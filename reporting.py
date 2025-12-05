@@ -115,10 +115,30 @@ def _display_single_market_report(
     print("\n" + "=" * 100)
     print("🎯 最終執行建議")
     print("=" * 100)
-    
+
+    # 顯示交易動作
+    trading_action = trader_decision.decision
+    action_map = {
+        "Buy": "🟢 買入",
+        "Sell": "🔴 賣出",
+        "Hold": "⏸️ 觀望",
+        "Long": "🟢 做多",
+        "Short": "🔴 做空"
+    }
+    action_display = action_map.get(trading_action, trading_action)
+    print(f"交易動作：{action_display}")
+
+    # 顯示審批結果
+    approval_map = {
+        "Approve": "✅ 完全批准",
+        "Amended": "⚠️ 修正後批准",
+        "Reject": "❌ 拒絕",
+        "Hold": "⏸️ 觀望"
+    }
+    approval_display = approval_map.get(final_approval.final_decision, final_approval.final_decision)
+    print(f"審批結果：{approval_display}")
+
     if final_approval.approved:
-        action_emoji = "🟢" if "Buy" in final_approval.final_decision or "Long" in final_approval.final_decision else "🔴"
-        print(f"{action_emoji} 建議執行：{final_approval.final_decision}")
         print(f"執行倉位：{final_approval.final_position_size * 100:.0f}%")
         if market_type == 'futures' and final_approval.approved_leverage is not None:
             print(f"使用槓桿：{final_approval.approved_leverage}x")

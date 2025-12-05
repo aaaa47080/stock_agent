@@ -315,8 +315,32 @@ class CryptoAnalysisBot:
             trader_decision = results.get('trader_decision')
             approval = results['final_approval']
 
+            # 獲取實際的交易動作
+            trading_action = trader_decision.decision if trader_decision else "Hold"
+
+            # 交易動作映射（轉換為中文）
+            action_map = {
+                "Buy": "🟢 買入",
+                "Sell": "🔴 賣出",
+                "Hold": "⏸️ 觀望",
+                "Long": "🟢 做多",
+                "Short": "🔴 做空"
+            }
+            action_display = action_map.get(trading_action, trading_action)
+
+            # 審批結果
+            approval_map = {
+                "Approve": "✅ 批准",
+                "Amended": "⚠️ 修正後批准",
+                "Reject": "❌ 拒絕",
+                "Hold": "⏸️ 觀望"
+            }
+            approval_display = approval_map.get(decision, decision)
+
             lines = [f"\n### {market_name}"]
-            lines.append(f"**決策**: {decision}")
+            lines.append(f"**交易動作**: {action_display}")
+            if approval.final_position_size > 0:
+                lines.append(f"**審批狀態**: {approval_display}")
             lines.append(f"**理由**: {reasoning}")
 
             # 如果批准交易，顯示價格信息
