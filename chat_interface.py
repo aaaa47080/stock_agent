@@ -306,13 +306,48 @@ class CryptoAnalysisBot:
             if len(reasoning) > 300: reasoning = reasoning[:300] + "..."
             return decision, reasoning
 
+        def format_market_info(results, market_name):
+            """格式化單個市場的信息，包含價格"""
+            if not results.get('final_approval'):
+                return f"\n### {market_name}\n**決策**: 無數據\n"
+
+            decision, reasoning = get_decision_data(results['final_approval'])
+            trader_decision = results.get('trader_decision')
+            approval = results['final_approval']
+
+            lines = [f"\n### {market_name}"]
+            lines.append(f"**決策**: {decision}")
+            lines.append(f"**理由**: {reasoning}")
+
+            # 如果批准交易，顯示價格信息
+            if approval.approved and approval.final_position_size > 0 and trader_decision:
+                lines.append(f"\n**📊 交易計劃**:")
+                lines.append(f"- **倉位**: {approval.final_position_size * 100:.0f}%")
+
+                if trader_decision.entry_price:
+                    lines.append(f"- **進場價**: ${trader_decision.entry_price:.4f}")
+                else:
+                    lines.append(f"- **進場價**: 市價 (${current_price:.4f})")
+
+                if trader_decision.stop_loss:
+                    loss_pct = abs((trader_decision.stop_loss - current_price) / current_price * 100)
+                    lines.append(f"- **止損**: ${trader_decision.stop_loss:.4f} (-{loss_pct:.2f}%)")
+
+                if trader_decision.take_profit:
+                    profit_pct = abs((trader_decision.take_profit - current_price) / current_price * 100)
+                    lines.append(f"- **止盈**: ${trader_decision.take_profit:.4f} (+{profit_pct:.2f}%)")
+
+                # 如果是合約，顯示槓桿
+                if approval.approved_leverage:
+                    lines.append(f"- **槓桿**: {approval.approved_leverage}x")
+
+            return "\n".join(lines) + "\n"
+
         if 'final_approval' in spot_results and spot_results['final_approval']:
-            s_decision, s_reasoning = get_decision_data(spot_results['final_approval'])
-            summary_parts.append(f"\n### 🏪 現貨市場\n**決策**: {s_decision}\n**理由**: {s_reasoning}\n")
+            summary_parts.append(format_market_info(spot_results, "🏪 現貨市場"))
 
         if 'final_approval' in futures_results and futures_results['final_approval']:
-            f_decision, f_reasoning = get_decision_data(futures_results['final_approval'])
-            summary_parts.append(f"\n### 📈 合約市場 (5x 槓桿)\n**決策**: {f_decision}\n**理由**: {f_reasoning}\n")
+            summary_parts.append(format_market_info(futures_results, "📈 合約市場 (5x 槓桿)"))
 
         if 'risk_assessment' in spot_results and spot_results['risk_assessment']:
             risk_obj = spot_results['risk_assessment']

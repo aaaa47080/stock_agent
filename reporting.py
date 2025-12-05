@@ -122,16 +122,23 @@ def _display_single_market_report(
         print(f"執行倉位：{final_approval.final_position_size * 100:.0f}%")
         if market_type == 'futures' and final_approval.approved_leverage is not None:
             print(f"使用槓桿：{final_approval.approved_leverage}x")
-        print(f"當前價格：${current_price:.2f}")
+        print(f"\n💰 價格資訊：")
+        print(f"  當前價格：${current_price:.2f}")
         if final_approval.final_position_size > 0:
+            if trader_decision.entry_price is not None:
+                print(f"  建議進場價：${trader_decision.entry_price:.2f}")
+            else:
+                print(f"  建議進場價：N/A（使用當前價格 ${current_price:.2f}）")
             if trader_decision.stop_loss is not None:
-                print(f"止損價位：${trader_decision.stop_loss:.2f}")
+                loss_pct = abs((trader_decision.stop_loss - current_price) / current_price * 100)
+                print(f"  止損價位：${trader_decision.stop_loss:.2f} ({'-' if trader_decision.stop_loss < current_price else '+'}{loss_pct:.2f}%)")
             else:
-                print("止損價位：N/A")
+                print("  止損價位：N/A")
             if trader_decision.take_profit is not None:
-                print(f"止盈價位：${trader_decision.take_profit:.2f}")
+                profit_pct = abs((trader_decision.take_profit - current_price) / current_price * 100)
+                print(f"  止盈價位：${trader_decision.take_profit:.2f} ({'+' if trader_decision.take_profit > current_price else '-'}{profit_pct:.2f}%)")
             else:
-                print("止盈價位：N/A")
+                print("  止盈價位：N/A")
     else:
         print("⏸️ 建議觀望，等待更好的機會")
     
