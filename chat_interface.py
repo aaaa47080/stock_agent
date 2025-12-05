@@ -157,7 +157,7 @@ class CryptoAnalysisBot:
                 continue
         return None
 
-    def _fetch_shared_data(self, symbol: str, exchange: str) -> Dict:
+    def _fetch_shared_data(self, symbol: str, exchange: str, interval: str = "1d", limit: int = 100) -> Dict:
         """
         🔥 核心功能：手動預先抓取數據 (只抓一次，供兩邊使用)
         這段邏輯是從 graph.py 的 prepare_data_node 提取出來的
@@ -169,7 +169,7 @@ class CryptoAnalysisBot:
         
         # 2. 為了節省資源，我們統一抓取「現貨 Spot」數據作為分析基礎
         # (雖然合約價格略有不同，但技術指標趨勢是一致的)
-        klines_df = data_fetcher.get_historical_klines(symbol, interval="1d", limit=100)
+        klines_df = data_fetcher.get_historical_klines(symbol, interval=interval, limit=limit)
         
         if klines_df is None or klines_df.empty:
             raise ValueError("無法獲取 K 線數據")
@@ -231,7 +231,7 @@ class CryptoAnalysisBot:
             "新聞資訊": news_data
         }
 
-    def analyze_crypto(self, symbol: str, exchange: str = None) -> Tuple[Optional[Dict], Optional[Dict], str]:
+    def analyze_crypto(self, symbol: str, exchange: str = None, interval: str = "1d", limit: int = 100) -> Tuple[Optional[Dict], Optional[Dict], str]:
         """
         分析單個加密貨幣 (使用並行處理 + 數據共享)
         """
@@ -249,19 +249,19 @@ class CryptoAnalysisBot:
 
         try:
             # 2. 🔥 預先抓取數據 (只做一次)
-            shared_data = self._fetch_shared_data(normalized_symbol, exchange)
-            print("✅ 數據預取完成，正在分發給 AI 分析師...")
+            shared_data = self._fetch_shared_data(normalized_symbol, exchange, interval, limit)
+            print(f"✅ 數據預取完成 (週期: {interval}, 數量: {limit})，正在分發給 AI 分析師...")
 
             # 3. 定義兩個任務 (注入 preloaded_data)
             spot_state = {
-                "symbol": normalized_symbol, "exchange": exchange, "interval": "1d",
-                "limit": 100, "market_type": 'spot', "leverage": 1,
+                "symbol": normalized_symbol, "exchange": exchange, "interval": interval,
+                "limit": limit, "market_type": 'spot', "leverage": 1,
                 "preloaded_data": shared_data # <--- 注入共用數據
             }
 
             futures_state = {
-                "symbol": normalized_symbol, "exchange": exchange, "interval": "1d",
-                "limit": 100, "market_type": 'futures', "leverage": 5,
+                "symbol": normalized_symbol, "exchange": exchange, "interval": interval,
+                "limit": limit, "market_type": 'futures', "leverage": 5,
                 "preloaded_data": shared_data # <--- 注入共用數據
             }
 
@@ -357,7 +357,7 @@ class CryptoAnalysisBot:
         summary_parts.append(f"\n---\n*分析時間: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*")
         return "\n".join(summary_parts)
     
-    def process_message(self, user_message: str, history: List) -> Tuple[str, List]:
+    def process_message(self, user_message: str, history: List, interval: str = "1d", limit: int = 100) -> Tuple[str, List]:
         # (這裡保持你不變的原始代碼，因為沒有變動)
         if not user_message.strip():
             return "", history
@@ -373,7 +373,7 @@ class CryptoAnalysisBot:
                 response = f"我來為你分析比較 {', '.join(symbols)} 的投資價值...\n\n"
                 all_summaries = []
                 for symbol in symbols:
-                    spot_results, futures_results, summary = self.analyze_crypto(symbol)
+                    spot_results, futures_results, summary = self.analyze_crypto(symbol, interval=interval, limit=limit)
                     if spot_results or futures_results:
                         all_summaries.append(summary)
                     else:
@@ -382,7 +382,7 @@ class CryptoAnalysisBot:
             else:
                 symbol = symbols[0]
                 response = f"正在為你分析 {symbol} 的投資價值...\n\n"
-                spot_results, futures_results, summary = self.analyze_crypto(symbol)
+                spot_results, futures_results, summary = self.analyze_crypto(symbol, interval=interval, limit=limit)
                 response += summary
         else:
             response = "抱歉，我沒有理解你的問題..."
@@ -435,27 +435,43 @@ def create_chat_interface():
             submit = gr.Button("發送", variant="primary", scale=1)
 
         with gr.Row():
-            clear = gr.Button("清除對話")
+            interval_dropdown = gr.Dropdown(
+                choices=['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '12h', '1d', '3d', '1w', '1M'],
+                value='1d',
+                label="⏱️ 時間週期",
+                info="K線週期（預設: 1天）",
+                scale=1
+            )
+            limit_slider = gr.Slider(
+                minimum=50,
+                maximum=1000,
+                value=100,
+                step=50,
+                label="📊 數據量",
+                info="K線數量（預設: 100）",
+                scale=2
+            )
+            clear = gr.Button("清除對話", scale=1)
 
         gr.Markdown(
             """
             ---
             **提示:**
-            - 支持的交易所: Binance (預設)
-            - 分析基於最近 100 天的數據
+            - 支持的交易所: Binance (預設), OKX
+            - 可自定義時間週期和數據量
             - 合約市場預設使用 5x 槓桿
             - 請謹慎投資，本系統僅供參考
             """
         )
 
-        def respond(message, chat_history):
+        def respond(message, chat_history, interval, limit):
             """處理用戶消息"""
-            response, updated_history = bot.process_message(message, chat_history)
+            response, updated_history = bot.process_message(message, chat_history, interval, limit)
             return "", updated_history
 
         # 綁定事件
-        msg.submit(respond, [msg, chatbot], [msg, chatbot])
-        submit.click(respond, [msg, chatbot], [msg, chatbot])
+        msg.submit(respond, [msg, chatbot, interval_dropdown, limit_slider], [msg, chatbot])
+        submit.click(respond, [msg, chatbot, interval_dropdown, limit_slider], [msg, chatbot])
         clear.click(lambda: None, None, chatbot, queue=False)
 
     return demo

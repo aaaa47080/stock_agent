@@ -8,19 +8,45 @@ def main():
     """
     主執行函式
     """
-    parser = argparse.ArgumentParser(description="Crypto Trading Agent for Dual Market Analysis")
-    parser.add_argument("--symbol", type=str, default="BTCUSDT", help="Trading pair symbol (e.g., BTCUSDT, ETHUSDT)")
-    parser.add_argument("--exchange", type=str, default="binance", help="Exchange to fetch data from (e.g., binance, okx)")
+    parser = argparse.ArgumentParser(
+        description="Crypto Trading Agent for Dual Market Analysis",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+時間週期選項 (--interval):
+  1m, 3m, 5m, 15m, 30m     分鐘級別
+  1h, 2h, 4h, 6h, 12h      小時級別
+  1d, 3d, 1w, 1M           日/周/月級別
+
+範例:
+  python main.py --symbol BTCUSDT --interval 1h --limit 200
+  python main.py --symbol ETHUSDT --interval 15m --limit 500 --exchange okx
+        """
+    )
+    parser.add_argument("--symbol", type=str, default="BTCUSDT",
+                       help="交易對符號 (例如: BTCUSDT, ETHUSDT)")
+    parser.add_argument("--exchange", type=str, default="binance",
+                       help="交易所 (binance 或 okx)")
+    parser.add_argument("--interval", type=str, default="1d",
+                       choices=['1m', '3m', '5m', '15m', '30m',
+                               '1h', '2h', '4h', '6h', '12h',
+                               '1d', '3d', '1w', '1M'],
+                       help="K線時間週期 (預設: 1d)")
+    parser.add_argument("--limit", type=int, default=100,
+                       help="獲取的K線數量 (預設: 100)")
+    parser.add_argument("--leverage", type=int, default=5,
+                       help="合約市場槓桿倍數 (預設: 5x)")
     args = parser.parse_args()
 
     print("=" * 100)
     print("啟動 TradingAgents (LangGraph 版本) - 雙市場分析")
     print("=" * 100)
+    print(f"📊 分析配置: {args.symbol} | 交易所: {args.exchange} | 週期: {args.interval} | 數量: {args.limit}")
+    print("=" * 100)
 
     symbol = args.symbol
-    exchange = args.exchange # Get exchange from args
-    interval = "1d"
-    limit = 100
+    exchange = args.exchange
+    interval = args.interval
+    limit = args.limit
     
     spot_final_state = None
     futures_final_state = None
@@ -47,7 +73,7 @@ def main():
             "interval": interval,
             "limit": limit,
             "market_type": 'futures',
-            "leverage": 5, # 合約市場預設槓桿 5x，可在此調整
+            "leverage": args.leverage, # 從命令行參數讀取
         }
         futures_final_state = app.invoke(futures_initial_state)
         print(f"\n--- 合約市場分析完成 ({symbol}) ---")
