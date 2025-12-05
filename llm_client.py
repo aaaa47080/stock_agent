@@ -7,7 +7,146 @@ from dotenv import load_dotenv
 import openai
 from typing import Dict, Any
 
+# 嘗試導入 Google Gemini，如果未安裝則跳過
+try:
+    import google.generativeai as genai
+    GOOGLE_GEMINI_AVAILABLE = True
+except ImportError:
+    genai = None
+    GOOGLE_GEMINI_AVAILABLE = False
+
 load_dotenv()
+
+
+class GeminiWrapper:
+    """Google Gemini API 包裝器，提供 OpenAI 兼容接口"""
+
+    def __init__(self, genai_module):
+        self.genai = genai_module
+        self.chat = self  # 模擬 OpenAI 的 client.chat 結構
+        self.completions = self  # 模擬 OpenAI 的 client.chat.completions 結構
+
+    def create(self, model: str, messages: list, response_format: dict = None, temperature: float = 0.5, **kwargs):
+        """
+        模擬 OpenAI 的 chat.completions.create() 方法
+
+        Args:
+            model: Gemini 模型名稱 (例如 "gemini-1.5-pro")
+            messages: OpenAI 格式的消息列表
+            response_format: 響應格式配置 ({"type": "json_object"})
+            temperature: 生成溫度
+            **kwargs: 其他參數
+
+        Returns:
+            模擬 OpenAI 響應格式的對象
+        """
+        # 將 OpenAI 格式的消息轉換為 Gemini 格式
+        # Gemini 只需要最後一條用戶消息的內容
+        prompt = ""
+        for msg in messages:
+            if msg["role"] == "user":
+                prompt = msg["content"]
+
+        # 配置生成參數
+        generation_config = {
+            "temperature": temperature,
+            "top_p": 0.95,
+            "top_k": 40,
+            "max_output_tokens": 8192,
+        }
+
+        # 如果需要 JSON 輸出，設置 response_mime_type 和強化提示
+        if response_format and response_format.get("type") == "json_object":
+            generation_config["response_mime_type"] = "application/json"
+            # 在提示詞最後強調只輸出 JSON
+            if "請以 JSON 格式回覆" in prompt or "JSON 格式" in prompt:
+                # 已經有 JSON 指示，加強說明
+                prompt = f"{prompt}\n\n重要提醒：只輸出純 JSON 對象，不要包含任何解釋、思考過程或其他文字。"
+            else:
+                # 沒有 JSON 指示，添加完整說明
+                prompt = f"{prompt}\n\n請以純 JSON 格式回覆，不要包含任何其他文字、解釋或標記。"
+
+        # 創建 Gemini 模型實例（帶系統指令）
+        system_instruction = None
+        if response_format and response_format.get("type") == "json_object":
+            system_instruction = "You are a JSON response generator. Always output valid JSON only, without any additional text, explanation, or markdown formatting."
+
+        gemini_model = self.genai.GenerativeModel(
+            model_name=model,
+            generation_config=generation_config,
+            system_instruction=system_instruction
+        )
+
+        # 調用 Gemini API
+        response = gemini_model.generate_content(prompt)
+
+        # 獲取響應文本
+        response_text = response.text
+
+        # 如果需要 JSON 輸出，清理和驗證響應
+        if response_format and response_format.get("type") == "json_object":
+            import json
+            import re
+
+            # 嘗試清理響應（移除可能的 markdown 代碼塊標記）
+            cleaned_text = response_text.strip()
+
+            # 移除可能的 markdown JSON 代碼塊
+            if cleaned_text.startswith("```json"):
+                cleaned_text = re.sub(r'^```json\s*\n', '', cleaned_text)
+                cleaned_text = re.sub(r'\n```\s*$', '', cleaned_text)
+            elif cleaned_text.startswith("```"):
+                cleaned_text = re.sub(r'^```\s*\n', '', cleaned_text)
+                cleaned_text = re.sub(r'\n```\s*$', '', cleaned_text)
+
+            try:
+                # 嘗試解析 JSON 以驗證格式
+                parsed = json.loads(cleaned_text)
+
+                # 檢查是否有 'task' 或其他包裝鍵（某些 Gemini 版本會這樣做）
+                if isinstance(parsed, dict) and len(parsed) == 1:
+                    # 如果只有一個鍵且不是預期的業務鍵，可能是包裝
+                    single_key = list(parsed.keys())[0]
+                    if single_key in ['task', 'response', 'output', 'result', 'data']:
+                        print(f"⚠️  檢測到 Gemini 包裝鍵 '{single_key}'，嘗試解包...")
+                        # 嘗試解包
+                        inner_value = parsed[single_key]
+                        if isinstance(inner_value, dict):
+                            parsed = inner_value
+                            print(f"✅ 解包成功，新的鍵: {list(parsed.keys())}")
+
+                # 記錄調試信息
+                print(f"🔍 Gemini JSON 響應鍵: {list(parsed.keys()) if isinstance(parsed, dict) else type(parsed)}")
+
+                # 重新序列化以確保格式正確
+                response_text = json.dumps(parsed, ensure_ascii=False)
+
+            except json.JSONDecodeError as e:
+                # 記錄原始響應以便調試
+                print(f"⚠️  Gemini JSON 解析失敗: {e}")
+                print(f"原始響應前500字符: {response_text[:500]}")
+                # 嘗試提取 JSON（查找第一個 { 到最後一個 }）
+                first_brace = response_text.find('{')
+                last_brace = response_text.rfind('}')
+                if first_brace != -1 and last_brace != -1:
+                    try:
+                        extracted = response_text[first_brace:last_brace + 1]
+                        parsed = json.loads(extracted)
+                        print(f"✅ JSON 提取成功")
+                        response_text = json.dumps(parsed, ensure_ascii=False)
+                    except:
+                        pass  # 保持原始響應文本
+
+        # 將 Gemini 響應轉換為 OpenAI 格式
+        class Choice:
+            def __init__(self, content):
+                self.message = type('obj', (object,), {'content': content})()
+
+        class Response:
+            def __init__(self, content):
+                self.choices = [Choice(content)]
+
+        return Response(response_text)
 
 
 class LLMClientFactory:
@@ -29,6 +168,8 @@ class LLMClientFactory:
             return LLMClientFactory._create_openai_client()
         elif provider.lower() == "openrouter":
             return LLMClientFactory._create_openrouter_client()
+        elif provider.lower() == "google_gemini":
+            return LLMClientFactory._create_google_gemini_client()
         else:
             raise ValueError(f"不支持的 LLM 提供商: {provider}")
 
@@ -55,6 +196,19 @@ class LLMClientFactory:
         )
 
     @staticmethod
+    def _create_google_gemini_client():
+        """創建 Google Gemini 客戶端"""
+        if not GOOGLE_GEMINI_AVAILABLE:
+            raise ValueError("Google Gemini SDK 未安裝，請運行: pip install google-generativeai")
+
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            raise ValueError("未找到 GOOGLE_API_KEY 環境變量")
+
+        genai.configure(api_key=api_key)
+        return GeminiWrapper(genai)
+
+    @staticmethod
     def get_model_info(config: Dict[str, str]) -> str:
         """
         獲取模型信息字符串
@@ -70,8 +224,11 @@ class LLMClientFactory:
 
         if provider == "openrouter":
             return f"{model} (via OpenRouter)"
+        elif provider == "google_gemini":
+            return f"{model} (Google Gemini Official)"
         else:
             return f"{model} (OpenAI)"
+
 
 
 def supports_json_mode(model: str) -> bool:
@@ -220,3 +377,13 @@ if __name__ == "__main__":
 
     print(f"\n多頭研究員: {LLMClientFactory.get_model_info(BULL_RESEARCHER_MODEL)}")
     print(f"空頭研究員: {LLMClientFactory.get_model_info(BEAR_RESEARCHER_MODEL)}")
+
+    # 測試 Google Gemini
+    try:
+        # 這裡不實際調用 generate_content，僅測試客戶端是否能成功初始化
+        # 實際的模型調用應在 Agent 或其他業務邏輯中處理
+        client = LLMClientFactory.create_client("google_gemini")
+        print("✅ Google Gemini 客戶端創建成功")
+    except Exception as e:
+        print(f"❌ Google Gemini 客戶端創建失敗: {e}")
+        print("   提示: 需要設置 GOOGLE_API_KEY 環境變量")

@@ -22,6 +22,8 @@ class ResearcherDebate(BaseModel):
     key_points: List[str]
     counter_arguments: List[str] = []
     confidence: float = Field(..., ge=0, le=100)
+    round_number: int = 1  # 當前是第幾輪辯論
+    opponent_view: Optional[str] = None  # 對手在上一輪的觀點（用於回應）
 
 
 class TraderDecision(BaseModel):

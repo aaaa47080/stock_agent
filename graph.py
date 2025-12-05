@@ -23,7 +23,8 @@ from agents import (
     BearResearcher,
     Trader,
     RiskManager,
-    FundManager
+    FundManager,
+    CommitteeSynthesizer
 )
 from settings import Settings
 
@@ -226,22 +227,181 @@ def analyst_team_node(state: AgentState) -> Dict:
 def research_debate_node(state: AgentState) -> Dict:
     """
     節點 3: 研究團隊進行多空辯論。
-    使用單一模型進行多空辯論（已簡化，移除可選功能）
+    實現多輪互動辯論機制，讓多空雙方真正互相討論。
+    支持委員會模式：多個模型組成委員會，先內部討論再辯論。
     """
-    print("\n[節點 3/7] 研究團隊 (多空辯論)...")
+    from settings import Settings
+    from config import (
+        ENABLE_COMMITTEE_MODE,
+        BULL_COMMITTEE_MODELS,
+        BEAR_COMMITTEE_MODELS,
+        SYNTHESIS_MODEL,
+        BULL_RESEARCHER_MODEL,
+        BEAR_RESEARCHER_MODEL
+    )
+    from llm_client import create_llm_client_from_config
 
+    debate_rounds = Settings.DEBATE_ROUNDS
     analyst_reports = state['analyst_reports']
     client = state['client']
 
-    # 創建多空研究員
-    bull_researcher = BullResearcher(client)
-    bear_researcher = BearResearcher(client)
+    # 檢查是否啟用委員會模式
+    if ENABLE_COMMITTEE_MODE:
+        print(f"\n[節點 3/7] 研究團隊 (委員會模式 + {debate_rounds}輪辯論)...")
+        print(f"  📋 多頭委員會: {len(BULL_COMMITTEE_MODELS)} 個模型")
+        print(f"  📋 空頭委員會: {len(BEAR_COMMITTEE_MODELS)} 個模型")
 
-    # 進行辯論
-    bull_argument = bull_researcher.debate(analyst_reports)
-    bear_argument = bear_researcher.debate(analyst_reports)
+        # === 多頭委員會討論 ===
+        print(f"\n  🐂 多頭委員會內部討論...")
+        bull_committee_args = []
+        for i, model_config in enumerate(BULL_COMMITTEE_MODELS, 1):
+            print(f"     成員 {i}: {model_config['provider']}:{model_config['model']}")
+            member_client, member_model = create_llm_client_from_config(model_config)
+            researcher = BullResearcher(member_client, member_model)
+            arg = researcher.debate(analyst_reports)
+            bull_committee_args.append(arg)
+            print(f"        ✅ 信心度: {arg.confidence}%")
 
-    print("✅ 多空辯論完成")
+        # 綜合多頭委員會觀點
+        print(f"\n  🔮 綜合多頭委員會觀點...")
+        synthesis_client, synthesis_model = create_llm_client_from_config(SYNTHESIS_MODEL)
+        synthesizer = CommitteeSynthesizer(synthesis_client, synthesis_model)
+        bull_argument = synthesizer.synthesize_committee_views('Bull', bull_committee_args, analyst_reports)
+        print(f"     ✅ 多頭委員會綜合觀點 (信心度: {bull_argument.confidence}%)")
+
+        # === 空頭委員會討論 ===
+        print(f"\n  🐻 空頭委員會內部討論...")
+        bear_committee_args = []
+        for i, model_config in enumerate(BEAR_COMMITTEE_MODELS, 1):
+            print(f"     成員 {i}: {model_config['provider']}:{model_config['model']}")
+            member_client, member_model = create_llm_client_from_config(model_config)
+            researcher = BearResearcher(member_client, member_model)
+            arg = researcher.debate(analyst_reports)
+            bear_committee_args.append(arg)
+            print(f"        ✅ 信心度: {arg.confidence}%")
+
+        # 綜合空頭委員會觀點
+        print(f"\n  🔮 綜合空頭委員會觀點...")
+        bear_argument = synthesizer.synthesize_committee_views('Bear', bear_committee_args, analyst_reports)
+        print(f"     ✅ 空頭委員會綜合觀點 (信心度: {bear_argument.confidence}%)")
+
+        # 如果啟用多輪辯論，使用綜合觀點進行辯論
+        if debate_rounds > 1:
+            print(f"\n  🔄 委員會綜合觀點進行 {debate_rounds-1} 輪辯論...")
+            # 創建研究員進行後續辯論
+            bull_client, bull_model = create_llm_client_from_config(SYNTHESIS_MODEL)
+            bear_client, bear_model = create_llm_client_from_config(SYNTHESIS_MODEL)
+            bull_researcher = BullResearcher(bull_client, bull_model)
+            bear_researcher = BearResearcher(bear_client, bear_model)
+
+            # 從第2輪開始辯論（第1輪已經是委員會綜合）
+            for round_num in range(2, debate_rounds + 1):
+                print(f"\n  🔄 第 {round_num}/{debate_rounds} 輪辯論...")
+
+                bull_argument = bull_researcher.debate(
+                    analyst_reports=analyst_reports,
+                    opponent_argument=bear_argument,
+                    round_number=round_num
+                )
+                print(f"     🐂 多頭信心度: {bull_argument.confidence}%")
+
+                bear_argument = bear_researcher.debate(
+                    analyst_reports=analyst_reports,
+                    opponent_argument=bull_argument,
+                    round_number=round_num
+                )
+                print(f"     🐻 空頭信心度: {bear_argument.confidence}%")
+
+    else:
+        # === 單一模型辯論模式 ===
+        print(f"\n[節點 3/7] 研究團隊 (多空辯論 - {debate_rounds}輪互動)...")
+
+        # 創建多空研究員
+        bull_client, bull_model = create_llm_client_from_config(BULL_RESEARCHER_MODEL)
+        bear_client, bear_model = create_llm_client_from_config(BEAR_RESEARCHER_MODEL)
+        bull_researcher = BullResearcher(bull_client, bull_model)
+        bear_researcher = BearResearcher(bear_client, bear_model)
+
+        # 進行多輪辯論
+        bull_argument = None
+        bear_argument = None
+
+        for round_num in range(1, debate_rounds + 1):
+            print(f"\n{'=' * 80}")
+            print(f"  🔄 第 {round_num}/{debate_rounds} 輪辯論")
+            print(f"{'=' * 80}")
+
+            # 多頭發言（如果不是第一輪，會看到空頭上一輪的觀點）
+            print(f"\n  🐂 多頭研究員發言...")
+            if bear_argument:
+                print(f"     💡 多頭看到了空頭上一輪的觀點：")
+                print(f"        空頭論點摘要: {bear_argument.argument[:150]}...")
+                print(f"        空頭信心度: {bear_argument.confidence}%")
+
+            bull_argument = bull_researcher.debate(
+                analyst_reports=analyst_reports,
+                opponent_argument=bear_argument,  # 傳入空頭的上一輪觀點
+                round_number=round_num
+            )
+
+            print(f"\n  ✅ 多頭研究員觀點 (第 {round_num} 輪)：")
+            print(f"     信心度: {bull_argument.confidence}%")
+            print(f"     完整論點: {bull_argument.argument}")
+            print(f"     關鍵看漲點:")
+            for i, point in enumerate(bull_argument.key_points, 1):
+                print(f"       {i}. {point}")
+            if bull_argument.counter_arguments:
+                print(f"     對空頭的反駁:")
+                for i, counter in enumerate(bull_argument.counter_arguments, 1):
+                    print(f"       {i}. {counter}")
+            print()
+
+            # 空頭發言（看到多頭本輪的觀點）
+            print(f"  🐻 空頭研究員發言...")
+            print(f"     💡 空頭看到了多頭本輪的觀點：")
+            print(f"        多頭論點摘要: {bull_argument.argument[:150]}...")
+            print(f"        多頭信心度: {bull_argument.confidence}%")
+
+            bear_argument = bear_researcher.debate(
+                analyst_reports=analyst_reports,
+                opponent_argument=bull_argument,  # 傳入多頭的本輪觀點
+                round_number=round_num
+            )
+
+            print(f"\n  ✅ 空頭研究員觀點 (第 {round_num} 輪)：")
+            print(f"     信心度: {bear_argument.confidence}%")
+            print(f"     完整論點: {bear_argument.argument}")
+            print(f"     關鍵看跌點:")
+            for i, point in enumerate(bear_argument.key_points, 1):
+                print(f"       {i}. {point}")
+            if bear_argument.counter_arguments:
+                print(f"     對多頭的反駁:")
+                for i, counter in enumerate(bear_argument.counter_arguments, 1):
+                    print(f"       {i}. {counter}")
+            print()
+
+    # 辯論總結
+    print(f"\n{'=' * 80}")
+    print(f"  📊 辯論總結")
+    print(f"{'=' * 80}")
+    print(f"\n  🐂 多頭最終觀點:")
+    print(f"     信心度: {bull_argument.confidence}%")
+    print(f"     核心論點: {bull_argument.argument[:200]}...")
+    print(f"\n  🐻 空頭最終觀點:")
+    print(f"     信心度: {bear_argument.confidence}%")
+    print(f"     核心論點: {bear_argument.argument[:200]}...")
+
+    confidence_diff = abs(bull_argument.confidence - bear_argument.confidence)
+    if bull_argument.confidence > bear_argument.confidence:
+        print(f"\n  📈 辯論結果: 多頭觀點較強 (信心度差距: {confidence_diff:.1f}%)")
+    elif bear_argument.confidence > bull_argument.confidence:
+        print(f"\n  📉 辯論結果: 空頭觀點較強 (信心度差距: {confidence_diff:.1f}%)")
+    else:
+        print(f"\n  ⚖️  辯論結果: 雙方勢均力敵")
+
+    print(f"\n✅ {debate_rounds}輪辯論完成")
+    print(f"{'=' * 80}\n")
+
     return {"bull_argument": bull_argument, "bear_argument": bear_argument}
 
 def trader_decision_node(state: AgentState) -> Dict:
