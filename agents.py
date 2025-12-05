@@ -402,7 +402,7 @@ class Trader:
 你是一位經驗豐富的專業交易員，負責做出最終的交易決策。
 當前市場類型是：{market_type}。
 數據來源交易所：{exchange}。
-{f"用戶指定預設槓桿倍數是：{leverage}x。請根據你的判斷，決定最適合此次交易的槓桿倍數 (1-125x)。" if market_type == 'futures' else ""}
+{f"請根據市場風險、波動率和你的交易策略，自行決定合適的槓桿倍數 (1-125x)。考慮因素：波動率越高應使用越低槓桿，趨勢越明確可適當提高槓桿。" if market_type == 'futures' else ""}
 {feedback_prompt}
 
 你已經收到：
@@ -508,7 +508,6 @@ class RiskManager:
         prompt = f"""
 你是一位風險管理專家，負責評估並控制交易風險。
 當前市場類型是：{market_type}。
-{f"交易員建議的槓桿倍數是：{leverage}x。" if market_type == 'futures' else ""}
 
 交易員決策：
 - 決策：{trader_decision.decision}

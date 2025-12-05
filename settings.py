@@ -28,15 +28,15 @@ class Settings:
     # 系統行為配置
     # ============================================================================
     # 重試機制
-    MAX_RETRIES: int = 3                # API 調用最大重試次數
+    MAX_RETRIES: int = 10                # API 調用最大重試次數
     RETRY_DELAY: float = 1.0            # 初始重試延遲（秒）
     RETRY_BACKOFF: float = 2.0          # 延遲倍增因子
 
     # 並行執行
-    ANALYST_MAX_WORKERS: int = 4        # 分析師並行執行的最大線程數
+    ANALYST_MAX_WORKERS: int = 10       # 分析師並行執行的最大線程數
 
     # 風險管理
-    MAX_REPLANS: int = 2                # 風險管理回饋的最大重規劃次數（原本是1）
+    MAX_REPLANS: int = 10                # 風險管理回饋的最大重規劃次數（原本是1）
 
     # LLM 緩存
     ENABLE_LLM_CACHE: bool = True       # 是否啟用 LLM 緩存
