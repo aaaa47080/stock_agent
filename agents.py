@@ -217,17 +217,31 @@ class BullResearcher:
         self.stance = "Bull"
         print(f"  🐂 多頭研究員使用模型: {self.model}")
 
-    def debate(self, analyst_reports: List[AnalystReport]) -> ResearcherDebate:
-        """基於分析師報告提出看漲論點"""
-        
+    def debate(self, analyst_reports: List[AnalystReport], opponent_argument: Optional[ResearcherDebate] = None, round_number: int = 1) -> ResearcherDebate:
+        """基於分析師報告提出看漲論點，並回應空頭觀點"""
+
         all_bullish = []
         all_bearish = []
         for report in analyst_reports:
             all_bullish.extend(report.bullish_points)
             all_bearish.extend(report.bearish_points)
-        
+
+        # 構建對手觀點部分
+        opponent_section = ""
+        if opponent_argument:
+            opponent_section = f"""
+=== 空頭研究員的論點（第{opponent_argument.round_number}輪）===
+論點：{opponent_argument.argument}
+關鍵點：{json.dumps(opponent_argument.key_points, ensure_ascii=False)}
+對你的反駁：{json.dumps(opponent_argument.counter_arguments, ensure_ascii=False)}
+信心度：{opponent_argument.confidence}%
+
+**重要**：你現在需要針對空頭的論點進行有針對性的回應和反駁。
+"""
+
         prompt = f"""
 你是一位多頭研究員，你的任務是尋找和強化看漲論點。
+當前是第 {round_number} 輪辯論。
 
 分析師報告摘要：
 {json.dumps([{"分析師": r.analyst_type, "摘要": r.summary} for r in analyst_reports], indent=2, ensure_ascii=False)}
@@ -238,10 +252,12 @@ class BullResearcher:
 所有看跌因素：
 {json.dumps(all_bearish, indent=2, ensure_ascii=False)}
 
+{opponent_section}
+
 你的任務：
-1. 綜合看漲論點並強化
+1. {'如果這是第一輪，綜合看漲論點並強化' if round_number == 1 else '針對空頭的反駁進行回應，強化你的看漲論點'}
 2. 解釋為什麼看漲因素更重要
-3. 反駁看跌論點
+3. {'反駁看跌論點' if round_number == 1 else '具體反駁空頭研究員的關鍵點'}
 4. 提供具體的買入理由
 
 請以 JSON 格式回覆，嚴格遵守數據類型：
@@ -250,6 +266,8 @@ class BullResearcher:
 - key_points: 關鍵看漲點列表 (必須是字串 List ["點1", "點2"])
 - counter_arguments: 對空頭論點的反駁列表 (必須是字串 List ["反駁1", "反駁2"]，絕對不要使用 Key-Value 物件或字典)
 - confidence: 信心度 (0-100 的數字)
+- round_number: {round_number}
+- opponent_view: {f'"{opponent_argument.argument[:200]}..."' if opponent_argument else 'null'}
 """
 
         # 根據模型是否支持 JSON 模式來決定是否使用 response_format
@@ -271,11 +289,42 @@ class BullResearcher:
                 # 使用提取函數從響應中提取 JSON
                 result_dict = extract_json_from_response(response.choices[0].message.content)
 
+            if "error" in result_dict:
+                print(f"       ⚠️ LLM 返回錯誤訊息而非預期結構: {result_dict.get('error', '未知錯誤')}")
+                # 構造一個默認的 ResearcherDebate 物件來避免崩潰
+                return ResearcherDebate(
+                    researcher_stance=self.stance,
+                    argument=f"LLM 回傳錯誤訊息: {result_dict.get('error', '未知錯誤')}",
+                    key_points=["LLM 拒絕回答或未能生成有效內容"],
+                    counter_arguments=["未能獲取到有效的對手反駁"],
+                    confidence=0.0, # 信心度設為0
+                    round_number=round_number,
+                    opponent_view=opponent_argument.argument[:200] if opponent_argument else None
+                )
             return ResearcherDebate.model_validate(result_dict)
         except Exception as e:
             print(f"       ❌ 失敗: {e}")
-            # 返回一個默認的響應，避免整個流程中斷
-            raise
+            # 如果是 Pydantic 驗證錯誤，將其轉換為 ResearcherDebate 物件
+            if isinstance(e, ValueError) and "Field required" in str(e):
+                return ResearcherDebate(
+                    researcher_stance=self.stance,
+                    argument=f"Pydantic 驗證失敗: {e}",
+                    key_points=["LLM 回傳的結構不符合預期"],
+                    counter_arguments=["未能獲取到有效的對手反駁"],
+                    confidence=0.0,
+                    round_number=round_number,
+                    opponent_view=opponent_argument.argument[:200] if opponent_argument else None
+                )
+            # 對於其他未知錯誤，也返回一個默認響應
+            return ResearcherDebate(
+                researcher_stance=self.stance,
+                argument=f"處理 LLM 響應時發生未知錯誤: {e}",
+                key_points=["未能處理 LLM 響應"],
+                counter_arguments=["未能獲取到有效的對手反駁"],
+                confidence=0.0,
+                round_number=round_number,
+                opponent_view=opponent_argument.argument[:200] if opponent_argument else None
+            )
 
 class BearResearcher:
     """空頭研究員 Agent"""
@@ -286,17 +335,31 @@ class BearResearcher:
         self.stance = "Bear"
         print(f"  🐻 空頭研究員使用模型: {self.model}")
 
-    def debate(self, analyst_reports: List[AnalystReport]) -> ResearcherDebate:
-        """基於分析師報告提出看跌論點"""
-        
+    def debate(self, analyst_reports: List[AnalystReport], opponent_argument: Optional[ResearcherDebate] = None, round_number: int = 1) -> ResearcherDebate:
+        """基於分析師報告提出看跌論點，並回應多頭觀點"""
+
         all_bullish = []
         all_bearish = []
         for report in analyst_reports:
             all_bullish.extend(report.bullish_points)
             all_bearish.extend(report.bearish_points)
-        
+
+        # 構建對手觀點部分
+        opponent_section = ""
+        if opponent_argument:
+            opponent_section = f"""
+=== 多頭研究員的論點（第{opponent_argument.round_number}輪）===
+論點：{opponent_argument.argument}
+關鍵點：{json.dumps(opponent_argument.key_points, ensure_ascii=False)}
+對你的反駁：{json.dumps(opponent_argument.counter_arguments, ensure_ascii=False)}
+信心度：{opponent_argument.confidence}%
+
+**重要**：你現在需要針對多頭的論點進行有針對性的回應和反駁。
+"""
+
         prompt = f"""
 你是一位空頭研究員，你的任務是識別風險和強化看跌論點。
+當前是第 {round_number} 輪辯論。
 
 分析師報告摘要：
 {json.dumps([{"分析師": r.analyst_type, "摘要": r.summary} for r in analyst_reports], indent=2, ensure_ascii=False)}
@@ -307,10 +370,12 @@ class BearResearcher:
 所有看跌因素：
 {json.dumps(all_bearish, indent=2, ensure_ascii=False)}
 
+{opponent_section}
+
 你的任務：
-1. 綜合看跌論點並強化
+1. {'如果這是第一輪，綜合看跌論點並強化' if round_number == 1 else '針對多頭的反駁進行回應，強化你的看跌論點'}
 2. 指出潛在風險和陷阱
-3. 反駁看漲論點
+3. {'反駁看漲論點' if round_number == 1 else '具體反駁多頭研究員的關鍵點'}
 4. 提供具體的風險警告
 
 請以 JSON 格式回覆，嚴格遵守數據類型：
@@ -319,6 +384,8 @@ class BearResearcher:
 - key_points: 關鍵看跌點列表 (必須是字串 List ["點1", "點2"])
 - counter_arguments: 對多頭論點的反駁列表 (必須是字串 List ["反駁1", "反駁2"]，絕對不要使用 Key-Value 物件或字典)
 - confidence: 信心度 (0-100 的數字)
+- round_number: {round_number}
+- opponent_view: {f'"{opponent_argument.argument[:200]}..."' if opponent_argument else 'null'}
 """
 
         # 根據模型是否支持 JSON 模式來決定是否使用 response_format
@@ -340,11 +407,42 @@ class BearResearcher:
                 # 使用提取函數從響應中提取 JSON
                 result_dict = extract_json_from_response(response.choices[0].message.content)
 
+            if "error" in result_dict:
+                print(f"       ⚠️ LLM 返回錯誤訊息而非預期結構: {result_dict.get('error', '未知錯誤')}")
+                # 構造一個默認的 ResearcherDebate 物件來避免崩潰
+                return ResearcherDebate(
+                    researcher_stance=self.stance,
+                    argument=f"LLM 回傳錯誤訊息: {result_dict.get('error', '未知錯誤')}",
+                    key_points=["LLM 拒絕回答或未能生成有效內容"],
+                    counter_arguments=["未能獲取到有效的對手反駁"],
+                    confidence=0.0, # 信心度設為0
+                    round_number=round_number,
+                    opponent_view=opponent_argument.argument[:200] if opponent_argument else None
+                )
             return ResearcherDebate.model_validate(result_dict)
         except Exception as e:
             print(f"       ❌ 失敗: {e}")
-            # 返回一個默認的響應，避免整個流程中斷
-            raise
+            # 如果是 Pydantic 驗證錯誤，將其轉換為 ResearcherDebate 物件
+            if isinstance(e, ValueError) and "Field required" in str(e):
+                return ResearcherDebate(
+                    researcher_stance=self.stance,
+                    argument=f"Pydantic 驗證失敗: {e}",
+                    key_points=["LLM 回傳的結構不符合預期"],
+                    counter_arguments=["未能獲取到有效的對手反駁"],
+                    confidence=0.0,
+                    round_number=round_number,
+                    opponent_view=opponent_argument.argument[:200] if opponent_argument else None
+                )
+            # 對於其他未知錯誤，也返回一個默認響應
+            return ResearcherDebate(
+                researcher_stance=self.stance,
+                argument=f"處理 LLM 響應時發生未知錯誤: {e}",
+                key_points=["未能處理 LLM 響應"],
+                counter_arguments=["未能獲取到有效的對手反駁"],
+                confidence=0.0,
+                round_number=round_number,
+                opponent_view=opponent_argument.argument[:200] if opponent_argument else None
+            )
 
 # ============================================================================ 
 # 第三層：交易員 (Trader)
@@ -662,3 +760,90 @@ class FundManager:
             result['rationale'] = result.get('reasoning', '基於風險與收益比的綜合考量做出此決策。')
 
         return FinalApproval.model_validate(result)
+
+# ============================================================================
+# 委員會模式支援
+# ============================================================================
+
+class CommitteeSynthesizer:
+    """委員會觀點綜合器 - 將多個模型的觀點整合成一個綜合觀點"""
+
+    def __init__(self, client, model: str = None):
+        self.client = client
+        self.model = model or DEEP_THINKING_MODEL
+        print(f"  🔮 綜合模型: {self.model}")
+
+    def synthesize_committee_views(
+        self,
+        stance: Literal['Bull', 'Bear'],
+        committee_arguments: List[ResearcherDebate],
+        analyst_reports: List[AnalystReport]
+    ) -> ResearcherDebate:
+        """綜合委員會成員的觀點"""
+
+        # 收集所有委員會成員的觀點
+        all_arguments = []
+        all_key_points = []
+        all_counter_arguments = []
+        avg_confidence = 0.0
+
+        for i, arg in enumerate(committee_arguments, 1):
+            all_arguments.append(f"成員 {i}: {arg.argument}")
+            all_key_points.extend(arg.key_points)
+            all_counter_arguments.extend(arg.counter_arguments)
+            avg_confidence += arg.confidence
+
+        avg_confidence = avg_confidence / len(committee_arguments) if committee_arguments else 50.0
+
+        stance_zh = "多頭" if stance == "Bull" else "空頭"
+
+        prompt = f"""
+你是一位資深的市場分析綜合專家，負責整合{stance_zh}委員會所有成員的觀點。
+
+委員會共有 {len(committee_arguments)} 位成員，他們的觀點如下：
+
+{chr(10).join(all_arguments)}
+
+所有關鍵點：
+{json.dumps(all_key_points, ensure_ascii=False, indent=2)}
+
+所有反駁論點：
+{json.dumps(all_counter_arguments, ensure_ascii=False, indent=2)}
+
+平均信心度：{avg_confidence:.1f}%
+
+你的任務：
+1. 綜合所有成員的觀點，提煉出核心共識
+2. 識別最強有力的論點
+3. 去除重複和次要論點
+4. 形成一個統一、連貫的{stance_zh}觀點
+
+請以 JSON 格式回覆：
+- researcher_stance: "{stance}"
+- argument: 綜合後的{stance_zh}論點 (繁體中文，至少150字)
+- key_points: 核心關鍵點列表 (去重後的 3-5 個最重要的點)
+- counter_arguments: 統一的反駁論點列表 (去重後的 3-5 個)
+- confidence: 綜合信心度 (基於所有成員的平均信心度調整，0-100)
+- round_number: 1
+- opponent_view: null
+"""
+
+        try:
+            if supports_json_mode(self.model):
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[{"role": "user", "content": prompt}],
+                    response_format={"type": "json_object"}
+                )
+                result_dict = json.loads(response.choices[0].message.content)
+            else:
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                result_dict = extract_json_from_response(response.choices[0].message.content)
+
+            return ResearcherDebate.model_validate(result_dict)
+        except Exception as e:
+            print(f"       ❌ 綜合失敗: {e}")
+            raise
