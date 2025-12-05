@@ -1,0 +1,437 @@
+"""
+聊天界面模組 - 使用 Gradio 創建對話式加密貨幣投資分析界面
+支持自然語言查詢，智能提取加密貨幣代號並進行分析
+"""
+
+import gradio as gr
+import os
+import re
+from typing import List, Dict, Tuple, Optional
+import openai
+from dotenv import load_dotenv
+from graph import app
+from data_fetcher import SymbolNotFoundError, get_data_fetcher
+import json
+from datetime import datetime
+from data_fetcher import get_data_fetcher
+from utils import get_crypto_news
+from indicator_calculator import add_technical_indicators
+import concurrent.futures  # <--- 記得加在文件最上面
+load_dotenv()
+
+
+class CryptoQueryParser:
+    """使用 LLM 解析用戶查詢並提取加密貨幣代號"""
+
+    def __init__(self):
+        self.client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+    def parse_query(self, user_message: str) -> Dict:
+        """
+        使用 LLM 解析用戶的自然語言查詢
+
+        Args:
+            user_message: 用戶的問題
+
+        Returns:
+            Dict: {
+                "intent": "investment_analysis",  # 意圖
+                "symbols": ["BTC", "ETH"],  # 提取的加密貨幣代號
+                "action": "analyze"  # 動作
+            }
+        """
+
+        system_prompt = """你是一個專業的加密貨幣投資助手。你的任務是解析用戶的問題,提取以下資訊:
+
+1. 用戶意圖 (intent):
+   - "investment_analysis": 投資分析
+   - "general_question": 一般問題
+   - "greeting": 打招呼
+
+2. 加密貨幣代號 (symbols): 從問題中提取所有提到的加密貨幣代號
+   - 常見格式: BTC, ETH, XRP, PI, PIUSDT, BTCUSDT 等
+   - 注意: PI 代表 Pi Network
+   - 如果用戶說 "比特幣", 轉換為 "BTC"
+   - 如果用戶說 "以太坊", 轉換為 "ETH"
+   - 如果已經包含 USDT 後綴(如 PIUSDT), 保持原樣
+   - 如果沒有 USDT 後綴, 不要自動添加
+
+3. 動作 (action):
+   - "analyze": 進行投資分析
+   - "compare": 比較多個幣種
+   - "chat": 普通對話
+
+請以 JSON 格式返回結果:
+{
+    "intent": "investment_analysis",
+    "symbols": ["BTC", "ETH"],
+    "action": "analyze",
+    "user_question": "用戶的原始問題摘要"
+}
+
+範例:
+- 輸入: "PI 可以投資嗎?"
+  輸出: {"intent": "investment_analysis", "symbols": ["PI"], "action": "analyze", "user_question": "PI 是否可以投資"}
+
+- 輸入: "PIUSDT 可以投資嘛"
+  輸出: {"intent": "investment_analysis", "symbols": ["PIUSDT"], "action": "analyze", "user_question": "PIUSDT 是否可以投資"}
+
+- 輸入: "XRP, PI, ETH 哪些可以投資"
+  輸出: {"intent": "investment_analysis", "symbols": ["XRP", "PI", "ETH"], "action": "compare", "user_question": "比較 XRP, PI, ETH 的投資價值"}
+
+- 輸入: "比特幣最近表現如何"
+  輸出: {"intent": "investment_analysis", "symbols": ["BTC"], "action": "analyze", "user_question": "比特幣最近的表現"}
+"""
+
+        try:
+            response = self.client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message}
+                ],
+                temperature=0.3,
+                response_format={"type": "json_object"}
+            )
+
+            result = json.loads(response.choices[0].message.content)
+            return result
+
+        except Exception as e:
+            print(f"解析查詢時發生錯誤: {e}")
+            # 退回到簡單的正則表達式提取
+            return self._fallback_parse(user_message)
+
+    def _fallback_parse(self, user_message: str) -> Dict:
+        """當 LLM 解析失敗時的退回方案"""
+        # 使用正則表達式提取常見的加密貨幣代號
+        crypto_pattern = r'\b([A-Z]{2,10}(?:USDT|BUSD)?)\b'
+        matches = re.findall(crypto_pattern, user_message.upper())
+
+        # 過濾常見詞彙
+        common_words = {'USDT', 'BUSD', 'USD', 'TWD', 'CNY'}
+        symbols = [m for m in matches if m not in common_words]
+
+        return {
+            "intent": "investment_analysis" if symbols else "general_question",
+            "symbols": symbols,
+            "action": "compare" if len(symbols) > 1 else "analyze",
+            "user_question": user_message
+        }
+
+
+class CryptoAnalysisBot:
+    """加密貨幣分析聊天機器人"""
+
+    def __init__(self):
+        self.parser = CryptoQueryParser()
+        self.chat_history = []
+        # 支持的交易所列表，按優先級排序
+        self.supported_exchanges = ["binance", "okx"]
+
+    def normalize_symbol(self, symbol: str, exchange: str = "binance") -> str:
+        """標準化交易對符號"""
+        symbol = symbol.upper().strip()
+        if exchange.lower() == "okx":
+            if "-USDT" in symbol or "-BUSD" in symbol: return symbol
+            if symbol.endswith("USDT"): return f"{symbol[:-4]}-USDT"
+            if symbol.endswith("BUSD"): return f"{symbol[:-4]}-BUSD"
+            return f"{symbol}-USDT"
+        else:
+            if "-USDT" in symbol: return symbol.replace("-USDT", "USDT")
+            if "-BUSD" in symbol: return symbol.replace("-BUSD", "BUSD")
+            if symbol.endswith('USDT') or symbol.endswith('BUSD'): return symbol
+            return f"{symbol}USDT"
+
+    def find_available_exchange(self, symbol: str) -> Optional[Tuple[str, str]]:
+        """查找交易對可用的交易所"""
+        for exchange in self.supported_exchanges:
+            try:
+                normalized = self.normalize_symbol(symbol, exchange)
+                fetcher = get_data_fetcher(exchange)
+                test_data = fetcher.get_historical_klines(normalized, "1d", limit=1)
+                if test_data is not None and not test_data.empty:
+                    print(f"✅ 在 {exchange.upper()} 找到交易對: {normalized}")
+                    return (exchange, normalized)
+            except:
+                continue
+        return None
+
+    def _fetch_shared_data(self, symbol: str, exchange: str) -> Dict:
+        """
+        🔥 核心功能：手動預先抓取數據 (只抓一次，供兩邊使用)
+        這段邏輯是從 graph.py 的 prepare_data_node 提取出來的
+        """
+        print(f"📥 正在預先下載共用數據: {symbol}...")
+        
+        # 1. 獲取數據抓取器
+        data_fetcher = get_data_fetcher(exchange)
+        
+        # 2. 為了節省資源，我們統一抓取「現貨 Spot」數據作為分析基礎
+        # (雖然合約價格略有不同，但技術指標趨勢是一致的)
+        klines_df = data_fetcher.get_historical_klines(symbol, interval="1d", limit=100)
+        
+        if klines_df is None or klines_df.empty:
+            raise ValueError("無法獲取 K 線數據")
+
+        # 3. 添加技術指標
+        df_with_indicators = add_technical_indicators(klines_df)
+        
+        # 4. 抓取新聞
+        base_currency = symbol.replace("USDT", "").replace("BUSD", "").replace("-", "").replace("SWAP", "")
+        news_data = get_crypto_news(symbol=base_currency, limit=5)
+
+        # 5. 整理數據結構 (這必須跟 AgentState 要求的格式一樣)
+        latest = df_with_indicators.iloc[-1]
+        current_price = float(latest['Close'])
+        
+        # 最近5天歷史
+        recent_history = []
+        recent_days = min(5, len(df_with_indicators))
+        for i in range(-recent_days, 0):
+            day_data = df_with_indicators.iloc[i]
+            recent_history.append({
+                "日期": i, "開盤": float(day_data['Open']), "最高": float(day_data['High']),
+                "最低": float(day_data['Low']), "收盤": float(day_data['Close']), "交易量": float(day_data['Volume'])
+            })
+
+        # 關鍵價位
+        recent_30 = df_with_indicators.tail(30) if len(df_with_indicators) >= 30 else df_with_indicators
+        key_levels = {
+            "30天最高價": float(recent_30['High'].max()), "30天最低價": float(recent_30['Low'].min()),
+            "支撐位": float(recent_30['Low'].quantile(0.25)), "壓力位": float(recent_30['High'].quantile(0.75)),
+        }
+
+        # 市場結構
+        price_changes = df_with_indicators['Close'].pct_change()
+        market_structure = {
+            "趨勢": "上漲" if price_changes.tail(7).mean() > 0 else "下跌",
+            "波動率": float(price_changes.tail(30).std() * 100) if len(price_changes) >= 30 else 0,
+            "平均交易量": float(df_with_indicators['Volume'].tail(7).mean()),
+        }
+
+        # 返回共用數據包
+        return {
+            "market_type": "spot", # 這裡先標記為 spot，傳入 graph 後會被覆蓋
+            "exchange": exchange,
+            "leverage": 1,
+            "funding_rate_info": {}, # 共用數據暫不包含合約特定的資金費率
+            "價格資訊": {
+                "當前價格": current_price,
+                "7天價格變化百分比": float(((latest['Close'] / df_with_indicators.iloc[-7]['Close']) - 1) * 100) if len(df_with_indicators) >= 7 else 0,
+            },
+            "技術指標": {
+                "RSI_14": float(latest.get('RSI_14', 0)), "MACD_線": float(latest.get('MACD_12_26_9', 0)),
+                "布林帶上軌": float(latest.get('BB_upper_20_2', 0)), "布林帶下軌": float(latest.get('BB_lower_20_2', 0)),
+                "MA_7": float(latest.get('MA_7', 0)), "MA_25": float(latest.get('MA_25', 0)),
+            },
+            "最近5天歷史": recent_history,
+            "市場結構": market_structure,
+            "關鍵價位": key_levels,
+            "新聞資訊": news_data
+        }
+
+    def analyze_crypto(self, symbol: str, exchange: str = None) -> Tuple[Optional[Dict], Optional[Dict], str]:
+        """
+        分析單個加密貨幣 (使用並行處理 + 數據共享)
+        """
+        # 1. 查找交易所與標準化符號
+        if exchange is None:
+            result = self.find_available_exchange(symbol)
+            if result is None:
+                error_msg = f"❌ 在所有支持的交易所 ({', '.join([e.upper() for e in self.supported_exchanges])}) 都找不到交易對 {symbol}\n"
+                return None, None, error_msg
+            exchange, normalized_symbol = result
+        else:
+            normalized_symbol = self.normalize_symbol(symbol, exchange)
+
+        print(f"🚀 準備分析 {normalized_symbol} ({exchange})...")
+
+        try:
+            # 2. 🔥 預先抓取數據 (只做一次)
+            shared_data = self._fetch_shared_data(normalized_symbol, exchange)
+            print("✅ 數據預取完成，正在分發給 AI 分析師...")
+
+            # 3. 定義兩個任務 (注入 preloaded_data)
+            spot_state = {
+                "symbol": normalized_symbol, "exchange": exchange, "interval": "1d",
+                "limit": 100, "market_type": 'spot', "leverage": 1,
+                "preloaded_data": shared_data # <--- 注入共用數據
+            }
+
+            futures_state = {
+                "symbol": normalized_symbol, "exchange": exchange, "interval": "1d",
+                "limit": 100, "market_type": 'futures', "leverage": 5,
+                "preloaded_data": shared_data # <--- 注入共用數據
+            }
+
+            # 4. 並行執行 AI 分析 (因為數據已經有了，這一步會非常快)
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+                future_spot = executor.submit(app.invoke, spot_state)
+                future_futures = executor.submit(app.invoke, futures_state)
+
+                spot_final_state = future_spot.result()
+                futures_final_state = future_futures.result()
+
+            # 5. 生成摘要
+            summary = self._generate_summary(spot_final_state, futures_final_state)
+            return spot_final_state, futures_final_state, summary
+
+        except Exception as e:
+            error_msg = f"❌ 分析 {normalized_symbol} 時發生錯誤: {str(e)}"
+            print(error_msg)
+            import traceback
+            traceback.print_exc()
+            return None, None, error_msg
+
+    def _generate_summary(self, spot_results: Dict, futures_results: Dict) -> str:
+        """生成分析摘要 (修復版)"""
+        summary_parts = []
+        symbol = spot_results.get('symbol', '未知幣種')
+        current_price = spot_results.get('current_price', 0)
+        exchange = spot_results.get('exchange', 'N/A').upper()
+
+        summary_parts.append(f"## 📊 {symbol} 投資分析報告\n")
+        summary_parts.append(f"**交易所**: {exchange}")
+        summary_parts.append(f"**當前價格**: ${float(current_price):.4f}\n" if current_price else "**當前價格**: 無法獲取\n")
+
+        def get_decision_data(approval_obj):
+            if not approval_obj: return "未知", "無數據"
+            decision = getattr(approval_obj, 'final_decision', getattr(approval_obj, 'decision', 'Hold'))
+            reasoning = "無法讀取詳細理由"
+            for field in ['reasoning', 'analysis', 'explanation', 'rationale', 'content']:
+                if hasattr(approval_obj, field) and getattr(approval_obj, field):
+                    reasoning = str(getattr(approval_obj, field))
+                    break
+            if len(reasoning) > 300: reasoning = reasoning[:300] + "..."
+            return decision, reasoning
+
+        if 'final_approval' in spot_results and spot_results['final_approval']:
+            s_decision, s_reasoning = get_decision_data(spot_results['final_approval'])
+            summary_parts.append(f"\n### 🏪 現貨市場\n**決策**: {s_decision}\n**理由**: {s_reasoning}\n")
+
+        if 'final_approval' in futures_results and futures_results['final_approval']:
+            f_decision, f_reasoning = get_decision_data(futures_results['final_approval'])
+            summary_parts.append(f"\n### 📈 合約市場 (5x 槓桿)\n**決策**: {f_decision}\n**理由**: {f_reasoning}\n")
+
+        if 'risk_assessment' in spot_results and spot_results['risk_assessment']:
+            risk_obj = spot_results['risk_assessment']
+            risk_level = getattr(risk_obj, 'risk_level', getattr(risk_obj, 'level', '未知'))
+            summary_parts.append(f"\n**風險等級**: {risk_level}")
+
+        summary_parts.append(f"\n---\n*分析時間: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*")
+        return "\n".join(summary_parts)
+    
+    def process_message(self, user_message: str, history: List) -> Tuple[str, List]:
+        # (這裡保持你不變的原始代碼，因為沒有變動)
+        if not user_message.strip():
+            return "", history
+        parsed = self.parser.parse_query(user_message)
+        intent = parsed.get("intent", "general_question")
+        symbols = parsed.get("symbols", [])
+        action = parsed.get("action", "chat")
+
+        if intent == "greeting":
+            response = "你好！我是加密貨幣投資分析助手..."
+        elif intent == "investment_analysis" and symbols:
+            if action == "compare" and len(symbols) > 1:
+                response = f"我來為你分析比較 {', '.join(symbols)} 的投資價值...\n\n"
+                all_summaries = []
+                for symbol in symbols:
+                    spot_results, futures_results, summary = self.analyze_crypto(symbol)
+                    if spot_results or futures_results:
+                        all_summaries.append(summary)
+                    else:
+                        all_summaries.append(f"### {symbol}\n{summary}")
+                response += "\n\n".join(all_summaries)
+            else:
+                symbol = symbols[0]
+                response = f"正在為你分析 {symbol} 的投資價值...\n\n"
+                spot_results, futures_results, summary = self.analyze_crypto(symbol)
+                response += summary
+        else:
+            response = "抱歉，我沒有理解你的問題..."
+
+        history.append({"role": "user", "content": user_message})
+        history.append({"role": "assistant", "content": response})
+        return "", history
+
+
+def create_chat_interface():
+    """創建 Gradio 聊天界面"""
+
+    bot = CryptoAnalysisBot()
+
+    # 創建界面
+    with gr.Blocks(title="加密貨幣投資分析助手") as demo:
+        gr.Markdown(
+            """
+            # 💰 加密貨幣投資分析助手
+
+            歡迎使用智能投資分析系統！我可以幫你分析各種加密貨幣的投資價值。
+
+            **功能特色:**
+            - 🤖 自然語言對話，智能識別加密貨幣代號
+            - 📊 雙市場分析（現貨 + 合約）
+            - 🔍 多維度技術分析
+            - ⚖️ 多空辯論與風險評估
+            - 📈 專業投資建議
+
+            **使用範例:**
+            - "PI 可以投資嗎？"
+            - "PIUSDT 值得買入嗎？"
+            - "XRP, PI, ETH 哪些可以投資？"
+            - "比特幣現在適合進場嗎？"
+            """
+        )
+
+        chatbot = gr.Chatbot(
+            label="對話記錄",
+            height=500,
+            show_label=True
+        )
+
+        with gr.Row():
+            msg = gr.Textbox(
+                label="輸入你的問題",
+                placeholder="例如: PI 可以投資嗎？",
+                scale=4
+            )
+            submit = gr.Button("發送", variant="primary", scale=1)
+
+        with gr.Row():
+            clear = gr.Button("清除對話")
+
+        gr.Markdown(
+            """
+            ---
+            **提示:**
+            - 支持的交易所: Binance (預設)
+            - 分析基於最近 100 天的數據
+            - 合約市場預設使用 5x 槓桿
+            - 請謹慎投資，本系統僅供參考
+            """
+        )
+
+        def respond(message, chat_history):
+            """處理用戶消息"""
+            response, updated_history = bot.process_message(message, chat_history)
+            return "", updated_history
+
+        # 綁定事件
+        msg.submit(respond, [msg, chatbot], [msg, chatbot])
+        submit.click(respond, [msg, chatbot], [msg, chatbot])
+        clear.click(lambda: None, None, chatbot, queue=False)
+
+    return demo
+
+
+if __name__ == "__main__":
+    # 啟動聊天界面
+    demo = create_chat_interface()
+    demo.launch(
+        server_name="0.0.0.0",
+        server_port=7860,
+        share=False,
+        show_error=True
+    )
