@@ -226,89 +226,18 @@ def analyst_team_node(state: AgentState) -> Dict:
 def research_debate_node(state: AgentState) -> Dict:
     """
     節點 3: 研究團隊進行多空辯論。
-    支持三種模式：
-    1. 單一模型辯論 (默認)
-    2. 多模型辯論 (不同模型扮演多空)
-    3. 委員會模式 (多個模型給出同一方觀點後綜合)
+    使用單一模型進行多空辯論（已簡化，移除可選功能）
     """
     print("\n[節點 3/7] 研究團隊 (多空辯論)...")
 
     analyst_reports = state['analyst_reports']
-
-    # 嘗試導入簡化配置
-    try:
-        from model_parser import load_simple_config
-        simple_config = load_simple_config()
-
-        # 檢查是否啟用委員會模式
-        if simple_config.get("enable_committee", False):
-            print("  🏛️ 啟用委員會模式")
-            from committee_debate import run_committee_debate
-
-            bull_argument, bear_argument = run_committee_debate(
-                analyst_reports=analyst_reports,
-                bull_committee_configs=simple_config["bull_committee"],
-                bear_committee_configs=simple_config["bear_committee"],
-                synthesis_model_config=simple_config["synthesis"]
-            )
-
-            print("✅ 委員會辯論完成")
-            return {"bull_argument": bull_argument, "bear_argument": bear_argument}
-
-        # 檢查是否啟用多模型辯論
-        elif simple_config.get("enable_multi_model", False):
-            print("  🎭 啟用多模型辯論")
-            from llm_client import create_llm_client_from_config
-
-            # 多頭使用配置的模型
-            bull_client, bull_model = create_llm_client_from_config(simple_config["bull"])
-            bull_researcher = BullResearcher(bull_client, bull_model)
-
-            # 空頭使用配置的模型
-            bear_client, bear_model = create_llm_client_from_config(simple_config["bear"])
-            bear_researcher = BearResearcher(bear_client, bear_model)
-
-            bull_argument = bull_researcher.debate(analyst_reports)
-            bear_argument = bear_researcher.debate(analyst_reports)
-
-            print("✅ 多空辯論完成")
-            return {"bull_argument": bull_argument, "bear_argument": bear_argument}
-
-    except ImportError:
-        print("  ⚠️ 未找到 config_simple.py，嘗試使用傳統配置...")
-
-    # 回退到傳統配置 (config.py)
-    try:
-        from config import (
-            ENABLE_MULTI_MODEL_DEBATE,
-            BULL_RESEARCHER_MODEL,
-            BEAR_RESEARCHER_MODEL
-        )
-        from llm_client import create_llm_client_from_config
-
-        if ENABLE_MULTI_MODEL_DEBATE:
-            print("  🎭 啟用多模型辯論 (傳統配置)")
-            bull_client, bull_model = create_llm_client_from_config(BULL_RESEARCHER_MODEL)
-            bull_researcher = BullResearcher(bull_client, bull_model)
-
-            bear_client, bear_model = create_llm_client_from_config(BEAR_RESEARCHER_MODEL)
-            bear_researcher = BearResearcher(bear_client, bear_model)
-
-            bull_argument = bull_researcher.debate(analyst_reports)
-            bear_argument = bear_researcher.debate(analyst_reports)
-
-            print("✅ 多空辯論完成")
-            return {"bull_argument": bull_argument, "bear_argument": bear_argument}
-
-    except ImportError:
-        pass
-
-    # 默認：使用單一模型
-    print("  📝 使用單一模型辯論")
     client = state['client']
+
+    # 創建多空研究員
     bull_researcher = BullResearcher(client)
     bear_researcher = BearResearcher(client)
 
+    # 進行辯論
     bull_argument = bull_researcher.debate(analyst_reports)
     bear_argument = bear_researcher.debate(analyst_reports)
 
