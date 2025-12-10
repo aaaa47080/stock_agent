@@ -51,7 +51,7 @@ TRADER_MODEL = {
 BULL_COMMITTEE_MODELS = [
     {"provider": "openai", "model": "gpt-4o-mini"},                           # GPT-4o mini
     {"provider": "google_gemini", "model": "gemini-2.5-flash"},              # Gemini 2.5 Flash (最新穩定版)
-    {"provider": "openrouter", "model": "qwen/qwen3-235b-a22b:free"},        # Qwen 免費版
+    # {"provider": "openrouter", "model": "qwen/qwen3-235b-a22b:free"},        # Qwen 免費版
 ]
 
 # === 空頭委員會 ===
@@ -59,7 +59,7 @@ BULL_COMMITTEE_MODELS = [
 BEAR_COMMITTEE_MODELS = [
     {"provider": "openai", "model": "gpt-4o-mini"},                           # GPT-4o mini
     {"provider": "google_gemini", "model": "gemini-2.5-flash"},              # Gemini 2.5 Flash (最新穩定版)
-    {"provider": "openrouter", "model": "qwen/qwen3-235b-a22b:free"},        # Qwen 免費版
+    # {"provider": "openrouter", "model": "qwen/qwen3-235b-a22b:free"},        # Qwen 免費版
 ]
 
 # === 綜合模型 ===

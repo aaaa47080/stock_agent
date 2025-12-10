@@ -17,6 +17,9 @@ from data_fetcher import get_data_fetcher
 from utils import get_crypto_news
 from indicator_calculator import add_technical_indicators
 import concurrent.futures  # <--- 記得加在文件最上面
+from crypto_screener import screen_top_cryptos
+import pandas as pd
+
 load_dotenv()
 
 
@@ -339,8 +342,7 @@ class CryptoAnalysisBot:
 
             lines = [f"\n### {market_name}"]
             lines.append(f"**交易動作**: {action_display}")
-            if approval.final_position_size > 0:
-                lines.append(f"**審批狀態**: {approval_display}")
+            lines.append(f"**審批狀態**: {approval_display}")
             lines.append(f"**理由**: {reasoning}")
 
             # 如果批准交易，顯示價格信息
@@ -382,7 +384,7 @@ class CryptoAnalysisBot:
         return "\n".join(summary_parts)
     
     def process_message(self, user_message: str, history: List, interval: str = "1d", limit: int = 100) -> Tuple[str, List]:
-        # (這裡保持你不變的原始代碼，因為沒有變動)
+        # (這裡保持你不變的原始代碼， क्योंकि इसमें कोई बदलाव नहीं है)
         if not user_message.strip():
             return "", history
         parsed = self.parser.parse_query(user_message)
@@ -500,13 +502,73 @@ def create_chat_interface():
 
     return demo
 
+def create_screener_interface():
+    """創建加密貨幣篩選器界面"""
+    bot = CryptoAnalysisBot()
+
+    with gr.Blocks() as screener_tab:
+        gr.Markdown("# 🚀 Top 30 Cryptocurrency Screener")
+        with gr.Row():
+            exchange_dropdown = gr.Dropdown(choices=["binance", "okx"], value="binance", label="Exchange")
+            run_button = gr.Button("Run Screener", variant="primary")
+        
+        top_performers_df_state = gr.State(pd.DataFrame())
+        
+        gr.Markdown("### 📈 Top Performers (7-day)")
+        top_performers_df_display = gr.DataFrame(pd.DataFrame(), interactive=False)
+        
+        with gr.Row():
+            debate_button = gr.Button("Debate Top 3", variant="secondary")
+        
+        debate_results_display = gr.Markdown("")
+
+        gr.Markdown("### 📉 Most Oversold (RSI < 40)")
+        oversold_df_display = gr.DataFrame(pd.DataFrame(), interactive=False)
+        
+        gr.Markdown("### 💹 Most Overbought (RSI > 70)")
+        overbought_df_display = gr.DataFrame(pd.DataFrame(), interactive=False)
+
+        def run_screener_and_display(exchange):
+            summary_df, top_performers, oversold, overbought = screen_top_cryptos(exchange=exchange, limit=30, interval='1d')
+            return top_performers, oversold, overbought, top_performers
+
+        def debate_top_performers(top_performers_df, exchange):
+            if top_performers_df.empty:
+                return "Please run the screener first to identify top performers."
+
+            top_3_symbols = top_performers_df.head(3)['Symbol'].tolist()
+            
+            all_summaries = []
+            for symbol in top_3_symbols:
+                _, _, summary = bot.analyze_crypto(symbol, exchange=exchange)
+                all_summaries.append(summary)
+            
+            return "\n\n---\n\n".join(all_summaries)
+
+        run_button.click(
+            run_screener_and_display,
+            inputs=[exchange_dropdown],
+            outputs=[top_performers_df_display, oversold_df_display, overbought_df_display, top_performers_df_state]
+        )
+        
+        debate_button.click(
+            debate_top_performers,
+            inputs=[top_performers_df_state, exchange_dropdown],
+            outputs=[debate_results_display]
+        )
+
+    return screener_tab
+
 
 if __name__ == "__main__":
-    # 啟動聊天界面
-    demo = create_chat_interface()
+    # 啟動帶有選項卡的界面
+    demo = gr.TabbedInterface(
+        [create_chat_interface(), create_screener_interface()],
+        ["Chat with Agent", "Crypto Screener"]
+    )
     demo.launch(
         server_name="0.0.0.0",
-        server_port=7860,
+        server_port=7868,
         share=False,
         show_error=True
     )

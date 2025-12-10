@@ -66,6 +66,32 @@ class BinanceDataFetcher:
             print(f"An unexpected error occurred while checking symbol availability for {symbol} on {market_type} market: {e}")
             raise requests.exceptions.RequestException(f"An unexpected error occurred: {e}")
 
+    def get_top_symbols(self, limit=30, quote_asset='USDT'):
+        """
+        Gets the top trading symbols by 24-hour quote volume from Binance Spot.
+        """
+        endpoint = "/ticker/24hr"
+        print(f"Fetching top {limit} symbols from Binance, quoted in {quote_asset}...")
+        
+        all_tickers = self._make_request(self.spot_base_url, endpoint)
+        
+        if all_tickers:
+            # Filter for symbols that are quoted in the desired asset (e.g., USDT)
+            usdt_tickers = [t for t in all_tickers if t['symbol'].endswith(quote_asset)]
+            
+            # Sort by quote volume in descending order
+            # The 'quoteVolume' is a string, so it needs to be converted to float
+            sorted_tickers = sorted(usdt_tickers, key=lambda x: float(x.get('quoteVolume', 0)), reverse=True)
+            
+            # Get the top 'limit' symbols
+            top_symbols = [t['symbol'] for t in sorted_tickers[:limit]]
+            
+            print(f"Found top {len(top_symbols)} symbols: {top_symbols}")
+            return top_symbols
+            
+        print("Could not retrieve tickers to determine top symbols.")
+        return []
+
     def get_historical_klines(self, symbol, interval, limit=1000, start_str=None):
         """
         Get historical K-line/candlestick data for a symbol from Binance Spot API.
@@ -147,7 +173,7 @@ class OkxDataFetcher:
     """OKX 交易所數據獲取器"""
 
     def __init__(self):
-        self.base_url = "https://www.okx.com/api/v5"
+        self.base_url = os.getenv("OKX_BASE_URL", "https://www.okx.com/api/v5")
 
     def _convert_interval(self, interval):
         """
@@ -174,9 +200,15 @@ class OkxDataFetcher:
 
     def _make_request(self, endpoint, params=None):
         """發送 HTTP 請求到 OKX API"""
+        proxies = None
+        https_proxy = os.getenv("HTTPS_PROXY")
+        if https_proxy:
+            proxies = {"http": https_proxy, "https": https_proxy}
+            print(f"🕵️ 使用代理: {https_proxy}")
+
         try:
             url = self.base_url + endpoint
-            response = requests.get(url, params=params, timeout=10)
+            response = requests.get(url, params=params, timeout=20, proxies=proxies)
             response.raise_for_status()
 
             data = response.json()
@@ -194,9 +226,42 @@ class OkxDataFetcher:
                 raise SymbolNotFoundError(f"Symbol not found on OKX: {params.get('instId', 'N/A')}") from http_err
             print(f"HTTP error occurred: {http_err}")
             return None
+        except requests.exceptions.ProxyError as proxy_err:
+            print(f"代理錯誤: 無法連接到代理伺服器 {https_proxy}。請檢查您的代理設定和網路。")
+            print(f"詳細錯誤: {proxy_err}")
+            return None
         except requests.exceptions.RequestException as req_err:
             print(f"Request error occurred: {req_err}")
             return None
+
+
+    def get_top_symbols(self, limit=30, quote_asset='USDT'):
+        """
+        Gets the top trading symbols by 24-hour volume from OKX Spot.
+        OKX symbol format is 'BTC-USDT'.
+        """
+        endpoint = "/market/tickers"
+        params = {'instType': 'SPOT'}
+        print(f"Fetching top {limit} symbols from OKX, quoted in {quote_asset}...")
+
+        all_tickers = self._make_request(endpoint, params)
+        
+        if all_tickers:
+            # Filter for symbols quoted in the desired asset (e.g., USDT)
+            usdt_tickers = [t for t in all_tickers if t['instId'].endswith(f'-{quote_asset}')]
+            
+            # Sort by 24h volume in quote currency (volCcy24h)
+            # The value is a string, so it needs to be converted to float
+            sorted_tickers = sorted(usdt_tickers, key=lambda x: float(x.get('volCcy24h', 0)), reverse=True)
+            
+            # Get the top 'limit' symbols
+            top_symbols = [t['instId'] for t in sorted_tickers[:limit]]
+            
+            print(f"Found top {len(top_symbols)} symbols: {top_symbols}")
+            return top_symbols
+            
+        print("Could not retrieve tickers from OKX to determine top symbols.")
+        return []
 
     def get_historical_klines(self, symbol, interval, limit=100):
         """
@@ -452,3 +517,16 @@ if __name__ == '__main__':
         print(okx_spot_klines_df.tail())
     else:
         print("Failed to fetch OKX Spot K-line data for PI-USDT (as expected for placeholder)")
+
+    print("\n" + "="*50 + "\n")
+
+    # Test get_top_symbols
+    print("--- Testing get_top_symbols ---")
+    top_binance_symbols = binance_fetcher.get_top_symbols(limit=5)
+    print(f"Top 5 symbols from Binance: {top_binance_symbols}")
+
+    print("\n---")
+
+    top_okx_symbols = okx_fetcher.get_top_symbols(limit=5)
+    print(f"Top 5 symbols from OKX: {top_okx_symbols}")
+

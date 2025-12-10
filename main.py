@@ -3,13 +3,14 @@ import sys
 from graph import app
 from reporting import display_full_report
 from data_fetcher import SymbolNotFoundError # Import the custom exception
+from crypto_screener import screen_top_cryptos
 
 def main():
     """
     主執行函式
     """
     parser = argparse.ArgumentParser(
-        description="Crypto Trading Agent for Dual Market Analysis",
+        description="Crypto Trading Agent for Dual Market Analysis and Screening",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 時間週期選項 (--interval):
@@ -20,6 +21,7 @@ def main():
 範例:
   python main.py --symbol BTCUSDT --interval 1h --limit 200
   python main.py --symbol ETHUSDT --interval 15m --limit 500 --exchange okx
+  python main.py --screen
         """
     )
     parser.add_argument("--symbol", type=str, default="BTCUSDT",
@@ -35,7 +37,13 @@ def main():
                        help="獲取的K線數量 (預設: 100)")
     parser.add_argument("--leverage", type=int, default=5,
                        help="合約市場槓桿倍數 (預設: 5x)")
+    parser.add_argument("--screen", action="store_true",
+                        help="對排名前30的加密貨幣進行篩選")
     args = parser.parse_args()
+
+    if args.screen:
+        screen_top_cryptos(exchange=args.exchange, limit=30, interval=args.interval)
+        sys.exit(0)
 
     print("=" * 100)
     print("啟動 TradingAgents (LangGraph 版本) - 雙市場分析")

@@ -87,6 +87,7 @@ class GeminiWrapper:
         if response_format and response_format.get("type") == "json_object":
             import json
             import re
+            import dirtyjson
 
             # 嘗試清理響應（移除可能的 markdown 代碼塊標記）
             cleaned_text = response_text.strip()
@@ -101,7 +102,7 @@ class GeminiWrapper:
 
             try:
                 # 嘗試解析 JSON 以驗證格式
-                parsed = json.loads(cleaned_text)
+                parsed = dirtyjson.loads(cleaned_text)
 
                 # 檢查是否有 'task' 或其他包裝鍵（某些 Gemini 版本會這樣做）
                 if isinstance(parsed, dict) and len(parsed) == 1:
@@ -131,7 +132,7 @@ class GeminiWrapper:
                 if first_brace != -1 and last_brace != -1:
                     try:
                         extracted = response_text[first_brace:last_brace + 1]
-                        parsed = json.loads(extracted)
+                        parsed = dirtyjson.loads(extracted)
                         print(f"✅ JSON 提取成功")
                         response_text = json.dumps(parsed, ensure_ascii=False)
                     except:
