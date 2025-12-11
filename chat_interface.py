@@ -14,7 +14,7 @@ from data_fetcher import SymbolNotFoundError, get_data_fetcher
 import json
 from datetime import datetime
 from data_fetcher import get_data_fetcher
-from utils import get_crypto_news
+from utils import get_crypto_news, safe_float
 from indicator_calculator import add_technical_indicators
 import concurrent.futures  # <--- 記得加在文件最上面
 from crypto_screener import screen_top_cryptos
@@ -186,7 +186,7 @@ class CryptoAnalysisBot:
 
         # 5. 整理數據結構 (這必須跟 AgentState 要求的格式一樣)
         latest = df_with_indicators.iloc[-1]
-        current_price = float(latest['Close'])
+        current_price = safe_float(latest['Close'])
         
         # 最近5天歷史
         recent_history = []
@@ -194,23 +194,23 @@ class CryptoAnalysisBot:
         for i in range(-recent_days, 0):
             day_data = df_with_indicators.iloc[i]
             recent_history.append({
-                "日期": i, "開盤": float(day_data['Open']), "最高": float(day_data['High']),
-                "最低": float(day_data['Low']), "收盤": float(day_data['Close']), "交易量": float(day_data['Volume'])
+                "日期": i, "開盤": safe_float(day_data['Open']), "最高": safe_float(day_data['High']),
+                "最低": safe_float(day_data['Low']), "收盤": safe_float(day_data['Close']), "交易量": safe_float(day_data['Volume'])
             })
 
         # 關鍵價位
         recent_30 = df_with_indicators.tail(30) if len(df_with_indicators) >= 30 else df_with_indicators
         key_levels = {
-            "30天最高價": float(recent_30['High'].max()), "30天最低價": float(recent_30['Low'].min()),
-            "支撐位": float(recent_30['Low'].quantile(0.25)), "壓力位": float(recent_30['High'].quantile(0.75)),
+            "30天最高價": safe_float(recent_30['High'].max()), "30天最低價": safe_float(recent_30['Low'].min()),
+            "支撐位": safe_float(recent_30['Low'].quantile(0.25)), "壓力位": safe_float(recent_30['High'].quantile(0.75)),
         }
 
         # 市場結構
         price_changes = df_with_indicators['Close'].pct_change()
         market_structure = {
             "趨勢": "上漲" if price_changes.tail(7).mean() > 0 else "下跌",
-            "波動率": float(price_changes.tail(30).std() * 100) if len(price_changes) >= 30 else 0,
-            "平均交易量": float(df_with_indicators['Volume'].tail(7).mean()),
+            "波動率": safe_float(price_changes.tail(30).std() * 100) if len(price_changes) >= 30 else 0,
+            "平均交易量": safe_float(df_with_indicators['Volume'].tail(7).mean()),
         }
 
         # 返回共用數據包
@@ -221,12 +221,12 @@ class CryptoAnalysisBot:
             "funding_rate_info": {}, # 共用數據暫不包含合約特定的資金費率
             "價格資訊": {
                 "當前價格": current_price,
-                "7天價格變化百分比": float(((latest['Close'] / df_with_indicators.iloc[-7]['Close']) - 1) * 100) if len(df_with_indicators) >= 7 else 0,
+                "7天價格變化百分比": safe_float(((latest['Close'] / df_with_indicators.iloc[-7]['Close']) - 1) * 100) if len(df_with_indicators) >= 7 else 0,
             },
             "技術指標": {
-                "RSI_14": float(latest.get('RSI_14', 0)), "MACD_線": float(latest.get('MACD_12_26_9', 0)),
-                "布林帶上軌": float(latest.get('BB_upper_20_2', 0)), "布林帶下軌": float(latest.get('BB_lower_20_2', 0)),
-                "MA_7": float(latest.get('MA_7', 0)), "MA_25": float(latest.get('MA_25', 0)),
+                "RSI_14": safe_float(latest.get('RSI_14', 0)), "MACD_線": safe_float(latest.get('MACD_12_26_9', 0)),
+                "布林帶上軌": safe_float(latest.get('BB_upper_20_2', 0)), "布林帶下軌": safe_float(latest.get('BB_lower_20_2', 0)),
+                "MA_7": safe_float(latest.get('MA_7', 0)), "MA_25": safe_float(latest.get('MA_25', 0)),
             },
             "最近5天歷史": recent_history,
             "市場結構": market_structure,
@@ -288,97 +288,147 @@ class CryptoAnalysisBot:
             return None, None, error_msg
 
     def _generate_summary(self, spot_results: Dict, futures_results: Dict) -> str:
-        """生成分析摘要 (修復版)"""
+        """生成詳細的分析摘要"""
         summary_parts = []
-        symbol = spot_results.get('symbol', '未知幣種')
-        current_price = spot_results.get('current_price', 0)
-        exchange = spot_results.get('exchange', 'N/A').upper()
+        # 使用現貨數據作為主要參考
+        primary_results = spot_results or futures_results
+        if not primary_results:
+            return "❌ 無法生成分析報告，因為沒有收到任何結果。"
 
-        summary_parts.append(f"## 📊 {symbol} 投資分析報告\n")
+        symbol = primary_results.get('symbol', '未知幣種')
+        current_price = primary_results.get('current_price', 0)
+        exchange = primary_results.get('exchange', 'N/A').upper()
+
+        summary_parts.append(f"## 📊 {symbol} 深度投資分析報告\n")
         summary_parts.append(f"**交易所**: {exchange}")
-        summary_parts.append(f"**當前價格**: ${float(current_price):.4f}\n" if current_price else "**當前價格**: 無法獲取\n")
+        summary_parts.append(f"**當前價格**: ${safe_float(current_price):.4f}\n" if current_price else "**當前價格**: 無法獲取\n")
 
-        def get_decision_data(approval_obj):
-            if not approval_obj: return "未知", "無數據"
-            decision = getattr(approval_obj, 'final_decision', getattr(approval_obj, 'decision', 'Hold'))
-            reasoning = "無法讀取詳細理由"
-            for field in ['reasoning', 'analysis', 'explanation', 'rationale', 'content']:
-                if hasattr(approval_obj, field) and getattr(approval_obj, field):
-                    reasoning = str(getattr(approval_obj, field))
-                    break
-            if len(reasoning) > 300: reasoning = reasoning[:300] + "..."
-            return decision, reasoning
+        # --- 1. 關鍵指標概覽 ---
+        summary_parts.append("### 📈 關鍵指標概覽")
+        if primary_results.get('價格資訊'):
+            price_info = primary_results['價格資訊']
+            change_pct = price_info.get('7天價格變化百分比', 0)
+            summary_parts.append(f"- **7天價格變化**: {change_pct:.2f}%")
+        
+        if primary_results.get('技術指標'):
+            indicators = primary_results['技術指標']
+            rsi = indicators.get('RSI_14', 0)
+            summary_parts.append(f"- **RSI (14)**: {rsi:.2f}")
 
-        def format_market_info(results, market_name):
-            """格式化單個市場的信息，包含價格"""
-            if not results.get('final_approval'):
-                return f"\n### {market_name}\n**決策**: 無數據\n"
+        if primary_results.get('市場結構'):
+            structure = primary_results['市場結構']
+            trend = structure.get('趨勢', '未知')
+            volatility = structure.get('波動率', 0)
+            summary_parts.append(f"- **短期趨勢**: {trend}")
+            summary_parts.append(f"- **波動率 (30天)**: {volatility:.2f}%")
+        summary_parts.append("\n")
 
-            decision, reasoning = get_decision_data(results['final_approval'])
+
+        # --- 2. 多空觀點辯論 ---
+        summary_parts.append("### 🐂⚔️🐻 多空觀點辯論")
+        bull_argument = primary_results.get('bull_argument')
+        bear_argument = primary_results.get('bear_argument')
+        if bull_argument:
+            summary_parts.append(f"**🐂 看多理由 (Bullish):**\n{bull_argument.argument}\n")
+        else:
+            summary_parts.append(f"**🐂 看多理由 (Bullish):**\n無\n")
+
+        if bear_argument:
+            summary_parts.append(f"**🐻 看空理由 (Bearish):**\n{bear_argument.argument}\n")
+        else:
+            summary_parts.append(f"**🐻 看空理由 (Bearish):**\n無\n")
+
+        # --- 3. 技術分析總結 ---
+        summary_parts.append("### 📉 技術分析")
+        tech_report = next((r for r in primary_results.get('analyst_reports', []) if r.analyst_type == '技術分析師'), None)
+        if tech_report:
+            summary_parts.append(f"**分析師觀點**: {tech_report.summary}\n")
+        else:
+            summary_parts.append("無技術分析摘要。\n")
+
+        # --- 4. 基本面分析 (新聞) ---
+        summary_parts.append("### 📰 新聞與基本面")
+        news_report = next((r for r in primary_results.get('analyst_reports', []) if r.analyst_type == '新聞分析師'), None)
+        sentiment_report = next((r for r in primary_results.get('analyst_reports', []) if r.analyst_type == '情緒分析師'), None)
+        
+        if sentiment_report:
+            summary_parts.append(f"**市場情緒**: {sentiment_report.summary}")
+        
+        if news_report:
+            summary_parts.append(f"**新聞摘要**: {news_report.summary}\n")
+        else:
+            summary_parts.append("無新聞分析摘要。\n")
+
+        # --- 5. 風險評估 ---
+        summary_parts.append("### ⚠️ 風險評估")
+        if primary_results.get('risk_assessment'):
+            risk = primary_results['risk_assessment']
+            summary_parts.append(f"- **風險等級**: {risk.risk_level if hasattr(risk, 'risk_level') else '未知'}")
+            summary_parts.append(f"- **評估意見**: {risk.assessment if hasattr(risk, 'assessment') else '無'}")
+            if hasattr(risk, 'warnings') and risk.warnings:
+                summary_parts.append(f"- **潛在風險**: {', '.join(risk.warnings)}")
+            else:
+                summary_parts.append(f"- **潛在風險**: 無")
+            summary_parts.append(f"- **應對建議**: {risk.suggested_adjustments if hasattr(risk, 'suggested_adjustments') else '無'}\n")
+        else:
+            summary_parts.append("無風險評估詳細資訊。\n")
+
+        # --- 6. 最終交易決策 ---
+        summary_parts.append("### ⚖️ 最終交易決策")
+
+        def format_market_decision(results, market_name):
+            if not results or not results.get('final_approval'):
+                return f"\n#### {market_name}\n**決策**: 無數據\n"
+
+            final_approval = results['final_approval']
             trader_decision = results.get('trader_decision')
-            approval = results['final_approval']
 
-            # 獲取實際的交易動作
-            trading_action = trader_decision.decision if trader_decision else "Hold"
+            action_map = {"Buy": "🟢 買入", "Sell": "🔴 賣出", "Hold": "⏸️ 觀望", "Long": "🟢 做多", "Short": "🔴 做空"}
+            approval_map = {"Approve": "✅ 批准", "Amended": "⚠️ 修正後批准", "Reject": "❌ 拒絕", "Hold": "⏸️ 觀望"}
 
-            # 交易動作映射（轉換為中文）
-            action_map = {
-                "Buy": "🟢 買入",
-                "Sell": "🔴 賣出",
-                "Hold": "⏸️ 觀望",
-                "Long": "🟢 做多",
-                "Short": "🔴 做空"
-            }
+            trading_action = trader_decision.decision if trader_decision else 'Hold'
             action_display = action_map.get(trading_action, trading_action)
+            
+            approval_status = final_approval.final_decision
+            approval_display = approval_map.get(approval_status, approval_status)
+            
+            reasoning = final_approval.rationale
 
-            # 審批結果
-            approval_map = {
-                "Approve": "✅ 批准",
-                "Amended": "⚠️ 修正後批准",
-                "Reject": "❌ 拒絕",
-                "Hold": "⏸️ 觀望"
-            }
-            approval_display = approval_map.get(decision, decision)
-
-            lines = [f"\n### {market_name}"]
+            lines = [f"\n#### {market_name}"]
             lines.append(f"**交易動作**: {action_display}")
             lines.append(f"**審批狀態**: {approval_display}")
-            lines.append(f"**理由**: {reasoning}")
+            lines.append(f"**審批理由**: {reasoning}")
 
-            # 如果批准交易，顯示價格信息
-            if approval.approved and approval.final_position_size > 0 and trader_decision:
+            if approval_status in ["Approve", "Amended"] and trader_decision:
                 lines.append(f"\n**📊 交易計劃**:")
-                lines.append(f"- **倉位**: {approval.final_position_size * 100:.0f}%")
+                pos_size = final_approval.final_position_size
+                lines.append(f"- **倉位**: {pos_size * 100:.0f}%")
+                
+                entry = trader_decision.entry_price or current_price
+                lines.append(f"- **進場價**: ${safe_float(entry):.4f}")
 
-                if trader_decision.entry_price:
-                    lines.append(f"- **進場價**: ${trader_decision.entry_price:.4f}")
-                else:
-                    lines.append(f"- **進場價**: 市價 (${current_price:.4f})")
+                stop_loss = trader_decision.stop_loss
+                if stop_loss and entry:
+                    loss_pct = abs((safe_float(stop_loss) - safe_float(entry)) / safe_float(entry) * 100)
+                    lines.append(f"- **止損**: ${safe_float(stop_loss):.4f} (-{loss_pct:.2f}%)")
 
-                if trader_decision.stop_loss:
-                    loss_pct = abs((trader_decision.stop_loss - current_price) / current_price * 100)
-                    lines.append(f"- **止損**: ${trader_decision.stop_loss:.4f} (-{loss_pct:.2f}%)")
-
-                if trader_decision.take_profit:
-                    profit_pct = abs((trader_decision.take_profit - current_price) / current_price * 100)
-                    lines.append(f"- **止盈**: ${trader_decision.take_profit:.4f} (+{profit_pct:.2f}%)")
-
-                # 如果是合約，顯示槓桿
-                if approval.approved_leverage:
-                    lines.append(f"- **槓桿**: {approval.approved_leverage}x")
+                take_profit = trader_decision.take_profit
+                if take_profit and entry:
+                    profit_pct = abs((safe_float(take_profit) - safe_float(entry)) / safe_float(entry) * 100)
+                    lines.append(f"- **止盈**: ${safe_float(take_profit):.4f} (+{profit_pct:.2f}%)")
+                
+                if market_name.startswith("📈"):
+                    leverage = final_approval.approved_leverage
+                    if leverage:
+                        lines.append(f"- **槓桿**: {leverage}x")
 
             return "\n".join(lines) + "\n"
 
-        if 'final_approval' in spot_results and spot_results['final_approval']:
-            summary_parts.append(format_market_info(spot_results, "🏪 現貨市場"))
-
-        if 'final_approval' in futures_results and futures_results['final_approval']:
-            summary_parts.append(format_market_info(futures_results, "📈 合約市場 (5x 槓桿)"))
-
-        if 'risk_assessment' in spot_results and spot_results['risk_assessment']:
-            risk_obj = spot_results['risk_assessment']
-            risk_level = getattr(risk_obj, 'risk_level', getattr(risk_obj, 'level', '未知'))
-            summary_parts.append(f"\n**風險等級**: {risk_level}")
+        if spot_results:
+            summary_parts.append(format_market_decision(spot_results, "🏪 現貨市場"))
+        
+        if futures_results:
+            summary_parts.append(format_market_decision(futures_results, "📈 合約市場 (5x 槓桿)"))
 
         summary_parts.append(f"\n---\n*分析時間: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*")
         return "\n".join(summary_parts)

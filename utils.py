@@ -4,6 +4,22 @@ import time
 import requests
 from urllib.parse import urlparse
 
+def safe_float(value, default=0.0):
+    """
+    Safely converts a value to a float.
+    
+    Args:
+        value: The value to convert.
+        default: The default value to return if conversion fails.
+        
+    Returns:
+        The float value or the default.
+    """
+    try:
+        return float(value)
+    except (ValueError, TypeError, SystemError):
+        return default
+
 def get_crypto_news(symbol: str = "BTC", limit: int = 5):
     """
     從 CryptoPanic 獲取指定幣種的最新新聞

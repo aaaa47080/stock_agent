@@ -7,7 +7,7 @@ import numpy as np
 from typing import Dict, List, Tuple
 from data_fetcher import get_data_fetcher
 from indicator_calculator import add_technical_indicators
-from utils import get_crypto_news
+from utils import get_crypto_news, safe_float
 
 
 def prepare_recent_history(df: pd.DataFrame, days: int = 5) -> List[Dict]:
@@ -28,11 +28,11 @@ def prepare_recent_history(df: pd.DataFrame, days: int = 5) -> List[Dict]:
         day_data = df.iloc[i]
         recent_history.append({
             "日期": i,
-            "開盤": float(day_data['Open']),
-            "最高": float(day_data['High']),
-            "最低": float(day_data['Low']),
-            "收盤": float(day_data['Close']),
-            "交易量": float(day_data['Volume'])
+            "開盤": safe_float(day_data['Open']),
+            "最高": safe_float(day_data['High']),
+            "最低": safe_float(day_data['Low']),
+            "收盤": safe_float(day_data['Close']),
+            "交易量": safe_float(day_data['Volume'])
         })
 
     return recent_history
@@ -52,10 +52,10 @@ def calculate_key_levels(df: pd.DataFrame, period: int = 30) -> Dict[str, float]
     recent = df.tail(period) if len(df) >= period else df
 
     return {
-        f"{period}天最高價": float(recent['High'].max()),
-        f"{period}天最低價": float(recent['Low'].min()),
-        "支撐位": float(recent['Low'].quantile(0.25)),
-        "壓力位": float(recent['High'].quantile(0.75)),
+        f"{period}天最高價": safe_float(recent['High'].max()),
+        f"{period}天最低價": safe_float(recent['Low'].min()),
+        "支撐位": safe_float(recent['Low'].quantile(0.25)),
+        "壓力位": safe_float(recent['High'].quantile(0.75)),
     }
 
 
@@ -73,8 +73,8 @@ def analyze_market_structure(df: pd.DataFrame) -> Dict:
 
     return {
         "趨勢": "上漲" if price_changes.tail(7).mean() > 0 else "下跌",
-        "波動率": float(price_changes.tail(30).std() * 100) if len(price_changes) >= 30 else 0,
-        "平均交易量": float(df['Volume'].tail(7).mean()),
+        "波動率": safe_float(price_changes.tail(30).std() * 100) if len(price_changes) >= 30 else 0,
+        "平均交易量": safe_float(df['Volume'].tail(7).mean()),
     }
 
 
@@ -89,12 +89,12 @@ def extract_technical_indicators(latest_data: pd.Series) -> Dict[str, float]:
         技術指標字典
     """
     return {
-        "RSI_14": float(latest_data.get('RSI_14', 0)),
-        "MACD_線": float(latest_data.get('MACD_12_26_9', 0)),
-        "布林帶上軌": float(latest_data.get('BB_upper_20_2', 0)),
-        "布林帶下軌": float(latest_data.get('BB_lower_20_2', 0)),
-        "MA_7": float(latest_data.get('MA_7', 0)),
-        "MA_25": float(latest_data.get('MA_25', 0)),
+        "RSI_14": safe_float(latest_data.get('RSI_14', 0)),
+        "MACD_線": safe_float(latest_data.get('MACD_12_26_9', 0)),
+        "布林帶上軌": safe_float(latest_data.get('BB_upper_20_2', 0)),
+        "布林帶下軌": safe_float(latest_data.get('BB_lower_20_2', 0)),
+        "MA_7": safe_float(latest_data.get('MA_7', 0)),
+        "MA_25": safe_float(latest_data.get('MA_25', 0)),
     }
 
 
@@ -109,13 +109,13 @@ def calculate_price_info(df: pd.DataFrame) -> Dict:
         價格資訊字典
     """
     latest = df.iloc[-1]
-    current_price = float(latest['Close'])
+    current_price = safe_float(latest['Close'])
 
     # 計算7天價格變化
     price_change_7d = 0
     if len(df) >= 7:
         price_7d_ago = df.iloc[-7]['Close']
-        price_change_7d = float(((latest['Close'] / price_7d_ago) - 1) * 100)
+        price_change_7d = safe_float(((latest['Close'] / price_7d_ago) - 1) * 100)
 
     return {
         "當前價格": current_price,

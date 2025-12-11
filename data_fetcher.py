@@ -263,6 +263,30 @@ class OkxDataFetcher:
         print("Could not retrieve tickers from OKX to determine top symbols.")
         return []
 
+    def check_symbol_availability(self, symbol, inst_type='SPOT'):
+        """
+        Checks if a given symbol is available on OKX.
+        Raises SymbolNotFoundError if the symbol is not found.
+        """
+        endpoint = "/public/instruments"
+        params = {'instType': inst_type, 'instId': symbol}
+        
+        try:
+            instrument_data = self._make_request(endpoint, params)
+            # The API returns a list. If it's empty, the symbol doesn't exist.
+            if instrument_data and len(instrument_data) > 0:
+                # Double-check the instrument ID and its state.
+                if instrument_data[0]['instId'] == symbol and instrument_data[0]['state'] == 'live':
+                    return True
+            
+            # If the list is empty or conditions are not met, raise the error.
+            raise SymbolNotFoundError(f"Symbol '{symbol}' not found or not live on OKX {inst_type} market.")
+
+        except requests.exceptions.RequestException as req_err:
+            print(f"Error checking symbol availability for {symbol} on OKX: {req_err}")
+            raise # Re-raise to be handled upstream
+
+
     def get_historical_klines(self, symbol, interval, limit=100):
         """
         獲取 OKX 現貨市場的 K 線數據
@@ -275,6 +299,8 @@ class OkxDataFetcher:
         Returns:
             DataFrame with columns: Open_time, Open, High, Low, Close, Volume, etc.
         """
+        self.check_symbol_availability(symbol, inst_type='SPOT') # Check symbol availability first
+        
         endpoint = "/market/candles"
 
         # 轉換時間間隔
@@ -300,7 +326,7 @@ class OkxDataFetcher:
         ])
 
         # 轉換數據類型，處理空字符串
-        df['Open_time'] = pd.to_numeric(df['Open_time'], errors='coerce')
+        df['Open_time'] = pd.to_datetime(pd.to_numeric(df['Open_time']), unit='ms')
         df['Open'] = pd.to_numeric(df['Open'], errors='coerce')
         df['High'] = pd.to_numeric(df['High'], errors='coerce')
         df['Low'] = pd.to_numeric(df['Low'], errors='coerce')
@@ -308,7 +334,7 @@ class OkxDataFetcher:
         df['Volume'] = pd.to_numeric(df['Volume'], errors='coerce')
 
         # 添加 Binance 格式的額外欄位（用於兼容性）
-        df['Close_time'] = df['Open_time'] + 1000  # 簡化處理
+        df['Close_time'] = df['Open_time'] + pd.to_timedelta(okx_interval.replace('H', 'h')) - pd.to_timedelta(1, 'ms')
         df['Quote_asset_volume'] = df['Volume_quote']
         df['Number_of_trades'] = 0  # OKX 不提供
         df['Taker_buy_base_asset_volume'] = 0  # OKX 不提供
@@ -344,6 +370,8 @@ class OkxDataFetcher:
             # 如果是現貨格式 (BTC-USDT)，轉換為合約格式
             symbol = symbol + '-SWAP'
 
+        self.check_symbol_availability(symbol, inst_type='SWAP') # Check symbol availability first
+
         # 獲取 K 線數據
         endpoint = "/market/candles"
         okx_interval = self._convert_interval(interval)
@@ -365,14 +393,14 @@ class OkxDataFetcher:
             'Volume_currency', 'Volume_quote', 'Confirm'
         ])
 
-        df['Open_time'] = pd.to_numeric(df['Open_time'], errors='coerce')
+        df['Open_time'] = pd.to_datetime(pd.to_numeric(df['Open_time']), unit='ms')
         df['Open'] = pd.to_numeric(df['Open'], errors='coerce')
         df['High'] = pd.to_numeric(df['High'], errors='coerce')
         df['Low'] = pd.to_numeric(df['Low'], errors='coerce')
         df['Close'] = pd.to_numeric(df['Close'], errors='coerce')
         df['Volume'] = pd.to_numeric(df['Volume'], errors='coerce')
 
-        df['Close_time'] = df['Open_time'] + 1000
+        df['Close_time'] = df['Open_time'] + pd.to_timedelta(okx_interval.replace('H', 'h')) - pd.to_timedelta(1, 'ms')
         df['Quote_asset_volume'] = df['Volume_quote']
         df['Number_of_trades'] = 0
         df['Taker_buy_base_asset_volume'] = 0
@@ -455,7 +483,7 @@ if __name__ == '__main__':
         else:
             print("Failed to fetch Binance Spot K-line data for BTCUSDT (unexpected)")
     except SymbolNotFoundError as e:
-        print(f"Caught expected error for BTCUSDT: {e}")
+        print(f"Caught unexpected error for BTCUSDT: {e}")
     except requests.exceptions.RequestException as e:
         print(f"Caught unexpected request error for BTCUSDT: {e}")
 
@@ -466,7 +494,7 @@ if __name__ == '__main__':
         if spot_klines_df_invalid is not None and not spot_klines_df_invalid.empty:
             print("Successfully fetched Binance Spot K-line data for INVALIDPAIR (unexpected)")
         else:
-            print("Failed to fetch Binance Spot K-line data for INVALIDPAIR (expected)")
+            print("Failed to fetch Binance Spot K-line data for INVALIDPAIR (as expected)")
     except SymbolNotFoundError as e:
         print(f"Caught expected error for INVALIDPAIR: {e}")
     except requests.exceptions.RequestException as e:
@@ -489,7 +517,7 @@ if __name__ == '__main__':
         else:
             print("Failed to fetch Binance Futures K-line data or funding rate for BTCUSDT (unexpected)")
     except SymbolNotFoundError as e:
-        print(f"Caught expected error for BTCUSDT: {e}")
+        print(f"Caught unexpected error for BTCUSDT: {e}")
     except requests.exceptions.RequestException as e:
         print(f"Caught unexpected request error for BTCUSDT: {e}")
 
@@ -500,7 +528,7 @@ if __name__ == '__main__':
         if futures_klines_df_invalid is not None and not futures_klines_df_invalid.empty:
             print("Successfully fetched Binance Futures K-line data for INVALIDPAIR (unexpected)")
         else:
-            print("Failed to fetch Binance Futures K-line data for INVALIDPAIR (expected)")
+            print("Failed to fetch Binance Futures K-line data for INVALIDPAIR (as expected)")
     except SymbolNotFoundError as e:
         print(f"Caught expected error for INVALIDPAIR: {e}")
     except requests.exceptions.RequestException as e:
@@ -509,14 +537,23 @@ if __name__ == '__main__':
     print("\n" + "="*50 + "\n")
 
     # Example usage for OKX Spot
-    print("--- Testing OKX Spot API (Placeholder) ---")
+    print("--- Testing OKX Spot API ---")
     okx_fetcher = get_data_fetcher("okx")
-    okx_spot_klines_df = okx_fetcher.get_historical_klines('PI-USDT', '1d')
-    if okx_spot_klines_df is not None and not okx_spot_klines_df.empty:
-        print("Successfully (placeholder) fetched OKX Spot K-line data for PI-USDT")
-        print(okx_spot_klines_df.tail())
-    else:
-        print("Failed to fetch OKX Spot K-line data for PI-USDT (as expected for placeholder)")
+
+    # Test with an invalid symbol
+    print("\n--- Testing OKX Spot API with INVALID symbol ---")
+    try:
+        okx_spot_klines_df = okx_fetcher.get_historical_klines('NONEXISTENT-SYMBOL-XYZ', '1d')
+        if okx_spot_klines_df is not None and not okx_spot_klines_df.empty:
+            print("Successfully fetched OKX Spot K-line data for NONEXISTENT-SYMBOL-XYZ (unexpected)")
+            print(okx_spot_klines_df.tail())
+        else:
+            print("Failed to fetch OKX Spot K-line data for NONEXISTENT-SYMBOL-XYZ (as expected)")
+    except SymbolNotFoundError as e:
+        print(f"Caught expected error for NONEXISTENT-SYMBOL-XYZ: {e}")
+    except requests.exceptions.RequestException as e:
+        print(f"Caught unexpected request error for NONEXISTENT-SYMBOL-XYZ: {e}")
+
 
     print("\n" + "="*50 + "\n")
 
