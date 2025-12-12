@@ -126,3 +126,26 @@ GOOGLE_GEMINI_MODELS = {
 # 組合4: 全開源
 # BULL: qwen/qwen-2.5-72b-instruct
 # BEAR: meta-llama/llama-3.1-70b-instruct
+
+
+# === 介面與應用程式配置 ===
+
+# 用於解析用戶查詢的 LLM 模型
+QUERY_PARSER_MODEL = "gpt-4o"
+
+# 支持的交易所列表，按優先級排序
+SUPPORTED_EXCHANGES = ["binance", "okx"]
+
+# 合約市場分析的默認槓桿
+DEFAULT_FUTURES_LEVERAGE = 5
+
+# 並行分析的最大工作線程數
+MAX_ANALYSIS_WORKERS = 2
+
+# Gradio 介面的預設值
+DEFAULT_INTERVAL = "1d"
+DEFAULT_KLINES_LIMIT = 100
+
+# 加密貨幣篩選器的預設值
+SCREENER_DEFAULT_LIMIT = 30
+SCREENER_DEFAULT_INTERVAL = "1d"
