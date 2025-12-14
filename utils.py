@@ -32,10 +32,10 @@ def get_crypto_news_cryptopanic(symbol: str = "BTC", limit: int = 5) -> List[Dic
     API_TOKEN = os.getenv("API_TOKEN", "")
     
     if API_TOKEN == "":
-        print("⚠️ 警告：未設定 CryptoPanic API Token，無法獲取真實新聞")
+        print(">> 警告：未設定 CryptoPanic API Token，無法獲取真實新聞")
         return []
 
-    print(f"📰 正在從 CryptoPanic 撈取 {symbol} 的真實新聞...")
+    print(f">> 正在從 CryptoPanic 撈取 {symbol} 的真實新聞...")
     
     # CryptoPanic API 請求
     url = "https://cryptopanic.com/api/developer/v2/posts/"
@@ -74,21 +74,21 @@ def get_crypto_news_cryptopanic(symbol: str = "BTC", limit: int = 5) -> List[Dic
                     })
             
             if not news_list:
-                print("⚠️ 未找到相關新聞")
+                print(">> 未找到相關新聞")
                 
             return news_list
 
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 429 and i < retries - 1:
-                print(f"⚠️ API rate limit hit. Retrying in {delay} seconds...")
+                print(f">> API rate limit hit. Retrying in {delay} seconds...")
                 time.sleep(delay)
                 delay *= 2  # Exponential backoff
                 continue
             else:
-                print(f"❌ 獲取新聞失敗: {str(e)}")
+                print(f">> 獲取新聞失敗: {str(e)}")
                 return []
         except Exception as e:
-            print(f"❌ 獲取新聞失敗: {str(e)}")
+            print(f">> 獲取新聞失敗: {str(e)}")
             return []
 
     return []
@@ -103,10 +103,10 @@ def get_crypto_news_newsapi(symbol: str = "BTC", limit: int = 5) -> List[Dict]:
     API_KEY = os.getenv("NEWSAPI_KEY", "")
 
     if not API_KEY:
-        print("⚠️ 警告：未設定 NewsAPI Key")
+        print(">> 警告：未設定 NewsAPI Key")
         return []
 
-    print(f"📰 正在從 NewsAPI 撈取 {symbol} 相關新聞...")
+    print(f">> 正在從 NewsAPI 撈取 {symbol} 相關新聞...")
 
     # 常見加密貨幣名稱映射
     crypto_names = {
@@ -146,7 +146,7 @@ def get_crypto_news_newsapi(symbol: str = "BTC", limit: int = 5) -> List[Dict]:
         return news_list
 
     except Exception as e:
-        print(f"❌ NewsAPI 獲取失敗: {str(e)}")
+        print(f">> NewsAPI 獲取失敗: {str(e)}")
         return []
 
 
@@ -155,7 +155,7 @@ def get_crypto_news_coingecko(symbol: str = "BTC", limit: int = 5) -> List[Dict]
     從 CoinGecko 獲取加密貨幣市場資訊（無需 API Key）
     完全免費，提供市場概況和社群數據
     """
-    print(f"📰 正在從 CoinGecko 撈取 {symbol} 市場資訊...")
+    print(f">> 正在從 CoinGecko 撈取 {symbol} 市場資訊...")
 
     # CoinGecko 需要幣種 ID（小寫）
     coin_id_map = {
@@ -246,12 +246,12 @@ def get_crypto_news_coingecko(symbol: str = "BTC", limit: int = 5) -> List[Dict]
 
     except requests.exceptions.HTTPError as e:
         if e.response.status_code == 404:
-            print(f"⚠️ CoinGecko 找不到幣種: {coin_id}")
+            print(f">> CoinGecko 找不到幣種: {coin_id}")
         else:
-            print(f"❌ CoinGecko 獲取失敗: {str(e)}")
+            print(f">> CoinGecko 獲取失敗: {str(e)}")
         return []
     except Exception as e:
-        print(f"❌ CoinGecko 獲取失敗: {str(e)}")
+        print(f">> CoinGecko 獲取失敗: {str(e)}")
         return []
 
 
@@ -272,7 +272,7 @@ def get_crypto_news(symbol: str = "BTC", limit: int = 5) -> List[Dict]:
     Returns:
         List[Dict]: 聚合後的新聞列表，按時間排序
     """
-    print(f"\n🌐 啟動多來源新聞聚合系統 (目標: {symbol})...")
+    print(f"\n>> 啟動多來源新聞聚合系統 (目標: {symbol})...")
 
     all_news = []
 
@@ -290,11 +290,11 @@ def get_crypto_news(symbol: str = "BTC", limit: int = 5) -> List[Dict]:
                 news = future.result()
                 if news:
                     all_news.extend(news)
-                    print(f"✅ {source_name}: 獲取 {len(news)} 條新聞")
+                    print(f">> {source_name}: 獲取 {len(news)} 條新聞")
                 else:
-                    print(f"⚠️ {source_name}: 無新聞")
+                    print(f">> {source_name}: 無新聞")
             except Exception as e:
-                print(f"❌ {source_name} 發生錯誤: {e}")
+                print(f">> {source_name} 發生錯誤: {e}")
 
     # 去重（根據標題相似度）
     unique_news = []
@@ -319,6 +319,6 @@ def get_crypto_news(symbol: str = "BTC", limit: int = 5) -> List[Dict]:
     # 返回限定數量
     result = unique_news[:limit * 2]  # 返回 2 倍數量以補償去重損失
 
-    print(f"\n📊 聚合完成: 總共獲取 {len(result)} 條獨特新聞\n")
+    print(f"\n>> 聚合完成: 總共獲取 {len(result)} 條獨特新聞\n")
 
     return result

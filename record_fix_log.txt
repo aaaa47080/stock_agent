@@ -1,0 +1,21 @@
+FIX LOG - December 14, 2025
+==========================
+
+ISSUE IDENTIFIED:
+- Batch analyzer was showing "ERROR" in CSV reports instead of actual trading signals
+- The issue was in batch_analyzer.py line where it checked for 'final_decision' key
+- The graph workflow returns 'trader_decision' key, not 'final_decision'
+
+SOLUTION APPLIED:
+- Changed the condition from: final_state.get('final_decision')
+- To: final_state.get('trader_decision')
+- This correctly extracts the trading decision from the final state
+
+RESULT:
+- ADAUSDT now shows "Hold" signal in CSV
+- DOGEUSDT now shows "Buy" signal in CSV with proper entry/exit prices
+- Confidence levels and reasoning are properly captured
+- No more "ERROR" entries in the reports
+
+FILES MODIFIED:
+- D:\okx\stock_agent\batch_analyzer.py

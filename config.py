@@ -1,4 +1,8 @@
 import os
+from dotenv import load_dotenv
+
+# Load environment variables with override to ensure .env file values take precedence
+load_dotenv(override=True)
 
 # === AI 模型配置 ===
 # 基礎模型（用於分析師團隊）
@@ -149,3 +153,18 @@ DEFAULT_KLINES_LIMIT = 100
 # 加密貨幣篩選器的預設值
 SCREENER_DEFAULT_LIMIT = 30
 SCREENER_DEFAULT_INTERVAL = "1d"
+
+# === 加密貨幣分析配置 ===
+# 預設要分析的加密貨幣列表。
+# 用戶可以在此處修改此列表，以選擇要分析的加密貨幣。
+CRYPTO_CURRENCIES_TO_ANALYZE = ["PIUSDT", "ETHUSDT"]
+
+# === OKX API 配置 ===
+# 從 .env 檔案或環境變數讀取 OKX API 資訊
+OKX_API_KEY = os.getenv("OKX_API_KEY", "")
+OKX_API_SECRET = os.getenv("OKX_API_SECRET", "")
+OKX_PASSPHRASE = os.getenv("OKX_PASSPHRASE", "")
+
+# 是否使用模擬盤 (Paper Trading)
+# True: 使用模擬盤 / False: 使用真實帳戶
+PAPER_TRADING = False

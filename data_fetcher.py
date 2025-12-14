@@ -207,7 +207,15 @@ class OkxDataFetcher:
             print(f"🕵️ 使用代理: {https_proxy}")
 
         try:
-            url = self.base_url + endpoint
+            # 處理 base_url 和 endpoint 的組合
+            # 檢查是否 base_url 已包含版本信息
+            if "/api/v5" in self.base_url:
+                # 如果 base_url 已包含版本信息，直接附加 endpoint
+                url = self.base_url + endpoint
+            else:
+                # 如果 base_url 沒有版本信息，添加 API 版本前綴
+                url = self.base_url + "/api/v5" + endpoint
+
             response = requests.get(url, params=params, timeout=20, proxies=proxies)
             response.raise_for_status()
 

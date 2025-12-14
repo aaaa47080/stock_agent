@@ -170,7 +170,7 @@ class CryptoAnalysisBot:
                 fetcher = get_data_fetcher(exchange)
                 test_data = fetcher.get_historical_klines(normalized, "1d", limit=1)
                 if test_data is not None and not test_data.empty:
-                    print(f"✅ 在 {exchange.upper()} 找到交易對: {normalized}")
+                    print(f">> 在 {exchange.upper()} 找到交易對: {normalized}")
                     return (exchange, normalized)
             except:
                 continue
@@ -181,7 +181,7 @@ class CryptoAnalysisBot:
         🔥 核心功能：手動預先抓取數據 (只抓一次，供兩邊使用)
         這段邏輯是從 graph.py 的 prepare_data_node 提取出來的
         """
-        print(f"📥 正在預先下載共用數據: {symbol}...")
+        print(f">> 正在預先下載共用數據: {symbol}...")
         
         # 1. 獲取數據抓取器
         data_fetcher = get_data_fetcher(exchange)
@@ -259,19 +259,19 @@ class CryptoAnalysisBot:
         if exchange is None:
             result = self.find_available_exchange(symbol)
             if result is None:
-                error_msg = f"❌ 在所有支持的交易所 ({', '.join([e.upper() for e in self.supported_exchanges])}) 都找不到交易對 {symbol}\n"
+                error_msg = f">> 在所有支持的交易所 ({', '.join([e.upper() for e in self.supported_exchanges])}) 都找不到交易對 {symbol}\n"
                 # 在生成器模式下，我們拋出異常而不是返回元組
                 raise ValueError(error_msg)
             exchange, normalized_symbol = result
         else:
             normalized_symbol = self.normalize_symbol(symbol, exchange)
 
-        print(f"🚀 準備分析 {normalized_symbol} ({exchange})...")
+        print(f">> 準備分析 {normalized_symbol} ({exchange})...")
 
         try:
             # 2. 🔥 預先抓取數據 (只做一次)
             shared_data = self._fetch_shared_data(normalized_symbol, exchange, interval, limit)
-            print(f"✅ 數據預取完成 (週期: {interval}, 數量: {limit})，正在分發給 AI 分析師...")
+            print(f">> 數據預取完成 (週期: {interval}, 數量: {limit})，正在分發給 AI 分析師...")
 
             # 3. 定義兩個任務 (注入 preloaded_data)
             spot_state = {
@@ -298,7 +298,7 @@ class CryptoAnalysisBot:
             return spot_final_state, futures_final_state, self._generate_summary(spot_final_state, futures_final_state)
 
         except Exception as e:
-            error_msg = f"❌ 分析 {normalized_symbol} 時發生錯誤: {str(e)}"
+            error_msg = f">> 分析 {normalized_symbol} 時發生錯誤: {str(e)}"
             print(error_msg)
             import traceback
             traceback.print_exc()
@@ -310,19 +310,19 @@ class CryptoAnalysisBot:
         # 使用現貨數據作為主要參考
         primary_results = spot_results or futures_results
         if not primary_results:
-            yield "❌ 無法生成分析報告，因為沒有收到任何結果。"
+            yield ">> 無法生成分析報告，因為沒有收到任何結果。"
             return
 
         symbol = primary_results.get('symbol', '未知幣種')
         current_price = primary_results.get('current_price', 0)
         exchange = primary_results.get('exchange', 'N/A').upper()
 
-        yield f"## 📊 {symbol} 深度投資分析報告\n"
+        yield f"## >> {symbol} 深度投資分析報告\n"
         yield f"**交易所**: {exchange}\n"
         yield f"**當前價格**: ${safe_float(current_price):.4f}\n\n" if current_price else "**當前價格**: 無法獲取\n\n"
 
         # --- 1. 關鍵指標概覽 ---
-        summary_parts = ["### 📈 關鍵指標概覽"]
+        summary_parts = ["### >> 關鍵指標概覽"]
         price_info = primary_results.get('價格資訊')
         if price_info:
             change_pct = price_info.get('7天價格變化百分比', 0)
@@ -343,18 +343,18 @@ class CryptoAnalysisBot:
 
 
         # --- 2. 多空觀點辯論 ---
-        summary_parts = ["### 🐂⚔️🐻 多空觀點辯論"]
+        summary_parts = ["### >> 多空觀點辯論"]
         bull_argument = primary_results.get('bull_argument')
         bear_argument = primary_results.get('bear_argument')
         if bull_argument:
-            summary_parts.append(f"**🐂 看多理由 (Bullish):**\n{bull_argument.argument}\n")
+            summary_parts.append(f"** 看多理由 (Bullish):**\n{bull_argument.argument}\n")
         else:
-            summary_parts.append(f"**🐂 看多理由 (Bullish):**\n無\n")
+            summary_parts.append(f"** 看多理由 (Bullish):**\n無\n")
 
         if bear_argument:
-            summary_parts.append(f"**🐻 看空理由 (Bearish):**\n{bear_argument.argument}\n")
+            summary_parts.append(f"** 看空理由 (Bearish):**\n{bear_argument.argument}\n")
         else:
-            summary_parts.append(f"**🐻 看空理由 (Bearish):**\n無\n")
+            summary_parts.append(f"** 看空理由 (Bearish):**\n無\n")
         yield "\n".join(summary_parts) + "\n"
 
         # --- 3. 技術分析總結 ---
@@ -379,7 +379,7 @@ class CryptoAnalysisBot:
         yield "\n".join(summary_parts) + "\n"
 
         # --- 5. 風險評估 ---
-        summary_parts = ["### ⚠️ 風險評估"]
+        summary_parts = ["### >> 風險評估"]
         if primary_results.get('risk_assessment'):
             risk = primary_results['risk_assessment']
             summary_parts.append(f"- **風險等級**: {risk.risk_level if hasattr(risk, 'risk_level') else '未知'}")
@@ -406,8 +406,8 @@ class CryptoAnalysisBot:
             if not final_approval:
                 return f"\n#### {market_name}\n**決策**: 無法獲取最終審批結果\n"
 
-            action_map = {"Buy": "🟢 買入", "Sell": "🔴 賣出", "Hold": "⏸️ 觀望", "Long": "🟢 做多", "Short": "🔴 做空"}
-            approval_map = {"Approve": "✅ 批准", "Amended": "⚠️ 修正後批准", "Reject": "❌ 拒絕", "Hold": "⏸️ 觀望"}
+            action_map = {"Buy": ">> 買入", "Sell": ">> 賣出", "Hold": ">> 觀望", "Long": ">> 做多", "Short": ">> 做空"}
+            approval_map = {"Approve": ">> 批准", "Amended": ">> 修正後批准", "Reject": ">> 拒絕", "Hold": ">> 觀望"}
 
             trading_action = trader_decision.decision if trader_decision else 'Hold'
             action_display = action_map.get(trading_action, trading_action)
@@ -423,7 +423,7 @@ class CryptoAnalysisBot:
             lines.append(f"**審批理由**: {reasoning}")
 
             if approval_status in ["Approve", "Amended"] and trader_decision:
-                lines.append(f"\n**📊 交易計劃**:")
+                lines.append(f"\n**>> 交易計劃**:")
                 
                 pos_size = final_approval.final_position_size if hasattr(final_approval, 'final_position_size') else 0
                 lines.append(f"- **倉位**: {pos_size * 100:.0f}%")
@@ -442,7 +442,7 @@ class CryptoAnalysisBot:
                     profit_pct = abs((safe_float(take_profit) - safe_float(entry)) / safe_float(entry) * 100)
                     lines.append(f"- **止盈**: ${safe_float(take_profit):.4f} (+{profit_pct:.2f}%)")
                 
-                if market_name.startswith("📈"):
+                if "合約" in market_name:  # Check for "futures" in the market name instead of emoji
                     leverage = final_approval.approved_leverage if hasattr(final_approval, 'approved_leverage') else None
                     if leverage:
                         lines.append(f"- **槓桿**: {leverage}x")
@@ -450,10 +450,10 @@ class CryptoAnalysisBot:
             return "\n".join(lines) + "\n"
 
         if spot_results:
-            yield format_market_decision(spot_results, "🏪 現貨市場")
-        
+            yield format_market_decision(spot_results, ">> 現貨市場")
+
         if futures_results:
-            yield format_market_decision(futures_results, f"📈 合約市場 ({DEFAULT_FUTURES_LEVERAGE}x 槓桿)")
+            yield format_market_decision(futures_results, f">> 合約市場 ({DEFAULT_FUTURES_LEVERAGE}x 槓桿)")
 
         yield f"\n---\n*分析時間: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*"
     
@@ -485,7 +485,7 @@ class CryptoAnalysisBot:
                              response_so_far += part
                              yield response_so_far
                     except Exception as e:
-                        response_so_far += f"\n❌ 分析 {symbol} 時發生錯誤: {e}"
+                        response_so_far += f"\n>> 分析 {symbol} 時發生錯誤: {e}"
                         yield response_so_far
             else:
                 symbol = symbols[0]
@@ -498,7 +498,7 @@ class CryptoAnalysisBot:
                         response_so_far += part
                         yield response_so_far
                 except Exception as e:
-                    response_so_far += f"\n❌ 分析 {symbol} 時發生錯誤: {e}"
+                    response_so_far += f"\n>> 分析 {symbol} 時發生錯誤: {e}"
                     yield response_so_far
         else:
             response_so_far = "抱歉，我不太理解您的問題。您可以試著問我「比特幣可以投資嗎？」或「比較 ETH 和 SOL」。"
@@ -654,7 +654,7 @@ def create_screener_interface():
                     full_summary = "".join(list(summary_generator))
                     all_summaries.append(full_summary)
                 except Exception as e:
-                    all_summaries.append(f"### {symbol}\n❌ 分析時發生錯誤: {e}")
+                    all_summaries.append(f"### {symbol}\n>> 分析時發生錯誤: {e}")
 
             return "\n\n---\n\n".join(all_summaries)
 

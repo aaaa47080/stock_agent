@@ -1,0 +1,31 @@
+{
+  "symbol": "BTCUSDT",
+  "analysis_timestamp": "2025-12-13T22:41:36.516189",
+  "error": "'cp950' codec can't encode character '\\U0001f449' in position 4: illegal multibyte sequence",
+  "spot_decision": {
+    "should_trade": false,
+    "decision": "Error",
+    "action": "error",
+    "position_size": 0.0,
+    "confidence": 0.0,
+    "reasoning": "'cp950' codec can't encode character '\\U0001f449' in position 4: illegal multibyte sequence",
+    "entry_price": null,
+    "stop_loss": null,
+    "take_profit": null,
+    "leverage": 1,
+    "additional_params": {}
+  },
+  "futures_decision": {
+    "should_trade": false,
+    "decision": "Error",
+    "action": "error",
+    "position_size": 0.0,
+    "confidence": 0.0,
+    "reasoning": "'cp950' codec can't encode character '\\U0001f449' in position 4: illegal multibyte sequence",
+    "entry_price": null,
+    "stop_loss": null,
+    "take_profit": null,
+    "leverage": 1,
+    "additional_params": {}
+  }
+}

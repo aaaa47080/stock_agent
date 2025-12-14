@@ -137,14 +137,14 @@ class FundamentalAnalyst:
 - bearish_points: 看跌基本面因素列表 (List[str])。
 - confidence: 信心度 (必須是 0 到 100 之間的數字，例如 75，不要寫文字)。
 """
-        
+
         response = self.client.chat.completions.create(
             model=FAST_THINKING_MODEL,
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
             temperature=0.5
         )
-        
+
         return AnalystReport.model_validate(json.loads(response.choices[0].message.content))
 
 class NewsAnalyst:
@@ -215,7 +215,7 @@ class BullResearcher:
         self.client = client
         self.model = model or DEEP_THINKING_MODEL
         self.stance = "Bull"
-        print(f"  🐂 多頭研究員使用模型: {self.model}")
+        print(f"  >> 多頭研究員使用模型: {self.model}")
 
     def debate(self, analyst_reports: List[AnalystReport], opponent_argument: Optional[ResearcherDebate] = None, round_number: int = 1) -> ResearcherDebate:
         """基於分析師報告提出看漲論點，並回應空頭觀點"""
@@ -303,7 +303,7 @@ class BullResearcher:
                 )
             return ResearcherDebate.model_validate(result_dict)
         except Exception as e:
-            print(f"       ❌ 失敗: {e}")
+            print(f"       >> 失敗: {e}")
             # 如果是 Pydantic 驗證錯誤，將其轉換為 ResearcherDebate 物件
             if isinstance(e, ValueError) and "Field required" in str(e):
                 return ResearcherDebate(
@@ -333,7 +333,7 @@ class BearResearcher:
         self.client = client
         self.model = model or DEEP_THINKING_MODEL
         self.stance = "Bear"
-        print(f"  🐻 空頭研究員使用模型: {self.model}")
+        print(f"  >> 空頭研究員使用模型: {self.model}")
 
     def debate(self, analyst_reports: List[AnalystReport], opponent_argument: Optional[ResearcherDebate] = None, round_number: int = 1) -> ResearcherDebate:
         """基於分析師報告提出看跌論點，並回應多頭觀點"""
@@ -421,7 +421,7 @@ class BearResearcher:
                 )
             return ResearcherDebate.model_validate(result_dict)
         except Exception as e:
-            print(f"       ❌ 失敗: {e}")
+            print(f"       >> 失敗: {e}")
             # 如果是 Pydantic 驗證錯誤，將其轉換為 ResearcherDebate 物件
             if isinstance(e, ValueError) and "Field required" in str(e):
                 return ResearcherDebate(
@@ -771,7 +771,7 @@ class CommitteeSynthesizer:
     def __init__(self, client, model: str = None):
         self.client = client
         self.model = model or DEEP_THINKING_MODEL
-        print(f"  🔮 綜合模型: {self.model}")
+        print(f"  >> 綜合模型: {self.model}")
 
     def synthesize_committee_views(
         self,
@@ -845,5 +845,5 @@ class CommitteeSynthesizer:
 
             return ResearcherDebate.model_validate(result_dict)
         except Exception as e:
-            print(f"       ❌ 綜合失敗: {e}")
+            print(f"       >> 綜合失敗: {e}")
             raise
