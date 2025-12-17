@@ -338,19 +338,19 @@ def create_llm_client_from_config(config: Dict[str, str]) -> tuple:
 # 便捷函數
 def get_bull_researcher_client():
     """獲取多頭研究員的 LLM 客戶端"""
-    from config import BULL_RESEARCHER_MODEL
+    from core.config import BULL_RESEARCHER_MODEL
     return create_llm_client_from_config(BULL_RESEARCHER_MODEL)
 
 
 def get_bear_researcher_client():
     """獲取空頭研究員的 LLM 客戶端"""
-    from config import BEAR_RESEARCHER_MODEL
+    from core.config import BEAR_RESEARCHER_MODEL
     return create_llm_client_from_config(BEAR_RESEARCHER_MODEL)
 
 
 def get_trader_client():
     """獲取交易員的 LLM 客戶端"""
-    from config import TRADER_MODEL
+    from core.config import TRADER_MODEL
     return create_llm_client_from_config(TRADER_MODEL)
 
 
@@ -374,7 +374,7 @@ if __name__ == "__main__":
         print("   提示: 需要設置 OPENROUTER_API_KEY 環境變量")
 
     # 測試配置
-    from config import BULL_RESEARCHER_MODEL, BEAR_RESEARCHER_MODEL
+    from core.config import BULL_RESEARCHER_MODEL, BEAR_RESEARCHER_MODEL
 
     print(f"\n多頭研究員: {LLMClientFactory.get_model_info(BULL_RESEARCHER_MODEL)}")
     print(f"空頭研究員: {LLMClientFactory.get_model_info(BEAR_RESEARCHER_MODEL)}")

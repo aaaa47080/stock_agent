@@ -5,7 +5,7 @@
 
 import os
 from dotenv import load_dotenv
-from utils import (
+from utils.utils import (
     get_crypto_news,
     get_crypto_news_cryptopanic,
     get_crypto_news_newsapi,

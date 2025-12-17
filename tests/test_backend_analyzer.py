@@ -6,7 +6,7 @@
 import json
 import os
 from datetime import datetime
-from backend_analyzer import BackendAnalyzer, run_backend_analysis, run_batch_backend_analysis
+from analysis.backend_analyzer import BackendAnalyzer, run_backend_analysis, run_batch_backend_analysis
 
 def test_single_symbol_analysis():
     """測試單一幣種分析功能"""

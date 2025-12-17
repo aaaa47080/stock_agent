@@ -1,6 +1,6 @@
 import pandas as pd
 import pandas_ta as ta
-from data_fetcher import get_data_fetcher, SymbolNotFoundError
+from data.data_fetcher import get_data_fetcher, SymbolNotFoundError
 import sys # Import sys for exiting gracefully
 
 def add_technical_indicators(df):

@@ -1,9 +1,16 @@
 
 import gradio as gr
 import asyncio
+import sys
+import os
+
+# Add the project root directory to Python path to enable imports
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(current_dir)
+sys.path.insert(0, project_root)
 
 # Import the new analysis engine functions
-from batch_analyzer import run_full_analysis, generate_report_and_summary
+from analysis.batch_analyzer import run_full_analysis, generate_report_and_summary
 
 async def real_batch_analysis(exchange, progress=gr.Progress(track_tqdm=True)):
     """

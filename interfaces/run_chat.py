@@ -4,7 +4,7 @@
 使用方式: python run_chat.py
 """
 
-from chat_interface import create_chat_interface
+from interfaces.chat_interface import create_chat_interface
 
 if __name__ == "__main__":
     print("🚀 正在啟動加密貨幣投資分析聊天界面...")

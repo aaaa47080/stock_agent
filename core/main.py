@@ -1,9 +1,9 @@
 import argparse
 import sys
-from graph import app
-from reporting import display_full_report
-from data_fetcher import SymbolNotFoundError # Import the custom exception
-from crypto_screener import screen_top_cryptos
+from core.graph import app
+from analysis.reporting import display_full_report
+from data.data_fetcher import SymbolNotFoundError # Import the custom exception
+from analysis.crypto_screener import screen_top_cryptos
 
 def main():
     """

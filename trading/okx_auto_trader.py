@@ -1,7 +1,7 @@
 import json
 import os
 from datetime import datetime
-from okx_api_connector import OKXAPIConnector
+from trading.okx_api_connector import OKXAPIConnector
 
 def execute_trade_from_analysis(json_file_path: str):
     """

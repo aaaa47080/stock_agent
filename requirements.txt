@@ -1,0 +1,14 @@
+# Core dependencies for AI Crypto Trading System
+openai>=1.12.0
+langgraph
+pandas>=2.0.0
+numpy
+pandas-ta
+requests
+python-dotenv
+pydantic
+gradio>=4.0.0
+cachetools
+tqdm
+google-generativeai
+dirtyjson

@@ -9,12 +9,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from langgraph.graph import StateGraph, END
 
 # 匯入我們自己的模組
-from models import AnalystReport, ResearcherDebate, TraderDecision, RiskAssessment, FinalApproval
-from data_processor import (
+from core.models import AnalystReport, ResearcherDebate, TraderDecision, RiskAssessment, FinalApproval
+from data.data_processor import (
     fetch_and_process_klines,
     build_market_data_package
 )
-from agents import (
+from core.agents import (
     TechnicalAnalyst,
     SentimentAnalyst,
     FundamentalAnalyst,
@@ -26,7 +26,7 @@ from agents import (
     FundManager,
     CommitteeSynthesizer
 )
-from settings import Settings
+from utils.settings import Settings
 
 # 重新規劃次數上限（從配置讀取）
 MAX_REPLANS = Settings.MAX_REPLANS

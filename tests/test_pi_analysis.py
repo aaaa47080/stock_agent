@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """快速測試 PI 分析功能"""
 
-from chat_interface import CryptoAnalysisBot
+from interfaces.chat_interface import CryptoAnalysisBot
 
 def test_pi_analysis():
     """測試 PI 幣種分析"""

@@ -1,4 +1,4 @@
-from models import AnalystReport, ResearcherDebate, TraderDecision, RiskAssessment, FinalApproval
+from core.models import AnalystReport, ResearcherDebate, TraderDecision, RiskAssessment, FinalApproval
 from typing import Dict, List
 
 def _display_single_market_report(

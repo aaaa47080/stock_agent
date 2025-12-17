@@ -6,12 +6,12 @@ import time
 import json
 
 # Import project-specific modules
-from data_fetcher import get_data_fetcher, SymbolNotFoundError
-from indicator_calculator import add_technical_indicators
-from graph import app, AgentState
-from config import DEFAULT_INTERVAL, DEFAULT_KLINES_LIMIT, CRYPTO_CURRENCIES_TO_ANALYZE, DEFAULT_FUTURES_LEVERAGE
-from models import TraderDecision
-from okx_api_connector import OKXAPIConnector
+from data.data_fetcher import get_data_fetcher, SymbolNotFoundError
+from data.indicator_calculator import add_technical_indicators
+from core.graph import app, AgentState
+from core.config import DEFAULT_INTERVAL, DEFAULT_KLINES_LIMIT, CRYPTO_CURRENCIES_TO_ANALYZE, DEFAULT_FUTURES_LEVERAGE
+from core.models import TraderDecision
+from trading.okx_api_connector import OKXAPIConnector
 
 def convert_symbol_format(symbol: str, source_exchange: str, target_exchange: str) -> str:
     """

@@ -5,9 +5,9 @@
 import pandas as pd
 import numpy as np
 from typing import Dict, List, Tuple
-from data_fetcher import get_data_fetcher
-from indicator_calculator import add_technical_indicators
-from utils import get_crypto_news, safe_float
+from data.data_fetcher import get_data_fetcher
+from data.indicator_calculator import add_technical_indicators
+from utils.utils import get_crypto_news, safe_float
 
 
 def prepare_recent_history(df: pd.DataFrame, days: int = 5) -> List[Dict]:

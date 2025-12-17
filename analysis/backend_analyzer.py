@@ -5,17 +5,21 @@
 
 import json
 import os
+import sys
 from datetime import datetime
 from typing import Dict, Optional, List
 
 import pandas as pd
 
-from chat_interface import CryptoAnalysisBot
-from graph import app
-from models import FinalApproval
-from utils import safe_float
-from okx_api_connector import OKXAPIConnector
-from config import CRYPTO_CURRENCIES_TO_ANALYZE
+# Add the parent directory to the Python path to allow imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from interfaces.chat_interface import CryptoAnalysisBot
+from core.graph import app
+from core.models import FinalApproval
+from utils.utils import safe_float
+from trading.okx_api_connector import OKXAPIConnector
+from core.config import CRYPTO_CURRENCIES_TO_ANALYZE
 
 
 class BackendAnalyzer:

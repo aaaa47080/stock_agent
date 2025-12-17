@@ -4,7 +4,7 @@
 import json
 import os
 from datetime import datetime
-from backend_analyzer import BackendAnalyzer
+from analysis.backend_analyzer import BackendAnalyzer
 
 def validate_backend_json_output():
     """驗證後台分析系統的 JSON 輸出功能"""
