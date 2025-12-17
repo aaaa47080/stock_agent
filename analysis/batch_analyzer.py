@@ -1,7 +1,11 @@
+import sys
+import os
+# Add the project root directory to the Python path to allow imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import asyncio
 from tqdm import tqdm
 import pandas as pd
-import os
 import time
 import json
 
@@ -142,10 +146,17 @@ async def run_full_analysis(exchange_name: str, market_type: str = 'spot', lever
         try:
             fetcher = get_data_fetcher(exchange_name)
 
+            # Convert symbol format based on the target exchange
+            symbol_for_primary_exchange = convert_symbol_format(symbol, "binance", exchange_name.lower())  # Convert from binance format to target exchange format
+            print(f"Using symbol format '{symbol_for_primary_exchange}' for {exchange_name}")
+
             if market_type == 'futures':
-                df, funding_rate_info = fetcher.get_futures_data(symbol, DEFAULT_INTERVAL, limit=DEFAULT_KLINES_LIMIT)
+                df, funding_rate_info = fetcher.get_futures_data(symbol_for_primary_exchange, DEFAULT_INTERVAL, limit=DEFAULT_KLINES_LIMIT)
             else:
-                df = fetcher.get_historical_klines(symbol, DEFAULT_INTERVAL, limit=DEFAULT_KLINES_LIMIT)
+                df = fetcher.get_historical_klines(symbol_for_primary_exchange, DEFAULT_INTERVAL, limit=DEFAULT_KLINES_LIMIT)
+
+            # Update symbol to reflect the format used on this exchange
+            symbol = symbol_for_primary_exchange
         except SymbolNotFoundError as e:
             print(f"Symbol {symbol} not found on primary exchange {exchange_name}: {e}")
             # Try fallback exchanges
@@ -154,8 +165,8 @@ async def run_full_analysis(exchange_name: str, market_type: str = 'spot', lever
                     print(f"Trying fallback exchange: {fallback_exchange}")
                     fetcher = get_data_fetcher(fallback_exchange)
 
-                    # Convert symbol format based on target exchange
-                    symbol_for_exchange = convert_symbol_format(symbol, exchange_name, fallback_exchange)
+                    # Convert symbol format from original (binance) format to target exchange format
+                    symbol_for_exchange = convert_symbol_format(symbol, "binance", fallback_exchange)  # Convert from binance format to target exchange format
                     print(f"Using symbol format '{symbol_for_exchange}' for {fallback_exchange}")
 
                     if market_type == 'futures':
@@ -181,8 +192,8 @@ async def run_full_analysis(exchange_name: str, market_type: str = 'spot', lever
                     print(f"Trying fallback exchange: {fallback_exchange}")
                     fetcher = get_data_fetcher(fallback_exchange)
 
-                    # Convert symbol format based on target exchange
-                    symbol_for_exchange = convert_symbol_format(symbol, exchange_name, fallback_exchange)
+                    # Convert symbol format from original (binance) format to target exchange format
+                    symbol_for_exchange = convert_symbol_format(symbol, "binance", fallback_exchange)  # Convert from binance format to target exchange format
                     print(f"Using symbol format '{symbol_for_exchange}' for {fallback_exchange}")
 
                     if market_type == 'futures':

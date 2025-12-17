@@ -3,8 +3,12 @@
 支持自然語言查詢，智能提取加密貨幣代號並進行分析
 """
 
-import gradio as gr
+import sys
 import os
+# Add the project root directory to the Python path to allow imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import gradio as gr
 import re
 from typing import List, Dict, Tuple, Optional
 import openai
@@ -277,12 +281,20 @@ class CryptoAnalysisBot:
             spot_state = {
                 "symbol": normalized_symbol, "exchange": exchange, "interval": interval,
                 "limit": limit, "market_type": 'spot', "leverage": 1,
+                "include_multi_timeframe": True,  # 啟用多週期分析
+                "short_term_interval": "1h",      # 短週期時間間隔
+                "medium_term_interval": "4h",     # 中週期時間間隔
+                "long_term_interval": "1d",       # 長週期時間間隔
                 "preloaded_data": shared_data # <--- 注入共用數據
             }
 
             futures_state = {
                 "symbol": normalized_symbol, "exchange": exchange, "interval": interval,
                 "limit": limit, "market_type": 'futures', "leverage": DEFAULT_FUTURES_LEVERAGE,
+                "include_multi_timeframe": True,  # 啟用多週期分析
+                "short_term_interval": "1h",      # 短週期時間間隔
+                "medium_term_interval": "4h",     # 中週期時間間隔
+                "long_term_interval": "1d",       # 長週期時間間隔
                 "preloaded_data": shared_data # <--- 注入共用數據
             }
 

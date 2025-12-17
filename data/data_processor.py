@@ -4,7 +4,7 @@
 """
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 from data.data_fetcher import get_data_fetcher
 from data.indicator_calculator import add_technical_indicators
 from utils.utils import get_crypto_news, safe_float
@@ -123,6 +123,142 @@ def calculate_price_info(df: pd.DataFrame) -> Dict:
     }
 
 
+def fetch_multi_timeframe_data(
+    symbol: str,
+    exchange: str,
+    market_type: str,
+    short_term_interval: str = "1h",
+    medium_term_interval: str = "4h",
+    long_term_interval: str = "1d",
+    limit: int = 100
+) -> Dict[str, Dict]:
+    """
+    獲取多週期數據
+
+    Args:
+        symbol: 交易對符號
+        exchange: 交易所
+        market_type: 市場類型（spot/futures）
+        short_term_interval: 短週期時間間隔
+        medium_term_interval: 中週期時間間隔
+        long_term_interval: 長週期時間間隔
+        limit: 數據條數
+
+    Returns:
+        包含多週期數據的字典
+    """
+    data_fetcher = get_data_fetcher(exchange)
+    multi_timeframe_data = {}
+
+    # 定義要獲取的週期
+    intervals = {
+        "short_term": short_term_interval,
+        "medium_term": medium_term_interval,
+        "long_term": long_term_interval
+    }
+
+    # 獲取每個時間週期的數據
+    for timeframe, interval in intervals.items():
+        try:
+            print(f"[CHART] 獲取 {symbol} {timeframe}({interval}) K線數據...")
+
+            # 根據市場類型獲取數據
+            if market_type == 'futures':
+                klines_df, funding_rate_info = data_fetcher.get_futures_data(symbol, interval, limit)
+            else:
+                klines_df = data_fetcher.get_historical_klines(symbol, interval, limit)
+
+            if klines_df is None or klines_df.empty:
+                print(f"⚠️  {timeframe}({interval}) 數據獲取失敗")
+                multi_timeframe_data[timeframe] = None
+                continue
+
+            # 添加技術指標
+            df_with_indicators = add_technical_indicators(klines_df)
+
+            # 準備多週期數據包
+            latest = df_with_indicators.iloc[-1]
+
+            timeframe_data = {
+                "timeframe": interval,
+                "market_type": market_type,
+                "exchange": exchange,
+                "funding_rate_info": funding_rate_info if market_type == 'futures' else {},
+                "價格資訊": calculate_price_info(df_with_indicators),
+                "技術指標": extract_technical_indicators(latest),
+                "最近5天歷史": prepare_recent_history(df_with_indicators, days=5),
+                "市場結構": analyze_market_structure(df_with_indicators),
+                "關鍵價位": calculate_key_levels(df_with_indicators, period=30),
+                "dataframe": df_with_indicators  # 保留原始數據框以供後續分析
+            }
+
+            multi_timeframe_data[timeframe] = timeframe_data
+            print(f"SUCCESS: {timeframe}({interval}) 數據獲取完成")
+
+        except Exception as e:
+            print(f"ERROR: 獲取 {timeframe}({interval}) 數據時發生錯誤: {e}")
+            multi_timeframe_data[timeframe] = None
+
+    return multi_timeframe_data
+
+
+def analyze_multi_timeframe_trend(multi_timeframe_data: Dict[str, Dict]) -> Dict:
+    """
+    分析多週期趨勢一致性
+
+    Args:
+        multi_timeframe_data: 多週期數據
+
+    Returns:
+        綜合趨勢分析
+    """
+    trend_analysis = {
+        "short_term_trend": "不明",
+        "medium_term_trend": "不明",
+        "long_term_trend": "不明",
+        "trend_consistency": "不一致",  # 一致/部分一致/不一致
+        "overall_bias": "中性",  # 偏多頭/偏空頭/中性
+        "confidence_score": 0.0,  # 0-100 的信心分數
+        "key_levels": {}  # 重要價位水平
+    }
+
+    # 分析每個週期的趨勢
+    for timeframe, data in multi_timeframe_data.items():
+        if data is not None and "市場結構" in data:
+            trend = data["市場結構"]["趨勢"]
+            trend_analysis[f"{timeframe}_trend"] = trend
+
+    # 計算趨勢一致性
+    valid_trends = []
+    for timeframe in ["short_term", "medium_term", "long_term"]:
+        if multi_timeframe_data.get(timeframe) is not None:
+            trend = multi_timeframe_data[timeframe]["市場結構"]["趨勢"]
+            valid_trends.append(trend)
+
+    if len(valid_trends) > 0:
+        # 計算趨勢一致性
+        unique_trends = set(valid_trends)
+        if len(unique_trends) == 1:
+            trend_analysis["trend_consistency"] = "一致"
+            trend_analysis["overall_bias"] = list(unique_trends)[0]
+            trend_analysis["confidence_score"] = 85.0
+        elif len(unique_trends) == 2:
+            trend_analysis["trend_consistency"] = "部分一致"
+            # 看哪種趨勢佔多數
+            if valid_trends.count(valid_trends[0]) > valid_trends.count(valid_trends[1]):
+                trend_analysis["overall_bias"] = valid_trends[0]
+                trend_analysis["confidence_score"] = 65.0
+            else:
+                trend_analysis["overall_bias"] = valid_trends[1]
+                trend_analysis["confidence_score"] = 65.0
+        else:
+            trend_analysis["trend_consistency"] = "不一致"
+            trend_analysis["overall_bias"] = "中性"
+            trend_analysis["confidence_score"] = 40.0
+
+    return trend_analysis
+
+
 def fetch_and_process_klines(
     symbol: str,
     interval: str,
@@ -131,7 +267,7 @@ def fetch_and_process_klines(
     exchange: str
 ) -> Tuple[pd.DataFrame, Dict]:
     """
-    獲取並處理 K線數據
+    獲取並處理 K線數據 (保持向後兼容性)
 
     Args:
         symbol: 交易對符號
@@ -167,7 +303,11 @@ def build_market_data_package(
     market_type: str,
     exchange: str,
     leverage: int,
-    funding_rate_info: Dict
+    funding_rate_info: Dict,
+    include_multi_timeframe: bool = False,
+    short_term_interval: str = "1h",
+    medium_term_interval: str = "4h",
+    long_term_interval: str = "1d"
 ) -> Dict:
     """
     構建完整的市場數據包
@@ -179,6 +319,10 @@ def build_market_data_package(
         exchange: 交易所
         leverage: 槓桿倍數
         funding_rate_info: 資金費率資訊
+        include_multi_timeframe: 是否包含多週期數據
+        short_term_interval: 短週期時間間隔
+        medium_term_interval: 中週期時間間隔
+        long_term_interval: 長週期時間間隔
 
     Returns:
         完整的市場數據字典
@@ -187,10 +331,11 @@ def build_market_data_package(
 
     # 提取基礎貨幣名稱（用於新聞搜尋）
     base_currency = symbol.replace("USDT", "").replace("BUSD", "").replace("-", "").replace("SWAP", "")
-    print(f"📰 正在從 CryptoPanic 撈取 {base_currency} 的真實新聞...")
+    print(f"[NEWS] 正在從 CryptoPanic 撈取 {base_currency} 的真實新聞...")
     news_data = get_crypto_news(symbol=base_currency, limit=5)
 
-    return {
+    # 基礎數據包
+    market_data = {
         "market_type": market_type,
         "exchange": exchange,
         "leverage": leverage,
@@ -202,3 +347,21 @@ def build_market_data_package(
         "關鍵價位": calculate_key_levels(df, period=30),
         "新聞資訊": news_data
     }
+
+    # 如果需要多週期分析，獲取並添加多週期數據
+    if include_multi_timeframe:
+        print(f"[REFRESH] 準備獲取多週期數據 ({short_term_interval}/{medium_term_interval}/{long_term_interval})...")
+        multi_timeframe_data = fetch_multi_timeframe_data(
+            symbol, exchange, market_type,
+            short_term_interval, medium_term_interval, long_term_interval
+        )
+
+        # 分析多週期趨勢一致性
+        trend_analysis = analyze_multi_timeframe_trend(multi_timeframe_data)
+
+        # 將多週期數據添加到市場數據包中
+        market_data["multi_timeframe_data"] = multi_timeframe_data
+        market_data["multi_timeframe_trend_analysis"] = trend_analysis
+        print("SUCCESS: 多週期數據準備完成")
+
+    return market_data

@@ -1,5 +1,9 @@
-import argparse
 import sys
+import os
+# Add the project root directory to the Python path to allow imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import argparse
 from core.graph import app
 from analysis.reporting import display_full_report
 from data.data_fetcher import SymbolNotFoundError # Import the custom exception

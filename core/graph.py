@@ -1,4 +1,8 @@
+import sys
 import os
+# Add the project root directory to the Python path to allow imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import openai
 import pandas as pd
 import numpy as np
@@ -45,12 +49,17 @@ class AgentState(TypedDict):
     leverage: int
     exchange: str # Added
     preloaded_data: Optional[Dict]  # 用來接收預先抓好的資料
+    # --- 多週期分析參數 ---
+    include_multi_timeframe: bool  # 是否包含多週期分析
+    short_term_interval: str       # 短週期時間間隔
+    medium_term_interval: str      # 中週期時間間隔
+    long_term_interval: str        # 長週期時間間隔
     # --- 客戶端與通用數據 ---
     client: openai.OpenAI
     market_data: Dict
     current_price: float
     funding_rate_info: Dict
-    
+
     # --- 各階段的產出 ---
     analyst_reports: List[AnalystReport]
     bull_argument: ResearcherDebate
@@ -58,7 +67,7 @@ class AgentState(TypedDict):
     trader_decision: TraderDecision
     risk_assessment: Optional[RiskAssessment] # 可能為 None
     final_approval: FinalApproval
-    
+
     # --- 循環控制 ---
     replan_count: int
 
@@ -73,6 +82,7 @@ def prepare_data_node(state: AgentState) -> Dict:
     1. 初始化 OpenAI Client
     2. 檢查是否有預加載數據（緩存），如果有則直接使用
     3. 如果沒有緩存，則從交易所和新聞源撈取數據
+    4. 可選：獲取多週期數據以進行更全面的分析
 
     已重構：將數據處理邏輯抽取到 data_processor.py，提高可維護性
     """
@@ -96,6 +106,37 @@ def prepare_data_node(state: AgentState) -> Dict:
         market_data["market_type"] = state["market_type"]
         market_data["leverage"] = state.get("leverage", 1)
 
+        # 如果狀態中包含多週期參數，且預加載數據中沒有多週期信息，則添加多週期數據
+        include_multi_timeframe = state.get("include_multi_timeframe", False)
+        if include_multi_timeframe and "multi_timeframe_data" not in market_data:
+            print(f">> [多週期模式] 預加載數據中添加多週期分析...")
+            symbol = state['symbol']
+            exchange = state['exchange']
+            market_type = state['market_type']
+
+            # 構建完整的市場數據包（使用重構後的函數，包含多週期分析）
+            from data.data_processor import build_market_data_package
+            df_with_indicators, funding_rate_info = fetch_and_process_klines(
+                symbol=symbol,
+                interval=state['interval'],  # 使用主週期
+                limit=state['limit'],
+                market_type=market_type,
+                exchange=exchange
+            )
+
+            market_data = build_market_data_package(
+                df=df_with_indicators,
+                symbol=symbol,
+                market_type=market_type,
+                exchange=exchange,
+                leverage=state.get("leverage", 1),
+                funding_rate_info=funding_rate_info,
+                include_multi_timeframe=True,
+                short_term_interval=state.get("short_term_interval", "1h"),
+                medium_term_interval=state.get("medium_term_interval", "4h"),
+                long_term_interval=state.get("long_term_interval", "1d")
+            )
+
         return {
             "client": client,
             "market_data": market_data,
@@ -112,24 +153,53 @@ def prepare_data_node(state: AgentState) -> Dict:
     exchange = state['exchange']
     leverage = state.get('leverage', 1)
 
-    # 獲取並處理 K線數據（使用重構後的函數）
-    df_with_indicators, funding_rate_info = fetch_and_process_klines(
-        symbol=symbol,
-        interval=interval,
-        limit=limit,
-        market_type=market_type,
-        exchange=exchange
-    )
+    # 判斷是否需要多週期分析
+    include_multi_timeframe = state.get("include_multi_timeframe", False)
+    print(f">> [多週期模式] 包含多週期分析: {include_multi_timeframe}")
 
-    # 構建完整的市場數據包（使用重構後的函數）
-    market_data = build_market_data_package(
-        df=df_with_indicators,
-        symbol=symbol,
-        market_type=market_type,
-        exchange=exchange,
-        leverage=leverage,
-        funding_rate_info=funding_rate_info
-    )
+    if include_multi_timeframe:
+        # 使用多週期數據構建函數
+        from data.data_processor import build_market_data_package
+        df_with_indicators, funding_rate_info = fetch_and_process_klines(
+            symbol=symbol,
+            interval=interval,
+            limit=limit,
+            market_type=market_type,
+            exchange=exchange
+        )
+
+        market_data = build_market_data_package(
+            df=df_with_indicators,
+            symbol=symbol,
+            market_type=market_type,
+            exchange=exchange,
+            leverage=leverage,
+            funding_rate_info=funding_rate_info,
+            include_multi_timeframe=True,
+            short_term_interval=state.get("short_term_interval", "1h"),
+            medium_term_interval=state.get("medium_term_interval", "4h"),
+            long_term_interval=state.get("long_term_interval", "1d")
+        )
+    else:
+        # 獲取並處理 K線數據（使用重構後的函數）
+        df_with_indicators, funding_rate_info = fetch_and_process_klines(
+            symbol=symbol,
+            interval=interval,
+            limit=limit,
+            market_type=market_type,
+            exchange=exchange
+        )
+
+        # 構建完整的市場數據包（使用重構後的函數）
+        market_data = build_market_data_package(
+            df=df_with_indicators,
+            symbol=symbol,
+            market_type=market_type,
+            exchange=exchange,
+            leverage=leverage,
+            funding_rate_info=funding_rate_info,
+            include_multi_timeframe=False  # 單週期模式
+        )
 
     current_price = market_data["價格資訊"]["當前價格"]
     print(f">> 數據準備完成 | 當前價格: ${current_price:.2f}")
@@ -232,8 +302,8 @@ def research_debate_node(state: AgentState) -> Dict:
     實現多輪互動辯論機制，讓多空雙方真正互相討論。
     支持委員會模式：多個模型組成委員會，先內部討論再辯論。
     """
-    from settings import Settings
-    from config import (
+    from utils.settings import Settings
+    from core.config import (
         ENABLE_COMMITTEE_MODE,
         BULL_COMMITTEE_MODELS,
         BEAR_COMMITTEE_MODELS,
@@ -241,7 +311,7 @@ def research_debate_node(state: AgentState) -> Dict:
         BULL_RESEARCHER_MODEL,
         BEAR_RESEARCHER_MODEL
     )
-    from llm_client import create_llm_client_from_config
+    from utils.llm_client import create_llm_client_from_config
 
     debate_rounds = Settings.DEBATE_ROUNDS
     analyst_reports = state['analyst_reports']

@@ -1,5 +1,9 @@
-import json
+import sys
 import os
+# Add the project root directory to the Python path to allow imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import json
 from datetime import datetime
 from trading.okx_api_connector import OKXAPIConnector
 

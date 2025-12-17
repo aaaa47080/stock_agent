@@ -5,6 +5,14 @@ from typing import Literal, List, Dict, Optional
 # Agent 角色定義
 # ============================================================================
 
+class MultiTimeframeData(BaseModel):
+    """多週期數據結構"""
+    short_term: Optional[Dict] = None      # 短週期數據 (1m, 5m, 15m, 30m, 1h)
+    medium_term: Optional[Dict] = None     # 中週期數據 (2h, 4h, 6h, 12h, 1d)
+    long_term: Optional[Dict] = None       # 長週期數據 (1d, 3d, 1w, 1mo)
+    overall_trend: Optional[Dict] = None   # 綜合多週期趨勢分析
+
+
 class AnalystReport(BaseModel):
     """分析師報告結構"""
     analyst_type: str
@@ -13,6 +21,8 @@ class AnalystReport(BaseModel):
     bullish_points: List[str] = []
     bearish_points: List[str] = []
     confidence: float = Field(..., ge=0, le=100)
+    # 添加多週期分析支持
+    multi_timeframe_analysis: Optional[MultiTimeframeData] = None
 
 
 class ResearcherDebate(BaseModel):
@@ -24,6 +34,8 @@ class ResearcherDebate(BaseModel):
     confidence: float = Field(..., ge=0, le=100)
     round_number: int = 1  # 當前是第幾輪辯論
     opponent_view: Optional[str] = None  # 對手在上一輪的觀點（用於回應）
+    # 添加多週期分析支持
+    multi_timeframe_analysis: Optional[MultiTimeframeData] = None
 
 
 class TraderDecision(BaseModel):
@@ -37,6 +49,8 @@ class TraderDecision(BaseModel):
     take_profit: Optional[float] = None
     confidence: float = Field(..., ge=0, le=100)
     synthesis: str = Field(..., min_length=50, description="如何綜合各方意見")
+    # 添加多週期分析支持
+    multi_timeframe_analysis: Optional[MultiTimeframeData] = None
 
 
 class RiskAssessment(BaseModel):
@@ -47,6 +61,8 @@ class RiskAssessment(BaseModel):
     suggested_adjustments: str
     approve: bool
     adjusted_position_size: float = Field(..., ge=0, le=1)
+    # 添加多週期分析支持
+    multi_timeframe_analysis: Optional[MultiTimeframeData] = None
 
 
 class FinalApproval(BaseModel):
@@ -56,3 +72,5 @@ class FinalApproval(BaseModel):
     approved_leverage: Optional[int] = Field(default=None, ge=1, le=125)
     execution_notes: str
     rationale: str  # ✅ 正確：是 rationale，不是 reasoning
+    # 添加多週期分析支持
+    multi_timeframe_analysis: Optional[MultiTimeframeData] = None

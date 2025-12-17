@@ -1,3 +1,8 @@
+import sys
+import os
+# Add the project root directory to the Python path to allow imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from core.models import AnalystReport, ResearcherDebate, TraderDecision, RiskAssessment, FinalApproval
 from typing import Dict, List
 

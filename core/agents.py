@@ -1,3 +1,8 @@
+import sys
+import os
+# Add the project root directory to the Python path to allow imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import json
 import openai
 from typing import Literal, List, Dict, Optional
@@ -21,38 +26,85 @@ class TechnicalAnalyst:
     def analyze(self, market_data: Dict) -> AnalystReport:
         """分析技術指標"""
 
+        # 檢查是否存在多週期數據
+        multi_timeframe_data = market_data.get('multi_timeframe_data')
+        multi_timeframe_analysis = market_data.get('multi_timeframe_trend_analysis')
+
+        multi_timeframe_context = ""
+        if multi_timeframe_data:
+            # 構建多週期分析上下文
+            trend_info = multi_timeframe_analysis or {}
+            short_term_data = multi_timeframe_data.get('short_term', {})
+            medium_term_data = multi_timeframe_data.get('medium_term', {})
+            long_term_data = multi_timeframe_data.get('long_term', {})
+
+            multi_timeframe_context = f"""
+多週期技術指標分析：
+- 短週期趨勢 ({short_term_data.get('timeframe', '1h')}): {trend_info.get('short_term_trend', '不明')}
+- 中週期趨勢 ({medium_term_data.get('timeframe', '4h')}): {trend_info.get('medium_term_trend', '不明')}
+- 長週期趨勢 ({long_term_data.get('timeframe', '1d')}): {trend_info.get('long_term_trend', '不明')}
+- 趨勢一致性: {trend_info.get('trend_consistency', '不明')}
+- 整體偏向: {trend_info.get('overall_bias', '中性')}
+- 多週期信心分數: {trend_info.get('confidence_score', 0):.1f}%
+
+短週期({short_term_data.get('timeframe', '1h')})技術指標: {short_term_data.get('技術指標', {})}
+中週期({medium_term_data.get('timeframe', '4h')})技術指標: {medium_term_data.get('技術指標', {})}
+長週期({long_term_data.get('timeframe', '1d')})技術指標: {long_term_data.get('技術指標', {})}
+"""
+        else:
+            multi_timeframe_context = "當前為單一週期分析模式，未啟用多週期技術指標對比。"
+
         prompt = f"""
-        
-        你是一位專業的技術分析師，專精於加密貨幣市場的技術指標分析。
+你是一位專業的多週期技術分析師，專精於分析不同時間框架下的技術指標和市場結構。
 
-        你的任務：
-        1. 分析提供的技術指標數據
-        2. 識別關鍵的技術信號（趨勢、動量、超買超賣）
-        3. 提供看漲和看跌的技術論點
-        4. 給出你的專業判斷
+你的任務：
+1. 分析提供的單一週期及多週期技術指標數據
+2. 識別各時間週期的關鍵技術信號（趨勢、動量、超買超賣）
+3. 比較不同週期技術指標的一致性/分歧度
+4. 提供看漲和看跌的多週期技術論點
+5. 給出你的專業判斷
 
-        市場數據：
-        {json.dumps(market_data.get('技術指標', {}), indent=2, ensure_ascii=False)}
-        價格資訊：
-        {json.dumps(market_data.get('價格資訊', {}), indent=2, ensure_ascii=False)}
+當前週期市場數據：
+主要技術指標：
+{json.dumps(market_data.get('技術指標', {}), indent=2, ensure_ascii=False)}
+價格資訊：
+{json.dumps(market_data.get('價格資訊', {}), indent=2, ensure_ascii=False)}
 
-        請以 JSON 格式回覆，嚴格遵守以下格式與要求：
-        - analyst_type: "技術分析師"
-        - summary: 技術分析摘要 (繁體中文，至少50字)。
-        - key_findings: 關鍵發現列表 (**必須是字串的列表**，例如：`["RSI 指標顯示超買", "價格突破布林帶上軌"]`)。
-        - bullish_points: 看漲技術信號列表 (List[str])。
-        - bearish_points: 看跌技術信號列表 (List[str])。
-        - confidence: 信心度 (0-100)。
-        """
-                
+{multi_timeframe_context}
+
+請以 JSON 格式回覆，嚴格遵守以下格式與要求：
+- analyst_type: "技術分析師"
+- summary: 技術分析摘要 (繁體中文，至少50字)。
+- key_findings: 關鍵發現列表 (**必須是字串的列表**，例如：`["RSI 指標顯示超買", "價格突破布林帶上軌"]`)。
+- bullish_points: 看漲技術信號列表 (List[str])。
+- bearish_points: 看跌技術信號列表 (List[str])。
+- confidence: 信心度 (0-100)。
+"""
+
         response = self.client.chat.completions.create(
             model=FAST_THINKING_MODEL,
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
             temperature=0.5
         )
-        
-        return AnalystReport.model_validate(json.loads(response.choices[0].message.content))
+
+        result = AnalystReport.model_validate(json.loads(response.choices[0].message.content))
+
+        # 如果存在多週期數據，創建多週期分析對象並附加到結果中
+        if 'multi_timeframe_data' in market_data:
+            from core.models import MultiTimeframeData
+            multi_timeframe_data = market_data['multi_timeframe_data']
+            multi_timeframe_analysis = market_data.get('multi_timeframe_trend_analysis', {})
+
+            multi_tf_analysis = MultiTimeframeData(
+                short_term=multi_timeframe_data.get('short_term'),
+                medium_term=multi_timeframe_data.get('medium_term'),
+                long_term=multi_timeframe_data.get('long_term'),
+                overall_trend=multi_timeframe_analysis
+            )
+            result.multi_timeframe_analysis = multi_tf_analysis
+
+        return result
 
 
 class SentimentAnalyst:
@@ -66,18 +118,49 @@ class SentimentAnalyst:
     def analyze(self, market_data: Dict) -> AnalystReport:
         """分析市場情緒"""
 
+        # 檢查是否存在多週期數據
+        multi_timeframe_data = market_data.get('multi_timeframe_data')
+        multi_timeframe_analysis = market_data.get('multi_timeframe_trend_analysis')
+
+        multi_timeframe_context = ""
+        if multi_timeframe_data:
+            # 構建多週期分析上下文
+            trend_info = multi_timeframe_analysis or {}
+            short_term_data = multi_timeframe_data.get('short_term', {})
+            medium_term_data = multi_timeframe_data.get('medium_term', {})
+            long_term_data = multi_timeframe_data.get('long_term', {})
+
+            multi_timeframe_context = f"""
+多週期市場情緒分析：
+- 短週期({short_term_data.get('timeframe', '1h')})情緒狀態: {short_term_data.get('市場結構', {}).get('趨勢', '不明')}
+- 中週期({medium_term_data.get('timeframe', '4h')})情緒狀態: {medium_term_data.get('市場結構', {}).get('趨勢', '不明')}
+- 長週期({long_term_data.get('timeframe', '1d')})情緒狀態: {long_term_data.get('市場結構', {}).get('趨勢', '不明')}
+- 情緒一致性: {trend_info.get('trend_consistency', '不明')}
+- 整體情緒偏向: {trend_info.get('overall_bias', '中性')}
+- 多週期情緒信心分數: {trend_info.get('confidence_score', 0):.1f}%
+
+短週期({short_term_data.get('timeframe', '1h')})波動率: {short_term_data.get('市場結構', {}).get('波動率', '不明')}
+中週期({medium_term_data.get('timeframe', '4h')})波動率: {medium_term_data.get('市場結構', {}).get('波動率', '不明')}
+長週期({long_term_data.get('timeframe', '1d')})波動率: {long_term_data.get('市場結構', {}).get('波動率', '不明')}
+"""
+        else:
+            multi_timeframe_context = "當前為單一週期分析模式，未啟用多週期情緒對比。"
+
         prompt = f"""
-你是一位市場情緒分析專家，專精於解讀市場氛圍和投資者心理。
+你是一位專業的多週期市場情緒分析專家，專精於解讀不同時間框架下的市場氛圍和投資者心理。
 
 你的任務：
 1. 基於價格走勢和成交量評估市場情緒
-2. 識別恐慌或貪婪的跡象
-3. 評估市場參與度
-4. 判斷情緒對價格的潛在影響
+2. 分析不同時間週期的情緒差異
+3. 識別恐慌或貪婪的跡象
+4. 評估情緒在不同週期的一致性/分歧度
+5. 判斷情緒對短期和長期價格的潛在影響
 
 市場數據：
-價格變化：{json.dumps(market_data.get('價格資訊', {}), indent=2, ensure_ascii=False)}
-市場結構：{json.dumps(market_data.get('市場結構', {}), indent=2, ensure_ascii=False)}
+當前週期價格變化：{json.dumps(market_data.get('價格資訊', {}), indent=2, ensure_ascii=False)}
+當前週期市場結構：{json.dumps(market_data.get('市場結構', {}), indent=2, ensure_ascii=False)}
+
+{multi_timeframe_context}
 
 請以 JSON 格式回覆，嚴格遵守以下格式與要求：
 - analyst_type: "情緒分析師"
@@ -87,15 +170,31 @@ class SentimentAnalyst:
 - bearish_points: 負面情緒指標列表 (List[str])。
 - confidence: 信心度 (0 到 100 的數字)。
 """
-        
+
         response = self.client.chat.completions.create(
             model=FAST_THINKING_MODEL,
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
             temperature=0.5
         )
-        
-        return AnalystReport.model_validate(json.loads(response.choices[0].message.content))
+
+        result = AnalystReport.model_validate(json.loads(response.choices[0].message.content))
+
+        # 如果存在多週期數據，創建多週期分析對象並附加到結果中
+        if 'multi_timeframe_data' in market_data:
+            from core.models import MultiTimeframeData
+            multi_timeframe_data = market_data['multi_timeframe_data']
+            multi_timeframe_analysis = market_data.get('multi_timeframe_trend_analysis', {})
+
+            multi_tf_analysis = MultiTimeframeData(
+                short_term=multi_timeframe_data.get('short_term'),
+                medium_term=multi_timeframe_data.get('medium_term'),
+                long_term=multi_timeframe_data.get('long_term'),
+                overall_trend=multi_timeframe_analysis
+            )
+            result.multi_timeframe_analysis = multi_tf_analysis
+
+        return result
 
 
 class FundamentalAnalyst:
@@ -114,20 +213,53 @@ class FundamentalAnalyst:
         exchange = market_data.get('exchange', 'binance')
         funding_rate_info = market_data.get('funding_rate_info', {})
 
+        # 檢查是否存在多週期數據
+        multi_timeframe_data = market_data.get('multi_timeframe_data')
+        multi_timeframe_analysis = market_data.get('multi_timeframe_trend_analysis')
+
+        multi_timeframe_context = ""
+        if multi_timeframe_data:
+            # 構建多週期分析上下文
+            trend_info = multi_timeframe_analysis or {}
+            short_term_data = multi_timeframe_data.get('short_term', {})
+            medium_term_data = multi_timeframe_data.get('medium_term', {})
+            long_term_data = multi_timeframe_data.get('long_term', {})
+
+            multi_timeframe_context = f"""
+多週期基本面分析：
+- 短週期({short_term_data.get('timeframe', '1h')})趨勢: {trend_info.get('short_term_trend', '不明')}
+- 中週期({medium_term_data.get('timeframe', '4h')})趨勢: {trend_info.get('medium_term_trend', '不明')}
+- 長週期({long_term_data.get('timeframe', '1d')})趨勢: {trend_info.get('long_term_trend', '不明')}
+- 趨勢一致性: {trend_info.get('trend_consistency', '不明')}
+- 整體結構強度: {trend_info.get('overall_bias', '中性')}
+- 多週期結構信心分數: {trend_info.get('confidence_score', 0):.1f}%
+
+短週期({short_term_data.get('timeframe', '1h')})市場結構: {short_term_data.get('市場結構', {})}
+中週期({medium_term_data.get('timeframe', '4h')})市場結構: {medium_term_data.get('市場結構', {})}
+長週期({long_term_data.get('timeframe', '1d')})市場結構: {long_term_data.get('市場結構', {})}
+關鍵價位一致性評估:
+{f"短週期支撐: {short_term_data.get('關鍵價位', {}).get('支撐位', '不明')}, 中週期支撐: {medium_term_data.get('關鍵價位', {}).get('支撐位', '不明')}, 長週期支撐: {long_term_data.get('關鍵價位', {}).get('支撐位', '不明')}"}
+{f"短週期壓力: {short_term_data.get('關鍵價位', {}).get('壓力位', '不明')}, 中週期壓力: {medium_term_data.get('關鍵價位', {}).get('壓力位', '不明')}, 長週期壓力: {long_term_data.get('關鍵價位', {}).get('壓力位', '不明')}"}
+"""
+        else:
+            multi_timeframe_context = "當前為單一週期分析模式，未啟用多週期基本面對比。"
+
         prompt = f"""
-你是一位基本面分析專家，專精於評估加密貨幣的長期價值。
+你是一位專業的多週期基本面分析專家，專精於評估不同時間框架下加密貨幣的價值和結構健康度。
 當前市場類型是：{market_type}，槓桿倍數是：{leverage}x。
 數據來源交易所：{exchange}。
 
 對於 {symbol}，請分析：
 1. 長期趨勢和價格定位
-2. 市場結構的健康度
-3. 關鍵支撐和壓力位
-4. 市場成熟度指標
+2. 市場結構在不同週期的健康度
+3. 多週期關鍵支撐和壓力位的一致性/分歧度
+4. 市場成熟度在不同時間框架下的表現
 {f"5. 資金費率資訊：{json.dumps(funding_rate_info, indent=2, ensure_ascii=False)}" if market_type == 'futures' else ""}
 
-市場數據：
+當前週期市場數據：
 {json.dumps(market_data, indent=2, ensure_ascii=False)}
+
+{multi_timeframe_context}
 
 請以 JSON 格式回覆，嚴格遵守以下數據類型：
 - analyst_type: "基本面分析師"
@@ -145,7 +277,23 @@ class FundamentalAnalyst:
             temperature=0.5
         )
 
-        return AnalystReport.model_validate(json.loads(response.choices[0].message.content))
+        result = AnalystReport.model_validate(json.loads(response.choices[0].message.content))
+
+        # 如果存在多週期數據，創建多週期分析對象並附加到結果中
+        if 'multi_timeframe_data' in market_data:
+            from core.models import MultiTimeframeData
+            multi_timeframe_data = market_data['multi_timeframe_data']
+            multi_timeframe_analysis = market_data.get('multi_timeframe_trend_analysis', {})
+
+            multi_tf_analysis = MultiTimeframeData(
+                short_term=multi_timeframe_data.get('short_term'),
+                medium_term=multi_timeframe_data.get('medium_term'),
+                long_term=multi_timeframe_data.get('long_term'),
+                overall_trend=multi_timeframe_analysis
+            )
+            result.multi_timeframe_analysis = multi_tf_analysis
+
+        return result
 
 class NewsAnalyst:
     """新聞分析師 Agent (已升級真實新聞功能)"""
@@ -198,10 +346,26 @@ class NewsAnalyst:
             temperature=0.5
         )
         print("============================================================")
-        print("新聞分析師回覆內容：")  
+        print("新聞分析師回覆內容：")
         print(market_data)
         print("============================================================")
-        return AnalystReport.model_validate(json.loads(response.choices[0].message.content))
+        result = AnalystReport.model_validate(json.loads(response.choices[0].message.content))
+
+        # 如果存在多週期數據，創建多週期分析對象並附加到結果中
+        if 'multi_timeframe_data' in market_data:
+            from core.models import MultiTimeframeData
+            multi_timeframe_data = market_data['multi_timeframe_data']
+            multi_timeframe_analysis = market_data.get('multi_timeframe_trend_analysis', {})
+
+            multi_tf_analysis = MultiTimeframeData(
+                short_term=multi_timeframe_data.get('short_term'),
+                medium_term=multi_timeframe_data.get('medium_term'),
+                long_term=multi_timeframe_data.get('long_term'),
+                overall_trend=multi_timeframe_analysis
+            )
+            result.multi_timeframe_analysis = multi_tf_analysis
+
+        return result
 
 
 # ============================================================================ 
@@ -222,9 +386,22 @@ class BullResearcher:
 
         all_bullish = []
         all_bearish = []
+        multi_timeframe_info = []
+
         for report in analyst_reports:
             all_bullish.extend(report.bullish_points)
             all_bearish.extend(report.bearish_points)
+            # 收集多週期分析信息
+            if report.multi_timeframe_analysis:
+                multi_timeframe_info.append({
+                    "analyst_type": report.analyst_type,
+                    "multi_timeframe_analysis": {
+                        "short_term": report.multi_timeframe_analysis.short_term,
+                        "medium_term": report.multi_timeframe_analysis.medium_term,
+                        "long_term": report.multi_timeframe_analysis.long_term,
+                        "overall_trend": report.multi_timeframe_analysis.overall_trend
+                    }
+                })
 
         # 構建對手觀點部分
         opponent_section = ""
@@ -239,8 +416,23 @@ class BullResearcher:
 **重要**：你現在需要針對空頭的論點進行有針對性的回應和反駁。
 """
 
+        multi_timeframe_context = ""
+        if multi_timeframe_info:
+            multi_timeframe_context = f"""
+多週期分析一致性：
+{json.dumps(multi_timeframe_info, indent=2, ensure_ascii=False)}
+
+請特別注意：
+1. 不同時間週期趨勢的一致性
+2. 短期、中期、長期的看漲因素是否存在共識
+3. 趨勢強度在不同週期的差異
+4. 識別關鍵時間週期的看漲信號強度
+"""
+        else:
+            multi_timeframe_context = "當前為單一週期分析，無多週期一致性數據。"
+
         prompt = f"""
-你是一位多頭研究員，你的任務是尋找和強化看漲論點。
+你是一位專業的多週期多頭研究員，你的任務是在考慮不同時間框架一致性的情況下尋找和強化看漲論點。
 當前是第 {round_number} 輪辯論。
 
 分析師報告摘要：
@@ -252,13 +444,15 @@ class BullResearcher:
 所有看跌因素：
 {json.dumps(all_bearish, indent=2, ensure_ascii=False)}
 
+{multi_timeframe_context}
+
 {opponent_section}
 
 你的任務：
 1. {'如果這是第一輪，綜合看漲論點並強化' if round_number == 1 else '針對空頭的反駁進行回應，強化你的看漲論點'}
-2. 解釋為什麼看漲因素更重要
+2. 解釋為什麼看漲因素更重要，特別是考慮多週期一致性
 3. {'反駁看跌論點' if round_number == 1 else '具體反駁空頭研究員的關鍵點'}
-4. 提供具體的買入理由
+4. 提供具體的買入理由，結合多週期分析
 
 請以 JSON 格式回覆，嚴格遵守數據類型：
 - researcher_stance: "Bull"
@@ -340,9 +534,22 @@ class BearResearcher:
 
         all_bullish = []
         all_bearish = []
+        multi_timeframe_info = []
+
         for report in analyst_reports:
             all_bullish.extend(report.bullish_points)
             all_bearish.extend(report.bearish_points)
+            # 收集多週期分析信息
+            if report.multi_timeframe_analysis:
+                multi_timeframe_info.append({
+                    "analyst_type": report.analyst_type,
+                    "multi_timeframe_analysis": {
+                        "short_term": report.multi_timeframe_analysis.short_term,
+                        "medium_term": report.multi_timeframe_analysis.medium_term,
+                        "long_term": report.multi_timeframe_analysis.long_term,
+                        "overall_trend": report.multi_timeframe_analysis.overall_trend
+                    }
+                })
 
         # 構建對手觀點部分
         opponent_section = ""
@@ -357,8 +564,23 @@ class BearResearcher:
 **重要**：你現在需要針對多頭的論點進行有針對性的回應和反駁。
 """
 
+        multi_timeframe_context = ""
+        if multi_timeframe_info:
+            multi_timeframe_context = f"""
+多週期分析一致性：
+{json.dumps(multi_timeframe_info, indent=2, ensure_ascii=False)}
+
+請特別注意：
+1. 不同時間週期趨勢的一致性
+2. 短期、中期、長期的看跌因素是否存在共識
+3. 風險在不同時間週期的強度差異
+4. 識別關鍵時間週期的風險信號強度
+"""
+        else:
+            multi_timeframe_context = "當前為單一週期分析，無多週期一致性數據。"
+
         prompt = f"""
-你是一位空頭研究員，你的任務是識別風險和強化看跌論點。
+你是一位專業的多週期空頭研究員，你的任務是在考慮不同時間框架一致性的情況下識別風險和強化看跌論點。
 當前是第 {round_number} 輪辯論。
 
 分析師報告摘要：
@@ -370,13 +592,15 @@ class BearResearcher:
 所有看跌因素：
 {json.dumps(all_bearish, indent=2, ensure_ascii=False)}
 
+{multi_timeframe_context}
+
 {opponent_section}
 
 你的任務：
 1. {'如果這是第一輪，綜合看跌論點並強化' if round_number == 1 else '針對多頭的反駁進行回應，強化你的看跌論點'}
-2. 指出潛在風險和陷阱
+2. 指出潛在風險和陷阱，特別是考慮多週期風險一致性
 3. {'反駁看漲論點' if round_number == 1 else '具體反駁多頭研究員的關鍵點'}
-4. 提供具體的風險警告
+4. 提供具體的風險警告，結合多週期分析
 
 請以 JSON 格式回覆，嚴格遵守數據類型：
 - researcher_stance: "Bear"
@@ -568,8 +792,21 @@ class Trader:
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"}
         )
-        
-        return TraderDecision.model_validate(json.loads(response.choices[0].message.content))
+
+        result = TraderDecision.model_validate(json.loads(response.choices[0].message.content))
+
+        # 如果存在多週期數據，創建多週期分析對象並附加到結果中
+        if 'multi_timeframe_data' in market_data and market_data.get('multi_timeframe_trend_analysis'):
+            from core.models import MultiTimeframeData
+            multi_timeframe_analysis = MultiTimeframeData(
+                short_term=market_data['multi_timeframe_data'].get('short_term'),
+                medium_term=market_data['multi_timeframe_data'].get('medium_term'),
+                long_term=market_data['multi_timeframe_data'].get('long_term'),
+                overall_trend=market_data['multi_timeframe_trend_analysis']
+            )
+            result.multi_timeframe_analysis = multi_timeframe_analysis
+
+        return result
 
 # ============================================================================ 
 # 第四層：風險管理團隊 (Risk Management Team)
@@ -603,8 +840,33 @@ class RiskManager:
                 adjusted_position_size=0.0
             )
         
+        # 檢查多週期分析數據
+        multi_timeframe_context = ""
+        if 'multi_timeframe_data' in market_data and market_data.get('multi_timeframe_trend_analysis'):
+            trend_analysis = market_data['multi_timeframe_trend_analysis']
+            short_term_data = market_data['multi_timeframe_data'].get('short_term', {})
+            medium_term_data = market_data['multi_timeframe_data'].get('medium_term', {})
+            long_term_data = market_data['multi_timeframe_data'].get('long_term', {})
+
+            multi_timeframe_context = f"""
+=== 多週期風險分析 ===
+- 短週期趨勢 ({short_term_data.get('timeframe', '1h')}): {trend_analysis.get('short_term_trend', '不明')}
+- 中週期趨勢 ({medium_term_data.get('timeframe', '4h')}): {trend_analysis.get('medium_term_trend', '不明')}
+- 長週期趨勢 ({long_term_data.get('timeframe', '1d')}): {trend_analysis.get('long_term_trend', '不明')}
+- 趨勢一致性: {trend_analysis.get('trend_consistency', '不明')}
+- 整體偏向: {trend_analysis.get('overall_bias', '中性')}
+- 多週期信心分數: {trend_analysis.get('confidence_score', 0):.1f}%
+
+風險評估考量：
+- 當趨勢一致性高時，信號更可靠，風險相對較低
+- 當趨勢不一致時，市場方向不明，風險較高
+- 多週期分析一致性影響倉位調整決策
+"""
+        else:
+            multi_timeframe_context = "當前為單一週期分析，無多週期趨勢數據。"
+
         prompt = f"""
-你是一位風險管理專家，負責評估並控制交易風險。
+你是一位專業的多週期風險管理專家，負責結合不同時間框架的資訊評估並控制交易風險。
 當前市場類型是：{market_type}。
 
 交易員決策：
@@ -616,6 +878,9 @@ class RiskManager:
 - 止盈：${f'{trader_decision.take_profit:.2f}' if trader_decision.take_profit is not None else 'N/A'}
 - 信心度：{trader_decision.confidence}%
 - 理由：{trader_decision.reasoning}
+- 多週期一致性：{'是' if trader_decision.multi_timeframe_analysis else '否'}
+
+{multi_timeframe_context}
 
 市場狀況：
 波動率：{market_data.get('市場結構', {}).get('波動率', 'N/A')}%
@@ -623,37 +888,55 @@ class RiskManager:
 {f"資金費率：{market_data['funding_rate_info'].get('last_funding_rate', 'N/A')}" if market_type == 'futures' and market_data.get('funding_rate_info') else ""}
 
 你的任務：
-1. 評估這筆交易的風險等級
+1. 評估這筆交易的風險等級，特別考慮多週期一致性
 2. 檢查倉位、止損、止盈是否合理
 3. 決定是否批准或需要調整
 {f"4. 對於合約交易，特別評估槓桿帶來的清算風險和資金費率的影響。" if market_type == 'futures' else ""}
+5. 根據多週期一致性調整風險評估和倉位建議
 
 **重要決策邏輯**：
 - 如果交易計劃合理且風險可控 → approve: true, adjusted_position_size 等於原始倉位
+- 如果多週期一致性高，風險較低，可適度提高倉位
+- 如果多週期一致性低，市場風險較高，應降低倉位或拒絕
 - 如果有明顯風險但可調整 → approve: true, adjusted_position_size 為調整後的倉位
 - 如果風險過高無法接受 → approve: false
 
 **adjusted_position_size 設定規則**：
 ✅ 如果**完全同意**交易員的建議 → adjusted_position_size = {trader_decision.position_size}（與原始倉位相同）
+📈 如果多週期**一致性高**，可適當增加倉位 → adjusted_position_size = {min(1.0, trader_decision.position_size * 1.2)}
+📉 如果多週期**一致性低**，應降低倉位 → adjusted_position_size = {max(0.01, trader_decision.position_size * 0.7)}
 ⚠️  如果需要**小幅調整** → adjusted_position_size 調整為合理值（例如降低 10-30%）
 ❌ 如果**不批准** → approve: false, adjusted_position_size = 0
 
 請以 JSON 格式回覆：
 - risk_level: "低風險"/"中低風險"/"中風險"/"中高風險"/"高風險"/"極高風險"
-- assessment: 風險評估（繁體中文，至少50個字符）
+- assessment: 風險評估（繁體中文，至少50個字符，需包含多週期分析考量）
 - warnings: 風險警告列表（如果沒有風險警告，可以是空列表 []）
 - suggested_adjustments: 建議調整（繁體中文）。如果完全同意，寫"建議按照交易員計劃執行"。
 - approve: true/false（是否批准）
 - adjusted_position_size: 調整後的倉位（0-1）。**如果完全同意，必須等於 {trader_decision.position_size}**
 """
-        
+
         response = self.client.chat.completions.create(
             model=DEEP_THINKING_MODEL,
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"}
         )
-        
-        return RiskAssessment.model_validate(json.loads(response.choices[0].message.content))
+
+        result = RiskAssessment.model_validate(json.loads(response.choices[0].message.content))
+
+        # 如果存在多週期數據，創建多週期分析對象並附加到結果中
+        if 'multi_timeframe_data' in market_data and market_data.get('multi_timeframe_trend_analysis'):
+            from core.models import MultiTimeframeData
+            multi_timeframe_analysis = MultiTimeframeData(
+                short_term=market_data['multi_timeframe_data'].get('short_term'),
+                medium_term=market_data['multi_timeframe_data'].get('medium_term'),
+                long_term=market_data['multi_timeframe_data'].get('long_term'),
+                overall_trend=market_data['multi_timeframe_trend_analysis']
+            )
+            result.multi_timeframe_analysis = multi_timeframe_analysis
+
+        return result
 
 # ============================================================================ 
 # 第五層：基金經理 (Fund Manager)
@@ -673,12 +956,30 @@ class FundManager:
         leverage: int
     ) -> FinalApproval:
         """最終審批交易"""
-        
+
         # 計算調整幅度
         position_change_pct = abs(risk_assessment.adjusted_position_size - trader_decision.position_size) / trader_decision.position_size * 100 if trader_decision.position_size > 0 else 0
 
+        # 檢查多週期分析數據
+        multi_timeframe_context = ""
+        if trader_decision.multi_timeframe_analysis:
+            trend_analysis = trader_decision.multi_timeframe_analysis.overall_trend or {}
+            multi_timeframe_context = f"""
+=== 多週期分析一致性 ===
+- 多週期趨勢一致性: {trend_analysis.get('trend_consistency', '不明')}
+- 整體偏向: {trend_analysis.get('overall_bias', '中性')}
+- 多週期信心分數: {trend_analysis.get('confidence_score', 0):.1f}%
+
+決策考量：
+- 當趨勢一致性高時，信號更可靠，可適當增加信任度
+- 當趨勢不一致時，需更加謹慎
+- 基於多週期一致性調整最終決策
+"""
+        else:
+            multi_timeframe_context = "當前為單一週期分析，無多週期趨勢數據。"
+
         prompt = f"""
-你是一位基金經理，擁有最終的資金調度權。
+你是一位專業的多週期基金經理，擁有最終的資金調度權，需結合不同時間框架的資訊做出決策。
 當前市場類型是：{market_type}。
 
 交易員建議：
@@ -686,6 +987,7 @@ class FundManager:
 - 建議倉位：{trader_decision.position_size * 100}%
 {f"- 建議槓桿：{trader_decision.leverage}x" if trader_decision.leverage else ""}
 - 理由：{trader_decision.reasoning}
+- 多週期一致性：{'是' if trader_decision.multi_timeframe_analysis else '否'}
 
 風險管理員評估：
 - 風險等級：{risk_assessment.risk_level}
@@ -693,18 +995,27 @@ class FundManager:
 - 是否批准：{risk_assessment.approve}
 - 調整後倉位：{risk_assessment.adjusted_position_size * 100}%
 - 調整幅度：{position_change_pct:.1f}%
+- 多週期一致性：{'是' if risk_assessment.multi_timeframe_analysis else '否'}
 {f"- 建議調整：{risk_assessment.suggested_adjustments}" if market_type == 'futures' else ""}
 
+{multi_timeframe_context}
+
+決策權重考量：
+- **多週期一致性高**：信號更可靠，適當增加決策信心
+- **多週期一致性低**：市場方向不明，更加謹慎
+- 平衡風險管理員建議與多週期分析一致性
+
 **最終決策邏輯**：
-1. 如果風險管理**批准** + 倉位調整幅度 < 5% → final_decision: "Approve"（完全批准）
+1. 如果風險管理**批准** + 倉位調整幅度 < 5% + 多週期一致性高 → final_decision: "Approve"（完全批准）
 2. 如果風險管理**批准** + 倉位調整幅度 5-30% → final_decision: "Amended"（修正後批准）
-3. 如果風險管理**批准** + 倉位調整幅度 > 30% → 根據風險評估決定 Amended 或 Reject
+3. 如果風險管理**批准**但多週期一致性低 → 根據綜合評估決定 Amended 或 Reject
 4. 如果風險管理**不批准** → final_decision: "Reject"（拒絕交易）
 
 你的任務：
-1. 審核交易員的決策與風險管理員的評估
+1. 審核交易員的決策、風險管理員的評估和多週期一致性
 2. 根據上述邏輯做出最終決定
 3. 確定最終執行的倉位大小與槓桿倍數
+4. 考慮多週期分析對決策的影響
 
 請以 JSON 格式回覆：
 - approved: true 或 false（是否批准交易）
@@ -712,7 +1023,7 @@ class FundManager:
 - final_position_size: 最終批准的倉位（0-1）。通常採用風險管理員建議的 adjusted_position_size。
 - approved_leverage: 最終批准的槓桿倍數（整數）。現貨或不交易時為 null。
 - execution_notes: 具體的執行注意事項（例如："分批進場"、"嚴格執行止損"）
-- rationale: 最終決策的詳細理由（繁體中文，至少 50 字）
+- rationale: 最終決策的詳細理由（繁體中文，至少 50 字，需包含多週期分析考量）
 
 **範例**：
 - 如果倉位調整 < 5%：final_decision = "Approve"，rationale = "風險管理評估通過，交易計劃合理，批准按原計劃執行。"
@@ -725,14 +1036,14 @@ class FundManager:
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"}
         )
-        
+
         # 解析 JSON
         result = json.loads(response.choices[0].message.content)
-        
+
         # ==========================================
         # 🛡️ 數據清洗與容錯處理 (防止 AI 偶發性漏欄位)
         # ==========================================
-        
+
         # 1. 確保 approved 欄位存在
         if 'approved' not in result:
             # 如果 AI 沒給 approved，根據 final_decision 推斷
@@ -743,7 +1054,7 @@ class FundManager:
             result['approved_leverage'] = None
         if market_type == 'spot': # 現貨強制為 None
             result['approved_leverage'] = None
-            
+
         # 3. 處理拒絕或觀望的情況
         if result.get('final_decision') in ['Hold', 'Reject']:
             result['approved_leverage'] = None
@@ -759,7 +1070,14 @@ class FundManager:
             # 如果 AI 寫錯成 reasoning，就複製過來
             result['rationale'] = result.get('reasoning', '基於風險與收益比的綜合考量做出此決策。')
 
-        return FinalApproval.model_validate(result)
+        # 創建最終決策對象
+        final_approval = FinalApproval.model_validate(result)
+
+        # 如果交易員或風險管理員有包含多週期分析，也附加到最終決策中
+        if trader_decision.multi_timeframe_analysis:
+            final_approval.multi_timeframe_analysis = trader_decision.multi_timeframe_analysis
+
+        return final_approval
 
 # ============================================================================
 # 委員會模式支援
