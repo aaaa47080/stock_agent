@@ -7,6 +7,10 @@ from urllib.parse import urlparse
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 import concurrent.futures
+from cachetools import cached, TTLCache
+
+# Cache for CryptoPanic API calls, 1-hour TTL
+cryptopanic_cache = TTLCache(maxsize=100, ttl=3600)
 
 class DataFrameEncoder(json.JSONEncoder):
     """
@@ -41,9 +45,10 @@ def safe_float(value, default=0.0):
     except (ValueError, TypeError, SystemError):
         return default
 
+@cached(cryptopanic_cache)
 def get_crypto_news_cryptopanic(symbol: str = "BTC", limit: int = 5) -> List[Dict]:
     """
-    從 CryptoPanic 獲取指定幣種的最新新聞
+    從 CryptoPanic 獲取指定幣種的最新新聞 (有1小時快取)
     需先申請 API Key: https://cryptopanic.com/developers/api/
     """
     # 增加延遲以符合 API Rate Limit (2 req/sec)
@@ -56,7 +61,7 @@ def get_crypto_news_cryptopanic(symbol: str = "BTC", limit: int = 5) -> List[Dic
         print(">> 警告：未設定 CryptoPanic API Token，無法獲取真實新聞")
         return []
 
-    print(f">> 正在從 CryptoPanic 撈取 {symbol} 的真實新聞...")
+    print(f">> 正在從 CryptoPanic API 撈取 {symbol} 的真實新聞 (快取 TTL: 1小時)...")
     
     # CryptoPanic API 請求
     url = "https://cryptopanic.com/api/developer/v2/posts/"
@@ -95,21 +100,21 @@ def get_crypto_news_cryptopanic(symbol: str = "BTC", limit: int = 5) -> List[Dic
                     })
             
             if not news_list:
-                print(">> 未找到相關新聞")
+                print(">> CryptoPanic: 未找到相關新聞")
                 
             return news_list
 
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 429 and i < retries - 1:
-                print(f">> API rate limit hit. Retrying in {delay} seconds...")
+                print(f">> CryptoPanic API rate limit hit. Retrying in {delay} seconds...")
                 time.sleep(delay)
                 delay *= 2  # Exponential backoff
                 continue
             else:
-                print(f">> 獲取新聞失敗: {str(e)}")
+                print(f">> CryptoPanic 獲取新聞失敗: {str(e)}")
                 return []
         except Exception as e:
-            print(f">> 獲取新聞失敗: {str(e)}")
+            print(f">> CryptoPanic 獲取新聞失敗: {str(e)}")
             return []
 
     return []

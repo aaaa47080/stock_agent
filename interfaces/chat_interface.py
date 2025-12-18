@@ -34,9 +34,9 @@ from core.config import (
     DEFAULT_INTERVAL,
     DEFAULT_KLINES_LIMIT,
     SCREENER_DEFAULT_LIMIT,
-    SCREENER_DEFAULT_INTERVAL
+    SCREENER_DEFAULT_INTERVAL,
+    NEWS_FETCH_LIMIT # <-- Add this
 )
-
 load_dotenv()
 
 
@@ -202,7 +202,7 @@ class CryptoAnalysisBot:
         
         # 4. 抓取新聞
         base_currency = symbol.replace("USDT", "").replace("BUSD", "").replace("-", "").replace("SWAP", "")
-        news_data = get_crypto_news(symbol=base_currency, limit=5)
+        news_data = get_crypto_news(symbol=base_currency, limit=NEWS_FETCH_LIMIT)
 
         # 5. 整理數據結構 (這必須跟 AgentState 要求的格式一樣)
         latest = df_with_indicators.iloc[-1]
@@ -254,12 +254,18 @@ class CryptoAnalysisBot:
             "新聞資訊": news_data
         }
 
-    def _crypto_cache_key(self, symbol, exchange=None, interval="1d", limit=100, account_balance_info=None):
+    def _crypto_cache_key(self, symbol, exchange=None, interval="1d", limit=100, account_balance_info=None,
+                           short_term_interval="1h", medium_term_interval="4h", long_term_interval="1d"):
         """為 analyze_crypto 創建一個自定義的快取鍵，忽略 account_balance_info"""
-        return keys.hashkey(symbol, exchange, interval, limit)
+        return keys.hashkey(symbol, exchange, interval, limit, short_term_interval, medium_term_interval, long_term_interval)
 
     @cachedmethod(operator.attrgetter('cache'), key=_crypto_cache_key)
-    def analyze_crypto(self, symbol: str, exchange: str = None, interval: str = "1d", limit: int = 100, account_balance_info: Optional[Dict] = None) -> Tuple[Optional[Dict], Optional[Dict], str]:
+    def analyze_crypto(self, symbol: str, exchange: str = None, 
+                     interval: str = "1d", limit: int = 100, 
+                     account_balance_info: Optional[Dict] = None,
+                     short_term_interval: str = "1h",
+                     medium_term_interval: str = "4h",
+                     long_term_interval: str = "1d") -> Tuple[Optional[Dict], Optional[Dict], str]:
         """
         分析單個加密貨幣 (使用並行處理 + 數據共享) (已快取)
         """
@@ -286,9 +292,9 @@ class CryptoAnalysisBot:
                 "symbol": normalized_symbol, "exchange": exchange, "interval": interval,
                 "limit": limit, "market_type": 'spot', "leverage": 1,
                 "include_multi_timeframe": True,  # 啟用多週期分析
-                "short_term_interval": "1h",      # 短週期時間間隔
-                "medium_term_interval": "4h",     # 中週期時間間隔
-                "long_term_interval": "1d",       # 長週期時間間隔
+                "short_term_interval": short_term_interval,
+                "medium_term_interval": medium_term_interval,
+                "long_term_interval": long_term_interval,
                 "preloaded_data": shared_data, # <--- 注入共用數據
                 "account_balance": account_balance_info
             }
@@ -297,9 +303,9 @@ class CryptoAnalysisBot:
                 "symbol": normalized_symbol, "exchange": exchange, "interval": interval,
                 "limit": limit, "market_type": 'futures', "leverage": DEFAULT_FUTURES_LEVERAGE,
                 "include_multi_timeframe": True,  # 啟用多週期分析
-                "short_term_interval": "1h",      # 短週期時間間隔
-                "medium_term_interval": "4h",     # 中週期時間間隔
-                "long_term_interval": "1d",       # 長週期時間間隔
+                "short_term_interval": short_term_interval,
+                "medium_term_interval": medium_term_interval,
+                "long_term_interval": long_term_interval,
                 "preloaded_data": shared_data, # <--- 注入共用數據
                 "account_balance": account_balance_info
             }

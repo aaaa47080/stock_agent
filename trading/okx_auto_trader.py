@@ -1,236 +1,240 @@
 import sys
 import os
-# Add the project root directory to the Python path to allow imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 import json
 from datetime import datetime
 from trading.okx_api_connector import OKXAPIConnector
+from typing import List, Dict
 
-def execute_trade_from_analysis(json_file_path: str):
+# Add the project root directory to the Python path to allow imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from core.config import MINIMUM_INVESTMENT_USD, EXCHANGE_MINIMUM_ORDER_USD
+
+def execute_trades_from_decision_data(decision_data: List[Dict], live_trading: bool = False):
     """
-    從分析結果 JSON 文件執行交易
-    
+    Executes trades based on a list of decision data from the backend analyzer.
+
     Args:
-        json_file_path: 分析結果 JSON 文件路徑
+        decision_data: A list of dictionaries, where each dictionary is a trading decision.
+        live_trading: A flag to enable or disable actual trading.
     """
-    print(f"[TRADE] 讀取分析結果: {json_file_path}")
-    
-    # 讀取 JSON 分析結果
-    with open(json_file_path, 'r', encoding='utf-8') as f:
-        analysis_data = json.load(f)
-    
-    # 初始化 OKX API 連接器
+    print(f"[TRADE] Processing {len(decision_data)} trade decisions.")
+
+    if not live_trading:
+        print("[INFO] Live trading is disabled. Running in simulation mode.")
+        return
+
     okx_api = OKXAPIConnector()
-    
-    # 檢查是否有 API 憑證
     if not all([okx_api.api_key, okx_api.secret_key, okx_api.passphrase]):
-        print("[ERROR] 請先設置 OKX API 憑證")
-        return False
-    
-    # 檢查連接
+        print("[ERROR] OKX API credentials are not set. Cannot execute trades.")
+        return
+
     if not okx_api.test_connection():
-        print("[ERROR] 無法連接到 OKX API")
-        return False
-    
-    print("[SUCCESS] OKX API 連接成功")
-    
-    # 執行每一個分析結果的交易
-    for result in analysis_data.get("results", []):
-        symbol = result.get("symbol", "")
-        signal = result.get("signal", "")
-        market_type = result.get("market_type", "spot")
-        confidence = result.get("confidence", 0)
-        entry_price = result.get("entry_price")
-        stop_loss = result.get("stop_loss")
-        take_profit = result.get("take_profit")
-        position_size = result.get("position_size", 0.02)
-        leverage = result.get("leverage", 1)
-        
-        print(f"\n[TRADE] 處理交易: {symbol} ({market_type}) - {signal}")
-        print(f"       信心度: {confidence}%, 倉位大小: {position_size}")
-        
-        # 根據市場類型和訊號執行交易
-        if market_type == "spot":
-            success = execute_spot_trade(okx_api, symbol, signal, result)
-        elif market_type == "futures":
-            success = execute_futures_trade(okx_api, symbol, signal, result)
-        else:
-            print(f"[ERROR] 不支援的市場類型: {market_type}")
-            continue
-        
-        if success:
-            print(f"[SUCCESS] {market_type} 交易下單成功: {symbol}")
-        else:
-            print(f"[ERROR] {market_type} 交易下單失敗: {symbol}")
+        print("[ERROR] Failed to connect to OKX API.")
+        return
 
-def execute_spot_trade(okx_api: OKXAPIConnector, symbol: str, signal: str, trade_data: dict):
+    print("[SUCCESS] OKX API connection successful.")
+
+    for decision in decision_data:
+        process_single_trade(okx_api, decision.get("spot_decision"))
+        process_single_trade(okx_api, decision.get("futures_decision"))
+
+def process_single_trade(okx_api: OKXAPIConnector, trade_decision: Dict):
     """
-    執行現貨交易
+    Processes a single trade decision for either spot or futures market.
+    """
+    if not trade_decision or not trade_decision.get("should_trade"):
+        print(f"[INFO] No trade advised for {trade_decision.get('market_type', 'unknown')}. Reason: {trade_decision.get('reasoning', 'Not specified')}")
+        return
+
+    investment_amount = trade_decision.get("investment_amount_usdt", 0)
     
-    Args:
-        okx_api: OKX API 連接器
-        symbol: 交易對 (如 PI-USDT)
-        signal: 交易訊號 (Buy/Sell/Hold)
-        trade_data: 交易數據
-    """
-    if signal.lower() in ["buy", "long"]:
-        side = "buy"
-    elif signal.lower() in ["sell", "short"]:
-        side = "sell"
+    if investment_amount < MINIMUM_INVESTMENT_USD:
+        print(f"[INFO] Investment amount ${investment_amount:.2f} is below the minimum threshold of ${MINIMUM_INVESTMENT_USD:.2f}. Skipping trade.")
+        return
+
+    market_type = trade_decision.get("market_type")
+    symbol = trade_decision.get("symbol_for_trade")
+    action = trade_decision.get("action")
+    
+    if not symbol:
+         print(f"[ERROR] Symbol not provided in trade decision for {market_type}. Cannot proceed.")
+         return
+
+    print(f"\n[TRADE] Executing {market_type} trade for {symbol}")
+    print(f"        Action: {action}, Amount: {investment_amount} USDT")
+
+    if market_type == "spot":
+        execute_spot_trade(okx_api, symbol, action, trade_decision)
+    elif market_type == "futures":
+        execute_futures_trade(okx_api, symbol, action, trade_decision)
     else:
-        print(f"[INFO] 無需執行交易: {signal}")
-        return True
-    
-    # 取得當前價格以計算數量
-    ticker_result = okx_api.get_ticker(symbol)
-    if ticker_result.get("code") != "0":
-        print(f"[ERROR] 無法取得 {symbol} 行情: {ticker_result}")
-        return False
-    
-    ticker_data = ticker_result.get("data", [{}])[0] if ticker_result.get("data") else {}
-    current_price = float(ticker_data.get("last", 0))
-    
-    if current_price <= 0:
-        print(f"[ERROR] 無效價格: {current_price}")
-        return False
-    
-    # 計算交易數量 (基於倉位大小和當前價格)
-    position_size = trade_data.get("position_size", 0.02)  # 2% 倉位
-    usd_amount = 1000 * position_size  # 假設帳戶有 1000 USDT
-    quantity = usd_amount / current_price
-    
-    print(f"[INFO] 執行現貨 {side.upper()}: {symbol}")
-    print(f"       價格: {current_price}, 數量: {quantity:.6f}")
-    
-    # 下市價單
-    order_result = okx_api.place_spot_order(
-        instId=symbol,
-        side=side,
-        ordType="market",  # 市價單
-        sz=f"{quantity:.6f}"  # 保留6位小數
-    )
-    
-    print(f"[ORDER] 現貨訂單結果: {order_result}")
-    
-    return order_result.get("code") == "0"
+        print(f"[ERROR] Unsupported market type: {market_type}")
 
-def execute_futures_trade(okx_api: OKXAPIConnector, symbol: str, signal: str, trade_data: dict):
+
+def execute_spot_trade(okx_api: OKXAPIConnector, symbol: str, action: str, trade_data: dict):
     """
-    執行期貨交易
-    
-    Args:
-        okx_api: OKX API 連接器
-        symbol: 交易對 (如 PI-USDT-SWAP)
-        signal: 交易訊號 (Long/Short/Hold)
-        trade_data: 交易數據
+    Executes a spot trade on OKX.
     """
-    if signal.lower() == "long":
+    if action not in ["buy", "sell"]:
+        print(f"[INFO] No action required for spot trade. Action: {action}")
+        return
+
+    usd_amount = trade_data.get("investment_amount_usdt", 0)
+    if usd_amount < EXCHANGE_MINIMUM_ORDER_USD:
+        print(f"[ERROR] Investment amount ${usd_amount:.2f} is below the exchange minimum of ${EXCHANGE_MINIMUM_ORDER_USD:.2f}.")
+        return
+
+    # 需要通過市價買入金額計算購買數量
+    if action == 'buy':
+        # 獲取當前價格以計算購買數量
+        ticker = okx_api.get_ticker(symbol)
+        if ticker.get("code") != "0" or not ticker.get("data"):
+            print(f"[ERROR] Could not retrieve ticker for {symbol} to calculate quantity.")
+            return
+
+        last_price = float(ticker["data"][0]["last"])
+        if last_price <= 0:
+            print(f"[ERROR] Invalid price ({last_price}) for {symbol}. Cannot calculate quantity.")
+            return
+
+        sz = usd_amount / last_price
+        print(f"[INFO] Placing SPOT {action.upper()} order for {symbol} with {usd_amount} USDT ({sz} units).")
+
+        order_result = okx_api.place_spot_order(
+            instId=symbol,
+            side=action,
+            ordType="market",
+            sz=str(round(sz, 6))  # 四捨五入到6位小數
+        )
+    else:  # sell
+        # 對於賣出，需要先獲取持倉數量
+        # 獲取當前價格以計算賣出數量
+        ticker = okx_api.get_ticker(symbol)
+        if ticker.get("code") != "0" or not ticker.get("data"):
+            print(f"[ERROR] Could not retrieve ticker for {symbol} to calculate sell quantity.")
+            return
+
+        last_price = float(ticker["data"][0]["last"])
+        if last_price <= 0:
+            print(f"[ERROR] Invalid price ({last_price}) for {symbol}. Cannot calculate sell quantity.")
+            return
+
+        # 獲取帳戶資產以確定可賣出數量
+        asset_symbol = symbol.split('-')[0]  # 從 "PIUSDT" 或 "PI-USDT" 中提取 "PI"
+        balance_result = okx_api.get_account_balance(asset_symbol)
+
+        if balance_result.get("code") != "0" or not balance_result.get("data"):
+            print(f"[ERROR] Could not retrieve balance for {asset_symbol} to determine sell amount.")
+            return
+
+        details = balance_result["data"][0].get("details", [])
+        if not details:
+            print(f"[ERROR] No balance details available for {asset_symbol}.")
+            return
+
+        available_amount = float(details[0].get("availBal", 0))
+        if available_amount <= 0:
+            print(f"[ERROR] Insufficient balance of {asset_symbol} to sell. Available: {available_amount}")
+            return
+
+        # 計算要賣出的數量 (使用全部可賣出數量或根據投資策略計算的數量)
+        desired_sell_amount = min(available_amount, usd_amount / last_price) if last_price > 0 else available_amount
+        sz = desired_sell_amount
+
+        print(f"[INFO] Placing SPOT {action.upper()} order for {symbol} selling {sz} units (available: {available_amount}).")
+
+        order_result = okx_api.place_spot_order(
+            instId=symbol,
+            side=action,
+            ordType="market",
+            sz=str(round(sz, 6))  # 四捨五入到6位小數
+        )
+
+    print(f"[ORDER] Spot order result: {order_result}")
+    if order_result.get("code") == "0":
+        print(f"[SUCCESS] Spot {action.upper()} order placed successfully for {symbol}.")
+    else:
+        print(f"[ERROR] Failed to place spot order for {symbol}. Reason: {order_result.get('msg')}")
+
+def execute_futures_trade(okx_api: OKXAPIConnector, symbol: str, action: str, trade_data: dict):
+    """
+    Executes a futures trade on OKX.
+    """
+    pos_side = None
+    if action == "long":
         side = "buy"
         pos_side = "long"
-    elif signal.lower() == "short":
+    elif action == "short":
         side = "sell"
         pos_side = "short"
     else:
-        print(f"[INFO] 無需執行交易: {signal}")
-        return True
-    
-    # 如果是 SWAP 格式，確保符號正確
+        print(f"[INFO] No action required for futures trade. Action: {action}")
+        return
+
     if not symbol.endswith("-SWAP"):
         futures_symbol = f"{symbol}-SWAP"
     else:
         futures_symbol = symbol
+
+    leverage = trade_data.get("leverage", 10)
+    leverage_result = okx_api.set_leverage(instId=futures_symbol, lever=str(leverage), mgnMode="cross")
+    if leverage_result.get("code") != "0":
+        print(f"[ERROR] Failed to set leverage for {futures_symbol}. Reason: {leverage_result.get('msg')}")
+        return
+
+    print(f"[INFO] Leverage for {futures_symbol} set to {leverage}x.")
+
+    usd_amount = trade_data.get("investment_amount_usdt", 0)
+    if usd_amount < EXCHANGE_MINIMUM_ORDER_USD:
+        print(f"[ERROR] Investment amount ${usd_amount:.2f} is below the exchange minimum of ${EXCHANGE_MINIMUM_ORDER_USD:.2f}.")
+        return
+
+    ticker = okx_api.get_ticker(futures_symbol)
+    if ticker.get("code") != "0" or not ticker.get("data"):
+        print(f"[ERROR] Could not retrieve ticker for {futures_symbol} to calculate contract size.")
+        return
     
-    # 取得當前價格以計算數量
-    ticker_result = okx_api.get_ticker(futures_symbol)
-    if ticker_result.get("code") != "0":
-        print(f"[ERROR] 無法取得 {futures_symbol} 行情: {ticker_result}")
-        return False
+    last_price = float(ticker["data"][0]["last"])
+    if last_price <= 0:
+        print(f"[ERROR] Invalid price ({last_price}) for {futures_symbol}. Cannot calculate contract size.")
+        return
+        
+    sz = usd_amount / last_price
+
+    print(f"[INFO] Placing FUTURES {action.upper()} order for {futures_symbol} with {usd_amount} USDT ({sz} contracts).")
     
-    ticker_data = ticker_result.get("data", [{}])[0] if ticker_result.get("data") else {}
-    current_price = float(ticker_data.get("last", 0))
-    
-    if current_price <= 0:
-        print(f"[ERROR] 無效價格: {current_price}")
-        return False
-    
-    # 計算交易數量 (基於倉位大小、槓桿和當前價格)
-    position_size = trade_data.get("position_size", 0.02)  # 2% 倉位
-    leverage = trade_data.get("leverage", 5)
-    usd_amount = 1000 * position_size * leverage  # 應用槓桿
-    quantity = usd_amount / current_price
-    
-    print(f"[INFO] 執行期貨 {side.upper()} {pos_side.upper()}: {futures_symbol}")
-    print(f"       價格: {current_price}, 數量: {quantity:.6f}, 槓桿: {leverage}x")
-    
-    # 在下單前設置槓桿
-    leverage_result = okx_api.set_leverage(futures_symbol, str(leverage))
-    print(f"[LEVERAGE] 槓桿設置結果: {leverage_result}")
-    
-    # 下期貨市價單
     order_result = okx_api.place_futures_order(
         instId=futures_symbol,
         side=side,
-        ordType="market",
-        sz=f"{quantity:.6f}",
         posSide=pos_side,
+        ordType="market",
+        sz=str(round(sz, 6)),
         lever=str(leverage)
     )
-    
-    print(f"[ORDER] 期貨訂單結果: {order_result}")
-    
-    return order_result.get("code") == "0"
 
-def test_with_latest_reports():
-    """
-    使用最新的分析報告進行測試
-    """
-    import glob
-    import os
-
-    print("[AUTO-TRADE] 查找最新的分析報告...")
-
-    # 在主目錄中查找最新的現貨和期貨報告
-    spot_reports = glob.glob("../reports/report_*_spot_*.json")
-    futures_reports = glob.glob("../reports/report_*_futures_*.json")
-
-    # 如果在主目錄中沒找到，則檢查當前目錄
-    if not spot_reports:
-        spot_reports = glob.glob("reports/report_*_spot_*.json")
-    if not futures_reports:
-        futures_reports = glob.glob("reports/report_*_futures_*.json")
-
-    if spot_reports:
-        latest_spot = max(spot_reports, key=os.path.getctime)
-        print(f"[INFO] 找到最新現貨報告: {latest_spot}")
-        execute_trade_from_analysis(latest_spot)
-
-    if futures_reports:
-        latest_futures = max(futures_reports, key=os.path.getctime)
-        print(f"[INFO] 找到最新期貨報告: {latest_futures}")
-        execute_trade_from_analysis(latest_futures)
-
-    if not spot_reports and not futures_reports:
-        print("[WARNING] 未找到分析報告")
-
-if __name__ == "__main__":
-    print("="*60)
-    print("OKX 自動交易執行器")
-    print("="*60)
-    
-    # 測試連接
-    okx_api = OKXAPIConnector()
-    
-    if not all([okx_api.api_key, okx_api.secret_key, okx_api.passphrase]):
-        print("\n[INFO] 請先在 .env 文件中設置 OKX API 憑證，範例：")
-        print("OKX_API_KEY=your_api_key")
-        print("OKX_SECRET_KEY=your_secret_key") 
-        print("OKX_PASSPHRASE=your_passphrase")
-        print("\n然後重新運行此腳本")
+    print(f"[ORDER] Futures order result: {order_result}")
+    if order_result.get("code") == "0":
+        print(f"[SUCCESS] Futures {action.upper()} order placed successfully for {futures_symbol}.")
     else:
-        print("\n[INFO] 檢測到 API 憑證，開始自動交易...")
-        test_with_latest_reports()
-    
-    print("\n" + "="*60)
-    print("[END] 程序結束")
-    print("="*60)
+        print(f"[ERROR] Failed to place futures order. Reason: {order_result.get('msg')}")
+
+
+def execute_trade_from_analysis_file(json_file_path: str, live_trading: bool = False):
+    """
+    Loads trade decisions from a JSON file and executes them.
+    """
+    print(f"[TRADE] Reading analysis from: {json_file_path}")
+    try:
+        with open(json_file_path, 'r', encoding='utf-8') as f:
+            decision_data = json.load(f)
+        
+        if isinstance(decision_data, dict):
+            decision_data = [decision_data]
+
+        execute_trades_from_decision_data(decision_data, live_trading)
+
+    except FileNotFoundError:
+        print(f"[ERROR] Analysis file not found: {json_file_path}")
+    except json.JSONDecodeError:
+        print(f"[ERROR] Invalid JSON in file: {json_file_path}")

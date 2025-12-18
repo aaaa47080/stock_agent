@@ -53,16 +53,18 @@ TRADER_MODEL = {
 # === 多頭委員會 ===
 # 多個模型都給出多頭觀點，然後綜合
 BULL_COMMITTEE_MODELS = [
-    {"provider": "openai", "model": "gpt-4o-mini"},                           # GPT-4o mini
-    {"provider": "google_gemini", "model": "gemini-3-flash-preview"},              # Gemini 2.5 Flash (最新穩定版)
+    {"provider": "openai", "model": "gpt-4.1-mini"},  
+    {"provider": "openai", "model": "gpt-5-mini"},                        # GPT-4o mini
+    #{"provider": "google_gemini", "model": "gemini-3-flash-preview"},              # Gemini 2.5 Flash (最新穩定版)
     # {"provider": "openrouter", "model": "qwen/qwen3-235b-a22b:free"},        # Qwen 免費版
 ]
 
 # === 空頭委員會 ===
 # 多個模型都給出空頭觀點，然後綜合
 BEAR_COMMITTEE_MODELS = [
-    {"provider": "openai", "model": "gpt-4o-mini"},                           # GPT-4o mini
-    {"provider": "google_gemini", "model": "gemini-3-flash-preview"},              # Gemini 2.5 Flash (最新穩定版)
+    {"provider": "openai", "model": "gpt-4.1-mini"},  
+    {"provider": "openai", "model": "gpt-5-mini"},                           # GPT-4o mini
+    #{"provider": "google_gemini", "model": "gemini-3-flash-preview"},              # Gemini 2.5 Flash (最新穩定版)
     # {"provider": "openrouter", "model": "qwen/qwen3-235b-a22b:free"},        # Qwen 免費版
 ]
 
@@ -70,7 +72,7 @@ BEAR_COMMITTEE_MODELS = [
 # 用於整合委員會意見的模型
 SYNTHESIS_MODEL = {
     "provider": "openai",
-    "model": "o4-mini",
+    "model": "gpt-5-mini",
 }
 
 # === OpenRouter 配置 ===
@@ -150,9 +152,16 @@ MAX_ANALYSIS_WORKERS = 2
 DEFAULT_INTERVAL = "1d"
 DEFAULT_KLINES_LIMIT = 100
 
+# 新聞抓取數量限制 (每個來源)
+NEWS_FETCH_LIMIT = 10 # 每個來源嘗試抓取 10 條新聞
+
 # 加密貨幣篩選器的預設值
 SCREENER_DEFAULT_LIMIT = 30
 SCREENER_DEFAULT_INTERVAL = "1d"
+
+# === 交易限制配置 ===
+MINIMUM_INVESTMENT_USD = 20  # 最低投資金額 (USDT)
+EXCHANGE_MINIMUM_ORDER_USD = 1.0  # 交易所最低下單金額 (USDT)
 
 # === 加密貨幣分析配置 ===
 # 預設要分析的加密貨幣列表。
