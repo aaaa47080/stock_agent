@@ -2,9 +2,12 @@
 測試後台分析系統
 驗證JSON輸出格式和交易決策功能
 """
+import sys
+import os
+# Add the parent directory to the Python path to allow imports from other directories
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import json
-import os
 from datetime import datetime
 from analysis.backend_analyzer import BackendAnalyzer, run_backend_analysis, run_batch_backend_analysis
 
@@ -16,7 +19,7 @@ def test_single_symbol_analysis():
 
     try:
         # 測試一個較為常用的幣種，避免可能無法獲取的幣種
-        result = analyzer.analyze_symbol("BTCUSDT", exchange="binance", interval="1h", limit=50)
+        result = analyzer.analyze_symbol("BTCUSDT", exchange="binance", interval="1h", limit=50, include_account_balance=False)
 
         print(f"> 分析完成: {result['symbol']}")
         print(f"> 交易所: {result['exchange']}")
@@ -26,14 +29,16 @@ def test_single_symbol_analysis():
         spot = result['spot_decision']
         print(f"> 現貨是否交易: {spot['should_trade']}")
         print(f"> 現貨決策: {spot['decision']}")
-        print(f"> 現貨部位大小: {spot['position_size']}")
+        print(f"> 現貨部位大小: {spot['position_size_percentage']:.2%}")
+        print(f"> 現貨投資金額: {spot['investment_amount_usdt']:.2f} USDT")
         print(f"> 現貨槓桿: {spot['leverage']}")
 
         # 檢查合約決策
         futures = result['futures_decision']
         print(f"> 合約是否交易: {futures['should_trade']}")
         print(f"> 合約決策: {futures['decision']}")
-        print(f"> 合約部位大小: {futures['position_size']}")
+        print(f"> 合約部位大小: {futures['position_size_percentage']:.2%}")
+        print(f"> 合約投資金額: {futures['investment_amount_usdt']:.2f} USDT")
         print(f"> 合約槓桿: {futures['leverage']}")
 
         # 保存結果到JSON文件
@@ -64,7 +69,8 @@ def test_batch_analysis():
             symbols=symbols,
             exchange="binance",
             interval="1h",
-            limit=50
+            limit=50,
+            include_account_balance=False
         )
 
         print(f"> 批量分析完成，分析了 {len(results)} 個幣種")
@@ -97,7 +103,8 @@ def validate_json_structure(result: dict):
     # 驗證決策結構
     for decision_type in ['spot_decision', 'futures_decision']:
         decision = result[decision_type]
-        required_decision_keys = ['should_trade', 'decision', 'action', 'position_size',
+        required_decision_keys = ['should_trade', 'decision', 'action', 
+                                  'position_size_percentage', 'investment_amount_usdt',
                                   'confidence', 'reasoning', 'entry_price', 'stop_loss',
                                   'take_profit', 'leverage', 'risk_level', 'market_type',
                                   'additional_params']

@@ -23,7 +23,7 @@ from data.indicator_calculator import add_technical_indicators
 import concurrent.futures  # <--- 記得加在文件最上面
 from analysis.crypto_screener import screen_top_cryptos
 import pandas as pd
-from cachetools import cachedmethod, TTLCache # <--- 引入快取工具
+from cachetools import cachedmethod, TTLCache, keys
 import operator  # <--- 用於 cachedmethod
 # 引入中心化配置
 from core.config import (
@@ -254,8 +254,12 @@ class CryptoAnalysisBot:
             "新聞資訊": news_data
         }
 
-    @cachedmethod(operator.attrgetter('cache'))
-    def analyze_crypto(self, symbol: str, exchange: str = None, interval: str = "1d", limit: int = 100) -> Tuple[Optional[Dict], Optional[Dict], str]:
+    def _crypto_cache_key(self, symbol, exchange=None, interval="1d", limit=100, account_balance_info=None):
+        """為 analyze_crypto 創建一個自定義的快取鍵，忽略 account_balance_info"""
+        return keys.hashkey(symbol, exchange, interval, limit)
+
+    @cachedmethod(operator.attrgetter('cache'), key=_crypto_cache_key)
+    def analyze_crypto(self, symbol: str, exchange: str = None, interval: str = "1d", limit: int = 100, account_balance_info: Optional[Dict] = None) -> Tuple[Optional[Dict], Optional[Dict], str]:
         """
         分析單個加密貨幣 (使用並行處理 + 數據共享) (已快取)
         """
@@ -285,7 +289,8 @@ class CryptoAnalysisBot:
                 "short_term_interval": "1h",      # 短週期時間間隔
                 "medium_term_interval": "4h",     # 中週期時間間隔
                 "long_term_interval": "1d",       # 長週期時間間隔
-                "preloaded_data": shared_data # <--- 注入共用數據
+                "preloaded_data": shared_data, # <--- 注入共用數據
+                "account_balance": account_balance_info
             }
 
             futures_state = {
@@ -295,7 +300,8 @@ class CryptoAnalysisBot:
                 "short_term_interval": "1h",      # 短週期時間間隔
                 "medium_term_interval": "4h",     # 中週期時間間隔
                 "long_term_interval": "1d",       # 長週期時間間隔
-                "preloaded_data": shared_data # <--- 注入共用數據
+                "preloaded_data": shared_data, # <--- 注入共用數據
+                "account_balance": account_balance_info
             }
 
             # 4. 並行執行 AI 分析 (因為數據已經有了，這一步會非常快)

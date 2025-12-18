@@ -54,7 +54,7 @@ TRADER_MODEL = {
 # 多個模型都給出多頭觀點，然後綜合
 BULL_COMMITTEE_MODELS = [
     {"provider": "openai", "model": "gpt-4o-mini"},                           # GPT-4o mini
-    {"provider": "google_gemini", "model": "gemini-2.5-flash"},              # Gemini 2.5 Flash (最新穩定版)
+    {"provider": "google_gemini", "model": "gemini-3-flash-preview"},              # Gemini 2.5 Flash (最新穩定版)
     # {"provider": "openrouter", "model": "qwen/qwen3-235b-a22b:free"},        # Qwen 免費版
 ]
 
@@ -62,7 +62,7 @@ BULL_COMMITTEE_MODELS = [
 # 多個模型都給出空頭觀點，然後綜合
 BEAR_COMMITTEE_MODELS = [
     {"provider": "openai", "model": "gpt-4o-mini"},                           # GPT-4o mini
-    {"provider": "google_gemini", "model": "gemini-2.5-flash"},              # Gemini 2.5 Flash (最新穩定版)
+    {"provider": "google_gemini", "model": "gemini-3-flash-preview"},              # Gemini 2.5 Flash (最新穩定版)
     # {"provider": "openrouter", "model": "qwen/qwen3-235b-a22b:free"},        # Qwen 免費版
 ]
 
@@ -157,7 +157,7 @@ SCREENER_DEFAULT_INTERVAL = "1d"
 # === 加密貨幣分析配置 ===
 # 預設要分析的加密貨幣列表。
 # 用戶可以在此處修改此列表，以選擇要分析的加密貨幣。
-CRYPTO_CURRENCIES_TO_ANALYZE = ["PIUSDT", "ETHUSDT"]
+CRYPTO_CURRENCIES_TO_ANALYZE = ["PIUSDT"]
 
 # === OKX API 配置 ===
 # 從 .env 檔案或環境變數讀取 OKX API 資訊

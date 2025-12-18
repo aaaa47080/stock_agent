@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from interfaces.chat_interface import CryptoAnalysisBot
 from core.graph import app
 from core.models import FinalApproval
-from utils.utils import safe_float
+from utils.utils import safe_float, DataFrameEncoder
 from trading.okx_api_connector import OKXAPIConnector
 from core.config import CRYPTO_CURRENCIES_TO_ANALYZE
 
@@ -74,7 +74,7 @@ class BackendAnalyzer:
         try:
             # 使用現有的分析方法獲取結果
             spot_result, futures_result, summary_gen = self.analysis_bot.analyze_crypto(
-                symbol, exchange, interval, limit
+                symbol, exchange, interval, limit, account_balance_info=account_balance_info
             )
 
             # 生成JSON格式的交易決策
@@ -105,8 +105,8 @@ class BackendAnalyzer:
             "analysis_timestamp": datetime.now().isoformat(),
             "exchange": spot_result.get('exchange', 'unknown').upper() if spot_result else 'unknown',
             "current_price": safe_float(spot_result.get('current_price', 0)) if spot_result else 0,
-            "spot_decision": self._extract_decision(spot_result, 'spot'),
-            "futures_decision": self._extract_decision(futures_result, 'futures')
+            "spot_decision": self._extract_decision(spot_result, 'spot', account_balance_info),
+            "futures_decision": self._extract_decision(futures_result, 'futures', account_balance_info)
         }
 
         # 如果有帳戶餘額資訊，則加入到輸出中
@@ -115,130 +115,91 @@ class BackendAnalyzer:
 
         return output
 
-    def _extract_decision(self, result: Optional[Dict], market_type: str) -> Dict:
+    def _extract_decision(self, result: Optional[Dict], market_type: str, account_balance_info: Optional[Dict] = None) -> Dict:
         """從分析結果中提取決策信息"""
 
-        if not result:
-            return {
-                "should_trade": False,
-                "decision": "Hold",
-                "action": "hold",  # 兼容性字段
-                "position_size": 0.0,
-                "confidence": 0.0,
-                "reasoning": "No analysis result available",
-                "entry_price": None,
-                "stop_loss": None,
-                "take_profit": None,
-                "leverage": 1 if market_type == "spot" else 10,  # 預設槓桿
-                "risk_level": "未知",
-                "market_type": market_type,
-                "additional_params": {}
-            }
+        base_decision = {
+            "should_trade": False,
+            "decision": "Hold",
+            "action": "hold",
+            "position_size_percentage": 0.0,
+            "investment_amount_usdt": 0.0,
+            "confidence": 0.0,
+            "reasoning": "No analysis result available",
+            "entry_price": None,
+            "stop_loss": None,
+            "take_profit": None,
+            "leverage": 1 if market_type == "spot" else 10,
+            "risk_level": "未知",
+            "market_type": market_type,
+            "additional_params": {}
+        }
 
-        # 獲取最終批准結果
+        if not result:
+            return base_decision
+
         final_approval = result.get('final_approval')
         trader_decision = result.get('trader_decision')
 
-        if not final_approval:
-            return {
-                "should_trade": False,
-                "decision": "Hold",
-                "action": "hold",
-                "position_size": 0.0,
-                "confidence": 0.0,
-                "reasoning": "No final approval available",
-                "entry_price": None,
-                "stop_loss": None,
-                "take_profit": None,
-                "leverage": 1 if market_type == "spot" else 10,
-                "risk_level": "未知",
-                "market_type": market_type,
-                "additional_params": {}
-            }
+        if not final_approval or not trader_decision:
+            base_decision["reasoning"] = "No final approval or trader decision available"
+            return base_decision
 
-        # 判斷是否應該交易 (批准狀態)
         should_trade = final_approval.final_decision in ["Approve", "Amended"]
 
-        # 決策映射
-        action_map = {
-            "Buy": "buy", "Sell": "sell", "Hold": "hold",
-            "Long": "long", "Short": "short"
-        }
-        decision_map = {
-            "Buy": "買入", "Sell": "賣出", "Hold": "觀望",
-            "Long": "做多", "Short": "做空"
-        }
+        action_map = {"Buy": "buy", "Sell": "sell", "Hold": "hold", "Long": "long", "Short": "short"}
+        decision_map = {"Buy": "買入", "Sell": "賣出", "Hold": "觀望", "Long": "做多", "Short": "做空"}
 
-        # 提取交易決策
-        trade_action = trader_decision.decision if trader_decision else "Hold"
+        trade_action = trader_decision.decision
         action = action_map.get(str(trade_action), "hold")
         decision = decision_map.get(str(trade_action), "觀望")
 
-        # 提取相關參數
         position_size = safe_float(getattr(final_approval, 'final_position_size', 0))
-        confidence = safe_float(getattr(trader_decision, 'confidence', 0)) if trader_decision else 0
+        confidence = safe_float(getattr(trader_decision, 'confidence', 0))
         entry_price = safe_float(getattr(trader_decision, 'entry_price', None))
         stop_loss = safe_float(getattr(trader_decision, 'stop_loss', None))
         take_profit = safe_float(getattr(trader_decision, 'take_profit', None))
-
-        # 獲取槓桿 (僅合約市場有效)
         leverage = getattr(final_approval, 'approved_leverage', 10) if market_type == "futures" else 1
-        if not leverage:
-            leverage = 10 if market_type == "futures" else 1
 
-        # 風險評估信息
+        investment_amount = 0.0
+        if account_balance_info and should_trade:
+            available_balance = account_balance_info.get('available_balance', 0.0)
+            investment_amount = available_balance * position_size
+
         risk_assessment = result.get('risk_assessment')
-        risk_level = "未知"
-        warnings = []
-        adjustments = ""
-        if risk_assessment:
-            risk_level = getattr(risk_assessment, 'risk_level', '未知')
-            warnings = getattr(risk_assessment, 'warnings', [])
-            adjustments = getattr(risk_assessment, 'suggested_adjustments', '')
-
-        # 技術指標信息
-        tech_indicators = result.get('技術指標', {})
-        market_structure = result.get('市場結構', {})
-
-        # 價格信息
-        price_info = result.get('價格資訊', {})
-
-        # 辯論結果
-        bull_argument = result.get('bull_argument')
-        bear_argument = result.get('bear_argument')
+        risk_level = getattr(risk_assessment, 'risk_level', '未知') if risk_assessment else "未知"
+        warnings = getattr(risk_assessment, 'warnings', []) if risk_assessment else []
+        adjustments = getattr(risk_assessment, 'suggested_adjustments', '') if risk_assessment else ""
 
         return {
             "should_trade": should_trade,
             "decision": decision,
             "action": action,
-            "position_size": position_size,
+            "position_size_percentage": position_size,
+            "investment_amount_usdt": investment_amount,
             "confidence": confidence,
             "reasoning": getattr(final_approval, 'rationale', ''),
             "entry_price": entry_price,
             "stop_loss": stop_loss,
             "take_profit": take_profit,
-            "leverage": leverage,
+            "leverage": leverage or (10 if market_type == "futures" else 1),
             "risk_level": risk_level,
             "market_type": market_type,
             "additional_params": {
-                "risk_info": {
-                    "risk_level": risk_level,
-                    "warnings": warnings,
-                    "adjustments": adjustments
-                },
-                "tech_indicators": tech_indicators,
-                "market_structure": market_structure,
-                "price_info": price_info,
+                "risk_info": {"risk_level": risk_level, "warnings": warnings, "adjustments": adjustments},
+                "tech_indicators": result.get('技術指標', {}),
+                "market_structure": result.get('市場結構', {}),
+                "price_info": result.get('價格資訊', {}),
                 "bull_argument": {
-                    "confidence": getattr(bull_argument, 'confidence', 0) if bull_argument else 0,
-                    "argument": getattr(bull_argument, 'argument', '') if bull_argument else '',
-                    "key_points": getattr(bull_argument, 'key_points', []) if bull_argument else []
-                } if bull_argument else None,
+                    "confidence": getattr(result.get('bull_argument'), 'confidence', 0),
+                    "argument": getattr(result.get('bull_argument'), 'argument', ''),
+                    "key_points": getattr(result.get('bull_argument'), 'key_points', [])
+                } if result.get('bull_argument') else None,
                 "bear_argument": {
-                    "confidence": getattr(bear_argument, 'confidence', 0) if bear_argument else 0,
-                    "argument": getattr(bear_argument, 'argument', '') if bear_argument else '',
-                    "key_points": getattr(bear_argument, 'key_points', []) if bear_argument else []
-                } if bear_argument else None,
+                    "confidence": getattr(result.get('bear_argument'), 'confidence', 0),
+                    "argument": getattr(result.get('bear_argument'), 'argument', ''),
+                    "key_points": getattr(result.get('bear_argument'), 'key_points', [])
+                } if result.get('bear_argument') else None,
                 "funding_rate_info": result.get("funding_rate_info", {}),
                 "news_info": result.get("新聞資訊", {})
             }
@@ -296,7 +257,7 @@ class BackendAnalyzer:
             filepath = f"trading_decisions_{symbol}_{timestamp}.json"
 
         with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(decision_data, f, ensure_ascii=False, indent=2)
+            json.dump(decision_data, f, ensure_ascii=False, indent=2, cls=DataFrameEncoder)
 
         print(f">> 交易決策已保存至: {filepath}")
         return filepath
@@ -309,7 +270,7 @@ class BackendAnalyzer:
             filepath = f"trading_decisions_batch_{timestamp}.json"
 
         with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(decisions_list, f, ensure_ascii=False, indent=2)
+            json.dump(decisions_list, f, ensure_ascii=False, indent=2, cls=DataFrameEncoder)
 
         print(f">> 批量交易決策已保存至: {filepath}")
         return filepath
@@ -406,8 +367,10 @@ if __name__ == "__main__":
         print(f"    現貨決策: {result['spot_decision']['decision']}")
         print(f"    合約是否交易: {result['futures_decision']['should_trade']}")
         print(f"    合約決策: {result['futures_decision']['decision']}")
-        print(f"    現貨倉位大小: {result['spot_decision']['position_size']:.2%}")
-        print(f"    合約倉位大小: {result['futures_decision']['position_size']:.2%}")
+        print(f"    現貨倉位大小: {result['spot_decision']['position_size_percentage']:.2%}")
+        print(f"    現貨投資金額: {result['spot_decision']['investment_amount_usdt']:.2f} USDT")
+        print(f"    合約倉位大小: {result['futures_decision']['position_size_percentage']:.2%}")
+        print(f"    合約投資金額: {result['futures_decision']['investment_amount_usdt']:.2f} USDT")
 
         # 顯示帳戶餘額資訊（如果存在）
         if 'account_balance' in result:

@@ -10,6 +10,7 @@ from core.models import AnalystReport, ResearcherDebate, TraderDecision, RiskAss
 from core.config import FAST_THINKING_MODEL, DEEP_THINKING_MODEL
 from utils.llm_client import supports_json_mode, extract_json_from_response
 from utils.retry_utils import retry_on_failure
+from utils.utils import DataFrameEncoder
 
 # ============================================================================ 
 # 第一層：分析師團隊 (Analysts Team)
@@ -257,7 +258,7 @@ class FundamentalAnalyst:
 {f"5. 資金費率資訊：{json.dumps(funding_rate_info, indent=2, ensure_ascii=False)}" if market_type == 'futures' else ""}
 
 當前週期市場數據：
-{json.dumps(market_data, indent=2, ensure_ascii=False)}
+{json.dumps(market_data, indent=2, ensure_ascii=False, cls=DataFrameEncoder)}
 
 {multi_timeframe_context}
 
@@ -420,7 +421,7 @@ class BullResearcher:
         if multi_timeframe_info:
             multi_timeframe_context = f"""
 多週期分析一致性：
-{json.dumps(multi_timeframe_info, indent=2, ensure_ascii=False)}
+{json.dumps(multi_timeframe_info, indent=2, ensure_ascii=False, cls=DataFrameEncoder)}
 
 請特別注意：
 1. 不同時間週期趨勢的一致性
@@ -568,7 +569,7 @@ class BearResearcher:
         if multi_timeframe_info:
             multi_timeframe_context = f"""
 多週期分析一致性：
-{json.dumps(multi_timeframe_info, indent=2, ensure_ascii=False)}
+{json.dumps(multi_timeframe_info, indent=2, ensure_ascii=False, cls=DataFrameEncoder)}
 
 請特別注意：
 1. 不同時間週期趨勢的一致性
@@ -687,7 +688,8 @@ class Trader:
         market_data: Dict,
         market_type: str,
         leverage: int,
-        feedback: Optional[RiskAssessment] = None
+        feedback: Optional[RiskAssessment] = None,
+        account_balance: Optional[Dict] = None
     ) -> TraderDecision:
         """基於所有資訊做出交易決策"""
 
@@ -701,6 +703,16 @@ class Trader:
 警告: {", ".join(feedback.warnings)}
 請務必根據以上建議，調整你的倉位、止損或止盈，或改變決策。
 """
+        
+        account_balance_prompt = ""
+        if account_balance:
+            account_balance_prompt = f"""
+=== 帳戶餘額資訊 ===
+總餘額: {account_balance.get('total_balance', 'N/A')} {account_balance.get('currency', '')}
+可用餘額: {account_balance.get('available_balance', 'N/A')} {account_balance.get('currency', '')}
+**重要**: 你的決策和推理過程**必須**考慮到此帳戶餘額。如果可用餘額為0或很低，你的倉位建議應更加保守或為0。
+"""
+
         decision_options = ""
         if market_type == 'spot':
             decision_options = "Buy\" / \"Sell\" / \"Hold"
@@ -726,6 +738,7 @@ class Trader:
 數據來源交易所：{exchange}。
 {f"請根據市場風險、波動率和你的交易策略，自行決定合適的槓桿倍數 (1-125x)。考慮因素：波動率越高應使用越低槓桿，趨勢越明確可適當提高槓桿。" if market_type == 'futures' else ""}
 {feedback_prompt}
+{account_balance_prompt}
 
 你已經收到：
 1. 四位分析師的詳細報告

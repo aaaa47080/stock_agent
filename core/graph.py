@@ -49,6 +49,7 @@ class AgentState(TypedDict):
     leverage: int
     exchange: str # Added
     preloaded_data: Optional[Dict]  # 用來接收預先抓好的資料
+    account_balance: Optional[Dict] # 新增：帳戶餘額資訊
     # --- 多週期分析參數 ---
     include_multi_timeframe: bool  # 是否包含多週期分析
     short_term_interval: str       # 短週期時間間隔
@@ -273,7 +274,6 @@ def analyst_team_node(state: AgentState) -> Dict:
             except Exception as e:
                 print(f"  >> {analyst_type} 分析失敗: {e}")
                 # 使用降級策略：創建一個默認報告
-                from models import AnalystReport
                 # Ensure the summary has at least 50 characters to meet validation requirements
                 default_summary = f"{analyst_type}分析暫時無法完成，使用默認評估。由於技術問題，本次分析採用保守策略。這是一個預設的安全評估，建議結合其他分析師的意見進行綜合判斷。"
                 results[analyst_type] = AnalystReport(
@@ -497,7 +497,8 @@ def trader_decision_node(state: AgentState) -> Dict:
         market_data=state['market_data'],
         market_type=state['market_data']['market_type'],
         leverage=state['market_data']['leverage'],
-        feedback=feedback # 將回饋傳遞給 Trader
+        feedback=feedback, # 將回饋傳遞給 Trader
+        account_balance=state.get('account_balance')
     )
     
     print(f">> 交易決策完成 | 決策: {trader_decision.decision}")

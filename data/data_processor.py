@@ -189,7 +189,7 @@ def fetch_multi_timeframe_data(
                 "最近5天歷史": prepare_recent_history(df_with_indicators, days=5),
                 "市場結構": analyze_market_structure(df_with_indicators),
                 "關鍵價位": calculate_key_levels(df_with_indicators, period=30),
-                "dataframe": df_with_indicators  # 保留原始數據框以供後續分析
+                # "dataframe": df_with_indicators  # 已移除，避免傳遞過大的原始數據
             }
 
             multi_timeframe_data[timeframe] = timeframe_data

@@ -2,10 +2,28 @@ import os
 import json
 import time
 import requests
+import pandas as pd
 from urllib.parse import urlparse
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 import concurrent.futures
+
+class DataFrameEncoder(json.JSONEncoder):
+    """
+    Custom JSON encoder to handle pandas DataFrame and Timestamps.
+    It converts a DataFrame to a list of dictionaries.
+    """
+    def default(self, obj):
+        if isinstance(obj, pd.DataFrame):
+            # Create a copy to avoid modifying the original DataFrame in place
+            df_copy = obj.copy()
+            # Convert all datetime-like columns to ISO 8601 strings.
+            for col in df_copy.select_dtypes(include=['datetime64[ns]', 'datetimetz']).columns:
+                df_copy[col] = df_copy[col].dt.isoformat()
+            return df_copy.to_dict(orient='records')
+        if isinstance(obj, pd.Timestamp):
+            return obj.isoformat()
+        return super().default(obj)
 
 def safe_float(value, default=0.0):
     """
@@ -28,6 +46,9 @@ def get_crypto_news_cryptopanic(symbol: str = "BTC", limit: int = 5) -> List[Dic
     從 CryptoPanic 獲取指定幣種的最新新聞
     需先申請 API Key: https://cryptopanic.com/developers/api/
     """
+    # 增加延遲以符合 API Rate Limit (2 req/sec)
+    time.sleep(0.5)
+
     # 請替換為你的 CryptoPanic API Token
     API_TOKEN = os.getenv("API_TOKEN", "")
     

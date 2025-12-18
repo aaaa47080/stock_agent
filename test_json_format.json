@@ -1,31 +1,107 @@
 {
   "symbol": "BTCUSDT",
-  "analysis_timestamp": "2025-12-13T22:41:36.516189",
-  "error": "'cp950' codec can't encode character '\\U0001f449' in position 4: illegal multibyte sequence",
+  "analysis_timestamp": "2025-12-18T14:00:32.768776",
+  "exchange": "BINANCE",
+  "current_price": 86417.75,
   "spot_decision": {
-    "should_trade": false,
-    "decision": "Error",
-    "action": "error",
-    "position_size": 0.0,
-    "confidence": 0.0,
-    "reasoning": "'cp950' codec can't encode character '\\U0001f449' in position 4: illegal multibyte sequence",
-    "entry_price": null,
-    "stop_loss": null,
-    "take_profit": null,
+    "should_trade": true,
+    "decision": "賣出",
+    "action": "sell",
+    "position_size": 0.14,
+    "confidence": 70.0,
+    "reasoning": "經過多週期分析，短期（1h）雖有反彈訊號，但中期（4h）與長期（日線）趨勢仍明顯向下，整體多週期趨勢部分一致且偏空，具備一定的可靠度。風險管理員已評估並建議將倉位由20%降至14%，調整幅度為30%，符合5-30%範圍，因此最終採取修正後批准。此決策兼顧趨勢分歧與整體下行壓力，並嚴守風控規則。",
+    "entry_price": 86417.75,
+    "stop_loss": 89010.28,
+    "take_profit": 81232.69,
     "leverage": 1,
-    "additional_params": {}
+    "risk_level": "中高風險",
+    "market_type": "spot",
+    "additional_params": {
+      "risk_info": {
+        "risk_level": "中高風險",
+        "warnings": [
+          "短週期與中長期趨勢不一致，方向不明確",
+          "高波動率可能導致快速止損",
+          "支撐位86022.54失守將進一步下探"
+        ],
+        "adjustments": "建議降低倉位至14%以降低因多週期趨勢不一致的風險"
+      },
+      "tech_indicators": {},
+      "market_structure": {},
+      "price_info": {},
+      "bull_argument": {
+        "confidence": 0.0,
+        "argument": "Pydantic 驗證失敗: 1 validation error for ResearcherDebate\nkey_points\n  Field required [type=missing, input_value={'researcher_stance': 'Bu...持續性。綜上...'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.12/v/missing",
+        "key_points": [
+          "LLM 回傳的結構不符合預期"
+        ]
+      },
+      "bear_argument": {
+        "confidence": 75.0,
+        "argument": "儘管短期1小時和4小時級別出現反彈走勢，但中期與長期圖表趨勢依然向下。RSI14在4小時與日線分別跌至39與38以下，MACD持續為負，顯示空頭動能穩固；日線波動率攀升至2.32，意味著價格隨時可能加速下破支撐。加上ETF資金外流超過3.5億美元，7天跌幅達4.49%，機構採取觀望態度，短期反彈更像修正浪而非趨勢反轉。中長期支撐位和壓力位分歧，市場共識偏空，需警惕下一波下跌加劇。",
+        "key_points": [
+          "中期與長期趨勢下跌",
+          "RSI與MACD指標持續空頭",
+          "高波動率帶來破位風險",
+          "ETF資金大規模外流"
+        ]
+      },
+      "funding_rate_info": {},
+      "news_info": {}
+    }
   },
   "futures_decision": {
     "should_trade": false,
-    "decision": "Error",
-    "action": "error",
+    "decision": "觀望",
+    "action": "hold",
     "position_size": 0.0,
-    "confidence": 0.0,
-    "reasoning": "'cp950' codec can't encode character '\\U0001f449' in position 4: illegal multibyte sequence",
-    "entry_price": null,
-    "stop_loss": null,
-    "take_profit": null,
-    "leverage": 1,
-    "additional_params": {}
+    "confidence": 50.0,
+    "reasoning": "綜合交易員與風險管理員均建議暫不進場，且當前多週期分析顯示短期雖有反彈，但中長期MACD、RSI仍偏空，整體趨勢偏下，且支撐壓力區距離過近，風險/報酬比不足，波動率及外部資金面承壓明顯。因此最終決策為Hold，倉位維持0%，嚴格執行觀望策略。",
+    "entry_price": 0.0,
+    "stop_loss": 0.0,
+    "take_profit": 0.0,
+    "leverage": 10,
+    "risk_level": "低風險",
+    "market_type": "futures",
+    "additional_params": {
+      "risk_info": {
+        "risk_level": "低風險",
+        "warnings": [
+          "建議持續關注市場動態",
+          "如市場出現明確信號可重新評估"
+        ],
+        "adjustments": "無需調整，維持觀望狀態即可。"
+      },
+      "tech_indicators": {},
+      "market_structure": {},
+      "price_info": {},
+      "bull_argument": {
+        "confidence": 75.0,
+        "argument": "近期短週期(1h)市場結構已經出現高低點上移，成交量與波動率配合，顯示多頭動能正在積聚。大持有者在負資金費率環境中逆勢穩定累積，凸顯其對後市的信心與成本優勢。另外，機構採用增長及對2026年投資主題的布局將在中長期持續創造需求，對抗宏觀壓力。另一方面，ETF資金流出多屬獲利回吐，並未改變市場的長期需求結構。基於短期反彈結構化突破和資金面潛在逼空效應，建議在86000至87000階段分批多單佈局，並以30天壓力位87500作為第一目標，逢低加倉。",
+        "key_points": [
+          "短週期(1h)趨勢上漲，顯示反轉初期動能",
+          "大持有者穩定累積，資金基礎強勁",
+          "機構採用增長帶來中長期需求",
+          "資金費率負向擴散短期反彈空間",
+          "7天價格小幅上漲、量能支撐短線多頭"
+        ]
+      },
+      "bear_argument": {
+        "confidence": 70.0,
+        "argument": "儘管短週期出現高低點上移，但中長期（4h、1d）趨勢仍呈顯著下跌格局，MACD負值持續擴大，並未出現轉向動能。負資金費率反映市場空頭過度擴張，一旦多頭嘗試拉抬就極易遭遇再度下殺的壓力；同時，高波動環境下的短線反彈更可能是空頭蓄勢的吸籌陷阱。ETF資金持續流出，結合宏觀緊縮政策與市場情緒偏冷，將使反彈難以有效延續。建議重視中長期下行風險，警惕87000至86000一帶短暫反彈後的二次殺跌。",
+        "key_points": [
+          "中長期趨勢持續下跌，反轉信號不足",
+          "負資金費率顯示空頭優勢且易再次下跌",
+          "ETF大額資金流出削弱市場流動性",
+          "高波動率下短線反彈易成吸籌陷阱",
+          "機構增長預期已在價格中提前反映"
+        ]
+      },
+      "funding_rate_info": {
+        "last_funding_rate": -6.89e-06,
+        "next_funding_time": "2025-12-18T08:00:00"
+      },
+      "news_info": {}
+    }
   }
 }
