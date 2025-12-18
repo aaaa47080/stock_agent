@@ -172,7 +172,7 @@ ENABLE_FUTURES_TRADING = True   # 是否執行合約交易
 # === 加密貨幣分析配置 ===
 # 預設要分析的加密貨幣列表。
 # 用戶可以在此處修改此列表，以選擇要分析的加密貨幣。
-CRYPTO_CURRENCIES_TO_ANALYZE = ["PIUSDT"]
+CRYPTO_CURRENCIES_TO_ANALYZE = ["KGENUSDT"]
 
 # === OKX API 配置 ===
 # 從 .env 檔案或環境變數讀取 OKX API 資訊
