@@ -286,11 +286,19 @@ def execute_futures_trade(okx_api: OKXAPIConnector, symbol: str, action: str, tr
         print(f"[ERROR] Calculated contract size {sz} is below minimum {min_sz} for {futures_symbol}.")
         return
 
+    # 从 trade_data 中提取止损止盈价格
+    stop_loss = trade_data.get("stop_loss")
+    take_profit = trade_data.get("take_profit")
+
     print(f"[INFO] Futures Order Details:")
     print(f"        Margin: ${margin_amount:.2f} USDT")
     print(f"        Leverage: {leverage}x")
     print(f"        Contract Value: ${contract_value_usd:.2f} USDT ({int(sz)} contracts)")
     print(f"        Entry Price: ${last_price:.4f}")
+    if stop_loss:
+        print(f"        Stop Loss: ${stop_loss:.4f}")
+    if take_profit:
+        print(f"        Take Profit: ${take_profit:.4f}")
     print(f"[INFO] Placing FUTURES {action.upper()} order for {futures_symbol}...")
 
     order_result = okx_api.place_futures_order(
@@ -299,7 +307,9 @@ def execute_futures_trade(okx_api: OKXAPIConnector, symbol: str, action: str, tr
         posSide=pos_side,
         ordType="market",
         sz=str(int(sz)),  # 確保是整數
-        lever=str(leverage)
+        lever=str(leverage),
+        slTriggerPx=str(stop_loss) if stop_loss else None,
+        tpTriggerPx=str(take_profit) if take_profit else None
     )
 
     print(f"[ORDER] Futures order result: {order_result}")

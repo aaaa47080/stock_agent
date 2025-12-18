@@ -19,11 +19,12 @@ from core.graph import app
 from core.models import FinalApproval
 from utils.utils import safe_float, DataFrameEncoder
 from trading.okx_api_connector import OKXAPIConnector
-from core.config import CRYPTO_CURRENCIES_TO_ANALYZE
+from core.config import (
+    CRYPTO_CURRENCIES_TO_ANALYZE,
+    MINIMUM_INVESTMENT_USD,
+    EXCHANGE_MINIMUM_ORDER_USD
+)
 from trading.okx_auto_trader import execute_trades_from_decision_data
-
-
-MINIMUM_INVESTMENT_USD = 100.0
 
 class BackendAnalyzer:
     """後台分析引擎 - 產生JSON格式的交易決策"""
@@ -195,9 +196,9 @@ class BackendAnalyzer:
         if account_balance_info and should_trade:
             available_balance = account_balance_info.get('available_balance', 0.0)
             investment_amount = available_balance * position_size
-            if investment_amount < 1: # OKX has minimum order size of 1 USD
+            if investment_amount < EXCHANGE_MINIMUM_ORDER_USD:
                 should_trade = False
-                reasoning = f"交易決策被覆蓋：計算出的投資金額 ${investment_amount:.2f} 低於交易所最低要求。"
+                reasoning = f"交易決策被覆蓋：計算出的投資金額 ${investment_amount:.2f} 低於交易所最低要求 ${EXCHANGE_MINIMUM_ORDER_USD:.2f}。"
 
         risk_assessment = result.get('risk_assessment')
         risk_level = getattr(risk_assessment, 'risk_level', '未知') if risk_assessment else "未知"
@@ -226,118 +227,6 @@ class BackendAnalyzer:
             }
         }
         
-    def _create_error_result(self, symbol: str, error_msg: str) -> Dict:
-        return {
-            "symbol": symbol, "analysis_timestamp": datetime.now().isoformat(), "error": error_msg,
-            "spot_decision": {"should_trade": False, "decision": "Error", "action": "error", "position_size": 0.0, "confidence": 0.0, "reasoning": error_msg, "entry_price": None, "stop_loss": None, "take_profit": None, "leverage": 1, "additional_params": {}},
-            "futures_decision": {"should_trade": False, "decision": "Error", "action": "error", "position_size": 0.0, "confidence": 0.0, "reasoning": error_msg, "entry_price": None, "stop_loss": None, "take_profit": None, "leverage": 1, "additional_params": {}}
-        }
-
-    def analyze_multiple_symbols(self, symbols: List[str], exchange: str = None,
-                                interval: str = "1d", limit: int = 100, include_account_balance: bool = True,
-                                short_term_interval: str = "1h", medium_term_interval: str = "4h", long_term_interval: str = "1d") -> List[Dict]:
-        results = []
-        for symbol in symbols:
-            result = self.analyze_symbol(
-                symbol, exchange, interval, limit, include_account_balance,
-                short_term_interval, medium_term_interval, long_term_interval
-            )
-            results.append(result)
-        return results
-
-    def save_decision_to_json(self, decision_data: Dict, filepath: str = None):
-        if not filepath:
-            symbol = decision_data.get('symbol', 'unknown')
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filepath = f"trading_decisions_{symbol}_{timestamp}.json"
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(decision_data, f, ensure_ascii=False, indent=2, cls=DataFrameEncoder)
-        print(f">> 交易決策已保存至: {filepath}")
-        return filepath
-
-    def save_multiple_decisions_to_json(self, decisions_list: List[Dict], filepath: str = None):
-        if not filepath:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filepath = f"trading_decisions_batch_{timestamp}.json"
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(decisions_list, f, ensure_ascii=False, indent=2, cls=DataFrameEncoder)
-        print(f">> 批量交易決策已保存至: {filepath}")
-        return filepath
-
-
-def run_backend_analysis(symbol: str, exchange: str = None, interval: str = "1d", limit: int = 100,
-                        output_file: str = None, include_account_balance: bool = True, auto_trade: bool = False,
-                        short_term="1h", medium_term="4h", long_term="1d"):
-    analyzer = BackendAnalyzer()
-    result = analyzer.analyze_symbol(
-        symbol, exchange, interval, limit, include_account_balance,
-        short_term_interval=short_term, medium_term_interval=medium_term, long_term_interval=long_term
-    )
-    filepath = analyzer.save_decision_to_json(result, output_file)
-    print(f"Analysis saved to {filepath}")
-    if auto_trade:
-        print("\n[AUTO-TRADE] Initiating automated trading...")
-        execute_trades_from_decision_data([result], live_trading=True)
-    return result
-
-
-def run_batch_backend_analysis(symbols: List[str] = None, exchange: str = None,
-                              interval: str = "1d", limit: int = 100,
-                              output_file: str = None, include_account_balance: bool = True, auto_trade: bool = False,
-                              short_term="1h", medium_term="4h", long_term="1d"):
-    analyzer = BackendAnalyzer()
-    if symbols is None:
-        symbols = CRYPTO_CURRENCIES_TO_ANALYZE
-    results = analyzer.analyze_multiple_symbols(
-        symbols, exchange, interval, limit, include_account_balance,
-        short_term_interval=short_term, medium_term_interval=medium_term, long_term_interval=long_term
-    )
-    filepath = analyzer.save_multiple_decisions_to_json(results, output_file)
-    print(f"Batch analysis saved to {filepath}")
-    if auto_trade:
-        print("\n[AUTO-TRADE] Initiating automated trading for batch...")
-        execute_trades_from_decision_data(results, live_trading=True)
-    return results
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Backend Crypto Analysis Engine")
-    parser.add_argument("--symbol", type=str, help="A single crypto symbol to analyze (e.g., BTC).")
-    parser.add_argument("--batch", action="store_true", help="Run batch analysis on all symbols from the config file.")
-    parser.add_argument("--exchange", type=str, default="okx", help="The exchange to use (e.g., okx).")
-    parser.add_argument(
-        "--interval", type=str, default="1h,4h,1d",
-        help="Comma-separated list of intervals for short, medium, and long term analysis (e.g., '5m,15m,1h'). The last one is the main interval."
-    )
-    parser.add_argument("--auto-trade", action="store_true", help="Enable live auto-trading after analysis.")
-    args = parser.parse_args()
-
-    if not args.symbol and not args.batch:
-        parser.error("You must specify either --symbol or --batch.")
-
-    intervals = [i.strip() for i in args.interval.split(',')]
-    if len(intervals) == 0:
-        intervals = ["1h", "4h", "1d"] # Default
-        
-    short = intervals[0]
-    medium = intervals[1] if len(intervals) > 1 else short
-    long = intervals[2] if len(intervals) > 2 else medium
-    main_interval = intervals[-1] # The longest interval is used for the main data fetch
-
-    if args.symbol:
-        run_backend_analysis(
-            symbol=args.symbol, exchange=args.exchange, interval=main_interval,
-            include_account_balance=True, auto_trade=args.auto_trade,
-            short_term=short, medium_term=medium, long_term=long
-        )
-    
-    if args.batch:
-        run_batch_backend_analysis(
-            exchange=args.exchange, interval=main_interval,
-            include_account_balance=True, auto_trade=args.auto_trade,
-            short_term=short, medium_term=medium, long_term=long
-        )
-
     def _create_error_result(self, symbol: str, error_msg: str) -> Dict:
         return {
             "symbol": symbol, "analysis_timestamp": datetime.now().isoformat(), "error": error_msg,

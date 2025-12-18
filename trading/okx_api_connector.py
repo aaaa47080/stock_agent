@@ -202,7 +202,9 @@ class OKXAPIConnector:
     # --- 期貨交易相關 ---
 
     def place_futures_order(self, instId: str, side: str, ordType: str, sz: str,
-                           posSide: str, px: str = None, lever: str = "5") -> dict:
+                           posSide: str, px: str = None, lever: str = "5",
+                           slTriggerPx: str = None, slOrdPx: str = None,
+                           tpTriggerPx: str = None, tpOrdPx: str = None) -> dict:
         """
         下期貨訂單
 
@@ -214,6 +216,10 @@ class OKXAPIConnector:
             posSide: 倉位方向 (long, short, net)
             px: 價格
             lever: 槓桿倍數
+            slTriggerPx: 止損触发价
+            slOrdPx: 止损委托价 (市价单设为-1)
+            tpTriggerPx: 止盈触发价
+            tpOrdPx: 止盈委托价 (市价单设为-1)
         """
         endpoint = "/trade/order"
         data = {
@@ -228,6 +234,15 @@ class OKXAPIConnector:
 
         if ordType == "limit" and px:
             data["px"] = str(px)
+
+        # 添加止损止盈参数
+        if slTriggerPx:
+            data["slTriggerPx"] = str(slTriggerPx)
+            data["slOrdPx"] = str(slOrdPx) if slOrdPx else "-1"  # -1 表示市价止损
+
+        if tpTriggerPx:
+            data["tpTriggerPx"] = str(tpTriggerPx)
+            data["tpOrdPx"] = str(tpOrdPx) if tpOrdPx else "-1"  # -1 表示市价止盈
 
         return self._make_request("POST", endpoint, data=data)
 
