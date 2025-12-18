@@ -422,6 +422,15 @@ def generate_report_and_summary(analysis_results: list, exchange_name: str, limi
         else:
             json_result["action"] = "HOLD"
 
+        # Convert position size percentage to actual investment amount based on account balance
+        investment_amount = 0  # Default to 0 if no account balance or invalid data
+        if account_balance_info and result.get("position_size") is not None:
+            available_balance = account_balance_info.get("available_balance", 0)
+            position_size = result.get("position_size", 0.02)
+            investment_amount = available_balance * position_size
+
+        json_result["investment_amount_usdt"] = investment_amount
+
         # For futures, include leverage information
         if market_type == 'futures':
             json_result["leverage"] = result.get("leverage", DEFAULT_FUTURES_LEVERAGE)

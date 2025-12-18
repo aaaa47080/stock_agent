@@ -163,6 +163,12 @@ SCREENER_DEFAULT_INTERVAL = "1d"
 MINIMUM_INVESTMENT_USD = 20  # 最低投資金額 (USDT)
 EXCHANGE_MINIMUM_ORDER_USD = 1.0  # 交易所最低下單金額 (USDT)
 
+# === 交易類型選擇 ===
+# 控制是否執行現貨交易和合約交易
+# True: 啟用該類型的交易 / False: 停用該類型的交易
+ENABLE_SPOT_TRADING = False      # 是否執行現貨交易
+ENABLE_FUTURES_TRADING = True   # 是否執行合約交易
+
 # === 加密貨幣分析配置 ===
 # 預設要分析的加密貨幣列表。
 # 用戶可以在此處修改此列表，以選擇要分析的加密貨幣。

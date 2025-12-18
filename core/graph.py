@@ -407,7 +407,9 @@ def research_debate_node(state: AgentState) -> Dict:
             print(f"\n  >> 多頭研究員發言...")
             if bear_argument:
                 print(f"     >> 多頭看到了空頭上一輪的觀點：")
-                print(f"        空頭論點摘要: {bear_argument.argument[:150]}...")
+                # 安全處理 Unicode 編碼問題
+                bear_arg_safe = bear_argument.argument[:150].encode('utf-8', errors='ignore').decode('utf-8') if bear_argument.argument else ""
+                print(f"        空頭論點摘要: {bear_arg_safe}...")
                 print(f"        空頭信心度: {bear_argument.confidence}%")
 
             bull_argument = bull_researcher.debate(
@@ -418,20 +420,26 @@ def research_debate_node(state: AgentState) -> Dict:
 
             print(f"\n  >> 多頭研究員觀點 (第 {round_num} 輪)：")
             print(f"     信心度: {bull_argument.confidence}%")
-            print(f"     完整論點: {bull_argument.argument}")
+            # 安全處理 Unicode 編碼問題
+            bull_arg_full_safe = bull_argument.argument.encode('utf-8', errors='ignore').decode('utf-8') if bull_argument.argument else ""
+            print(f"     完整論點: {bull_arg_full_safe}")
             print(f"     關鍵看漲點:")
             for i, point in enumerate(bull_argument.key_points, 1):
-                print(f"       {i}. {point}")
+                point_safe = point.encode('utf-8', errors='ignore').decode('utf-8') if point else ""
+                print(f"       {i}. {point_safe}")
             if bull_argument.counter_arguments:
                 print(f"     對空頭的反駁:")
                 for i, counter in enumerate(bull_argument.counter_arguments, 1):
-                    print(f"       {i}. {counter}")
+                    counter_safe = counter.encode('utf-8', errors='ignore').decode('utf-8') if counter else ""
+                    print(f"       {i}. {counter_safe}")
             print()
 
             # 空頭發言（看到多頭本輪的觀點）
             print(f"  >> 空頭研究員發言...")
             print(f"     >> 空頭看到了多頭本輪的觀點：")
-            print(f"        多頭論點摘要: {bull_argument.argument[:150]}...")
+            # 安全處理 Unicode 編碼問題
+            bull_arg_safe = bull_argument.argument[:150].encode('utf-8', errors='ignore').decode('utf-8') if bull_argument.argument else ""
+            print(f"        多頭論點摘要: {bull_arg_safe}...")
             print(f"        多頭信心度: {bull_argument.confidence}%")
 
             bear_argument = bear_researcher.debate(
@@ -442,14 +450,18 @@ def research_debate_node(state: AgentState) -> Dict:
 
             print(f"\n  >> 空頭研究員觀點 (第 {round_num} 輪)：")
             print(f"     信心度: {bear_argument.confidence}%")
-            print(f"     完整論點: {bear_argument.argument}")
+            # 安全處理 Unicode 編碼問題
+            bear_arg_safe = bear_argument.argument.encode('utf-8', errors='ignore').decode('utf-8') if bear_argument.argument else ""
+            print(f"     完整論點: {bear_arg_safe}")
             print(f"     關鍵看跌點:")
             for i, point in enumerate(bear_argument.key_points, 1):
-                print(f"       {i}. {point}")
+                point_safe = point.encode('utf-8', errors='ignore').decode('utf-8') if point else ""
+                print(f"       {i}. {point_safe}")
             if bear_argument.counter_arguments:
                 print(f"     對多頭的反駁:")
                 for i, counter in enumerate(bear_argument.counter_arguments, 1):
-                    print(f"       {i}. {counter}")
+                    counter_safe = counter.encode('utf-8', errors='ignore').decode('utf-8') if counter else ""
+                    print(f"       {i}. {counter_safe}")
             print()
 
     # 辯論總結
@@ -458,10 +470,28 @@ def research_debate_node(state: AgentState) -> Dict:
     print(f"{'=' * 80}")
     print(f"\n  >> 多頭最終觀點:")
     print(f"     信心度: {bull_argument.confidence}%")
-    print(f"     核心論點: {bull_argument.argument[:200]}...")
+    # 安全處理 Unicode 編碼問題
+    bull_argument_text = bull_argument.argument[:200] if bull_argument.argument else ""
+    if bull_argument_text:
+        try:
+            bull_argument_safe = bull_argument_text.encode('cp950', errors='ignore').decode('cp950')
+        except:
+            bull_argument_safe = bull_argument_text.encode('utf-8', errors='ignore').decode('utf-8')
+    else:
+        bull_argument_safe = ""
+    print(f"     核心論點: {bull_argument_safe}...")
     print(f"\n  >> 空頭最終觀點:")
     print(f"     信心度: {bear_argument.confidence}%")
-    print(f"     核心論點: {bear_argument.argument[:200]}...")
+    # 安全處理 Unicode 編碼問題
+    bear_argument_text = bear_argument.argument[:200] if bear_argument.argument else ""
+    if bear_argument_text:
+        try:
+            bear_argument_safe = bear_argument_text.encode('cp950', errors='ignore').decode('cp950')
+        except:
+            bear_argument_safe = bear_argument_text.encode('utf-8', errors='ignore').decode('utf-8')
+    else:
+        bear_argument_safe = ""
+    print(f"     核心論點: {bear_argument_safe}...")
 
     confidence_diff = abs(bull_argument.confidence - bear_argument.confidence)
     if bull_argument.confidence > bear_argument.confidence:

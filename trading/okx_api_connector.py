@@ -27,7 +27,7 @@ class OKXAPIConnector:
             print("OKX_API_KEY=您的API密鑰")
             print("OKX_API_SECRET=您的API私鑰")
             print("OKX_PASSPHRASE=您的API密碼")
-        
+
         # Use custom base URL if provided in .env, else use default
         self.base_url = os.getenv("OKX_BASE_URL", "https://www.okx.com")
         self.headers = {
@@ -130,11 +130,11 @@ class OKXAPIConnector:
             return {"code": "000000", "msg": f"未知錯誤: {str(e)}", "data": []}
 
     # --- 帳戶資訊相關 ---
-    
+
     def get_account_balance(self, ccy: str = "USDT") -> dict:
         """
         獲取帳戶餘額
-        
+
         Args:
             ccy: 幣別 (預設 USDT)
         """
@@ -145,7 +145,7 @@ class OKXAPIConnector:
     def get_positions(self, instType: str = "ANY") -> dict:
         """
         獲取持倉資訊
-        
+
         Args:
             instType: 產品類型 (SPOT, MARGIN, SWAP, FUTURES, OPTION, ANY)
         """
@@ -161,11 +161,11 @@ class OKXAPIConnector:
         return self._make_request("GET", endpoint)
 
     # --- 現貨交易相關 ---
-    
+
     def place_spot_order(self, instId: str, side: str, ordType: str, sz: str, px: str = None) -> dict:
         """
         下現貨訂單
-        
+
         Args:
             instId: 產品ID (如 BTC-USDT)
             side: 買賣方向 (buy, sell)
@@ -181,16 +181,16 @@ class OKXAPIConnector:
             "ordType": ordType,
             "sz": str(sz)
         }
-        
+
         if ordType == "limit" and px:
             data["px"] = str(px)
-        
+
         return self._make_request("POST", endpoint, data=data)
 
     def get_spot_orders(self, instId: str, state: str = "live") -> dict:
         """
         獲取現貨訂單狀態
-        
+
         Args:
             instId: 產品ID
             state: 訂單狀態 (live, filled, cancelled, etc.)
@@ -200,12 +200,12 @@ class OKXAPIConnector:
         return self._make_request("GET", endpoint, params=params)
 
     # --- 期貨交易相關 ---
-    
-    def place_futures_order(self, instId: str, side: str, ordType: str, sz: str, 
+
+    def place_futures_order(self, instId: str, side: str, ordType: str, sz: str,
                            posSide: str, px: str = None, lever: str = "5") -> dict:
         """
         下期貨訂單
-        
+
         Args:
             instId: 產品ID (如 BTC-USDT-SWAP)
             side: 買賣方向 (buy, sell)
@@ -225,16 +225,16 @@ class OKXAPIConnector:
             "posSide": posSide,
             "lever": str(lever)
         }
-        
+
         if ordType == "limit" and px:
             data["px"] = str(px)
-        
+
         return self._make_request("POST", endpoint, data=data)
 
     def get_futures_positions(self, instId: str = None) -> dict:
         """
         獲取期貨持倉
-        
+
         Args:
             instId: 產品ID (可選)
         """
@@ -244,29 +244,49 @@ class OKXAPIConnector:
             params["instId"] = instId
         return self._make_request("GET", endpoint, params=params)
 
-    def set_leverage(self, instId: str, lever: str, mgnMode: str = "cross") -> dict:
+    def set_leverage(self, instId: str, lever: str, mgnMode: str = "cross", posSide: str = None) -> dict:
         """
         設置槓桿倍數
-        
+
         Args:
             instId: 產品ID
             lever: 槓桿倍數
             mgnMode: 保證金模式 (cross, isolated)
+            posSide: 持倉方向 (long, short, net) - 在單向持倉模式下使用 'net'
         """
-        endpoint = "/account/leverage-info"
+        endpoint = "/account/set-leverage"
         data = {
             "instId": instId,
             "lever": str(lever),
             "mgnMode": mgnMode
         }
+
+        # Only add posSide if provided (required in some position modes)
+        if posSide:
+            data["posSide"] = posSide
+
         return self._make_request("POST", endpoint, data=data)
 
     # --- 市場資料相關 ---
-    
+
+    def get_instruments(self, instType: str, instId: str = None) -> dict:
+        """
+        獲取交易產品的基礎信息（包含lot size等規則）
+
+        Args:
+            instType: 產品類型 (SPOT, SWAP, FUTURES, OPTION)
+            instId: 產品ID (可選)
+        """
+        endpoint = "/public/instruments"
+        params = {"instType": instType}
+        if instId:
+            params["instId"] = instId
+        return self._make_request("GET", endpoint, params=params)
+
     def get_ticker(self, instId: str) -> dict:
         """
         獲取產品行情資訊
-        
+
         Args:
             instId: 產品ID
         """
@@ -282,7 +302,7 @@ class OKXAPIConnector:
         return self._make_request("GET", endpoint)
 
     # --- 測試連接 ---
-    
+
     def test_connection(self) -> bool:
         """
         測試 API 連接

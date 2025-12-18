@@ -119,7 +119,30 @@ class AsyncBackendAnalyzer:
 
     def _extract_decision(self, symbol: str, result: Optional[Dict], market_type: str, account_balance_info: Optional[Dict] = None) -> Dict:
         """從分析結果中提取決策信息"""
-        trade_symbol = f"{symbol.upper()}-USDT"
+        # Convert symbol from Binance format (e.g. "PIUSDT") to OKX format (e.g. "PI-USDT")
+        # First remove any existing USDT/BUSD suffix and then add the correct format
+        # Handle both "PIUSDT" and "PI-USDT" formats correctly
+        upper_symbol = symbol.upper()
+
+        # Check if symbol already contains OKX format (with hyphens)
+        if '-' in upper_symbol:
+            # If it's already in OKX format like "PI-USDT", extract base symbol correctly
+            parts = upper_symbol.split('-')
+            if len(parts) >= 2 and parts[-1] in ['USDT', 'BUSD']:
+                base_symbol = parts[0]  # Take the first part (PI)
+            else:
+                base_symbol = parts[0]  # For formats like "PI-USDT-SWAP" take first part
+        elif upper_symbol.endswith('USDT'):
+            # Handle Binance format like "PIUSDT"
+            base_symbol = upper_symbol[:-4]  # Remove 'USDT' from end
+        elif upper_symbol.endswith('BUSD'):
+            # Handle BUSD format
+            base_symbol = upper_symbol[:-4]  # Remove 'BUSD' from end
+        else:
+            # Unknown format, just use as-is
+            base_symbol = upper_symbol
+
+        trade_symbol = f"{base_symbol}-USDT"
         if market_type == 'futures':
             trade_symbol += "-SWAP"
 
