@@ -1,8 +1,0 @@
-   1    # 使用非同步方式進行批次分析（更快）
-   2    python /home/danny/AI-agent/crypto_trading_system/analysis/async_backend_analyzer.py --async-batch --auto-trade --exchange okx
-   3    
-   4    # 使用原有同步方式
-   5    python async_backend_analyzer.py --batch --auto-trade --exchange okx
-
-        #背景執行
-   6    nohup python3 -u analysis/backend_analyzer.py --async-batch --exchange okx --interval 5m,15m,30m --auto-trade > trading_analysis.log 2>&1 &
