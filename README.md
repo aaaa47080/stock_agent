@@ -1,4 +1,4 @@
-[ 🇨🇳 中文版 (Chinese Version) ](README_CN.md)
+[ 🇹🇼 中文版 (Chinese Version) ](README_CN.md)
 
 # Building the Future with AI-Agents, Intelligent Data, and Scalable Infrastructure
 
