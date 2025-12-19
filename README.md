@@ -386,11 +386,15 @@ EXCHANGE_MINIMUM_ORDER_USD = 1.0  # Exchange minimum order amount
    - Regulatory news
    - Technical updates
 
-#### Risk Control
+##### Risk Control
 - **Position Management**: Dynamically adjust position size
 - **Stop-Loss**: Multiple stop-loss strategies (ATR, percentage, technical levels)
 - **Take-Profit**: Risk-reward ratio management (1:2, 1:3)
 - **Leverage Control**: Dynamically adjust based on volatility
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).
 
 ---
 
