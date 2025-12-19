@@ -22,6 +22,7 @@ from trading.okx_api_connector import OKXAPIConnector
 from core.config import (
     CRYPTO_CURRENCIES_TO_ANALYZE,
     MINIMUM_INVESTMENT_USD,
+    MAXIMUM_INVESTMENT_USD,
     EXCHANGE_MINIMUM_ORDER_USD
 )
 from trading.okx_auto_trader import execute_trades_from_decision_data
@@ -196,6 +197,12 @@ class BackendAnalyzer:
         if account_balance_info and should_trade:
             available_balance = account_balance_info.get('available_balance', 0.0)
             investment_amount = available_balance * position_size
+            
+            # Check maximum investment cap
+            if investment_amount > MAXIMUM_INVESTMENT_USD:
+                investment_amount = MAXIMUM_INVESTMENT_USD
+                reasoning += f" (投資金額已限制為上限 ${MAXIMUM_INVESTMENT_USD:.2f})"
+
             if investment_amount < EXCHANGE_MINIMUM_ORDER_USD:
                 should_trade = False
                 reasoning = f"交易決策被覆蓋：計算出的投資金額 ${investment_amount:.2f} 低於交易所最低要求 ${EXCHANGE_MINIMUM_ORDER_USD:.2f}。"

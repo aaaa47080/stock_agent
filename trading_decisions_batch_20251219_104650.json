@@ -1,0 +1,33 @@
+[
+  {
+    "symbol": "PIUSDT",
+    "analysis_timestamp": "2025-12-19T10:46:50.011789",
+    "error": "1 validation error for ResearcherDebate\nargument\n  String should have at least 100 characters [type=string_too_short, input_value=\"處理 LLM 響應時發...amed 'langchain.schema'\", input_type=str]\n    For further information visit https://errors.pydantic.dev/2.12/v/string_too_short",
+    "spot_decision": {
+      "should_trade": false,
+      "decision": "Error",
+      "action": "error",
+      "position_size": 0.0,
+      "confidence": 0.0,
+      "reasoning": "1 validation error for ResearcherDebate\nargument\n  String should have at least 100 characters [type=string_too_short, input_value=\"處理 LLM 響應時發...amed 'langchain.schema'\", input_type=str]\n    For further information visit https://errors.pydantic.dev/2.12/v/string_too_short",
+      "entry_price": null,
+      "stop_loss": null,
+      "take_profit": null,
+      "leverage": 1,
+      "additional_params": {}
+    },
+    "futures_decision": {
+      "should_trade": false,
+      "decision": "Error",
+      "action": "error",
+      "position_size": 0.0,
+      "confidence": 0.0,
+      "reasoning": "1 validation error for ResearcherDebate\nargument\n  String should have at least 100 characters [type=string_too_short, input_value=\"處理 LLM 響應時發...amed 'langchain.schema'\", input_type=str]\n    For further information visit https://errors.pydantic.dev/2.12/v/string_too_short",
+      "entry_price": null,
+      "stop_loss": null,
+      "take_profit": null,
+      "leverage": 1,
+      "additional_params": {}
+    }
+  }
+]

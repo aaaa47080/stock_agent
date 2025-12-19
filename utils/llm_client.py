@@ -6,6 +6,13 @@ import os
 from dotenv import load_dotenv
 import openai
 from typing import Dict, Any
+# 嘗試導入 LangChain 的 init_chat_model，如果未安裝則跳過或報錯
+try:
+    from langchain.chat_models import init_chat_model
+    LANGCHAIN_AVAILABLE = True
+except ImportError:
+    LANGCHAIN_AVAILABLE = False
+    print("Warning: langchain not installed. Local LLM support will be limited.")
 
 # 嘗試導入 Google Gemini，如果未安裝則跳過
 try:
@@ -20,7 +27,7 @@ load_dotenv()
 
 class GeminiWrapper:
     """Google Gemini API 包裝器，提供 OpenAI 兼容接口"""
-
+    # ... (GeminiWrapper implementation remains the same)
     def __init__(self, genai_module):
         self.genai = genai_module
         self.chat = self  # 模擬 OpenAI 的 client.chat 結構
@@ -150,6 +157,58 @@ class GeminiWrapper:
         return Response(response_text)
 
 
+class LangChainOpenAIAdapter:
+    """
+    適配器：將 LangChain ChatModel 封裝成類似 OpenAI Client 的接口
+    主要用於讓現有代碼 (client.chat.completions.create) 能無縫使用 LangChain 物件
+    """
+    def __init__(self, langchain_model):
+        self.model = langchain_model
+        self.chat = self
+        self.completions = self
+
+    def create(self, model: str = None, messages: list = None, response_format: dict = None, temperature: float = None, **kwargs):
+        """
+        模擬 OpenAI 的 create 方法
+        """
+        # 1. 轉換 messages (OpenAI dict -> LangChain Message objects)
+        # Using langchain_core.messages as langchain.schema is deprecated/moved
+        from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
+        lc_messages = []
+        for msg in messages:
+            role = msg.get("role")
+            content = msg.get("content")
+            if role == "system":
+                lc_messages.append(SystemMessage(content=content))
+            elif role == "user":
+                lc_messages.append(HumanMessage(content=content))
+            elif role == "assistant":
+                lc_messages.append(AIMessage(content=content))
+            else:
+                lc_messages.append(HumanMessage(content=content)) # Fallback
+
+        # 2. 執行 Invoke
+        # 注意：temperature 等參數在 init_chat_model 時已經設定，這裡如果要覆蓋需要 bind
+        # 但為了簡單起見，這裡直接 invoke，忽略運行時的超參數覆蓋 (除非使用 bind)
+        try:
+            response = self.model.invoke(lc_messages)
+            content = response.content
+        except Exception as e:
+            print(f"LangChain invoke error: {e}")
+            raise e
+
+        # 3. 封裝回 OpenAI 格式的回傳
+        class Choice:
+            def __init__(self, content):
+                self.message = type('obj', (object,), {'content': content})()
+
+        class Response:
+            def __init__(self, content):
+                self.choices = [Choice(content)]
+        
+        return Response(content)
+
+
 class LLMClientFactory:
     """LLM 客戶端工廠，支持多種 LLM 提供商"""
 
@@ -159,11 +218,11 @@ class LLMClientFactory:
         創建 LLM 客戶端
 
         Args:
-            provider: 提供商 ("openai" 或 "openrouter")
+            provider: 提供商 ("openai", "openrouter", "google_gemini", "local")
             model: 模型名稱（用於記錄）
 
         Returns:
-            配置好的 OpenAI 客戶端
+            配置好的 OpenAI 客戶端 (或 LangChain 適配器)
         """
         if provider.lower() == "openai":
             return LLMClientFactory._create_openai_client()
@@ -171,6 +230,8 @@ class LLMClientFactory:
             return LLMClientFactory._create_openrouter_client()
         elif provider.lower() == "google_gemini":
             return LLMClientFactory._create_google_gemini_client()
+        elif provider.lower() == "local":
+            return LLMClientFactory._create_local_langchain_client(model)
         else:
             raise ValueError(f"不支持的 LLM 提供商: {provider}")
 
@@ -210,6 +271,42 @@ class LLMClientFactory:
         return GeminiWrapper(genai)
 
     @staticmethod
+    def _create_local_langchain_client(model_name: str):
+        """創建本地 LangChain 客戶端，並封裝為 OpenAI 兼容接口"""
+        if not LANGCHAIN_AVAILABLE:
+            raise ImportError("LangChain is required for local model support. Please install it.")
+
+        try:
+            from core.config import LOCAL_LLM_CONFIG
+        except ImportError:
+            # Fallback default if config not found
+            LOCAL_LLM_CONFIG = {
+                "base_url": "http://localhost:8000/v1",
+                "api_key": "not-needed",
+                "temperature": 0.1,
+                "seed": 42
+            }
+
+        base_url = LOCAL_LLM_CONFIG.get("base_url", "http://localhost:8000/v1")
+        api_key = LOCAL_LLM_CONFIG.get("api_key", "not-needed")
+        temperature = LOCAL_LLM_CONFIG.get("temperature", 0.1)
+        seed = LOCAL_LLM_CONFIG.get("seed", 42)
+
+        # 這裡 model_provider 設為 "openai" 是因為 vLLM/Ollama 通常提供 OpenAI 兼容的 API
+        llm = init_chat_model(
+            model=model_name or "local-model",
+            model_provider="openai",
+            base_url=base_url,
+            api_key=api_key,
+            temperature=temperature,
+            max_retries=2,
+            model_kwargs={"seed": seed}
+        )
+        
+        # 返回適配器，讓現有代碼 (client.chat.completions.create) 可以繼續工作
+        return LangChainOpenAIAdapter(llm)
+
+    @staticmethod
     def get_model_info(config: Dict[str, str]) -> str:
         """
         獲取模型信息字符串
@@ -227,6 +324,8 @@ class LLMClientFactory:
             return f"{model} (via OpenRouter)"
         elif provider == "google_gemini":
             return f"{model} (Google Gemini Official)"
+        elif provider == "local":
+            return f"{model} (Local LangChain)"
         else:
             return f"{model} (OpenAI)"
 

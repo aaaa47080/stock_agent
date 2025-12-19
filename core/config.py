@@ -53,19 +53,21 @@ TRADER_MODEL = {
 # === 多頭委員會 ===
 # 多個模型都給出多頭觀點，然後綜合
 BULL_COMMITTEE_MODELS = [
-    {"provider": "openai", "model": "gpt-4.1-mini"},  
-    {"provider": "openai", "model": "gpt-5-mini"},                        # GPT-4o mini
+    # {"provider": "openai", "model": "gpt-4.1-mini"},  
+    # {"provider": "openai", "model": "gpt-5-mini"},                        # GPT-4o mini
     #{"provider": "google_gemini", "model": "gemini-3-flash-preview"},              # Gemini 2.5 Flash (最新穩定版)
     # {"provider": "openrouter", "model": "qwen/qwen3-235b-a22b:free"},        # Qwen 免費版
+    {"provider": "local", "model": "/home/danny/AI-agent/Qwen3_4B_2507"},         # 本地模型 (vLLM/Ollama)
 ]
 
 # === 空頭委員會 ===
 # 多個模型都給出空頭觀點，然後綜合
 BEAR_COMMITTEE_MODELS = [
-    {"provider": "openai", "model": "gpt-4.1-mini"},  
-    {"provider": "openai", "model": "gpt-5-mini"},                           # GPT-4o mini
+    # {"provider": "openai", "model": "gpt-4.1-mini"},  
+    # {"provider": "openai", "model": "gpt-5-mini"},                           # GPT-4o mini
     #{"provider": "google_gemini", "model": "gemini-3-flash-preview"},              # Gemini 2.5 Flash (最新穩定版)
     # {"provider": "openrouter", "model": "qwen/qwen3-235b-a22b:free"},        # Qwen 免費版
+    {"provider": "local", "model": "/home/danny/AI-agent/Qwen3_4B_2507"},    # 本地模型 (vLLM/Ollama)
 ]
 
 # === 綜合模型 ===
@@ -82,6 +84,15 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 # === Google Gemini 配置 ===
 # Google Gemini API 設定（如果使用官方 Gemini API）
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
+
+# === 本地/落地模型配置 (Local LLM) ===
+# 用於連接 vLLM, Ollama, LM Studio 等本地推理服務
+LOCAL_LLM_CONFIG = {
+    "base_url": "http://0.0.0.0:8080/v1",  # 本地 API 地址
+    "api_key": "not-needed",               # 本地模型通常不需要 API Key
+    "temperature": 0.1,                    # 預設溫度
+    "seed": 42                             # 固定隨機種子 (可選)
+}
 
 # OpenRouter 熱門模型推薦
 OPENROUTER_MODELS = {
@@ -133,6 +144,10 @@ GOOGLE_GEMINI_MODELS = {
 # BULL: qwen/qwen-2.5-72b-instruct
 # BEAR: meta-llama/llama-3.1-70b-instruct
 
+# 組合5: 本地模型 (vLLM/Ollama)
+# BULL: {"provider": "local", "model": "meta-llama/Llama-3-8b-chat-hf"}
+# BEAR: {"provider": "local", "model": "mistralai/Mistral-7B-Instruct-v0.2"}
+
 
 # === 介面與應用程式配置 ===
 
@@ -160,7 +175,8 @@ SCREENER_DEFAULT_LIMIT = 30
 SCREENER_DEFAULT_INTERVAL = "1d"
 
 # === 交易限制配置 ===
-MINIMUM_INVESTMENT_USD = 20  # 最低投資金額 (USDT)
+MINIMUM_INVESTMENT_USD = 20.0  # 最低投資金額 (USDT)
+MAXIMUM_INVESTMENT_USD = 50.0  # 最高投資金額 (USDT)
 EXCHANGE_MINIMUM_ORDER_USD = 1.0  # 交易所最低下單金額 (USDT)
 
 # === 交易類型選擇 ===
@@ -172,7 +188,7 @@ ENABLE_FUTURES_TRADING = True   # 是否執行合約交易
 # === 加密貨幣分析配置 ===
 # 預設要分析的加密貨幣列表。
 # 用戶可以在此處修改此列表，以選擇要分析的加密貨幣。
-CRYPTO_CURRENCIES_TO_ANALYZE = ["KGENUSDT"]
+CRYPTO_CURRENCIES_TO_ANALYZE = ["PIUSDT"]
 
 # === OKX API 配置 ===
 # 從 .env 檔案或環境變數讀取 OKX API 資訊
