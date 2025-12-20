@@ -87,10 +87,10 @@ class OKXAPIConnector:
 
         # Debug: Show the exact message being signed
         message_to_sign = timestamp + method.upper() + request_path + body
-        print(f"[DEBUG] 消息內容 (簽名): {message_to_sign}")
+        # print(f"[DEBUG] 消息內容 (簽名): {message_to_sign}")
 
         signature = self._generate_signature(timestamp, method, request_path, body)
-        print(f"[DEBUG] 簽名結果: {signature}")
+        # print(f"[DEBUG] 簽名結果: {signature}")
 
         headers.update({
             "OK-ACCESS-KEY": self.api_key,
@@ -100,10 +100,10 @@ class OKXAPIConnector:
         })
 
         # Debug: Print headers to check
-        print(f"[DEBUG] API 請求: {method} {endpoint}")
-        print(f"[DEBUG] 請求路徑 (用於簽名): {request_path}")
-        print(f"[DEBUG] 請求體: {body}")
-        print(f"[DEBUG] Headers: {dict(headers)}")
+        # print(f"[DEBUG] API 請求: {method} {endpoint}")
+        # print(f"[DEBUG] 請求路徑 (用於簽名): {request_path}")
+        # print(f"[DEBUG] 請求體: {body}")
+        # print(f"[DEBUG] Headers: {dict(headers)}")
 
         try:
             if method.upper() == 'GET':
@@ -117,9 +117,9 @@ class OKXAPIConnector:
             else:
                 return {"code": "000000", "msg": "不支援的 HTTP 方法", "data": []}
 
-            print(f"[DEBUG] API 回應: {response.status_code}")
+            # print(f"[DEBUG] API 回應: {response.status_code}")
             result = response.json()
-            print(f"[DEBUG] API 回應內容: {result}")
+            # print(f"[DEBUG] API 回應內容: {result}")
             return result
 
         except requests.exceptions.RequestException as e:
@@ -235,14 +235,23 @@ class OKXAPIConnector:
         if ordType == "limit" and px:
             data["px"] = str(px)
 
-        # 添加止损止盈参数
-        if slTriggerPx:
-            data["slTriggerPx"] = str(slTriggerPx)
-            data["slOrdPx"] = str(slOrdPx) if slOrdPx else "-1"  # -1 表示市价止损
+        # 添加止損止盈參數 (使用最新的 attachAlgoOrds 格式以修正錯誤 54070)
+        attach_algo_ords = []
+        algo_ord = {}
 
         if tpTriggerPx:
-            data["tpTriggerPx"] = str(tpTriggerPx)
-            data["tpOrdPx"] = str(tpOrdPx) if tpOrdPx else "-1"  # -1 表示市价止盈
+            algo_ord["tpTriggerPx"] = str(tpTriggerPx)
+            algo_ord["tpOrdPx"] = str(tpOrdPx) if tpOrdPx else "-1"
+            algo_ord["tpTriggerPxType"] = "last"
+        
+        if slTriggerPx:
+            algo_ord["slTriggerPx"] = str(slTriggerPx)
+            algo_ord["slOrdPx"] = str(slOrdPx) if slOrdPx else "-1"
+            algo_ord["slTriggerPxType"] = "last"
+
+        if algo_ord:
+            attach_algo_ords.append(algo_ord)
+            data["attachAlgoOrds"] = attach_algo_ords
 
         return self._make_request("POST", endpoint, data=data)
 
@@ -324,7 +333,7 @@ class OKXAPIConnector:
         """
         # 先測試比較基本的帳戶餘額接口
         result = self.get_account_balance("USDT")
-        print(f"[DEBUG] 帳戶餘額API返回: {result}")
+        # print(f"[DEBUG] 帳戶餘額API返回: {result}")
         return result.get("code") == "0"
 
 def test_okx_api():
