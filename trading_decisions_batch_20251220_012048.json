@@ -1,0 +1,91 @@
+[
+  {
+    "symbol": "PIUSDT",
+    "analysis_timestamp": "2025-12-20T01:20:47.862765",
+    "exchange": "OKX",
+    "current_price": 0.207,
+    "spot_decision": {
+      "should_trade": false,
+      "decision": "Hold",
+      "action": "hold",
+      "symbol_for_trade": "PI-USDT",
+      "position_size_percentage": 0.0,
+      "investment_amount_usdt": 0.0,
+      "confidence": 0.0,
+      "reasoning": "No analysis result available",
+      "entry_price": null,
+      "stop_loss": null,
+      "take_profit": null,
+      "leverage": 1,
+      "risk_level": "未知",
+      "market_type": "spot",
+      "additional_params": {}
+    },
+    "futures_decision": {
+      "should_trade": false,
+      "decision": "觀望",
+      "action": "hold",
+      "symbol_for_trade": "PI-USDT-SWAP",
+      "position_size_percentage": 0.0,
+      "investment_amount_usdt": 0.0,
+      "confidence": 85.0,
+      "reasoning": "經審核後發現風險管理員已批准且倉位調整幅度為0%，但多週期趨勢僅為部分一致且信心分數65分，未達到高度一致標準，因此維持觀望決策最為合理。此結論兼顧風險控制與多週期分析，等待更明確趨勢再行建倉。",
+      "entry_price": 0.0,
+      "stop_loss": 0.0,
+      "take_profit": 0.0,
+      "leverage": 10,
+      "risk_level": "低風險",
+      "market_type": "futures",
+      "additional_params": {
+        "risk_info": {
+          "risk_level": "低風險",
+          "warnings": [
+            "建議持續關注市場動態",
+            "如市場出現明確信號可重新評估"
+          ],
+          "adjustments": "無需調整，維持觀望狀態即可。"
+        },
+        "tech_indicators": {},
+        "market_structure": {},
+        "price_info": {},
+        "bull_argument": {
+          "confidence": 60.0,
+          "argument": "儘管空頭強調24小時內僅有2.23%的上漲幅度以及交易量的下降，但環顧整體市場，我們發現市場的多週期技術指標一致顯示出中長期的上漲趨勢。RSI和MACD等技術指標支持市場動量的健康發展，也反映了市場參與者對中長期潛力的信心。此外，情緒和基本面分析皆顯示出市場的上升動能。確實，近期交易量減少可能被視為市場缺乏強推動力的象徵。然而，我們確認這一點後，仍要強調市場還在等待新的催化劑並不是趨勢改變的指標，只要市場基本面依然增強，未來的催化劑將可能提供足夠的動能助推價格。並且，市場情緒和基本面上升的趨勢，也依然支持上漲的觀點。",
+          "key_points": [
+            "技術指標（RSI和MACD）中長期表現出上漲信號",
+            "市場情緒偏向上漲，表明市場信心增強",
+            "基本面顯示成熟市場結構和穩定上漲動能"
+          ]
+        },
+        "bear_argument": {
+          "confidence": 65.0,
+          "argument": "在綜合決策與風險的維度下，我們必須正視短期流動性枯竭及市場多空分歧加劇的隱憂。儘管中長週期的RSI與MACD確實偏多，並且情緒與基本面都顯示一定的上漲動能，但交易量的持續萎縮卻呈現市場參與意願下降的風險信號。更何況，波動率在中長期回升，意味著每次反彈都有可能遭遇劇烈拋壓，讓收益前景充滿不確定性。此外，地緣政治、通膨與央行政策的不確定因素仍在左右多空分歧，極易在無明確催化劑的狀態下演變為區間震盪而非趨勢突破。我們承認對手提出的中長期技術指標看漲信號最為合理，但這並不代表市場風險已被充分消化，反而提醒我們應重視資金流動性與波動風險，因為在決策與風險管理的天秤上，潛在的下行風險遠大於可獲取的多頭收益。",
+          "key_points": [
+            "短週期技術指標顯示下跌節奏加劇",
+            "交易量持續減少，市場流動性風險上升",
+            "中長期波動率回升，隱含價格劇烈震盪",
+            "宏觀與地緣政治不確定性仍高",
+            "資金費率偏中性，未給予明顯多頭優勢"
+          ]
+        },
+        "debate_judgment": {
+          "winning_stance": "Neutral",
+          "judge_rationale": "多頭陣營邏輯鏈條完整，強調中長期技術指標與基本面動能，但對RSI與MACD實際數值解讀過於樂觀，且未提供交易量具體數據，降低了論點的說服力。空頭觀點對流動性枯竭和波動風險有敏銳警覺，但同樣缺乏具體交易量與波動率上下文佐證，且讓步中長期多頭信號後仍未充分平衡利空與利多，論據有所遺漏。中立派則全面攬括多空矛盾，並提出區間操作策略，既未偏頗也不忽視黑天鵝風險，數據準確性與風險意識兼備，故得分最高。",
+          "key_takeaway": "當前市場同時存在中長期技術指標偏多、基本面支撐與短期交易量萎縮、地緣政治或政策不確定因素，最有可能呈現區間盤整格局。"
+        },
+        "funding_rate_info": {
+          "current_funding_rate": 1.958495792e-06,
+          "next_funding_rate": 0.0,
+          "funding_time": "1766174400000",
+          "next_funding_time": "1766188800000"
+        },
+        "news_info": {}
+      }
+    },
+    "account_balance": {
+      "total_balance": 568.5718237644553,
+      "available_balance": 518.5813237644553,
+      "currency": "USDT"
+    }
+  }
+]

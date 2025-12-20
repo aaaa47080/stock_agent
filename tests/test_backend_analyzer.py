@@ -9,13 +9,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import json
 from datetime import datetime
-from analysis.backend_analyzer import BackendAnalyzer, run_backend_analysis, run_batch_backend_analysis
+from analysis.async_backend_analyzer import AsyncBackendAnalyzer, run_backend_analysis, run_sync_batch_backend_analysis
 
 def test_single_symbol_analysis():
     """測試單一幣種分析功能"""
     print(">> 測試單一幣種分析功能")
 
-    analyzer = BackendAnalyzer()
+    analyzer = AsyncBackendAnalyzer()
 
     try:
         # 測試一個較為常用的幣種，避免可能無法獲取的幣種
@@ -65,7 +65,7 @@ def test_batch_analysis():
         # 使用常見的幾個幣種進行測試
         symbols = ["BTCUSDT", "ETHUSDT"]  # 只用2個幣種來加快測試
 
-        results = run_batch_backend_analysis(
+        results = run_sync_batch_backend_analysis(
             symbols=symbols,
             exchange="binance",
             interval="1h",

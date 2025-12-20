@@ -4,13 +4,13 @@
 import json
 import os
 from datetime import datetime
-from analysis.backend_analyzer import BackendAnalyzer
+from analysis.async_backend_analyzer import AsyncBackendAnalyzer
 
 def validate_backend_json_output():
     """驗證後台分析系統的 JSON 輸出功能"""
     print("🔍 驗證後台分析 JSON 輸出功能...")
     
-    analyzer = BackendAnalyzer()
+    analyzer = AsyncBackendAnalyzer()
     
     # 執行分析
     result = analyzer.analyze_symbol("BTCUSDT", exchange="binance", interval="1h", limit=30)
@@ -29,7 +29,7 @@ def validate_backend_json_output():
     for market_type in ['spot_decision', 'futures_decision']:
         decision = result[market_type]
         decision_required_keys = [
-            'should_trade', 'decision', 'action', 'position_size', 
+            'should_trade', 'decision', 'action', 'position_size_percentage', 
             'confidence', 'reasoning', 'entry_price', 'stop_loss', 
             'take_profit', 'leverage', 'risk_level', 'market_type',
             'additional_params'

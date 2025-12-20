@@ -27,15 +27,23 @@ class AnalystReport(BaseModel):
 
 class ResearcherDebate(BaseModel):
     """研究員辯論結構"""
-    researcher_stance: Literal['Bull', 'Bear']
+    researcher_stance: Literal['Bull', 'Bear', 'Neutral'] # Added Neutral
     argument: str = Field(..., min_length=100)
     key_points: List[str]
     counter_arguments: List[str] = []
+    concession_point: Optional[str] = Field(None, description="對方最有道理的觀點 (讓步點)")
     confidence: float = Field(..., ge=0, le=100)
     round_number: int = 1  # 當前是第幾輪辯論
     opponent_view: Optional[str] = None  # 對手在上一輪的觀點（用於回應）
     # 添加多週期分析支持
     multi_timeframe_analysis: Optional[MultiTimeframeData] = None
+
+class FactCheckResult(BaseModel):
+    """數據檢察官驗證結果"""
+    is_accurate: bool
+    corrections: List[str] = []
+    confidence_score: float = Field(..., ge=0, le=100)
+    comment: str
 
 
 class TraderDecision(BaseModel):
@@ -74,3 +82,13 @@ class FinalApproval(BaseModel):
     rationale: str  # ✅ 正確：是 rationale，不是 reasoning
     # 添加多週期分析支持
     multi_timeframe_analysis: Optional[MultiTimeframeData] = None
+
+
+class DebateJudgment(BaseModel):
+    """綜合交易委員會 (裁判) 的裁決結構"""
+    bull_score: float = Field(..., ge=0, le=100, description="對多頭論點的公信力評分")
+    bear_score: float = Field(..., ge=0, le=100, description="對空頭論點的公信力評分")
+    neutral_score: float = Field(..., ge=0, le=100, description="對中立論點的公信力評分")
+    judge_rationale: str = Field(..., min_length=100, description="裁決理由與各方表現評價")
+    key_takeaway: str = Field(..., description="裁判總結的最核心市場事實")
+    winning_stance: Literal['Bull', 'Bear', 'Neutral', 'Tie'] = Field(..., description="哪一方在辯論中更具說服力")

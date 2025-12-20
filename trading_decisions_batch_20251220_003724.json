@@ -1,0 +1,88 @@
+[
+  {
+    "symbol": "PIUSDT",
+    "analysis_timestamp": "2025-12-20T00:37:23.956537",
+    "exchange": "OKX",
+    "current_price": 0.2076,
+    "spot_decision": {
+      "should_trade": false,
+      "decision": "Hold",
+      "action": "hold",
+      "symbol_for_trade": "PI-USDT",
+      "position_size_percentage": 0.0,
+      "investment_amount_usdt": 0.0,
+      "confidence": 0.0,
+      "reasoning": "No analysis result available",
+      "entry_price": null,
+      "stop_loss": null,
+      "take_profit": null,
+      "leverage": 1,
+      "risk_level": "未知",
+      "market_type": "spot",
+      "additional_params": {}
+    },
+    "futures_decision": {
+      "should_trade": false,
+      "decision": "觀望",
+      "action": "hold",
+      "symbol_for_trade": "PI-USDT-SWAP",
+      "position_size_percentage": 0.0,
+      "investment_amount_usdt": 0.0,
+      "confidence": 50.0,
+      "reasoning": "經風險管理員批准且倉位調整幅度為0%，但多週期趨勢僅呈部分一致、信心分數65%，技術面與基本面缺乏明確方向信號，故最終決定維持觀望，暫不進行任何新倉位布局。",
+      "entry_price": 0.21,
+      "stop_loss": 0.0,
+      "take_profit": 0.0,
+      "leverage": 10,
+      "risk_level": "低風險",
+      "market_type": "futures",
+      "additional_params": {
+        "risk_info": {
+          "risk_level": "低風險",
+          "warnings": [
+            "建議持續關注市場動態",
+            "如市場出現明確信號可重新評估"
+          ],
+          "adjustments": "無需調整，維持觀望狀態即可。"
+        },
+        "tech_indicators": {},
+        "market_structure": {},
+        "price_info": {},
+        "bull_argument": {
+          "confidence": 78.0,
+          "argument": "在綜合決策與風險的分析中，值得讓步的是Bear研究員指出的鎖倉機制可能釋放供應壓力，這在某程度確實可能影響短期的價格。然而，從總體市場表現來看，PI的流通性已達65%，意味著市場已對其基本面表現出相當的信心。同時，技術分析師與情緒分析師的觀點都顯示出短期與中期的上行動力，表明市場看多的潛力依然強勁。此外，成交量高的情況下，較高的市場參與度往往能帶動進一步的價格走高。而基本面分析師提到的結構強度也偏向上漲，加上新聞分析所指的市場對PI的正面情緒，構成短期支撐的有力理由。",
+          "key_points": [
+            "市場流通性已達65%，顯示出強勁的基本面信心。",
+            "短期和中期上漲趨勢明顯，技術指標支持價格上行。",
+            "市場情緒和活躍度高，成交量保持上升，有利於進一步上漲。",
+            "儘管存在供應壓力，近期的流動性顯示出市場對PI的信任不斷加強。"
+          ]
+        },
+        "bear_argument": {
+          "confidence": 82.0,
+          "argument": "我承認在短期與中期內，技術分析師與情緒分析師所指出的成交量活躍與上漲動能確實為市場提供了一定的短線支撐。然而，在綜合決策與風險維度上，我們不能僅憑短中期趨勢就高估中長期收益潛力。首先，長週期仍處於明顯下跌趨勢，且宏觀環境（包括全球利率政策與地緣政治風險）未見明顯好轉，隨時可能引爆新一輪拋售。其次，RSI 與 MACD 指標均接近中性，顯示當前多空動能均衡，一旦市場參與者情緒轉弱，便可能迅速下跌。此外，市場對65%流通率的樂觀預期早已反映在價格中，缺乏進一步催化劑。綜合而言，潛在風險（長期趨勢逆轉、宏觀黑天鵝、流動性釋放壓力）遠大於短期收益，投資者需更謹慎地控制風險敞口。",
+          "key_points": [
+            "長週期明顯下跌趨勢未改，限定了上行空間",
+            "全球政策利率與地緣政治風險依舊高壓",
+            "RSI、MACD 指標動能不足，易引發反轉",
+            "65% 流通率利多已被價格充分消化",
+            "高成交量伴隨高波動，不代表持續上漲",
+            "未來潛在供應釋放壓力及黑天鵝風險"
+          ]
+        },
+        "funding_rate_info": {
+          "current_funding_rate": 2.92033237556e-05,
+          "next_funding_rate": 0.0,
+          "funding_time": "1766174400000",
+          "next_funding_time": "1766188800000"
+        },
+        "news_info": {}
+      }
+    },
+    "account_balance": {
+      "total_balance": 569.0631555144553,
+      "available_balance": 569.0631555144553,
+      "currency": "USDT"
+    }
+  }
+]

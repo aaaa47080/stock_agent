@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import json
 import openai
 from typing import Literal, List, Dict, Optional
-from core.models import AnalystReport, ResearcherDebate, TraderDecision, RiskAssessment, FinalApproval
+from core.models import AnalystReport, ResearcherDebate, TraderDecision, RiskAssessment, FinalApproval, FactCheckResult, FactCheckResult
 from core.config import FAST_THINKING_MODEL, DEEP_THINKING_MODEL
 from utils.llm_client import supports_json_mode, extract_json_from_response
 from utils.retry_utils import retry_on_failure
@@ -382,156 +382,50 @@ class BullResearcher:
         self.stance = "Bull"
         print(f"  >> 多頭研究員使用模型: {self.model}")
 
-    def debate(self, analyst_reports: List[AnalystReport], opponent_argument: Optional[ResearcherDebate] = None, round_number: int = 1) -> ResearcherDebate:
-        """基於分析師報告提出看漲論點，並回應空頭觀點"""
+    def debate(self, analyst_reports: List[AnalystReport], opponent_arguments: List[ResearcherDebate] = [], round_number: int = 1, topic: str = "綜合") -> ResearcherDebate:
+        """基於分析師報告提出看漲論點，並回應其他研究員觀點"""
 
-        all_bullish = []
-        all_bearish = []
-        multi_timeframe_info = []
-
-        for report in analyst_reports:
-            all_bullish.extend(report.bullish_points)
-            all_bearish.extend(report.bearish_points)
-            # 收集多週期分析信息
-            if report.multi_timeframe_analysis:
-                multi_timeframe_info.append({
-                    "analyst_type": report.analyst_type,
-                    "multi_timeframe_analysis": {
-                        "short_term": report.multi_timeframe_analysis.short_term,
-                        "medium_term": report.multi_timeframe_analysis.medium_term,
-                        "long_term": report.multi_timeframe_analysis.long_term,
-                        "overall_trend": report.multi_timeframe_analysis.overall_trend
-                    }
-                })
-
-        # 構建對手觀點部分
-        opponent_section = ""
-        if opponent_argument:
-            opponent_section = f"""
-=== 空頭研究員的論點（第{opponent_argument.round_number}輪）===
-論點：{opponent_argument.argument}
-關鍵點：{json.dumps(opponent_argument.key_points, ensure_ascii=False)}
-對你的反駁：{json.dumps(opponent_argument.counter_arguments, ensure_ascii=False)}
-信心度：{opponent_argument.confidence}%
-
-**重要**：你現在需要針對空頭的論點進行有針對性的回應和反駁。
-"""
-
-        multi_timeframe_context = ""
-        if multi_timeframe_info:
-            multi_timeframe_context = f"""
-多週期分析一致性：
-{json.dumps(multi_timeframe_info, indent=2, ensure_ascii=False, cls=DataFrameEncoder)}
-
-請特別注意：
-1. 不同時間週期趨勢的一致性
-2. 短期、中期、長期的看漲因素是否存在共識
-3. 趨勢強度在不同週期的差異
-4. 識別關鍵時間週期的看漲信號強度
-"""
-        else:
-            multi_timeframe_context = "當前為單一週期分析，無多週期一致性數據。"
+        # 收集對手觀點
+        opponents_section = ""
+        if opponent_arguments:
+            opponents_section = "=== 對手的論點 ===\n"
+            for arg in opponent_arguments:
+                opponents_section += f"[{arg.researcher_stance} 研究員]: {arg.argument}\n信心度: {arg.confidence}%\n---\n"
 
         prompt = f"""
-你是一位專業的多週期多頭研究員，你的任務是在考慮不同時間框架一致性的情況下尋找和強化看漲論點。
-當前是第 {round_number} 輪辯論。
+你是一位專業的多週期多頭研究員。當前進行的是第 {round_number} 輪辯論，重點辯論主題為：【{topic}】。
 
 分析師報告摘要：
 {json.dumps([{"分析師": r.analyst_type, "摘要": r.summary} for r in analyst_reports], indent=2, ensure_ascii=False)}
 
-所有看漲因素：
-{json.dumps(all_bullish, indent=2, ensure_ascii=False)}
-
-所有看跌因素：
-{json.dumps(all_bearish, indent=2, ensure_ascii=False)}
-
-{multi_timeframe_context}
-
-{opponent_section}
+{opponents_section}
 
 你的任務：
-1. {'如果這是第一輪，綜合看漲論點並強化' if round_number == 1 else '針對空頭的反駁進行回應，強化你的看漲論點'}
-2. 解釋為什麼看漲因素更重要，特別是考慮多週期一致性
-3. {'反駁看跌論點' if round_number == 1 else '具體反駁空頭研究員的關鍵點'}
-4. 提供具體的買入理由，結合多週期分析
+1. 針對當前主題【{topic}】強化看漲論點。
+2. **讓步機制**：在對手提出的觀點中，找出一個你認為最合理、最具威脅性的數據或邏輯，並公開承認它。
+3. **針對性反駁**：具體指出空頭或中立派在【{topic}】方面的邏輯漏洞或數據誤讀。
+4. 解釋為什麼儘管存在上述風險，看漲因素在【{topic}】維度上依然佔據主導地位。
 
-請以 JSON 格式回覆，嚴格遵守數據類型：
+請以 JSON 格式回覆：
 - researcher_stance: "Bull"
-- argument: 多頭論點 (繁體中文，至少100字)
-- key_points: 關鍵看漲點列表 (必須是字串 List ["點1", "點2"])
-- counter_arguments: 對空頭論點的反駁列表 (必須是字串 List ["反駁1", "反駁2"]，絕對不要使用 Key-Value 物件或字典)
-- confidence: 信心度 (0-100 的數字)
+- argument: 多頭論點 (繁體中文，至少100字，需包含讓步與反駁)
+- key_points: 關鍵看漲點列表 (List[str])
+- concession_point: 承認對手最有道理的觀點 (字串)
+- counter_arguments: 對對手論點的反駁列表 (List[str])
+- confidence: 信心度 (0-100)
 - round_number: {round_number}
-- opponent_view: {f'"{opponent_argument.argument[:200]}..."' if opponent_argument else 'null'}
+- opponent_view: "Addressing all current opponents"
 """
-
-        # 根據模型是否支持 JSON 模式來決定是否使用 response_format
         try:
             if supports_json_mode(self.model):
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[{"role": "user", "content": prompt}],
-                    response_format={"type": "json_object"}
-                )
-                # 支持 JSON 模式的模型，直接解析
+                response = self.client.chat.completions.create(model=self.model, messages=[{"role": "user", "content": prompt}], response_format={"type": "json_object"})
                 result_dict = json.loads(response.choices[0].message.content)
             else:
-                # 對於不支持 JSON 模式的模型，仍然在 prompt 中要求 JSON，但不使用 response_format
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[{"role": "user", "content": prompt}]
-                )
-                # 使用提取函數從響應中提取 JSON
+                response = self.client.chat.completions.create(model=self.model, messages=[{"role": "user", "content": prompt}])
                 result_dict = extract_json_from_response(response.choices[0].message.content)
-
-            if "error" in result_dict:
-                print(f"       ⚠️ LLM 返回錯誤訊息而非預期結構: {result_dict.get('error', '未知錯誤')}")
-                # 構造一個默認的 ResearcherDebate 物件來避免崩潰
-                error_msg = f"LLM 回傳錯誤訊息: {result_dict.get('error', '未知錯誤')}"
-                while len(error_msg) < 100:
-                    error_msg += " ... (填充文字以滿足最小長度限制) ..."
-                
-                return ResearcherDebate(
-                    researcher_stance=self.stance,
-                    argument=error_msg,
-                    key_points=["LLM 拒絕回答或未能生成有效內容"],
-                    counter_arguments=["未能獲取到有效的對手反駁"],
-                    confidence=0.0, # 信心度設為0
-                    round_number=round_number,
-                    opponent_view=opponent_argument.argument[:200] if opponent_argument else None
-                )
             return ResearcherDebate.model_validate(result_dict)
         except Exception as e:
-            print(f"       >> 失敗: {e}")
-            # 如果是 Pydantic 驗證錯誤，將其轉換為 ResearcherDebate 物件
-            if isinstance(e, ValueError) and "Field required" in str(e):
-                error_msg = f"Pydantic 驗證失敗: {e}"
-                while len(error_msg) < 100:
-                    error_msg += " ... (填充文字以滿足最小長度限制) ..."
-                
-                return ResearcherDebate(
-                    researcher_stance=self.stance,
-                    argument=error_msg,
-                    key_points=["LLM 回傳的結構不符合預期"],
-                    counter_arguments=["未能獲取到有效的對手反駁"],
-                    confidence=0.0,
-                    round_number=round_number,
-                    opponent_view=opponent_argument.argument[:200] if opponent_argument else None
-                )
-            # 對於其他未知錯誤，也返回一個默認響應
-            error_msg = f"處理 LLM 響應時發生未知錯誤: {e}"
-            while len(error_msg) < 100:
-                error_msg += " ... (填充文字以滿足最小長度限制) ..."
-            
-            return ResearcherDebate(
-                researcher_stance=self.stance,
-                argument=error_msg,
-                key_points=["未能處理 LLM 響應"],
-                counter_arguments=["未能獲取到有效的對手反駁"],
-                confidence=0.0,
-                round_number=round_number,
-                opponent_view=opponent_argument.argument[:200] if opponent_argument else None
-            )
+            return ResearcherDebate(researcher_stance="Bull", argument=f"分析出錯: {str(e)}", key_points=[], confidence=0, round_number=round_number)
 
 class BearResearcher:
     """空頭研究員 Agent"""
@@ -542,156 +436,97 @@ class BearResearcher:
         self.stance = "Bear"
         print(f"  >> 空頭研究員使用模型: {self.model}")
 
-    def debate(self, analyst_reports: List[AnalystReport], opponent_argument: Optional[ResearcherDebate] = None, round_number: int = 1) -> ResearcherDebate:
-        """基於分析師報告提出看跌論點，並回應多頭觀點"""
+    def debate(self, analyst_reports: List[AnalystReport], opponent_arguments: List[ResearcherDebate] = [], round_number: int = 1, topic: str = "綜合") -> ResearcherDebate:
+        """基於分析師報告提出看跌論點，並回應其他研究員觀點"""
 
-        all_bullish = []
-        all_bearish = []
-        multi_timeframe_info = []
-
-        for report in analyst_reports:
-            all_bullish.extend(report.bullish_points)
-            all_bearish.extend(report.bearish_points)
-            # 收集多週期分析信息
-            if report.multi_timeframe_analysis:
-                multi_timeframe_info.append({
-                    "analyst_type": report.analyst_type,
-                    "multi_timeframe_analysis": {
-                        "short_term": report.multi_timeframe_analysis.short_term,
-                        "medium_term": report.multi_timeframe_analysis.medium_term,
-                        "long_term": report.multi_timeframe_analysis.long_term,
-                        "overall_trend": report.multi_timeframe_analysis.overall_trend
-                    }
-                })
-
-        # 構建對手觀點部分
-        opponent_section = ""
-        if opponent_argument:
-            opponent_section = f"""
-=== 多頭研究員的論點（第{opponent_argument.round_number}輪）===
-論點：{opponent_argument.argument}
-關鍵點：{json.dumps(opponent_argument.key_points, ensure_ascii=False)}
-對你的反駁：{json.dumps(opponent_argument.counter_arguments, ensure_ascii=False)}
-信心度：{opponent_argument.confidence}%
-
-**重要**：你現在需要針對多頭的論點進行有針對性的回應和反駁。
-"""
-
-        multi_timeframe_context = ""
-        if multi_timeframe_info:
-            multi_timeframe_context = f"""
-多週期分析一致性：
-{json.dumps(multi_timeframe_info, indent=2, ensure_ascii=False, cls=DataFrameEncoder)}
-
-請特別注意：
-1. 不同時間週期趨勢的一致性
-2. 短期、中期、長期的看跌因素是否存在共識
-3. 風險在不同時間週期的強度差異
-4. 識別關鍵時間週期的風險信號強度
-"""
-        else:
-            multi_timeframe_context = "當前為單一週期分析，無多週期一致性數據。"
+        opponents_section = ""
+        if opponent_arguments:
+            opponents_section = "=== 對手的論點 ===\n"
+            for arg in opponent_arguments:
+                opponents_section += f"[{arg.researcher_stance} 研究員]: {arg.argument}\n信心度: {arg.confidence}%\n---\n"
 
         prompt = f"""
-你是一位專業的多週期空頭研究員，你的任務是在考慮不同時間框架一致性的情況下識別風險和強化看跌論點。
-當前是第 {round_number} 輪辯論。
+你是一位專業的多週期空頭研究員。當前進行的是第 {round_number} 輪辯論，重點辯論主題為：【{topic}】。
 
 分析師報告摘要：
 {json.dumps([{"分析師": r.analyst_type, "摘要": r.summary} for r in analyst_reports], indent=2, ensure_ascii=False)}
 
-所有看漲因素：
-{json.dumps(all_bullish, indent=2, ensure_ascii=False)}
-
-所有看跌因素：
-{json.dumps(all_bearish, indent=2, ensure_ascii=False)}
-
-{multi_timeframe_context}
-
-{opponent_section}
+{opponents_section}
 
 你的任務：
-1. {'如果這是第一輪，綜合看跌論點並強化' if round_number == 1 else '針對多頭的反駁進行回應，強化你的看跌論點'}
-2. 指出潛在風險和陷阱，特別是考慮多週期風險一致性
-3. {'反駁看漲論點' if round_number == 1 else '具體反駁多頭研究員的關鍵點'}
-4. 提供具體的風險警告，結合多週期分析
+1. 針對當前主題【{topic}】強化看跌論點（識別風險）。
+2. **讓步機制**：在多頭或中立派提出的觀點中，找出一個你認為最合理、最難反駁的利多因素，並公開承認它。
+3. **針對性反駁**：具體指出多頭在【{topic}】維度上的過度樂觀或盲點。
+4. 強調為什麼在【{topic}】維度下，潛在風險比收益更值得關注。
 
-請以 JSON 格式回覆，嚴格遵守數據類型：
+請以 JSON 格式回覆：
 - researcher_stance: "Bear"
-- argument: 空頭論點 (繁體中文，至少100字)
-- key_points: 關鍵看跌點列表 (必須是字串 List ["點1", "點2"])
-- counter_arguments: 對多頭論點的反駁列表 (必須是字串 List ["反駁1", "反駁2"]，絕對不要使用 Key-Value 物件或字典)
-- confidence: 信心度 (0-100 的數字)
+- argument: 空頭論點 (繁體中文，至少100字，需包含讓步與反駁)
+- key_points: 關鍵看跌點列表 (List[str])
+- concession_point: 承認對手最有道理的觀點 (字串)
+- counter_arguments: 對對手論點的反駁列表 (List[str])
+- confidence: 信心度 (0-100)
 - round_number: {round_number}
-- opponent_view: {f'"{opponent_argument.argument[:200]}..."' if opponent_argument else 'null'}
+- opponent_view: "Addressing all current opponents"
 """
-
-        # 根據模型是否支持 JSON 模式來決定是否使用 response_format
         try:
             if supports_json_mode(self.model):
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[{"role": "user", "content": prompt}],
-                    response_format={"type": "json_object"}
-                )
-                # 支持 JSON 模式的模型，直接解析
+                response = self.client.chat.completions.create(model=self.model, messages=[{"role": "user", "content": prompt}], response_format={"type": "json_object"})
                 result_dict = json.loads(response.choices[0].message.content)
             else:
-                # 對於不支持 JSON 模式的模型，仍然在 prompt 中要求 JSON，但不使用 response_format
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[{"role": "user", "content": prompt}]
-                )
-                # 使用提取函數從響應中提取 JSON
+                response = self.client.chat.completions.create(model=self.model, messages=[{"role": "user", "content": prompt}])
                 result_dict = extract_json_from_response(response.choices[0].message.content)
-
-            if "error" in result_dict:
-                print(f"       ⚠️ LLM 返回錯誤訊息而非預期結構: {result_dict.get('error', '未知錯誤')}")
-                # 構造一個默認的 ResearcherDebate 物件來避免崩潰
-                error_msg = f"LLM 回傳錯誤訊息: {result_dict.get('error', '未知錯誤')}"
-                while len(error_msg) < 100:
-                    error_msg += " ... (填充文字以滿足最小長度限制) ..."
-                
-                return ResearcherDebate(
-                    researcher_stance=self.stance,
-                    argument=error_msg,
-                    key_points=["LLM 拒絕回答或未能生成有效內容"],
-                    counter_arguments=["未能獲取到有效的對手反駁"],
-                    confidence=0.0, # 信心度設為0
-                    round_number=round_number,
-                    opponent_view=opponent_argument.argument[:200] if opponent_argument else None
-                )
             return ResearcherDebate.model_validate(result_dict)
         except Exception as e:
-            print(f"       >> 失敗: {e}")
-            # 如果是 Pydantic 驗證錯誤，將其轉換為 ResearcherDebate 物件
-            if isinstance(e, ValueError) and "Field required" in str(e):
-                error_msg = f"Pydantic 驗證失敗: {e}"
-                while len(error_msg) < 100:
-                    error_msg += " ... (填充文字以滿足最小長度限制) ..."
-                
-                return ResearcherDebate(
-                    researcher_stance=self.stance,
-                    argument=error_msg,
-                    key_points=["LLM 回傳的結構不符合預期"],
-                    counter_arguments=["未能獲取到有效的對手反駁"],
-                    confidence=0.0,
-                    round_number=round_number,
-                    opponent_view=opponent_argument.argument[:200] if opponent_argument else None
-                )
-            # 對於其他未知錯誤，也返回一個默認響應
-            error_msg = f"處理 LLM 響應時發生未知錯誤: {e}"
-            while len(error_msg) < 100:
-                error_msg += " ... (填充文字以滿足最小長度限制) ..."
-            
-            return ResearcherDebate(
-                researcher_stance=self.stance,
-                argument=error_msg,
-                key_points=["未能處理 LLM 響應"],
-                counter_arguments=["未能獲取到有效的對手反駁"],
-                confidence=0.0,
-                round_number=round_number,
-                opponent_view=opponent_argument.argument[:200] if opponent_argument else None
-            )
+            return ResearcherDebate(researcher_stance="Bear", argument=f"分析出錯: {str(e)}", key_points=[], confidence=0, round_number=round_number)
+
+class NeutralResearcher:
+    """中立/震盪派研究員 Agent (魔鬼代言人)"""
+
+    def __init__(self, client, model: str = None):
+        self.client = client
+        self.model = model or DEEP_THINKING_MODEL
+        self.stance = "Neutral"
+        print(f"  >> 中立研究員使用模型: {self.model}")
+
+    def debate(self, analyst_reports: List[AnalystReport], opponent_arguments: List[ResearcherDebate] = [], round_number: int = 1, topic: str = "綜合") -> ResearcherDebate:
+        """提出中立/震盪觀點，質疑單邊趨勢"""
+
+        opponents_section = ""
+        if opponent_arguments:
+            opponents_section = "=== 其他研究員的觀點 ===\n"
+            for arg in opponent_arguments:
+                opponents_section += f"[{arg.researcher_stance} 研究員]: {arg.argument}\n信心度: {arg.confidence}%\n---\n"
+
+        prompt = f"""
+你是一位專業的中立/震盪派研究員。當前進行的是第 {round_number} 輪辯論，重點主題為：【{topic}】。
+
+你的任務：
+1. 質疑多頭與空頭是否都對【{topic}】過度預測了方向。
+2. 尋找市場在【{topic}】維度下可能陷入橫盤、震盪或波動率收斂的證據。
+3. **讓步機制**：承認某一方在特定數據上的正確性，但指出這不代表單邊趨勢的確立。
+4. 強調「觀望」或「區間操作」在當前【{topic}】背景下的合理性。
+
+請以 JSON 格式回覆：
+- researcher_stance: "Neutral"
+- argument: 中立論點 (繁體中文，至少100字)
+- key_points: 關鍵中立因素列表 (List[str])
+- concession_point: 承認對手最有道理的觀點 (字串)
+- counter_arguments: 對單邊趨勢觀點的反駁 (List[str])
+- confidence: 信心度 (0-100)
+- round_number: {round_number}
+- opponent_view: "Questioning both sides"
+"""
+        try:
+            if supports_json_mode(self.model):
+                response = self.client.chat.completions.create(model=self.model, messages=[{"role": "user", "content": prompt}], response_format={"type": "json_object"})
+                result_dict = json.loads(response.choices[0].message.content)
+            else:
+                response = self.client.chat.completions.create(model=self.model, messages=[{"role": "user", "content": prompt}])
+                result_dict = extract_json_from_response(response.choices[0].message.content)
+            return ResearcherDebate.model_validate(result_dict)
+        except Exception as e:
+            return ResearcherDebate(researcher_stance="Neutral", argument=f"分析出錯: {str(e)}", key_points=[], confidence=0, round_number=round_number)
 
 # ============================================================================ 
 # 第三層：交易員 (Trader)
@@ -708,6 +543,9 @@ class Trader:
         analyst_reports: List[AnalystReport],
         bull_argument: ResearcherDebate,
         bear_argument: ResearcherDebate,
+        neutral_argument: Optional[ResearcherDebate],
+        fact_checks: Optional[Dict],
+        debate_judgment: Optional['DebateJudgment'], # Added
         current_price: float,
         market_data: Dict,
         market_type: str,
@@ -737,91 +575,62 @@ class Trader:
 **重要**: 你的決策和推理過程**必須**考慮到此帳戶餘額。如果可用餘額為0或很低，你的倉位建議應更加保守或為0。
 """
 
+        fact_check_prompt = ""
+        if fact_checks:
+            fact_check_prompt = f"""
+=== 數據檢察官驗證結果 ===
+{json.dumps(fact_checks, indent=2, ensure_ascii=False, default=str)}
+**注意**: 如果某方的數據準確性得分較低，請降低該觀點在決策中的權重。
+"""
+
+        judge_prompt = ""
+        if debate_judgment:
+            judge_prompt = f"""
+=== 綜合交易委員會 (裁判) 裁決 ===
+【裁判總結】: {debate_judgment.key_takeaway}
+【裁決理由】: {debate_judgment.judge_rationale}
+【公信力得分】: 多頭 {debate_judgment.bull_score} | 空頭 {debate_judgment.bear_score} | 中立 {debate_judgment.neutral_score}
+【勝出方】: {debate_judgment.winning_stance}
+**核心指導**: 你應該優先相信公信力得分較高的立場。如果裁判判定為 Tie，則表示市場處於高度分歧，應考慮觀望。
+"""
+
         decision_options = ""
         if market_type == 'spot':
             decision_options = "Buy\" / \"Sell\" / \"Hold"
         else: # futures
             decision_options = "Long\" / \"Short\" / \"Hold"
 
-        funding_rate_context = ""
-        if market_type == 'futures' and market_data.get('funding_rate_info'):
-            funding_rate_context = f"""
-=== 資金費率資訊 ===
-{json.dumps(market_data['funding_rate_info'], indent=2, ensure_ascii=False)}
-"""
-        exchange = market_data.get('exchange', 'binance') # Extract exchange from market_data
-
-        # 提取關鍵價位信息
-        key_levels = market_data.get('關鍵價位', {})
-        support = key_levels.get('支撐位', current_price * 0.95)
-        resistance = key_levels.get('壓力位', current_price * 1.05)
-
         prompt = f"""
-你是一位經驗豐富的專業交易員，負責做出最終的交易決策。
-當前市場類型是：{market_type}。
-數據來源交易所：{exchange}。
-{f"請根據市場風險、波動率和你的交易策略，自行決定合適的槓桿倍數 (1-125x)。考慮因素：波動率越高應使用越低槓桿，趨勢越明確可適當提高槓桿。" if market_type == 'futures' else ""}
+你是一位資深首席交易員。你需要綜合分析師報告、多空辯論、數據核對結果以及裁判的最終裁決來做出最終決策。
+
+當前價格：${current_price:.2f}
+市場類型：{market_type}
+
+=== 研究員辯論內容 ===
+【多頭】: {bull_argument.argument}
+【空頭】: {bear_argument.argument}
+【中立】: {neutral_argument.argument if neutral_argument else "無"}
+
+{fact_check_prompt}
+{judge_prompt}
 {feedback_prompt}
 {account_balance_prompt}
 
-你已經收到：
-1. 四位分析師的詳細報告
-2. 多頭研究員的看漲論點
-3. 空頭研究員的看跌論點
-
-=== 市場價格資訊 ===
-當前價格：${current_price:.2f}
-支撐位：${support:.2f}
-壓力位：${resistance:.2f}
-{funding_rate_context}
-
-=== 分析師報告 ===
-{json.dumps([{
-    "分析師": r.analyst_type,
-    "摘要": r.summary,
-    "信心度": r.confidence
-} for r in analyst_reports], indent=2, ensure_ascii=False)}
-
-=== 多頭論點 ===
-論點：{bull_argument.argument}
-關鍵點：{json.dumps(bull_argument.key_points, ensure_ascii=False)}
-信心度：{bull_argument.confidence}%
-
-=== 空頭論點 ===
-論點：{bear_argument.argument}
-關鍵點：{json.dumps(bear_argument.key_points, ensure_ascii=False)}
-信心度：{bear_argument.confidence}%
-
 你的任務：
-1. 綜合評估所有資訊，做出理性的交易決策 ({decision_options})。
-2. **如果決定交易（非 Hold），你必須給出具體的進場價、止損價、止盈價（浮點數）**。
-3. 確定合理的倉位大小（佔總資金的百分比）。
-4. 基於技術分析設定止損止盈：
-   - 止損：可參考支撐位/壓力位，或使用 ATR、固定百分比（2-5%）
-   - 止盈：可參考壓力位/支撐位，或使用風險回報比（1:2 或 1:3）
-
-**重要**：所有價格必須是具體數字（浮點數），不能是 null（除非 decision 為 "Hold"）。
+1. 權衡多、空、中三方觀點。**必須以裁判的公信力得分為主要參考依據**。
+2. 參考數據檢察官的意見，排除掉那些基於錯誤數據的誇大言論。
+3. 做出最終決策 ({decision_options}) 並設定具體的交易計劃。
 
 請以 JSON 格式回覆：
 - decision: "{decision_options}"
-- reasoning: 決策推理 (繁體中文，至少100字)。
-- position_size: 建議倉位 (0-1)。如果 decision 為 "Hold"，此項應為 0。
-{f"- leverage: 使用的槓桿倍數 (整數，1-125)。僅當 decision 為 \"Long\" 或 \"Short\" 時需要提供，否則為 null。" if market_type == 'futures' else ""}
-- entry_price: **進場價位（浮點數）**。通常是當前價格或稍微優化的價格。Hold 時為 null。
-- stop_loss: **止損價位（浮點數）**。必須基於技術分析或固定百分比。Hold 時為 null。
-- take_profit: **止盈價位（浮點數）**。建議使用 1:2 或 1:3 風險回報比。Hold 時為 null。
-- confidence: 決策信心度 (0-100)
-- synthesis: 如何綜合各方意見 (繁體中文)
-
-**範例（做多）**：
-- entry_price: {current_price:.2f}
-- stop_loss: {current_price * 0.97:.2f}  (約 -3% 止損)
-- take_profit: {current_price * 1.06:.2f}  (約 +6% 止盈，1:2 風險回報比)
-
-**範例（做空）**：
-- entry_price: {current_price:.2f}
-- stop_loss: {current_price * 1.03:.2f}  (約 +3% 止損)
-- take_profit: {current_price * 0.94:.2f}  (約 -6% 止盈)
+- reasoning: 決策推理 (繁體中文，需提及如何權衡三方觀點及裁判的裁決)
+- position_size: 建議倉位 (0-1)
+- leverage: 槓桿 (1-125)
+- entry_price: 進場價 (float)
+- stop_loss: 止損價 (float)
+- take_profit: 止盈價 (float)
+- confidence: 信心度 (0-100)
+- synthesis: 綜合各方意見的總結
 """
         
         response = self.client.chat.completions.create(
@@ -844,6 +653,61 @@ class Trader:
             result.multi_timeframe_analysis = multi_timeframe_analysis
 
         return result
+
+
+class DebateJudge:
+    """綜合交易委員會裁判 Agent - 評估辯論各方表現"""
+    
+    def __init__(self, client):
+        self.client = client
+        
+    @retry_on_failure(max_retries=3, delay=1.0, backoff=2.0)
+    def judge(
+        self,
+        bull_argument: ResearcherDebate,
+        bear_argument: ResearcherDebate,
+        neutral_argument: ResearcherDebate,
+        fact_checks: Dict,
+        market_data: Dict
+    ) -> 'DebateJudgment':
+        """作為公正第三方評估辯論質量與公信力"""
+        
+        from core.models import DebateJudgment
+        
+        prompt = f"""
+你是一位資深的「綜合交易委員會裁判」。你的任務是審查一場關於市場走勢的三方辯論，並給出公正的裁決分數。
+
+辯論各方論點：
+【多頭】: {bull_argument.argument}
+【空頭】: {bear_argument.argument}
+【中立】: {neutral_argument.argument}
+
+數據檢察官驗證結果：
+{json.dumps(fact_checks, indent=2, ensure_ascii=False, default=str)}
+
+你的裁決標準：
+1. 邏輯嚴密性：論點是否環環相扣，有無明顯漏洞。
+2. 數據準確性：是否尊重事實，有無被檢察官糾正。
+3. 讓步客觀性：是否誠實承認對手的合理點（讓步點是否深刻）。
+4. 風險意識：是否考慮了潛在的黑天鵝事件或反向因素。
+
+請以 JSON 格式回覆，給出 0-100 的公信力評分：
+- bull_score: 多頭公信力評分
+- bear_score: 空頭公信力評分
+- neutral_score: 中立派公信力評分
+- judge_rationale: 裁決理由 (繁體中文，至少100字，需點評各方表現)
+- key_takeaway: 你從這場辯論中總結出的最核心事實
+- winning_stance: "Bull", "Bear", "Neutral", 或 "Tie"
+"""
+
+        response = self.client.chat.completions.create(
+            model=DEEP_THINKING_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"}
+        )
+
+        return DebateJudgment.model_validate(json.loads(response.choices[0].message.content))
+
 
 # ============================================================================ 
 # 第四層：風險管理團隊 (Risk Management Team)
@@ -1172,11 +1036,13 @@ class CommitteeSynthesizer:
 2. 識別最強有力的論點
 3. 去除重複和次要論點
 4. 形成一個統一、連貫的{stance_zh}觀點
+5. **識別讓步點**：從分析師報告中，找出對我方觀點最不利、最難反駁的證據或數據，予以承認。
 
 請以 JSON 格式回覆：
 - researcher_stance: "{stance}"
 - argument: 綜合後的{stance_zh}論點 (繁體中文，至少150字)
 - key_points: 核心關鍵點列表 (去重後的 3-5 個最重要的點)
+- concession_point: 承認最不利的證據或觀點 (字串)
 - counter_arguments: 統一的反駁論點列表 (去重後的 3-5 個)
 - confidence: 綜合信心度 (基於所有成員的平均信心度調整，0-100)
 - round_number: 1
@@ -1202,3 +1068,58 @@ class CommitteeSynthesizer:
         except Exception as e:
             print(f"       >> 綜合失敗: {e}")
             raise
+
+class DataFactChecker:
+    """數據檢察官 Agent - 確保論點基於真實數據"""
+
+    def __init__(self, client):
+        self.client = client
+
+    def check(self, arguments: List[ResearcherDebate], market_data: Dict) -> Dict[str, FactCheckResult]:
+        """核對數據準確性"""
+        market_summary = {
+            "價格": market_data.get("價格資訊", {}).get("當前價格"),
+            "技術指標": market_data.get("技術指標", {}),
+            "市場結構": market_data.get("市場結構", {})
+        }
+        
+        args_text = ""
+        for a in arguments:
+            if a:
+                args_text += f"[{a.researcher_stance}]: {a.argument}\n"
+        
+        prompt = f"""
+你是一位嚴格的數據檢察官。你的任務是核對研究員在辯論中引用的數據是否與真實市場數據相符。
+
+真實市場數據：
+{json.dumps(market_summary, indent=2, ensure_ascii=False)}
+
+研究員論點：
+{args_text}
+
+你的任務：
+1. 檢查研究員是否引用了錯誤的數值。
+2. 檢查研究員是否對數據進行了嚴重扭曲的解讀。
+3. 如果發現錯誤，請具體指出並更正。
+
+請以 JSON 格式回覆，Key 為研究員立場 (Bull/Bear/Neutral)，Value 為 FactCheckResult 結構：
+- is_accurate: bool
+- corrections: List[str]
+- confidence_score: 0-100 (準確度評分)
+- comment: 簡短評論
+"""
+        try:
+            response = self.client.chat.completions.create(
+                model=FAST_THINKING_MODEL,
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"}
+            )
+            result_dict = json.loads(response.choices[0].message.content)
+            validated = {}
+            for stance, data in result_dict.items():
+                if stance in ['Bull', 'Bear', 'Neutral']:
+                    validated[stance] = FactCheckResult.model_validate(data)
+            return validated
+        except Exception as e:
+            print(f"       >> 數據核對出錯: {e}")
+            return {}

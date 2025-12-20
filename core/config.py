@@ -53,21 +53,21 @@ TRADER_MODEL = {
 # === 多頭委員會 ===
 # 多個模型都給出多頭觀點，然後綜合
 BULL_COMMITTEE_MODELS = [
-    # {"provider": "openai", "model": "gpt-4.1-mini"},  
+    {"provider": "openai", "model": "gpt-4.1-mini"},  
     # {"provider": "openai", "model": "gpt-5-mini"},                        # GPT-4o mini
-    #{"provider": "google_gemini", "model": "gemini-3-flash-preview"},              # Gemini 2.5 Flash (最新穩定版)
-    # {"provider": "openrouter", "model": "qwen/qwen3-235b-a22b:free"},        # Qwen 免費版
-    {"provider": "local", "model": "/home/danny/AI-agent/Qwen3_4B_2507"},         # 本地模型 (vLLM/Ollama)
+    {"provider": "google_gemini", "model": "gemini-3-flash-preview"},              # Gemini 2.5 Flash (最新穩定版)
+    {"provider": "openrouter", "model": "qwen/qwen3-235b-a22b:free"},        # Qwen 免費版
+    # {"provider": "local", "model": "/home/danny/AI-agent/Qwen3_4B_2507"},         # 本地模型 (vLLM/Ollama)
 ]
 
 # === 空頭委員會 ===
 # 多個模型都給出空頭觀點，然後綜合
 BEAR_COMMITTEE_MODELS = [
-    # {"provider": "openai", "model": "gpt-4.1-mini"},  
+    {"provider": "openai", "model": "gpt-4.1-mini"},  
     # {"provider": "openai", "model": "gpt-5-mini"},                           # GPT-4o mini
-    #{"provider": "google_gemini", "model": "gemini-3-flash-preview"},              # Gemini 2.5 Flash (最新穩定版)
-    # {"provider": "openrouter", "model": "qwen/qwen3-235b-a22b:free"},        # Qwen 免費版
-    {"provider": "local", "model": "/home/danny/AI-agent/Qwen3_4B_2507"},    # 本地模型 (vLLM/Ollama)
+    {"provider": "google_gemini", "model": "gemini-3-flash-preview"},              # Gemini 2.5 Flash (最新穩定版)
+    {"provider": "openrouter", "model": "qwen/qwen3-235b-a22b:free"},        # Qwen 免費版
+    # {"provider": "local", "model": "/home/danny/AI-agent/Qwen3_4B_2507"},    # 本地模型 (vLLM/Ollama)
 ]
 
 # === 綜合模型 ===
@@ -176,7 +176,7 @@ SCREENER_DEFAULT_INTERVAL = "1d"
 
 # === 交易限制配置 ===
 MINIMUM_INVESTMENT_USD = 20.0  # 最低投資金額 (USDT)
-MAXIMUM_INVESTMENT_USD = 50.0  # 最高投資金額 (USDT)
+MAXIMUM_INVESTMENT_USD = 30.0  # 最高投資金額 (USDT)
 EXCHANGE_MINIMUM_ORDER_USD = 1.0  # 交易所最低下單金額 (USDT)
 
 # === 交易類型選擇 ===

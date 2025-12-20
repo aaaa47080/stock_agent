@@ -300,6 +300,9 @@ async def run_full_analysis(exchange_name: str, market_type: str = 'spot', lever
             analyst_reports=[],
             bull_argument=None,
             bear_argument=None,
+            neutral_argument=None,
+            fact_checks=None,
+            debate_judgment=None,
             trader_decision=None,
             risk_assessment=None,
             final_approval=None,
@@ -315,16 +318,56 @@ async def run_full_analysis(exchange_name: str, market_type: str = 'spot', lever
         # Extract result
         if final_state and final_state.get('trader_decision'):
             decision : TraderDecision = final_state['trader_decision']
+            final_approval = final_state.get('final_approval')
+            debate_judgment = final_state.get('debate_judgment')
+            
+            # Default values from trader decision
+            signal = decision.decision
+            
+            # 採用第三方裁判 (DebateJudge) 的公信力評分，而不是交易員自評的信心度
+            confidence = 0.0
+            if debate_judgment:
+                if signal in ["Buy", "Long"]:
+                    confidence = getattr(debate_judgment, 'bull_score', 0)
+                elif signal in ["Sell", "Short"]:
+                    confidence = getattr(debate_judgment, 'bear_score', 0)
+                else: # Hold
+                    confidence = getattr(debate_judgment, 'neutral_score', 0)
+            
+            # 備援方案：若無裁判評分，則退回到交易員自評
+            if not confidence or confidence == 0:
+                confidence = decision.confidence
+
+            position_size = decision.position_size
+            leverage_val = decision.leverage if decision.leverage else leverage
+            reasoning = decision.reasoning
+            
+            # Override with final approval if it exists
+            if final_approval:
+                if final_approval.final_decision in ['Reject', 'Hold']:
+                    signal = 'Hold'
+                    position_size = 0.0
+                    reasoning = f"Fund Manager {final_approval.final_decision}: {final_approval.rationale}"
+                elif final_approval.final_decision == 'Amended':
+                    position_size = final_approval.final_position_size
+                    if final_approval.approved_leverage:
+                        leverage_val = final_approval.approved_leverage
+                    reasoning = f"Fund Manager Amended: {final_approval.rationale}\n\nOriginal Reasoning: {decision.reasoning}"
+                elif final_approval.final_decision == 'Approve':
+                    reasoning = f"Fund Manager Approved: {final_approval.rationale}\n\nOriginal Reasoning: {decision.reasoning}"
+
             result = {
                 "symbol": symbol,
-                "signal": decision.decision,
-                "confidence": decision.confidence,
+                "signal": signal,
+                "confidence": confidence,
                 "entry_price": decision.entry_price,
                 "stop_loss": decision.stop_loss,
                 "take_profit": decision.take_profit,
-                "reasoning": decision.reasoning,
-                "market_type": market_type,  # Add market type to result
-                "exchange": exchange_to_use  # Add exchange used to result
+                "position_size": position_size,
+                "leverage": leverage_val,
+                "reasoning": reasoning,
+                "market_type": market_type,
+                "exchange": exchange_to_use
             }
             # Add account balance information if available in preloaded data
             if initial_state.get('preloaded_data') and initial_state['preloaded_data'].get('account_balance'):

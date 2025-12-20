@@ -16,7 +16,8 @@ def _display_single_market_report(
     final_approval: FinalApproval,
     current_price: float,
     market_type: str,
-    market_data: Dict
+    market_data: Dict,
+    debate_judgment: any = None
 ):
     """顯示單一市場的決策報告"""
     
@@ -43,23 +44,48 @@ def _display_single_market_report(
     # 研究員辯論
     print("\n【第二層：研究團隊辯論】")
     print("-" * 100)
-    print(f"\n🐂 多頭研究員 (信心度: {bull_argument.confidence}%)")
+    
+    # 如果有裁判，顯示裁判的公信力評分，否則顯示自評
+    bull_conf = debate_judgment.bull_score if debate_judgment else bull_argument.confidence
+    bear_conf = debate_judgment.bear_score if debate_judgment else bear_argument.confidence
+    
+    print(f"\n🐂 多頭研究員 (公信力評分: {bull_conf}%)")
     print(f"論點：{bull_argument.argument}")
     print(f"關鍵點：")
     for point in bull_argument.key_points:
         print(f"  • {point}")
     
-    print(f"\n🐻 空頭研究員 (信心度: {bear_argument.confidence}%)")
+    print(f"\n🐻 空頭研究員 (公信力評分: {bear_conf}%)")
     print(f"論點：{bear_argument.argument}")
     print(f"關鍵點：")
     for point in bear_argument.key_points:
         print(f"  • {point}")
+        
+    if debate_judgment:
+        print(f"\n👨‍⚖️ 綜合交易委員會 (裁判) 裁決：")
+        print(f"勝出方：{debate_judgment.winning_stance}")
+        print(f"裁決理由：{debate_judgment.judge_rationale}")
+        print(f"核心事實：{debate_judgment.key_takeaway}")
     
     # 交易員決策
     print("\n【第三層：交易員決策】")
     print("-" * 100)
     print(f"決策：{trader_decision.decision}")
-    print(f"信心度：{trader_decision.confidence}%")
+    
+    # 採用裁判公信力評分
+    final_conf = 0.0
+    if debate_judgment:
+        if trader_decision.decision in ["Buy", "Long"]:
+            final_conf = debate_judgment.bull_score
+        elif trader_decision.decision in ["Sell", "Short"]:
+            final_conf = debate_judgment.bear_score
+        else:
+            final_conf = debate_judgment.neutral_score
+    
+    if final_conf == 0:
+        final_conf = trader_decision.confidence
+        
+    print(f"信心度 (採納裁判客觀評分)：{final_conf}%")
     print(f"建議倉位：{trader_decision.position_size * 100:.0f}%")
     if market_type == 'futures' and trader_decision.leverage:
         print(f"使用槓桿：{trader_decision.leverage}x")
@@ -188,7 +214,8 @@ def display_full_report(spot_results: Dict, futures_results: Dict):
             final_approval=spot_results['final_approval'],
             current_price=spot_results['current_price'],
             market_type=spot_results['market_data']['market_type'],
-            market_data=spot_results['market_data']
+            market_data=spot_results['market_data'],
+            debate_judgment=spot_results.get('debate_judgment')
         )
     else:
         print("\n" + "=" * 100)
@@ -207,7 +234,8 @@ def display_full_report(spot_results: Dict, futures_results: Dict):
             final_approval=futures_results['final_approval'],
             current_price=futures_results['current_price'],
             market_type=futures_results['market_data']['market_type'],
-            market_data=futures_results['market_data']
+            market_data=futures_results['market_data'],
+            debate_judgment=futures_results.get('debate_judgment')
         )
     else:
         print("\n" + "=" * 100)

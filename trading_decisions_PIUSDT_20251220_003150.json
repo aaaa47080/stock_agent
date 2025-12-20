@@ -1,0 +1,31 @@
+{
+  "symbol": "PIUSDT",
+  "analysis_timestamp": "2025-12-20T00:31:50.409461",
+  "error": "'FactCheckResult' object has no attribute 'get'",
+  "spot_decision": {
+    "should_trade": false,
+    "decision": "Error",
+    "action": "error",
+    "position_size": 0.0,
+    "confidence": 0.0,
+    "reasoning": "'FactCheckResult' object has no attribute 'get'",
+    "entry_price": null,
+    "stop_loss": null,
+    "take_profit": null,
+    "leverage": 1,
+    "additional_params": {}
+  },
+  "futures_decision": {
+    "should_trade": false,
+    "decision": "Error",
+    "action": "error",
+    "position_size": 0.0,
+    "confidence": 0.0,
+    "reasoning": "'FactCheckResult' object has no attribute 'get'",
+    "entry_price": null,
+    "stop_loss": null,
+    "take_profit": null,
+    "leverage": 1,
+    "additional_params": {}
+  }
+}

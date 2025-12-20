@@ -13,7 +13,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from langgraph.graph import StateGraph, END
 
 # 匯入我們自己的模組
-from core.models import AnalystReport, ResearcherDebate, TraderDecision, RiskAssessment, FinalApproval
+from core.models import AnalystReport, ResearcherDebate, TraderDecision, RiskAssessment, FinalApproval, FactCheckResult, DebateJudgment
 from data.data_processor import (
     fetch_and_process_klines,
     build_market_data_package
@@ -25,6 +25,9 @@ from core.agents import (
     NewsAnalyst,
     BullResearcher,
     BearResearcher,
+    NeutralResearcher, # Added
+    DataFactChecker,    # Added
+    DebateJudge,        # Added
     Trader,
     RiskManager,
     FundManager,
@@ -65,6 +68,9 @@ class AgentState(TypedDict):
     analyst_reports: List[AnalystReport]
     bull_argument: ResearcherDebate
     bear_argument: ResearcherDebate
+    neutral_argument: Optional[ResearcherDebate] # Added
+    fact_checks: Optional[Dict]                  # Added
+    debate_judgment: Optional[DebateJudgment]    # Added
     trader_decision: TraderDecision
     risk_assessment: Optional[RiskAssessment] # 可能為 None
     final_approval: FinalApproval
@@ -298,213 +304,109 @@ def analyst_team_node(state: AgentState) -> Dict:
 
 def research_debate_node(state: AgentState) -> Dict:
     """
-    節點 3: 研究團隊進行多空辯論。
-    實現多輪互動辯論機制，讓多空雙方真正互相討論。
-    支持委員會模式：多個模型組成委員會，先內部討論再辯論。
+    節點 3: 研究團隊進行深度辯論。
+    升級功能：
+    1. 三方辯論：多頭 vs 空頭 vs 中立派(魔鬼代言人)。
+    2. 主題式辯論：分階段討論技術面、基本面、綜合結論。
+    3. 動態終止：若雙方達成共識或陷入僵局則提前結束。
+    4. 數據核對：每輪辯論後由數據檢察官檢查準確性。
     """
-    from utils.settings import Settings
-    from core.config import (
-        ENABLE_COMMITTEE_MODE,
-        BULL_COMMITTEE_MODELS,
-        BEAR_COMMITTEE_MODELS,
-        SYNTHESIS_MODEL,
-        BULL_RESEARCHER_MODEL,
-        BEAR_RESEARCHER_MODEL
-    )
     from utils.llm_client import create_llm_client_from_config
+    from core.config import (
+        ENABLE_COMMITTEE_MODE, BULL_COMMITTEE_MODELS, BEAR_COMMITTEE_MODELS,
+        SYNTHESIS_MODEL, BULL_RESEARCHER_MODEL, BEAR_RESEARCHER_MODEL
+    )
 
-    debate_rounds = Settings.DEBATE_ROUNDS
     analyst_reports = state['analyst_reports']
+    market_data = state['market_data']
     client = state['client']
+    
+    print(f"\n[節點 3/7] 研究團隊深度辯論 (三方模式 + 主題分研)...")
 
-    # 檢查是否啟用委員會模式
-    if ENABLE_COMMITTEE_MODE:
-        print(f"\n[節點 3/7] 研究團隊 (委員會模式 + {debate_rounds}輪辯論)...")
-        print(f"  >> 多頭委員會: {len(BULL_COMMITTEE_MODELS)} 個模型")
-        print(f"  >> 空頭委員會: {len(BEAR_COMMITTEE_MODELS)} 個模型")
+    # 1. 初始化研究員 (三方)
+    # 為簡化，中立研究員使用與綜合模型相同的配置
+    bull_client, bull_model = create_llm_client_from_config(BULL_RESEARCHER_MODEL)
+    bear_client, bear_model = create_llm_client_from_config(BEAR_RESEARCHER_MODEL)
+    neutral_client, neutral_model = create_llm_client_from_config(SYNTHESIS_MODEL)
+    
+    bull_researcher = BullResearcher(bull_client, bull_model)
+    bear_researcher = BearResearcher(bear_client, bear_model)
+    neutral_researcher = NeutralResearcher(neutral_client, neutral_model)
+    fact_checker = DataFactChecker(client)
 
-        # === 多頭委員會討論 ===
-        print(f"\n  >> 多頭委員會內部討論...")
-        bull_committee_args = []
-        for i, model_config in enumerate(BULL_COMMITTEE_MODELS, 1):
-            print(f"     成員 {i}: {model_config['provider']}:{model_config['model']}")
-            member_client, member_model = create_llm_client_from_config(model_config)
-            researcher = BullResearcher(member_client, member_model)
-            arg = researcher.debate(analyst_reports)
-            bull_committee_args.append(arg)
-            print(f"        >> 信心度: {arg.confidence}%")
+    # 辯論主題定義
+    topics = ["技術面與指標", "基本面與新聞", "綜合決策與風險"]
+    
+    bull_argument = None
+    bear_argument = None
+    neutral_argument = None
+    fact_checks = {}
 
-        # 綜合多頭委員會觀點
-        print(f"\n  >> 綜合多頭委員會觀點...")
-        synthesis_client, synthesis_model = create_llm_client_from_config(SYNTHESIS_MODEL)
-        synthesizer = CommitteeSynthesizer(synthesis_client, synthesis_model)
-        bull_argument = synthesizer.synthesize_committee_views('Bull', bull_committee_args, analyst_reports)
-        print(f"     >> 多頭委員會綜合觀點 (信心度: {bull_argument.confidence}%)")
+    # 2. 開始主題式辯論
+    for i, topic in enumerate(topics, 1):
+        print(f"\n{'=' * 40} 第 {i} 輪辯論：{topic} {'=' * 40}")
+        
+        # 多頭發言
+        opponents = [arg for arg in [bear_argument, neutral_argument] if arg]
+        bull_argument = bull_researcher.debate(analyst_reports, opponents, round_number=i, topic=topic)
+        print(f"  >> [多頭] 信心度: {bull_argument.confidence}% | 讓步點: {bull_argument.concession_point[:50] if bull_argument.concession_point else '無'}...")
 
-        # === 空頭委員會討論 ===
-        print(f"\n  >> 空頭委員會內部討論...")
-        bear_committee_args = []
-        for i, model_config in enumerate(BEAR_COMMITTEE_MODELS, 1):
-            print(f"     成員 {i}: {model_config['provider']}:{model_config['model']}")
-            member_client, member_model = create_llm_client_from_config(model_config)
-            researcher = BearResearcher(member_client, member_model)
-            arg = researcher.debate(analyst_reports)
-            bear_committee_args.append(arg)
-            print(f"        >> 信心度: {arg.confidence}%")
+        # 空頭發言
+        opponents = [arg for arg in [bull_argument, neutral_argument] if arg]
+        bear_argument = bear_researcher.debate(analyst_reports, opponents, round_number=i, topic=topic)
+        print(f"  >> [空頭] 信心度: {bear_argument.confidence}% | 讓步點: {bear_argument.concession_point[:50] if bear_argument.concession_point else '無'}...")
 
-        # 綜合空頭委員會觀點
-        print(f"\n  >> 綜合空頭委員會觀點...")
-        bear_argument = synthesizer.synthesize_committee_views('Bear', bear_committee_args, analyst_reports)
-        print(f"     >> 空頭委員會綜合觀點 (信心度: {bear_argument.confidence}%)")
+        # 中立派發言
+        opponents = [arg for arg in [bull_argument, bear_argument] if arg]
+        neutral_argument = neutral_researcher.debate(analyst_reports, opponents, round_number=i, topic=topic)
+        print(f"  >> [中立] 信心度: {neutral_argument.confidence}% | 關鍵質疑: {neutral_argument.argument[:50]}...")
 
-        # 如果啟用多輪辯論，使用綜合觀點進行辯論
-        if debate_rounds > 1:
-            print(f"\n  >> 委員會綜合觀點進行 {debate_rounds-1} 輪辯論...")
-            # 創建研究員進行後續辯論
-            bull_client, bull_model = create_llm_client_from_config(SYNTHESIS_MODEL)
-            bear_client, bear_model = create_llm_client_from_config(SYNTHESIS_MODEL)
-            bull_researcher = BullResearcher(bull_client, bull_model)
-            bear_researcher = BearResearcher(bear_client, bear_model)
-
-            # 從第2輪開始辯論（第1輪已經是委員會綜合）
-            for round_num in range(2, debate_rounds + 1):
-                print(f"\n  >> 第 {round_num}/{debate_rounds} 輪辯論...")
-
-                bull_argument = bull_researcher.debate(
-                    analyst_reports=analyst_reports,
-                    opponent_argument=bear_argument,
-                    round_number=round_num
-                )
-                print(f"     >> 多頭信心度: {bull_argument.confidence}%")
-
-                bear_argument = bear_researcher.debate(
-                    analyst_reports=analyst_reports,
-                    opponent_argument=bull_argument,
-                    round_number=round_num
-                )
-                print(f"     >> 空頭信心度: {bear_argument.confidence}%")
-
-    else:
-        # === 單一模型辯論模式 ===
-        print(f"\n[節點 3/7] 研究團隊 (多空辯論 - {debate_rounds}輪互動)...")
-
-        # 創建多空研究員
-        bull_client, bull_model = create_llm_client_from_config(BULL_RESEARCHER_MODEL)
-        bear_client, bear_model = create_llm_client_from_config(BEAR_RESEARCHER_MODEL)
-        bull_researcher = BullResearcher(bull_client, bull_model)
-        bear_researcher = BearResearcher(bear_client, bear_model)
-
-        # 進行多輪辯論
-        bull_argument = None
-        bear_argument = None
-
-        for round_num in range(1, debate_rounds + 1):
-            print(f"\n{'=' * 80}")
-            print(f"  >> 第 {round_num}/{debate_rounds} 輪辯論")
-            print(f"{'=' * 80}")
-
-            # 多頭發言（如果不是第一輪，會看到空頭上一輪的觀點）
-            print(f"\n  >> 多頭研究員發言...")
-            if bear_argument:
-                print(f"     >> 多頭看到了空頭上一輪的觀點：")
-                # 安全處理 Unicode 編碼問題
-                bear_arg_safe = bear_argument.argument[:150].encode('utf-8', errors='ignore').decode('utf-8') if bear_argument.argument else ""
-                print(f"        空頭論點摘要: {bear_arg_safe}...")
-                print(f"        空頭信心度: {bear_argument.confidence}%")
-
-            bull_argument = bull_researcher.debate(
-                analyst_reports=analyst_reports,
-                opponent_argument=bear_argument,  # 傳入空頭的上一輪觀點
-                round_number=round_num
-            )
-
-            print(f"\n  >> 多頭研究員觀點 (第 {round_num} 輪)：")
-            print(f"     信心度: {bull_argument.confidence}%")
-            # 安全處理 Unicode 編碼問題
-            bull_arg_full_safe = bull_argument.argument.encode('utf-8', errors='ignore').decode('utf-8') if bull_argument.argument else ""
-            print(f"     完整論點: {bull_arg_full_safe}")
-            print(f"     關鍵看漲點:")
-            for i, point in enumerate(bull_argument.key_points, 1):
-                point_safe = point.encode('utf-8', errors='ignore').decode('utf-8') if point else ""
-                print(f"       {i}. {point_safe}")
-            if bull_argument.counter_arguments:
-                print(f"     對空頭的反駁:")
-                for i, counter in enumerate(bull_argument.counter_arguments, 1):
-                    counter_safe = counter.encode('utf-8', errors='ignore').decode('utf-8') if counter else ""
-                    print(f"       {i}. {counter_safe}")
-            print()
-
-            # 空頭發言（看到多頭本輪的觀點）
-            print(f"  >> 空頭研究員發言...")
-            print(f"     >> 空頭看到了多頭本輪的觀點：")
-            # 安全處理 Unicode 編碼問題
-            bull_arg_safe = bull_argument.argument[:150].encode('utf-8', errors='ignore').decode('utf-8') if bull_argument.argument else ""
-            print(f"        多頭論點摘要: {bull_arg_safe}...")
-            print(f"        多頭信心度: {bull_argument.confidence}%")
-
-            bear_argument = bear_researcher.debate(
-                analyst_reports=analyst_reports,
-                opponent_argument=bull_argument,  # 傳入多頭的本輪觀點
-                round_number=round_num
-            )
-
-            print(f"\n  >> 空頭研究員觀點 (第 {round_num} 輪)：")
-            print(f"     信心度: {bear_argument.confidence}%")
-            # 安全處理 Unicode 編碼問題
-            bear_arg_safe = bear_argument.argument.encode('utf-8', errors='ignore').decode('utf-8') if bear_argument.argument else ""
-            print(f"     完整論點: {bear_arg_safe}")
-            print(f"     關鍵看跌點:")
-            for i, point in enumerate(bear_argument.key_points, 1):
-                point_safe = point.encode('utf-8', errors='ignore').decode('utf-8') if point else ""
-                print(f"       {i}. {point_safe}")
-            if bear_argument.counter_arguments:
-                print(f"     對多頭的反駁:")
-                for i, counter in enumerate(bear_argument.counter_arguments, 1):
-                    counter_safe = counter.encode('utf-8', errors='ignore').decode('utf-8') if counter else ""
-                    print(f"       {i}. {counter_safe}")
-            print()
-
-    # 辯論總結
+        # 3. 數據核對
+        print(f"  >> [數據核對] 檢查本輪論點準確性...")
+        current_args = [bull_argument, bear_argument, neutral_argument]
+        checks = fact_checker.check(current_args, market_data)
+        fact_checks.update(checks)
+        
+        # 4. 動態終止檢查 (收斂檢測)
+        if i >= 2:
+            conf_diff = abs(bull_argument.confidence - bear_argument.confidence)
+            if conf_diff > 60:
+                print(f"\n  >> [動態終止] 觀點已出現明顯傾斜 (差距 {conf_diff:.1f}%)，辯論提前結束。")
+                break
+            
+    # 辯論總結列印
     print(f"\n{'=' * 80}")
-    print(f"  >> 辯論總結")
+    print(f"  >> 辯論最終總結")
     print(f"{'=' * 80}")
-    print(f"\n  >> 多頭最終觀點:")
-    print(f"     信心度: {bull_argument.confidence}%")
-    # 安全處理 Unicode 編碼問題
-    bull_argument_text = bull_argument.argument[:200] if bull_argument.argument else ""
-    if bull_argument_text:
-        try:
-            bull_argument_safe = bull_argument_text.encode('cp950', errors='ignore').decode('cp950')
-        except:
-            bull_argument_safe = bull_argument_text.encode('utf-8', errors='ignore').decode('utf-8')
-    else:
-        bull_argument_safe = ""
-    print(f"     核心論點: {bull_argument_safe}...")
-    print(f"\n  >> 空頭最終觀點:")
-    print(f"     信心度: {bear_argument.confidence}%")
-    # 安全處理 Unicode 編碼問題
-    bear_argument_text = bear_argument.argument[:200] if bear_argument.argument else ""
-    if bear_argument_text:
-        try:
-            bear_argument_safe = bear_argument_text.encode('cp950', errors='ignore').decode('cp950')
-        except:
-            bear_argument_safe = bear_argument_text.encode('utf-8', errors='ignore').decode('utf-8')
-    else:
-        bear_argument_safe = ""
-    print(f"     核心論點: {bear_argument_safe}...")
+    print(f"  【多頭信心】: {bull_argument.confidence}%")
+    print(f"  【空頭信心】: {bear_argument.confidence}%")
+    print(f"  【中立信心】: {neutral_argument.confidence}%")
+    
+    if fact_checks:
+        bull_acc = fact_checks.get('Bull').confidence_score if fact_checks.get('Bull') else 'N/A'
+        bear_acc = fact_checks.get('Bear').confidence_score if fact_checks.get('Bear') else 'N/A'
+        print(f"  【數據準確性】: Bull({bull_acc}), Bear({bear_acc})")
 
-    confidence_diff = abs(bull_argument.confidence - bear_argument.confidence)
-    if bull_argument.confidence > bear_argument.confidence:
-        print(f"\n  >> 辯論結果: 多頭觀點較強 (信心度差距: {confidence_diff:.1f}%)")
-    elif bear_argument.confidence > bull_argument.confidence:
-        print(f"\n  >> 辯論結果: 空頭觀點較強 (信心度差距: {confidence_diff:.1f}%)")
-    else:
-        print(f"\n  >> 辯論結果: 雙方勢均力敵")
+    # 5. 裁判裁決環節 (新增)
+    print(f"\n  >> [裁判裁決] 綜合交易委員會正在審核辯論表現...")
+    judge = DebateJudge(client)
+    debate_judgment = judge.judge(
+        bull_argument=bull_argument,
+        bear_argument=bear_argument,
+        neutral_argument=neutral_argument,
+        fact_checks=fact_checks,
+        market_data=market_data
+    )
+    print(f"  >> [裁決結果] 勝出方: {debate_judgment.winning_stance} | 理由: {debate_judgment.key_takeaway}")
 
-    print(f"\n>> {debate_rounds}輪辯論完成")
-    print(f"{'=' * 80}\n")
-
-    return {"bull_argument": bull_argument, "bear_argument": bear_argument}
+    print(f"\n>> 辯論環節完成。")
+    return {
+        "bull_argument": bull_argument,
+        "bear_argument": bear_argument,
+        "neutral_argument": neutral_argument,
+        "fact_checks": fact_checks,
+        "debate_judgment": debate_judgment
+    }
 
 def trader_decision_node(state: AgentState) -> Dict:
     """
@@ -523,6 +425,9 @@ def trader_decision_node(state: AgentState) -> Dict:
         analyst_reports=state['analyst_reports'],
         bull_argument=state['bull_argument'],
         bear_argument=state['bear_argument'],
+        neutral_argument=state.get('neutral_argument'),
+        fact_checks=state.get('fact_checks'),
+        debate_judgment=state.get('debate_judgment'), # Added
         current_price=state['current_price'],
         market_data=state['market_data'],
         market_type=state['market_data']['market_type'],

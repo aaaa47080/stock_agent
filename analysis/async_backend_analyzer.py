@@ -106,11 +106,15 @@ class AsyncBackendAnalyzer:
         account_balance_info: Optional[Dict] = None
     ) -> Dict:
         """將分析結果格式化為JSON輸出"""
+        
+        # Determine primary result for metadata
+        primary_result = spot_result if spot_result else futures_result
+        
         output = {
             "symbol": symbol,
             "analysis_timestamp": datetime.now().isoformat(),
-            "exchange": spot_result.get('exchange', 'unknown').upper() if spot_result else 'unknown',
-            "current_price": safe_float(spot_result.get('current_price', 0)) if spot_result else 0,
+            "exchange": primary_result.get('exchange', 'unknown').upper() if primary_result else 'unknown',
+            "current_price": safe_float(primary_result.get('current_price', 0)) if primary_result else 0,
             "spot_decision": self._extract_decision(symbol, spot_result, 'spot', account_balance_info),
             "futures_decision": self._extract_decision(symbol, futures_result, 'futures', account_balance_info)
         }
@@ -181,7 +185,22 @@ class AsyncBackendAnalyzer:
         decision = decision_map.get(str(trade_action), "觀望")
 
         position_size = safe_float(getattr(final_approval, 'final_position_size', 0))
-        confidence = safe_float(getattr(trader_decision, 'confidence', 0))
+        
+        # 採用第三方裁判 (DebateJudge) 的公信力評分，避免研究員自評的「球員兼裁判」問題
+        confidence = 0.0
+        debate_judgment = result.get('debate_judgment')
+        if debate_judgment:
+            if trade_action in ["Buy", "Long"]:
+                confidence = safe_float(getattr(debate_judgment, 'bull_score', 0))
+            elif trade_action in ["Sell", "Short"]:
+                confidence = safe_float(getattr(debate_judgment, 'bear_score', 0))
+            else: # Hold
+                confidence = safe_float(getattr(debate_judgment, 'neutral_score', 0))
+        
+        # 備援方案：若無裁判評分，則退回到交易員自評
+        if confidence == 0:
+            confidence = safe_float(getattr(trader_decision, 'confidence', 0))
+
         entry_price = safe_float(getattr(trader_decision, 'entry_price', None))
         stop_loss = safe_float(getattr(trader_decision, 'stop_loss', None))
         take_profit = safe_float(getattr(trader_decision, 'take_profit', None))
@@ -217,13 +236,20 @@ class AsyncBackendAnalyzer:
                 "tech_indicators": result.get('技術指標', {}), "market_structure": result.get('市場結構', {}),
                 "price_info": result.get('價格資訊', {}),
                 "bull_argument": {
-                    "confidence": getattr(result.get('bull_argument'), 'confidence', 0), "argument": getattr(result.get('bull_argument'), 'argument', ''),
+                    "confidence": safe_float(getattr(debate_judgment, 'bull_score', 0)) if debate_judgment else getattr(result.get('bull_argument'), 'confidence', 0), 
+                    "argument": getattr(result.get('bull_argument'), 'argument', ''),
                     "key_points": getattr(result.get('bull_argument'), 'key_points', [])
                 } if result.get('bull_argument') else None,
                 "bear_argument": {
-                    "confidence": getattr(result.get('bear_argument'), 'confidence', 0), "argument": getattr(result.get('bear_argument'), 'argument', ''),
+                    "confidence": safe_float(getattr(debate_judgment, 'bear_score', 0)) if debate_judgment else getattr(result.get('bear_argument'), 'confidence', 0), 
+                    "argument": getattr(result.get('bear_argument'), 'argument', ''),
                     "key_points": getattr(result.get('bear_argument'), 'key_points', [])
                 } if result.get('bear_argument') else None,
+                "debate_judgment": {
+                    "winning_stance": getattr(debate_judgment, 'winning_stance', 'Tie'),
+                    "judge_rationale": getattr(debate_judgment, 'judge_rationale', ''),
+                    "key_takeaway": getattr(debate_judgment, 'key_takeaway', '')
+                } if debate_judgment else None,
                 "funding_rate_info": result.get("funding_rate_info", {}), "news_info": result.get("新聞資訊", {})
             }
         }

@@ -35,7 +35,9 @@ from core.config import (
     DEFAULT_KLINES_LIMIT,
     SCREENER_DEFAULT_LIMIT,
     SCREENER_DEFAULT_INTERVAL,
-    NEWS_FETCH_LIMIT # <-- Add this
+    NEWS_FETCH_LIMIT, # <-- Add this
+    ENABLE_SPOT_TRADING,
+    ENABLE_FUTURES_TRADING
 )
 load_dotenv()
 
@@ -312,11 +314,17 @@ class CryptoAnalysisBot:
 
             # 4. 並行執行 AI 分析 (因為數據已經有了，這一步會非常快)
             with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_ANALYSIS_WORKERS) as executor:
-                future_spot = executor.submit(app.invoke, spot_state)
-                future_futures = executor.submit(app.invoke, futures_state)
+                future_spot = None
+                future_futures = None
 
-                spot_final_state = future_spot.result()
-                futures_final_state = future_futures.result()
+                if ENABLE_SPOT_TRADING:
+                    future_spot = executor.submit(app.invoke, spot_state)
+                
+                if ENABLE_FUTURES_TRADING:
+                    future_futures = executor.submit(app.invoke, futures_state)
+
+                spot_final_state = future_spot.result() if future_spot else None
+                futures_final_state = future_futures.result() if future_futures else None
 
             # 5. 返回摘要生成器
             return spot_final_state, futures_final_state, self._generate_summary(spot_final_state, futures_final_state)
@@ -370,15 +378,24 @@ class CryptoAnalysisBot:
         summary_parts = ["### >> 多空觀點辯論"]
         bull_argument = primary_results.get('bull_argument')
         bear_argument = primary_results.get('bear_argument')
+        debate_judgment = primary_results.get('debate_judgment')
+
         if bull_argument:
-            summary_parts.append(f"** 看多理由 (Bullish):**\n{bull_argument.argument}\n")
+            bull_conf = getattr(debate_judgment, 'bull_score', bull_argument.confidence) if debate_judgment else bull_argument.confidence
+            summary_parts.append(f"** 看多理由 (Bullish) [公信力: {bull_conf}%]:**\n{bull_argument.argument}\n")
         else:
             summary_parts.append(f"** 看多理由 (Bullish):**\n無\n")
 
         if bear_argument:
-            summary_parts.append(f"** 看空理由 (Bearish):**\n{bear_argument.argument}\n")
+            bear_conf = getattr(debate_judgment, 'bear_score', bear_argument.confidence) if debate_judgment else bear_argument.confidence
+            summary_parts.append(f"** 看空理由 (Bearish) [公信力: {bear_conf}%]:**\n{bear_argument.argument}\n")
         else:
             summary_parts.append(f"** 看空理由 (Bearish):**\n無\n")
+
+        if debate_judgment:
+            summary_parts.append(f"**👨‍⚖️ 裁判裁決 ({debate_judgment.winning_stance}):**\n{debate_judgment.judge_rationale}\n")
+            summary_parts.append(f"**💡 核心事實:** {debate_judgment.key_takeaway}\n")
+            
         yield "\n".join(summary_parts) + "\n"
 
         # --- 3. 技術分析總結 ---
@@ -426,6 +443,7 @@ class CryptoAnalysisBot:
 
             final_approval = results.get('final_approval')
             trader_decision = results.get('trader_decision')
+            debate_judgment = results.get('debate_judgment')
 
             if not final_approval:
                 return f"\n#### {market_name}\n**決策**: 無法獲取最終審批結果\n"
@@ -436,6 +454,19 @@ class CryptoAnalysisBot:
             trading_action = trader_decision.decision if trader_decision else 'Hold'
             action_display = action_map.get(trading_action, trading_action)
 
+            # 加入裁判公信力評分
+            final_conf = 0.0
+            if debate_judgment:
+                if trading_action in ["Buy", "Long"]:
+                    final_conf = getattr(debate_judgment, 'bull_score', 0)
+                elif trading_action in ["Sell", "Short"]:
+                    final_conf = getattr(debate_judgment, 'bear_score', 0)
+                else:
+                    final_conf = getattr(debate_judgment, 'neutral_score', 0)
+            
+            if final_conf == 0 and trader_decision:
+                final_conf = getattr(trader_decision, 'confidence', 0)
+
             approval_status = final_approval.final_decision if hasattr(final_approval, 'final_decision') else "未知"
             approval_display = approval_map.get(approval_status, approval_status)
             
@@ -443,6 +474,8 @@ class CryptoAnalysisBot:
 
             lines = [f"\n#### {market_name}"]
             lines.append(f"**交易動作**: {action_display}")
+            if final_conf > 0:
+                lines.append(f"**客觀公信力**: {final_conf}%")
             lines.append(f"**審批狀態**: {approval_display}")
             lines.append(f"**審批理由**: {reasoning}")
 
