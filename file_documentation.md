@@ -30,27 +30,28 @@
 14. **crypto_screener.py** - 加密貨幣篩選器
 15. **backend_analyzer.py** - 後台分析引擎（生成 JSON 格式決策）
 16. **batch_analyzer.py** - 批量分析器（多幣種同時分析）
+17. **market_scanner.py** - 簡易市場掃描器（通道與形態檢測）
 
 ## 工具與輔助檔案 (Utils)
 
-17. **utils.py** - 通用工具函數
-18. **retry_utils.py** - 重試機制工具
-19. **llm_client.py** - LLM 客戶端管理（OpenAI/OpenRouter/Google Gemini）
-20. **llm_cache.py** - LLM 緩存機制
-21. **settings.py** - 系統設置參數
+18. **utils.py** - 通用工具函數
+19. **retry_utils.py** - 重試機制工具
+20. **llm_client.py** - LLM 客戶端管理（OpenAI/OpenRouter/Google Gemini）
+21. **llm_cache.py** - LLM 緩存機制
+22. **settings.py** - 系統設置參數
 
 ## 測試與開發檔案 (Testing/Development)
 
-22. **test_backend_analyzer.py** - 後台分析器測試
-23. **validate_backend_json.py** - JSON 驗證工具
-24. **list_gemini_models.py** - 列出可用的 Gemini 模型
+23. **test_backend_analyzer.py** - 後台分析器測試
+24. **validate_backend_json.py** - JSON 驗證工具
+25. **list_gemini_models.py** - 列出可用的 Gemini 模型
 
 ## 其他檔案 (Others)
 
-25. **NEWS_SOURCES_GUIDE.md** - 新聞源指南（非 Python 檔案）
-26. **record.txt** - 系統記錄文本
-27. **record_fix_log.txt** - 修復日誌
-28. **trading_decisions_*.json** - 交易決策存檔（非 Python 檔案）
+26. **NEWS_SOURCES_GUIDE.md** - 新聞源指南（非 Python 檔案）
+27. **record.txt** - 系統記錄文本
+28. **record_fix_log.txt** - 修復日誌
+29. **trading_decisions_*.json** - 交易決策存檔（非 Python 檔案）
 
 # 功能分類與建議的資料夾結構
 

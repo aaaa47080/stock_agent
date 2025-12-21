@@ -263,9 +263,12 @@ class AsyncBackendAnalyzer:
 
     def save_decision_to_json(self, decision_data: Dict, filepath: str = None):
         if not filepath:
+            # Create decisions directory if it doesn't exist
+            os.makedirs("decisions", exist_ok=True)
             symbol = decision_data.get('symbol', 'unknown')
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filepath = f"trading_decisions_{symbol}_{timestamp}.json"
+            filepath = os.path.join("decisions", f"trading_decisions_{symbol}_{timestamp}.json")
+        
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(decision_data, f, ensure_ascii=False, indent=2, cls=DataFrameEncoder)
         print(f">> 交易決策已保存至: {filepath}")
@@ -273,8 +276,11 @@ class AsyncBackendAnalyzer:
 
     def save_multiple_decisions_to_json(self, decisions_list: List[Dict], filepath: str = None):
         if not filepath:
+            # Create decisions directory if it doesn't exist
+            os.makedirs("decisions", exist_ok=True)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filepath = f"trading_decisions_batch_{timestamp}.json"
+            filepath = os.path.join("decisions", f"trading_decisions_batch_{timestamp}.json")
+            
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(decisions_list, f, ensure_ascii=False, indent=2, cls=DataFrameEncoder)
         print(f">> 批量交易決策已保存至: {filepath}")
