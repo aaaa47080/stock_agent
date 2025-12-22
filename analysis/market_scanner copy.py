@@ -430,48 +430,12 @@ class ExhaustiveTrendlineDetector:
                 })
 
         if pivots:
-            # Sort by price to assign priority
             pivots_sorted_by_price = sorted(pivots, key=lambda x: x['price'])
 
             for i, pivot in enumerate(pivots_sorted_by_price):
                 pivot['priority'] = len(pivots_sorted_by_price) - i
 
-            # Additionally, consider ascending lows for uptrend channels
-            # Find lows that are in ascending order (higher lows pattern)
-            ascending_lows = self.find_ascending_lows(pivots)
-            for low in ascending_lows:
-                # Boost priority for ascending lows pattern
-                for pivot in pivots:
-                    if pivot['index'] == low['index']:
-                        pivot['priority'] += 5  # Boost priority for ascending lows
-                        break
-
         return sorted(pivots, key=lambda x: x['index'])
-
-    def find_ascending_lows(self, pivots):
-        """Find pivot lows that form an ascending pattern (higher lows)"""
-        if len(pivots) < 2:
-            return []
-
-        ascending_lows = []
-
-        # Find consecutive lows that are increasing in price
-        for i in range(len(pivots)):
-            current_low = pivots[i]
-            temp_ascending = [current_low]
-
-            for j in range(i + 1, len(pivots)):
-                next_low = pivots[j]
-                # Check if next low is higher than previous and index is sequential
-                if next_low['price'] > current_low['price'] and next_low['index'] > current_low['index']:
-                    temp_ascending.append(next_low)
-                    current_low = next_low
-
-            # Only keep longer sequences
-            if len(temp_ascending) >= 2 and len(temp_ascending) > len(ascending_lows):
-                ascending_lows = temp_ascending[:]
-
-        return ascending_lows
 
     def find_pivot_highs(self, df):
         """Find all pivot highs, sort by price and assign priority"""
@@ -487,48 +451,12 @@ class ExhaustiveTrendlineDetector:
                 })
 
         if pivots:
-            # Sort by price to assign priority
             pivots_sorted_by_price = sorted(pivots, key=lambda x: x['price'], reverse=True)
 
             for i, pivot in enumerate(pivots_sorted_by_price):
                 pivot['priority'] = len(pivots_sorted_by_price) - i
 
-            # Additionally, consider descending highs for downtrend channels
-            # Find highs that are in descending order (lower highs pattern)
-            descending_highs = self.find_descending_highs(pivots)
-            for high in descending_highs:
-                # Boost priority for descending highs pattern
-                for pivot in pivots:
-                    if pivot['index'] == high['index']:
-                        pivot['priority'] += 5  # Boost priority for descending highs
-                        break
-
         return sorted(pivots, key=lambda x: x['index'])
-
-    def find_descending_highs(self, pivots):
-        """Find pivot highs that form a descending pattern (lower highs)"""
-        if len(pivots) < 2:
-            return []
-
-        descending_highs = []
-
-        # Find consecutive highs that are decreasing in price
-        for i in range(len(pivots)):
-            current_high = pivots[i]
-            temp_descending = [current_high]
-
-            for j in range(i + 1, len(pivots)):
-                next_high = pivots[j]
-                # Check if next high is lower than previous and index is sequential
-                if next_high['price'] < current_high['price'] and next_high['index'] > current_high['index']:
-                    temp_descending.append(next_high)
-                    current_high = next_high
-
-            # Only keep longer sequences
-            if len(temp_descending) >= 2 and len(temp_descending) > len(descending_highs):
-                descending_highs = temp_descending[:]
-
-        return descending_highs
 
     def exhaustive_search_trendline(self, df, pivots, line_type='resistance'):
         """
