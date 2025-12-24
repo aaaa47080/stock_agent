@@ -94,9 +94,11 @@ def get_crypto_news_cryptopanic(symbol: str = "BTC", limit: int = 5) -> List[Dic
 
                     news_list.append({
                         "title": item.get("title", "No Title"),
-                        "description": item.get("description", ""),
+                        "description": item.get("title", ""), # CryptoPanic often has empty description, use title as fallback
                         "published_at": item.get("published_at", "N/A"),
-                        "sentiment": sentiment
+                        "sentiment": sentiment,
+                        "url": item.get("url", ""), # Extract URL
+                        "source": item.get("domain", "CryptoPanic")
                     })
             
             if not news_list:
@@ -166,7 +168,8 @@ def get_crypto_news_newsapi(symbol: str = "BTC", limit: int = 5) -> List[Dict]:
                     "description": article.get("description", ""),
                     "published_at": article.get("publishedAt", "N/A"),
                     "sentiment": "中性",  # NewsAPI 不提供情緒分析
-                    "source": f"NewsAPI ({article.get('source', {}).get('name', 'Unknown')})"
+                    "source": f"NewsAPI ({article.get('source', {}).get('name', 'Unknown')})",
+                    "url": article.get("url", "") # Extract URL
                 })
 
         return news_list
@@ -222,7 +225,8 @@ def get_crypto_news_coingecko(symbol: str = "BTC", limit: int = 5) -> List[Dict]
                 "description": f"24小時變化: {price_change_24h:.2f}%, 7天變化: {price_change_7d:.2f}%, 市值排名: #{market.get('market_cap_rank', 'N/A')}",
                 "published_at": datetime.now().isoformat(),
                 "sentiment": "看漲" if price_change_24h > 5 else ("看跌" if price_change_24h < -5 else "中性"),
-                "source": "CoinGecko (Market Data)"
+                "source": "CoinGecko (Market Data)",
+                "url": f"https://www.coingecko.com/en/coins/{coin_id}"
             })
 
         # 2. 社群活動概況
@@ -237,7 +241,8 @@ def get_crypto_news_coingecko(symbol: str = "BTC", limit: int = 5) -> List[Dict]
                     "description": f"Twitter 關注者: {twitter:,}, Reddit 訂閱者: {reddit:,}, Telegram 用戶: {community.get('telegram_channel_user_count', 0):,}",
                     "published_at": datetime.now().isoformat(),
                     "sentiment": "中性",
-                    "source": "CoinGecko (Community)"
+                    "source": "CoinGecko (Community)",
+                    "url": f"https://www.coingecko.com/en/coins/{coin_id}#social"
                 })
 
         # 3. 開發活動（如果有）
@@ -249,7 +254,8 @@ def get_crypto_news_coingecko(symbol: str = "BTC", limit: int = 5) -> List[Dict]
                     "description": f"GitHub Stars: {dev.get('stars', 0):,}, Forks: {dev.get('forks', 0):,}, 最近提交: {dev.get('commit_count_4_weeks', 0)}",
                     "published_at": datetime.now().isoformat(),
                     "sentiment": "中性",
-                    "source": "CoinGecko (Developer)"
+                    "source": "CoinGecko (Developer)",
+                    "url": f"https://www.coingecko.com/en/coins/{coin_id}#developer"
                 })
 
         # 4. 流通量資訊
@@ -265,7 +271,8 @@ def get_crypto_news_coingecko(symbol: str = "BTC", limit: int = 5) -> List[Dict]
                     "description": f"流通量: {circulating:,.0f}, 總供應量: {total:,.0f} ({circ_percent:.1f}% 已流通)",
                     "published_at": datetime.now().isoformat(),
                     "sentiment": "中性",
-                    "source": "CoinGecko (Supply)"
+                    "source": "CoinGecko (Supply)",
+                    "url": f"https://www.coingecko.com/en/coins/{coin_id}#tokenomics"
                 })
 
         return news_list[:limit]

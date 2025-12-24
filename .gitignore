@@ -49,6 +49,8 @@ logs/
 Thumbs.db
 
 # Project specific
-*.pdf
-reports/
-backups/
+# *.pdf
+# reports/
+# backups/
+# web/
+# run_ngrok.sh

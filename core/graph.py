@@ -64,6 +64,10 @@ class AgentState(TypedDict):
     current_price: float
     funding_rate_info: Dict
 
+    # --- 流程控制參數 ---
+    selected_analysts: Optional[List[str]] # 指定要運行的分析師 ["technical", "sentiment", "fundamental", "news"]
+    perform_trading_decision: bool         # 是否進行後續的辯論與交易決策
+
     # --- 各階段的產出 ---
     analyst_reports: List[AnalystReport]
     bull_argument: ResearcherDebate
@@ -302,6 +306,19 @@ def analyst_team_node(state: AgentState) -> Dict:
     print(">> 所有分析師報告完成")
     return {"analyst_reports": analyst_reports}
 
+def after_analyst_team_router(state: AgentState) -> str:
+    """
+    路由節點: 在分析師完成後，決定下一步。
+    如果不需要交易決策 (例如只問 RSI 或 新聞)，則直接結束。
+    """
+    perform_trading_decision = state.get('perform_trading_decision', True)
+    
+    if perform_trading_decision:
+        return "proceed_to_debate"
+    else:
+        print("  >> 用戶僅請求特定分析，跳過辯論與交易決策階段。")
+        return "end_process"
+
 def research_debate_node(state: AgentState) -> Dict:
     """
     節點 3: 研究團隊進行深度辯論。
@@ -506,7 +523,17 @@ workflow.set_entry_point("prepare_data")
 
 # 添加邊 (Edges)
 workflow.add_edge("prepare_data", "run_analyst_team")
-workflow.add_edge("run_analyst_team", "run_research_debate")
+
+# 條件路由：分析師完成後，決定是否進入辯論階段
+workflow.add_conditional_edges(
+    "run_analyst_team",
+    after_analyst_team_router,
+    {
+        "proceed_to_debate": "run_research_debate",
+        "end_process": END
+    }
+)
+
 workflow.add_edge("run_research_debate", "run_trader_decision")
 # 交易員決策後，進入風險管理
 workflow.add_edge("run_trader_decision", "run_risk_management")

@@ -1,6 +1,12 @@
 # Core dependencies for AI Crypto Trading System
 openai>=1.12.0
-langgraph
+
+# LangChain 1.0+ (官方大改版後的穩定版本)
+langchain>=1.0.0
+langchain-openai>=1.0.0
+langchain-core>=1.0.0
+langgraph>=1.0.0
+
 pandas>=2.0.0
 numpy
 pandas-ta
@@ -12,3 +18,5 @@ cachetools
 tqdm
 google-generativeai
 dirtyjson
+fastapi
+uvicorn

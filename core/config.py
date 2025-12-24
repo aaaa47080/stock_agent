@@ -53,28 +53,28 @@ TRADER_MODEL = {
 # === 多頭委員會 ===
 # 多個模型都給出多頭觀點，然後綜合
 BULL_COMMITTEE_MODELS = [
-    {"provider": "openai", "model": "gpt-4.1-mini"},  
+    # {"provider": "openai", "model": "gpt-4.1-mini"},  
     # {"provider": "openai", "model": "gpt-5-mini"},                        # GPT-4o mini
-    {"provider": "google_gemini", "model": "gemini-3-flash-preview"},              # Gemini 2.5 Flash (最新穩定版)
-    {"provider": "openrouter", "model": "qwen/qwen3-235b-a22b:free"},        # Qwen 免費版
-    # {"provider": "local", "model": "/home/danny/AI-agent/Qwen3_4B_2507"},         # 本地模型 (vLLM/Ollama)
+    # {"provider": "google_gemini", "model": "gemini-3-flash-preview"},              # Gemini 2.5 Flash (最新穩定版)
+    # {"provider": "openrouter", "model": "qwen/qwen3-235b-a22b:free"},        # Qwen 免費版
+    {"provider": "local", "model": "/home/danny/AI-agent/Qwen3_4B_2507"},         # 本地模型 (vLLM/Ollama)
 ]
 
 # === 空頭委員會 ===
 # 多個模型都給出空頭觀點，然後綜合
 BEAR_COMMITTEE_MODELS = [
-    {"provider": "openai", "model": "gpt-4.1-mini"},  
+    # {"provider": "openai", "model": "gpt-4.1-mini"},  
     # {"provider": "openai", "model": "gpt-5-mini"},                           # GPT-4o mini
-    {"provider": "google_gemini", "model": "gemini-3-flash-preview"},              # Gemini 2.5 Flash (最新穩定版)
-    {"provider": "openrouter", "model": "qwen/qwen3-235b-a22b:free"},        # Qwen 免費版
-    # {"provider": "local", "model": "/home/danny/AI-agent/Qwen3_4B_2507"},    # 本地模型 (vLLM/Ollama)
+    # {"provider": "google_gemini", "model": "gemini-3-flash-preview"},              # Gemini 2.5 Flash (最新穩定版)
+    # {"provider": "openrouter", "model": "qwen/qwen3-235b-a22b:free"},        # Qwen 免費版
+    {"provider": "local", "model": "/home/danny/AI-agent/Qwen3_4B_2507"},    # 本地模型 (vLLM/Ollama)
 ]
 
 # === 綜合模型 ===
 # 用於整合委員會意見的模型
 SYNTHESIS_MODEL = {
-    "provider": "openai",
-    "model": "gpt-5-mini",
+    "provider": "local",
+    "model": "/home/danny/AI-agent/Qwen3_4B_2507",
 }
 
 # === OpenRouter 配置 ===
@@ -93,61 +93,6 @@ LOCAL_LLM_CONFIG = {
     "temperature": 0.1,                    # 預設溫度
     "seed": 42                             # 固定隨機種子 (可選)
 }
-
-# OpenRouter 熱門模型推薦
-OPENROUTER_MODELS = {
-    # Anthropic Claude 系列
-    "claude-3.5-sonnet": "anthropic/claude-3.5-sonnet",
-    "claude-3-opus": "anthropic/claude-3-opus",
-    "claude-3-haiku": "anthropic/claude-3-haiku",
-
-    # OpenAI 系列
-    "gpt-4-turbo": "openai/gpt-4-turbo",
-    "gpt-4o": "openai/gpt-4o",
-    "gpt-4o-mini": "openai/gpt-4o-mini",
-
-    # Google Gemini 系列 (OpenRouter 代理)
-    "gemini-pro-1.5": "google/gemini-pro-1.5",
-    "gemini-flash-1.5": "google/gemini-flash-1.5",
-
-    # Meta Llama 系列
-    "llama-3.1-70b": "meta-llama/llama-3.1-70b-instruct",
-    "llama-3.1-405b": "meta-llama/llama-3.1-405b-instruct",
-
-    # 其他優秀模型
-    "qwen-2.5-72b": "qwen/qwen-2.5-72b-instruct",
-    "deepseek-chat": "deepseek/deepseek-chat",
-}
-
-# Google Gemini 官方模型推薦
-GOOGLE_GEMINI_MODELS = {
-    "gemini-1.5-pro": "gemini-1.5-pro",
-    "gemini-1.5-flash": "gemini-1.5-flash",
-    "gemini-pro": "gemini-pro", # Legacy model
-}
-
-
-# === 推薦的辯論組合 ===
-# 組合1: Claude vs GPT（經典對決）
-# BULL: anthropic/claude-3.5-sonnet (保守穩健)
-# BEAR: openai/gpt-4o (激進創新)
-
-# 組合2: GPT vs Gemini（多樣性）
-# BULL: openai/gpt-4o
-# BEAR: google/gemini-pro-1.5
-
-# 組合3: Claude vs Llama（開源vs商業）
-# BULL: anthropic/claude-3.5-sonnet
-# BEAR: meta-llama/llama-3.1-70b-instruct
-
-# 組合4: 全開源
-# BULL: qwen/qwen-2.5-72b-instruct
-# BEAR: meta-llama/llama-3.1-70b-instruct
-
-# 組合5: 本地模型 (vLLM/Ollama)
-# BULL: {"provider": "local", "model": "meta-llama/Llama-3-8b-chat-hf"}
-# BEAR: {"provider": "local", "model": "mistralai/Mistral-7B-Instruct-v0.2"}
-
 
 # === 介面與應用程式配置 ===
 

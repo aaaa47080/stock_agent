@@ -6,11 +6,19 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import json
 import openai
 from typing import Literal, List, Dict, Optional
-from core.models import AnalystReport, ResearcherDebate, TraderDecision, RiskAssessment, FinalApproval, FactCheckResult, FactCheckResult
-from core.config import FAST_THINKING_MODEL, DEEP_THINKING_MODEL
+from core.models import (
+    AnalystReport, ResearcherDebate, TraderDecision, RiskAssessment, 
+    FinalApproval, FactCheckResult, MultiTimeframeData
+)
+from core.config import FAST_THINKING_MODEL, DEEP_THINKING_MODEL, QUERY_PARSER_MODEL
 from utils.llm_client import supports_json_mode, extract_json_from_response
 from utils.retry_utils import retry_on_failure
 from utils.utils import DataFrameEncoder
+from dotenv import load_dotenv
+from langchain_openai import ChatOpenAI
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from langgraph.prebuilt import create_react_agent
+from core.tools import get_crypto_tools
 
 # ============================================================================ 
 # 第一層：分析師團隊 (Analysts Team)
@@ -1123,3 +1131,382 @@ class DataFactChecker:
         except Exception as e:
             print(f"       >> 數據核對出錯: {e}")
             return {}
+
+
+# ============================================================================
+
+# Merged from core/agent.py (CryptoAgent)
+
+# ============================================================================
+
+CRYPTO_ASSISTANT_PROMPT = """你是一位專業的加密貨幣投資分析助手，同時也是一位友善的 AI 助理。你的名字是 Pi Crypto Insight。
+
+## 你的能力
+
+1. **一般對話**: 你可以回答各種問題，不限於加密貨幣話題。你可以聊天、回答知識問題、提供建議等。
+
+2. **加密貨幣分析**: 你有專業的工具可以分析加密貨幣市場，包括：
+   - 即時價格查詢
+   - 技術指標分析
+   - 新聞面分析
+   - 完整投資分析
+
+## 可用工具說明
+
+你有以下工具可以使用：
+
+| 工具名稱 | 功能 | 速度 | 適用情境 |
+|---------|------|------|---------|
+| `get_crypto_price_tool` | 即時價格查詢 | 最快 (1-2秒) | 「現在多少錢？」「價格是多少？」 |
+| `technical_analysis_tool` | 純技術分析 | 快 (3-5秒) | 「RSI 是多少？」「MACD 如何？」「趨勢如何？」 |
+| `news_analysis_tool` | 新聞面分析 | 快 (3-5秒) | 「最新新聞是什麼？」「有什麼消息？」 |
+| `full_investment_analysis_tool` | 完整投資分析 | 慢 (30秒-2分鐘) | 「可以投資嗎？」「應該買嗎？」「給我完整分析」 |
+
+## 工具選擇策略
+
+請根據用戶問題選擇最合適的工具：
+
+### 1. 價格相關問題 → `get_crypto_price_tool`
+- 「BTC 現在多少錢？」
+- 「ETH 的價格是多少？」
+- 「PI 幣價格？」
+
+### 2. 技術指標問題 → `technical_analysis_tool`
+- 「BTC 的 RSI 是多少？」
+- 「ETH 超買了嗎？」
+- 「SOL 的趨勢如何？」
+- 「支撐位在哪裡？」
+
+### 3. 新聞/消息問題 → `news_analysis_tool`
+- 「BTC 最近有什麼新聞？」
+- 「ETH 有什麼消息？」
+- 「市場情緒如何？」
+
+### 4. 投資決策問題 → `full_investment_analysis_tool`
+- 「BTC 可以投資嗎？」
+- 「應該買入 ETH 嗎？」
+- 「SOL 值得做多嗎？」
+- 「給我完整的分析報告」
+- 「幫我分析一下 PI」（如果用戶沒指定類型，且看起來想要投資建議）
+
+### 5. 一般問題 → 不需要工具，直接回答
+- 「什麼是 RSI？」
+- 「如何看 MACD？」
+- 「你好」
+- 「謝謝」
+- 任何非即時數據相關的問題
+
+## 重要原則
+
+1. **選擇最輕量的工具**: 如果只是問價格，不要用完整分析工具。用戶問 RSI，不需要跑完整投資分析。
+
+2. **確認幣種**:
+   - 如果用戶提到「它」、「這個幣」、「剛才那個」，請根據對話上下文推斷是指哪個幣種。
+   - 如果無法確定，請禮貌地詢問：「請問您是指哪個加密貨幣呢？」
+
+3. **說明等待時間**: 在調用 `full_investment_analysis_tool` 前，先告知用戶：「正在為您進行完整分析，這可能需要 30 秒到 2 分鐘，請稍候...」
+
+4. **錯誤處理**: 如果工具返回錯誤，友善地告知用戶並提供替代建議。
+
+5. **語言**: 請使用繁體中文回應，除非用戶使用其他語言。
+
+6. **風險提示**: 在給出投資建議時，適當加上風險提示。
+
+7. **引用來源**: 當工具返回包含網址 (URL) 的新聞或數據來源時，**必須**在回應的最後方保留這些連結，作為「參考資料」。不要移除或摘要這些連結。
+
+## 對話風格
+
+- 專業但友善
+- 簡潔明瞭
+- 必要時提供補充說明
+- 使用表格和 Markdown 格式使回答更易讀
+- **最後必須附上參考資料連結** (如果有)
+
+## 範例對話
+
+**用戶**: BTC 現在多少錢？
+**助手**: [使用 get_crypto_price_tool] 返回價格資訊
+
+**用戶**: RSI 是多少？
+**助手**: [根據上下文知道是 BTC，使用 technical_analysis_tool] 返回技術分析
+
+**用戶**: 可以買嗎？
+**助手**: 「正在為您進行完整分析，請稍候...」[使用 full_investment_analysis_tool] 返回完整分析
+
+**用戶**: 什麼是布林帶？
+**助手**: [不需要工具，直接解釋布林帶的概念]
+
+現在，請根據用戶的問題，決定是否需要使用工具，並給出專業且友善的回應。
+"""
+
+
+# ============================================================================
+# Agent 建立函式
+# ============================================================================
+
+def create_crypto_agent(
+    model_name: str = None,
+    temperature: float = 0.3,
+    verbose: bool = False
+):
+    """
+    創建加密貨幣分析 Agent
+
+    Args:
+        model_name: 使用的模型名稱，預設使用 QUERY_PARSER_MODEL
+        temperature: 溫度參數
+        verbose: 是否顯示詳細日誌
+
+    Returns:
+        LangGraph Agent 實例
+    """
+
+    # 初始化 LLM
+    llm = ChatOpenAI(
+        model=model_name or QUERY_PARSER_MODEL,
+        temperature=temperature,
+        api_key=os.getenv("OPENAI_API_KEY")
+    )
+
+    # 獲取工具
+    tools = get_crypto_tools()
+
+    # 使用 langgraph 創建 ReAct Agent
+    # create_react_agent 會自動處理工具調用和對話流程
+    agent = create_react_agent(
+        model=llm,
+        tools=tools,
+        prompt=CRYPTO_ASSISTANT_PROMPT  # 系統提示詞
+    )
+
+    return agent
+
+
+# ============================================================================
+# CryptoAgent 封裝類
+# ============================================================================
+
+class CryptoAgent:
+    """加密貨幣分析 Agent 封裝類"""
+
+    def __init__(
+        self,
+        model_name: str = None,
+        temperature: float = 0.3,
+        verbose: bool = False
+    ):
+        """
+        初始化 CryptoAgent
+
+        Args:
+            model_name: 使用的模型名稱
+            temperature: 溫度參數
+            verbose: 是否顯示詳細日誌
+        """
+        self.agent = create_crypto_agent(model_name, temperature, verbose)
+        self.chat_history: List = []
+        self.last_symbol: Optional[str] = None  # 追蹤最後提到的幣種
+        self.verbose = verbose
+
+    def chat(self, user_input: str) -> str:
+        """
+        與 Agent 對話
+
+        Args:
+            user_input: 用戶輸入
+
+        Returns:
+            Agent 回應
+        """
+        try:
+            # 構建消息列表
+            messages = self.chat_history + [HumanMessage(content=user_input)]
+
+            # 執行 Agent (langgraph 使用 invoke 方法)
+            result = self.agent.invoke({"messages": messages})
+
+            # 從結果中提取最後的 AI 消息
+            response = ""
+            tool_outputs = []
+            if "messages" in result:
+                for msg in reversed(result["messages"]):
+                    if isinstance(msg, AIMessage) and msg.content and not response:
+                        response = msg.content
+                    # 收集工具的原始輸出
+                    if hasattr(msg, 'tool_name') or (hasattr(msg, 'type') and msg.type == 'tool'):
+                        tool_outputs.append(msg.content)
+
+            # --- [新增] 自動提取網址並附加參考資料區 ---
+            references = self._extract_references_from_tools(tool_outputs)
+            if references:
+                response += "\n\n---\n### 📚 相關連接\n"
+                for i, url in enumerate(references, 1):
+                    response += f"{i}.{url}\n\n"
+
+            # 更新對話歷史
+            self.chat_history.append(HumanMessage(content=user_input))
+            self.chat_history.append(AIMessage(content=response))
+
+            # 限制歷史長度（避免 context 過長）
+            if len(self.chat_history) > 20:
+                self.chat_history = self.chat_history[-20:]
+
+            # 嘗試從對話中提取幣種（用於上下文追蹤）
+            self._extract_symbol(user_input)
+
+            return response
+
+        except Exception as e:
+            error_msg = f"處理請求時發生錯誤: {str(e)}"
+            print(f"[CryptoAgent Error] {error_msg}")
+            import traceback
+            if self.verbose:
+                traceback.print_exc()
+            return f"抱歉，處理您的請求時發生了一些問題。請稍後再試，或換一種方式提問。\n\n錯誤詳情: {str(e)}"
+
+    def chat_stream(self, user_input: str):
+        """
+        與 Agent 對話（串流模式）
+
+        Args:
+            user_input: 用戶輸入
+
+        Yields:
+            逐步生成的回應文字
+        """
+        try:
+            # 構建消息列表
+            messages = self.chat_history + [HumanMessage(content=user_input)]
+
+            # 執行 Agent
+            result = self.agent.invoke({"messages": messages})
+
+            # 從結果中提取最後的 AI 消息
+            response = ""
+            tool_outputs = []
+            if "messages" in result:
+                for msg in reversed(result["messages"]):
+                    if isinstance(msg, AIMessage) and msg.content and not response:
+                        response = msg.content
+                    if hasattr(msg, 'tool_name') or (hasattr(msg, 'type') and msg.type == 'tool'):
+                        tool_outputs.append(msg.content)
+
+            if not response:
+                response = "抱歉，我無法處理這個請求。"
+
+            # --- [新增] 自動提取網址並附加參考資料區 ---
+            references = self._extract_references_from_tools(tool_outputs)
+            if references:
+                response += "\n\n---\n### 📚 相關連接\n"
+                for i, url in enumerate(references, 1):
+                    response += f"{i}.{url}\n\n"
+
+            # 更新對話歷史
+            self.chat_history.append(HumanMessage(content=user_input))
+            self.chat_history.append(AIMessage(content=response))
+
+            # 限制歷史長度
+            if len(self.chat_history) > 20:
+                self.chat_history = self.chat_history[-20:]
+
+            # 嘗試從對話中提取幣種
+            self._extract_symbol(user_input)
+
+            yield response
+
+        except Exception as e:
+            import traceback
+            if self.verbose:
+                traceback.print_exc()
+            yield f"抱歉，處理您的請求時發生了一些問題: {str(e)}"
+
+    def _extract_references_from_tools(self, tool_outputs: List[str]) -> List[str]:
+        """從工具輸出中提取唯一網址"""
+        import re
+        seen_urls = set()
+        urls = []
+        
+        for output in tool_outputs:
+            if not isinstance(output, str): continue
+            
+            # 匹配所有 http/https 網址
+            found_urls = re.findall(r'(https?://[^\s\)\"\'>\]]+)', output)
+            for url in found_urls:
+                # 移除網址末尾可能存在的標點符號 (例如 Markdown 的括號)
+                clean_url = url.split(')')[0].split(']')[0].rstrip(',. ')
+                if clean_url not in seen_urls and len(clean_url) > 10:
+                    urls.append(clean_url)
+                    seen_urls.add(clean_url)
+        
+        return urls
+
+    def _extract_symbol(self, text: str) -> Optional[str]:
+        """從文字中提取幣種符號"""
+        import re
+        # 常見的加密貨幣符號
+        crypto_pattern = r'\b(BTC|ETH|SOL|XRP|ADA|DOGE|DOT|MATIC|LINK|AVAX|ATOM|UNI|LTC|BCH|SHIB|PI|PIUSDT|BTCUSDT|ETHUSDT)\b'
+        matches = re.findall(crypto_pattern, text.upper())
+        if matches:
+            # 清理符號
+            symbol = matches[0].replace("USDT", "")
+            self.last_symbol = symbol
+            return symbol
+        return None
+
+    def clear_history(self):
+        """清除對話歷史"""
+        self.chat_history = []
+        self.last_symbol = None
+
+    def get_last_symbol(self) -> Optional[str]:
+        """獲取最後提到的幣種"""
+        return self.last_symbol
+
+
+# ============================================================================
+# 便捷函式
+# ============================================================================
+
+def quick_chat(message: str, verbose: bool = False) -> str:
+    """
+    快速對話（無狀態，每次創建新 Agent）
+
+    Args:
+        message: 用戶消息
+        verbose: 是否顯示詳細日誌
+
+    Returns:
+        Agent 回應
+    """
+    agent = CryptoAgent(verbose=verbose)
+    return agent.chat(message)
+
+
+# ============================================================================
+# 測試代碼
+# ============================================================================
+
+if __name__ == "__main__":
+    print("=" * 60)
+    print("Pi Crypto Insight - Agent 測試模式")
+    print("=" * 60)
+
+    # 創建 Agent
+    agent = CryptoAgent(verbose=True)
+
+    # 測試對話
+    test_queries = [
+        "你好！",
+        "BTC 現在多少錢？",
+        "它的 RSI 是多少？",
+        "什麼是 MACD？",
+        "PI 幣最近有什麼新聞？",
+    ]
+
+    for query in test_queries:
+        print(f"\n{'=' * 40}")
+        print(f"用戶: {query}")
+        print("-" * 40)
+        response = agent.chat(query)
+        print(f"助手: {response}")
+        print("=" * 40)

@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pi Crypto Insight - AI 投資分析</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Markdown Parser -->
+    <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js"></script>
+    <!-- Pi SDK -->
+    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+    <!-- TradingView Lightweight Charts -->
+    <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f1f5f9;
+        }
+
+        .glass-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .message-bubble {
+            max-width: 85%;
+            border-radius: 1.25rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .user-message {
+            background: #3b82f6;
+            color: white;
+            border-bottom-right-radius: 0.25rem;
+            margin-left: auto;
+        }
+
+        .bot-message {
+            background: #1e293b;
+            color: #f1f5f9;
+            border-bottom-left-radius: 0.25rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 5px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 10px;
+        }
+
+        /* Markdown Styles */
+        .prose h1, .prose h2, .prose h3 { color: #60a5fa; font-weight: bold; margin-top: 1rem; margin-bottom: 0.5rem; }
+        .prose h2 { font-size: 1.25rem; border-left: 4px solid #3b82f6; padding-left: 0.5rem; }
+        .prose p { margin-bottom: 0.75rem; line-height: 1.6; }
+        .prose ul { list-style-type: disc; margin-left: 1.5rem; margin-bottom: 0.75rem; }
+        .prose strong { color: #fbbf24; }
+        .prose table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+        .prose th, .prose td { border: 1px solid #334155; padding: 0.5rem; text-align: left; }
+        .prose th { background: #1e293b; }
+
+        .typing-indicator span {
+            display: inline-block;
+            width: 4px;
+            height: 4px;
+            background-color: #94a3b8;
+            border-radius: 50%;
+            margin-right: 2px;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1.0); }
+        }
+
+        /* Loading Spinner */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .loading-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 18px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        .spinner {
+            width: 22px;
+            height: 22px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        .done-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            font-size: 12px;
+            margin-top: 12px;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <!-- Header -->
+    <header class="glass-card h-16 flex items-center justify-between px-6 z-10">
+        <div class="flex items-center gap-2">
+            <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-900/20">
+                <i data-lucide="trending-up" class="text-white w-6 h-6"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg leading-tight">Pi Crypto <span class="text-blue-500">Insight</span></h1>
+                <p class="text-xs text-slate-400 flex items-center gap-1">
+                    <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> AI Analysis Ready
+                </p>
+            </div>
+        </div>
+        <div id="pi-user" class="text-sm bg-slate-800/50 px-3 py-1.5 rounded-full border border-slate-700 hidden">
+            <!-- Pi Username will appear here -->
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex overflow-hidden">
+        
+        <!-- Sidebar (Desktop) / Bottom Nav (Mobile) -->
+        <nav class="w-20 glass-card flex flex-col items-center py-8 gap-8 hidden md:flex">
+            <button onclick="switchTab('chat')" class="nav-btn active group text-blue-500" title="AI 分析對話">
+                <i data-lucide="message-square" class="w-7 h-7"></i>
+            </button>
+            <button onclick="switchTab('watchlist')" class="nav-btn group text-slate-400 hover:text-blue-400" title="我的自選">
+                <i data-lucide="star" class="w-7 h-7"></i>
+            </button>
+            <button onclick="switchTab('market')" class="nav-btn group text-slate-400 hover:text-blue-400" title="行情篩選">
+                <i data-lucide="bar-chart-2" class="w-7 h-7"></i>
+            </button>
+            <button onclick="switchTab('settings')" class="mt-auto nav-btn text-slate-400" title="設定">
+                <i data-lucide="settings" class="w-7 h-7"></i>
+            </button>
+        </nav>
+
+        <!-- Chat Area -->
+        <div id="chat-tab" class="flex-1 flex flex-col relative bg-[#0f172a]">
+            <!-- Messages Container -->
+            <div id="chat-messages" class="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar space-y-4">
+                <!-- Welcome Message -->
+                <div class="bot-message message-bubble prose">
+                    <h3 class="flex items-center gap-2"><i data-lucide="bot" class="w-5 h-5"></i> 歡迎使用 Pi Crypto Insight</h3>
+                    <p>我是您的 AI 投資助手。您可以輸入加密貨幣代號（如 BTC, ETH, PI），我將為您進行深度分析。</p>
+                    <p>試試點擊下方的建議：</p>
+                    <div class="flex flex-wrap gap-2 mt-2">
+                        <button onclick="quickAsk('PIUSDT 可以投資嗎？')" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs border border-slate-700 transition">Pi Network (PI) 分析</button>
+                        <button onclick="quickAsk('比特幣現在適合買入嗎？')" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs border border-slate-700 transition">BTC 行情預測</button>
+                        <button onclick="quickAsk('比較 ETH 和 SOL')" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs border border-slate-700 transition">幣種對比</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="p-4 md:p-6 bg-gradient-to-t from-[#0f172a] to-transparent">
+                <div class="max-w-4xl mx-auto glass-card rounded-2xl p-1 shadow-2xl transition-all duration-300" id="input-container">
+                    
+                    <!-- Input Row -->
+                    <div class="flex items-center gap-2 p-2">
+                        <button onclick="toggleOptions()" class="p-3 text-slate-400 hover:text-blue-400 transition bg-slate-800/50 hover:bg-slate-700 rounded-xl" title="分析設定">
+                            <i data-lucide="sliders-horizontal" class="w-6 h-6"></i>
+                        </button>
+                        <input type="text" id="user-input" 
+                            class="flex-1 bg-transparent border-none focus:ring-0 text-slate-200 placeholder-slate-500 text-sm md:text-base py-3"
+                            placeholder="請輸入您的問題..."
+                            onkeypress="if(event.key === 'Enter') sendMessage()">
+                        <button onclick="sendMessage()" id="send-btn"
+                            class="bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-xl transition shadow-lg shadow-blue-600/20">
+                            <i data-lucide="send" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+
+                    <!-- Analysis Options Panel (Hidden by default) -->
+                    <div id="analysis-options-panel" class="hidden border-t border-slate-700/50 p-3 animate-in slide-in-from-top-2 duration-200">
+                        <div class="text-xs text-slate-500 mb-2 font-medium px-1">選擇分析模組 (留空則自動判斷):</div>
+                        <div class="flex flex-wrap gap-2">
+                            <label class="flex items-center gap-2 cursor-pointer bg-slate-800/40 px-3 py-2 rounded-lg border border-slate-700 hover:bg-slate-700/60 transition select-none">
+                                <input type="checkbox" class="analysis-checkbox form-checkbox h-4 w-4 text-blue-500 rounded bg-slate-700 border-slate-600 focus:ring-offset-slate-800" value="Technical Analysis">
+                                <span class="text-xs text-slate-300">技術分析</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer bg-slate-800/40 px-3 py-2 rounded-lg border border-slate-700 hover:bg-slate-700/60 transition select-none">
+                                <input type="checkbox" class="analysis-checkbox form-checkbox h-4 w-4 text-blue-500 rounded bg-slate-700 border-slate-600 focus:ring-offset-slate-800" value="News Analysis">
+                                <span class="text-xs text-slate-300">新聞分析</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer bg-slate-800/40 px-3 py-2 rounded-lg border border-slate-700 hover:bg-slate-700/60 transition select-none">
+                                <input type="checkbox" class="analysis-checkbox form-checkbox h-4 w-4 text-blue-500 rounded bg-slate-700 border-slate-600 focus:ring-offset-slate-800" value="Fundamental Analysis">
+                                <span class="text-xs text-slate-300">基本面</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer bg-slate-800/40 px-3 py-2 rounded-lg border border-slate-700 hover:bg-slate-700/60 transition select-none">
+                                <input type="checkbox" class="analysis-checkbox form-checkbox h-4 w-4 text-blue-500 rounded bg-slate-700 border-slate-600 focus:ring-offset-slate-800" value="Sentiment Analysis">
+                                <span class="text-xs text-slate-300">情緒分析</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer bg-slate-800/40 px-3 py-2 rounded-lg border border-amber-500/30 hover:bg-amber-900/10 transition select-none">
+                                <input type="checkbox" class="analysis-checkbox form-checkbox h-4 w-4 text-amber-500 rounded bg-slate-700 border-slate-600 focus:ring-offset-slate-800" value="Full Trading Decision">
+                                <span class="text-xs text-amber-400 font-medium">交易決策</span>
+                            </label>
+                        </div>
+                    </div>
+
+                </div>
+                <p class="text-[10px] text-center text-slate-500 mt-3 uppercase tracking-widest">Powered by AI Agent System & Pi Network</p>
+            </div>
+        </div>
+
+        <!-- Market Tab (Hidden by default) -->
+        <div id="market-tab" class="hidden flex-1 flex flex-col p-6 overflow-y-auto custom-scrollbar">
+            <div class="max-w-6xl mx-auto w-full">
+                <div class="flex justify-between items-end mb-8">
+                    <div>
+                        <h2 class="text-2xl font-bold">市場篩選器</h2>
+                        <p class="text-slate-400">根據 RSI 與漲幅挑選優質幣種</p>
+                    </div>
+                    <button onclick="refreshScreener()" class="flex items-center gap-2 bg-blue-600/20 text-blue-400 px-4 py-2 rounded-lg border border-blue-500/30 hover:bg-blue-600/30 transition">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i> 重新整理
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Top Performers -->
+                    <div class="glass-card rounded-2xl p-5">
+                        <h3 class="flex items-center gap-2 font-semibold mb-4 text-green-400">
+                            <i data-lucide="rocket" class="w-5 h-5"></i> 領漲幣種 (7D)
+                        </h3>
+                        <div id="top-list" class="space-y-3">
+                            <div class="animate-pulse flex space-y-4">載入中...</div>
+                        </div>
+                    </div>
+                    <!-- Oversold -->
+                    <div class="glass-card rounded-2xl p-5">
+                        <h3 class="flex items-center gap-2 font-semibold mb-4 text-orange-400">
+                            <i data-lucide="trending-down" class="w-5 h-5"></i> 超賣區域 (RSI &lt; 40)
+                        </h3>
+                        <div id="oversold-list" class="space-y-3">
+                            <div class="animate-pulse flex space-y-4">載入中...</div>
+                        </div>
+                    </div>
+                    <!-- Overbought -->
+                    <div class="glass-card rounded-2xl p-5">
+                        <h3 class="flex items-center gap-2 font-semibold mb-4 text-red-400">
+                            <i data-lucide="alert-triangle" class="w-5 h-5"></i> 超買區域 (RSI &gt; 70)
+                        </h3>
+                        <div id="overbought-list" class="space-y-3">
+                            <div class="animate-pulse flex space-y-4">載入中...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Watchlist Tab (自選清單) -->
+        <div id="watchlist-tab" class="hidden flex-1 flex flex-col p-6 overflow-y-auto custom-scrollbar">
+            <div class="max-w-4xl mx-auto w-full">
+                <div class="flex justify-between items-end mb-8">
+                    <div>
+                        <h2 class="text-2xl font-bold flex items-center gap-2">
+                            <i data-lucide="star" class="w-6 h-6 text-amber-400"></i> 我的自選清單
+                        </h2>
+                        <p class="text-slate-400">追蹤您關注的幣種，快速查看行情</p>
+                    </div>
+                    <button onclick="refreshWatchlist()" class="flex items-center gap-2 bg-amber-600/20 text-amber-400 px-4 py-2 rounded-lg border border-amber-500/30 hover:bg-amber-600/30 transition">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i> 刷新
+                    </button>
+                </div>
+
+                <!-- Watchlist Items -->
+                <div id="watchlist-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="glass-card rounded-xl p-6 text-center text-slate-400">
+                        <i data-lucide="star" class="w-12 h-12 mx-auto mb-3 opacity-30"></i>
+                        <p>您還沒有收藏任何幣種</p>
+                        <p class="text-sm mt-2">在 AI 分析結果中點擊 ⭐ 按鈕來收藏</p>
+                    </div>
+                </div>
+
+                <!-- Chart Container -->
+                <div id="chart-section" class="mt-8 hidden">
+                    <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <i data-lucide="trending-up" class="w-5 h-5 text-blue-400"></i>
+                        <span id="chart-title">BTC/USDT</span> K 線圖
+                    </h3>
+                    <div id="chart-container" class="glass-card rounded-xl p-4" style="height: 400px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="settings-tab" class="hidden flex-1 flex flex-col p-6 overflow-y-auto custom-scrollbar">
+            <div class="max-w-2xl mx-auto w-full">
+                <h2 class="text-2xl font-bold mb-6">設定與帳戶</h2>
+                <div class="glass-card rounded-2xl p-6 space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-400 mb-2">Pi 網路身份</label>
+                        <div id="settings-user" class="text-lg font-semibold text-blue-400">未登入</div>
+                    </div>
+                    
+                    <div class="pt-6 border-t border-slate-700">
+                        <h3 class="text-lg font-semibold mb-4 text-amber-400">贊助與支持</h3>
+                        <p class="text-sm text-slate-400 mb-4">如果您覺得這個工具對您有幫助，可以贊助 1 Pi 來支持開發者持續優化系統。</p>
+                        <button onclick="alert('正式版本將串接 Pi 錢包支付 1 Pi')" class="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold py-3 rounded-xl transition shadow-lg opacity-50">
+                            贊助 1 Pi (開發中)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Mobile Navigation -->
+    <nav class="md:hidden glass-card flex justify-around py-4 border-t border-slate-800">
+        <button onclick="switchTab('chat')" class="flex flex-col items-center gap-1 text-blue-500">
+            <i data-lucide="message-square" class="w-6 h-6"></i>
+            <span class="text-[10px]">分析</span>
+        </button>
+        <button onclick="switchTab('watchlist')" class="flex flex-col items-center gap-1 text-slate-400">
+            <i data-lucide="star" class="w-6 h-6"></i>
+            <span class="text-[10px]">自選</span>
+        </button>
+        <button onclick="switchTab('market')" class="flex flex-col items-center gap-1 text-slate-400">
+            <i data-lucide="bar-chart-2" class="w-6 h-6"></i>
+            <span class="text-[10px]">行情</span>
+        </button>
+        <button onclick="switchTab('settings')" class="flex flex-col items-center gap-1 text-slate-400">
+            <i data-lucide="settings" class="w-6 h-6"></i>
+            <span class="text-[10px]">設定</span>
+        </button>
+    </nav>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+        const md = window.markdownit({ html: true, linkify: true });
+        let isAnalyzing = false;
+
+        // Pi Network Initialization (moved to end of script for watchlist integration)
+        const Pi = window.Pi;
+
+        // --- [正式版支付函式 - 註解保存] ---
+        /*
+        async function createPiPayment(amount, memo) {
+            if (!Pi) return alert("請在 Pi Browser 中使用此功能");
+            
+            Pi.createPayment({
+                amount: amount,
+                memo: memo,
+                metadata: { type: "donation" },
+            }, {
+                onReadyForServerApproval: (paymentId) => {
+                    return fetch('/api/payment/approve', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ paymentId: paymentId })
+                    });
+                },
+                onReadyForServerCompletion: (paymentId, txid) => {
+                    return fetch('/api/payment/complete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ paymentId: paymentId, txid: txid })
+                    });
+                },
+                onCancel: (paymentId) => console.log("支付取消", paymentId),
+                onError: (error, payment) => console.error("支付錯誤", error, payment),
+            });
+        }
+        */
+
+        function switchTab(tab) {
+            document.getElementById('chat-tab').classList.add('hidden');
+            document.getElementById('market-tab').classList.add('hidden');
+            document.getElementById('watchlist-tab').classList.add('hidden');
+            document.getElementById('settings-tab').classList.add('hidden');
+            document.getElementById(tab + '-tab').classList.remove('hidden');
+
+            // Update nav icon colors (simplified)
+            document.querySelectorAll('nav button').forEach(btn => btn.classList.replace('text-blue-500', 'text-slate-400'));
+            // In a real app, you'd target the specific button more accurately
+
+            if (tab === 'market') refreshScreener();
+            if (tab === 'watchlist') refreshWatchlist();
+
+            // Re-render icons for new tab
+            lucide.createIcons();
+        }
+
+        function quickAsk(text) {
+            document.getElementById('user-input').value = text;
+            sendMessage();
+        }
+
+        function appendMessage(role, content) {
+            const container = document.getElementById('chat-messages');
+            const div = document.createElement('div');
+            div.className = `message-bubble ${role === 'user' ? 'user-message' : 'bot-message prose'}`;
+            
+            if (role === 'bot') {
+                div.innerHTML = md.render(content);
+            } else {
+                div.textContent = content;
+            }
+            
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+            return div;
+        }
+
+        function toggleOptions() {
+            const panel = document.getElementById('analysis-options-panel');
+            panel.classList.toggle('hidden');
+            // Re-render icons in case they were hidden
+            lucide.createIcons();
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('user-input');
+            const sendBtn = document.getElementById('send-btn');
+            const text = input.value.trim();
+            if (!text || isAnalyzing) return;
+
+            // Collect selected analysis modules
+            const checkboxes = document.querySelectorAll('.analysis-checkbox:checked');
+            const selection = Array.from(checkboxes).map(cb => cb.value);
+
+            input.value = '';
+            appendMessage('user', text);
+            isAnalyzing = true;
+
+            // Disable input and button
+            input.disabled = true;
+            sendBtn.disabled = true;
+            input.classList.add('opacity-50');
+            sendBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+            // Add loading indicator with spinner
+            const botMsgDiv = appendMessage('bot', '');
+            const startTime = Date.now();
+            let timerInterval;
+
+            // Create loading HTML (只建立一次，避免動畫重置)
+            botMsgDiv.innerHTML = `
+                <div class="loading-container">
+                    <div class="spinner"></div>
+                    <span>AI 思考中...</span>
+                    <span id="loading-timer">⏱️ 0.0 秒</span>
+                </div>
+            `;
+
+            // 只更新時間數字，不重建整個 HTML
+            const timerSpan = botMsgDiv.querySelector('#loading-timer');
+            timerInterval = setInterval(() => {
+                const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                timerSpan.textContent = `⏱️ ${elapsed} 秒`;
+            }, 100);
+
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: text,
+                        manual_selection: selection
+                    })
+                });
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let fullContent = '';
+
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = JSON.parse(line.substring(6));
+                            if (data.content) {
+                                fullContent = data.content;
+                                // Stop timer and show content
+                                clearInterval(timerInterval);
+                                botMsgDiv.innerHTML = md.render(fullContent);
+                                document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
+                            }
+                            if (data.done) {
+                                isAnalyzing = false;
+                                // Add elapsed time badge
+                                const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+                                const timeBadge = document.createElement('div');
+                                timeBadge.className = 'done-badge';
+                                timeBadge.innerHTML = `✅ 完成 ⏱️ ${totalTime} 秒`;
+                                botMsgDiv.appendChild(timeBadge);
+                            }
+                            if (data.error) {
+                                clearInterval(timerInterval);
+                                botMsgDiv.innerHTML = `<span class="text-red-400">Error: ${data.error}</span>`;
+                                isAnalyzing = false;
+                            }
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+                clearInterval(timerInterval);
+                botMsgDiv.innerHTML = '<span class="text-red-400">連線失敗，請檢查後端伺服器。</span>';
+                isAnalyzing = false;
+            } finally {
+                // Re-enable input and button
+                clearInterval(timerInterval);
+                input.disabled = false;
+                sendBtn.disabled = false;
+                input.classList.remove('opacity-50');
+                sendBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                input.focus();
+            }
+        }
+
+        async function refreshScreener() {
+            const containers = {
+                'top': document.getElementById('top-list'),
+                'oversold': document.getElementById('oversold-list'),
+                'overbought': document.getElementById('overbought-list')
+            };
+            
+            Object.values(containers).forEach(c => c.innerHTML = '<div class="animate-pulse space-y-2"><div class="h-4 bg-slate-700 rounded w-3/4"></div><div class="h-4 bg-slate-700 rounded w-1/2"></div></div>');
+
+            try {
+                const res = await fetch('/api/screener', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ exchange: 'binance' })
+                });
+                const data = await res.json();
+
+                renderList(containers.top, data.top_performers, 'price_change_7d', '%');
+                renderList(containers.oversold, data.oversold, 'RSI_14', '');
+                renderList(containers.overbought, data.overbought, 'RSI_14', '');
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function renderList(container, items, key, unit) {
+            container.innerHTML = '';
+            if (!items || items.length === 0) {
+                container.innerHTML = '<p class="text-slate-500 text-sm italic">無數據</p>';
+                return;
+            }
+
+            items.slice(0, 8).forEach(item => {
+                const val = parseFloat(item[key]);
+                const isPositive = val > 0;
+                const div = document.createElement('div');
+                div.className = "flex items-center justify-between p-2 hover:bg-slate-800/50 rounded-lg transition group cursor-pointer";
+                div.onclick = () => { switchTab('chat'); quickAsk(`${item.Symbol} 分析`); };
+                
+                div.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 bg-slate-700 rounded-full flex items-center justify-center text-[10px] font-bold">${item.Symbol.substring(0, 1)}</div>
+                        <div>
+                            <div class="font-medium text-sm">${item.Symbol}</div>
+                            <div class="text-[10px] text-slate-500">$${parseFloat(item.Close).toFixed(4)}</div>
+                        </div>
+                    </div>
+                    <div class="text-sm font-semibold ${key === 'RSI_14' ? (val > 70 ? 'text-red-400' : (val < 40 ? 'text-green-400' : 'text-slate-300')) : (val > 0 ? 'text-green-400' : 'text-red-400')}">
+                        ${val.toFixed(2)}${unit}
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // ========== 自選清單功能 ==========
+        let currentUserId = 'guest'; // 預設用戶 ID，登入後會更新
+        let chart = null;
+        let candleSeries = null;
+
+        // 更新 Pi 登入後的用戶 ID
+        function updateUserId(uid) {
+            currentUserId = uid || 'guest';
+        }
+
+        // 獲取並顯示自選清單
+        async function refreshWatchlist() {
+            const container = document.getElementById('watchlist-container');
+            container.innerHTML = '<div class="glass-card rounded-xl p-6 text-center"><div class="animate-pulse">載入中...</div></div>';
+
+            try {
+                const res = await fetch(`/api/watchlist/${currentUserId}`);
+                const data = await res.json();
+
+                if (!data.symbols || data.symbols.length === 0) {
+                    container.innerHTML = `
+                        <div class="glass-card rounded-xl p-6 text-center text-slate-400">
+                            <i data-lucide="star" class="w-12 h-12 mx-auto mb-3 opacity-30"></i>
+                            <p>您還沒有收藏任何幣種</p>
+                            <p class="text-sm mt-2">在 AI 分析結果中點擊 ⭐ 按鈕來收藏</p>
+                        </div>
+                    `;
+                    lucide.createIcons();
+                    return;
+                }
+
+                container.innerHTML = '';
+                for (const symbol of data.symbols) {
+                    const card = document.createElement('div');
+                    card.className = 'glass-card rounded-xl p-4 hover:bg-slate-800/50 transition cursor-pointer';
+                    card.innerHTML = `
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center font-bold">
+                                    ${symbol.replace('USDT', '').substring(0, 2)}
+                                </div>
+                                <div>
+                                    <div class="font-semibold">${symbol}</div>
+                                    <div class="text-xs text-slate-400">點擊查看圖表</div>
+                                </div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="event.stopPropagation(); showChart('${symbol}')" class="p-2 bg-blue-600/20 text-blue-400 rounded-lg hover:bg-blue-600/30 transition" title="查看圖表">
+                                    <i data-lucide="trending-up" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="event.stopPropagation(); removeFromWatchlist('${symbol}')" class="p-2 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600/30 transition" title="移除">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    card.onclick = () => showChart(symbol);
+                    container.appendChild(card);
+                }
+                lucide.createIcons();
+            } catch (err) {
+                console.error('Failed to load watchlist:', err);
+                container.innerHTML = '<div class="glass-card rounded-xl p-6 text-center text-red-400">載入失敗</div>';
+            }
+        }
+
+        // 添加到自選清單
+        async function addToWatchlist(symbol) {
+            try {
+                const res = await fetch('/api/watchlist/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: currentUserId, symbol: symbol })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert(`✅ ${symbol} 已加入自選清單！`);
+                }
+            } catch (err) {
+                console.error('Failed to add to watchlist:', err);
+            }
+        }
+
+        // 從自選清單移除
+        async function removeFromWatchlist(symbol) {
+            if (!confirm(`確定要移除 ${symbol} 嗎？`)) return;
+            try {
+                const res = await fetch('/api/watchlist/remove', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: currentUserId, symbol: symbol })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    refreshWatchlist();
+                }
+            } catch (err) {
+                console.error('Failed to remove from watchlist:', err);
+            }
+        }
+
+        // ========== TradingView 圖表功能 ==========
+        async function showChart(symbol) {
+            const chartSection = document.getElementById('chart-section');
+            const chartContainer = document.getElementById('chart-container');
+            const chartTitle = document.getElementById('chart-title');
+
+            chartSection.classList.remove('hidden');
+            chartTitle.textContent = symbol;
+            chartContainer.innerHTML = '<div class="flex items-center justify-center h-full"><div class="animate-pulse text-slate-400">載入圖表中...</div></div>';
+
+            try {
+                const res = await fetch('/api/klines', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbol: symbol, interval: '1d', limit: 100 })
+                });
+                const data = await res.json();
+
+                if (!data.klines || data.klines.length === 0) {
+                    chartContainer.innerHTML = '<div class="flex items-center justify-center h-full text-red-400">無法載入數據</div>';
+                    return;
+                }
+
+                // 清空容器並創建圖表
+                chartContainer.innerHTML = '';
+
+                if (chart) {
+                    chart.remove();
+                }
+
+                chart = LightweightCharts.createChart(chartContainer, {
+                    width: chartContainer.clientWidth,
+                    height: 380,
+                    layout: {
+                        background: { type: 'solid', color: 'transparent' },
+                        textColor: '#94a3b8',
+                    },
+                    grid: {
+                        vertLines: { color: 'rgba(51, 65, 85, 0.3)' },
+                        horzLines: { color: 'rgba(51, 65, 85, 0.3)' },
+                    },
+                    crosshair: {
+                        mode: LightweightCharts.CrosshairMode.Normal,
+                    },
+                    rightPriceScale: {
+                        borderColor: '#334155',
+                    },
+                    timeScale: {
+                        borderColor: '#334155',
+                        timeVisible: true,
+                    },
+                });
+
+                candleSeries = chart.addCandlestickSeries({
+                    upColor: '#22c55e',
+                    downColor: '#ef4444',
+                    borderDownColor: '#ef4444',
+                    borderUpColor: '#22c55e',
+                    wickDownColor: '#ef4444',
+                    wickUpColor: '#22c55e',
+                });
+
+                candleSeries.setData(data.klines);
+                chart.timeScale().fitContent();
+
+                // 響應式調整
+                window.addEventListener('resize', () => {
+                    if (chart) {
+                        chart.applyOptions({ width: chartContainer.clientWidth });
+                    }
+                });
+
+            } catch (err) {
+                console.error('Failed to load chart:', err);
+                chartContainer.innerHTML = '<div class="flex items-center justify-center h-full text-red-400">圖表載入失敗</div>';
+            }
+        }
+
+        // 擴展 Pi 登入以更新用戶 ID
+        if (Pi) {
+            Pi.init({ version: "2.0", sandbox: true });
+            Pi.authenticate(['username'], (payment) => {}).then(auth => {
+                const userEl = document.getElementById('pi-user');
+                userEl.innerHTML = `<span class="text-blue-400 font-medium">@${auth.user.username}</span>`;
+                userEl.classList.remove('hidden');
+
+                const settingsUserEl = document.getElementById('settings-user');
+                if (settingsUserEl) settingsUserEl.innerText = "@" + auth.user.username;
+
+                // 更新用戶 ID 用於自選清單
+                updateUserId(auth.user.uid || auth.user.username);
+            }).catch(err => console.error(err));
+        }
+    </script>
+</body>
+</html>

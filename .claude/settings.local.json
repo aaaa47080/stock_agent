@@ -6,7 +6,9 @@
       "Bash(git checkout:*)",
       "Bash(ls:*)",
       "Bash(dir:*)",
-      "Bash(fc-list:*)"
+      "Bash(fc-list:*)",
+      "Bash(pip index:*)",
+      "Bash(pip show:*)"
     ],
     "deny": [],
     "ask": []
