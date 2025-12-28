@@ -1,0 +1,32 @@
+INFO:     Uvicorn running on http://0.0.0.0:8111 (Press CTRL+C to quit)
+Found top 50 symbols: ['BTCUSDT', 'USDCUSDT', 'ETHUSDT', 'ZECUSDT', 'SOLUSDT', 'USD1USDT', 'FLOWUSDT', 'BNBUSDT', 'XRPUSDT', 'TRXUSDT', 'FDUSDUSDT', 'UNIUSDT', 'ADAUSDT', 'BCHUSDT', 'ATUSDT', 'DOGEUSDT', 'ZENUSDT', 'DASHUSDT', 'AVAXUSDT', 'SUIUSDT', 'FILUSDT', 'LTCUSDT', 'ASTERUSDT', 'DOTUSDT', 'STORJUSDT', 'XPLUSDT', 'ONTUSDT', 'PAXGUSDT', 'LINKUSDT', 'NEARUSDT', 'TAOUSDT', 'PEPEUSDT', 'GASUSDT', 'NTRNUSDT', 'AVNTUSDT', 'TONUSDT', 'ENAUSDT', 'ACTUSDT', 'STRKUSDT', 'ZKUSDT', 'SEIUSDT', 'PENGUUSDT', 'AAVEUSDT', 'AIXBTUSDT', 'APTUSDT', 'SPKUSDT', 'ICPUSDT', 'GIGGLEUSDT', 'TRUUSDT', 'KAITOUSDT']
+Starting parallel analysis with 10 workers...
+2025-12-28 15:37:07,353 [INFO] API: 使用快取篩選數據 (更新時間: 2025-12-28T15:34:21.889478)
+INFO:     127.0.0.1:61496 - "POST /api/screener HTTP/1.1" 200 OK
+OKX API 錯誤: Instrument ID, Instrument ID code, or Spread ID doesn't exist.
+Error in get_klines for BTC: Symbol 'BTC' not found or not live on OKX SPOT market.
+INFO:     127.0.0.1:65037 - "GET /api/market-pulse/BTC HTTP/1.1" 404 Not Found
+2025-12-28 15:37:09,863 [INFO] API: 使用快取篩選數據 (更新時間: 2025-12-28T15:34:21.889478)
+INFO:     127.0.0.1:65037 - "POST /api/screener HTTP/1.1" 200 OK
+2025-12-28 15:37:10,463 [INFO] API: 使用快取篩選數據 (更新時間: 2025-12-28T15:34:21.889478)
+INFO:     127.0.0.1:65037 - "POST /api/screener HTTP/1.1" 200 OK
+2025-12-28 15:37:10,475 [INFO] API: Screener cache saved to analysis_results/screener_cache.json
+2025-12-28 15:37:10,475 [INFO] API: ✅ [背景任務] 市場篩選器更新完成。
+2025-12-28 15:37:10,476 [INFO] API: ⏳ [背景任務] 下次更新將在 1 小時後...
+OKX API 錯誤: Instrument ID, Instrument ID code, or Spread ID doesn't exist.
+Error in get_klines for BTC: Symbol 'BTC' not found or not live on OKX SPOT market.
+INFO:     127.0.0.1:61496 - "GET /api/market-pulse/BTC HTTP/1.1" 404 Not Found
+2025-12-28 15:37:10,898 [INFO] API: 使用快取篩選數據 (更新時間: 2025-12-28T15:37:10.472733)
+INFO:     127.0.0.1:61496 - "POST /api/screener HTTP/1.1" 200 OK
+OKX API 錯誤: Instrument ID, Instrument ID code, or Spread ID doesn't exist.
+Error in get_klines for PI: Symbol 'PI' not found or not live on OKX SPOT market.
+INFO:     127.0.0.1:53161 - "GET /api/market-pulse/PI HTTP/1.1" 404 Not Found
+OKX API 錯誤: Instrument ID, Instrument ID code, or Spread ID doesn't exist.
+Error in get_klines for PI: Symbol 'PI' not found or not live on OKX SPOT market.
+INFO:     127.0.0.1:61496 - "GET /api/market-pulse/PI HTTP/1.1" 404 Not Found
+
+領漲幣種 (7D) 
+超賣區域 (RSI < 40)
+超買區域 (RSI > 70)
+
+這三個應該要及時更新才對吧?

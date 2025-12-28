@@ -119,6 +119,13 @@ NEWS_FETCH_LIMIT = 10 # 每個來源嘗試抓取 10 條新聞
 SCREENER_DEFAULT_LIMIT = 30
 SCREENER_DEFAULT_INTERVAL = "1d"
 
+# === 自動篩選器/市場掃描配置 ===
+# 指定要每天自動分析的重點幣種 (減少數量以提升效能，建議 3-5 個)
+SCREENER_TARGET_SYMBOLS = ["BTC", "ETH", "SOL", "PI"]
+
+# 自動更新間隔 (分鐘)
+SCREENER_UPDATE_INTERVAL_MINUTES = 0.25
+
 # === 交易限制配置 ===
 MINIMUM_INVESTMENT_USD = 20.0  # 最低投資金額 (USDT)
 MAXIMUM_INVESTMENT_USD = 30.0  # 最高投資金額 (USDT)

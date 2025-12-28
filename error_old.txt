@@ -1,0 +1,19 @@
+領漲幣種 (7D) 
+超賣區域 (RSI < 40)
+超買區域 (RSI > 70)
+
+1.這幾個應該要動態更新在我不切換頁面的情況下也要即時更新
+2.並且你要在市場篩選器加上上次更新是甚麼時候
+
+D:\okx\stock_agent\web\index.html
+
+Fixed:
+1. Updated backend screener update interval to 1 minute (Real-time).
+2. Updated frontend polling interval to 10 seconds (Dynamic update without page switch).
+3. Added "Last Updated" timestamp to the market screener in the UI.
+
+Fixed (Round 2):
+1. Verified sorting logic: Top Gainers (High to Low), Oversold (RSI Low to High), Overbought (RSI High to Low). Logic is correct.
+2. Increased backend scan speed (Workers: 10 -> 50).
+3. Increased backend update frequency (30s -> 15s).
+4. Increased frontend polling frequency (10s -> 5s).

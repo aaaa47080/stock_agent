@@ -1,0 +1,229 @@
+{
+  "timestamp": "2025-12-28T22:50:18.160478",
+  "data": {
+    "top_performers": [
+      {
+        "Symbol": "TUSDT",
+        "Close": 0.00966,
+        "price_change_24h": 9.523809523809534,
+        "price_change_7d": 7.095343680709543,
+        "Trend": "上漲",
+        "Volatility": 3.2665080240664945,
+        "RSI_14": 48.15123250759603,
+        "Support": 0.00884,
+        "Resistance": 0.0112725,
+        "signals": [
+          "🔥爆量"
+        ]
+      },
+      {
+        "Symbol": "HIVEUSDT",
+        "Close": 0.1034,
+        "price_change_24h": 8.72765509989486,
+        "price_change_7d": 8.272251308900525,
+        "Trend": "上漲",
+        "Volatility": 3.7413846623788682,
+        "RSI_14": 56.94865991167014,
+        "Support": 0.089675,
+        "Resistance": 0.107725,
+        "signals": [
+          "🔥爆量"
+        ]
+      },
+      {
+        "Symbol": "GASUSDT",
+        "Close": 2.163,
+        "price_change_24h": 8.638874937217466,
+        "price_change_7d": 17.810457516339852,
+        "Trend": "上漲",
+        "Volatility": 3.3880506494136466,
+        "RSI_14": 61.27453465679191,
+        "Support": 1.8185,
+        "Resistance": 2.21075,
+        "signals": [
+          "🔥爆量"
+        ]
+      },
+      {
+        "Symbol": "ATUSDT",
+        "Close": 0.1707,
+        "price_change_24h": 8.037974683544302,
+        "price_change_7d": 82.1771611526147,
+        "Trend": "上漲",
+        "Volatility": 12.356835424628903,
+        "RSI_14": 53.14683554744521,
+        "Support": 0.0897,
+        "Resistance": 0.1518,
+        "signals": []
+      },
+      {
+        "Symbol": "UNIUSDT",
+        "Close": 6.427,
+        "price_change_24h": 7.709066532595954,
+        "price_change_7d": 6.796277833167164,
+        "Trend": "上漲",
+        "Volatility": 4.95159820748718,
+        "RSI_14": 61.11625543558092,
+        "Support": 5.263,
+        "Resistance": 6.178,
+        "signals": []
+      },
+      {
+        "Symbol": "ZENUSDT",
+        "Close": 9.616,
+        "price_change_24h": 5.3692746000438385,
+        "price_change_7d": 23.203074951953884,
+        "Trend": "上漲",
+        "Volatility": 6.341060316794513,
+        "RSI_14": 55.702317054711074,
+        "Support": 7.7299999999999995,
+        "Resistance": 9.721,
+        "signals": []
+      },
+      {
+        "Symbol": "MASKUSDT",
+        "Close": 0.633,
+        "price_change_24h": 4.801324503311255,
+        "price_change_7d": 9.326424870466333,
+        "Trend": "上漲",
+        "Volatility": 3.400940655346205,
+        "RSI_14": 54.0380762228591,
+        "Support": 0.5615,
+        "Resistance": 0.69075,
+        "signals": [
+          "🔥爆量"
+        ]
+      },
+      {
+        "Symbol": "ZECUSDT",
+        "Close": 537.36,
+        "price_change_24h": 4.119356713815159,
+        "price_change_7d": 24.509940219658,
+        "Trend": "上漲",
+        "Volatility": 8.122085818576085,
+        "RSI_14": 64.01231903845589,
+        "Support": 356.72249999999997,
+        "Resistance": 457.7375,
+        "signals": [
+          "🐢突破"
+        ]
+      },
+      {
+        "Symbol": "FILUSDT",
+        "Close": 1.367,
+        "price_change_24h": 3.875379939209722,
+        "price_change_7d": 5.234795996920716,
+        "Trend": "上漲",
+        "Volatility": 4.2091960476076755,
+        "RSI_14": 48.68118656709924,
+        "Support": 1.2429999999999999,
+        "Resistance": 1.56975,
+        "signals": []
+      },
+      {
+        "Symbol": "GIGGLEUSDT",
+        "Close": 70.35,
+        "price_change_24h": 3.761061946902644,
+        "price_change_7d": 4.129662522202482,
+        "Trend": "上漲",
+        "Volatility": 8.4254727532042,
+        "RSI_14": 38.69314885218267,
+        "Support": 64.4925,
+        "Resistance": 95.3325,
+        "signals": []
+      }
+    ],
+    "oversold": [
+      {
+        "Symbol": "FLOWUSDT",
+        "Close": 0.113,
+        "price_change_24h": 1.8018018018018056,
+        "price_change_7d": -33.529411764705884,
+        "Trend": "下跌",
+        "Volatility": 6.963842026136656,
+        "RSI_14": 15.714131609119868,
+        "Support": 0.16925,
+        "Resistance": 0.22675,
+        "signals": [
+          "🔥爆量",
+          "💎抄底"
+        ]
+      },
+      {
+        "Symbol": "ASTERUSDT",
+        "Close": 0.723,
+        "price_change_24h": 0.277392510402219,
+        "price_change_7d": 2.6988636363636465,
+        "Trend": "上漲",
+        "Volatility": 4.72056633119127,
+        "RSI_14": 36.591495950458395,
+        "Support": 0.69025,
+        "Resistance": 1.0095,
+        "signals": []
+      },
+      {
+        "Symbol": "TAOUSDT",
+        "Close": 225.5,
+        "price_change_24h": 0.5798394290811748,
+        "price_change_7d": 1.439496176338273,
+        "Trend": "上漲",
+        "Volatility": 4.095414197500294,
+        "RSI_14": 36.83707954528842,
+        "Support": 218.475,
+        "Resistance": 300.9,
+        "signals": []
+      },
+      {
+        "Symbol": "DOGEUSDT",
+        "Close": 0.12477,
+        "price_change_24h": 0.3377563329312494,
+        "price_change_7d": -5.890782923517879,
+        "Trend": "下跌",
+        "Volatility": 3.4910537974510345,
+        "RSI_14": 38.52587668809418,
+        "Support": 0.126535,
+        "Resistance": 0.14746499999999998,
+        "signals": []
+      },
+      {
+        "Symbol": "GIGGLEUSDT",
+        "Close": 70.35,
+        "price_change_24h": 3.761061946902644,
+        "price_change_7d": 4.129662522202482,
+        "Trend": "上漲",
+        "Volatility": 8.4254727532042,
+        "RSI_14": 38.69314885218267,
+        "Support": 64.4925,
+        "Resistance": 95.3325,
+        "signals": []
+      }
+    ],
+    "overbought": [
+      {
+        "Symbol": "PAXGUSDT",
+        "Close": 4555.71,
+        "price_change_24h": -0.34518286160528655,
+        "price_change_7d": 1.5770415921587233,
+        "Trend": "上漲",
+        "Volatility": 0.6405532740713081,
+        "RSI_14": 78.72293618547367,
+        "Support": 4203.25,
+        "Resistance": 4380.889999999999,
+        "signals": []
+      },
+      {
+        "Symbol": "ACTUSDT",
+        "Close": 0.0433,
+        "price_change_24h": 0.0,
+        "price_change_7d": 26.97947214076246,
+        "Trend": "上漲",
+        "Volatility": 9.830784961962111,
+        "RSI_14": 71.57253354515353,
+        "Support": 0.020025,
+        "Resistance": 0.03895,
+        "signals": []
+      }
+    ],
+    "last_updated": "2025-12-28T22:50:18.160478"
+  }
+}

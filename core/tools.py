@@ -624,6 +624,58 @@ def get_crypto_price_tool(
         return f"價格查詢時發生錯誤: {str(e)}"
 
 
+class MarketPulseInput(BaseModel):
+    """市場脈動分析工具的輸入參數"""
+    symbol: str = Field(
+        description="加密貨幣符號，如 'BTC', 'ETH', 'SOL'。"
+    )
+
+@tool(args_schema=MarketPulseInput)
+def explain_market_movement_tool(symbol: str) -> str:
+    """
+    解釋加密貨幣的價格波動原因。
+    
+    這個工具會結合即時價格變化和最新新聞，生成一句簡短的解釋（敘事歸因）。
+    
+    適用情境：
+    - 用戶問「為什麼 BTC 跌了？」
+    - 用戶問「ETH 為什麼漲這麼多？」
+    - 用戶想知道市場波動背後的原因
+    """
+    try:
+        from analysis.market_pulse import get_market_pulse
+        
+        # 清理 symbol
+        base_symbol = symbol.upper().replace("USDT", "").replace("BUSD", "").replace("-", "")
+        
+        result = get_market_pulse(base_symbol)
+        
+        if "error" in result:
+            return result["error"]
+            
+        explanation = result.get("explanation", "暫無解釋")
+        change_1h = result.get("change_1h", 0)
+        current_price = result.get("current_price", 0)
+        
+        # 構建回應
+        output = f"### 💡 市場脈動: {base_symbol}\n\n"
+        output += f"**{explanation}**\n\n"
+        output += f"- 當前價格: ${current_price:.4f}\n"
+        output += f"- 1小時變化: {change_1h:+.2f}%\n"
+        
+        # 附上新聞來源
+        news = result.get("news_sources", [])
+        if news:
+            output += "\n**相關新聞**:\n"
+            for n in news[:2]:
+                output += f"- [{n.get('source')}] {n.get('title')}\n"
+                
+        return output
+        
+    except Exception as e:
+        return f"分析市場波動時發生錯誤: {str(e)}"
+
+
 # ============================================================================
 # 工具列表導出
 # ============================================================================
@@ -635,6 +687,7 @@ def get_crypto_tools() -> List:
         technical_analysis_tool,
         news_analysis_tool,
         full_investment_analysis_tool,
+        explain_market_movement_tool,
     ]
 
 

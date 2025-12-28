@@ -50,12 +50,19 @@ def calculate_key_levels(df: pd.DataFrame, period: int = 30) -> Dict[str, float]
         關鍵價位字典
     """
     recent = df.tail(period) if len(df) >= period else df
+    
+    # 海龜突破：計算過去 20 天（不含今天）的最高價
+    # 使用 shift(1) 避免包含當前正在進行的 K 線
+    high_20d = df['High'].shift(1).tail(20).max()
+    low_20d = df['Low'].shift(1).tail(20).min()
 
     return {
         f"{period}天最高價": safe_float(recent['High'].max()),
         f"{period}天最低價": safe_float(recent['Low'].min()),
         "支撐位": safe_float(recent['Low'].quantile(0.25)),
         "壓力位": safe_float(recent['High'].quantile(0.75)),
+        "20日最高價": safe_float(high_20d),
+        "20日最低價": safe_float(low_20d),
     }
 
 
@@ -70,11 +77,17 @@ def analyze_market_structure(df: pd.DataFrame) -> Dict:
         市場結構分析結果
     """
     price_changes = df['Close'].pct_change()
+    
+    # 爆量偵測：當前成交量是否大於過去 20 天平均成交量的 2 倍
+    current_vol = df.iloc[-1]['Volume']
+    avg_vol_20 = df['Volume'].tail(21).iloc[:-1].mean() # 過去 20 根 K 線的平均（不含當前）
+    volume_spike = current_vol > (avg_vol_20 * 2) if avg_vol_20 > 0 else False
 
     return {
         "趨勢": "上漲" if price_changes.tail(7).mean() > 0 else "下跌",
         "波動率": safe_float(price_changes.tail(30).std() * 100) if len(price_changes) >= 30 else 0,
         "平均交易量": safe_float(df['Volume'].tail(7).mean()),
+        "爆量": volume_spike,
     }
 
 
@@ -117,9 +130,18 @@ def calculate_price_info(df: pd.DataFrame) -> Dict:
         price_7d_ago = df.iloc[-7]['Close']
         price_change_7d = safe_float(((latest['Close'] / price_7d_ago) - 1) * 100)
 
+    # 計算24小時價格變化
+    price_change_24h = 0
+    if len(df) >= 2:
+        # 假設 K 線是 1d，則前一根就是 24h 前
+        # 如果是其他週期，則需要更多邏輯，但這裡簡化處理
+        price_prev = df.iloc[-2]['Close']
+        price_change_24h = safe_float(((latest['Close'] / price_prev) - 1) * 100)
+
     return {
         "當前價格": current_price,
         "7天價格變化百分比": price_change_7d,
+        "24小時價格變化百分比": price_change_24h,
     }
 
 
