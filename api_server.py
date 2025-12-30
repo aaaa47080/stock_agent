@@ -122,6 +122,7 @@ class QueryRequest(BaseModel):
 
 class ScreenerRequest(BaseModel):
     exchange: str = SUPPORTED_EXCHANGES[0]
+    symbols: Optional[List[str]] = None
 
 class WatchlistRequest(BaseModel):
     user_id: str
@@ -146,33 +147,111 @@ class PredictionRequest(BaseModel):
 
 # --- 背景任務 ---
 
-async def update_screener_task():
+# 使用 Lock 確保不會有重疊的分析任務同時執行
+screener_lock = asyncio.Lock()
+
+async def update_screener_prices_fast():
     """
-    背景任務：定期更新市場篩選器數據。
-    執行廣泛的市場掃描 (Top 50)，以確保篩選器能捕捉到真正的領漲幣種。
+    快速更新任務：只更新 cached_screener_result 中的價格資訊。
+    不重新計算指標或排名，僅抓取當前最新價格 (Ticker)。
     """
-    while True:
-        try:
-            logger.info("🔄 [背景任務] 開始更新市場篩選器數據 (Top 50)...")
+    if cached_screener_result["data"] is None:
+        return
+
+    try:
+        from data.data_fetcher import get_data_fetcher
+        # 使用 Binance 因為 API 響應快 (或根據配置)
+        fetcher = get_data_fetcher("binance") 
+        
+        # 收集所有需要更新的 Symbol
+        symbols = set()
+        data = cached_screener_result["data"]
+        
+        for list_name in ["top_performers", "oversold", "overbought"]:
+            if data.get(list_name):
+                for item in data[list_name]:
+                    symbols.add(item["Symbol"])
+        
+        if not symbols:
+            return
+
+        # 這裡我們假設 fetcher 有一個批量獲取價格的方法，或者我們循環調用
+        # 為了效率，我們直接調用 ticker/24hr endpoint (一次請求獲取所有)
+        # 注意：get_top_symbols 內部調用了 ticker/24hr 但只返回 symbol list
+        # 我們直接用 fetcher 的內部方法 _make_request 比較快，但為了封裝性，我們擴展 fetcher 或直接在這裡做
+        # 簡單起見，我們假設數量不多 (10-30個)，可以用個別請求或批量
+        
+        # 優化：Binance ticker/price?symbol=... 只能一個，或者 ticker/price (全部)
+        # 獲取全部 ticker 對服務器負擔小，因為是一次請求
+        loop = asyncio.get_running_loop()
+        all_tickers = await loop.run_in_executor(None, lambda: fetcher._make_request(fetcher.spot_base_url, "/ticker/24hr"))
+        
+        if not all_tickers:
+            return
+
+        # 建立價格查找表 {symbol: {price, change_percent}}
+        price_map = {}
+        for t in all_tickers:
+            price_map[t['symbol']] = {
+                'price': float(t['lastPrice']),
+                'change': float(t['priceChangePercent'])
+            }
+
+        # 更新快取中的數據
+        updated = False
+        for list_name in ["top_performers", "oversold", "overbought"]:
+            if data.get(list_name):
+                for item in data[list_name]:
+                    # 嘗試匹配 (Binance symbol 通常是 BTCUSDT)
+                    # 我們的 item["Symbol"] 可能是 BTC/USDT 或 BTCUSDT
+                    s = item["Symbol"].replace("/", "").replace("-", "")
+                    # 如果是 OKX 來的數據可能是 BTC-USDT，轉為 BTCUSDT 嘗試匹配
+                    # 注意：如果 fetcher 是 OKX，這裡邏輯要變。目前假設主要用 Binance 做即時報價
+                    
+                    if s in price_map:
+                        item["Close"] = price_map[s]['price']
+                        item["price_change_24h"] = price_map[s]['change']
+                        updated = True
+        
+        if updated:
+            # Re-sort top_performers to maintain order based on new price changes
+            if data.get("top_performers"):
+                data["top_performers"].sort(key=lambda x: float(x.get("price_change_24h", 0)), reverse=True)
+
+            timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            cached_screener_result["data"]["last_updated"] = timestamp_str
+            # 不需要更新 cached_screener_result["timestamp"]，那個留給完整分析的時間
+            # 或者我們更新它讓前端知道數據變了
+            cached_screener_result["timestamp"] = timestamp_str
             
-            # 使用 asyncio.to_thread 或 run_in_executor 執行同步的分析函數
+            # 這裡不存檔，避免頻繁 I/O
+            # save_screener_cache(cached_screener_result) 
+            
+    except Exception as e:
+        # 靜默失敗，不要刷屏 log，因為這是高頻任務
+        pass
+
+async def run_screener_analysis():
+    """執行實際的分析工作並更新快取 (重型任務)"""
+    if screener_lock.locked():
+        return
+        
+    async with screener_lock:
+        try:
+            exchange = SUPPORTED_EXCHANGES[0]
             loop = asyncio.get_running_loop()
             
-            # 這裡我們使用 Config 設定的目標幣種
-            # 注意：這裡預設使用 Binance 或 Config 中的第一個交易所
-            exchange = SUPPORTED_EXCHANGES[0] 
-            
+            # 執行重型分析任務
             summary_df, top_performers, oversold, overbought = await loop.run_in_executor(
                 None,
                 lambda: screen_top_cryptos(
                     exchange=exchange,
-                    limit=50, # 掃描前 50 大，找出真正的熱門幣
+                    limit=10, 
                     interval="1d",
-                    target_symbols=None # 不限制特定幣種，進行全市場掃描
+                    target_symbols=None
                 )
             )
 
-            # --- 清理數據 (處理 NaN 為 None，避免 JSON 錯誤) 與 欄位映射 ---
             rename_map = {
                 "Current Price": "Close", 
                 "24h Change %": "price_change_24h",
@@ -184,8 +263,7 @@ async def update_screener_task():
             oversold = oversold.rename(columns=rename_map).replace({np.nan: None})
             overbought = overbought.rename(columns=rename_map).replace({np.nan: None})
             
-            # 更新快取
-            timestamp_str = datetime.now().isoformat()
+            timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             cached_screener_result["timestamp"] = timestamp_str
             cached_screener_result["data"] = {
                 "top_performers": top_performers.to_dict(orient="records"),
@@ -194,18 +272,28 @@ async def update_screener_task():
                 "last_updated": timestamp_str
             }
             
-            # 持久化快取
             save_screener_cache(cached_screener_result)
             
-            logger.info(f"✅ [背景任務] 市場篩選器更新完成。")
-            
         except Exception as e:
-            logger.error(f"❌ [背景任務] 市場篩選器更新失敗: {e}", exc_info=True)
-            
-        # 等待下一次更新 (轉換為秒)
-        wait_seconds = SCREENER_UPDATE_INTERVAL_MINUTES * 60
-        logger.info(f"⏳ [背景任務] 下次更新將在 {SCREENER_UPDATE_INTERVAL_MINUTES} 分鐘後...")
-        await asyncio.sleep(wait_seconds)
+            logger.error(f"❌ [分析任務] 執行失敗: {e}")
+
+async def update_screener_task():
+    """
+    背景任務：
+    1. 每秒執行快速價格更新 (Fast Update)
+    2. 每 60 秒執行完整分析 (Heavy Analysis) - 降低頻率以避免 API 封禁
+    """
+    counter = 0
+    while True:
+        # 每秒都嘗試更新價格
+        asyncio.create_task(update_screener_prices_fast())
+        
+        # 每 60 秒執行一次完整分析 (或如果剛啟動)
+        if counter % 60 == 0:
+            asyncio.create_task(run_screener_analysis())
+        
+        counter += 1
+        await asyncio.sleep(1)
 
 
 # --- [正式版支付註解區塊] ---
@@ -299,9 +387,59 @@ async def get_config():
         "default_limit": DEFAULT_KLINES_LIMIT
     }
 
+@app.get("/api/market/symbols")
+async def get_market_symbols(exchange: str = "binance"):
+    """Get all available symbols for a given exchange."""
+    logger.info(f"Requesting symbol list for exchange: {exchange}")
+    try:
+        from data.data_fetcher import get_data_fetcher
+        fetcher = get_data_fetcher(exchange)
+        symbols = fetcher.get_all_symbols()
+        logger.info(f"Successfully fetched {len(symbols)} symbols from {exchange}")
+        return {"symbols": symbols}
+    except Exception as e:
+        logger.error(f"Failed to fetch symbols from {exchange}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/api/screener")
 async def run_screener(request: ScreenerRequest):
     """回傳市場篩選數據 (優先使用快取)"""
+    # 如果有指定 symbols，則**不**使用全域快取，而是直接執行分析
+    if request.symbols and len(request.symbols) > 0:
+        logger.info(f"執行自定義市場篩選: {request.exchange}, Symbols: {len(request.symbols)}")
+        try:
+             loop = asyncio.get_running_loop()
+             summary_df, top_performers, oversold, overbought = await loop.run_in_executor(
+                None, 
+                lambda: screen_top_cryptos(
+                    exchange=request.exchange, 
+                    limit=len(request.symbols), 
+                    interval="1d",
+                    target_symbols=request.symbols
+                )
+            )
+             
+             rename_map = {
+                "Current Price": "Close", 
+                "24h Change %": "price_change_24h",
+                "7d Change %": "price_change_7d",
+                "Signals": "signals"
+            }
+            
+             top_performers = top_performers.rename(columns=rename_map).replace({np.nan: None})
+             oversold = oversold.rename(columns=rename_map).replace({np.nan: None})
+             overbought = overbought.rename(columns=rename_map).replace({np.nan: None})
+             
+             return {
+                "top_performers": top_performers.to_dict(orient="records"),
+                "oversold": oversold.to_dict(orient="records"),
+                "overbought": overbought.to_dict(orient="records"),
+                "last_updated": datetime.now().isoformat()
+            }
+        except Exception as e:
+             logger.error(f"自定義篩選失敗: {e}", exc_info=True)
+             raise HTTPException(status_code=500, detail=str(e))
+
     # 檢查是否有快取數據
     if cached_screener_result["data"] is not None:
         logger.info(f"使用快取篩選數據 (更新時間: {cached_screener_result['timestamp']})")
@@ -316,7 +454,7 @@ async def run_screener(request: ScreenerRequest):
             None, 
             lambda: screen_top_cryptos(
                 exchange=request.exchange, 
-                limit=50, 
+                limit=10, 
                 interval="1d",
                 target_symbols=None
             )
@@ -433,7 +571,7 @@ async def get_klines_data(request: KlineRequest):
 # --- 市場脈動 (Smart Attribution) API ---
 
 @app.get("/api/market-pulse/{symbol}")
-async def get_market_pulse_api(symbol: str):
+async def get_market_pulse_api(symbol: str, sources: Optional[str] = None):
     """
     獲取市場脈動分析：解釋價格波動原因 (Smart Attribution)。
     """
@@ -444,8 +582,11 @@ async def get_market_pulse_api(symbol: str):
         # 清理 symbol
         base_symbol = symbol.upper().replace("USDT", "").replace("BUSD", "").replace("-", "")
         
+        # 處理新聞來源參數
+        enabled_sources = sources.split(',') if sources else None
+        
         # 放入執行緒池執行
-        result = await loop.run_in_executor(None, lambda: get_market_pulse(base_symbol))
+        result = await loop.run_in_executor(None, lambda: get_market_pulse(base_symbol, enabled_sources=enabled_sources))
         
         if "error" in result:
             raise HTTPException(status_code=404, detail=result["error"])

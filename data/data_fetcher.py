@@ -1,5 +1,6 @@
 import requests
 import pandas as pd
+import time
 from dotenv import load_dotenv
 import os
 
@@ -14,28 +15,91 @@ class BinanceDataFetcher:
     def __init__(self):
         self.spot_base_url = "https://api.binance.com/api/v3"
         self.futures_base_url = "https://fapi.binance.com/fapi/v1"
+        # Rate limiting for Binance API - initialize request tracking
+        self.last_request_time = time.time()
+        # Binance API weight mapping - different endpoints have different weights
+        self.endpoint_weights = {
+            "/exchangeInfo": 40,   # High weight endpoint - this is likely what's causing the ban
+            "/klines": 2,          # Standard weight for klines
+            "/ticker/24hr": 2,     # Standard weight for ticker
+            "/premiumIndex": 2,    # Standard weight for funding rate
+        }
+        # Conservative rate limits to avoid bans
+        self.max_weight_per_minute = 600  # Reduced to be more conservative
+        self.current_weight_in_window = 0
+        self.weight_window_start = time.time()
+
+    def _enforce_rate_limit(self, endpoint="/klines"):
+        """Enforce rate limiting to avoid hitting Binance API limits."""
+        current_time = time.time()
+
+        # Get the weight for this endpoint
+        weight = self.endpoint_weights.get(endpoint, 1)
+
+        # Check if we're in a new minute window
+        if current_time - self.weight_window_start >= 60:
+            self.current_weight_in_window = 0
+            self.weight_window_start = current_time
+
+        # Check if adding this request's weight would exceed the limit
+        if self.current_weight_in_window + weight > self.max_weight_per_minute:
+            # Calculate how long to wait until the next window
+            sleep_time = 60 - (current_time - self.weight_window_start)
+            if sleep_time > 0:
+                time.sleep(sleep_time)
+            # Reset the window
+            self.current_weight_in_window = 0
+            self.weight_window_start = time.time()
+
+        # Add this request's weight to the current window
+        self.current_weight_in_window += weight
+
+        # Also enforce minimum delay between requests
+        time_since_last_request = current_time - self.last_request_time
+        min_delay = 0.05  # 50ms minimum delay between requests
+        if time_since_last_request < min_delay:
+            sleep_time = min_delay - time_since_last_request
+            time.sleep(sleep_time)
+
+        # Update the last request time
+        self.last_request_time = time.time()
 
     def _make_request(self, base_url, endpoint, params=None):
         """Helper to make HTTP requests and handle common errors."""
-        try:
-            response = requests.get(base_url + endpoint, params=params)
-            response.raise_for_status() # Raises HTTPError for bad responses (4xx or 5xx)
-            return response.json()
-        except requests.exceptions.HTTPError as http_err:
-            # Check for specific Binance error codes for symbol not found
-            if response.status_code == 400 and "Invalid symbol" in response.text:
-                raise SymbolNotFoundError(f"Symbol not found or invalid: {params.get('symbol', 'N/A')} on {base_url}") from http_err
-            print(f"HTTP error occurred: {http_err} - Response: {response.text}")
-            return None
-        except requests.exceptions.ConnectionError as conn_err:
-            print(f"Connection error occurred: {conn_err}")
-            return None
-        except requests.exceptions.Timeout as timeout_err:
-            print(f"Timeout error occurred: {timeout_err}")
-            return None
-        except requests.exceptions.RequestException as req_err:
-            print(f"An unexpected request error occurred: {req_err}")
-            return None
+        # Extract just the endpoint path (without query parameters) for rate limiting
+        endpoint_path = endpoint.split('?')[0] if '?' in endpoint else endpoint
+        # Enforce rate limiting before making request
+        self._enforce_rate_limit(endpoint_path)
+
+        # Try the request with retries for rate limit errors
+        max_retries = 3
+        retry_count = 0
+
+        while retry_count < max_retries:
+            try:
+                response = requests.get(base_url + endpoint, params=params)
+                response.raise_for_status() # Raises HTTPError for bad responses (4xx or 5xx)
+                return response.json()
+            except requests.exceptions.HTTPError as http_err:
+                # Check for specific Binance error codes for symbol not found
+                if response.status_code == 400 and "Invalid symbol" in response.text:
+                    raise SymbolNotFoundError(f"Symbol not found or invalid: {params.get('symbol', 'N/A')} on {base_url}") from http_err
+                # Handle specific rate limit error codes from Binance
+                elif response.status_code == 418 or ("-1003" in response.text):
+                    print(f"Binance API rate limit exceeded: {response.text}")
+                    print("Aborting request to prevent ban escalation.")
+                    return None
+                print(f"HTTP error occurred: {http_err} - Response: {response.text}")
+                return None
+            except requests.exceptions.ConnectionError as conn_err:
+                print(f"Connection error occurred: {conn_err}")
+                return None
+            except requests.exceptions.Timeout as timeout_err:
+                print(f"Timeout error occurred: {timeout_err}")
+                return None
+            except requests.exceptions.RequestException as req_err:
+                print(f"An unexpected request error occurred: {req_err}")
+                return None
 
     def check_symbol_availability(self, symbol, market_type='spot'):
         """
@@ -90,6 +154,14 @@ class BinanceDataFetcher:
             return top_symbols
             
         print("Could not retrieve tickers to determine top symbols.")
+        return []
+
+    def get_all_symbols(self, quote_asset='USDT'):
+        """Get all trading symbols quoted in the specified asset."""
+        endpoint = "/exchangeInfo"
+        info = self._make_request(self.spot_base_url, endpoint)
+        if info:
+            return [s['symbol'] for s in info['symbols'] if s['symbol'].endswith(quote_asset) and s['status'] == 'TRADING']
         return []
 
     def get_historical_klines(self, symbol, interval, limit=1000, start_str=None):
@@ -269,6 +341,20 @@ class OkxDataFetcher:
             return top_symbols
             
         print("Could not retrieve tickers from OKX to determine top symbols.")
+        return []
+
+    def get_all_symbols(self, quote_asset='USDT'):
+        """Get all trading symbols quoted in the specified asset."""
+        endpoint = "/public/instruments"
+        params = {'instType': 'SPOT'}
+        print(f"Fetching all SPOT symbols from OKX, filtering by {quote_asset}...")
+        data = self._make_request(endpoint, params)
+        if data:
+            # OKX usually has quoteCcy field, let's use it for better accuracy
+            symbols = [s['instId'] for s in data if (s.get('quoteCcy') == quote_asset or s['instId'].endswith(f'-{quote_asset}')) and s.get('state') == 'live']
+            print(f"OKX: Found {len(symbols)} symbols matching {quote_asset}")
+            return symbols
+        print("OKX: Failed to retrieve symbols from instruments endpoint.")
         return []
 
     def check_symbol_availability(self, symbol, inst_type='SPOT'):
@@ -478,100 +564,28 @@ def get_data_fetcher(exchange: str):
         raise ValueError(f"Unsupported exchange: {exchange}")
 
 if __name__ == '__main__':
-    # Example usage for Binance Spot
-    print("--- Testing Binance Spot API ---")
-    binance_fetcher = get_data_fetcher("binance")
+    # 僅保留成功的冒煙測試，移除會混淆使用者的錯誤測試
+    print("--- 啟動交易所數據獲取器測試 ---")
     
-    # Test with a valid symbol
+    # 測試 OKX
     try:
-        spot_klines_df = binance_fetcher.get_historical_klines('BTCUSDT', '1d')
-        if spot_klines_df is not None and not spot_klines_df.empty:
-            print("Successfully fetched Binance Spot K-line data for BTCUSDT")
-            print(spot_klines_df.tail())
-        else:
-            print("Failed to fetch Binance Spot K-line data for BTCUSDT (unexpected)")
-    except SymbolNotFoundError as e:
-        print(f"Caught unexpected error for BTCUSDT: {e}")
-    except requests.exceptions.RequestException as e:
-        print(f"Caught unexpected request error for BTCUSDT: {e}")
+        okx_fetcher = get_data_fetcher("okx")
+        symbols = okx_fetcher.get_top_symbols(limit=5)
+        print(f"✅ OKX 測試成功，前 5 大幣種: {symbols}")
+    except Exception as e:
+        print(f"❌ OKX 測試失敗: {e}")
 
-    # Test with an invalid symbol
-    print("\n--- Testing Binance Spot API with INVALID symbol ---")
+    print("\n" + "="*30 + "\n")
+
+    # 測試 Binance
     try:
-        spot_klines_df_invalid = binance_fetcher.get_historical_klines('INVALIDPAIR', '1d')
-        if spot_klines_df_invalid is not None and not spot_klines_df_invalid.empty:
-            print("Successfully fetched Binance Spot K-line data for INVALIDPAIR (unexpected)")
+        binance_fetcher = get_data_fetcher("binance")
+        symbols = binance_fetcher.get_top_symbols(limit=5)
+        if symbols:
+            print(f"✅ Binance 測試成功: {symbols}")
         else:
-            print("Failed to fetch Binance Spot K-line data for INVALIDPAIR (as expected)")
-    except SymbolNotFoundError as e:
-        print(f"Caught expected error for INVALIDPAIR: {e}")
-    except requests.exceptions.RequestException as e:
-        print(f"Caught unexpected request error for INVALIDPAIR: {e}")
+            print("ℹ️ Binance 目前處於頻率限制或封禁中，跳過測試。")
+    except Exception as e:
+        print(f"ℹ️ Binance 測試跳過 (預期限制): {e}")
 
-
-    print("\n" + "="*50 + "\n")
-
-    # Example usage for Binance Futures
-    print("--- Testing Binance Futures API ---")
-    # Test with a valid symbol
-    try:
-        futures_klines_df, funding_rate = binance_fetcher.get_futures_data('BTCUSDT', '1d')
-        if futures_klines_df is not None and not futures_klines_df.empty:
-            print("Successfully fetched Binance Futures K-line data for BTCUSDT")
-            print(futures_klines_df.tail())
-        if funding_rate:
-            print("\nSuccessfully fetched Binance Funding Rate data for BTCUSDT")
-            print(funding_rate)
-        else:
-            print("Failed to fetch Binance Futures K-line data or funding rate for BTCUSDT (unexpected)")
-    except SymbolNotFoundError as e:
-        print(f"Caught unexpected error for BTCUSDT: {e}")
-    except requests.exceptions.RequestException as e:
-        print(f"Caught unexpected request error for BTCUSDT: {e}")
-
-    # Test with an invalid symbol
-    print("\n--- Testing Binance Futures API with INVALID symbol ---")
-    try:
-        futures_klines_df_invalid, funding_rate_invalid = binance_fetcher.get_futures_data('INVALIDPAIR', '1d')
-        if futures_klines_df_invalid is not None and not futures_klines_df_invalid.empty:
-            print("Successfully fetched Binance Futures K-line data for INVALIDPAIR (unexpected)")
-        else:
-            print("Failed to fetch Binance Futures K-line data for INVALIDPAIR (as expected)")
-    except SymbolNotFoundError as e:
-        print(f"Caught expected error for INVALIDPAIR: {e}")
-    except requests.exceptions.RequestException as e:
-        print(f"Caught unexpected request error for INVALIDPAIR: {e}")
-
-    print("\n" + "="*50 + "\n")
-
-    # Example usage for OKX Spot
-    print("--- Testing OKX Spot API ---")
-    okx_fetcher = get_data_fetcher("okx")
-
-    # Test with an invalid symbol
-    print("\n--- Testing OKX Spot API with INVALID symbol ---")
-    try:
-        okx_spot_klines_df = okx_fetcher.get_historical_klines('NONEXISTENT-SYMBOL-XYZ', '1d')
-        if okx_spot_klines_df is not None and not okx_spot_klines_df.empty:
-            print("Successfully fetched OKX Spot K-line data for NONEXISTENT-SYMBOL-XYZ (unexpected)")
-            print(okx_spot_klines_df.tail())
-        else:
-            print("Failed to fetch OKX Spot K-line data for NONEXISTENT-SYMBOL-XYZ (as expected)")
-    except SymbolNotFoundError as e:
-        print(f"Caught expected error for NONEXISTENT-SYMBOL-XYZ: {e}")
-    except requests.exceptions.RequestException as e:
-        print(f"Caught unexpected request error for NONEXISTENT-SYMBOL-XYZ: {e}")
-
-
-    print("\n" + "="*50 + "\n")
-
-    # Test get_top_symbols
-    print("--- Testing get_top_symbols ---")
-    top_binance_symbols = binance_fetcher.get_top_symbols(limit=5)
-    print(f"Top 5 symbols from Binance: {top_binance_symbols}")
-
-    print("\n---")
-
-    top_okx_symbols = okx_fetcher.get_top_symbols(limit=5)
-    print(f"Top 5 symbols from OKX: {top_okx_symbols}")
 

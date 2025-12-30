@@ -4,17 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pi Crypto Insight - AI 投資分析</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Markdown Parser -->
     <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js"></script>
-    <!-- Pi SDK -->
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
-    <!-- TradingView Lightweight Charts -->
     <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
-
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         
@@ -142,6 +136,14 @@
                 </p>
             </div>
         </div>
+        
+        <!-- Global Asset Filter Button -->
+        <button onclick="openGlobalFilter()" class="hidden md:flex items-center gap-2 bg-slate-800/50 hover:bg-slate-700 border border-slate-700 px-4 py-2 rounded-full transition group">
+            <div class="w-2 h-2 rounded-full bg-blue-500 group-hover:animate-ping"></div>
+            <span class="text-xs font-medium text-slate-300">關注資產: <span id="global-count-badge" class="text-white font-bold">自動</span></span>
+            <i data-lucide="chevron-down" class="w-3 h-3 text-slate-500"></i>
+        </button>
+
         <div id="pi-user" class="text-sm bg-slate-800/50 px-3 py-1.5 rounded-full border border-slate-700 hidden">
             <!-- Pi Username will appear here -->
         </div>
@@ -161,6 +163,9 @@
             <button onclick="switchTab('market')" class="nav-btn group text-slate-400 hover:text-blue-400" title="行情篩選">
                 <i data-lucide="bar-chart-2" class="w-7 h-7"></i>
             </button>
+            <button onclick="switchTab('pulse')" class="nav-btn group text-slate-400 hover:text-blue-400" title="市場脈動">
+                <i data-lucide="activity" class="w-7 h-7"></i>
+            </button>
             <button onclick="switchTab('social')" class="nav-btn group text-slate-400 hover:text-blue-400" title="社群預測">
                 <i data-lucide="users" class="w-7 h-7"></i>
             </button>
@@ -178,7 +183,7 @@
                     <h3 class="flex items-center gap-2"><i data-lucide="bot" class="w-5 h-5"></i> 歡迎使用 Pi Crypto Insight</h3>
                     <p>我是您的 AI 投資助手。您可以輸入加密貨幣代號（如 BTC, ETH, PI），我將為您進行深度分析。</p>
                     <p>試試點擊下方的建議：</p>
-                    <div class="flex flex-wrap gap-2 mt-2">
+                    <div class="flex wrap gap-2 mt-2">
                         <button onclick="quickAsk('PIUSDT 可以投資嗎？')" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs border border-slate-700 transition">Pi Network (PI) 分析</button>
                         <button onclick="quickAsk('比特幣現在適合買入嗎？')" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs border border-slate-700 transition">BTC 行情預測</button>
                         <button onclick="quickAsk('比較 ETH 和 SOL')" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs border border-slate-700 transition">幣種對比</button>
@@ -241,23 +246,15 @@
         <div id="market-tab" class="hidden flex-1 flex flex-col p-6 overflow-y-auto custom-scrollbar">
             <div class="max-w-6xl mx-auto w-full">
                 
-                <!-- Market Pulse Ticker -->
-                <div id="market-pulse" class="mb-6 bg-gradient-to-r from-blue-900/40 to-slate-900/40 border border-blue-500/20 rounded-xl p-4 flex items-center gap-4 animate-in fade-in slide-in-from-top-4 duration-500 hidden">
-                    <div class="bg-blue-500/20 p-2 rounded-lg text-blue-400">
-                        <i data-lucide="activity" class="w-5 h-5"></i>
-                    </div>
-                    <div class="flex-1">
-                        <div class="text-xs text-blue-400 font-bold uppercase tracking-wider mb-0.5">Market Pulse</div>
-                        <div id="pulse-content" class="text-sm font-medium text-slate-200">正在偵測市場異動...</div>
-                    </div>
-                </div>
-
                 <div class="flex justify-between items-end mb-8">
                     <div>
                         <h2 class="text-2xl font-bold">市場篩選器</h2>
                         <p class="text-slate-400">根據 RSI 與漲幅挑選優質幣種 <span id="screener-last-updated" class="text-xs text-slate-500 ml-2"></span></p>
                     </div>
                     <div class="flex gap-2">
+                        <button onclick="openGlobalFilter()" class="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg border border-slate-600 transition">
+                            <i data-lucide="filter" class="w-4 h-4"></i> 篩選資產
+                        </button>
                         <button onclick="openBacktestModal()" class="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg border border-slate-600 transition">
                             <i data-lucide="history" class="w-4 h-4"></i> 回測工具
                         </button>
@@ -265,6 +262,13 @@
                             <i data-lucide="refresh-cw" class="w-4 h-4"></i> 重新整理
                         </button>
                     </div>
+                </div>
+
+                <!-- Active Filter Indicator -->
+                <div id="active-filter-indicator" class="hidden mb-4 flex items-center gap-2 bg-blue-900/20 border border-blue-500/30 text-blue-300 px-4 py-2 rounded-lg text-sm">
+                    <i data-lucide="check-circle" class="w-4 h-4"></i>
+                    <span>已套用全域關注: <span id="filter-count" class="font-bold text-white">0</span> 個幣種</span>
+                    <button onclick="clearGlobalFilter()" class="ml-auto text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -280,7 +284,7 @@
                     <!-- Oversold -->
                     <div class="glass-card rounded-2xl p-5">
                         <h3 class="flex items-center gap-2 font-semibold mb-4 text-orange-400">
-                            <i data-lucide="trending-down" class="w-5 h-5"></i> 超賣區域 (RSI 14 < 40)
+                            <i data-lucide="trending-down" class="w-5 h-5"></i> 超賣區域 (RSI 14 &lt; 40)
                         </h3>
                         <div id="oversold-list" class="space-y-3">
                             <div class="animate-pulse flex space-y-4">載入中...</div>
@@ -289,11 +293,32 @@
                     <!-- Overbought -->
                     <div class="glass-card rounded-2xl p-5">
                         <h3 class="flex items-center gap-2 font-semibold mb-4 text-red-400">
-                            <i data-lucide="alert-triangle" class="w-5 h-5"></i> 超買區域 (RSI 14 > 70)
+                            <i data-lucide="alert-triangle" class="w-5 h-5"></i> 超買區域 (RSI 14 &gt; 70)
                         </h3>
                         <div id="overbought-list" class="space-y-3">
                             <div class="animate-pulse flex space-y-4">載入中...</div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pulse Tab (News/AI) -->
+        <div id="pulse-tab" class="hidden flex-1 flex flex-col p-6 overflow-y-auto custom-scrollbar">
+            <div class="max-w-6xl mx-auto w-full">
+                <div class="flex justify-between items-end mb-6">
+                    <h2 class="text-2xl font-bold flex items-center gap-2">
+                        <i data-lucide="zap" class="w-6 h-6 text-yellow-400"></i> 市場脈動 AI
+                    </h2>
+                    <button onclick="openGlobalFilter()" class="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg border border-slate-600 transition">
+                        <i data-lucide="settings-2" class="w-4 h-4"></i> 設定關注
+                    </button>
+                </div>
+
+                <div id="pulse-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Cards will be injected here -->
+                    <div class="glass-card rounded-2xl p-8 text-center col-span-full">
+                        <div class="animate-pulse text-slate-400">正在初始化 AI 分析引擎...</div>
                     </div>
                 </div>
             </div>
@@ -472,6 +497,87 @@
             </div>
         </div>
 
+        <!-- Global Filter Modal -->
+        <div id="global-filter-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+            <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md max-h-[80vh] flex flex-col shadow-2xl">
+                <div class="p-4 border-b border-slate-700 flex justify-between items-center">
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                        全域關注資產
+                        <select id="filter-exchange-select" onchange="switchFilterExchange(this.value)" class="bg-slate-800 text-sm border border-slate-600 rounded px-2 py-1 text-slate-300 focus:outline-none focus:border-blue-500">
+                            <option value="okx">OKX</option>
+                            <option value="binance">Binance</option>
+                        </select>
+                    </h3>
+                    <button onclick="document.getElementById('global-filter-modal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                
+                <div class="p-4 border-b border-slate-700 bg-slate-800/50">
+                    <div class="relative">
+                        <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-400"></i>
+                        <input type="text" id="symbol-search" placeholder="搜尋幣種 (如 BTC, ETH)..." 
+                            class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-4 py-2 text-sm focus:border-blue-500 outline-none"
+                            oninput="renderSymbolList(allMarketSymbols)">
+                    </div>
+                    <div class="flex justify-between mt-3 text-xs text-slate-400">
+                        <span>已選擇: <span id="selected-count-modal" class="text-blue-400 font-bold">0</span></span>
+                        <button onclick="selectAllMatches()" class="text-blue-400 hover:text-blue-300 transition">全選搜尋結果</button>
+                    </div>
+                </div>
+
+                <div id="symbol-list-container" class="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                    <div class="text-center py-8 text-slate-500">載入中...</div>
+                </div>
+
+                <!-- News Source Selection Area -->
+                <div class="p-4 border-t border-slate-700 bg-slate-800/30">
+                    <h4 class="text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider">新聞來源設定</h4>
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="flex items-center gap-2 cursor-pointer bg-slate-900/50 p-2 rounded-lg border border-slate-700 hover:border-blue-500/50 transition">
+                            <input type="checkbox" class="news-source-checkbox form-checkbox h-3.5 w-3.5 text-blue-500 rounded" value="google" checked>
+                            <span class="text-[11px] text-slate-300">Google News</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer bg-slate-900/50 p-2 rounded-lg border border-slate-700 hover:border-blue-500/50 transition">
+                            <input type="checkbox" class="news-source-checkbox form-checkbox h-3.5 w-3.5 text-blue-500 rounded" value="cryptocompare" checked>
+                            <span class="text-[11px] text-slate-300">CryptoCompare</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer bg-slate-900/50 p-2 rounded-lg border border-slate-700 hover:border-blue-500/50 transition">
+                            <input type="checkbox" class="news-source-checkbox form-checkbox h-3.5 w-3.5 text-blue-500 rounded" value="cryptopanic" checked>
+                            <span class="text-[11px] text-slate-300">CryptoPanic</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer bg-slate-900/50 p-2 rounded-lg border border-slate-700 hover:border-blue-500/50 transition">
+                            <input type="checkbox" class="news-source-checkbox form-checkbox h-3.5 w-3.5 text-blue-500 rounded" value="newsapi" checked>
+                            <span class="text-[11px] text-slate-300">NewsAPI</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="p-4 border-t border-slate-700 flex gap-2">
+                    <button onclick="globalSelectedSymbols=[]; renderSymbolList(allMarketSymbols);" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 rounded-lg transition">清除選擇</button>
+                    <button onclick="applyGlobalFilter()" class="flex-[2] bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-lg font-bold transition">套用設定</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- News List Modal -->
+        <div id="news-modal" class="fixed inset-0 bg-black/80 z-[60] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+            <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg max-h-[70vh] flex flex-col shadow-2xl">
+                <div class="p-4 border-b border-slate-700 flex justify-between items-center">
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                        <i data-lucide="newspaper" class="w-5 h-5 text-blue-400"></i>
+                        AI 參考新聞: <span id="news-modal-symbol"></span>
+                    </h3>
+                    <button onclick="document.getElementById('news-modal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <div id="news-list-content" class="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+                    <!-- News items will be injected here -->
+                </div>
+            </div>
+        </div>
+
         <div id="settings-tab" class="hidden flex-1 flex flex-col p-6 overflow-y-auto custom-scrollbar">
             <div class="max-w-2xl mx-auto w-full">
                 <h2 class="text-2xl font-bold mb-6">設定與帳戶</h2>
@@ -508,6 +614,10 @@
             <i data-lucide="bar-chart-2" class="w-6 h-6"></i>
             <span class="text-[10px]">行情</span>
         </button>
+        <button onclick="switchTab('pulse')" class="flex flex-col items-center gap-1 text-slate-400">
+            <i data-lucide="activity" class="w-6 h-6"></i>
+            <span class="text-[10px]">脈動</span>
+        </button>
         <button onclick="switchTab('social')" class="flex flex-col items-center gap-1 text-slate-400">
             <i data-lucide="users" class="w-6 h-6"></i>
             <span class="text-[10px]">社群</span>
@@ -524,72 +634,201 @@
         const md = window.markdownit({ html: true, linkify: true });
         let isAnalyzing = false;
         let marketRefreshInterval = null;
+        
+        // --- Global Filter Logic Variables ---
+        let allMarketSymbols = [];
+        let globalSelectedSymbols = []; // Unified selection
+        let selectedNewsSources = ['google', 'cryptocompare', 'cryptopanic', 'newsapi']; // Default all sources
+        let currentFilterExchange = 'okx';
+        let isFirstLoad = true;
+
+        async function openGlobalFilter() {
+            const modal = document.getElementById('global-filter-modal');
+            modal.classList.remove('hidden');
+            
+            document.getElementById('filter-exchange-select').value = currentFilterExchange;
+
+            // Sync news source checkboxes with current state
+            document.querySelectorAll('.news-source-checkbox').forEach(cb => {
+                cb.checked = selectedNewsSources.includes(cb.value);
+            });
+
+            if (allMarketSymbols.length === 0) {
+                await fetchSymbols(currentFilterExchange);
+            } else {
+                renderSymbolList(allMarketSymbols);
+            }
+        }
+
+        async function switchFilterExchange(exchange) {
+            if (exchange === currentFilterExchange) return;
+            
+            if (globalSelectedSymbols.length > 0) {
+                if(!confirm("切換交易所將清除目前的選擇，是否繼續？")) {
+                    document.getElementById('filter-exchange-select').value = currentFilterExchange;
+                    return;
+                }
+            }
+            
+            currentFilterExchange = exchange;
+            globalSelectedSymbols = []; 
+            allMarketSymbols = []; 
+            await fetchSymbols(exchange);
+        }
+
+        async function fetchSymbols(exchange) {
+            const container = document.getElementById('symbol-list-container');
+            container.innerHTML = '<div class="text-center py-8 text-slate-500 animate-pulse">正在從交易所獲取幣種列表...</div>';
+            
+            try {
+                const res = await fetch(`/api/market/symbols?exchange=${exchange}`);
+                const data = await res.json();
+                if (data.symbols) {
+                    allMarketSymbols = data.symbols.sort();
+                    renderSymbolList(allMarketSymbols);
+                } else {
+                    container.innerHTML = '<div class="text-center py-8 text-red-400">無法獲取幣種列表</div>';
+                }
+            } catch (e) {
+                console.error("Failed to fetch symbols", e);
+                container.innerHTML = '<div class="text-center py-8 text-red-400">連線錯誤</div>';
+            }
+        }
+
+        function renderSymbolList(symbols) {
+            const container = document.getElementById('symbol-list-container');
+            container.innerHTML = '';
+            
+            const searchVal = document.getElementById('symbol-search').value.toUpperCase().trim();
+            const filtered = symbols.filter(s => s.includes(searchVal));
+            
+            const toRender = filtered.slice(0, 200); 
+            
+            if (toRender.length === 0) {
+                container.innerHTML = '<div class="text-center py-8 text-slate-500">沒有找到符合的幣種</div>';
+            } else {
+                toRender.forEach(s => {
+                    const isChecked = globalSelectedSymbols.includes(s);
+                    const div = document.createElement('div');
+                    div.className = `flex items-center justify-between p-3 rounded-lg cursor-pointer transition select-none ${isChecked ? 'bg-blue-900/30 border border-blue-500/50' : 'hover:bg-slate-800 border border-transparent'}`;
+                    div.onclick = () => toggleSymbolSelection(s);
+                    div.innerHTML = `
+                        <span class="text-sm font-mono ${isChecked ? 'text-blue-300 font-bold' : 'text-slate-300'}">${s}</span>
+                        <div class="w-5 h-5 rounded border ${isChecked ? 'bg-blue-600 border-blue-600' : 'border-slate-600 bg-slate-800'} flex items-center justify-center transition">
+                            ${isChecked ? '<i data-lucide="check" class="w-3.5 h-3.5 text-white"></i>' : ''}
+                        </div>
+                    `;
+                    container.appendChild(div);
+                });
+            }
+            
+            document.getElementById('selected-count-modal').innerText = globalSelectedSymbols.length;
+            lucide.createIcons();
+        }
+
+        function toggleSymbolSelection(s) {
+            if (globalSelectedSymbols.includes(s)) {
+                globalSelectedSymbols = globalSelectedSymbols.filter(item => item !== s);
+            } else {
+                globalSelectedSymbols.push(s);
+            }
+            renderSymbolList(allMarketSymbols);
+        }
+        
+        function selectAllMatches() {
+            const searchVal = document.getElementById('symbol-search').value.toUpperCase().trim();
+            if (!searchVal) return; 
+            
+            const filtered = allMarketSymbols.filter(s => s.includes(searchVal));
+            let addedCount = 0;
+            filtered.forEach(s => {
+                if (!globalSelectedSymbols.includes(s)) {
+                    globalSelectedSymbols.push(s);
+                    addedCount++;
+                }
+            });
+            if (addedCount > 0) renderSymbolList(allMarketSymbols);
+        }
+
+        function applyGlobalFilter() {
+            document.getElementById('global-filter-modal').classList.add('hidden');
+            const indicator = document.getElementById('active-filter-indicator');
+            const headerBadge = document.getElementById('global-count-badge');
+            
+            // Capture news source selection
+            const newsCheckboxes = document.querySelectorAll('.news-source-checkbox:checked');
+            selectedNewsSources = Array.from(newsCheckboxes).map(cb => cb.value);
+            
+            if (selectedNewsSources.length === 0) {
+                alert("請至少選擇一個新聞來源");
+                return;
+            }
+
+            const count = globalSelectedSymbols.length;
+            headerBadge.innerText = count > 0 ? count : '自動';
+            
+            if (count > 0) {
+                if (indicator) {
+                    indicator.classList.remove('hidden');
+                    document.getElementById('filter-count').innerText = count;
+                }
+            } else {
+                if (indicator) indicator.classList.add('hidden');
+            }
+            
+            // Refresh both main components
+            refreshScreener(true);
+            
+            // Only refresh Pulse if visible (to save tokens), otherwise it will refresh on tab switch
+            if (!document.getElementById('pulse-tab').classList.contains('hidden')) {
+                checkMarketPulse(true);
+            }
+        }
+
+        function clearGlobalFilter() {
+            globalSelectedSymbols = [];
+            applyGlobalFilter();
+        }
 
         // Pi Network Initialization (moved to end of script for watchlist integration)
         const Pi = window.Pi;
 
-        // --- [正式版支付函式 - 註解保存] ---
-        /*
-        async function createPiPayment(amount, memo) {
-            if (!Pi) return alert("請在 Pi Browser 中使用此功能");
-            
-            Pi.createPayment({
-                amount: amount,
-                memo: memo,
-                metadata: { type: "donation" },
-            }, {
-                onReadyForServerApproval: (paymentId) => {
-                    return fetch('/api/payment/approve', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ paymentId: paymentId })
-                    });
-                },
-                onReadyForServerCompletion: (paymentId, txid) => {
-                    return fetch('/api/payment/complete', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ paymentId: paymentId, txid: txid })
-                    });
-                },
-                onCancel: (paymentId) => console.log("支付取消", paymentId),
-                onError: (error, payment) => console.error("支付錯誤", error, payment),
-            });
-        }
-        */
-
         function switchTab(tab) {
-            ['chat', 'market', 'watchlist', 'social', 'settings'].forEach(t => {
+            ['chat', 'market', 'watchlist', 'social', 'settings', 'pulse'].forEach(t => {
                 const el = document.getElementById(t + '-tab');
                 if (el) el.classList.add('hidden');
             });
             document.getElementById(tab + '-tab').classList.remove('hidden');
 
-            // Update nav icon colors (simplified)
+            // Update nav icon colors
             document.querySelectorAll('nav button').forEach(btn => btn.classList.replace('text-blue-500', 'text-slate-400'));
             
-            // Highlight active tab icon (rough heuristic)
-            // In a real app, use IDs on buttons
-            
-            // Clear existing interval
             if (marketRefreshInterval) {
                 clearInterval(marketRefreshInterval);
                 marketRefreshInterval = null;
             }
+            if (window.pulseInterval) {
+                clearInterval(window.pulseInterval);
+                window.pulseInterval = null;
+            }
 
             if (tab === 'market') { 
                 refreshScreener(true); 
-                checkMarketPulse(); 
-                // Auto-refresh every 60 seconds
                 marketRefreshInterval = setInterval(() => {
                     refreshScreener(false);
-                    checkMarketPulse();
-                }, 5000);
+                }, 1000);
             }
+            
+            if (tab === 'pulse') {
+                checkMarketPulse(true); 
+                window.pulseInterval = setInterval(() => {
+                    checkMarketPulse(false);
+                }, 30000);
+            }
+
             if (tab === 'watchlist') refreshWatchlist();
             if (tab === 'social') refreshSocial();
 
-            // Re-render icons for new tab
             lucide.createIcons();
         }
 
@@ -605,8 +844,6 @@
             
             if (role === 'bot') {
                 div.innerHTML = md.render(content);
-                
-                // --- Auto-detect symbol to add extra action buttons ---
                 const match = content.match(/\b([A-Z]{2,5})\b/);
                 if (match && !content.includes('載入中') && !content.includes('Error')) {
                      const symbol = match[1];
@@ -621,7 +858,6 @@
                         </button>
                      `;
                      div.appendChild(actionsDiv);
-                     // Need to re-init lucide icons for new elements
                      setTimeout(() => lucide.createIcons(), 0);
                 }
             } else {
@@ -636,7 +872,6 @@
         function toggleOptions() {
             const panel = document.getElementById('analysis-options-panel');
             panel.classList.toggle('hidden');
-            // Re-render icons in case they were hidden
             lucide.createIcons();
         }
 
@@ -646,7 +881,6 @@
             const text = input.value.trim();
             if (!text || isAnalyzing) return;
 
-            // Collect selected analysis modules
             const checkboxes = document.querySelectorAll('.analysis-checkbox:checked');
             const selection = Array.from(checkboxes).map(cb => cb.value);
 
@@ -654,18 +888,15 @@
             appendMessage('user', text);
             isAnalyzing = true;
 
-            // Disable input and button
             input.disabled = true;
             sendBtn.disabled = true;
             input.classList.add('opacity-50');
             sendBtn.classList.add('opacity-50', 'cursor-not-allowed');
 
-            // Add loading indicator with spinner
             const botMsgDiv = appendMessage('bot', '');
             const startTime = Date.now();
             let timerInterval;
 
-            // Create loading HTML (只建立一次，避免動畫重置)
             botMsgDiv.innerHTML = `
                 <div class="loading-container">
                     <div class="spinner"></div>
@@ -674,7 +905,6 @@
                 </div>
             `;
 
-            // 只更新時間數字，不重建整個 HTML
             const timerSpan = botMsgDiv.querySelector('#loading-timer');
             timerInterval = setInterval(() => {
                 const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
@@ -707,14 +937,12 @@
                             const data = JSON.parse(line.substring(6));
                             if (data.content) {
                                 fullContent = data.content;
-                                // Stop timer and show content
                                 clearInterval(timerInterval);
                                 botMsgDiv.innerHTML = md.render(fullContent);
                                 document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
                             }
                             if (data.done) {
                                 isAnalyzing = false;
-                                // Add elapsed time badge
                                 const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
                                 const timeBadge = document.createElement('div');
                                 timeBadge.className = 'done-badge';
@@ -735,7 +963,6 @@
                 botMsgDiv.innerHTML = '<span class="text-red-400">連線失敗，請檢查後端伺服器。</span>';
                 isAnalyzing = false;
             } finally {
-                // Re-enable input and button
                 clearInterval(timerInterval);
                 input.disabled = false;
                 sendBtn.disabled = false;
@@ -757,12 +984,30 @@
             }
 
             try {
+                const body = { exchange: currentFilterExchange };
+                if (globalSelectedSymbols.length > 0) {
+                    body.symbols = globalSelectedSymbols;
+                }
+
                 const res = await fetch('/api/screener', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ exchange: 'binance' })
+                    body: JSON.stringify(body)
                 });
                 const data = await res.json();
+
+                if (isFirstLoad && globalSelectedSymbols.length === 0) {
+                    if (data.top_performers && data.top_performers.length > 0) {
+                        globalSelectedSymbols = data.top_performers.map(item => item.Symbol);
+                        const indicator = document.getElementById('active-filter-indicator');
+                        if (indicator) {
+                            indicator.classList.remove('hidden');
+                            document.getElementById('filter-count').innerText = globalSelectedSymbols.length;
+                        }
+                        document.getElementById('global-count-badge').innerText = globalSelectedSymbols.length;
+                    }
+                    isFirstLoad = false;
+                }
 
                 if (data.last_updated) {
                     const date = new Date(data.last_updated);
@@ -775,6 +1020,9 @@
                 renderList(containers.overbought, data.overbought, 'RSI_14', '');
             } catch (err) {
                 console.error(err);
+                if (showLoading) {
+                    Object.values(containers).forEach(c => c.innerHTML = '<div class="text-red-400 text-sm">載入失敗</div>');
+                }
             }
         }
 
@@ -785,11 +1033,8 @@
                 return;
             }
 
-            items.slice(0, 8).forEach(item => {
+            items.forEach(item => {
                 const val = parseFloat(item[key]);
-                const isPositive = val > 0;
-                
-                // Render signals tags
                 let signalsHtml = '';
                 if (item.signals && Array.isArray(item.signals)) {
                     item.signals.forEach(sig => {
@@ -798,7 +1043,6 @@
                         if (sig.includes('爆量')) colorClass = 'bg-orange-500/20 text-orange-400 border border-orange-500/30';
                         if (sig.includes('金叉')) colorClass = 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30';
                         if (sig.includes('抄底')) colorClass = 'bg-blue-500/20 text-blue-400 border border-blue-500/30';
-                        
                         signalsHtml += `<span class="text-[10px] px-1.5 py-0.5 rounded ${colorClass} mr-1">${sig}</span>`;
                     });
                 }
@@ -826,373 +1070,182 @@
             });
         }
 
-        // ========== 自選清單功能 ==========
-        let currentUserId = 'guest'; // 預設用戶 ID，登入後會更新
+        let currentUserId = 'guest'; 
         let chart = null;
         let candleSeries = null;
 
-        // 更新 Pi 登入後的用戶 ID
-        function updateUserId(uid) {
-            currentUserId = uid || 'guest';
-        }
+        function updateUserId(uid) { currentUserId = uid || 'guest'; }
 
-        // 獲取並顯示自選清單
         async function refreshWatchlist() {
             const container = document.getElementById('watchlist-container');
             container.innerHTML = '<div class="glass-card rounded-xl p-6 text-center"><div class="animate-pulse">載入中...</div></div>';
-
             try {
                 const res = await fetch(`/api/watchlist/${currentUserId}`);
                 const data = await res.json();
-
                 if (!data.symbols || data.symbols.length === 0) {
-                    container.innerHTML = `
-                        <div class="glass-card rounded-xl p-6 text-center text-slate-400">
-                            <i data-lucide="star" class="w-12 h-12 mx-auto mb-3 opacity-30"></i>
-                            <p>您還沒有收藏任何幣種</p>
-                            <p class="text-sm mt-2">在 AI 分析結果中點擊 ⭐ 按鈕來收藏</p>
-                        </div>
-                    `;
-                    lucide.createIcons();
-                    return;
+                    container.innerHTML = '<div class="glass-card rounded-xl p-6 text-center text-slate-400"><i data-lucide="star" class="w-12 h-12 mx-auto mb-3 opacity-30"></i><p>您還沒有收藏任何幣種</p></div>';
+                    lucide.createIcons(); return;
                 }
-
                 container.innerHTML = '';
                 for (const symbol of data.symbols) {
                     const card = document.createElement('div');
                     card.className = 'glass-card rounded-xl p-4 hover:bg-slate-800/50 transition cursor-pointer';
-                    card.innerHTML = `
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center font-bold">
-                                    ${symbol.replace('USDT', '').substring(0, 2)}
-                                </div>
-                                <div>
-                                    <div class="font-semibold">${symbol}</div>
-                                    <div class="text-xs text-slate-400">點擊查看圖表</div>
-                                </div>
-                            </div>
-                            <div class="flex gap-2">
-                                <button onclick="event.stopPropagation(); showChart('${symbol}')" class="p-2 bg-blue-600/20 text-blue-400 rounded-lg hover:bg-blue-600/30 transition" title="查看圖表">
-                                    <i data-lucide="trending-up" class="w-4 h-4"></i>
-                                </button>
-                                <button onclick="event.stopPropagation(); removeFromWatchlist('${symbol}')" class="p-2 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600/30 transition" title="移除">
-                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
-                                </button>
-                            </div>
-                        </div>
-                    `;
+                    card.innerHTML = `<div class="flex items-center justify-between"><div class="flex items-center gap-3"><div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center font-bold">${symbol.substring(0, 2)}</div><div><div class="font-semibold">${symbol}</div></div></div><div class="flex gap-2"><button onclick="event.stopPropagation(); showChart('${symbol}')" class="p-2 bg-blue-600/20 text-blue-400 rounded-lg hover:bg-blue-600/30 transition"><i data-lucide="trending-up" class="w-4 h-4"></i></button><button onclick="event.stopPropagation(); removeFromWatchlist('${symbol}')" class="p-2 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600/30 transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>`;
                     card.onclick = () => showChart(symbol);
                     container.appendChild(card);
                 }
                 lucide.createIcons();
-            } catch (err) {
-                console.error('Failed to load watchlist:', err);
-                container.innerHTML = '<div class="glass-card rounded-xl p-6 text-center text-red-400">載入失敗</div>';
-            }
+            } catch (err) { console.error(err); }
         }
 
-        // 添加到自選清單
         async function addToWatchlist(symbol) {
             try {
-                const res = await fetch('/api/watchlist/add', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: currentUserId, symbol: symbol })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    alert(`✅ ${symbol} 已加入自選清單！`);
-                }
-            } catch (err) {
-                console.error('Failed to add to watchlist:', err);
-            }
+                const res = await fetch('/api/watchlist/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: currentUserId, symbol: symbol }) });
+                const data = await res.json(); if (data.success) alert(`✅ ${symbol} 已加入自選！`);
+            } catch (err) { console.error(err); }
         }
 
-        // 從自選清單移除
         async function removeFromWatchlist(symbol) {
             if (!confirm(`確定要移除 ${symbol} 嗎？`)) return;
             try {
-                const res = await fetch('/api/watchlist/remove', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: currentUserId, symbol: symbol })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    refreshWatchlist();
-                }
-            } catch (err) {
-                console.error('Failed to remove from watchlist:', err);
-            }
+                const res = await fetch('/api/watchlist/remove', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: currentUserId, symbol: symbol }) });
+                const data = await res.json(); if (data.success) refreshWatchlist();
+            } catch (err) { console.error(err); }
         }
 
-        // ========== TradingView 圖表功能 ==========
         async function showChart(symbol) {
             const chartSection = document.getElementById('chart-section');
             const chartContainer = document.getElementById('chart-container');
-            const chartTitle = document.getElementById('chart-title');
-
             chartSection.classList.remove('hidden');
-            chartTitle.textContent = symbol;
-            chartContainer.innerHTML = '<div class="flex items-center justify-center h-full"><div class="animate-pulse text-slate-400">載入圖表中...</div></div>';
-
+            document.getElementById('chart-title').textContent = symbol;
+            chartContainer.innerHTML = '<div class="animate-pulse text-slate-400">載入圖表中...</div>';
             try {
-                const res = await fetch('/api/klines', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ symbol: symbol, interval: '1d', limit: 100 })
-                });
+                const res = await fetch('/api/klines', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ symbol: symbol, interval: '1d', limit: 100 }) });
                 const data = await res.json();
-
-                if (!data.klines || data.klines.length === 0) {
-                    chartContainer.innerHTML = '<div class="flex items-center justify-center h-full text-red-400">無法載入數據</div>';
-                    return;
-                }
-
-                // 清空容器並創建圖表
+                if (!data.klines || data.klines.length === 0) { chartContainer.innerHTML = '<div class="text-red-400">無法載入數據</div>'; return; }
                 chartContainer.innerHTML = '';
-
-                if (chart) {
-                    chart.remove();
-                }
-
-                chart = LightweightCharts.createChart(chartContainer, {
-                    width: chartContainer.clientWidth,
-                    height: 380,
-                    layout: {
-                        background: { type: 'solid', color: 'transparent' },
-                        textColor: '#94a3b8',
-                    },
-                    grid: {
-                        vertLines: { color: 'rgba(51, 65, 85, 0.3)' },
-                        horzLines: { color: 'rgba(51, 65, 85, 0.3)' },
-                    },
-                    crosshair: {
-                        mode: LightweightCharts.CrosshairMode.Normal,
-                    },
-                    rightPriceScale: {
-                        borderColor: '#334155',
-                    },
-                    timeScale: {
-                        borderColor: '#334155',
-                        timeVisible: true,
-                    },
-                });
-
-                candleSeries = chart.addCandlestickSeries({
-                    upColor: '#22c55e',
-                    downColor: '#ef4444',
-                    borderDownColor: '#ef4444',
-                    borderUpColor: '#22c55e',
-                    wickDownColor: '#ef4444',
-                    wickUpColor: '#22c55e',
-                });
-
+                if (chart) chart.remove();
+                chart = LightweightCharts.createChart(chartContainer, { width: chartContainer.clientWidth, height: 380, layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#94a3b8' }, grid: { vertLines: { color: 'rgba(51, 65, 85, 0.3)' }, horzLines: { color: 'rgba(51, 65, 85, 0.3)' } }, timeScale: { borderColor: '#334155', timeVisible: true } });
+                candleSeries = chart.addCandlestickSeries({ upColor: '#22c55e', downColor: '#ef4444' });
                 candleSeries.setData(data.klines);
                 chart.timeScale().fitContent();
+            } catch (err) { console.error(err); }
+        }
 
-                // 響應式調整
-                window.addEventListener('resize', () => {
-                    if (chart) {
-                        chart.applyOptions({ width: chartContainer.clientWidth });
-                    }
+        async function checkMarketPulse(showLoading = false) {
+            const grid = document.getElementById('pulse-grid');
+            let targets = globalSelectedSymbols.length > 0 ? globalSelectedSymbols : ['BTC', 'ETH', 'SOL', 'PI'];
+            if (showLoading) {
+                grid.innerHTML = '';
+                targets.forEach(symbol => {
+                    const el = document.createElement('div');
+                    el.className = 'glass-card rounded-2xl p-6 h-full flex flex-col items-center justify-center min-h-[200px]';
+                    el.innerHTML = `<div class="animate-pulse text-slate-400">AI 分析中...</div>`;
+                    el.id = `pulse-card-${symbol}`; grid.appendChild(el);
                 });
-
-            } catch (err) {
-                console.error('Failed to load chart:', err);
-                chartContainer.innerHTML = '<div class="flex items-center justify-center h-full text-red-400">圖表載入失敗</div>';
             }
+            targets.forEach(symbol => fetchPulseForSymbol(symbol));
         }
 
-        // ========== Market Pulse Logic ==========
-        async function checkMarketPulse() {
-            const symbols = ['BTC', 'ETH', 'SOL', 'PI'];
-            const randomSymbol = symbols[Math.floor(Math.random() * symbols.length)];
-            const ticker = document.getElementById('market-pulse');
-            const content = document.getElementById('pulse-content');
-            
+        let currentPulseData = {};
+
+        async function fetchPulseForSymbol(symbol) {
+            const cardId = `pulse-card-${symbol}`;
+            let card = document.getElementById(cardId); if (!card) return;
             try {
-                const res = await fetch(`/api/market-pulse/${randomSymbol}`);
+                const sourcesQuery = selectedNewsSources.join(',');
+                const res = await fetch(`/api/market-pulse/${symbol}?sources=${sourcesQuery}`);
                 const data = await res.json();
-                
                 if (data.explanation) {
-                    // Extract unique sources
-                    const sources = [...new Set(data.news_sources.map(n => n.source.split(' ')[0]))].join(', ');
-                    
-                    content.textContent = `${data.symbol}: ${data.explanation} (${data.change_1h > 0 ? '+' : ''}${data.change_1h.toFixed(2)}%)`;
-                    content.title = `資訊來源: ${sources || 'AI Market Analysis'}`; // Tooltip
-                    ticker.classList.remove('hidden');
+                    currentPulseData[symbol] = data;
+                    const isPositive = data.change_1h > 0;
+                    card.className = "glass-card rounded-2xl p-6 h-full flex flex-col hover:border-blue-500/30 transition duration-300";
+                    card.innerHTML = `<div class="flex justify-between items-start mb-4"><div class="flex items-center gap-3"><div class="w-10 h-10 ${isPositive ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'} rounded-xl flex items-center justify-center"><i data-lucide="${isPositive ? 'trending-up' : 'trending-down'}" class="w-5 h-5"></i></div><div><h3 class="font-bold text-lg">${data.symbol}</h3><div class="text-xs text-slate-400">24h: <span class="${data.change_24h > 0 ? 'text-green-400' : 'text-red-400'}">${data.change_24h.toFixed(2)}%</span></div></div></div><span class="px-2 py-1 rounded bg-slate-800 text-[10px] text-slate-400 border border-slate-700">1H: ${data.change_1h.toFixed(2)}%</span></div><div class="flex-1 mb-4"><p class="text-slate-300 text-sm leading-relaxed">${data.explanation}</p></div><div class="mt-auto pt-4 border-t border-slate-700/50 flex justify-between items-center"><button onclick="showNewsList('${symbol}')" class="text-xs font-medium text-blue-400 hover:text-blue-300 transition flex items-center gap-1"><i data-lucide="newspaper" class="w-4 h-4"></i> 新聞詳情 (${data.news_sources.length})</button><button onclick="switchTab('chat'); quickAsk('${data.symbol} 詳細分析')" class="p-2 bg-purple-900/30 text-purple-400 rounded-lg hover:bg-purple-900/50 transition group"><i data-lucide="bot" class="w-4 h-4 group-hover:scale-110 transition"></i></button></div>`;
+                    lucide.createIcons();
                 }
-            } catch (e) {
-                console.error("Pulse check failed", e);
-            }
+            } catch (e) { console.error(e); }
         }
 
-        // ========== Social & Prediction Logic ==========
+        function showNewsList(symbol) {
+            const data = currentPulseData[symbol]; if (!data || !data.news_sources) return;
+            const modal = document.getElementById('news-modal');
+            const listContent = document.getElementById('news-list-content');
+            document.getElementById('news-modal-symbol').innerText = symbol;
+            listContent.innerHTML = '';
+            data.news_sources.forEach(news => {
+                const item = document.createElement('div');
+                item.className = 'bg-slate-800/50 border border-slate-700 p-3 rounded-xl hover:bg-slate-800 transition group';
+                item.innerHTML = `<div class="flex justify-between items-start mb-1"><span class="text-[10px] px-1.5 py-0.5 bg-blue-900/30 text-blue-400 rounded border border-blue-500/20">${news.source}</span></div><h4 class="text-sm font-semibold text-slate-200 mb-2 group-hover:text-blue-300 transition line-clamp-2">${news.title}</h4><a href="${news.url}" target="_blank" class="text-[10px] text-blue-500 hover:underline">查看原文 <i data-lucide="external-link" class="w-2.5 h-2.5"></i></a>`;
+                listContent.appendChild(item);
+            });
+            modal.classList.remove('hidden'); lucide.createIcons();
+        }
+
         async function refreshSocial() {
             const tbody = document.getElementById('leaderboard-body');
-            tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-4 text-center animate-pulse">載入排行榜中...</td></tr>';
-            
+            tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-4 text-center animate-pulse">載入中...</td></tr>';
             try {
                 const res = await fetch('/api/social/leaderboard');
                 const data = await res.json();
-                const list = data.leaderboard || [];
-                
                 tbody.innerHTML = '';
-                if (list.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-4 text-center text-slate-500">暫無數據</td></tr>';
-                    return;
-                }
-                
-                list.forEach((user, idx) => {
-                    const row = document.createElement('tr');
-                    row.className = 'border-b border-slate-700/50 hover:bg-slate-800/30';
-                    row.innerHTML = `
-                        <td class="px-4 py-3 font-bold ${idx < 3 ? 'text-yellow-400' : 'text-slate-400'}">#${idx + 1}</td>
-                        <td class="px-4 py-3 font-medium text-white">${user.username}</td>
-                        <td class="px-4 py-3">${user.win_rate.toFixed(1)}%</td>
-                        <td class="px-4 py-3 text-slate-400 text-xs">${user.wins} / ${user.total_predictions}</td>
-                        <td class="px-4 py-3 ${user.avg_pnl > 0 ? 'text-green-400' : 'text-red-400'}">${user.avg_pnl.toFixed(2)}%</td>
-                    `;
+                if (!data.leaderboard || data.leaderboard.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-4 text-center text-slate-500">暫無數據</td></tr>'; return; }
+                data.leaderboard.forEach((user, idx) => {
+                    const row = document.createElement('tr'); row.className = 'border-b border-slate-700/50 hover:bg-slate-800/30';
+                    row.innerHTML = `<td class="px-4 py-3 font-bold ${idx < 3 ? 'text-yellow-400' : 'text-slate-400'}">#${idx + 1}</td><td class="px-4 py-3 font-medium text-white">${user.username}</td><td class="px-4 py-3">${user.win_rate.toFixed(1)}%</td><td class="px-4 py-3 text-slate-400 text-xs">${user.wins} / ${user.total_predictions}</td><td class="px-4 py-3 ${user.avg_pnl > 0 ? 'text-green-400' : 'text-red-400'}">${user.avg_pnl.toFixed(2)}%</td>`;
                     tbody.appendChild(row);
                 });
-            } catch (e) {
-                console.error(e);
-                tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-4 text-center text-red-400">載入失敗</td></tr>';
-            }
+            } catch (e) { console.error(e); }
         }
 
         async function submitPrediction(direction) {
             const symbol = document.getElementById('predict-symbol').value.toUpperCase();
             if (!symbol) return alert("請輸入幣種");
-            
-            if (!currentUserId || currentUserId === 'guest') {
-                return alert("請先登入 Pi 帳戶才能參與預測 (目前為 Guest 模式)");
-            }
-            
+            if (currentUserId === 'guest') return alert("請先登入 Pi 帳戶");
             try {
-                const res = await fetch('/api/social/predict', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        user_id: currentUserId,
-                        username: document.getElementById('settings-user').innerText.replace('@', '') || 'Guest',
-                        symbol: symbol,
-                        direction: direction
-                    })
-                });
-                const data = await res.json();
-                if (data.success) {
-                    alert(`✅ 預測成功！進場價: $${data.entry_price}`);
-                    refreshSocial();
-                } else {
-                    alert("預測失敗: " + data.detail);
-                }
-            } catch (e) {
-                alert("提交失敗");
-            }
+                const res = await fetch('/api/social/predict', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: currentUserId, username: document.getElementById('settings-user').innerText.replace('@', '') || 'Guest', symbol: symbol, direction: direction }) });
+                const data = await res.json(); if (data.success) { alert(`✅ 預測成功！進場價: $${data.entry_price}`); refreshSocial(); }
+            } catch (e) { console.error(e); }
         }
 
-        // ========== Backtest Logic ==========
-        function openBacktestModal() {
-            document.getElementById('backtest-modal').classList.remove('hidden');
-        }
+        function openBacktestModal() { document.getElementById('backtest-modal').classList.remove('hidden'); }
 
         async function runBacktest() {
             const symbol = document.getElementById('bt-symbol').value;
             const strategy = document.getElementById('bt-strategy').value;
             const resultDiv = document.getElementById('bt-result');
-            
-            resultDiv.classList.remove('hidden');
-            resultDiv.innerHTML = '<div class="animate-pulse">回測中...</div>';
-            
+            resultDiv.classList.remove('hidden'); resultDiv.innerHTML = '<div class="animate-pulse">回測中...</div>';
             try {
-                const res = await fetch('/api/backtest', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ symbol: symbol, signal_type: strategy, interval: '1h' })
-                });
-                const data = await res.json();
-                
-                if (data.error) throw new Error(data.error);
-                
+                const res = await fetch('/api/backtest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ symbol: symbol, signal_type: strategy, interval: '1h' }) });
+                const data = await res.json(); if (data.error) throw new Error(data.error);
                 const isProfitable = data.return_pct > 0;
-                resultDiv.innerHTML = `
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="font-bold text-white">${symbol} (${strategy})</span>
-                        <span class="${isProfitable ? 'text-green-400' : 'text-red-400'} font-bold">${data.return_pct.toFixed(2)}%</span>
-                    </div>
-                    <div class="grid grid-cols-2 gap-2 text-xs text-slate-300">
-                        <div>勝率: <span class="text-white">${data.win_rate.toFixed(1)}%</span></div>
-                        <div>交易次數: <span class="text-white">${data.total_trades}</span></div>
-                        <div>最大回撤: <span class="text-red-400">${data.max_drawdown.toFixed(2)}%</span></div>
-                        <div>淨利: <span class="${isProfitable ? 'text-green-400' : 'text-red-400'}">$${(data.final_capital - data.initial_capital).toFixed(2)}</span></div>
-                    </div>
-                `;
-            } catch (e) {
-                resultDiv.innerHTML = `<span class="text-red-400">回測失敗: ${e.message}</span>`;
-            }
+                resultDiv.innerHTML = `<div class="flex justify-between items-center mb-2"><span class="font-bold text-white">${symbol} (${strategy})</span><span class="${isProfitable ? 'text-green-400' : 'text-red-400'} font-bold">${data.return_pct.toFixed(2)}%</span></div><div class="grid grid-cols-2 gap-2 text-xs text-slate-300"><div>勝率: <span class="text-white">${data.win_rate.toFixed(1)}%</span></div><div>交易次數: <span class="text-white">${data.total_trades}</span></div><div>最大回撤: <span class="text-red-400">${data.max_drawdown.toFixed(2)}%</span></div><div>淨利: <span class="${isProfitable ? 'text-green-400' : 'text-red-400'}">$${(data.final_capital - data.initial_capital).toFixed(2)}</span></div></div>`;
+            } catch (e) { resultDiv.innerHTML = `<span class="text-red-400">回測失敗: ${e.message}</span>`; }
         }
 
-        // ========== AI Debate Visualization ==========
         async function showDebate(symbol) {
             const modal = document.getElementById('debate-modal');
             const bullArg = document.getElementById('bull-arg');
             const bearArg = document.getElementById('bear-arg');
             const verdict = document.getElementById('judge-verdict');
-            
-            modal.classList.remove('hidden');
-            document.getElementById('debate-symbol').textContent = symbol;
-            
-            bullArg.innerHTML = '<div class="animate-pulse">AI 研究員正在分析...</div>';
-            bearArg.innerHTML = '<div class="animate-pulse">AI 研究員正在分析...</div>';
-            verdict.innerHTML = '裁判正在審核...';
-            
+            modal.classList.remove('hidden'); document.getElementById('debate-symbol').textContent = symbol;
+            bullArg.innerHTML = '<div class="animate-pulse">分析中...</div>'; bearArg.innerHTML = '<div class="animate-pulse">分析中...</div>'; verdict.innerHTML = '裁判審核中...';
             try {
                 const res = await fetch(`/api/debate/${symbol}`);
                 const data = await res.json();
-                
-                // Update Scores
-                const bullScore = data.debate_judgment.bull_score;
-                const bearScore = data.debate_judgment.bear_score;
-                const total = bullScore + bearScore;
-                const bullPct = (bullScore / total) * 100;
-                
-                document.getElementById('score-bull').style.width = `${bullPct}%`;
-                document.getElementById('score-bear').style.width = `${100 - bullPct}%`;
-                document.getElementById('score-val-bull').textContent = bullScore;
-                document.getElementById('score-val-bear').textContent = bearScore;
-                
+                const bullScore = data.debate_judgment.bull_score; const bearScore = data.debate_judgment.bear_score;
+                const bullPct = (bullScore / (bullScore + bearScore)) * 100;
+                document.getElementById('score-bull').style.width = `${bullPct}%`; document.getElementById('score-bear').style.width = `${100 - bullPct}%`;
+                document.getElementById('score-val-bull').textContent = bullScore; document.getElementById('score-val-bear').textContent = bearScore;
                 const winnerBadge = document.getElementById('winner-badge');
-                if (data.debate_judgment.winning_stance === 'Bull') {
-                    winnerBadge.textContent = '多頭勝出 🐂';
-                    winnerBadge.className = 'px-3 py-1 bg-green-600/20 text-green-400 rounded-lg text-sm border border-green-600/50';
-                } else if (data.debate_judgment.winning_stance === 'Bear') {
-                    winnerBadge.textContent = '空頭勝出 🐻';
-                    winnerBadge.className = 'px-3 py-1 bg-red-600/20 text-red-400 rounded-lg text-sm border border-red-600/50';
-                } else {
-                    winnerBadge.textContent = '平局 ⚖️';
-                    winnerBadge.className = 'px-3 py-1 bg-slate-600/20 text-slate-400 rounded-lg text-sm border border-slate-600/50';
-                }
-
-                // Render Arguments
-                bullArg.innerHTML = md.render(data.bull_argument.argument);
-                bearArg.innerHTML = md.render(data.bear_argument.argument);
-                verdict.innerHTML = md.render(data.debate_judgment.judge_rationale);
-                
-            } catch (e) {
-                console.error(e);
-                bullArg.textContent = '載入失敗';
-                bearArg.textContent = '載入失敗';
-            }
+                if (data.debate_judgment.winning_stance === 'Bull') { winnerBadge.textContent = '多頭勝出 🐂'; winnerBadge.className = 'px-3 py-1 bg-green-600/20 text-green-400 rounded-lg text-sm border border-green-600/50'; }
+                else if (data.debate_judgment.winning_stance === 'Bear') { winnerBadge.textContent = '空頭勝出 🐻'; winnerBadge.className = 'px-3 py-1 bg-red-600/20 text-red-400 rounded-lg text-sm border border-red-600/50'; }
+                else { winnerBadge.textContent = '平局 ⚖️'; winnerBadge.className = 'px-3 py-1 bg-slate-600/20 text-slate-400 rounded-lg text-sm border border-slate-600/50'; }
+                bullArg.innerHTML = md.render(data.bull_argument.argument); bearArg.innerHTML = md.render(data.bear_argument.argument); verdict.innerHTML = md.render(data.debate_judgment.judge_rationale);
+            } catch (e) { console.error(e); }
         }
         
-        function closeDebate() {
-            document.getElementById('debate-modal').classList.add('hidden');
-        }
+        function closeDebate() { document.getElementById('debate-modal').classList.add('hidden'); }
 
-        // Expose globally
         window.showDebate = showDebate;
         if (Pi) {
             Pi.init({ version: "2.0", sandbox: true });
@@ -1200,11 +1253,8 @@
                 const userEl = document.getElementById('pi-user');
                 userEl.innerHTML = `<span class="text-blue-400 font-medium">@${auth.user.username}</span>`;
                 userEl.classList.remove('hidden');
-
                 const settingsUserEl = document.getElementById('settings-user');
                 if (settingsUserEl) settingsUserEl.innerText = "@" + auth.user.username;
-
-                // 更新用戶 ID 用於自選清單
                 updateUserId(auth.user.uid || auth.user.username);
             }).catch(err => console.error(err));
         }

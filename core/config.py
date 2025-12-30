@@ -100,7 +100,7 @@ LOCAL_LLM_CONFIG = {
 QUERY_PARSER_MODEL = "gpt-4o"
 
 # 支持的交易所列表，按優先級排序
-SUPPORTED_EXCHANGES = ["binance", "okx"]
+SUPPORTED_EXCHANGES = ["okx", "binance"]
 
 # 合約市場分析的默認槓桿
 DEFAULT_FUTURES_LEVERAGE = 5

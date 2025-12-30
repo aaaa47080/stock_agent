@@ -3,14 +3,15 @@ import json
 import time
 import requests
 import pandas as pd
+import numpy as np
 from urllib.parse import urlparse
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 import concurrent.futures
 from cachetools import cached, TTLCache
 
-# Cache for CryptoPanic API calls, 1-hour TTL
-cryptopanic_cache = TTLCache(maxsize=100, ttl=3600)
+# Cache for CryptoPanic API calls, 5-minute TTL (reduced from 1 hour for real-time)
+cryptopanic_cache = TTLCache(maxsize=100, ttl=300)
 
 class DataFrameEncoder(json.JSONEncoder):
     """
@@ -61,7 +62,7 @@ def get_crypto_news_cryptopanic(symbol: str = "BTC", limit: int = 5) -> List[Dic
         print(">> 警告：未設定 CryptoPanic API Token，無法獲取真實新聞")
         return []
 
-    print(f">> 正在從 CryptoPanic API 撈取 {symbol} 的真實新聞 (快取 TTL: 1小時)...")
+    print(f">> 正在從 CryptoPanic API 撈取 {symbol} 的真實新聞 (快取 TTL: 5分鐘)...")
     
     # CryptoPanic API 請求
     url = "https://cryptopanic.com/api/developer/v2/posts/"
@@ -152,7 +153,7 @@ def get_crypto_news_newsapi(symbol: str = "BTC", limit: int = 5) -> List[Dict]:
         "language": "en",
         "sortBy": "publishedAt",
         "pageSize": limit,
-        "from": (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
+        "from": (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%S")
     }
 
     try:
@@ -288,70 +289,124 @@ def get_crypto_news_coingecko(symbol: str = "BTC", limit: int = 5) -> List[Dict]
         return []
 
 
-def get_crypto_news(symbol: str = "BTC", limit: int = 5) -> List[Dict]:
+def get_crypto_news_google(symbol: str = "BTC", limit: int = 5) -> List[Dict]:
     """
-    🔥 多來源新聞聚合器（推薦使用）
-    自動從多個來源獲取新聞，提高覆蓋率和可靠性
+    從 Google News RSS 獲取最新新聞（無限量、無 API Key 限制）
+    """
+    import xml.etree.ElementTree as ET
+    print(f">> 正在從 Google News 撈取 {symbol} 的即時新聞...")
+    
+    url = f"https://news.google.com/rss/search?q={symbol}+crypto+when:24h&hl=en-US&gl=US&ceid=US:en"
+    
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        root = ET.fromstring(response.content)
+        
+        news_list = []
+        for item in root.findall('.//item')[:limit]:
+            title = item.find('title').text if item.find('title') is not None else "No Title"
+            link = item.find('link').text if item.find('link') is not None else ""
+            source_name = item.find('source').text if item.find('source') is not None else "Google News"
+            
+            news_list.append({
+                "title": title,
+                "description": title,
+                "published_at": item.find('pubDate').text if item.find('pubDate') is not None else "N/A",
+                "sentiment": "中性",
+                "source": f"Google ({source_name})",
+                "url": link
+            })
+        return news_list
+    except Exception as e:
+        print(f">> Google News 獲取失敗: {str(e)}")
+        return []
 
-    來源優先級：
-    1. CryptoPanic - 專業加密貨幣新聞聚合（需 API Key）
-    2. NewsAPI - 主流媒體報導（需 API Key，免費 100 請求/天）
-    3. CoinGecko - 項目狀態更新（免費，無需 API Key）
+def get_crypto_news_cryptocompare(symbol: str = "BTC", limit: int = 5) -> List[Dict]:
+    """
+    從 CryptoCompare 獲取專業新聞（免費額度極高）
+    """
+    print(f">> 正在從 CryptoCompare 撈取 {symbol} 的專業報導...")
+    url = "https://min-api.cryptocompare.com/data/v2/news/"
+    params = {"categories": symbol, "excludeCategories": "Sponsored", "lang": "EN"}
+    
+    try:
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        
+        news_list = []
+        if data.get("Data"):
+            for item in data["Data"][:limit]:
+                news_list.append({
+                    "title": item.get("title", "No Title"),
+                    "description": item.get("body", ""),
+                    "published_at": datetime.fromtimestamp(item.get("published_on", 0)).isoformat(),
+                    "sentiment": "中性",
+                    "source": f"CryptoCompare ({item.get('source', 'Unknown')})",
+                    "url": item.get("url", "")
+                })
+        return news_list
+    except Exception as e:
+        print(f">> CryptoCompare 獲取失敗: {str(e)}")
+        return []
 
-    Args:
-        symbol: 加密貨幣代號（如 BTC, ETH, PI）
-        limit: 每個來源返回的新聞數量
-
-    Returns:
-        List[Dict]: 聚合後的新聞列表，按時間排序
+def get_crypto_news(symbol: str = "BTC", limit: int = 5, enabled_sources: List[str] = None) -> List[Dict]:
+    """
+    🔥 多來源新聞聚合器（已增強版）
+    
+    支援來源 ID: ['google', 'cryptocompare', 'cryptopanic', 'newsapi']
     """
     print(f"\n>> 啟動多來源新聞聚合系統 (目標: {symbol})...")
 
-    all_news = []
+    # 如果沒有指定來源，預設啟用所有（或穩定來源）
+    if not enabled_sources:
+        enabled_sources = ['google', 'cryptocompare', 'cryptopanic', 'newsapi']
 
-    # 使用並行處理同時抓取多個來源
-    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-        futures = {
-            executor.submit(get_crypto_news_cryptopanic, symbol, limit): "CryptoPanic",
-            executor.submit(get_crypto_news_newsapi, symbol, limit): "NewsAPI",
-            executor.submit(get_crypto_news_coingecko, symbol, limit): "CoinGecko"
-        }
+    all_news = []
+    source_map = {
+        'google': (get_crypto_news_google, "Google News (無限)"),
+        'cryptocompare': (get_crypto_news_cryptocompare, "CryptoCompare (高額度)"),
+        'cryptopanic': (get_crypto_news_cryptopanic, "CryptoPanic (專業)"),
+        'newsapi': (get_crypto_news_newsapi, "NewsAPI (主流)")
+    }
+
+    # 使用並行處理
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(enabled_sources)) as executor:
+        futures = {}
+        for src_id in enabled_sources:
+            if src_id in source_map:
+                func, name = source_map[src_id]
+                futures[executor.submit(func, symbol, limit)] = name
 
         for future in concurrent.futures.as_completed(futures):
-            source_name = futures[future]
+            name = futures[future]
             try:
                 news = future.result()
                 if news:
                     all_news.extend(news)
-                    print(f">> {source_name}: 獲取 {len(news)} 條新聞")
+                    print(f">> {name}: 獲取 {len(news)} 條新聞")
                 else:
-                    print(f">> {source_name}: 無新聞")
+                    print(f">> {name}: 無新聞")
             except Exception as e:
-                print(f">> {source_name} 發生錯誤: {e}")
+                print(f">> {name} 發生錯誤: {e}")
 
     # 去重（根據標題相似度）
     unique_news = []
     seen_titles = set()
 
     for news_item in all_news:
-        title_lower = news_item["title"].lower()[:50]  # 只比較前50個字符
+        title_lower = news_item["title"].lower()[:50]
         if title_lower not in seen_titles:
             seen_titles.add(title_lower)
             unique_news.append(news_item)
 
-    # 按發布時間排序（最新優先）
+    # 排序並返回
     try:
-        unique_news.sort(
-            key=lambda x: datetime.fromisoformat(x["published_at"].replace("Z", "+00:00"))
-            if x["published_at"] != "N/A" else datetime.min,
-            reverse=True
-        )
+        unique_news.sort(key=lambda x: x.get("published_at", ""), reverse=True)
     except:
-        pass  # 如果排序失敗，保持原順序
+        pass
 
-    # 返回限定數量
-    result = unique_news[:limit * 2]  # 返回 2 倍數量以補償去重損失
-
+    result = unique_news[:limit * 3]
     print(f"\n>> 聚合完成: 總共獲取 {len(result)} 條獨特新聞\n")
-
     return result

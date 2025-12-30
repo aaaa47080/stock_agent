@@ -75,9 +75,9 @@ class TechnicalAnalyst:
 
 當前週期市場數據：
 主要技術指標：
-{json.dumps(market_data.get('技術指標', {}), indent=2, ensure_ascii=False)}
+{json.dumps(market_data.get('技術指標', {}), indent=2, ensure_ascii=False, cls=DataFrameEncoder)}
 價格資訊：
-{json.dumps(market_data.get('價格資訊', {}), indent=2, ensure_ascii=False)}
+{json.dumps(market_data.get('價格資訊', {}), indent=2, ensure_ascii=False, cls=DataFrameEncoder)}
 
 {multi_timeframe_context}
 
@@ -166,8 +166,8 @@ class SentimentAnalyst:
 5. 判斷情緒對短期和長期價格的潛在影響
 
 市場數據：
-當前週期價格變化：{json.dumps(market_data.get('價格資訊', {}), indent=2, ensure_ascii=False)}
-當前週期市場結構：{json.dumps(market_data.get('市場結構', {}), indent=2, ensure_ascii=False)}
+當前週期價格變化：{json.dumps(market_data.get('價格資訊', {}), indent=2, ensure_ascii=False, cls=DataFrameEncoder)}
+當前週期市場結構：{json.dumps(market_data.get('市場結構', {}), indent=2, ensure_ascii=False, cls=DataFrameEncoder)}
 
 {multi_timeframe_context}
 
@@ -329,7 +329,7 @@ class NewsAnalyst:
 
 市場數據：
 1. 近期價格表現：
-{json.dumps(market_data.get('最近5天歷史', []), indent=2, ensure_ascii=False)}
+{json.dumps(market_data.get('最近5天歷史', []), indent=2, ensure_ascii=False, cls=DataFrameEncoder)}
 
 2. 真實市場新聞快訊：
 {news_context}

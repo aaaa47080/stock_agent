@@ -26,13 +26,14 @@ class MarketPulseAnalyzer:
     def __init__(self):
         self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         
-    def analyze_movement(self, symbol: str, threshold_percent: float = 2.0) -> Dict:
+    def analyze_movement(self, symbol: str, threshold_percent: float = 2.0, enabled_sources: List[str] = None) -> Dict:
         """
         Analyze recent market movement and provide a narrative explanation.
         
         Args:
             symbol: Crypto symbol (e.g., 'BTC', 'ETH')
             threshold_percent: Minimum percentage change to trigger deep analysis
+            enabled_sources: List of news source IDs to fetch from
             
         Returns:
             Dict containing volatility data, news, and the AI-generated explanation.
@@ -68,7 +69,7 @@ class MarketPulseAnalyzer:
         # 2. If volatile or requested, fetch news and explain
         # We always fetch news to provide context, but the prompt changes based on volatility
         news_limit = 5
-        news_data = get_crypto_news(symbol, limit=news_limit)
+        news_data = get_crypto_news(symbol, limit=news_limit, enabled_sources=enabled_sources)
         result["news_sources"] = news_data
         
         # 3. Generate Narrative using LLM
@@ -129,9 +130,9 @@ class MarketPulseAnalyzer:
 # Global instance
 market_pulse = MarketPulseAnalyzer()
 
-def get_market_pulse(symbol: str) -> Dict:
+def get_market_pulse(symbol: str, enabled_sources: List[str] = None) -> Dict:
     """Wrapper function to be used by API/Tools"""
-    return market_pulse.analyze_movement(symbol)
+    return market_pulse.analyze_movement(symbol, enabled_sources=enabled_sources)
 
 if __name__ == "__main__":
     # Test

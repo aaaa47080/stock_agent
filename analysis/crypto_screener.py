@@ -34,7 +34,7 @@ def analyze_symbol_data(df: pd.DataFrame, symbol: str) -> dict:
     }
     return analysis
 
-def screen_top_cryptos(exchange='binance', limit=30, interval='1d', target_symbols: Optional[List[str]] = None):
+def screen_top_cryptos(exchange='okx', limit=30, interval='1d', target_symbols: Optional[List[str]] = None):
     """
     Fetches, analyzes, and ranks cryptocurrencies.
     
@@ -105,14 +105,21 @@ def screen_top_cryptos(exchange='binance', limit=30, interval='1d', target_symbo
             return None, None
 
     # Use ThreadPoolExecutor for parallel execution
-    # Determine max workers (e.g., 5-10 for I/O bound tasks like API calls)
-    # Increased to speed up "real-time" scanning
-    max_workers = min(len(top_symbols), 50) 
+    # Determine max workers (reduced to prevent rate limiting/IP bans)
+    max_workers = min(len(top_symbols), 3) 
     print(f"Starting parallel analysis with {max_workers} workers...")
+
+    import time
+    import random
+
+    def process_symbol_with_delay(symbol):
+        # Add random delay to distribute requests and avoid hitting rate limits
+        time.sleep(random.uniform(0.5, 2.0)) 
+        return process_symbol(symbol)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         # Submit all tasks
-        future_to_symbol = {executor.submit(process_symbol, symbol): symbol for symbol in top_symbols}
+        future_to_symbol = {executor.submit(process_symbol_with_delay, symbol): symbol for symbol in top_symbols}
         
         # Process results as they complete
         for future in concurrent.futures.as_completed(future_to_symbol):
