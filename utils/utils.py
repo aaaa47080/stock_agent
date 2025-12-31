@@ -15,8 +15,8 @@ cryptopanic_cache = TTLCache(maxsize=100, ttl=300)
 
 class DataFrameEncoder(json.JSONEncoder):
     """
-    Custom JSON encoder to handle pandas DataFrame and Timestamps.
-    It converts a DataFrame to a list of dictionaries.
+    Custom JSON encoder to handle pandas DataFrame, Timestamps, and NumPy types.
+    It converts a DataFrame to a list of dictionaries and NumPy types to native Python types.
     """
     def default(self, obj):
         if isinstance(obj, pd.DataFrame):
@@ -28,6 +28,14 @@ class DataFrameEncoder(json.JSONEncoder):
             return df_copy.to_dict(orient='records')
         if isinstance(obj, pd.Timestamp):
             return obj.isoformat()
+        if isinstance(obj, (np.bool_, bool)):
+            return bool(obj)
+        if isinstance(obj, (np.integer, int)):
+            return int(obj)
+        if isinstance(obj, (np.floating, float)):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
         return super().default(obj)
 
 def safe_float(value, default=0.0):

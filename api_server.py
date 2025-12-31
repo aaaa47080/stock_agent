@@ -50,8 +50,12 @@ from contextlib import asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: 嘗試載入快取
     load_screener_cache()
+    load_market_pulse_cache()
+    
     # Startup: 啟動背景篩選器更新任務
     asyncio.create_task(update_screener_task())
+    # Startup: 啟動 Market Pulse 定期更新任務
+    asyncio.create_task(update_market_pulse_task())
     yield
     # Shutdown logic can go here if needed
 
@@ -64,6 +68,94 @@ cached_screener_result = {
     "data": None
 }
 SCREENER_CACHE_FILE = "analysis_results/screener_cache.json"
+
+# --- 全域快取 (Market Pulse) ---
+# 用於儲存市場脈動 AI 分析結果
+MARKET_PULSE_CACHE = {}
+MARKET_PULSE_CACHE_FILE = "analysis_results/market_pulse_cache.json"
+# 固定監控的幣種列表
+MARKET_PULSE_TARGETS = ["BTC", "ETH", "SOL", "PI"]
+# 更新頻率 (秒)
+MARKET_PULSE_UPDATE_INTERVAL = 3600  # 1小時
+
+# Locks for concurrency control
+screener_lock = asyncio.Lock()
+symbol_locks = {} # {symbol: asyncio.Lock()}
+
+def get_symbol_lock(symbol: str) -> asyncio.Lock:
+    if symbol not in symbol_locks:
+        symbol_locks[symbol] = asyncio.Lock()
+    return symbol_locks[symbol]
+
+def save_market_pulse_cache():
+    """Save Market Pulse data to a JSON file."""
+    try:
+        os.makedirs(os.path.dirname(MARKET_PULSE_CACHE_FILE), exist_ok=True)
+        with open(MARKET_PULSE_CACHE_FILE, 'w', encoding='utf-8') as f:
+            json.dump(MARKET_PULSE_CACHE, f, ensure_ascii=False, indent=2)
+        logger.info(f"Market Pulse cache saved to {MARKET_PULSE_CACHE_FILE}")
+    except Exception as e:
+        logger.error(f"Failed to save Market Pulse cache: {e}")
+
+def load_market_pulse_cache():
+    """Load Market Pulse data from the JSON file."""
+    global MARKET_PULSE_CACHE
+    try:
+        if os.path.exists(MARKET_PULSE_CACHE_FILE):
+            with open(MARKET_PULSE_CACHE_FILE, 'r', encoding='utf-8') as f:
+                MARKET_PULSE_CACHE = json.load(f)
+            logger.info(f"Loaded Market Pulse cache from {MARKET_PULSE_CACHE_FILE} ({len(MARKET_PULSE_CACHE)} symbols)")
+    except Exception as e:
+        logger.error(f"Failed to load Market Pulse cache: {e}")
+
+async def update_single_market_pulse(symbol: str, fixed_sources: List[str]):
+    """Helper to update a single symbol for Market Pulse."""
+    from analysis.market_pulse import get_market_pulse
+    loop = asyncio.get_running_loop()
+    try:
+        logger.info(f"[Background] Updating Market Pulse for {symbol}...")
+        result = await loop.run_in_executor(
+            None, 
+            lambda: get_market_pulse(symbol, enabled_sources=fixed_sources)
+        )
+        
+        if result and "error" not in result:
+            MARKET_PULSE_CACHE[symbol] = result
+            logger.info(f"[Background] Successfully updated {symbol}")
+        else:
+            logger.warning(f"[Background] Failed to update {symbol}: {result.get('error', 'Unknown error')}")
+    except Exception as e:
+        logger.error(f"[Background] Error updating {symbol}: {e}")
+
+async def update_market_pulse_task():
+    """Background task to update Market Pulse analysis periodically."""
+    
+    # 固定的新聞來源，確保品質一致
+    FIXED_SOURCES = ['google', 'cryptopanic', 'newsapi', 'cryptocompare']
+    
+    # 1. Initial Fast Update (Concurrent)
+    logger.info("🚀 Starting initial Market Pulse analysis (Concurrent)...")
+    tasks = [update_single_market_pulse(sym, FIXED_SOURCES) for sym in MARKET_PULSE_TARGETS]
+    await asyncio.gather(*tasks)
+    save_market_pulse_cache()
+    logger.info("✅ Initial Market Pulse analysis complete.")
+
+    # 2. Periodic Update Loop
+    while True:
+        await asyncio.sleep(MARKET_PULSE_UPDATE_INTERVAL)
+        try:
+            logger.info("Starting scheduled Market Pulse update cycle...")
+            
+            # For periodic updates, we can do them sequentially or semi-concurrently to be gentle on APIs
+            for symbol in MARKET_PULSE_TARGETS:
+                await update_single_market_pulse(symbol, FIXED_SOURCES)
+                await asyncio.sleep(5) # Gentle spacing
+            
+            save_market_pulse_cache()
+            logger.info("Scheduled Market Pulse update complete.")
+            
+        except Exception as e:
+            logger.error(f"Market Pulse task error: {e}")
 
 def save_screener_cache(data: Dict[str, Any]):
     """Save screener data to a JSON file."""
@@ -139,16 +231,8 @@ class BacktestRequest(BaseModel):
     signal_type: str = "RSI" # RSI, MACD, MA_CROSS
     interval: str = "1h"
 
-class PredictionRequest(BaseModel):
-    user_id: str
-    username: str
-    symbol: str
-    direction: str # "UP" or "DOWN"
 
 # --- 背景任務 ---
-
-# 使用 Lock 確保不會有重疊的分析任務同時執行
-screener_lock = asyncio.Lock()
 
 async def update_screener_prices_fast():
     """
@@ -175,14 +259,6 @@ async def update_screener_prices_fast():
         if not symbols:
             return
 
-        # 這裡我們假設 fetcher 有一個批量獲取價格的方法，或者我們循環調用
-        # 為了效率，我們直接調用 ticker/24hr endpoint (一次請求獲取所有)
-        # 注意：get_top_symbols 內部調用了 ticker/24hr 但只返回 symbol list
-        # 我們直接用 fetcher 的內部方法 _make_request 比較快，但為了封裝性，我們擴展 fetcher 或直接在這裡做
-        # 簡單起見，我們假設數量不多 (10-30個)，可以用個別請求或批量
-        
-        # 優化：Binance ticker/price?symbol=... 只能一個，或者 ticker/price (全部)
-        # 獲取全部 ticker 對服務器負擔小，因為是一次請求
         loop = asyncio.get_running_loop()
         all_tickers = await loop.run_in_executor(None, lambda: fetcher._make_request(fetcher.spot_base_url, "/ticker/24hr"))
         
@@ -202,41 +278,32 @@ async def update_screener_prices_fast():
         for list_name in ["top_performers", "oversold", "overbought"]:
             if data.get(list_name):
                 for item in data[list_name]:
-                    # 嘗試匹配 (Binance symbol 通常是 BTCUSDT)
-                    # 我們的 item["Symbol"] 可能是 BTC/USDT 或 BTCUSDT
                     s = item["Symbol"].replace("/", "").replace("-", "")
-                    # 如果是 OKX 來的數據可能是 BTC-USDT，轉為 BTCUSDT 嘗試匹配
-                    # 注意：如果 fetcher 是 OKX，這裡邏輯要變。目前假設主要用 Binance 做即時報價
-                    
                     if s in price_map:
                         item["Close"] = price_map[s]['price']
                         item["price_change_24h"] = price_map[s]['change']
                         updated = True
         
         if updated:
-            # Re-sort top_performers to maintain order based on new price changes
             if data.get("top_performers"):
                 data["top_performers"].sort(key=lambda x: float(x.get("price_change_24h", 0)), reverse=True)
 
             timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             cached_screener_result["data"]["last_updated"] = timestamp_str
-            # 不需要更新 cached_screener_result["timestamp"]，那個留給完整分析的時間
-            # 或者我們更新它讓前端知道數據變了
             cached_screener_result["timestamp"] = timestamp_str
             
-            # 這裡不存檔，避免頻繁 I/O
-            # save_screener_cache(cached_screener_result) 
-            
     except Exception as e:
-        # 靜默失敗，不要刷屏 log，因為這是高頻任務
         pass
 
 async def run_screener_analysis():
     """執行實際的分析工作並更新快取 (重型任務)"""
+    # 如果已經鎖定，表示正在運行，無需重複
     if screener_lock.locked():
+        logger.info("Screener analysis already in progress, skipping...")
         return
         
     async with screener_lock:
+        logger.info("Starting heavy screener analysis...")
         try:
             exchange = SUPPORTED_EXCHANGES[0]
             loop = asyncio.get_running_loop()
@@ -273,6 +340,7 @@ async def run_screener_analysis():
             }
             
             save_screener_cache(cached_screener_result)
+            logger.info("Heavy screener analysis complete.")
             
         except Exception as e:
             logger.error(f"❌ [分析任務] 執行失敗: {e}")
@@ -283,12 +351,16 @@ async def update_screener_task():
     1. 每秒執行快速價格更新 (Fast Update)
     2. 每 60 秒執行完整分析 (Heavy Analysis) - 降低頻率以避免 API 封禁
     """
-    counter = 0
+    logger.info("🚀 Starting initial Screener analysis...")
+    # Immediately run analysis on startup
+    await run_screener_analysis()
+    
+    counter = 1
     while True:
         # 每秒都嘗試更新價格
         asyncio.create_task(update_screener_prices_fast())
         
-        # 每 60 秒執行一次完整分析 (或如果剛啟動)
+        # 每 60 秒執行一次完整分析
         if counter % 60 == 0:
             asyncio.create_task(run_screener_analysis())
         
@@ -325,6 +397,20 @@ async def update_screener_task():
 
 # --- 工具函數 ---
 
+# 定義一個哨兵物件來標記迭代結束
+_STOP_ITERATION_SENTINEL = object()
+
+def _safe_next(iterator):
+    """
+    安全地獲取下一個項目的輔助函數。
+    如果遇到 StopIteration，則返回哨兵物件，而不是拋出異常。
+    這避免了 StopIteration 異常在 run_in_executor 的 Future 中傳遞的問題。
+    """
+    try:
+        return next(iterator)
+    except StopIteration:
+        return _STOP_ITERATION_SENTINEL
+
 async def iterate_in_threadpool(generator):
     """
     將同步生成器包裝在執行緒池中運行，實現真正的異步串流。
@@ -334,11 +420,14 @@ async def iterate_in_threadpool(generator):
     iterator = iter(generator)
     while True:
         try:
-            # 在默認執行緒池中執行 next(iterator)
-            item = await loop.run_in_executor(None, next, iterator)
+            # 在默認執行緒池中執行 _safe_next(iterator)
+            # 使用 _safe_next 避免 StopIteration 傳遞給 Future
+            item = await loop.run_in_executor(None, _safe_next, iterator)
+            
+            if item is _STOP_ITERATION_SENTINEL:
+                break
+                
             yield item
-        except StopIteration:
-            break
         except Exception as e:
             logger.error(f"串流生成錯誤: {e}")
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
@@ -403,8 +492,9 @@ async def get_market_symbols(exchange: str = "binance"):
 
 @app.post("/api/screener")
 async def run_screener(request: ScreenerRequest):
-    """回傳市場篩選數據 (優先使用快取)"""
-    # 如果有指定 symbols，則**不**使用全域快取，而是直接執行分析
+    """回傳市場篩選數據 (優先使用快取，並支援等待背景任務)"""
+    
+    # 1. 自定義請求：直接執行
     if request.symbols and len(request.symbols) > 0:
         logger.info(f"執行自定義市場篩選: {request.exchange}, Symbols: {len(request.symbols)}")
         try:
@@ -418,18 +508,15 @@ async def run_screener(request: ScreenerRequest):
                     target_symbols=request.symbols
                 )
             )
-             
+             # ... formatting ...
              rename_map = {
                 "Current Price": "Close", 
-                "24h Change %": "price_change_24h",
-                "7d Change %": "price_change_7d",
-                "Signals": "signals"
+                "24h Change %": "price_change_24h", 
+                "7d Change %": "price_change_7d", "Signals": "signals"
             }
-            
              top_performers = top_performers.rename(columns=rename_map).replace({np.nan: None})
              oversold = oversold.rename(columns=rename_map).replace({np.nan: None})
              overbought = overbought.rename(columns=rename_map).replace({np.nan: None})
-             
              return {
                 "top_performers": top_performers.to_dict(orient="records"),
                 "oversold": oversold.to_dict(orient="records"),
@@ -440,64 +527,66 @@ async def run_screener(request: ScreenerRequest):
              logger.error(f"自定義篩選失敗: {e}", exc_info=True)
              raise HTTPException(status_code=500, detail=str(e))
 
-    # 檢查是否有快取數據
+    # 2. 檢查快取
     if cached_screener_result["data"] is not None:
-        logger.info(f"使用快取篩選數據 (更新時間: {cached_screener_result['timestamp']})")
         return cached_screener_result["data"]
     
-    logger.info(f"無快取數據，執行即時市場篩選: {request.exchange}")
-    try:
-        # 如果剛啟動還沒有快取，則執行一次即時分析 (廣泛掃描)
-        
-        loop = asyncio.get_running_loop()
-        summary_df, top_performers, oversold, overbought = await loop.run_in_executor(
-            None, 
-            lambda: screen_top_cryptos(
-                exchange=request.exchange, 
-                limit=10, 
-                interval="1d",
-                target_symbols=None
+    # 3. 若快取為空，檢查是否背景任務正在運行
+    if screener_lock.locked():
+        logger.info("Cache empty, waiting for background analysis to complete...")
+        async with screener_lock:
+             # 等待鎖釋放後，再次檢查快取
+             if cached_screener_result["data"] is not None:
+                 return cached_screener_result["data"]
+
+    # 4. 若等待後仍無數據（極少見），或未鎖定，則執行同步更新 (Double-check Locking)
+    # 使用鎖防止多個請求同時觸發
+    async with screener_lock:
+        if cached_screener_result["data"] is not None:
+            return cached_screener_result["data"]
+            
+        logger.info(f"無快取且無背景任務，執行即時市場篩選: {request.exchange}")
+        try:
+            loop = asyncio.get_running_loop()
+            summary_df, top_performers, oversold, overbought = await loop.run_in_executor(
+                None, 
+                lambda: screen_top_cryptos(
+                    exchange=request.exchange, 
+                    limit=10, 
+                    interval="1d",
+                    target_symbols=None
+                )
             )
-        )
-        
-        # --- 清理數據 ---
-        rename_map = {
-            "Current Price": "Close", 
-            "24h Change %": "price_change_24h",
-            "7d Change %": "price_change_7d",
-            "Signals": "signals"
-        }
-        
-        top_performers = top_performers.rename(columns=rename_map).replace({np.nan: None})
-        oversold = oversold.rename(columns=rename_map).replace({np.nan: None})
-        overbought = overbought.rename(columns=rename_map).replace({np.nan: None})
-        
-        timestamp_str = datetime.now().isoformat()
-        result_data = {
-            "top_performers": top_performers.to_dict(orient="records"),
-            "oversold": oversold.to_dict(orient="records"),
-            "overbought": overbought.to_dict(orient="records"),
-            "last_updated": timestamp_str
-        }
-        
-        # 順便更新快取
-        cached_screener_result["timestamp"] = timestamp_str
-        cached_screener_result["data"] = result_data
-
-        # 持久化快取
-        save_screener_cache(cached_screener_result)
-
-        return result_data
-    except Exception as e:
-        logger.error(f"篩選器錯誤: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+            # ... formatting ...
+            rename_map = {
+                "Current Price": "Close", "24h Change %": "price_change_24h", 
+                "7d Change %": "price_change_7d", "Signals": "signals"
+            }
+            top_performers = top_performers.rename(columns=rename_map).replace({np.nan: None})
+            oversold = oversold.rename(columns=rename_map).replace({np.nan: None})
+            overbought = overbought.rename(columns=rename_map).replace({np.nan: None})
+            
+            timestamp_str = datetime.now().isoformat()
+            result_data = {
+                "top_performers": top_performers.to_dict(orient="records"),
+                "oversold": oversold.to_dict(orient="records"),
+                "overbought": overbought.to_dict(orient="records"),
+                "last_updated": timestamp_str
+            }
+            
+            cached_screener_result["timestamp"] = timestamp_str
+            cached_screener_result["data"] = result_data
+            save_screener_cache(cached_screener_result)
+            return result_data
+        except Exception as e:
+            logger.error(f"篩選器錯誤: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail=str(e))
 
 # --- 自選清單 API ---
 
 @app.get("/api/watchlist/{user_id}")
 async def get_user_watchlist(user_id: str):
     """獲取用戶的自選清單"""
-    # TODO: 增加真實的身份驗證 (目前僅依賴路徑參數)
     try:
         symbols = get_watchlist(user_id)
         return {"symbols": symbols}
@@ -531,7 +620,6 @@ async def remove_watchlist(request: WatchlistRequest):
 async def get_klines_data(request: KlineRequest):
     """獲取 K 線數據供圖表顯示"""
     try:
-        # get_klines 涉及網絡請求，放入執行緒池
         loop = asyncio.get_running_loop()
         df = await loop.run_in_executor(
             None,
@@ -546,7 +634,6 @@ async def get_klines_data(request: KlineRequest):
         if df is None or df.empty:
             raise HTTPException(status_code=404, detail=f"找不到 {request.symbol} 的數據")
 
-        # 轉換為 TradingView Lightweight Charts 格式
         klines = []
         for _, row in df.iterrows():
             klines.append({
@@ -573,25 +660,41 @@ async def get_klines_data(request: KlineRequest):
 @app.get("/api/market-pulse/{symbol}")
 async def get_market_pulse_api(symbol: str, sources: Optional[str] = None):
     """
-    獲取市場脈動分析：解釋價格波動原因 (Smart Attribution)。
+    獲取市場脈動分析。
+    使用 Symbol Lock 避免同一時間對同一幣種進行重複的即時分析。
     """
     try:
         from analysis.market_pulse import get_market_pulse
         
-        loop = asyncio.get_running_loop()
-        # 清理 symbol
         base_symbol = symbol.upper().replace("USDT", "").replace("BUSD", "").replace("-", "")
         
-        # 處理新聞來源參數
-        enabled_sources = sources.split(',') if sources else None
+        # 1. 優先檢查快取
+        if base_symbol in MARKET_PULSE_CACHE:
+            return MARKET_PULSE_CACHE[base_symbol]
+
+        # 2. 快取未命中，使用鎖進行同步控制
+        lock = get_symbol_lock(base_symbol)
         
-        # 放入執行緒池執行
-        result = await loop.run_in_executor(None, lambda: get_market_pulse(base_symbol, enabled_sources=enabled_sources))
-        
-        if "error" in result:
-            raise HTTPException(status_code=404, detail=result["error"])
+        async with lock:
+            # Double check cache inside lock
+            if base_symbol in MARKET_PULSE_CACHE:
+                 return MARKET_PULSE_CACHE[base_symbol]
+
+            logger.info(f"Cache miss for {base_symbol}, triggering immediate analysis...")
             
-        return result
+            loop = asyncio.get_running_loop()
+            enabled_sources = sources.split(',') if sources else None
+            
+            result = await loop.run_in_executor(None, lambda: get_market_pulse(base_symbol, enabled_sources=enabled_sources))
+            
+            if "error" in result:
+                raise HTTPException(status_code=404, detail=result["error"])
+                
+            MARKET_PULSE_CACHE[base_symbol] = result
+            save_market_pulse_cache()
+            
+            return result
+            
     except HTTPException:
         raise
     except Exception as e:
@@ -599,7 +702,7 @@ async def get_market_pulse_api(symbol: str, sources: Optional[str] = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 # --- AI 辯論視覺化 (Visualized Debate) API ---
-
+# ... (保留原樣)
 @app.get("/api/debate/{symbol}")
 async def get_debate_analysis(symbol: str):
     """
@@ -706,56 +809,6 @@ async def run_backtest_api(request: BacktestRequest):
         logger.error(f"回測執行失敗: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
-# --- Pi Network 社交跟單 API ---
-
-@app.post("/api/social/predict")
-async def submit_prediction(request: PredictionRequest):
-    """
-    提交價格預測 (社交互動)。
-    """
-    try:
-        from core.database import submit_prediction
-        from core.tools import get_crypto_price_tool
-        
-        # 1. 獲取當前價格作為進場價
-        # 為了簡化，這裡我們假設工具能返回價格，或者我們直接用 fetcher
-        from data.data_fetcher import get_data_fetcher
-        clean_symbol = request.symbol.upper().replace("USDT", "").replace("-", "")
-        fetcher = get_data_fetcher("okx") # 默認
-        klines = fetcher.get_historical_klines(f"{clean_symbol}-USDT", "1m", limit=1)
-        
-        if klines is None or klines.empty:
-            raise HTTPException(status_code=400, detail="無法獲取當前價格")
-            
-        current_price = float(klines.iloc[-1]['Close'])
-        
-        # 2. 寫入資料庫
-        submit_prediction(
-            request.user_id, 
-            request.username, 
-            clean_symbol, 
-            request.direction, 
-            current_price
-        )
-        
-        return {"success": True, "message": "預測已提交！", "entry_price": current_price}
-        
-    except Exception as e:
-        logger.error(f"預測提交失敗: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/api/social/leaderboard")
-async def get_leaderboard_api():
-    """
-    獲取預測排行榜。
-    """
-    try:
-        from core.database import get_leaderboard
-        leaderboard = get_leaderboard(limit=10)
-        return {"leaderboard": leaderboard}
-    except Exception as e:
-        logger.error(f"獲取排行榜失敗: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
 
 # --- 靜態檔案與頁面 ---
 
@@ -771,6 +824,6 @@ async def read_index():
 
 if __name__ == "__main__":
     logger.info("🚀 Pi Crypto Insight API Server 啟動中...")
-    logger.info(f"🏠 本地網址: http://localhost:8000")
+    logger.info(f"🏠 本地網址: http://localhost:8111")
     logger.info("📱 請在 Pi Browser 中使用 HTTPS 網址訪問 (如透過 ngrok)")
     uvicorn.run(app, host="0.0.0.0", port=8111)

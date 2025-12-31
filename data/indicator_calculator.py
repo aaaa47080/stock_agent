@@ -19,6 +19,8 @@ def add_technical_indicators(df):
     df.ta.macd(close='Close', fast=12, slow=26, signal=9, append=True)
     df.ta.ema(close='Close', length=12, append=True)
     df.ta.ema(close='Close', length=26, append=True)
+    df.ta.sma(close='Close', length=7, append=True)   # MA7
+    df.ta.sma(close='Close', length=25, append=True)  # MA25
     df.ta.adx(length=14, append=True) # Average Directional Index
 
     # Momentum Indicators

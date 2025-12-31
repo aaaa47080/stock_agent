@@ -104,10 +104,10 @@ def extract_technical_indicators(latest_data: pd.Series) -> Dict[str, float]:
     return {
         "RSI_14": safe_float(latest_data.get('RSI_14', 0)),
         "MACD_線": safe_float(latest_data.get('MACD_12_26_9', 0)),
-        "布林帶上軌": safe_float(latest_data.get('BB_upper_20_2', 0)),
-        "布林帶下軌": safe_float(latest_data.get('BB_lower_20_2', 0)),
-        "MA_7": safe_float(latest_data.get('MA_7', 0)),
-        "MA_25": safe_float(latest_data.get('MA_25', 0)),
+        "布林帶上軌": safe_float(latest_data.get('BBU_20_2.0_2.0', 0)),
+        "布林帶下軌": safe_float(latest_data.get('BBL_20_2.0_2.0', 0)),
+        "MA_7": safe_float(latest_data.get('SMA_7', 0)),
+        "MA_25": safe_float(latest_data.get('SMA_25', 0)),
     }
 
 

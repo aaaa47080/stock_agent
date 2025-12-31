@@ -75,12 +75,14 @@ class AgentState(TypedDict):
     neutral_argument: Optional[ResearcherDebate] # Added
     fact_checks: Optional[Dict]                  # Added
     debate_judgment: Optional[DebateJudgment]    # Added
+    debate_history: List[Dict]                   # 新增：存儲辯論過程中的每一發言
     trader_decision: TraderDecision
     risk_assessment: Optional[RiskAssessment] # 可能為 None
     final_approval: FinalApproval
 
     # --- 循環控制 ---
     replan_count: int
+    debate_round: int # 新增：當前辯論輪次
 
 
 # 2. 創建節點 (Nodes)
@@ -153,6 +155,8 @@ def prepare_data_node(state: AgentState) -> Dict:
             "market_data": market_data,
             "current_price": market_data["價格資訊"]["當前價格"],
             "funding_rate_info": market_data.get("funding_rate_info", {}),
+            "debate_history": [],
+            "debate_round": 0,
             "replan_count": 0
         }
 
@@ -220,6 +224,8 @@ def prepare_data_node(state: AgentState) -> Dict:
         "market_data": market_data,
         "current_price": current_price,
         "funding_rate_info": funding_rate_info,
+        "debate_history": [],
+        "debate_round": 0,
         "replan_count": 0
     }
 
@@ -321,27 +327,28 @@ def after_analyst_team_router(state: AgentState) -> str:
 
 def research_debate_node(state: AgentState) -> Dict:
     """
-    節點 3: 研究團隊進行深度辯論。
-    升級功能：
-    1. 三方辯論：多頭 vs 空頭 vs 中立派(魔鬼代言人)。
-    2. 主題式辯論：分階段討論技術面、基本面、綜合結論。
-    3. 動態終止：若雙方達成共識或陷入僵局則提前結束。
-    4. 數據核對：每輪辯論後由數據檢察官檢查準確性。
+    節點 3: 研究團隊進行一輪深度辯論。
     """
     from utils.llm_client import create_llm_client_from_config
     from core.config import (
-        ENABLE_COMMITTEE_MODE, BULL_COMMITTEE_MODELS, BEAR_COMMITTEE_MODELS,
         SYNTHESIS_MODEL, BULL_RESEARCHER_MODEL, BEAR_RESEARCHER_MODEL
     )
 
     analyst_reports = state['analyst_reports']
     market_data = state['market_data']
     client = state['client']
+    debate_round = state.get('debate_round', 0)
+    debate_history = state.get('debate_history', [])
     
-    print(f"\n[節點 3/7] 研究團隊深度辯論 (三方模式 + 主題分研)...")
+    # 辯論主題定義
+    topics = ["技術面與指標", "基本面與新聞", "綜合決策與風險"]
+    if debate_round >= len(topics):
+        return {} # 應該由 router 攔截
 
-    # 1. 初始化研究員 (三方)
-    # 為簡化，中立研究員使用與綜合模型相同的配置
+    topic = topics[debate_round]
+    print(f"\n[節點 3/7] 研究團隊辯論 - 第 {debate_round + 1} 輪：{topic}...")
+
+    # 初始化研究員
     bull_client, bull_model = create_llm_client_from_config(BULL_RESEARCHER_MODEL)
     bear_client, bear_model = create_llm_client_from_config(BEAR_RESEARCHER_MODEL)
     neutral_client, neutral_model = create_llm_client_from_config(SYNTHESIS_MODEL)
@@ -351,79 +358,86 @@ def research_debate_node(state: AgentState) -> Dict:
     neutral_researcher = NeutralResearcher(neutral_client, neutral_model)
     fact_checker = DataFactChecker(client)
 
-    # 辯論主題定義
-    topics = ["技術面與指標", "基本面與新聞", "綜合決策與風險"]
+    # 獲取上一輪的參數（如果有）
+    prev_bull = state.get('bull_argument')
+    prev_bear = state.get('bear_argument')
+    prev_neutral = state.get('neutral_argument')
+
+    # 多頭發言
+    opponents = [arg for arg in [prev_bear, prev_neutral] if arg]
+    bull_argument = bull_researcher.debate(analyst_reports, opponents, round_number=debate_round+1, topic=topic)
     
-    bull_argument = None
-    bear_argument = None
-    neutral_argument = None
-    fact_checks = {}
+    # 空頭發言
+    opponents = [arg for arg in [bull_argument, prev_neutral] if arg]
+    bear_argument = bear_researcher.debate(analyst_reports, opponents, round_number=debate_round+1, topic=topic)
 
-    # 2. 開始主題式辯論
-    for i, topic in enumerate(topics, 1):
-        print(f"\n{'=' * 40} 第 {i} 輪辯論：{topic} {'=' * 40}")
-        
-        # 多頭發言
-        opponents = [arg for arg in [bear_argument, neutral_argument] if arg]
-        bull_argument = bull_researcher.debate(analyst_reports, opponents, round_number=i, topic=topic)
-        print(f"  >> [多頭] 信心度: {bull_argument.confidence}% | 讓步點: {bull_argument.concession_point[:50] if bull_argument.concession_point else '無'}...")
+    # 中立派發言
+    opponents = [arg for arg in [bull_argument, bear_argument] if arg]
+    neutral_argument = neutral_researcher.debate(analyst_reports, opponents, round_number=debate_round+1, topic=topic)
 
-        # 空頭發言
-        opponents = [arg for arg in [bull_argument, neutral_argument] if arg]
-        bear_argument = bear_researcher.debate(analyst_reports, opponents, round_number=i, topic=topic)
-        print(f"  >> [空頭] 信心度: {bear_argument.confidence}% | 讓步點: {bear_argument.concession_point[:50] if bear_argument.concession_point else '無'}...")
-
-        # 中立派發言
-        opponents = [arg for arg in [bull_argument, bear_argument] if arg]
-        neutral_argument = neutral_researcher.debate(analyst_reports, opponents, round_number=i, topic=topic)
-        print(f"  >> [中立] 信心度: {neutral_argument.confidence}% | 關鍵質疑: {neutral_argument.argument[:50]}...")
-
-        # 3. 數據核對
-        print(f"  >> [數據核對] 檢查本輪論點準確性...")
-        current_args = [bull_argument, bear_argument, neutral_argument]
-        checks = fact_checker.check(current_args, market_data)
-        fact_checks.update(checks)
-        
-        # 4. 動態終止檢查 (收斂檢測)
-        if i >= 2:
-            conf_diff = abs(bull_argument.confidence - bear_argument.confidence)
-            if conf_diff > 60:
-                print(f"\n  >> [動態終止] 觀點已出現明顯傾斜 (差距 {conf_diff:.1f}%)，辯論提前結束。")
-                break
-            
-    # 辯論總結列印
-    print(f"\n{'=' * 80}")
-    print(f"  >> 辯論最終總結")
-    print(f"{'=' * 80}")
-    print(f"  【多頭信心】: {bull_argument.confidence}%")
-    print(f"  【空頭信心】: {bear_argument.confidence}%")
-    print(f"  【中立信心】: {neutral_argument.confidence}%")
+    # 數據核對
+    current_args = [bull_argument, bear_argument, neutral_argument]
+    fact_checks = fact_checker.check(current_args, market_data)
     
-    if fact_checks:
-        bull_acc = fact_checks.get('Bull').confidence_score if fact_checks.get('Bull') else 'N/A'
-        bear_acc = fact_checks.get('Bear').confidence_score if fact_checks.get('Bear') else 'N/A'
-        print(f"  【數據準確性】: Bull({bull_acc}), Bear({bear_acc})")
+    # 更新歷史紀錄
+    new_history = debate_history.copy()
+    new_history.append({
+        "round": debate_round + 1,
+        "topic": topic,
+        "bull": bull_argument.model_dump(),
+        "bear": bear_argument.model_dump(),
+        "neutral": neutral_argument.model_dump(),
+        "fact_checks": {k: v.model_dump() for k, v in fact_checks.items()}
+    })
 
-    # 5. 裁判裁決環節 (新增)
-    print(f"\n  >> [裁判裁決] 綜合交易委員會正在審核辯論表現...")
-    judge = DebateJudge(client)
-    debate_judgment = judge.judge(
-        bull_argument=bull_argument,
-        bear_argument=bear_argument,
-        neutral_argument=neutral_argument,
-        fact_checks=fact_checks,
-        market_data=market_data
-    )
-    print(f"  >> [裁決結果] 勝出方: {debate_judgment.winning_stance} | 理由: {debate_judgment.key_takeaway}")
-
-    print(f"\n>> 辯論環節完成。")
     return {
         "bull_argument": bull_argument,
         "bear_argument": bear_argument,
         "neutral_argument": neutral_argument,
         "fact_checks": fact_checks,
-        "debate_judgment": debate_judgment
+        "debate_history": new_history,
+        "debate_round": debate_round + 1
     }
+
+def debate_router(state: AgentState) -> str:
+    """決定是否繼續下一輪辯論或進入裁判階段"""
+    debate_round = state.get('debate_round', 0)
+    bull_arg = state.get('bull_argument')
+    bear_arg = state.get('bear_argument')
+    
+    # 基本終止條件：完成 3 輪
+    if debate_round >= 3:
+        return "proceed_to_judgment"
+
+    # 動態終止：根據論點數量差距判斷（不再依賴主觀信心度）
+    if bull_arg and bear_arg:
+        bull_points = len(bull_arg.key_points)
+        bear_points = len(bear_arg.key_points)
+        point_diff = abs(bull_points - bear_points)
+        # 如果一方的論點數量遠超另一方，提前結束
+        if point_diff >= 4 and max(bull_points, bear_points) >= 5:
+            winner = "多頭" if bull_points > bear_points else "空頭"
+            print(f"  >> [動態終止] {winner}論點數量優勢明顯 ({bull_points} vs {bear_points})")
+            return "proceed_to_judgment"
+
+    return "continue_debate"
+
+def debate_judgment_node(state: AgentState) -> Dict:
+    """節點 3.5: 裁判進行最終裁決"""
+    print(f"\n  >> [裁判裁決] 綜合交易委員會正在審核辯論表現...")
+    client = state['client']
+    judge = DebateJudge(client)
+    
+    debate_judgment = judge.judge(
+        bull_argument=state['bull_argument'],
+        bear_argument=state['bear_argument'],
+        neutral_argument=state['neutral_argument'],
+        fact_checks=state['fact_checks'],
+        market_data=state['market_data']
+    )
+    print(f"  >> [裁決結果] 勝出方: {debate_judgment.winning_stance} | 理由: {debate_judgment.key_takeaway}")
+    
+    return {"debate_judgment": debate_judgment}
 
 def trader_decision_node(state: AgentState) -> Dict:
     """
@@ -514,6 +528,7 @@ workflow = StateGraph(AgentState)
 workflow.add_node("prepare_data", prepare_data_node)
 workflow.add_node("run_analyst_team", analyst_team_node)
 workflow.add_node("run_research_debate", research_debate_node)
+workflow.add_node("run_debate_judgment", debate_judgment_node) # 新增
 workflow.add_node("run_trader_decision", trader_decision_node)
 workflow.add_node("run_risk_management", risk_management_node)
 workflow.add_node("run_fund_manager_approval", fund_manager_approval_node)
@@ -534,7 +549,17 @@ workflow.add_conditional_edges(
     }
 )
 
-workflow.add_edge("run_research_debate", "run_trader_decision")
+# 辯論循環路由
+workflow.add_conditional_edges(
+    "run_research_debate",
+    debate_router,
+    {
+        "continue_debate": "run_research_debate",
+        "proceed_to_judgment": "run_debate_judgment"
+    }
+)
+
+workflow.add_edge("run_debate_judgment", "run_trader_decision")
 # 交易員決策後，進入風險管理
 workflow.add_edge("run_trader_decision", "run_risk_management")
 

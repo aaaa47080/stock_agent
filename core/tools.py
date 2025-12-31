@@ -101,14 +101,24 @@ class PriceInput(BaseModel):
 
 def _normalize_symbol(symbol: str, exchange: str = "binance") -> str:
     """標準化交易對符號"""
+    if not symbol: return ""
     symbol = symbol.upper().strip()
-    # 移除可能存在的後綴
-    symbol = symbol.replace("USDT", "").replace("BUSD", "").replace("-", "").replace("SWAP", "")
+    
+    # 1. 先提取基礎幣種 (Base Currency)
+    base_symbol = symbol.replace("-", "").replace("_", "")
+    
+    if base_symbol.endswith("USDT"):
+        base_symbol = base_symbol[:-4]
+    elif base_symbol.endswith("BUSD"):
+        base_symbol = base_symbol[:-4]
+    elif base_symbol.endswith("USD"):
+        base_symbol = base_symbol[:-3]
 
+    # 2. 根據交易所格式化
     if exchange.lower() == "okx":
-        return f"{symbol}-USDT"
+        return f"{base_symbol}-USDT"
     else:  # binance
-        return f"{symbol}USDT"
+        return f"{base_symbol}USDT"
 
 
 def _find_available_exchange(symbol: str) -> tuple:
@@ -436,7 +446,7 @@ def full_investment_analysis_tool(
         result = langgraph_app.invoke(spot_state)
 
         # 格式化結果
-        output = _format_full_analysis_result(result, "現貨", symbol, interval)
+        output = format_full_analysis_result(result, "現貨", symbol, interval)
 
         # 如果需要合約分析
         if include_futures:
@@ -449,7 +459,7 @@ def full_investment_analysis_tool(
             try:
                 futures_result = langgraph_app.invoke(futures_state)
                 output += "\n\n---\n\n"
-                output += _format_full_analysis_result(futures_result, f"合約 ({leverage}x槓桿)", symbol, interval)
+                output += format_full_analysis_result(futures_result, f"合約 ({leverage}x槓桿)", symbol, interval)
             except Exception as e:
                 output += f"\n\n(合約分析暫時無法完成: {str(e)})"
 
@@ -461,7 +471,7 @@ def full_investment_analysis_tool(
         return f"完整投資分析時發生錯誤: {str(e)}"
 
 
-def _format_full_analysis_result(result: dict, market_type: str, symbol: str, interval: str) -> str:
+def format_full_analysis_result(result: dict, market_type: str, symbol: str, interval: str) -> str:
     """格式化完整分析結果為可讀文本"""
 
     current_price = result.get('current_price', 0)
@@ -483,7 +493,9 @@ def _format_full_analysis_result(result: dict, market_type: str, symbol: str, in
         output += "### 分析師觀點摘要\n"
         for report in analyst_reports:
             if report:
-                output += f"- **{report.analyst_type}**: 信心度 {report.confidence:.1f}%\n"
+                bullish = len(getattr(report, 'bullish_points', []))
+                bearish = len(getattr(report, 'bearish_points', []))
+                output += f"- **{report.analyst_type}**: {bullish}個看多觀點 / {bearish}個看空觀點\n"
         output += "\n"
 
     # 辯論結果
@@ -492,18 +504,26 @@ def _format_full_analysis_result(result: dict, market_type: str, symbol: str, in
 | 項目 | 結果 |
 |------|------|
 | 勝出方 | **{debate_judgment.winning_stance}** |
-| 多頭得分 | {debate_judgment.bull_score:.1f} |
-| 空頭得分 | {debate_judgment.bear_score:.1f} |
+| 建議行動 | **{debate_judgment.suggested_action}** |
 
-**裁判總結**: {debate_judgment.key_takeaway}
+**獲勝原因**: {debate_judgment.winning_reason}
+
+**多頭最強論點**: {debate_judgment.strongest_bull_point}
+
+**空頭最強論點**: {debate_judgment.strongest_bear_point}
 
 """
+        if debate_judgment.fatal_flaw:
+            output += f"⚠️ **致命缺陷**: {debate_judgment.fatal_flaw}\n\n"
+
+        output += f"**核心事實**: {debate_judgment.key_takeaway}\n\n"
 
     # 交易決策
     if trader_decision:
         entry = f"${trader_decision.entry_price:.4f}" if trader_decision.entry_price else "N/A"
         stop_loss = f"${trader_decision.stop_loss:.4f}" if trader_decision.stop_loss else "N/A"
         take_profit = f"${trader_decision.take_profit:.4f}" if trader_decision.take_profit else "N/A"
+        follows_text = "✅ 是" if trader_decision.follows_judge else "⚠️ 否"
 
         output += f"""### 交易決策
 | 項目 | 建議 |
@@ -513,11 +533,15 @@ def _format_full_analysis_result(result: dict, market_type: str, symbol: str, in
 | 止損 | {stop_loss} |
 | 止盈 | {take_profit} |
 | 建議倉位 | {trader_decision.position_size * 100:.1f}% |
-| 信心度 | {trader_decision.confidence:.1f}% |
+| 遵循裁判 | {follows_text} |
 
 **決策理由**: {trader_decision.reasoning}
 
+**主要風險**: {trader_decision.key_risk}
+
 """
+        if not trader_decision.follows_judge and trader_decision.deviation_reason:
+            output += f"⚠️ **偏離裁判原因**: {trader_decision.deviation_reason}\n\n"
 
     # 風險評估
     if risk_assessment:

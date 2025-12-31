@@ -263,7 +263,7 @@ class FundamentalAnalyst:
 2. 市場結構在不同週期的健康度
 3. 多週期關鍵支撐和壓力位的一致性/分歧度
 4. 市場成熟度在不同時間框架下的表現
-{f"5. 資金費率資訊：{json.dumps(funding_rate_info, indent=2, ensure_ascii=False)}" if market_type == 'futures' else ""}
+{f"5. 資金費率資訊：{json.dumps(funding_rate_info, indent=2, ensure_ascii=False, cls=DataFrameEncoder)}" if market_type == 'futures' else ""}
 
 當前週期市場數據：
 {json.dumps(market_data, indent=2, ensure_ascii=False, cls=DataFrameEncoder)}
@@ -593,13 +593,41 @@ class Trader:
 
         judge_prompt = ""
         if debate_judgment:
+            # 根據裁判建議行動決定倉位
+            action_to_position = {
+                "強烈做多": "0.5-0.8",
+                "適度做多": "0.2-0.4",
+                "觀望": "0",
+                "適度做空": "0.2-0.4",
+                "強烈做空": "0.5-0.8"
+            }
+            position_hint = action_to_position.get(debate_judgment.suggested_action, "0.1-0.3")
+
             judge_prompt = f"""
 === 綜合交易委員會 (裁判) 裁決 ===
-【裁判總結】: {debate_judgment.key_takeaway}
-【裁決理由】: {debate_judgment.judge_rationale}
-【公信力得分】: 多頭 {debate_judgment.bull_score} | 空頭 {debate_judgment.bear_score} | 中立 {debate_judgment.neutral_score}
+
 【勝出方】: {debate_judgment.winning_stance}
-**核心指導**: 你應該優先相信公信力得分較高的立場。如果裁判判定為 Tie，則表示市場處於高度分歧，應考慮觀望。
+【獲勝原因】: {debate_judgment.winning_reason}
+
+【多頭評估】: {debate_judgment.bull_evaluation}
+【空頭評估】: {debate_judgment.bear_evaluation}
+【中立評估】: {debate_judgment.neutral_evaluation}
+
+【多頭最強論點】: {debate_judgment.strongest_bull_point}
+【空頭最強論點】: {debate_judgment.strongest_bear_point}
+【致命缺陷】: {debate_judgment.fatal_flaw or "無"}
+
+【裁判建議行動】: {debate_judgment.suggested_action}
+【建議理由】: {debate_judgment.action_rationale}
+【建議倉位範圍】: {position_hint}
+
+【核心事實】: {debate_judgment.key_takeaway}
+
+=== 你必須遵循的規則 ===
+1. 你的決策方向**必須**與裁判建議一致，除非你發現裁判遺漏了重大風險
+2. 你的倉位大小**必須**在建議範圍內
+3. 如果裁判建議「觀望」，你**必須**選擇 Hold
+4. 如果你不遵循裁判建議，**必須**提供充分理由
 """
 
         decision_options = ""
@@ -625,20 +653,21 @@ class Trader:
 {account_balance_prompt}
 
 你的任務：
-1. 權衡多、空、中三方觀點。**必須以裁判的公信力得分為主要參考依據**。
-2. 參考數據檢察官的意見，排除掉那些基於錯誤數據的誇大言論。
-3. 做出最終決策 ({decision_options}) 並設定具體的交易計劃。
+1. **嚴格遵循裁判裁決**: 裁判的 suggested_action 決定了你的交易方向和強度
+2. 參考數據檢察官的意見，排除掉那些基於錯誤數據的誇大言論
+3. 設定具體的進場價、止損、止盈
 
-請以 JSON 格式回覆：
-- decision: "{decision_options}"
-- reasoning: 決策推理 (繁體中文，需提及如何權衡三方觀點及裁判的裁決)
-- position_size: 建議倉位 (0-1)
+請以 JSON 格式回覆（繁體中文）：
+- decision: "{decision_options}" (必須與裁判建議一致)
+- reasoning: 為什麼做出此決策（必須引用裁判的裁決和獲勝原因）
+- position_size: 倉位 (必須在裁判建議的範圍內)
 - leverage: 槓桿 (1-125)
 - entry_price: 進場價 (float)
 - stop_loss: 止損價 (float)
 - take_profit: 止盈價 (float)
-- confidence: 信心度 (0-100)
-- synthesis: 綜合各方意見的總結
+- follows_judge: true/false (是否遵循裁判建議)
+- deviation_reason: 如果 follows_judge 為 false，說明為什麼不遵循（否則為 null）
+- key_risk: 此交易的主要風險點是什麼
 """
         
         response = self.client.chat.completions.create(
@@ -683,29 +712,36 @@ class DebateJudge:
         from core.models import DebateJudgment
         
         prompt = f"""
-你是一位資深的「綜合交易委員會裁判」。你的任務是審查一場關於市場走勢的三方辯論，並給出公正的裁決分數。
+你是一位資深的「綜合交易委員會裁判」。你的任務是審查一場關於市場走勢的三方辯論，並基於**論點品質**做出裁決。
 
-辯論各方論點：
+**不要給出任何數字評分**，只評估論點的實際品質。
+
+=== 辯論各方論點 ===
 【多頭】: {bull_argument.argument}
 【空頭】: {bear_argument.argument}
 【中立】: {neutral_argument.argument}
 
-數據檢察官驗證結果：
+=== 數據檢察官驗證結果 ===
 {json.dumps(fact_checks, indent=2, ensure_ascii=False, default=str)}
 
-你的裁決標準：
-1. 邏輯嚴密性：論點是否環環相扣，有無明顯漏洞。
-2. 數據準確性：是否尊重事實，有無被檢察官糾正。
-3. 讓步客觀性：是否誠實承認對手的合理點（讓步點是否深刻）。
-4. 風險意識：是否考慮了潛在的黑天鵝事件或反向因素。
+=== 你的裁決標準 ===
+1. **論點有效性**：論據是否有數據支撐？是否被檢察官糾正過？
+2. **邏輯嚴密性**：推理過程是否合理？有無邏輯跳躍？
+3. **風險考量**：是否考慮了反向風險？讓步點是否誠實？
+4. **實用性**：論點是否能轉化為可執行的交易建議？
 
-請以 JSON 格式回覆，給出 0-100 的公信力評分：
-- bull_score: 多頭公信力評分
-- bear_score: 空頭公信力評分
-- neutral_score: 中立派公信力評分
-- judge_rationale: 裁決理由 (繁體中文，至少100字，需點評各方表現)
-- key_takeaway: 你從這場辯論中總結出的最核心事實
-- winning_stance: "Bull", "Bear", "Neutral", 或 "Tie"
+=== 請以 JSON 格式回覆（繁體中文）===
+- bull_evaluation: 【純文字字串】評估多頭論點的優缺點，例如："多頭正確指出了...但忽略了..."
+- bear_evaluation: 【純文字字串】評估空頭論點的優缺點，例如："空頭的風險警告合理，但過度悲觀..."
+- neutral_evaluation: 【純文字字串】評估中立論點的優缺點，例如："中立觀點較為平衡，但缺乏明確建議..."
+- strongest_bull_point: 多頭最有力的單一論點
+- strongest_bear_point: 空頭最有力的單一論點
+- fatal_flaw: 某方論點的致命缺陷（如果有的話，否則為 null）
+- winning_stance: "Bull" / "Bear" / "Neutral" / "Tie"（基於上述評估決定誰獲勝）
+- winning_reason: 為什麼這一方獲勝？（必須具體引用其論點）
+- suggested_action: "強烈做多" / "適度做多" / "觀望" / "適度做空" / "強烈做空"
+- action_rationale: 為什麼建議這個行動？
+- key_takeaway: 從這場辯論中總結出的最核心市場事實
 """
 
         response = self.client.chat.completions.create(
@@ -785,7 +821,8 @@ class RiskManager:
 - 進場價：${f'{trader_decision.entry_price:.2f}' if trader_decision.entry_price is not None else 'N/A'}
 - 止損：${f'{trader_decision.stop_loss:.2f}' if trader_decision.stop_loss is not None else 'N/A'}
 - 止盈：${f'{trader_decision.take_profit:.2f}' if trader_decision.take_profit is not None else 'N/A'}
-- 信心度：{trader_decision.confidence}%
+- 遵循裁判建議：{'是' if trader_decision.follows_judge else '否'}
+- 主要風險：{trader_decision.key_risk}
 - 理由：{trader_decision.reasoning}
 - 多週期一致性：{'是' if trader_decision.multi_timeframe_analysis else '否'}
 
@@ -1100,7 +1137,7 @@ class DataFactChecker:
 你是一位嚴格的數據檢察官。你的任務是核對研究員在辯論中引用的數據是否與真實市場數據相符。
 
 真實市場數據：
-{json.dumps(market_summary, indent=2, ensure_ascii=False)}
+{json.dumps(market_summary, indent=2, ensure_ascii=False, cls=DataFrameEncoder)}
 
 研究員論點：
 {args_text}

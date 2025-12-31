@@ -119,6 +119,84 @@
             font-size: 12px;
             margin-top: 12px;
         }
+
+        /* 可折疊的分析過程區塊 */
+        .process-container {
+            margin-bottom: 1rem;
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            border-radius: 12px;
+            overflow: hidden;
+            background: rgba(30, 41, 59, 0.5);
+        }
+        .process-container summary {
+            padding: 12px 16px;
+            cursor: pointer;
+            background: linear-gradient(135deg, rgba(71, 85, 105, 0.4) 0%, rgba(51, 65, 85, 0.4) 100%);
+            font-size: 13px;
+            font-weight: 600;
+            color: #94a3b8;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            user-select: none;
+            transition: background 0.2s;
+        }
+        .process-container summary:hover {
+            background: linear-gradient(135deg, rgba(71, 85, 105, 0.6) 0%, rgba(51, 65, 85, 0.6) 100%);
+        }
+        .process-container summary::marker,
+        .process-container summary::-webkit-details-marker {
+            display: none;
+        }
+        .process-container summary .chevron {
+            transition: transform 0.2s;
+        }
+        .process-container[open] summary .chevron {
+            transform: rotate(90deg);
+        }
+        .process-content {
+            padding: 16px;
+            color: #64748b;
+            font-size: 12px;
+            line-height: 1.7;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .process-content .prose {
+            color: #64748b;
+        }
+        .process-content .prose strong {
+            color: #94a3b8;
+        }
+        .process-content .prose h3 {
+            color: #94a3b8;
+            font-size: 14px;
+        }
+        .process-step-item {
+            padding: 6px 8px;
+            margin: 2px 0;
+            background: rgba(51, 65, 85, 0.2);
+            border-radius: 6px;
+            border-left: 3px solid rgba(59, 130, 246, 0.4);
+            font-size: 12px;
+            color: #94a3b8;
+        }
+        .process-step-item strong {
+            color: #cbd5e1;
+        }
+        .result-container {
+            animation: fadeInUp 0.3s ease-out;
+        }
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
@@ -166,9 +244,6 @@
             <button onclick="switchTab('pulse')" class="nav-btn group text-slate-400 hover:text-blue-400" title="市場脈動">
                 <i data-lucide="activity" class="w-7 h-7"></i>
             </button>
-            <button onclick="switchTab('social')" class="nav-btn group text-slate-400 hover:text-blue-400" title="社群預測">
-                <i data-lucide="users" class="w-7 h-7"></i>
-            </button>
             <button onclick="switchTab('settings')" class="mt-auto nav-btn text-slate-400" title="設定">
                 <i data-lucide="settings" class="w-7 h-7"></i>
             </button>
@@ -182,6 +257,15 @@
                 <div class="bot-message message-bubble prose">
                     <h3 class="flex items-center gap-2"><i data-lucide="bot" class="w-5 h-5"></i> 歡迎使用 Pi Crypto Insight</h3>
                     <p>我是您的 AI 投資助手。您可以輸入加密貨幣代號（如 BTC, ETH, PI），我將為您進行深度分析。</p>
+
+                    <!-- 風險警告 -->
+                    <div class="my-3 p-3 bg-amber-900/20 border border-amber-500/30 rounded-lg">
+                        <p class="text-amber-400 text-xs flex items-start gap-2 m-0">
+                            <i data-lucide="alert-triangle" class="w-4 h-4 mt-0.5 shrink-0"></i>
+                            <span><strong>風險警告：</strong>加密貨幣投資具有高度風險，價格波動劇烈。本工具提供的分析僅供參考，不構成任何投資建議。請根據自身風險承受能力謹慎決策，切勿投入超過您能承受損失的資金。</span>
+                        </p>
+                    </div>
+
                     <p>試試點擊下方的建議：</p>
                     <div class="flex wrap gap-2 mt-2">
                         <button onclick="quickAsk('PIUSDT 可以投資嗎？')" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs border border-slate-700 transition">Pi Network (PI) 分析</button>
@@ -359,67 +443,6 @@
             </div>
         </div>
 
-        <!-- Social Tab (New) -->
-        <div id="social-tab" class="hidden flex-1 flex flex-col p-6 overflow-y-auto custom-scrollbar">
-            <div class="max-w-6xl mx-auto w-full">
-                <div class="flex justify-between items-end mb-8">
-                    <div>
-                        <h2 class="text-2xl font-bold flex items-center gap-2">
-                            <i data-lucide="users" class="w-6 h-6 text-purple-400"></i> 社群預測
-                        </h2>
-                        <p class="text-slate-400">參與價格預測，贏得 Pi 幣獎勵</p>
-                    </div>
-                    <button onclick="refreshSocial()" class="flex items-center gap-2 bg-purple-600/20 text-purple-400 px-4 py-2 rounded-lg border border-purple-500/30 hover:bg-purple-600/30 transition">
-                        <i data-lucide="refresh-cw" class="w-4 h-4"></i> 刷新
-                    </button>
-                </div>
-
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <!-- Prediction Card -->
-                    <div class="glass-card rounded-2xl p-6 lg:col-span-1">
-                        <h3 class="text-lg font-semibold mb-4">🔮 發起預測</h3>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-xs text-slate-400 mb-1">幣種 (如 BTC)</label>
-                                <input type="text" id="predict-symbol" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-sm text-white focus:border-purple-500 outline-none" placeholder="BTC">
-                            </div>
-                            <div class="flex gap-2">
-                                <button onclick="submitPrediction('UP')" class="flex-1 bg-green-600/20 hover:bg-green-600/40 text-green-400 border border-green-600/50 py-3 rounded-xl font-bold transition flex items-center justify-center gap-2">
-                                    <i data-lucide="trending-up" class="w-4 h-4"></i> 看漲
-                                </button>
-                                <button onclick="submitPrediction('DOWN')" class="flex-1 bg-red-600/20 hover:bg-red-600/40 text-red-400 border border-red-600/50 py-3 rounded-xl font-bold transition flex items-center justify-center gap-2">
-                                    <i data-lucide="trending-down" class="w-4 h-4"></i> 看跌
-                                </button>
-                            </div>
-                            <p class="text-xs text-slate-500 mt-2 text-center">預測成功將獲得積分，積分可用於兌換 VIP 分析功能。</p>
-                        </div>
-                    </div>
-
-                    <!-- Leaderboard -->
-                    <div class="glass-card rounded-2xl p-6 lg:col-span-2">
-                        <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                            <i data-lucide="trophy" class="w-5 h-5 text-yellow-400"></i> 排行榜
-                        </h3>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-sm text-left text-slate-400">
-                                <thead class="text-xs text-slate-500 uppercase bg-slate-800/50">
-                                    <tr>
-                                        <th class="px-4 py-3 rounded-l-lg">排名</th>
-                                        <th class="px-4 py-3">用戶</th>
-                                        <th class="px-4 py-3">勝率</th>
-                                        <th class="px-4 py-3">勝場/總計</th>
-                                        <th class="px-4 py-3 rounded-r-lg">平均獲利</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="leaderboard-body">
-                                    <tr><td colspan="5" class="px-4 py-4 text-center">載入中...</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <!-- Debate Modal (Hidden) -->
         <div id="debate-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
@@ -618,15 +641,22 @@
             <i data-lucide="activity" class="w-6 h-6"></i>
             <span class="text-[10px]">脈動</span>
         </button>
-        <button onclick="switchTab('social')" class="flex flex-col items-center gap-1 text-slate-400">
-            <i data-lucide="users" class="w-6 h-6"></i>
-            <span class="text-[10px]">社群</span>
-        </button>
         <button onclick="switchTab('settings')" class="flex flex-col items-center gap-1 text-slate-400">
             <i data-lucide="settings" class="w-6 h-6"></i>
             <span class="text-[10px]">設定</span>
         </button>
     </nav>
+
+    <!-- 固定免責聲明 Footer -->
+    <footer class="hidden md:block bg-slate-900/80 border-t border-slate-800 py-2 px-4">
+        <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-2 text-[10px] text-slate-500">
+            <p class="flex items-center gap-1">
+                <i data-lucide="shield-alert" class="w-3 h-3"></i>
+                <span><strong>免責聲明：</strong>本平台提供之所有資訊僅供參考，不構成任何投資建議或要約。加密貨幣交易具有高度風險，可能導致本金全部損失。</span>
+            </p>
+            <p class="text-slate-600">© 2025 Pi Crypto Insight - 投資有風險，入市需謹慎</p>
+        </div>
+    </footer>
 
     <script>
         // Initialize Lucide icons
@@ -794,7 +824,7 @@
         const Pi = window.Pi;
 
         function switchTab(tab) {
-            ['chat', 'market', 'watchlist', 'social', 'settings', 'pulse'].forEach(t => {
+            ['chat', 'market', 'watchlist', 'settings', 'pulse'].forEach(t => {
                 const el = document.getElementById(t + '-tab');
                 if (el) el.classList.add('hidden');
             });
@@ -827,7 +857,6 @@
             }
 
             if (tab === 'watchlist') refreshWatchlist();
-            if (tab === 'social') refreshSocial();
 
             lucide.createIcons();
         }
@@ -924,6 +953,9 @@
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
                 let fullContent = '';
+                let processContent = '';
+                let resultContent = '';
+                let hasProcessContent = false;
 
                 while (true) {
                     const { value, done } = await reader.read();
@@ -936,18 +968,179 @@
                         if (line.startsWith('data: ')) {
                             const data = JSON.parse(line.substring(6));
                             if (data.content) {
-                                fullContent = data.content;
-                                clearInterval(timerInterval);
-                                botMsgDiv.innerHTML = md.render(fullContent);
+                                // 累積內容而不是替換
+                                fullContent += data.content;
+
+                                // 解析 [PROCESS] 和 [RESULT] 標記
+                                processContent = '';
+                                resultContent = '';
+                                hasProcessContent = false;
+
+                                const contentLines = fullContent.split('\n');
+                                let currentMode = 'normal'; // normal, process, result
+
+                                for (const cLine of contentLines) {
+                                    if (cLine.includes('[PROCESS_START]')) {
+                                        currentMode = 'process';
+                                        hasProcessContent = true;
+                                        continue;
+                                    }
+                                    if (cLine.includes('[PROCESS_END]')) {
+                                        currentMode = 'normal';
+                                        continue;
+                                    }
+                                    if (cLine.includes('[RESULT]')) {
+                                        currentMode = 'result';
+                                        continue;
+                                    }
+
+                                    if (cLine.startsWith('[PROCESS]')) {
+                                        processContent += cLine.substring(9) + '\n';
+                                        hasProcessContent = true;
+                                    } else if (currentMode === 'process') {
+                                        processContent += cLine + '\n';
+                                    } else if (currentMode === 'result') {
+                                        resultContent += cLine + '\n';
+                                    } else {
+                                        resultContent += cLine + '\n';
+                                    }
+                                }
+
+                                // 渲染 HTML
+                                let html = '';
+                                const isStillProcessing = !fullContent.includes('[RESULT]');
+
+                                if (hasProcessContent && processContent.trim()) {
+                                    const stepCount = (processContent.match(/✅|📊|⚔️|👨‍⚖️|⚖️|🛡️|💰|🚀|🔍|⏳/g) || []).length;
+                                    // 如果還在處理中，預設展開；處理完成後收起
+                                    const openAttr = isStillProcessing ? 'open' : '';
+
+                                    // 將過程內容格式化為步驟列表
+                                    const processLines = processContent.trim().split('\n').filter(l => l.trim());
+                                    let stepsHtml = '';
+                                    for (const line of processLines) {
+                                        const trimmed = line.trim();
+                                        if (trimmed.startsWith('---') || trimmed.startsWith('###')) {
+                                            // 辯論標題
+                                            stepsHtml += `<div class="mt-3 mb-2 text-blue-400 font-semibold text-sm">${md.renderInline(trimmed.replace(/^---\s*/, '').replace(/^###\s*/, ''))}</div>`;
+                                        } else if (trimmed.startsWith('**🐂') || trimmed.startsWith('**🐻') || trimmed.startsWith('**⚖️')) {
+                                            // 辯論觀點標題
+                                            stepsHtml += `<div class="mt-2 font-medium text-slate-300">${md.renderInline(trimmed)}</div>`;
+                                        } else if (trimmed.startsWith('>')) {
+                                            // 引用內容
+                                            stepsHtml += `<div class="pl-3 border-l-2 border-slate-600 text-slate-400 text-xs my-1">${md.renderInline(trimmed.substring(1).trim())}</div>`;
+                                        } else if (trimmed.startsWith('→')) {
+                                            // 子項目
+                                            stepsHtml += `<div class="pl-4 text-slate-500 text-xs">${trimmed}</div>`;
+                                        } else {
+                                            // 一般步驟
+                                            stepsHtml += `<div class="process-step-item py-1">${md.renderInline(trimmed)}</div>`;
+                                        }
+                                    }
+
+                                    html += `
+                                        <details class="process-container" ${openAttr}>
+                                            <summary>
+                                                <i data-lucide="chevron-right" class="w-4 h-4 chevron"></i>
+                                                ${isStillProcessing ? '<div class="spinner" style="width:14px;height:14px;border-width:2px;"></div>' : '<i data-lucide="check-circle" class="w-4 h-4 text-green-500"></i>'}
+                                                分析過程 (${stepCount} 個步驟)${isStillProcessing ? ' - 進行中...' : ' - 已完成'}
+                                                <span class="ml-auto text-xs text-slate-500">點擊展開/收起</span>
+                                            </summary>
+                                            <div class="process-content custom-scrollbar">
+                                                ${stepsHtml}
+                                            </div>
+                                        </details>
+                                    `;
+                                }
+
+                                if (resultContent.trim()) {
+                                    html += `<div class="result-container prose">${md.render(resultContent)}</div>`;
+                                } else if (!hasProcessContent) {
+                                    // 沒有標記的普通內容
+                                    html = md.render(fullContent);
+                                } else if (isStillProcessing) {
+                                    // 還在處理中，顯示等待結果的提示
+                                    html += `<div class="text-slate-500 text-sm animate-pulse mt-4">⏳ 正在生成分析報告...</div>`;
+                                }
+
+                                botMsgDiv.innerHTML = html;
+                                lucide.createIcons();
                                 document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
                             }
                             if (data.done) {
+                                clearInterval(timerInterval);
                                 isAnalyzing = false;
                                 const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+
+                                // 重新渲染最終結果（確保 details 是收起的）
+                                processContent = '';
+                                resultContent = '';
+                                hasProcessContent = false;
+                                const contentLines = fullContent.split('\n');
+                                let currentMode = 'normal';
+                                for (const cLine of contentLines) {
+                                    if (cLine.includes('[PROCESS_START]')) { currentMode = 'process'; hasProcessContent = true; continue; }
+                                    if (cLine.includes('[PROCESS_END]')) { currentMode = 'normal'; continue; }
+                                    if (cLine.includes('[RESULT]')) { currentMode = 'result'; continue; }
+                                    if (cLine.startsWith('[PROCESS]')) { processContent += cLine.substring(9) + '\n'; hasProcessContent = true; }
+                                    else if (currentMode === 'process') { processContent += cLine + '\n'; }
+                                    else if (currentMode === 'result') { resultContent += cLine + '\n'; }
+                                    else { resultContent += cLine + '\n'; }
+                                }
+
+                                let finalHtml = '';
+                                if (hasProcessContent && processContent.trim()) {
+                                    const stepCount = (processContent.match(/✅|📊|⚔️|👨‍⚖️|⚖️|🛡️|💰|🚀|🔍|⏳/g) || []).length;
+
+                                    // 格式化過程步驟
+                                    const processLines = processContent.trim().split('\n').filter(l => l.trim());
+                                    let stepsHtml = '';
+                                    for (const line of processLines) {
+                                        const trimmed = line.trim();
+                                        if (trimmed.startsWith('---') || trimmed.startsWith('###')) {
+                                            stepsHtml += `<div class="mt-3 mb-2 text-blue-400 font-semibold text-sm">${md.renderInline(trimmed.replace(/^---\s*/, '').replace(/^###\s*/, ''))}</div>`;
+                                        } else if (trimmed.startsWith('**🐂') || trimmed.startsWith('**🐻') || trimmed.startsWith('**⚖️')) {
+                                            stepsHtml += `<div class="mt-2 font-medium text-slate-300">${md.renderInline(trimmed)}</div>`;
+                                        } else if (trimmed.startsWith('>')) {
+                                            stepsHtml += `<div class="pl-3 border-l-2 border-slate-600 text-slate-400 text-xs my-1">${md.renderInline(trimmed.substring(1).trim())}</div>`;
+                                        } else if (trimmed.startsWith('→')) {
+                                            stepsHtml += `<div class="pl-4 text-slate-500 text-xs">${trimmed}</div>`;
+                                        } else {
+                                            stepsHtml += `<div class="process-step-item py-1">${md.renderInline(trimmed)}</div>`;
+                                        }
+                                    }
+
+                                    finalHtml += `
+                                        <details class="process-container">
+                                            <summary>
+                                                <i data-lucide="chevron-right" class="w-4 h-4 chevron"></i>
+                                                <i data-lucide="check-circle" class="w-4 h-4 text-green-500"></i>
+                                                分析過程 (${stepCount} 個步驟) - 已完成
+                                                <span class="ml-auto text-xs text-slate-500">點擊展開/收起</span>
+                                            </summary>
+                                            <div class="process-content custom-scrollbar">${stepsHtml}</div>
+                                        </details>
+                                    `;
+                                }
+                                if (resultContent.trim()) {
+                                    finalHtml += `<div class="result-container prose">${md.render(resultContent)}</div>`;
+                                } else if (!hasProcessContent) {
+                                    finalHtml = md.render(fullContent);
+                                }
+
+                                botMsgDiv.innerHTML = finalHtml;
+
                                 const timeBadge = document.createElement('div');
                                 timeBadge.className = 'done-badge';
                                 timeBadge.innerHTML = `✅ 完成 ⏱️ ${totalTime} 秒`;
                                 botMsgDiv.appendChild(timeBadge);
+
+                                // 免責聲明
+                                const disclaimer = document.createElement('div');
+                                disclaimer.className = 'mt-3 pt-3 border-t border-slate-700/50 text-[10px] text-slate-500 italic';
+                                disclaimer.innerHTML = '⚠️ 免責聲明：以上分析由 AI 自動生成，僅供參考，不構成投資建議。投資決策請自行判斷，盈虧自負。';
+                                botMsgDiv.appendChild(disclaimer);
+                                lucide.createIcons();
                             }
                             if (data.error) {
                                 clearInterval(timerInterval);
@@ -1156,11 +1349,133 @@
                 const sourcesQuery = selectedNewsSources.join(',');
                 const res = await fetch(`/api/market-pulse/${symbol}?sources=${sourcesQuery}`);
                 const data = await res.json();
-                if (data.explanation) {
+                
+                // 相容舊版 explanation 和新版 report 結構
+                const report = data.report || { 
+                    summary: data.explanation, 
+                    key_points: [], 
+                    highlights: [], 
+                    risks: [] 
+                };
+
+                if (report.summary) {
                     currentPulseData[symbol] = data;
-                    const isPositive = data.change_1h > 0;
-                    card.className = "glass-card rounded-2xl p-6 h-full flex flex-col hover:border-blue-500/30 transition duration-300";
-                    card.innerHTML = `<div class="flex justify-between items-start mb-4"><div class="flex items-center gap-3"><div class="w-10 h-10 ${isPositive ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'} rounded-xl flex items-center justify-center"><i data-lucide="${isPositive ? 'trending-up' : 'trending-down'}" class="w-5 h-5"></i></div><div><h3 class="font-bold text-lg">${data.symbol}</h3><div class="text-xs text-slate-400">24h: <span class="${data.change_24h > 0 ? 'text-green-400' : 'text-red-400'}">${data.change_24h.toFixed(2)}%</span></div></div></div><span class="px-2 py-1 rounded bg-slate-800 text-[10px] text-slate-400 border border-slate-700">1H: ${data.change_1h.toFixed(2)}%</span></div><div class="flex-1 mb-4"><p class="text-slate-300 text-sm leading-relaxed">${data.explanation}</p></div><div class="mt-auto pt-4 border-t border-slate-700/50 flex justify-between items-center"><button onclick="showNewsList('${symbol}')" class="text-xs font-medium text-blue-400 hover:text-blue-300 transition flex items-center gap-1"><i data-lucide="newspaper" class="w-4 h-4"></i> 新聞詳情 (${data.news_sources.length})</button><button onclick="switchTab('chat'); quickAsk('${data.symbol} 詳細分析')" class="p-2 bg-purple-900/30 text-purple-400 rounded-lg hover:bg-purple-900/50 transition group"><i data-lucide="bot" class="w-4 h-4 group-hover:scale-110 transition"></i></button></div>`;
+                    const isPositive = data.change_24h > 0; // Use 24h change for main color
+                    
+                    // Format timestamp
+                    const updatedTime = new Date(data.timestamp);
+                    const timeString = updatedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    const uniqueSources = data.news_sources ? [...new Set(data.news_sources.map(n => n.source.split(' ')[0]))].join(', ') : '';
+
+                    card.className = "glass-card rounded-2xl p-0 h-full flex flex-col hover:border-blue-500/30 transition duration-300 overflow-hidden";
+                    
+                    // 1. Header Section (Price & Summary)
+                    let html = `
+                        <div class="p-5 border-b border-slate-700/50 bg-slate-800/20">
+                            <div class="flex justify-between items-start mb-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 ${isPositive ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'} rounded-xl flex items-center justify-center">
+                                        <i data-lucide="${isPositive ? 'trending-up' : 'trending-down'}" class="w-5 h-5"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="font-bold text-lg flex items-center gap-2">
+                                            ${data.symbol} 
+                                            <span class="text-xs font-normal text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">${timeString}</span>
+                                        </h3>
+                                        <div class="text-xs text-slate-400">
+                                            $${data.current_price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                                            <span class="ml-1 ${isPositive ? 'text-green-400' : 'text-red-400'}">
+                                                ${data.change_24h > 0 ? '+' : ''}${data.change_24h.toFixed(2)}%
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <span class="px-2 py-1 rounded bg-slate-800 text-[10px] text-slate-400 border border-slate-700">1H: ${data.change_1h > 0 ? '+' : ''}${data.change_1h.toFixed(2)}%</span>
+                            </div>
+                            <p class="text-slate-200 text-sm font-medium leading-relaxed">${report.summary}</p>
+                        </div>
+                    `;
+
+                    // 2. Body Section (Scrollable)
+                    html += `<div class="p-5 flex-1 overflow-y-auto custom-scrollbar space-y-5">`;
+
+                    // Key Points (要點)
+                    if (report.key_points && report.key_points.length > 0) {
+                        html += `
+                            <div>
+                                <h4 class="text-xs font-bold text-blue-400 mb-2 flex items-center gap-1 uppercase tracking-wider">
+                                    <i data-lucide="sparkles" class="w-3 h-3"></i> 要點
+                                </h4>
+                                <ul class="space-y-2">
+                                    ${report.key_points.map((point, idx) => `
+                                        <li class="flex gap-2 text-xs text-slate-300">
+                                            <span class="text-blue-500/50 font-mono">${idx + 1}.</span>
+                                            <span>${point}</span>
+                                        </li>
+                                    `).join('')}
+                                </ul>
+                            </div>
+                        `;
+                    }
+
+                    // Highlights (亮點 - Detailed cards)
+                    if (report.highlights && report.highlights.length > 0) {
+                        html += `
+                            <div>
+                                <h4 class="text-xs font-bold text-purple-400 mb-2 flex items-center gap-1 uppercase tracking-wider">
+                                    <i data-lucide="zap" class="w-3 h-3"></i> 亮點
+                                </h4>
+                                <div class="space-y-2">
+                                    ${report.highlights.map(item => `
+                                        <div class="bg-slate-800/40 rounded-lg p-3 border border-slate-700/50">
+                                            <div class="text-xs font-semibold text-slate-200 mb-1">${item.title}</div>
+                                            <div class="text-[11px] text-slate-400 leading-normal">${item.content}</div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    // Risks (風險)
+                    if (report.risks && report.risks.length > 0) {
+                        html += `
+                            <div>
+                                <h4 class="text-xs font-bold text-orange-400 mb-2 flex items-center gap-1 uppercase tracking-wider">
+                                    <i data-lucide="alert-triangle" class="w-3 h-3"></i> 風險
+                                </h4>
+                                <ul class="space-y-1">
+                                    ${report.risks.map(risk => `
+                                        <li class="flex gap-2 text-xs text-slate-400">
+                                            <i data-lucide="alert-circle" class="w-3 h-3 text-orange-500/50 mt-0.5 shrink-0"></i>
+                                            <span>${risk}</span>
+                                        </li>
+                                    `).join('')}
+                                </ul>
+                            </div>
+                        `;
+                    }
+
+                    html += `</div>`; // End Body
+
+                    // 3. Footer Section (Actions)
+                    html += `
+                        <div class="p-4 border-t border-slate-700/50 bg-slate-800/30 flex justify-between items-center text-[10px] text-slate-500">
+                            <div class="flex items-center gap-2">
+                                <span title="${uniqueSources}">Refs: ${data.news_sources ? data.news_sources.length : 0}</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="showNewsList('${symbol}')" class="px-2 py-1.5 hover:bg-slate-700/50 rounded transition text-blue-400 flex items-center gap-1">
+                                    <i data-lucide="newspaper" class="w-3 h-3"></i> 新聞
+                                </button>
+                                <button onclick="switchTab('chat'); quickAsk('${data.symbol} 詳細分析')" class="px-2 py-1.5 bg-purple-600/20 text-purple-300 hover:bg-purple-600/30 rounded transition flex items-center gap-1 border border-purple-500/20">
+                                    <i data-lucide="bot" class="w-3 h-3"></i> 詳情
+                                </button>
+                            </div>
+                        </div>
+                    `;
+
+                    card.innerHTML = html;
                     lucide.createIcons();
                 }
             } catch (e) { console.error(e); }
@@ -1179,32 +1494,6 @@
                 listContent.appendChild(item);
             });
             modal.classList.remove('hidden'); lucide.createIcons();
-        }
-
-        async function refreshSocial() {
-            const tbody = document.getElementById('leaderboard-body');
-            tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-4 text-center animate-pulse">載入中...</td></tr>';
-            try {
-                const res = await fetch('/api/social/leaderboard');
-                const data = await res.json();
-                tbody.innerHTML = '';
-                if (!data.leaderboard || data.leaderboard.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-4 text-center text-slate-500">暫無數據</td></tr>'; return; }
-                data.leaderboard.forEach((user, idx) => {
-                    const row = document.createElement('tr'); row.className = 'border-b border-slate-700/50 hover:bg-slate-800/30';
-                    row.innerHTML = `<td class="px-4 py-3 font-bold ${idx < 3 ? 'text-yellow-400' : 'text-slate-400'}">#${idx + 1}</td><td class="px-4 py-3 font-medium text-white">${user.username}</td><td class="px-4 py-3">${user.win_rate.toFixed(1)}%</td><td class="px-4 py-3 text-slate-400 text-xs">${user.wins} / ${user.total_predictions}</td><td class="px-4 py-3 ${user.avg_pnl > 0 ? 'text-green-400' : 'text-red-400'}">${user.avg_pnl.toFixed(2)}%</td>`;
-                    tbody.appendChild(row);
-                });
-            } catch (e) { console.error(e); }
-        }
-
-        async function submitPrediction(direction) {
-            const symbol = document.getElementById('predict-symbol').value.toUpperCase();
-            if (!symbol) return alert("請輸入幣種");
-            if (currentUserId === 'guest') return alert("請先登入 Pi 帳戶");
-            try {
-                const res = await fetch('/api/social/predict', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: currentUserId, username: document.getElementById('settings-user').innerText.replace('@', '') || 'Guest', symbol: symbol, direction: direction }) });
-                const data = await res.json(); if (data.success) { alert(`✅ 預測成功！進場價: $${data.entry_price}`); refreshSocial(); }
-            } catch (e) { console.error(e); }
         }
 
         function openBacktestModal() { document.getElementById('backtest-modal').classList.remove('hidden'); }

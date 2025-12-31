@@ -14,12 +14,15 @@ import operator
 import concurrent.futures
 from typing import List, Dict, Tuple, Optional
 from datetime import datetime
+import json
+import time
 
 import openai
 from dotenv import load_dotenv
 from cachetools import cachedmethod, TTLCache, keys
 
 from core.graph import app
+from core.tools import format_full_analysis_result
 from core.config import (
     QUERY_PARSER_MODEL,
     SUPPORTED_EXCHANGES,
@@ -27,7 +30,9 @@ from core.config import (
     MAX_ANALYSIS_WORKERS,
     NEWS_FETCH_LIMIT,
     ENABLE_SPOT_TRADING,
-    ENABLE_FUTURES_TRADING
+    ENABLE_FUTURES_TRADING,
+    DEFAULT_KLINES_LIMIT,
+    DEFAULT_INTERVAL
 )
 from data.data_fetcher import SymbolNotFoundError, get_data_fetcher
 from data.indicator_calculator import add_technical_indicators
@@ -61,6 +66,7 @@ class CryptoQueryParser:
    - "investment_analysis": 投資分析或詢問特定數據指標
    - "general_question": 一般問題
    - "greeting": 打招呼
+   - "unclear": 意圖不明確，需要澄清
 
 2. 加密貨幣代號 (symbols): 從問題中提取所有提到的加密貨幣代號
    - 如果用戶使用 "它"、"這個"、"他的" 等代名詞，請在 symbols 留下空列表，但在 user_question 標註是代指。
@@ -74,6 +80,17 @@ class CryptoQueryParser:
 
 6. 時間週期 (interval): 如果用戶提到特定時間，如 "15分鐘" -> "15m", "1小時" -> "1h", "4小時" -> "4h", "日線" -> "1d"。若無則為 null。
 
+7. 意圖清晰度 (clarity): "high" / "medium" / "low"
+   - high: 意圖非常明確，可以直接執行
+   - medium: 大致理解，但某些細節不確定
+   - low: 無法確定用戶想要什麼
+
+8. 澄清問題 (clarification_question): 如果 clarity 為 "low"，提供一個澄清問題
+   - 例如: "請問您想要分析哪個加密貨幣？" 或 "您是想要技術分析還是完整的投資建議？"
+
+9. 建議選項 (suggested_options): 如果 clarity 為 "low"，提供 2-4 個可能的選項
+   - 例如: ["分析 BTC 的價格走勢", "查看市場熱門幣種", "獲取完整投資建議"]
+
 請以 JSON 格式返回結果:
 {
     "intent": "investment_analysis",
@@ -82,7 +99,10 @@ class CryptoQueryParser:
     "focus": ["technical"],
     "requires_trade_decision": false,
     "interval": "15m",
-    "user_question": "查詢 BTC 15分鐘線 RSI"
+    "user_question": "查詢 BTC 15分鐘線 RSI",
+    "clarity": "high",
+    "clarification_question": null,
+    "suggested_options": null
 }
 """
 
@@ -108,8 +128,28 @@ class CryptoQueryParser:
         """當 LLM 解析失敗時的退回方案"""
         crypto_pattern = r'\b([A-Z]{2,10}(?:USDT|BUSD)?)\b'
         matches = re.findall(crypto_pattern, user_message.upper())
-        common_words = {'USDT', 'BUSD', 'USD', 'TWD', 'CNY'}
+        common_words = {'USDT', 'BUSD', 'USD', 'TWD', 'CNY', 'THE', 'AND', 'FOR', 'ARE', 'NOT'}
         symbols = [m for m in matches if m not in common_words]
+
+        # 如果沒有找到任何幣種，標記為不明確
+        if not symbols and len(user_message) < 10:
+            return {
+                "intent": "unclear",
+                "symbols": [],
+                "action": "chat",
+                "focus": [],
+                "requires_trade_decision": False,
+                "interval": None,
+                "user_question": user_message,
+                "clarity": "low",
+                "clarification_question": "請問您想要分析哪個加密貨幣？或者有什麼我可以幫助您的？",
+                "suggested_options": [
+                    "分析 BTC (比特幣)",
+                    "分析 ETH (以太坊)",
+                    "查看市場熱門幣種",
+                    "詢問加密貨幣相關問題"
+                ]
+            }
 
         return {
             "intent": "investment_analysis" if symbols else "general_question",
@@ -118,8 +158,20 @@ class CryptoQueryParser:
             "focus": ["technical", "sentiment", "fundamental", "news"],
             "requires_trade_decision": True,
             "interval": None,
-            "user_question": user_message
+            "user_question": user_message,
+            "clarity": "high" if symbols else "medium",
+            "clarification_question": None,
+            "suggested_options": None
         }
+
+
+def _crypto_cache_key(self, symbol, exchange=None, interval="1d", limit=100, account_balance_info=None,
+                       short_term_interval="1h", medium_term_interval="4h", long_term_interval="1d",
+                       selected_analysts=None, perform_trading_decision=True):
+    """快取鍵生成函數 - 必須在類別外部定義以供裝飾器使用"""
+    analysts_tuple = tuple(selected_analysts) if selected_analysts else tuple()
+    return keys.hashkey(symbol, exchange, interval, limit, short_term_interval, medium_term_interval,
+                        long_term_interval, analysts_tuple, perform_trading_decision)
 
 
 class CryptoAnalysisBot:
@@ -136,15 +188,19 @@ class CryptoAnalysisBot:
         """
         self.use_agent = use_agent and AGENT_AVAILABLE
 
+        # 始終初始化解析器，用於混合模式判斷
+        self.parser = CryptoQueryParser()
+
+        # 始終初始化快取 (用於 find_available_exchange 等方法)
+        self.cache = TTLCache(maxsize=100, ttl=300)
+
         if self.use_agent:
             # 新架構: 使用 ReAct Agent
-            print(">> 使用 ReAct Agent 模式")
+            print(">> 使用 ReAct Agent 模式 (混合串流增強)")
             self.agent = CryptoAgent(verbose=False)
         else:
             # 舊架構: 保持向後兼容
             print(">> 使用傳統分析模式")
-            self.parser = CryptoQueryParser()
-            self.cache = TTLCache(maxsize=100, ttl=300)
 
         self.chat_history = []
         self.supported_exchanges = SUPPORTED_EXCHANGES
@@ -154,16 +210,24 @@ class CryptoAnalysisBot:
         """標準化交易對符號"""
         if not symbol: return ""
         symbol = symbol.upper().strip()
-        if exchange.lower() == "okx":
-            if "-USDT" in symbol or "-BUSD" in symbol: return symbol
-            if symbol.endswith("USDT"): return f"{symbol[:-4]}-USDT"
-            return f"{symbol}-USDT"
-        else:
-            if "-USDT" in symbol: return symbol.replace("-USDT", "USDT")
-            if symbol.endswith('USDT') or symbol.endswith('BUSD'): return symbol
-            return f"{symbol}USDT"
+        
+        # 1. 先提取基礎幣種 (Base Currency)
+        base_symbol = symbol.replace("-", "").replace("_", "")
+        
+        if base_symbol.endswith("USDT"):
+            base_symbol = base_symbol[:-4]
+        elif base_symbol.endswith("BUSD"):
+            base_symbol = base_symbol[:-4]
+        elif base_symbol.endswith("USD"):
+            base_symbol = base_symbol[:-3]
 
-    @cachedmethod(operator.attrgetter('cache'))
+        # 2. 根據交易所格式化
+        if exchange.lower() == "okx":
+            return f"{base_symbol}-USDT"
+        else:  # binance
+            return f"{base_symbol}USDT"
+
+    @cachedmethod(operator.attrgetter('cache') if not hasattr(operator.attrgetter('cache'), 'use_agent') else lambda x: x.cache, key=_crypto_cache_key)
     def find_available_exchange(self, symbol: str) -> Optional[Tuple[str, str]]:
         """查找交易對可用的交易所 (已快取)"""
         for exchange in self.supported_exchanges:
@@ -201,7 +265,7 @@ class CryptoAnalysisBot:
         # 檢查指標有效性
         latest = df_with_indicators.iloc[-1]
         if latest.get('RSI_14', 0) == 0:
-            print(">> ⚠️ 警告: RSI 計算結果為 0，可能是數據量不足。")
+            print(">> ⚠️ 警告: RSI 計算結果為 0，可能是數據量不足。" )
 
         # 只有在需要新聞或情緒分析時才抓新聞
         news_data = []
@@ -253,14 +317,7 @@ class CryptoAnalysisBot:
             "新聞資訊": news_data
         }
 
-    def _crypto_cache_key(self, symbol, exchange=None, interval="1d", limit=100, account_balance_info=None,
-                           short_term_interval="1h", medium_term_interval="4h", long_term_interval="1d",
-                           selected_analysts=None, perform_trading_decision=True):
-        analysts_tuple = tuple(selected_analysts) if selected_analysts else tuple()
-        return keys.hashkey(symbol, exchange, interval, limit, short_term_interval, medium_term_interval, 
-                          long_term_interval, analysts_tuple, perform_trading_decision)
-
-    @cachedmethod(operator.attrgetter('cache'), key=_crypto_cache_key)
+    @cachedmethod(operator.attrgetter('cache') if not hasattr(operator.attrgetter('cache'), 'use_agent') else lambda x: x.cache, key=_crypto_cache_key)
     def analyze_crypto(self, symbol: str, exchange: str = None, 
                      interval: str = "1d", limit: int = 100, 
                      account_balance_info: Optional[Dict] = None,
@@ -270,7 +327,7 @@ class CryptoAnalysisBot:
                      selected_analysts: List[str] = None,
                      perform_trading_decision: bool = True) -> Tuple[Optional[Dict], Optional[Dict], str]:
         """
-        分析單個加密貨幣
+        分析單個加密貨幣 (舊模式)
         """
         if exchange is None:
             result = self.find_available_exchange(symbol)
@@ -363,86 +420,188 @@ class CryptoAnalysisBot:
     
     def process_message(self, user_message: str, interval: str = "1d", limit: int = 100, manual_selection: List[str] = None):
         """
-        處理用戶消息
-
-        Args:
-            user_message: 用戶輸入的消息
-            interval: 時間週期 (舊模式使用)
-            limit: 數據量限制 (舊模式使用)
-            manual_selection: 手動選擇的分析類型 (舊模式使用)
-
-        Yields:
-            回應文字
+        處理用戶消息 (支援混合模式：普通問題走 Agent，完整分析走即時串流 Graph)
         """
-        # ============ 新架構: 使用 ReAct Agent ============
+        def simulate_stream(text: str, prefix: str = "", delay: float = 0.01, chunk_size: int = 10):
+            """模擬打字機流式輸出"""
+            if prefix:
+                yield prefix
+            for i in range(0, len(text), chunk_size):
+                yield text[i:i+chunk_size]
+                time.sleep(delay)
+            yield "\n\n"
+
+        # 1. 嘗試解析意圖
+        try:
+            parsed = self.parser.parse_query(user_message)
+            intent = parsed.get("intent", "general_question")
+            symbols = parsed.get("symbols", [])
+            requires_trade_decision = parsed.get("requires_trade_decision", False)
+            clarity = parsed.get("clarity", "high")
+            clarification_question = parsed.get("clarification_question")
+            suggested_options = parsed.get("suggested_options", [])
+
+            # 處理意圖不明確的情況
+            if clarity == "low" or intent == "unclear":
+                yield "🤔 **我不太確定您的意思，讓我確認一下：**\n\n"
+                if clarification_question:
+                    yield f"❓ {clarification_question}\n\n"
+                if suggested_options:
+                    yield "您可以試試以下選項：\n"
+                    for i, option in enumerate(suggested_options, 1):
+                        yield f"  {i}. {option}\n"
+                    yield "\n"
+                yield "請告訴我您想要什麼，我會盡力幫助您！\n"
+                return
+
+            # 上下文補全
+            if not symbols and self.last_symbol:
+                 if any(w in user_message for w in ["它", "這個", "繼續", "分析"]):
+                     base_last = self.last_symbol.replace("-USDT", "").replace("USDT", "")
+                     symbols = [base_last]
+
+            # 2. 判斷是否觸發「完整投資分析直通車」
+            if intent == "investment_analysis" and requires_trade_decision and symbols:
+                symbol = symbols[0]
+                yield f"[PROCESS]🚀 正在為您啟動 {symbol} 的深度全方位分析...\n"
+
+                try:
+                    yield f"[PROCESS]🔍 正在查找交易所...\n"
+                    exchange_info = self.find_available_exchange(symbol)
+                except Exception as e:
+                    yield f"[PROCESS]❌ 查找交易所時出錯: {str(e)}\n"
+                    return
+
+                if not exchange_info:
+                    yield f"⚠️ 找不到 {symbol} 的相關交易對，請確認名稱。\n"
+                    return
+
+                exchange, normalized_symbol = exchange_info
+                self.last_symbol = normalized_symbol
+                yield f"[PROCESS]✅ 找到交易對: {normalized_symbol} @ {exchange}\n"
+
+                state_input = {
+                    "symbol": normalized_symbol,
+                    "exchange": exchange,
+                    "interval": parsed.get("interval") or interval,
+                    "limit": DEFAULT_KLINES_LIMIT,
+                    "market_type": "spot",
+                    "leverage": 1,
+                    "include_multi_timeframe": True,
+                    "short_term_interval": "1h",
+                    "medium_term_interval": "4h",
+                    "long_term_interval": "1d",
+                    "preloaded_data": None,
+                    "account_balance": None,
+                    "selected_analysts": parsed.get("focus") or ["technical", "sentiment", "fundamental", "news"],
+                    "perform_trading_decision": True,
+                    "debate_round": 0,
+                    "debate_history": []
+                }
+
+                try:
+                    accumulated_state = state_input.copy()
+                    # 開始過程區塊
+                    yield "[PROCESS_START]\n"
+                    yield f"[PROCESS]⏳ 開始執行分析流程...\n"
+
+                    event_count = 0
+                    for event in app.stream(state_input):
+                        event_count += 1
+                        for node_name, state_update in event.items():
+                            accumulated_state.update(state_update)
+
+                            if node_name == "prepare_data":
+                                price = state_update.get("current_price", 0)
+                                yield f"[PROCESS]✅ **數據準備完成**: 當前價格 ${price:.4f}\n"
+
+                            elif node_name == "run_analyst_team":
+                                reports = state_update.get("analyst_reports", [])
+                                yield f"[PROCESS]📊 **AI 分析師團隊**: 已完成 {len(reports)} 份專業報告\n"
+                                for report in reports:
+                                    analyst_type = getattr(report, 'analyst_type', '分析師')
+                                    bullish = len(getattr(report, 'bullish_points', []))
+                                    bearish = len(getattr(report, 'bearish_points', []))
+                                    total = bullish + bearish
+                                    if total > 0:
+                                        # 用視覺化比例條顯示多空比
+                                        bull_ratio = bullish / total
+                                        bull_bars = round(bull_ratio * 5)
+                                        bear_bars = 5 - bull_bars
+                                        bar = '🟩' * bull_bars + '🟥' * bear_bars
+                                        signal = f"{bar} ({bullish}多/{bearish}空)"
+                                    else:
+                                        signal = "⬜⬜⬜⬜⬜ (無數據)"
+                                    yield f"[PROCESS]   → {analyst_type}: {signal}\n"
+
+                            elif node_name == "run_research_debate":
+                                history = accumulated_state.get("debate_history", [])
+                                if history:
+                                    latest = history[-1]
+                                    yield f"[PROCESS]\n---\n### ⚔️ 第 {latest.get('round')} 輪辯論：{latest.get('topic')}\n\n"
+                                    bull_arg = latest.get('bull', {}).get('argument', '無觀點')
+                                    yield f"[PROCESS]**🐂 多頭觀點**:\n> {bull_arg.replace(chr(10), chr(10) + '> ')}\n\n"
+                                    bear_arg = latest.get('bear', {}).get('argument', '無觀點')
+                                    yield f"[PROCESS]**🐻 空頭觀點**:\n> {bear_arg.replace(chr(10), chr(10) + '> ')}\n\n"
+                                    neutral_arg = latest.get('neutral', {}).get('argument', '無觀點')
+                                    yield f"[PROCESS]**⚖️ 中立觀點**:\n> {neutral_arg.replace(chr(10), chr(10) + '> ')}\n\n"
+
+                            elif node_name == "run_debate_judgment":
+                                judgment = state_update.get("debate_judgment")
+                                if judgment:
+                                    winner = judgment.winning_stance
+                                    action = judgment.suggested_action
+                                    yield f"[PROCESS]👨‍⚖️ **辯論裁決**: 勝方 **{winner}** → 建議 **{action}**\n"
+                                    yield f"[PROCESS]   獲勝原因: {judgment.winning_reason}\n"
+                                    if judgment.fatal_flaw:
+                                        yield f"[PROCESS]   ⚠️ 致命缺陷: {judgment.fatal_flaw}\n"
+                                    yield f"[PROCESS]   📌 {judgment.key_takeaway}\n\n"
+
+                            elif node_name == "run_trader_decision":
+                                decision = state_update.get("trader_decision")
+                                follows = "✅ 遵循裁判" if decision.follows_judge else "⚠️ 偏離裁判"
+                                yield f"[PROCESS]⚖️ **交易員決策**: **{decision.decision}** | 倉位: {decision.position_size:.0%} | {follows}\n"
+                                if not decision.follows_judge and decision.deviation_reason:
+                                    yield f"[PROCESS]   偏離原因: {decision.deviation_reason}\n"
+                                yield f"[PROCESS]   主要風險: {decision.key_risk}\n"
+
+                            elif node_name == "run_risk_management":
+                                risk = state_update.get("risk_assessment")
+                                yield f"[PROCESS]🛡️ **風險評估**: {risk.risk_level} (批准狀態: {risk.approve})\n"
+
+                            elif node_name == "run_fund_manager_approval":
+                                approval = state_update.get("final_approval")
+                                yield f"[PROCESS]💰 **基金經理最終審批**: {approval.final_decision}\n"
+
+                    # 結束過程區塊
+                    yield "[PROCESS_END]\n"
+
+                    # 最終報告
+                    yield "[RESULT]\n"
+                    formatted_report = format_full_analysis_result(accumulated_state, "現貨", normalized_symbol, accumulated_state['interval'])
+                    yield formatted_report
+                    return
+
+                except Exception as e:
+                    import traceback
+                    error_detail = traceback.format_exc()
+                    print(f"❌ 分析過程中發生錯誤: {error_detail}")
+                    yield f"[PROCESS]❌ 分析過程中發生錯誤: {str(e)}\n"
+                    yield f"[RESULT]\n❌ **錯誤**: {str(e)}\n\n請檢查後端日誌以獲取更多詳情。"
+                    return
+
+        except Exception as e:
+            print(f"解析意圖失敗: {e}")
+
         if self.use_agent:
             try:
-                # 使用 Agent 處理對話
                 for chunk in self.agent.chat_stream(user_message):
                     yield chunk
             except Exception as e:
                 yield f"處理請求時發生錯誤: {str(e)}"
             return
 
-        # ============ 舊架構: 保持向後兼容 ============
-        parsed = self.parser.parse_query(user_message)
-        intent = parsed.get("intent", "general_question")
-        symbols = parsed.get("symbols", [])
-
-        # 如果 LLM 解析沒找到幣種，嘗試用正則表達式從消息中提取
-        if not symbols:
-            crypto_pattern = r'\b([A-Z]{2,10})\b'
-            matches = re.findall(crypto_pattern, user_message.upper())
-            # 排除常見非幣種詞彙
-            common_words = {'USDT', 'BUSD', 'USD', 'TWD', 'CNY', 'THE', 'AND', 'FOR', 'RSI', 'MACD', 'EMA', 'SMA', 'MA', 'BB', 'API', 'OK', 'HTTP'}
-            explicit_symbols = [m for m in matches if m not in common_words and len(m) >= 2]
-            if explicit_symbols:
-                symbols = explicit_symbols[:3]  # 最多取前3個
-                print(f">> 從消息中提取到幣種: {symbols}")
-
-        # 上下文補全：只有在消息中完全沒有幣種時才使用歷史幣種
-        if not symbols and self.last_symbol:
-            # 去除 OKX 的 -USDT 後綴進行補全
-            base_last = self.last_symbol.replace("-USDT", "").replace("USDT", "")
-            symbols = [base_last]
-            print(f">> 從上下文補全幣種: {symbols}")
-
-        if intent == "greeting":
-            yield "你好！我是加密貨幣投資分析助手，請問有什麼可以為您服務的？"
-            return
-
-        if symbols:
-            # 時間週期優先級：提問文字 > 手動 UI 選擇
-            query_interval = parsed.get("interval")
-            final_interval = query_interval if query_interval else interval
-
-            focus = parsed.get("focus", ["technical", "sentiment", "fundamental", "news"])
-            requires_trade_decision = parsed.get("requires_trade_decision", True)
-
-            # 手動 UI 勾選覆蓋
-            if manual_selection:
-                selected_map = {"Technical Analysis": "technical", "News Analysis": "news", "Fundamental Analysis": "fundamental", "Sentiment Analysis": "sentiment"}
-                manual_focus = [selected_map[item] for item in manual_selection if item in selected_map]
-                if manual_focus: focus = manual_focus
-                if "Full Trading Decision" in manual_selection: requires_trade_decision = True
-                elif manual_focus: requires_trade_decision = False
-
-            symbol = symbols[0]
-            yield f"好的，正在為您分析 {symbol} ({final_interval})...\n"
-
-            try:
-                _, _, summary_generator = self.analyze_crypto(
-                    symbol, interval=final_interval, limit=limit,
-                    selected_analysts=focus, perform_trading_decision=requires_trade_decision
-                )
-                response_so_far = ""
-                for part in summary_generator:
-                    response_so_far += part
-                    yield response_so_far
-            except Exception as e:
-                yield f"\n>> 分析時發生錯誤: {e}"
-        else:
-            yield "抱歉，我不太理解您的問題。您可以試著問我「比特幣可以投資嗎？」或指定特定指標如「它的 15分鐘線 RSI 是多少」。"
+        yield "抱歉，我不太理解您的問題。"
 
     def clear_history(self):
         """清除對話歷史"""

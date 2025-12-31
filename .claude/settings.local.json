@@ -8,7 +8,8 @@
       "Bash(dir:*)",
       "Bash(fc-list:*)",
       "Bash(pip index:*)",
-      "Bash(pip show:*)"
+      "Bash(pip show:*)",
+      "Bash(python3:*)"
     ],
     "deny": [],
     "ask": []

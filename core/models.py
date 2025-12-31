@@ -47,16 +47,18 @@ class FactCheckResult(BaseModel):
 
 
 class TraderDecision(BaseModel):
-    """交易員決策結構"""
+    """交易員決策結構 - 基於裁判裁決而非主觀信心"""
     decision: Literal['Buy', 'Sell', 'Hold', 'Long', 'Short']
-    reasoning: str = Field(..., min_length=100)
-    position_size: float = Field(..., ge=0, le=1)
+    reasoning: str = Field(..., min_length=20, description="為什麼做出此決策（必須引用裁判的裁決）")
+    position_size: float = Field(..., ge=0, le=1, description="倉位大小，基於裁判建議行動強度")
     leverage: Optional[int] = Field(None, ge=1, le=125)
     entry_price: Optional[float] = None
     stop_loss: Optional[float] = None
     take_profit: Optional[float] = None
-    confidence: float = Field(..., ge=0, le=100)
-    synthesis: str = Field(..., min_length=50, description="如何綜合各方意見")
+    # 移除 confidence，改為遵循裁判的 suggested_action
+    follows_judge: bool = Field(..., description="是否遵循裁判建議")
+    deviation_reason: Optional[str] = Field(None, description="如果不遵循裁判，說明原因")
+    key_risk: str = Field(..., description="此交易的主要風險點")
     # 添加多週期分析支持
     multi_timeframe_analysis: Optional[MultiTimeframeData] = None
 
@@ -85,10 +87,23 @@ class FinalApproval(BaseModel):
 
 
 class DebateJudgment(BaseModel):
-    """綜合交易委員會 (裁判) 的裁決結構"""
-    bull_score: float = Field(..., ge=0, le=100, description="對多頭論點的公信力評分")
-    bear_score: float = Field(..., ge=0, le=100, description="對空頭論點的公信力評分")
-    neutral_score: float = Field(..., ge=0, le=100, description="對中立論點的公信力評分")
-    judge_rationale: str = Field(..., min_length=100, description="裁決理由與各方表現評價")
+    """綜合交易委員會 (裁判) 的裁決結構 - 基於論點品質而非數字評分"""
+
+    # 各方論點評估（文字描述，非數字）
+    bull_evaluation: str = Field(..., min_length=10, description="多頭論點的優缺點評估")
+    bear_evaluation: str = Field(..., min_length=10, description="空頭論點的優缺點評估")
+    neutral_evaluation: str = Field(..., min_length=10, description="中立論點的優缺點評估")
+
+    # 關鍵論點對決
+    strongest_bull_point: str = Field(..., description="多頭最有力的論點")
+    strongest_bear_point: str = Field(..., description="空頭最有力的論點")
+    fatal_flaw: Optional[str] = Field(None, description="某方論點的致命缺陷（如有）")
+
+    # 裁決結果
+    winning_stance: Literal['Bull', 'Bear', 'Neutral', 'Tie'] = Field(..., description="勝出方")
+    winning_reason: str = Field(..., min_length=10, description="為什麼這一方獲勝（具體引用其論點）")
+
+    # 交易建議
+    suggested_action: Literal['強烈做多', '適度做多', '觀望', '適度做空', '強烈做空'] = Field(..., description="基於辯論結果的建議行動")
+    action_rationale: str = Field(..., description="建議行動的依據")
     key_takeaway: str = Field(..., description="裁判總結的最核心市場事實")
-    winning_stance: Literal['Bull', 'Bear', 'Neutral', 'Tie'] = Field(..., description="哪一方在辯論中更具說服力")
