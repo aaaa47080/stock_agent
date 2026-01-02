@@ -51,6 +51,10 @@ logs/
 Thumbs.db
 
 # Project specific
+user_data.db
+analysis_results/
+decisions/
+pattern_charts/
 # *.pdf
 # reports/
 # backups/
