@@ -418,7 +418,7 @@ class CryptoAnalysisBot:
 
         yield f"\n*分析時間: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*"
     
-    def process_message(self, user_message: str, interval: str = "1d", limit: int = 100, manual_selection: List[str] = None):
+    def process_message(self, user_message: str, interval: str = "1d", limit: int = 100, manual_selection: List[str] = None, auto_execute: bool = False, market_type: str = "spot"):
         """
         處理用戶消息 (支援混合模式：普通問題走 Agent，完整分析走即時串流 Graph)
         """
@@ -434,6 +434,9 @@ class CryptoAnalysisBot:
         # 1. 嘗試解析意圖
         try:
             parsed = self.parser.parse_query(user_message)
+            if not parsed:
+                parsed = {} # Fallback to empty dict to avoid NoneType error
+            
             intent = parsed.get("intent", "general_question")
             symbols = parsed.get("symbols", [])
             requires_trade_decision = parsed.get("requires_trade_decision", False)
@@ -477,24 +480,59 @@ class CryptoAnalysisBot:
                     return
 
                 exchange, normalized_symbol = exchange_info
+                
+                # 如果是合約市場且交易所是 OKX，確保符號正確 (OKX 合約格式: BTC-USDT-SWAP)
+                if market_type == "futures" and exchange == "okx" and not normalized_symbol.endswith("-SWAP"):
+                    normalized_symbol = normalized_symbol + "-SWAP"
+                
                 self.last_symbol = normalized_symbol
-                yield f"[PROCESS]✅ 找到交易對: {normalized_symbol} @ {exchange}\n"
+                yield f"[PROCESS]✅ 找到交易對: {normalized_symbol} @ {exchange} ({'現貨' if market_type == 'spot' else '合約'})\n"
+
+                # 嘗試獲取帳戶餘額 (用於計算建議倉位，無論是否自動執行)
+                account_balance = None
+                from trading.okx_api_connector import OKXAPIConnector
+                okx = OKXAPIConnector()
+                
+                # 只有當 Key 存在時才嘗試獲取餘額
+                if all([okx.api_key, okx.secret_key, okx.passphrase]):
+                    try:
+                        # 獲取 USDT 餘額
+                        bal_res = okx.get_account_balance("USDT")
+                        if bal_res and bal_res.get('code') == '0' and bal_res.get('data'):
+                            details = bal_res['data'][0]['details']
+                            usdt_bal = next((d for d in details if d['ccy'] == 'USDT'), None)
+                            if usdt_bal:
+                                avail = float(usdt_bal.get('availBal', 0))
+                                account_balance = {'available_balance': avail, 'currency': 'USDT'}
+                                yield f"[PROCESS]💳 帳戶餘額: ${avail:.2f} USDT\n"
+                    except Exception as e:
+                        # 靜默失敗，不阻擋分析流程，只影響後續金額計算
+                        print(f"Failed to fetch balance: {e}")
+                
+                # 如果開啟自動交易但沒有 Key，發出警告
+                if auto_execute and not account_balance:
+                     if not all([okx.api_key, okx.secret_key, okx.passphrase]):
+                        yield f"[PROCESS]⚠️ **警告**: 您啟用了自動交易，但尚未設定 API Key。\n"
+                        auto_execute = False
+                     else:
+                        yield f"[PROCESS]⚠️ **警告**: 無法獲取餘額，自動交易可能受限。\n"
 
                 state_input = {
                     "symbol": normalized_symbol,
                     "exchange": exchange,
                     "interval": parsed.get("interval") or interval,
                     "limit": DEFAULT_KLINES_LIMIT,
-                    "market_type": "spot",
-                    "leverage": 1,
+                    "market_type": market_type, 
+                    "leverage": 1 if market_type == "spot" else 5, # 預設合約 5 倍
                     "include_multi_timeframe": True,
                     "short_term_interval": "1h",
                     "medium_term_interval": "4h",
                     "long_term_interval": "1d",
                     "preloaded_data": None,
-                    "account_balance": None,
+                    "account_balance": account_balance,
                     "selected_analysts": parsed.get("focus") or ["technical", "sentiment", "fundamental", "news"],
                     "perform_trading_decision": True,
+                    "execute_trade": False, # 禁用圖表內自動執行，改為前端手動確認 (HITL)
                     "debate_round": 0,
                     "debate_history": []
                 }
@@ -572,6 +610,44 @@ class CryptoAnalysisBot:
                             elif node_name == "run_fund_manager_approval":
                                 approval = state_update.get("final_approval")
                                 yield f"[PROCESS]💰 **基金經理最終審批**: {approval.final_decision}\n"
+                                
+                                # HITL: 如果獲得批准，生成交易提案供前端顯示
+                                if approval.approved:
+                                    # 提取交易決策細節
+                                    decision = accumulated_state.get('trader_decision')
+                                    market_type = accumulated_state.get('market_type')
+                                    symbol = accumulated_state.get('symbol')
+                                    leverage = approval.approved_leverage or 1
+                                    
+                                    # 計算建議金額 (基於倉位與餘額)
+                                    balance = accumulated_state.get('account_balance')
+                                    amount = 0
+                                    balance_status = "unknown"
+
+                                    if balance:
+                                        avail = balance.get('available_balance', 0)
+                                        if avail > 0:
+                                            amount = avail * approval.final_position_size
+                                            balance_status = "ok"
+                                        else:
+                                            balance_status = "zero"
+                                    
+                                    proposal = {
+                                        "symbol": symbol,
+                                        "market_type": market_type,
+                                        "side": "buy" if "Buy" in decision.decision else ("long" if "Long" in decision.decision else "short"),
+                                        "amount": round(amount, 2),
+                                        "leverage": leverage,
+                                        "price": decision.entry_price,
+                                        "stop_loss": decision.stop_loss,
+                                        "take_profit": decision.take_profit,
+                                        "balance_status": balance_status
+                                    }
+                                    
+                                    # 改為嵌入式按鈕數據，而非自動彈窗
+                                    # 我們使用一個特殊的隱藏區塊，讓前端解析並渲染按鈕
+                                    proposal_json = json.dumps(proposal)
+                                    yield f"\n\n<!-- TRADE_PROPOSAL_START {proposal_json} TRADE_PROPOSAL_END -->\n"
 
                     # 結束過程區塊
                     yield "[PROCESS_END]\n"

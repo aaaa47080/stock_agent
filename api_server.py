@@ -36,13 +36,22 @@ try:
         SUPPORTED_EXCHANGES, DEFAULT_INTERVAL, DEFAULT_KLINES_LIMIT,
         SCREENER_TARGET_SYMBOLS, SCREENER_UPDATE_INTERVAL_MINUTES
     )
-    from core.database import add_to_watchlist, remove_from_watchlist, get_watchlist
+    from core.database import add_to_watchlist, remove_from_watchlist, get_watchlist, get_cache, set_cache
     from data.market_data import get_klines
+    from trading.okx_api_connector import OKXAPIConnector
 except ImportError as e:
     logger.critical(f"無法導入核心模組: {e}")
     sys.exit(1)
 
 load_dotenv()
+
+# 初始化 OKX 連接器
+try:
+    okx_connector = OKXAPIConnector()
+    logger.info("OKX Connector 初始化成功")
+except Exception as e:
+    logger.error(f"OKX Connector 初始化失敗: {e}")
+    okx_connector = None
 
 from contextlib import asynccontextmanager
 
@@ -51,11 +60,14 @@ async def lifespan(app: FastAPI):
     # Startup: 嘗試載入快取
     load_screener_cache()
     load_market_pulse_cache()
-    
+    load_funding_rate_cache()
+
     # Startup: 啟動背景篩選器更新任務
     asyncio.create_task(update_screener_task())
     # Startup: 啟動 Market Pulse 定期更新任務
     asyncio.create_task(update_market_pulse_task())
+    # Startup: 啟動 Funding Rate 定期更新任務
+    asyncio.create_task(funding_rate_update_task())
     yield
     # Shutdown logic can go here if needed
 
@@ -67,19 +79,25 @@ cached_screener_result = {
     "timestamp": None,
     "data": None
 }
-SCREENER_CACHE_FILE = "analysis_results/screener_cache.json"
 
 # --- 全域快取 (Market Pulse) ---
 # 用於儲存市場脈動 AI 分析結果
 MARKET_PULSE_CACHE = {}
-MARKET_PULSE_CACHE_FILE = "analysis_results/market_pulse_cache.json"
 # 固定監控的幣種列表
 MARKET_PULSE_TARGETS = ["BTC", "ETH", "SOL", "PI"]
 # 更新頻率 (秒)
 MARKET_PULSE_UPDATE_INTERVAL = 3600  # 1小時
 
+# --- 全域快取 (Funding Rate) ---
+FUNDING_RATE_CACHE = {
+    "timestamp": None,
+    "data": {}
+}
+FUNDING_RATE_UPDATE_INTERVAL = 300  # 5分鐘更新一次
+
 # Locks for concurrency control
 screener_lock = asyncio.Lock()
+funding_rate_lock = asyncio.Lock()
 symbol_locks = {} # {symbol: asyncio.Lock()}
 
 def get_symbol_lock(symbol: str) -> asyncio.Lock:
@@ -88,25 +106,78 @@ def get_symbol_lock(symbol: str) -> asyncio.Lock:
     return symbol_locks[symbol]
 
 def save_market_pulse_cache():
-    """Save Market Pulse data to a JSON file."""
+    """Save Market Pulse data to DB."""
     try:
-        os.makedirs(os.path.dirname(MARKET_PULSE_CACHE_FILE), exist_ok=True)
-        with open(MARKET_PULSE_CACHE_FILE, 'w', encoding='utf-8') as f:
-            json.dump(MARKET_PULSE_CACHE, f, ensure_ascii=False, indent=2)
-        logger.info(f"Market Pulse cache saved to {MARKET_PULSE_CACHE_FILE}")
+        set_cache("MARKET_PULSE", MARKET_PULSE_CACHE)
+        logger.info(f"Market Pulse cache saved to DB")
     except Exception as e:
         logger.error(f"Failed to save Market Pulse cache: {e}")
 
 def load_market_pulse_cache():
-    """Load Market Pulse data from the JSON file."""
+    """Load Market Pulse data from DB."""
     global MARKET_PULSE_CACHE
     try:
-        if os.path.exists(MARKET_PULSE_CACHE_FILE):
-            with open(MARKET_PULSE_CACHE_FILE, 'r', encoding='utf-8') as f:
-                MARKET_PULSE_CACHE = json.load(f)
-            logger.info(f"Loaded Market Pulse cache from {MARKET_PULSE_CACHE_FILE} ({len(MARKET_PULSE_CACHE)} symbols)")
+        data = get_cache("MARKET_PULSE")
+        if data:
+            MARKET_PULSE_CACHE = data
+            logger.info(f"Loaded Market Pulse cache from DB ({len(MARKET_PULSE_CACHE)} symbols)")
     except Exception as e:
         logger.error(f"Failed to load Market Pulse cache: {e}")
+
+# --- Funding Rate Cache Functions ---
+def save_funding_rate_cache():
+    """Save Funding Rate data to DB."""
+    try:
+        set_cache("FUNDING_RATE", FUNDING_RATE_CACHE)
+        logger.info(f"Funding Rate cache saved ({len(FUNDING_RATE_CACHE.get('data', {}))} symbols)")
+    except Exception as e:
+        logger.error(f"Failed to save Funding Rate cache: {e}")
+
+def load_funding_rate_cache():
+    """Load Funding Rate data from DB."""
+    global FUNDING_RATE_CACHE
+    try:
+        data = get_cache("FUNDING_RATE")
+        if data:
+            FUNDING_RATE_CACHE = data
+            logger.info(f"Loaded Funding Rate cache from DB ({len(FUNDING_RATE_CACHE.get('data', {}))} symbols)")
+    except Exception as e:
+        logger.error(f"Failed to load Funding Rate cache: {e}")
+
+async def update_funding_rates():
+    """Update all funding rates from OKX."""
+    from trading.okx_api_connector import OKXAPIConnector
+
+    async with funding_rate_lock:
+        try:
+            logger.info("Updating funding rates...")
+            loop = asyncio.get_running_loop()
+            okx = OKXAPIConnector()
+
+            # 在執行緒池中執行（因為是同步 API 調用）
+            funding_rates = await loop.run_in_executor(None, okx.get_all_funding_rates)
+
+            if "error" not in funding_rates:
+                FUNDING_RATE_CACHE["timestamp"] = datetime.now().isoformat()
+                FUNDING_RATE_CACHE["data"] = funding_rates
+                save_funding_rate_cache()
+                logger.info(f"Funding rates updated: {len(funding_rates)} symbols")
+            else:
+                logger.error(f"Failed to update funding rates: {funding_rates.get('error')}")
+        except Exception as e:
+            logger.error(f"Funding rate update error: {e}")
+
+async def funding_rate_update_task():
+    """Background task to update funding rates periodically."""
+    await asyncio.sleep(5)  # 延遲啟動
+
+    # 初始更新
+    await update_funding_rates()
+
+    # 定期更新
+    while True:
+        await asyncio.sleep(FUNDING_RATE_UPDATE_INTERVAL)
+        await update_funding_rates()
 
 async def update_single_market_pulse(symbol: str, fixed_sources: List[str]):
     """Helper to update a single symbol for Market Pulse."""
@@ -127,55 +198,88 @@ async def update_single_market_pulse(symbol: str, fixed_sources: List[str]):
     except Exception as e:
         logger.error(f"[Background] Error updating {symbol}: {e}")
 
+class RefreshPulseRequest(BaseModel):
+    symbols: Optional[List[str]] = None
+
+async def refresh_all_market_pulse_data(target_symbols: List[str] = None):
+    """
+    Refreshes Market Pulse data for specified symbols concurrently.
+    Ensures all symbols share the EXACT SAME timestamp for consistency.
+    """
+    # Use provided symbols or fallback to defaults
+    raw_symbols = target_symbols if target_symbols and len(target_symbols) > 0 else MARKET_PULSE_TARGETS
+    
+    # Normalize symbols: UPPER -> remove USDT/BUSD/- -> unique
+    # This matches the key format used in get_market_pulse_api
+    symbols_to_update = set()
+    for s in raw_symbols:
+        norm = s.upper().replace("USDT", "").replace("BUSD", "").replace("-", "")
+        if norm:
+            symbols_to_update.add(norm)
+    symbols_to_update = list(symbols_to_update)
+    
+    FIXED_SOURCES = ['google', 'cryptopanic', 'newsapi', 'cryptocompare']
+    logger.info(f"🔄 Starting global Market Pulse refresh for: {symbols_to_update}")
+    
+    # 1. Run updates concurrently
+    tasks = [update_single_market_pulse(sym, FIXED_SOURCES) for sym in symbols_to_update]
+    await asyncio.gather(*tasks)
+    
+    # 2. Unify Timestamps
+    # Even with concurrent execution, LLM processing times vary.
+    # We overwrite the timestamp to ensure the UI shows them as one cohesive "snapshot".
+    batch_timestamp = datetime.now().isoformat()
+    for sym in symbols_to_update:
+        if sym in MARKET_PULSE_CACHE:
+            MARKET_PULSE_CACHE[sym]["timestamp"] = batch_timestamp
+            
+    # 3. Save Cache
+    save_market_pulse_cache()
+    logger.info("✅ Global Market Pulse refresh complete.")
+    return batch_timestamp
+
 async def update_market_pulse_task():
     """Background task to update Market Pulse analysis periodically."""
     
-    # 固定的新聞來源，確保品質一致
-    FIXED_SOURCES = ['google', 'cryptopanic', 'newsapi', 'cryptocompare']
-    
-    # 1. Initial Fast Update (Concurrent)
-    logger.info("🚀 Starting initial Market Pulse analysis (Concurrent)...")
-    tasks = [update_single_market_pulse(sym, FIXED_SOURCES) for sym in MARKET_PULSE_TARGETS]
-    await asyncio.gather(*tasks)
-    save_market_pulse_cache()
-    logger.info("✅ Initial Market Pulse analysis complete.")
+    # 1. Initial Fast Update
+    logger.info("🚀 Starting initial Market Pulse analysis...")
+    await refresh_all_market_pulse_data()
 
     # 2. Periodic Update Loop
     while True:
         await asyncio.sleep(MARKET_PULSE_UPDATE_INTERVAL)
         try:
             logger.info("Starting scheduled Market Pulse update cycle...")
-            
-            # For periodic updates, we can do them sequentially or semi-concurrently to be gentle on APIs
-            for symbol in MARKET_PULSE_TARGETS:
-                await update_single_market_pulse(symbol, FIXED_SOURCES)
-                await asyncio.sleep(5) # Gentle spacing
-            
-            save_market_pulse_cache()
-            logger.info("Scheduled Market Pulse update complete.")
-            
+            await refresh_all_market_pulse_data()
         except Exception as e:
             logger.error(f"Market Pulse task error: {e}")
 
-def save_screener_cache(data: Dict[str, Any]):
-    """Save screener data to a JSON file."""
+@app.post("/api/market-pulse/refresh-all")
+async def api_refresh_all_market_pulse(request: RefreshPulseRequest):
+    """Trigger a global refresh of specified Market Pulse targets immediately."""
     try:
-        os.makedirs(os.path.dirname(SCREENER_CACHE_FILE), exist_ok=True)
-        with open(SCREENER_CACHE_FILE, 'w', encoding='utf-8') as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        logger.info(f"Screener cache saved to {SCREENER_CACHE_FILE}")
+        timestamp = await refresh_all_market_pulse_data(request.symbols)
+        return {"status": "success", "timestamp": timestamp}
+    except Exception as e:
+        logger.error(f"Manual refresh failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+def save_screener_cache(data: Dict[str, Any]):
+    """Save screener data to DB."""
+    try:
+        set_cache("SCREENER", data)
+        logger.info(f"Screener cache saved to DB")
     except Exception as e:
         logger.error(f"Failed to save screener cache: {e}")
 
 def load_screener_cache():
-    """Load screener data from the JSON file."""
+    """Load screener data from DB."""
     try:
-        if os.path.exists(SCREENER_CACHE_FILE):
-            with open(SCREENER_CACHE_FILE, 'r', encoding='utf-8') as f:
-                data = json.load(f)
+        data = get_cache("SCREENER")
+        if data:
             cached_screener_result["timestamp"] = data.get("timestamp")
             cached_screener_result["data"] = data.get("data")
-            logger.info(f"Loaded screener cache from {SCREENER_CACHE_FILE} (Timestamp: {data.get('timestamp')})")
+            logger.info(f"Loaded screener cache from DB (Timestamp: {data.get('timestamp')})")
     except Exception as e:
         logger.error(f"Failed to load screener cache: {e}")
 
@@ -211,6 +315,8 @@ class QueryRequest(BaseModel):
     interval: str = DEFAULT_INTERVAL
     limit: int = DEFAULT_KLINES_LIMIT
     manual_selection: Optional[List[str]] = None
+    auto_execute: bool = False
+    market_type: str = "spot"
 
 class ScreenerRequest(BaseModel):
     exchange: str = SUPPORTED_EXCHANGES[0]
@@ -230,6 +336,83 @@ class BacktestRequest(BaseModel):
     symbol: str
     signal_type: str = "RSI" # RSI, MACD, MA_CROSS
     interval: str = "1h"
+
+
+class APIKeySettings(BaseModel):
+    api_key: str
+    secret_key: str
+    passphrase: str
+
+def update_env_file(keys: Dict[str, str]):
+    """Helper function to update or append keys to the .env file"""
+    env_path = os.path.join(project_root, ".env")
+    
+    # Read existing lines
+    if os.path.exists(env_path):
+        with open(env_path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+    else:
+        lines = []
+
+    # Prepare new content
+    new_lines = []
+    updated_keys = set()
+    
+    for line in lines:
+        key_match = False
+        for k, v in keys.items():
+            if line.strip().startswith(f"{k}="):
+                new_lines.append(f"{k}={v}\n")
+                updated_keys.add(k)
+                key_match = True
+                break
+        if not key_match:
+            new_lines.append(line)
+    
+    # Append new keys that weren't in the file
+    if len(new_lines) > 0 and not new_lines[-1].endswith('\n'):
+        new_lines.append('\n')
+        
+    for k, v in keys.items():
+        if k not in updated_keys:
+            new_lines.append(f"{k}={v}\n")
+
+    # Write back
+    with open(env_path, "w", encoding="utf-8") as f:
+        f.writelines(new_lines)
+
+@app.post("/api/settings/keys")
+async def update_api_keys(settings: APIKeySettings):
+    """接收前端傳來的 API Keys，寫入 .env 並熱重載連接器"""
+    global okx_connector
+    
+    try:
+        # 1. Update .env file for persistence
+        update_env_file({
+            "OKX_API_KEY": settings.api_key,
+            "OKX_API_SECRET": settings.secret_key,
+            "OKX_PASSPHRASE": settings.passphrase
+        })
+        
+        # 2. Update environment variables for current process
+        os.environ["OKX_API_KEY"] = settings.api_key
+        os.environ["OKX_API_SECRET"] = settings.secret_key
+        os.environ["OKX_PASSPHRASE"] = settings.passphrase
+        
+        # 3. Re-initialize the connector
+        from trading.okx_api_connector import OKXAPIConnector
+        okx_connector = OKXAPIConnector()
+        
+        # 4. Verify connection immediately
+        if not okx_connector.test_connection():
+            return {"success": False, "message": "Keys saved, but connection failed. Please check your inputs."}
+            
+        logger.info("API Keys updated and connector re-initialized successfully.")
+        return {"success": True, "message": "API Keys 設定成功且連線正常！"}
+        
+    except Exception as e:
+        logger.error(f"Failed to update API keys: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # --- 背景任務 ---
@@ -455,7 +638,14 @@ async def analyze_crypto(request: QueryRequest):
         try:
             # 使用 iterate_in_threadpool 將同步生成器轉為異步
             async for part in iterate_in_threadpool(
-                bot.process_message(request.message, request.interval, request.limit, request.manual_selection)
+                bot.process_message(
+                    request.message, 
+                    request.interval, 
+                    request.limit, 
+                    request.manual_selection,
+                    request.auto_execute,
+                    request.market_type
+                )
             ):
                 # 包裝成 JSON 格式發送給前端
                 yield f"data: {json.dumps({'content': part})}\n\n"
@@ -466,6 +656,13 @@ async def analyze_crypto(request: QueryRequest):
             yield f"data: {json.dumps({'error': 'Internal Server Error'})}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+@app.post("/api/chat/clear")
+async def clear_chat_history():
+    """清除對話歷史"""
+    if bot:
+        bot.clear_history()
+    return {"status": "success", "message": "Chat history cleared"}
 
 @app.get("/api/config")
 async def get_config():
@@ -655,21 +852,124 @@ async def get_klines_data(request: KlineRequest):
         logger.error(f"獲取 K 線數據失敗: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
+# --- 資金費率 (Funding Rate) API ---
+
+@app.get("/api/funding-rates")
+async def get_funding_rates(refresh: bool = False):
+    """
+    獲取所有幣種的資金費率。
+    資金費率為正表示多頭付給空頭（市場看多），負值表示空頭付給多頭（市場看空）。
+    """
+    try:
+        # 如果要求刷新或快取為空，則更新
+        if refresh or not FUNDING_RATE_CACHE.get("data"):
+            await update_funding_rates()
+
+        data = FUNDING_RATE_CACHE.get("data", {})
+        timestamp = FUNDING_RATE_CACHE.get("timestamp")
+
+        # 計算極端值統計
+        rates = [(sym, info.get("fundingRate", 0)) for sym, info in data.items()]
+        sorted_by_rate = sorted(rates, key=lambda x: x[1], reverse=True)
+
+        # 前5個最高（多頭擁擠）
+        top_bullish = sorted_by_rate[:5]
+        # 後5個最低（空頭擁擠）
+        top_bearish = sorted_by_rate[-5:][::-1]
+
+        return {
+            "timestamp": timestamp,
+            "total_count": len(data),
+            "data": data,
+            "top_bullish": [{"symbol": s, "fundingRate": r} for s, r in top_bullish],
+            "top_bearish": [{"symbol": s, "fundingRate": r} for s, r in top_bearish]
+        }
+    except Exception as e:
+        logger.error(f"獲取資金費率失敗: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/funding-rate/{symbol}")
+async def get_single_funding_rate(symbol: str):
+    """獲取單個幣種的資金費率"""
+    try:
+        base_symbol = symbol.upper().replace("USDT", "").replace("-SWAP", "").replace("-", "")
+
+        # 先檢查快取
+        if FUNDING_RATE_CACHE.get("data") and base_symbol in FUNDING_RATE_CACHE["data"]:
+            return FUNDING_RATE_CACHE["data"][base_symbol]
+
+        # 快取中沒有，直接查詢
+        from trading.okx_api_connector import OKXAPIConnector
+        okx = OKXAPIConnector()
+        instId = f"{base_symbol}-USDT-SWAP"
+        result = okx.get_funding_rate(instId)
+
+        if result.get("code") == "0" and result.get("data"):
+            data = result["data"][0]
+            return {
+                "symbol": base_symbol,
+                "instId": instId,
+                "fundingRate": float(data.get("fundingRate", 0)) * 100,
+                "nextFundingRate": float(data.get("nextFundingRate", 0)) * 100 if data.get("nextFundingRate") else None,
+                "fundingTime": data.get("fundingTime"),
+                "nextFundingTime": data.get("nextFundingTime")
+            }
+        return {"error": "Not found"}
+    except Exception as e:
+        logger.error(f"Error fetching single funding rate: {e}")
+        return {"error": str(e)}
+
+@app.get("/api/funding-rate-history/{symbol}")
+async def get_funding_rate_history(symbol: str):
+    """獲取資金費率歷史數據"""
+    try:
+        # Normalize symbol (e.g. BTC -> BTC-USDT-SWAP)
+        base = symbol.upper().replace("-USDT", "").replace("-SWAP", "").replace("USDT", "")
+        instId = f"{base}-USDT-SWAP"
+        
+        logger.info(f"[History] Fetching for symbol: {symbol} -> instId: {instId}")
+
+        from trading.okx_api_connector import OKXAPIConnector
+        okx = OKXAPIConnector()
+        
+        # Get the running event loop
+        loop = asyncio.get_running_loop()
+        
+        # Use run_in_executor to avoid blocking event loop
+        result = await loop.run_in_executor(None, okx.get_funding_rate_history, instId)
+        
+        if result.get("code") == "0" and result.get("data"):
+            history = []
+            for item in result["data"]:
+                history.append({
+                    "time": item["fundingTime"],
+                    "rate": float(item["fundingRate"]) * 100, # Convert to percentage
+                    "realRate": float(item["realizedRate"]) * 100 if "realizedRate" in item else float(item["fundingRate"]) * 100
+                })
+            # OKX returns newest first, reverse to show chronological order
+            return {"data": history[::-1], "symbol": base}
+        
+        return {"error": "Failed to fetch history", "details": result}
+    except Exception as e:
+        logger.error(f"Error fetching history: {e}")
+        return {"error": str(e)}
+
 # --- 市場脈動 (Smart Attribution) API ---
 
 @app.get("/api/market-pulse/{symbol}")
-async def get_market_pulse_api(symbol: str, sources: Optional[str] = None):
+async def get_market_pulse_api(symbol: str, sources: Optional[str] = None, refresh: bool = False):
     """
     獲取市場脈動分析。
     使用 Symbol Lock 避免同一時間對同一幣種進行重複的即時分析。
+    refresh=true 可強制刷新數據。
     """
     try:
         from analysis.market_pulse import get_market_pulse
-        
+
         base_symbol = symbol.upper().replace("USDT", "").replace("BUSD", "").replace("-", "")
-        
-        # 1. 優先檢查快取
-        if base_symbol in MARKET_PULSE_CACHE:
+
+        # 1. 優先檢查快取 (除非要求強制刷新)
+        if not refresh and base_symbol in MARKET_PULSE_CACHE:
             return MARKET_PULSE_CACHE[base_symbol]
 
         # 2. 快取未命中，使用鎖進行同步控制
@@ -760,6 +1060,163 @@ async def get_debate_analysis(symbol: str):
         raise
     except Exception as e:
         logger.error(f"AI 辯論分析失敗: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- 帳戶資產與持倉 API ---
+
+@app.get("/api/account/assets")
+async def get_account_assets():
+    """獲取帳戶資產餘額"""
+    if not okx_connector:
+        raise HTTPException(status_code=503, detail="交易連接器尚未就緒")
+    
+    try:
+        # 獲取帳戶餘額 (預設 USDT，也可以不傳參數獲取所有)
+        # 這裡我們不傳 ccy 以獲取所有非零餘額
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, lambda: okx_connector.get_account_balance(ccy=None))
+        
+        if result.get("code") != "0":
+             # 嘗試獲取更多錯誤細節
+             msg = result.get("msg", "Unknown error")
+             logger.error(f"獲取資產失敗: {msg}")
+             raise HTTPException(status_code=500, detail=f"Exchange Error: {msg}")
+             
+        # 整理數據格式給前端
+        data = result.get("data", [])
+        if not data:
+            return {"total_equity": 0, "details": []}
+            
+        account_data = data[0]
+        total_equity = float(account_data.get("totalEq", 0))
+        details = []
+        
+        for bal in account_data.get("details", []):
+            if float(bal.get("eq", 0)) > 0: # 只顯示有餘額的幣種
+                details.append({
+                    "currency": bal.get("ccy"),
+                    "balance": float(bal.get("eq")),
+                    "available": float(bal.get("availBal")),
+                    "frozen": float(bal.get("frozenBal")),
+                    "usd_value": float(bal.get("eqUsd", 0))
+                })
+        
+        # 按美元價值排序
+        details.sort(key=lambda x: x["usd_value"], reverse=True)
+        
+        return {
+            "total_equity": total_equity,
+            "update_time": datetime.fromtimestamp(int(account_data.get("uTime", 0))/1000).isoformat(),
+            "details": details
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"獲取帳戶資產失敗: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/account/positions")
+async def get_account_positions():
+    """獲取當前持倉 (包含現貨與合約)"""
+    if not okx_connector:
+        raise HTTPException(status_code=503, detail="交易連接器尚未就緒")
+        
+    try:
+        loop = asyncio.get_running_loop()
+        # 獲取所有持倉
+        result = await loop.run_in_executor(None, lambda: okx_connector.get_positions("ANY"))
+        
+        if result.get("code") != "0":
+             msg = result.get("msg", "Unknown error")
+             raise HTTPException(status_code=500, detail=f"Exchange Error: {msg}")
+             
+        data = result.get("data", [])
+        positions = []
+        
+        for pos in data:
+            # 區分持倉類型
+            inst_type = pos.get("instType")
+            side = pos.get("posSide") # long, short, net
+            
+            # 處理基礎數據
+            positions.append({
+                "symbol": pos.get("instId"),
+                "type": inst_type,
+                "side": side,
+                "size": float(pos.get("pos")), # 持倉數量
+                "avg_price": float(pos.get("avgPx") or 0), # 開倉均價
+                "mark_price": float(pos.get("markPx") or 0), # 標記價格
+                "pnl": float(pos.get("upl") or 0), # 未實現盈虧
+                "pnl_ratio": float(pos.get("uplRatio") or 0) * 100, # 盈虧率 %
+                "leverage": float(pos.get("lever") or 1),
+                "margin": float(pos.get("margin") or 0),
+                "liq_price": float(pos.get("liqPx") or 0) # 強平價格
+            })
+            
+        return {"positions": positions}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"獲取持倉失敗: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- 交易執行 API ---
+
+class TradeExecutionRequest(BaseModel):
+    symbol: str
+    market_type: str # "spot" or "futures"
+    side: str # "buy", "sell", "long", "short"
+    amount: float # Investment/Margin amount in USDT
+    leverage: int = 1
+    stop_loss: Optional[float] = None
+    take_profit: Optional[float] = None
+
+@app.post("/api/trade/execute")
+async def execute_trade_api(request: TradeExecutionRequest):
+    """
+    手動確認後執行交易 (Human-in-the-loop)
+    """
+    try:
+        from trading.trade_executor import TradeExecutor
+        executor = TradeExecutor()
+        
+        loop = asyncio.get_running_loop()
+        
+        if request.market_type == "spot":
+            result = await loop.run_in_executor(
+                None, 
+                lambda: executor.execute_spot(
+                    symbol=request.symbol, 
+                    side=request.side, 
+                    amount_usdt=request.amount
+                )
+            )
+        elif request.market_type == "futures":
+            result = await loop.run_in_executor(
+                None, 
+                lambda: executor.execute_futures(
+                    symbol=request.symbol, 
+                    side=request.side, 
+                    margin_amount=request.amount,
+                    leverage=request.leverage,
+                    stop_loss=request.stop_loss,
+                    take_profit=request.take_profit
+                )
+            )
+        else:
+            raise HTTPException(status_code=400, detail="Invalid market type")
+            
+        if result.get("status") == "failed":
+            raise HTTPException(status_code=400, detail=result.get("error"))
+            
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"交易執行失敗: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 # --- 回測 (One-Click Backtest) API ---

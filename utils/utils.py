@@ -58,27 +58,24 @@ def safe_float(value, default=0.0):
 def get_crypto_news_cryptopanic(symbol: str = "BTC", limit: int = 5) -> List[Dict]:
     """
     從 CryptoPanic 獲取指定幣種的最新新聞 (有1小時快取)
-    需先申請 API Key: https://cryptopanic.com/developers/api/
     """
-    # 增加延遲以符合 API Rate Limit (2 req/sec)
+    # 增加延遲以符合 API Rate Limit
     time.sleep(0.5)
 
-    # 請替換為你的 CryptoPanic API Token
-    API_TOKEN = os.getenv("API_TOKEN", "")
+    # 統一使用 CRYPTOPANIC_API_KEY
+    API_KEY = os.getenv("CRYPTOPANIC_API_KEY", "")
     
-    if API_TOKEN == "":
-        print(">> 警告：未設定 CryptoPanic API Token，無法獲取真實新聞")
+    if not API_KEY:
+        # 如果沒設定，安靜地返回，不干擾使用者
         return []
 
-    print(f">> 正在從 CryptoPanic API 撈取 {symbol} 的真實新聞 (快取 TTL: 5分鐘)...")
+    print(f">> 正在從 CryptoPanic API 撈取 {symbol} 的真實新聞...")
     
-    # CryptoPanic API 請求
     url = "https://cryptopanic.com/api/developer/v2/posts/"
     params = {
-        "auth_token": API_TOKEN,
+        "auth_token": API_KEY,
         "currencies": symbol,
-        # "filter": "important",  # 暫時移除 "important" 過濾，以獲取更多新聞
-        "kind": "news",         # 排除媒體影片，只抓新聞
+        "kind": "news",
         "public": "true"
     }
 

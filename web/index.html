@@ -9,195 +9,10 @@
     <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js"></script>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #0f172a;
-            color: #f1f5f9;
-        }
-
-        .glass-card {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .message-bubble {
-            max-width: 85%;
-            border-radius: 1.25rem;
-            padding: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .user-message {
-            background: #3b82f6;
-            color: white;
-            border-bottom-right-radius: 0.25rem;
-            margin-left: auto;
-        }
-
-        .bot-message {
-            background: #1e293b;
-            color: #f1f5f9;
-            border-bottom-left-radius: 0.25rem;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 5px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #334155;
-            border-radius: 10px;
-        }
-
-        /* Markdown Styles */
-        .prose h1, .prose h2, .prose h3 { color: #60a5fa; font-weight: bold; margin-top: 1rem; margin-bottom: 0.5rem; }
-        .prose h2 { font-size: 1.25rem; border-left: 4px solid #3b82f6; padding-left: 0.5rem; }
-        .prose p { margin-bottom: 0.75rem; line-height: 1.6; }
-        .prose ul { list-style-type: disc; margin-left: 1.5rem; margin-bottom: 0.75rem; }
-        .prose strong { color: #fbbf24; }
-        .prose table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
-        .prose th, .prose td { border: 1px solid #334155; padding: 0.5rem; text-align: left; }
-        .prose th { background: #1e293b; }
-
-        .typing-indicator span {
-            display: inline-block;
-            width: 4px;
-            height: 4px;
-            background-color: #94a3b8;
-            border-radius: 50%;
-            margin-right: 2px;
-            animation: bounce 1.4s infinite ease-in-out both;
-        }
-        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
-        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
-        @keyframes bounce {
-            0%, 80%, 100% { transform: scale(0); }
-            40% { transform: scale(1.0); }
-        }
-
-        /* Loading Spinner */
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .loading-container {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 18px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 12px;
-            color: white;
-            font-weight: 600;
-            font-size: 14px;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-        }
-        .spinner {
-            width: 22px;
-            height: 22px;
-            border: 3px solid rgba(255,255,255,0.3);
-            border-top: 3px solid white;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        .done-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 12px;
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-            border-radius: 8px;
-            color: white;
-            font-weight: 600;
-            font-size: 12px;
-            margin-top: 12px;
-        }
-
-        /* 可折疊的分析過程區塊 */
-        .process-container {
-            margin-bottom: 1rem;
-            border: 1px solid rgba(100, 116, 139, 0.3);
-            border-radius: 12px;
-            overflow: hidden;
-            background: rgba(30, 41, 59, 0.5);
-        }
-        .process-container summary {
-            padding: 12px 16px;
-            cursor: pointer;
-            background: linear-gradient(135deg, rgba(71, 85, 105, 0.4) 0%, rgba(51, 65, 85, 0.4) 100%);
-            font-size: 13px;
-            font-weight: 600;
-            color: #94a3b8;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            user-select: none;
-            transition: background 0.2s;
-        }
-        .process-container summary:hover {
-            background: linear-gradient(135deg, rgba(71, 85, 105, 0.6) 0%, rgba(51, 65, 85, 0.6) 100%);
-        }
-        .process-container summary::marker,
-        .process-container summary::-webkit-details-marker {
-            display: none;
-        }
-        .process-container summary .chevron {
-            transition: transform 0.2s;
-        }
-        .process-container[open] summary .chevron {
-            transform: rotate(90deg);
-        }
-        .process-content {
-            padding: 16px;
-            color: #64748b;
-            font-size: 12px;
-            line-height: 1.7;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        .process-content .prose {
-            color: #64748b;
-        }
-        .process-content .prose strong {
-            color: #94a3b8;
-        }
-        .process-content .prose h3 {
-            color: #94a3b8;
-            font-size: 14px;
-        }
-        .process-step-item {
-            padding: 6px 8px;
-            margin: 2px 0;
-            background: rgba(51, 65, 85, 0.2);
-            border-radius: 6px;
-            border-left: 3px solid rgba(59, 130, 246, 0.4);
-            font-size: 12px;
-            color: #94a3b8;
-        }
-        .process-step-item strong {
-            color: #cbd5e1;
-        }
-        .result-container {
-            animation: fadeInUp 0.3s ease-out;
-        }
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body class="h-screen flex flex-col overflow-hidden">
 
@@ -222,8 +37,13 @@
             <i data-lucide="chevron-down" class="w-3 h-3 text-slate-500"></i>
         </button>
 
-        <div id="pi-user" class="text-sm bg-slate-800/50 px-3 py-1.5 rounded-full border border-slate-700 hidden">
-            <!-- Pi Username will appear here -->
+        <div class="flex items-center gap-2">
+            <button onclick="location.reload()" class="p-2 bg-slate-800/50 hover:bg-slate-700 rounded-full border border-slate-700 transition text-slate-400 hover:text-white" title="重新整理頁面">
+                <i data-lucide="rotate-cw" class="w-4 h-4"></i>
+            </button>
+            <div id="pi-user" class="text-sm bg-slate-800/50 px-3 py-1.5 rounded-full border border-slate-700 hidden">
+                <!-- Pi Username will appear here -->
+            </div>
         </div>
     </header>
 
@@ -241,6 +61,9 @@
             <button onclick="switchTab('market')" class="nav-btn group text-slate-400 hover:text-blue-400" title="行情篩選">
                 <i data-lucide="bar-chart-2" class="w-7 h-7"></i>
             </button>
+            <button onclick="switchTab('assets')" class="nav-btn group text-slate-400 hover:text-blue-400" title="資產管理">
+                <i data-lucide="wallet" class="w-7 h-7"></i>
+            </button>
             <button onclick="switchTab('pulse')" class="nav-btn group text-slate-400 hover:text-blue-400" title="市場脈動">
                 <i data-lucide="activity" class="w-7 h-7"></i>
             </button>
@@ -251,6 +74,13 @@
 
         <!-- Chat Area -->
         <div id="chat-tab" class="flex-1 flex flex-col relative bg-[#0f172a]">
+            <!-- Chat Header Actions -->
+            <div class="absolute top-4 right-4 z-10">
+                <button onclick="clearChat()" class="p-2 bg-slate-800/80 hover:bg-slate-700 backdrop-blur-sm border border-slate-700 rounded-lg text-slate-400 hover:text-red-400 transition shadow-lg" title="清除對話紀錄">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+            </div>
+
             <!-- Messages Container -->
             <div id="chat-messages" class="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar space-y-4">
                 <!-- Welcome Message -->
@@ -315,8 +145,29 @@
                                 <span class="text-xs text-slate-300">情緒分析</span>
                             </label>
                             <label class="flex items-center gap-2 cursor-pointer bg-slate-800/40 px-3 py-2 rounded-lg border border-amber-500/30 hover:bg-amber-900/10 transition select-none">
-                                <input type="checkbox" class="analysis-checkbox form-checkbox h-4 w-4 text-amber-500 rounded bg-slate-700 border-slate-600 focus:ring-offset-slate-800" value="Full Trading Decision">
+                                <input type="checkbox" id="check-trading-decision" class="analysis-checkbox form-checkbox h-4 w-4 text-amber-500 rounded bg-slate-700 border-slate-600 focus:ring-offset-slate-800" value="Full Trading Decision">
                                 <span class="text-xs text-amber-400 font-medium">交易決策</span>
+                            </label>
+                        </div>
+
+                        <!-- New: Execution Options -->
+                        <div class="mt-4 pt-3 border-t border-slate-700/30 flex flex-wrap items-center gap-4">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-slate-500 font-medium">交易市場:</span>
+                                <select id="select-market-type" class="bg-slate-800 text-xs border border-slate-700 rounded px-2 py-1 text-slate-300 outline-none focus:border-blue-500">
+                                    <option value="spot">現貨 (Spot)</option>
+                                    <option value="futures">合約 (Futures)</option>
+                                </select>
+                            </div>
+
+                            <label class="flex items-center gap-2 cursor-pointer group">
+                                <div class="relative">
+                                    <input type="checkbox" id="toggle-auto-execute" class="sr-only peer">
+                                    <div class="w-8 h-4 bg-slate-700 rounded-full peer peer-checked:bg-green-600 transition-colors"></div>
+                                    <div class="absolute left-0.5 top-0.5 w-3 h-3 bg-white rounded-full transition-transform peer-checked:translate-x-4"></div>
+                                </div>
+                                <span class="text-xs text-slate-400 group-hover:text-green-400 transition">自動執行交易</span>
+                                <i data-lucide="info" class="w-3 h-3 text-slate-600" title="開啟後，AI 若建議買入且經理批准，將自動下單 (僅限 OKX)"></i>
                             </label>
                         </div>
                     </div>
@@ -384,6 +235,125 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Funding Rate Section -->
+                <div class="mt-6">
+                    <div class="flex items-center gap-2 mb-4">
+                        <h3 class="text-lg font-bold flex items-center gap-2">
+                            <i data-lucide="percent" class="w-5 h-5 text-purple-400"></i> 資金費率
+                        </h3>
+                        <span class="text-xs text-slate-500 bg-slate-800 px-2 py-1 rounded">永續合約</span>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- High Funding Rate (Bullish Crowded) -->
+                        <div class="glass-card rounded-2xl p-5">
+                            <h3 class="flex items-center gap-2 font-semibold mb-2 text-red-400">
+                                <i data-lucide="trending-up" class="w-5 h-5"></i> 多頭擁擠 (高資金費率)
+                            </h3>
+                            <p class="text-[10px] text-slate-500 mb-4">費率過高代表做多成本高，可能有回調風險</p>
+                            <div id="high-funding-list" class="space-y-3">
+                                <div class="animate-pulse flex space-y-4">載入中...</div>
+                            </div>
+                        </div>
+                        <!-- Low Funding Rate (Bearish Crowded) -->
+                        <div class="glass-card rounded-2xl p-5">
+                            <h3 class="flex items-center gap-2 font-semibold mb-2 text-green-400">
+                                <i data-lucide="trending-down" class="w-5 h-5"></i> 空頭擁擠 (負資金費率)
+                            </h3>
+                            <p class="text-[10px] text-slate-500 mb-4">負費率代表做空成本高，可能有軋空機會</p>
+                            <div id="low-funding-list" class="space-y-3">
+                                <div class="animate-pulse flex space-y-4">載入中...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Assets Tab -->
+        <div id="assets-tab" class="hidden flex-1 flex flex-col p-6 overflow-y-auto custom-scrollbar">
+            <div class="max-w-4xl mx-auto w-full">
+                <div class="flex justify-between items-end mb-8">
+                    <div>
+                        <h2 class="text-2xl font-bold flex items-center gap-2">
+                            <i data-lucide="wallet" class="w-6 h-6 text-green-400"></i> 我的資產
+                        </h2>
+                        <p class="text-slate-400">查看您的帳戶餘額與持倉狀態</p>
+                    </div>
+                    <button onclick="refreshAssets()" class="flex items-center gap-2 bg-green-600/20 text-green-400 px-4 py-2 rounded-lg border border-green-500/30 hover:bg-green-600/30 transition">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i> 刷新
+                    </button>
+                </div>
+
+                <!-- Total Equity Card -->
+                <div class="glass-card rounded-2xl p-6 mb-8 relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 p-8 opacity-10 transform translate-x-4 -translate-y-4 group-hover:scale-110 transition duration-700">
+                        <i data-lucide="pie-chart" class="w-32 h-32 text-green-400"></i>
+                    </div>
+                    <h3 class="text-sm font-medium text-slate-400 mb-1">總資產估值 (USDT)</h3>
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-4xl font-bold text-white tracking-tight" id="total-equity">0.00</span>
+                        <span class="text-sm text-slate-500">≈ $0.00 USD</span>
+                    </div>
+                    <div class="mt-4 flex gap-4 text-xs text-slate-400">
+                        <div class="flex items-center gap-1">
+                            <i data-lucide="clock" class="w-3 h-3"></i> <span id="asset-update-time">--:--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Asset Breakdown -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <!-- Spot Assets -->
+                    <div class="glass-card rounded-xl p-5">
+                        <h3 class="font-semibold mb-4 flex items-center gap-2">
+                            <i data-lucide="coins" class="w-4 h-4 text-blue-400"></i> 現貨餘額
+                        </h3>
+                        <div id="spot-assets-list" class="space-y-3">
+                            <div class="animate-pulse text-slate-500 text-sm">載入中...</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Positions Summary -->
+                    <div class="glass-card rounded-xl p-5">
+                        <h3 class="font-semibold mb-4 flex items-center gap-2">
+                            <i data-lucide="layers" class="w-4 h-4 text-purple-400"></i> 持倉分佈
+                        </h3>
+                        <div id="positions-summary" class="space-y-3">
+                             <div class="animate-pulse text-slate-500 text-sm">載入中...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Positions Table -->
+                <div class="glass-card rounded-xl overflow-hidden">
+                    <div class="p-4 border-b border-slate-700/50 flex justify-between items-center">
+                        <h3 class="font-semibold flex items-center gap-2">
+                            <i data-lucide="activity" class="w-4 h-4 text-orange-400"></i> 持倉詳情
+                        </h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left text-slate-400">
+                            <thead class="text-xs text-slate-500 uppercase bg-slate-800/50">
+                                <tr>
+                                    <th class="px-4 py-3">合約/幣種</th>
+                                    <th class="px-4 py-3">方向/槓桿</th>
+                                    <th class="px-4 py-3 text-right">數量</th>
+                                    <th class="px-4 py-3 text-right">開倉價</th>
+                                    <th class="px-4 py-3 text-right">標記價</th>
+                                    <th class="px-4 py-3 text-right">未實現盈虧</th>
+                                </tr>
+                            </thead>
+                            <tbody id="positions-table-body">
+                                <tr>
+                                    <td colspan="6" class="px-4 py-8 text-center text-slate-500">
+                                        尚無持倉數據
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -394,9 +364,14 @@
                     <h2 class="text-2xl font-bold flex items-center gap-2">
                         <i data-lucide="zap" class="w-6 h-6 text-yellow-400"></i> 市場脈動 AI
                     </h2>
-                    <button onclick="openGlobalFilter()" class="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg border border-slate-600 transition">
-                        <i data-lucide="settings-2" class="w-4 h-4"></i> 設定關注
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <button onclick="refreshMarketPulse()" id="pulse-refresh-btn" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg border border-blue-500 transition">
+                            <i data-lucide="refresh-cw" class="w-4 h-4" id="pulse-refresh-icon"></i> 重新整理
+                        </button>
+                        <button onclick="openGlobalFilter()" class="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg border border-slate-600 transition">
+                            <i data-lucide="settings-2" class="w-4 h-4"></i> 設定關注
+                        </button>
+                    </div>
                 </div>
 
                 <div id="pulse-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -621,6 +596,114 @@
             </div>
         </div>
 
+        <!-- API Key Setting Modal -->
+        <div id="apikey-modal" class="fixed inset-0 bg-black/90 z-[70] hidden flex items-center justify-center p-4 backdrop-blur-md">
+            <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl relative overflow-hidden">
+                <!-- Decorative background -->
+                <div class="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+                
+                <div class="p-6 relative z-10">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                            <i data-lucide="key" class="w-5 h-5 text-amber-400"></i>
+                            設定交易所 API
+                        </h3>
+                        <button onclick="closeApiKeyModal()" class="text-slate-400 hover:text-white transition">
+                            <i data-lucide="x" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                    
+                    <p class="text-sm text-slate-400 mb-6 leading-relaxed">
+                        請輸入您的 OKX V5 API 金鑰。這些資訊將會加密儲存在您本地的設定檔 (.env) 中，不會上傳至任何第三方伺服器。
+                    </p>
+
+                    <form id="apikey-form" onsubmit="saveApiKeys(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">API Key</label>
+                            <input type="text" id="input-api-key" required 
+                                class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition"
+                                placeholder="輸入 API Key">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Secret Key</label>
+                            <input type="password" id="input-secret-key" required 
+                                class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition"
+                                placeholder="輸入 Secret Key">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Passphrase</label>
+                            <input type="password" id="input-passphrase" required 
+                                class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition"
+                                placeholder="輸入 Passphrase">
+                        </div>
+
+                        <div class="pt-4 flex gap-3">
+                            <button type="button" onclick="closeApiKeyModal()" class="flex-1 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-medium transition">
+                                取消
+                            </button>
+                            <button type="submit" id="btn-save-keys" class="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-bold shadow-lg shadow-blue-900/20 transition flex items-center justify-center gap-2">
+                                儲存並連線
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trade Proposal Modal (HITL) -->
+        <div id="proposal-modal" class="fixed inset-0 bg-black/90 z-[80] hidden flex items-center justify-center p-4 backdrop-blur-md">
+            <div class="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl relative overflow-hidden">
+                <div class="p-6 relative z-10">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                            <i data-lucide="zap" class="w-5 h-5 text-blue-400"></i>
+                            交易執行確認
+                        </h3>
+                        <button onclick="closeProposalModal()" class="text-slate-400 hover:text-white transition">
+                            <i data-lucide="x" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
+                            <div class="flex justify-between mb-2">
+                                <span class="text-slate-400 text-xs">交易對</span>
+                                <span class="text-white font-bold font-mono" id="prop-symbol">BTC-USDT</span>
+                            </div>
+                            <div class="flex justify-between mb-2">
+                                <span class="text-slate-400 text-xs">方向</span>
+                                <span class="font-bold uppercase px-2 py-0.5 rounded text-xs" id="prop-side">LONG</span>
+                            </div>
+                            <div class="flex justify-between mb-2">
+                                <span class="text-slate-400 text-xs">市場</span>
+                                <span class="text-slate-300 text-xs" id="prop-market">Futures (5x)</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">下單金額 (USDT)</label>
+                            <input type="number" id="prop-amount" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white font-mono text-center text-lg focus:border-blue-500 outline-none">
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[10px] text-slate-500 mb-1">止損 (SL)</label>
+                                <input type="number" id="prop-sl" class="w-full bg-slate-800/50 border border-slate-700 rounded px-2 py-1.5 text-slate-300 text-sm" placeholder="選填">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] text-slate-500 mb-1">止盈 (TP)</label>
+                                <input type="number" id="prop-tp" class="w-full bg-slate-800/50 border border-slate-700 rounded px-2 py-1.5 text-slate-300 text-sm" placeholder="選填">
+                            </div>
+                        </div>
+
+                        <button onclick="confirmTradeExecution()" id="btn-confirm-trade" class="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-blue-900/20 transition flex items-center justify-center gap-2 mt-2">
+                            確認下單
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </main>
 
     <!-- Mobile Navigation -->
@@ -636,6 +719,10 @@
         <button onclick="switchTab('market')" class="flex flex-col items-center gap-1 text-slate-400">
             <i data-lucide="bar-chart-2" class="w-6 h-6"></i>
             <span class="text-[10px]">行情</span>
+        </button>
+        <button onclick="switchTab('assets')" class="flex flex-col items-center gap-1 text-slate-400">
+            <i data-lucide="wallet" class="w-6 h-6"></i>
+            <span class="text-[10px]">資產</span>
         </button>
         <button onclick="switchTab('pulse')" class="flex flex-col items-center gap-1 text-slate-400">
             <i data-lucide="activity" class="w-6 h-6"></i>
@@ -658,895 +745,15 @@
         </div>
     </footer>
 
-    <script>
-        // Initialize Lucide icons
-        lucide.createIcons();
-        const md = window.markdownit({ html: true, linkify: true });
-        let isAnalyzing = false;
-        let marketRefreshInterval = null;
-        
-        // --- Global Filter Logic Variables ---
-        let allMarketSymbols = [];
-        let globalSelectedSymbols = []; // Unified selection
-        let selectedNewsSources = ['google', 'cryptocompare', 'cryptopanic', 'newsapi']; // Default all sources
-        let currentFilterExchange = 'okx';
-        let isFirstLoad = true;
 
-        async function openGlobalFilter() {
-            const modal = document.getElementById('global-filter-modal');
-            modal.classList.remove('hidden');
-            
-            document.getElementById('filter-exchange-select').value = currentFilterExchange;
-
-            // Sync news source checkboxes with current state
-            document.querySelectorAll('.news-source-checkbox').forEach(cb => {
-                cb.checked = selectedNewsSources.includes(cb.value);
-            });
-
-            if (allMarketSymbols.length === 0) {
-                await fetchSymbols(currentFilterExchange);
-            } else {
-                renderSymbolList(allMarketSymbols);
-            }
-        }
-
-        async function switchFilterExchange(exchange) {
-            if (exchange === currentFilterExchange) return;
-            
-            if (globalSelectedSymbols.length > 0) {
-                if(!confirm("切換交易所將清除目前的選擇，是否繼續？")) {
-                    document.getElementById('filter-exchange-select').value = currentFilterExchange;
-                    return;
-                }
-            }
-            
-            currentFilterExchange = exchange;
-            globalSelectedSymbols = []; 
-            allMarketSymbols = []; 
-            await fetchSymbols(exchange);
-        }
-
-        async function fetchSymbols(exchange) {
-            const container = document.getElementById('symbol-list-container');
-            container.innerHTML = '<div class="text-center py-8 text-slate-500 animate-pulse">正在從交易所獲取幣種列表...</div>';
-            
-            try {
-                const res = await fetch(`/api/market/symbols?exchange=${exchange}`);
-                const data = await res.json();
-                if (data.symbols) {
-                    allMarketSymbols = data.symbols.sort();
-                    renderSymbolList(allMarketSymbols);
-                } else {
-                    container.innerHTML = '<div class="text-center py-8 text-red-400">無法獲取幣種列表</div>';
-                }
-            } catch (e) {
-                console.error("Failed to fetch symbols", e);
-                container.innerHTML = '<div class="text-center py-8 text-red-400">連線錯誤</div>';
-            }
-        }
-
-        function renderSymbolList(symbols) {
-            const container = document.getElementById('symbol-list-container');
-            container.innerHTML = '';
-            
-            const searchVal = document.getElementById('symbol-search').value.toUpperCase().trim();
-            const filtered = symbols.filter(s => s.includes(searchVal));
-            
-            const toRender = filtered.slice(0, 200); 
-            
-            if (toRender.length === 0) {
-                container.innerHTML = '<div class="text-center py-8 text-slate-500">沒有找到符合的幣種</div>';
-            } else {
-                toRender.forEach(s => {
-                    const isChecked = globalSelectedSymbols.includes(s);
-                    const div = document.createElement('div');
-                    div.className = `flex items-center justify-between p-3 rounded-lg cursor-pointer transition select-none ${isChecked ? 'bg-blue-900/30 border border-blue-500/50' : 'hover:bg-slate-800 border border-transparent'}`;
-                    div.onclick = () => toggleSymbolSelection(s);
-                    div.innerHTML = `
-                        <span class="text-sm font-mono ${isChecked ? 'text-blue-300 font-bold' : 'text-slate-300'}">${s}</span>
-                        <div class="w-5 h-5 rounded border ${isChecked ? 'bg-blue-600 border-blue-600' : 'border-slate-600 bg-slate-800'} flex items-center justify-center transition">
-                            ${isChecked ? '<i data-lucide="check" class="w-3.5 h-3.5 text-white"></i>' : ''}
-                        </div>
-                    `;
-                    container.appendChild(div);
-                });
-            }
-            
-            document.getElementById('selected-count-modal').innerText = globalSelectedSymbols.length;
-            lucide.createIcons();
-        }
-
-        function toggleSymbolSelection(s) {
-            if (globalSelectedSymbols.includes(s)) {
-                globalSelectedSymbols = globalSelectedSymbols.filter(item => item !== s);
-            } else {
-                globalSelectedSymbols.push(s);
-            }
-            renderSymbolList(allMarketSymbols);
-        }
-        
-        function selectAllMatches() {
-            const searchVal = document.getElementById('symbol-search').value.toUpperCase().trim();
-            if (!searchVal) return; 
-            
-            const filtered = allMarketSymbols.filter(s => s.includes(searchVal));
-            let addedCount = 0;
-            filtered.forEach(s => {
-                if (!globalSelectedSymbols.includes(s)) {
-                    globalSelectedSymbols.push(s);
-                    addedCount++;
-                }
-            });
-            if (addedCount > 0) renderSymbolList(allMarketSymbols);
-        }
-
-        function applyGlobalFilter() {
-            document.getElementById('global-filter-modal').classList.add('hidden');
-            const indicator = document.getElementById('active-filter-indicator');
-            const headerBadge = document.getElementById('global-count-badge');
-            
-            // Capture news source selection
-            const newsCheckboxes = document.querySelectorAll('.news-source-checkbox:checked');
-            selectedNewsSources = Array.from(newsCheckboxes).map(cb => cb.value);
-            
-            if (selectedNewsSources.length === 0) {
-                alert("請至少選擇一個新聞來源");
-                return;
-            }
-
-            const count = globalSelectedSymbols.length;
-            headerBadge.innerText = count > 0 ? count : '自動';
-            
-            if (count > 0) {
-                if (indicator) {
-                    indicator.classList.remove('hidden');
-                    document.getElementById('filter-count').innerText = count;
-                }
-            } else {
-                if (indicator) indicator.classList.add('hidden');
-            }
-            
-            // Refresh both main components
-            refreshScreener(true);
-            
-            // Only refresh Pulse if visible (to save tokens), otherwise it will refresh on tab switch
-            if (!document.getElementById('pulse-tab').classList.contains('hidden')) {
-                checkMarketPulse(true);
-            }
-        }
-
-        function clearGlobalFilter() {
-            globalSelectedSymbols = [];
-            applyGlobalFilter();
-        }
-
-        // Pi Network Initialization (moved to end of script for watchlist integration)
-        const Pi = window.Pi;
-
-        function switchTab(tab) {
-            ['chat', 'market', 'watchlist', 'settings', 'pulse'].forEach(t => {
-                const el = document.getElementById(t + '-tab');
-                if (el) el.classList.add('hidden');
-            });
-            document.getElementById(tab + '-tab').classList.remove('hidden');
-
-            // Update nav icon colors
-            document.querySelectorAll('nav button').forEach(btn => btn.classList.replace('text-blue-500', 'text-slate-400'));
-            
-            if (marketRefreshInterval) {
-                clearInterval(marketRefreshInterval);
-                marketRefreshInterval = null;
-            }
-            if (window.pulseInterval) {
-                clearInterval(window.pulseInterval);
-                window.pulseInterval = null;
-            }
-
-            if (tab === 'market') { 
-                refreshScreener(true); 
-                marketRefreshInterval = setInterval(() => {
-                    refreshScreener(false);
-                }, 1000);
-            }
-            
-            if (tab === 'pulse') {
-                checkMarketPulse(true); 
-                window.pulseInterval = setInterval(() => {
-                    checkMarketPulse(false);
-                }, 30000);
-            }
-
-            if (tab === 'watchlist') refreshWatchlist();
-
-            lucide.createIcons();
-        }
-
-        function quickAsk(text) {
-            document.getElementById('user-input').value = text;
-            sendMessage();
-        }
-
-        function appendMessage(role, content) {
-            const container = document.getElementById('chat-messages');
-            const div = document.createElement('div');
-            div.className = `message-bubble ${role === 'user' ? 'user-message' : 'bot-message prose'}`;
-            
-            if (role === 'bot') {
-                div.innerHTML = md.render(content);
-                const match = content.match(/\b([A-Z]{2,5})\b/);
-                if (match && !content.includes('載入中') && !content.includes('Error')) {
-                     const symbol = match[1];
-                     const actionsDiv = document.createElement('div');
-                     actionsDiv.className = 'flex gap-2 mt-3 pt-3 border-t border-slate-700/50';
-                     actionsDiv.innerHTML = `
-                        <button onclick="showDebate('${symbol}')" class="text-xs bg-purple-900/30 text-purple-400 px-2 py-1 rounded hover:bg-purple-900/50 border border-purple-500/30 transition flex items-center gap-1">
-                            <i data-lucide="swords" class="w-3 h-3"></i> 觀看辯論
-                        </button>
-                        <button onclick="showChart('${symbol}'); switchTab('watchlist');" class="text-xs bg-blue-900/30 text-blue-400 px-2 py-1 rounded hover:bg-blue-900/50 border border-blue-500/30 transition flex items-center gap-1">
-                            <i data-lucide="bar-chart" class="w-3 h-3"></i> K線圖
-                        </button>
-                     `;
-                     div.appendChild(actionsDiv);
-                     setTimeout(() => lucide.createIcons(), 0);
-                }
-            } else {
-                div.textContent = content;
-            }
-            
-            container.appendChild(div);
-            container.scrollTop = container.scrollHeight;
-            return div;
-        }
-
-        function toggleOptions() {
-            const panel = document.getElementById('analysis-options-panel');
-            panel.classList.toggle('hidden');
-            lucide.createIcons();
-        }
-
-        async function sendMessage() {
-            const input = document.getElementById('user-input');
-            const sendBtn = document.getElementById('send-btn');
-            const text = input.value.trim();
-            if (!text || isAnalyzing) return;
-
-            const checkboxes = document.querySelectorAll('.analysis-checkbox:checked');
-            const selection = Array.from(checkboxes).map(cb => cb.value);
-
-            input.value = '';
-            appendMessage('user', text);
-            isAnalyzing = true;
-
-            input.disabled = true;
-            sendBtn.disabled = true;
-            input.classList.add('opacity-50');
-            sendBtn.classList.add('opacity-50', 'cursor-not-allowed');
-
-            const botMsgDiv = appendMessage('bot', '');
-            const startTime = Date.now();
-            let timerInterval;
-
-            botMsgDiv.innerHTML = `
-                <div class="loading-container">
-                    <div class="spinner"></div>
-                    <span>AI 思考中...</span>
-                    <span id="loading-timer">⏱️ 0.0 秒</span>
-                </div>
-            `;
-
-            const timerSpan = botMsgDiv.querySelector('#loading-timer');
-            timerInterval = setInterval(() => {
-                const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-                timerSpan.textContent = `⏱️ ${elapsed} 秒`;
-            }, 100);
-
-            try {
-                const response = await fetch('/api/analyze', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        message: text,
-                        manual_selection: selection
-                    })
-                });
-
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-                let fullContent = '';
-                let processContent = '';
-                let resultContent = '';
-                let hasProcessContent = false;
-
-                while (true) {
-                    const { value, done } = await reader.read();
-                    if (done) break;
-
-                    const chunk = decoder.decode(value);
-                    const lines = chunk.split('\n');
-
-                    for (const line of lines) {
-                        if (line.startsWith('data: ')) {
-                            const data = JSON.parse(line.substring(6));
-                            if (data.content) {
-                                // 累積內容而不是替換
-                                fullContent += data.content;
-
-                                // 解析 [PROCESS] 和 [RESULT] 標記
-                                processContent = '';
-                                resultContent = '';
-                                hasProcessContent = false;
-
-                                const contentLines = fullContent.split('\n');
-                                let currentMode = 'normal'; // normal, process, result
-
-                                for (const cLine of contentLines) {
-                                    if (cLine.includes('[PROCESS_START]')) {
-                                        currentMode = 'process';
-                                        hasProcessContent = true;
-                                        continue;
-                                    }
-                                    if (cLine.includes('[PROCESS_END]')) {
-                                        currentMode = 'normal';
-                                        continue;
-                                    }
-                                    if (cLine.includes('[RESULT]')) {
-                                        currentMode = 'result';
-                                        continue;
-                                    }
-
-                                    if (cLine.startsWith('[PROCESS]')) {
-                                        processContent += cLine.substring(9) + '\n';
-                                        hasProcessContent = true;
-                                    } else if (currentMode === 'process') {
-                                        processContent += cLine + '\n';
-                                    } else if (currentMode === 'result') {
-                                        resultContent += cLine + '\n';
-                                    } else {
-                                        resultContent += cLine + '\n';
-                                    }
-                                }
-
-                                // 渲染 HTML
-                                let html = '';
-                                const isStillProcessing = !fullContent.includes('[RESULT]');
-
-                                if (hasProcessContent && processContent.trim()) {
-                                    const stepCount = (processContent.match(/✅|📊|⚔️|👨‍⚖️|⚖️|🛡️|💰|🚀|🔍|⏳/g) || []).length;
-                                    // 如果還在處理中，預設展開；處理完成後收起
-                                    const openAttr = isStillProcessing ? 'open' : '';
-
-                                    // 將過程內容格式化為步驟列表
-                                    const processLines = processContent.trim().split('\n').filter(l => l.trim());
-                                    let stepsHtml = '';
-                                    for (const line of processLines) {
-                                        const trimmed = line.trim();
-                                        if (trimmed.startsWith('---') || trimmed.startsWith('###')) {
-                                            // 辯論標題
-                                            stepsHtml += `<div class="mt-3 mb-2 text-blue-400 font-semibold text-sm">${md.renderInline(trimmed.replace(/^---\s*/, '').replace(/^###\s*/, ''))}</div>`;
-                                        } else if (trimmed.startsWith('**🐂') || trimmed.startsWith('**🐻') || trimmed.startsWith('**⚖️')) {
-                                            // 辯論觀點標題
-                                            stepsHtml += `<div class="mt-2 font-medium text-slate-300">${md.renderInline(trimmed)}</div>`;
-                                        } else if (trimmed.startsWith('>')) {
-                                            // 引用內容
-                                            stepsHtml += `<div class="pl-3 border-l-2 border-slate-600 text-slate-400 text-xs my-1">${md.renderInline(trimmed.substring(1).trim())}</div>`;
-                                        } else if (trimmed.startsWith('→')) {
-                                            // 子項目
-                                            stepsHtml += `<div class="pl-4 text-slate-500 text-xs">${trimmed}</div>`;
-                                        } else {
-                                            // 一般步驟
-                                            stepsHtml += `<div class="process-step-item py-1">${md.renderInline(trimmed)}</div>`;
-                                        }
-                                    }
-
-                                    html += `
-                                        <details class="process-container" ${openAttr}>
-                                            <summary>
-                                                <i data-lucide="chevron-right" class="w-4 h-4 chevron"></i>
-                                                ${isStillProcessing ? '<div class="spinner" style="width:14px;height:14px;border-width:2px;"></div>' : '<i data-lucide="check-circle" class="w-4 h-4 text-green-500"></i>'}
-                                                分析過程 (${stepCount} 個步驟)${isStillProcessing ? ' - 進行中...' : ' - 已完成'}
-                                                <span class="ml-auto text-xs text-slate-500">點擊展開/收起</span>
-                                            </summary>
-                                            <div class="process-content custom-scrollbar">
-                                                ${stepsHtml}
-                                            </div>
-                                        </details>
-                                    `;
-                                }
-
-                                if (resultContent.trim()) {
-                                    html += `<div class="result-container prose">${md.render(resultContent)}</div>`;
-                                } else if (!hasProcessContent) {
-                                    // 沒有標記的普通內容
-                                    html = md.render(fullContent);
-                                } else if (isStillProcessing) {
-                                    // 還在處理中，顯示等待結果的提示
-                                    html += `<div class="text-slate-500 text-sm animate-pulse mt-4">⏳ 正在生成分析報告...</div>`;
-                                }
-
-                                botMsgDiv.innerHTML = html;
-                                lucide.createIcons();
-                                document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
-                            }
-                            if (data.done) {
-                                clearInterval(timerInterval);
-                                isAnalyzing = false;
-                                const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
-
-                                // 重新渲染最終結果（確保 details 是收起的）
-                                processContent = '';
-                                resultContent = '';
-                                hasProcessContent = false;
-                                const contentLines = fullContent.split('\n');
-                                let currentMode = 'normal';
-                                for (const cLine of contentLines) {
-                                    if (cLine.includes('[PROCESS_START]')) { currentMode = 'process'; hasProcessContent = true; continue; }
-                                    if (cLine.includes('[PROCESS_END]')) { currentMode = 'normal'; continue; }
-                                    if (cLine.includes('[RESULT]')) { currentMode = 'result'; continue; }
-                                    if (cLine.startsWith('[PROCESS]')) { processContent += cLine.substring(9) + '\n'; hasProcessContent = true; }
-                                    else if (currentMode === 'process') { processContent += cLine + '\n'; }
-                                    else if (currentMode === 'result') { resultContent += cLine + '\n'; }
-                                    else { resultContent += cLine + '\n'; }
-                                }
-
-                                let finalHtml = '';
-                                if (hasProcessContent && processContent.trim()) {
-                                    const stepCount = (processContent.match(/✅|📊|⚔️|👨‍⚖️|⚖️|🛡️|💰|🚀|🔍|⏳/g) || []).length;
-
-                                    // 格式化過程步驟
-                                    const processLines = processContent.trim().split('\n').filter(l => l.trim());
-                                    let stepsHtml = '';
-                                    for (const line of processLines) {
-                                        const trimmed = line.trim();
-                                        if (trimmed.startsWith('---') || trimmed.startsWith('###')) {
-                                            stepsHtml += `<div class="mt-3 mb-2 text-blue-400 font-semibold text-sm">${md.renderInline(trimmed.replace(/^---\s*/, '').replace(/^###\s*/, ''))}</div>`;
-                                        } else if (trimmed.startsWith('**🐂') || trimmed.startsWith('**🐻') || trimmed.startsWith('**⚖️')) {
-                                            stepsHtml += `<div class="mt-2 font-medium text-slate-300">${md.renderInline(trimmed)}</div>`;
-                                        } else if (trimmed.startsWith('>')) {
-                                            stepsHtml += `<div class="pl-3 border-l-2 border-slate-600 text-slate-400 text-xs my-1">${md.renderInline(trimmed.substring(1).trim())}</div>`;
-                                        } else if (trimmed.startsWith('→')) {
-                                            stepsHtml += `<div class="pl-4 text-slate-500 text-xs">${trimmed}</div>`;
-                                        } else {
-                                            stepsHtml += `<div class="process-step-item py-1">${md.renderInline(trimmed)}</div>`;
-                                        }
-                                    }
-
-                                    finalHtml += `
-                                        <details class="process-container">
-                                            <summary>
-                                                <i data-lucide="chevron-right" class="w-4 h-4 chevron"></i>
-                                                <i data-lucide="check-circle" class="w-4 h-4 text-green-500"></i>
-                                                分析過程 (${stepCount} 個步驟) - 已完成
-                                                <span class="ml-auto text-xs text-slate-500">點擊展開/收起</span>
-                                            </summary>
-                                            <div class="process-content custom-scrollbar">${stepsHtml}</div>
-                                        </details>
-                                    `;
-                                }
-                                if (resultContent.trim()) {
-                                    finalHtml += `<div class="result-container prose">${md.render(resultContent)}</div>`;
-                                } else if (!hasProcessContent) {
-                                    finalHtml = md.render(fullContent);
-                                }
-
-                                botMsgDiv.innerHTML = finalHtml;
-
-                                const timeBadge = document.createElement('div');
-                                timeBadge.className = 'done-badge';
-                                timeBadge.innerHTML = `✅ 完成 ⏱️ ${totalTime} 秒`;
-                                botMsgDiv.appendChild(timeBadge);
-
-                                // 免責聲明
-                                const disclaimer = document.createElement('div');
-                                disclaimer.className = 'mt-3 pt-3 border-t border-slate-700/50 text-[10px] text-slate-500 italic';
-                                disclaimer.innerHTML = '⚠️ 免責聲明：以上分析由 AI 自動生成，僅供參考，不構成投資建議。投資決策請自行判斷，盈虧自負。';
-                                botMsgDiv.appendChild(disclaimer);
-                                lucide.createIcons();
-                            }
-                            if (data.error) {
-                                clearInterval(timerInterval);
-                                botMsgDiv.innerHTML = `<span class="text-red-400">Error: ${data.error}</span>`;
-                                isAnalyzing = false;
-                            }
-                        }
-                    }
-                }
-            } catch (err) {
-                console.error(err);
-                clearInterval(timerInterval);
-                botMsgDiv.innerHTML = '<span class="text-red-400">連線失敗，請檢查後端伺服器。</span>';
-                isAnalyzing = false;
-            } finally {
-                clearInterval(timerInterval);
-                input.disabled = false;
-                sendBtn.disabled = false;
-                input.classList.remove('opacity-50');
-                sendBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                input.focus();
-            }
-        }
-
-        async function refreshScreener(showLoading = false) {
-            const containers = {
-                'top': document.getElementById('top-list'),
-                'oversold': document.getElementById('oversold-list'),
-                'overbought': document.getElementById('overbought-list')
-            };
-            
-            if (showLoading) {
-                Object.values(containers).forEach(c => c.innerHTML = '<div class="animate-pulse space-y-2"><div class="h-4 bg-slate-700 rounded w-3/4"></div><div class="h-4 bg-slate-700 rounded w-1/2"></div></div>');
-            }
-
-            try {
-                const body = { exchange: currentFilterExchange };
-                if (globalSelectedSymbols.length > 0) {
-                    body.symbols = globalSelectedSymbols;
-                }
-
-                const res = await fetch('/api/screener', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
-                });
-                const data = await res.json();
-
-                if (isFirstLoad && globalSelectedSymbols.length === 0) {
-                    if (data.top_performers && data.top_performers.length > 0) {
-                        globalSelectedSymbols = data.top_performers.map(item => item.Symbol);
-                        const indicator = document.getElementById('active-filter-indicator');
-                        if (indicator) {
-                            indicator.classList.remove('hidden');
-                            document.getElementById('filter-count').innerText = globalSelectedSymbols.length;
-                        }
-                        document.getElementById('global-count-badge').innerText = globalSelectedSymbols.length;
-                    }
-                    isFirstLoad = false;
-                }
-
-                if (data.last_updated) {
-                    const date = new Date(data.last_updated);
-                    const timeStr = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
-                    document.getElementById('screener-last-updated').textContent = `(更新於: ${timeStr})`;
-                }
-
-                renderList(containers.top, data.top_performers, 'price_change_24h', '%');
-                renderList(containers.oversold, data.oversold, 'RSI_14', '');
-                renderList(containers.overbought, data.overbought, 'RSI_14', '');
-            } catch (err) {
-                console.error(err);
-                if (showLoading) {
-                    Object.values(containers).forEach(c => c.innerHTML = '<div class="text-red-400 text-sm">載入失敗</div>');
-                }
-            }
-        }
-
-        function renderList(container, items, key, unit) {
-            container.innerHTML = '';
-            if (!items || items.length === 0) {
-                container.innerHTML = '<p class="text-slate-500 text-sm italic">無數據</p>';
-                return;
-            }
-
-            items.forEach(item => {
-                const val = parseFloat(item[key]);
-                let signalsHtml = '';
-                if (item.signals && Array.isArray(item.signals)) {
-                    item.signals.forEach(sig => {
-                        let colorClass = 'bg-slate-600 text-slate-200';
-                        if (sig.includes('突破')) colorClass = 'bg-purple-500/20 text-purple-400 border border-purple-500/30';
-                        if (sig.includes('爆量')) colorClass = 'bg-orange-500/20 text-orange-400 border border-orange-500/30';
-                        if (sig.includes('金叉')) colorClass = 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30';
-                        if (sig.includes('抄底')) colorClass = 'bg-blue-500/20 text-blue-400 border border-blue-500/30';
-                        signalsHtml += `<span class="text-[10px] px-1.5 py-0.5 rounded ${colorClass} mr-1">${sig}</span>`;
-                    });
-                }
-
-                const div = document.createElement('div');
-                div.className = "flex items-center justify-between p-2 hover:bg-slate-800/50 rounded-lg transition group cursor-pointer";
-                div.onclick = () => { switchTab('chat'); quickAsk(`${item.Symbol} 分析`); };
-                
-                div.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 bg-slate-700 rounded-full flex items-center justify-center text-[10px] font-bold">${item.Symbol.substring(0, 1)}</div>
-                        <div>
-                            <div class="flex items-center gap-2">
-                                <div class="font-medium text-sm">${item.Symbol}</div>
-                                <div class="flex">${signalsHtml}</div>
-                            </div>
-                            <div class="text-[10px] text-slate-500">$${parseFloat(item.Close).toFixed(4)}</div>
-                        </div>
-                    </div>
-                    <div class="text-sm font-semibold ${key === 'RSI_14' ? (val > 70 ? 'text-red-400' : (val < 40 ? 'text-green-400' : 'text-slate-300')) : (val > 0 ? 'text-green-400' : 'text-red-400')}">
-                        ${val.toFixed(2)}${unit}
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        let currentUserId = 'guest'; 
-        let chart = null;
-        let candleSeries = null;
-
-        function updateUserId(uid) { currentUserId = uid || 'guest'; }
-
-        async function refreshWatchlist() {
-            const container = document.getElementById('watchlist-container');
-            container.innerHTML = '<div class="glass-card rounded-xl p-6 text-center"><div class="animate-pulse">載入中...</div></div>';
-            try {
-                const res = await fetch(`/api/watchlist/${currentUserId}`);
-                const data = await res.json();
-                if (!data.symbols || data.symbols.length === 0) {
-                    container.innerHTML = '<div class="glass-card rounded-xl p-6 text-center text-slate-400"><i data-lucide="star" class="w-12 h-12 mx-auto mb-3 opacity-30"></i><p>您還沒有收藏任何幣種</p></div>';
-                    lucide.createIcons(); return;
-                }
-                container.innerHTML = '';
-                for (const symbol of data.symbols) {
-                    const card = document.createElement('div');
-                    card.className = 'glass-card rounded-xl p-4 hover:bg-slate-800/50 transition cursor-pointer';
-                    card.innerHTML = `<div class="flex items-center justify-between"><div class="flex items-center gap-3"><div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center font-bold">${symbol.substring(0, 2)}</div><div><div class="font-semibold">${symbol}</div></div></div><div class="flex gap-2"><button onclick="event.stopPropagation(); showChart('${symbol}')" class="p-2 bg-blue-600/20 text-blue-400 rounded-lg hover:bg-blue-600/30 transition"><i data-lucide="trending-up" class="w-4 h-4"></i></button><button onclick="event.stopPropagation(); removeFromWatchlist('${symbol}')" class="p-2 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600/30 transition"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>`;
-                    card.onclick = () => showChart(symbol);
-                    container.appendChild(card);
-                }
-                lucide.createIcons();
-            } catch (err) { console.error(err); }
-        }
-
-        async function addToWatchlist(symbol) {
-            try {
-                const res = await fetch('/api/watchlist/add', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: currentUserId, symbol: symbol }) });
-                const data = await res.json(); if (data.success) alert(`✅ ${symbol} 已加入自選！`);
-            } catch (err) { console.error(err); }
-        }
-
-        async function removeFromWatchlist(symbol) {
-            if (!confirm(`確定要移除 ${symbol} 嗎？`)) return;
-            try {
-                const res = await fetch('/api/watchlist/remove', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: currentUserId, symbol: symbol }) });
-                const data = await res.json(); if (data.success) refreshWatchlist();
-            } catch (err) { console.error(err); }
-        }
-
-        async function showChart(symbol) {
-            const chartSection = document.getElementById('chart-section');
-            const chartContainer = document.getElementById('chart-container');
-            chartSection.classList.remove('hidden');
-            document.getElementById('chart-title').textContent = symbol;
-            chartContainer.innerHTML = '<div class="animate-pulse text-slate-400">載入圖表中...</div>';
-            try {
-                const res = await fetch('/api/klines', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ symbol: symbol, interval: '1d', limit: 100 }) });
-                const data = await res.json();
-                if (!data.klines || data.klines.length === 0) { chartContainer.innerHTML = '<div class="text-red-400">無法載入數據</div>'; return; }
-                chartContainer.innerHTML = '';
-                if (chart) chart.remove();
-                chart = LightweightCharts.createChart(chartContainer, { width: chartContainer.clientWidth, height: 380, layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#94a3b8' }, grid: { vertLines: { color: 'rgba(51, 65, 85, 0.3)' }, horzLines: { color: 'rgba(51, 65, 85, 0.3)' } }, timeScale: { borderColor: '#334155', timeVisible: true } });
-                candleSeries = chart.addCandlestickSeries({ upColor: '#22c55e', downColor: '#ef4444' });
-                candleSeries.setData(data.klines);
-                chart.timeScale().fitContent();
-            } catch (err) { console.error(err); }
-        }
-
-        async function checkMarketPulse(showLoading = false) {
-            const grid = document.getElementById('pulse-grid');
-            let targets = globalSelectedSymbols.length > 0 ? globalSelectedSymbols : ['BTC', 'ETH', 'SOL', 'PI'];
-            if (showLoading) {
-                grid.innerHTML = '';
-                targets.forEach(symbol => {
-                    const el = document.createElement('div');
-                    el.className = 'glass-card rounded-2xl p-6 h-full flex flex-col items-center justify-center min-h-[200px]';
-                    el.innerHTML = `<div class="animate-pulse text-slate-400">AI 分析中...</div>`;
-                    el.id = `pulse-card-${symbol}`; grid.appendChild(el);
-                });
-            }
-            targets.forEach(symbol => fetchPulseForSymbol(symbol));
-        }
-
-        let currentPulseData = {};
-
-        async function fetchPulseForSymbol(symbol) {
-            const cardId = `pulse-card-${symbol}`;
-            let card = document.getElementById(cardId); if (!card) return;
-            try {
-                const sourcesQuery = selectedNewsSources.join(',');
-                const res = await fetch(`/api/market-pulse/${symbol}?sources=${sourcesQuery}`);
-                const data = await res.json();
-                
-                // 相容舊版 explanation 和新版 report 結構
-                const report = data.report || { 
-                    summary: data.explanation, 
-                    key_points: [], 
-                    highlights: [], 
-                    risks: [] 
-                };
-
-                if (report.summary) {
-                    currentPulseData[symbol] = data;
-                    const isPositive = data.change_24h > 0; // Use 24h change for main color
-                    
-                    // Format timestamp
-                    const updatedTime = new Date(data.timestamp);
-                    const timeString = updatedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    const uniqueSources = data.news_sources ? [...new Set(data.news_sources.map(n => n.source.split(' ')[0]))].join(', ') : '';
-
-                    card.className = "glass-card rounded-2xl p-0 h-full flex flex-col hover:border-blue-500/30 transition duration-300 overflow-hidden";
-                    
-                    // 1. Header Section (Price & Summary)
-                    let html = `
-                        <div class="p-5 border-b border-slate-700/50 bg-slate-800/20">
-                            <div class="flex justify-between items-start mb-3">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 ${isPositive ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'} rounded-xl flex items-center justify-center">
-                                        <i data-lucide="${isPositive ? 'trending-up' : 'trending-down'}" class="w-5 h-5"></i>
-                                    </div>
-                                    <div>
-                                        <h3 class="font-bold text-lg flex items-center gap-2">
-                                            ${data.symbol} 
-                                            <span class="text-xs font-normal text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">${timeString}</span>
-                                        </h3>
-                                        <div class="text-xs text-slate-400">
-                                            $${data.current_price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                                            <span class="ml-1 ${isPositive ? 'text-green-400' : 'text-red-400'}">
-                                                ${data.change_24h > 0 ? '+' : ''}${data.change_24h.toFixed(2)}%
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <span class="px-2 py-1 rounded bg-slate-800 text-[10px] text-slate-400 border border-slate-700">1H: ${data.change_1h > 0 ? '+' : ''}${data.change_1h.toFixed(2)}%</span>
-                            </div>
-                            <p class="text-slate-200 text-sm font-medium leading-relaxed">${report.summary}</p>
-                        </div>
-                    `;
-
-                    // 2. Body Section (Scrollable)
-                    html += `<div class="p-5 flex-1 overflow-y-auto custom-scrollbar space-y-5">`;
-
-                    // Key Points (要點)
-                    if (report.key_points && report.key_points.length > 0) {
-                        html += `
-                            <div>
-                                <h4 class="text-xs font-bold text-blue-400 mb-2 flex items-center gap-1 uppercase tracking-wider">
-                                    <i data-lucide="sparkles" class="w-3 h-3"></i> 要點
-                                </h4>
-                                <ul class="space-y-2">
-                                    ${report.key_points.map((point, idx) => `
-                                        <li class="flex gap-2 text-xs text-slate-300">
-                                            <span class="text-blue-500/50 font-mono">${idx + 1}.</span>
-                                            <span>${point}</span>
-                                        </li>
-                                    `).join('')}
-                                </ul>
-                            </div>
-                        `;
-                    }
-
-                    // Highlights (亮點 - Detailed cards)
-                    if (report.highlights && report.highlights.length > 0) {
-                        html += `
-                            <div>
-                                <h4 class="text-xs font-bold text-purple-400 mb-2 flex items-center gap-1 uppercase tracking-wider">
-                                    <i data-lucide="zap" class="w-3 h-3"></i> 亮點
-                                </h4>
-                                <div class="space-y-2">
-                                    ${report.highlights.map(item => `
-                                        <div class="bg-slate-800/40 rounded-lg p-3 border border-slate-700/50">
-                                            <div class="text-xs font-semibold text-slate-200 mb-1">${item.title}</div>
-                                            <div class="text-[11px] text-slate-400 leading-normal">${item.content}</div>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        `;
-                    }
-                    
-                    // Risks (風險)
-                    if (report.risks && report.risks.length > 0) {
-                        html += `
-                            <div>
-                                <h4 class="text-xs font-bold text-orange-400 mb-2 flex items-center gap-1 uppercase tracking-wider">
-                                    <i data-lucide="alert-triangle" class="w-3 h-3"></i> 風險
-                                </h4>
-                                <ul class="space-y-1">
-                                    ${report.risks.map(risk => `
-                                        <li class="flex gap-2 text-xs text-slate-400">
-                                            <i data-lucide="alert-circle" class="w-3 h-3 text-orange-500/50 mt-0.5 shrink-0"></i>
-                                            <span>${risk}</span>
-                                        </li>
-                                    `).join('')}
-                                </ul>
-                            </div>
-                        `;
-                    }
-
-                    html += `</div>`; // End Body
-
-                    // 3. Footer Section (Actions)
-                    html += `
-                        <div class="p-4 border-t border-slate-700/50 bg-slate-800/30 flex justify-between items-center text-[10px] text-slate-500">
-                            <div class="flex items-center gap-2">
-                                <span title="${uniqueSources}">Refs: ${data.news_sources ? data.news_sources.length : 0}</span>
-                            </div>
-                            <div class="flex gap-2">
-                                <button onclick="showNewsList('${symbol}')" class="px-2 py-1.5 hover:bg-slate-700/50 rounded transition text-blue-400 flex items-center gap-1">
-                                    <i data-lucide="newspaper" class="w-3 h-3"></i> 新聞
-                                </button>
-                                <button onclick="switchTab('chat'); quickAsk('${data.symbol} 詳細分析')" class="px-2 py-1.5 bg-purple-600/20 text-purple-300 hover:bg-purple-600/30 rounded transition flex items-center gap-1 border border-purple-500/20">
-                                    <i data-lucide="bot" class="w-3 h-3"></i> 詳情
-                                </button>
-                            </div>
-                        </div>
-                    `;
-
-                    card.innerHTML = html;
-                    lucide.createIcons();
-                }
-            } catch (e) { console.error(e); }
-        }
-
-        function showNewsList(symbol) {
-            const data = currentPulseData[symbol]; if (!data || !data.news_sources) return;
-            const modal = document.getElementById('news-modal');
-            const listContent = document.getElementById('news-list-content');
-            document.getElementById('news-modal-symbol').innerText = symbol;
-            listContent.innerHTML = '';
-            data.news_sources.forEach(news => {
-                const item = document.createElement('div');
-                item.className = 'bg-slate-800/50 border border-slate-700 p-3 rounded-xl hover:bg-slate-800 transition group';
-                item.innerHTML = `<div class="flex justify-between items-start mb-1"><span class="text-[10px] px-1.5 py-0.5 bg-blue-900/30 text-blue-400 rounded border border-blue-500/20">${news.source}</span></div><h4 class="text-sm font-semibold text-slate-200 mb-2 group-hover:text-blue-300 transition line-clamp-2">${news.title}</h4><a href="${news.url}" target="_blank" class="text-[10px] text-blue-500 hover:underline">查看原文 <i data-lucide="external-link" class="w-2.5 h-2.5"></i></a>`;
-                listContent.appendChild(item);
-            });
-            modal.classList.remove('hidden'); lucide.createIcons();
-        }
-
-        function openBacktestModal() { document.getElementById('backtest-modal').classList.remove('hidden'); }
-
-        async function runBacktest() {
-            const symbol = document.getElementById('bt-symbol').value;
-            const strategy = document.getElementById('bt-strategy').value;
-            const resultDiv = document.getElementById('bt-result');
-            resultDiv.classList.remove('hidden'); resultDiv.innerHTML = '<div class="animate-pulse">回測中...</div>';
-            try {
-                const res = await fetch('/api/backtest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ symbol: symbol, signal_type: strategy, interval: '1h' }) });
-                const data = await res.json(); if (data.error) throw new Error(data.error);
-                const isProfitable = data.return_pct > 0;
-                resultDiv.innerHTML = `<div class="flex justify-between items-center mb-2"><span class="font-bold text-white">${symbol} (${strategy})</span><span class="${isProfitable ? 'text-green-400' : 'text-red-400'} font-bold">${data.return_pct.toFixed(2)}%</span></div><div class="grid grid-cols-2 gap-2 text-xs text-slate-300"><div>勝率: <span class="text-white">${data.win_rate.toFixed(1)}%</span></div><div>交易次數: <span class="text-white">${data.total_trades}</span></div><div>最大回撤: <span class="text-red-400">${data.max_drawdown.toFixed(2)}%</span></div><div>淨利: <span class="${isProfitable ? 'text-green-400' : 'text-red-400'}">$${(data.final_capital - data.initial_capital).toFixed(2)}</span></div></div>`;
-            } catch (e) { resultDiv.innerHTML = `<span class="text-red-400">回測失敗: ${e.message}</span>`; }
-        }
-
-        async function showDebate(symbol) {
-            const modal = document.getElementById('debate-modal');
-            const bullArg = document.getElementById('bull-arg');
-            const bearArg = document.getElementById('bear-arg');
-            const verdict = document.getElementById('judge-verdict');
-            modal.classList.remove('hidden'); document.getElementById('debate-symbol').textContent = symbol;
-            bullArg.innerHTML = '<div class="animate-pulse">分析中...</div>'; bearArg.innerHTML = '<div class="animate-pulse">分析中...</div>'; verdict.innerHTML = '裁判審核中...';
-            try {
-                const res = await fetch(`/api/debate/${symbol}`);
-                const data = await res.json();
-                const bullScore = data.debate_judgment.bull_score; const bearScore = data.debate_judgment.bear_score;
-                const bullPct = (bullScore / (bullScore + bearScore)) * 100;
-                document.getElementById('score-bull').style.width = `${bullPct}%`; document.getElementById('score-bear').style.width = `${100 - bullPct}%`;
-                document.getElementById('score-val-bull').textContent = bullScore; document.getElementById('score-val-bear').textContent = bearScore;
-                const winnerBadge = document.getElementById('winner-badge');
-                if (data.debate_judgment.winning_stance === 'Bull') { winnerBadge.textContent = '多頭勝出 🐂'; winnerBadge.className = 'px-3 py-1 bg-green-600/20 text-green-400 rounded-lg text-sm border border-green-600/50'; }
-                else if (data.debate_judgment.winning_stance === 'Bear') { winnerBadge.textContent = '空頭勝出 🐻'; winnerBadge.className = 'px-3 py-1 bg-red-600/20 text-red-400 rounded-lg text-sm border border-red-600/50'; }
-                else { winnerBadge.textContent = '平局 ⚖️'; winnerBadge.className = 'px-3 py-1 bg-slate-600/20 text-slate-400 rounded-lg text-sm border border-slate-600/50'; }
-                bullArg.innerHTML = md.render(data.bull_argument.argument); bearArg.innerHTML = md.render(data.bear_argument.argument); verdict.innerHTML = md.render(data.debate_judgment.judge_rationale);
-            } catch (e) { console.error(e); }
-        }
-        
-        function closeDebate() { document.getElementById('debate-modal').classList.add('hidden'); }
-
-        window.showDebate = showDebate;
-        if (Pi) {
-            Pi.init({ version: "2.0", sandbox: true });
-            Pi.authenticate(['username'], (payment) => {}).then(auth => {
-                const userEl = document.getElementById('pi-user');
-                userEl.innerHTML = `<span class="text-blue-400 font-medium">@${auth.user.username}</span>`;
-                userEl.classList.remove('hidden');
-                const settingsUserEl = document.getElementById('settings-user');
-                if (settingsUserEl) settingsUserEl.innerText = "@" + auth.user.username;
-                updateUserId(auth.user.uid || auth.user.username);
-            }).catch(err => console.error(err));
-        }
-    </script>
+    <!-- JavaScript Modules -->
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/filter.js"></script>
+    <script src="/static/js/chat.js"></script>
+    <script src="/static/js/market.js"></script>
+    <script src="/static/js/assets.js"></script>
+    <script src="/static/js/pulse.js"></script>
+    <script src="/static/js/watchlist.js"></script>
+    <script src="/static/js/trade.js"></script>
 </body>
 </html>

@@ -34,6 +34,16 @@ class OKXAPIConnector:
             "Content-Type": "application/json",
             "Accept": "application/json"
         }
+        
+        # 定義不需要簽名的公共端點
+        self.public_endpoints = [
+            "/public/instruments",
+            "/market/ticker",
+            "/market/tickers",
+            "/market/candles",
+            "/market/history-candles",
+            "/public/funding-rate"
+        ]
 
     def _generate_signature(self, timestamp: str, method: str, request_path: str, body: str = "") -> str:
         """
@@ -55,7 +65,11 @@ class OKXAPIConnector:
         """
         發送 API 請求
         """
-        if not all([self.api_key, self.secret_key, self.passphrase]):
+        # 檢查是否為公共端點
+        is_public = any(endpoint.startswith(pub) for pub in self.public_endpoints)
+
+        # 如果不是公共端點，且缺少憑證，則報錯
+        if not is_public and not all([self.api_key, self.secret_key, self.passphrase]):
             return {"code": "000000", "msg": "API 憑證未設置", "data": []}
 
         # 構建實際請求的 URL
@@ -66,52 +80,67 @@ class OKXAPIConnector:
             url = f"{self.base_url}/api/v5{endpoint}"
 
         # 準備請求參數
-        timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
         headers = self.headers.copy()
+        
+        # 只有在有憑證且不是故意要忽略簽名的情況下才簽名
+        # 但為了提高限頻，如果有的話即使是 public 我們通常也簽名
+        # 但為了回應使用者需求：如果使用者想用 public 方式，這裡我們對於 public endpoint 可以選擇不簽名
+        # 這裡策略：如果有 key 就簽名 (獲取更高限頻)，除非使用者指定要 public 模式 (這裡暫不實作複雜開關)
+        # 或者：嚴格按照使用者建議，Public endpoint 就不簽名
+        
+        # 修正邏輯：如果 Keys 存在，為了 Rate Limit 還是建議簽名。
+        # 但如果 Keys 不存在 且 是 Public Endpoint -> 允許通過。
+        
+        if all([self.api_key, self.secret_key, self.passphrase]):
+             # 有 Key，執行簽名以獲得更高權限/限頻
+            timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
+            
+            # 構建請求路徑 (用於簽名)
+            signature_endpoint = '/api/v5' + endpoint 
 
-        # 構建請求路徑 (用於簽名)
-        # 根據 OKX API V5 文檔，requestPath 應包含完整的 API V5 路徑，包括查詢參數
-        # 簽名中的路徑必須始終以 /api/v5 開頭
-        signature_endpoint = '/api/v5' + endpoint  # 簽名時始終使用 /api/v5 前綴
-
-        if method.upper() == 'GET':
-            query_string = '&'.join([f"{k}={v}" for k, v in (params or {}).items()]) if params else ""
-            if query_string:
-                request_path = f"{signature_endpoint}?{query_string}"  # 例如: '/api/v5/account/balance?ccy=USDT'
+            if method.upper() == 'GET':
+                query_string = '&'.join([f"{k}={v}" for k, v in (params or {}).items()]) if params else ""
+                if query_string:
+                    request_path = f"{signature_endpoint}?{query_string}"
+                else:
+                    request_path = signature_endpoint
+                body = ""
             else:
-                request_path = signature_endpoint  # 例如: '/api/v5/account/balance'
-            body = ""
+                request_path = signature_endpoint
+                body = json.dumps(data, separators=(',', ':')) if data else ""
+
+            signature = self._generate_signature(timestamp, method, request_path, body)
+
+            headers.update({
+                "OK-ACCESS-KEY": self.api_key,
+                "OK-ACCESS-SIGN": signature,
+                "OK-ACCESS-TIMESTAMP": timestamp,
+                "OK-ACCESS-PASSPHRASE": self.passphrase
+            })
+            
+            # 對於 POST/PUT 請求，確保 body 是 JSON 字符串
+            if method.upper() not in ['GET', 'DELETE'] and not isinstance(data, str) and data:
+                 data = body # 使用簽名時生成的 body 字符串
+                 
         else:
-            request_path = signature_endpoint  # 例如: '/api/v5/account/balance'
-            body = json.dumps(data, separators=(',', ':')) if data else ""
-
-        # Debug: Show the exact message being signed
-        message_to_sign = timestamp + method.upper() + request_path + body
-        # print(f"[DEBUG] 消息內容 (簽名): {message_to_sign}")
-
-        signature = self._generate_signature(timestamp, method, request_path, body)
-        # print(f"[DEBUG] 簽名結果: {signature}")
-
-        headers.update({
-            "OK-ACCESS-KEY": self.api_key,
-            "OK-ACCESS-SIGN": signature,
-            "OK-ACCESS-TIMESTAMP": timestamp,
-            "OK-ACCESS-PASSPHRASE": self.passphrase
-        })
-
-        # Debug: Print headers to check
-        # print(f"[DEBUG] API 請求: {method} {endpoint}")
-        # print(f"[DEBUG] 請求路徑 (用於簽名): {request_path}")
-        # print(f"[DEBUG] 請求體: {body}")
-        # print(f"[DEBUG] Headers: {dict(headers)}")
+            # 無 Key 且是 Public -> 不簽名，直接發送
+            pass
 
         try:
             if method.upper() == 'GET':
                 response = requests.get(url, headers=headers, params=params)
             elif method.upper() == 'POST':
-                response = requests.post(url, headers=headers, data=body)
+                # 注意：如果上面有簽名，data 已經被轉成 json string (body)，如果是 requests.post(json=...) 會再次轉義
+                # 所以這裡要小心。如果 headers 有 Content-Type: application/json，直接傳 data=body
+                if isinstance(data, dict):
+                     response = requests.post(url, headers=headers, json=data)
+                else:
+                     response = requests.post(url, headers=headers, data=data)
             elif method.upper() == 'PUT':
-                response = requests.put(url, headers=headers, data=body)
+                if isinstance(data, dict):
+                     response = requests.put(url, headers=headers, json=data)
+                else:
+                     response = requests.put(url, headers=headers, data=data)
             elif method.upper() == 'DELETE':
                 response = requests.delete(url, headers=headers, params=params)
             else:
@@ -317,6 +346,80 @@ class OKXAPIConnector:
         endpoint = "/market/ticker"
         params = {"instId": instId}
         return self._make_request("GET", endpoint, params=params)
+
+    def get_funding_rate(self, instId: str) -> dict:
+        """
+        獲取單個永續合約的當前資金費率
+
+        Args:
+            instId: 永續合約ID (如 BTC-USDT-SWAP)
+        """
+        endpoint = "/public/funding-rate"
+        params = {"instId": instId}
+        return self._make_request("GET", endpoint, params=params)
+
+    def get_funding_rate_history(self, instId: str, limit: int = 100) -> dict:
+        """
+        獲取資金費率歷史數據
+
+        Args:
+            instId: 永續合約ID
+            limit: 獲取數量 (Max 100)
+        """
+        endpoint = "/public/funding-rate-history"
+        params = {"instId": instId, "limit": str(limit)}
+        return self._make_request("GET", endpoint, params=params)
+
+    def get_all_funding_rates(self) -> dict:
+        """
+        獲取所有 USDT 永續合約的資金費率，包含上下限資訊
+
+        Returns:
+            dict: 包含所有合約資金費率的字典，key 為幣種符號
+        """
+        # 先獲取所有 SWAP 產品以取得清單
+        instruments = self.get_instruments("SWAP")
+        if instruments.get("code") != "0":
+            return {"error": "無法獲取合約列表"}
+
+        funding_rates = {}
+
+        # 篩選 USDT 本位永續合約
+        usdt_swaps = [inst for inst in instruments.get("data", [])
+                      if inst.get("instId", "").endswith("-USDT-SWAP")]
+
+        # 批量獲取資金費率
+        for inst in usdt_swaps:
+            instId = inst.get("instId")
+            try:
+                result = self.get_funding_rate(instId)
+                if result.get("code") == "0" and result.get("data"):
+                    data = result["data"][0]
+                    symbol = instId.replace("-SWAP", "")
+                    
+                    # 從回應中直接獲取上下限，若無則使用預設值
+                    # OKX API 回傳的 maxFundingRate/minFundingRate 是小數 (例如 0.00375)，需轉為 %
+                    max_rate = float(data.get("maxFundingRate", 0.0075)) * 100
+                    min_rate = float(data.get("minFundingRate", -0.0075)) * 100
+                    
+                    # 處理下次資金費率 (可能是空字串)
+                    next_rate_val = data.get("nextFundingRate")
+                    next_rate = float(next_rate_val) * 100 if next_rate_val else None
+
+                    funding_rates[symbol] = {
+                        "instId": instId,
+                        "fundingRate": float(data.get("fundingRate", 0)) * 100,
+                        "nextFundingRate": next_rate,
+                        "fundingTime": data.get("fundingTime"),
+                        "nextFundingTime": data.get("nextFundingTime"),
+                        "maxFundingRate": max_rate,
+                        "minFundingRate": min_rate
+                    }
+            except Exception as e:
+                # print(f"[WARNING] 獲取 {instId} 資金費率失敗: {e}")
+                continue
+
+        return funding_rates
 
     def get_account_and_position_risk(self) -> dict:
         """

@@ -576,6 +576,8 @@ def format_full_analysis_result(result: dict, market_type: str, symbol: str, int
             title = news.get('title', 'N/A')
             url = news.get('url', '')
             source = news.get('source', 'Unknown')
+            
+            # 強制使用 1. 2. 3. 格式
             if url:
                 output += f"{i}. [{title}]({url}) ({source})\n"
             else:

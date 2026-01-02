@@ -43,9 +43,9 @@ class TechnicalAnalyst:
         if multi_timeframe_data:
             # 構建多週期分析上下文
             trend_info = multi_timeframe_analysis or {}
-            short_term_data = multi_timeframe_data.get('short_term', {})
-            medium_term_data = multi_timeframe_data.get('medium_term', {})
-            long_term_data = multi_timeframe_data.get('long_term', {})
+            short_term_data = multi_timeframe_data.get('short_term') or {}
+            medium_term_data = multi_timeframe_data.get('medium_term') or {}
+            long_term_data = multi_timeframe_data.get('long_term') or {}
 
             multi_timeframe_context = f"""
 多週期技術指標分析：
@@ -135,9 +135,9 @@ class SentimentAnalyst:
         if multi_timeframe_data:
             # 構建多週期分析上下文
             trend_info = multi_timeframe_analysis or {}
-            short_term_data = multi_timeframe_data.get('short_term', {})
-            medium_term_data = multi_timeframe_data.get('medium_term', {})
-            long_term_data = multi_timeframe_data.get('long_term', {})
+            short_term_data = multi_timeframe_data.get('short_term') or {}
+            medium_term_data = multi_timeframe_data.get('medium_term') or {}
+            long_term_data = multi_timeframe_data.get('long_term') or {}
 
             multi_timeframe_context = f"""
 多週期市場情緒分析：
@@ -230,9 +230,9 @@ class FundamentalAnalyst:
         if multi_timeframe_data:
             # 構建多週期分析上下文
             trend_info = multi_timeframe_analysis or {}
-            short_term_data = multi_timeframe_data.get('short_term', {})
-            medium_term_data = multi_timeframe_data.get('medium_term', {})
-            long_term_data = multi_timeframe_data.get('long_term', {})
+            short_term_data = multi_timeframe_data.get('short_term') or {}
+            medium_term_data = multi_timeframe_data.get('medium_term') or {}
+            long_term_data = multi_timeframe_data.get('long_term') or {}
 
             multi_timeframe_context = f"""
 多週期基本面分析：
@@ -1122,10 +1122,11 @@ class DataFactChecker:
 
     def check(self, arguments: List[ResearcherDebate], market_data: Dict) -> Dict[str, FactCheckResult]:
         """核對數據準確性"""
+        price_info = market_data.get("價格資訊") or {}
         market_summary = {
-            "價格": market_data.get("價格資訊", {}).get("當前價格"),
-            "技術指標": market_data.get("技術指標", {}),
-            "市場結構": market_data.get("市場結構", {})
+            "價格": price_info.get("當前價格"),
+            "技術指標": market_data.get("技術指標") or {},
+            "市場結構": market_data.get("市場結構") or {}
         }
         
         args_text = ""

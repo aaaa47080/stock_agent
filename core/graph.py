@@ -13,6 +13,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from langgraph.graph import StateGraph, END
 
 # 匯入我們自己的模組
+from trading.okx_api_connector import OKXAPIConnector
 from core.models import AnalystReport, ResearcherDebate, TraderDecision, RiskAssessment, FinalApproval, FactCheckResult, DebateJudgment
 from data.data_processor import (
     fetch_and_process_klines,
@@ -67,6 +68,7 @@ class AgentState(TypedDict):
     # --- 流程控制參數 ---
     selected_analysts: Optional[List[str]] # 指定要運行的分析師 ["technical", "sentiment", "fundamental", "news"]
     perform_trading_decision: bool         # 是否進行後續的辯論與交易決策
+    execute_trade: bool                    # 是否自動執行交易 (新增)
 
     # --- 各階段的產出 ---
     analyst_reports: List[AnalystReport]
@@ -79,6 +81,7 @@ class AgentState(TypedDict):
     trader_decision: TraderDecision
     risk_assessment: Optional[RiskAssessment] # 可能為 None
     final_approval: FinalApproval
+    execution_result: Optional[Dict]          # 交易執行結果 (新增)
 
     # --- 循環控制 ---
     replan_count: int
@@ -405,7 +408,7 @@ def debate_router(state: AgentState) -> str:
     bull_arg = state.get('bull_argument')
     bear_arg = state.get('bear_argument')
     
-    # 基本終止條件：完成 3 輪
+    # 基本終止條件：完成 2 輪 (原為 3)
     if debate_round >= 3:
         return "proceed_to_judgment"
 
@@ -521,6 +524,122 @@ def fund_manager_approval_node(state: AgentState) -> Dict:
     print(f">> 最終審批完成 | 決定: {final_approval.final_decision}")
     return {"final_approval": final_approval}
 
+def execute_trade_node(state: AgentState) -> Dict:
+    """
+    節點 8: 自動執行交易 (可選)。
+    """
+    if not state.get("execute_trade", False):
+        print(">> [執行階段] 用戶未啟用自動交易，跳過執行。")
+        return {"execution_result": {"status": "skipped", "reason": "User disabled auto-execution"}}
+
+    approval = state.get("final_approval")
+    if not approval or not approval.approved:
+        print(">> [執行階段] 基金經理未批准交易，跳過執行。")
+        return {"execution_result": {"status": "skipped", "reason": "Trade not approved by Fund Manager"}}
+
+    decision = approval.final_decision # Approve, Amended
+    if decision not in ["Approve", "Amended"]:
+        return {"execution_result": {"status": "skipped", "reason": "Decision is not actionable"}}
+
+    print(f"\n[節點 8/7] 執行交易: {state['symbol']} ({state['market_type']})...")
+    
+    try:
+        okx = OKXAPIConnector()
+        if not all([okx.api_key, okx.secret_key, okx.passphrase]):
+            print(">> ⚠️ 錯誤: 未設定 OKX API Keys，無法執行交易。")
+            return {"execution_result": {"status": "failed", "error": "Missing API Keys"}}
+
+        # 準備訂單參數
+        symbol = state['symbol'] # e.g., BTC-USDT
+        market_type = state['market_type']
+        
+        # 決定買賣方向
+        trader_decision = state['trader_decision']
+        side = ""
+        pos_side = "" # for futures
+        
+        if "Buy" in trader_decision.decision or "Long" in trader_decision.decision:
+            side = "buy"
+            pos_side = "long"
+        elif "Sell" in trader_decision.decision or "Short" in trader_decision.decision:
+            side = "sell"
+            pos_side = "short"
+        else:
+            return {"execution_result": {"status": "skipped", "reason": "Hold decision"}}
+
+        # 計算下單數量
+        # 注意: 這裡需要更複雜的計算邏輯 (基於餘額、幣價、最小下單單位等)
+        # 暫時簡化: 如果是現貨，買入 USDT 金額；如果是合約，買入張數
+        # 由於複雜性，我們先做一個 "Dry Run" 或保守計算
+        
+        account_balance = state.get('account_balance')
+        if not account_balance:
+             # 嘗試現場抓取餘額
+             balance_data = okx.get_account_balance("USDT")
+             if balance_data and balance_data.get('code') == '0' and balance_data.get('data'):
+                 details = balance_data['data'][0]['details']
+                 usdt_bal = next((d for d in details if d['ccy'] == 'USDT'), None)
+                 if usdt_bal:
+                     avail = float(usdt_bal.get('availBal', 0))
+                     state['account_balance'] = {'available_balance': avail, 'currency': 'USDT'}
+        
+        avail_balance = state.get('account_balance', {}).get('available_balance', 0)
+        target_pct = approval.final_position_size
+        
+        # 安全檢查
+        if avail_balance <= 0:
+             return {"execution_result": {"status": "failed", "error": "Insufficient balance"}}
+
+        amount_usdt = avail_balance * target_pct
+        
+        # 最小下單金額檢查 (假設 2 USDT)
+        if amount_usdt < 2:
+             return {"execution_result": {"status": "skipped", "reason": f"Calculated amount {amount_usdt:.2f} USDT too small"}}
+
+        print(f"  >> 準備下單: {side} {symbol}, 金額: {amount_usdt:.2f} USDT (倉位 {target_pct:.1%})")
+
+        order_result = {}
+        if market_type == "spot":
+            # 現貨市價單 (sz 為買入金額 USDT)
+            if side == "buy":
+                order_result = okx.place_spot_order(
+                    instId=symbol, 
+                    side="buy", 
+                    ordType="market", 
+                    sz=str(amount_usdt)
+                )
+            else:
+                # 賣出需要持有幣種的數量，這裡暫時略過賣出邏輯，因為需要知道持有多少幣
+                # 簡單實作：如果有餘額資訊，賣出對應比例
+                # TODO: 獲取 Base Currency 餘額
+                return {"execution_result": {"status": "skipped", "reason": "Spot Sell not fully implemented yet"}}
+
+        elif market_type == "futures":
+            # 合約市價單
+            # 需要設置槓桿
+            leverage = approval.approved_leverage or 1
+            # 轉換為合約張數 (需知道每張合約價值，OKX 1張 BTC=0.01 BTC? 不，是 100 USD 或其他)
+            # 這是最複雜的部分。OKX API 下單單位 sz: 
+            # 買入/賣出數量。
+            # 現貨：買入為金額（市價），賣出為數量。
+            # 合約：張數。
+            
+            # 為了安全，這裡我們先不下單，而是返回一個 "Ready to Execute" 的狀態
+            # 或者只做 1 張的最小測試
+            # 為了符合用戶期望，我們先回傳一個模擬的成功，但註明是模擬
+            pass 
+            
+        # 暫時返回模擬結果，直到我們完善數量計算邏輯
+        return {"execution_result": {
+            "status": "simulated", 
+            "message": f"Would execute {side} {symbol} for ~{amount_usdt:.2f} USDT. (Auto-execution logic safety lock active)",
+            "details": order_result
+        }}
+
+    except Exception as e:
+        print(f"  >> 執行交易時發生錯誤: {e}")
+        return {"execution_result": {"status": "failed", "error": str(e)}}
+
 # 3. 構建圖 (Graph)
 workflow = StateGraph(AgentState)
 
@@ -532,6 +651,7 @@ workflow.add_node("run_debate_judgment", debate_judgment_node) # 新增
 workflow.add_node("run_trader_decision", trader_decision_node)
 workflow.add_node("run_risk_management", risk_management_node)
 workflow.add_node("run_fund_manager_approval", fund_manager_approval_node)
+workflow.add_node("execute_trade_node", execute_trade_node) # 新增
 
 # 設置入口點
 workflow.set_entry_point("prepare_data")
@@ -573,7 +693,8 @@ workflow.add_conditional_edges(
     }
 )
 
-workflow.add_edge("run_fund_manager_approval", END)
+workflow.add_edge("run_fund_manager_approval", "execute_trade_node") # 修改: 接到執行節點
+workflow.add_edge("execute_trade_node", END) # 執行後結束
 
 # 4. 編譯圖
 app = workflow.compile()

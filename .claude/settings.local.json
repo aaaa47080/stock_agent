@@ -9,7 +9,8 @@
       "Bash(fc-list:*)",
       "Bash(pip index:*)",
       "Bash(pip show:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(wc:*)"
     ],
     "deny": [],
     "ask": []

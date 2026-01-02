@@ -12,6 +12,10 @@ class SymbolNotFoundError(Exception):
     pass
 
 class BinanceDataFetcher:
+    """
+    Fetches market data from Binance using public API endpoints.
+    Does NOT require API keys. strictly for public market data.
+    """
     def __init__(self):
         self.spot_base_url = "https://api.binance.com/api/v3"
         self.futures_base_url = "https://fapi.binance.com/fapi/v1"
@@ -242,7 +246,10 @@ class BinanceDataFetcher:
         return klines_df, funding_rate_info
 
 class OkxDataFetcher:
-    """OKX 交易所數據獲取器"""
+    """
+    OKX 交易所數據獲取器
+    Uses public API endpoints only. No API keys required.
+    """
 
     def __init__(self):
         self.base_url = os.getenv("OKX_BASE_URL", "https://www.okx.com/api/v5")

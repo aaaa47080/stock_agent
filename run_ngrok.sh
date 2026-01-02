@@ -1,5 +1,5 @@
 #!/bin/bash
-
+pkill ngrok
 # 設定 Port 號
 PORT=8111
 

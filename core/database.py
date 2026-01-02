@@ -1,6 +1,7 @@
 import sqlite3
 import os
-from typing import List, Dict, Optional
+import json
+from typing import List, Dict, Optional, Any
 from datetime import datetime
 
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "user_data.db")
@@ -33,9 +34,56 @@ def init_db():
             final_pnl_pct REAL DEFAULT 0.0
         )
     ''')
+
+    # 建立系統快取表 (System Cache)
+    # 用於取代散落的 JSON 檔案，統一管理 Market Pulse, Funding Rates 等數據
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS system_cache (
+            key TEXT PRIMARY KEY,
+            value TEXT, -- JSON String
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
     
     conn.commit()
     conn.close()
+
+# --- System Cache Functions ---
+
+def set_cache(key: str, data: Any):
+    """設定系統快取 (存入 DB)"""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    try:
+        json_str = json.dumps(data, ensure_ascii=False)
+        c.execute('''
+            INSERT INTO system_cache (key, value, updated_at) 
+            VALUES (?, ?, datetime('now'))
+            ON CONFLICT(key) DO UPDATE SET 
+                value = excluded.value,
+                updated_at = excluded.updated_at
+        ''', (key, json_str))
+        conn.commit()
+    except Exception as e:
+        print(f"Cache write error: {e}")
+    finally:
+        conn.close()
+
+def get_cache(key: str) -> Optional[Any]:
+    """獲取系統快取 (從 DB 讀取)"""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    try:
+        c.execute('SELECT value FROM system_cache WHERE key = ?', (key,))
+        row = c.fetchone()
+        if row:
+            return json.loads(row[0])
+        return None
+    except Exception as e:
+        print(f"Cache read error: {e}")
+        return None
+    finally:
+        conn.close()
 
 # --- Watchlist Functions ---
 
