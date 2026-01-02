@@ -158,7 +158,7 @@ def get_crypto_news_newsapi(symbol: str = "BTC", limit: int = 5) -> List[Dict]:
         "language": "en",
         "sortBy": "publishedAt",
         "pageSize": limit,
-        "from": (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%S")
+        "from": (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S")
     }
 
     try:
@@ -301,7 +301,7 @@ def get_crypto_news_google(symbol: str = "BTC", limit: int = 5) -> List[Dict]:
     import xml.etree.ElementTree as ET
     print(f">> 正在從 Google News 撈取 {symbol} 的即時新聞...")
     
-    url = f"https://news.google.com/rss/search?q={symbol}+crypto+when:24h&hl=en-US&gl=US&ceid=US:en"
+    url = f"https://news.google.com/rss/search?q={symbol}+crypto+when:7d&hl=en-US&gl=US&ceid=US:en"
     
     try:
         response = requests.get(url, timeout=10)
@@ -356,6 +356,73 @@ def get_crypto_news_cryptocompare(symbol: str = "BTC", limit: int = 5) -> List[D
         print(f">> CryptoCompare 獲取失敗: {str(e)}")
         return []
 
+def audit_crypto_news(symbol: str, news_list: List[Dict]) -> List[Dict]:
+    """
+    📰 新聞審查員 (News Auditor)
+    使用 LLM 批量審查新聞清單，過濾掉不相關、廣告或低質量的資訊。
+    """
+    if not news_list:
+        return []
+
+    from core.config import FAST_THINKING_MODEL
+    from openai import OpenAI
+    
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    
+    print(f">> 🛡️ 新聞審查員正在啟動 (對象: {symbol}, 待審核: {len(news_list)} 條)...")
+
+    # 準備審核文本
+    audit_data = []
+    for i, n in enumerate(news_list):
+        audit_data.append({
+            "id": i,
+            "title": n.get("title", ""),
+            "source": n.get("source", "")
+        })
+
+    prompt = f"""
+你是一位專業的加密貨幣新聞審查員。你的任務是從以下新聞清單中，篩選出與「{symbol}」真正相關且具備參考價值的內容。
+
+**篩選準則**:
+1. **高度相關**: 新聞必須直接提及 {symbol} 或其生態系統、技術更新、重大合作或價格波動原因。
+2. **品質優先**: 過濾掉明顯的點擊誘餌 (Clickbait)、純廣告、無意義的短訊或與加密貨幣完全無關的內容。
+3. **去除重複**: 如果多條新聞內容幾乎相同，請只保留最重要或來源最可靠的一條。
+
+**待審核清單**:
+{json.dumps(audit_data, ensure_ascii=False, indent=2)}
+
+**輸出要求**:
+請僅輸出一個 JSON 陣列，包含通過審核的新聞 ID。
+範例: [0, 2, 5]
+不要包含任何解釋、標記或 Markdown 格式。
+"""
+
+    try:
+        response = client.chat.completions.create(
+            model=FAST_THINKING_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2,
+            response_format={"type": "text"} # 確保簡短回覆
+        )
+        
+        content = response.choices[0].message.content.strip()
+        # 移除可能存在的 Markdown 標記
+        content = content.replace("```json", "").replace("```", "").strip()
+        
+        passed_ids = json.loads(content)
+        
+        if not isinstance(passed_ids, list):
+            print(">> ⚠️ 審查員回傳格式錯誤，跳過篩選。")
+            return news_list
+
+        filtered_news = [news_list[i] for i in passed_ids if i < len(news_list)]
+        print(f">> ✅ 審查完成: 保留 {len(filtered_news)}/{len(news_list)} 條高價值新聞")
+        return filtered_news
+
+    except Exception as e:
+        print(f">> ⚠️ 審查過程發生錯誤: {e}")
+        return news_list
+
 def get_crypto_news(symbol: str = "BTC", limit: int = 5, enabled_sources: List[str] = None) -> List[Dict]:
     """
     🔥 多來源新聞聚合器（已增強版）
@@ -406,12 +473,15 @@ def get_crypto_news(symbol: str = "BTC", limit: int = 5, enabled_sources: List[s
             seen_titles.add(title_lower)
             unique_news.append(news_item)
 
-    # 排序並返回
+    # 排序
     try:
         unique_news.sort(key=lambda x: x.get("published_at", ""), reverse=True)
     except:
         pass
 
-    result = unique_news[:limit * 3]
-    print(f"\n>> 聚合完成: 總共獲取 {len(result)} 條獨特新聞\n")
+    # 🚀 調用 LLM 審查員進行最後篩選
+    audited_news = audit_crypto_news(symbol, unique_news[:limit * 3])
+    
+    result = audited_news[:limit * 3]
+    print(f"\n>> 聚合與審查完成: 總共獲取 {len(result)} 條優質新聞\n")
     return result

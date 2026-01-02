@@ -63,43 +63,61 @@ class CryptoQueryParser:
         system_prompt = """你是一個專業的加密貨幣投資助手。你的任務是解析用戶的問題,提取以下資訊:
 
 1. 用戶意圖 (intent):
-   - "investment_analysis": 投資分析或詢問特定數據指標
-   - "general_question": 一般問題
+   - "investment_analysis": 當用戶詢問任何與投資、交易、買賣、價格分析相關的問題時使用。
+     包括但不限於：
+     * "XXX 可以投資嗎？" / "XXX 能買嗎？" / "XXX 適合買入嗎？"
+     * "XXX 怎麼樣？" / "XXX 如何？" / "XXX 現在好嗎？"
+     * "分析 XXX" / "幫我看看 XXX" / "XXX 的走勢"
+     * "XXX 值得買嗎？" / "應該買 XXX 嗎？"
+     * 任何提到加密貨幣名稱並詢問意見或分析的問題
+   - "general_question": 純粹的知識性問題，不涉及具體投資決策（如 "什麼是區塊鏈？"）
    - "greeting": 打招呼
    - "unclear": 意圖不明確，需要澄清
 
 2. 加密貨幣代號 (symbols): 從問題中提取所有提到的加密貨幣代號
    - 如果用戶使用 "它"、"這個"、"他的" 等代名詞，請在 symbols 留下空列表，但在 user_question 標註是代指。
-   - 如果用戶說 "比特幣", 轉換為 "BTC"；"以太坊", 轉換為 "ETH"。
+   - 常見轉換：比特幣->BTC, 以太坊->ETH, 狗狗幣->DOGE, 瑞波幣->XRP, 萊特幣->LTC, 柚子幣->EOS, 派幣->PI
 
 3. 動作 (action): "analyze", "compare", "chat"
 
 4. 關注領域 (focus): ["technical", "news", "fundamental", "sentiment"]
 
 5. 是否需要交易決策 (requires_trade_decision): bool
+   **重要**: 當 intent 為 "investment_analysis" 且用戶詢問的是投資建議、買賣時機、是否適合投資等問題時，必須設為 true。
+   只有在用戶明確表示只想看某個特定指標（如 "只看 RSI"）時才設為 false。
 
 6. 時間週期 (interval): 如果用戶提到特定時間，如 "15分鐘" -> "15m", "1小時" -> "1h", "4小時" -> "4h", "日線" -> "1d"。若無則為 null。
 
 7. 意圖清晰度 (clarity): "high" / "medium" / "low"
-   - high: 意圖非常明確，可以直接執行
-   - medium: 大致理解，但某些細節不確定
-   - low: 無法確定用戶想要什麼
 
 8. 澄清問題 (clarification_question): 如果 clarity 為 "low"，提供一個澄清問題
-   - 例如: "請問您想要分析哪個加密貨幣？" 或 "您是想要技術分析還是完整的投資建議？"
 
 9. 建議選項 (suggested_options): 如果 clarity 為 "low"，提供 2-4 個可能的選項
-   - 例如: ["分析 BTC 的價格走勢", "查看市場熱門幣種", "獲取完整投資建議"]
 
-請以 JSON 格式返回結果:
+範例：
+用戶: "BTC可以投資嗎？"
 {
     "intent": "investment_analysis",
     "symbols": ["BTC"],
     "action": "analyze",
-    "focus": ["technical"],
-    "requires_trade_decision": false,
-    "interval": "15m",
-    "user_question": "查詢 BTC 15分鐘線 RSI",
+    "focus": ["technical", "sentiment", "fundamental", "news"],
+    "requires_trade_decision": true,
+    "interval": null,
+    "user_question": "BTC可以投資嗎？",
+    "clarity": "high",
+    "clarification_question": null,
+    "suggested_options": null
+}
+
+用戶: "幫我分析一下以太坊"
+{
+    "intent": "investment_analysis",
+    "symbols": ["ETH"],
+    "action": "analyze",
+    "focus": ["technical", "sentiment", "fundamental", "news"],
+    "requires_trade_decision": true,
+    "interval": null,
+    "user_question": "幫我分析一下以太坊",
     "clarity": "high",
     "clarification_question": null,
     "suggested_options": null
@@ -464,8 +482,12 @@ class CryptoAnalysisBot:
                      symbols = [base_last]
 
             # 2. 判斷是否觸發「完整投資分析直通車」
+            print(f"[DEBUG] intent={intent}, requires_trade_decision={requires_trade_decision}, symbols={symbols}")
             if intent == "investment_analysis" and requires_trade_decision and symbols:
                 symbol = symbols[0]
+                print(f"[DEBUG] 進入完整分析流程: {symbol}")
+                # 開始過程區塊 - 必須在所有 [PROCESS] 訊息之前發送
+                yield "[PROCESS_START]\n"
                 yield f"[PROCESS]🚀 正在為您啟動 {symbol} 的深度全方位分析...\n"
 
                 try:
@@ -539,8 +561,6 @@ class CryptoAnalysisBot:
 
                 try:
                     accumulated_state = state_input.copy()
-                    # 開始過程區塊
-                    yield "[PROCESS_START]\n"
                     yield f"[PROCESS]⏳ 開始執行分析流程...\n"
 
                     event_count = 0
@@ -590,26 +610,43 @@ class CryptoAnalysisBot:
                                     winner = judgment.winning_stance
                                     action = judgment.suggested_action
                                     yield f"[PROCESS]👨‍⚖️ **辯論裁決**: 勝方 **{winner}** → 建議 **{action}**\n"
-                                    yield f"[PROCESS]   獲勝原因: {judgment.winning_reason}\n"
+                                    yield f"[PROCESS]   🐂 多頭評估: {judgment.bull_evaluation}\n"
+                                    yield f"[PROCESS]   🐻 空頭評估: {judgment.bear_evaluation}\n"
+                                    yield f"[PROCESS]   ⚖️ 中立評估: {judgment.neutral_evaluation}\n"
+                                    yield f"[PROCESS]   💪 多頭最強論點: {judgment.strongest_bull_point}\n"
+                                    yield f"[PROCESS]   💪 空頭最強論點: {judgment.strongest_bear_point}\n"
                                     if judgment.fatal_flaw:
                                         yield f"[PROCESS]   ⚠️ 致命缺陷: {judgment.fatal_flaw}\n"
+                                    yield f"[PROCESS]   🏆 獲勝原因: {judgment.winning_reason}\n"
+                                    yield f"[PROCESS]   📝 行動依據: {judgment.action_rationale}\n"
                                     yield f"[PROCESS]   📌 {judgment.key_takeaway}\n\n"
 
                             elif node_name == "run_trader_decision":
                                 decision = state_update.get("trader_decision")
                                 follows = "✅ 遵循裁判" if decision.follows_judge else "⚠️ 偏離裁判"
                                 yield f"[PROCESS]⚖️ **交易員決策**: **{decision.decision}** | 倉位: {decision.position_size:.0%} | {follows}\n"
+                                if decision.reasoning:
+                                    yield f"[PROCESS]   💭 決策理由: {decision.reasoning}\n"
                                 if not decision.follows_judge and decision.deviation_reason:
                                     yield f"[PROCESS]   偏離原因: {decision.deviation_reason}\n"
                                 yield f"[PROCESS]   主要風險: {decision.key_risk}\n"
 
                             elif node_name == "run_risk_management":
                                 risk = state_update.get("risk_assessment")
-                                yield f"[PROCESS]🛡️ **風險評估**: {risk.risk_level} (批准狀態: {risk.approve})\n"
+                                yield f"[PROCESS]🛡️ **風險評估**: {risk.risk_level} (批准狀態: {'✅ 通過' if risk.approve else '❌ 不通過'})\n"
+                                yield f"[PROCESS]   📋 評估內容: {risk.assessment}\n"
+                                if risk.warnings:
+                                    yield f"[PROCESS]   ⚠️ 風險警告: {'; '.join(risk.warnings)}\n"
+                                yield f"[PROCESS]   💡 建議調整: {risk.suggested_adjustments}\n"
+                                yield f"[PROCESS]   📊 調整後倉位: {risk.adjusted_position_size:.0%}\n"
 
                             elif node_name == "run_fund_manager_approval":
                                 approval = state_update.get("final_approval")
                                 yield f"[PROCESS]💰 **基金經理最終審批**: {approval.final_decision}\n"
+                                yield f"[PROCESS]   📝 審批理由: {approval.rationale}\n"
+                                yield f"[PROCESS]   📊 最終倉位: {approval.final_position_size:.0%}\n"
+                                if approval.execution_notes:
+                                    yield f"[PROCESS]   📋 執行備註: {approval.execution_notes}\n"
                                 
                                 # HITL: 如果獲得批准，生成交易提案供前端顯示
                                 if approval.approved:
@@ -663,6 +700,7 @@ class CryptoAnalysisBot:
                     error_detail = traceback.format_exc()
                     print(f"❌ 分析過程中發生錯誤: {error_detail}")
                     yield f"[PROCESS]❌ 分析過程中發生錯誤: {str(e)}\n"
+                    yield "[PROCESS_END]\n"
                     yield f"[RESULT]\n❌ **錯誤**: {str(e)}\n\n請檢查後端日誌以獲取更多詳情。"
                     return
 

@@ -114,6 +114,9 @@ async function sendMessage() {
         timerSpan.textContent = `⏱️ ${elapsed} 秒`;
     }, 100);
 
+    // Create AbortController
+    window.currentAnalysisController = new AbortController();
+
     try {
         const response = await fetch('/api/analyze', {
             method: 'POST',
@@ -123,7 +126,8 @@ async function sendMessage() {
                 manual_selection: selection,
                 market_type: marketType,
                 auto_execute: autoExecute
-            })
+            }),
+            signal: window.currentAnalysisController.signal
         });
 
         const reader = response.body.getReader();
@@ -143,8 +147,10 @@ async function sendMessage() {
             for (const line of lines) {
                 if (line.startsWith('data: ')) {
                     const data = JSON.parse(line.substring(6));
+                    console.log('[DEBUG] Received:', data); // 調試輸出
                     if (data.content) {
                         fullContent += data.content;
+                        console.log('[DEBUG] fullContent length:', fullContent.length); // 調試輸出
                         processContent = '';
                         resultContent = '';
                         hasProcessContent = false;
@@ -164,6 +170,7 @@ async function sendMessage() {
 
                         let html = '';
                         const isStillProcessing = !fullContent.includes('[RESULT]');
+                        console.log('[DEBUG] hasProcessContent:', hasProcessContent, 'processContent length:', processContent.length); // 調試輸出
 
                         if (hasProcessContent && processContent.trim()) {
                             const stepCount = (processContent.match(/✅|📊|⚔️|👨‍⚖️|⚖️|🛡️|💰|🚀|🔍|⏳/g) || []).length;
@@ -312,11 +319,17 @@ async function sendMessage() {
             }
         }
     } catch (err) {
-        console.error(err);
+        if (err.name === 'AbortError') {
+            console.log('Analysis aborted by user');
+            botMsgDiv.innerHTML = '<span class="text-orange-400">已取消分析。</span>';
+        } else {
+            console.error(err);
+            botMsgDiv.innerHTML = '<span class="text-red-400">連線失敗，請檢查後端伺服器。</span>';
+        }
         clearInterval(timerInterval);
-        botMsgDiv.innerHTML = '<span class="text-red-400">連線失敗，請檢查後端伺服器。</span>';
         isAnalyzing = false;
     } finally {
+        window.currentAnalysisController = null;
         clearInterval(timerInterval);
         input.disabled = false;
         sendBtn.disabled = false;

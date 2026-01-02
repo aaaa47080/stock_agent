@@ -6,8 +6,8 @@ load_dotenv(override=True)
 
 # === AI 模型配置 ===
 # 基礎模型（用於分析師團隊）
-FAST_THINKING_MODEL = "gpt-4o"  # 用於數據收集和快速分析
-DEEP_THINKING_MODEL = "o4-mini"  # 用於深度推理和決策
+FAST_THINKING_MODEL = "gpt-4.1-nano"  # 最便宜模型：用於數據收集和快速分析
+DEEP_THINKING_MODEL = "gpt-4.1-nano"  # 最便宜模型：用於推理和決策
 
 # === 多模型辯論配置 ===
 # 是否啟用多模型辯論（不同模型扮演多空雙方）
@@ -25,7 +25,7 @@ ENABLE_COMMITTEE_MODE = True  # 設為 True 啟用委員會模式
 # 多頭研究員使用的模型
 BULL_RESEARCHER_MODEL = {
     "provider": "openai",  # 選項: "openai" 或 "openrouter"
-    "model": "gpt-4o",  # OpenAI 模型名稱
+    "model": "gpt-4.1-nano",  # OpenAI 模型名稱
     # OpenRouter 範例:
     # "provider": "openrouter",
     # "model": "anthropic/claude-3.5-sonnet",
@@ -34,7 +34,7 @@ BULL_RESEARCHER_MODEL = {
 # 空頭研究員使用的模型
 BEAR_RESEARCHER_MODEL = {
     "provider": "openai",  # 選項: "openai" 或 "openrouter"
-    "model": "o4-mini",  # OpenAI 模型名稱
+    "model": "gpt-4o",
     # OpenRouter 範例:
     # "provider": "openrouter",
     # "model": "google/gemini-pro-1.5",
@@ -43,7 +43,7 @@ BEAR_RESEARCHER_MODEL = {
 # 交易員使用的模型
 TRADER_MODEL = {
     "provider": "openai",
-    "model": "o4-mini",
+    "model": "gpt-4o",
 }
 
 # ============================================================================
@@ -97,7 +97,7 @@ LOCAL_LLM_CONFIG = {
 # === 介面與應用程式配置 ===
 
 # 用於解析用戶查詢的 LLM 模型
-QUERY_PARSER_MODEL = "gpt-4o"
+QUERY_PARSER_MODEL = "gpt-4.1-nano"
 
 # 支持的交易所列表，按優先級排序
 SUPPORTED_EXCHANGES = ["okx", "binance"]
@@ -125,6 +125,16 @@ SCREENER_TARGET_SYMBOLS = ["BTC", "ETH", "SOL", "PI"]
 
 # 自動更新間隔 (分鐘)
 SCREENER_UPDATE_INTERVAL_MINUTES = 0.25
+
+# 資金費率自動更新間隔 (秒)
+FUNDING_RATE_UPDATE_INTERVAL = 60  # 1分鐘更新一次 (加速更新)
+
+# === 市場脈動 (Market Pulse) 配置 ===
+# 固定監控的幣種列表
+MARKET_PULSE_TARGETS = ["BTC", "ETH", "SOL", "PI"]
+
+# 市場脈動更新頻率 (秒)
+MARKET_PULSE_UPDATE_INTERVAL = 3600  # 1小時
 
 # === 交易限制配置 ===
 MINIMUM_INVESTMENT_USD = 20.0  # 最低投資金額 (USDT)

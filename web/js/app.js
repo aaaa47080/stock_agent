@@ -26,6 +26,9 @@ let currentPulseData = {};
 // Trade Proposal
 let currentProposal = null;
 
+// Analysis Abort Controller
+window.currentAnalysisController = null;
+
 // Pi Network Initialization
 const Pi = window.Pi;
 
@@ -41,6 +44,23 @@ function switchTab(tab) {
 
     // Update nav icon colors
     document.querySelectorAll('nav button').forEach(btn => btn.classList.replace('text-blue-500', 'text-slate-400'));
+
+    // Abort pending analysis if leaving chat tab
+    if (tab !== 'chat' && window.currentAnalysisController) {
+        window.currentAnalysisController.abort();
+        window.currentAnalysisController = null;
+        isAnalyzing = false; // Reset analyzing state
+        
+        // Reset Chat UI if needed (optional, but good for UX)
+        const input = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        if (input && sendBtn) {
+            input.disabled = false;
+            sendBtn.disabled = false;
+            input.classList.remove('opacity-50');
+            sendBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+    }
 
     if (marketRefreshInterval) {
         clearInterval(marketRefreshInterval);

@@ -10,7 +10,14 @@
       "Bash(pip index:*)",
       "Bash(pip show:*)",
       "Bash(python3:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(netstat:*)",
+      "Bash(ss:*)",
+      "Bash(curl:*)",
+      "Bash(timeout 10 curl:*)",
+      "Bash(timeout 60 curl:*)",
+      "Bash(timeout 30 curl:*)",
+      "Bash(source:*)"
     ],
     "deny": [],
     "ask": []

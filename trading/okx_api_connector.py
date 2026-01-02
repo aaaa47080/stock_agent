@@ -5,6 +5,7 @@ import hashlib
 import base64
 import datetime
 from typing import Dict, List, Optional
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 from dotenv import load_dotenv
 
@@ -388,36 +389,47 @@ class OKXAPIConnector:
         usdt_swaps = [inst for inst in instruments.get("data", [])
                       if inst.get("instId", "").endswith("-USDT-SWAP")]
 
-        # 批量獲取資金費率
-        for inst in usdt_swaps:
-            instId = inst.get("instId")
+        # Helper function for parallel fetching
+        def fetch_single_rate(inst_id):
             try:
-                result = self.get_funding_rate(instId)
-                if result.get("code") == "0" and result.get("data"):
-                    data = result["data"][0]
-                    symbol = instId.replace("-SWAP", "")
-                    
-                    # 從回應中直接獲取上下限，若無則使用預設值
-                    # OKX API 回傳的 maxFundingRate/minFundingRate 是小數 (例如 0.00375)，需轉為 %
-                    max_rate = float(data.get("maxFundingRate", 0.0075)) * 100
-                    min_rate = float(data.get("minFundingRate", -0.0075)) * 100
-                    
-                    # 處理下次資金費率 (可能是空字串)
-                    next_rate_val = data.get("nextFundingRate")
-                    next_rate = float(next_rate_val) * 100 if next_rate_val else None
+                res = self.get_funding_rate(inst_id)
+                if res.get("code") == "0" and res.get("data"):
+                    return inst_id, res["data"][0]
+            except Exception:
+                pass
+            return inst_id, None
 
-                    funding_rates[symbol] = {
-                        "instId": instId,
-                        "fundingRate": float(data.get("fundingRate", 0)) * 100,
-                        "nextFundingRate": next_rate,
-                        "fundingTime": data.get("fundingTime"),
-                        "nextFundingTime": data.get("nextFundingTime"),
-                        "maxFundingRate": max_rate,
-                        "minFundingRate": min_rate
-                    }
-            except Exception as e:
-                # print(f"[WARNING] 獲取 {instId} 資金費率失敗: {e}")
-                continue
+        # 批量獲取資金費率 (並行處理)
+        # 使用 10 個線程並行請求，避免觸發 OKX API 限頻 (通常 20 req/2s)
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            future_to_inst = {executor.submit(fetch_single_rate, inst.get("instId")): inst for inst in usdt_swaps}
+            
+            for future in as_completed(future_to_inst):
+                instId, data = future.result()
+                if data:
+                    try:
+                        symbol = instId.replace("-SWAP", "")
+                        
+                        # 從回應中直接獲取上下限，若無則使用預設值
+                        # OKX API 回傳的 maxFundingRate/minFundingRate 是小數 (例如 0.00375)，需轉為 %
+                        max_rate = float(data.get("maxFundingRate", 0.0075)) * 100
+                        min_rate = float(data.get("minFundingRate", -0.0075)) * 100
+                        
+                        # 處理下次資金費率 (可能是空字串)
+                        next_rate_val = data.get("nextFundingRate")
+                        next_rate = float(next_rate_val) * 100 if next_rate_val else None
+
+                        funding_rates[symbol] = {
+                            "instId": instId,
+                            "fundingRate": float(data.get("fundingRate", 0)) * 100,
+                            "nextFundingRate": next_rate,
+                            "fundingTime": data.get("fundingTime"),
+                            "nextFundingTime": data.get("nextFundingTime"),
+                            "maxFundingRate": max_rate,
+                            "minFundingRate": min_rate
+                        }
+                    except Exception as e:
+                        print(f"[ERROR] Error processing funding rate for {instId}: {e}")
 
         return funding_rates
 
