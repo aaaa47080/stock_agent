@@ -174,20 +174,33 @@ async def refresh_all_market_pulse_data(target_symbols: List[str] = None):
     return batch_timestamp
 
 async def update_market_pulse_task():
-    """Background task to update Market Pulse analysis periodically."""
-    
-    # 1. Initial Fast Update
-    logger.info("🚀 Starting initial Market Pulse analysis...")
-    await refresh_all_market_pulse_data()
+    """
+    Background task to update Market Pulse analysis periodically.
+
+    ✅ 優化策略：
+    - 啟動時只檢查緩存，不立即執行分析（避免沒有 LLM Key 時失敗）
+    - 如果緩存為空，等待第一個定時周期再執行
+    - 定時更新確保數據新鮮度
+    """
+
+    # 1. 檢查緩存狀態
+    cache_size = len(MARKET_PULSE_CACHE)
+    if cache_size > 0:
+        logger.info(f"✅ Market Pulse cache loaded from database ({cache_size} symbols)")
+        logger.info("⏰ Next update scheduled in 1 hour")
+    else:
+        logger.warning("⚠️ Market Pulse cache is empty. Will populate on first scheduled cycle or user request.")
 
     # 2. Periodic Update Loop
     while True:
         await asyncio.sleep(MARKET_PULSE_UPDATE_INTERVAL)
         try:
-            logger.info("Starting scheduled Market Pulse update cycle...")
+            logger.info("🔄 Starting scheduled Market Pulse update cycle...")
             await refresh_all_market_pulse_data()
+            logger.info("✅ Market Pulse update completed successfully")
         except Exception as e:
-            logger.error(f"Market Pulse task error: {e}")
+            logger.error(f"❌ Market Pulse task error: {e}")
+            # 繼續運行，不要讓任務崩潰
 
 async def update_screener_prices_fast():
     """

@@ -8,11 +8,6 @@ async function openGlobalFilter() {
 
     document.getElementById('filter-exchange-select').value = currentFilterExchange;
 
-    // Sync news source checkboxes with current state
-    document.querySelectorAll('.news-source-checkbox').forEach(cb => {
-        cb.checked = selectedNewsSources.includes(cb.value);
-    });
-
     if (allMarketSymbols.length === 0) {
         await fetchSymbols(currentFilterExchange);
     } else {
@@ -115,14 +110,8 @@ function applyGlobalFilter() {
     const indicator = document.getElementById('active-filter-indicator');
     const headerBadge = document.getElementById('global-count-badge');
 
-    // Capture news source selection
-    const newsCheckboxes = document.querySelectorAll('.news-source-checkbox:checked');
-    selectedNewsSources = Array.from(newsCheckboxes).map(cb => cb.value);
-
-    if (selectedNewsSources.length === 0) {
-        alert("請至少選擇一個新聞來源");
-        return;
-    }
+    // 新聞來源固定使用所有來源（不需要用戶選擇）
+    // selectedNewsSources 在 app.js 中已經預設為所有來源
 
     const count = globalSelectedSymbols.length;
     headerBadge.innerText = count > 0 ? count : '自動';

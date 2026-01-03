@@ -12,10 +12,12 @@ load_dotenv()
 class Settings:
     """系統配置類"""
 
-    # ============================================================================
+    # ============================================
     # API 配置
-    # ============================================================================
+    # ============================================
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+    GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
+    OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
     CRYPTOPANIC_API_KEY: str = os.getenv("CRYPTOPANIC_API_KEY", "")
 
     # ============================================================================

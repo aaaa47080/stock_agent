@@ -14,11 +14,27 @@ from core.config import MINIMUM_INVESTMENT_USD, EXCHANGE_MINIMUM_ORDER_USD
 class TradeExecutor:
     """
     Handles the execution of trades on OKX, calculating correct sizes and handling API interactions.
+
+    支持 BYOK (Bring Your Own Keys) 模式:
+    - 可以傳入臨時的 okx_connector 實例
+    - 如果不傳入，則使用全局的 connector（向後兼容）
     """
-    def __init__(self):
-        self.okx = OKXAPIConnector()
-        if not all([self.okx.api_key, self.okx.secret_key, self.okx.passphrase]):
-            print("[WARNING] OKX API credentials missing. TradeExecutor initialized in limited mode.")
+    def __init__(self, okx_connector: Optional[OKXAPIConnector] = None):
+        """
+        初始化 TradeExecutor
+
+        Args:
+            okx_connector: 可選的 OKXAPIConnector 實例（BYOK 模式）
+                          如果不提供，則創建新的實例（傳統模式）
+        """
+        if okx_connector:
+            # BYOK 模式：使用傳入的臨時 connector
+            self.okx = okx_connector
+        else:
+            # 傳統模式：創建新的 connector（從環境變量讀取）
+            self.okx = OKXAPIConnector()
+            if not all([self.okx.api_key, self.okx.secret_key, self.okx.passphrase]):
+                print("[WARNING] OKX API credentials missing. TradeExecutor initialized in limited mode.")
 
     def execute_spot(self, symbol: str, side: str, amount_usdt: float) -> Dict:
         """

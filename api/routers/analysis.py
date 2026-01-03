@@ -1,5 +1,6 @@
 import json
 import asyncio
+import os
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
@@ -9,6 +10,8 @@ from api.models import QueryRequest, BacktestRequest
 from api.utils import iterate_in_threadpool, logger
 from analysis.simple_backtester import run_simple_backtest
 import api.globals as globals
+import core.config as core_config
+from utils.user_client_factory import create_user_llm_client
 
 router = APIRouter()
 
@@ -17,28 +20,53 @@ async def analyze_crypto(request: QueryRequest):
     """
     處理分析請求，並以串流 (Streaming) 方式回傳結果。
     使用執行緒池避免阻塞事件循環。
+    ⭐ 新版：使用用戶提供的 API key
     """
     if not globals.bot:
         raise HTTPException(status_code=503, detail="分析服務尚未就緒")
+
+    # ⭐ 驗證用戶是否提供了 API key
+    if not request.user_api_key or not request.user_provider:
+        raise HTTPException(
+            status_code=400,
+            detail="缺少 API Key。請在系統設定中輸入您的 LLM API Key。"
+        )
+
+    # ⭐ 使用用戶提供的 key 創建 LLM 客戶端
+    try:
+        user_client = create_user_llm_client(
+            provider=request.user_provider,
+            api_key=request.user_api_key
+        )
+        logger.info(f"✅ 使用用戶的 {request.user_provider} client")
+    except Exception as e:
+        logger.error(f"❌ 創建用戶 LLM client 失敗: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"API Key 無效: {str(e)}"
+        )
 
     logger.info(f"收到分析請求: {request.message[:50]}... (Interval: {request.interval})")
 
     async def event_generator():
         try:
-            # 使用 iterate_in_threadpool 將同步生成器轉為異步
+            # ⭐ 使用 iterate_in_threadpool 將同步生成器轉為異步
+            # 傳入用戶的 LLM client
             async for part in iterate_in_threadpool(
                 globals.bot.process_message(
-                    request.message, 
-                    request.interval, 
-                    request.limit, 
+                    request.message,
+                    request.interval,
+                    request.limit,
                     request.manual_selection,
                     request.auto_execute,
-                    request.market_type
+                    request.market_type,
+                    user_llm_client=user_client,  # ⭐ 傳入用戶的 client
+                    user_provider=request.user_provider  # ⭐ 傳入 provider 類型
                 )
             ):
                 # 包裝成 JSON 格式發送給前端
                 yield f"data: {json.dumps({'content': part})}\n\n"
-            
+
             yield f"data: {json.dumps({'done': True})}\n\n"
         except Exception as e:
             logger.error(f"分析過程發生未預期錯誤: {e}", exc_info=True)

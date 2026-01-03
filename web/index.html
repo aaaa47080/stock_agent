@@ -24,8 +24,8 @@
             </div>
             <div>
                 <h1 class="font-bold text-lg leading-tight">Pi Crypto <span class="text-blue-500">Insight</span></h1>
-                <p class="text-xs text-slate-400 flex items-center gap-1">
-                    <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> AI Analysis Ready
+                <p id="api-status-indicator" class="text-xs text-slate-400 flex items-center gap-1">
+                    <span class="w-2 h-2 bg-slate-500 rounded-full"></span> <span id="api-status-text">檢查中...</span>
                 </p>
             </div>
         </div>
@@ -51,23 +51,58 @@
     <main class="flex-1 flex overflow-hidden">
         
         <!-- Sidebar (Desktop) / Bottom Nav (Mobile) -->
-        <nav class="w-20 glass-card flex flex-col items-center py-8 gap-8 hidden md:flex">
-            <button onclick="switchTab('chat')" class="nav-btn active group text-blue-500" title="AI 分析對話">
-                <i data-lucide="message-square" class="w-7 h-7"></i>
-            </button>
-            <button onclick="switchTab('watchlist')" class="nav-btn group text-slate-400 hover:text-blue-400" title="我的自選">
-                <i data-lucide="star" class="w-7 h-7"></i>
-            </button>
-            <button onclick="switchTab('market')" class="nav-btn group text-slate-400 hover:text-blue-400" title="行情篩選">
-                <i data-lucide="bar-chart-2" class="w-7 h-7"></i>
-            </button>
-            <button onclick="switchTab('assets')" class="nav-btn group text-slate-400 hover:text-blue-400" title="資產管理">
-                <i data-lucide="wallet" class="w-7 h-7"></i>
-            </button>
-            <button onclick="switchTab('pulse')" class="nav-btn group text-slate-400 hover:text-blue-400" title="市場脈動">
-                <i data-lucide="activity" class="w-7 h-7"></i>
-            </button>
-            <button onclick="switchTab('settings')" class="mt-auto nav-btn text-slate-400" title="設定">
+        <nav class="w-24 glass-card flex flex-col items-center py-6 gap-4 hidden md:flex">
+            <!-- AI 功能（需要 LLM Key） -->
+            <div class="flex flex-col items-center gap-2">
+                <button onclick="switchTab('chat')" class="nav-btn active group text-blue-500 relative" title="AI 聊天分析（需要 LLM Key）">
+                    <i data-lucide="bot" class="w-7 h-7"></i>
+                    <div class="absolute -bottom-1 -right-1 w-3 h-3 bg-purple-500 rounded-full border-2 border-slate-900 flex items-center justify-center">
+                        <i data-lucide="zap" class="w-2 h-2 text-white"></i>
+                    </div>
+                </button>
+                <span class="text-[10px] text-slate-500">AI 分析</span>
+            </div>
+
+            <!-- 分隔線 -->
+            <div class="w-12 h-px bg-slate-700/50"></div>
+
+            <!-- 公開功能（不需要 Key） -->
+            <div class="flex flex-col items-center gap-2">
+                <button onclick="switchTab('pulse')" class="nav-btn group text-slate-400 hover:text-blue-400 relative" title="市場脈動（公開）">
+                    <i data-lucide="activity" class="w-7 h-7"></i>
+                    <div class="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-slate-900 flex items-center justify-center">
+                        <i data-lucide="globe" class="w-2 h-2 text-white"></i>
+                    </div>
+                </button>
+                <span class="text-[10px] text-slate-500">脈動</span>
+            </div>
+
+            <div class="flex flex-col items-center gap-2">
+                <button onclick="switchTab('market')" class="nav-btn group text-slate-400 hover:text-blue-400 relative" title="領先幣種（公開）">
+                    <i data-lucide="trending-up" class="w-7 h-7"></i>
+                    <div class="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-slate-900 flex items-center justify-center">
+                        <i data-lucide="globe" class="w-2 h-2 text-white"></i>
+                    </div>
+                </button>
+                <span class="text-[10px] text-slate-500">行情</span>
+            </div>
+
+            <!-- 分隔線 -->
+            <div class="w-12 h-px bg-slate-700/50"></div>
+
+            <!-- 資產功能（需要 OKX Key） -->
+            <div class="flex flex-col items-center gap-2">
+                <button onclick="switchTab('assets')" class="nav-btn group text-slate-400 hover:text-blue-400 relative" title="資產管理（需要 OKX Key）">
+                    <i data-lucide="wallet" class="w-7 h-7"></i>
+                    <div class="absolute -bottom-1 -right-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-slate-900 flex items-center justify-center">
+                        <i data-lucide="key" class="w-2 h-2 text-white"></i>
+                    </div>
+                </button>
+                <span class="text-[10px] text-slate-500">資產</span>
+            </div>
+
+            <!-- 設定（底部） -->
+            <button onclick="switchTab('settings')" class="mt-auto nav-btn text-slate-400 hover:text-blue-400" title="系統設定">
                 <i data-lucide="settings" class="w-7 h-7"></i>
             </button>
         </nav>
@@ -88,6 +123,25 @@
                     <h3 class="flex items-center gap-2"><i data-lucide="bot" class="w-5 h-5"></i> 歡迎使用 Pi Crypto Insight</h3>
                     <p>我是您的 AI 投資助手。您可以輸入加密貨幣代號（如 BTC, ETH, PI），我將為您進行深度分析。</p>
 
+                    <!-- 功能說明 -->
+                    <div class="my-3 p-3 bg-slate-800/50 border border-slate-700 rounded-lg">
+                        <p class="text-slate-300 text-xs m-0 mb-2"><strong>側邊欄功能說明：</strong></p>
+                        <div class="flex flex-col gap-1.5 text-xs">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 bg-purple-500 rounded-full"></span>
+                                <span class="text-slate-400">紫色 = 需要 LLM API Key（OpenAI/Gemini/OpenRouter）</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 bg-green-500 rounded-full"></span>
+                                <span class="text-slate-400">綠色 = 公開功能（無需 API Key）</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 bg-amber-500 rounded-full"></span>
+                                <span class="text-slate-400">黃色 = 需要 OKX API Key（查看資產）</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- 風險警告 -->
                     <div class="my-3 p-3 bg-amber-900/20 border border-amber-500/30 rounded-lg">
                         <p class="text-amber-400 text-xs flex items-start gap-2 m-0">
@@ -96,11 +150,26 @@
                         </p>
                     </div>
 
-                    <p>試試點擊下方的建議：</p>
-                    <div class="flex wrap gap-2 mt-2">
-                        <button onclick="quickAsk('PIUSDT 可以投資嗎？')" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs border border-slate-700 transition">Pi Network (PI) 分析</button>
-                        <button onclick="quickAsk('比特幣現在適合買入嗎？')" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs border border-slate-700 transition">BTC 行情預測</button>
-                        <button onclick="quickAsk('比較 ETH 和 SOL')" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs border border-slate-700 transition">幣種對比</button>
+                    <!-- 建議按鈕區域（需要 API key 才顯示） -->
+                    <div id="suggestions-area" class="hidden">
+                        <p>試試點擊下方的建議：</p>
+                        <div class="flex wrap gap-2 mt-2">
+                            <button onclick="quickAsk('PIUSDT 可以投資嗎？')" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs border border-slate-700 transition">Pi Network (PI) 分析</button>
+                            <button onclick="quickAsk('比特幣現在適合買入嗎？')" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs border border-slate-700 transition">BTC 行情預測</button>
+                            <button onclick="quickAsk('比較 ETH 和 SOL')" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs border border-slate-700 transition">幣種對比</button>
+                        </div>
+                    </div>
+
+                    <!-- API Key 未設置提示（沒有 key 時顯示） -->
+                    <div id="api-key-warning" class="hidden my-4 p-4 bg-blue-900/20 border border-blue-500/30 rounded-lg">
+                        <p class="text-blue-400 text-sm flex items-start gap-2 m-0">
+                            <i data-lucide="info" class="w-5 h-5 mt-0.5 shrink-0"></i>
+                            <span><strong>請先設置 API Key：</strong>要使用 AI 分析功能，請先點擊右上角設定圖標 <i data-lucide="settings" class="w-4 h-4 inline"></i>，輸入您的 OpenAI、Google Gemini 或 OpenRouter API Key。</span>
+                        </p>
+                        <button onclick="switchTab('settings')" class="mt-3 w-full bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg transition flex items-center justify-center gap-2">
+                            <i data-lucide="settings" class="w-4 h-4"></i>
+                            前往設置 API Key
+                        </button>
                     </div>
                 </div>
             </div>
@@ -528,29 +597,6 @@
                     <div class="text-center py-8 text-slate-500">載入中...</div>
                 </div>
 
-                <!-- News Source Selection Area -->
-                <div class="p-4 border-t border-slate-700 bg-slate-800/30">
-                    <h4 class="text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider">新聞來源設定</h4>
-                    <div class="grid grid-cols-2 gap-2">
-                        <label class="flex items-center gap-2 cursor-pointer bg-slate-900/50 p-2 rounded-lg border border-slate-700 hover:border-blue-500/50 transition">
-                            <input type="checkbox" class="news-source-checkbox form-checkbox h-3.5 w-3.5 text-blue-500 rounded" value="google" checked>
-                            <span class="text-[11px] text-slate-300">Google News</span>
-                        </label>
-                        <label class="flex items-center gap-2 cursor-pointer bg-slate-900/50 p-2 rounded-lg border border-slate-700 hover:border-blue-500/50 transition">
-                            <input type="checkbox" class="news-source-checkbox form-checkbox h-3.5 w-3.5 text-blue-500 rounded" value="cryptocompare" checked>
-                            <span class="text-[11px] text-slate-300">CryptoCompare</span>
-                        </label>
-                        <label class="flex items-center gap-2 cursor-pointer bg-slate-900/50 p-2 rounded-lg border border-slate-700 hover:border-blue-500/50 transition">
-                            <input type="checkbox" class="news-source-checkbox form-checkbox h-3.5 w-3.5 text-blue-500 rounded" value="cryptopanic" checked>
-                            <span class="text-[11px] text-slate-300">CryptoPanic</span>
-                        </label>
-                        <label class="flex items-center gap-2 cursor-pointer bg-slate-900/50 p-2 rounded-lg border border-slate-700 hover:border-blue-500/50 transition">
-                            <input type="checkbox" class="news-source-checkbox form-checkbox h-3.5 w-3.5 text-blue-500 rounded" value="newsapi" checked>
-                            <span class="text-[11px] text-slate-300">NewsAPI</span>
-                        </label>
-                    </div>
-                </div>
-
                 <div class="p-4 border-t border-slate-700 flex gap-2">
                     <button onclick="globalSelectedSymbols=[]; renderSymbolList(allMarketSymbols);" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 rounded-lg transition">清除選擇</button>
                     <button onclick="applyGlobalFilter()" class="flex-[2] bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-lg font-bold transition">套用設定</button>
@@ -579,13 +625,84 @@
         <div id="settings-tab" class="hidden flex-1 flex flex-col p-6 overflow-y-auto custom-scrollbar">
             <div class="max-w-2xl mx-auto w-full">
                 <h2 class="text-2xl font-bold mb-6">設定與帳戶</h2>
-                <div class="glass-card rounded-2xl p-6 space-y-6">
+
+                <!-- LLM API Keys 設定 -->
+                <div class="glass-card rounded-2xl p-6 space-y-6 mb-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-lg font-semibold text-blue-400 flex items-center gap-2">
+                                <i data-lucide="key" class="w-5 h-5"></i>
+                                AI 模型 API Key
+                            </h3>
+                            <p class="text-xs text-slate-400 mt-1">您需要自己的 API Key 才能使用 AI 分析功能</p>
+                        </div>
+                    </div>
+
+                    <!-- Provider Selection -->
+                    <div>
+                        <label class="block text-sm font-medium text-slate-400 mb-2">選擇 AI 提供商</label>
+                        <select id="llm-provider-select" onchange="updateLLMKeyInput()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition">
+                            <option value="openai">OpenAI (GPT-4o-mini)</option>
+                            <option value="google_gemini">Google Gemini (Flash)</option>
+                            <option value="openrouter">OpenRouter</option>
+                        </select>
+                    </div>
+
+                    <!-- API Key Input -->
+                    <div>
+                        <label class="block text-sm font-medium text-slate-400 mb-2">API Key</label>
+                        <div class="relative">
+                            <input type="password" id="llm-api-key-input"
+                                class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 pr-20 text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition"
+                                placeholder="sk-...">
+                            <button type="button" onclick="toggleLLMKeyVisibility()" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-2">
+                                <i data-lucide="eye" class="w-4 h-4" id="llm-key-eye-icon"></i>
+                            </button>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-2">
+                            您的 API Key 僅存儲在瀏覽器本地，不會上傳到任何服務器
+                        </p>
+                    </div>
+
+                    <!-- Save/Test Buttons -->
+                    <div class="flex gap-3">
+                        <button onclick="testLLMKey()" class="flex-1 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2">
+                            <i data-lucide="check-circle" class="w-4 h-4"></i>
+                            測試連接
+                        </button>
+                        <button onclick="saveLLMKey()" class="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-bold shadow-lg shadow-blue-900/20 transition flex items-center justify-center gap-2">
+                            <i data-lucide="save" class="w-4 h-4"></i>
+                            保存設置
+                        </button>
+                    </div>
+
+                    <!-- Status -->
+                    <div id="llm-key-status" class="hidden p-3 rounded-lg">
+                        <p class="text-sm"></p>
+                    </div>
+
+                    <!-- Help Links -->
+                    <div class="pt-4 border-t border-slate-700">
+                        <p class="text-xs text-slate-500 mb-2">如何獲取 API Key？</p>
+                        <div class="flex flex-wrap gap-2">
+                            <a href="https://platform.openai.com/api-keys" target="_blank" class="text-xs text-blue-400 hover:text-blue-300 underline">OpenAI 官網</a>
+                            <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-xs text-blue-400 hover:text-blue-300 underline">Google AI Studio</a>
+                            <a href="https://openrouter.ai/keys" target="_blank" class="text-xs text-blue-400 hover:text-blue-300 underline">OpenRouter</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pi Network Identity -->
+                <div class="glass-card rounded-2xl p-6 space-y-6 mb-6">
                     <div>
                         <label class="block text-sm font-medium text-slate-400 mb-2">Pi 網路身份</label>
                         <div id="settings-user" class="text-lg font-semibold text-blue-400">未登入</div>
                     </div>
-                    
-                    <div class="pt-6 border-t border-slate-700">
+                </div>
+
+                <!-- Support Section -->
+                <div class="glass-card rounded-2xl p-6 space-y-6">
+                    <div>
                         <h3 class="text-lg font-semibold mb-4 text-amber-400">贊助與支持</h3>
                         <p class="text-sm text-slate-400 mb-4">如果您覺得這個工具對您有幫助，可以贊助 1 Pi 來支持開發者持續優化系統。</p>
                         <button onclick="alert('正式版本將串接 Pi 錢包支付 1 Pi')" class="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold py-3 rounded-xl transition shadow-lg opacity-50">
@@ -614,7 +731,9 @@
                     </div>
                     
                     <p class="text-sm text-slate-400 mb-6 leading-relaxed">
-                        請輸入您的 OKX V5 API 金鑰。這些資訊將會加密儲存在您本地的設定檔 (.env) 中，不會上傳至任何第三方伺服器。
+                        🔒 <strong>安全模式 (BYOK):</strong> 您的 OKX API 金鑰僅存儲在<strong>您的瀏覽器</strong>中（localStorage），不會上傳到服務器。
+                        <br>
+                        ⚠️ <strong>注意:</strong> 無痕視窗不會保存您的金鑰，每次需要重新輸入。
                     </p>
 
                     <form id="apikey-form" onsubmit="saveApiKeys(event)" class="space-y-4">
@@ -704,29 +823,192 @@
             </div>
         </div>
 
+        <!-- Comprehensive Settings Modal -->
+        <div id="settings-modal" class="fixed inset-0 bg-black/80 hidden z-[90] flex items-center justify-center backdrop-blur-sm p-4">
+            <div class="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-2xl p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto custom-scrollbar">
+                <button onclick="closeSettings()" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+                
+                <h2 class="text-xl font-bold mb-6 flex items-center gap-2 text-white">
+                    <i data-lucide="sliders" class="w-6 h-6 text-blue-400"></i> 系統設置
+                </h2>
+                
+                <!-- 1. API Keys -->
+                <div class="mb-8">
+                    <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-700 pb-2">AI 模型 API 金鑰</h3>
+                    
+                    <div class="grid grid-cols-1 gap-4">
+                        <div class="space-y-2">
+                            <label class="text-xs text-slate-400 flex justify-between items-center">
+                                OpenAI API Key
+                                <span id="status-openai" class="text-[10px] text-slate-500 flex items-center gap-1">
+                                    <i data-lucide="circle-dashed" class="w-3 h-3"></i> 未設定
+                                </span>
+                            </label>
+                            <div class="flex gap-2">
+                                <input type="password" id="set-openai-key" oninput="resetKeyStatus('openai')" class="flex-1 bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white focus:border-blue-500 outline-none" placeholder="sk-...">
+                                <button onclick="verifyKey('openai')" class="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-xs transition border border-slate-600 whitespace-nowrap">驗證</button>
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-xs text-slate-400 flex justify-between items-center">
+                                Google Gemini API Key
+                                <span id="status-google_gemini" class="text-[10px] text-slate-500 flex items-center gap-1">
+                                    <i data-lucide="circle-dashed" class="w-3 h-3"></i> 未設定
+                                </span>
+                            </label>
+                            <div class="flex gap-2">
+                                <input type="password" id="set-google-key" oninput="resetKeyStatus('google_gemini')" class="flex-1 bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white focus:border-blue-500 outline-none" placeholder="AIza...">
+                                <button onclick="verifyKey('google_gemini')" class="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-xs transition border border-slate-600 whitespace-nowrap">驗證</button>
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-xs text-slate-400 flex justify-between items-center">
+                                OpenRouter API Key
+                                <span id="status-openrouter" class="text-[10px] text-slate-500 flex items-center gap-1">
+                                    <i data-lucide="circle-dashed" class="w-3 h-3"></i> 未設定
+                                </span>
+                            </label>
+                            <div class="flex gap-2">
+                                <input type="password" id="set-openrouter-key" oninput="resetKeyStatus('openrouter')" class="flex-1 bg-slate-900 border border-slate-700 rounded p-2 text-sm text-white focus:border-blue-500 outline-none" placeholder="sk-or-...">
+                                <button onclick="verifyKey('openrouter')" class="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-xs transition border border-slate-600 whitespace-nowrap">驗證</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- OKX Keys -->
+                    <div class="mt-6 p-4 bg-slate-900/50 rounded-lg border border-slate-700/50">
+                        <h4 class="text-sm font-medium text-slate-300 mb-2 flex items-center gap-2">
+                            <img src="https://static.okx.com/cdn/assets/imgs/247/5F7057067E614532.png" class="w-4 h-4 rounded-full"> OKX 交易金鑰
+                            <span class="text-[10px] px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full border border-green-500/30">🔒 本地存儲</span>
+                        </h4>
+                        <p class="text-[10px] text-slate-500 mb-3">⚠️ 金鑰僅存儲在您的瀏覽器中，不會上傳到服務器（BYOK 模式）</p>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <input type="password" id="set-okx-key" class="bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white" placeholder="API Key">
+                            <input type="password" id="set-okx-secret" class="bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white" placeholder="Secret Key">
+                            <input type="password" id="set-okx-pass" class="bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white" placeholder="Passphrase">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Model Configuration -->
+                <div class="mb-8">
+                    <h3 class="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4 border-b border-slate-700 pb-2">模型與模式設置</h3>
+                    
+                    <div class="flex items-center justify-between mb-6 bg-blue-900/20 p-4 rounded-lg border border-blue-500/20">
+                        <div>
+                            <h4 class="font-medium text-white flex items-center gap-2">
+                                <i data-lucide="users" class="w-4 h-4 text-blue-400"></i>
+                                委員會辯論模式 (Multi-Model)
+                            </h4>
+                            <p class="text-xs text-slate-400 mt-1">啟用後，將同時調用多個 AI 模型進行辯論與投票，分析更全面但速度較慢。</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="set-committee-mode" class="sr-only peer" onchange="toggleCommitteePanel()">
+                            <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                    </div>
+
+                    <div id="single-model-config" class="grid grid-cols-1 md:grid-cols-2 gap-6 transition-all duration-300">
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-slate-300">模型提供商</label>
+                            <select id="set-model-provider" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-blue-500 outline-none">
+                                <option value="google_gemini">Google Gemini</option>
+                                <option value="openai">OpenAI</option>
+                                <option value="openrouter">OpenRouter</option>
+                            </select>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-sm font-medium text-slate-300">模型名稱</label>
+                            <div class="flex flex-col gap-2">
+                                <input type="text" id="set-model-name" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:border-blue-500 outline-none" placeholder="e.g. gemini-1.5-pro">
+                                <select onchange="document.getElementById('set-model-name').value = this.value" class="w-full bg-slate-800 text-xs text-slate-400 border border-slate-700 rounded px-2 py-1 outline-none cursor-pointer">
+                                    <option value="">-- 快速選擇常用模型 --</option>
+                                    <option value="gemini-3-flash-preview">Google: Gemini 2.5 Flash</option>
+                                    <option value="gemini-1.5-pro">Google: Gemini 1.5 Pro</option>
+                                    <option value="gpt-4o">OpenAI: GPT-4o</option>
+                                    <option value="gpt-4o-mini">OpenAI: GPT-4o Mini</option>
+                                    <option value="anthropic/claude-3.5-sonnet">OpenRouter: Claude 3.5 Sonnet</option>
+                                    <option value="deepseek/deepseek-r1">OpenRouter: DeepSeek R1</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 委員會成員列表 (僅在開啟委員會模式時顯示) -->
+                    <div id="committee-management-panel" class="hidden mt-6 pt-6 border-t border-slate-700">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-sm font-bold text-white">管理委員會成員</h4>
+                            <p class="text-[10px] text-slate-400">請先在上方選擇模型，再點擊下方按鈕加入對應陣營。</p>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- 多頭成員 -->
+                            <div class="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50">
+                                <div class="flex justify-between items-center mb-2">
+                                    <h5 class="text-xs font-bold text-green-400 flex items-center gap-1">
+                                        <i data-lucide="trending-up" class="w-3 h-3"></i> 多頭委員會 (Bull)
+                                    </h5>
+                                    <button onclick="addCurrentModelToCommittee('bull')" class="text-[10px] bg-green-600/20 hover:bg-green-600 hover:text-white text-green-400 px-2 py-1 rounded border border-green-600/30 transition flex items-center gap-1" title="將上方選擇的模型加入多頭">
+                                        <i data-lucide="plus" class="w-3 h-3"></i> 加入
+                                    </button>
+                                </div>
+                                <ul id="bull-committee-list" class="space-y-2 text-xs min-h-[40px]">
+                                    <li class="text-slate-500 italic">載入中...</li>
+                                </ul>
+                            </div>
+                            
+                            <!-- 空頭成員 -->
+                            <div class="bg-slate-900/50 p-3 rounded-lg border border-slate-700/50">
+                                <div class="flex justify-between items-center mb-2">
+                                    <h5 class="text-xs font-bold text-red-400 flex items-center gap-1">
+                                        <i data-lucide="trending-down" class="w-3 h-3"></i> 空頭委員會 (Bear)
+                                    </h5>
+                                    <button onclick="addCurrentModelToCommittee('bear')" class="text-[10px] bg-red-600/20 hover:bg-red-600 hover:text-white text-red-400 px-2 py-1 rounded border border-red-600/30 transition flex items-center gap-1" title="將上方選擇的模型加入空頭">
+                                        <i data-lucide="plus" class="w-3 h-3"></i> 加入
+                                    </button>
+                                </div>
+                                <ul id="bear-committee-list" class="space-y-2 text-xs min-h-[40px]">
+                                    <li class="text-slate-500 italic">載入中...</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-700">
+                    <button onclick="closeSettings()" class="px-4 py-2 text-slate-400 hover:text-white transition">取消</button>
+                    <button onclick="saveSettings()" id="btn-save-settings" class="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg shadow-lg shadow-blue-600/20 font-medium transition flex items-center gap-2">
+                        <i data-lucide="save" class="w-4 h-4"></i> 保存並應用
+                    </button>
+                </div>
+            </div>
+        </div>
+
     </main>
 
     <!-- Mobile Navigation -->
     <nav class="md:hidden glass-card flex justify-around py-4 border-t border-slate-800">
-        <button onclick="switchTab('chat')" class="flex flex-col items-center gap-1 text-blue-500">
-            <i data-lucide="message-square" class="w-6 h-6"></i>
-            <span class="text-[10px]">分析</span>
+        <button onclick="switchTab('chat')" class="flex flex-col items-center gap-1 text-blue-500 relative">
+            <i data-lucide="bot" class="w-6 h-6"></i>
+            <span class="text-[10px]">AI 分析</span>
+            <div class="absolute top-0 right-2 w-2 h-2 bg-purple-500 rounded-full"></div>
         </button>
-        <button onclick="switchTab('watchlist')" class="flex flex-col items-center gap-1 text-slate-400">
-            <i data-lucide="star" class="w-6 h-6"></i>
-            <span class="text-[10px]">自選</span>
-        </button>
-        <button onclick="switchTab('market')" class="flex flex-col items-center gap-1 text-slate-400">
-            <i data-lucide="bar-chart-2" class="w-6 h-6"></i>
-            <span class="text-[10px]">行情</span>
-        </button>
-        <button onclick="switchTab('assets')" class="flex flex-col items-center gap-1 text-slate-400">
-            <i data-lucide="wallet" class="w-6 h-6"></i>
-            <span class="text-[10px]">資產</span>
-        </button>
-        <button onclick="switchTab('pulse')" class="flex flex-col items-center gap-1 text-slate-400">
+        <button onclick="switchTab('pulse')" class="flex flex-col items-center gap-1 text-slate-400 relative">
             <i data-lucide="activity" class="w-6 h-6"></i>
             <span class="text-[10px]">脈動</span>
+            <div class="absolute top-0 right-2 w-2 h-2 bg-green-500 rounded-full"></div>
+        </button>
+        <button onclick="switchTab('market')" class="flex flex-col items-center gap-1 text-slate-400 relative">
+            <i data-lucide="trending-up" class="w-6 h-6"></i>
+            <span class="text-[10px]">行情</span>
+            <div class="absolute top-0 right-2 w-2 h-2 bg-green-500 rounded-full"></div>
+        </button>
+        <button onclick="switchTab('assets')" class="flex flex-col items-center gap-1 text-slate-400 relative">
+            <i data-lucide="wallet" class="w-6 h-6"></i>
+            <span class="text-[10px]">資產</span>
+            <div class="absolute top-0 right-2 w-2 h-2 bg-amber-500 rounded-full"></div>
         </button>
         <button onclick="switchTab('settings')" class="flex flex-col items-center gap-1 text-slate-400">
             <i data-lucide="settings" class="w-6 h-6"></i>
@@ -747,7 +1029,10 @@
 
 
     <!-- JavaScript Modules -->
+    <script src="/static/js/apiKeyManager.js"></script>
+    <script src="/static/js/okxKeyManager.js"></script>
     <script src="/static/js/app.js"></script>
+    <script src="/static/js/llmSettings.js"></script>
     <script src="/static/js/filter.js"></script>
     <script src="/static/js/chat.js"></script>
     <script src="/static/js/market.js"></script>

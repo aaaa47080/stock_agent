@@ -1,32 +1,113 @@
-INFO:     Uvicorn running on http://0.0.0.0:8111 (Press CTRL+C to quit)
-Found top 50 symbols: ['BTCUSDT', 'USDCUSDT', 'ETHUSDT', 'ZECUSDT', 'SOLUSDT', 'USD1USDT', 'FLOWUSDT', 'BNBUSDT', 'XRPUSDT', 'TRXUSDT', 'FDUSDUSDT', 'UNIUSDT', 'ADAUSDT', 'BCHUSDT', 'ATUSDT', 'DOGEUSDT', 'ZENUSDT', 'DASHUSDT', 'AVAXUSDT', 'SUIUSDT', 'FILUSDT', 'LTCUSDT', 'ASTERUSDT', 'DOTUSDT', 'STORJUSDT', 'XPLUSDT', 'ONTUSDT', 'PAXGUSDT', 'LINKUSDT', 'NEARUSDT', 'TAOUSDT', 'PEPEUSDT', 'GASUSDT', 'NTRNUSDT', 'AVNTUSDT', 'TONUSDT', 'ENAUSDT', 'ACTUSDT', 'STRKUSDT', 'ZKUSDT', 'SEIUSDT', 'PENGUUSDT', 'AAVEUSDT', 'AIXBTUSDT', 'APTUSDT', 'SPKUSDT', 'ICPUSDT', 'GIGGLEUSDT', 'TRUUSDT', 'KAITOUSDT']
-Starting parallel analysis with 10 workers...
-2025-12-28 15:37:07,353 [INFO] API: 使用快取篩選數據 (更新時間: 2025-12-28T15:34:21.889478)
-INFO:     127.0.0.1:61496 - "POST /api/screener HTTP/1.1" 200 OK
-OKX API 錯誤: Instrument ID, Instrument ID code, or Spread ID doesn't exist.
-Error in get_klines for BTC: Symbol 'BTC' not found or not live on OKX SPOT market.
-INFO:     127.0.0.1:65037 - "GET /api/market-pulse/BTC HTTP/1.1" 404 Not Found
-2025-12-28 15:37:09,863 [INFO] API: 使用快取篩選數據 (更新時間: 2025-12-28T15:34:21.889478)
-INFO:     127.0.0.1:65037 - "POST /api/screener HTTP/1.1" 200 OK
-2025-12-28 15:37:10,463 [INFO] API: 使用快取篩選數據 (更新時間: 2025-12-28T15:34:21.889478)
-INFO:     127.0.0.1:65037 - "POST /api/screener HTTP/1.1" 200 OK
-2025-12-28 15:37:10,475 [INFO] API: Screener cache saved to analysis_results/screener_cache.json
-2025-12-28 15:37:10,475 [INFO] API: ✅ [背景任務] 市場篩選器更新完成。
-2025-12-28 15:37:10,476 [INFO] API: ⏳ [背景任務] 下次更新將在 1 小時後...
-OKX API 錯誤: Instrument ID, Instrument ID code, or Spread ID doesn't exist.
-Error in get_klines for BTC: Symbol 'BTC' not found or not live on OKX SPOT market.
-INFO:     127.0.0.1:61496 - "GET /api/market-pulse/BTC HTTP/1.1" 404 Not Found
-2025-12-28 15:37:10,898 [INFO] API: 使用快取篩選數據 (更新時間: 2025-12-28T15:37:10.472733)
-INFO:     127.0.0.1:61496 - "POST /api/screener HTTP/1.1" 200 OK
-OKX API 錯誤: Instrument ID, Instrument ID code, or Spread ID doesn't exist.
-Error in get_klines for PI: Symbol 'PI' not found or not live on OKX SPOT market.
-INFO:     127.0.0.1:53161 - "GET /api/market-pulse/PI HTTP/1.1" 404 Not Found
-OKX API 錯誤: Instrument ID, Instrument ID code, or Spread ID doesn't exist.
-Error in get_klines for PI: Symbol 'PI' not found or not live on OKX SPOT market.
-INFO:     127.0.0.1:61496 - "GET /api/market-pulse/PI HTTP/1.1" 404 Not Found
+======================================================================
+問題：API 伺服器啟動時缺少 OPENAI_API_KEY 環境變數
+日期：2026-01-03
+======================================================================
 
-領漲幣種 (7D) 
-超賣區域 (RSI < 40)
-超買區域 (RSI > 70)
+原始錯誤：
+(.venv) (base) PS D:\okx\stock_agent> & D:/okx/stock_agent/.venv/Scripts/python.exe d:/okx/stock_agent/api_server.py
+Traceback (most recent call last):
+  File "d:\okx\stock_agent\api_server.py", line 21, in <module>
+    from api.services import (
+  File "d:\okx\stock_agent\api\services.py", line 12, in <module>
+    from analysis.market_pulse import get_market_pulse
+  File "d:\okx\stock_agent\analysis\market_pulse.py", line 215, in <module>
+    market_pulse = MarketPulseAnalyzer()
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "d:\okx\stock_agent\analysis\market_pulse.py", line 28, in __init__
+    self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\okx\stock_agent\.venv\Lib\site-packages\openai\_client.py", line 137, in __init__
+    raise OpenAIError(
+openai.OpenAIError: The api_key client option must be set either by passing api_key to the client or by setting the OPENAI_API_KEY environment variable
 
-這三個應該要及時更新才對吧?
+======================================================================
+解決方案（已實施）：
+======================================================================
+
+✅ 1. 重構 MarketPulseAnalyzer 使用統一的 LLMClientFactory
+   - 修改 analysis/market_pulse.py
+   - 在 core/config.py 中添加 MARKET_PULSE_MODEL 配置
+   - 使用 Google Gemini 作為 LLM 提供商
+
+✅ 2. 重構 CryptoQueryParser 使用統一的 LLMClientFactory
+   - 修改 interfaces/chat_interface.py
+   - 在 core/config.py 中添加 QUERY_PARSER_MODEL_CONFIG 配置
+   - 修復 CryptoAnalysisBot 的初始化問題
+
+✅ 3. 重構 utils/utils.py 中的 audit_news_with_llm 函數
+   - 使用統一的 LLM 客戶端工廠
+
+✅ 4. 啟用 GOOGLE_API_KEY 環境變數
+   - 在 .env 檔案中取消註解 GOOGLE_API_KEY
+
+======================================================================
+架構改進：
+======================================================================
+
+1. **統一的 LLM 管理**
+   - 所有 LLM 調用現在都通過 LLMClientFactory 進行
+   - 支援多種 LLM 提供商（OpenAI、Google Gemini、OpenRouter）
+   - 配置集中化在 core/config.py
+
+2. **成本優化**
+   - 使用 Google Gemini 替代 OpenAI
+   - 不需要額外的 OPENAI_API_KEY
+
+3. **可維護性提升**
+   - 未來切換模型只需修改配置
+   - 架構更加統一和一致
+
+======================================================================
+狀態：✅ 問題已完全解決 + 增強用戶體驗
+======================================================================
+
+## 額外優化（2026-01-03 更新）
+
+### 問題 2：Google Gemini API 配額不足
+- **問題**：免費版 Gemini 每天只有 20 個請求
+- **解決**：切換回 OpenAI（gpt-4o-mini），更穩定且配額充足
+
+### 問題 3：未設置 API key 時無法阻止請求
+- **問題**：用戶在未設置 API key 時仍可發送分析請求，導致失敗
+- **解決**：
+  1. **後端驗證** (api/routers/analysis.py)
+     - 添加 `check_api_key_available()` 函數
+     - 在分析請求前檢查當前 provider 的 API key
+     - 如果未設置，返回 400 錯誤並提示用戶
+
+  2. **前端驗證** (web/js/chat.js)
+     - 在 `sendMessage()` 函數中添加 API key 檢查
+     - 發送請求前先調用 `/api/config` 檢查狀態
+     - 如果未設置，彈出警告並自動開啟設定面板
+
+  3. **狀態顯示** (web/index.html + web/js/app.js)
+     - Header 顯示即時 API key 狀態
+     - 綠色 = 已設置且可用
+     - 紅色 = 未設置，需要配置
+     - 可點擊狀態文字快速開啟設定
+
+======================================================================
+最終配置建議（生產環境）
+======================================================================
+
+**推薦使用 OpenAI：**
+```env
+OPENAI_API_KEY=your-key-here  # ✅ 已啟用
+```
+
+**配置檔案：**
+```python
+# core/config.py
+BULL_RESEARCHER_MODEL = {
+    "provider": "openai",
+    "model": "gpt-4o-mini"  # 穩定、快速、成本可控
+}
+```
+
+**優勢：**
+- ✅ 穩定的 API 配額
+- ✅ 統一的 LLM 架構
+- ✅ 完整的錯誤處理
+- ✅ 用戶友好的提示
+
+======================================================================

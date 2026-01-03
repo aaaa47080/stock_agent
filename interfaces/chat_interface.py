@@ -24,7 +24,7 @@ from cachetools import cachedmethod, TTLCache, keys
 from core.graph import app
 from core.tools import format_full_analysis_result
 from core.config import (
-    QUERY_PARSER_MODEL,
+    QUERY_PARSER_MODEL_CONFIG,
     SUPPORTED_EXCHANGES,
     DEFAULT_FUTURES_LEVERAGE,
     MAX_ANALYSIS_WORKERS,
@@ -37,6 +37,7 @@ from core.config import (
 from data.data_fetcher import SymbolNotFoundError, get_data_fetcher
 from data.indicator_calculator import add_technical_indicators
 from utils.utils import get_crypto_news, safe_float
+from utils.llm_client import create_llm_client_from_config
 
 # 導入新的 Agent 模組
 try:
@@ -53,7 +54,8 @@ class CryptoQueryParser:
     """使用 LLM 解析用戶查詢並提取加密貨幣代號"""
 
     def __init__(self):
-        self.client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        """初始化 CryptoQueryParser，使用統一的 LLM 客戶端工廠"""
+        self.client, self.model = create_llm_client_from_config(QUERY_PARSER_MODEL_CONFIG)
 
     def parse_query(self, user_message: str) -> Dict:
         """
@@ -126,7 +128,7 @@ class CryptoQueryParser:
 
         try:
             response = self.client.chat.completions.create(
-                model=QUERY_PARSER_MODEL,
+                model=self.model,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_message}
@@ -436,9 +438,15 @@ class CryptoAnalysisBot:
 
         yield f"\n*分析時間: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*"
     
-    def process_message(self, user_message: str, interval: str = "1d", limit: int = 100, manual_selection: List[str] = None, auto_execute: bool = False, market_type: str = "spot"):
+    def process_message(self, user_message: str, interval: str = "1d", limit: int = 100,
+                       manual_selection: List[str] = None, auto_execute: bool = False,
+                       market_type: str = "spot", user_llm_client=None, user_provider: str = "openai"):
         """
         處理用戶消息 (支援混合模式：普通問題走 Agent，完整分析走即時串流 Graph)
+
+        Args:
+            user_llm_client: ⭐ 用戶提供的 LLM 客戶端
+            user_provider: ⭐ 用戶選擇的 provider
         """
         def simulate_stream(text: str, prefix: str = "", delay: float = 0.01, chunk_size: int = 10):
             """模擬打字機流式輸出"""
@@ -544,7 +552,7 @@ class CryptoAnalysisBot:
                     "exchange": exchange,
                     "interval": parsed.get("interval") or interval,
                     "limit": DEFAULT_KLINES_LIMIT,
-                    "market_type": market_type, 
+                    "market_type": market_type,
                     "leverage": 1 if market_type == "spot" else 5, # 預設合約 5 倍
                     "include_multi_timeframe": True,
                     "short_term_interval": "1h",
@@ -556,7 +564,10 @@ class CryptoAnalysisBot:
                     "perform_trading_decision": True,
                     "execute_trade": False, # 禁用圖表內自動執行，改為前端手動確認 (HITL)
                     "debate_round": 0,
-                    "debate_history": []
+                    "debate_history": [],
+                    # ⭐ 添加用戶的 LLM client
+                    "user_llm_client": user_llm_client,
+                    "user_provider": user_provider
                 }
 
                 try:
@@ -597,10 +608,39 @@ class CryptoAnalysisBot:
                                 if history:
                                     latest = history[-1]
                                     yield f"[PROCESS]\n---\n### ⚔️ 第 {latest.get('round')} 輪辯論：{latest.get('topic')}\n\n"
+                                    
+                                    # --- 多頭展示 ---
                                     bull_arg = latest.get('bull', {}).get('argument', '無觀點')
-                                    yield f"[PROCESS]**🐂 多頭觀點**:\n> {bull_arg.replace(chr(10), chr(10) + '> ')}\n\n"
+                                    bull_details = latest.get('bull_committee_details', [])
+                                    
+                                    if bull_details:
+                                        yield f"[PROCESS]**🐂 多頭委員會 (共識觀點)**:\n> {bull_arg.replace(chr(10), chr(10) + '> ')}\n"
+                                        yield f"[PROCESS]   🔻 委員會成員觀點:\n"
+                                        for i, member in enumerate(bull_details):
+                                            m_arg = member.get('argument', '無內容')
+                                            # 只取前 150 字作為摘要，避免過長
+                                            summary = m_arg[:150].replace('\n', ' ') + "..." if len(m_arg) > 150 else m_arg
+                                            yield f"[PROCESS]   🔸 成員 {i+1}: {summary}\n"
+                                        yield f"[PROCESS]\n"
+                                    else:
+                                        yield f"[PROCESS]**🐂 多頭觀點**:\n> {bull_arg.replace(chr(10), chr(10) + '> ')}\n\n"
+
+                                    # --- 空頭展示 ---
                                     bear_arg = latest.get('bear', {}).get('argument', '無觀點')
-                                    yield f"[PROCESS]**🐻 空頭觀點**:\n> {bear_arg.replace(chr(10), chr(10) + '> ')}\n\n"
+                                    bear_details = latest.get('bear_committee_details', [])
+                                    
+                                    if bear_details:
+                                        yield f"[PROCESS]**🐻 空頭委員會 (共識觀點)**:\n> {bear_arg.replace(chr(10), chr(10) + '> ')}\n"
+                                        yield f"[PROCESS]   🔻 委員會成員觀點:\n"
+                                        for i, member in enumerate(bear_details):
+                                            m_arg = member.get('argument', '無內容')
+                                            summary = m_arg[:150].replace('\n', ' ') + "..." if len(m_arg) > 150 else m_arg
+                                            yield f"[PROCESS]   🔸 成員 {i+1}: {summary}\n"
+                                        yield f"[PROCESS]\n"
+                                    else:
+                                        yield f"[PROCESS]**🐻 空頭觀點**:\n> {bear_arg.replace(chr(10), chr(10) + '> ')}\n\n"
+
+                                    # --- 中立展示 ---
                                     neutral_arg = latest.get('neutral', {}).get('argument', '無觀點')
                                     yield f"[PROCESS]**⚖️ 中立觀點**:\n> {neutral_arg.replace(chr(10), chr(10) + '> ')}\n\n"
 

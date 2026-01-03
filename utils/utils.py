@@ -364,10 +364,10 @@ def audit_crypto_news(symbol: str, news_list: List[Dict]) -> List[Dict]:
     if not news_list:
         return []
 
-    from core.config import FAST_THINKING_MODEL
-    from openai import OpenAI
-    
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    from core.config import MARKET_PULSE_MODEL
+    from utils.llm_client import create_llm_client_from_config
+
+    client, model = create_llm_client_from_config(MARKET_PULSE_MODEL)
     
     print(f">> 🛡️ 新聞審查員正在啟動 (對象: {symbol}, 待審核: {len(news_list)} 條)...")
 
@@ -399,7 +399,7 @@ def audit_crypto_news(symbol: str, news_list: List[Dict]) -> List[Dict]:
 
     try:
         response = client.chat.completions.create(
-            model=FAST_THINKING_MODEL,
+            model=model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2,
             response_format={"type": "text"} # 確保簡短回覆

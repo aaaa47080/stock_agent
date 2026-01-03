@@ -75,14 +75,29 @@ async function confirmTradeExecution() {
     btn.innerHTML = '<div class="spinner w-4 h-4 border-2"></div> 執行中...';
 
     try {
+        // ✅ 檢查是否有 OKX API 金鑰
+        const okxKeyManager = window.OKXKeyManager;
+        if (!okxKeyManager || !okxKeyManager.hasCredentials()) {
+            alert('⚠️ 請先設置 OKX API 金鑰');
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            return;
+        }
+
         // Update proposal with user edits
         currentProposal.amount = parseFloat(document.getElementById('prop-amount').value);
         currentProposal.stop_loss = parseFloat(document.getElementById('prop-sl').value) || null;
         currentProposal.take_profit = parseFloat(document.getElementById('prop-tp').value) || null;
 
+        // ✅ 獲取認證頭
+        const authHeaders = okxKeyManager.getAuthHeaders();
+
         const res = await fetch('/api/trade/execute', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                ...authHeaders
+            },
             body: JSON.stringify(currentProposal)
         });
 

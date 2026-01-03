@@ -5,7 +5,6 @@ import logging
 from datetime import datetime
 from typing import Dict, Optional, List, Any
 import pandas as pd
-from openai import OpenAI
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -13,7 +12,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.utils import get_crypto_news, safe_float, DataFrameEncoder
 from data.market_data import get_klines
 from data.indicator_calculator import add_technical_indicators
-from core.config import FAST_THINKING_MODEL
+from core.config import MARKET_PULSE_MODEL
+from utils.llm_client import create_llm_client_from_config
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -22,10 +22,25 @@ class MarketPulseAnalyzer:
     """
     Market Pulse Analyzer: Explains WHY the market is moving.
     Combines price volatility detection with news correlation and technicals.
+    ⭐ 使用用戶提供的 LLM client
     """
-    
-    def __init__(self):
-        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+    def __init__(self, client=None):
+        """
+        初始化 MarketPulseAnalyzer
+
+        Args:
+            client: LLM 客戶端（用戶提供）。如果未提供，則從配置創建（用於向後兼容）
+        """
+        if client is None:
+            # 向後兼容：如果沒有傳入 client，則從配置創建
+            self.client, self.model = create_llm_client_from_config(MARKET_PULSE_MODEL)
+            logger.warning("MarketPulseAnalyzer 使用配置創建 client（向後兼容模式）")
+        else:
+            # ⭐ 使用用戶提供的 client
+            self.client = client
+            self.model = "user-provided-model"
+            logger.info("MarketPulseAnalyzer 使用用戶提供的 client")
         
     def analyze_movement(self, symbol: str, threshold_percent: float = 2.0, enabled_sources: List[str] = None) -> Dict:
         """
@@ -192,7 +207,7 @@ class MarketPulseAnalyzer:
 """
         try:
             response = self.client.chat.completions.create(
-                model=FAST_THINKING_MODEL,
+                model=self.model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.4,
                 response_format={"type": "json_object"}
@@ -211,12 +226,33 @@ class MarketPulseAnalyzer:
                 "risks": ["市場情緒不明朗", "短線波動風險"]
             }
 
-# Global instance
-market_pulse = MarketPulseAnalyzer()
+# Global instance (Lazy Loading)
+_market_pulse = None
 
 def get_market_pulse(symbol: str, enabled_sources: List[str] = None) -> Dict:
-    """Wrapper function to be used by API/Tools"""
-    return market_pulse.analyze_movement(symbol, enabled_sources=enabled_sources)
+    """
+    Wrapper function to be used by API/Tools
+
+    ✅ 使用懶加載模式：只在實際調用時才創建 MarketPulseAnalyzer 實例
+    這樣即使沒有 LLM API Key，服務器也能正常啟動
+    """
+    global _market_pulse
+
+    if _market_pulse is None:
+        # 第一次調用時才創建實例
+        try:
+            _market_pulse = MarketPulseAnalyzer()
+            logger.info("✅ MarketPulseAnalyzer 實例已創建（懶加載）")
+        except Exception as e:
+            logger.error(f"❌ 創建 MarketPulseAnalyzer 失敗: {e}")
+            # 返回錯誤信息，而不是讓整個應用崩潰
+            return {
+                "error": "LLM_NOT_CONFIGURED",
+                "message": "請先在設置中配置 LLM API Key",
+                "details": str(e)
+            }
+
+    return _market_pulse.analyze_movement(symbol, enabled_sources=enabled_sources)
 
 if __name__ == "__main__":
     # Test

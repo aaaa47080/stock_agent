@@ -71,7 +71,7 @@ class OKXAPIConnector:
 
         # 如果不是公共端點，且缺少憑證，則報錯
         if not is_public and not all([self.api_key, self.secret_key, self.passphrase]):
-            return {"code": "000000", "msg": "API 憑證未設置", "data": []}
+            return {"code": "50000", "msg": "❌ 未設置 OKX API Key。請在系統設定中輸入您的 OKX API 憑證。", "data": []}
 
         # 構建實際請求的 URL
         # 如果 base_url 已包含版本信息 (/api/v5)，則直接附加 endpoint；否則添加版本前綴

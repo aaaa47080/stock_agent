@@ -17,7 +17,16 @@
       "Bash(timeout 10 curl:*)",
       "Bash(timeout 60 curl:*)",
       "Bash(timeout 30 curl:*)",
-      "Bash(source:*)"
+      "Bash(source:*)",
+      "Bash(.venv/Scripts/python.exe:*)",
+      "Bash(timeout 5 .venv/Scripts/python.exe:*)",
+      "Bash(node -c:*)",
+      "Bash(if [ -d \".llm_cache\" ])",
+      "Bash(then echo \"LLM cache exists\")",
+      "Bash(else echo \"No LLM cache directory\")",
+      "Bash(fi)",
+      "Bash(cd:*)",
+      "Bash(.venvScriptspython.exe -c \"import sys; sys.path.insert\\(0, ''.''\\); from analysis.market_pulse import get_market_pulse; print\\(''✅ market_pulse 模塊導入成功''\\)\")"
     ],
     "deny": [],
     "ask": []

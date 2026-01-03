@@ -24,8 +24,11 @@ ENABLE_COMMITTEE_MODE = True  # 設為 True 啟用委員會模式
 
 # 多頭研究員使用的模型
 BULL_RESEARCHER_MODEL = {
-    "provider": "openai",  # 選項: "openai" 或 "openrouter"
-    "model": "gpt-4.1-nano",  # OpenAI 模型名稱
+    "provider": "openai",  # 選項: "openai" 或 "openrouter" 或 "google_gemini"
+    "model": "gpt-4o-mini",
+    # Google Gemini 範例:
+    # "provider": "google_gemini",
+    # "model": "gemini-3-flash-preview",
     # OpenRouter 範例:
     # "provider": "openrouter",
     # "model": "anthropic/claude-3.5-sonnet",
@@ -33,8 +36,11 @@ BULL_RESEARCHER_MODEL = {
 
 # 空頭研究員使用的模型
 BEAR_RESEARCHER_MODEL = {
-    "provider": "openai",  # 選項: "openai" 或 "openrouter"
-    "model": "gpt-4o",
+    "provider": "openai",  # 選項: "openai" 或 "openrouter" 或 "google_gemini"
+    "model": "gpt-4o-mini",
+    # Google Gemini 範例:
+    # "provider": "google_gemini",
+    # "model": "gemini-3-flash-preview",
     # OpenRouter 範例:
     # "provider": "openrouter",
     # "model": "google/gemini-pro-1.5",
@@ -43,7 +49,13 @@ BEAR_RESEARCHER_MODEL = {
 # 交易員使用的模型
 TRADER_MODEL = {
     "provider": "openai",
-    "model": "gpt-4o",
+    "model": "gpt-4o-mini",
+}
+
+# 市場脈動分析器使用的模型
+MARKET_PULSE_MODEL = {
+    "provider": "openai",
+    "model": "gpt-4o-mini",
 }
 
 # ============================================================================
@@ -53,21 +65,21 @@ TRADER_MODEL = {
 # === 多頭委員會 ===
 # 多個模型都給出多頭觀點，然後綜合
 BULL_COMMITTEE_MODELS = [
-    # {"provider": "openai", "model": "gpt-4.1-mini"},  
+    {"provider": "openai", "model": "gpt-4.1-mini"},  
     # {"provider": "openai", "model": "gpt-5-mini"},                        # GPT-4o mini
-    # {"provider": "google_gemini", "model": "gemini-3-flash-preview"},              # Gemini 2.5 Flash (最新穩定版)
+    {"provider": "google_gemini", "model": "gemini-3-flash-preview"},              # Gemini 2.5 Flash (最新穩定版)
     # {"provider": "openrouter", "model": "qwen/qwen3-235b-a22b:free"},        # Qwen 免費版
-    {"provider": "local", "model": "/home/danny/AI-agent/Qwen3_4B_2507"},         # 本地模型 (vLLM/Ollama)
+    # {"provider": "local", "model": "/home/danny/AI-agent/Qwen3_4B_2507"},         # 本地模型 (vLLM/Ollama)
 ]
 
 # === 空頭委員會 ===
 # 多個模型都給出空頭觀點，然後綜合
 BEAR_COMMITTEE_MODELS = [
-    # {"provider": "openai", "model": "gpt-4.1-mini"},  
+    {"provider": "openai", "model": "gpt-4.1-mini"},  
     # {"provider": "openai", "model": "gpt-5-mini"},                           # GPT-4o mini
-    # {"provider": "google_gemini", "model": "gemini-3-flash-preview"},              # Gemini 2.5 Flash (最新穩定版)
+    {"provider": "google_gemini", "model": "gemini-3-flash-preview"},              # Gemini 2.5 Flash (最新穩定版)
     # {"provider": "openrouter", "model": "qwen/qwen3-235b-a22b:free"},        # Qwen 免費版
-    {"provider": "local", "model": "/home/danny/AI-agent/Qwen3_4B_2507"},    # 本地模型 (vLLM/Ollama)
+    # {"provider": "local", "model": "/home/danny/AI-agent/Qwen3_4B_2507"},    # 本地模型 (vLLM/Ollama)
 ]
 
 # === 綜合模型 ===
@@ -97,7 +109,13 @@ LOCAL_LLM_CONFIG = {
 # === 介面與應用程式配置 ===
 
 # 用於解析用戶查詢的 LLM 模型
-QUERY_PARSER_MODEL = "gpt-4.1-nano"
+QUERY_PARSER_MODEL_CONFIG = {
+    "provider": "google_gemini",
+    "model": "gemini-3-flash-preview",
+}
+
+# 向後兼容：保留模型名稱字符串（供直接使用模型名稱的代碼使用）
+QUERY_PARSER_MODEL = QUERY_PARSER_MODEL_CONFIG["model"]
 
 # 支持的交易所列表，按優先級排序
 SUPPORTED_EXCHANGES = ["okx", "binance"]

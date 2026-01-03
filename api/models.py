@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Dict
 from pydantic import BaseModel
 from core.config import (
     SUPPORTED_EXCHANGES, DEFAULT_INTERVAL, DEFAULT_KLINES_LIMIT
@@ -12,6 +12,9 @@ class QueryRequest(BaseModel):
     manual_selection: Optional[List[str]] = None
     auto_execute: bool = False
     market_type: str = "spot"
+    # 用戶提供的 API key（必填）
+    user_api_key: str
+    user_provider: str  # "openai", "google_gemini", "openrouter"
 
 class ScreenerRequest(BaseModel):
     exchange: str = SUPPORTED_EXCHANGES[0]
@@ -29,8 +32,28 @@ class KlineRequest(BaseModel):
 
 class BacktestRequest(BaseModel):
     symbol: str
-    signal_type: str = "RSI" # RSI, MACD, MA_CROSS
+    signal_type: str = "RSI_OVERSOLD" # RSI_OVERSOLD, MACD_CROSS
     interval: str = "1h"
+
+class UserSettings(BaseModel):
+    """用戶動態設置"""
+    openai_api_key: Optional[str] = None
+    google_api_key: Optional[str] = None
+    openrouter_api_key: Optional[str] = None
+    
+    # 模型選擇
+    primary_model_provider: str = "google_gemini" # openai, google_gemini, openrouter
+    primary_model_name: str = "gemini-3-flash-preview"
+    
+    # 委員會模式
+    enable_committee: bool = False
+    bull_committee_models: Optional[List[Dict[str, str]]] = None # List of {"provider": "...", "model": "..."}
+    bear_committee_models: Optional[List[Dict[str, str]]] = None # List of {"provider": "...", "model": "..."}
+    
+    # OKX Keys (可選，若要在這裡統一管理)
+    okx_api_key: Optional[str] = None
+    okx_secret_key: Optional[str] = None
+    okx_passphrase: Optional[str] = None
 
 class APIKeySettings(BaseModel):
     api_key: str
@@ -48,3 +71,7 @@ class TradeExecutionRequest(BaseModel):
 
 class RefreshPulseRequest(BaseModel):
     symbols: Optional[List[str]] = None
+
+class KeyValidationRequest(BaseModel):
+    provider: str # openai, google_gemini, openrouter
+    api_key: str

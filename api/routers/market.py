@@ -273,18 +273,46 @@ async def get_funding_rate_history(symbol: str):
 @router.get("/api/market-pulse/{symbol}")
 async def get_market_pulse_api(symbol: str, sources: Optional[str] = None, refresh: bool = False):
     """
-    獲取市場脈動分析。
-    使用 Symbol Lock 避免同一時間對同一幣種進行重複的即時分析。
-    refresh=true 可強制刷新數據。
+    獲取市場脈動分析 (使用智能緩存)
+
+    緩存策略：
+    - 優先返回緩存數據（快速響應）
+    - 緩存有效期：2小時
+    - refresh=true 可強制刷新
+    - 使用 Symbol Lock 避免重複分析
     """
     try:
         base_symbol = symbol.upper().replace("USDT", "").replace("BUSD", "").replace("-", "")
+        CACHE_VALIDITY_HOURS = 2  # 緩存有效期 2 小時
 
-        # 1. 優先檢查快取 (除非要求強制刷新)
+        # 1. 檢查緩存並驗證時效性
         if not refresh and base_symbol in MARKET_PULSE_CACHE:
-            return MARKET_PULSE_CACHE[base_symbol]
+            cached_data = MARKET_PULSE_CACHE[base_symbol]
 
-        # 2. 快取未命中，使用鎖進行同步控制
+            # 檢查緩存是否過期
+            if "timestamp" in cached_data:
+                try:
+                    from datetime import datetime, timedelta
+                    cache_time = datetime.fromisoformat(cached_data["timestamp"])
+                    now = datetime.now()
+                    age_hours = (now - cache_time).total_seconds() / 3600
+
+                    if age_hours < CACHE_VALIDITY_HOURS:
+                        # 緩存仍然有效，直接返回
+                        logger.info(f"✅ Cache hit for {base_symbol} (age: {age_hours:.1f}h)")
+                        return cached_data
+                    else:
+                        logger.info(f"⏰ Cache expired for {base_symbol} (age: {age_hours:.1f}h), will refresh")
+                except Exception as e:
+                    logger.warning(f"⚠️ Failed to parse timestamp for {base_symbol}: {e}")
+                    # 時間戳解析失敗，仍然返回緩存數據（安全策略）
+                    return cached_data
+            else:
+                # 沒有時間戳，但有數據，仍然返回（向後兼容）
+                logger.info(f"✅ Cache hit for {base_symbol} (no timestamp)")
+                return cached_data
+
+        # 2. 緩存過期或未命中，使用鎖進行同步控制
         lock = get_symbol_lock(base_symbol)
         
         async with lock:

@@ -12,10 +12,25 @@ async function refreshAssets() {
     totalEl.classList.add('animate-pulse');
 
     try {
-        // 1. Fetch Assets
-        const resAssets = await fetch('/api/account/assets');
+        // ✅ 檢查是否有 OKX API 金鑰（BYOK 模式）
+        const okxKeyManager = window.OKXKeyManager;
+        if (!okxKeyManager || !okxKeyManager.hasCredentials()) {
+            throw new Error("NO_OKX_KEY");
+        }
+
+        // ✅ 獲取認證頭
+        const authHeaders = okxKeyManager.getAuthHeaders();
+
+        // 1. Fetch Assets (帶上認證頭)
+        const resAssets = await fetch('/api/account/assets', {
+            headers: authHeaders
+        });
 
         if (!resAssets.ok) {
+            // 如果是 401 錯誤，說明金鑰無效或缺失
+            if (resAssets.status === 401) {
+                throw new Error("INVALID_OKX_KEY");
+            }
             throw new Error("API_ERROR");
         }
 
@@ -43,9 +58,16 @@ async function refreshAssets() {
             spotList.innerHTML = '<div class="text-slate-500 text-xs">無資產餘額</div>';
         }
 
-        // 2. Fetch Positions
-        const resPos = await fetch('/api/account/positions');
-        if (!resPos.ok) throw new Error("API_ERROR");
+        // 2. Fetch Positions (帶上認證頭)
+        const resPos = await fetch('/api/account/positions', {
+            headers: authHeaders
+        });
+        if (!resPos.ok) {
+            if (resPos.status === 401) {
+                throw new Error("INVALID_OKX_KEY");
+            }
+            throw new Error("API_ERROR");
+        }
 
         const posData = await resPos.json();
 
@@ -141,31 +163,48 @@ async function saveApiKeys(event) {
     const secretKey = document.getElementById('input-secret-key').value.trim();
     const passphrase = document.getElementById('input-passphrase').value.trim();
 
+    if (!apiKey || !secretKey || !passphrase) {
+        alert('⚠️ 請填寫所有欄位');
+        return;
+    }
+
     btn.disabled = true;
-    btn.innerHTML = '<div class="spinner w-4 h-4 border-2"></div> 連線測試中...';
+    btn.innerHTML = '<div class="spinner w-4 h-4 border-2"></div> 驗證中...';
 
     try {
-        const res = await fetch('/api/settings/keys', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                api_key: apiKey,
-                secret_key: secretKey,
-                passphrase: passphrase
-            })
+        const okxKeyManager = window.OKXKeyManager;
+
+        // ✅ 先驗證金鑰是否有效
+        const validation = await okxKeyManager.validateCredentials({
+            api_key: apiKey,
+            secret_key: secretKey,
+            passphrase: passphrase
         });
 
-        const data = await res.json();
-
-        if (data.success) {
-            alert('✅ ' + data.message);
-            closeApiKeyModal();
-            refreshAssets();
-        } else {
-            alert('❌ 設定失敗: ' + data.message);
+        if (!validation.valid) {
+            alert('❌ 驗證失敗: ' + validation.message);
+            return;
         }
+
+        // ✅ 驗證成功，保存到 localStorage（BYOK 模式）
+        okxKeyManager.saveCredentials({
+            api_key: apiKey,
+            secret_key: secretKey,
+            passphrase: passphrase
+        });
+
+        alert('✅ OKX API 金鑰已保存到本地瀏覽器\n\n⚠️ 注意: 金鑰僅存儲在您的瀏覽器中，不會上傳到服務器。\n無痕視窗不會保存您的金鑰。');
+
+        // 清空輸入框
+        document.getElementById('input-api-key').value = '';
+        document.getElementById('input-secret-key').value = '';
+        document.getElementById('input-passphrase').value = '';
+
+        closeApiKeyModal();
+        refreshAssets();
+
     } catch (e) {
-        alert('❌ 系統錯誤:無法連接伺服器');
+        alert('❌ 系統錯誤: ' + e.message);
         console.error(e);
     } finally {
         btn.disabled = false;

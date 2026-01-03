@@ -213,6 +213,23 @@ class LLMClientFactory:
     """LLM 客戶端工廠，支持多種 LLM 提供商"""
 
     @staticmethod
+    def _get_api_key(provider: str) -> str:
+        """
+        獲取 API Key 的核心方法。
+        優先級：動態 Settings > os.environ > .env
+        """
+        from utils.settings import Settings
+        
+        if provider == "openai":
+            return Settings.OPENAI_API_KEY or os.getenv("OPENAI_API_KEY", "")
+        elif provider == "google_gemini":
+            # 兼容 Google 官方 SDK 的變數名稱
+            return os.getenv("GOOGLE_API_KEY") or getattr(Settings, "GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
+        elif provider == "openrouter":
+            return os.getenv("OPENROUTER_API_KEY") or getattr(Settings, "OPENROUTER_API_KEY", "")
+        return ""
+
+    @staticmethod
     def create_client(provider: str, model: str = None) -> Any:
         """
         創建 LLM 客戶端
@@ -238,18 +255,18 @@ class LLMClientFactory:
     @staticmethod
     def _create_openai_client():
         """創建 OpenAI 客戶端"""
-        api_key = os.getenv("OPENAI_API_KEY")
+        api_key = LLMClientFactory._get_api_key("openai")
         if not api_key:
-            raise ValueError("未找到 OPENAI_API_KEY 環境變量")
+            raise ValueError("未找到有效 OpenAI API Key。請先在設置中輸入並驗證。")
 
         return openai.OpenAI(api_key=api_key)
 
     @staticmethod
     def _create_openrouter_client():
         """創建 OpenRouter 客戶端"""
-        api_key = os.getenv("OPENROUTER_API_KEY")
+        api_key = LLMClientFactory._get_api_key("openrouter")
         if not api_key:
-            raise ValueError("未找到 OPENROUTER_API_KEY 環境變量")
+            raise ValueError("未找到有效 OpenRouter API Key。請先在設置中輸入並驗證。")
 
         # OpenRouter 使用 OpenAI 兼容的 API
         return openai.OpenAI(
@@ -263,9 +280,9 @@ class LLMClientFactory:
         if not GOOGLE_GEMINI_AVAILABLE:
             raise ValueError("Google Gemini SDK 未安裝，請運行: pip install google-generativeai")
 
-        api_key = os.getenv("GOOGLE_API_KEY")
+        api_key = LLMClientFactory._get_api_key("google_gemini")
         if not api_key:
-            raise ValueError("未找到 GOOGLE_API_KEY 環境變量")
+            raise ValueError("未找到有效 Google API Key。請先在設置中輸入並驗證。")
 
         genai.configure(api_key=api_key)
         return GeminiWrapper(genai)

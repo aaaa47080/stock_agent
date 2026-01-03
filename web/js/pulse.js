@@ -2,6 +2,37 @@
 // pulse.js - 市場脈動功能
 // ========================================
 
+/**
+ * 智能價格格式化 - 根據價格大小自動調整小數位數
+ * @param {number} price - 價格
+ * @returns {string} - 格式化後的價格字符串
+ */
+function formatPrice(price) {
+    if (price === null || price === undefined || isNaN(price)) {
+        return '$0.00';
+    }
+
+    const absPrice = Math.abs(price);
+
+    if (absPrice >= 1) {
+        // 價格 >= $1: 顯示 2 位小數
+        return '$' + price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    } else if (absPrice >= 0.01) {
+        // 價格 >= $0.01: 顯示 4 位小數
+        return '$' + price.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+    } else if (absPrice >= 0.0001) {
+        // 價格 >= $0.0001: 顯示 6 位小數
+        return '$' + price.toLocaleString(undefined, { minimumFractionDigits: 6, maximumFractionDigits: 6 });
+    } else {
+        // 非常小的價格: 顯示 8 位小數或使用科學記號
+        if (absPrice === 0) {
+            return '$0.00';
+        }
+        // 顯示有效數字（最多 8 位小數）
+        return '$' + price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 });
+    }
+}
+
 async function checkMarketPulse(showLoading = false, forceRefresh = false) {
     const grid = document.getElementById('pulse-grid');
     let targets = globalSelectedSymbols.length > 0 ? globalSelectedSymbols : ['BTC', 'ETH', 'SOL', 'PI'];
@@ -57,10 +88,9 @@ async function fetchPulseForSymbol(symbol, forceRefresh = false) {
     try {
         const sourcesQuery = selectedNewsSources.join(',');
         const refreshParam = forceRefresh ? '&refresh=true' : '';
-        // Add cache buster
-        const tParam = `&_t=${new Date().getTime()}`;
-        
-        const res = await fetch(`/api/market-pulse/${symbol}?sources=${sourcesQuery}${refreshParam}${tParam}`);
+
+        // ✅ 移除 cache buster - 後端有緩存機制，不需要前端強制刷新
+        const res = await fetch(`/api/market-pulse/${symbol}?sources=${sourcesQuery}${refreshParam}`);
         const data = await res.json();
 
         const report = data.report || {
@@ -94,7 +124,7 @@ async function fetchPulseForSymbol(symbol, forceRefresh = false) {
                                     <span class="text-xs font-normal text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">${timeString}</span>
                                 </h3>
                                 <div class="text-xs text-slate-400">
-                                    $${data.current_price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    ${formatPrice(data.current_price)}
                                     <span class="ml-1 ${isPositive ? 'text-green-400' : 'text-red-400'}">
                                         ${data.change_24h > 0 ? '+' : ''}${data.change_24h.toFixed(2)}%
                                     </span>

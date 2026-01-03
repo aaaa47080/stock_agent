@@ -60,7 +60,9 @@ class AgentState(TypedDict):
     medium_term_interval: str      # 中週期時間間隔
     long_term_interval: str        # 長週期時間間隔
     # --- 客戶端與通用數據 ---
-    client: openai.OpenAI
+    client: openai.OpenAI  # 保留兼容性，實際使用 user_llm_client
+    user_llm_client: Optional[object]  # ⭐ 用戶提供的 LLM 客戶端
+    user_provider: Optional[str]       # ⭐ 用戶選擇的 provider
     market_data: Dict
     current_price: float
     funding_rate_info: Dict
@@ -95,21 +97,21 @@ def prepare_data_node(state: AgentState) -> Dict:
     """
     節點 1: 準備所有需要的數據。
     功能：
-    1. 初始化 OpenAI Client
-    2. 檢查是否有預加載數據（緩存），如果有則直接使用
-    3. 如果沒有緩存，則從交易所和新聞源撈取數據
-    4. 可選：獲取多週期數據以進行更全面的分析
-
-    已重構：將數據處理邏輯抽取到 data_processor.py，提高可維護性
+    1. ⭐ 使用用戶提供的 LLM Client
+    2. 檢查是否有預加載數據
+    3. 執行數據下載
     """
     print("\n[節點 1/7] 準備數據...")
 
-    # 1. 初始化 OpenAI Client
-    load_dotenv()
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise ValueError(">> 錯誤：找不到 OPENAI_API_KEY")
-    client = openai.OpenAI(api_key=api_key)
+    # ⭐ 使用用戶提供的 LLM client
+    user_client = state.get('user_llm_client')
+    user_provider = state.get('user_provider', 'openai')
+
+    if not user_client:
+        raise ValueError("❌ 缺少用戶 LLM client。請確保前端傳遞了 user_api_key。")
+
+    print(f">> ✅ 使用用戶的 {user_provider} client")
+    client = user_client
 
     # 2. 檢查是否有預加載的數據（緩存機制）
     if state.get("preloaded_data"):
@@ -236,11 +238,19 @@ def analyst_team_node(state: AgentState) -> Dict:
     """
     節點 2: 四位分析師並行工作。
     使用 ThreadPoolExecutor 實現真正的並行執行，提升 3-4 倍速度。
+    ⭐ 使用用戶提供的 LLM client
     """
     print("\n[節點 2/7] 分析師團隊 (並行分析)...")
-    client, market_data, symbol = state['client'], state['market_data'], state['symbol']
 
-    # 創建分析師實例
+    # ⭐ 使用用戶的 LLM client
+    user_client = state.get('user_llm_client')
+    if not user_client:
+        raise ValueError("❌ 缺少用戶 LLM client")
+
+    client = user_client
+    market_data, symbol = state['market_data'], state['symbol']
+
+    # 創建分析師實例（傳入用戶的 client）
     analysts = {
         'technical': TechnicalAnalyst(client),
         'sentiment': SentimentAnalyst(client),
@@ -331,34 +341,41 @@ def after_analyst_team_router(state: AgentState) -> str:
 def research_debate_node(state: AgentState) -> Dict:
     """
     節點 3: 研究團隊進行一輪深度辯論。
+    支持「單一模型」與「委員會模式 (多模型並行)」兩種模式。
+    ⭐ 使用用戶提供的 LLM client（除了委員會模式的多模型配置）
     """
     from utils.llm_client import create_llm_client_from_config
     from core.config import (
-        SYNTHESIS_MODEL, BULL_RESEARCHER_MODEL, BEAR_RESEARCHER_MODEL
+        ENABLE_COMMITTEE_MODE, SYNTHESIS_MODEL,
+        BULL_COMMITTEE_MODELS, BEAR_COMMITTEE_MODELS,
+        BULL_RESEARCHER_MODEL, BEAR_RESEARCHER_MODEL
     )
+
+    # ⭐ 使用用戶的 LLM client
+    user_client = state.get('user_llm_client')
+    if not user_client:
+        raise ValueError("❌ 缺少用戶 LLM client")
 
     analyst_reports = state['analyst_reports']
     market_data = state['market_data']
-    client = state['client']
+    client = user_client  # 用於 fact_checker
     debate_round = state.get('debate_round', 0)
     debate_history = state.get('debate_history', [])
     
     # 辯論主題定義
     topics = ["技術面與指標", "基本面與新聞", "綜合決策與風險"]
     if debate_round >= len(topics):
-        return {} # 應該由 router 攔截
+        return {}
 
     topic = topics[debate_round]
     print(f"\n[節點 3/7] 研究團隊辯論 - 第 {debate_round + 1} 輪：{topic}...")
+    if ENABLE_COMMITTEE_MODE:
+        print(f"  >> [模式] 委員會模式已開啟，正在調動多個模型...")
 
-    # 初始化研究員
-    bull_client, bull_model = create_llm_client_from_config(BULL_RESEARCHER_MODEL)
-    bear_client, bear_model = create_llm_client_from_config(BEAR_RESEARCHER_MODEL)
-    neutral_client, neutral_model = create_llm_client_from_config(SYNTHESIS_MODEL)
-    
-    bull_researcher = BullResearcher(bull_client, bull_model)
-    bear_researcher = BearResearcher(bear_client, bear_model)
-    neutral_researcher = NeutralResearcher(neutral_client, neutral_model)
+    # 1. 準備合成器與中立研究員 (使用 SYNTHESIS_MODEL)
+    synth_client, synth_model_name = create_llm_client_from_config(SYNTHESIS_MODEL)
+    synthesizer = CommitteeSynthesizer(synth_client, synth_model_name)
+    neutral_researcher = NeutralResearcher(synth_client, synth_model_name)
     fact_checker = DataFactChecker(client)
 
     # 獲取上一輪的參數（如果有）
@@ -366,17 +383,79 @@ def research_debate_node(state: AgentState) -> Dict:
     prev_bear = state.get('bear_argument')
     prev_neutral = state.get('neutral_argument')
 
-    # 多頭發言
-    opponents = [arg for arg in [prev_bear, prev_neutral] if arg]
-    bull_argument = bull_researcher.debate(analyst_reports, opponents, round_number=debate_round+1, topic=topic)
+    # ==========================================
+    # 階段 A: 多頭陣營發言 (Bull Side)
+    # ==========================================
+    opponents_for_bull = [arg for arg in [prev_bear, prev_neutral] if arg]
     
-    # 空頭發言
-    opponents = [arg for arg in [bull_argument, prev_neutral] if arg]
-    bear_argument = bear_researcher.debate(analyst_reports, opponents, round_number=debate_round+1, topic=topic)
+    bull_committee_details = [] # 用於存儲委員會詳細觀點
 
-    # 中立派發言
-    opponents = [arg for arg in [bull_argument, bear_argument] if arg]
-    neutral_argument = neutral_researcher.debate(analyst_reports, opponents, round_number=debate_round+1, topic=topic)
+    if ENABLE_COMMITTEE_MODE:
+        # 並行執行所有委員會成員
+        bull_committee_args = []
+        with ThreadPoolExecutor(max_workers=len(BULL_COMMITTEE_MODELS)) as executor:
+            futures = []
+            for cfg in BULL_COMMITTEE_MODELS:
+                c, m = create_llm_client_from_config(cfg)
+                researcher = BullResearcher(c, m)
+                futures.append(executor.submit(researcher.debate, analyst_reports, opponents_for_bull, debate_round+1, topic))
+            
+            for future in as_completed(futures):
+                try:
+                    res = future.result()
+                    bull_committee_args.append(res)
+                    # 收集詳細觀點
+                    bull_committee_details.append(res.model_dump())
+                except Exception as e:
+                    print(f"  >> 多頭委員會成員發言失敗: {e}")
+        
+        # 綜合多頭觀點
+        bull_argument = synthesizer.synthesize_committee_views('Bull', bull_committee_args, analyst_reports)
+    else:
+        # 單一模型模式
+        bull_client, bull_model = create_llm_client_from_config(BULL_RESEARCHER_MODEL)
+        bull_researcher = BullResearcher(bull_client, bull_model)
+        bull_argument = bull_researcher.debate(analyst_reports, opponents_for_bull, debate_round+1, topic)
+
+    # ==========================================
+    # 階段 B: 空頭陣營發言 (Bear Side)
+    # ==========================================
+    opponents_for_bear = [arg for arg in [bull_argument, prev_neutral] if arg]
+    
+    bear_committee_details = [] # 用於存儲委員會詳細觀點
+
+    if ENABLE_COMMITTEE_MODE:
+        # 並行執行所有委員會成員
+        bear_committee_args = []
+        with ThreadPoolExecutor(max_workers=len(BEAR_COMMITTEE_MODELS)) as executor:
+            futures = []
+            for cfg in BEAR_COMMITTEE_MODELS:
+                c, m = create_llm_client_from_config(cfg)
+                researcher = BearResearcher(c, m)
+                futures.append(executor.submit(researcher.debate, analyst_reports, opponents_for_bear, debate_round+1, topic))
+            
+            for future in as_completed(futures):
+                try:
+                    res = future.result()
+                    bear_committee_args.append(res)
+                    # 收集詳細觀點
+                    bear_committee_details.append(res.model_dump())
+                except Exception as e:
+                    print(f"  >> 空頭委員會成員發言失敗: {e}")
+        
+        # 綜合空頭觀點
+        bear_argument = synthesizer.synthesize_committee_views('Bear', bear_committee_args, analyst_reports)
+    else:
+        # 單一模型模式
+        bear_client, bear_model = create_llm_client_from_config(BEAR_RESEARCHER_MODEL)
+        bear_researcher = BearResearcher(bear_client, bear_model)
+        bear_argument = bear_researcher.debate(analyst_reports, opponents_for_bear, debate_round+1, topic)
+
+    # ==========================================
+    # 階段 C: 中立/裁判階段
+    # ==========================================
+    opponents_for_neutral = [arg for arg in [bull_argument, bear_argument] if arg]
+    neutral_argument = neutral_researcher.debate(analyst_reports, opponents_for_neutral, debate_round+1, topic)
 
     # 數據核對
     current_args = [bull_argument, bear_argument, neutral_argument]
@@ -390,6 +469,8 @@ def research_debate_node(state: AgentState) -> Dict:
         "bull": bull_argument.model_dump(),
         "bear": bear_argument.model_dump(),
         "neutral": neutral_argument.model_dump(),
+        "bull_committee_details": bull_committee_details, # 新增
+        "bear_committee_details": bear_committee_details, # 新增
         "fact_checks": {k: v.model_dump() for k, v in fact_checks.items()}
     })
 
@@ -426,10 +507,18 @@ def debate_router(state: AgentState) -> str:
     return "continue_debate"
 
 def debate_judgment_node(state: AgentState) -> Dict:
-    """節點 3.5: 裁判進行最終裁決"""
+    """
+    節點 3.5: 裁判進行最終裁決
+    ⭐ 使用用戶提供的 LLM client
+    """
     print(f"\n  >> [裁判裁決] 綜合交易委員會正在審核辯論表現...")
-    client = state['client']
-    judge = DebateJudge(client)
+
+    # ⭐ 使用用戶的 LLM client
+    user_client = state.get('user_llm_client')
+    if not user_client:
+        raise ValueError("❌ 缺少用戶 LLM client")
+
+    judge = DebateJudge(user_client)
     
     debate_judgment = judge.judge(
         bull_argument=state['bull_argument'],
@@ -445,16 +534,22 @@ def debate_judgment_node(state: AgentState) -> Dict:
 def trader_decision_node(state: AgentState) -> Dict:
     """
     節點 4: 交易員綜合所有資訊做出決策。(可能被回饋)
+    ⭐ 使用用戶提供的 LLM client
     """
     print("\n[節點 4/7] 交易員 (綜合決策)...")
-    
+
+    # ⭐ 使用用戶的 LLM client
+    user_client = state.get('user_llm_client')
+    if not user_client:
+        raise ValueError("❌ 缺少用戶 LLM client")
+
     replan_count = state.get('replan_count', 0)
     feedback = state.get('risk_assessment')
 
     if feedback:
         print(f"  - ⚠️ 收到風險管理員回饋，正在重新規劃 (第 {replan_count + 1} 次)...")
-    
-    trader = Trader(state['client'])
+
+    trader = Trader(user_client)
     trader_decision = trader.make_decision(
         analyst_reports=state['analyst_reports'],
         bull_argument=state['bull_argument'],
@@ -476,10 +571,16 @@ def trader_decision_node(state: AgentState) -> Dict:
 def risk_management_node(state: AgentState) -> Dict:
     """
     節點 5: 風險經理評估交易風險。
+    ⭐ 使用用戶提供的 LLM client
     """
     print("\n[節點 5/7] 風險管理 (風險評估)...")
-    
-    risk_manager = RiskManager(state['client'])
+
+    # ⭐ 使用用戶的 LLM client
+    user_client = state.get('user_llm_client')
+    if not user_client:
+        raise ValueError("❌ 缺少用戶 LLM client")
+
+    risk_manager = RiskManager(user_client)
     risk_assessment = risk_manager.assess(
         trader_decision=state['trader_decision'],
         market_data=state['market_data'],
@@ -510,10 +611,16 @@ def after_risk_management_router(state: AgentState) -> str:
 def fund_manager_approval_node(state: AgentState) -> Dict:
     """
     節點 7: 基金經理最終審批。
+    ⭐ 使用用戶提供的 LLM client
     """
     print("\n[節點 7/7] 基金經理 (最終審批)...")
-    
-    fund_manager = FundManager(state['client'])
+
+    # ⭐ 使用用戶的 LLM client
+    user_client = state.get('user_llm_client')
+    if not user_client:
+        raise ValueError("❌ 缺少用戶 LLM client")
+
+    fund_manager = FundManager(user_client)
     final_approval = fund_manager.approve(
         trader_decision=state['trader_decision'],
         risk_assessment=state['risk_assessment'],

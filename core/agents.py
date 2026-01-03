@@ -63,28 +63,37 @@ class TechnicalAnalyst:
         else:
             multi_timeframe_context = "當前為單一週期分析模式，未啟用多週期技術指標對比。"
 
+        # 歷史回測數據
+        backtest_results = market_data.get('歷史回測', [])
+        backtest_context = "無歷史回測數據"
+        if backtest_results:
+             backtest_context = json.dumps(backtest_results, indent=2, ensure_ascii=False)
+
         prompt = f"""
 你是一位專業的多週期技術分析師，專精於分析不同時間框架下的技術指標和市場結構。
 
 你的任務：
 1. 分析提供的單一週期及多週期技術指標數據
 2. 識別各時間週期的關鍵技術信號（趨勢、動量、超買超賣）
-3. 比較不同週期技術指標的一致性/分歧度
-4. 提供看漲和看跌的多週期技術論點
-5. 給出你的專業判斷
+3. **重要：參考歷史回測數據**。如果歷史回測顯示某個策略勝率很高（例如 >60%），這應該是你判斷的強力依據；如果勝率很低，則應發出警示。
+4. 比較不同週期技術指標的一致性/分歧度
+5. 提供看漲和看跌的多週期技術論點
+6. 給出你的專業判斷
 
 當前週期市場數據：
 主要技術指標：
 {json.dumps(market_data.get('技術指標', {}), indent=2, ensure_ascii=False, cls=DataFrameEncoder)}
 價格資訊：
 {json.dumps(market_data.get('價格資訊', {}), indent=2, ensure_ascii=False, cls=DataFrameEncoder)}
+歷史策略回測結果 (過去表現不代表未來，但具參考價值)：
+{backtest_context}
 
 {multi_timeframe_context}
 
 請以 JSON 格式回覆，嚴格遵守以下格式與要求：
 - analyst_type: "技術分析師"
-- summary: 技術分析摘要 (繁體中文，至少50字)。
-- key_findings: 關鍵發現列表 (**必須是字串的列表**，例如：`["RSI 指標顯示超買", "價格突破布林帶上軌"]`)。
+- summary: 技術分析摘要 (繁體中文，至少50字，**必須包含對歷史回測結果的評論**)。
+- key_findings: 關鍵發現列表 (**必須是字串的列表**，例如：`["RSI 指標顯示超買", "MA趨勢策略歷史回測勝率達 65%"]`)。
 - bullish_points: 看漲技術信號列表 (List[str])。
 - bearish_points: 看跌技術信號列表 (List[str])。
 - confidence: 信心度 (0-100)。
@@ -403,20 +412,20 @@ class BullResearcher:
         prompt = f"""
 你是一位專業的多週期多頭研究員。當前進行的是第 {round_number} 輪辯論，重點辯論主題為：【{topic}】。
 
-分析師報告摘要：
-{json.dumps([{"分析師": r.analyst_type, "摘要": r.summary} for r in analyst_reports], indent=2, ensure_ascii=False)}
+分析師報告摘要（其中技術分析師可能包含歷史回測數據）：
+{json.dumps([{"分析師": r.analyst_type, "摘要": r.summary, "關鍵發現": r.key_findings} for r in analyst_reports], indent=2, ensure_ascii=False)}
 
 {opponents_section}
 
 你的任務：
-1. 針對當前主題【{topic}】強化看漲論點。
+1. 針對當前主題【{topic}】強化看漲論點。如果技術分析師的報告中包含**高勝率的歷史回測數據**，請務必引用它作為支持證據。
 2. **讓步機制**：在對手提出的觀點中，找出一個你認為最合理、最具威脅性的數據或邏輯，並公開承認它。
 3. **針對性反駁**：具體指出空頭或中立派在【{topic}】方面的邏輯漏洞或數據誤讀。
 4. 解釋為什麼儘管存在上述風險，看漲因素在【{topic}】維度上依然佔據主導地位。
 
 請以 JSON 格式回覆：
 - researcher_stance: "Bull"
-- argument: 多頭論點 (繁體中文，至少100字，需包含讓步與反駁)
+- argument: 多頭論點 (繁體中文，至少100字，需包含讓步與反駁，若有回測數據請引用)
 - key_points: 關鍵看漲點列表 (List[str])
 - concession_point: 承認對手最有道理的觀點 (字串)
 - counter_arguments: 對對手論點的反駁列表 (List[str])
@@ -456,20 +465,20 @@ class BearResearcher:
         prompt = f"""
 你是一位專業的多週期空頭研究員。當前進行的是第 {round_number} 輪辯論，重點辯論主題為：【{topic}】。
 
-分析師報告摘要：
-{json.dumps([{"分析師": r.analyst_type, "摘要": r.summary} for r in analyst_reports], indent=2, ensure_ascii=False)}
+分析師報告摘要（其中技術分析師可能包含歷史回測數據）：
+{json.dumps([{"分析師": r.analyst_type, "摘要": r.summary, "關鍵發現": r.key_findings} for r in analyst_reports], indent=2, ensure_ascii=False)}
 
 {opponents_section}
 
 你的任務：
-1. 針對當前主題【{topic}】強化看跌論點（識別風險）。
+1. 針對當前主題【{topic}】強化看跌論點（識別風險）。**特別注意歷史回測數據**：如果歷史回測顯示當前策略勝率低，這就是你最好的攻擊武器。
 2. **讓步機制**：在多頭或中立派提出的觀點中，找出一個你認為最合理、最難反駁的利多因素，並公開承認它。
 3. **針對性反駁**：具體指出多頭在【{topic}】維度上的過度樂觀或盲點。
 4. 強調為什麼在【{topic}】維度下，潛在風險比收益更值得關注。
 
 請以 JSON 格式回覆：
 - researcher_stance: "Bear"
-- argument: 空頭論點 (繁體中文，至少100字，需包含讓步與反駁)
+- argument: 空頭論點 (繁體中文，至少100字，需包含讓步與反駁，若有回測數據請引用)
 - key_points: 關鍵看跌點列表 (List[str])
 - concession_point: 承認對手最有道理的觀點 (字串)
 - counter_arguments: 對對手論點的反駁列表 (List[str])
@@ -710,11 +719,22 @@ class DebateJudge:
         """作為公正第三方評估辯論質量與公信力"""
         
         from core.models import DebateJudgment
+
+        # 歷史回測數據
+        backtest_results = market_data.get('歷史回測', [])
+        backtest_context = "無歷史回測數據"
+        if backtest_results:
+             backtest_context = json.dumps(backtest_results, indent=2, ensure_ascii=False)
         
         prompt = f"""
 你是一位資深的「綜合交易委員會裁判」。你的任務是審查一場關於市場走勢的三方辯論，並基於**論點品質**做出裁決。
 
 **不要給出任何數字評分**，只評估論點的實際品質。
+
+=== 歷史策略回測參考數據 ===
+這些數據顯示了類似策略在過去的表現，作為你判斷論點客觀性的重要依據：
+{backtest_context}
+(注意：如果辯論方引用了回測數據但被你發現引用錯誤，請扣分。)
 
 === 辯論各方論點 ===
 【多頭】: {bull_argument.argument}
@@ -725,14 +745,14 @@ class DebateJudge:
 {json.dumps(fact_checks, indent=2, ensure_ascii=False, default=str)}
 
 === 你的裁決標準 ===
-1. **論點有效性**：論據是否有數據支撐？是否被檢察官糾正過？
+1. **論點有效性**：論據是否有數據支撐？是否被檢察官糾正過？是否與歷史回測結果相符？
 2. **邏輯嚴密性**：推理過程是否合理？有無邏輯跳躍？
 3. **風險考量**：是否考慮了反向風險？讓步點是否誠實？
 4. **實用性**：論點是否能轉化為可執行的交易建議？
 
 === 請以 JSON 格式回覆（繁體中文）===
-- bull_evaluation: 【純文字字串】評估多頭論點的優缺點，例如："多頭正確指出了...但忽略了..."
-- bear_evaluation: 【純文字字串】評估空頭論點的優缺點，例如："空頭的風險警告合理，但過度悲觀..."
+- bull_evaluation: 【純文字字串】評估多頭論點的優缺點，例如："多頭正確指出了...但忽略了歷史回測勝率偏低..."
+- bear_evaluation: 【純文字字串】評估空頭論點的優缺點，例如："空頭的風險警告與歷史數據一致..."
 - neutral_evaluation: 【純文字字串】評估中立論點的優缺點，例如："中立觀點較為平衡，但缺乏明確建議..."
 - strongest_bull_point: 多頭最有力的單一論點
 - strongest_bear_point: 空頭最有力的單一論點

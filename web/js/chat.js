@@ -70,6 +70,20 @@ async function sendMessage() {
     const text = input.value.trim();
     if (!text || isAnalyzing) return;
 
+    // 檢查用戶是否有設置 API key（從 localStorage）
+    const userKey = window.APIKeyManager?.getCurrentKey();
+
+    if (!userKey) {
+        const providerName = '任何 LLM API';
+        alert(`❌ 未設置 API Key\n\n請先在系統設定中輸入您的 ${providerName} Key 才能使用分析功能。\n\n您需要自己的 OpenAI、Google Gemini 或 OpenRouter API Key。`);
+
+        // 自動開啟設定面板
+        if (typeof openSettings === 'function') {
+            openSettings();
+        }
+        return;
+    }
+
     const checkboxes = document.querySelectorAll('.analysis-checkbox:checked');
     const selection = Array.from(checkboxes).map(cb => cb.value);
 
@@ -125,7 +139,10 @@ async function sendMessage() {
                 message: text,
                 manual_selection: selection,
                 market_type: marketType,
-                auto_execute: autoExecute
+                auto_execute: autoExecute,
+                // 傳送用戶的 API key
+                user_api_key: userKey.key,
+                user_provider: userKey.provider
             }),
             signal: window.currentAnalysisController.signal
         });

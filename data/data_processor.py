@@ -8,6 +8,7 @@ from typing import Dict, List, Tuple, Optional
 from data.data_fetcher import get_data_fetcher
 from data.indicator_calculator import add_technical_indicators
 from utils.utils import get_crypto_news, safe_float
+from analysis.backtest_engine import BacktestEngine
 
 
 def prepare_recent_history(df: pd.DataFrame, days: int = 5) -> List[Dict]:
@@ -356,6 +357,11 @@ def build_market_data_package(
     print(f"[NEWS] 正在從 CryptoPanic 撈取 {base_currency} 的真實新聞...")
     news_data = get_crypto_news(symbol=base_currency, limit=5)
 
+    # 執行輕量化歷史回測 (新增功能)
+    print(f"[BACKTEST] 正在執行 {symbol} 的策略回測...")
+    backtest_engine = BacktestEngine()
+    backtest_results = backtest_engine.run_all_strategies(df)
+
     # 基礎數據包
     market_data = {
         "market_type": market_type,
@@ -367,7 +373,8 @@ def build_market_data_package(
         "最近5天歷史": prepare_recent_history(df, days=5),
         "市場結構": analyze_market_structure(df),
         "關鍵價位": calculate_key_levels(df, period=30),
-        "新聞資訊": news_data
+        "新聞資訊": news_data,
+        "歷史回測": backtest_results  # 新增
     }
 
     # 如果需要多週期分析，獲取並添加多週期數據

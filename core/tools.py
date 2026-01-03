@@ -656,6 +656,20 @@ class MarketPulseInput(BaseModel):
         description="加密貨幣符號，如 'BTC', 'ETH', 'SOL'。"
     )
 
+class BacktestStrategyInput(BaseModel):
+    """回測策略工具的輸入參數"""
+    symbol: str = Field(
+        description="加密貨幣符號，如 'BTC', 'ETH'。"
+    )
+    interval: str = Field(
+        default="1d",
+        description="時間週期，如 '1d', '4h', '1h'。"
+    )
+    period: int = Field(
+        default=90,
+        description="回測天數，預設 90 天。"
+    )
+
 @tool(args_schema=MarketPulseInput)
 def explain_market_movement_tool(symbol: str) -> str:
     """
@@ -702,6 +716,90 @@ def explain_market_movement_tool(symbol: str) -> str:
         return f"分析市場波動時發生錯誤: {str(e)}"
 
 
+@tool(args_schema=BacktestStrategyInput)
+def backtest_strategy_tool(
+    symbol: str,
+    interval: str = "1d",
+    period: int = 90
+) -> str:
+    """
+    執行加密貨幣的歷史策略回測。
+    
+    此工具會使用過去一段時間的數據，模擬執行常見的技術指標策略（如 RSI逆勢、均線趨勢、布林帶突破），
+    並回報其勝率和總回報率。
+    
+    適用情境：
+    - 用戶問「這個幣最近如果用 RSI 操作會賺錢嗎？」
+    - 用戶問「幫我回測一下 BTC」
+    - 驗證某個策略在該幣種上的歷史有效性
+    """
+    try:
+        from analysis.backtest_engine import BacktestEngine
+        
+        # 自動選擇交易所
+        exchange, normalized_symbol = _find_available_exchange(symbol)
+        if exchange is None:
+            return f"錯誤：無法在支持的交易所中找到 {symbol} 交易對。請確認幣種名稱是否正確。"
+            
+        # 獲取歷史數據 (計算需要的K線數量)
+        # 假設 interval="1d", period=90 -> limit=90
+        # 假設 interval="1h", period=90 -> limit=90*24 = 2160
+        limit = period
+        if interval == "1h": limit = period * 24
+        elif interval == "4h": limit = period * 6
+        elif interval == "15m": limit = period * 96
+        
+        # 限制最大 limit
+        limit = min(limit, 1000)
+        
+        # 獲取數據
+        df, _ = fetch_and_process_klines(
+            symbol=normalized_symbol,
+            interval=interval,
+            limit=limit,
+            market_type="spot",
+            exchange=exchange
+        )
+        
+        # 執行回測
+        engine = BacktestEngine()
+        results = engine.run_all_strategies(df)
+        
+        if not results or "error" in results[0]:
+            return f"回測失敗: {results[0].get('error', '未知錯誤')}"
+            
+        # 格式化輸出
+        summary = results[0] # 第一個元素是摘要
+        strategies = results[1:] # 後面是具體策略結果
+        
+        output = f"## 📊 {symbol} 歷史策略回測報告\n\n"
+        output += f"**回測區間**: 過去 {period} 天 ({len(df)} 根 K 線)\n"
+        output += f"**最佳策略**: {summary['best_strategy_name']} (勝率 {summary['best_win_rate']}%)\n\n"
+        output += f"> {summary['summary']}\n\n"
+        
+        output += "### 詳細表現\n"
+        output += "| 策略名稱 | 勝率 | 總回報 | 交易次數 | 評價 |\n"
+        output += "|---|---|---|---|---|\n"
+        
+        for res in strategies:
+            win_rate = f"{res['win_rate']}%"
+            ret = f"{res['total_return']:+.2f}%"
+            quality = res['signal_quality']
+            
+            # 加一些 emoji
+            if res['total_return'] > 0: ret = f"🟢 {ret}"
+            else: ret = f"🔴 {ret}"
+            
+            output += f"| {res['strategy']} | {win_rate} | {ret} | {res['total_trades']} | {quality} |\n"
+            
+        output += "\n> 注意：過往績效不代表未來表現。此回測僅供參考，未考慮滑點與手續費。\n"
+        
+        return output
+
+    except Exception as e:
+        return f"執行回測時發生錯誤: {str(e)}"
+
+
 # ============================================================================
 # 工具列表導出
 # ============================================================================
@@ -714,6 +812,7 @@ def get_crypto_tools() -> List:
         news_analysis_tool,
         full_investment_analysis_tool,
         explain_market_movement_tool,
+        backtest_strategy_tool, # 新增
     ]
 
 
