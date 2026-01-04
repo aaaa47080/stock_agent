@@ -565,9 +565,21 @@ async function saveSettings() {
         const result = await res.json();
 
         if (result.success) {
+            // ⭐ 同步更新前端 localStorage (APIKeyManager)
+            // 這對於 checkApiKeyStatus 正確運作至關重要，因為它依賴 localStorage
+            if (payload.openai_api_key) window.APIKeyManager.setKey('openai', payload.openai_api_key);
+            if (payload.google_api_key) window.APIKeyManager.setKey('google_gemini', payload.google_api_key);
+            if (payload.openrouter_api_key) window.APIKeyManager.setKey('openrouter', payload.openrouter_api_key);
+            
+            // 更新選擇的 Provider
+            if (payload.primary_model_provider) {
+                window.APIKeyManager.setSelectedProvider(payload.primary_model_provider);
+            }
+
             const message = okxKey ? '✅ 設置已保存！\n\n📌 OKX API 金鑰已保存到本地瀏覽器（BYOK 模式）\n⚠️ 無痕視窗不會保存您的金鑰' : result.message;
             alert(message);
             closeSettings();
+            
             // Clear sensitive inputs
             document.getElementById('set-openai-key').value = '';
             document.getElementById('set-google-key').value = '';
@@ -575,6 +587,9 @@ async function saveSettings() {
             document.getElementById('set-okx-key').value = '';
             document.getElementById('set-okx-secret').value = '';
             document.getElementById('set-okx-pass').value = '';
+
+            // ⭐ 強制刷新 UI 狀態
+            checkApiKeyStatus();
         } else {
             alert('保存失敗: ' + (result.detail || '未知錯誤'));
         }

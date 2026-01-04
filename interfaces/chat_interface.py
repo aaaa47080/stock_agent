@@ -739,9 +739,19 @@ class CryptoAnalysisBot:
                     import traceback
                     error_detail = traceback.format_exc()
                     print(f"❌ 分析過程中發生錯誤: {error_detail}")
-                    yield f"[PROCESS]❌ 分析過程中發生錯誤: {str(e)}\n"
+                    
+                    error_msg = str(e)
+                    friendly_error = error_msg
+                    
+                    # 針對常見 API 錯誤提供友善提示
+                    if "429" in error_msg or "quota" in error_msg.lower():
+                        friendly_error = "⚠️ **API 額度已用盡** (429)\n\n您的 LLM API Key 額度不足或請求過於頻繁。\n請檢查您的 API Key 帳戶餘額，或稍後再試。\n(建議：在設定中更換為其他 Provider 或升級配額)"
+                    elif "401" in error_msg or "auth" in error_msg.lower():
+                         friendly_error = "⚠️ **API 認證失敗** (401)\n\n您的 API Key 無效或已過期。\n請進入「設定」檢查並更新您的 API Key。"
+                    
+                    yield f"[PROCESS]❌ 分析過程中發生錯誤: {friendly_error}\n"
                     yield "[PROCESS_END]\n"
-                    yield f"[RESULT]\n❌ **錯誤**: {str(e)}\n\n請檢查後端日誌以獲取更多詳情。"
+                    yield f"[RESULT]\n❌ **分析中止**: {friendly_error}\n"
                     return
 
         except Exception as e:
@@ -752,7 +762,13 @@ class CryptoAnalysisBot:
                 for chunk in self.agent.chat_stream(user_message):
                     yield chunk
             except Exception as e:
-                yield f"處理請求時發生錯誤: {str(e)}"
+                error_msg = str(e)
+                if "429" in error_msg or "quota" in error_msg.lower():
+                    yield "⚠️ **API 額度已用盡** (429)。請檢查您的 API Key 餘額或配額。"
+                elif "401" in error_msg:
+                    yield "⚠️ **API Key 無效** (401)。請檢查設定。"
+                else:
+                    yield f"處理請求時發生錯誤: {error_msg}"
             return
 
         yield "抱歉，我不太理解您的問題。"

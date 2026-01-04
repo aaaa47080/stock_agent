@@ -13,6 +13,7 @@ from utils.settings import Settings
 from api.models import APIKeySettings, UserSettings, KeyValidationRequest
 from api.utils import update_env_file, logger
 from trading.okx_api_connector import OKXAPIConnector
+from interfaces.chat_interface import CryptoAnalysisBot
 import api.globals as globals
 
 router = APIRouter()
@@ -45,7 +46,7 @@ async def validate_key(request: KeyValidationRequest):
             genai.configure(api_key=key)
             # 嘗試列出模型
             # genai.list_models() 返回的是 generator，需轉 list 觸發請求
-            models = list(genai.list_models(limit=1)) 
+            models = list(genai.list_models()) 
             return {"valid": True, "message": "Google Gemini Key 驗證成功"}
             
         elif provider == "openrouter":
@@ -160,6 +161,17 @@ async def update_user_settings(settings: UserSettings):
         # 5. Save to .env file for persistence
         if env_updates:
             update_env_file(env_updates, project_root)
+
+        # 6. Re-initialize CryptoAnalysisBot if it wasn't initialized or needs refresh
+        try:
+            # Re-initialize only if keys were updated or bot is missing
+            if env_updates or globals.bot is None:
+                logger.info("Re-initializing CryptoAnalysisBot with new settings...")
+                globals.bot = CryptoAnalysisBot()
+                logger.info("CryptoAnalysisBot re-initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to re-initialize CryptoAnalysisBot: {e}")
+            # Don't fail the request, just log it. The user might need to fix the key.
             
         return {"success": True, "message": "系統設置已更新！(模式與模型已切換)"}
         
