@@ -33,6 +33,27 @@ function formatPrice(price) {
     }
 }
 
+/**
+ * 將時間戳轉換為「多久以前」
+ */
+function getTimeAgo(timestamp) {
+    if (!timestamp) return "未知時間";
+    const date = new Date(timestamp);
+    const seconds = Math.floor((new Date() - date) / 1000);
+
+    let interval = seconds / 31536000;
+    if (interval > 1) return Math.floor(interval) + " 年前";
+    interval = seconds / 2592000;
+    if (interval > 1) return Math.floor(interval) + " 個月前";
+    interval = seconds / 86400;
+    if (interval > 1) return Math.floor(interval) + " 天前";
+    interval = seconds / 3600;
+    if (interval > 1) return Math.floor(interval) + " 小時前";
+    interval = seconds / 60;
+    if (interval > 1) return Math.floor(interval) + " 分鐘前";
+    return seconds < 10 ? "剛剛" : Math.floor(seconds) + " 秒前";
+}
+
 async function checkMarketPulse(showLoading = false, forceRefresh = false) {
     const grid = document.getElementById('pulse-grid');
     let targets = globalSelectedSymbols.length > 0 ? globalSelectedSymbols : ['BTC', 'ETH', 'SOL', 'PI'];
@@ -57,22 +78,33 @@ async function refreshMarketPulse() {
     try {
         // Identify targets to refresh
         let targets = globalSelectedSymbols.length > 0 ? globalSelectedSymbols : ['BTC', 'ETH', 'SOL', 'PI'];
+        const userKey = window.APIKeyManager?.getCurrentKey();
 
-        // 1. Trigger global batch update on server with specific symbols
-        const res = await fetch('/api/market-pulse/refresh-all', { 
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ symbols: targets })
-        });
-        
-        if (!res.ok) throw new Error("Refresh failed");
-        
-        // 2. Fetch the newly cached data
-        await checkMarketPulse(true, false);
+        if (userKey) {
+            // [Premium] 使用用戶 Key 進行並行深度分析
+            console.log("Using User Key for Deep Refresh...");
+            const promises = targets.map(symbol => triggerDeepAnalysis(symbol));
+            await Promise.allSettled(promises);
+            // 完成後重新讀取快取以更新 UI
+            await checkMarketPulse(false, false);
+        } else {
+            // [Free] 觸發後台公共更新
+            console.log("Triggering Background Public Refresh...");
+            const res = await fetch('/api/market-pulse/refresh-all', { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ symbols: targets })
+            });
+            
+            if (!res.ok) throw new Error("Refresh failed");
+            
+            // 開始輪詢進度，直到完成
+            pollAnalysisProgress();
+        }
         
     } catch (e) {
         console.error("Market Pulse Refresh Error:", e);
-        alert("重新整理失敗，請稍後再試");
+        // alert("重新整理失敗，請稍後再試"); // Suppress alert on network cancel (e.g. F5)
     } finally {
         setTimeout(() => {
             if (btn) btn.disabled = false;
@@ -82,15 +114,27 @@ async function refreshMarketPulse() {
     }
 }
 
-async function fetchPulseForSymbol(symbol, forceRefresh = false) {
+async function fetchPulseForSymbol(symbol, forceRefresh = false, deepAnalysis = false) {
     const cardId = `pulse-card-${symbol}`;
     let card = document.getElementById(cardId); if (!card) return;
     try {
         const sourcesQuery = selectedNewsSources.join(',');
         const refreshParam = forceRefresh ? '&refresh=true' : '';
+        const deepParam = deepAnalysis ? '&deep_analysis=true' : '';
 
-        // ✅ 移除 cache buster - 後端有緩存機制，不需要前端強制刷新
-        const res = await fetch(`/api/market-pulse/${symbol}?sources=${sourcesQuery}${refreshParam}`);
+        // 只有在深度分析模式下才發送用戶 API Key
+        const headers = {};
+        if (deepAnalysis) {
+            const userKey = window.APIKeyManager?.getCurrentKey();
+            if (userKey) {
+                headers['X-User-LLM-Key'] = userKey.key;
+                headers['X-User-LLM-Provider'] = userKey.provider;
+            }
+        }
+
+        const res = await fetch(`/api/market-pulse/${symbol}?sources=${sourcesQuery}${refreshParam}${deepParam}`, {
+            headers: headers
+        });
         const data = await res.json();
 
         const report = data.report || {
@@ -100,12 +144,31 @@ async function fetchPulseForSymbol(symbol, forceRefresh = false) {
             risks: []
         };
 
+        // 處理等待排程更新的情況
+        if (data.status === 'pending' || data.source_mode === 'awaiting_update') {
+            card.className = "glass-card rounded-2xl p-6 h-full flex flex-col items-center justify-center min-h-[200px] border border-dashed border-slate-600";
+            card.innerHTML = `
+                <div class="text-center">
+                    <div class="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <i data-lucide="clock" class="w-6 h-6 text-slate-500"></i>
+                    </div>
+                    <h3 class="font-bold text-lg text-slate-300 mb-2">${data.symbol}</h3>
+                    <p class="text-slate-400 text-sm mb-4">等待排程更新（每 4 小時）</p>
+                    <button onclick="triggerDeepAnalysis('${data.symbol}')" class="px-4 py-2 bg-amber-600/20 text-amber-400 hover:bg-amber-600/30 rounded-lg transition flex items-center gap-2 mx-auto border border-amber-500/30">
+                        <i data-lucide="zap" class="w-4 h-4"></i>
+                        即時深度分析
+                    </button>
+                </div>
+            `;
+            lucide.createIcons();
+            return;
+        }
+
         if (report.summary) {
             currentPulseData[symbol] = data;
             const isPositive = data.change_24h > 0;
 
-            const updatedTime = new Date(data.timestamp);
-            const timeString = updatedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const timeString = getTimeAgo(data.timestamp);
             const uniqueSources = data.news_sources ? [...new Set(data.news_sources.map(n => n.source.split(' ')[0]))].join(', ') : '';
 
             card.className = "glass-card rounded-2xl p-0 h-full flex flex-col hover:border-blue-500/30 transition duration-300 overflow-hidden";
@@ -200,14 +263,23 @@ async function fetchPulseForSymbol(symbol, forceRefresh = false) {
             html += `</div>`; // End Body
 
             // 3. Footer Section
+            const sourceMode = data.source_mode || 'public_cache';
+            const sourceBadge = sourceMode === 'deep_analysis'
+                ? `<span class="px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded border border-amber-500/30 flex items-center gap-1"><i data-lucide="zap" class="w-2.5 h-2.5"></i>深度</span>`
+                : `<span class="px-1.5 py-0.5 bg-slate-700/50 text-slate-400 rounded border border-slate-600/30">公共</span>`;
+
             html += `
                 <div class="p-4 border-t border-slate-700/50 bg-slate-800/30 flex justify-between items-center text-[10px] text-slate-500">
                     <div class="flex items-center gap-2">
+                        ${sourceBadge}
                         <span title="${uniqueSources}">Refs: ${data.news_sources ? data.news_sources.length : 0}</span>
                     </div>
                     <div class="flex gap-2">
                         <button onclick="showNewsList('${symbol}')" class="px-2 py-1.5 hover:bg-slate-700/50 rounded transition text-blue-400 flex items-center gap-1">
                             <i data-lucide="newspaper" class="w-3 h-3"></i> 新聞
+                        </button>
+                        <button onclick="triggerDeepAnalysis('${symbol}')" class="px-2 py-1.5 hover:bg-amber-600/20 rounded transition text-amber-400 flex items-center gap-1 border border-amber-500/20" title="使用您的 API Key 進行即時深度分析">
+                            <i data-lucide="microscope" class="w-3 h-3"></i> 深度
                         </button>
                         <button onclick="switchTab('chat'); quickAsk('${data.symbol} 詳細分析')" class="px-2 py-1.5 bg-purple-600/20 text-purple-300 hover:bg-purple-600/30 rounded transition flex items-center gap-1 border border-purple-500/20">
                             <i data-lucide="bot" class="w-3 h-3"></i> 詳情
@@ -222,17 +294,135 @@ async function fetchPulseForSymbol(symbol, forceRefresh = false) {
     } catch (e) { console.error(e); }
 }
 
+/**
+ * 觸發深度分析 - 使用用戶的私人 API Key 進行即時分析
+ */
+async function triggerDeepAnalysis(symbol) {
+    const userKey = window.APIKeyManager?.getCurrentKey();
+
+    if (!userKey) {
+        alert('請先在設定中配置您的 API Key（OpenAI / Google / OpenRouter）才能使用深度分析功能。');
+        return;
+    }
+
+    const card = document.getElementById(`pulse-card-${symbol}`);
+    if (card) {
+        // 顯示載入狀態
+        const originalContent = card.innerHTML;
+        card.innerHTML = `
+            <div class="p-6 h-full flex flex-col items-center justify-center min-h-[200px]">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-400 mb-3"></div>
+                <div class="text-amber-400 text-sm font-medium">深度分析中...</div>
+                <div class="text-slate-500 text-xs mt-1">使用 ${userKey.provider.toUpperCase()} 進行即時分析</div>
+            </div>
+        `;
+    }
+
+    try {
+        await fetchPulseForSymbol(symbol, false, true); // deepAnalysis = true
+    } catch (e) {
+        console.error('Deep analysis failed:', e);
+        alert('深度分析失敗，請檢查您的 API Key 是否正確。');
+        // 恢復原始內容
+        if (card) {
+            await fetchPulseForSymbol(symbol, false, false);
+        }
+    }
+}
+
 function showNewsList(symbol) {
     const data = currentPulseData[symbol]; if (!data || !data.news_sources) return;
     const modal = document.getElementById('news-modal');
     const listContent = document.getElementById('news-list-content');
     document.getElementById('news-modal-symbol').innerText = symbol;
     listContent.innerHTML = '';
-    data.news_sources.forEach(news => {
-        const item = document.createElement('div');
-        item.className = 'bg-slate-800/50 border border-slate-700 p-3 rounded-xl hover:bg-slate-800 transition group';
-        item.innerHTML = `<div class="flex justify-between items-start mb-1"><span class="text-[10px] px-1.5 py-0.5 bg-blue-900/30 text-blue-400 rounded border border-blue-500/20">${news.source}</span></div><h4 class="text-sm font-semibold text-slate-200 mb-2 group-hover:text-blue-300 transition line-clamp-2">${news.title}</h4><a href="${news.url}" target="_blank" class="text-[10px] text-blue-500 hover:underline">查看原文 <i data-lucide="external-link" class="w-2.5 h-2.5"></i></a>`;
-        listContent.appendChild(item);
-    });
+
+    if (!data.news_sources || data.news_sources.length === 0) {
+        console.log("No news sources found for", symbol, data);
+        listContent.innerHTML = `<div class="text-slate-500 text-center py-4">暫無相關新聞</div>`;
+    } else {
+        data.news_sources.forEach(news => {
+            const item = document.createElement('div');
+            item.className = 'bg-slate-800/50 border border-slate-700 p-3 rounded-xl hover:bg-slate-800 transition group';
+            
+            const title = news.title || '無標題';
+            const source = news.source || '未知來源';
+            const url = news.url || '#';
+            const linkHtml = url !== '#' 
+                ? `<a href="${url}" target="_blank" class="text-[10px] text-blue-500 hover:underline">查看原文 <i data-lucide="external-link" class="w-2.5 h-2.5"></i></a>`
+                : `<span class="text-[10px] text-slate-500 cursor-not-allowed">無連結</span>`;
+
+            item.innerHTML = `
+                <div class="flex justify-between items-start mb-1">
+                    <span class="text-[10px] px-1.5 py-0.5 bg-blue-900/30 text-blue-400 rounded border border-blue-500/20">${source}</span>
+                </div>
+                <h4 class="text-sm font-semibold text-slate-200 mb-2 group-hover:text-blue-300 transition line-clamp-2">${title}</h4>
+                ${linkHtml}
+            `;
+            listContent.appendChild(item);
+        });
+    }
     modal.classList.remove('hidden'); lucide.createIcons();
 }
+
+// --- Analysis Progress Polling ---
+let isPollingProgress = false;
+
+async function pollAnalysisProgress() {
+    if (isPollingProgress) return;
+    isPollingProgress = true;
+
+    const container = document.getElementById('analysis-progress-container');
+    const bar = document.getElementById('analysis-progress-bar');
+    const text = document.getElementById('analysis-progress-text');
+
+    try {
+        while (true) {
+            const res = await fetch('/api/market-pulse/progress');
+            if (!res.ok) break;
+            
+            const status = await res.json();
+            
+            if (status.is_running && status.total > 0) {
+                container.classList.remove('hidden');
+                
+                const pct = (status.completed / status.total) * 100;
+                bar.style.width = `${pct}%`;
+                text.innerText = `${status.completed}/${status.total} (${pct.toFixed(1)}%)`;
+                
+                // Keep polling
+                await new Promise(r => setTimeout(r, 2000));
+            } else {
+                // Done or not running
+                if (!container.classList.contains('hidden')) {
+                    // Show 100% briefly then hide
+                    bar.style.width = '100%';
+                    text.innerText = '完成';
+                    await new Promise(r => setTimeout(r, 2000));
+                    container.classList.add('hidden');
+                    
+                    // Refresh grid one last time to show new data
+                    checkMarketPulse(false, false);
+                }
+                break;
+            }
+        }
+    } catch (e) {
+        console.error("Progress poll error:", e);
+    } finally {
+        isPollingProgress = false;
+    }
+}
+
+// Hook into existing functions
+const originalCheckMarketPulse = checkMarketPulse;
+checkMarketPulse = async function(showLoading, forceRefresh) {
+    await originalCheckMarketPulse(showLoading, forceRefresh);
+    pollAnalysisProgress(); // Start polling if background task is running
+};
+
+const originalRefreshMarketPulse = refreshMarketPulse;
+refreshMarketPulse = async function() {
+    await originalRefreshMarketPulse();
+    pollAnalysisProgress();
+};

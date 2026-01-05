@@ -12,8 +12,17 @@ from contextlib import asynccontextmanager
 project_root = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, project_root)
 
+import logging
+
 # Load environment variables
 load_dotenv()
+
+# Configure Logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
 
 # Import from refactored modules
 from api.utils import logger
@@ -60,8 +69,15 @@ async def lifespan(app: FastAPI):
 
     # Startup: 啟動背景篩選器更新任務
     asyncio.create_task(update_screener_task())
-    # Startup: 啟動 Market Pulse 定期更新任務
-    asyncio.create_task(update_market_pulse_task())
+
+    # Market Pulse 任務：檢查是否由獨立 Worker 處理
+    # 設置環境變數 MARKET_PULSE_WORKER=1 時，API 不啟動此任務（由獨立 Worker 處理）
+    if not os.getenv("MARKET_PULSE_WORKER"):
+        logger.info("📊 Starting Market Pulse task in API process...")
+        asyncio.create_task(update_market_pulse_task())
+    else:
+        logger.info("📊 Market Pulse handled by external worker (MARKET_PULSE_WORKER=1)")
+
     # Startup: 啟動 Funding Rate 定期更新任務
     asyncio.create_task(funding_rate_update_task())
     yield

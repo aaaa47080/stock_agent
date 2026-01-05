@@ -1,6 +1,6 @@
 import asyncio
 from typing import Optional
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Header
 
 from core.config import SUPPORTED_EXCHANGES
 from data.market_data import get_klines
@@ -12,7 +12,8 @@ from api.globals import (
     FUNDING_RATE_CACHE,
     MARKET_PULSE_CACHE,
     screener_lock,
-    get_symbol_lock
+    get_symbol_lock,
+    ANALYSIS_STATUS
 )
 from api.services import (
     save_screener_cache,
@@ -271,69 +272,104 @@ async def get_funding_rate_history(symbol: str):
         return {"error": str(e)}
 
 @router.get("/api/market-pulse/{symbol}")
-async def get_market_pulse_api(symbol: str, sources: Optional[str] = None, refresh: bool = False):
+async def get_market_pulse_api(
+    symbol: str,
+    sources: Optional[str] = None,
+    refresh: bool = False,
+    deep_analysis: bool = False,
+    x_user_llm_key: Optional[str] = Header(None),
+    x_user_llm_provider: Optional[str] = Header(None)
+):
     """
-    獲取市場脈動分析 (使用智能緩存)
+    獲取市場脈動分析
 
-    緩存策略：
-    - 優先返回緩存數據（快速響應）
-    - 緩存有效期：2小時
-    - refresh=true 可強制刷新
-    - 使用 Symbol Lock 避免重複分析
+    分層設計：
+    - 預設模式：讀取公共快取（後台已分析好的數據）
+    - 深度分析模式：deep_analysis=true + 私人金鑰 → 即時使用用戶 API Key 分析
     """
     try:
         base_symbol = symbol.upper().replace("USDT", "").replace("BUSD", "").replace("-", "")
-        CACHE_VALIDITY_HOURS = 2  # 緩存有效期 2 小時
 
-        # 1. 檢查緩存並驗證時效性
-        if not refresh and base_symbol in MARKET_PULSE_CACHE:
-            cached_data = MARKET_PULSE_CACHE[base_symbol]
+        # 1. 優先讀取公共快取（除非用戶明確要求深度分析）
+        if not deep_analysis and base_symbol in MARKET_PULSE_CACHE:
+            cached_data = MARKET_PULSE_CACHE[base_symbol].copy()  # 返回副本，避免修改原始快取
+            cached_data["source_mode"] = "public_cache"  # 標記數據來源
+            return cached_data
 
-            # 檢查緩存是否過期
-            if "timestamp" in cached_data:
-                try:
-                    from datetime import datetime, timedelta
-                    cache_time = datetime.fromisoformat(cached_data["timestamp"])
-                    now = datetime.now()
-                    age_hours = (now - cache_time).total_seconds() / 3600
+        # 2. 深度分析模式：用戶選擇使用私人金鑰即時分析
+        if deep_analysis and x_user_llm_key and x_user_llm_provider:
+            try:
+                from utils.llm_client import create_llm_client_from_config
+                from analysis.market_pulse import MarketPulseAnalyzer
 
-                    if age_hours < CACHE_VALIDITY_HOURS:
-                        # 緩存仍然有效，直接返回
-                        logger.info(f"✅ Cache hit for {base_symbol} (age: {age_hours:.1f}h)")
-                        return cached_data
-                    else:
-                        logger.info(f"⏰ Cache expired for {base_symbol} (age: {age_hours:.1f}h), will refresh")
-                except Exception as e:
-                    logger.warning(f"⚠️ Failed to parse timestamp for {base_symbol}: {e}")
-                    # 時間戳解析失敗，仍然返回緩存數據（安全策略）
-                    return cached_data
-            else:
-                # 沒有時間戳，但有數據，仍然返回（向後兼容）
-                logger.info(f"✅ Cache hit for {base_symbol} (no timestamp)")
-                return cached_data
+                logger.info(f"🔬 Deep Analysis Mode: Using User Key for {base_symbol}")
+                user_client, _ = create_llm_client_from_config({
+                    "provider": x_user_llm_provider,
+                    "api_key": x_user_llm_key
+                })
 
-        # 2. 緩存過期或未命中，使用鎖進行同步控制
-        lock = get_symbol_lock(base_symbol)
+                analyzer = MarketPulseAnalyzer(client=user_client)
+                loop = asyncio.get_running_loop()
+                enabled_sources = sources.split(',') if sources else None
+
+                result = await loop.run_in_executor(None, lambda: analyzer.analyze_movement(base_symbol, enabled_sources=enabled_sources))
+
+                # 深度分析結果也更新到公共快取，讓其他人也受益
+                if result and "error" not in result:
+                    result["source_mode"] = "deep_analysis"  # 標記為深度分析
+                    result["analyzed_by"] = x_user_llm_provider  # 記錄分析來源
+                    MARKET_PULSE_CACHE[base_symbol] = result
+                    save_market_pulse_cache()
+                return result
+            except Exception as e:
+                logger.error(f"Deep analysis failed: {e}")
+                # 深度分析失敗時，回退到快取
+                if base_symbol in MARKET_PULSE_CACHE:
+                    return MARKET_PULSE_CACHE[base_symbol]
+
+        # 3. 快取未命中：立即執行按需分析 (On-Demand Analysis)
+        logger.info(f"Cache miss for {base_symbol}, triggering immediate analysis...")
         
-        async with lock:
-            # Double check cache inside lock
-            if base_symbol in MARKET_PULSE_CACHE:
-                 return MARKET_PULSE_CACHE[base_symbol]
-
-            logger.info(f"Cache miss for {base_symbol}, triggering immediate analysis...")
+        try:
+            from analysis.market_pulse import get_market_pulse
             
-            loop = asyncio.get_running_loop()
+            # 使用預設來源
             enabled_sources = sources.split(',') if sources else None
+            loop = asyncio.get_running_loop()
             
+            # 立即執行分析
             result = await loop.run_in_executor(None, lambda: get_market_pulse(base_symbol, enabled_sources=enabled_sources))
             
-            if "error" in result:
-                raise HTTPException(status_code=404, detail=result["error"])
+            if result and "error" not in result:
+                # 成功後寫入快取，造福後續請求
+                result["source_mode"] = "on_demand"
+                MARKET_PULSE_CACHE[base_symbol] = result
+                # 異步保存到檔案，不阻塞
+                asyncio.create_task(asyncio.to_thread(save_market_pulse_cache))
+                return result
+            else:
+                # 分析失敗的 fallback
+                logger.warning(f"On-demand analysis failed for {base_symbol}: {result.get('error')}")
+                # 繼續向下執行，返回 pending 狀態
                 
-            MARKET_PULSE_CACHE[base_symbol] = result
-            save_market_pulse_cache()
-            
-            return result
+        except Exception as e:
+            logger.error(f"Error during on-demand analysis for {base_symbol}: {e}")
+
+        return {
+            "symbol": base_symbol,
+            "status": "pending",
+            "source_mode": "awaiting_update",
+            "message": "分析中，請稍候再試",
+            "current_price": 0,
+            "change_24h": 0,
+            "change_1h": 0,
+            "report": {
+                "summary": "系統正在為此幣種生成初始報告，請稍後刷新頁面。",
+                "key_points": [],
+                "highlights": [],
+                "risks": []
+            }
+        }
             
     except HTTPException:
         raise
@@ -350,3 +386,8 @@ async def api_refresh_all_market_pulse(request: RefreshPulseRequest):
     except Exception as e:
         logger.error(f"Manual refresh failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/api/market-pulse/progress")
+async def get_market_pulse_progress():
+    """Get the current status of background analysis task."""
+    return ANALYSIS_STATUS

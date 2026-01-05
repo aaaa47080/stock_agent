@@ -4,6 +4,8 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 import openai
 import google.generativeai as genai
+from dotenv import load_dotenv
+from utils.llm_client import LLMClientFactory
 
 from core.config import (
     SUPPORTED_EXCHANGES, DEFAULT_INTERVAL, DEFAULT_KLINES_LIMIT
@@ -28,36 +30,78 @@ async def health_check():
 
 @router.post("/api/settings/validate-key")
 async def validate_key(request: KeyValidationRequest):
-    """測試 API Key 是否有效"""
+    """測試 API Key 是否有效，並嘗試進行對話"""
     provider = request.provider
     key = request.api_key
     
     if not key or len(key) < 5:
         return {"valid": False, "message": "Key 為空或過短"}
 
+    test_prompt = "你好請問今天天氣好麻 (請簡短回答)"
+
     try:
+        reply_text = ""
+        
         if provider == "openai":
             client = openai.OpenAI(api_key=key)
-            # 嘗試列出模型，這是最輕量的驗證方式
-            client.models.list()
-            return {"valid": True, "message": "OpenAI Key 驗證成功"}
+            # 嘗試使用輕量模型進行測試
+            completion = client.chat.completions.create(
+                model="gpt-4o-mini", 
+                messages=[{"role": "user", "content": test_prompt}],
+                max_tokens=50
+            )
+            reply_text = completion.choices[0].message.content
             
         elif provider == "google_gemini":
             genai.configure(api_key=key)
-            # 嘗試列出模型
-            # genai.list_models() 返回的是 generator，需轉 list 觸發請求
-            models = list(genai.list_models()) 
-            return {"valid": True, "message": "Google Gemini Key 驗證成功"}
+            # 嘗試多個模型版本以提高兼容性
+            models_to_try = ["gemini-3-flash-preview"]
+            last_error = None
+            
+            for model_name in models_to_try:
+                try:
+                    model = genai.GenerativeModel(model_name)
+                    response = model.generate_content(test_prompt)
+                    reply_text = response.text
+                    # 如果成功，就跳出循環
+                    break 
+                except Exception as e:
+                    last_error = e
+                    continue
+            
+            # 如果所有模型都失敗，拋出最後一個錯誤
+            if not reply_text and last_error:
+                raise last_error
             
         elif provider == "openrouter":
             client = openai.OpenAI(
                 base_url="https://openrouter.ai/api/v1",
                 api_key=key,
             )
-            client.models.list()
-            return {"valid": True, "message": "OpenRouter Key 驗證成功"}
+            # 先獲取模型列表，確保使用有效模型
+            models = client.models.list()
+            if not models.data:
+                raise ValueError("無法獲取模型列表")
             
-        return {"valid": False, "message": "未知的提供商"}
+            # 使用列表中的第一個模型 (通常是免費或熱門模型)
+            test_model = models.data[0].id
+            
+            completion = client.chat.completions.create(
+                model=test_model,
+                messages=[{"role": "user", "content": test_prompt}],
+                max_tokens=50
+            )
+            reply_text = completion.choices[0].message.content
+            
+        else:
+            return {"valid": False, "message": "未知的提供商"}
+            
+        return {
+            "valid": True, 
+            "message": "驗證成功！連接正常。", 
+            "reply": reply_text,
+            "provider": provider
+        }
         
     except Exception as e:
         logger.warning(f"Key validation failed for {provider}: {e}")
@@ -66,21 +110,23 @@ async def validate_key(request: KeyValidationRequest):
             error_msg = "認證失敗 (401)，請檢查 Key 是否正確。"
         elif "429" in error_msg:
             error_msg = "額度不足或請求過多 (429)。"
+        elif "404" in error_msg:
+             # 有些舊 Key 可能無法訪問新模型，嘗試降級提示
+             error_msg = "連接成功但模型不可用 (404)。請檢查權限。"
+             
         return {"valid": False, "message": f"驗證失敗: {error_msg}"}
 
 @router.get("/api/config")
 async def get_config():
     """回傳前端需要的配置資訊"""
+    # Reload .env to pick up manual changes
+    load_dotenv(override=True)
+
     current_provider = core_config.BULL_RESEARCHER_MODEL.get("provider", "openai")
 
-    # 檢查當前使用的 provider 是否有 API key
-    has_current_key = False
-    if current_provider == "openai":
-        has_current_key = bool(os.getenv("OPENAI_API_KEY"))
-    elif current_provider == "google_gemini":
-        has_current_key = bool(os.getenv("GOOGLE_API_KEY"))
-    elif current_provider == "openrouter":
-        has_current_key = bool(os.getenv("OPENROUTER_API_KEY"))
+    # Helper to check key existence using Factory logic
+    def has_key(provider):
+        return bool(LLMClientFactory._get_api_key(provider))
 
     return {
         "supported_exchanges": SUPPORTED_EXCHANGES,
@@ -93,10 +139,10 @@ async def get_config():
             "bull_committee_models": core_config.BULL_COMMITTEE_MODELS,
             "bear_committee_models": core_config.BEAR_COMMITTEE_MODELS,
             # Mask keys for security
-            "has_openai_key": bool(os.getenv("OPENAI_API_KEY")),
-            "has_google_key": bool(os.getenv("GOOGLE_API_KEY")),
-            "has_openrouter_key": bool(os.getenv("OPENROUTER_API_KEY")),
-            "has_current_provider_key": has_current_key,  # 當前使用的 provider 是否有 key
+            "has_openai_key": has_key("openai"),
+            "has_google_key": has_key("google_gemini"),
+            "has_openrouter_key": has_key("openrouter"),
+            "has_current_provider_key": has_key(current_provider),
         }
     }
 

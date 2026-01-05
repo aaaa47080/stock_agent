@@ -8,21 +8,23 @@ from core.config import (
 # 設定日誌
 logger = logging.getLogger("API")
 
-# --- 全域快取 (Screener) ---
-# 用於儲存市場掃描結果，避免每次請求都重新運算
+# Global caches
+MARKET_PULSE_CACHE = {}
+FUNDING_RATE_CACHE = {}
+
+# Analysis Status Tracker
+ANALYSIS_STATUS = {
+    "is_running": False,
+    "total": 0,
+    "completed": 0,
+    "current_batch": [],
+    "start_time": None
+}
+
+# Screener cache structure
 cached_screener_result = {
     "timestamp": None,
     "data": None
-}
-
-# --- 全域快取 (Market Pulse) ---
-# 用於儲存市場脈動 AI 分析結果
-MARKET_PULSE_CACHE = {}
-
-# --- 全域快取 (Funding Rate) ---
-FUNDING_RATE_CACHE = {
-    "timestamp": None,
-    "data": {}
 }
 
 # Locks for concurrency control

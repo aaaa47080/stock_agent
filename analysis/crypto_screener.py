@@ -195,15 +195,8 @@ def screen_top_cryptos(exchange='okx', limit=30, interval='1d', target_symbols: 
     
     summary_df = pd.DataFrame(summary_list)
 
-    # 5. Save raw data and summary report (Only if needed, maybe skip for background tasks to avoid clutter)
-    # Keeping it for now as per original design but could be optional
-    output_dir = "analysis_results"
-    os.makedirs(output_dir, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    
-    # Save summary report
-    summary_file = os.path.join(output_dir, f"screener_summary_{timestamp}.csv")
-    summary_df.to_csv(summary_file, index=False)
+    # 5. [Removed] Save raw data and summary report (Logic removed to keep directory clean)
+    # The output_dir logic and CSV saving has been disabled.
     
     # 6. Prepare DataFrames for output
     # Ensure columns are numeric for sorting

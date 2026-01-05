@@ -115,17 +115,19 @@ async function sendMessage() {
     let timerInterval;
 
     botMsgDiv.innerHTML = `
-        <div class="loading-container">
-            <div class="spinner"></div>
-            <span>AI 思考中...</span>
-            <span id="loading-timer">⏱️ 0.0 秒</span>
+        <div class="flex items-center gap-3 p-2 text-slate-300">
+            <div class="relative">
+                <div class="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+            </div>
+            <span class="text-sm font-mono animate-pulse">AI is thinking...</span>
+            <span id="loading-timer" class="text-xs font-mono text-slate-500 ml-auto">0.0s</span>
         </div>
     `;
 
     const timerSpan = botMsgDiv.querySelector('#loading-timer');
     timerInterval = setInterval(() => {
         const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-        timerSpan.textContent = `⏱️ ${elapsed} 秒`;
+        timerSpan.textContent = `${elapsed}s`;
     }, 100);
 
     // Create AbortController

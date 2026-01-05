@@ -8,6 +8,7 @@ from typing import Dict, List, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 from dotenv import load_dotenv
+from api.utils import logger
 
 # Load environment variables with override to ensure .env file values take precedence
 load_dotenv(override=True)
@@ -16,6 +17,8 @@ class OKXAPIConnector:
     """
     OKX API 連接器，支援現貨和期貨交易
     """
+    _has_warned_missing_creds = False
+
     def __init__(self):
         # 嘗試從環境變數獲取 API 資訊
         self.api_key = os.getenv("OKX_API_KEY", "")
@@ -23,11 +26,13 @@ class OKXAPIConnector:
         self.passphrase = os.getenv("OKX_PASSPHRASE", "")
 
         if not all([self.api_key, self.secret_key, self.passphrase]):
-            print("[WARNING] 未找到 OKX API 憑證")
-            print("請在 .env 文件中設置以下變數：")
-            print("OKX_API_KEY=您的API密鑰")
-            print("OKX_API_SECRET=您的API私鑰")
-            print("OKX_PASSPHRASE=您的API密碼")
+            if not OKXAPIConnector._has_warned_missing_creds:
+                logger.warning("[WARNING] 未找到 OKX API 憑證")
+                logger.warning("請在 .env 文件中設置以下變數：")
+                logger.warning("OKX_API_KEY=您的API密鑰")
+                logger.warning("OKX_API_SECRET=您的API私鑰")
+                logger.warning("OKX_PASSPHRASE=您的API密碼")
+                OKXAPIConnector._has_warned_missing_creds = True
 
         # Use custom base URL if provided in .env, else use default
         self.base_url = os.getenv("OKX_BASE_URL", "https://www.okx.com")
@@ -346,6 +351,17 @@ class OKXAPIConnector:
         """
         endpoint = "/market/ticker"
         params = {"instId": instId}
+        return self._make_request("GET", endpoint, params=params)
+
+    def get_tickers(self, instType: str) -> dict:
+        """
+        獲取所有產品行情資訊
+
+        Args:
+            instType: 產品類型 (SPOT, SWAP, FUTURES, OPTION)
+        """
+        endpoint = "/market/tickers"
+        params = {"instType": instType}
         return self._make_request("GET", endpoint, params=params)
 
     def get_funding_rate(self, instId: str) -> dict:

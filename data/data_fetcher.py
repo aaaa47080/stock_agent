@@ -1,8 +1,9 @@
 import requests
 import pandas as pd
 import time
-from dotenv import load_dotenv
 import os
+from dotenv import load_dotenv
+from api.utils import logger
 
 # Load environment variables from .env file
 load_dotenv()
@@ -90,19 +91,19 @@ class BinanceDataFetcher:
                     raise SymbolNotFoundError(f"Symbol not found or invalid: {params.get('symbol', 'N/A')} on {base_url}") from http_err
                 # Handle specific rate limit error codes from Binance
                 elif response.status_code == 418 or ("-1003" in response.text):
-                    print(f"Binance API rate limit exceeded: {response.text}")
-                    print("Aborting request to prevent ban escalation.")
+                    logger.error(f"Binance API rate limit exceeded: {response.text}")
+                    logger.error("Aborting request to prevent ban escalation.")
                     return None
-                print(f"HTTP error occurred: {http_err} - Response: {response.text}")
+                logger.error(f"HTTP error occurred: {http_err} - Response: {response.text}")
                 return None
             except requests.exceptions.ConnectionError as conn_err:
-                print(f"Connection error occurred: {conn_err}")
+                logger.error(f"Connection error occurred: {conn_err}")
                 return None
             except requests.exceptions.Timeout as timeout_err:
-                print(f"Timeout error occurred: {timeout_err}")
+                logger.error(f"Timeout error occurred: {timeout_err}")
                 return None
             except requests.exceptions.RequestException as req_err:
-                print(f"An unexpected request error occurred: {req_err}")
+                logger.error(f"An unexpected request error occurred: {req_err}")
                 return None
 
     def check_symbol_availability(self, symbol, market_type='spot'):

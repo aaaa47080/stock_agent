@@ -19,15 +19,17 @@ from api.globals import (
     MARKET_PULSE_CACHE, 
     FUNDING_RATE_CACHE, 
     screener_lock, 
-    funding_rate_lock
+    funding_rate_lock,
+    ANALYSIS_STATUS
 )
 
 # --- Market Pulse Cache Functions ---
-def save_market_pulse_cache():
+def save_market_pulse_cache(silent=True):
     """Save Market Pulse data to DB."""
     try:
         set_cache("MARKET_PULSE", MARKET_PULSE_CACHE)
-        logger.info(f"Market Pulse cache saved to DB")
+        if not silent:
+            logger.info(f"Market Pulse cache saved to DB")
     except Exception as e:
         logger.error(f"Failed to save Market Pulse cache: {e}")
 
@@ -118,89 +120,234 @@ async def funding_rate_update_task():
         await asyncio.sleep(FUNDING_RATE_UPDATE_INTERVAL)
         await update_funding_rates()
 
-async def update_single_market_pulse(symbol: str, fixed_sources: List[str]):
-    """Helper to update a single symbol for Market Pulse."""
+async def update_single_market_pulse(symbol: str, fixed_sources: List[str], semaphore: asyncio.Semaphore = None):
+    """Helper to update a single symbol for Market Pulse with Timeout protection."""
     loop = asyncio.get_running_loop()
-    try:
-        logger.info(f"[Background] Updating Market Pulse for {symbol}...")
-        result = await loop.run_in_executor(
-            None, 
-            lambda: get_market_pulse(symbol, enabled_sources=fixed_sources)
-        )
-        
-        if result and "error" not in result:
-            MARKET_PULSE_CACHE[symbol] = result
-            logger.info(f"[Background] Successfully updated {symbol}")
-        else:
-            logger.warning(f"[Background] Failed to update {symbol}: {result.get('error', 'Unknown error')}")
-    except Exception as e:
-        logger.error(f"[Background] Error updating {symbol}: {e}")
+    
+    async def _do_update():
+        try:
+            logger.info(f"[Background] Updating Market Pulse for {symbol}...")
+            # 為同步函數執行加上超時保護 (180秒)
+            # 注意: run_in_executor 本身不能直接 cancel，但在這裡 wrap 一層 wait_for 可以讓 asyncio 繼續往下走
+            result = await asyncio.wait_for(
+                loop.run_in_executor(
+                    None, 
+                    lambda: get_market_pulse(symbol, enabled_sources=fixed_sources)
+                ),
+                timeout=180.0
+            )
+            
+            if result and "error" not in result:
+                MARKET_PULSE_CACHE[symbol] = result
+                logger.info(f"[Background] Successfully updated {symbol}")
+            else:
+                logger.warning(f"[Background] Failed to update {symbol}: {result.get('error', 'Unknown error')}")
+        except asyncio.TimeoutError:
+            logger.error(f"[Background] ⏱️ Timeout updating {symbol} - skipping after 180s")
+        except asyncio.CancelledError:
+            logger.warning(f"[Background] 🛑 Task for {symbol} was cancelled.")
+            raise  # Re-raise to let the gathered task know it was cancelled
+        except Exception as e:
+            logger.error(f"[Background] Error updating {symbol}: {e}")
+
+    if semaphore:
+        async with semaphore:
+            await _do_update()
+    else:
+        await _do_update()
 
 async def refresh_all_market_pulse_data(target_symbols: List[str] = None):
     """
-    Refreshes Market Pulse data for specified symbols concurrently.
-    Ensures all symbols share the EXACT SAME timestamp for consistency.
+    Refreshes Market Pulse data with Smart Resume and Fixed Window logic.
+    - Fixed Windows: 00:00, 04:00, 08:00, 12:00, 16:00, 20:00
+    - Resume: Skips symbols already analyzed in the current window.
+    - Consistency: All data in a window shares the same timestamp.
     """
-    # Use provided symbols or fallback to defaults
-    raw_symbols = target_symbols if target_symbols and len(target_symbols) > 0 else MARKET_PULSE_TARGETS
+    # 1. 計算當前 4 小時窗口的起始時間
+    now = datetime.now()
+    window_hour = (now.hour // 4) * 4
+    window_start = now.replace(hour=window_hour, minute=0, second=0, microsecond=0)
+    window_start_iso = window_start.isoformat()
     
-    # Normalize symbols: UPPER -> remove USDT/BUSD/- -> unique
-    # This matches the key format used in get_market_pulse_api
-    symbols_to_update = set()
-    for s in raw_symbols:
-        norm = s.upper().replace("USDT", "").replace("BUSD", "").replace("-", "")
-        if norm:
-            symbols_to_update.add(norm)
-    symbols_to_update = list(symbols_to_update)
+    logger.info(f"🎯 Current Update Window: {window_start_iso}")
+
+    # 2. 決定要分析的幣種清單
+    final_symbols = set()
+    for s in MARKET_PULSE_TARGETS:
+         final_symbols.add(s.upper())
+         
+    if not target_symbols:
+        try:
+            logger.info("Fetching ALL volume tickers from OKX...")
+            okx = OKXAPIConnector()
+            loop = asyncio.get_running_loop()
+            tickers_result = await loop.run_in_executor(None, lambda: okx.get_tickers("SPOT"))
+            
+            if tickers_result.get("code") == "0":
+                tickers = tickers_result.get("data", [])
+                usdt_tickers = [t for t in tickers if t["instId"].endswith("-USDT")]
+                usdt_tickers.sort(key=lambda x: float(x.get("volCcy24h", 0)), reverse=True)
+                for t in usdt_tickers:
+                    base_currency = t["instId"].split("-")[0]
+                    final_symbols.add(base_currency)
+                logger.info(f"Added ALL {len(usdt_tickers)} tokens to analysis list.")
+            else:
+                logger.warning(f"Failed to fetch tickers: {tickers_result.get('msg')}")
+        except Exception as e:
+            logger.error(f"Error fetching tickers: {e}")
+    else:
+        for s in target_symbols:
+            final_symbols.add(s.upper())
+
+    # 標準化並過濾已完成的幣種
+    symbols_to_process = []
+    skipped_count = 0
+    
+    # 診斷：確認當前記憶體中的快取狀態
+    current_cache_size = len(MARKET_PULSE_CACHE)
+    logger.info(f"📦 [數據診斷] 快取中現有 {current_cache_size} 個幣種數據")
+    
+    for s in final_symbols:
+        # 統一標準化：只取第一段並大寫 (例如 BTC-USDT -> BTC)
+        norm = s.split("-")[0].split("/")[0].upper()
+        if not norm: continue
+        
+        existing = MARKET_PULSE_CACHE.get(norm)
+        if existing and "timestamp" in existing:
+            try:
+                cache_time = datetime.fromisoformat(existing["timestamp"])
+                if cache_time >= window_start:
+                    skipped_count += 1
+                    continue
+            except:
+                pass
+        
+        symbols_to_process.append(norm)
+    
+    if skipped_count > 0:
+        logger.info(f"⏭️ [Resume] 偵測到當前窗口 ({window_hour}:00) 已有 {skipped_count} 個幣種，將自動跳過。")
+    else:
+        logger.info(f"ℹ️ [New Run] 當前窗口 ({window_hour}:00) 尚無完成記錄，開始全量分析。")
+
+    if not symbols_to_process:
+        return window_start_iso
+
+    # Init Progress
+    ANALYSIS_STATUS["is_running"] = True
+    ANALYSIS_STATUS["total"] = len(symbols_to_process) + skipped_count 
+    ANALYSIS_STATUS["completed"] = skipped_count
+    ANALYSIS_STATUS["start_time"] = now.isoformat()
     
     FIXED_SOURCES = ['google', 'cryptopanic', 'newsapi', 'cryptocompare']
-    logger.info(f"🔄 Starting global Market Pulse refresh for: {symbols_to_update}")
+    sem = asyncio.Semaphore(5)
     
-    # 1. Run updates concurrently
-    tasks = [update_single_market_pulse(sym, FIXED_SOURCES) for sym in symbols_to_update]
+    async def _tracked_update(sym):
+        try:
+            await update_single_market_pulse(sym, FIXED_SOURCES, semaphore=sem)
+            # 成功後強制寫入 DB，確保續傳點被永久保存
+            if sym in MARKET_PULSE_CACHE:
+                MARKET_PULSE_CACHE[sym]["timestamp"] = window_start_iso
+                set_cache("MARKET_PULSE", MARKET_PULSE_CACHE)
+        finally:
+            ANALYSIS_STATUS["completed"] += 1
+
+    tasks = [_tracked_update(sym) for sym in symbols_to_process]
     await asyncio.gather(*tasks)
     
-    # 2. Unify Timestamps
-    # Even with concurrent execution, LLM processing times vary.
-    # We overwrite the timestamp to ensure the UI shows them as one cohesive "snapshot".
-    batch_timestamp = datetime.now().isoformat()
-    for sym in symbols_to_update:
-        if sym in MARKET_PULSE_CACHE:
-            MARKET_PULSE_CACHE[sym]["timestamp"] = batch_timestamp
-            
-    # 3. Save Cache
-    save_market_pulse_cache()
-    logger.info("✅ Global Market Pulse refresh complete.")
-    return batch_timestamp
+    ANALYSIS_STATUS["is_running"] = False
+    return window_start_iso
 
 async def update_market_pulse_task():
     """
-    Background task to update Market Pulse analysis periodically.
+    背景任務：定期更新市場脈動分析。
 
-    ✅ 優化策略：
-    - 啟動時只檢查緩存，不立即執行分析（避免沒有 LLM Key 時失敗）
-    - 如果緩存為空，等待第一個定時周期再執行
-    - 定時更新確保數據新鮮度
+    ✅ 智能排程策略：
+    1. 啟動時優先信任現有快取
+    2. 只有在快取確實過期（超過 4 小時）時才觸發更新
+    3. 定期週期性更新
     """
+    logger.info("🚀 [Background] Initializing Market Pulse task...")
 
-    # 1. 檢查緩存狀態
-    cache_size = len(MARKET_PULSE_CACHE)
-    if cache_size > 0:
-        logger.info(f"✅ Market Pulse cache loaded from database ({cache_size} symbols)")
-        logger.info("⏰ Next update scheduled in 1 hour")
-    else:
-        logger.warning("⚠️ Market Pulse cache is empty. Will populate on first scheduled cycle or user request.")
+    loop = asyncio.get_running_loop()
+    initial_sleep_time = 0
 
-    # 2. Periodic Update Loop
-    while True:
-        await asyncio.sleep(MARKET_PULSE_UPDATE_INTERVAL)
-        try:
-            logger.info("🔄 Starting scheduled Market Pulse update cycle...")
+    try:
+        # --- 步驟 1: 檢查現有快取狀態（優先信任快取）---
+        now = datetime.now()
+        cache_count = len(MARKET_PULSE_CACHE)
+        logger.info(f"📦 Current cache has {cache_count} symbols")
+
+        # 如果快取有數據，檢查最新的時間戳
+        if cache_count > 0:
+            timestamps = []
+            for sym, data in MARKET_PULSE_CACHE.items():
+                if data and "timestamp" in data:
+                    try:
+                        ts = datetime.fromisoformat(data["timestamp"])
+                        timestamps.append(ts)
+                    except ValueError:
+                        pass
+
+            if timestamps:
+                newest_ts = max(timestamps)
+                oldest_ts = min(timestamps)
+                newest_age = (now - newest_ts).total_seconds()
+                oldest_age = (now - oldest_ts).total_seconds()
+
+                logger.info(f"📊 Cache age: newest={newest_age/60:.1f}min, oldest={oldest_age/60:.1f}min (threshold={MARKET_PULSE_UPDATE_INTERVAL/60:.0f}min)")
+
+                # 如果最老的數據都還沒過期，就不需要更新
+                if oldest_age < MARKET_PULSE_UPDATE_INTERVAL:
+                    remaining_time = MARKET_PULSE_UPDATE_INTERVAL - oldest_age
+                    logger.info(f"✅ All cache is fresh! Sleeping for {remaining_time/60:.1f} minutes until next update.")
+                    initial_sleep_time = remaining_time
+                elif oldest_age < MARKET_PULSE_UPDATE_INTERVAL * 3:
+                    # [優化] 如果數據只是「稍微過期」(例如過期幾小時)，不要在啟動時阻塞做全量更新
+                    # 先讓 API 可以讀取這些舊數據，然後在背景稍後(1分鐘後)再開始更新
+                    logger.info(f"⚠️ Cache is stale ({oldest_age/3600:.1f}h) but usable for startup. Skipping immediate blocking refresh.")
+                    initial_sleep_time = 60 # 1分鐘後再開始背景更新
+                else:
+                    # 有嚴重過期數據 (>12小時)，觸發更新
+                    logger.info(f"⏰ Cache is too old ({oldest_age/3600:.1f}h). Triggering immediate refresh...")
+                    await refresh_all_market_pulse_data()
+                    initial_sleep_time = MARKET_PULSE_UPDATE_INTERVAL
+            else:
+                # 沒有有效時間戳，觸發更新
+                logger.info("⚠️ No valid timestamps in cache. Triggering refresh...")
+                await refresh_all_market_pulse_data()
+                initial_sleep_time = MARKET_PULSE_UPDATE_INTERVAL
+        else:
+            # 快取為空，觸發全量更新
+            logger.info("📭 Cache is empty. Triggering initial full refresh...")
             await refresh_all_market_pulse_data()
-            logger.info("✅ Market Pulse update completed successfully")
+            initial_sleep_time = MARKET_PULSE_UPDATE_INTERVAL
+
+    except Exception as e:
+        logger.error(f"⚠️ Error during startup check: {e}. Falling back to immediate full update.")
+        try:
+            await refresh_all_market_pulse_data()
+            initial_sleep_time = MARKET_PULSE_UPDATE_INTERVAL
+        except Exception as ex:
+            logger.error(f"❌ Fallback update failed: {ex}")
+            initial_sleep_time = 300
+
+    # 2. 進入週期性更新迴圈
+    while True:
+        # 等待下一次更新時間
+        if initial_sleep_time > 0:
+            logger.info(f"💤 Sleeping for {initial_sleep_time}s...")
+            await asyncio.sleep(initial_sleep_time)
+        
+        try:
+            logger.info("🔄 [Background] Starting scheduled Market Pulse update cycle...")
+            # 週期性任務執行全量更新 (傳入 None 會自動抓所有)
+            await refresh_all_market_pulse_data() 
+            logger.info("✅ [Background] Scheduled update cycle complete.")
         except Exception as e:
-            logger.error(f"❌ Market Pulse task error: {e}")
-            # 繼續運行，不要讓任務崩潰
+            logger.error(f"❌ [Background] Market Pulse update cycle error: {e}")
+        
+        # 之後的迴圈都等待完整的間隔時間
+        initial_sleep_time = MARKET_PULSE_UPDATE_INTERVAL
 
 async def update_screener_prices_fast():
     """

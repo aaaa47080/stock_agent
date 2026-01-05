@@ -5,114 +5,132 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 # === AI 模型配置 ===
-# 基礎模型（用於分析師團隊）
-FAST_THINKING_MODEL = "gpt-4.1-nano"  # 最便宜模型：用於數據收集和快速分析
-DEEP_THINKING_MODEL = "gpt-4.1-nano"  # 最便宜模型：用於推理和決策
+
+# 基礎模型（用於分析師團隊 - 需用戶 Key）
+
+FAST_THINKING_MODEL = "gpt-4o-mini"
+
+DEEP_THINKING_MODEL = "gpt-4o-mini"
+
+
 
 # === 多模型辯論配置 ===
-# 是否啟用多模型辯論（不同模型扮演多空雙方）
+
 ENABLE_MULTI_MODEL_DEBATE = True
 
-# === 啟用委員會模式 ===
-# False: 單一模型對單一模型 (多頭 1個 vs 空頭 1個)
-# True:  委員會模式 (多頭多個 → 綜合 vs 空頭多個 → 綜合)
-ENABLE_COMMITTEE_MODE = True  # 設為 True 啟用委員會模式
+ENABLE_COMMITTEE_MODE = True
+
+
 
 # ============================================================================
-# 單一模型辯論配置 (ENABLE_COMMITTEE_MODE = False 時使用)
+
+# [User-Side] 需要用戶 API Key 的功能
+
 # ============================================================================
 
-# 多頭研究員使用的模型
+
+
+# 多頭研究員 (用戶付費)
+
 BULL_RESEARCHER_MODEL = {
-    "provider": "openai",  # 選項: "openai" 或 "openrouter" 或 "google_gemini"
+
+    "provider": "user_provided", 
+
     "model": "gpt-4o-mini",
-    # Google Gemini 範例:
-    # "provider": "google_gemini",
-    # "model": "gemini-3-flash-preview",
-    # OpenRouter 範例:
-    # "provider": "openrouter",
-    # "model": "anthropic/claude-3.5-sonnet",
+
 }
 
-# 空頭研究員使用的模型
+
+
+# 空頭研究員 (用戶付費)
+
 BEAR_RESEARCHER_MODEL = {
-    "provider": "openai",  # 選項: "openai" 或 "openrouter" 或 "google_gemini"
+
+    "provider": "user_provided",
+
     "model": "gpt-4o-mini",
-    # Google Gemini 範例:
-    # "provider": "google_gemini",
-    # "model": "gemini-3-flash-preview",
-    # OpenRouter 範例:
-    # "provider": "openrouter",
-    # "model": "google/gemini-pro-1.5",
+
 }
 
-# 交易員使用的模型
+
+
+# 交易員 (用戶付費)
+
 TRADER_MODEL = {
-    "provider": "openai",
+
+    "provider": "user_provided",
+
     "model": "gpt-4o-mini",
+
 }
 
-# 市場脈動分析器使用的模型
-MARKET_PULSE_MODEL = {
-    "provider": "openai",
-    "model": "gpt-4o-mini",
-}
 
-# ============================================================================
-# 委員會模式配置 (ENABLE_COMMITTEE_MODE = True 時使用)
-# ============================================================================
 
-# === 多頭委員會 ===
-# 多個模型都給出多頭觀點，然後綜合
+# 委員會成員 (用戶付費)
+
 BULL_COMMITTEE_MODELS = [
-    {"provider": "openai", "model": "gpt-4.1-mini"},  
-    # {"provider": "openai", "model": "gpt-5-mini"},                        # GPT-4o mini
-    {"provider": "google_gemini", "model": "gemini-3-flash-preview"},              # Gemini 2.5 Flash (最新穩定版)
-    # {"provider": "openrouter", "model": "qwen/qwen3-235b-a22b:free"},        # Qwen 免費版
-    # {"provider": "local", "model": "/home/danny/AI-agent/Qwen3_4B_2507"},         # 本地模型 (vLLM/Ollama)
+
+    {"provider": "user_provided", "model": "gpt-4o-mini"},  
+
+    {"provider": "user_provided", "model": "gpt-4o-mini"},
+
 ]
 
-# === 空頭委員會 ===
-# 多個模型都給出空頭觀點，然後綜合
+
+
 BEAR_COMMITTEE_MODELS = [
-    {"provider": "openai", "model": "gpt-4.1-mini"},  
-    # {"provider": "openai", "model": "gpt-5-mini"},                           # GPT-4o mini
-    {"provider": "google_gemini", "model": "gemini-3-flash-preview"},              # Gemini 2.5 Flash (最新穩定版)
-    # {"provider": "openrouter", "model": "qwen/qwen3-235b-a22b:free"},        # Qwen 免費版
-    # {"provider": "local", "model": "/home/danny/AI-agent/Qwen3_4B_2507"},    # 本地模型 (vLLM/Ollama)
+
+    {"provider": "user_provided", "model": "gpt-4o-mini"},  
+
+    {"provider": "user_provided", "model": "gpt-4o-mini"},
+
 ]
 
-# === 綜合模型 ===
-# 用於整合委員會意見的模型
+
+
+# 綜合模型 (用戶付費)
+
 SYNTHESIS_MODEL = {
-    "provider": "local",
-    "model": "/home/danny/AI-agent/Qwen3_4B_2507",
+
+    "provider": "user_provided",
+
+    "model": "gpt-4o-mini",
+
 }
 
-# === OpenRouter 配置 ===
-# OpenRouter API 設定（如果使用 OpenRouter）
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 
-# === Google Gemini 配置 ===
-# Google Gemini API 設定（如果使用官方 Gemini API）
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
 
-# === 本地/落地模型配置 (Local LLM) ===
-# 用於連接 vLLM, Ollama, LM Studio 等本地推理服務
-LOCAL_LLM_CONFIG = {
-    "base_url": "http://0.0.0.0:8080/v1",  # 本地 API 地址
-    "api_key": "not-needed",               # 本地模型通常不需要 API Key
-    "temperature": 0.1,                    # 預設溫度
-    "seed": 42                             # 固定隨機種子 (可選)
-}
+# 查詢解析 (用戶付費)
 
-# === 介面與應用程式配置 ===
-
-# 用於解析用戶查詢的 LLM 模型
 QUERY_PARSER_MODEL_CONFIG = {
-    "provider": "google_gemini",
-    "model": "gemini-3-flash-preview",
+
+    "provider": "user_provided",
+
+    "model": "gpt-4o-mini",
+
 }
+
+
+
+# ============================================================================
+
+# [Server-Side] 由平台提供的免費功能 (後台運行)
+
+# ============================================================================
+
+
+
+# 市場脈動分析器 (平台付費 - 用於生成公共報告)
+
+MARKET_PULSE_MODEL = {
+
+    "provider": "openai", # 使用伺服器端的 .env KEY
+
+    "model": "gpt-4o-mini",
+
+}
+
+
 
 # 向後兼容：保留模型名稱字符串（供直接使用模型名稱的代碼使用）
 QUERY_PARSER_MODEL = QUERY_PARSER_MODEL_CONFIG["model"]
@@ -148,11 +166,14 @@ SCREENER_UPDATE_INTERVAL_MINUTES = 0.25
 FUNDING_RATE_UPDATE_INTERVAL = 60  # 1分鐘更新一次 (加速更新)
 
 # === 市場脈動 (Market Pulse) 配置 ===
-# 固定監控的幣種列表
+# 固定監控的幣種列表 (優先級最高)
 MARKET_PULSE_TARGETS = ["BTC", "ETH", "SOL", "PI"]
 
-# 市場脈動更新頻率 (秒)
-MARKET_PULSE_UPDATE_INTERVAL = 3600  # 1小時
+# 自動排名的幣種數量 (已停用 - 改為全市場掃描)
+# MARKET_PULSE_BATCH_SIZE = 20
+
+# 市場脈動更新頻率 (秒) - 4小時
+MARKET_PULSE_UPDATE_INTERVAL = 14400
 
 # === 交易限制配置 ===
 MINIMUM_INVESTMENT_USD = 20.0  # 最低投資金額 (USDT)

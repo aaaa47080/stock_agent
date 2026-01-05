@@ -30,65 +30,61 @@ class MarketPulseAnalyzer:
         初始化 MarketPulseAnalyzer
 
         Args:
-            client: LLM 客戶端（用戶提供）。如果未提供，則從配置創建（用於向後兼容）
+            client: LLM 客戶端（用戶提供）。如果未提供，則嘗試從配置創建。
         """
         if client is None:
-            # 向後兼容：如果沒有傳入 client，則從配置創建
-            self.client, self.model = create_llm_client_from_config(MARKET_PULSE_MODEL)
-            logger.warning("MarketPulseAnalyzer 使用配置創建 client（向後兼容模式）")
+            try:
+                self.client, self.model = create_llm_client_from_config(MARKET_PULSE_MODEL)
+                logger.info("MarketPulseAnalyzer initialized with system config")
+            except Exception as e:
+                logger.warning(f"MarketPulseAnalyzer initialized WITHOUT LLM (Fallback Mode): {e}")
+                self.client = None
+                self.model = None
         else:
-            # ⭐ 使用用戶提供的 client
             self.client = client
             self.model = "user-provided-model"
-            logger.info("MarketPulseAnalyzer 使用用戶提供的 client")
+            logger.info("MarketPulseAnalyzer initialized with user client")
         
-    def analyze_movement(self, symbol: str, threshold_percent: float = 2.0, enabled_sources: List[str] = None) -> Dict:
+    def analyze_movement(self, symbol: str, threshold_percent: float = 2.0, enabled_sources: List[str] = None, skip_llm: bool = False) -> Dict:
         """
-        Analyze recent market movement and provide a narrative explanation.
+        Analyze recent market movement.
         
         Args:
-            symbol: Crypto symbol (e.g., 'BTC', 'ETH')
-            threshold_percent: Minimum percentage change to trigger deep analysis
-            enabled_sources: List of news source IDs to fetch from
-            
-        Returns:
-            Dict containing volatility data, news, and the AI-generated structured report.
+            symbol: Crypto symbol
+            threshold_percent: Volatility threshold
+            enabled_sources: News sources
+            skip_llm: If True, skips LLM generation even if client is available (for fast fallback)
         """
-        # 1. Get recent price data (1h timeframe, last 100 candles for indicators)
-        # We need enough data to calculate RSI(14), MACD, etc.
+        # 1. Get recent price data
         df = get_klines(symbol, interval="1h", limit=100)
         
         if df is None or df.empty:
             return {"error": f"無法獲取 {symbol} 的價格數據"}
         
+        # ... (Technical Analysis code remains same) ...
         # 2. Calculate Technical Indicators
         try:
-            # Rename columns to match pandas_ta expectations if necessary (get_klines usually returns lowercase)
             df = df.rename(columns={
                 'open': 'Open', 'high': 'High', 'low': 'Low', 'close': 'Close', 'volume': 'Volume'
             })
             df = add_technical_indicators(df)
             
-            # Extract latest values
             latest = df.iloc[-1]
             prev = df.iloc[-2]
             
             current_price = safe_float(latest['Close'])
             rsi_14 = safe_float(latest.get('RSI_14', 0))
-            macd = safe_float(latest.get('MACD_12_26_9', 0))
             macd_hist = safe_float(latest.get('MACDh_12_26_9', 0))
             prev_macd_hist = safe_float(prev.get('MACDh_12_26_9', 0))
             
             bb_upper = safe_float(latest.get('BBU_20_2.0', 0))
             bb_lower = safe_float(latest.get('BBL_20_2.0', 0))
             
-            # Volume Analysis
             vol_sma_20 = df['Volume'].rolling(window=20).mean().iloc[-1]
             current_vol = safe_float(latest['Volume'])
             vol_ratio = current_vol / vol_sma_20 if vol_sma_20 > 0 else 1.0
             vol_status = f"放量 ({vol_ratio:.1f}x)" if vol_ratio > 1.5 else ("縮量" if vol_ratio < 0.7 else "正常")
 
-            # Determine MACD trend
             macd_trend = "增強" if macd_hist > prev_macd_hist else "減弱"
             macd_signal = "黃金交叉" if macd_hist > 0 and prev_macd_hist <= 0 else ("死亡交叉" if macd_hist < 0 and prev_macd_hist >= 0 else "延續")
             
@@ -108,9 +104,8 @@ class MarketPulseAnalyzer:
             current_price = safe_float(df.iloc[-1]['Close'])
 
         # Calculate changes
-        # Use simple calculation if we have at least 24 rows
         if len(df) >= 25:
-            price_1h_ago = safe_float(df.iloc[-2]['Close']) # Previous close is roughly 1h ago
+            price_1h_ago = safe_float(df.iloc[-2]['Close']) 
             price_24h_ago = safe_float(df.iloc[-25]['Close'])
             change_1h = ((current_price - price_1h_ago) / price_1h_ago) * 100
             change_24h = ((current_price - price_24h_ago) / price_24h_ago) * 100
@@ -121,12 +116,45 @@ class MarketPulseAnalyzer:
         is_volatile = abs(change_1h) >= threshold_percent or abs(change_24h) >= 5.0
         
         # 3. Fetch News
-        news_limit = 8 # Increase limit to find more specific details
+        news_limit = 8
         news_data = get_crypto_news(symbol, limit=news_limit, enabled_sources=enabled_sources)
         
-        # 4. Generate Structured Report using LLM
-        report = self._generate_structured_report(symbol, current_price, change_1h, change_24h, technicals, news_data)
-        
+        # 4. Generate Report
+        # Only use LLM if client exists AND skip_llm is False
+        if self.client and not skip_llm:
+            report = self._generate_structured_report(symbol, current_price, change_1h, change_24h, technicals, news_data)
+        else:
+            # Fallback Report (Fast Rule-based)
+            trend_str = "上漲" if change_24h > 0 else "下跌"
+            rsi_status = "超買" if technicals.get('RSI', 50) > 70 else "超賣" if technicals.get('RSI', 50) < 30 else "中性"
+            
+            # Determine reason for fallback
+            if self.client:
+                reason = "AI 分析正在後台排隊中，稍後刷新即可查看完整報告。"
+                risk_msg = "此為即時數據快照，AI 深度分析運算中..."
+            else:
+                reason = "如需完整 AI 深度分析，請點擊下方的「深度」按鈕並配置您的 API Key。"
+                risk_msg = "未配置 AI 金鑰，僅顯示基礎數據。"
+            
+            report = {
+                "summary": f"**[快速預覽]** {symbol} 現價 ${current_price:,.2f}，24小時{trend_str} {abs(change_24h):.2f}%。技術指標顯示 RSI 為 {rsi_status} ({technicals.get('RSI',0):.1f})。\n\n> {reason}",
+                "key_points": [
+                    f"**價格走勢**: 1H {change_1h:+.2f}%, 24H {change_24h:+.2f}%",
+                    f"**技術信號**: MACD {technicals.get('MACD_Trend', 'N/A')}, 成交量 {technicals.get('Volume_Status', 'N/A')}",
+                    f"**新聞動態**: 檢索到 {len(news_data)} 條相關新聞"
+                ],
+                "highlights": [
+                    {"title": "技術面概覽", "content": f"RSI: {technicals.get('RSI',0):.1f}, MACD: {technicals.get('MACD_Signal','N/A')}"}
+                ],
+                "risks": [risk_msg]
+            }
+            if news_data:
+                top_news = news_data[0]
+                report["highlights"].append({
+                    "title": "最新消息",
+                    "content": f"[{top_news.get('source')}] {top_news.get('title')}"
+                })
+
         result = {
             "symbol": symbol,
             "current_price": current_price,
@@ -134,8 +162,8 @@ class MarketPulseAnalyzer:
             "change_24h": change_24h,
             "is_volatile": is_volatile,
             "timestamp": datetime.now().isoformat(),
-            "explanation": report.get("summary", ""), # Backward compatibility
-            "report": report, # New structured data
+            "explanation": report.get("summary", ""),
+            "report": report,
             "news_sources": news_data
         }
         
@@ -212,7 +240,11 @@ class MarketPulseAnalyzer:
                 temperature=0.4,
                 response_format={"type": "json_object"}
             )
-            return json.loads(response.choices[0].message.content)
+            content = response.choices[0].message.content.strip()
+            # Clean markdown code blocks if present
+            if content.startswith("```"):
+                content = content.replace("```json", "").replace("```", "").strip()
+            return json.loads(content)
         except Exception as e:
             logger.error(f"Error generating report: {e}")
             # Fallback structure

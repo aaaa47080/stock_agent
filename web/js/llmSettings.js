@@ -14,8 +14,8 @@ function updateLLMKeyInput() {
     const existingKey = window.APIKeyManager.getKey(provider);
 
     if (existingKey) {
-        input.value = existingKey;
-        input.placeholder = '已設置 API Key';
+        input.value = '';
+        input.placeholder = '已設置 API Key (**************)';
     } else {
         input.value = '';
         input.placeholder = provider === 'openai' ? 'sk-...' :
@@ -80,6 +80,9 @@ function saveLLMKey() {
  * 測試 LLM API Key
  */
 async function testLLMKey() {
+    // Debug alert
+    // alert("Debug: testLLMKey called"); 
+    
     const provider = document.getElementById('llm-provider-select').value;
     const key = document.getElementById('llm-api-key-input').value.trim();
     const status = document.getElementById('llm-key-status');
@@ -96,7 +99,7 @@ async function testLLMKey() {
         return;
     }
 
-    showLLMKeyStatus('loading', '🔄 正在測試連接...');
+    showLLMKeyStatus('loading', '🔄 正在測試連接與對話...');
 
     try {
         const response = await fetch('/api/settings/validate-key', {
@@ -116,9 +119,24 @@ async function testLLMKey() {
             window.APIKeyManager.setKey(provider, key);
             window.APIKeyManager.setSelectedProvider(provider);
 
+            // 通知 app.js 更新選單狀態
+            if (window.setKeyValidity) {
+                window.setKeyValidity(provider, true);
+            }
+
             // 更新狀態指示器
             if (typeof checkApiKeyStatus === 'function') {
                 checkApiKeyStatus();
+            }
+
+            // 顯示測試結果 Modal
+            if (result.reply) {
+                const modal = document.getElementById('api-test-modal');
+                const responseText = document.getElementById('api-test-response');
+                if (modal && responseText) {
+                    responseText.textContent = result.reply;
+                    modal.classList.remove('hidden');
+                }
             }
         } else {
             showLLMKeyStatus('error', `❌ ${result.message}`);
@@ -136,22 +154,21 @@ async function testLLMKey() {
  */
 function showLLMKeyStatus(type, message) {
     const status = document.getElementById('llm-key-status');
-    const textEl = status.querySelector('p');
+    if (!status) return;
 
-    status.classList.remove('hidden', 'bg-green-900/20', 'bg-red-900/20', 'bg-blue-900/20', 'border-green-500/30', 'border-red-500/30', 'border-blue-500/30');
+    status.classList.remove('hidden', 'bg-green-900/20', 'bg-red-900/20', 'bg-blue-900/20', 'border-green-500/30', 'border-red-500/30', 'border-blue-500/30', 'border');
 
     if (type === 'success') {
-        status.classList.add('bg-green-900/20', 'border', 'border-green-500/30');
-        textEl.className = 'text-sm text-green-400';
+        status.classList.add('bg-green-900/20', 'border', 'border-green-500/30', 'text-green-400');
     } else if (type === 'error') {
-        status.classList.add('bg-red-900/20', 'border', 'border-red-500/30');
-        textEl.className = 'text-sm text-red-400';
+        status.classList.add('bg-red-900/20', 'border', 'border-red-500/30', 'text-red-400');
+        // 對於錯誤，額外彈出視窗提醒
+        alert("❌ 測試失敗: " + message);
     } else if (type === 'loading') {
-        status.classList.add('bg-blue-900/20', 'border', 'border-blue-500/30');
-        textEl.className = 'text-sm text-blue-400';
+        status.classList.add('bg-blue-900/20', 'border', 'border-blue-500/30', 'text-blue-400');
     }
 
-    textEl.textContent = message;
+    status.textContent = message;
 }
 
 /**
@@ -180,3 +197,9 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     }
 });
+
+// Expose functions globally
+window.updateLLMKeyInput = updateLLMKeyInput;
+window.toggleLLMKeyVisibility = toggleLLMKeyVisibility;
+window.saveLLMKey = saveLLMKey;
+window.testLLMKey = testLLMKey;

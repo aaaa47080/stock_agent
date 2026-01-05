@@ -1305,39 +1305,65 @@ CRYPTO_ASSISTANT_PROMPT = """你是一位專業的加密貨幣投資分析助手
 def create_crypto_agent(
     model_name: str = None,
     temperature: float = 0.3,
-    verbose: bool = False
+    verbose: bool = False,
+    user_api_key: str = None,
+    user_provider: str = None
 ):
     """
     創建加密貨幣分析 Agent
 
     Args:
-        model_name: 使用的模型名稱，預設使用 QUERY_PARSER_MODEL
+        model_name: 使用的模型名稱
         temperature: 溫度參數
         verbose: 是否顯示詳細日誌
+        user_api_key: 用戶提供的 API Key (BYOK)
+        user_provider: 用戶提供的 Provider (openai, openrouter, google_gemini)
 
     Returns:
-        LangGraph Agent 實例
+        LangGraph Agent 實例 或 None (如果不支持該 Provider 的 Agent 模式)
     """
+    
+    # 決定 API Key 和 Base URL
+    api_key = user_api_key or os.getenv("OPENAI_API_KEY")
+    base_url = None
+    
+    # 處理不同的 Provider
+    if user_provider == "openrouter":
+        base_url = "https://openrouter.ai/api/v1"
+        if not model_name: 
+            model_name = "gpt-4o-mini" # OpenRouter 默認
+    elif user_provider == "google_gemini":
+        # 目前 LangChain Google GenAI 模組未安裝，暫時無法為 Gemini 創建 ReAct Agent
+        # 將返回 None，由 CryptoAgent 類別處理降級為普通對話 (無工具)
+        return None
+    
+    if not api_key:
+        print("Warning: No API key found for CryptoAgent.")
+        return None
 
-    # 初始化 LLM
-    llm = ChatOpenAI(
-        model=model_name or QUERY_PARSER_MODEL,
-        temperature=temperature,
-        api_key=os.getenv("OPENAI_API_KEY")
-    )
+    # 初始化 LLM (ChatOpenAI)
+    try:
+        llm = ChatOpenAI(
+            model=model_name or QUERY_PARSER_MODEL,
+            temperature=temperature,
+            api_key=api_key,
+            base_url=base_url
+        )
 
-    # 獲取工具
-    tools = get_crypto_tools()
+        # 獲取工具
+        tools = get_crypto_tools()
 
-    # 使用 langgraph 創建 ReAct Agent
-    # create_react_agent 會自動處理工具調用和對話流程
-    agent = create_react_agent(
-        model=llm,
-        tools=tools,
-        prompt=CRYPTO_ASSISTANT_PROMPT  # 系統提示詞
-    )
+        # 使用 langgraph 創建 ReAct Agent
+        agent = create_react_agent(
+            model=llm,
+            tools=tools,
+            prompt=CRYPTO_ASSISTANT_PROMPT
+        )
 
-    return agent
+        return agent
+    except Exception as e:
+        print(f"Error creating ChatOpenAI agent: {e}")
+        return None
 
 
 # ============================================================================
@@ -1351,7 +1377,10 @@ class CryptoAgent:
         self,
         model_name: str = None,
         temperature: float = 0.3,
-        verbose: bool = False
+        verbose: bool = False,
+        user_api_key: str = None,
+        user_provider: str = None,
+        user_client: Optional[object] = None
     ):
         """
         初始化 CryptoAgent
@@ -1360,11 +1389,27 @@ class CryptoAgent:
             model_name: 使用的模型名稱
             temperature: 溫度參數
             verbose: 是否顯示詳細日誌
+            user_api_key: 用戶 API Key
+            user_provider: 用戶 Provider
+            user_client: 用戶已經初始化的 LLM Client (用於降級模式)
         """
-        self.agent = create_crypto_agent(model_name, temperature, verbose)
+        self.agent = create_crypto_agent(model_name, temperature, verbose, user_api_key, user_provider)
+        self.user_client = user_client # 用於 Fallback
+        self.user_provider = user_provider
         self.chat_history: List = []
-        self.last_symbol: Optional[str] = None  # 追蹤最後提到的幣種
+        self.last_symbol: Optional[str] = None
         self.verbose = verbose
+        
+        if self.agent is None and self.user_client is None:
+             # 如果既無法創建 Agent 也沒有 User Client (且不是因為 provider 不支持，而是單純沒 key)
+             # 嘗試從環境變數加載系統默認 Client 作為最後手段
+             try:
+                 from utils.llm_client import LLMClientFactory
+                 # 默認嘗試 OpenAI
+                 if os.getenv("OPENAI_API_KEY"):
+                     self.user_client = LLMClientFactory.create_client("openai")
+             except:
+                 pass
 
     def chat(self, user_input: str) -> str:
         """
@@ -1377,39 +1422,66 @@ class CryptoAgent:
             Agent 回應
         """
         try:
-            # 構建消息列表
-            messages = self.chat_history + [HumanMessage(content=user_input)]
+            # 1. 如果有 Agent (LangGraph)，優先使用 (支持工具)
+            if self.agent:
+                # 構建消息列表
+                messages = self.chat_history + [HumanMessage(content=user_input)]
 
-            # 執行 Agent (langgraph 使用 invoke 方法)
-            result = self.agent.invoke({"messages": messages})
+                # 執行 Agent
+                result = self.agent.invoke({"messages": messages})
 
-            # 從結果中提取最後的 AI 消息
-            response = ""
-            tool_outputs = []
-            if "messages" in result:
-                for msg in reversed(result["messages"]):
-                    if isinstance(msg, AIMessage) and msg.content and not response:
-                        response = msg.content
-                    # 收集工具的原始輸出
-                    if hasattr(msg, 'tool_name') or (hasattr(msg, 'type') and msg.type == 'tool'):
-                        tool_outputs.append(msg.content)
+                # 從結果中提取最後的 AI 消息
+                response = ""
+                tool_outputs = []
+                if "messages" in result:
+                    for msg in reversed(result["messages"]):
+                        if isinstance(msg, AIMessage) and msg.content and not response:
+                            response = msg.content
+                        if hasattr(msg, 'tool_name') or (hasattr(msg, 'type') and msg.type == 'tool'):
+                            tool_outputs.append(msg.content)
 
-            # --- [新增] 自動提取網址並附加參考資料區 ---
-            references = self._extract_references_from_tools(tool_outputs)
-            if references:
-                response += "\n\n---\n### 📚 相關連接\n"
-                for i, url in enumerate(references, 1):
-                    response += f"{i}.{url}\n\n"
+                # 處理引用
+                references = self._extract_references_from_tools(tool_outputs)
+                if references:
+                    response += "\n\n---\n### 📚 相關連接\n"
+                    for i, url in enumerate(references, 1):
+                        response += f"{i}.{url}\n\n"
 
-            # 更新對話歷史
-            self.chat_history.append(HumanMessage(content=user_input))
-            self.chat_history.append(AIMessage(content=response))
+                # 更新歷史
+                self.chat_history.append(HumanMessage(content=user_input))
+                self.chat_history.append(AIMessage(content=response))
+                
+            # 2. 如果沒有 Agent (例如 Gemini)，使用普通 Client 降級模式 (無工具)
+            elif self.user_client:
+                if self.verbose: print(">> Using fallback user_client for chat (No Tools)")
+                
+                # 構建簡單的消息歷史 (OpenAI 格式)
+                messages = [{"role": "system", "content": CRYPTO_ASSISTANT_PROMPT}]
+                # 將 LangChain 歷史轉換為 OpenAI 格式
+                for msg in self.chat_history[-10:]: # 取最近 10 條
+                    role = "user" if isinstance(msg, HumanMessage) else "assistant"
+                    messages.append({"role": role, "content": msg.content})
+                messages.append({"role": "user", "content": user_input})
+                
+                # 調用 API
+                completion = self.user_client.chat.completions.create(
+                    model="gemini-1.5-flash" if self.user_provider == "google_gemini" else "gpt-4o", # 簡單處理
+                    messages=messages
+                )
+                response = completion.choices[0].message.content
+                
+                # 更新歷史
+                self.chat_history.append(HumanMessage(content=user_input))
+                self.chat_history.append(AIMessage(content=response))
+                
+            else:
+                return "系統錯誤：無法初始化聊天代理。請檢查您的 API Key 設定。"
 
-            # 限制歷史長度（避免 context 過長）
+            # 限制歷史長度
             if len(self.chat_history) > 20:
                 self.chat_history = self.chat_history[-20:]
 
-            # 嘗試從對話中提取幣種（用於上下文追蹤）
+            # 嘗試提取幣種
             self._extract_symbol(user_input)
 
             return response
@@ -1420,57 +1492,69 @@ class CryptoAgent:
             import traceback
             if self.verbose:
                 traceback.print_exc()
-            return f"抱歉，處理您的請求時發生了一些問題。請稍後再試，或換一種方式提問。\n\n錯誤詳情: {str(e)}"
+            return f"抱歉，處理您的請求時發生了一些問題。請稍後再試。\n錯誤: {str(e)}"
 
     def chat_stream(self, user_input: str):
         """
         與 Agent 對話（串流模式）
-
-        Args:
-            user_input: 用戶輸入
-
-        Yields:
-            逐步生成的回應文字
         """
         try:
-            # 構建消息列表
-            messages = self.chat_history + [HumanMessage(content=user_input)]
+            # 1. Agent Mode (LangGraph)
+            if self.agent:
+                messages = self.chat_history + [HumanMessage(content=user_input)]
+                result = self.agent.invoke({"messages": messages})
 
-            # 執行 Agent
-            result = self.agent.invoke({"messages": messages})
+                response = ""
+                tool_outputs = []
+                if "messages" in result:
+                    for msg in reversed(result["messages"]):
+                        if isinstance(msg, AIMessage) and msg.content and not response:
+                            response = msg.content
+                        if hasattr(msg, 'tool_name') or (hasattr(msg, 'type') and msg.type == 'tool'):
+                            tool_outputs.append(msg.content)
 
-            # 從結果中提取最後的 AI 消息
-            response = ""
-            tool_outputs = []
-            if "messages" in result:
-                for msg in reversed(result["messages"]):
-                    if isinstance(msg, AIMessage) and msg.content and not response:
-                        response = msg.content
-                    if hasattr(msg, 'tool_name') or (hasattr(msg, 'type') and msg.type == 'tool'):
-                        tool_outputs.append(msg.content)
+                if not response: response = "抱歉，我無法處理這個請求。"
 
-            if not response:
-                response = "抱歉，我無法處理這個請求。"
+                references = self._extract_references_from_tools(tool_outputs)
+                if references:
+                    response += "\n\n---\n### 📚 相關連接\n"
+                    for i, url in enumerate(references, 1):
+                        response += f"{i}.{url}\n\n"
 
-            # --- [新增] 自動提取網址並附加參考資料區 ---
-            references = self._extract_references_from_tools(tool_outputs)
-            if references:
-                response += "\n\n---\n### 📚 相關連接\n"
-                for i, url in enumerate(references, 1):
-                    response += f"{i}.{url}\n\n"
+                self.chat_history.append(HumanMessage(content=user_input))
+                self.chat_history.append(AIMessage(content=response))
+                if len(self.chat_history) > 20: self.chat_history = self.chat_history[-20:]
+                self._extract_symbol(user_input)
 
-            # 更新對話歷史
-            self.chat_history.append(HumanMessage(content=user_input))
-            self.chat_history.append(AIMessage(content=response))
+                yield response
+            
+            # 2. Fallback Mode (User Client)
+            elif self.user_client:
+                if self.verbose: print(">> Using fallback user_client for chat_stream (No Tools)")
+                
+                messages = [{"role": "system", "content": CRYPTO_ASSISTANT_PROMPT}]
+                for msg in self.chat_history[-10:]:
+                    role = "user" if isinstance(msg, HumanMessage) else "assistant"
+                    messages.append({"role": role, "content": msg.content})
+                messages.append({"role": "user", "content": user_input})
+                
+                # 這裡暫時不支持流式 (因為 GeminiWrapper 可能沒實作 yield)，直接等待並 yield 全部
+                # 改進：如果 client 支持 stream=True，可以嘗試
+                completion = self.user_client.chat.completions.create(
+                    model="gemini-1.5-flash" if self.user_provider == "google_gemini" else "gpt-4o",
+                    messages=messages
+                )
+                response = completion.choices[0].message.content
+                
+                self.chat_history.append(HumanMessage(content=user_input))
+                self.chat_history.append(AIMessage(content=response))
+                if len(self.chat_history) > 20: self.chat_history = self.chat_history[-20:]
+                self._extract_symbol(user_input)
+                
+                yield response
 
-            # 限制歷史長度
-            if len(self.chat_history) > 20:
-                self.chat_history = self.chat_history[-20:]
-
-            # 嘗試從對話中提取幣種
-            self._extract_symbol(user_input)
-
-            yield response
+            else:
+                yield "系統錯誤：無法初始化聊天代理。請檢查您的 API Key 設定。"
 
         except Exception as e:
             import traceback

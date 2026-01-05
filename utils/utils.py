@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 import concurrent.futures
 from cachetools import cached, TTLCache
+from api.utils import logger
 
 # Cache for CryptoPanic API calls, 5-minute TTL (reduced from 1 hour for real-time)
 cryptopanic_cache = TTLCache(maxsize=100, ttl=300)
@@ -69,7 +70,7 @@ def get_crypto_news_cryptopanic(symbol: str = "BTC", limit: int = 5) -> List[Dic
         # 如果沒設定，安靜地返回，不干擾使用者
         return []
 
-    print(f">> 正在從 CryptoPanic API 撈取 {symbol} 的真實新聞...")
+    logger.debug(f">> 正在從 CryptoPanic API 撈取 {symbol} 的真實新聞...")
     
     url = "https://cryptopanic.com/api/developer/v2/posts/"
     params = {
@@ -108,21 +109,21 @@ def get_crypto_news_cryptopanic(symbol: str = "BTC", limit: int = 5) -> List[Dic
                     })
             
             if not news_list:
-                print(">> CryptoPanic: 未找到相關新聞")
+                logger.debug(">> CryptoPanic: 未找到相關新聞")
                 
             return news_list
 
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 429 and i < retries - 1:
-                print(f">> CryptoPanic API rate limit hit. Retrying in {delay} seconds...")
+                logger.warning(f">> CryptoPanic API rate limit hit. Retrying in {delay} seconds...")
                 time.sleep(delay)
                 delay *= 2  # Exponential backoff
                 continue
             else:
-                print(f">> CryptoPanic 獲取新聞失敗: {str(e)}")
+                logger.error(f">> CryptoPanic 獲取新聞失敗: {str(e)}")
                 return []
         except Exception as e:
-            print(f">> CryptoPanic 獲取新聞失敗: {str(e)}")
+            logger.error(f">> CryptoPanic 獲取新聞失敗: {str(e)}")
             return []
 
     return []
@@ -137,10 +138,10 @@ def get_crypto_news_newsapi(symbol: str = "BTC", limit: int = 5) -> List[Dict]:
     API_KEY = os.getenv("NEWSAPI_KEY", "")
 
     if not API_KEY:
-        print(">> 警告：未設定 NewsAPI Key")
+        logger.debug(">> NewsAPI Key not set, skipping...")
         return []
 
-    print(f">> 正在從 NewsAPI 撈取 {symbol} 相關新聞...")
+    logger.debug(f">> 正在從 NewsAPI 撈取 {symbol} 相關新聞...")
 
     # 常見加密貨幣名稱映射
     crypto_names = {
@@ -299,7 +300,7 @@ def get_crypto_news_google(symbol: str = "BTC", limit: int = 5) -> List[Dict]:
     從 Google News RSS 獲取最新新聞（無限量、無 API Key 限制）
     """
     import xml.etree.ElementTree as ET
-    print(f">> 正在從 Google News 撈取 {symbol} 的即時新聞...")
+    logger.debug(f">> 正在從 Google News 撈取 {symbol} 的即時新聞...")
     
     url = f"https://news.google.com/rss/search?q={symbol}+crypto+when:7d&hl=en-US&gl=US&ceid=US:en"
     
@@ -324,14 +325,14 @@ def get_crypto_news_google(symbol: str = "BTC", limit: int = 5) -> List[Dict]:
             })
         return news_list
     except Exception as e:
-        print(f">> Google News 獲取失敗: {str(e)}")
+        logger.error(f">> Google News 獲取失敗: {str(e)}")
         return []
 
 def get_crypto_news_cryptocompare(symbol: str = "BTC", limit: int = 5) -> List[Dict]:
     """
     從 CryptoCompare 獲取專業新聞（免費額度極高）
     """
-    print(f">> 正在從 CryptoCompare 撈取 {symbol} 的專業報導...")
+    logger.debug(f">> 正在從 CryptoCompare 撈取 {symbol} 的專業報導...")
     url = "https://min-api.cryptocompare.com/data/v2/news/"
     params = {"categories": symbol, "excludeCategories": "Sponsored", "lang": "EN"}
     
@@ -367,9 +368,15 @@ def audit_crypto_news(symbol: str, news_list: List[Dict]) -> List[Dict]:
     from core.config import MARKET_PULSE_MODEL
     from utils.llm_client import create_llm_client_from_config
 
-    client, model = create_llm_client_from_config(MARKET_PULSE_MODEL)
+    try:
+        client, model = create_llm_client_from_config(MARKET_PULSE_MODEL)
+    except Exception as e:
+        if not getattr(audit_crypto_news, '_has_warned', False):
+            logger.warning(f">> ⚠️ 無法啟動新聞審查員 (未配置 API Key)，跳過審查。")
+            audit_crypto_news._has_warned = True
+        return news_list
     
-    print(f">> 🛡️ 新聞審查員正在啟動 (對象: {symbol}, 待審核: {len(news_list)} 條)...")
+    logger.debug(f">> 🛡️ 新聞審查員正在啟動 (對象: {symbol}, 待審核: {len(news_list)} 條)...")
 
     # 準備審核文本
     audit_data = []
@@ -412,15 +419,15 @@ def audit_crypto_news(symbol: str, news_list: List[Dict]) -> List[Dict]:
         passed_ids = json.loads(content)
         
         if not isinstance(passed_ids, list):
-            print(">> ⚠️ 審查員回傳格式錯誤，跳過篩選。")
+            logger.warning(">> ⚠️ 審查員回傳格式錯誤，跳過篩選。")
             return news_list
 
         filtered_news = [news_list[i] for i in passed_ids if i < len(news_list)]
-        print(f">> ✅ 審查完成: 保留 {len(filtered_news)}/{len(news_list)} 條高價值新聞")
+        logger.debug(f">> ✅ 審查完成: 保留 {len(filtered_news)}/{len(news_list)} 條高價值新聞")
         return filtered_news
 
     except Exception as e:
-        print(f">> ⚠️ 審查過程發生錯誤: {e}")
+        logger.error(f">> ⚠️ 審查過程發生錯誤: {e}")
         return news_list
 
 def get_crypto_news(symbol: str = "BTC", limit: int = 5, enabled_sources: List[str] = None) -> List[Dict]:
@@ -429,7 +436,7 @@ def get_crypto_news(symbol: str = "BTC", limit: int = 5, enabled_sources: List[s
     
     支援來源 ID: ['google', 'cryptocompare', 'cryptopanic', 'newsapi']
     """
-    print(f"\n>> 啟動多來源新聞聚合系統 (目標: {symbol})...")
+    logger.debug(f"\n>> 啟動多來源新聞聚合系統 (目標: {symbol})...")
 
     # 如果沒有指定來源，預設啟用所有（或穩定來源）
     if not enabled_sources:
@@ -457,11 +464,11 @@ def get_crypto_news(symbol: str = "BTC", limit: int = 5, enabled_sources: List[s
                 news = future.result()
                 if news:
                     all_news.extend(news)
-                    print(f">> {name}: 獲取 {len(news)} 條新聞")
+                    logger.debug(f">> {name}: 獲取 {len(news)} 條新聞")
                 else:
-                    print(f">> {name}: 無新聞")
+                    logger.debug(f">> {name}: 無新聞")
             except Exception as e:
-                print(f">> {name} 發生錯誤: {e}")
+                logger.error(f">> {name} 發生錯誤: {e}")
 
     # 去重（根據標題相似度）
     unique_news = []
@@ -479,9 +486,16 @@ def get_crypto_news(symbol: str = "BTC", limit: int = 5, enabled_sources: List[s
     except:
         pass
 
-    # 🚀 調用 LLM 審查員進行最後篩選
-    audited_news = audit_crypto_news(symbol, unique_news[:limit * 3])
+        # 🚀 調用 LLM 審查員進行最後篩選
+
+        audited_news = audit_crypto_news(symbol, unique_news[:limit * 3])
+
+        
+
+        result = audited_news[:limit * 3]
+
+        logger.debug(f"\n>> 聚合與審查完成: 總共獲取 {len(result)} 條優質新聞\n")
+
+        return result
+
     
-    result = audited_news[:limit * 3]
-    print(f"\n>> 聚合與審查完成: 總共獲取 {len(result)} 條優質新聞\n")
-    return result

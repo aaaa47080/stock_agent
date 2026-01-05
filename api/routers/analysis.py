@@ -61,7 +61,8 @@ async def analyze_crypto(request: QueryRequest):
                     request.auto_execute,
                     request.market_type,
                     user_llm_client=user_client,  # ⭐ 傳入用戶的 client
-                    user_provider=request.user_provider  # ⭐ 傳入 provider 類型
+                    user_provider=request.user_provider,  # ⭐ 傳入 provider 類型
+                    user_api_key=request.user_api_key # ⭐ 傳入原始 Key 字串 (用於 Agent 重建)
                 )
             ):
                 # 包裝成 JSON 格式發送給前端

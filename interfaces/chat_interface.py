@@ -55,9 +55,16 @@ class CryptoQueryParser:
 
     def __init__(self):
         """初始化 CryptoQueryParser，使用統一的 LLM 客戶端工廠"""
-        self.client, self.model = create_llm_client_from_config(QUERY_PARSER_MODEL_CONFIG)
+        try:
+            self.client, self.model = create_llm_client_from_config(QUERY_PARSER_MODEL_CONFIG)
+        except ValueError:
+            # 如果沒有系統層級的 Key (BYOK 模式)，允許初始化失敗
+            # 後續依賴用戶傳入的 user_client
+            print("Notice: System-level API key not found for CryptoQueryParser. Will rely on user-provided keys.")
+            self.client = None
+            self.model = QUERY_PARSER_MODEL_CONFIG.get("model", "gpt-4o")
 
-    def parse_query(self, user_message: str) -> Dict:
+    def parse_query(self, user_message: str, user_llm_client=None, user_provider=None) -> Dict:
         """
         使用 LLM 解析用戶的自然語言查詢
         """
@@ -125,10 +132,27 @@ class CryptoQueryParser:
     "suggested_options": null
 }
 """
+        # 決定使用哪個 Client 和 Model
+        client_to_use = user_llm_client or self.client
+        model_to_use = self.model
+
+        # 如果使用用戶的 client，需要根據 provider 選擇合適的模型
+        if user_llm_client and user_provider:
+            if user_provider == "google_gemini":
+                # Google Gemini 不支持 gpt-4o 模型名，需切換
+                model_to_use = "gemini-1.5-flash" 
+            elif user_provider == "openrouter":
+                 # OpenRouter 通常支持 gpt-4o-mini 或映射
+                 model_to_use = "gpt-4o-mini" # 使用便宜的模型解析意圖
+            # openai 則維持默認或 gpt-4o-mini
+        
+        if not client_to_use:
+            print("No valid LLM client available for query parsing.")
+            return self._fallback_parse(user_message)
 
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
+            response = client_to_use.chat.completions.create(
+                model=model_to_use,
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_message}
@@ -440,13 +464,14 @@ class CryptoAnalysisBot:
     
     def process_message(self, user_message: str, interval: str = "1d", limit: int = 100,
                        manual_selection: List[str] = None, auto_execute: bool = False,
-                       market_type: str = "spot", user_llm_client=None, user_provider: str = "openai"):
+                       market_type: str = "spot", user_llm_client=None, user_provider: str = "openai", user_api_key: str = None):
         """
         處理用戶消息 (支援混合模式：普通問題走 Agent，完整分析走即時串流 Graph)
 
         Args:
             user_llm_client: ⭐ 用戶提供的 LLM 客戶端
             user_provider: ⭐ 用戶選擇的 provider
+            user_api_key: ⭐ 用戶提供的 API Key (String)
         """
         def simulate_stream(text: str, prefix: str = "", delay: float = 0.01, chunk_size: int = 10):
             """模擬打字機流式輸出"""
@@ -459,7 +484,11 @@ class CryptoAnalysisBot:
 
         # 1. 嘗試解析意圖
         try:
-            parsed = self.parser.parse_query(user_message)
+            parsed = self.parser.parse_query(
+                user_message, 
+                user_llm_client=user_llm_client,
+                user_provider=user_provider
+            )
             if not parsed:
                 parsed = {} # Fallback to empty dict to avoid NoneType error
             
@@ -759,8 +788,30 @@ class CryptoAnalysisBot:
 
         if self.use_agent:
             try:
-                for chunk in self.agent.chat_stream(user_message):
-                    yield chunk
+                # 為了支持 BYOK，這裡需要根據用戶的 key 臨時創建一個 agent
+                # 因為 self.agent 是系統級的，可能沒有 key
+                temp_agent = self.agent
+                
+                # 如果有提供用戶 key，且 (self.agent 無法使用 或 為了確保使用用戶 key)
+                if user_api_key or user_llm_client:
+                    # 重新創建一個臨時 agent
+                    try:
+                        temp_agent = CryptoAgent(
+                            verbose=False, 
+                            user_api_key=user_api_key, 
+                            user_provider=user_provider,
+                            user_client=user_llm_client
+                        )
+                    except Exception as e:
+                        print(f"Failed to create temp agent: {e}, falling back to system agent")
+                        # temp_agent 保持為 self.agent
+                
+                if temp_agent:
+                    for chunk in temp_agent.chat_stream(user_message):
+                        yield chunk
+                else:
+                    yield "抱歉，系統暫時無法處理您的請求 (Agent 初始化失敗)。"
+                    
             except Exception as e:
                 error_msg = str(e)
                 if "429" in error_msg or "quota" in error_msg.lower():

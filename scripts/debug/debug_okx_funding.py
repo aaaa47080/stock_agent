@@ -1,5 +1,7 @@
 import os
 import asyncio
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 from dotenv import load_dotenv
 from trading.okx_api_connector import OKXAPIConnector
 import json

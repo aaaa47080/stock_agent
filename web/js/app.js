@@ -16,45 +16,63 @@ function checkApiKeyStatus() {
     const statusText = document.getElementById('api-status-text');
     const statusDot = indicator ? indicator.querySelector('span') : null;
 
-    if (!statusText || !statusDot) return;
-
-    // 檢查用戶是否有設置 API key（從 localStorage）
+    // Check LLM Key
     const currentKey = window.APIKeyManager?.getCurrentKey();
+    const hasLlmKey = !!currentKey;
 
-    if (currentKey) {
-        // 用戶已設置 API key
-        const providerName = currentKey.provider === 'openai' ? 'OpenAI' :
-                            currentKey.provider === 'google_gemini' ? 'Gemini' :
-                            currentKey.provider === 'openrouter' ? 'OpenRouter' : currentKey.provider;
+    // Check OKX Key
+    const hasOkxKey = window.OKXKeyManager?.hasCredentials();
 
-        statusDot.className = 'w-2 h-2 bg-green-500 rounded-full animate-pulse';
-        statusText.textContent = `AI Ready (${providerName})`;
-        statusText.className = 'text-green-400';
-        statusText.onclick = null; // 移除點擊事件
-    } else {
-        // 用戶未設置 API key
-        statusDot.className = 'w-2 h-2 bg-red-500 rounded-full animate-pulse';
-        statusText.textContent = '請設置 API Key';
-        statusText.className = 'text-red-400 cursor-pointer hover:underline';
+    // 1. Update Top Bar Indicator (LLM Status)
+    if (indicator && statusText && statusDot) {
+        if (hasLlmKey) {
+            const providerName = currentKey.provider === 'openai' ? 'OpenAI' :
+                                currentKey.provider === 'google_gemini' ? 'Gemini' :
+                                currentKey.provider === 'openrouter' ? 'OpenRouter' : currentKey.provider;
 
-        // 點擊狀態文字可以開啟設定
-        statusText.onclick = () => {
-            if (typeof openSettings === 'function') {
-                openSettings();
-            }
-        };
+            statusDot.className = 'w-2 h-2 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse';
+            statusText.textContent = `AI Online: ${providerName}`;
+            statusText.className = 'text-emerald-400 font-mono tracking-tight';
+            statusText.onclick = null;
+        } else {
+            statusDot.className = 'w-2 h-2 bg-rose-500 rounded-full animate-pulse';
+            statusText.textContent = 'SYSTEM OFFLINE (NO KEY)';
+            statusText.className = 'text-rose-400 font-mono tracking-tight cursor-pointer hover:underline';
+            statusText.onclick = () => { if (typeof openSettings === 'function') openSettings(); };
+        }
     }
 
-    // ⭐ 同時更新聊天 UI 狀態
-    updateChatUIState();
+    // 2. Control Chat Tab Overlay (LLM Key)
+    const llmOverlay = document.getElementById('no-llm-key-warning');
+    if (llmOverlay) {
+        if (hasLlmKey) {
+            llmOverlay.classList.add('hidden');
+        } else {
+            llmOverlay.classList.remove('hidden');
+        }
+    }
+
+    // 3. Control Assets Tab Overlay (OKX Key)
+    const okxOverlay = document.getElementById('no-okx-key-overlay');
+    if (okxOverlay) {
+        if (hasOkxKey) {
+            okxOverlay.classList.add('hidden');
+        } else {
+            okxOverlay.classList.remove('hidden');
+        }
+    }
+
+    // 4. Update Chat Input State
+    updateChatUIState(hasLlmKey);
 }
 
 // ========================================
 // 更新聊天 UI 狀態（根據 API key 是否存在）
 // ========================================
-function updateChatUIState() {
-    const currentKey = window.APIKeyManager?.getCurrentKey();
-    const hasApiKey = !!currentKey;
+function updateChatUIState(hasApiKey) {
+    if (hasApiKey === undefined) {
+         hasApiKey = !!window.APIKeyManager?.getCurrentKey();
+    }
 
     // 1. 建議按鈕區域
     const suggestionsArea = document.getElementById('suggestions-area');
@@ -62,7 +80,7 @@ function updateChatUIState() {
         suggestionsArea.classList.toggle('hidden', !hasApiKey);
     }
 
-    // 2. API Key 未設置警告
+    // 2. API Key 未設置警告 (Old element, kept for compatibility if exists)
     const apiKeyWarning = document.getElementById('api-key-warning');
     if (apiKeyWarning) {
         apiKeyWarning.classList.toggle('hidden', hasApiKey);
@@ -74,27 +92,15 @@ function updateChatUIState() {
 
     if (userInput) {
         userInput.disabled = !hasApiKey;
-        userInput.placeholder = hasApiKey ? '請輸入您的問題...' : '請先設置 API Key 才能使用';
+        userInput.placeholder = hasApiKey ? 'Send a command to AI Agent...' : 'System Locked - Please Configure API Key';
         userInput.classList.toggle('opacity-50', !hasApiKey);
+        userInput.classList.toggle('cursor-not-allowed', !hasApiKey);
     }
 
     if (sendBtn) {
         sendBtn.disabled = !hasApiKey;
         sendBtn.classList.toggle('opacity-50', !hasApiKey);
         sendBtn.classList.toggle('cursor-not-allowed', !hasApiKey);
-    }
-
-    // 4. 分析選項按鈕
-    const optionsBtn = document.querySelector('[onclick="toggleOptions()"]');
-    if (optionsBtn) {
-        optionsBtn.disabled = !hasApiKey;
-        optionsBtn.classList.toggle('opacity-50', !hasApiKey);
-        optionsBtn.classList.toggle('cursor-not-allowed', !hasApiKey);
-    }
-
-    // 5. 重新渲染 Lucide 圖標
-    if (typeof lucide !== 'undefined') {
-        lucide.createIcons();
     }
 }
 
@@ -331,9 +337,8 @@ function updateProviderOptions() {
 }
 
 async function openSettings() {
-    const modal = document.getElementById('settings-modal');
-    if (!modal) return; // Safety check
-    modal.classList.remove('hidden');
+    // Switch to settings tab instead of opening modal
+    switchTab('settings');
 
     // Load current config
     try {
@@ -342,25 +347,17 @@ async function openSettings() {
         const settings = data.current_settings || {};
 
         // Update Valid Keys state based on backend existence
-        // 注意：這只是表示「已設定」，嚴格來說應該要驗證，但為了 UX，我們假設已設定的是有效的
-        // 用戶如果修改了 Key，會觸發 resetKeyStatus
-        
         const setStatus = (provider, hasKey) => {
-            const el = document.getElementById(`status-${provider}`);
-            if (hasKey) {
-                validKeys[provider] = true;
-                el.innerHTML = '<i data-lucide="check-circle" class="w-3 h-3 text-green-500 inline"></i> <span class="text-green-500">已設定</span>';
-            } else {
-                validKeys[provider] = false;
-                el.innerHTML = '<i data-lucide="circle-dashed" class="w-3 h-3 text-slate-500 inline"></i> 未設定';
-            }
+            // Note: We don't have visual indicators for "Server has key" in the new simplified UI yet,
+            // but we maintain the validKeys state for logic.
+            validKeys[provider] = hasKey;
         };
 
         setStatus('openai', settings.has_openai_key);
         setStatus('google_gemini', settings.has_google_key);
         setStatus('openrouter', settings.has_openrouter_key);
         
-        lucide.createIcons();
+        // Update Provider Select Options based on validity
         updateProviderOptions();
 
         document.getElementById('set-committee-mode').checked = settings.enable_committee;
@@ -385,9 +382,11 @@ async function openSettings() {
 }
 
 function closeSettings() {
-    document.getElementById('settings-modal').classList.add('hidden');
+    // Just switch back to default chat tab or previous tab
+    // For simplicity, go to Chat
+    switchTab('chat');
 
-    // ⭐ 關閉設定後立即更新 UI 狀態
+    // Force UI status update
     if (typeof checkApiKeyStatus === 'function') {
         checkApiKeyStatus();
     }
@@ -476,75 +475,33 @@ window.removeCommitteeModel = function(type, index) {
 window.addCurrentModelToCommittee = addCurrentModelToCommittee;
 window.toggleCommitteePanel = toggleCommitteePanel;
 
+// Allow external modules (like llmSettings.js) to update key validity
+window.setKeyValidity = function(provider, isValid) {
+    if (validKeys.hasOwnProperty(provider)) {
+        validKeys[provider] = isValid;
+        updateProviderOptions();
+    }
+};
 
 async function saveSettings() {
     const btn = document.getElementById('btn-save-settings');
-    
-    // --- 強制驗證邏輯 (Gatekeeper) ---
-    // 檢查是否有任何已輸入但未通過驗證的 Key
-    const providerNames = {
-        openai: 'OpenAI',
-        google_gemini: 'Google Gemini',
-        openrouter: 'OpenRouter'
-    };
-
-    for (const [provider, inputId] of Object.entries(keyInputMap)) {
-        const inputVal = document.getElementById(inputId).value.trim();
-        // 如果用戶輸入了內容，但狀態是無效/未驗證，則阻止保存
-        if (inputVal && !validKeys[provider]) {
-            alert(`⛔ 無法保存：\n\n您輸入了 ${providerNames[provider]} API Key 但尚未通過驗證。\n\n請點擊輸入框旁的「驗證」按鈕，確認 Key 有效後再保存。`);
-            return; // 中止保存流程
-        }
-    }
-
     const originalText = btn.innerHTML;
-    btn.innerHTML = '<div class="spinner w-4 h-4 border-2 border-white/30 border-t-white rounded-full inline-block"></div> 保存中...';
+    btn.innerHTML = '<div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block"></div> Saving...';
     btn.disabled = true;
 
-    // ✅ 處理 OKX API Key (BYOK 模式 - 保存到前端)
-    const okxKey = document.getElementById('set-okx-key').value.trim();
-    const okxSecret = document.getElementById('set-okx-secret').value.trim();
-    const okxPass = document.getElementById('set-okx-pass').value.trim();
+    // ✅ Handle OKX Key (BYOK) - Only if modal inputs are populated (which are separate now)
+    // Actually, OKX configuration is now handled via the modal directly, so we don't need to do it here
+    // unless we want to support saving from the modal's inputs if they were open.
+    // For now, assume OKX is handled by the modal's own save button.
 
-    if (okxKey || okxSecret || okxPass) {
-        // 如果用戶填寫了任何 OKX 欄位，則驗證並保存到前端
-        if (!okxKey || !okxSecret || !okxPass) {
-            alert('⚠️ OKX API 金鑰必須填寫完整（API Key, Secret Key, Passphrase）');
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-            return;
-        }
-
-        // 驗證 OKX Key
-        btn.innerHTML = '<div class="spinner w-4 h-4 border-2 border-white/30 border-t-white rounded-full inline-block"></div> 驗證 OKX Key...';
-        const okxKeyManager = window.OKXKeyManager;
-        const validation = await okxKeyManager.validateCredentials({
-            api_key: okxKey,
-            secret_key: okxSecret,
-            passphrase: okxPass
-        });
-
-        if (!validation.valid) {
-            alert('❌ OKX API 金鑰驗證失敗: ' + validation.message);
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-            return;
-        }
-
-        // 保存到前端
-        okxKeyManager.saveCredentials({
-            api_key: okxKey,
-            secret_key: okxSecret,
-            passphrase: okxPass
-        });
-        console.log('[Settings] OKX API 金鑰已保存到本地瀏覽器（BYOK 模式）');
-    }
-
-    // ⚠️ 不再將 OKX Key 發送到後端（安全改進）
+    // ⚠️ Prepare Backend Payload
     const payload = {
-        openai_api_key: document.getElementById('set-openai-key').value || null,
-        google_api_key: document.getElementById('set-google-key').value || null,
-        openrouter_api_key: document.getElementById('set-openrouter-key').value || null,
+        // We don't send API keys here anymore as we encourage BYOK or .env
+        // But if we wanted to support server-side keys, we'd need inputs for them.
+        // For now, just send nulls to indicate "don't change" or handle logic in backend
+        openai_api_key: null,
+        google_api_key: null,
+        openrouter_api_key: null,
 
         enable_committee: document.getElementById('set-committee-mode').checked,
         primary_model_provider: document.getElementById('set-model-provider').value,
@@ -555,8 +512,6 @@ async function saveSettings() {
     };
 
     try {
-        btn.innerHTML = '<div class="spinner w-4 h-4 border-2 border-white/30 border-t-white rounded-full inline-block"></div> 保存中...';
-
         const res = await fetch('/api/settings/update', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -565,36 +520,21 @@ async function saveSettings() {
         const result = await res.json();
 
         if (result.success) {
-            // ⭐ 同步更新前端 localStorage (APIKeyManager)
-            // 這對於 checkApiKeyStatus 正確運作至關重要，因為它依賴 localStorage
-            if (payload.openai_api_key) window.APIKeyManager.setKey('openai', payload.openai_api_key);
-            if (payload.google_api_key) window.APIKeyManager.setKey('google_gemini', payload.google_api_key);
-            if (payload.openrouter_api_key) window.APIKeyManager.setKey('openrouter', payload.openrouter_api_key);
-            
-            // 更新選擇的 Provider
+            // Update local provider selection
             if (payload.primary_model_provider) {
                 window.APIKeyManager.setSelectedProvider(payload.primary_model_provider);
             }
 
-            const message = okxKey ? '✅ 設置已保存！\n\n📌 OKX API 金鑰已保存到本地瀏覽器（BYOK 模式）\n⚠️ 無痕視窗不會保存您的金鑰' : result.message;
-            alert(message);
+            alert('✅ Settings saved successfully!\nCommittee configuration has been updated.');
             closeSettings();
             
-            // Clear sensitive inputs
-            document.getElementById('set-openai-key').value = '';
-            document.getElementById('set-google-key').value = '';
-            document.getElementById('set-openrouter-key').value = '';
-            document.getElementById('set-okx-key').value = '';
-            document.getElementById('set-okx-secret').value = '';
-            document.getElementById('set-okx-pass').value = '';
-
-            // ⭐ 強制刷新 UI 狀態
+            // Force UI update
             checkApiKeyStatus();
         } else {
-            alert('保存失敗: ' + (result.detail || '未知錯誤'));
+            alert('Failed to save settings: ' + (result.detail || 'Unknown error'));
         }
     } catch (e) {
-        alert('保存時發生錯誤: ' + e);
+        alert('Error saving settings: ' + e);
     } finally {
         btn.innerHTML = originalText;
         btn.disabled = false;

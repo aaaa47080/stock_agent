@@ -1,0 +1,18 @@
+[Unit]
+Description=Crypto Market Pulse Worker (4h update)
+After=network.target
+
+[Service]
+Type=simple
+User=danny
+WorkingDirectory=/home/danny/AI-agent/crypto_trading_system
+# 使用虛擬環境中的 Python 確保套件路徑正確
+ExecStart=/home/danny/AI-agent/crypto_trading_system/.venv/bin/python scripts/market_pulse_worker.py
+Restart=always
+RestartSec=10
+# 記錄日誌以便後續排錯
+StandardOutput=append:/home/danny/AI-agent/crypto_trading_system/worker_out.log
+StandardError=append:/home/danny/AI-agent/crypto_trading_system/worker_err.log
+
+[Install]
+WantedBy=multi-user.target
