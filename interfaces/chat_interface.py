@@ -72,64 +72,60 @@ class CryptoQueryParser:
         system_prompt = """你是一個專業的加密貨幣投資助手。你的任務是解析用戶的問題,提取以下資訊:
 
 1. 用戶意圖 (intent):
-   - "investment_analysis": 當用戶詢問任何與投資、交易、買賣、價格分析相關的問題時使用。
-     包括但不限於：
-     * "XXX 可以投資嗎？" / "XXX 能買嗎？" / "XXX 適合買入嗎？"
-     * "XXX 怎麼樣？" / "XXX 如何？" / "XXX 現在好嗎？"
-     * "分析 XXX" / "幫我看看 XXX" / "XXX 的走勢"
-     * "XXX 值得買嗎？" / "應該買 XXX 嗎？"
-     * 任何提到加密貨幣名稱並詢問意見或分析的問題
-   - "general_question": 純粹的知識性問題，不涉及具體投資決策（如 "什麼是區塊鏈？"）
+   - "investment_analysis": **僅當**用戶詢問「投資建議」、「是否可以買賣」、「深度分析」、「未來走勢預測」或「完整評估」時使用。
+     例如：
+     * "BTC 可以投資嗎？" / "現在適合買 ETH 嗎？"
+     * "幫我深度分析 SOL" / "XXX 值得長期持有嗎？"
+     * "請給出交易策略"
+   - "general_question": 用於單純的資訊查詢、價格查詢、特定指標查詢、新聞查詢或知識性問題。**不要**觸發深度分析。
+     例如：
+     * "BTC 現在價格多少？" / "ETH 的 RSI 是多少？"
+     * "最近有什麼新聞？" / "什麼是區塊鏈？"
+     * "PI 幣怎麼挖？"
    - "greeting": 打招呼
-   - "unclear": 意圖不明確，需要澄清
+   - "unclear": 意圖不明確
 
 2. 加密貨幣代號 (symbols): 從問題中提取所有提到的加密貨幣代號
-   - 如果用戶使用 "它"、"這個"、"他的" 等代名詞，請在 symbols 留下空列表，但在 user_question 標註是代指。
-   - 常見轉換：比特幣->BTC, 以太坊->ETH, 狗狗幣->DOGE, 瑞波幣->XRP, 萊特幣->LTC, 柚子幣->EOS, 派幣->PI
+   - 常見轉換：比特幣->BTC, 以太坊->ETH, 派幣->PI
 
 3. 動作 (action): "analyze", "compare", "chat"
 
 4. 關注領域 (focus): ["technical", "news", "fundamental", "sentiment"]
 
 5. 是否需要交易決策 (requires_trade_decision): bool
-   **重要**: 當 intent 為 "investment_analysis" 且用戶詢問的是投資建議、買賣時機、是否適合投資等問題時，必須設為 true。
-   只有在用戶明確表示只想看某個特定指標（如 "只看 RSI"）時才設為 false。
+   **關鍵判斷**: 
+   - 只有當用戶明確尋求 **「買賣建議」** 或 **「投資判斷」** 時設為 true。
+   - 如果用戶只是問「價格」、「數據」或「新聞」，**必須**設為 false。
+   - 例子：
+     * "BTC 多少錢？" -> false
+     * "BTC 能買嗎？" -> true
 
-6. 時間週期 (interval): 如果用戶提到特定時間，如 "15分鐘" -> "15m", "1小時" -> "1h", "4小時" -> "4h", "日線" -> "1d"。若無則為 null。
+6. 時間週期 (interval): 如 "15m", "4h", "1d"。無則 null。
 
-7. 意圖清晰度 (clarity): "high" / "medium" / "low"
+7. 意圖清晰度 (clarity): "high"/"low"
 
-8. 澄清問題 (clarification_question): 如果 clarity 為 "low"，提供一個澄清問題
+8. 澄清問題 (clarification_question)
 
-9. 建議選項 (suggested_options): 如果 clarity 為 "low"，提供 2-4 個可能的選項
+9. 建議選項 (suggested_options)
 
-範例：
-用戶: "BTC可以投資嗎？"
+範例 1 (簡單查詢 -> 走快速通道):
+用戶: "BTC 現在價格多少？"
+{
+    "intent": "general_question",
+    "symbols": ["BTC"],
+    "action": "chat",
+    "requires_trade_decision": false,
+    "user_question": "BTC 現在價格多少？"
+}
+
+範例 2 (投資分析 -> 走深度通道):
+用戶: "BTC 可以投資嗎？"
 {
     "intent": "investment_analysis",
     "symbols": ["BTC"],
     "action": "analyze",
-    "focus": ["technical", "sentiment", "fundamental", "news"],
     "requires_trade_decision": true,
-    "interval": null,
-    "user_question": "BTC可以投資嗎？",
-    "clarity": "high",
-    "clarification_question": null,
-    "suggested_options": null
-}
-
-用戶: "幫我分析一下以太坊"
-{
-    "intent": "investment_analysis",
-    "symbols": ["ETH"],
-    "action": "analyze",
-    "focus": ["technical", "sentiment", "fundamental", "news"],
-    "requires_trade_decision": true,
-    "interval": null,
-    "user_question": "幫我分析一下以太坊",
-    "clarity": "high",
-    "clarification_question": null,
-    "suggested_options": null
+    "user_question": "BTC 可以投資嗎？"
 }
 """
         # 決定使用哪個 Client 和 Model

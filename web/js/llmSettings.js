@@ -6,9 +6,13 @@
  * 更新 LLM Key 輸入框的內容（根據選擇的 provider）
  */
 function updateLLMKeyInput() {
-    const provider = document.getElementById('llm-provider-select').value;
+    const providerSelect = document.getElementById('llm-provider-select');
     const input = document.getElementById('llm-api-key-input');
     const status = document.getElementById('llm-key-status');
+
+    if (!providerSelect || !input) return;
+
+    const provider = providerSelect.value;
 
     // 讀取該 provider 的 key（如果有的話）
     const existingKey = window.APIKeyManager.getKey(provider);
@@ -24,7 +28,7 @@ function updateLLMKeyInput() {
     }
 
     // 隱藏狀態訊息
-    status.classList.add('hidden');
+    if (status) status.classList.add('hidden');
 
     // 更新圖標
     lucide.createIcons();
@@ -36,6 +40,8 @@ function updateLLMKeyInput() {
 function toggleLLMKeyVisibility() {
     const input = document.getElementById('llm-api-key-input');
     const icon = document.getElementById('llm-key-eye-icon');
+
+    if (!input || !icon) return;
 
     if (input.type === 'password') {
         input.type = 'text';
@@ -52,9 +58,13 @@ function toggleLLMKeyVisibility() {
  * 保存 LLM API Key
  */
 function saveLLMKey() {
-    const provider = document.getElementById('llm-provider-select').value;
-    const key = document.getElementById('llm-api-key-input').value.trim();
-    const status = document.getElementById('llm-key-status');
+    const providerSelect = document.getElementById('llm-provider-select');
+    const input = document.getElementById('llm-api-key-input');
+    
+    if (!providerSelect || !input) return;
+
+    const provider = providerSelect.value;
+    const key = input.value.trim();
 
     // 格式驗證
     const validation = window.APIKeyManager.validateKeyFormat(provider, key);
@@ -80,12 +90,13 @@ function saveLLMKey() {
  * 測試 LLM API Key
  */
 async function testLLMKey() {
-    // Debug alert
-    // alert("Debug: testLLMKey called"); 
+    const providerSelect = document.getElementById('llm-provider-select');
+    const input = document.getElementById('llm-api-key-input');
     
-    const provider = document.getElementById('llm-provider-select').value;
-    const key = document.getElementById('llm-api-key-input').value.trim();
-    const status = document.getElementById('llm-key-status');
+    if (!providerSelect || !input) return;
+    
+    const provider = providerSelect.value;
+    const key = input.value.trim();
 
     if (!key) {
         showLLMKeyStatus('error', '請先輸入 API Key');

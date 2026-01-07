@@ -486,16 +486,14 @@ def get_crypto_news(symbol: str = "BTC", limit: int = 5, enabled_sources: List[s
     except:
         pass
 
-        # 🚀 調用 LLM 審查員進行最後篩選
+    # 🚀 調用 LLM 審查員進行最後篩選
 
-        audited_news = audit_crypto_news(symbol, unique_news[:limit * 3])
+    audited_news = audit_crypto_news(symbol, unique_news[:limit * 3])
 
-        
+    result = audited_news[:limit * 3]
 
-        result = audited_news[:limit * 3]
+    logger.debug(f"\n>> 聚合與審查完成: 總共獲取 {len(result)} 條優質新聞\n")
 
-        logger.debug(f"\n>> 聚合與審查完成: 總共獲取 {len(result)} 條優質新聞\n")
-
-        return result
+    return result
 
     

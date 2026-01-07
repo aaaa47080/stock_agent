@@ -205,7 +205,9 @@ def screen_top_cryptos(exchange='okx', limit=30, interval='1d', target_symbols: 
     summary_df["RSI_14"] = pd.to_numeric(summary_df["RSI_14"], errors='coerce').fillna(50)
 
     top_performers = summary_df.sort_values(by="24h Change %", ascending=False).head(10)
-    oversold = summary_df[summary_df["RSI_14"] < 40].sort_values(by="RSI_14", ascending=True).head(10)
+    # More responsive oversold detection: include assets with RSI < 35 OR with "抄底" signals
+    oversold_condition = (summary_df["RSI_14"] < 35) | (summary_df["Signals"].apply(lambda x: "💎抄底" in x if isinstance(x, list) else False))
+    oversold = summary_df[oversold_condition].sort_values(by="RSI_14", ascending=True).head(10)
     overbought = summary_df[summary_df["RSI_14"] > 70].sort_values(by="RSI_14", ascending=False).head(10)
 
     return summary_df, top_performers, oversold, overbought
@@ -213,4 +215,4 @@ def screen_top_cryptos(exchange='okx', limit=30, interval='1d', target_symbols: 
 
 if __name__ == '__main__':
     # You can choose 'binance' or 'okx'
-    screen_top_cryptos(exchange='binance', limit=30, interval='1d')
+    screen_top_cryptos(exchange='okx', limit=30, interval='1d')

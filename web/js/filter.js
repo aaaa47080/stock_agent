@@ -6,7 +6,8 @@ async function openGlobalFilter() {
     const modal = document.getElementById('global-filter-modal');
     modal.classList.remove('hidden');
 
-    document.getElementById('filter-exchange-select').value = currentFilterExchange;
+    const select = document.getElementById('filter-exchange-select');
+    if (select) select.value = currentFilterExchange;
 
     if (allMarketSymbols.length === 0) {
         await fetchSymbols(currentFilterExchange);
@@ -20,7 +21,8 @@ async function switchFilterExchange(exchange) {
 
     if (globalSelectedSymbols.length > 0) {
         if (!confirm("切換交易所將清除目前的選擇，是否繼續？")) {
-            document.getElementById('filter-exchange-select').value = currentFilterExchange;
+            const select = document.getElementById('filter-exchange-select');
+            if (select) select.value = currentFilterExchange;
             return;
         }
     }
@@ -37,16 +39,42 @@ async function fetchSymbols(exchange) {
 
     try {
         const res = await fetch(`/api/market/symbols?exchange=${exchange}`);
+        
+        if (!res.ok) {
+            throw new Error(`HTTP Error ${res.status}`);
+        }
+
         const data = await res.json();
         if (data.symbols) {
             allMarketSymbols = data.symbols.sort();
             renderSymbolList(allMarketSymbols);
         } else {
-            container.innerHTML = '<div class="text-center py-8 text-red-400">無法獲取幣種列表</div>';
+            container.innerHTML = '<div class="text-center py-8 text-red-400">無法獲取幣種列表 (格式錯誤)</div>';
         }
     } catch (e) {
         console.error("Failed to fetch symbols", e);
-        container.innerHTML = '<div class="text-center py-8 text-red-400">連線錯誤</div>';
+        
+        let errorMessage = '連線錯誤';
+        let detail = e.message;
+
+        if (e.message.includes('429')) {
+            errorMessage = 'API 請求過於頻繁';
+        } else if (e.message.includes('500')) {
+            errorMessage = '伺服器內部錯誤';
+        } else if (e.message.includes('timeout') || e.message.includes('NetworkError') || e.message.includes('Failed to fetch')) {
+            errorMessage = '網路連線失敗';
+        }
+
+        container.innerHTML = `
+            <div class="text-center py-8 text-red-400 flex flex-col items-center gap-2">
+                <i data-lucide="wifi-off" class="w-8 h-8 opacity-50"></i>
+                <span class="font-bold">${errorMessage}</span>
+                <span class="text-xs opacity-70 mb-2">${detail}</span>
+                <button onclick="fetchSymbols('${exchange}')" class="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg text-sm transition border border-red-500/20">
+                    重試
+                </button>
+            </div>`;
+        lucide.createIcons();
     }
 }
 
@@ -114,7 +142,9 @@ function applyGlobalFilter() {
     // selectedNewsSources 在 app.js 中已經預設為所有來源
 
     const count = globalSelectedSymbols.length;
-    headerBadge.innerText = count > 0 ? count : '自動';
+    if (headerBadge) {
+        headerBadge.innerText = count > 0 ? count : '自動';
+    }
 
     if (count > 0) {
         if (indicator) {

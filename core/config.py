@@ -66,6 +66,18 @@ TRADER_MODEL = {
 
 
 
+# 裁判 (用戶付費)
+
+JUDGE_MODEL = {
+
+    "provider": "user_provided",
+
+    "model": "gpt-4o-mini",
+
+}
+
+
+
 # 委員會成員 (用戶付費)
 
 BULL_COMMITTEE_MODELS = [

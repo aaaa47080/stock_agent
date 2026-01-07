@@ -74,8 +74,20 @@ class MarketPulseAnalyzer:
             
             current_price = safe_float(latest['Close'])
             rsi_14 = safe_float(latest.get('RSI_14', 0))
-            macd_hist = safe_float(latest.get('MACDh_12_26_9', 0))
-            prev_macd_hist = safe_float(prev.get('MACDh_12_26_9', 0))
+            
+            # Dynamically find MACD columns (Histogram often starts with MACDh_)
+            macd_hist_col = next((c for c in df.columns if c.startswith('MACDh_')), None)
+            
+            if macd_hist_col:
+                macd_hist = safe_float(latest.get(macd_hist_col, 0))
+                prev_macd_hist = safe_float(prev.get(macd_hist_col, 0))
+                # Handle NaN which safe_float passes through
+                import math
+                if isinstance(macd_hist, float) and math.isnan(macd_hist): macd_hist = 0.0
+                if isinstance(prev_macd_hist, float) and math.isnan(prev_macd_hist): prev_macd_hist = 0.0
+            else:
+                macd_hist = 0.0
+                prev_macd_hist = 0.0
             
             bb_upper = safe_float(latest.get('BBU_20_2.0', 0))
             bb_lower = safe_float(latest.get('BBL_20_2.0', 0))

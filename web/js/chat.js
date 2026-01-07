@@ -18,7 +18,7 @@ function appendMessage(role, content) {
                 <button onclick="showDebate('${symbol}')" class="text-xs bg-accent/10 text-accent px-3 py-1.5 rounded-full hover:bg-accent/20 border border-accent/20 transition flex items-center gap-1.5">
                     <i data-lucide="swords" class="w-3 h-3"></i> Debate
                 </button>
-                <button onclick="showChart('${symbol}'); switchTab('watchlist');" class="text-xs bg-primary/10 text-primary px-3 py-1.5 rounded-full hover:bg-primary/20 border border-primary/20 transition flex items-center gap-1.5">
+                <button onclick="showChart('${symbol}');" class="text-xs bg-primary/10 text-primary px-3 py-1.5 rounded-full hover:bg-primary/20 border border-primary/20 transition flex items-center gap-1.5">
                     <i data-lucide="bar-chart" class="w-3 h-3"></i> Chart
                 </button>
             `;

@@ -156,7 +156,8 @@ function closeApiKeyModal() {
 
 async function saveApiKeys(event) {
     event.preventDefault();
-    const btn = document.getElementById('btn-save-keys');
+    const form = event.target;
+    const btn = form.querySelector('button[type="submit"]');
     const originalText = btn.innerHTML;
 
     const apiKey = document.getElementById('input-api-key').value.trim();

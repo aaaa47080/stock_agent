@@ -20,4 +20,5 @@ google-generativeai
 dirtyjson
 fastapi
 uvicorn
+websockets
 backtrader
