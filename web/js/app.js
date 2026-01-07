@@ -137,37 +137,18 @@ window.currentAnalysisController = null;
 const Pi = window.Pi;
 
 // ========================================
-// Tab Switching
+// Tab Switching (called from HTML after basic UI update)
 // ========================================
-function switchTab(tab) {
-    // 如果是 settings，不隱藏當前頁面，而是打開 Modal
-    if (tab === 'settings') {
-        openSettings();
-        return;
-    }
+// Note: The main switchTab() function is now defined inline in index.html
+// This function handles additional logic like intervals and API calls
 
-    // 隱藏所有頁籤（移除了 watchlist）
-    ['chat', 'market', 'pulse', 'assets'].forEach(t => {
-        const el = document.getElementById(t + '-tab');
-        if (el) el.classList.add('hidden');
-    });
-
-    const targetTab = document.getElementById(tab + '-tab');
-    if (targetTab) targetTab.classList.remove('hidden');
-
-    // Update nav icon colors
-    document.querySelectorAll('nav button').forEach(btn => btn.classList.replace('text-blue-500', 'text-slate-400'));
-    // Highlight active (Optional logic here)
-    // TODO: Need a better way to map button to tab since we don't have IDs on buttons in original HTML
-    // For now, simple color reset is fine.
-
+function onTabSwitch(tab) {
     // Abort pending analysis if leaving chat tab
     if (tab !== 'chat' && window.currentAnalysisController) {
         window.currentAnalysisController.abort();
         window.currentAnalysisController = null;
-        isAnalyzing = false; // Reset analyzing state
-        
-        // Reset Chat UI if needed (optional, but good for UX)
+        isAnalyzing = false;
+
         const input = document.getElementById('user-input');
         const sendBtn = document.getElementById('send-btn');
         if (input && sendBtn) {
@@ -178,6 +159,7 @@ function switchTab(tab) {
         }
     }
 
+    // Clear all intervals
     if (marketRefreshInterval) {
         clearInterval(marketRefreshInterval);
         marketRefreshInterval = null;
@@ -186,35 +168,31 @@ function switchTab(tab) {
         clearInterval(window.pulseInterval);
         window.pulseInterval = null;
     }
+    if (window.assetsInterval) {
+        clearInterval(window.assetsInterval);
+        window.assetsInterval = null;
+    }
 
+    // Set up new intervals based on tab
     if (tab === 'market') {
-        refreshScreener(true);
         marketRefreshInterval = setInterval(() => {
             refreshScreener(false);
         }, 1000);
     }
 
     if (tab === 'pulse') {
-        checkMarketPulse(true);
         window.pulseInterval = setInterval(() => {
             checkMarketPulse(false);
         }, 30000);
     }
 
-    if (window.assetsInterval) {
-        clearInterval(window.assetsInterval);
-        window.assetsInterval = null;
-    }
-
-    if (tab === 'watchlist') refreshWatchlist();
-
     if (tab === 'assets') {
-        refreshAssets();
         window.assetsInterval = setInterval(refreshAssets, 10000);
     }
-
-    lucide.createIcons();
 }
+
+// Make it globally accessible
+window.onTabSwitch = onTabSwitch;
 
 // ========================================
 // Utility Functions
@@ -337,8 +315,10 @@ function updateProviderOptions() {
 }
 
 async function openSettings() {
-    // Switch to settings tab instead of opening modal
-    switchTab('settings');
+    // Switch to settings tab
+    if (typeof switchTab === 'function') {
+        switchTab('settings');
+    }
 
     // Load current config
     try {

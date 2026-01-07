@@ -61,8 +61,8 @@ async function checkMarketPulse(showLoading = false, forceRefresh = false) {
         grid.innerHTML = '';
         targets.forEach(symbol => {
             const el = document.createElement('div');
-            el.className = 'glass-card rounded-2xl p-6 h-full flex flex-col items-center justify-center min-h-[200px]';
-            el.innerHTML = `<div class="animate-pulse text-slate-400">AI 分析中...</div>`;
+            el.className = 'bg-surface rounded-2xl border border-white/5 p-5 h-full flex flex-col items-center justify-center min-h-[200px]';
+            el.innerHTML = `<div class="typing-indicator"><div class="typing-dots flex gap-1"><span></span><span></span><span></span></div><span class="ml-2 text-textMuted">Analyzing...</span></div>`;
             el.id = `pulse-card-${symbol}`; grid.appendChild(el);
         });
     }
@@ -90,18 +90,18 @@ async function refreshMarketPulse() {
         } else {
             // [Free] 觸發後台公共更新
             console.log("Triggering Background Public Refresh...");
-            const res = await fetch('/api/market-pulse/refresh-all', { 
+            const res = await fetch('/api/market-pulse/refresh-all', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ symbols: targets })
             });
-            
+
             if (!res.ok) throw new Error("Refresh failed");
-            
+
             // 開始輪詢進度，直到完成
             pollAnalysisProgress();
         }
-        
+
     } catch (e) {
         console.error("Market Pulse Refresh Error:", e);
         // alert("重新整理失敗，請稍後再試"); // Suppress alert on network cancel (e.g. F5)
@@ -146,17 +146,17 @@ async function fetchPulseForSymbol(symbol, forceRefresh = false, deepAnalysis = 
 
         // 處理等待排程更新的情況
         if (data.status === 'pending' || data.source_mode === 'awaiting_update') {
-            card.className = "glass-card rounded-2xl p-6 h-full flex flex-col items-center justify-center min-h-[200px] border border-dashed border-slate-600";
+            card.className = "bg-surface rounded-3xl border border-dashed border-white/10 p-6 h-full flex flex-col items-center justify-center min-h-[200px]";
             card.innerHTML = `
                 <div class="text-center">
-                    <div class="w-12 h-12 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <i data-lucide="clock" class="w-6 h-6 text-slate-500"></i>
+                    <div class="w-12 h-12 bg-background rounded-full flex items-center justify-center mx-auto mb-3">
+                        <i data-lucide="clock" class="w-6 h-6 text-textMuted"></i>
                     </div>
-                    <h3 class="font-bold text-lg text-slate-300 mb-2">${data.symbol}</h3>
-                    <p class="text-slate-400 text-sm mb-4">等待排程更新（每 4 小時）</p>
-                    <button onclick="triggerDeepAnalysis('${data.symbol}')" class="px-4 py-2 bg-amber-600/20 text-amber-400 hover:bg-amber-600/30 rounded-lg transition flex items-center gap-2 mx-auto border border-amber-500/30">
+                    <h3 class="font-serif text-lg text-secondary mb-2">${data.symbol}</h3>
+                    <p class="text-textMuted text-sm mb-4">Awaiting scheduled update</p>
+                    <button onclick="triggerDeepAnalysis('${data.symbol}')" class="px-4 py-2.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-xl transition flex items-center gap-2 mx-auto border border-primary/20">
                         <i data-lucide="zap" class="w-4 h-4"></i>
-                        即時深度分析
+                        Deep Analysis
                     </button>
                 </div>
             `;
@@ -171,32 +171,32 @@ async function fetchPulseForSymbol(symbol, forceRefresh = false, deepAnalysis = 
             const timeString = getTimeAgo(data.timestamp);
             const uniqueSources = data.news_sources ? [...new Set(data.news_sources.map(n => n.source.split(' ')[0]))].join(', ') : '';
 
-            card.className = "glass-card rounded-2xl p-0 h-full flex flex-col hover:border-blue-500/30 transition duration-300 overflow-hidden";
+            card.className = "bg-surface rounded-3xl border border-white/5 p-0 h-full flex flex-col hover:border-primary/20 transition duration-300 overflow-hidden";
 
             // 1. Header Section (Price & Summary)
             let html = `
-                <div class="p-5 border-b border-slate-700/50 bg-slate-800/20">
+                <div class="p-5 border-b border-white/5 bg-background/30">
                     <div class="flex justify-between items-start mb-3">
                         <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 ${isPositive ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'} rounded-xl flex items-center justify-center">
+                            <div class="w-10 h-10 ${isPositive ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'} rounded-xl flex items-center justify-center">
                                 <i data-lucide="${isPositive ? 'trending-up' : 'trending-down'}" class="w-5 h-5"></i>
                             </div>
                             <div>
-                                <h3 class="font-bold text-lg flex items-center gap-2">
+                                <h3 class="font-serif text-lg flex items-center gap-2 text-secondary">
                                     ${data.symbol}
-                                    <span class="text-xs font-normal text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">${timeString}</span>
+                                    <span class="text-[10px] font-normal text-textMuted/50 bg-background px-1.5 py-0.5 rounded-lg border border-white/5">${timeString}</span>
                                 </h3>
-                                <div class="text-xs text-slate-400">
+                                <div class="text-xs text-textMuted">
                                     ${formatPrice(data.current_price)}
-                                    <span class="ml-1 ${isPositive ? 'text-green-400' : 'text-red-400'}">
+                                    <span class="ml-1 ${isPositive ? 'text-success' : 'text-danger'}">
                                         ${data.change_24h > 0 ? '+' : ''}${data.change_24h.toFixed(2)}%
                                     </span>
                                 </div>
                             </div>
                         </div>
-                        <span class="px-2 py-1 rounded bg-slate-800 text-[10px] text-slate-400 border border-slate-700">1H: ${data.change_1h > 0 ? '+' : ''}${data.change_1h.toFixed(2)}%</span>
+                        <span class="px-2 py-1 rounded-lg bg-background text-[10px] text-textMuted border border-white/5">1H: ${data.change_1h > 0 ? '+' : ''}${data.change_1h.toFixed(2)}%</span>
                     </div>
-                    <p class="text-slate-200 text-sm font-medium leading-relaxed">${report.summary}</p>
+                    <p class="text-secondary/90 text-sm font-light leading-relaxed">${report.summary}</p>
                 </div>
             `;
 
@@ -207,13 +207,13 @@ async function fetchPulseForSymbol(symbol, forceRefresh = false, deepAnalysis = 
             if (report.key_points && report.key_points.length > 0) {
                 html += `
                     <div>
-                        <h4 class="text-xs font-bold text-blue-400 mb-2 flex items-center gap-1 uppercase tracking-wider">
-                            <i data-lucide="sparkles" class="w-3 h-3"></i> 要點
+                        <h4 class="text-xs font-bold text-accent mb-2 flex items-center gap-1 uppercase tracking-wider">
+                            <i data-lucide="sparkles" class="w-3 h-3"></i> Key Points
                         </h4>
                         <ul class="space-y-2">
                             ${report.key_points.map((point, idx) => `
-                                <li class="flex gap-2 text-xs text-slate-300">
-                                    <span class="text-blue-500/50 font-mono">${idx + 1}.</span>
+                                <li class="flex gap-2 text-xs text-secondary/80">
+                                    <span class="text-primary/50 font-mono">${idx + 1}.</span>
                                     <span>${point}</span>
                                 </li>
                             `).join('')}
@@ -226,14 +226,14 @@ async function fetchPulseForSymbol(symbol, forceRefresh = false, deepAnalysis = 
             if (report.highlights && report.highlights.length > 0) {
                 html += `
                     <div>
-                        <h4 class="text-xs font-bold text-purple-400 mb-2 flex items-center gap-1 uppercase tracking-wider">
-                            <i data-lucide="zap" class="w-3 h-3"></i> 亮點
+                        <h4 class="text-xs font-bold text-accent mb-2 flex items-center gap-1 uppercase tracking-wider">
+                            <i data-lucide="zap" class="w-3 h-3"></i> Highlights
                         </h4>
                         <div class="space-y-2">
                             ${report.highlights.map(item => `
-                                <div class="bg-slate-800/40 rounded-lg p-3 border border-slate-700/50">
-                                    <div class="text-xs font-semibold text-slate-200 mb-1">${item.title}</div>
-                                    <div class="text-[11px] text-slate-400 leading-normal">${item.content}</div>
+                                <div class="bg-background/50 rounded-xl p-3 border border-white/5">
+                                    <div class="text-xs font-semibold text-secondary mb-1">${item.title}</div>
+                                    <div class="text-[11px] text-textMuted leading-normal">${item.content}</div>
                                 </div>
                             `).join('')}
                         </div>
@@ -245,13 +245,13 @@ async function fetchPulseForSymbol(symbol, forceRefresh = false, deepAnalysis = 
             if (report.risks && report.risks.length > 0) {
                 html += `
                     <div>
-                        <h4 class="text-xs font-bold text-orange-400 mb-2 flex items-center gap-1 uppercase tracking-wider">
-                            <i data-lucide="alert-triangle" class="w-3 h-3"></i> 風險
+                        <h4 class="text-xs font-bold text-danger mb-2 flex items-center gap-1 uppercase tracking-wider">
+                            <i data-lucide="alert-triangle" class="w-3 h-3"></i> Risks
                         </h4>
                         <ul class="space-y-1">
                             ${report.risks.map(risk => `
-                                <li class="flex gap-2 text-xs text-slate-400">
-                                    <i data-lucide="alert-circle" class="w-3 h-3 text-orange-500/50 mt-0.5 shrink-0"></i>
+                                <li class="flex gap-2 text-xs text-textMuted">
+                                    <i data-lucide="alert-circle" class="w-3 h-3 text-danger/50 mt-0.5 shrink-0"></i>
                                     <span>${risk}</span>
                                 </li>
                             `).join('')}
@@ -265,24 +265,24 @@ async function fetchPulseForSymbol(symbol, forceRefresh = false, deepAnalysis = 
             // 3. Footer Section
             const sourceMode = data.source_mode || 'public_cache';
             const sourceBadge = sourceMode === 'deep_analysis'
-                ? `<span class="px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded border border-amber-500/30 flex items-center gap-1"><i data-lucide="zap" class="w-2.5 h-2.5"></i>深度</span>`
-                : `<span class="px-1.5 py-0.5 bg-slate-700/50 text-slate-400 rounded border border-slate-600/30">公共</span>`;
+                ? `<span class="px-1.5 py-0.5 bg-primary/20 text-primary rounded-lg border border-primary/30 flex items-center gap-1"><i data-lucide="zap" class="w-2.5 h-2.5"></i>Deep</span>`
+                : `<span class="px-1.5 py-0.5 bg-background text-textMuted rounded-lg border border-white/5">Public</span>`;
 
             html += `
-                <div class="p-4 border-t border-slate-700/50 bg-slate-800/30 flex justify-between items-center text-[10px] text-slate-500">
+                <div class="p-4 border-t border-white/5 bg-background/30 flex justify-between items-center text-[10px] text-textMuted">
                     <div class="flex items-center gap-2">
                         ${sourceBadge}
                         <span title="${uniqueSources}">Refs: ${data.news_sources ? data.news_sources.length : 0}</span>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="showNewsList('${symbol}')" class="px-2 py-1.5 hover:bg-slate-700/50 rounded transition text-blue-400 flex items-center gap-1">
-                            <i data-lucide="newspaper" class="w-3 h-3"></i> 新聞
+                        <button onclick="showNewsList('${symbol}')" class="px-2.5 py-1.5 hover:bg-surfaceHighlight rounded-lg transition text-accent flex items-center gap-1">
+                            <i data-lucide="newspaper" class="w-3 h-3"></i> News
                         </button>
-                        <button onclick="triggerDeepAnalysis('${symbol}')" class="px-2 py-1.5 hover:bg-amber-600/20 rounded transition text-amber-400 flex items-center gap-1 border border-amber-500/20" title="使用您的 API Key 進行即時深度分析">
-                            <i data-lucide="microscope" class="w-3 h-3"></i> 深度
+                        <button onclick="triggerDeepAnalysis('${symbol}')" class="px-2.5 py-1.5 hover:bg-primary/10 rounded-lg transition text-primary flex items-center gap-1 border border-primary/10" title="Deep analysis with your API Key">
+                            <i data-lucide="microscope" class="w-3 h-3"></i> Deep
                         </button>
-                        <button onclick="switchTab('chat'); quickAsk('${data.symbol} 詳細分析')" class="px-2 py-1.5 bg-purple-600/20 text-purple-300 hover:bg-purple-600/30 rounded transition flex items-center gap-1 border border-purple-500/20">
-                            <i data-lucide="bot" class="w-3 h-3"></i> 詳情
+                        <button onclick="switchTab('chat'); quickAsk('${data.symbol} analysis')" class="px-2.5 py-1.5 bg-accent/10 text-accent hover:bg-accent/20 rounded-lg transition flex items-center gap-1 border border-accent/20">
+                            <i data-lucide="bot" class="w-3 h-3"></i> Detail
                         </button>
                     </div>
                 </div>
@@ -344,11 +344,11 @@ function showNewsList(symbol) {
         data.news_sources.forEach(news => {
             const item = document.createElement('div');
             item.className = 'bg-slate-800/50 border border-slate-700 p-3 rounded-xl hover:bg-slate-800 transition group';
-            
+
             const title = news.title || '無標題';
             const source = news.source || '未知來源';
             const url = news.url || '#';
-            const linkHtml = url !== '#' 
+            const linkHtml = url !== '#'
                 ? `<a href="${url}" target="_blank" class="text-[10px] text-blue-500 hover:underline">查看原文 <i data-lucide="external-link" class="w-2.5 h-2.5"></i></a>`
                 : `<span class="text-[10px] text-slate-500 cursor-not-allowed">無連結</span>`;
 
@@ -380,16 +380,16 @@ async function pollAnalysisProgress() {
         while (true) {
             const res = await fetch('/api/market-pulse/progress');
             if (!res.ok) break;
-            
+
             const status = await res.json();
-            
+
             if (status.is_running && status.total > 0) {
                 container.classList.remove('hidden');
-                
+
                 const pct = (status.completed / status.total) * 100;
                 bar.style.width = `${pct}%`;
                 text.innerText = `${status.completed}/${status.total} (${pct.toFixed(1)}%)`;
-                
+
                 // Keep polling
                 await new Promise(r => setTimeout(r, 2000));
             } else {
@@ -400,7 +400,7 @@ async function pollAnalysisProgress() {
                     text.innerText = '完成';
                     await new Promise(r => setTimeout(r, 2000));
                     container.classList.add('hidden');
-                    
+
                     // Refresh grid one last time to show new data
                     checkMarketPulse(false, false);
                 }

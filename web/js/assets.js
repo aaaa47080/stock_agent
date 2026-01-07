@@ -47,15 +47,15 @@ async function refreshAssets() {
                 div.className = 'flex justify-between items-center text-sm';
                 div.innerHTML = `
                     <div class="flex items-center gap-2">
-                        <span class="font-bold text-white">${asset.currency}</span>
-                        <span class="text-xs text-slate-500">${asset.available.toFixed(4)} 可用</span>
+                        <span class="font-bold text-secondary">${asset.currency}</span>
+                        <span class="text-xs text-textMuted">${asset.available.toFixed(4)} 可用</span>
                     </div>
-                    <div class="text-slate-300">$${asset.usd_value.toFixed(2)}</div>
+                    <div class="text-textMuted">$${asset.usd_value.toFixed(2)}</div>
                 `;
                 spotList.appendChild(div);
             });
         } else {
-            spotList.innerHTML = '<div class="text-slate-500 text-xs">無資產餘額</div>';
+            spotList.innerHTML = '<div class="text-textMuted text-xs">無資產餘額</div>';
         }
 
         // 2. Fetch Positions (帶上認證頭)
@@ -79,19 +79,19 @@ async function refreshAssets() {
 
             posData.positions.forEach(pos => {
                 const isLong = pos.side === 'long' || pos.size > 0;
-                const pnlClass = pos.pnl >= 0 ? 'text-green-400' : 'text-red-400';
-                const sideClass = isLong ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400';
+                const pnlClass = pos.pnl >= 0 ? 'text-success' : 'text-danger';
+                const sideClass = isLong ? 'bg-success/20 text-success' : 'bg-danger/20 text-danger';
                 const sideText = pos.side === 'net' ? (pos.size > 0 ? '多' : '空') : (pos.side === 'long' ? '多' : '空');
 
                 totalPnl += pos.pnl;
 
                 const tr = document.createElement('tr');
-                tr.className = 'border-b border-slate-700/50 hover:bg-slate-800/30 transition';
+                tr.className = 'border-b border-white/5 hover:bg-surfaceHighlight transition';
                 tr.innerHTML = `
-                    <td class="px-4 py-3 font-medium text-white">${pos.symbol}</td>
+                    <td class="px-4 py-3 font-medium text-secondary">${pos.symbol}</td>
                     <td class="px-4 py-3">
                         <span class="text-[10px] px-1.5 py-0.5 rounded ${sideClass} border border-white/10 mr-1">${sideText}</span>
-                        <span class="text-xs text-slate-400">${pos.leverage}x</span>
+                        <span class="text-xs text-textMuted">${pos.leverage}x</span>
                     </td>
                     <td class="px-4 py-3 text-right font-mono">${Math.abs(pos.size)}</td>
                     <td class="px-4 py-3 text-right font-mono text-xs">$${pos.avg_price.toLocaleString()}</td>
@@ -106,18 +106,18 @@ async function refreshAssets() {
 
             summaryEl.innerHTML = `
                 <div class="flex justify-between items-center text-sm mb-2">
-                    <span class="text-slate-400">持倉數量</span>
-                    <span class="text-white font-bold">${posData.positions.length}</span>
+                    <span class="text-textMuted">持倉數量</span>
+                    <span class="text-secondary font-bold">${posData.positions.length}</span>
                 </div>
                 <div class="flex justify-between items-center text-sm">
-                    <span class="text-slate-400">未實現總盈虧</span>
-                    <span class="${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'} font-bold">${totalPnl > 0 ? '+' : ''}${totalPnl.toFixed(2)} USDT</span>
+                    <span class="text-textMuted">未實現總盈虧</span>
+                    <span class="${totalPnl >= 0 ? 'text-success' : 'text-danger'} font-bold">${totalPnl > 0 ? '+' : ''}${totalPnl.toFixed(2)} USDT</span>
                 </div>
             `;
 
         } else {
-            posTable.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-slate-500">尚無持倉數據</td></tr>';
-            summaryEl.innerHTML = '<div class="text-slate-500 text-xs">無持倉</div>';
+            posTable.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-textMuted">尚無持倉數據</td></tr>';
+            summaryEl.innerHTML = '<div class="text-textMuted text-xs">無持倉</div>';
         }
 
     } catch (e) {
@@ -127,20 +127,20 @@ async function refreshAssets() {
 
         const noKeyHtml = `
             <div class="flex flex-col items-center justify-center py-8 text-center h-full">
-                <div class="bg-slate-800 p-3 rounded-full mb-3">
-                    <i data-lucide="lock" class="w-6 h-6 text-amber-400"></i>
+                <div class="bg-background p-3 rounded-full mb-3">
+                    <i data-lucide="lock" class="w-6 h-6 text-primary"></i>
                 </div>
-                <h4 class="text-sm font-bold text-slate-200 mb-1">尚未綁定交易所</h4>
-                <p class="text-xs text-slate-500 max-w-[200px] mb-4">請設定 API 金鑰以查看即時資產數據。</p>
-                <button onclick="openApiKeyModal()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition shadow-lg shadow-blue-900/20 flex items-center gap-2">
+                <h4 class="text-sm font-bold text-secondary mb-1">尚未綁定交易所</h4>
+                <p class="text-xs text-textMuted max-w-[200px] mb-4">請設定 API 金鑰以查看即時資產數據。</p>
+                <button onclick="openApiKeyModal()" class="px-4 py-2 bg-primary hover:bg-primary/80 text-background text-xs font-bold rounded-lg transition flex items-center gap-2">
                     <i data-lucide="settings" class="w-3 h-3"></i> 立即設定
                 </button>
             </div>
         `;
 
         spotList.innerHTML = noKeyHtml;
-        summaryEl.innerHTML = '<div class="text-xs text-slate-500 text-center">需先連接 API</div>';
-        posTable.innerHTML = `<tr><td colspan="6" class="p-0"><div class="p-8 flex justify-center text-slate-500">${noKeyHtml}</div></td></tr>`;
+        summaryEl.innerHTML = '<div class="text-xs text-textMuted text-center">需先連接 API</div>';
+        posTable.innerHTML = `<tr><td colspan="6" class="p-0"><div class="p-8 flex justify-center text-textMuted">${noKeyHtml}</div></td></tr>`;
 
         lucide.createIcons();
     }

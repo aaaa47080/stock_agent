@@ -13,13 +13,13 @@ function appendMessage(role, content) {
         if (match && !content.includes('載入中') && !content.includes('Error')) {
             const symbol = match[1];
             const actionsDiv = document.createElement('div');
-            actionsDiv.className = 'flex gap-2 mt-3 pt-3 border-t border-slate-700/50';
+            actionsDiv.className = 'flex gap-2 mt-4 pt-4 border-t border-white/5';
             actionsDiv.innerHTML = `
-                <button onclick="showDebate('${symbol}')" class="text-xs bg-purple-900/30 text-purple-400 px-2 py-1 rounded hover:bg-purple-900/50 border border-purple-500/30 transition flex items-center gap-1">
-                    <i data-lucide="swords" class="w-3 h-3"></i> 觀看辯論
+                <button onclick="showDebate('${symbol}')" class="text-xs bg-accent/10 text-accent px-3 py-1.5 rounded-full hover:bg-accent/20 border border-accent/20 transition flex items-center gap-1.5">
+                    <i data-lucide="swords" class="w-3 h-3"></i> Debate
                 </button>
-                <button onclick="showChart('${symbol}'); switchTab('watchlist');" class="text-xs bg-blue-900/30 text-blue-400 px-2 py-1 rounded hover:bg-blue-900/50 border border-blue-500/30 transition flex items-center gap-1">
-                    <i data-lucide="bar-chart" class="w-3 h-3"></i> K線圖
+                <button onclick="showChart('${symbol}'); switchTab('watchlist');" class="text-xs bg-primary/10 text-primary px-3 py-1.5 rounded-full hover:bg-primary/20 border border-primary/20 transition flex items-center gap-1.5">
+                    <i data-lucide="bar-chart" class="w-3 h-3"></i> Chart
                 </button>
             `;
             div.appendChild(actionsDiv);
@@ -48,12 +48,21 @@ async function clearChat() {
         const container = document.getElementById('chat-messages');
 
         container.innerHTML = `
-        <div class="bot-message message-bubble prose">
-            <h3 class="flex items-center gap-2"><i data-lucide="bot" class="w-5 h-5"></i> 歡迎使用 Pi Crypto Insight</h3>
-            <p>對話已重置。我是您的 AI 投資助手，請輸入加密貨幣代號（如 BTC, ETH, PI）開始分析。</p>
-            <div class="flex wrap gap-2 mt-2">
-                <button onclick="quickAsk('PIUSDT 可以投資嗎？')" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs border border-slate-700 transition">Pi Network (PI) 分析</button>
-                <button onclick="quickAsk('比特幣現在適合買入嗎？')" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs border border-slate-700 transition">BTC 行情預測</button>
+        <div class="bot-message opacity-0 animate-fade-in-up" style="animation-delay: 0.1s; animation-fill-mode: forwards;">
+            <p class="font-serif text-2xl md:text-3xl leading-tight text-secondary mb-4">
+                Chat cleared. <br>
+                Ready for new analysis.
+            </p>
+            <p class="text-textMuted text-lg font-light leading-relaxed">
+                What would you like to analyze today?
+            </p>
+            <div class="flex flex-wrap gap-3 mt-8">
+                <button onclick="quickAsk('Analyze BTC trend')" class="px-5 py-2.5 rounded-full bg-surface hover:bg-surfaceHighlight border border-white/5 text-sm text-textMuted hover:text-primary transition shadow-sm">
+                    Bitcoin Trend
+                </button>
+                <button onclick="quickAsk('ETH Funding Rates')" class="px-5 py-2.5 rounded-full bg-surface hover:bg-surfaceHighlight border border-white/5 text-sm text-textMuted hover:text-primary transition shadow-sm">
+                    ETH Rates
+                </button>
             </div>
         </div>`;
 
@@ -87,19 +96,9 @@ async function sendMessage() {
     const checkboxes = document.querySelectorAll('.analysis-checkbox:checked');
     const selection = Array.from(checkboxes).map(cb => cb.value);
 
-    // New: Get execution options
-    const marketType = document.getElementById('select-market-type').value;
-    const autoExecute = document.getElementById('toggle-auto-execute').checked;
-
-    // Pre-check: If auto-execute is on, ensure we have some indicator of keys
-    if (autoExecute) {
-        const totalEquity = document.getElementById('total-equity').innerText;
-        if (totalEquity === "---" || totalEquity === "0.00") {
-            if (!confirm("偵測到您尚未設定 API Key 或餘額不足。自動交易將無法執行，是否仍要繼續僅進行分析？")) {
-                return;
-            }
-        }
-    }
+    // Default execution options (simplified UI)
+    const marketType = 'spot';
+    const autoExecute = false;
 
     input.value = '';
     appendMessage('user', text);
@@ -115,12 +114,12 @@ async function sendMessage() {
     let timerInterval;
 
     botMsgDiv.innerHTML = `
-        <div class="flex items-center gap-3 p-2 text-slate-300">
-            <div class="relative">
-                <div class="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+        <div class="typing-indicator">
+            <div class="typing-dots flex gap-1">
+                <span></span><span></span><span></span>
             </div>
-            <span class="text-sm font-mono animate-pulse">AI is thinking...</span>
-            <span id="loading-timer" class="text-xs font-mono text-slate-500 ml-auto">0.0s</span>
+            <span class="text-sm text-textMuted ml-2">Thinking...</span>
+            <span id="loading-timer" class="text-xs font-mono text-textMuted/50 ml-auto">0.0s</span>
         </div>
     `;
 
@@ -199,13 +198,13 @@ async function sendMessage() {
                             for (const line of processLines) {
                                 const trimmed = line.trim();
                                 if (trimmed.startsWith('---') || trimmed.startsWith('###')) {
-                                    stepsHtml += `<div class="mt-3 mb-2 text-blue-400 font-semibold text-sm">${md.renderInline(trimmed.replace(/^---\s*/, '').replace(/^###\s*/, ''))}</div>`;
+                                    stepsHtml += `<div class="mt-3 mb-2 text-accent font-semibold text-sm">${md.renderInline(trimmed.replace(/^---\s*/, '').replace(/^###\s*/, ''))}</div>`;
                                 } else if (trimmed.startsWith('**🐂') || trimmed.startsWith('**🐻') || trimmed.startsWith('**⚖️')) {
-                                    stepsHtml += `<div class="mt-2 font-medium text-slate-300">${md.renderInline(trimmed)}</div>`;
+                                    stepsHtml += `<div class="mt-2 font-medium text-secondary">${md.renderInline(trimmed)}</div>`;
                                 } else if (trimmed.startsWith('>')) {
-                                    stepsHtml += `<div class="pl-3 border-l-2 border-slate-600 text-slate-400 text-xs my-1">${md.renderInline(trimmed.substring(1).trim())}</div>`;
+                                    stepsHtml += `<div class="pl-3 border-l-2 border-white/10 text-textMuted text-xs my-1">${md.renderInline(trimmed.substring(1).trim())}</div>`;
                                 } else if (trimmed.startsWith('→')) {
-                                    stepsHtml += `<div class="pl-4 text-slate-500 text-xs">${trimmed}</div>`;
+                                    stepsHtml += `<div class="pl-4 text-textMuted/60 text-xs">${trimmed}</div>`;
                                 } else {
                                     stepsHtml += `<div class="process-step-item py-1">${md.renderInline(trimmed)}</div>`;
                                 }
@@ -229,7 +228,7 @@ async function sendMessage() {
                         } else if (!hasProcessContent) {
                             html = md.render(fullContent);
                         } else if (isStillProcessing) {
-                            html += `<div class="text-slate-500 text-sm animate-pulse mt-4">⏳ 正在生成分析報告...</div>`;
+                            html += `<div class="text-textMuted text-sm animate-pulse mt-4">⏳ Generating report...</div>`;
                         }
 
                         botMsgDiv.innerHTML = html;
@@ -264,13 +263,13 @@ async function sendMessage() {
                             for (const line of processLines) {
                                 const trimmed = line.trim();
                                 if (trimmed.startsWith('---') || trimmed.startsWith('###')) {
-                                    stepsHtml += `<div class="mt-3 mb-2 text-blue-400 font-semibold text-sm">${md.renderInline(trimmed.replace(/^---\s*/, '').replace(/^###\s*/, ''))}</div>`;
+                                    stepsHtml += `<div class="mt-3 mb-2 text-accent font-semibold text-sm">${md.renderInline(trimmed.replace(/^---\s*/, '').replace(/^###\s*/, ''))}</div>`;
                                 } else if (trimmed.startsWith('**🐂') || trimmed.startsWith('**🐻') || trimmed.startsWith('**⚖️')) {
-                                    stepsHtml += `<div class="mt-2 font-medium text-slate-300">${md.renderInline(trimmed)}</div>`;
+                                    stepsHtml += `<div class="mt-2 font-medium text-secondary">${md.renderInline(trimmed)}</div>`;
                                 } else if (trimmed.startsWith('>')) {
-                                    stepsHtml += `<div class="pl-3 border-l-2 border-slate-600 text-slate-400 text-xs my-1">${md.renderInline(trimmed.substring(1).trim())}</div>`;
+                                    stepsHtml += `<div class="pl-3 border-l-2 border-white/10 text-textMuted text-xs my-1">${md.renderInline(trimmed.substring(1).trim())}</div>`;
                                 } else if (trimmed.startsWith('→')) {
-                                    stepsHtml += `<div class="pl-4 text-slate-500 text-xs">${trimmed}</div>`;
+                                    stepsHtml += `<div class="pl-4 text-textMuted/60 text-xs">${trimmed}</div>`;
                                 } else {
                                     stepsHtml += `<div class="process-step-item py-1">${md.renderInline(trimmed)}</div>`;
                                 }
@@ -302,13 +301,13 @@ async function sendMessage() {
                                 const pData = JSON.parse(proposalJson);
                                 finalHtml = finalHtml.replace(proposalMatch[0], '');
                                 const btnHtml = `
-                                    <div class="mt-6 p-4 bg-blue-900/20 border border-blue-500/30 rounded-xl flex items-center justify-between">
+                                    <div class="mt-6 p-5 bg-surface rounded-2xl border border-primary/20 flex items-center justify-between">
                                         <div>
-                                            <h4 class="text-sm font-bold text-blue-400">交易機會識別</h4>
-                                            <p class="text-xs text-slate-400 mt-1">AI 建議: <span class="text-white font-mono">${pData.side.toUpperCase()} ${pData.symbol}</span></p>
+                                            <h4 class="text-sm font-bold text-primary">Trade Opportunity</h4>
+                                            <p class="text-xs text-textMuted mt-1">AI Suggests: <span class="text-secondary font-mono">${pData.side.toUpperCase()} ${pData.symbol}</span></p>
                                         </div>
-                                        <button onclick='showProposalModal(${proposalJson})' class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-lg shadow-lg shadow-blue-600/20 transition flex items-center gap-2">
-                                            <i data-lucide="zap" class="w-4 h-4"></i> 執行交易
+                                        <button onclick='showProposalModal(${proposalJson})' class="px-4 py-2.5 bg-primary hover:brightness-110 text-background text-sm font-bold rounded-xl shadow-lg shadow-primary/20 transition flex items-center gap-2">
+                                            <i data-lucide="zap" class="w-4 h-4"></i> Execute
                                         </button>
                                     </div>
                                 `;
@@ -319,13 +318,13 @@ async function sendMessage() {
                         botMsgDiv.innerHTML = finalHtml;
 
                         const timeBadge = document.createElement('div');
-                        timeBadge.className = 'done-badge';
-                        timeBadge.innerHTML = `✅ 完成 ⏱️ ${totalTime} 秒`;
+                        timeBadge.className = 'mt-4 text-xs text-textMuted/60 font-mono';
+                        timeBadge.innerHTML = `Completed in ${totalTime}s`;
                         botMsgDiv.appendChild(timeBadge);
 
                         const disclaimer = document.createElement('div');
-                        disclaimer.className = 'mt-3 pt-3 border-t border-slate-700/50 text-[10px] text-slate-500 italic';
-                        disclaimer.innerHTML = '⚠️ 免責聲明：以上分析由 AI 自動生成，僅供參考，不構成投資建議。投資決策請自行判斷，盈虧自負。';
+                        disclaimer.className = 'mt-4 pt-4 border-t border-white/5 text-[10px] text-textMuted/40 italic';
+                        disclaimer.innerHTML = 'Disclaimer: AI-generated analysis for reference only. Not financial advice.';
                         botMsgDiv.appendChild(disclaimer);
                         lucide.createIcons();
                     }

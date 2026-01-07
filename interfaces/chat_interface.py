@@ -170,13 +170,41 @@ class CryptoQueryParser:
 
     def _fallback_parse(self, user_message: str) -> Dict:
         """當 LLM 解析失敗時的退回方案"""
-        crypto_pattern = r'\b([A-Z]{2,10}(?:USDT|BUSD)?)\b'
+        # 改進的正則表達式，避免匹配單詞中的模式
+        crypto_pattern = r'\b(BTC|ETH|SOL|XRP|ADA|DOGE|DOT|AVAX|LTC|LINK|UNI|BCH|SHIB|ETC|TRX|MATIC|XLM|BCH|ATOM|NEAR|APT|AR|PI|TON|BNB|SUI|STX|FLOW|HBAR|VET|ALGO|XTZ|EOS|XMR|ZEC|ZIL|ONT|THETA|AAVE|SAND|MANA|DOGE|PEPE|FLOKI|MEME|WIF|BONK|RENDER|TAO|SEI|JUP|PYTH|WIF|STRK|WLD|ORDI|STARK|APT|AR|PI|TON|SUI|ETHEREUM|BITCOIN|BITCOIN_CASH|LITECOIN|DOGECOIN|POLKADOT|SOLANA|CARDANO|CHAINLINK|UNISWAP|POLYGON|MONERO|LUNA|TERRA|FILECOIN|AVALANCHE|COSMOS|ALGORAND|TEZOS|EOSIO|NEM|STEEM|VERGE|ZCASH|DASH|MAKER|SYNTHETIX|COMPOUND|BALANCER|YFI|SUSHI|CRV|REN|UMA|BAND|LINK|SNX|COMP|CRV|REN|UMA|BAND|KSM|DOT|KUSAMA|MOONBEAM|MOONRIVER|BASE|ARB|OPTIMISM|ZKSYNC|ZK|SCROLL|LINEA|BLAST|TAIKO|MODE|WORLD|WIF|RENDER|JUP|PYTH|TIA|DYM|INJ|OSMO|AXL|STRIDE|STARS|JUNO|CRO|KAVA|IRIS|BAND|LUNA|UST|ANC|BETH|WBTC|USDC|USDT|BUSD)\b'
         matches = re.findall(crypto_pattern, user_message.upper())
-        common_words = {'USDT', 'BUSD', 'USD', 'TWD', 'CNY', 'THE', 'AND', 'FOR', 'ARE', 'NOT'}
+        common_words = {'USDT', 'BUSD', 'USD', 'TWD', 'CNY', 'THE', 'AND', 'FOR', 'ARE', 'NOT', 'ANALYZE', 'MARKET', 'SENTIMENT', 'TREND', 'FUNDING', 'RATES'}
         symbols = [m for m in matches if m not in common_words]
 
-        # 如果沒有找到任何幣種，標記為不明確
-        if not symbols and len(user_message) < 10:
+        # 檢查是否是分析相關的查詢
+        analyze_keywords = ['analyze', 'analysis', 'trend', 'price', 'investment', 'can invest', 'buy', 'sell', 'should buy', 'should sell', 'worth buying', 'worth investing', 'how is', 'how about', 'what about', 'what is', 'is it good to', 'is it good for', 'is it worth', 'is it a good time', 'good time to', 'buy or sell', 'long or short', 'going up', 'going down', 'bullish', 'bearish', 'technical', 'fundamental', 'news about', 'news on', 'sentiment']
+        is_analysis_query = any(keyword in user_message.lower() for keyword in analyze_keywords)
+
+        # 檢查是否是市場整體查詢
+        market_keywords = ['market', 'sentiment', 'overall market', 'global market', 'crypto market', 'market sentiment', 'market trend', 'market analysis']
+        is_market_query = any(keyword in user_message.lower() for keyword in market_keywords)
+
+        # 檢查是否是資金費率查詢
+        funding_keywords = ['funding', 'rates', 'funding rate', 'funding rates', 'premium', 'paying', 'receiving', 'funding premium', 'funding cost']
+        is_funding_query = any(keyword in user_message.lower() for keyword in funding_keywords)
+
+        # 如果是市場或資金費率查詢，返回一般問題，不提取幣種
+        if is_market_query or is_funding_query:
+            return {
+                "intent": "general_question",
+                "symbols": [],
+                "action": "chat",
+                "focus": ["news", "sentiment", "fundamental"],
+                "requires_trade_decision": False,
+                "interval": None,
+                "user_question": user_message,
+                "clarity": "high",
+                "clarification_question": None,
+                "suggested_options": None
+            }
+
+        # 如果是分析查詢但沒有找到幣種，標記為不明確
+        if is_analysis_query and not symbols:
             return {
                 "intent": "unclear",
                 "symbols": [],
@@ -186,24 +214,39 @@ class CryptoQueryParser:
                 "interval": None,
                 "user_question": user_message,
                 "clarity": "low",
-                "clarification_question": "請問您想要分析哪個加密貨幣？或者有什麼我可以幫助您的？",
+                "clarification_question": "請問您想要分析哪個加密貨幣？",
                 "suggested_options": [
                     "分析 BTC (比特幣)",
                     "分析 ETH (以太坊)",
-                    "查看市場熱門幣種",
-                    "詢問加密貨幣相關問題"
+                    "分析 SOL (Solana)",
+                    "分析 PI (Pi Network)"
                 ]
             }
 
+        # 如果沒有找到任何幣種，標記為一般問題
+        if not symbols:
+            return {
+                "intent": "general_question",
+                "symbols": [],
+                "action": "chat",
+                "focus": [],
+                "requires_trade_decision": False,
+                "interval": None,
+                "user_question": user_message,
+                "clarity": "high",
+                "clarification_question": None,
+                "suggested_options": None
+            }
+
         return {
-            "intent": "investment_analysis" if symbols else "general_question",
+            "intent": "investment_analysis",
             "symbols": symbols,
             "action": "compare" if len(symbols) > 1 else "analyze",
             "focus": ["technical", "sentiment", "fundamental", "news"],
             "requires_trade_decision": True,
             "interval": None,
             "user_question": user_message,
-            "clarity": "high" if symbols else "medium",
+            "clarity": "high",
             "clarification_question": None,
             "suggested_options": None
         }
