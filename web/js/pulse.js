@@ -57,12 +57,12 @@ function getTimeAgo(timestamp) {
 async function checkMarketPulse(showLoading = false, forceRefresh = false) {
     const grid = document.getElementById('pulse-grid');
     let targets = globalSelectedSymbols.length > 0 ? globalSelectedSymbols : ['BTC', 'ETH', 'SOL', 'PI'];
-    if (showLoading) {
+    if (showLoading && grid) {
         grid.innerHTML = '';
         targets.forEach(symbol => {
             const el = document.createElement('div');
-            el.className = 'bg-surface rounded-2xl border border-white/5 p-5 h-full flex flex-col items-center justify-center min-h-[200px]';
-            el.innerHTML = `<div class="typing-indicator"><div class="typing-dots flex gap-1"><span></span><span></span><span></span></div><span class="ml-2 text-textMuted">Analyzing...</span></div>`;
+            el.className = 'bg-surface rounded-3xl border border-white/5 p-5 h-[300px] flex flex-col items-center justify-center';
+            el.innerHTML = `<div class="typing-indicator"><div class="typing-dots flex gap-1"><span></span><span></span><span></span></div><span class="ml-2 text-textMuted text-sm">Analyzing ${symbol}...</span></div>`;
             el.id = `pulse-card-${symbol}`; grid.appendChild(el);
         });
     }
@@ -135,6 +135,12 @@ async function fetchPulseForSymbol(symbol, forceRefresh = false, deepAnalysis = 
         const res = await fetch(`/api/market-pulse/${symbol}?sources=${sourcesQuery}${refreshParam}${deepParam}`, {
             headers: headers
         });
+        
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({ detail: res.statusText }));
+            throw new Error(errData.detail || `Server Error: ${res.status}`);
+        }
+
         const data = await res.json();
 
         const report = data.report || {
@@ -291,7 +297,34 @@ async function fetchPulseForSymbol(symbol, forceRefresh = false, deepAnalysis = 
             card.innerHTML = html;
             lucide.createIcons();
         }
-    } catch (e) { console.error(e); }
+    } catch (e) {
+        console.error(e);
+        
+        // Error Handling & UI Feedback
+        let errorMsg = e.message || "未知錯誤";
+        let isQuota = false;
+        
+        if (errorMsg.includes("429") || errorMsg.includes("quota")) {
+            isQuota = true;
+            errorMsg = "API 配額已滿";
+            if (window.showError) {
+                window.showError(`分析 ${symbol} 失敗`, "API 配額已滿或請求過於頻繁。請稍後再試或檢查您的金鑰。", true);
+            }
+        }
+
+        // Update Card UI to show error
+        card.innerHTML = `
+            <div class="p-6 h-full flex flex-col items-center justify-center min-h-[200px] text-center text-red-400">
+                <i data-lucide="alert-octagon" class="w-8 h-8 mb-2 opacity-80"></i>
+                <h3 class="text-sm font-bold mb-1">載入失敗</h3>
+                <p class="text-xs opacity-70 mb-4 px-2 line-clamp-2">${errorMsg}</p>
+                <button onclick="fetchPulseForSymbol('${symbol}', true)" class="text-xs bg-red-500/10 hover:bg-red-500/20 px-4 py-2 rounded-xl transition border border-red-500/20">
+                    重試
+                </button>
+            </div>
+        `;
+        lucide.createIcons();
+    }
 }
 
 /**
@@ -334,8 +367,11 @@ function showNewsList(symbol) {
     const data = currentPulseData[symbol]; if (!data || !data.news_sources) return;
     const modal = document.getElementById('news-modal');
     const listContent = document.getElementById('news-list-content');
-    document.getElementById('news-modal-symbol').innerText = symbol;
-    listContent.innerHTML = '';
+    
+    const symbolTitle = document.getElementById('news-modal-symbol');
+    if (symbolTitle) symbolTitle.innerText = symbol;
+    
+    if (listContent) listContent.innerHTML = '';
 
     if (!data.news_sources || data.news_sources.length === 0) {
         console.log("No news sources found for", symbol, data);
@@ -426,3 +462,23 @@ refreshMarketPulse = async function() {
     await originalRefreshMarketPulse();
     pollAnalysisProgress();
 };
+
+// Initialize pulse when tab becomes active
+if (typeof onTabSwitch === 'function') {
+    const originalOnTabSwitch = onTabSwitch;
+    onTabSwitch = function(tabId) {
+        if (originalOnTabSwitch) originalOnTabSwitch(tabId);
+        if (tabId === 'pulse') {
+            // Check pulse data when pulse tab is activated
+            setTimeout(() => checkMarketPulse(false, false), 500);
+        }
+    };
+} else {
+    // Define the function if it doesn't exist
+    window.onTabSwitch = function(tabId) {
+        if (tabId === 'pulse') {
+            // Check pulse data when pulse tab is activated
+            setTimeout(() => checkMarketPulse(false, false), 500);
+        }
+    };
+}

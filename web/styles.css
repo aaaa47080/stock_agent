@@ -300,3 +300,22 @@ select {
     -ms-overflow-style: none;
     scrollbar-width: none;
 }
+
+/* Price Flash Animation (WebSocket Updates) */
+@keyframes priceFlash {
+    0% { background-color: rgba(212, 182, 147, 0.3); }
+    100% { background-color: transparent; }
+}
+
+.price-flash {
+    animation: priceFlash 0.3s ease-out;
+    border-radius: 4px;
+}
+
+/* Ticker WebSocket Status Indicator */
+.ticker-ws-status {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    transition: background-color 0.3s;
+}

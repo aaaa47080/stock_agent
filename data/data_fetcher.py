@@ -4,9 +4,13 @@ import time
 import os
 from dotenv import load_dotenv
 from api.utils import logger
+from cachetools import TTLCache
 
 # Load environment variables from .env file
 load_dotenv()
+
+# Global cache for symbol lists (1 hour TTL)
+symbol_cache = TTLCache(maxsize=10, ttl=3600)
 
 class SymbolNotFoundError(Exception):
     """Custom exception for when a trading symbol is not found on the exchange."""
@@ -163,10 +167,16 @@ class BinanceDataFetcher:
 
     def get_all_symbols(self, quote_asset='USDT'):
         """Get all trading symbols quoted in the specified asset."""
+        cache_key = f"binance_all_symbols_{quote_asset}"
+        if cache_key in symbol_cache:
+            return symbol_cache[cache_key]
+
         endpoint = "/exchangeInfo"
         info = self._make_request(self.spot_base_url, endpoint)
         if info:
-            return [s['symbol'] for s in info['symbols'] if s['symbol'].endswith(quote_asset) and s['status'] == 'TRADING']
+            symbols = [s['symbol'] for s in info['symbols'] if s['symbol'].endswith(quote_asset) and s['status'] == 'TRADING']
+            symbol_cache[cache_key] = symbols
+            return symbols
         return []
 
     def get_historical_klines(self, symbol, interval, limit=1000, start_str=None):
@@ -279,48 +289,55 @@ class OkxDataFetcher:
         return interval_map.get(interval.lower(), '1D')
 
     def _make_request(self, endpoint, params=None):
-        """發送 HTTP 請求到 OKX API"""
+        """發送 HTTP 請求到 OKX API (With Retries)"""
         proxies = None
         https_proxy = os.getenv("HTTPS_PROXY")
         if https_proxy:
             proxies = {"http": https_proxy, "https": https_proxy}
             print(f"🕵️ 使用代理: {https_proxy}")
 
-        try:
-            # 處理 base_url 和 endpoint 的組合
-            # 檢查是否 base_url 已包含版本信息
-            if "/api/v5" in self.base_url:
-                # 如果 base_url 已包含版本信息，直接附加 endpoint
-                url = self.base_url + endpoint
-            else:
-                # 如果 base_url 沒有版本信息，添加 API 版本前綴
-                url = self.base_url + "/api/v5" + endpoint
+        # 處理 base_url 和 endpoint 的組合
+        if "/api/v5" in self.base_url:
+            url = self.base_url + endpoint
+        else:
+            url = self.base_url + "/api/v5" + endpoint
 
-            response = requests.get(url, params=params, timeout=20, proxies=proxies)
-            response.raise_for_status()
+        max_retries = 3
+        retry_delay = 1  # seconds
 
-            data = response.json()
+        for attempt in range(max_retries):
+            try:
+                response = requests.get(url, params=params, timeout=20, proxies=proxies)
+                response.raise_for_status()
 
-            # OKX API 返回格式: {"code":"0","msg":"","data":[...]}
-            if data.get('code') == '0':
-                return data.get('data', [])
-            else:
-                error_msg = data.get('msg', 'Unknown error')
-                print(f"OKX API 錯誤: {error_msg}")
-                return None
+                data = response.json()
 
-        except requests.exceptions.HTTPError as http_err:
-            if response.status_code == 400:
-                raise SymbolNotFoundError(f"Symbol not found on OKX: {params.get('instId', 'N/A')}") from http_err
-            print(f"HTTP error occurred: {http_err}")
-            return None
-        except requests.exceptions.ProxyError as proxy_err:
-            print(f"代理錯誤: 無法連接到代理伺服器 {https_proxy}。請檢查您的代理設定和網路。")
-            print(f"詳細錯誤: {proxy_err}")
-            return None
-        except requests.exceptions.RequestException as req_err:
-            print(f"Request error occurred: {req_err}")
-            return None
+                # OKX API 返回格式: {"code":"0","msg":"","data":[...]}
+                if data.get('code') == '0':
+                    return data.get('data', [])
+                else:
+                    error_msg = data.get('msg', 'Unknown error')
+                    print(f"OKX API 錯誤: {error_msg}")
+                    return None
+
+            except requests.exceptions.HTTPError as http_err:
+                if response.status_code == 400:
+                    raise SymbolNotFoundError(f"Symbol not found on OKX: {params.get('instId', 'N/A')}") from http_err
+                print(f"HTTP error occurred: {http_err} (Attempt {attempt+1}/{max_retries})")
+            except requests.exceptions.ProxyError as proxy_err:
+                print(f"代理錯誤: 無法連接到代理伺服器 {https_proxy}。請檢查您的代理設定和網路。")
+                print(f"詳細錯誤: {proxy_err}")
+                return None # Proxy errors usually don't resolve with simple retries
+            except requests.exceptions.RequestException as req_err:
+                print(f"Request error occurred: {req_err} (Attempt {attempt+1}/{max_retries})")
+            
+            # Wait before retrying (exponential backoff could be added here)
+            if attempt < max_retries - 1:
+                time.sleep(retry_delay)
+                retry_delay *= 2
+
+        print(f"❌ Failed to fetch data from OKX after {max_retries} attempts.")
+        return None
 
 
     def get_top_symbols(self, limit=30, quote_asset='USDT'):
@@ -353,6 +370,10 @@ class OkxDataFetcher:
 
     def get_all_symbols(self, quote_asset='USDT'):
         """Get all trading symbols quoted in the specified asset."""
+        cache_key = f"okx_all_symbols_{quote_asset}"
+        if cache_key in symbol_cache:
+            return symbol_cache[cache_key]
+
         endpoint = "/public/instruments"
         params = {'instType': 'SPOT'}
         print(f"Fetching all SPOT symbols from OKX, filtering by {quote_asset}...")
@@ -361,6 +382,7 @@ class OkxDataFetcher:
             # OKX usually has quoteCcy field, let's use it for better accuracy
             symbols = [s['instId'] for s in data if (s.get('quoteCcy') == quote_asset or s['instId'].endswith(f'-{quote_asset}')) and s.get('state') == 'live']
             print(f"OKX: Found {len(symbols)} symbols matching {quote_asset}")
+            symbol_cache[cache_key] = symbols
             return symbols
         print("OKX: Failed to retrieve symbols from instruments endpoint.")
         return []

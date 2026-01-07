@@ -1,6 +1,7 @@
 import asyncio
-from typing import Optional
-from fastapi import APIRouter, HTTPException, Header
+import json
+from typing import Optional, Set
+from fastapi import APIRouter, HTTPException, Header, WebSocket, WebSocketDisconnect
 
 from core.config import SUPPORTED_EXCHANGES
 from data.market_data import get_klines
@@ -29,13 +30,19 @@ from datetime import datetime
 router = APIRouter()
 
 @router.get("/api/market/symbols")
-async def get_market_symbols(exchange: str = "binance"):
+async def get_market_symbols(exchange: str = "okx"):
     """Get all available symbols for a given exchange."""
     logger.info(f"Requesting symbol list for exchange: {exchange}")
     try:
+        loop = asyncio.get_running_loop()
         from data.data_fetcher import get_data_fetcher
-        fetcher = get_data_fetcher(exchange)
-        symbols = fetcher.get_all_symbols()
+        
+        def fetch_task():
+            fetcher = get_data_fetcher(exchange)
+            return fetcher.get_all_symbols()
+
+        symbols = await loop.run_in_executor(None, fetch_task)
+        
         logger.info(f"Successfully fetched {len(symbols)} symbols from {exchange}")
         return {"symbols": symbols}
     except Exception as e:
@@ -154,18 +161,23 @@ async def get_klines_data(request: KlineRequest):
 
         klines = []
         for _, row in df.iterrows():
-            klines.append({
+            kline_data = {
                 "time": int(row['timestamp'].timestamp()) if hasattr(row['timestamp'], 'timestamp') else int(row['timestamp'] / 1000),
                 "open": float(row['open']),
                 "high": float(row['high']),
                 "low": float(row['low']),
                 "close": float(row['close'])
-            })
+            }
+            if 'volume' in row.index and row['volume'] is not None:
+                kline_data["volume"] = float(row['volume'])
+            klines.append(kline_data)
 
+        from datetime import datetime
         return {
             "symbol": request.symbol,
             "interval": request.interval,
-            "klines": klines
+            "klines": klines,
+            "updated_at": datetime.now().isoformat()
         }
     except HTTPException:
         raise
@@ -391,3 +403,322 @@ async def api_refresh_all_market_pulse(request: RefreshPulseRequest):
 async def get_market_pulse_progress():
     """Get the current status of background analysis task."""
     return ANALYSIS_STATUS
+
+
+# ========================================
+# WebSocket 即時 K 線數據
+# ========================================
+
+# 管理所有連接的 WebSocket 客戶端
+class KlineConnectionManager:
+    def __init__(self):
+        self.active_connections: Set[WebSocket] = set()
+        self.subscriptions: dict = {}  # websocket -> {symbol, interval}
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.add(websocket)
+        logger.info(f"WebSocket 客戶端連接，當前連接數: {len(self.active_connections)}")
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.discard(websocket)
+        if websocket in self.subscriptions:
+            del self.subscriptions[websocket]
+        logger.info(f"WebSocket 客戶端斷開，當前連接數: {len(self.active_connections)}")
+
+    def subscribe(self, websocket: WebSocket, symbol: str, interval: str):
+        self.subscriptions[websocket] = {"symbol": symbol, "interval": interval}
+        logger.info(f"客戶端訂閱: {symbol} {interval}")
+
+    def unsubscribe(self, websocket: WebSocket):
+        if websocket in self.subscriptions:
+            del self.subscriptions[websocket]
+
+    async def broadcast_kline(self, symbol: str, interval: str, kline: dict):
+        """向訂閱特定幣種/週期的客戶端廣播 K 線數據"""
+        for ws, sub in list(self.subscriptions.items()):
+            if sub["symbol"].upper() == symbol.upper() and sub["interval"] == interval:
+                try:
+                    await ws.send_json({
+                        "type": "kline",
+                        "symbol": symbol,
+                        "interval": interval,
+                        "data": kline
+                    })
+                except Exception as e:
+                    logger.error(f"廣播失敗: {e}")
+
+kline_manager = KlineConnectionManager()
+
+# OKX WebSocket 管理器
+okx_ws_started = False
+
+async def start_okx_websocket():
+    """啟動 OKX WebSocket 連接"""
+    global okx_ws_started
+    if okx_ws_started:
+        return
+
+    try:
+        from data.okx_websocket import okx_ws_manager
+        okx_ws_started = True
+        await okx_ws_manager.start()
+    except ImportError as e:
+        logger.error(f"無法導入 OKX WebSocket 模組: {e}")
+    except Exception as e:
+        logger.error(f"啟動 OKX WebSocket 失敗: {e}")
+
+@router.websocket("/ws/klines")
+async def websocket_klines(websocket: WebSocket):
+    """
+    WebSocket 端點，用於即時 K 線數據推送
+
+    客戶端訂閱格式:
+    {"action": "subscribe", "symbol": "BTC", "interval": "1m"}
+    {"action": "unsubscribe"}
+    """
+    await kline_manager.connect(websocket)
+
+    try:
+        from data.okx_websocket import okx_ws_manager
+
+        # 確保 OKX WebSocket 已啟動
+        asyncio.create_task(start_okx_websocket())
+
+        current_subscription = None
+
+        async def on_kline_update(symbol: str, interval: str, kline: dict):
+            """收到 OKX K 線更新時的回調"""
+            try:
+                await websocket.send_json({
+                    "type": "kline",
+                    "symbol": symbol,
+                    "interval": interval,
+                    "data": kline
+                })
+            except Exception:
+                pass
+
+        while True:
+            try:
+                # 接收客戶端消息
+                data = await websocket.receive_text()
+                message = json.loads(data)
+
+                action = message.get("action")
+
+                if action == "subscribe":
+                    symbol = message.get("symbol", "BTC").upper()
+                    interval = message.get("interval", "1m")
+
+                    # 取消之前的訂閱
+                    if current_subscription:
+                        old_symbol, old_interval = current_subscription
+                        await okx_ws_manager.unsubscribe(old_symbol, old_interval, on_kline_update)
+
+                    # 新訂閱
+                    kline_manager.subscribe(websocket, symbol, interval)
+                    await okx_ws_manager.subscribe(symbol, interval, on_kline_update)
+                    current_subscription = (symbol, interval)
+
+                    await websocket.send_json({
+                        "type": "subscribed",
+                        "symbol": symbol,
+                        "interval": interval
+                    })
+
+                elif action == "unsubscribe":
+                    if current_subscription:
+                        old_symbol, old_interval = current_subscription
+                        await okx_ws_manager.unsubscribe(old_symbol, old_interval, on_kline_update)
+                        current_subscription = None
+
+                    kline_manager.unsubscribe(websocket)
+                    await websocket.send_json({"type": "unsubscribed"})
+
+                elif action == "ping":
+                    await websocket.send_json({"type": "pong"})
+
+            except json.JSONDecodeError:
+                await websocket.send_json({"type": "error", "message": "Invalid JSON"})
+
+    except WebSocketDisconnect:
+        logger.info("WebSocket 客戶端主動斷開")
+    except Exception as e:
+        logger.error(f"WebSocket 錯誤: {e}")
+    finally:
+        # 清理訂閱
+        if current_subscription:
+            try:
+                from data.okx_websocket import okx_ws_manager
+                old_symbol, old_interval = current_subscription
+                await okx_ws_manager.unsubscribe(old_symbol, old_interval)
+            except:
+                pass
+        kline_manager.disconnect(websocket)
+
+
+# ========================================
+# WebSocket 即時 Ticker 數據 (Market Watch)
+# ========================================
+
+class TickerConnectionManager:
+    """管理 Ticker WebSocket 連接"""
+    def __init__(self):
+        self.active_connections: Set[WebSocket] = set()
+        self.subscribed_symbols: dict = {}  # websocket -> set of symbols
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.add(websocket)
+        self.subscribed_symbols[websocket] = set()
+        logger.info(f"Ticker WebSocket 客戶端連接，當前連接數: {len(self.active_connections)}")
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.discard(websocket)
+        if websocket in self.subscribed_symbols:
+            del self.subscribed_symbols[websocket]
+        logger.info(f"Ticker WebSocket 客戶端斷開，當前連接數: {len(self.active_connections)}")
+
+    def subscribe(self, websocket: WebSocket, symbols: list):
+        if websocket not in self.subscribed_symbols:
+            self.subscribed_symbols[websocket] = set()
+        self.subscribed_symbols[websocket].update(symbols)
+
+    def unsubscribe(self, websocket: WebSocket, symbols: list = None):
+        if websocket in self.subscribed_symbols:
+            if symbols:
+                self.subscribed_symbols[websocket] -= set(symbols)
+            else:
+                self.subscribed_symbols[websocket].clear()
+
+ticker_manager = TickerConnectionManager()
+
+# OKX Ticker WebSocket 狀態
+okx_ticker_ws_started = False
+
+async def start_okx_ticker_websocket():
+    """啟動 OKX Ticker WebSocket 連接"""
+    global okx_ticker_ws_started
+    if okx_ticker_ws_started:
+        logger.info("OKX Ticker WebSocket 已在運行中")
+        return
+
+    try:
+        from data.okx_websocket import okx_ticker_ws_manager
+        logger.info("正在啟動 OKX Ticker WebSocket...")
+        okx_ticker_ws_started = True
+        await okx_ticker_ws_manager.start()
+        logger.info("OKX Ticker WebSocket 啟動任務已創建")
+    except ImportError as e:
+        logger.error(f"無法導入 OKX Ticker WebSocket 模組: {e}")
+        okx_ticker_ws_started = False
+    except Exception as e:
+        logger.error(f"啟動 OKX Ticker WebSocket 失敗: {e}")
+        okx_ticker_ws_started = False
+
+@router.websocket("/ws/tickers")
+async def websocket_tickers(websocket: WebSocket):
+    """
+    WebSocket 端點，用於即時 Ticker 數據推送 (Market Watch)
+
+    客戶端訂閱格式:
+    {"action": "subscribe", "symbols": ["BTC", "ETH", "SOL"]}
+    {"action": "unsubscribe", "symbols": ["BTC"]}
+    {"action": "unsubscribe_all"}
+    """
+    await ticker_manager.connect(websocket)
+
+    try:
+        from data.okx_websocket import okx_ticker_ws_manager
+
+        # 確保 OKX Ticker WebSocket 已啟動
+        asyncio.create_task(start_okx_ticker_websocket())
+
+        current_callbacks = {}  # symbol -> callback
+
+        async def create_ticker_callback(symbol: str):
+            """為特定 symbol 創建回調函數"""
+            async def on_ticker_update(sym: str, ticker: dict):
+                try:
+                    await websocket.send_json({
+                        "type": "ticker",
+                        "symbol": symbol,
+                        "data": ticker
+                    })
+                except Exception:
+                    pass
+            return on_ticker_update
+
+        while True:
+            try:
+                data = await websocket.receive_text()
+                message = json.loads(data)
+
+                action = message.get("action")
+
+                if action == "subscribe":
+                    symbols = message.get("symbols", [])
+                    if isinstance(symbols, str):
+                        symbols = [symbols]
+
+                    logger.info(f"收到 Ticker 訂閱請求: {symbols}")
+
+                    # 訂閱每個 symbol
+                    for symbol in symbols:
+                        symbol = symbol.upper()
+                        if symbol not in current_callbacks:
+                            callback = await create_ticker_callback(symbol)
+                            current_callbacks[symbol] = callback
+                            await okx_ticker_ws_manager.subscribe(symbol, callback)
+                            logger.info(f"已訂閱 Ticker: {symbol}")
+
+                    ticker_manager.subscribe(websocket, symbols)
+                    await websocket.send_json({
+                        "type": "subscribed",
+                        "symbols": symbols
+                    })
+
+                elif action == "unsubscribe":
+                    symbols = message.get("symbols", [])
+                    if isinstance(symbols, str):
+                        symbols = [symbols]
+
+                    for symbol in symbols:
+                        symbol = symbol.upper()
+                        if symbol in current_callbacks:
+                            await okx_ticker_ws_manager.unsubscribe(symbol, current_callbacks[symbol])
+                            del current_callbacks[symbol]
+
+                    ticker_manager.unsubscribe(websocket, symbols)
+                    await websocket.send_json({
+                        "type": "unsubscribed",
+                        "symbols": symbols
+                    })
+
+                elif action == "unsubscribe_all":
+                    for symbol, callback in list(current_callbacks.items()):
+                        await okx_ticker_ws_manager.unsubscribe(symbol, callback)
+                    current_callbacks.clear()
+                    ticker_manager.unsubscribe(websocket)
+                    await websocket.send_json({"type": "unsubscribed_all"})
+
+                elif action == "ping":
+                    await websocket.send_json({"type": "pong"})
+
+            except json.JSONDecodeError:
+                await websocket.send_json({"type": "error", "message": "Invalid JSON"})
+
+    except WebSocketDisconnect:
+        logger.info("Ticker WebSocket 客戶端主動斷開")
+    except Exception as e:
+        logger.error(f"Ticker WebSocket 錯誤: {e}")
+    finally:
+        # 清理訂閱
+        try:
+            from data.okx_websocket import okx_ticker_ws_manager
+            for symbol, callback in current_callbacks.items():
+                await okx_ticker_ws_manager.unsubscribe(symbol, callback)
+        except:
+            pass
+        ticker_manager.disconnect(websocket)

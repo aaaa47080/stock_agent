@@ -369,8 +369,16 @@ def research_debate_node(state: AgentState) -> Dict:
 
     topic = topics[debate_round]
     print(f"\n[節點 3/7] 研究團隊辯論 - 第 {debate_round + 1} 輪：{topic}...")
+    
     if ENABLE_COMMITTEE_MODE:
         print(f"  >> [模式] 委員會模式已開啟，正在調動多個模型...")
+        # 🛡️ 委員會模式驗證
+        if not BULL_COMMITTEE_MODELS or not BEAR_COMMITTEE_MODELS:
+             raise ValueError("❌ 委員會模式已開啟，但未配置委員會成員模型。請在設定中添加模型或關閉委員會模式。")
+        
+        # 顯示當前配置
+        print(f"  >> 多頭委員會: {[m.get('model') for m in BULL_COMMITTEE_MODELS]}")
+        print(f"  >> 空頭委員會: {[m.get('model') for m in BEAR_COMMITTEE_MODELS]}")
 
     # 1. 準備合成器與中立研究員 (使用 SYNTHESIS_MODEL)
     synth_client, synth_model_name = create_llm_client_from_config(SYNTHESIS_MODEL)
@@ -509,16 +517,25 @@ def debate_router(state: AgentState) -> str:
 def debate_judgment_node(state: AgentState) -> Dict:
     """
     節點 3.5: 裁判進行最終裁決
-    ⭐ 使用用戶提供的 LLM client
+    ⭐ 使用 JUDGE_MODEL 配置
     """
+    from core.config import JUDGE_MODEL
+    from utils.llm_client import create_llm_client_from_config
+
     print(f"\n  >> [裁判裁決] 綜合交易委員會正在審核辯論表現...")
 
-    # ⭐ 使用用戶的 LLM client
-    user_client = state.get('user_llm_client')
-    if not user_client:
-        raise ValueError("❌ 缺少用戶 LLM client")
+    # 1. 嘗試使用 JUDGE_MODEL
+    try:
+        judge_client, _ = create_llm_client_from_config(JUDGE_MODEL)
+        print(f"  >> [裁判] 使用模型: {JUDGE_MODEL.get('model', 'default')}")
+    except Exception as e:
+        print(f"  >> [裁判] JUDGE_MODEL 初始化失敗 ({e})，回退至 User Client")
+        judge_client = state.get('user_llm_client')
 
-    judge = DebateJudge(user_client)
+    if not judge_client:
+        raise ValueError("❌ 缺少 Judge Client")
+
+    judge = DebateJudge(judge_client)
     
     debate_judgment = judge.judge(
         bull_argument=state['bull_argument'],

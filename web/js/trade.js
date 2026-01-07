@@ -5,16 +5,22 @@
 function showProposalModal(data) {
     currentProposal = data;
     const modal = document.getElementById('proposal-modal');
+    if (!modal) return;
 
-    document.getElementById('prop-symbol').innerText = data.symbol;
+    const propSymbol = document.getElementById('prop-symbol');
+    if (propSymbol) propSymbol.innerText = data.symbol;
 
     const sideEl = document.getElementById('prop-side');
-    sideEl.innerText = data.side.toUpperCase();
-    sideEl.className = `font-bold uppercase px-2 py-0.5 rounded text-xs ${['buy', 'long'].includes(data.side) ? 'bg-success/20 text-success' : 'bg-danger/20 text-danger'}`;
+    if (sideEl) {
+        sideEl.innerText = data.side.toUpperCase();
+        sideEl.className = `font-bold uppercase px-2 py-0.5 rounded text-xs ${['buy', 'long'].includes(data.side) ? 'bg-success/20 text-success' : 'bg-danger/20 text-danger'}`;
+    }
 
-    document.getElementById('prop-market').innerText = `${data.market_type === 'spot' ? '現貨' : '合約'} ${data.leverage > 1 ? '(' + data.leverage + 'x)' : ''}`;
+    const propMarket = document.getElementById('prop-market');
+    if (propMarket) propMarket.innerText = `${data.market_type === 'spot' ? '現貨' : '合約'} ${data.leverage > 1 ? '(' + data.leverage + 'x)' : ''}`;
 
     const amountInput = document.getElementById('prop-amount');
+    if (!amountInput) return;
 
     // Reset styles
     amountInput.classList.remove("border-yellow-500", "border-red-500", "border-white/10");
@@ -44,26 +50,32 @@ function showProposalModal(data) {
         warnEl = document.createElement('div');
         warnEl.id = 'prop-warning';
         warnEl.className = 'text-[10px] mt-1 font-bold';
-        amountInput.parentNode.appendChild(warnEl);
+        if (amountInput.parentNode) amountInput.parentNode.appendChild(warnEl);
     }
 
-    if (warningMsg) {
-        warnEl.innerText = warningMsg;
-        warnEl.className = 'text-[10px] mt-1 font-bold ' + (data.balance_status === 'zero' ? 'text-danger' : 'text-primary');
-        warnEl.style.display = 'block';
-        setTimeout(() => amountInput.focus(), 100);
-    } else {
-        warnEl.style.display = 'none';
+    if (warnEl) {
+        if (warningMsg) {
+            warnEl.innerText = warningMsg;
+            warnEl.className = 'text-[10px] mt-1 font-bold ' + (data.balance_status === 'zero' ? 'text-danger' : 'text-primary');
+            warnEl.style.display = 'block';
+            setTimeout(() => amountInput.focus(), 100);
+        } else {
+            warnEl.style.display = 'none';
+        }
     }
 
-    document.getElementById('prop-sl').value = data.stop_loss || '';
-    document.getElementById('prop-tp').value = data.take_profit || '';
+    const slInput = document.getElementById('prop-sl');
+    if (slInput) slInput.value = data.stop_loss || '';
+    
+    const tpInput = document.getElementById('prop-tp');
+    if (tpInput) tpInput.value = data.take_profit || '';
 
     modal.classList.remove('hidden');
 }
 
 function closeProposalModal() {
-    document.getElementById('proposal-modal').classList.add('hidden');
+    const modal = document.getElementById('proposal-modal');
+    if (modal) modal.classList.add('hidden');
 }
 
 async function confirmTradeExecution() {

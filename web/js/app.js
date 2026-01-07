@@ -107,22 +107,48 @@ function updateChatUIState(hasApiKey) {
 // 頁面加載時檢查 API key 狀態
 window.addEventListener('DOMContentLoaded', () => {
     checkApiKeyStatus();
-    // 每10秒更新一次狀態（檢測用戶是否輸入了 key）
+    // 立即觸發數據預加載，讓用戶切換分頁時「進去就有東西看」
+    refreshScreener(false);
+    // 每10秒檢查一次 API 狀態
     setInterval(checkApiKeyStatus, 10000);
 });
 
 
 // --- Global Filter Logic Variables ---
-let allMarketSymbols = [];
-let globalSelectedSymbols = []; // Unified selection
-let selectedNewsSources = ['google', 'cryptocompare', 'cryptopanic', 'newsapi']; // ✅ 固定使用所有新聞來源（不需要用戶選擇）
-let currentFilterExchange = 'okx';
+window.allMarketSymbols = [];
+window.globalSelectedSymbols = []; // Unified selection
+window.selectedNewsSources = ['google', 'cryptocompare', 'cryptopanic', 'newsapi']; // ✅ 固定使用所有新聞來源
+window.currentFilterExchange = 'okx';
 let isFirstLoad = true;
+
+// Committee Variables
+let tempBullModels = [];
+let tempBearModels = [];
+
+// API Key Validity Cache
+let validKeys = {
+    openai: false,
+    google_gemini: false,
+    openrouter: false
+};
+
+function updateProviderOptions() {
+    // Simple implementation to visually indicate valid keys in the dropdown
+    const select = document.getElementById('llm-provider-select');
+    if (!select) return;
+    
+    Array.from(select.options).forEach(opt => {
+        const provider = opt.value;
+        if (validKeys[provider]) {
+            if (!opt.text.includes('✅')) {
+                opt.text = `${opt.text} ✅`;
+            }
+        }
+    });
+}
 
 // Watchlist & Chart Variables
 let currentUserId = 'guest';
-let chart = null;
-let candleSeries = null;
 
 // Pulse Data Cache
 let currentPulseData = {};
@@ -177,7 +203,7 @@ function onTabSwitch(tab) {
     if (tab === 'market') {
         marketRefreshInterval = setInterval(() => {
             refreshScreener(false);
-        }, 1000);
+        }, 60000);
     }
 
     if (tab === 'pulse') {
@@ -199,120 +225,93 @@ window.onTabSwitch = onTabSwitch;
 // ========================================
 function updateUserId(uid) { currentUserId = uid || 'guest'; }
 
+/**
+ * 顯示全局錯誤提示 (Unified Error Display)
+ * @param {string} title - 錯誤標題
+ * @param {string} message - 錯誤詳情
+ * @param {boolean} isQuotaError - 是否為配額/額度不足錯誤
+ */
+window.showError = function(title, message, isQuotaError = false) {
+    // Check if modal exists, if not create it
+    let modal = document.getElementById('global-error-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'global-error-modal';
+        modal.className = 'fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm hidden';
+        modal.innerHTML = `
+            <div class="bg-surface border border-red-500/30 rounded-3xl w-[90%] max-w-md p-6 shadow-2xl transform transition-all scale-95 opacity-0" id="global-error-content">
+                <div class="flex items-center gap-3 mb-4 text-red-400">
+                    <i data-lucide="alert-triangle" class="w-8 h-8"></i>
+                    <h3 class="text-xl font-bold font-serif" id="global-error-title">Error</h3>
+                </div>
+                <div class="text-secondary/90 text-sm leading-relaxed mb-6" id="global-error-message"></div>
+                
+                <div id="quota-error-actions" class="hidden mb-4 bg-red-500/10 p-3 rounded-xl border border-red-500/20">
+                    <p class="text-xs text-red-300 mb-2">💡 建議解決方案:</p>
+                    <ul class="text-xs text-textMuted list-disc pl-4 space-y-1">
+                        <li>檢查 API Key 是否正確設定</li>
+                        <li>確認您的 Google/OpenAI 帳戶餘額是否充足</li>
+                        <li>嘗試切換其他 AI 提供商 (如 OpenRouter)</li>
+                    </ul>
+                    <button onclick="openSettings(); closeErrorModal()" class="mt-3 w-full py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg text-sm font-medium transition border border-red-500/30">
+                        前往設定檢查金鑰
+                    </button>
+                </div>
+
+                <div class="flex justify-end">
+                    <button onclick="closeErrorModal()" class="px-5 py-2 bg-surfaceHighlight hover:bg-white/10 text-white rounded-xl transition border border-white/10">
+                        關閉
+                    </button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        lucide.createIcons();
+    }
+
+    const titleEl = document.getElementById('global-error-title');
+    const msgEl = document.getElementById('global-error-message');
+    const quotaActions = document.getElementById('quota-error-actions');
+
+    titleEl.innerText = title;
+    msgEl.innerText = message || "發生未知錯誤";
+    
+    if (isQuotaError) {
+        quotaActions.classList.remove('hidden');
+    } else {
+        quotaActions.classList.add('hidden');
+    }
+
+    modal.classList.remove('hidden');
+    // Animation
+    setTimeout(() => {
+        const content = document.getElementById('global-error-content');
+        content.classList.remove('scale-95', 'opacity-0');
+        content.classList.add('scale-100', 'opacity-100');
+    }, 10);
+};
+
+window.closeErrorModal = function() {
+    const modal = document.getElementById('global-error-modal');
+    const content = document.getElementById('global-error-content');
+    if (modal && content) {
+        content.classList.remove('scale-100', 'opacity-100');
+        content.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 300);
+    }
+};
+
 function quickAsk(text) {
-    document.getElementById('user-input').value = text;
-    sendMessage();
-}
-
-// ========================================
-// Pi Network Authentication
-// ========================================
-if (Pi) {
-    Pi.init({ version: "2.0", sandbox: true });
-    Pi.authenticate(['username'], (payment) => {}).then(auth => {
-        const userEl = document.getElementById('pi-user');
-        userEl.innerHTML = `<span class="text-blue-400 font-medium">@${auth.user.username}</span>`;
-        userEl.classList.remove('hidden');
-        const settingsUserEl = document.getElementById('settings-user');
-        if (settingsUserEl) settingsUserEl.innerText = "@" + auth.user.username;
-        updateUserId(auth.user.uid || auth.user.username);
-    }).catch(err => console.error(err));
-}
-
-// ========================================
-// Settings Logic
-// ========================================
-
-// Local state for committee models and keys
-let tempBullModels = [];
-let tempBearModels = [];
-let validKeys = {
-    openai: false,
-    google_gemini: false,
-    openrouter: false
-};
-
-const keyInputMap = {
-    openai: 'set-openai-key',
-    google_gemini: 'set-google-key',
-    openrouter: 'set-openrouter-key'
-};
-
-async function verifyKey(provider) {
-    const inputId = keyInputMap[provider];
-    const key = document.getElementById(inputId).value.trim();
-    const statusEl = document.getElementById(`status-${provider}`);
-    
-    if (!key) {
-        // 如果是已保存的狀態（後端有 Key 但前端顯示為空），視為不需要重新驗證
-        // 但如果用戶想測試，必須輸入。這裡簡化：如果有 placeholder 暗示已設定，允許後端測試？
-        // 安全起見，這裡要求用戶必須輸入 Key 才能進行「主動驗證」
-        alert("請輸入 API Key 以進行驗證");
-        return;
-    }
-
-    statusEl.innerHTML = '<div class="spinner w-3 h-3 border-2 border-slate-500 border-t-blue-500 rounded-full inline-block"></div> 驗證中...';
-    
-    try {
-        const res = await fetch('/api/settings/validate-key', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ provider, api_key: key })
-        });
-        const result = await res.json();
-        
-        if (result.valid) {
-            statusEl.innerHTML = '<i data-lucide="check-circle" class="w-3 h-3 text-green-500 inline"></i> <span class="text-green-500">有效</span>';
-            validKeys[provider] = true;
-        } else {
-            statusEl.innerHTML = '<i data-lucide="x-circle" class="w-3 h-3 text-red-500 inline"></i> <span class="text-red-500">無效</span>';
-            validKeys[provider] = false;
-            alert(result.message);
-        }
-    } catch (e) {
-        statusEl.innerHTML = '<span class="text-red-500">錯誤</span>';
-        console.error(e);
-    }
-    
-    lucide.createIcons();
-    updateProviderOptions();
-}
-
-function resetKeyStatus(provider) {
-    validKeys[provider] = false;
-    const statusEl = document.getElementById(`status-${provider}`);
-    statusEl.innerHTML = '<i data-lucide="circle-dashed" class="w-3 h-3 text-slate-500 inline"></i> 未驗證';
-    lucide.createIcons();
-    updateProviderOptions();
-}
-
-function updateProviderOptions() {
-    const select = document.getElementById('set-model-provider');
-    const options = select.options;
-    
-    for (let i = 0; i < options.length; i++) {
-        const provider = options[i].value;
-        if (validKeys[provider]) {
-            options[i].disabled = false;
-            options[i].text = options[i].text.replace(' (需驗證)', '');
-        } else {
-            options[i].disabled = true;
-            if (!options[i].text.includes('(需驗證)')) {
-                options[i].text += ' (需驗證)';
-            }
-        }
-    }
-    
-    // 如果當前選中的被禁用了，嘗試切換到第一個可用的
-    if (select.selectedOptions.length > 0 && select.selectedOptions[0].disabled) {
-        for (let i = 0; i < options.length; i++) {
-            if (!options[i].disabled) {
-                select.selectedIndex = i;
-                break;
-            }
-        }
+    const input = document.getElementById('user-input');
+    if (input) {
+        input.value = text;
+        sendMessage();
     }
 }
+
+// ... existing code ...
 
 async function openSettings() {
     // Switch to settings tab
@@ -340,13 +339,16 @@ async function openSettings() {
         // Update Provider Select Options based on validity
         updateProviderOptions();
 
-        document.getElementById('set-committee-mode').checked = settings.enable_committee;
+        const committeeMode = document.getElementById('set-committee-mode');
+        if (committeeMode) committeeMode.checked = settings.enable_committee;
         
         if (settings.primary_model_provider) {
-             document.getElementById('set-model-provider').value = settings.primary_model_provider;
+             const providerSelect = document.getElementById('set-model-provider');
+             if (providerSelect) providerSelect.value = settings.primary_model_provider;
         }
         if (settings.primary_model_name) {
-            document.getElementById('set-model-name').value = settings.primary_model_name;
+            const nameInput = document.getElementById('set-model-name');
+            if (nameInput) nameInput.value = settings.primary_model_name;
         }
 
         // Initialize committee lists
@@ -465,6 +467,10 @@ window.setKeyValidity = function(provider, isValid) {
 
 async function saveSettings() {
     const btn = document.getElementById('btn-save-settings');
+    if (!btn) {
+        console.error('Save settings button not found');
+        return;
+    }
     const originalText = btn.innerHTML;
     btn.innerHTML = '<div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block"></div> Saving...';
     btn.disabled = true;
@@ -483,9 +489,9 @@ async function saveSettings() {
         google_api_key: null,
         openrouter_api_key: null,
 
-        enable_committee: document.getElementById('set-committee-mode').checked,
-        primary_model_provider: document.getElementById('set-model-provider').value,
-        primary_model_name: document.getElementById('set-model-name').value,
+        enable_committee: document.getElementById('set-committee-mode') ? document.getElementById('set-committee-mode').checked : false,
+        primary_model_provider: document.getElementById('llm-provider-select') ? document.getElementById('llm-provider-select').value : '',
+        primary_model_name: document.getElementById('set-model-name') ? document.getElementById('set-model-name').value : '',
 
         bull_committee_models: tempBullModels,
         bear_committee_models: tempBearModels
