@@ -10,26 +10,26 @@ function showProposalModal(data) {
 
     const sideEl = document.getElementById('prop-side');
     sideEl.innerText = data.side.toUpperCase();
-    sideEl.className = `font-bold uppercase px-2 py-0.5 rounded text-xs ${['buy', 'long'].includes(data.side) ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`;
+    sideEl.className = `font-bold uppercase px-2 py-0.5 rounded text-xs ${['buy', 'long'].includes(data.side) ? 'bg-success/20 text-success' : 'bg-danger/20 text-danger'}`;
 
     document.getElementById('prop-market').innerText = `${data.market_type === 'spot' ? '現貨' : '合約'} ${data.leverage > 1 ? '(' + data.leverage + 'x)' : ''}`;
 
     const amountInput = document.getElementById('prop-amount');
 
     // Reset styles
-    amountInput.classList.remove("border-yellow-500", "border-red-500", "border-slate-700");
-    amountInput.classList.add("border-slate-700");
+    amountInput.classList.remove("border-yellow-500", "border-red-500", "border-white/10");
+    amountInput.classList.add("border-white/10");
 
     let warningMsg = "";
 
     if (data.balance_status === "unknown") {
         amountInput.value = "";
         amountInput.placeholder = "請輸入金額";
-        amountInput.classList.replace("border-slate-700", "border-yellow-500");
+        amountInput.classList.replace("border-white/10", "border-primary/50");
         warningMsg = "⚠️ 未連結錢包/未獲取餘額，請手動輸入";
     } else if (data.balance_status === "zero") {
         amountInput.value = "0";
-        amountInput.classList.replace("border-slate-700", "border-red-500");
+        amountInput.classList.replace("border-white/10", "border-danger/50");
         warningMsg = "⚠️ 帳戶餘額為 0";
     } else {
         amountInput.value = data.amount;
@@ -49,7 +49,7 @@ function showProposalModal(data) {
 
     if (warningMsg) {
         warnEl.innerText = warningMsg;
-        warnEl.className = 'text-[10px] mt-1 font-bold ' + (data.balance_status === 'zero' ? 'text-red-400' : 'text-yellow-400');
+        warnEl.className = 'text-[10px] mt-1 font-bold ' + (data.balance_status === 'zero' ? 'text-danger' : 'text-primary');
         warnEl.style.display = 'block';
         setTimeout(() => amountInput.focus(), 100);
     } else {
@@ -138,9 +138,9 @@ async function runBacktest() {
         const data = await res.json();
         if (data.error) throw new Error(data.error);
         const isProfitable = data.return_pct > 0;
-        resultDiv.innerHTML = `<div class="flex justify-between items-center mb-2"><span class="font-bold text-white">${symbol} (${strategy})</span><span class="${isProfitable ? 'text-green-400' : 'text-red-400'} font-bold">${data.return_pct.toFixed(2)}%</span></div><div class="grid grid-cols-2 gap-2 text-xs text-slate-300"><div>勝率: <span class="text-white">${data.win_rate.toFixed(1)}%</span></div><div>交易次數: <span class="text-white">${data.total_trades}</span></div><div>最大回撤: <span class="text-red-400">${data.max_drawdown.toFixed(2)}%</span></div><div>淨利: <span class="${isProfitable ? 'text-green-400' : 'text-red-400'}">$${(data.final_capital - data.initial_capital).toFixed(2)}</span></div></div>`;
+        resultDiv.innerHTML = `<div class="flex justify-between items-center mb-2"><span class="font-bold text-secondary">${symbol} (${strategy})</span><span class="${isProfitable ? 'text-success' : 'text-danger'} font-bold">${data.return_pct.toFixed(2)}%</span></div><div class="grid grid-cols-2 gap-2 text-xs text-textMuted"><div>勝率: <span class="text-secondary">${data.win_rate.toFixed(1)}%</span></div><div>交易次數: <span class="text-secondary">${data.total_trades}</span></div><div>最大回撤: <span class="text-danger">${data.max_drawdown.toFixed(2)}%</span></div><div>淨利: <span class="${isProfitable ? 'text-success' : 'text-danger'}">$${(data.final_capital - data.initial_capital).toFixed(2)}</span></div></div>`;
     } catch (e) {
-        resultDiv.innerHTML = `<span class="text-red-400">回測失敗: ${e.message}</span>`;
+        resultDiv.innerHTML = `<span class="text-danger">回測失敗: ${e.message}</span>`;
     }
 }
 
@@ -167,15 +167,15 @@ async function showDebate(symbol) {
         const winnerBadge = document.getElementById('winner-badge');
         if (data.debate_judgment.winning_stance === 'Bull') {
             winnerBadge.textContent = '多頭勝出 🐂';
-            winnerBadge.className = 'px-3 py-1 bg-green-600/20 text-green-400 rounded-lg text-sm border border-green-600/50';
+            winnerBadge.className = 'px-3 py-1 bg-success/20 text-success rounded-lg text-sm border border-success/30';
         }
         else if (data.debate_judgment.winning_stance === 'Bear') {
             winnerBadge.textContent = '空頭勝出 🐻';
-            winnerBadge.className = 'px-3 py-1 bg-red-600/20 text-red-400 rounded-lg text-sm border border-red-600/50';
+            winnerBadge.className = 'px-3 py-1 bg-danger/20 text-danger rounded-lg text-sm border border-danger/30';
         }
         else {
             winnerBadge.textContent = '平局 ⚖️';
-            winnerBadge.className = 'px-3 py-1 bg-slate-600/20 text-slate-400 rounded-lg text-sm border border-slate-600/50';
+            winnerBadge.className = 'px-3 py-1 bg-surfaceHighlight text-textMuted rounded-lg text-sm border border-white/10';
         }
         bullArg.innerHTML = md.render(data.bull_argument.argument);
         bearArg.innerHTML = md.render(data.bear_argument.argument);
