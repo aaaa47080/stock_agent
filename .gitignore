@@ -55,6 +55,11 @@ user_data.db
 analysis_results/
 decisions/
 pattern_charts/
+interview/
+tests/
+reports/
+parallel_chats.db
+learn-ai/
 # *.pdf
 # reports/
 # backups/
