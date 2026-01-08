@@ -228,7 +228,7 @@ class FundamentalAnalyst:
 
         market_type = market_data.get('market_type', 'spot')
         leverage = market_data.get('leverage', 1)
-        exchange = market_data.get('exchange', 'binance')
+        exchange = market_data.get('exchange', 'okx')
         funding_rate_info = market_data.get('funding_rate_info', {})
 
         # 檢查是否存在多週期數據
@@ -1279,20 +1279,6 @@ CRYPTO_ASSISTANT_PROMPT = """你是一位專業的加密貨幣投資分析助手
 - 必要時提供補充說明
 - 使用表格和 Markdown 格式使回答更易讀
 - **最後必須附上參考資料連結** (如果有)
-
-## 範例對話
-
-**用戶**: BTC 現在多少錢？
-**助手**: [使用 get_crypto_price_tool] 返回價格資訊
-
-**用戶**: RSI 是多少？
-**助手**: [根據上下文知道是 BTC，使用 technical_analysis_tool] 返回技術分析
-
-**用戶**: 可以買嗎？
-**助手**: 「正在為您進行完整分析，請稍候...」[使用 full_investment_analysis_tool] 返回完整分析
-
-**用戶**: 什麼是布林帶？
-**助手**: [不需要工具，直接解釋布林帶的概念]
 
 現在，請根據用戶的問題，決定是否需要使用工具，並給出專業且友善的回應。
 """

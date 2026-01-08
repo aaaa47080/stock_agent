@@ -47,6 +47,15 @@ except ImportError as e:
     print(f"Warning: CryptoAgent not available: {e}")
     AGENT_AVAILABLE = False
 
+# 導入新的 Admin Agent 架構
+try:
+    from core.admin_agent import AdminAgent
+    from core.agent_registry import agent_registry
+    ADMIN_AGENT_AVAILABLE = True
+except ImportError as e:
+    print(f"Warning: AdminAgent not available: {e}")
+    ADMIN_AGENT_AVAILABLE = False
+
 load_dotenv()
 
 
@@ -69,63 +78,66 @@ class CryptoQueryParser:
         使用 LLM 解析用戶的自然語言查詢
         """
 
-        system_prompt = """你是一個專業的加密貨幣投資助手。你的任務是解析用戶的問題,提取以下資訊:
+        system_prompt = """你是一個智能任務分派員 (Dispatcher)。你的唯一任務是分析用戶的問題，並將其指派給最合適的 Agent 處理。
 
-1. 用戶意圖 (intent):
-   - "investment_analysis": **僅當**用戶詢問「投資建議」、「是否可以買賣」、「深度分析」、「未來走勢預測」或「完整評估」時使用。
-     例如：
-     * "BTC 可以投資嗎？" / "現在適合買 ETH 嗎？"
-     * "幫我深度分析 SOL" / "XXX 值得長期持有嗎？"
-     * "請給出交易策略"
-   - "general_question": 用於單純的資訊查詢、價格查詢、特定指標查詢、新聞查詢或知識性問題。**不要**觸發深度分析。
-     例如：
-     * "BTC 現在價格多少？" / "ETH 的 RSI 是多少？"
-     * "最近有什麼新聞？" / "什麼是區塊鏈？"
-     * "PI 幣怎麼挖？"
-   - "greeting": 打招呼
-   - "unclear": 意圖不明確
+請從以下三個 Agent 中選擇一個：
 
-2. 加密貨幣代號 (symbols): 從問題中提取所有提到的加密貨幣代號
-   - 常見轉換：比特幣->BTC, 以太坊->ETH, 派幣->PI
+1. **admin_agent (行政人員)**:
+   - 負責處理打招呼、閒聊、系統操作問題、一般性非金融問題。
+   - 範例: "你好", "你是誰", "這系統怎麼用", "早安", "謝謝"
 
-3. 動作 (action): "analyze", "compare", "chat"
+2. **market_data_agent (市場數據員)**:
+   - 負責處理淺層、具體的金融數據查詢。
+   - 包括：當前價格、特定技術指標 (RSI, MACD)、最近新聞、幣種介紹。
+   - 特點：不需要深度推理或投資建議，只需要數據。
+   - 範例: "BTC 價格", "ETH 的 RSI 是多少", "最近有什麼新聞", "什麼是 Solana"
 
-4. 關注領域 (focus): ["technical", "news", "fundamental", "sentiment"]
+3. **deep_research_agent (深度研究員)**:
+   - 負責處理複雜的投資分析、交易決策、多空辯論、趨勢預測。
+   - 特點：需要綜合多個指標、進行推理、給出買賣建議或策略。
+   - 範例: "BTC 可以買嗎", "幫我分析 ETH 走勢", "現在適合進場嗎", "給個交易策略", "深度分析 SOL"
 
-5. 是否需要交易決策 (requires_trade_decision): bool
-   **關鍵判斷**: 
-   - 只有當用戶明確尋求 **「買賣建議」** 或 **「投資判斷」** 時設為 true。
-   - 如果用戶只是問「價格」、「數據」或「新聞」，**必須**設為 false。
-   - 例子：
-     * "BTC 多少錢？" -> false
-     * "BTC 能買嗎？" -> true
+請提取以下資訊並以 JSON 格式回覆：
+- assigned_agent: "admin_agent" | "market_data_agent" | "deep_research_agent"
+- symbols: [提取的加密貨幣代號列表, e.g. "BTC", "ETH"]
+- user_question: 用戶的原始問題
+- intent: (為了兼容性保留) "greeting" | "general_question" | "investment_analysis" | "unclear"
+- requires_trade_decision: bool (如果指派給 deep_research_agent 則為 true，否則為 false)
+- clarity: "high" | "low"
+- clarification_question: (若 clarity 為 low，提供澄清問題)
+- suggested_options: (若 clarity 為 low，提供建議選項)
 
-6. 時間週期 (interval): 如 "15m", "4h", "1d"。無則 null。
-
-7. 意圖清晰度 (clarity): "high"/"low"
-
-8. 澄清問題 (clarification_question)
-
-9. 建議選項 (suggested_options)
-
-範例 1 (簡單查詢 -> 走快速通道):
-用戶: "BTC 現在價格多少？"
+範例 1:
+用戶: "BTC 現在多少錢？"
 {
-    "intent": "general_question",
+    "assigned_agent": "market_data_agent",
     "symbols": ["BTC"],
-    "action": "chat",
+    "intent": "general_question",
     "requires_trade_decision": false,
-    "user_question": "BTC 現在價格多少？"
+    "user_question": "BTC 現在多少錢？",
+    "clarity": "high"
 }
 
-範例 2 (投資分析 -> 走深度通道):
+範例 2:
 用戶: "BTC 可以投資嗎？"
 {
-    "intent": "investment_analysis",
+    "assigned_agent": "deep_research_agent",
     "symbols": ["BTC"],
-    "action": "analyze",
+    "intent": "investment_analysis",
     "requires_trade_decision": true,
-    "user_question": "BTC 可以投資嗎？"
+    "user_question": "BTC 可以投資嗎？",
+    "clarity": "high"
+}
+
+範例 3:
+用戶: "你好"
+{
+    "assigned_agent": "admin_agent",
+    "symbols": [],
+    "intent": "greeting",
+    "requires_trade_decision": false,
+    "user_question": "你好",
+    "clarity": "high"
 }
 """
         # 決定使用哪個 Client 和 Model
@@ -184,9 +196,10 @@ class CryptoQueryParser:
         funding_keywords = ['funding', 'rates', 'funding rate', 'funding rates', 'premium', 'paying', 'receiving', 'funding premium', 'funding cost']
         is_funding_query = any(keyword in user_message.lower() for keyword in funding_keywords)
 
-        # 如果是市場或資金費率查詢，返回一般問題，不提取幣種
+        # 市場或數據查詢 -> market_data_agent
         if is_market_query or is_funding_query:
             return {
+                "assigned_agent": "market_data_agent",
                 "intent": "general_question",
                 "symbols": [],
                 "action": "chat",
@@ -199,9 +212,10 @@ class CryptoQueryParser:
                 "suggested_options": None
             }
 
-        # 如果是分析查詢但沒有找到幣種，標記為不明確
+        # 分析相關但沒幣種 -> Unclear -> admin_agent (or let chat handle it)
         if is_analysis_query and not symbols:
             return {
+                "assigned_agent": "admin_agent",
                 "intent": "unclear",
                 "symbols": [],
                 "action": "chat",
@@ -219,11 +233,16 @@ class CryptoQueryParser:
                 ]
             }
 
-        # 如果沒有找到任何幣種，標記為一般問題
-        if not symbols:
+        # 有幣種，判斷是深度還是淺層
+        # 這裡做個簡單判斷：如果有 "buy", "sell", "invest" 等詞則為深度，否則為淺層
+        # deep_keywords = ['invest', 'buy', 'sell', 'strategy', 'long', 'short', 'future', 'prediction', 'should', 'worth']
+        # is_deep = any(k in user_message.lower() for k in deep_keywords)
+
+        if symbols:
             return {
+                "assigned_agent": "market_data_agent",
                 "intent": "general_question",
-                "symbols": [],
+                "symbols": symbols,
                 "action": "chat",
                 "focus": [],
                 "requires_trade_decision": False,
@@ -234,12 +253,14 @@ class CryptoQueryParser:
                 "suggested_options": None
             }
 
+        # 默認 -> admin_agent
         return {
-            "intent": "investment_analysis",
-            "symbols": symbols,
-            "action": "compare" if len(symbols) > 1 else "analyze",
-            "focus": ["technical", "sentiment", "fundamental", "news"],
-            "requires_trade_decision": True,
+            "assigned_agent": "admin_agent",
+            "intent": "greeting",
+            "symbols": [],
+            "action": "chat",
+            "focus": [],
+            "requires_trade_decision": False,
             "interval": None,
             "user_question": user_message,
             "clarity": "high",
@@ -260,36 +281,39 @@ def _crypto_cache_key(self, symbol, exchange=None, interval="1d", limit=100, acc
 class CryptoAnalysisBot:
     """加密貨幣分析聊天機器人"""
 
-    def __init__(self, use_agent: bool = True):
+    def __init__(self, use_agent: bool = True, use_admin_agent: bool = True):
         """
         初始化聊天機器人
 
         Args:
-            use_agent: 是否使用新的 ReAct Agent 模式
-                      True: 使用 LangChain Agent (支援完整對話 + 動態工具調用)
-                      False: 使用舊版固定流程
+            use_agent: 是否使用 ReAct Agent 模式（保留向後兼容）
+            use_admin_agent: 是否使用新的 Admin Agent 架構（推薦）
         """
         self.use_agent = use_agent and AGENT_AVAILABLE
+        self.use_admin_agent = use_admin_agent and ADMIN_AGENT_AVAILABLE
 
-        # 始終初始化解析器，用於混合模式判斷
+        # 始終初始化舊版解析器作為 fallback
         self.parser = CryptoQueryParser()
 
         # 始終初始化快取 (用於 find_available_exchange 等方法)
         self.cache = TTLCache(maxsize=100, ttl=300)
 
-        if self.use_agent:
-            # 新架構: 使用 ReAct Agent
+        if self.use_admin_agent:
+            # 新架構: 使用 Admin Agent 進行任務分派
+            print(">> 使用 Admin Agent 架構 (任務分派 + 會議討論)")
+        elif self.use_agent:
+            # 舊架構: 使用 ReAct Agent
             print(">> 使用 ReAct Agent 模式 (混合串流增強)")
             self.agent = CryptoAgent(verbose=False)
         else:
-            # 舊架構: 保持向後兼容
+            # 最舊架構: 保持向後兼容
             print(">> 使用傳統分析模式")
 
         self.chat_history = []
         self.supported_exchanges = SUPPORTED_EXCHANGES
-        self.last_symbol = None # 用於追蹤上下文
+        self.last_symbol = None  # 用於追蹤上下文
 
-    def normalize_symbol(self, symbol: str, exchange: str = "binance") -> str:
+    def normalize_symbol(self, symbol: str, exchange: str = "okx") -> str:
         """標準化交易對符號"""
         if not symbol: return ""
         symbol = symbol.upper().strip()
@@ -521,6 +545,59 @@ class CryptoAnalysisBot:
                 time.sleep(delay)
             yield "\n\n"
 
+        # ========================================================================
+        # 新架構: 使用 Admin Agent 進行任務分析和路由
+        # ========================================================================
+        if self.use_admin_agent and user_llm_client:
+            try:
+                # 創建 Admin Agent
+                admin = AdminAgent(
+                    user_llm_client=user_llm_client,
+                    user_provider=user_provider,
+                    verbose=False
+                )
+
+                # 分析任務
+                task = admin.analyze_task(user_message)
+
+                print(f"[AdminAgent] assigned_agent={task.assigned_agent}, is_complex={task.is_complex}, symbols={task.symbols}")
+
+                # 更新上下文
+                if task.symbols:
+                    self.last_symbol = task.symbols[0]
+
+                # 根據任務類型路由
+                if task.is_complex:
+                    # 複雜任務：使用 Planning Manager 拆分並並行執行
+                    yield from admin.route_complex_task(
+                        user_message,
+                        task,
+                        market_type=market_type,
+                        interval=interval,
+                        user_api_key=user_api_key,
+                        account_balance=None  # 可以從外部傳入
+                    )
+                else:
+                    # 簡單任務：直接路由到對應 Agent
+                    yield from admin.route_simple_task(
+                        task,
+                        user_message,
+                        market_type=market_type,
+                        interval=interval,
+                        user_api_key=user_api_key
+                    )
+                return
+
+            except Exception as e:
+                print(f"[AdminAgent] Error: {e}, falling back to legacy mode")
+                import traceback
+                traceback.print_exc()
+                # 降級到舊模式
+
+        # ========================================================================
+        # 舊架構: 使用 CryptoQueryParser（向後兼容）
+        # ========================================================================
+
         # 1. 嘗試解析意圖
         try:
             parsed = self.parser.parse_query(
@@ -532,6 +609,7 @@ class CryptoAnalysisBot:
                 parsed = {} # Fallback to empty dict to avoid NoneType error
             
             intent = parsed.get("intent", "general_question")
+            assigned_agent = parsed.get("assigned_agent", "admin_agent")
             symbols = parsed.get("symbols", [])
             requires_trade_decision = parsed.get("requires_trade_decision", False)
             clarity = parsed.get("clarity", "high")
@@ -557,14 +635,16 @@ class CryptoAnalysisBot:
                      base_last = self.last_symbol.replace("-USDT", "").replace("USDT", "")
                      symbols = [base_last]
 
-            # 2. 判斷是否觸發「完整投資分析直通車」
-            print(f"[DEBUG] intent={intent}, requires_trade_decision={requires_trade_decision}, symbols={symbols}")
-            if intent == "investment_analysis" and requires_trade_decision and symbols:
+            # 2. 根據指派的 Agent 進行路由
+            print(f"[DEBUG] assigned_agent={assigned_agent}, intent={intent}, symbols={symbols}")
+            
+            # === 路徑 A: Deep Research Agent (深度分析) ===
+            if assigned_agent == "deep_research_agent" and symbols:
                 symbol = symbols[0]
-                print(f"[DEBUG] 進入完整分析流程: {symbol}")
+                print(f"[DEBUG] 進入深度分析流程: {symbol}")
                 # 開始過程區塊 - 必須在所有 [PROCESS] 訊息之前發送
                 yield "[PROCESS_START]\n"
-                yield f"[PROCESS]🚀 正在為您啟動 {symbol} 的深度全方位分析...\n"
+                yield f"[PROCESS]🚀 正在啟動深度研究員 (Deep Research Agent) 對 {symbol} 進行全方位分析...\n"
 
                 try:
                     yield f"[PROCESS]🔍 正在查找交易所...\n"
@@ -825,6 +905,9 @@ class CryptoAnalysisBot:
         except Exception as e:
             print(f"解析意圖失敗: {e}")
 
+        # === 路徑 B & C: Fast Track (Admin Agent / Market Data Agent) ===
+        # 如果不是深度分析，或者解析失敗，或者 deep_research_agent 但沒有幣種
+        # 則進入快速通道，由單一 Agent (CryptoAgent) 處理
         if self.use_agent:
             try:
                 # 為了支持 BYOK，這裡需要根據用戶的 key 臨時創建一個 agent

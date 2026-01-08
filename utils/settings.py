@@ -15,6 +15,12 @@ class Settings:
     # ============================================
     # API 配置
     # ============================================
+    # 伺服器端 API Key（從 .env 讀取，不會被用戶覆蓋）
+    # 用於平台級功能：Market Pulse、新聞審查等公共報告
+    SERVER_OPENAI_API_KEY: str = os.getenv("SERVER_OPENAI_API_KEY", "") or os.getenv("OPENAI_API_KEY", "")
+
+    # 用戶端 API Key（可被用戶在 UI 中覆蓋）
+    # 用於用戶個人分析：深度投資分析、聊天等
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
     OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
@@ -48,7 +54,7 @@ class Settings:
     # ============================================================================
     # 數據獲取配置
     # ============================================================================
-    DEFAULT_EXCHANGE: str = "binance"   # 默認交易所
+    DEFAULT_EXCHANGE: str = "okx"   # 默認交易所
     DEFAULT_INTERVAL: str = "1d"        # 默認時間間隔
     DEFAULT_LIMIT: int = 100            # 默認數據條數
     NEWS_LIMIT: int = 5                 # 新聞獲取數量

@@ -358,8 +358,8 @@ async def update_screener_prices_fast():
         return
 
     try:
-        # 使用 Binance 因為 API 響應快 (或根據配置)
-        fetcher = get_data_fetcher("binance") 
+        # 使用 OKX 獲取最新價格 (Ticker)
+        fetcher = get_data_fetcher("okx") 
         
         # 收集所有需要更新的 Symbol
         symbols = set()
@@ -374,17 +374,23 @@ async def update_screener_prices_fast():
             return
 
         loop = asyncio.get_running_loop()
-        all_tickers = await loop.run_in_executor(None, lambda: fetcher._make_request(fetcher.spot_base_url, "/ticker/24hr"))
+        # OKX get_tickers returns a different structure, but Binance format is used in price_map
+        # We'll adapt it to use OKX's ticker structure
+        tickers_result = await loop.run_in_executor(None, lambda: fetcher._make_request(fetcher.market_base_url, "/market/tickers", params={"instType": "SPOT"}))
         
-        if not all_tickers:
+        if not tickers_result or tickers_result.get("code") != "0":
             return
+            
+        all_tickers = tickers_result.get("data", [])
 
         # 建立價格查找表 {symbol: {price, change_percent}}
         price_map = {}
         for t in all_tickers:
-            price_map[t['symbol']] = {
-                'price': float(t['lastPrice']),
-                'change': float(t['priceChangePercent'])
+            instId = t['instId'] # e.g. BTC-USDT
+            symbol_key = instId.replace("-", "") # BTCUSDT
+            price_map[symbol_key] = {
+                'price': float(t['last']),
+                'change': ((float(t['last']) - float(t['open24h'])) / float(t['open24h']) * 100) if float(t['open24h']) != 0 else 0
             }
 
         # 更新快取中的數據

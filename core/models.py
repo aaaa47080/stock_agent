@@ -2,6 +2,47 @@ from pydantic import BaseModel, Field
 from typing import Literal, List, Dict, Optional
 
 # ============================================================================
+# Admin Agent 任務分析模型
+# ============================================================================
+
+class TaskAnalysis(BaseModel):
+    """任務分析結果 - Admin Agent 使用"""
+    is_complex: bool = Field(..., description="是否為複雜任務")
+    complexity_reason: str = Field(default="", description="複雜度判斷原因")
+    assigned_agent: str = Field(..., description="指派的 Agent ID")
+    symbols: List[str] = Field(default_factory=list, description="提取的加密貨幣符號")
+    confidence: float = Field(default=0.8, ge=0, le=1, description="分析置信度")
+    original_question: str = Field(default="", description="用戶原始問題")
+
+
+class SubTask(BaseModel):
+    """子任務定義 - Planning Manager 使用"""
+    id: str = Field(..., description="子任務唯一 ID")
+    description: str = Field(..., description="任務描述")
+    assigned_agent: str = Field(..., description="指派的 Agent ID")
+    tools_hint: List[str] = Field(default_factory=list, description="建議使用的工具")
+    dependencies: List[str] = Field(default_factory=list, description="依賴的其他子任務 ID")
+    status: Literal["pending", "in_progress", "completed", "failed"] = Field(
+        default="pending", description="任務狀態"
+    )
+    result: Optional[str] = Field(default=None, description="任務執行結果")
+    symbol: Optional[str] = Field(default=None, description="相關的加密貨幣符號")
+    priority: int = Field(default=5, description="執行優先級（數字越小越優先）")
+
+
+class TaskPlan(BaseModel):
+    """任務規劃結果 - Planning Manager 使用"""
+    original_question: str = Field(..., description="原始用戶問題")
+    is_complex: bool = Field(default=False, description="是否為複雜任務")
+    complexity_reason: str = Field(default="", description="複雜度判斷原因")
+    subtasks: List[SubTask] = Field(default_factory=list, description="子任務列表")
+    execution_strategy: Literal["parallel", "sequential", "mixed", "direct"] = Field(
+        default="parallel", description="執行策略"
+    )
+    estimated_steps: int = Field(default=1, description="預估步驟數")
+
+
+# ============================================================================
 # Agent 角色定義
 # ============================================================================
 

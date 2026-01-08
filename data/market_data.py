@@ -8,9 +8,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 try:
     from core.config import SUPPORTED_EXCHANGES
 except ImportError:
-    SUPPORTED_EXCHANGES = ["binance", "okx"] # Fallback
+    SUPPORTED_EXCHANGES = ["okx"] # Fallback
 
-def get_klines(symbol: str, exchange: str = "binance", interval: str = "1d", limit: int = 100):
+def get_klines(symbol: str, exchange: str = "okx", interval: str = "1d", limit: int = 100):
     """
     Fetch historical klines for a given symbol.
     If the symbol is not found on the specified exchange, it tries other supported exchanges.

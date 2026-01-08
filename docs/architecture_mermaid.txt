@@ -1,272 +1,64 @@
-================================================================================
-                    Pi Crypto Insight - 系統架構 Mermaid 圖
-================================================================================
+graph TD
+    %% 樣式定義
+    classDef startNode fill:#00c853,stroke:#333,stroke-width:2px,color:white;
+    classDef processNode fill:#e1f5fe,stroke:#0277bd,stroke-width:2px;
+    classDef parallelNode fill:#fff9c4,stroke:#fbc02d,stroke-width:2px;
+    classDef decisionNode fill:#fce4ec,stroke:#c2185b,stroke-width:2px,shape:diamond;
+    classDef loopNode fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
+    classDef endNode fill:#424242,stroke:#333,stroke-width:2px,color:white;
 
-【1. 整體架構流程圖】
-
-```mermaid
-flowchart TB
-    subgraph Frontend["前端介面"]
-        UI[Gradio Web UI / API Server]
-        User((用戶))
+    %% 節點定義
+    Start([開始: prepare_data]) --> |準備市場數據 & 用戶設定| AnalystTeam[分析師團隊: run_analyst_team]
+    
+    subgraph Analyst_Phase [階段一：多維度分析]
+        direction TB
+        AnalystTeam --> |並行執行| Tech[技術分析師]
+        AnalystTeam --> |並行執行| Sent[情緒分析師]
+        AnalystTeam --> |並行執行| Fund[基本面分析師]
+        AnalystTeam --> |並行執行| News[新聞分析師]
     end
 
-    subgraph Agent["ReAct Agent 層"]
-        CA[CryptoAgent]
-        LLM[GPT-4o LLM]
+    Tech & Sent & Fund & News --> Router1{需要交易決策?}
+    
+    Router1 --> |否: 僅請求分析| EndNode([結束])
+    Router1 --> |是: 進入決策流程| DebateRound[研究辯論: run_research_debate]
 
-        subgraph Tools["工具集 @tool"]
-            T1[get_crypto_price_tool<br/>即時價格查詢]
-            T2[technical_analysis_tool<br/>純技術分析]
-            T3[news_analysis_tool<br/>新聞面分析]
-            T4[full_investment_analysis_tool<br/>完整投資分析]
-        end
+    subgraph Debate_Phase [階段二：觀點辯論與驗證]
+        direction TB
+        DebateRound --> |生成觀點| Bull[多頭研究員/委員會]
+        DebateRound --> |生成觀點| Bear[空頭研究員/委員會]
+        DebateRound --> |生成觀點| Neutral[中立研究員]
+        
+        Bull & Bear & Neutral --> FactCheck[數據檢察官: FactChecker]
+        FactCheck --> DebateCheck{繼續辯論?}
+        
+        DebateCheck --> |"輪次 < 3 且 無明顯勝者"| DebateRound
+        DebateCheck --> |"輪次 >= 3 或 勝負已分"| Judge[裁判裁決: run_debate_judgment]
     end
 
-    subgraph Backend["後端分析引擎"]
-        subgraph LangGraph["LangGraph 工作流"]
-            N1[prepare_data_node<br/>準備數據]
-            N2[analyst_team_node<br/>4位分析師並行]
-            N3[research_debate_node<br/>三方辯論]
-            N4[trader_decision_node<br/>交易決策]
-            N5[risk_management_node<br/>風險評估]
-            N6[fund_manager_node<br/>最終審批]
-        end
+    Judge --> |傳遞裁決結果| Trader[交易員決策: run_trader_decision]
 
-        subgraph DataLayer["數據層"]
-            DF[DataFetcher<br/>Binance/OKX]
-            IC[IndicatorCalculator<br/>技術指標計算]
-            NF[NewsFetcher<br/>新聞聚合]
-        end
+    subgraph Execution_Phase [階段三：決策與執行]
+        direction TB
+        Trader --> RiskMgr[風險管理: run_risk_management]
+        
+        RiskMgr --> RiskCheck{風險批准?}
+        
+        RiskCheck --> |"否 (且未達重試上限)"| Trader
+        RiskCheck --> |"是 (或已達上限)"| FundMgr[基金經理審批: run_fund_manager_approval]
+        
+        FundMgr --> Executor[交易執行: execute_trade_node]
     end
 
-    User -->|輸入問題| UI
-    UI -->|process_message| CA
-    CA -->|判斷意圖| LLM
-    LLM -->|選擇工具| Tools
+    Executor --> EndNode
 
-    T1 -->|調用| DF
-    T2 -->|調用| DF
-    T2 -->|調用| IC
-    T3 -->|調用| NF
-    T4 -->|調用| LangGraph
+    %% 樣式應用
+    class Start startNode;
+    class AnalystTeam,DebateRound,Judge,Trader,RiskMgr,FundMgr,Executor processNode;
+    class Tech,Sent,Fund,News,Bull,Bear,Neutral,FactCheck parallelNode;
+    class Router1,DebateCheck,RiskCheck decisionNode;
+    class EndNode endNode;
 
-    N1 --> N2
-    N2 --> N3
-    N3 --> N4
-    N4 --> N5
-    N5 -->|批准| N6
-    N5 -->|拒絕| N4
-
-    Tools -->|返回結果| LLM
-    LLM -->|生成回應| CA
-    CA -->|串流輸出| UI
-    UI -->|顯示結果| User
-```
-
-================================================================================
-
-【2. Agent 工具調用決策流程圖】
-
-```mermaid
-flowchart TD
-    Start([用戶輸入]) --> Parse[LLM 解析意圖]
-
-    Parse --> Q1{需要即時數據?}
-    Q1 -->|否| Direct[直接回答<br/>不調用工具]
-    Q1 -->|是| Q2{問題類型?}
-
-    Q2 -->|價格查詢| Price[get_crypto_price_tool]
-    Q2 -->|技術指標| Tech[technical_analysis_tool]
-    Q2 -->|新聞消息| News[news_analysis_tool]
-    Q2 -->|投資建議| Full[full_investment_analysis_tool]
-
-    Price -->|1-2秒| Result
-    Tech -->|3-5秒| Result
-    News -->|3-5秒| Result
-    Full -->|30秒-2分鐘| Result
-    Direct --> Result
-
-    Result[整合結果] --> Response[生成回應]
-    Response --> End([返回用戶])
-```
-
-================================================================================
-
-【3. 完整投資分析流程圖 (full_investment_analysis_tool)】
-
-```mermaid
-flowchart TB
-    subgraph Phase1["階段 1: 數據準備"]
-        P1[獲取 K 線數據]
-        P2[計算技術指標]
-        P3[獲取新聞資訊]
-        P4[多週期數據 1h/4h/1d]
-    end
-
-    subgraph Phase2["階段 2: 分析師團隊 (並行)"]
-        A1[技術分析師]
-        A2[情緒分析師]
-        A3[基本面分析師]
-        A4[新聞分析師]
-    end
-
-    subgraph Phase3["階段 3: 三方辯論"]
-        D1[多頭研究員 Bull]
-        D2[空頭研究員 Bear]
-        D3[中立研究員 Neutral]
-        D4[數據核查員 FactChecker]
-        D5[辯論裁判 Judge]
-    end
-
-    subgraph Phase4["階段 4: 決策審批"]
-        T[交易員決策]
-        R[風險管理評估]
-        F[基金經理審批]
-    end
-
-    P1 --> P2 --> P3 --> P4
-    P4 --> A1 & A2 & A3 & A4
-    A1 & A2 & A3 & A4 --> D1
-    D1 --> D2 --> D3
-    D3 --> D4 --> D5
-    D5 --> T --> R
-    R -->|批准| F
-    R -->|拒絕| T
-    F --> Result([最終報告])
-```
-
-================================================================================
-
-【4. 數據流向時序圖】
-
-```mermaid
-sequenceDiagram
-    participant U as 用戶
-    participant UI as Web UI
-    participant CA as CryptoAgent
-    participant LLM as GPT-4o
-    participant Tool as Tools
-    participant API as 交易所 API
-
-    U->>UI: "BTC 可以投資嗎？"
-    UI->>CA: process_message()
-    CA->>LLM: 解析意圖 + 選擇工具
-    LLM-->>CA: 調用 full_investment_analysis_tool
-
-    CA->>Tool: invoke tool
-    Tool->>API: 獲取 K 線數據
-    API-->>Tool: 返回數據
-
-    Note over Tool: 執行 LangGraph 工作流
-    Note over Tool: 4 位分析師並行分析
-    Note over Tool: 三方辯論
-    Note over Tool: 交易決策 + 風險評估
-
-    Tool-->>CA: 返回完整分析報告
-    CA->>LLM: 整理最終回應
-    LLM-->>CA: 生成回應文字
-    CA-->>UI: 串流輸出
-    UI-->>U: 顯示分析結果
-```
-
-================================================================================
-
-【5. 檔案結構依賴關係圖】
-
-```mermaid
-flowchart LR
-    subgraph Interfaces["interfaces/"]
-        CI[chat_interface.py]
-        AS[api_server.py]
-    end
-
-    subgraph Core["core/"]
-        AG[agent.py - CryptoAgent]
-        TL[tools.py - @tool 定義]
-        GR[graph.py - LangGraph 流程]
-        AGS[agents.py - 分析師類別]
-        MD[models.py - 數據模型]
-        CF[config.py - 配置]
-    end
-
-    subgraph Data["data/"]
-        DF[data_fetcher.py]
-        DP[data_processor.py]
-        IC[indicator_calculator.py]
-    end
-
-    AS --> CI
-    CI --> AG
-    AG --> TL
-    TL --> GR
-    TL --> DF
-    TL --> DP
-    GR --> AGS
-    GR --> DP
-    AGS --> MD
-    DP --> IC
-```
-
-================================================================================
-
-【6. 工具選擇策略圖】
-
-```mermaid
-flowchart TD
-    Input[用戶輸入] --> Analyze{分析問題類型}
-
-    Analyze -->|"現在多少錢?" "價格是多少?"| P[get_crypto_price_tool]
-    Analyze -->|"RSI 是多少?" "MACD 如何?" "趨勢?"| T[technical_analysis_tool]
-    Analyze -->|"最新新聞?" "有什麼消息?"| N[news_analysis_tool]
-    Analyze -->|"可以投資嗎?" "應該買嗎?" "完整分析"| F[full_investment_analysis_tool]
-    Analyze -->|"什麼是 RSI?" "你好" 一般問題| D[直接回答]
-
-    P -->|最快| R1[1-2 秒]
-    T -->|快| R2[3-5 秒]
-    N -->|快| R3[3-5 秒]
-    F -->|慢| R4[30秒-2分鐘]
-    D -->|即時| R5[即時]
-
-    R1 & R2 & R3 & R4 & R5 --> Output[返回結果]
-```
-
-================================================================================
-
-【工具速查表】
-
-+--------------------------------+------------+-------------+------------------+
-| 工具名稱                        | 功能       | 執行時間     | 調用場景         |
-+--------------------------------+------------+-------------+------------------+
-| get_crypto_price_tool          | 即時價格   | 1-2 秒      | 價格查詢         |
-| technical_analysis_tool        | 技術指標   | 3-5 秒      | RSI/MACD/趨勢    |
-| news_analysis_tool             | 新聞分析   | 3-5 秒      | 新聞/情緒        |
-| full_investment_analysis_tool  | 完整分析   | 30秒-2分鐘  | 投資建議         |
-| (無工具)                        | 直接回答   | 即時        | 知識問答/聊天    |
-+--------------------------------+------------+-------------+------------------+
-
-================================================================================
-
-【核心檔案說明】
-
-1. core/agents.py     - 包含所有 Agent 實作（分析師團隊、研究員團隊、交易員、風險管理、基金經理及 CryptoAgent）
-2. core/tools.py      - 定義 4 個 @tool 工具函數
-3. core/graph.py      - LangGraph 工作流定義 (7 個節點)
-4. core/agents.py     - 分析師類別 (技術/情緒/基本面/新聞)
-5. interfaces/chat_interface.py - Gradio 聊天介面
-6. api_server.py      - FastAPI 伺服器
-
-================================================================================
-
-【運作原理簡述】
-
-1. 用戶輸入問題
-2. CryptoAgent 將問題傳給 GPT-4o
-3. GPT-4o 判斷是否需要調用工具：
-   - 不需要 → 直接回答
-   - 需要 → 選擇適當的工具
-4. 工具執行後返回結果
-5. GPT-4o 整理結果生成最終回應
-6. 回應串流輸出給用戶
-
-================================================================================
+    %% 註解
+    click AnalystTeam "API調用與數據處理"
+    click DebateRound "LLM 辯論循環"

@@ -35,7 +35,7 @@ from api.services import (
     update_market_pulse_task,
     funding_rate_update_task
 )
-from api.routers import system, analysis, market, trading, user
+from api.routers import system, analysis, market, trading, user, agents
 
 # Core imports for initialization
 try:
@@ -108,6 +108,7 @@ app.include_router(analysis.router)
 app.include_router(market.router)
 app.include_router(trading.router)
 app.include_router(user.router)
+app.include_router(agents.router)  # Agent 管理 API
 
 # --- 靜態檔案與頁面 ---
 if os.path.exists("web"):

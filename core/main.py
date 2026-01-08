@@ -30,9 +30,8 @@ def main():
     )
     parser.add_argument("--symbol", type=str, default="BTCUSDT",
                        help="交易對符號 (例如: BTCUSDT, ETHUSDT)")
-    parser.add_argument("--exchange", type=str, default="binance",
-                       help="交易所 (binance 或 okx)")
-    parser.add_argument("--interval", type=str, default="1d",
+        parser.add_argument("--exchange", type=str, default="okx",
+                            help="交易所 (okx)")    parser.add_argument("--interval", type=str, default="1d",
                        choices=['1m', '3m', '5m', '15m', '30m',
                                '1h', '2h', '4h', '6h', '12h',
                                '1d', '3d', '1w', '1M'],

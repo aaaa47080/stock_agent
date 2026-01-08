@@ -219,9 +219,13 @@ class LLMClientFactory:
         優先級：動態 Settings > os.environ > .env
         """
         from utils.settings import Settings
-        
+
         if provider == "openai":
             return Settings.OPENAI_API_KEY or os.getenv("OPENAI_API_KEY", "")
+        elif provider == "openai_server":
+            # 伺服器端專用 key（不會被用戶覆蓋）
+            # 用於 Market Pulse、新聞審查等平台級功能
+            return Settings.SERVER_OPENAI_API_KEY or os.getenv("SERVER_OPENAI_API_KEY", "") or os.getenv("OPENAI_API_KEY", "")
         elif provider == "google_gemini":
             # 兼容 Google 官方 SDK 的變數名稱
             return os.getenv("GOOGLE_API_KEY") or getattr(Settings, "GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
@@ -434,18 +438,28 @@ def extract_json_from_response(response_text: str) -> dict:
     raise ValueError(f"無法從響應中提取有效的 JSON。響應前100個字符: {response_text[:100]}")
 
 
-def create_llm_client_from_config(config: Dict[str, str]) -> tuple:
+def create_llm_client_from_config(config: Dict[str, str], user_client: Any = None) -> tuple:
     """
     從配置創建 LLM 客戶端
 
     Args:
         config: 模型配置 {"provider": "...", "model": "..."}
+        user_client: 可選的用戶提供的 LLM 客戶端 (用於 provider="user_provided" 時)
 
     Returns:
         (client, model_name) 元組
     """
     provider = config.get("provider", "openai")
     model = config.get("model", "gpt-4o")
+
+    if provider == "user_provided":
+        if user_client:
+            return user_client, model
+        else:
+            # 如果沒有提供用戶客戶端，回退到 OpenAI (假設系統有默認 Key) 
+            # 或者拋出更明確的錯誤
+            print("Warning: Config specifies 'user_provided' but no user_client passed. Fallback to OpenAI.")
+            provider = "openai"
 
     client = LLMClientFactory.create_client(provider, model)
     return client, model

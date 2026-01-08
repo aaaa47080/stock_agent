@@ -367,6 +367,15 @@ def audit_crypto_news(symbol: str, news_list: List[Dict]) -> List[Dict]:
 
     from core.config import MARKET_PULSE_MODEL
     from utils.llm_client import create_llm_client_from_config
+    from utils.settings import Settings
+
+    # 檢查 API key 是否有效（基本格式驗證）
+    api_key = Settings.OPENAI_API_KEY or os.getenv("OPENAI_API_KEY", "")
+    if not api_key or not api_key.startswith("sk-") or len(api_key) < 20:
+        if not getattr(audit_crypto_news, '_has_warned', False):
+            logger.warning(f">> ⚠️ 新聞審查員跳過：未配置有效的 OpenAI API Key")
+            audit_crypto_news._has_warned = True
+        return news_list
 
     try:
         client, model = create_llm_client_from_config(MARKET_PULSE_MODEL)
