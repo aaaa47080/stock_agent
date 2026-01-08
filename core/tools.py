@@ -48,7 +48,7 @@ class TechnicalAnalysisInput(BaseModel):
     )
     exchange: Optional[str] = Field(
         default=None,
-        description="交易所名稱。選項: 'binance', 'okx'。如不指定，系統會自動選擇。"
+        description="交易所名稱。選項: 'okx' (預設), 'binance'。"
     )
 
 
@@ -91,7 +91,7 @@ class PriceInput(BaseModel):
     )
     exchange: Optional[str] = Field(
         default=None,
-        description="交易所名稱。選項: 'binance', 'okx'。"
+        description="交易所名稱。選項: 'okx' (預設), 'binance'。"
     )
 
 
@@ -99,7 +99,7 @@ class PriceInput(BaseModel):
 # 輔助函數
 # ============================================================================
 
-def _normalize_symbol(symbol: str, exchange: str = "binance") -> str:
+def _normalize_symbol(symbol: str, exchange: str = "okx") -> str:
     """標準化交易對符號"""
     if not symbol: return ""
     symbol = symbol.upper().strip()
@@ -115,10 +115,10 @@ def _normalize_symbol(symbol: str, exchange: str = "binance") -> str:
         base_symbol = base_symbol[:-3]
 
     # 2. 根據交易所格式化
-    if exchange.lower() == "okx":
-        return f"{base_symbol}-USDT"
-    else:  # binance
+    if exchange.lower() == "binance":
         return f"{base_symbol}USDT"
+    else:  # okx (default)
+        return f"{base_symbol}-USDT"
 
 
 def _find_available_exchange(symbol: str) -> tuple:
@@ -812,8 +812,62 @@ def get_crypto_tools() -> List:
         news_analysis_tool,
         full_investment_analysis_tool,
         explain_market_movement_tool,
-        backtest_strategy_tool, # 新增
+        backtest_strategy_tool,
     ]
+
+
+# ============================================================================
+# 工具名稱映射（用於 Agent Registry）
+# ============================================================================
+
+# 工具名稱到工具對象的映射
+TOOL_MAP = {
+    "get_crypto_price_tool": get_crypto_price_tool,
+    "technical_analysis_tool": technical_analysis_tool,
+    "news_analysis_tool": news_analysis_tool,
+    "full_investment_analysis_tool": full_investment_analysis_tool,
+    "explain_market_movement_tool": explain_market_movement_tool,
+    "backtest_strategy_tool": backtest_strategy_tool,
+}
+
+
+def get_tools_by_names(tool_names: List[str]) -> List:
+    """
+    根據工具名稱列表獲取工具對象
+
+    Args:
+        tool_names: 工具名稱列表，如 ["get_crypto_price_tool", "technical_analysis_tool"]
+
+    Returns:
+        對應的工具對象列表
+
+    Example:
+        tools = get_tools_by_names(["get_crypto_price_tool", "news_analysis_tool"])
+    """
+    return [TOOL_MAP[name] for name in tool_names if name in TOOL_MAP]
+
+
+def get_available_tool_names() -> List[str]:
+    """
+    獲取所有可用工具的名稱列表
+
+    Returns:
+        工具名稱列表
+    """
+    return list(TOOL_MAP.keys())
+
+
+def get_tool_by_name(tool_name: str):
+    """
+    根據名稱獲取單個工具對象
+
+    Args:
+        tool_name: 工具名稱
+
+    Returns:
+        工具對象或 None
+    """
+    return TOOL_MAP.get(tool_name)
 
 
 # ============================================================================

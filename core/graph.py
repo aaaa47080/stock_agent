@@ -381,7 +381,7 @@ def research_debate_node(state: AgentState) -> Dict:
         print(f"  >> 空頭委員會: {[m.get('model') for m in BEAR_COMMITTEE_MODELS]}")
 
     # 1. 準備合成器與中立研究員 (使用 SYNTHESIS_MODEL)
-    synth_client, synth_model_name = create_llm_client_from_config(SYNTHESIS_MODEL)
+    synth_client, synth_model_name = create_llm_client_from_config(SYNTHESIS_MODEL, user_client=user_client)
     synthesizer = CommitteeSynthesizer(synth_client, synth_model_name)
     neutral_researcher = NeutralResearcher(synth_client, synth_model_name)
     fact_checker = DataFactChecker(client)
@@ -404,7 +404,7 @@ def research_debate_node(state: AgentState) -> Dict:
         with ThreadPoolExecutor(max_workers=len(BULL_COMMITTEE_MODELS)) as executor:
             futures = []
             for cfg in BULL_COMMITTEE_MODELS:
-                c, m = create_llm_client_from_config(cfg)
+                c, m = create_llm_client_from_config(cfg, user_client=user_client)
                 researcher = BullResearcher(c, m)
                 futures.append(executor.submit(researcher.debate, analyst_reports, opponents_for_bull, debate_round+1, topic))
             
@@ -421,7 +421,7 @@ def research_debate_node(state: AgentState) -> Dict:
         bull_argument = synthesizer.synthesize_committee_views('Bull', bull_committee_args, analyst_reports)
     else:
         # 單一模型模式
-        bull_client, bull_model = create_llm_client_from_config(BULL_RESEARCHER_MODEL)
+        bull_client, bull_model = create_llm_client_from_config(BULL_RESEARCHER_MODEL, user_client=user_client)
         bull_researcher = BullResearcher(bull_client, bull_model)
         bull_argument = bull_researcher.debate(analyst_reports, opponents_for_bull, debate_round+1, topic)
 
@@ -438,7 +438,7 @@ def research_debate_node(state: AgentState) -> Dict:
         with ThreadPoolExecutor(max_workers=len(BEAR_COMMITTEE_MODELS)) as executor:
             futures = []
             for cfg in BEAR_COMMITTEE_MODELS:
-                c, m = create_llm_client_from_config(cfg)
+                c, m = create_llm_client_from_config(cfg, user_client=user_client)
                 researcher = BearResearcher(c, m)
                 futures.append(executor.submit(researcher.debate, analyst_reports, opponents_for_bear, debate_round+1, topic))
             
@@ -455,7 +455,7 @@ def research_debate_node(state: AgentState) -> Dict:
         bear_argument = synthesizer.synthesize_committee_views('Bear', bear_committee_args, analyst_reports)
     else:
         # 單一模型模式
-        bear_client, bear_model = create_llm_client_from_config(BEAR_RESEARCHER_MODEL)
+        bear_client, bear_model = create_llm_client_from_config(BEAR_RESEARCHER_MODEL, user_client=user_client)
         bear_researcher = BearResearcher(bear_client, bear_model)
         bear_argument = bear_researcher.debate(analyst_reports, opponents_for_bear, debate_round+1, topic)
 
@@ -524,13 +524,16 @@ def debate_judgment_node(state: AgentState) -> Dict:
 
     print(f"\n  >> [裁判裁決] 綜合交易委員會正在審核辯論表現...")
 
+    # ⭐ 使用用戶的 LLM client
+    user_client = state.get('user_llm_client')
+
     # 1. 嘗試使用 JUDGE_MODEL
     try:
-        judge_client, _ = create_llm_client_from_config(JUDGE_MODEL)
+        judge_client, _ = create_llm_client_from_config(JUDGE_MODEL, user_client=user_client)
         print(f"  >> [裁判] 使用模型: {JUDGE_MODEL.get('model', 'default')}")
     except Exception as e:
         print(f"  >> [裁判] JUDGE_MODEL 初始化失敗 ({e})，回退至 User Client")
-        judge_client = state.get('user_llm_client')
+        judge_client = user_client
 
     if not judge_client:
         raise ValueError("❌ 缺少 Judge Client")
