@@ -2,256 +2,173 @@
 
 ## 1. 整體架構流程
 
+本系統採用現代化的前後端分離架構，前端為 Mobile-First 的響應式 Web App (Pi Browser 相容)，後端為基於 FastAPI 的高效能非同步伺服器。
+
 ```mermaid
 flowchart TB
-    subgraph Frontend["前端介面"]
-        UI[Gradio Web UI / API Server]
+    subgraph Frontend["前端 (Web/Mobile)"]
+        UI[HTML5 + TailwindCSS + JS]
+        SSE[Server-Sent Events (串流接收)]
+        Chart[Lightweight Charts (K線圖)]
         User((用戶))
     end
 
-    subgraph Agent["ReAct Agent 層"]
-        CA[CryptoAgent]
-        LLM[GPT-4o LLM]
+    subgraph Backend["API Server (FastAPI)"]
+        API[api_server.py]
+        Router[API Routers]
+        WS[WebSocket Manager]
+    end
 
-        subgraph Tools["工具集 @tool"]
-            T1[get_crypto_price_tool<br/>即時價格查詢]
-            T2[technical_analysis_tool<br/>純技術分析]
-            T3[news_analysis_tool<br/>新聞面分析]
-            T4[full_investment_analysis_tool<br/>完整投資分析]
+    subgraph AgentLayer["智慧代理層 (ReAct + LangGraph)"]
+        Bot[CryptoAnalysisBot]
+        LLM[LLM Client (GPT-4o/Gemini/Claude)]
+        
+        subgraph Tools["工具集 (@tool)"]
+            T1[get_crypto_price_tool<br/>即時價格]
+            T2[technical_analysis_tool<br/>技術指標]
+            T3[news_analysis_tool<br/>新聞情緒]
+            T4[full_investment_analysis_tool<br/>深度分析流程]
+        end
+
+        subgraph Workflow["LangGraph 深度分析引擎"]
+            N1[準備數據] --> N2[分析師團隊]
+            N2 --> N3[三方辯論]
+            N3 --> N4[交易決策]
+            N4 --> N5[風險控管]
         end
     end
 
-    subgraph Backend["後端分析引擎"]
-        subgraph LangGraph["LangGraph 工作流"]
-            N1[prepare_data_node<br/>準備數據]
-            N2[analyst_team_node<br/>4位分析師並行]
-            N3[research_debate_node<br/>三方辯論]
-            N4[trader_decision_node<br/>交易決策]
-            N5[risk_management_node<br/>風險評估]
-            N6[fund_manager_node<br/>最終審批]
-        end
-
-        subgraph DataLayer["數據層"]
-            DF[DataFetcher<br/>Binance/OKX]
-            IC[IndicatorCalculator<br/>技術指標計算]
-            NF[NewsFetcher<br/>新聞聚合]
-        end
+    subgraph DataServices["數據服務層"]
+        Screener[Crypto Screener<br/>背景篩選]
+        Pulse[Market Pulse<br/>市場脈動]
+        Data[Data Fetcher<br/>(OKX/Binance)]
     end
 
-    User -->|輸入問題| UI
-    UI -->|process_message| CA
-    CA -->|判斷意圖| LLM
-    LLM -->|選擇工具| Tools
-
-    T1 -->|調用| DF
-    T2 -->|調用| DF
-    T2 -->|調用| IC
-    T3 -->|調用| NF
-    T4 -->|調用| LangGraph
-
-    N1 --> N2
-    N2 --> N3
-    N3 --> N4
-    N4 --> N5
-    N5 -->|批准| N6
-    N5 -->|拒絕| N4
-
-    Tools -->|返回結果| LLM
-    LLM -->|生成回應| CA
-    CA -->|串流輸出| UI
-    UI -->|顯示結果| User
+    User -->|HTTP/REST| UI
+    UI -->|POST /api/analyze| API
+    UI -->|GET /api/market/ticker| WS
+    
+    API --> Router
+    Router -->|分析請求| Bot
+    
+    Bot -->|Prompt| LLM
+    LLM -->|Tool Call| Tools
+    
+    T1 & T2 --> Data
+    T3 --> Data
+    T4 -->|Invoke| Workflow
+    
+    Workflow -->|Result| Bot
+    Bot -->|Streaming Response| SSE
+    SSE -->|Update UI| UI
 ```
 
-## 2. Agent 工具調用決策流程
+## 2. 核心組件說明
 
-```mermaid
-flowchart TD
-    Start([用戶輸入]) --> Parse[LLM 解析意圖]
+### 前端 (Frontend)
+- **技術棧**: 原生 HTML5, Tailwind CSS, Vanilla JavaScript (無大型框架依賴，輕量化)。
+- **特色**: 
+  - **Mobile-First**: 專為 Pi Browser 及行動裝置優化。
+  - **Pi Design**: 深色模式 (Dark Mode)，符合 Pi Network 設計語言。
+  - **即時性**: 使用 `EventSource` 接收 AI 打字機效果回應，WebSocket 接收即時行情。
 
-    Parse --> Q1{需要即時數據?}
-    Q1 -->|否| Direct[直接回答<br/>不調用工具]
-    Q1 -->|是| Q2{問題類型?}
+### 後端 (Backend API)
+- **核心**: Python FastAPI，提供 REST API 與 WebSocket 服務。
+- **模組化路由 (`api/routers/`)**:
+  - `analysis.py`: 處理 AI 對話與深度分析請求 (Streaming)。
+  - `market.py`: 提供市場數據、K線數據、篩選器結果。
+  - `agents.py`: Agent 的 CRUD 管理與配置。
+  - `system.py`: 系統健康狀態與配置。
 
-    Q2 -->|價格查詢| Price[get_crypto_price_tool]
-    Q2 -->|技術指標| Tech[technical_analysis_tool]
-    Q2 -->|新聞消息| News[news_analysis_tool]
-    Q2 -->|投資建議| Full[full_investment_analysis_tool]
+### 智慧代理層 (Agent Layer)
+- **Orchestrator**: `CryptoAnalysisBot` (位於 `interfaces/chat_interface.py`) 負責接收用戶訊息，維護對話歷史，並調用 LLM。
+- **ReAct 模式**: LLM 根據用戶問題動態選擇工具 (價格查詢、技術分析、新聞、或深度報告)。
+- **Deep Dive**: 當用戶要求「完整分析」時，觸發 `full_investment_analysis_tool`，進入 LangGraph 定義的複雜工作流。
 
-    Price -->|1-2秒| Result
-    Tech -->|3-5秒| Result
-    News -->|3-5秒| Result
-    Full -->|30秒-2分鐘| Result
-    Direct --> Result
+## 3. 完整投資分析流程 (LangGraph)
 
-    Result[整合結果] --> Response[生成回應]
-    Response --> End([返回用戶])
-
-    style Price fill:#90EE90
-    style Tech fill:#87CEEB
-    style News fill:#DDA0DD
-    style Full fill:#FFB6C1
-    style Direct fill:#F0E68C
-```
-
-## 3. 完整投資分析流程 (full_investment_analysis_tool)
+當調用 `full_investment_analysis_tool` 時，系統執行以下並行與序列任務：
 
 ```mermaid
 flowchart TB
-    subgraph Phase1["階段 1: 數據準備"]
-        P1[獲取 K 線數據]
-        P2[計算技術指標]
-        P3[獲取新聞資訊]
-        P4[多週期數據<br/>1h/4h/1d]
+    subgraph Phase1["階段 1: 數據聚合"]
+        D1[OHLCV K線數據]
+        D2[技術指標計算 (RSI, MACD, BB)]
+        D3[新聞與社群情緒]
     end
 
-    subgraph Phase2["階段 2: 分析師團隊 (並行)"]
-        A1[技術分析師<br/>Technical]
-        A2[情緒分析師<br/>Sentiment]
-        A3[基本面分析師<br/>Fundamental]
-        A4[新聞分析師<br/>News]
+    subgraph Phase2["階段 2: 平行分析 (Committee)"]
+        A1[技術分析師]
+        A2[基本面分析師]
+        A3[情緒分析師]
+        A4[新聞分析師]
     end
 
-    subgraph Phase3["階段 3: 三方辯論"]
-        D1[多頭研究員<br/>Bull]
-        D2[空頭研究員<br/>Bear]
-        D3[中立研究員<br/>Neutral]
-        D4[數據核查員<br/>FactChecker]
-        D5[辯論裁判<br/>Judge]
+    subgraph Phase3["階段 3: 辯論與決策"]
+        Bull[多頭代表]
+        Bear[空頭代表]
+        Judge[裁判官]
+        Decision[最終投資建議]
     end
 
-    subgraph Phase4["階段 4: 決策審批"]
-        T[交易員決策]
-        R[風險管理評估]
-        F[基金經理審批]
-    end
-
-    P1 --> P2 --> P3 --> P4
-    P4 --> A1 & A2 & A3 & A4
-
-    A1 & A2 & A3 & A4 --> D1
-    D1 --> D2 --> D3
-    D3 --> D4 --> D5
-
-    D5 --> T --> R
-    R -->|批准| F
-    R -->|拒絕| T
-    F --> Result([最終報告])
+    D1 & D2 & D3 --> A1 & A2 & A3 & A4
+    A1 & A2 & A3 & A4 --> Bull & Bear
+    Bull <--> Bear
+    Bull & Bear --> Judge
+    Judge --> Decision
 ```
 
-## 4. 檔案結構與依賴關係
+## 4. 檔案結構映射
 
 ```mermaid
 flowchart LR
-    subgraph Interfaces["interfaces/"]
-        CI[chat_interface.py]
-        AS[api_server.py]
+    subgraph Root["/"]
+        Main[api_server.py<br/>程式入口]
+        
+        subgraph API["api/"]
+            R[routers/<br/>路由定義]
+            S[services.py<br/>業務邏輯]
+        end
+
+        subgraph Core["core/"]
+            Conf[config.py]
+            Graph[graph.py<br/>LangGraph定義]
+            Tools[tools.py<br/>工具函式]
+            Reg[agent_registry.py]
+        end
+        
+        subgraph Web["web/"]
+            HTML[index.html]
+            JS[js/<br/>前端邏輯]
+            CSS[styles.css]
+        end
+        
+        subgraph Data["data/"]
+            Fetch[data_fetcher.py]
+            Calc[indicator_calculator.py]
+        end
     end
 
-    subgraph Core["core/"]
-        AG[agent.py<br/>CryptoAgent]
-        TL[tools.py<br/>@tool 定義]
-        GR[graph.py<br/>LangGraph 流程]
-        AGS[agents.py<br/>分析師類別]
-        MD[models.py<br/>數據模型]
-        CF[config.py<br/>配置]
-    end
-
-    subgraph Data["data/"]
-        DF[data_fetcher.py]
-        DP[data_processor.py]
-        IC[indicator_calculator.py]
-    end
-
-    subgraph Utils["utils/"]
-        UT[utils.py<br/>新聞聚合]
-        LC[llm_client.py]
-    end
-
-    AS --> CI
-    CI --> AG
-    AG --> TL
-    TL --> GR
-    TL --> DF
-    TL --> DP
-    GR --> AGS
-    GR --> DP
-    AGS --> MD
-    DP --> IC
-    DP --> UT
-    AGS --> LC
-
-    style AG fill:#FFD700
-    style TL fill:#98FB98
-    style GR fill:#87CEFA
+    Main --> API
+    Main --> Web
+    API --> Core
+    API --> Data
+    Core --> Data
 ```
 
-## 5. 數據流向
+## 5. 數據流與回應機制
 
-```mermaid
-sequenceDiagram
-    participant U as 用戶
-    participant UI as Web UI
-    participant CA as CryptoAgent
-    participant LLM as GPT-4o
-    participant Tool as Tools
-    participant API as 交易所 API
+1.  **用戶輸入**: "分析 BTC 趨勢"
+2.  **API 接收**: `/api/analyze` 接收請求 (包含用戶 API Key 配置)。
+3.  **Bot 處理**: 
+    - LLM 判斷意圖 -> 調用 `technical_analysis_tool`。
+    - 工具執行 -> 調用 `data_fetcher` 獲取 OKX 數據 -> `indicator_calculator` 計算。
+    - LLM 接收工具結果 -> 生成自然語言回應。
+4.  **串流輸出**: 通過 Server-Sent Events (SSE) 逐字回傳給前端。
+5.  **前端渲染**: JavaScript 解析 SSE 數據，實時更新對話框，並可選地渲染圖表 (Chart.js/Lightweight Charts)。
 
-    U->>UI: "BTC 可以投資嗎？"
-    UI->>CA: process_message()
-    CA->>LLM: 解析意圖 + 選擇工具
-    LLM-->>CA: 調用 full_investment_analysis_tool
+## 6. 擴展性設計
 
-    CA->>Tool: invoke tool
-    Tool->>API: 獲取 K 線數據
-    API-->>Tool: 返回數據
-
-    Note over Tool: 執行 LangGraph 工作流
-    Note over Tool: 4 位分析師並行分析
-    Note over Tool: 三方辯論
-    Note over Tool: 交易決策 + 風險評估
-
-    Tool-->>CA: 返回完整分析報告
-    CA->>LLM: 整理最終回應
-    LLM-->>CA: 生成回應文字
-    CA-->>UI: 串流輸出
-    UI-->>U: 顯示分析結果
-```
-
-## 6. 工具選擇策略
-
-```mermaid
-flowchart TD
-    Input[用戶輸入] --> Analyze{分析問題類型}
-
-    Analyze -->|"現在多少錢?"<br/>"價格是多少?"| P[get_crypto_price_tool]
-    Analyze -->|"RSI 是多少?"<br/>"MACD 如何?"<br/>"趨勢?"| T[technical_analysis_tool]
-    Analyze -->|"最新新聞?"<br/>"有什麼消息?"| N[news_analysis_tool]
-    Analyze -->|"可以投資嗎?"<br/>"應該買嗎?"<br/>"完整分析"| F[full_investment_analysis_tool]
-    Analyze -->|"什麼是 RSI?"<br/>"你好"<br/>一般問題| D[直接回答]
-
-    P -->|最快| R1[1-2 秒]
-    T -->|快| R2[3-5 秒]
-    N -->|快| R3[3-5 秒]
-    F -->|慢| R4[30秒-2分鐘]
-    D -->|即時| R5[即時]
-
-    R1 & R2 & R3 & R4 & R5 --> Output[返回結果]
-
-    style P fill:#90EE90
-    style T fill:#87CEEB
-    style N fill:#DDA0DD
-    style F fill:#FFB6C1
-    style D fill:#F0E68C
-```
-
----
-
-## 快速參考
-
-| 工具名稱 | 功能 | 速度 | 調用場景 |
-|---------|------|------|---------|
-| `get_crypto_price_tool` | 即時價格 | 1-2秒 | 價格查詢 |
-| `technical_analysis_tool` | 技術指標 | 3-5秒 | RSI/MACD/趨勢 |
-| `news_analysis_tool` | 新聞分析 | 3-5秒 | 新聞/情緒 |
-| `full_investment_analysis_tool` | 完整分析 | 30秒-2分 | 投資建議 |
-| (無工具) | 直接回答 | 即時 | 知識問答/聊天 |
+- **自定義 Agent**: 透過 `/api/agents` 端點，支援動態註冊新的 Agent 行為與專屬工具。
+- **BYOK (Bring Your Own Key)**: 支援用戶在前端配置自己的 OpenAI/Gemini/Anthropic API Key，後端動態建立 LLM Client，確保隱私與靈活性。
+- **Worker 模式**: 支援將耗時的市場掃描 (`market_scanner`) 拆分為獨立 Worker Process 運行。
