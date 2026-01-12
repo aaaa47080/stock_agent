@@ -3,16 +3,44 @@ LLM 客戶端工廠 - 支持 OpenAI 和 OpenRouter
 """
 
 import os
+import logging
 from dotenv import load_dotenv
 import openai
 from typing import Dict, Any
+
+# Import logger from api.utils if available, otherwise create a fallback logger
+try:
+    from api.utils import logger
+except ImportError:
+    # Create a fallback logger if api.utils is not available
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+
+    # Create formatter similar to the main API logger
+    log_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+
+    # Add console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_handler.setFormatter(log_formatter)
+    logger.addHandler(console_handler)
+
+    # Add file handler for debugging
+    try:
+        file_handler = logging.FileHandler("llm_client.log", encoding='utf-8')
+        file_handler.setLevel(logging.INFO)
+        file_handler.setFormatter(log_formatter)
+        logger.addHandler(file_handler)
+    except:
+        pass  # If file creation fails, continue with console only
+
 # 嘗試導入 LangChain 的 init_chat_model，如果未安裝則跳過或報錯
 try:
     from langchain.chat_models import init_chat_model
     LANGCHAIN_AVAILABLE = True
 except ImportError:
     LANGCHAIN_AVAILABLE = False
-    print("Warning: langchain not installed. Local LLM support will be limited.")
+    logger.warning("Warning: langchain not installed. Local LLM support will be limited.")
 
 # 嘗試導入 Google Gemini，如果未安裝則跳過
 try:
@@ -33,12 +61,12 @@ class GeminiWrapper:
         self.chat = self  # 模擬 OpenAI 的 client.chat 結構
         self.completions = self  # 模擬 OpenAI 的 client.chat.completions 結構
 
-    def create(self, model: str, messages: list, response_format: dict = None, temperature: float = 0.5, **kwargs):
+    def create(self, model: str, messages: list, response_format: dict = None, temperature: float = 0.5, max_tokens: int = None, **kwargs):
         """
         模擬 OpenAI 的 chat.completions.create() 方法
 
         Args:
-            model: Gemini 模型名稱 (例如 "gemini-1.5-pro")
+            model: Gemini 模型名稱 (參考配置文件中的可用模型)
             messages: OpenAI 格式的消息列表
             response_format: 響應格式配置 ({"type": "json_object"})
             temperature: 生成溫度
@@ -59,7 +87,7 @@ class GeminiWrapper:
             "temperature": temperature,
             "top_p": 0.95,
             "top_k": 40,
-            "max_output_tokens": 8192,
+            "max_output_tokens": max_tokens or 8192,  # 使用傳入的 max_tokens 或默認值
         }
 
         # 如果需要 JSON 輸出，設置 response_mime_type 和強化提示
@@ -87,8 +115,23 @@ class GeminiWrapper:
         # 調用 Gemini API
         response = gemini_model.generate_content(prompt)
 
-        # 獲取響應文本
-        response_text = response.text
+        # 獲取響應文本，處理可能的內容審核問題
+        try:
+            response_text = response.text
+        except Exception as e:
+            # 如果 response.text 失敗，檢查候選結果
+            if response.candidates and len(response.candidates) > 0:
+                candidate = response.candidates[0]
+                if hasattr(candidate, 'finish_reason') and candidate.finish_reason == 2:
+                    # Finish reason 2 通常表示內容被審核系統阻止
+                    raise Exception(f"The response was blocked due to content policy. Finish reason: {candidate.finish_reason}")
+                elif hasattr(candidate, 'content') and candidate.content.parts:
+                    # 嘗試從 content.parts 獲取文本
+                    response_text = "".join([part.text for part in candidate.content.parts if hasattr(part, 'text')])
+                else:
+                    raise Exception(f"Could not retrieve response text. Finish reason: {candidate.finish_reason if hasattr(candidate, 'finish_reason') else 'unknown'}")
+            else:
+                raise Exception("No candidates returned from Gemini API")
 
         # 如果需要 JSON 輸出，清理和驗證響應
         if response_format and response_format.get("type") == "json_object":
@@ -116,23 +159,23 @@ class GeminiWrapper:
                     # 如果只有一個鍵且不是預期的業務鍵，可能是包裝
                     single_key = list(parsed.keys())[0]
                     if single_key in ['task', 'response', 'output', 'result', 'data']:
-                        print(f"⚠️  檢測到 Gemini 包裝鍵 '{single_key}'，嘗試解包...")
+                        logger.warning(f"⚠️  檢測到 Gemini 包裝鍵 '{single_key}'，嘗試解包...")
                         # 嘗試解包
                         inner_value = parsed[single_key]
                         if isinstance(inner_value, dict):
                             parsed = inner_value
-                            print(f"✅ 解包成功，新的鍵: {list(parsed.keys())}")
+                            logger.info(f"✅ 解包成功，新的鍵: {list(parsed.keys())}")
 
                 # 記錄調試信息
-                print(f"🔍 Gemini JSON 響應鍵: {list(parsed.keys()) if isinstance(parsed, dict) else type(parsed)}")
+                logger.debug(f"🔍 Gemini JSON 響應鍵: {list(parsed.keys()) if isinstance(parsed, dict) else type(parsed)}")
 
                 # 重新序列化以確保格式正確
                 response_text = json.dumps(parsed, ensure_ascii=False)
 
             except json.JSONDecodeError as e:
                 # 記錄原始響應以便調試
-                print(f"⚠️  Gemini JSON 解析失敗: {e}")
-                print(f"原始響應前500字符: {response_text[:500]}")
+                logger.warning(f"⚠️  Gemini JSON 解析失敗: {e}")
+                logger.debug(f"原始響應前500字符: {response_text[:500]}")
                 # 嘗試提取 JSON（查找第一個 { 到最後一個 }）
                 first_brace = response_text.find('{')
                 last_brace = response_text.rfind('}')
@@ -140,7 +183,7 @@ class GeminiWrapper:
                     try:
                         extracted = response_text[first_brace:last_brace + 1]
                         parsed = dirtyjson.loads(extracted)
-                        print(f"✅ JSON 提取成功")
+                        logger.info(f"✅ JSON 提取成功")
                         response_text = json.dumps(parsed, ensure_ascii=False)
                     except:
                         pass  # 保持原始響應文本
@@ -194,7 +237,7 @@ class LangChainOpenAIAdapter:
             response = self.model.invoke(lc_messages)
             content = response.content
         except Exception as e:
-            print(f"LangChain invoke error: {e}")
+            logger.error(f"LangChain invoke error: {e}")
             raise e
 
         # 3. 封裝回 OpenAI 格式的回傳
@@ -221,10 +264,16 @@ class LLMClientFactory:
         from utils.settings import Settings
 
         if provider == "openai":
+            # Debug prints - can be removed later
+            # print("===================================test================================")
+            # print(Settings.OPENAI_API_KEY or os.getenv("OPENAI_API_KEY", ""))
+            # print("===================================test================================")
             return Settings.OPENAI_API_KEY or os.getenv("OPENAI_API_KEY", "")
         elif provider == "openai_server":
-            # 伺服器端專用 key（不會被用戶覆蓋）
-            # 用於 Market Pulse、新聞審查等平台級功能
+            # Debug prints - can be removed later
+            # print("===================================test================================")
+            # print(Settings.OPENAI_API_KEY or os.getenv("OPENAI_API_KEY", ""))
+            # print("===================================test================================")
             return Settings.SERVER_OPENAI_API_KEY or os.getenv("SERVER_OPENAI_API_KEY", "") or os.getenv("OPENAI_API_KEY", "")
         elif provider == "google_gemini":
             # 兼容 Google 官方 SDK 的變數名稱
@@ -438,31 +487,43 @@ def extract_json_from_response(response_text: str) -> dict:
     raise ValueError(f"無法從響應中提取有效的 JSON。響應前100個字符: {response_text[:100]}")
 
 
-def create_llm_client_from_config(config: Dict[str, str], user_client: Any = None) -> tuple:
+def create_llm_client_from_config(config: Dict[str, str], user_client: Any = None, user_provider: str = None, user_model: str = None) -> tuple:
     """
-    從配置創建 LLM 客戶端
+    從配置創建 LLM 客戶端。
+    ⭐ 優先使用用戶提供的客戶端，以確保使用用戶的 Key。
 
     Args:
         config: 模型配置 {"provider": "...", "model": "..."}
-        user_client: 可選的用戶提供的 LLM 客戶端 (用於 provider="user_provided" 時)
+        user_client: 可選的用戶提供的 LLM 客戶端。
+        user_provider: 用戶的 provider 名稱。
+        user_model: 用戶選擇的模型名稱。
 
     Returns:
         (client, model_name) 元組
     """
-    provider = config.get("provider", "openai")
-    model = config.get("model", "gpt-4o")
+    model_from_config = config.get("model", "gpt-4o")
 
-    if provider == "user_provided":
-        if user_client:
-            return user_client, model
-        else:
-            # 如果沒有提供用戶客戶端，回退到 OpenAI (假設系統有默認 Key) 
-            # 或者拋出更明確的錯誤
-            print("Warning: Config specifies 'user_provided' but no user_client passed. Fallback to OpenAI.")
-            provider = "openai"
+    # 1. 絕對優先使用傳入的 user_client
+    if user_client:
+        # 如果用戶指定了模型，優先使用用戶的模型
+        effective_model = user_model if user_model else model_from_config
+        return user_client, effective_model
 
-    client = LLMClientFactory.create_client(provider, model)
-    return client, model
+    # 2. 如果沒有傳入 user_client，則根據 config 創建新 client
+    provider_from_config = config.get("provider", "openai")
+
+    # 如果用戶指定了模型，優先使用用戶的模型
+    effective_model = user_model if user_model else model_from_config
+
+    # 警告：如果 user_client 未傳入，將回退到使用後端環境變量中的 API Key
+    logger.warning(
+        f"create_llm_client_from_config: user_client is None. "
+        f"Attempting to create a new client for provider '{provider_from_config}' "
+        f"using system environment variables. This might fail if keys are not set."
+    )
+
+    client = LLMClientFactory.create_client(provider_from_config, effective_model)
+    return client, effective_model
 
 
 # 便捷函數
@@ -486,35 +547,35 @@ def get_trader_client():
 
 if __name__ == "__main__":
     # 測試
-    print("測試 LLM 客戶端工廠\n")
+    logger.info("測試 LLM 客戶端工廠\n")
 
     # 測試 OpenAI
     try:
         client = LLMClientFactory.create_client("openai")
-        print("✅ OpenAI 客戶端創建成功")
+        logger.info("✅ OpenAI 客戶端創建成功")
     except Exception as e:
-        print(f"❌ OpenAI 客戶端創建失敗: {e}")
+        logger.error(f"❌ OpenAI 客戶端創建失敗: {e}")
 
     # 測試 OpenRouter
     try:
         client = LLMClientFactory.create_client("openrouter")
-        print("✅ OpenRouter 客戶端創建成功")
+        logger.info("✅ OpenRouter 客戶端創建成功")
     except Exception as e:
-        print(f"⚠️  OpenRouter 客戶端創建失敗: {e}")
-        print("   提示: 需要設置 OPENROUTER_API_KEY 環境變量")
+        logger.warning(f"⚠️  OpenRouter 客戶端創建失敗: {e}")
+        logger.info("   提示: 需要設置 OPENROUTER_API_KEY 環境變數")
 
     # 測試配置
     from core.config import BULL_RESEARCHER_MODEL, BEAR_RESEARCHER_MODEL
 
-    print(f"\n多頭研究員: {LLMClientFactory.get_model_info(BULL_RESEARCHER_MODEL)}")
-    print(f"空頭研究員: {LLMClientFactory.get_model_info(BEAR_RESEARCHER_MODEL)}")
+    logger.info(f"\n多頭研究員: {LLMClientFactory.get_model_info(BULL_RESEARCHER_MODEL)}")
+    logger.info(f"空頭研究員: {LLMClientFactory.get_model_info(BEAR_RESEARCHER_MODEL)}")
 
     # 測試 Google Gemini
     try:
         # 這裡不實際調用 generate_content，僅測試客戶端是否能成功初始化
         # 實際的模型調用應在 Agent 或其他業務邏輯中處理
         client = LLMClientFactory.create_client("google_gemini")
-        print("✅ Google Gemini 客戶端創建成功")
+        logger.info("✅ Google Gemini 客戶端創建成功")
     except Exception as e:
-        print(f"❌ Google Gemini 客戶端創建失敗: {e}")
-        print("   提示: 需要設置 GOOGLE_API_KEY 環境變量")
+        logger.error(f"❌ Google Gemini 客戶端創建失敗: {e}")
+        logger.info("   提示: 需要設置 GOOGLE_API_KEY 環境變數")

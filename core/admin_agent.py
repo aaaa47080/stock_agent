@@ -28,6 +28,7 @@ class TaskAnalysis(BaseModel):
     execution_mode: str = Field(default="auto", description="執行模式: planning, deep_analysis, simple")
     confidence: float = Field(default=0.8, ge=0, le=1, description="分析置信度")
     original_question: str = Field(default="", description="用戶原始問題")
+    symbols: List[str] = Field(default_factory=list, description="涉及的幣種符號")
 
 
 class SubTask(BaseModel):
@@ -66,7 +67,8 @@ class AdminAgent:
         self,
         user_llm_client=None,
         user_provider: str = "openai",
-        verbose: bool = False
+        verbose: bool = False,
+        user_model: str = None
     ):
         """
         初始化 Admin Agent
@@ -75,9 +77,11 @@ class AdminAgent:
             user_llm_client: 用戶提供的 LLM Client
             user_provider: LLM Provider (openai, openrouter, google_gemini)
             verbose: 是否顯示詳細日誌
+            user_model: 用戶選擇的模型名稱
         """
         self.user_llm_client = user_llm_client
         self.user_provider = user_provider
+        self.user_model = user_model
         self.verbose = verbose
 
         # 延遲導入 PlanningManager 避免循環依賴
@@ -90,18 +94,29 @@ class AdminAgent:
             from core.planning_manager import PlanningManager
             self._planning_manager = PlanningManager(
                 self.user_llm_client,
-                self.user_provider
+                self.user_provider,
+                self.user_model
             )
         return self._planning_manager
 
     def _get_model_for_provider(self) -> str:
         """根據 provider 獲取適合的模型名稱"""
-        if self.user_provider == "google_gemini":
-            return "gemini-1.5-flash"
-        if self.user_provider == "openrouter":
-            return "gpt-4o-mini"
-        else:
-            return "gpt-4o-mini"
+        try:
+            from core.model_config import get_default_model
+            if self.user_provider == "google_gemini":
+                return get_default_model("google_gemini")
+            elif self.user_provider == "openrouter":
+                return get_default_model("openrouter")
+            else:
+                return get_default_model("openai")
+        except ImportError:
+            # 如果配置文件不可用，使用默認值
+            if self.user_provider == "google_gemini":
+                return "gemini-3-flash-preview"
+            elif self.user_provider == "openrouter":
+                return "gpt-4o-mini"
+            else:
+                return "gpt-4o-mini"
 
     def analyze_task(self, user_message: str) -> TaskAnalysis:
         """

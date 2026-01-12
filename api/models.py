@@ -15,6 +15,7 @@ class QueryRequest(BaseModel):
     # 用戶提供的 API key（必填）
     user_api_key: str
     user_provider: str  # "openai", "google_gemini", "openrouter"
+    user_model: Optional[str] = None  # 用戶選擇的模型名稱
 
 class ScreenerRequest(BaseModel):
     exchange: str = SUPPORTED_EXCHANGES[0]
@@ -43,7 +44,12 @@ class UserSettings(BaseModel):
     
     # 模型選擇
     primary_model_provider: str = "google_gemini" # openai, google_gemini, openrouter
-    primary_model_name: str = "gemini-3-flash-preview"
+    # 從模型配置文件獲取默認模型
+    try:
+        from core.model_config import get_default_model
+        primary_model_name: str = get_default_model("google_gemini")  # 默認為 Google Gemini
+    except ImportError:
+        primary_model_name: str = "gemini-3-flash-preview"  # 備用默認值
     
     # 委員會模式
     enable_committee: bool = False
@@ -75,3 +81,4 @@ class RefreshPulseRequest(BaseModel):
 class KeyValidationRequest(BaseModel):
     provider: str # openai, google_gemini, openrouter
     api_key: str
+    model: Optional[str] = None  # 用戶選擇的模型名稱

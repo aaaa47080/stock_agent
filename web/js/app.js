@@ -467,24 +467,14 @@ window.setKeyValidity = function(provider, isValid) {
 
 async function saveSettings() {
     const btn = document.getElementById('btn-save-settings');
-    if (!btn) {
-        console.error('Save settings button not found');
-        return;
-    }
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '<div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block"></div> Saving...';
+    if (!btn) return;
+    
+    // 1. 僅停用並變灰，不改變文字內容 (不閃爍)
     btn.disabled = true;
-
-    // ✅ Handle OKX Key (BYOK) - Only if modal inputs are populated (which are separate now)
-    // Actually, OKX configuration is now handled via the modal directly, so we don't need to do it here
-    // unless we want to support saving from the modal's inputs if they were open.
-    // For now, assume OKX is handled by the modal's own save button.
+    btn.classList.add('opacity-50', 'cursor-not-allowed');
 
     // ⚠️ Prepare Backend Payload
     const payload = {
-        // We don't send API keys here anymore as we encourage BYOK or .env
-        // But if we wanted to support server-side keys, we'd need inputs for them.
-        // For now, just send nulls to indicate "don't change" or handle logic in backend
         openai_api_key: null,
         google_api_key: null,
         openrouter_api_key: null,
@@ -497,6 +487,8 @@ async function saveSettings() {
         bear_committee_models: tempBearModels
     };
 
+    let success = false;
+
     try {
         const res = await fetch('/api/settings/update', {
             method: 'POST',
@@ -506,23 +498,33 @@ async function saveSettings() {
         const result = await res.json();
 
         if (result.success) {
-            // Update local provider selection
+            success = true;
             if (payload.primary_model_provider) {
                 window.APIKeyManager.setSelectedProvider(payload.primary_model_provider);
             }
 
-            alert('✅ Settings saved successfully!\nCommittee configuration has been updated.');
-            closeSettings();
-            
-            // Force UI update
-            checkApiKeyStatus();
+            // 2. 儲存成功：維持灰色狀態半秒後直接關閉
+            setTimeout(() => {
+                closeSettings();
+                checkApiKeyStatus();
+                
+                // 3. 在畫面切換後才恢復按鈕狀態
+                setTimeout(() => {
+                    btn.disabled = false;
+                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                }, 500);
+            }, 500);
+
         } else {
             alert('Failed to save settings: ' + (result.detail || 'Unknown error'));
         }
     } catch (e) {
         alert('Error saving settings: ' + e);
-    } finally {
-        btn.innerHTML = originalText;
+    }
+    
+    // 只有在失敗時才立即恢復按鈕
+    if (!success) {
         btn.disabled = false;
+        btn.classList.remove('opacity-50', 'cursor-not-allowed');
     }
 }

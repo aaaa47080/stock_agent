@@ -23,7 +23,16 @@ async def analyze_crypto(request: QueryRequest):
     ⭐ 新版：使用用戶提供的 API key
     """
     if not globals.bot:
-        raise HTTPException(status_code=503, detail="分析服務尚未就緒")
+        logger.warning("分析服務尚未就緒 - CryptoAnalysisBot 未初始化")
+        # 檢查是否是因為缺少配置導致的初始化失敗
+        try:
+            from interfaces.chat_interface import CryptoAnalysisBot
+            # 嘗試重新初始化
+            globals.bot = CryptoAnalysisBot()
+            logger.info("CryptoAnalysisBot 重新初始化成功")
+        except Exception as e:
+            logger.error(f"CryptoAnalysisBot 初始化失敗: {e}")
+            raise HTTPException(status_code=503, detail=f"分析服務尚未就緒: {str(e)}")
 
     # ⭐ 驗證用戶是否提供了 API key
     if not request.user_api_key or not request.user_provider:
@@ -62,7 +71,8 @@ async def analyze_crypto(request: QueryRequest):
                     request.market_type,
                     user_llm_client=user_client,  # ⭐ 傳入用戶的 client
                     user_provider=request.user_provider,  # ⭐ 傳入 provider 類型
-                    user_api_key=request.user_api_key # ⭐ 傳入原始 Key 字串 (用於 Agent 重建)
+                    user_api_key=request.user_api_key, # ⭐ 傳入原始 Key 字串 (用於 Agent 重建)
+                    user_model=request.user_model  # ⭐ 傳入用戶選擇的模型
                 )
             ):
                 # 包裝成 JSON 格式發送給前端

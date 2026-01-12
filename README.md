@@ -339,7 +339,7 @@ DEEP_THINKING_MODEL = "o4-mini"  # Used for deep reasoning and decision-making
 # Bull Committee Models
 BULL_COMMITTEE_MODELS = [
     {"provider": "openai", "model": "gpt-4o-mini"},
-    {"provider": "google_gemini", "model": "gemini-2.5-flash"},
+    {"provider": "google_gemini", "model": "gemini-3-flash-preview"},
     {"provider": "local", "model": "llama-3-8b-instruct"},  # Local model example
 ]
 ```

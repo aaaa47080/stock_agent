@@ -312,7 +312,7 @@
                     <div class="space-y-4">
                         <div>
                              <label class="block text-xs font-bold text-textMuted uppercase mb-2">Provider</label>
-                            <select id="llm-provider-select" onchange="updateLLMKeyInput()" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition appearance-none">
+                            <select id="llm-provider-select" onchange="updateLLMKeyInput(); updateAvailableModels()" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition appearance-none">
                                 <option value="openai">OpenAI</option>
                                 <option value="google_gemini">Google Gemini</option>
                                 <option value="openrouter">OpenRouter</option>
@@ -324,9 +324,18 @@
                                 <input type="password" id="llm-api-key-input" class="flex-1 bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 font-mono text-sm" placeholder="sk-...">
                                 <button onclick="testLLMKey()" class="px-4 bg-surfaceHighlight hover:bg-white/10 text-secondary rounded-xl transition font-bold text-xs">TEST</button>
                             </div>
-                            <p id="llm-key-status" class="mt-2 text-xs text-textMuted"></p>
                         </div>
-                         <button onclick="saveLLMKey()" class="w-full py-3 bg-primary text-background font-bold rounded-xl shadow-lg shadow-primary/10 hover:brightness-110 transition">Save AI Configuration</button>
+                        <div>
+                             <label class="block text-xs font-bold text-textMuted uppercase mb-2">Model</label>
+                            <select id="llm-model-select" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition appearance-none" style="display: block;">
+                                <option value="">請選擇模型</option>
+                            </select>
+                            <input type="text" id="llm-model-input" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-sm text-secondary outline-none focus:border-primary/50 transition"
+                                   placeholder="Enter model name (e.g., openai/gpt-4o, anthropic/claude-3.5-sonnet)"
+                                   style="display: none;" />
+                            <p id="llm-key-status" class="mt-2 text-xs text-textMuted hidden"></p>
+                        </div>
+                         <button id="save-llm-key-btn" onclick="saveLLMKey()" class="w-full py-3 bg-primary text-background font-bold rounded-xl shadow-lg shadow-primary/10 opacity-50 cursor-not-allowed transition" disabled>Save AI Configuration</button>
                     </div>
                 </div>
 
@@ -346,7 +355,7 @@
                             <label class="block text-xs font-bold text-textMuted uppercase mb-2">Main Model</label>
                             <select onchange="document.getElementById('set-model-name').value = this.value" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-sm text-secondary outline-none">
                                 <option value="">Select a Model...</option>
-                                <option value="gemini-2.0-flash-exp">Gemini 2.0 Flash</option>
+                                <option value="gemini-3-flash-preview">gemini-3-flash-preview</option>
                                 <option value="gpt-4o">GPT-4o</option>
                                 <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
                             </select>
@@ -543,16 +552,16 @@
     </div>
 
     <!-- Scripts -->
-    <script src="/static/js/apiKeyManager.js?v=3"></script>
-    <script src="/static/js/okxKeyManager.js?v=3"></script>
-    <script src="/static/js/app.js?v=3"></script>
-    <script src="/static/js/llmSettings.js?v=3"></script>
-    <script src="/static/js/filter.js?v=3"></script>
-    <script src="/static/js/chat.js?v=3"></script>
-    <script src="/static/js/market.js?v=3"></script>
-    <script src="/static/js/assets.js?v=3"></script>
-    <script src="/static/js/pulse.js?v=3"></script>
-    <script src="/static/js/trade.js?v=3"></script>
+    <script src="/static/js/apiKeyManager.js?v=4"></script>
+    <script src="/static/js/okxKeyManager.js?v=4"></script>
+    <script src="/static/js/app.js?v=8"></script>
+    <script src="/static/js/llmSettings.js?v=4"></script>
+    <script src="/static/js/filter.js?v=4"></script>
+    <script src="/static/js/chat.js?v=4"></script>
+    <script src="/static/js/market.js?v=4"></script>
+    <script src="/static/js/assets.js?v=4"></script>
+    <script src="/static/js/pulse.js?v=4"></script>
+    <script src="/static/js/trade.js?v=4"></script>
     <script>
         lucide.createIcons();
 
@@ -567,9 +576,6 @@
             const target = document.getElementById(tabId + '-tab');
             if(target) {
                 target.classList.remove('hidden');
-                // Animation for tab entry
-                target.classList.add('animate-fade-in');
-                setTimeout(() => target.classList.remove('animate-fade-in'), 300);
             }
 
             // Update Nav Icons

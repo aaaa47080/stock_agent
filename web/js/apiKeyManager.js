@@ -179,6 +179,32 @@ const APIKeyManager = {
             'openrouter': this.STORAGE_KEYS.OPENROUTER
         };
         return map[provider] || null;
+    },
+
+    /**
+     * 設置用戶選擇的模型（按提供商）
+     * @param {string} provider - 'openai', 'google_gemini', 'openrouter'
+     * @param {string} model - 模型名稱
+     */
+    setModelForProvider(provider, model) {
+        if (!provider || !model) return;
+
+        const storageKey = `user_${provider}_selected_model`;
+        localStorage.setItem(storageKey, model.trim());
+        console.log(`✅ ${provider} selected model saved: ${model}`);
+    },
+
+    /**
+     * 獲取用戶選擇的模型（按提供商）
+     * @param {string} provider - 'openai', 'google_gemini', 'openrouter'
+     * @returns {string|null}
+     */
+    getModelForProvider(provider) {
+        if (!provider) return null;
+
+        const storageKey = `user_${provider}_selected_model`;
+        const model = localStorage.getItem(storageKey);
+        return model && model.trim() !== '' ? model.trim() : null;
     }
 };
 

@@ -16,10 +16,37 @@ from typing import List, Dict, Tuple, Optional
 from datetime import datetime
 import json
 import time
+import logging
 
 import openai
 from dotenv import load_dotenv
 from cachetools import cachedmethod, TTLCache, keys
+
+# Import logger from api.utils if available, otherwise create a fallback logger
+try:
+    from api.utils import logger
+except ImportError:
+    # Create a fallback logger if api.utils is not available
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+
+    # Create formatter similar to the main API logger
+    log_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+
+    # Add console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    console_handler.setFormatter(log_formatter)
+    logger.addHandler(console_handler)
+
+    # Add file handler for debugging
+    try:
+        file_handler = logging.FileHandler("chat_interface.log", encoding='utf-8')
+        file_handler.setLevel(logging.INFO)
+        file_handler.setFormatter(log_formatter)
+        logger.addHandler(file_handler)
+    except:
+        pass  # If file creation fails, continue with console only
 
 from core.graph import app
 from core.tools import format_full_analysis_result
@@ -44,7 +71,7 @@ try:
     from core.agents import CryptoAgent
     AGENT_AVAILABLE = True
 except ImportError as e:
-    print(f"Warning: CryptoAgent not available: {e}")
+    logger.warning(f"Warning: CryptoAgent not available: {e}")
     AGENT_AVAILABLE = False
 
 # 導入新的 Admin Agent 架構
@@ -53,7 +80,7 @@ try:
     from core.agent_registry import agent_registry
     ADMIN_AGENT_AVAILABLE = True
 except ImportError as e:
-    print(f"Warning: AdminAgent not available: {e}")
+    logger.warning(f"Warning: AdminAgent not available: {e}")
     ADMIN_AGENT_AVAILABLE = False
 
 load_dotenv()
@@ -69,11 +96,11 @@ class CryptoQueryParser:
         except ValueError:
             # 如果沒有系統層級的 Key (BYOK 模式)，允許初始化失敗
             # 後續依賴用戶傳入的 user_client
-            print("Notice: System-level API key not found for CryptoQueryParser. Will rely on user-provided keys.")
+            logger.info("Notice: System-level API key not found for CryptoQueryParser. Will rely on user-provided keys.")
             self.client = None
             self.model = QUERY_PARSER_MODEL_CONFIG.get("model", "gpt-4o")
 
-    def parse_query(self, user_message: str, user_llm_client=None, user_provider=None) -> Dict:
+    def parse_query(self, user_message: str, user_llm_client=None, user_provider=None, user_model=None) -> Dict:
         """
         使用 LLM 解析用戶的自然語言查詢
         """
@@ -146,16 +173,30 @@ class CryptoQueryParser:
 
         # 如果使用用戶的 client，需要根據 provider 選擇合適的模型
         if user_llm_client and user_provider:
+            # 優先使用用戶指定的模型
             if user_provider == "google_gemini":
                 # Google Gemini 不支持 gpt-4o 模型名，需切換
-                model_to_use = "gemini-1.5-flash" 
+                # 從配置文件獲取默認模型
+                try:
+                    from core.model_config import get_default_model
+                    default_gemini_model = get_default_model("google_gemini")
+                    model_to_use = user_model if user_model and user_model.startswith('gemini') else default_gemini_model
+                except ImportError:
+                    # 如果配置文件不可用，使用默認值
+                    model_to_use = user_model if user_model and user_model.startswith('gemini') else "gemini-3-flash-preview"
             elif user_provider == "openrouter":
                  # OpenRouter 通常支持 gpt-4o-mini 或映射
-                 model_to_use = "gpt-4o-mini" # 使用便宜的模型解析意圖
-            # openai 則維持默認或 gpt-4o-mini
+                 model_to_use = user_model if user_model else "gpt-4o-mini" # 使用便宜的模型解析意圖
+            elif user_provider == "openai":
+                 # OpenAI 通常使用 gpt-4o 或 gpt-4o-mini
+                 model_to_use = user_model if user_model and user_model.startswith('gpt') else "gpt-4o-mini"
+            else:
+                # 如果用戶提供了模型且與提供商匹配，則使用用戶的模型
+                if user_model:
+                    model_to_use = user_model
         
         if not client_to_use:
-            print("No valid LLM client available for query parsing.")
+            logger.warning("No valid LLM client available for query parsing.")
             return self._fallback_parse(user_message)
 
         try:
@@ -173,7 +214,7 @@ class CryptoQueryParser:
             return result
 
         except Exception as e:
-            print(f"解析查詢時發生錯誤: {e}")
+            logger.error(f"解析查詢時發生錯誤: {e}")
             return self._fallback_parse(user_message)
 
     def _fallback_parse(self, user_message: str) -> Dict:
@@ -281,13 +322,14 @@ def _crypto_cache_key(self, symbol, exchange=None, interval="1d", limit=100, acc
 class CryptoAnalysisBot:
     """加密貨幣分析聊天機器人"""
 
-    def __init__(self, use_agent: bool = True, use_admin_agent: bool = True):
+    def __init__(self, use_agent: bool = True, use_admin_agent: bool = True, user_model: str = None):
         """
         初始化聊天機器人
 
         Args:
             use_agent: 是否使用 ReAct Agent 模式（保留向後兼容）
             use_admin_agent: 是否使用新的 Admin Agent 架構（推薦）
+            user_model: 用戶選擇的模型名稱
         """
         self.use_agent = use_agent and AGENT_AVAILABLE
         self.use_admin_agent = use_admin_agent and ADMIN_AGENT_AVAILABLE
@@ -300,14 +342,19 @@ class CryptoAnalysisBot:
 
         if self.use_admin_agent:
             # 新架構: 使用 Admin Agent 進行任務分派
-            print(">> 使用 Admin Agent 架構 (任務分派 + 會議討論)")
-        elif self.use_agent:
-            # 舊架構: 使用 ReAct Agent
-            print(">> 使用 ReAct Agent 模式 (混合串流增強)")
-            self.agent = CryptoAgent(verbose=False)
+            logger.info(">> 使用 Admin Agent 架構 (任務分派 + 會議討論)")
+
+        if self.use_agent:
+            # 舊架構: 使用 ReAct Agent (或是作為 Admin Agent 的 fallback)
+            if not self.use_admin_agent:
+                logger.info(">> 使用 ReAct Agent 模式 (混合串流增強)")
+            self.agent = CryptoAgent(verbose=False, user_model=user_model)
         else:
+            self.agent = None
+
+        if not self.use_admin_agent and not self.use_agent:
             # 最舊架構: 保持向後兼容
-            print(">> 使用傳統分析模式")
+            logger.info(">> 使用傳統分析模式")
 
         self.chat_history = []
         self.supported_exchanges = SUPPORTED_EXCHANGES
@@ -357,22 +404,22 @@ class CryptoAnalysisBot:
         effective_limit = limit
         if interval in ['1m', '3m', '5m', '15m', '30m', '1h', '4h'] and limit < 200:
             effective_limit = 200
-            print(f">> 自動調整 K 線數量至 {effective_limit} 以確保指標準確性 (原設定: {limit})")
+            logger.info(f">> 自動調整 K 線數量至 {effective_limit} 以確保指標準確性 (原設定: {limit})")
 
-        print(f">> 正在下載分析數據: {symbol} (週期: {interval}, 數量: {effective_limit})...")
-        
+        logger.info(f">> 正在下載分析數據: {symbol} (週期: {interval}, 數量: {effective_limit})...")
+
         data_fetcher = get_data_fetcher(exchange)
         klines_df = data_fetcher.get_historical_klines(symbol, interval=interval, limit=effective_limit)
-        
+
         if klines_df is None or klines_df.empty:
             raise ValueError("無法獲取 K 線數據")
 
         df_with_indicators = add_technical_indicators(klines_df)
-        
+
         # 檢查指標有效性
         latest = df_with_indicators.iloc[-1]
         if latest.get('RSI_14', 0) == 0:
-            print(">> ⚠️ 警告: RSI 計算結果為 0，可能是數據量不足。" )
+            logger.warning(">> ⚠️ 警告: RSI 計算結果為 0，可能是數據量不足。" )
 
         # 只有在需要新聞或情緒分析時才抓新聞
         news_data = []
@@ -445,7 +492,7 @@ class CryptoAnalysisBot:
             normalized_symbol = self.normalize_symbol(symbol, exchange)
 
         self.last_symbol = normalized_symbol # 紀錄最後分析的幣種
-        print(f">> 準備分析 {normalized_symbol} ({exchange}) | 週期: {interval}")
+        logger.info(f">> 準備分析 {normalized_symbol} ({exchange}) | 週期: {interval}")
 
         try:
             shared_data = self._fetch_shared_data(normalized_symbol, exchange, interval, limit, focus=selected_analysts)
@@ -527,7 +574,7 @@ class CryptoAnalysisBot:
     
     def process_message(self, user_message: str, interval: str = "1d", limit: int = 100,
                        manual_selection: List[str] = None, auto_execute: bool = False,
-                       market_type: str = "spot", user_llm_client=None, user_provider: str = "openai", user_api_key: str = None):
+                       market_type: str = "spot", user_llm_client=None, user_provider: str = "openai", user_api_key: str = None, user_model: str = None):
         """
         處理用戶消息 (支援混合模式：普通問題走 Agent，完整分析走即時串流 Graph)
 
@@ -554,13 +601,14 @@ class CryptoAnalysisBot:
                 admin = AdminAgent(
                     user_llm_client=user_llm_client,
                     user_provider=user_provider,
+                    user_model=user_model,
                     verbose=False
                 )
 
                 # 分析任務
                 task = admin.analyze_task(user_message)
 
-                print(f"[AdminAgent] assigned_agent={task.assigned_agent}, is_complex={task.is_complex}, symbols={task.symbols}")
+                logger.info(f"[AdminAgent] assigned_agent={task.assigned_agent}, is_complex={task.is_complex}, symbols={task.symbols}")
 
                 # 更新上下文
                 if task.symbols:
@@ -589,7 +637,7 @@ class CryptoAnalysisBot:
                 return
 
             except Exception as e:
-                print(f"[AdminAgent] Error: {e}, falling back to legacy mode")
+                logger.error(f"[AdminAgent] Error: {e}, falling back to legacy mode")
                 import traceback
                 traceback.print_exc()
                 # 降級到舊模式
@@ -601,9 +649,10 @@ class CryptoAnalysisBot:
         # 1. 嘗試解析意圖
         try:
             parsed = self.parser.parse_query(
-                user_message, 
+                user_message,
                 user_llm_client=user_llm_client,
-                user_provider=user_provider
+                user_provider=user_provider,
+                user_model=user_model
             )
             if not parsed:
                 parsed = {} # Fallback to empty dict to avoid NoneType error
@@ -636,12 +685,12 @@ class CryptoAnalysisBot:
                      symbols = [base_last]
 
             # 2. 根據指派的 Agent 進行路由
-            print(f"[DEBUG] assigned_agent={assigned_agent}, intent={intent}, symbols={symbols}")
+            logger.debug(f"[DEBUG] assigned_agent={assigned_agent}, intent={intent}, symbols={symbols}")
             
             # === 路徑 A: Deep Research Agent (深度分析) ===
             if assigned_agent == "deep_research_agent" and symbols:
                 symbol = symbols[0]
-                print(f"[DEBUG] 進入深度分析流程: {symbol}")
+                logger.debug(f"[DEBUG] 進入深度分析流程: {symbol}")
                 # 開始過程區塊 - 必須在所有 [PROCESS] 訊息之前發送
                 yield "[PROCESS_START]\n"
                 yield f"[PROCESS]🚀 正在啟動深度研究員 (Deep Research Agent) 對 {symbol} 進行全方位分析...\n"
@@ -685,7 +734,7 @@ class CryptoAnalysisBot:
                                 yield f"[PROCESS]💳 帳戶餘額: ${avail:.2f} USDT\n"
                     except Exception as e:
                         # 靜默失敗，不阻擋分析流程，只影響後續金額計算
-                        print(f"Failed to fetch balance: {e}")
+                        logger.error(f"Failed to fetch balance: {e}")
                 
                 # 如果開啟自動交易但沒有 Key，發出警告
                 if auto_execute and not account_balance:
@@ -886,7 +935,7 @@ class CryptoAnalysisBot:
                 except Exception as e:
                     import traceback
                     error_detail = traceback.format_exc()
-                    print(f"❌ 分析過程中發生錯誤: {error_detail}")
+                    logger.error(f"❌ 分析過程中發生錯誤: {error_detail}")
                     
                     error_msg = str(e)
                     friendly_error = error_msg
@@ -903,7 +952,7 @@ class CryptoAnalysisBot:
                     return
 
         except Exception as e:
-            print(f"解析意圖失敗: {e}")
+            logger.error(f"解析意圖失敗: {e}")
 
         # === 路徑 B & C: Fast Track (Admin Agent / Market Data Agent) ===
         # 如果不是深度分析，或者解析失敗，或者 deep_research_agent 但沒有幣種
@@ -919,13 +968,14 @@ class CryptoAnalysisBot:
                     # 重新創建一個臨時 agent
                     try:
                         temp_agent = CryptoAgent(
-                            verbose=False, 
-                            user_api_key=user_api_key, 
+                            verbose=False,
+                            user_api_key=user_api_key,
                             user_provider=user_provider,
-                            user_client=user_llm_client
+                            user_client=user_llm_client,
+                            user_model=user_model
                         )
                     except Exception as e:
-                        print(f"Failed to create temp agent: {e}, falling back to system agent")
+                        logger.error(f"Failed to create temp agent: {e}, falling back to system agent")
                         # temp_agent 保持為 self.agent
                 
                 if temp_agent:

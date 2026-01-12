@@ -93,6 +93,9 @@ async function sendMessage() {
         return;
     }
 
+    // 獲取用戶選擇的模型
+    const userSelectedModel = window.APIKeyManager.getModelForProvider(userKey.provider);
+
     const checkboxes = document.querySelectorAll('.analysis-checkbox:checked');
     const selection = Array.from(checkboxes).map(cb => cb.value);
 
@@ -143,7 +146,8 @@ async function sendMessage() {
                 auto_execute: autoExecute,
                 // 傳送用戶的 API key
                 user_api_key: userKey.key,
-                user_provider: userKey.provider
+                user_provider: userKey.provider,
+                user_model: userSelectedModel  // 傳送用戶選擇的模型
             }),
             signal: window.currentAnalysisController.signal
         });

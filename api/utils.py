@@ -5,6 +5,7 @@ import logging
 from typing import Dict
 
 logger = logging.getLogger("API")
+logger.setLevel(logging.INFO)  # Ensure this logger also logs at INFO level
 
 # 定義一個哨兵物件來標記迭代結束
 _STOP_ITERATION_SENTINEL = object()

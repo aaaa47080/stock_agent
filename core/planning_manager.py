@@ -2,9 +2,12 @@
 Planning Manager - 複雜任務規劃和拆分
 
 Planning Manager 負責：
-1. 判斷任務是否為複雜任務
-2. 將複雜任務拆分為可並行執行的子任務
-3. 規劃子任務的執行順序和依賴關係
+1. 將複雜任務拆分為可並行執行的子任務（使用 LLM 智能拆分）
+2. 規劃子任務的執行順序和依賴關係
+3. 追蹤子任務執行狀態
+
+注意：任務複雜度的判斷已由 AdminAgent.analyze_task() 使用 LLM 完成，
+本模組不再包含硬編碼的複雜度判斷邏輯。
 """
 import json
 import re
@@ -52,17 +55,18 @@ class PlanningManager:
     使用方式:
         planner = PlanningManager(user_llm_client, user_provider)
 
-        # 判斷複雜度
-        is_complex = planner.analyze_complexity(message, task_analysis)
+        # 創建任務計劃（複雜度已由 AdminAgent 判斷）
+        plan = planner.create_task_plan(message, symbols, is_complex=True)
 
-        # 創建子任務
-        subtasks = planner.create_subtasks(message, task_analysis)
+        # 或者直接創建子任務
+        subtasks = planner.create_subtasks(message, symbols)
     """
 
     def __init__(
         self,
         user_llm_client=None,
         user_provider: str = "openai",
+        user_model: str = None,
         verbose: bool = False
     ):
         """
@@ -71,79 +75,36 @@ class PlanningManager:
         Args:
             user_llm_client: 用戶提供的 LLM Client
             user_provider: LLM Provider
+            user_model: 用戶選擇的模型名稱
             verbose: 是否顯示詳細日誌
         """
         self.user_llm_client = user_llm_client
         self.user_provider = user_provider
+        self.user_model = user_model
         self.verbose = verbose
 
     def _get_model_for_provider(self) -> str:
         """根據 provider 獲取適合的模型名稱"""
-        if self.user_provider == "google_gemini":
-            return "gemini-1.5-flash"
-        elif self.user_provider == "openrouter":
-            return "gpt-4o-mini"
-        else:
-            return "gpt-4o-mini"
+        try:
+            from core.model_config import get_default_model
+            if self.user_provider == "google_gemini":
+                return get_default_model("google_gemini")
+            elif self.user_provider == "openrouter":
+                return get_default_model("openrouter")
+            else:
+                return get_default_model("openai")
+        except ImportError:
+            # 如果配置文件不可用，使用默認值
+            if self.user_provider == "google_gemini":
+                return "gemini-3-flash-preview"
+            elif self.user_provider == "openrouter":
+                return "gpt-4o-mini"
+            else:
+                return "gpt-4o-mini"
 
-    def analyze_complexity(
-        self,
-        message: str,
-        symbols: List[str] = None
-    ) -> bool:
-        """
-        判斷任務是否為複雜任務
-
-        複雜任務標準：
-        1. 包含多個幣種需要比較
-        2. 需要綜合多種分析（技術+基本面+新聞）
-        3. 涉及投資決策或策略規劃
-        4. 需要多步驟處理
-
-        Args:
-            message: 用戶消息
-            symbols: 提取的幣種列表
-
-        Returns:
-            是否為複雜任務
-        """
-        message_lower = message.lower()
-
-        # 1. 多幣種比較 → 複雜
-        if symbols and len(symbols) > 1:
-            return True
-
-        # 2. 投資決策相關 → 複雜
-        investment_keywords = [
-            "投資", "買", "賣", "做多", "做空",
-            "建議", "策略", "值得", "應該",
-            "深度分析", "完整分析", "詳細分析",
-            "風險評估", "投資組合", "配置"
-        ]
-        if any(k in message_lower for k in investment_keywords):
-            return True
-
-        # 3. 比較分析 → 複雜
-        comparison_keywords = [
-            "比較", "對比", "哪個", "vs", "還是",
-            "更好", "更值得", "選擇"
-        ]
-        if any(k in message_lower for k in comparison_keywords):
-            return True
-
-        # 4. 多維度分析 → 複雜
-        multi_aspect = 0
-        if any(k in message_lower for k in ["技術", "指標", "rsi", "macd"]):
-            multi_aspect += 1
-        if any(k in message_lower for k in ["新聞", "消息", "基本面"]):
-            multi_aspect += 1
-        if any(k in message_lower for k in ["趨勢", "預測", "未來"]):
-            multi_aspect += 1
-
-        if multi_aspect >= 2:
-            return True
-
-        return False
+    # analyze_complexity 已被移除
+    # 複雜度判斷現在由 AdminAgent.analyze_task() 使用 LLM 完成
+    # 不再使用硬編碼的關鍵詞匹配
 
     def create_subtasks(
         self,
@@ -329,21 +290,24 @@ class PlanningManager:
         self,
         message: str,
         symbols: List[str],
-        assigned_agent: str = None
+        assigned_agent: str = None,
+        is_complex: bool = True
     ) -> TaskPlan:
         """
         創建完整的任務計劃
+
+        注意：此方法通常在 AdminAgent 已經使用 LLM 判斷為複雜任務後才被調用，
+        因此 is_complex 參數默認為 True。
 
         Args:
             message: 用戶消息
             symbols: 幣種列表
             assigned_agent: 建議的主要 Agent
+            is_complex: 是否為複雜任務（由 AdminAgent.analyze_task() 判斷）
 
         Returns:
             TaskPlan 對象
         """
-        is_complex = self.analyze_complexity(message, symbols)
-
         if not is_complex:
             # 簡單任務，不需要拆分
             return TaskPlan(

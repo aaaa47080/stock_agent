@@ -33,7 +33,8 @@ async def validate_key(request: KeyValidationRequest):
     """測試 API Key 是否有效，並嘗試進行對話"""
     provider = request.provider
     key = request.api_key
-    
+    user_model = request.model  # 用戶選擇的模型
+
     if not key or len(key) < 5:
         return {"valid": False, "message": "Key 為空或過短"}
 
@@ -41,79 +42,125 @@ async def validate_key(request: KeyValidationRequest):
 
     try:
         reply_text = ""
-        
+
         if provider == "openai":
             client = openai.OpenAI(api_key=key)
-            # 嘗試使用輕量模型進行測試
+            # 如果用戶指定了模型，優先使用用戶的模型，否則使用默認模型
+            model_to_test = user_model if user_model and user_model.startswith('gpt') else "gpt-4o-mini"
             completion = client.chat.completions.create(
-                model="gpt-4o-mini", 
+                model=model_to_test,
                 messages=[{"role": "user", "content": test_prompt}],
                 max_tokens=50
             )
             reply_text = completion.choices[0].message.content
-            
+
         elif provider == "google_gemini":
+            # 使用與實際應用相同的 GeminiWrapper 來確保一致性
+            from utils.llm_client import GeminiWrapper
+            import google.generativeai as genai
             genai.configure(api_key=key)
-            # 嘗試多個模型版本以提高兼容性
-            models_to_try = ["gemini-3-flash-preview"]
+
+            # 如果用戶指定了模型，優先使用用戶的模型
+            if user_model and user_model.startswith('gemini'):
+                # 僅測試用戶指定的模型
+                models_to_try = [user_model]
+            else:
+                # 從配置文件獲取可用模型
+                try:
+                    from core.model_config import get_available_models
+                    available_models = get_available_models("google_gemini")
+                    models_to_try = [model['value'] for model in available_models]
+                except ImportError:
+                    # 如果配置文件不可用，使用默認值
+                    models_to_try = ["gemini-3-flash-preview"]
             last_error = None
-            
+
             for model_name in models_to_try:
                 try:
-                    model = genai.GenerativeModel(model_name)
-                    response = model.generate_content(test_prompt)
-                    reply_text = response.text
+                    # 使用 GeminiWrapper 進行測試，確保與實際應用行為一致
+                    wrapper = GeminiWrapper(genai)
+                    response = wrapper.create(
+                        model=model_name,
+                        messages=[{"role": "user", "content": test_prompt}],
+                        temperature=0.5,
+                        max_tokens=50
+                    )
+                    reply_text = response.choices[0].message.content
                     # 如果成功，就跳出循環
-                    break 
+                    break
                 except Exception as e:
-                    last_error = e
-                    continue
-            
+                    # 檢查是否是因為內容審核問題
+                    error_str = str(e)
+                    if "blocked due to content policy" in error_str:
+                        # 這表示 API 連接正常，但內容被審核系統拒絕
+                        # 我們可以嘗試另一個模型
+                        logger.warning(f"Gemini model {model_name} content was blocked by policy: {e}")
+                        continue
+                    elif "response.text" in error_str and "finish_reason" in error_str:
+                        # 這可能是因為內容被審核系統拒絕，但仍表示 API 連接正常
+                        logger.warning(f"Gemini model {model_name} returned blocked content: {e}")
+                        continue
+                    else:
+                        last_error = e
+                        continue
+
             # 如果所有模型都失敗，拋出最後一個錯誤
             if not reply_text and last_error:
                 raise last_error
-            
+
         elif provider == "openrouter":
             client = openai.OpenAI(
                 base_url="https://openrouter.ai/api/v1",
                 api_key=key,
             )
-            # 先獲取模型列表，確保使用有效模型
-            models = client.models.list()
-            if not models.data:
-                raise ValueError("無法獲取模型列表")
-            
-            # 使用列表中的第一個模型 (通常是免費或熱門模型)
-            test_model = models.data[0].id
-            
+            # 如果用戶指定了模型，優先使用用戶的模型
+            if user_model:
+                test_model = user_model
+            else:
+                # 否則獲取模型列表，使用默認模型
+                models = client.models.list()
+                if not models.data:
+                    raise ValueError("無法獲取模型列表")
+                # 使用列表中的第一個模型 (通常是免費或熱門模型)
+                test_model = models.data[0].id
+
             completion = client.chat.completions.create(
                 model=test_model,
                 messages=[{"role": "user", "content": test_prompt}],
                 max_tokens=50
             )
             reply_text = completion.choices[0].message.content
-            
+
         else:
             return {"valid": False, "message": "未知的提供商"}
-            
+
         return {
-            "valid": True, 
-            "message": "驗證成功！連接正常。", 
+            "valid": True,
+            "message": f"驗證成功！連接正常。使用模型: {user_model or 'default'}",
             "reply": reply_text,
-            "provider": provider
+            "provider": provider,
+            "model": user_model or "default"
         }
         
     except Exception as e:
         logger.warning(f"Key validation failed for {provider}: {e}")
         error_msg = str(e)
-        if "401" in error_msg:
+        if "401" in error_msg or "auth" in error_msg.lower() or "unauthorized" in error_msg.lower():
             error_msg = "認證失敗 (401)，請檢查 Key 是否正確。"
-        elif "429" in error_msg:
-            error_msg = "額度不足或請求過多 (429)。"
-        elif "404" in error_msg:
-             # 有些舊 Key 可能無法訪問新模型，嘗試降級提示
-             error_msg = "連接成功但模型不可用 (404)。請檢查權限。"
-             
+        elif "429" in error_msg or "quota" in error_msg.lower() or "rate" in error_msg.lower() or "exceeded your current quota" in error_msg.lower():
+            error_msg = "額度不足或請求過多 (429)，請檢查您的計費詳情和用量限制。"
+        elif "404" in error_msg or "not found" in error_msg.lower():
+             error_msg = "連接成功但模型不可用 (404)。請檢查模型名稱是否正確。"
+        elif "400" in error_msg:
+            if "API_KEY_INVALID" in error_msg or "API key not valid" in error_msg:
+                error_msg = "API Key 無效，請檢查 Key 是否正確。"
+            elif "access not configured" in error_msg.lower():
+                error_msg = "API 服務未啟用，請確保已在 Google Cloud Console 中啟用 Generative Language API。"
+            else:
+                error_msg = "請求參數錯誤 (400)。請檢查模型名稱是否正確。"
+        elif "connection" in error_msg.lower() or "timeout" in error_msg.lower():
+             error_msg = "連接超時或網絡問題。請檢查網絡連接。"
+
         return {"valid": False, "message": f"驗證失敗: {error_msg}"}
 
 @router.get("/api/config")
@@ -145,6 +192,12 @@ async def get_config():
             "has_current_provider_key": has_key(current_provider),
         }
     }
+
+@router.get("/api/model-config")
+async def get_model_config():
+    """獲取模型配置資訊"""
+    from core.model_config import MODEL_CONFIG
+    return {"model_config": MODEL_CONFIG}
 
 @router.post("/api/settings/update")
 async def update_user_settings(settings: UserSettings):

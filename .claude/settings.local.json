@@ -27,7 +27,16 @@
       "Bash(fi)",
       "Bash(cd:*)",
       "Bash(.venvScriptspython.exe -c \"import sys; sys.path.insert\\(0, ''.''\\); from analysis.market_pulse import get_market_pulse; print\\(''✅ market_pulse 模塊導入成功''\\)\")",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(# 清理所有 Python 緩存 find /home/danny/AI-agent/crypto_trading_system -name \"\"*.pyc\"\" -delete find /home/danny/AI-agent/crypto_trading_system -name \"\"__pycache__\"\" -type d -exec rm -rf {} + echo \"\"✅ Python 緩存已清理\"\" # 檢查是否有正在運行的服務器進程 echo \"\"\"\" echo \"\"正在檢查運行中的 Python 進程...\"\" ps aux)",
+      "Bash(# 停止所有 crypto_trading_system 的 api_server 進程 pkill -f \"\"crypto_trading_system/.venv/bin/python.*api_server.py\"\" sleep 2 # 確認所有進程已停止 echo \"\"檢查是否還有運行中的服務器...\"\" ps aux)",
+      "Bash(# 強制停止所有 api_server 進程 kill -9 559452 570388 608591 650928 717222 914179 943135 1003443 1289201 2559517 2825104 2882816 sleep 2 ps aux)",
+      "Bash(./server.sh start)",
+      "Bash(__NEW_LINE__ echo \"=== 測試 status 命令 ===\")",
+      "Bash(./server.sh status:*)",
+      "Bash(__NEW_LINE__ echo \"\")",
+      "Bash(./server.sh:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

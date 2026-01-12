@@ -18,10 +18,22 @@ import logging
 load_dotenv()
 
 # Configure Logging
+log_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+
+# Create file handler
+file_handler = logging.FileHandler("api_server.log", encoding='utf-8')
+file_handler.setLevel(logging.INFO)
+file_handler.setFormatter(log_formatter)
+
+# Create console handler
+console_handler = logging.StreamHandler(sys.stdout)
+console_handler.setLevel(logging.INFO)
+console_handler.setFormatter(log_formatter)
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[logging.StreamHandler(sys.stdout)]
+    handlers=[file_handler, console_handler]
 )
 
 # Import from refactored modules

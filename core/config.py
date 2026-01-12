@@ -8,9 +8,15 @@ load_dotenv(override=True)
 
 # 基礎模型（用於分析師團隊 - 需用戶 Key）
 
-FAST_THINKING_MODEL = "gpt-4o-mini"
-
-DEEP_THINKING_MODEL = "gpt-4o-mini"
+# 從模型配置文件獲取默認模型
+try:
+    from core.model_config import get_default_model
+    FAST_THINKING_MODEL = get_default_model("openai")
+    DEEP_THINKING_MODEL = get_default_model("openai")
+except ImportError:
+    # 如果配置文件不可用，使用默認值
+    FAST_THINKING_MODEL = "gpt-4o-mini"
+    DEEP_THINKING_MODEL = "gpt-4o-mini"
 
 
 
@@ -31,91 +37,64 @@ ENABLE_COMMITTEE_MODE = True
 
 
 # 多頭研究員 (用戶付費)
+try:
+    from core.model_config import get_default_model
+    default_openai_model = get_default_model("openai")
+    default_gemini_model = get_default_model("google_gemini")
+except ImportError:
+    default_openai_model = "gpt-4o-mini"
+    default_gemini_model = "gemini-3-flash-preview"
 
 BULL_RESEARCHER_MODEL = {
-
-    "provider": "user_provided", 
-
-    "model": "gpt-4o-mini",
-
+    "provider": "user_provided",
+    "model": default_openai_model,
 }
-
-
 
 # 空頭研究員 (用戶付費)
-
 BEAR_RESEARCHER_MODEL = {
-
     "provider": "user_provided",
-
-    "model": "gpt-4o-mini",
-
+    "model": default_openai_model,
 }
-
-
 
 # 交易員 (用戶付費)
-
 TRADER_MODEL = {
-
     "provider": "user_provided",
-
-    "model": "gpt-4o-mini",
-
+    "model": default_openai_model,
 }
-
-
 
 # 裁判 (用戶付費)
-
 JUDGE_MODEL = {
-
     "provider": "user_provided",
-
-    "model": "gpt-4o-mini",
-
+    "model": default_openai_model,
 }
 
-
-
 # 委員會成員 (用戶付費)
-
 BULL_COMMITTEE_MODELS = [
-
-    {"provider": "user_provided", "model": "gpt-4o-mini"},  
-
-    {"provider": "user_provided", "model": "gpt-4o-mini"},
-
+    {"provider": "user_provided", "model": default_openai_model},
+    {"provider": "user_provided", "model": default_openai_model},
 ]
 
-
-
 BEAR_COMMITTEE_MODELS = [
-
-    {"provider": "user_provided", "model": "gpt-4o-mini"},  
-
-    {"provider": "user_provided", "model": "gpt-4o-mini"},
-
+    {"provider": "user_provided", "model": default_openai_model},
+    {"provider": "user_provided", "model": default_openai_model},
 ]
 
 
 
 # 綜合模型 (用戶付費)
+try:
+    from core.model_config import get_default_model
+    default_openai_model = get_default_model("openai")
+except ImportError:
+    default_openai_model = "gpt-4o-mini"
 
 SYNTHESIS_MODEL = {
-
     "provider": "user_provided",
-
-    "model": "gpt-4o-mini",
-
+    "model": default_openai_model,
 }
 
-
-
 # 查詢解析 (用戶付費)
-
 QUERY_PARSER_MODEL_CONFIG = {
-
     "provider": "user_provided",
 
     "model": "gpt-4o-mini",

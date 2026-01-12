@@ -7,6 +7,7 @@ from core.config import (
 
 # 設定日誌
 logger = logging.getLogger("API")
+logger.setLevel(logging.INFO)  # Ensure this logger also logs at INFO level
 
 # Global caches
 MARKET_PULSE_CACHE = {}

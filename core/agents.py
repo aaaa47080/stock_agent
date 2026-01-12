@@ -8,7 +8,7 @@ import openai
 from typing import Literal, List, Dict, Optional
 from core.models import (
     AnalystReport, ResearcherDebate, TraderDecision, RiskAssessment, 
-    FinalApproval, FactCheckResult, MultiTimeframeData
+    FinalApproval, FactCheckResult, MultiTimeframeData, DebateJudgment
 )
 from core.config import FAST_THINKING_MODEL, DEEP_THINKING_MODEL, QUERY_PARSER_MODEL
 from utils.llm_client import supports_json_mode, extract_json_from_response
@@ -16,6 +16,7 @@ from utils.retry_utils import retry_on_failure
 from utils.utils import DataFrameEncoder
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langgraph.prebuilt import create_react_agent
 from core.tools import get_crypto_tools
@@ -1308,36 +1309,63 @@ def create_crypto_agent(
     Returns:
         LangGraph Agent 實例 或 None (如果不支持該 Provider 的 Agent 模式)
     """
-    
-    # 決定 API Key 和 Base URL
-    api_key = user_api_key or os.getenv("OPENAI_API_KEY")
-    base_url = None
-    
-    # 處理不同的 Provider
-    if user_provider == "openrouter":
-        base_url = "https://openrouter.ai/api/v1"
-        if not model_name: 
-            model_name = "gpt-4o-mini" # OpenRouter 默認
-    elif user_provider == "google_gemini":
-        # 目前 LangChain Google GenAI 模組未安裝，暫時無法為 Gemini 創建 ReAct Agent
-        # 將返回 None，由 CryptoAgent 類別處理降級為普通對話 (無工具)
-        return None
-    
-    if not api_key:
-        print("Warning: No API key found for CryptoAgent.")
-        return None
 
-    # 初始化 LLM (ChatOpenAI)
     try:
-        llm = ChatOpenAI(
-            model=model_name or QUERY_PARSER_MODEL,
-            temperature=temperature,
-            api_key=api_key,
-            base_url=base_url
-        )
-
         # 獲取工具
         tools = get_crypto_tools()
+        llm = None
+
+        # 處理不同的 Provider
+        if user_provider == "google_gemini":
+            # 使用 Gemini
+            api_key = user_api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+            if not api_key:
+                print("Warning: No Gemini API key found for CryptoAgent.")
+                return None
+
+            # 獲取默認模型
+            if not model_name:
+                try:
+                    from core.model_config import get_default_model
+                    model_name = get_default_model("google_gemini")
+                except ImportError:
+                    model_name = "gemini-3-flash-preview"
+
+            llm = ChatGoogleGenerativeAI(
+                model=model_name,
+                temperature=temperature,
+                google_api_key=api_key
+            )
+
+        elif user_provider == "openrouter":
+            # 使用 OpenRouter
+            api_key = user_api_key or os.getenv("OPENAI_API_KEY")
+            if not api_key:
+                print("Warning: No API key found for CryptoAgent.")
+                return None
+
+            if not model_name:
+                model_name = "gpt-4o-mini"
+
+            llm = ChatOpenAI(
+                model=model_name,
+                temperature=temperature,
+                api_key=api_key,
+                base_url="https://openrouter.ai/api/v1"
+            )
+
+        else:
+            # 默認使用 OpenAI
+            api_key = user_api_key or os.getenv("OPENAI_API_KEY")
+            if not api_key:
+                print("Warning: No API key found for CryptoAgent.")
+                return None
+
+            llm = ChatOpenAI(
+                model=model_name or QUERY_PARSER_MODEL,
+                temperature=temperature,
+                api_key=api_key
+            )
 
         # 使用 langgraph 創建 ReAct Agent
         agent = create_react_agent(
@@ -1347,8 +1375,11 @@ def create_crypto_agent(
         )
 
         return agent
+
     except Exception as e:
-        print(f"Error creating ChatOpenAI agent: {e}")
+        print(f"Error creating CryptoAgent: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 
@@ -1366,7 +1397,8 @@ class CryptoAgent:
         verbose: bool = False,
         user_api_key: str = None,
         user_provider: str = None,
-        user_client: Optional[object] = None
+        user_client: Optional[object] = None,
+        user_model: str = None
     ):
         """
         初始化 CryptoAgent
@@ -1378,10 +1410,14 @@ class CryptoAgent:
             user_api_key: 用戶 API Key
             user_provider: 用戶 Provider
             user_client: 用戶已經初始化的 LLM Client (用於降級模式)
+            user_model: 用戶選擇的模型名稱
         """
-        self.agent = create_crypto_agent(model_name, temperature, verbose, user_api_key, user_provider)
+        # 優先使用用戶選擇的模型，否則使用指定的模型名稱
+        effective_model_name = user_model or model_name
+        self.agent = create_crypto_agent(effective_model_name, temperature, verbose, user_api_key, user_provider)
         self.user_client = user_client # 用於 Fallback
         self.user_provider = user_provider
+        self.user_model = user_model
         self.chat_history: List = []
         self.last_symbol: Optional[str] = None
         self.verbose = verbose
@@ -1422,9 +1458,25 @@ class CryptoAgent:
                 if "messages" in result:
                     for msg in reversed(result["messages"]):
                         if isinstance(msg, AIMessage) and msg.content and not response:
-                            response = msg.content
+                            # 確保 content 是字串（Gemini 可能返回列表或物件）
+                            content = msg.content
+                            if isinstance(content, list):
+                                # 如果是列表，嘗試提取文字內容
+                                text_parts = []
+                                for part in content:
+                                    if isinstance(part, str):
+                                        text_parts.append(part)
+                                    elif isinstance(part, dict) and 'text' in part:
+                                        text_parts.append(part['text'])
+                                    elif hasattr(part, 'text'):
+                                        text_parts.append(part.text)
+                                response = ''.join(text_parts)
+                            elif isinstance(content, str):
+                                response = content
+                            else:
+                                response = str(content)
                         if hasattr(msg, 'tool_name') or (hasattr(msg, 'type') and msg.type == 'tool'):
-                            tool_outputs.append(msg.content)
+                            tool_outputs.append(str(msg.content) if msg.content else "")
 
                 # 處理引用
                 references = self._extract_references_from_tools(tool_outputs)
@@ -1450,8 +1502,18 @@ class CryptoAgent:
                 messages.append({"role": "user", "content": user_input})
                 
                 # 調用 API
+                # 從配置文件獲取默認模型
+                try:
+                    from core.model_config import get_default_model
+                    default_gemini_model = get_default_model("google_gemini")
+                    default_openai_model = get_default_model("openai")
+                except ImportError:
+                    # 如果配置文件不可用，使用默認值
+                    default_gemini_model = "gemini-3-flash-preview"
+                    default_openai_model = "gpt-4o"
+
                 completion = self.user_client.chat.completions.create(
-                    model="gemini-1.5-flash" if self.user_provider == "google_gemini" else "gpt-4o", # 簡單處理
+                    model=default_gemini_model if self.user_provider == "google_gemini" else default_openai_model, # 簡單處理
                     messages=messages
                 )
                 response = completion.choices[0].message.content
@@ -1495,9 +1557,25 @@ class CryptoAgent:
                 if "messages" in result:
                     for msg in reversed(result["messages"]):
                         if isinstance(msg, AIMessage) and msg.content and not response:
-                            response = msg.content
+                            # 確保 content 是字串（Gemini 可能返回列表或物件）
+                            content = msg.content
+                            if isinstance(content, list):
+                                # 如果是列表，嘗試提取文字內容
+                                text_parts = []
+                                for part in content:
+                                    if isinstance(part, str):
+                                        text_parts.append(part)
+                                    elif isinstance(part, dict) and 'text' in part:
+                                        text_parts.append(part['text'])
+                                    elif hasattr(part, 'text'):
+                                        text_parts.append(part.text)
+                                response = ''.join(text_parts)
+                            elif isinstance(content, str):
+                                response = content
+                            else:
+                                response = str(content)
                         if hasattr(msg, 'tool_name') or (hasattr(msg, 'type') and msg.type == 'tool'):
-                            tool_outputs.append(msg.content)
+                            tool_outputs.append(str(msg.content) if msg.content else "")
 
                 if not response: response = "抱歉，我無法處理這個請求。"
 
@@ -1526,8 +1604,18 @@ class CryptoAgent:
                 
                 # 這裡暫時不支持流式 (因為 GeminiWrapper 可能沒實作 yield)，直接等待並 yield 全部
                 # 改進：如果 client 支持 stream=True，可以嘗試
+                # 從配置文件獲取默認模型
+                try:
+                    from core.model_config import get_default_model
+                    default_gemini_model = get_default_model("google_gemini")
+                    default_openai_model = get_default_model("openai")
+                except ImportError:
+                    # 如果配置文件不可用，使用默認值
+                    default_gemini_model = "gemini-3-flash-preview"
+                    default_openai_model = "gpt-4o"
+
                 completion = self.user_client.chat.completions.create(
-                    model="gemini-1.5-flash" if self.user_provider == "google_gemini" else "gpt-4o",
+                    model=default_gemini_model if self.user_provider == "google_gemini" else default_openai_model,
                     messages=messages
                 )
                 response = completion.choices[0].message.content
