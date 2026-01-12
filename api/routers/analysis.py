@@ -1,7 +1,9 @@
 import json
 import asyncio
 import os
-from fastapi import APIRouter, HTTPException
+import uuid
+from typing import Optional
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
 from core.tools import _find_available_exchange
@@ -13,7 +15,46 @@ import api.globals as globals
 import core.config as core_config
 from utils.user_client_factory import create_user_llm_client
 
+# Import DB functions
+from core.database import (
+    save_chat_message, 
+    get_chat_history, 
+    clear_chat_history as db_clear_history,
+    get_sessions,
+    create_session,
+    delete_session
+)
+
 router = APIRouter()
+
+# --- Session Management Endpoints ---
+
+@router.get("/api/chat/sessions")
+async def get_user_sessions(user_id: str = "local_user"):
+    """獲取用戶對話列表（根據 user_id 過濾）"""
+    sessions = get_sessions(user_id=user_id)
+    return {"sessions": sessions}
+
+@router.post("/api/chat/sessions")
+async def create_new_session(user_id: str = "local_user"):
+    """創建新對話（綁定 user_id）"""
+    new_id = str(uuid.uuid4())
+    create_session(new_id, title="New Chat", user_id=user_id)
+    return {"session_id": new_id, "title": "New Chat"}
+
+@router.delete("/api/chat/sessions/{session_id}")
+async def delete_user_session(session_id: str):
+    """刪除特定對話"""
+    delete_session(session_id)
+    return {"status": "success", "message": f"Session {session_id} deleted"}
+
+@router.get("/api/chat/history")
+async def get_history(session_id: str = "default", user_id: str = "local_user"):
+    """獲取特定會話的歷史（未來可加入 user_id 驗證）"""
+    history = get_chat_history(session_id=session_id, limit=50)
+    return {"history": history}
+
+# --- Analysis Endpoint ---
 
 @router.post("/api/analyze")
 async def analyze_crypto(request: QueryRequest):
@@ -47,7 +88,7 @@ async def analyze_crypto(request: QueryRequest):
             provider=request.user_provider,
             api_key=request.user_api_key
         )
-        logger.info(f"✅ 使用用戶的 {request.user_provider} client")
+        # logger.info(f"✅ 使用用戶的 {request.user_provider} client")
     except Exception as e:
         logger.error(f"❌ 創建用戶 LLM client 失敗: {e}")
         raise HTTPException(
@@ -55,12 +96,15 @@ async def analyze_crypto(request: QueryRequest):
             detail=f"API Key 無效: {str(e)}"
         )
 
-    logger.info(f"收到分析請求: {request.message[:50]}... (Interval: {request.interval})")
+    logger.info(f"收到分析請求 (Session: {request.session_id}): {request.message[:50]}...")
+
+    # 1. 保存用戶訊息 (指定 Session ID)
+    save_chat_message("user", request.message, session_id=request.session_id)
 
     async def event_generator():
+        full_response = ""
         try:
             # ⭐ 使用 iterate_in_threadpool 將同步生成器轉為異步
-            # 傳入用戶的 LLM client
             async for part in iterate_in_threadpool(
                 globals.bot.process_message(
                     request.message,
@@ -75,8 +119,12 @@ async def analyze_crypto(request: QueryRequest):
                     user_model=request.user_model  # ⭐ 傳入用戶選擇的模型
                 )
             ):
+                full_response += part
                 # 包裝成 JSON 格式發送給前端
                 yield f"data: {json.dumps({'content': part})}\n\n"
+            
+            # 2. 保存 AI 完整回應 (指定 Session ID)
+            save_chat_message("assistant", full_response, session_id=request.session_id)
 
             yield f"data: {json.dumps({'done': True})}\n\n"
         except Exception as e:
@@ -86,10 +134,14 @@ async def analyze_crypto(request: QueryRequest):
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 @router.post("/api/chat/clear")
-async def clear_chat_history():
+async def clear_chat_history_endpoint(session_id: str = "default"):
     """清除對話歷史"""
     if globals.bot:
         globals.bot.clear_history()
+    
+    # 清除 DB 歷史
+    db_clear_history(session_id)
+    
     return {"status": "success", "message": "Chat history cleared"}
 
 @router.get("/api/debate/{symbol}")

@@ -49,6 +49,11 @@ from api.services import (
 )
 from api.routers import system, analysis, market, trading, user, agents
 
+# Initialize database (ensure tables exist)
+from core.database import init_db
+init_db()
+logger.info("✅ Database initialized")
+
 # Core imports for initialization
 try:
     from interfaces.chat_interface import CryptoAnalysisBot

@@ -40,7 +40,10 @@
       "Bash(git stash:*)",
       "Bash(git for-each-ref:*)",
       "Bash(git push:*)",
-      "Bash(gh api:*)"
+      "Bash(gh api:*)",
+      "Bash(tree:*)",
+      "Bash(sqlite3:*)",
+      "Bash(lsof:*)"
     ],
     "deny": [],
     "ask": []

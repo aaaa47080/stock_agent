@@ -37,11 +37,11 @@ get_all_pids() {
     # 方法 1: 通過端口查找
     local port_pid=$(lsof -ti :$PORT 2>/dev/null | head -1)
 
-    # 方法 2: 通過進程名查找
-    local proc_pids=$(pgrep -f "api_server.py" 2>/dev/null)
+    # 方法 2: 通過進程名查找（更精確匹配，排除當前腳本進程）
+    local proc_pids=$(pgrep -f "python.*api_server\.py" 2>/dev/null | grep -v "^$$\$")
 
-    # 合併並去重
-    echo -e "$port_pid\n$proc_pids" | grep -v '^$' | sort -u
+    # 合併並去重（排除空值和當前 shell 的子進程）
+    echo -e "$port_pid\n$proc_pids" | grep -v '^$' | grep -v "^$$\$" | sort -u
 }
 
 # 檢查服務器狀態

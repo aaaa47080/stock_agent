@@ -45,6 +45,30 @@ def init_db():
         )
     ''')
     
+    # 建立對話歷史表 (Conversation History)
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS conversation_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT DEFAULT 'default',
+            user_id TEXT DEFAULT 'local_user',
+            role TEXT NOT NULL,  -- 'user' or 'assistant'
+            content TEXT NOT NULL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            metadata TEXT  -- JSON String for extra info (symbol, tool_used, etc.)
+        )
+    ''')
+
+    # 建立對話會話表 (Sessions) - 用於管理左側列表
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS sessions (
+            session_id TEXT PRIMARY KEY,
+            user_id TEXT DEFAULT 'local_user',
+            title TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
     conn.commit()
     conn.close()
 
@@ -189,6 +213,159 @@ def get_user_predictions(user_id: str) -> List[Dict]:
                 "date": r[5]
             } for r in rows
         ]
+    finally:
+        conn.close()
+
+# --- Chat History Functions (New) ---
+
+def create_session(session_id: str, title: str = "New Chat", user_id: str = "local_user"):
+    """創建新對話會話"""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    try:
+        c.execute('''
+            INSERT INTO sessions (session_id, user_id, title, created_at, updated_at)
+            VALUES (?, ?, ?, datetime('now'), datetime('now'))
+        ''', (session_id, user_id, title))
+        conn.commit()
+    except Exception as e:
+        print(f"Session create error: {e}")
+    finally:
+        conn.close()
+
+def update_session_title(session_id: str, title: str):
+    """更新對話標題"""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    try:
+        c.execute('UPDATE sessions SET title = ?, updated_at = datetime("now") WHERE session_id = ?', (title, session_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+def get_sessions(user_id: str = "local_user", limit: int = 20) -> List[Dict]:
+    """獲取用戶的對話列表"""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    try:
+        c.execute('''
+            SELECT session_id, title, created_at, updated_at 
+            FROM sessions 
+            WHERE user_id = ? 
+            ORDER BY updated_at DESC
+            LIMIT ?
+        ''', (user_id, limit))
+        rows = c.fetchall()
+        
+        sessions = []
+        for row in rows:
+            sessions.append({
+                "id": row[0],
+                "title": row[1],
+                "created_at": row[2],
+                "updated_at": row[3]
+            })
+        return sessions
+    except Exception as e:
+        print(f"Session list error: {e}")
+        return []
+    finally:
+        conn.close()
+
+def delete_session(session_id: str):
+    """刪除對話會話及其歷史"""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    try:
+        c.execute('DELETE FROM sessions WHERE session_id = ?', (session_id,))
+        c.execute('DELETE FROM conversation_history WHERE session_id = ?', (session_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+def save_chat_message(role: str, content: str, session_id: str = "default", user_id: str = "local_user", metadata: Optional[Dict] = None):
+    """保存對話訊息，並自動更新 session 的 updated_at 和標題"""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    try:
+        # 1. 保存訊息
+        metadata_json = json.dumps(metadata, ensure_ascii=False) if metadata else None
+        c.execute('''
+            INSERT INTO conversation_history (session_id, user_id, role, content, metadata, timestamp)
+            VALUES (?, ?, ?, ?, ?, datetime('now'))
+        ''', (session_id, user_id, role, content, metadata_json))
+
+        # 2. 檢查 Session 是否存在
+        c.execute('SELECT title FROM sessions WHERE session_id = ?', (session_id,))
+        row = c.fetchone()
+
+        if not row:
+            # Session 不存在，創建新的
+            title = content[:30] + "..." if len(content) > 30 else content
+            if role == 'assistant':
+                title = "AI Analysis"
+
+            c.execute('''
+                INSERT INTO sessions (session_id, user_id, title, created_at, updated_at)
+                VALUES (?, ?, ?, datetime('now'), datetime('now'))
+            ''', (session_id, user_id, title))
+        else:
+            # Session 存在，檢查是否需要更新標題
+            current_title = row[0]
+
+            # 如果標題是 "New Chat" 且這是用戶訊息，則用用戶的第一句話作為標題
+            if current_title == "New Chat" and role == "user":
+                new_title = content[:30] + "..." if len(content) > 30 else content
+                c.execute('UPDATE sessions SET title = ?, updated_at = datetime("now") WHERE session_id = ?',
+                         (new_title, session_id))
+            else:
+                # 只更新 updated_at
+                c.execute('UPDATE sessions SET updated_at = datetime("now") WHERE session_id = ?', (session_id,))
+
+        conn.commit()
+    except Exception as e:
+        print(f"Chat save error: {e}")
+    finally:
+        conn.close()
+
+
+def get_chat_history(session_id: str = "default", limit: int = 50) -> List[Dict]:
+    """獲取對話歷史"""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    try:
+        c.execute('''
+            SELECT role, content, metadata, timestamp 
+            FROM conversation_history 
+            WHERE session_id = ? 
+            ORDER BY timestamp ASC
+            LIMIT ?
+        ''', (session_id, limit))
+        rows = c.fetchall()
+        
+        history = []
+        for row in rows:
+            metadata = json.loads(row[2]) if row[2] else None
+            history.append({
+                "role": row[0],
+                "content": row[1],
+                "metadata": metadata,
+                "timestamp": row[3]
+            })
+        return history
+    except Exception as e:
+        print(f"Chat history read error: {e}")
+        return []
+    finally:
+        conn.close()
+
+def clear_chat_history(session_id: str = "default"):
+    """清除特定 session 的對話歷史"""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    try:
+        c.execute('DELETE FROM conversation_history WHERE session_id = ?', (session_id,))
+        conn.commit()
     finally:
         conn.close()
 

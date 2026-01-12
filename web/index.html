@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AI Crypto Analyst</title>
+    <link rel="icon" type="image/png" href="/static/img/pi-logo.png">
 
     <!-- Core Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -53,30 +54,85 @@
     <!-- Custom Styles -->
     <link rel="stylesheet" href="/static/styles.css">
 </head>
-<body class="h-screen w-screen overflow-hidden flex flex-col bg-background text-textMain selection:bg-primary/30">
+<body class="h-screen w-screen overflow-hidden flex bg-background text-textMain selection:bg-primary/30">
 
-    <!-- Mobile-First Header (Minimal) -->
-    <header class="fixed top-0 left-0 right-0 z-50 px-6 py-4 flex items-center justify-between bg-gradient-to-b from-background to-transparent pointer-events-none">
-        <div class="pointer-events-auto flex items-center gap-3 opacity-80 hover:opacity-100 transition">
-            <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
-                <i data-lucide="sparkles" class="w-4 h-4 text-primary"></i>
+    <!-- Sidebar (Chat History) -->
+    <aside id="chat-sidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-surface/95 backdrop-blur-xl border-r border-white/5 transform -translate-x-full transition-transform duration-300 md:translate-x-0 md:static md:w-72 md:flex-shrink-0 flex flex-col">
+        <div class="p-4 border-b border-white/5 flex items-center justify-between">
+             <div class="flex items-center gap-2 text-secondary font-serif">
+                <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
+                    <i data-lucide="sparkles" class="w-4 h-4 text-primary"></i>
+                </div>
+                <span>CryptoMind</span>
             </div>
-            <span class="font-serif italic text-lg text-secondary">Crypto<span class="text-primary">Mind</span></span>
+            <button onclick="toggleSidebar()" class="md:hidden p-2 hover:bg-white/5 rounded-full text-textMuted"><i data-lucide="x" class="w-5 h-5"></i></button>
         </div>
 
-        <div class="pointer-events-auto flex gap-3">
-             <button onclick="openGlobalFilter()" class="relative w-10 h-10 rounded-full bg-surface hover:bg-surfaceHighlight flex items-center justify-center transition shadow-lg shadow-black/20 text-textMuted hover:text-primary">
-                <i data-lucide="sliders-horizontal" class="w-5 h-5"></i>
-                <div id="active-filter-indicator" class="hidden absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center border border-background">
-                    <span id="filter-count" class="text-[10px] font-bold text-background">0</span>
+        <div class="p-4">
+            <button onclick="createNewChat()" class="w-full py-3 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-xl flex items-center justify-center gap-2 transition font-bold text-sm">
+                <i data-lucide="plus" class="w-4 h-4"></i> New Chat
+            </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto custom-scrollbar px-2 space-y-1" id="chat-session-list">
+            <!-- Sessions injected via JS -->
+            <div class="text-center text-xs text-textMuted/40 py-4">No history</div>
+        </div>
+
+        <div class="p-4 border-t border-white/5">
+             <button onclick="switchTab('settings')" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl text-textMuted hover:text-secondary transition text-sm">
+                <div class="w-8 h-8 rounded-full bg-surfaceHighlight flex items-center justify-center">
+                    <i data-lucide="user" class="w-4 h-4"></i>
+                </div>
+                <div class="flex-1 text-left">
+                    <div class="font-bold">Settings</div>
+                    <div class="text-[10px] opacity-60">API Keys & Models</div>
                 </div>
             </button>
-            <div id="pi-user" class="hidden px-3 py-1 rounded-full bg-surface border border-white/5 flex items-center text-xs font-bold text-textMuted"></div>
         </div>
-    </header>
+    </aside>
 
     <!-- Main Content Container -->
-    <main class="flex-1 relative w-full max-w-2xl mx-auto h-full pt-20 pb-28 px-4 md:px-0">
+    <main class="flex-1 relative h-full flex flex-col w-full overflow-hidden">
+
+    <!-- Mobile Header -->
+    <header class="md:hidden flex items-center justify-between px-4 py-3 border-b border-white/5 bg-background/80 backdrop-blur-sm z-40">
+        <button onclick="toggleSidebar()" class="p-2 -ml-2 hover:bg-white/5 rounded-full text-textMuted"><i data-lucide="menu" class="w-5 h-5"></i></button>
+        <span class="font-serif text-secondary">CryptoMind</span>
+        <div class="w-9"></div> <!-- Spacer -->
+    </header>
+
+    <div class="flex-1 relative w-full h-full overflow-hidden">
+
+        <!-- Global Floating Draggable Navigation -->
+        <div id="global-nav-container" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
+            <nav id="draggable-nav" class="bg-surface/90 backdrop-blur-xl border border-white/10 rounded-3xl p-2 flex items-center gap-2 shadow-2xl shadow-black/30 cursor-move select-none">
+                <!-- Drag Handle -->
+                <div class="drag-handle w-6 h-12 flex flex-col items-center justify-center gap-0.5 text-textMuted/40 hover:text-textMuted/60 transition mr-1">
+                    <i data-lucide="grip-vertical" class="w-4 h-4"></i>
+                </div>
+                <button onclick="switchTab('chat')" class="nav-btn chat-nav-btn w-14 h-14 flex flex-col items-center justify-center rounded-2xl hover:bg-white/5 text-textMuted hover:text-primary transition gap-1" title="Chat" data-tab="chat">
+                    <i data-lucide="message-circle" class="w-6 h-6"></i>
+                    <span class="text-[10px] font-medium">Chat</span>
+                </button>
+                <button onclick="switchTab('market')" class="nav-btn chat-nav-btn w-14 h-14 flex flex-col items-center justify-center rounded-2xl hover:bg-white/5 text-textMuted hover:text-primary transition gap-1" title="Market" data-tab="market">
+                    <i data-lucide="bar-chart-2" class="w-6 h-6"></i>
+                    <span class="text-[10px] font-medium">Market</span>
+                </button>
+                <button onclick="switchTab('pulse')" class="nav-btn chat-nav-btn w-14 h-14 flex flex-col items-center justify-center rounded-2xl hover:bg-white/5 text-textMuted hover:text-primary transition gap-1" title="Pulse" data-tab="pulse">
+                    <i data-lucide="activity" class="w-6 h-6"></i>
+                    <span class="text-[10px] font-medium">Pulse</span>
+                </button>
+                <button onclick="switchTab('assets')" class="nav-btn chat-nav-btn w-14 h-14 flex flex-col items-center justify-center rounded-2xl hover:bg-white/5 text-textMuted hover:text-primary transition gap-1" title="Assets" data-tab="assets">
+                    <i data-lucide="wallet" class="w-6 h-6"></i>
+                    <span class="text-[10px] font-medium">Assets</span>
+                </button>
+                <button onclick="switchTab('settings')" class="nav-btn chat-nav-btn w-14 h-14 flex flex-col items-center justify-center rounded-2xl hover:bg-white/5 text-textMuted hover:text-primary transition gap-1" title="Settings" data-tab="settings">
+                    <i data-lucide="settings-2" class="w-6 h-6"></i>
+                    <span class="text-[10px] font-medium">Settings</span>
+                </button>
+            </nav>
+        </div>
 
         <!-- Tab: Chat (Home) - Pi Network Theme -->
         <div id="chat-tab" class="tab-content h-full flex flex-col">
@@ -88,7 +144,7 @@
             </div>
 
             <!-- Messages Area -->
-            <div id="chat-messages" class="flex-1 overflow-y-auto custom-scrollbar px-2 pb-4 space-y-8">
+            <div id="chat-messages" class="flex-1 overflow-y-auto custom-scrollbar px-4 md:px-8 py-6 space-y-6">
                 <!-- Welcome -->
                 <div class="bot-message opacity-0 animate-fade-in-up" style="animation-delay: 0.1s; animation-fill-mode: forwards;">
                     <div class="flex flex-col items-center justify-center mb-8">
@@ -119,28 +175,33 @@
                 </div>
             </div>
 
-            <!-- Warning Overlay (No Key) -->
-            <div id="no-llm-key-warning" class="hidden absolute inset-0 flex items-center justify-center z-40 p-4">
-                <div class="bg-surface/90 backdrop-blur-xl rounded-3xl p-8 border border-white/5 shadow-2xl max-w-sm w-full text-center">
-                    <div class="w-12 h-12 bg-gradient-to-r from-primary to-accent rounded-full flex items-center justify-center mx-auto mb-4 text-white">
-                        <i data-lucide="key" class="w-6 h-6"></i>
+            <!-- Warning Overlay (No Key) - 浮在聊天區域上方，不遮擋導航 -->
+            <div id="no-llm-key-warning" class="hidden absolute top-0 left-0 right-0 bottom-32 flex items-center justify-center z-40 p-4 bg-background/80 backdrop-blur-sm">
+                <div class="bg-surface/95 backdrop-blur-xl rounded-3xl p-8 border border-white/10 shadow-2xl max-w-sm w-full text-center">
+                    <div class="w-14 h-14 bg-gradient-to-r from-primary to-accent rounded-full flex items-center justify-center mx-auto mb-4 text-white shadow-lg shadow-primary/30">
+                        <i data-lucide="key" class="w-7 h-7"></i>
                     </div>
-                    <h3 class="font-serif text-xl mb-2 text-secondary">Unlock Pi Intelligence</h3>
-                    <p class="text-textMuted text-sm mb-6">Connect an API key to enable AI analysis. Your keys are stored locally.</p>
-                    <button onclick="switchTab('settings'); document.getElementById('no-llm-key-warning').classList.add('hidden');" class="w-full py-3 bg-gradient-to-r from-primary to-accent text-background font-bold rounded-2xl hover:brightness-110 transition">
-                        Configure
+                    <h3 class="font-serif text-2xl mb-2 text-secondary">Unlock Pi Intelligence</h3>
+                    <p class="text-textMuted text-sm mb-6 leading-relaxed">Connect an API key to enable AI analysis.<br>Your keys are stored locally and securely.</p>
+                    <button onclick="switchTab('settings');" class="w-full py-3.5 bg-gradient-to-r from-primary to-accent text-background font-bold rounded-2xl hover:brightness-110 transition shadow-lg shadow-primary/20">
+                        <i data-lucide="settings" class="w-4 h-4 inline-block mr-2"></i>
+                        Configure API Key
                     </button>
+                    <p class="text-textMuted/60 text-xs mt-4">You can still use other features below</p>
                 </div>
             </div>
 
             <!-- Input Area -->
-            <div class="relative mt-auto">
-                 <div class="bg-surface/80 backdrop-blur-xl border border-white/5 rounded-[2rem] p-2 flex items-center gap-2 shadow-2xl shadow-black/20 transition-all focus-within:ring-1 focus-within:ring-primary/50">
+            <div class="relative mt-auto px-4 md:px-8 pb-6">
+                <!-- Removed Inline Navigation from here -->
+
+                <!-- Input Box -->
+                <div class="bg-surface/80 backdrop-blur-xl border border-white/5 rounded-[2rem] p-2 flex items-center gap-2 shadow-2xl shadow-black/20 transition-all focus-within:ring-1 focus-within:ring-primary/50 mb-32"> <!-- Changed mb-20 to mb-32 to better position under the nav -->
                     <button onclick="toggleOptions()" class="w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center text-textMuted hover:text-primary transition">
                         <i data-lucide="plus" class="w-5 h-5"></i>
                     </button>
                     <input type="text" id="user-input"
-                        class="flex-1 bg-transparent border-none outline-none text-base text-secondary placeholder-textMuted/50 px-2 font-light"
+                        class="flex-1 bg-transparent border-none outline-none text-base text-secondary placeholder-textMuted/50 px-2 font-light relative z-10"
                         placeholder="Ask anything about crypto or trading..."
                         autocomplete="off"
                         onkeypress="if(event.key === 'Enter') sendMessage()">
@@ -148,8 +209,9 @@
                         <i data-lucide="arrow-up" class="w-5 h-5"></i>
                     </button>
                 </div>
+
                 <!-- Hidden Options -->
-                <div id="analysis-options-panel" class="hidden absolute bottom-full left-0 right-0 mb-4 p-4 bg-surface rounded-3xl border border-white/5 shadow-xl animate-fade-in-up">
+                <div id="analysis-options-panel" class="hidden absolute bottom-full left-0 right-0 mb-36 p-4 bg-surface rounded-3xl border border-white/5 shadow-xl animate-fade-in-up z-10"> <!-- Adjusted mb to position properly -->
                     <div class="flex flex-wrap gap-4 justify-center">
                          <label class="flex items-center gap-2 cursor-pointer select-none">
                             <input type="checkbox" class="analysis-checkbox accent-primary w-4 h-4 rounded-full" value="Technical Analysis" checked>
@@ -287,9 +349,18 @@
                 <span class="text-xs text-textMuted/50 font-mono" id="asset-update-time">Updated: --:--</span>
             </div>
 
+            <!-- Spot Assets Section -->
+            <div class="bg-surface p-6 rounded-3xl border border-white/5 mb-6">
+                <h3 class="font-bold text-sm text-textMuted mb-4">Spot Assets</h3>
+                <div id="spot-assets-list" class="space-y-3">
+                    <!-- Injected via JS -->
+                </div>
+            </div>
+
             <div class="bg-surface rounded-3xl border border-white/5 overflow-hidden">
-                <div class="p-4 border-b border-white/5">
+                <div class="p-4 border-b border-white/5 flex justify-between items-center">
                     <h3 class="font-bold text-sm text-textMuted pl-2">Active Positions</h3>
+                    <div id="positions-summary"></div>
                 </div>
                  <div class="overflow-x-auto">
                     <table class="w-full text-sm">
@@ -302,95 +373,137 @@
         </div>
 
         <!-- Tab: Settings -->
-        <div id="settings-tab" class="tab-content hidden h-full overflow-y-auto custom-scrollbar pb-10">
-             <h2 class="font-serif text-3xl text-secondary mb-8 px-2">Settings</h2>
+        <div id="settings-tab" class="tab-content hidden h-full overflow-y-auto custom-scrollbar pb-28">
+             <div class="max-w-2xl mx-auto px-4 md:px-6">
+                 <h2 class="font-serif text-3xl text-secondary mb-8 pt-2">Settings</h2>
 
-             <div class="space-y-6">
-                 <!-- LLM -->
-                <div class="bg-surface p-6 rounded-3xl border border-white/5">
-                    <h3 class="text-lg font-serif text-primary mb-4">AI Intelligence</h3>
-                    <div class="space-y-4">
-                        <div>
-                             <label class="block text-xs font-bold text-textMuted uppercase mb-2">Provider</label>
-                            <select id="llm-provider-select" onchange="updateLLMKeyInput(); updateAvailableModels()" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition appearance-none">
-                                <option value="openai">OpenAI</option>
-                                <option value="google_gemini">Google Gemini</option>
-                                <option value="openrouter">OpenRouter</option>
-                            </select>
-                        </div>
-                         <div>
-                            <label class="block text-xs font-bold text-textMuted uppercase mb-2">API Key</label>
-                            <div class="flex gap-2">
-                                <input type="password" id="llm-api-key-input" class="flex-1 bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 font-mono text-sm" placeholder="sk-...">
-                                <button onclick="testLLMKey()" class="px-4 bg-surfaceHighlight hover:bg-white/10 text-secondary rounded-xl transition font-bold text-xs">TEST</button>
+                 <div class="space-y-8">
+                     <!-- LLM Configuration -->
+                    <div class="bg-surface p-6 md:p-8 rounded-3xl border border-white/5">
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                                <i data-lucide="brain" class="w-5 h-5 text-primary"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-serif text-primary">AI Intelligence</h3>
+                                <p class="text-xs text-textMuted">Configure your LLM provider</p>
                             </div>
                         </div>
-                        <div>
-                             <label class="block text-xs font-bold text-textMuted uppercase mb-2">Model</label>
-                            <select id="llm-model-select" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition appearance-none" style="display: block;">
-                                <option value="">請選擇模型</option>
-                            </select>
-                            <input type="text" id="llm-model-input" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-sm text-secondary outline-none focus:border-primary/50 transition"
-                                   placeholder="Enter model name (e.g., openai/gpt-4o, anthropic/claude-3.5-sonnet)"
-                                   style="display: none;" />
-                            <p id="llm-key-status" class="mt-2 text-xs text-textMuted hidden"></p>
-                        </div>
-                         <button id="save-llm-key-btn" onclick="saveLLMKey()" class="w-full py-3 bg-primary text-background font-bold rounded-xl shadow-lg shadow-primary/10 opacity-50 cursor-not-allowed transition" disabled>Save AI Configuration</button>
-                    </div>
-                </div>
 
-                <!-- Committee -->
-                 <div class="bg-surface p-6 rounded-3xl border border-white/5">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-serif text-accent">Committee Mode</h3>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="set-committee-mode" class="sr-only peer" onchange="toggleCommitteePanel()">
-                            <div class="w-11 h-6 bg-background rounded-full peer peer-focus:ring-0 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
-                        </label>
-                    </div>
+                        <div class="space-y-5">
+                            <!-- Provider -->
+                            <div>
+                                <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Provider</label>
+                                <select id="llm-provider-select" onchange="updateLLMKeyInput(); updateAvailableModels()" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3.5 text-secondary outline-none focus:border-primary/50 transition appearance-none">
+                                    <option value="openai">OpenAI</option>
+                                    <option value="google_gemini">Google Gemini</option>
+                                    <option value="openrouter">OpenRouter</option>
+                                </select>
+                            </div>
 
-                     <div id="committee-management-panel" class="hidden space-y-4 pt-4 border-t border-white/5">
-                        <!-- Simplified Model Select -->
-                         <div>
-                            <label class="block text-xs font-bold text-textMuted uppercase mb-2">Main Model</label>
-                            <select onchange="document.getElementById('set-model-name').value = this.value" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-sm text-secondary outline-none">
-                                <option value="">Select a Model...</option>
-                                <option value="gemini-3-flash-preview">gemini-3-flash-preview</option>
-                                <option value="gpt-4o">GPT-4o</option>
-                                <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
-                            </select>
-                            <input type="hidden" id="set-model-name">
-                        </div>
+                            <!-- API Key -->
+                            <div>
+                                <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">API Key</label>
+                                <div class="flex gap-3">
+                                    <input type="password" id="llm-api-key-input" class="flex-1 bg-background border border-white/5 rounded-xl px-4 py-3.5 text-secondary outline-none focus:border-primary/50 font-mono text-sm" placeholder="sk-...">
+                                    <button onclick="testLLMKey()" class="px-5 bg-surfaceHighlight hover:bg-white/10 text-secondary rounded-xl transition font-bold text-xs whitespace-nowrap">TEST</button>
+                                </div>
+                            </div>
 
-                        <div class="grid grid-cols-2 gap-3">
-                            <button onclick="addCurrentModelToCommittee('bull')" class="py-2 bg-success/10 text-success rounded-xl text-xs font-bold border border-success/20 hover:bg-success/20 transition">+ Bull Team</button>
-                            <button onclick="addCurrentModelToCommittee('bear')" class="py-2 bg-danger/10 text-danger rounded-xl text-xs font-bold border border-danger/20 hover:bg-danger/20 transition">+ Bear Team</button>
-                        </div>
+                            <!-- Model -->
+                            <div>
+                                <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Model</label>
+                                <select id="llm-model-select" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3.5 text-secondary outline-none focus:border-primary/50 transition appearance-none" style="display: block;">
+                                    <option value="">Select a model</option>
+                                </select>
+                                <input type="text" id="llm-model-input" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3.5 text-sm text-secondary outline-none focus:border-primary/50 transition mt-3"
+                                       placeholder="e.g., openai/gpt-4o, anthropic/claude-3.5-sonnet"
+                                       style="display: none;" />
+                                <p id="llm-key-status" class="mt-2 text-xs text-textMuted hidden"></p>
+                            </div>
 
-                         <div class="grid grid-cols-2 gap-4 text-xs">
-                             <div class="bg-background p-3 rounded-xl">
-                                <span class="text-success font-bold block mb-2">Bull Members</span>
-                                <ul id="bull-committee-list" class="space-y-1 text-textMuted"></ul>
-                             </div>
-                             <div class="bg-background p-3 rounded-xl">
-                                <span class="text-danger font-bold block mb-2">Bear Members</span>
-                                <ul id="bear-committee-list" class="space-y-1 text-textMuted"></ul>
-                             </div>
+                            <button id="save-llm-key-btn" onclick="saveLLMKey()" class="w-full py-3.5 bg-primary text-background font-bold rounded-xl shadow-lg shadow-primary/10 opacity-50 cursor-not-allowed transition mt-2" disabled>
+                                Save AI Configuration
+                            </button>
                         </div>
                     </div>
-                </div>
 
-                <!-- Exchange -->
-                <div class="bg-surface p-6 rounded-3xl border border-white/5">
-                     <h3 class="text-lg font-serif text-secondary mb-4">Exchange Keys</h3>
-                     <button onclick="document.getElementById('apikey-modal').classList.remove('hidden')" class="w-full py-3 bg-surfaceHighlight hover:bg-white/10 border border-white/5 text-secondary rounded-xl transition flex items-center justify-center gap-2">
-                        <i data-lucide="settings" class="w-4 h-4"></i> Manage OKX Keys
+                    <!-- Committee Mode -->
+                    <div class="bg-surface p-6 md:p-8 rounded-3xl border border-white/5">
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                                    <i data-lucide="users" class="w-5 h-5 text-accent"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-serif text-accent">Committee Mode</h3>
+                                    <p class="text-xs text-textMuted">Multi-model consensus</p>
+                                </div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="set-committee-mode" class="sr-only peer" onchange="toggleCommitteePanel()">
+                                <div class="w-12 h-7 bg-background rounded-full peer peer-focus:ring-0 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-accent"></div>
+                            </label>
+                        </div>
+
+                        <div id="committee-management-panel" class="hidden space-y-5 pt-6 mt-6 border-t border-white/5">
+                            <div>
+                                <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Add Model to Team</label>
+                                <select onchange="document.getElementById('set-model-name').value = this.value" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3.5 text-sm text-secondary outline-none">
+                                    <option value="">Select a Model...</option>
+                                    <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
+                                    <option value="gpt-4o">GPT-4o</option>
+                                    <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+                                </select>
+                                <input type="hidden" id="set-model-name">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <button onclick="addCurrentModelToCommittee('bull')" class="py-3 bg-success/10 text-success rounded-xl text-sm font-bold border border-success/20 hover:bg-success/20 transition flex items-center justify-center gap-2">
+                                    <i data-lucide="plus" class="w-4 h-4"></i> Bull Team
+                                </button>
+                                <button onclick="addCurrentModelToCommittee('bear')" class="py-3 bg-danger/10 text-danger rounded-xl text-sm font-bold border border-danger/20 hover:bg-danger/20 transition flex items-center justify-center gap-2">
+                                    <i data-lucide="plus" class="w-4 h-4"></i> Bear Team
+                                </button>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="bg-background p-4 rounded-xl">
+                                    <span class="text-success font-bold text-sm flex items-center gap-2 mb-3">
+                                        <span class="w-2 h-2 rounded-full bg-success"></span> Bull Members
+                                    </span>
+                                    <ul id="bull-committee-list" class="space-y-2 text-xs text-textMuted"></ul>
+                                </div>
+                                <div class="bg-background p-4 rounded-xl">
+                                    <span class="text-danger font-bold text-sm flex items-center gap-2 mb-3">
+                                        <span class="w-2 h-2 rounded-full bg-danger"></span> Bear Members
+                                    </span>
+                                    <ul id="bear-committee-list" class="space-y-2 text-xs text-textMuted"></ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Exchange Keys -->
+                    <div class="bg-surface p-6 md:p-8 rounded-3xl border border-white/5">
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="w-10 h-10 rounded-xl bg-secondary/10 flex items-center justify-center">
+                                <i data-lucide="key" class="w-5 h-5 text-secondary"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-serif text-secondary">Exchange Keys</h3>
+                                <p class="text-xs text-textMuted">Connect your OKX account</p>
+                            </div>
+                        </div>
+                        <button onclick="document.getElementById('apikey-modal').classList.remove('hidden')" class="w-full py-3.5 bg-surfaceHighlight hover:bg-white/10 border border-white/5 text-secondary rounded-xl transition flex items-center justify-center gap-2 font-medium">
+                            <i data-lucide="settings" class="w-4 h-4"></i> Manage OKX Keys
+                        </button>
+                    </div>
+
+                    <button onclick="saveSettings()" id="btn-save-settings" class="w-full py-4 bg-secondary text-background font-bold rounded-2xl shadow-xl hover:scale-[1.02] transition">
+                        Save All Settings
                     </button>
-                </div>
-
-                 <button onclick="saveSettings()" id="btn-save-settings" class="w-full py-4 bg-secondary text-background font-bold rounded-2xl shadow-xl hover:scale-[1.02] transition">
-                    Save All Settings
-                </button>
+                 </div>
              </div>
         </div>
     </main>
@@ -448,8 +561,8 @@
         </div>
     </div>
 
-    <!-- Bottom Floating Dock (Navigation) -->
-    <div class="fixed bottom-6 left-0 right-0 z-50 flex justify-center pointer-events-none">
+    <!-- Bottom Floating Dock (Navigation) - Hidden on Chat Tab -->
+    <div id="bottom-dock" class="fixed bottom-6 left-0 right-0 z-50 flex justify-center pointer-events-none transition-all duration-300 translate-y-full opacity-0">
         <nav class="pointer-events-auto bg-surface/90 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] p-2 flex items-center gap-2 shadow-2xl shadow-black/50 transition-all hover:scale-105 hover:bg-surface">
 
             <button onclick="switchTab('chat')" class="nav-btn group relative w-12 h-12 flex items-center justify-center rounded-full transition-all duration-300" title="Home">
@@ -551,21 +664,93 @@
         </div>
     </div>
 
+    <!-- Confirm Dialog Modal -->
+    <div id="confirm-modal" class="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-6">
+        <div class="bg-surface w-full max-w-sm p-8 rounded-[2.5rem] border border-white/5 shadow-2xl animate-fade-in-up">
+            <!-- Icon -->
+            <div id="confirm-modal-icon" class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i data-lucide="alert-triangle" class="w-8 h-8"></i>
+            </div>
+            <!-- Title -->
+            <h3 id="confirm-modal-title" class="text-center font-serif text-xl text-secondary mb-2">確認操作</h3>
+            <!-- Message -->
+            <p id="confirm-modal-message" class="text-center text-textMuted text-sm mb-8">確定要執行此操作嗎？</p>
+            <!-- Buttons -->
+            <div class="flex gap-3">
+                <button id="confirm-modal-cancel" class="flex-1 py-3 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-2xl transition border border-white/5">
+                    取消
+                </button>
+                <button id="confirm-modal-confirm" class="flex-1 py-3 bg-danger hover:brightness-110 text-white font-bold rounded-2xl transition shadow-lg">
+                    確認
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="fixed inset-0 bg-background/95 backdrop-blur-xl z-[90] flex items-center justify-center p-6">
+        <div class="bg-surface w-full max-w-md p-8 rounded-[2.5rem] border border-white/10 shadow-2xl">
+            <!-- Header -->
+            <div class="text-center mb-8">
+                <div class="w-20 h-20 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary/20">
+                    <i data-lucide="shield-check" class="w-10 h-10 text-white"></i>
+                </div>
+                <h2 class="font-serif text-2xl text-secondary mb-2">Welcome to CryptoMind</h2>
+                <p class="text-textMuted text-sm">Connect your wallet or login to continue</p>
+            </div>
+
+            <!-- Pi Network Login Button -->
+            <button onclick="handlePiLogin()" class="w-full py-4 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-bold rounded-2xl mb-4 flex items-center justify-center gap-3 transition shadow-lg">
+                <img src="/static/img/pi-logo.png" alt="Pi" class="w-6 h-6">
+                Connect Pi Wallet
+            </button>
+
+            <div class="flex items-center gap-4 my-6">
+                <div class="flex-1 h-px bg-white/10"></div>
+                <span class="text-xs text-textMuted uppercase tracking-wider">or test mode</span>
+                <div class="flex-1 h-px bg-white/10"></div>
+            </div>
+
+            <!-- Test Credentials Login -->
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Public Key</label>
+                    <input type="text" id="login-public-key" placeholder="Enter public key"
+                        class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Password</label>
+                    <input type="password" id="login-password" placeholder="Enter password"
+                        class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition"
+                        onkeypress="if(event.key === 'Enter') handleTestLogin()">
+                </div>
+                <button onclick="handleTestLogin()" class="w-full py-3 bg-surfaceHighlight hover:bg-white/10 text-secondary font-bold rounded-xl transition border border-white/5">
+                    Login with Credentials
+                </button>
+            </div>
+
+            <p class="text-center text-xs text-textMuted/50 mt-6">
+                Test credentials: <code class="text-primary/70">test_uuid / test_uuid</code>
+            </p>
+        </div>
+    </div>
+
     <!-- Scripts -->
-    <script src="/static/js/apiKeyManager.js?v=4"></script>
-    <script src="/static/js/okxKeyManager.js?v=4"></script>
-    <script src="/static/js/app.js?v=8"></script>
-    <script src="/static/js/llmSettings.js?v=4"></script>
-    <script src="/static/js/filter.js?v=4"></script>
-    <script src="/static/js/chat.js?v=4"></script>
-    <script src="/static/js/market.js?v=4"></script>
-    <script src="/static/js/assets.js?v=4"></script>
-    <script src="/static/js/pulse.js?v=4"></script>
-    <script src="/static/js/trade.js?v=4"></script>
+    <script src="/static/js/apiKeyManager.js?v=5"></script>
+    <script src="/static/js/okxKeyManager.js?v=5"></script>
+    <script src="/static/js/app.js?v=5"></script>
+    <script src="/static/js/auth.js?v=5"></script>
+    <script src="/static/js/llmSettings.js?v=5"></script>
+    <script src="/static/js/filter.js?v=5"></script>
+    <script src="/static/js/chat.js?v=5"></script>
+    <script src="/static/js/market.js?v=5"></script>
+    <script src="/static/js/assets.js?v=5"></script>
+    <script src="/static/js/pulse.js?v=5"></script>
+    <script src="/static/js/trade.js?v=5"></script>
     <script>
         lucide.createIcons();
 
-        // Navigation Logic (Updated for Dock)
+        // Navigation Logic (Updated for Global Draggable Dock)
         function switchTab(tabId) {
             localStorage.setItem('activeTab', tabId);
 
@@ -582,24 +767,32 @@
             document.querySelectorAll('.nav-btn').forEach(btn => {
                 const icon = btn.querySelector('i');
                 const label = btn.querySelector('span');
+
+                // Reset to inactive state
                 if(icon) {
                     icon.classList.remove('text-primary');
                     icon.classList.add('text-textMuted');
                 }
-                btn.classList.remove('bg-surface');
-                if(label) label.classList.remove('opacity-100');
+                btn.classList.remove('bg-primary/10', 'text-primary');
+                btn.classList.add('text-textMuted', 'hover:bg-white/5', 'hover:text-primary');
+
+                if(label) label.classList.remove('opacity-100'); // Optional: adjust if needed
             });
 
             // Highlight Active
-            const activeBtn = document.querySelector(`button[onclick="switchTab('${tabId}')"]`);
+            const activeBtn = document.querySelector(`button[data-tab="${tabId}"]`) || document.querySelector(`button[onclick="switchTab('${tabId}')"]`);
             if(activeBtn) {
                 const icon = activeBtn.querySelector('i');
                 const label = activeBtn.querySelector('span');
+
+                // Set to active state
                 if(icon) {
                     icon.classList.remove('text-textMuted');
                     icon.classList.add('text-primary');
                 }
-                activeBtn.classList.add('bg-surface');
+                activeBtn.classList.remove('text-textMuted', 'hover:bg-white/5', 'hover:text-primary');
+                activeBtn.classList.add('bg-primary/10', 'text-primary');
+
                 if(label) label.classList.add('opacity-100');
             }
 
