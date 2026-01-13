@@ -141,6 +141,7 @@ class AdminAgent:
         2. 判斷任務的複雜度（簡單/複雜）
         3. 決定最佳的執行模式 (Execution Mode)
         4. 選擇最適合處理該任務的 Agent
+        5. 從用戶查詢中精確提取加密貨幣符號
 
         ## 可用的 Agent 列表：
         {agent_descriptions}
@@ -161,6 +162,13 @@ class AdminAgent:
         - 適用於：單一、明確的數據查詢或閒聊。
         - 例如：「BTC 價格」、「你好」、「RSI 是多少」。
 
+        ## 加密貨幣符號提取指南：
+        - 精確識別加密貨幣符號，如 BTC, ETH, SOL, XRP, ADA, DOGE, DOT, AVAX, LTC, LINK, UNI, BCH, SHIB 等
+        - 支援中英文混合文本，例如 "BTC現在值得購買嘛" 應提取 ["BTC"]
+        - 避免誤識別常見詞語，如 USD, THE, AND, FOR 等
+        - 符號前後可能有中文、英文、數字或特殊字符
+        - 仔細區分相似詞語，如 "buy" 不是幣種，但 "BTC" 是
+
         ## 決策原則：
         1. **數據優先**：只要用戶的問題中包含加密貨幣（如 BTC, ETH, PI），`assigned_agent` 絕對不能是 `admin_chat_agent`。必須選擇能處理數據的 Agent。
         2. **混合即規劃**：如果一個句子包含兩個或以上的意圖（例如：1.問候 + 2.查價），這被定義為「混合意圖」，必須設定 `execution_mode: "planning"` 且 `is_complex: true`。
@@ -174,6 +182,7 @@ class AdminAgent:
             "complexity_reason": "包含問候與特定幣種價格查詢，屬於混合意圖任務",
             "execution_mode": "planning",
             "assigned_agent": "shallow_crypto_agent",
+            "symbols": ["BTC"],
             "confidence": 1.0
         }}
 
@@ -184,6 +193,7 @@ class AdminAgent:
             "complexity_reason": "涉及多個幣種的對比分析",
             "execution_mode": "planning",
             "assigned_agent": "shallow_crypto_agent",
+            "symbols": ["BTC", "ETH"],
             "confidence": 1.0
         }}
 
@@ -194,6 +204,18 @@ class AdminAgent:
             "complexity_reason": "需要深入的投資建議與策略評估",
             "execution_mode": "deep_analysis",
             "assigned_agent": "deep_crypto_agent",
+            "symbols": ["BTC"],
+            "confidence": 0.95
+        }}
+
+        用戶: "BTC現在值得購買嘛"
+        JSON:
+        {{
+            "is_complex": true,
+            "complexity_reason": "需要深入的投資建議與策略評估",
+            "execution_mode": "deep_analysis",
+            "assigned_agent": "deep_crypto_agent",
+            "symbols": ["BTC"],
             "confidence": 0.95
         }}
 
@@ -204,6 +226,7 @@ class AdminAgent:
             "complexity_reason": "純粹的社交問候",
             "execution_mode": "simple",
             "assigned_agent": "admin_chat_agent",
+            "symbols": [],
             "confidence": 1.0
         }}
 
@@ -214,6 +237,7 @@ class AdminAgent:
             "complexity_reason": "判斷原因",
             "execution_mode": "planning" | "deep_analysis" | "simple",
             "assigned_agent": "agent_id (必須是: {', '.join(enabled_agents)})",
+            "symbols": ["BTC", "ETH"], // 提取到的幣種符號列表
             "confidence": 0.9  // 0-1 之間
         }}
         """
@@ -323,18 +347,51 @@ class AdminAgent:
         )
 
     def _fallback_agent_selection(self, user_message: str) -> str:
-        """快速關鍵詞匹配選擇 Agent"""
-        matched = agent_registry.find_agent_by_keyword(user_message)
-        return matched or "admin_chat_agent"
+        """
+        當 LLM 無法判斷時的降級選擇
+
+        邏輯：有加密貨幣符號 → shallow_crypto_agent，否則 → admin_chat_agent
+        """
+        symbols = self._extract_symbols(user_message)
+        if symbols:
+            return "shallow_crypto_agent"
+        return "admin_chat_agent"
 
     def _extract_symbols(self, text: str) -> List[str]:
         """從文本中提取加密貨幣符號"""
-        crypto_pattern = r'\b(BTC|ETH|SOL|XRP|ADA|DOGE|DOT|AVAX|LTC|LINK|UNI|BCH|SHIB|MATIC|ATOM|NEAR|APT|AR|PI|TON|BNB|SUI|STX|PEPE|WIF|BONK|RENDER|TAO|SEI|JUP|PYTH|STRK|WLD|ORDI|INJ|TIA|DYM)\b'
-        matches = re.findall(crypto_pattern, text.upper())
+        # 擴展幣種列表，包含更多熱門幣種
+        crypto_symbols = [
+            # Major coins
+            'BTC', 'ETH', 'SOL', 'XRP', 'ADA', 'DOGE', 'DOT', 'AVAX', 'LTC', 'LINK', 'UNI', 'BCH', 'SHIB', 'ETC', 'TRX', 'MATIC', 'XLM', 'ATOM', 'NEAR', 'APT', 'AR', 'PI', 'TON',
+            # Altcoins
+            'BNB', 'SUI', 'STX', 'FLOW', 'HBAR', 'VET', 'ALGO', 'XTZ', 'EOS', 'XMR', 'ZEC', 'ZIL', 'ONT', 'THETA', 'AAVE', 'SAND', 'MANA', 'PEPE', 'FLOKI', 'MEME', 'WIF', 'BONK',
+            'RENDER', 'TAO', 'SEI', 'JUP', 'PYTH', 'STRK', 'WLD', 'ORDI', 'INJ', 'TIA', 'DYM', 'FIL', 'ICP', 'SGB', 'XDC', 'IOTX', 'KDA', 'QLC', 'XVG', 'LSK', 'STEEM', 'HIVE',
+            'WAVES', 'DGB', 'SC', 'RVN', 'DCR', 'SYS', 'UBQ', 'XEM', 'FTM', 'CRV', 'MKR', 'COMP', 'BAL', 'YFI', 'SNX', 'REN', 'KNC', 'BAND', 'RLC', 'UMA', 'SRM', 'OCEAN', 'CVC',
+            'ANKR', 'OGN', 'CTSI', 'BNT', 'WRX', 'STORJ', 'ZRX', 'BAL', 'RLC', 'OCEAN', 'CVC', 'ANKR', 'OGN', 'CTSI', 'BAND', 'WRX', 'STORJ', 'ILV', 'YGG', 'IMX', 'DYDX', 'GMX',
+            'SPELL', 'UST', 'LUNA', 'FIL', 'HBAR', 'VET', 'IOTA', 'CKB', 'RVN', 'ALGO', 'QTUM', 'ONT', 'ZEC', 'DASH', 'ZEN', 'DCR', 'BAT', 'REP', 'LINK', 'COMP', 'SNX', 'MKR', 'YFI',
+            'CRV', 'UMA', 'UNI', 'SUSHI', 'BCH', 'LTC', 'XMR', 'ADA', 'DOT', 'DOGE', 'ATOM', 'BCH', 'XRP', 'ETC', 'TRX', 'EOS', 'XLM', 'BSV', 'NEO', 'HT', 'OKB', 'LEO', 'FTT', 'APT',
+            'GMT', 'SAND', 'MANA', 'AXS', 'ILV', 'RLC', 'YGG', 'IMX', 'DYDX', 'GMX', 'SPELL', 'UST', 'LUNA', 'FIL', 'HBAR', 'VET', 'IOTA', 'CKB', 'RVN', 'ALGO', 'QTUM', 'ONT', 'ZEC',
+            'DASH', 'ZEN', 'DCR', 'BAT', 'REP', 'FIL', 'LINK', 'COMP', 'SNX', 'MKR', 'YFI', 'CRV', 'UMA', 'UNI', 'SUSHI', 'BCH', 'LTC', 'XMR', 'ADA', 'DOT', 'DOGE', 'ATOM', 'BCH',
+            'XRP', 'ETC', 'TRX', 'EOS', 'XLM', 'BSV', 'NEO', 'HT', 'OKB', 'LEO', 'FTT', 'APT', 'GMT', 'SGB', 'XDC', 'IOTX', 'KDA', 'QLC', 'ADA', 'XVG', 'LSK', 'STEEM', 'HIVE',
+            'WAVES', 'XTZ', 'DGB', 'SC', 'ZIL', 'RVN', 'DCR', 'SYS', 'UBQ', 'XEM', 'LSK', 'STEEM', 'HIVE', 'WAVES', 'XTZ', 'DGB', 'SC', 'ZIL', 'RVN', 'DCR', 'SYS', 'UBQ', 'XEM',
+            'FLOW', 'ICP', 'SOL', 'AVAX', 'FTM', 'NEAR', 'AAVE', 'CRV', 'MKR', 'COMP', 'BAL', 'YFI', 'SNX', 'REN', 'KNC', 'BAND', 'RLC', 'UMA', 'SRM', 'OCEAN', 'CVC', 'ANKR', 'OGN',
+            'CTSI', 'BNT', 'WRX', 'STORJ', 'ZRX', 'BAL', 'RLC', 'OCEAN', 'CVC', 'ANKR', 'OGN', 'CTSI', 'BAND', 'WRX', 'STORJ'
+        ]
 
-        # 去重並過濾常見非幣種詞
-        common_words = {'USDT', 'BUSD', 'USD', 'THE', 'AND', 'FOR'}
-        return list(set(m for m in matches if m not in common_words))
+        # 使用工具提取加密貨幣符號（保留原有方法作為備用）
+        try:
+            from core.tools import extract_crypto_symbols_tool
+            result = extract_crypto_symbols_tool(text)
+            return result.get("extracted_symbols", [])
+        except:
+            # 如果工具不可用，使用原有的正則表達式方法
+            escaped_symbols = [re.escape(symbol) for symbol in crypto_symbols]
+            pattern = r'(?<![a-zA-Z0-9])(' + '|'.join(escaped_symbols) + r')(?![a-zA-Z0-9])'
+            matches = re.findall(pattern, text.upper(), re.IGNORECASE)
+
+            # 去重並過濾常見非幣種詞
+            common_words = {'USDT', 'BUSD', 'USD', 'THE', 'AND', 'FOR', 'ARE', 'CAN', 'SEE', 'DID', 'HAS', 'WAS', 'NOT', 'BUT', 'ALL', 'ANY', 'NEW', 'NOW', 'ONE', 'TWO', 'BUY', 'SELL', 'PAY', 'GET', 'RUN', 'SET', 'TOP', 'LOW', 'KEY', 'USE', 'TRY', 'BIG', 'OLD', 'BAD', 'HOT', 'RED', 'BIT', 'EAT', 'FLY', 'MAN', 'BOY', 'ART', 'CAR', 'DAY', 'WAY', 'HEY', 'WHY', 'HOW', 'WHO'}
+            return list(set(m for m in matches if m not in common_words))
 
     def route_simple_task(
         self,
@@ -448,9 +505,15 @@ class AdminAgent:
         from core.graph import app
         from core.config import DEFAULT_KLINES_LIMIT
 
-        # 本地提取幣種 (因為 TaskAnalysis 已移除 symbols 欄位)
-        extracted_symbols = self._extract_symbols(user_message)
-        symbol = extracted_symbols[0] if extracted_symbols else None
+        # 優先使用 TaskAnalysis 中的 symbols
+        symbol = None
+        if task.symbols and len(task.symbols) > 0:
+            symbol = task.symbols[0]
+
+        # 如果沒有，嘗試本地提取
+        if not symbol:
+            extracted_symbols = self._extract_symbols(user_message)
+            symbol = extracted_symbols[0] if extracted_symbols else None
 
         if not symbol:
             yield "錯誤：深度分析需要指定加密貨幣符號。請告訴我您想分析哪個幣種？"
@@ -550,7 +613,7 @@ class AdminAgent:
         subtasks = plan.subtasks
 
         yield f"[PROCESS] 📊 拆解出 {len(subtasks)} 個子任務\n"
-        
+
         # 列出所有子任務細節
         for st in subtasks:
             agent_name = st.assigned_agent
@@ -560,7 +623,7 @@ class AdminAgent:
         results = {}
         # 限制並發數，避免 API Rate Limit
         max_workers = min(4, len(subtasks))
-        
+
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {
                 executor.submit(self._execute_subtask_sync, subtask, **kwargs): subtask.id
@@ -572,11 +635,11 @@ class AdminAgent:
                 try:
                     result = future.result()
                     results[task_id] = result
-                    
+
                     # 找到對應的子任務以獲取描述
                     st = next((s for s in subtasks if s.id == task_id), None)
                     desc = st.description if st else task_id
-                    
+
                     yield f"[PROCESS] ✅ 完成子任務: {desc}\n"
                 except Exception as e:
                     results[task_id] = f"錯誤: {str(e)}"
@@ -586,10 +649,10 @@ class AdminAgent:
 
         # 聚合結果
         yield "[RESULT]\n"
-        
+
         # 3. 最終合成 (Synthesis) - 將所有結果彙整為一個完整的回答
         yield f"[PROCESS] 🧠 正在彙整 {len(results)} 個子任務的結果...\n"
-        
+
         synthesis_prompt = f"""你是一個高級金融分析助手。用戶問了一個複雜的問題，我們已經將其拆解為多個子任務並執行完畢。
 現在請根據「用戶原始問題」和「子任務執行結果」，生成一個完整、流暢、邏輯連貫的最終回答。
 
@@ -602,7 +665,7 @@ class AdminAgent:
             # 找到對應的子任務描述
             desc = next((st.description for st in subtasks if st.id == task_id), "未知任務")
             synthesis_prompt += f"\n--- 子任務: {desc} ---\n{result}\n"
-            
+
         synthesis_prompt += "\n\n## 你的任務：\n請綜合以上資訊，直接回答用戶的問題。不需要提及「子任務」或「拆解過程」，直接給出最終答案即可。請使用繁體中文。"
 
         try:
@@ -616,7 +679,7 @@ class AdminAgent:
             )
             final_answer = response.choices[0].message.content
             yield final_answer
-            
+
         except Exception as e:
             yield f"彙整結果時發生錯誤: {str(e)}\n\n以下是原始結果:\n"
             for task_id, result in results.items():
@@ -657,11 +720,82 @@ class AdminAgent:
         user_message: str,
         **kwargs
     ) -> Generator[str, None, None]:
-        """執行簡單對話（無工具）"""
+        """執行簡單對話（支援工具調用）"""
         if not self.user_llm_client:
             yield "抱歉，系統暫時無法處理您的請求。請稍後再試。"
             return
 
+        # 檢查 Agent 是否有配置工具
+        agent_config = agent_registry.get_agent(task.assigned_agent)
+        agent_tools = agent_config.tools if agent_config else []
+
+        # 如果有工具，使用帶工具的 Agent
+        if agent_tools:
+            try:
+                from core.tools import get_tools_by_names
+                from langchain_openai import ChatOpenAI
+                from langchain_google_genai import ChatGoogleGenerativeAI
+                from langgraph.prebuilt import create_react_agent
+                from langchain_core.messages import HumanMessage, AIMessage
+                import os
+
+                # 獲取工具
+                tools = get_tools_by_names(agent_tools)
+
+                # 創建 LLM
+                llm = None
+                if self.user_provider == "google_gemini":
+                    api_key = kwargs.get("user_api_key") or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+                    if api_key:
+                        model_name = self.user_model or "gemini-2.0-flash"
+                        llm = ChatGoogleGenerativeAI(
+                            model=model_name,
+                            temperature=0.7,
+                            google_api_key=api_key
+                        )
+                else:
+                    # OpenAI 或 OpenRouter
+                    api_key = kwargs.get("user_api_key") or os.getenv("OPENAI_API_KEY")
+                    base_url = None
+                    if self.user_provider == "openrouter":
+                        base_url = "https://openrouter.ai/api/v1"
+                    if api_key:
+                        model_name = self.user_model or self._get_model_for_provider()
+                        llm = ChatOpenAI(
+                            model=model_name,
+                            temperature=0.7,
+                            api_key=api_key,
+                            base_url=base_url
+                        )
+
+                if llm and tools:
+                    # 創建 ReAct Agent
+                    system_prompt = """你是一個友善的加密貨幣分析助手。
+你可以幫助用戶了解加密貨幣市場、回答問題、提供使用說明。
+你有權限使用工具來查詢當前時間等資訊。
+請用繁體中文回答。"""
+
+                    agent = create_react_agent(llm, tools, prompt=system_prompt)
+                    result = agent.invoke({"messages": [HumanMessage(content=user_message)]})
+
+                    # 提取 AI 回應
+                    if "messages" in result:
+                        for msg in reversed(result["messages"]):
+                            if isinstance(msg, AIMessage) and msg.content:
+                                content = msg.content
+                                if isinstance(content, list):
+                                    text_parts = [p if isinstance(p, str) else p.get('text', '') for p in content]
+                                    yield ''.join(text_parts)
+                                else:
+                                    yield str(content)
+                                return
+
+            except Exception as e:
+                if self.verbose:
+                    print(f"[AdminAgent] Tool-based chat failed: {e}, falling back to simple chat")
+                # 繼續使用無工具對話作為 fallback
+
+        # 無工具或工具執行失敗時，使用純對話模式
         try:
             system_prompt = """你是一個友善的加密貨幣分析助手。
 你可以幫助用戶了解加密貨幣市場、回答問題、提供使用說明。

@@ -147,4 +147,73 @@ class OKXKeyManager {
 // 創建全局實例
 window.OKXKeyManager = new OKXKeyManager();
 
+/**
+ * 更新 Settings 頁面的 OKX 連接狀態 UI
+ */
+function updateOKXStatusUI() {
+    const okxKeyManager = window.OKXKeyManager;
+    const statusBadge = document.getElementById('okx-status-badge');
+    const notConnected = document.getElementById('okx-not-connected');
+    const connected = document.getElementById('okx-connected');
+
+    if (!statusBadge || !notConnected || !connected) return;
+
+    if (okxKeyManager && okxKeyManager.hasCredentials()) {
+        // 已連接狀態
+        statusBadge.innerHTML = `
+            <span class="w-2 h-2 rounded-full bg-success animate-pulse"></span>
+            <span class="text-success">Connected</span>
+        `;
+        statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-success/10 border border-success/20';
+        notConnected.classList.add('hidden');
+        connected.classList.remove('hidden');
+    } else {
+        // 未連接狀態
+        statusBadge.innerHTML = `
+            <span class="w-2 h-2 rounded-full bg-textMuted"></span>
+            <span class="text-textMuted">Not Connected</span>
+        `;
+        statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 border border-white/10';
+        notConnected.classList.remove('hidden');
+        connected.classList.add('hidden');
+    }
+
+    lucide.createIcons();
+}
+
+/**
+ * 斷開 OKX 連接
+ */
+async function disconnectOKX() {
+    const confirmed = await showConfirm({
+        title: '斷開連接',
+        message: '確定要斷開 OKX 連接嗎？\n\n您的 API 金鑰將從瀏覽器中移除。',
+        type: 'danger',
+        confirmText: '斷開',
+        cancelText: '取消'
+    });
+
+    if (!confirmed) return;
+
+    const okxKeyManager = window.OKXKeyManager;
+    if (okxKeyManager) {
+        okxKeyManager.clearCredentials();
+    }
+
+    // 更新 UI
+    updateOKXStatusUI();
+
+    // 如果在 Assets 頁面，也更新那邊的 UI
+    if (typeof refreshAssets === 'function') {
+        refreshAssets();
+    }
+
+    showToast('OKX 連接已斷開', 'success');
+}
+
+// 頁面載入時更新狀態
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(updateOKXStatusUI, 100);
+});
+
 console.log('[OKXKeyManager] OKX API 金鑰管理器已初始化（BYOK 模式）');

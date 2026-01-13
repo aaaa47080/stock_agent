@@ -20,7 +20,15 @@ async function switchFilterExchange(exchange) {
     if (exchange === currentFilterExchange) return;
 
     if (globalSelectedSymbols.length > 0) {
-        if (!confirm("切換交易所將清除目前的選擇，是否繼續？")) {
+        const confirmed = await showConfirm({
+            title: '切換交易所',
+            message: '切換交易所將清除目前的選擇，是否繼續？',
+            type: 'warning',
+            confirmText: '繼續',
+            cancelText: '取消'
+        });
+
+        if (!confirmed) {
             const select = document.getElementById('filter-exchange-select');
             if (select) select.value = currentFilterExchange;
             return;

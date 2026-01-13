@@ -9,6 +9,209 @@ let isAnalyzing = false;
 let marketRefreshInterval = null;
 
 // ========================================
+// 自定義對話框系統 (替代原生 alert/confirm)
+// ========================================
+
+/**
+ * 顯示 Toast 通知
+ * @param {string} message - 訊息內容
+ * @param {string} type - 類型: 'success', 'error', 'warning', 'info'
+ * @param {number} duration - 顯示時間(ms)，默認 3000
+ */
+function showToast(message, type = 'info', duration = 3000) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const icons = {
+        success: 'check-circle',
+        error: 'x-circle',
+        warning: 'alert-triangle',
+        info: 'info'
+    };
+
+    const colors = {
+        success: 'bg-success/20 border-success/30 text-success',
+        error: 'bg-danger/20 border-danger/30 text-danger',
+        warning: 'bg-primary/20 border-primary/30 text-primary',
+        info: 'bg-accent/20 border-accent/30 text-accent'
+    };
+
+    const toast = document.createElement('div');
+    toast.className = `pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-2xl border backdrop-blur-xl shadow-xl ${colors[type]} animate-fade-in-up max-w-sm`;
+    toast.innerHTML = `
+        <i data-lucide="${icons[type]}" class="w-5 h-5 flex-shrink-0 mt-0.5"></i>
+        <p class="text-sm leading-relaxed whitespace-pre-line">${message}</p>
+        <button onclick="this.parentElement.remove()" class="ml-auto flex-shrink-0 opacity-60 hover:opacity-100 transition">
+            <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+    `;
+
+    container.appendChild(toast);
+    lucide.createIcons();
+
+    // 自動移除
+    if (duration > 0) {
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(100%)';
+            toast.style.transition = 'all 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    }
+}
+
+/**
+ * 顯示確認對話框 (替代 confirm)
+ * @param {Object} options - 配置選項
+ * @param {string} options.title - 標題
+ * @param {string} options.message - 訊息內容
+ * @param {string} options.type - 類型: 'danger', 'warning', 'info'
+ * @param {string} options.confirmText - 確認按鈕文字
+ * @param {string} options.cancelText - 取消按鈕文字
+ * @returns {Promise<boolean>} - 用戶選擇結果
+ */
+function showConfirm(options = {}) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('confirm-modal');
+        const iconEl = document.getElementById('confirm-modal-icon');
+        const titleEl = document.getElementById('confirm-modal-title');
+        const messageEl = document.getElementById('confirm-modal-message');
+        const confirmBtn = document.getElementById('confirm-modal-confirm');
+        const cancelBtn = document.getElementById('confirm-modal-cancel');
+
+        if (!modal) {
+            resolve(window.confirm(options.message || '確定嗎？'));
+            return;
+        }
+
+        const {
+            title = '確認操作',
+            message = '確定要執行此操作嗎？',
+            type = 'warning',
+            confirmText = '確認',
+            cancelText = '取消'
+        } = options;
+
+        // 設置圖標和顏色
+        const iconConfig = {
+            danger: { icon: 'alert-triangle', bg: 'bg-danger/20', color: 'text-danger' },
+            warning: { icon: 'alert-circle', bg: 'bg-primary/20', color: 'text-primary' },
+            info: { icon: 'info', bg: 'bg-accent/20', color: 'text-accent' },
+            success: { icon: 'check-circle', bg: 'bg-success/20', color: 'text-success' }
+        };
+
+        const config = iconConfig[type] || iconConfig.warning;
+
+        iconEl.className = `w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 ${config.bg}`;
+        iconEl.innerHTML = `<i data-lucide="${config.icon}" class="w-8 h-8 ${config.color}"></i>`;
+
+        titleEl.textContent = title;
+        messageEl.textContent = message;
+        confirmBtn.textContent = confirmText;
+        cancelBtn.textContent = cancelText;
+
+        // 根據類型設置確認按鈕樣式
+        if (type === 'danger') {
+            confirmBtn.className = 'flex-1 py-3 bg-danger hover:brightness-110 text-white font-bold rounded-2xl transition shadow-lg';
+        } else {
+            confirmBtn.className = 'flex-1 py-3 bg-primary hover:brightness-110 text-background font-bold rounded-2xl transition shadow-lg';
+        }
+
+        lucide.createIcons();
+        modal.classList.remove('hidden');
+
+        // 清除舊的事件監聽器
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        const newCancelBtn = cancelBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+
+        newConfirmBtn.onclick = () => {
+            modal.classList.add('hidden');
+            resolve(true);
+        };
+
+        newCancelBtn.onclick = () => {
+            modal.classList.add('hidden');
+            resolve(false);
+        };
+    });
+}
+
+/**
+ * 顯示 Alert 對話框 (替代 alert，只有確認按鈕)
+ * @param {Object} options - 配置選項
+ * @returns {Promise<void>}
+ */
+function showAlert(options = {}) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('confirm-modal');
+        const iconEl = document.getElementById('confirm-modal-icon');
+        const titleEl = document.getElementById('confirm-modal-title');
+        const messageEl = document.getElementById('confirm-modal-message');
+        const buttonsEl = document.getElementById('confirm-modal-buttons');
+
+        if (!modal) {
+            window.alert(options.message || '提示');
+            resolve();
+            return;
+        }
+
+        const {
+            title = '提示',
+            message = '',
+            type = 'info',
+            confirmText = '確定'
+        } = options;
+
+        // 設置圖標和顏色
+        const iconConfig = {
+            danger: { icon: 'x-circle', bg: 'bg-danger/20', color: 'text-danger' },
+            warning: { icon: 'alert-triangle', bg: 'bg-primary/20', color: 'text-primary' },
+            info: { icon: 'info', bg: 'bg-accent/20', color: 'text-accent' },
+            success: { icon: 'check-circle', bg: 'bg-success/20', color: 'text-success' }
+        };
+
+        const config = iconConfig[type] || iconConfig.info;
+
+        iconEl.className = `w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 ${config.bg}`;
+        iconEl.innerHTML = `<i data-lucide="${config.icon}" class="w-8 h-8 ${config.color}"></i>`;
+
+        titleEl.textContent = title;
+        messageEl.textContent = message;
+
+        // 只顯示一個按鈕
+        buttonsEl.innerHTML = `
+            <button id="confirm-modal-ok" class="flex-1 py-3 bg-primary hover:brightness-110 text-background font-bold rounded-2xl transition shadow-lg">
+                ${confirmText}
+            </button>
+        `;
+
+        lucide.createIcons();
+        modal.classList.remove('hidden');
+
+        document.getElementById('confirm-modal-ok').onclick = () => {
+            // 恢復兩個按鈕的結構
+            buttonsEl.innerHTML = `
+                <button id="confirm-modal-cancel" class="flex-1 py-3 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-2xl transition border border-white/5">
+                    取消
+                </button>
+                <button id="confirm-modal-confirm" class="flex-1 py-3 bg-danger hover:brightness-110 text-white font-bold rounded-2xl transition shadow-lg">
+                    確認
+                </button>
+            `;
+            modal.classList.add('hidden');
+            resolve();
+        };
+    });
+}
+
+// 全局導出
+window.showToast = showToast;
+window.showConfirm = showConfirm;
+window.showAlert = showAlert;
+
+// ========================================
 // API Key Status Check
 // ========================================
 function checkApiKeyStatus() {
@@ -127,10 +330,6 @@ window.globalSelectedSymbols = []; // Unified selection
 window.selectedNewsSources = ['google', 'cryptocompare', 'cryptopanic', 'newsapi']; // ✅ 固定使用所有新聞來源
 window.currentFilterExchange = 'okx';
 let isFirstLoad = true;
-
-// Committee Variables
-let tempBullModels = [];
-let tempBearModels = [];
 
 // API Key Validity Cache
 let validKeys = {
@@ -358,12 +557,14 @@ async function openSettings() {
             if (nameInput) nameInput.value = settings.primary_model_name;
         }
 
-        // Initialize committee lists
-        tempBullModels = settings.bull_committee_models || [];
-        tempBearModels = settings.bear_committee_models || [];
-        
-        toggleCommitteePanel(); // Show/Hide based on checkbox
-        renderCommitteeLists();
+        // Initialize committee lists using CommitteeManager
+        if (window.CommitteeManager) {
+            window.CommitteeManager.loadConfig({
+                bull: settings.bull_committee_models || [],
+                bear: settings.bear_committee_models || []
+            });
+            window.CommitteeManager.togglePanel(settings.enable_committee);
+        }
 
     } catch (e) {
         console.error("Failed to load settings", e);
@@ -381,89 +582,6 @@ function closeSettings() {
     }
 }
 
-function toggleCommitteePanel() {
-    const isEnabled = document.getElementById('set-committee-mode').checked;
-    const panel = document.getElementById('committee-management-panel');
-    const singleConfig = document.getElementById('single-model-config');
-    
-    if (isEnabled) {
-        panel.classList.remove('hidden');
-        // Optional: Maybe dim single config or label it differently
-    } else {
-        panel.classList.add('hidden');
-    }
-}
-
-function renderCommitteeLists() {
-    const renderList = (models, elementId, type) => {
-        const ul = document.getElementById(elementId);
-        ul.innerHTML = '';
-        if (models.length === 0) {
-            ul.innerHTML = '<li class="text-slate-500 italic">尚無成員，請添加</li>';
-            return;
-        }
-        models.forEach((m, idx) => {
-            const li = document.createElement('li');
-            li.className = 'flex justify-between items-center bg-slate-800 rounded px-2 py-1 border border-slate-700';
-            li.innerHTML = `
-                <span class="truncate" title="${m.model} (${m.provider})">
-                    <span class="text-blue-400 font-bold">[${m.provider === 'google_gemini' ? 'Gemini' : (m.provider === 'openai' ? 'OpenAI' : 'OpenRouter')}]</span> 
-                    ${m.model}
-                </span>
-                <button onclick="removeCommitteeModel('${type}', ${idx})" class="text-slate-500 hover:text-red-400">
-                    <i data-lucide="trash-2" class="w-3 h-3"></i>
-                </button>
-            `;
-            ul.appendChild(li);
-        });
-    };
-
-    renderList(tempBullModels, 'bull-committee-list', 'bull');
-    renderList(tempBearModels, 'bear-committee-list', 'bear');
-    lucide.createIcons();
-}
-
-function addCurrentModelToCommittee(targetType) {
-    const provider = document.getElementById('set-model-provider').value;
-    const model = document.getElementById('set-model-name').value;
-
-    if (!model) {
-        alert("請先輸入或選擇模型名稱");
-        return;
-    }
-
-    const newModel = { provider, model };
-
-    const addTo = (list) => {
-        const exists = list.some(m => m.provider === provider && m.model === model);
-        if (!exists) list.push(newModel);
-    };
-
-    if (targetType === 'bull') {
-        addTo(tempBullModels);
-    } else if (targetType === 'bear') {
-        addTo(tempBearModels);
-    } else {
-        // Fallback: add to both if called without type (backward compatibility)
-        addTo(tempBullModels);
-        addTo(tempBearModels);
-    }
-
-    renderCommitteeLists();
-}
-
-// Expose to global scope for onclick events
-window.removeCommitteeModel = function(type, index) {
-    if (type === 'bull') {
-        tempBullModels.splice(index, 1);
-    } else {
-        tempBearModels.splice(index, 1);
-    }
-    renderCommitteeLists();
-};
-window.addCurrentModelToCommittee = addCurrentModelToCommittee;
-window.toggleCommitteePanel = toggleCommitteePanel;
-
 // Allow external modules (like llmSettings.js) to update key validity
 window.setKeyValidity = function(provider, isValid) {
     if (validKeys.hasOwnProperty(provider)) {
@@ -473,75 +591,163 @@ window.setKeyValidity = function(provider, isValid) {
 };
 
 // ========================================
-// Draggable Navigation Logic
+// Draggable Navigation Logic (Optimized)
 // ========================================
-document.addEventListener('DOMContentLoaded', () => {
+let navCollapsed = false;
+
+function toggleNavCollapse() {
+    const navButtons = document.getElementById('nav-buttons');
+    const toggleIcon = document.getElementById('nav-toggle-icon');
     const nav = document.getElementById('draggable-nav');
-    if (!nav) return;
+
+    if (!navButtons || !toggleIcon) return;
+
+    navCollapsed = !navCollapsed;
+
+    if (navCollapsed) {
+        // 收縮
+        navButtons.style.width = '0';
+        navButtons.style.opacity = '0';
+        navButtons.style.pointerEvents = 'none';
+        toggleIcon.style.transform = 'rotate(180deg)';
+        nav.style.borderRadius = '9999px';
+    } else {
+        // 展開
+        navButtons.style.width = '';
+        navButtons.style.opacity = '1';
+        navButtons.style.pointerEvents = 'auto';
+        toggleIcon.style.transform = 'rotate(0deg)';
+        nav.style.borderRadius = '9999px';
+    }
+
+    // 保存狀態
+    localStorage.setItem('navCollapsed', navCollapsed);
+}
+
+// 初始化收縮狀態
+document.addEventListener('DOMContentLoaded', () => {
+    const saved = localStorage.getItem('navCollapsed');
+    if (saved === 'true') {
+        navCollapsed = false; // 先設為 false，讓 toggle 變成 true
+        toggleNavCollapse();
+    }
+});
+
+// Draggable Logic
+document.addEventListener('DOMContentLoaded', () => {
+    const container = document.getElementById('global-nav-container');
+    const nav = document.getElementById('draggable-nav');
+    if (!container || !nav) return;
 
     let isDragging = false;
-    let currentX = 0;
-    let currentY = 0;
-    let initialX;
-    let initialY;
-    let xOffset = 0;
-    let yOffset = 0;
+    let hasMoved = false;
+    let startX, startY;
+    let offsetX = 0, offsetY = 0;
 
-    const dragHandle = nav.querySelector('.drag-handle') || nav;
-
-    dragHandle.addEventListener('mousedown', dragStart);
-    document.addEventListener('mousemove', drag);
-    document.addEventListener('mouseup', dragEnd);
-
-    // Touch support
-    dragHandle.addEventListener('touchstart', dragStart, {passive: false});
-    document.addEventListener('touchmove', drag, {passive: false});
-    document.addEventListener('touchend', dragEnd);
-
-    function dragStart(e) {
-        if (e.type === 'touchstart') {
-            initialX = e.touches[0].clientX - xOffset;
-            initialY = e.touches[0].clientY - yOffset;
-        } else {
-            initialX = e.clientX - xOffset;
-            initialY = e.clientY - yOffset;
-        }
-
-        if (e.target.closest('button')) return; // Allow clicking buttons
-
-        if (e.target === dragHandle || dragHandle.contains(e.target)) {
-            isDragging = true;
-        }
+    // 從 localStorage 恢復位置
+    const savedPos = localStorage.getItem('navPosition');
+    if (savedPos) {
+        const { x, y } = JSON.parse(savedPos);
+        offsetX = x;
+        offsetY = y;
+        updatePosition();
     }
 
-    function dragEnd(e) {
-        initialX = currentX;
-        initialY = currentY;
+    const dragHandle = nav.querySelector('.drag-handle');
+    if (!dragHandle) return;
+
+    // Mouse events
+    dragHandle.addEventListener('mousedown', onStart);
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onEnd);
+
+    // Touch events
+    dragHandle.addEventListener('touchstart', onStart, { passive: false });
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', onEnd);
+
+    function onStart(e) {
+        if (e.target.closest('button:not(.drag-handle)')) return;
+
+        isDragging = true;
+        hasMoved = false;
+
+        const point = e.touches ? e.touches[0] : e;
+        startX = point.clientX - offsetX;
+        startY = point.clientY - offsetY;
+
+        nav.style.transition = 'none';
+        dragHandle.style.cursor = 'grabbing';
+    }
+
+    function onMove(e) {
+        if (!isDragging) return;
+        e.preventDefault();
+
+        const point = e.touches ? e.touches[0] : e;
+        const newX = point.clientX - startX;
+        const newY = point.clientY - startY;
+
+        // 檢測是否真的移動了
+        if (Math.abs(newX - offsetX) > 3 || Math.abs(newY - offsetY) > 3) {
+            hasMoved = true;
+        }
+
+        offsetX = newX;
+        offsetY = newY;
+
+        updatePosition();
+    }
+
+    function onEnd() {
+        if (!isDragging) return;
         isDragging = false;
+
+        nav.style.transition = 'all 0.3s ease';
+        dragHandle.style.cursor = 'grab';
+
+        // 邊界檢測與吸附
+        const navRect = nav.getBoundingClientRect();
+        const navWidth = navRect.width;
+        const navHeight = navRect.height;
+        const viewW = window.innerWidth;
+        const viewH = window.innerHeight;
+        const padding = 10;
+
+        // 計算導航欄可移動的範圍
+        // 初始位置是 left: 50%, transform: translateX(-50%)，所以中心點在屏幕中央
+        // offsetX/offsetY 是相對於初始中心位置的偏移
+
+        // 水平邊界：導航欄不能超出屏幕左右
+        const minX = -(viewW / 2) + (navWidth / 2) + padding;
+        const maxX = (viewW / 2) - (navWidth / 2) - padding;
+
+        // 垂直邊界：導航欄不能超出屏幕上下
+        // 初始位置是 bottom: 24 (約 96px)，所以初始 top 約為 viewH - 96 - navHeight
+        const initialTop = viewH - 96 - navHeight;
+        const minY = -initialTop + padding;
+        const maxY = viewH - initialTop - navHeight - padding;
+
+        // 限制在邊界內
+        offsetX = Math.max(minX, Math.min(maxX, offsetX));
+        offsetY = Math.max(minY, Math.min(maxY, offsetY));
+
+        updatePosition();
+
+        // 保存位置
+        localStorage.setItem('navPosition', JSON.stringify({ x: offsetX, y: offsetY }));
     }
 
-    function drag(e) {
-        if (isDragging) {
-            e.preventDefault();
-            
-            if (e.type === 'touchmove') {
-                currentX = e.touches[0].clientX - initialX;
-                currentY = e.touches[0].clientY - initialY;
-            } else {
-                currentX = e.clientX - initialX;
-                currentY = e.clientY - initialY;
-            }
+    function updatePosition() {
+        container.style.transform = `translate(calc(-50% + ${offsetX}px), ${offsetY}px)`;
+    }
 
-            xOffset = currentX;
-            yOffset = currentY;
-
-            setTranslate(currentX, currentY, nav);
+    // 窗口大小改變時重新檢測邊界
+    window.addEventListener('resize', () => {
+        if (!isDragging) {
+            onEnd();
         }
-    }
-
-    function setTranslate(xPos, yPos, el) {
-        el.style.transform = `translate3d(${xPos}px, ${yPos}px, 0)`;
-    }
+    });
 });
 
 async function saveSettings() {
@@ -553,6 +759,8 @@ async function saveSettings() {
     btn.classList.add('opacity-50', 'cursor-not-allowed');
 
     // ⚠️ Prepare Backend Payload
+    const committeeConfig = window.CommitteeManager ? window.CommitteeManager.getConfig() : { bull: [], bear: [] };
+    
     const payload = {
         openai_api_key: null,
         google_api_key: null,
@@ -562,8 +770,8 @@ async function saveSettings() {
         primary_model_provider: document.getElementById('llm-provider-select') ? document.getElementById('llm-provider-select').value : '',
         primary_model_name: document.getElementById('set-model-name') ? document.getElementById('set-model-name').value : '',
 
-        bull_committee_models: tempBullModels,
-        bear_committee_models: tempBearModels
+        bull_committee_models: committeeConfig.bull,
+        bear_committee_models: committeeConfig.bear
     };
 
     let success = false;
@@ -595,10 +803,10 @@ async function saveSettings() {
             }, 500);
 
         } else {
-            alert('Failed to save settings: ' + (result.detail || 'Unknown error'));
+            showToast('保存設定失敗: ' + (result.detail || '未知錯誤'), 'error');
         }
     } catch (e) {
-        alert('Error saving settings: ' + e);
+        showToast('保存設定時發生錯誤: ' + e, 'error');
     }
     
     // 只有在失敗時才立即恢復按鈕

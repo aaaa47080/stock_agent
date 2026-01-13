@@ -374,11 +374,11 @@ async function showFundingHistory(symbol) {
             renderHistoryChart(data.data);
         } else {
             console.error('History data missing:', data);
-            alert('無法獲取歷史數據: ' + (data.error || '未知錯誤'));
+            showToast('無法獲取歷史數據: ' + (data.error || '未知錯誤'), 'error');
         }
     } catch (e) {
         console.error('Fetch failed:', e);
-        alert('載入失敗，請檢查網絡或伺服器日誌');
+        showToast('載入失敗，請檢查網絡連接', 'error');
     }
 }
 

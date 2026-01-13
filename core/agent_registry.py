@@ -1,6 +1,6 @@
 """
 Agent 註冊表 - 可配置的 Agent 路由系統
-支持配置文件預設 + API 運行時動態修改
+完全依賴 LLM 自主判斷選擇最佳 Agent
 
 使用方式:
     from core.agent_registry import agent_registry
@@ -24,9 +24,7 @@ class AgentConfig(BaseModel):
     name: str = Field(..., description="Agent 顯示名稱")
     description: str = Field(..., description="Agent 功能描述，用於 LLM 路由判斷")
     tools: List[str] = Field(default_factory=list, description="可用工具 ID 列表")
-    keywords: List[str] = Field(default_factory=list, description="關鍵詞匹配（用於快速路由）")
     enabled: bool = Field(default=True, description="是否啟用")
-    priority: int = Field(default=10, description="優先級（數字越小越高）")
     use_debate_system: bool = Field(default=False, description="是否啟用完整會議討論機制")
     llm_config: Optional[Dict[str, Any]] = Field(default=None, description="可選的 LLM 模型配置覆蓋")
 
@@ -42,43 +40,51 @@ class AgentConfig(BaseModel):
 DEFAULT_AGENT_REGISTRY: Dict[str, dict] = {
     "shallow_crypto_agent": {
         "name": "淺層加密貨幣 Agent",
-        "description": "處理加密貨幣簡單相關問題，包括：即時價格查詢、技術指標（RSI、MACD、布林帶、均線等）、最新新聞。適合快速獲取市場數據，不涉及深度投資分析。",
+        "description": """處理加密貨幣的快速查詢需求，包括：
+        - 即時價格查詢（如「BTC 現在多少錢？」）
+        - 技術指標查詢（RSI、MACD、布林帶、均線等）
+        - 最新新聞和市場動態
+        - 市場脈動解釋（如「為什麼 ETH 漲了？」）
+        適合需要快速獲取市場數據的用戶，不涉及深度投資建議。""",
         "tools": [
+            "get_current_time_tool",
             "get_crypto_price_tool",
             "technical_analysis_tool",
-            "news_analysis_tool"
+            "news_analysis_tool",
+            "explain_market_movement_tool"
         ],
-        "keywords": [],
         "enabled": True,
-        "priority": 1,
         "use_debate_system": False
     },
 
     "deep_crypto_agent": {
         "name": "深層加密貨幣 Agent",
-        "description": "詳細加密貨幣交易對分析，制定相關投資策略，並進行歷史回測。適合需要深入市場洞察和策略建議的用戶。",
+        "description": """處理需要深度分析的投資決策，包括：
+        - 完整投資分析（多空辯論、風險評估、交易建議）
+        - 歷史策略回測
+        - 投資建議和交易計劃
+        適合詢問「XXX 可以買嗎？」「應該做多還是做空？」「給我完整分析」等需要深度洞察的問題。
+        注意：此 Agent 執行時間較長（30秒-2分鐘）。""",
         "tools": [
             "full_investment_analysis_tool",
             "backtest_strategy_tool"
         ],
-        "keywords": [],
         "enabled": True,
-        "priority": 2,
         "use_debate_system": True
     },
 
     "admin_chat_agent": {
         "name": "行政 Agent",
-        "description": "處理一般性閒聊、系統操作問題、使用說明。適合打招呼、詢問系統功能、非金融相關問題。",
-        "tools": [],
-        "keywords": [
-            "你好", "哈囉", "嗨", "早安", "午安", "晚安",
-            "謝謝", "感謝", "掰掰", "再見",
-            "幫助", "怎麼用", "如何使用", "功能", "介紹",
-            "你是誰", "你是什麼", "系統"
+        "description": """處理非加密貨幣相關的一般性問題，包括：
+        - 打招呼和閒聊（如「你好」「謝謝」）
+        - 系統使用說明和功能介紹
+        - 當前時間和日期查詢（如「現在幾點？」「今天星期幾？」）
+        - 其他非金融相關的一般性問題
+        適合社交互動和系統操作指引。""",
+        "tools": [
+            "get_current_time_tool"
         ],
         "enabled": True,
-        "priority": 3,
         "use_debate_system": False
     }
 }
@@ -93,6 +99,7 @@ class AgentRegistry:
     - 運行時動態新增/刪除/修改 Agent
     - 工具列表更新
     - 導出為字典格式（用於 API）
+    - 生成 LLM 路由描述
     """
 
     def __init__(self):
@@ -233,17 +240,6 @@ class AgentRegistry:
         self._registry[agent_id] = AgentConfig(**new_config_dict)
         return True
 
-    def update_agent_priority(self, agent_id: str, priority: int) -> bool:
-        """更新 Agent 優先級"""
-        if agent_id not in self._registry:
-            return False
-
-        old_config = self._registry[agent_id]
-        new_config_dict = old_config.model_dump()
-        new_config_dict["priority"] = priority
-        self._registry[agent_id] = AgentConfig(**new_config_dict)
-        return True
-
     def to_dict(self) -> Dict[str, dict]:
         """
         導出為字典格式（用於 API 響應）
@@ -261,49 +257,21 @@ class AgentRegistry:
         self._registry.clear()
         self._load_defaults()
 
-    def get_agents_by_priority(self) -> List[tuple]:
-        """
-        按優先級排序獲取啟用的 Agent
-
-        Returns:
-            [(agent_id, AgentConfig), ...] 按優先級排序
-        """
-        enabled = self.get_enabled_agents()
-        return sorted(enabled.items(), key=lambda x: x[1].priority)
-
-    def find_agent_by_keyword(self, message: str) -> Optional[str]:
-        """
-        通過關鍵詞快速匹配 Agent（用於 fallback）
-
-        Args:
-            message: 用戶消息
-
-        Returns:
-            匹配的 agent_id 或 None
-        """
-        message_lower = message.lower()
-
-        # 按優先級順序檢查
-        for agent_id, config in self.get_agents_by_priority():
-            for keyword in config.keywords:
-                if keyword.lower() in message_lower:
-                    return agent_id
-
-        return None
-
     def get_agent_description_for_llm(self) -> str:
         """
         生成用於 LLM 路由的 Agent 描述文本
+
+        LLM 將根據這些描述自主判斷最適合的 Agent
 
         Returns:
             格式化的 Agent 描述字符串
         """
         lines = []
-        for agent_id, config in self.get_agents_by_priority():
-            lines.append(f"- **{agent_id}** ({config.name})")
-            lines.append(f"  描述: {config.description}")
+        for agent_id, config in self.get_enabled_agents().items():
+            lines.append(f"### {agent_id} ({config.name})")
+            lines.append(f"{config.description}")
             if config.tools:
-                lines.append(f"  可用工具: {', '.join(config.tools)}")
+                lines.append(f"可用工具: {', '.join(config.tools)}")
             lines.append("")
         return "\n".join(lines)
 

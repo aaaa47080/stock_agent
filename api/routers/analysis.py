@@ -25,6 +25,9 @@ from core.database import (
     delete_session
 )
 
+# New function import for pin
+from core.database import toggle_session_pin
+
 router = APIRouter()
 
 # --- Session Management Endpoints ---
@@ -47,6 +50,12 @@ async def delete_user_session(session_id: str):
     """刪除特定對話"""
     delete_session(session_id)
     return {"status": "success", "message": f"Session {session_id} deleted"}
+
+@router.put("/api/chat/sessions/{session_id}/pin")
+async def pin_user_session(session_id: str, is_pinned: bool = Query(..., description="Set to true to pin, false to unpin")):
+    """切換對話置頂狀態"""
+    toggle_session_pin(session_id, is_pinned)
+    return {"status": "success", "session_id": session_id, "is_pinned": is_pinned}
 
 @router.get("/api/chat/history")
 async def get_history(session_id: str = "default", user_id: str = "local_user"):

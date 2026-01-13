@@ -257,13 +257,13 @@ async function handlePiLogin() {
         console.log('Auth result:', result);
         if (result.success) {
             hideLoginModal();
-            // 可以顯示成功提示
+            showToast('Pi Network 認證成功', 'success');
         } else {
-            alert('Pi Network 認證失敗: ' + result.error);
+            showToast('Pi Network 認證失敗: ' + result.error, 'error');
         }
     } catch (error) {
         console.error('handlePiLogin error:', error);
-        alert('錯誤: ' + error.message);
+        showToast('錯誤: ' + error.message, 'error');
     }
 }
 
@@ -272,15 +272,16 @@ async function handleTestLogin() {
     const password = document.getElementById('login-password')?.value;
 
     if (!publicKey || !password) {
-        alert('請輸入公鑰和密碼');
+        showToast('請輸入公鑰和密碼', 'warning');
         return;
     }
 
     const result = await AuthManager.authenticateWithCredentials(publicKey, password);
     if (result.success) {
         hideLoginModal();
+        showToast('登入成功', 'success');
     } else {
-        alert('認證失敗: ' + result.error);
+        showToast('認證失敗: ' + result.error, 'error');
     }
 }
 

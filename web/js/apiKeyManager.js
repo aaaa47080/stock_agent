@@ -210,3 +210,41 @@ const APIKeyManager = {
 
 // Export to global scope
 window.APIKeyManager = APIKeyManager;
+
+/**
+ * 更新 Settings 頁面的 LLM 連接狀態 UI
+ */
+function updateLLMStatusUI() {
+    const statusBadge = document.getElementById('llm-status-badge');
+    if (!statusBadge) return;
+
+    const currentKey = APIKeyManager.getCurrentKey();
+
+    if (currentKey && currentKey.key) {
+        // 已連接狀態 - 顯示 provider 名稱
+        const providerNames = {
+            'openai': 'OpenAI',
+            'google_gemini': 'Gemini',
+            'openrouter': 'OpenRouter'
+        };
+        const providerName = providerNames[currentKey.provider] || currentKey.provider;
+
+        statusBadge.innerHTML = `
+            <span class="w-2 h-2 rounded-full bg-success animate-pulse"></span>
+            <span class="text-success">${providerName}</span>
+        `;
+        statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-success/10 border border-success/20';
+    } else {
+        // 未連接狀態
+        statusBadge.innerHTML = `
+            <span class="w-2 h-2 rounded-full bg-textMuted"></span>
+            <span class="text-textMuted">Not Connected</span>
+        `;
+        statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 border border-white/10';
+    }
+}
+
+// 頁面載入時更新狀態
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(updateLLMStatusUI, 100);
+});

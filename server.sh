@@ -139,7 +139,8 @@ start_server() {
     cd "$SCRIPT_DIR"
     source "$VENV_PATH/bin/activate"
 
-    nohup python "$SERVER_SCRIPT" >> "$LOG_FILE" 2>&1 &
+    # Properly detach the process from the terminal
+    nohup python "$SERVER_SCRIPT" </dev/null >> "$LOG_FILE" 2>&1 &
     local pid=$!
     echo $pid > "$PID_FILE"
 

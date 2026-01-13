@@ -64,10 +64,18 @@ def init_db():
             session_id TEXT PRIMARY KEY,
             user_id TEXT DEFAULT 'local_user',
             title TEXT,
+            is_pinned INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+
+    # Migration for existing sessions table
+    try:
+        c.execute('ALTER TABLE sessions ADD COLUMN is_pinned INTEGER DEFAULT 0')
+    except sqlite3.OperationalError:
+        # Column likely already exists
+        pass
     
     conn.commit()
     conn.close()
@@ -224,8 +232,8 @@ def create_session(session_id: str, title: str = "New Chat", user_id: str = "loc
     c = conn.cursor()
     try:
         c.execute('''
-            INSERT INTO sessions (session_id, user_id, title, created_at, updated_at)
-            VALUES (?, ?, ?, datetime('now'), datetime('now'))
+            INSERT INTO sessions (session_id, user_id, title, is_pinned, created_at, updated_at)
+            VALUES (?, ?, ?, 0, datetime('now'), datetime('now'))
         ''', (session_id, user_id, title))
         conn.commit()
     except Exception as e:
@@ -243,16 +251,28 @@ def update_session_title(session_id: str, title: str):
     finally:
         conn.close()
 
+def toggle_session_pin(session_id: str, is_pinned: bool):
+    """切換對話置頂狀態"""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    try:
+        # Convert bool to int (0 or 1)
+        pin_val = 1 if is_pinned else 0
+        c.execute('UPDATE sessions SET is_pinned = ? WHERE session_id = ?', (pin_val, session_id))
+        conn.commit()
+    finally:
+        conn.close()
+
 def get_sessions(user_id: str = "local_user", limit: int = 20) -> List[Dict]:
-    """獲取用戶的對話列表"""
+    """獲取用戶的對話列表 (置頂優先)"""
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     try:
         c.execute('''
-            SELECT session_id, title, created_at, updated_at 
+            SELECT session_id, title, created_at, updated_at, is_pinned
             FROM sessions 
             WHERE user_id = ? 
-            ORDER BY updated_at DESC
+            ORDER BY is_pinned DESC, updated_at DESC
             LIMIT ?
         ''', (user_id, limit))
         rows = c.fetchall()
@@ -263,7 +283,8 @@ def get_sessions(user_id: str = "local_user", limit: int = 20) -> List[Dict]:
                 "id": row[0],
                 "title": row[1],
                 "created_at": row[2],
-                "updated_at": row[3]
+                "updated_at": row[3],
+                "is_pinned": bool(row[4])
             })
         return sessions
     except Exception as e:

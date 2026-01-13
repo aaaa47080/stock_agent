@@ -769,6 +769,7 @@ class CryptoAnalysisBot:
 
                 try:
                     accumulated_state = state_input.copy()
+                    start_time = time.time()  # 記錄開始時間
                     yield f"[PROCESS]⏳ 開始執行分析流程...\n"
 
                     event_count = 0
@@ -779,11 +780,13 @@ class CryptoAnalysisBot:
 
                             if node_name == "prepare_data":
                                 price = state_update.get("current_price", 0)
-                                yield f"[PROCESS]✅ **數據準備完成**: 當前價格 ${price:.4f}\n"
+                                elapsed_time = time.time() - start_time
+                                yield f"[PROCESS]✅ **數據準備完成**: 當前價格 ${price:.4f} (耗時: {elapsed_time:.2f}秒)\n"
 
                             elif node_name == "run_analyst_team":
                                 reports = state_update.get("analyst_reports", [])
-                                yield f"[PROCESS]📊 **AI 分析師團隊**: 已完成 {len(reports)} 份專業報告\n"
+                                elapsed_time = time.time() - start_time
+                                yield f"[PROCESS]📊 **AI 分析師團隊**: 已完成 {len(reports)} 份專業報告 (耗時: {elapsed_time:.2f}秒)\n"
                                 for report in reports:
                                     analyst_type = getattr(report, 'analyst_type', '分析師')
                                     bullish = len(getattr(report, 'bullish_points', []))
@@ -802,14 +805,15 @@ class CryptoAnalysisBot:
 
                             elif node_name == "run_research_debate":
                                 history = accumulated_state.get("debate_history", [])
+                                elapsed_time = time.time() - start_time
                                 if history:
                                     latest = history[-1]
-                                    yield f"[PROCESS]\n---\n### ⚔️ 第 {latest.get('round')} 輪辯論：{latest.get('topic')}\n\n"
-                                    
+                                    yield f"[PROCESS]\n---\n### ⚔️ 第 {latest.get('round')} 輪辯論：{latest.get('topic')} (耗時: {elapsed_time:.2f}秒)\n\n"
+
                                     # --- 多頭展示 ---
                                     bull_arg = latest.get('bull', {}).get('argument', '無觀點')
                                     bull_details = latest.get('bull_committee_details', [])
-                                    
+
                                     if bull_details:
                                         yield f"[PROCESS]**🐂 多頭委員會 (共識觀點)**:\n> {bull_arg.replace(chr(10), chr(10) + '> ')}\n"
                                         yield f"[PROCESS]   🔻 委員會成員觀點:\n"
@@ -825,7 +829,7 @@ class CryptoAnalysisBot:
                                     # --- 空頭展示 ---
                                     bear_arg = latest.get('bear', {}).get('argument', '無觀點')
                                     bear_details = latest.get('bear_committee_details', [])
-                                    
+
                                     if bear_details:
                                         yield f"[PROCESS]**🐻 空頭委員會 (共識觀點)**:\n> {bear_arg.replace(chr(10), chr(10) + '> ')}\n"
                                         yield f"[PROCESS]   🔻 委員會成員觀點:\n"
@@ -843,10 +847,11 @@ class CryptoAnalysisBot:
 
                             elif node_name == "run_debate_judgment":
                                 judgment = state_update.get("debate_judgment")
+                                elapsed_time = time.time() - start_time
                                 if judgment:
                                     winner = judgment.winning_stance
                                     action = judgment.suggested_action
-                                    yield f"[PROCESS]👨‍⚖️ **辯論裁決**: 勝方 **{winner}** → 建議 **{action}**\n"
+                                    yield f"[PROCESS]👨‍⚖️ **辯論裁決**: 勝方 **{winner}** → 建議 **{action}** (耗時: {elapsed_time:.2f}秒)\n"
                                     yield f"[PROCESS]   🐂 多頭評估: {judgment.bull_evaluation}\n"
                                     yield f"[PROCESS]   🐻 空頭評估: {judgment.bear_evaluation}\n"
                                     yield f"[PROCESS]   ⚖️ 中立評估: {judgment.neutral_evaluation}\n"
@@ -860,8 +865,9 @@ class CryptoAnalysisBot:
 
                             elif node_name == "run_trader_decision":
                                 decision = state_update.get("trader_decision")
+                                elapsed_time = time.time() - start_time
                                 follows = "✅ 遵循裁判" if decision.follows_judge else "⚠️ 偏離裁判"
-                                yield f"[PROCESS]⚖️ **交易員決策**: **{decision.decision}** | 倉位: {decision.position_size:.0%} | {follows}\n"
+                                yield f"[PROCESS]⚖️ **交易員決策**: **{decision.decision}** | 倉位: {decision.position_size:.0%} | {follows} (耗時: {elapsed_time:.2f}秒)\n"
                                 if decision.reasoning:
                                     yield f"[PROCESS]   💭 決策理由: {decision.reasoning}\n"
                                 if not decision.follows_judge and decision.deviation_reason:
@@ -870,7 +876,8 @@ class CryptoAnalysisBot:
 
                             elif node_name == "run_risk_management":
                                 risk = state_update.get("risk_assessment")
-                                yield f"[PROCESS]🛡️ **風險評估**: {risk.risk_level} (批准狀態: {'✅ 通過' if risk.approve else '❌ 不通過'})\n"
+                                elapsed_time = time.time() - start_time
+                                yield f"[PROCESS]🛡️ **風險評估**: {risk.risk_level} (批准狀態: {'✅ 通過' if risk.approve else '❌ 不通過'}) (耗時: {elapsed_time:.2f}秒)\n"
                                 yield f"[PROCESS]   📋 評估內容: {risk.assessment}\n"
                                 if risk.warnings:
                                     yield f"[PROCESS]   ⚠️ 風險警告: {'; '.join(risk.warnings)}\n"
@@ -879,12 +886,13 @@ class CryptoAnalysisBot:
 
                             elif node_name == "run_fund_manager_approval":
                                 approval = state_update.get("final_approval")
-                                yield f"[PROCESS]💰 **基金經理最終審批**: {approval.final_decision}\n"
+                                elapsed_time = time.time() - start_time
+                                yield f"[PROCESS]💰 **基金經理最終審批**: {approval.final_decision} (耗時: {elapsed_time:.2f}秒)\n"
                                 yield f"[PROCESS]   📝 審批理由: {approval.rationale}\n"
                                 yield f"[PROCESS]   📊 最終倉位: {approval.final_position_size:.0%}\n"
                                 if approval.execution_notes:
                                     yield f"[PROCESS]   📋 執行備註: {approval.execution_notes}\n"
-                                
+
                                 # HITL: 如果獲得批准，生成交易提案供前端顯示
                                 if approval.approved:
                                     # 提取交易決策細節
@@ -892,7 +900,7 @@ class CryptoAnalysisBot:
                                     market_type = accumulated_state.get('market_type')
                                     symbol = accumulated_state.get('symbol')
                                     leverage = approval.approved_leverage or 1
-                                    
+
                                     # 計算建議金額 (基於倉位與餘額)
                                     balance = accumulated_state.get('account_balance')
                                     amount = 0
@@ -905,7 +913,7 @@ class CryptoAnalysisBot:
                                             balance_status = "ok"
                                         else:
                                             balance_status = "zero"
-                                    
+
                                     proposal = {
                                         "symbol": symbol,
                                         "market_type": market_type,
@@ -917,13 +925,16 @@ class CryptoAnalysisBot:
                                         "take_profit": decision.take_profit,
                                         "balance_status": balance_status
                                     }
-                                    
+
                                     # 改為嵌入式按鈕數據，而非自動彈窗
                                     # 我們使用一個特殊的隱藏區塊，讓前端解析並渲染按鈕
                                     proposal_json = json.dumps(proposal)
                                     yield f"\n\n<!-- TRADE_PROPOSAL_START {proposal_json} TRADE_PROPOSAL_END -->\n"
 
                     # 結束過程區塊
+                    end_time = time.time()  # 記錄結束時間
+                    total_duration = end_time - start_time  # 計算總耗時
+                    yield f"[PROCESS]⏱️ **分析完成**: 總耗時 {total_duration:.2f} 秒\n"
                     yield "[PROCESS_END]\n"
 
                     # 最終報告

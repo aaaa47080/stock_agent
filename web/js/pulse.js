@@ -334,7 +334,14 @@ async function triggerDeepAnalysis(symbol) {
     const userKey = window.APIKeyManager?.getCurrentKey();
 
     if (!userKey) {
-        alert('請先在設定中配置您的 API Key（OpenAI / Google / OpenRouter）才能使用深度分析功能。');
+        showAlert({
+            title: '未設置 API Key',
+            message: '請先在設定中配置您的 API Key 才能使用深度分析功能。',
+            type: 'warning',
+            confirmText: '前往設定'
+        }).then(() => {
+            if (typeof switchTab === 'function') switchTab('settings');
+        });
         return;
     }
 
@@ -355,7 +362,7 @@ async function triggerDeepAnalysis(symbol) {
         await fetchPulseForSymbol(symbol, false, true); // deepAnalysis = true
     } catch (e) {
         console.error('Deep analysis failed:', e);
-        alert('深度分析失敗，請檢查您的 API Key 是否正確。');
+        showToast('深度分析失敗，請檢查您的 API Key', 'error');
         // 恢復原始內容
         if (card) {
             await fetchPulseForSymbol(symbol, false, false);

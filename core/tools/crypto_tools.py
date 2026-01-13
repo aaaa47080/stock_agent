@@ -1,143 +1,33 @@
 """
-加密貨幣分析 LangChain 工具集
-將現有分析功能封裝為 @tool，供 ReAct Agent 調用
+加密貨幣分析工具
+所有與加密貨幣相關的 LangChain 工具
 """
 
-import os
-import sys
-from typing import Optional, Dict, List
-from pydantic import BaseModel, Field
-
-# 確保專案根目錄在 Python 路徑中
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
+from typing import Optional, Dict
 from langchain_core.tools import tool
 
-# 導入現有模組
 from data.data_fetcher import get_data_fetcher, SymbolNotFoundError
 from data.data_processor import (
     fetch_and_process_klines,
     extract_technical_indicators,
     calculate_key_levels,
-    analyze_market_structure,
-    calculate_price_info
+    analyze_market_structure
 )
 from utils.utils import safe_float, get_crypto_news
-from core.config import (
-    DEFAULT_INTERVAL,
-    DEFAULT_KLINES_LIMIT,
-    DEFAULT_FUTURES_LEVERAGE,
-    SUPPORTED_EXCHANGES
+from core.config import DEFAULT_KLINES_LIMIT
+
+from .schemas import (
+    TechnicalAnalysisInput,
+    NewsAnalysisInput,
+    FullInvestmentAnalysisInput,
+    PriceInput,
+    MarketPulseInput,
+    BacktestStrategyInput,
+    ExtractCryptoSymbolsInput
 )
+from .helpers import normalize_symbol, find_available_exchange, extract_crypto_symbols
+from .formatters import format_full_analysis_result
 
-
-# ============================================================================
-# 工具輸入模型定義 (Pydantic Schema)
-# ============================================================================
-
-class TechnicalAnalysisInput(BaseModel):
-    """技術分析工具的輸入參數"""
-    symbol: str = Field(
-        description="加密貨幣交易對符號，如 'BTC', 'ETH', 'SOL', 'PI'。不需要加 'USDT' 後綴。"
-    )
-    interval: str = Field(
-        default="1d",
-        description="K線時間週期。選項: '1m', '5m', '15m', '1h', '4h', '1d', '1w'。預設為日線 '1d'。"
-    )
-    exchange: Optional[str] = Field(
-        default=None,
-        description="交易所名稱。選項: 'okx' (預設), 'binance'。"
-    )
-
-
-class NewsAnalysisInput(BaseModel):
-    """新聞分析工具的輸入參數"""
-    symbol: str = Field(
-        description="加密貨幣符號，如 'BTC', 'ETH', 'PI'。"
-    )
-    include_sentiment: bool = Field(
-        default=True,
-        description="是否包含情緒分析。預設為 True。"
-    )
-
-
-class FullInvestmentAnalysisInput(BaseModel):
-    """完整投資分析工具的輸入參數"""
-    symbol: str = Field(
-        description="加密貨幣交易對符號，如 'BTC', 'ETH', 'PI'。"
-    )
-    interval: str = Field(
-        default="1d",
-        description="主要分析的時間週期。預設為日線 '1d'。"
-    )
-    include_futures: bool = Field(
-        default=True,
-        description="是否同時分析合約市場。預設為 True。"
-    )
-    leverage: int = Field(
-        default=5,
-        ge=1,
-        le=125,
-        description="合約分析使用的槓桿倍數。預設 5 倍。"
-    )
-
-
-class PriceInput(BaseModel):
-    """價格查詢工具的輸入參數"""
-    symbol: str = Field(
-        description="加密貨幣符號，如 'BTC', 'ETH', 'SOL', 'PI'。"
-    )
-    exchange: Optional[str] = Field(
-        default=None,
-        description="交易所名稱。選項: 'okx' (預設), 'binance'。"
-    )
-
-
-# ============================================================================
-# 輔助函數
-# ============================================================================
-
-def _normalize_symbol(symbol: str, exchange: str = "okx") -> str:
-    """標準化交易對符號"""
-    if not symbol: return ""
-    symbol = symbol.upper().strip()
-    
-    # 1. 先提取基礎幣種 (Base Currency)
-    base_symbol = symbol.replace("-", "").replace("_", "")
-    
-    if base_symbol.endswith("USDT"):
-        base_symbol = base_symbol[:-4]
-    elif base_symbol.endswith("BUSD"):
-        base_symbol = base_symbol[:-4]
-    elif base_symbol.endswith("USD"):
-        base_symbol = base_symbol[:-3]
-
-    # 2. 根據交易所格式化
-    if exchange.lower() == "binance":
-        return f"{base_symbol}USDT"
-    else:  # okx (default)
-        return f"{base_symbol}-USDT"
-
-
-def _find_available_exchange(symbol: str) -> tuple:
-    """查找交易對可用的交易所"""
-    for exchange in SUPPORTED_EXCHANGES:
-        try:
-            normalized = _normalize_symbol(symbol, exchange)
-            fetcher = get_data_fetcher(exchange)
-            test_data = fetcher.get_historical_klines(normalized, "1d", limit=1)
-            if test_data is not None and not test_data.empty:
-                return (exchange, normalized)
-        except Exception:
-            continue
-    return (None, None)
-
-
-# ============================================================================
-# 工具實現
-# ============================================================================
 
 @tool(args_schema=TechnicalAnalysisInput)
 def technical_analysis_tool(
@@ -165,17 +55,17 @@ def technical_analysis_tool(
     try:
         # 自動選擇交易所
         if exchange is None:
-            exchange, normalized_symbol = _find_available_exchange(symbol)
+            exchange, normalized_symbol = find_available_exchange(symbol)
             if exchange is None:
                 return f"錯誤：無法在支持的交易所中找到 {symbol} 交易對。請確認幣種名稱是否正確。"
         else:
-            normalized_symbol = _normalize_symbol(symbol, exchange)
+            normalized_symbol = normalize_symbol(symbol, exchange)
 
         # 獲取 K線數據並計算技術指標
         df_with_indicators, _ = fetch_and_process_klines(
             symbol=normalized_symbol,
             interval=interval,
-            limit=200,  # 確保有足夠數據計算指標
+            limit=200,
             market_type="spot",
             exchange=exchange
         )
@@ -280,9 +170,9 @@ def news_analysis_tool(
         if not news_data:
             return f"目前沒有找到 {symbol} 的最新新聞。這可能是因為該幣種較新或新聞來源暫時無法連接。"
 
-        # 分類新聞為正面、負面、中性
-        positive_keywords = ['surge', 'rally', 'bullish', 'gain', 'rise', 'up', 'high', 'buy', 'launch', '上漲', '利好', '突破', 'approval', 'partnership', 'adoption', 'upgrade', 'halving', 'ETF', 'institutional', 'bull', 'moon', 'rocket', 'gain', 'profit', 'success', 'achievement', 'growth', 'expansion', 'investment', 'funding', 'development', 'innovation', 'record', 'high', 'all-time high']
-        negative_keywords = ['crash', 'bearish', 'drop', 'fall', 'down', 'low', 'sell', 'hack', 'scam', '下跌', '利空', '暴跌', 'ban', 'regulation', 'crackdown', 'dump', 'fud', 'fear', 'panic', 'lawsuit', 'delisting', 'loss', 'decline', 'decrease', 'bear', 'crash', 'plunge', 'trouble', 'problem', 'failure', 'issue', 'concern', 'worries', 'downside', 'risk', 'volatility', 'crisis', 'shutdown', 'ban', 'prosecution', 'fine', 'penalty']
+        # 分類新聞
+        positive_keywords = ['surge', 'rally', 'bullish', 'gain', 'rise', 'up', 'high', 'buy', 'launch', '上漲', '利好', '突破', 'approval', 'partnership', 'adoption', 'upgrade', 'halving', 'ETF', 'institutional']
+        negative_keywords = ['crash', 'bearish', 'drop', 'fall', 'down', 'low', 'sell', 'hack', 'scam', '下跌', '利空', '暴跌', 'ban', 'regulation', 'crackdown', 'dump', 'lawsuit', 'delisting']
 
         positive_news = []
         negative_news = []
@@ -300,12 +190,12 @@ def news_analysis_tool(
             else:
                 neutral_news.append(news)
 
-        # 格式化新聞列表按情緒分類
+        # 格式化新聞列表
         news_sections = []
 
         if positive_news:
             positive_list = []
-            for i, news in enumerate(positive_news, 1):
+            for news in positive_news:
                 title = news.get('title', 'N/A')
                 source = news.get('source', 'Unknown')
                 url = news.get('url', '')
@@ -317,7 +207,7 @@ def news_analysis_tool(
 
         if negative_news:
             negative_list = []
-            for i, news in enumerate(negative_news, 1):
+            for news in negative_news:
                 title = news.get('title', 'N/A')
                 source = news.get('source', 'Unknown')
                 url = news.get('url', '')
@@ -329,7 +219,7 @@ def news_analysis_tool(
 
         if neutral_news:
             neutral_list = []
-            for i, news in enumerate(neutral_news, 1):
+            for news in neutral_news:
                 title = news.get('title', 'N/A')
                 source = news.get('source', 'Unknown')
                 url = news.get('url', '')
@@ -343,43 +233,22 @@ def news_analysis_tool(
 
 📊 **總覽**: 共 {len(news_data)} 條新聞 | 🟢 {len(positive_news)} 利多 | 🔴 {len(negative_news)} 利空 | 🔵 {len(neutral_news)} 中性
 
-{chr(10).join(news_sections) if news_sections else "📋 無分類新聞 | [閱讀更多]({news_data[0].get('url', '')})" if news_data else ""}
-
-
-### 📋 新聞摘要
-- 共獲取到 **{len(news_data)}** 條相關新聞
-- 主要來源包括 CoinGecko、NewsAPI、CryptoPanic 等
-- 按情緒分類：正面 {len(positive_news)} 條，負面 {len(negative_news)} 條，中性 {len(neutral_news)} 條
+{chr(10).join(news_sections) if news_sections else ""}
 
 """
 
         if include_sentiment:
-            # 簡單的情緒分析（基於新聞標題關鍵詞）
-            positive_keywords = ['surge', 'rally', 'bullish', 'gain', 'rise', 'up', 'high', 'buy', 'launch', '上漲', '利好', '突破']
-            negative_keywords = ['crash', 'bearish', 'drop', 'fall', 'down', 'low', 'sell', 'hack', 'scam', '下跌', '利空', '暴跌']
-
-            positive_count = 0
-            negative_count = 0
-
-            for news in news_data:
-                title = news.get('title', '').lower()
-                if any(kw in title for kw in positive_keywords):
-                    positive_count += 1
-                if any(kw in title for kw in negative_keywords):
-                    negative_count += 1
-
-            if positive_count > negative_count:
+            if len(positive_news) > len(negative_news):
                 sentiment = "偏正面 (利多消息較多)"
-            elif negative_count > positive_count:
+            elif len(negative_news) > len(positive_news):
                 sentiment = "偏負面 (利空消息較多)"
             else:
                 sentiment = "中性 (無明顯傾向)"
 
             result += f"""### 簡易情緒分析
 - **整體情緒**: {sentiment}
-- **正面新聞**: {positive_count} 條
-- **負面新聞**: {negative_count} 條
-- **中性新聞**: {len(news_data) - positive_count - negative_count} 條
+- **正面新聞**: {len(positive_news)} 條
+- **負面新聞**: {len(negative_news)} 條
 
 > 注意：此為基於關鍵詞的簡易分析。如需更深入的投資建議，請使用完整投資分析功能。
 """
@@ -420,7 +289,7 @@ def full_investment_analysis_tool(
         from core.graph import app as langgraph_app
 
         # 自動選擇交易所
-        exchange, normalized_symbol = _find_available_exchange(symbol)
+        exchange, normalized_symbol = find_available_exchange(symbol)
         if exchange is None:
             return f"錯誤：無法在支持的交易所中找到 {symbol} 交易對。請確認幣種名稱是否正確。"
 
@@ -471,124 +340,6 @@ def full_investment_analysis_tool(
         return f"完整投資分析時發生錯誤: {str(e)}"
 
 
-def format_full_analysis_result(result: dict, market_type: str, symbol: str, interval: str) -> str:
-    """格式化完整分析結果為可讀文本"""
-
-    current_price = result.get('current_price', 0)
-    final_approval = result.get('final_approval')
-    trader_decision = result.get('trader_decision')
-    risk_assessment = result.get('risk_assessment')
-    debate_judgment = result.get('debate_judgment')
-    analyst_reports = result.get('analyst_reports', [])
-
-    output = f"""## {symbol} {market_type}分析報告 ({interval})
-
-### 當前價格
-**${current_price:.4f}**
-
-"""
-
-    # 分析師報告摘要
-    if analyst_reports:
-        output += "### 分析師觀點摘要\n"
-        for report in analyst_reports:
-            if report:
-                bullish = len(getattr(report, 'bullish_points', []))
-                bearish = len(getattr(report, 'bearish_points', []))
-                output += f"- **{report.analyst_type}**: {bullish}個看多觀點 / {bearish}個看空觀點\n"
-        output += "\n"
-
-    # 辯論結果
-    if debate_judgment:
-        output += f"""### 多空辯論裁決
-| 項目 | 結果 |
-|------|------|
-| 勝出方 | **{debate_judgment.winning_stance}** |
-| 建議行動 | **{debate_judgment.suggested_action}** |
-
-**獲勝原因**: {debate_judgment.winning_reason}
-
-**多頭最強論點**: {debate_judgment.strongest_bull_point}
-
-**空頭最強論點**: {debate_judgment.strongest_bear_point}
-
-"""
-        if debate_judgment.fatal_flaw:
-            output += f"⚠️ **致命缺陷**: {debate_judgment.fatal_flaw}\n\n"
-
-        output += f"**核心事實**: {debate_judgment.key_takeaway}\n\n"
-
-    # 交易決策
-    if trader_decision:
-        entry = f"${trader_decision.entry_price:.4f}" if trader_decision.entry_price else "N/A"
-        stop_loss = f"${trader_decision.stop_loss:.4f}" if trader_decision.stop_loss else "N/A"
-        take_profit = f"${trader_decision.take_profit:.4f}" if trader_decision.take_profit else "N/A"
-        follows_text = "✅ 是" if trader_decision.follows_judge else "⚠️ 否"
-
-        output += f"""### 交易決策
-| 項目 | 建議 |
-|------|------|
-| **決策** | **{trader_decision.decision}** |
-| 進場價 | {entry} |
-| 止損 | {stop_loss} |
-| 止盈 | {take_profit} |
-| 建議倉位 | {trader_decision.position_size * 100:.1f}% |
-| 遵循裁判 | {follows_text} |
-
-**決策理由**: {trader_decision.reasoning}
-
-**主要風險**: {trader_decision.key_risk}
-
-"""
-        if not trader_decision.follows_judge and trader_decision.deviation_reason:
-            output += f"⚠️ **偏離裁判原因**: {trader_decision.deviation_reason}\n\n"
-
-    # 風險評估
-    if risk_assessment:
-        output += f"""### 風險評估
-- **風險等級**: {risk_assessment.risk_level}
-- **評估意見**: {risk_assessment.assessment}
-- **調整後倉位**: {risk_assessment.adjusted_position_size * 100:.1f}%
-"""
-        if risk_assessment.warnings:
-            output += f"- **警告**: {', '.join(risk_assessment.warnings)}\n"
-        output += "\n"
-
-    # 最終審批
-    if final_approval:
-        output += f"""### 最終審批 (基金經理)
-| 項目 | 結果 |
-|------|------|
-| **最終決定** | **{final_approval.final_decision}** |
-| 最終倉位 | {final_approval.final_position_size * 100:.1f}% |
-
-**執行建議**: {final_approval.execution_notes}
-
-**審批理由**: {final_approval.rationale}
-"""
-
-    # 附錄：真實新聞列表
-    market_data = result.get('market_data', {})
-    news_data = market_data.get('新聞資訊', [])
-    if news_data:
-        output += "\n### 📰 相關新聞快訊\n"
-        for i, news in enumerate(news_data[:5], 1):
-            title = news.get('title', 'N/A')
-            url = news.get('url', '')
-            source = news.get('source', 'Unknown')
-            
-            # 強制使用 1. 2. 3. 格式
-            if url:
-                output += f"{i}. [{title}]({url}) ({source})\n"
-            else:
-                output += f"{i}. {title} ({source})\n"
-        output += "\n"
-
-    output += "\n> 免責聲明：以上分析僅供參考，不構成投資建議。投資有風險，請謹慎決策。"
-
-    return output
-
-
 @tool(args_schema=PriceInput)
 def get_crypto_price_tool(
     symbol: str,
@@ -607,11 +358,11 @@ def get_crypto_price_tool(
     try:
         # 自動選擇交易所
         if exchange is None:
-            exchange, normalized_symbol = _find_available_exchange(symbol)
+            exchange, normalized_symbol = find_available_exchange(symbol)
             if exchange is None:
                 return f"錯誤：無法在支持的交易所中找到 {symbol} 交易對。請確認幣種名稱是否正確。"
         else:
-            normalized_symbol = _normalize_symbol(symbol, exchange)
+            normalized_symbol = normalize_symbol(symbol, exchange)
 
         # 獲取最新價格
         fetcher = get_data_fetcher(exchange)
@@ -650,33 +401,13 @@ def get_crypto_price_tool(
         return f"價格查詢時發生錯誤: {str(e)}"
 
 
-class MarketPulseInput(BaseModel):
-    """市場脈動分析工具的輸入參數"""
-    symbol: str = Field(
-        description="加密貨幣符號，如 'BTC', 'ETH', 'SOL'。"
-    )
-
-class BacktestStrategyInput(BaseModel):
-    """回測策略工具的輸入參數"""
-    symbol: str = Field(
-        description="加密貨幣符號，如 'BTC', 'ETH'。"
-    )
-    interval: str = Field(
-        default="1d",
-        description="時間週期，如 '1d', '4h', '1h'。"
-    )
-    period: int = Field(
-        default=90,
-        description="回測天數，預設 90 天。"
-    )
-
 @tool(args_schema=MarketPulseInput)
 def explain_market_movement_tool(symbol: str) -> str:
     """
     解釋加密貨幣的價格波動原因。
-    
+
     這個工具會結合即時價格變化和最新新聞，生成一句簡短的解釋（敘事歸因）。
-    
+
     適用情境：
     - 用戶問「為什麼 BTC 跌了？」
     - 用戶問「ETH 為什麼漲這麼多？」
@@ -684,34 +415,34 @@ def explain_market_movement_tool(symbol: str) -> str:
     """
     try:
         from analysis.market_pulse import get_market_pulse
-        
+
         # 清理 symbol
         base_symbol = symbol.upper().replace("USDT", "").replace("BUSD", "").replace("-", "")
-        
+
         result = get_market_pulse(base_symbol)
-        
+
         if "error" in result:
             return result["error"]
-            
+
         explanation = result.get("explanation", "暫無解釋")
         change_1h = result.get("change_1h", 0)
         current_price = result.get("current_price", 0)
-        
+
         # 構建回應
         output = f"### 💡 市場脈動: {base_symbol}\n\n"
         output += f"**{explanation}**\n\n"
         output += f"- 當前價格: ${current_price:.4f}\n"
         output += f"- 1小時變化: {change_1h:+.2f}%\n"
-        
+
         # 附上新聞來源
         news = result.get("news_sources", [])
         if news:
             output += "\n**相關新聞**:\n"
             for n in news[:2]:
                 output += f"- [{n.get('source')}] {n.get('title')}\n"
-                
+
         return output
-        
+
     except Exception as e:
         return f"分析市場波動時發生錯誤: {str(e)}"
 
@@ -724,10 +455,10 @@ def backtest_strategy_tool(
 ) -> str:
     """
     執行加密貨幣的歷史策略回測。
-    
+
     此工具會使用過去一段時間的數據，模擬執行常見的技術指標策略（如 RSI逆勢、均線趨勢、布林帶突破），
     並回報其勝率和總回報率。
-    
+
     適用情境：
     - 用戶問「這個幣最近如果用 RSI 操作會賺錢嗎？」
     - 用戶問「幫我回測一下 BTC」
@@ -735,23 +466,24 @@ def backtest_strategy_tool(
     """
     try:
         from analysis.backtest_engine import BacktestEngine
-        
+
         # 自動選擇交易所
-        exchange, normalized_symbol = _find_available_exchange(symbol)
+        exchange, normalized_symbol = find_available_exchange(symbol)
         if exchange is None:
             return f"錯誤：無法在支持的交易所中找到 {symbol} 交易對。請確認幣種名稱是否正確。"
-            
-        # 獲取歷史數據 (計算需要的K線數量)
-        # 假設 interval="1d", period=90 -> limit=90
-        # 假設 interval="1h", period=90 -> limit=90*24 = 2160
+
+        # 計算需要的K線數量
         limit = period
-        if interval == "1h": limit = period * 24
-        elif interval == "4h": limit = period * 6
-        elif interval == "15m": limit = period * 96
-        
+        if interval == "1h":
+            limit = period * 24
+        elif interval == "4h":
+            limit = period * 6
+        elif interval == "15m":
+            limit = period * 96
+
         # 限制最大 limit
         limit = min(limit, 1000)
-        
+
         # 獲取數據
         df, _ = fetch_and_process_klines(
             symbol=normalized_symbol,
@@ -760,129 +492,64 @@ def backtest_strategy_tool(
             market_type="spot",
             exchange=exchange
         )
-        
+
         # 執行回測
         engine = BacktestEngine()
         results = engine.run_all_strategies(df)
-        
+
         if not results or "error" in results[0]:
             return f"回測失敗: {results[0].get('error', '未知錯誤')}"
-            
+
         # 格式化輸出
-        summary = results[0] # 第一個元素是摘要
-        strategies = results[1:] # 後面是具體策略結果
-        
+        summary = results[0]
+        strategies = results[1:]
+
         output = f"## 📊 {symbol} 歷史策略回測報告\n\n"
         output += f"**回測區間**: 過去 {period} 天 ({len(df)} 根 K 線)\n"
         output += f"**最佳策略**: {summary['best_strategy_name']} (勝率 {summary['best_win_rate']}%)\n\n"
         output += f"> {summary['summary']}\n\n"
-        
+
         output += "### 詳細表現\n"
         output += "| 策略名稱 | 勝率 | 總回報 | 交易次數 | 評價 |\n"
         output += "|---|---|---|---|---|\n"
-        
+
         for res in strategies:
             win_rate = f"{res['win_rate']}%"
             ret = f"{res['total_return']:+.2f}%"
             quality = res['signal_quality']
-            
-            # 加一些 emoji
-            if res['total_return'] > 0: ret = f"🟢 {ret}"
-            else: ret = f"🔴 {ret}"
-            
+
+            if res['total_return'] > 0:
+                ret = f"🟢 {ret}"
+            else:
+                ret = f"🔴 {ret}"
+
             output += f"| {res['strategy']} | {win_rate} | {ret} | {res['total_trades']} | {quality} |\n"
-            
+
         output += "\n> 注意：過往績效不代表未來表現。此回測僅供參考，未考慮滑點與手續費。\n"
-        
+
         return output
 
     except Exception as e:
         return f"執行回測時發生錯誤: {str(e)}"
 
 
-# ============================================================================
-# 工具列表導出
-# ============================================================================
-
-def get_crypto_tools() -> List:
-    """獲取所有加密貨幣分析工具"""
-    return [
-        get_crypto_price_tool,
-        technical_analysis_tool,
-        news_analysis_tool,
-        full_investment_analysis_tool,
-        explain_market_movement_tool,
-        backtest_strategy_tool,
-    ]
-
-
-# ============================================================================
-# 工具名稱映射（用於 Agent Registry）
-# ============================================================================
-
-# 工具名稱到工具對象的映射
-TOOL_MAP = {
-    "get_crypto_price_tool": get_crypto_price_tool,
-    "technical_analysis_tool": technical_analysis_tool,
-    "news_analysis_tool": news_analysis_tool,
-    "full_investment_analysis_tool": full_investment_analysis_tool,
-    "explain_market_movement_tool": explain_market_movement_tool,
-    "backtest_strategy_tool": backtest_strategy_tool,
-}
-
-
-def get_tools_by_names(tool_names: List[str]) -> List:
+@tool(args_schema=ExtractCryptoSymbolsInput)
+def extract_crypto_symbols_tool(user_query: str) -> Dict:
     """
-    根據工具名稱列表獲取工具對象
+    從用戶查詢中提取加密貨幣符號。
 
-    Args:
-        tool_names: 工具名稱列表，如 ["get_crypto_price_tool", "technical_analysis_tool"]
+    這個工具會智能地從用戶的自然語言查詢中識別和提取加密貨幣符號，
+    支持中英文混合文本，並返回匹配到的符號列表。
 
-    Returns:
-        對應的工具對象列表
-
-    Example:
-        tools = get_tools_by_names(["get_crypto_price_tool", "news_analysis_tool"])
+    適用情境：
+    - 從混合語言文本中提取加密貨幣符號
+    - 當用戶詢問 'BTC現在值得買嗎？' 時提取 'BTC'
+    - 當用戶詢問 '比較ETH和SOL' 時提取 ['ETH', 'SOL']
     """
-    return [TOOL_MAP[name] for name in tool_names if name in TOOL_MAP]
+    extracted_symbols = extract_crypto_symbols(user_query)
 
-
-def get_available_tool_names() -> List[str]:
-    """
-    獲取所有可用工具的名稱列表
-
-    Returns:
-        工具名稱列表
-    """
-    return list(TOOL_MAP.keys())
-
-
-def get_tool_by_name(tool_name: str):
-    """
-    根據名稱獲取單個工具對象
-
-    Args:
-        tool_name: 工具名稱
-
-    Returns:
-        工具對象或 None
-    """
-    return TOOL_MAP.get(tool_name)
-
-
-# ============================================================================
-# 測試代碼
-# ============================================================================
-
-if __name__ == "__main__":
-    print("測試工具...")
-
-    # 測試價格查詢
-    print("\n=== 測試價格查詢 ===")
-    result = get_crypto_price_tool.invoke({"symbol": "BTC"})
-    print(result)
-
-    # 測試技術分析
-    print("\n=== 測試技術分析 ===")
-    result = technical_analysis_tool.invoke({"symbol": "ETH", "interval": "1h"})
-    print(result)
+    return {
+        "original_query": user_query,
+        "extracted_symbols": extracted_symbols,
+        "count": len(extracted_symbols)
+    }

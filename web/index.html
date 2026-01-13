@@ -105,37 +105,46 @@
     <div class="flex-1 relative w-full h-full overflow-hidden">
 
         <!-- Global Floating Draggable Navigation -->
-        <div id="global-nav-container" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50">
-            <nav id="draggable-nav" class="bg-surface/90 backdrop-blur-xl border border-white/10 rounded-3xl p-2 flex items-center gap-2 shadow-2xl shadow-black/30 cursor-move select-none">
+        <div id="global-nav-container" class="fixed bottom-24 left-1/2 z-50" style="transform: translateX(-50%);">
+            <nav id="draggable-nav" class="bg-surface/95 backdrop-blur-xl border border-white/10 rounded-full p-1.5 flex items-center gap-1 shadow-2xl shadow-black/40 select-none transition-all duration-300">
+                <!-- Collapse/Expand Toggle -->
+                <button id="nav-toggle" onclick="toggleNavCollapse()" class="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200" title="收縮/展開">
+                    <i data-lucide="chevrons-left" class="w-4 h-4 transition-transform duration-300" id="nav-toggle-icon"></i>
+                </button>
+
+                <!-- Navigation Buttons -->
+                <div id="nav-buttons" class="flex items-center gap-1 overflow-hidden transition-all duration-300">
+                    <button onclick="switchTab('chat')" class="nav-btn w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5" title="Chat" data-tab="chat">
+                        <i data-lucide="message-circle" class="w-5 h-5"></i>
+                        <span class="text-[9px] font-medium opacity-80">Chat</span>
+                    </button>
+                    <button onclick="switchTab('market')" class="nav-btn w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5" title="Market" data-tab="market">
+                        <i data-lucide="bar-chart-2" class="w-5 h-5"></i>
+                        <span class="text-[9px] font-medium opacity-80">Market</span>
+                    </button>
+                    <button onclick="switchTab('pulse')" class="nav-btn w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5" title="Pulse" data-tab="pulse">
+                        <i data-lucide="activity" class="w-5 h-5"></i>
+                        <span class="text-[9px] font-medium opacity-80">Pulse</span>
+                    </button>
+                    <button onclick="switchTab('assets')" class="nav-btn w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5" title="Assets" data-tab="assets">
+                        <i data-lucide="wallet" class="w-5 h-5"></i>
+                        <span class="text-[9px] font-medium opacity-80">Assets</span>
+                    </button>
+                    <button onclick="switchTab('settings')" class="nav-btn w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5" title="Settings" data-tab="settings">
+                        <i data-lucide="settings-2" class="w-5 h-5"></i>
+                        <span class="text-[9px] font-medium opacity-80">Settings</span>
+                    </button>
+                </div>
+
                 <!-- Drag Handle -->
-                <div class="drag-handle w-6 h-12 flex flex-col items-center justify-center gap-0.5 text-textMuted/40 hover:text-textMuted/60 transition mr-1">
+                <div class="drag-handle w-8 h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-textMuted/50 hover:text-textMuted cursor-grab active:cursor-grabbing transition-all duration-200 ml-0.5">
                     <i data-lucide="grip-vertical" class="w-4 h-4"></i>
                 </div>
-                <button onclick="switchTab('chat')" class="nav-btn chat-nav-btn w-14 h-14 flex flex-col items-center justify-center rounded-2xl hover:bg-white/5 text-textMuted hover:text-primary transition gap-1" title="Chat" data-tab="chat">
-                    <i data-lucide="message-circle" class="w-6 h-6"></i>
-                    <span class="text-[10px] font-medium">Chat</span>
-                </button>
-                <button onclick="switchTab('market')" class="nav-btn chat-nav-btn w-14 h-14 flex flex-col items-center justify-center rounded-2xl hover:bg-white/5 text-textMuted hover:text-primary transition gap-1" title="Market" data-tab="market">
-                    <i data-lucide="bar-chart-2" class="w-6 h-6"></i>
-                    <span class="text-[10px] font-medium">Market</span>
-                </button>
-                <button onclick="switchTab('pulse')" class="nav-btn chat-nav-btn w-14 h-14 flex flex-col items-center justify-center rounded-2xl hover:bg-white/5 text-textMuted hover:text-primary transition gap-1" title="Pulse" data-tab="pulse">
-                    <i data-lucide="activity" class="w-6 h-6"></i>
-                    <span class="text-[10px] font-medium">Pulse</span>
-                </button>
-                <button onclick="switchTab('assets')" class="nav-btn chat-nav-btn w-14 h-14 flex flex-col items-center justify-center rounded-2xl hover:bg-white/5 text-textMuted hover:text-primary transition gap-1" title="Assets" data-tab="assets">
-                    <i data-lucide="wallet" class="w-6 h-6"></i>
-                    <span class="text-[10px] font-medium">Assets</span>
-                </button>
-                <button onclick="switchTab('settings')" class="nav-btn chat-nav-btn w-14 h-14 flex flex-col items-center justify-center rounded-2xl hover:bg-white/5 text-textMuted hover:text-primary transition gap-1" title="Settings" data-tab="settings">
-                    <i data-lucide="settings-2" class="w-6 h-6"></i>
-                    <span class="text-[10px] font-medium">Settings</span>
-                </button>
             </nav>
         </div>
 
         <!-- Tab: Chat (Home) - Pi Network Theme -->
-        <div id="chat-tab" class="tab-content h-full flex flex-col">
+        <div id="chat-tab" class="tab-content h-full flex flex-col relative">
             <!-- Pi Network Animated Background -->
             <div class="absolute inset-0 overflow-hidden -z-10 pointer-events-none">
                 <div class="w-full h-full flex items-center justify-center opacity-10">
@@ -144,7 +153,7 @@
             </div>
 
             <!-- Messages Area -->
-            <div id="chat-messages" class="flex-1 overflow-y-auto custom-scrollbar px-4 md:px-8 py-6 space-y-6">
+            <div id="chat-messages" class="flex-1 overflow-y-auto custom-scrollbar px-4 md:px-8 py-6 space-y-6 pb-32">
                 <!-- Welcome -->
                 <div class="bot-message opacity-0 animate-fade-in-up" style="animation-delay: 0.1s; animation-fill-mode: forwards;">
                     <div class="flex flex-col items-center justify-center mb-8">
@@ -192,43 +201,43 @@
             </div>
 
             <!-- Input Area -->
-            <div class="relative mt-auto px-4 md:px-8 pb-6">
-                <!-- Removed Inline Navigation from here -->
+            <div class="fixed bottom-0 left-0 md:left-72 right-0 z-40 bg-background/80 backdrop-blur-xl border-t border-white/5 px-4 md:px-8 py-4">
+                <div class="relative w-full max-w-4xl mx-auto">
+                    <!-- Hidden Options -->
+                    <div id="analysis-options-panel" class="hidden absolute bottom-full left-0 right-0 mb-4 p-4 bg-surface rounded-3xl border border-white/5 shadow-xl animate-fade-in-up z-10">
+                        <div class="flex flex-wrap gap-4 justify-center">
+                             <label class="flex items-center gap-2 cursor-pointer select-none">
+                                <input type="checkbox" class="analysis-checkbox accent-primary w-4 h-4 rounded-full" value="Technical Analysis" checked>
+                                <span class="text-sm text-secondary">Technical</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer select-none">
+                                <input type="checkbox" class="analysis-checkbox accent-primary w-4 h-4 rounded-full" value="News Analysis" checked>
+                                <span class="text-sm text-secondary">News</span>
+                            </label>
+                        </div>
+                    </div>
 
-                <!-- Input Box -->
-                <div class="bg-surface/80 backdrop-blur-xl border border-white/5 rounded-[2rem] p-2 flex items-center gap-2 shadow-2xl shadow-black/20 transition-all focus-within:ring-1 focus-within:ring-primary/50 mb-32"> <!-- Changed mb-20 to mb-32 to better position under the nav -->
-                    <button onclick="toggleOptions()" class="w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center text-textMuted hover:text-primary transition">
-                        <i data-lucide="plus" class="w-5 h-5"></i>
-                    </button>
-                    <input type="text" id="user-input"
-                        class="flex-1 bg-transparent border-none outline-none text-base text-secondary placeholder-textMuted/50 px-2 font-light relative z-10"
-                        placeholder="Ask anything about crypto or trading..."
-                        autocomplete="off"
-                        onkeypress="if(event.key === 'Enter') sendMessage()">
-                    <button onclick="sendMessage()" id="send-btn" class="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-accent text-background flex items-center justify-center hover:scale-105 active:scale-95 transition shadow-lg shadow-primary/20">
-                        <i data-lucide="arrow-up" class="w-5 h-5"></i>
-                    </button>
-                </div>
-
-                <!-- Hidden Options -->
-                <div id="analysis-options-panel" class="hidden absolute bottom-full left-0 right-0 mb-36 p-4 bg-surface rounded-3xl border border-white/5 shadow-xl animate-fade-in-up z-10"> <!-- Adjusted mb to position properly -->
-                    <div class="flex flex-wrap gap-4 justify-center">
-                         <label class="flex items-center gap-2 cursor-pointer select-none">
-                            <input type="checkbox" class="analysis-checkbox accent-primary w-4 h-4 rounded-full" value="Technical Analysis" checked>
-                            <span class="text-sm text-secondary">Technical</span>
-                        </label>
-                        <label class="flex items-center gap-2 cursor-pointer select-none">
-                            <input type="checkbox" class="analysis-checkbox accent-primary w-4 h-4 rounded-full" value="News Analysis" checked>
-                            <span class="text-sm text-secondary">News</span>
-                        </label>
+                    <!-- Input Box -->
+                    <div class="bg-surface/90 border border-white/10 rounded-[2rem] p-2 flex items-center gap-2 shadow-xl focus-within:ring-1 focus-within:ring-primary/50">
+                        <button onclick="toggleOptions()" class="w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center text-textMuted hover:text-primary transition">
+                            <i data-lucide="plus" class="w-5 h-5"></i>
+                        </button>
+                        <input type="text" id="user-input"
+                            class="flex-1 bg-transparent border-none outline-none text-base text-secondary placeholder-textMuted/50 px-2 font-light relative z-10"
+                            placeholder="Ask anything..."
+                            autocomplete="off"
+                            onkeypress="if(event.key === 'Enter') sendMessage()">
+                        <button onclick="sendMessage()" id="send-btn" class="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-accent text-background flex items-center justify-center hover:scale-105 active:scale-95 transition shadow-lg shadow-primary/20">
+                            <i data-lucide="arrow-up" class="w-5 h-5"></i>
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Tab: Market -->
-        <div id="market-tab" class="tab-content hidden h-full overflow-y-auto custom-scrollbar pb-10">
-            <div class="flex items-center justify-between mb-8 px-2">
+        <div id="market-tab" class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40">
+            <div class="flex items-center justify-between mb-8">
                 <h2 class="font-serif text-3xl text-secondary">Market Watch</h2>
                 <div class="flex items-center gap-3">
                     <div class="flex items-center gap-1.5" title="即時更新狀態">
@@ -248,7 +257,7 @@
                         <h3 class="text-xs font-bold text-primary uppercase tracking-[0.2em] whitespace-nowrap">Top Performers</h3>
                         <div class="h-px flex-1 bg-gradient-to-l from-primary/30 to-transparent"></div>
                     </div>
-                    <div id="top-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                    <div id="top-list" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
                 </section>
 
                 <!-- Section 2: Market Dynamics (RSI & Funding) -->
@@ -297,8 +306,8 @@
         </div>
 
         <!-- Tab: Pulse -->
-        <div id="pulse-tab" class="tab-content hidden h-full overflow-y-auto custom-scrollbar pb-10">
-             <div class="flex justify-between items-end mb-6 px-2">
+        <div id="pulse-tab" class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40">
+             <div class="flex justify-between items-end mb-8">
                 <h2 class="font-serif text-3xl text-secondary">Market Pulse</h2>
                 <button onclick="refreshMarketPulse()" class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
             </div>
@@ -317,7 +326,7 @@
                 </div>
             </div>
 
-            <div id="pulse-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div id="pulse-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Cards injected here -->
             </div>
         </div>
@@ -325,72 +334,83 @@
 
 
         <!-- Tab: Assets -->
-        <div id="assets-tab" class="tab-content hidden h-full overflow-y-auto custom-scrollbar pb-10 relative">
-             <div class="flex justify-between items-end mb-6 px-2">
+        <div id="assets-tab" class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40 relative">
+             <div class="flex justify-between items-end mb-8">
                 <h2 class="font-serif text-3xl text-secondary">Portfolio</h2>
                 <button onclick="refreshAssets()" class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
             </div>
 
             <!-- No OKX Key -->
-            <div id="no-okx-key-overlay" class="hidden text-center py-10">
-                <div class="w-16 h-16 bg-surfaceHighlight rounded-full flex items-center justify-center mx-auto mb-4 text-textMuted">
-                    <i data-lucide="wallet" class="w-8 h-8"></i>
+            <div id="no-okx-key-overlay" class="hidden text-center py-16">
+                <div class="w-20 h-20 bg-gradient-to-br from-primary/20 to-accent/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i data-lucide="wallet" class="w-10 h-10 text-primary"></i>
                 </div>
-                <p class="text-textMuted mb-6">Connect OKX to view your assets.</p>
-                <button onclick="document.getElementById('apikey-modal').classList.remove('hidden')" class="px-6 py-3 bg-surface border border-white/10 hover:border-primary/50 text-secondary rounded-2xl transition">
-                    Connect Exchange
+                <h3 class="font-serif text-xl text-secondary mb-2">Connect Your Exchange</h3>
+                <p class="text-textMuted mb-8 text-sm">Link your OKX account to view portfolio and positions.</p>
+                <button onclick="switchTab('settings')" class="px-8 py-3.5 bg-gradient-to-r from-primary to-accent text-background font-bold rounded-2xl transition flex items-center gap-2 mx-auto shadow-lg shadow-primary/20 hover:scale-105">
+                    <i data-lucide="settings" class="w-4 h-4"></i>
+                    Go to Settings
                 </button>
             </div>
 
-            <div class="bg-gradient-to-br from-surface to-surfaceHighlight p-8 rounded-[2.5rem] mb-6 text-center border border-white/5 relative overflow-hidden">
-                <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-10 -mt-10"></div>
-                <span class="text-sm text-textMuted font-medium uppercase tracking-widest">Total Equity</span>
-                <h1 class="text-4xl md:text-5xl font-serif text-secondary mt-2 mb-2" id="total-equity">--</h1>
-                <span class="text-xs text-textMuted/50 font-mono" id="asset-update-time">Updated: --:--</span>
-            </div>
-
-            <!-- Spot Assets Section -->
-            <div class="bg-surface p-6 rounded-3xl border border-white/5 mb-6">
-                <h3 class="font-bold text-sm text-textMuted mb-4">Spot Assets</h3>
-                <div id="spot-assets-list" class="space-y-3">
-                    <!-- Injected via JS -->
+            <!-- Assets Content (hidden when no OKX key) -->
+            <div id="assets-content">
+                <div class="bg-gradient-to-br from-surface to-surfaceHighlight p-8 rounded-[2.5rem] mb-6 text-center border border-white/5 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-10 -mt-10"></div>
+                    <span class="text-sm text-textMuted font-medium uppercase tracking-widest">Total Equity</span>
+                    <h1 class="text-4xl md:text-5xl font-serif text-secondary mt-2 mb-2" id="total-equity">--</h1>
+                    <span class="text-xs text-textMuted/50 font-mono" id="asset-update-time">Updated: --:--</span>
                 </div>
-            </div>
 
-            <div class="bg-surface rounded-3xl border border-white/5 overflow-hidden">
-                <div class="p-4 border-b border-white/5 flex justify-between items-center">
-                    <h3 class="font-bold text-sm text-textMuted pl-2">Active Positions</h3>
-                    <div id="positions-summary"></div>
+                <!-- Spot Assets Section -->
+                <div class="bg-surface p-6 rounded-3xl border border-white/5 mb-6">
+                    <h3 class="font-bold text-sm text-textMuted mb-4">Spot Assets</h3>
+                    <div id="spot-assets-list" class="space-y-4">
+                        <!-- Injected via JS -->
+                    </div>
                 </div>
-                 <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
-                        <tbody id="positions-table-body" class="divide-y divide-white/5">
-                            <!-- Rows injected via JS -->
-                        </tbody>
-                    </table>
+
+                <div class="bg-surface rounded-3xl border border-white/5 overflow-hidden">
+                    <div class="p-4 border-b border-white/5 flex justify-between items-center">
+                        <h3 class="font-bold text-sm text-textMuted pl-2">Active Positions</h3>
+                        <div id="positions-summary"></div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <tbody id="positions-table-body" class="divide-y divide-white/5">
+                                <!-- Rows injected via JS -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Tab: Settings -->
-        <div id="settings-tab" class="tab-content hidden h-full overflow-y-auto custom-scrollbar pb-28">
-             <div class="max-w-2xl mx-auto px-4 md:px-6">
-                 <h2 class="font-serif text-3xl text-secondary mb-8 pt-2">Settings</h2>
+        <div id="settings-tab" class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40">
+             <div class="max-w-2xl mx-auto">
+                 <h2 class="font-serif text-3xl text-secondary mb-8">Settings</h2>
 
-                 <div class="space-y-8">
+                 <div class="space-y-10">
                      <!-- LLM Configuration -->
                     <div class="bg-surface p-6 md:p-8 rounded-3xl border border-white/5">
-                        <div class="flex items-center gap-3 mb-6">
-                            <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                                <i data-lucide="brain" class="w-5 h-5 text-primary"></i>
+                        <div class="flex items-center justify-between mb-6">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                                    <i data-lucide="brain" class="w-5 h-5 text-primary"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-serif text-primary">AI Intelligence</h3>
+                                    <p class="text-xs text-textMuted">Configure your LLM provider</p>
+                                </div>
                             </div>
-                            <div>
-                                <h3 class="text-lg font-serif text-primary">AI Intelligence</h3>
-                                <p class="text-xs text-textMuted">Configure your LLM provider</p>
+                            <!-- LLM Status Badge -->
+                            <div id="llm-status-badge" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium">
+                                <!-- Will be updated by JS -->
                             </div>
                         </div>
 
-                        <div class="space-y-5">
+                        <div class="space-y-6">
                             <!-- Provider -->
                             <div>
                                 <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Provider</label>
@@ -441,44 +461,56 @@
                                 </div>
                             </div>
                             <label class="relative inline-flex items-center cursor-pointer">
-                                <input type="checkbox" id="set-committee-mode" class="sr-only peer" onchange="toggleCommitteePanel()">
+                                <input type="checkbox" id="set-committee-mode" class="sr-only peer">
                                 <div class="w-12 h-7 bg-background rounded-full peer peer-focus:ring-0 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-accent"></div>
                             </label>
                         </div>
 
-                        <div id="committee-management-panel" class="hidden space-y-5 pt-6 mt-6 border-t border-white/5">
+                        <div id="committee-management-panel" class="hidden space-y-6 pt-6 mt-6 border-t border-white/5">
+                            <!-- Provider Selection -->
                             <div>
-                                <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Add Model to Team</label>
-                                <select onchange="document.getElementById('set-model-name').value = this.value" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3.5 text-sm text-secondary outline-none">
-                                    <option value="">Select a Model...</option>
-                                    <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
-                                    <option value="gpt-4o">GPT-4o</option>
-                                    <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+                                <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Provider</label>
+                                <select id="committee-provider-select" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3.5 text-sm text-secondary outline-none focus:border-accent/50 transition appearance-none">
+                                    <option value="">Select Provider...</option>
                                 </select>
-                                <input type="hidden" id="set-model-name">
+                                <p id="committee-no-key-hint" class="text-xs text-warning mt-2 hidden">
+                                    請先在 AI Intelligence 區塊設定 API Key
+                                </p>
                             </div>
 
+                            <!-- Model Selection -->
+                            <div>
+                                <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Model</label>
+                                <select id="committee-model-select" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3.5 text-sm text-secondary outline-none focus:border-accent/50 transition appearance-none" disabled>
+                                    <option value="">先選擇 Provider...</option>
+                                </select>
+                            </div>
+
+                            <!-- Add to Team Buttons -->
                             <div class="grid grid-cols-2 gap-3">
-                                <button onclick="addCurrentModelToCommittee('bull')" class="py-3 bg-success/10 text-success rounded-xl text-sm font-bold border border-success/20 hover:bg-success/20 transition flex items-center justify-center gap-2">
+                                <button id="add-bull-btn" class="py-3 bg-success/10 text-success rounded-xl text-sm font-bold border border-success/20 hover:bg-success/20 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
                                     <i data-lucide="plus" class="w-4 h-4"></i> Bull Team
                                 </button>
-                                <button onclick="addCurrentModelToCommittee('bear')" class="py-3 bg-danger/10 text-danger rounded-xl text-sm font-bold border border-danger/20 hover:bg-danger/20 transition flex items-center justify-center gap-2">
+                                <button id="add-bear-btn" class="py-3 bg-danger/10 text-danger rounded-xl text-sm font-bold border border-danger/20 hover:bg-danger/20 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
                                     <i data-lucide="plus" class="w-4 h-4"></i> Bear Team
                                 </button>
                             </div>
 
+                            <!-- Team Members -->
                             <div class="grid grid-cols-2 gap-4">
                                 <div class="bg-background p-4 rounded-xl">
                                     <span class="text-success font-bold text-sm flex items-center gap-2 mb-3">
-                                        <span class="w-2 h-2 rounded-full bg-success"></span> Bull Members
+                                        <span class="w-2 h-2 rounded-full bg-success"></span> Bull Team
                                     </span>
-                                    <ul id="bull-committee-list" class="space-y-2 text-xs text-textMuted"></ul>
+                                    <ul id="bull-committee-list" class="space-y-2 text-xs"></ul>
+                                    <p id="bull-empty-hint" class="text-textMuted/50 text-xs">尚未添加成員</p>
                                 </div>
                                 <div class="bg-background p-4 rounded-xl">
                                     <span class="text-danger font-bold text-sm flex items-center gap-2 mb-3">
-                                        <span class="w-2 h-2 rounded-full bg-danger"></span> Bear Members
+                                        <span class="w-2 h-2 rounded-full bg-danger"></span> Bear Team
                                     </span>
-                                    <ul id="bear-committee-list" class="space-y-2 text-xs text-textMuted"></ul>
+                                    <ul id="bear-committee-list" class="space-y-2 text-xs"></ul>
+                                    <p id="bear-empty-hint" class="text-textMuted/50 text-xs">尚未添加成員</p>
                                 </div>
                             </div>
                         </div>
@@ -486,18 +518,55 @@
 
                     <!-- Exchange Keys -->
                     <div class="bg-surface p-6 md:p-8 rounded-3xl border border-white/5">
-                        <div class="flex items-center gap-3 mb-6">
-                            <div class="w-10 h-10 rounded-xl bg-secondary/10 flex items-center justify-center">
-                                <i data-lucide="key" class="w-5 h-5 text-secondary"></i>
+                        <div class="flex items-center justify-between mb-6">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-secondary/10 flex items-center justify-center">
+                                    <i data-lucide="key" class="w-5 h-5 text-secondary"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-serif text-secondary">Exchange Keys</h3>
+                                    <p class="text-xs text-textMuted">Connect your OKX account</p>
+                                </div>
                             </div>
-                            <div>
-                                <h3 class="text-lg font-serif text-secondary">Exchange Keys</h3>
-                                <p class="text-xs text-textMuted">Connect your OKX account</p>
+                            <!-- Connection Status Badge -->
+                            <div id="okx-status-badge" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium">
+                                <!-- Will be updated by JS -->
                             </div>
                         </div>
-                        <button onclick="document.getElementById('apikey-modal').classList.remove('hidden')" class="w-full py-3.5 bg-surfaceHighlight hover:bg-white/10 border border-white/5 text-secondary rounded-xl transition flex items-center justify-center gap-2 font-medium">
-                            <i data-lucide="settings" class="w-4 h-4"></i> Manage OKX Keys
-                        </button>
+
+                        <!-- Not Connected State -->
+                        <div id="okx-not-connected" class="hidden">
+                            <div class="text-center py-4 mb-4 bg-background/50 rounded-xl">
+                                <i data-lucide="unplug" class="w-8 h-8 text-textMuted mx-auto mb-2"></i>
+                                <p class="text-sm text-textMuted">No exchange connected</p>
+                            </div>
+                            <button onclick="document.getElementById('apikey-modal').classList.remove('hidden')" class="w-full py-3.5 bg-gradient-to-r from-primary to-accent text-background font-bold rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02]">
+                                <i data-lucide="plug" class="w-4 h-4"></i> Connect OKX
+                            </button>
+                        </div>
+
+                        <!-- Connected State -->
+                        <div id="okx-connected" class="hidden">
+                            <div class="flex items-center justify-between p-4 bg-success/5 border border-success/20 rounded-xl mb-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-full bg-success/20 flex items-center justify-center">
+                                        <i data-lucide="check" class="w-5 h-5 text-success"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-medium text-secondary">OKX Connected</p>
+                                        <p class="text-xs text-textMuted">API key stored locally</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <button onclick="document.getElementById('apikey-modal').classList.remove('hidden')" class="py-3 bg-surfaceHighlight hover:bg-white/10 border border-white/5 text-secondary rounded-xl transition flex items-center justify-center gap-2 text-sm font-medium">
+                                    <i data-lucide="edit-3" class="w-4 h-4"></i> Update
+                                </button>
+                                <button onclick="disconnectOKX()" class="py-3 bg-danger/10 hover:bg-danger/20 border border-danger/20 text-danger rounded-xl transition flex items-center justify-center gap-2 text-sm font-medium">
+                                    <i data-lucide="unplug" class="w-4 h-4"></i> Disconnect
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <button onclick="saveSettings()" id="btn-save-settings" class="w-full py-4 bg-secondary text-background font-bold rounded-2xl shadow-xl hover:scale-[1.02] transition">
@@ -561,36 +630,7 @@
         </div>
     </div>
 
-    <!-- Bottom Floating Dock (Navigation) - Hidden on Chat Tab -->
-    <div id="bottom-dock" class="fixed bottom-6 left-0 right-0 z-50 flex justify-center pointer-events-none transition-all duration-300 translate-y-full opacity-0">
-        <nav class="pointer-events-auto bg-surface/90 backdrop-blur-2xl border border-white/10 rounded-[2.5rem] p-2 flex items-center gap-2 shadow-2xl shadow-black/50 transition-all hover:scale-105 hover:bg-surface">
-
-            <button onclick="switchTab('chat')" class="nav-btn group relative w-12 h-12 flex items-center justify-center rounded-full transition-all duration-300" title="Home">
-                <i data-lucide="message-circle" class="w-6 h-6 text-textMuted group-hover:text-primary transition-colors"></i>
-            </button>
-
-            <button onclick="switchTab('market')" class="nav-btn group relative w-12 h-12 flex items-center justify-center rounded-full transition-all duration-300" title="Market">
-                <i data-lucide="bar-chart-2" class="w-6 h-6 text-textMuted group-hover:text-primary transition-colors"></i>
-            </button>
-
-            <button onclick="switchTab('pulse')" class="nav-btn group relative w-12 h-12 flex items-center justify-center rounded-full transition-all duration-300" title="Pulse">
-                <i data-lucide="activity" class="w-6 h-6 text-textMuted group-hover:text-primary transition-colors"></i>
-            </button>
-
-
-
-            <button onclick="switchTab('assets')" class="nav-btn group relative w-12 h-12 flex items-center justify-center rounded-full transition-all duration-300" title="Assets">
-                <i data-lucide="wallet" class="w-6 h-6 text-textMuted group-hover:text-primary transition-colors"></i>
-            </button>
-
-            <button onclick="switchTab('settings')" class="nav-btn group relative w-12 h-12 flex items-center justify-center rounded-full transition-all duration-300" title="Settings">
-                <i data-lucide="settings-2" class="w-6 h-6 text-textMuted group-hover:text-primary transition-colors"></i>
-            </button>
-
-        </nav>
-    </div>
-
-    <!-- Modals (Re-styled) -->
+    <!-- Modals -->
     <!-- API Key Modal -->
     <div id="apikey-modal" class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-6">
         <div class="bg-surface w-full max-w-md p-8 rounded-[2.5rem] border border-white/5 shadow-2xl">
@@ -674,9 +714,9 @@
             <!-- Title -->
             <h3 id="confirm-modal-title" class="text-center font-serif text-xl text-secondary mb-2">確認操作</h3>
             <!-- Message -->
-            <p id="confirm-modal-message" class="text-center text-textMuted text-sm mb-8">確定要執行此操作嗎？</p>
+            <p id="confirm-modal-message" class="text-center text-textMuted text-sm mb-8 whitespace-pre-line">確定要執行此操作嗎？</p>
             <!-- Buttons -->
-            <div class="flex gap-3">
+            <div id="confirm-modal-buttons" class="flex gap-3">
                 <button id="confirm-modal-cancel" class="flex-1 py-3 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-2xl transition border border-white/5">
                     取消
                 </button>
@@ -685,6 +725,13 @@
                 </button>
             </div>
         </div>
+    </div>
+
+    <!-- Toast Container - 桌面右上角，移动端底部中央 -->
+    <div id="toast-container" class="fixed z-[110] flex flex-col gap-3 pointer-events-none
+        bottom-28 left-4 right-4 items-center
+        md:bottom-auto md:top-6 md:left-auto md:right-6 md:items-end">
+        <!-- Toasts will be injected here -->
     </div>
 
     <!-- Login Modal -->
@@ -747,6 +794,8 @@
     <script src="/static/js/assets.js?v=5"></script>
     <script src="/static/js/pulse.js?v=5"></script>
     <script src="/static/js/trade.js?v=5"></script>
+    <script src="/static/js/debate.js?v=1"></script>
+    <script src="/static/js/committeeManager.js?v=1"></script>
     <script>
         lucide.createIcons();
 

@@ -90,7 +90,7 @@ async function confirmTradeExecution() {
         // ✅ 檢查是否有 OKX API 金鑰
         const okxKeyManager = window.OKXKeyManager;
         if (!okxKeyManager || !okxKeyManager.hasCredentials()) {
-            alert('⚠️ 請先設置 OKX API 金鑰');
+            showToast('請先設置 OKX API 金鑰', 'warning');
             btn.disabled = false;
             btn.innerHTML = originalText;
             return;
@@ -116,15 +116,15 @@ async function confirmTradeExecution() {
         const data = await res.json();
 
         if (data.status === 'success') {
-            alert(`✅ 交易成功！\n訂單ID: ${data.details.data ? data.details.data[0].ordId : 'Unknown'}`);
+            showToast(`交易成功！訂單ID: ${data.details.data ? data.details.data[0].ordId : 'Unknown'}`, 'success', 5000);
             closeProposalModal();
             refreshAssets();
         } else {
-            alert(`❌ 交易失敗: ${data.error || 'Unknown error'}`);
+            showToast(`交易失敗: ${data.error || 'Unknown error'}`, 'error');
         }
     } catch (e) {
         console.error(e);
-        alert('❌ 連線錯誤');
+        showToast('連線錯誤', 'error');
     } finally {
         btn.disabled = false;
         btn.innerHTML = originalText;

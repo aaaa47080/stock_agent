@@ -1,0 +1,26 @@
+1. 還是一樣的問題
+
+btc現在是否值得購買
+分析過程 (0 個步驟)
+點擊展開/收起
+🧠 Admin Agent 判定這是一個複雜任務
+📋 原因: 需要深入的投資建議與策略評估
+⚙️ 執行模式: deep_analysis
+🎯 啟動單幣種深度分析...
+錯誤：深度分析需要指定加密貨幣符號。請告訴我您想分析哪個幣種？
+
+
+│ > (匿名) @ pi-sdk.js:1                                                                                                                  │
+│   market.js?v=5:1275 Ticker WebSocket 連接成功                                                                                          │
+│   market.js?v=5:1358 訂閱 Ticker: USDC-USDT, BTC-USDT, IP-USDT, ETH-USDT, DOGE-USDT, LTC-USDT, XRP-USDT, PUMP-USDT, PEPE-USDT, SOL-USDT │
+│   market.js?v=5:1381 ✅ 已訂閱 Ticker: USDC-USDT, BTC-USDT, IP-USDT, ETH-USDT, DOGE-USDT, LTC-USDT, XRP-USDT, PUMP-USDT, PEPE-USDT,     │
+│   SOL-USDT                                                                                                                              │
+│   chat.js?v=5:549 initChat: initializing chat...                                                                                        │
+│   chat.js?v=5:592 initChat: using existing session 83306526-0a7b-41cd-b898-bbd7c8c00853                                                 │
+│   apiKeyManager.js?v=5:32 ✅ openai API Key saved to localStorage                                                                       │
+│   apiKeyManager.js?v=5:194 ✅ openai selected model saved: gpt-4o-mini                                                                  │
+│   pi-sdk.js:1  Uncaught (in promise) Error: Messaging promise with id 0 timed out after 120000ms.）））） 還有一個問題    
+
+2.當我先點開Commit Mode 然後在輸入金鑰測試完畢後會沒有多/空頭模型可以選擇，他們應該是同步的，不是要我把Commit Mode取消後在點一次才有東西才對
+3.聊天是現在我一進去它就會直接加載到最近一次的聊天室，而不是給我一個乾淨的聊天室，
+4.擴充符號識別庫：擴大了本地識別的加密貨幣正則表達式列表，增加了更多熱門幣種（如 TRX, XLM, FIL, AR, PI 等）。 這個應該給LLM進行提取才對，而不是呆靠人工

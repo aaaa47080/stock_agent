@@ -161,16 +161,45 @@ function saveLLMKey() {
     if (!providerSelect || !input) return;
 
     const provider = providerSelect.value;
-    const key = input.value.trim();
+    const inputKey = input.value.trim();
 
     // 根據提供商獲取模型名稱
     let model = '';
     if (provider === 'openrouter') {
-        // OpenRouter 使用輸入框
         model = modelInput.value.trim();
     } else {
-        // 其他提供商使用下拉選擇
         model = modelSelect.value;
+    }
+
+    // 檢查已保存的 Key
+    const existingKey = window.APIKeyManager.getKey(provider);
+    const isKeyUnchanged = existingKey && (inputKey === '' || inputKey === existingKey);
+
+    if (isKeyUnchanged) {
+        // ✅ 情況 A: Key 已保存且沒有更改，只是換模型 → 直接保存模型
+        if (!model) {
+            showLLMKeyStatus('error', '❌ 請選擇一個模型');
+            return;
+        }
+
+        window.APIKeyManager.setModelForProvider(provider, model);
+        window.APIKeyManager.setSelectedProvider(provider);
+
+        showLLMKeyStatus('success', `✅ 模型已切換為 ${model}`);
+
+        // 更新 LLM 狀態 UI
+        if (typeof updateLLMStatusUI === 'function') {
+            updateLLMStatusUI();
+        }
+        return;
+    }
+
+    // ✅ 情況 B: Key 是新的或已更改 → 需要先 TEST
+    const key = inputKey;
+
+    if (!key) {
+        showLLMKeyStatus('error', '❌ 請輸入 API Key');
+        return;
     }
 
     // 檢查是否已經測試成功
@@ -183,7 +212,6 @@ function saveLLMKey() {
         lastTestKey !== key ||
         lastTestModel !== model) {
         showLLMKeyStatus('error', '❌ 請先測試 API Key 並確保測試成功後再保存！');
-        // 更新保存按鈕狀態
         updateSaveButtonState(provider, key, model);
         return;
     }
@@ -205,12 +233,17 @@ function saveLLMKey() {
         window.APIKeyManager.setModelForProvider(provider, model);
     }
 
-    showLLMKeyStatus('success', `✅ 模型儲存成功！${getProviderName(provider)} API Key 已保存！`);
+    showLLMKeyStatus('success', `✅ ${getProviderName(provider)} API Key 已保存！`);
 
     // 清除測試緩存
     localStorage.removeItem(`last_test_result_${provider}`);
     localStorage.removeItem(`last_test_key_${provider}`);
     localStorage.removeItem(`last_test_model_${provider}`);
+
+    // 更新 Provider 下拉選單狀態（添加 ✅）
+    if (typeof updateProviderDropdownStatus === 'function') {
+        updateProviderDropdownStatus();
+    }
 
     // 更新按鈕狀態
     updateSaveButtonState(provider, key, model);
@@ -218,6 +251,16 @@ function saveLLMKey() {
     // 更新狀態指示器
     if (typeof checkApiKeyStatus === 'function') {
         checkApiKeyStatus();
+    }
+
+    // 更新 LLM 狀態 UI
+    if (typeof updateLLMStatusUI === 'function') {
+        updateLLMStatusUI();
+    }
+
+    // 更新 Committee Manager providers if it exists
+    if (window.CommitteeManager && typeof window.CommitteeManager.updateProviders === 'function') {
+        window.CommitteeManager.updateProviders();
     }
 }
 
@@ -228,11 +271,25 @@ function updateSaveButtonState(provider, key, model) {
     const saveBtn = document.getElementById('save-llm-key-btn');
     if (!saveBtn) return;
 
-    // 如果沒有提供有效的 provider，禁用按鈕
-    if (!provider || !key) {
+    // 檢查已保存的 Key
+    const existingKey = window.APIKeyManager.getKey(provider);
+    const isKeyUnchanged = existingKey && (key === '' || key === existingKey);
+
+    // ✅ 情況 A: Key 已保存且沒有更改 → 只要有選擇模型就可以保存
+    if (isKeyUnchanged && model) {
+        saveBtn.disabled = false;
+        saveBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        saveBtn.classList.add('hover:brightness-110');
+        saveBtn.textContent = 'Save Model';
+        return;
+    }
+
+    // ✅ 情況 B: 新 Key → 需要先測試
+    if (!key) {
         saveBtn.disabled = true;
         saveBtn.classList.add('opacity-50', 'cursor-not-allowed');
         saveBtn.classList.remove('hover:brightness-110');
+        saveBtn.textContent = 'Save AI Configuration';
         return;
     }
 
@@ -245,10 +302,12 @@ function updateSaveButtonState(provider, key, model) {
         saveBtn.disabled = false;
         saveBtn.classList.remove('opacity-50', 'cursor-not-allowed');
         saveBtn.classList.add('hover:brightness-110');
+        saveBtn.textContent = 'Save AI Configuration';
     } else {
         saveBtn.disabled = true;
         saveBtn.classList.add('opacity-50', 'cursor-not-allowed');
         saveBtn.classList.remove('hover:brightness-110');
+        saveBtn.textContent = 'Save AI Configuration';
     }
 }
 
@@ -338,6 +397,11 @@ async function testLLMKey() {
                     modal.classList.remove('hidden');
                 }
             }
+
+            // 更新 Committee Manager providers if it exists
+            if (window.CommitteeManager && typeof window.CommitteeManager.updateProviders === 'function') {
+                window.CommitteeManager.updateProviders();
+            }
         } else {
             // 清除之前的測試結果
             localStorage.removeItem(`last_test_result_${provider}`);
@@ -375,8 +439,8 @@ function showLLMKeyStatus(type, message) {
         status.classList.add('bg-green-900/20', 'border', 'border-green-500/30', 'text-green-400');
     } else if (type === 'error') {
         status.classList.add('bg-red-900/20', 'border', 'border-red-500/30', 'text-red-400');
-        // 對於錯誤，額外彈出視窗提醒
-        alert(message);
+        // 對於錯誤，使用 Toast 提醒
+        showToast(message.replace(/^❌\s*/, ''), 'error');
     } else if (type === 'loading') {
         status.classList.add('bg-blue-900/20', 'border', 'border-blue-500/30', 'text-blue-400');
     }
@@ -397,65 +461,110 @@ function getProviderName(provider) {
 }
 
 /**
+ * 更新 Provider 下拉選單的顯示狀態（添加 ✅）
+ */
+function updateProviderDropdownStatus() {
+    const providerSelect = document.getElementById('llm-provider-select');
+    if (!providerSelect) return;
+
+    const providers = [
+        { value: 'openai', label: 'OpenAI' },
+        { value: 'google_gemini', label: 'Google Gemini' },
+        { value: 'openrouter', label: 'OpenRouter' }
+    ];
+
+    // 保存當前選擇的值
+    const currentValue = providerSelect.value;
+
+    // 清空並重建選項
+    providerSelect.innerHTML = '';
+
+    providers.forEach(p => {
+        const key = window.APIKeyManager.getKey(p.value);
+        const option = document.createElement('option');
+        option.value = p.value;
+        // 如果有 key，在名稱後顯示 ✅
+        option.textContent = key ? `${p.label} ✅` : p.label;
+        providerSelect.appendChild(option);
+    });
+
+    // 恢復選擇
+    providerSelect.value = currentValue;
+}
+
+/**
  * 页面加载时初始化
  */
 window.addEventListener('DOMContentLoaded', async () => {
-    // 初始化時載入已保存的 key
+    // 1. 初始化 Provider 下拉選單狀態 (顯示 ✅)
+    updateProviderDropdownStatus();
+
+    // 2. 初始化選中狀態和模型
     const currentKey = window.APIKeyManager?.getCurrentKey();
-    if (currentKey) {
-        const providerSelect = document.getElementById('llm-provider-select');
-        const modelSelect = document.getElementById('llm-model-select');
-        const modelInput = document.getElementById('llm-model-input');
-
-        if (providerSelect) {
-            providerSelect.value = currentKey.provider;
-            updateLLMKeyInput();
-
-            // 更新可用模型列表
-            await updateAvailableModels();
-
-            // 恢復保存的模型選擇
-            if (currentKey.provider) {
-                const savedModel = window.APIKeyManager.getModelForProvider(currentKey.provider);
-                if (savedModel) {
-                    if (currentKey.provider === 'openrouter') {
-                        // OpenRouter 使用輸入框
-                        if (modelInput) modelInput.value = savedModel;
-                    } else {
-                        // 其他提供商使用下拉選擇
-                        if (modelSelect) modelSelect.value = savedModel;
-                    }
-                }
-            }
-        }
-    } else {
-        // 如果沒有保存的 key，初始化模型列表
-        await updateAvailableModels();
-    }
-
-    // 更新保存按鈕狀態
-    if (currentKey) {
-        const savedModel = window.APIKeyManager.getModelForProvider(currentKey.provider);
-        updateSaveButtonState(currentKey.provider, currentKey.key, savedModel || '');
-    } else {
-        // 如果沒有保存的 key，初始化模型列表後更新按鈕狀態
-        await updateAvailableModels();
-        updateSaveButtonState('', '', '');
-    }
-
-    // 添加事件監聽器以在選擇改變時更新按鈕狀態
     const providerSelect = document.getElementById('llm-provider-select');
     const modelSelect = document.getElementById('llm-model-select');
     const modelInput = document.getElementById('llm-model-input');
 
+    if (currentKey && providerSelect) {
+        providerSelect.value = currentKey.provider;
+        
+        // 恢復保存的模型選擇
+        if (currentKey.provider) {
+            const savedModel = window.APIKeyManager.getModelForProvider(currentKey.provider);
+            // 我們會在 updateAvailableModels 中設置 value，但這裡先存個引用
+            if (savedModel) {
+                // 稍後在 updateAvailableModels 完成後設置
+                providerSelect.dataset.savedModel = savedModel;
+            }
+        }
+    }
+
+    // 3. 無論是否有 currentKey，都要更新當前選中 Provider 的輸入框狀態
+    // 這樣即使默認選中 OpenAI 且有 Key，也會正確顯示 placeholder
+    updateLLMKeyInput();
+
+    // 4. 更新可用模型列表
+    await updateAvailableModels();
+
+    // 5. 再次確保模型被選中 (因為 updateAvailableModels 會重置選項)
+    if (providerSelect && providerSelect.dataset.savedModel) {
+        if (providerSelect.value === 'openrouter') {
+             if (modelInput) modelInput.value = providerSelect.dataset.savedModel;
+        } else {
+             if (modelSelect) modelSelect.value = providerSelect.dataset.savedModel;
+        }
+    }
+
+    // 6. 更新保存按鈕狀態
+    if (providerSelect) {
+        const provider = providerSelect.value;
+        const keyInput = document.getElementById('llm-api-key-input');
+        const key = keyInput ? keyInput.value.trim() : '';
+        
+        let model = '';
+        if (provider === 'openrouter') {
+            model = modelInput ? modelInput.value.trim() : '';
+        } else {
+            model = modelSelect ? modelSelect.value : '';
+        }
+        
+        updateSaveButtonState(provider, key, model);
+    }
+
+    // 添加事件監聽器以在選擇改變時更新按鈕狀態
     if (providerSelect) {
         providerSelect.addEventListener('change', function() {
+            updateLLMKeyInput(); // 確保切換時更新 placeholder
             const currentKeyObj = window.APIKeyManager.getCurrentKey();
-            if (currentKeyObj) {
-                const savedModel = window.APIKeyManager.getModelForProvider(currentKeyObj.provider);
-                updateSaveButtonState(currentKeyObj.provider, currentKeyObj.key, savedModel || '');
+            
+            // 如果切換到的 provider 已有保存的 key
+            const existingKey = window.APIKeyManager.getKey(this.value);
+            
+            if (existingKey) {
+                const savedModel = window.APIKeyManager.getModelForProvider(this.value);
+                updateSaveButtonState(this.value, '', savedModel || '');
             } else {
-                // 如果沒有保存的 key，使用當前選擇的值
+                // 如果沒有保存的 key，使用當前輸入框的值
                 const keyInput = document.getElementById('llm-api-key-input');
                 if (keyInput) {
                     const key = keyInput.value.trim();
@@ -475,8 +584,8 @@ window.addEventListener('DOMContentLoaded', async () => {
         modelSelect.addEventListener('change', function() {
             const providerSelect = document.getElementById('llm-provider-select');
             if (providerSelect && providerSelect.value !== 'openrouter') {
-                const currentKeyObj = window.APIKeyManager.getCurrentKey();
-                const key = currentKeyObj ? currentKeyObj.key : (document.getElementById('llm-api-key-input') && document.getElementById('llm-api-key-input').value ? document.getElementById('llm-api-key-input').value : '').trim();
+                const keyInput = document.getElementById('llm-api-key-input');
+                const key = keyInput ? keyInput.value.trim() : '';
                 updateSaveButtonState(providerSelect.value, key, this.value);
             }
         });
@@ -486,8 +595,8 @@ window.addEventListener('DOMContentLoaded', async () => {
         modelInput.addEventListener('input', function() {
             const providerSelect = document.getElementById('llm-provider-select');
             if (providerSelect && providerSelect.value === 'openrouter') {
-                const currentKeyObj = window.APIKeyManager.getCurrentKey();
-                const key = currentKeyObj ? currentKeyObj.key : (document.getElementById('llm-api-key-input') && document.getElementById('llm-api-key-input').value ? document.getElementById('llm-api-key-input').value : '').trim();
+                const keyInput = document.getElementById('llm-api-key-input');
+                const key = keyInput ? keyInput.value.trim() : '';
                 updateSaveButtonState(providerSelect.value, key, this.value);
             }
         });

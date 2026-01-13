@@ -7,16 +7,27 @@ async function refreshAssets() {
     const spotList = document.getElementById('spot-assets-list');
     const posTable = document.getElementById('positions-table-body');
     const summaryEl = document.getElementById('positions-summary');
+    const noKeyOverlay = document.getElementById('no-okx-key-overlay');
+    const assetsContent = document.getElementById('assets-content');
+
+    // ✅ 檢查是否有 OKX API 金鑰（BYOK 模式）
+    const okxKeyManager = window.OKXKeyManager;
+    if (!okxKeyManager || !okxKeyManager.hasCredentials()) {
+        // 沒有金鑰：顯示 overlay，隱藏內容
+        if (noKeyOverlay) noKeyOverlay.classList.remove('hidden');
+        if (assetsContent) assetsContent.classList.add('hidden');
+        lucide.createIcons();
+        return;
+    }
+
+    // 有金鑰：隱藏 overlay，顯示內容
+    if (noKeyOverlay) noKeyOverlay.classList.add('hidden');
+    if (assetsContent) assetsContent.classList.remove('hidden');
 
     // Loading state
     totalEl.classList.add('animate-pulse');
 
     try {
-        // ✅ 檢查是否有 OKX API 金鑰（BYOK 模式）
-        const okxKeyManager = window.OKXKeyManager;
-        if (!okxKeyManager || !okxKeyManager.hasCredentials()) {
-            throw new Error("NO_OKX_KEY");
-        }
 
         // ✅ 獲取認證頭
         const authHeaders = okxKeyManager.getAuthHeaders();
@@ -125,22 +136,27 @@ async function refreshAssets() {
         totalEl.classList.remove('animate-pulse');
         totalEl.innerText = "---";
 
-        const noKeyHtml = `
-            <div class="flex flex-col items-center justify-center py-8 text-center h-full">
-                <div class="bg-background p-3 rounded-full mb-3">
-                    <i data-lucide="lock" class="w-6 h-6 text-primary"></i>
+        // 如果是金鑰無效，顯示 overlay
+        if (e.message === "INVALID_OKX_KEY") {
+            if (noKeyOverlay) noKeyOverlay.classList.remove('hidden');
+            if (assetsContent) assetsContent.classList.add('hidden');
+            lucide.createIcons();
+            return;
+        }
+
+        // 其他 API 錯誤
+        const errorHtml = `
+            <div class="flex flex-col items-center justify-center py-6 text-center">
+                <div class="bg-danger/10 p-3 rounded-full mb-3">
+                    <i data-lucide="alert-circle" class="w-5 h-5 text-danger"></i>
                 </div>
-                <h4 class="text-sm font-bold text-secondary mb-1">尚未綁定交易所</h4>
-                <p class="text-xs text-textMuted max-w-[200px] mb-4">請設定 API 金鑰以查看即時資產數據。</p>
-                <button onclick="openApiKeyModal()" class="px-4 py-2 bg-primary hover:bg-primary/80 text-background text-xs font-bold rounded-lg transition flex items-center gap-2">
-                    <i data-lucide="settings" class="w-3 h-3"></i> 立即設定
-                </button>
+                <p class="text-xs text-textMuted">無法載入資料，請稍後重試</p>
             </div>
         `;
 
-        spotList.innerHTML = noKeyHtml;
-        summaryEl.innerHTML = '<div class="text-xs text-textMuted text-center">需先連接 API</div>';
-        posTable.innerHTML = `<tr><td colspan="6" class="p-0"><div class="p-8 flex justify-center text-textMuted">${noKeyHtml}</div></td></tr>`;
+        spotList.innerHTML = errorHtml;
+        summaryEl.innerHTML = '';
+        posTable.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-textMuted text-xs">載入失敗</td></tr>`;
 
         lucide.createIcons();
     }
@@ -165,7 +181,7 @@ async function saveApiKeys(event) {
     const passphrase = document.getElementById('input-passphrase').value.trim();
 
     if (!apiKey || !secretKey || !passphrase) {
-        alert('⚠️ 請填寫所有欄位');
+        showToast('請填寫所有欄位', 'warning');
         return;
     }
 
@@ -183,7 +199,7 @@ async function saveApiKeys(event) {
         });
 
         if (!validation.valid) {
-            alert('❌ 驗證失敗: ' + validation.message);
+            showToast('驗證失敗: ' + validation.message, 'error');
             return;
         }
 
@@ -194,7 +210,7 @@ async function saveApiKeys(event) {
             passphrase: passphrase
         });
 
-        alert('✅ OKX API 金鑰已保存到本地瀏覽器\n\n⚠️ 注意: 金鑰僅存儲在您的瀏覽器中，不會上傳到服務器。\n無痕視窗不會保存您的金鑰。');
+        showToast('OKX API 金鑰已保存\n金鑰僅存儲在您的瀏覽器中', 'success', 4000);
 
         // 清空輸入框
         document.getElementById('input-api-key').value = '';
@@ -204,8 +220,13 @@ async function saveApiKeys(event) {
         closeApiKeyModal();
         refreshAssets();
 
+        // 更新 Settings 頁面的連接狀態
+        if (typeof updateOKXStatusUI === 'function') {
+            updateOKXStatusUI();
+        }
+
     } catch (e) {
-        alert('❌ 系統錯誤: ' + e.message);
+        showToast('系統錯誤: ' + e.message, 'error');
         console.error(e);
     } finally {
         btn.disabled = false;

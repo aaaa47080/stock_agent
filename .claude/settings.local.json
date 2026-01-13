@@ -43,7 +43,8 @@
       "Bash(gh api:*)",
       "Bash(tree:*)",
       "Bash(sqlite3:*)",
-      "Bash(lsof:*)"
+      "Bash(lsof:*)",
+      "Bash(TZ='Asia/Taipei' date:*)"
     ],
     "deny": [],
     "ask": []
