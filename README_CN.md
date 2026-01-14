@@ -15,6 +15,7 @@
 | 陳鈺澔 (Yu-Hao Chen) | LLM & AI-Agent Architect | 專精於 LLM 應用框架、自主代理人 (AI-Agents) 工作流設計、Prompt Engineering。 | a29015822@gmail.com |
 | 賴弘育 (Hung-Yu Lai) | Intelligent Data Retrieval | 專精於金融領域精準爬蟲、數據清洗與動態資訊流，為 AI 提供高品質知識庫。 | howard880729@gmail.com |
 | 施柏均 (Po-Chun Shih) | Backend & Infra Engineer | 負責高併發後端架構、數據庫維運與優化，支撐 AI 代理人的大規模運算需求。 | williampcs0203@mail.com |
+| 王庭甡 (Po-Chun Shih) | Backend Engineer | API 開發・Docker 容器化・雲端部署・資料庫操作 | s04240046gothu@gmail.com |
 
 ## 🌟 我們專注的方向
 
