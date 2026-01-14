@@ -82,7 +82,8 @@ DEFAULT_AGENT_REGISTRY: Dict[str, dict] = {
         - 其他非金融相關的一般性問題
         適合社交互動和系統操作指引。""",
         "tools": [
-            "get_current_time_tool"
+            "get_current_time_tool",
+            "introduction_tool"
         ],
         "enabled": True,
         "use_debate_system": False

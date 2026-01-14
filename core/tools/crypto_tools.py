@@ -140,7 +140,7 @@ def technical_analysis_tool(
         return f"錯誤：找不到交易對 {symbol}。請確認幣種名稱是否正確。"
     except Exception as e:
         return f"技術分析時發生錯誤: {str(e)}"
-
+    
 
 @tool(args_schema=NewsAnalysisInput)
 def news_analysis_tool(
@@ -195,11 +195,11 @@ def news_analysis_tool(
 
         if positive_news:
             positive_list = []
-            for news in positive_news:
+            for i, news in enumerate(positive_news, 1):
                 title = news.get('title', 'N/A')
                 source = news.get('source', 'Unknown')
                 url = news.get('url', '')
-                news_item = f"✅ **{title}**\n   來源: {source}"
+                news_item = f"{i}. **{title}**\n   來源: {source}"
                 if url:
                     news_item += f" | [閱讀更多]({url})"
                 positive_list.append(news_item)
@@ -207,11 +207,11 @@ def news_analysis_tool(
 
         if negative_news:
             negative_list = []
-            for news in negative_news:
+            for i, news in enumerate(negative_news, 1):
                 title = news.get('title', 'N/A')
                 source = news.get('source', 'Unknown')
                 url = news.get('url', '')
-                news_item = f"❌ **{title}**\n   來源: {source}"
+                news_item = f"{i}. **{title}**\n   來源: {source}"
                 if url:
                     news_item += f" | [閱讀更多]({url})"
                 negative_list.append(news_item)
@@ -219,11 +219,11 @@ def news_analysis_tool(
 
         if neutral_news:
             neutral_list = []
-            for news in neutral_news:
+            for i, news in enumerate(neutral_news, 1):
                 title = news.get('title', 'N/A')
                 source = news.get('source', 'Unknown')
                 url = news.get('url', '')
-                news_item = f"⚪ **{title}**\n   來源: {source}"
+                news_item = f"{i}. **{title}**\n   來源: {source}"
                 if url:
                     news_item += f" | [閱讀更多]({url})"
                 neutral_list.append(news_item)
@@ -437,9 +437,9 @@ def explain_market_movement_tool(symbol: str) -> str:
         # 附上新聞來源
         news = result.get("news_sources", [])
         if news:
-            output += "\n**相關新聞**:\n"
-            for n in news[:2]:
-                output += f"- [{n.get('source')}] {n.get('title')}\n"
+            output += "\n**相關新聞**:\n\n"
+            for i, n in enumerate(news[:2], 1):
+                output += f"{i}. **{n.get('title')}** - {n.get('source')}\n"
 
         return output
 

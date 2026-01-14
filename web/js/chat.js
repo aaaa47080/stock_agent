@@ -383,9 +383,6 @@ function showWelcomeScreen() {
     container.innerHTML = `
     <div class="bot-message opacity-0 animate-fade-in-up" style="animation-delay: 0.1s; animation-fill-mode: forwards;">
         <div class="flex flex-col items-center justify-center mb-8">
-            <div class="w-20 h-20 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center mb-4 shadow-lg shadow-primary/20">
-                <i data-lucide="sparkles" class="w-10 h-10 text-white"></i>
-            </div>
             <h1 class="font-serif text-3xl md:text-4xl leading-tight text-center">
                 <span class="text-secondary">Welcome to</span><br>
                 <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">CryptoMind</span>
@@ -852,9 +849,6 @@ async function loadChatHistory(sessionId = 'default') {
              container.innerHTML = `
                 <div class="bot-message opacity-0 animate-fade-in-up" style="animation-delay: 0.1s; animation-fill-mode: forwards;">
                     <div class="flex flex-col items-center justify-center mb-8">
-                        <div class="w-20 h-20 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center mb-4 shadow-lg shadow-primary/20">
-                            <i data-lucide="sparkles" class="w-10 h-10 text-white"></i>
-                        </div>
                         <h1 class="font-serif text-3xl md:text-4xl leading-tight text-center">
                             <span class="text-secondary">Welcome to</span><br>
                             <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">CryptoMind</span>

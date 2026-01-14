@@ -137,7 +137,7 @@ MAX_ANALYSIS_WORKERS = 2
 
 # Gradio 介面的預設值
 DEFAULT_INTERVAL = "1d"
-DEFAULT_KLINES_LIMIT = 100
+DEFAULT_KLINES_LIMIT = 200  # 業界標準：200 天，確保統計有效性
 
 # 新聞抓取數量限制 (每個來源)
 NEWS_FETCH_LIMIT = 10 # 每個來源嘗試抓取 10 條新聞

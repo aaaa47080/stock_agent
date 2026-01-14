@@ -33,10 +33,10 @@ _normalize_symbol = normalize_symbol
 _find_available_exchange = find_available_exchange
 
 # 導入格式化函數
-from .formatters import format_full_analysis_result
+from .formatters import format_full_analysis_result, format_compact_analysis_result
 
 # 導入所有工具
-from .utility_tools import get_current_time_tool
+from .utility_tools import get_current_time_tool, introduction_tool
 from .crypto_tools import (
     technical_analysis_tool,
     news_analysis_tool,
@@ -63,6 +63,7 @@ def get_crypto_tools() -> List:
         explain_market_movement_tool,
         backtest_strategy_tool,
         extract_crypto_symbols_tool,
+        introduction_tool
     ]
 
 
@@ -79,6 +80,7 @@ TOOL_MAP = {
     "explain_market_movement_tool": explain_market_movement_tool,
     "backtest_strategy_tool": backtest_strategy_tool,
     "extract_crypto_symbols_tool": extract_crypto_symbols_tool,
+    "introduction_tool": introduction_tool,
 }
 
 
@@ -152,6 +154,7 @@ __all__ = [
     'explain_market_movement_tool',
     'backtest_strategy_tool',
     'extract_crypto_symbols_tool',
+    'introduction_tool',
     # Tool management
     'get_crypto_tools',
     'get_tools_by_names',

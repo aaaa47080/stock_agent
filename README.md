@@ -44,25 +44,25 @@ This is an advanced cryptocurrency trading system based on AI agents, featuring 
 
 ### 🌟 Key Features
 
-#### 1. Modern Web Interface (Pi App Style)
+#### 1. Privacy-First Architecture (BYOK)
+- **Bring Your Own Key (LLM)**: Users provide their own API keys (OpenAI, Gemini, OpenRouter). Keys are stored in the browser's `localStorage` and never saved on the server.
+- **Secure OKX Integration**: Trading and asset management use a session-based approach. API credentials travel via secure headers and are used to create temporary, stateless connectors that are destroyed after each request.
+- **Incognito-Ready**: No persistent server-side storage of user credentials ensures privacy even on shared devices.
+
+#### 2. Modern Web Interface (Pi App Style)
 - **Mobile-First Design**: Optimized for Pi Browser and mobile devices with a sleek, dark-mode aesthetic.
 - **Real-time Streaming (SSE)**: AI responses are streamed character-by-character for a smooth, conversational experience.
 - **Interactive Charts**: Integrated with Lightweight Charts and Chart.js for real-time market visualization.
-- **BYOK (Bring Your Own Key)**: Users can configure their own LLM API keys (OpenAI, Gemini, OpenRouter) directly in the UI.
 
-#### 2. Multi-Tiered Analysis Agent System (LangGraph)
+#### 3. Multi-Tiered Analysis Agent System (LangGraph)
 - **Analyst Team**: Technical, sentiment, fundamental, and news analysts working in parallel.
 - **Committee Debate**: Multi-model consensus system where "Bull" and "Bear" researchers debate market trends.
 - **Risk Management**: Automated evaluation of stop-loss, take-profit, and position sizing.
 
-#### 3. Market Intelligence & Monitoring
-- **Market Pulse**: Background scanning of the top 30+ assets for RSI anomalies, funding rate spikes, and news sentiment.
+#### 4. Market Intelligence & Performance
+- **Intelligent Caching**: Market Pulse data is cached and updated periodically. Users see near-instant reports (<100ms) for major assets like BTC, ETH, and SOL.
 - **Live Tickers**: Real-time price updates via WebSocket.
-- **Multi-Exchange Core**: Unified data fetching from OKX and Binance with automatic symbol format normalization.
-
-#### 4. Automated Risk Management
-- Dynamic position adjustment and leverage risk assessment.
-- Funding rate consideration and multi-timeframe analysis (1h, 4h, 1d).
+- **Multi-Exchange Core**: Unified data fetching from OKX and Binance with automatic symbol normalization.
 
 ### 🏗️ System Architecture
 
@@ -70,13 +70,13 @@ This is an advanced cryptocurrency trading system based on AI agents, featuring 
 ```mermaid
 graph LR
     User((User)) <--> UI[Web UI / Pi Browser]
-    UI <--> API[FastAPI Server]
-    API <--> Agent[ReAct Agent / LangGraph]
-    Agent <--> Data[Data Fetchers / News API]
+    UI -- "Request + Keys" --> API[FastAPI Server]
+    API -- "Stateless Client" --> LLM[LLM / Exchange APIs]
+    API -- "Query" --> Cache[(Market Cache)]
+    API -- "Stream" --> UI
 ```
 
 #### Agent System Workflow (LangGraph)
-The system employs a sophisticated state machine for deep market dives:
 1. **Data Prep**: Aggregates OHLCV, Indicators, and News.
 2. **Analysis**: Parallel processing by specialized AI analysts.
 3. **Debate**: Competitive reasoning between Bull/Bear models.
@@ -87,27 +87,28 @@ The system employs a sophisticated state machine for deep market dives:
 
 #### Backend & Core Logic
 - `api_server.py` - FastAPI entry point and server configuration.
-- `api/routers/` - Modular API endpoints (analysis, market, agents, system).
+- `api/routers/` - Modular API endpoints (analysis, market, trading, system).
 - `core/graph.py` - LangGraph workflow definition for deep analysis.
-- `core/main.py` - CLI entry point for backend analysis.
 - `interfaces/chat_interface.py` - Orchestrator for handling chat logic and agent routing.
+- `utils/user_client_factory.py` - Factory for creating stateless, user-specific LLM clients.
+- `utils/okx_auth.py` - Authentication middleware for handling user-provided exchange credentials.
 
 #### Data & Analysis
 - `data/data_fetcher.py` - Standardized data acquisition from OKX/Binance.
 - `data/indicator_calculator.py` - Technical indicator calculations (RSI, MACD, etc.).
+- `analysis/market_pulse.py` - Core logic for background market monitoring and caching.
 - `analysis/crypto_screener.py` - Market scanning and anomaly detection.
-- `utils/llm_client.py` - Multi-provider LLM client (OpenAI, Gemini, Anthropic).
 
 #### Frontend Assets
 - `web/index.html` - The main SPA interface.
-- `web/js/` - Modular frontend logic (chat, market, charts, settings).
+- `web/js/` - Modular frontend logic (chat, market, okxKeyManager, apiKeyManager).
 - `web/styles.css` - Custom Pi-themed Tailwind configuration.
 
 ### 🛠️ Technology Components
 
 - **Backend**: FastAPI, LangGraph, Pydantic, Pandas.
 - **Frontend**: HTML5, Tailwind CSS, Vanilla JS, Lucide Icons.
-- **AI Models**: GPT-4o, Gemini 1.5 Pro, Claude 3.5, and local models (Ollama/vLLM).
+- **AI Models**: GPT-4o, Gemini 1.5 Pro, Claude 3.5 (via OpenRouter).
 - **Visualization**: Lightweight Charts, Chart.js.
 - **Real-time**: WebSocket, Server-Sent Events (SSE).
 
@@ -119,7 +120,7 @@ The system employs a sophisticated state machine for deep market dives:
    ```
 
 2. **Configure Environment**:
-   Create a `.env` file with your API keys (see `.env.example`).
+   Create a `.env` file (see `.env.example`). Note: LLM and OKX keys are now provided via the Web UI.
 
 3. **Run the Server**:
    ```bash
@@ -127,11 +128,19 @@ The system employs a sophisticated state machine for deep market dives:
    ```
 
 4. **Access the UI**:
-   Open `http://localhost:8111` in your browser.
+   Open `http://localhost:8111` in your browser, go to **Settings**, and enter your API keys to get started.
 
 ## 📄 License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the [Apache License 2.0](LICENSE).
+
+---
+
+### ⚠️ Trademark Disclaimer
+
+The **Pi Network** logo and name are trademarks of the **Pi Network**. This project is an independent community contribution and is not affiliated with, endorsed by, or sponsored by the **Pi Core Team**. 
+
+The use of the Pi Network logo and related assets in the UI is for decorative and identification purposes within the Pi Browser ecosystem only. The developers of this project do not claim any ownership over Pi Network trademarks.
 
 ---
 

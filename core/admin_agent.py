@@ -473,6 +473,12 @@ class AdminAgent:
         **kwargs
     ) -> Generator[str, None, None]:
         """執行淺層分析（使用帶工具的 CryptoAgent）"""
+        import time
+        start_time = time.time()
+
+        yield "[PROCESS_START]\n"
+        yield f"[PROCESS] 📊 正在執行快速分析...\n"
+
         try:
             from core.agents import CryptoAgent
 
@@ -484,11 +490,24 @@ class AdminAgent:
                 verbose=self.verbose
             )
 
-            # 執行並 yield 結果
+            yield f"[PROCESS] 🔧 載入分析工具\n"
+            yield f"[PROCESS] 💬 正在生成回應...\n"
+
+            # 執行並收集結果
+            result_parts = []
             for chunk in agent.chat_stream(user_message):
-                yield chunk
+                result_parts.append(chunk)
+
+            elapsed_time = time.time() - start_time
+            yield f"[PROCESS] ✅ 分析完成 (耗時: {elapsed_time:.2f}秒)\n"
+            yield "[PROCESS_END]\n"
+            yield "[RESULT]\n"
+            yield "".join(result_parts)
 
         except Exception as e:
+            elapsed_time = time.time() - start_time
+            yield f"[PROCESS] ❌ 分析失敗 (耗時: {elapsed_time:.2f}秒)\n"
+            yield "[PROCESS_END]\n"
             yield f"執行淺層分析時發生錯誤: {str(e)}"
 
     def _execute_deep_analysis(
@@ -575,10 +594,10 @@ class AdminAgent:
 
             yield "[PROCESS_END]\n"
 
-            # 最終報告
+            # 最終報告（使用簡化版，因為辯論過程已即時輸出）
             yield "[RESULT]\n"
-            from core.tools import format_full_analysis_result
-            formatted_report = format_full_analysis_result(
+            from core.tools import format_compact_analysis_result
+            formatted_report = format_compact_analysis_result(
                 accumulated_state,
                 "現貨" if market_type == "spot" else "合約",
                 normalized_symbol,
@@ -721,13 +740,21 @@ class AdminAgent:
         **kwargs
     ) -> Generator[str, None, None]:
         """執行簡單對話（支援工具調用）"""
+        import time
+        start_time = time.time()
+
         if not self.user_llm_client:
             yield "抱歉，系統暫時無法處理您的請求。請稍後再試。"
             return
 
+        yield "[PROCESS_START]\n"
+        yield f"[PROCESS] 🤖 正在處理您的問題...\n"
+
         # 檢查 Agent 是否有配置工具
         agent_config = agent_registry.get_agent(task.assigned_agent)
         agent_tools = agent_config.tools if agent_config else []
+
+        response_content = None
 
         # 如果有工具，使用帶工具的 Agent
         if agent_tools:
@@ -735,12 +762,15 @@ class AdminAgent:
                 from core.tools import get_tools_by_names
                 from langchain_openai import ChatOpenAI
                 from langchain_google_genai import ChatGoogleGenerativeAI
-                from langgraph.prebuilt import create_react_agent
+                from langgraph.prebuilt import create_react_agent  # type: ignore[deprecated]
                 from langchain_core.messages import HumanMessage, AIMessage
                 import os
 
                 # 獲取工具
                 tools = get_tools_by_names(agent_tools)
+
+                if tools:
+                    yield f"[PROCESS] 🔧 載入 {len(tools)} 個工具\n"
 
                 # 創建 LLM
                 llm = None
@@ -775,6 +805,7 @@ class AdminAgent:
 你有權限使用工具來查詢當前時間等資訊。
 請用繁體中文回答。"""
 
+                    yield f"[PROCESS] 💬 正在生成回應...\n"
                     agent = create_react_agent(llm, tools, prompt=system_prompt)
                     result = agent.invoke({"messages": [HumanMessage(content=user_message)]})
 
@@ -785,10 +816,10 @@ class AdminAgent:
                                 content = msg.content
                                 if isinstance(content, list):
                                     text_parts = [p if isinstance(p, str) else p.get('text', '') for p in content]
-                                    yield ''.join(text_parts)
+                                    response_content = ''.join(text_parts)
                                 else:
-                                    yield str(content)
-                                return
+                                    response_content = str(content)
+                                break
 
             except Exception as e:
                 if self.verbose:
@@ -796,25 +827,39 @@ class AdminAgent:
                 # 繼續使用無工具對話作為 fallback
 
         # 無工具或工具執行失敗時，使用純對話模式
-        try:
-            system_prompt = """你是一個友善的加密貨幣分析助手。
+        if response_content is None:
+            try:
+                system_prompt = """你是一個友善的加密貨幣分析助手。
 你可以幫助用戶了解加密貨幣市場、回答問題、提供使用說明。
 對於投資建議，請提醒用戶這只是參考意見，不構成投資建議。
 請用繁體中文回答。"""
 
-            response = self.user_llm_client.chat.completions.create(
-                model=self._get_model_for_provider(),
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_message}
-                ],
-                temperature=0.7
-            )
+                yield f"[PROCESS] 💬 正在生成回應...\n"
+                response = self.user_llm_client.chat.completions.create(
+                    model=self._get_model_for_provider(),
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_message}
+                    ],
+                    temperature=0.7
+                )
 
-            yield response.choices[0].message.content
+                response_content = response.choices[0].message.content
 
-        except Exception as e:
-            yield f"處理您的請求時發生錯誤: {str(e)}"
+            except Exception as e:
+                elapsed_time = time.time() - start_time
+                yield f"[PROCESS] ❌ 處理請求時發生錯誤 (耗時: {elapsed_time:.2f}秒)\n"
+                yield "[PROCESS_END]\n"
+                yield f"處理您的請求時發生錯誤: {str(e)}"
+                return
+
+        # 輸出時間統計和結果
+        elapsed_time = time.time() - start_time
+        yield f"[PROCESS] ✅ 處理完成 (耗時: {elapsed_time:.2f}秒)\n"
+        yield "[PROCESS_END]\n"
+        yield "[RESULT]\n"
+        if response_content:
+            yield response_content
 
     def _find_available_exchange(self, symbol: str) -> Optional[Tuple[str, str]]:
         """查找可用的交易所和標準化符號"""
@@ -878,7 +923,36 @@ class AdminAgent:
             history = accumulated_state.get("debate_history", [])
             if history:
                 latest = history[-1]
-                yield f"[PROCESS] ⚔️ 第 {latest.get('round')} 輪辯論完成\n"
+                round_num = latest.get('round', 1)
+                topic = latest.get('topic', '辯論')
+
+                yield f"[PROCESS] ⚔️ **第 {round_num} 輪辯論: {topic}**\n"
+
+                # 多頭觀點
+                bull = latest.get('bull', {})
+                if bull:
+                    bull_conf = bull.get('confidence', 0)
+                    bull_points = bull.get('key_points', [])
+                    yield f"[PROCESS]   🐂 **多頭** (信心: {bull_conf:.0f}%)\n"
+                    for point in bull_points[:2]:  # 只顯示前2個重點
+                        yield f"[PROCESS]      • {point[:60]}{'...' if len(point) > 60 else ''}\n"
+
+                # 空頭觀點
+                bear = latest.get('bear', {})
+                if bear:
+                    bear_conf = bear.get('confidence', 0)
+                    bear_points = bear.get('key_points', [])
+                    yield f"[PROCESS]   🐻 **空頭** (信心: {bear_conf:.0f}%)\n"
+                    for point in bear_points[:2]:  # 只顯示前2個重點
+                        yield f"[PROCESS]      • {point[:60]}{'...' if len(point) > 60 else ''}\n"
+
+                # 中立觀點（簡短顯示）
+                neutral = latest.get('neutral', {})
+                if neutral:
+                    neutral_arg = neutral.get('argument', '')
+                    if neutral_arg:
+                        summary = neutral_arg[:80] + '...' if len(neutral_arg) > 80 else neutral_arg
+                        yield f"[PROCESS]   ⚖️ **中立**: {summary}\n"
 
         elif node_name == "run_debate_judgment":
             judgment = state_update.get("debate_judgment")

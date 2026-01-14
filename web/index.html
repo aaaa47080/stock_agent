@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AI Crypto Analyst</title>
-    <link rel="icon" type="image/png" href="/static/img/pi-logo.png">
+    <link rel="icon" type="image/png" href="/static/img/title_icon.png">
 
     <!-- Core Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -60,8 +60,8 @@
     <aside id="chat-sidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-surface/95 backdrop-blur-xl border-r border-white/5 transform -translate-x-full transition-transform duration-300 md:translate-x-0 md:static md:w-72 md:flex-shrink-0 flex flex-col">
         <div class="p-4 border-b border-white/5 flex items-center justify-between">
              <div class="flex items-center gap-2 text-secondary font-serif">
-                <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
-                    <i data-lucide="sparkles" class="w-4 h-4 text-primary"></i>
+                <div class="w-8 h-8 rounded-full overflow-hidden">
+                    <img src="/static/img/title_icon.png" alt="CryptoMind" class="w-full h-full object-cover">
                 </div>
                 <span>CryptoMind</span>
             </div>
@@ -147,8 +147,8 @@
         <div id="chat-tab" class="tab-content h-full flex flex-col relative">
             <!-- Pi Network Animated Background -->
             <div class="absolute inset-0 overflow-hidden -z-10 pointer-events-none">
-                <div class="w-full h-full flex items-center justify-center opacity-10">
-                    <img src="/static/img/pi-logo.png" alt="Pi Network Logo" class="w-72 h-72 md:w-96 md:h-96 object-contain grayscale-0">
+                <div class="w-full h-full flex items-center justify-center opacity-25">
+                    <img src="/static/img/title_icon.png" alt="CryptoMind Logo" class="w-72 h-72 md:w-96 md:h-96 object-contain grayscale-0">
                 </div>
             </div>
 
@@ -157,9 +157,6 @@
                 <!-- Welcome -->
                 <div class="bot-message opacity-0 animate-fade-in-up" style="animation-delay: 0.1s; animation-fill-mode: forwards;">
                     <div class="flex flex-col items-center justify-center mb-8">
-                        <div class="w-20 h-20 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center mb-4 shadow-lg shadow-primary/20">
-                            <i data-lucide="sparkles" class="w-10 h-10 text-white"></i>
-                        </div>
                         <h1 class="font-serif text-3xl md:text-4xl leading-tight text-center">
                             <span class="text-secondary">Welcome to</span><br>
                             <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">CryptoMind</span>
@@ -739,8 +736,8 @@
         <div class="bg-surface w-full max-w-md p-8 rounded-[2.5rem] border border-white/10 shadow-2xl">
             <!-- Header -->
             <div class="text-center mb-8">
-                <div class="w-20 h-20 rounded-full bg-gradient-to-r from-primary to-accent flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary/20">
-                    <i data-lucide="shield-check" class="w-10 h-10 text-white"></i>
+                <div class="w-24 h-24 mx-auto mb-4">
+                    <img src="/static/img/title_icon.png" alt="CryptoMind Logo" class="w-full h-full object-contain drop-shadow-lg">
                 </div>
                 <h2 class="font-serif text-2xl text-secondary mb-2">Welcome to CryptoMind</h2>
                 <p class="text-textMuted text-sm">Connect your wallet or login to continue</p>
@@ -748,8 +745,7 @@
 
             <!-- Pi Network Login Button -->
             <button onclick="handlePiLogin()" class="w-full py-4 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-bold rounded-2xl mb-4 flex items-center justify-center gap-3 transition shadow-lg">
-                <img src="/static/img/pi-logo.png" alt="Pi" class="w-6 h-6">
-                Connect Pi Wallet
+                                            <img src="/static/img/pi-logo.png" alt="Pi" class="w-6 h-6">                Connect Pi Wallet
             </button>
 
             <div class="flex items-center gap-4 my-6">

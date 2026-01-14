@@ -9,6 +9,21 @@ from langchain_core.tools import tool
 
 from .schemas import CurrentTimeInput
 
+@tool
+def introduction_tool(_query: str = "") -> str:
+    """
+    介紹本平台系統和開發者資訊。
+
+    適用情境：
+    - 用戶詢問「誰是開發者？」「這個平台是誰做的？」
+    - 用戶詢問「開發者是誰？」「誰開發了這個系統？」
+    - 用戶詢問「本平台開發者」「作者是誰？」
+    - 用戶想了解系統背景或開發團隊資訊
+    """
+    with open("/home/danny/AI-agent/crypto_trading_system/data/data/introduction.txt", "r", encoding="utf-8") as f:
+        content = "平台開發者詳細資訊:"+ f.read()
+        return content
+
 
 @tool(args_schema=CurrentTimeInput)
 def get_current_time_tool(timezone: str = "Asia/Taipei") -> str:

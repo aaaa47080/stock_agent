@@ -114,18 +114,101 @@ def format_full_analysis_result(result: dict, market_type: str, symbol: str, int
     market_data = result.get('market_data', {})
     news_data = market_data.get('新聞資訊', [])
     if news_data:
-        output += "\n### 📰 相關新聞快訊\n"
+        output += "\n### 📰 相關新聞快訊\n\n"
         for i, news in enumerate(news_data[:5], 1):
             title = news.get('title', 'N/A')
             url = news.get('url', '')
             source = news.get('source', 'Unknown')
 
             if url:
-                output += f"{i}. [{title}]({url}) ({source})\n"
+                output += f"{i}. [**{title}**]({url}) - {source}\n"
             else:
-                output += f"{i}. {title} ({source})\n"
+                output += f"{i}. **{title}** - {source}\n"
         output += "\n"
 
     output += "\n> 免責聲明：以上分析僅供參考，不構成投資建議。投資有風險，請謹慎決策。"
+
+    return output
+
+
+def format_compact_analysis_result(result: dict, market_type: str, symbol: str, interval: str) -> str:
+    """
+    格式化簡潔版分析結果（適合辯論過程已即時輸出的情況）
+
+    Args:
+        result: LangGraph 分析結果
+        market_type: 市場類型（現貨/合約）
+        symbol: 交易對符號
+        interval: 時間週期
+
+    Returns:
+        格式化的簡潔 Markdown 文本
+    """
+    current_price = result.get('current_price', 0)
+    final_approval = result.get('final_approval')
+    trader_decision = result.get('trader_decision')
+    risk_assessment = result.get('risk_assessment')
+    debate_judgment = result.get('debate_judgment')
+
+    output = f"""## {symbol} {market_type}分析結論 ({interval})
+
+"""
+
+    # 核心決策卡片
+    if final_approval:
+        decision_emoji = "🟢" if "買入" in final_approval.final_decision or "做多" in final_approval.final_decision else \
+                        "🔴" if "賣出" in final_approval.final_decision or "做空" in final_approval.final_decision else "🟡"
+
+        output += f"""### {decision_emoji} 最終決策: **{final_approval.final_decision}**
+
+| 項目 | 數值 |
+|------|------|
+| 當前價格 | **${current_price:.4f}** |
+| 建議倉位 | **{final_approval.final_position_size * 100:.1f}%** |
+"""
+
+    # 交易建議（關鍵數字）
+    if trader_decision:
+        entry = f"${trader_decision.entry_price:.4f}" if trader_decision.entry_price else "-"
+        stop_loss = f"${trader_decision.stop_loss:.4f}" if trader_decision.stop_loss else "-"
+        take_profit = f"${trader_decision.take_profit:.4f}" if trader_decision.take_profit else "-"
+
+        output += f"""| 進場價 | {entry} |
+| 止損 | {stop_loss} |
+| 止盈 | {take_profit} |
+
+"""
+
+    # 風險等級（一行）
+    if risk_assessment:
+        risk_emoji = "🟢" if risk_assessment.risk_level in ["低", "Low"] else \
+                    "🟡" if risk_assessment.risk_level in ["中", "Medium"] else "🔴"
+        output += f"**風險等級**: {risk_emoji} {risk_assessment.risk_level}\n\n"
+
+    # 執行建議（簡短）
+    if final_approval and final_approval.execution_notes:
+        output += f"**執行建議**: {final_approval.execution_notes}\n\n"
+
+    # 辯論結論（簡化）
+    if debate_judgment:
+        output += f"**辯論結論**: {debate_judgment.winning_stance}勝出 → {debate_judgment.suggested_action}\n\n"
+
+    # 相關新聞（保留）
+    market_data = result.get('market_data', {})
+    news_data = market_data.get('新聞資訊', [])
+    if news_data:
+        output += "### 📰 相關新聞\n\n"
+        for i, news in enumerate(news_data[:3], 1):  # 只顯示前3則
+            title = news.get('title', 'N/A')
+            url = news.get('url', '')
+            source = news.get('source', 'Unknown')
+
+            if url:
+                output += f"{i}. [**{title}**]({url}) - {source}\n"
+            else:
+                output += f"{i}. **{title}** - {source}\n"
+        output += "\n"
+
+    output += "> 免責聲明：以上分析僅供參考，不構成投資建議。"
 
     return output

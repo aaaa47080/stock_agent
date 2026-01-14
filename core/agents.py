@@ -18,7 +18,7 @@ from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from langgraph.prebuilt import create_react_agent
+from langgraph.prebuilt import create_react_agent  # type: ignore[deprecated]
 from core.tools import get_crypto_tools
 
 # ============================================================================ 
@@ -331,8 +331,8 @@ class NewsAnalyst:
         if not real_news:
             news_context = "目前沒有獲取到最新的真實新聞，請基於市場價格波動進行合理的推測分析。"
         else:
-            news_str = "\n".join([f"- {n['title']}: {n.get('description', 'N/A')}" for n in real_news])
-            news_context = f"以下是從 CryptoPanic 獲取的最新真實市場新聞：\n{news_str}"
+            news_str = "\n".join([f"{i}. {n['title']}: {n.get('description', 'N/A')}" for i, n in enumerate(real_news, 1)])
+            news_context = f"以下是獲取的最新真實市場新聞：\n{news_str}"
 
         prompt = f"""
 你是一位加密貨幣市場新聞分析師。請基於提供的**真實新聞**與**近期價格表現**進行分析。
@@ -1483,7 +1483,7 @@ class CryptoAgent:
                 if references:
                     response += "\n\n---\n### 📚 相關連接\n"
                     for i, url in enumerate(references, 1):
-                        response += f"{i}.{url}\n\n"
+                        response += f"{i}. {url}\n\n"
 
                 # 更新歷史
                 self.chat_history.append(HumanMessage(content=user_input))
