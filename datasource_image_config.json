@@ -1,0 +1,27 @@
+{
+  "description": "資料源與圖片目錄對應配置，用於根據 PDF 來源過濾圖片",
+  "datasources": {
+    "public_health": {
+      "name": "衛教園地",
+      "pdf_directories": [
+        "/home/danny/AI-agent/衛教園地綜合資訊"
+      ],
+      "description": "一般衛教圖片（慢性病、用藥指導、檢查流程等）"
+    },
+    "infection_control": {
+      "name": "感染控制",
+      "pdf_directories": [
+        "/home/danny/AI-agent/DataSet"
+      ],
+      "description": "感染管制相關圖片（傳染病、消毒、隔離等）"
+    }
+  },
+  "text_to_image_datasource_mapping": {
+    "_description": "文字資料源 ID → 圖片資料源 ID 的映射",
+    "public_health": "public_health",
+    "dialysis_education": "public_health",
+    "medical_kb_jsonl": "infection_control",
+    "cdc_infectious_diseases": "infection_control"
+  },
+  "mapping_notes": "系統啟動時會掃描 pdf_directories 中的所有 PDF 檔案，建立 PDF 名稱 → datasource_id 的映射"
+}
