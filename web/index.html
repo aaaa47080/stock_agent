@@ -81,12 +81,12 @@
 
         <div class="p-4 border-t border-white/5">
              <button onclick="switchTab('settings')" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl text-textMuted hover:text-secondary transition text-sm">
-                <div class="w-8 h-8 rounded-full bg-surfaceHighlight flex items-center justify-center">
+                <div class="w-8 h-8 rounded-full bg-surfaceHighlight flex items-center justify-center text-xs font-bold overflow-hidden" id="sidebar-user-avatar">
                     <i data-lucide="user" class="w-4 h-4"></i>
                 </div>
                 <div class="flex-1 text-left">
-                    <div class="font-bold">Settings</div>
-                    <div class="text-[10px] opacity-60">API Keys & Models</div>
+                    <div class="font-bold truncate" id="sidebar-user-name">Guest</div>
+                    <div class="text-[10px] opacity-60">Settings</div>
                 </div>
             </button>
         </div>
@@ -389,6 +389,27 @@
                  <h2 class="font-serif text-3xl text-secondary mb-8">Settings</h2>
 
                  <div class="space-y-10">
+                    <!-- User Profile Section -->
+                    <div id="settings-profile-card" class="bg-surface p-6 md:p-8 rounded-3xl border border-white/5 hidden">
+                        <div class="flex items-center gap-4 mb-6">
+                            <div class="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-background font-bold text-2xl shadow-lg shadow-primary/20" id="profile-avatar">
+                                U
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-serif text-secondary" id="profile-username">User</h3>
+                                <p class="text-xs text-textMuted font-mono" id="profile-uid">UID: --</p>
+                                <div class="mt-1 flex items-center gap-2">
+                                    <span class="px-2 py-0.5 rounded-md bg-white/5 text-[10px] text-textMuted border border-white/5 uppercase" id="profile-method">PASSWORD</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button onclick="handleLogout()" class="w-full py-3 bg-white/5 hover:bg-danger/10 text-textMuted hover:text-danger border border-white/5 hover:border-danger/20 font-bold rounded-xl transition flex items-center justify-center gap-2">
+                            <i data-lucide="log-out" class="w-4 h-4"></i>
+                            Logout
+                        </button>
+                    </div>
+
                      <!-- LLM Configuration -->
                     <div class="bg-surface p-6 md:p-8 rounded-3xl border border-white/5">
                         <div class="flex items-center justify-between mb-6">
@@ -732,8 +753,8 @@
     </div>
 
     <!-- Login Modal -->
-    <div id="login-modal" class="fixed inset-0 bg-background/95 backdrop-blur-xl z-[90] flex items-center justify-center p-6">
-        <div class="bg-surface w-full max-w-md p-8 rounded-[2.5rem] border border-white/10 shadow-2xl">
+    <div id="login-modal" class="fixed inset-0 bg-background/95 backdrop-blur-xl z-[90] overflow-y-auto flex justify-center py-10 px-6">
+        <div class="bg-surface w-full max-w-md p-8 rounded-[2.5rem] border border-white/10 shadow-2xl my-auto">
             <!-- Header -->
             <div class="text-center mb-8">
                 <div class="w-24 h-24 mx-auto mb-4">
@@ -750,48 +771,149 @@
 
             <div class="flex items-center gap-4 my-6">
                 <div class="flex-1 h-px bg-white/10"></div>
-                <span class="text-xs text-textMuted uppercase tracking-wider">or test mode</span>
+                <span class="text-xs text-textMuted uppercase tracking-wider">or continue with email</span>
                 <div class="flex-1 h-px bg-white/10"></div>
             </div>
 
-            <!-- Test Credentials Login -->
-            <div class="space-y-4">
+            <!-- Auth Tabs -->
+            <div class="flex p-1 bg-background/50 rounded-xl mb-6">
+                <button onclick="toggleAuthMode('login')" id="tab-login" class="flex-1 py-2 rounded-lg text-sm font-bold transition bg-surfaceHighlight text-secondary shadow-sm">Login</button>
+                <button onclick="toggleAuthMode('register')" id="tab-register" class="flex-1 py-2 rounded-lg text-sm font-bold text-textMuted transition hover:text-secondary">Register</button>
+            </div>
+
+            <!-- Login Form -->
+            <div id="form-login" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Public Key</label>
-                    <input type="text" id="login-public-key" placeholder="Enter public key"
+                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Username</label>
+                    <input type="text" id="login-username" placeholder="Enter username"
                         class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Password</label>
                     <input type="password" id="login-password" placeholder="Enter password"
                         class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition"
-                        onkeypress="if(event.key === 'Enter') handleTestLogin()">
+                        onkeypress="if(event.key === 'Enter') handleCredentialLogin()">
                 </div>
-                <button onclick="handleTestLogin()" class="w-full py-3 bg-surfaceHighlight hover:bg-white/10 text-secondary font-bold rounded-xl transition border border-white/5">
-                    Login with Credentials
+                <button onclick="handleCredentialLogin()" class="w-full py-3 bg-surfaceHighlight hover:bg-white/10 text-secondary font-bold rounded-xl transition border border-white/5">
+                    Login
+                </button>
+                <div class="text-center">
+                    <button onclick="showForgotPasswordModal()" class="text-sm text-primary hover:text-accent transition">
+                        Forgot Password?
+                    </button>
+                </div>
+            </div>
+
+            <!-- Register Form (Hidden) -->
+            <div id="form-register" class="space-y-4 hidden">
+                <div>
+                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Username</label>
+                    <input type="text" id="reg-username" placeholder="At least 6 characters"
+                           class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition"
+                           minlength="6"
+                           onkeypress="if(event.key === 'Enter') checkUsernameAvailability()"
+                           onblur="checkUsernameAvailability()">
+                    <p id="reg-username-msg" class="text-xs mt-1 min-h-[1.25rem] transition-colors duration-300 text-textMuted/60">At least 6 characters</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Email <span class="text-danger">*</span></label>
+                    <input type="email" id="reg-email" placeholder="name@example.com"
+                           class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition"
+                           onblur="checkEmailAvailability()" required>
+                    <p id="reg-email-msg" class="text-xs text-textMuted/60 mt-1">Required for password recovery</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Password</label>
+                    <input type="password" id="reg-password" placeholder="8-15 characters" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition" minlength="8" maxlength="15">
+                    <p class="text-xs text-textMuted/60 mt-1">8-15 characters required</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Confirm Password</label>
+                    <input type="password" id="reg-confirm-password" placeholder="Confirm password" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition" minlength="8" maxlength="15">
+                </div>
+                <button onclick="handleRegister()" class="w-full py-3 bg-primary text-background font-bold rounded-xl transition hover:brightness-110 shadow-lg shadow-primary/20">
+                    Create Account
                 </button>
             </div>
 
-            <p class="text-center text-xs text-textMuted/50 mt-6">
-                Test credentials: <code class="text-primary/70">test_uuid / test_uuid</code>
-            </p>
+        </div>
+    </div>
+
+    <!-- Forgot Password Modal -->
+    <div id="forgot-password-modal" class="fixed inset-0 bg-background/95 backdrop-blur-xl z-[95] hidden flex items-center justify-center p-6">
+        <div class="bg-surface w-full max-w-md p-8 rounded-[2.5rem] border border-white/10 shadow-2xl">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 mx-auto mb-4 bg-primary/10 rounded-full flex items-center justify-center">
+                    <i data-lucide="key" class="w-8 h-8 text-primary"></i>
+                </div>
+                <h2 class="font-serif text-2xl text-secondary mb-2">Forgot Password</h2>
+                <p class="text-textMuted text-sm">Enter your email to receive a reset link</p>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Email Address</label>
+                    <input type="email" id="forgot-email" placeholder="name@example.com"
+                        class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition"
+                        onkeypress="if(event.key === 'Enter') handleForgotPassword()">
+                </div>
+                <button onclick="handleForgotPassword()" id="forgot-submit-btn" class="w-full py-3 bg-primary text-background font-bold rounded-xl transition hover:brightness-110 shadow-lg shadow-primary/20">
+                    Send Reset Link
+                </button>
+                <button onclick="hideForgotPasswordModal()" class="w-full py-3 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-xl transition border border-white/5">
+                    Back to Login
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reset Password Modal -->
+    <div id="reset-password-modal" class="fixed inset-0 bg-background/95 backdrop-blur-xl z-[95] hidden flex items-center justify-center p-6">
+        <div class="bg-surface w-full max-w-md p-8 rounded-[2.5rem] border border-white/10 shadow-2xl">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 mx-auto mb-4 bg-success/10 rounded-full flex items-center justify-center">
+                    <i data-lucide="lock" class="w-8 h-8 text-success"></i>
+                </div>
+                <h2 class="font-serif text-2xl text-secondary mb-2">Reset Password</h2>
+                <p class="text-textMuted text-sm">Enter your new password</p>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">New Password</label>
+                    <input type="password" id="reset-new-password" placeholder="Enter new password"
+                        class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Confirm Password</label>
+                    <input type="password" id="reset-confirm-password" placeholder="Confirm new password"
+                        class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition"
+                        onkeypress="if(event.key === 'Enter') handleResetPassword()">
+                </div>
+                <button onclick="handleResetPassword()" id="reset-submit-btn" class="w-full py-3 bg-success text-background font-bold rounded-xl transition hover:brightness-110 shadow-lg shadow-success/20">
+                    Reset Password
+                </button>
+                <button onclick="hideResetPasswordModal()" class="w-full py-3 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-xl transition border border-white/5">
+                    Cancel
+                </button>
+            </div>
         </div>
     </div>
 
     <!-- Scripts -->
-    <script src="/static/js/apiKeyManager.js?v=5"></script>
-    <script src="/static/js/okxKeyManager.js?v=5"></script>
-    <script src="/static/js/app.js?v=5"></script>
-    <script src="/static/js/auth.js?v=5"></script>
-    <script src="/static/js/llmSettings.js?v=5"></script>
-    <script src="/static/js/filter.js?v=5"></script>
-    <script src="/static/js/chat.js?v=5"></script>
-    <script src="/static/js/market.js?v=5"></script>
-    <script src="/static/js/assets.js?v=5"></script>
-    <script src="/static/js/pulse.js?v=5"></script>
-    <script src="/static/js/trade.js?v=5"></script>
-    <script src="/static/js/debate.js?v=1"></script>
-    <script src="/static/js/committeeManager.js?v=1"></script>
+    <script src="/static/js/apiKeyManager.js?v=9"></script>
+    <script src="/static/js/okxKeyManager.js?v=9"></script>
+    <script src="/static/js/app.js?v=9"></script>
+    <script src="/static/js/auth.js?v=9"></script>
+    <script src="/static/js/llmSettings.js?v=9"></script>
+    <script src="/static/js/filter.js?v=9"></script>
+    <script src="/static/js/chat.js?v=9"></script>
+    <script src="/static/js/market.js?v=9"></script>
+    <script src="/static/js/assets.js?v=9"></script>
+    <script src="/static/js/pulse.js?v=9"></script>
+    <script src="/static/js/trade.js?v=9"></script>
+    <script src="/static/js/debate.js?v=9"></script>
+    <script src="/static/js/committeeManager.js?v=9"></script>
     <script>
         lucide.createIcons();
 

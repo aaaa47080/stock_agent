@@ -26,6 +26,22 @@ class WatchlistRequest(BaseModel):
     user_id: str
     symbol: str
 
+class UserRegisterRequest(BaseModel):
+    username: str
+    password: str
+    email: Optional[str] = None
+
+class UserLoginRequest(BaseModel):
+    username: str
+    password: str
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
 class KlineRequest(BaseModel):
     symbol: str
     exchange: str = SUPPORTED_EXCHANGES[0]

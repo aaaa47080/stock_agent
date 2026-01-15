@@ -44,7 +44,9 @@
       "Bash(tree:*)",
       "Bash(sqlite3:*)",
       "Bash(lsof:*)",
-      "Bash(TZ='Asia/Taipei' date:*)"
+      "Bash(TZ='Asia/Taipei' date:*)",
+      "Bash(zip -r:*)",
+      "Bash(zip:*)"
     ],
     "deny": [],
     "ask": []
