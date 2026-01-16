@@ -15,10 +15,9 @@ from utils.llm_client import supports_json_mode, extract_json_from_response
 from utils.retry_utils import retry_on_failure
 from utils.utils import DataFrameEncoder
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from langgraph.prebuilt import create_react_agent  # type: ignore[deprecated]
+from langchain.agents import create_agent  # 使用最新的 create_agent API
 from core.tools import get_crypto_tools
 
 # ============================================================================ 
@@ -71,34 +70,34 @@ class TechnicalAnalyst:
              backtest_context = json.dumps(backtest_results, indent=2, ensure_ascii=False)
 
         prompt = f"""
-你是一位專業的多週期技術分析師，專精於分析不同時間框架下的技術指標和市場結構。
+        你是一位專業的多週期技術分析師，專精於分析不同時間框架下的技術指標和市場結構。
 
-你的任務：
-1. 分析提供的單一週期及多週期技術指標數據
-2. 識別各時間週期的關鍵技術信號（趨勢、動量、超買超賣）
-3. **重要：參考歷史回測數據**。如果歷史回測顯示某個策略勝率很高（例如 >60%），這應該是你判斷的強力依據；如果勝率很低，則應發出警示。
-4. 比較不同週期技術指標的一致性/分歧度
-5. 提供看漲和看跌的多週期技術論點
-6. 給出你的專業判斷
+        你的任務：
+        1. 分析提供的單一週期及多週期技術指標數據
+        2. 識別各時間週期的關鍵技術信號（趨勢、動量、超買超賣）
+        3. **重要：參考歷史回測數據**。如果歷史回測顯示某個策略勝率很高（例如 >60%），這應該是你判斷的強力依據；如果勝率很低，則應發出警示。
+        4. 比較不同週期技術指標的一致性/分歧度
+        5. 提供看漲和看跌的多週期技術論點
+        6. 給出你的專業判斷
 
-當前週期市場數據：
-主要技術指標：
-{json.dumps(market_data.get('技術指標', {}), indent=2, ensure_ascii=False, cls=DataFrameEncoder)}
-價格資訊：
-{json.dumps(market_data.get('價格資訊', {}), indent=2, ensure_ascii=False, cls=DataFrameEncoder)}
-歷史策略回測結果 (過去表現不代表未來，但具參考價值)：
-{backtest_context}
+        當前週期市場數據：
+        主要技術指標：
+        {json.dumps(market_data.get('技術指標', {}), indent=2, ensure_ascii=False, cls=DataFrameEncoder)}
+        價格資訊：
+        {json.dumps(market_data.get('價格資訊', {}), indent=2, ensure_ascii=False, cls=DataFrameEncoder)}
+        歷史策略回測結果 (過去表現不代表未來，但具參考價值)：
+        {backtest_context}
 
-{multi_timeframe_context}
+        {multi_timeframe_context}
 
-請以 JSON 格式回覆，嚴格遵守以下格式與要求：
-- analyst_type: "技術分析師"
-- summary: 技術分析摘要 (繁體中文，至少50字，**必須包含對歷史回測結果的評論**)。
-- key_findings: 關鍵發現列表 (**必須是字串的列表**，例如：`["RSI 指標顯示超買", "MA趨勢策略歷史回測勝率達 65%"]`)。
-- bullish_points: 看漲技術信號列表 (List[str])。
-- bearish_points: 看跌技術信號列表 (List[str])。
-- confidence: 信心度 (0-100)。
-"""
+        請以 JSON 格式回覆，嚴格遵守以下格式與要求：
+        - analyst_type: "技術分析師"
+        - summary: 技術分析摘要 (繁體中文，至少50字，**必須包含對歷史回測結果的評論**)。
+        - key_findings: 關鍵發現列表 (**必須是字串的列表**，例如：`["RSI 指標顯示超買", "MA趨勢策略歷史回測勝率達 65%"]`)。
+        - bullish_points: 看漲技術信號列表 (List[str])。
+        - bearish_points: 看跌技術信號列表 (List[str])。
+        - confidence: 信心度 (0-100)。
+        """
 
         response = self.client.chat.completions.create(
             model=FAST_THINKING_MODEL,
@@ -335,28 +334,28 @@ class NewsAnalyst:
             news_context = f"以下是獲取的最新真實市場新聞：\n{news_str}"
 
         prompt = f"""
-你是一位加密貨幣市場新聞分析師。請基於提供的**真實新聞**與**近期價格表現**進行分析。
+        你是一位加密貨幣市場新聞分析師。請基於提供的**真實新聞**與**近期價格表現**進行分析。
 
-市場數據：
-1. 近期價格表現：
-{json.dumps(market_data.get('最近5天歷史', []), indent=2, ensure_ascii=False, cls=DataFrameEncoder)}
+        市場數據：
+        1. 近期價格表現：
+        {json.dumps(market_data.get('最近5天歷史', []), indent=2, ensure_ascii=False, cls=DataFrameEncoder)}
 
-2. 真實市場新聞快訊：
-{news_context}
+        2. 真實市場新聞快訊：
+        {news_context}
 
-你的任務：
-1. 分析新聞對市場情緒的具體影響 (利多/利空/中性)
-2. 判斷市場是否已經反映了這些新聞 (Price-in)
-3. 結合價格走勢，預測未來可能的催化劑
+        你的任務：
+        1. 分析新聞對市場情緒的具體影響 (利多/利空/中性)
+        2. 判斷市場是否已經反映了這些新聞 (Price-in)
+        3. 結合價格走勢，預測未來可能的催化劑
 
-請以 JSON 格式回覆，**嚴格遵守以下數據類型** (避免程式報錯)：
-- analyst_type: "新聞分析師"
-- summary: 新聞影響分析 (繁體中文，至少50字)
-- key_findings: 關鍵發現列表 (必須是字串 List ["發現1", "發現2"]，**絕對不要**使用 Key-Value 物件)
-- bullish_points: 正面催化劑列表 (List[str])
-- bearish_points: 負面風險事件列表 (List[str])
-- confidence: 信心度 (必須是 0 到 100 之間的**數字**，例如 65，不要寫文字)
-"""
+        請以 JSON 格式回覆，**嚴格遵守以下數據類型** (避免程式報錯)：
+        - analyst_type: "新聞分析師"
+        - summary: 新聞影響分析 (繁體中文，至少50字)
+        - key_findings: 關鍵發現列表 (必須是字串 List ["發現1", "發現2"]，**絕對不要**使用 Key-Value 物件)
+        - bullish_points: 正面催化劑列表 (List[str])
+        - bearish_points: 負面風險事件列表 (List[str])
+        - confidence: 信心度 (必須是 0 到 100 之間的**數字**，例如 65，不要寫文字)
+        """
         
         response = self.client.chat.completions.create(
             model=FAST_THINKING_MODEL,
@@ -364,10 +363,6 @@ class NewsAnalyst:
             response_format={"type": "json_object"},
             temperature=0.5
         )
-        print("============================================================")
-        print("新聞分析師回覆內容：")
-        print(market_data)
-        print("============================================================")
         result = AnalystReport.model_validate(json.loads(response.choices[0].message.content))
 
         # 如果存在多週期數據，創建多週期分析對象並附加到結果中
@@ -411,29 +406,29 @@ class BullResearcher:
                 opponents_section += f"[{arg.researcher_stance} 研究員]: {arg.argument}\n信心度: {arg.confidence}%\n---\n"
 
         prompt = f"""
-你是一位專業的多週期多頭研究員。當前進行的是第 {round_number} 輪辯論，重點辯論主題為：【{topic}】。
+        你是一位專業的多週期多頭研究員。當前進行的是第 {round_number} 輪辯論，重點辯論主題為：【{topic}】。
 
-分析師報告摘要（其中技術分析師可能包含歷史回測數據）：
-{json.dumps([{"分析師": r.analyst_type, "摘要": r.summary, "關鍵發現": r.key_findings} for r in analyst_reports], indent=2, ensure_ascii=False)}
+        分析師報告摘要（其中技術分析師可能包含歷史回測數據）：
+        {json.dumps([{"分析師": r.analyst_type, "摘要": r.summary, "關鍵發現": r.key_findings} for r in analyst_reports], indent=2, ensure_ascii=False)}
 
-{opponents_section}
+        {opponents_section}
 
-你的任務：
-1. 針對當前主題【{topic}】強化看漲論點。如果技術分析師的報告中包含**高勝率的歷史回測數據**，請務必引用它作為支持證據。
-2. **讓步機制**：在對手提出的觀點中，找出一個你認為最合理、最具威脅性的數據或邏輯，並公開承認它。
-3. **針對性反駁**：具體指出空頭或中立派在【{topic}】方面的邏輯漏洞或數據誤讀。
-4. 解釋為什麼儘管存在上述風險，看漲因素在【{topic}】維度上依然佔據主導地位。
+        你的任務：
+        1. 針對當前主題【{topic}】強化看漲論點。如果技術分析師的報告中包含**高勝率的歷史回測數據**，請務必引用它作為支持證據。
+        2. **讓步機制**：在對手提出的觀點中，找出一個你認為最合理、最具威脅性的數據或邏輯，並公開承認它。
+        3. **針對性反駁**：具體指出空頭或中立派在【{topic}】方面的邏輯漏洞或數據誤讀。
+        4. 解釋為什麼儘管存在上述風險，看漲因素在【{topic}】維度上依然佔據主導地位。
 
-請以 JSON 格式回覆：
-- researcher_stance: "Bull"
-- argument: 多頭論點 (繁體中文，至少100字，需包含讓步與反駁，若有回測數據請引用)
-- key_points: 關鍵看漲點列表 (List[str])
-- concession_point: 承認對手最有道理的觀點 (字串)
-- counter_arguments: 對對手論點的反駁列表 (List[str])
-- confidence: 信心度 (0-100)
-- round_number: {round_number}
-- opponent_view: "Addressing all current opponents"
-"""
+        請以 JSON 格式回覆：
+        - researcher_stance: "Bull"
+        - argument: 多頭論點 (繁體中文，至少100字，需包含讓步與反駁，若有回測數據請引用)
+        - key_points: 關鍵看漲點列表 (List[str])
+        - concession_point: 承認對手最有道理的觀點 (字串)
+        - counter_arguments: 對對手論點的反駁列表 (List[str])
+        - confidence: 信心度 (0-100)
+        - round_number: {round_number}
+        - opponent_view: "Addressing all current opponents"
+        """
         try:
             if supports_json_mode(self.model):
                 response = self.client.chat.completions.create(model=self.model, messages=[{"role": "user", "content": prompt}], response_format={"type": "json_object"})
@@ -464,29 +459,29 @@ class BearResearcher:
                 opponents_section += f"[{arg.researcher_stance} 研究員]: {arg.argument}\n信心度: {arg.confidence}%\n---\n"
 
         prompt = f"""
-你是一位專業的多週期空頭研究員。當前進行的是第 {round_number} 輪辯論，重點辯論主題為：【{topic}】。
+        你是一位專業的多週期空頭研究員。當前進行的是第 {round_number} 輪辯論，重點辯論主題為：【{topic}】。
 
-分析師報告摘要（其中技術分析師可能包含歷史回測數據）：
-{json.dumps([{"分析師": r.analyst_type, "摘要": r.summary, "關鍵發現": r.key_findings} for r in analyst_reports], indent=2, ensure_ascii=False)}
+        分析師報告摘要（其中技術分析師可能包含歷史回測數據）：
+        {json.dumps([{"分析師": r.analyst_type, "摘要": r.summary, "關鍵發現": r.key_findings} for r in analyst_reports], indent=2, ensure_ascii=False)}
 
-{opponents_section}
+        {opponents_section}
 
-你的任務：
-1. 針對當前主題【{topic}】強化看跌論點（識別風險）。**特別注意歷史回測數據**：如果歷史回測顯示當前策略勝率低，這就是你最好的攻擊武器。
-2. **讓步機制**：在多頭或中立派提出的觀點中，找出一個你認為最合理、最難反駁的利多因素，並公開承認它。
-3. **針對性反駁**：具體指出多頭在【{topic}】維度上的過度樂觀或盲點。
-4. 強調為什麼在【{topic}】維度下，潛在風險比收益更值得關注。
+        你的任務：
+        1. 針對當前主題【{topic}】強化看跌論點（識別風險）。**特別注意歷史回測數據**：如果歷史回測顯示當前策略勝率低，這就是你最好的攻擊武器。
+        2. **讓步機制**：在多頭或中立派提出的觀點中，找出一個你認為最合理、最難反駁的利多因素，並公開承認它。
+        3. **針對性反駁**：具體指出多頭在【{topic}】維度上的過度樂觀或盲點。
+        4. 強調為什麼在【{topic}】維度下，潛在風險比收益更值得關注。
 
-請以 JSON 格式回覆：
-- researcher_stance: "Bear"
-- argument: 空頭論點 (繁體中文，至少100字，需包含讓步與反駁，若有回測數據請引用)
-- key_points: 關鍵看跌點列表 (List[str])
-- concession_point: 承認對手最有道理的觀點 (字串)
-- counter_arguments: 對對手論點的反駁列表 (List[str])
-- confidence: 信心度 (0-100)
-- round_number: {round_number}
-- opponent_view: "Addressing all current opponents"
-"""
+        請以 JSON 格式回覆：
+        - researcher_stance: "Bear"
+        - argument: 空頭論點 (繁體中文，至少100字，需包含讓步與反駁，若有回測數據請引用)
+        - key_points: 關鍵看跌點列表 (List[str])
+        - concession_point: 承認對手最有道理的觀點 (字串)
+        - counter_arguments: 對對手論點的反駁列表 (List[str])
+        - confidence: 信心度 (0-100)
+        - round_number: {round_number}
+        - opponent_view: "Addressing all current opponents"
+        """
         try:
             if supports_json_mode(self.model):
                 response = self.client.chat.completions.create(model=self.model, messages=[{"role": "user", "content": prompt}], response_format={"type": "json_object"})
@@ -517,24 +512,24 @@ class NeutralResearcher:
                 opponents_section += f"[{arg.researcher_stance} 研究員]: {arg.argument}\n信心度: {arg.confidence}%\n---\n"
 
         prompt = f"""
-你是一位專業的中立/震盪派研究員。當前進行的是第 {round_number} 輪辯論，重點主題為：【{topic}】。
+        你是一位專業的中立/震盪派研究員。當前進行的是第 {round_number} 輪辯論，重點主題為：【{topic}】。
 
-你的任務：
-1. 質疑多頭與空頭是否都對【{topic}】過度預測了方向。
-2. 尋找市場在【{topic}】維度下可能陷入橫盤、震盪或波動率收斂的證據。
-3. **讓步機制**：承認某一方在特定數據上的正確性，但指出這不代表單邊趨勢的確立。
-4. 強調「觀望」或「區間操作」在當前【{topic}】背景下的合理性。
+        你的任務：
+        1. 質疑多頭與空頭是否都對【{topic}】過度預測了方向。
+        2. 尋找市場在【{topic}】維度下可能陷入橫盤、震盪或波動率收斂的證據。
+        3. **讓步機制**：承認某一方在特定數據上的正確性，但指出這不代表單邊趨勢的確立。
+        4. 強調「觀望」或「區間操作」在當前【{topic}】背景下的合理性。
 
-請以 JSON 格式回覆：
-- researcher_stance: "Neutral"
-- argument: 中立論點 (繁體中文，至少100字)
-- key_points: 關鍵中立因素列表 (List[str])
-- concession_point: 承認對手最有道理的觀點 (字串)
-- counter_arguments: 對單邊趨勢觀點的反駁 (List[str])
-- confidence: 信心度 (0-100)
-- round_number: {round_number}
-- opponent_view: "Questioning both sides"
-"""
+        請以 JSON 格式回覆：
+        - researcher_stance: "Neutral"
+        - argument: 中立論點 (繁體中文，至少100字)
+        - key_points: 關鍵中立因素列表 (List[str])
+        - concession_point: 承認對手最有道理的觀點 (字串)
+        - counter_arguments: 對單邊趨勢觀點的反駁 (List[str])
+        - confidence: 信心度 (0-100)
+        - round_number: {round_number}
+        - opponent_view: "Questioning both sides"
+        """
         try:
             if supports_json_mode(self.model):
                 response = self.client.chat.completions.create(model=self.model, messages=[{"role": "user", "content": prompt}], response_format={"type": "json_object"})
@@ -558,7 +553,6 @@ class Trader:
     
     def make_decision(
         self,
-        analyst_reports: List[AnalystReport],
         bull_argument: ResearcherDebate,
         bear_argument: ResearcherDebate,
         neutral_argument: Optional[ResearcherDebate],
@@ -567,7 +561,6 @@ class Trader:
         current_price: float,
         market_data: Dict,
         market_type: str,
-        leverage: int,
         feedback: Optional[RiskAssessment] = None,
         account_balance: Optional[Dict] = None
     ) -> TraderDecision:
@@ -576,13 +569,13 @@ class Trader:
         feedback_prompt = ""
         if feedback:
             feedback_prompt = f"""
-=== 風險管理員回饋 ===
-你的上一個計畫已被拒絕，原因如下。請根據這些回饋，提出一個經過修正的、全新的交易計畫。
-風險評估: {feedback.assessment}
-建議調整: {feedback.suggested_adjustments}
-警告: {", ".join(feedback.warnings)}
-請務必根據以上建議，調整你的倉位、止損或止盈，或改變決策。
-"""
+        === 風險管理員回饋 ===
+        你的上一個計畫已被拒絕，原因如下。請根據這些回饋，提出一個經過修正的、全新的交易計畫。
+        風險評估: {feedback.assessment}
+        建議調整: {feedback.suggested_adjustments}
+        警告: {", ".join(feedback.warnings)}
+        請務必根據以上建議，調整你的倉位、止損或止盈，或改變決策。
+        """
         
         account_balance_prompt = ""
         if account_balance:
@@ -1313,9 +1306,8 @@ def create_crypto_agent(
     try:
         # 獲取工具
         tools = get_crypto_tools()
-        llm = None
 
-        # 處理不同的 Provider
+        # 統一使用 init_chat_model 處理不同的 Provider
         if user_provider == "google_gemini":
             # 使用 Gemini
             api_key = user_api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
@@ -1329,16 +1321,17 @@ def create_crypto_agent(
                     from core.model_config import get_default_model
                     model_name = get_default_model("google_gemini")
                 except ImportError:
-                    model_name = "gemini-3-flash-preview"
+                    model_name = "gemini-2.0-flash-exp"
 
-            llm = ChatGoogleGenerativeAI(
+            llm = init_chat_model(
                 model=model_name,
+                model_provider="google_genai",
                 temperature=temperature,
-                google_api_key=api_key
+                api_key=api_key
             )
 
         elif user_provider == "openrouter":
-            # 使用 OpenRouter
+            # 使用 OpenRouter (使用 OpenAI provider + base_url)
             api_key = user_api_key or os.getenv("OPENAI_API_KEY")
             if not api_key:
                 print("Warning: No API key found for CryptoAgent.")
@@ -1347,8 +1340,9 @@ def create_crypto_agent(
             if not model_name:
                 model_name = "gpt-4o-mini"
 
-            llm = ChatOpenAI(
+            llm = init_chat_model(
                 model=model_name,
+                model_provider="openai",
                 temperature=temperature,
                 api_key=api_key,
                 base_url="https://openrouter.ai/api/v1"
@@ -1361,17 +1355,18 @@ def create_crypto_agent(
                 print("Warning: No API key found for CryptoAgent.")
                 return None
 
-            llm = ChatOpenAI(
+            llm = init_chat_model(
                 model=model_name or QUERY_PARSER_MODEL,
+                model_provider="openai",
                 temperature=temperature,
                 api_key=api_key
             )
 
-        # 使用 langgraph 創建 ReAct Agent
-        agent = create_react_agent(
+        # 使用最新的 create_agent API 創建 Agent
+        agent = create_agent(
             model=llm,
             tools=tools,
-            prompt=CRYPTO_ASSISTANT_PROMPT
+            system_prompt=CRYPTO_ASSISTANT_PROMPT
         )
 
         return agent

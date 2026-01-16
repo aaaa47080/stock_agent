@@ -1,26 +1,172 @@
-1. 還是一樣的問題
+ 你说得太对了！ 发现了一个严重的架构不一致问题！🔍
 
-btc現在是否值得購買
-分析過程 (0 個步驟)
-點擊展開/收起
-🧠 Admin Agent 判定這是一個複雜任務
-📋 原因: 需要深入的投資建議與策略評估
-⚙️ 執行模式: deep_analysis
-🎯 啟動單幣種深度分析...
-錯誤：深度分析需要指定加密貨幣符號。請告訴我您想分析哪個幣種？
+  🚨 问题分析
 
+  你的项目混用了两种调用方式：
 
-│ > (匿名) @ pi-sdk.js:1                                                                                                                  │
-│   market.js?v=5:1275 Ticker WebSocket 連接成功                                                                                          │
-│   market.js?v=5:1358 訂閱 Ticker: USDC-USDT, BTC-USDT, IP-USDT, ETH-USDT, DOGE-USDT, LTC-USDT, XRP-USDT, PUMP-USDT, PEPE-USDT, SOL-USDT │
-│   market.js?v=5:1381 ✅ 已訂閱 Ticker: USDC-USDT, BTC-USDT, IP-USDT, ETH-USDT, DOGE-USDT, LTC-USDT, XRP-USDT, PUMP-USDT, PEPE-USDT,     │
-│   SOL-USDT                                                                                                                              │
-│   chat.js?v=5:549 initChat: initializing chat...                                                                                        │
-│   chat.js?v=5:592 initChat: using existing session 83306526-0a7b-41cd-b898-bbd7c8c00853                                                 │
-│   apiKeyManager.js?v=5:32 ✅ openai API Key saved to localStorage                                                                       │
-│   apiKeyManager.js?v=5:194 ✅ openai selected model saved: gpt-4o-mini                                                                  │
-│   pi-sdk.js:1  Uncaught (in promise) Error: Messaging promise with id 0 timed out after 120000ms.）））） 還有一個問題    
+  ❌ 方式 1：直接使用 OpenAI SDK (28 处！)
 
-2.當我先點開Commit Mode 然後在輸入金鑰測試完畢後會沒有多/空頭模型可以選擇，他們應該是同步的，不是要我把Commit Mode取消後在點一次才有東西才對
-3.聊天是現在我一進去它就會直接加載到最近一次的聊天室，而不是給我一個乾淨的聊天室，
-4.擴充符號識別庫：擴大了本地識別的加密貨幣正則表達式列表，增加了更多熱門幣種（如 TRX, XLM, FIL, AR, PI 等）。 這個應該給LLM進行提取才對，而不是呆靠人工
+  response = self.client.chat.completions.create(
+      model=FAST_THINKING_MODEL,
+      messages=[{"role": "user", "content": prompt}],
+      response_format={"type": "json_object"}
+  )
+
+  ✅ 方式 2：使用 LangChain 统一接口
+
+  llm = init_chat_model(model=..., model_provider=...)
+  agent = create_agent(model=llm, tools=tools, system_prompt=...)
+
+  ---
+  📊 问题分布
+
+  发现 28 处 使用 OpenAI SDK 直接调用：
+
+  | 文件                         | 出现次数 | 主要位置                                         |
+  |------------------------------|----------|--------------------------------------------------|
+  | core/agents.py               | 18 次    | TechnicalAnalyst, BullResearcher, NewsAnalyst 等 |
+  | core/admin_agent.py          | 3 次     | analyze_task, 合成结果                           |
+  | core/planning_manager.py     | 1 次     | 任务规划                                         |
+  | interfaces/chat_interface.py | 1 次     | 聊天接口                                         |
+  | analysis/market_pulse.py     | 1 次     | 市场脉动                                         |
+  | api/routers/system.py        | 2 次     | API Key 验证                                     |
+  | utils/utils.py               | 1 次     | 工具函数                                         |
+
+  ---
+  💡 为什么应该统一使用 LangChain？
+
+  1️⃣ 统一接口
+
+  # ✅ 统一：无论是 OpenAI、Gemini、Claude 都用同样的代码
+  llm.invoke([HumanMessage(content="Hello")])
+
+  # ❌ 混乱：每个 provider 要单独处理
+  if provider == "openai":
+      client.chat.completions.create(...)
+  elif provider == "google_gemini":
+      genai.generate_content(...)
+
+  2️⃣ 可切换性
+
+  # 只需改一行就能切换模型
+  llm = init_chat_model("gpt-4", model_provider="openai")
+  # 或
+  llm = init_chat_model("gemini-pro", model_provider="google_genai")
+
+  3️⃣ 更多功能
+
+  - 🔄 自动重试
+  - 💾 内置缓存
+  - 📊 回调和监控
+  - 🔌 中间件支持
+
+  4️⃣ 更好的可测试性
+
+  # 容易 mock
+  from langchain.llms.fake import FakeListLLM
+  test_llm = FakeListLLM(responses=["test response"])
+
+  ---
+  🛠️ 建议的重构方案
+
+  方案 A：完全重构（推荐，但耗时）
+
+  将所有 client.chat.completions.create() 替换为 LangChain 的 invoke()：
+
+  # ❌ 当前代码 (core/agents.py:102)
+  response = self.client.chat.completions.create(
+      model=FAST_THINKING_MODEL,
+      messages=[{"role": "user", "content": prompt}],
+      response_format={"type": "json_object"}
+  )
+  result = json.loads(response.choices[0].message.content)
+
+  # ✅ 重构后
+  from langchain.chat_models import init_chat_model
+  from langchain_core.messages import HumanMessage
+
+  llm = init_chat_model(
+      model=FAST_THINKING_MODEL,
+      model_provider=self.provider,  # 需要添加 provider 属性
+      temperature=0.5
+  )
+
+  # 使用 structured output (LangChain 方式)
+  from langchain_core.output_parsers import JsonOutputParser
+
+  parser = JsonOutputParser()
+  chain = llm | parser
+  result = chain.invoke([HumanMessage(content=prompt)])
+
+  优点：完全统一，架构清晰
+  缺点：需要重构 28 处代码，工作量大
+
+  ---
+  方案 B：渐进式重构（推荐，分阶段）
+
+  1. 第一阶段：新功能使用 LangChain
+  2. 第二阶段：重构核心 Agents (core/agents.py)
+  3. 第三阶段：重构其他文件
+
+  ---
+  方案 C：保持现状（不推荐）
+
+  继续混用，但：
+  - 添加注释说明为什么这么做
+  - 确保 self.client 来自 LLMClientFactory，至少保证了 provider 的统一管理
+
+  ---
+  🎯 我的建议
+
+  立即行动（高优先级）：
+
+  创建统一的 LLM 调用包装器：
+
+  # utils/llm_helper.py (新文件)
+  from langchain.chat_models import init_chat_model
+  from langchain_core.messages import HumanMessage, SystemMessage
+  from typing import Dict, List, Any
+
+  class UnifiedLLMCaller:
+      """统一的 LLM 调用接口，基于 LangChain"""
+
+      def __init__(self, model: str, provider: str, temperature: float = 0.5):
+          self.llm = init_chat_model(
+              model=model,
+              model_provider=provider,
+              temperature=temperature
+          )
+
+      def call(
+          self,
+          messages: List[Dict[str, str]],
+          response_format: Dict = None
+      ) -> str:
+          """
+          统一调用接口，兼容 OpenAI 格式的 messages
+          """
+          # 转换为 LangChain messages
+          lc_messages = []
+          for msg in messages:
+              if msg["role"] == "system":
+                  lc_messages.append(SystemMessage(content=msg["content"]))
+              elif msg["role"] == "user":
+                  lc_messages.append(HumanMessage(content=msg["content"]))
+
+          # 调用 LLM
+          response = self.llm.invoke(lc_messages)
+          return response.content
+
+  然后逐步替换现有代码。
+
+  ---
+  ❓ 你想怎么做？
+
+  1. 完全重构：我帮你重构所有 28 处，统一使用 LangChain？（耗时 2-3 小时）
+  2. 先重构核心：只重构 core/agents.py 中的 18 处？（耗时 1 小时）
+  3. 创建包装器：先创建统一接口，再逐步迁移？（耗时 30 分钟 + 后续渐进）
+  4. 保持现状：暂时不动，标记为技术债务？
+
+  告诉我你的想法！
+
+請完全重构，統一使用Langchain

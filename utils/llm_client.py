@@ -34,13 +34,14 @@ except ImportError:
     except:
         pass  # If file creation fails, continue with console only
 
-# 嘗試導入 LangChain 的 init_chat_model，如果未安裝則跳過或報錯
+# 導入 LangChain 的 init_chat_model (統一的聊天模型初始化接口)
+# 用於統一創建 OpenAI、Gemini、OpenRouter 等不同提供商的聊天模型
 try:
     from langchain.chat_models import init_chat_model
     LANGCHAIN_AVAILABLE = True
 except ImportError:
     LANGCHAIN_AVAILABLE = False
-    logger.warning("Warning: langchain not installed. Local LLM support will be limited.")
+    logger.warning("Warning: langchain not installed. LLM support will be limited.")
 
 # 嘗試導入 Google Gemini，如果未安裝則跳過
 try:
@@ -524,25 +525,6 @@ def create_llm_client_from_config(config: Dict[str, str], user_client: Any = Non
 
     client = LLMClientFactory.create_client(provider_from_config, effective_model)
     return client, effective_model
-
-
-# 便捷函數
-def get_bull_researcher_client():
-    """獲取多頭研究員的 LLM 客戶端"""
-    from core.config import BULL_RESEARCHER_MODEL
-    return create_llm_client_from_config(BULL_RESEARCHER_MODEL)
-
-
-def get_bear_researcher_client():
-    """獲取空頭研究員的 LLM 客戶端"""
-    from core.config import BEAR_RESEARCHER_MODEL
-    return create_llm_client_from_config(BEAR_RESEARCHER_MODEL)
-
-
-def get_trader_client():
-    """獲取交易員的 LLM 客戶端"""
-    from core.config import TRADER_MODEL
-    return create_llm_client_from_config(TRADER_MODEL)
 
 
 if __name__ == "__main__":

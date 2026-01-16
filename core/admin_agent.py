@@ -760,9 +760,8 @@ class AdminAgent:
         if agent_tools:
             try:
                 from core.tools import get_tools_by_names
-                from langchain_openai import ChatOpenAI
-                from langchain_google_genai import ChatGoogleGenerativeAI
-                from langgraph.prebuilt import create_react_agent  # type: ignore[deprecated]
+                from langchain.chat_models import init_chat_model
+                from langchain.agents import create_agent  # 使用最新的 create_agent API
                 from langchain_core.messages import HumanMessage, AIMessage
                 import os
 
@@ -772,16 +771,17 @@ class AdminAgent:
                 if tools:
                     yield f"[PROCESS] 🔧 載入 {len(tools)} 個工具\n"
 
-                # 創建 LLM
+                # 統一使用 init_chat_model 創建 LLM
                 llm = None
                 if self.user_provider == "google_gemini":
                     api_key = kwargs.get("user_api_key") or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
                     if api_key:
-                        model_name = self.user_model or "gemini-2.0-flash"
-                        llm = ChatGoogleGenerativeAI(
+                        model_name = self.user_model or "gemini-2.0-flash-exp"
+                        llm = init_chat_model(
                             model=model_name,
+                            model_provider="google_genai",
                             temperature=0.7,
-                            google_api_key=api_key
+                            api_key=api_key
                         )
                 else:
                     # OpenAI 或 OpenRouter
@@ -791,22 +791,23 @@ class AdminAgent:
                         base_url = "https://openrouter.ai/api/v1"
                     if api_key:
                         model_name = self.user_model or self._get_model_for_provider()
-                        llm = ChatOpenAI(
+                        llm = init_chat_model(
                             model=model_name,
+                            model_provider="openai",
                             temperature=0.7,
                             api_key=api_key,
                             base_url=base_url
                         )
 
                 if llm and tools:
-                    # 創建 ReAct Agent
+                    # 使用最新的 create_agent API 創建 Agent
                     system_prompt = """你是一個友善的加密貨幣分析助手。
-你可以幫助用戶了解加密貨幣市場、回答問題、提供使用說明。
-你有權限使用工具來查詢當前時間等資訊。
-請用繁體中文回答。"""
+                    你可以幫助用戶了解加密貨幣市場、回答問題、提供使用說明。
+                    你有權限使用工具來查詢當前時間等資訊。
+                    請用繁體中文回答。"""
 
                     yield f"[PROCESS] 💬 正在生成回應...\n"
-                    agent = create_react_agent(llm, tools, prompt=system_prompt)
+                    agent = create_agent(model=llm, tools=tools, system_prompt=system_prompt)
                     result = agent.invoke({"messages": [HumanMessage(content=user_message)]})
 
                     # 提取 AI 回應
