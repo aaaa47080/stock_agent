@@ -63,6 +63,8 @@ learn-ai/
 # *.pdf
 # reports/
 # backups/
+.claude
+.gradio
 # web/
 # run_ngrok.sh
 error.txt
