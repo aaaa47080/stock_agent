@@ -130,6 +130,10 @@
                         <i data-lucide="wallet" class="w-5 h-5"></i>
                         <span class="text-[9px] font-medium opacity-80">Assets</span>
                     </button>
+                    <button onclick="window.location.href='/static/forum/index.html'" class="nav-btn w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5" title="Forum">
+                        <i data-lucide="users" class="w-5 h-5"></i>
+                        <span class="text-[9px] font-medium opacity-80">Forum</span>
+                    </button>
                     <button onclick="switchTab('settings')" class="nav-btn w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5" title="Settings" data-tab="settings">
                         <i data-lucide="settings-2" class="w-5 h-5"></i>
                         <span class="text-[9px] font-medium opacity-80">Settings</span>
@@ -384,13 +388,13 @@
         </div>
 
         <!-- Tab: Settings -->
-        <div id="settings-tab" class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40">
+        <div id="settings-tab" class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40 will-change-transform">
              <div class="max-w-2xl mx-auto">
                  <h2 class="font-serif text-3xl text-secondary mb-8">Settings</h2>
 
                  <div class="space-y-10">
                     <!-- User Profile Section -->
-                    <div id="settings-profile-card" class="bg-surface p-6 md:p-8 rounded-3xl border border-white/5 hidden">
+                    <div id="settings-profile-card" class="bg-surface p-6 md:p-8 rounded-3xl border border-white/5">
                         <div class="flex items-center gap-4 mb-6">
                             <div class="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-background font-bold text-2xl shadow-lg shadow-primary/20" id="profile-avatar">
                                 U
@@ -408,6 +412,62 @@
                             <i data-lucide="log-out" class="w-4 h-4"></i>
                             Logout
                         </button>
+                    </div>
+
+                    <!-- Pi Wallet Section -->
+                    <div id="settings-wallet-card" class="bg-surface p-6 md:p-8 rounded-3xl border border-white/5">
+                        <div class="flex items-center justify-between mb-6">
+                            <div class="flex items-center gap-3">
+                                <div id="settings-wallet-icon" class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                                    <i data-lucide="wallet" class="w-5 h-5 text-primary"></i>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-serif text-primary">Pi Wallet</h3>
+                                    <p class="text-xs text-textMuted">連接您的 Pi 錢包以進行交易</p>
+                                </div>
+                            </div>
+                            <div id="settings-wallet-status-badge" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-textMuted">
+                                <i data-lucide="loader" class="w-3 h-3 animate-spin"></i>
+                                載入中
+                            </div>
+                        </div>
+
+                        <div id="settings-wallet-content" class="space-y-4">
+                            <!-- 未綁定狀態 -->
+                            <div id="wallet-not-linked" class="hidden">
+                                <div class="bg-background/50 rounded-xl p-4 border border-white/5 mb-4">
+                                    <p class="text-sm text-textMuted leading-relaxed">
+                                        <i data-lucide="info" class="w-4 h-4 inline-block mr-1 opacity-60"></i>
+                                        綁定 Pi 錢包後可以：
+                                    </p>
+                                    <ul class="text-xs text-textMuted mt-2 space-y-1 ml-5">
+                                        <li>• 在論壇發布文章（需支付 1 Pi）</li>
+                                        <li>• 打賞優質內容創作者</li>
+                                        <li>• 接收來自其他用戶的打賞</li>
+                                    </ul>
+                                </div>
+                                <button onclick="handleSettingsLinkWallet()" class="w-full py-3.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 font-bold rounded-xl transition flex items-center justify-center gap-2">
+                                    <i data-lucide="link" class="w-4 h-4"></i>
+                                    綁定 Pi 錢包
+                                </button>
+                                <p class="text-[10px] text-textMuted/60 text-center mt-2">需要在 Pi Browser 中開啟</p>
+                            </div>
+
+                            <!-- 已綁定狀態 -->
+                            <div id="wallet-linked" class="hidden">
+                                <div class="bg-success/5 rounded-xl p-4 border border-success/10">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-full bg-success/20 flex items-center justify-center">
+                                            <i data-lucide="check-circle" class="w-5 h-5 text-success"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-bold text-success">錢包已連接</p>
+                                            <p id="settings-wallet-username" class="text-xs text-textMuted font-mono">@username</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                      <!-- LLM Configuration -->
@@ -590,6 +650,11 @@
                     <button onclick="saveSettings()" id="btn-save-settings" class="w-full py-4 bg-secondary text-background font-bold rounded-2xl shadow-xl hover:scale-[1.02] transition">
                         Save All Settings
                     </button>
+                    
+                    <!-- Version Info -->
+                    <div class="text-center pt-8 opacity-20 text-[10px] font-mono tracking-widest uppercase">
+                        CryptoMind v1.2.0-Pi-Integrated
+                    </div>
                  </div>
              </div>
         </div>
@@ -901,28 +966,51 @@
     </div>
 
     <!-- Scripts -->
-    <script src="/static/js/apiKeyManager.js?v=9"></script>
-    <script src="/static/js/okxKeyManager.js?v=9"></script>
-    <script src="/static/js/app.js?v=9"></script>
-    <script src="/static/js/auth.js?v=9"></script>
-    <script src="/static/js/llmSettings.js?v=9"></script>
-    <script src="/static/js/filter.js?v=9"></script>
-    <script src="/static/js/chat.js?v=9"></script>
-    <script src="/static/js/market.js?v=9"></script>
-    <script src="/static/js/assets.js?v=9"></script>
-    <script src="/static/js/pulse.js?v=9"></script>
-    <script src="/static/js/trade.js?v=9"></script>
-    <script src="/static/js/debate.js?v=9"></script>
-    <script src="/static/js/committeeManager.js?v=9"></script>
+    <script src="/static/js/apiKeyManager.js?v=10"></script>
+    <script src="/static/js/okxKeyManager.js?v=10"></script>
+    <script src="/static/js/app.js?v=10"></script>
+    <script src="/static/js/auth.js?v=10"></script>
+    <script src="/static/js/llmSettings.js?v=10"></script>
+    <script src="/static/js/filter.js?v=10"></script>
+    <script src="/static/js/chat.js?v=10"></script>
+    <script src="/static/js/market.js?v=10"></script>
+    <script src="/static/js/assets.js?v=10"></script>
+    <script src="/static/js/pulse.js?v=10"></script>
+    <script src="/static/js/trade.js?v=10"></script>
+    <script src="/static/js/debate.js?v=10"></script>
+    <script src="/static/js/committeeManager.js?v=10"></script>
     <script>
         lucide.createIcons();
 
-        // Navigation Logic (Updated for Global Draggable Dock)
+        // Navigation Logic (Updated with Smooth Transitions)
         function switchTab(tabId) {
+            const currentTab = document.querySelector('.tab-content:not(.hidden)');
+            const targetTab = document.getElementById(tabId + '-tab');
+            
+            if (currentTab && currentTab.id !== tabId + '-tab') {
+                // 1. 先讓當前頁面淡出
+                currentTab.style.opacity = '0';
+                currentTab.style.transform = 'translateY(-5px)';
+                currentTab.style.transition = 'all 0.2s ease-in';
+                
+                setTimeout(() => {
+                    executeTabSwitch(tabId);
+                }, 150);
+            } else {
+                executeTabSwitch(tabId);
+            }
+        }
+
+        function executeTabSwitch(tabId) {
             localStorage.setItem('activeTab', tabId);
 
             // Hide all tabs
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-content').forEach(el => {
+                el.classList.add('hidden');
+                el.style.opacity = '';
+                el.style.transform = '';
+                el.style.transition = '';
+            });
 
             // Show target tab
             const target = document.getElementById(tabId + '-tab');
@@ -935,40 +1023,34 @@
                 const icon = btn.querySelector('i');
                 const label = btn.querySelector('span');
 
-                // Reset to inactive state
                 if(icon) {
                     icon.classList.remove('text-primary');
                     icon.classList.add('text-textMuted');
                 }
                 btn.classList.remove('bg-primary/10', 'text-primary');
                 btn.classList.add('text-textMuted', 'hover:bg-white/5', 'hover:text-primary');
-
-                if(label) label.classList.remove('opacity-100'); // Optional: adjust if needed
             });
 
             // Highlight Active
-            const activeBtn = document.querySelector(`button[data-tab="${tabId}"]`) || document.querySelector(`button[onclick="switchTab('${tabId}')"]`);
+            const activeBtn = document.querySelector(`button[data-tab="${tabId}"]`) || document.querySelector(`button[onclick*="switchTab('${tabId}')"]`);
             if(activeBtn) {
                 const icon = activeBtn.querySelector('i');
                 const label = activeBtn.querySelector('span');
 
-                // Set to active state
                 if(icon) {
                     icon.classList.remove('text-textMuted');
                     icon.classList.add('text-primary');
                 }
                 activeBtn.classList.remove('text-textMuted', 'hover:bg-white/5', 'hover:text-primary');
                 activeBtn.classList.add('bg-primary/10', 'text-primary');
-
-                if(label) label.classList.add('opacity-100');
             }
 
-            // Trigger refreshes and handle intervals
+            // Trigger refreshes
             if(tabId === 'market') refreshScreener();
             if(tabId === 'assets') refreshAssets();
             if(tabId === 'pulse') checkMarketPulse(true);
+            if(tabId === 'settings' && typeof loadSettingsWalletStatus === 'function') loadSettingsWalletStatus();
 
-            // Call app.js handler for additional logic (intervals, abort, etc.)
             if(typeof onTabSwitch === 'function') onTabSwitch(tabId);
         }
 

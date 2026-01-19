@@ -49,6 +49,7 @@ from api.services import (
     funding_rate_update_task
 )
 from api.routers import system, analysis, market, trading, user, agents
+from api.routers.forum import router as forum_router
 
 # Initialize database (ensure tables exist)
 from core.database import init_db
@@ -127,6 +128,7 @@ app.include_router(market.router)
 app.include_router(trading.router)
 app.include_router(user.router)
 app.include_router(agents.router)  # Agent 管理 API
+app.include_router(forum_router)   # 論壇 API
 
 # --- Pi Network 域名驗證 ---
 PI_VALIDATION_KEY = "3f976384939a5237ed6b540a7ad666ef9715fc06f51cbdf660621e9dadf14ff4cb3971613d3a0cdef24caaee705ccbed7782bc09ca9bbad2a75768175f97afb9"  # 從 Pi Developer Portal 取得

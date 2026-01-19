@@ -264,5 +264,8 @@ async def update_api_keys(settings: APIKeySettings):
 async def read_index():
     """返回主頁面 index.html"""
     if os.path.exists("web/index.html"):
-        return FileResponse("web/index.html")
+        return FileResponse(
+            "web/index.html", 
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+        )
     return {"message": "Welcome to Crypto API. Frontend not found."}

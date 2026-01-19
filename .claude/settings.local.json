@@ -19,7 +19,9 @@
       "Bash(powershell -Command \"Get-Command ngrok -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source\")",
       "Bash(powershell:*)",
       "WebFetch(domain:github.com)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(dir:*)",
+      "Bash(wc:*)"
     ]
   }
 }

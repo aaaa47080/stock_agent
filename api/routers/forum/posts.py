@@ -1,0 +1,193 @@
+"""
+文章相關 API
+"""
+from fastapi import APIRouter, HTTPException, Query
+from typing import Optional
+
+from core.database import (
+    get_board_by_slug,
+    create_post,
+    get_posts,
+    get_post_by_id,
+    update_post,
+    delete_post,
+    get_user_membership,
+)
+from .models import CreatePostRequest, UpdatePostRequest
+
+router = APIRouter(prefix="/api/forum/posts", tags=["Forum - Posts"])
+
+
+# 文章分類列表
+VALID_CATEGORIES = ["analysis", "question", "tutorial", "news", "chat", "insight"]
+
+
+@router.get("")
+async def list_posts(
+    board: Optional[str] = Query(None, description="看板 slug"),
+    category: Optional[str] = Query(None, description="分類"),
+    tag: Optional[str] = Query(None, description="標籤"),
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+):
+    """
+    獲取文章列表
+
+    可選篩選條件：
+    - board: 看板 slug
+    - category: 分類
+    - tag: 標籤
+    """
+    try:
+        # 如果指定看板，先獲取看板 ID
+        board_id = None
+        if board:
+            board_info = get_board_by_slug(board)
+            if not board_info:
+                raise HTTPException(status_code=404, detail="看板不存在")
+            board_id = board_info["id"]
+
+        posts = get_posts(
+            board_id=board_id,
+            category=category,
+            tag=tag,
+            limit=limit,
+            offset=offset,
+        )
+        return {"success": True, "posts": posts, "count": len(posts)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"獲取文章列表失敗: {str(e)}")
+
+
+@router.post("")
+async def create_new_post(request: CreatePostRequest, user_id: str = Query(..., description="用戶 ID")):
+    """
+    發表新文章
+
+    - 免費會員需提供 payment_tx_hash（支付 1 Pi）
+    - PRO 會員免費發文
+    """
+    try:
+        # 驗證分類
+        if request.category not in VALID_CATEGORIES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"無效的分類，可選: {', '.join(VALID_CATEGORIES)}"
+            )
+
+        # 驗證看板
+        board = get_board_by_slug(request.board_slug)
+        if not board:
+            raise HTTPException(status_code=404, detail="看板不存在")
+        if not board["is_active"]:
+            raise HTTPException(status_code=400, detail="此看板目前不開放發文")
+
+        # 檢查會員狀態
+        membership = get_user_membership(user_id)
+
+        # 免費會員需要付費
+        if not membership["is_pro"] and not request.payment_tx_hash:
+            raise HTTPException(
+                status_code=402,
+                detail="免費會員發文需支付 1 Pi，請提供 payment_tx_hash"
+            )
+
+        # 創建文章
+        post_id = create_post(
+            board_id=board["id"],
+            user_id=user_id,
+            category=request.category,
+            title=request.title,
+            content=request.content,
+            tags=request.tags,
+            payment_tx_hash=request.payment_tx_hash,
+        )
+
+        return {
+            "success": True,
+            "message": "文章發表成功",
+            "post_id": post_id
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"發表文章失敗: {str(e)}")
+
+
+@router.get("/{post_id}")
+async def get_post_detail(post_id: int, user_id: Optional[str] = Query(None, description="查看者的用戶 ID")):
+    """
+    獲取文章詳情
+
+    會自動增加瀏覽數
+    """
+    try:
+        post = get_post_by_id(post_id, increment_view=True, viewer_user_id=user_id)
+        if not post:
+            raise HTTPException(status_code=404, detail="文章不存在")
+        if post["is_hidden"]:
+            raise HTTPException(status_code=404, detail="文章已被刪除")
+
+        return {"success": True, "post": post}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"獲取文章詳情失敗: {str(e)}")
+
+
+@router.put("/{post_id}")
+async def update_post_content(
+    post_id: int,
+    request: UpdatePostRequest,
+    user_id: str = Query(..., description="用戶 ID"),
+):
+    """
+    編輯文章（只有作者可以編輯）
+    """
+    try:
+        # 驗證分類
+        if request.category and request.category not in VALID_CATEGORIES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"無效的分類，可選: {', '.join(VALID_CATEGORIES)}"
+            )
+
+        success = update_post(
+            post_id=post_id,
+            user_id=user_id,
+            title=request.title,
+            content=request.content,
+            category=request.category,
+        )
+
+        if not success:
+            raise HTTPException(status_code=403, detail="無權編輯此文章或文章不存在")
+
+        return {"success": True, "message": "文章更新成功"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"更新文章失敗: {str(e)}")
+
+
+@router.delete("/{post_id}")
+async def delete_post_by_id(
+    post_id: int,
+    user_id: str = Query(..., description="用戶 ID"),
+):
+    """
+    刪除文章（軟刪除，只有作者可以刪除）
+    """
+    try:
+        success = delete_post(post_id=post_id, user_id=user_id)
+
+        if not success:
+            raise HTTPException(status_code=403, detail="無權刪除此文章或文章不存在")
+
+        return {"success": True, "message": "文章已刪除"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"刪除文章失敗: {str(e)}")

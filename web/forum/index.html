@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pi Crypto Forum</title>
+    <link rel="icon" type="image/png" href="/static/img/title_icon.png">
+
+    <!-- Core Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        background: '#1a1a1c',
+                        surface: '#252529',
+                        surfaceHighlight: '#323236',
+                        primary: '#d4b693',
+                        secondary: '#e4e4e7',
+                        accent: '#c084fc',
+                        success: '#86efac',
+                        danger: '#fda4af',
+                        textMain: '#f4f4f5',
+                        textMuted: '#a1a1aa',
+                    },
+                    fontFamily: {
+                        sans: ['Mulish', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Mulish:wght@300;400;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body class="bg-background text-textMain min-h-screen flex flex-col" data-page="index">
+
+    <!-- Navbar -->
+    <nav class="sticky top-0 z-50 bg-surface/95 backdrop-blur-xl border-b border-white/5 px-4 py-3">
+        <div class="max-w-6xl mx-auto flex items-center justify-between">
+            <a href="/static/index.html" onclick="handleBackToApp(event)" class="flex items-center gap-2 text-secondary font-bold hover:text-primary transition">
+                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                <span>Back to App</span>
+            </a>
+            
+            <div class="font-bold text-lg text-primary tracking-wide">Pi Crypto Forum</div>
+
+            <div class="flex items-center gap-3">
+                <div class="auth-only hidden flex items-center gap-2">
+                    <span class="text-xs text-textMuted user-display-name">User</span>
+                    <a href="/static/forum/dashboard.html" class="p-2 hover:bg-white/5 rounded-full"><i data-lucide="user" class="w-5 h-5"></i></a>
+                    <a href="/static/forum/create.html" class="bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 transition">
+                        <i data-lucide="pen-tool" class="w-4 h-4"></i> Post
+                    </a>
+                </div>
+                <div class="guest-only text-xs text-textMuted">Guest Mode</div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-6xl mx-auto w-full p-4 grid grid-cols-1 md:grid-cols-4 gap-6">
+        
+        <!-- Sidebar (Filters & Trending) -->
+        <aside class="md:col-span-1 space-y-6">
+            <div class="bg-surface border border-white/5 rounded-2xl p-4">
+                <h3 class="font-bold text-secondary mb-3 flex items-center gap-2"><i data-lucide="filter" class="w-4 h-4"></i> Filter</h3>
+                <div class="space-y-1">
+                    <select id="category-filter" class="appearance-none w-full bg-background border border-white/10 rounded-lg p-2 text-sm text-textMain focus:border-primary outline-none">
+                        <option value="">All Categories</option>
+                        <option value="analysis">Analysis [分析]</option>
+                        <option value="question">Question [請益]</option>
+                        <option value="tutorial">Tutorial [教學]</option>
+                        <option value="news">News [新聞]</option>
+                        <option value="chat">Chat [閒聊]</option>
+                        <option value="insight">Insight [心得]</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="bg-surface border border-white/5 rounded-2xl p-4">
+                <h3 class="font-bold text-secondary mb-3 flex items-center gap-2"><i data-lucide="trending-up" class="w-4 h-4"></i> Trending Tags</h3>
+                <div id="trending-tags" class="space-y-1">
+                    <!-- Loaded via JS -->
+                    <div class="text-xs text-textMuted">Loading...</div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Post List -->
+        <div class="md:col-span-3">
+            <div id="post-list" class="space-y-3">
+                <!-- Posts injected here -->
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-24 right-4 z-[100] flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Confirm Modal -->
+    <div id="confirm-modal" class="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
+        <div class="bg-surface w-full max-w-sm p-6 rounded-3xl border border-white/10 shadow-2xl transform transition-all scale-100 opacity-100">
+            <div id="confirm-modal-icon" class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 bg-warning/20">
+                <i data-lucide="alert-circle" class="w-8 h-8 text-warning"></i>
+            </div>
+            <h3 id="confirm-modal-title" class="text-xl font-bold text-center text-secondary mb-2">Confirm</h3>
+            <p id="confirm-modal-message" class="text-textMuted text-center text-sm mb-6">Are you sure?</p>
+            <div id="confirm-modal-buttons" class="flex gap-3">
+                <button id="confirm-modal-cancel" class="flex-1 py-3 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-2xl transition border border-white/5">Cancel</button>
+                <button id="confirm-modal-confirm" class="flex-1 py-3 bg-primary hover:brightness-110 text-background font-bold rounded-2xl transition shadow-lg">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/static/js/auth.js"></script>
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/forum.js"></script>
+</body>
+</html>

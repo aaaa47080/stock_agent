@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Create Post - Pi Crypto Forum</title>
+    <link rel="icon" type="image/png" href="/static/img/title_icon.png">
+
+    <!-- Core Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        background: '#1a1a1c',
+                        surface: '#252529',
+                        surfaceHighlight: '#323236',
+                        primary: '#d4b693',
+                        secondary: '#e4e4e7',
+                        accent: '#c084fc',
+                        success: '#86efac',
+                        danger: '#fda4af',
+                        textMain: '#f4f4f5',
+                        textMuted: '#a1a1aa',
+                    },
+                    fontFamily: {
+                        sans: ['Mulish', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Mulish:wght@300;400;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body class="bg-background text-textMain min-h-screen flex flex-col" data-page="create">
+
+    <!-- Navbar -->
+    <nav class="sticky top-0 z-50 bg-surface/95 backdrop-blur-xl border-b border-white/5 px-4 py-3">
+        <div class="max-w-3xl mx-auto flex items-center justify-between">
+            <a href="/static/forum/index.html" class="flex items-center gap-2 text-secondary font-bold hover:text-primary transition">
+                <i data-lucide="x" class="w-5 h-5"></i>
+                <span>Cancel</span>
+            </a>
+            <div class="font-bold text-lg text-primary tracking-wide">New Post</div>
+            <div class="w-10"></div> <!-- Spacer -->
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-3xl mx-auto w-full p-4">
+        
+        <form id="post-form" class="space-y-6">
+            
+            <!-- Category & Board -->
+            <div class="bg-surface border border-white/5 rounded-2xl p-4">
+                <label class="block text-xs font-bold text-textMuted uppercase mb-2">Category</label>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <select id="input-category" class="appearance-none w-full bg-background border border-white/10 rounded-xl p-3 text-textMain focus:border-primary outline-none" required>
+                            <option value="analysis">Analysis [分析]</option>
+                            <option value="question">Question [請益]</option>
+                            <option value="tutorial">Tutorial [教學]</option>
+                            <option value="news">News [新聞]</option>
+                            <option value="chat">Chat [閒聊]</option>
+                            <option value="insight">Insight [心得]</option>
+                        </select>
+                    </div>
+                    <div class="flex items-center justify-center bg-background/50 rounded-xl border border-white/5 text-textMuted text-sm">
+                        Board: Crypto
+                    </div>
+                </div>
+            </div>
+
+            <!-- Title -->
+            <div class="bg-surface border border-white/5 rounded-2xl p-4">
+                <label class="block text-xs font-bold text-textMuted uppercase mb-2">Title</label>
+                <input type="text" id="input-title" class="w-full bg-background border border-white/10 rounded-xl p-3 text-textMain focus:border-primary outline-none font-bold text-lg placeholder-textMuted/50" placeholder="Enter an interesting title..." maxlength="50" required>
+                <div class="text-right text-xs text-textMuted mt-1">Max 50 chars</div>
+            </div>
+
+            <!-- Content -->
+            <div class="bg-surface border border-white/5 rounded-2xl p-4">
+                <label class="block text-xs font-bold text-textMuted uppercase mb-2">Content (Markdown supported)</label>
+                <textarea id="input-content" class="w-full bg-background border border-white/10 rounded-xl p-3 text-textMain focus:border-primary outline-none min-h-[300px] font-mono text-sm leading-relaxed placeholder-textMuted/50" placeholder="Share your insights..." required></textarea>
+                <div class="flex items-center gap-2 mt-2 text-xs text-textMuted">
+                    <i data-lucide="info" class="w-3 h-3"></i> Use Markdown for formatting
+                </div>
+            </div>
+
+            <!-- Tags -->
+            <div class="bg-surface border border-white/5 rounded-2xl p-4">
+                <label class="block text-xs font-bold text-textMuted uppercase mb-2">Tags (Optional)</label>
+                <input type="text" id="input-tags" class="w-full bg-background border border-white/10 rounded-xl p-3 text-textMain focus:border-primary outline-none placeholder-textMuted/50" placeholder="#BTC #ETH #Analysis">
+                <div class="text-xs text-textMuted mt-1">Separate with spaces</div>
+            </div>
+
+            <!-- Submit Action -->
+            <div class="flex flex-col items-center gap-4 pt-4">
+                <div class="text-center text-sm text-textMuted">
+                    Cost to post: <span class="text-primary font-bold">1 Pi</span>
+                    <br>
+                    <span class="text-xs opacity-60">(Free for PRO members)</span>
+                </div>
+                <button type="submit" class="w-full md:w-auto px-12 py-4 bg-gradient-to-r from-primary to-primary/80 hover:to-primary text-background font-bold text-lg rounded-xl shadow-lg shadow-primary/20 transition transform hover:-translate-y-1 flex items-center justify-center gap-2">
+                    <span>Pay 1 Pi & Post</span>
+                    <i data-lucide="send" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+        </form>
+
+    </main>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-24 right-4 z-[100] flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Confirm Modal -->
+    <div id="confirm-modal" class="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
+        <div class="bg-surface w-full max-w-sm p-6 rounded-3xl border border-white/10 shadow-2xl transform transition-all scale-100 opacity-100">
+            <div id="confirm-modal-icon" class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 bg-warning/20">
+                <i data-lucide="alert-circle" class="w-8 h-8 text-warning"></i>
+            </div>
+            <h3 id="confirm-modal-title" class="text-xl font-bold text-center text-secondary mb-2">Confirm</h3>
+            <p id="confirm-modal-message" class="text-textMuted text-center text-sm mb-6">Are you sure?</p>
+            <div id="confirm-modal-buttons" class="flex gap-3">
+                <button id="confirm-modal-cancel" class="flex-1 py-3 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-2xl transition border border-white/5">Cancel</button>
+                <button id="confirm-modal-confirm" class="flex-1 py-3 bg-primary hover:brightness-110 text-background font-bold rounded-2xl transition shadow-lg">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/static/js/auth.js"></script>
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/forum.js"></script>
+</body>
+</html>

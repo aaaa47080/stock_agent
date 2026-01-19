@@ -17,20 +17,20 @@ PRESET_URLS = {"main": MAIN_URL, "tsm": TSM_URL}
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Crawl futunn news pages with playwright and trafilatura")
-    parser.add_argument("--url", default=None, help="Target page to scan for article links (overrides preset)")
-    parser.add_argument("--preset", choices=list(PRESET_URLS.keys()), default=None, help="Preset page to crawl when --url is not provided; omit for interactive prompt")
-    parser.add_argument("--output", default=OUT_FILE, help="JSONL output file path")
-    parser.add_argument(
+    arg_parser = argparse.ArgumentParser(description="Crawl futunn news pages with playwright and trafilatura")
+    arg_parser.add_argument("--url", default=None, help="Target page to scan for article links (overrides preset)")
+    arg_parser.add_argument("--preset", choices=list(PRESET_URLS.keys()), default=None, help="Preset page to crawl when --url is not provided; omit for interactive prompt")
+    arg_parser.add_argument("--output", default=OUT_FILE, help="JSONL output file path")
+    arg_parser.add_argument(
         "--scroll-rounds",
         type=int,
         default=SCROLL_ROUNDS,
         help="Number of scroll events to trigger lazy loading",
     )
-    parser.add_argument("--limit", type=int, default=LIMIT, help="Maximum articles to fetch (<=0 means no limit)")
-    parser.add_argument("--include-flash", action="store_true", help="When set also keep /flash/ links")
+    arg_parser.add_argument("--limit", type=int, default=LIMIT, help="Maximum articles to fetch (<=0 means no limit)")
+    arg_parser.add_argument("--include-flash", action="store_true", help="When set also keep /flash/ links")
 
-    return parser.parse_args()
+    return arg_parser.parse_args()
 
 
 def select_target_url():

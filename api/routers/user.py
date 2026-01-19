@@ -12,7 +12,8 @@ from core.database import (
     record_login_attempt, is_account_locked, get_failed_attempts,
     MAX_LOGIN_ATTEMPTS,
     # Pi Network 用戶相關
-    create_or_get_pi_user, get_user_by_pi_uid, is_username_available
+    create_or_get_pi_user, get_user_by_pi_uid, is_username_available,
+    link_pi_wallet, get_user_wallet_status
 )
 from core.email_service import send_reset_email, is_email_configured
 
@@ -290,3 +291,44 @@ async def reset_password(request: ResetPasswordRequest):
     except Exception as e:
         logger.error(f"Reset password error: {e}")
         raise HTTPException(status_code=500, detail="An error occurred")
+
+
+# --- Pi Wallet Linking Endpoints ---
+
+class LinkWalletRequest(BaseModel):
+    user_id: str
+    pi_uid: str
+    pi_username: str
+    access_token: str = None
+
+
+@router.post("/api/user/link-wallet")
+async def link_wallet(request: LinkWalletRequest):
+    """
+    綁定 Pi 錢包到現有帳密用戶
+    """
+    try:
+        result = link_pi_wallet(
+            user_id=request.user_id,
+            pi_uid=request.pi_uid,
+            pi_username=request.pi_username
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    except Exception as e:
+        logger.error(f"Link wallet error: {e}")
+        raise HTTPException(status_code=500, detail="綁定失敗")
+
+
+@router.get("/api/user/wallet-status/{user_id}")
+async def get_wallet_status(user_id: str):
+    """
+    獲取用戶錢包綁定狀態
+    """
+    try:
+        status = get_user_wallet_status(user_id)
+        return {"success": True, **status}
+    except Exception as e:
+        logger.error(f"Get wallet status error: {e}")
+        raise HTTPException(status_code=500, detail="獲取狀態失敗")

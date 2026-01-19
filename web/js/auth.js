@@ -72,12 +72,16 @@ const AuthManager = {
         if (savedUser) {
             try {
                 this.currentUser = JSON.parse(savedUser);
+                console.log('AuthManager: Loaded user from localStorage', this.currentUser);
                 this._updateGlobalUserId();
                 this._updateUI(true);
                 return true;
             } catch (e) {
+                console.error('AuthManager: Failed to parse saved user', e);
                 localStorage.removeItem('pi_user');
             }
+        } else {
+            console.log('AuthManager: No saved user found');
         }
         this._updateUI(false);
         return false;
@@ -823,6 +827,142 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// ========================================
+// Pi 錢包綁定相關函數
+// ========================================
+
+/**
+ * 獲取用戶錢包綁定狀態
+ */
+async function getWalletStatus() {
+    if (!AuthManager.currentUser) {
+        return { has_wallet: false, auth_method: null };
+    }
+
+    try {
+        const response = await fetch(`/api/user/wallet-status/${AuthManager.currentUser.uid}`);
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Get wallet status error:', error);
+        return { has_wallet: false, auth_method: null };
+    }
+}
+
+/**
+ * 綁定 Pi 錢包到現有帳號
+ * 必須在 Pi Browser 中執行
+ */
+async function linkPiWallet() {
+    if (!AuthManager.currentUser) {
+        showToast('請先登入', 'warning');
+        return { success: false, error: 'Not logged in' };
+    }
+
+    if (!window.Pi) {
+        showToast('請在 Pi Browser 中開啟以綁定錢包', 'error');
+        return { success: false, error: 'Pi SDK not available' };
+    }
+
+    try {
+        // 確保 Pi SDK 已初始化
+        if (!AuthManager.piInitialized) {
+            AuthManager.initPiSDK();
+        }
+
+        // 進行 Pi 認證獲取錢包資訊（帶超時機制）
+        showToast('正在連接 Pi 錢包...', 'info', 0); // 不自動消失
+
+        const TIMEOUT_MS = 15000; // 15 秒超時
+        const authPromise = Pi.authenticate(['username'], AuthManager._onIncompletePayment);
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('TIMEOUT')), TIMEOUT_MS)
+        );
+
+        let auth;
+        try {
+            auth = await Promise.race([authPromise, timeoutPromise]);
+        } catch (e) {
+            // 清除連接中的 Toast
+            document.querySelectorAll('#toast-container > div').forEach(t => t.remove());
+
+            if (e.message === 'TIMEOUT') {
+                // 超時 - 顯示重試選項
+                const retry = await showConfirm({
+                    title: '連接超時',
+                    message: '無法連接 Pi 錢包。\n\n請確認您是在 Pi Browser 中開啟此頁面，而非一般瀏覽器。',
+                    type: 'warning',
+                    confirmText: '重新連接',
+                    cancelText: '取消'
+                });
+
+                if (retry) {
+                    return linkPiWallet(); // 遞迴重試
+                }
+                return { success: false, error: 'Connection timeout' };
+            }
+            throw e; // 其他錯誤繼續拋出
+        }
+
+        // 清除連接中的 Toast
+        document.querySelectorAll('#toast-container > div').forEach(t => t.remove());
+
+        // 呼叫 API 綁定錢包
+        const response = await fetch('/api/user/link-wallet', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: AuthManager.currentUser.uid,
+                pi_uid: auth.user.uid,
+                pi_username: auth.user.username,
+                access_token: auth.accessToken
+            })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            // 更新本地用戶資料
+            AuthManager.currentUser.pi_uid = auth.user.uid;
+            AuthManager.currentUser.pi_username = auth.user.username;
+            localStorage.setItem('pi_user', JSON.stringify(AuthManager.currentUser));
+
+            showToast(result.already_linked ? '錢包已綁定' : 'Pi 錢包綁定成功！', 'success');
+            return { success: true, ...result };
+        } else {
+            showToast(result.detail || '綁定失敗', 'error');
+            return { success: false, error: result.detail };
+        }
+    } catch (error) {
+        // 清除連接中的 Toast
+        document.querySelectorAll('#toast-container > div').forEach(t => t.remove());
+
+        console.error('Link wallet error:', error);
+
+        // 判斷是否為用戶取消
+        if (error.message?.includes('cancelled') || error.message?.includes('canceled')) {
+            showToast('已取消連接', 'info');
+            return { success: false, error: 'User cancelled' };
+        }
+
+        showToast('綁定錢包時發生錯誤: ' + error.message, 'error');
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * 檢查用戶是否可以進行 Pi 支付
+ * (必須有綁定錢包或以 Pi 登入)
+ */
+function canMakePiPayment() {
+    if (!AuthManager.currentUser) return false;
+    // Pi 錢包登入的用戶
+    if (AuthManager.currentUser.authMethod === 'pi_network') return true;
+    // 帳密用戶但已綁定錢包
+    if (AuthManager.currentUser.pi_uid) return true;
+    return false;
+}
+
 // 暴露到全局
 window.AuthManager = AuthManager;
 window.showLoginModal = showLoginModal;
@@ -840,3 +980,79 @@ window.handleForgotPassword = handleForgotPassword;
 window.showResetPasswordModal = showResetPasswordModal;
 window.hideResetPasswordModal = hideResetPasswordModal;
 window.handleResetPassword = handleResetPassword;
+window.getWalletStatus = getWalletStatus;
+window.linkPiWallet = linkPiWallet;
+window.canMakePiPayment = canMakePiPayment;
+window.loadSettingsWalletStatus = loadSettingsWalletStatus;
+window.handleSettingsLinkWallet = handleSettingsLinkWallet;
+
+// ========================================
+// Settings 頁面錢包區塊
+// ========================================
+
+/**
+ * 載入 Settings 頁面的錢包狀態
+ */
+async function loadSettingsWalletStatus() {
+    const walletCard = document.getElementById('settings-wallet-card');
+    const statusBadge = document.getElementById('settings-wallet-status-badge');
+    const notLinked = document.getElementById('wallet-not-linked');
+    const linked = document.getElementById('wallet-linked');
+    const walletUsername = document.getElementById('settings-wallet-username');
+    const walletIcon = document.getElementById('settings-wallet-icon');
+
+    // 只有登入才顯示錢包卡片
+    if (!AuthManager.currentUser) {
+        if (walletCard) walletCard.classList.add('hidden');
+        return;
+    }
+
+    if (walletCard) walletCard.classList.remove('hidden');
+
+    try {
+        const status = await getWalletStatus();
+
+        if (status.has_wallet || status.auth_method === 'pi_network') {
+            // 已綁定
+            if (statusBadge) {
+                statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-success/10 text-success';
+                statusBadge.innerHTML = '<i data-lucide="check" class="w-3 h-3"></i> 已連接';
+            }
+            if (walletIcon) {
+                walletIcon.className = 'w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center';
+                walletIcon.innerHTML = '<i data-lucide="wallet" class="w-5 h-5 text-success"></i>';
+            }
+            if (notLinked) notLinked.classList.add('hidden');
+            if (linked) linked.classList.remove('hidden');
+            if (walletUsername && status.pi_username) {
+                walletUsername.textContent = '@' + status.pi_username;
+            }
+        } else {
+            // 未綁定
+            if (statusBadge) {
+                statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-textMuted';
+                statusBadge.innerHTML = '<i data-lucide="link-2-off" class="w-3 h-3"></i> 未綁定';
+            }
+            if (notLinked) notLinked.classList.remove('hidden');
+            if (linked) linked.classList.add('hidden');
+        }
+
+        if (window.lucide) lucide.createIcons();
+    } catch (e) {
+        console.error('Load settings wallet status error:', e);
+        if (statusBadge) {
+            statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-danger/10 text-danger';
+            statusBadge.innerHTML = '<i data-lucide="alert-circle" class="w-3 h-3"></i> 錯誤';
+        }
+    }
+}
+
+/**
+ * Settings 頁面綁定錢包按鈕
+ */
+async function handleSettingsLinkWallet() {
+    const result = await linkPiWallet();
+    if (result.success) {
+        loadSettingsWalletStatus();
+    }
+}
