@@ -2,10 +2,12 @@ import os
 import sys
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
-import openai
-import google.generativeai as genai
 from dotenv import load_dotenv
 from utils.llm_client import LLMClientFactory
+
+# LangChain Imports
+from langchain.chat_models import init_chat_model
+from langchain_core.messages import HumanMessage
 
 from core.config import (
     SUPPORTED_EXCHANGES, DEFAULT_INTERVAL, DEFAULT_KLINES_LIMIT
@@ -42,104 +44,53 @@ async def validate_key(request: KeyValidationRequest):
 
     try:
         reply_text = ""
-
-        if provider == "openai":
-            client = openai.OpenAI(api_key=key)
-            # 如果用戶指定了模型，優先使用用戶的模型，否則使用默認模型
-            model_to_test = user_model if user_model and user_model.startswith('gpt') else "gpt-4o-mini"
-            completion = client.chat.completions.create(
-                model=model_to_test,
-                messages=[{"role": "user", "content": test_prompt}],
-                max_tokens=50
-            )
-            reply_text = completion.choices[0].message.content
-
-        elif provider == "google_gemini":
-            # 使用與實際應用相同的 GeminiWrapper 來確保一致性
-            from utils.llm_client import GeminiWrapper
-            import google.generativeai as genai
-            genai.configure(api_key=key)
-
-            # 如果用戶指定了模型，優先使用用戶的模型
-            if user_model and user_model.startswith('gemini'):
-                # 僅測試用戶指定的模型
-                models_to_try = [user_model]
-            else:
-                # 從配置文件獲取可用模型
-                try:
-                    from core.model_config import get_available_models
-                    available_models = get_available_models("google_gemini")
-                    models_to_try = [model['value'] for model in available_models]
-                except ImportError:
-                    # 如果配置文件不可用，使用默認值
-                    models_to_try = ["gemini-3-flash-preview"]
-            last_error = None
-
-            for model_name in models_to_try:
-                try:
-                    # 使用 GeminiWrapper 進行測試，確保與實際應用行為一致
-                    wrapper = GeminiWrapper(genai)
-                    response = wrapper.create(
-                        model=model_name,
-                        messages=[{"role": "user", "content": test_prompt}],
-                        temperature=0.5,
-                        max_tokens=50
-                    )
-                    reply_text = response.choices[0].message.content
-                    # 如果成功，就跳出循環
-                    break
-                except Exception as e:
-                    # 檢查是否是因為內容審核問題
-                    error_str = str(e)
-                    if "blocked due to content policy" in error_str:
-                        # 這表示 API 連接正常，但內容被審核系統拒絕
-                        # 我們可以嘗試另一個模型
-                        logger.warning(f"Gemini model {model_name} content was blocked by policy: {e}")
-                        continue
-                    elif "response.text" in error_str and "finish_reason" in error_str:
-                        # 這可能是因為內容被審核系統拒絕，但仍表示 API 連接正常
-                        logger.warning(f"Gemini model {model_name} returned blocked content: {e}")
-                        continue
-                    else:
-                        last_error = e
-                        continue
-
-            # 如果所有模型都失敗，拋出最後一個錯誤
-            if not reply_text and last_error:
-                raise last_error
-
+        
+        # 統一使用 LangChain init_chat_model 進行驗證
+        
+        # 映射 provider
+        lc_provider = "openai"
+        base_url = None
+        
+        if provider == "google_gemini":
+            lc_provider = "google_genai"
         elif provider == "openrouter":
-            client = openai.OpenAI(
-                base_url="https://openrouter.ai/api/v1",
-                api_key=key,
-            )
-            # 如果用戶指定了模型，優先使用用戶的模型
-            if user_model:
-                test_model = user_model
-            else:
-                # 否則獲取模型列表，使用默認模型
-                models = client.models.list()
-                if not models.data:
-                    raise ValueError("無法獲取模型列表")
-                # 使用列表中的第一個模型 (通常是免費或熱門模型)
-                test_model = models.data[0].id
-
-            completion = client.chat.completions.create(
-                model=test_model,
-                messages=[{"role": "user", "content": test_prompt}],
-                max_tokens=50
-            )
-            reply_text = completion.choices[0].message.content
-
+            lc_provider = "openai"
+            base_url = "https://openrouter.ai/api/v1"
+        elif provider == "openai":
+            lc_provider = "openai"
         else:
             return {"valid": False, "message": "未知的提供商"}
 
+        # 決定模型名稱
+        if user_model:
+            model_to_test = user_model
+        else:
+            if provider == "google_gemini":
+                model_to_test = "gemini-2.0-flash-exp"
+            elif provider == "openrouter":
+                model_to_test = "gpt-4o-mini" # 或其他默認
+            else:
+                model_to_test = "gpt-4o-mini"
+
+        # 嘗試初始化 LLM
+        llm = init_chat_model(
+            model=model_to_test,
+            model_provider=lc_provider,
+            temperature=0.5,
+            api_key=key,
+            base_url=base_url
+        )
+        
+        # 嘗試調用
+        response = llm.invoke([HumanMessage(content=test_prompt)])
+        reply_text = response.content
+
         return {
             "valid": True,
-            "message": f"驗證成功！連接正常。使用模型: {user_model or 'default'}",
+            "message": f"驗證成功！連接正常。使用模型: {model_to_test}",
             "reply": reply_text,
             "provider": provider,
-            "model": user_model or "default"
+            "model": model_to_test
         }
         
     except Exception as e:

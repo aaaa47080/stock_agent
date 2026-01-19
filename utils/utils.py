@@ -11,6 +11,10 @@ import concurrent.futures
 from cachetools import cached, TTLCache
 from api.utils import logger
 
+# LangChain Imports
+from langchain_core.messages import HumanMessage
+from utils.llm_client import extract_json_from_response
+
 # Cache for CryptoPanic API calls, 5-minute TTL (reduced from 1 hour for real-time)
 cryptopanic_cache = TTLCache(maxsize=100, ttl=300)
 
@@ -414,21 +418,14 @@ def audit_crypto_news(symbol: str, news_list: List[Dict]) -> List[Dict]:
 """
 
     try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.2,
-            response_format={"type": "text"} # 確保簡短回覆
-        )
+        # LangChain Invoke
+        response = client.invoke([HumanMessage(content=prompt)])
+        content = response.content.strip()
         
-        content = response.choices[0].message.content.strip()
-        # 移除可能存在的 Markdown 標記
-        content = content.replace("```json", "").replace("```", "").strip()
-        
-        passed_ids = json.loads(content)
+        passed_ids = extract_json_from_response(content)
         
         if not isinstance(passed_ids, list):
-            logger.warning(">> ⚠️ 審查員回傳格式錯誤，跳過篩選。")
+            logger.warning(">> ⚠️ 審查員回傳格式錯誤，跳過篩選。" )
             return news_list
 
         filtered_news = [news_list[i] for i in passed_ids if i < len(news_list)]
@@ -504,5 +501,3 @@ def get_crypto_news(symbol: str = "BTC", limit: int = 5, enabled_sources: List[s
     logger.debug(f"\n>> 聚合與審查完成: 總共獲取 {len(result)} 條優質新聞\n")
 
     return result
-
-    

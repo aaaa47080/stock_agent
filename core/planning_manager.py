@@ -14,8 +14,12 @@ import re
 from typing import List, Optional, Dict
 from pydantic import BaseModel, Field
 
-from core.agent_registry import agent_registry
+# LangChain Imports
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.language_models import BaseChatModel
 
+from core.agent_registry import agent_registry
+from utils.llm_client import extract_json_from_response
 
 # ============================================================================
 # 數據模型
@@ -64,7 +68,7 @@ class PlanningManager:
 
     def __init__(
         self,
-        user_llm_client=None,
+        user_llm_client: BaseChatModel = None,
         user_provider: str = "openai",
         user_model: str = None,
         verbose: bool = False
@@ -73,7 +77,7 @@ class PlanningManager:
         初始化 Planning Manager
 
         Args:
-            user_llm_client: 用戶提供的 LLM Client
+            user_llm_client: 用戶提供的 LLM Client (LangChain BaseChatModel)
             user_provider: LLM Provider
             user_model: 用戶選擇的模型名稱
             verbose: 是否顯示詳細日誌
@@ -82,25 +86,6 @@ class PlanningManager:
         self.user_provider = user_provider
         self.user_model = user_model
         self.verbose = verbose
-
-    def _get_model_for_provider(self) -> str:
-        """根據 provider 獲取適合的模型名稱"""
-        try:
-            from core.model_config import get_default_model
-            if self.user_provider == "google_gemini":
-                return get_default_model("google_gemini")
-            elif self.user_provider == "openrouter":
-                return get_default_model("openrouter")
-            else:
-                return get_default_model("openai")
-        except ImportError:
-            # 如果配置文件不可用，使用默認值
-            if self.user_provider == "google_gemini":
-                return "gemini-3-flash-preview"
-            elif self.user_provider == "openrouter":
-                return "gpt-4o-mini"
-            else:
-                return "gpt-4o-mini"
 
     # analyze_complexity 已被移除
     # 複雜度判斷現在由 AdminAgent.analyze_task() 使用 LLM 完成
@@ -182,26 +167,18 @@ class PlanningManager:
 """
 
         try:
-            response = self.user_llm_client.chat.completions.create(
-                model=self._get_model_for_provider(),
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": message}
-                ],
-                temperature=0.3,
-                response_format={"type": "json_object"} if self.user_provider != "google_gemini" else None
-            )
-
-            result_text = response.choices[0].message.content
+            # LangChain Invoke
+            messages = [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=message)
+            ]
+            
+            response = self.user_llm_client.invoke(messages)
+            result_text = response.content
 
             # 解析 JSON
             try:
-                if "```json" in result_text:
-                    result_text = result_text.split("```json")[1].split("```")[0]
-                elif "```" in result_text:
-                    result_text = result_text.split("```")[1].split("```")[0]
-
-                result = json.loads(result_text)
+                result = extract_json_from_response(result_text)
                 subtasks = []
 
                 for st in result.get("subtasks", []):
@@ -221,7 +198,7 @@ class PlanningManager:
 
                 return subtasks if subtasks else self._rule_based_subtasks(message, symbols, assigned_agent)
 
-            except json.JSONDecodeError:
+            except Exception:
                 if self.verbose:
                     print(f"[PlanningManager] JSON parse error: {result_text[:200]}")
                 return self._rule_based_subtasks(message, symbols, assigned_agent)

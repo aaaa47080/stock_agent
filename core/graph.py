@@ -3,11 +3,10 @@ import os
 # Add the project root directory to the Python path to allow imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import openai
 import pandas as pd
 import numpy as np
 from dotenv import load_dotenv
-from typing import TypedDict, List, Dict, Optional
+from typing import TypedDict, List, Dict, Optional, Any
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from langgraph.graph import StateGraph, END
@@ -60,8 +59,8 @@ class AgentState(TypedDict):
     medium_term_interval: str      # 中週期時間間隔
     long_term_interval: str        # 長週期時間間隔
     # --- 客戶端與通用數據 ---
-    client: openai.OpenAI  # 保留兼容性，實際使用 user_llm_client
-    user_llm_client: Optional[object]  # ⭐ 用戶提供的 LLM 客戶端
+    client: Any  # LangChain BaseChatModel
+    user_llm_client: Optional[Any]  # ⭐ 用戶提供的 LLM 客戶端 (BaseChatModel)
     user_provider: Optional[str]       # ⭐ 用戶選擇的 provider
     market_data: Dict
     current_price: float

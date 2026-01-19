@@ -65,3 +65,5 @@ learn-ai/
 # backups/
 # web/
 # run_ngrok.sh
+error.txt
+register_pi_network.txt

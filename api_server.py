@@ -3,6 +3,7 @@ import sys
 import asyncio
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from dotenv import load_dotenv
@@ -126,6 +127,48 @@ app.include_router(market.router)
 app.include_router(trading.router)
 app.include_router(user.router)
 app.include_router(agents.router)  # Agent 管理 API
+
+# --- Pi Network 域名驗證 ---
+PI_VALIDATION_KEY = "3f976384939a5237ed6b540a7ad666ef9715fc06f51cbdf660621e9dadf14ff4cb3971613d3a0cdef24caaee705ccbed7782bc09ca9bbad2a75768175f97afb9"  # 從 Pi Developer Portal 取得
+
+@app.get("/validation-key.txt", response_class=PlainTextResponse)
+async def pi_validation():
+    """Pi Network 域名所有權驗證"""
+    return PI_VALIDATION_KEY
+
+# --- 前端 Debug Log API ---
+from pydantic import BaseModel
+from typing import Optional
+import datetime
+
+class FrontendLog(BaseModel):
+    level: str = "info"
+    message: str
+    data: Optional[dict] = None
+
+@app.post("/api/debug-log")
+async def receive_frontend_log(log: FrontendLog):
+    """接收前端 debug log 並寫入檔案"""
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_line = f"[{timestamp}] [{log.level.upper()}] {log.message}"
+    if log.data:
+        log_line += f" | Data: {log.data}"
+
+    # 寫入檔案
+    with open("frontend_debug.log", "a", encoding="utf-8") as f:
+        f.write(log_line + "\n")
+
+    logger.info(f"[Frontend] {log.message}")
+    return {"status": "logged"}
+
+@app.get("/api/debug-log", response_class=PlainTextResponse)
+async def get_debug_logs():
+    """查看 debug logs"""
+    try:
+        with open("frontend_debug.log", "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        return "No logs yet"
 
 # --- 靜態檔案與頁面 ---
 if os.path.exists("web"):

@@ -8,6 +8,27 @@ from datetime import datetime
 
 DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "user_data.db")
 
+# 追蹤資料庫是否已初始化
+_db_initialized = False
+
+def get_connection() -> sqlite3.Connection:
+    """
+    獲取資料庫連接，確保資料庫和表存在
+    如果資料庫文件被刪除，會自動重新初始化
+    """
+    global _db_initialized
+
+    # 如果資料庫文件不存在，需要重新初始化
+    if not os.path.exists(DB_PATH):
+        _db_initialized = False
+
+    # 如果尚未初始化，執行初始化
+    if not _db_initialized:
+        init_db()
+        _db_initialized = True
+
+    return sqlite3.connect(DB_PATH)
+
 def init_db():
     """初始化資料庫"""
     conn = sqlite3.connect(DB_PATH)
@@ -72,16 +93,28 @@ def init_db():
         )
     ''')
 
-    # 建立用戶表 (Users) - 用於傳統註冊登入
+    # 建立用戶表 (Users) - 統一管理所有登入方式
     c.execute('''
         CREATE TABLE IF NOT EXISTS users (
             user_id TEXT PRIMARY KEY,
             username TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
+            password_hash TEXT,
             email TEXT UNIQUE,
+            auth_method TEXT DEFAULT 'password',
+            pi_uid TEXT UNIQUE,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+
+    # 遷移：為舊表添加新欄位（如果不存在）
+    try:
+        c.execute('ALTER TABLE users ADD COLUMN auth_method TEXT DEFAULT "password"')
+    except sqlite3.OperationalError:
+        pass  # 欄位已存在
+    try:
+        c.execute('ALTER TABLE users ADD COLUMN pi_uid TEXT UNIQUE')
+    except sqlite3.OperationalError:
+        pass  # 欄位已存在
 
     # 建立密碼重置 Token 表
     c.execute('''
@@ -119,7 +152,7 @@ def init_db():
 
 def set_cache(key: str, data: Any):
     """設定系統快取 (存入 DB)"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     try:
         json_str = json.dumps(data, ensure_ascii=False)
@@ -138,7 +171,7 @@ def set_cache(key: str, data: Any):
 
 def get_cache(key: str) -> Optional[Any]:
     """獲取系統快取 (從 DB 讀取)"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     try:
         c.execute('SELECT value FROM system_cache WHERE key = ?', (key,))
@@ -156,7 +189,7 @@ def get_cache(key: str) -> Optional[Any]:
 
 def add_to_watchlist(user_id: str, symbol: str):
     """新增幣種到自選清單"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     try:
         c.execute('INSERT OR IGNORE INTO watchlist (user_id, symbol) VALUES (?, ?)', (user_id, symbol))
@@ -166,7 +199,7 @@ def add_to_watchlist(user_id: str, symbol: str):
 
 def remove_from_watchlist(user_id: str, symbol: str):
     """從自選清單移除幣種"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     try:
         c.execute('DELETE FROM watchlist WHERE user_id = ? AND symbol = ?', (user_id, symbol))
@@ -176,7 +209,7 @@ def remove_from_watchlist(user_id: str, symbol: str):
 
 def get_watchlist(user_id: str) -> List[str]:
     """獲取用戶的自選清單"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     try:
         c.execute('SELECT symbol FROM watchlist WHERE user_id = ?', (user_id,))
@@ -189,7 +222,7 @@ def get_watchlist(user_id: str) -> List[str]:
 
 def submit_prediction(user_id: str, username: str, symbol: str, direction: str, current_price: float):
     """提交用戶預測"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     try:
         c.execute('''
@@ -202,7 +235,7 @@ def submit_prediction(user_id: str, username: str, symbol: str, direction: str, 
 
 def get_leaderboard(limit: int = 10) -> List[Dict]:
     """獲取預測排行榜"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     try:
         # 簡單計算：勝場數最多的
@@ -236,7 +269,7 @@ def get_leaderboard(limit: int = 10) -> List[Dict]:
 
 def get_user_predictions(user_id: str) -> List[Dict]:
     """獲取單個用戶的預測歷史"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     try:
         c.execute('''
@@ -263,7 +296,7 @@ def get_user_predictions(user_id: str) -> List[Dict]:
 
 def create_session(session_id: str, title: str = "New Chat", user_id: str = "local_user"):
     """創建新對話會話"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     try:
         c.execute('''
@@ -278,7 +311,7 @@ def create_session(session_id: str, title: str = "New Chat", user_id: str = "loc
 
 def update_session_title(session_id: str, title: str):
     """更新對話標題"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     try:
         c.execute('UPDATE sessions SET title = ?, updated_at = datetime("now") WHERE session_id = ?', (title, session_id))
@@ -288,7 +321,7 @@ def update_session_title(session_id: str, title: str):
 
 def toggle_session_pin(session_id: str, is_pinned: bool):
     """切換對話置頂狀態"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     try:
         # Convert bool to int (0 or 1)
@@ -300,7 +333,7 @@ def toggle_session_pin(session_id: str, is_pinned: bool):
 
 def get_sessions(user_id: str = "local_user", limit: int = 20) -> List[Dict]:
     """獲取用戶的對話列表 (置頂優先)"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     try:
         c.execute('''
@@ -330,7 +363,7 @@ def get_sessions(user_id: str = "local_user", limit: int = 20) -> List[Dict]:
 
 def delete_session(session_id: str):
     """刪除對話會話及其歷史"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     try:
         c.execute('DELETE FROM sessions WHERE session_id = ?', (session_id,))
@@ -341,7 +374,7 @@ def delete_session(session_id: str):
 
 def save_chat_message(role: str, content: str, session_id: str = "default", user_id: str = "local_user", metadata: Optional[Dict] = None):
     """保存對話訊息，並自動更新 session 的 updated_at 和標題"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     try:
         # 1. 保存訊息
@@ -387,7 +420,7 @@ def save_chat_message(role: str, content: str, session_id: str = "default", user
 
 def get_chat_history(session_id: str = "default", limit: int = 50) -> List[Dict]:
     """獲取對話歷史"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     try:
         c.execute('''
@@ -417,7 +450,7 @@ def get_chat_history(session_id: str = "default", limit: int = 50) -> List[Dict]
 
 def clear_chat_history(session_id: str = "default"):
     """清除特定 session 的對話歷史"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     try:
         c.execute('DELETE FROM conversation_history WHERE session_id = ?', (session_id,))
@@ -448,7 +481,7 @@ def verify_password(stored_password: str, provided_password: str) -> bool:
 
 def create_user(username: str, password: str, email: str = None) -> Dict:
     """創建新用戶"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     try:
         # 檢查 email 是否已被使用
@@ -475,7 +508,7 @@ def create_user(username: str, password: str, email: str = None) -> Dict:
 
 def get_user_by_username(username: str) -> Optional[Dict]:
     """根據用戶名獲取用戶信息（包含密碼雜湊）"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     try:
         c.execute('SELECT user_id, username, password_hash, email FROM users WHERE username = ?', (username,))
@@ -493,7 +526,7 @@ def get_user_by_username(username: str) -> Optional[Dict]:
 
 def get_user_by_email(email: str) -> Optional[Dict]:
     """根據 Email 獲取用戶信息"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     try:
         c.execute('SELECT user_id, username, password_hash, email FROM users WHERE email = ?', (email,))
@@ -511,7 +544,7 @@ def get_user_by_email(email: str) -> Optional[Dict]:
 
 def update_password(user_id: str, new_password: str) -> bool:
     """更新用戶密碼"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     try:
         password_hash = hash_password(new_password)
@@ -524,11 +557,95 @@ def update_password(user_id: str, new_password: str) -> bool:
     finally:
         conn.close()
 
+# --- Pi Network User Functions ---
+
+def create_or_get_pi_user(pi_uid: str, username: str) -> Dict:
+    """
+    創建或獲取 Pi Network 用戶
+    - 如果 pi_uid 已存在，返回現有用戶
+    - 如果 username 被其他用戶使用，拋出錯誤
+    - 否則創建新用戶
+    """
+    print(f"[DEBUG] create_or_get_pi_user called: pi_uid={pi_uid}, username={username}")
+    conn = get_connection()
+    c = conn.cursor()
+    try:
+        # 檢查 pi_uid 是否已存在
+        c.execute('SELECT user_id, username, auth_method FROM users WHERE pi_uid = ?', (pi_uid,))
+        row = c.fetchone()
+        if row:
+            print(f"[DEBUG] Found existing Pi user: {row}")
+            return {
+                "user_id": row[0],
+                "username": row[1],
+                "auth_method": row[2],
+                "is_new": False
+            }
+
+        # 檢查 username 是否被其他用戶使用
+        c.execute('SELECT user_id, auth_method FROM users WHERE username = ?', (username,))
+        existing = c.fetchone()
+        if existing:
+            print(f"[DEBUG] Username conflict: {username} used by user_id={existing[0]}, auth_method={existing[1]}")
+            raise ValueError(f"Username '{username}' is already used by another account")
+
+        # 創建新 Pi 用戶
+        print(f"[DEBUG] Creating new Pi user: pi_uid={pi_uid}, username={username}")
+        user_id = pi_uid  # 使用 Pi UID 作為 user_id
+        c.execute('''
+            INSERT INTO users (user_id, username, password_hash, auth_method, pi_uid, created_at)
+            VALUES (?, ?, NULL, 'pi_network', ?, datetime('now'))
+        ''', (user_id, username, pi_uid))
+        conn.commit()
+        print(f"[DEBUG] Pi user created successfully: user_id={user_id}")
+
+        return {
+            "user_id": user_id,
+            "username": username,
+            "auth_method": "pi_network",
+            "is_new": True
+        }
+    except ValueError:
+        raise  # 重新拋出 ValueError (用戶名衝突)
+    except Exception as e:
+        print(f"[ERROR] create_or_get_pi_user failed: {type(e).__name__}: {e}")
+        raise
+    finally:
+        conn.close()
+
+def get_user_by_pi_uid(pi_uid: str) -> Optional[Dict]:
+    """根據 Pi UID 獲取用戶信息"""
+    conn = get_connection()
+    c = conn.cursor()
+    try:
+        c.execute('SELECT user_id, username, auth_method, created_at FROM users WHERE pi_uid = ?', (pi_uid,))
+        row = c.fetchone()
+        if row:
+            return {
+                "user_id": row[0],
+                "username": row[1],
+                "auth_method": row[2],
+                "created_at": row[3]
+            }
+        return None
+    finally:
+        conn.close()
+
+def is_username_available(username: str) -> bool:
+    """檢查用戶名是否可用（同時檢查 Pi 和 Email 用戶）"""
+    conn = get_connection()
+    c = conn.cursor()
+    try:
+        c.execute('SELECT 1 FROM users WHERE username = ?', (username,))
+        return c.fetchone() is None
+    finally:
+        conn.close()
+
 # --- Password Reset Token Functions ---
 
 def create_reset_token(user_id: str, expires_minutes: int = 30) -> str:
     """創建密碼重置 Token（30 分鐘有效）"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     try:
         # 先清除該用戶舊的 token
@@ -550,7 +667,7 @@ def create_reset_token(user_id: str, expires_minutes: int = 30) -> str:
 
 def get_reset_token(token: str) -> Optional[Dict]:
     """驗證重置 Token 並返回用戶信息（檢查是否過期）"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     try:
         c.execute('''
@@ -570,7 +687,7 @@ def get_reset_token(token: str) -> Optional[Dict]:
 
 def delete_reset_token(token: str) -> bool:
     """刪除已使用的重置 Token"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     try:
         c.execute('DELETE FROM password_reset_tokens WHERE token = ?', (token,))
@@ -584,7 +701,7 @@ def delete_reset_token(token: str) -> bool:
 
 def cleanup_expired_tokens():
     """清理過期的 Token（可定期執行）"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     try:
         c.execute('DELETE FROM password_reset_tokens WHERE expires_at < datetime("now")')
@@ -599,7 +716,7 @@ LOCKOUT_HOURS = 24
 
 def record_login_attempt(username: str, success: bool, ip_address: str = None):
     """記錄登入嘗試"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     try:
         c.execute('''
@@ -620,7 +737,7 @@ def record_login_attempt(username: str, success: bool, ip_address: str = None):
 
 def get_failed_attempts(username: str, hours: int = LOCKOUT_HOURS) -> int:
     """獲取指定時間內的失敗登入次數"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     try:
         c.execute('''
@@ -638,7 +755,7 @@ def is_account_locked(username: str) -> tuple:
     檢查帳號是否被鎖定
     返回: (is_locked: bool, remaining_minutes: int)
     """
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     try:
         failed_count = get_failed_attempts(username, LOCKOUT_HOURS)
@@ -667,7 +784,7 @@ def is_account_locked(username: str) -> tuple:
 
 def clear_login_attempts(username: str):
     """清除用戶的登入嘗試記錄（管理員用）"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     try:
         c.execute('DELETE FROM login_attempts WHERE username = ?', (username,))

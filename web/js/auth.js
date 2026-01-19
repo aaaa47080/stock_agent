@@ -3,6 +3,24 @@
 // 支持 Pi Network 和測試模式
 // ========================================
 
+// Debug Logger - 發送 log 到伺服器
+const DebugLog = {
+    async send(level, message, data = null) {
+        try {
+            await fetch('/api/debug-log', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ level, message, data })
+            });
+        } catch (e) {
+            console.error('DebugLog error:', e);
+        }
+    },
+    info(msg, data) { this.send('info', msg, data); console.log(msg, data); },
+    error(msg, data) { this.send('error', msg, data); console.error(msg, data); },
+    warn(msg, data) { this.send('warn', msg, data); console.warn(msg, data); }
+};
+
 const AuthManager = {
     // 當前用戶資料
     currentUser: null,
@@ -29,7 +47,7 @@ const AuthManager = {
             try {
                 Pi.init({
                     version: "2.0",
-                    sandbox: true  // true = 測試環境, false = 正式環境
+                    sandbox: false  // true = 測試環境, false = 正式環境
                 });
                 this.piInitialized = true;
                 console.log('Pi SDK initialized successfully');
@@ -70,24 +88,45 @@ const AuthManager = {
      * 使用 Pi SDK 進行真實認證
      */
     async authenticateWithPi() {
-        console.log('authenticateWithPi called');
+        DebugLog.info('authenticateWithPi called');
         try {
             if (!window.Pi) {
+                DebugLog.error('Pi SDK not loaded');
                 throw new Error('Pi SDK not loaded. Please open in Pi Browser.');
             }
 
             // 確保 Pi SDK 已初始化
             if (!this.piInitialized) {
-                console.log('Initializing Pi SDK before auth...');
+                DebugLog.info('Initializing Pi SDK before auth...');
                 this.initPiSDK();
             }
 
-            console.log('Calling Pi.authenticate...');
+            DebugLog.info('Calling Pi.authenticate()...');
             const auth = await Pi.authenticate(
                 ['username', 'payments'],
                 this._onIncompletePayment
             );
-            console.log('Pi.authenticate returned:', auth);
+            DebugLog.info('Pi.authenticate returned', { uid: auth?.user?.uid, username: auth?.user?.username });
+
+            // 同步用戶到後端資料庫
+            DebugLog.info('Syncing Pi user to backend...');
+            const syncResponse = await fetch('/api/user/pi-sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    pi_uid: auth.user.uid,
+                    username: auth.user.username,
+                    access_token: auth.accessToken
+                })
+            });
+
+            const syncResult = await syncResponse.json();
+            DebugLog.info('Pi user sync result', syncResult);
+
+            if (!syncResponse.ok) {
+                // 用戶名衝突或其他錯誤
+                throw new Error(syncResult.detail || '用戶同步失敗');
+            }
 
             this.currentUser = {
                 uid: auth.user.uid,
@@ -106,7 +145,7 @@ const AuthManager = {
                 await initChat();
             }
 
-            return { success: true, user: this.currentUser };
+            return { success: true, user: this.currentUser, isNewUser: syncResult.is_new_user };
         } catch (error) {
             console.error('Pi authentication failed:', error);
             return { success: false, error: error.message };
@@ -202,7 +241,7 @@ const AuthManager = {
         const loginBtn = document.getElementById('auth-login-btn');
         const logoutBtn = document.getElementById('auth-logout-btn');
         const userInfo = document.getElementById('auth-user-info');
-        const loginOverlay = document.getElementById('login-overlay');
+        const loginModal = document.getElementById('login-modal');
 
         // Settings Profile Elements
         const profileCard = document.getElementById('settings-profile-card');
@@ -222,7 +261,7 @@ const AuthManager = {
                 userInfo.textContent = this.currentUser.username || 'User';
                 userInfo.classList.remove('hidden');
             }
-            if (loginOverlay) loginOverlay.classList.add('hidden');
+            if (loginModal) loginModal.classList.add('hidden');
 
             // Update Profile Card in Settings
             if (profileCard) {
@@ -245,7 +284,7 @@ const AuthManager = {
             if (loginBtn) loginBtn.classList.remove('hidden');
             if (logoutBtn) logoutBtn.classList.add('hidden');
             if (userInfo) userInfo.classList.add('hidden');
-            if (loginOverlay) loginOverlay.classList.remove('hidden');
+            if (loginModal) loginModal.classList.remove('hidden');
 
             // Hide Profile Card
             if (profileCard) profileCard.classList.add('hidden');
@@ -312,13 +351,23 @@ function toggleAuthMode(mode) {
 }
 
 async function handlePiLogin() {
-    console.log('handlePiLogin called');
-    console.log('window.Pi exists:', !!window.Pi);
-    console.log('piInitialized:', AuthManager.piInitialized);
+    DebugLog.info('handlePiLogin called', {
+        hasPi: !!window.Pi,
+        userAgent: navigator.userAgent,
+        url: window.location.href
+    });
+
+    if (!window.Pi) {
+        DebugLog.error('Pi SDK not found');
+        showToast('請在 Pi Browser 中開啟', 'error');
+        return;
+    }
+
+    DebugLog.info('Pi SDK found, calling authenticateWithPi...');
 
     try {
         const result = await AuthManager.authenticateWithPi();
-        console.log('Auth result:', result);
+        DebugLog.info('authenticateWithPi result', result);
         if (result.success) {
             hideLoginModal();
             showToast('Pi Network 認證成功', 'success');
@@ -326,7 +375,7 @@ async function handlePiLogin() {
             showToast('Pi Network 認證失敗: ' + result.error, 'error');
         }
     } catch (error) {
-        console.error('handlePiLogin error:', error);
+        DebugLog.error('handlePiLogin error', { message: error.message, stack: error.stack });
         showToast('錯誤: ' + error.message, 'error');
     }
 }

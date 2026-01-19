@@ -12,13 +12,19 @@ import re
 from typing import List, Dict, Generator, Optional, Any, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pydantic import BaseModel, Field
+import time
+
+# LangChain Imports
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
+from langchain_core.language_models import BaseChatModel
+from langchain.agents import create_agent
 
 from core.agent_registry import agent_registry, AgentConfig
+from utils.llm_client import extract_json_from_response
 
-
-# ============================================================================
+# ============================================================================ 
 # 數據模型
-# ============================================================================
+# ============================================================================ 
 
 class TaskAnalysis(BaseModel):
     """任務分析結果"""
@@ -43,29 +49,18 @@ class SubTask(BaseModel):
     symbol: Optional[str] = Field(default=None, description="相關的加密貨幣符號")
 
 
-# ============================================================================
+# ============================================================================ 
 # Admin Agent 主類
-# ============================================================================
+# ============================================================================ 
 
 class AdminAgent:
     """
     Admin Agent - 任務分派和協調中樞
-
-    使用方式:
-        admin = AdminAgent(user_llm_client, user_provider)
-        task = admin.analyze_task("BTC 現在多少錢？")
-
-        if task.is_complex:
-            for chunk in admin.route_complex_task(message, task):
-                yield chunk
-        else:
-            for chunk in admin.route_simple_task(task):
-                yield chunk
     """
 
     def __init__(
-        self,
-        user_llm_client=None,
+        self, 
+        user_llm_client: BaseChatModel = None,
         user_provider: str = "openai",
         verbose: bool = False,
         user_model: str = None
@@ -74,7 +69,7 @@ class AdminAgent:
         初始化 Admin Agent
 
         Args:
-            user_llm_client: 用戶提供的 LLM Client
+            user_llm_client: 用戶提供的 LLM Client (LangChain BaseChatModel)
             user_provider: LLM Provider (openai, openrouter, google_gemini)
             verbose: 是否顯示詳細日誌
             user_model: 用戶選擇的模型名稱
@@ -99,34 +94,9 @@ class AdminAgent:
             )
         return self._planning_manager
 
-    def _get_model_for_provider(self) -> str:
-        """根據 provider 獲取適合的模型名稱"""
-        try:
-            from core.model_config import get_default_model
-            if self.user_provider == "google_gemini":
-                return get_default_model("google_gemini")
-            elif self.user_provider == "openrouter":
-                return get_default_model("openrouter")
-            else:
-                return get_default_model("openai")
-        except ImportError:
-            # 如果配置文件不可用，使用默認值
-            if self.user_provider == "google_gemini":
-                return "gemini-3-flash-preview"
-            elif self.user_provider == "openrouter":
-                return "gpt-4o-mini"
-            else:
-                return "gpt-4o-mini"
-
     def analyze_task(self, user_message: str) -> TaskAnalysis:
         """
         使用 LLM 分析任務複雜度和適合的 Agent
-
-        Args:
-            user_message: 用戶輸入的消息
-
-        Returns:
-            TaskAnalysis 對象
         """
         # 如果沒有 LLM client，使用 fallback 方法
         if not self.user_llm_client:
@@ -136,7 +106,8 @@ class AdminAgent:
         agent_descriptions = agent_registry.get_agent_description_for_llm()
         enabled_agents = list(agent_registry.get_enabled_agents().keys())
 
-        system_prompt = f"""你是一個智能任務分析器 (Admin Agent)。你的任務是：
+        system_prompt = f"""
+        你是一個智能任務分析器 (Admin Agent)。你的任務是：
         1. 分析用戶的問題
         2. 判斷任務的複雜度（簡單/複雜）
         3. 決定最佳的執行模式 (Execution Mode)
@@ -243,27 +214,17 @@ class AdminAgent:
         """
 
         try:
-            response = self.user_llm_client.chat.completions.create(
-                model=self._get_model_for_provider(),
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_message}
-                ],
-                temperature=0.3,
-                response_format={"type": "json_object"} if self.user_provider != "google_gemini" else None
-            )
+            # LangChain invoke
+            messages = [
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=user_message)
+            ]
+            response = self.user_llm_client.invoke(messages)
+            result_text = response.content
 
-            result_text = response.choices[0].message.content
-
-            # 嘗試解析 JSON
+            # 解析 JSON
             try:
-                # 處理可能包含 markdown 代碼塊的情況
-                if "```json" in result_text:
-                    result_text = result_text.split("```json")[1].split("```")[0]
-                elif "```" in result_text:
-                    result_text = result_text.split("```")[1].split("```")[0]
-
-                result = json.loads(result_text)
+                result = extract_json_from_response(result_text)
 
                 # 驗證 assigned_agent 是有效的
                 if result.get("assigned_agent") not in enabled_agents:
@@ -279,7 +240,7 @@ class AdminAgent:
                     original_question=user_message
                 )
 
-            except json.JSONDecodeError:
+            except Exception:
                 if self.verbose:
                     print(f"[AdminAgent] JSON parse error, using fallback. Response: {result_text[:200]}")
                 return self._fallback_analyze(user_message)
@@ -292,8 +253,6 @@ class AdminAgent:
     def _fallback_analyze(self, user_message: str) -> TaskAnalysis:
         """
         當 LLM 分析失敗時的降級方案
-
-        使用關鍵詞匹配進行基礎路由
         """
         message_lower = user_message.lower()
         symbols = self._extract_symbols(user_message)
@@ -347,11 +306,7 @@ class AdminAgent:
         )
 
     def _fallback_agent_selection(self, user_message: str) -> str:
-        """
-        當 LLM 無法判斷時的降級選擇
-
-        邏輯：有加密貨幣符號 → shallow_crypto_agent，否則 → admin_chat_agent
-        """
+        """當 LLM 無法判斷時的降級選擇"""
         symbols = self._extract_symbols(user_message)
         if symbols:
             return "shallow_crypto_agent"
@@ -359,38 +314,20 @@ class AdminAgent:
 
     def _extract_symbols(self, text: str) -> List[str]:
         """從文本中提取加密貨幣符號"""
-        # 擴展幣種列表，包含更多熱門幣種
-        crypto_symbols = [
-            # Major coins
-            'BTC', 'ETH', 'SOL', 'XRP', 'ADA', 'DOGE', 'DOT', 'AVAX', 'LTC', 'LINK', 'UNI', 'BCH', 'SHIB', 'ETC', 'TRX', 'MATIC', 'XLM', 'ATOM', 'NEAR', 'APT', 'AR', 'PI', 'TON',
-            # Altcoins
-            'BNB', 'SUI', 'STX', 'FLOW', 'HBAR', 'VET', 'ALGO', 'XTZ', 'EOS', 'XMR', 'ZEC', 'ZIL', 'ONT', 'THETA', 'AAVE', 'SAND', 'MANA', 'PEPE', 'FLOKI', 'MEME', 'WIF', 'BONK',
-            'RENDER', 'TAO', 'SEI', 'JUP', 'PYTH', 'STRK', 'WLD', 'ORDI', 'INJ', 'TIA', 'DYM', 'FIL', 'ICP', 'SGB', 'XDC', 'IOTX', 'KDA', 'QLC', 'XVG', 'LSK', 'STEEM', 'HIVE',
-            'WAVES', 'DGB', 'SC', 'RVN', 'DCR', 'SYS', 'UBQ', 'XEM', 'FTM', 'CRV', 'MKR', 'COMP', 'BAL', 'YFI', 'SNX', 'REN', 'KNC', 'BAND', 'RLC', 'UMA', 'SRM', 'OCEAN', 'CVC',
-            'ANKR', 'OGN', 'CTSI', 'BNT', 'WRX', 'STORJ', 'ZRX', 'BAL', 'RLC', 'OCEAN', 'CVC', 'ANKR', 'OGN', 'CTSI', 'BAND', 'WRX', 'STORJ', 'ILV', 'YGG', 'IMX', 'DYDX', 'GMX',
-            'SPELL', 'UST', 'LUNA', 'FIL', 'HBAR', 'VET', 'IOTA', 'CKB', 'RVN', 'ALGO', 'QTUM', 'ONT', 'ZEC', 'DASH', 'ZEN', 'DCR', 'BAT', 'REP', 'LINK', 'COMP', 'SNX', 'MKR', 'YFI',
-            'CRV', 'UMA', 'UNI', 'SUSHI', 'BCH', 'LTC', 'XMR', 'ADA', 'DOT', 'DOGE', 'ATOM', 'BCH', 'XRP', 'ETC', 'TRX', 'EOS', 'XLM', 'BSV', 'NEO', 'HT', 'OKB', 'LEO', 'FTT', 'APT',
-            'GMT', 'SAND', 'MANA', 'AXS', 'ILV', 'RLC', 'YGG', 'IMX', 'DYDX', 'GMX', 'SPELL', 'UST', 'LUNA', 'FIL', 'HBAR', 'VET', 'IOTA', 'CKB', 'RVN', 'ALGO', 'QTUM', 'ONT', 'ZEC',
-            'DASH', 'ZEN', 'DCR', 'BAT', 'REP', 'FIL', 'LINK', 'COMP', 'SNX', 'MKR', 'YFI', 'CRV', 'UMA', 'UNI', 'SUSHI', 'BCH', 'LTC', 'XMR', 'ADA', 'DOT', 'DOGE', 'ATOM', 'BCH',
-            'XRP', 'ETC', 'TRX', 'EOS', 'XLM', 'BSV', 'NEO', 'HT', 'OKB', 'LEO', 'FTT', 'APT', 'GMT', 'SGB', 'XDC', 'IOTX', 'KDA', 'QLC', 'ADA', 'XVG', 'LSK', 'STEEM', 'HIVE',
-            'WAVES', 'XTZ', 'DGB', 'SC', 'ZIL', 'RVN', 'DCR', 'SYS', 'UBQ', 'XEM', 'LSK', 'STEEM', 'HIVE', 'WAVES', 'XTZ', 'DGB', 'SC', 'ZIL', 'RVN', 'DCR', 'SYS', 'UBQ', 'XEM',
-            'FLOW', 'ICP', 'SOL', 'AVAX', 'FTM', 'NEAR', 'AAVE', 'CRV', 'MKR', 'COMP', 'BAL', 'YFI', 'SNX', 'REN', 'KNC', 'BAND', 'RLC', 'UMA', 'SRM', 'OCEAN', 'CVC', 'ANKR', 'OGN',
-            'CTSI', 'BNT', 'WRX', 'STORJ', 'ZRX', 'BAL', 'RLC', 'OCEAN', 'CVC', 'ANKR', 'OGN', 'CTSI', 'BAND', 'WRX', 'STORJ'
-        ]
-
         # 使用工具提取加密貨幣符號（保留原有方法作為備用）
         try:
             from core.tools import extract_crypto_symbols_tool
             result = extract_crypto_symbols_tool(text)
             return result.get("extracted_symbols", [])
         except:
-            # 如果工具不可用，使用原有的正則表達式方法
+             # 常見的加密貨幣符號 (精簡版，避免過大)
+            crypto_symbols = ['BTC', 'ETH', 'SOL', 'XRP', 'ADA', 'DOGE', 'DOT', 'AVAX', 'LTC', 'LINK', 'UNI', 'BCH', 'SHIB', 'PI', 'BNB']
+            
             escaped_symbols = [re.escape(symbol) for symbol in crypto_symbols]
             pattern = r'(?<![a-zA-Z0-9])(' + '|'.join(escaped_symbols) + r')(?![a-zA-Z0-9])'
             matches = re.findall(pattern, text.upper(), re.IGNORECASE)
-
-            # 去重並過濾常見非幣種詞
-            common_words = {'USDT', 'BUSD', 'USD', 'THE', 'AND', 'FOR', 'ARE', 'CAN', 'SEE', 'DID', 'HAS', 'WAS', 'NOT', 'BUT', 'ALL', 'ANY', 'NEW', 'NOW', 'ONE', 'TWO', 'BUY', 'SELL', 'PAY', 'GET', 'RUN', 'SET', 'TOP', 'LOW', 'KEY', 'USE', 'TRY', 'BIG', 'OLD', 'BAD', 'HOT', 'RED', 'BIT', 'EAT', 'FLY', 'MAN', 'BOY', 'ART', 'CAR', 'DAY', 'WAY', 'HEY', 'WHY', 'HOW', 'WHO'}
+            
+            common_words = {'USDT', 'USD', 'THE', 'AND', 'BUY', 'SELL'}
             return list(set(m for m in matches if m not in common_words))
 
     def route_simple_task(
@@ -399,17 +336,7 @@ class AdminAgent:
         user_message: str,
         **kwargs
     ) -> Generator[str, None, None]:
-        """
-        處理簡單任務 - 直接路由到單一 Agent
-
-        Args:
-            task: 任務分析結果
-            user_message: 原始用戶消息
-            **kwargs: 傳遞給 Agent 的額外參數
-
-        Yields:
-            Agent 的回應片段
-        """
+        """處理簡單任務"""
         agent_config = agent_registry.get_agent(task.assigned_agent)
 
         if not agent_config:
@@ -421,13 +348,10 @@ class AdminAgent:
 
         # 根據 Agent 類型創建對應的執行器
         if task.assigned_agent == "deep_crypto_agent" and agent_config.use_debate_system:
-            # 深度分析走完整流程
             yield from self._execute_deep_analysis(task, user_message, **kwargs)
         elif task.assigned_agent == "shallow_crypto_agent":
-            # 淺層分析使用 CryptoAgent with tools
             yield from self._execute_shallow_analysis(task, user_message, **kwargs)
         else:
-            # 行政或其他 Agent 使用簡單對話
             yield from self._execute_chat(task, user_message, **kwargs)
 
     def route_complex_task(
@@ -436,33 +360,19 @@ class AdminAgent:
         task: TaskAnalysis,
         **kwargs
     ) -> Generator[str, None, None]:
-        """
-        處理複雜任務 - 交給 Planning Manager 拆分後並行執行
-
-        Args:
-            user_message: 原始用戶消息
-            task: 任務分析結果
-            **kwargs: 額外參數
-
-        Yields:
-            處理過程和結果
-        """
+        """處理複雜任務"""
         yield "[PROCESS_START]\n"
         yield f"[PROCESS] 🧠 Admin Agent 判定這是一個複雜任務\n"
         yield f"[PROCESS] 📋 原因: {task.complexity_reason}\n"
         yield f"[PROCESS] ⚙️ 執行模式: {task.execution_mode}\n"
 
-        # 根據 execution_mode 進行路由 (不再依賴硬編碼規則)
         if task.execution_mode == "planning":
-            # 規劃模式：多幣種或混合意圖
             yield f"[PROCESS] 🔀 啟動動態規劃路徑...\n"
             yield from self._execute_multi_symbol_analysis(task, user_message, **kwargs)
         elif task.execution_mode == "deep_analysis":
-            # 深度分析模式：單幣種深度研究
             yield f"[PROCESS] 🎯 啟動單幣種深度分析...\n"
             yield from self._execute_deep_analysis(task, user_message, **kwargs)
         else:
-            # Fallback (雖然 route_complex_task 通常是 is_complex=True，但以防萬一)
             yield f"[PROCESS] ⚠️ 未知模式，嘗試使用規劃路徑...\n"
             yield from self._execute_multi_symbol_analysis(task, user_message, **kwargs)
 
@@ -472,8 +382,7 @@ class AdminAgent:
         user_message: str,
         **kwargs
     ) -> Generator[str, None, None]:
-        """執行淺層分析（使用帶工具的 CryptoAgent）"""
-        import time
+        """執行淺層分析"""
         start_time = time.time()
 
         yield "[PROCESS_START]\n"
@@ -486,7 +395,7 @@ class AdminAgent:
             agent = CryptoAgent(
                 user_api_key=kwargs.get("user_api_key"),
                 user_provider=self.user_provider,
-                user_client=self.user_llm_client,
+                user_client=self.user_llm_client, # Pass LangChain client
                 verbose=self.verbose
             )
 
@@ -516,20 +425,14 @@ class AdminAgent:
         user_message: str,
         **kwargs
     ) -> Generator[str, None, None]:
-        """
-        執行深度分析（使用完整的 LangGraph 會議討論流程）
-
-        這會調用現有的 app.stream() 流程
-        """
+        """執行深度分析"""
         from core.graph import app
         from core.config import DEFAULT_KLINES_LIMIT
 
-        # 優先使用 TaskAnalysis 中的 symbols
         symbol = None
         if task.symbols and len(task.symbols) > 0:
             symbol = task.symbols[0]
 
-        # 如果沒有，嘗試本地提取
         if not symbol:
             extracted_symbols = self._extract_symbols(user_message)
             symbol = extracted_symbols[0] if extracted_symbols else None
@@ -541,7 +444,6 @@ class AdminAgent:
         yield "[PROCESS_START]\n"
         yield f"[PROCESS] 🚀 正在啟動深度研究 Agent，分析 {symbol}...\n"
 
-        # 查找交易所
         try:
             exchange_info = self._find_available_exchange(symbol)
             if not exchange_info:
@@ -557,7 +459,6 @@ class AdminAgent:
             yield "[PROCESS_END]\n"
             return
 
-        # 構建 state_input
         market_type = kwargs.get("market_type", "spot")
         state_input = {
             "symbol": normalized_symbol,
@@ -577,24 +478,19 @@ class AdminAgent:
             "execute_trade": False,
             "debate_round": 0,
             "debate_history": [],
-            "user_llm_client": self.user_llm_client,
+            "user_llm_client": self.user_llm_client, # Pass LangChain client
             "user_provider": self.user_provider
         }
 
-        # 執行分析流程
         try:
             accumulated_state = state_input.copy()
 
             for event in app.stream(state_input):
                 for node_name, state_update in event.items():
                     accumulated_state.update(state_update)
-
-                    # 輸出各節點的進度信息
                     yield from self._format_node_output(node_name, state_update, accumulated_state)
 
             yield "[PROCESS_END]\n"
-
-            # 最終報告（使用簡化版，因為辯論過程已即時輸出）
             yield "[RESULT]\n"
             from core.tools import format_compact_analysis_result
             formatted_report = format_compact_analysis_result(
@@ -618,14 +514,7 @@ class AdminAgent:
         user_message: str,
         **kwargs
     ) -> Generator[str, None, None]:
-        """
-        執行多幣種或複雜並行分析
-
-        Args:
-            task: 任務分析結果
-            user_message: 原始用戶消息
-        """
-        # 使用 Planning Manager 智能拆分任務
+        """執行多幣種或複雜並行分析"""
         yield f"[PROCESS] 🧠 正在調用 Planning Manager 進行任務拆解...\n"
         # 傳遞空列表作為 symbols，讓 Planning Manager 自行從 message 中提取
         plan = self.planning_manager.create_task_plan(user_message, [])
@@ -633,14 +522,11 @@ class AdminAgent:
 
         yield f"[PROCESS] 📊 拆解出 {len(subtasks)} 個子任務\n"
 
-        # 列出所有子任務細節
         for st in subtasks:
             agent_name = st.assigned_agent
             yield f"[PROCESS]   📍 [子任務 {st.id}] {st.description} ({agent_name})\n"
 
-        # 並行執行子任務
         results = {}
-        # 限制並發數，避免 API Rate Limit
         max_workers = min(4, len(subtasks))
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -654,49 +540,38 @@ class AdminAgent:
                 try:
                     result = future.result()
                     results[task_id] = result
-
-                    # 找到對應的子任務以獲取描述
                     st = next((s for s in subtasks if s.id == task_id), None)
                     desc = st.description if st else task_id
-
                     yield f"[PROCESS] ✅ 完成子任務: {desc}\n"
                 except Exception as e:
                     results[task_id] = f"錯誤: {str(e)}"
                     yield f"[PROCESS] ❌ 子任務 {task_id} 失敗: {str(e)}\n"
 
         yield "[PROCESS_END]\n"
-
-        # 聚合結果
         yield "[RESULT]\n"
-
-        # 3. 最終合成 (Synthesis) - 將所有結果彙整為一個完整的回答
         yield f"[PROCESS] 🧠 正在彙整 {len(results)} 個子任務的結果...\n"
 
-        synthesis_prompt = f"""你是一個高級金融分析助手。用戶問了一個複雜的問題，我們已經將其拆解為多個子任務並執行完畢。
-現在請根據「用戶原始問題」和「子任務執行結果」，生成一個完整、流暢、邏輯連貫的最終回答。
+        synthesis_prompt = f"""
+        你是一個高級金融分析助手。用戶問了一個複雜的問題，我們已經將其拆解為多個子任務並執行完畢。
+        現在請根據「用戶原始問題」和「子任務執行結果」，生成一個完整、流暢、邏輯連貫的最終回答。
 
-## 用戶原始問題：
-{user_message}
+        ## 用戶原始問題：
+        {user_message}
 
-## 子任務執行結果：
-"""
+        ## 子任務執行結果：
+        """
         for task_id, result in results.items():
-            # 找到對應的子任務描述
             desc = next((st.description for st in subtasks if st.id == task_id), "未知任務")
             synthesis_prompt += f"\n--- 子任務: {desc} ---\n{result}\n"
 
         synthesis_prompt += "\n\n## 你的任務：\n請綜合以上資訊，直接回答用戶的問題。不需要提及「子任務」或「拆解過程」，直接給出最終答案即可。請使用繁體中文。"
 
         try:
-            response = self.user_llm_client.chat.completions.create(
-                model=self._get_model_for_provider(),
-                messages=[
-                    {"role": "system", "content": "你是一個專業的整合分析師。"},
-                    {"role": "user", "content": synthesis_prompt}
-                ],
-                temperature=0.7
-            )
-            final_answer = response.choices[0].message.content
+            response = self.user_llm_client.invoke([
+                SystemMessage(content="你是一個專業的整合分析師。"),
+                HumanMessage(content=synthesis_prompt)
+            ])
+            final_answer = response.content
             yield final_answer
 
         except Exception as e:
@@ -706,7 +581,7 @@ class AdminAgent:
                 yield f"### {desc}\n{result}\n\n"
 
     def _execute_subtask_sync(self, subtask: SubTask, **kwargs) -> str:
-        """同步執行子任務（用於並行執行）"""
+        """同步執行子任務"""
         try:
             from core.agents import CryptoAgent
 
@@ -717,13 +592,11 @@ class AdminAgent:
                 verbose=self.verbose
             )
 
-            # 構建查詢
             if subtask.symbol:
                 query = f"{subtask.symbol} 的價格和技術指標"
             else:
                 query = subtask.description
 
-            # 執行並收集結果
             result_parts = []
             for chunk in agent.chat_stream(query):
                 result_parts.append(chunk)
@@ -739,8 +612,7 @@ class AdminAgent:
         user_message: str,
         **kwargs
     ) -> Generator[str, None, None]:
-        """執行簡單對話（支援工具調用）"""
-        import time
+        """執行簡單對話"""
         start_time = time.time()
 
         if not self.user_llm_client:
@@ -750,67 +622,34 @@ class AdminAgent:
         yield "[PROCESS_START]\n"
         yield f"[PROCESS] 🤖 正在處理您的問題...\n"
 
-        # 檢查 Agent 是否有配置工具
         agent_config = agent_registry.get_agent(task.assigned_agent)
         agent_tools = agent_config.tools if agent_config else []
-
         response_content = None
 
-        # 如果有工具，使用帶工具的 Agent
+        # 1. 嘗試使用工具
         if agent_tools:
             try:
                 from core.tools import get_tools_by_names
-                from langchain.chat_models import init_chat_model
-                from langchain.agents import create_agent  # 使用最新的 create_agent API
-                from langchain_core.messages import HumanMessage, AIMessage
-                import os
-
+                
                 # 獲取工具
                 tools = get_tools_by_names(agent_tools)
 
                 if tools:
                     yield f"[PROCESS] 🔧 載入 {len(tools)} 個工具\n"
-
-                # 統一使用 init_chat_model 創建 LLM
-                llm = None
-                if self.user_provider == "google_gemini":
-                    api_key = kwargs.get("user_api_key") or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-                    if api_key:
-                        model_name = self.user_model or "gemini-2.0-flash-exp"
-                        llm = init_chat_model(
-                            model=model_name,
-                            model_provider="google_genai",
-                            temperature=0.7,
-                            api_key=api_key
-                        )
-                else:
-                    # OpenAI 或 OpenRouter
-                    api_key = kwargs.get("user_api_key") or os.getenv("OPENAI_API_KEY")
-                    base_url = None
-                    if self.user_provider == "openrouter":
-                        base_url = "https://openrouter.ai/api/v1"
-                    if api_key:
-                        model_name = self.user_model or self._get_model_for_provider()
-                        llm = init_chat_model(
-                            model=model_name,
-                            model_provider="openai",
-                            temperature=0.7,
-                            api_key=api_key,
-                            base_url=base_url
-                        )
-
-                if llm and tools:
-                    # 使用最新的 create_agent API 創建 Agent
-                    system_prompt = """你是一個友善的加密貨幣分析助手。
+                    
+                    system_prompt = """
+                    你是一個友善的加密貨幣分析助手。
                     你可以幫助用戶了解加密貨幣市場、回答問題、提供使用說明。
                     你有權限使用工具來查詢當前時間等資訊。
-                    請用繁體中文回答。"""
+                    請用繁體中文回答。
+                    """
 
                     yield f"[PROCESS] 💬 正在生成回應...\n"
-                    agent = create_agent(model=llm, tools=tools, system_prompt=system_prompt)
+                    
+                    # 使用 self.user_llm_client (BaseChatModel)
+                    agent = create_agent(model=self.user_llm_client, tools=tools, system_prompt=system_prompt)
                     result = agent.invoke({"messages": [HumanMessage(content=user_message)]})
 
-                    # 提取 AI 回應
                     if "messages" in result:
                         for msg in reversed(result["messages"]):
                             if isinstance(msg, AIMessage) and msg.content:
@@ -821,31 +660,28 @@ class AdminAgent:
                                 else:
                                     response_content = str(content)
                                 break
-
+                                
             except Exception as e:
                 if self.verbose:
-                    print(f"[AdminAgent] Tool-based chat failed: {e}, falling back to simple chat")
-                # 繼續使用無工具對話作為 fallback
+                    print(f"[AdminAgent] Tool-based chat failed: {e}")
 
-        # 無工具或工具執行失敗時，使用純對話模式
+        # 2. 如果沒有工具或工具執行失敗，直接調用 LLM
         if response_content is None:
             try:
-                system_prompt = """你是一個友善的加密貨幣分析助手。
-你可以幫助用戶了解加密貨幣市場、回答問題、提供使用說明。
-對於投資建議，請提醒用戶這只是參考意見，不構成投資建議。
-請用繁體中文回答。"""
+                system_prompt = """
+                你是一個友善的加密貨幣分析助手。
+                你可以幫助用戶了解加密貨幣市場、回答問題、提供使用說明。
+                對於投資建議，請提醒用戶這只是參考意見，不構成投資建議。
+                請用繁體中文回答。
+                """
 
                 yield f"[PROCESS] 💬 正在生成回應...\n"
-                response = self.user_llm_client.chat.completions.create(
-                    model=self._get_model_for_provider(),
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_message}
-                    ],
-                    temperature=0.7
-                )
-
-                response_content = response.choices[0].message.content
+                
+                response = self.user_llm_client.invoke([
+                    SystemMessage(content=system_prompt),
+                    HumanMessage(content=user_message)
+                ])
+                response_content = response.content
 
             except Exception as e:
                 elapsed_time = time.time() - start_time
@@ -854,7 +690,6 @@ class AdminAgent:
                 yield f"處理您的請求時發生錯誤: {str(e)}"
                 return
 
-        # 輸出時間統計和結果
         elapsed_time = time.time() - start_time
         yield f"[PROCESS] ✅ 處理完成 (耗時: {elapsed_time:.2f}秒)\n"
         yield "[PROCESS_END]\n"
@@ -929,25 +764,16 @@ class AdminAgent:
 
                 yield f"[PROCESS] ⚔️ **第 {round_num} 輪辯論: {topic}**\n"
 
-                # 多頭觀點
                 bull = latest.get('bull', {})
                 if bull:
                     bull_conf = bull.get('confidence', 0)
-                    bull_points = bull.get('key_points', [])
                     yield f"[PROCESS]   🐂 **多頭** (信心: {bull_conf:.0f}%)\n"
-                    for point in bull_points[:2]:  # 只顯示前2個重點
-                        yield f"[PROCESS]      • {point[:60]}{'...' if len(point) > 60 else ''}\n"
 
-                # 空頭觀點
                 bear = latest.get('bear', {})
                 if bear:
                     bear_conf = bear.get('confidence', 0)
-                    bear_points = bear.get('key_points', [])
                     yield f"[PROCESS]   🐻 **空頭** (信心: {bear_conf:.0f}%)\n"
-                    for point in bear_points[:2]:  # 只顯示前2個重點
-                        yield f"[PROCESS]      • {point[:60]}{'...' if len(point) > 60 else ''}\n"
 
-                # 中立觀點（簡短顯示）
                 neutral = latest.get('neutral', {})
                 if neutral:
                     neutral_arg = neutral.get('argument', '')

@@ -4,20 +4,20 @@
 ⭐ 重要：完全使用用戶提供的 key，不從 .env 讀取
 """
 
-import openai
 from typing import Any
-
+from langchain.chat_models import init_chat_model
+from langchain_core.messages import HumanMessage
 
 def create_user_llm_client(provider: str, api_key: str) -> Any:
     """
-    根據用戶提供的 key 創建 LLM 客戶端
+    根據用戶提供的 key 創建 LLM 客戶端 (LangChain BaseChatModel)
 
     Args:
         provider: "openai", "google_gemini", "openrouter"
         api_key: 用戶的 API key
 
     Returns:
-        配置好的 LLM 客戶端
+        配置好的 LLM 客戶端 (BaseChatModel)
 
     Raises:
         ValueError: 如果 provider 不支援或 api_key 為空
@@ -26,42 +26,30 @@ def create_user_llm_client(provider: str, api_key: str) -> Any:
         raise ValueError("API key 不能為空")
 
     api_key = api_key.strip()
+    
+    lc_provider = "openai"
+    base_url = None
+    default_model = "gpt-4o-mini"
 
     if provider == "openai":
-        return _create_openai_client(api_key)
+        lc_provider = "openai"
+        default_model = "gpt-4o-mini"
     elif provider == "google_gemini":
-        return _create_google_gemini_client(api_key)
+        lc_provider = "google_genai"
+        default_model = "gemini-2.0-flash-exp"
     elif provider == "openrouter":
-        return _create_openrouter_client(api_key)
+        lc_provider = "openai"
+        base_url = "https://openrouter.ai/api/v1"
+        default_model = "gpt-4o-mini"
     else:
         raise ValueError(f"不支援的 provider: {provider}")
 
-
-def _create_openai_client(api_key: str) -> Any:
-    """創建 OpenAI 客戶端"""
-    return openai.OpenAI(api_key=api_key)
-
-
-def _create_google_gemini_client(api_key: str) -> Any:
-    """創建 Google Gemini 客戶端（使用 wrapper）"""
-    try:
-        import google.generativeai as genai
-        from utils.llm_client import GeminiWrapper
-
-        # 配置 API key
-        genai.configure(api_key=api_key)
-
-        # 返回 wrapper（提供 OpenAI 兼容接口）
-        return GeminiWrapper(genai)
-    except ImportError:
-        raise ValueError("Google Gemini SDK 未安裝。請運行: pip install google-generativeai")
-
-
-def _create_openrouter_client(api_key: str) -> Any:
-    """創建 OpenRouter 客戶端"""
-    return openai.OpenAI(
-        base_url="https://openrouter.ai/api/v1",
-        api_key=api_key
+    return init_chat_model(
+        model=default_model, # 這只是一個默認值，實際調用時通常會指定模型，或由 invoke 時 bind 指定
+        model_provider=lc_provider,
+        temperature=0.5,
+        api_key=api_key,
+        base_url=base_url
     )
 
 
@@ -80,14 +68,8 @@ def validate_user_key(provider: str, api_key: str) -> tuple[bool, str]:
         client = create_user_llm_client(provider, api_key)
 
         # 嘗試進行一個輕量的測試調用
-        if provider == "openai":
-            # 列出模型（最輕量的驗證方式）
-            client.models.list()
-        elif provider == "google_gemini":
-            # Gemini wrapper 已經在創建時驗證了
-            pass
-        elif provider == "openrouter":
-            client.models.list()
+        # 使用一個非常簡單的 Prompt
+        client.invoke([HumanMessage(content="Hi")])
 
         return True, "驗證成功"
     except Exception as e:

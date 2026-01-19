@@ -15,9 +15,13 @@ from utils.llm_client import supports_json_mode, extract_json_from_response
 from utils.retry_utils import retry_on_failure
 from utils.utils import DataFrameEncoder
 from dotenv import load_dotenv
+
+# LangChain Imports
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from langchain.agents import create_agent  # 使用最新的 create_agent API
+from langchain.agents import create_agent
+from langchain_core.language_models import BaseChatModel
+
 from core.tools import get_crypto_tools
 
 # ============================================================================ 
@@ -27,13 +31,12 @@ from core.tools import get_crypto_tools
 class TechnicalAnalyst:
     """技術分析師 Agent"""
 
-    def __init__(self, client):
+    def __init__(self, client: BaseChatModel):
         self.client = client
         self.role = "技術分析師"
 
     @retry_on_failure(max_retries=3, delay=1.0, backoff=2.0)
     def analyze(self, market_data: Dict) -> AnalystReport:
-        """分析技術指標"""
 
         # 檢查是否存在多週期數據
         multi_timeframe_data = market_data.get('multi_timeframe_data')
@@ -51,8 +54,8 @@ class TechnicalAnalyst:
 多週期技術指標分析：
 - 短週期趨勢 ({short_term_data.get('timeframe', '1h')}): {trend_info.get('short_term_trend', '不明')}
 - 中週期趨勢 ({medium_term_data.get('timeframe', '4h')}): {trend_info.get('medium_term_trend', '不明')}
-- 長週期趨勢 ({long_term_data.get('timeframe', '1d')}): {trend_info.get('long_term_trend', '不明')}
-- 趨勢一致性: {trend_info.get('trend_consistency', '不明')}
+            - 長週期趨勢 ({long_term_data.get('timeframe', '1d')}): {trend_info.get('long_term_trend', '不明')}
+            - 趨勢一致性: {trend_info.get('trend_consistency', '不明')}
 - 整體偏向: {trend_info.get('overall_bias', '中性')}
 - 多週期信心分數: {trend_info.get('confidence_score', 0):.1f}%
 
@@ -99,14 +102,9 @@ class TechnicalAnalyst:
         - confidence: 信心度 (0-100)。
         """
 
-        response = self.client.chat.completions.create(
-            model=FAST_THINKING_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            temperature=0.5
-        )
-
-        result = AnalystReport.model_validate(json.loads(response.choices[0].message.content))
+        # LangChain Invoke
+        response = self.client.invoke([HumanMessage(content=prompt)])
+        result = AnalystReport.model_validate(extract_json_from_response(response.content))
 
         # 如果存在多週期數據，創建多週期分析對象並附加到結果中
         if 'multi_timeframe_data' in market_data:
@@ -128,7 +126,7 @@ class TechnicalAnalyst:
 class SentimentAnalyst:
     """情緒分析師 Agent"""
 
-    def __init__(self, client):
+    def __init__(self, client: BaseChatModel):
         self.client = client
         self.role = "情緒分析師"
 
@@ -165,38 +163,33 @@ class SentimentAnalyst:
             multi_timeframe_context = "當前為單一週期分析模式，未啟用多週期情緒對比。"
 
         prompt = f"""
-你是一位專業的多週期市場情緒分析專家，專精於解讀不同時間框架下的市場氛圍和投資者心理。
+        你是一位專業的多週期市場情緒分析專家，專精於解讀不同時間框架下的市場氛圍和投資者心理。
 
-你的任務：
-1. 基於價格走勢和成交量評估市場情緒
-2. 分析不同時間週期的情緒差異
-3. 識別恐慌或貪婪的跡象
-4. 評估情緒在不同週期的一致性/分歧度
-5. 判斷情緒對短期和長期價格的潛在影響
+        你的任務：
+        1. 基於價格走勢和成交量評估市場情緒
+        2. 分析不同時間週期的情緒差異
+        3. 識別恐慌或貪婪的跡象
+        4. 評估情緒在不同週期的一致性/分歧度
+        5. 判斷情緒對短期和長期價格的潛在影響
 
-市場數據：
-當前週期價格變化：{json.dumps(market_data.get('價格資訊', {}), indent=2, ensure_ascii=False, cls=DataFrameEncoder)}
-當前週期市場結構：{json.dumps(market_data.get('市場結構', {}), indent=2, ensure_ascii=False, cls=DataFrameEncoder)}
+        市場數據：
+        當前週期價格變化：{json.dumps(market_data.get('價格資訊', {}), indent=2, ensure_ascii=False, cls=DataFrameEncoder)}
+        當前週期市場結構：{json.dumps(market_data.get('市場結構', {}), indent=2, ensure_ascii=False, cls=DataFrameEncoder)}
 
-{multi_timeframe_context}
+        {multi_timeframe_context}
 
-請以 JSON 格式回覆，嚴格遵守以下格式與要求：
-- analyst_type: "情緒分析師"
-- summary: 情緒分析摘要 (繁體中文，**至少50字**)。
-- key_findings: 關鍵發現列表 (**必須是字串的列表**，例如：`["市場情緒偏向貪婪", "成交量放大顯示參與度高"]`)。
-- bullish_points: 正面情緒指標列表 (List[str])。
-- bearish_points: 負面情緒指標列表 (List[str])。
-- confidence: 信心度 (0 到 100 的數字)。
-"""
+        請以 JSON 格式回覆，嚴格遵守以下格式與要求：
+        - analyst_type: "情緒分析師"
+        - summary: 情緒分析摘要 (繁體中文，**至少50字**)。
+        - key_findings: 關鍵發現列表 (**必須是字串的列表**，例如：`["市場情緒偏向貪婪", "成交量放大顯示參與度高"]`)。
+        - bullish_points: 正面情緒指標列表 (List[str])。
+        - bearish_points: 負面情緒指標列表 (List[str])。
+        - confidence: 信心度 (0 到 100 的數字)。
+        """
 
-        response = self.client.chat.completions.create(
-            model=FAST_THINKING_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            temperature=0.5
-        )
-
-        result = AnalystReport.model_validate(json.loads(response.choices[0].message.content))
+        # LangChain Invoke
+        response = self.client.invoke([HumanMessage(content=prompt)])
+        result = AnalystReport.model_validate(extract_json_from_response(response.content))
 
         # 如果存在多週期數據，創建多週期分析對象並附加到結果中
         if 'multi_timeframe_data' in market_data:
@@ -218,7 +211,7 @@ class SentimentAnalyst:
 class FundamentalAnalyst:
     """基本面分析師 Agent"""
 
-    def __init__(self, client):
+    def __init__(self, client: BaseChatModel):
         self.client = client
         self.role = "基本面分析師"
 
@@ -263,39 +256,34 @@ class FundamentalAnalyst:
             multi_timeframe_context = "當前為單一週期分析模式，未啟用多週期基本面對比。"
 
         prompt = f"""
-你是一位專業的多週期基本面分析專家，專精於評估不同時間框架下加密貨幣的價值和結構健康度。
-當前市場類型是：{market_type}，槓桿倍數是：{leverage}x。
-數據來源交易所：{exchange}。
+        你是一位專業的多週期基本面分析專家，專精於評估不同時間框架下加密貨幣的價值和結構健康度。
+        當前市場類型是：{market_type}，槓桿倍數是：{leverage}x。
+        數據來源交易所：{exchange}。
 
-對於 {symbol}，請分析：
-1. 長期趨勢和價格定位
-2. 市場結構在不同週期的健康度
-3. 多週期關鍵支撐和壓力位的一致性/分歧度
-4. 市場成熟度在不同時間框架下的表現
-{f"5. 資金費率資訊：{json.dumps(funding_rate_info, indent=2, ensure_ascii=False, cls=DataFrameEncoder)}" if market_type == 'futures' else ""}
+        對於 {symbol}，請分析：
+        1. 長期趨勢和價格定位
+        2. 市場結構在不同週期的健康度
+        3. 多週期關鍵支撐和壓力位的一致性/分歧度
+        4. 市場成熟度在不同時間框架下的表現
+        {f"5. 資金費率資訊：{json.dumps(funding_rate_info, indent=2, ensure_ascii=False, cls=DataFrameEncoder)}" if market_type == 'futures' else ""}
 
-當前週期市場數據：
-{json.dumps(market_data, indent=2, ensure_ascii=False, cls=DataFrameEncoder)}
+        當前週期市場數據：
+        {json.dumps(market_data, indent=2, ensure_ascii=False, cls=DataFrameEncoder)}
 
-{multi_timeframe_context}
+        {multi_timeframe_context}
 
-請以 JSON 格式回覆，嚴格遵守以下數據類型：
-- analyst_type: "基本面分析師"
-- summary: 基本面分析摘要 (繁體中文，**至少50字**)。
-- key_findings: 關鍵發現列表 (必須是字串 List ["發現1", "發現2"]，不要使用 Key-Value 物件)。
-- bullish_points: 看漲基本面因素列表 (List[str])。
-- bearish_points: 看跌基本面因素列表 (List[str])。
-- confidence: 信心度 (必須是 0 到 100 之間的數字，例如 75，不要寫文字)。
-"""
+        請以 JSON 格式回覆，嚴格遵守以下數據類型：
+        - analyst_type: "基本面分析師"
+        - summary: 基本面分析摘要 (繁體中文，**至少50字**)。
+        - key_findings: 關鍵發現列表 (必須是字串 List ["發現1", "發現2"]，不要使用 Key-Value 物件)。
+        - bullish_points: 看漲基本面因素列表 (List[str])。
+        - bearish_points: 看跌基本面因素列表 (List[str])。
+        - confidence: 信心度 (必須是 0 到 100 之間的數字，例如 75，不要寫文字)。
+        """
 
-        response = self.client.chat.completions.create(
-            model=FAST_THINKING_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            temperature=0.5
-        )
-
-        result = AnalystReport.model_validate(json.loads(response.choices[0].message.content))
+        # LangChain Invoke
+        response = self.client.invoke([HumanMessage(content=prompt)])
+        result = AnalystReport.model_validate(extract_json_from_response(response.content))
 
         # 如果存在多週期數據，創建多週期分析對象並附加到結果中
         if 'multi_timeframe_data' in market_data:
@@ -316,7 +304,7 @@ class FundamentalAnalyst:
 class NewsAnalyst:
     """新聞分析師 Agent (已升級真實新聞功能)"""
 
-    def __init__(self, client):
+    def __init__(self, client: BaseChatModel):
         self.client = client
         self.role = "新聞分析師"
 
@@ -357,13 +345,9 @@ class NewsAnalyst:
         - confidence: 信心度 (必須是 0 到 100 之間的**數字**，例如 65，不要寫文字)
         """
         
-        response = self.client.chat.completions.create(
-            model=FAST_THINKING_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"},
-            temperature=0.5
-        )
-        result = AnalystReport.model_validate(json.loads(response.choices[0].message.content))
+        # LangChain Invoke
+        response = self.client.invoke([HumanMessage(content=prompt)])
+        result = AnalystReport.model_validate(extract_json_from_response(response.content))
 
         # 如果存在多週期數據，創建多週期分析對象並附加到結果中
         if 'multi_timeframe_data' in market_data:
@@ -389,7 +373,7 @@ class NewsAnalyst:
 class BullResearcher:
     """多頭研究員 Agent"""
 
-    def __init__(self, client, model: str = None):
+    def __init__(self, client: BaseChatModel, model: str = None):
         self.client = client
         self.model = model or DEEP_THINKING_MODEL
         self.stance = "Bull"
@@ -430,12 +414,9 @@ class BullResearcher:
         - opponent_view: "Addressing all current opponents"
         """
         try:
-            if supports_json_mode(self.model):
-                response = self.client.chat.completions.create(model=self.model, messages=[{"role": "user", "content": prompt}], response_format={"type": "json_object"})
-                result_dict = json.loads(response.choices[0].message.content)
-            else:
-                response = self.client.chat.completions.create(model=self.model, messages=[{"role": "user", "content": prompt}])
-                result_dict = extract_json_from_response(response.choices[0].message.content)
+            # LangChain Invoke
+            response = self.client.invoke([HumanMessage(content=prompt)])
+            result_dict = extract_json_from_response(response.content)
             return ResearcherDebate.model_validate(result_dict)
         except Exception as e:
             return ResearcherDebate(researcher_stance="Bull", argument=f"分析出錯: {str(e)}", key_points=[], confidence=0, round_number=round_number)
@@ -443,7 +424,7 @@ class BullResearcher:
 class BearResearcher:
     """空頭研究員 Agent"""
 
-    def __init__(self, client, model: str = None):
+    def __init__(self, client: BaseChatModel, model: str = None):
         self.client = client
         self.model = model or DEEP_THINKING_MODEL
         self.stance = "Bear"
@@ -483,12 +464,9 @@ class BearResearcher:
         - opponent_view: "Addressing all current opponents"
         """
         try:
-            if supports_json_mode(self.model):
-                response = self.client.chat.completions.create(model=self.model, messages=[{"role": "user", "content": prompt}], response_format={"type": "json_object"})
-                result_dict = json.loads(response.choices[0].message.content)
-            else:
-                response = self.client.chat.completions.create(model=self.model, messages=[{"role": "user", "content": prompt}])
-                result_dict = extract_json_from_response(response.choices[0].message.content)
+            # LangChain Invoke
+            response = self.client.invoke([HumanMessage(content=prompt)])
+            result_dict = extract_json_from_response(response.content)
             return ResearcherDebate.model_validate(result_dict)
         except Exception as e:
             return ResearcherDebate(researcher_stance="Bear", argument=f"分析出錯: {str(e)}", key_points=[], confidence=0, round_number=round_number)
@@ -496,7 +474,7 @@ class BearResearcher:
 class NeutralResearcher:
     """中立/震盪派研究員 Agent (魔鬼代言人)"""
 
-    def __init__(self, client, model: str = None):
+    def __init__(self, client: BaseChatModel, model: str = None):
         self.client = client
         self.model = model or DEEP_THINKING_MODEL
         self.stance = "Neutral"
@@ -531,12 +509,9 @@ class NeutralResearcher:
         - opponent_view: "Questioning both sides"
         """
         try:
-            if supports_json_mode(self.model):
-                response = self.client.chat.completions.create(model=self.model, messages=[{"role": "user", "content": prompt}], response_format={"type": "json_object"})
-                result_dict = json.loads(response.choices[0].message.content)
-            else:
-                response = self.client.chat.completions.create(model=self.model, messages=[{"role": "user", "content": prompt}])
-                result_dict = extract_json_from_response(response.choices[0].message.content)
+            # LangChain Invoke
+            response = self.client.invoke([HumanMessage(content=prompt)])
+            result_dict = extract_json_from_response(response.content)
             return ResearcherDebate.model_validate(result_dict)
         except Exception as e:
             return ResearcherDebate(researcher_stance="Neutral", argument=f"分析出錯: {str(e)}", key_points=[], confidence=0, round_number=round_number)
@@ -548,7 +523,7 @@ class NeutralResearcher:
 class Trader:
     """交易員 Agent - 綜合所有資訊做出最終決策"""
     
-    def __init__(self, client):
+    def __init__(self, client: BaseChatModel):
         self.client = client
     
     def make_decision(
@@ -635,51 +610,47 @@ class Trader:
 
         decision_options = ""
         if market_type == 'spot':
-            decision_options = "Buy\" / \"Sell\" / \"Hold"
+            decision_options = "Buy" / "Sell" / "Hold"
         else: # futures
-            decision_options = "Long\" / \"Short\" / \"Hold"
+            decision_options = "Long" / "Short" / "Hold"
 
         prompt = f"""
-你是一位資深首席交易員。你需要綜合分析師報告、多空辯論、數據核對結果以及裁判的最終裁決來做出最終決策。
+        你是一位資深首席交易員。你需要綜合分析師報告、多空辯論、數據核對結果以及裁判的最終裁決來做出最終決策。
 
-當前價格：${current_price:.2f}
-市場類型：{market_type}
+        當前價格：${current_price:.2f}
+        市場類型：{market_type}
 
-=== 研究員辯論內容 ===
-【多頭】: {bull_argument.argument}
-【空頭】: {bear_argument.argument}
-【中立】: {neutral_argument.argument if neutral_argument else "無"}
+        === 研究員辯論內容 ===
+        【多頭】: {bull_argument.argument}
+        【空頭】: {bear_argument.argument}
+        【中立】: {neutral_argument.argument if neutral_argument else "無"}
 
-{fact_check_prompt}
-{judge_prompt}
-{feedback_prompt}
-{account_balance_prompt}
+        {fact_check_prompt}
+        {judge_prompt}
+        {feedback_prompt}
+        {account_balance_prompt}
 
-你的任務：
-1. **嚴格遵循裁判裁決**: 裁判的 suggested_action 決定了你的交易方向和強度
-2. 參考數據檢察官的意見，排除掉那些基於錯誤數據的誇大言論
-3. 設定具體的進場價、止損、止盈
+        你的任務：
+        1. **嚴格遵循裁判裁決**: 裁判的 suggested_action 決定了你的交易方向和強度
+        2. 參考數據檢察官的意見，排除掉那些基於錯誤數據的誇大言論
+        3. 設定具體的進場價、止損、止盈
 
-請以 JSON 格式回覆（繁體中文）：
-- decision: "{decision_options}" (必須與裁判建議一致)
-- reasoning: 為什麼做出此決策（必須引用裁判的裁決和獲勝原因）
-- position_size: 倉位 (必須在裁判建議的範圍內)
-- leverage: 槓桿 (1-125)
-- entry_price: 進場價 (float)
-- stop_loss: 止損價 (float)
-- take_profit: 止盈價 (float)
-- follows_judge: true/false (是否遵循裁判建議)
-- deviation_reason: 如果 follows_judge 為 false，說明為什麼不遵循（否則為 null）
-- key_risk: 此交易的主要風險點是什麼
-"""
+        請以 JSON 格式回覆（繁體中文）：
+        - decision: "{decision_options}" (必須與裁判建議一致)
+        - reasoning: 為什麼做出此決策（必須引用裁判的裁決和獲勝原因）
+        - position_size: 倉位 (必須在裁判建議的範圍內)
+        - leverage: 槓桿 (1-125)
+        - entry_price: 進場價 (float)
+        - stop_loss: 止損價 (float)
+        - take_profit: 止盈價 (float)
+        - follows_judge: true/false (是否遵循裁判建議)
+        - deviation_reason: 如果 follows_judge 為 false，說明為什麼不遵循（否則為 null）
+        - key_risk: 此交易的主要風險點是什麼
+        """
         
-        response = self.client.chat.completions.create(
-            model=DEEP_THINKING_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"}
-        )
-
-        result = TraderDecision.model_validate(json.loads(response.choices[0].message.content))
+        # LangChain Invoke
+        response = self.client.invoke([HumanMessage(content=prompt)])
+        result = TraderDecision.model_validate(extract_json_from_response(response.content))
 
         # 如果存在多週期數據，創建多週期分析對象並附加到結果中
         if 'multi_timeframe_data' in market_data and market_data.get('multi_timeframe_trend_analysis'):
@@ -698,7 +669,7 @@ class Trader:
 class DebateJudge:
     """綜合交易委員會裁判 Agent - 評估辯論各方表現"""
     
-    def __init__(self, client):
+    def __init__(self, client: BaseChatModel):
         self.client = client
         
     @retry_on_failure(max_retries=3, delay=1.0, backoff=2.0)
@@ -721,62 +692,56 @@ class DebateJudge:
              backtest_context = json.dumps(backtest_results, indent=2, ensure_ascii=False)
         
         prompt = f"""
-你是一位資深的「綜合交易委員會裁判」。你的任務是審查一場關於市場走勢的三方辯論，並基於**論點品質**做出裁決。
+        你是一位資深的「綜合交易委員會裁判」。你的任務是審查一場關於市場走勢的三方辯論，並基於**論點品質**做出裁決。
 
-**不要給出任何數字評分**，只評估論點的實際品質。
+        **不要給出任何數字評分**，只評估論點的實際品質。
 
-=== 歷史策略回測參考數據 ===
-這些數據顯示了類似策略在過去的表現，作為你判斷論點客觀性的重要依據：
-{backtest_context}
-(注意：如果辯論方引用了回測數據但被你發現引用錯誤，請扣分。)
+        === 歷史策略回測參考數據 ===
+        這些數據顯示了類似策略在過去的表現，作為你判斷論點客觀性的重要依據：
+        {backtest_context}
+        (注意：如果辯論方引用了回測數據但被你發現引用錯誤，請扣分。)
 
-=== 辯論各方論點 ===
-【多頭】: {bull_argument.argument}
-【空頭】: {bear_argument.argument}
-【中立】: {neutral_argument.argument}
+        === 辯論各方論點 ===
+        【多頭】: {bull_argument.argument}
+        【空頭】: {bear_argument.argument}
+        【中立】: {neutral_argument.argument}
 
-=== 數據檢察官驗證結果 ===
-{json.dumps(fact_checks, indent=2, ensure_ascii=False, default=str)}
+        === 數據檢察官驗證結果 ===
+        {json.dumps(fact_checks, indent=2, ensure_ascii=False, default=str)}
 
-=== 你的裁決標準 ===
-1. **論點有效性**：論據是否有數據支撐？是否被檢察官糾正過？是否與歷史回測結果相符？
-2. **邏輯嚴密性**：推理過程是否合理？有無邏輯跳躍？
-3. **風險考量**：是否考慮了反向風險？讓步點是否誠實？
-4. **實用性**：論點是否能轉化為可執行的交易建議？
+        === 你的裁決標準 ===
+        1. **論點有效性**：論據是否有數據支撐？是否被檢察官糾正過？是否與歷史回測結果相符？
+        2. **邏輯嚴密性**：推理過程是否合理？有無邏輯跳躍？
+        3. **風險考量**：是否考慮了反向風險？讓步點是否誠實？
+        4. **實用性**：論點是否能轉化為可執行的交易建議？
 
-=== 請以 JSON 格式回覆（繁體中文）===
-- bull_evaluation: 【純文字字串】評估多頭論點的優缺點，例如："多頭正確指出了...但忽略了歷史回測勝率偏低..."
-- bear_evaluation: 【純文字字串】評估空頭論點的優缺點，例如："空頭的風險警告與歷史數據一致..."
-- neutral_evaluation: 【純文字字串】評估中立論點的優缺點，例如："中立觀點較為平衡，但缺乏明確建議..."
-- strongest_bull_point: 多頭最有力的單一論點
-- strongest_bear_point: 空頭最有力的單一論點
-- fatal_flaw: 某方論點的致命缺陷（如果有的話，否則為 null）
-- winning_stance: "Bull" / "Bear" / "Neutral" / "Tie"（基於上述評估決定誰獲勝）
-- winning_reason: 為什麼這一方獲勝？（必須具體引用其論點）
-- suggested_action: "強烈做多" / "適度做多" / "觀望" / "適度做空" / "強烈做空"
-- action_rationale: 為什麼建議這個行動？
-- key_takeaway: 從這場辯論中總結出的最核心市場事實
-"""
+        === 請以 JSON 格式回覆（繁體中文）===
+        - bull_evaluation: 【純文字字串】評估多頭論點的優缺點，例如："多頭正確指出了...但忽略了歷史回測勝率偏低..."
+        - bear_evaluation: 【純文字字串】評估空頭論點的優缺點，例如："空頭的風險警告與歷史數據一致..."
+        - neutral_evaluation: 【純文字字串】評估中立論點的優缺點，例如："中立觀點較為平衡，但缺乏明確建議..."
+        - strongest_bull_point: 多頭最有力的單一論點
+        - strongest_bear_point: 空頭最有力的單一論點
+        - fatal_flaw: 某方論點的致命缺陷（如果有的話，否則為 null）
+        - winning_stance: "Bull" / "Bear" / "Neutral" / "Tie"（基於上述評估決定誰獲勝）
+        - winning_reason: 為什麼這一方獲勝？（必須具體引用其論點）
+        - suggested_action: "強烈做多" / "適度做多" / "觀望" / "適度做空" / "強烈做空"
+        - action_rationale: 為什麼建議這個行動？
+        - key_takeaway: 從這場辯論中總結出的最核心市場事實
+        """
 
-        response = self.client.chat.completions.create(
-            model=DEEP_THINKING_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"}
-        )
-
-        return DebateJudgment.model_validate(json.loads(response.choices[0].message.content))
+        # LangChain Invoke
+        response = self.client.invoke([HumanMessage(content=prompt)])
+        return DebateJudgment.model_validate(extract_json_from_response(response.content))
 
 
 # ============================================================================ 
 # 第四層：風險管理團隊 (Risk Management Team)
 # ============================================================================ 
 
-# 在 agents.py 的 RiskManager 類中需要修改
-
 class RiskManager:
     """風險管理員 Agent"""
     
-    def __init__(self, client):
+    def __init__(self, client: BaseChatModel):
         self.client = client
     
     def assess(
@@ -808,82 +773,78 @@ class RiskManager:
             long_term_data = market_data['multi_timeframe_data'].get('long_term', {})
 
             multi_timeframe_context = f"""
-=== 多週期風險分析 ===
-- 短週期趨勢 ({short_term_data.get('timeframe', '1h')}): {trend_analysis.get('short_term_trend', '不明')}
-- 中週期趨勢 ({medium_term_data.get('timeframe', '4h')}): {trend_analysis.get('medium_term_trend', '不明')}
-- 長週期趨勢 ({long_term_data.get('timeframe', '1d')}): {trend_analysis.get('long_term_trend', '不明')}
-- 趨勢一致性: {trend_analysis.get('trend_consistency', '不明')}
-- 整體偏向: {trend_analysis.get('overall_bias', '中性')}
-- 多週期信心分數: {trend_analysis.get('confidence_score', 0):.1f}%
+            === 多週期風險分析 ===
+            - 短週期趨勢 ({short_term_data.get('timeframe', '1h')}): {trend_analysis.get('short_term_trend', '不明')}
+            - 中週期趨勢 ({medium_term_data.get('timeframe', '4h')}): {trend_analysis.get('medium_term_trend', '不明')}
+            - 長週期趨勢 ({long_term_data.get('timeframe', '1d')}): {trend_analysis.get('long_term_trend', '不明')}
+            - 趨勢一致性: {trend_analysis.get('trend_consistency', '不明')}
+            - 整體偏向: {trend_analysis.get('overall_bias', '中性')}
+            - 多週期信心分數: {trend_analysis.get('confidence_score', 0):.1f}%
 
-風險評估考量：
-- 當趨勢一致性高時，信號更可靠，風險相對較低
-- 當趨勢不一致時，市場方向不明，風險較高
-- 多週期分析一致性影響倉位調整決策
-"""
+            風險評估考量：
+            -當趨勢一致性高時，信號更可靠，風險相對較低
+            -當趨勢不一致時，市場方向不明，風險較高
+            - 多週期分析一致性影響倉位調整決策
+            """
         else:
             multi_timeframe_context = "當前為單一週期分析，無多週期趨勢數據。"
 
         prompt = f"""
-你是一位專業的多週期風險管理專家，負責結合不同時間框架的資訊評估並控制交易風險。
-當前市場類型是：{market_type}。
+        你是一位專業的多週期風險管理專家，負責結合不同時間框架的資訊評估並控制交易風險。
+        當前市場類型是：{market_type}。
 
-交易員決策：
-- 決策：{trader_decision.decision}
-- 倉位：{trader_decision.position_size * 100}%
-{f"- 使用槓桿：{trader_decision.leverage}x" if trader_decision.leverage else ""}
-- 進場價：${f'{trader_decision.entry_price:.2f}' if trader_decision.entry_price is not None else 'N/A'}
-- 止損：${f'{trader_decision.stop_loss:.2f}' if trader_decision.stop_loss is not None else 'N/A'}
-- 止盈：${f'{trader_decision.take_profit:.2f}' if trader_decision.take_profit is not None else 'N/A'}
-- 遵循裁判建議：{'是' if trader_decision.follows_judge else '否'}
-- 主要風險：{trader_decision.key_risk}
-- 理由：{trader_decision.reasoning}
-- 多週期一致性：{'是' if trader_decision.multi_timeframe_analysis else '否'}
+        交易員決策：
+        - 決策：{trader_decision.decision}
+        - 倉位：{trader_decision.position_size * 100}%
+        {f"- 使用槓桿：{trader_decision.leverage}x" if trader_decision.leverage else ""}
+        - 進場價：${f'{trader_decision.entry_price:.2f}' if trader_decision.entry_price is not None else 'N/A'}
+        - 止損：${f'{trader_decision.stop_loss:.2f}' if trader_decision.stop_loss is not None else 'N/A'}
+        - 止盈：${f'{trader_decision.take_profit:.2f}' if trader_decision.take_profit is not None else 'N/A'}
+        - 遵循裁判建議：{'是' if trader_decision.follows_judge else '否'}
+        - 主要風險：{trader_decision.key_risk}
+        - 理由：{trader_decision.reasoning}
+        - 多週期一致性：{'是' if trader_decision.multi_timeframe_analysis else '否'}
 
-{multi_timeframe_context}
+        {multi_timeframe_context}
 
-市場狀況：
-波動率：{market_data.get('市場結構', {}).get('波動率', 'N/A')}%
-成交量：{market_data.get('市場結構', {}).get('平均交易量', 'N/A')}
-{f"資金費率：{market_data['funding_rate_info'].get('last_funding_rate', 'N/A')}" if market_type == 'futures' and market_data.get('funding_rate_info') else ""}
+        市場狀況：
+        波動率：{market_data.get('市場結構', {}).get('波動率', 'N/A')}% 
+        成交量：{market_data.get('市場結構', {}).get('平均交易量', 'N/A')}
+        {f"資金費率：{market_data['funding_rate_info'].get('last_funding_rate', 'N/A')}" if market_type == 'futures' and market_data.get('funding_rate_info') else ""}
 
-你的任務：
-1. 評估這筆交易的風險等級，特別考慮多週期一致性
-2. 檢查倉位、止損、止盈是否合理
-3. 決定是否批准或需要調整
-{f"4. 對於合約交易，特別評估槓桿帶來的清算風險和資金費率的影響。" if market_type == 'futures' else ""}
-5. 根據多週期一致性調整風險評估和倉位建議
+        你的任務：
+        1. 評估這筆交易的風險等級，特別考慮多週期一致性
+        2. 檢查倉位、止損、止盈是否合理
+        3. 決定是否批准或需要調整
+        {f"4. 對於合約交易，特別評估槓桿帶來的清算風險和資金費率的影響。" if market_type == 'futures' else ""}
+        5. 根據多週期一致性調整風險評估和倉位建議
 
-**重要決策邏輯**：
-- 如果交易計劃合理且風險可控 → approve: true, adjusted_position_size 等於原始倉位
-- 如果多週期一致性高，風險較低，可適度提高倉位
-- 如果多週期一致性低，市場風險較高，應降低倉位或拒絕
-- 如果有明顯風險但可調整 → approve: true, adjusted_position_size 為調整後的倉位
-- 如果風險過高無法接受 → approve: false
+        **重要決策邏輯**：
+        - 如果交易計劃合理且風險可控 → approve: true, adjusted_position_size 等於原始倉位
+        - 如果多週期一致性高，風險較低，可適度提高倉位
+        - 如果多週期一致性低，市場風險較高，應降低倉位或拒絕
+        - 如果有明顯風險但可調整 → approve: true, adjusted_position_size 為調整後的倉位
+        - 如果風險過高無法接受 → approve: false
 
-**adjusted_position_size 設定規則**：
-✅ 如果**完全同意**交易員的建議 → adjusted_position_size = {trader_decision.position_size}（與原始倉位相同）
-📈 如果多週期**一致性高**，可適當增加倉位 → adjusted_position_size = {min(1.0, trader_decision.position_size * 1.2)}
-📉 如果多週期**一致性低**，應降低倉位 → adjusted_position_size = {max(0.01, trader_decision.position_size * 0.7)}
-⚠️  如果需要**小幅調整** → adjusted_position_size 調整為合理值（例如降低 10-30%）
-❌ 如果**不批准** → approve: false, adjusted_position_size = 0
+        **adjusted_position_size 設定規則**：
+        ✅ 如果**完全同意**交易員的建議 → adjusted_position_size = {trader_decision.position_size}（與原始倉位相同）
+        📈 如果多週期**一致性高**，可適當增加倉位 → adjusted_position_size = {min(1.0, trader_decision.position_size * 1.2)}
+        📉 如果多週期**一致性低**，應降低倉位 → adjusted_position_size = {max(0.01, trader_decision.position_size * 0.7)}
+        ⚠️  如果需要**小幅調整** → adjusted_position_size 調整為合理值（例如降低 10-30%）
+        ❌ 如果**不批准** → approve: false, adjusted_position_size = 0
 
-請以 JSON 格式回覆：
-- risk_level: "低風險"/"中低風險"/"中風險"/"中高風險"/"高風險"/"極高風險"
-- assessment: 風險評估（繁體中文，至少50個字符，需包含多週期分析考量）
-- warnings: 風險警告列表（如果沒有風險警告，可以是空列表 []）
-- suggested_adjustments: 建議調整（繁體中文）。如果完全同意，寫"建議按照交易員計劃執行"。
-- approve: true/false（是否批准）
-- adjusted_position_size: 調整後的倉位（0-1）。**如果完全同意，必須等於 {trader_decision.position_size}**
-"""
+        請以 JSON 格式回覆：
+        - risk_level: "低風險"/"中低風險"/"中風險"/"中高風險"/"高風險"/"極高風險"
+        - assessment: 風險評估（繁體中文，至少50個字符，需包含多週期分析考量）
+        - warnings: 風險警告列表（如果沒有風險警告，可以是空列表 []）
+        - suggested_adjustments: 建議調整（繁體中文）。如果完全同意，寫"建議按照交易員計劃執行"。
+        - approve: true/false（是否批准）
+        - adjusted_position_size: 調整後的倉位（0-1）。**如果完全同意，必須等於 {trader_decision.position_size}**
+        """
 
-        response = self.client.chat.completions.create(
-            model=DEEP_THINKING_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"}
-        )
-
-        result = RiskAssessment.model_validate(json.loads(response.choices[0].message.content))
+        # LangChain Invoke
+        response = self.client.invoke([HumanMessage(content=prompt)])
+        result = RiskAssessment.model_validate(extract_json_from_response(response.content))
 
         # 如果存在多週期數據，創建多週期分析對象並附加到結果中
         if 'multi_timeframe_data' in market_data and market_data.get('multi_timeframe_trend_analysis'):
@@ -905,7 +866,7 @@ class RiskManager:
 class FundManager:
     """基金經理 Agent - 最終審批者"""
     
-    def __init__(self, client):
+    def __init__(self, client: BaseChatModel):
         self.client = client
     
     def approve(
@@ -931,78 +892,73 @@ class FundManager:
 - 多週期信心分數: {trend_analysis.get('confidence_score', 0):.1f}%
 
 決策考量：
-- 當趨勢一致性高時，信號更可靠，可適當增加信任度
-- 當趨勢不一致時，需更加謹慎
+-當趨勢一致性高時，信號更可靠，可適當增加信任度
+-當趨勢不一致時，需更加謹慎
 - 基於多週期一致性調整最終決策
 """
         else:
             multi_timeframe_context = "當前為單一週期分析，無多週期趨勢數據。"
 
         prompt = f"""
-你是一位專業的多週期基金經理，擁有最終的資金調度權，需結合不同時間框架的資訊做出決策。
-當前市場類型是：{market_type}。
+        你是一位專業的多週期基金經理，擁有最終的資金調度權，需結合不同時間框架的資訊做出決策。
+        當前市場類型是：{market_type}。
 
-交易員建議：
-- 決策：{trader_decision.decision}
-- 建議倉位：{trader_decision.position_size * 100}%
-{f"- 建議槓桿：{trader_decision.leverage}x" if trader_decision.leverage else ""}
-- 理由：{trader_decision.reasoning}
-- 多週期一致性：{'是' if trader_decision.multi_timeframe_analysis else '否'}
+        交易員建議：
+        - 決策：{trader_decision.decision}
+        - 建議倉位：{trader_decision.position_size * 100}%
+        {f"- 建議槓桿：{trader_decision.leverage}x" if trader_decision.leverage else ""}
+        - 理由：{trader_decision.reasoning}
+        - 多週期一致性：{'是' if trader_decision.multi_timeframe_analysis else '否'}
 
-風險管理員評估：
-- 風險等級：{risk_assessment.risk_level}
-- 評估意見：{risk_assessment.assessment}
-- 是否批准：{risk_assessment.approve}
-- 調整後倉位：{risk_assessment.adjusted_position_size * 100}%
-- 調整幅度：{position_change_pct:.1f}%
-- 多週期一致性：{'是' if risk_assessment.multi_timeframe_analysis else '否'}
-{f"- 建議調整：{risk_assessment.suggested_adjustments}" if market_type == 'futures' else ""}
+        風險管理員評估：
+        - 風險等級：{risk_assessment.risk_level}
+        - 評估意見：{risk_assessment.assessment}
+        - 是否批准：{risk_assessment.approve}
+        - 調整後倉位：{risk_assessment.adjusted_position_size * 100}%
+        - 調整幅度：{position_change_pct:.1f}%
+        - 多週期一致性：{'是' if risk_assessment.multi_timeframe_analysis else '否'}
+        {f"- 建議調整：{risk_assessment.suggested_adjustments}" if market_type == 'futures' else ""}
 
-{multi_timeframe_context}
+        {multi_timeframe_context}
 
-決策權重考量：
-- **多週期一致性高**：信號更可靠，適當增加決策信心
-- **多週期一致性低**：市場方向不明，更加謹慎
-- 平衡風險管理員建議與多週期分析一致性
+        決策權重考量：
+        - **多週期一致性高**：信號更可靠，適當增加決策信心
+        - **多週期一致性低**：市場方向不明，更加謹慎
+        - 平衡風險管理員建議與多週期分析一致性
 
-**最終決策邏輯**：
-1. 如果風險管理**批准** + 倉位調整幅度 < 5% + 多週期一致性高 → final_decision: "Approve"（完全批准）
-2. 如果風險管理**批准** + 倉位調整幅度 5-30% → final_decision: "Amended"（修正後批准）
-3. 如果風險管理**批准**但多週期一致性低 → 根據綜合評估決定 Amended 或 Reject
-4. 如果風險管理**不批准** → final_decision: "Reject"（拒絕交易）
+        **最終決策邏輯**：
+        1. 如果風險管理**批准** + 倉位調整幅度 < 5% + 多週期一致性高 → final_decision: "Approve"（完全批准）
+        2. 如果風險管理**批准** + 倉位調整幅度 5-30% → final_decision: "Amended"（修正後批准）
+        3. 如果風險管理**批准**但多週期一致性低 → 根據綜合評估決定 Amended 或 Reject
+        4. 如果風險管理**不批准** → final_decision: "Reject"（拒絕交易）
 
-你的任務：
-1. 審核交易員的決策、風險管理員的評估和多週期一致性
-2. 根據上述邏輯做出最終決定
-3. 確定最終執行的倉位大小與槓桿倍數
-4. 考慮多週期分析對決策的影響
+        你的任務：
+        1. 審核交易員的決策、風險管理員的評估和多週期一致性
+        2. 根據上述邏輯做出最終決定
+        3. 確定最終執行的倉位大小與槓桿倍數
+        4. 考慮多週期分析對決策的影響
 
-請以 JSON 格式回覆：
-- approved: true 或 false（是否批准交易）
-- final_decision: "Approve" / "Reject" / "Amended" / "Hold"
-- final_position_size: 最終批准的倉位（0-1）。通常採用風險管理員建議的 adjusted_position_size。
-- approved_leverage: 最終批准的槓桿倍數（整數）。現貨或不交易時為 null。
-- execution_notes: 具體的執行注意事項（例如："分批進場"、"嚴格執行止損"）
-- rationale: 最終決策的詳細理由（繁體中文，至少 50 字，需包含多週期分析考量）
+        請以 JSON 格式回覆：
+        - approved: true 或 false（是否批准交易）
+        - final_decision: "Approve" / "Reject" / "Amended" / "Hold"
+        - final_position_size: 最終批准的倉位（0-1）。通常採用風險管理員建議的 adjusted_position_size。
+        - approved_leverage: 最終批准的槓桿倍數（整數）。現貨或不交易時為 null。
+        - execution_notes: 具體的執行注意事項（例如："分批進場"、"嚴格執行止損"）
+        - rationale: 最終決策的詳細理由（繁體中文，至少 50 字，需包含多週期分析考量）
 
-**範例**：
-- 如果倉位調整 < 5%：final_decision = "Approve"，rationale = "風險管理評估通過，交易計劃合理，批准按原計劃執行。"
-- 如果倉位調整 10%：final_decision = "Amended"，rationale = "基於風險控制，將倉位從 30% 調整至 20%，降低市場曝險。"
-- 如果風險過高：final_decision = "Reject"，rationale = "當前市場風險過高，不適合開倉，建議觀望。"
-"""
+        **範例**：
+        - 如果倉位調整 < 5%：final_decision = "Approve"，rationale = "風險管理評估通過，交易計劃合理，批准按原計劃執行。"
+        - 如果倉位調整 10%：final_decision = "Amended"，rationale = "基於風險控制，將倉位從 30% 調整至 20%，降低市場曝險。"
+        - 如果風險過高：final_decision = "Reject"，rationale = "當前市場風險過高，不適合開倉，建議觀望。"
+        """
         
-        response = self.client.chat.completions.create(
-            model=DEEP_THINKING_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            response_format={"type": "json_object"}
-        )
+        # LangChain Invoke
+        response = self.client.invoke([HumanMessage(content=prompt)])
+        result = extract_json_from_response(response.content)
 
-        # 解析 JSON
-        result = json.loads(response.choices[0].message.content)
-
-        # ==========================================
+        # ========================================== 
         # 🛡️ 數據清洗與容錯處理 (防止 AI 偶發性漏欄位)
-        # ==========================================
+        # ========================================== 
 
         # 1. 確保 approved 欄位存在
         if 'approved' not in result:
@@ -1039,14 +995,14 @@ class FundManager:
 
         return final_approval
 
-# ============================================================================
+# ============================================================================ 
 # 委員會模式支援
-# ============================================================================
+# ============================================================================ 
 
 class CommitteeSynthesizer:
     """委員會觀點綜合器 - 將多個模型的觀點整合成一個綜合觀點"""
 
-    def __init__(self, client, model: str = None):
+    def __init__(self, client: BaseChatModel, model: str = None):
         self.client = client
         self.model = model or DEEP_THINKING_MODEL
         print(f"  >> 綜合模型: {self.model}")
@@ -1076,52 +1032,42 @@ class CommitteeSynthesizer:
         stance_zh = "多頭" if stance == "Bull" else "空頭"
 
         prompt = f"""
-你是一位資深的市場分析綜合專家，負責整合{stance_zh}委員會所有成員的觀點。
+        你是一位資深的市場分析綜合專家，負責整合{stance_zh}委員會所有成員的觀點。
 
-委員會共有 {len(committee_arguments)} 位成員，他們的觀點如下：
+        委員會共有 {len(committee_arguments)} 位成員，他們的觀點如下：
 
-{chr(10).join(all_arguments)}
+        {chr(10).join(all_arguments)}
 
-所有關鍵點：
-{json.dumps(all_key_points, ensure_ascii=False, indent=2)}
+        所有關鍵點：
+        {json.dumps(all_key_points, ensure_ascii=False, indent=2)}
 
-所有反駁論點：
-{json.dumps(all_counter_arguments, ensure_ascii=False, indent=2)}
+        所有反駁論點：
+        {json.dumps(all_counter_arguments, ensure_ascii=False, indent=2)}
 
-平均信心度：{avg_confidence:.1f}%
+        平均信心度：{avg_confidence:.1f}%
 
-你的任務：
-1. 綜合所有成員的觀點，提煉出核心共識
-2. 識別最強有力的論點
-3. 去除重複和次要論點
-4. 形成一個統一、連貫的{stance_zh}觀點
-5. **識別讓步點**：從分析師報告中，找出對我方觀點最不利、最難反駁的證據或數據，予以承認。
+        你的任務：
+        1. 綜合所有成員的觀點，提煉出核心共識
+        2. 識別最強有力的論點
+        3. 去除重複和次要論點
+        4. 形成一個統一、連貫的{stance_zh}觀點
+        5. **識別讓步點**：從分析師報告中，找出對我方觀點最不利、最難反駁的證據或數據，予以承認。
 
-請以 JSON 格式回覆：
-- researcher_stance: "{stance}"
-- argument: 綜合後的{stance_zh}論點 (繁體中文，至少150字)
-- key_points: 核心關鍵點列表 (去重後的 3-5 個最重要的點)
-- concession_point: 承認最不利的證據或觀點 (字串)
-- counter_arguments: 統一的反駁論點列表 (去重後的 3-5 個)
-- confidence: 綜合信心度 (基於所有成員的平均信心度調整，0-100)
-- round_number: 1
-- opponent_view: null
-"""
+        請以 JSON 格式回覆：
+        - researcher_stance: "{stance}"
+        - argument: 綜合後的{stance_zh}論點 (繁體中文，至少150字)
+        - key_points: 核心關鍵點列表 (去重後的 3-5 個最重要的點)
+        - concession_point: 承認最不利的證據或觀點 (字串)
+        - counter_arguments: 統一的反駁論點列表 (去重後的 3-5 個)
+        - confidence: 綜合信心度 (基於所有成員的平均信心度調整，0-100)
+        - round_number: 1
+        - opponent_view: null
+        """
 
         try:
-            if supports_json_mode(self.model):
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[{"role": "user", "content": prompt}],
-                    response_format={"type": "json_object"}
-                )
-                result_dict = json.loads(response.choices[0].message.content)
-            else:
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=[{"role": "user", "content": prompt}]
-                )
-                result_dict = extract_json_from_response(response.choices[0].message.content)
+            # LangChain Invoke
+            response = self.client.invoke([HumanMessage(content=prompt)])
+            result_dict = extract_json_from_response(response.content)
 
             return ResearcherDebate.model_validate(result_dict)
         except Exception as e:
@@ -1131,7 +1077,7 @@ class CommitteeSynthesizer:
 class DataFactChecker:
     """數據檢察官 Agent - 確保論點基於真實數據"""
 
-    def __init__(self, client):
+    def __init__(self, client: BaseChatModel):
         self.client = client
 
     def check(self, arguments: List[ResearcherDebate], market_data: Dict) -> Dict[str, FactCheckResult]:
@@ -1149,32 +1095,29 @@ class DataFactChecker:
                 args_text += f"[{a.researcher_stance}]: {a.argument}\n"
         
         prompt = f"""
-你是一位嚴格的數據檢察官。你的任務是核對研究員在辯論中引用的數據是否與真實市場數據相符。
+        你是一位嚴格的數據檢察官。你的任務是核對研究員在辯論中引用的數據是否與真實市場數據相符。
 
-真實市場數據：
-{json.dumps(market_summary, indent=2, ensure_ascii=False, cls=DataFrameEncoder)}
+        真實市場數據：
+        {json.dumps(market_summary, indent=2, ensure_ascii=False, cls=DataFrameEncoder)}
 
-研究員論點：
-{args_text}
+        研究員論點：
+        {args_text}
 
-你的任務：
-1. 檢查研究員是否引用了錯誤的數值。
-2. 檢查研究員是否對數據進行了嚴重扭曲的解讀。
-3. 如果發現錯誤，請具體指出並更正。
+        你的任務：
+        1. 檢查研究員是否引用了錯誤的數值。
+        2. 檢查研究員是否對數據進行了嚴重扭曲的解讀。
+        3. 如果發現錯誤，請具體指出並更正。
 
-請以 JSON 格式回覆，Key 為研究員立場 (Bull/Bear/Neutral)，Value 為 FactCheckResult 結構：
-- is_accurate: bool
-- corrections: List[str]
-- confidence_score: 0-100 (準確度評分)
-- comment: 簡短評論
-"""
+        請以 JSON 格式回覆，Key 為研究員立場 (Bull/Bear/Neutral)，Value 為 FactCheckResult 結構：
+        - is_accurate: bool
+        - corrections: List[str]
+        - confidence_score: 0-100 (準確度評分)
+        - comment: 簡短評論
+        """
         try:
-            response = self.client.chat.completions.create(
-                model=FAST_THINKING_MODEL,
-                messages=[{"role": "user", "content": prompt}],
-                response_format={"type": "json_object"}
-            )
-            result_dict = json.loads(response.choices[0].message.content)
+            # LangChain Invoke
+            response = self.client.invoke([HumanMessage(content=prompt)])
+            result_dict = extract_json_from_response(response.content)
             validated = {}
             for stance, data in result_dict.items():
                 if stance in ['Bull', 'Bear', 'Neutral']:
@@ -1185,11 +1128,11 @@ class DataFactChecker:
             return {}
 
 
-# ============================================================================
+# ============================================================================ 
 
 # Merged from core/agent.py (CryptoAgent)
 
-# ============================================================================
+# ============================================================================ 
 
 CRYPTO_ASSISTANT_PROMPT = """你是一位專業的加密貨幣投資分析助手，同時也是一位友善的 AI 助理。你的名字是 Pi Crypto Insight。
 
@@ -1275,12 +1218,12 @@ CRYPTO_ASSISTANT_PROMPT = """你是一位專業的加密貨幣投資分析助手
 - **最後必須附上參考資料連結** (如果有)
 
 現在，請根據用戶的問題，決定是否需要使用工具，並給出專業且友善的回應。
-"""
+""";
 
 
-# ============================================================================
+# ============================================================================ 
 # Agent 建立函式
-# ============================================================================
+# ============================================================================ 
 
 def create_crypto_agent(
     model_name: str = None,
@@ -1290,77 +1233,52 @@ def create_crypto_agent(
     user_provider: str = None
 ):
     """
-    創建加密貨幣分析 Agent
-
-    Args:
-        model_name: 使用的模型名稱
-        temperature: 溫度參數
-        verbose: 是否顯示詳細日誌
-        user_api_key: 用戶提供的 API Key (BYOK)
-        user_provider: 用戶提供的 Provider (openai, openrouter, google_gemini)
-
-    Returns:
-        LangGraph Agent 實例 或 None (如果不支持該 Provider 的 Agent 模式)
+    創建加密貨幣分析 Agent (LangGraph)
     """
 
     try:
         # 獲取工具
         tools = get_crypto_tools()
 
+        lc_provider = "openai"
+        base_url = None
+        
         # 統一使用 init_chat_model 處理不同的 Provider
         if user_provider == "google_gemini":
-            # 使用 Gemini
+            lc_provider = "google_genai"
             api_key = user_api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-            if not api_key:
-                print("Warning: No Gemini API key found for CryptoAgent.")
-                return None
-
+            
             # 獲取默認模型
             if not model_name:
-                try:
-                    from core.model_config import get_default_model
-                    model_name = get_default_model("google_gemini")
-                except ImportError:
-                    model_name = "gemini-2.0-flash-exp"
-
-            llm = init_chat_model(
-                model=model_name,
-                model_provider="google_genai",
-                temperature=temperature,
-                api_key=api_key
-            )
+                model_name = "gemini-2.0-flash-exp"
 
         elif user_provider == "openrouter":
-            # 使用 OpenRouter (使用 OpenAI provider + base_url)
+            lc_provider = "openai"
+            base_url = "https://openrouter.ai/api/v1"
             api_key = user_api_key or os.getenv("OPENAI_API_KEY")
-            if not api_key:
-                print("Warning: No API key found for CryptoAgent.")
-                return None
-
+            
             if not model_name:
                 model_name = "gpt-4o-mini"
 
-            llm = init_chat_model(
-                model=model_name,
-                model_provider="openai",
-                temperature=temperature,
-                api_key=api_key,
-                base_url="https://openrouter.ai/api/v1"
-            )
-
         else:
             # 默認使用 OpenAI
+            lc_provider = "openai"
             api_key = user_api_key or os.getenv("OPENAI_API_KEY")
-            if not api_key:
-                print("Warning: No API key found for CryptoAgent.")
-                return None
+            
+            if not model_name:
+                model_name = QUERY_PARSER_MODEL
 
-            llm = init_chat_model(
-                model=model_name or QUERY_PARSER_MODEL,
-                model_provider="openai",
-                temperature=temperature,
-                api_key=api_key
-            )
+        if not api_key:
+            print("Warning: No API key found for CryptoAgent.")
+            return None
+
+        llm = init_chat_model(
+            model=model_name,
+            model_provider=lc_provider,
+            temperature=temperature,
+            api_key=api_key,
+            base_url=base_url
+        )
 
         # 使用最新的 create_agent API 創建 Agent
         agent = create_agent(
@@ -1378,9 +1296,9 @@ def create_crypto_agent(
         return None
 
 
-# ============================================================================
+# ============================================================================ 
 # CryptoAgent 封裝類
-# ============================================================================
+# ============================================================================ 
 
 class CryptoAgent:
     """加密貨幣分析 Agent 封裝類"""
@@ -1392,20 +1310,11 @@ class CryptoAgent:
         verbose: bool = False,
         user_api_key: str = None,
         user_provider: str = None,
-        user_client: Optional[object] = None,
+        user_client: BaseChatModel = None,
         user_model: str = None
     ):
         """
         初始化 CryptoAgent
-
-        Args:
-            model_name: 使用的模型名稱
-            temperature: 溫度參數
-            verbose: 是否顯示詳細日誌
-            user_api_key: 用戶 API Key
-            user_provider: 用戶 Provider
-            user_client: 用戶已經初始化的 LLM Client (用於降級模式)
-            user_model: 用戶選擇的模型名稱
         """
         # 優先使用用戶選擇的模型，否則使用指定的模型名稱
         effective_model_name = user_model or model_name
@@ -1431,12 +1340,6 @@ class CryptoAgent:
     def chat(self, user_input: str) -> str:
         """
         與 Agent 對話
-
-        Args:
-            user_input: 用戶輸入
-
-        Returns:
-            Agent 回應
         """
         try:
             # 1. 如果有 Agent (LangGraph)，優先使用 (支持工具)
@@ -1477,8 +1380,8 @@ class CryptoAgent:
                 references = self._extract_references_from_tools(tool_outputs)
                 if references:
                     response += "\n\n---\n### 📚 相關連接\n"
-                    for i, url in enumerate(references, 1):
-                        response += f"{i}. {url}\n\n"
+                    for i, (short, full) in enumerate(references, 1):
+                        response += f"{i}. [{short}]({full})\n"
 
                 # 更新歷史
                 self.chat_history.append(HumanMessage(content=user_input))
@@ -1488,30 +1391,19 @@ class CryptoAgent:
             elif self.user_client:
                 if self.verbose: print(">> Using fallback user_client for chat (No Tools)")
                 
-                # 構建簡單的消息歷史 (OpenAI 格式)
-                messages = [{"role": "system", "content": CRYPTO_ASSISTANT_PROMPT}]
-                # 將 LangChain 歷史轉換為 OpenAI 格式
+                # 構建簡單的消息歷史 (LangChain Format)
+                messages = [SystemMessage(content=CRYPTO_ASSISTANT_PROMPT)]
                 for msg in self.chat_history[-10:]: # 取最近 10 條
-                    role = "user" if isinstance(msg, HumanMessage) else "assistant"
-                    messages.append({"role": role, "content": msg.content})
-                messages.append({"role": "user", "content": user_input})
+                    if isinstance(msg, HumanMessage):
+                        messages.append(msg)
+                    elif isinstance(msg, AIMessage):
+                        messages.append(msg)
                 
-                # 調用 API
-                # 從配置文件獲取默認模型
-                try:
-                    from core.model_config import get_default_model
-                    default_gemini_model = get_default_model("google_gemini")
-                    default_openai_model = get_default_model("openai")
-                except ImportError:
-                    # 如果配置文件不可用，使用默認值
-                    default_gemini_model = "gemini-3-flash-preview"
-                    default_openai_model = "gpt-4o"
-
-                completion = self.user_client.chat.completions.create(
-                    model=default_gemini_model if self.user_provider == "google_gemini" else default_openai_model, # 簡單處理
-                    messages=messages
-                )
-                response = completion.choices[0].message.content
+                messages.append(HumanMessage(content=user_input))
+                
+                # 調用 API (LangChain Invoke)
+                response_obj = self.user_client.invoke(messages)
+                response = response_obj.content
                 
                 # 更新歷史
                 self.chat_history.append(HumanMessage(content=user_input))
@@ -1552,10 +1444,8 @@ class CryptoAgent:
                 if "messages" in result:
                     for msg in reversed(result["messages"]):
                         if isinstance(msg, AIMessage) and msg.content and not response:
-                            # 確保 content 是字串（Gemini 可能返回列表或物件）
                             content = msg.content
                             if isinstance(content, list):
-                                # 如果是列表，嘗試提取文字內容
                                 text_parts = []
                                 for part in content:
                                     if isinstance(part, str):
@@ -1577,8 +1467,8 @@ class CryptoAgent:
                 references = self._extract_references_from_tools(tool_outputs)
                 if references:
                     response += "\n\n---\n### 📚 相關連接\n"
-                    for i, url in enumerate(references, 1):
-                        response += f"{i}.{url}\n\n"
+                    for i, (short, full) in enumerate(references, 1):
+                        response += f"{i}. [{short}]({full})\n"
 
                 self.chat_history.append(HumanMessage(content=user_input))
                 self.chat_history.append(AIMessage(content=response))
@@ -1591,29 +1481,18 @@ class CryptoAgent:
             elif self.user_client:
                 if self.verbose: print(">> Using fallback user_client for chat_stream (No Tools)")
                 
-                messages = [{"role": "system", "content": CRYPTO_ASSISTANT_PROMPT}]
+                messages = [SystemMessage(content=CRYPTO_ASSISTANT_PROMPT)]
                 for msg in self.chat_history[-10:]:
-                    role = "user" if isinstance(msg, HumanMessage) else "assistant"
-                    messages.append({"role": role, "content": msg.content})
-                messages.append({"role": "user", "content": user_input})
+                    if isinstance(msg, HumanMessage):
+                        messages.append(msg)
+                    elif isinstance(msg, AIMessage):
+                        messages.append(msg)
+                        
+                messages.append(HumanMessage(content=user_input))
                 
-                # 這裡暫時不支持流式 (因為 GeminiWrapper 可能沒實作 yield)，直接等待並 yield 全部
-                # 改進：如果 client 支持 stream=True，可以嘗試
-                # 從配置文件獲取默認模型
-                try:
-                    from core.model_config import get_default_model
-                    default_gemini_model = get_default_model("google_gemini")
-                    default_openai_model = get_default_model("openai")
-                except ImportError:
-                    # 如果配置文件不可用，使用默認值
-                    default_gemini_model = "gemini-3-flash-preview"
-                    default_openai_model = "gpt-4o"
-
-                completion = self.user_client.chat.completions.create(
-                    model=default_gemini_model if self.user_provider == "google_gemini" else default_openai_model,
-                    messages=messages
-                )
-                response = completion.choices[0].message.content
+                # LangChain Invoke (not streaming for simplicity here, or use stream if available)
+                response_obj = self.user_client.invoke(messages)
+                response = response_obj.content
                 
                 self.chat_history.append(HumanMessage(content=user_input))
                 self.chat_history.append(AIMessage(content=response))
@@ -1631,24 +1510,45 @@ class CryptoAgent:
                 traceback.print_exc()
             yield f"抱歉，處理您的請求時發生了一些問題: {str(e)}"
 
+    def _format_url_short(self, url: str, max_len: int = 50) -> str:
+        """將 URL 格式化為較短的顯示形式"""
+        from urllib.parse import urlparse
+        try:
+            parsed = urlparse(url)
+            domain = parsed.netloc.replace('www.', '')
+            path = parsed.path
+
+            # 如果整個 URL 已經夠短，直接返回
+            if len(url) <= max_len:
+                return url
+
+            # 只顯示 domain + 截斷的 path
+            if len(path) > 20:
+                path = path[:15] + "..." + path[-10:] if len(path) > 30 else path[:20] + "..."
+
+            short = f"{domain}{path}"
+            return short if len(short) <= max_len else f"{domain}/..."
+        except:
+            return url[:max_len] + "..." if len(url) > max_len else url
+
     def _extract_references_from_tools(self, tool_outputs: List[str]) -> List[str]:
-        """從工具輸出中提取唯一網址"""
+        """從工具輸出中提取唯一網址，返回 (短顯示, 完整URL) 的列表"""
         import re
         seen_urls = set()
         urls = []
-        
+
         for output in tool_outputs:
             if not isinstance(output, str): continue
-            
+
             # 匹配所有 http/https 網址
-            found_urls = re.findall(r'(https?://[^\s\)\"\'>\]]+)', output)
+            found_urls = re.findall(r"(https?://[^\s\)\"'>\]]+)", output)
             for url in found_urls:
                 # 移除網址末尾可能存在的標點符號 (例如 Markdown 的括號)
                 clean_url = url.split(')')[0].split(']')[0].rstrip(',. ')
                 if clean_url not in seen_urls and len(clean_url) > 10:
-                    urls.append(clean_url)
+                    urls.append((self._format_url_short(clean_url), clean_url))
                     seen_urls.add(clean_url)
-        
+
         return urls
 
     def _extract_symbol(self, text: str) -> Optional[str]:
@@ -1674,9 +1574,9 @@ class CryptoAgent:
         return self.last_symbol
 
 
-# ============================================================================
+# ============================================================================ 
 # 便捷函式
-# ============================================================================
+# ============================================================================ 
 
 def quick_chat(message: str, verbose: bool = False) -> str:
     """
@@ -1693,9 +1593,9 @@ def quick_chat(message: str, verbose: bool = False) -> str:
     return agent.chat(message)
 
 
-# ============================================================================
+# ============================================================================ 
 # 測試代碼
-# ============================================================================
+# ============================================================================ 
 
 if __name__ == "__main__":
     print("=" * 60)

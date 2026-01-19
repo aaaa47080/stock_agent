@@ -10,7 +10,9 @@ from core.database import (
     get_user_by_email, create_reset_token, get_reset_token,
     delete_reset_token, update_password,
     record_login_attempt, is_account_locked, get_failed_attempts,
-    MAX_LOGIN_ATTEMPTS
+    MAX_LOGIN_ATTEMPTS,
+    # Pi Network 用戶相關
+    create_or_get_pi_user, get_user_by_pi_uid, is_username_available
 )
 from core.email_service import send_reset_email, is_email_configured
 
@@ -115,10 +117,10 @@ async def login_user(request: UserLoginRequest):
 
 @router.get("/api/user/check/{username}")
 async def check_username_availability(username: str):
-    """檢查用戶名是否可用"""
+    """檢查用戶名是否可用（同時檢查 Pi 和 Email 用戶）"""
     try:
-        user = get_user_by_username(username)
-        if user:
+        available = is_username_available(username)
+        if not available:
             return {"available": False, "message": "此用戶名已被註冊"}
         return {"available": True, "message": "用戶名可用"}
     except Exception as e:
@@ -137,6 +139,63 @@ async def check_email_availability(email: str):
     except Exception as e:
         logger.error(f"檢查 Email 失敗: {e}")
         raise HTTPException(status_code=500, detail="檢查失敗")
+
+
+# --- Pi Network User Endpoints ---
+
+from pydantic import BaseModel
+
+class PiUserSyncRequest(BaseModel):
+    pi_uid: str
+    username: str
+    access_token: str = None
+
+@router.post("/api/user/pi-sync")
+async def sync_pi_user(request: PiUserSyncRequest):
+    """
+    同步 Pi Network 用戶到資料庫
+    - 首次登入時自動創建用戶
+    - 之後登入時返回現有用戶資料
+    """
+    try:
+        result = create_or_get_pi_user(
+            pi_uid=request.pi_uid,
+            username=request.username
+        )
+
+        return {
+            "success": True,
+            "user": {
+                "user_id": result["user_id"],
+                "username": result["username"],
+                "auth_method": result["auth_method"]
+            },
+            "is_new_user": result.get("is_new", False)
+        }
+    except ValueError as e:
+        # 用戶名衝突
+        logger.warning(f"Pi 用戶同步失敗 - 用戶名衝突: {e}")
+        raise HTTPException(
+            status_code=409,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Pi 用戶同步失敗: {e}")
+        raise HTTPException(status_code=500, detail="同步失敗")
+
+@router.get("/api/user/pi/{pi_uid}")
+async def get_pi_user(pi_uid: str):
+    """根據 Pi UID 獲取用戶資料"""
+    try:
+        user = get_user_by_pi_uid(pi_uid)
+        if not user:
+            raise HTTPException(status_code=404, detail="用戶不存在")
+        return {"success": True, "user": user}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"獲取 Pi 用戶失敗: {e}")
+        raise HTTPException(status_code=500, detail="獲取失敗")
 
 
 # --- Password Reset Endpoints ---

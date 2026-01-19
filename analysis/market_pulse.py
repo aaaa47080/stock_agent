@@ -13,7 +13,11 @@ from utils.utils import get_crypto_news, safe_float, DataFrameEncoder
 from data.market_data import get_klines
 from data.indicator_calculator import add_technical_indicators
 from core.config import MARKET_PULSE_MODEL
-from utils.llm_client import create_llm_client_from_config
+from utils.llm_client import create_llm_client_from_config, extract_json_from_response
+
+# LangChain Imports
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.language_models import BaseChatModel
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -22,7 +26,6 @@ class MarketPulseAnalyzer:
     """
     Market Pulse Analyzer: Explains WHY the market is moving.
     Combines price volatility detection with news correlation and technicals.
-    ⭐ 使用用戶提供的 LLM client
     """
 
     def __init__(self, client=None):
@@ -48,12 +51,6 @@ class MarketPulseAnalyzer:
     def analyze_movement(self, symbol: str, threshold_percent: float = 2.0, enabled_sources: List[str] = None, skip_llm: bool = False) -> Dict:
         """
         Analyze recent market movement.
-        
-        Args:
-            symbol: Crypto symbol
-            threshold_percent: Volatility threshold
-            enabled_sources: News sources
-            skip_llm: If True, skips LLM generation even if client is available (for fast fallback)
         """
         # 1. Get recent price data
         df = get_klines(symbol, interval="1h", limit=100)
@@ -81,7 +78,6 @@ class MarketPulseAnalyzer:
             if macd_hist_col:
                 macd_hist = safe_float(latest.get(macd_hist_col, 0))
                 prev_macd_hist = safe_float(prev.get(macd_hist_col, 0))
-                # Handle NaN which safe_float passes through
                 import math
                 if isinstance(macd_hist, float) and math.isnan(macd_hist): macd_hist = 0.0
                 if isinstance(prev_macd_hist, float) and math.isnan(prev_macd_hist): prev_macd_hist = 0.0
@@ -140,7 +136,6 @@ class MarketPulseAnalyzer:
             trend_str = "上漲" if change_24h > 0 else "下跌"
             rsi_status = "超買" if technicals.get('RSI', 50) > 70 else "超賣" if technicals.get('RSI', 50) < 30 else "中性"
             
-            # Determine reason for fallback
             if self.client:
                 reason = "AI 分析正在後台排隊中，稍後刷新即可查看完整報告。"
                 risk_msg = "此為即時數據快照，AI 深度分析運算中..."
@@ -203,8 +198,8 @@ class MarketPulseAnalyzer:
         tech_context = "數據不足"
         if technicals:
             tech_context = (
-                f"RSI(14): {technicals.get('RSI', 0):.1f} ({'超買' if technicals.get('RSI',0)>70 else '超賣' if technicals.get('RSI',0)<30 else '中性'})\n"
-                f"MACD柱狀圖: {technicals.get('MACD_Hist', 0):.4f} (動能{technicals.get('MACD_Trend', '')}, {technicals.get('MACD_Signal', '')})\n"
+                f"RSI(14): {technicals.get('RSI', 0):.1f} ({'超買' if technicals.get('RSI',0)>70 else '超賣' if technicals.get('RSI',0)<30 else '中性'})"
+                f"MACD柱狀圖: {technicals.get('MACD_Hist', 0):.4f} (動能{technicals.get('MACD_Trend', '')}, {technicals.get('MACD_Signal', '')})"
                 f"布林帶位置: {technicals.get('BB_Position', 0.5):.2f} (0=下軌, 1=上軌)\n"
                 f"成交量狀態: {technicals.get('Volume_Status', 'N/A')}"
             )
@@ -213,7 +208,7 @@ class MarketPulseAnalyzer:
 你是一位頂級的加密貨幣研究員（類似 Binance Research 風格）。請根據以下數據，為 {symbol} 撰寫一份結構化的「市場脈動」快報。
 
 **市場數據**:
-- 當前價格: ${price:,.2f}
+-當前價格: ${price:,.2f}
 - 24小時走勢: {trend_24h} {abs(change_24h):.2f}%
 - 1小時走勢: {change_1h:+.2f}%
 
@@ -246,17 +241,10 @@ class MarketPulseAnalyzer:
 請直接輸出 JSON，不要加 markdown 標記。
 """
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.4,
-                response_format={"type": "json_object"}
-            )
-            content = response.choices[0].message.content.strip()
-            # Clean markdown code blocks if present
-            if content.startswith("```"):
-                content = content.replace("```json", "").replace("```", "").strip()
-            return json.loads(content)
+            # LangChain Invoke
+            response = self.client.invoke([HumanMessage(content=prompt)])
+            return extract_json_from_response(response.content)
+            
         except Exception as e:
             logger.error(f"Error generating report: {e}")
             # Fallback structure
@@ -276,9 +264,6 @@ _market_pulse = None
 def get_market_pulse(symbol: str, enabled_sources: List[str] = None) -> Dict:
     """
     Wrapper function to be used by API/Tools
-
-    ✅ 使用懶加載模式：只在實際調用時才創建 MarketPulseAnalyzer 實例
-    這樣即使沒有 LLM API Key，服務器也能正常啟動
     """
     global _market_pulse
 

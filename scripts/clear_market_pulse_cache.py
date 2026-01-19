@@ -5,12 +5,12 @@ import sys
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from core.database import DB_PATH
+from core.database import DB_PATH, get_connection
 
 def clear_market_pulse_cache():
     print(f"Opening database at: {DB_PATH}")
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = get_connection()
         c = conn.cursor()
         
         # Check if key exists first
