@@ -47,6 +47,7 @@
     <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <script src="/static/config.js"></script>
 
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Mulish:wght@300;400;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -55,29 +56,44 @@
     <link rel="stylesheet" href="/static/styles.css">
 
     <script>
-        // 安全引導：防止 handlePiLogin 在載入前被呼叫
+        // Pi 登入（含防重複點擊機制）
+        window._piLoginInProgress = false;
         window.safePiLogin = async function() {
-            console.log('[safePiLogin] 按鈕被點擊');
-            // 發送日誌到伺服器
-            fetch('/api/debug-log', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    level: 'info',
-                    message: 'safePiLogin 按鈕被點擊',
-                    data: {
-                        handlePiLoginExists: typeof handlePiLogin === 'function',
-                        hasPiSDK: typeof window.Pi !== 'undefined',
-                        hasAuthManager: typeof window.AuthManager !== 'undefined'
-                    }
-                })
-            }).catch(e => console.error('Log send failed:', e));
+            // 防止重複點擊
+            if (window._piLoginInProgress) {
+                console.log('登入已在進行中，忽略重複點擊');
+                return;
+            }
 
-            if (typeof handlePiLogin === 'function') {
-                return await handlePiLogin();
-            } else {
-                console.error('handlePiLogin not ready');
-                alert('系統核心載入中，請稍等 3-5 秒後再試一次');
+            const btn = document.getElementById('pi-login-btn');
+            const originalText = btn ? btn.innerHTML : '';
+
+            try {
+                window._piLoginInProgress = true;
+
+                // 更新按鈕狀態為 Loading
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerHTML = '<svg class="animate-spin w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> 連接中...';
+                    btn.classList.add('opacity-70', 'cursor-not-allowed');
+                }
+
+                if (typeof handlePiLogin === 'function') {
+                    return await handlePiLogin();
+                }
+                // 如果 JS 尚未載入完成，等待後重試
+                await new Promise(r => setTimeout(r, 500));
+                if (typeof handlePiLogin === 'function') {
+                    return await handlePiLogin();
+                }
+            } finally {
+                window._piLoginInProgress = false;
+                // 恢復按鈕狀態
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                    btn.classList.remove('opacity-70', 'cursor-not-allowed');
+                }
             }
         };
     </script>
@@ -504,24 +520,68 @@
                 <p class="text-textMuted text-sm">Connect your wallet or login to continue</p>
             </div>
 
-            <!-- Pi Network Login Button -->
-            <button onclick="safePiLogin()" class="w-full py-4 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-bold rounded-2xl mb-4 flex items-center justify-center gap-3 transition shadow-lg">
-                                            <img src="/static/img/pi-logo.png" alt="Pi" class="w-6 h-6">                Connect Pi Wallet
-            </button>
+            <!-- Pi Network Login -->
+            <div id="pi-login-area">
+                <!-- 按鈕：默認隱藏，Pi Browser 中才顯示 -->
+                <button id="pi-login-btn" onclick="safePiLogin()" class="w-full py-4 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-bold rounded-2xl mb-4 flex items-center justify-center gap-3 transition shadow-lg" style="display:none;">
+                    <img src="/static/img/pi-logo.png" alt="Pi" class="w-6 h-6"> Connect Pi Wallet
+                </button>
+                <!-- 非 Pi Browser 提示：默認顯示 -->
+                <div id="not-pi-browser-msg" class="text-center py-6">
+                    <div class="w-16 h-16 mx-auto mb-4 bg-primary/10 rounded-full flex items-center justify-center">
+                        <img src="/static/img/pi-logo.png" alt="Pi" class="w-8 h-8 opacity-50">
+                    </div>
+                    <p class="text-secondary font-bold mb-2">請使用 Pi Browser 開啟</p>
+                    <p class="text-textMuted text-sm mb-4">Please open this app in Pi Browser</p>
+                    <div class="bg-background/50 rounded-xl p-4 text-left">
+                        <p class="text-xs text-textMuted mb-2">步驟 Steps:</p>
+                        <ol class="text-xs text-textMuted/80 space-y-1 list-decimal list-inside">
+                            <li>開啟 Pi Browser App</li>
+                            <li>在網址列輸入本應用網址</li>
+                            <li>點擊 Connect Pi Wallet 登入</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+            <script>
+                // 嚴格檢測 Pi Browser 環境
+                (function() {
+                    const isValidPiBrowser = typeof window.Pi !== 'undefined' &&
+                                             window.Pi !== null &&
+                                             typeof window.Pi.authenticate === 'function' &&
+                                             typeof window.Pi.init === 'function';
 
+                    console.log('Pi Browser 環境檢測:', {
+                        hasPi: typeof window.Pi !== 'undefined',
+                        hasAuth: typeof window.Pi?.authenticate === 'function',
+                        hasInit: typeof window.Pi?.init === 'function',
+                        result: isValidPiBrowser
+                    });
+
+                    if (isValidPiBrowser) {
+                        document.getElementById('pi-login-btn').style.display = 'flex';
+                        document.getElementById('not-pi-browser-msg').style.display = 'none';
+                    }
+                })();
+            </script>
+
+            <!-- ============================================================
+                 EMAIL LOGIN DISABLED - Pi SDK Exclusive Authentication
+                 官方要求：只允許 Pi SDK 登入，不允許其他登入方式
+                 如需恢復，取消以下註解即可
+            ============================================================ -->
+            <!--
             <div class="flex items-center gap-4 my-6">
                 <div class="flex-1 h-px bg-white/10"></div>
                 <span class="text-xs text-textMuted uppercase tracking-wider">or continue with email</span>
                 <div class="flex-1 h-px bg-white/10"></div>
             </div>
 
-            <!-- Auth Tabs -->
             <div class="flex p-1 bg-background/50 rounded-xl mb-6">
                 <button onclick="toggleAuthMode('login')" id="tab-login" class="flex-1 py-2 rounded-lg text-sm font-bold transition bg-surfaceHighlight text-secondary shadow-sm">Login</button>
                 <button onclick="toggleAuthMode('register')" id="tab-register" class="flex-1 py-2 rounded-lg text-sm font-bold text-textMuted transition hover:text-secondary">Register</button>
             </div>
 
-            <!-- Login Form -->
             <div id="form-login" class="space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Username</label>
@@ -544,7 +604,6 @@
                 </div>
             </div>
 
-            <!-- Register Form (Hidden) -->
             <div id="form-register" class="space-y-4 hidden">
                 <div>
                     <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Username</label>
@@ -575,11 +634,15 @@
                     Create Account
                 </button>
             </div>
+            -->
 
         </div>
     </div>
 
-    <!-- Forgot Password Modal -->
+    <!-- ============================================================
+         FORGOT/RESET PASSWORD DISABLED - Pi SDK Exclusive Authentication
+    ============================================================ -->
+    <!--
     <div id="forgot-password-modal" class="fixed inset-0 bg-background/95 backdrop-blur-xl z-[95] hidden flex items-center justify-center p-6">
         <div class="bg-surface w-full max-w-md p-8 rounded-[2.5rem] border border-white/10 shadow-2xl">
             <div class="text-center mb-6">
@@ -607,7 +670,6 @@
         </div>
     </div>
 
-    <!-- Reset Password Modal -->
     <div id="reset-password-modal" class="fixed inset-0 bg-background/95 backdrop-blur-xl z-[95] hidden flex items-center justify-center p-6">
         <div class="bg-surface w-full max-w-md p-8 rounded-[2.5rem] border border-white/10 shadow-2xl">
             <div class="text-center mb-6">
@@ -639,6 +701,7 @@
             </div>
         </div>
     </div>
+    -->
 
     <!-- Scripts -->
     <script src="/static/js/app.js?v=20" onerror="alert('app.js 載入失敗')"></script>

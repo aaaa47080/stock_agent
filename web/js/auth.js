@@ -3,16 +3,18 @@
 // ========================================
 
 const DebugLog = {
-    async send(level, message, data = null) {
+    send(level, message, data = null) {
         console.log(`[${level.toUpperCase()}] ${message}`, data);
-        try {
-            fetch('/api/debug-log', {
+        // 在开发环境中记录日志，在生产环境中可选择禁用
+        // 为了减少网络请求，仅在特定条件下发送到服务器
+        if (window.APP_CONFIG && window.APP_CONFIG.DEBUG_MODE === true) {
+            fetch('/api/debug/log', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ level, message, data }),
                 keepalive: true
-            });
-        } catch (e) {}
+            }).catch(() => {});
+        }
     },
     info(msg, data) { this.send('info', msg, data); },
     error(msg, data) { this.send('error', msg, data); },
@@ -47,23 +49,51 @@ const AuthManager = {
     },
 
     isPiBrowser() {
-        // 判斷是否在 Pi Browser 環境中
-        // 優先使用 window.Pi SDK 的存在性來判斷（更可靠）
-        // 因為 Pi Browser 的 User-Agent 可能不包含 "PiBrowser" 字串
-        const hasPiSDK = typeof window.Pi !== 'undefined' && window.Pi !== null;
-        const ua = navigator.userAgent.toLowerCase();
-        const uaHasPi = ua.includes('pibrowser') || ua.includes('pi browser');
+        // 同步檢測：Pi SDK 必須存在且有必要方法
+        const hasPiSDK = typeof window.Pi !== 'undefined' &&
+                         window.Pi !== null &&
+                         typeof window.Pi.authenticate === 'function' &&
+                         typeof window.Pi.init === 'function';
 
-        // 如果 Pi SDK 存在，就認為是 Pi Browser 環境
-        const isPi = hasPiSDK || uaHasPi;
-
-        DebugLog.info('isPiBrowser 檢測', {
+        DebugLog.info('isPiBrowser 同步檢測', {
             userAgent: navigator.userAgent,
             hasPiSDK: hasPiSDK,
-            uaHasPi: uaHasPi,
-            result: isPi
+            hasAuthMethod: typeof window.Pi?.authenticate === 'function',
+            hasInitMethod: typeof window.Pi?.init === 'function',
+            result: hasPiSDK
         });
-        return isPi;
+        return hasPiSDK;
+    },
+
+    // 異步快速檢測 Pi Browser 環境是否有效（使用 nativeFeaturesList）
+    async verifyPiBrowserEnvironment() {
+        if (!this.isPiBrowser()) {
+            return { valid: false, reason: 'Pi SDK 不存在' };
+        }
+
+        try {
+            this.initPiSDK();
+
+            // 使用 nativeFeaturesList 做快速環境檢測（1.5 秒超時）
+            const QUICK_TIMEOUT = 1500;
+
+            const featuresPromise = window.Pi.nativeFeaturesList
+                ? Pi.nativeFeaturesList()
+                : Promise.resolve([]);
+
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('TIMEOUT')), QUICK_TIMEOUT);
+            });
+
+            const features = await Promise.race([featuresPromise, timeoutPromise]);
+
+            DebugLog.info('Pi Browser 環境驗證成功', { features });
+            return { valid: true, features };
+
+        } catch (error) {
+            DebugLog.warn('Pi Browser 環境驗證失敗', { error: error.message });
+            return { valid: false, reason: error.message };
+        }
     },
 
     isLoggedIn() {
@@ -73,7 +103,7 @@ const AuthManager = {
     async loginAsMockUser() {
         console.log("⚠️ [Dev Mode] Manually triggering Mock Login.");
         showToast('開發模式：使用模擬 Pi 帳號登入', 'info');
-        
+
         await new Promise(r => setTimeout(r, 500)); // 模擬延遲
 
         const mockUser = {
@@ -109,7 +139,7 @@ const AuthManager = {
         this.currentUser = mockUser;
         localStorage.setItem('pi_user', JSON.stringify(this.currentUser));
         this._updateUI(true);
-        
+
         if (typeof initChat === 'function') initChat();
         return { success: true, user: this.currentUser };
     },
@@ -128,8 +158,8 @@ const AuthManager = {
 
             DebugLog.info('呼叫 Pi.authenticate...');
 
-            // 呼叫 Pi SDK 認證 (包含 payments 權限) - 添加 30 秒超時
-            const AUTH_TIMEOUT = 30000;
+            // 呼叫 Pi SDK 認證 (包含 payments 權限) - 3 秒超時（快速反饋）
+            const AUTH_TIMEOUT = 3000;
 
             const authPromise = Pi.authenticate(['username', 'payments'], (payment) => {
                 DebugLog.warn('發現未完成的支付', payment);
@@ -280,7 +310,12 @@ const AuthManager = {
 
 // 工具函式
 function isPiBrowser() {
-    return !!window.Pi || navigator.userAgent.toLowerCase().includes('pibrowser');
+    // 嚴格檢測：Pi SDK 必須存在且有必要方法
+    const hasPiSDK = typeof window.Pi !== 'undefined' &&
+                     window.Pi !== null &&
+                     typeof window.Pi.authenticate === 'function' &&
+                     typeof window.Pi.init === 'function';
+    return hasPiSDK;
 }
 
 function canMakePiPayment() {
@@ -332,16 +367,16 @@ async function getWalletStatus() {
     }
 }
 
-// 綁定 Pi 錢包（含超時機制）
+// 綁定 Pi 錢包（含快速環境檢測）
 async function linkPiWallet() {
-    const TIMEOUT_MS = 15000;
+    const TIMEOUT_MS = 3000; // 3秒超時（快速反饋）
 
     if (!AuthManager.currentUser) {
         if (typeof showToast === 'function') showToast('請先登入', 'warning');
         return { success: false, error: '請先登入' };
     }
 
-    // 必須在 Pi 瀏覽器中
+    // 第一步：同步檢測 Pi SDK 是否存在
     if (!isPiBrowser()) {
         const msg = '請在 Pi Browser 中開啟此頁面以綁定錢包';
         if (typeof showAlert === 'function') {
@@ -350,6 +385,21 @@ async function linkPiWallet() {
             alert(msg);
         }
         return { success: false, error: msg };
+    }
+
+    // 第二步：快速驗證 Pi Browser 環境是否有效
+    const envCheck = await AuthManager.verifyPiBrowserEnvironment();
+    if (!envCheck.valid) {
+        if (typeof showAlert === 'function') {
+            await showAlert({
+                title: 'Pi Browser 環境異常',
+                message: '無法連接到 Pi Network。\n\n請確認已登入 Pi 帳號且網路連線正常。',
+                type: 'warning'
+            });
+        } else if (typeof showToast === 'function') {
+            showToast('Pi Browser 環境異常', 'warning');
+        }
+        return { success: false, error: 'Pi Browser 環境異常' };
     }
 
     // 顯示連接中提示
@@ -756,16 +806,63 @@ async function handleForgotPassword() {
 
 // 暴露全域
 window.AuthManager = AuthManager;
-window.handleCredentialLogin = handleCredentialLogin;
-window.handleRegister = handleRegister;
-window.toggleAuthMode = toggleAuthMode;
-window.checkUsernameAvailability = checkUsernameAvailability;
-window.checkEmailAvailability = checkEmailAvailability;
-window.showForgotPasswordModal = showForgotPasswordModal;
-window.hideForgotPasswordModal = hideForgotPasswordModal;
-window.handleForgotPassword = handleForgotPassword;
+
+// ============================================================
+// EMAIL LOGIN DISABLED - Pi SDK Exclusive Authentication
+// 官方要求：只允許 Pi SDK 登入，不允許其他登入方式
+// 如需恢復，取消以下註解即可
+// ============================================================
+// window.handleCredentialLogin = handleCredentialLogin;
+// window.handleRegister = handleRegister;
+// window.toggleAuthMode = toggleAuthMode;
+// window.checkUsernameAvailability = checkUsernameAvailability;
+// window.checkEmailAvailability = checkEmailAvailability;
+// window.showForgotPasswordModal = showForgotPasswordModal;
+// window.hideForgotPasswordModal = hideForgotPasswordModal;
+// window.handleForgotPassword = handleForgotPassword;
 window.handlePiLogin = async () => {
     DebugLog.info('handlePiLogin 被呼叫');
+
+    // 第一步：同步檢測 Pi SDK 是否存在
+    if (!isPiBrowser()) {
+        DebugLog.warn('非 Pi Browser 環境，無法登入');
+        const msg = '請在 Pi Browser 中開啟此頁面才能登入';
+        if (typeof showAlert === 'function') {
+            await showAlert({
+                title: '需要 Pi Browser',
+                message: '此應用需要使用 Pi Browser 才能登入。\n\n請複製此網址到 Pi Browser 中開啟。',
+                type: 'warning'
+            });
+        } else if (typeof showToast === 'function') {
+            showToast(msg, 'warning');
+        } else {
+            alert(msg);
+        }
+        return;
+    }
+
+    // 第二步：快速驗證 Pi Browser 環境是否有效（1.5 秒內）
+    DebugLog.info('開始快速環境驗證...');
+    const envCheck = await AuthManager.verifyPiBrowserEnvironment();
+
+    if (!envCheck.valid) {
+        DebugLog.warn('Pi Browser 環境驗證失敗', envCheck);
+        if (typeof showAlert === 'function') {
+            await showAlert({
+                title: 'Pi Browser 環境異常',
+                message: '無法連接到 Pi Network。\n\n請確認：\n1. 您正在使用 Pi Browser\n2. 已登入 Pi 帳號\n3. 網路連線正常',
+                type: 'warning'
+            });
+        } else if (typeof showToast === 'function') {
+            showToast('Pi Browser 環境異常，請確認已登入 Pi 帳號', 'warning');
+        } else {
+            alert('Pi Browser 環境異常，請確認已登入 Pi 帳號');
+        }
+        return;
+    }
+
+    // 第三步：環境有效，進行認證
+    DebugLog.info('環境驗證通過，開始認證...');
     try {
         const res = await AuthManager.authenticateWithPi();
         DebugLog.info('Pi 登入結果', res);

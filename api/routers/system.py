@@ -24,6 +24,60 @@ router = APIRouter()
 
 # Get project root from sys.path or os.getcwd
 project_root = os.getcwd()
+FRONTEND_DEBUG_LOG = os.path.join(project_root, "frontend_debug.log")
+
+# Pydantic model for debug log
+from pydantic import BaseModel
+from typing import Any, Optional
+
+class DebugLogRequest(BaseModel):
+    level: str = "info"
+    message: str
+    data: Optional[Any] = None
+
+@router.post("/api/debug/log")
+async def write_debug_log(request: DebugLogRequest):
+    """接收前端日誌並寫入 frontend_debug.log"""
+    from datetime import datetime
+    try:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+        log_line = f"[{timestamp}] [{request.level.upper()}] {request.message}"
+        if request.data:
+            import json
+            log_line += f" | {json.dumps(request.data, ensure_ascii=False, default=str)}"
+        log_line += "\n"
+
+        with open(FRONTEND_DEBUG_LOG, "a", encoding="utf-8") as f:
+            f.write(log_line)
+
+        return {"success": True}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@router.get("/api/debug/log")
+async def read_debug_log(lines: int = 50):
+    """讀取最後 N 行 frontend_debug.log"""
+    try:
+        if not os.path.exists(FRONTEND_DEBUG_LOG):
+            return {"lines": [], "message": "Log file not found"}
+
+        with open(FRONTEND_DEBUG_LOG, "r", encoding="utf-8") as f:
+            all_lines = f.readlines()
+            last_lines = all_lines[-lines:] if len(all_lines) > lines else all_lines
+
+        return {"lines": last_lines, "total": len(all_lines)}
+    except Exception as e:
+        return {"lines": [], "error": str(e)}
+
+@router.delete("/api/debug/log")
+async def clear_debug_log():
+    """清空 frontend_debug.log"""
+    try:
+        with open(FRONTEND_DEBUG_LOG, "w", encoding="utf-8") as f:
+            f.write("")
+        return {"success": True, "message": "Log cleared"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 @router.get("/health")
 async def health_check():

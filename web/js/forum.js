@@ -510,9 +510,15 @@ const ForumApp = {
             return showToast('請先登入', 'warning');
         }
 
+        // 檢查是否在 Pi Browser 環境
+        const isPi = typeof isPiBrowser === 'function' ? isPiBrowser() : false;
+
+        // 確認打賞
         const confirmed = await showConfirm({
             title: '確認打賞',
-            message: '確認打賞 1 Pi 給作者？',
+            message: isPi
+                ? '確認打賞 1 Pi 給作者？\n將會開啟 Pi 支付流程。'
+                : '確認打賞 1 Pi 給作者？\n（測試模式：非 Pi Browser 環境）',
             type: 'info',
             confirmText: '確認打賞',
             cancelText: '取消'
@@ -521,226 +527,272 @@ const ForumApp = {
         if (!confirmed) return;
 
         try {
-            // 1. 呼叫 Pi SDK 支付 (mock)
-            // TODO: Implement actual Pi.createPayment
-            const txHash = "mock_tx_" + Date.now();
+            let txHash = "";
 
-            // 2. 後端記錄
+            if (isPi && window.Pi) {
+                // === Pi 真實支付流程 ===
+                console.log('[Tip] 開始 Pi 支付流程');
+
+                // 快速環境驗證
+                if (typeof AuthManager.verifyPiBrowserEnvironment === 'function') {
+                    const envCheck = await AuthManager.verifyPiBrowserEnvironment();
+                    if (!envCheck.valid) {
+                        showToast('Pi Browser 環境異常，請確認已登入 Pi 帳號', 'warning');
+                        return;
+                    }
+                }
+
+                // 認證 payments scope
+                try {
+                    await Pi.authenticate(['payments'], () => {});
+                    console.log('[Tip] payments scope 認證成功');
+                } catch (authErr) {
+                    console.error('[Tip] payments scope 認證失敗', authErr);
+                    showToast('支付權限不足，請重新登入', 'error');
+                    return;
+                }
+
+                // 建立支付
+                let paymentComplete = false;
+                let paymentError = null;
+
+                showToast('正在處理支付...', 'info', 0);
+
+                await Pi.createPayment({
+                    amount: 1.0,
+                    memo: `打賞文章 #${postId}`,
+                    metadata: { type: "tip", post_id: postId }
+                }, {
+                    onReadyForServerApproval: async (paymentId) => {
+                        console.log('[Tip] onReadyForServerApproval', paymentId);
+                        try {
+                            await fetch('/api/user/payment/approve', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ paymentId })
+                            });
+                        } catch (e) {
+                            console.error('[Tip] approve error', e);
+                        }
+                    },
+                    onReadyForServerCompletion: async (paymentId, txid) => {
+                        console.log('[Tip] onReadyForServerCompletion', paymentId, txid);
+                        txHash = txid;
+                        paymentComplete = true;
+                        try {
+                            await fetch('/api/user/payment/complete', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ paymentId, txid })
+                            });
+                        } catch (e) {
+                            console.error('[Tip] complete error', e);
+                        }
+                    },
+                    onCancel: (paymentId) => {
+                        console.log('[Tip] onCancel', paymentId);
+                        paymentError = 'CANCELLED';
+                    },
+                    onError: (error) => {
+                        console.error('[Tip] onError', error);
+                        paymentError = error?.message || 'PAYMENT_ERROR';
+                    }
+                });
+
+                // 等待支付完成（最多 120 秒）
+                const startTime = Date.now();
+                while (!paymentComplete && !paymentError && (Date.now() - startTime) < 120000) {
+                    await new Promise(r => setTimeout(r, 300));
+                }
+
+                // 清除 loading toast
+                const toastContainer = document.getElementById('toast-container');
+                if (toastContainer) toastContainer.innerHTML = '';
+
+                console.log('[Tip] 支付結果', { paymentComplete, paymentError, txHash });
+
+                if (paymentError) {
+                    showToast(paymentError === 'CANCELLED' ? '支付已取消' : '支付失敗', 'warning');
+                    return;
+                }
+
+                if (!txHash) {
+                    showToast('支付超時，請重試', 'warning');
+                    return;
+                }
+
+            } else {
+                // === 模擬支付（非 Pi Browser）===
+                console.log('[Tip] 使用模擬支付');
+                txHash = "mock_tip_" + Date.now();
+            }
+
+            // 後端記錄打賞
             await ForumAPI.tipPost(postId, 1, txHash);
-            showToast('打賞成功！', 'success');
+            showToast('打賞成功！感謝您的支持', 'success');
             this.loadPostDetail(postId);
 
         } catch (e) {
-            console.error(e);
+            console.error('[Tip] 錯誤', e);
             showToast('打賞失敗: ' + e.message, 'error');
         }
     },
 
     // ===========================================
-    // Create Post Logic
+    // Create Post Logic (精簡版)
     // ===========================================
     initCreatePage() {
-        if (typeof window.DebugLog !== 'undefined') DebugLog.info('Create Post Page Initialized');
+        const log = (msg, data = {}) => {
+            const entry = `[${new Date().toISOString()}] ${msg} ${JSON.stringify(data)}`;
+            console.log('[CreatePost]', msg, data);
+            // 寫入後端日誌
+            fetch('/api/debug/log', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ level: 'info', message: msg, data })
+            }).catch(() => {});
+        };
+
+        log('Create Post Page Initialized');
+
         document.getElementById('post-form')?.addEventListener('submit', async (e) => {
             e.preventDefault();
-            if (!window.AuthManager || !AuthManager.currentUser) return showToast('請先登入', 'warning');
+            log('=== 表單提交開始 ===');
 
-            // --- 強化錢包狀態檢查 ---
-            const uid = ForumAPI._getUserId();
-            if (typeof window.DebugLog !== 'undefined') {
-                await DebugLog.info('開始發文檢查', { 
-                    uid: uid, 
-                    local_user: AuthManager.currentUser 
-                });
+            // 1. 檢查登入狀態
+            if (!AuthManager?.currentUser) {
+                log('未登入');
+                showToast('請先登入', 'warning');
+                return;
             }
 
-            try {
-                const status = await getWalletStatus();
-                await DebugLog.info('後端獲取錢包狀態', status);
-
-                if (status.has_wallet) {
-                    AuthManager.currentUser.pi_uid = status.pi_uid;
-                    AuthManager.currentUser.pi_username = status.pi_username;
-                    localStorage.setItem('pi_user', JSON.stringify(AuthManager.currentUser));
-                    await DebugLog.info('同步後端狀態到本地成功');
-                }
-            } catch (err) {
-                await DebugLog.error('獲取後端狀態失敗', { error: err.message });
-            }
-
-            // 2. 檢查錢包綁定狀態
-            const isPi = AuthManager.isPiBrowser();
-            if (!canMakePiPayment()) {
-                await DebugLog.warn('判斷失敗：顯示綁定彈窗');
-                // ... (彈窗邏輯維持不變)
-            }
-
+            // 2. 取得表單數據
             const title = document.getElementById('input-title').value;
             const content = document.getElementById('input-content').value;
             const category = document.getElementById('input-category').value;
             const tagsStr = document.getElementById('input-tags').value;
-
-            // 處理標籤
             const tags = tagsStr.split(' ').map(t => t.replace('#', '').trim()).filter(t => t);
 
+            log('表單數據', { title, category, tagsLength: tags.length });
+
+            // 3. 支付流程
+            const isPi = AuthManager.isPiBrowser();
+            let txHash = "";
+
             try {
-                let txHash = "";
-
-                // 詳細調試信息 - 寫入伺服器日誌
-                await DebugLog.info('支付流程開始', {
-                    isPi: isPi,
-                    hasPiSDK: !!window.Pi,
-                    userAgent: navigator.userAgent,
-                    title: title.substring(0, 30)
-                });
-
-                // 確保 Pi SDK 已初始化
-                if (isPi && !window.Pi) {
-                    await DebugLog.info('嘗試初始化 Pi SDK');
-                    AuthManager.initPiSDK();
-                    // 等待 SDK 載入
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    await DebugLog.info('SDK 初始化後', { hasPiSDK: !!window.Pi });
-                }
-
                 if (isPi && window.Pi) {
-                    // --- 真實 Pi 支付流程 ---
-                    await DebugLog.info('進入真實 Pi 支付流程');
+                    // === Pi 真實支付 ===
+                    log('開始 Pi 支付流程');
 
-                    // 【重要】根據 Pi SDK 官方文檔，必須先用 payments scope 認證
-                    // 在發文前重新呼叫 authenticate 確保有 payments 權限
-                    await DebugLog.info('重新認證以確保 payments scope...');
-                    showToast('正在驗證支付權限...', 'info');
-
+                    // 認證 payments scope
                     try {
-                        // 根據官方範例：先認證 payments scope
-                        const authResult = await Pi.authenticate(['payments'], (incompletePayment) => {
-                            DebugLog.warn('發現未完成的支付', incompletePayment);
-                        });
-                        await DebugLog.info('payments scope 認證成功', { user: authResult.user?.username });
-                    } catch (authError) {
-                        await DebugLog.error('payments scope 認證失敗', { error: authError.message });
-                        showToast('無法獲取支付權限，請在 Pi Browser 設定中撤銷本應用授權後重新登入', 'error', 8000);
+                        await Pi.authenticate(['payments'], () => {});
+                        log('payments scope 認證成功');
+                    } catch (authErr) {
+                        log('payments scope 認證失敗', { error: authErr.message });
+                        showToast('支付權限不足，請重新登入', 'error');
                         return;
                     }
 
-                    // 現在可以建立支付
-                    showToast('正在呼叫 Pi 錢包...', 'info');
+                    // 建立支付
+                    let paymentComplete = false;
+                    let paymentError = null;
 
-                    // 使用 Promise 來等待支付完成或取消
-                    // 注意：Pi.createPayment() 不返回 Promise，使用回調方式
-                    try {
-                        txHash = await new Promise((resolve, reject) => {
-                            try {
-                                Pi.createPayment({
-                                    amount: 1.0,
-                                    memo: `Create post: ${title.substring(0, 20)}...`,
-                                    metadata: { type: "create_post", title: title.substring(0, 50) }
-                                }, {
-                                    onReadyForServerApproval: async (paymentId) => {
-                                        DebugLog.info('Pi 支付等待審批', { paymentId });
-                                        try {
-                                            const res = await fetch('/api/user/payment/approve', {
-                                                method: 'POST',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ paymentId })
-                                            });
-                                            const result = await res.json();
-                                            DebugLog.info('Pi 審批回應', result);
-                                        } catch (e) {
-                                            DebugLog.error('Pi 審批失敗', { error: e.message });
-                                        }
-                                    },
-                                    onReadyForServerCompletion: async (paymentId, txid) => {
-                                        DebugLog.info('Pi 支付完成', { paymentId, txid });
-                                        try {
-                                            const res = await fetch('/api/user/payment/complete', {
-                                                method: 'POST',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ paymentId, txid })
-                                            });
-                                            const result = await res.json();
-                                            DebugLog.info('Pi 完成回應', result);
-                                            // 支付成功，返回 txid
-                                            resolve(txid);
-                                        } catch (e) {
-                                            DebugLog.error('Pi 完成失敗', { error: e.message });
-                                            reject(new Error('支付確認失敗: ' + e.message));
-                                        }
-                                    },
-                                    onCancel: (paymentId) => {
-                                        DebugLog.warn('Pi 支付已取消', { paymentId });
-                                        showToast('支付已取消', 'warning');
-                                        reject(new Error('CANCELLED'));
-                                    },
-                                    onError: (error, payment) => {
-                                        DebugLog.error('Pi 支付回調錯誤', {
-                                            errorMessage: error?.message || error,
-                                            payment: payment
-                                        });
-                                        reject(error);
-                                    }
-                                });
-                                DebugLog.info('Pi.createPayment 已呼叫，等待回調...');
-                            } catch (createError) {
-                                // 捕獲 createPayment 同步拋出的錯誤（如 scope 錯誤）
-                                reject(createError);
-                            }
-                        });
-
-                        DebugLog.info('支付成功，獲得 txHash', { txHash });
-
-                    } catch (paymentError) {
-                        // 用戶取消
-                        if (paymentError.message === 'CANCELLED') {
-                            return;
+                    await Pi.createPayment({
+                        amount: 1.0,
+                        memo: `發文: ${title.substring(0, 20)}`,
+                        metadata: { type: "create_post" }
+                    }, {
+                        onReadyForServerApproval: async (paymentId) => {
+                            log('onReadyForServerApproval', { paymentId });
+                            await fetch('/api/user/payment/approve', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ paymentId })
+                            });
+                        },
+                        onReadyForServerCompletion: async (paymentId, txid) => {
+                            log('onReadyForServerCompletion', { paymentId, txid });
+                            txHash = txid;
+                            paymentComplete = true;
+                            await fetch('/api/user/payment/complete', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ paymentId, txid })
+                            });
+                        },
+                        onCancel: (paymentId) => {
+                            log('onCancel', { paymentId });
+                            paymentError = 'CANCELLED';
+                        },
+                        onError: (error) => {
+                            log('onError', { error: error?.message || error });
+                            paymentError = error?.message || 'ERROR';
                         }
+                    });
 
-                        // 捕獲 Pi.createPayment 拋出的錯誤（如 scope 錯誤）
-                        await DebugLog.error('Pi 支付流程錯誤', {
-                            error: paymentError.message || paymentError,
-                            stack: paymentError.stack
-                        });
+                    // 等待支付完成
+                    const startTime = Date.now();
+                    while (!paymentComplete && !paymentError && (Date.now() - startTime) < 120000) {
+                        await new Promise(r => setTimeout(r, 300));
+                    }
 
-                        // 檢查是否為 scope 權限錯誤
-                        const errorMsg = paymentError.message || String(paymentError);
-                        if (errorMsg.toLowerCase().includes('scope')) {
-                            showScopeErrorModal();
-                            return;
-                        } else {
-                            showToast('支付失敗: ' + errorMsg, 'error');
-                            return;
-                        }
+                    log('支付等待結束', { paymentComplete, paymentError, txHash });
+
+                    if (paymentError || !txHash) {
+                        showToast(paymentError === 'CANCELLED' ? '支付已取消' : '支付失敗', 'warning');
+                        return;
                     }
                 } else {
-                    // --- 開發者模擬環境 ---
-                    DebugLog.warn('進入模擬支付模式', {
-                        isPi: isPi,
-                        hasPiSDK: !!window.Pi,
-                        reason: '非 Pi Browser 或 SDK 未載入'
-                    });
-                    txHash = "mock_payment_" + Date.now();
-                    showToast('測試模式：使用模擬支付成功', 'info');
+                    // === 模擬支付 ===
+                    log('使用模擬支付（非 Pi Browser）');
+                    txHash = "mock_" + Date.now();
                 }
 
-                // 2. 提交 API
-                await ForumAPI.createPost({
-                    board_slug: 'crypto', 
+                // 4. 提交文章
+                log('開始提交文章', { txHash });
+
+                const postData = {
+                    board_slug: 'crypto',
                     category,
                     title,
                     content,
                     tags,
                     payment_tx_hash: txHash
-                });
+                };
 
-                showToast('發布成功！', 'success');
+                const result = await ForumAPI.createPost(postData);
+                log('✅ 文章提交成功', { result });
+
+                // 5. 顯示成功訊息
+                log('準備顯示成功 Toast');
+
+                // 清空舊 Toast
+                const container = document.getElementById('toast-container');
+                log('toast-container 存在?', { exists: !!container });
+                if (container) container.innerHTML = '';
+
+                // 顯示成功
+                log('呼叫 showToast', { showToastExists: typeof showToast === 'function' });
+
+                if (typeof showToast === 'function') {
+                    showToast('🎉 發布成功！', 'success', 5000);
+                    log('showToast 已執行');
+                } else {
+                    log('showToast 不存在，使用 alert');
+                    alert('🎉 發布成功！');
+                }
+
+                // 6. 延遲跳轉
+                log('設定 3 秒後跳轉');
                 setTimeout(() => {
+                    log('執行跳轉');
                     window.location.href = '/static/forum/index.html';
-                }, 1000);
+                }, 3000);
 
-            } catch (e) {
-                console.error("Submission error:", e);
-                showToast('發布失敗: ' + e.message, 'error');
+            } catch (err) {
+                log('❌ 發生錯誤', { error: err.message, stack: err.stack });
+                showToast('發布失敗: ' + err.message, 'error');
             }
         });
     },

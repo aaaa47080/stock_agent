@@ -382,21 +382,23 @@ def add_comment(post_id: int, user_id: str, comment_type: str, content: str = No
                 # 如果點擊的是同一種類型 -> 取消 (Toggle Off)
                 if v_type == comment_type:
                     c.execute('DELETE FROM forum_comments WHERE id = ?', (vote_id,))
+                    # push/boo 不影響 comment_count，只更新各自的計數
                     if v_type == 'push':
-                        c.execute('UPDATE posts SET push_count = MAX(0, push_count - 1), comment_count = MAX(0, comment_count - 1) WHERE id = ?', (post_id,))
+                        c.execute('UPDATE posts SET push_count = MAX(0, push_count - 1) WHERE id = ?', (post_id,))
                     else:
-                        c.execute('UPDATE posts SET boo_count = MAX(0, boo_count - 1), comment_count = MAX(0, comment_count - 1) WHERE id = ?', (post_id,))
+                        c.execute('UPDATE posts SET boo_count = MAX(0, boo_count - 1) WHERE id = ?', (post_id,))
                     conn.commit()
                     return {"success": True, "action": "cancelled"}
-                
+
                 # 如果點擊的是不同類型 -> 切換 (Switch)
                 else:
                     # 先刪除舊的
                     c.execute('DELETE FROM forum_comments WHERE id = ?', (vote_id,))
+                    # push/boo 不影響 comment_count，只更新各自的計數
                     if v_type == 'push':
-                        c.execute('UPDATE posts SET push_count = MAX(0, push_count - 1), comment_count = MAX(0, comment_count - 1) WHERE id = ?', (post_id,))
+                        c.execute('UPDATE posts SET push_count = MAX(0, push_count - 1) WHERE id = ?', (post_id,))
                     else:
-                        c.execute('UPDATE posts SET boo_count = MAX(0, boo_count - 1), comment_count = MAX(0, comment_count - 1) WHERE id = ?', (post_id,))
+                        c.execute('UPDATE posts SET boo_count = MAX(0, boo_count - 1) WHERE id = ?', (post_id,))
                     # 接下來會繼續執行下面的 INSERT
 
         # 新增回覆
@@ -408,10 +410,11 @@ def add_comment(post_id: int, user_id: str, comment_type: str, content: str = No
         comment_id = c.lastrowid
 
         # 更新文章統計
+        # 注意：comment_count 只統計真正的留言，push/boo 只更新各自的計數
         if comment_type == 'push':
-            c.execute('UPDATE posts SET push_count = push_count + 1, comment_count = comment_count + 1 WHERE id = ?', (post_id,))
+            c.execute('UPDATE posts SET push_count = push_count + 1 WHERE id = ?', (post_id,))
         elif comment_type == 'boo':
-            c.execute('UPDATE posts SET boo_count = boo_count + 1, comment_count = comment_count + 1 WHERE id = ?', (post_id,))
+            c.execute('UPDATE posts SET boo_count = boo_count + 1 WHERE id = ?', (post_id,))
         else:
             c.execute('UPDATE posts SET comment_count = comment_count + 1 WHERE id = ?', (post_id,))
 
