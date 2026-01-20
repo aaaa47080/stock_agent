@@ -191,3 +191,11 @@ OKX_PASSPHRASE = os.getenv("OKX_PASSPHRASE", "")
 # 是否使用模擬盤 (Paper Trading)
 # True: 使用模擬盤 / False: 使用真實帳戶
 PAPER_TRADING = False
+
+# === Pi Network 支付價格配置 ===
+# 定義各種操作的 Pi 幣價格（用於後端驗證防止金額篡改）
+PI_PAYMENT_PRICES = {
+    "create_post": 1.0,    # 發文費用 1 Pi
+    "tip": 1.0,            # 打賞 1 Pi
+    "premium": 10.0,       # 高級會員 10 Pi（示例）
+}

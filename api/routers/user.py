@@ -301,6 +301,9 @@ async def reset_password(request: ResetPasswordRequest):
 
 # --- Pi Payment Handling Endpoints ---
 
+# 從 config 導入價格表
+from core.config import PI_PAYMENT_PRICES
+
 class ApprovePaymentRequest(BaseModel):
     paymentId: str
 
@@ -311,7 +314,14 @@ class CompletePaymentRequest(BaseModel):
 @router.post("/api/user/payment/approve")
 async def approve_payment(request: ApprovePaymentRequest):
     """
-    接收前端通知，呼叫 Pi Server API 核准支付
+    接收前端通知，驗證金額後呼叫 Pi Server API 核准支付
+
+    流程：
+    1. 從 Pi API 獲取支付詳情（包含實際金額和 metadata）
+    2. 根據 metadata.type 查找預期價格
+    3. 驗證實際金額 === 預期金額
+    4. 驗證通過後才批准支付
+
     官方文檔: https://pi-apps.github.io/community-developer-guide/docs/gettingStarted/piAppPlatform/piAppPlatformAPIs/
     """
     logger.info(f"Pi Payment Approval Requested: {request.paymentId}")
@@ -322,17 +332,58 @@ async def approve_payment(request: ApprovePaymentRequest):
 
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.post(
+            # ============================================
+            # 步驟 1: 從 Pi API 獲取支付詳情
+            # ============================================
+            get_response = await client.get(
+                f"{PI_API_BASE}/payments/{request.paymentId}",
+                headers={"Authorization": f"Key {PI_API_KEY}"}
+            )
+            get_response.raise_for_status()
+            payment_info = get_response.json()
+
+            logger.info(f"Pi Payment Info: {payment_info}")
+
+            # ============================================
+            # 步驟 2: 驗證金額
+            # ============================================
+            actual_amount = payment_info.get("amount", 0)
+            metadata = payment_info.get("metadata", {})
+            payment_type = metadata.get("type", "unknown")
+
+            # 查找預期價格
+            expected_amount = PI_PAYMENT_PRICES.get(payment_type)
+
+            if expected_amount is not None:
+                # 有定義價格的類型，進行驗證
+                if abs(actual_amount - expected_amount) > 0.001:  # 允許微小浮點誤差
+                    logger.error(f"Payment amount mismatch! Expected: {expected_amount}, Actual: {actual_amount}, Type: {payment_type}")
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"金額不正確: 預期 {expected_amount} Pi, 實際 {actual_amount} Pi"
+                    )
+                logger.info(f"Payment amount verified: {actual_amount} Pi for {payment_type}")
+            else:
+                # 未定義的支付類型，記錄警告但允許通過（可根據需求改為拒絕）
+                logger.warning(f"Unknown payment type: {payment_type}, amount: {actual_amount}")
+
+            # ============================================
+            # 步驟 3: 驗證通過，批准支付
+            # ============================================
+            approve_response = await client.post(
                 f"{PI_API_BASE}/payments/{request.paymentId}/approve",
                 headers={"Authorization": f"Key {PI_API_KEY}"}
             )
-            response.raise_for_status()
-            result = response.json()
+            approve_response.raise_for_status()
+            result = approve_response.json()
             logger.info(f"Pi API Approve Response: {result}")
             return {"status": "ok", "message": "Payment approved", "data": result}
+
     except httpx.HTTPStatusError as e:
         logger.error(f"Pi API Approve Error: {e.response.status_code} - {e.response.text}")
         raise HTTPException(status_code=e.response.status_code, detail=f"Pi API Error: {e.response.text}")
+    except HTTPException:
+        raise  # 重新拋出我們自己的 HTTPException
     except Exception as e:
         logger.error(f"Pi Payment Approval Failed: {e}")
         raise HTTPException(status_code=500, detail=f"Payment approval failed: {str(e)}")
