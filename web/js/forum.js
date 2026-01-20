@@ -2,6 +2,51 @@
 // forum.js - 論壇功能核心邏輯
 // ========================================
 
+// ============================================
+// Pi 支付價格配置（從後端動態獲取）
+// ============================================
+window.PiPrices = {
+    create_post: 1.0,  // 預設值，會被後端覆蓋
+    tip: 1.0,
+    premium: 10.0,
+    loaded: false
+};
+
+// 從後端載入價格配置
+async function loadPiPrices() {
+    try {
+        const res = await fetch('/api/config/prices');
+        if (res.ok) {
+            const data = await res.json();
+            window.PiPrices = { ...data.prices, loaded: true };
+            console.log('[Forum] Pi 價格配置已載入:', window.PiPrices);
+            // 更新頁面上的價格顯示
+            updatePriceDisplays();
+        }
+    } catch (e) {
+        console.error('[Forum] 載入價格配置失敗，使用預設值:', e);
+    }
+}
+
+// 更新頁面上所有價格顯示元素
+function updatePriceDisplays() {
+    // 更新發文價格
+    document.querySelectorAll('[data-price="create_post"]').forEach(el => {
+        el.textContent = `${window.PiPrices.create_post} Pi`;
+    });
+    // 更新打賞價格
+    document.querySelectorAll('[data-price="tip"]').forEach(el => {
+        el.textContent = `${window.PiPrices.tip} Pi`;
+    });
+    // 更新高級會員價格
+    document.querySelectorAll('[data-price="premium"]').forEach(el => {
+        el.textContent = `${window.PiPrices.premium} Pi`;
+    });
+}
+
+// 頁面載入時獲取價格
+document.addEventListener('DOMContentLoaded', loadPiPrices);
+
 // 格式化為台灣時間
 function formatTWDate(dateStr, showTime = false) {
     const date = new Date(dateStr);
@@ -513,12 +558,15 @@ const ForumApp = {
         // 檢查是否在 Pi Browser 環境
         const isPi = typeof isPiBrowser === 'function' ? isPiBrowser() : false;
 
+        // 獲取打賞價格
+        const tipAmount = window.PiPrices?.tip || 1.0;
+
         // 確認打賞
         const confirmed = await showConfirm({
             title: '確認打賞',
             message: isPi
-                ? '確認打賞 1 Pi 給作者？\n將會開啟 Pi 支付流程。'
-                : '確認打賞 1 Pi 給作者？\n（測試模式：非 Pi Browser 環境）',
+                ? `確認打賞 ${tipAmount} Pi 給作者？\n將會開啟 Pi 支付流程。`
+                : `確認打賞 ${tipAmount} Pi 給作者？\n（測試模式：非 Pi Browser 環境）`,
             type: 'info',
             confirmText: '確認打賞',
             cancelText: '取消'
@@ -559,7 +607,7 @@ const ForumApp = {
                 showToast('正在處理支付...', 'info', 0);
 
                 await Pi.createPayment({
-                    amount: 1.0,
+                    amount: tipAmount,
                     memo: `打賞文章 #${postId}`,
                     metadata: { type: "tip", post_id: postId }
                 }, {
@@ -628,7 +676,7 @@ const ForumApp = {
             }
 
             // 後端記錄打賞
-            await ForumAPI.tipPost(postId, 1, txHash);
+            await ForumAPI.tipPost(postId, tipAmount, txHash);
             showToast('打賞成功！感謝您的支持', 'success');
             this.loadPostDetail(postId);
 
@@ -675,7 +723,11 @@ const ForumApp = {
 
             log('表單數據', { title, category, tagsLength: tags.length });
 
-            // 3. 支付流程
+            // 3. 獲取發文價格
+            const postAmount = window.PiPrices?.create_post || 1.0;
+            log('發文價格', { postAmount });
+
+            // 4. 支付流程
             const isPi = AuthManager.isPiBrowser();
             let txHash = "";
 
@@ -699,7 +751,7 @@ const ForumApp = {
                     let paymentError = null;
 
                     await Pi.createPayment({
-                        amount: 1.0,
+                        amount: postAmount,
                         memo: `發文: ${title.substring(0, 20)}`,
                         metadata: { type: "create_post" }
                     }, {

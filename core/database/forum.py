@@ -8,13 +8,7 @@ from datetime import datetime
 
 from .connection import get_connection
 from .user import get_user_membership
-
-
-# ============================================================================
-# 常數
-# ============================================================================
-
-DAILY_COMMENT_LIMIT_FREE = 20  # 免費會員每日回覆上限
+from core.config import FORUM_LIMITS
 
 
 # ============================================================================
@@ -70,12 +64,66 @@ def get_board_by_slug(slug: str) -> Optional[Dict]:
 # 文章 (Posts)
 # ============================================================================
 
-def create_post(board_id: int, user_id: str, category: str, title: str, content: str,
-                tags: List[str] = None, payment_tx_hash: str = None) -> int:
-    """創建新文章，返回文章 ID"""
+def check_daily_post_limit(user_id: str) -> Dict:
+    """
+    檢查用戶是否達到每日發文上限
+    返回: {"allowed": bool, "count": int, "limit": int|None, "remaining": int|None}
+    """
     conn = get_connection()
     c = conn.cursor()
     try:
+        membership = get_user_membership(user_id)
+        is_premium = membership['is_pro']
+
+        # 獲取對應的限制
+        limit = FORUM_LIMITS["daily_post_premium"] if is_premium else FORUM_LIMITS["daily_post_free"]
+
+        # 如果無限制，直接返回允許
+        if limit is None:
+            return {"allowed": True, "count": 0, "limit": None, "remaining": None}
+
+        # 查詢今日發文數
+        today = datetime.utcnow().strftime('%Y-%m-%d')
+        c.execute('''
+            SELECT post_count FROM user_daily_posts
+            WHERE user_id = ? AND date = ?
+        ''', (user_id, today))
+        row = c.fetchone()
+        current_count = row[0] if row else 0
+
+        return {
+            "allowed": current_count < limit,
+            "count": current_count,
+            "limit": limit,
+            "remaining": max(0, limit - current_count)
+        }
+    finally:
+        conn.close()
+
+
+def create_post(board_id: int, user_id: str, category: str, title: str, content: str,
+                tags: List[str] = None, payment_tx_hash: str = None,
+                skip_limit_check: bool = False) -> Dict:
+    """
+    創建新文章
+    返回: {"success": bool, "post_id": int} 或 {"success": False, "error": str, ...}
+
+    skip_limit_check: 跳過限制檢查（用於 PRO 會員等特殊情況）
+    """
+    conn = get_connection()
+    c = conn.cursor()
+    try:
+        # 檢查每日發文限制（免費會員）
+        if not skip_limit_check:
+            limit_check = check_daily_post_limit(user_id)
+            if not limit_check["allowed"]:
+                return {
+                    "success": False,
+                    "error": "daily_post_limit_reached",
+                    "limit": limit_check["limit"],
+                    "count": limit_check["count"]
+                }
+
         tags_json = json.dumps(tags, ensure_ascii=False) if tags else None
         c.execute('''
             INSERT INTO posts (board_id, user_id, category, title, content, tags, payment_tx_hash, created_at, updated_at)
@@ -107,12 +155,20 @@ def create_post(board_id: int, user_id: str, category: str, title: str, content:
                 # 建立關聯
                 c.execute('INSERT OR IGNORE INTO post_tags (post_id, tag_id) VALUES (?, ?)', (post_id, tag_id))
 
+        # 更新每日發文計數
+        today = datetime.utcnow().strftime('%Y-%m-%d')
+        c.execute('''
+            INSERT INTO user_daily_posts (user_id, date, post_count)
+            VALUES (?, ?, 1)
+            ON CONFLICT(user_id, date) DO UPDATE SET post_count = post_count + 1
+        ''', (user_id, today))
+
         conn.commit()
-        return post_id
+        return {"success": True, "post_id": post_id}
     except Exception as e:
         print(f"Create post error: {e}")
         conn.rollback()
-        raise
+        return {"success": False, "error": str(e)}
     finally:
         conn.close()
 
@@ -356,7 +412,10 @@ def add_comment(post_id: int, user_id: str, comment_type: str, content: str = No
         # 檢查每日回覆限制（免費會員）- 僅針對實際留言，推噓不計入
         if comment_type == 'comment':
             membership = get_user_membership(user_id)
-            if not membership['is_pro']:
+            limit = FORUM_LIMITS["daily_comment_premium"] if membership['is_pro'] else FORUM_LIMITS["daily_comment_free"]
+
+            # 如果有限制，檢查是否超過
+            if limit is not None:
                 today = datetime.utcnow().strftime('%Y-%m-%d')
                 c.execute('''
                     SELECT comment_count FROM user_daily_comments
@@ -365,8 +424,8 @@ def add_comment(post_id: int, user_id: str, comment_type: str, content: str = No
                 row = c.fetchone()
                 current_count = row[0] if row else 0
 
-                if current_count >= DAILY_COMMENT_LIMIT_FREE:
-                    return {"success": False, "error": "daily_limit_reached", "limit": DAILY_COMMENT_LIMIT_FREE}
+                if current_count >= limit:
+                    return {"success": False, "error": "daily_limit_reached", "limit": limit}
 
         # 檢查是否重複推噓 (同一篇文章只能推/噓一次) - 實作 Toggle 邏輯
         if comment_type in ['push', 'boo']:
@@ -484,7 +543,29 @@ def get_daily_comment_count(user_id: str) -> Dict:
         count = row[0] if row else 0
 
         membership = get_user_membership(user_id)
-        limit = None if membership['is_pro'] else DAILY_COMMENT_LIMIT_FREE
+        limit = FORUM_LIMITS["daily_comment_premium"] if membership['is_pro'] else FORUM_LIMITS["daily_comment_free"]
+
+        return {
+            "count": count,
+            "limit": limit,
+            "remaining": None if limit is None else max(0, limit - count)
+        }
+    finally:
+        conn.close()
+
+
+def get_daily_post_count(user_id: str) -> Dict:
+    """獲取用戶今日發文數"""
+    conn = get_connection()
+    c = conn.cursor()
+    try:
+        today = datetime.utcnow().strftime('%Y-%m-%d')
+        c.execute('SELECT post_count FROM user_daily_posts WHERE user_id = ? AND date = ?', (user_id, today))
+        row = c.fetchone()
+        count = row[0] if row else 0
+
+        membership = get_user_membership(user_id)
+        limit = FORUM_LIMITS["daily_post_premium"] if membership['is_pro'] else FORUM_LIMITS["daily_post_free"]
 
         return {
             "count": count,

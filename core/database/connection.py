@@ -284,6 +284,19 @@ def init_db():
         )
     ''')
 
+    # 用戶每日發文計數表
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS user_daily_posts (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id         TEXT NOT NULL,
+            date            DATE NOT NULL,
+            post_count      INTEGER DEFAULT 0,
+
+            UNIQUE (user_id, date),
+            FOREIGN KEY (user_id) REFERENCES users(user_id)
+        )
+    ''')
+
     # Migration: 為 users 表添加會員等級欄位
     try:
         c.execute('ALTER TABLE users ADD COLUMN membership_tier TEXT DEFAULT "free"')

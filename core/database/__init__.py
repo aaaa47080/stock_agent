@@ -62,18 +62,18 @@ from .chat import (
 
 # 論壇功能
 from .forum import (
-    # 常數
-    DAILY_COMMENT_LIMIT_FREE,
     # 看板
     get_boards,
     get_board_by_slug,
     # 文章
+    check_daily_post_limit,
     create_post,
     get_posts,
     get_post_by_id,
     update_post,
     delete_post,
     get_user_posts,
+    get_daily_post_count,
     # 回覆
     add_comment,
     get_comments,
@@ -153,15 +153,16 @@ __all__ = [
     'get_chat_history',
     'clear_chat_history',
     # 論壇
-    'DAILY_COMMENT_LIMIT_FREE',
     'get_boards',
     'get_board_by_slug',
+    'check_daily_post_limit',
     'create_post',
     'get_posts',
     'get_post_by_id',
     'update_post',
     'delete_post',
     'get_user_posts',
+    'get_daily_post_count',
     'add_comment',
     'get_comments',
     'get_daily_comment_count',

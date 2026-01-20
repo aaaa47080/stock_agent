@@ -199,3 +199,12 @@ PI_PAYMENT_PRICES = {
     "tip": 1.0,            # 打賞 1 Pi
     "premium": 10.0,       # 高級會員 10 Pi（示例）
 }
+
+# === 論壇會員限制配置 ===
+# None 表示無限制
+FORUM_LIMITS = {
+    "daily_post_free": 3,        # 一般會員每日發文上限
+    "daily_post_premium": None,  # 高級會員每日發文上限 (None = 無限)
+    "daily_comment_free": 20,    # 一般會員每日回覆上限
+    "daily_comment_premium": None,  # 高級會員每日回覆上限 (None = 無限)
+}

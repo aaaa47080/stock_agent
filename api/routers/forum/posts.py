@@ -12,6 +12,7 @@ from core.database import (
     update_post,
     delete_post,
     get_user_membership,
+    check_daily_post_limit,
 )
 from .models import CreatePostRequest, UpdatePostRequest
 
@@ -68,6 +69,7 @@ async def create_new_post(request: CreatePostRequest, user_id: str = Query(..., 
 
     - 免費會員需提供 payment_tx_hash（支付 1 Pi）
     - PRO 會員免費發文
+    - 一般會員每日限制 3 篇，PRO 會員無限制
     """
     try:
         # 驗證分類
@@ -87,6 +89,14 @@ async def create_new_post(request: CreatePostRequest, user_id: str = Query(..., 
         # 檢查會員狀態
         membership = get_user_membership(user_id)
 
+        # 檢查每日發文限制（在付款前先檢查，避免用戶付費後才發現無法發文）
+        limit_check = check_daily_post_limit(user_id)
+        if not limit_check["allowed"]:
+            raise HTTPException(
+                status_code=429,
+                detail=f"已達每日發文上限 ({limit_check['limit']} 篇)，升級 PRO 會員可無限發文"
+            )
+
         # 免費會員需要付費
         if not membership["is_pro"] and not request.payment_tx_hash:
             raise HTTPException(
@@ -94,8 +104,8 @@ async def create_new_post(request: CreatePostRequest, user_id: str = Query(..., 
                 detail="免費會員發文需支付 1 Pi，請提供 payment_tx_hash"
             )
 
-        # 創建文章
-        post_id = create_post(
+        # 創建文章（跳過限制檢查，因為上面已經檢查過了）
+        result = create_post(
             board_id=board["id"],
             user_id=user_id,
             category=request.category,
@@ -103,12 +113,21 @@ async def create_new_post(request: CreatePostRequest, user_id: str = Query(..., 
             content=request.content,
             tags=request.tags,
             payment_tx_hash=request.payment_tx_hash,
+            skip_limit_check=True,
         )
+
+        if not result["success"]:
+            if result.get("error") == "daily_post_limit_reached":
+                raise HTTPException(
+                    status_code=429,
+                    detail=f"已達每日發文上限 ({result['limit']} 篇)，升級 PRO 會員可無限發文"
+                )
+            raise HTTPException(status_code=500, detail=result.get("error", "發表文章失敗"))
 
         return {
             "success": True,
             "message": "文章發表成功",
-            "post_id": post_id
+            "post_id": result["post_id"]
         }
     except HTTPException:
         raise

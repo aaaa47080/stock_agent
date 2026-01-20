@@ -10,7 +10,7 @@ from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage
 
 from core.config import (
-    SUPPORTED_EXCHANGES, DEFAULT_INTERVAL, DEFAULT_KLINES_LIMIT
+    SUPPORTED_EXCHANGES, DEFAULT_INTERVAL, DEFAULT_KLINES_LIMIT, PI_PAYMENT_PRICES
 )
 import core.config as core_config
 from utils.settings import Settings
@@ -203,6 +203,17 @@ async def get_model_config():
     """獲取模型配置資訊"""
     from core.model_config import MODEL_CONFIG
     return {"model_config": MODEL_CONFIG}
+
+@router.get("/api/config/prices")
+async def get_pi_prices():
+    """
+    獲取 Pi 支付價格配置
+    前端使用此 API 獲取動態價格，確保價格與後端驗證一致
+    """
+    return {
+        "prices": PI_PAYMENT_PRICES,
+        "currency": "Pi"
+    }
 
 @router.post("/api/settings/update")
 async def update_user_settings(settings: UserSettings):
