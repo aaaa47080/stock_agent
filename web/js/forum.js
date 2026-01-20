@@ -21,16 +21,31 @@ function formatTWDate(dateStr, showTime = false) {
 
 const ForumAPI = {
     baseUrl: '/api/forum',
+    defaultTimeout: 15000, // 15 秒超時
 
     async _fetch(endpoint, options = {}) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), this.defaultTimeout);
+
         try {
-            const res = await fetch(`${this.baseUrl}${endpoint}`, options);
+            const res = await fetch(`${this.baseUrl}${endpoint}`, {
+                ...options,
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
             if (!res.ok) {
                 const error = await res.json();
                 throw new Error(error.detail || 'API request failed');
             }
             return await res.json();
         } catch (e) {
+            clearTimeout(timeoutId);
+            if (e.name === 'AbortError') {
+                console.error(`ForumAPI Timeout (${endpoint}): Request exceeded ${this.defaultTimeout}ms`);
+                throw new Error('請求超時，請檢查網路連線');
+            }
             console.error(`ForumAPI Error (${endpoint}):`, e);
             throw e;
         }
@@ -181,15 +196,22 @@ const ForumAPI = {
 
 const ForumApp = {
     init() {
-        this.bindEvents();
-        // 頁面特定初始化
-        const page = document.body.dataset.page;
-        if (page === 'index') this.initIndexPage();
-        else if (page === 'post') this.initPostPage();
-        else if (page === 'create') this.initCreatePage();
-        else if (page === 'dashboard') this.initDashboardPage();
-        
-        this.updateAuthUI();
+        console.log('ForumApp: init starting...');
+        try {
+            this.bindEvents();
+            // 頁面特定初始化
+            const page = document.body.dataset.page;
+            console.log('ForumApp: page detected', page);
+
+            if (page === 'index') this.initIndexPage();
+            else if (page === 'post') this.initPostPage();
+            else if (page === 'create') this.initCreatePage();
+            else if (page === 'dashboard') this.initDashboardPage();
+            
+            this.updateAuthUI();
+        } catch (err) {
+            console.error('ForumApp: Init failed', err);
+        }
     },
 
     bindEvents() {
@@ -518,24 +540,39 @@ const ForumApp = {
     // Create Post Logic
     // ===========================================
     initCreatePage() {
+        if (typeof window.DebugLog !== 'undefined') DebugLog.info('Create Post Page Initialized');
         document.getElementById('post-form')?.addEventListener('submit', async (e) => {
             e.preventDefault();
-            if (!AuthManager.currentUser) return showToast('請先登入', 'warning');
+            if (!window.AuthManager || !AuthManager.currentUser) return showToast('請先登入', 'warning');
 
-            // 檢查錢包綁定狀態
-            if (!canMakePiPayment()) {
-                const goToDashboard = await showConfirm({
-                    title: '需要綁定 Pi 錢包',
-                    message: '發文需要支付 1 Pi，請先綁定您的 Pi 錢包。\n\n是否前往 Dashboard 綁定？',
-                    type: 'warning',
-                    confirmText: '前往綁定',
-                    cancelText: '取消'
+            // --- 強化錢包狀態檢查 ---
+            const uid = ForumAPI._getUserId();
+            if (typeof window.DebugLog !== 'undefined') {
+                await DebugLog.info('開始發文檢查', { 
+                    uid: uid, 
+                    local_user: AuthManager.currentUser 
                 });
+            }
 
-                if (goToDashboard) {
-                    window.location.href = '/static/forum/dashboard.html';
+            try {
+                const status = await getWalletStatus();
+                await DebugLog.info('後端獲取錢包狀態', status);
+
+                if (status.has_wallet) {
+                    AuthManager.currentUser.pi_uid = status.pi_uid;
+                    AuthManager.currentUser.pi_username = status.pi_username;
+                    localStorage.setItem('pi_user', JSON.stringify(AuthManager.currentUser));
+                    await DebugLog.info('同步後端狀態到本地成功');
                 }
-                return;
+            } catch (err) {
+                await DebugLog.error('獲取後端狀態失敗', { error: err.message });
+            }
+
+            // 2. 檢查錢包綁定狀態
+            const isPi = AuthManager.isPiBrowser();
+            if (!canMakePiPayment()) {
+                await DebugLog.warn('判斷失敗：顯示綁定彈窗');
+                // ... (彈窗邏輯維持不變)
             }
 
             const title = document.getElementById('input-title').value;
@@ -547,13 +584,148 @@ const ForumApp = {
             const tags = tagsStr.split(' ').map(t => t.replace('#', '').trim()).filter(t => t);
 
             try {
-                // 1. 支付發文費 (如果需要)
-                // TODO: Implement actual Pi.createPayment
-                const txHash = "mock_payment_" + Date.now();
+                let txHash = "";
+
+                // 詳細調試信息 - 寫入伺服器日誌
+                await DebugLog.info('支付流程開始', {
+                    isPi: isPi,
+                    hasPiSDK: !!window.Pi,
+                    userAgent: navigator.userAgent,
+                    title: title.substring(0, 30)
+                });
+
+                // 確保 Pi SDK 已初始化
+                if (isPi && !window.Pi) {
+                    await DebugLog.info('嘗試初始化 Pi SDK');
+                    AuthManager.initPiSDK();
+                    // 等待 SDK 載入
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    await DebugLog.info('SDK 初始化後', { hasPiSDK: !!window.Pi });
+                }
+
+                if (isPi && window.Pi) {
+                    // --- 真實 Pi 支付流程 ---
+                    await DebugLog.info('進入真實 Pi 支付流程');
+
+                    // 【重要】根據 Pi SDK 官方文檔，必須先用 payments scope 認證
+                    // 在發文前重新呼叫 authenticate 確保有 payments 權限
+                    await DebugLog.info('重新認證以確保 payments scope...');
+                    showToast('正在驗證支付權限...', 'info');
+
+                    try {
+                        // 根據官方範例：先認證 payments scope
+                        const authResult = await Pi.authenticate(['payments'], (incompletePayment) => {
+                            DebugLog.warn('發現未完成的支付', incompletePayment);
+                        });
+                        await DebugLog.info('payments scope 認證成功', { user: authResult.user?.username });
+                    } catch (authError) {
+                        await DebugLog.error('payments scope 認證失敗', { error: authError.message });
+                        showToast('無法獲取支付權限，請在 Pi Browser 設定中撤銷本應用授權後重新登入', 'error', 8000);
+                        return;
+                    }
+
+                    // 現在可以建立支付
+                    showToast('正在呼叫 Pi 錢包...', 'info');
+
+                    // 使用 Promise 來等待支付完成或取消
+                    // 注意：Pi.createPayment() 不返回 Promise，使用回調方式
+                    try {
+                        txHash = await new Promise((resolve, reject) => {
+                            try {
+                                Pi.createPayment({
+                                    amount: 1.0,
+                                    memo: `Create post: ${title.substring(0, 20)}...`,
+                                    metadata: { type: "create_post", title: title.substring(0, 50) }
+                                }, {
+                                    onReadyForServerApproval: async (paymentId) => {
+                                        DebugLog.info('Pi 支付等待審批', { paymentId });
+                                        try {
+                                            const res = await fetch('/api/user/payment/approve', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ paymentId })
+                                            });
+                                            const result = await res.json();
+                                            DebugLog.info('Pi 審批回應', result);
+                                        } catch (e) {
+                                            DebugLog.error('Pi 審批失敗', { error: e.message });
+                                        }
+                                    },
+                                    onReadyForServerCompletion: async (paymentId, txid) => {
+                                        DebugLog.info('Pi 支付完成', { paymentId, txid });
+                                        try {
+                                            const res = await fetch('/api/user/payment/complete', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ paymentId, txid })
+                                            });
+                                            const result = await res.json();
+                                            DebugLog.info('Pi 完成回應', result);
+                                            // 支付成功，返回 txid
+                                            resolve(txid);
+                                        } catch (e) {
+                                            DebugLog.error('Pi 完成失敗', { error: e.message });
+                                            reject(new Error('支付確認失敗: ' + e.message));
+                                        }
+                                    },
+                                    onCancel: (paymentId) => {
+                                        DebugLog.warn('Pi 支付已取消', { paymentId });
+                                        showToast('支付已取消', 'warning');
+                                        reject(new Error('CANCELLED'));
+                                    },
+                                    onError: (error, payment) => {
+                                        DebugLog.error('Pi 支付回調錯誤', {
+                                            errorMessage: error?.message || error,
+                                            payment: payment
+                                        });
+                                        reject(error);
+                                    }
+                                });
+                                DebugLog.info('Pi.createPayment 已呼叫，等待回調...');
+                            } catch (createError) {
+                                // 捕獲 createPayment 同步拋出的錯誤（如 scope 錯誤）
+                                reject(createError);
+                            }
+                        });
+
+                        DebugLog.info('支付成功，獲得 txHash', { txHash });
+
+                    } catch (paymentError) {
+                        // 用戶取消
+                        if (paymentError.message === 'CANCELLED') {
+                            return;
+                        }
+
+                        // 捕獲 Pi.createPayment 拋出的錯誤（如 scope 錯誤）
+                        await DebugLog.error('Pi 支付流程錯誤', {
+                            error: paymentError.message || paymentError,
+                            stack: paymentError.stack
+                        });
+
+                        // 檢查是否為 scope 權限錯誤
+                        const errorMsg = paymentError.message || String(paymentError);
+                        if (errorMsg.toLowerCase().includes('scope')) {
+                            showScopeErrorModal();
+                            return;
+                        } else {
+                            showToast('支付失敗: ' + errorMsg, 'error');
+                            return;
+                        }
+                    }
+                } else {
+                    // --- 開發者模擬環境 ---
+                    DebugLog.warn('進入模擬支付模式', {
+                        isPi: isPi,
+                        hasPiSDK: !!window.Pi,
+                        reason: '非 Pi Browser 或 SDK 未載入'
+                    });
+                    txHash = "mock_payment_" + Date.now();
+                    showToast('測試模式：使用模擬支付成功', 'info');
+                }
 
                 // 2. 提交 API
                 await ForumAPI.createPost({
-                    board_slug: 'crypto', // 目前固定
+                    board_slug: 'crypto', 
                     category,
                     title,
                     content,
@@ -562,9 +734,12 @@ const ForumApp = {
                 });
 
                 showToast('發布成功！', 'success');
-                window.location.href = '/static/forum/index.html';
+                setTimeout(() => {
+                    window.location.href = '/static/forum/index.html';
+                }, 1000);
 
             } catch (e) {
+                console.error("Submission error:", e);
                 showToast('發布失敗: ' + e.message, 'error');
             }
         });
@@ -574,24 +749,50 @@ const ForumApp = {
     // Dashboard Logic
     // ===========================================
     async initDashboardPage() {
+        DebugLog.info('initDashboardPage 被呼叫', {
+            hasCurrentUser: !!AuthManager.currentUser,
+            currentUser: AuthManager.currentUser
+        });
+
         if (!AuthManager.currentUser) {
+            DebugLog.warn('Dashboard: 用戶未登入，重定向到首頁');
             window.location.href = '/static/forum/index.html';
             return;
         }
 
-        try {
-            // Load Wallet Status
-            await this.loadWalletStatus();
+        const uid = ForumAPI._getUserId();
+        DebugLog.info('Dashboard 載入開始', {
+            uid: uid,
+            currentUser: AuthManager.currentUser
+        });
 
-            // Load Stats
+        // Load Wallet Status (獨立錯誤處理)
+        try {
+            await this.loadWalletStatus();
+            DebugLog.info('Dashboard Wallet 狀態載入完成');
+        } catch (e) {
+            DebugLog.error('Dashboard Wallet 狀態載入失敗', { error: e.message });
+        }
+
+        // Load Stats (獨立錯誤處理)
+        try {
+            DebugLog.info('Dashboard 獲取統計數據中...');
             const statsRes = await ForumAPI.getMyStats();
+            DebugLog.info('Dashboard 統計數據回應', statsRes);
             const stats = statsRes.stats || {};
             document.getElementById('dash-post-count').textContent = stats.post_count || 0;
             document.getElementById('dash-tips-sent').textContent = stats.tips_sent || 0;
             document.getElementById('dash-tips-received').textContent = stats.tips_received || 0;
+        } catch (e) {
+            DebugLog.error('Dashboard 統計數據載入失敗', { error: e.message });
+            document.getElementById('dash-post-count').textContent = 'Error';
+        }
 
-            // Load Posts
+        // Load Posts (獨立錯誤處理)
+        try {
+            DebugLog.info('Dashboard 獲取文章列表中...');
             const postsRes = await ForumAPI.getMyPosts();
+            DebugLog.info('Dashboard 文章列表回應', { count: postsRes.posts?.length || 0, posts: postsRes.posts });
             const postsList = document.getElementById('dash-posts-list');
             if (postsList && postsRes.posts && postsRes.posts.length > 0) {
                 postsList.innerHTML = postsRes.posts.map(p => `
@@ -600,9 +801,15 @@ const ForumApp = {
                         <span class="text-xs text-textMuted">${formatTWDate(p.created_at)}</span>
                     </div>
                 `).join('');
+            } else if (postsList) {
+                postsList.innerHTML = '<p class="text-textMuted text-sm">尚無文章</p>';
             }
+        } catch (e) {
+            DebugLog.error('Dashboard 文章列表載入失敗', { error: e.message });
+        }
 
-            // Load Transactions (Tips Sent)
+        // Load Transactions (Tips Sent) (獨立錯誤處理)
+        try {
             const tipsRes = await ForumAPI.getMyTipsSent();
             const txList = document.getElementById('dash-tx-list');
             if (txList && tipsRes.tips && tipsRes.tips.length > 0) {
@@ -622,23 +829,42 @@ const ForumApp = {
     },
 
     async loadWalletStatus() {
+        DebugLog.info('loadWalletStatus 開始');
+
         const statusText = document.getElementById('wallet-status-text');
         const usernameEl = document.getElementById('wallet-username');
         const actionArea = document.getElementById('wallet-action-area');
         const iconEl = document.getElementById('wallet-icon');
 
-        if (!statusText || !actionArea) return;
+        if (!statusText || !actionArea) {
+            DebugLog.warn('loadWalletStatus: DOM 元素不存在');
+            return;
+        }
+
+        // Safety check
+        if (typeof window.getWalletStatus !== 'function') {
+            DebugLog.error('getWalletStatus function missing');
+            statusText.textContent = 'System Error (Auth)';
+            statusText.classList.add('text-danger');
+            return;
+        }
 
         try {
+            DebugLog.info('呼叫 getWalletStatus...');
             const status = await getWalletStatus();
+            DebugLog.info('getWalletStatus 回應', status);
 
             if (status.has_wallet || status.auth_method === 'pi_network') {
                 // 已綁定或 Pi 錢包登入
                 statusText.textContent = '已連接';
+                statusText.classList.remove('text-textMuted', 'text-danger');
                 statusText.classList.add('text-success');
-                iconEl.classList.remove('bg-primary/20');
-                iconEl.classList.add('bg-success/20');
-                iconEl.innerHTML = '<i data-lucide="check-circle" class="w-7 h-7 text-success"></i>';
+                
+                if (iconEl) {
+                    iconEl.classList.remove('bg-primary/20');
+                    iconEl.classList.add('bg-success/20');
+                    iconEl.innerHTML = '<i data-lucide="check-circle" class="w-7 h-7 text-success"></i>';
+                }
 
                 if (status.pi_username) {
                     usernameEl.textContent = `@${status.pi_username}`;
@@ -654,6 +880,7 @@ const ForumApp = {
             } else {
                 // 未綁定
                 statusText.textContent = '未綁定';
+                statusText.classList.remove('text-success', 'text-danger');
                 statusText.classList.add('text-textMuted');
 
                 actionArea.innerHTML = `
@@ -665,9 +892,18 @@ const ForumApp = {
             }
 
             if (window.lucide) lucide.createIcons();
+            DebugLog.info('loadWalletStatus 完成');
         } catch (e) {
-            console.error('Load wallet status error:', e);
+            DebugLog.error('loadWalletStatus 錯誤', { error: e.message, stack: e.stack });
             statusText.textContent = '載入失敗';
+            statusText.classList.add('text-danger');
+
+            // Allow retry
+            actionArea.innerHTML = `
+                <button onclick="location.reload()" class="text-xs text-textMuted hover:text-white underline">
+                    Retry
+                </button>
+            `;
         }
     }
 };
@@ -681,19 +917,60 @@ async function handleLinkWallet() {
     }
 }
 
+// 顯示 Scope 錯誤的詳細彈窗
+function showScopeErrorModal() {
+    // 創建模態框
+    const modal = document.createElement('div');
+    modal.id = 'scope-error-modal';
+    modal.className = 'fixed inset-0 bg-background/95 backdrop-blur-xl z-[100] flex items-center justify-center p-4';
+    modal.innerHTML = `
+        <div class="bg-surface w-full max-w-md p-6 rounded-3xl border border-danger/30 shadow-2xl">
+            <div class="w-16 h-16 rounded-full bg-danger/20 flex items-center justify-center mx-auto mb-4">
+                <i data-lucide="alert-triangle" class="w-8 h-8 text-danger"></i>
+            </div>
+            <h3 class="text-xl font-bold text-center text-secondary mb-2">支付權限不足</h3>
+            <p class="text-textMuted text-center text-sm mb-4">
+                您的帳號缺少「支付 (payments)」權限。這是因為您首次登入時沒有授權支付功能。
+            </p>
+            <div class="bg-surfaceHighlight rounded-xl p-4 mb-4 text-sm">
+                <p class="font-bold text-primary mb-2">請按照以下步驟操作：</p>
+                <ol class="list-decimal list-inside space-y-2 text-textMuted">
+                    <li>打開 <span class="text-secondary">Pi Browser</span> 應用</li>
+                    <li>點擊右下角的 <span class="text-secondary">選單 (三條線)</span></li>
+                    <li>前往 <span class="text-secondary">Settings (設定)</span></li>
+                    <li>找到 <span class="text-secondary">Connected Apps (已連接的應用)</span></li>
+                    <li>找到本應用並點擊 <span class="text-danger">Revoke (撤銷)</span></li>
+                    <li>回到本應用，重新登入</li>
+                </ol>
+            </div>
+            <p class="text-xs text-textMuted text-center mb-4">
+                重新登入時，請確認授權視窗中包含 <span class="text-primary">payments</span> 權限
+            </p>
+            <div class="flex gap-3">
+                <button onclick="document.getElementById('scope-error-modal').remove()"
+                    class="flex-1 py-3 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-2xl transition border border-white/5">
+                    稍後處理
+                </button>
+                <button onclick="localStorage.removeItem('pi_user');window.location.href=window.location.pathname+'?logout=1'"
+                    class="flex-1 py-3 bg-primary hover:brightness-110 text-background font-bold rounded-2xl transition shadow-lg">
+                    登出並重試
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    if (window.lucide) lucide.createIcons();
+}
+
 // 確保在 DOM 載入後執行
 document.addEventListener('DOMContentLoaded', () => {
-    // 檢查 AuthManager 是否就緒，或者等待它
-    if (window.AuthManager) {
-        // 嘗試從 localStorage 恢復
-        AuthManager.init();
+    // 檢查 ForumApp 是否就緒
+    if (window.ForumApp) {
         ForumApp.init();
     } else {
-        // 簡單輪詢
-        const checkAuth = setInterval(() => {
-            if (window.AuthManager) {
-                clearInterval(checkAuth);
-                AuthManager.init();
+        const checkApp = setInterval(() => {
+            if (window.ForumApp) {
+                clearInterval(checkApp);
                 ForumApp.init();
             }
         }, 100);

@@ -1,120 +1,158 @@
 // ========================================
-// auth.js - 用戶身份認證模塊
-// 支持 Pi Network 和測試模式
+// auth.js - 用戶身份認證模塊 (簡潔穩定版)
 // ========================================
 
-// Debug Logger - 發送 log 到伺服器
 const DebugLog = {
     async send(level, message, data = null) {
+        console.log(`[${level.toUpperCase()}] ${message}`, data);
         try {
-            await fetch('/api/debug-log', {
+            fetch('/api/debug-log', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ level, message, data })
+                body: JSON.stringify({ level, message, data }),
+                keepalive: true
             });
-        } catch (e) {
-            console.error('DebugLog error:', e);
-        }
+        } catch (e) {}
     },
-    info(msg, data) { this.send('info', msg, data); console.log(msg, data); },
-    error(msg, data) { this.send('error', msg, data); console.error(msg, data); },
-    warn(msg, data) { this.send('warn', msg, data); console.warn(msg, data); }
+    info(msg, data) { this.send('info', msg, data); },
+    error(msg, data) { this.send('error', msg, data); },
+    warn(msg, data) { this.send('warn', msg, data); }
 };
 
-const AuthManager = {
-    // 當前用戶資料
-    currentUser: null,
+window.DebugLog = DebugLog;
 
-    // Pi SDK 是否已初始化
+const AuthManager = {
+    currentUser: null,
     piInitialized: false,
 
-    // 測試帳號（開發用）
-    TEST_CREDENTIALS: {
-        publicKey: 'test_uuid',
-        password: 'test_uuid'
-    },
-
-    /**
-     * 初始化 Pi SDK
-     * 必須在調用其他 Pi 方法之前執行
-     */
     initPiSDK() {
-        console.log('initPiSDK called, already initialized:', this.piInitialized);
-        if (this.piInitialized) return true;
-
-        console.log('window.Pi:', window.Pi);
+        if (this.piInitialized) {
+            DebugLog.info('initPiSDK: 已初始化，跳過');
+            return true;
+        }
         if (window.Pi) {
             try {
-                Pi.init({
-                    version: "2.0",
-                    sandbox: false  // true = 測試環境, false = 正式環境
-                });
+                // Official Guide: Initialize SDK early. Use sandbox: true for development.
+                Pi.init({ version: "2.0", sandbox: false });
                 this.piInitialized = true;
-                console.log('Pi SDK initialized successfully');
+                DebugLog.info('Pi SDK 初始化成功 (Sandbox Mode)');
                 return true;
             } catch (e) {
-                console.error('Pi.init error:', e);
+                DebugLog.error('Pi SDK 初始化失敗', { error: e.message, stack: e.stack });
                 return false;
             }
         }
-        console.log('window.Pi not found');
+        DebugLog.warn('initPiSDK: window.Pi 不存在');
         return false;
     },
 
-    /**
-     * 初始化認證狀態
-     * 檢查是否有已保存的 session
-     */
-    init() {
-        // 嘗試初始化 Pi SDK
-        this.initPiSDK();
-        const savedUser = localStorage.getItem('pi_user');
-        if (savedUser) {
-            try {
-                this.currentUser = JSON.parse(savedUser);
-                console.log('AuthManager: Loaded user from localStorage', this.currentUser);
-                this._updateGlobalUserId();
-                this._updateUI(true);
-                return true;
-            } catch (e) {
-                console.error('AuthManager: Failed to parse saved user', e);
-                localStorage.removeItem('pi_user');
-            }
-        } else {
-            console.log('AuthManager: No saved user found');
-        }
-        this._updateUI(false);
-        return false;
+    isPiBrowser() {
+        // 判斷是否在 Pi Browser 環境中
+        // 優先使用 window.Pi SDK 的存在性來判斷（更可靠）
+        // 因為 Pi Browser 的 User-Agent 可能不包含 "PiBrowser" 字串
+        const hasPiSDK = typeof window.Pi !== 'undefined' && window.Pi !== null;
+        const ua = navigator.userAgent.toLowerCase();
+        const uaHasPi = ua.includes('pibrowser') || ua.includes('pi browser');
+
+        // 如果 Pi SDK 存在，就認為是 Pi Browser 環境
+        const isPi = hasPiSDK || uaHasPi;
+
+        DebugLog.info('isPiBrowser 檢測', {
+            userAgent: navigator.userAgent,
+            hasPiSDK: hasPiSDK,
+            uaHasPi: uaHasPi,
+            result: isPi
+        });
+        return isPi;
     },
 
-    /**
-     * Pi Network 認證
-     * 使用 Pi SDK 進行真實認證
-     */
-    async authenticateWithPi() {
-        DebugLog.info('authenticateWithPi called');
+    isLoggedIn() {
+        return !!this.currentUser;
+    },
+
+    async loginAsMockUser() {
+        console.log("⚠️ [Dev Mode] Manually triggering Mock Login.");
+        showToast('開發模式：使用模擬 Pi 帳號登入', 'info');
+        
+        await new Promise(r => setTimeout(r, 500)); // 模擬延遲
+
+        const mockUser = {
+            uid: "mock_user_" + Date.now(),
+            user_id: "mock_user_" + Date.now(),
+            username: "MockTester",
+            accessToken: "mock_token_123",
+            authMethod: "pi_network",
+            pi_uid: "mock_pi_uid_" + Date.now(),
+            pi_username: "MockTester"
+        };
+
+        // 同步 Mock 用戶到後端 (確保資料庫有紀錄)
         try {
-            if (!window.Pi) {
-                DebugLog.error('Pi SDK not loaded');
-                throw new Error('Pi SDK not loaded. Please open in Pi Browser.');
+            const res = await fetch('/api/user/pi-sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    pi_uid: mockUser.pi_uid,
+                    username: mockUser.username,
+                    access_token: mockUser.accessToken
+                })
+            });
+            const syncResult = await res.json();
+            if (syncResult.user && syncResult.user.user_id) {
+                mockUser.uid = syncResult.user.user_id;
+                mockUser.user_id = syncResult.user.user_id;
             }
+        } catch (e) {
+            console.error("Mock sync warning:", e);
+        }
 
-            // 確保 Pi SDK 已初始化
+        this.currentUser = mockUser;
+        localStorage.setItem('pi_user', JSON.stringify(this.currentUser));
+        this._updateUI(true);
+        
+        if (typeof initChat === 'function') initChat();
+        return { success: true, user: this.currentUser };
+    },
+
+    async authenticateWithPi() {
+        DebugLog.info('authenticateWithPi 開始', {
+            piInitialized: this.piInitialized,
+            hasPiSDK: !!window.Pi
+        });
+
+        try {
             if (!this.piInitialized) {
-                DebugLog.info('Initializing Pi SDK before auth...');
+                DebugLog.info('初始化 Pi SDK...');
                 this.initPiSDK();
             }
 
-            DebugLog.info('Calling Pi.authenticate()...');
-            const auth = await Pi.authenticate(
-                ['username', 'payments'],
-                this._onIncompletePayment
-            );
-            DebugLog.info('Pi.authenticate returned', { uid: auth?.user?.uid, username: auth?.user?.username });
+            DebugLog.info('呼叫 Pi.authenticate...');
 
-            // 同步用戶到後端資料庫
-            DebugLog.info('Syncing Pi user to backend...');
-            const syncResponse = await fetch('/api/user/pi-sync', {
+            // 呼叫 Pi SDK 認證 (包含 payments 權限) - 添加 30 秒超時
+            const AUTH_TIMEOUT = 30000;
+
+            const authPromise = Pi.authenticate(['username', 'payments'], (payment) => {
+                DebugLog.warn('發現未完成的支付', payment);
+                fetch('/api/user/payment/complete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ paymentId: payment.identifier, txid: payment.transaction.txid })
+                });
+            });
+
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => {
+                    DebugLog.error('Pi.authenticate 超時', { timeout: AUTH_TIMEOUT });
+                    reject(new Error('Pi 認證超時，請確認 Pi Browser 是否有彈出授權視窗'));
+                }, AUTH_TIMEOUT);
+            });
+
+            const auth = await Promise.race([authPromise, timeoutPromise]);
+
+            DebugLog.info('Pi 認證成功', { username: auth.user.username, uid: auth.user.uid });
+
+            // 同步到後端
+            const res = await fetch('/api/user/pi-sync', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -124,271 +162,361 @@ const AuthManager = {
                 })
             });
 
-            const syncResult = await syncResponse.json();
-            DebugLog.info('Pi user sync result', syncResult);
-
-            if (!syncResponse.ok) {
-                // 用戶名衝突或其他錯誤
-                throw new Error(syncResult.detail || '用戶同步失敗');
-            }
+            const syncResult = await res.json();
+            if (!res.ok) throw new Error(syncResult.detail || 'Sync failed');
 
             this.currentUser = {
-                uid: auth.user.uid,
-                username: auth.user.username,
+                uid: syncResult.user.user_id,
+                user_id: syncResult.user.user_id,
+                username: syncResult.user.username,
                 accessToken: auth.accessToken,
-                authMethod: 'pi_network',
-                loginTime: Date.now()
+                authMethod: syncResult.user.auth_method,
+                pi_uid: auth.user.uid,
+                pi_username: auth.user.username
             };
 
             localStorage.setItem('pi_user', JSON.stringify(this.currentUser));
-            this._updateGlobalUserId();
             this._updateUI(true);
 
-            // 認證成功後初始化聊天
-            if (typeof initChat === 'function') {
-                await initChat();
-            }
+            if (typeof initChat === 'function') initChat();
 
-            return { success: true, user: this.currentUser, isNewUser: syncResult.is_new_user };
+            DebugLog.info('Pi 登入流程完成', { user: this.currentUser });
+            return { success: true, user: this.currentUser };
         } catch (error) {
-            console.error('Pi authentication failed:', error);
+            DebugLog.error('authenticateWithPi 失敗', {
+                error: error.message,
+                stack: error.stack,
+                piExists: !!window.Pi
+            });
             return { success: false, error: error.message };
         }
     },
 
-    /**
-     * 測試模式認證
-     * 用於開發環境，使用 publicKey + password
-     */
-    async authenticateWithCredentials(publicKey, password) {
-        // 驗證測試帳號
-        if (publicKey === this.TEST_CREDENTIALS.publicKey &&
-            password === this.TEST_CREDENTIALS.password) {
-
-            this.currentUser = {
-                uid: publicKey,
-                username: 'Test User',
-                authMethod: 'test_credentials',
-                loginTime: Date.now()
-            };
-
-            localStorage.setItem('pi_user', JSON.stringify(this.currentUser));
-            this._updateGlobalUserId();
-            this._updateUI(true);
-
-            // 認證成功後初始化聊天
-            if (typeof initChat === 'function') {
-                await initChat();
-            }
-
-            return { success: true, user: this.currentUser };
+    init() {
+        // 檢查 URL 參數是否要求強制登出
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('logout') === '1' || urlParams.get('force_logout') === '1') {
+            DebugLog.info('URL 參數觸發強制登出');
+            localStorage.removeItem('pi_user');
+            // 移除 URL 參數並重新載入
+            window.history.replaceState({}, '', window.location.pathname);
+            window.location.reload();
+            return false;
         }
 
-        return { success: false, error: 'Invalid credentials' };
+        // Ensure Pi SDK is initialized on startup
+        this.initPiSDK();
+
+        const savedUser = localStorage.getItem('pi_user');
+        if (savedUser) {
+            try {
+                this.currentUser = JSON.parse(savedUser);
+                this._updateUI(true);
+                return true;
+            } catch (e) {
+                localStorage.removeItem('pi_user');
+            }
+        }
+        this._updateUI(false);
+        return false;
     },
 
-    /**
-     * 登出
-     */
+    _updateUI(isLoggedIn) {
+        const username = this.currentUser?.username || 'Guest';
+        const uid = this.currentUser?.uid || this.currentUser?.user_id || '--';
+        const authMethod = this.currentUser?.authMethod || 'guest';
+
+        // 更新所有可能存在的使用者名稱欄位
+        ['sidebar-user-name', 'forum-user-name', 'profile-username'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = username;
+        });
+
+        // 更新 UID 顯示
+        const uidEl = document.getElementById('profile-uid');
+        if (uidEl) {
+            uidEl.textContent = isLoggedIn ? `UID: ${uid}` : 'UID: --';
+        }
+
+        // 更新登入方式顯示
+        const methodEl = document.getElementById('profile-method');
+        if (methodEl) {
+            const methodText = authMethod === 'pi_network' ? 'PI WALLET' :
+                              authMethod === 'password' ? 'PASSWORD' : 'GUEST';
+            methodEl.textContent = methodText;
+        }
+
+        // 更新頭像
+        ['sidebar-user-avatar', 'forum-user-avatar', 'profile-avatar'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                if (isLoggedIn) {
+                    el.textContent = username[0].toUpperCase();
+                    el.classList.add('bg-gradient-to-br', 'from-primary', 'to-accent', 'text-background');
+                } else {
+                    el.innerHTML = '<i data-lucide="user" class="w-4 h-4"></i>';
+                    el.classList.remove('bg-gradient-to-br', 'from-primary', 'to-accent', 'text-background');
+                }
+            }
+        });
+
+        // 控制登入 Modal 顯示
+        const modal = document.getElementById('login-modal');
+        if (modal) {
+            if (isLoggedIn) modal.classList.add('hidden');
+            else modal.classList.remove('hidden');
+        }
+
+        if (window.lucide) lucide.createIcons();
+    },
+
     logout() {
         this.currentUser = null;
         localStorage.removeItem('pi_user');
-        window.currentUserId = 'guest';
         this._updateUI(false);
-
-        // 重置聊天初始化狀態
-        if (typeof resetChatInit === 'function') {
-            resetChatInit();
-        }
-
-        // 清空聊天畫面
-        const container = document.getElementById('chat-messages');
-        if (container) {
-            container.innerHTML = '';
-        }
-        const sessionList = document.getElementById('chat-session-list');
-        if (sessionList) {
-            sessionList.innerHTML = '<div class="text-center text-xs text-textMuted/40 py-4">Please login first</div>';
-        }
-    },
-
-    /**
-     * 檢查是否已登入
-     */
-    isLoggedIn() {
-        return this.currentUser !== null;
-    },
-
-    /**
-     * 獲取當前用戶 ID
-     */
-    getUserId() {
-        return this.currentUser?.uid || 'guest';
-    },
-
-    /**
-     * 更新全局 userId
-     */
-    _updateGlobalUserId() {
-        if (this.currentUser) {
-            window.currentUserId = this.currentUser.uid;
-            if (typeof updateUserId === 'function') {
-                updateUserId(this.currentUser.uid);
-            }
-        }
-    },
-
-    /**
-     * 更新 UI 狀態
-     */
-    _updateUI(isLoggedIn) {
-        const loginBtn = document.getElementById('auth-login-btn');
-        const logoutBtn = document.getElementById('auth-logout-btn');
-        const userInfo = document.getElementById('auth-user-info');
-        const loginModal = document.getElementById('login-modal');
-
-        // Settings Profile Elements
-        const profileCard = document.getElementById('settings-profile-card');
-        const profileAvatar = document.getElementById('profile-avatar');
-        const profileUsername = document.getElementById('profile-username');
-        const profileUid = document.getElementById('profile-uid');
-        const profileMethod = document.getElementById('profile-method');
-
-        // Sidebar User Elements
-        const sidebarUserName = document.getElementById('sidebar-user-name');
-        const sidebarUserAvatar = document.getElementById('sidebar-user-avatar');
-
-        if (isLoggedIn && this.currentUser) {
-            if (loginBtn) loginBtn.classList.add('hidden');
-            if (logoutBtn) logoutBtn.classList.remove('hidden');
-            if (userInfo) {
-                userInfo.textContent = this.currentUser.username || 'User';
-                userInfo.classList.remove('hidden');
-            }
-            if (loginModal) loginModal.classList.add('hidden');
-
-            // Update Profile Card in Settings
-            if (profileCard) {
-                profileCard.classList.remove('hidden');
-                if(profileUsername) profileUsername.textContent = this.currentUser.username || 'User';
-                if(profileUid) profileUid.textContent = `UID: ${this.currentUser.uid}`;
-                if(profileAvatar) profileAvatar.textContent = (this.currentUser.username || 'U')[0].toUpperCase();
-                if(profileMethod) profileMethod.textContent = (this.currentUser.authMethod || 'UNKNOWN').replace('_', ' ').toUpperCase();
-            }
-
-            // Update Sidebar User Info
-            if (sidebarUserName) sidebarUserName.textContent = this.currentUser.username || 'User';
-            if (sidebarUserAvatar) {
-                sidebarUserAvatar.textContent = (this.currentUser.username || 'U')[0].toUpperCase();
-                sidebarUserAvatar.classList.remove('bg-surfaceHighlight');
-                sidebarUserAvatar.classList.add('bg-gradient-to-br', 'from-primary', 'to-accent', 'text-background');
-            }
-
-        } else {
-            if (loginBtn) loginBtn.classList.remove('hidden');
-            if (logoutBtn) logoutBtn.classList.add('hidden');
-            if (userInfo) userInfo.classList.add('hidden');
-            if (loginModal) loginModal.classList.remove('hidden');
-
-            // Hide Profile Card
-            if (profileCard) profileCard.classList.add('hidden');
-
-            // Reset Sidebar User Info
-            if (sidebarUserName) sidebarUserName.textContent = 'Guest';
-            if (sidebarUserAvatar) {
-                sidebarUserAvatar.innerHTML = '<i data-lucide="user" class="w-4 h-4"></i>';
-                sidebarUserAvatar.classList.add('bg-surfaceHighlight');
-                sidebarUserAvatar.classList.remove('bg-gradient-to-br', 'from-primary', 'to-accent', 'text-background');
-                if (window.lucide) window.lucide.createIcons();
-            }
-        }
-    },
-
-    /**
-     * Pi Network 未完成支付回調
-     */
-    _onIncompletePayment(payment) {
-        console.log('Incomplete payment found:', payment);
-        // 處理未完成的支付
+        window.location.reload();
     }
 };
 
-// ========================================
-// 登入對話框相關函數
-// ========================================
-
-function showLoginModal() {
-    const modal = document.getElementById('login-modal');
-    if (modal) {
-        modal.classList.remove('hidden');
-    }
+// 工具函式
+function isPiBrowser() {
+    return !!window.Pi || navigator.userAgent.toLowerCase().includes('pibrowser');
 }
 
-function hideLoginModal() {
-    const modal = document.getElementById('login-modal');
-    if (modal) {
-        modal.classList.add('hidden');
-    }
+function canMakePiPayment() {
+    if (!AuthManager.currentUser) return false;
+    // 有 pi_uid 表示已綁定錢包或用 Pi 登入
+    if (AuthManager.currentUser.pi_uid) return true;
+    // 沒有綁定但在開發環境中模擬
+    if (!isPiBrowser()) return true;
+    return false;
 }
 
-function toggleAuthMode(mode) {
-    const loginForm = document.getElementById('form-login');
-    const registerForm = document.getElementById('form-register');
-    const loginTab = document.getElementById('tab-login');
-    const registerTab = document.getElementById('tab-register');
-
-    if (mode === 'login') {
-        loginForm.classList.remove('hidden');
-        registerForm.classList.add('hidden');
-        loginTab.classList.remove('text-textMuted', 'hover:text-secondary');
-        loginTab.classList.add('bg-surfaceHighlight', 'text-secondary', 'shadow-sm');
-        registerTab.classList.add('text-textMuted', 'hover:text-secondary');
-        registerTab.classList.remove('bg-surfaceHighlight', 'text-secondary', 'shadow-sm');
-    } else {
-        loginForm.classList.add('hidden');
-        registerForm.classList.remove('hidden');
-        registerTab.classList.remove('text-textMuted', 'hover:text-secondary');
-        registerTab.classList.add('bg-surfaceHighlight', 'text-secondary', 'shadow-sm');
-        loginTab.classList.add('text-textMuted', 'hover:text-secondary');
-        loginTab.classList.remove('bg-surfaceHighlight', 'text-secondary', 'shadow-sm');
-    }
-}
-
-async function handlePiLogin() {
-    DebugLog.info('handlePiLogin called', {
-        hasPi: !!window.Pi,
-        userAgent: navigator.userAgent,
-        url: window.location.href
-    });
-
-    if (!window.Pi) {
-        DebugLog.error('Pi SDK not found');
-        showToast('請在 Pi Browser 中開啟', 'error');
-        return;
+// 獲取錢包狀態（從後端 API）- 含超時機制
+async function getWalletStatus() {
+    const uid = AuthManager.currentUser?.uid || AuthManager.currentUser?.user_id;
+    if (!uid) {
+        return { has_wallet: false, auth_method: 'guest' };
     }
 
-    DebugLog.info('Pi SDK found, calling authenticateWithPi...');
+    const TIMEOUT_MS = 10000; // 10 秒超時
 
     try {
-        const result = await AuthManager.authenticateWithPi();
-        DebugLog.info('authenticateWithPi result', result);
-        if (result.success) {
-            hideLoginModal();
-            showToast('Pi Network 認證成功', 'success');
-        } else {
-            showToast('Pi Network 認證失敗: ' + result.error, 'error');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+        const res = await fetch(`/api/user/wallet-status/${uid}`, {
+            signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!res.ok) {
+            console.error('Wallet status API error:', res.status);
+            return { has_wallet: false, auth_method: 'unknown' };
         }
-    } catch (error) {
-        DebugLog.error('handlePiLogin error', { message: error.message, stack: error.stack });
-        showToast('錯誤: ' + error.message, 'error');
+        const data = await res.json();
+        return {
+            has_wallet: data.has_wallet || false,
+            pi_uid: data.pi_uid || null,
+            pi_username: data.pi_username || null,
+            auth_method: data.auth_method || 'password'
+        };
+    } catch (e) {
+        if (e.name === 'AbortError') {
+            console.error('getWalletStatus timeout after', TIMEOUT_MS, 'ms');
+        } else {
+            console.error('getWalletStatus error:', e);
+        }
+        return { has_wallet: false, auth_method: 'unknown' };
     }
 }
 
+// 綁定 Pi 錢包（含超時機制）
+async function linkPiWallet() {
+    const TIMEOUT_MS = 15000;
+
+    if (!AuthManager.currentUser) {
+        if (typeof showToast === 'function') showToast('請先登入', 'warning');
+        return { success: false, error: '請先登入' };
+    }
+
+    // 必須在 Pi 瀏覽器中
+    if (!isPiBrowser()) {
+        const msg = '請在 Pi Browser 中開啟此頁面以綁定錢包';
+        if (typeof showAlert === 'function') {
+            await showAlert({ title: '提示', message: msg, type: 'warning' });
+        } else {
+            alert(msg);
+        }
+        return { success: false, error: msg };
+    }
+
+    // 顯示連接中提示
+    if (typeof showToast === 'function') showToast('正在連接 Pi 錢包...', 'info', 0);
+
+    try {
+        AuthManager.initPiSDK();
+
+        // 使用 Promise.race 實現超時
+        const authPromise = Pi.authenticate(['username', 'payments'], (payment) => {
+            console.warn('Incomplete payment found during wallet link:', payment);
+        });
+
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('TIMEOUT')), TIMEOUT_MS);
+        });
+
+        const auth = await Promise.race([authPromise, timeoutPromise]);
+
+        // 移除連接中提示（如果有持續的 toast）
+        const toastContainer = document.getElementById('toast-container');
+        if (toastContainer) toastContainer.innerHTML = '';
+
+        console.log('Pi Auth for wallet link:', auth.user.username);
+
+        // 呼叫後端 API 綁定錢包
+        const uid = AuthManager.currentUser.uid || AuthManager.currentUser.user_id;
+        const res = await fetch('/api/user/link-wallet', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_id: uid,
+                pi_uid: auth.user.uid,
+                pi_username: auth.user.username,
+                access_token: auth.accessToken
+            })
+        });
+
+        const result = await res.json();
+
+        if (!res.ok) {
+            throw new Error(result.detail || '綁定失敗');
+        }
+
+        // 更新本地用戶資料
+        AuthManager.currentUser.pi_uid = auth.user.uid;
+        AuthManager.currentUser.pi_username = auth.user.username;
+        localStorage.setItem('pi_user', JSON.stringify(AuthManager.currentUser));
+
+        if (typeof showToast === 'function') showToast('Pi 錢包綁定成功！', 'success');
+
+        return { success: true, pi_uid: auth.user.uid, pi_username: auth.user.username };
+
+    } catch (error) {
+        // 移除連接中提示
+        const toastContainer = document.getElementById('toast-container');
+        if (toastContainer) toastContainer.innerHTML = '';
+
+        if (error.message === 'TIMEOUT') {
+            // 超時：顯示重試對話框
+            const retry = typeof showConfirm === 'function' ? await showConfirm({
+                title: '連接超時',
+                message: '無法連接到 Pi 錢包，請確認您正在使用 Pi Browser。\n\n是否重試？',
+                type: 'warning',
+                confirmText: '重試',
+                cancelText: '取消'
+            }) : confirm('連接超時，是否重試？');
+
+            if (retry) {
+                return linkPiWallet(); // 遞迴重試
+            }
+            return { success: false, error: '連接超時' };
+        }
+
+        console.error('linkPiWallet error:', error);
+        if (typeof showToast === 'function') showToast('綁定失敗: ' + error.message, 'error');
+        return { success: false, error: error.message };
+    }
+}
+
+// 載入 Settings 頁面的錢包狀態
+async function loadSettingsWalletStatus() {
+    const statusBadge = document.getElementById('settings-wallet-status-badge');
+    const notLinkedSection = document.getElementById('wallet-not-linked');
+    const linkedSection = document.getElementById('wallet-linked');
+    const usernameEl = document.getElementById('settings-wallet-username');
+    const walletIcon = document.getElementById('settings-wallet-icon');
+
+    // 如果元素不存在（Settings 頁面未載入），直接返回
+    if (!statusBadge) return;
+
+    try {
+        const status = await getWalletStatus();
+
+        if (status.has_wallet || status.auth_method === 'pi_network') {
+            // 已綁定或 Pi 登入
+            statusBadge.innerHTML = `
+                <i data-lucide="check-circle" class="w-3 h-3"></i>
+                已連接
+            `;
+            statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-success/10 text-success';
+
+            if (walletIcon) {
+                walletIcon.innerHTML = '<i data-lucide="wallet" class="w-5 h-5 text-success"></i>';
+                walletIcon.className = 'w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center';
+            }
+
+            if (notLinkedSection) notLinkedSection.classList.add('hidden');
+            if (linkedSection) linkedSection.classList.remove('hidden');
+            if (usernameEl && status.pi_username) {
+                usernameEl.textContent = `@${status.pi_username}`;
+            }
+        } else {
+            // 未綁定
+            statusBadge.innerHTML = `
+                <i data-lucide="link-2-off" class="w-3 h-3"></i>
+                未綁定
+            `;
+            statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-textMuted';
+
+            if (walletIcon) {
+                walletIcon.innerHTML = '<i data-lucide="wallet" class="w-5 h-5 text-primary"></i>';
+                walletIcon.className = 'w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center';
+            }
+
+            if (notLinkedSection) notLinkedSection.classList.remove('hidden');
+            if (linkedSection) linkedSection.classList.add('hidden');
+        }
+
+        if (window.lucide) lucide.createIcons();
+    } catch (e) {
+        console.error('loadSettingsWalletStatus error:', e);
+        if (statusBadge) {
+            statusBadge.innerHTML = `
+                <i data-lucide="alert-circle" class="w-3 h-3"></i>
+                載入失敗
+            `;
+            statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-danger/10 text-danger';
+        }
+    }
+}
+
+// Settings 頁面的綁定錢包按鈕處理
+async function handleSettingsLinkWallet() {
+    const result = await linkPiWallet();
+    if (result.success) {
+        loadSettingsWalletStatus();
+    }
+}
+
+// 處理綁定錢包按鈕
+async function handleLinkWallet() {
+    const result = await linkPiWallet();
+    if (result.success) {
+        // 重新載入狀態
+        if (typeof loadSettingsWalletStatus === 'function') loadSettingsWalletStatus();
+        if (typeof ForumApp !== 'undefined' && ForumApp.loadWalletStatus) ForumApp.loadWalletStatus();
+    }
+}
+
+// ========================================
+// 密碼登入與註冊
+// ========================================
+
 async function handleCredentialLogin() {
-    const usernameInput = document.getElementById('login-username');
-    const passwordInput = document.getElementById('login-password');
-    const username = usernameInput?.value.trim();
-    const password = passwordInput?.value;
+    const username = document.getElementById('login-username')?.value?.trim();
+    const password = document.getElementById('login-password')?.value;
 
     if (!username || !password) {
         showToast('請輸入用戶名和密碼', 'warning');
@@ -396,663 +524,275 @@ async function handleCredentialLogin() {
     }
 
     try {
-        const response = await fetch('/api/user/login', {
+        const res = await fetch('/api/user/login', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
         });
 
-        const data = await response.json();
+        const result = await res.json();
 
-        if (response.ok && data.success) {
-            AuthManager.currentUser = {
-                uid: data.user.uid,
-                username: data.user.username,
-                authMethod: 'password',
-                loginTime: Date.now()
-            };
-            localStorage.setItem('pi_user', JSON.stringify(AuthManager.currentUser));
-            AuthManager._updateGlobalUserId();
-            AuthManager._updateUI(true);
-
-            // 認證成功後初始化聊天
-            if (typeof initChat === 'function') {
-                await initChat();
-            }
-
-            hideLoginModal();
-            showToast('登入成功', 'success');
-        } else {
-            showToast(data.detail || '登入失敗', 'error');
+        if (!res.ok) {
+            showToast(result.detail || '登入失敗', 'error');
+            return;
         }
-    } catch (error) {
-        console.error('Login error:', error);
-        showToast('登入發生錯誤', 'error');
+
+        // 登入成功
+        AuthManager.currentUser = {
+            uid: result.user.uid,
+            user_id: result.user.uid,
+            username: result.user.username,
+            authMethod: result.user.authMethod || 'password'
+        };
+
+        localStorage.setItem('pi_user', JSON.stringify(AuthManager.currentUser));
+        AuthManager._updateUI(true);
+
+        showToast('登入成功！', 'success');
+        setTimeout(() => window.location.reload(), 500);
+
+    } catch (e) {
+        console.error('Login error:', e);
+        showToast('登入時發生錯誤', 'error');
     }
 }
 
 async function handleRegister() {
-    const username = document.getElementById('reg-username')?.value.trim();
-    const email = document.getElementById('reg-email')?.value.trim();
+    const username = document.getElementById('reg-username')?.value?.trim();
+    const email = document.getElementById('reg-email')?.value?.trim();
     const password = document.getElementById('reg-password')?.value;
     const confirmPassword = document.getElementById('reg-confirm-password')?.value;
 
-    if (!username || !password) {
-        showToast('請填寫用戶名和密碼', 'warning');
-        return;
-    }
-
-    // 用戶名長度驗證（至少 6 個字元）
-    if (username.length < 6) {
+    // 驗證
+    if (!username || username.length < 6) {
         showToast('用戶名至少需要 6 個字元', 'warning');
         return;
     }
 
-    // 密碼長度驗證（8-15 個字元）
-    if (password.length < 8 || password.length > 15) {
+    if (!email || !email.includes('@')) {
+        showToast('請輸入有效的 Email', 'warning');
+        return;
+    }
+
+    if (!password || password.length < 8 || password.length > 15) {
         showToast('密碼需要 8-15 個字元', 'warning');
         return;
     }
 
-    // Email 必填檢查
-    if (!email) {
-        showToast('請填寫 Email（用於密碼找回）', 'warning');
-        return;
-    }
-
-    // Email 格式驗證
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-        showToast('請輸入有效的 Email 地址', 'warning');
-        return;
-    }
-
-    // 再次檢查用戶名是否可用 (選擇性，確保安全)
-    const checkResponse = await fetch(`/api/user/check/${username}`);
-    const checkData = await checkResponse.json();
-    if (!checkData.available) {
-        showToast('該用戶名已被使用，請更換', 'warning');
-        return;
-    }
-
     if (password !== confirmPassword) {
-        showToast('兩次密碼輸入不一致', 'warning');
+        showToast('兩次輸入的密碼不一致', 'warning');
         return;
     }
 
     try {
-        const response = await fetch('/api/user/register', {
+        const res = await fetch('/api/user/register', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ username, password, email })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, email, password })
         });
 
-        const data = await response.json();
+        const result = await res.json();
 
-        if (response.ok && data.success) {
-            showToast('註冊成功，請登入', 'success');
-            toggleAuthMode('login');
-            // 自動填入用戶名
-            document.getElementById('login-username').value = username;
-        } else {
-            showToast(data.detail || '註冊失敗', 'error');
+        if (!res.ok) {
+            showToast(result.detail || '註冊失敗', 'error');
+            return;
         }
-    } catch (error) {
-        console.error('Register error:', error);
-        showToast('註冊發生錯誤', 'error');
+
+        // 註冊成功，自動登入
+        AuthManager.currentUser = {
+            uid: result.user_id,
+            user_id: result.user_id,
+            username: result.username,
+            authMethod: 'password'
+        };
+
+        localStorage.setItem('pi_user', JSON.stringify(AuthManager.currentUser));
+        AuthManager._updateUI(true);
+
+        showToast('註冊成功！', 'success');
+        setTimeout(() => window.location.reload(), 500);
+
+    } catch (e) {
+        console.error('Register error:', e);
+        showToast('註冊時發生錯誤', 'error');
     }
 }
 
+// 切換登入/註冊表單
+function toggleAuthMode(mode) {
+    const loginForm = document.getElementById('form-login');
+    const registerForm = document.getElementById('form-register');
+    const tabLogin = document.getElementById('tab-login');
+    const tabRegister = document.getElementById('tab-register');
+
+    if (mode === 'login') {
+        loginForm?.classList.remove('hidden');
+        registerForm?.classList.add('hidden');
+        tabLogin?.classList.add('bg-surfaceHighlight', 'text-secondary', 'shadow-sm');
+        tabLogin?.classList.remove('text-textMuted');
+        tabRegister?.classList.remove('bg-surfaceHighlight', 'text-secondary', 'shadow-sm');
+        tabRegister?.classList.add('text-textMuted');
+    } else {
+        loginForm?.classList.add('hidden');
+        registerForm?.classList.remove('hidden');
+        tabRegister?.classList.add('bg-surfaceHighlight', 'text-secondary', 'shadow-sm');
+        tabRegister?.classList.remove('text-textMuted');
+        tabLogin?.classList.remove('bg-surfaceHighlight', 'text-secondary', 'shadow-sm');
+        tabLogin?.classList.add('text-textMuted');
+    }
+}
+
+// 檢查用戶名是否可用
 async function checkUsernameAvailability() {
     const input = document.getElementById('reg-username');
-    const msgElement = document.getElementById('reg-username-msg');
-    const username = input?.value.trim();
+    const msg = document.getElementById('reg-username-msg');
+    const username = input?.value?.trim();
 
-    if (!username) {
-        if(msgElement) {
-            msgElement.textContent = '';
-            msgElement.className = 'text-xs mt-1 min-h-[1.25rem] transition-colors duration-300';
+    if (!username || username.length < 6) {
+        if (msg) {
+            msg.textContent = '至少需要 6 個字元';
+            msg.className = 'text-xs mt-1 text-textMuted/60';
         }
-        input?.classList.remove('border-success/50', 'border-danger/50');
-        input?.classList.add('border-white/5');
-        return;
-    }
-
-    // 用戶名長度驗證
-    if (username.length < 6) {
-        if(msgElement) {
-            msgElement.textContent = '用戶名至少需要 6 個字元';
-            msgElement.className = 'text-xs mt-1 min-h-[1.25rem] text-danger font-bold transition-colors duration-300';
-        }
-        input?.classList.remove('border-white/5', 'border-success/50');
-        input?.classList.add('border-danger/50');
         return;
     }
 
     try {
-        const response = await fetch(`/api/user/check/${username}`);
-        const data = await response.json();
+        const res = await fetch(`/api/user/check/${username}`);
+        const result = await res.json();
 
-        if (response.ok && data.available) {
-            if(msgElement) {
-                msgElement.textContent = '此用戶名可用';
-                msgElement.className = 'text-xs mt-1 min-h-[1.25rem] text-success font-bold transition-colors duration-300';
+        if (msg) {
+            if (result.available) {
+                msg.textContent = '✓ 用戶名可用';
+                msg.className = 'text-xs mt-1 text-success';
+            } else {
+                msg.textContent = '✗ 用戶名已被使用';
+                msg.className = 'text-xs mt-1 text-danger';
             }
-            input.classList.remove('border-white/5', 'border-danger/50');
-            input.classList.add('border-success/50');
-        } else {
-             if(msgElement) {
-                msgElement.textContent = data.message || '此用戶名已被註冊';
-                msgElement.className = 'text-xs mt-1 min-h-[1.25rem] text-danger font-bold transition-colors duration-300';
-            }
-            input.classList.remove('border-white/5', 'border-success/50');
-            input.classList.add('border-danger/50');
         }
-    } catch (error) {
-        console.error('Check username error:', error);
+    } catch (e) {
+        console.error('Check username error:', e);
     }
 }
 
+// 檢查 Email 是否可用
 async function checkEmailAvailability() {
     const input = document.getElementById('reg-email');
-    const msgElement = document.getElementById('reg-email-msg');
-    const email = input?.value.trim();
+    const msg = document.getElementById('reg-email-msg');
+    const email = input?.value?.trim();
 
-    if (!email) {
-        if (msgElement) {
-            msgElement.textContent = 'Required for password recovery';
-            msgElement.className = 'text-xs text-textMuted/60 mt-1';
+    if (!email || !email.includes('@')) {
+        if (msg) {
+            msg.textContent = '用於密碼重置';
+            msg.className = 'text-xs mt-1 text-textMuted/60';
         }
-        input?.classList.remove('border-success/50', 'border-danger/50');
-        input?.classList.add('border-white/5');
-        return;
-    }
-
-    // Email 格式驗證
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-        if (msgElement) {
-            msgElement.textContent = '請輸入有效的 Email 格式';
-            msgElement.className = 'text-xs mt-1 text-danger font-bold';
-        }
-        input?.classList.remove('border-white/5', 'border-success/50');
-        input?.classList.add('border-danger/50');
         return;
     }
 
     try {
-        const response = await fetch(`/api/user/check-email/${encodeURIComponent(email)}`);
-        const data = await response.json();
+        const res = await fetch(`/api/user/check-email/${encodeURIComponent(email)}`);
+        const result = await res.json();
 
-        if (response.ok && data.available) {
-            if (msgElement) {
-                msgElement.textContent = 'Email 可用';
-                msgElement.className = 'text-xs mt-1 text-success font-bold';
+        if (msg) {
+            if (result.available) {
+                msg.textContent = '✓ Email 可用';
+                msg.className = 'text-xs mt-1 text-success';
+            } else {
+                msg.textContent = '✗ Email 已被註冊';
+                msg.className = 'text-xs mt-1 text-danger';
             }
-            input?.classList.remove('border-white/5', 'border-danger/50');
-            input?.classList.add('border-success/50');
-        } else {
-            if (msgElement) {
-                msgElement.textContent = data.message || '此 Email 已被註冊';
-                msgElement.className = 'text-xs mt-1 text-danger font-bold';
-            }
-            input?.classList.remove('border-white/5', 'border-success/50');
-            input?.classList.add('border-danger/50');
         }
-    } catch (error) {
-        console.error('Check email error:', error);
+    } catch (e) {
+        console.error('Check email error:', e);
     }
 }
 
-async function handleLogout() {
-    const confirmed = await showConfirmDialog({
-        title: '登出',
-        message: '確定要登出嗎？',
-        confirmText: '登出',
-        cancelText: '取消',
-        type: 'warning'
-    });
-
-    if (confirmed) {
-        AuthManager.logout();
-    }
-}
-
-// ========================================
-// 忘記密碼相關函數
-// ========================================
-
-// 當前重置 Token（從 URL 獲取）
-let currentResetToken = null;
-
+// 忘記密碼
 function showForgotPasswordModal() {
-    hideLoginModal();
-    const modal = document.getElementById('forgot-password-modal');
-    if (modal) {
-        modal.classList.remove('hidden');
-        document.getElementById('forgot-email')?.focus();
-        if (window.lucide) window.lucide.createIcons();
-    }
+    document.getElementById('forgot-password-modal')?.classList.remove('hidden');
 }
 
 function hideForgotPasswordModal() {
-    const modal = document.getElementById('forgot-password-modal');
-    if (modal) {
-        modal.classList.add('hidden');
-    }
-    showLoginModal();
+    document.getElementById('forgot-password-modal')?.classList.add('hidden');
 }
 
 async function handleForgotPassword() {
-    const emailInput = document.getElementById('forgot-email');
-    const submitBtn = document.getElementById('forgot-submit-btn');
-    const email = emailInput?.value.trim();
+    const email = document.getElementById('forgot-email')?.value?.trim();
+    const btn = document.getElementById('forgot-submit-btn');
 
     if (!email) {
-        showToast('Please enter your email address', 'warning');
+        showToast('請輸入 Email', 'warning');
         return;
     }
 
-    // Email 格式驗證
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-        showToast('Please enter a valid email address', 'warning');
-        return;
-    }
-
-    // 禁用按鈕避免重複提交
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Sending...';
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = '發送中...';
     }
 
     try {
-        const response = await fetch('/api/user/forgot-password', {
+        const res = await fetch('/api/user/forgot-password', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email })
         });
 
-        const data = await response.json();
+        const result = await res.json();
 
-        if (response.ok) {
-            showToast('If the email exists, a reset link has been sent.', 'success');
+        if (res.ok) {
+            showToast('如果 Email 存在，重置連結已發送', 'success');
             hideForgotPasswordModal();
-            // 清空輸入框
-            if (emailInput) emailInput.value = '';
         } else {
-            showToast(data.detail || 'Failed to send reset email', 'error');
+            showToast(result.detail || '發送失敗', 'error');
         }
-    } catch (error) {
-        console.error('Forgot password error:', error);
-        showToast('An error occurred. Please try again.', 'error');
+    } catch (e) {
+        showToast('發送時發生錯誤', 'error');
     } finally {
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Send Reset Link';
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Send Reset Link';
         }
     }
 }
 
-function showResetPasswordModal(token) {
-    currentResetToken = token;
-    hideLoginModal();
-    const modal = document.getElementById('reset-password-modal');
-    if (modal) {
-        modal.classList.remove('hidden');
-        document.getElementById('reset-new-password')?.focus();
-        if (window.lucide) window.lucide.createIcons();
-    }
-}
-
-function hideResetPasswordModal() {
-    const modal = document.getElementById('reset-password-modal');
-    if (modal) {
-        modal.classList.add('hidden');
-    }
-    currentResetToken = null;
-    // 清除 URL 中的 token 參數
-    const url = new URL(window.location);
-    url.searchParams.delete('reset_token');
-    window.history.replaceState({}, '', url);
-    showLoginModal();
-}
-
-async function handleResetPassword() {
-    const newPassword = document.getElementById('reset-new-password')?.value;
-    const confirmPassword = document.getElementById('reset-confirm-password')?.value;
-    const submitBtn = document.getElementById('reset-submit-btn');
-
-    if (!newPassword || !confirmPassword) {
-        showToast('Please fill in all fields', 'warning');
-        return;
-    }
-
-    if (newPassword.length < 6) {
-        showToast('Password must be at least 6 characters', 'warning');
-        return;
-    }
-
-    if (newPassword !== confirmPassword) {
-        showToast('Passwords do not match', 'warning');
-        return;
-    }
-
-    if (!currentResetToken) {
-        showToast('Invalid reset token. Please request a new reset link.', 'error');
-        return;
-    }
-
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Resetting...';
-    }
-
-    try {
-        const response = await fetch('/api/user/reset-password', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                token: currentResetToken,
-                new_password: newPassword
-            })
-        });
-
-        const data = await response.json();
-
-        if (response.ok && data.success) {
-            showToast('Password reset successfully! Please login.', 'success');
-            hideResetPasswordModal();
-            // 清空輸入框
-            document.getElementById('reset-new-password').value = '';
-            document.getElementById('reset-confirm-password').value = '';
-        } else {
-            showToast(data.detail || 'Failed to reset password', 'error');
-        }
-    } catch (error) {
-        console.error('Reset password error:', error);
-        showToast('An error occurred. Please try again.', 'error');
-    } finally {
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Reset Password';
-        }
-    }
-}
-
-async function checkResetTokenFromUrl() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const resetToken = urlParams.get('reset_token');
-
-    if (resetToken) {
-        // 驗證 Token 是否有效
-        try {
-            const response = await fetch(`/api/user/verify-reset-token/${resetToken}`);
-            const data = await response.json();
-
-            if (data.valid) {
-                showResetPasswordModal(resetToken);
-            } else {
-                showToast('Invalid or expired reset link. Please request a new one.', 'error');
-                // 清除 URL 參數
-                const url = new URL(window.location);
-                url.searchParams.delete('reset_token');
-                window.history.replaceState({}, '', url);
-            }
-        } catch (error) {
-            console.error('Token verification error:', error);
-            showToast('Failed to verify reset token.', 'error');
-        }
-    }
-}
-
-// ========================================
-// 初始化
-// ========================================
-document.addEventListener('DOMContentLoaded', () => {
-    // 檢查是否有已保存的登入狀態
-    const isLoggedIn = AuthManager.init();
-
-    // 檢查 URL 是否有重置密碼的 Token
-    checkResetTokenFromUrl();
-
-    // 如果沒有登入，顯示登入提示
-    if (!isLoggedIn) {
-        // 可以自動顯示登入對話框
-        // showLoginModal();
-    }
-});
-
-// ========================================
-// Pi 錢包綁定相關函數
-// ========================================
-
-/**
- * 獲取用戶錢包綁定狀態
- */
-async function getWalletStatus() {
-    if (!AuthManager.currentUser) {
-        return { has_wallet: false, auth_method: null };
-    }
-
-    try {
-        const response = await fetch(`/api/user/wallet-status/${AuthManager.currentUser.uid}`);
-        const data = await response.json();
-        return data;
-    } catch (error) {
-        console.error('Get wallet status error:', error);
-        return { has_wallet: false, auth_method: null };
-    }
-}
-
-/**
- * 綁定 Pi 錢包到現有帳號
- * 必須在 Pi Browser 中執行
- */
-async function linkPiWallet() {
-    if (!AuthManager.currentUser) {
-        showToast('請先登入', 'warning');
-        return { success: false, error: 'Not logged in' };
-    }
-
-    if (!window.Pi) {
-        showToast('請在 Pi Browser 中開啟以綁定錢包', 'error');
-        return { success: false, error: 'Pi SDK not available' };
-    }
-
-    try {
-        // 確保 Pi SDK 已初始化
-        if (!AuthManager.piInitialized) {
-            AuthManager.initPiSDK();
-        }
-
-        // 進行 Pi 認證獲取錢包資訊（帶超時機制）
-        showToast('正在連接 Pi 錢包...', 'info', 0); // 不自動消失
-
-        const TIMEOUT_MS = 15000; // 15 秒超時
-        const authPromise = Pi.authenticate(['username'], AuthManager._onIncompletePayment);
-        const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('TIMEOUT')), TIMEOUT_MS)
-        );
-
-        let auth;
-        try {
-            auth = await Promise.race([authPromise, timeoutPromise]);
-        } catch (e) {
-            // 清除連接中的 Toast
-            document.querySelectorAll('#toast-container > div').forEach(t => t.remove());
-
-            if (e.message === 'TIMEOUT') {
-                // 超時 - 顯示重試選項
-                const retry = await showConfirm({
-                    title: '連接超時',
-                    message: '無法連接 Pi 錢包。\n\n請確認您是在 Pi Browser 中開啟此頁面，而非一般瀏覽器。',
-                    type: 'warning',
-                    confirmText: '重新連接',
-                    cancelText: '取消'
-                });
-
-                if (retry) {
-                    return linkPiWallet(); // 遞迴重試
-                }
-                return { success: false, error: 'Connection timeout' };
-            }
-            throw e; // 其他錯誤繼續拋出
-        }
-
-        // 清除連接中的 Toast
-        document.querySelectorAll('#toast-container > div').forEach(t => t.remove());
-
-        // 呼叫 API 綁定錢包
-        const response = await fetch('/api/user/link-wallet', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                user_id: AuthManager.currentUser.uid,
-                pi_uid: auth.user.uid,
-                pi_username: auth.user.username,
-                access_token: auth.accessToken
-            })
-        });
-
-        const result = await response.json();
-
-        if (response.ok) {
-            // 更新本地用戶資料
-            AuthManager.currentUser.pi_uid = auth.user.uid;
-            AuthManager.currentUser.pi_username = auth.user.username;
-            localStorage.setItem('pi_user', JSON.stringify(AuthManager.currentUser));
-
-            showToast(result.already_linked ? '錢包已綁定' : 'Pi 錢包綁定成功！', 'success');
-            return { success: true, ...result };
-        } else {
-            showToast(result.detail || '綁定失敗', 'error');
-            return { success: false, error: result.detail };
-        }
-    } catch (error) {
-        // 清除連接中的 Toast
-        document.querySelectorAll('#toast-container > div').forEach(t => t.remove());
-
-        console.error('Link wallet error:', error);
-
-        // 判斷是否為用戶取消
-        if (error.message?.includes('cancelled') || error.message?.includes('canceled')) {
-            showToast('已取消連接', 'info');
-            return { success: false, error: 'User cancelled' };
-        }
-
-        showToast('綁定錢包時發生錯誤: ' + error.message, 'error');
-        return { success: false, error: error.message };
-    }
-}
-
-/**
- * 檢查用戶是否可以進行 Pi 支付
- * (必須有綁定錢包或以 Pi 登入)
- */
-function canMakePiPayment() {
-    if (!AuthManager.currentUser) return false;
-    // Pi 錢包登入的用戶
-    if (AuthManager.currentUser.authMethod === 'pi_network') return true;
-    // 帳密用戶但已綁定錢包
-    if (AuthManager.currentUser.pi_uid) return true;
-    return false;
-}
-
-// 暴露到全局
+// 暴露全域
 window.AuthManager = AuthManager;
-window.showLoginModal = showLoginModal;
-window.hideLoginModal = hideLoginModal;
-window.handlePiLogin = handlePiLogin;
 window.handleCredentialLogin = handleCredentialLogin;
 window.handleRegister = handleRegister;
+window.toggleAuthMode = toggleAuthMode;
 window.checkUsernameAvailability = checkUsernameAvailability;
 window.checkEmailAvailability = checkEmailAvailability;
-window.toggleAuthMode = toggleAuthMode;
-window.handleLogout = handleLogout;
 window.showForgotPasswordModal = showForgotPasswordModal;
 window.hideForgotPasswordModal = hideForgotPasswordModal;
 window.handleForgotPassword = handleForgotPassword;
-window.showResetPasswordModal = showResetPasswordModal;
-window.hideResetPasswordModal = hideResetPasswordModal;
-window.handleResetPassword = handleResetPassword;
+window.handlePiLogin = async () => {
+    DebugLog.info('handlePiLogin 被呼叫');
+    try {
+        const res = await AuthManager.authenticateWithPi();
+        DebugLog.info('Pi 登入結果', res);
+        if (res.success) {
+            window.location.reload();
+        } else {
+            if (typeof showToast === 'function') {
+                showToast('登入失敗: ' + res.error, 'error');
+            } else {
+                alert('登入失敗: ' + res.error);
+            }
+        }
+    } catch (e) {
+        DebugLog.error('handlePiLogin 異常', { error: e.message, stack: e.stack });
+        if (typeof showToast === 'function') {
+            showToast('登入異常: ' + e.message, 'error');
+        } else {
+            alert('登入異常: ' + e.message);
+        }
+    }
+};
+window.handleLogout = () => AuthManager.logout();
+window.initializeAuth = () => AuthManager.init();
+window.isPiBrowser = isPiBrowser;
+window.canMakePiPayment = canMakePiPayment;
 window.getWalletStatus = getWalletStatus;
 window.linkPiWallet = linkPiWallet;
-window.canMakePiPayment = canMakePiPayment;
 window.loadSettingsWalletStatus = loadSettingsWalletStatus;
+window.handleLinkWallet = handleLinkWallet;
 window.handleSettingsLinkWallet = handleSettingsLinkWallet;
-
-// ========================================
-// Settings 頁面錢包區塊
-// ========================================
-
-/**
- * 載入 Settings 頁面的錢包狀態
- */
-async function loadSettingsWalletStatus() {
-    const walletCard = document.getElementById('settings-wallet-card');
-    const statusBadge = document.getElementById('settings-wallet-status-badge');
-    const notLinked = document.getElementById('wallet-not-linked');
-    const linked = document.getElementById('wallet-linked');
-    const walletUsername = document.getElementById('settings-wallet-username');
-    const walletIcon = document.getElementById('settings-wallet-icon');
-
-    // 只有登入才顯示錢包卡片
-    if (!AuthManager.currentUser) {
-        if (walletCard) walletCard.classList.add('hidden');
-        return;
-    }
-
-    if (walletCard) walletCard.classList.remove('hidden');
-
-    try {
-        const status = await getWalletStatus();
-
-        if (status.has_wallet || status.auth_method === 'pi_network') {
-            // 已綁定
-            if (statusBadge) {
-                statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-success/10 text-success';
-                statusBadge.innerHTML = '<i data-lucide="check" class="w-3 h-3"></i> 已連接';
-            }
-            if (walletIcon) {
-                walletIcon.className = 'w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center';
-                walletIcon.innerHTML = '<i data-lucide="wallet" class="w-5 h-5 text-success"></i>';
-            }
-            if (notLinked) notLinked.classList.add('hidden');
-            if (linked) linked.classList.remove('hidden');
-            if (walletUsername && status.pi_username) {
-                walletUsername.textContent = '@' + status.pi_username;
-            }
-        } else {
-            // 未綁定
-            if (statusBadge) {
-                statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-textMuted';
-                statusBadge.innerHTML = '<i data-lucide="link-2-off" class="w-3 h-3"></i> 未綁定';
-            }
-            if (notLinked) notLinked.classList.remove('hidden');
-            if (linked) linked.classList.add('hidden');
-        }
-
-        if (window.lucide) lucide.createIcons();
-    } catch (e) {
-        console.error('Load settings wallet status error:', e);
-        if (statusBadge) {
-            statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-danger/10 text-danger';
-            statusBadge.innerHTML = '<i data-lucide="alert-circle" class="w-3 h-3"></i> 錯誤';
-        }
-    }
-}
-
-/**
- * Settings 頁面綁定錢包按鈕
- */
-async function handleSettingsLinkWallet() {
-    const result = await linkPiWallet();
-    if (result.success) {
-        loadSettingsWalletStatus();
-    }
-}

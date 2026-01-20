@@ -362,6 +362,17 @@ select {
     border-radius: 4px;
 }
 
+/* Prevent initial white flash */
+body {
+    background-color: #1a1a1c;
+    opacity: 0;
+    animation: bodyFadeIn 0.5s ease-out forwards;
+}
+
+@keyframes bodyFadeIn {
+    to { opacity: 1; }
+}
+
 /* Tab Transition Animations */
 .tab-content {
     animation: slideUpFade 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;

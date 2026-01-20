@@ -146,10 +146,15 @@ def create_or_get_pi_user(pi_uid: str, username: str) -> Dict:
     c = conn.cursor()
     try:
         # 檢查 pi_uid 是否已存在
-        c.execute('SELECT user_id, username, auth_method FROM users WHERE pi_uid = ?', (pi_uid,))
+        c.execute('SELECT user_id, username, auth_method, pi_username FROM users WHERE pi_uid = ?', (pi_uid,))
         row = c.fetchone()
         if row:
             print(f"[DEBUG] Found existing Pi user: {row}")
+            # 如果 pi_username 為空，更新它
+            if not row[3]:
+                c.execute('UPDATE users SET pi_username = ? WHERE pi_uid = ?', (username, pi_uid))
+                conn.commit()
+                print(f"[DEBUG] Updated pi_username for existing user: {username}")
             return {
                 "user_id": row[0],
                 "username": row[1],
@@ -161,16 +166,25 @@ def create_or_get_pi_user(pi_uid: str, username: str) -> Dict:
         c.execute('SELECT user_id, auth_method FROM users WHERE username = ?', (username,))
         existing = c.fetchone()
         if existing:
-            print(f"[DEBUG] Username conflict: {username} used by user_id={existing[0]}, auth_method={existing[1]}")
-            raise ValueError(f"Username '{username}' is already used by another account")
+            # 💡 修復：如果用戶名衝突，不報錯，而是自動加上隨機後綴
+            import random
+            original_username = username
+            suffix = str(random.randint(1000, 9999))
+            username = f"{original_username}_{suffix}"
+            print(f"[DEBUG] Username conflict: {original_username} taken. Assigned new username: {username}")
+            
+            # 再次檢查新用戶名是否也衝突（極低機率）
+            c.execute('SELECT 1 FROM users WHERE username = ?', (username,))
+            if c.fetchone():
+                username = f"{original_username}_{str(uuid.uuid4())[:4]}"
 
         # 創建新 Pi 用戶
         print(f"[DEBUG] Creating new Pi user: pi_uid={pi_uid}, username={username}")
         user_id = pi_uid
         c.execute('''
-            INSERT INTO users (user_id, username, password_hash, auth_method, pi_uid, created_at)
-            VALUES (?, ?, NULL, 'pi_network', ?, datetime('now'))
-        ''', (user_id, username, pi_uid))
+            INSERT INTO users (user_id, username, password_hash, auth_method, pi_uid, pi_username, created_at)
+            VALUES (?, ?, NULL, 'pi_network', ?, ?, datetime('now'))
+        ''', (user_id, username, pi_uid, username))
         conn.commit()
         print(f"[DEBUG] Pi user created successfully: user_id={user_id}")
 

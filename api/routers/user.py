@@ -1,9 +1,15 @@
+import os
+import httpx
 from fastapi import APIRouter, HTTPException
 from api.models import (
     WatchlistRequest, UserRegisterRequest, UserLoginRequest,
     ForgotPasswordRequest, ResetPasswordRequest
 )
 from api.utils import logger
+
+# Pi Network API 配置
+PI_API_KEY = os.getenv("PI_API_KEY", "")
+PI_API_BASE = "https://api.minepi.com/v2"
 from core.database import (
     add_to_watchlist, remove_from_watchlist, get_watchlist,
     create_user, get_user_by_username, verify_password,
@@ -292,6 +298,75 @@ async def reset_password(request: ResetPasswordRequest):
         logger.error(f"Reset password error: {e}")
         raise HTTPException(status_code=500, detail="An error occurred")
 
+
+# --- Pi Payment Handling Endpoints ---
+
+class ApprovePaymentRequest(BaseModel):
+    paymentId: str
+
+class CompletePaymentRequest(BaseModel):
+    paymentId: str
+    txid: str
+
+@router.post("/api/user/payment/approve")
+async def approve_payment(request: ApprovePaymentRequest):
+    """
+    接收前端通知，呼叫 Pi Server API 核准支付
+    官方文檔: https://pi-apps.github.io/community-developer-guide/docs/gettingStarted/piAppPlatform/piAppPlatformAPIs/
+    """
+    logger.info(f"Pi Payment Approval Requested: {request.paymentId}")
+
+    if not PI_API_KEY or PI_API_KEY == "your_pi_api_key_here":
+        logger.warning("PI_API_KEY not configured, skipping actual API call")
+        return {"status": "ok", "message": "Payment approval received (API key not configured)"}
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{PI_API_BASE}/payments/{request.paymentId}/approve",
+                headers={"Authorization": f"Key {PI_API_KEY}"}
+            )
+            response.raise_for_status()
+            result = response.json()
+            logger.info(f"Pi API Approve Response: {result}")
+            return {"status": "ok", "message": "Payment approved", "data": result}
+    except httpx.HTTPStatusError as e:
+        logger.error(f"Pi API Approve Error: {e.response.status_code} - {e.response.text}")
+        raise HTTPException(status_code=e.response.status_code, detail=f"Pi API Error: {e.response.text}")
+    except Exception as e:
+        logger.error(f"Pi Payment Approval Failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Payment approval failed: {str(e)}")
+
+
+@router.post("/api/user/payment/complete")
+async def complete_payment(request: CompletePaymentRequest):
+    """
+    接收前端通知，呼叫 Pi Server API 完成支付
+    官方文檔: https://pi-apps.github.io/community-developer-guide/docs/gettingStarted/piAppPlatform/piAppPlatformAPIs/
+    """
+    logger.info(f"Pi Payment Completion Requested: {request.paymentId}, txid: {request.txid}")
+
+    if not PI_API_KEY or PI_API_KEY == "your_pi_api_key_here":
+        logger.warning("PI_API_KEY not configured, skipping actual API call")
+        return {"status": "ok", "message": "Payment completion received (API key not configured)", "txid": request.txid}
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{PI_API_BASE}/payments/{request.paymentId}/complete",
+                headers={"Authorization": f"Key {PI_API_KEY}"},
+                json={"txid": request.txid}
+            )
+            response.raise_for_status()
+            result = response.json()
+            logger.info(f"Pi API Complete Response: {result}")
+            return {"status": "ok", "message": "Payment completed", "data": result, "txid": request.txid}
+    except httpx.HTTPStatusError as e:
+        logger.error(f"Pi API Complete Error: {e.response.status_code} - {e.response.text}")
+        raise HTTPException(status_code=e.response.status_code, detail=f"Pi API Error: {e.response.text}")
+    except Exception as e:
+        logger.error(f"Pi Payment Completion Failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Payment completion failed: {str(e)}")
 
 # --- Pi Wallet Linking Endpoints ---
 

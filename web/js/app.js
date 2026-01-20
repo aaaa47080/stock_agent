@@ -89,10 +89,58 @@ window.handleBackToApp = handleBackToApp;
 function showConfirm(options = {}) {
     return new Promise((resolve) => {
         const modal = document.getElementById('confirm-modal');
+        const iconEl = document.getElementById('confirm-modal-icon');
+        const titleEl = document.getElementById('confirm-modal-title');
+        const messageEl = document.getElementById('confirm-modal-message');
+        const confirmBtn = document.getElementById('confirm-modal-confirm');
+        const cancelBtn = document.getElementById('confirm-modal-cancel');
         const content = modal ? modal.querySelector('div') : null;
-        
-        // ... (中間邏輯保持不變)
 
+        if (!modal) {
+            resolve(window.confirm(options.message || '確定嗎？'));
+            return;
+        }
+
+        const {
+            title = '確認操作',
+            message = '確定要執行此操作嗎？',
+            type = 'warning',
+            confirmText = '確認',
+            cancelText = '取消'
+        } = options;
+
+        // 設置圖標和顏色
+        const iconConfig = {
+            danger: { icon: 'alert-triangle', bg: 'bg-danger/20', color: 'text-danger' },
+            warning: { icon: 'alert-circle', bg: 'bg-primary/20', color: 'text-primary' },
+            info: { icon: 'info', bg: 'bg-accent/20', color: 'text-accent' },
+            success: { icon: 'check-circle', bg: 'bg-success/20', color: 'text-success' }
+        };
+
+        const config = iconConfig[type] || iconConfig.warning;
+
+        if (iconEl) {
+            iconEl.className = `w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 ${config.bg}`;
+            iconEl.innerHTML = `<i data-lucide="${config.icon}" class="w-8 h-8 ${config.color}"></i>`;
+        }
+
+        if (titleEl) titleEl.textContent = title;
+        if (messageEl) messageEl.textContent = message;
+        if (confirmBtn) confirmBtn.textContent = confirmText;
+        if (cancelBtn) cancelBtn.textContent = cancelText;
+
+        // 根據類型設置確認按鈕樣式
+        if (confirmBtn) {
+            if (type === 'danger') {
+                confirmBtn.className = 'flex-1 py-3 bg-danger hover:brightness-110 text-white font-bold rounded-2xl transition shadow-lg';
+            } else {
+                confirmBtn.className = 'flex-1 py-3 bg-primary hover:brightness-110 text-background font-bold rounded-2xl transition shadow-lg';
+            }
+        }
+
+        if (window.lucide) lucide.createIcons();
+        
+        // 觸發動畫
         if (content) {
             content.classList.remove('modal-content-active');
             void content.offsetWidth; // 強制重繪
@@ -100,7 +148,22 @@ function showConfirm(options = {}) {
         }
 
         modal.classList.remove('hidden');
-        // ...
+
+        // 清除舊的事件監聽器並添加新的
+        const newConfirmBtn = confirmBtn.cloneNode(true);
+        const newCancelBtn = cancelBtn.cloneNode(true);
+        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+
+        newConfirmBtn.onclick = () => {
+            modal.classList.add('hidden');
+            resolve(true);
+        };
+
+        newCancelBtn.onclick = () => {
+            modal.classList.add('hidden');
+            resolve(false);
+        };
     });
 }
 
@@ -280,14 +343,17 @@ function updateChatUIState(hasApiKey) {
     }
 }
 
-// 頁面加載時檢查 API key 狀態
-window.addEventListener('DOMContentLoaded', () => {
+// 暴露到全局供 index.html 控制初始化順序
+window.initializeUIStatus = function() {
     checkApiKeyStatus();
-    // 立即觸發數據預加載，讓用戶切換分頁時「進去就有東西看」
-    refreshScreener(false);
     // 每10秒檢查一次 API 狀態
-    setInterval(checkApiKeyStatus, 10000);
-});
+    if (!window.apiKeyStatusInterval) {
+        window.apiKeyStatusInterval = setInterval(checkApiKeyStatus, 10000);
+    }
+};
+
+// 頁面加載時不再自動執行，由 index.html 統一調度
+// window.addEventListener('DOMContentLoaded', () => { ... });
 
 
 // --- Global Filter Logic Variables ---
@@ -489,6 +555,11 @@ async function openSettings() {
     // Switch to settings tab
     if (typeof switchTab === 'function') {
         switchTab('settings');
+    }
+    
+    // Ensure component is injected
+    if (window.Components && typeof window.Components.inject === 'function') {
+        await window.Components.inject('settings');
     }
 
     // Load current config
@@ -744,7 +815,13 @@ async function saveSettings() {
 
         enable_committee: document.getElementById('set-committee-mode') ? document.getElementById('set-committee-mode').checked : false,
         primary_model_provider: document.getElementById('llm-provider-select') ? document.getElementById('llm-provider-select').value : '',
-        primary_model_name: document.getElementById('set-model-name') ? document.getElementById('set-model-name').value : '',
+        primary_model_name: (function() {
+            const select = document.getElementById('llm-model-select');
+            const input = document.getElementById('llm-model-input');
+            const provider = document.getElementById('llm-provider-select') ? document.getElementById('llm-provider-select').value : '';
+            if (provider === 'openrouter') return input ? input.value : '';
+            return select ? select.value : '';
+        })(),
 
         bull_committee_models: committeeConfig.bull,
         bear_committee_models: committeeConfig.bear

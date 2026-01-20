@@ -48,7 +48,17 @@
                 <span>Cancel</span>
             </a>
             <div class="font-bold text-lg text-primary tracking-wide">New Post</div>
-            <div class="w-10"></div> <!-- Spacer -->
+            
+            <!-- User Status -->
+            <div class="flex items-center gap-3">
+                <div class="hidden md:flex flex-col items-end">
+                    <span id="forum-user-name" class="text-xs font-bold text-secondary">Guest</span>
+                    <span class="text-[10px] text-textMuted opacity-60">Poster</span>
+                </div>
+                <div id="forum-user-avatar" class="w-8 h-8 rounded-full bg-surfaceHighlight flex items-center justify-center text-xs font-bold overflow-hidden border border-white/10">
+                    <i data-lucide="user" class="w-4 h-4"></i>
+                </div>
+            </div>
         </div>
     </nav>
 
@@ -136,8 +146,24 @@
     </div>
 
     <!-- Scripts -->
-    <script src="/static/js/auth.js"></script>
     <script src="/static/js/app.js"></script>
+    <script src="/static/js/apiKeyManager.js"></script>
+    <script src="/static/js/auth.js"></script>
     <script src="/static/js/forum.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('Create page fully loaded, starting initialization...');
+            
+            // 1. 恢復登入狀態
+            if (typeof initializeAuth === 'function') {
+                initializeAuth();
+            }
+
+            // 2. 初始化論壇邏輯
+            if (typeof ForumApp !== 'undefined' && typeof ForumApp.init === 'function') {
+                ForumApp.init();
+            }
+        });
+    </script>
 </body>
 </html>
