@@ -177,6 +177,10 @@
                         <i data-lucide="activity" class="w-5 h-5"></i>
                         <span class="text-[9px] font-medium opacity-80">Pulse</span>
                     </button>
+                    <button onclick="switchTab('wallet')" class="nav-btn w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5" title="Wallet" data-tab="wallet">
+                        <i data-lucide="credit-card" class="w-5 h-5"></i>
+                        <span class="text-[9px] font-medium opacity-80">Wallet</span>
+                    </button>
                     <button onclick="switchTab('assets')" class="nav-btn w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5" title="Assets" data-tab="assets">
                         <i data-lucide="wallet" class="w-5 h-5"></i>
                         <span class="text-[9px] font-medium opacity-80">Assets</span>
@@ -296,6 +300,64 @@
         <div id="pulse-tab" class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40">
             <!-- Dynamic Content Injected via components.js -->
         </div>
+
+        <!-- Tab: Wallet -->
+        <div id="wallet-tab" class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40">
+            <div class="max-w-3xl mx-auto space-y-6">
+                 <!-- Header -->
+                <div class="flex justify-between items-end">
+                    <h2 class="font-serif text-3xl text-secondary">Wallet History</h2>
+                    <button onclick="WalletApp.loadData()" class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+                </div>
+
+                <!-- Balance / Status Card -->
+                <div class="bg-surface border border-white/5 rounded-[2rem] p-6 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 p-6 opacity-5 pointer-events-none">
+                        <i data-lucide="wallet" class="w-32 h-32 text-primary"></i>
+                    </div>
+                    <div class="flex items-center gap-5 relative z-10">
+                        <div class="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                            <i data-lucide="credit-card" class="w-8 h-8 text-primary"></i>
+                        </div>
+                        <div>
+                            <div class="text-textMuted text-xs font-bold uppercase tracking-wider mb-2">Total Activity</div>
+                            <div class="flex gap-8">
+                                 <div>
+                                     <span class="text-[10px] text-textMuted uppercase tracking-wider block mb-0.5">Spent (Out)</span>
+                                     <div class="text-danger font-bold text-xl flex items-center gap-1">
+                                         <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
+                                         <span id="wallet-total-out">0.0</span> Pi
+                                     </div>
+                                 </div>
+                                 <div>
+                                     <span class="text-[10px] text-textMuted uppercase tracking-wider block mb-0.5">Received (In)</span>
+                                     <div class="text-success font-bold text-xl flex items-center gap-1">
+                                         <i data-lucide="arrow-down-left" class="w-4 h-4"></i>
+                                         <span id="wallet-total-in">0.0</span> Pi
+                                     </div>
+                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transaction List -->
+                <div class="bg-surface border border-white/5 rounded-[2rem] p-6 min-h-[400px]">
+                    <h3 class="font-bold text-secondary text-lg mb-6 flex items-center gap-2">
+                        <i data-lucide="history" class="w-5 h-5 text-primary"></i> Transactions
+                    </h3>
+                    
+                    <div id="wallet-tx-list" class="space-y-2">
+                        <div class="text-center text-textMuted py-10 opacity-50">
+                            <i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto mb-2"></i>
+                            Loading history...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
 
 
 
@@ -723,6 +785,8 @@
     <script src="/static/js/assets.js?v=27"></script>
     <script src="/static/js/pulse.js?v=27"></script>
     <script src="/static/js/trade.js?v=27"></script>
+    <script src="/static/js/forum.js?v=27"></script>
+    <script src="/static/js/wallet.js?v=27"></script>
     <script src="/static/js/debate.js?v=27"></script>
     <script src="/static/js/committeeManager.js?v=27"></script>
     <script>
@@ -812,6 +876,9 @@
             }
             if(tabId === 'assets') refreshAssets();
             if(tabId === 'pulse') checkMarketPulse(true);
+            if(tabId === 'wallet') {
+                if (window.WalletApp) window.WalletApp.init();
+            }
             if(tabId === 'settings') {
                 // 💡 修正：注入內容後，立即更新用戶資料顯示
                 if (window.AuthManager && typeof window.AuthManager._updateUI === 'function') {

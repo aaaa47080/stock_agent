@@ -970,8 +970,7 @@ const ForumApp = {
         const loaders = [
             this.loadWalletStatus().catch(err => console.error('Wallet Status Load Failed:', err)),
             this.loadStats().catch(err => console.error('Stats Load Failed:', err)),
-            this.loadMyPosts().catch(err => console.error('Posts Load Failed:', err)),
-            this.loadTransactions().catch(err => console.error('Transactions Load Failed:', err))
+            this.loadMyPosts().catch(err => console.error('Posts Load Failed:', err))
         ];
 
         await Promise.allSettled(loaders);
