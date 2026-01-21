@@ -1136,7 +1136,9 @@ const ForumApp = {
                  ForumAPI.getMyTipsSent()
              ]);
 
-             const payments = (paymentsData.payments || []).map(p => ({...p, type: 'post_payment', amount: -1.0})); 
+             const payments = (paymentsData.payments || [])
+                 .filter(p => p.tx_hash !== 'pro_member_free')
+                 .map(p => ({...p, type: 'post_payment', amount: -1.0})); 
              const tips = (tipsSentData.tips || []).map(t => ({...t, type: 'tip_sent', amount: -t.amount, title: `Tip: ${t.post_title || 'Post'}`}));
              
              const allTx = [...payments, ...tips].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -1147,10 +1149,17 @@ const ForumApp = {
                  return;
              }
              
-             allTx.slice(0, 20).forEach(tx => { 
+             allTx.slice(0, 20).forEach((tx, idx) => { 
                  const el = document.createElement('div');
-                 el.className = 'flex items-center justify-between border-b border-white/5 pb-3 last:border-0 last:pb-0';
+                 el.className = 'flex items-center justify-between border-b border-white/5 py-4 hover:bg-white/5 px-2 rounded-xl transition cursor-pointer last:border-0';
                  
+                 // 將完整資料存入元素
+                 el.dataset.txData = JSON.stringify(tx);
+                 el.onclick = function() {
+                     console.log('Transaction clicked:', tx);
+                     ForumApp.showTransactionDetail(tx);
+                 };
+
                  let icon = 'credit-card';
                  let title = 'Payment';
                  
@@ -1164,8 +1173,8 @@ const ForumApp = {
 
                  el.innerHTML = `
                     <div class="flex items-center gap-3 overflow-hidden">
-                         <div class="w-8 h-8 rounded-full bg-surfaceHighlight flex items-center justify-center shrink-0">
-                            <i data-lucide="${icon}" class="w-4 h-4 text-textMuted"></i>
+                         <div class="w-10 h-10 rounded-full bg-surfaceHighlight flex items-center justify-center shrink-0">
+                            <i data-lucide="${icon}" class="w-5 h-5 text-textMuted"></i>
                          </div>
                          <div class="overflow-hidden">
                              <div class="font-bold text-textMain truncate">${title}</div>
@@ -1173,8 +1182,8 @@ const ForumApp = {
                          </div>
                     </div>
                     <div class="text-right shrink-0">
-                        <div class="font-bold text-textMain">${tx.amount.toFixed(1)} Pi</div>
-                        <div class="text-xs text-textMuted font-mono truncate w-20 opacity-50" title="${tx.tx_hash || tx.payment_tx_hash}">${(tx.tx_hash || tx.payment_tx_hash || '').substring(0,6)}...</div>
+                        <div class="font-bold ${tx.amount < 0 ? 'text-danger' : 'text-success'}">${tx.amount.toFixed(1)} Pi</div>
+                        <div class="text-[10px] text-textMuted font-mono opacity-50">${(tx.tx_hash || tx.payment_tx_hash || '').substring(0,8)}...</div>
                     </div>
                  `;
                  container.appendChild(el);
@@ -1185,6 +1194,72 @@ const ForumApp = {
              console.error('loadTransactions error', e);
              container.innerHTML = '<div class="text-center text-danger py-4">Failed to load</div>';
          }
+    },
+
+    showTransactionDetail(tx) {
+        console.log('Showing details for:', tx);
+        
+        const txId = tx.tx_hash || tx.payment_tx_hash || 'N/A';
+        const typeLabel = tx.type === 'post_payment' ? 'Post Publication Fee' : 'Article Tip Support';
+        const status = 'Completed'; // 由於是從資料庫讀取的成功紀錄
+        const memo = tx.title || (tx.type === 'post_payment' ? 'Forum Posting Fee' : 'Tip to Author');
+
+        // 建立詳細資訊模態框
+        const modal = document.createElement('div');
+        modal.id = 'tx-detail-modal';
+        modal.className = 'fixed inset-0 bg-background/90 backdrop-blur-md z-[110] flex items-center justify-center p-4 animate-fade-in';
+        modal.innerHTML = `
+            <div class="bg-surface w-full max-w-md p-6 rounded-3xl border border-white/10 shadow-2xl animate-scale-in">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold text-secondary">Transaction Detail</h3>
+                    <button onclick="document.getElementById('tx-detail-modal').remove()" class="text-textMuted hover:text-white transition">
+                        <i data-lucide="x" class="w-6 h-6"></i>
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <!-- Amount Header -->
+                    <div class="text-center py-6 bg-background/50 rounded-2xl border border-white/5 mb-4">
+                        <div class="text-textMuted text-xs uppercase font-bold tracking-widest mb-1">Amount</div>
+                        <div class="text-3xl font-bold text-primary">${Math.abs(tx.amount).toFixed(1)} <span class="text-sm">Pi</span></div>
+                    </div>
+
+                    <!-- Info Grid -->
+                    <div class="grid grid-cols-1 gap-4 text-sm">
+                        <div class="flex justify-between border-b border-white/5 pb-2">
+                            <span class="text-textMuted">Type</span>
+                            <span class="text-secondary font-medium">${typeLabel}</span>
+                        </div>
+                        <div class="flex justify-between border-b border-white/5 pb-2">
+                            <span class="text-textMuted">Status</span>
+                            <span class="text-success font-bold flex items-center gap-1">
+                                <i data-lucide="check-circle" class="w-3 h-3"></i> ${status}
+                            </span>
+                        </div>
+                        <div class="flex justify-between border-b border-white/5 pb-2">
+                            <span class="text-textMuted">Date</span>
+                            <span class="text-secondary">${formatTWDate(tx.created_at, true)}</span>
+                        </div>
+                        <div class="flex flex-col gap-1 border-b border-white/5 pb-2">
+                            <span class="text-textMuted">Transaction ID</span>
+                            <span class="text-primary font-mono text-[10px] break-all bg-white/5 p-2 rounded-lg mt-1">${txId}</span>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <span class="text-textMuted">Memo / Note</span>
+                            <span class="text-secondary italic text-xs bg-white/5 p-3 rounded-lg mt-1">"${memo}"</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button onclick="document.getElementById('tx-detail-modal').remove()" 
+                    class="w-full mt-8 py-4 bg-surfaceHighlight hover:bg-white/10 text-textMain font-bold rounded-2xl transition border border-white/5">
+                    Close
+                </button>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        if (window.lucide) lucide.createIcons();
     }
 };
 
