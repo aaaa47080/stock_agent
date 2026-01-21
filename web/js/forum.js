@@ -8,7 +8,7 @@
 window.PiPrices = {
     create_post: 1.0,  // 預設值，會被後端覆蓋
     tip: 1.0,
-    premium: 10.0,
+    premium: 100.0,    // 高級會員價格更新為 100 Pi
     loaded: false
 };
 
@@ -236,6 +236,12 @@ const ForumAPI = {
         const uid = this._getUserId();
         if (!uid) return { tips: [] };
         return this._fetch(`/me/tips/received?user_id=${uid}`);
+    },
+
+    async getMyPayments() {
+        const uid = this._getUserId();
+        if (!uid) return { payments: [] };
+        return this._fetch(`/me/payments?user_id=${uid}`);
     }
 };
 
@@ -243,6 +249,12 @@ const ForumApp = {
     init() {
         console.log('ForumApp: init starting...');
         try {
+            // 確保 AuthManager 已初始化（從 localStorage 載入用戶資訊）
+            if (typeof AuthManager !== 'undefined' && typeof AuthManager.init === 'function') {
+                AuthManager.init();
+                console.log('ForumApp: AuthManager initialized, currentUser:', AuthManager.currentUser);
+            }
+
             this.bindEvents();
             // 頁面特定初始化
             const page = document.body.dataset.page;
@@ -703,6 +715,53 @@ const ForumApp = {
 
         log('Create Post Page Initialized');
 
+        // 檢查會員狀態並更新UI
+        const updateUIForMembership = async () => {
+            const userId = AuthManager.currentUser?.user_id || AuthManager.currentUser?.uid;
+            if (!userId) return;
+
+            try {
+                const response = await fetch(`/api/premium/status/${userId}`);
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    const isPro = result.membership.is_pro;
+
+                    // 更新按鈕文本
+                    const submitButton = document.querySelector('button[type="submit"]');
+                    const paySpan = submitButton?.querySelector('span');
+                    if (paySpan) {
+                        if (isPro) {
+                            paySpan.textContent = 'Post for Free (PRO)';
+                        } else {
+                            const postAmount = window.PiPrices?.create_post || 1.0;
+                            paySpan.innerHTML = `Pay <span class="text-primary">${postAmount}</span> Pi & Post`;
+                        }
+                    }
+
+                    // 更新成本提示
+                    const costElements = document.querySelectorAll('.text-sm.text-textMuted');
+                    costElements.forEach(el => {
+                        if (el.textContent.includes('Cost to post:')) {
+                            if (isPro) {
+                                el.innerHTML = 'Cost to post: <span class="text-success font-bold">FREE</span> <br><span class="text-xs opacity-60">(For PRO members)</span>';
+                            } else {
+                                const postAmount = window.PiPrices?.create_post || 1.0;
+                                el.innerHTML = `Cost to post: <span class="text-primary font-bold">${postAmount}</span> Pi<br><span class="text-xs opacity-60">(Free for PRO members)</span>`;
+                            }
+                        }
+                    });
+                }
+            } catch (error) {
+                log('檢查會員狀態失敗', { error: error.message });
+            }
+        };
+
+        // 初始化時更新UI
+        if (AuthManager.currentUser) {
+            updateUIForMembership();
+        }
+
         document.getElementById('post-form')?.addEventListener('submit', async (e) => {
             e.preventDefault();
             log('=== 表單提交開始 ===');
@@ -727,81 +786,110 @@ const ForumApp = {
             const postAmount = window.PiPrices?.create_post || 1.0;
             log('發文價格', { postAmount });
 
-            // 4. 支付流程
+            // 4. 檢查會員狀態和支付流程
             const isPi = AuthManager.isPiBrowser();
             let txHash = "";
 
-            try {
-                if (isPi && window.Pi) {
-                    // === Pi 真實支付 ===
-                    log('開始 Pi 支付流程');
+            // 檢查用戶是否為高級會員
+            const userId = AuthManager.currentUser?.user_id || AuthManager.currentUser?.uid;
+            let isProMember = false;
 
-                    // 認證 payments scope
-                    try {
-                        await Pi.authenticate(['payments'], () => {});
-                        log('payments scope 認證成功');
-                    } catch (authErr) {
-                        log('payments scope 認證失敗', { error: authErr.message });
-                        showToast('支付權限不足，請重新登入', 'error');
-                        return;
+            if (userId) {
+                try {
+                    const membershipResponse = await fetch(`/api/premium/status/${userId}`);
+                    const membershipResult = await membershipResponse.json();
+                    if (membershipResponse.ok && membershipResult.success) {
+                        isProMember = membershipResult.membership.is_pro;
                     }
-
-                    // 建立支付
-                    let paymentComplete = false;
-                    let paymentError = null;
-
-                    await Pi.createPayment({
-                        amount: postAmount,
-                        memo: `發文: ${title.substring(0, 20)}`,
-                        metadata: { type: "create_post" }
-                    }, {
-                        onReadyForServerApproval: async (paymentId) => {
-                            log('onReadyForServerApproval', { paymentId });
-                            await fetch('/api/user/payment/approve', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ paymentId })
-                            });
-                        },
-                        onReadyForServerCompletion: async (paymentId, txid) => {
-                            log('onReadyForServerCompletion', { paymentId, txid });
-                            txHash = txid;
-                            paymentComplete = true;
-                            await fetch('/api/user/payment/complete', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ paymentId, txid })
-                            });
-                        },
-                        onCancel: (paymentId) => {
-                            log('onCancel', { paymentId });
-                            paymentError = 'CANCELLED';
-                        },
-                        onError: (error) => {
-                            log('onError', { error: error?.message || error });
-                            paymentError = error?.message || 'ERROR';
-                        }
-                    });
-
-                    // 等待支付完成
-                    const startTime = Date.now();
-                    while (!paymentComplete && !paymentError && (Date.now() - startTime) < 120000) {
-                        await new Promise(r => setTimeout(r, 300));
-                    }
-
-                    log('支付等待結束', { paymentComplete, paymentError, txHash });
-
-                    if (paymentError || !txHash) {
-                        showToast(paymentError === 'CANCELLED' ? '支付已取消' : '支付失敗', 'warning');
-                        return;
-                    }
-                } else {
-                    // === 模擬支付 ===
-                    log('使用模擬支付（非 Pi Browser）');
-                    txHash = "mock_" + Date.now();
+                } catch (error) {
+                    log('檢查會員狀態失敗', { error: error.message });
                 }
+            }
 
-                // 4. 提交文章
+            // 高級會員免支付
+            if (isProMember) {
+                log('高級會員，免支付');
+                txHash = "pro_member_free"; // 標記為高級會員免費發文
+            } else {
+                // 非高級會員需要支付
+                try {
+                    if (isPi && window.Pi) {
+                        // === Pi 真實支付 ===
+                        log('開始 Pi 支付流程');
+
+                        // 認證 payments scope
+                        try {
+                            await Pi.authenticate(['payments'], () => {});
+                            log('payments scope 認證成功');
+                        } catch (authErr) {
+                            log('payments scope 認證失敗', { error: authErr.message });
+                            showToast('支付權限不足，請重新登入', 'error');
+                            return;
+                        }
+
+                        // 建立支付
+                        let paymentComplete = false;
+                        let paymentError = null;
+
+                        await Pi.createPayment({
+                            amount: postAmount,
+                            memo: `發文: ${title.substring(0, 20)}`,
+                            metadata: { type: "create_post" }
+                        }, {
+                            onReadyForServerApproval: async (paymentId) => {
+                                log('onReadyForServerApproval', { paymentId });
+                                await fetch('/api/user/payment/approve', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ paymentId })
+                                });
+                            },
+                            onReadyForServerCompletion: async (paymentId, txid) => {
+                                log('onReadyForServerCompletion', { paymentId, txid });
+                                txHash = txid;
+                                paymentComplete = true;
+                                await fetch('/api/user/payment/complete', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ paymentId, txid })
+                                });
+                            },
+                            onCancel: (paymentId) => {
+                                log('onCancel', { paymentId });
+                                paymentError = 'CANCELLED';
+                            },
+                            onError: (error) => {
+                                log('onError', { error: error?.message || error });
+                                paymentError = error?.message || 'ERROR';
+                            }
+                        });
+
+                        // 等待支付完成
+                        const startTime = Date.now();
+                        while (!paymentComplete && !paymentError && (Date.now() - startTime) < 120000) {
+                            await new Promise(r => setTimeout(r, 300));
+                        }
+
+                        log('支付等待結束', { paymentComplete, paymentError, txHash });
+
+                        if (paymentError || !txHash) {
+                            showToast(paymentError === 'CANCELLED' ? '支付已取消' : '支付失敗', 'warning');
+                            return;
+                        }
+                    } else {
+                        // === 模擬支付 ===
+                        log('使用模擬支付（非 Pi Browser）');
+                        txHash = "mock_" + Date.now();
+                    }
+                } catch (paymentError) {
+                    log('支付過程中發生錯誤', { error: paymentError.message });
+                    showToast('支付過程中發生錯誤', 'error');
+                    return;
+                }
+            }
+
+            // 4. 提交文章
+            try {
                 log('開始提交文章', { txHash });
 
                 const postData = {
@@ -853,83 +941,41 @@ const ForumApp = {
     // Dashboard Logic
     // ===========================================
     async initDashboardPage() {
-        DebugLog.info('initDashboardPage 被呼叫', {
-            hasCurrentUser: !!AuthManager.currentUser,
-            currentUser: AuthManager.currentUser
-        });
+        console.log('initDashboardPage: Starting initialization');
 
         if (!AuthManager.currentUser) {
-            DebugLog.warn('Dashboard: 用戶未登入，重定向到首頁');
+            console.warn('Dashboard: User not logged in, redirecting...');
             window.location.href = '/static/forum/index.html';
             return;
         }
 
-        const uid = ForumAPI._getUserId();
-        DebugLog.info('Dashboard 載入開始', {
-            uid: uid,
-            currentUser: AuthManager.currentUser
-        });
+        const user = AuthManager.currentUser;
+        console.log('Dashboard: Current User', user);
 
-        // Load Wallet Status (獨立錯誤處理)
-        try {
-            await this.loadWalletStatus();
-            DebugLog.info('Dashboard Wallet 狀態載入完成');
-        } catch (e) {
-            DebugLog.error('Dashboard Wallet 狀態載入失敗', { error: e.message });
+        // 1. Explicitly Update Navbar immediately
+        const usernameEl = document.getElementById('nav-username');
+        const avatarEl = document.getElementById('nav-avatar');
+        
+        if (usernameEl) {
+            usernameEl.textContent = user.username || user.pi_username || 'User';
+        }
+        if (avatarEl && user.username) {
+            avatarEl.innerHTML = `<span class="text-primary font-bold">${user.username[0].toUpperCase()}</span>`;
         }
 
-        // Load Stats (獨立錯誤處理)
-        try {
-            DebugLog.info('Dashboard 獲取統計數據中...');
-            const statsRes = await ForumAPI.getMyStats();
-            DebugLog.info('Dashboard 統計數據回應', statsRes);
-            const stats = statsRes.stats || {};
-            document.getElementById('dash-post-count').textContent = stats.post_count || 0;
-            document.getElementById('dash-tips-sent').textContent = stats.tips_sent || 0;
-            document.getElementById('dash-tips-received').textContent = stats.tips_received || 0;
-        } catch (e) {
-            DebugLog.error('Dashboard 統計數據載入失敗', { error: e.message });
-            document.getElementById('dash-post-count').textContent = 'Error';
-        }
+        // 2. Parallel Data Loading
+        // We run these in parallel so one failure doesn't block the others
+        console.log('Dashboard: Starting parallel data load');
+        
+        const loaders = [
+            this.loadWalletStatus().catch(err => console.error('Wallet Status Load Failed:', err)),
+            this.loadStats().catch(err => console.error('Stats Load Failed:', err)),
+            this.loadMyPosts().catch(err => console.error('Posts Load Failed:', err)),
+            this.loadTransactions().catch(err => console.error('Transactions Load Failed:', err))
+        ];
 
-        // Load Posts (獨立錯誤處理)
-        try {
-            DebugLog.info('Dashboard 獲取文章列表中...');
-            const postsRes = await ForumAPI.getMyPosts();
-            DebugLog.info('Dashboard 文章列表回應', { count: postsRes.posts?.length || 0, posts: postsRes.posts });
-            const postsList = document.getElementById('dash-posts-list');
-            if (postsList && postsRes.posts && postsRes.posts.length > 0) {
-                postsList.innerHTML = postsRes.posts.map(p => `
-                    <div class="flex items-center justify-between border-b border-white/5 py-2">
-                        <a href="/static/forum/post.html?id=${p.id}" class="text-sm hover:text-primary truncate">${p.title}</a>
-                        <span class="text-xs text-textMuted">${formatTWDate(p.created_at)}</span>
-                    </div>
-                `).join('');
-            } else if (postsList) {
-                postsList.innerHTML = '<p class="text-textMuted text-sm">尚無文章</p>';
-            }
-        } catch (e) {
-            DebugLog.error('Dashboard 文章列表載入失敗', { error: e.message });
-        }
-
-        // Load Transactions (Tips Sent) (獨立錯誤處理)
-        try {
-            const tipsRes = await ForumAPI.getMyTipsSent();
-            const txList = document.getElementById('dash-tx-list');
-            if (txList && tipsRes.tips && tipsRes.tips.length > 0) {
-                txList.innerHTML = tipsRes.tips.map(t => `
-                    <div class="flex items-center justify-between border-b border-white/5 py-2">
-                        <div class="flex flex-col">
-                            <span class="text-sm">Sent 1 Pi to Post #${t.post_id}</span>
-                            <span class="text-[10px] text-textMuted font-mono">${t.tx_hash.substring(0, 8)}...</span>
-                        </div>
-                        <span class="text-xs text-textMuted">${formatTWDate(t.created_at)}</span>
-                    </div>
-                `).join('');
-            }
-        } catch (e) {
-            console.error("Dashboard load error", e);
-        }
+        await Promise.allSettled(loaders);
+        console.log('Dashboard: All loaders finished');
     },
 
     async loadWalletStatus() {
@@ -1009,6 +1055,136 @@ const ForumApp = {
                 </button>
             `;
         }
+    },
+
+    async loadStats() {
+        try {
+            const data = await ForumAPI.getMyStats();
+            if (data.success && data.stats) {
+                const s = data.stats;
+                const postCountEl = document.getElementById('dash-post-count');
+                const tipsRecEl = document.getElementById('dash-tips-received');
+                
+                if (postCountEl) postCountEl.textContent = s.post_count || 0;
+                if (tipsRecEl) tipsRecEl.textContent = s.tips_received || 0; 
+            }
+
+            const sentData = await ForumAPI.getMyTipsSent();
+            const tipsSentEl = document.getElementById('dash-tips-sent');
+            if (tipsSentEl) {
+                if (sentData.success && sentData.tips) {
+                    const totalSent = sentData.tips.reduce((acc, tip) => acc + (tip.amount || 0), 0);
+                    tipsSentEl.textContent = totalSent.toFixed(1); 
+                } else {
+                    tipsSentEl.textContent = "0";
+                }
+            }
+        } catch (e) {
+            console.error('loadStats error', e);
+        }
+    },
+
+    async loadMyPosts() {
+        const container = document.getElementById('dash-posts-list');
+        if (!container) return;
+
+        try {
+            const data = await ForumAPI.getMyPosts();
+            const posts = data.posts || [];
+
+            container.innerHTML = '';
+            if (posts.length === 0) {
+                container.innerHTML = '<div class="text-center text-textMuted py-4">No posts yet</div>';
+                return;
+            }
+
+            posts.forEach(post => {
+                const el = document.createElement('div');
+                el.className = 'flex items-center justify-between border-b border-white/5 pb-3 last:border-0 last:pb-0';
+                
+                const netVotes = (post.push_count || 0) - (post.boo_count || 0);
+                
+                el.innerHTML = `
+                    <div class="overflow-hidden mr-4">
+                         <a href="/static/forum/post.html?id=${post.id}" class="font-bold text-textMain hover:text-primary transition truncate block">${post.title}</a>
+                         <div class="text-xs text-textMuted mt-1 flex items-center gap-2">
+                            <span>${formatTWDate(post.created_at)}</span>
+                            <span class="bg-white/10 px-1.5 rounded text-[10px] uppercase">${post.category}</span>
+                         </div>
+                    </div>
+                    <div class="flex items-center gap-3 text-xs text-textMuted shrink-0">
+                        <span class="flex items-center gap-1"><i data-lucide="message-square" class="w-3 h-3"></i> ${post.comment_count}</span>
+                        <span class="flex items-center gap-1 ${netVotes > 0 ? 'text-success' : ''}"><i data-lucide="thumbs-up" class="w-3 h-3"></i> ${netVotes}</span>
+                    </div>
+                `;
+                container.appendChild(el);
+            });
+            if (window.lucide) lucide.createIcons();
+        } catch (e) {
+            console.error('loadMyPosts error', e);
+            container.innerHTML = '<div class="text-center text-danger py-4">Failed to load</div>';
+        }
+    },
+
+    async loadTransactions() {
+         const container = document.getElementById('dash-tx-list');
+         if (!container) return;
+         
+         try {
+             const [paymentsData, tipsSentData] = await Promise.all([
+                 ForumAPI.getMyPayments(),
+                 ForumAPI.getMyTipsSent()
+             ]);
+
+             const payments = (paymentsData.payments || []).map(p => ({...p, type: 'post_payment', amount: -1.0})); 
+             const tips = (tipsSentData.tips || []).map(t => ({...t, type: 'tip_sent', amount: -t.amount, title: `Tip: ${t.post_title || 'Post'}`}));
+             
+             const allTx = [...payments, ...tips].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+             
+             container.innerHTML = '';
+             if (allTx.length === 0) {
+                 container.innerHTML = '<div class="text-center text-textMuted py-4">No transactions</div>';
+                 return;
+             }
+             
+             allTx.slice(0, 20).forEach(tx => { 
+                 const el = document.createElement('div');
+                 el.className = 'flex items-center justify-between border-b border-white/5 pb-3 last:border-0 last:pb-0';
+                 
+                 let icon = 'credit-card';
+                 let title = 'Payment';
+                 
+                 if (tx.type === 'post_payment') {
+                     title = 'Post Fee';
+                     icon = 'file-text';
+                 } else if (tx.type === 'tip_sent') {
+                     title = 'Tip Sent';
+                     icon = 'gift';
+                 }
+
+                 el.innerHTML = `
+                    <div class="flex items-center gap-3 overflow-hidden">
+                         <div class="w-8 h-8 rounded-full bg-surfaceHighlight flex items-center justify-center shrink-0">
+                            <i data-lucide="${icon}" class="w-4 h-4 text-textMuted"></i>
+                         </div>
+                         <div class="overflow-hidden">
+                             <div class="font-bold text-textMain truncate">${title}</div>
+                             <div class="text-xs text-textMuted mt-0.5">${formatTWDate(tx.created_at)}</div>
+                         </div>
+                    </div>
+                    <div class="text-right shrink-0">
+                        <div class="font-bold text-textMain">${tx.amount.toFixed(1)} Pi</div>
+                        <div class="text-xs text-textMuted font-mono truncate w-20 opacity-50" title="${tx.tx_hash || tx.payment_tx_hash}">${(tx.tx_hash || tx.payment_tx_hash || '').substring(0,6)}...</div>
+                    </div>
+                 `;
+                 container.appendChild(el);
+             });
+             
+             if (window.lucide) lucide.createIcons();
+         } catch (e) {
+             console.error('loadTransactions error', e);
+             container.innerHTML = '<div class="text-center text-danger py-4">Failed to load</div>';
+         }
     }
 };
 

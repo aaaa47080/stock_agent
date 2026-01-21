@@ -107,19 +107,26 @@ const Components = {
              <div class="space-y-10">
                 <!-- User Profile Section -->
                 <div id="settings-profile-card" class="bg-surface p-6 md:p-8 rounded-3xl border border-white/5">
-                    <div class="flex items-center gap-4 mb-6">
-                        <div class="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-background font-bold text-2xl shadow-lg shadow-primary/20" id="profile-avatar">
-                            U
-                        </div>
-                        <div>
-                            <h3 class="text-xl font-serif text-secondary" id="profile-username">User</h3>
-                            <p class="text-xs text-textMuted font-mono" id="profile-uid">UID: --</p>
-                            <div class="mt-1 flex items-center gap-2">
-                                <span class="px-2 py-0.5 rounded-md bg-white/5 text-[10px] text-textMuted border border-white/5 uppercase" id="profile-method">PASSWORD</span>
+                    <div class="flex items-start justify-between mb-6">
+                        <div class="flex items-center gap-4">
+                            <div class="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-background font-bold text-2xl shadow-lg shadow-primary/20" id="profile-avatar">
+                                U
+                            </div>
+                            <div>
+                                <h3 class="text-xl font-serif text-secondary" id="profile-username">User</h3>
+                                <p class="text-xs text-textMuted font-mono" id="profile-uid">UID: --</p>
+                                <div class="mt-1 flex items-center gap-2">
+                                    <span class="px-2 py-0.5 rounded-md bg-white/5 text-[10px] text-textMuted border border-white/5 uppercase" id="profile-method">PASSWORD</span>
+                                </div>
                             </div>
                         </div>
+                        <!-- Membership Status Badge -->
+                        <div id="premium-status-badge" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-textMuted">
+                            <i data-lucide="loader" class="w-3 h-3 animate-spin"></i>
+                            Loading
+                        </div>
                     </div>
-                    
+
                     <button onclick="handleLogout()" class="w-full py-3 bg-white/5 hover:bg-danger/10 text-textMuted hover:text-danger border border-white/5 hover:border-danger/20 font-bold rounded-xl transition flex items-center justify-center gap-2">
                         <i data-lucide="log-out" class="w-4 h-4"></i>
                         Logout
@@ -303,6 +310,41 @@ const Components = {
                                 <p id="bear-empty-hint" class="text-textMuted/50 text-xs">尚未添加成員</p>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Premium Membership -->
+                <div class="bg-surface p-6 md:p-8 rounded-3xl border border-white/5">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-r from-yellow-500 to-orange-500 flex items-center justify-center">
+                            <i data-lucide="star" class="w-5 h-5 text-white"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-serif text-yellow-400">Premium Membership</h3>
+                            <p class="text-xs text-textMuted">Unlock advanced features</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="bg-background/50 rounded-xl p-4 border border-white/5">
+                            <p class="text-sm text-textMuted leading-relaxed">
+                                <i data-lucide="crown" class="w-4 h-4 inline-block mr-1 text-yellow-400"></i>
+                                高級會員享有：
+                            </p>
+                            <ul class="text-xs text-textMuted mt-2 space-y-1 ml-5">
+                                <li>• 無限發文權限</li>
+                                <li>• 無限回覆權限</li>
+                                <li>• 優先訪問新功能</li>
+                                <li>• 專屬高級會員標識</li>
+                            </ul>
+                        </div>
+
+                        <button onclick="handleUpgradeToPremium()" class="w-full py-3.5 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-background font-bold rounded-xl transition flex items-center justify-center gap-2 upgrade-premium-btn">
+                            <i data-lucide="zap" class="w-4 h-4"></i>
+                            <span>升級到高級會員 - <span data-price="premium">100</span> Pi</span>
+                        </button>
+
+                        <p class="text-[10px] text-textMuted/60 text-center">一次性付費，立即生效</p>
                     </div>
                 </div>
 

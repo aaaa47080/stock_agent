@@ -53,10 +53,35 @@ function toggleOptions() {
 
 function toggleSidebar() {
     const sidebar = document.getElementById('chat-sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+
     if (sidebar.classList.contains('-translate-x-full')) {
+        // 打開側邊欄
         sidebar.classList.remove('-translate-x-full');
+        // 顯示背景遮罩（僅在手機上）
+        if (backdrop) {
+            backdrop.classList.remove('hidden');
+        }
     } else {
+        // 關閉側邊欄
         sidebar.classList.add('-translate-x-full');
+        // 隱藏背景遮罩
+        if (backdrop) {
+            backdrop.classList.add('hidden');
+        }
+
+        // 如果當前頁面不是活動標籤頁，則返回到活動標籤頁
+        // 這確保在關閉側邊欄時返回到正確的頁面
+        if (typeof currentActiveTab !== 'undefined' && typeof switchTab === 'function') {
+            // 延遲執行，確保側邊欄動畫完成
+            setTimeout(() => {
+                // 檢查當前是否在活動標籤頁上，如果不是則切換回去
+                const currentVisibleTab = document.querySelector('.tab-content:not(.hidden)');
+                if (currentVisibleTab && !currentVisibleTab.id.includes(currentActiveTab)) {
+                    switchTab(currentActiveTab);
+                }
+            }, 150);
+        }
     }
 }
 

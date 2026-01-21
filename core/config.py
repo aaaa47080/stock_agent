@@ -197,7 +197,7 @@ PAPER_TRADING = False
 PI_PAYMENT_PRICES = {
     "create_post": 1.0,    # 發文費用 1 Pi
     "tip": 1.0,            # 打賞 1 Pi
-    "premium": 10.0,       # 高級會員 10 Pi（示例）
+    "premium": 100.0,      # 高級會員 100 Pi
 }
 
 # === 論壇會員限制配置 ===

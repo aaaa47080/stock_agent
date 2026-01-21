@@ -159,7 +159,7 @@ const AuthManager = {
             DebugLog.info('呼叫 Pi.authenticate...');
 
             // 呼叫 Pi SDK 認證 (包含 payments 權限) - 3 秒超時（快速反饋）
-            const AUTH_TIMEOUT = 3000;
+            const AUTH_TIMEOUT = 10000;
 
             const authPromise = Pi.authenticate(['username', 'payments'], (payment) => {
                 DebugLog.warn('發現未完成的支付', payment);
@@ -257,9 +257,14 @@ const AuthManager = {
         const authMethod = this.currentUser?.authMethod || 'guest';
 
         // 更新所有可能存在的使用者名稱欄位
-        ['sidebar-user-name', 'forum-user-name', 'profile-username'].forEach(id => {
+        ['sidebar-user-name', 'forum-user-name', 'profile-username', 'nav-username'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.textContent = username;
+        });
+
+        // 更新所有有 user-display-name class 的元素
+        document.querySelectorAll('.user-display-name').forEach(el => {
+            el.textContent = username;
         });
 
         // 更新 UID 顯示
@@ -277,7 +282,7 @@ const AuthManager = {
         }
 
         // 更新頭像
-        ['sidebar-user-avatar', 'forum-user-avatar', 'profile-avatar'].forEach(id => {
+        ['sidebar-user-avatar', 'forum-user-avatar', 'profile-avatar', 'nav-avatar'].forEach(id => {
             const el = document.getElementById(id);
             if (el) {
                 if (isLoggedIn) {
@@ -295,6 +300,14 @@ const AuthManager = {
         if (modal) {
             if (isLoggedIn) modal.classList.add('hidden');
             else modal.classList.remove('hidden');
+        }
+
+        // 更新會員狀態顯示
+        if (isLoggedIn && typeof loadPremiumStatus === 'function') {
+            // 延遲執行以確保UI已更新
+            setTimeout(() => {
+                loadPremiumStatus();
+            }, 300);
         }
 
         if (window.lucide) lucide.createIcons();
@@ -557,6 +570,111 @@ async function handleLinkWallet() {
         // 重新載入狀態
         if (typeof loadSettingsWalletStatus === 'function') loadSettingsWalletStatus();
         if (typeof ForumApp !== 'undefined' && ForumApp.loadWalletStatus) ForumApp.loadWalletStatus();
+    }
+}
+
+// 載入高級會員狀態
+async function loadPremiumStatus() {
+    // 使用延遲加載，確保組件已注入
+    setTimeout(async () => {
+        const statusBadge = document.getElementById('premium-status-badge');
+        const upgradeBtn = document.querySelector('.upgrade-premium-btn');
+
+        // 如果元素不存在（Settings 頁面未載入），直接返回
+        if (!statusBadge) {
+            console.log('Premium status badge not found, may not be on settings page');
+            return;
+        }
+
+        try {
+            if (!AuthManager.currentUser) {
+                const sidebarBadge = document.getElementById('sidebar-premium-badge');
+                if (sidebarBadge) sidebarBadge.classList.add('hidden');
+                
+                statusBadge.innerHTML = `
+                    <i data-lucide="x-circle" class="w-3 h-3"></i>
+                    未登入
+                `;
+                statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-textMuted';
+                if (upgradeBtn) upgradeBtn.disabled = true;
+                return;
+            }
+
+            const userId = AuthManager.currentUser.uid || AuthManager.currentUser.user_id;
+            if (!userId) {
+                statusBadge.innerHTML = `
+                    <i data-lucide="alert-circle" class="w-3 h-3"></i>
+                    無法獲取用戶ID
+                `;
+                statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-danger/10 text-danger';
+                if (upgradeBtn) upgradeBtn.disabled = true;
+                return;
+            }
+
+            const response = await fetch(`/api/premium/status/${userId}`);
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.detail || '獲取會員狀態失敗');
+            }
+
+            const membership = result.membership;
+            const sidebarBadge = document.getElementById('sidebar-premium-badge');
+
+            if (membership.is_pro) {
+                // 高級會員
+                statusBadge.innerHTML = `
+                    <i data-lucide="star" class="w-3 h-3 text-yellow-400"></i>
+                    <span class="font-bold text-yellow-400">高級會員</span>
+                `;
+                statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400 border border-yellow-500/30 shadow-sm shadow-yellow-500/10';
+                
+                if (sidebarBadge) {
+                    sidebarBadge.classList.remove('hidden');
+                }
+                
+                if (upgradeBtn) upgradeBtn.disabled = true;
+                if (upgradeBtn) {
+                    upgradeBtn.innerHTML = '<i data-lucide="check-circle" class="w-4 h-4"></i> 已是高級會員';
+                    upgradeBtn.className = 'w-full py-3.5 bg-gradient-to-r from-green-500 to-emerald-500 text-background font-bold rounded-xl transition flex items-center justify-center gap-2 cursor-default';
+                }
+            } else {
+                // 免費會員
+                statusBadge.innerHTML = `
+                    <i data-lucide="user" class="w-3 h-3"></i>
+                    <span class="font-bold text-textMuted">免費會員</span>
+                `;
+                statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-textMuted';
+                
+                if (sidebarBadge) {
+                    sidebarBadge.classList.add('hidden');
+                }
+                
+                if (upgradeBtn) upgradeBtn.disabled = false;
+            }
+
+            if (window.lucide) lucide.createIcons();
+        } catch (e) {
+            console.error('loadPremiumStatus error:', e);
+            if (statusBadge) {
+                statusBadge.innerHTML = `
+                    <i data-lucide="alert-circle" class="w-3 h-3"></i>
+                    <span class="font-bold text-danger">載入失敗</span>
+                `;
+                statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-danger/10 text-danger';
+            }
+        }
+    }, 500); // 延遲500毫秒，確保組件已注入
+}
+
+// 處理高級會員升級按鈕
+async function handleUpgradeToPremium() {
+    if (typeof upgradeToPremium === 'function') {
+        await upgradeToPremium();
+        // 升級後重新載入狀態
+        setTimeout(loadPremiumStatus, 2000);
+    } else {
+        showToast('高級會員功能尚未載入', 'error');
     }
 }
 
@@ -893,3 +1011,5 @@ window.linkPiWallet = linkPiWallet;
 window.loadSettingsWalletStatus = loadSettingsWalletStatus;
 window.handleLinkWallet = handleLinkWallet;
 window.handleSettingsLinkWallet = handleSettingsLinkWallet;
+window.loadPremiumStatus = loadPremiumStatus;
+window.handleUpgradeToPremium = handleUpgradeToPremium;

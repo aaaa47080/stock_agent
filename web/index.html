@@ -48,6 +48,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
     <script src="/static/config.js"></script>
+    <script src="/static/js/premium.js"></script>
 
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Mulish:wght@300;400;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -129,12 +130,18 @@
                     <i data-lucide="user" class="w-4 h-4"></i>
                 </div>
                 <div class="flex-1 text-left">
-                    <div class="font-bold truncate" id="sidebar-user-name">Guest</div>
+                    <div class="flex items-center gap-1.5">
+                        <div class="font-bold truncate" id="sidebar-user-name">Guest</div>
+                        <div id="sidebar-premium-badge" class="hidden px-1.5 py-0.5 rounded text-[8px] font-black bg-gradient-to-r from-yellow-500 to-orange-500 text-background leading-none uppercase tracking-tighter">PRO</div>
+                    </div>
                     <div class="text-[10px] opacity-60">Settings</div>
                 </div>
             </button>
         </div>
     </aside>
+
+    <!-- 點擊側邊欄外部區域關閉側邊欄 -->
+    <div id="sidebar-backdrop" class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm hidden md:hidden" onclick="toggleSidebar()"></div>
 
     <!-- Main Content Container -->
     <main class="flex-1 relative h-full flex flex-col w-full overflow-hidden">
@@ -704,22 +711,25 @@
     -->
 
     <!-- Scripts -->
-    <script src="/static/js/app.js?v=20" onerror="alert('app.js 載入失敗')"></script>
-    <script src="/static/js/apiKeyManager.js?v=20" onerror="alert('apiKeyManager.js 載入失敗')"></script>
-    <script src="/static/js/auth.js?v=20" onerror="alert('auth.js 載入失敗')"></script>
-    <script src="/static/js/okxKeyManager.js?v=20"></script>
-    <script src="/static/js/components.js?v=20"></script>
-    <script src="/static/js/llmSettings.js?v=20"></script>
-    <script src="/static/js/filter.js?v=20"></script>
-    <script src="/static/js/chat.js?v=20"></script>
-    <script src="/static/js/market.js?v=20"></script>
-    <script src="/static/js/assets.js?v=20"></script>
-    <script src="/static/js/pulse.js?v=20"></script>
-    <script src="/static/js/trade.js?v=20"></script>
-    <script src="/static/js/debate.js?v=20"></script>
-    <script src="/static/js/committeeManager.js?v=20"></script>
+    <script src="/static/js/app.js?v=26" onerror="alert('app.js 載入失敗')"></script>
+    <script src="/static/js/apiKeyManager.js?v=26" onerror="alert('apiKeyManager.js 載入失敗')"></script>
+    <script src="/static/js/auth.js?v=26" onerror="alert('auth.js 載入失敗')"></script>
+    <script src="/static/js/okxKeyManager.js?v=26"></script>
+    <script src="/static/js/components.js?v=26"></script>
+    <script src="/static/js/llmSettings.js?v=26"></script>
+    <script src="/static/js/filter.js?v=26"></script>
+    <script src="/static/js/chat.js?v=26"></script>
+    <script src="/static/js/market.js?v=26"></script>
+    <script src="/static/js/assets.js?v=26"></script>
+    <script src="/static/js/pulse.js?v=26"></script>
+    <script src="/static/js/trade.js?v=26"></script>
+    <script src="/static/js/debate.js?v=26"></script>
+    <script src="/static/js/committeeManager.js?v=26"></script>
     <script>
         lucide.createIcons();
+
+        // Track current active tab to return to when closing sidebar
+        window.currentActiveTab = 'chat'; // Default to chat, make it global so chat.js can access it
 
         // Navigation Logic (Updated with Smooth Transitions)
         async function switchTab(tabId) {
@@ -745,6 +755,7 @@
 
         async function executeTabSwitch(tabId) {
             localStorage.setItem('activeTab', tabId);
+            currentActiveTab = tabId; // Update current active tab
 
             // Hide all tabs
             document.querySelectorAll('.tab-content').forEach(el => {
@@ -807,6 +818,12 @@
                     window.AuthManager._updateUI(window.AuthManager.isLoggedIn());
                 }
                 if (typeof loadSettingsWalletStatus === 'function') loadSettingsWalletStatus();
+                // 加載高級會員狀態 - 延遲執行以確保組件已注入
+                if (typeof loadPremiumStatus === 'function') {
+                    setTimeout(() => {
+                        loadPremiumStatus();
+                    }, 1000);
+                }
                 // 確保 Settings 中的 LLM 狀態被更新
                 if (typeof updateLLMStatusUI === 'function') updateLLMStatusUI();
             }

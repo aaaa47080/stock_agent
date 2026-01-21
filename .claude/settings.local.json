@@ -21,7 +21,9 @@
       "WebFetch(domain:github.com)",
       "Bash(taskkill:*)",
       "Bash(dir:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(grep:*)"
     ]
   }
 }

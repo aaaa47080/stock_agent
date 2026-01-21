@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- 防止快取 -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Dashboard - Pi Crypto Forum</title>
     <link rel="icon" type="image/png" href="/static/img/title_icon.png">
 
@@ -49,17 +53,28 @@
             </a>
             <div class="font-bold text-lg text-primary tracking-wide">My Dashboard</div>
             <div class="flex items-center gap-2">
-                <span class="text-xs text-textMuted user-display-name">User</span>
-                <div class="w-8 h-8 rounded-full bg-surfaceHighlight flex items-center justify-center text-xs font-bold overflow-hidden">
+                <span id="nav-username" class="text-xs text-textMuted user-display-name">User</span>
+                <div id="nav-avatar" class="w-8 h-8 rounded-full bg-surfaceHighlight flex items-center justify-center text-xs font-bold overflow-hidden">
                     <i data-lucide="user" class="w-4 h-4"></i>
                 </div>
             </div>
         </div>
     </nav>
 
+    <!-- Debug Panel (開發模式可見) -->
+    <div id="debug-panel" class="max-w-5xl mx-auto w-full px-4 pt-4 hidden">
+        <div class="bg-surfaceHighlight border border-yellow-500/30 rounded-xl p-4 text-xs font-mono">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-yellow-400 font-bold">DEBUG INFO</span>
+                <button onclick="document.getElementById('debug-panel').classList.add('hidden')" class="text-textMuted hover:text-white">×</button>
+            </div>
+            <div id="debug-content" class="text-textMuted space-y-1"></div>
+        </div>
+    </div>
+
     <!-- Main Content -->
     <main class="flex-1 max-w-5xl mx-auto w-full p-4 space-y-8">
-        
+
         <!-- Wallet Status Card -->
         <div id="wallet-status-card" class="bg-surface border border-white/5 rounded-2xl p-6 relative overflow-hidden">
             <div class="flex items-center justify-between">
@@ -69,12 +84,12 @@
                     </div>
                     <div>
                         <div class="text-textMuted text-sm font-bold uppercase tracking-wider mb-1">Pi Wallet</div>
-                        <div id="wallet-status-text" class="text-lg font-bold text-textMain">Loading...</div>
+                        <div id="wallet-status-text" class="text-lg font-bold text-textMain">載入中...</div>
                         <div id="wallet-username" class="text-xs text-textMuted hidden"></div>
                     </div>
                 </div>
                 <div id="wallet-action-area">
-                    <!-- 動態顯示：綁定按鈕或已綁定狀態 -->
+                    <div class="animate-pulse w-24 h-8 bg-white/5 rounded-lg"></div>
                 </div>
             </div>
         </div>
@@ -87,7 +102,7 @@
                     <i data-lucide="file-text" class="w-16 h-16 text-primary"></i>
                 </div>
                 <div class="text-textMuted text-sm font-bold uppercase tracking-wider mb-2">My Posts</div>
-                <div class="text-4xl font-bold text-textMain" id="dash-post-count">0</div>
+                <div class="text-4xl font-bold text-textMain" id="dash-post-count">-</div>
                 <div class="text-xs text-textMuted mt-2">Total published articles</div>
             </div>
 
@@ -98,7 +113,7 @@
                 </div>
                 <div class="text-textMuted text-sm font-bold uppercase tracking-wider mb-2">Tips Received</div>
                 <div class="text-4xl font-bold text-success flex items-end gap-1">
-                    <span id="dash-tips-received">0</span>
+                    <span id="dash-tips-received">-</span>
                     <span class="text-base mb-1">Pi</span>
                 </div>
                 <div class="text-xs text-textMuted mt-2">Earned from your content</div>
@@ -111,7 +126,7 @@
                 </div>
                 <div class="text-textMuted text-sm font-bold uppercase tracking-wider mb-2">Tips Sent</div>
                 <div class="text-4xl font-bold text-accent flex items-end gap-1">
-                    <span id="dash-tips-sent">0</span>
+                    <span id="dash-tips-sent">-</span>
                     <span class="text-base mb-1">Pi</span>
                 </div>
                 <div class="text-xs text-textMuted mt-2">Supported creators</div>
@@ -120,19 +135,19 @@
 
         <!-- Sections -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            
+
             <!-- Recent Activity / My Posts -->
             <div class="bg-surface border border-white/5 rounded-2xl p-6 min-h-[300px]">
                 <div class="flex items-center justify-between mb-6">
                     <h3 class="font-bold text-secondary text-lg flex items-center gap-2">
                         <i data-lucide="list" class="w-5 h-5"></i> My Recent Posts
                     </h3>
-                    <button class="text-xs text-primary hover:underline">View All</button>
                 </div>
-                
+
                 <div id="dash-posts-list" class="space-y-3">
                     <div class="text-center text-textMuted py-10 opacity-50">
-                        No recent activity loaded.
+                        <i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto mb-2"></i>
+                        載入中...
                     </div>
                 </div>
             </div>
@@ -143,12 +158,12 @@
                     <h3 class="font-bold text-secondary text-lg flex items-center gap-2">
                         <i data-lucide="history" class="w-5 h-5"></i> Transaction History
                     </h3>
-                    <button class="text-xs text-primary hover:underline">View All</button>
                 </div>
-                
+
                 <div id="dash-tx-list" class="space-y-3">
                     <div class="text-center text-textMuted py-10 opacity-50">
-                        No transactions loaded.
+                        <i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto mb-2"></i>
+                        載入中...
                     </div>
                 </div>
             </div>
@@ -175,8 +190,25 @@
     </div>
 
     <!-- Scripts -->
-    <script src="/static/js/auth.js?v=21"></script>
-    <script src="/static/js/app.js?v=21"></script>
-    <script src="/static/js/forum.js?v=21"></script>
+    <script src="/static/js/auth.js?v=26"></script>
+    <script src="/static/js/app.js?v=26"></script>
+    <script src="/static/js/premium.js?v=26"></script>
+    <script src="/static/js/forum.js?v=26"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 1. Initialize Auth
+            if (typeof initializeAuth === 'function') {
+                initializeAuth();
+            }
+            
+            // 2. Initialize Forum App
+            // Using a slight delay to ensure Auth is ready if it's async (though init() is usually sync for localStorage)
+            setTimeout(() => {
+                if (typeof ForumApp !== 'undefined') {
+                    ForumApp.init();
+                }
+            }, 100);
+        });
+    </script>
 </body>
 </html>

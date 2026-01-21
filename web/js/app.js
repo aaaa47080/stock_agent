@@ -613,6 +613,14 @@ async function openSettings() {
             window.CommitteeManager.togglePanel(settings.enable_committee);
         }
 
+        // Load premium membership status
+        if (typeof loadPremiumStatus === 'function') {
+            // 延遲加載，確保組件已注入
+            setTimeout(() => {
+                loadPremiumStatus();
+            }, 1000);
+        }
+
     } catch (e) {
         console.error("Failed to load settings", e);
     }
