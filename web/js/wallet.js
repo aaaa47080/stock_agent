@@ -72,10 +72,24 @@ const WalletApp = {
             if (results[1].status === 'rejected') this.log('TipsSent fetch failed', results[1].reason);
             if (results[2].status === 'rejected') this.log('TipsReceived fetch failed', results[2].reason);
 
-            // Process Outgoing
-            const payments = (paymentsData.payments || [])
-                .filter(p => p.tx_hash !== 'pro_member_free')
-                .map(p => ({...p, type: 'post_payment', amount: -1.0})); 
+            // Process Outgoing (Payments)
+            // The API now returns a unified list including both posts and membership
+            const payments = (paymentsData.payments || []).map(p => {
+                let type = 'post_payment';
+                let icon = 'file-text';
+                
+                if (p.type === 'membership') {
+                    type = 'membership_payment';
+                    icon = 'crown';
+                }
+
+                return {
+                    ...p,
+                    type: type,
+                    amount: -(p.amount || 1.0), // Ensure expense is negative
+                    icon: icon
+                };
+            });
 
             const tipsSent = (tipsSentData.tips || [])
                 .map(t => ({...t, type: 'tip_sent', amount: -(t.amount || 0), title: `Tip: ${t.post_title || 'Post'}`}));
@@ -117,6 +131,11 @@ const WalletApp = {
                     title = 'Post Fee';
                     subtext = tx.title || 'Forum Post';
                     icon = 'file-text';
+                } else if (tx.type === 'membership_payment') {
+                    title = 'Premium Upgrade';
+                    subtext = tx.title || 'Membership';
+                    icon = 'crown';
+                    colorClass = 'bg-primary/10 text-primary'; // Gold/Primary color for premium
                 } else if (tx.type === 'tip_sent') {
                     title = 'Tip Sent';
                     subtext = tx.title || 'Tip Support';
@@ -140,7 +159,7 @@ const WalletApp = {
                         </div>
                    </div>
                    <div class="text-right shrink-0">
-                       <div class="font-bold text-base ${tx.amount < 0 ? 'text-textMain' : 'text-success'}">
+                       <div class="font-bold text-base ${tx.amount < 0 && tx.type !== 'membership_payment' ? 'text-textMain' : (tx.type === 'membership_payment' ? 'text-primary' : 'text-success')}">
                            ${tx.amount > 0 ? '+' : ''}${Math.abs(tx.amount).toFixed(1)} Pi
                        </div>
                        <div class="text-[10px] text-textMuted opacity-50 mt-1">${this.formatDate(tx.created_at)}</div>

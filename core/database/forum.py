@@ -777,25 +777,55 @@ def get_user_forum_stats(user_id: str) -> Dict:
 
 
 def get_user_payment_history(user_id: str, limit: int = 50) -> List[Dict]:
-    """獲取用戶發文付款記錄"""
+    """獲取用戶的所有付款記錄（包含發文費和會員費）"""
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
-            SELECT id, title, payment_tx_hash, created_at
-            FROM posts
-            WHERE user_id = ? AND payment_tx_hash IS NOT NULL
+        # 使用 UNION ALL 合併發文紀錄和會員購買紀錄
+        # 為了統一格式：
+        # - posts: title 是文章標題, amount 預設為 1.0 (發文費)
+        # - membership: title 格式化為 "Premium Membership (N Months)", amount 為實際記錄金額
+        query = '''
+            SELECT type, id, title, amount, tx_hash, created_at FROM (
+                -- 文章支付紀錄
+                SELECT 
+                    'post' as type,
+                    id, 
+                    title, 
+                    1.0 as amount, 
+                    payment_tx_hash as tx_hash, 
+                    created_at
+                FROM posts
+                WHERE user_id = ? AND payment_tx_hash IS NOT NULL AND payment_tx_hash != 'pro_member_free'
+
+                UNION ALL
+
+                -- 會員購買紀錄
+                SELECT 
+                    'membership' as type,
+                    id, 
+                    'Premium Membership (' || months || ' Month)' as title, 
+                    amount, 
+                    tx_hash, 
+                    created_at
+                FROM membership_payments
+                WHERE user_id = ?
+            )
             ORDER BY created_at DESC
             LIMIT ?
-        ''', (user_id, limit))
+        '''
+        
+        c.execute(query, (user_id, user_id, limit))
         rows = c.fetchall()
 
         return [
             {
-                "post_id": r[0],
-                "title": r[1],
-                "tx_hash": r[2],
-                "created_at": r[3]
+                "type": r[0],
+                "ref_id": r[1],
+                "title": r[2],
+                "amount": r[3],
+                "tx_hash": r[4],
+                "created_at": r[5]
             } for r in rows
         ]
     finally:

@@ -119,6 +119,19 @@ def init_db():
         )
     ''')
 
+    # 建立會員支付記錄表 (Membership Payments)
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS membership_payments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            amount REAL NOT NULL,
+            months INTEGER NOT NULL,
+            tx_hash TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(user_id)
+        )
+    ''')
+
     # 遷移：為舊表添加新欄位
     try:
         c.execute('ALTER TABLE users ADD COLUMN auth_method TEXT DEFAULT "password"')

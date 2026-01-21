@@ -323,18 +323,31 @@ def get_user_membership(user_id: str) -> Dict:
 
 
 def upgrade_to_pro(user_id: str, months: int = 1, tx_hash: str = None) -> bool:
-    """升級用戶為 PRO 會員"""
+    """升級用戶為 PRO 會員並記錄支付"""
     conn = get_connection()
     c = conn.cursor()
     try:
+        # 1. 更新會員狀態
         c.execute('''
             UPDATE users
             SET membership_tier = 'pro',
                 membership_expires_at = datetime('now', '+' || ? || ' months')
             WHERE user_id = ?
         ''', (months, user_id))
+        
+        # 2. 如果有交易哈希，記錄支付流水帳
+        if tx_hash:
+            amount = 100.0 * months  # 假設單月價格為 100 Pi (應與前端配置保持一致)
+            c.execute('''
+                INSERT INTO membership_payments (user_id, amount, months, tx_hash, created_at)
+                VALUES (?, ?, ?, ?, datetime('now'))
+            ''', (user_id, amount, months, tx_hash))
+
         conn.commit()
         return c.rowcount > 0
+    except Exception as e:
+        print(f"Upgrade to pro error: {e}")
+        return False
     finally:
         conn.close()
 
