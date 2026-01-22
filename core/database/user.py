@@ -294,7 +294,7 @@ def get_user_wallet_status(user_id: str) -> Dict:
 # ============================================================================
 
 def get_user_membership(user_id: str) -> Dict:
-    """獲取用戶會員狀態"""
+    """獲取用戶會員狀態（包含自動過期處理）"""
     conn = get_connection()
     c = conn.cursor()
     try:
@@ -303,19 +303,38 @@ def get_user_membership(user_id: str) -> Dict:
             FROM users WHERE user_id = ?
         ''', (user_id,))
         row = c.fetchone()
+        
         if row:
             tier = row[0] or 'free'
             expires_at = row[1]
+            is_pro = (tier == 'pro')
 
-            # 檢查 PRO 會員是否過期
-            if tier == 'pro' and expires_at:
-                if datetime.strptime(expires_at, '%Y-%m-%d %H:%M:%S') < datetime.utcnow():
-                    tier = 'free'
+            # 檢查是否過期 (Lazy Expiration Check)
+            if is_pro and expires_at:
+                try:
+                    expire_dt = datetime.strptime(expires_at, '%Y-%m-%d %H:%M:%S')
+                    if expire_dt < datetime.utcnow():
+                        # 已過期：更新資料庫為 free
+                        c.execute('''
+                            UPDATE users 
+                            SET membership_tier = 'free', membership_expires_at = NULL 
+                            WHERE user_id = ?
+                        ''', (user_id,))
+                        conn.commit()
+                        
+                        # 重置變數
+                        tier = 'free'
+                        expires_at = None
+                        is_pro = False
+                        print(f"[Membership] User {user_id} expired, downgraded to free.")
+                except ValueError:
+                    # 日期格式錯誤，視為過期
+                    pass
 
             return {
                 "tier": tier,
                 "expires_at": expires_at,
-                "is_pro": tier == 'pro'
+                "is_pro": is_pro
             }
         return {"tier": "free", "expires_at": None, "is_pro": False}
     finally:
