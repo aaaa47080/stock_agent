@@ -12,9 +12,32 @@ from core.database import (
     get_tips_total_received,
     get_user_membership,
     get_daily_comment_count,
+    get_daily_post_count,
 )
 
 router = APIRouter(prefix="/api/forum/me", tags=["Forum - Me"])
+
+
+@router.get("/limits")
+async def get_my_limits(user_id: str = Query(..., description="用戶 ID")):
+    """
+    獲取我的每日限制狀態 (發文與回覆)
+    """
+    try:
+        post_limits = get_daily_post_count(user_id)
+        comment_limits = get_daily_comment_count(user_id)
+        membership = get_user_membership(user_id)
+        
+        return {
+            "success": True,
+            "limits": {
+                "post": post_limits,
+                "comment": comment_limits
+            },
+            "membership": membership
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"獲取限制狀態失敗: {str(e)}")
 
 
 @router.get("/stats")

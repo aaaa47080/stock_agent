@@ -112,10 +112,17 @@
 
             <!-- Submit Action -->
             <div class="flex flex-col items-center gap-4 pt-4">
-                <div class="text-center text-sm text-textMuted">
-                    Cost to post: <span class="text-primary font-bold" data-price="create_post">1 Pi</span>
-                    <br>
-                    <span class="text-xs opacity-60">(Free for PRO members)</span>
+                <div class="text-center text-sm text-textMuted space-y-1">
+                    <div id="daily-limit-display" class="flex items-center justify-center gap-2 text-xs mb-2">
+                        <!-- Will be populated by JS -->
+                        <span class="animate-pulse">Checking limits...</span>
+                    </div>
+                    <div>
+                        Cost to post: <span class="text-primary font-bold" data-price="create_post">1 Pi</span>
+                    </div>
+                    <div class="text-[10px] opacity-60">
+                        (Free for PRO members)
+                    </div>
                 </div>
                 <button type="submit" class="w-full md:w-auto px-12 py-4 bg-gradient-to-r from-primary to-primary/80 hover:to-primary text-background font-bold text-lg rounded-xl shadow-lg shadow-primary/20 transition transform hover:-translate-y-1 flex items-center justify-center gap-2">
                     <span>Pay <span data-price="create_post">1 Pi</span> & Post</span>
@@ -146,10 +153,10 @@
     </div>
 
     <!-- Scripts -->
-    <script src="/static/js/app.js?v=27"></script>
-    <script src="/static/js/apiKeyManager.js?v=27"></script>
-    <script src="/static/js/auth.js?v=27"></script>
-    <script src="/static/js/forum.js?v=27"></script>
+    <script src="/static/js/app.js?v=36"></script>
+    <script src="/static/js/apiKeyManager.js?v=36"></script>
+    <script src="/static/js/auth.js?v=36"></script>
+    <script src="/static/js/forum.js?v=36"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             console.log('Create page fully loaded, starting initialization...');
