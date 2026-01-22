@@ -342,19 +342,44 @@ def get_user_membership(user_id: str) -> Dict:
 
 
 def upgrade_to_pro(user_id: str, months: int = 1, tx_hash: str = None) -> bool:
-    """升級用戶為 PRO 會員並記錄支付"""
+    """升級用戶為 PRO 會員並記錄支付（支援續費順延）"""
     conn = get_connection()
     c = conn.cursor()
     try:
-        # 1. 更新會員狀態
-        c.execute('''
-            UPDATE users
-            SET membership_tier = 'pro',
-                membership_expires_at = datetime('now', '+' || ? || ' months')
-            WHERE user_id = ?
-        ''', (months, user_id))
+        # 1. 查詢當前狀態，決定是「新購」還是「續費」
+        c.execute('SELECT membership_tier, membership_expires_at FROM users WHERE user_id = ?', (user_id,))
+        row = c.fetchone()
         
-        # 2. 如果有交易哈希，記錄支付流水帳
+        is_active_pro = False
+        if row:
+            tier, expires_at_str = row
+            if tier == 'pro' and expires_at_str:
+                try:
+                    current_expires = datetime.strptime(expires_at_str, '%Y-%m-%d %H:%M:%S')
+                    if current_expires > datetime.utcnow():
+                        is_active_pro = True
+                except ValueError:
+                    pass
+
+        # 2. 更新會員狀態
+        if is_active_pro:
+            # 續費：從原到期日往後順延
+            c.execute('''
+                UPDATE users
+                SET membership_tier = 'pro',
+                    membership_expires_at = datetime(membership_expires_at, '+' || ? || ' months')
+                WHERE user_id = ?
+            ''', (months, user_id))
+        else:
+            # 新購或已過期：從現在開始計算
+            c.execute('''
+                UPDATE users
+                SET membership_tier = 'pro',
+                    membership_expires_at = datetime('now', '+' || ? || ' months')
+                WHERE user_id = ?
+            ''', (months, user_id))
+        
+        # 3. 如果有交易哈希，記錄支付流水帳
         if tx_hash:
             amount = 100.0 * months  # 假設單月價格為 100 Pi (應與前端配置保持一致)
             c.execute('''
