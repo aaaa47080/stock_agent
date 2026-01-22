@@ -823,6 +823,7 @@ const ForumApp = {
                     
                     document.getElementById('post-form')?.addEventListener('submit', async (e) => {
                         e.preventDefault();
+                        console.log('[CreatePost] V38 Handler Active');
                         console.log('[CreatePost] Form submitted');
                     
                         // Disable button to prevent double submit
