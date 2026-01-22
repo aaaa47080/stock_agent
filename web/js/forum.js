@@ -880,8 +880,34 @@ const ForumApp = {
                                     // limit === null means unlimited (Pro)
                                     if (postLimit.limit !== null && postLimit.remaining <= 0) {
                                         console.warn('[CreatePost] Daily limit reached:', postLimit);
-                                        const msg = `今日發文次數已達上限 (${postLimit.count}/${postLimit.limit})\n升級 PRO 會員可無限發文！`;
-                                        alert(msg); // Alert is better than toast here to force attention
+                                        
+                                        // Custom Styled Modal
+                                        const modal = document.createElement('div');
+                                        modal.className = 'fixed inset-0 bg-background/90 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-fade-in';
+                                        modal.innerHTML = `
+                                            <div class="bg-surface w-full max-w-sm p-6 rounded-3xl border border-white/10 shadow-2xl animate-scale-in text-center">
+                                                <div class="w-16 h-16 bg-warning/10 rounded-full flex items-center justify-center mx-auto mb-5 border border-warning/20">
+                                                    <i data-lucide="lock" class="w-8 h-8 text-warning"></i>
+                                                </div>
+                                                <h3 class="text-xl font-bold text-secondary mb-2">發文額度已滿</h3>
+                                                <div class="text-textMuted text-sm mb-6 leading-relaxed">
+                                                    今日已發布 <span class="text-textMain font-bold text-base">${postLimit.count}</span> / <span class="text-textMain font-bold text-base">${postLimit.limit}</span> 篇文章<br>
+                                                    <span class="opacity-70">升級 PRO 會員即可無限發文！</span>
+                                                </div>
+                                                <div class="flex flex-col gap-3">
+                                                    <button onclick="window.location.href='/static/forum/premium.html'" class="w-full py-3.5 bg-gradient-to-r from-primary to-primary/80 hover:to-primary text-background font-bold rounded-2xl transition shadow-lg flex items-center justify-center gap-2 transform active:scale-95">
+                                                        <i data-lucide="crown" class="w-4 h-4"></i>
+                                                        <span>升級 PRO 會員</span>
+                                                    </button>
+                                                    <button onclick="this.closest('.fixed').remove()" class="w-full py-3.5 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-2xl transition border border-white/5 hover:text-white">
+                                                        知道了
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        `;
+                                        document.body.appendChild(modal);
+                                        if (window.lucide) lucide.createIcons();
+
                                         resetButton();
                                         return; // STOP HERE - Do not proceed to payment
                                     }
