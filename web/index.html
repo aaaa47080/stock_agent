@@ -343,9 +343,29 @@
 
                 <!-- Transaction List -->
                 <div class="bg-surface border border-white/5 rounded-[2rem] p-6 min-h-[400px]">
-                    <h3 class="font-bold text-secondary text-lg mb-6 flex items-center gap-2">
-                        <i data-lucide="history" class="w-5 h-5 text-primary"></i> Transactions
-                    </h3>
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                        <h3 class="font-bold text-secondary text-lg flex items-center gap-2">
+                            <i data-lucide="history" class="w-5 h-5 text-primary"></i> Transactions
+                        </h3>
+                        
+                        <!-- Filters -->
+                        <div class="flex gap-2 overflow-x-auto pb-1 md:pb-0 hide-scrollbar">
+                            <select id="wallet-filter-type" onchange="WalletApp.applyFilters()" class="bg-surfaceHighlight border border-white/10 text-textMuted text-xs font-bold rounded-xl px-3 py-2 outline-none focus:border-primary/50 transition cursor-pointer">
+                                <option value="all">All Types</option>
+                                <option value="in">💰 Income (In)</option>
+                                <option value="out">💸 Expense (Out)</option>
+                                <option value="membership">👑 Premium</option>
+                                <option value="tip">🎁 Tips</option>
+                                <option value="post">📝 Post Fees</option>
+                            </select>
+                            <select id="wallet-filter-time" onchange="WalletApp.applyFilters()" class="bg-surfaceHighlight border border-white/10 text-textMuted text-xs font-bold rounded-xl px-3 py-2 outline-none focus:border-primary/50 transition cursor-pointer">
+                                <option value="all">All Time</option>
+                                <option value="7">Last 7 Days</option>
+                                <option value="30">Last 30 Days</option>
+                                <option value="90">Last 3 Months</option>
+                            </select>
+                        </div>
+                    </div>
                     
                     <div id="wallet-tx-list" class="space-y-2">
                         <div class="text-center text-textMuted py-10 opacity-50">
