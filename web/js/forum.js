@@ -1041,20 +1041,54 @@ const ForumApp = {
                             const container = document.getElementById('toast-container');
                             if (container) container.innerHTML = '';
 
-                            showToast('🎉 發布成功！', 'success', 2000);
+                            // Success Modal
+                            const successModal = document.createElement('div');
+                            successModal.className = 'fixed inset-0 bg-background/90 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-fade-in';
+                            successModal.innerHTML = `
+                                <div class="bg-surface w-full max-w-sm p-6 rounded-3xl border border-white/10 shadow-2xl animate-scale-in text-center">
+                                    <div class="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-5 border border-success/20">
+                                        <i data-lucide="check-circle-2" class="w-8 h-8 text-success"></i>
+                                    </div>
+                                    <h3 class="text-xl font-bold text-secondary mb-2">發布成功！</h3>
+                                    <div class="text-textMuted text-sm mb-6">
+                                        您的文章已成功上鏈儲存。<br>
+                                        <span class="text-primary animate-pulse">正在前往文章詳情頁...</span>
+                                    </div>
+                                    <button id="btn-go-now" class="w-full py-3.5 bg-gradient-to-r from-success/80 to-success text-background font-bold rounded-2xl transition shadow-lg transform active:scale-95">
+                                        立即前往
+                                    </button>
+                                </div>
+                            `;
+                            document.body.appendChild(successModal);
+                            if (window.lucide) lucide.createIcons();
 
-                            // Update button state
+                            // Determine redirect URL
+                            const targetUrl = result.post_id 
+                                ? `/static/forum/post.html?id=${result.post_id}` 
+                                : '/static/forum/index.html';
+
+                            // Redirect Action
+                            const doRedirect = () => {
+                                console.log('[Forum] Redirecting to:', targetUrl);
+                                try {
+                                    window.location.assign(targetUrl);
+                                } catch (e) {
+                                    window.location.href = targetUrl;
+                                }
+                            };
+
+                            // Bind button
+                            document.getElementById('btn-go-now').onclick = doRedirect;
+
+                            // Auto redirect
+                            setTimeout(doRedirect, 2000);
+
+                            // Update button state (just in case)
                             if (submitBtn) {
                                 submitBtn.disabled = true;
                                 submitBtn.innerHTML = '<i class="w-4 h-4 animate-spin" data-lucide="loader-2"></i> Redirecting...';
                                 if (window.lucide) lucide.createIcons();
                             }
-
-                            // Reliable redirection
-                            console.log('[Forum] Redirecting to index...');
-                            setTimeout(() => {
-                                window.location.href = '/static/forum/index.html';
-                            }, 1500);
 
                         } catch (err) {
                             console.error('[Forum] CreatePost API failed:', err);
