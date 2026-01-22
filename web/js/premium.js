@@ -5,7 +5,7 @@
 
 class PremiumManager {
     constructor() {
-        this.premiumPrice = window.PiPrices?.premium || 100.0; // 從全局配置獲取價格，默認為100 Pi
+        this.premiumPrice = 1.0; // 預設安全值
         this.initEventListeners();
     }
 
@@ -24,6 +24,11 @@ class PremiumManager {
      * 更新價格顯示
      */
     updatePriceDisplay() {
+        // 嘗試從全局配置獲取最新價格
+        if (window.PiPrices?.premium) {
+            this.premiumPrice = window.PiPrices.premium;
+        }
+
         // 更新所有顯示價格的元素
         const priceElements = document.querySelectorAll('[data-price="premium"]');
         priceElements.forEach(element => {
@@ -50,6 +55,11 @@ class PremiumManager {
      */
     async handleUpgradeClick() {
         try {
+            // 確保使用最新價格
+            if (window.PiPrices?.premium) {
+                this.premiumPrice = window.PiPrices.premium;
+            }
+
             // 檢查用戶是否已登入
             if (!window.AuthManager || !window.AuthManager.currentUser) {
                 showToast('請先登入', 'warning');

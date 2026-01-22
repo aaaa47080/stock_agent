@@ -8,7 +8,7 @@
 window.PiPrices = {
     create_post: 1.0,  // 預設值，會被後端覆蓋
     tip: 1.0,
-    premium: 100.0,    // 高級會員價格更新為 100 Pi
+    premium: 1.0,    // 高級會員價格預設 1.0 (避免快取問題)
     loaded: false
 };
 
