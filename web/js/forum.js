@@ -14,246 +14,42 @@ window.PiPrices = {
 
 // 從後端載入價格配置
 async function loadPiPrices() {
+    if (window.PiPrices.loading) return; // Prevent concurrent requests
+    window.PiPrices.loading = true;
+
     try {
         const res = await fetch('/api/config/prices');
         if (res.ok) {
             const data = await res.json();
-            window.PiPrices = { ...data.prices, loaded: true };
+            window.PiPrices = { ...data.prices, loaded: true, loading: false };
             console.log('[Forum] Pi 價格配置已載入:', window.PiPrices);
             // 更新頁面上的價格顯示
             updatePriceDisplays();
             // 通知其他模組價格已更新
             document.dispatchEvent(new Event('pi-prices-updated'));
+        } else {
+             window.PiPrices.loading = false;
         }
     } catch (e) {
         console.error('[Forum] 載入價格配置失敗:', e);
+        window.PiPrices.loading = false;
         // 失敗時顯示錯誤或重試按鈕 (這裡簡單處理為保持 Loading 狀態)
     }
 }
 
-// 更新頁面上所有價格顯示元素
-function updatePriceDisplays() {
-    const formatPrice = (price) => price !== null ? `${price} Pi` : '<span class="animate-pulse">...</span>';
-
-    // 更新發文價格
-    document.querySelectorAll('[data-price="create_post"]').forEach(el => {
-        el.innerHTML = formatPrice(window.PiPrices.create_post);
-    });
-    // 更新打賞價格
-    document.querySelectorAll('[data-price="tip"]').forEach(el => {
-        el.innerHTML = formatPrice(window.PiPrices.tip);
-    });
-    // 更新高級會員價格
-    document.querySelectorAll('[data-price="premium"]').forEach(el => {
-        el.innerHTML = formatPrice(window.PiPrices.premium);
-    });
-}
-
-// 頁面載入時獲取價格
-document.addEventListener('DOMContentLoaded', loadPiPrices);
-
-// 格式化為台灣時間
-function formatTWDate(dateStr, showTime = false) {
-    const date = new Date(dateStr);
-    const options = {
-        timeZone: 'Asia/Taipei',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-    };
-    if (showTime) {
-        options.hour = '2-digit';
-        options.minute = '2-digit';
-        options.hour12 = false;
-    }
-    return date.toLocaleString('zh-TW', options);
-}
-
-const ForumAPI = {
-    baseUrl: '/api/forum',
-    defaultTimeout: 15000, // 15 秒超時
-
-    async _fetch(endpoint, options = {}) {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), this.defaultTimeout);
-
-        try {
-            const res = await fetch(`${this.baseUrl}${endpoint}`, {
-                ...options,
-                signal: controller.signal
-            });
-
-            clearTimeout(timeoutId);
-
-            if (!res.ok) {
-                const error = await res.json();
-                throw new Error(error.detail || 'API request failed');
-            }
-            return await res.json();
-        } catch (e) {
-            clearTimeout(timeoutId);
-            if (e.name === 'AbortError') {
-                console.error(`ForumAPI Timeout (${endpoint}): Request exceeded ${this.defaultTimeout}ms`);
-                throw new Error('請求超時，請檢查網路連線');
-            }
-            console.error(`ForumAPI Error (${endpoint}):`, e);
-            throw e;
-        }
-    },
-
-    // Helper to get user ID safely (handling uid vs user_id mismatch)
-    _getUserId() {
-        if (!AuthManager.currentUser) return null;
-        return AuthManager.currentUser.uid || AuthManager.currentUser.user_id;
-    },
-
-    // 看板相關
-    async getBoards() {
-        return this._fetch('/boards');
-    },
-
-    async getBoard(slug) {
-        return this._fetch(`/boards/${slug}`);
-    },
-
-    // 文章相關
-    async getPosts(params = {}) {
-        const query = new URLSearchParams(params).toString();
-        return this._fetch(`/posts?${query}`);
-    },
-
-    async getPost(id) {
-        const uid = this._getUserId();
-        const query = uid ? `?user_id=${uid}` : '';
-        return this._fetch(`/posts/${id}${query}`);
-    },
-
-    async createPost(data) {
-        // data: { board_slug, category, title, content, tags, payment_tx_hash }
-        const uid = this._getUserId();
-        if (!uid) throw new Error("User not logged in");
-
-        // user_id 必須是 Query Parameter
-        return this._fetch(`/posts?user_id=${uid}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-    },
-
-    async updatePost(postId, data) {
-        const uid = this._getUserId();
-        if (!uid) throw new Error("User not logged in");
-
-        return this._fetch(`/posts/${postId}?user_id=${uid}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-    },
-
-    async deletePost(postId) {
-        const uid = this._getUserId();
-        if (!uid) throw new Error("User not logged in");
-
-        return this._fetch(`/posts/${postId}?user_id=${uid}`, {
-            method: 'DELETE'
-        });
-    },
-
-    // 回覆相關
-    async getComments(postId) {
-        return this._fetch(`/posts/${postId}/comments`);
-    },
-
-    async createComment(postId, data) {
-        // data: { content, parent_id, type }
-        const uid = this._getUserId();
-        if (!uid) throw new Error("User not logged in");
-
-        return this._fetch(`/posts/${postId}/comments?user_id=${uid}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-    },
-
-    async pushPost(postId) {
-        const uid = this._getUserId();
-        if (!uid) throw new Error("User not logged in");
-
-        return this._fetch(`/posts/${postId}/push?user_id=${uid}`, {
-            method: 'POST'
-        });
-    },
-
-    async booPost(postId) {
-        const uid = this._getUserId();
-        if (!uid) throw new Error("User not logged in");
-
-        return this._fetch(`/posts/${postId}/boo?user_id=${uid}`, {
-            method: 'POST'
-        });
-    },
-
-    // 打賞相關
-    async tipPost(postId, amount, txHash) {
-        const uid = this._getUserId();
-        if (!uid) throw new Error("User not logged in");
-
-        const data = {
-            amount: amount,
-            tx_hash: txHash
-        };
-        
-        return this._fetch(`/posts/${postId}/tip?user_id=${uid}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-    },
-
-    // 標籤相關
-    async getTrendingTags() {
-        return this._fetch('/tags/trending');
-    },
-
-    // 個人後台
-    async getMyStats() {
-        const uid = this._getUserId();
-        const query = uid ? `?user_id=${uid}` : '';
-        return this._fetch(`/me/stats${query}`);
-    },
-
-    async getMyPosts() {
-        const uid = this._getUserId();
-        if (!uid) return { posts: [] };
-        return this._fetch(`/me/posts?user_id=${uid}`);
-    },
-
-    async getMyTipsSent() {
-        const uid = this._getUserId();
-        if (!uid) return { tips: [] };
-        return this._fetch(`/me/tips/sent?user_id=${uid}`);
-    },
-
-    async getMyTipsReceived() {
-        const uid = this._getUserId();
-        if (!uid) return { tips: [] };
-        return this._fetch(`/me/tips/received?user_id=${uid}`);
-    },
-
-    async getMyPayments() {
-        const uid = this._getUserId();
-        if (!uid) return { payments: [] };
-        return this._fetch(`/me/payments?user_id=${uid}`);
-    }
-};
+// ... existing code ...
 
 const ForumApp = {
     init() {
         console.log('ForumApp: init starting...');
+        
+        // Ensure prices are loaded
+        if (!window.PiPrices.loaded) {
+            loadPiPrices();
+        }
+
         try {
+            // ... existing code ...
             // 確保 AuthManager 已初始化（從 localStorage 載入用戶資訊）
             if (typeof AuthManager !== 'undefined' && typeof AuthManager.init === 'function') {
                 AuthManager.init();

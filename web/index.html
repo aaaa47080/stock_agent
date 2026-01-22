@@ -349,21 +349,31 @@
                         </h3>
                         
                         <!-- Filters -->
-                        <div class="flex gap-2 overflow-x-auto pb-1 md:pb-0 hide-scrollbar">
-                            <select id="wallet-filter-type" onchange="WalletApp.applyFilters()" class="bg-surfaceHighlight border border-white/10 text-textMuted text-xs font-bold rounded-xl px-3 py-2 outline-none focus:border-primary/50 transition cursor-pointer">
-                                <option value="all">All Types</option>
-                                <option value="in">💰 Income (In)</option>
-                                <option value="out">💸 Expense (Out)</option>
-                                <option value="membership">👑 Premium</option>
-                                <option value="tip">🎁 Tips</option>
-                                <option value="post">📝 Post Fees</option>
-                            </select>
-                            <select id="wallet-filter-time" onchange="WalletApp.applyFilters()" class="bg-surfaceHighlight border border-white/10 text-textMuted text-xs font-bold rounded-xl px-3 py-2 outline-none focus:border-primary/50 transition cursor-pointer">
-                                <option value="all">All Time</option>
-                                <option value="7">Last 7 Days</option>
-                                <option value="30">Last 30 Days</option>
-                                <option value="90">Last 3 Months</option>
-                            </select>
+                        <div class="flex flex-col gap-2 items-end">
+                            <div class="flex gap-2 overflow-x-auto pb-1 md:pb-0 hide-scrollbar">
+                                <select id="wallet-filter-type" onchange="WalletApp.applyFilters()" class="bg-surfaceHighlight border border-white/10 text-textMuted text-xs font-bold rounded-xl px-3 py-2 outline-none focus:border-primary/50 transition cursor-pointer">
+                                    <option value="all">All Types</option>
+                                    <option value="in">💰 Income (In)</option>
+                                    <option value="out">💸 Expense (Out)</option>
+                                    <option value="membership">👑 Premium</option>
+                                    <option value="tip">🎁 Tips</option>
+                                    <option value="post">📝 Post Fees</option>
+                                </select>
+                                <select id="wallet-filter-time" onchange="WalletApp.handleTimeFilterChange(this)" class="bg-surfaceHighlight border border-white/10 text-textMuted text-xs font-bold rounded-xl px-3 py-2 outline-none focus:border-primary/50 transition cursor-pointer">
+                                    <option value="all">All Time</option>
+                                    <option value="7">Last 7 Days</option>
+                                    <option value="30">Last 30 Days</option>
+                                    <option value="90">Last 3 Months</option>
+                                    <option value="custom">📅 Custom Range</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Custom Date Inputs (Hidden by default) -->
+                            <div id="wallet-custom-date-range" class="hidden flex items-center gap-2 bg-surfaceHighlight p-2 rounded-xl border border-white/5 animate-fade-in-down w-full md:w-auto justify-end">
+                                <input type="date" id="wallet-date-start" class="bg-background border border-white/10 rounded-lg px-2 py-1 text-xs text-secondary outline-none focus:border-primary/50 min-w-[120px]" onchange="WalletApp.applyFilters()">
+                                <span class="text-textMuted text-xs">to</span>
+                                <input type="date" id="wallet-date-end" class="bg-background border border-white/10 rounded-lg px-2 py-1 text-xs text-secondary outline-none focus:border-primary/50 min-w-[120px]" onchange="WalletApp.applyFilters()">
+                            </div>
                         </div>
                     </div>
                     
@@ -793,22 +803,22 @@
     -->
 
     <!-- Scripts -->
-    <script src="/static/js/app.js?v=27" onerror="alert('app.js 載入失敗')"></script>
-    <script src="/static/js/apiKeyManager.js?v=27" onerror="alert('apiKeyManager.js 載入失敗')"></script>
-    <script src="/static/js/auth.js?v=27" onerror="alert('auth.js 載入失敗')"></script>
-    <script src="/static/js/okxKeyManager.js?v=27"></script>
-    <script src="/static/js/components.js?v=27"></script>
-    <script src="/static/js/llmSettings.js?v=27"></script>
-    <script src="/static/js/filter.js?v=27"></script>
-    <script src="/static/js/chat.js?v=27"></script>
-    <script src="/static/js/market.js?v=27"></script>
-    <script src="/static/js/assets.js?v=27"></script>
-    <script src="/static/js/pulse.js?v=27"></script>
-    <script src="/static/js/trade.js?v=27"></script>
-    <script src="/static/js/forum.js?v=27"></script>
-    <script src="/static/js/wallet.js?v=27"></script>
-    <script src="/static/js/debate.js?v=27"></script>
-    <script src="/static/js/committeeManager.js?v=27"></script>
+    <script src="/static/js/app.js?v=28" onerror="alert('app.js 載入失敗')"></script>
+    <script src="/static/js/apiKeyManager.js?v=28" onerror="alert('apiKeyManager.js 載入失敗')"></script>
+    <script src="/static/js/auth.js?v=28" onerror="alert('auth.js 載入失敗')"></script>
+    <script src="/static/js/okxKeyManager.js?v=28"></script>
+    <script src="/static/js/components.js?v=28"></script>
+    <script src="/static/js/llmSettings.js?v=28"></script>
+    <script src="/static/js/filter.js?v=28"></script>
+    <script src="/static/js/chat.js?v=28"></script>
+    <script src="/static/js/market.js?v=28"></script>
+    <script src="/static/js/assets.js?v=28"></script>
+    <script src="/static/js/pulse.js?v=28"></script>
+    <script src="/static/js/trade.js?v=28"></script>
+    <script src="/static/js/forum.js?v=28"></script>
+    <script src="/static/js/wallet.js?v=28"></script>
+    <script src="/static/js/debate.js?v=28"></script>
+    <script src="/static/js/committeeManager.js?v=28"></script>
     <script>
         lucide.createIcons();
 
@@ -913,6 +923,11 @@
                 }
                 // 確保 Settings 中的 LLM 狀態被更新
                 if (typeof updateLLMStatusUI === 'function') updateLLMStatusUI();
+
+                // 確保價格顯示被更新
+                if (window.PremiumManager && typeof window.PremiumManager.updatePriceDisplay === 'function') {
+                    window.PremiumManager.updatePriceDisplay();
+                }
             }
 
             if(typeof onTabSwitch === 'function') onTabSwitch(tabId);

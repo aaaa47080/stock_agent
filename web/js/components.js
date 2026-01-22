@@ -341,7 +341,7 @@ const Components = {
 
                         <button onclick="handleUpgradeToPremium()" class="w-full py-3.5 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-background font-bold rounded-xl transition flex items-center justify-center gap-2 upgrade-premium-btn">
                             <i data-lucide="zap" class="w-4 h-4"></i>
-                            <span>升級到高級會員 - <span data-price="premium">100</span> Pi</span>
+                            <span>升級到高級會員 - <span data-price="premium"><i data-lucide="loader" class="w-3 h-3 animate-spin"></i></span></span>
                         </button>
 
                         <p class="text-[10px] text-textMuted/60 text-center">一次性付費，立即生效</p>

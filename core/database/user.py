@@ -381,7 +381,8 @@ def upgrade_to_pro(user_id: str, months: int = 1, tx_hash: str = None) -> bool:
         
         # 3. 如果有交易哈希，記錄支付流水帳
         if tx_hash:
-            amount = 100.0 * months  # 假設單月價格為 100 Pi (應與前端配置保持一致)
+            from core.config import PI_PAYMENT_PRICES
+        amount = PI_PAYMENT_PRICES.get("premium", 1.0) * months
             c.execute('''
                 INSERT INTO membership_payments (user_id, amount, months, tx_hash, created_at)
                 VALUES (?, ?, ?, ?, datetime('now'))

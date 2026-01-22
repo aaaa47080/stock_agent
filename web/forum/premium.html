@@ -103,8 +103,7 @@
                 
                 <h2 class="text-3xl font-serif font-bold text-secondary mb-2">高級會員</h2>
                 <div class="mb-6">
-                    <span class="text-5xl font-bold text-primary" id="premium-price">100</span>
-                    <span class="text-textMuted ml-2">Pi</span>
+                    <span class="text-5xl font-bold text-primary" data-price="premium"><span class="animate-pulse">...</span></span>
                 </div>
                 
                 <p class="text-textMuted text-sm mb-8">一次性付費，立即生效，享受完整功能</p>
@@ -161,10 +160,11 @@
     </div>
 
     <!-- Scripts -->
-    <script src="/static/js/app.js?v=27"></script>
-    <script src="/static/js/apiKeyManager.js?v=27"></script>
-    <script src="/static/js/auth.js?v=27"></script>
-    <script src="/static/js/premium.js?v=27"></script>
+    <script src="/static/js/app.js?v=28"></script>
+    <script src="/static/js/apiKeyManager.js?v=28"></script>
+    <script src="/static/js/auth.js?v=28"></script>
+    <script src="/static/js/forum.js?v=28"></script>
+    <script src="/static/js/premium.js?v=28"></script>
     <script>
         // 初始化頁面
         document.addEventListener('DOMContentLoaded', async () => {
@@ -172,9 +172,6 @@
             if (typeof initializeAuth === 'function') {
                 initializeAuth();
             }
-            
-            // 更新價格顯示
-            document.getElementById('premium-price').textContent = window.PiPrices?.premium || 100;
             
             // 加載用戶會員狀態
             if (window.AuthManager?.currentUser) {
