@@ -6,9 +6,9 @@
 // Pi 支付價格配置（從後端動態獲取）
 // ============================================
 window.PiPrices = {
-    create_post: 1.0,  // 預設值，會被後端覆蓋
-    tip: 1.0,
-    premium: 1.0,    // 高級會員價格預設 1.0 (避免快取問題)
+    create_post: null,  // 移除硬編碼預設值
+    tip: null,
+    premium: null,
     loaded: false
 };
 
@@ -22,25 +22,30 @@ async function loadPiPrices() {
             console.log('[Forum] Pi 價格配置已載入:', window.PiPrices);
             // 更新頁面上的價格顯示
             updatePriceDisplays();
+            // 通知其他模組價格已更新
+            document.dispatchEvent(new Event('pi-prices-updated'));
         }
     } catch (e) {
-        console.error('[Forum] 載入價格配置失敗，使用預設值:', e);
+        console.error('[Forum] 載入價格配置失敗:', e);
+        // 失敗時顯示錯誤或重試按鈕 (這裡簡單處理為保持 Loading 狀態)
     }
 }
 
 // 更新頁面上所有價格顯示元素
 function updatePriceDisplays() {
+    const formatPrice = (price) => price !== null ? `${price} Pi` : '<span class="animate-pulse">...</span>';
+
     // 更新發文價格
     document.querySelectorAll('[data-price="create_post"]').forEach(el => {
-        el.textContent = `${window.PiPrices.create_post} Pi`;
+        el.innerHTML = formatPrice(window.PiPrices.create_post);
     });
     // 更新打賞價格
     document.querySelectorAll('[data-price="tip"]').forEach(el => {
-        el.textContent = `${window.PiPrices.tip} Pi`;
+        el.innerHTML = formatPrice(window.PiPrices.tip);
     });
     // 更新高級會員價格
     document.querySelectorAll('[data-price="premium"]').forEach(el => {
-        el.textContent = `${window.PiPrices.premium} Pi`;
+        el.innerHTML = formatPrice(window.PiPrices.premium);
     });
 }
 

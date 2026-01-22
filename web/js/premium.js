@@ -5,7 +5,7 @@
 
 class PremiumManager {
     constructor() {
-        this.premiumPrice = 1.0; // 預設安全值
+        this.premiumPrice = null; // 初始為 null，完全依賴後端
         this.initEventListeners();
     }
 
@@ -13,10 +13,22 @@ class PremiumManager {
      * 初始化事件監聽器
      */
     initEventListeners() {
-        // 監聽 DOMContentLoaded 事件來初始化升級按鈕
+        // 監聽 DOMContentLoaded
         document.addEventListener('DOMContentLoaded', () => {
+            // 嘗試從全局變數獲取（如果已經載入）
+            if (window.PiPrices?.premium) {
+                this.premiumPrice = window.PiPrices.premium;
+            }
             this.updatePriceDisplay();
             this.initUpgradeButtons();
+        });
+
+        // 監聽價格更新事件 (由 forum.js 觸發)
+        document.addEventListener('pi-prices-updated', () => {
+            if (window.PiPrices?.premium) {
+                this.premiumPrice = window.PiPrices.premium;
+                this.updatePriceDisplay();
+            }
         });
     }
 
@@ -24,15 +36,14 @@ class PremiumManager {
      * 更新價格顯示
      */
     updatePriceDisplay() {
-        // 嘗試從全局配置獲取最新價格
-        if (window.PiPrices?.premium) {
-            this.premiumPrice = window.PiPrices.premium;
-        }
+        const displayHtml = this.premiumPrice !== null 
+            ? `${this.premiumPrice} Pi` 
+            : '<span class="animate-pulse">Loading...</span>';
 
         // 更新所有顯示價格的元素
         const priceElements = document.querySelectorAll('[data-price="premium"]');
         priceElements.forEach(element => {
-            element.textContent = this.premiumPrice + ' Pi';
+            element.innerHTML = displayHtml;
         });
     }
 
@@ -55,9 +66,17 @@ class PremiumManager {
      */
     async handleUpgradeClick() {
         try {
-            // 確保使用最新價格
-            if (window.PiPrices?.premium) {
-                this.premiumPrice = window.PiPrices.premium;
+            // 確保價格已載入
+            if (this.premiumPrice === null) {
+                // 再次嘗試從全局讀取
+                if (window.PiPrices?.premium) {
+                    this.premiumPrice = window.PiPrices.premium;
+                } else {
+                    showToast('正在獲取最新價格，請稍候...', 'info');
+                    // 嘗試主動觸發載入
+                    if(typeof loadPiPrices === 'function') loadPiPrices();
+                    return;
+                }
             }
 
             // 檢查用戶是否已登入
