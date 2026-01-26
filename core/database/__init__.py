@@ -21,6 +21,7 @@ from .user import (
     # 用戶 CRUD
     create_user,
     get_user_by_username,
+    get_user_by_id,
     get_user_by_email,
     update_password,
     is_username_available,
@@ -112,6 +113,27 @@ from .cache import (
     clear_all_cache,
 )
 
+# 系統配置（商用化 V2 - Redis + 審計日誌）
+from .system_config import (
+    # 配置讀取
+    get_config,
+    get_all_configs,
+    get_prices,
+    get_limits,
+    # 配置更新
+    set_config,
+    update_price,
+    update_limit,
+    bulk_update_configs,
+    # 配置管理
+    get_config_metadata,
+    list_all_configs_with_metadata,
+    invalidate_cache as invalidate_config_cache,
+    # 審計日誌
+    get_config_history,
+    init_audit_table,
+)
+
 
 # 定義公開 API
 __all__ = [
@@ -124,6 +146,7 @@ __all__ = [
     'verify_password',
     'create_user',
     'get_user_by_username',
+    'get_user_by_id',
     'get_user_by_email',
     'update_password',
     'is_username_available',
@@ -187,4 +210,19 @@ __all__ = [
     'get_cache',
     'delete_cache',
     'clear_all_cache',
+    # 系統配置
+    'get_config',
+    'get_all_configs',
+    'get_prices',
+    'get_limits',
+    'set_config',
+    'update_price',
+    'update_limit',
+    'bulk_update_configs',
+    'get_config_metadata',
+    'list_all_configs_with_metadata',
+    'invalidate_config_cache',
+    # 審計日誌
+    'get_config_history',
+    'init_audit_table',
 ]

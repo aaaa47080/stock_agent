@@ -51,6 +51,7 @@ from api.services import (
 from api.routers import system, analysis, market, trading, user, agents
 from api.routers.forum import router as forum_router
 from api.routers.premium import router as premium_router
+from api.routers.admin import router as admin_router
 
 # Initialize database (ensure tables exist)
 from core.database import init_db
@@ -122,6 +123,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from fastapi import Response
+import time
+
+# 服务启动时间
+SERVICE_START_TIME = time.time()
+
 # Include Routers
 app.include_router(system.router)
 app.include_router(analysis.router)
@@ -131,9 +138,59 @@ app.include_router(user.router)
 app.include_router(agents.router)  # Agent 管理 API
 app.include_router(forum_router)   # 論壇 API
 app.include_router(premium_router) # 高級會員 API
+app.include_router(admin_router)   # 管理員 API（配置管理）
+
+# --- 健康检查端点（用于负载均衡和监控）---
+@app.get("/health")
+async def health_check():
+    """
+    健康检查端点 - 用于负载均衡器确认服务存活
+    返回 200 表示服务正常运行
+    """
+    return {
+        "status": "healthy",
+        "service": "pi_crypto_insight",
+        "uptime_seconds": int(time.time() - SERVICE_START_TIME)
+    }
+
+@app.get("/ready")
+async def readiness_check():
+    """
+    就绪检查端点 - 确认服务可以接受请求
+    检查关键组件是否已初始化
+    """
+    ready = True
+    components = {}
+    
+    # 检查 OKX Connector
+    components["okx_connector"] = globals.okx_connector is not None
+    
+    # 检查 Bot
+    components["crypto_bot"] = globals.bot is not None
+    
+    # 检查数据库
+    try:
+        from core.database import init_db
+        components["database"] = True
+    except Exception as e:
+        components["database"] = False
+        ready = False
+    
+    status_code = 200 if ready else 503
+    
+    return Response(
+        content=str({
+            "status": "ready" if ready else "not_ready",
+            "components": components,
+            "uptime_seconds": int(time.time() - SERVICE_START_TIME)
+        }),
+        status_code=status_code,
+        media_type="application/json"
+    )
+
 
 # --- Pi Network 域名驗證 ---
-PI_VALIDATION_KEY = "3f976384939a5237ed6b540a7ad666ef9715fc06f51cbdf660621e9dadf14ff4cb3971613d3a0cdef24caaee705ccbed7782bc09ca9bbad2a75768175f97afb9"  # 從 Pi Developer Portal 取得
+PI_VALIDATION_KEY = "bb688627074252c72dd05212708965ba06070edde22821ac519aadc388ebf2f06cd0746217c4a1c466baeb1303311ef7333813683253a330e5d257522670a480"  # 從 Pi Developer Portal 取得
 
 @app.get("/validation-key.txt", response_class=PlainTextResponse)
 async def pi_validation():

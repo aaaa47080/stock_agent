@@ -53,7 +53,7 @@ class AddCommentRequest(BaseModel):
 class CreateTipRequest(BaseModel):
     """打賞請求"""
     tx_hash: str = Field(..., description="Pi 支付交易哈希")
-    amount: float = Field(1.0, description="打賞金額（固定 1 Pi）")
+    amount: float = Field(..., description="打賞金額（從 /api/config/prices 獲取 tip 價格）")
 
 
 # ============================================================================

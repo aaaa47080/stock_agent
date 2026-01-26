@@ -13,6 +13,9 @@ from core.database import (
     delete_post,
     get_user_membership,
     check_daily_post_limit,
+    get_user_by_id,
+    get_prices,
+    get_limits,
 )
 from .models import CreatePostRequest, UpdatePostRequest
 
@@ -67,11 +70,19 @@ async def create_new_post(request: CreatePostRequest, user_id: str = Query(..., 
     """
     發表新文章
 
-    - 免費會員需提供 payment_tx_hash（支付 1 Pi）
+    - 免費會員需提供 payment_tx_hash（支付費用從 /api/config/prices 獲取）
     - PRO 會員免費發文
-    - 一般會員每日限制 3 篇，PRO 會員無限制
+    - 每日發文限制從 /api/config/limits 獲取，PRO 會員無限制
     """
     try:
+        # 驗證用戶是否存在
+        user = get_user_by_id(user_id)
+        if not user:
+            raise HTTPException(
+                status_code=401,
+                detail="用戶不存在或憑證失效，請重新登入 (User not found, please relogin)"
+            )
+
         # 驗證分類
         if request.category not in VALID_CATEGORIES:
             raise HTTPException(
@@ -99,9 +110,10 @@ async def create_new_post(request: CreatePostRequest, user_id: str = Query(..., 
 
         # 免費會員需要付費
         if not membership["is_pro"] and not request.payment_tx_hash:
+            prices = get_prices()
             raise HTTPException(
                 status_code=402,
-                detail="免費會員發文需支付 1 Pi，請提供 payment_tx_hash"
+                detail=f"免費會員發文需支付 {prices.get('create_post', 1)} Pi，請提供 payment_tx_hash"
             )
 
         # 創建文章（跳過限制檢查，因為上面已經檢查過了）

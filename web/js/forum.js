@@ -6,9 +6,20 @@
 // Pi 支付價格配置（從後端動態獲取）
 // ============================================
 window.PiPrices = {
-    create_post: 1.0,  // 預設值，會被後端覆蓋
-    tip: 1.0,
-    premium: 100.0,    // 高級會員價格更新為 100 Pi
+    create_post: null,  // 完全依賴後端配置
+    tip: null,
+    premium: null,
+    loaded: false
+};
+
+// ============================================
+// 論壇限制配置（從後端動態獲取）
+// ============================================
+window.ForumLimits = {
+    daily_post_free: null,
+    daily_post_premium: null,
+    daily_comment_free: null,
+    daily_comment_premium: null,
     loaded: false
 };
 
@@ -28,7 +39,7 @@ async function loadPiPrices() {
             // 通知其他模組價格已更新
             document.dispatchEvent(new Event('pi-prices-updated'));
         } else {
-             window.PiPrices.loading = false;
+            window.PiPrices.loading = false;
         }
     } catch (e) {
         console.error('[Forum] 載入價格配置失敗:', e);
@@ -37,7 +48,63 @@ async function loadPiPrices() {
 }
 
 function updatePriceDisplays() {
-    // 價格更新時刷新相關 UI
+    // 更新所有帶有 data-price 屬性的元素
+    if (!window.PiPrices || !window.PiPrices.loaded) {
+        console.log('[Forum] 價格尚未載入，跳過更新');
+        return;
+    }
+
+    const priceElements = document.querySelectorAll('[data-price]');
+    priceElements.forEach(el => {
+        const priceKey = el.getAttribute('data-price');
+        const price = window.PiPrices[priceKey];
+
+        if (price !== undefined && price !== null) {
+            el.textContent = `${price} Pi`;
+        }
+    });
+
+    console.log('[Forum] 價格顯示已更新:', window.PiPrices);
+}
+
+// 從後端載入論壇限制配置
+async function loadForumLimits() {
+    if (window.ForumLimits.loading) return;
+    window.ForumLimits.loading = true;
+
+    try {
+        const res = await fetch('/api/config/limits');
+        if (res.ok) {
+            const data = await res.json();
+            window.ForumLimits = { ...data.limits, loaded: true, loading: false };
+            console.log('[Forum] 論壇限制配置已載入:', window.ForumLimits);
+            // 通知其他模組限制已更新
+            document.dispatchEvent(new Event('forum-limits-updated'));
+        } else {
+            window.ForumLimits.loading = false;
+        }
+    } catch (e) {
+        console.error('[Forum] 載入論壇限制配置失敗:', e);
+        window.ForumLimits.loading = false;
+    }
+}
+
+// 取得價格的輔助函數（確保有值）
+function getPrice(key) {
+    if (window.PiPrices?.loaded && window.PiPrices[key] !== null) {
+        return window.PiPrices[key];
+    }
+    console.warn(`[Forum] 價格 ${key} 尚未載入，請確認 API 連線`);
+    return null;
+}
+
+// 取得限制的輔助函數（確保有值）
+function getLimit(key) {
+    if (window.ForumLimits?.loaded && window.ForumLimits[key] !== undefined) {
+        return window.ForumLimits[key];
+    }
+    console.warn(`[Forum] 限制 ${key} 尚未載入，請確認 API 連線`);
+    return null;
 }
 
 // Helper to format date
@@ -47,20 +114,20 @@ function formatTWDate(dateStr, full = false) {
         const date = new Date(dateStr);
         const now = new Date();
         const diff = now - date;
-        
+
         // Less than 24 hours
         if (diff < 86400000 && !full) {
             if (diff < 3600000) return Math.max(1, Math.floor(diff / 60000)) + 'm ago';
             return Math.floor(diff / 3600000) + 'h ago';
         }
-        
+
         // Format: MM/DD or YYYY/MM/DD HH:mm
         const year = date.getFullYear();
         const month = (date.getMonth() + 1).toString().padStart(2, '0');
         const day = date.getDate().toString().padStart(2, '0');
         const hours = date.getHours().toString().padStart(2, '0');
         const minutes = date.getMinutes().toString().padStart(2, '0');
-        
+
         if (full) return `${year}/${month}/${day} ${hours}:${minutes}`;
         return `${month}/${day}`;
     } catch (e) {
@@ -92,7 +159,9 @@ const ForumAPI = {
         return await res.json();
     },
     async getPost(id) {
-        const res = await fetch(`/api/forum/posts/${id}`);
+        const userId = this._getUserId();
+        const query = userId ? `?user_id=${encodeURIComponent(userId)}` : '';
+        const res = await fetch(`/api/forum/posts/${id}${query}`);
         return await res.json();
     },
     async createPost(data) {
@@ -132,11 +201,11 @@ const ForumAPI = {
         return await res.json();
     },
     async createComment(postId, data) {
-         const userId = this._getUserId();
-         if (!userId) throw new Error('Please login first');
+        const userId = this._getUserId();
+        if (!userId) throw new Error('Please login first');
 
-         const query = new URLSearchParams({ user_id: userId }).toString();
-         const res = await fetch(`/api/forum/posts/${postId}/comments?${query}`, {
+        const query = new URLSearchParams({ user_id: userId }).toString();
+        const res = await fetch(`/api/forum/posts/${postId}/comments?${query}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -164,7 +233,7 @@ const ForumAPI = {
     async pushPost(postId) {
         const userId = this._getUserId();
         if (!userId) throw new Error('Please login first');
-        
+
         const res = await fetch(`/api/forum/posts/${postId}/push?user_id=${userId}`, { method: 'POST' });
         if (!res.ok) {
             let errorMsg = 'Failed to push';
@@ -190,20 +259,20 @@ const ForumAPI = {
 
         const res = await fetch(`/api/forum/posts/${postId}/boo?user_id=${userId}`, { method: 'POST' });
         if (!res.ok) {
-             let errorMsg = 'Failed to boo';
-             try {
-                 const err = await res.json();
-                 if (typeof err.detail === 'string') {
-                     errorMsg = err.detail;
-                 } else if (Array.isArray(err.detail)) {
-                     errorMsg = err.detail.map(e => `${e.loc.join('.')}: ${e.msg}`).join('\n');
-                 } else if (err.message) {
-                     errorMsg = err.message;
-                 }
-             } catch (e) {
-                 errorMsg = `Status ${res.status}: ${res.statusText}`;
-             }
-             throw new Error(errorMsg);
+            let errorMsg = 'Failed to boo';
+            try {
+                const err = await res.json();
+                if (typeof err.detail === 'string') {
+                    errorMsg = err.detail;
+                } else if (Array.isArray(err.detail)) {
+                    errorMsg = err.detail.map(e => `${e.loc.join('.')}: ${e.msg}`).join('\n');
+                } else if (err.message) {
+                    errorMsg = err.message;
+                }
+            } catch (e) {
+                errorMsg = `Status ${res.status}: ${res.statusText}`;
+            }
+            throw new Error(errorMsg);
         }
         return await res.json();
     },
@@ -216,10 +285,10 @@ const ForumAPI = {
 
     // Tips
     async tipPost(postId, amount, txHash) {
-         const userId = this._getUserId();
-         if (!userId) throw new Error('Please login first');
+        const userId = this._getUserId();
+        if (!userId) throw new Error('Please login first');
 
-         const res = await fetch(`/api/forum/posts/${postId}/tip?user_id=${userId}`, {
+        const res = await fetch(`/api/forum/posts/${postId}/tip?user_id=${userId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ amount, tx_hash: txHash })
@@ -277,7 +346,7 @@ const ForumAPI = {
     async checkLimits() {
         const userId = this._getUserId();
         if (!userId) throw new Error('User not logged in');
-        
+
         const controller = new AbortController();
         const id = setTimeout(() => controller.abort(), 5000); // 5s timeout
 
@@ -303,10 +372,13 @@ window.ForumAPI = ForumAPI;
 const ForumApp = {
     init() {
         console.log('ForumApp: init starting...');
-        
-        // Ensure prices are loaded
+
+        // Ensure prices and limits are loaded
         if (!window.PiPrices.loaded) {
             loadPiPrices();
+        }
+        if (!window.ForumLimits.loaded) {
+            loadForumLimits();
         }
 
         try {
@@ -325,7 +397,7 @@ const ForumApp = {
             else if (page === 'post') this.initPostPage();
             else if (page === 'create') this.initCreatePage();
             else if (page === 'dashboard') this.initDashboardPage();
-            
+
             this.updateAuthUI();
         } catch (err) {
             console.error('ForumApp: Init failed', err);
@@ -341,11 +413,11 @@ const ForumApp = {
         const user = AuthManager.currentUser;
         const authElements = document.querySelectorAll('.auth-only');
         const guestElements = document.querySelectorAll('.guest-only');
-        
+
         if (user) {
             authElements.forEach(el => el.classList.remove('hidden'));
             guestElements.forEach(el => el.classList.add('hidden'));
-            
+
             // 更新用戶顯示名稱
             const nameEls = document.querySelectorAll('.user-display-name');
             nameEls.forEach(el => el.textContent = user.username);
@@ -379,16 +451,16 @@ const ForumApp = {
     async loadPosts(filters = {}) {
         const container = document.getElementById('post-list');
         if (!container) return;
-        
+
         container.innerHTML = '<div class="text-center py-10 text-textMuted"><i class="animate-spin" data-lucide="loader-2"></i> Loading...</div>';
         if (window.lucide) lucide.createIcons();
 
         try {
             const response = await ForumAPI.getPosts(filters);
             const posts = response.posts || [];
-            
+
             container.innerHTML = '';
-            
+
             if (posts.length === 0) {
                 container.innerHTML = '<div class="text-center py-10 text-textMuted">暫無文章</div>';
                 return;
@@ -398,21 +470,21 @@ const ForumApp = {
                 const el = document.createElement('div');
                 el.className = 'bg-surface hover:bg-surfaceHighlight border border-white/5 rounded-xl p-4 transition cursor-pointer mb-3';
                 el.onclick = () => window.location.href = `/static/forum/post.html?id=${post.id}`;
-                
+
                 // 標籤 HTML
                 let tagsHtml = '';
                 try {
                     if (post.tags) {
                         const tags = JSON.parse(post.tags);
-                        tagsHtml = tags.map(tag => 
+                        tagsHtml = tags.map(tag =>
                             `<span class="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full mr-1">#${tag}</span>`
                         ).join('');
                     }
-                } catch (e) {}
+                } catch (e) { }
 
                 // 日期格式化
                 const date = formatTWDate(post.created_at);
-                
+
                 // 計算推噓淨值
                 const netLikes = (post.push_count || 0) - (post.boo_count || 0);
 
@@ -449,8 +521,8 @@ const ForumApp = {
 
         try {
             const response = await ForumAPI.getTrendingTags();
-            const tags = response.tags || []; 
-            
+            const tags = response.tags || [];
+
             container.innerHTML = tags.map(tag => `
                 <a href="#" class="block text-sm text-textMuted hover:text-primary transition py-1">#${tag.name} <span class="text-xs opacity-50">(${tag.post_count})</span></a>
             `).join('');
@@ -465,7 +537,7 @@ const ForumApp = {
     async initPostPage() {
         const urlParams = new URLSearchParams(window.location.search);
         const postId = urlParams.get('id');
-        
+
         if (!postId) {
             window.location.href = '/static/forum/index.html';
             return;
@@ -487,14 +559,17 @@ const ForumApp = {
         try {
             const response = await ForumAPI.getPost(id);
             const post = response.post;
-            
+
+            // 保存當前文章對象，用於後續檢查（如打賞時檢查作者）
+            this.currentPost = post;
+
             document.title = `${post.title} - Pi Forum`;
-            
+
             document.getElementById('post-category').textContent = post.category;
             document.getElementById('post-title').textContent = post.title;
             document.getElementById('post-author').textContent = post.username || post.user_id;
             document.getElementById('post-date').textContent = formatTWDate(post.created_at, true);
-            
+
             // 使用 markdown-it 渲染內容
             const md = window.markdownit ? window.markdownit() : { render: t => t };
             document.getElementById('post-content').innerHTML = md.render(post.content);
@@ -504,17 +579,17 @@ const ForumApp = {
             if (post.tags && tagsContainer) {
                 try {
                     const tags = JSON.parse(post.tags);
-                    tagsContainer.innerHTML = tags.map(tag => 
+                    tagsContainer.innerHTML = tags.map(tag =>
                         `<span class="text-sm bg-primary/10 text-primary px-3 py-1 rounded-full">#${tag}</span>`
                     ).join('');
-                } catch(e) {}
+                } catch (e) { }
             }
-            
+
             // Stats
             this.updatePostStats(post);
-            
+
             // Re-render icons
-            if(window.lucide) window.lucide.createIcons();
+            if (window.lucide) window.lucide.createIcons();
 
         } catch (e) {
             showToast('文章載入失敗', 'error');
@@ -554,17 +629,17 @@ const ForumApp = {
         try {
             const response = await ForumAPI.getComments(postId);
             const comments = response.comments || [];
-            
+
             container.innerHTML = '';
-            
+
             if (comments.length === 0) {
-                 container.innerHTML = '<div class="text-center text-textMuted py-4">暫無回覆</div>';
-                 return;
+                container.innerHTML = '<div class="text-center text-textMuted py-4">暫無回覆</div>';
+                return;
             }
-            
+
             comments.forEach(comment => {
                 if (comment.type !== 'comment') return; // 只顯示一般回覆
-                
+
                 const el = document.createElement('div');
                 el.className = 'border-b border-white/5 py-3';
                 el.innerHTML = `
@@ -591,7 +666,7 @@ const ForumApp = {
             showToast(e.message, 'error');
         }
     },
-    
+
     async handleBoo(postId) {
         if (!AuthManager.currentUser) return showToast('請先登入', 'warning');
         try {
@@ -625,6 +700,14 @@ const ForumApp = {
     async handleTip(postId) {
         if (!AuthManager.currentUser) {
             return showToast('請先登入', 'warning');
+        }
+
+        // 檢查是否在打賞自己的文章
+        const currentUserId = AuthManager.currentUser.user_id || AuthManager.currentUser.uid;
+        const postAuthorId = this.currentPost?.user_id;
+
+        if (currentUserId && postAuthorId && currentUserId === postAuthorId) {
+            return showToast('不能打賞自己的文章', 'warning');
         }
 
         // 檢查是否在 Pi Browser 環境
@@ -662,7 +745,7 @@ const ForumApp = {
                 }
 
                 try {
-                    await Pi.authenticate(['payments'], () => {});
+                    await Pi.authenticate(['payments'], () => { });
                 } catch (authErr) {
                     showToast('支付權限不足，請重新登入', 'error');
                     return;
@@ -760,7 +843,9 @@ const ForumApp = {
 
                 if (limitsData.success) {
                     const isPro = limitsData.membership?.is_pro || false;
-                    const postLimit = limitsData.limits?.post || { count: 0, limit: 3, remaining: 3 };
+                    // 使用後端返回的限制，fallback 使用動態載入的配置
+                    const defaultLimit = getLimit('daily_post_free');
+                    const postLimit = limitsData.limits?.post || { count: 0, limit: defaultLimit, remaining: defaultLimit };
 
                     // Update Daily Limit Display
                     if (limitDisplay) {
@@ -772,12 +857,12 @@ const ForumApp = {
                                 </div>
                             `;
                         } else {
-                            const total = postLimit.limit || 3;
+                            const total = postLimit.limit !== null ? postLimit.limit : (getLimit('daily_post_free') || 0);
                             const used = postLimit.count || 0;
                             // Ensure remaining logic is consistent
                             const remaining = (postLimit.remaining !== undefined) ? postLimit.remaining : (total - used);
                             const isLow = remaining <= 0;
-                            
+
                             limitDisplay.innerHTML = `
                                 <div class="bg-white/5 px-3 py-1 rounded-full border border-white/10 flex items-center gap-1.5">
                                     <span class="opacity-60">Daily Posts:</span>
@@ -795,11 +880,13 @@ const ForumApp = {
                         if (isPro) {
                             paySpan.textContent = 'Post for Free (PRO)';
                         } else {
-                            const postAmount = window.PiPrices?.create_post || 1.0;
-                            paySpan.innerHTML = `Pay <span class="font-bold text-white">${postAmount}</span> Pi & Post`;
+                            const postAmount = getPrice('create_post');
+                            if (postAmount !== null) {
+                                paySpan.innerHTML = `Pay <span class="font-bold text-white">${postAmount}</span> Pi & Post`;
+                            }
                         }
                     }
-                    
+
                     const costElements = document.querySelectorAll('.text-sm.text-textMuted');
                     costElements.forEach(el => {
                         if (el.textContent.includes('Cost to post:')) {
@@ -816,76 +903,154 @@ const ForumApp = {
                 if (limitDisplay) limitDisplay.innerHTML = '<span class="text-danger text-xs">Connection Error</span>';
             }
         };
-                    
-                    if (AuthManager.currentUser) {
-                        updateUIForMembership();
-                    }
-                    
-                    document.getElementById('post-form')?.addEventListener('submit', async (e) => {
-                        e.preventDefault();
-                        console.log('[CreatePost] V38 Handler Active');
-                        console.log('[CreatePost] Form submitted');
-                    
-                        // Disable button to prevent double submit
-                        const submitBtn = document.querySelector('button[type="submit"]');
-                        let originalBtnContent = '';
-                        
-                        if (submitBtn) {
-                            if (submitBtn.disabled) return; // Already processing
-                            submitBtn.disabled = true;
-                            originalBtnContent = submitBtn.innerHTML;
-                            submitBtn.innerHTML = '<i class="animate-spin" data-lucide="loader-2"></i> Processing...';
-                            if (window.lucide) lucide.createIcons();
-                        }
-                    
-                        // Function to reset button state
-                        const resetButton = () => {
-                            console.log('[CreatePost] Resetting button state');
-                            if (submitBtn) {
-                                submitBtn.disabled = false;
-                                submitBtn.innerHTML = originalBtnContent;
-                                if (window.lucide) lucide.createIcons();
-                            }
-                        };
-                    
-                        if (!AuthManager?.currentUser) {
-                            showToast('請先登入', 'warning');
-                            resetButton();
-                            return;
-                        }
-                    
-                        const title = document.getElementById('input-title').value;
-                        const content = document.getElementById('input-content').value;
-                        const category = document.getElementById('input-category').value;
-                        const tagsStr = document.getElementById('input-tags').value;
-                        const tags = tagsStr.split(' ').map(t => t.replace('#', '').trim()).filter(t => t);
-                    
-                        const postAmount = window.PiPrices?.create_post || 1.0;
-                        const isPi = AuthManager.isPiBrowser();
-                        let txHash = "";
-                    
-                        const userId = AuthManager.currentUser?.user_id || AuthManager.currentUser?.uid;
-                        let isProMember = false;
-                    
-                        if (userId) {
-                            try {
-                                // First, check limits and membership status
-                                console.log('[CreatePost] Checking limits and membership...');
-                                const limitsData = await ForumAPI.checkLimits();
-                                
-                                if (limitsData.success) {
-                                    const postLimit = limitsData.limits.post;
-                                    isProMember = limitsData.membership?.is_pro || false;
 
-                                    // Check if limit reached
-                                    // limit === null means unlimited (Pro)
-                                    if (postLimit.limit !== null && postLimit.remaining <= 0) {
-                                        console.warn('[CreatePost] Daily limit reached:', postLimit);
-                                        
-                                        // Custom Styled Modal
-                                        const modal = document.createElement('div');
-                                        modal.className = 'fixed inset-0 bg-background/90 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-fade-in';
-                                        modal.innerHTML = `
+        if (AuthManager.currentUser) {
+            updateUIForMembership();
+        }
+
+        // 初始化字數統計功能
+        const initCharCounters = () => {
+            const titleInput = document.getElementById('input-title');
+            const contentInput = document.getElementById('input-content');
+            const titleCurrent = document.getElementById('title-current');
+            const contentCurrent = document.getElementById('content-current');
+            const titleMax = document.getElementById('title-max');
+            const contentMax = document.getElementById('content-max');
+
+            // 從後端配置獲取限制（與後端保持一致）
+            const MAX_TITLE = 200;
+            const MAX_CONTENT = 10000;
+
+            // 更新顯示的最大值
+            if (titleMax) titleMax.textContent = MAX_TITLE;
+            if (contentMax) contentMax.textContent = MAX_CONTENT;
+
+            // 標題字數統計
+            if (titleInput && titleCurrent) {
+                const updateTitleCount = () => {
+                    const count = titleInput.value.length;
+                    titleCurrent.textContent = count;
+
+                    // 顏色變化提示
+                    const titleCounter = document.getElementById('title-counter');
+                    if (count > MAX_TITLE * 0.9) {
+                        titleCurrent.className = 'text-danger font-bold';
+                        titleCounter?.classList.add('border-danger/30');
+                    } else if (count > MAX_TITLE * 0.7) {
+                        titleCurrent.className = 'text-warning font-bold';
+                        titleCounter?.classList.remove('border-danger/30');
+                    } else {
+                        titleCurrent.className = 'text-primary font-bold';
+                        titleCounter?.classList.remove('border-danger/30');
+                    }
+                };
+
+                titleInput.addEventListener('input', updateTitleCount);
+                titleInput.addEventListener('paste', () => setTimeout(updateTitleCount, 10));
+                updateTitleCount(); // 初始化
+            }
+
+            // 內容字數統計
+            if (contentInput && contentCurrent) {
+                const updateContentCount = () => {
+                    const count = contentInput.value.length;
+                    contentCurrent.textContent = count;
+
+                    // 顏色變化提示
+                    const contentCounter = document.getElementById('content-counter');
+                    if (count > MAX_CONTENT * 0.9) {
+                        contentCurrent.className = 'text-danger font-bold';
+                        contentCounter?.classList.add('border-danger/30');
+                    } else if (count > MAX_CONTENT * 0.7) {
+                        contentCurrent.className = 'text-warning font-bold';
+                        contentCounter?.classList.remove('border-danger/30');
+                    } else {
+                        contentCurrent.className = 'text-primary font-bold';
+                        contentCounter?.classList.remove('border-danger/30');
+                    }
+                };
+
+                contentInput.addEventListener('input', updateContentCount);
+                contentInput.addEventListener('paste', () => setTimeout(updateContentCount, 10));
+                updateContentCount(); // 初始化
+            }
+
+            console.log('[CharCounter] Character counters initialized');
+        };
+
+        // 執行初始化
+        initCharCounters();
+
+        document.getElementById('post-form')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            console.log('[CreatePost] V38 Handler Active');
+            console.log('[CreatePost] Form submitted');
+
+            // Disable button to prevent double submit
+            const submitBtn = document.querySelector('button[type="submit"]');
+            let originalBtnContent = '';
+
+            if (submitBtn) {
+                if (submitBtn.disabled) return; // Already processing
+                submitBtn.disabled = true;
+                originalBtnContent = submitBtn.innerHTML;
+                submitBtn.innerHTML = '<i class="animate-spin" data-lucide="loader-2"></i> Processing...';
+                if (window.lucide) lucide.createIcons();
+            }
+
+            // Function to reset button state
+            const resetButton = () => {
+                console.log('[CreatePost] Resetting button state');
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalBtnContent;
+                    if (window.lucide) lucide.createIcons();
+                }
+            };
+
+            if (!AuthManager?.currentUser) {
+                showToast('請先登入', 'warning');
+                resetButton();
+                return;
+            }
+
+            const title = document.getElementById('input-title').value;
+            const content = document.getElementById('input-content').value;
+            const category = document.getElementById('input-category').value;
+            const tagsStr = document.getElementById('input-tags').value;
+            const tags = tagsStr.split(' ').map(t => t.replace('#', '').trim()).filter(t => t);
+
+            const postAmount = getPrice('create_post');
+            if (postAmount === null) {
+                showToast('價格配置載入失敗，請重新整理頁面', 'error');
+                resetButton();
+                return;
+            }
+            const isPi = AuthManager.isPiBrowser();
+            let txHash = "";
+
+            const userId = AuthManager.currentUser?.user_id || AuthManager.currentUser?.uid;
+            let isProMember = false;
+
+            if (userId) {
+                try {
+                    // First, check limits and membership status
+                    console.log('[CreatePost] Checking limits and membership...');
+                    const limitsData = await ForumAPI.checkLimits();
+
+                    if (limitsData.success) {
+                        const postLimit = limitsData.limits.post;
+                        isProMember = limitsData.membership?.is_pro || false;
+
+                        // Check if limit reached
+                        // limit === null means unlimited (Pro)
+                        if (postLimit.limit !== null && postLimit.remaining <= 0) {
+                            console.warn('[CreatePost] Daily limit reached:', postLimit);
+
+                            // Custom Styled Modal
+                            const modal = document.createElement('div');
+                            modal.className = 'fixed inset-0 bg-background/90 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-fade-in';
+                            modal.innerHTML = `
                                             <div class="bg-surface w-full max-w-sm p-6 rounded-3xl border border-white/10 shadow-2xl animate-scale-in text-center">
                                                 <div class="w-16 h-16 bg-warning/10 rounded-full flex items-center justify-center mx-auto mb-5 border border-warning/20">
                                                     <i data-lucide="lock" class="w-8 h-8 text-warning"></i>
@@ -906,146 +1071,146 @@ const ForumApp = {
                                                 </div>
                                             </div>
                                         `;
-                                        document.body.appendChild(modal);
-                                        if (window.lucide) lucide.createIcons();
+                            document.body.appendChild(modal);
+                            if (window.lucide) lucide.createIcons();
 
-                                        resetButton();
-                                        return; // STOP HERE - Do not proceed to payment
-                                    }
-                                }
-                            } catch (error) {
-                                console.warn('[CreatePost] Failed to check limits:', error);
-                                // Optional: Decide whether to block or proceed if check fails. 
-                                // Ideally we should probably warn but maybe let them try? 
-                                // For safety, let's proceed but log the error.
-                            }
+                            resetButton();
+                            return; // STOP HERE - Do not proceed to payment
                         }
-                        
-                        console.log(`[CreatePost] User: ${userId}, IsPro: ${isProMember}, Amount: ${postAmount}`);
-                    
-                        if (isProMember) {
-                            txHash = "pro_member_free"; 
-                            console.log('[CreatePost] Pro member, skipping payment');
-                        } else {
-                            try {
-                                if (isPi && window.Pi) {
-                                    console.log('[CreatePost] Starting Pi Payment flow...');
-                                    try {
-                                        await Pi.authenticate(['payments'], () => {});
-                                    } catch (authErr) {
-                                        console.error('[CreatePost] Pi Auth failed:', authErr);
-                                        showToast('支付權限不足，請重新登入', 'error');
-                                        resetButton();
-                                        return;
-                                    }
-                    
-                                    let paymentComplete = false;
-                                    let paymentError = null;
-                                    let serverCompletionCalled = false;
-                    
-                                    await Pi.createPayment({
-                                        amount: postAmount,
-                                        memo: `發文: ${title.substring(0, 20)}`,
-                                        metadata: { type: "create_post" }
-                                    }, {
-                                        onReadyForServerApproval: async (paymentId) => {
-                                            console.log('[CreatePost] onReadyForServerApproval', paymentId);
-                                            try {
-                                                await fetch('/api/user/payment/approve', {
-                                                    method: 'POST',
-                                                    headers: { 'Content-Type': 'application/json' },
-                                                    body: JSON.stringify({ paymentId })
-                                                });
-                                            } catch (e) {
-                                                console.error('[CreatePost] Approve failed:', e);
-                                                // Don't throw here, let Pi SDK handle timeout if needed
-                                            }
-                                        },
-                                        onReadyForServerCompletion: async (paymentId, txid) => {
-                                            console.log('[CreatePost] onReadyForServerCompletion', paymentId, txid);
-                                            txHash = txid; // CRITICAL: Capture txid immediately
-                                            serverCompletionCalled = true;
-                                            
-                                            // Non-blocking call to server completion
-                                            fetch('/api/user/payment/complete', {
-                                                method: 'POST',
-                                                headers: { 'Content-Type': 'application/json' },
-                                                body: JSON.stringify({ paymentId, txid })
-                                            }).then(res => {
-                                                console.log('[CreatePost] Server completion notified:', res.status);
-                                            }).catch(err => {
-                                                console.error('[CreatePost] Server completion notification failed (ignoring):', err);
-                                            }).finally(() => {
-                                                paymentComplete = true; // Mark done regardless of backend success
-                                            });
-                                        },
-                                        onCancel: (paymentId) => {
-                                            console.log('[CreatePost] Payment cancelled', paymentId);
-                                            paymentError = 'CANCELLED';
-                                        },
-                                        onError: (error) => {
-                                            console.error('[CreatePost] Payment error', error);
-                                            paymentError = error?.message || 'ERROR';
-                                        }
-                                    });
-                    
-                                    // Wait for txHash (preferred) or paymentComplete flag
-                                    console.log('[CreatePost] Waiting for payment result...');
-                                    const startTime = Date.now();
-                                    
-                                    while (!txHash && !paymentError && (Date.now() - startTime) < 120000) {
-                                        if (serverCompletionCalled && txHash) break; // We have what we need
-                                        await new Promise(r => setTimeout(r, 500));
-                                    }
-                    
-                                    if (paymentError) {
-                                        showToast(paymentError === 'CANCELLED' ? '支付已取消' : '支付失敗', 'warning');
-                                        resetButton();
-                                        return;
-                                    }
+                    }
+                } catch (error) {
+                    console.warn('[CreatePost] Failed to check limits:', error);
+                    // Optional: Decide whether to block or proceed if check fails. 
+                    // Ideally we should probably warn but maybe let them try? 
+                    // For safety, let's proceed but log the error.
+                }
+            }
 
-                                    if (!txHash) {
-                                        console.error('[CreatePost] Payment timed out (no txHash)');
-                                        showToast('支付超時或狀態異常，請聯繫管理員', 'warning');
-                                        resetButton();
-                                        return;
-                                    }
-                                    
-                                    console.log('[CreatePost] Payment successful, txHash:', txHash);
+            console.log(`[CreatePost] User: ${userId}, IsPro: ${isProMember}, Amount: ${postAmount}`);
 
-                                } else {
-                                    console.log('[CreatePost] Mock payment (Non-Pi Env)');
-                                    txHash = "mock_" + Date.now();
-                                }
-                            } catch (paymentError) {
-                                console.error('[CreatePost] Exception during payment setup:', paymentError);
-                                showToast('支付過程中發生錯誤', 'error');
-                                resetButton();
-                                return;
-                            }
-                        }
-                    
+            if (isProMember) {
+                txHash = "pro_member_free";
+                console.log('[CreatePost] Pro member, skipping payment');
+            } else {
+                try {
+                    if (isPi && window.Pi) {
+                        console.log('[CreatePost] Starting Pi Payment flow...');
                         try {
-                            const postData = {
-                                board_slug: 'crypto',
-                                category,
-                                title,
-                                content,
-                                tags,
-                                payment_tx_hash: txHash
-                            };
+                            await Pi.authenticate(['payments'], () => { });
+                        } catch (authErr) {
+                            console.error('[CreatePost] Pi Auth failed:', authErr);
+                            showToast('支付權限不足，請重新登入', 'error');
+                            resetButton();
+                            return;
+                        }
 
-                            console.log('[Forum] Sending post data:', postData);
-                            const result = await ForumAPI.createPost(postData);
-                            console.log('[Forum] Post created successfully:', result);
+                        let paymentComplete = false;
+                        let paymentError = null;
+                        let serverCompletionCalled = false;
 
-                            const container = document.getElementById('toast-container');
-                            if (container) container.innerHTML = '';
+                        await Pi.createPayment({
+                            amount: postAmount,
+                            memo: `發文: ${title.substring(0, 20)}`,
+                            metadata: { type: "create_post" }
+                        }, {
+                            onReadyForServerApproval: async (paymentId) => {
+                                console.log('[CreatePost] onReadyForServerApproval', paymentId);
+                                try {
+                                    await fetch('/api/user/payment/approve', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ paymentId })
+                                    });
+                                } catch (e) {
+                                    console.error('[CreatePost] Approve failed:', e);
+                                    // Don't throw here, let Pi SDK handle timeout if needed
+                                }
+                            },
+                            onReadyForServerCompletion: async (paymentId, txid) => {
+                                console.log('[CreatePost] onReadyForServerCompletion', paymentId, txid);
+                                txHash = txid; // CRITICAL: Capture txid immediately
+                                serverCompletionCalled = true;
 
-                            // Success Modal
-                            const successModal = document.createElement('div');
-                            successModal.className = 'fixed inset-0 bg-background/90 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-fade-in';
-                            successModal.innerHTML = `
+                                // Non-blocking call to server completion
+                                fetch('/api/user/payment/complete', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ paymentId, txid })
+                                }).then(res => {
+                                    console.log('[CreatePost] Server completion notified:', res.status);
+                                }).catch(err => {
+                                    console.error('[CreatePost] Server completion notification failed (ignoring):', err);
+                                }).finally(() => {
+                                    paymentComplete = true; // Mark done regardless of backend success
+                                });
+                            },
+                            onCancel: (paymentId) => {
+                                console.log('[CreatePost] Payment cancelled', paymentId);
+                                paymentError = 'CANCELLED';
+                            },
+                            onError: (error) => {
+                                console.error('[CreatePost] Payment error', error);
+                                paymentError = error?.message || 'ERROR';
+                            }
+                        });
+
+                        // Wait for txHash (preferred) or paymentComplete flag
+                        console.log('[CreatePost] Waiting for payment result...');
+                        const startTime = Date.now();
+
+                        while (!txHash && !paymentError && (Date.now() - startTime) < 120000) {
+                            if (serverCompletionCalled && txHash) break; // We have what we need
+                            await new Promise(r => setTimeout(r, 500));
+                        }
+
+                        if (paymentError) {
+                            showToast(paymentError === 'CANCELLED' ? '支付已取消' : '支付失敗', 'warning');
+                            resetButton();
+                            return;
+                        }
+
+                        if (!txHash) {
+                            console.error('[CreatePost] Payment timed out (no txHash)');
+                            showToast('支付超時或狀態異常，請聯繫管理員', 'warning');
+                            resetButton();
+                            return;
+                        }
+
+                        console.log('[CreatePost] Payment successful, txHash:', txHash);
+
+                    } else {
+                        console.log('[CreatePost] Mock payment (Non-Pi Env)');
+                        txHash = "mock_" + Date.now();
+                    }
+                } catch (paymentError) {
+                    console.error('[CreatePost] Exception during payment setup:', paymentError);
+                    showToast('支付過程中發生錯誤', 'error');
+                    resetButton();
+                    return;
+                }
+            }
+
+            try {
+                const postData = {
+                    board_slug: 'crypto',
+                    category,
+                    title,
+                    content,
+                    tags,
+                    payment_tx_hash: txHash
+                };
+
+                console.log('[Forum] Sending post data:', postData);
+                const result = await ForumAPI.createPost(postData);
+                console.log('[Forum] Post created successfully:', result);
+
+                const container = document.getElementById('toast-container');
+                if (container) container.innerHTML = '';
+
+                // Success Modal
+                const successModal = document.createElement('div');
+                successModal.className = 'fixed inset-0 bg-background/90 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-fade-in';
+                successModal.innerHTML = `
                                 <div class="bg-surface w-full max-w-sm p-6 rounded-3xl border border-white/10 shadow-2xl animate-scale-in text-center">
                                     <div class="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-5 border border-success/20">
                                         <i data-lucide="check-circle-2" class="w-8 h-8 text-success"></i>
@@ -1060,48 +1225,94 @@ const ForumApp = {
                                     </button>
                                 </div>
                             `;
-                            document.body.appendChild(successModal);
-                            if (window.lucide) lucide.createIcons();
+                document.body.appendChild(successModal);
+                if (window.lucide) lucide.createIcons();
 
-                            // Determine redirect URL
-                            const targetUrl = result.post_id 
-                                ? `/static/forum/post.html?id=${result.post_id}` 
-                                : '/static/forum/index.html';
+                // Determine redirect URL
+                const targetUrl = result.post_id
+                    ? `/static/forum/post.html?id=${result.post_id}`
+                    : '/static/forum/index.html';
 
-                            // Redirect Action
-                            const doRedirect = () => {
-                                console.log('[Forum] Redirecting to:', targetUrl);
-                                try {
-                                    window.location.assign(targetUrl);
-                                } catch (e) {
-                                    window.location.href = targetUrl;
-                                }
-                            };
+                // Redirect Action
+                const doRedirect = () => {
+                    console.log('[Forum] Redirecting to:', targetUrl);
+                    try {
+                        window.location.assign(targetUrl);
+                    } catch (e) {
+                        window.location.href = targetUrl;
+                    }
+                };
 
-                            // Bind button
-                            document.getElementById('btn-go-now').onclick = doRedirect;
+                // Bind button
+                document.getElementById('btn-go-now').onclick = doRedirect;
 
-                            // Auto redirect
-                            setTimeout(doRedirect, 2000);
+                // Auto redirect
+                setTimeout(doRedirect, 2000);
 
-                            // Update button state (just in case)
-                            if (submitBtn) {
-                                submitBtn.disabled = true;
-                                submitBtn.innerHTML = '<i class="w-4 h-4 animate-spin" data-lucide="loader-2"></i> Redirecting...';
-                                if (window.lucide) lucide.createIcons();
-                            }
+                // Update button state (just in case)
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<i class="w-4 h-4 animate-spin" data-lucide="loader-2"></i> Redirecting...';
+                    if (window.lucide) lucide.createIcons();
+                }
 
-                        } catch (err) {
-                            console.error('[Forum] CreatePost API failed:', err);
-                            // If payment was made but post failed, we should alert the user to copy their content
-                            if (txHash && txHash !== "pro_member_free" && !txHash.startsWith("mock_")) {
-                                alert(`發文失敗但支付可能已成功。\n請保存您的交易 ID: ${txHash}\n並聯繫管理員處理。\n\n錯誤: ${err.message}`);
-                            } else {
-                                showToast('發布失敗: ' + err.message, 'error');
-                            }
-                            resetButton();
-                        }
-                    });    },
+            } catch (err) {
+                console.error('[Forum] CreatePost API failed:', err);
+                // If payment was made but post failed, we should alert the user to copy their content
+                if (txHash && txHash !== "pro_member_free" && !txHash.startsWith("mock_")) {
+                    // 顯示友好的錯誤 Modal 而非 alert
+                    const errorModal = document.createElement('div');
+                    errorModal.className = 'fixed inset-0 bg-background/90 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-fade-in';
+                    errorModal.innerHTML = `
+                        <div class="bg-surface w-full max-w-md p-6 rounded-3xl border border-white/10 shadow-2xl animate-scale-in">
+                            <div class="w-16 h-16 bg-danger/10 rounded-full flex items-center justify-center mx-auto mb-5 border border-danger/20">
+                                <i data-lucide="alert-triangle" class="w-8 h-8 text-danger"></i>
+                            </div>
+                            <h3 class="text-xl font-bold text-secondary mb-3 text-center">發文失敗但支付已完成</h3>
+                            <div class="text-textMuted text-sm mb-4 leading-relaxed">
+                                <p class="mb-2">您的支付已成功，但文章發布失敗。請保存以下交易 ID 並聯繫客服處理：</p>
+                                <div class="bg-background/50 p-3 rounded-xl border border-white/10 mb-3">
+                                    <div class="text-xs text-textMuted mb-1">交易 ID</div>
+                                    <div class="text-textMain font-mono text-xs break-all" id="error-txhash">${txHash}</div>
+                                </div>
+                                <p class="text-xs opacity-60">錯誤訊息：${err.message}</p>
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <button id="copy-txhash-btn" class="w-full py-3 bg-primary hover:brightness-110 text-background font-bold rounded-2xl transition shadow-lg flex items-center justify-center gap-2">
+                                    <i data-lucide="copy" class="w-4 h-4"></i>
+                                    <span>複製交易 ID</span>
+                                </button>
+                                <button onclick="this.closest('.fixed').remove()" class="w-full py-3 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-2xl transition border border-white/5">
+                                    關閉
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    document.body.appendChild(errorModal);
+                    if (window.lucide) lucide.createIcons();
+
+                    // 複製功能
+                    document.getElementById('copy-txhash-btn').onclick = () => {
+                        navigator.clipboard.writeText(txHash).then(() => {
+                            showToast('交易 ID 已複製', 'success');
+                        }).catch(() => {
+                            // Fallback for older browsers
+                            const textArea = document.createElement('textarea');
+                            textArea.value = txHash;
+                            document.body.appendChild(textArea);
+                            textArea.select();
+                            document.execCommand('copy');
+                            document.body.removeChild(textArea);
+                            showToast('交易 ID 已複製', 'success');
+                        });
+                    };
+                } else {
+                    showToast('發布失敗: ' + err.message, 'error');
+                }
+                resetButton();
+            }
+        });
+    },
 
     // ===========================================
     // Dashboard Logic
@@ -1115,10 +1326,10 @@ const ForumApp = {
         }
 
         const user = AuthManager.currentUser;
-        
+
         const usernameEl = document.getElementById('nav-username');
         const avatarEl = document.getElementById('nav-avatar');
-        
+
         if (usernameEl) {
             usernameEl.textContent = user.username || user.pi_username || 'User';
         }
@@ -1157,7 +1368,7 @@ const ForumApp = {
                 statusText.textContent = '已連接';
                 statusText.classList.remove('text-textMuted', 'text-danger');
                 statusText.classList.add('text-success');
-                
+
                 if (iconEl) {
                     iconEl.classList.remove('bg-primary/20');
                     iconEl.classList.add('bg-success/20');
@@ -1208,9 +1419,9 @@ const ForumApp = {
                 const s = data.stats;
                 const postCountEl = document.getElementById('dash-post-count');
                 const tipsRecEl = document.getElementById('dash-tips-received');
-                
+
                 if (postCountEl) postCountEl.textContent = s.post_count || 0;
-                if (tipsRecEl) tipsRecEl.textContent = s.tips_received || 0; 
+                if (tipsRecEl) tipsRecEl.textContent = s.tips_received || 0;
             }
 
             const sentData = await ForumAPI.getMyTipsSent();
@@ -1218,7 +1429,7 @@ const ForumApp = {
             if (tipsSentEl) {
                 if (sentData.success && sentData.tips) {
                     const totalSent = sentData.tips.reduce((acc, tip) => acc + (tip.amount || 0), 0);
-                    tipsSentEl.textContent = totalSent.toFixed(1); 
+                    tipsSentEl.textContent = totalSent.toFixed(1);
                 } else {
                     tipsSentEl.textContent = "0";
                 }
@@ -1245,9 +1456,9 @@ const ForumApp = {
             posts.forEach(post => {
                 const el = document.createElement('div');
                 el.className = 'flex items-center justify-between border-b border-white/5 pb-3 last:border-0 last:pb-0';
-                
+
                 const netVotes = (post.push_count || 0) - (post.boo_count || 0);
-                
+
                 el.innerHTML = `
                     <div class="overflow-hidden mr-4">
                          <a href="/static/forum/post.html?id=${post.id}" class="font-bold text-textMain hover:text-primary transition truncate block">${post.title}</a>
@@ -1271,49 +1482,76 @@ const ForumApp = {
     },
 
     async loadTransactions() {
-         const container = document.getElementById('dash-tx-list');
-         if (!container) return;
-         
-         try {
-             const [paymentsData, tipsSentData] = await Promise.all([
-                 ForumAPI.getMyPayments(),
-                 ForumAPI.getMyTipsSent()
-             ]);
+        const container = document.getElementById('dash-tx-list');
+        if (!container) return;
 
-             const payments = (paymentsData.payments || [])
-                 .filter(p => p.tx_hash !== 'pro_member_free')
-                 .map(p => ({...p, type: 'post_payment', amount: -1.0})); 
-             const tips = (tipsSentData.tips || []).map(t => ({...t, type: 'tip_sent', amount: -t.amount, title: `Tip: ${t.post_title || 'Post'}`}));
-             
-             const allTx = [...payments, ...tips].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-             
-             container.innerHTML = '';
-             if (allTx.length === 0) {
-                 container.innerHTML = '<div class="text-center text-textMuted py-4">No transactions</div>';
-                 return;
-             }
-             
-             allTx.slice(0, 20).forEach((tx, idx) => { 
-                 const el = document.createElement('div');
-                 el.className = 'flex items-center justify-between border-b border-white/5 py-4 hover:bg-white/5 px-2 rounded-xl transition cursor-pointer last:border-0';
-                 
-                 el.dataset.txData = JSON.stringify(tx);
-                 el.onclick = function() {
-                     ForumApp.showTransactionDetail(tx);
-                 };
+        try {
+            // 使用 Promise.allSettled 確保部分 API 失敗時仍能顯示可用數據
+            const results = await Promise.allSettled([
+                ForumAPI.getMyPayments(),
+                ForumAPI.getMyTipsSent()
+            ]);
 
-                 let icon = 'credit-card';
-                 let title = 'Payment';
-                 
-                 if (tx.type === 'post_payment') {
-                     title = 'Post Fee';
-                     icon = 'file-text';
-                 } else if (tx.type === 'tip_sent') {
-                     title = 'Tip Sent';
-                     icon = 'gift';
-                 }
+            // 記錄失敗的 API
+            results.forEach((result, index) => {
+                if (result.status === 'rejected') {
+                    const apiNames = ['getMyPayments', 'getMyTipsSent'];
+                    console.warn(`[Dashboard] ${apiNames[index]} failed:`, result.reason);
+                }
+            });
 
-                 el.innerHTML = `
+            // 提取數據，失敗時使用空數組
+            const paymentsData = results[0].status === 'fulfilled' ? results[0].value : { payments: [] };
+            const tipsSentData = results[1].status === 'fulfilled' ? results[1].value : { tips: [] };
+
+            const payments = (paymentsData.payments || [])
+                // 保留 PRO 會員免費發文記錄但標記為免費
+                .map(p => {
+                    const isFree = p.tx_hash === 'pro_member_free';
+                    return {
+                        ...p,
+                        type: isFree ? 'post_payment_free' : 'post_payment',
+                        amount: isFree ? 0 : -(p.amount || getPrice('create_post') || 0),
+                        isFree: isFree
+                    };
+                });
+            const tips = (tipsSentData.tips || []).map(t => ({ ...t, type: 'tip_sent', amount: -t.amount, title: `Tip: ${t.post_title || 'Post'}` }));
+
+            const allTx = [...payments, ...tips].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+            container.innerHTML = '';
+            if (allTx.length === 0) {
+                container.innerHTML = '<div class="text-center text-textMuted py-4">No transactions</div>';
+                return;
+            }
+
+            allTx.slice(0, 20).forEach((tx, idx) => {
+                const el = document.createElement('div');
+                el.className = 'flex items-center justify-between border-b border-white/5 py-4 hover:bg-white/5 px-2 rounded-xl transition cursor-pointer last:border-0';
+
+                el.dataset.txData = JSON.stringify(tx);
+                el.onclick = function () {
+                    ForumApp.showTransactionDetail(tx);
+                };
+
+                let icon = 'credit-card';
+                let title = 'Payment';
+
+                if (tx.type === 'post_payment') {
+                    icon = 'file-text';
+                    title = 'Post Fee';
+                } else if (tx.type === 'post_payment_free') {
+                    icon = 'file-text';
+                    title = 'Post (FREE)';
+                } else if (tx.type === 'tip_sent') {
+                    icon = 'gift';
+                    title = tx.title || 'Tip Sent';
+                }
+
+                const amountClass = tx.isFree ? 'text-success' : (tx.amount < 0 ? 'text-danger' : 'text-success');
+                const amountText = tx.isFree ? 'FREE' : `${tx.amount > 0 ? '+' : ''}${Math.abs(tx.amount).toFixed(1)} Pi`;
+
+                el.innerHTML = `
                     <div class="flex items-center gap-3 overflow-hidden">
                          <div class="w-10 h-10 rounded-full bg-surfaceHighlight flex items-center justify-center shrink-0">
                             <i data-lucide="${icon}" class="w-5 h-5 text-textMuted"></i>
@@ -1324,24 +1562,24 @@ const ForumApp = {
                          </div>
                     </div>
                     <div class="text-right shrink-0">
-                        <div class="font-bold ${tx.amount < 0 ? 'text-danger' : 'text-success'}">${tx.amount.toFixed(1)} Pi</div>
-                        <div class="text-[10px] text-textMuted font-mono opacity-50">${(tx.tx_hash || tx.payment_tx_hash || '').substring(0,8)}...</div>
+                         <div class="font-bold ${amountClass}">${amountText}</div>
+                         <div class="text-[10px] text-textMuted opacity-60 mt-0.5">${formatTWDate(tx.created_at)}</div>
                     </div>
                  `;
-                 container.appendChild(el);
-             });
-             
-             if (window.lucide) lucide.createIcons();
-         } catch (e) {
-             console.error('loadTransactions error', e);
-             container.innerHTML = '<div class="text-center text-danger py-4">Failed to load</div>';
-         }
+                container.appendChild(el);
+            });
+
+            if (window.lucide) lucide.createIcons();
+        } catch (e) {
+            console.error('loadTransactions error', e);
+            container.innerHTML = '<div class="text-center text-danger py-4">Failed to load</div>';
+        }
     },
 
     showTransactionDetail(tx) {
         const txId = tx.tx_hash || tx.payment_tx_hash || 'N/A';
         const typeLabel = tx.type === 'post_payment' ? 'Post Publication Fee' : 'Article Tip Support';
-        const status = 'Completed'; 
+        const status = 'Completed';
         const memo = tx.title || (tx.type === 'post_payment' ? 'Forum Posting Fee' : 'Tip to Author');
 
         const modal = document.createElement('div');

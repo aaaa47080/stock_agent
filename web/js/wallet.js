@@ -7,7 +7,7 @@ const WalletApp = {
 
     async init() {
         this.log('Init called');
-        
+
         // Ensure AuthManager is ready
         if (typeof AuthManager === 'undefined') {
             this.log('AuthManager undefined');
@@ -34,7 +34,7 @@ const WalletApp = {
     async loadData() {
         this.log('Loading data...');
         const container = document.getElementById('wallet-tx-list');
-        
+
         if (!container) {
             this.log('Container not found');
             return;
@@ -59,36 +59,54 @@ const WalletApp = {
                 ForumAPI.getMyTipsReceived()   // 2: In: Tips received
             ]);
 
+            this.log('API Results:', {
+                payments: results[0].status,
+                tipsSent: results[1].status,
+                tipsReceived: results[2].status
+            });
+
+            // Extract data with comprehensive error handling
             const paymentsData = results[0].status === 'fulfilled' ? results[0].value : { payments: [] };
             const tipsSentData = results[1].status === 'fulfilled' ? results[1].value : { tips: [] };
             const tipsReceivedData = results[2].status === 'fulfilled' ? results[2].value : { tips: [] };
+
+            // Log any rejected promises for debugging
+            results.forEach((result, index) => {
+                if (result.status === 'rejected') {
+                    const apiNames = ['getMyPayments', 'getMyTipsSent', 'getMyTipsReceived'];
+                    console.warn(`[WalletApp] ${apiNames[index]} failed:`, result.reason);
+                }
+            });
 
             // Process Outgoing
             const payments = (paymentsData.payments || []).map(p => {
                 let type = 'post_payment';
                 let icon = 'file-text';
-                
+
                 if (p.type === 'membership') {
                     type = 'membership_payment';
                     icon = 'crown';
                 }
 
+                // 使用後端返回的金額，如果沒有則嘗試從全域配置取得
+                const priceKey = type === 'membership_payment' ? 'premium' : 'create_post';
+                const fallbackPrice = window.PiPrices?.[priceKey] || 0;
                 return {
                     ...p,
                     type: type,
-                    amount: -(p.amount || 1.0), // Ensure expense is negative
+                    amount: -(p.amount || fallbackPrice), // Ensure expense is negative
                     icon: icon
                 };
             });
 
             const tipsSent = (tipsSentData.tips || [])
-                .map(t => ({...t, type: 'tip_sent', amount: -(t.amount || 0), title: `Tip: ${t.post_title || 'Post'}`}));
+                .map(t => ({ ...t, type: 'tip_sent', amount: -(t.amount || 0), title: `Tip: ${t.post_title || 'Post'}` }));
 
             // Process Incoming
             const tipsReceived = (tipsReceivedData.tips || [])
-                .map(t => ({...t, type: 'tip_received', amount: (t.amount || 0), title: `Tip from ${t.from_username || 'User'}`}));
+                .map(t => ({ ...t, type: 'tip_received', amount: (t.amount || 0), title: `Tip from ${t.from_username || 'User'}` }));
 
-            // Combine & Sort & Store globally
+            // Combine & Sort & Store globally - ALWAYS initialize even if empty
             this.allTransactions = [...payments, ...tipsSent, ...tipsReceived]
                 .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
@@ -99,16 +117,33 @@ const WalletApp = {
 
         } catch (e) {
             console.error('[WalletApp] Load Error:', e);
-            this.renderError(e.message);
+            // Initialize empty array to prevent undefined errors
+            this.allTransactions = [];
+            this.renderError(e.message || 'Unknown error occurred');
         }
     },
 
+    handleTimeFilterChange(selectEl) {
+        const customRangeEl = document.getElementById('wallet-custom-date-range');
+        if (!customRangeEl) return;
+
+        if (selectEl.value === 'custom') {
+            customRangeEl.classList.remove('hidden');
+        } else {
+            customRangeEl.classList.add('hidden');
+        }
+        this.applyFilters();
+    },
+
     applyFilters() {
-        if (!this.allTransactions) return;
+        // Initialize as empty array if undefined (defensive programming)
+        if (!this.allTransactions) {
+            this.allTransactions = [];
+        }
 
         const typeFilter = document.getElementById('wallet-filter-type')?.value || 'all';
         const timeFilter = document.getElementById('wallet-filter-time')?.value || 'all';
-        
+
         const now = Date.now();
         const oneDay = 24 * 60 * 60 * 1000;
 
@@ -123,8 +158,23 @@ const WalletApp = {
 
             // 2. Filter by Time
             let timeMatch = true;
-            if (timeFilter !== 'all') {
-                const txTime = new Date(tx.created_at).getTime();
+            const txTime = new Date(tx.created_at).getTime();
+
+            if (timeFilter === 'custom') {
+                const startStr = document.getElementById('wallet-date-start')?.value;
+                const endStr = document.getElementById('wallet-date-end')?.value;
+
+                if (startStr) {
+                    const startDate = new Date(startStr);
+                    startDate.setHours(0, 0, 0, 0);
+                    if (txTime < startDate.getTime()) timeMatch = false;
+                }
+                if (endStr) {
+                    const endDate = new Date(endStr);
+                    endDate.setHours(23, 59, 59, 999);
+                    if (txTime > endDate.getTime()) timeMatch = false;
+                }
+            } else if (timeFilter !== 'all') {
                 const days = parseInt(timeFilter);
                 timeMatch = (now - txTime) < (days * oneDay);
             }
@@ -136,7 +186,7 @@ const WalletApp = {
         // This gives users insight into "How much did I spend on TIPS in the last 7 DAYS"
         const totalOutEl = document.getElementById('wallet-total-out');
         const totalInEl = document.getElementById('wallet-total-in');
-        
+
         const totalOut = filtered.filter(t => t.amount < 0).reduce((acc, t) => acc + Math.abs(t.amount), 0);
         const totalIn = filtered.filter(t => t.amount > 0).reduce((acc, t) => acc + t.amount, 0);
 
@@ -151,7 +201,7 @@ const WalletApp = {
         if (!container) return;
 
         container.innerHTML = '';
-        
+
         if (list.length === 0) {
             this.renderEmptyState('No transactions found matching filters');
             return;
@@ -160,12 +210,12 @@ const WalletApp = {
         list.forEach(tx => {
             const el = document.createElement('div');
             el.className = 'flex items-center justify-between border-b border-white/5 py-4 hover:bg-white/5 px-3 rounded-2xl transition cursor-pointer last:border-0 group animate-fade-in-up';
-            
+
             let icon = 'circle-dollar-sign';
             let title = 'Transaction';
             let subtext = '';
             let colorClass = tx.amount < 0 ? 'bg-danger/10 text-danger' : 'bg-success/10 text-success';
-            
+
             if (tx.type === 'post_payment') {
                 title = 'Post Fee';
                 subtext = tx.title || 'Forum Post';
@@ -206,7 +256,7 @@ const WalletApp = {
             `;
             container.appendChild(el);
         });
-        
+
         if (window.lucide) lucide.createIcons();
     },
 
@@ -249,8 +299,8 @@ const WalletApp = {
     formatDate(dateStr) {
         try {
             const date = new Date(dateStr);
-            return date.toLocaleDateString('zh-TW', { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
-        } catch(e) {
+            return date.toLocaleDateString('zh-TW', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        } catch (e) {
             return dateStr;
         }
     }
@@ -258,10 +308,10 @@ const WalletApp = {
 
 // Auto-init if tab is already active (e.g. reload)
 document.addEventListener('DOMContentLoaded', () => {
-   // Wait for auth to be ready
-   setTimeout(() => {
-       if (document.getElementById('wallet-tab') && !document.getElementById('wallet-tab').classList.contains('hidden')) {
-           WalletApp.init();
-       }
-   }, 1000);
+    // Wait for auth to be ready
+    setTimeout(() => {
+        if (document.getElementById('wallet-tab') && !document.getElementById('wallet-tab').classList.contains('hidden')) {
+            WalletApp.init();
+        }
+    }, 1000);
 });

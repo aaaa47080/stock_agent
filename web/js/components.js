@@ -160,7 +160,7 @@ const Components = {
                                     綁定 Pi 錢包後可以：
                                 </p>
                                 <ul class="text-xs text-textMuted mt-2 space-y-1 ml-5">
-                                    <li>• 在論壇發布文章（需支付 <span data-price="create_post">1 Pi</span>）</li>
+                                    <li>• 在論壇發布文章（需支付 <span data-price="create_post"><i data-lucide="loader" class="w-3 h-3 animate-spin inline-block"></i></span>）</li>
                                     <li>• 打賞優質內容創作者</li>
                                     <li>• 接收來自其他用戶的打賞</li>
                                 </ul>

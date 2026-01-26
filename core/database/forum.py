@@ -8,7 +8,7 @@ from datetime import datetime
 
 from .connection import get_connection
 from .user import get_user_membership
-from core.config import FORUM_LIMITS
+from .system_config import get_limits
 
 
 # ============================================================================
@@ -75,8 +75,9 @@ def check_daily_post_limit(user_id: str) -> Dict:
         membership = get_user_membership(user_id)
         is_premium = membership['is_pro']
 
-        # 獲取對應的限制
-        limit = FORUM_LIMITS["daily_post_premium"] if is_premium else FORUM_LIMITS["daily_post_free"]
+        # 獲取對應的限制（從數據庫動態讀取）
+        limits = get_limits()
+        limit = limits["daily_post_premium"] if is_premium else limits["daily_post_free"]
 
         # 如果無限制，直接返回允許
         if limit is None:
@@ -110,9 +111,46 @@ def create_post(board_id: int, user_id: str, category: str, title: str, content:
 
     skip_limit_check: 跳過限制檢查（用於 PRO 會員等特殊情況）
     """
+    # 內容長度限制
+    MAX_TITLE_LENGTH = 200
+    MAX_CONTENT_LENGTH = 10000
+    # 標籤數量上限
+    MAX_TAGS_PER_POST = 5
+    
     conn = get_connection()
     c = conn.cursor()
     try:
+        # 檢查標題長度
+        if not title or len(title.strip()) == 0:
+            return {"success": False, "error": "title_required"}
+        if len(title) > MAX_TITLE_LENGTH:
+            return {
+                "success": False,
+                "error": "title_too_long",
+                "max_length": MAX_TITLE_LENGTH,
+                "current_length": len(title)
+            }
+        
+        # 檢查內容長度
+        if not content or len(content.strip()) == 0:
+            return {"success": False, "error": "content_required"}
+        if len(content) > MAX_CONTENT_LENGTH:
+            return {
+                "success": False,
+                "error": "content_too_long",
+                "max_length": MAX_CONTENT_LENGTH,
+                "current_length": len(content)
+            }
+        
+        # 檢查標籤數量
+        if tags and len(tags) > MAX_TAGS_PER_POST:
+            return {
+                "success": False,
+                "error": "too_many_tags",
+                "max_tags": MAX_TAGS_PER_POST,
+                "provided": len(tags)
+            }
+        
         # 檢查每日發文限制（免費會員）
         if not skip_limit_check:
             limit_check = check_daily_post_limit(user_id)
@@ -124,6 +162,9 @@ def create_post(board_id: int, user_id: str, category: str, title: str, content:
                     "count": limit_check["count"]
                 }
 
+        # ===== 以下所有操作在單一事務中 =====
+        
+        # 1. 創建文章
         tags_json = json.dumps(tags, ensure_ascii=False) if tags else None
         c.execute('''
             INSERT INTO posts (board_id, user_id, category, title, content, tags, payment_tx_hash, created_at, updated_at)
@@ -132,10 +173,10 @@ def create_post(board_id: int, user_id: str, category: str, title: str, content:
 
         post_id = c.lastrowid
 
-        # 更新看板文章數
+        # 2. 更新看板文章數
         c.execute('UPDATE boards SET post_count = post_count + 1 WHERE id = ?', (board_id,))
 
-        # 處理標籤
+        # 3. 處理標籤
         if tags:
             for tag_name in tags:
                 tag_name = tag_name.strip().upper()
@@ -155,7 +196,7 @@ def create_post(board_id: int, user_id: str, category: str, title: str, content:
                 # 建立關聯
                 c.execute('INSERT OR IGNORE INTO post_tags (post_id, tag_id) VALUES (?, ?)', (post_id, tag_id))
 
-        # 更新每日發文計數
+        # 4. 更新每日發文計數（關鍵：必須在同一事務中）
         today = datetime.utcnow().strftime('%Y-%m-%d')
         c.execute('''
             INSERT INTO user_daily_posts (user_id, date, post_count)
@@ -163,11 +204,12 @@ def create_post(board_id: int, user_id: str, category: str, title: str, content:
             ON CONFLICT(user_id, date) DO UPDATE SET post_count = post_count + 1
         ''', (user_id, today))
 
+        # 全部成功才提交
         conn.commit()
         return {"success": True, "post_id": post_id}
     except Exception as e:
         print(f"Create post error: {e}")
-        conn.rollback()
+        conn.rollback()  # 全部回滾，確保數據一致性
         return {"success": False, "error": str(e)}
     finally:
         conn.close()
@@ -412,7 +454,8 @@ def add_comment(post_id: int, user_id: str, comment_type: str, content: str = No
         # 檢查每日回覆限制（免費會員）- 僅針對實際留言，推噓不計入
         if comment_type == 'comment':
             membership = get_user_membership(user_id)
-            limit = FORUM_LIMITS["daily_comment_premium"] if membership['is_pro'] else FORUM_LIMITS["daily_comment_free"]
+            limits = get_limits()
+            limit = limits["daily_comment_premium"] if membership['is_pro'] else limits["daily_comment_free"]
 
             # 如果有限制，檢查是否超過
             if limit is not None:
@@ -543,7 +586,8 @@ def get_daily_comment_count(user_id: str) -> Dict:
         count = row[0] if row else 0
 
         membership = get_user_membership(user_id)
-        limit = FORUM_LIMITS["daily_comment_premium"] if membership['is_pro'] else FORUM_LIMITS["daily_comment_free"]
+        limits = get_limits()
+        limit = limits["daily_comment_premium"] if membership['is_pro'] else limits["daily_comment_free"]
 
         return {
             "count": count,
@@ -565,7 +609,8 @@ def get_daily_post_count(user_id: str) -> Dict:
         count = row[0] if row else 0
 
         membership = get_user_membership(user_id)
-        limit = FORUM_LIMITS["daily_post_premium"] if membership['is_pro'] else FORUM_LIMITS["daily_post_free"]
+        limits = get_limits()
+        limit = limits["daily_post_premium"] if membership['is_pro'] else limits["daily_post_free"]
 
         return {
             "count": count,
@@ -781,10 +826,8 @@ def get_user_payment_history(user_id: str, limit: int = 50) -> List[Dict]:
     conn = get_connection()
     c = conn.cursor()
     try:
-        # 使用 UNION ALL 合併發文紀錄和會員購買紀錄
-        # 為了統一格式：
-        # - posts: title 是文章標題, amount 預設為 1.0 (發文費)
-        # - membership: title 格式化為 "Premium Membership (N Months)", amount 為實際記錄金額
+        # 使用 UNION（自動去重）合併發文紀錄和會員購買紀錄
+        # 避免同一個 tx_hash 出現兩次
         query = '''
             SELECT type, id, title, amount, tx_hash, created_at FROM (
                 -- 文章支付紀錄
@@ -798,7 +841,7 @@ def get_user_payment_history(user_id: str, limit: int = 50) -> List[Dict]:
                 FROM posts
                 WHERE user_id = ? AND payment_tx_hash IS NOT NULL AND payment_tx_hash != 'pro_member_free'
 
-                UNION ALL
+                UNION
 
                 -- 會員購買紀錄
                 SELECT 

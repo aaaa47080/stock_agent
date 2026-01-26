@@ -84,6 +84,25 @@ def get_user_by_username(username: str) -> Optional[Dict]:
         conn.close()
 
 
+def get_user_by_id(user_id: str) -> Optional[Dict]:
+    """根據 ID 獲取用戶信息"""
+    conn = get_connection()
+    c = conn.cursor()
+    try:
+        c.execute('SELECT user_id, username, email, auth_method FROM users WHERE user_id = ?', (user_id,))
+        row = c.fetchone()
+        if row:
+            return {
+                "user_id": row[0],
+                "username": row[1],
+                "email": row[2],
+                "auth_method": row[3]
+            }
+        return None
+    finally:
+        conn.close()
+
+
 def get_user_by_email(email: str) -> Optional[Dict]:
     """根據 Email 獲取用戶信息"""
     conn = get_connection()
@@ -166,17 +185,19 @@ def create_or_get_pi_user(pi_uid: str, username: str) -> Dict:
         c.execute('SELECT user_id, auth_method FROM users WHERE username = ?', (username,))
         existing = c.fetchone()
         if existing:
-            # 💡 修復：如果用戶名衝突，不報錯，而是自動加上隨機後綴
-            import random
+            # 💡 修復：如果用戶名衝突，自動加上隨機後綴（使用8位避免極端衝突）
             original_username = username
-            suffix = str(random.randint(1000, 9999))
+            # 使用 UUID 的前8位作為後綴，降低衝突機率
+            suffix = str(uuid.uuid4()).replace('-', '')[:8]
             username = f"{original_username}_{suffix}"
             print(f"[DEBUG] Username conflict: {original_username} taken. Assigned new username: {username}")
             
-            # 再次檢查新用戶名是否也衝突（極低機率）
+            # 理論上8位 UUID 衝突機率極低，但仍然檢查
             c.execute('SELECT 1 FROM users WHERE username = ?', (username,))
             if c.fetchone():
-                username = f"{original_username}_{str(uuid.uuid4())[:4]}"
+                # 極端情況：使用完整 UUID 確保唯一
+                username = f"{original_username}_{str(uuid.uuid4())}"
+                print(f"[DEBUG] Secondary collision detected, using full UUID: {username}")
 
         # 創建新 Pi 用戶
         print(f"[DEBUG] Creating new Pi user: pi_uid={pi_uid}, username={username}")
@@ -293,8 +314,22 @@ def get_user_wallet_status(user_id: str) -> Dict:
 # 會員等級
 # ============================================================================
 
-def get_user_membership(user_id: str) -> Dict:
-    """獲取用戶會員狀態（包含自動過期處理）"""
+def get_user_membership(user_id: str, auto_update_expired: bool = False) -> Dict:
+    """
+    獲取用戶會員狀態
+    
+    Args:
+        user_id: 用戶 ID
+        auto_update_expired: 是否自動更新過期會員狀態（默認 False，避免讀取中執行寫入）
+    
+    Returns:
+        {
+            "tier": str,
+            "expires_at": str | None,
+            "is_pro": bool,
+            "is_expired": bool  # 新增：標記是否已過期（但未更新）
+        }
+    """
     conn = get_connection()
     c = conn.cursor()
     try:
@@ -308,35 +343,64 @@ def get_user_membership(user_id: str) -> Dict:
             tier = row[0] or 'free'
             expires_at = row[1]
             is_pro = (tier == 'pro')
+            is_expired = False
 
-            # 檢查是否過期 (Lazy Expiration Check)
+            # 檢查是否過期（只檢查，不自動更新）
             if is_pro and expires_at:
                 try:
                     expire_dt = datetime.strptime(expires_at, '%Y-%m-%d %H:%M:%S')
                     if expire_dt < datetime.utcnow():
-                        # 已過期：更新資料庫為 free
-                        c.execute('''
-                            UPDATE users 
-                            SET membership_tier = 'free', membership_expires_at = NULL 
-                            WHERE user_id = ?
-                        ''', (user_id,))
-                        conn.commit()
+                        is_expired = True
                         
-                        # 重置變數
-                        tier = 'free'
-                        expires_at = None
-                        is_pro = False
-                        print(f"[Membership] User {user_id} expired, downgraded to free.")
+                        # 只有明確要求才自動更新
+                        if auto_update_expired:
+                            c.execute('''
+                                UPDATE users 
+                                SET membership_tier = 'free', membership_expires_at = NULL 
+                                WHERE user_id = ?
+                            ''', (user_id,))
+                            conn.commit()
+                            
+                            # 更新返回值
+                            tier = 'free'
+                            expires_at = None
+                            is_pro = False
+                            is_expired = False  # 已經更新了，不再是「過期未更新」狀態
+                            print(f"[Membership] User {user_id} expired, downgraded to free.")
                 except ValueError:
                     # 日期格式錯誤，視為過期
-                    pass
+                    is_expired = True
 
             return {
                 "tier": tier,
                 "expires_at": expires_at,
-                "is_pro": is_pro
+                "is_pro": is_pro and not is_expired,  # 已過期的不算 pro
+                "is_expired": is_expired
             }
-        return {"tier": "free", "expires_at": None, "is_pro": False}
+        return {"tier": "free", "expires_at": None, "is_pro": False, "is_expired": False}
+    finally:
+        conn.close()
+
+
+def expire_user_membership(user_id: str) -> bool:
+    """
+    手動將用戶會員狀態降級為免費（用於過期處理）
+    這是一個獨立的寫入方法，與讀取分離
+    """
+    conn = get_connection()
+    c = conn.cursor()
+    try:
+        c.execute('''
+            UPDATE users 
+            SET membership_tier = 'free', membership_expires_at = NULL 
+            WHERE user_id = ? AND membership_tier = 'pro'
+        ''', (user_id,))
+        conn.commit()
+        return c.rowcount > 0
+    except Exception as e:
+        print(f"Expire membership error: {e}")
+        conn.rollback()
+        return False
     finally:
         conn.close()
 
@@ -346,20 +410,30 @@ def upgrade_to_pro(user_id: str, months: int = 1, tx_hash: str = None) -> bool:
     conn = get_connection()
     c = conn.cursor()
     try:
+        # 0. 如果有交易哈希，檢查是否已被使用（防止重複提交）
+        if tx_hash:
+            c.execute('SELECT user_id FROM membership_payments WHERE tx_hash = ?', (tx_hash,))
+            existing = c.fetchone()
+            if existing:
+                print(f"[Upgrade] Duplicate tx_hash detected: {tx_hash} already used by user {existing[0]}")
+                raise ValueError(f"此交易已被處理（transaction hash已存在）")
+        
         # 1. 查詢當前狀態，決定是「新購」還是「續費」
         c.execute('SELECT membership_tier, membership_expires_at FROM users WHERE user_id = ?', (user_id,))
         row = c.fetchone()
         
+        if not row:
+            raise ValueError("用戶不存在")
+        
         is_active_pro = False
-        if row:
-            tier, expires_at_str = row
-            if tier == 'pro' and expires_at_str:
-                try:
-                    current_expires = datetime.strptime(expires_at_str, '%Y-%m-%d %H:%M:%S')
-                    if current_expires > datetime.utcnow():
-                        is_active_pro = True
-                except ValueError:
-                    pass
+        tier, expires_at_str = row
+        if tier == 'pro' and expires_at_str:
+            try:
+                current_expires = datetime.strptime(expires_at_str, '%Y-%m-%d %H:%M:%S')
+                if current_expires > datetime.utcnow():
+                    is_active_pro = True
+            except ValueError:
+                pass
 
         # 2. 更新會員狀態
         if is_active_pro:
@@ -381,8 +455,9 @@ def upgrade_to_pro(user_id: str, months: int = 1, tx_hash: str = None) -> bool:
         
         # 3. 如果有交易哈希，記錄支付流水帳
         if tx_hash:
-            from core.config import PI_PAYMENT_PRICES
-        amount = PI_PAYMENT_PRICES.get("premium", 1.0) * months
+            from core.database.system_config import get_prices
+            prices = get_prices()
+            amount = prices.get("premium", 1.0) * months
             c.execute('''
                 INSERT INTO membership_payments (user_id, amount, months, tx_hash, created_at)
                 VALUES (?, ?, ?, ?, datetime('now'))
@@ -390,8 +465,12 @@ def upgrade_to_pro(user_id: str, months: int = 1, tx_hash: str = None) -> bool:
 
         conn.commit()
         return c.rowcount > 0
+    except ValueError:
+        # 重複交易或用戶不存在等業務錯誤，不回滾（因為沒有執行任何寫入）
+        raise
     except Exception as e:
         print(f"Upgrade to pro error: {e}")
+        conn.rollback()
         return False
     finally:
         conn.close()

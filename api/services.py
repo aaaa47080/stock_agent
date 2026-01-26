@@ -239,7 +239,7 @@ async def refresh_all_market_pulse_data(target_symbols: List[str] = None):
     ANALYSIS_STATUS["start_time"] = now.isoformat()
     
     FIXED_SOURCES = ['google', 'cryptopanic', 'newsapi', 'cryptocompare']
-    sem = asyncio.Semaphore(5)
+    sem = asyncio.Semaphore(2)  # 減少並發數，避免 OKX API SSL 連接問題
     
     async def _tracked_update(sym):
         try:

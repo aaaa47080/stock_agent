@@ -301,8 +301,8 @@ async def reset_password(request: ResetPasswordRequest):
 
 # --- Pi Payment Handling Endpoints ---
 
-# 從 config 導入價格表
-from core.config import PI_PAYMENT_PRICES
+# 從數據庫獲取動態價格配置
+from core.database import get_prices
 
 class ApprovePaymentRequest(BaseModel):
     paymentId: str
@@ -351,8 +351,9 @@ async def approve_payment(request: ApprovePaymentRequest):
             metadata = payment_info.get("metadata", {})
             payment_type = metadata.get("type", "unknown")
 
-            # 查找預期價格
-            expected_amount = PI_PAYMENT_PRICES.get(payment_type)
+            # 查找預期價格（從數據庫動態獲取）
+            prices = get_prices()
+            expected_amount = prices.get(payment_type)
 
             if expected_amount is not None:
                 # 有定義價格的類型，進行驗證

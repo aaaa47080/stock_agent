@@ -89,17 +89,41 @@
 
             <!-- Title -->
             <div class="bg-surface border border-white/5 rounded-2xl p-4">
-                <label class="block text-xs font-bold text-textMuted uppercase mb-2">Title</label>
-                <input type="text" id="input-title" class="w-full bg-background border border-white/10 rounded-xl p-3 text-textMain focus:border-primary outline-none font-bold text-lg placeholder-textMuted/50" placeholder="Enter an interesting title..." maxlength="50" required>
-                <div class="text-right text-xs text-textMuted mt-1">Max 50 chars</div>
+                <div class="flex items-center justify-between mb-2">
+                    <label class="block text-xs font-bold text-textMuted uppercase">Title</label>
+                    <div id="title-counter" class="flex items-center gap-1.5 px-2 py-0.5 bg-background rounded-lg border border-white/10">
+                        <span class="text-xs font-mono">
+                            <span id="title-current" class="text-primary font-bold">0</span>
+                            <span class="text-textMuted">/</span>
+                            <span id="title-max" class="text-textMuted">200</span>
+                        </span>
+                    </div>
+                </div>
+                <input type="text" id="input-title" class="w-full bg-background border border-white/10 rounded-xl p-3 text-textMain focus:border-primary outline-none font-bold text-lg placeholder-textMuted/50" placeholder="Enter an interesting title..." maxlength="200" required>
+                <div class="flex items-center gap-2 text-xs text-textMuted mt-1.5 opacity-60">
+                    <i data-lucide="info" class="w-3 h-3"></i>
+                    <span>至少 1 字，最多 200 字</span>
+                </div>
             </div>
 
             <!-- Content -->
             <div class="bg-surface border border-white/5 rounded-2xl p-4">
-                <label class="block text-xs font-bold text-textMuted uppercase mb-2">Content (Markdown supported)</label>
-                <textarea id="input-content" class="w-full bg-background border border-white/10 rounded-xl p-3 text-textMain focus:border-primary outline-none min-h-[300px] font-mono text-sm leading-relaxed placeholder-textMuted/50" placeholder="Share your insights..." required></textarea>
-                <div class="flex items-center gap-2 mt-2 text-xs text-textMuted">
-                    <i data-lucide="info" class="w-3 h-3"></i> Use Markdown for formatting
+                <div class="flex items-center justify-between mb-2">
+                    <label class="block text-xs font-bold text-textMuted uppercase">Content (Markdown supported)</label>
+                    <div id="content-counter" class="flex items-center gap-1.5 px-2 py-0.5 bg-background rounded-lg border border-white/10">
+                        <span class="text-xs font-mono">
+                            <span id="content-current" class="text-primary font-bold">0</span>
+                            <span class="text-textMuted">/</span>
+                            <span id="content-max" class="text-textMuted">10000</span>
+                        </span>
+                    </div>
+                </div>
+                <textarea id="input-content" class="w-full bg-background border border-white/10 rounded-xl p-3 text-textMain focus:border-primary outline-none min-h-[300px] font-mono text-sm leading-relaxed placeholder-textMuted/50" placeholder="Share your insights..." maxlength="10000" required></textarea>
+                <div class="flex items-center justify-between mt-2 text-xs text-textMuted">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="info" class="w-3 h-3"></i> Use Markdown for formatting
+                    </div>
+                    <div class="opacity-60">至少 1 字，最多 10000 字</div>
                 </div>
             </div>
 
@@ -118,14 +142,14 @@
                         <span class="animate-pulse">Checking limits...</span>
                     </div>
                     <div>
-                        Cost to post: <span class="text-primary font-bold" data-price="create_post">1 Pi</span>
+                        Cost to post: <span class="text-primary font-bold" data-price="create_post"><i data-lucide="loader" class="w-3 h-3 animate-spin inline-block"></i></span>
                     </div>
                     <div class="text-[10px] opacity-60">
                         (Free for PRO members)
                     </div>
                 </div>
                 <button type="submit" class="w-full md:w-auto px-12 py-4 bg-gradient-to-r from-primary to-primary/80 hover:to-primary text-background font-bold text-lg rounded-xl shadow-lg shadow-primary/20 transition transform hover:-translate-y-1 flex items-center justify-center gap-2">
-                    <span>Pay <span data-price="create_post">1 Pi</span> & Post</span>
+                    <span>Pay <span data-price="create_post"><i data-lucide="loader" class="w-3 h-3 animate-spin inline-block"></i></span> & Post</span>
                     <i data-lucide="send" class="w-5 h-5"></i>
                 </button>
             </div>

@@ -1,2 +1,0 @@
-﻿symbol,signal,confidence,entry_price,stop_loss,take_profit,position_size,leverage,reasoning,market_type,exchange,account_balance
-PI-USDT,Hold,75.0,0.21,0.2,0.23,0.0,1,Fund Manager Hold: 當前單一週期分析顯示市場缺乏明確趨勢，多週期一致性評估為低，風險管理員建議完全調整至0%持倉以降低風險；綜合考量多週期不一致與風險審核結果，決定維持觀望，暫不開倉，待更明確的多週期趨勢信號後再行部署。,spot,okx,"{'total_balance': 569.0631555144553, 'available_balance': 569.0631555144553, 'currency': 'USDT'}"

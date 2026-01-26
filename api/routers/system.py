@@ -10,8 +10,9 @@ from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage
 
 from core.config import (
-    SUPPORTED_EXCHANGES, DEFAULT_INTERVAL, DEFAULT_KLINES_LIMIT, PI_PAYMENT_PRICES
+    SUPPORTED_EXCHANGES, DEFAULT_INTERVAL, DEFAULT_KLINES_LIMIT
 )
+from core.database import get_prices, get_limits
 import core.config as core_config
 from utils.settings import Settings
 from api.models import APIKeySettings, UserSettings, KeyValidationRequest
@@ -207,12 +208,26 @@ async def get_model_config():
 @router.get("/api/config/prices")
 async def get_pi_prices():
     """
-    獲取 Pi 支付價格配置
+    獲取 Pi 支付價格配置（從數據庫讀取）
     前端使用此 API 獲取動態價格，確保價格與後端驗證一致
+
+    商用化設計：配置存儲在數據庫中，可通過管理 API 即時修改
     """
     return {
-        "prices": PI_PAYMENT_PRICES,
+        "prices": get_prices(),
         "currency": "Pi"
+    }
+
+@router.get("/api/config/limits")
+async def get_forum_limits():
+    """
+    獲取論壇限制配置（從數據庫讀取）
+    前端使用此 API 獲取動態限制，確保限制與後端驗證一致
+
+    商用化設計：配置存儲在數據庫中，可通過管理 API 即時修改
+    """
+    return {
+        "limits": get_limits()
     }
 
 @router.post("/api/settings/update")

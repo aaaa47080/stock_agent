@@ -803,22 +803,22 @@
     -->
 
     <!-- Scripts -->
-    <script src="/static/js/app.js?v=28" onerror="alert('app.js 載入失敗')"></script>
-    <script src="/static/js/apiKeyManager.js?v=28" onerror="alert('apiKeyManager.js 載入失敗')"></script>
-    <script src="/static/js/auth.js?v=28" onerror="alert('auth.js 載入失敗')"></script>
-    <script src="/static/js/okxKeyManager.js?v=28"></script>
-    <script src="/static/js/components.js?v=28"></script>
-    <script src="/static/js/llmSettings.js?v=28"></script>
-    <script src="/static/js/filter.js?v=28"></script>
-    <script src="/static/js/chat.js?v=28"></script>
-    <script src="/static/js/market.js?v=28"></script>
-    <script src="/static/js/assets.js?v=28"></script>
-    <script src="/static/js/pulse.js?v=28"></script>
-    <script src="/static/js/trade.js?v=28"></script>
-    <script src="/static/js/forum.js?v=28"></script>
-    <script src="/static/js/wallet.js?v=28"></script>
-    <script src="/static/js/debate.js?v=28"></script>
-    <script src="/static/js/committeeManager.js?v=28"></script>
+    <script src="/static/js/app.js?v=38" onerror="alert('app.js 載入失敗')"></script>
+    <script src="/static/js/apiKeyManager.js?v=38" onerror="alert('apiKeyManager.js 載入失敗')"></script>
+    <script src="/static/js/auth.js?v=38" onerror="alert('auth.js 載入失敗')"></script>
+    <script src="/static/js/okxKeyManager.js?v=38"></script>
+    <script src="/static/js/components.js?v=38"></script>
+    <script src="/static/js/llmSettings.js?v=38"></script>
+    <script src="/static/js/filter.js?v=38"></script>
+    <script src="/static/js/chat.js?v=38"></script>
+    <script src="/static/js/market.js?v=38"></script>
+    <script src="/static/js/assets.js?v=38"></script>
+    <script src="/static/js/pulse.js?v=38"></script>
+    <script src="/static/js/trade.js?v=38"></script>
+    <script src="/static/js/forum.js?v=38"></script>
+    <script src="/static/js/wallet.js?v=38"></script>
+    <script src="/static/js/debate.js?v=38"></script>
+    <script src="/static/js/committeeManager.js?v=38"></script>
     <script>
         lucide.createIcons();
 
@@ -924,7 +924,10 @@
                 // 確保 Settings 中的 LLM 狀態被更新
                 if (typeof updateLLMStatusUI === 'function') updateLLMStatusUI();
 
-                // 確保價格顯示被更新
+                // 確保價格顯示被更新（通用價格更新 + Premium 模組）
+                if (typeof updatePriceDisplays === 'function') {
+                    updatePriceDisplays();
+                }
                 if (window.PremiumManager && typeof window.PremiumManager.updatePriceDisplay === 'function') {
                     window.PremiumManager.updatePriceDisplay();
                 }

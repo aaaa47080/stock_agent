@@ -74,6 +74,24 @@ def init_db():
     ''')
 
     # ========================================================================
+    # 系統配置資料表 (商用化配置管理)
+    # ========================================================================
+
+    # 建立系統配置表 (System Config)
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS system_config (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            value_type TEXT DEFAULT 'string',
+            category TEXT DEFAULT 'general',
+            description TEXT,
+            is_public INTEGER DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # ========================================================================
     # 對話相關資料表
     # ========================================================================
 
@@ -327,6 +345,30 @@ def init_db():
             INSERT INTO boards (name, slug, description, is_active)
             VALUES ('加密貨幣', 'crypto', '加密貨幣相關討論', 1)
         ''')
+
+    # 初始化系統配置（如果不存在）
+    # 從 core/config.py 獲取預設值
+    from core.config import PI_PAYMENT_PRICES, FORUM_LIMITS
+
+    default_configs = [
+        # 價格配置
+        ('price_create_post', str(PI_PAYMENT_PRICES.get('create_post', 1.0)), 'float', 'pricing', '發文費用 (Pi)', 1),
+        ('price_tip', str(PI_PAYMENT_PRICES.get('tip', 1.0)), 'float', 'pricing', '打賞費用 (Pi)', 1),
+        ('price_premium', str(PI_PAYMENT_PRICES.get('premium', 1.0)), 'float', 'pricing', '高級會員費用 (Pi)', 1),
+        # 限制配置
+        ('limit_daily_post_free', str(FORUM_LIMITS.get('daily_post_free', 3)), 'int', 'limits', '一般會員每日發文上限', 1),
+        ('limit_daily_post_premium', 'null', 'int', 'limits', '高級會員每日發文上限 (null=無限)', 1),
+        ('limit_daily_comment_free', str(FORUM_LIMITS.get('daily_comment_free', 20)), 'int', 'limits', '一般會員每日回覆上限', 1),
+        ('limit_daily_comment_premium', 'null', 'int', 'limits', '高級會員每日回覆上限 (null=無限)', 1),
+    ]
+
+    for key, value, value_type, category, description, is_public in default_configs:
+        c.execute('SELECT COUNT(*) FROM system_config WHERE key = ?', (key,))
+        if c.fetchone()[0] == 0:
+            c.execute('''
+                INSERT INTO system_config (key, value, value_type, category, description, is_public)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (key, value, value_type, category, description, is_public))
 
     # ========================================================================
     # 索引

@@ -56,7 +56,7 @@ async def add_new_comment(
     - comment: 一般回覆
 
     限制：
-    - 免費會員每日上限 20 則
+    - 免費會員每日回覆上限從 /api/config/limits 獲取
     - PRO 會員無限制
     """
     try:

@@ -151,10 +151,10 @@ SCREENER_DEFAULT_INTERVAL = "1d"
 SCREENER_TARGET_SYMBOLS = ["BTC", "ETH", "SOL", "PI"]
 
 # 自動更新間隔 (分鐘)
-SCREENER_UPDATE_INTERVAL_MINUTES = 0.25
+SCREENER_UPDATE_INTERVAL_MINUTES = 1  # 每 1 分鐘更新一次
 
 # 資金費率自動更新間隔 (秒)
-FUNDING_RATE_UPDATE_INTERVAL = 60  # 1分鐘更新一次 (加速更新)
+FUNDING_RATE_UPDATE_INTERVAL = 120  # 2 分鐘更新一次
 
 # === 市場脈動 (Market Pulse) 配置 ===
 # 固定監控的幣種列表 (優先級最高)
@@ -197,7 +197,7 @@ PAPER_TRADING = False
 PI_PAYMENT_PRICES = {
     "create_post": 1.0,    # 發文費用 1 Pi
     "tip": 1.0,            # 打賞 1 Pi
-    "premium": 100.0,      # 高級會員 100 Pi
+    "premium": 1.0,      # 高級會員 1 Pi
 }
 
 # === 論壇會員限制配置 ===

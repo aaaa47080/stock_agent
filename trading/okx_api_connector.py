@@ -132,23 +132,26 @@ class OKXAPIConnector:
             # 無 Key 且是 Public -> 不簽名，直接發送
             pass
 
+        # 設置請求超時 (連接超時, 讀取超時)
+        timeout = (10, 30)
+
         try:
             if method.upper() == 'GET':
-                response = requests.get(url, headers=headers, params=params)
+                response = requests.get(url, headers=headers, params=params, timeout=timeout)
             elif method.upper() == 'POST':
                 # 注意：如果上面有簽名，data 已經被轉成 json string (body)，如果是 requests.post(json=...) 會再次轉義
                 # 所以這裡要小心。如果 headers 有 Content-Type: application/json，直接傳 data=body
                 if isinstance(data, dict):
-                     response = requests.post(url, headers=headers, json=data)
+                     response = requests.post(url, headers=headers, json=data, timeout=timeout)
                 else:
-                     response = requests.post(url, headers=headers, data=data)
+                     response = requests.post(url, headers=headers, data=data, timeout=timeout)
             elif method.upper() == 'PUT':
                 if isinstance(data, dict):
-                     response = requests.put(url, headers=headers, json=data)
+                     response = requests.put(url, headers=headers, json=data, timeout=timeout)
                 else:
-                     response = requests.put(url, headers=headers, data=data)
+                     response = requests.put(url, headers=headers, data=data, timeout=timeout)
             elif method.upper() == 'DELETE':
-                response = requests.delete(url, headers=headers, params=params)
+                response = requests.delete(url, headers=headers, params=params, timeout=timeout)
             else:
                 return {"code": "000000", "msg": "不支援的 HTTP 方法", "data": []}
 
@@ -405,9 +408,11 @@ class OKXAPIConnector:
         usdt_swaps = [inst for inst in instruments.get("data", [])
                       if inst.get("instId", "").endswith("-USDT-SWAP")]
 
-        # Helper function for parallel fetching
+        # Helper function for parallel fetching with rate limiting
+        import time
         def fetch_single_rate(inst_id):
             try:
+                time.sleep(0.1)  # 100ms 間隔，避免觸發限流
                 res = self.get_funding_rate(inst_id)
                 if res.get("code") == "0" and res.get("data"):
                     return inst_id, res["data"][0]
@@ -416,8 +421,8 @@ class OKXAPIConnector:
             return inst_id, None
 
         # 批量獲取資金費率 (並行處理)
-        # 使用 10 個線程並行請求，避免觸發 OKX API 限頻 (通常 20 req/2s)
-        with ThreadPoolExecutor(max_workers=10) as executor:
+        # 減少並發數到 3，避免 SSL 連接問題
+        with ThreadPoolExecutor(max_workers=3) as executor:
             future_to_inst = {executor.submit(fetch_single_rate, inst.get("instId")): inst for inst in usdt_swaps}
             
             for future in as_completed(future_to_inst):

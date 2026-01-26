@@ -24,7 +24,7 @@ async def tip_post(
     """
     打賞文章
 
-    - 每次打賞固定 1 Pi
+    - 打賞金額從 /api/config/prices 獲取
     - Pi 從打賞者錢包直接轉到作者錢包（P2P）
     - 需提供交易哈希作為憑證
     """

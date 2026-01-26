@@ -21,6 +21,11 @@ class PremiumManager {
             }
             this.updatePriceDisplay();
             this.initUpgradeButtons();
+
+            // 如果價格仍未載入，嘗試手動載入
+            if (this.premiumPrice === null && typeof loadPiPrices === 'function') {
+                loadPiPrices();
+            }
         });
 
         // 監聽價格更新事件 (由 forum.js 觸發)
@@ -36,9 +41,18 @@ class PremiumManager {
      * 更新價格顯示
      */
     updatePriceDisplay() {
-        const displayHtml = this.premiumPrice !== null 
-            ? `${this.premiumPrice} Pi` 
-            : '<span class="animate-pulse">Loading...</span>';
+        let displayHtml;
+        if (this.premiumPrice !== null) {
+            displayHtml = `${this.premiumPrice} Pi`;
+        } else {
+            // 尝试从全局变量获取最新价格
+            if (window.PiPrices?.premium) {
+                this.premiumPrice = window.PiPrices.premium;
+                displayHtml = `${this.premiumPrice} Pi`;
+            } else {
+                displayHtml = '<span class="animate-pulse">Loading...</span>';
+            }
+        }
 
         // 更新所有顯示價格的元素
         const priceElements = document.querySelectorAll('[data-price="premium"]');
@@ -72,10 +86,44 @@ class PremiumManager {
                 if (window.PiPrices?.premium) {
                     this.premiumPrice = window.PiPrices.premium;
                 } else {
-                    showToast('正在獲取最新價格，請稍候...', 'info');
-                    // 嘗試主動觸發載入
-                    if(typeof loadPiPrices === 'function') loadPiPrices();
-                    return;
+                    // 使用智能重試策略載入價格
+                    if (typeof loadPiPrices === 'function') {
+                        showToast('正在獲取最新價格...', 'info', 2000);
+
+                        try {
+                            // 主動觸發載入
+                            await loadPiPrices();
+
+                            // 使用指數退避重試（最多 3 次）
+                            let retries = 0;
+                            while (!window.PiPrices?.premium && retries < 3) {
+                                await new Promise(resolve => setTimeout(resolve, 500 * Math.pow(2, retries)));
+                                retries++;
+                            }
+
+                            // 檢查是否成功載入
+                            if (window.PiPrices?.premium) {
+                                this.premiumPrice = window.PiPrices.premium;
+                            } else {
+                                // 無法載入價格，顯示錯誤
+                                showToast('無法取得價格配置，請重新整理頁面', 'error');
+                                console.error('[Premium] 無法從後端獲取價格，請確認 API 連線');
+                                return;
+                            }
+                        } catch (error) {
+                            console.error('[Premium] 載入價格時發生錯誤:', error);
+                            showToast('價格載入失敗，請重新整理頁面', 'error');
+                            return;
+                        }
+                    } else {
+                        // 如果沒有 loadPiPrices 函數，顯示錯誤
+                        showToast('系統錯誤：價格載入模組未初始化', 'error');
+                        console.error('[Premium] loadPiPrices 函數不存在');
+                        return;
+                    }
+
+                    // 更新顯示
+                    this.updatePriceDisplay();
                 }
             }
 
@@ -87,7 +135,7 @@ class PremiumManager {
 
             // 檢查是否已在 Pi Browser 中
             const isPi = typeof isPiBrowser === 'function' ? isPiBrowser() : false;
-            
+
             if (!isPi) {
                 showToast('請在 Pi Browser 中進行升級', 'warning');
                 return;
@@ -121,44 +169,44 @@ class PremiumManager {
                     <strong>${this.premiumPrice} Pi</strong> 將從您的錢包扣除。<br>
                     <small class="text-textMuted/60">高級會員享有無限發文、無限回覆等特權。</small>
                 `;
-                
+
                 // 設置圖標
                 const iconEl = document.getElementById('confirm-modal-icon');
                 iconEl.className = 'w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 bg-success/20';
                 iconEl.innerHTML = '<i data-lucide="star" class="w-8 h-8 text-success"></i>';
-                
+
                 // 設置按鈕
                 const cancelBtn = document.getElementById('confirm-modal-cancel');
                 const confirmBtn = document.getElementById('confirm-modal-confirm');
-                
+
                 cancelBtn.textContent = '取消';
                 confirmBtn.textContent = `支付 ${this.premiumPrice} Pi`;
                 confirmBtn.className = 'flex-1 py-3 bg-success hover:brightness-110 text-background font-bold rounded-2xl transition shadow-lg';
-                
+
                 // 設置事件處理器
                 const handleCancel = () => {
                     existingModal.classList.add('hidden');
                     resolve(false);
                 };
-                
+
                 const handleConfirm = async () => {
                     existingModal.classList.add('hidden');
                     resolve(true);
-                    
+
                     // 移除事件監聽器
                     cancelBtn.removeEventListener('click', handleCancel);
                     confirmBtn.removeEventListener('click', handleConfirm);
                 };
-                
+
                 // 添加事件監聽器
                 cancelBtn.removeEventListener('click', handleCancel);
                 confirmBtn.removeEventListener('click', handleConfirm);
                 cancelBtn.addEventListener('click', handleCancel);
                 confirmBtn.addEventListener('click', handleConfirm);
-                
+
                 // 顯示對話框
                 existingModal.classList.remove('hidden');
-                
+
                 // 更新 Lucide 圖標
                 if (window.lucide) {
                     lucide.createIcons();
@@ -277,9 +325,9 @@ class PremiumManager {
             await fetch('/api/user/payment/complete', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    paymentId: payment.identifier, 
-                    txid: payment.transaction?.txid || null 
+                body: JSON.stringify({
+                    paymentId: payment.identifier,
+                    txid: payment.transaction?.txid || null
                 })
             });
         } catch (e) {
@@ -333,38 +381,82 @@ class PremiumManager {
                     // 步驟 2: 區塊鏈交易完成，等待後端確認完成
                     onReadyForServerCompletion: async (paymentId, txid) => {
                         console.log('[Premium] 支付待完成:', paymentId, txid);
-                        try {
-                            const response = await fetch('/api/user/payment/complete', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ paymentId, txid })
-                            });
 
-                            if (!response.ok) {
-                                const errorData = await response.json();
-                                console.error('[Premium] 完成請求失敗:', errorData);
-                                throw new Error(errorData.detail || '完成請求失敗');
+                        // 立即保存 txid 到 localStorage 以防萬一
+                        try {
+                            localStorage.setItem('pending_premium_upgrade', JSON.stringify({
+                                paymentId,
+                                txid,
+                                timestamp: Date.now()
+                            }));
+                        } catch (e) {
+                            console.warn('[Premium] 無法保存到 localStorage:', e);
+                        }
+
+                        // 重試機制：最多 3 次
+                        let retryCount = 0;
+                        const maxRetries = 3;
+                        let lastError = null;
+
+                        while (retryCount < maxRetries) {
+                            try {
+                                console.log(`[Premium] 嘗試完成請求 (${retryCount + 1}/${maxRetries})...`);
+
+                                const response = await fetch('/api/user/payment/complete', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ paymentId, txid })
+                                });
+
+                                if (response.ok) {
+                                    // 成功！清除 localStorage
+                                    try {
+                                        localStorage.removeItem('pending_premium_upgrade');
+                                    } catch (e) { }
+
+                                    txHash = txid;
+                                    paymentComplete = true;
+                                    console.log('[Premium] 支付完成:', { paymentId, txid });
+
+                                    // 清除加載提示
+                                    const toastContainer = document.getElementById('toast-container');
+                                    if (toastContainer) toastContainer.innerHTML = '';
+
+                                    resolve(txid);
+                                    return; // 成功退出
+                                } else {
+                                    const errorData = await response.json();
+                                    lastError = new Error(errorData.detail || '完成請求失敗');
+                                    console.warn(`[Premium] 完成請求失敗 (嘗試 ${retryCount + 1}):`, errorData);
+                                }
+                            } catch (error) {
+                                lastError = error;
+                                console.warn(`[Premium] 網絡錯誤 (嘗試 ${retryCount + 1}):`, error);
                             }
 
-                            txHash = txid;
-                            paymentComplete = true;
-                            console.log('[Premium] 支付完成:', { paymentId, txid });
-
-                            // 清除加載提示
-                            const toastContainer = document.getElementById('toast-container');
-                            if (toastContainer) toastContainer.innerHTML = '';
-
-                            resolve(txid);
-                        } catch (error) {
-                            console.error('[Premium] 完成支付時發生錯誤:', error);
-
-                            // 清除加載提示
-                            const toastContainer = document.getElementById('toast-container');
-                            if (toastContainer) toastContainer.innerHTML = '';
-
-                            paymentError = error;
-                            reject(error);
+                            retryCount++;
+                            if (retryCount < maxRetries) {
+                                // 指數退避：等待 1s, 2s, 4s
+                                await new Promise(r => setTimeout(r, 1000 * Math.pow(2, retryCount - 1)));
+                            }
                         }
+
+                        // 所有重試都失敗，顯示錯誤並保持 txid
+                        console.error('[Premium] 完成支付所有重試均失敗:', lastError);
+                        console.error('[Premium] 交易已完成但後端確認失敗，txid:', txid);
+
+                        // 清除加載提示
+                        const toastContainer = document.getElementById('toast-container');
+                        if (toastContainer) toastContainer.innerHTML = '';
+
+                        // 不拒絕 Promise，而是設置一個標記並繼續
+                        txHash = txid;
+                        paymentComplete = true; // 支付確實完成了
+
+                        // 提示用戶聯繫客服
+                        showToast('⚠️ 支付已完成，但系統確認失敗。請聯繫客服並提供交易 ID。', 'warning', 10000);
+
+                        resolve(txid); // 繼續流程，讓用戶可以使用 txid 重試升級
                     },
 
                     // 用戶取消支付
@@ -428,7 +520,7 @@ class PremiumManager {
      */
     async requestUpgrade(txHash) {
         const userId = window.AuthManager.currentUser?.user_id || window.AuthManager.currentUser?.uid;
-        
+
         if (!userId) {
             throw new Error('無法獲取用戶ID');
         }
@@ -497,7 +589,7 @@ class PremiumManager {
             if (response.ok && result.success) {
                 return result.membership;
             }
-            
+
             return { tier: 'free', is_pro: false, expires_at: null };
         } catch (error) {
             console.error('[Premium] 獲取會員狀態失敗:', error);
