@@ -5,8 +5,6 @@ __pycache__/
 *.so
 .Python
 build/
-error_old.txt
-reports/*.csv
 develop-eggs/
 dist/
 downloads/
@@ -21,6 +19,7 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+.pytest_cache/
 
 # Virtual Environment
 .venv/
@@ -31,6 +30,7 @@ env/
 # Environment Variables
 .env
 .env.local
+.env.production
 
 # LLM Cache
 .llm_cache/
@@ -38,10 +38,21 @@ env/
 # Logs
 logs/
 *.log
+api_server.log
 
-# IDE
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+user_data.db
+parallel_chats.db
+
+# IDE & AI Tools
 .vscode/
 .idea/
+.claude/
+.cursor/
+.gemini/
 *.swp
 *.swo
 *~
@@ -50,22 +61,35 @@ logs/
 .DS_Store
 Thumbs.db
 
+# Backup files
+*.backup
+*.bak
+*.tmp
+*.old
+
+# AI Codebooks
+claude_codebook/
+gemini_codebook/
+qwen_codebook/
+*_codebook/
+
 # Project specific
-user_data.db
 analysis_results/
 decisions/
 pattern_charts/
 interview/
 tests/
 reports/
-parallel_chats.db
 learn-ai/
-# *.pdf
-# reports/
-# backups/
-.claude
-.gradio
-# web/
-# run_ngrok.sh
+.gradio/
+
+# Temporary files
 error.txt
+error_old.txt
+null.txt
+improved_redirect_logic.js
+REFACTOR_COMPLETE.md
+
+# Documentation (keep in docs/)
 register_pi_network.txt
+cloudflare_tunnel.md

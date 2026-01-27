@@ -1,6 +1,0 @@
-<solve>修改 web/js/forum.js 後導致論壇功能失效，瀏覽器報錯 ForumAPI is not defined。<solve><answer>重新寫入完整的 forum.js 檔案，補回遺失的 ForumAPI 物件定義及相關初始化邏輯。<answer>
-<solve>論壇發文支付後文章未創建，或出現「支付成功但發文失敗」的情況。<solve><answer>優化 Pi Network 支付流程：1. 在前端 `onReadyForServerCompletion` 回調中立即捕獲 `txid` 並設為 `txHash`，不再等待後端 API 完成回應。2. 將後端完成通知 (`/api/user/payment/complete`) 改為非阻塞式調用。3. 增加詳細日誌紀錄支付流程。<answer>
-<solve>用戶支付發文費用後，系統才提示「今日發文次數已達上限」，導致已付款但無法發文。<solve><answer>1. 後端新增 `/api/forum/me/limits` 接口查詢用戶剩餘額度。2. 前端在「發布」按鈕點擊時，**優先呼叫此接口檢查額度**。3. 若額度已滿，直接顯示模態視窗阻止流程，**不啟動支付**。<answer>
-<solve>發文頁面缺乏額度提示，且發文成功後跳轉太快導致用戶未看到成功訊息。<solve><answer>1. 在發文頁面按鈕上方新增「Daily Posts: X/Y」即時額度顯示。2. 將原生的 `alert()` 警告替換為與系統風格一致的深色 Modal。3. 發文成功後顯示「發布成功」Modal，並在 2 秒後自動跳轉至**新文章詳情頁**而非首頁，提升用戶體驗。<answer>
-<solve>發文時後端報錯 FOREIGN KEY CONSTRAINT FAILED，導致 HTTP 500 錯誤。<solve><answer>原因是用戶 ID 在 users 資料表中不存在（常見於 Pi Network 用戶未完全同步）。修復方式：1. 在 core/database/user.py 新增 get_user_by_id 函式並導出。2. 在 api/routers/forum/posts.py 發文接口中，先呼叫此函式檢查用戶是否存在。3. 若不存在，回傳 401 錯誤並提示用戶重新登入，避免觸發資料庫錯誤。<answer>
-<solve>修改前端 JS 後，瀏覽器仍加載舊版代碼，導致新功能（如成功模態視窗）未顯示。<solve><answer>在 web/forum/create.html 中，將所有 script 標籤的引入路徑參數版本號由 ?v=37 更新為 ?v=38，強制瀏覽器重新下載最新的 forum.js 檔案。<answer>
