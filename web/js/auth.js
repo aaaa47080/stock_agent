@@ -228,18 +228,30 @@ const AuthManager = {
         if (urlParams.get('logout') === '1' || urlParams.get('force_logout') === '1') {
             DebugLog.info('URL 參數觸發強制登出');
             localStorage.removeItem('pi_user');
-            // 移除 URL 參數並重新載入
             window.history.replaceState({}, '', window.location.pathname);
             window.location.reload();
             return false;
         }
 
-        // 檢查測試模式
+        // 優先從 localStorage 載入用戶（同步，確保立即可用）
+        const savedUser = localStorage.getItem('pi_user');
+        if (savedUser) {
+            try {
+                this.currentUser = JSON.parse(savedUser);
+                this._updateUI(true);
+            } catch (e) {
+                localStorage.removeItem('pi_user');
+            }
+        } else {
+            this._updateUI(false);
+        }
+
+        // 檢查測試模式（async，但不影響已登入用戶）
         try {
             const configRes = await fetch('/api/config');
             const config = await configRes.json();
 
-            if (config.test_mode && config.test_user) {
+            if (config.test_mode && config.test_user && !this.currentUser) {
                 console.log('🧪 [Test Mode] 自動登入測試用戶');
                 this.currentUser = {
                     uid: config.test_user.uid,
@@ -251,7 +263,6 @@ const AuthManager = {
                 localStorage.setItem('pi_user', JSON.stringify(this.currentUser));
                 this._updateUI(true);
                 if (typeof initChat === 'function') initChat();
-                return true;
             }
         } catch (e) {
             console.warn('Failed to check test mode:', e);
@@ -260,24 +271,29 @@ const AuthManager = {
         // Ensure Pi SDK is initialized on startup
         this.initPiSDK();
 
-        const savedUser = localStorage.getItem('pi_user');
-        if (savedUser) {
-            try {
-                this.currentUser = JSON.parse(savedUser);
-                this._updateUI(true);
-                return true;
-            } catch (e) {
-                localStorage.removeItem('pi_user');
-            }
-        }
-        this._updateUI(false);
-        return false;
+        return !!this.currentUser;
     },
 
     _updateUI(isLoggedIn) {
         const username = this.currentUser?.username || 'Guest';
         const uid = this.currentUser?.uid || this.currentUser?.user_id || '--';
         const authMethod = this.currentUser?.authMethod || 'guest';
+
+        // 控制 auth-only 和 guest-only 元素的顯示
+        document.querySelectorAll('.auth-only').forEach(el => {
+            if (isLoggedIn) {
+                el.classList.remove('hidden');
+            } else {
+                el.classList.add('hidden');
+            }
+        });
+        document.querySelectorAll('.guest-only').forEach(el => {
+            if (isLoggedIn) {
+                el.classList.add('hidden');
+            } else {
+                el.classList.remove('hidden');
+            }
+        });
 
         // 更新所有可能存在的使用者名稱欄位
         ['sidebar-user-name', 'forum-user-name', 'profile-username', 'nav-username'].forEach(id => {

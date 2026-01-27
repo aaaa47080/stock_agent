@@ -53,6 +53,7 @@ from api.routers.forum import router as forum_router
 from api.routers.premium import router as premium_router
 from api.routers.admin import router as admin_router
 from api.routers.friends import router as friends_router
+from api.routers.messages import router as messages_router
 
 # Initialize database (ensure tables exist)
 from core.database import init_db
@@ -141,6 +142,7 @@ app.include_router(forum_router)   # 論壇 API
 app.include_router(premium_router) # 高級會員 API
 app.include_router(admin_router)   # 管理員 API（配置管理）
 app.include_router(friends_router) # 好友功能 API
+app.include_router(messages_router) # 私訊功能 API
 
 # --- 健康检查端点（用于负载均衡和监控）---
 @app.get("/health")

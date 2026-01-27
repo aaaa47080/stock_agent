@@ -148,6 +148,10 @@ def init_db():
         c.execute('ALTER TABLE users ADD COLUMN pi_username TEXT')
     except sqlite3.OperationalError:
         pass
+    try:
+        c.execute('ALTER TABLE users ADD COLUMN last_active_at TIMESTAMP')
+    except sqlite3.OperationalError:
+        pass
 
     # 建立密碼重置 Token 表
     c.execute('''
@@ -333,6 +337,62 @@ def init_db():
         )
     ''')
 
+    # ========================================================================
+    # 私訊功能資料表
+    # ========================================================================
+
+    # 對話表（兩人之間的對話）
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS dm_conversations (
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            user1_id            TEXT NOT NULL,
+            user2_id            TEXT NOT NULL,
+            last_message_id     INTEGER,
+            last_message_at     TIMESTAMP,
+            user1_unread_count  INTEGER DEFAULT 0,
+            user2_unread_count  INTEGER DEFAULT 0,
+            created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+            UNIQUE (user1_id, user2_id),
+            FOREIGN KEY (user1_id) REFERENCES users(user_id),
+            FOREIGN KEY (user2_id) REFERENCES users(user_id)
+        )
+    ''')
+
+    # 私訊訊息表
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS dm_messages (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            conversation_id INTEGER NOT NULL,
+            from_user_id    TEXT NOT NULL,
+            to_user_id      TEXT NOT NULL,
+            content         TEXT NOT NULL,
+            message_type    TEXT DEFAULT 'text',
+            is_read         INTEGER DEFAULT 0,
+            read_at         TIMESTAMP,
+            created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+            FOREIGN KEY (conversation_id) REFERENCES dm_conversations(id),
+            FOREIGN KEY (from_user_id) REFERENCES users(user_id),
+            FOREIGN KEY (to_user_id) REFERENCES users(user_id)
+        )
+    ''')
+
+    # 用戶訊息限制追蹤表
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS user_message_limits (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id         TEXT NOT NULL,
+            date            DATE NOT NULL,
+            message_count   INTEGER DEFAULT 0,
+            greeting_count  INTEGER DEFAULT 0,
+            greeting_month  TEXT,
+
+            UNIQUE (user_id, date),
+            FOREIGN KEY (user_id) REFERENCES users(user_id)
+        )
+    ''')
+
     # Migration: 為 users 表添加會員等級欄位
     try:
         c.execute('ALTER TABLE users ADD COLUMN membership_tier TEXT DEFAULT "free"')
@@ -360,11 +420,16 @@ def init_db():
         ('price_create_post', str(PI_PAYMENT_PRICES.get('create_post', 1.0)), 'float', 'pricing', '發文費用 (Pi)', 1),
         ('price_tip', str(PI_PAYMENT_PRICES.get('tip', 1.0)), 'float', 'pricing', '打賞費用 (Pi)', 1),
         ('price_premium', str(PI_PAYMENT_PRICES.get('premium', 1.0)), 'float', 'pricing', '高級會員費用 (Pi)', 1),
-        # 限制配置
+        # 論壇限制配置
         ('limit_daily_post_free', str(FORUM_LIMITS.get('daily_post_free', 3)), 'int', 'limits', '一般會員每日發文上限', 1),
         ('limit_daily_post_premium', 'null', 'int', 'limits', '高級會員每日發文上限 (null=無限)', 1),
         ('limit_daily_comment_free', str(FORUM_LIMITS.get('daily_comment_free', 20)), 'int', 'limits', '一般會員每日回覆上限', 1),
         ('limit_daily_comment_premium', 'null', 'int', 'limits', '高級會員每日回覆上限 (null=無限)', 1),
+        # 私訊限制配置
+        ('limit_daily_message_free', '20', 'int', 'limits', '一般會員每日私訊上限', 1),
+        ('limit_daily_message_premium', 'null', 'int', 'limits', '高級會員每日私訊上限 (null=無限)', 1),
+        ('limit_monthly_greeting', '5', 'int', 'limits', '高級會員每月打招呼上限', 1),
+        ('limit_message_max_length', '500', 'int', 'limits', '單則訊息最大字數', 1),
     ]
 
     for key, value, value_type, category, description, is_public in default_configs:
@@ -394,6 +459,16 @@ def init_db():
     c.execute('CREATE INDEX IF NOT EXISTS idx_friendships_user_id ON friendships(user_id)')
     c.execute('CREATE INDEX IF NOT EXISTS idx_friendships_friend_id ON friendships(friend_id)')
     c.execute('CREATE INDEX IF NOT EXISTS idx_friendships_status ON friendships(status)')
+
+    # 私訊功能索引
+    c.execute('CREATE INDEX IF NOT EXISTS idx_dm_conversations_user1 ON dm_conversations(user1_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_dm_conversations_user2 ON dm_conversations(user2_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_dm_conversations_last_message ON dm_conversations(last_message_at DESC)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_dm_messages_conversation ON dm_messages(conversation_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_dm_messages_created ON dm_messages(created_at DESC)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_dm_messages_from_user ON dm_messages(from_user_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_dm_messages_to_user ON dm_messages(to_user_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_user_message_limits ON user_message_limits(user_id, date)')
 
     conn.commit()
     conn.close()

@@ -105,86 +105,176 @@ const Components = {
         <div id="pulse-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
     `,
 
-    // Tab: Friends (New Global Feature)
+    // Tab: Friends (Integrated Social Hub - Friends + Messages)
     friends: `
-        <div class="max-w-4xl mx-auto space-y-6">
-            <div class="flex justify-between items-end mb-4">
-                <h2 class="font-serif text-3xl text-secondary">Friends</h2>
+        <div class="h-full flex flex-col">
+            <!-- Header with Tab Switcher -->
+            <div class="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-surface/50">
+                <h2 class="font-serif text-2xl text-secondary">Social</h2>
                 <div class="flex items-center gap-2">
-                    <span id="friends-badge-total" class="px-2 py-0.5 text-xs bg-white/10 text-textMuted rounded-full">0</span>
-                    <button onclick="Components.forceInject('friends'); if(typeof loadFriendsTabData === 'function') loadFriendsTabData();" class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition">
+                    <span id="friends-badge-total" class="hidden px-2 py-0.5 text-xs bg-danger text-white rounded-full">0</span>
+                    <button onclick="SocialHub.refresh()" class="p-2 hover:bg-white/5 rounded-full text-textMuted transition">
                         <i data-lucide="refresh-cw" class="w-4 h-4"></i>
                     </button>
                 </div>
             </div>
 
-            <!-- Search Section -->
-            <div class="bg-surface border border-white/5 rounded-2xl p-6">
-                <h3 class="font-bold text-secondary text-lg mb-4 flex items-center gap-2">
-                    <i data-lucide="search" class="w-5 h-5"></i>
-                    Find Friends
-                </h3>
-                <div class="relative">
-                    <input type="text" id="friend-search-input" placeholder="Search by username..."
-                           class="w-full bg-background border border-white/10 rounded-xl px-4 py-3 pl-10 text-secondary outline-none focus:border-primary/50 transition"
-                           oninput="if(typeof handleFriendSearch === 'function') handleFriendSearch(this.value)">
-                    <i data-lucide="search" class="w-5 h-5 text-textMuted absolute left-3 top-1/2 -translate-y-1/2"></i>
-                </div>
-                <div id="search-results" class="mt-4 space-y-2 hidden"></div>
-            </div>
-
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Pending Requests -->
-                <div class="bg-surface border border-white/5 rounded-2xl p-6">
-                    <h3 class="font-bold text-secondary text-lg mb-4 flex items-center gap-2">
-                        <i data-lucide="user-plus" class="w-5 h-5 text-primary"></i>
-                        Friend Requests
-                        <span id="pending-count-badge" class="hidden px-2 py-0.5 text-xs bg-danger text-white rounded-full"></span>
-                    </h3>
-                    <div id="pending-requests-list" class="space-y-2">
-                        <div class="text-center text-textMuted py-6 opacity-50">
-                            <i data-lucide="loader-2" class="w-5 h-5 animate-spin mx-auto mb-2"></i>
-                            Loading requests...
-                        </div>
-                    </div>
-                </div>
-
-                <!-- My Friends -->
-                <div class="bg-surface border border-white/5 rounded-2xl p-6">
-                    <h3 class="font-bold text-secondary text-lg mb-4 flex items-center gap-2">
-                        <i data-lucide="users" class="w-5 h-5 text-success"></i>
-                        My Friends
-                        <span id="friends-count-badge" class="hidden px-2 py-0.5 text-xs bg-white/10 text-textMuted rounded-full">0</span>
-                    </h3>
-                    <div id="friends-list" class="space-y-2">
-                        <div class="text-center text-textMuted py-6 opacity-50">
-                            <i data-lucide="loader-2" class="w-5 h-5 animate-spin mx-auto mb-2"></i>
-                            Loading friends...
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Blocked Users (Collapsible) -->
-            <div class="bg-surface border border-white/5 rounded-2xl overflow-hidden mt-6">
-                <button onclick="document.getElementById('blocked-list').classList.toggle('hidden'); document.getElementById('blocked-chevron').classList.toggle('rotate-180');" class="w-full p-6 flex items-center justify-between hover:bg-white/5 transition">
-                    <h3 class="font-bold text-textMuted text-lg flex items-center gap-2">
-                        <i data-lucide="ban" class="w-5 h-5 text-danger"></i>
-                        Blocked Users
-                        <span id="blocked-count-badge" class="px-2 py-0.5 text-xs bg-white/10 text-textMuted rounded-full">0</span>
-                    </h3>
-                    <i data-lucide="chevron-down" id="blocked-chevron" class="w-5 h-5 text-textMuted transition-transform"></i>
+            <!-- Sub-tab Navigation -->
+            <div class="flex gap-1 p-2 bg-background/50 border-b border-white/5">
+                <button onclick="SocialHub.switchSubTab('messages')" id="social-tab-messages"
+                    class="social-sub-tab flex-1 py-2.5 px-4 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 bg-primary text-background">
+                    <i data-lucide="message-circle" class="w-4 h-4"></i>
+                    <span>聊天</span>
+                    <span id="messages-unread-badge" class="hidden px-1.5 py-0.5 text-xs bg-danger text-white rounded-full">0</span>
                 </button>
-                <div id="blocked-list" class="px-6 pb-6 hidden">
-                    <div class="space-y-2" id="blocked-users-container">
-                        <div class="text-center text-textMuted py-4 opacity-50">
-                            No blocked users
+                <button onclick="SocialHub.switchSubTab('friends')" id="social-tab-friends"
+                    class="social-sub-tab flex-1 py-2.5 px-4 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 text-textMuted hover:text-textMain hover:bg-white/5">
+                    <i data-lucide="users" class="w-4 h-4"></i>
+                    <span>好友</span>
+                    <span id="friends-request-badge" class="hidden px-1.5 py-0.5 text-xs bg-danger text-white rounded-full">0</span>
+                </button>
+            </div>
+
+            <!-- ==================== MESSAGES SUB-TAB ==================== -->
+            <div id="social-content-messages" class="flex-1 flex overflow-hidden">
+                <!-- Conversation List (Left) -->
+                <div id="social-conv-sidebar" class="w-full md:w-80 lg:w-96 border-r border-white/5 flex flex-col bg-surface/30">
+                    <div id="social-conv-list" class="flex-1 overflow-y-auto">
+                        <div class="flex items-center justify-center h-full">
+                            <div class="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full"></div>
+                        </div>
+                    </div>
+                    <!-- Message Limit Info (Non-Pro) -->
+                    <div id="social-msg-limit" class="p-3 border-t border-white/5 bg-background/50 text-xs text-textMuted hidden">
+                        <div class="flex items-center justify-between">
+                            <span>今日已發送: <span id="social-limit-used">0</span>/<span id="social-limit-total">20</span></span>
+                            <a href="/static/forum/premium.html" class="text-primary hover:underline">升級 Pro</a>
                         </div>
                     </div>
                 </div>
+
+                <!-- Chat Window (Right) -->
+                <div id="social-chat-section" class="hidden md:flex flex-1 flex-col bg-background">
+                    <!-- Chat Header -->
+                    <div id="social-chat-header" class="p-4 border-b border-white/5 flex items-center gap-3 hidden">
+                        <button onclick="SocialHub.backToConvList()" class="md:hidden p-2 hover:bg-white/5 rounded-lg transition">
+                            <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                        </button>
+                        <div id="social-chat-avatar" class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">U</div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2">
+                                <span id="social-chat-username" class="font-bold text-textMain truncate">User</span>
+                                <span id="social-chat-badge"></span>
+                            </div>
+                        </div>
+                        <a id="social-chat-profile-link" href="#" class="p-2 hover:bg-white/5 rounded-lg transition" title="查看資料">
+                            <i data-lucide="user" class="w-5 h-5"></i>
+                        </a>
+                    </div>
+
+                    <!-- Messages Container -->
+                    <div id="social-messages-container" class="flex-1 overflow-y-auto p-4">
+                        <div class="flex flex-col items-center justify-center h-full text-textMuted">
+                            <i data-lucide="message-square" class="w-16 h-16 opacity-30 mb-4"></i>
+                            <p>選擇一個對話開始聊天</p>
+                        </div>
+                    </div>
+
+                    <!-- Message Input -->
+                    <div id="social-msg-input-container" class="p-4 border-t border-white/5 hidden">
+                        <form id="social-msg-form" onsubmit="SocialHub.sendMessage(event)" class="flex items-end gap-3">
+                            <div class="flex-1">
+                                <div class="bg-surface border border-white/10 rounded-2xl px-4 py-3 focus-within:border-primary/50 transition">
+                                    <textarea id="social-msg-input"
+                                        class="w-full bg-transparent text-textMain placeholder-textMuted resize-none leading-6 py-0 outline-none"
+                                        placeholder="輸入訊息..." rows="1" maxlength="500"
+                                        onkeydown="SocialHub.handleInputKeydown(event)"
+                                        oninput="SocialHub.autoResizeInput(this); SocialHub.updateCharCount()"></textarea>
+                                </div>
+                                <div class="flex items-center justify-between mt-1 px-2">
+                                    <span id="social-char-count" class="text-xs text-textMuted/50">0/500</span>
+                                </div>
+                            </div>
+                            <button type="submit" id="social-send-btn" class="p-3 bg-primary hover:brightness-110 text-background rounded-xl transition disabled:opacity-50" disabled>
+                                <i data-lucide="send" class="w-5 h-5"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </div>
-            
-            <div class="h-20"></div> <!-- Spacer for bottom nav if needed -->
+
+            <!-- ==================== FRIENDS SUB-TAB ==================== -->
+            <div id="social-content-friends" class="flex-1 overflow-y-auto p-4 hidden">
+                <div class="max-w-4xl mx-auto space-y-6">
+                    <!-- Search Section -->
+                    <div class="bg-surface border border-white/5 rounded-2xl p-6">
+                        <h3 class="font-bold text-secondary text-lg mb-4 flex items-center gap-2">
+                            <i data-lucide="search" class="w-5 h-5"></i>
+                            Find Friends
+                        </h3>
+                        <div class="relative">
+                            <input type="text" id="friend-search-input" placeholder="Search by username..."
+                                   class="w-full bg-background border border-white/10 rounded-xl px-4 py-3 pl-10 text-secondary outline-none focus:border-primary/50 transition"
+                                   oninput="if(typeof handleFriendSearch === 'function') handleFriendSearch(this.value)">
+                            <i data-lucide="search" class="w-5 h-5 text-textMuted absolute left-3 top-1/2 -translate-y-1/2"></i>
+                        </div>
+                        <div id="search-results" class="mt-4 space-y-2 hidden"></div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Pending Requests -->
+                        <div class="bg-surface border border-white/5 rounded-2xl p-6">
+                            <h3 class="font-bold text-secondary text-lg mb-4 flex items-center gap-2">
+                                <i data-lucide="user-plus" class="w-5 h-5 text-primary"></i>
+                                Friend Requests
+                                <span id="pending-count-badge" class="hidden px-2 py-0.5 text-xs bg-danger text-white rounded-full"></span>
+                            </h3>
+                            <div id="pending-requests-list" class="space-y-2">
+                                <div class="text-center text-textMuted py-6 opacity-50">
+                                    <i data-lucide="loader-2" class="w-5 h-5 animate-spin mx-auto mb-2"></i>
+                                    Loading requests...
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- My Friends -->
+                        <div class="bg-surface border border-white/5 rounded-2xl p-6">
+                            <h3 class="font-bold text-secondary text-lg mb-4 flex items-center gap-2">
+                                <i data-lucide="users" class="w-5 h-5 text-success"></i>
+                                My Friends
+                                <span id="friends-count-badge" class="hidden px-2 py-0.5 text-xs bg-white/10 text-textMuted rounded-full">0</span>
+                            </h3>
+                            <div id="friends-list" class="space-y-2">
+                                <div class="text-center text-textMuted py-6 opacity-50">
+                                    <i data-lucide="loader-2" class="w-5 h-5 animate-spin mx-auto mb-2"></i>
+                                    Loading friends...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Blocked Users (Collapsible) -->
+                    <div class="bg-surface border border-white/5 rounded-2xl overflow-hidden">
+                        <button onclick="document.getElementById('blocked-list').classList.toggle('hidden'); document.getElementById('blocked-chevron').classList.toggle('rotate-180');" class="w-full p-6 flex items-center justify-between hover:bg-white/5 transition">
+                            <h3 class="font-bold text-textMuted text-lg flex items-center gap-2">
+                                <i data-lucide="ban" class="w-5 h-5 text-danger"></i>
+                                Blocked Users
+                                <span id="blocked-count-badge" class="px-2 py-0.5 text-xs bg-white/10 text-textMuted rounded-full">0</span>
+                            </h3>
+                            <i data-lucide="chevron-down" id="blocked-chevron" class="w-5 h-5 text-textMuted transition-transform"></i>
+                        </button>
+                        <div id="blocked-list" class="px-6 pb-6 hidden">
+                            <div class="space-y-2" id="blocked-users-container">
+                                <div class="text-center text-textMuted py-4 opacity-50">
+                                    No blocked users
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="h-20"></div>
+                </div>
+            </div>
         </div>
     `,
 

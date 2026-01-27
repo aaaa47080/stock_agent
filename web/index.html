@@ -50,7 +50,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
     <script src="/static/config.js"></script>
     <script src="/static/js/premium.js"></script>
-    <script src="/static/js/friends.js"></script>
+    <script src="/static/js/friends.js?v=2"></script>
+    <script src="/static/js/messages.js?v=2"></script>
 
     <!-- Fonts -->
     <link
@@ -544,9 +545,9 @@
                 </div>
             </div>
 
-            <!-- Tab: Friends (Global) -->
+            <!-- Tab: Friends (Global Social Hub) -->
             <div id="friends-tab"
-                class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40 relative">
+                class="tab-content hidden h-full overflow-hidden relative">
                 <!-- Dynamic Content Injected via components.js -->
             </div>
 
@@ -969,7 +970,7 @@
     <script src="/static/js/apiKeyManager.js?v=45" onerror="alert('apiKeyManager.js 載入失敗')"></script>
     <script src="/static/js/auth.js?v=45" onerror="alert('auth.js 載入失敗')"></script>
     <script src="/static/js/okxKeyManager.js?v=45"></script>
-    <script src="/static/js/components.js?v=45"></script>
+    <script src="/static/js/components.js?v=46"></script>
     <script src="/static/js/llmSettings.js?v=45"></script>
     <script src="/static/js/filter.js?v=45"></script>
     <script src="/static/js/chat.js?v=45"></script>
@@ -1022,7 +1023,7 @@
             });
 
             // Dynamic Component Injection (Lazy Loading)
-            if (['market', 'pulse', 'settings'].includes(tabId)) {
+            if (['market', 'pulse', 'settings', 'friends'].includes(tabId)) {
                 if (window.Components && typeof window.Components.inject === 'function') {
                     await window.Components.inject(tabId);
                 }
@@ -1080,6 +1081,9 @@
             }
             if (tabId === 'wallet') {
                 if (window.WalletApp) window.WalletApp.init();
+            }
+            if (tabId === 'friends') {
+                if (window.SocialHub) window.SocialHub.init();
             }
             if (tabId === 'settings') {
                 // 💡 修正：注入內容後，立即更新用戶資料顯示

@@ -25,6 +25,7 @@ from .user import (
     get_user_by_email,
     update_password,
     is_username_available,
+    update_last_active,
     # Pi Network
     create_or_get_pi_user,
     get_user_by_pi_uid,
@@ -127,6 +128,29 @@ from .friends import (
     is_friend,
 )
 
+# 私訊功能
+from .messages import (
+    # 對話管理
+    get_or_create_conversation,
+    get_conversations,
+    get_conversation_by_id,
+    get_conversation_with_user,
+    # 訊息操作
+    send_message as send_dm_message,
+    get_messages as get_dm_messages,
+    mark_as_read,
+    get_unread_count,
+    # 訊息限制
+    check_message_limit,
+    increment_message_count,
+    check_greeting_limit,
+    increment_greeting_count,
+    # 打招呼（Pro）
+    send_greeting,
+    # 搜尋（Pro）
+    search_messages,
+)
+
 # 系統快取
 from .cache import (
     set_cache,
@@ -172,6 +196,7 @@ __all__ = [
     'get_user_by_email',
     'update_password',
     'is_username_available',
+    'update_last_active',
     'create_or_get_pi_user',
     'get_user_by_pi_uid',
     'link_pi_wallet',
@@ -243,6 +268,21 @@ __all__ = [
     'get_pending_count',
     'is_blocked',
     'is_friend',
+    # 私訊功能
+    'get_or_create_conversation',
+    'get_conversations',
+    'get_conversation_by_id',
+    'get_conversation_with_user',
+    'send_dm_message',
+    'get_dm_messages',
+    'mark_as_read',
+    'get_unread_count',
+    'check_message_limit',
+    'increment_message_count',
+    'check_greeting_limit',
+    'increment_greeting_count',
+    'send_greeting',
+    'search_messages',
     # 快取
     'set_cache',
     'get_cache',

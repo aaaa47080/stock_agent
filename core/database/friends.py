@@ -354,7 +354,7 @@ def get_friends_list(user_id: str, limit: int = 50, offset: int = 0) -> List[Dic
     try:
         c.execute('''
             SELECT u.user_id, u.username, u.pi_username, u.membership_tier,
-                   f.updated_at as friends_since
+                   f.updated_at as friends_since, u.last_active_at
             FROM friendships f
             JOIN users u ON (
                 CASE
@@ -376,7 +376,8 @@ def get_friends_list(user_id: str, limit: int = 50, offset: int = 0) -> List[Dic
                 "username": r[1],
                 "pi_username": r[2],
                 "membership_tier": r[3] or 'free',
-                "friends_since": r[4]
+                "friends_since": r[4],
+                "last_active_at": r[5]
             } for r in rows
         ]
     finally:

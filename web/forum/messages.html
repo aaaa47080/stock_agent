@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <title>Messages - Pi Crypto Forum</title>
+    <link rel="icon" type="image/png" href="/static/img/title_icon.png">
+
+    <!-- Core Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        background: '#1a1a1c',
+                        surface: '#252529',
+                        surfaceHighlight: '#323236',
+                        primary: '#d4b693',
+                        secondary: '#e4e4e7',
+                        accent: '#c084fc',
+                        success: '#86efac',
+                        danger: '#fda4af',
+                        textMain: '#f4f4f5',
+                        textMuted: '#a1a1aa',
+                    },
+                    fontFamily: {
+                        sans: ['Mulish', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Mulish:wght@300;400;600;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        .messages-container {
+            height: calc(100vh - 120px);
+        }
+
+        @media (max-width: 768px) {
+            .messages-container {
+                height: calc(100vh - 60px);
+            }
+        }
+
+        .conversation-list {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+        }
+
+        .messages-scroll {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+        }
+
+        .message-input:focus {
+            outline: none;
+        }
+    </style>
+</head>
+
+<body class="bg-background text-textMain min-h-screen flex flex-col" data-page="messages">
+
+    <!-- Navbar -->
+    <nav class="sticky top-0 z-50 bg-surface/95 backdrop-blur-xl border-b border-white/5 px-4 py-3">
+        <div class="max-w-6xl mx-auto flex items-center justify-between">
+            <a href="/static/forum/index.html"
+                class="flex items-center gap-2 text-secondary font-bold hover:text-primary transition">
+                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                <span class="hidden md:inline">Back</span>
+            </a>
+            <div class="font-bold text-lg text-primary tracking-wide flex items-center gap-2">
+                <i data-lucide="message-circle" class="w-5 h-5"></i>
+                <span>Messages</span>
+            </div>
+            <div class="w-20 flex justify-end">
+                <!-- 搜尋按鈕（Pro 專屬） -->
+                <button id="search-btn" onclick="MessagesPage.toggleSearch()"
+                    class="hidden p-2 hover:bg-white/5 rounded-lg transition" title="搜尋訊息">
+                    <i data-lucide="search" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Toast Container -->
+    <div id="toast-container"
+        class="fixed z-[200] flex flex-col gap-2 pointer-events-none bottom-28 left-4 right-4 md:bottom-auto md:top-6 md:right-6 md:left-auto md:w-80">
+    </div>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-6xl mx-auto w-full flex messages-container">
+
+        <!-- 對話列表側邊欄 -->
+        <aside id="conversation-sidebar"
+            class="w-full md:w-80 lg:w-96 border-r border-white/5 flex flex-col bg-surface/50">
+            <!-- 側邊欄標題 -->
+            <div class="p-4 border-b border-white/5">
+                <h2 class="font-bold text-lg text-textMain">對話</h2>
+            </div>
+
+            <!-- 對話列表 -->
+            <div id="conversation-list" class="flex-1 overflow-y-auto conversation-list">
+                <div class="flex items-center justify-center h-full">
+                    <div class="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full"></div>
+                </div>
+            </div>
+
+            <!-- 訊息限制提示 -->
+            <div id="message-limit-info"
+                class="p-3 border-t border-white/5 bg-background/50 text-xs text-textMuted hidden">
+                <div class="flex items-center justify-between">
+                    <span>今日已發送: <span id="limit-used">0</span>/<span id="limit-total">20</span></span>
+                    <a href="/static/forum/premium.html" class="text-primary hover:underline">升級 Pro</a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 聊天視窗 -->
+        <section id="chat-section" class="hidden md:flex flex-1 flex-col bg-background">
+            <!-- 聊天標題 -->
+            <div id="chat-header" class="p-4 border-b border-white/5 flex items-center gap-3 hidden">
+                <button onclick="MessagesPage.backToList()"
+                    class="md:hidden p-2 hover:bg-white/5 rounded-lg transition">
+                    <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                </button>
+                <div id="chat-user-avatar"
+                    class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
+                    U
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2">
+                        <span id="chat-username" class="font-bold text-textMain truncate">User</span>
+                        <span id="chat-user-badge"></span>
+                    </div>
+                    <div id="chat-user-status" class="text-xs text-textMuted"></div>
+                </div>
+                <a id="chat-profile-link" href="#" class="p-2 hover:bg-white/5 rounded-lg transition" title="查看用戶資料">
+                    <i data-lucide="user" class="w-5 h-5"></i>
+                </a>
+            </div>
+
+            <!-- 訊息列表 -->
+            <div id="messages-container" class="flex-1 overflow-y-auto p-4 messages-scroll">
+                <div class="flex flex-col items-center justify-center h-full text-textMuted">
+                    <i data-lucide="message-square" class="w-16 h-16 opacity-30 mb-4"></i>
+                    <p>選擇一個對話開始聊天</p>
+                </div>
+            </div>
+
+            <!-- 訊息輸入框 -->
+            <div id="message-input-container" class="p-4 border-t border-white/5 hidden">
+                <form id="message-form" onsubmit="MessagesPage.sendMessage(event)" class="flex items-end gap-3">
+                    <div class="flex-1">
+                        <div
+                            class="bg-surface border border-white/10 rounded-2xl px-4 py-3 focus-within:border-primary/50 transition">
+                            <textarea id="message-input"
+                                class="message-input w-full bg-transparent text-textMain placeholder-textMuted resize-none leading-6 py-0"
+                                placeholder="輸入訊息..." rows="1" maxlength="500"
+                                onkeydown="MessagesPage.handleInputKeydown(event)"
+                                oninput="MessagesPage.autoResizeInput(this); MessagesPage.updateCharCount()"></textarea>
+                        </div>
+                        <!-- 字數統計 -->
+                        <div class="flex items-center justify-between mt-1 px-2">
+                            <span id="char-count" class="text-xs text-textMuted/50">0/500</span>
+                            <div id="input-limit-warning" class="text-xs text-danger hidden"></div>
+                        </div>
+                    </div>
+                    <button type="submit" id="send-btn"
+                        class="p-3 bg-primary hover:brightness-110 text-background rounded-xl transition disabled:opacity-50"
+                        disabled>
+                        <i data-lucide="send" class="w-5 h-5"></i>
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- 搜尋面板（Pro 專屬） -->
+        <div id="search-panel" class="hidden absolute inset-0 bg-background z-40 flex flex-col">
+            <div class="p-4 border-b border-white/5 flex items-center gap-3">
+                <button onclick="MessagesPage.toggleSearch()" class="p-2 hover:bg-white/5 rounded-lg transition">
+                    <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                </button>
+                <div class="flex-1">
+                    <input type="text" id="search-input"
+                        class="w-full bg-surface border border-white/10 rounded-xl px-4 py-2 text-textMain placeholder-textMuted focus:border-primary/50 transition"
+                        placeholder="搜尋訊息..." oninput="MessagesPage.handleSearch(this.value)">
+                </div>
+            </div>
+            <div id="search-results" class="flex-1 overflow-y-auto p-4">
+                <div class="text-center text-textMuted py-8">輸入關鍵字搜尋訊息</div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Scripts -->
+    <script src="/static/js/auth.js?v=1"></script>
+    <script src="/static/js/messages.js?v=2"></script>
+    <script>
+        // ========================================
+        // Messages Page Controller
+        // ========================================
+
+        const MessagesPage = {
+            currentConversationId: null,
+            currentOtherUserId: null,
+            currentOtherUsername: null,
+            isPro: false,
+            conversations: [],
+            isMobile: window.innerWidth < 768,
+            maxMessageLength: 500,  // 預設值，會從 API 更新
+
+            /**
+             * 初始化頁面
+             */
+            async init() {
+                // 檢查登入
+                if (typeof AuthManager !== 'undefined') {
+                    await AuthManager.init();
+                    if (!AuthManager.isLoggedIn()) {
+                        window.location.href = '/static/forum/index.html';
+                        return;
+                    }
+                }
+
+                MessagesUI.init();
+
+                // 載入訊息限制狀態
+                await this.loadLimits();
+
+                // 載入對話列表
+                await this.loadConversations();
+
+                // 連接 WebSocket
+                this.setupWebSocket();
+
+                // 處理 URL 參數（直接開啟與某人的對話）
+                const params = new URLSearchParams(window.location.search);
+                const withUserId = params.get('with');
+                if (withUserId) {
+                    await this.openConversationWith(withUserId);
+                }
+
+                // 響應式處理
+                window.addEventListener('resize', () => {
+                    this.isMobile = window.innerWidth < 768;
+                });
+
+                lucide.createIcons();
+            },
+
+            /**
+             * 載入訊息限制狀態
+             */
+            async loadLimits() {
+                const limits = await MessagesAPI.getLimits();
+                if (limits) {
+                    this.isPro = limits.is_pro;
+
+                    // 更新訊息長度限制（從 API 取得）
+                    if (limits.max_length) {
+                        this.maxMessageLength = limits.max_length;
+                        // 更新 textarea 的 maxlength 屬性
+                        const input = document.getElementById('message-input');
+                        if (input) {
+                            input.maxLength = this.maxMessageLength;
+                        }
+                        // 更新字數統計顯示
+                        const charCount = document.getElementById('char-count');
+                        if (charCount) {
+                            charCount.textContent = `0/${this.maxMessageLength}`;
+                        }
+                    }
+
+                    // 顯示/隱藏 Pro 功能
+                    if (this.isPro) {
+                        document.getElementById('search-btn').classList.remove('hidden');
+                        document.getElementById('message-limit-info').classList.add('hidden');
+                    } else {
+                        document.getElementById('message-limit-info').classList.remove('hidden');
+                        document.getElementById('limit-used').textContent = limits.message_limit.used || 0;
+                        document.getElementById('limit-total').textContent = limits.message_limit.limit || 20;
+                    }
+                }
+            },
+
+            /**
+             * 載入對話列表
+             */
+            async loadConversations() {
+                const listEl = document.getElementById('conversation-list');
+
+                try {
+                    const result = await MessagesAPI.getConversations();
+                    this.conversations = result.conversations || [];
+
+                    if (this.conversations.length === 0) {
+                        listEl.innerHTML = MessagesUI.renderEmptyState('尚無對話', 'message-square');
+                        lucide.createIcons();
+                        return;
+                    }
+
+                    listEl.innerHTML = this.conversations.map(conv =>
+                        MessagesUI.renderConversationItem(conv, conv.id === this.currentConversationId)
+                    ).join('');
+
+                    lucide.createIcons();
+                } catch (e) {
+                    console.error('載入對話列表失敗:', e);
+                    listEl.innerHTML = `<div class="p-4 text-center text-danger">${e.message}</div>`;
+                }
+            },
+
+            /**
+             * 選擇對話
+             */
+            async selectConversation(conversationId, otherUserId, otherUsername) {
+                this.currentConversationId = conversationId;
+                this.currentOtherUserId = otherUserId;
+                this.currentOtherUsername = otherUsername;
+
+                // 更新 UI
+                this.showChatSection();
+                this.updateChatHeader(otherUsername);
+                await this.loadMessages();
+
+                // 標記已讀
+                await MessagesAPI.markAsRead(conversationId);
+
+                // 更新對話列表中的未讀狀態
+                this.updateConversationUnread(conversationId, 0);
+            },
+
+            /**
+             * 透過用戶 ID 開啟對話
+             */
+            async openConversationWith(userId) {
+                const messagesContainer = document.getElementById('messages-container');
+                messagesContainer.innerHTML = MessagesUI.renderLoadingState();
+
+                try {
+                    const result = await MessagesAPI.getConversationWith(userId);
+                    this.currentConversationId = result.conversation.id;
+                    this.currentOtherUserId = userId;
+
+                    // 取得用戶名
+                    const conv = this.conversations.find(c => c.other_user_id === userId);
+                    this.currentOtherUsername = conv?.other_username || userId;
+
+                    this.showChatSection();
+                    this.updateChatHeader(this.currentOtherUsername);
+                    this.renderMessages(result.messages || []);
+
+                    // 標記已讀
+                    if (result.conversation.id) {
+                        await MessagesAPI.markAsRead(result.conversation.id);
+                    }
+
+                    // 重新載入對話列表以更新順序
+                    await this.loadConversations();
+
+                } catch (e) {
+                    console.error('開啟對話失敗:', e);
+                    messagesContainer.innerHTML = `<div class="p-4 text-center text-danger">${e.message}</div>`;
+                }
+            },
+
+            /**
+             * 載入訊息
+             */
+            async loadMessages() {
+                const messagesContainer = document.getElementById('messages-container');
+                messagesContainer.innerHTML = MessagesUI.renderLoadingState();
+
+                try {
+                    const result = await MessagesAPI.getMessages(this.currentConversationId);
+                    this.renderMessages(result.messages || []);
+                } catch (e) {
+                    console.error('載入訊息失敗:', e);
+                    messagesContainer.innerHTML = `<div class="p-4 text-center text-danger">${e.message}</div>`;
+                }
+            },
+
+            /**
+             * 渲染訊息列表
+             */
+            renderMessages(messages) {
+                const container = document.getElementById('messages-container');
+
+                if (messages.length === 0) {
+                    container.innerHTML = MessagesUI.renderEmptyState('開始對話吧', 'message-circle');
+                    lucide.createIcons();
+                    return;
+                }
+
+                container.innerHTML = messages.map(msg =>
+                    MessagesUI.renderMessageBubble(msg, this.isPro)
+                ).join('');
+
+                // 滾動到底部
+                container.scrollTop = container.scrollHeight;
+            },
+
+            /**
+             * 發送訊息
+             */
+            async sendMessage(event) {
+                event.preventDefault();
+
+                const input = document.getElementById('message-input');
+                const content = input.value.trim();
+
+                if (!content || !this.currentOtherUserId) return;
+
+                const sendBtn = document.getElementById('send-btn');
+                sendBtn.disabled = true;
+
+                try {
+                    const result = await MessagesAPI.sendMessage(this.currentOtherUserId, content);
+
+                    if (result.success) {
+                        input.value = '';
+                        this.autoResizeInput(input);
+
+                        // 添加訊息到畫面
+                        this.appendMessage(result.message);
+
+                        // 更新限制顯示
+                        if (!this.isPro) {
+                            const limits = await MessagesAPI.getLimits();
+                            if (limits) {
+                                document.getElementById('limit-used').textContent = limits.message_limit.used || 0;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error('發送訊息失敗:', e);
+                    showToast(e.message, 'error');
+                } finally {
+                    sendBtn.disabled = false;
+                    this.updateSendButton();
+                }
+            },
+
+            /**
+             * 添加新訊息到畫面
+             */
+            appendMessage(msg) {
+                const container = document.getElementById('messages-container');
+
+                // 移除空狀態
+                const emptyState = container.querySelector('.flex.flex-col.items-center');
+                if (emptyState) {
+                    container.innerHTML = '';
+                }
+
+                container.insertAdjacentHTML('beforeend', MessagesUI.renderMessageBubble(msg, this.isPro));
+                container.scrollTop = container.scrollHeight;
+            },
+
+            /**
+             * 處理輸入框按鍵
+             */
+            handleInputKeydown(event) {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+                    document.getElementById('message-form').requestSubmit();
+                }
+            },
+
+            /**
+             * 自動調整輸入框高度
+             */
+            autoResizeInput(textarea) {
+                textarea.style.height = 'auto';
+                textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+                this.updateSendButton();
+            },
+
+            /**
+             * 更新發送按鈕狀態
+             */
+            updateSendButton() {
+                const input = document.getElementById('message-input');
+                const sendBtn = document.getElementById('send-btn');
+                sendBtn.disabled = !input.value.trim();
+            },
+
+            /**
+             * 更新字數統計
+             */
+            updateCharCount() {
+                const input = document.getElementById('message-input');
+                const charCount = document.getElementById('char-count');
+                const warning = document.getElementById('input-limit-warning');
+                const currentLength = input.value.length;
+                const maxLength = this.maxMessageLength;
+
+                // 更新計數顯示
+                charCount.textContent = `${currentLength}/${maxLength}`;
+
+                // 根據字數改變顏色
+                if (currentLength >= maxLength) {
+                    charCount.classList.remove('text-textMuted/50');
+                    charCount.classList.add('text-danger');
+                    warning.textContent = '已達字數上限';
+                    warning.classList.remove('hidden');
+                } else if (currentLength >= maxLength * 0.9) {
+                    charCount.classList.remove('text-textMuted/50');
+                    charCount.classList.add('text-yellow-500');
+                    warning.classList.add('hidden');
+                } else {
+                    charCount.classList.remove('text-danger', 'text-yellow-500');
+                    charCount.classList.add('text-textMuted/50');
+                    warning.classList.add('hidden');
+                }
+            },
+
+            /**
+             * 顯示聊天區域
+             */
+            showChatSection() {
+                const sidebar = document.getElementById('conversation-sidebar');
+                const chatSection = document.getElementById('chat-section');
+                const chatHeader = document.getElementById('chat-header');
+                const inputContainer = document.getElementById('message-input-container');
+
+                if (this.isMobile) {
+                    sidebar.classList.add('hidden');
+                    chatSection.classList.remove('hidden');
+                    chatSection.classList.add('flex');
+                } else {
+                    chatSection.classList.remove('hidden');
+                    chatSection.classList.add('flex');
+                }
+
+                chatHeader.classList.remove('hidden');
+                inputContainer.classList.remove('hidden');
+            },
+
+            /**
+             * 返回對話列表（手機版）
+             */
+            backToList() {
+                const sidebar = document.getElementById('conversation-sidebar');
+                const chatSection = document.getElementById('chat-section');
+
+                sidebar.classList.remove('hidden');
+                chatSection.classList.add('hidden');
+                chatSection.classList.remove('flex');
+
+                this.currentConversationId = null;
+                this.currentOtherUserId = null;
+            },
+
+            /**
+             * 更新聊天標題
+             */
+            updateChatHeader(username) {
+                document.getElementById('chat-user-avatar').textContent = MessagesUI.getInitial(username);
+                document.getElementById('chat-username').textContent = username;
+                document.getElementById('chat-profile-link').href = `/static/forum/profile.html?id=${this.currentOtherUserId}`;
+
+                // 找到對話資訊更新徽章
+                const conv = this.conversations.find(c => c.other_user_id === this.currentOtherUserId);
+                if (conv && conv.other_membership_tier === 'pro') {
+                    document.getElementById('chat-user-badge').innerHTML = MessagesUI.getMembershipBadge('pro');
+                } else {
+                    document.getElementById('chat-user-badge').innerHTML = '';
+                }
+            },
+
+            /**
+             * 更新對話的未讀數
+             */
+            updateConversationUnread(conversationId, count) {
+                const item = document.querySelector(`.conversation-item[data-conversation-id="${conversationId}"]`);
+                if (item) {
+                    const badge = item.querySelector('.bg-primary.rounded-full');
+                    if (badge) {
+                        if (count > 0) {
+                            badge.textContent = count > 99 ? '99+' : count;
+                        } else {
+                            badge.remove();
+                        }
+                    }
+                }
+            },
+
+            /**
+             * 設置 WebSocket
+             */
+            setupWebSocket() {
+                MessagesWebSocket.onConnect((data) => {
+                    console.log('WebSocket 連接成功');
+                });
+
+                MessagesWebSocket.onMessage((message, isSent) => {
+                    // 如果是自己發送的訊息（message_sent），跳過，因為 API 回應已經添加過了
+                    if (isSent) {
+                        return;
+                    }
+
+                    // 如果是當前對話的訊息，添加到畫面
+                    if (message.conversation_id === this.currentConversationId) {
+                        this.appendMessage(message);
+                        // 標記已讀
+                        MessagesAPI.markAsRead(this.currentConversationId);
+                    } else {
+                        // 其他對話的新訊息，更新對話列表
+                        this.loadConversations();
+                        const senderName = message.from_username || message.from_user_id;
+                        const preview = message.content.length > 30 ? message.content.substring(0, 30) + '...' : message.content;
+                        showToast(`${senderName}: ${preview}`, 'info');
+                    }
+                });
+
+                MessagesWebSocket.onReadReceipt((conversationId, readBy) => {
+                    // 更新已讀狀態（僅 Pro 可見）
+                    if (this.isPro && conversationId === this.currentConversationId) {
+                        // 將所有自己發送的訊息標記為已讀
+                        const bubbles = document.querySelectorAll('.message-bubble');
+                        bubbles.forEach(bubble => {
+                            const status = bubble.querySelector('.text-textMuted:last-child');
+                            if (status && status.textContent.includes('已送達')) {
+                                status.innerHTML = '<span class="text-xs text-success">已讀</span>';
+                            }
+                        });
+                    }
+                });
+
+                MessagesWebSocket.connect();
+            },
+
+            /**
+             * 切換搜尋面板
+             */
+            toggleSearch() {
+                const panel = document.getElementById('search-panel');
+                panel.classList.toggle('hidden');
+
+                if (!panel.classList.contains('hidden')) {
+                    document.getElementById('search-input').focus();
+                }
+            },
+
+            /**
+             * 處理搜尋
+             */
+            async handleSearch(query) {
+                const resultsEl = document.getElementById('search-results');
+
+                if (!query || query.length < 2) {
+                    resultsEl.innerHTML = '<div class="text-center text-textMuted py-8">輸入至少 2 個字元</div>';
+                    return;
+                }
+
+                resultsEl.innerHTML = MessagesUI.renderLoadingState();
+
+                try {
+                    const result = await MessagesAPI.searchMessages(query);
+
+                    if (!result.results || result.results.length === 0) {
+                        resultsEl.innerHTML = '<div class="text-center text-textMuted py-8">找不到符合的訊息</div>';
+                        return;
+                    }
+
+                    resultsEl.innerHTML = result.results.map(msg => `
+                        <div class="p-3 border-b border-white/5 hover:bg-white/5 cursor-pointer transition"
+                             onclick="MessagesPage.openConversationWith('${msg.other_user_id}'); MessagesPage.toggleSearch();">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="font-bold text-textMain">${msg.other_username || msg.other_user_id}</span>
+                                <span class="text-xs text-textMuted">${MessagesUI.formatTime(msg.created_at)}</span>
+                            </div>
+                            <p class="text-sm text-textMuted">${msg.content}</p>
+                        </div>
+                    `).join('');
+
+                } catch (e) {
+                    resultsEl.innerHTML = `<div class="p-4 text-center text-danger">${e.message}</div>`;
+                }
+            }
+        };
+
+        // Toast 函數
+        function showToast(message, type = 'info', duration = 3000) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            const colors = {
+                success: 'bg-success/20 border-success/30 text-success',
+                error: 'bg-danger/20 border-danger/30 text-danger',
+                warning: 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400',
+                info: 'bg-primary/20 border-primary/30 text-primary'
+            };
+
+            const icons = {
+                success: 'check-circle',
+                error: 'x-circle',
+                warning: 'alert-triangle',
+                info: 'info'
+            };
+
+            toast.className = `pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-2xl border backdrop-blur-xl shadow-xl animate-fade-in-up ${colors[type] || colors.info}`;
+            toast.innerHTML = `
+                <i data-lucide="${icons[type] || icons.info}" class="w-5 h-5 flex-shrink-0 mt-0.5"></i>
+                <p class="text-sm font-medium flex-1">${message}</p>
+                <button onclick="this.parentElement.remove()" class="text-current opacity-60 hover:opacity-100 transition">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            `;
+
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            if (duration > 0) {
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                    toast.style.transform = 'translateY(-10px)';
+                    setTimeout(() => toast.remove(), 300);
+                }, duration);
+            }
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            MessagesPage.init();
+        });
+    </script>
+</body>
+
+</html>

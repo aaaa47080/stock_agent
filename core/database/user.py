@@ -149,6 +149,24 @@ def is_username_available(username: str) -> bool:
         conn.close()
 
 
+def update_last_active(user_id: str) -> bool:
+    """更新用戶最後活動時間"""
+    conn = get_connection()
+    c = conn.cursor()
+    try:
+        c.execute('''
+            UPDATE users SET last_active_at = datetime('now')
+            WHERE user_id = ?
+        ''', (user_id,))
+        conn.commit()
+        return c.rowcount > 0
+    except Exception as e:
+        print(f"Update last active error: {e}")
+        return False
+    finally:
+        conn.close()
+
+
 # ============================================================================
 # Pi Network 用戶
 # ============================================================================

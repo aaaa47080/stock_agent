@@ -43,26 +43,36 @@
     <!-- Navbar -->
     <nav class="sticky top-0 z-50 bg-surface/95 backdrop-blur-xl border-b border-white/5 px-4 py-3">
         <div class="max-w-6xl mx-auto flex items-center justify-between">
-            <a href="/static/index.html" onclick="handleBackToApp(event)" class="flex items-center gap-2 text-secondary font-bold hover:text-primary transition">
-                <i data-lucide="arrow-left" class="w-5 h-5"></i>
-                <span>Back to App</span>
-            </a>
-            
-            <div class="font-bold text-lg text-primary tracking-wide">Pi Crypto Forum</div>
-
+            <!-- 返回主頁 + Logo -->
             <div class="flex items-center gap-3">
-                <div class="auth-only hidden flex items-center gap-2">
-                    <span class="text-xs text-textMuted user-display-name">User</span>
-                    <a href="/static/forum/dashboard.html#friends" id="nav-friends-btn" class="p-2 hover:bg-white/5 rounded-full relative" title="Friends">
-                        <i data-lucide="users" class="w-5 h-5"></i>
-                        <span id="nav-friends-badge" class="hidden absolute -top-1 -right-1 w-4 h-4 bg-danger text-white text-xs rounded-full flex items-center justify-center">0</span>
+                <a href="/static/index.html" class="p-2 hover:bg-white/5 rounded-full text-textMuted hover:text-primary transition" title="返回主頁">
+                    <i data-lucide="home" class="w-5 h-5"></i>
+                </a>
+                <a href="/static/forum/index.html" class="font-bold text-lg text-primary tracking-wide">
+                    Pi Forum
+                </a>
+            </div>
+
+            <!-- 右側按鈕區 -->
+            <div class="flex items-center gap-2">
+                <!-- 已登入狀態 -->
+                <div class="auth-only hidden flex items-center gap-1">
+                    <!-- 個人中心 -->
+                    <a href="/static/forum/dashboard.html" class="p-2 hover:bg-white/5 rounded-full" title="個人中心">
+                        <i data-lucide="user" class="w-5 h-5"></i>
                     </a>
-                    <a href="/static/forum/dashboard.html" class="p-2 hover:bg-white/5 rounded-full" title="Dashboard"><i data-lucide="user" class="w-5 h-5"></i></a>
-                    <a href="/static/forum/create.html" class="bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 transition">
-                        <i data-lucide="pen-tool" class="w-4 h-4"></i> Post
+                    <!-- 發文 -->
+                    <a href="/static/forum/create.html" class="bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 transition ml-1">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">發文</span>
                     </a>
                 </div>
-                <div class="guest-only text-xs text-textMuted">Guest Mode</div>
+                <!-- 未登入狀態 -->
+                <div class="guest-only">
+                    <button onclick="handlePiLogin()" class="bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-sm font-bold transition">
+                        登入
+                    </button>
+                </div>
             </div>
         </div>
     </nav>
@@ -129,25 +139,20 @@
     <script src="/static/js/auth.js?v=39"></script>
     <script src="/static/js/premium.js?v=39"></script>
     <script src="/static/js/forum.js?v=39"></script>
-    <script src="/static/js/friends.js?v=1"></script>
+    <script src="/static/js/friends.js?v=2"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            if (typeof initializeAuth === 'function') initializeAuth();
-            if (typeof ForumApp !== 'undefined') ForumApp.init();
+        document.addEventListener('DOMContentLoaded', async () => {
+            // 1. 初始化認證（等待完成）
+            if (typeof AuthManager !== 'undefined') {
+                await AuthManager.init();
+            }
 
-            // Update friends badge after auth is ready
-            setTimeout(async () => {
-                if (typeof FriendsAPI !== 'undefined' && typeof AuthManager !== 'undefined' && AuthManager.currentUser) {
-                    try {
-                        const counts = await FriendsAPI.getCounts();
-                        const badge = document.getElementById('nav-friends-badge');
-                        if (badge && counts.pending_received > 0) {
-                            badge.textContent = counts.pending_received;
-                            badge.classList.remove('hidden');
-                        }
-                    } catch (e) { console.log('Friends badge error:', e); }
-                }
-            }, 200);
+            // 2. 初始化 ForumApp
+            if (typeof ForumApp !== 'undefined') {
+                ForumApp.init();
+            }
+
+            lucide.createIcons();
         });
     </script>
 </body>
