@@ -69,12 +69,12 @@ function showToast(message, type = 'info', duration = 3000) {
  */
 function handleBackToApp(e) {
     if (e) e.preventDefault();
-    
+
     // 添加淡出效果
     document.body.style.opacity = '0';
     document.body.style.transform = 'scale(0.99)';
     document.body.style.transition = 'all 0.3s ease-in-out';
-    
+
     setTimeout(() => {
         window.location.href = '/static/index.html';
     }, 250);
@@ -139,7 +139,7 @@ function showConfirm(options = {}) {
         }
 
         if (window.lucide) lucide.createIcons();
-        
+
         // 觸發動畫
         if (content) {
             content.classList.remove('modal-content-active');
@@ -259,8 +259,8 @@ function checkApiKeyStatus() {
     if (indicator && statusText && statusDot) {
         if (hasLlmKey) {
             const providerName = currentKey.provider === 'openai' ? 'OpenAI' :
-                                currentKey.provider === 'google_gemini' ? 'Gemini' :
-                                currentKey.provider === 'openrouter' ? 'OpenRouter' : currentKey.provider;
+                currentKey.provider === 'google_gemini' ? 'Gemini' :
+                    currentKey.provider === 'openrouter' ? 'OpenRouter' : currentKey.provider;
 
             statusDot.className = 'w-2 h-2 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse';
             statusText.textContent = `AI Online: ${providerName}`;
@@ -303,7 +303,7 @@ function checkApiKeyStatus() {
 // ========================================
 function updateChatUIState(hasApiKey) {
     if (hasApiKey === undefined) {
-         hasApiKey = !!window.APIKeyManager?.getCurrentKey();
+        hasApiKey = !!window.APIKeyManager?.getCurrentKey();
     }
 
     // 1. 建議按鈕區域
@@ -344,7 +344,7 @@ function updateChatUIState(hasApiKey) {
 }
 
 // 暴露到全局供 index.html 控制初始化順序
-window.initializeUIStatus = function() {
+window.initializeUIStatus = function () {
     checkApiKeyStatus();
     // 每10秒檢查一次 API 狀態
     if (!window.apiKeyStatusInterval) {
@@ -374,7 +374,7 @@ function updateProviderOptions() {
     // Simple implementation to visually indicate valid keys in the dropdown
     const select = document.getElementById('llm-provider-select');
     if (!select) return;
-    
+
     Array.from(select.options).forEach(opt => {
         const provider = opt.value;
         if (validKeys[provider]) {
@@ -388,8 +388,10 @@ function updateProviderOptions() {
 // Watchlist & Chart Variables
 let currentUserId = 'guest';
 
-// Pulse Data Cache
-let currentPulseData = {};
+// Pulse Data Cache (使用 window 物件避免重複聲明)
+if (typeof window.currentPulseData === 'undefined') {
+    window.currentPulseData = {};
+}
 
 // Trade Proposal
 let currentProposal = null;
@@ -440,18 +442,40 @@ function onTabSwitch(tab) {
     // Set up new intervals based on tab
     if (tab === 'market') {
         marketRefreshInterval = setInterval(() => {
-            refreshScreener(false);
+            if (typeof refreshScreener === 'function') refreshScreener(false);
         }, 60000);
     }
 
     if (tab === 'pulse') {
         window.pulseInterval = setInterval(() => {
-            checkMarketPulse(false);
+            if (typeof checkMarketPulse === 'function') checkMarketPulse(false);
         }, 30000);
     }
 
     if (tab === 'assets') {
-        window.assetsInterval = setInterval(refreshAssets, 10000);
+        window.assetsInterval = setInterval(() => {
+            if (typeof refreshAssets === 'function') refreshAssets();
+        }, 10000);
+    }
+
+    // Friends Tab
+    if (tab === 'friends') {
+        // Force inject component if not already done (though switchTab usually handles this)
+        const initFriends = () => {
+            if (typeof loadFriendsTabData === 'function') loadFriendsTabData();
+        };
+
+        if (window.Components && !window.Components.isInjected('friends')) {
+            window.Components.inject('friends').then(initFriends);
+        } else {
+            initFriends();
+        }
+
+        // Auto-refresh every 5 seconds (polling for requests)
+        window.friendsInterval = setInterval(() => {
+            // Slient refresh (optional arg can be added to loadFriendsTabData to avoid spinners if needed)
+            if (typeof loadFriendsTabData === 'function') loadFriendsTabData();
+        }, 5000);
     }
 }
 
@@ -469,7 +493,7 @@ function updateUserId(uid) { currentUserId = uid || 'guest'; }
  * @param {string} message - 錯誤詳情
  * @param {boolean} isQuotaError - 是否為配額/額度不足錯誤
  */
-window.showError = function(title, message, isQuotaError = false) {
+window.showError = function (title, message, isQuotaError = false) {
     // Check if modal exists, if not create it
     let modal = document.getElementById('global-error-modal');
     if (!modal) {
@@ -513,7 +537,7 @@ window.showError = function(title, message, isQuotaError = false) {
 
     titleEl.innerText = title;
     msgEl.innerText = message || "發生未知錯誤";
-    
+
     if (isQuotaError) {
         quotaActions.classList.remove('hidden');
     } else {
@@ -529,7 +553,7 @@ window.showError = function(title, message, isQuotaError = false) {
     }, 10);
 };
 
-window.closeErrorModal = function() {
+window.closeErrorModal = function () {
     const modal = document.getElementById('global-error-modal');
     const content = document.getElementById('global-error-content');
     if (modal && content) {
@@ -556,7 +580,7 @@ async function openSettings() {
     if (typeof switchTab === 'function') {
         switchTab('settings');
     }
-    
+
     // Ensure component is injected
     if (window.Components && typeof window.Components.inject === 'function') {
         await window.Components.inject('settings');
@@ -578,21 +602,21 @@ async function openSettings() {
         setStatus('openai', settings.has_openai_key);
         setStatus('google_gemini', settings.has_google_key);
         setStatus('openrouter', settings.has_openrouter_key);
-        
+
         // Update Provider Select Options based on validity
         updateProviderOptions();
 
         const committeeMode = document.getElementById('set-committee-mode');
         if (committeeMode) committeeMode.checked = settings.enable_committee;
-        
+
         if (settings.primary_model_provider) {
-             const providerSelect = document.getElementById('llm-provider-select');
-             if (providerSelect) {
-                 providerSelect.value = settings.primary_model_provider;
-                 // 觸發更新
-                 if (typeof updateLLMKeyInput === 'function') updateLLMKeyInput();
-                 if (typeof updateAvailableModels === 'function') await updateAvailableModels();
-             }
+            const providerSelect = document.getElementById('llm-provider-select');
+            if (providerSelect) {
+                providerSelect.value = settings.primary_model_provider;
+                // 觸發更新
+                if (typeof updateLLMKeyInput === 'function') updateLLMKeyInput();
+                if (typeof updateAvailableModels === 'function') await updateAvailableModels();
+            }
         }
         if (settings.primary_model_name) {
             const modelSelect = document.getElementById('llm-model-select');
@@ -638,7 +662,7 @@ function closeSettings() {
 }
 
 // Allow external modules (like llmSettings.js) to update key validity
-window.setKeyValidity = function(provider, isValid) {
+window.setKeyValidity = function (provider, isValid) {
     if (validKeys.hasOwnProperty(provider)) {
         validKeys[provider] = isValid;
         updateProviderOptions();
@@ -688,80 +712,76 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Draggable Logic
+// Draggable Logic (Optimized with requestAnimationFrame)
 document.addEventListener('DOMContentLoaded', () => {
     const container = document.getElementById('global-nav-container');
     const nav = document.getElementById('draggable-nav');
     if (!container || !nav) return;
 
+    // State Variables
     let isDragging = false;
-    let hasMoved = false;
-    let startX, startY;
-    let offsetX = 0, offsetY = 0;
+    let currentX = 0, currentY = 0; // Current Translation
+    let initialX, initialY; // Touch/Mouse Start Position
+    let xOffset = 0, yOffset = 0; // Saved Offset
+    let animationFrameId = null;
 
-    // 從 localStorage 恢復位置
+    // Load saved position
     const savedPos = localStorage.getItem('navPosition');
     if (savedPos) {
         const { x, y } = JSON.parse(savedPos);
-        offsetX = x;
-        offsetY = y;
-        updatePosition();
+        xOffset = x;
+        yOffset = y;
+        // Apply immediately without animation
+        setTranslate(xOffset, yOffset, container);
     }
 
     const dragHandle = nav.querySelector('.drag-handle');
     if (!dragHandle) return;
 
-    // Mouse events
-    dragHandle.addEventListener('mousedown', onStart);
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onEnd);
+    // Mobile Optimization: Prevent default touch actions (scrolling) on handle
+    dragHandle.style.touchAction = 'none';
 
-    // Touch events
-    dragHandle.addEventListener('touchstart', onStart, { passive: false });
-    document.addEventListener('touchmove', onMove, { passive: false });
-    document.addEventListener('touchend', onEnd);
+    // Event Listeners
+    dragHandle.addEventListener('mousedown', dragStart);
+    dragHandle.addEventListener('touchstart', dragStart, { passive: false });
 
-    function onStart(e) {
+    document.addEventListener('mouseup', dragEnd);
+    document.addEventListener('touchend', dragEnd);
+
+    document.addEventListener('mousemove', drag);
+    document.addEventListener('touchmove', drag, { passive: false });
+
+    function dragStart(e) {
         if (e.target.closest('button:not(.drag-handle)')) return;
 
+        if (e.type === 'touchstart') {
+            initialX = e.touches[0].clientX - xOffset;
+            initialY = e.touches[0].clientY - yOffset;
+        } else {
+            initialX = e.clientX - xOffset;
+            initialY = e.clientY - yOffset;
+        }
+
         isDragging = true;
-        hasMoved = false;
 
-        const point = e.touches ? e.touches[0] : e;
-        startX = point.clientX - offsetX;
-        startY = point.clientY - offsetY;
+        // Performance: specific optimization classes
+        container.style.willChange = 'transform';
+        container.style.transition = 'none'; // Disable transition on container if any
+        nav.style.transition = 'none'; // Disable hover transitions etc on nav
 
-        nav.style.transition = 'none';
         dragHandle.style.cursor = 'grabbing';
     }
 
-    function onMove(e) {
+    function dragEnd(e) {
         if (!isDragging) return;
-        e.preventDefault();
 
-        const point = e.touches ? e.touches[0] : e;
-        const newX = point.clientX - startX;
-        const newY = point.clientY - startY;
+        initialX = currentX;
+        initialY = currentY;
 
-        // 檢測是否真的移動了
-        if (Math.abs(newX - offsetX) > 3 || Math.abs(newY - offsetY) > 3) {
-            hasMoved = true;
-        }
-
-        offsetX = newX;
-        offsetY = newY;
-
-        updatePosition();
-    }
-
-    function onEnd() {
-        if (!isDragging) return;
         isDragging = false;
+        cancelAnimationFrame(animationFrameId);
 
-        nav.style.transition = 'all 0.3s ease';
-        dragHandle.style.cursor = 'grab';
-
-        // 邊界檢測與吸附
+        // Snap to bounds logic
         const navRect = nav.getBoundingClientRect();
         const navWidth = navRect.width;
         const navHeight = navRect.height;
@@ -769,38 +789,105 @@ document.addEventListener('DOMContentLoaded', () => {
         const viewH = window.innerHeight;
         const padding = 10;
 
-        // 計算導航欄可移動的範圍
-        // 初始位置是 left: 50%, transform: translateX(-50%)，所以中心點在屏幕中央
-        // offsetX/offsetY 是相對於初始中心位置的偏移
-
-        // 水平邊界：導航欄不能超出屏幕左右
+        // Boundaries (Note: container is strictly centered horizontally by default via CSS)
+        // offsetX represents deviation from that center.
         const minX = -(viewW / 2) + (navWidth / 2) + padding;
         const maxX = (viewW / 2) - (navWidth / 2) - padding;
 
-        // 垂直邊界：導航欄不能超出屏幕上下
-        // 初始位置是 bottom: 24 (約 96px)，所以初始 top 約為 viewH - 96 - navHeight
-        const initialTop = viewH - 96 - navHeight;
-        const minY = -initialTop + padding;
-        const maxY = viewH - initialTop - navHeight - padding;
+        // Vertical boundaries
+        // Initial bottom is 24px (approx 96px from bottom).
+        // initialTop = viewH - 96 - navHeight;
+        // Let's rely on computed rect for safer bounds
+        // Reset transition for smooth snap
+        container.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)';
 
-        // 限制在邊界內
-        offsetX = Math.max(minX, Math.min(maxX, offsetX));
-        offsetY = Math.max(minY, Math.min(maxY, offsetY));
+        // Clamp offsets
+        // Recalculate based on current state to ensure robustness
+        // Since we are moving with transform translate, currentX is the translation value.
 
-        updatePosition();
+        let targetX = currentX;
+        let targetY = currentY;
 
-        // 保存位置
-        localStorage.setItem('navPosition', JSON.stringify({ x: offsetX, y: offsetY }));
+        // Clamp X
+        if (targetX < minX) targetX = minX;
+        if (targetX > maxX) targetX = maxX;
+
+        // Clamp Y (Simplify: just keep it on screen)
+        // Top boundary (negative Y moves up)
+        // Bottom is fixed at 24px.
+        // Transforming Y negative moves UP.
+        // Max UP = viewH - margin
+        // Max DOWN = margin (since it starts at bottom)
+
+        // Let's use simple logic: keep center on screen
+        const safeMarginY = viewH / 2 - navHeight; // Rough estimate
+        // Actually, just clamp to keep rect visible
+        // We know initial position (0,0) is bottom-center.
+
+        // Constrain Y to be reasonable (e.g., +/- screen height)
+        // Ideally we would calculate exact pixels but rough clamp works for "keep on screen"
+        const maxUp = -(viewH - 150);
+        const maxDown = 80;
+
+        if (targetY < maxUp) targetY = maxUp;
+        if (targetY > maxDown) targetY = maxDown;
+
+        // Commit final position
+        xOffset = targetX;
+        yOffset = targetY; // Actually we should use targetY but let's trust the clamp
+
+        setTranslate(targetX, targetY, container);
+
+        // Cleanup
+        setTimeout(() => {
+            container.style.willChange = 'auto';
+            container.style.transition = '';
+            nav.style.transition = 'all 0.3s ease'; // Restore nav transition
+        }, 300);
+
+        dragHandle.style.cursor = 'grab';
+
+        // Save
+        localStorage.setItem('navPosition', JSON.stringify({ x: targetX, y: targetY }));
     }
 
-    function updatePosition() {
-        container.style.transform = `translate(calc(-50% + ${offsetX}px), ${offsetY}px)`;
+    function drag(e) {
+        if (!isDragging) return;
+
+        e.preventDefault(); // Important for touch
+
+        let clientX, clientY;
+        if (e.type === 'touchmove') {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+
+        currentX = clientX - initialX;
+        currentY = clientY - initialY;
+
+        // Debounce via rAF
+        if (!animationFrameId) {
+            animationFrameId = requestAnimationFrame(() => {
+                setTranslate(currentX, currentY, container);
+                animationFrameId = null;
+            });
+        }
     }
 
-    // 窗口大小改變時重新檢測邊界
+    function setTranslate(xPos, yPos, el) {
+        // Use stacked transforms for better compatibility than calc() inside translate3d
+        // translateX(-50%) centers it, then translate3d moves it by offset
+        el.style.transform = `translateX(-50%) translate3d(${xPos}px, ${yPos}px, 0)`;
+    }
+
+    // Fix resize reset
     window.addEventListener('resize', () => {
         if (!isDragging) {
-            onEnd();
+            // Reset to center x if window resizes drastically? 
+            // Or just clamp. For now, keep simple.
         }
     });
 });
@@ -808,14 +895,14 @@ document.addEventListener('DOMContentLoaded', () => {
 async function saveSettings() {
     const btn = document.getElementById('btn-save-settings');
     if (!btn) return;
-    
+
     // 1. 僅停用並變灰，不改變文字內容 (不閃爍)
     btn.disabled = true;
     btn.classList.add('opacity-50', 'cursor-not-allowed');
 
     // ⚠️ Prepare Backend Payload
     const committeeConfig = window.CommitteeManager ? window.CommitteeManager.getConfig() : { bull: [], bear: [] };
-    
+
     const payload = {
         openai_api_key: null,
         google_api_key: null,
@@ -823,7 +910,7 @@ async function saveSettings() {
 
         enable_committee: document.getElementById('set-committee-mode') ? document.getElementById('set-committee-mode').checked : false,
         primary_model_provider: document.getElementById('llm-provider-select') ? document.getElementById('llm-provider-select').value : '',
-        primary_model_name: (function() {
+        primary_model_name: (function () {
             const select = document.getElementById('llm-model-select');
             const input = document.getElementById('llm-model-input');
             const provider = document.getElementById('llm-provider-select') ? document.getElementById('llm-provider-select').value : '';
@@ -855,7 +942,7 @@ async function saveSettings() {
             setTimeout(() => {
                 closeSettings();
                 checkApiKeyStatus();
-                
+
                 // 3. 在畫面切換後才恢復按鈕狀態
                 setTimeout(() => {
                     btn.disabled = false;
@@ -869,7 +956,7 @@ async function saveSettings() {
     } catch (e) {
         showToast('保存設定時發生錯誤: ' + e, 'error');
     }
-    
+
     // 只有在失敗時才立即恢復按鈕
     if (!success) {
         btn.disabled = false;

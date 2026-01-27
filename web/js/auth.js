@@ -222,7 +222,7 @@ const AuthManager = {
         }
     },
 
-    init() {
+    async init() {
         // 檢查 URL 參數是否要求強制登出
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('logout') === '1' || urlParams.get('force_logout') === '1') {
@@ -232,6 +232,29 @@ const AuthManager = {
             window.history.replaceState({}, '', window.location.pathname);
             window.location.reload();
             return false;
+        }
+
+        // 檢查測試模式
+        try {
+            const configRes = await fetch('/api/config');
+            const config = await configRes.json();
+
+            if (config.test_mode && config.test_user) {
+                console.log('🧪 [Test Mode] 自動登入測試用戶');
+                this.currentUser = {
+                    uid: config.test_user.uid,
+                    user_id: config.test_user.uid,
+                    username: config.test_user.username,
+                    accessToken: config.test_user.accessToken,
+                    authMethod: 'test_mode'
+                };
+                localStorage.setItem('pi_user', JSON.stringify(this.currentUser));
+                this._updateUI(true);
+                if (typeof initChat === 'function') initChat();
+                return true;
+            }
+        } catch (e) {
+            console.warn('Failed to check test mode:', e);
         }
 
         // Ensure Pi SDK is initialized on startup

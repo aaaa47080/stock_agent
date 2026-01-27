@@ -49,21 +49,6 @@ def init_db():
         )
     ''')
 
-    # 建立預測記錄表 (Social Trading)
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS predictions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT NOT NULL,
-            username TEXT,
-            symbol TEXT NOT NULL,
-            direction TEXT NOT NULL,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            entry_price REAL,
-            status TEXT DEFAULT 'PENDING',
-            final_pnl_pct REAL DEFAULT 0.0
-        )
-    ''')
-
     # 建立系統快取表 (System Cache)
     c.execute('''
         CREATE TABLE IF NOT EXISTS system_cache (
@@ -328,6 +313,26 @@ def init_db():
         )
     ''')
 
+    # ========================================================================
+    # 好友功能資料表
+    # ========================================================================
+
+    # 好友關係表
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS friendships (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id         TEXT NOT NULL,
+            friend_id       TEXT NOT NULL,
+            status          TEXT NOT NULL DEFAULT 'pending',
+            created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+            FOREIGN KEY (user_id) REFERENCES users(user_id),
+            FOREIGN KEY (friend_id) REFERENCES users(user_id),
+            UNIQUE (user_id, friend_id)
+        )
+    ''')
+
     # Migration: 為 users 表添加會員等級欄位
     try:
         c.execute('ALTER TABLE users ADD COLUMN membership_tier TEXT DEFAULT "free"')
@@ -384,6 +389,11 @@ def init_db():
     c.execute('CREATE INDEX IF NOT EXISTS idx_tips_to_user ON tips(to_user_id)')
     c.execute('CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(name)')
     c.execute('CREATE INDEX IF NOT EXISTS idx_user_daily_comments_user_date ON user_daily_comments(user_id, date)')
+
+    # 好友功能索引
+    c.execute('CREATE INDEX IF NOT EXISTS idx_friendships_user_id ON friendships(user_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_friendships_friend_id ON friendships(friend_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_friendships_status ON friendships(status)')
 
     conn.commit()
     conn.close()

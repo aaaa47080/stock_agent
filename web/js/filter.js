@@ -7,19 +7,19 @@ async function openGlobalFilter() {
     modal.classList.remove('hidden');
 
     const select = document.getElementById('filter-exchange-select');
-    if (select) select.value = currentFilterExchange;
+    if (select) select.value = window.currentFilterExchange || 'okx';
 
-    if (allMarketSymbols.length === 0) {
-        await fetchSymbols(currentFilterExchange);
+    if (!window.allMarketSymbols || window.allMarketSymbols.length === 0) {
+        await fetchSymbols(window.currentFilterExchange || 'okx');
     } else {
-        renderSymbolList(allMarketSymbols);
+        renderSymbolList(window.allMarketSymbols);
     }
 }
 
 async function switchFilterExchange(exchange) {
-    if (exchange === currentFilterExchange) return;
+    if (exchange === window.currentFilterExchange) return;
 
-    if (globalSelectedSymbols.length > 0) {
+    if (window.globalSelectedSymbols && window.globalSelectedSymbols.length > 0) {
         const confirmed = await showConfirm({
             title: '切換交易所',
             message: '切換交易所將清除目前的選擇，是否繼續？',
@@ -30,14 +30,14 @@ async function switchFilterExchange(exchange) {
 
         if (!confirmed) {
             const select = document.getElementById('filter-exchange-select');
-            if (select) select.value = currentFilterExchange;
+            if (select) select.value = window.currentFilterExchange || 'okx';
             return;
         }
     }
 
-    currentFilterExchange = exchange;
-    globalSelectedSymbols = [];
-    allMarketSymbols = [];
+    window.currentFilterExchange = exchange;
+    window.globalSelectedSymbols = [];
+    window.allMarketSymbols = [];
     await fetchSymbols(exchange);
 }
 
@@ -47,21 +47,21 @@ async function fetchSymbols(exchange) {
 
     try {
         const res = await fetch(`/api/market/symbols?exchange=${exchange}`);
-        
+
         if (!res.ok) {
             throw new Error(`HTTP Error ${res.status}`);
         }
 
         const data = await res.json();
         if (data.symbols) {
-            allMarketSymbols = data.symbols.sort();
-            renderSymbolList(allMarketSymbols);
+            window.allMarketSymbols = data.symbols.sort();
+            renderSymbolList(window.allMarketSymbols);
         } else {
             container.innerHTML = '<div class="text-center py-8 text-red-400">無法獲取幣種列表 (格式錯誤)</div>';
         }
     } catch (e) {
         console.error("Failed to fetch symbols", e);
-        
+
         let errorMessage = '連線錯誤';
         let detail = e.message;
 
@@ -99,7 +99,7 @@ function renderSymbolList(symbols) {
         container.innerHTML = '<div class="text-center py-8 text-slate-500">沒有找到符合的幣種</div>';
     } else {
         toRender.forEach(s => {
-            const isChecked = globalSelectedSymbols.includes(s);
+            const isChecked = window.globalSelectedSymbols && window.globalSelectedSymbols.includes(s);
             const div = document.createElement('div');
             div.className = `flex items-center justify-between p-3 rounded-lg cursor-pointer transition select-none ${isChecked ? 'bg-blue-900/30 border border-blue-500/50' : 'hover:bg-slate-800 border border-transparent'}`;
             div.onclick = () => toggleSymbolSelection(s);
@@ -113,32 +113,34 @@ function renderSymbolList(symbols) {
         });
     }
 
-    document.getElementById('selected-count-modal').innerText = globalSelectedSymbols.length;
+    document.getElementById('selected-count-modal').innerText = (window.globalSelectedSymbols || []).length;
     lucide.createIcons();
 }
 
 function toggleSymbolSelection(s) {
-    if (globalSelectedSymbols.includes(s)) {
-        globalSelectedSymbols = globalSelectedSymbols.filter(item => item !== s);
+    if (window.globalSelectedSymbols && window.globalSelectedSymbols.includes(s)) {
+        window.globalSelectedSymbols = window.globalSelectedSymbols.filter(item => item !== s);
     } else {
-        globalSelectedSymbols.push(s);
+        if (!window.globalSelectedSymbols) window.globalSelectedSymbols = [];
+        window.globalSelectedSymbols.push(s);
     }
-    renderSymbolList(allMarketSymbols);
+    renderSymbolList(window.allMarketSymbols || []);
 }
 
 function selectAllMatches() {
     const searchVal = document.getElementById('symbol-search').value.toUpperCase().trim();
     if (!searchVal) return;
 
-    const filtered = allMarketSymbols.filter(s => s.includes(searchVal));
+    const filtered = (window.allMarketSymbols || []).filter(s => s.includes(searchVal));
     let addedCount = 0;
     filtered.forEach(s => {
-        if (!globalSelectedSymbols.includes(s)) {
-            globalSelectedSymbols.push(s);
+        if (!window.globalSelectedSymbols) window.globalSelectedSymbols = [];
+        if (!window.globalSelectedSymbols.includes(s)) {
+            window.globalSelectedSymbols.push(s);
             addedCount++;
         }
     });
-    if (addedCount > 0) renderSymbolList(allMarketSymbols);
+    if (addedCount > 0) renderSymbolList(window.allMarketSymbols || []);
 }
 
 function applyGlobalFilter() {
@@ -149,7 +151,7 @@ function applyGlobalFilter() {
     // 新聞來源固定使用所有來源（不需要用戶選擇）
     // selectedNewsSources 在 app.js 中已經預設為所有來源
 
-    const count = globalSelectedSymbols.length;
+    const count = (window.globalSelectedSymbols || []).length;
     if (headerBadge) {
         headerBadge.innerText = count > 0 ? count : '自動';
     }
@@ -173,6 +175,6 @@ function applyGlobalFilter() {
 }
 
 function clearGlobalFilter() {
-    globalSelectedSymbols = [];
+    window.globalSelectedSymbols = [];
     applyGlobalFilter();
 }

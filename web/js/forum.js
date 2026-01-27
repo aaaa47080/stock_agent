@@ -492,7 +492,7 @@ const ForumApp = {
                     <div class="flex items-center justify-between mb-2">
                         <div class="flex items-center gap-2">
                             <span class="text-xs font-bold text-secondary bg-white/10 px-2 py-0.5 rounded uppercase">${post.category}</span>
-                            <span class="text-xs text-textMuted">${post.username || post.user_id}</span>
+                            <a href="/static/forum/profile.html?id=${post.user_id}" class="text-xs text-textMuted hover:text-primary transition" onclick="event.stopPropagation()">${post.username || post.user_id}</a>
                             <span class="text-xs text-textMuted">• ${date}</span>
                         </div>
                         <div class="flex items-center gap-3 text-xs text-textMuted">
@@ -567,7 +567,7 @@ const ForumApp = {
 
             document.getElementById('post-category').textContent = post.category;
             document.getElementById('post-title').textContent = post.title;
-            document.getElementById('post-author').textContent = post.username || post.user_id;
+            document.getElementById('post-author').innerHTML = `<a href="/static/forum/profile.html?id=${post.user_id}" class="hover:text-primary transition">${post.username || post.user_id}</a>`;
             document.getElementById('post-date').textContent = formatTWDate(post.created_at, true);
 
             // 使用 markdown-it 渲染內容
@@ -644,7 +644,7 @@ const ForumApp = {
                 el.className = 'border-b border-white/5 py-3';
                 el.innerHTML = `
                     <div class="flex justify-between items-start mb-1">
-                        <span class="font-bold text-sm text-secondary">${comment.username || comment.user_id}</span>
+                        <a href="/static/forum/profile.html?id=${comment.user_id}" class="font-bold text-sm text-secondary hover:text-primary transition">${comment.username || comment.user_id}</a>
                         <span class="text-xs text-textMuted">${formatTWDate(comment.created_at, true)}</span>
                     </div>
                     <div class="text-textMain text-sm">${comment.content}</div>

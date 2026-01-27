@@ -5,6 +5,45 @@
 // 資金費率快取
 let fundingRateData = {};
 let isScreenerLoading = false;
+let marketInitialized = false;
+
+/**
+ * 主要初始化函數 - 確保組件已注入並加載數據
+ * 這是進入 Market 頁面時唯一需要調用的函數
+ */
+async function initMarket() {
+    console.log('[Market] initMarket called');
+
+    // 1. 確保組件已注入
+    if (window.Components && !window.Components.isInjected('market')) {
+        console.log('[Market] Injecting component...');
+        await window.Components.inject('market');
+    }
+
+    // 2. 等待 DOM 元素出現
+    let topList = document.getElementById('top-list');
+    if (!topList) {
+        for (let i = 0; i < 10; i++) {
+            await new Promise(r => setTimeout(r, 50));
+            topList = document.getElementById('top-list');
+            if (topList) break;
+        }
+    }
+
+    if (!topList) {
+        console.error('[Market] top-list not found after injection!');
+        return;
+    }
+
+    console.log('[Market] DOM ready, loading data...');
+    marketInitialized = true;
+
+    // 3. 加載數據
+    await refreshScreener(true);
+}
+
+// Export to window
+window.initMarket = initMarket;
 let chart = null;
 let candleSeries = null;
 let volumeSeries = null;
@@ -69,13 +108,33 @@ function getFundingRateStyle(rate) {
 async function refreshScreener(showLoading = false) {
     if (isScreenerLoading) return;
 
-    const containers = {
+    let containers = {
         'top': document.getElementById('top-list'),
         'oversold': document.getElementById('oversold-list'),
         'overbought': document.getElementById('overbought-list'),
         'highFunding': document.getElementById('high-funding-list'),
         'lowFunding': document.getElementById('low-funding-list')
     };
+
+    // 如果主容器不存在，使用輪詢等待（最多等待 1 秒）
+    if (!containers.top) {
+        for (let i = 0; i < 10; i++) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            containers = {
+                'top': document.getElementById('top-list'),
+                'oversold': document.getElementById('oversold-list'),
+                'overbought': document.getElementById('overbought-list'),
+                'highFunding': document.getElementById('high-funding-list'),
+                'lowFunding': document.getElementById('low-funding-list')
+            };
+            if (containers.top) break;
+        }
+        if (!containers.top) {
+            console.warn('[Market] top-list not found after waiting, skipping refreshScreener');
+            return;
+        }
+    }
+    console.log('[Market] containers found, loading data...');
 
     // 如果容器是空的，強制顯示 loading，確保用戶知道正在加載
     const isTopEmpty = containers.top && containers.top.children.length === 0;
@@ -88,10 +147,10 @@ async function refreshScreener(showLoading = false) {
     isScreenerLoading = true;
 
     try {
-            const body = { exchange: window.currentFilterExchange || 'okx' };
-            if (window.globalSelectedSymbols && window.globalSelectedSymbols.length > 0) {
-                body.symbols = window.globalSelectedSymbols;
-            }
+        const body = { exchange: window.currentFilterExchange || 'okx' };
+        if (window.globalSelectedSymbols && window.globalSelectedSymbols.length > 0) {
+            body.symbols = window.globalSelectedSymbols;
+        }
         // 獨立處理兩個請求，互不影響
         // 1. Fetch Screener Data
         const screenerPromise = fetch('/api/screener', {
@@ -111,21 +170,21 @@ async function refreshScreener(showLoading = false) {
 
         const [screenerData, fundingData] = await Promise.all([screenerPromise, fundingPromise]);
 
-            // --- 處理篩選器結果 (Screener) ---
-            if (screenerData && !screenerData.error) {
-                if (isFirstLoad && (!window.globalSelectedSymbols || window.globalSelectedSymbols.length === 0)) {
-                    if (screenerData.top_performers && screenerData.top_performers.length > 0) {
-                        window.globalSelectedSymbols = screenerData.top_performers.map(item => item.Symbol);
-                        const indicator = document.getElementById('active-filter-indicator');
-                        const filterCount = document.getElementById('filter-count');
-                        const globalCount = document.getElementById('global-count-badge');
+        // --- 處理篩選器結果 (Screener) ---
+        if (screenerData && !screenerData.error) {
+            if (isFirstLoad && (!window.globalSelectedSymbols || window.globalSelectedSymbols.length === 0)) {
+                if (screenerData.top_performers && screenerData.top_performers.length > 0) {
+                    window.globalSelectedSymbols = screenerData.top_performers.map(item => item.Symbol);
+                    const indicator = document.getElementById('active-filter-indicator');
+                    const filterCount = document.getElementById('filter-count');
+                    const globalCount = document.getElementById('global-count-badge');
 
-                        if (indicator) indicator.classList.remove('hidden');
-                        if (filterCount) filterCount.innerText = window.globalSelectedSymbols.length;
-                        if (globalCount) globalCount.innerText = window.globalSelectedSymbols.length;
-                    }
-                    isFirstLoad = false;
+                    if (indicator) indicator.classList.remove('hidden');
+                    if (filterCount) filterCount.innerText = window.globalSelectedSymbols.length;
+                    if (globalCount) globalCount.innerText = window.globalSelectedSymbols.length;
                 }
+                isFirstLoad = false;
+            }
             if (screenerData.last_updated) {
                 const date = new Date(screenerData.last_updated);
                 const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -144,7 +203,7 @@ async function refreshScreener(showLoading = false) {
 
             // 顯示錯誤 Modal (如果是配額問題)
             if (screenerData?.message && (screenerData.message.includes("429") || screenerData.message.includes("quota")) && window.showError) {
-                 window.showError("市場數據載入失敗", "API 配額已滿或請求過於頻繁。", true);
+                window.showError("市場數據載入失敗", "API 配額已滿或請求過於頻繁。", true);
             }
 
             ['top', 'oversold', 'overbought'].forEach(key => {
@@ -405,7 +464,7 @@ function renderHistoryChart(historyData) {
 
     const labels = historyData.map(d => {
         const date = new Date(parseInt(d.time));
-        return `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:00`;
+        return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:00`;
     });
 
     const rates = historyData.map(d => d.rate);
@@ -457,7 +516,7 @@ function renderHistoryChart(historyData) {
                     borderWidth: 1,
                     padding: 10,
                     callbacks: {
-                        label: function(context) {
+                        label: function (context) {
                             return `費率: ${context.raw.toFixed(4)}%`;
                         }
                     }
@@ -1479,3 +1538,7 @@ window.toggleAutoRefresh = toggleAutoRefresh;
 window.connectTickerWebSocket = connectTickerWebSocket;
 window.disconnectTickerWebSocket = disconnectTickerWebSocket;
 window.subscribeTickerSymbols = subscribeTickerSymbols;
+window.refreshScreener = refreshScreener; // CRITICAL: Export for index.html to call
+window.showFundingHistory = showFundingHistory;
+window.closeFundingHistory = closeFundingHistory;
+

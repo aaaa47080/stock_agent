@@ -4,6 +4,18 @@ from dotenv import load_dotenv
 # Load environment variables with override to ensure .env file values take precedence
 load_dotenv(override=True)
 
+# === 測試模式配置 ===
+# 設為 True 時，跳過登入驗證，自動以測試用戶身份登入
+# 注意：僅供開發測試使用，正式環境請設為 False
+TEST_MODE = False
+
+# 測試用戶資料（TEST_MODE=True 時使用）
+TEST_USER = {
+    "uid": "test-user-001",
+    "username": "TestUser",
+    "accessToken": "test-token-12345"
+}
+
 # === AI 模型配置 ===
 
 # 基礎模型（用於分析師團隊 - 需用戶 Key）

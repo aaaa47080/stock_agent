@@ -3,12 +3,23 @@
 // ========================================
 
 const Components = {
+    // 追蹤已注入的組件
+    _injected: {},
+
     // Tab: Market
     market: `
         <div class="flex items-center justify-between mb-8">
             <h2 class="font-serif text-3xl text-secondary">Market Watch</h2>
             <div class="flex items-center gap-3">
-                <div class="flex items-center gap-1.5" title="即時更新狀態">
+                <button onclick="openGlobalFilter()" class="flex items-center gap-2 px-3 py-1.5 bg-surface hover:bg-surfaceHighlight rounded-lg text-textMuted hover:text-primary transition border border-white/5">
+                    <i data-lucide="filter" class="w-4 h-4"></i>
+                    <span class="text-xs font-bold">Filter</span>
+                    <span id="global-count-badge" class="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded">Auto</span>
+                </button>
+                <div id="active-filter-indicator" class="hidden flex items-center gap-1 text-xs text-primary">
+                    <span id="filter-count">0</span> selected
+                </div>
+                <div class="flex items-center gap-1.5" title="Live Update Status">
                     <div id="ticker-ws-indicator" class="w-2 h-2 rounded-full bg-gray-500 transition-colors"></div>
                     <span class="text-[9px] text-textMuted uppercase tracking-wider">LIVE</span>
                 </div>
@@ -18,7 +29,6 @@ const Components = {
         </div>
 
         <div class="space-y-12">
-            <!-- Section 1: Top Movers -->
             <section>
                 <div class="flex items-center gap-3 mb-6 px-2">
                     <div class="h-px flex-1 bg-gradient-to-r from-primary/30 to-transparent"></div>
@@ -28,7 +38,6 @@ const Components = {
                 <div id="top-list" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
             </section>
 
-            <!-- Section 2: Market Dynamics (RSI & Funding) -->
             <section>
                 <div class="flex items-center gap-3 mb-8 px-2">
                     <div class="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent"></div>
@@ -37,7 +46,6 @@ const Components = {
                 </div>
 
                 <div class="space-y-10 px-2">
-                    <!-- RSI Radar (Side by Side) -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <h4 class="text-xs font-bold text-success mb-4 flex items-center gap-2 opacity-80 uppercase tracking-wider">
@@ -53,7 +61,6 @@ const Components = {
                         </div>
                     </div>
 
-                    <!-- Funding Heatmap (Side by Side) -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <h4 class="text-xs font-bold text-secondary mb-4 flex items-center gap-2 opacity-80 uppercase tracking-wider">
@@ -77,10 +84,11 @@ const Components = {
     pulse: `
         <div class="flex justify-between items-end mb-8">
             <h2 class="font-serif text-3xl text-secondary">Market Pulse</h2>
-            <button onclick="refreshMarketPulse()" class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+            <button id="pulse-refresh-btn" onclick="refreshMarketPulse()" class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition">
+                <i id="pulse-refresh-icon" data-lucide="refresh-cw" class="w-4 h-4"></i>
+            </button>
         </div>
 
-        <!-- Progress -->
         <div id="analysis-progress-container" class="hidden mb-6 bg-surface rounded-2xl p-4 border border-primary/10">
             <div class="flex justify-between items-center mb-2">
                 <span class="text-xs font-bold text-primary flex items-center gap-2">
@@ -94,12 +102,93 @@ const Components = {
             </div>
         </div>
 
-        <div id="pulse-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Cards injected here -->
+        <div id="pulse-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+    `,
+
+    // Tab: Friends (New Global Feature)
+    friends: `
+        <div class="max-w-4xl mx-auto space-y-6">
+            <div class="flex justify-between items-end mb-4">
+                <h2 class="font-serif text-3xl text-secondary">Friends</h2>
+                <div class="flex items-center gap-2">
+                    <span id="friends-badge-total" class="px-2 py-0.5 text-xs bg-white/10 text-textMuted rounded-full">0</span>
+                    <button onclick="Components.forceInject('friends'); if(typeof loadFriendsTabData === 'function') loadFriendsTabData();" class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Search Section -->
+            <div class="bg-surface border border-white/5 rounded-2xl p-6">
+                <h3 class="font-bold text-secondary text-lg mb-4 flex items-center gap-2">
+                    <i data-lucide="search" class="w-5 h-5"></i>
+                    Find Friends
+                </h3>
+                <div class="relative">
+                    <input type="text" id="friend-search-input" placeholder="Search by username..."
+                           class="w-full bg-background border border-white/10 rounded-xl px-4 py-3 pl-10 text-secondary outline-none focus:border-primary/50 transition"
+                           oninput="if(typeof handleFriendSearch === 'function') handleFriendSearch(this.value)">
+                    <i data-lucide="search" class="w-5 h-5 text-textMuted absolute left-3 top-1/2 -translate-y-1/2"></i>
+                </div>
+                <div id="search-results" class="mt-4 space-y-2 hidden"></div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Pending Requests -->
+                <div class="bg-surface border border-white/5 rounded-2xl p-6">
+                    <h3 class="font-bold text-secondary text-lg mb-4 flex items-center gap-2">
+                        <i data-lucide="user-plus" class="w-5 h-5 text-primary"></i>
+                        Friend Requests
+                        <span id="pending-count-badge" class="hidden px-2 py-0.5 text-xs bg-danger text-white rounded-full"></span>
+                    </h3>
+                    <div id="pending-requests-list" class="space-y-2">
+                        <div class="text-center text-textMuted py-6 opacity-50">
+                            <i data-lucide="loader-2" class="w-5 h-5 animate-spin mx-auto mb-2"></i>
+                            Loading requests...
+                        </div>
+                    </div>
+                </div>
+
+                <!-- My Friends -->
+                <div class="bg-surface border border-white/5 rounded-2xl p-6">
+                    <h3 class="font-bold text-secondary text-lg mb-4 flex items-center gap-2">
+                        <i data-lucide="users" class="w-5 h-5 text-success"></i>
+                        My Friends
+                        <span id="friends-count-badge" class="hidden px-2 py-0.5 text-xs bg-white/10 text-textMuted rounded-full">0</span>
+                    </h3>
+                    <div id="friends-list" class="space-y-2">
+                        <div class="text-center text-textMuted py-6 opacity-50">
+                            <i data-lucide="loader-2" class="w-5 h-5 animate-spin mx-auto mb-2"></i>
+                            Loading friends...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Blocked Users (Collapsible) -->
+            <div class="bg-surface border border-white/5 rounded-2xl overflow-hidden mt-6">
+                <button onclick="document.getElementById('blocked-list').classList.toggle('hidden'); document.getElementById('blocked-chevron').classList.toggle('rotate-180');" class="w-full p-6 flex items-center justify-between hover:bg-white/5 transition">
+                    <h3 class="font-bold text-textMuted text-lg flex items-center gap-2">
+                        <i data-lucide="ban" class="w-5 h-5 text-danger"></i>
+                        Blocked Users
+                        <span id="blocked-count-badge" class="px-2 py-0.5 text-xs bg-white/10 text-textMuted rounded-full">0</span>
+                    </h3>
+                    <i data-lucide="chevron-down" id="blocked-chevron" class="w-5 h-5 text-textMuted transition-transform"></i>
+                </button>
+                <div id="blocked-list" class="px-6 pb-6 hidden">
+                    <div class="space-y-2" id="blocked-users-container">
+                        <div class="text-center text-textMuted py-4 opacity-50">
+                            No blocked users
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="h-20"></div> <!-- Spacer for bottom nav if needed -->
         </div>
     `,
 
-    // Tab: Settings
+    // Tab: Settings (保持原樣，這裡省略以節省空間)
     settings: `
         <div class="max-w-2xl mx-auto">
              <h2 class="font-serif text-3xl text-secondary mb-8">Settings</h2>
@@ -120,7 +209,6 @@ const Components = {
                                 </div>
                             </div>
                         </div>
-                        <!-- Membership Status Badge -->
                         <div id="premium-status-badge" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-textMuted">
                             <i data-lucide="loader" class="w-3 h-3 animate-spin"></i>
                             Loading
@@ -152,7 +240,6 @@ const Components = {
                     </div>
 
                     <div id="settings-wallet-content" class="space-y-4">
-                        <!-- 未綁定狀態 -->
                         <div id="wallet-not-linked" class="hidden">
                             <div class="bg-background/50 rounded-xl p-4 border border-white/5 mb-4">
                                 <p class="text-sm text-textMuted leading-relaxed">
@@ -172,7 +259,6 @@ const Components = {
                             <p class="text-[10px] text-textMuted/60 text-center mt-2">需要在 Pi Browser 中開啟</p>
                         </div>
 
-                        <!-- 已綁定狀態 -->
                         <div id="wallet-linked" class="hidden">
                             <div class="bg-success/5 rounded-xl p-4 border border-success/10">
                                 <div class="flex items-center gap-3">
@@ -201,14 +287,11 @@ const Components = {
                                 <p class="text-xs text-textMuted">Configure your LLM provider</p>
                             </div>
                         </div>
-                        <!-- LLM Status Badge -->
                         <div id="llm-status-badge" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium">
-                            <!-- Will be updated by JS -->
                         </div>
                     </div>
 
                     <div class="space-y-6">
-                        <!-- Provider -->
                         <div>
                             <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Provider</label>
                             <select id="llm-provider-select" onchange="updateLLMKeyInput(); updateAvailableModels()" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3.5 text-secondary outline-none focus:border-primary/50 transition appearance-none">
@@ -218,7 +301,6 @@ const Components = {
                             </select>
                         </div>
 
-                        <!-- API Key -->
                         <div>
                             <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">API Key</label>
                             <div class="flex gap-3">
@@ -227,7 +309,6 @@ const Components = {
                             </div>
                         </div>
 
-                        <!-- Model -->
                         <div>
                             <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Model</label>
                             <select id="llm-model-select" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3.5 text-secondary outline-none focus:border-primary/50 transition appearance-none" style="display: block;">
@@ -264,7 +345,6 @@ const Components = {
                     </div>
 
                     <div id="committee-management-panel" class="hidden space-y-6 pt-6 mt-6 border-t border-white/5">
-                        <!-- Provider Selection -->
                         <div>
                             <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Provider</label>
                             <select id="committee-provider-select" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3.5 text-sm text-secondary outline-none focus:border-accent/50 transition appearance-none">
@@ -275,7 +355,6 @@ const Components = {
                             </p>
                         </div>
 
-                        <!-- Model Selection -->
                         <div>
                             <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Model</label>
                             <select id="committee-model-select" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3.5 text-sm text-secondary outline-none focus:border-accent/50 transition appearance-none" disabled>
@@ -283,7 +362,6 @@ const Components = {
                             </select>
                         </div>
 
-                        <!-- Add to Team Buttons -->
                         <div class="grid grid-cols-2 gap-3">
                             <button id="add-bull-btn" class="py-3 bg-success/10 text-success rounded-xl text-sm font-bold border border-success/20 hover:bg-success/20 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
                                 <i data-lucide="plus" class="w-4 h-4"></i> Bull Team
@@ -293,7 +371,6 @@ const Components = {
                             </button>
                         </div>
 
-                        <!-- Team Members -->
                         <div class="grid grid-cols-2 gap-4">
                             <div class="bg-background p-4 rounded-xl">
                                 <span class="text-success font-bold text-sm flex items-center gap-2 mb-3">
@@ -360,13 +437,10 @@ const Components = {
                                 <p class="text-xs text-textMuted">Connect your OKX account</p>
                             </div>
                         </div>
-                        <!-- Connection Status Badge -->
                         <div id="okx-status-badge" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium">
-                            <!-- Will be updated by JS -->
                         </div>
                     </div>
 
-                    <!-- Not Connected State -->
                     <div id="okx-not-connected" class="hidden">
                         <div class="text-center py-4 mb-4 bg-background/50 rounded-xl">
                             <i data-lucide="unplug" class="w-8 h-8 text-textMuted mx-auto mb-2"></i>
@@ -377,7 +451,6 @@ const Components = {
                         </button>
                     </div>
 
-                    <!-- Connected State -->
                     <div id="okx-connected" class="hidden">
                         <div class="flex items-center justify-between p-4 bg-success/5 border border-success/20 rounded-xl mb-4">
                             <div class="flex items-center gap-3">
@@ -404,8 +477,7 @@ const Components = {
                 <button onclick="saveSettings()" id="btn-save-settings" class="w-full py-4 bg-secondary text-background font-bold rounded-2xl shadow-xl hover:scale-[1.02] transition">
                     Save All Settings
                 </button>
-                
-                <!-- Version Info -->
+
                 <div class="text-center pt-8 opacity-20 text-[10px] font-mono tracking-widest uppercase">
                     CryptoMind v1.2.0-Pi-Integrated
                 </div>
@@ -414,34 +486,54 @@ const Components = {
     `,
 
     /**
-     * 將組件注入到指定的容器中
+     * 同步注入組件並確保 DOM 更新完成
      * @param {string} id - 分頁 ID (如 'market', 'pulse', 'settings')
      * @returns {Promise<boolean>}
      */
     async inject(id) {
-        console.log(`[Components] Attempting to inject: ${id}`);
         const container = document.getElementById(id + '-tab');
-        if (container && this[id]) {
-            // 強制注入，不檢查是否為空，確保修正顯示問題
-            container.innerHTML = this[id];
-            
-            // 使用 requestAnimationFrame 確保瀏覽器已經完成 DOM 解析
-            return new Promise((resolve) => {
-                requestAnimationFrame(() => {
-                    // 重新初始化 Lucide 圖標
-                    if (window.lucide) {
-                        window.lucide.createIcons();
-                    }
-                    console.log(`[Components] Successfully injected ${id} content`);
-                    resolve(true);
-                });
-            });
+        if (!container || !this[id]) {
+            console.error(`[Components] inject failed: container=${!!container}, template=${!!this[id]}`);
+            return false;
         }
-        console.error(`[Components] Failed to inject ${id}: Container or template not found`, {
-            hasContainer: !!container,
-            hasTemplate: !!this[id]
-        });
-        return Promise.resolve(false);
+
+        // 如果已經注入過，直接返回
+        if (this._injected[id]) {
+            console.log(`[Components] ${id} already injected, skipping`);
+            return true;
+        }
+
+        console.log(`[Components] Injecting ${id}...`);
+
+        // 直接設置 innerHTML
+        container.innerHTML = this[id];
+        this._injected[id] = true;
+
+        // 等待 DOM 更新完成（使用 setTimeout 比 requestAnimationFrame 更可靠）
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        // 初始化 Lucide 圖標
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
+
+        console.log(`[Components] ${id} injected successfully`);
+        return true;
+    },
+
+    /**
+     * 檢查組件是否已注入
+     */
+    isInjected(id) {
+        return !!this._injected[id];
+    },
+
+    /**
+     * 強制重新注入
+     */
+    async forceInject(id) {
+        this._injected[id] = false;
+        return this.inject(id);
     }
 };
 

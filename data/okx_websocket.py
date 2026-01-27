@@ -53,7 +53,12 @@ class OKXWebSocketManager:
     def _get_okx_inst_id(self, symbol: str) -> str:
         """轉換幣種符號為 OKX 格式"""
         # 移除常見後綴，轉換為 OKX 格式
-        symbol = symbol.upper().replace("USDT", "").replace("USD", "").replace("-", "")
+        symbol = symbol.upper().replace("-", "")
+        # 只移除結尾的 USDT/USD，避免影響 USDC 等幣種
+        if symbol.endswith("USDT"):
+            symbol = symbol[:-4]
+        elif symbol.endswith("USD") and symbol != "USDC":
+            symbol = symbol[:-3]
         return f"{symbol}-USDT"
 
     async def connect(self):
@@ -295,7 +300,12 @@ class OKXTickerWebSocketManager:
 
     def _get_okx_inst_id(self, symbol: str) -> str:
         """轉換幣種符號為 OKX 格式"""
-        symbol = symbol.upper().replace("USDT", "").replace("USD", "").replace("-", "")
+        symbol = symbol.upper().replace("-", "")
+        # 只移除結尾的 USDT/USD，避免影響 USDC 等幣種
+        if symbol.endswith("USDT"):
+            symbol = symbol[:-4]
+        elif symbol.endswith("USD") and symbol != "USDC":
+            symbol = symbol[:-3]
         return f"{symbol}-USDT"
 
     async def connect(self):

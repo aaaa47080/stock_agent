@@ -53,7 +53,11 @@
             <div class="flex items-center gap-3">
                 <div class="auth-only hidden flex items-center gap-2">
                     <span class="text-xs text-textMuted user-display-name">User</span>
-                    <a href="/static/forum/dashboard.html" class="p-2 hover:bg-white/5 rounded-full"><i data-lucide="user" class="w-5 h-5"></i></a>
+                    <a href="/static/forum/dashboard.html#friends" id="nav-friends-btn" class="p-2 hover:bg-white/5 rounded-full relative" title="Friends">
+                        <i data-lucide="users" class="w-5 h-5"></i>
+                        <span id="nav-friends-badge" class="hidden absolute -top-1 -right-1 w-4 h-4 bg-danger text-white text-xs rounded-full flex items-center justify-center">0</span>
+                    </a>
+                    <a href="/static/forum/dashboard.html" class="p-2 hover:bg-white/5 rounded-full" title="Dashboard"><i data-lucide="user" class="w-5 h-5"></i></a>
                     <a href="/static/forum/create.html" class="bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 transition">
                         <i data-lucide="pen-tool" class="w-4 h-4"></i> Post
                     </a>
@@ -120,15 +124,30 @@
     </div>
 
     <!-- Scripts -->
-    <script src="/static/js/app.js?v=38"></script>
-    <script src="/static/js/apiKeyManager.js?v=38"></script>
-    <script src="/static/js/auth.js?v=38"></script>
-    <script src="/static/js/premium.js?v=38"></script>
-    <script src="/static/js/forum.js?v=38"></script>
+    <script src="/static/js/app.js?v=39"></script>
+    <script src="/static/js/apiKeyManager.js?v=39"></script>
+    <script src="/static/js/auth.js?v=39"></script>
+    <script src="/static/js/premium.js?v=39"></script>
+    <script src="/static/js/forum.js?v=39"></script>
+    <script src="/static/js/friends.js?v=1"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             if (typeof initializeAuth === 'function') initializeAuth();
             if (typeof ForumApp !== 'undefined') ForumApp.init();
+
+            // Update friends badge after auth is ready
+            setTimeout(async () => {
+                if (typeof FriendsAPI !== 'undefined' && typeof AuthManager !== 'undefined' && AuthManager.currentUser) {
+                    try {
+                        const counts = await FriendsAPI.getCounts();
+                        const badge = document.getElementById('nav-friends-badge');
+                        if (badge && counts.pending_received > 0) {
+                            badge.textContent = counts.pending_received;
+                            badge.classList.remove('hidden');
+                        }
+                    } catch (e) { console.log('Friends badge error:', e); }
+                }
+            }, 200);
         });
     </script>
 </body>

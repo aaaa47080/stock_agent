@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>User Profile - Pi Crypto Forum</title>
+    <link rel="icon" type="image/png" href="/static/img/title_icon.png">
+
+    <!-- Core Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        background: '#1a1a1c',
+                        surface: '#252529',
+                        surfaceHighlight: '#323236',
+                        primary: '#d4b693',
+                        secondary: '#e4e4e7',
+                        accent: '#c084fc',
+                        success: '#86efac',
+                        danger: '#fda4af',
+                        textMain: '#f4f4f5',
+                        textMuted: '#a1a1aa',
+                    },
+                    fontFamily: {
+                        sans: ['Mulish', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Mulish:wght@300;400;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body class="bg-background text-textMain min-h-screen flex flex-col" data-page="profile">
+
+    <!-- Navbar -->
+    <nav class="sticky top-0 z-50 bg-surface/95 backdrop-blur-xl border-b border-white/5 px-4 py-3">
+        <div class="max-w-3xl mx-auto flex items-center justify-between">
+            <button onclick="history.back()" class="flex items-center gap-2 text-secondary font-bold hover:text-primary transition">
+                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                <span>Back</span>
+            </button>
+            <div class="font-bold text-lg text-primary tracking-wide">User Profile</div>
+            <div class="w-20"></div>
+        </div>
+    </nav>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed z-[200] flex flex-col gap-2 pointer-events-none bottom-28 left-4 right-4 md:bottom-auto md:top-6 md:right-6 md:left-auto md:w-80"></div>
+
+    <!-- Confirm Modal -->
+    <div id="confirm-modal" class="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
+        <div class="bg-surface border border-white/10 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <div id="confirm-modal-icon" class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"></div>
+            <h3 id="confirm-modal-title" class="text-xl font-bold text-textMain text-center mb-2"></h3>
+            <p id="confirm-modal-message" class="text-textMuted text-center mb-6"></p>
+            <div class="flex gap-3">
+                <button id="confirm-cancel-btn" class="flex-1 py-3 rounded-xl font-bold bg-white/5 hover:bg-white/10 text-textMuted transition">取消</button>
+                <button id="confirm-ok-btn" class="flex-1 py-3 rounded-xl font-bold transition"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-3xl mx-auto w-full p-4 space-y-6">
+
+        <!-- Profile Header -->
+        <div id="profile-header" class="bg-surface border border-white/5 rounded-2xl p-6 relative overflow-hidden">
+            <div class="flex flex-col md:flex-row md:items-center gap-4">
+                <div id="profile-avatar" class="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center text-primary text-3xl font-bold flex-shrink-0">
+                    <div class="animate-pulse w-full h-full rounded-full bg-white/5"></div>
+                </div>
+                <div class="flex-1">
+                    <div id="profile-username" class="text-2xl font-bold text-textMain mb-1">
+                        <div class="animate-pulse h-8 w-32 bg-white/5 rounded"></div>
+                    </div>
+                    <div id="profile-badges" class="flex items-center gap-2 mb-2"></div>
+                    <div id="profile-meta" class="text-sm text-textMuted">
+                        <div class="animate-pulse h-4 w-48 bg-white/5 rounded"></div>
+                    </div>
+                </div>
+                <div id="profile-actions" class="flex-shrink-0">
+                    <div class="animate-pulse w-24 h-10 bg-white/5 rounded-lg"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-surface border border-white/5 rounded-xl p-4 text-center">
+                <div id="stat-posts" class="text-2xl font-bold text-primary">-</div>
+                <div class="text-xs text-textMuted">Posts</div>
+            </div>
+            <div class="bg-surface border border-white/5 rounded-xl p-4 text-center">
+                <div id="stat-pushes" class="text-2xl font-bold text-success">-</div>
+                <div class="text-xs text-textMuted">Pushes</div>
+            </div>
+            <div class="bg-surface border border-white/5 rounded-xl p-4 text-center">
+                <div id="stat-friends" class="text-2xl font-bold text-accent">-</div>
+                <div class="text-xs text-textMuted">Friends</div>
+            </div>
+            <div class="bg-surface border border-white/5 rounded-xl p-4 text-center">
+                <div id="stat-member" class="text-2xl font-bold text-secondary">-</div>
+                <div class="text-xs text-textMuted">Member Since</div>
+            </div>
+        </div>
+
+        <!-- User Posts -->
+        <div class="bg-surface border border-white/5 rounded-2xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-white/5">
+                <h2 class="font-bold text-lg text-textMain flex items-center gap-2">
+                    <i data-lucide="file-text" class="w-5 h-5 text-primary"></i>
+                    Recent Posts
+                </h2>
+            </div>
+            <div id="user-posts" class="divide-y divide-white/5">
+                <div class="p-6 text-center text-textMuted">
+                    <div class="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
+                    Loading...
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions Menu (for non-self profiles) -->
+        <div id="more-actions" class="hidden">
+            <div class="bg-surface border border-white/5 rounded-2xl overflow-hidden">
+                <button id="block-btn" class="w-full px-6 py-4 text-left text-danger hover:bg-danger/10 transition flex items-center gap-3">
+                    <i data-lucide="ban" class="w-5 h-5"></i>
+                    <span>Block User</span>
+                </button>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Scripts -->
+    <script src="/static/js/auth.js?v=1"></script>
+    <script src="/static/js/friends.js?v=1"></script>
+    <script>
+        // ========================================
+        // Profile Page Logic
+        // ========================================
+
+        let profileData = null;
+        let currentUserId = null;
+
+        // Toast notification
+        function showToast(message, type = 'info', duration = 3000) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            const colors = {
+                success: 'bg-success/20 border-success/30 text-success',
+                error: 'bg-danger/20 border-danger/30 text-danger',
+                warning: 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400',
+                info: 'bg-primary/20 border-primary/30 text-primary'
+            };
+
+            const icons = {
+                success: 'check-circle',
+                error: 'x-circle',
+                warning: 'alert-triangle',
+                info: 'info'
+            };
+
+            toast.className = `pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-2xl border backdrop-blur-xl shadow-xl animate-fade-in-up ${colors[type] || colors.info}`;
+            toast.innerHTML = `
+                <i data-lucide="${icons[type] || icons.info}" class="w-5 h-5 flex-shrink-0 mt-0.5"></i>
+                <p class="text-sm font-medium flex-1">${message}</p>
+                <button onclick="this.parentElement.remove()" class="text-current opacity-60 hover:opacity-100 transition">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            `;
+
+            container.appendChild(toast);
+            lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-10px)';
+                setTimeout(() => toast.remove(), 300);
+            }, duration);
+        }
+
+        // Confirm modal
+        function showConfirm(options) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('confirm-modal');
+                const title = document.getElementById('confirm-modal-title');
+                const message = document.getElementById('confirm-modal-message');
+                const icon = document.getElementById('confirm-modal-icon');
+                const okBtn = document.getElementById('confirm-ok-btn');
+                const cancelBtn = document.getElementById('confirm-cancel-btn');
+
+                title.textContent = options.title || 'Confirm';
+                message.textContent = options.message || 'Are you sure?';
+
+                const typeColors = {
+                    danger: { bg: 'bg-danger/20', text: 'text-danger', btn: 'bg-danger text-white' },
+                    warning: { bg: 'bg-yellow-500/20', text: 'text-yellow-400', btn: 'bg-yellow-500 text-black' },
+                    info: { bg: 'bg-primary/20', text: 'text-primary', btn: 'bg-primary text-black' },
+                    success: { bg: 'bg-success/20', text: 'text-success', btn: 'bg-success text-black' }
+                };
+                const colors = typeColors[options.type] || typeColors.info;
+
+                icon.className = `w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${colors.bg}`;
+                icon.innerHTML = `<i data-lucide="alert-triangle" class="w-8 h-8 ${colors.text}"></i>`;
+
+                okBtn.textContent = options.confirmText || 'Confirm';
+                okBtn.className = `flex-1 py-3 rounded-xl font-bold transition ${colors.btn}`;
+                cancelBtn.textContent = options.cancelText || 'Cancel';
+
+                modal.classList.remove('hidden');
+                lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
+
+                const cleanup = () => {
+                    modal.classList.add('hidden');
+                    okBtn.onclick = null;
+                    cancelBtn.onclick = null;
+                };
+
+                okBtn.onclick = () => { cleanup(); resolve(true); };
+                cancelBtn.onclick = () => { cleanup(); resolve(false); };
+            });
+        }
+
+        // Format date
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('zh-TW', { year: 'numeric', month: 'short' });
+        }
+
+        function formatTimeAgo(dateString) {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            const now = new Date();
+            const diff = now - date;
+
+            if (diff < 60000) return 'Just now';
+            if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+            if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+            if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`;
+            return date.toLocaleDateString('zh-TW');
+        }
+
+        // Load profile
+        async function loadProfile() {
+            const params = new URLSearchParams(window.location.search);
+            const targetUserId = params.get('id');
+
+            if (!targetUserId) {
+                document.getElementById('user-posts').innerHTML = `
+                    <div class="p-6 text-center text-danger">
+                        <i data-lucide="alert-circle" class="w-8 h-8 mx-auto mb-2"></i>
+                        <p>Invalid user ID</p>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
+            // Get current user
+            if (typeof AuthManager !== 'undefined') {
+                await AuthManager.init();
+                currentUserId = AuthManager.currentUser?.user_id || AuthManager.currentUser?.uid;
+            }
+
+            try {
+                const result = await FriendsAPI.getProfile(targetUserId);
+                if (!result.success) throw new Error('User not found');
+
+                profileData = result.profile;
+                renderProfile();
+                loadUserPosts(targetUserId);
+
+            } catch (error) {
+                console.error('Load profile error:', error);
+                document.getElementById('profile-username').innerHTML = `
+                    <span class="text-danger">User not found</span>
+                `;
+                document.getElementById('user-posts').innerHTML = `
+                    <div class="p-6 text-center text-textMuted">
+                        <i data-lucide="user-x" class="w-8 h-8 mx-auto mb-2 text-danger"></i>
+                        <p>Unable to load user profile</p>
+                    </div>
+                `;
+                lucide.createIcons();
+            }
+        }
+
+        // Render profile
+        function renderProfile() {
+            const p = profileData;
+            const isOwn = currentUserId && currentUserId === p.user_id;
+
+            // Avatar
+            const initial = (p.username || 'U')[0].toUpperCase();
+            document.getElementById('profile-avatar').innerHTML = `
+                <span>${initial}</span>
+            `;
+
+            // Username
+            document.getElementById('profile-username').innerHTML = p.username || p.user_id;
+
+            // Badges
+            let badges = '';
+            if (p.membership_tier === 'pro') {
+                badges += '<span class="px-2 py-1 text-xs font-bold bg-gradient-to-r from-yellow-500 to-orange-500 text-black rounded-lg">PRO</span>';
+            }
+            if (p.is_friend) {
+                badges += '<span class="px-2 py-1 text-xs font-bold bg-success/20 text-success rounded-lg flex items-center gap-1"><i data-lucide="user-check" class="w-3 h-3"></i> Friend</span>';
+            }
+            document.getElementById('profile-badges').innerHTML = badges;
+
+            // Meta
+            document.getElementById('profile-meta').innerHTML = `
+                Member since ${formatDate(p.member_since)}
+                ${p.pi_username ? ` &middot; Pi: @${p.pi_username}` : ''}
+            `;
+
+            // Stats
+            document.getElementById('stat-posts').textContent = p.post_count || 0;
+            document.getElementById('stat-pushes').textContent = p.total_pushes || 0;
+            document.getElementById('stat-member').textContent = formatDate(p.member_since);
+
+            // Friends count (if we have the data)
+            document.getElementById('stat-friends').textContent = '-';
+
+            // Actions
+            if (isOwn) {
+                document.getElementById('profile-actions').innerHTML = `
+                    <a href="/static/forum/dashboard.html" class="bg-white/5 hover:bg-white/10 text-textMuted px-4 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2">
+                        <i data-lucide="settings" class="w-4 h-4"></i>
+                        Dashboard
+                    </a>
+                `;
+                document.getElementById('more-actions').classList.add('hidden');
+            } else {
+                renderFriendButton();
+                document.getElementById('more-actions').classList.remove('hidden');
+                document.getElementById('block-btn').onclick = () => handleBlock();
+            }
+
+            lucide.createIcons();
+        }
+
+        // Render friend button
+        function renderFriendButton() {
+            const p = profileData;
+            let buttonHtml = '';
+
+            if (p.friend_status === 'accepted') {
+                buttonHtml = `
+                    <button onclick="handleRemoveFriend()"
+                            class="bg-success/10 text-success px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 border border-success/20 hover:bg-danger/10 hover:text-danger hover:border-danger/20 transition group">
+                        <i data-lucide="user-check" class="w-4 h-4 group-hover:hidden"></i>
+                        <i data-lucide="user-minus" class="w-4 h-4 hidden group-hover:block"></i>
+                        <span class="group-hover:hidden">Friends</span>
+                        <span class="hidden group-hover:inline">Remove</span>
+                    </button>
+                `;
+            } else if (p.friend_status === 'pending') {
+                if (p.is_requester) {
+                    buttonHtml = `
+                        <button onclick="handleCancelRequest()"
+                                class="bg-white/5 text-textMuted px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 border border-white/10 hover:bg-danger/10 hover:text-danger hover:border-danger/20 transition">
+                            <i data-lucide="clock" class="w-4 h-4"></i>
+                            <span>Pending</span>
+                        </button>
+                    `;
+                } else {
+                    buttonHtml = `
+                        <div class="flex gap-2">
+                            <button onclick="handleAcceptRequest()"
+                                    class="bg-success/10 hover:bg-success/20 text-success px-4 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2">
+                                <i data-lucide="check" class="w-4 h-4"></i> Accept
+                            </button>
+                            <button onclick="handleRejectRequest()"
+                                    class="bg-danger/10 hover:bg-danger/20 text-danger px-4 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2">
+                                <i data-lucide="x" class="w-4 h-4"></i> Reject
+                            </button>
+                        </div>
+                    `;
+                }
+            } else if (p.friend_status === 'blocked') {
+                buttonHtml = `
+                    <button onclick="handleUnblock()"
+                            class="bg-danger/10 text-danger px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 border border-danger/20 hover:bg-danger/20 transition">
+                        <i data-lucide="ban" class="w-4 h-4"></i>
+                        <span>Blocked</span>
+                    </button>
+                `;
+                document.getElementById('block-btn').innerHTML = `
+                    <i data-lucide="unlock" class="w-5 h-5"></i>
+                    <span>Unblock User</span>
+                `;
+                document.getElementById('block-btn').onclick = () => handleUnblock();
+            } else {
+                buttonHtml = `
+                    <button onclick="handleAddFriend()"
+                            class="bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition border border-primary/20">
+                        <i data-lucide="user-plus" class="w-4 h-4"></i>
+                        <span>Add Friend</span>
+                    </button>
+                `;
+            }
+
+            document.getElementById('profile-actions').innerHTML = buttonHtml;
+            lucide.createIcons();
+        }
+
+        // Load user posts
+        async function loadUserPosts(userId) {
+            try {
+                const res = await fetch(`/api/forum/me/posts?user_id=${userId}&limit=10`);
+                const data = await res.json();
+
+                const container = document.getElementById('user-posts');
+
+                if (!data.posts || data.posts.length === 0) {
+                    container.innerHTML = `
+                        <div class="p-6 text-center text-textMuted">
+                            <i data-lucide="file-x" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+                            <p>No posts yet</p>
+                        </div>
+                    `;
+                    lucide.createIcons();
+                    return;
+                }
+
+                container.innerHTML = data.posts.map(post => `
+                    <a href="/static/forum/post.html?id=${post.id}" class="block px-6 py-4 hover:bg-white/5 transition">
+                        <div class="flex items-start justify-between gap-4">
+                            <div class="min-w-0 flex-1">
+                                <div class="text-xs text-primary font-bold uppercase tracking-wider mb-1">${post.category}</div>
+                                <h3 class="font-bold text-textMain truncate">${post.title}</h3>
+                                <div class="text-xs text-textMuted mt-1">${formatTimeAgo(post.created_at)}</div>
+                            </div>
+                            <div class="flex items-center gap-3 text-xs text-textMuted flex-shrink-0">
+                                <span class="flex items-center gap-1">
+                                    <i data-lucide="thumbs-up" class="w-3 h-3"></i>
+                                    ${post.push_count || 0}
+                                </span>
+                                <span class="flex items-center gap-1">
+                                    <i data-lucide="message-square" class="w-3 h-3"></i>
+                                    ${post.comment_count || 0}
+                                </span>
+                            </div>
+                        </div>
+                    </a>
+                `).join('');
+
+                lucide.createIcons();
+
+            } catch (error) {
+                console.error('Load posts error:', error);
+                document.getElementById('user-posts').innerHTML = `
+                    <div class="p-6 text-center text-textMuted">
+                        <p>Unable to load posts</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Friend action handlers
+        async function handleAddFriend() {
+            try {
+                await FriendsAPI.sendRequest(profileData.user_id);
+                showToast('Friend request sent', 'success');
+                profileData.friend_status = 'pending';
+                profileData.is_requester = true;
+                renderFriendButton();
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        async function handleAcceptRequest() {
+            try {
+                await FriendsAPI.acceptRequest(profileData.user_id);
+                showToast('You are now friends', 'success');
+                profileData.friend_status = 'accepted';
+                profileData.is_friend = true;
+                renderProfile();
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        async function handleRejectRequest() {
+            try {
+                await FriendsAPI.rejectRequest(profileData.user_id);
+                showToast('Request rejected', 'info');
+                profileData.friend_status = null;
+                renderFriendButton();
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        async function handleCancelRequest() {
+            try {
+                await FriendsAPI.cancelRequest(profileData.user_id);
+                showToast('Request cancelled', 'info');
+                profileData.friend_status = null;
+                renderFriendButton();
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        async function handleRemoveFriend() {
+            const confirmed = await showConfirm({
+                title: 'Remove Friend',
+                message: 'Are you sure you want to remove this friend?',
+                type: 'warning',
+                confirmText: 'Remove',
+                cancelText: 'Cancel'
+            });
+
+            if (!confirmed) return;
+
+            try {
+                await FriendsAPI.removeFriend(profileData.user_id);
+                showToast('Friend removed', 'info');
+                profileData.friend_status = null;
+                profileData.is_friend = false;
+                renderProfile();
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        async function handleBlock() {
+            const confirmed = await showConfirm({
+                title: 'Block User',
+                message: 'This user will not be able to send you friend requests. Are you sure?',
+                type: 'danger',
+                confirmText: 'Block',
+                cancelText: 'Cancel'
+            });
+
+            if (!confirmed) return;
+
+            try {
+                await FriendsAPI.blockUser(profileData.user_id);
+                showToast('User blocked', 'info');
+                profileData.friend_status = 'blocked';
+                profileData.is_friend = false;
+                renderProfile();
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        async function handleUnblock() {
+            try {
+                await FriendsAPI.unblockUser(profileData.user_id);
+                showToast('User unblocked', 'success');
+                profileData.friend_status = null;
+                renderProfile();
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            loadProfile();
+        });
+    </script>
+</body>
+</html>

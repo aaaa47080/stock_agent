@@ -315,3 +315,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, 1000);
 });
+
+// ========================================
+// CRITICAL: Export to window for global access
+// ========================================
+window.WalletApp = WalletApp;

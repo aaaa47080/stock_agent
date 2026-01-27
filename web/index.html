@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW" class="dark">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -49,9 +50,12 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
     <script src="/static/config.js"></script>
     <script src="/static/js/premium.js"></script>
+    <script src="/static/js/friends.js"></script>
 
     <!-- Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Mulish:wght@300;400;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Mulish:wght@300;400;600;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
 
     <!-- Custom Styles -->
     <link rel="stylesheet" href="/static/styles.css">
@@ -59,7 +63,7 @@
     <script>
         // Pi 登入（含防重複點擊機制）
         window._piLoginInProgress = false;
-        window.safePiLogin = async function() {
+        window.safePiLogin = async function () {
             // 防止重複點擊
             if (window._piLoginInProgress) {
                 console.log('登入已在進行中，忽略重複點擊');
@@ -99,22 +103,26 @@
         };
     </script>
 </head>
+
 <body class="h-screen w-screen overflow-hidden flex bg-background text-textMain selection:bg-primary/30">
 
     <!-- Sidebar (Chat History) -->
-    <aside id="chat-sidebar" class="fixed inset-y-0 left-0 z-50 w-64 bg-surface/95 backdrop-blur-xl border-r border-white/5 transform -translate-x-full transition-transform duration-300 md:translate-x-0 md:static md:w-72 md:flex-shrink-0 flex flex-col">
+    <aside id="chat-sidebar"
+        class="fixed inset-y-0 left-0 z-50 w-64 bg-surface/95 backdrop-blur-xl border-r border-white/5 transform -translate-x-full transition-transform duration-300 md:translate-x-0 md:static md:w-72 md:flex-shrink-0 flex flex-col">
         <div class="p-4 border-b border-white/5 flex items-center justify-between">
-             <div class="flex items-center gap-2 text-secondary font-serif">
+            <div class="flex items-center gap-2 text-secondary font-serif">
                 <div class="w-8 h-8 rounded-full overflow-hidden">
                     <img src="/static/img/title_icon.png" alt="CryptoMind" class="w-full h-full object-cover">
                 </div>
                 <span>CryptoMind</span>
             </div>
-            <button onclick="toggleSidebar()" class="md:hidden p-2 hover:bg-white/5 rounded-full text-textMuted"><i data-lucide="x" class="w-5 h-5"></i></button>
+            <button onclick="toggleSidebar()" class="md:hidden p-2 hover:bg-white/5 rounded-full text-textMuted"><i
+                    data-lucide="x" class="w-5 h-5"></i></button>
         </div>
 
         <div class="p-4">
-            <button onclick="createNewChat()" class="w-full py-3 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-xl flex items-center justify-center gap-2 transition font-bold text-sm">
+            <button onclick="createNewChat()"
+                class="w-full py-3 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-xl flex items-center justify-center gap-2 transition font-bold text-sm">
                 <i data-lucide="plus" class="w-4 h-4"></i> New Chat
             </button>
         </div>
@@ -125,14 +133,18 @@
         </div>
 
         <div class="p-4 border-t border-white/5">
-             <button onclick="switchTab('settings')" class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl text-textMuted hover:text-secondary transition text-sm">
-                <div class="w-8 h-8 rounded-full bg-surfaceHighlight flex items-center justify-center text-xs font-bold overflow-hidden" id="sidebar-user-avatar">
+            <button onclick="switchTab('settings')"
+                class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl text-textMuted hover:text-secondary transition text-sm">
+                <div class="w-8 h-8 rounded-full bg-surfaceHighlight flex items-center justify-center text-xs font-bold overflow-hidden"
+                    id="sidebar-user-avatar">
                     <i data-lucide="user" class="w-4 h-4"></i>
                 </div>
                 <div class="flex-1 text-left">
                     <div class="flex items-center gap-1.5">
                         <div class="font-bold truncate" id="sidebar-user-name">Guest</div>
-                        <div id="sidebar-premium-badge" class="hidden px-1.5 py-0.5 rounded text-[8px] font-black bg-gradient-to-r from-yellow-500 to-orange-500 text-background leading-none uppercase tracking-tighter">PRO</div>
+                        <div id="sidebar-premium-badge"
+                            class="hidden px-1.5 py-0.5 rounded text-[8px] font-black bg-gradient-to-r from-yellow-500 to-orange-500 text-background leading-none uppercase tracking-tighter">
+                            PRO</div>
                     </div>
                     <div class="text-[10px] opacity-60">Settings</div>
                 </div>
@@ -141,313 +153,408 @@
     </aside>
 
     <!-- 點擊側邊欄外部區域關閉側邊欄 -->
-    <div id="sidebar-backdrop" class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm hidden md:hidden" onclick="toggleSidebar()"></div>
+    <div id="sidebar-backdrop" class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm hidden md:hidden"
+        onclick="toggleSidebar()"></div>
 
     <!-- Main Content Container -->
     <main class="flex-1 relative h-full flex flex-col w-full overflow-hidden">
 
-    <!-- Mobile Header -->
-    <header class="md:hidden flex items-center justify-between px-4 py-3 border-b border-white/5 bg-background/80 backdrop-blur-sm z-40">
-        <button onclick="toggleSidebar()" class="p-2 -ml-2 hover:bg-white/5 rounded-full text-textMuted"><i data-lucide="menu" class="w-5 h-5"></i></button>
-        <span class="font-serif text-secondary">CryptoMind</span>
-        <div class="w-9"></div> <!-- Spacer -->
-    </header>
+        <!-- Mobile Header -->
+        <header
+            class="md:hidden flex items-center justify-between px-4 py-3 border-b border-white/5 bg-background/80 backdrop-blur-sm z-40">
+            <button onclick="toggleSidebar()" class="p-2 -ml-2 hover:bg-white/5 rounded-full text-textMuted"><i
+                    data-lucide="menu" class="w-5 h-5"></i></button>
+            <span class="font-serif text-secondary">CryptoMind</span>
+            <div class="w-9"></div> <!-- Spacer -->
+        </header>
 
-    <div class="flex-1 relative w-full h-full overflow-hidden">
+        <div class="flex-1 relative w-full h-full overflow-hidden">
 
-        <!-- Global Floating Draggable Navigation -->
-        <div id="global-nav-container" class="fixed bottom-24 left-1/2 z-50" style="transform: translateX(-50%);">
-            <nav id="draggable-nav" class="bg-surface/95 backdrop-blur-xl border border-white/10 rounded-full p-1.5 flex items-center gap-1 shadow-2xl shadow-black/40 select-none transition-all duration-300">
-                <!-- Collapse/Expand Toggle -->
-                <button id="nav-toggle" onclick="toggleNavCollapse()" class="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200" title="收縮/展開">
-                    <i data-lucide="chevrons-left" class="w-4 h-4 transition-transform duration-300" id="nav-toggle-icon"></i>
-                </button>
+            <!-- Global Floating Draggable Navigation -->
+            <div id="global-nav-container" class="fixed bottom-24 left-1/2 z-50" style="transform: translateX(-50%);">
+                <nav id="draggable-nav"
+                    class="bg-surface/95 backdrop-blur-xl border border-white/10 rounded-full p-1.5 flex items-center gap-1 shadow-2xl shadow-black/40 select-none transition-all duration-300">
+                    <!-- Collapse/Expand Toggle -->
+                    <button id="nav-toggle" onclick="toggleNavCollapse()"
+                        class="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200"
+                        title="收縮/展開">
+                        <i data-lucide="chevrons-left" class="w-4 h-4 transition-transform duration-300"
+                            id="nav-toggle-icon"></i>
+                    </button>
 
-                <!-- Navigation Buttons -->
-                <div id="nav-buttons" class="flex items-center gap-1 overflow-hidden transition-all duration-300">
-                    <button onclick="switchTab('chat')" class="nav-btn w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5" title="Chat" data-tab="chat">
-                        <i data-lucide="message-circle" class="w-5 h-5"></i>
-                        <span class="text-[9px] font-medium opacity-80">Chat</span>
-                    </button>
-                    <button onclick="switchTab('market')" class="nav-btn w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5" title="Market" data-tab="market">
-                        <i data-lucide="bar-chart-2" class="w-5 h-5"></i>
-                        <span class="text-[9px] font-medium opacity-80">Market</span>
-                    </button>
-                    <button onclick="switchTab('pulse')" class="nav-btn w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5" title="Pulse" data-tab="pulse">
-                        <i data-lucide="activity" class="w-5 h-5"></i>
-                        <span class="text-[9px] font-medium opacity-80">Pulse</span>
-                    </button>
-                    <button onclick="switchTab('wallet')" class="nav-btn w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5" title="Wallet" data-tab="wallet">
-                        <i data-lucide="credit-card" class="w-5 h-5"></i>
-                        <span class="text-[9px] font-medium opacity-80">Wallet</span>
-                    </button>
-                    <button onclick="switchTab('assets')" class="nav-btn w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5" title="Assets" data-tab="assets">
-                        <i data-lucide="wallet" class="w-5 h-5"></i>
-                        <span class="text-[9px] font-medium opacity-80">Assets</span>
-                    </button>
-                    <button onclick="window.location.href='/static/forum/index.html'" class="nav-btn w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5" title="Forum">
-                        <i data-lucide="users" class="w-5 h-5"></i>
-                        <span class="text-[9px] font-medium opacity-80">Forum</span>
-                    </button>
-                    <button onclick="switchTab('settings')" class="nav-btn w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5" title="Settings" data-tab="settings">
-                        <i data-lucide="settings-2" class="w-5 h-5"></i>
-                        <span class="text-[9px] font-medium opacity-80">Settings</span>
-                    </button>
+                    <!-- Navigation Buttons (Scrollable) -->
+                    <div id="nav-buttons"
+                        class="flex items-center gap-1 overflow-x-auto max-w-[160px] md:max-w-none transition-all duration-300 px-1 pb-1"
+                        style="scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.2) transparent;">
+                        <style>
+                            #nav-buttons::-webkit-scrollbar {
+                                height: 3px;
+                            }
+
+                            #nav-buttons::-webkit-scrollbar-track {
+                                background: transparent;
+                            }
+
+                            #nav-buttons::-webkit-scrollbar-thumb {
+                                background-color: rgba(255, 255, 255, 0.2);
+                                border-radius: 9999px;
+                            }
+                        </style>
+
+                        <button onclick="switchTab('chat')"
+                            class="nav-btn shrink-0 w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5"
+                            title="Chat" data-tab="chat">
+                            <i data-lucide="message-circle" class="w-5 h-5"></i>
+                            <span class="text-[9px] font-medium opacity-80">Chat</span>
+                        </button>
+                        <button onclick="switchTab('market')"
+                            class="nav-btn shrink-0 w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5"
+                            title="Market" data-tab="market">
+                            <i data-lucide="bar-chart-2" class="w-5 h-5"></i>
+                            <span class="text-[9px] font-medium opacity-80">Market</span>
+                        </button>
+                        <button onclick="switchTab('pulse')"
+                            class="nav-btn shrink-0 w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5"
+                            title="Pulse" data-tab="pulse">
+                            <i data-lucide="activity" class="w-5 h-5"></i>
+                            <span class="text-[9px] font-medium opacity-80">Pulse</span>
+                        </button>
+                        <button onclick="switchTab('wallet')"
+                            class="nav-btn shrink-0 w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5"
+                            title="Wallet" data-tab="wallet">
+                            <i data-lucide="credit-card" class="w-5 h-5"></i>
+                            <span class="text-[9px] font-medium opacity-80">Wallet</span>
+                        </button>
+                        <button onclick="switchTab('assets')"
+                            class="nav-btn shrink-0 w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5"
+                            title="Assets" data-tab="assets">
+                            <i data-lucide="wallet" class="w-5 h-5"></i>
+                            <span class="text-[9px] font-medium opacity-80">Assets</span>
+                        </button>
+                        <button onclick="switchTab('friends')"
+                            class="nav-btn shrink-0 w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5"
+                            title="Friends" data-tab="friends">
+                            <i data-lucide="users" class="w-5 h-5"></i>
+                            <span class="text-[9px] font-medium opacity-80">Friends</span>
+                        </button>
+                        <button onclick="window.location.href='/static/forum/index.html'"
+                            class="nav-btn w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5"
+                            title="Forum">
+                            <i data-lucide="users" class="w-5 h-5"></i>
+                            <span class="text-[9px] font-medium opacity-80">Forum</span>
+                        </button>
+                        <button onclick="switchTab('settings')"
+                            class="nav-btn w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5"
+                            title="Settings" data-tab="settings">
+                            <i data-lucide="settings-2" class="w-5 h-5"></i>
+                            <span class="text-[9px] font-medium opacity-80">Settings</span>
+                        </button>
+                    </div>
+
+                    <!-- Drag Handle -->
+                    <div
+                        class="drag-handle w-8 h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-textMuted/50 hover:text-textMuted cursor-grab active:cursor-grabbing transition-all duration-200 ml-0.5">
+                        <i data-lucide="grip-vertical" class="w-4 h-4"></i>
+                    </div>
+                </nav>
+            </div>
+
+            <!-- Tab: Chat (Home) - Pi Network Theme -->
+            <div id="chat-tab" class="tab-content h-full flex flex-col relative">
+                <!-- Pi Network Animated Background -->
+                <div class="absolute inset-0 overflow-hidden -z-10 pointer-events-none">
+                    <div class="w-full h-full flex items-center justify-center opacity-25">
+                        <img src="/static/img/title_icon.png" alt="CryptoMind Logo"
+                            class="w-72 h-72 md:w-96 md:h-96 object-contain grayscale-0">
+                    </div>
                 </div>
 
-                <!-- Drag Handle -->
-                <div class="drag-handle w-8 h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-textMuted/50 hover:text-textMuted cursor-grab active:cursor-grabbing transition-all duration-200 ml-0.5">
-                    <i data-lucide="grip-vertical" class="w-4 h-4"></i>
-                </div>
-            </nav>
-        </div>
+                <!-- Messages Area -->
+                <div id="chat-messages"
+                    class="flex-1 overflow-y-auto custom-scrollbar px-4 md:px-8 py-6 space-y-6 pb-32">
+                    <!-- Welcome -->
+                    <div class="bot-message opacity-0 animate-fade-in-up"
+                        style="animation-delay: 0.1s; animation-fill-mode: forwards;">
+                        <div class="flex flex-col items-center justify-center mb-8">
+                            <h1 class="font-serif text-3xl md:text-4xl leading-tight text-center">
+                                <span class="text-secondary">Welcome to</span><br>
+                                <span
+                                    class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">CryptoMind</span>
+                            </h1>
+                            <p class="text-textMuted mt-2">Good <span id="greeting-time">day</span>.</p>
+                        </div>
+                        <p class="text-textMuted text-lg font-light leading-relaxed text-center">
+                            AI-powered crypto analysis and trading insights. Monitor markets and make informed
+                            decisions.
+                        </p>
 
-        <!-- Tab: Chat (Home) - Pi Network Theme -->
-        <div id="chat-tab" class="tab-content h-full flex flex-col relative">
-            <!-- Pi Network Animated Background -->
-            <div class="absolute inset-0 overflow-hidden -z-10 pointer-events-none">
-                <div class="w-full h-full flex items-center justify-center opacity-25">
-                    <img src="/static/img/title_icon.png" alt="CryptoMind Logo" class="w-72 h-72 md:w-96 md:h-96 object-contain grayscale-0">
+                        <div class="flex flex-wrap gap-3 mt-8 justify-center">
+                            <button onclick="quickAsk('Analyze BTC trend')"
+                                class="px-5 py-2.5 rounded-full bg-surface hover:bg-surfaceHighlight border border-white/5 text-sm text-textMuted hover:text-primary transition shadow-sm">
+                                Bitcoin Trend
+                            </button>
+                            <button onclick="quickAsk('ETH Funding Rates')"
+                                class="px-5 py-2.5 rounded-full bg-surface hover:bg-surfaceHighlight border border-white/5 text-sm text-textMuted hover:text-primary transition shadow-sm">
+                                ETH Rates
+                            </button>
+                            <button onclick="quickAsk('Market Sentiment')"
+                                class="px-5 py-2.5 rounded-full bg-surface hover:bg-surfaceHighlight border border-white/5 text-sm text-textMuted hover:text-primary transition shadow-sm">
+                                Global Sentiment
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Warning Overlay (No Key) - 浮在聊天區域上方，不遮擋導航 -->
+                <div id="no-llm-key-warning"
+                    class="hidden absolute top-0 left-0 right-0 bottom-32 flex items-center justify-center z-40 p-4 bg-background/80 backdrop-blur-sm">
+                    <div
+                        class="bg-surface/95 backdrop-blur-xl rounded-3xl p-8 border border-white/10 shadow-2xl max-w-sm w-full text-center">
+                        <div
+                            class="w-14 h-14 bg-gradient-to-r from-primary to-accent rounded-full flex items-center justify-center mx-auto mb-4 text-white shadow-lg shadow-primary/30">
+                            <i data-lucide="key" class="w-7 h-7"></i>
+                        </div>
+                        <h3 class="font-serif text-2xl mb-2 text-secondary">Unlock Pi Intelligence</h3>
+                        <p class="text-textMuted text-sm mb-6 leading-relaxed">Connect an API key to enable AI
+                            analysis.<br>Your keys are stored locally and securely.</p>
+                        <button onclick="switchTab('settings');"
+                            class="w-full py-3.5 bg-gradient-to-r from-primary to-accent text-background font-bold rounded-2xl hover:brightness-110 transition shadow-lg shadow-primary/20">
+                            <i data-lucide="settings" class="w-4 h-4 inline-block mr-2"></i>
+                            Configure API Key
+                        </button>
+                        <p class="text-textMuted/60 text-xs mt-4">You can still use other features below</p>
+                    </div>
+                </div>
+
+                <!-- Input Area -->
+                <div
+                    class="fixed bottom-0 left-0 md:left-72 right-0 z-40 bg-background/80 backdrop-blur-xl border-t border-white/5 px-4 md:px-8 py-4">
+                    <div class="relative w-full max-w-4xl mx-auto">
+                        <!-- Hidden Options -->
+                        <div id="analysis-options-panel"
+                            class="hidden absolute bottom-full left-0 right-0 mb-4 p-4 bg-surface rounded-3xl border border-white/5 shadow-xl animate-fade-in-up z-10">
+                            <div class="flex flex-wrap gap-4 justify-center">
+                                <label class="flex items-center gap-2 cursor-pointer select-none">
+                                    <input type="checkbox" class="analysis-checkbox accent-primary w-4 h-4 rounded-full"
+                                        value="Technical Analysis" checked>
+                                    <span class="text-sm text-secondary">Technical</span>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer select-none">
+                                    <input type="checkbox" class="analysis-checkbox accent-primary w-4 h-4 rounded-full"
+                                        value="News Analysis" checked>
+                                    <span class="text-sm text-secondary">News</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Input Box -->
+                        <div
+                            class="bg-surface/90 border border-white/10 rounded-[2rem] p-2 flex items-center gap-2 shadow-xl focus-within:ring-1 focus-within:ring-primary/50">
+                            <button onclick="toggleOptions()"
+                                class="w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center text-textMuted hover:text-primary transition">
+                                <i data-lucide="plus" class="w-5 h-5"></i>
+                            </button>
+                            <input type="text" id="user-input"
+                                class="flex-1 bg-transparent border-none outline-none text-base text-secondary placeholder-textMuted/50 px-2 font-light relative z-10"
+                                placeholder="Ask anything..." autocomplete="off"
+                                onkeypress="if(event.key === 'Enter') sendMessage()">
+                            <button onclick="sendMessage()" id="send-btn"
+                                class="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-accent text-background flex items-center justify-center hover:scale-105 active:scale-95 transition shadow-lg shadow-primary/20">
+                                <i data-lucide="arrow-up" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Messages Area -->
-            <div id="chat-messages" class="flex-1 overflow-y-auto custom-scrollbar px-4 md:px-8 py-6 space-y-6 pb-32">
-                <!-- Welcome -->
-                <div class="bot-message opacity-0 animate-fade-in-up" style="animation-delay: 0.1s; animation-fill-mode: forwards;">
-                    <div class="flex flex-col items-center justify-center mb-8">
-                        <h1 class="font-serif text-3xl md:text-4xl leading-tight text-center">
-                            <span class="text-secondary">Welcome to</span><br>
-                            <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">CryptoMind</span>
-                        </h1>
-                        <p class="text-textMuted mt-2">Good <span id="greeting-time">day</span>.</p>
-                    </div>
-                    <p class="text-textMuted text-lg font-light leading-relaxed text-center">
-                        AI-powered crypto analysis and trading insights. Monitor markets and make informed decisions.
-                    </p>
-
-                    <div class="flex flex-wrap gap-3 mt-8 justify-center">
-                         <button onclick="quickAsk('Analyze BTC trend')" class="px-5 py-2.5 rounded-full bg-surface hover:bg-surfaceHighlight border border-white/5 text-sm text-textMuted hover:text-primary transition shadow-sm">
-                            Bitcoin Trend
-                        </button>
-                        <button onclick="quickAsk('ETH Funding Rates')" class="px-5 py-2.5 rounded-full bg-surface hover:bg-surfaceHighlight border border-white/5 text-sm text-textMuted hover:text-primary transition shadow-sm">
-                            ETH Rates
-                        </button>
-                        <button onclick="quickAsk('Market Sentiment')" class="px-5 py-2.5 rounded-full bg-surface hover:bg-surfaceHighlight border border-white/5 text-sm text-textMuted hover:text-primary transition shadow-sm">
-                            Global Sentiment
-                        </button>
-                    </div>
-                </div>
+            <!-- Tab: Market -->
+            <div id="market-tab"
+                class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40">
+                <!-- Dynamic Content Injected via components.js -->
             </div>
 
-            <!-- Warning Overlay (No Key) - 浮在聊天區域上方，不遮擋導航 -->
-            <div id="no-llm-key-warning" class="hidden absolute top-0 left-0 right-0 bottom-32 flex items-center justify-center z-40 p-4 bg-background/80 backdrop-blur-sm">
-                <div class="bg-surface/95 backdrop-blur-xl rounded-3xl p-8 border border-white/10 shadow-2xl max-w-sm w-full text-center">
-                    <div class="w-14 h-14 bg-gradient-to-r from-primary to-accent rounded-full flex items-center justify-center mx-auto mb-4 text-white shadow-lg shadow-primary/30">
-                        <i data-lucide="key" class="w-7 h-7"></i>
-                    </div>
-                    <h3 class="font-serif text-2xl mb-2 text-secondary">Unlock Pi Intelligence</h3>
-                    <p class="text-textMuted text-sm mb-6 leading-relaxed">Connect an API key to enable AI analysis.<br>Your keys are stored locally and securely.</p>
-                    <button onclick="switchTab('settings');" class="w-full py-3.5 bg-gradient-to-r from-primary to-accent text-background font-bold rounded-2xl hover:brightness-110 transition shadow-lg shadow-primary/20">
-                        <i data-lucide="settings" class="w-4 h-4 inline-block mr-2"></i>
-                        Configure API Key
-                    </button>
-                    <p class="text-textMuted/60 text-xs mt-4">You can still use other features below</p>
-                </div>
+            <!-- Tab: Pulse -->
+            <div id="pulse-tab"
+                class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40">
+                <!-- Dynamic Content Injected via components.js -->
             </div>
 
-            <!-- Input Area -->
-            <div class="fixed bottom-0 left-0 md:left-72 right-0 z-40 bg-background/80 backdrop-blur-xl border-t border-white/5 px-4 md:px-8 py-4">
-                <div class="relative w-full max-w-4xl mx-auto">
-                    <!-- Hidden Options -->
-                    <div id="analysis-options-panel" class="hidden absolute bottom-full left-0 right-0 mb-4 p-4 bg-surface rounded-3xl border border-white/5 shadow-xl animate-fade-in-up z-10">
-                        <div class="flex flex-wrap gap-4 justify-center">
-                             <label class="flex items-center gap-2 cursor-pointer select-none">
-                                <input type="checkbox" class="analysis-checkbox accent-primary w-4 h-4 rounded-full" value="Technical Analysis" checked>
-                                <span class="text-sm text-secondary">Technical</span>
-                            </label>
-                            <label class="flex items-center gap-2 cursor-pointer select-none">
-                                <input type="checkbox" class="analysis-checkbox accent-primary w-4 h-4 rounded-full" value="News Analysis" checked>
-                                <span class="text-sm text-secondary">News</span>
-                            </label>
+            <!-- Tab: Wallet -->
+            <div id="wallet-tab"
+                class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40">
+                <div class="max-w-3xl mx-auto space-y-6">
+                    <!-- Header -->
+                    <div class="flex justify-between items-end">
+                        <h2 class="font-serif text-3xl text-secondary">Wallet History</h2>
+                        <button onclick="WalletApp.loadData()"
+                            class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition"><i
+                                data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+                    </div>
+
+                    <!-- Balance / Status Card -->
+                    <div class="bg-surface border border-white/5 rounded-[2rem] p-6 relative overflow-hidden">
+                        <div class="absolute top-0 right-0 p-6 opacity-5 pointer-events-none">
+                            <i data-lucide="wallet" class="w-32 h-32 text-primary"></i>
+                        </div>
+                        <div class="flex items-center gap-5 relative z-10">
+                            <div class="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                                <i data-lucide="credit-card" class="w-8 h-8 text-primary"></i>
+                            </div>
+                            <div>
+                                <div class="text-textMuted text-xs font-bold uppercase tracking-wider mb-2">Total
+                                    Activity</div>
+                                <div class="flex gap-8">
+                                    <div>
+                                        <span
+                                            class="text-[10px] text-textMuted uppercase tracking-wider block mb-0.5">Spent
+                                            (Out)</span>
+                                        <div class="text-danger font-bold text-xl flex items-center gap-1">
+                                            <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
+                                            <span id="wallet-total-out">0.0</span> Pi
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span
+                                            class="text-[10px] text-textMuted uppercase tracking-wider block mb-0.5">Received
+                                            (In)</span>
+                                        <div class="text-success font-bold text-xl flex items-center gap-1">
+                                            <i data-lucide="arrow-down-left" class="w-4 h-4"></i>
+                                            <span id="wallet-total-in">0.0</span> Pi
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Input Box -->
-                    <div class="bg-surface/90 border border-white/10 rounded-[2rem] p-2 flex items-center gap-2 shadow-xl focus-within:ring-1 focus-within:ring-primary/50">
-                        <button onclick="toggleOptions()" class="w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center text-textMuted hover:text-primary transition">
-                            <i data-lucide="plus" class="w-5 h-5"></i>
-                        </button>
-                        <input type="text" id="user-input"
-                            class="flex-1 bg-transparent border-none outline-none text-base text-secondary placeholder-textMuted/50 px-2 font-light relative z-10"
-                            placeholder="Ask anything..."
-                            autocomplete="off"
-                            onkeypress="if(event.key === 'Enter') sendMessage()">
-                        <button onclick="sendMessage()" id="send-btn" class="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-accent text-background flex items-center justify-center hover:scale-105 active:scale-95 transition shadow-lg shadow-primary/20">
-                            <i data-lucide="arrow-up" class="w-5 h-5"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
+                    <!-- Transaction List -->
+                    <div class="bg-surface border border-white/5 rounded-[2rem] p-6 min-h-[400px]">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                            <h3 class="font-bold text-secondary text-lg flex items-center gap-2">
+                                <i data-lucide="history" class="w-5 h-5 text-primary"></i> Transactions
+                            </h3>
 
-        <!-- Tab: Market -->
-        <div id="market-tab" class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40">
-            <!-- Dynamic Content Injected via components.js -->
-        </div>
+                            <!-- Filters -->
+                            <div class="flex flex-col gap-2 items-end">
+                                <div class="flex gap-2 overflow-x-auto pb-1 md:pb-0 hide-scrollbar">
+                                    <select id="wallet-filter-type" onchange="WalletApp.applyFilters()"
+                                        class="bg-surfaceHighlight border border-white/10 text-textMuted text-xs font-bold rounded-xl px-3 py-2 outline-none focus:border-primary/50 transition cursor-pointer">
+                                        <option value="all">All Types</option>
+                                        <option value="in">💰 Income (In)</option>
+                                        <option value="out">💸 Expense (Out)</option>
+                                        <option value="membership">👑 Premium</option>
+                                        <option value="tip">🎁 Tips</option>
+                                        <option value="post">📝 Post Fees</option>
+                                    </select>
+                                    <select id="wallet-filter-time" onchange="WalletApp.handleTimeFilterChange(this)"
+                                        class="bg-surfaceHighlight border border-white/10 text-textMuted text-xs font-bold rounded-xl px-3 py-2 outline-none focus:border-primary/50 transition cursor-pointer">
+                                        <option value="all">All Time</option>
+                                        <option value="7">Last 7 Days</option>
+                                        <option value="30">Last 30 Days</option>
+                                        <option value="90">Last 3 Months</option>
+                                        <option value="custom">📅 Custom Range</option>
+                                    </select>
+                                </div>
 
-        <!-- Tab: Pulse -->
-        <div id="pulse-tab" class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40">
-            <!-- Dynamic Content Injected via components.js -->
-        </div>
-
-        <!-- Tab: Wallet -->
-        <div id="wallet-tab" class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40">
-            <div class="max-w-3xl mx-auto space-y-6">
-                 <!-- Header -->
-                <div class="flex justify-between items-end">
-                    <h2 class="font-serif text-3xl text-secondary">Wallet History</h2>
-                    <button onclick="WalletApp.loadData()" class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
-                </div>
-
-                <!-- Balance / Status Card -->
-                <div class="bg-surface border border-white/5 rounded-[2rem] p-6 relative overflow-hidden">
-                    <div class="absolute top-0 right-0 p-6 opacity-5 pointer-events-none">
-                        <i data-lucide="wallet" class="w-32 h-32 text-primary"></i>
-                    </div>
-                    <div class="flex items-center gap-5 relative z-10">
-                        <div class="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                            <i data-lucide="credit-card" class="w-8 h-8 text-primary"></i>
+                                <!-- Custom Date Inputs (Hidden by default) -->
+                                <div id="wallet-custom-date-range"
+                                    class="hidden flex items-center gap-2 bg-surfaceHighlight p-2 rounded-xl border border-white/5 animate-fade-in-down w-full md:w-auto justify-end">
+                                    <input type="date" id="wallet-date-start"
+                                        class="bg-background border border-white/10 rounded-lg px-2 py-1 text-xs text-secondary outline-none focus:border-primary/50 min-w-[120px]"
+                                        onchange="WalletApp.applyFilters()">
+                                    <span class="text-textMuted text-xs">to</span>
+                                    <input type="date" id="wallet-date-end"
+                                        class="bg-background border border-white/10 rounded-lg px-2 py-1 text-xs text-secondary outline-none focus:border-primary/50 min-w-[120px]"
+                                        onchange="WalletApp.applyFilters()">
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <div class="text-textMuted text-xs font-bold uppercase tracking-wider mb-2">Total Activity</div>
-                            <div class="flex gap-8">
-                                 <div>
-                                     <span class="text-[10px] text-textMuted uppercase tracking-wider block mb-0.5">Spent (Out)</span>
-                                     <div class="text-danger font-bold text-xl flex items-center gap-1">
-                                         <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
-                                         <span id="wallet-total-out">0.0</span> Pi
-                                     </div>
-                                 </div>
-                                 <div>
-                                     <span class="text-[10px] text-textMuted uppercase tracking-wider block mb-0.5">Received (In)</span>
-                                     <div class="text-success font-bold text-xl flex items-center gap-1">
-                                         <i data-lucide="arrow-down-left" class="w-4 h-4"></i>
-                                         <span id="wallet-total-in">0.0</span> Pi
-                                     </div>
-                                 </div>
+
+                        <div id="wallet-tx-list" class="space-y-2">
+                            <div class="text-center text-textMuted py-10 opacity-50">
+                                <i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto mb-2"></i>
+                                Loading history...
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Transaction List -->
-                <div class="bg-surface border border-white/5 rounded-[2rem] p-6 min-h-[400px]">
-                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                        <h3 class="font-bold text-secondary text-lg flex items-center gap-2">
-                            <i data-lucide="history" class="w-5 h-5 text-primary"></i> Transactions
-                        </h3>
-                        
-                        <!-- Filters -->
-                        <div class="flex flex-col gap-2 items-end">
-                            <div class="flex gap-2 overflow-x-auto pb-1 md:pb-0 hide-scrollbar">
-                                <select id="wallet-filter-type" onchange="WalletApp.applyFilters()" class="bg-surfaceHighlight border border-white/10 text-textMuted text-xs font-bold rounded-xl px-3 py-2 outline-none focus:border-primary/50 transition cursor-pointer">
-                                    <option value="all">All Types</option>
-                                    <option value="in">💰 Income (In)</option>
-                                    <option value="out">💸 Expense (Out)</option>
-                                    <option value="membership">👑 Premium</option>
-                                    <option value="tip">🎁 Tips</option>
-                                    <option value="post">📝 Post Fees</option>
-                                </select>
-                                <select id="wallet-filter-time" onchange="WalletApp.handleTimeFilterChange(this)" class="bg-surfaceHighlight border border-white/10 text-textMuted text-xs font-bold rounded-xl px-3 py-2 outline-none focus:border-primary/50 transition cursor-pointer">
-                                    <option value="all">All Time</option>
-                                    <option value="7">Last 7 Days</option>
-                                    <option value="30">Last 30 Days</option>
-                                    <option value="90">Last 3 Months</option>
-                                    <option value="custom">📅 Custom Range</option>
-                                </select>
-                            </div>
-                            
-                            <!-- Custom Date Inputs (Hidden by default) -->
-                            <div id="wallet-custom-date-range" class="hidden flex items-center gap-2 bg-surfaceHighlight p-2 rounded-xl border border-white/5 animate-fade-in-down w-full md:w-auto justify-end">
-                                <input type="date" id="wallet-date-start" class="bg-background border border-white/10 rounded-lg px-2 py-1 text-xs text-secondary outline-none focus:border-primary/50 min-w-[120px]" onchange="WalletApp.applyFilters()">
-                                <span class="text-textMuted text-xs">to</span>
-                                <input type="date" id="wallet-date-end" class="bg-background border border-white/10 rounded-lg px-2 py-1 text-xs text-secondary outline-none focus:border-primary/50 min-w-[120px]" onchange="WalletApp.applyFilters()">
-                            </div>
+
+
+
+
+            <!-- Tab: Assets -->
+            <div id="assets-tab"
+                class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40 relative">
+                <div class="flex justify-between items-end mb-8">
+                    <h2 class="font-serif text-3xl text-secondary">Portfolio</h2>
+                    <button onclick="refreshAssets()"
+                        class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition"><i
+                            data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+                </div>
+
+                <!-- No OKX Key -->
+                <div id="no-okx-key-overlay" class="hidden text-center py-16">
+                    <div
+                        class="w-20 h-20 bg-gradient-to-br from-primary/20 to-accent/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i data-lucide="wallet" class="w-10 h-10 text-primary"></i>
+                    </div>
+                    <h3 class="font-serif text-xl text-secondary mb-2">Connect Your Exchange</h3>
+                    <p class="text-textMuted mb-8 text-sm">Link your OKX account to view portfolio and positions.</p>
+                    <button onclick="switchTab('settings')"
+                        class="px-8 py-3.5 bg-gradient-to-r from-primary to-accent text-background font-bold rounded-2xl transition flex items-center gap-2 mx-auto shadow-lg shadow-primary/20 hover:scale-105">
+                        <i data-lucide="settings" class="w-4 h-4"></i>
+                        Go to Settings
+                    </button>
+                </div>
+
+                <!-- Assets Content (hidden when no OKX key) -->
+                <div id="assets-content">
+                    <div
+                        class="bg-gradient-to-br from-surface to-surfaceHighlight p-8 rounded-[2.5rem] mb-6 text-center border border-white/5 relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-10 -mt-10">
+                        </div>
+                        <span class="text-sm text-textMuted font-medium uppercase tracking-widest">Total Equity</span>
+                        <h1 class="text-4xl md:text-5xl font-serif text-secondary mt-2 mb-2" id="total-equity">--</h1>
+                        <span class="text-xs text-textMuted/50 font-mono" id="asset-update-time">Updated: --:--</span>
+                    </div>
+
+                    <!-- Spot Assets Section -->
+                    <div class="bg-surface p-6 rounded-3xl border border-white/5 mb-6">
+                        <h3 class="font-bold text-sm text-textMuted mb-4">Spot Assets</h3>
+                        <div id="spot-assets-list" class="space-y-4">
+                            <!-- Injected via JS -->
                         </div>
                     </div>
-                    
-                    <div id="wallet-tx-list" class="space-y-2">
-                        <div class="text-center text-textMuted py-10 opacity-50">
-                            <i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto mb-2"></i>
-                            Loading history...
+
+                    <div class="bg-surface rounded-3xl border border-white/5 overflow-hidden">
+                        <div class="p-4 border-b border-white/5 flex justify-between items-center">
+                            <h3 class="font-bold text-sm text-textMuted pl-2">Active Positions</h3>
+                            <div id="positions-summary"></div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <tbody id="positions-table-body" class="divide-y divide-white/5">
+                                    <!-- Rows injected via JS -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-
-
-
-
-        <!-- Tab: Assets -->
-        <div id="assets-tab" class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40 relative">
-             <div class="flex justify-between items-end mb-8">
-                <h2 class="font-serif text-3xl text-secondary">Portfolio</h2>
-                <button onclick="refreshAssets()" class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+            <!-- Tab: Friends (Global) -->
+            <div id="friends-tab"
+                class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40 relative">
+                <!-- Dynamic Content Injected via components.js -->
             </div>
 
-            <!-- No OKX Key -->
-            <div id="no-okx-key-overlay" class="hidden text-center py-16">
-                <div class="w-20 h-20 bg-gradient-to-br from-primary/20 to-accent/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <i data-lucide="wallet" class="w-10 h-10 text-primary"></i>
-                </div>
-                <h3 class="font-serif text-xl text-secondary mb-2">Connect Your Exchange</h3>
-                <p class="text-textMuted mb-8 text-sm">Link your OKX account to view portfolio and positions.</p>
-                <button onclick="switchTab('settings')" class="px-8 py-3.5 bg-gradient-to-r from-primary to-accent text-background font-bold rounded-2xl transition flex items-center gap-2 mx-auto shadow-lg shadow-primary/20 hover:scale-105">
-                    <i data-lucide="settings" class="w-4 h-4"></i>
-                    Go to Settings
-                </button>
+            <!-- Tab: Settings -->
+            <div id="settings-tab"
+                class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40 will-change-transform">
+                <!-- Dynamic Content Injected via components.js -->
             </div>
-
-            <!-- Assets Content (hidden when no OKX key) -->
-            <div id="assets-content">
-                <div class="bg-gradient-to-br from-surface to-surfaceHighlight p-8 rounded-[2.5rem] mb-6 text-center border border-white/5 relative overflow-hidden">
-                    <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-10 -mt-10"></div>
-                    <span class="text-sm text-textMuted font-medium uppercase tracking-widest">Total Equity</span>
-                    <h1 class="text-4xl md:text-5xl font-serif text-secondary mt-2 mb-2" id="total-equity">--</h1>
-                    <span class="text-xs text-textMuted/50 font-mono" id="asset-update-time">Updated: --:--</span>
-                </div>
-
-                <!-- Spot Assets Section -->
-                <div class="bg-surface p-6 rounded-3xl border border-white/5 mb-6">
-                    <h3 class="font-bold text-sm text-textMuted mb-4">Spot Assets</h3>
-                    <div id="spot-assets-list" class="space-y-4">
-                        <!-- Injected via JS -->
-                    </div>
-                </div>
-
-                <div class="bg-surface rounded-3xl border border-white/5 overflow-hidden">
-                    <div class="p-4 border-b border-white/5 flex justify-between items-center">
-                        <h3 class="font-bold text-sm text-textMuted pl-2">Active Positions</h3>
-                        <div id="positions-summary"></div>
-                    </div>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-sm">
-                            <tbody id="positions-table-body" class="divide-y divide-white/5">
-                                <!-- Rows injected via JS -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tab: Settings -->
-        <div id="settings-tab" class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40 will-change-transform">
-            <!-- Dynamic Content Injected via components.js -->
-        </div>
     </main>
 
     <!-- Chart Modal (Moved from Watchlist) -->
@@ -458,25 +565,49 @@
                     <h3 id="chart-title" class="text-lg md:text-xl font-serif text-secondary">BTC Chart</h3>
                     <span id="chart-updated" class="text-[10px] text-textMuted opacity-60"></span>
                 </div>
-                <button onclick="closeChart()" class="w-10 h-10 rounded-full bg-surface flex items-center justify-center text-textMuted hover:text-secondary transition"><i data-lucide="x" class="w-5 h-5"></i></button>
+                <button onclick="closeChart()"
+                    class="w-10 h-10 rounded-full bg-surface flex items-center justify-center text-textMuted hover:text-secondary transition"><i
+                        data-lucide="x" class="w-5 h-5"></i></button>
             </div>
             <!-- Toolbar -->
             <div class="flex flex-wrap items-center gap-2">
                 <!-- Timeframe Selector -->
                 <div class="flex gap-0.5 bg-surface/50 p-1 rounded-xl overflow-x-auto">
-                    <button onclick="changeChartInterval('1m')" class="chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap" data-interval="1m">1m</button>
-                    <button onclick="changeChartInterval('3m')" class="chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap" data-interval="3m">3m</button>
-                    <button onclick="changeChartInterval('5m')" class="chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap" data-interval="5m">5m</button>
-                    <button onclick="changeChartInterval('15m')" class="chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap" data-interval="15m">15m</button>
-                    <button onclick="changeChartInterval('30m')" class="chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap" data-interval="30m">30m</button>
-                    <button onclick="changeChartInterval('1h')" class="chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap" data-interval="1h">1H</button>
-                    <button onclick="changeChartInterval('2h')" class="chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap" data-interval="2h">2H</button>
-                    <button onclick="changeChartInterval('4h')" class="chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap" data-interval="4h">4H</button>
-                    <button onclick="changeChartInterval('1d')" class="chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap bg-white/10 text-primary" data-interval="1d">1D</button>
-                    <button onclick="changeChartInterval('1w')" class="chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap" data-interval="1w">1W</button>
+                    <button onclick="changeChartInterval('1m')"
+                        class="chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap"
+                        data-interval="1m">1m</button>
+                    <button onclick="changeChartInterval('3m')"
+                        class="chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap"
+                        data-interval="3m">3m</button>
+                    <button onclick="changeChartInterval('5m')"
+                        class="chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap"
+                        data-interval="5m">5m</button>
+                    <button onclick="changeChartInterval('15m')"
+                        class="chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap"
+                        data-interval="15m">15m</button>
+                    <button onclick="changeChartInterval('30m')"
+                        class="chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap"
+                        data-interval="30m">30m</button>
+                    <button onclick="changeChartInterval('1h')"
+                        class="chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap"
+                        data-interval="1h">1H</button>
+                    <button onclick="changeChartInterval('2h')"
+                        class="chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap"
+                        data-interval="2h">2H</button>
+                    <button onclick="changeChartInterval('4h')"
+                        class="chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap"
+                        data-interval="4h">4H</button>
+                    <button onclick="changeChartInterval('1d')"
+                        class="chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap bg-white/10 text-primary"
+                        data-interval="1d">1D</button>
+                    <button onclick="changeChartInterval('1w')"
+                        class="chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap"
+                        data-interval="1w">1W</button>
                 </div>
                 <!-- Auto Refresh Toggle -->
-                <button id="auto-refresh-btn" onclick="toggleAutoRefresh()" class="px-2 py-1 text-[10px] rounded-lg bg-surface/50 text-textMuted hover:bg-white/5 transition flex items-center gap-1" title="自動更新">
+                <button id="auto-refresh-btn" onclick="toggleAutoRefresh()"
+                    class="px-2 py-1 text-[10px] rounded-lg bg-surface/50 text-textMuted hover:bg-white/5 transition flex items-center gap-1"
+                    title="自動更新">
                     <i data-lucide="refresh-cw" class="w-3 h-3"></i>
                     <span id="auto-refresh-status">OFF</span>
                 </button>
@@ -505,45 +636,60 @@
 
     <!-- Modals -->
     <!-- API Key Modal -->
-    <div id="apikey-modal" class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-6">
+    <div id="apikey-modal"
+        class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-6">
         <div class="bg-surface w-full max-w-md p-8 rounded-[2.5rem] border border-white/5 shadow-2xl">
             <div class="flex justify-between items-center mb-6">
                 <h3 class="font-serif text-xl text-secondary">Connect OKX</h3>
-                <button onclick="closeApiKeyModal()" class="w-8 h-8 rounded-full bg-background flex items-center justify-center text-textMuted hover:text-secondary transition"><i data-lucide="x" class="w-4 h-4"></i></button>
+                <button onclick="closeApiKeyModal()"
+                    class="w-8 h-8 rounded-full bg-background flex items-center justify-center text-textMuted hover:text-secondary transition"><i
+                        data-lucide="x" class="w-4 h-4"></i></button>
             </div>
             <form id="apikey-form" onsubmit="saveApiKeys(event)" class="space-y-4">
-                <input type="text" id="input-api-key" placeholder="API Key" class="w-full bg-background border border-white/5 rounded-2xl p-4 text-secondary outline-none focus:border-primary/50 transition">
-                <input type="password" id="input-secret-key" placeholder="Secret Key" class="w-full bg-background border border-white/5 rounded-2xl p-4 text-secondary outline-none focus:border-primary/50 transition">
-                <input type="password" id="input-passphrase" placeholder="Passphrase" class="w-full bg-background border border-white/5 rounded-2xl p-4 text-secondary outline-none focus:border-primary/50 transition">
-                <button type="submit" class="w-full bg-secondary hover:bg-white text-background font-bold py-4 rounded-2xl transition">Secure Connect</button>
+                <input type="text" id="input-api-key" placeholder="API Key"
+                    class="w-full bg-background border border-white/5 rounded-2xl p-4 text-secondary outline-none focus:border-primary/50 transition">
+                <input type="password" id="input-secret-key" placeholder="Secret Key"
+                    class="w-full bg-background border border-white/5 rounded-2xl p-4 text-secondary outline-none focus:border-primary/50 transition">
+                <input type="password" id="input-passphrase" placeholder="Passphrase"
+                    class="w-full bg-background border border-white/5 rounded-2xl p-4 text-secondary outline-none focus:border-primary/50 transition">
+                <button type="submit"
+                    class="w-full bg-secondary hover:bg-white text-background font-bold py-4 rounded-2xl transition">Secure
+                    Connect</button>
             </form>
         </div>
     </div>
 
     <!-- Global Filter Modal (Re-styled) -->
-    <div id="global-filter-modal" class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4">
-        <div class="bg-surface w-full max-w-md h-[80vh] flex flex-col rounded-[2.5rem] border border-white/5 shadow-2xl overflow-hidden">
-             <div class="p-6 border-b border-white/5 flex justify-between items-center">
+    <div id="global-filter-modal"
+        class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4">
+        <div
+            class="bg-surface w-full max-w-md h-[80vh] flex flex-col rounded-[2.5rem] border border-white/5 shadow-2xl overflow-hidden">
+            <div class="p-6 border-b border-white/5 flex justify-between items-center">
                 <h3 class="font-serif text-xl text-secondary">Asset Filter</h3>
-                <button onclick="document.getElementById('global-filter-modal').classList.add('hidden')" class="w-8 h-8 rounded-full bg-background flex items-center justify-center text-textMuted hover:text-secondary"><i data-lucide="x" class="w-4 h-4"></i></button>
+                <button onclick="document.getElementById('global-filter-modal').classList.add('hidden')"
+                    class="w-8 h-8 rounded-full bg-background flex items-center justify-center text-textMuted hover:text-secondary"><i
+                        data-lucide="x" class="w-4 h-4"></i></button>
             </div>
 
             <div class="p-4 bg-background/50 space-y-3">
-                 <input type="text" id="symbol-search" placeholder="Search (e.g. BTC)..."
-                           class="w-full bg-background border border-white/5 rounded-2xl px-5 py-3 text-secondary focus:border-primary/50 outline-none transition"
-                           oninput="renderSymbolList(allMarketSymbols)">
-                 <div class="flex gap-2">
-                    <select id="filter-exchange-select" onchange="switchFilterExchange(this.value)" class="flex-1 bg-background border border-white/5 rounded-xl px-3 py-2 text-xs text-textMuted outline-none">
+                <input type="text" id="symbol-search" placeholder="Search (e.g. BTC)..."
+                    class="w-full bg-background border border-white/5 rounded-2xl px-5 py-3 text-secondary focus:border-primary/50 outline-none transition"
+                    oninput="renderSymbolList(allMarketSymbols)">
+                <div class="flex gap-2">
+                    <select id="filter-exchange-select" onchange="switchFilterExchange(this.value)"
+                        class="flex-1 bg-background border border-white/5 rounded-xl px-3 py-2 text-xs text-textMuted outline-none">
                         <option value="okx">OKX</option>
                     </select>
-                    <button onclick="clearGlobalFilter()" class="px-3 py-2 bg-background border border-white/5 rounded-xl text-xs text-textMuted uppercase hover:bg-white/5 transition">Reset</button>
+                    <button onclick="clearGlobalFilter()"
+                        class="px-3 py-2 bg-background border border-white/5 rounded-xl text-xs text-textMuted uppercase hover:bg-white/5 transition">Reset</button>
                 </div>
             </div>
 
             <div id="symbol-list-container" class="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar"></div>
 
             <div class="p-6 border-t border-white/5">
-                 <button onclick="applyGlobalFilter()" class="w-full bg-primary text-background font-bold py-4 rounded-2xl transition shadow-lg shadow-primary/20">
+                <button onclick="applyGlobalFilter()"
+                    class="w-full bg-primary text-background font-bold py-4 rounded-2xl transition shadow-lg shadow-primary/20">
                     Apply Filter (<span id="selected-count-modal">0</span>)
                 </button>
             </div>
@@ -551,13 +697,17 @@
     </div>
 
     <!-- News Modal -->
-    <div id="news-modal" class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-6">
-        <div class="bg-surface w-full max-w-md max-h-[80vh] flex flex-col rounded-[2.5rem] border border-white/5 shadow-2xl">
+    <div id="news-modal"
+        class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-6">
+        <div
+            class="bg-surface w-full max-w-md max-h-[80vh] flex flex-col rounded-[2.5rem] border border-white/5 shadow-2xl">
             <div class="p-6 border-b border-white/5 flex justify-between items-center shrink-0">
                 <h3 class="font-serif text-xl text-secondary flex items-center gap-2">
                     <span id="news-modal-symbol" class="text-primary">BTC</span> News
                 </h3>
-                <button onclick="document.getElementById('news-modal').classList.add('hidden')" class="w-8 h-8 rounded-full bg-background flex items-center justify-center text-textMuted hover:text-secondary transition"><i data-lucide="x" class="w-4 h-4"></i></button>
+                <button onclick="document.getElementById('news-modal').classList.add('hidden')"
+                    class="w-8 h-8 rounded-full bg-background flex items-center justify-center text-textMuted hover:text-secondary transition"><i
+                        data-lucide="x" class="w-4 h-4"></i></button>
             </div>
             <div id="news-list-content" class="p-6 overflow-y-auto custom-scrollbar space-y-3">
                 <!-- News items injected here -->
@@ -566,20 +716,25 @@
     </div>
 
     <!-- API Test Modal -->
-    <div id="api-test-modal" class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[80] hidden flex items-center justify-center p-6">
+    <div id="api-test-modal"
+        class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[80] hidden flex items-center justify-center p-6">
         <div class="bg-surface w-full max-w-sm p-8 rounded-[2.5rem] border border-success/20 shadow-2xl">
-             <div class="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-6 text-success">
+            <div
+                class="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-6 text-success">
                 <i data-lucide="check" class="w-8 h-8"></i>
             </div>
             <h3 class="text-center font-serif text-xl text-secondary mb-2">Connected</h3>
             <p class="text-center text-textMuted text-sm mb-6">AI brain is now online.</p>
-            <button onclick="document.getElementById('api-test-modal').classList.add('hidden')" class="w-full py-3 bg-secondary text-background font-bold rounded-2xl">Continue</button>
+            <button onclick="document.getElementById('api-test-modal').classList.add('hidden')"
+                class="w-full py-3 bg-secondary text-background font-bold rounded-2xl">Continue</button>
         </div>
     </div>
 
     <!-- Confirm Dialog Modal -->
-    <div id="confirm-modal" class="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-6">
-        <div class="bg-surface w-full max-w-sm p-8 rounded-[2.5rem] border border-white/5 shadow-2xl animate-fade-in-up">
+    <div id="confirm-modal"
+        class="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-6">
+        <div
+            class="bg-surface w-full max-w-sm p-8 rounded-[2.5rem] border border-white/5 shadow-2xl animate-fade-in-up">
             <!-- Icon -->
             <div id="confirm-modal-icon" class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
                 <i data-lucide="alert-triangle" class="w-8 h-8"></i>
@@ -587,13 +742,16 @@
             <!-- Title -->
             <h3 id="confirm-modal-title" class="text-center font-serif text-xl text-secondary mb-2">確認操作</h3>
             <!-- Message -->
-            <p id="confirm-modal-message" class="text-center text-textMuted text-sm mb-8 whitespace-pre-line">確定要執行此操作嗎？</p>
+            <p id="confirm-modal-message" class="text-center text-textMuted text-sm mb-8 whitespace-pre-line">確定要執行此操作嗎？
+            </p>
             <!-- Buttons -->
             <div id="confirm-modal-buttons" class="flex gap-3">
-                <button id="confirm-modal-cancel" class="flex-1 py-3 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-2xl transition border border-white/5">
+                <button id="confirm-modal-cancel"
+                    class="flex-1 py-3 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-2xl transition border border-white/5">
                     取消
                 </button>
-                <button id="confirm-modal-confirm" class="flex-1 py-3 bg-danger hover:brightness-110 text-white font-bold rounded-2xl transition shadow-lg">
+                <button id="confirm-modal-confirm"
+                    class="flex-1 py-3 bg-danger hover:brightness-110 text-white font-bold rounded-2xl transition shadow-lg">
                     確認
                 </button>
             </div>
@@ -608,12 +766,14 @@
     </div>
 
     <!-- Login Modal -->
-    <div id="login-modal" class="fixed inset-0 bg-background/95 backdrop-blur-xl z-[90] overflow-y-auto flex justify-center py-10 px-6">
+    <div id="login-modal"
+        class="fixed inset-0 bg-background/95 backdrop-blur-xl z-[90] overflow-y-auto flex justify-center py-10 px-6">
         <div class="bg-surface w-full max-w-md p-8 rounded-[2.5rem] border border-white/10 shadow-2xl my-auto">
             <!-- Header -->
             <div class="text-center mb-8">
                 <div class="w-24 h-24 mx-auto mb-4">
-                    <img src="/static/img/title_icon.png" alt="CryptoMind Logo" class="w-full h-full object-contain drop-shadow-lg">
+                    <img src="/static/img/title_icon.png" alt="CryptoMind Logo"
+                        class="w-full h-full object-contain drop-shadow-lg">
                 </div>
                 <h2 class="font-serif text-2xl text-secondary mb-2">Welcome to CryptoMind</h2>
                 <p class="text-textMuted text-sm">Connect your wallet or login to continue</p>
@@ -622,7 +782,9 @@
             <!-- Pi Network Login -->
             <div id="pi-login-area">
                 <!-- 按鈕：默認隱藏，Pi Browser 中才顯示 -->
-                <button id="pi-login-btn" onclick="safePiLogin()" class="w-full py-4 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-bold rounded-2xl mb-4 flex items-center justify-center gap-3 transition shadow-lg" style="display:none;">
+                <button id="pi-login-btn" onclick="safePiLogin()"
+                    class="w-full py-4 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-bold rounded-2xl mb-4 flex items-center justify-center gap-3 transition shadow-lg"
+                    style="display:none;">
                     <img src="/static/img/pi-logo.png" alt="Pi" class="w-6 h-6"> Connect Pi Wallet
                 </button>
                 <!-- 非 Pi Browser 提示：默認顯示 -->
@@ -644,11 +806,11 @@
             </div>
             <script>
                 // 嚴格檢測 Pi Browser 環境
-                (function() {
+                (function () {
                     const isValidPiBrowser = typeof window.Pi !== 'undefined' &&
-                                             window.Pi !== null &&
-                                             typeof window.Pi.authenticate === 'function' &&
-                                             typeof window.Pi.init === 'function';
+                        window.Pi !== null &&
+                        typeof window.Pi.authenticate === 'function' &&
+                        typeof window.Pi.init === 'function';
 
                     console.log('Pi Browser 環境檢測:', {
                         hasPi: typeof window.Pi !== 'undefined',
@@ -803,22 +965,22 @@
     -->
 
     <!-- Scripts -->
-    <script src="/static/js/app.js?v=38" onerror="alert('app.js 載入失敗')"></script>
-    <script src="/static/js/apiKeyManager.js?v=38" onerror="alert('apiKeyManager.js 載入失敗')"></script>
-    <script src="/static/js/auth.js?v=38" onerror="alert('auth.js 載入失敗')"></script>
-    <script src="/static/js/okxKeyManager.js?v=38"></script>
-    <script src="/static/js/components.js?v=38"></script>
-    <script src="/static/js/llmSettings.js?v=38"></script>
-    <script src="/static/js/filter.js?v=38"></script>
-    <script src="/static/js/chat.js?v=38"></script>
-    <script src="/static/js/market.js?v=38"></script>
-    <script src="/static/js/assets.js?v=38"></script>
-    <script src="/static/js/pulse.js?v=38"></script>
-    <script src="/static/js/trade.js?v=38"></script>
-    <script src="/static/js/forum.js?v=38"></script>
-    <script src="/static/js/wallet.js?v=38"></script>
-    <script src="/static/js/debate.js?v=38"></script>
-    <script src="/static/js/committeeManager.js?v=38"></script>
+    <script src="/static/js/app.js?v=45" onerror="alert('app.js 載入失敗')"></script>
+    <script src="/static/js/apiKeyManager.js?v=45" onerror="alert('apiKeyManager.js 載入失敗')"></script>
+    <script src="/static/js/auth.js?v=45" onerror="alert('auth.js 載入失敗')"></script>
+    <script src="/static/js/okxKeyManager.js?v=45"></script>
+    <script src="/static/js/components.js?v=45"></script>
+    <script src="/static/js/llmSettings.js?v=45"></script>
+    <script src="/static/js/filter.js?v=45"></script>
+    <script src="/static/js/chat.js?v=45"></script>
+    <script src="/static/js/market.js?v=45"></script>
+    <script src="/static/js/assets.js?v=45"></script>
+    <script src="/static/js/pulse.js?v=45"></script>
+    <script src="/static/js/trade.js?v=45"></script>
+    <script src="/static/js/forum.js?v=45"></script>
+    <script src="/static/js/wallet.js?v=45"></script>
+    <script src="/static/js/debate.js?v=45"></script>
+    <script src="/static/js/committeeManager.js?v=45"></script>
     <script>
         lucide.createIcons();
 
@@ -829,13 +991,13 @@
         async function switchTab(tabId) {
             const currentTab = document.querySelector('.tab-content:not(.hidden)');
             const targetTab = document.getElementById(tabId + '-tab');
-            
+
             if (currentTab && currentTab.id !== tabId + '-tab') {
                 // 1. 先讓當前頁面淡出
                 currentTab.style.opacity = '0';
                 currentTab.style.transform = 'translateY(-5px)';
                 currentTab.style.transition = 'all 0.2s ease-in';
-                
+
                 return new Promise((resolve) => {
                     setTimeout(async () => {
                         await executeTabSwitch(tabId);
@@ -868,7 +1030,7 @@
 
             // Show target tab
             const target = document.getElementById(tabId + '-tab');
-            if(target) {
+            if (target) {
                 target.classList.remove('hidden');
             }
 
@@ -877,7 +1039,7 @@
                 const icon = btn.querySelector('i');
                 const label = btn.querySelector('span');
 
-                if(icon) {
+                if (icon) {
                     icon.classList.remove('text-primary');
                     icon.classList.add('text-textMuted');
                 }
@@ -887,11 +1049,11 @@
 
             // Highlight Active
             const activeBtn = document.querySelector(`button[data-tab="${tabId}"]`) || document.querySelector(`button[onclick*="switchTab('${tabId}')"]`);
-            if(activeBtn) {
+            if (activeBtn) {
                 const icon = activeBtn.querySelector('i');
                 const label = activeBtn.querySelector('span');
 
-                if(icon) {
+                if (icon) {
                     icon.classList.remove('text-textMuted');
                     icon.classList.add('text-primary');
                 }
@@ -899,17 +1061,27 @@
                 activeBtn.classList.add('bg-primary/10', 'text-primary');
             }
 
-            // Trigger refreshes
-            if(tabId === 'market') {
+            // Trigger tab-specific initialization
+            if (tabId === 'market') {
                 if (typeof connectTickerWebSocket === 'function') connectTickerWebSocket();
-                refreshScreener(true);
+                if (typeof initMarket === 'function') {
+                    await initMarket();
+                } else if (typeof refreshScreener === 'function') {
+                    await refreshScreener(true);
+                }
             }
-            if(tabId === 'assets') refreshAssets();
-            if(tabId === 'pulse') checkMarketPulse(true);
-            if(tabId === 'wallet') {
+            if (tabId === 'assets' && typeof refreshAssets === 'function') refreshAssets();
+            if (tabId === 'pulse') {
+                if (typeof initPulse === 'function') {
+                    await initPulse();
+                } else if (typeof checkMarketPulse === 'function') {
+                    await checkMarketPulse(true);
+                }
+            }
+            if (tabId === 'wallet') {
                 if (window.WalletApp) window.WalletApp.init();
             }
-            if(tabId === 'settings') {
+            if (tabId === 'settings') {
                 // 💡 修正：注入內容後，立即更新用戶資料顯示
                 if (window.AuthManager && typeof window.AuthManager._updateUI === 'function') {
                     window.AuthManager._updateUI(window.AuthManager.isLoggedIn());
@@ -933,7 +1105,7 @@
                 }
             }
 
-            if(typeof onTabSwitch === 'function') onTabSwitch(tabId);
+            if (typeof onTabSwitch === 'function') onTabSwitch(tabId);
         }
 
         // Initialize Greeting Time
@@ -943,7 +1115,7 @@
 
         document.addEventListener('DOMContentLoaded', async () => {
             console.log('DOM fully loaded, starting controlled initialization...');
-            
+
             // 等待核心組件就緒的輔助函式
             const waitForGlobal = (key, timeout = 3000) => {
                 return new Promise((resolve) => {
@@ -972,11 +1144,11 @@
                 UI: !!window.initializeUIStatus
             });
 
-            // 1. 初始化認證系統
+            // 1. 初始化認證系統（支援測試模式自動登入）
             if (typeof initializeAuth === 'function') {
                 try {
-                    initializeAuth();
-                } catch(e) { console.error('Auth Init Error:', e); }
+                    await initializeAuth();
+                } catch (e) { console.error('Auth Init Error:', e); }
             }
 
             // 2. 載入預設分頁
@@ -984,13 +1156,13 @@
             console.log('Initial tab switching to:', savedTab);
             try {
                 await switchTab(savedTab);
-            } catch(e) { console.error('Initial Tab Error:', e); }
+            } catch (e) { console.error('Initial Tab Error:', e); }
 
             // 3. 更新 UI 狀態
             if (typeof initializeUIStatus === 'function') {
                 try {
                     initializeUIStatus();
-                } catch(e) { console.error('UI Init Error:', e); }
+                } catch (e) { console.error('UI Init Error:', e); }
             }
 
             // 4. 延遲啟動 Ticker WebSocket
@@ -1004,10 +1176,23 @@
                     }, 5000);
                 }
             }, 1000);
+
+            // 5. 預加載 Market 和 Pulse 數據（背景執行）
+            setTimeout(async () => {
+                console.log('Preloading market data...');
+                // 預先注入並初始化 market 和 pulse
+                if (typeof initMarket === 'function') {
+                    await initMarket();
+                }
+                if (typeof initPulse === 'function') {
+                    await initPulse();
+                }
+                console.log('Market data preloaded');
+            }, 2000);
         });
 
         // WebSocket Status Debugging
-        window.checkWebSocketStatus = function() {
+        window.checkWebSocketStatus = function () {
             console.log('=== WebSocket Status ===');
             console.log('Ticker WS Connected:', window.marketWsConnected || false);
             console.log('K-line WS Connected:', window.wsConnected || false);
@@ -1020,4 +1205,5 @@
         };
     </script>
 </body>
+
 </html>

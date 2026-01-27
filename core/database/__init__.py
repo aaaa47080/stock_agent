@@ -99,10 +99,32 @@ from .trading import (
     add_to_watchlist,
     remove_from_watchlist,
     get_watchlist,
-    # 預測
-    submit_prediction,
-    get_leaderboard,
-    get_user_predictions,
+)
+
+# 好友功能
+from .friends import (
+    # 用戶搜尋
+    search_users,
+    get_public_user_profile,
+    # 好友請求
+    send_friend_request,
+    accept_friend_request,
+    reject_friend_request,
+    cancel_friend_request,
+    remove_friend,
+    # 封鎖功能
+    block_user,
+    unblock_user,
+    get_blocked_users,
+    # 好友列表
+    get_friends_list,
+    get_pending_requests_received,
+    get_pending_requests_sent,
+    get_friendship_status,
+    get_friends_count,
+    get_pending_count,
+    is_blocked,
+    is_friend,
 )
 
 # 系統快取
@@ -202,9 +224,25 @@ __all__ = [
     'add_to_watchlist',
     'remove_from_watchlist',
     'get_watchlist',
-    'submit_prediction',
-    'get_leaderboard',
-    'get_user_predictions',
+    # 好友功能
+    'search_users',
+    'get_public_user_profile',
+    'send_friend_request',
+    'accept_friend_request',
+    'reject_friend_request',
+    'cancel_friend_request',
+    'remove_friend',
+    'block_user',
+    'unblock_user',
+    'get_blocked_users',
+    'get_friends_list',
+    'get_pending_requests_received',
+    'get_pending_requests_sent',
+    'get_friendship_status',
+    'get_friends_count',
+    'get_pending_count',
+    'is_blocked',
+    'is_friend',
     # 快取
     'set_cache',
     'get_cache',
