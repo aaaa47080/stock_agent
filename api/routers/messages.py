@@ -422,6 +422,46 @@ async def get_message_limits_endpoint(
         raise HTTPException(status_code=500, detail=f"取得限制狀態失敗: {str(e)}")
 
 
+# DEBUG: 臨時調試端點 - 查看訊息狀態
+@router.get("/api/messages/debug/{conversation_id}")
+async def debug_messages_endpoint(
+    conversation_id: int,
+    user_id: str = Query(..., description="用戶 ID"),
+):
+    """
+    調試用 - 查看對話中訊息的 is_read 狀態
+    """
+    from core.database.connection import get_connection
+    conn = get_connection()
+    c = conn.cursor()
+    try:
+        c.execute('''
+            SELECT id, from_user_id, to_user_id, is_read, 
+                   substr(content, 1, 20) as preview
+            FROM dm_messages 
+            WHERE conversation_id = ?
+            ORDER BY id DESC LIMIT 10
+        ''', (conversation_id,))
+        rows = c.fetchall()
+        messages = [
+            {
+                "id": r[0],
+                "from": r[1][:8] if r[1] else None,
+                "to": r[2][:8] if r[2] else None,
+                "is_read": bool(r[3]),
+                "preview": r[4]
+            }
+            for r in rows
+        ]
+        return {
+            "conversation_id": conversation_id,
+            "viewer": user_id[:8] if user_id else None,
+            "messages": messages
+        }
+    finally:
+        conn.close()
+
+
 # ============================================================================
 # WebSocket 端點
 # ============================================================================

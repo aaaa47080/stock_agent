@@ -448,7 +448,15 @@ const MessagesUI = {
     renderConversationItem(conv, isActive = false) {
         const initial = this.getInitial(conv.other_username);
         const badge = this.getMembershipBadge(conv.other_membership_tier);
-        const unreadClass = conv.unread_count > 0 ? 'font-bold text-textMain' : 'text-textMuted';
+        const hasUnread = conv.unread_count > 0;
+
+        // 未讀狀態樣式
+        const unreadTextClass = hasUnread ? 'font-bold text-textMain' : 'text-textMuted';
+        const unreadBgClass = hasUnread ? 'bg-primary/5' : '';
+        const unreadAvatarClass = hasUnread ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : '';
+        const unreadIndicator = hasUnread ? '<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r"></div>' : '';
+
+        // 活動狀態樣式
         const activeClass = isActive ? 'bg-primary/10 border-primary/30' : 'hover:bg-white/5';
         const timeStr = this.formatTime(conv.last_message_at);
 
@@ -459,26 +467,27 @@ const MessagesUI = {
         }
 
         return `
-            <div class="conversation-item cursor-pointer p-3 border-b border-white/5 ${activeClass} transition"
+            <div class="conversation-item cursor-pointer p-3 border-b border-white/5 ${activeClass} ${unreadBgClass} transition relative"
                  data-conversation-id="${conv.id}"
                  data-other-user-id="${conv.other_user_id}"
                  onclick="MessagesPage.selectConversation(${conv.id}, '${conv.other_user_id}', '${conv.other_username}')">
+                ${unreadIndicator}
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold flex-shrink-0">
+                    <div class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold flex-shrink-0 ${unreadAvatarClass}">
                         ${initial}
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center justify-between gap-2">
                             <div class="flex items-center gap-2 min-w-0">
-                                <span class="font-bold text-textMain truncate">${conv.other_username}</span>
+                                <span class="${hasUnread ? 'font-extrabold' : 'font-bold'} text-textMain truncate">${conv.other_username}</span>
                                 ${badge}
                             </div>
-                            <span class="text-xs text-textMuted flex-shrink-0">${timeStr}</span>
+                            <span class="text-xs ${hasUnread ? 'text-primary font-bold' : 'text-textMuted'} flex-shrink-0">${timeStr}</span>
                         </div>
                         <div class="flex items-center justify-between gap-2 mt-0.5">
-                            <p class="text-sm ${unreadClass} truncate">${preview}</p>
-                            ${conv.unread_count > 0 ? `
-                                <span class="flex-shrink-0 w-5 h-5 rounded-full bg-primary text-background text-xs font-bold flex items-center justify-center">
+                            <p class="text-sm ${unreadTextClass} truncate">${preview}</p>
+                            ${hasUnread ? `
+                                <span class="flex-shrink-0 min-w-5 h-5 px-1.5 rounded-full bg-primary text-background text-xs font-bold flex items-center justify-center animate-pulse">
                                     ${conv.unread_count > 99 ? '99+' : conv.unread_count}
                                 </span>
                             ` : ''}
@@ -510,14 +519,14 @@ const MessagesUI = {
             : '';
 
         if (isMine) {
-            // 自己發送的訊息（右側）
+            // 自己的訊息 - 靠右對齊
             return `
-                <div class="message-bubble flex justify-end mb-3" data-message-id="${msg.id}">
-                    <div class="max-w-[75%]">
-                        <div class="bg-primary text-background px-4 py-2 rounded-2xl rounded-br-sm">
+                <div class="flex justify-end mb-4" data-message-id="${msg.id}">
+                    <div class="flex flex-col items-end" style="max-width: 70%;">
+                        <div class="bg-primary text-background px-4 py-2.5 rounded-2xl rounded-br-md">
                             ${greetingBadge}<span class="whitespace-pre-wrap break-words">${this._escapeHtml(msg.content)}</span>
                         </div>
-                        <div class="flex items-center justify-end gap-2 mt-1">
+                        <div class="flex items-center gap-2 mt-1 px-1">
                             ${readStatus}
                             <span class="text-xs text-textMuted">${timeStr}</span>
                         </div>
@@ -525,14 +534,14 @@ const MessagesUI = {
                 </div>
             `;
         } else {
-            // 對方發送的訊息（左側）
+            // 對方的訊息 - 靠左對齊
             return `
-                <div class="message-bubble flex justify-start mb-3" data-message-id="${msg.id}">
-                    <div class="max-w-[75%]">
-                        <div class="bg-surface border border-white/10 text-textMain px-4 py-2 rounded-2xl rounded-bl-sm">
+                <div class="flex justify-start mb-4" data-message-id="${msg.id}">
+                    <div class="flex flex-col items-start" style="max-width: 70%;">
+                        <div class="bg-surface border border-white/10 text-textMain px-4 py-2.5 rounded-2xl rounded-bl-md">
                             ${greetingBadge}<span class="whitespace-pre-wrap break-words">${this._escapeHtml(msg.content)}</span>
                         </div>
-                        <div class="text-xs text-textMuted mt-1">${timeStr}</div>
+                        <div class="text-xs text-textMuted mt-1 px-1">${timeStr}</div>
                     </div>
                 </div>
             `;
@@ -558,6 +567,22 @@ const MessagesUI = {
         return `
             <div class="flex items-center justify-center h-full">
                 <div class="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full"></div>
+            </div>
+        `;
+    },
+
+    /**
+     * 渲染新訊息分隔線
+     */
+    renderNewMessagesSeparator() {
+        return `
+            <div class="new-messages-separator flex items-center gap-4 my-4 px-4">
+                <div class="flex-1 h-px bg-primary/30"></div>
+                <span class="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1">
+                    <i data-lucide="arrow-down" class="w-3 h-3"></i>
+                    新訊息
+                </span>
+                <div class="flex-1 h-px bg-primary/30"></div>
             </div>
         `;
     },

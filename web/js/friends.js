@@ -605,16 +605,8 @@ const FriendsUI = {
      * 開啟與用戶的聊天（切換到聊天 tab 並開啟對話）
      */
     openChat(userId, username) {
-        // 如果在主應用中（有 SocialHub）
-        if (typeof SocialHub !== 'undefined') {
-            // 切換到聊天子標籤
-            SocialHub.switchSubTab('messages');
-            // 開啟對話
-            SocialHub.openConversationWith(userId, username);
-        } else {
-            // 如果在論壇頁面，跳轉到 messages.html
-            window.location.href = `/static/forum/messages.html?with=${userId}`;
-        }
+        // 統一跳轉到全屏聊天頁面
+        window.location.href = `/static/forum/messages.html?with=${userId}`;
     }
 };
 
@@ -1389,7 +1381,7 @@ const SocialHub = {
             <div class="social-conv-item cursor-pointer p-3 border-b border-white/5 ${activeClass} transition"
                  data-conversation-id="${conv.id}"
                  data-other-user-id="${conv.other_user_id}"
-                 onclick="SocialHub.selectConversation(${conv.id}, '${conv.other_user_id}', '${conv.other_username}')">
+                 onclick="window.location.href='/static/forum/messages.html?with=${conv.other_user_id}'">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold flex-shrink-0">
                         ${initial}

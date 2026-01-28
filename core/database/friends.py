@@ -91,6 +91,13 @@ def get_public_user_profile(user_id: str, viewer_user_id: str = None) -> Optiona
         c.execute('SELECT COALESCE(SUM(push_count), 0) FROM posts WHERE user_id = ?', (user_id,))
         profile["total_pushes"] = c.fetchone()[0]
 
+        # 取得好友數量（公開）
+        c.execute('''
+            SELECT COUNT(*) FROM friendships
+            WHERE (user_id = ? OR friend_id = ?) AND status = 'accepted'
+        ''', (user_id, user_id))
+        profile["friends_count"] = c.fetchone()[0]
+
         return profile
     finally:
         conn.close()

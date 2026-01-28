@@ -304,8 +304,13 @@ def get_messages(conversation_id: int, user_id: str, limit: int = 50, before_id:
                 ORDER BY m.created_at DESC, m.id DESC
                 LIMIT ?
             ''', (conversation_id, limit))
-
+        
         rows = c.fetchall()
+        
+        # DEBUG: Check what is being returned
+        print(f"[DEBUG get_messages] conv_id={conversation_id}, user_id={user_id}, count={len(rows)}")
+        for r in rows[:3]:
+            print(f"[DEBUG get_messages] id={r[0]}, from={r[2]}, to={r[3]}, is_read={r[6]}")
 
         messages = [
             {
@@ -348,13 +353,24 @@ def mark_as_read(conversation_id: int, user_id: str) -> Dict:
         if not conv:
             return {"success": False, "error": "conversation_not_found"}
 
-        # 標記所有發給當前用戶的未讀訊息為已讀
+        # DEBUG: 記錄更新前的訊息狀態
+        c.execute('''
+            SELECT id, from_user_id, to_user_id, is_read 
+            FROM dm_messages 
+            WHERE conversation_id = ?
+            ORDER BY id DESC LIMIT 5
+        ''', (conversation_id,))
+        before_rows = c.fetchall()
+        print(f"[DEBUG mark_as_read] user_id={user_id}, conv_id={conversation_id}")
+        print(f"[DEBUG mark_as_read] 更新前訊息: {before_rows}")
+
         c.execute('''
             UPDATE dm_messages
             SET is_read = 1, read_at = datetime('now')
-            WHERE conversation_id = ? AND to_user_id = ? AND is_read = 0
-        ''', (conversation_id, user_id))
+            WHERE conversation_id = ? AND to_user_id = ? AND from_user_id != ? AND is_read = 0
+        ''', (conversation_id, user_id, user_id))
         updated_count = c.rowcount
+        print(f"[DEBUG mark_as_read] 更新了 {updated_count} 條訊息 (to_user_id={user_id})")
 
         # 重置對話中當前用戶的未讀數
         if conv["user1_id"] == user_id:
@@ -363,6 +379,16 @@ def mark_as_read(conversation_id: int, user_id: str) -> Dict:
             c.execute('UPDATE dm_conversations SET user2_unread_count = 0 WHERE id = ?', (conversation_id,))
 
         conn.commit()
+
+        # DEBUG: 記錄更新後的訊息狀態
+        c.execute('''
+            SELECT id, from_user_id, to_user_id, is_read 
+            FROM dm_messages 
+            WHERE conversation_id = ?
+            ORDER BY id DESC LIMIT 5
+        ''', (conversation_id,))
+        after_rows = c.fetchall()
+        print(f"[DEBUG mark_as_read] 更新後訊息: {after_rows}")
 
         return {
             "success": True,
