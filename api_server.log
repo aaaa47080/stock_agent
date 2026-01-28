@@ -26576,3 +26576,7 @@ task: <Task cancelling name='Task-419' coro=<OKXTickerWebSocketManager.connect()
 2026-01-29 01:51:09,326 [INFO] API: Heavy screener analysis complete. (Top: 10)
 2026-01-29 01:51:51,654 [INFO] API: Funding Rate cache saved (254 symbols)
 2026-01-29 01:51:51,654 [INFO] API: Funding rates updated: 254 symbols
+2026-01-29 01:52:01,732 [INFO] API: Starting heavy screener analysis...
+2026-01-29 01:52:09,418 [INFO] API: Screener cache saved to DB
+2026-01-29 01:52:09,418 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-29 01:53:01,726 [INFO] API: Starting heavy screener analysis...

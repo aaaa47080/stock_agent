@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW" class="dark">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -39,16 +40,22 @@
     </script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Mulish:wght@300;400;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Mulish:wght@300;400;600;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="/static/styles.css">
+    <script src="/static/config.js"></script>
+    <script src="/static/js/logger.js"></script>
 </head>
+
 <body class="bg-background text-textMain min-h-screen flex flex-col pb-20" data-page="wallet">
 
     <!-- Top Bar -->
     <nav class="sticky top-0 z-50 bg-surface/95 backdrop-blur-xl border-b border-white/5 px-4 py-3">
         <div class="max-w-5xl mx-auto flex items-center justify-between">
-            <a href="/static/forum/index.html" onclick="event.preventDefault(); if(typeof smoothNavigate==='function'){smoothNavigate('/static/forum/index.html')}else{window.location.href='/static/forum/index.html'}"
-               class="flex items-center gap-2 text-secondary font-bold hover:text-primary transition">
+            <a href="/static/forum/index.html"
+                onclick="event.preventDefault(); if(typeof smoothNavigate==='function'){smoothNavigate('/static/forum/index.html')}else{window.location.href='/static/forum/index.html'}"
+                class="flex items-center gap-2 text-secondary font-bold hover:text-primary transition">
                 <i data-lucide="arrow-left" class="w-5 h-5"></i>
                 <span>Back</span>
             </a>
@@ -69,29 +76,30 @@
                     <i data-lucide="wallet" class="w-7 h-7 text-primary"></i>
                 </div>
                 <div>
-                    <div class="text-textMuted text-sm font-bold uppercase tracking-wider mb-1">Total Spent / Received</div>
+                    <div class="text-textMuted text-sm font-bold uppercase tracking-wider mb-1">Total Spent / Received
+                    </div>
                     <div class="flex gap-4">
-                         <div class="text-success font-bold flex flex-col">
-                             <span class="text-xs opacity-70">In</span>
-                             <span id="total-in">0.0 Pi</span>
-                         </div>
-                         <div class="text-danger font-bold flex flex-col">
-                             <span class="text-xs opacity-70">Out</span>
-                             <span id="total-out">0.0 Pi</span>
-                         </div>
+                        <div class="text-success font-bold flex flex-col">
+                            <span class="text-xs opacity-70">In</span>
+                            <span id="total-in">0.0 Pi</span>
+                        </div>
+                        <div class="text-danger font-bold flex flex-col">
+                            <span class="text-xs opacity-70">Out</span>
+                            <span id="total-out">0.0 Pi</span>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Filters (Optional, keeping simple for now) -->
-        
+
         <!-- Transaction List -->
         <div>
             <h3 class="font-bold text-secondary text-lg mb-4 flex items-center gap-2">
                 <i data-lucide="history" class="w-5 h-5"></i> Transactions
             </h3>
-            
+
             <div id="wallet-tx-list" class="space-y-3">
                 <div class="text-center text-textMuted py-10 opacity-50">
                     <i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto mb-2"></i>
@@ -134,4 +142,5 @@
         });
     </script>
 </body>
+
 </html>
