@@ -1,95 +1,16 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-.pytest_cache/
-
-# Virtual Environment
-.venv/
-venv/
-ENV/
-env/
 
 # Environment Variables
 .env
 .env.local
-.env.production
 
-# LLM Cache
-.llm_cache/
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
 
-# Logs
-logs/
-*.log
-api_server.log
-
-# Database files
-*.db
-*.sqlite
-*.sqlite3
-user_data.db
-parallel_chats.db
-
-# IDE & AI Tools
+# IDE
 .vscode/
 .idea/
-.claude/
-.cursor/
-.gemini/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Backup files
-*.backup
-*.bak
-*.tmp
-*.old
-
-# AI Codebooks
-claude_codebook/
-gemini_codebook/
-qwen_codebook/
-*_codebook/
-
-# Project specific
-analysis_results/
-decisions/
-pattern_charts/
-interview/
-tests/
-reports/
-learn-ai/
-.gradio/
-
-# Temporary files
-error.txt
-error_old.txt
-null.txt
-improved_redirect_logic.js
-REFACTOR_COMPLETE.md
-
-# Documentation (keep in docs/)
-register_pi_network.txt
-cloudflare_tunnel.md

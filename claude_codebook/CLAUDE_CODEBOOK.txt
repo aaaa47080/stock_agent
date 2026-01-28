@@ -1,0 +1,835 @@
+<solve>
+打賞功能允許用戶打賞自己的文章，進入支付畫面後才提示錯誤，造成不良用戶體驗
+</solve>
+
+<answer>
+1. 問題根源：前端在 `handleTip()` 函數中未檢查文章作者，直接進入支付流程
+2. 後端雖有驗證，但用戶已完成支付才收到錯誤
+3. 修復步驟：
+   - 在 `loadPostDetail()` 函數中保存當前文章對象到 `this.currentPost`（forum.js 第561行）
+   - 在 `handleTip()` 函數開頭添加作者檢查邏輯（forum.js 第703-708行）
+   - 比對 `currentUserId` 與 `postAuthorId`，相同則立即返回錯誤提示
+4. 技術要點：
+   - 使用可選鏈運算符 `?.` 安全訪問屬性
+   - 支援多種用戶 ID 格式（user_id 或 uid）
+   - 在支付流程前就阻止，避免無效交易
+</answer>
+
+<solve>
+文章按讚/倒讚功能點擊後顏色改變，但計數顯示始終為 0
+</solve>
+
+<answer>
+1. 問題根源：前端調用 `ForumAPI.getPost(id)` 時未傳遞 `user_id` 參數
+2. 後端無法識別當前用戶，無法返回正確的 `viewer_vote` 狀態和最新計數
+3. 修復步驟：
+   - 修改 `ForumAPI.getPost()` 方法（forum.js 第161-165行）
+   - 使用 `_getUserId()` 獲取當前用戶 ID
+   - 構建查詢參數 `?user_id={userId}` 並附加到 API 請求
+4. 技術要點：
+   - 使用三元運算符處理未登入狀態（userId 為空時不添加參數）
+   - 使用 `encodeURIComponent()` 確保 URL 安全
+   - 保持向後兼容，未登入用戶仍可正常瀏覽
+5. 影響範圍：
+   - 確保獲取最新的 push_count 和 boo_count
+   - 正確顯示用戶的投票狀態（已推/已噓）
+   - 支援投票狀態持久化（重新載入頁面後保持）
+</answer>
+
+<solve>
+Wallet History 頁面一直顯示 "Loading history..." 狀態，無論是否有數據
+</solve>
+
+<answer>
+1. 問題根源：
+   - API 請求失敗或返回空數據時，`allTransactions` 未被初始化
+   - `applyFilters()` 函數檢查到 `undefined` 直接返回，不渲染任何內容
+   - 缺乏詳細的錯誤日誌，難以診斷問題
+2. 修復步驟（wallet.js）：
+   A. 增強錯誤處理和日誌（第62-72行）：
+      - 記錄所有 API 調用的 fulfilled/rejected 狀態
+      - 使用 `forEach` 遍歷並警告失敗的 API
+   B. 保證數據初始化（第109-112行）：
+      - 在 `catch` 區塊中初始化 `this.allTransactions = []`
+      - 調用 `renderError()` 顯示錯誤訊息和重試按鈕
+   C. 防禦性編程（第139-142行）：
+      - 在 `applyFilters()` 開頭檢查 `allTransactions`
+      - 若為 `undefined` 則初始化為空數組，繼續處理
+3. 技術要點：
+   - 使用 `Promise.allSettled()` 確保部分 API 失敗時仍能處理成功的請求
+   - 多層防護：loadData catch + applyFilters 初始化
+   - 詳細日誌便於遠程調試
+4. 用戶體驗改進：
+   - 無數據時顯示 "No transactions found" 而非一直 loading
+   - 錯誤時顯示具體訊息和重試按鈕
+   - 部分 API 失敗時仍能顯示可用數據
+</answer>
+
+<solve>
+Dashboard 交易列表使用 Promise.all() 缺少錯誤處理，任一 API 失敗導致整個列表崩潰
+</solve>
+
+<answer>
+1. 問題根源：
+   - `loadTransactions()` 使用 `Promise.all()` 獲取 payments 和 tips
+   - 任何一個 API 失敗會導致整個 Promise 拒絕
+   - 用戶會看到空白或錯誤，即使其中一個 API 成功
+2. 修復步驟（forum.js 第1371-1394行）：
+   - 將 `Promise.all()` 改為 `Promise.allSettled()`
+   - 記錄每個 API 的 fulfilled/rejected 狀態
+   - 失敗的 API 使用空數組作為 fallback
+3. 技術要點：
+   - `Promise.allSettled()` 確保所有 Promise 完成，無論成功或失敗
+   - 使用 `forEach` 遍歷結果並記錄警告
+   - 提供降級體驗：部分數據優於完全失敗
+4. 影響範圍：
+   - Dashboard 頁面交易歷史顯示更穩定
+   - 網絡不穩定時仍能顯示部分數據
+   - 詳細日誌便於診斷問題
+</answer>
+
+<solve>
+Premium 升級流程在支付成功後如果後端確認失敗，用戶已付款但無法升級會員
+</solve>
+
+<answer>
+1. 問題根源：
+   - `onReadyForServerCompletion` 回調中單次請求失敗就拋出錯誤
+   - 區塊鏈交易已完成但後端數據庫未更新
+   - 用戶需要聯繫客服手動處理，體驗極差
+2. 修復步驟（premium.js 第370-450行）：
+   A. 添加 localStorage 備份：
+      - 支付完成時立即保存 paymentId 和 txid 到 localStorage
+      - 作為恢復機制的數據源
+   B. 實現重試機制：
+      - 使用 while 循環最多重試 3 次
+      - 指數退避：等待 1s, 2s, 4s 避免過度請求
+      - 每次重試前記錄日誌
+   C. 優雅降級：
+      - 所有重試失敗後，不拒絕 Promise
+      - 設置 `paymentComplete = true` 並保留 txid
+      - 提示用戶聯繫客服並提供交易 ID
+3. 技術要點：
+   - 使用 `while (retryCount < maxRetries)` 控制重試
+   - 指數退避公式：`1000 * Math.pow(2, retryCount - 1)`
+   - localStorage 作為事務日誌
+4. 用戶體驗改進：
+   - 大幅降低因網絡問題導致的升級失敗
+   - 即使失敗也能保留 txid 供用戶重試或客服查詢
+   - 清晰的錯誤提示和後續步驟指引
+</answer>
+
+<solve>
+發文支付失敗後使用 alert() 提示交易 ID，用戶難以複製且體驗差
+</solve>
+
+<answer>
+1. 問題根源：
+   - 使用原生 `alert()` 顯示錯誤和交易 ID
+   - 用戶需要手動複製 alert 中的文字，移動設備困難
+   - 關閉 alert 後交易 ID 無法找回
+2. 修復步驟（forum.js 第1187-1237行）：
+   - 創建友好的 Modal 替代 alert
+   - 提供專用的「複製交易 ID」按鈕
+   - 使用 Clipboard API 及 fallback 方案
+3. Modal UI 設計：
+   - 危險圖標（alert-triangle）和紅色主題
+   - 清晰的標題：「發文失敗但支付已完成」
+   - 交易 ID 顯示在獨立區塊，使用 monospace 字體
+   - 兩個按鈕：複製交易 ID（主要）/ 關閉（次要）
+4. 技術要點：
+   - 使用 `navigator.clipboard.writeText()` 現代 API
+   - Fallback 使用 `document.execCommand('copy')` 兼容舊瀏覽器
+   - 複製成功後顯示 toast 確認
+5. 影響範圍：
+   - 大幅改善用戶處理支付失敗的體驗
+   - 減少客服工單（用戶能自行保存交易 ID）
+   - 統一 UI 風格，符合系統設計語言
+</answer>
+
+<solve>
+Wallet 和 Dashboard 過濾掉 PRO 會員的免費發文記錄，用戶看不到自己的發文歷史
+</solve>
+
+<answer>
+1. 問題根源：
+   - `loadTransactions()` 使用 `.filter(p => p.tx_hash !== 'pro_member_free')` 過濾掉所有免費記錄
+   - PRO 會員看不到自己的免費發文歷史
+   - 發文統計不完整
+2. 修復步驟（forum.js 第1432-1444行）：
+   - 移除 `.filter()`，改為在 `.map()` 中判斷
+   - 檢查 `tx_hash === 'pro_member_free'` 設置 `isFree` 標記
+   - 免費記錄金額設為 0，type 設為 `post_payment_free`
+3. UI 更新（forum.js 第1464-1479行）：
+   - 新增 `post_payment_free` 類型判斷
+   - 標題顯示為 "Post (FREE)"
+   - 金額顯示為綠色 "FREE" 而非數字
+4. 技術要點：
+   - 使用條件運算符：`isFree ? 0 : -(p.amount || ...)`
+   - 保留所有記錄但添加語義化標記
+   - 統一的 type 命名規範
+5. 影響範圍：
+   - PRO 會員能完整查看發文歷史
+   - 清楚區分付費和免費發文
+   - 改善資訊透明度
+</answer>
+
+<solve>
+Premium 價格載入失敗時等待時間固定為 1 秒，慢速網絡體驗差且成功率低
+</solve>
+
+<answer>
+1. 問題根源：
+   - 固定等待 1 秒後只檢查一次價格
+   - 網絡慢時可能未完成載入
+   - 失敗後無重試，用戶必須重新整理頁面
+2. 修復步驟（premium.js 第84-126行）：
+   - 使用指數退避策略重試載入
+   - 最多重試 3 次，等待時間：500ms, 1s, 2s
+   - 添加完整的錯誤處理和日誌
+3. 智能重試邏輯：
+   ```javascript
+   let retries = 0;
+   while (!window.PiPrices?.premium && retries < 3) {
+       await new Promise(resolve => setTimeout(resolve, 500 * Math.pow(2, retries)));
+       retries++;
+   }
+   ```
+4. 技術要點：
+   - 指數退避公式：`500 * Math.pow(2, retries)` = 500ms, 1s, 2s
+   - 每次重試前檢查是否已載入成功
+   - try-catch 包裹整個流程
+5. 用戶體驗改進：
+   - 慢速網絡下成功率大幅提升
+   - Toast 提示更新為 2 秒限時（原為無限）
+   - 清晰的錯誤訊息指引用戶重新整理頁面
+</answer>
+
+<solve>
+Premium 升級 API 缺少重複交易檢查，同一 tx_hash 可以多次使用導致財務損失
+</solve>
+
+<answer>
+1. 問題根源：
+   - `upgrade_to_pro()` 函數未檢查 tx_hash 唯一性
+   - 用戶可以使用同一交易哈希多次調用升級
+   - 支付 1 次但獲得多次會員時長
+2. 修復步驟（user.py 第368-377行）：
+   - 在升級前查詢 membership_payments 表檢查 tx_hash
+   - 如果發現重複則拋出 ValueError 阻止操作
+   - 添加詳細日誌記錄重複嘗試
+3. 代碼實現：
+   ```python
+   if tx_hash:
+       c.execute('SELECT user_id FROM membership_payments WHERE tx_hash = ?', (tx_hash,))
+       existing = c.fetchone()
+       if existing:
+           raise ValueError(f"此交易已被處理（transaction hash已存在）")
+   ```
+4. 異常處理：
+   - 區分業務錯誤（ValueError）和系統錯誤（Exception）
+   - ValueError 不回滾（因為未執行任何寫入）
+   - Exception 執行 rollback 確保數據一致性
+5. 影響範圍：
+   - 防止財務損失和會員時長刷單
+   - 保護交易哈希唯一性
+   - 審計日誌完整可追溯
+</answer>
+
+<solve>
+每日發文和回覆計數更新缺少事務保護，可能導致計數不準確或限制繞過
+</solve>
+
+<answer>
+1. 問題根源：
+   - `create_post()` 中，文章創建、看板計數、標籤處理、每日計數更新分散執行
+   - 如果中間某步失敗，已執行的操作未回滾
+   - 可能出現「計數已更新但文章未創建」等不一致狀態
+2. 修復步驟（forum.py 第104-174行）：
+   A. 添加標籤數量限制（MAX_TAGS_PER_POST = 5）
+   B. 在 try 塊最前面檢查標籤數量，超過則提前返回錯誤
+   C. 確保所有數據庫操作在單一事務中
+   D. catch 塊中執行 conn.rollback() 全部回滾
+3. 事務保護流程：
+   ```python
+   try:
+       # 1. 創建文章
+       # 2. 更新看板計數
+       # 3. 處理標籤
+       # 4. 更新每日計數（關鍵！）
+       conn.commit()  # 全部成功才提交
+   except:
+       conn.rollback()  # 任何失敗都回滾
+   ```
+4. 技術要點：
+   - 檢查標籤數量避免 DoS 攻擊
+   - 所有操作順序執行，不提前 commit
+   - rollback 確保數據一致性
+5. 影響範圍：
+   - 免費用戶無法繞過每日發文限制
+   - 計數準確，避免數據不一致
+   - 標籤數量受控，防止性能問題
+</answer>
+
+<solve>
+get_user_membership 在讀取操作中執行寫入（Lazy Expiration），導致併發和事務問題
+</solve>
+
+<answer>
+1. 問題根源：
+   - `get_user_membership()` 在 SELECT 查詢中執行 UPDATE 和 commit
+   - 多個併發請求同時讀取時可能產生競態條件
+   - 外層調用者的事務邏輯被內部 commit 破壞
+   - 每次讀取都可能觸發寫入，性能差
+2. 修復步驟（user.py 第315-389行）：
+   - 添加 `auto_update_expired` 參數（默認 False）
+   - 只在明確要求時才執行過期更新
+   - 添加 `is_expired` 字段返回過期狀態
+   - 創建獨立的 `expire_user_membership()` 方法處理寫入
+3. 新的 API 設計：
+   ```python
+   # 只讀取，不自動更新
+   membership = get_user_membership(user_id)
+   if membership['is_expired']:
+       # 外層決定是否和何時更新
+       expire_user_membership(user_id)
+   ```
+4. 讀寫分離優勢：
+   - 讀取操作不再有副作用
+   - 調用者完全控制事務邊界
+   - 可以使用定時任務批量處理過期
+   - 高併發下無鎖定問題
+5. 向後兼容：
+   - 需要自動更新的地方傳遞 `auto_update_expired=True`
+   - 默認行為改為只讀，更符合函數語義
+   - 新增 `is_expired` 字段提供明確的過期信息
+</answer>
+
+<solve>
+支付歷史查詢使用 UNION ALL 可能返回重複的交易記錄
+</solve>
+
+<answer>
+1. 問題根源：
+   - `get_user_payment_history()` 使用 UNION ALL 合併發文和會員支付
+   - 如果同一 tx_hash 同時存在於兩個表，會返回兩條記錄
+   - 雖然概率低，但技術上可能發生
+2. 修復步驟（forum.py 第779-833行）：
+   - 將 UNION ALL 改為 UNION（自動去重）
+   - 更新註釋說明去重原因
+3. SQL 變更：
+   ```sql
+   -- 修改前
+   SELECT ... FROM posts
+   UNION ALL  -- 可能重複
+   SELECT ... FROM membership_payments
+   
+   -- 修改後
+   SELECT ... FROM posts
+   UNION      -- 自動去重
+   SELECT ... FROM membership_payments
+   ```
+4. 性能考量：
+   - UNION 會進行去重，略慢於 UNION ALL
+   - 但數據量不大（LIMIT 50），影響可忽略
+   - 數據正確性優先於微小性能差異
+5. 影響範圍：
+   - 避免用戶看到重複的交易記錄
+   - 前端顯示更清晰
+   - 數據完整性提升
+</answer>
+
+<solve>
+Pi Network 用戶註冊時用戶名衝突使用 4 位隨機數，極端情況下可能用盡
+</solve>
+
+<answer>
+1. 問題根源：
+   - 用戶名衝突時添加 4 位隨機數後綴（1000-9999）
+   - 只有 9000 種可能性
+   - 熱門用戶名（如 "user"）可能用盡所有後綴
+2. 修復步驟（user.py 第184-200行）：
+   - 改用 UUID 的前 8 位作為後綴（16^8 種可能）
+   - 如果 8 位也衝突，使用完整 UUID 確保唯一
+   - 添加第二次衝突的日誌記錄
+3. 代碼實現：
+   ```python
+   # 第一次嘗試：8位 UUID（約 43 億種可能）
+   suffix = str(uuid.uuid4()).replace('-', '')[:8]
+   username = f"{original_username}_{suffix}"
+   
+   # 第二次嘗試：完整 UUID（絕對唯一）
+   if still_conflict:
+       username = f"{original_username}_{str(uuid.uuid4())}"
+   ```
+4. 衝突概率對比：
+   - 4 位數字：9,000 種 → 容易用盡
+   - 8 位 UUID：4,294,967,296 種 → 極難衝突
+   - 完整 UUID：實際上不可能衝突
+5. 影響範圍：
+   - 支持更多用戶註冊相同基礎用戶名
+   - 極端情況下仍能正常運作
+   - 用戶名更長但保證唯一性
+</answer>
+
+<solve>
+前端 JavaScript 修改後的通用注意事項
+</solve>
+
+<answer>
+1. 防禦性編程最佳實踐：
+   - 使用可選鏈 `?.` 訪問可能不存在的屬性
+   - 使用空值合併 `||` 提供默認值
+   - 在函數開頭進行參數和狀態檢查
+2. API 調用標準流程：
+   - 使用 `Promise.allSettled()` 而非 `Promise.all()` 處理多個獨立請求
+   - 記錄 API 調用狀態（fulfilled/rejected）
+   - 提供 fallback 數據結構（空數組或空對象）
+3. 錯誤處理層次：
+   - API 層：處理網絡錯誤，返回標準格式
+   - 邏輯層：初始化默認值，避免 undefined
+   - UI 層：顯示友好的錯誤訊息和重試按鈕
+4. 日誌系統：
+   - 使用統一的日誌前綴（如 `[WalletApp]`、`[ForumApp]`）
+   - 記錄關鍵步驟和狀態變化
+   - 使用 `console.warn()` 而非 `console.error()` 標記非致命錯誤
+5. 用戶狀態管理：
+   - 集中管理用戶 ID 獲取（`_getUserId()` 方法）
+   - 支援多種 ID 格式（user_id / uid）
+   - 確保未登入狀態的向後兼容
+6. 重試機制設計：
+   - 使用指數退避避免過度請求：`Math.pow(2, retryCount)`
+   - 設置最大重試次數（通常 3 次）
+   - 記錄每次重試的日誌
+7. Modal 設計原則：
+   - 統一使用 Modal 替代 alert/confirm
+   - 提供明確的主要和次要操作按鈕
+   - 使用 Lucide 圖標增強視覺提示
+   - 確保移動設備友好（響應式設計）
+8. 交易安全措施：
+   - 支付完成立即保存 txid 到 localStorage
+   - 提供「複製交易 ID」功能
+   - 失敗時清晰提示用戶聯繫客服
+   - 所有金額相關操作都要重試機制
+9. 數據庫事務安全：
+   - 確保相關操作在同一事務中
+   - 失敗時執行 rollback 全部回滾
+   - 區分業務錯誤和系統錯誤
+10. 讀寫分離原則：
+    - 讀取方法不應有副作用
+    - 寫入操作獨立為專門的方法
+    - 由調用者控制事務邊界
+</answer>
+
+<solve>
+價格和限制配置硬編碼在 config.py 和前端，修改需要重啟服務且前後端不同步
+</solve>
+
+<answer>
+1. 問題根源：
+   - `PI_PAYMENT_PRICES` 和 `FORUM_LIMITS` 直接定義在 config.py
+   - 前端 HTML 硬編碼「1 Pi」等文字
+   - 修改價格需要：改 config.py → 改前端 → 重啟服務
+   - 多個檔案引用這些值，容易遺漏
+
+2. 解決方案架構（方案二：Redis + SQLite + 審計日誌）：
+   ```
+   ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+   │   API 請求   │ --> │ 進程內快取   │ --> │ Redis 快取  │ --> │  SQLite DB  │
+   └─────────────┘     │   (10秒)    │     │  (5分鐘)    │     │ system_     │
+                       └─────────────┘     └──────┬──────┘     │ config 表   │
+                              ↑                   │            └─────────────┘
+                              └── Pub/Sub 通知 ───┘
+   ```
+
+3. 修改的檔案清單：
+   A. 前端（硬編碼 → 動態載入）：
+      - web/forum/create.html：`1 Pi` → `<span data-price="create_post">載入中</span>`
+      - web/forum/post.html：`1 Pi` → `<span data-price="tip">載入中</span>`
+      - web/js/components.js：同上
+      - web/index.html：settings 頁籤添加 `updatePriceDisplays()` 調用
+
+   B. 後端（config.py → get_prices()/get_limits()）：
+      - api/routers/user.py：`PI_PAYMENT_PRICES` → `get_prices()`
+      - core/database/user.py：同上
+      - core/database/forum.py：`FORUM_LIMITS` → `get_limits()`
+      - api/routers/forum/posts.py：添加動態導入和錯誤訊息
+
+   C. 配置模組升級（system_config.py）：
+      - ConfigCacheManager：多層快取管理器（單例模式）
+      - Redis Pub/Sub：跨進程快取失效通知
+      - 審計日誌：config_audit_log 表記錄變更歷史
+
+4. 快取層級說明：
+   - Layer 1（進程內）：10 秒 TTL，最快，避免頻繁網絡請求
+   - Layer 2（Redis）：5 分鐘 TTL，跨進程同步
+   - Layer 3（SQLite）：持久化存儲，真正的數據源
+
+5. 生效時間取決於修改方式：
+   | 修改方式          | 生效時間       | 原因                    |
+   |------------------|---------------|------------------------|
+   | 用 Admin API     | 即時（最多10秒）| 主動清除所有快取         |
+   | 直接改 DB        | 最多 5 分鐘    | 快取不知道 DB 被改了     |
+   | 改 DB + 清快取 API | 即時         | 手動觸發快取失效         |
+
+6. 管理 API 使用方式：
+   ```bash
+   # 查看價格
+   curl http://localhost:8000/api/config/prices
+
+   # 修改價格（需 Admin Key）
+   curl -X PUT http://localhost:8000/api/admin/config/price \
+     -H "X-Admin-Key: your_key" \
+     -H "Content-Type: application/json" \
+     -d '{"key": "premium", "value": 5.0}'
+
+   # 查看變更歷史
+   curl http://localhost:8000/api/admin/config/audit/price_premium \
+     -H "X-Admin-Key: your_key"
+
+   # 手動清除快取
+   curl -X POST http://localhost:8000/api/admin/config/cache/invalidate \
+     -H "X-Admin-Key: your_key"
+   ```
+
+7. Redis 是否必須？
+   - **不是必須**。未設置 REDIS_URL 時自動降級為純記憶體快取
+   - 單機部署：可以不用 Redis（進程內快取 10 秒 TTL）
+   - 多進程/多機器：**推薦** Redis（確保快取同步）
+
+   啟用 Redis 方式：
+   ```bash
+   # 啟動 Redis
+   docker run -d --name redis -p 6379:6379 redis:alpine
+
+   # .env 添加
+   REDIS_URL=redis://localhost:6379/0
+   ```
+
+8. 環境變數設定：
+   ```bash
+   # .env 文件
+   REDIS_URL=redis://localhost:6379/0          # 可選，啟用 Redis 快取
+   ADMIN_API_KEY=your_secure_key_here          # 必須，管理 API 認證
+   ```
+
+9. 審計日誌表結構：
+   ```sql
+   CREATE TABLE config_audit_log (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       config_key TEXT NOT NULL,      -- 配置鍵名
+       old_value TEXT,                -- 舊值
+       new_value TEXT,                -- 新值
+       changed_by TEXT NOT NULL,      -- 變更者（user_id 或 'admin'）
+       changed_at TIMESTAMP           -- 變更時間
+   );
+   ```
+
+10. 向後兼容性：
+    - config.py 中的 PI_PAYMENT_PRICES 和 FORUM_LIMITS 保留作為初始默認值
+    - 數據庫初始化時會讀取這些值寫入 system_config 表
+    - 之後所有讀取都從數據庫獲取，config.py 的值不再使用
+</answer>
+
+<solve>
+為什麼多進程部署時，改了資料庫但各進程返回的值不一致？Redis Pub/Sub 如何解決？
+</solve>
+
+<answer>
+1. 問題根源 - 快取的本質：
+   - 快取的目的是「不要每次都讀資料庫」減少 DB 負擔
+   - 每個進程都有自己獨立的記憶體快取
+   - 快取一旦建立，在 TTL 內不會再查 DB
+   - 所以 DB 被改了，進程的快取裡還是舊值
+
+2. 問題示意圖：
+   ```
+   時間軸
+   ──────────────────────────────────────────────────→
+
+   0秒    Worker 1 查 DB，快取 premium = 1.0（10秒有效）
+          Worker 2 查 DB，快取 premium = 1.0（10秒有效）
+
+   3秒    管理員直接改 DB：premium = 5.0
+          ↓
+          DB 裡面是 5.0 了！但是...
+
+   4秒    Worker 1 收到請求 → 讀記憶體快取 → 返回 1.0 ❌
+          Worker 2 收到請求 → 讀記憶體快取 → 返回 1.0 ❌
+
+          快取沒過期，根本不會去查 DB！
+
+   10秒   快取過期，下次請求才會重新查 DB
+   ```
+
+3. 為什麼要用 API 修改而不是直接改 DB：
+   ```
+   直接改 DB：
+       DB 改了 → 但沒人知道 → 等快取自己過期（最多5分鐘）
+
+   用 API 改：
+       DB 改了 → 廣播「快取失效！」→ 所有人立刻清快取 → 即時生效
+   ```
+
+4. Redis Pub/Sub 工作原理：
+   - Pub/Sub = 發布/訂閱 = 廣播通知系統
+   - 所有 Worker 啟動時訂閱同一個頻道（config:updates）
+   - 當配置被修改，API 發布一條「快取失效」的訊息
+   - 所有訂閱者（Worker）收到訊息，立刻清除自己的快取
+
+5. 完整流程：
+   ```
+   1. 管理員調用 API 修改配置
+      │
+      ▼
+   2. API 更新 DB：premium = 5.0
+      │
+      ▼
+   3. API 調用 invalidate()
+      │
+      ├──→ 清除 Worker 1 的記憶體快取
+      ├──→ 清除 Redis 快取
+      └──→ 發布廣播到 "config:updates" 頻道
+                      │
+          ┌───────────┴───────────┐
+          ↓                       ↓
+   4. Worker 2 收到廣播      Worker 3 收到廣播
+      清除自己的快取          清除自己的快取
+          │                       │
+          ▼                       ▼
+   5. 下次請求 → 快取空的 → 查 DB/Redis → 拿到 5.0 ✅
+   ```
+
+6. 多層快取的精髓 - 第一個請求查，其他人用結果：
+   ```
+   快取清除後...
+
+   Worker 1（第一個收到請求）：
+       快取空的 → 查 DB → 拿到 5.0 → 存到 Redis → 返回 5.0
+
+   Worker 2（稍後收到請求）：
+       快取空的 → 查 Redis → 有了！→ 存到記憶體 → 返回 5.0
+       （不用查 DB）
+
+   Worker 3（再稍後）：
+       快取空的 → 查 Redis → 有了！→ 存到記憶體 → 返回 5.0
+       （不用查 DB）
+   ```
+
+7. 查詢效率對比（4 個 Worker，配置改了一次）：
+   | 方案              | DB 查詢次數 | Redis 查詢次數 |
+   |-------------------|------------|---------------|
+   | 沒快取            | 每請求 1 次 | -             |
+   | 只有記憶體快取     | 4 次       | -             |
+   | 記憶體 + Redis    | 1 次       | 3 次          |
+
+   Redis 查詢比 DB 快 10-100 倍，所以多層快取最高效。
+
+8. 簡單比喻：
+   ```
+   沒有 Pub/Sub：
+   老師改了答案，但學生們都在看自己抄的筆記，
+   要等 10 分鐘後筆記「過期」才會重新抄黑板。
+
+   有 Pub/Sub：
+   老師改了答案，同時大喊「黑板更新了！把筆記劃掉！」
+   所有學生立刻劃掉筆記，下次看黑板。
+   ```
+
+9. 是否需要 Redis：
+   | 部署方式                  | 需要 Redis？ | 原因                     |
+   |--------------------------|-------------|-------------------------|
+   | 單進程（uvicorn）         | ❌ 不需要    | 只有一份快取，沒同步問題  |
+   | 多進程（gunicorn -w 4）   | ✅ 推薦     | 4 個 Worker 需要同步     |
+   | 多機器部署               | ✅ 必須     | 不同機器必須共享快取      |
+
+10. 代碼位置參考：
+    - ConfigCacheManager 類：core/database/system_config.py 第 55-243 行
+    - Pub/Sub 監聯器：system_config.py 第 111-132 行
+    - invalidate() 廣播：system_config.py 第 213-242 行
+    - 多層快取讀取：system_config.py 第 138-156 行
+</answer>
+
+<solve>
+Friends 聊天室進入後不會自動滾動到輸入框位置，用戶需要手動滑動才能看到輸入框
+</solve>
+
+<answer>
+1. 問題根源：
+   - `scrollToBottom()` 方法只滾動訊息容器，未確保輸入框在可視區域
+   - 手機端軟鍵盤彈出時可能遮擋輸入框
+   - `showChatSection()` 顯示聊天區域後未觸發滾動
+
+2. 修復步驟（messages_page.js）：
+   A. 新增 `scrollToInputBox()` 方法（第 345-369 行）：
+      - 使用 `scrollIntoView({ behavior: 'smooth', block: 'end' })` 滾動輸入框到視窗底部
+      - 手機端延遲 focus 到輸入框，避免軟鍵盤彈出時遮擋
+      - 軟鍵盤彈出後再次確保輸入框可見
+
+   B. 改進 `scrollToBottom()` 方法（第 306-343 行）：
+      - 在訊息容器滾動完成後調用 `scrollToInputBox()`
+      - 確保用戶看到最新訊息的同時也能看到輸入框
+
+   C. 改進 `showChatSection()` 方法（第 497-527 行）：
+      - 顯示聊天區域後延遲 200ms 調用 `scrollToInputBox()`
+      - 確保 DOM 完全更新後再滾動
+
+3. 核心代碼實現：
+   ```javascript
+   scrollToInputBox() {
+       requestAnimationFrame(() => {
+           const inputContainer = document.getElementById('message-input-container');
+           const messageInput = document.getElementById('message-input');
+           
+           if (inputContainer) {
+               setTimeout(() => {
+                   inputContainer.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                   
+                   // 手機端處理軟鍵盤
+                   if (this.isMobile && messageInput) {
+                       setTimeout(() => {
+                           messageInput.focus();
+                           setTimeout(() => {
+                               inputContainer.scrollIntoView({ behavior: 'smooth', block: 'end' });
+                           }, 300);
+                       }, 100);
+                   }
+               }, 100);
+           }
+       });
+   }
+   ```
+
+4. 技術要點：
+   - 使用 `requestAnimationFrame` 確保 DOM 完全渲染
+   - 多層 `setTimeout` 處理動態內容和軟鍵盤彈出
+   - `scrollIntoView` 的 `block: 'end'` 確保元素在視窗底部
+   - `isMobile` 判斷決定是否自動 focus（避免桌面端不必要的鍵盤焦點）
+
+5. 用戶體驗改進：
+   - 進入聊天室後自動滾動到輸入框位置
+   - 無需手動滑動即可開始輸入
+   - 手機端軟鍵盤彈出後輸入框仍然可見
+   - 發送訊息後自動滾動到最新訊息和輸入框
+</answer>
+
+<solve>
+User Profile 頁面 Friends 統計顯示為 "-"，沒有顯示實際的好友數量
+</solve>
+
+<answer>
+1. 問題根源：
+   - 後端 `get_public_user_profile()` 函數沒有返回 `friends_count` 欄位
+   - 前端 `profile.html` 直接將 friends 硬編碼為 "-"（第 337 行）
+   - 雖然後端已有 `get_friends_count()` 函數，但 profile API 未調用
+
+2. 修復步驟：
+   A. 後端修改（core/database/friends.py 第 94-99 行）：
+      - 在 `get_public_user_profile()` 函數中新增好友數量查詢
+      - 使用現有的 friendships 表計算已接受的好友數量
+
+   B. 前端修改（web/forum/profile.html 第 336-337 行）：
+      - 將硬編碼的 "-" 改為使用 API 返回的 `friends_count`
+
+3. 後端核心代碼：
+   ```python
+   # 取得好友數量（公開）
+   c.execute('''
+       SELECT COUNT(*) FROM friendships
+       WHERE (user_id = ? OR friend_id = ?) AND status = 'accepted'
+   ''', (user_id, user_id))
+   profile["friends_count"] = c.fetchone()[0]
+   ```
+
+4. 前端核心代碼：
+   ```javascript
+   // Friends count
+   document.getElementById('stat-friends').textContent = p.friends_count || 0;
+   ```
+
+5. 技術要點：
+   - 好友關係是雙向的，需要同時檢查 user_id 和 friend_id
+   - 只計算 status = 'accepted' 的記錄
+   - 前端使用 `|| 0` 確保即使 API 未返回也顯示 0 而非 undefined
+
+6. 影響範圍：
+   - User Profile 頁面正確顯示好友數量
+   - 所有用戶（自己和他人）的 profile 都會顯示
+   - 好友數量作為公開資訊，無需好友關係即可查看
+</answer>
+
+<solve>
+聊天室無法區分哪些訊息是已讀、哪些是新訊息，用戶體驗不夠直覺
+</solve>
+
+<answer>
+1. 問題根源：
+   - 進入對話後，所有訊息看起來一樣，沒有視覺區分
+   - 用戶無法快速定位到未讀的新訊息
+   - 商業化聊天應用（Slack, Discord）都有此功能
+
+2. 解決方案 - 新訊息分隔線：
+   - 在已讀訊息和未讀訊息之間插入「──── 新訊息 ────」分隔線
+   - 進入對話時自動滾動到分隔線位置
+   - 類似 Slack、Discord 等商業應用的設計
+
+3. 修復步驟：
+   A. 新增 UI 渲染方法（messages.js 第 566-578 行）：
+      - `renderNewMessagesSeparator()` 渲染分隔線 HTML
+
+   B. 修改訊息渲染邏輯（messages_page.js 第 282-350 行）：
+      - `renderMessages()` 方法分析訊息的 `is_read` 狀態
+      - 找到第一條未讀訊息的位置
+      - 在該位置前插入分隔線
+
+   C. 新增滾動方法（messages_page.js 第 338-355 行）：
+      - `scrollToNewMessages()` 滾動到分隔線位置
+
+4. 核心代碼邏輯：
+   ```javascript
+   // 找到第一條未讀訊息
+   for (let i = 0; i < sortedMessages.length; i++) {
+       const msg = sortedMessages[i];
+       // 對方發給我的訊息，且未讀
+       if (msg.to_user_id === currentUserId && !msg.is_read) {
+           firstUnreadIndex = i;
+           break;
+       }
+   }
+
+   // 在第一條未讀訊息前插入分隔線
+   if (i === firstUnreadIndex && firstUnreadIndex > 0) {
+       html += MessagesUI.renderNewMessagesSeparator();
+   }
+   ```
+
+5. 分隔線 HTML 設計：
+   ```html
+   <div class="new-messages-separator flex items-center gap-4 my-4 px-4">
+       <div class="flex-1 h-px bg-primary/30"></div>
+       <span class="text-xs font-bold text-primary uppercase">
+           <i data-lucide="arrow-down"></i> 新訊息
+       </span>
+       <div class="flex-1 h-px bg-primary/30"></div>
+   </div>
+   ```
+
+6. 技術要點：
+   - 判斷依據：`to_user_id === currentUserId && !is_read`
+   - 只在有舊訊息時顯示分隔線（`firstUnreadIndex > 0`）
+   - 滾動到分隔線使用 `block: 'center'` 讓用戶看到前後文
+
+7. 用戶體驗改進：
+   - 進入對話時自動定位到新訊息
+   - 清楚區分已讀和未讀訊息
+   - 符合商業化聊天應用的標準設計
+
+8. 補充：對話列表未讀樣式優化（messages.js 第 448-499 行）
+   優化 `renderConversationItem()` 讓未讀對話更加醒目：
+   - 左側主色指示條（absolute 定位的 1px 寬條）
+   - 頭像添加 ring 邊框高亮
+   - 整行添加淡色背景 (`bg-primary/5`)
+   - 用戶名變為 `font-extrabold`
+   - 時間戳變為主色且加粗
+   - 未讀數徽章添加 `animate-pulse` 動畫
+</answer>

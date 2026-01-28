@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "WebSearch",
+      "Bash(ls -la \"D:\\\\okx\\\\stock_agent\\\\web\\\\js\"\" 2>/dev/null || echo \"Directory not found \")",
+      "Bash(python api_server.py)",
+      "Bash(grep:*)",
+      "Bash(dir:*)",
+      "Bash(python:*)",
+      "Bash(pip install:*)"
+    ]
+  }
+}

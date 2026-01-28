@@ -5,10 +5,16 @@ import psycopg2
 import os
 
 # PostgreSQL 連接字符串
-DATABASE_URL = os.environ.get(
-    "DATABASE_URL",
-    "postgresql://neondb_owner:npg_1HfX6WYBRekw@ep-fragrant-mud-a1nkzyhx-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
-)
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+if not DATABASE_URL:
+    # 嘗試從 .env 讀取 (如果 load_dotenv 未在入口處執行)
+    from dotenv import load_dotenv
+    load_dotenv()
+    DATABASE_URL = os.environ.get("DATABASE_URL")
+
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL environment variable is not set. Please check your .env file.")
 
 # 追蹤資料庫是否已初始化
 _db_initialized = False
