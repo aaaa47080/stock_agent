@@ -389,7 +389,7 @@ const FriendsUI = {
 
         return `
             <div class="user-card bg-surface border border-white/5 rounded-xl p-4 flex items-center justify-between hover:border-white/10 transition">
-                <a href="/static/forum/profile.html?id=${user.user_id}" class="flex items-center gap-3 flex-1 min-w-0">
+                <a href="/static/forum/profile.html?id=${user.user_id}" onclick="sessionStorage.setItem('returnToTab', 'friends')" class="flex items-center gap-3 flex-1 min-w-0">
                     <div class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold flex-shrink-0">
                         ${initial}
                     </div>
@@ -605,8 +605,15 @@ const FriendsUI = {
      * 開啟與用戶的聊天（切換到聊天 tab 並開啟對話）
      */
     openChat(userId, username) {
-        // 統一跳轉到全屏聊天頁面
-        window.location.href = `/static/forum/messages.html?with=${userId}`;
+        // 保存當前 tab 以便返回
+        sessionStorage.setItem('returnToTab', 'friends');
+        // 統一跳轉到全屏聊天頁面，帶上來源參數（平滑過渡）
+        const targetUrl = `/static/forum/messages.html?with=${userId}&source=friends`;
+        if (typeof smoothNavigate === 'function') {
+            smoothNavigate(targetUrl);
+        } else {
+            window.location.href = targetUrl;
+        }
     }
 };
 
@@ -866,6 +873,20 @@ const SocialHub = {
 
         // 重新初始化圖標
         if (window.lucide) lucide.createIcons();
+    },
+
+    /**
+     * 導航到消息頁面（平滑過渡）
+     */
+    navigateToMessages(userId) {
+        // 保存當前 tab 以便返回
+        sessionStorage.setItem('returnToTab', 'friends');
+        const targetUrl = `/static/forum/messages.html?with=${userId}&source=friends`;
+        if (typeof smoothNavigate === 'function') {
+            smoothNavigate(targetUrl);
+        } else {
+            window.location.href = targetUrl;
+        }
     },
 
     /**
@@ -1381,7 +1402,7 @@ const SocialHub = {
             <div class="social-conv-item cursor-pointer p-3 border-b border-white/5 ${activeClass} transition"
                  data-conversation-id="${conv.id}"
                  data-other-user-id="${conv.other_user_id}"
-                 onclick="window.location.href='/static/forum/messages.html?with=${conv.other_user_id}'">
+                 onclick="SocialHub.navigateToMessages('${conv.other_user_id}')">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold flex-shrink-0">
                         ${initial}

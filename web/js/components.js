@@ -8,9 +8,24 @@ const Components = {
 
     // Tab: Market
     market: `
-        <div class="flex items-center justify-between mb-8">
-            <h2 class="font-serif text-3xl text-secondary">Market Watch</h2>
-            <div class="flex items-center gap-3">
+        <div class="mb-6 md:mb-8">
+            <!-- 標題行 -->
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="font-serif text-2xl md:text-3xl text-secondary">Market Watch</h2>
+                <div class="flex items-center gap-2">
+                    <!-- 狀態指示器 -->
+                    <div class="flex items-center gap-1.5" title="Live Update Status">
+                        <div id="ticker-ws-indicator" class="w-2 h-2 rounded-full bg-gray-500 transition-colors"></div>
+                        <span class="text-[9px] text-textMuted uppercase tracking-wider hidden md:inline">LIVE</span>
+                    </div>
+                    <!-- 刷新按鈕 -->
+                    <button onclick="refreshScreener(true)" class="p-2 hover:bg-white/5 rounded-full text-textMuted transition">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+            <!-- 篩選器行 (手機換行顯示) -->
+            <div class="flex flex-wrap items-center gap-2 md:gap-3">
                 <button onclick="openGlobalFilter()" class="flex items-center gap-2 px-3 py-1.5 bg-surface hover:bg-surfaceHighlight rounded-lg text-textMuted hover:text-primary transition border border-white/5">
                     <i data-lucide="filter" class="w-4 h-4"></i>
                     <span class="text-xs font-bold">Filter</span>
@@ -19,12 +34,7 @@ const Components = {
                 <div id="active-filter-indicator" class="hidden flex items-center gap-1 text-xs text-primary">
                     <span id="filter-count">0</span> selected
                 </div>
-                <div class="flex items-center gap-1.5" title="Live Update Status">
-                    <div id="ticker-ws-indicator" class="w-2 h-2 rounded-full bg-gray-500 transition-colors"></div>
-                    <span class="text-[9px] text-textMuted uppercase tracking-wider">LIVE</span>
-                </div>
-                <span id="screener-last-updated" class="text-[10px] text-textMuted uppercase tracking-widest opacity-60"></span>
-                <button onclick="refreshScreener(true)" class="p-2 hover:bg-white/5 rounded-full text-textMuted transition"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+                <span id="screener-last-updated" class="text-[10px] text-textMuted opacity-60 hidden md:inline"></span>
             </div>
         </div>
 
@@ -148,7 +158,7 @@ const Components = {
                     <div id="social-msg-limit" class="p-3 border-t border-white/5 bg-background/50 text-xs text-textMuted hidden">
                         <div class="flex items-center justify-between">
                             <span>今日已發送: <span id="social-limit-used">0</span>/<span id="social-limit-total">20</span></span>
-                            <a href="/static/forum/premium.html" class="text-primary hover:underline">升級 Pro</a>
+                            <a href="/static/forum/premium.html" onclick="sessionStorage.setItem('returnToTab', 'friends')" class="text-primary hover:underline">升級 Pro</a>
                         </div>
                     </div>
                 </div>
@@ -167,7 +177,7 @@ const Components = {
                                 <span id="social-chat-badge"></span>
                             </div>
                         </div>
-                        <a id="social-chat-profile-link" href="#" class="p-2 hover:bg-white/5 rounded-lg transition" title="查看資料">
+                        <a id="social-chat-profile-link" href="#" onclick="sessionStorage.setItem('returnToTab', 'friends')" class="p-2 hover:bg-white/5 rounded-lg transition" title="查看資料">
                             <i data-lucide="user" class="w-5 h-5"></i>
                         </a>
                     </div>

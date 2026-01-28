@@ -66,22 +66,85 @@ function showToast(message, type = 'info', duration = 3000) {
 
 /**
  * 處理返回主程式的過渡效果
+ * @param {Event} e - 事件對象
+ * @param {string} targetTab - 可選的目標 tab（如 'friends', 'chat' 等）
  */
-function handleBackToApp(e) {
+function handleBackToApp(e, targetTab = '') {
     if (e) e.preventDefault();
 
-    // 添加淡出效果
+    // 添加淡出效果（統一使用 0.2s）
     document.body.style.opacity = '0';
-    document.body.style.transform = 'scale(0.99)';
-    document.body.style.transition = 'all 0.3s ease-in-out';
+    document.body.style.transition = 'opacity 0.2s ease-out';
+
+    // 構建目標 URL
+    let targetUrl = '/static/index.html';
+    if (targetTab) {
+        targetUrl += '#' + targetTab;
+    }
 
     setTimeout(() => {
-        window.location.href = '/static/index.html';
-    }, 250);
+        window.location.href = targetUrl;
+    }, 200);
 }
 
 // 暴露到全局
 window.handleBackToApp = handleBackToApp;
+
+/**
+ * 通用的平滑導航函數
+ * @param {string} url - 目標 URL
+ * @param {number} delay - 過渡延遲（毫秒）
+ */
+function smoothNavigate(url, delay = 200) {
+    document.body.style.opacity = '0';
+    document.body.style.transition = 'opacity 0.2s ease-out';
+    setTimeout(() => {
+        window.location.href = url;
+    }, delay);
+}
+window.smoothNavigate = smoothNavigate;
+
+/**
+ * 初始化頁面淡入效果
+ */
+function initPageTransition() {
+    // 頁面載入時的淡入效果
+    document.body.style.opacity = '0';
+    document.body.style.transition = 'opacity 0.2s ease-in';
+    requestAnimationFrame(() => {
+        document.body.style.opacity = '1';
+    });
+
+    // 為所有返回主應用的連結添加平滑過渡
+    document.querySelectorAll('a[href="/static/index.html"], a[href^="/static/index.html#"]').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            smoothNavigate(link.href);
+        });
+    });
+
+    // 為所有論壇內部連結添加平滑過渡
+    document.querySelectorAll('a[href^="/static/forum/"]').forEach(link => {
+        // 排除當前頁面的連結
+        if (link.href === window.location.href) return;
+
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            smoothNavigate(link.href);
+        });
+    });
+}
+
+// 在 DOM 載入後初始化頁面過渡
+document.addEventListener('DOMContentLoaded', () => {
+    // 只在論壇頁面執行（非主應用）
+    const page = document.body.dataset.page;
+    if (page && page !== 'main') {
+        initPageTransition();
+    }
+});
+
+window.initPageTransition = initPageTransition;
 
 /**
  * 顯示確認對話框 (替代 confirm)

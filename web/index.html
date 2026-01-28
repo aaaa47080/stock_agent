@@ -238,7 +238,7 @@
                             <i data-lucide="users" class="w-5 h-5"></i>
                             <span class="text-[9px] font-medium opacity-80">Friends</span>
                         </button>
-                        <button onclick="window.location.href='/static/forum/index.html'"
+                        <button onclick="navigateToForum()"
                             class="nav-btn w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5"
                             title="Forum">
                             <i data-lucide="messages-square" class="w-5 h-5"></i>
@@ -988,7 +988,7 @@
         window.currentActiveTab = 'chat'; // Default to chat, make it global so chat.js can access it
 
         // Navigation Logic (Updated with Smooth Transitions)
-        async function switchTab(tabId) {
+        async function switchTab(tabId, fromPopState = false) {
             const currentTab = document.querySelector('.tab-content:not(.hidden)');
             const targetTab = document.getElementById(tabId + '-tab');
 
@@ -1000,18 +1000,49 @@
 
                 return new Promise((resolve) => {
                     setTimeout(async () => {
-                        await executeTabSwitch(tabId);
+                        await executeTabSwitch(tabId, fromPopState);
                         resolve();
                     }, 150);
                 });
             } else {
-                return await executeTabSwitch(tabId);
+                return await executeTabSwitch(tabId, fromPopState);
             }
         }
 
-        async function executeTabSwitch(tabId) {
+        // 監聽瀏覽器返回/前進按鈕
+        window.addEventListener('popstate', (event) => {
+            const validTabs = ['chat', 'market', 'pulse', 'wallet', 'assets', 'friends', 'settings'];
+            let targetTab = 'chat';
+
+            if (event.state && event.state.tab) {
+                targetTab = event.state.tab;
+            } else if (window.location.hash) {
+                const hashTab = window.location.hash.replace('#', '');
+                if (validTabs.includes(hashTab)) {
+                    targetTab = hashTab;
+                }
+            }
+
+            // 使用 fromPopState=true 避免再次 pushState
+            switchTab(targetTab, true);
+        });
+
+        // 跳轉到論壇（保存當前 tab 以便返回）
+        function navigateToForum() {
+            // 保存當前 tab 到 sessionStorage
+            const currentTab = localStorage.getItem('activeTab') || 'chat';
+            sessionStorage.setItem('returnToTab', currentTab);
+            smoothNavigate('/static/forum/index.html');
+        }
+
+        async function executeTabSwitch(tabId, fromPopState = false) {
             localStorage.setItem('activeTab', tabId);
             currentActiveTab = tabId; // Update current active tab
+
+            // 更新瀏覽器歷史記錄（只有非 popstate 觸發時才 push）
+            if (!fromPopState && window.location.hash !== '#' + tabId) {
+                history.pushState({ tab: tabId }, '', '#' + tabId);
+            }
 
             // Hide all tabs
             document.querySelectorAll('.tab-content').forEach(el => {
@@ -1119,6 +1150,13 @@
         document.addEventListener('DOMContentLoaded', async () => {
             console.log('DOM fully loaded, starting controlled initialization...');
 
+            // 頁面淡入效果
+            document.body.style.opacity = '0';
+            document.body.style.transition = 'opacity 0.25s ease-in';
+            requestAnimationFrame(() => {
+                document.body.style.opacity = '1';
+            });
+
             // 等待核心組件就緒的輔助函式
             const waitForGlobal = (key, timeout = 3000) => {
                 return new Promise((resolve) => {
@@ -1154,11 +1192,29 @@
                 } catch (e) { console.error('Auth Init Error:', e); }
             }
 
-            // 2. 載入預設分頁
+            // 2. 載入預設分頁（優先順序：sessionStorage returnToTab > URL hash > localStorage）
+            const validTabs = ['chat', 'market', 'pulse', 'wallet', 'assets', 'friends', 'settings'];
+            const returnToTab = sessionStorage.getItem('returnToTab');
+            const hashTab = window.location.hash.replace('#', '');
             const savedTab = localStorage.getItem('activeTab') || 'chat';
-            console.log('Initial tab switching to:', savedTab);
+
+            // 優先使用 returnToTab（從論壇返回），其次 hash，最後 localStorage
+            let initialTab;
+            if (returnToTab && validTabs.includes(returnToTab)) {
+                initialTab = returnToTab;
+                sessionStorage.removeItem('returnToTab'); // 使用後清除
+            } else if (validTabs.includes(hashTab)) {
+                initialTab = hashTab;
+            } else {
+                initialTab = savedTab;
+            }
+            console.log('Initial tab switching to:', initialTab, '(returnTo:', returnToTab, ', hash:', hashTab, ', saved:', savedTab, ')');
+
+            // 清除 hash 並設置正確的初始歷史狀態
+            history.replaceState({ tab: initialTab }, '', '#' + initialTab);
+
             try {
-                await switchTab(savedTab);
+                await switchTab(initialTab, true); // fromPopState=true 避免重複 pushState
             } catch (e) { console.error('Initial Tab Error:', e); }
 
             // 3. 更新 UI 狀態

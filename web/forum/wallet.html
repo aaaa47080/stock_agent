@@ -47,6 +47,11 @@
     <!-- Top Bar -->
     <nav class="sticky top-0 z-50 bg-surface/95 backdrop-blur-xl border-b border-white/5 px-4 py-3">
         <div class="max-w-5xl mx-auto flex items-center justify-between">
+            <a href="/static/forum/index.html" onclick="event.preventDefault(); if(typeof smoothNavigate==='function'){smoothNavigate('/static/forum/index.html')}else{window.location.href='/static/forum/index.html'}"
+               class="flex items-center gap-2 text-secondary font-bold hover:text-primary transition">
+                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                <span>Back</span>
+            </a>
             <div class="font-bold text-lg text-primary tracking-wide">Wallet History</div>
             <div class="flex items-center gap-2">
                 <span class="text-xs text-textMuted user-display-name">User</span>

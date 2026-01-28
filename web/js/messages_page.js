@@ -23,7 +23,12 @@ const MessagesPage = {
         if (typeof AuthManager !== 'undefined') {
             await AuthManager.init();
             if (!AuthManager.isLoggedIn()) {
-                window.location.href = '/static/forum/index.html';
+                // 使用平滑過渡跳轉
+                if (typeof smoothNavigate === 'function') {
+                    smoothNavigate('/static/forum/index.html');
+                } else {
+                    window.location.href = '/static/forum/index.html';
+                }
                 return;
             }
         }
@@ -806,20 +811,51 @@ function showToast(message, type = 'info', duration = 3000) {
 // 智能返回邏輯
 function setupBackButton() {
     const backBtn = document.getElementById('back-btn');
-    if (backBtn) {
-        // 檢查 referrer 是否來自主應用
+    if (!backBtn) return;
+
+    // 從 URL 參數或 sessionStorage 獲取來源
+    const params = new URLSearchParams(window.location.search);
+    const source = params.get('source') || sessionStorage.getItem('messages_source');
+
+    // 保存來源到 sessionStorage（供後續使用）
+    if (params.get('source')) {
+        sessionStorage.setItem('messages_source', params.get('source'));
+    }
+
+    // 根據來源決定返回目標
+    if (source === 'friends' || source === 'main') {
+        // 從主應用的 Friends tab 來的
+        backBtn.href = '/static/index.html#friends';
+    } else if (source === 'forum') {
+        // 從論壇來的
+        backBtn.href = '/static/forum/index.html';
+    } else {
+        // 使用 referrer 作為後備方案，但不完全依賴它
         const referrer = document.referrer;
-        if (referrer && referrer.includes('/static/index.html')) {
-            // 從主應用來的，返回主應用並切換到 FRIENDS tab
-            backBtn.href = '/static/index.html#friends';
-        } else if (referrer && referrer.includes('/static/forum/')) {
-            // 從論壇頁面來的，返回論壇首頁
+        if (referrer && referrer.includes('/static/forum/')) {
             backBtn.href = '/static/forum/index.html';
         } else {
-            // 默認返回主應用
-            backBtn.href = '/static/index.html';
+            // 默認返回主應用的 Friends tab
+            backBtn.href = '/static/index.html#friends';
         }
     }
+
+    // 添加平滑過渡效果
+    backBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const targetUrl = backBtn.href;
+
+        // 淡出效果
+        document.body.style.opacity = '0';
+        document.body.style.transition = 'opacity 0.2s ease-out';
+
+        // 清除 sessionStorage
+        sessionStorage.removeItem('messages_source');
+
+        setTimeout(() => {
+            window.location.href = targetUrl;
+        }, 200);
+    });
 }
 
 // 初始化

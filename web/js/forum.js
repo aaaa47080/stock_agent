@@ -469,7 +469,13 @@ const ForumApp = {
             posts.forEach(post => {
                 const el = document.createElement('div');
                 el.className = 'bg-surface hover:bg-surfaceHighlight border border-white/5 rounded-xl p-4 transition cursor-pointer mb-3';
-                el.onclick = () => window.location.href = `/static/forum/post.html?id=${post.id}`;
+                el.onclick = () => {
+                    if (typeof smoothNavigate === 'function') {
+                        smoothNavigate(`/static/forum/post.html?id=${post.id}`);
+                    } else {
+                        window.location.href = `/static/forum/post.html?id=${post.id}`;
+                    }
+                };
 
                 // 標籤 HTML
                 let tagsHtml = '';
@@ -539,7 +545,11 @@ const ForumApp = {
         const postId = urlParams.get('id');
 
         if (!postId) {
-            window.location.href = '/static/forum/index.html';
+            if (typeof smoothNavigate === 'function') {
+                smoothNavigate('/static/forum/index.html');
+            } else {
+                window.location.href = '/static/forum/index.html';
+            }
             return;
         }
 
@@ -1061,7 +1071,7 @@ const ForumApp = {
                                                     <span class="opacity-70">升級 PRO 會員即可無限發文！</span>
                                                 </div>
                                                 <div class="flex flex-col gap-3">
-                                                    <button onclick="window.location.href='/static/forum/premium.html'" class="w-full py-3.5 bg-gradient-to-r from-primary to-primary/80 hover:to-primary text-background font-bold rounded-2xl transition shadow-lg flex items-center justify-center gap-2 transform active:scale-95">
+                                                    <button onclick="smoothNavigate('/static/forum/premium.html')" class="w-full py-3.5 bg-gradient-to-r from-primary to-primary/80 hover:to-primary text-background font-bold rounded-2xl transition shadow-lg flex items-center justify-center gap-2 transform active:scale-95">
                                                         <i data-lucide="crown" class="w-4 h-4"></i>
                                                         <span>升級 PRO 會員</span>
                                                     </button>
@@ -1233,13 +1243,17 @@ const ForumApp = {
                     ? `/static/forum/post.html?id=${result.post_id}`
                     : '/static/forum/index.html';
 
-                // Redirect Action
+                // Redirect Action (with smooth transition)
                 const doRedirect = () => {
                     console.log('[Forum] Redirecting to:', targetUrl);
-                    try {
-                        window.location.assign(targetUrl);
-                    } catch (e) {
-                        window.location.href = targetUrl;
+                    if (typeof smoothNavigate === 'function') {
+                        smoothNavigate(targetUrl);
+                    } else {
+                        try {
+                            window.location.assign(targetUrl);
+                        } catch (e) {
+                            window.location.href = targetUrl;
+                        }
                     }
                 };
 
@@ -1321,7 +1335,11 @@ const ForumApp = {
         console.log('initDashboardPage: Starting initialization');
 
         if (!AuthManager.currentUser) {
-            window.location.href = '/static/forum/index.html';
+            if (typeof smoothNavigate === 'function') {
+                smoothNavigate('/static/forum/index.html');
+            } else {
+                window.location.href = '/static/forum/index.html';
+            }
             return;
         }
 

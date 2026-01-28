@@ -2,6 +2,44 @@
 // filter.js - 過濾器功能
 // ========================================
 
+// 從 localStorage 載入已保存的選擇
+function loadSavedSymbolSelection() {
+    try {
+        const saved = localStorage.getItem('marketWatchSymbols');
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                window.globalSelectedSymbols = parsed;
+                console.log('[Filter] 已載入保存的選擇:', parsed.length, '個幣種');
+                return true;
+            }
+        }
+    } catch (e) {
+        console.error('[Filter] 載入保存的選擇失敗:', e);
+    }
+    return false;
+}
+
+// 保存選擇到 localStorage
+function saveSymbolSelection() {
+    try {
+        if (window.globalSelectedSymbols && window.globalSelectedSymbols.length > 0) {
+            localStorage.setItem('marketWatchSymbols', JSON.stringify(window.globalSelectedSymbols));
+            console.log('[Filter] 已保存選擇:', window.globalSelectedSymbols.length, '個幣種');
+        } else {
+            localStorage.removeItem('marketWatchSymbols');
+            console.log('[Filter] 已清除保存的選擇');
+        }
+    } catch (e) {
+        console.error('[Filter] 保存選擇失敗:', e);
+    }
+}
+
+// 初始化時載入保存的選擇
+document.addEventListener('DOMContentLoaded', () => {
+    loadSavedSymbolSelection();
+});
+
 async function openGlobalFilter() {
     const modal = document.getElementById('global-filter-modal');
     modal.classList.remove('hidden');
@@ -148,12 +186,12 @@ function applyGlobalFilter() {
     const indicator = document.getElementById('active-filter-indicator');
     const headerBadge = document.getElementById('global-count-badge');
 
-    // 新聞來源固定使用所有來源（不需要用戶選擇）
-    // selectedNewsSources 在 app.js 中已經預設為所有來源
+    // 保存選擇到 localStorage
+    saveSymbolSelection();
 
     const count = (window.globalSelectedSymbols || []).length;
     if (headerBadge) {
-        headerBadge.innerText = count > 0 ? count : '自動';
+        headerBadge.innerText = count > 0 ? count : 'Auto';
     }
 
     if (count > 0) {
@@ -176,5 +214,6 @@ function applyGlobalFilter() {
 
 function clearGlobalFilter() {
     window.globalSelectedSymbols = [];
+    localStorage.removeItem('marketWatchSymbols');
     applyGlobalFilter();
 }

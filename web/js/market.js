@@ -6,6 +6,7 @@
 let fundingRateData = {};
 let isScreenerLoading = false;
 let marketInitialized = false;
+let isFirstLoad = true;
 
 /**
  * 主要初始化函數 - 確保組件已注入並加載數據
@@ -39,6 +40,11 @@ async function initMarket() {
     marketInitialized = true;
 
     // 3. 加載數據
+    // 先嘗試從 localStorage 載入保存的選擇，避免發送無效的預設請求
+    if (typeof loadSavedSymbolSelection === 'function') {
+        loadSavedSymbolSelection();
+    }
+
     await refreshScreener(true);
 }
 
@@ -172,19 +178,22 @@ async function refreshScreener(showLoading = false) {
 
         // --- 處理篩選器結果 (Screener) ---
         if (screenerData && !screenerData.error) {
-            if (isFirstLoad && (!window.globalSelectedSymbols || window.globalSelectedSymbols.length === 0)) {
-                if (screenerData.top_performers && screenerData.top_performers.length > 0) {
-                    window.globalSelectedSymbols = screenerData.top_performers.map(item => item.Symbol);
-                    const indicator = document.getElementById('active-filter-indicator');
-                    const filterCount = document.getElementById('filter-count');
-                    const globalCount = document.getElementById('global-count-badge');
+            // Update UI indicators based on current selection
+            const count = (window.globalSelectedSymbols || []).length;
+            const indicator = document.getElementById('active-filter-indicator');
+            const filterCount = document.getElementById('filter-count');
+            const globalCount = document.getElementById('global-count-badge');
 
-                    if (indicator) indicator.classList.remove('hidden');
-                    if (filterCount) filterCount.innerText = window.globalSelectedSymbols.length;
-                    if (globalCount) globalCount.innerText = window.globalSelectedSymbols.length;
-                }
-                isFirstLoad = false;
+            if (count > 0) {
+                if (indicator) indicator.classList.remove('hidden');
+                if (filterCount) filterCount.innerText = count;
+                if (globalCount) globalCount.innerText = count;
+            } else {
+                if (indicator) indicator.classList.add('hidden');
+                if (globalCount) globalCount.innerText = 'Auto';
             }
+
+            isFirstLoad = false;
             if (screenerData.last_updated) {
                 const date = new Date(screenerData.last_updated);
                 const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
