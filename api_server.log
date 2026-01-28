@@ -48,3 +48,4 @@
 2026-01-29 02:07:48,081 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'LINK-USDT'}
 2026-01-29 02:07:48,081 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'DOGE-USDT'}
 2026-01-29 02:07:48,081 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'DOT-USDT'}
+2026-01-29 02:07:52,514 [INFO] API: Updating funding rates...
