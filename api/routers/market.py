@@ -87,21 +87,25 @@ async def run_screener(request: ScreenerRequest):
              raise HTTPException(status_code=500, detail=str(e))
 
     # 2. 檢查快取
-    if cached_screener_result["data"] is not None:
+    if not request.refresh and cached_screener_result["data"] is not None:
         return cached_screener_result["data"]
     
-    # 3. 若快取為空，檢查是否背景任務正在運行
+    # 3. 若快取為空或強制刷新，檢查是否背景任務正在運行
     if screener_lock.locked():
-        logger.info("Cache empty, waiting for background analysis to complete...")
+        # 如果是強制刷新，我們還是得等
+        logger.info(f"Cache miss/refresh (locked), waiting for background analysis... (Request refresh: {request.refresh})")
         async with screener_lock:
              # 等待鎖釋放後，再次檢查快取
+             # 如果是強制刷新，且剛跑完的數據很新 (e.g. < 5秒)，或許可以用？ 
+             # 但簡單起見，如果鎖釋放了，通常代表有新數據，直接返回即可
              if cached_screener_result["data"] is not None:
                  return cached_screener_result["data"]
 
-    # 4. 若等待後仍無數據（極少見），或未鎖定，則執行同步更新 (Double-check Locking)
+    # 4. 若等待後仍無數據，或未鎖定，則執行同步更新 (Double-check Locking)
     # 使用鎖防止多個請求同時觸發
     async with screener_lock:
-        if cached_screener_result["data"] is not None:
+        # Double check: 如果是並發請求，前一個可能已經更新了
+        if not request.refresh and cached_screener_result["data"] is not None:
             return cached_screener_result["data"]
             
         logger.info(f"無快取且無背景任務，執行即時市場篩選: {request.exchange}")
@@ -135,7 +139,9 @@ async def run_screener(request: ScreenerRequest):
             
             cached_screener_result["timestamp"] = timestamp_str
             cached_screener_result["data"] = result_data
-            save_screener_cache(cached_screener_result)
+            
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, save_screener_cache, cached_screener_result)
             return result_data
         except Exception as e:
             logger.error(f"篩選器錯誤: {e}", exc_info=True)
@@ -331,7 +337,7 @@ async def get_market_pulse_api(
                     result["source_mode"] = "deep_analysis"  # 標記為深度分析
                     result["analyzed_by"] = x_user_llm_provider  # 記錄分析來源
                     MARKET_PULSE_CACHE[base_symbol] = result
-                    save_market_pulse_cache()
+                    await loop.run_in_executor(None, save_market_pulse_cache)
                 return result
             except Exception as e:
                 logger.error(f"Deep analysis failed: {e}")

@@ -10,6 +10,8 @@ from core.database import (
     get_daily_comment_count,
 )
 from .models import AddCommentRequest
+import asyncio
+from functools import partial
 
 router = APIRouter(prefix="/api/forum/posts", tags=["Forum - Comments"])
 
@@ -24,12 +26,13 @@ async def list_comments(post_id: int):
     獲取文章的回覆列表
     """
     try:
+        loop = asyncio.get_running_loop()
         # 確認文章存在
-        post = get_post_by_id(post_id, increment_view=False)
+        post = await loop.run_in_executor(None, partial(get_post_by_id, post_id, increment_view=False))
         if not post or post["is_hidden"]:
             raise HTTPException(status_code=404, detail="文章不存在")
 
-        comments = get_comments(post_id)
+        comments = await loop.run_in_executor(None, get_comments, post_id)
         return {
             "success": True,
             "comments": comments,
@@ -68,17 +71,22 @@ async def add_new_comment(
             )
 
         # 確認文章存在
-        post = get_post_by_id(post_id, increment_view=False)
+        loop = asyncio.get_running_loop()
+        post = await loop.run_in_executor(None, partial(get_post_by_id, post_id, increment_view=False))
         if not post or post["is_hidden"]:
             raise HTTPException(status_code=404, detail="文章不存在")
 
         # 新增回覆
-        result = add_comment(
-            post_id=post_id,
-            user_id=user_id,
-            comment_type=request.type,
-            content=request.content,
-            parent_id=request.parent_id,
+        result = await loop.run_in_executor(
+            None,
+            partial(
+                add_comment,
+                post_id=post_id,
+                user_id=user_id,
+                comment_type=request.type,
+                content=request.content,
+                parent_id=request.parent_id,
+            )
         )
 
         if not result["success"]:
@@ -110,15 +118,20 @@ async def push_post(
     推文（快捷方式）
     """
     try:
-        post = get_post_by_id(post_id, increment_view=False)
+        loop = asyncio.get_running_loop()
+        post = await loop.run_in_executor(None, partial(get_post_by_id, post_id, increment_view=False))
         if not post or post["is_hidden"]:
             raise HTTPException(status_code=404, detail="文章不存在")
 
-        result = add_comment(
-            post_id=post_id,
-            user_id=user_id,
-            comment_type="push",
-            content=content,
+        result = await loop.run_in_executor(
+            None,
+            partial(
+                add_comment,
+                post_id=post_id,
+                user_id=user_id,
+                comment_type="push",
+                content=content,
+            )
         )
 
         if not result["success"]:
@@ -143,15 +156,20 @@ async def boo_post(
     噓文（快捷方式）
     """
     try:
-        post = get_post_by_id(post_id, increment_view=False)
+        loop = asyncio.get_running_loop()
+        post = await loop.run_in_executor(None, partial(get_post_by_id, post_id, increment_view=False))
         if not post or post["is_hidden"]:
             raise HTTPException(status_code=404, detail="文章不存在")
 
-        result = add_comment(
-            post_id=post_id,
-            user_id=user_id,
-            comment_type="boo",
-            content=content,
+        result = await loop.run_in_executor(
+            None,
+            partial(
+                add_comment,
+                post_id=post_id,
+                user_id=user_id,
+                comment_type="boo",
+                content=content,
+            )
         )
 
         if not result["success"]:
@@ -175,7 +193,8 @@ async def get_comment_status(
     獲取用戶在該文章的回覆狀態（今日剩餘回覆數等）
     """
     try:
-        daily_count = get_daily_comment_count(user_id)
+        loop = asyncio.get_running_loop()
+        daily_count = await loop.run_in_executor(None, get_daily_comment_count, user_id)
         return {
             "success": True,
             "today_count": daily_count["count"],

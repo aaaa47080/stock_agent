@@ -63,17 +63,28 @@ def screen_top_cryptos(exchange='okx', limit=30, interval='1d', target_symbols: 
         # OR we handle suffix here. Let's try to be smart.
         top_symbols = []
         for s in target_symbols:
-            s_clean = s.upper().replace("USDT", "").replace("-", "")
-            if exchange == 'okx':
-                top_symbols.append(f"{s_clean}-USDT")
+            # If the symbol already matches the exchange format, use it directly
+            if exchange == 'okx' and s.endswith('-USDT'):
+                top_symbols.append(s)
+            elif exchange != 'okx' and s.endswith('USDT'):
+                 top_symbols.append(s)
             else:
-                top_symbols.append(f"{s_clean}USDT")
+                # Fallback normalization for inputs like "BTC"
+                s_clean = s.upper().replace("USDT", "").replace("-", "")
+                if exchange == 'okx':
+                    top_symbols.append(f"{s_clean}-USDT")
+                else:
+                    top_symbols.append(f"{s_clean}USDT")
     else:
         top_symbols = fetcher.get_top_symbols(limit=limit)
         
     if not top_symbols:
-        print("Could not retrieve symbols. Exiting.")
-        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+        print("Could not retrieve symbols. Using fallback list.")
+        # Fallback to major cryptos if API fails to list top symbols
+        if exchange == 'okx':
+            top_symbols = ['BTC-USDT', 'ETH-USDT', 'SOL-USDT', 'XRP-USDT', 'DOGE-USDT', 'ADA-USDT', 'DOT-USDT', 'AVAX-USDT']
+        else:
+            top_symbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'DOGEUSDT', 'ADAUSDT', 'DOTUSDT', 'AVAXUSDT']
 
     # 3. Fetch and analyze data for each symbol
     all_analysis_results = []

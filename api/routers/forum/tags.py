@@ -8,6 +8,8 @@ from core.database import (
     get_posts_by_tag,
     search_tags,
 )
+import asyncio
+from functools import partial
 
 router = APIRouter(prefix="/api/forum/tags", tags=["Forum - Tags"])
 
@@ -24,10 +26,11 @@ async def list_tags(
     - 否則返回熱門標籤
     """
     try:
+        loop = asyncio.get_running_loop()
         if q:
-            tags = search_tags(q, limit=limit)
+            tags = await loop.run_in_executor(None, partial(search_tags, q, limit=limit))
         else:
-            tags = get_trending_tags(limit=limit)
+            tags = await loop.run_in_executor(None, partial(get_trending_tags, limit=limit))
 
         return {
             "success": True,
@@ -44,7 +47,8 @@ async def get_hot_tags(limit: int = Query(10, ge=1, le=20)):
     獲取熱門標籤（近 7 天內使用頻率最高）
     """
     try:
-        tags = get_trending_tags(limit=limit)
+        loop = asyncio.get_running_loop()
+        tags = await loop.run_in_executor(None, partial(get_trending_tags, limit=limit))
         return {
             "success": True,
             "tags": tags,
@@ -64,7 +68,8 @@ async def get_posts_with_tag(
     獲取指定標籤的文章列表
     """
     try:
-        posts = get_posts_by_tag(tag_name, limit=limit, offset=offset)
+        loop = asyncio.get_running_loop()
+        posts = await loop.run_in_executor(None, partial(get_posts_by_tag, tag_name, limit=limit, offset=offset))
         return {
             "success": True,
             "tag": tag_name.upper(),

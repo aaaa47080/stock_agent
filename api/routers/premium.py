@@ -7,6 +7,8 @@ from typing import Optional
 
 from core.database import get_user_membership, upgrade_to_pro
 from api.utils import logger
+import asyncio
+from functools import partial
 
 router = APIRouter(prefix="/api/premium", tags=["Premium"])
 
@@ -27,8 +29,9 @@ async def upgrade_to_premium(request: UpgradeRequest):
         tx_hash: Pi 支付交易哈希 (正式環境需要)
     """
     try:
+        loop = asyncio.get_running_loop()
         # 檢查當前會員狀態
-        current_membership = get_user_membership(request.user_id)
+        current_membership = await loop.run_in_executor(None, get_user_membership, request.user_id)
         
         if not current_membership:
             raise HTTPException(status_code=404, detail="用戶不存在")
@@ -40,17 +43,21 @@ async def upgrade_to_premium(request: UpgradeRequest):
         
         # 在正式環境中，需要驗證 tx_hash
         # 這裡簡化處理，實際部署時需要驗證 Pi 支付
-        success = upgrade_to_pro(
-            user_id=request.user_id,
-            months=request.months,
-            tx_hash=request.tx_hash
+        success = await loop.run_in_executor(
+            None,
+            partial(
+                upgrade_to_pro,
+                user_id=request.user_id,
+                months=request.months,
+                tx_hash=request.tx_hash
+            )
         )
         
         if not success:
             raise HTTPException(status_code=500, detail="升級失敗")
         
         # 返回新的會員狀態
-        new_membership = get_user_membership(request.user_id)
+        new_membership = await loop.run_in_executor(None, get_user_membership, request.user_id)
         
         logger.info(f"用戶 {request.user_id} 成功升級到高級會員，{request.months} 個月")
         
@@ -73,7 +80,8 @@ async def get_premium_status(user_id: str):
     獲取用戶高級會員狀態
     """
     try:
-        membership = get_user_membership(user_id)
+        loop = asyncio.get_running_loop()
+        membership = await loop.run_in_executor(None, get_user_membership, user_id)
         
         if not membership:
             raise HTTPException(status_code=404, detail="用戶不存在")

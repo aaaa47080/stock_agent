@@ -25,6 +25,8 @@ from core.database import (
     bulk_update_configs,
     invalidate_config_cache,
 )
+import asyncio
+from functools import partial
 
 router = APIRouter()
 
@@ -81,9 +83,12 @@ async def get_all_admin_configs(x_admin_key: Optional[str] = Header(None)):
     """
     verify_admin_key(x_admin_key)
 
+    loop = asyncio.get_running_loop()
+    configs = await loop.run_in_executor(None, list_all_configs_with_metadata)
+
     return {
         "success": True,
-        "configs": list_all_configs_with_metadata()
+        "configs": configs
     }
 
 
@@ -96,9 +101,12 @@ async def get_admin_prices(x_admin_key: Optional[str] = Header(None)):
     """
     verify_admin_key(x_admin_key)
 
+    loop = asyncio.get_running_loop()
+    prices = await loop.run_in_executor(None, get_prices)
+
     return {
         "success": True,
-        "prices": get_prices()
+        "prices": prices
     }
 
 
@@ -111,9 +119,12 @@ async def get_admin_limits(x_admin_key: Optional[str] = Header(None)):
     """
     verify_admin_key(x_admin_key)
 
+    loop = asyncio.get_running_loop()
+    limits = await loop.run_in_executor(None, get_limits)
+
     return {
         "success": True,
-        "limits": get_limits()
+        "limits": limits
     }
 
 
@@ -150,13 +161,15 @@ async def update_price_config(
             detail="Price cannot be negative"
         )
 
-    success = update_price(request.key, request.value)
+    loop = asyncio.get_running_loop()
+    success = await loop.run_in_executor(None, partial(update_price, request.key, request.value))
 
     if success:
+        new_prices = await loop.run_in_executor(None, get_prices)
         return {
             "success": True,
             "message": f"Price '{request.key}' updated to {request.value} Pi",
-            "new_prices": get_prices()
+            "new_prices": new_prices
         }
     else:
         raise HTTPException(status_code=500, detail="Failed to update price")
@@ -192,13 +205,15 @@ async def update_limit_config(
             detail="Limit cannot be negative"
         )
 
-    success = update_limit(request.key, request.value)
+    loop = asyncio.get_running_loop()
+    success = await loop.run_in_executor(None, partial(update_limit, request.key, request.value))
 
     if success:
+        new_limits = await loop.run_in_executor(None, get_limits)
         return {
             "success": True,
             "message": f"Limit '{request.key}' updated to {request.value if request.value is not None else 'unlimited'}",
-            "new_limits": get_limits()
+            "new_limits": new_limits
         }
     else:
         raise HTTPException(status_code=500, detail="Failed to update limit")
@@ -216,19 +231,25 @@ async def update_generic_config(
     """
     verify_admin_key(x_admin_key)
 
-    success = set_config(
-        key=request.key,
-        value=request.value,
-        value_type=request.value_type,
-        category=request.category,
-        description=request.description
+    loop = asyncio.get_running_loop()
+    success = await loop.run_in_executor(
+        None,
+        partial(
+            set_config,
+            key=request.key,
+            value=request.value,
+            value_type=request.value_type,
+            category=request.category,
+            description=request.description
+        )
     )
 
     if success:
+        value = await loop.run_in_executor(None, get_config, request.key)
         return {
             "success": True,
             "message": f"Config '{request.key}' updated successfully",
-            "value": get_config(request.key)
+            "value": value
         }
     else:
         raise HTTPException(status_code=500, detail="Failed to update config")
@@ -246,7 +267,8 @@ async def bulk_update_admin_configs(
     """
     verify_admin_key(x_admin_key)
 
-    success = bulk_update_configs(request.configs)
+    loop = asyncio.get_running_loop()
+    success = await loop.run_in_executor(None, partial(bulk_update_configs, request.configs))
 
     if success:
         return {
@@ -267,7 +289,8 @@ async def invalidate_cache(x_admin_key: Optional[str] = Header(None)):
     """
     verify_admin_key(x_admin_key)
 
-    invalidate_config_cache()
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, invalidate_config_cache)
 
     return {
         "success": True,
@@ -300,13 +323,14 @@ async def get_config_audit_log(
         from core.database.system_config import get_config_metadata
 
         # 嘗試使用 V2 版本的審計日誌
+        loop = asyncio.get_running_loop()
         try:
             from core.database.system_config_v2 import get_config_history
-            history = get_config_history(key, limit)
+            history = await loop.run_in_executor(None, partial(get_config_history, key, limit))
         except ImportError:
             history = []
 
-        metadata = get_config_metadata(key)
+        metadata = await loop.run_in_executor(None, get_config_metadata, key)
 
         return {
             "success": True,

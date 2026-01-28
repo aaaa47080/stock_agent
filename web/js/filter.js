@@ -2,6 +2,13 @@
 // filter.js - 過濾器功能
 // ========================================
 
+// 預設熱門幣種列表 (當用戶未選擇時顯示)
+// 預設熱門幣種列表 (當用戶未選擇時顯示)
+var DEFAULT_MARKET_SYMBOLS = [
+    'BTC-USDT', 'ETH-USDT', 'SOL-USDT', 'DOGE-USDT', 'XRP-USDT',
+    'BNB-USDT', 'ADA-USDT', 'AVAX-USDT', 'DOT-USDT', 'LINK-USDT'
+];
+
 // 從 localStorage 載入已保存的選擇
 function loadSavedSymbolSelection() {
     try {
@@ -17,7 +24,11 @@ function loadSavedSymbolSelection() {
     } catch (e) {
         console.error('[Filter] 載入保存的選擇失敗:', e);
     }
-    return false;
+
+    // 如果沒有保存的選擇，保持為空，讓 market.js 加載後端預設數據 (Auto Mode)
+    window.globalSelectedSymbols = [];
+    console.log('[Filter] 無保存紀錄，初始化為空 (Auto Mode)');
+    return true;
 }
 
 // 保存選擇到 localStorage
@@ -131,7 +142,13 @@ function renderSymbolList(symbols) {
     const searchVal = document.getElementById('symbol-search').value.toUpperCase().trim();
     const filtered = symbols.filter(s => s.includes(searchVal));
 
-    const toRender = filtered.slice(0, 200);
+    const toRender = filtered.sort((a, b) => {
+        const aSelected = window.globalSelectedSymbols && window.globalSelectedSymbols.includes(a);
+        const bSelected = window.globalSelectedSymbols && window.globalSelectedSymbols.includes(b);
+        if (aSelected && !bSelected) return -1;
+        if (!aSelected && bSelected) return 1;
+        return a.localeCompare(b);
+    }).slice(0, 200);
 
     if (toRender.length === 0) {
         container.innerHTML = '<div class="text-center py-8 text-slate-500">沒有找到符合的幣種</div>';
@@ -204,7 +221,13 @@ function applyGlobalFilter() {
     }
 
     // Refresh both main components
-    refreshScreener(true);
+    if (typeof window.refreshScreener === 'function') {
+        window.refreshScreener(true);
+    } else if (typeof refreshScreener === 'function') {
+        refreshScreener(true);
+    } else {
+        console.error('[Filter] refreshScreener is not defined');
+    }
 
     // Only refresh Pulse if visible (to save tokens), otherwise it will refresh on tab switch
     if (!document.getElementById('pulse-tab').classList.contains('hidden')) {
@@ -213,7 +236,8 @@ function applyGlobalFilter() {
 }
 
 function clearGlobalFilter() {
-    window.globalSelectedSymbols = [];
+    window.globalSelectedSymbols = [...DEFAULT_MARKET_SYMBOLS];
     localStorage.removeItem('marketWatchSymbols');
+    console.log('[Filter] 已重置為預設熱門幣種');
     applyGlobalFilter();
 }

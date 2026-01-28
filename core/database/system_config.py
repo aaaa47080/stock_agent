@@ -5,7 +5,7 @@
 包含多層快取機制（進程內 + Redis）以提高性能。
 
 商用化設計：
-- 多層快取：進程內快取(10秒) -> Redis快取(5分鐘) -> SQLite
+- 多層快取：進程內快取(10秒) -> Redis快取(5分鐘) -> PostgreSQL
 - 配置變更審計日誌
 - Redis Pub/Sub 跨進程快取失效
 - 支持即時更新配置，無需重啟服務
@@ -14,7 +14,7 @@
 
 架構圖：
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   API 請求   │ --> │ 進程內快取   │ --> │ Redis 快取  │ --> │  SQLite DB  │
+│   API 請求   │ --> │ 進程內快取   │ --> │ Redis 快取  │ --> │ PostgreSQL  │
 └─────────────┘     │   (10秒)    │     │  (5分鐘)    │     └─────────────┘
                     └─────────────┘     └──────┬──────┘
                                                │
@@ -58,7 +58,7 @@ class ConfigCacheManager:
 
     Layer 1: 進程內記憶體快取（10秒）- 最快，避免頻繁網絡請求
     Layer 2: Redis 快取（5分鐘）- 跨進程同步
-    Layer 3: SQLite 數據庫 - 持久化存儲
+    Layer 3: PostgreSQL 數據庫 - 持久化存儲
     """
 
     _instance = None
@@ -360,11 +360,11 @@ def get_all_configs(category: Optional[str] = None, public_only: bool = True) ->
         params = []
 
         if category:
-            query += ' AND category = ?'
+            query += ' AND category = %s'
             params.append(category)
 
         if public_only:
-            query += ' AND is_public = 1'
+            query += ' AND is_public = TRUE'
 
         c.execute(query, params)
         rows = c.fetchall()
@@ -434,7 +434,7 @@ def set_config(key: str, value: Any, value_type: str = 'string',
 
     try:
         # 獲取舊值（用於審計日誌）
-        c.execute('SELECT value FROM system_config WHERE key = ?', (key,))
+        c.execute('SELECT value FROM system_config WHERE key = %s', (key,))
         old_row = c.fetchone()
         old_value = old_row[0] if old_row else None
 
@@ -446,15 +446,15 @@ def set_config(key: str, value: Any, value_type: str = 'string',
 
         c.execute('''
             INSERT INTO system_config (key, value, value_type, category, description, is_public, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
             ON CONFLICT(key) DO UPDATE SET
-                value = excluded.value,
-                value_type = excluded.value_type,
-                category = excluded.category,
-                description = excluded.description,
-                is_public = excluded.is_public,
+                value = EXCLUDED.value,
+                value_type = EXCLUDED.value_type,
+                category = EXCLUDED.category,
+                description = EXCLUDED.description,
+                is_public = EXCLUDED.is_public,
                 updated_at = CURRENT_TIMESTAMP
-        ''', (key, serialized_value, value_type, category, description, 1 if is_public else 0))
+        ''', (key, serialized_value, value_type, category, description, is_public))
 
         # 寫入審計日誌
         _write_audit_log(c, key, old_value, serialized_value, changed_by)
@@ -480,7 +480,7 @@ def _write_audit_log(cursor, key: str, old_value: Any, new_value: Any, changed_b
     try:
         cursor.execute('''
             INSERT INTO config_audit_log (config_key, old_value, new_value, changed_by, changed_at)
-            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+            VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP)
         ''', (key, old_value, new_value, changed_by))
     except Exception as e:
         # 審計表可能不存在，僅記錄警告
@@ -540,9 +540,9 @@ def get_config_history(key: str, limit: int = 20) -> List[Dict]:
         c.execute('''
             SELECT old_value, new_value, changed_by, changed_at
             FROM config_audit_log
-            WHERE config_key = ?
+            WHERE config_key = %s
             ORDER BY changed_at DESC
-            LIMIT ?
+            LIMIT %s
         ''', (key, limit))
         rows = c.fetchall()
 
@@ -550,7 +550,7 @@ def get_config_history(key: str, limit: int = 20) -> List[Dict]:
             'old_value': row[0],
             'new_value': row[1],
             'changed_by': row[2],
-            'changed_at': row[3],
+            'changed_at': row[3].isoformat() if row[3] else None,
         } for row in rows]
     except Exception as e:
         print(f"[Config] 查詢審計日誌失敗: {e}")
@@ -580,15 +580,15 @@ def bulk_update_configs(configs: Dict[str, Any], changed_by: str = 'admin') -> b
     try:
         for key, value in configs.items():
             # 獲取舊值
-            c.execute('SELECT value FROM system_config WHERE key = ?', (key,))
+            c.execute('SELECT value FROM system_config WHERE key = %s', (key,))
             old_row = c.fetchone()
             old_value = old_row[0] if old_row else None
 
             serialized_value = _serialize_value(value)
             c.execute('''
                 UPDATE system_config
-                SET value = ?, updated_at = CURRENT_TIMESTAMP
-                WHERE key = ?
+                SET value = %s, updated_at = CURRENT_TIMESTAMP
+                WHERE key = %s
             ''', (serialized_value, key))
 
             # 寫入審計日誌
@@ -618,7 +618,7 @@ def get_config_metadata(key: str) -> Optional[Dict]:
     try:
         c.execute('''
             SELECT key, value, value_type, category, description, is_public, created_at, updated_at
-            FROM system_config WHERE key = ?
+            FROM system_config WHERE key = %s
         ''', (key,))
         row = c.fetchone()
 
@@ -631,8 +631,8 @@ def get_config_metadata(key: str) -> Optional[Dict]:
                 'category': row[3],
                 'description': row[4],
                 'is_public': bool(row[5]),
-                'created_at': row[6],
-                'updated_at': row[7],
+                'created_at': row[6].isoformat() if row[6] else None,
+                'updated_at': row[7].isoformat() if row[7] else None,
             }
         return None
     finally:
@@ -664,8 +664,8 @@ def list_all_configs_with_metadata() -> List[Dict]:
             'category': row[3],
             'description': row[4],
             'is_public': bool(row[5]),
-            'created_at': row[6],
-            'updated_at': row[7],
+            'created_at': row[6].isoformat() if row[6] else None,
+            'updated_at': row[7].isoformat() if row[7] else None,
         } for row in rows]
     finally:
         conn.close()
@@ -682,7 +682,7 @@ def init_audit_table():
     try:
         c.execute('''
             CREATE TABLE IF NOT EXISTS config_audit_log (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 config_key TEXT NOT NULL,
                 old_value TEXT,
                 new_value TEXT,

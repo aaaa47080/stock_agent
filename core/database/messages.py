@@ -17,7 +17,7 @@ def _get_message_config(key: str, default: any = None):
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('SELECT value, value_type FROM system_config WHERE key = ?', (key,))
+        c.execute('SELECT value, value_type FROM system_config WHERE key = %s', (key,))
         row = c.fetchone()
         if not row:
             return default
@@ -59,7 +59,7 @@ def get_or_create_conversation(user1_id: str, user2_id: str) -> Dict:
         c.execute('''
             SELECT id, user1_id, user2_id, last_message_at, user1_unread_count, user2_unread_count, created_at
             FROM dm_conversations
-            WHERE user1_id = ? AND user2_id = ?
+            WHERE user1_id = %s AND user2_id = %s
         ''', (user1_id, user2_id))
         row = c.fetchone()
 
@@ -68,22 +68,24 @@ def get_or_create_conversation(user1_id: str, user2_id: str) -> Dict:
                 "id": row[0],
                 "user1_id": row[1],
                 "user2_id": row[2],
-                "last_message_at": row[3],
+                "last_message_at": row[3].isoformat() if row[3] else None,
                 "user1_unread_count": row[4],
                 "user2_unread_count": row[5],
-                "created_at": row[6],
+                "created_at": row[6].isoformat() if row[6] else None,
                 "is_new": False
             }
 
         # 建立新對話
         c.execute('''
             INSERT INTO dm_conversations (user1_id, user2_id, created_at)
-            VALUES (?, ?, datetime('now'))
+            VALUES (%s, %s, NOW())
+            RETURNING id
         ''', (user1_id, user2_id))
+        conv_id = c.fetchone()[0]
         conn.commit()
 
         return {
-            "id": c.lastrowid,
+            "id": conv_id,
             "user1_id": user1_id,
             "user2_id": user2_id,
             "last_message_at": None,
@@ -114,16 +116,16 @@ def get_conversations(user_id: str, limit: int = 50, offset: int = 0) -> List[Di
                 c.created_at,
                 m.content as last_message,
                 m.from_user_id as last_message_from,
-                CASE WHEN c.user1_id = ? THEN u2.username ELSE u1.username END as other_username,
-                CASE WHEN c.user1_id = ? THEN u2.user_id ELSE u1.user_id END as other_user_id,
-                CASE WHEN c.user1_id = ? THEN u2.membership_tier ELSE u1.membership_tier END as other_membership_tier
+                CASE WHEN c.user1_id = %s THEN u2.username ELSE u1.username END as other_username,
+                CASE WHEN c.user1_id = %s THEN u2.user_id ELSE u1.user_id END as other_user_id,
+                CASE WHEN c.user1_id = %s THEN u2.membership_tier ELSE u1.membership_tier END as other_membership_tier
             FROM dm_conversations c
             LEFT JOIN dm_messages m ON m.id = c.last_message_id
             LEFT JOIN users u1 ON u1.user_id = c.user1_id
             LEFT JOIN users u2 ON u2.user_id = c.user2_id
-            WHERE c.user1_id = ? OR c.user2_id = ?
+            WHERE c.user1_id = %s OR c.user2_id = %s
             ORDER BY c.last_message_at DESC NULLS LAST, c.created_at DESC
-            LIMIT ? OFFSET ?
+            LIMIT %s OFFSET %s
         ''', (user_id, user_id, user_id, user_id, user_id, limit, offset))
 
         rows = c.fetchall()
@@ -142,9 +144,9 @@ def get_conversations(user_id: str, limit: int = 50, offset: int = 0) -> List[Di
                 "other_membership_tier": other_membership_tier or 'free',
                 "last_message": last_message,
                 "last_message_from": last_message_from,
-                "last_message_at": last_message_at,
+                "last_message_at": last_message_at.isoformat() if last_message_at else None,
                 "unread_count": unread_count,
-                "created_at": created_at
+                "created_at": created_at.isoformat() if created_at else None
             })
 
         return conversations
@@ -162,7 +164,7 @@ def get_conversation_by_id(conversation_id: int, user_id: str) -> Optional[Dict]
         c.execute('''
             SELECT id, user1_id, user2_id, last_message_at, user1_unread_count, user2_unread_count
             FROM dm_conversations
-            WHERE id = ? AND (user1_id = ? OR user2_id = ?)
+            WHERE id = %s AND (user1_id = %s OR user2_id = %s)
         ''', (conversation_id, user_id, user_id))
         row = c.fetchone()
 
@@ -173,7 +175,7 @@ def get_conversation_by_id(conversation_id: int, user_id: str) -> Optional[Dict]
             "id": row[0],
             "user1_id": row[1],
             "user2_id": row[2],
-            "last_message_at": row[3],
+            "last_message_at": row[3].isoformat() if row[3] else None,
             "user1_unread_count": row[4],
             "user2_unread_count": row[5]
         }
@@ -211,9 +213,10 @@ def send_message(from_user_id: str, to_user_id: str, content: str, message_type:
         # 插入訊息
         c.execute('''
             INSERT INTO dm_messages (conversation_id, from_user_id, to_user_id, content, message_type, created_at)
-            VALUES (?, ?, ?, ?, ?, datetime('now'))
+            VALUES (%s, %s, %s, %s, %s, NOW())
+            RETURNING id
         ''', (conversation_id, from_user_id, to_user_id, content.strip(), message_type))
-        message_id = c.lastrowid
+        message_id = c.fetchone()[0]
 
         # 更新對話的最後訊息和未讀數
         # 確定哪個用戶的未讀數要增加
@@ -224,10 +227,10 @@ def send_message(from_user_id: str, to_user_id: str, content: str, message_type:
 
         c.execute(f'''
             UPDATE dm_conversations
-            SET last_message_id = ?,
-                last_message_at = datetime('now'),
+            SET last_message_id = %s,
+                last_message_at = NOW(),
                 {unread_field} = {unread_field} + 1
-            WHERE id = ?
+            WHERE id = %s
         ''', (message_id, conversation_id))
 
         conn.commit()
@@ -240,7 +243,7 @@ def send_message(from_user_id: str, to_user_id: str, content: str, message_type:
             FROM dm_messages m
             LEFT JOIN users u1 ON m.from_user_id = u1.user_id
             LEFT JOIN users u2 ON m.to_user_id = u2.user_id
-            WHERE m.id = ?
+            WHERE m.id = %s
         ''', (message_id,))
         msg_row = c.fetchone()
 
@@ -254,8 +257,8 @@ def send_message(from_user_id: str, to_user_id: str, content: str, message_type:
                 "content": msg_row[4],
                 "message_type": msg_row[5],
                 "is_read": bool(msg_row[6]),
-                "read_at": msg_row[7],
-                "created_at": msg_row[8],
+                "read_at": msg_row[7].isoformat() if msg_row[7] else None,
+                "created_at": msg_row[8].isoformat() if msg_row[8] else None,
                 "from_username": msg_row[9],
                 "to_username": msg_row[10]
             }
@@ -288,9 +291,9 @@ def get_messages(conversation_id: int, user_id: str, limit: int = 50, before_id:
                 FROM dm_messages m
                 LEFT JOIN users u1 ON m.from_user_id = u1.user_id
                 LEFT JOIN users u2 ON m.to_user_id = u2.user_id
-                WHERE m.conversation_id = ? AND m.id < ?
+                WHERE m.conversation_id = %s AND m.id < %s
                 ORDER BY m.created_at DESC, m.id DESC
-                LIMIT ?
+                LIMIT %s
             ''', (conversation_id, before_id, limit))
         else:
             c.execute('''
@@ -300,13 +303,13 @@ def get_messages(conversation_id: int, user_id: str, limit: int = 50, before_id:
                 FROM dm_messages m
                 LEFT JOIN users u1 ON m.from_user_id = u1.user_id
                 LEFT JOIN users u2 ON m.to_user_id = u2.user_id
-                WHERE m.conversation_id = ?
+                WHERE m.conversation_id = %s
                 ORDER BY m.created_at DESC, m.id DESC
-                LIMIT ?
+                LIMIT %s
             ''', (conversation_id, limit))
-        
+
         rows = c.fetchall()
-        
+
         # DEBUG: Check what is being returned
         print(f"[DEBUG get_messages] conv_id={conversation_id}, user_id={user_id}, count={len(rows)}")
         for r in rows[:3]:
@@ -321,8 +324,8 @@ def get_messages(conversation_id: int, user_id: str, limit: int = 50, before_id:
                 "content": row[4],
                 "message_type": row[5],
                 "is_read": bool(row[6]),
-                "read_at": row[7],
-                "created_at": row[8],
+                "read_at": row[7].isoformat() if row[7] else None,
+                "created_at": row[8].isoformat() if row[8] else None,
                 "from_username": row[9],
                 "to_username": row[10]
             }
@@ -355,9 +358,9 @@ def mark_as_read(conversation_id: int, user_id: str) -> Dict:
 
         # DEBUG: 記錄更新前的訊息狀態
         c.execute('''
-            SELECT id, from_user_id, to_user_id, is_read 
-            FROM dm_messages 
-            WHERE conversation_id = ?
+            SELECT id, from_user_id, to_user_id, is_read
+            FROM dm_messages
+            WHERE conversation_id = %s
             ORDER BY id DESC LIMIT 5
         ''', (conversation_id,))
         before_rows = c.fetchall()
@@ -366,25 +369,25 @@ def mark_as_read(conversation_id: int, user_id: str) -> Dict:
 
         c.execute('''
             UPDATE dm_messages
-            SET is_read = 1, read_at = datetime('now')
-            WHERE conversation_id = ? AND to_user_id = ? AND from_user_id != ? AND is_read = 0
+            SET is_read = TRUE, read_at = NOW()
+            WHERE conversation_id = %s AND to_user_id = %s AND from_user_id != %s AND is_read = FALSE
         ''', (conversation_id, user_id, user_id))
         updated_count = c.rowcount
         print(f"[DEBUG mark_as_read] 更新了 {updated_count} 條訊息 (to_user_id={user_id})")
 
         # 重置對話中當前用戶的未讀數
         if conv["user1_id"] == user_id:
-            c.execute('UPDATE dm_conversations SET user1_unread_count = 0 WHERE id = ?', (conversation_id,))
+            c.execute('UPDATE dm_conversations SET user1_unread_count = 0 WHERE id = %s', (conversation_id,))
         else:
-            c.execute('UPDATE dm_conversations SET user2_unread_count = 0 WHERE id = ?', (conversation_id,))
+            c.execute('UPDATE dm_conversations SET user2_unread_count = 0 WHERE id = %s', (conversation_id,))
 
         conn.commit()
 
         # DEBUG: 記錄更新後的訊息狀態
         c.execute('''
-            SELECT id, from_user_id, to_user_id, is_read 
-            FROM dm_messages 
-            WHERE conversation_id = ?
+            SELECT id, from_user_id, to_user_id, is_read
+            FROM dm_messages
+            WHERE conversation_id = %s
             ORDER BY id DESC LIMIT 5
         ''', (conversation_id,))
         after_rows = c.fetchall()
@@ -412,12 +415,12 @@ def get_unread_count(user_id: str) -> int:
             SELECT
                 COALESCE(SUM(
                     CASE
-                        WHEN user1_id = ? THEN user1_unread_count
+                        WHEN user1_id = %s THEN user1_unread_count
                         ELSE user2_unread_count
                     END
                 ), 0)
             FROM dm_conversations
-            WHERE user1_id = ? OR user2_id = ?
+            WHERE user1_id = %s OR user2_id = %s
         ''', (user_id, user_id, user_id))
         return c.fetchone()[0]
     finally:
@@ -448,7 +451,7 @@ def check_message_limit(user_id: str, is_pro: bool) -> Dict:
     try:
         c.execute('''
             SELECT message_count FROM user_message_limits
-            WHERE user_id = ? AND date = ?
+            WHERE user_id = %s AND date = %s
         ''', (user_id, today))
         row = c.fetchone()
 
@@ -476,8 +479,8 @@ def increment_message_count(user_id: str) -> None:
     try:
         c.execute('''
             INSERT INTO user_message_limits (user_id, date, message_count)
-            VALUES (?, ?, 1)
-            ON CONFLICT(user_id, date) DO UPDATE SET message_count = message_count + 1
+            VALUES (%s, %s, 1)
+            ON CONFLICT(user_id, date) DO UPDATE SET message_count = user_message_limits.message_count + 1
         ''', (user_id, today))
         conn.commit()
     finally:
@@ -501,7 +504,7 @@ def check_greeting_limit(user_id: str, is_pro: bool) -> Dict:
     try:
         c.execute('''
             SELECT greeting_count, greeting_month FROM user_message_limits
-            WHERE user_id = ? AND date = ?
+            WHERE user_id = %s AND date = %s
         ''', (user_id, date.today().isoformat()))
         row = c.fetchone()
 
@@ -535,7 +538,7 @@ def increment_greeting_count(user_id: str) -> None:
         # 檢查是否需要重置（新月份）
         c.execute('''
             SELECT greeting_month FROM user_message_limits
-            WHERE user_id = ? AND date = ?
+            WHERE user_id = %s AND date = %s
         ''', (user_id, today))
         row = c.fetchone()
 
@@ -543,19 +546,19 @@ def increment_greeting_count(user_id: str) -> None:
             # 新月份，重置計數
             c.execute('''
                 UPDATE user_message_limits
-                SET greeting_count = 1, greeting_month = ?
-                WHERE user_id = ? AND date = ?
+                SET greeting_count = 1, greeting_month = %s
+                WHERE user_id = %s AND date = %s
             ''', (current_month, user_id, today))
         else:
             c.execute('''
                 INSERT INTO user_message_limits (user_id, date, greeting_count, greeting_month)
-                VALUES (?, ?, 1, ?)
+                VALUES (%s, %s, 1, %s)
                 ON CONFLICT(user_id, date) DO UPDATE SET
                     greeting_count = CASE
-                        WHEN greeting_month = ? THEN greeting_count + 1
+                        WHEN user_message_limits.greeting_month = %s THEN user_message_limits.greeting_count + 1
                         ELSE 1
                     END,
-                    greeting_month = ?
+                    greeting_month = %s
             ''', (user_id, today, current_month, current_month, current_month))
 
         conn.commit()
@@ -589,16 +592,16 @@ def search_messages(user_id: str, query: str, limit: int = 50) -> List[Dict]:
             SELECT
                 m.id, m.conversation_id, m.from_user_id, m.to_user_id,
                 m.content, m.message_type, m.created_at,
-                CASE WHEN c.user1_id = ? THEN u2.username ELSE u1.username END as other_username,
-                CASE WHEN c.user1_id = ? THEN c.user2_id ELSE c.user1_id END as other_user_id
+                CASE WHEN c.user1_id = %s THEN u2.username ELSE u1.username END as other_username,
+                CASE WHEN c.user1_id = %s THEN c.user2_id ELSE c.user1_id END as other_user_id
             FROM dm_messages m
             JOIN dm_conversations c ON c.id = m.conversation_id
             LEFT JOIN users u1 ON u1.user_id = c.user1_id
             LEFT JOIN users u2 ON u2.user_id = c.user2_id
-            WHERE (c.user1_id = ? OR c.user2_id = ?)
-            AND m.content LIKE ?
+            WHERE (c.user1_id = %s OR c.user2_id = %s)
+            AND m.content LIKE %s
             ORDER BY m.created_at DESC
-            LIMIT ?
+            LIMIT %s
         ''', (user_id, user_id, user_id, user_id, f'%{query}%', limit))
 
         rows = c.fetchall()
@@ -611,7 +614,7 @@ def search_messages(user_id: str, query: str, limit: int = 50) -> List[Dict]:
                 "to_user_id": row[3],
                 "content": row[4],
                 "message_type": row[5],
-                "created_at": row[6],
+                "created_at": row[6].isoformat() if row[6] else None,
                 "other_username": row[7],
                 "other_user_id": row[8]
             }
@@ -638,7 +641,7 @@ def get_conversation_with_user(user_id: str, other_user_id: str) -> Optional[Dic
         c.execute('''
             SELECT id, user1_id, user2_id, last_message_at
             FROM dm_conversations
-            WHERE user1_id = ? AND user2_id = ?
+            WHERE user1_id = %s AND user2_id = %s
         ''', (u1, u2))
         row = c.fetchone()
 
@@ -649,7 +652,7 @@ def get_conversation_with_user(user_id: str, other_user_id: str) -> Optional[Dic
             "id": row[0],
             "user1_id": row[1],
             "user2_id": row[2],
-            "last_message_at": row[3]
+            "last_message_at": row[3].isoformat() if row[3] else None
         }
     finally:
         conn.close()

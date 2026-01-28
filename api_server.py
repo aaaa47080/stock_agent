@@ -220,20 +220,32 @@ async def receive_frontend_log(log: FrontendLog):
         log_line += f" | Data: {log.data}"
 
     # 寫入檔案
-    with open("frontend_debug.log", "a", encoding="utf-8") as f:
-        f.write(log_line + "\n")
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, lambda: _append_log("frontend_debug.log", log_line))
 
     logger.info(f"[Frontend] {log.message}")
     return {"status": "logged"}
+
+def _append_log(filepath, content):
+    with open(filepath, "a", encoding="utf-8") as f:
+        f.write(content + "\n")
 
 @app.get("/api/debug-log", response_class=PlainTextResponse)
 async def get_debug_logs():
     """查看 debug logs"""
     try:
-        with open("frontend_debug.log", "r", encoding="utf-8") as f:
-            return f.read()
+        loop = asyncio.get_running_loop()
+        content = await loop.run_in_executor(None, lambda: _read_log("frontend_debug.log"))
+        return content
     except FileNotFoundError:
         return "No logs yet"
+
+def _read_log(filepath):
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        raise
 
 # --- 靜態檔案與頁面 ---
 if os.path.exists("web"):

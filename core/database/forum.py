@@ -44,7 +44,7 @@ def get_board_by_slug(slug: str) -> Optional[Dict]:
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('SELECT id, name, slug, description, post_count, is_active FROM boards WHERE slug = ?', (slug,))
+        c.execute('SELECT id, name, slug, description, post_count, is_active FROM boards WHERE slug = %s', (slug,))
         row = c.fetchone()
         if row:
             return {
@@ -87,7 +87,7 @@ def check_daily_post_limit(user_id: str) -> Dict:
         today = datetime.utcnow().strftime('%Y-%m-%d')
         c.execute('''
             SELECT post_count FROM user_daily_posts
-            WHERE user_id = ? AND date = ?
+            WHERE user_id = %s AND date = %s
         ''', (user_id, today))
         row = c.fetchone()
         current_count = row[0] if row else 0
@@ -116,7 +116,7 @@ def create_post(board_id: int, user_id: str, category: str, title: str, content:
     MAX_CONTENT_LENGTH = 10000
     # 標籤數量上限
     MAX_TAGS_PER_POST = 5
-    
+
     conn = get_connection()
     c = conn.cursor()
     try:
@@ -130,7 +130,7 @@ def create_post(board_id: int, user_id: str, category: str, title: str, content:
                 "max_length": MAX_TITLE_LENGTH,
                 "current_length": len(title)
             }
-        
+
         # 檢查內容長度
         if not content or len(content.strip()) == 0:
             return {"success": False, "error": "content_required"}
@@ -141,7 +141,7 @@ def create_post(board_id: int, user_id: str, category: str, title: str, content:
                 "max_length": MAX_CONTENT_LENGTH,
                 "current_length": len(content)
             }
-        
+
         # 檢查標籤數量
         if tags and len(tags) > MAX_TAGS_PER_POST:
             return {
@@ -150,7 +150,7 @@ def create_post(board_id: int, user_id: str, category: str, title: str, content:
                 "max_tags": MAX_TAGS_PER_POST,
                 "provided": len(tags)
             }
-        
+
         # 檢查每日發文限制（免費會員）
         if not skip_limit_check:
             limit_check = check_daily_post_limit(user_id)
@@ -163,18 +163,19 @@ def create_post(board_id: int, user_id: str, category: str, title: str, content:
                 }
 
         # ===== 以下所有操作在單一事務中 =====
-        
+
         # 1. 創建文章
         tags_json = json.dumps(tags, ensure_ascii=False) if tags else None
         c.execute('''
             INSERT INTO posts (board_id, user_id, category, title, content, tags, payment_tx_hash, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+            VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+            RETURNING id
         ''', (board_id, user_id, category, title, content, tags_json, payment_tx_hash))
 
-        post_id = c.lastrowid
+        post_id = c.fetchone()[0]
 
         # 2. 更新看板文章數
-        c.execute('UPDATE boards SET post_count = post_count + 1 WHERE id = ?', (board_id,))
+        c.execute('UPDATE boards SET post_count = post_count + 1 WHERE id = %s', (board_id,))
 
         # 3. 處理標籤
         if tags:
@@ -185,23 +186,23 @@ def create_post(board_id: int, user_id: str, category: str, title: str, content:
                 # 創建或更新標籤
                 c.execute('''
                     INSERT INTO tags (name, post_count, last_used_at, created_at)
-                    VALUES (?, 1, datetime('now'), datetime('now'))
+                    VALUES (%s, 1, NOW(), NOW())
                     ON CONFLICT(name) DO UPDATE SET
-                        post_count = post_count + 1,
-                        last_used_at = datetime('now')
+                        post_count = tags.post_count + 1,
+                        last_used_at = NOW()
                 ''', (tag_name,))
                 # 獲取標籤 ID
-                c.execute('SELECT id FROM tags WHERE name = ?', (tag_name,))
+                c.execute('SELECT id FROM tags WHERE name = %s', (tag_name,))
                 tag_id = c.fetchone()[0]
                 # 建立關聯
-                c.execute('INSERT OR IGNORE INTO post_tags (post_id, tag_id) VALUES (?, ?)', (post_id, tag_id))
+                c.execute('INSERT INTO post_tags (post_id, tag_id) VALUES (%s, %s) ON CONFLICT DO NOTHING', (post_id, tag_id))
 
         # 4. 更新每日發文計數（關鍵：必須在同一事務中）
         today = datetime.utcnow().strftime('%Y-%m-%d')
         c.execute('''
             INSERT INTO user_daily_posts (user_id, date, post_count)
-            VALUES (?, ?, 1)
-            ON CONFLICT(user_id, date) DO UPDATE SET post_count = post_count + 1
+            VALUES (%s, %s, 1)
+            ON CONFLICT(user_id, date) DO UPDATE SET post_count = user_daily_posts.post_count + 1
         ''', (user_id, today))
 
         # 全部成功才提交
@@ -234,11 +235,11 @@ def get_posts(board_id: int = None, category: str = None, tag: str = None,
         params = []
 
         if board_id:
-            query += ' AND p.board_id = ?'
+            query += ' AND p.board_id = %s'
             params.append(board_id)
 
         if category:
-            query += ' AND p.category = ?'
+            query += ' AND p.category = %s'
             params.append(category)
 
         if not include_hidden:
@@ -249,19 +250,23 @@ def get_posts(board_id: int = None, category: str = None, tag: str = None,
                 AND p.id IN (
                     SELECT pt.post_id FROM post_tags pt
                     JOIN tags t ON pt.tag_id = t.id
-                    WHERE t.name = ?
+                    WHERE t.name = %s
                 )
             '''
             params.append(tag.upper())
 
-        query += ' ORDER BY p.is_pinned DESC, p.created_at DESC LIMIT ? OFFSET ?'
+        query += ' ORDER BY p.is_pinned DESC, p.created_at DESC LIMIT %s OFFSET %s'
         params.extend([limit, offset])
 
         c.execute(query, params)
         rows = c.fetchall()
 
-        return [
-            {
+        result = []
+        for r in rows:
+            created_at = r[12]
+            if created_at and not isinstance(created_at, str):
+                created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
+            result.append({
                 "id": r[0],
                 "board_id": r[1],
                 "user_id": r[2],
@@ -274,13 +279,13 @@ def get_posts(board_id: int = None, category: str = None, tag: str = None,
                 "view_count": r[9],
                 "is_pinned": bool(r[10]),
                 "is_hidden": bool(r[11]),
-                "created_at": r[12],
+                "created_at": created_at,
                 "username": r[13],
                 "board_name": r[14],
                 "board_slug": r[15],
                 "net_votes": r[5] - r[6]
-            } for r in rows
-        ]
+            })
+        return result
     finally:
         conn.close()
 
@@ -291,7 +296,7 @@ def get_post_by_id(post_id: int, increment_view: bool = True, viewer_user_id: st
     c = conn.cursor()
     try:
         if increment_view:
-            c.execute('UPDATE posts SET view_count = view_count + 1 WHERE id = ?', (post_id,))
+            c.execute('UPDATE posts SET view_count = view_count + 1 WHERE id = %s', (post_id,))
             conn.commit()
 
         c.execute('''
@@ -302,12 +307,19 @@ def get_post_by_id(post_id: int, increment_view: bool = True, viewer_user_id: st
             FROM posts p
             LEFT JOIN users u ON p.user_id = u.user_id
             LEFT JOIN boards b ON p.board_id = b.id
-            WHERE p.id = ?
+            WHERE p.id = %s
         ''', (post_id,))
         row = c.fetchone()
 
         if row:
             tags = json.loads(row[6]) if row[6] else []
+            created_at = row[15]
+            updated_at = row[16]
+            if created_at and not isinstance(created_at, str):
+                created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
+            if updated_at and not isinstance(updated_at, str):
+                updated_at = updated_at.strftime('%Y-%m-%d %H:%M:%S')
+
             post_data = {
                 "id": row[0],
                 "board_id": row[1],
@@ -324,26 +336,26 @@ def get_post_by_id(post_id: int, increment_view: bool = True, viewer_user_id: st
                 "payment_tx_hash": row[12],
                 "is_pinned": bool(row[13]),
                 "is_hidden": bool(row[14]),
-                "created_at": row[15],
-                "updated_at": row[16],
+                "created_at": created_at,
+                "updated_at": updated_at,
                 "username": row[17],
                 "board_name": row[18],
                 "board_slug": row[19],
                 "net_votes": row[7] - row[8],
                 "viewer_vote": None
             }
-            
+
             # 如果有提供 viewer_user_id，檢查投票狀態
             if viewer_user_id:
                 c.execute('''
-                    SELECT type FROM forum_comments 
-                    WHERE post_id = ? AND user_id = ? AND type IN ('push', 'boo')
+                    SELECT type FROM forum_comments
+                    WHERE post_id = %s AND user_id = %s AND type IN ('push', 'boo')
                     LIMIT 1
                 ''', (post_id, viewer_user_id))
                 vote_row = c.fetchone()
                 if vote_row:
                     post_data["viewer_vote"] = vote_row[0]
-                    
+
             return post_data
         return None
     finally:
@@ -356,7 +368,7 @@ def update_post(post_id: int, user_id: str, title: str = None, content: str = No
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('SELECT user_id FROM posts WHERE id = ?', (post_id,))
+        c.execute('SELECT user_id FROM posts WHERE id = %s', (post_id,))
         row = c.fetchone()
         if not row or row[0] != user_id:
             return False
@@ -365,19 +377,19 @@ def update_post(post_id: int, user_id: str, title: str = None, content: str = No
         params = []
 
         if title is not None:
-            updates.append('title = ?')
+            updates.append('title = %s')
             params.append(title)
         if content is not None:
-            updates.append('content = ?')
+            updates.append('content = %s')
             params.append(content)
         if category is not None:
-            updates.append('category = ?')
+            updates.append('category = %s')
             params.append(category)
 
         if updates:
-            updates.append('updated_at = datetime("now")')
+            updates.append('updated_at = NOW()')
             params.append(post_id)
-            c.execute(f'UPDATE posts SET {", ".join(updates)} WHERE id = ?', params)
+            c.execute(f'UPDATE posts SET {", ".join(updates)} WHERE id = %s', params)
             conn.commit()
             return c.rowcount > 0
         return False
@@ -390,7 +402,7 @@ def delete_post(post_id: int, user_id: str) -> bool:
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('UPDATE posts SET is_hidden = 1 WHERE id = ? AND user_id = ?', (post_id, user_id))
+        c.execute('UPDATE posts SET is_hidden = 1 WHERE id = %s AND user_id = %s', (post_id, user_id))
         conn.commit()
         return c.rowcount > 0
     finally:
@@ -409,14 +421,18 @@ def get_user_posts(user_id: str, limit: int = 20, offset: int = 0) -> List[Dict]
                    b.name as board_name, b.slug as board_slug
             FROM posts p
             LEFT JOIN boards b ON p.board_id = b.id
-            WHERE p.user_id = ? AND p.is_hidden = 0
+            WHERE p.user_id = %s AND p.is_hidden = 0
             ORDER BY p.created_at DESC
-            LIMIT ? OFFSET ?
+            LIMIT %s OFFSET %s
         ''', (user_id, limit, offset))
         rows = c.fetchall()
 
-        return [
-            {
+        result = []
+        for r in rows:
+            created_at = r[11]
+            if created_at and not isinstance(created_at, str):
+                created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
+            result.append({
                 "id": r[0],
                 "board_id": r[1],
                 "category": r[2],
@@ -428,12 +444,12 @@ def get_user_posts(user_id: str, limit: int = 20, offset: int = 0) -> List[Dict]
                 "view_count": r[8],
                 "is_pinned": bool(r[9]),
                 "is_hidden": bool(r[10]),
-                "created_at": r[11],
+                "created_at": created_at,
                 "board_name": r[12],
                 "board_slug": r[13],
                 "net_votes": r[4] - r[5]
-            } for r in rows
-        ]
+            })
+        return result
     finally:
         conn.close()
 
@@ -462,7 +478,7 @@ def add_comment(post_id: int, user_id: str, comment_type: str, content: str = No
                 today = datetime.utcnow().strftime('%Y-%m-%d')
                 c.execute('''
                     SELECT comment_count FROM user_daily_comments
-                    WHERE user_id = ? AND date = ?
+                    WHERE user_id = %s AND date = %s
                 ''', (user_id, today))
                 row = c.fetchone()
                 current_count = row[0] if row else 0
@@ -474,59 +490,60 @@ def add_comment(post_id: int, user_id: str, comment_type: str, content: str = No
         if comment_type in ['push', 'boo']:
             c.execute('''
                 SELECT id, type FROM forum_comments
-                WHERE post_id = ? AND user_id = ? AND type IN ('push', 'boo')
+                WHERE post_id = %s AND user_id = %s AND type IN ('push', 'boo')
             ''', (post_id, user_id))
             existing_vote = c.fetchone()
-            
+
             if existing_vote:
                 vote_id, v_type = existing_vote
-                
+
                 # 如果點擊的是同一種類型 -> 取消 (Toggle Off)
                 if v_type == comment_type:
-                    c.execute('DELETE FROM forum_comments WHERE id = ?', (vote_id,))
+                    c.execute('DELETE FROM forum_comments WHERE id = %s', (vote_id,))
                     # push/boo 不影響 comment_count，只更新各自的計數
                     if v_type == 'push':
-                        c.execute('UPDATE posts SET push_count = MAX(0, push_count - 1) WHERE id = ?', (post_id,))
+                        c.execute('UPDATE posts SET push_count = GREATEST(0, push_count - 1) WHERE id = %s', (post_id,))
                     else:
-                        c.execute('UPDATE posts SET boo_count = MAX(0, boo_count - 1) WHERE id = ?', (post_id,))
+                        c.execute('UPDATE posts SET boo_count = GREATEST(0, boo_count - 1) WHERE id = %s', (post_id,))
                     conn.commit()
                     return {"success": True, "action": "cancelled"}
 
                 # 如果點擊的是不同類型 -> 切換 (Switch)
                 else:
                     # 先刪除舊的
-                    c.execute('DELETE FROM forum_comments WHERE id = ?', (vote_id,))
+                    c.execute('DELETE FROM forum_comments WHERE id = %s', (vote_id,))
                     # push/boo 不影響 comment_count，只更新各自的計數
                     if v_type == 'push':
-                        c.execute('UPDATE posts SET push_count = MAX(0, push_count - 1) WHERE id = ?', (post_id,))
+                        c.execute('UPDATE posts SET push_count = GREATEST(0, push_count - 1) WHERE id = %s', (post_id,))
                     else:
-                        c.execute('UPDATE posts SET boo_count = MAX(0, boo_count - 1) WHERE id = ?', (post_id,))
+                        c.execute('UPDATE posts SET boo_count = GREATEST(0, boo_count - 1) WHERE id = %s', (post_id,))
                     # 接下來會繼續執行下面的 INSERT
 
         # 新增回覆
         c.execute('''
             INSERT INTO forum_comments (post_id, user_id, parent_id, type, content, created_at)
-            VALUES (?, ?, ?, ?, ?, datetime('now'))
+            VALUES (%s, %s, %s, %s, %s, NOW())
+            RETURNING id
         ''', (post_id, user_id, parent_id, comment_type, content))
 
-        comment_id = c.lastrowid
+        comment_id = c.fetchone()[0]
 
         # 更新文章統計
         # 注意：comment_count 只統計真正的留言，push/boo 只更新各自的計數
         if comment_type == 'push':
-            c.execute('UPDATE posts SET push_count = push_count + 1 WHERE id = ?', (post_id,))
+            c.execute('UPDATE posts SET push_count = push_count + 1 WHERE id = %s', (post_id,))
         elif comment_type == 'boo':
-            c.execute('UPDATE posts SET boo_count = boo_count + 1 WHERE id = ?', (post_id,))
+            c.execute('UPDATE posts SET boo_count = boo_count + 1 WHERE id = %s', (post_id,))
         else:
-            c.execute('UPDATE posts SET comment_count = comment_count + 1 WHERE id = ?', (post_id,))
+            c.execute('UPDATE posts SET comment_count = comment_count + 1 WHERE id = %s', (post_id,))
 
         # 更新每日回覆計數 (僅針對實際留言)
         if comment_type == 'comment':
             today = datetime.utcnow().strftime('%Y-%m-%d')
             c.execute('''
                 INSERT INTO user_daily_comments (user_id, date, comment_count)
-                VALUES (?, ?, 1)
-                ON CONFLICT(user_id, date) DO UPDATE SET comment_count = comment_count + 1
+                VALUES (%s, %s, 1)
+                ON CONFLICT(user_id, date) DO UPDATE SET comment_count = user_daily_comments.comment_count + 1
             ''', (user_id, today))
 
         conn.commit()
@@ -549,7 +566,7 @@ def get_comments(post_id: int, include_hidden: bool = False) -> List[Dict]:
                    c.is_hidden, c.created_at, u.username
             FROM forum_comments c
             LEFT JOIN users u ON c.user_id = u.user_id
-            WHERE c.post_id = ?
+            WHERE c.post_id = %s
         '''
         if not include_hidden:
             query += ' AND c.is_hidden = 0'
@@ -558,8 +575,12 @@ def get_comments(post_id: int, include_hidden: bool = False) -> List[Dict]:
         c.execute(query, (post_id,))
         rows = c.fetchall()
 
-        return [
-            {
+        result = []
+        for r in rows:
+            created_at = r[7]
+            if created_at and not isinstance(created_at, str):
+                created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
+            result.append({
                 "id": r[0],
                 "post_id": r[1],
                 "user_id": r[2],
@@ -567,10 +588,10 @@ def get_comments(post_id: int, include_hidden: bool = False) -> List[Dict]:
                 "type": r[4],
                 "content": r[5],
                 "is_hidden": bool(r[6]),
-                "created_at": r[7],
+                "created_at": created_at,
                 "username": r[8]
-            } for r in rows
-        ]
+            })
+        return result
     finally:
         conn.close()
 
@@ -581,7 +602,7 @@ def get_daily_comment_count(user_id: str) -> Dict:
     c = conn.cursor()
     try:
         today = datetime.utcnow().strftime('%Y-%m-%d')
-        c.execute('SELECT comment_count FROM user_daily_comments WHERE user_id = ? AND date = ?', (user_id, today))
+        c.execute('SELECT comment_count FROM user_daily_comments WHERE user_id = %s AND date = %s', (user_id, today))
         row = c.fetchone()
         count = row[0] if row else 0
 
@@ -604,7 +625,7 @@ def get_daily_post_count(user_id: str) -> Dict:
     c = conn.cursor()
     try:
         today = datetime.utcnow().strftime('%Y-%m-%d')
-        c.execute('SELECT post_count FROM user_daily_posts WHERE user_id = ? AND date = ?', (user_id, today))
+        c.execute('SELECT post_count FROM user_daily_posts WHERE user_id = %s AND date = %s', (user_id, today))
         row = c.fetchone()
         count = row[0] if row else 0
 
@@ -632,13 +653,14 @@ def create_tip(post_id: int, from_user_id: str, to_user_id: str, amount: float, 
     try:
         c.execute('''
             INSERT INTO tips (post_id, from_user_id, to_user_id, amount, tx_hash, created_at)
-            VALUES (?, ?, ?, ?, ?, datetime('now'))
+            VALUES (%s, %s, %s, %s, %s, NOW())
+            RETURNING id
         ''', (post_id, from_user_id, to_user_id, amount, tx_hash))
 
-        tip_id = c.lastrowid
+        tip_id = c.fetchone()[0]
 
         # 更新文章累計打賞
-        c.execute('UPDATE posts SET tips_total = tips_total + ? WHERE id = ?', (amount, post_id))
+        c.execute('UPDATE posts SET tips_total = tips_total + %s WHERE id = %s', (amount, post_id))
 
         conn.commit()
         return tip_id
@@ -661,24 +683,28 @@ def get_tips_sent(user_id: str, limit: int = 50) -> List[Dict]:
             FROM tips t
             LEFT JOIN posts p ON t.post_id = p.id
             LEFT JOIN users u ON t.to_user_id = u.user_id
-            WHERE t.from_user_id = ?
+            WHERE t.from_user_id = %s
             ORDER BY t.created_at DESC
-            LIMIT ?
+            LIMIT %s
         ''', (user_id, limit))
         rows = c.fetchall()
 
-        return [
-            {
+        result = []
+        for r in rows:
+            created_at = r[5]
+            if created_at and not isinstance(created_at, str):
+                created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
+            result.append({
                 "id": r[0],
                 "post_id": r[1],
                 "to_user_id": r[2],
                 "amount": r[3],
                 "tx_hash": r[4],
-                "created_at": r[5],
+                "created_at": created_at,
                 "post_title": r[6],
                 "to_username": r[7]
-            } for r in rows
-        ]
+            })
+        return result
     finally:
         conn.close()
 
@@ -694,24 +720,28 @@ def get_tips_received(user_id: str, limit: int = 50) -> List[Dict]:
             FROM tips t
             LEFT JOIN posts p ON t.post_id = p.id
             LEFT JOIN users u ON t.from_user_id = u.user_id
-            WHERE t.to_user_id = ?
+            WHERE t.to_user_id = %s
             ORDER BY t.created_at DESC
-            LIMIT ?
+            LIMIT %s
         ''', (user_id, limit))
         rows = c.fetchall()
 
-        return [
-            {
+        result = []
+        for r in rows:
+            created_at = r[5]
+            if created_at and not isinstance(created_at, str):
+                created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
+            result.append({
                 "id": r[0],
                 "post_id": r[1],
                 "from_user_id": r[2],
                 "amount": r[3],
                 "tx_hash": r[4],
-                "created_at": r[5],
+                "created_at": created_at,
                 "post_title": r[6],
                 "from_username": r[7]
-            } for r in rows
-        ]
+            })
+        return result
     finally:
         conn.close()
 
@@ -721,7 +751,7 @@ def get_tips_total_received(user_id: str) -> float:
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('SELECT COALESCE(SUM(amount), 0) FROM tips WHERE to_user_id = ?', (user_id,))
+        c.execute('SELECT COALESCE(SUM(amount), 0) FROM tips WHERE to_user_id = %s', (user_id,))
         return c.fetchone()[0]
     finally:
         conn.close()
@@ -739,20 +769,24 @@ def get_trending_tags(limit: int = 10) -> List[Dict]:
         c.execute('''
             SELECT id, name, post_count, last_used_at
             FROM tags
-            WHERE last_used_at > datetime('now', '-7 days')
+            WHERE last_used_at > NOW() - INTERVAL '7 days'
             ORDER BY post_count DESC
-            LIMIT ?
+            LIMIT %s
         ''', (limit,))
         rows = c.fetchall()
 
-        return [
-            {
+        result = []
+        for r in rows:
+            last_used_at = r[3]
+            if last_used_at and not isinstance(last_used_at, str):
+                last_used_at = last_used_at.strftime('%Y-%m-%d %H:%M:%S')
+            result.append({
                 "id": r[0],
                 "name": r[1],
                 "post_count": r[2],
-                "last_used_at": r[3]
-            } for r in rows
-        ]
+                "last_used_at": last_used_at
+            })
+        return result
     finally:
         conn.close()
 
@@ -770,9 +804,9 @@ def search_tags(query: str, limit: int = 10) -> List[Dict]:
         c.execute('''
             SELECT id, name, post_count
             FROM tags
-            WHERE name LIKE ?
+            WHERE name LIKE %s
             ORDER BY post_count DESC
-            LIMIT ?
+            LIMIT %s
         ''', (f'%{query.upper()}%', limit))
         rows = c.fetchall()
 
@@ -797,15 +831,15 @@ def get_user_forum_stats(user_id: str) -> Dict:
     c = conn.cursor()
     try:
         # 文章數
-        c.execute('SELECT COUNT(*) FROM posts WHERE user_id = ? AND is_hidden = 0', (user_id,))
+        c.execute('SELECT COUNT(*) FROM posts WHERE user_id = %s AND is_hidden = 0', (user_id,))
         post_count = c.fetchone()[0]
 
         # 回覆數
-        c.execute('SELECT COUNT(*) FROM forum_comments WHERE user_id = ? AND is_hidden = 0', (user_id,))
+        c.execute('SELECT COUNT(*) FROM forum_comments WHERE user_id = %s AND is_hidden = 0', (user_id,))
         comment_count = c.fetchone()[0]
 
         # 獲得的推數
-        c.execute('SELECT COALESCE(SUM(push_count), 0) FROM posts WHERE user_id = ?', (user_id,))
+        c.execute('SELECT COALESCE(SUM(push_count), 0) FROM posts WHERE user_id = %s', (user_id,))
         total_pushes = c.fetchone()[0]
 
         # 收到的打賞總額
@@ -831,45 +865,49 @@ def get_user_payment_history(user_id: str, limit: int = 50) -> List[Dict]:
         query = '''
             SELECT type, id, title, amount, tx_hash, created_at FROM (
                 -- 文章支付紀錄
-                SELECT 
+                SELECT
                     'post' as type,
-                    id, 
-                    title, 
-                    1.0 as amount, 
-                    payment_tx_hash as tx_hash, 
+                    id,
+                    title,
+                    1.0 as amount,
+                    payment_tx_hash as tx_hash,
                     created_at
                 FROM posts
-                WHERE user_id = ? AND payment_tx_hash IS NOT NULL AND payment_tx_hash != 'pro_member_free'
+                WHERE user_id = %s AND payment_tx_hash IS NOT NULL AND payment_tx_hash != 'pro_member_free'
 
                 UNION
 
                 -- 會員購買紀錄
-                SELECT 
+                SELECT
                     'membership' as type,
-                    id, 
-                    'Premium Membership (' || months || ' Month)' as title, 
-                    amount, 
-                    tx_hash, 
+                    id,
+                    'Premium Membership (' || months || ' Month)' as title,
+                    amount,
+                    tx_hash,
                     created_at
                 FROM membership_payments
-                WHERE user_id = ?
-            )
+                WHERE user_id = %s
+            ) AS combined
             ORDER BY created_at DESC
-            LIMIT ?
+            LIMIT %s
         '''
-        
+
         c.execute(query, (user_id, user_id, limit))
         rows = c.fetchall()
 
-        return [
-            {
+        result = []
+        for r in rows:
+            created_at = r[5]
+            if created_at and not isinstance(created_at, str):
+                created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
+            result.append({
                 "type": r[0],
                 "ref_id": r[1],
                 "title": r[2],
                 "amount": r[3],
                 "tx_hash": r[4],
-                "created_at": r[5]
-            } for r in rows
-        ]
+                "created_at": created_at
+            })
+        return result
     finally:
         conn.close()

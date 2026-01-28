@@ -5,7 +5,9 @@ from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconn
 from typing import Optional, Set, Dict
 from pydantic import BaseModel, Field
 import json
+import json
 import asyncio
+from functools import partial
 
 from core.database import (
     get_or_create_conversation,
@@ -122,11 +124,16 @@ async def get_conversations_endpoint(
     """
     try:
         # 驗證用戶存在
-        if not get_user_by_id(user_id):
+        loop = asyncio.get_running_loop()
+        user_exists = await loop.run_in_executor(None, get_user_by_id, user_id)
+        if not user_exists:
             raise HTTPException(status_code=401, detail="用戶不存在")
 
-        conversations = get_conversations(user_id, limit=limit, offset=offset)
-        total_unread = get_unread_count(user_id)
+        conversations = await loop.run_in_executor(
+            None, 
+            partial(get_conversations, user_id, limit=limit, offset=offset)
+        )
+        total_unread = await loop.run_in_executor(None, get_unread_count, user_id)
 
         return {
             "success": True,
@@ -152,7 +159,11 @@ async def get_messages_endpoint(
     取得對話中的訊息
     """
     try:
-        result = get_dm_messages(conversation_id, user_id, limit=limit, before_id=before_id)
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(
+            None,
+            partial(get_dm_messages, conversation_id, user_id, limit=limit, before_id=before_id)
+        )
 
         if not result["success"]:
             raise HTTPException(status_code=404, detail="對話不存在或無權限")
@@ -175,11 +186,19 @@ async def get_conversation_with_user_endpoint(
     取得與特定用戶的對話和訊息
     """
     try:
+        loop = asyncio.get_running_loop()
+        
         # 取得或建立對話
-        conv = get_or_create_conversation(user_id, other_user_id)
+        conv = await loop.run_in_executor(
+            None,
+            partial(get_or_create_conversation, user_id, other_user_id)
+        )
 
         # 取得訊息
-        result = get_dm_messages(conv["id"], user_id, limit=limit)
+        result = await loop.run_in_executor(
+            None,
+            partial(get_dm_messages, conv["id"], user_id, limit=limit)
+        )
 
         return {
             "success": True,
@@ -202,25 +221,31 @@ async def send_message_endpoint(
     """
     try:
         # 驗證用戶存在
-        if not get_user_by_id(user_id):
+        loop = asyncio.get_running_loop()
+        sender_exists = await loop.run_in_executor(None, get_user_by_id, user_id)
+        if not sender_exists:
             raise HTTPException(status_code=401, detail="用戶不存在")
-        if not get_user_by_id(request.to_user_id):
+            
+        receiver_exists = await loop.run_in_executor(None, get_user_by_id, request.to_user_id)
+        if not receiver_exists:
             raise HTTPException(status_code=404, detail="接收者不存在")
 
         # 檢查是否被封鎖
-        if is_blocked(user_id, request.to_user_id):
+        blocked = await loop.run_in_executor(None, partial(is_blocked, user_id, request.to_user_id))
+        if blocked:
             raise HTTPException(status_code=403, detail="無法發送訊息給此用戶")
 
         # 檢查是否為好友
-        if not is_friend(user_id, request.to_user_id):
+        friend = await loop.run_in_executor(None, partial(is_friend, user_id, request.to_user_id))
+        if not friend:
             raise HTTPException(status_code=403, detail="只能發送訊息給好友")
 
         # 更新用戶最後活動時間
-        update_last_active(user_id)
+        await loop.run_in_executor(None, update_last_active, user_id)
 
         # 檢查訊息限制
         is_pro = _check_user_is_pro(user_id)
-        limit_check = check_message_limit(user_id, is_pro)
+        limit_check = await loop.run_in_executor(None, partial(check_message_limit, user_id, is_pro))
 
         if not limit_check["can_send"]:
             raise HTTPException(
@@ -229,14 +254,17 @@ async def send_message_endpoint(
             )
 
         # 發送訊息
-        result = send_dm_message(user_id, request.to_user_id, request.content)
+        result = await loop.run_in_executor(
+            None,
+            partial(send_dm_message, user_id, request.to_user_id, request.content)
+        )
 
         if not result["success"]:
             raise HTTPException(status_code=400, detail=result.get("error", "發送失敗"))
 
         # 增加訊息計數（非 Pro 用戶）
         if not is_pro:
-            increment_message_count(user_id)
+            await loop.run_in_executor(None, increment_message_count, user_id)
 
         # 透過 WebSocket 推送給接收者
         await message_manager.send_to_user(request.to_user_id, {
@@ -267,19 +295,21 @@ async def mark_read_endpoint(
     標記對話為已讀
     """
     try:
-        result = mark_as_read(request.conversation_id, user_id)
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, partial(mark_as_read, request.conversation_id, user_id))
 
         if not result["success"]:
             raise HTTPException(status_code=404, detail="對話不存在")
 
         # 取得對話資訊以通知對方（已讀回執）
-        conv = get_conversation_by_id(request.conversation_id, user_id)
+        conv = await loop.run_in_executor(None, partial(get_conversation_by_id, request.conversation_id, user_id))
         if conv:
             # 確定對方用戶 ID
             other_user_id = conv["user2_id"] if conv["user1_id"] == user_id else conv["user1_id"]
 
             # 檢查對方是否為 Pro 會員（只有 Pro 會員能看到已讀回執）
-            if _check_user_is_pro(other_user_id):
+            is_other_pro = _check_user_is_pro(other_user_id)
+            if is_other_pro:
                 await message_manager.send_to_user(other_user_id, {
                     "type": "read_receipt",
                     "conversation_id": request.conversation_id,
@@ -304,9 +334,13 @@ async def send_greeting_endpoint(
     """
     try:
         # 驗證用戶存在
-        if not get_user_by_id(user_id):
+        loop = asyncio.get_running_loop()
+        sender_exists = await loop.run_in_executor(None, get_user_by_id, user_id)
+        if not sender_exists:
             raise HTTPException(status_code=401, detail="用戶不存在")
-        if not get_user_by_id(request.to_user_id):
+            
+        receiver_exists = await loop.run_in_executor(None, get_user_by_id, request.to_user_id)
+        if not receiver_exists:
             raise HTTPException(status_code=404, detail="接收者不存在")
 
         # 檢查是否為 Pro 會員
@@ -315,11 +349,12 @@ async def send_greeting_endpoint(
             raise HTTPException(status_code=403, detail="打招呼功能僅限 Pro 會員使用")
 
         # 檢查是否被封鎖
-        if is_blocked(user_id, request.to_user_id):
+        blocked = await loop.run_in_executor(None, partial(is_blocked, user_id, request.to_user_id))
+        if blocked:
             raise HTTPException(status_code=403, detail="無法發送訊息給此用戶")
 
         # 檢查打招呼限制
-        limit_check = check_greeting_limit(user_id, is_pro)
+        limit_check = await loop.run_in_executor(None, partial(check_greeting_limit, user_id, is_pro))
         if not limit_check["can_send"]:
             raise HTTPException(
                 status_code=429,
@@ -327,13 +362,16 @@ async def send_greeting_endpoint(
             )
 
         # 發送打招呼
-        result = send_greeting(user_id, request.to_user_id, request.content)
+        result = await loop.run_in_executor(
+            None, 
+            partial(send_greeting, user_id, request.to_user_id, request.content)
+        )
 
         if not result["success"]:
             raise HTTPException(status_code=400, detail=result.get("error", "發送失敗"))
 
         # 增加打招呼計數
-        increment_greeting_count(user_id)
+        await loop.run_in_executor(None, increment_greeting_count, user_id)
 
         # 透過 WebSocket 推送
         await message_manager.send_to_user(request.to_user_id, {
@@ -364,7 +402,8 @@ async def search_messages_endpoint(
         if not is_pro:
             raise HTTPException(status_code=403, detail="訊息搜尋功能僅限 Pro 會員使用")
 
-        results = search_messages(user_id, q, limit=limit)
+        loop = asyncio.get_running_loop()
+        results = await loop.run_in_executor(None, partial(search_messages, user_id, q, limit=limit))
 
         return {
             "success": True,
@@ -386,7 +425,8 @@ async def get_unread_count_endpoint(
     取得未讀訊息數量
     """
     try:
-        count = get_unread_count(user_id)
+        loop = asyncio.get_running_loop()
+        count = await loop.run_in_executor(None, get_unread_count, user_id)
         return {
             "success": True,
             "unread_count": count
@@ -406,9 +446,11 @@ async def get_message_limits_endpoint(
     try:
         from core.database import get_config
         is_pro = _check_user_is_pro(user_id)
-        message_limit = check_message_limit(user_id, is_pro)
-        greeting_limit = check_greeting_limit(user_id, is_pro)
-        max_length = get_config('limit_message_max_length', 500)
+        
+        loop = asyncio.get_running_loop()
+        message_limit = await loop.run_in_executor(None, partial(check_message_limit, user_id, is_pro))
+        greeting_limit = await loop.run_in_executor(None, partial(check_greeting_limit, user_id, is_pro))
+        max_length = await loop.run_in_executor(None, partial(get_config, 'limit_message_max_length', 500))
 
         return {
             "success": True,
@@ -494,7 +536,9 @@ async def websocket_endpoint(websocket: WebSocket):
             user_id = auth_message["user_id"]
 
             # 驗證用戶存在
-            if not get_user_by_id(user_id):
+            loop = asyncio.get_running_loop()
+            user_exists = await loop.run_in_executor(None, get_user_by_id, user_id)
+            if not user_exists:
                 await websocket.send_json({"type": "error", "message": "用戶不存在"})
                 await websocket.close()
                 return
@@ -513,10 +557,10 @@ async def websocket_endpoint(websocket: WebSocket):
         logger.info(f"用戶 {user_id} WebSocket 認證成功")
 
         # 更新用戶最後活動時間
-        update_last_active(user_id)
+        await loop.run_in_executor(None, update_last_active, user_id)
 
         # 發送認證成功和未讀數量
-        unread_count = get_unread_count(user_id)
+        unread_count = await loop.run_in_executor(None, get_unread_count, user_id)
         await websocket.send_json({
             "type": "authenticated",
             "user_id": user_id,

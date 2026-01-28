@@ -3,6 +3,7 @@ import asyncio
 import os
 import uuid
 from typing import Optional
+from functools import partial
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
@@ -35,32 +36,37 @@ router = APIRouter()
 @router.get("/api/chat/sessions")
 async def get_user_sessions(user_id: str = "local_user"):
     """獲取用戶對話列表（根據 user_id 過濾）"""
-    sessions = get_sessions(user_id=user_id)
+    loop = asyncio.get_running_loop()
+    sessions = await loop.run_in_executor(None, partial(get_sessions, user_id=user_id))
     return {"sessions": sessions}
 
 @router.post("/api/chat/sessions")
 async def create_new_session(user_id: str = "local_user"):
     """創建新對話（綁定 user_id）"""
     new_id = str(uuid.uuid4())
-    create_session(new_id, title="New Chat", user_id=user_id)
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, partial(create_session, new_id, title="New Chat", user_id=user_id))
     return {"session_id": new_id, "title": "New Chat"}
 
 @router.delete("/api/chat/sessions/{session_id}")
 async def delete_user_session(session_id: str):
     """刪除特定對話"""
-    delete_session(session_id)
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, delete_session, session_id)
     return {"status": "success", "message": f"Session {session_id} deleted"}
 
 @router.put("/api/chat/sessions/{session_id}/pin")
 async def pin_user_session(session_id: str, is_pinned: bool = Query(..., description="Set to true to pin, false to unpin")):
     """切換對話置頂狀態"""
-    toggle_session_pin(session_id, is_pinned)
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, partial(toggle_session_pin, session_id, is_pinned))
     return {"status": "success", "session_id": session_id, "is_pinned": is_pinned}
 
 @router.get("/api/chat/history")
 async def get_history(session_id: str = "default", user_id: str = "local_user"):
     """獲取特定會話的歷史（未來可加入 user_id 驗證）"""
-    history = get_chat_history(session_id=session_id, limit=50)
+    loop = asyncio.get_running_loop()
+    history = await loop.run_in_executor(None, partial(get_chat_history, session_id=session_id, limit=50))
     return {"history": history}
 
 # --- Analysis Endpoint ---
@@ -108,7 +114,8 @@ async def analyze_crypto(request: QueryRequest):
     logger.info(f"收到分析請求 (Session: {request.session_id}): {request.message[:50]}...")
 
     # 1. 保存用戶訊息 (指定 Session ID)
-    save_chat_message("user", request.message, session_id=request.session_id)
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, partial(save_chat_message, "user", request.message, session_id=request.session_id))
 
     async def event_generator():
         full_response = ""
@@ -133,7 +140,10 @@ async def analyze_crypto(request: QueryRequest):
                 yield f"data: {json.dumps({'content': part})}\n\n"
             
             # 2. 保存 AI 完整回應 (指定 Session ID)
-            save_chat_message("assistant", full_response, session_id=request.session_id)
+            # 注意: 這裡不能直接存取外層 loop，因為我們在 generator 內部。但在 Python 3.7+ 的 async generator 中應該沒問題，
+            # 或者我們可以獲取新的 loop。安全起見獲取 loop。
+            inner_loop = asyncio.get_running_loop()
+            await inner_loop.run_in_executor(None, partial(save_chat_message, "assistant", full_response, session_id=request.session_id))
 
             yield f"data: {json.dumps({'done': True})}\n\n"
         except Exception as e:
@@ -149,7 +159,8 @@ async def clear_chat_history_endpoint(session_id: str = "default"):
         globals.bot.clear_history()
     
     # 清除 DB 歷史
-    db_clear_history(session_id)
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, db_clear_history, session_id)
     
     return {"status": "success", "message": "Chat history cleared"}
 

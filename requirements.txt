@@ -151,3 +151,4 @@ zstandard==0.25.0
 
 # === 可選依賴（商業級功能）===
 redis==5.0.0  # 配置快取同步（多進程/多機器部署時推薦）
+psycopg2-binary==2.9.10  # PostgreSQL 連接

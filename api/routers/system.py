@@ -1,5 +1,7 @@
 import os
 import sys
+import asyncio
+from functools import partial
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from dotenv import load_dotenv
@@ -137,7 +139,9 @@ async def validate_key(request: KeyValidationRequest):
         )
         
         # 嘗試調用
-        response = llm.invoke([HumanMessage(content=test_prompt)])
+        # 使用 run_in_executor 避免阻塞，因為 llm.invoke 可能包含網路請求
+        loop = asyncio.get_running_loop()
+        response = await loop.run_in_executor(None, lambda: llm.invoke([HumanMessage(content=test_prompt)]))
         reply_text = response.content
 
         return {
@@ -222,7 +226,7 @@ async def get_pi_prices():
     商用化設計：配置存儲在數據庫中，可通過管理 API 即時修改
     """
     return {
-        "prices": get_prices(),
+        "prices": await asyncio.get_running_loop().run_in_executor(None, get_prices),
         "currency": "Pi"
     }
 
@@ -235,7 +239,7 @@ async def get_forum_limits():
     商用化設計：配置存儲在數據庫中，可通過管理 API 即時修改
     """
     return {
-        "limits": get_limits()
+        "limits": await asyncio.get_running_loop().run_in_executor(None, get_limits)
     }
 
 @router.post("/api/settings/update")
@@ -298,7 +302,8 @@ async def update_user_settings(settings: UserSettings):
 
         # 5. Save to .env file for persistence
         if env_updates:
-            update_env_file(env_updates, project_root)
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, partial(update_env_file, env_updates, project_root))
 
         # 6. Re-initialize CryptoAnalysisBot if it wasn't initialized or needs refresh
         try:
@@ -323,11 +328,19 @@ async def update_api_keys(settings: APIKeySettings):
     
     try:
         # 1. Update .env file for persistence
-        update_env_file({
-            "OKX_API_KEY": settings.api_key,
-            "OKX_API_SECRET": settings.secret_key,
-            "OKX_PASSPHRASE": settings.passphrase
-        }, project_root)
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(
+            None, 
+            partial(
+                update_env_file, 
+                {
+                    "OKX_API_KEY": settings.api_key,
+                    "OKX_API_SECRET": settings.secret_key,
+                    "OKX_PASSPHRASE": settings.passphrase
+                }, 
+                project_root
+            )
+        )
         
         # 2. Update environment variables for current process
         os.environ["OKX_API_KEY"] = settings.api_key

@@ -101,7 +101,7 @@ async def update_funding_rates():
             if "error" not in funding_rates:
                 FUNDING_RATE_CACHE["timestamp"] = datetime.now().isoformat()
                 FUNDING_RATE_CACHE["data"] = funding_rates
-                save_funding_rate_cache()
+                await loop.run_in_executor(None, save_funding_rate_cache)
                 logger.info(f"Funding rates updated: {len(funding_rates)} symbols")
             else:
                 logger.error(f"Failed to update funding rates: {funding_rates.get('error')}")
@@ -247,7 +247,8 @@ async def refresh_all_market_pulse_data(target_symbols: List[str] = None):
             # 成功後強制寫入 DB，確保續傳點被永久保存
             if sym in MARKET_PULSE_CACHE:
                 MARKET_PULSE_CACHE[sym]["timestamp"] = window_start_iso
-                set_cache("MARKET_PULSE", MARKET_PULSE_CACHE)
+                loop = asyncio.get_running_loop()
+                await loop.run_in_executor(None, set_cache, "MARKET_PULSE", MARKET_PULSE_CACHE)
         finally:
             ANALYSIS_STATUS["completed"] += 1
 
@@ -450,17 +451,23 @@ async def run_screener_analysis():
             oversold = oversold.rename(columns=rename_map).replace({np.nan: None})
             overbought = overbought.rename(columns=rename_map).replace({np.nan: None})
             
-            timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            cached_screener_result["timestamp"] = timestamp_str
-            cached_screener_result["data"] = {
-                "top_performers": top_performers.to_dict(orient="records"),
-                "oversold": oversold.to_dict(orient="records"),
-                "overbought": overbought.to_dict(orient="records"),
-                "last_updated": timestamp_str
-            }
-            
-            save_screener_cache(cached_screener_result)
-            logger.info("Heavy screener analysis complete.")
+            # 只有當有數據時才更新快取，避免因網路錯誤導致快取被清空
+            if not top_performers.empty:
+                timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                cached_screener_result["timestamp"] = timestamp_str
+                cached_screener_result["data"] = {
+                    "top_performers": top_performers.to_dict(orient="records"),
+                    "oversold": oversold.to_dict(orient="records"),
+                    "overbought": overbought.to_dict(orient="records"),
+                    "last_updated": timestamp_str
+                }
+                
+                await loop.run_in_executor(None, save_screener_cache, cached_screener_result)
+                logger.info(f"Heavy screener analysis complete. (Top: {len(top_performers)})")
+            else:
+                logger.warning("Heavy screener analysis returned empty results. Skipping cache update.")
+                
+            # 解除鎖定由 async with 處理
             
         except Exception as e:
             logger.error(f"❌ [分析任務] 執行失敗: {e}")

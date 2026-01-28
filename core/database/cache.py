@@ -15,14 +15,15 @@ def set_cache(key: str, data: Any):
         json_str = json.dumps(data, ensure_ascii=False)
         c.execute('''
             INSERT INTO system_cache (key, value, updated_at)
-            VALUES (?, ?, datetime('now'))
+            VALUES (%s, %s, NOW())
             ON CONFLICT(key) DO UPDATE SET
-                value = excluded.value,
-                updated_at = excluded.updated_at
+                value = EXCLUDED.value,
+                updated_at = EXCLUDED.updated_at
         ''', (key, json_str))
         conn.commit()
     except Exception as e:
         print(f"Cache write error: {e}")
+        conn.rollback()
     finally:
         conn.close()
 
@@ -32,7 +33,7 @@ def get_cache(key: str) -> Optional[Any]:
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('SELECT value FROM system_cache WHERE key = ?', (key,))
+        c.execute('SELECT value FROM system_cache WHERE key = %s', (key,))
         row = c.fetchone()
         if row:
             return json.loads(row[0])
@@ -49,7 +50,7 @@ def delete_cache(key: str) -> bool:
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('DELETE FROM system_cache WHERE key = ?', (key,))
+        c.execute('DELETE FROM system_cache WHERE key = %s', (key,))
         conn.commit()
         return c.rowcount > 0
     finally:

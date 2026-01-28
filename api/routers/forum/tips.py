@@ -11,6 +11,8 @@ from core.database import (
     get_tips_total_received,
 )
 from .models import CreateTipRequest
+import asyncio
+from functools import partial
 
 router = APIRouter(prefix="/api/forum", tags=["Forum - Tips"])
 
@@ -29,8 +31,9 @@ async def tip_post(
     - 需提供交易哈希作為憑證
     """
     try:
+        loop = asyncio.get_running_loop()
         # 確認文章存在
-        post = get_post_by_id(post_id, increment_view=False)
+        post = await loop.run_in_executor(None, partial(get_post_by_id, post_id, increment_view=False))
         if not post or post["is_hidden"]:
             raise HTTPException(status_code=404, detail="文章不存在")
 
@@ -39,12 +42,16 @@ async def tip_post(
             raise HTTPException(status_code=400, detail="不能打賞自己的文章")
 
         # 創建打賞記錄
-        tip_id = create_tip(
-            post_id=post_id,
-            from_user_id=user_id,
-            to_user_id=post["user_id"],
-            amount=request.amount,
-            tx_hash=request.tx_hash,
+        tip_id = await loop.run_in_executor(
+            None,
+            partial(
+                create_tip,
+                post_id=post_id,
+                from_user_id=user_id,
+                to_user_id=post["user_id"],
+                amount=request.amount,
+                tx_hash=request.tx_hash,
+            )
         )
 
         return {
@@ -68,7 +75,8 @@ async def get_sent_tips(
     獲取用戶送出的打賞記錄
     """
     try:
-        tips = get_tips_sent(user_id, limit=limit)
+        loop = asyncio.get_running_loop()
+        tips = await loop.run_in_executor(None, partial(get_tips_sent, user_id, limit=limit))
         return {
             "success": True,
             "tips": tips,
@@ -87,8 +95,9 @@ async def get_received_tips(
     獲取用戶收到的打賞記錄
     """
     try:
-        tips = get_tips_received(user_id, limit=limit)
-        total = get_tips_total_received(user_id)
+        loop = asyncio.get_running_loop()
+        tips = await loop.run_in_executor(None, partial(get_tips_received, user_id, limit=limit))
+        total = await loop.run_in_executor(None, get_tips_total_received, user_id)
         return {
             "success": True,
             "tips": tips,

@@ -19,7 +19,7 @@ const Components = {
                         <span class="text-[9px] text-textMuted uppercase tracking-wider hidden md:inline">LIVE</span>
                     </div>
                     <!-- 刷新按鈕 -->
-                    <button onclick="refreshScreener(true)" class="p-2 hover:bg-white/5 rounded-full text-textMuted transition">
+                    <button onclick="refreshScreener(true, true)" class="p-2 hover:bg-white/5 rounded-full text-textMuted transition">
                         <i data-lucide="refresh-cw" class="w-4 h-4"></i>
                     </button>
                 </div>

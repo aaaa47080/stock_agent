@@ -17,34 +17,34 @@ def batch_expire_memberships():
         c.execute('''
             SELECT COUNT(*) FROM users
             WHERE membership_tier = 'pro'
-              AND membership_expires_at < datetime('now')
+              AND membership_expires_at < NOW()
         ''')
         count_before = c.fetchone()[0]
-        
+
         if count_before == 0:
             print(f"[Cron] 沒有過期會員需要處理")
             return
-        
+
         # 批量更新過期會員
         c.execute('''
             UPDATE users
-            SET membership_tier = 'free', 
+            SET membership_tier = 'free',
                 membership_expires_at = NULL
             WHERE membership_tier = 'pro'
-              AND membership_expires_at < datetime('now')
+              AND membership_expires_at < NOW()
         ''')
-        
+
         affected = c.rowcount
         conn.commit()
-        
+
         print(f"[Cron] 成功處理 {affected} 個過期會員 (預期: {count_before})")
-        
+
         # 記錄日誌（可選：存入數據庫）
         current_time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
         print(f"[Cron] 執行時間: {current_time}")
-        
+
         return affected
-        
+
     except Exception as e:
         print(f"[Cron] 批量處理過期會員失敗: {e}")
         conn.rollback()

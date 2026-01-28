@@ -19,11 +19,12 @@ def create_session(session_id: str, title: str = "New Chat", user_id: str = "loc
     try:
         c.execute('''
             INSERT INTO sessions (session_id, user_id, title, is_pinned, created_at, updated_at)
-            VALUES (?, ?, ?, 0, datetime('now'), datetime('now'))
+            VALUES (%s, %s, %s, 0, NOW(), NOW())
         ''', (session_id, user_id, title))
         conn.commit()
     except Exception as e:
         print(f"Session create error: {e}")
+        conn.rollback()
     finally:
         conn.close()
 
@@ -33,7 +34,7 @@ def update_session_title(session_id: str, title: str):
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('UPDATE sessions SET title = ?, updated_at = datetime("now") WHERE session_id = ?', (title, session_id))
+        c.execute('UPDATE sessions SET title = %s, updated_at = NOW() WHERE session_id = %s', (title, session_id))
         conn.commit()
     finally:
         conn.close()
@@ -45,7 +46,7 @@ def toggle_session_pin(session_id: str, is_pinned: bool):
     c = conn.cursor()
     try:
         pin_val = 1 if is_pinned else 0
-        c.execute('UPDATE sessions SET is_pinned = ? WHERE session_id = ?', (pin_val, session_id))
+        c.execute('UPDATE sessions SET is_pinned = %s WHERE session_id = %s', (pin_val, session_id))
         conn.commit()
     finally:
         conn.close()
@@ -59,19 +60,25 @@ def get_sessions(user_id: str = "local_user", limit: int = 20) -> List[Dict]:
         c.execute('''
             SELECT session_id, title, created_at, updated_at, is_pinned
             FROM sessions
-            WHERE user_id = ?
+            WHERE user_id = %s
             ORDER BY is_pinned DESC, updated_at DESC
-            LIMIT ?
+            LIMIT %s
         ''', (user_id, limit))
         rows = c.fetchall()
 
         sessions = []
         for row in rows:
+            created_at = row[2]
+            updated_at = row[3]
+            if created_at and not isinstance(created_at, str):
+                created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
+            if updated_at and not isinstance(updated_at, str):
+                updated_at = updated_at.strftime('%Y-%m-%d %H:%M:%S')
             sessions.append({
                 "id": row[0],
                 "title": row[1],
-                "created_at": row[2],
-                "updated_at": row[3],
+                "created_at": created_at,
+                "updated_at": updated_at,
                 "is_pinned": bool(row[4])
             })
         return sessions
@@ -87,8 +94,8 @@ def delete_session(session_id: str):
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('DELETE FROM sessions WHERE session_id = ?', (session_id,))
-        c.execute('DELETE FROM conversation_history WHERE session_id = ?', (session_id,))
+        c.execute('DELETE FROM sessions WHERE session_id = %s', (session_id,))
+        c.execute('DELETE FROM conversation_history WHERE session_id = %s', (session_id,))
         conn.commit()
     finally:
         conn.close()
@@ -108,11 +115,11 @@ def save_chat_message(role: str, content: str, session_id: str = "default",
         metadata_json = json.dumps(metadata, ensure_ascii=False) if metadata else None
         c.execute('''
             INSERT INTO conversation_history (session_id, user_id, role, content, metadata, timestamp)
-            VALUES (?, ?, ?, ?, ?, datetime('now'))
+            VALUES (%s, %s, %s, %s, %s, NOW())
         ''', (session_id, user_id, role, content, metadata_json))
 
         # 2. 檢查 Session 是否存在
-        c.execute('SELECT title FROM sessions WHERE session_id = ?', (session_id,))
+        c.execute('SELECT title FROM sessions WHERE session_id = %s', (session_id,))
         row = c.fetchone()
 
         if not row:
@@ -123,7 +130,7 @@ def save_chat_message(role: str, content: str, session_id: str = "default",
 
             c.execute('''
                 INSERT INTO sessions (session_id, user_id, title, created_at, updated_at)
-                VALUES (?, ?, ?, datetime('now'), datetime('now'))
+                VALUES (%s, %s, %s, NOW(), NOW())
             ''', (session_id, user_id, title))
         else:
             # Session 存在，檢查是否需要更新標題
@@ -131,14 +138,15 @@ def save_chat_message(role: str, content: str, session_id: str = "default",
 
             if current_title == "New Chat" and role == "user":
                 new_title = content[:30] + "..." if len(content) > 30 else content
-                c.execute('UPDATE sessions SET title = ?, updated_at = datetime("now") WHERE session_id = ?',
+                c.execute('UPDATE sessions SET title = %s, updated_at = NOW() WHERE session_id = %s',
                           (new_title, session_id))
             else:
-                c.execute('UPDATE sessions SET updated_at = datetime("now") WHERE session_id = ?', (session_id,))
+                c.execute('UPDATE sessions SET updated_at = NOW() WHERE session_id = %s', (session_id,))
 
         conn.commit()
     except Exception as e:
         print(f"Chat save error: {e}")
+        conn.rollback()
     finally:
         conn.close()
 
@@ -151,20 +159,23 @@ def get_chat_history(session_id: str = "default", limit: int = 50) -> List[Dict]
         c.execute('''
             SELECT role, content, metadata, timestamp
             FROM conversation_history
-            WHERE session_id = ?
+            WHERE session_id = %s
             ORDER BY timestamp ASC
-            LIMIT ?
+            LIMIT %s
         ''', (session_id, limit))
         rows = c.fetchall()
 
         history = []
         for row in rows:
             metadata = json.loads(row[2]) if row[2] else None
+            timestamp = row[3]
+            if timestamp and not isinstance(timestamp, str):
+                timestamp = timestamp.strftime('%Y-%m-%d %H:%M:%S')
             history.append({
                 "role": row[0],
                 "content": row[1],
                 "metadata": metadata,
-                "timestamp": row[3]
+                "timestamp": timestamp
             })
         return history
     except Exception as e:
@@ -179,7 +190,7 @@ def clear_chat_history(session_id: str = "default"):
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('DELETE FROM conversation_history WHERE session_id = ?', (session_id,))
+        c.execute('DELETE FROM conversation_history WHERE session_id = %s', (session_id,))
         conn.commit()
     finally:
         conn.close()

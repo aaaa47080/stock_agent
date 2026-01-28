@@ -25,6 +25,8 @@ from core.database import (
     get_user_by_id,
 )
 from api.utils import logger
+import asyncio
+from functools import partial
 
 router = APIRouter()
 
@@ -52,11 +54,12 @@ async def search_users_endpoint(
     以用戶名搜尋用戶
     """
     try:
-        users = search_users(query=q, limit=limit, exclude_user_id=user_id)
+        loop = asyncio.get_running_loop()
+        users = await loop.run_in_executor(None, partial(search_users, query=q, limit=limit, exclude_user_id=user_id))
 
         # 為每個用戶添加好友狀態
         for user in users:
-            status = get_friendship_status(user_id, user["user_id"])
+            status = await loop.run_in_executor(None, get_friendship_status, user_id, user["user_id"])
             user["friend_status"] = status.get("status") if status else None
             user["is_friend"] = status.get("status") == "accepted" if status else False
 
@@ -75,7 +78,8 @@ async def get_user_profile(
     取得用戶的公開資料
     """
     try:
-        profile = get_public_user_profile(target_user_id, viewer_user_id=user_id)
+        loop = asyncio.get_running_loop()
+        profile = await loop.run_in_executor(None, partial(get_public_user_profile, target_user_id, viewer_user_id=user_id))
         if not profile:
             raise HTTPException(status_code=404, detail="用戶不存在")
         return {"success": True, "profile": profile}
@@ -99,13 +103,16 @@ async def send_request(
     發送好友請求
     """
     try:
+        loop = asyncio.get_running_loop()
         # 驗證用戶存在
-        if not get_user_by_id(user_id):
+        user_exists = await loop.run_in_executor(None, get_user_by_id, user_id)
+        if not user_exists:
             raise HTTPException(status_code=401, detail="用戶不存在")
-        if not get_user_by_id(request.target_user_id):
+        target_exists = await loop.run_in_executor(None, get_user_by_id, request.target_user_id)
+        if not target_exists:
             raise HTTPException(status_code=404, detail="目標用戶不存在")
 
-        result = send_friend_request(user_id, request.target_user_id)
+        result = await loop.run_in_executor(None, send_friend_request, user_id, request.target_user_id)
 
         if not result["success"]:
             error_messages = {
@@ -137,7 +144,8 @@ async def accept_request(
     接受好友請求
     """
     try:
-        result = accept_friend_request(user_id, request.target_user_id)
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, accept_friend_request, user_id, request.target_user_id)
 
         if not result["success"]:
             raise HTTPException(status_code=400, detail="找不到此好友請求")
@@ -159,7 +167,8 @@ async def reject_request(
     拒絕好友請求
     """
     try:
-        result = reject_friend_request(user_id, request.target_user_id)
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, reject_friend_request, user_id, request.target_user_id)
 
         if not result["success"]:
             raise HTTPException(status_code=400, detail="找不到此好友請求")
@@ -181,7 +190,8 @@ async def cancel_request(
     取消已發送的好友請求
     """
     try:
-        result = cancel_friend_request(user_id, request.target_user_id)
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, cancel_friend_request, user_id, request.target_user_id)
 
         if not result["success"]:
             raise HTTPException(status_code=400, detail="找不到此好友請求")
@@ -203,7 +213,8 @@ async def remove_friend_endpoint(
     移除好友
     """
     try:
-        result = remove_friend(user_id, target_user_id)
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, remove_friend, user_id, target_user_id)
 
         if not result["success"]:
             raise HTTPException(status_code=400, detail="你們不是好友")
@@ -229,7 +240,8 @@ async def block_user_endpoint(
     封鎖用戶
     """
     try:
-        result = block_user(user_id, request.target_user_id)
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, block_user, user_id, request.target_user_id)
 
         if not result["success"]:
             error_messages = {
@@ -257,7 +269,8 @@ async def unblock_user_endpoint(
     解除封鎖
     """
     try:
-        result = unblock_user(user_id, request.target_user_id)
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, unblock_user, user_id, request.target_user_id)
 
         if not result["success"]:
             raise HTTPException(status_code=400, detail="此用戶未被封鎖")
@@ -278,7 +291,8 @@ async def get_blocked_list(
     取得封鎖名單
     """
     try:
-        blocked = get_blocked_users(user_id)
+        loop = asyncio.get_running_loop()
+        blocked = await loop.run_in_executor(None, get_blocked_users, user_id)
         return {
             "success": True,
             "blocked_users": blocked,
@@ -303,8 +317,9 @@ async def get_friends(
     取得好友列表
     """
     try:
-        friends = get_friends_list(user_id, limit=limit, offset=offset)
-        count = get_friends_count(user_id)
+        loop = asyncio.get_running_loop()
+        friends = await loop.run_in_executor(None, partial(get_friends_list, user_id, limit=limit, offset=offset))
+        count = await loop.run_in_executor(None, get_friends_count, user_id)
 
         return {
             "success": True,
@@ -325,7 +340,8 @@ async def get_received_requests(
     取得收到的好友請求
     """
     try:
-        requests = get_pending_requests_received(user_id)
+        loop = asyncio.get_running_loop()
+        requests = await loop.run_in_executor(None, get_pending_requests_received, user_id)
         return {
             "success": True,
             "requests": requests,
@@ -344,7 +360,8 @@ async def get_sent_requests(
     取得已發送的好友請求
     """
     try:
-        requests = get_pending_requests_sent(user_id)
+        loop = asyncio.get_running_loop()
+        requests = await loop.run_in_executor(None, get_pending_requests_sent, user_id)
         return {
             "success": True,
             "requests": requests,
@@ -364,7 +381,8 @@ async def get_status(
     取得與特定用戶的好友狀態
     """
     try:
-        status = get_friendship_status(user_id, target_user_id)
+        loop = asyncio.get_running_loop()
+        status = await loop.run_in_executor(None, get_friendship_status, user_id, target_user_id)
         return {
             "success": True,
             "status": status.get("status") if status else None,
@@ -384,10 +402,13 @@ async def get_counts(
     取得好友相關數量（好友數、待處理請求數）
     """
     try:
+        loop = asyncio.get_running_loop()
+        friends_count = await loop.run_in_executor(None, get_friends_count, user_id)
+        pending_received = await loop.run_in_executor(None, get_pending_count, user_id)
         return {
             "success": True,
-            "friends_count": get_friends_count(user_id),
-            "pending_received": get_pending_count(user_id),
+            "friends_count": friends_count,
+            "pending_received": pending_received,
         }
     except Exception as e:
         logger.error(f"取得好友數量失敗: {e}")

@@ -8,7 +8,7 @@
 
 # 連接管理
 from .connection import (
-    DB_PATH,
+    DATABASE_URL,
     get_connection,
     init_db,
 )
@@ -184,7 +184,7 @@ from .system_config import (
 # 定義公開 API
 __all__ = [
     # 連接
-    'DB_PATH',
+    'DATABASE_URL',
     'get_connection',
     'init_db',
     # 用戶

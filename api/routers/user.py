@@ -22,6 +22,8 @@ from core.database import (
     link_pi_wallet, get_user_wallet_status
 )
 from core.email_service import send_reset_email, is_email_configured
+import asyncio
+from functools import partial
 
 router = APIRouter()
 
@@ -29,7 +31,8 @@ router = APIRouter()
 async def get_user_watchlist(user_id: str):
     """獲取用戶的自選清單"""
     try:
-        symbols = get_watchlist(user_id)
+        loop = asyncio.get_running_loop()
+        symbols = await loop.run_in_executor(None, get_watchlist, user_id)
         return {"symbols": symbols}
     except Exception as e:
         logger.error(f"獲取自選清單失敗: {e}")
@@ -39,7 +42,8 @@ async def get_user_watchlist(user_id: str):
 async def add_watchlist(request: WatchlistRequest):
     """新增幣種到自選清單"""
     try:
-        add_to_watchlist(request.user_id, request.symbol.upper())
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, partial(add_to_watchlist, request.user_id, request.symbol.upper()))
         return {"success": True, "message": f"{request.symbol} 已加入自選清單"}
     except Exception as e:
         logger.error(f"新增自選清單失敗: {e}")
@@ -49,7 +53,8 @@ async def add_watchlist(request: WatchlistRequest):
 async def remove_watchlist(request: WatchlistRequest):
     """從自選清單移除幣種"""
     try:
-        remove_from_watchlist(request.user_id, request.symbol.upper())
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, partial(remove_from_watchlist, request.user_id, request.symbol.upper()))
         return {"success": True, "message": f"{request.symbol} 已從自選清單移除"}
     except Exception as e:
         logger.error(f"移除自選清單失敗: {e}")
@@ -59,7 +64,11 @@ async def remove_watchlist(request: WatchlistRequest):
 async def register_user(request: UserRegisterRequest):
     """註冊新用戶"""
     try:
-        user = create_user(request.username, request.password, request.email)
+        loop = asyncio.get_running_loop()
+        user = await loop.run_in_executor(
+            None, 
+            partial(create_user, request.username, request.password, request.email)
+        )
         return {"success": True, "user_id": user["user_id"], "username": user["username"]}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -71,8 +80,11 @@ async def register_user(request: UserRegisterRequest):
 async def login_user(request: UserLoginRequest):
     """用戶登入（含暴力破解防護）"""
     try:
+        loop = asyncio.get_running_loop()
+        
         # 1. 檢查帳號是否被鎖定
-        is_locked, remaining_minutes = is_account_locked(request.username)
+        is_locked_result = await loop.run_in_executor(None, is_account_locked, request.username)
+        is_locked, remaining_minutes = is_locked_result
         if is_locked:
             hours = remaining_minutes // 60
             mins = remaining_minutes % 60
@@ -83,13 +95,18 @@ async def login_user(request: UserLoginRequest):
             )
 
         # 2. 驗證用戶
-        user = get_user_by_username(request.username)
-        if not user or not verify_password(user["password_hash"], request.password):
+        user = await loop.run_in_executor(None, get_user_by_username, request.username)
+        # Verify password (CPU intensive, definitely needs run_in_executor)
+        is_valid = False
+        if user:
+            is_valid = await loop.run_in_executor(None, verify_password, user["password_hash"], request.password)
+            
+        if not user or not is_valid:
             # 記錄失敗的登入嘗試
-            record_login_attempt(request.username, success=False)
+            await loop.run_in_executor(None, partial(record_login_attempt, request.username, success=False))
 
             # 檢查剩餘嘗試次數
-            failed_count = get_failed_attempts(request.username)
+            failed_count = await loop.run_in_executor(None, get_failed_attempts, request.username)
             remaining = MAX_LOGIN_ATTEMPTS - failed_count
 
             if remaining <= 0:
@@ -106,7 +123,7 @@ async def login_user(request: UserLoginRequest):
                 raise HTTPException(status_code=401, detail="無效的用戶名或密碼")
 
         # 3. 登入成功，記錄並清除失敗記錄
-        record_login_attempt(request.username, success=True)
+        await loop.run_in_executor(None, partial(record_login_attempt, request.username, success=True))
 
         return {
             "success": True,
@@ -126,7 +143,8 @@ async def login_user(request: UserLoginRequest):
 async def check_username_availability(username: str):
     """檢查用戶名是否可用（同時檢查 Pi 和 Email 用戶）"""
     try:
-        available = is_username_available(username)
+        loop = asyncio.get_running_loop()
+        available = await loop.run_in_executor(None, is_username_available, username)
         if not available:
             return {"available": False, "message": "此用戶名已被註冊"}
         return {"available": True, "message": "用戶名可用"}
@@ -139,7 +157,8 @@ async def check_username_availability(username: str):
 async def check_email_availability(email: str):
     """檢查 Email 是否可用"""
     try:
-        user = get_user_by_email(email)
+        loop = asyncio.get_running_loop()
+        user = await loop.run_in_executor(None, get_user_by_email, email)
         if user:
             return {"available": False, "message": "此 Email 已被註冊"}
         return {"available": True, "message": "Email 可用"}
@@ -165,9 +184,10 @@ async def sync_pi_user(request: PiUserSyncRequest):
     - 之後登入時返回現有用戶資料
     """
     try:
-        result = create_or_get_pi_user(
-            pi_uid=request.pi_uid,
-            username=request.username
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(
+            None,
+            partial(create_or_get_pi_user, pi_uid=request.pi_uid, username=request.username)
         )
 
         return {
@@ -194,7 +214,8 @@ async def sync_pi_user(request: PiUserSyncRequest):
 async def get_pi_user(pi_uid: str):
     """根據 Pi UID 獲取用戶資料"""
     try:
-        user = get_user_by_pi_uid(pi_uid)
+        loop = asyncio.get_running_loop()
+        user = await loop.run_in_executor(None, get_user_by_pi_uid, pi_uid)
         if not user:
             raise HTTPException(status_code=404, detail="用戶不存在")
         return {"success": True, "user": user}
@@ -219,7 +240,8 @@ async def forgot_password(request: ForgotPasswordRequest):
             )
 
         # 查找用戶
-        user = get_user_by_email(request.email)
+        loop = asyncio.get_running_loop()
+        user = await loop.run_in_executor(None, get_user_by_email, request.email)
         if not user:
             # 安全性考量：不透露 email 是否存在
             return {
@@ -228,15 +250,14 @@ async def forgot_password(request: ForgotPasswordRequest):
             }
 
         # 創建重置 Token
-        token = create_reset_token(user["user_id"])
+        token = await loop.run_in_executor(None, create_reset_token, user["user_id"])
         if not token:
             raise HTTPException(status_code=500, detail="Failed to create reset token")
 
         # 發送郵件
-        email_sent = send_reset_email(
-            to_email=request.email,
-            reset_token=token,
-            username=user["username"]
+        email_sent = await loop.run_in_executor(
+            None, 
+            partial(send_reset_email, to_email=request.email, reset_token=token, username=user["username"])
         )
 
         if not email_sent:
@@ -258,7 +279,8 @@ async def forgot_password(request: ForgotPasswordRequest):
 async def verify_reset_token(token: str):
     """驗證重置 Token 是否有效"""
     try:
-        token_data = get_reset_token(token)
+        loop = asyncio.get_running_loop()
+        token_data = await loop.run_in_executor(None, get_reset_token, token)
         if not token_data:
             return {"valid": False, "message": "Invalid or expired token"}
 
@@ -272,9 +294,11 @@ async def verify_reset_token(token: str):
 @router.post("/api/user/reset-password")
 async def reset_password(request: ResetPasswordRequest):
     """使用 Token 重置密碼"""
+    """使用 Token 重置密碼"""
     try:
+        loop = asyncio.get_running_loop()
         # 驗證 Token
-        token_data = get_reset_token(request.token)
+        token_data = await loop.run_in_executor(None, get_reset_token, request.token)
         if not token_data:
             raise HTTPException(status_code=400, detail="Invalid or expired token")
 
@@ -283,12 +307,12 @@ async def reset_password(request: ResetPasswordRequest):
             raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
 
         # 更新密碼
-        success = update_password(token_data["user_id"], request.new_password)
+        success = await loop.run_in_executor(None, partial(update_password, token_data["user_id"], request.new_password))
         if not success:
             raise HTTPException(status_code=500, detail="Failed to update password")
 
         # 刪除已使用的 Token
-        delete_reset_token(request.token)
+        await loop.run_in_executor(None, delete_reset_token, request.token)
 
         return {"success": True, "message": "Password has been reset successfully"}
 
@@ -352,7 +376,8 @@ async def approve_payment(request: ApprovePaymentRequest):
             payment_type = metadata.get("type", "unknown")
 
             # 查找預期價格（從數據庫動態獲取）
-            prices = get_prices()
+            loop = asyncio.get_running_loop()
+            prices = await loop.run_in_executor(None, get_prices)
             expected_amount = prices.get(payment_type)
 
             if expected_amount is not None:
@@ -435,10 +460,10 @@ async def link_wallet(request: LinkWalletRequest):
     綁定 Pi 錢包到現有帳密用戶
     """
     try:
-        result = link_pi_wallet(
-            user_id=request.user_id,
-            pi_uid=request.pi_uid,
-            pi_username=request.pi_username
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(
+            None,
+            partial(link_pi_wallet, user_id=request.user_id, pi_uid=request.pi_uid, pi_username=request.pi_username)
         )
         return result
     except ValueError as e:
@@ -454,7 +479,8 @@ async def get_wallet_status(user_id: str):
     獲取用戶錢包綁定狀態
     """
     try:
-        status = get_user_wallet_status(user_id)
+        loop = asyncio.get_running_loop()
+        status = await loop.run_in_executor(None, get_user_wallet_status, user_id)
         return {"success": True, **status}
     except Exception as e:
         logger.error(f"Get wallet status error: {e}")

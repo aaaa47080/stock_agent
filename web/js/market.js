@@ -1,12 +1,14 @@
 // ========================================
 // market.js - 市場篩選功能
 // ========================================
+console.log('[Market] Script loading...');
 
 // 資金費率快取
-let fundingRateData = {};
-let isScreenerLoading = false;
-let marketInitialized = false;
-let isFirstLoad = true;
+// 資金費率快取
+var fundingRateData = {};
+var isScreenerLoading = false;
+var marketInitialized = false;
+var isFirstLoad = true;
 
 /**
  * 主要初始化函數 - 確保組件已注入並加載數據
@@ -43,36 +45,60 @@ async function initMarket() {
     // 先嘗試從 localStorage 載入保存的選擇，避免發送無效的預設請求
     if (typeof loadSavedSymbolSelection === 'function') {
         loadSavedSymbolSelection();
+    } else {
+        console.warn('[Market] loadSavedSymbolSelection not found! Check if filter.js is loaded.');
     }
 
-    await refreshScreener(true);
+    // Double check: 允許空列表，這會觸發後端的 "Auto" 模式 (返回市值前排行)
+    if (!window.globalSelectedSymbols) {
+        window.globalSelectedSymbols = [];
+    }
+
+    // 確保 refreshScreener 全域可用後才呼叫
+    if (typeof window.refreshScreener === 'function') {
+        await window.refreshScreener(true);
+    } else {
+        await refreshScreener(true);
+    }
 }
 
-// Export to window
+// Export functions and variables to window to ensure global access even after script reload
 window.initMarket = initMarket;
-let chart = null;
-let candleSeries = null;
-let volumeSeries = null;
+
+// Define refreshScreener before exporting it ensuring it is hoisted or available
+// However, since it's an async function defined below, we might need to rely on var hoisting or assignment.
+// Best practice for reloadable scripts: assign directly to window
+
+window.refreshScreener = refreshScreener; // 確保 filter.js 與 HTML onclick 也能呼叫
+window.showChart = showChart;
+window.showFundingHistory = showFundingHistory;
+var chart = null;
+var candleSeries = null;
+var volumeSeries = null;
 
 // Chart state variables
-let currentChartSymbol = null;
-let currentChartInterval = '1h';
-let autoRefreshEnabled = true; // 預設開啟即時更新
-let autoRefreshTimer = null;
-let chartKlinesData = []; // 儲存當前 K 線數據供更新用
-let isChartHovered = false; // 追蹤圖表是否被懸停
+// Chart state variables
+var currentChartSymbol = null;
+var currentChartInterval = '1h';
+var autoRefreshEnabled = true; // 預設開啟即時更新
+var autoRefreshTimer = null;
+var chartKlinesData = []; // 儲存當前 K 線數據供更新用
+var isChartHovered = false; // 追蹤圖表是否被懸停
 
 // WebSocket 連接
-let klineWebSocket = null;
-let wsReconnectTimer = null;
-let wsConnected = false;
+// WebSocket 連接
+// WebSocket 連接
+var klineWebSocket = null;
+var wsReconnectTimer = null;
+var wsConnected = false;
 
 // Market Watch WebSocket
-let marketWsConnected = false;
-let marketWebSocket = null;
-let tickerReconnectTimer = null;
-let subscribedTickerSymbols = new Set();
-let pendingTickerSymbols = new Set(); // 等待連接後訂閱的 symbols
+// Market Watch WebSocket
+var marketWsConnected = false;
+var marketWebSocket = null;
+var tickerReconnectTimer = null;
+var subscribedTickerSymbols = new Set();
+var pendingTickerSymbols = new Set(); // 等待連接後訂閱的 symbols
 
 // 獲取資金費率數據
 async function fetchFundingRates() {
@@ -111,7 +137,7 @@ function getFundingRateStyle(rate) {
     return { color: 'text-cyan-400 font-medium', bg: 'bg-cyan-500/10', border: 'border-cyan-500/30', label: '看空/軋空' };
 }
 
-async function refreshScreener(showLoading = false) {
+async function refreshScreener(showLoading = false, forceRefresh = false) {
     if (isScreenerLoading) return;
 
     let containers = {
@@ -153,7 +179,10 @@ async function refreshScreener(showLoading = false) {
     isScreenerLoading = true;
 
     try {
-        const body = { exchange: window.currentFilterExchange || 'okx' };
+        const body = {
+            exchange: window.currentFilterExchange || 'okx',
+            refresh: forceRefresh
+        };
         if (window.globalSelectedSymbols && window.globalSelectedSymbols.length > 0) {
             body.symbols = window.globalSelectedSymbols;
         }
@@ -178,11 +207,30 @@ async function refreshScreener(showLoading = false) {
 
         // --- 處理篩選器結果 (Screener) ---
         if (screenerData && !screenerData.error) {
+            // Restore Old Behavior: Auto-populate symbols from backend response on first load if empty
+            if (isFirstLoad && (!window.globalSelectedSymbols || window.globalSelectedSymbols.length === 0)) {
+                if (screenerData.top_performers && screenerData.top_performers.length > 0) {
+                    window.globalSelectedSymbols = screenerData.top_performers.map(function (item) { return item.Symbol; });
+                    console.log('[Market] Auto-populated symbols from backend:', window.globalSelectedSymbols.length);
+
+                    var indicator = document.getElementById('active-filter-indicator');
+                    var filterCount = document.getElementById('filter-count');
+                    var globalCount = document.getElementById('global-count-badge');
+
+                    // Update UI to show we are in Auto mode (technically selecting what we got)
+                    // Or keep it hidden to imply "All". Let's update count but maybe keep indicator hidden or distinct.
+                    // The old code updated them:
+                    if (indicator) indicator.classList.remove('hidden');
+                    if (filterCount) filterCount.innerText = window.globalSelectedSymbols.length;
+                    if (globalCount) globalCount.innerText = window.globalSelectedSymbols.length;
+                }
+            }
+
             // Update UI indicators based on current selection
-            const count = (window.globalSelectedSymbols || []).length;
-            const indicator = document.getElementById('active-filter-indicator');
-            const filterCount = document.getElementById('filter-count');
-            const globalCount = document.getElementById('global-count-badge');
+            var count = (window.globalSelectedSymbols || []).length;
+            var indicator = document.getElementById('active-filter-indicator');
+            var filterCount = document.getElementById('filter-count');
+            var globalCount = document.getElementById('global-count-badge');
 
             if (count > 0) {
                 if (indicator) indicator.classList.remove('hidden');
@@ -203,12 +251,22 @@ async function refreshScreener(showLoading = false) {
                 }
             }
 
+            const topCount = screenerData.top_performers ? screenerData.top_performers.length : 0;
+            console.log(`[Market] Loaded ${topCount} items.`);
+            // Debug Toast
+            if (window.showToast) {
+                window.showToast(`已載入 ${topCount} 個市場數據`, 'success');
+            }
+
             renderList(containers.top, screenerData.top_performers, 'price_change_24h', '%');
             renderList(containers.oversold, screenerData.oversold, 'RSI_14', '');
             renderList(containers.overbought, screenerData.overbought, 'RSI_14', '');
         } else {
             // Screener 失敗處理
             console.error("Screener Load Failed:", screenerData?.message);
+            if (window.showToast) {
+                window.showToast(`載入失敗: ${screenerData?.message || '未知錯誤'}`, 'error');
+            }
 
             // 顯示錯誤 Modal (如果是配額問題)
             if (screenerData?.message && (screenerData.message.includes("429") || screenerData.message.includes("quota")) && window.showError) {
@@ -222,7 +280,7 @@ async function refreshScreener(showLoading = false) {
                             <i data-lucide="wifi-off" class="w-8 h-8 mb-2 opacity-50"></i>
                             <span class="text-sm font-medium">載入失敗</span>
                             <div class="text-xs opacity-50 mt-1 mb-2">${screenerData?.message || 'Unknown error'}</div>
-                            <button onclick="refreshScreener(true)" class="text-xs bg-red-500/10 hover:bg-red-500/20 px-3 py-1 rounded-full transition">重試</button>
+                            <button onclick="window.refreshScreener(true, true)" class="text-xs bg-red-500/10 hover:bg-red-500/20 px-3 py-1 rounded-full transition">重試</button>
                         </div>`;
                 }
             });
@@ -243,7 +301,7 @@ async function refreshScreener(showLoading = false) {
                         <div class="flex flex-col items-center justify-center py-8 text-center text-red-400">
                             <i data-lucide="wifi-off" class="w-8 h-8 mb-2 opacity-50"></i>
                             <span class="text-sm font-medium">載入失敗</span>
-                            <button onclick="refreshScreener(true)" class="mt-2 text-xs bg-red-500/10 hover:bg-red-500/20 px-3 py-1 rounded-full transition">重試</button>
+                            <button onclick="window.refreshScreener(true, true)" class="mt-2 text-xs bg-red-500/10 hover:bg-red-500/20 px-3 py-1 rounded-full transition">重試</button>
                         </div>`;
                 }
             });

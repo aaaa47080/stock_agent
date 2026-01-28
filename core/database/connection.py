@@ -1,39 +1,37 @@
 """
-資料庫連接管理和初始化
+資料庫連接管理和初始化 (PostgreSQL 版本)
 """
-import sqlite3
+import psycopg2
 import os
 
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "user_data.db")
+# PostgreSQL 連接字符串
+DATABASE_URL = os.environ.get(
+    "DATABASE_URL",
+    "postgresql://neondb_owner:npg_1HfX6WYBRekw@ep-fragrant-mud-a1nkzyhx-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+)
 
 # 追蹤資料庫是否已初始化
 _db_initialized = False
 
 
-def get_connection() -> sqlite3.Connection:
+def get_connection():
     """
     獲取資料庫連接，確保資料庫和表存在
-    如果資料庫文件被刪除，會自動重新初始化
     """
     global _db_initialized
-
-    # 如果資料庫文件不存在，需要重新初始化
-    if not os.path.exists(DB_PATH):
-        _db_initialized = False
 
     # 如果尚未初始化，執行初始化
     if not _db_initialized:
         init_db()
         _db_initialized = True
 
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("PRAGMA foreign_keys = ON")
+    conn = psycopg2.connect(DATABASE_URL)
     return conn
 
 
 def init_db():
     """初始化資料庫 - 建立所有資料表"""
-    conn = sqlite3.connect(DB_PATH)
+    conn = psycopg2.connect(DATABASE_URL)
     c = conn.cursor()
 
     # ========================================================================
@@ -54,7 +52,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS system_cache (
             key TEXT PRIMARY KEY,
             value TEXT,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
 
@@ -71,8 +69,8 @@ def init_db():
             category TEXT DEFAULT 'general',
             description TEXT,
             is_public INTEGER DEFAULT 1,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
 
@@ -83,12 +81,12 @@ def init_db():
     # 建立對話歷史表 (Conversation History)
     c.execute('''
         CREATE TABLE IF NOT EXISTS conversation_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             session_id TEXT DEFAULT 'default',
             user_id TEXT DEFAULT 'local_user',
             role TEXT NOT NULL,
             content TEXT NOT NULL,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             metadata TEXT
         )
     ''')
@@ -100,8 +98,8 @@ def init_db():
             user_id TEXT DEFAULT 'local_user',
             title TEXT,
             is_pinned INTEGER DEFAULT 0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
 
@@ -118,48 +116,34 @@ def init_db():
             email TEXT UNIQUE,
             auth_method TEXT DEFAULT 'password',
             pi_uid TEXT UNIQUE,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            pi_username TEXT,
+            last_active_at TIMESTAMP,
+            membership_tier TEXT DEFAULT 'free',
+            membership_expires_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
 
     # 建立會員支付記錄表 (Membership Payments)
     c.execute('''
         CREATE TABLE IF NOT EXISTS membership_payments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             user_id TEXT NOT NULL,
             amount REAL NOT NULL,
             months INTEGER NOT NULL,
             tx_hash TEXT NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(user_id)
         )
     ''')
-
-    # 遷移：為舊表添加新欄位
-    try:
-        c.execute('ALTER TABLE users ADD COLUMN auth_method TEXT DEFAULT "password"')
-    except sqlite3.OperationalError:
-        pass
-    try:
-        c.execute('ALTER TABLE users ADD COLUMN pi_uid TEXT UNIQUE')
-    except sqlite3.OperationalError:
-        pass
-    try:
-        c.execute('ALTER TABLE users ADD COLUMN pi_username TEXT')
-    except sqlite3.OperationalError:
-        pass
-    try:
-        c.execute('ALTER TABLE users ADD COLUMN last_active_at TIMESTAMP')
-    except sqlite3.OperationalError:
-        pass
 
     # 建立密碼重置 Token 表
     c.execute('''
         CREATE TABLE IF NOT EXISTS password_reset_tokens (
             token TEXT PRIMARY KEY,
             user_id TEXT NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            expires_at DATETIME NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            expires_at TIMESTAMP NOT NULL,
             FOREIGN KEY (user_id) REFERENCES users(user_id)
         )
     ''')
@@ -167,19 +151,13 @@ def init_db():
     # 建立登入嘗試記錄表 (防暴力破解)
     c.execute('''
         CREATE TABLE IF NOT EXISTS login_attempts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY,
             username TEXT NOT NULL,
             ip_address TEXT,
-            attempt_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+            attempt_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             success INTEGER DEFAULT 0
         )
     ''')
-
-    # Migration for existing sessions table
-    try:
-        c.execute('ALTER TABLE sessions ADD COLUMN is_pinned INTEGER DEFAULT 0')
-    except sqlite3.OperationalError:
-        pass
 
     # ========================================================================
     # 論壇相關資料表
@@ -188,7 +166,7 @@ def init_db():
     # 看板表
     c.execute('''
         CREATE TABLE IF NOT EXISTS boards (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            id              SERIAL PRIMARY KEY,
             name            TEXT NOT NULL,
             slug            TEXT NOT NULL UNIQUE,
             description     TEXT,
@@ -202,7 +180,7 @@ def init_db():
     # 文章表
     c.execute('''
         CREATE TABLE IF NOT EXISTS posts (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            id              SERIAL PRIMARY KEY,
             board_id        INTEGER NOT NULL,
             user_id         TEXT NOT NULL,
             category        TEXT NOT NULL,
@@ -232,7 +210,7 @@ def init_db():
     # 回覆表
     c.execute('''
         CREATE TABLE IF NOT EXISTS forum_comments (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            id              SERIAL PRIMARY KEY,
             post_id         INTEGER NOT NULL,
             user_id         TEXT NOT NULL,
             parent_id       INTEGER,
@@ -252,7 +230,7 @@ def init_db():
     # 打賞記錄表
     c.execute('''
         CREATE TABLE IF NOT EXISTS tips (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            id              SERIAL PRIMARY KEY,
             post_id         INTEGER NOT NULL,
             from_user_id    TEXT NOT NULL,
             to_user_id      TEXT NOT NULL,
@@ -270,7 +248,7 @@ def init_db():
     # 標籤統計表
     c.execute('''
         CREATE TABLE IF NOT EXISTS tags (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            id              SERIAL PRIMARY KEY,
             name            TEXT NOT NULL UNIQUE,
             post_count      INTEGER DEFAULT 0,
             last_used_at    TIMESTAMP,
@@ -294,7 +272,7 @@ def init_db():
     # 用戶每日回覆計數表
     c.execute('''
         CREATE TABLE IF NOT EXISTS user_daily_comments (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            id              SERIAL PRIMARY KEY,
             user_id         TEXT NOT NULL,
             date            DATE NOT NULL,
             comment_count   INTEGER DEFAULT 0,
@@ -307,7 +285,7 @@ def init_db():
     # 用戶每日發文計數表
     c.execute('''
         CREATE TABLE IF NOT EXISTS user_daily_posts (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            id              SERIAL PRIMARY KEY,
             user_id         TEXT NOT NULL,
             date            DATE NOT NULL,
             post_count      INTEGER DEFAULT 0,
@@ -324,7 +302,7 @@ def init_db():
     # 好友關係表
     c.execute('''
         CREATE TABLE IF NOT EXISTS friendships (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            id              SERIAL PRIMARY KEY,
             user_id         TEXT NOT NULL,
             friend_id       TEXT NOT NULL,
             status          TEXT NOT NULL DEFAULT 'pending',
@@ -344,7 +322,7 @@ def init_db():
     # 對話表（兩人之間的對話）
     c.execute('''
         CREATE TABLE IF NOT EXISTS dm_conversations (
-            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            id                  SERIAL PRIMARY KEY,
             user1_id            TEXT NOT NULL,
             user2_id            TEXT NOT NULL,
             last_message_id     INTEGER,
@@ -362,7 +340,7 @@ def init_db():
     # 私訊訊息表
     c.execute('''
         CREATE TABLE IF NOT EXISTS dm_messages (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            id              SERIAL PRIMARY KEY,
             conversation_id INTEGER NOT NULL,
             from_user_id    TEXT NOT NULL,
             to_user_id      TEXT NOT NULL,
@@ -381,7 +359,7 @@ def init_db():
     # 用戶訊息限制追蹤表
     c.execute('''
         CREATE TABLE IF NOT EXISTS user_message_limits (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            id              SERIAL PRIMARY KEY,
             user_id         TEXT NOT NULL,
             date            DATE NOT NULL,
             message_count   INTEGER DEFAULT 0,
@@ -393,18 +371,8 @@ def init_db():
         )
     ''')
 
-    # Migration: 為 users 表添加會員等級欄位
-    try:
-        c.execute('ALTER TABLE users ADD COLUMN membership_tier TEXT DEFAULT "free"')
-    except sqlite3.OperationalError:
-        pass
-    try:
-        c.execute('ALTER TABLE users ADD COLUMN membership_expires_at TIMESTAMP')
-    except sqlite3.OperationalError:
-        pass
-
     # 初始化預設看板（如果不存在）
-    c.execute('SELECT COUNT(*) FROM boards WHERE slug = "crypto"')
+    c.execute("SELECT COUNT(*) FROM boards WHERE slug = 'crypto'")
     if c.fetchone()[0] == 0:
         c.execute('''
             INSERT INTO boards (name, slug, description, is_active)
@@ -433,11 +401,11 @@ def init_db():
     ]
 
     for key, value, value_type, category, description, is_public in default_configs:
-        c.execute('SELECT COUNT(*) FROM system_config WHERE key = ?', (key,))
+        c.execute('SELECT COUNT(*) FROM system_config WHERE key = %s', (key,))
         if c.fetchone()[0] == 0:
             c.execute('''
                 INSERT INTO system_config (key, value, value_type, category, description, is_public)
-                VALUES (?, ?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s, %s)
             ''', (key, value, value_type, category, description, is_public))
 
     # ========================================================================

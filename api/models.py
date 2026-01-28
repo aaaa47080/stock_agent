@@ -21,6 +21,7 @@ class QueryRequest(BaseModel):
 class ScreenerRequest(BaseModel):
     exchange: str = SUPPORTED_EXCHANGES[0]
     symbols: Optional[List[str]] = None
+    refresh: bool = False
 
 class WatchlistRequest(BaseModel):
     user_id: str

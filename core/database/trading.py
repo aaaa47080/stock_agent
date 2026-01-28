@@ -16,7 +16,7 @@ def add_to_watchlist(user_id: str, symbol: str):
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('INSERT OR IGNORE INTO watchlist (user_id, symbol) VALUES (?, ?)', (user_id, symbol))
+        c.execute('INSERT INTO watchlist (user_id, symbol) VALUES (%s, %s) ON CONFLICT DO NOTHING', (user_id, symbol))
         conn.commit()
     finally:
         conn.close()
@@ -27,7 +27,7 @@ def remove_from_watchlist(user_id: str, symbol: str):
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('DELETE FROM watchlist WHERE user_id = ? AND symbol = ?', (user_id, symbol))
+        c.execute('DELETE FROM watchlist WHERE user_id = %s AND symbol = %s', (user_id, symbol))
         conn.commit()
     finally:
         conn.close()
@@ -38,7 +38,7 @@ def get_watchlist(user_id: str) -> List[str]:
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('SELECT symbol FROM watchlist WHERE user_id = ?', (user_id,))
+        c.execute('SELECT symbol FROM watchlist WHERE user_id = %s', (user_id,))
         rows = c.fetchall()
         return [row[0] for row in rows]
     finally:

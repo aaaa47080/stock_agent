@@ -22,29 +22,33 @@ def search_users(query: str, limit: int = 20, exclude_user_id: str = None) -> Li
         sql = '''
             SELECT user_id, username, pi_username, membership_tier, created_at
             FROM users
-            WHERE username LIKE ?
+            WHERE username LIKE %s
         '''
         params = [f'%{query}%']
 
         if exclude_user_id:
-            sql += ' AND user_id != ?'
+            sql += ' AND user_id != %s'
             params.append(exclude_user_id)
 
-        sql += ' ORDER BY username ASC LIMIT ?'
+        sql += ' ORDER BY username ASC LIMIT %s'
         params.append(limit)
 
         c.execute(sql, params)
         rows = c.fetchall()
 
-        return [
-            {
+        result = []
+        for r in rows:
+            created_at = r[4]
+            if created_at and not isinstance(created_at, str):
+                created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
+            result.append({
                 "user_id": r[0],
                 "username": r[1],
                 "pi_username": r[2],
                 "membership_tier": r[3] or 'free',
-                "member_since": r[4]
-            } for r in rows
-        ]
+                "member_since": created_at
+            })
+        return result
     finally:
         conn.close()
 
@@ -61,19 +65,23 @@ def get_public_user_profile(user_id: str, viewer_user_id: str = None) -> Optiona
         c.execute('''
             SELECT user_id, username, pi_username, membership_tier, created_at
             FROM users
-            WHERE user_id = ?
+            WHERE user_id = %s
         ''', (user_id,))
         row = c.fetchone()
 
         if not row:
             return None
 
+        created_at = row[4]
+        if created_at and not isinstance(created_at, str):
+            created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
+
         profile = {
             "user_id": row[0],
             "username": row[1],
             "pi_username": row[2],
             "membership_tier": row[3] or 'free',
-            "member_since": row[4],
+            "member_since": created_at,
             "is_friend": False,
             "friend_status": None
         }
@@ -85,16 +93,16 @@ def get_public_user_profile(user_id: str, viewer_user_id: str = None) -> Optiona
             profile["is_friend"] = friendship.get("status") == "accepted" if friendship else False
 
         # 取得論壇統計（公開）
-        c.execute('SELECT COUNT(*) FROM posts WHERE user_id = ? AND is_hidden = 0', (user_id,))
+        c.execute('SELECT COUNT(*) FROM posts WHERE user_id = %s AND is_hidden = 0', (user_id,))
         profile["post_count"] = c.fetchone()[0]
 
-        c.execute('SELECT COALESCE(SUM(push_count), 0) FROM posts WHERE user_id = ?', (user_id,))
+        c.execute('SELECT COALESCE(SUM(push_count), 0) FROM posts WHERE user_id = %s', (user_id,))
         profile["total_pushes"] = c.fetchone()[0]
 
         # 取得好友數量（公開）
         c.execute('''
             SELECT COUNT(*) FROM friendships
-            WHERE (user_id = ? OR friend_id = ?) AND status = 'accepted'
+            WHERE (user_id = %s OR friend_id = %s) AND status = 'accepted'
         ''', (user_id, user_id))
         profile["friends_count"] = c.fetchone()[0]
 
@@ -121,7 +129,7 @@ def send_friend_request(from_user_id: str, to_user_id: str) -> Dict:
         # 檢查是否已存在任何關係
         c.execute('''
             SELECT id, status, user_id FROM friendships
-            WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)
+            WHERE (user_id = %s AND friend_id = %s) OR (user_id = %s AND friend_id = %s)
         ''', (from_user_id, to_user_id, to_user_id, from_user_id))
         existing = c.fetchone()
 
@@ -137,8 +145,8 @@ def send_friend_request(from_user_id: str, to_user_id: str) -> Dict:
                     # 對方發送請求給我們，自動接受
                     c.execute('''
                         UPDATE friendships
-                        SET status = 'accepted', updated_at = datetime('now')
-                        WHERE user_id = ? AND friend_id = ?
+                        SET status = 'accepted', updated_at = NOW()
+                        WHERE user_id = %s AND friend_id = %s
                     ''', (to_user_id, from_user_id))
                     conn.commit()
                     return {"success": True, "message": "friend_added", "auto_accepted": True}
@@ -152,8 +160,8 @@ def send_friend_request(from_user_id: str, to_user_id: str) -> Dict:
                 # 允許在拒絕後重新發送（更新現有記錄）
                 c.execute('''
                     UPDATE friendships
-                    SET status = 'pending', updated_at = datetime('now')
-                    WHERE user_id = ? AND friend_id = ?
+                    SET status = 'pending', updated_at = NOW()
+                    WHERE user_id = %s AND friend_id = %s
                 ''', (from_user_id, to_user_id))
                 conn.commit()
                 return {"success": True, "message": "request_resent", "request_id": existing[0]}
@@ -161,11 +169,13 @@ def send_friend_request(from_user_id: str, to_user_id: str) -> Dict:
         # 建立新的好友請求
         c.execute('''
             INSERT INTO friendships (user_id, friend_id, status, created_at, updated_at)
-            VALUES (?, ?, 'pending', datetime('now'), datetime('now'))
+            VALUES (%s, %s, 'pending', NOW(), NOW())
+            RETURNING id
         ''', (from_user_id, to_user_id))
+        request_id = c.fetchone()[0]
         conn.commit()
 
-        return {"success": True, "message": "request_sent", "request_id": c.lastrowid}
+        return {"success": True, "message": "request_sent", "request_id": request_id}
     except Exception as e:
         conn.rollback()
         return {"success": False, "error": str(e)}
@@ -184,8 +194,8 @@ def accept_friend_request(user_id: str, requester_id: str) -> Dict:
     try:
         c.execute('''
             UPDATE friendships
-            SET status = 'accepted', updated_at = datetime('now')
-            WHERE user_id = ? AND friend_id = ? AND status = 'pending'
+            SET status = 'accepted', updated_at = NOW()
+            WHERE user_id = %s AND friend_id = %s AND status = 'pending'
         ''', (requester_id, user_id))
 
         if c.rowcount == 0:
@@ -207,8 +217,8 @@ def reject_friend_request(user_id: str, requester_id: str) -> Dict:
     try:
         c.execute('''
             UPDATE friendships
-            SET status = 'rejected', updated_at = datetime('now')
-            WHERE user_id = ? AND friend_id = ? AND status = 'pending'
+            SET status = 'rejected', updated_at = NOW()
+            WHERE user_id = %s AND friend_id = %s AND status = 'pending'
         ''', (requester_id, user_id))
 
         if c.rowcount == 0:
@@ -230,7 +240,7 @@ def cancel_friend_request(user_id: str, target_user_id: str) -> Dict:
     try:
         c.execute('''
             DELETE FROM friendships
-            WHERE user_id = ? AND friend_id = ? AND status = 'pending'
+            WHERE user_id = %s AND friend_id = %s AND status = 'pending'
         ''', (user_id, target_user_id))
 
         if c.rowcount == 0:
@@ -253,7 +263,7 @@ def remove_friend(user_id: str, friend_id: str) -> Dict:
         # 刪除雙向的好友記錄
         c.execute('''
             DELETE FROM friendships
-            WHERE ((user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?))
+            WHERE ((user_id = %s AND friend_id = %s) OR (user_id = %s AND friend_id = %s))
             AND status = 'accepted'
         ''', (user_id, friend_id, friend_id, user_id))
 
@@ -284,13 +294,13 @@ def block_user(user_id: str, blocked_user_id: str) -> Dict:
         # 移除任何現有的好友關係/請求
         c.execute('''
             DELETE FROM friendships
-            WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)
+            WHERE (user_id = %s AND friend_id = %s) OR (user_id = %s AND friend_id = %s)
         ''', (user_id, blocked_user_id, blocked_user_id, user_id))
 
         # 建立封鎖記錄
         c.execute('''
             INSERT INTO friendships (user_id, friend_id, status, created_at, updated_at)
-            VALUES (?, ?, 'blocked', datetime('now'), datetime('now'))
+            VALUES (%s, %s, 'blocked', NOW(), NOW())
         ''', (user_id, blocked_user_id))
 
         conn.commit()
@@ -309,7 +319,7 @@ def unblock_user(user_id: str, blocked_user_id: str) -> Dict:
     try:
         c.execute('''
             DELETE FROM friendships
-            WHERE user_id = ? AND friend_id = ? AND status = 'blocked'
+            WHERE user_id = %s AND friend_id = %s AND status = 'blocked'
         ''', (user_id, blocked_user_id))
 
         if c.rowcount == 0:
@@ -333,19 +343,23 @@ def get_blocked_users(user_id: str) -> List[Dict]:
             SELECT u.user_id, u.username, u.pi_username, f.created_at as blocked_at
             FROM friendships f
             JOIN users u ON f.friend_id = u.user_id
-            WHERE f.user_id = ? AND f.status = 'blocked'
+            WHERE f.user_id = %s AND f.status = 'blocked'
             ORDER BY f.created_at DESC
         ''', (user_id,))
 
         rows = c.fetchall()
-        return [
-            {
+        result = []
+        for r in rows:
+            blocked_at = r[3]
+            if blocked_at and not isinstance(blocked_at, str):
+                blocked_at = blocked_at.strftime('%Y-%m-%d %H:%M:%S')
+            result.append({
                 "user_id": r[0],
                 "username": r[1],
                 "pi_username": r[2],
-                "blocked_at": r[3]
-            } for r in rows
-        ]
+                "blocked_at": blocked_at
+            })
+        return result
     finally:
         conn.close()
 
@@ -365,28 +379,35 @@ def get_friends_list(user_id: str, limit: int = 50, offset: int = 0) -> List[Dic
             FROM friendships f
             JOIN users u ON (
                 CASE
-                    WHEN f.user_id = ? THEN f.friend_id = u.user_id
+                    WHEN f.user_id = %s THEN f.friend_id = u.user_id
                     ELSE f.user_id = u.user_id
                 END
             )
-            WHERE (f.user_id = ? OR f.friend_id = ?)
+            WHERE (f.user_id = %s OR f.friend_id = %s)
             AND f.status = 'accepted'
-            AND u.user_id != ?
+            AND u.user_id != %s
             ORDER BY f.updated_at DESC
-            LIMIT ? OFFSET ?
+            LIMIT %s OFFSET %s
         ''', (user_id, user_id, user_id, user_id, limit, offset))
 
         rows = c.fetchall()
-        return [
-            {
+        result = []
+        for r in rows:
+            friends_since = r[4]
+            last_active = r[5]
+            if friends_since and not isinstance(friends_since, str):
+                friends_since = friends_since.strftime('%Y-%m-%d %H:%M:%S')
+            if last_active and not isinstance(last_active, str):
+                last_active = last_active.strftime('%Y-%m-%d %H:%M:%S')
+            result.append({
                 "user_id": r[0],
                 "username": r[1],
                 "pi_username": r[2],
                 "membership_tier": r[3] or 'free',
-                "friends_since": r[4],
-                "last_active_at": r[5]
-            } for r in rows
-        ]
+                "friends_since": friends_since,
+                "last_active_at": last_active
+            })
+        return result
     finally:
         conn.close()
 
@@ -401,21 +422,25 @@ def get_pending_requests_received(user_id: str) -> List[Dict]:
                    f.id as request_id, f.created_at
             FROM friendships f
             JOIN users u ON f.user_id = u.user_id
-            WHERE f.friend_id = ? AND f.status = 'pending'
+            WHERE f.friend_id = %s AND f.status = 'pending'
             ORDER BY f.created_at DESC
         ''', (user_id,))
 
         rows = c.fetchall()
-        return [
-            {
+        result = []
+        for r in rows:
+            requested_at = r[5]
+            if requested_at and not isinstance(requested_at, str):
+                requested_at = requested_at.strftime('%Y-%m-%d %H:%M:%S')
+            result.append({
                 "user_id": r[0],
                 "username": r[1],
                 "pi_username": r[2],
                 "membership_tier": r[3] or 'free',
                 "request_id": r[4],
-                "requested_at": r[5]
-            } for r in rows
-        ]
+                "requested_at": requested_at
+            })
+        return result
     finally:
         conn.close()
 
@@ -430,21 +455,25 @@ def get_pending_requests_sent(user_id: str) -> List[Dict]:
                    f.id as request_id, f.created_at
             FROM friendships f
             JOIN users u ON f.friend_id = u.user_id
-            WHERE f.user_id = ? AND f.status = 'pending'
+            WHERE f.user_id = %s AND f.status = 'pending'
             ORDER BY f.created_at DESC
         ''', (user_id,))
 
         rows = c.fetchall()
-        return [
-            {
+        result = []
+        for r in rows:
+            sent_at = r[5]
+            if sent_at and not isinstance(sent_at, str):
+                sent_at = sent_at.strftime('%Y-%m-%d %H:%M:%S')
+            result.append({
                 "user_id": r[0],
                 "username": r[1],
                 "pi_username": r[2],
                 "membership_tier": r[3] or 'free',
                 "request_id": r[4],
-                "sent_at": r[5]
-            } for r in rows
-        ]
+                "sent_at": sent_at
+            })
+        return result
     finally:
         conn.close()
 
@@ -457,18 +486,24 @@ def get_friendship_status(user_id: str, other_user_id: str) -> Optional[Dict]:
         c.execute('''
             SELECT id, user_id, friend_id, status, created_at, updated_at
             FROM friendships
-            WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)
+            WHERE (user_id = %s AND friend_id = %s) OR (user_id = %s AND friend_id = %s)
         ''', (user_id, other_user_id, other_user_id, user_id))
 
         row = c.fetchone()
         if row:
+            created_at = row[4]
+            updated_at = row[5]
+            if created_at and not isinstance(created_at, str):
+                created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
+            if updated_at and not isinstance(updated_at, str):
+                updated_at = updated_at.strftime('%Y-%m-%d %H:%M:%S')
             return {
                 "id": row[0],
                 "requester_id": row[1],
                 "target_id": row[2],
                 "status": row[3],
-                "created_at": row[4],
-                "updated_at": row[5],
+                "created_at": created_at,
+                "updated_at": updated_at,
                 "is_requester": row[1] == user_id
             }
         return None
@@ -483,7 +518,7 @@ def get_friends_count(user_id: str) -> int:
     try:
         c.execute('''
             SELECT COUNT(*) FROM friendships
-            WHERE (user_id = ? OR friend_id = ?) AND status = 'accepted'
+            WHERE (user_id = %s OR friend_id = %s) AND status = 'accepted'
         ''', (user_id, user_id))
         return c.fetchone()[0]
     finally:
@@ -497,7 +532,7 @@ def get_pending_count(user_id: str) -> int:
     try:
         c.execute('''
             SELECT COUNT(*) FROM friendships
-            WHERE friend_id = ? AND status = 'pending'
+            WHERE friend_id = %s AND status = 'pending'
         ''', (user_id,))
         return c.fetchone()[0]
     finally:
@@ -511,7 +546,7 @@ def is_blocked(user_id: str, other_user_id: str) -> bool:
     try:
         c.execute('''
             SELECT 1 FROM friendships
-            WHERE ((user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?))
+            WHERE ((user_id = %s AND friend_id = %s) OR (user_id = %s AND friend_id = %s))
             AND status = 'blocked'
         ''', (user_id, other_user_id, other_user_id, user_id))
         return c.fetchone() is not None
@@ -526,7 +561,7 @@ def is_friend(user_id: str, other_user_id: str) -> bool:
     try:
         c.execute('''
             SELECT 1 FROM friendships
-            WHERE ((user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?))
+            WHERE ((user_id = %s AND friend_id = %s) OR (user_id = %s AND friend_id = %s))
             AND status = 'accepted'
         ''', (user_id, other_user_id, other_user_id, user_id))
         return c.fetchone() is not None
