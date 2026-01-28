@@ -1,0 +1,50 @@
+2026-01-29 02:07:42,916 [INFO] API: ✅ Database initialized
+2026-01-29 02:07:42,916 [INFO] API: OKX Connector 初始化成功
+2026-01-29 02:07:42,916 [WARNING] API: create_llm_client_from_config: Creating new client for user_provided/gpt-4o-mini (System Keys)
+2026-01-29 02:07:42,916 [INFO] API: Initializing LLM: Provider=openai, Model=gpt-4o-mini
+2026-01-29 02:07:43,555 [INFO] API: >> 使用 Admin Agent 架構 (任務分派 + 會議討論)
+2026-01-29 02:07:43,556 [INFO] API: CryptoAnalysisBot 初始化成功
+2026-01-29 02:07:43,641 [INFO] API: 🚀 Pi Crypto Insight API Server 啟動中...
+2026-01-29 02:07:43,642 [INFO] API: 🏠 本地網址: http://localhost:8111
+2026-01-29 02:07:43,642 [INFO] API: 📱 請在 Pi Browser 中使用 HTTPS 網址訪問 (如透過 ngrok)
+2026-01-29 02:07:44,466 [INFO] API: Loaded screener cache from DB (Timestamp: 2026-01-29 02:05:48)
+2026-01-29 02:07:46,493 [INFO] API: Loaded Market Pulse cache from DB (297 symbols)
+2026-01-29 02:07:47,504 [INFO] API: Loaded Funding Rate cache from DB (254 symbols)
+2026-01-29 02:07:47,504 [INFO] API: 📊 Starting Market Pulse task in API process...
+2026-01-29 02:07:47,505 [INFO] API: 🚀 Starting initial Screener analysis...
+2026-01-29 02:07:47,505 [INFO] API: Starting heavy screener analysis...
+2026-01-29 02:07:47,505 [INFO] API: 🚀 [Background] Initializing Market Pulse task...
+2026-01-29 02:07:47,505 [INFO] API: 📦 Current cache has 297 symbols
+2026-01-29 02:07:47,506 [INFO] API: 📊 Cache age: newest=60.3min, oldest=127.8min (threshold=240min)
+2026-01-29 02:07:47,506 [INFO] API: ✅ All cache is fresh! Sleeping for 112.2 minutes until next update.
+2026-01-29 02:07:47,506 [INFO] API: 💤 Sleeping for 6732.494762s...
+2026-01-29 02:07:47,774 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 1
+2026-01-29 02:07:47,774 [INFO] API: 正在啟動 OKX Ticker WebSocket...
+2026-01-29 02:07:47,774 [INFO] API: OKX Ticker WebSocket 啟動任務已創建
+2026-01-29 02:07:47,774 [INFO] data.okx_websocket: 正在連接 OKX Ticker WebSocket: wss://ws.okx.com:8443/ws/v5/public
+2026-01-29 02:07:47,780 [INFO] API: 收到 Ticker 訂閱請求: ['XRP-USDT', 'ETH-USDT', 'SOL-USDT', 'LINK-USDT', 'DOGE-USDT', 'DOT-USDT']
+2026-01-29 02:07:47,780 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XRP-USDT
+2026-01-29 02:07:47,780 [INFO] API: 已訂閱 Ticker: XRP-USDT
+2026-01-29 02:07:47,780 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: ETH-USDT
+2026-01-29 02:07:47,780 [INFO] API: 已訂閱 Ticker: ETH-USDT
+2026-01-29 02:07:47,780 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: SOL-USDT
+2026-01-29 02:07:47,780 [INFO] API: 已訂閱 Ticker: SOL-USDT
+2026-01-29 02:07:47,780 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: LINK-USDT
+2026-01-29 02:07:47,780 [INFO] API: 已訂閱 Ticker: LINK-USDT
+2026-01-29 02:07:47,780 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: DOGE-USDT
+2026-01-29 02:07:47,780 [INFO] API: 已訂閱 Ticker: DOGE-USDT
+2026-01-29 02:07:47,780 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: DOT-USDT
+2026-01-29 02:07:47,780 [INFO] API: 已訂閱 Ticker: DOT-USDT
+2026-01-29 02:07:48,053 [INFO] data.okx_websocket: OKX Ticker WebSocket 連接成功
+2026-01-29 02:07:48,053 [INFO] data.okx_websocket: 訂閱 Ticker: XRP-USDT
+2026-01-29 02:07:48,053 [INFO] data.okx_websocket: 訂閱 Ticker: ETH-USDT
+2026-01-29 02:07:48,053 [INFO] data.okx_websocket: 訂閱 Ticker: SOL-USDT
+2026-01-29 02:07:48,053 [INFO] data.okx_websocket: 訂閱 Ticker: LINK-USDT
+2026-01-29 02:07:48,053 [INFO] data.okx_websocket: 訂閱 Ticker: DOGE-USDT
+2026-01-29 02:07:48,053 [INFO] data.okx_websocket: 訂閱 Ticker: DOT-USDT
+2026-01-29 02:07:48,074 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XRP-USDT'}
+2026-01-29 02:07:48,081 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'ETH-USDT'}
+2026-01-29 02:07:48,081 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'SOL-USDT'}
+2026-01-29 02:07:48,081 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'LINK-USDT'}
+2026-01-29 02:07:48,081 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'DOGE-USDT'}
+2026-01-29 02:07:48,081 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'DOT-USDT'}
