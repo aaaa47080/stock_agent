@@ -25,13 +25,60 @@ MIN_POOL_SIZE = 2   # 最小連接數
 MAX_POOL_SIZE = 20  # 最大連接數（增加以支持並發 screener 任務）
 
 # 連接獲取配置
-MAX_RETRIES = 3          # 最大重試次數
-RETRY_DELAY_BASE = 0.5   # 重試延遲基數（秒），使用指數退避
+MAX_RETRIES = 5          # 增加重試次數
+RETRY_DELAY_BASE = 0.3   # 縮短重試延遲
 
 # 全局連接池
 _connection_pool = None
 _pool_lock = threading.Lock()
 _db_initialized = False
+
+
+class PooledConnection:
+    """
+    連接池包裝類 - 確保連接正確歸還到池中
+    
+    問題：psycopg2 的 ThreadedConnectionPool 需要顯式調用 putconn() 來歸還連接，
+    但調用 conn.close() 不會自動歸還，導致連接洩漏。
+    
+    解決方案：包裝原始連接，讓 close() 自動調用 putconn() 歸還連接。
+    """
+    
+    def __init__(self, conn, pool_ref):
+        self._conn = conn
+        self._pool = pool_ref
+        self._returned = False
+    
+    def close(self):
+        """關閉連接（實際上是歸還到池中）"""
+        if not self._returned and self._pool and self._conn:
+            try:
+                # 歸還連接到池中，而不是真正關閉
+                self._pool.putconn(self._conn)
+                self._returned = True
+            except Exception as e:
+                # 如果歸還失敗，嘗試真正關閉
+                try:
+                    self._conn.close()
+                except:
+                    pass
+                print(f"⚠️ 連接歸還失敗: {e}")
+    
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False
+    
+    def __getattr__(self, name):
+        """代理所有其他屬性到原始連接"""
+        return getattr(self._conn, name)
+    
+    def __del__(self):
+        """析構時確保連接被歸還"""
+        if not self._returned:
+            self.close()
 
 
 def init_connection_pool():
@@ -65,9 +112,9 @@ def get_connection():
     - 線程安全
     - 自動重試機制（指數退避）
     - 連接健康檢查（防止 SSL 斷開錯誤）
-    - 自動重新建立壞掉的連接
+    - 自動歸還連接（通過 PooledConnection 包裝）
     
-    重要: 使用完畢後必須調用 conn.close() 將連接歸還到池中
+    重要: 使用完畢後調用 conn.close() 會自動將連接歸還到池中
     """
     global _db_initialized, _connection_pool
     
@@ -83,23 +130,23 @@ def get_connection():
     # 從池中獲取連接（帶重試機制和健康檢查）
     last_error = None
     for attempt in range(MAX_RETRIES):
-        conn = None
+        raw_conn = None
         try:
-            conn = _connection_pool.getconn()
+            raw_conn = _connection_pool.getconn()
             
             # === 連接健康檢查 ===
             # 檢查 1: 連接是否已關閉
-            if conn.closed:
+            if raw_conn.closed:
                 try:
-                    _connection_pool.putconn(conn, close=True)
+                    _connection_pool.putconn(raw_conn, close=True)
                 except:
                     pass
-                conn = None
+                raw_conn = None
                 continue
             
             # 檢查 2: 執行簡單查詢驗證連接是否真的可用（防止 SSL 斷開）
             try:
-                test_cursor = conn.cursor()
+                test_cursor = raw_conn.cursor()
                 test_cursor.execute("SELECT 1")
                 test_cursor.fetchone()
                 test_cursor.close()
@@ -107,20 +154,21 @@ def get_connection():
                 # 連接已斷開（SSL 錯誤等），關閉並丟棄
                 print(f"⚠️ 偵測到壞掉的連接（{type(health_error).__name__}），重新獲取...")
                 try:
-                    _connection_pool.putconn(conn, close=True)
+                    _connection_pool.putconn(raw_conn, close=True)
                 except:
                     pass
-                conn = None
+                raw_conn = None
                 continue
             
-            # 連接健康，可以返回
-            return conn
+            # 連接健康，包裝後返回
+            # PooledConnection 確保 close() 時自動調用 putconn()
+            return PooledConnection(raw_conn, _connection_pool)
             
         except pool.PoolError as e:
             last_error = e
-            if conn:
+            if raw_conn:
                 try:
-                    _connection_pool.putconn(conn, close=True)
+                    _connection_pool.putconn(raw_conn, close=True)
                 except:
                     pass
             if attempt < MAX_RETRIES - 1:
@@ -133,9 +181,9 @@ def get_connection():
                 raise
         except Exception as e:
             last_error = e
-            if conn:
+            if raw_conn:
                 try:
-                    _connection_pool.putconn(conn, close=True)
+                    _connection_pool.putconn(raw_conn, close=True)
                 except:
                     pass
             print(f"❌ 無法從連接池獲取連接: {e}")
