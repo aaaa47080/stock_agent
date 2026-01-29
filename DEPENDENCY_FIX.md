@@ -10,7 +10,7 @@ ERROR: Cannot install numpy==1.26.4 because these package versions have conflict
 The conflict is caused by:
     The user requested numpy==1.26.4
     contourpy 1.3.3 depends on numpy>=1.25
-    langchain-community 0.4.1 depends on numpy>=2.1.0; python_version >= "3.13"
+    langchain-community 0.4.1 depends on numpy>=2.1.0; python_version >= "3.12.7"
 ```
 
 ## Root Cause
@@ -19,7 +19,7 @@ The conflict is caused by:
 - **Required by langchain-community**: `numpy>=2.1.0`
 - **Required by contourpy**: `numpy>=1.25`
 
-The langchain ecosystem has upgraded to numpy 2.x for better performance and compatibility with Python 3.13+.
+The langchain ecosystem has upgraded to numpy 2.x for better performance and compatibility with Python 3.12.7.
 
 ## Solution Applied
 
