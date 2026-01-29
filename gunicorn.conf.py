@@ -14,9 +14,10 @@ backlog = 2048
 # ========================================
 # Worker Processes
 # ========================================
-# 推荐配置：(2 * CPU核心数) + 1
+# 固定為 4 workers（适用于内存密集型应用，如 AI/ML）
+# AI 库（LangChain、LangGraph）非常耗内存，过多 workers 会导致 OOM
 # 可通过环境变量 WEB_CONCURRENCY 覆盖
-workers = int(os.getenv("WEB_CONCURRENCY", multiprocessing.cpu_count() * 2 + 1))
+workers = int(os.getenv("WEB_CONCURRENCY", 4))
 
 # Uvicorn worker 以支持异步
 worker_class = "uvicorn.workers.UvicornWorker"
@@ -24,14 +25,18 @@ worker_class = "uvicorn.workers.UvicornWorker"
 # Worker 连接数限制
 worker_connections = 1000
 
-# Worker 最大请求数（防止内存泄漏）
-max_requests = 1000
+# Worker 最大请求数（防止内存泄漏）- 降低以更频繁地重启 workers
+max_requests = 500
 max_requests_jitter = 50
 
 # Worker 超时时间（秒）
 timeout = 120
 graceful_timeout = 30
 keepalive = 5
+
+# 预加载应用代码（节省内存）
+preload_app = True
+
 
 # ========================================
 # Logging
