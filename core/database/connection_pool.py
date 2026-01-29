@@ -63,7 +63,8 @@ def get_connection():
     特性：
     - 線程安全
     - 自動重試機制（指數退避）
-    - 連接驗證
+    - 連接健康檢查（防止 SSL 斷開錯誤）
+    - 自動重新建立壞掉的連接
     
     記住要調用 conn.close() 來將連接歸還到池中（不是真正關閉）
     """
@@ -78,24 +79,49 @@ def get_connection():
         init_db()
         _db_initialized = True
     
-    # 從池中獲取連接（帶重試機制）
+    # 從池中獲取連接（帶重試機制和健康檢查）
     last_error = None
     for attempt in range(MAX_RETRIES):
+        conn = None
         try:
             conn = _connection_pool.getconn()
             
-            # 驗證連接是否有效
+            # === 連接健康檢查 ===
+            # 檢查 1: 連接是否已關閉
             if conn.closed:
                 try:
                     _connection_pool.putconn(conn, close=True)
                 except:
                     pass
+                conn = None
                 continue
             
+            # 檢查 2: 執行簡單查詢驗證連接是否真的可用（防止 SSL 斷開）
+            try:
+                test_cursor = conn.cursor()
+                test_cursor.execute("SELECT 1")
+                test_cursor.fetchone()
+                test_cursor.close()
+            except Exception as health_error:
+                # 連接已斷開（SSL 錯誤等），關閉並丟棄
+                print(f"⚠️ 偵測到壞掉的連接（{type(health_error).__name__}），重新獲取...")
+                try:
+                    _connection_pool.putconn(conn, close=True)
+                except:
+                    pass
+                conn = None
+                continue
+            
+            # 連接健康，可以返回
             return conn
             
         except pool.PoolError as e:
             last_error = e
+            if conn:
+                try:
+                    _connection_pool.putconn(conn, close=True)
+                except:
+                    pass
             if attempt < MAX_RETRIES - 1:
                 delay = RETRY_DELAY_BASE * (2 ** attempt)
                 print(f"⚠️ 連接池暫時耗盡，等待 {delay:.1f}s 後重試 (嘗試 {attempt + 1}/{MAX_RETRIES})...")
@@ -105,6 +131,11 @@ def get_connection():
                 raise
         except Exception as e:
             last_error = e
+            if conn:
+                try:
+                    _connection_pool.putconn(conn, close=True)
+                except:
+                    pass
             print(f"❌ 無法從連接池獲取連接: {e}")
             raise
     
