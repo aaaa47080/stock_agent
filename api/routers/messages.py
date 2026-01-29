@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconn
 from typing import Optional, Set, Dict
 from pydantic import BaseModel, Field
 import json
-import json
+
 import asyncio
 from functools import partial
 
@@ -119,7 +119,7 @@ def _check_user_is_pro(user_id: str) -> bool:
 async def get_conversations_endpoint(
     user_id: str = Query(..., description="用戶 ID"),
     limit: int = Query(50, ge=1, le=100),
-    limit: int = Query(50, ge=1, le=100),
+
     offset: int = Query(0, ge=0),
     current_user: dict = Depends(get_current_user)
 ):

@@ -28,6 +28,20 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+def verify_token(token: str) -> dict:
+    """
+    Verify the token and return the payload.
+    Used for WebSocket authentication or where Depends() cannot be used.
+    """
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+        )
+
 async def get_current_user_id(token: str = Depends(oauth2_scheme)) -> str:
     """
     Validate the token and return the user_id.

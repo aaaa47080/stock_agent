@@ -22,7 +22,6 @@ from .user import (
     create_user,
     get_user_by_username,
     get_user_by_id,
-    get_user_by_email,
     update_password,
     is_username_available,
     update_last_active,
@@ -35,10 +34,10 @@ from .user import (
     get_user_membership,
     upgrade_to_pro,
     # 密碼重置
-    create_reset_token,
-    get_reset_token,
-    delete_reset_token,
-    cleanup_expired_tokens,
+    # create_reset_token,
+    # get_reset_token,
+    # delete_reset_token,
+    # cleanup_expired_tokens,
     # 登入嘗試
     MAX_LOGIN_ATTEMPTS,
     LOCKOUT_HOURS,

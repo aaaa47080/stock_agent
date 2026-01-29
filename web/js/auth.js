@@ -196,10 +196,11 @@ const AuthManager = {
                 uid: syncResult.user.user_id,
                 user_id: syncResult.user.user_id,
                 username: syncResult.user.username,
-                accessToken: auth.accessToken,
+                accessToken: syncResult.access_token,
                 authMethod: syncResult.user.auth_method,
                 pi_uid: auth.user.uid,
-                pi_username: auth.user.username
+                pi_username: auth.user.username,
+                piAccessToken: auth.accessToken
             };
 
             localStorage.setItem('pi_user', JSON.stringify(this.currentUser));
