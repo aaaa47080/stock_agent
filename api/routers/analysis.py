@@ -28,34 +28,40 @@ from core.database import (
 
 # New function import for pin
 from core.database import toggle_session_pin
+from fastapi import Depends
+from api.deps import get_current_user
 
 router = APIRouter()
 
 # --- Session Management Endpoints ---
 
 @router.get("/api/chat/sessions")
-async def get_user_sessions(user_id: str = "local_user"):
+async def get_user_sessions(user_id: str = "local_user", current_user: dict = Depends(get_current_user)):
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
     """獲取用戶對話列表（根據 user_id 過濾）"""
     loop = asyncio.get_running_loop()
     sessions = await loop.run_in_executor(None, partial(get_sessions, user_id=user_id))
     return {"sessions": sessions}
 
 @router.post("/api/chat/sessions")
-async def create_new_session(user_id: str = "local_user"):
+async def create_new_session(user_id: str = "local_user", current_user: dict = Depends(get_current_user)):
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
     """創建新對話（綁定 user_id）"""
     new_id = str(uuid.uuid4())
     loop = asyncio.get_running_loop()
     await loop.run_in_executor(None, partial(create_session, new_id, title="New Chat", user_id=user_id))
     return {"session_id": new_id, "title": "New Chat"}
 
-@router.delete("/api/chat/sessions/{session_id}")
+@router.delete("/api/chat/sessions/{session_id}", dependencies=[Depends(get_current_user)])
 async def delete_user_session(session_id: str):
     """刪除特定對話"""
     loop = asyncio.get_running_loop()
     await loop.run_in_executor(None, delete_session, session_id)
     return {"status": "success", "message": f"Session {session_id} deleted"}
 
-@router.put("/api/chat/sessions/{session_id}/pin")
+@router.put("/api/chat/sessions/{session_id}/pin", dependencies=[Depends(get_current_user)])
 async def pin_user_session(session_id: str, is_pinned: bool = Query(..., description="Set to true to pin, false to unpin")):
     """切換對話置頂狀態"""
     loop = asyncio.get_running_loop()
@@ -72,7 +78,7 @@ async def get_history(session_id: str = "default", user_id: str = "local_user"):
 # --- Analysis Endpoint ---
 
 @router.post("/api/analyze")
-async def analyze_crypto(request: QueryRequest):
+async def analyze_crypto(request: QueryRequest, current_user: dict = Depends(get_current_user)):
     """
     處理分析請求，並以串流 (Streaming) 方式回傳結果。
     使用執行緒池避免阻塞事件循環。
@@ -166,7 +172,7 @@ async def clear_chat_history_endpoint(session_id: str = "default"):
     
     return {"status": "success", "message": "Chat history cleared"}
 
-@router.get("/api/debate/{symbol}")
+@router.get("/api/debate/{symbol}", dependencies=[Depends(get_current_user)])
 async def get_debate_analysis(symbol: str):
     """
     獲取 AI 辯論詳情 (用於前端視覺化顯示)。
@@ -222,7 +228,7 @@ async def get_debate_analysis(symbol: str):
         logger.error(f"AI 辯論分析失敗: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/api/backtest")
+@router.post("/api/backtest", dependencies=[Depends(get_current_user)])
 async def run_backtest_api(request: BacktestRequest):
     """
     執行快速回測 (One-Click Backtest)。

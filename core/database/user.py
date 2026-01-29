@@ -38,29 +38,22 @@ def verify_password(stored_password: str, provided_password: str) -> bool:
 # 用戶 CRUD
 # ============================================================================
 
-def create_user(username: str, password: str, email: str = None) -> Dict:
+def create_user(username: str, password: str) -> Dict:
     """創建新用戶"""
     conn = get_connection()
     c = conn.cursor()
     try:
-        if email:
-            c.execute('SELECT user_id FROM users WHERE email = %s', (email,))
-            if c.fetchone():
-                raise ValueError("Email already registered")
-
         user_id = str(uuid.uuid4())
         password_hash = hash_password(password)
 
         c.execute('''
-            INSERT INTO users (user_id, username, password_hash, email, created_at)
-            VALUES (%s, %s, %s, %s, NOW())
-        ''', (user_id, username, password_hash, email))
+            INSERT INTO users (user_id, username, password_hash, created_at)
+            VALUES (%s, %s, %s, NOW())
+        ''', (user_id, username, password_hash))
         conn.commit()
         return {"user_id": user_id, "username": username}
     except psycopg2.IntegrityError as e:
         conn.rollback()
-        if "email" in str(e).lower():
-            raise ValueError("Email already registered")
         raise ValueError("Username already exists")
     finally:
         conn.close()
@@ -104,23 +97,7 @@ def get_user_by_id(user_id: str) -> Optional[Dict]:
         conn.close()
 
 
-def get_user_by_email(email: str) -> Optional[Dict]:
-    """根據 Email 獲取用戶信息"""
-    conn = get_connection()
-    c = conn.cursor()
-    try:
-        c.execute('SELECT user_id, username, password_hash, email FROM users WHERE email = %s', (email,))
-        row = c.fetchone()
-        if row:
-            return {
-                "user_id": row[0],
-                "username": row[1],
-                "password_hash": row[2],
-                "email": row[3]
-            }
-        return None
-    finally:
-        conn.close()
+
 
 
 def update_password(user_id: str, new_password: str) -> bool:
@@ -511,81 +488,7 @@ def upgrade_to_pro(user_id: str, months: int = 1, tx_hash: str = None) -> bool:
         conn.close()
 
 
-# ============================================================================
-# 密碼重置 Token
-# ============================================================================
 
-def create_reset_token(user_id: str, expires_minutes: int = 30) -> str:
-    """創建密碼重置 Token（30 分鐘有效）"""
-    conn = get_connection()
-    c = conn.cursor()
-    try:
-        c.execute('DELETE FROM password_reset_tokens WHERE user_id = %s', (user_id,))
-
-        token = str(uuid.uuid4())
-        c.execute('''
-            INSERT INTO password_reset_tokens (token, user_id, created_at, expires_at)
-            VALUES (%s, %s, NOW(), NOW() + INTERVAL '%s minutes')
-        ''' % ('%s', '%s', expires_minutes), (token, user_id))
-        conn.commit()
-        return token
-    except Exception as e:
-        print(f"Create reset token error: {e}")
-        conn.rollback()
-        return None
-    finally:
-        conn.close()
-
-
-def get_reset_token(token: str) -> Optional[Dict]:
-    """驗證重置 Token 並返回用戶信息"""
-    conn = get_connection()
-    c = conn.cursor()
-    try:
-        c.execute('''
-            SELECT user_id, expires_at
-            FROM password_reset_tokens
-            WHERE token = %s AND expires_at > NOW()
-        ''', (token,))
-        row = c.fetchone()
-        if row:
-            expires_at = row[1]
-            if expires_at and not isinstance(expires_at, str):
-                expires_at = expires_at.strftime('%Y-%m-%d %H:%M:%S')
-            return {
-                "user_id": row[0],
-                "expires_at": expires_at
-            }
-        return None
-    finally:
-        conn.close()
-
-
-def delete_reset_token(token: str) -> bool:
-    """刪除已使用的重置 Token"""
-    conn = get_connection()
-    c = conn.cursor()
-    try:
-        c.execute('DELETE FROM password_reset_tokens WHERE token = %s', (token,))
-        conn.commit()
-        return c.rowcount > 0
-    except Exception as e:
-        print(f"Delete reset token error: {e}")
-        conn.rollback()
-        return False
-    finally:
-        conn.close()
-
-
-def cleanup_expired_tokens():
-    """清理過期的 Token"""
-    conn = get_connection()
-    c = conn.cursor()
-    try:
-        c.execute('DELETE FROM password_reset_tokens WHERE expires_at < NOW()')
-        conn.commit()
-    finally:
-        conn.close()
 
 
 # ============================================================================

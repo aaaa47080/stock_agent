@@ -13,7 +13,7 @@ const DebugLog = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ level, message, data }),
                 keepalive: true
-            }).catch(() => {});
+            }).catch(() => { });
         }
     },
     info(msg, data) { this.send('info', msg, data); },
@@ -51,9 +51,9 @@ const AuthManager = {
     isPiBrowser() {
         // 同步檢測：Pi SDK 必須存在且有必要方法
         const hasPiSDK = typeof window.Pi !== 'undefined' &&
-                         window.Pi !== null &&
-                         typeof window.Pi.authenticate === 'function' &&
-                         typeof window.Pi.init === 'function';
+            window.Pi !== null &&
+            typeof window.Pi.authenticate === 'function' &&
+            typeof window.Pi.init === 'function';
 
         DebugLog.info('isPiBrowser 同步檢測', {
             userAgent: navigator.userAgent,
@@ -102,46 +102,43 @@ const AuthManager = {
 
     async loginAsMockUser() {
         console.log("⚠️ [Dev Mode] Manually triggering Mock Login.");
-        showToast('開發模式：使用模擬 Pi 帳號登入', 'info');
+        showToast('開發模式：使用測試帳號登入...', 'info');
 
         await new Promise(r => setTimeout(r, 500)); // 模擬延遲
 
-        const mockUser = {
-            uid: "mock_user_" + Date.now(),
-            user_id: "mock_user_" + Date.now(),
-            username: "MockTester",
-            accessToken: "mock_token_123",
-            authMethod: "pi_network",
-            pi_uid: "mock_pi_uid_" + Date.now(),
-            pi_username: "MockTester"
-        };
-
-        // 同步 Mock 用戶到後端 (確保資料庫有紀錄)
         try {
-            const res = await fetch('/api/user/pi-sync', {
+            // 使用新的 Dev Login Endpoint
+            const res = await fetch('/api/user/dev-login', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    pi_uid: mockUser.pi_uid,
-                    username: mockUser.username,
-                    access_token: mockUser.accessToken
-                })
+                headers: { 'Content-Type': 'application/json' }
             });
-            const syncResult = await res.json();
-            if (syncResult.user && syncResult.user.user_id) {
-                mockUser.uid = syncResult.user.user_id;
-                mockUser.user_id = syncResult.user.user_id;
+
+            const result = await res.json();
+
+            if (!res.ok) {
+                showToast(result.detail || 'Test Mode disabled', 'error');
+                return { success: false, error: result.detail };
             }
+
+            this.currentUser = {
+                uid: result.user.uid,
+                user_id: result.user.uid,
+                username: result.user.username,
+                accessToken: result.access_token,
+                authMethod: result.user.authMethod
+            };
+
+            localStorage.setItem('pi_user', JSON.stringify(this.currentUser));
+            this._updateUI(true);
+
+            if (typeof initChat === 'function') initChat();
+            return { success: true, user: this.currentUser };
+
         } catch (e) {
-            console.error("Mock sync warning:", e);
+            console.error("Mock login error:", e);
+            showToast('模擬登入失敗', 'error');
+            return { success: false, error: e.message };
         }
-
-        this.currentUser = mockUser;
-        localStorage.setItem('pi_user', JSON.stringify(this.currentUser));
-        this._updateUI(true);
-
-        if (typeof initChat === 'function') initChat();
-        return { success: true, user: this.currentUser };
     },
 
     async authenticateWithPi() {
@@ -316,7 +313,7 @@ const AuthManager = {
         const methodEl = document.getElementById('profile-method');
         if (methodEl) {
             const methodText = authMethod === 'pi_network' ? 'PI WALLET' :
-                              authMethod === 'password' ? 'PASSWORD' : 'GUEST';
+                authMethod === 'password' ? 'PASSWORD' : 'GUEST';
             methodEl.textContent = methodText;
         }
 
@@ -364,9 +361,9 @@ const AuthManager = {
 function isPiBrowser() {
     // 嚴格檢測：Pi SDK 必須存在且有必要方法
     const hasPiSDK = typeof window.Pi !== 'undefined' &&
-                     window.Pi !== null &&
-                     typeof window.Pi.authenticate === 'function' &&
-                     typeof window.Pi.init === 'function';
+        window.Pi !== null &&
+        typeof window.Pi.authenticate === 'function' &&
+        typeof window.Pi.init === 'function';
     return hasPiSDK;
 }
 
@@ -629,7 +626,7 @@ async function loadPremiumStatus() {
             if (!AuthManager.currentUser) {
                 const sidebarBadge = document.getElementById('sidebar-premium-badge');
                 if (sidebarBadge) sidebarBadge.classList.add('hidden');
-                
+
                 statusBadge.innerHTML = `
                     <i data-lucide="x-circle" class="w-3 h-3"></i>
                     未登入
@@ -667,11 +664,11 @@ async function loadPremiumStatus() {
                     <span class="font-bold text-yellow-400">高級會員</span>
                 `;
                 statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400 border border-yellow-500/30 shadow-sm shadow-yellow-500/10';
-                
+
                 if (sidebarBadge) {
                     sidebarBadge.classList.remove('hidden');
                 }
-                
+
                 if (upgradeBtn) upgradeBtn.disabled = true;
                 if (upgradeBtn) {
                     upgradeBtn.innerHTML = '<i data-lucide="check-circle" class="w-4 h-4"></i> 已是高級會員';
@@ -684,11 +681,11 @@ async function loadPremiumStatus() {
                     <span class="font-bold text-textMuted">免費會員</span>
                 `;
                 statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-textMuted';
-                
+
                 if (sidebarBadge) {
                     sidebarBadge.classList.add('hidden');
                 }
-                
+
                 if (upgradeBtn) upgradeBtn.disabled = false;
             }
 
@@ -718,112 +715,18 @@ async function handleUpgradeToPremium() {
 }
 
 // ========================================
-// 密碼登入與註冊
+// 密碼登入與註冊 - REMOVED (Strict Pi Network Policy)
 // ========================================
 
 async function handleCredentialLogin() {
-    const username = document.getElementById('login-username')?.value?.trim();
-    const password = document.getElementById('login-password')?.value;
-
-    if (!username || !password) {
-        showToast('請輸入用戶名和密碼', 'warning');
-        return;
-    }
-
-    try {
-        const res = await fetch('/api/user/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
-        });
-
-        const result = await res.json();
-
-        if (!res.ok) {
-            showToast(result.detail || '登入失敗', 'error');
-            return;
-        }
-
-        // 登入成功
-        AuthManager.currentUser = {
-            uid: result.user.uid,
-            user_id: result.user.uid,
-            username: result.user.username,
-            authMethod: result.user.authMethod || 'password'
-        };
-
-        localStorage.setItem('pi_user', JSON.stringify(AuthManager.currentUser));
-        AuthManager._updateUI(true);
-
-        showToast('登入成功！', 'success');
-        setTimeout(() => window.location.reload(), 500);
-
-    } catch (e) {
-        console.error('Login error:', e);
-        showToast('登入時發生錯誤', 'error');
-    }
+    showToast('Login with Password is deprecated. Please use Pi Network.', 'warning');
 }
 
 async function handleRegister() {
-    const username = document.getElementById('reg-username')?.value?.trim();
-    const email = document.getElementById('reg-email')?.value?.trim();
-    const password = document.getElementById('reg-password')?.value;
-    const confirmPassword = document.getElementById('reg-confirm-password')?.value;
-
-    // 驗證
-    if (!username || username.length < 6) {
-        showToast('用戶名至少需要 6 個字元', 'warning');
-        return;
-    }
-
-    if (!email || !email.includes('@')) {
-        showToast('請輸入有效的 Email', 'warning');
-        return;
-    }
-
-    if (!password || password.length < 8 || password.length > 15) {
-        showToast('密碼需要 8-15 個字元', 'warning');
-        return;
-    }
-
-    if (password !== confirmPassword) {
-        showToast('兩次輸入的密碼不一致', 'warning');
-        return;
-    }
-
-    try {
-        const res = await fetch('/api/user/register', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, email, password })
-        });
-
-        const result = await res.json();
-
-        if (!res.ok) {
-            showToast(result.detail || '註冊失敗', 'error');
-            return;
-        }
-
-        // 註冊成功，自動登入
-        AuthManager.currentUser = {
-            uid: result.user_id,
-            user_id: result.user_id,
-            username: result.username,
-            authMethod: 'password'
-        };
-
-        localStorage.setItem('pi_user', JSON.stringify(AuthManager.currentUser));
-        AuthManager._updateUI(true);
-
-        showToast('註冊成功！', 'success');
-        setTimeout(() => window.location.reload(), 500);
-
-    } catch (e) {
-        console.error('Register error:', e);
-        showToast('註冊時發生錯誤', 'error');
-    }
+    showToast('Registration is disabled. Please use Pi Network.', 'warning');
 }
+
+// 註冊邏輯已移除
 
 // 切換登入/註冊表單
 function toggleAuthMode(mode) {

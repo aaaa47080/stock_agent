@@ -6,6 +6,9 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from dotenv import load_dotenv
 from utils.llm_client import LLMClientFactory
+from fastapi import Depends
+from api.deps import get_current_user
+from api.routers.admin import verify_admin_key
 
 # LangChain Imports
 from langchain.chat_models import init_chat_model
@@ -72,9 +75,9 @@ async def read_debug_log(lines: int = 50):
     except Exception as e:
         return {"lines": [], "error": str(e)}
 
-@router.delete("/api/debug/log")
+@router.delete("/api/debug/log", dependencies=[Depends(verify_admin_key)])
 async def clear_debug_log():
-    """清空 frontend_debug.log"""
+    """清空 frontend_debug.log (Admin only)"""
     try:
         with open(FRONTEND_DEBUG_LOG, "w", encoding="utf-8") as f:
             f.write("")
@@ -243,7 +246,7 @@ async def get_forum_limits():
     }
 
 @router.post("/api/settings/update")
-async def update_user_settings(settings: UserSettings):
+async def update_user_settings(settings: UserSettings, current_user: dict = Depends(get_current_user)):
     """
     更新用戶設置 (LLM API Keys, 模型選擇, 委員會模式)
 
@@ -323,7 +326,7 @@ async def update_user_settings(settings: UserSettings):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/api/settings/keys")
-async def update_api_keys(settings: APIKeySettings):
+async def update_api_keys(settings: APIKeySettings, current_user: dict = Depends(get_current_user)):
     """接收前端傳來的 API Keys，寫入 .env 並熱重載連接器"""
     
     try:

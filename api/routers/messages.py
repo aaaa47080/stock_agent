@@ -30,6 +30,8 @@ from core.database import (
     get_user_membership,
     update_last_active,
 )
+from fastapi import Depends
+from api.deps import get_current_user, verify_token
 from api.utils import logger
 
 router = APIRouter()
@@ -117,11 +119,15 @@ def _check_user_is_pro(user_id: str) -> bool:
 async def get_conversations_endpoint(
     user_id: str = Query(..., description="用戶 ID"),
     limit: int = Query(50, ge=1, le=100),
+    limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     取得對話列表
     """
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
     try:
         # 驗證用戶存在
         loop = asyncio.get_running_loop()
@@ -154,10 +160,13 @@ async def get_messages_endpoint(
     user_id: str = Query(..., description="用戶 ID"),
     limit: int = Query(50, ge=1, le=100),
     before_id: Optional[int] = Query(None, description="取得此 ID 之前的訊息"),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     取得對話中的訊息
     """
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
     try:
         loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(
@@ -181,10 +190,13 @@ async def get_conversation_with_user_endpoint(
     other_user_id: str,
     user_id: str = Query(..., description="當前用戶 ID"),
     limit: int = Query(50, ge=1, le=100),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     取得與特定用戶的對話和訊息
     """
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
     try:
         loop = asyncio.get_running_loop()
         
@@ -215,10 +227,13 @@ async def get_conversation_with_user_endpoint(
 async def send_message_endpoint(
     request: SendMessageRequest,
     user_id: str = Query(..., description="發送者用戶 ID"),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     發送訊息（僅限好友）
     """
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
     try:
         # 驗證用戶存在
         loop = asyncio.get_running_loop()
@@ -290,10 +305,13 @@ async def send_message_endpoint(
 async def mark_read_endpoint(
     request: MarkReadRequest,
     user_id: str = Query(..., description="用戶 ID"),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     標記對話為已讀
     """
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
     try:
         loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(None, partial(mark_as_read, request.conversation_id, user_id))
@@ -328,10 +346,13 @@ async def mark_read_endpoint(
 async def send_greeting_endpoint(
     request: SendMessageRequest,
     user_id: str = Query(..., description="發送者用戶 ID"),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     發送打招呼訊息（Pro 會員專屬，可發給非好友）
     """
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
     try:
         # 驗證用戶存在
         loop = asyncio.get_running_loop()
@@ -392,10 +413,13 @@ async def search_messages_endpoint(
     q: str = Query(..., min_length=1, max_length=100, description="搜尋關鍵字"),
     user_id: str = Query(..., description="用戶 ID"),
     limit: int = Query(50, ge=1, le=100),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     搜尋訊息（Pro 會員專屬）
     """
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
     try:
         # 檢查是否為 Pro 會員
         is_pro = _check_user_is_pro(user_id)
@@ -420,10 +444,13 @@ async def search_messages_endpoint(
 @router.get("/api/messages/unread-count")
 async def get_unread_count_endpoint(
     user_id: str = Query(..., description="用戶 ID"),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     取得未讀訊息數量
     """
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
     try:
         loop = asyncio.get_running_loop()
         count = await loop.run_in_executor(None, get_unread_count, user_id)
@@ -439,10 +466,13 @@ async def get_unread_count_endpoint(
 @router.get("/api/messages/limits")
 async def get_message_limits_endpoint(
     user_id: str = Query(..., description="用戶 ID"),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     取得用戶的訊息限制狀態
     """
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
     try:
         from core.database import get_config
         is_pro = _check_user_is_pro(user_id)
@@ -528,12 +558,33 @@ async def websocket_endpoint(websocket: WebSocket):
             auth_data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
             auth_message = json.loads(auth_data)
 
-            if auth_message.get("action") != "auth" or not auth_message.get("user_id"):
-                await websocket.send_json({"type": "error", "message": "需要認證"})
+            # Authenticate with Token
+            token = auth_message.get("token") or auth_message.get("access_token")
+            # If token is not provided but user_id is, it's INSECURE. We ENFORCE token.
+            
+            if not token:
+                await websocket.send_json({"type": "error", "message": "Authentication required (Missing Token)"})
                 await websocket.close()
                 return
 
-            user_id = auth_message["user_id"]
+            # Verify Token
+            try:
+                payload = verify_token(token)
+                user_id = payload.get("sub")
+                if not user_id:
+                    raise HTTPException(status_code=401, detail="Invalid token payload")
+            except Exception as e:
+                logger.warning(f"WebSocket auth failed: {e}")
+                await websocket.send_json({"type": "error", "message": "Invalid Token"})
+                await websocket.close()
+                return
+
+            # Optional: Check if the token user matches the claimed user_id if provided
+            if auth_message.get("user_id") and auth_message["user_id"] != user_id:
+                 logger.warning(f"WebSocket auth mismatch: Token user {user_id} != Claimed {auth_message['user_id']}")
+                 await websocket.send_json({"type": "error", "message": "User ID mismatch"})
+                 await websocket.close()
+                 return   
 
             # 驗證用戶存在
             loop = asyncio.get_running_loop()

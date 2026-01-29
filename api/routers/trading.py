@@ -8,11 +8,13 @@ from api.utils import logger
 from trading.trade_executor import TradeExecutor
 from utils.okx_auth import get_okx_connector_from_request, validate_okx_credentials
 import api.globals as globals
+from fastapi import Depends
+from api.deps import get_current_user
 
 router = APIRouter()
 
 @router.post("/api/okx/test-connection")
-async def test_okx_connection(request: Request):
+async def test_okx_connection(request: Request, current_user: dict = Depends(get_current_user)):
     """
     測試 OKX API 連接 (BYOK Mode)
 
@@ -47,7 +49,7 @@ async def test_okx_connection(request: Request):
         }
 
 @router.get("/api/account/assets")
-async def get_account_assets(request: Request):
+async def get_account_assets(request: Request, current_user: dict = Depends(get_current_user)):
     """
     獲取帳戶資產餘額 (BYOK Mode)
 
@@ -106,7 +108,7 @@ async def get_account_assets(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/api/account/positions")
-async def get_account_positions(request: Request):
+async def get_account_positions(request: Request, current_user: dict = Depends(get_current_user)):
     """
     獲取當前持倉 (包含現貨與合約) - BYOK Mode
 
@@ -158,7 +160,7 @@ async def get_account_positions(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/api/trade/execute")
-async def execute_trade_api(trade_request: TradeExecutionRequest, request: Request):
+async def execute_trade_api(trade_request: TradeExecutionRequest, request: Request, current_user: dict = Depends(get_current_user)):
     """
     手動確認後執行交易 (Human-in-the-loop) - BYOK Mode
 

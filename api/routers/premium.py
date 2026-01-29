@@ -18,8 +18,12 @@ class UpgradeRequest(BaseModel):
     tx_hash: Optional[str] = None  # Pi 支付交易哈希
 
 
+from api.deps import get_current_user
+
 @router.post("/upgrade")
-async def upgrade_to_premium(request: UpgradeRequest):
+async def upgrade_to_premium(request: UpgradeRequest, current_user: dict = Depends(get_current_user)):
+    if current_user["user_id"] != request.user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
     """
     升級到高級會員
     

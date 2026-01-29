@@ -16,6 +16,8 @@ from pydantic import BaseModel, Field
 
 from core.agent_registry import agent_registry, AgentConfig
 from core.tools import get_available_tool_names
+from fastapi import Depends
+from api.routers.admin import verify_admin_key
 
 router = APIRouter(prefix="/agents", tags=["Agent Management"])
 
@@ -116,7 +118,8 @@ async def get_agent(agent_id: str):
 @router.post("/", summary="註冊新 Agent")
 async def register_agent(
     agent_id: str = Body(..., embed=True, description="Agent 唯一 ID"),
-    config: AgentConfigRequest = Body(..., description="Agent 配置")
+    config: AgentConfigRequest = Body(..., description="Agent 配置"),
+    _: bool = Depends(verify_admin_key)
 ):
     """
     註冊新 Agent（或更新現有 Agent）
@@ -173,7 +176,8 @@ async def register_agent(
 @router.put("/{agent_id}", summary="更新 Agent 配置")
 async def update_agent(
     agent_id: str,
-    config: AgentConfigRequest
+    config: AgentConfigRequest,
+    _: bool = Depends(verify_admin_key)
 ):
     """
     更新指定 Agent 的配置
@@ -230,7 +234,7 @@ async def update_agent(
         )
 
 
-@router.delete("/{agent_id}", summary="刪除 Agent")
+@router.delete("/{agent_id}", summary="刪除 Agent", dependencies=[Depends(verify_admin_key)])
 async def delete_agent(agent_id: str):
     """
     刪除指定 Agent
@@ -268,7 +272,8 @@ async def delete_agent(agent_id: str):
 @router.patch("/{agent_id}/tools", summary="更新 Agent 工具列表")
 async def update_agent_tools(
     agent_id: str,
-    request: AgentToolsUpdateRequest
+    request: AgentToolsUpdateRequest,
+    _: bool = Depends(verify_admin_key)
 ):
     """
     更新指定 Agent 的工具列表
@@ -316,7 +321,7 @@ async def update_agent_tools(
         )
 
 
-@router.patch("/{agent_id}/enable", summary="啟用 Agent")
+@router.patch("/{agent_id}/enable", summary="啟用 Agent", dependencies=[Depends(verify_admin_key)])
 async def enable_agent(agent_id: str):
     """啟用指定 Agent"""
     if not agent_registry.get_agent(agent_id):
@@ -340,7 +345,7 @@ async def enable_agent(agent_id: str):
         )
 
 
-@router.patch("/{agent_id}/disable", summary="禁用 Agent")
+@router.patch("/{agent_id}/disable", summary="禁用 Agent", dependencies=[Depends(verify_admin_key)])
 async def disable_agent(agent_id: str):
     """禁用指定 Agent"""
     if not agent_registry.get_agent(agent_id):
@@ -364,7 +369,7 @@ async def disable_agent(agent_id: str):
         )
 
 
-@router.post("/reset", summary="重置為預設配置")
+@router.post("/reset", summary="重置為預設配置", dependencies=[Depends(verify_admin_key)])
 async def reset_agents():
     """
     重置所有 Agent 為預設配置

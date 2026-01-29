@@ -34,11 +34,13 @@ router = APIRouter()
 # 簡易認證（生產環境應使用更安全的方式）
 # ============================================================================
 
-ADMIN_API_KEY = os.getenv("ADMIN_API_KEY", "dev_admin_key_change_in_production")
-
+ADMIN_API_KEY = os.getenv("ADMIN_API_KEY")
 
 def verify_admin_key(x_admin_key: Optional[str] = Header(None)):
     """驗證管理員 API Key"""
+    if not ADMIN_API_KEY:
+        raise HTTPException(status_code=500, detail="Server configuration error: ADMIN_API_KEY not set")
+    
     if not x_admin_key or x_admin_key != ADMIN_API_KEY:
         raise HTTPException(status_code=403, detail="Invalid or missing admin API key")
     return True
