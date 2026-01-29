@@ -87,8 +87,10 @@ async def analyze_crypto(request: QueryRequest):
             globals.bot = CryptoAnalysisBot()
             logger.info("CryptoAnalysisBot 重新初始化成功")
         except Exception as e:
-            logger.error(f"CryptoAnalysisBot 初始化失敗: {e}")
-            raise HTTPException(status_code=503, detail=f"分析服務尚未就緒: {str(e)}")
+            import traceback
+            error_details = traceback.format_exc()
+            logger.error(f"CryptoAnalysisBot 初始化失敗: {error_details}")
+            raise HTTPException(status_code=503, detail=f"分析服務尚未就緒: {str(e)}\n\nTraceback:\n{error_details}")
 
     # ⭐ 驗證用戶是否提供了 API key
     if not request.user_api_key or not request.user_provider:

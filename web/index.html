@@ -53,9 +53,6 @@
     <script src="/static/js/premium.js"></script>
     <script src="/static/js/friends.js?v=2"></script>
     <script src="/static/js/messages.js?v=2"></script>
-    <script src="/static/js/filter.js?v=46"></script>
-    <script src="/static/js/market.js?v=46"></script>
-
     <!-- Fonts -->
     <link
         href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Mulish:wght@300;400;600;800&family=JetBrains+Mono:wght@400;500&display=swap"
@@ -309,9 +306,9 @@
                     </div>
                 </div>
 
-                <!-- Warning Overlay (No Key) - 浮在聊天區域上方，不遮擋導航 -->
+                <!-- Warning Overlay (No Key) - 預設顯示，有 key 時由 JS 隱藏 -->
                 <div id="no-llm-key-warning"
-                    class="hidden absolute top-0 left-0 right-0 bottom-32 flex items-center justify-center z-40 p-4 bg-background/80 backdrop-blur-sm">
+                    class="absolute top-0 left-0 right-0 bottom-32 flex items-center justify-center z-40 p-4 bg-background/80 backdrop-blur-sm">
                     <div
                         class="bg-surface/95 backdrop-blur-xl rounded-3xl p-8 border border-white/10 shadow-2xl max-w-sm w-full text-center">
                         <div
@@ -358,12 +355,12 @@
                                 class="w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center text-textMuted hover:text-primary transition">
                                 <i data-lucide="plus" class="w-5 h-5"></i>
                             </button>
-                            <input type="text" id="user-input"
-                                class="flex-1 bg-transparent border-none outline-none text-base text-secondary placeholder-textMuted/50 px-2 font-light relative z-10"
-                                placeholder="Ask anything..." autocomplete="off"
+                            <input type="text" id="user-input" disabled
+                                class="flex-1 bg-transparent border-none outline-none text-base text-secondary placeholder-textMuted/50 px-2 font-light relative z-10 opacity-50 cursor-not-allowed"
+                                placeholder="System Locked - Please Configure API Key" autocomplete="off"
                                 onkeypress="if(event.key === 'Enter') sendMessage()">
-                            <button onclick="sendMessage()" id="send-btn"
-                                class="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-accent text-background flex items-center justify-center hover:scale-105 active:scale-95 transition shadow-lg shadow-primary/20">
+                            <button onclick="sendMessage()" id="send-btn" disabled
+                                class="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-accent text-background flex items-center justify-center hover:scale-105 active:scale-95 transition shadow-lg shadow-primary/20 opacity-50 cursor-not-allowed">
                                 <i data-lucide="arrow-up" class="w-5 h-5"></i>
                             </button>
                         </div>
@@ -968,22 +965,22 @@
     -->
 
     <!-- Scripts -->
-    <script src="/static/js/app.js?v=45" onerror="alert('app.js 載入失敗')"></script>
-    <script src="/static/js/apiKeyManager.js?v=45" onerror="alert('apiKeyManager.js 載入失敗')"></script>
-    <script src="/static/js/auth.js?v=45" onerror="alert('auth.js 載入失敗')"></script>
-    <script src="/static/js/okxKeyManager.js?v=45"></script>
-    <script src="/static/js/components.js?v=46"></script>
-    <script src="/static/js/llmSettings.js?v=45"></script>
-    <script src="/static/js/filter.js?v=45"></script>
-    <script src="/static/js/chat.js?v=45"></script>
-    <script src="/static/js/market.js?v=45"></script>
-    <script src="/static/js/assets.js?v=45"></script>
-    <script src="/static/js/pulse.js?v=45"></script>
-    <script src="/static/js/trade.js?v=45"></script>
-    <script src="/static/js/forum.js?v=45"></script>
-    <script src="/static/js/wallet.js?v=45"></script>
-    <script src="/static/js/debate.js?v=45"></script>
-    <script src="/static/js/committeeManager.js?v=45"></script>
+    <script src="/static/js/app.js?v=47" onerror="alert('app.js 載入失敗')"></script>
+    <script src="/static/js/apiKeyManager.js?v=47" onerror="alert('apiKeyManager.js 載入失敗')"></script>
+    <script src="/static/js/auth.js?v=47" onerror="alert('auth.js 載入失敗')"></script>
+    <script src="/static/js/okxKeyManager.js?v=47"></script>
+    <script src="/static/js/components.js?v=47"></script>
+    <script src="/static/js/llmSettings.js?v=47"></script>
+    <script src="/static/js/filter.js?v=47"></script>
+    <script src="/static/js/chat.js?v=47"></script>
+    <script src="/static/js/market.js?v=47"></script>
+    <script src="/static/js/assets.js?v=47"></script>
+    <script src="/static/js/pulse.js?v=47"></script>
+    <script src="/static/js/trade.js?v=47"></script>
+    <script src="/static/js/forum.js?v=47"></script>
+    <script src="/static/js/wallet.js?v=47"></script>
+    <script src="/static/js/debate.js?v=47"></script>
+    <script src="/static/js/committeeManager.js?v=47"></script>
     <script>
         lucide.createIcons();
 
@@ -1139,6 +1136,16 @@
                 }
                 if (window.PremiumManager && typeof window.PremiumManager.updatePriceDisplay === 'function') {
                     window.PremiumManager.updatePriceDisplay();
+                }
+
+                // 確保 LLM 模型列表已更新
+                if (typeof window.updateAvailableModels === 'function') {
+                    window.updateAvailableModels();
+                }
+
+                // 🌟 確保 Committee Manager 被重新初始化 (因為 Settings UI 是動態注入的)
+                if (window.CommitteeManager && typeof window.CommitteeManager.init === 'function') {
+                    window.CommitteeManager.init();
                 }
             }
 

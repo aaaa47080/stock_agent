@@ -8,11 +8,19 @@ const CommitteeManager = {
     // State to track team members
     bullTeam: [],
     bearTeam: [],
+    _initialized: false, // 🔒 防止重複初始化
 
     init() {
+        // 防止重複初始化
+        if (this._initialized) {
+            console.log('[CommitteeManager] Already initialized, skipping');
+            return;
+        }
+
         this.bindEvents();
         this.updateProviders();
         this.updateTeamUI();
+        this._initialized = true;
     },
 
     bindEvents() {
@@ -22,36 +30,79 @@ const CommitteeManager = {
         const addBearBtn = document.getElementById('add-bear-btn');
         const toggleCheckbox = document.getElementById('set-committee-mode');
 
+        console.log('[CommitteeManager] Binding events...', {
+            providerSelect: !!providerSelect,
+            modelSelect: !!modelSelect,
+            toggleCheckbox: !!toggleCheckbox
+        });
+
+        // 如果關鍵元素不存在，跳過綁定（可能組件還未注入）
+        if (!toggleCheckbox) {
+            console.log('[CommitteeManager] Committee checkbox not found, skipping event binding');
+            return;
+        }
+
+        // 🔧 移除舊的事件監聽器（如果存在）以防止重複綁定
+        if (this._boundHandlers) {
+            if (providerSelect) providerSelect.removeEventListener('change', this._boundHandlers.providerChange);
+            if (modelSelect) modelSelect.removeEventListener('change', this._boundHandlers.modelChange);
+            if (addBullBtn) addBullBtn.removeEventListener('click', this._boundHandlers.addBull);
+            if (addBearBtn) addBearBtn.removeEventListener('click', this._boundHandlers.addBear);
+            if (toggleCheckbox) toggleCheckbox.removeEventListener('change', this._boundHandlers.toggle);
+        }
+
+        // 創建綁定的處理函數（保存引用以便後續移除）
+        this._boundHandlers = {
+            providerChange: () => this.handleProviderChange(),
+            modelChange: () => this.updateAddButtons(),
+            addBull: () => this.addMember('bull'),
+            addBear: () => this.addMember('bear'),
+            toggle: (e) => {
+                console.log('[CommitteeManager] Toggle event fired:', e.target.checked);
+                this.togglePanel(e.target.checked);
+            }
+        };
+
+        // 綁定新的事件監聽器
         if (providerSelect) {
-            providerSelect.addEventListener('change', () => this.handleProviderChange());
+            providerSelect.addEventListener('change', this._boundHandlers.providerChange);
         }
 
         if (modelSelect) {
-            modelSelect.addEventListener('change', () => this.updateAddButtons());
+            modelSelect.addEventListener('change', this._boundHandlers.modelChange);
         }
 
         if (addBullBtn) {
-            addBullBtn.addEventListener('click', () => this.addMember('bull'));
+            addBullBtn.addEventListener('click', this._boundHandlers.addBull);
         }
 
         if (addBearBtn) {
-            addBearBtn.addEventListener('click', () => this.addMember('bear'));
+            addBearBtn.addEventListener('click', this._boundHandlers.addBear);
         }
-        
+
         if (toggleCheckbox) {
-             toggleCheckbox.addEventListener('change', (e) => this.togglePanel(e.target.checked));
+            toggleCheckbox.addEventListener('change', this._boundHandlers.toggle);
         }
+
+        console.log('[CommitteeManager] Events bound successfully');
     },
 
     togglePanel(isChecked) {
         const panel = document.getElementById('committee-management-panel');
-        if (!panel) return;
-        
+        console.log('[CommitteeManager] togglePanel called:', { isChecked, panel: !!panel });
+
+        if (!panel) {
+            console.error('[CommitteeManager] Panel not found!');
+            return;
+        }
+
         if (isChecked) {
             panel.classList.remove('hidden');
             this.updateProviders(); // Refresh providers when opening
+            console.log('[CommitteeManager] Panel opened');
         } else {
             panel.classList.add('hidden');
+            console.log('[CommitteeManager] Panel closed');
         }
     },
 
@@ -105,11 +156,11 @@ const CommitteeManager = {
     async handleProviderChange() {
         const providerSelect = document.getElementById('committee-provider-select');
         const modelSelect = document.getElementById('committee-model-select');
-        
+
         if (!providerSelect || !modelSelect) return;
 
         const provider = providerSelect.value;
-        
+
         // Reset model select
         modelSelect.innerHTML = '<option value="">Select Model...</option>';
         modelSelect.disabled = true;
@@ -118,10 +169,10 @@ const CommitteeManager = {
         if (!provider) return;
 
         modelSelect.disabled = false;
-        
+
         // Fetch models (using the existing fetchModelConfig from llmSettings.js if available, or fallback)
         let models = [];
-        
+
         try {
             // Try to get models from the shared config function if it exists
             if (typeof fetchModelConfig === 'function') {
@@ -129,11 +180,11 @@ const CommitteeManager = {
                 if (config && config[provider] && config[provider].available_models) {
                     models = config[provider].available_models;
                 }
-            } 
-            
+            }
+
             // If fetching failed or returned empty (or specific logic for OpenRouter)
             if (models.length === 0) {
-                 if (provider === 'openai') {
+                if (provider === 'openai') {
                     models = [
                         { value: 'gpt-4o', display: 'GPT-4o' },
                         { value: 'gpt-4o-mini', display: 'GPT-4o Mini' }
@@ -144,28 +195,29 @@ const CommitteeManager = {
                         { value: 'gemini-1.5-flash', display: 'Gemini 1.5 Flash' }
                     ];
                 } else if (provider === 'openrouter') {
-                     // For OpenRouter, we might just let them type or show common ones
-                     // Since this is a select box, we'll provide common ones.
-                     // Ideally, this should be an input for OpenRouter, but keeping it consistent for now.
-                     models = [
+                    // For OpenRouter, we might just let them type or show common ones
+                    // Since this is a select box, we'll provide common ones.
+                    models = [
                         { value: 'anthropic/claude-3.5-sonnet', display: 'Claude 3.5 Sonnet' },
                         { value: 'openai/gpt-4o', display: 'GPT-4o (via OR)' },
                         { value: 'google/gemini-pro-1.5', display: 'Gemini 1.5 Pro (via OR)' }
-                     ];
-                     
-                     // If the user has a manually entered model saved for OpenRouter, add it
-                     const savedModel = window.APIKeyManager.getModelForProvider('openrouter');
-                     if (savedModel) {
-                         // Check if already in list
-                         if (!models.find(m => m.value === savedModel)) {
-                             models.unshift({ value: savedModel, display: savedModel });
-                         }
-                     }
+                    ];
                 }
             }
 
-            // Populate Dropdown
+            // Deduplicate models by value using Set
+            const uniqueModels = [];
+            const seenValues = new Set();
+
             models.forEach(m => {
+                if (!seenValues.has(m.value)) {
+                    seenValues.add(m.value);
+                    uniqueModels.push(m);
+                }
+            });
+
+            // Populate Dropdown with unique models only
+            uniqueModels.forEach(m => {
                 const option = document.createElement('option');
                 option.value = m.value;
                 option.textContent = m.display;
@@ -193,7 +245,7 @@ const CommitteeManager = {
     addMember(team) {
         const providerSelect = document.getElementById('committee-provider-select');
         const modelSelect = document.getElementById('committee-model-select');
-        
+
         const provider = providerSelect.value;
         const model = modelSelect.value;
         const providerName = providerSelect.options[providerSelect.selectedIndex].text;
@@ -216,7 +268,7 @@ const CommitteeManager = {
         }
 
         this.updateTeamUI();
-        
+
         // Optional: Reset selection? No, keep it for easy adding to other team.
         // But maybe show a toast
         if (typeof showToast === 'function') {
@@ -269,7 +321,7 @@ const CommitteeManager = {
     renderList(team, members) {
         const listEl = document.getElementById(`${team}-committee-list`);
         const emptyHint = document.getElementById(`${team}-empty-hint`);
-        
+
         if (!listEl) return;
 
         listEl.innerHTML = '';
@@ -278,7 +330,7 @@ const CommitteeManager = {
             if (emptyHint) emptyHint.classList.remove('hidden');
         } else {
             if (emptyHint) emptyHint.classList.add('hidden');
-            
+
             members.forEach(m => {
                 const li = document.createElement('li');
                 li.className = 'flex items-center justify-between bg-surface p-2 rounded-lg border border-white/5';
@@ -297,7 +349,7 @@ const CommitteeManager = {
             if (window.lucide) window.lucide.createIcons();
         }
     },
-    
+
     // Get current configuration (for saving)
     getConfig() {
         return {
@@ -314,6 +366,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Expose to global for HTML callbacks
 window.CommitteeManager = CommitteeManager;
-window.toggleCommitteePanel = (e) => CommitteeManager.togglePanel(document.getElementById('set-committee-mode')?.checked);
+window.toggleCommitteePanel = (checkbox) => {
+    if (checkbox && checkbox.checked !== undefined) {
+        CommitteeManager.togglePanel(checkbox.checked);
+    }
+};
 window.updateCommitteeModels = () => CommitteeManager.handleProviderChange();
 window.addModelToCommittee = (team) => CommitteeManager.addMember(team);

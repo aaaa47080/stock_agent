@@ -253,10 +253,8 @@ async function refreshScreener(showLoading = false, forceRefresh = false) {
 
             const topCount = screenerData.top_performers ? screenerData.top_performers.length : 0;
             console.log(`[Market] Loaded ${topCount} items.`);
-            // Debug Toast
-            if (window.showToast) {
-                window.showToast(`已載入 ${topCount} 個市場數據`, 'success');
-            }
+            // Debug Toast removed as per user request
+
 
             renderList(containers.top, screenerData.top_performers, 'price_change_24h', '%');
             renderList(containers.oversold, screenerData.oversold, 'RSI_14', '');
@@ -520,7 +518,7 @@ function closeFundingHistory() {
     }
 }
 
-let historyChartInstance = null;
+var historyChartInstance = null;
 
 function renderHistoryChart(historyData) {
     const ctx = document.getElementById('fundingHistoryChart').getContext('2d');

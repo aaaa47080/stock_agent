@@ -601,10 +601,23 @@ async function sendMessage() {
                 user_api_key: userKey.key,
                 user_provider: userKey.provider,
                 user_model: userSelectedModel,
-                session_id: currentSessionId // Pass current session ID
+                session_id: currentSessionId
             }),
             signal: window.currentAnalysisController.signal
         });
+
+        if (!response.ok) {
+            let errorMsg = `Server Error (${response.status})`;
+            try {
+                const errorData = await response.json();
+                if (errorData.detail) errorMsg = errorData.detail;
+            } catch (e) {
+                // If not JSON, try text
+                const text = await response.text();
+                if (text) errorMsg = text.substring(0, 100);
+            }
+            throw new Error(errorMsg);
+        }
 
         // Backend 已經保存了用戶訊息並更新了標題，立即刷新列表以顯示新標題
         loadSessions();
@@ -627,7 +640,7 @@ async function sendMessage() {
                     if (data.content) {
                         fullContent += data.content;
                         // 實時更新內容，傳入 isStreaming=true 和當前耗時
-                        botMsgDiv.innerHTML = renderStoredBotMessage(fullContent, true, currentElapsed); 
+                        botMsgDiv.innerHTML = renderStoredBotMessage(fullContent, true, currentElapsed);
                     }
                     if (data.done) {
                         clearInterval(timerInterval);
@@ -700,11 +713,11 @@ function renderStoredBotMessage(fullContent, isStreaming = false, elapsedTime = 
         const processLines = processContent.trim().split('\n').filter(l => l.trim());
         let stepsHtml = '';
         let hasTimeInfo = false;
-        
+
         processLines.forEach((line, index) => {
             const trimmed = line.trim();
             const isLastLine = index === processLines.length - 1;
-            
+
             // Determine content
             let lineContent = '';
             if (trimmed.startsWith('---') || trimmed.startsWith('###')) {
@@ -730,15 +743,15 @@ function renderStoredBotMessage(fullContent, isStreaming = false, elapsedTime = 
 
             // Append Loading Spinner to the last line if streaming
             if (isStreaming && isLastLine && !trimmed.includes('分析完成')) {
-                 const spinnerSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-loader-2 animate-spin inline-block ml-2 text-primary"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>`;
-                 
-                 // Check if it's a div wrapper (standard lines) or just text
-                 if (lineContent.includes('<div')) {
-                     // Insert before the closing div
-                     lineContent = lineContent.replace('</div>', ` ${spinnerSvg}</div>`);
-                 } else {
-                     lineContent += ` ${spinnerSvg}`;
-                 }
+                const spinnerSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-loader-2 animate-spin inline-block ml-2 text-primary"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>`;
+
+                // Check if it's a div wrapper (standard lines) or just text
+                if (lineContent.includes('<div')) {
+                    // Insert before the closing div
+                    lineContent = lineContent.replace('</div>', ` ${spinnerSvg}</div>`);
+                } else {
+                    lineContent += ` ${spinnerSvg}`;
+                }
             }
             stepsHtml += lineContent;
         });
@@ -749,7 +762,7 @@ function renderStoredBotMessage(fullContent, isStreaming = false, elapsedTime = 
         // 如果在步驟中沒有找到時間信息，則檢查完整內容
         let timeInfo = '';
         let timerHeader = '';
-        
+
         if (!hasTimeInfo) {
             const timeMatch = fullContent.match(/\[PROCESS\]⏱️ \*\*分析完成\*\*: 總耗時 ([\d.]+) 秒/);
             if (timeMatch) {
@@ -790,7 +803,7 @@ function renderStoredBotMessage(fullContent, isStreaming = false, elapsedTime = 
     } else if (!hasProcessContent) {
         let timerHtml = '';
         if (isStreaming && elapsedTime) {
-             timerHtml = `<div class="flex items-center gap-2 mb-2 text-xs text-textMuted/50 font-mono">
+            timerHtml = `<div class="flex items-center gap-2 mb-2 text-xs text-textMuted/50 font-mono">
                             <i data-lucide="loader-2" class="w-3 h-3 animate-spin"></i>
                             <span id="loading-timer">${elapsedTime}s</span>
                           </div>`;
@@ -863,15 +876,15 @@ async function loadChatHistory(sessionId = 'default') {
                     const footer = document.createElement('div');
                     footer.className = 'mt-2 text-[10px] text-textMuted/30 font-mono';
                     const date = new Date(msg.timestamp + 'Z');
-                    footer.textContent = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    footer.textContent = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                     div.appendChild(footer);
                 }
             });
             lucide.createIcons();
             setTimeout(() => { container.scrollTop = container.scrollHeight; }, 100);
         } else {
-             // Welcome message for empty session
-             container.innerHTML = `
+            // Welcome message for empty session
+            container.innerHTML = `
                 <div class="bot-message opacity-0 animate-fade-in-up" style="animation-delay: 0.1s; animation-fill-mode: forwards;">
                     <div class="flex flex-col items-center justify-center mb-8">
                         <h1 class="font-serif text-3xl md:text-4xl leading-tight text-center">
@@ -888,7 +901,7 @@ async function loadChatHistory(sessionId = 'default') {
                         </button>
                     </div>
                 </div>`;
-             lucide.createIcons();
+            lucide.createIcons();
         }
     } catch (e) {
         console.error("Failed to load history:", e);

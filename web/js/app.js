@@ -9,7 +9,7 @@ if (typeof lucide !== 'undefined') {
 
 // markdown-it 可能不存在於所有頁面
 const md = window.markdownit ? window.markdownit({ html: true, linkify: true }) : null;
-let isAnalyzing = false;
+window.isAnalyzing = false;
 let marketRefreshInterval = null;
 
 // ========================================
@@ -307,6 +307,8 @@ window.showAlert = showAlert;
 // API Key Status Check
 // ========================================
 function checkApiKeyStatus() {
+    console.log('[App] checkApiKeyStatus called');
+
     const indicator = document.getElementById('api-status-indicator');
     const statusText = document.getElementById('api-status-text');
     const statusDot = indicator ? indicator.querySelector('span') : null;
@@ -314,6 +316,7 @@ function checkApiKeyStatus() {
     // Check LLM Key
     const currentKey = window.APIKeyManager?.getCurrentKey();
     const hasLlmKey = !!currentKey;
+    console.log('[App] hasLlmKey:', hasLlmKey, 'currentKey:', currentKey);
 
     // Check OKX Key
     const hasOkxKey = window.OKXKeyManager?.hasCredentials();
@@ -339,11 +342,14 @@ function checkApiKeyStatus() {
 
     // 2. Control Chat Tab Overlay (LLM Key)
     const llmOverlay = document.getElementById('no-llm-key-warning');
+    console.log('[App] llmOverlay element:', !!llmOverlay, 'hasLlmKey:', hasLlmKey);
     if (llmOverlay) {
         if (hasLlmKey) {
             llmOverlay.classList.add('hidden');
+            console.log('[App] Hiding LLM overlay (has key)');
         } else {
             llmOverlay.classList.remove('hidden');
+            console.log('[App] Showing LLM overlay (no key)');
         }
     }
 
@@ -408,6 +414,10 @@ function updateChatUIState(hasApiKey) {
 
 // 暴露到全局供 index.html 控制初始化順序
 window.initializeUIStatus = function () {
+    console.log('[App] initializeUIStatus called');
+    console.log('[App] APIKeyManager exists:', !!window.APIKeyManager);
+    console.log('[App] getCurrentKey:', window.APIKeyManager?.getCurrentKey());
+
     checkApiKeyStatus();
     // 每10秒檢查一次 API 狀態
     if (!window.apiKeyStatusInterval) {
@@ -424,7 +434,6 @@ window.allMarketSymbols = [];
 window.globalSelectedSymbols = []; // Unified selection
 window.selectedNewsSources = ['google', 'cryptocompare', 'cryptopanic', 'newsapi']; // ✅ 固定使用所有新聞來源
 window.currentFilterExchange = 'okx';
-let isFirstLoad = true;
 
 // API Key Validity Cache
 let validKeys = {
@@ -691,12 +700,18 @@ async function openSettings() {
             }
         }
 
-        // Initialize committee lists using CommitteeManager
+        // Load committee configuration from backend
         if (window.CommitteeManager) {
+            // Load saved configuration (if any)
             window.CommitteeManager.loadConfig({
                 bull: settings.bull_committee_models || [],
                 bear: settings.bear_committee_models || []
             });
+
+            // 🔧 Ensure events are bound after settings component injection
+            window.CommitteeManager.bindEvents();
+
+            // Toggle panel visibility based on checkbox
             window.CommitteeManager.togglePanel(settings.enable_committee);
         }
 
@@ -959,13 +974,42 @@ async function saveSettings() {
     const btn = document.getElementById('btn-save-settings');
     if (!btn) return;
 
+    // 🛡️ Validate Committee Mode Configuration BEFORE saving
+    const committeeCheckbox = document.getElementById('set-committee-mode');
+    const committeeConfig = window.CommitteeManager ? window.CommitteeManager.getConfig() : { bull: [], bear: [] };
+
+    if (committeeCheckbox && committeeCheckbox.checked) {
+        const hasBull = Array.isArray(committeeConfig.bull) && committeeConfig.bull.length > 0;
+        const hasBear = Array.isArray(committeeConfig.bear) && committeeConfig.bear.length > 0;
+
+        if (!hasBull || !hasBear) {
+            const missing = [];
+            if (!hasBull) missing.push("多頭(Bull)");
+            if (!hasBear) missing.push("空頭(Bear)");
+
+            await showAlert({
+                title: '⚠️ Committee Mode 配置不完整',
+                message: `請為 ${missing.join(" 和 ")} 添加至少一個 AI 模型，否則無法啟用 Committee Mode。\n\n請在下方的 Committee Management 面板中添加成員。`,
+                type: 'warning',
+                confirmText: '我知道了'
+            });
+
+            // 滾動到 committee 面板
+            const panel = document.getElementById('committee-management-panel');
+            if (panel) {
+                panel.classList.remove('hidden');
+                panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            return; // 阻止保存
+        }
+    }
+
     // 1. 僅停用並變灰，不改變文字內容 (不閃爍)
     btn.disabled = true;
     btn.classList.add('opacity-50', 'cursor-not-allowed');
 
     // ⚠️ Prepare Backend Payload
-    const committeeConfig = window.CommitteeManager ? window.CommitteeManager.getConfig() : { bull: [], bear: [] };
-
     const payload = {
         openai_api_key: null,
         google_api_key: null,

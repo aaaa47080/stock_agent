@@ -767,12 +767,16 @@ class AdminAgent:
                 bull = latest.get('bull', {})
                 if bull:
                     bull_conf = bull.get('confidence', 0)
-                    yield f"[PROCESS]   🐂 **多頭** (信心: {bull_conf:.0f}%)\n"
+                    bull_arg = bull.get('argument', '')
+                    summary = bull_arg[:100] + '...' if len(bull_arg) > 100 else bull_arg
+                    yield f"[PROCESS]   🐂 **多頭** (信心: {bull_conf:.0f}%): {summary}\n"
 
                 bear = latest.get('bear', {})
                 if bear:
                     bear_conf = bear.get('confidence', 0)
-                    yield f"[PROCESS]   🐻 **空頭** (信心: {bear_conf:.0f}%)\n"
+                    bear_arg = bear.get('argument', '')
+                    summary = bear_arg[:100] + '...' if len(bear_arg) > 100 else bear_arg
+                    yield f"[PROCESS]   🐻 **空頭** (信心: {bear_conf:.0f}%): {summary}\n"
 
                 neutral = latest.get('neutral', {})
                 if neutral:

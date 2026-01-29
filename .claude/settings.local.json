@@ -10,7 +10,12 @@
       "Bash(grep:*)",
       "Bash(dir:*)",
       "Bash(python:*)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Bash(node --check:*)",
+      "Bash(for file in D:/okx/stock_agent/web/js/*.js)",
+      "Bash(do echo \"Checking $file\")",
+      "Bash(echo:*)",
+      "Bash(done)"
     ]
   }
 }

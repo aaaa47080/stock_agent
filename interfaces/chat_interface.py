@@ -79,8 +79,8 @@ class CryptoQueryParser:
         """初始化 CryptoQueryParser，使用統一的 LLM 客戶端工廠"""
         try:
             self.client, self.model = create_llm_client_from_config(QUERY_PARSER_MODEL_CONFIG)
-        except ValueError:
-            logger.info("Notice: System-level API key not found for CryptoQueryParser. Will rely on user-provided keys.")
+        except Exception as e:
+            logger.info(f"Notice: System-level API key not found for CryptoQueryParser ({e}). Will rely on user-provided keys.")
             self.client = None
             self.model = QUERY_PARSER_MODEL_CONFIG.get("model", "gpt-4o")
 
@@ -291,7 +291,11 @@ class CryptoAnalysisBot:
             if not self.use_admin_agent:
                 logger.info(">> 使用 ReAct Agent 模式 (混合串流增強)")
             # 傳遞 user_model
-            self.agent = CryptoAgent(verbose=False, user_model=user_model)
+            try:
+                self.agent = CryptoAgent(verbose=False, user_model=user_model)
+            except Exception as e:
+                logger.warning(f"CryptoAgent initialization skipped (System Key missing?): {e}")
+                self.agent = None
         else:
             self.agent = None
 

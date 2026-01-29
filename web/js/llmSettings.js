@@ -23,8 +23,8 @@ function updateLLMKeyInput() {
     } else {
         input.value = '';
         input.placeholder = provider === 'openai' ? 'sk-...' :
-                           provider === 'google_gemini' ? 'AIza...' :
-                           'sk-or-...';
+            provider === 'google_gemini' ? 'AIza...' :
+                'sk-or-...';
     }
 
     // 隱藏狀態訊息
@@ -49,15 +49,15 @@ async function fetchModelConfig() {
             "openai": {
                 "default_model": "gpt-4o-mini",
                 "available_models": [
-                    {"value": "gpt-4o", "display": "gpt-4o"},
-                    {"value": "gpt-4o-mini", "display": "gpt-4o-mini"},
-                    {"value": "gpt-4-turbo", "display": "gpt-4-turbo"}
+                    { "value": "gpt-4o", "display": "gpt-4o" },
+                    { "value": "gpt-4o-mini", "display": "gpt-4o-mini" },
+                    { "value": "gpt-4-turbo", "display": "gpt-4-turbo" }
                 ]
             },
             "google_gemini": {
                 "default_model": "gemini-3-flash-preview",
                 "available_models": [
-                    {"value": "gemini-3-flash-preview", "display": "Gemini 3 Flash Preview"}
+                    { "value": "gemini-3-flash-preview", "display": "Gemini 3 Flash Preview" }
                 ]
             },
             "openrouter": {
@@ -107,7 +107,12 @@ async function updateAvailableModels() {
         defaultOption.value = '';
         defaultOption.textContent = '請選擇模型';
         defaultOption.disabled = true;
-        defaultOption.selected = true;
+
+        // 只有當沒有選中值時，才默認選中提示
+        if (!modelSelect.value) {
+            defaultOption.selected = true;
+        }
+
         modelSelect.appendChild(defaultOption);
 
         // 添加可用模型選項
@@ -261,6 +266,32 @@ function saveLLMKey() {
     // 更新 Committee Manager providers if it exists
     if (window.CommitteeManager && typeof window.CommitteeManager.updateProviders === 'function') {
         window.CommitteeManager.updateProviders();
+
+        // 🛡️ [修正] Committee Mode 驗證 (在單模型保存成功後才檢查)
+        const committeeCheckbox = document.getElementById('set-committee-mode');
+        if (committeeCheckbox && committeeCheckbox.checked) {
+            const config = window.CommitteeManager.getConfig();
+            const hasBull = Array.isArray(config.bull) && config.bull.length > 0;
+            const hasBear = Array.isArray(config.bear) && config.bear.length > 0;
+
+            if (!hasBull || !hasBear) {
+                // 不阻止保存，但彈出警告
+                const missing = [];
+                if (!hasBull) missing.push("多頭(Bull)");
+                if (!hasBear) missing.push("空頭(Bear)");
+
+                alert(`⚠️ API Key 已保存，但 Committee Mode 未完整配置！\n\n缺少: ${missing.join(", ")}\n\n請在下方 Committee Management 面板添加成員，否則辯論功能將無法正常運作。`);
+
+                showLLMKeyStatus('error', '⚠️ API Key 已保存，但 Committee Mode 未完整配置 (無成員)！');
+
+                // 滾動到 committee 面板
+                const panel = document.getElementById('committee-management-panel');
+                if (panel) {
+                    panel.classList.remove('hidden');
+                    panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        }
     }
 }
 
@@ -500,22 +531,32 @@ window.addEventListener('DOMContentLoaded', async () => {
     updateProviderDropdownStatus();
 
     // 2. 初始化選中狀態和模型
-    const currentKey = window.APIKeyManager?.getCurrentKey();
+    // 優先使用當前 active 的 provider，如果沒有則使用第一個有的 key
+    let currentProvider = window.APIKeyManager?.getSelectedProvider();
+
+    // 如果沒有選中的，嘗試找第一個有 Key 的
+    if (!currentProvider) {
+        const keys = window.APIKeyManager?.getAllKeys() || {};
+        const providersWithKeys = Object.keys(keys).filter(k => keys[k]);
+        if (providersWithKeys.length > 0) {
+            currentProvider = providersWithKeys[0];
+        } else {
+            currentProvider = 'openai'; // Default fallback
+        }
+    }
+
     const providerSelect = document.getElementById('llm-provider-select');
     const modelSelect = document.getElementById('llm-model-select');
     const modelInput = document.getElementById('llm-model-input');
 
-    if (currentKey && providerSelect) {
-        providerSelect.value = currentKey.provider;
-        
+    if (currentProvider && providerSelect) {
+        providerSelect.value = currentProvider;
+
         // 恢復保存的模型選擇
-        if (currentKey.provider) {
-            const savedModel = window.APIKeyManager.getModelForProvider(currentKey.provider);
+        const savedModel = window.APIKeyManager.getModelForProvider(currentProvider);
+        if (savedModel) {
             // 我們會在 updateAvailableModels 中設置 value，但這裡先存個引用
-            if (savedModel) {
-                // 稍後在 updateAvailableModels 完成後設置
-                providerSelect.dataset.savedModel = savedModel;
-            }
+            providerSelect.dataset.savedModel = savedModel;
         }
     }
 
@@ -529,9 +570,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     // 5. 再次確保模型被選中 (因為 updateAvailableModels 會重置選項)
     if (providerSelect && providerSelect.dataset.savedModel) {
         if (providerSelect.value === 'openrouter') {
-             if (modelInput) modelInput.value = providerSelect.dataset.savedModel;
+            if (modelInput) modelInput.value = providerSelect.dataset.savedModel;
         } else {
-             if (modelSelect) modelSelect.value = providerSelect.dataset.savedModel;
+            if (modelSelect) modelSelect.value = providerSelect.dataset.savedModel;
         }
     }
 
@@ -540,26 +581,26 @@ window.addEventListener('DOMContentLoaded', async () => {
         const provider = providerSelect.value;
         const keyInput = document.getElementById('llm-api-key-input');
         const key = keyInput ? keyInput.value.trim() : '';
-        
+
         let model = '';
         if (provider === 'openrouter') {
             model = modelInput ? modelInput.value.trim() : '';
         } else {
             model = modelSelect ? modelSelect.value : '';
         }
-        
+
         updateSaveButtonState(provider, key, model);
     }
 
     // 添加事件監聽器以在選擇改變時更新按鈕狀態
     if (providerSelect) {
-        providerSelect.addEventListener('change', function() {
+        providerSelect.addEventListener('change', function () {
             updateLLMKeyInput(); // 確保切換時更新 placeholder
             const currentKeyObj = window.APIKeyManager.getCurrentKey();
-            
+
             // 如果切換到的 provider 已有保存的 key
             const existingKey = window.APIKeyManager.getKey(this.value);
-            
+
             if (existingKey) {
                 const savedModel = window.APIKeyManager.getModelForProvider(this.value);
                 updateSaveButtonState(this.value, '', savedModel || '');
@@ -581,7 +622,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (modelSelect) {
-        modelSelect.addEventListener('change', function() {
+        modelSelect.addEventListener('change', function () {
             const providerSelect = document.getElementById('llm-provider-select');
             if (providerSelect && providerSelect.value !== 'openrouter') {
                 const keyInput = document.getElementById('llm-api-key-input');
@@ -592,7 +633,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (modelInput) {
-        modelInput.addEventListener('input', function() {
+        modelInput.addEventListener('input', function () {
             const providerSelect = document.getElementById('llm-provider-select');
             if (providerSelect && providerSelect.value === 'openrouter') {
                 const keyInput = document.getElementById('llm-api-key-input');
@@ -608,3 +649,4 @@ window.updateLLMKeyInput = updateLLMKeyInput;
 window.toggleLLMKeyVisibility = toggleLLMKeyVisibility;
 window.saveLLMKey = saveLLMKey;
 window.testLLMKey = testLLMKey;
+window.updateAvailableModels = updateAvailableModels;
