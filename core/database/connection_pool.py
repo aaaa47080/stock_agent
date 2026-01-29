@@ -1,11 +1,12 @@
 """
-優化的數據庫連接管理 - 使用連接池
+優化的數據庫連接管理 - 使用線程安全連接池
 替換原本的 core/database/connection.py
 """
 import psycopg2
 from psycopg2 import pool
 import os
 import threading
+import time
 
 # PostgreSQL 連接字符串
 DATABASE_URL = os.environ.get("DATABASE_URL")
@@ -18,9 +19,13 @@ if not DATABASE_URL:
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL environment variable is not set. Please check your .env file.")
 
-# 連接池配置
+# 連接池配置 - 增加最大連接數以支持並發任務
 MIN_POOL_SIZE = 2   # 最小連接數
-MAX_POOL_SIZE = 10  # 最大連接數
+MAX_POOL_SIZE = 20  # 最大連接數（增加以支持並發 screener 任務）
+
+# 連接獲取配置
+MAX_RETRIES = 3          # 最大重試次數
+RETRY_DELAY_BASE = 0.5   # 重試延遲基數（秒），使用指數退避
 
 # 全局連接池
 _connection_pool = None
@@ -29,19 +34,21 @@ _db_initialized = False
 
 
 def init_connection_pool():
-    """初始化連接池（單例模式）"""
+    """初始化線程安全連接池（單例模式）"""
     global _connection_pool
     
     if _connection_pool is None:
         with _pool_lock:
             if _connection_pool is None:
                 try:
-                    _connection_pool = psycopg2.pool.SimpleConnectionPool(
+                    # 使用 ThreadedConnectionPool 替代 SimpleConnectionPool
+                    # ThreadedConnectionPool 是線程安全的，適用於多線程環境
+                    _connection_pool = psycopg2.pool.ThreadedConnectionPool(
                         MIN_POOL_SIZE,
                         MAX_POOL_SIZE,
                         DATABASE_URL
                     )
-                    print(f"✅ 數據庫連接池已初始化 (min={MIN_POOL_SIZE}, max={MAX_POOL_SIZE})")
+                    print(f"✅ 線程安全數據庫連接池已初始化 (min={MIN_POOL_SIZE}, max={MAX_POOL_SIZE})")
                 except Exception as e:
                     print(f"❌ 連接池初始化失敗: {e}")
                     raise
@@ -52,6 +59,11 @@ def init_connection_pool():
 def get_connection():
     """
     從連接池獲取連接
+    
+    特性：
+    - 線程安全
+    - 自動重試機制（指數退避）
+    - 連接驗證
     
     記住要調用 conn.close() 來將連接歸還到池中（不是真正關閉）
     """
@@ -66,13 +78,37 @@ def get_connection():
         init_db()
         _db_initialized = True
     
-    # 從池中獲取連接
-    try:
-        conn = _connection_pool.getconn()
-        return conn
-    except Exception as e:
-        print(f"❌ 無法從連接池獲取連接: {e}")
-        raise
+    # 從池中獲取連接（帶重試機制）
+    last_error = None
+    for attempt in range(MAX_RETRIES):
+        try:
+            conn = _connection_pool.getconn()
+            
+            # 驗證連接是否有效
+            if conn.closed:
+                try:
+                    _connection_pool.putconn(conn, close=True)
+                except:
+                    pass
+                continue
+            
+            return conn
+            
+        except pool.PoolError as e:
+            last_error = e
+            if attempt < MAX_RETRIES - 1:
+                delay = RETRY_DELAY_BASE * (2 ** attempt)
+                print(f"⚠️ 連接池暫時耗盡，等待 {delay:.1f}s 後重試 (嘗試 {attempt + 1}/{MAX_RETRIES})...")
+                time.sleep(delay)
+            else:
+                print(f"❌ 無法從連接池獲取連接（已重試 {MAX_RETRIES} 次）: {e}")
+                raise
+        except Exception as e:
+            last_error = e
+            print(f"❌ 無法從連接池獲取連接: {e}")
+            raise
+    
+    raise Exception(f"連接池耗盡，無法獲取連接: {last_error}")
 
 
 def return_connection(conn):
