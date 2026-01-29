@@ -1,11 +1,8 @@
 """
 資料庫連接管理和初始化 (PostgreSQL 版本)
-使用連接池優化記憶體消耗
 """
 import psycopg2
-from psycopg2 import pool
 import os
-import threading
 
 # PostgreSQL 連接字符串
 DATABASE_URL = os.environ.get("DATABASE_URL")
@@ -19,79 +16,27 @@ if not DATABASE_URL:
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL environment variable is not set. Please check your .env file.")
 
-# 連接池配置
-MIN_POOL_SIZE = 2   # 最小連接數
-MAX_POOL_SIZE = 10  # 最大連接數
-
-# 全局連接池
-_connection_pool = None
-_pool_lock = threading.Lock()
+# 追蹤資料庫是否已初始化
 _db_initialized = False
-
-
-def init_connection_pool():
-    """初始化連接池（單例模式）"""
-    global _connection_pool
-    
-    if _connection_pool is None:
-        with _pool_lock:
-            if _connection_pool is None:
-                try:
-                    _connection_pool = psycopg2.pool.SimpleConnectionPool(
-                        MIN_POOL_SIZE,
-                        MAX_POOL_SIZE,
-                        DATABASE_URL
-                    )
-                    print(f"✅ 數據庫連接池已初始化 (min={MIN_POOL_SIZE}, max={MAX_POOL_SIZE})")
-                except Exception as e:
-                    print(f"❌ 連接池初始化失敗: {e}")
-                    raise
-    
-    return _connection_pool
 
 
 def get_connection():
     """
-    從連接池獲取連接，確保資料庫和表存在
-    
-    重要: 使用完畢後必須調用 conn.close() 將連接歸還到池中
+    獲取資料庫連接，確保資料庫和表存在
     """
-    global _db_initialized, _connection_pool
-    
-    # 確保連接池已初始化
-    if _connection_pool is None:
-        init_connection_pool()
+    global _db_initialized
 
-    # 如果尚未初始化數據庫，執行初始化
+    # 如果尚未初始化，執行初始化
     if not _db_initialized:
         init_db()
         _db_initialized = True
 
-    # 從池中獲取連接
-    try:
-        conn = _connection_pool.getconn()
-        return conn
-    except Exception as e:
-        print(f"❌ 無法從連接池獲取連接: {e}")
-        raise
-
-
-def close_all_connections():
-    """關閉所有連接池連接（應用關閉時調用）"""
-    global _connection_pool
-    
-    if _connection_pool:
-        try:
-            _connection_pool.closeall()
-            print("✅ 所有數據庫連接已關閉")
-        except Exception as e:
-            print(f"❌ 關閉連接池失敗: {e}")
-
+    conn = psycopg2.connect(DATABASE_URL)
+    return conn
 
 
 def init_db():
     """初始化資料庫 - 建立所有資料表"""
-    # 直接創建連接而不是從池中獲取（避免初始化時的循環依賴）
     conn = psycopg2.connect(DATABASE_URL)
     c = conn.cursor()
 
@@ -557,5 +502,5 @@ def init_db():
     conn.close()
 
 
-# 連接池將在第一次 get_connection() 時自動初始化數據庫
-# 不再需要在模塊載入時立即初始化
+# 模組載入時初始化資料庫
+init_db()

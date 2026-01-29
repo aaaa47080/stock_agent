@@ -11,6 +11,7 @@ from .connection import (
     DATABASE_URL,
     get_connection,
     init_db,
+    close_all_connections,  # 新增：連接池清理
 )
 
 # 用戶相關
@@ -186,6 +187,7 @@ __all__ = [
     'DATABASE_URL',
     'get_connection',
     'init_db',
+    'close_all_connections',  # 新增
     # 用戶
     'hash_password',
     'verify_password',

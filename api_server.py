@@ -107,6 +107,13 @@ async def lifespan(app: FastAPI):
     
     # Shutdown: Clean up resources
     logger.info("🛑 Shutting down application...")
+    
+    # 關閉數據庫連接池
+    try:
+        from core.database import close_all_connections
+        close_all_connections()
+    except Exception as e:
+        logger.error(f"❌ 關閉連接池時出錯: {e}")
 
 app = FastAPI(title="Crypto Trading System API", version="1.2.0", lifespan=lifespan)
 
