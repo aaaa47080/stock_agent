@@ -9,7 +9,7 @@
 - 建議在生產環境中添加 API Key 或 JWT 認證
 """
 
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, HTTPException, Header, Depends
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
 import os
