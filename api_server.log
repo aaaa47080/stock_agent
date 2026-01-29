@@ -5923,3 +5923,5 @@ ConnectionResetError: [WinError 10054] 遠端主機已強制關閉一個現存�
 2026-01-29 17:01:24,683 [INFO] API: Screener cache saved to DB
 2026-01-29 17:01:24,683 [INFO] API: Heavy screener analysis complete. (Top: 10)
 2026-01-29 17:02:17,964 [INFO] API: Starting heavy screener analysis...
+2026-01-29 17:02:26,487 [INFO] API: Screener cache saved to DB
+2026-01-29 17:02:26,487 [INFO] API: Heavy screener analysis complete. (Top: 10)
