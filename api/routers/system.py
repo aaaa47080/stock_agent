@@ -41,8 +41,8 @@ class DebugLogRequest(BaseModel):
     message: str
     data: Optional[Any] = None
 
-@router.post("/api/debug/log")
-async def write_debug_log(request: DebugLogRequest):
+@router.post("/api/debug/log", dependencies=[Depends(verify_admin_key)])
+async def write_debug_log(request: DebugLogRequest, x_admin_key: str = Header(None)):
     """接收前端日誌並寫入 frontend_debug.log"""
     from datetime import datetime
     try:
@@ -60,8 +60,8 @@ async def write_debug_log(request: DebugLogRequest):
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-@router.get("/api/debug/log")
-async def read_debug_log(lines: int = 50):
+@router.get("/api/debug/log", dependencies=[Depends(verify_admin_key)])
+async def read_debug_log(lines: int = 50, x_admin_key: str = Header(None)):
     """讀取最後 N 行 frontend_debug.log"""
     try:
         if not os.path.exists(FRONTEND_DEBUG_LOG):
@@ -91,7 +91,7 @@ async def health_check():
     return {"status": "ok", "service": "Crypto Trading API"}
 
 @router.post("/api/settings/validate-key")
-async def validate_key(request: KeyValidationRequest):
+async def validate_key(request: KeyValidationRequest, current_user: dict = Depends(get_current_user)):
     """測試 API Key 是否有效，並嘗試進行對話"""
     provider = request.provider
     key = request.api_key

@@ -56,7 +56,7 @@ class AgentResponse(BaseModel):
 # ============================================================================
 
 @router.get("/", summary="列出所有 Agent")
-async def list_agents(enabled_only: bool = False):
+async def list_agents(enabled_only: bool = False, current_user: dict = Depends(get_current_user)):
     """
     列出所有 Agent 配置
 
@@ -76,7 +76,7 @@ async def list_agents(enabled_only: bool = False):
 
 
 @router.get("/tools", summary="列出所有可用工具")
-async def list_available_tools():
+async def list_available_tools(current_user: dict = Depends(get_current_user)):
     """
     列出所有可用的工具名稱
 
@@ -90,7 +90,7 @@ async def list_available_tools():
 
 
 @router.get("/{agent_id}", summary="獲取單個 Agent 配置")
-async def get_agent(agent_id: str):
+async def get_agent(agent_id: str, current_user: dict = Depends(get_current_user)):
     """
     獲取指定 Agent 的配置
 
@@ -388,7 +388,7 @@ async def reset_agents():
 
 
 @router.get("/{agent_id}/description", summary="獲取 Agent 描述（用於 LLM）")
-async def get_agent_description_for_llm(agent_id: str = None):
+async def get_agent_description_for_llm(agent_id: str = None, current_user: dict = Depends(get_current_user)):
     """
     獲取格式化的 Agent 描述，用於 LLM 路由決策
 

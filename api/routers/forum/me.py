@@ -1,7 +1,8 @@
 """
 個人後台相關 API
 """
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
+from api.deps import get_current_user
 
 from core.database import (
     get_user_posts,
@@ -21,10 +22,14 @@ router = APIRouter(prefix="/api/forum/me", tags=["Forum - Me"])
 
 
 @router.get("/limits")
-async def get_my_limits(user_id: str = Query(..., description="用戶 ID")):
+async def get_my_limits(user_id: str = Query(..., description="用戶 ID"), current_user: dict = Depends(get_current_user)):
     """
     獲取我的每日限制狀態 (發文與回覆)
     """
+    # Verify user authorization
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
     try:
         loop = asyncio.get_running_loop()
         post_limits = await loop.run_in_executor(None, get_daily_post_count, user_id)
@@ -44,7 +49,7 @@ async def get_my_limits(user_id: str = Query(..., description="用戶 ID")):
 
 
 @router.get("/stats")
-async def get_my_stats(user_id: str = Query(..., description="用戶 ID")):
+async def get_my_stats(user_id: str = Query(..., description="用戶 ID"), current_user: dict = Depends(get_current_user)):
     """
     獲取我的論壇統計資料
 
@@ -56,6 +61,10 @@ async def get_my_stats(user_id: str = Query(..., description="用戶 ID")):
     - 會員狀態
     - 今日回覆狀況
     """
+    # Verify user authorization
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
     try:
         loop = asyncio.get_running_loop()
         stats = await loop.run_in_executor(None, get_user_forum_stats, user_id)
@@ -79,10 +88,15 @@ async def get_my_posts(
     user_id: str = Query(..., description="用戶 ID"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     獲取我的文章列表
     """
+    # Verify user authorization
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
     try:
         loop = asyncio.get_running_loop()
         posts = await loop.run_in_executor(None, partial(get_user_posts, user_id, limit=limit, offset=offset))
@@ -99,10 +113,15 @@ async def get_my_posts(
 async def get_my_sent_tips(
     user_id: str = Query(..., description="用戶 ID"),
     limit: int = Query(50, ge=1, le=100),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     獲取我送出的打賞記錄
     """
+    # Verify user authorization
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
     try:
         loop = asyncio.get_running_loop()
         tips = await loop.run_in_executor(None, partial(get_tips_sent, user_id, limit=limit))
@@ -119,10 +138,15 @@ async def get_my_sent_tips(
 async def get_my_received_tips(
     user_id: str = Query(..., description="用戶 ID"),
     limit: int = Query(50, ge=1, le=100),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     獲取我收到的打賞記錄
     """
+    # Verify user authorization
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
     try:
         loop = asyncio.get_running_loop()
         tips = await loop.run_in_executor(None, partial(get_tips_received, user_id, limit=limit))
@@ -141,10 +165,15 @@ async def get_my_received_tips(
 async def get_my_payments(
     user_id: str = Query(..., description="用戶 ID"),
     limit: int = Query(50, ge=1, le=100),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     獲取我的發文付款記錄
     """
+    # Verify user authorization
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
     try:
         loop = asyncio.get_running_loop()
         payments = await loop.run_in_executor(None, partial(get_user_payment_history, user_id, limit=limit))
@@ -158,10 +187,14 @@ async def get_my_payments(
 
 
 @router.get("/membership")
-async def get_my_membership(user_id: str = Query(..., description="用戶 ID")):
+async def get_my_membership(user_id: str = Query(..., description="用戶 ID"), current_user: dict = Depends(get_current_user)):
     """
     獲取我的會員狀態
     """
+    # Verify user authorization
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
     try:
         loop = asyncio.get_running_loop()
         membership = await loop.run_in_executor(None, get_user_membership, user_id)

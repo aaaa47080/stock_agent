@@ -65,8 +65,11 @@ async def list_posts(
         raise HTTPException(status_code=500, detail=f"獲取文章列表失敗: {str(e)}")
 
 
+from api.deps import get_current_user
+from fastapi import Depends
+
 @router.post("")
-async def create_new_post(request: CreatePostRequest, user_id: str = Query(..., description="用戶 ID")):
+async def create_new_post(request: CreatePostRequest, user_id: str = Query(..., description="用戶 ID"), current_user: dict = Depends(get_current_user)):
     """
     發表新文章
 
@@ -75,6 +78,9 @@ async def create_new_post(request: CreatePostRequest, user_id: str = Query(..., 
     - 每日發文限制從 /api/config/limits 獲取，PRO 會員無限制
     """
     try:
+        if current_user["user_id"] != user_id:
+            raise HTTPException(status_code=403, detail="Not authorized to post as this user")
+
         loop = asyncio.get_running_loop()
         # 驗證用戶是否存在
         user = await loop.run_in_executor(None, get_user_by_id, user_id)
@@ -182,11 +188,15 @@ async def update_post_content(
     post_id: int,
     request: UpdatePostRequest,
     user_id: str = Query(..., description="用戶 ID"),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     編輯文章（只有作者可以編輯）
     """
     try:
+        if current_user["user_id"] != user_id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+
         # 驗證分類
         if request.category and request.category not in VALID_CATEGORIES:
             raise HTTPException(
@@ -221,11 +231,15 @@ async def update_post_content(
 async def delete_post_by_id(
     post_id: int,
     user_id: str = Query(..., description="用戶 ID"),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     刪除文章（軟刪除，只有作者可以刪除）
     """
     try:
+        if current_user["user_id"] != user_id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+            
         loop = asyncio.get_running_loop()
         success = await loop.run_in_executor(None, partial(delete_post, post_id=post_id, user_id=user_id))
 

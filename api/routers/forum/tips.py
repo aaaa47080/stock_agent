@@ -1,7 +1,8 @@
 """
 打賞相關 API
 """
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
+from api.deps import get_current_user
 
 from core.database import (
     get_post_by_id,
@@ -22,6 +23,7 @@ async def tip_post(
     post_id: int,
     request: CreateTipRequest,
     user_id: str = Query(..., description="打賞者的用戶 ID"),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     打賞文章
@@ -30,6 +32,10 @@ async def tip_post(
     - Pi 從打賞者錢包直接轉到作者錢包（P2P）
     - 需提供交易哈希作為憑證
     """
+    # Verify user authorization
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to tip as this user")
+    
     try:
         loop = asyncio.get_running_loop()
         # 確認文章存在
@@ -70,10 +76,15 @@ async def tip_post(
 async def get_sent_tips(
     user_id: str = Query(..., description="用戶 ID"),
     limit: int = Query(50, ge=1, le=100),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     獲取用戶送出的打賞記錄
     """
+    # Verify user authorization
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
     try:
         loop = asyncio.get_running_loop()
         tips = await loop.run_in_executor(None, partial(get_tips_sent, user_id, limit=limit))
@@ -90,10 +101,15 @@ async def get_sent_tips(
 async def get_received_tips(
     user_id: str = Query(..., description="用戶 ID"),
     limit: int = Query(50, ge=1, le=100),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     獲取用戶收到的打賞記錄
     """
+    # Verify user authorization
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
     try:
         loop = asyncio.get_running_loop()
         tips = await loop.run_in_executor(None, partial(get_tips_received, user_id, limit=limit))

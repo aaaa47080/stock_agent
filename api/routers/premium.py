@@ -79,10 +79,14 @@ async def upgrade_to_premium(request: UpgradeRequest, current_user: dict = Depen
 
 
 @router.get("/status/{user_id}")
-async def get_premium_status(user_id: str):
+async def get_premium_status(user_id: str, current_user: dict = Depends(get_current_user)):
     """
     獲取用戶高級會員狀態
     """
+    # Verify user authorization
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to view this membership status")
+    
     try:
         loop = asyncio.get_running_loop()
         membership = await loop.run_in_executor(None, get_user_membership, user_id)

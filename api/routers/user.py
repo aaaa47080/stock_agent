@@ -113,13 +113,39 @@ class PiUserSyncRequest(BaseModel):
 
 @router.post("/api/user/pi-sync")
 async def sync_pi_user(request: PiUserSyncRequest):
-    # TODO: Verify Pi Access Token here if available
-    # For now, we trust the client but in production we MUST verify against Pi Server using request.access_token
     """
     同步 Pi Network 用戶到資料庫
     - 首次登入時自動創建用戶
     - 之後登入時返回現有用戶資料
+    - 驗證 Pi Access Token 確保身份真實性
     """
+    # Server-side verification of Pi Access Token
+    if request.access_token:
+        try:
+            # Import verification module
+            from api.pi_verification import verify_pi_access_token
+            
+            # Verify token against Pi Network API
+            pi_user_data = await verify_pi_access_token(
+                request.access_token, 
+                request.pi_uid
+            )
+            
+            # Token is valid and UID matches
+            logger.info(f"Pi token verified for user: {pi_user_data.get('username')}")
+            
+        except HTTPException as e:
+            # Token verification failed - reject the request
+            logger.warning(f"Pi token verification failed for uid {request.pi_uid}: {e.detail}")
+            raise e
+    else:
+        # No token provided - this should not happen in production
+        logger.error(f"Pi sync attempted without access token for uid: {request.pi_uid}")
+        raise HTTPException(
+            status_code=401, 
+            detail="Pi Access Token is required for authentication"
+        )
+    
     try:
         loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(
@@ -155,13 +181,24 @@ async def sync_pi_user(request: PiUserSyncRequest):
         raise HTTPException(status_code=500, detail="同步失敗")
 
 @router.get("/api/user/pi/{pi_uid}")
-async def get_pi_user(pi_uid: str):
+async def get_pi_user(pi_uid: str, current_user: dict = Depends(get_current_user)):
     """根據 Pi UID 獲取用戶資料"""
+    # 僅允許查詢自己的 Pi 資料，或管理員
+    # 這裡假設 current_user["user_id"] 可能不直接等於 pi_uid，需查表。
+    # 簡單起見，先確保已登入。若需嚴格權限，需查詢 pi_uid 對應的 user_id
+    # 安全起見，還是檢查一下是否為本人或有權限
+    pass  # We will implement logic inside 
     try:
         loop = asyncio.get_running_loop()
         user = await loop.run_in_executor(None, get_user_by_pi_uid, pi_uid)
+        
         if not user:
             raise HTTPException(status_code=404, detail="用戶不存在")
+            
+        # Verify ownership
+        if user["user_id"] != current_user["user_id"]:
+             raise HTTPException(status_code=403, detail="Not authorized to view this Pi profile")
+
         return {"success": True, "user": user}
     except HTTPException:
         raise
@@ -186,23 +223,17 @@ class CompletePaymentRequest(BaseModel):
     txid: str
 
 @router.post("/api/user/payment/approve")
-async def approve_payment(request: ApprovePaymentRequest):
+async def approve_payment(request: ApprovePaymentRequest, current_user: dict = Depends(get_current_user)):
     """
     接收前端通知，驗證金額後呼叫 Pi Server API 核准支付
-
-    流程：
-    1. 從 Pi API 獲取支付詳情（包含實際金額和 metadata）
-    2. 根據 metadata.type 查找預期價格
-    3. 驗證實際金額 === 預期金額
-    4. 驗證通過後才批准支付
-
-    官方文檔: https://pi-apps.github.io/community-developer-guide/docs/gettingStarted/piAppPlatform/piAppPlatformAPIs/
     """
-    logger.info(f"Pi Payment Approval Requested: {request.paymentId}")
+    logger.info(f"Pi Payment Approval Requested: {request.paymentId} by User {current_user['user_id']}")
 
     if not PI_API_KEY or PI_API_KEY == "your_pi_api_key_here":
-        logger.warning("PI_API_KEY not configured, skipping actual API call")
-        return {"status": "ok", "message": "Payment approval received (API key not configured)"}
+        # Security Fix: Fail strictly if key is not configured
+        msg = "Server configuration error: PI_API_KEY not set"
+        logger.error(msg)
+        raise HTTPException(status_code=500, detail=msg)
 
     try:
         async with httpx.AsyncClient() as client:
@@ -266,16 +297,16 @@ async def approve_payment(request: ApprovePaymentRequest):
 
 
 @router.post("/api/user/payment/complete")
-async def complete_payment(request: CompletePaymentRequest):
+async def complete_payment(request: CompletePaymentRequest, current_user: dict = Depends(get_current_user)):
     """
     接收前端通知，呼叫 Pi Server API 完成支付
-    官方文檔: https://pi-apps.github.io/community-developer-guide/docs/gettingStarted/piAppPlatform/piAppPlatformAPIs/
     """
-    logger.info(f"Pi Payment Completion Requested: {request.paymentId}, txid: {request.txid}")
+    logger.info(f"Pi Payment Completion Requested: {request.paymentId} by User {current_user['user_id']}")
 
     if not PI_API_KEY or PI_API_KEY == "your_pi_api_key_here":
-        logger.warning("PI_API_KEY not configured, skipping actual API call")
-        return {"status": "ok", "message": "Payment completion received (API key not configured)", "txid": request.txid}
+        msg = "Server configuration error: PI_API_KEY not set"
+        logger.error(msg)
+        raise HTTPException(status_code=500, detail=msg)
 
     try:
         async with httpx.AsyncClient() as client:
@@ -326,12 +357,16 @@ async def link_wallet(request: LinkWalletRequest, current_user: dict = Depends(g
 
 
 @router.get("/api/user/wallet-status/{user_id}")
-async def get_wallet_status(user_id: str):
+async def get_wallet_status(user_id: str, current_user: dict = Depends(get_current_user)):
     """
     獲取用戶錢包綁定狀態
     """
     try:
         loop = asyncio.get_running_loop()
+        # Security Check
+        if current_user["user_id"] != user_id:
+             raise HTTPException(status_code=403, detail="Not authorized")
+             
         status = await loop.run_in_executor(None, get_user_wallet_status, user_id)
         return {"success": True, **status}
     except Exception as e:

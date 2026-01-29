@@ -39,7 +39,9 @@ ADMIN_API_KEY = os.getenv("ADMIN_API_KEY")
 def verify_admin_key(x_admin_key: Optional[str] = Header(None)):
     """驗證管理員 API Key"""
     if not ADMIN_API_KEY:
-        raise HTTPException(status_code=500, detail="Server configuration error: ADMIN_API_KEY not set")
+        # Avoid leaking internal configuration details
+        # Return 403 Forbidden to mask the fact that the key is not configured
+        raise HTTPException(status_code=403, detail="Forbidden: Admin access not configured")
     
     if not x_admin_key or x_admin_key != ADMIN_API_KEY:
         raise HTTPException(status_code=403, detail="Invalid or missing admin API key")
@@ -71,20 +73,46 @@ class UpdateConfigRequest(BaseModel):
 class BulkUpdateRequest(BaseModel):
     configs: Dict[str, Any]
 
+class DebugLogRequest(BaseModel):
+    message: str
+    level: str = "INFO"
+
 
 # ============================================================================
 # 配置讀取 API
 # ============================================================================
 
-@router.get("/api/admin/config")
-async def get_all_admin_configs(x_admin_key: Optional[str] = Header(None)):
+@router.get("/api/debug/log", dependencies=[Depends(verify_admin_key)])
+async def read_debug_log(lines: int = 50):
+    """
+    讀取系統日誌
+
+    需要管理員權限
+    """
+    log_file_path = os.getenv("LOG_FILE_PATH", "app.log")
+    if not os.path.exists(log_file_path):
+        raise HTTPException(status_code=404, detail="Log file not found")
+
+    try:
+        with open(log_file_path, 'r', encoding='utf-8') as f:
+            all_lines = f.readlines()
+            # Get the last 'lines' number of lines
+            recent_lines = all_lines[-lines:]
+        return {
+            "success": True,
+            "log_content": "".join(recent_lines)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read log file: {str(e)}")
+
+
+@router.get("/api/admin/config", dependencies=[Depends(verify_admin_key)])
+async def get_all_admin_configs():
     """
     獲取所有系統配置（包含元數據）
 
     需要管理員權限
     """
-    verify_admin_key(x_admin_key)
-
     loop = asyncio.get_running_loop()
     configs = await loop.run_in_executor(None, list_all_configs_with_metadata)
 
@@ -94,15 +122,13 @@ async def get_all_admin_configs(x_admin_key: Optional[str] = Header(None)):
     }
 
 
-@router.get("/api/admin/config/prices")
-async def get_admin_prices(x_admin_key: Optional[str] = Header(None)):
+@router.get("/api/admin/config/prices", dependencies=[Depends(verify_admin_key)])
+async def get_admin_prices():
     """
     獲取所有價格配置
 
     需要管理員權限
     """
-    verify_admin_key(x_admin_key)
-
     loop = asyncio.get_running_loop()
     prices = await loop.run_in_executor(None, get_prices)
 
@@ -112,15 +138,13 @@ async def get_admin_prices(x_admin_key: Optional[str] = Header(None)):
     }
 
 
-@router.get("/api/admin/config/limits")
-async def get_admin_limits(x_admin_key: Optional[str] = Header(None)):
+@router.get("/api/admin/config/limits", dependencies=[Depends(verify_admin_key)])
+async def get_admin_limits():
     """
     獲取所有限制配置
 
     需要管理員權限
     """
-    verify_admin_key(x_admin_key)
-
     loop = asyncio.get_running_loop()
     limits = await loop.run_in_executor(None, get_limits)
 
@@ -134,10 +158,9 @@ async def get_admin_limits(x_admin_key: Optional[str] = Header(None)):
 # 配置更新 API
 # ============================================================================
 
-@router.put("/api/admin/config/price")
+@router.put("/api/admin/config/price", dependencies=[Depends(verify_admin_key)])
 async def update_price_config(
-    request: UpdatePriceRequest,
-    x_admin_key: Optional[str] = Header(None)
+    request: UpdatePriceRequest
 ):
     """
     更新價格配置
@@ -148,8 +171,6 @@ async def update_price_config(
 
     需要管理員權限
     """
-    verify_admin_key(x_admin_key)
-
     valid_keys = ['create_post', 'tip', 'premium']
     if request.key not in valid_keys:
         raise HTTPException(
@@ -177,10 +198,9 @@ async def update_price_config(
         raise HTTPException(status_code=500, detail="Failed to update price")
 
 
-@router.put("/api/admin/config/limit")
+@router.put("/api/admin/config/limit", dependencies=[Depends(verify_admin_key)])
 async def update_limit_config(
-    request: UpdateLimitRequest,
-    x_admin_key: Optional[str] = Header(None)
+    request: UpdateLimitRequest
 ):
     """
     更新限制配置
@@ -191,8 +211,6 @@ async def update_limit_config(
 
     需要管理員權限
     """
-    verify_admin_key(x_admin_key)
-
     valid_keys = ['daily_post_free', 'daily_post_premium',
                   'daily_comment_free', 'daily_comment_premium']
     if request.key not in valid_keys:
@@ -221,10 +239,29 @@ async def update_limit_config(
         raise HTTPException(status_code=500, detail="Failed to update limit")
 
 
-@router.put("/api/admin/config")
+@router.post("/api/debug/log", dependencies=[Depends(verify_admin_key)])
+async def write_debug_log(request: DebugLogRequest):
+    """
+    寫入系統日誌 (僅限管理員)
+
+    需要管理員權限
+    """
+    import logging
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logger = logging.getLogger(__name__)
+
+    log_level = getattr(logging, request.level.upper(), logging.INFO)
+    logger.log(log_level, f"ADMIN_DEBUG: {request.message}")
+
+    return {
+        "success": True,
+        "message": f"Log message '{request.message}' written with level {request.level}"
+    }
+
+
+@router.put("/api/admin/config", dependencies=[Depends(verify_admin_key)])
 async def update_generic_config(
-    request: UpdateConfigRequest,
-    x_admin_key: Optional[str] = Header(None)
+    request: UpdateConfigRequest
 ):
     """
     更新任意配置

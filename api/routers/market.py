@@ -27,6 +27,9 @@ from analysis.market_pulse import get_market_pulse
 import numpy as np
 from datetime import datetime
 
+from api.routers.admin import verify_admin_key
+from fastapi import Depends
+
 router = APIRouter()
 
 @router.get("/api/market/symbols")
@@ -395,7 +398,7 @@ async def get_market_pulse_api(
         logger.error(f"市場脈動分析失敗: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/api/market-pulse/refresh-all")
+@router.post("/api/market-pulse/refresh-all", dependencies=[Depends(verify_admin_key)])
 async def api_refresh_all_market_pulse(request: RefreshPulseRequest):
     """Trigger a global refresh of specified Market Pulse targets immediately."""
     try:

@@ -69,9 +69,11 @@ async def pin_user_session(session_id: str, is_pinned: bool = Query(..., descrip
     return {"status": "success", "session_id": session_id, "is_pinned": is_pinned}
 
 @router.get("/api/chat/history")
-async def get_history(session_id: str = "default", user_id: str = "local_user"):
-    """獲取特定會話的歷史（未來可加入 user_id 驗證）"""
+async def get_history(session_id: str = "default", current_user: dict = Depends(get_current_user)):
+    """獲取特定會話的歷史"""
+    # 這裡可以進一步驗證 session 是否屬於 usage
     loop = asyncio.get_running_loop()
+    # TODO: Pass user_id to db function to ensure ownership
     history = await loop.run_in_executor(None, partial(get_chat_history, session_id=session_id, limit=50))
     return {"history": history}
 
@@ -161,7 +163,7 @@ async def analyze_crypto(request: QueryRequest, current_user: dict = Depends(get
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 @router.post("/api/chat/clear")
-async def clear_chat_history_endpoint(session_id: str = "default"):
+async def clear_chat_history_endpoint(session_id: str = "default", current_user: dict = Depends(get_current_user)):
     """清除對話歷史"""
     if globals.bot:
         globals.bot.clear_history()

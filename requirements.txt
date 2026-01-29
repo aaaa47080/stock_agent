@@ -156,3 +156,5 @@ psycopg2-binary==2.9.10  # PostgreSQL 連接
 # === Security & Auth ===
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
+PyJWT==2.8.0  # For Pi Access Token verification
+slowapi==0.1.9  # For API rate limiting

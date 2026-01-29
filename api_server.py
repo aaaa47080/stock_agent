@@ -54,6 +54,7 @@ from api.routers.premium import router as premium_router
 from api.routers.admin import router as admin_router
 from api.routers.friends import router as friends_router
 from api.routers.messages import router as messages_router
+from api.routers.audit import router as audit_router  # Audit log admin API
 
 # Initialize database (ensure tables exist)
 from core.database import init_db
@@ -106,15 +107,45 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown logic can go here if needed
 
-app = FastAPI(title="Crypto Trading System API", version="1.1.0", lifespan=lifespan)
+app = FastAPI(title="Crypto Trading System API", version="1.2.0", lifespan=lifespan)
 
-# --- 安全性強化: CORS ---
+# ================================================================
+# Security Enhancements (Phase 7)
+# ================================================================
+
+# --- 1. Rate Limiting ---
+try:
+    from slowapi import _rate_limit_exceeded_handler
+    from slowapi.errors import RateLimitExceeded
+    from api.middleware.rate_limit import limiter, rate_limit_exceeded_handler
+    
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+    logger.info("✅ Rate limiting enabled")
+except ImportError as e:
+    logger.warning(f"⚠️ Rate limiting not available: {e}")
+    logger.warning("Install slowapi: pip install slowapi")
+
+# --- 2. Audit Logging Middleware ---
+try:
+    from api.middleware.audit import audit_middleware
+    
+    @app.middleware("http")
+    async def audit_logging(request, call_next):
+        """Audit all API requests"""
+        return await audit_middleware(request, call_next)
+    
+    logger.info("✅ Audit logging enabled")
+except ImportError as e:
+    logger.warning(f"⚠️ Audit logging not available: {e}")
+
+# --- 3. CORS ---
 origins = [
     "http://localhost",
     "http://localhost:3000",
     "http://localhost:8080",
     "https://app.minepi.com", # Pi Browser 環境
-    "*", # 開發階段允許所有，生產環境請限制
+    "*", # 開發階段允許所有,生產環境請限制
 ]
 
 app.add_middleware(
@@ -131,7 +162,9 @@ import time
 # 服务启动时间
 SERVICE_START_TIME = time.time()
 
-# Include Routers
+# ================================================================
+# Include API Routers
+# ================================================================
 app.include_router(system.router)
 app.include_router(analysis.router)
 app.include_router(market.router)
@@ -143,6 +176,7 @@ app.include_router(premium_router) # 高級會員 API
 app.include_router(admin_router)   # 管理員 API（配置管理）
 app.include_router(friends_router) # 好友功能 API
 app.include_router(messages_router) # 私訊功能 API
+app.include_router(audit_router)   # 審計日誌查詢 API (管理員專用)
 
 # --- 健康检查端点（用于负载均衡和监控）---
 @app.get("/health")

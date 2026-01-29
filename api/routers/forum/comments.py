@@ -1,7 +1,8 @@
 """
 回覆相關 API（推/噓/一般回覆）
 """
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
+from api.deps import get_current_user
 
 from core.database import (
     get_post_by_id,
@@ -49,6 +50,7 @@ async def add_new_comment(
     post_id: int,
     request: AddCommentRequest,
     user_id: str = Query(..., description="用戶 ID"),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     新增回覆
@@ -62,6 +64,10 @@ async def add_new_comment(
     - 免費會員每日回覆上限從 /api/config/limits 獲取
     - PRO 會員無限制
     """
+    # Verify user authorization
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to comment as this user")
+    
     try:
         # 驗證回覆類型
         if request.type not in VALID_COMMENT_TYPES:
@@ -113,10 +119,15 @@ async def push_post(
     post_id: int,
     user_id: str = Query(..., description="用戶 ID"),
     content: str = Query(None, max_length=100, description="推文內容（選填）"),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     推文（快捷方式）
     """
+    # Verify user authorization
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
     try:
         loop = asyncio.get_running_loop()
         post = await loop.run_in_executor(None, partial(get_post_by_id, post_id, increment_view=False))
@@ -151,10 +162,15 @@ async def boo_post(
     post_id: int,
     user_id: str = Query(..., description="用戶 ID"),
     content: str = Query(None, max_length=100, description="噓文內容（選填）"),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     噓文（快捷方式）
     """
+    # Verify user authorization
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
     try:
         loop = asyncio.get_running_loop()
         post = await loop.run_in_executor(None, partial(get_post_by_id, post_id, increment_view=False))
@@ -188,10 +204,15 @@ async def boo_post(
 async def get_comment_status(
     post_id: int,
     user_id: str = Query(..., description="用戶 ID"),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     獲取用戶在該文章的回覆狀態（今日剩餘回覆數等）
     """
+    # Verify user authorization
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
     try:
         loop = asyncio.get_running_loop()
         daily_count = await loop.run_in_executor(None, get_daily_comment_count, user_id)
