@@ -7014,3 +7014,9 @@ ConnectionResetError: [WinError 10054] 遠端主機已強制關閉一個現存�
 2026-01-29 18:58:28,639 [INFO] API: Starting heavy screener analysis...
 2026-01-29 18:58:36,666 [INFO] API: Screener cache saved to DB
 2026-01-29 18:58:36,667 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-29 18:59:26,509 [INFO] API: Updating funding rates...
+2026-01-29 18:59:29,301 [INFO] API: Starting heavy screener analysis...
+2026-01-29 18:59:37,426 [INFO] API: Screener cache saved to DB
+2026-01-29 18:59:37,426 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-29 18:59:57,891 [INFO] API: Funding Rate cache saved (254 symbols)
+2026-01-29 18:59:57,892 [INFO] API: Funding rates updated: 254 symbols
