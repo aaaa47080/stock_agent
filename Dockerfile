@@ -24,8 +24,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 複製應用代碼
 COPY . .
 
-# 創建日誌目錄
-RUN mkdir -p logs
+# 創建日誌目錄並設置權限（備用，主要日誌已輸出到 stdout/stderr）
+RUN mkdir -p /app/logs && chmod 777 /app/logs
 
 # 暴露端口
 EXPOSE 8111

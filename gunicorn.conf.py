@@ -36,12 +36,12 @@ keepalive = 5
 # ========================================
 # Logging
 # ========================================
-# 访问日志
-accesslog = "logs/gunicorn_access.log"
+# 访问日志 - 输出到 stdout（容器友好）
+accesslog = "-"
 access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)s'
 
-# 错误日志
-errorlog = "logs/gunicorn_error.log"
+# 错误日志 - 输出到 stderr（容器友好）
+errorlog = "-"
 loglevel = "info"
 
 # ========================================
@@ -55,8 +55,8 @@ proc_name = "pi_crypto_insight"
 # 守护进程模式（生产环境建议使用 systemd 或 supervisor）
 daemon = False
 
-# PID 文件
-pidfile = "logs/gunicorn.pid"
+# PID 文件 - 使用 /tmp 以避免权限问题
+pidfile = "/tmp/gunicorn.pid"
 
 # 用户/组（可选，生产环境建议使用非 root 用户）
 # user = "www-data"
