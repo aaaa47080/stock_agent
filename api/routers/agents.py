@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 from core.agent_registry import agent_registry, AgentConfig
 from core.tools import get_available_tool_names
 from fastapi import Depends
+from api.deps import get_current_user
 from api.routers.admin import verify_admin_key
 
 router = APIRouter(prefix="/agents", tags=["Agent Management"])
