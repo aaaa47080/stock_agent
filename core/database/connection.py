@@ -377,6 +377,60 @@ def init_db():
         )
     ''')
 
+    # ========================================================================
+    # 審計日誌資料表 (Security & Compliance)
+    # ========================================================================
+    
+    # 審計日誌主表 - 記錄所有安全敏感操作
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS audit_logs (
+            id SERIAL PRIMARY KEY,
+            timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            
+            -- User information
+            user_id VARCHAR(255),
+            username VARCHAR(255),
+            
+            -- Action details
+            action VARCHAR(100) NOT NULL,
+            resource_type VARCHAR(100),
+            resource_id VARCHAR(255),
+            
+            -- Request details
+            endpoint VARCHAR(255) NOT NULL,
+            method VARCHAR(10) NOT NULL,
+            ip_address VARCHAR(45),
+            user_agent TEXT,
+            
+            -- Request/Response data
+            request_data JSONB,
+            response_code INTEGER,
+            
+            -- Status
+            success BOOLEAN DEFAULT TRUE,
+            error_message TEXT,
+            
+            -- Performance
+            duration_ms INTEGER,
+            
+            -- Additional metadata
+            metadata JSONB,
+            
+            -- Timestamps
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        )
+    ''')
+    
+    # 審計日誌索引 - 優化查詢性能
+    c.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp DESC)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_endpoint ON audit_logs(endpoint)')
+    
+    # ========================================================================
+    # 初始化預設數據
+    # ========================================================================
+
     # 初始化預設看板（如果不存在）
     c.execute("SELECT COUNT(*) FROM boards WHERE slug = 'crypto'")
     if c.fetchone()[0] == 0:
