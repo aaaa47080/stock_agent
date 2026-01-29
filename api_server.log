@@ -49,3 +49,5 @@
 2026-01-29 02:07:48,081 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'DOGE-USDT'}
 2026-01-29 02:07:48,081 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'DOT-USDT'}
 2026-01-29 02:07:52,514 [INFO] API: Updating funding rates...
+2026-01-29 02:07:56,200 [INFO] API: Screener cache saved to DB
+2026-01-29 02:07:56,201 [INFO] API: Heavy screener analysis complete. (Top: 10)
