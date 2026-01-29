@@ -56,36 +56,34 @@ from api.routers.friends import router as friends_router
 from api.routers.messages import router as messages_router
 from api.routers.audit import router as audit_router  # Audit log admin API
 
-# Initialize database (ensure tables exist)
+# Import database and core modules (but don't initialize at module level)
 from core.database import init_db
-init_db()
-logger.info("✅ Database initialized")
-
-# Core imports for initialization
-try:
-    from interfaces.chat_interface import CryptoAnalysisBot
-    from trading.okx_api_connector import OKXAPIConnector
-except ImportError as e:
-    logger.critical(f"無法導入核心模組: {e}")
-    sys.exit(1)
-
-# Initialize Global Instances
-try:
-    globals.okx_connector = OKXAPIConnector()
-    logger.info("OKX Connector 初始化成功")
-except Exception as e:
-    logger.error(f"OKX Connector 初始化失敗: {e}")
-    globals.okx_connector = None
-
-try:
-    globals.bot = CryptoAnalysisBot()
-    logger.info("CryptoAnalysisBot 初始化成功")
-except Exception as e:
-    logger.error(f"CryptoAnalysisBot 初始化失敗: {e}")
-    globals.bot = None
+from interfaces.chat_interface import CryptoAnalysisBot
+from trading.okx_api_connector import OKXAPIConnector
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Startup: Initialize database
+    logger.info("🔄 Initializing database...")
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, init_db)
+    logger.info("✅ Database initialized")
+    
+    # Startup: Initialize Global Instances
+    try:
+        globals.okx_connector = OKXAPIConnector()
+        logger.info("✅ OKX Connector 初始化成功")
+    except Exception as e:
+        logger.error(f"❌ OKX Connector 初始化失敗: {e}")
+        globals.okx_connector = None
+    
+    try:
+        globals.bot = CryptoAnalysisBot()
+        logger.info("✅ CryptoAnalysisBot 初始化成功")
+    except Exception as e:
+        logger.error(f"❌ CryptoAnalysisBot 初始化失敗: {e}")
+        globals.bot = None
+    
     # Startup: 嘗試載入快取
     load_screener_cache()
     load_market_pulse_cache()
@@ -104,8 +102,11 @@ async def lifespan(app: FastAPI):
 
     # Startup: 啟動 Funding Rate 定期更新任務
     asyncio.create_task(funding_rate_update_task())
+    
     yield
-    # Shutdown logic can go here if needed
+    
+    # Shutdown: Clean up resources
+    logger.info("🛑 Shutting down application...")
 
 app = FastAPI(title="Crypto Trading System API", version="1.2.0", lifespan=lifespan)
 

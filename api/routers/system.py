@@ -2,7 +2,7 @@ import os
 import sys
 import asyncio
 from functools import partial
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Header
 from fastapi.responses import FileResponse
 from dotenv import load_dotenv
 from utils.llm_client import LLMClientFactory
