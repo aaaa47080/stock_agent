@@ -41,6 +41,13 @@ async def add_watchlist(request: WatchlistRequest, current_user: dict = Depends(
         raise HTTPException(status_code=403, detail="Not authorized to modify this data")
     try:
         loop = asyncio.get_running_loop()
+        
+        # [Optimization] Abuse Prevention: Enforce Watchlist Limit
+        # Limit to 10 symbols to prevent users from spamming "On-Demand" analysis for thousands of coins
+        current_list = await loop.run_in_executor(None, get_watchlist, request.user_id)
+        if len(current_list) >= 10:
+             raise HTTPException(status_code=400, detail="自選清單已滿 (上限 10 個)，請移除舊幣種後再試。")
+
         await loop.run_in_executor(None, partial(add_to_watchlist, request.user_id, request.symbol.upper()))
         return {"success": True, "message": f"{request.symbol} 已加入自選清單"}
     except Exception as e:

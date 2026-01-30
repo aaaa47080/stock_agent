@@ -45,50 +45,12 @@ def load_market_pulse_cache():
     except Exception as e:
         logger.error(f"Failed to load Market Pulse cache: {e}")
 
-# --- Funding Rate Cache Functions ---
-def save_funding_rate_cache():
-    """Save Funding Rate data to DB."""
-    try:
-        set_cache("FUNDING_RATE", FUNDING_RATE_CACHE)
-        logger.info(f"Funding Rate cache saved ({len(FUNDING_RATE_CACHE.get('data', {}))} symbols)")
-    except Exception as e:
-        logger.error(f"Failed to save Funding Rate cache: {e}")
-
-def load_funding_rate_cache():
-    """Load Funding Rate data from DB."""
-    try:
-        data = get_cache("FUNDING_RATE")
-        if data:
-            FUNDING_RATE_CACHE["timestamp"] = data.get("timestamp")
-            FUNDING_RATE_CACHE["data"] = data.get("data")
-            logger.info(f"Loaded Funding Rate cache from DB ({len(FUNDING_RATE_CACHE.get('data', {}))} symbols)")
-    except Exception as e:
-        logger.error(f"Failed to load Funding Rate cache: {e}")
-
-# --- Screener Cache Functions ---
-def save_screener_cache(data: Dict[str, Any]):
-    """Save screener data to DB."""
-    try:
-        set_cache("SCREENER", data)
-        logger.info(f"Screener cache saved to DB")
-    except Exception as e:
-        logger.error(f"Failed to save screener cache: {e}")
-
-def load_screener_cache():
-    """Load screener data from DB."""
-    try:
-        data = get_cache("SCREENER")
-        if data:
-            cached_screener_result["timestamp"] = data.get("timestamp")
-            cached_screener_result["data"] = data.get("data")
-            logger.info(f"Loaded screener cache from DB (Timestamp: {data.get('timestamp')})")
-    except Exception as e:
-        logger.error(f"Failed to load screener cache: {e}")
+# [Optimization] Removed DB Cache functions for Screener/Funding (In-Memory Only)
 
 # --- Background Tasks ---
 
 async def update_funding_rates():
-    """Update all funding rates from OKX."""
+    """Update all funding rates from OKX (In-Memory Only)."""
     async with funding_rate_lock:
         try:
             logger.info("Updating funding rates...")
@@ -101,8 +63,8 @@ async def update_funding_rates():
             if "error" not in funding_rates:
                 FUNDING_RATE_CACHE["timestamp"] = datetime.now().isoformat()
                 FUNDING_RATE_CACHE["data"] = funding_rates
-                await loop.run_in_executor(None, save_funding_rate_cache)
-                logger.info(f"Funding rates updated: {len(funding_rates)} symbols")
+                # [Optimization] No DB write
+                logger.info(f"Funding rates updated in RAM: {len(funding_rates)} symbols")
             else:
                 logger.error(f"Failed to update funding rates: {funding_rates.get('error')}")
         except Exception as e:
@@ -186,11 +148,19 @@ async def refresh_all_market_pulse_data(target_symbols: List[str] = None):
             if tickers_result.get("code") == "0":
                 tickers = tickers_result.get("data", [])
                 usdt_tickers = [t for t in tickers if t["instId"].endswith("-USDT")]
+                
+                # [Optimization] Tiered Analysis Strategy
+                # Sort by 24h Volume (descending) and take only TOP 50
                 usdt_tickers.sort(key=lambda x: float(x.get("volCcy24h", 0)), reverse=True)
-                for t in usdt_tickers:
+                
+                TOP_N = 50
+                top_tickers = usdt_tickers[:TOP_N]
+                
+                for t in top_tickers:
                     base_currency = t["instId"].split("-")[0]
                     final_symbols.add(base_currency)
-                logger.info(f"Added ALL {len(usdt_tickers)} tokens to analysis list.")
+                    
+                logger.info(f"Filtered to TOP {len(top_tickers)} high-volume tokens (Tier 1) for auto-analysis.")
             else:
                 logger.warning(f"Failed to fetch tickers: {tickers_result.get('msg')}")
         except Exception as e:
@@ -484,7 +454,7 @@ async def run_screener_analysis():
                 None,
                 lambda: screen_top_cryptos(
                     exchange=exchange,
-                    limit=10, 
+                    limit=50, # [Optimization] Analyze Top 50 to populate filter list
                     interval="1d",
                     target_symbols=None
                 )
@@ -512,8 +482,8 @@ async def run_screener_analysis():
                     "last_updated": timestamp_str
                 }
                 
-                await loop.run_in_executor(None, save_screener_cache, cached_screener_result)
-                logger.info(f"Heavy screener analysis complete. (Top: {len(top_performers)})")
+                # [Optimization] RAM Only - No DB write
+                logger.info(f"Heavy screener analysis complete (RAM updated). (Top: {len(top_performers)})")
             else:
                 logger.warning("Heavy screener analysis returned empty results. Skipping cache update.")
                 
@@ -526,20 +496,25 @@ async def update_screener_task():
     """
     背景任務：
     1. 每秒執行快速價格更新 (Fast Update)
-    2. 每 60 秒執行完整分析 (Heavy Analysis) - 降低頻率以避免 API 封禁
+    2. 每 N 分鐘執行完整分析 (Heavy Analysis) - 降低頻率以避免 API 封禁
     """
-    logger.info("🚀 Starting initial Screener analysis...")
+    logger.info("🚀 Starting initial Screener analysis (In-Memory)...")
     # Immediately run analysis on startup
     await run_screener_analysis()
     
+    # [Optimization] Use config variable (minutes -> seconds)
+    update_interval_sec = SCREENER_UPDATE_INTERVAL_MINUTES * 60
+    logger.info(f"Screener background task interval set to {SCREENER_UPDATE_INTERVAL_MINUTES} min ({update_interval_sec}s)")
+
     counter = 1
     while True:
         # 每秒都嘗試更新價格
         asyncio.create_task(update_screener_prices_fast())
         
-        # 每 60 秒執行一次完整分析
-        if counter % 60 == 0:
+        # 定期執行完整分析
+        if counter % update_interval_sec == 0:
             asyncio.create_task(run_screener_analysis())
+            counter = 0 # Reset counter to prevent overflow
         
         counter += 1
         await asyncio.sleep(1)

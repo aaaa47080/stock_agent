@@ -7,7 +7,7 @@ load_dotenv(override=True)
 # === 測試模式配置 ===
 # 設為 True 時，跳過登入驗證，自動以測試用戶身份登入
 # 注意：僅供開發測試使用，正式環境請設為 False
-TEST_MODE = False
+TEST_MODE = True
 
 # 測試用戶資料（TEST_MODE=True 時使用）
 TEST_USER = {
@@ -163,10 +163,10 @@ SCREENER_DEFAULT_INTERVAL = "1d"
 SCREENER_TARGET_SYMBOLS = ["BTC", "ETH", "SOL", "PI"]
 
 # 自動更新間隔 (分鐘)
-SCREENER_UPDATE_INTERVAL_MINUTES = 1  # 每 1 分鐘更新一次
+SCREENER_UPDATE_INTERVAL_MINUTES = 5  # [Optimization] Increased to 5 minutes to reduce load
 
 # 資金費率自動更新間隔 (秒)
-FUNDING_RATE_UPDATE_INTERVAL = 120  # 2 分鐘更新一次
+FUNDING_RATE_UPDATE_INTERVAL = 300  # [Optimization] Increased to 5 minutes to reduce load
 
 # === 市場脈動 (Market Pulse) 配置 ===
 # 固定監控的幣種列表 (優先級最高)

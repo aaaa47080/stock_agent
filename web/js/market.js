@@ -207,22 +207,33 @@ async function refreshScreener(showLoading = false, forceRefresh = false) {
 
         // --- 處理篩選器結果 (Screener) ---
         if (screenerData && !screenerData.error) {
-            // Restore Old Behavior: Auto-populate symbols from backend response on first load if empty
-            if (isFirstLoad && (!window.globalSelectedSymbols || window.globalSelectedSymbols.length === 0)) {
+            // [Optimization] Auto-populate filter with TOP 50, but only render TOP 10
+            // [Fix] REMOVED isFirstLoad check. Always populate Top 10 if selection is empty.
+            if (!window.globalSelectedSymbols || window.globalSelectedSymbols.length === 0) {
                 if (screenerData.top_performers && screenerData.top_performers.length > 0) {
-                    window.globalSelectedSymbols = screenerData.top_performers.map(function (item) { return item.Symbol; });
-                    console.log('[Market] Auto-populated symbols from backend:', window.globalSelectedSymbols.length);
+                    // [Refinement] Analysis covers Top 50, but Filter only auto-checks Top 5 by default
+                    // User can manually check others from the list if needed
+                    // [Config] User requested default Top 5
+                    var top5 = screenerData.top_performers.slice(0, 5);
+                    window.globalSelectedSymbols = top5.map(function (item) { return item.Symbol; });
+                    console.log('[Market] Auto-populated Top 5 symbols:', window.globalSelectedSymbols.length);
 
                     var indicator = document.getElementById('active-filter-indicator');
                     var filterCount = document.getElementById('filter-count');
                     var globalCount = document.getElementById('global-count-badge');
 
-                    // Update UI to show we are in Auto mode (technically selecting what we got)
-                    // Or keep it hidden to imply "All". Let's update count but maybe keep indicator hidden or distinct.
-                    // The old code updated them:
                     if (indicator) indicator.classList.remove('hidden');
                     if (filterCount) filterCount.innerText = window.globalSelectedSymbols.length;
                     if (globalCount) globalCount.innerText = window.globalSelectedSymbols.length;
+
+                    // [Sync] Update Pulse Tab Indicators too
+                    var pulseIndicator = document.getElementById('active-pulse-filter-indicator');
+                    var pulseFilterCount = document.getElementById('pulse-filter-count');
+                    var pulseBadge = document.getElementById('pulse-count-badge');
+
+                    if (pulseIndicator) pulseIndicator.classList.remove('hidden');
+                    if (pulseFilterCount) pulseFilterCount.innerText = window.globalSelectedSymbols.length;
+                    if (pulseBadge) pulseBadge.innerText = window.globalSelectedSymbols.length;
                 }
             }
 
@@ -232,13 +243,25 @@ async function refreshScreener(showLoading = false, forceRefresh = false) {
             var filterCount = document.getElementById('filter-count');
             var globalCount = document.getElementById('global-count-badge');
 
+            // [Sync] Update Pulse Tab Indicators
+            var pulseIndicator = document.getElementById('active-pulse-filter-indicator');
+            var pulseFilterCount = document.getElementById('pulse-filter-count');
+            var pulseBadge = document.getElementById('pulse-count-badge');
+
             if (count > 0) {
                 if (indicator) indicator.classList.remove('hidden');
                 if (filterCount) filterCount.innerText = count;
                 if (globalCount) globalCount.innerText = count;
+
+                if (pulseIndicator) pulseIndicator.classList.remove('hidden');
+                if (pulseFilterCount) pulseFilterCount.innerText = count;
+                if (pulseBadge) pulseBadge.innerText = count;
             } else {
                 if (indicator) indicator.classList.add('hidden');
-                if (globalCount) globalCount.innerText = 'Auto';
+                if (globalCount) globalCount.innerText = "Auto";
+
+                if (pulseIndicator) pulseIndicator.classList.add('hidden');
+                if (pulseBadge) pulseBadge.innerText = "Auto";
             }
 
             isFirstLoad = false;
@@ -253,10 +276,11 @@ async function refreshScreener(showLoading = false, forceRefresh = false) {
 
             const topCount = screenerData.top_performers ? screenerData.top_performers.length : 0;
             console.log(`[Market] Loaded ${topCount} items.`);
-            // Debug Toast removed as per user request
 
+            // [Optimization] Only display TOP 10 in the widget to keep UI clean
+            const displayList = screenerData.top_performers ? screenerData.top_performers.slice(0, 10) : [];
+            renderList(containers.top, displayList, 'price_change_24h', '%');
 
-            renderList(containers.top, screenerData.top_performers, 'price_change_24h', '%');
             renderList(containers.oversold, screenerData.oversold, 'RSI_14', '');
             renderList(containers.overbought, screenerData.overbought, 'RSI_14', '');
         } else {

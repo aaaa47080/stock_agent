@@ -92,11 +92,28 @@ const Components = {
 
     // Tab: Pulse
     pulse: `
-        <div class="flex justify-between items-end mb-8">
+        <div class="flex justify-between items-end mb-4">
             <h2 class="font-serif text-3xl text-secondary">Market Pulse</h2>
             <button id="pulse-refresh-btn" onclick="refreshMarketPulse()" class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition">
                 <i id="pulse-refresh-icon" data-lucide="refresh-cw" class="w-4 h-4"></i>
             </button>
+        </div>
+
+        <!-- Filter UI (Synced with Market Watch) -->
+        <div class="flex flex-wrap items-center gap-2 md:gap-3 mb-8">
+            <button onclick="openGlobalFilter()" class="flex items-center gap-2 px-3 py-1.5 bg-surface hover:bg-surfaceHighlight rounded-lg text-textMuted hover:text-primary transition border border-white/5">
+                <i data-lucide="filter" class="w-4 h-4"></i>
+                <span class="text-xs font-bold">Filter</span>
+                <!-- Reusing the global count badge ID might cause conflicts if IDs must be unique, 
+                     but since tabs are hidden, it might be okay. 
+                     Safest is to use a class or a new ID and update logic to target multiple. 
+                     However, the logic in market.js updates 'document.getElementById...'.
+                     Let's use a NEW ID for Pulse and update logic to sync both. -->
+                <span id="pulse-count-badge" class="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded">Auto</span>
+            </button>
+            <div id="active-pulse-filter-indicator" class="hidden flex items-center gap-1 text-xs text-primary">
+                <span id="pulse-filter-count">0</span> selected
+            </div>
         </div>
 
         <div id="analysis-progress-container" class="hidden mb-6 bg-surface rounded-2xl p-4 border border-primary/10">

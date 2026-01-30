@@ -85,9 +85,18 @@ async function loadPulseData(showLoading = false) {
         return;
     }
 
+    // [Sync] Ensure we use the shared "Top 5" selection from Market module
+    // If no selection exists, trigger Market initialization to populate Top 5
+    if (!window.globalSelectedSymbols || window.globalSelectedSymbols.length === 0) {
+        if (typeof window.initMarket === 'function') {
+            console.log('[Pulse] No selection found, initializing Market to get Top 5...');
+            await window.initMarket();
+        }
+    }
+
     const targets = (window.globalSelectedSymbols && window.globalSelectedSymbols.length > 0)
         ? window.globalSelectedSymbols
-        : ['BTC', 'ETH', 'SOL', 'PI'];
+        : ['BTC', 'ETH', 'SOL', 'PI']; // Failsafe fallback
 
     // 創建 loading placeholder
     if (showLoading || grid.children.length === 0) {
@@ -129,6 +138,10 @@ async function refreshMarketPulse() {
     if (icon) icon.classList.add('animate-spin');
 
     try {
+        if (!window.globalSelectedSymbols || window.globalSelectedSymbols.length === 0) {
+            if (typeof window.initMarket === 'function') await window.initMarket();
+        }
+
         const targets = (window.globalSelectedSymbols && window.globalSelectedSymbols.length > 0)
             ? window.globalSelectedSymbols
             : ['BTC', 'ETH', 'SOL', 'PI'];

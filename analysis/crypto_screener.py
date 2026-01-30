@@ -215,7 +215,9 @@ def screen_top_cryptos(exchange='okx', limit=30, interval='1d', target_symbols: 
     summary_df["7d Change %"] = pd.to_numeric(summary_df["7d Change %"], errors='coerce').fillna(0)
     summary_df["RSI_14"] = pd.to_numeric(summary_df["RSI_14"], errors='coerce').fillna(50)
 
-    top_performers = summary_df.sort_values(by="24h Change %", ascending=False).head(10)
+    # [Optimization] Return TOP 50 for frontend selection, even if UI only shows top 10
+    top_performers = summary_df.sort_values(by="24h Change %", ascending=False).head(50)
+    
     # More responsive oversold detection: include assets with RSI < 35 OR with "抄底" signals
     oversold_condition = (summary_df["RSI_14"] < 35) | (summary_df["Signals"].apply(lambda x: "💎抄底" in x if isinstance(x, list) else False))
     oversold = summary_df[oversold_condition].sort_values(by="RSI_14", ascending=True).head(10)

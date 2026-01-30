@@ -8232,3 +8232,1780 @@ ConnectionResetError: [WinError 10054] 遠端主機已強制關閉一個現存�
 2026-01-30 13:22:37,468 [INFO] API: [Background] Updating Market Pulse for MET...
 2026-01-30 13:22:38,264 [INFO] API: [Background] Successfully updated SKL
 2026-01-30 13:22:38,264 [INFO] API: [Background] Updating Market Pulse for ALGO...
+2026-01-30 13:22:39,377 [INFO] API: [Background] Successfully updated MET
+2026-01-30 13:22:39,378 [INFO] API: [Background] Updating Market Pulse for SPACE...
+2026-01-30 13:22:40,342 [INFO] API: [Background] Successfully updated ALGO
+2026-01-30 13:22:40,342 [INFO] API: [Background] Updating Market Pulse for EGLD...
+2026-01-30 13:22:41,244 [INFO] API: [Background] Successfully updated SPACE
+2026-01-30 13:22:41,244 [INFO] API: [Background] Updating Market Pulse for SSV...
+2026-01-30 13:22:42,278 [INFO] API: [Background] Successfully updated EGLD
+2026-01-30 13:22:42,278 [INFO] API: [Background] Updating Market Pulse for IP...
+2026-01-30 13:22:43,055 [INFO] API: 💾 [Batch Save] Saved Market Pulse cache to DB
+2026-01-30 13:22:43,260 [INFO] API: [Background] Successfully updated SSV
+2026-01-30 13:22:43,260 [INFO] API: [Background] Updating Market Pulse for GRT...
+2026-01-30 13:22:44,222 [INFO] API: [Background] Successfully updated IP
+2026-01-30 13:22:44,222 [INFO] API: [Background] Updating Market Pulse for XRP...
+2026-01-30 13:22:45,103 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:22:45,160 [INFO] API: [Background] Successfully updated GRT
+2026-01-30 13:22:45,160 [INFO] API: [Background] Updating Market Pulse for ASTR...
+2026-01-30 13:22:46,933 [INFO] API: [Background] Successfully updated XRP
+2026-01-30 13:22:46,934 [INFO] API: [Background] Updating Market Pulse for TURBO...
+2026-01-30 13:22:47,086 [INFO] API: [Background] Successfully updated ASTR
+2026-01-30 13:22:47,086 [INFO] API: [Background] Updating Market Pulse for BERA...
+2026-01-30 13:22:49,006 [INFO] API: [Background] Successfully updated TURBO
+2026-01-30 13:22:49,006 [INFO] API: [Background] Updating Market Pulse for UNI...
+2026-01-30 13:22:49,102 [INFO] API: [Background] Successfully updated BERA
+2026-01-30 13:22:49,102 [INFO] API: [Background] Updating Market Pulse for ME...
+2026-01-30 13:22:51,099 [INFO] API: [Background] Successfully updated ME
+2026-01-30 13:22:51,104 [INFO] API: [Background] Updating Market Pulse for WLFI...
+2026-01-30 13:22:51,274 [INFO] API: [Background] Successfully updated UNI
+2026-01-30 13:22:51,274 [INFO] API: [Background] Updating Market Pulse for G...
+2026-01-30 13:22:52,447 [INFO] API: Screener cache saved to DB
+2026-01-30 13:22:52,449 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:22:53,165 [INFO] API: [Background] Successfully updated WLFI
+2026-01-30 13:22:53,165 [INFO] API: [Background] Updating Market Pulse for T...
+2026-01-30 13:22:53,282 [INFO] API: [Background] Successfully updated G
+2026-01-30 13:22:53,282 [INFO] API: [Background] Updating Market Pulse for SOL...
+2026-01-30 13:22:54,514 [INFO] API: 💾 [Batch Save] Saved Market Pulse cache to DB
+2026-01-30 13:22:55,097 [INFO] API: [Background] Successfully updated T
+2026-01-30 13:22:55,099 [INFO] API: [Background] Updating Market Pulse for RPL...
+2026-01-30 13:22:55,971 [INFO] API: [Background] Successfully updated SOL
+2026-01-30 13:22:55,971 [INFO] API: [Background] Updating Market Pulse for AAVE...
+2026-01-30 13:22:57,026 [INFO] API: [Background] Successfully updated RPL
+2026-01-30 13:22:57,026 [INFO] API: [Background] Updating Market Pulse for S...
+2026-01-30 13:22:58,128 [INFO] API: [Background] Successfully updated AAVE
+2026-01-30 13:22:58,129 [INFO] API: [Background] Updating Market Pulse for LINK...
+2026-01-30 13:22:58,894 [INFO] API: [Background] Successfully updated S
+2026-01-30 13:22:58,894 [INFO] API: [Background] Updating Market Pulse for PARTI...
+2026-01-30 13:23:00,633 [INFO] API: [Background] Successfully updated LINK
+2026-01-30 13:23:00,634 [INFO] API: [Background] Updating Market Pulse for GLM...
+2026-01-30 13:23:00,888 [INFO] API: [Background] Successfully updated PARTI
+2026-01-30 13:23:00,888 [INFO] API: [Background] Updating Market Pulse for CXT...
+2026-01-30 13:23:02,735 [INFO] API: [Background] Successfully updated GLM
+2026-01-30 13:23:02,735 [INFO] API: [Background] Updating Market Pulse for YGG...
+2026-01-30 13:23:02,938 [INFO] API: [Background] Successfully updated CXT
+2026-01-30 13:23:02,939 [INFO] API: [Background] Updating Market Pulse for RVN...
+2026-01-30 13:23:04,043 [INFO] API: 💾 [Batch Save] Saved Market Pulse cache to DB
+2026-01-30 13:23:04,683 [INFO] API: [Background] Successfully updated YGG
+2026-01-30 13:23:04,683 [INFO] API: [Background] Updating Market Pulse for LEO...
+2026-01-30 13:23:05,102 [INFO] API: [Background] Successfully updated RVN
+2026-01-30 13:23:05,104 [INFO] API: [Background] Updating Market Pulse for POR...
+2026-01-30 13:23:06,589 [INFO] API: [Background] Successfully updated LEO
+2026-01-30 13:23:06,589 [INFO] API: [Background] Updating Market Pulse for CETUS...
+2026-01-30 13:23:07,224 [INFO] API: [Background] Successfully updated POR
+2026-01-30 13:23:07,224 [INFO] API: [Background] Updating Market Pulse for VIRTUAL...
+2026-01-30 13:23:08,707 [INFO] API: [Background] Successfully updated CETUS
+2026-01-30 13:23:08,707 [INFO] API: [Background] Updating Market Pulse for HMSTR...
+2026-01-30 13:23:09,371 [INFO] API: [Background] Successfully updated VIRTUAL
+2026-01-30 13:23:09,371 [INFO] API: [Background] Updating Market Pulse for CFG...
+2026-01-30 13:23:10,839 [INFO] API: [Background] Successfully updated HMSTR
+2026-01-30 13:23:10,841 [INFO] API: [Background] Updating Market Pulse for FLR...
+2026-01-30 13:23:11,309 [INFO] API: [Background] Successfully updated CFG
+2026-01-30 13:23:11,309 [INFO] API: [Background] Updating Market Pulse for SPURS...
+2026-01-30 13:23:12,838 [INFO] API: [Background] Successfully updated FLR
+2026-01-30 13:23:12,839 [INFO] API: [Background] Updating Market Pulse for BABYDOGE...
+2026-01-30 13:23:13,647 [INFO] API: [Background] Successfully updated SPURS
+2026-01-30 13:23:13,647 [INFO] API: [Background] Updating Market Pulse for W...
+2026-01-30 13:23:14,534 [INFO] API: 💾 [Batch Save] Saved Market Pulse cache to DB
+2026-01-30 13:23:14,743 [INFO] API: [Background] Successfully updated BABYDOGE
+2026-01-30 13:23:14,743 [INFO] API: [Background] Updating Market Pulse for YB...
+2026-01-30 13:23:15,697 [INFO] API: [Background] Successfully updated W
+2026-01-30 13:23:15,697 [INFO] API: [Background] Updating Market Pulse for PNUT...
+2026-01-30 13:23:17,039 [INFO] API: [Background] Successfully updated YB
+2026-01-30 13:23:17,039 [INFO] API: [Background] Updating Market Pulse for CORE...
+2026-01-30 13:23:17,829 [INFO] API: [Background] Successfully updated PNUT
+2026-01-30 13:23:17,829 [INFO] API: [Background] Updating Market Pulse for ADA...
+2026-01-30 13:23:18,947 [INFO] API: [Background] Successfully updated CORE
+2026-01-30 13:23:18,947 [INFO] API: [Background] Updating Market Pulse for AXS...
+2026-01-30 13:23:20,262 [INFO] API: [Background] Successfully updated ADA
+2026-01-30 13:23:20,262 [INFO] API: [Background] Updating Market Pulse for KITE...
+2026-01-30 13:23:21,043 [INFO] API: [Background] Successfully updated AXS
+2026-01-30 13:23:21,043 [INFO] API: [Background] Updating Market Pulse for ALLO...
+2026-01-30 13:23:22,400 [INFO] API: [Background] Successfully updated KITE
+2026-01-30 13:23:22,400 [INFO] API: [Background] Updating Market Pulse for ONE...
+2026-01-30 13:23:23,205 [INFO] API: [Background] Successfully updated ALLO
+2026-01-30 13:23:23,205 [INFO] API: [Background] Updating Market Pulse for SUI...
+2026-01-30 13:23:24,546 [INFO] API: [Background] Successfully updated ONE
+2026-01-30 13:23:24,546 [INFO] API: [Background] Updating Market Pulse for CITY...
+2026-01-30 13:23:25,319 [INFO] API: 💾 [Batch Save] Saved Market Pulse cache to DB
+2026-01-30 13:23:25,974 [INFO] API: [Background] Successfully updated SUI
+2026-01-30 13:23:25,974 [INFO] API: [Background] Updating Market Pulse for CAT...
+2026-01-30 13:23:26,393 [INFO] API: [Background] Successfully updated CITY
+2026-01-30 13:23:26,393 [INFO] API: [Background] Updating Market Pulse for DAO...
+2026-01-30 13:23:28,143 [INFO] API: [Background] Successfully updated CAT
+2026-01-30 13:23:28,143 [INFO] API: [Background] Updating Market Pulse for LPT...
+2026-01-30 13:23:28,448 [INFO] API: [Background] Successfully updated DAO
+2026-01-30 13:23:28,448 [INFO] API: [Background] Updating Market Pulse for GOAT...
+2026-01-30 13:23:30,052 [INFO] API: [Background] Successfully updated LPT
+2026-01-30 13:23:30,053 [INFO] API: [Background] Updating Market Pulse for LTC...
+2026-01-30 13:23:30,724 [INFO] API: [Background] Successfully updated GOAT
+2026-01-30 13:23:30,724 [INFO] API: [Background] Updating Market Pulse for VELO...
+2026-01-30 13:23:32,632 [INFO] API: [Background] Successfully updated VELO
+2026-01-30 13:23:32,633 [INFO] API: [Background] Updating Market Pulse for NOT...
+2026-01-30 13:23:32,678 [INFO] API: [Background] Successfully updated LTC
+2026-01-30 13:23:32,679 [INFO] API: [Background] Updating Market Pulse for AIXBT...
+2026-01-30 13:23:34,703 [INFO] API: [Background] Successfully updated NOT
+2026-01-30 13:23:34,703 [INFO] API: [Background] Updating Market Pulse for FLOKI...
+2026-01-30 13:23:34,771 [INFO] API: [Background] Successfully updated AIXBT
+2026-01-30 13:23:34,772 [INFO] API: [Background] Updating Market Pulse for NEO...
+2026-01-30 13:23:35,893 [INFO] API: 💾 [Batch Save] Saved Market Pulse cache to DB
+2026-01-30 13:23:36,752 [INFO] API: [Background] Successfully updated NEO
+2026-01-30 13:23:36,753 [INFO] API: [Background] Updating Market Pulse for LSK...
+2026-01-30 13:23:36,884 [INFO] API: [Background] Successfully updated FLOKI
+2026-01-30 13:23:36,884 [INFO] API: [Background] Updating Market Pulse for ZBCN...
+2026-01-30 13:23:38,756 [INFO] API: [Background] Successfully updated LSK
+2026-01-30 13:23:38,756 [INFO] API: [Background] Updating Market Pulse for ORBS...
+2026-01-30 13:23:38,834 [INFO] API: [Background] Successfully updated ZBCN
+2026-01-30 13:23:38,834 [INFO] API: [Background] Updating Market Pulse for JUP...
+2026-01-30 13:23:40,743 [INFO] API: [Background] Successfully updated ORBS
+2026-01-30 13:23:40,743 [INFO] API: [Background] Updating Market Pulse for ETHFI...
+2026-01-30 13:23:40,813 [INFO] API: [Background] Successfully updated JUP
+2026-01-30 13:23:40,813 [INFO] API: [Background] Updating Market Pulse for AUCTION...
+2026-01-30 13:23:42,748 [INFO] API: [Background] Successfully updated ETHFI
+2026-01-30 13:23:42,749 [INFO] API: [Background] Updating Market Pulse for RON...
+2026-01-30 13:23:42,789 [INFO] API: [Background] Successfully updated AUCTION
+2026-01-30 13:23:42,790 [INFO] API: [Background] Updating Market Pulse for SONIC...
+2026-01-30 13:23:43,450 [INFO] API: 🛑 Shutting down application...
+2026-01-30 13:24:22,528 [WARNING] API: ⚠️ Rate limiting not available: No module named 'slowapi'
+2026-01-30 13:24:22,529 [WARNING] API: Install slowapi: pip install slowapi
+2026-01-30 13:24:22,529 [INFO] API: ✅ Audit logging enabled
+2026-01-30 13:24:22,579 [INFO] API: 🚀 Pi Crypto Insight API Server 啟動中...
+2026-01-30 13:24:22,579 [INFO] API: 🏠 本地網址: http://localhost:8111
+2026-01-30 13:24:22,579 [INFO] API: 📱 請在 Pi Browser 中使用 HTTPS 網址訪問 (如透過 ngrok)
+2026-01-30 13:24:22,613 [INFO] API: 🔄 Initializing database...
+2026-01-30 13:24:27,647 [INFO] API: ✅ Database initialized
+2026-01-30 13:24:27,647 [WARNING] API: [WARNING] 未找到 OKX API 憑證
+2026-01-30 13:24:27,648 [WARNING] API: 請在 .env 文件中設置以下變數：
+2026-01-30 13:24:27,648 [WARNING] API: OKX_API_KEY=您的API密鑰
+2026-01-30 13:24:27,648 [WARNING] API: OKX_API_SECRET=您的API私鑰
+2026-01-30 13:24:27,649 [WARNING] API: OKX_PASSPHRASE=您的API密碼
+2026-01-30 13:24:27,649 [INFO] API: ✅ OKX Connector 初始化成功
+2026-01-30 13:24:27,649 [WARNING] API: create_llm_client_from_config: Creating new client for user_provided/gpt-4o-mini (System Keys)
+2026-01-30 13:24:27,649 [INFO] API: Initializing LLM: Provider=openai, Model=gpt-4o-mini
+2026-01-30 13:24:27,649 [ERROR] API: Failed to initialize LLM client for user_provided/gpt-4o-mini: Unable to import langchain_openai. Please install with `pip install -U langchain-openai`
+2026-01-30 13:24:27,650 [INFO] API: Notice: System-level API key not found for CryptoQueryParser (Unable to import langchain_openai. Please install with `pip install -U langchain-openai`). Will rely on user-provided keys.
+2026-01-30 13:24:27,651 [INFO] API: >> 使用 Admin Agent 架構 (任務分派 + 會議討論)
+2026-01-30 13:24:27,651 [INFO] API: ✅ CryptoAnalysisBot 初始化成功
+2026-01-30 13:24:28,048 [INFO] API: Loaded screener cache from DB (Timestamp: 2026-01-30 13:22:52)
+2026-01-30 13:24:33,215 [INFO] API: Loaded Market Pulse cache from DB (270 symbols)
+2026-01-30 13:24:33,401 [INFO] API: Loaded Funding Rate cache from DB (254 symbols)
+2026-01-30 13:24:33,401 [INFO] API: 📊 Starting Market Pulse task in API process...
+2026-01-30 13:24:33,401 [INFO] API: 🚀 Starting initial Screener analysis...
+2026-01-30 13:24:33,401 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:24:33,401 [INFO] API: 🚀 [Background] Initializing Market Pulse task...
+2026-01-30 13:24:33,403 [INFO] API: 📦 Current cache has 270 symbols
+2026-01-30 13:24:33,403 [INFO] API: 📊 Cache age: newest=84.6min, oldest=84.6min (threshold=240min)
+2026-01-30 13:24:33,404 [INFO] API: ✅ All cache is fresh! Sleeping for 155.4 minutes until next update.
+2026-01-30 13:24:33,404 [INFO] API: 💤 Sleeping for 9326.596768s...
+2026-01-30 13:24:38,408 [INFO] API: Updating funding rates...
+2026-01-30 13:24:41,110 [INFO] API: Screener cache saved to DB
+2026-01-30 13:24:41,110 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:25:10,509 [INFO] API: Funding Rate cache saved (254 symbols)
+2026-01-30 13:25:10,509 [INFO] API: Funding rates updated: 254 symbols
+2026-01-30 13:25:26,838 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 1
+2026-01-30 13:25:26,844 [INFO] API: 正在啟動 OKX Ticker WebSocket...
+2026-01-30 13:25:26,844 [INFO] API: OKX Ticker WebSocket 啟動任務已創建
+2026-01-30 13:25:26,844 [INFO] data.okx_websocket: 正在連接 OKX Ticker WebSocket: wss://ws.okx.com:8443/ws/v5/public
+2026-01-30 13:25:26,904 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:25:26,904 [WARNING] API: create_llm_client_from_config: Creating new client for openai/gpt-4o-mini (System Keys)
+2026-01-30 13:25:26,904 [WARNING] analysis.market_pulse: MarketPulseAnalyzer initialized WITHOUT LLM (Fallback Mode): Missing OpenAI API Key.
+2026-01-30 13:25:26,904 [INFO] analysis.market_pulse: ✅ MarketPulseAnalyzer 實例已創建（懶加載）
+2026-01-30 13:25:27,164 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', 'XAUT-USDT', 'USDC-USDT', 'DOGE-USDT', 'SOL-USDT', 'BTC-USDT', 'XRP-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 13:25:27,164 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: FOGO-USDT
+2026-01-30 13:25:27,164 [INFO] API: 已訂閱 Ticker: FOGO-USDT
+2026-01-30 13:25:27,164 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XAUT-USDT
+2026-01-30 13:25:27,164 [INFO] API: 已訂閱 Ticker: XAUT-USDT
+2026-01-30 13:25:27,165 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: USDC-USDT
+2026-01-30 13:25:27,165 [INFO] API: 已訂閱 Ticker: USDC-USDT
+2026-01-30 13:25:27,165 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: DOGE-USDT
+2026-01-30 13:25:27,165 [INFO] API: 已訂閱 Ticker: DOGE-USDT
+2026-01-30 13:25:27,165 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: SOL-USDT
+2026-01-30 13:25:27,165 [INFO] API: 已訂閱 Ticker: SOL-USDT
+2026-01-30 13:25:27,165 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: BTC-USDT
+2026-01-30 13:25:27,165 [INFO] API: 已訂閱 Ticker: BTC-USDT
+2026-01-30 13:25:27,166 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XRP-USDT
+2026-01-30 13:25:27,166 [INFO] API: 已訂閱 Ticker: XRP-USDT
+2026-01-30 13:25:27,166 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: ETH-USDT
+2026-01-30 13:25:27,166 [INFO] API: 已訂閱 Ticker: ETH-USDT
+2026-01-30 13:25:27,166 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: LIT-USDT
+2026-01-30 13:25:27,166 [INFO] API: 已訂閱 Ticker: LIT-USDT
+2026-01-30 13:25:27,168 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: HYPE-USDT
+2026-01-30 13:25:27,168 [INFO] API: 已訂閱 Ticker: HYPE-USDT
+2026-01-30 13:25:27,168 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:25:27,411 [INFO] data.okx_websocket: OKX Ticker WebSocket 連接成功
+2026-01-30 13:25:27,411 [INFO] data.okx_websocket: 訂閱 Ticker: FOGO-USDT
+2026-01-30 13:25:27,412 [INFO] data.okx_websocket: 訂閱 Ticker: XAUT-USDT
+2026-01-30 13:25:27,412 [INFO] data.okx_websocket: 訂閱 Ticker: USDC-USDT
+2026-01-30 13:25:27,413 [INFO] data.okx_websocket: 訂閱 Ticker: DOGE-USDT
+2026-01-30 13:25:27,413 [INFO] data.okx_websocket: 訂閱 Ticker: SOL-USDT
+2026-01-30 13:25:27,413 [INFO] data.okx_websocket: 訂閱 Ticker: BTC-USDT
+2026-01-30 13:25:27,413 [INFO] data.okx_websocket: 訂閱 Ticker: XRP-USDT
+2026-01-30 13:25:27,413 [INFO] data.okx_websocket: 訂閱 Ticker: ETH-USDT
+2026-01-30 13:25:27,414 [INFO] data.okx_websocket: 訂閱 Ticker: LIT-USDT
+2026-01-30 13:25:27,414 [INFO] data.okx_websocket: 訂閱 Ticker: HYPE-USDT
+2026-01-30 13:25:27,414 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', 'XAUT-USDT', 'USDC-USDT', 'DOGE-USDT', 'SOL-USDT', 'BTC-USDT', 'XRP-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 13:25:27,449 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'FOGO-USDT'}
+2026-01-30 13:25:27,452 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XAUT-USDT'}
+2026-01-30 13:25:27,452 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'USDC-USDT'}
+2026-01-30 13:25:27,453 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'DOGE-USDT'}
+2026-01-30 13:25:27,453 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'SOL-USDT'}
+2026-01-30 13:25:27,453 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'BTC-USDT'}
+2026-01-30 13:25:27,453 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XRP-USDT'}
+2026-01-30 13:25:27,453 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'ETH-USDT'}
+2026-01-30 13:25:27,453 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'LIT-USDT'}
+2026-01-30 13:25:27,453 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'HYPE-USDT'}
+2026-01-30 13:25:43,421 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:25:50,355 [INFO] API: Screener cache saved to DB
+2026-01-30 13:25:50,356 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:26:43,696 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:26:51,274 [INFO] API: Screener cache saved to DB
+2026-01-30 13:26:51,275 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:27:10,523 [INFO] API: Updating funding rates...
+2026-01-30 13:27:42,874 [INFO] API: Funding Rate cache saved (254 symbols)
+2026-01-30 13:27:42,874 [INFO] API: Funding rates updated: 254 symbols
+2026-01-30 13:27:43,809 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:27:49,612 [INFO] API: Screener cache saved to DB
+2026-01-30 13:27:49,613 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:28:34,729 [INFO] httpx: HTTP Request: GET https://api.minepi.com/v2/me "HTTP/1.1 200 OK"
+2026-01-30 13:28:34,732 [INFO] API: Pi Access Token successfully verified for uid: de596108-bd78-46cc-9948-4b8353ff638c
+2026-01-30 13:28:34,733 [INFO] API: Pi token verified for user: a1031737
+2026-01-30 13:28:35,366 [INFO] API: AUDIT [login]: user=None(None), resource=None/None, success=True
+2026-01-30 13:28:36,546 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:28:36,547 [INFO] data.okx_websocket: 取消訂閱 Ticker: FOGO-USDT
+2026-01-30 13:28:36,547 [INFO] data.okx_websocket: 取消訂閱 Ticker: XAUT-USDT
+2026-01-30 13:28:36,547 [INFO] data.okx_websocket: 取消訂閱 Ticker: USDC-USDT
+2026-01-30 13:28:36,548 [INFO] data.okx_websocket: 取消訂閱 Ticker: DOGE-USDT
+2026-01-30 13:28:36,548 [INFO] data.okx_websocket: 取消訂閱 Ticker: SOL-USDT
+2026-01-30 13:28:36,549 [INFO] data.okx_websocket: 取消訂閱 Ticker: BTC-USDT
+2026-01-30 13:28:36,549 [INFO] data.okx_websocket: 取消訂閱 Ticker: XRP-USDT
+2026-01-30 13:28:36,549 [INFO] data.okx_websocket: 取消訂閱 Ticker: ETH-USDT
+2026-01-30 13:28:36,549 [INFO] data.okx_websocket: 取消訂閱 Ticker: LIT-USDT
+2026-01-30 13:28:36,549 [INFO] data.okx_websocket: 取消訂閱 Ticker: HYPE-USDT
+2026-01-30 13:28:36,551 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 0
+2026-01-30 13:28:39,245 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 1
+2026-01-30 13:28:39,247 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:28:39,791 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 2
+2026-01-30 13:28:39,791 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:28:39,843 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', 'XAUT-USDT', 'USDC-USDT', 'DOGE-USDT', 'SOL-USDT', 'XRP-USDT', 'BTC-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 13:28:39,844 [INFO] data.okx_websocket: 訂閱 Ticker: FOGO-USDT
+2026-01-30 13:28:39,844 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: FOGO-USDT
+2026-01-30 13:28:39,844 [INFO] API: 已訂閱 Ticker: FOGO-USDT
+2026-01-30 13:28:39,844 [INFO] data.okx_websocket: 訂閱 Ticker: XAUT-USDT
+2026-01-30 13:28:39,844 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XAUT-USDT
+2026-01-30 13:28:39,844 [INFO] API: 已訂閱 Ticker: XAUT-USDT
+2026-01-30 13:28:39,844 [INFO] data.okx_websocket: 訂閱 Ticker: USDC-USDT
+2026-01-30 13:28:39,844 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: USDC-USDT
+2026-01-30 13:28:39,844 [INFO] API: 已訂閱 Ticker: USDC-USDT
+2026-01-30 13:28:39,844 [INFO] data.okx_websocket: 訂閱 Ticker: DOGE-USDT
+2026-01-30 13:28:39,844 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: DOGE-USDT
+2026-01-30 13:28:39,846 [INFO] API: 已訂閱 Ticker: DOGE-USDT
+2026-01-30 13:28:39,846 [INFO] data.okx_websocket: 訂閱 Ticker: SOL-USDT
+2026-01-30 13:28:39,846 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: SOL-USDT
+2026-01-30 13:28:39,846 [INFO] API: 已訂閱 Ticker: SOL-USDT
+2026-01-30 13:28:39,846 [INFO] data.okx_websocket: 訂閱 Ticker: XRP-USDT
+2026-01-30 13:28:39,846 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XRP-USDT
+2026-01-30 13:28:39,846 [INFO] API: 已訂閱 Ticker: XRP-USDT
+2026-01-30 13:28:39,846 [INFO] data.okx_websocket: 訂閱 Ticker: BTC-USDT
+2026-01-30 13:28:39,846 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: BTC-USDT
+2026-01-30 13:28:39,846 [INFO] API: 已訂閱 Ticker: BTC-USDT
+2026-01-30 13:28:39,846 [INFO] data.okx_websocket: 訂閱 Ticker: ETH-USDT
+2026-01-30 13:28:39,846 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: ETH-USDT
+2026-01-30 13:28:39,846 [INFO] API: 已訂閱 Ticker: ETH-USDT
+2026-01-30 13:28:39,846 [INFO] data.okx_websocket: 訂閱 Ticker: LIT-USDT
+2026-01-30 13:28:39,847 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: LIT-USDT
+2026-01-30 13:28:39,847 [INFO] API: 已訂閱 Ticker: LIT-USDT
+2026-01-30 13:28:39,847 [INFO] data.okx_websocket: 訂閱 Ticker: HYPE-USDT
+2026-01-30 13:28:39,847 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: HYPE-USDT
+2026-01-30 13:28:39,847 [INFO] API: 已訂閱 Ticker: HYPE-USDT
+2026-01-30 13:28:39,849 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', 'XAUT-USDT', 'USDC-USDT', 'DOGE-USDT', 'SOL-USDT', 'XRP-USDT', 'BTC-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 13:28:39,881 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'FOGO-USDT'}
+2026-01-30 13:28:39,919 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XAUT-USDT'}
+2026-01-30 13:28:39,919 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'USDC-USDT'}
+2026-01-30 13:28:39,919 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'DOGE-USDT'}
+2026-01-30 13:28:39,919 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'SOL-USDT'}
+2026-01-30 13:28:39,919 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XRP-USDT'}
+2026-01-30 13:28:39,921 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'BTC-USDT'}
+2026-01-30 13:28:39,921 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'ETH-USDT'}
+2026-01-30 13:28:39,921 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'LIT-USDT'}
+2026-01-30 13:28:39,921 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'HYPE-USDT'}
+2026-01-30 13:28:44,227 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:28:44,327 [INFO] API: Cache miss for PI, triggering immediate analysis...
+2026-01-30 13:28:44,558 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:28:46,370 [WARNING] API: AUDIT [tip_post]: user=None(None), resource=None/None, success=False
+2026-01-30 13:28:46,638 [WARNING] API: >> ⚠️ 新聞審查員跳過：未配置有效的 OpenAI API Key
+2026-01-30 13:28:46,828 [WARNING] API: AUDIT [tip_post]: user=None(None), resource=None/None, success=False
+2026-01-30 13:28:46,832 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:28:47,454 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:28:47,702 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:28:52,334 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:28:52,334 [INFO] data.okx_websocket: 取消訂閱 Ticker: FOGO-USDT
+2026-01-30 13:28:52,335 [INFO] data.okx_websocket: 取消訂閱 Ticker: XAUT-USDT
+2026-01-30 13:28:52,335 [INFO] data.okx_websocket: 取消訂閱 Ticker: USDC-USDT
+2026-01-30 13:28:52,335 [INFO] data.okx_websocket: 取消訂閱 Ticker: DOGE-USDT
+2026-01-30 13:28:52,337 [INFO] data.okx_websocket: 取消訂閱 Ticker: SOL-USDT
+2026-01-30 13:28:52,337 [INFO] data.okx_websocket: 取消訂閱 Ticker: XRP-USDT
+2026-01-30 13:28:52,338 [INFO] data.okx_websocket: 取消訂閱 Ticker: BTC-USDT
+2026-01-30 13:28:52,338 [INFO] data.okx_websocket: 取消訂閱 Ticker: ETH-USDT
+2026-01-30 13:28:52,338 [INFO] data.okx_websocket: 取消訂閱 Ticker: LIT-USDT
+2026-01-30 13:28:52,338 [INFO] data.okx_websocket: 取消訂閱 Ticker: HYPE-USDT
+2026-01-30 13:28:52,338 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 1
+2026-01-30 13:28:52,339 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:28:52,339 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 0
+2026-01-30 13:28:54,151 [INFO] API: Screener cache saved to DB
+2026-01-30 13:28:54,151 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:29:37,074 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 1
+2026-01-30 13:29:37,077 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:29:37,971 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', 'XAUT-USDT', 'USDC-USDT', 'DOGE-USDT', 'SOL-USDT', 'XRP-USDT', 'BTC-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 13:29:37,973 [INFO] data.okx_websocket: 訂閱 Ticker: FOGO-USDT
+2026-01-30 13:29:37,973 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: FOGO-USDT
+2026-01-30 13:29:37,973 [INFO] API: 已訂閱 Ticker: FOGO-USDT
+2026-01-30 13:29:37,973 [INFO] data.okx_websocket: 訂閱 Ticker: XAUT-USDT
+2026-01-30 13:29:37,973 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XAUT-USDT
+2026-01-30 13:29:37,973 [INFO] API: 已訂閱 Ticker: XAUT-USDT
+2026-01-30 13:29:37,974 [INFO] data.okx_websocket: 訂閱 Ticker: USDC-USDT
+2026-01-30 13:29:37,974 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: USDC-USDT
+2026-01-30 13:29:37,974 [INFO] API: 已訂閱 Ticker: USDC-USDT
+2026-01-30 13:29:37,974 [INFO] data.okx_websocket: 訂閱 Ticker: DOGE-USDT
+2026-01-30 13:29:37,975 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: DOGE-USDT
+2026-01-30 13:29:37,975 [INFO] API: 已訂閱 Ticker: DOGE-USDT
+2026-01-30 13:29:37,975 [INFO] data.okx_websocket: 訂閱 Ticker: SOL-USDT
+2026-01-30 13:29:37,975 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: SOL-USDT
+2026-01-30 13:29:37,975 [INFO] API: 已訂閱 Ticker: SOL-USDT
+2026-01-30 13:29:37,975 [INFO] data.okx_websocket: 訂閱 Ticker: XRP-USDT
+2026-01-30 13:29:37,975 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XRP-USDT
+2026-01-30 13:29:37,976 [INFO] API: 已訂閱 Ticker: XRP-USDT
+2026-01-30 13:29:37,976 [INFO] data.okx_websocket: 訂閱 Ticker: BTC-USDT
+2026-01-30 13:29:37,976 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: BTC-USDT
+2026-01-30 13:29:37,976 [INFO] API: 已訂閱 Ticker: BTC-USDT
+2026-01-30 13:29:37,977 [INFO] data.okx_websocket: 訂閱 Ticker: ETH-USDT
+2026-01-30 13:29:37,977 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: ETH-USDT
+2026-01-30 13:29:37,977 [INFO] API: 已訂閱 Ticker: ETH-USDT
+2026-01-30 13:29:37,977 [INFO] data.okx_websocket: 訂閱 Ticker: LIT-USDT
+2026-01-30 13:29:37,977 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: LIT-USDT
+2026-01-30 13:29:37,977 [INFO] API: 已訂閱 Ticker: LIT-USDT
+2026-01-30 13:29:37,977 [INFO] data.okx_websocket: 訂閱 Ticker: HYPE-USDT
+2026-01-30 13:29:37,977 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: HYPE-USDT
+2026-01-30 13:29:37,977 [INFO] API: 已訂閱 Ticker: HYPE-USDT
+2026-01-30 13:29:38,206 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'FOGO-USDT'}
+2026-01-30 13:29:38,206 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XAUT-USDT'}
+2026-01-30 13:29:38,208 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'USDC-USDT'}
+2026-01-30 13:29:38,208 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'DOGE-USDT'}
+2026-01-30 13:29:38,209 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'SOL-USDT'}
+2026-01-30 13:29:38,209 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XRP-USDT'}
+2026-01-30 13:29:38,210 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'BTC-USDT'}
+2026-01-30 13:29:38,211 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'ETH-USDT'}
+2026-01-30 13:29:38,211 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'LIT-USDT'}
+2026-01-30 13:29:38,211 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'HYPE-USDT'}
+2026-01-30 13:29:40,963 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:29:41,190 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:29:42,504 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:29:42,731 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:29:42,951 [INFO] API: Updating funding rates...
+2026-01-30 13:29:50,341 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:29:52,531 [INFO] API: Requesting symbol list for exchange: okx
+2026-01-30 13:29:52,797 [INFO] API: Successfully fetched 297 symbols from okx
+2026-01-30 13:29:58,444 [INFO] API: Screener cache saved to DB
+2026-01-30 13:29:58,444 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:30:16,689 [INFO] API: Funding Rate cache saved (254 symbols)
+2026-01-30 13:30:16,692 [INFO] API: Funding rates updated: 254 symbols
+2026-01-30 13:30:36,578 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:30:36,788 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:30:50,505 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:30:56,735 [INFO] API: Screener cache saved to DB
+2026-01-30 13:30:56,735 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:31:07,688 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:31:07,915 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:31:37,893 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:31:38,128 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:31:50,892 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:31:57,342 [INFO] API: Screener cache saved to DB
+2026-01-30 13:31:57,343 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:32:07,715 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:32:07,942 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:32:16,688 [INFO] API: Updating funding rates...
+2026-01-30 13:32:37,928 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:32:38,254 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:32:48,469 [INFO] API: Funding Rate cache saved (254 symbols)
+2026-01-30 13:32:48,469 [INFO] API: Funding rates updated: 254 symbols
+2026-01-30 13:32:51,845 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:32:58,653 [INFO] API: Screener cache saved to DB
+2026-01-30 13:32:58,653 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:33:07,692 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:33:07,924 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:33:12,668 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:33:12,669 [INFO] data.okx_websocket: 取消訂閱 Ticker: FOGO-USDT
+2026-01-30 13:33:12,669 [INFO] data.okx_websocket: 取消訂閱 Ticker: XAUT-USDT
+2026-01-30 13:33:12,671 [INFO] data.okx_websocket: 取消訂閱 Ticker: USDC-USDT
+2026-01-30 13:33:12,671 [INFO] data.okx_websocket: 取消訂閱 Ticker: DOGE-USDT
+2026-01-30 13:33:12,672 [INFO] data.okx_websocket: 取消訂閱 Ticker: SOL-USDT
+2026-01-30 13:33:12,672 [INFO] data.okx_websocket: 取消訂閱 Ticker: XRP-USDT
+2026-01-30 13:33:12,673 [INFO] data.okx_websocket: 取消訂閱 Ticker: BTC-USDT
+2026-01-30 13:33:12,674 [INFO] data.okx_websocket: 取消訂閱 Ticker: ETH-USDT
+2026-01-30 13:33:12,674 [INFO] data.okx_websocket: 取消訂閱 Ticker: LIT-USDT
+2026-01-30 13:33:12,674 [INFO] data.okx_websocket: 取消訂閱 Ticker: HYPE-USDT
+2026-01-30 13:33:12,674 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 0
+2026-01-30 13:33:17,190 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 1
+2026-01-30 13:33:17,191 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:33:17,660 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 2
+2026-01-30 13:33:17,662 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:33:17,719 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', 'USDC-USDT', 'XAUT-USDT', 'DOGE-USDT', 'SOL-USDT', 'XRP-USDT', 'BTC-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 13:33:17,719 [INFO] data.okx_websocket: 訂閱 Ticker: FOGO-USDT
+2026-01-30 13:33:17,720 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: FOGO-USDT
+2026-01-30 13:33:17,720 [INFO] API: 已訂閱 Ticker: FOGO-USDT
+2026-01-30 13:33:17,720 [INFO] data.okx_websocket: 訂閱 Ticker: USDC-USDT
+2026-01-30 13:33:17,720 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: USDC-USDT
+2026-01-30 13:33:17,720 [INFO] API: 已訂閱 Ticker: USDC-USDT
+2026-01-30 13:33:17,720 [INFO] data.okx_websocket: 訂閱 Ticker: XAUT-USDT
+2026-01-30 13:33:17,720 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XAUT-USDT
+2026-01-30 13:33:17,720 [INFO] API: 已訂閱 Ticker: XAUT-USDT
+2026-01-30 13:33:17,720 [INFO] data.okx_websocket: 訂閱 Ticker: DOGE-USDT
+2026-01-30 13:33:17,720 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: DOGE-USDT
+2026-01-30 13:33:17,720 [INFO] API: 已訂閱 Ticker: DOGE-USDT
+2026-01-30 13:33:17,721 [INFO] data.okx_websocket: 訂閱 Ticker: SOL-USDT
+2026-01-30 13:33:17,721 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: SOL-USDT
+2026-01-30 13:33:17,721 [INFO] API: 已訂閱 Ticker: SOL-USDT
+2026-01-30 13:33:17,721 [INFO] data.okx_websocket: 訂閱 Ticker: XRP-USDT
+2026-01-30 13:33:17,721 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XRP-USDT
+2026-01-30 13:33:17,721 [INFO] API: 已訂閱 Ticker: XRP-USDT
+2026-01-30 13:33:17,722 [INFO] data.okx_websocket: 訂閱 Ticker: BTC-USDT
+2026-01-30 13:33:17,723 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: BTC-USDT
+2026-01-30 13:33:17,723 [INFO] API: 已訂閱 Ticker: BTC-USDT
+2026-01-30 13:33:17,723 [INFO] data.okx_websocket: 訂閱 Ticker: ETH-USDT
+2026-01-30 13:33:17,723 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: ETH-USDT
+2026-01-30 13:33:17,723 [INFO] API: 已訂閱 Ticker: ETH-USDT
+2026-01-30 13:33:17,723 [INFO] data.okx_websocket: 訂閱 Ticker: LIT-USDT
+2026-01-30 13:33:17,723 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: LIT-USDT
+2026-01-30 13:33:17,723 [INFO] API: 已訂閱 Ticker: LIT-USDT
+2026-01-30 13:33:17,723 [INFO] data.okx_websocket: 訂閱 Ticker: HYPE-USDT
+2026-01-30 13:33:17,723 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: HYPE-USDT
+2026-01-30 13:33:17,723 [INFO] API: 已訂閱 Ticker: HYPE-USDT
+2026-01-30 13:33:17,724 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', 'USDC-USDT', 'XAUT-USDT', 'DOGE-USDT', 'SOL-USDT', 'XRP-USDT', 'BTC-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 13:33:17,758 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'FOGO-USDT'}
+2026-01-30 13:33:17,794 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'USDC-USDT'}
+2026-01-30 13:33:17,794 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XAUT-USDT'}
+2026-01-30 13:33:17,794 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'DOGE-USDT'}
+2026-01-30 13:33:17,794 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'SOL-USDT'}
+2026-01-30 13:33:17,794 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XRP-USDT'}
+2026-01-30 13:33:17,794 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'BTC-USDT'}
+2026-01-30 13:33:17,794 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'ETH-USDT'}
+2026-01-30 13:33:17,794 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'LIT-USDT'}
+2026-01-30 13:33:17,794 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'HYPE-USDT'}
+2026-01-30 13:33:19,971 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:33:20,184 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:33:21,684 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:33:21,684 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 1
+2026-01-30 13:33:21,685 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:33:21,686 [INFO] data.okx_websocket: 取消訂閱 Ticker: FOGO-USDT
+2026-01-30 13:33:21,688 [INFO] data.okx_websocket: 取消訂閱 Ticker: USDC-USDT
+2026-01-30 13:33:21,688 [INFO] data.okx_websocket: 取消訂閱 Ticker: XAUT-USDT
+2026-01-30 13:33:21,688 [INFO] data.okx_websocket: 取消訂閱 Ticker: DOGE-USDT
+2026-01-30 13:33:21,688 [INFO] data.okx_websocket: 取消訂閱 Ticker: SOL-USDT
+2026-01-30 13:33:21,688 [INFO] data.okx_websocket: 取消訂閱 Ticker: XRP-USDT
+2026-01-30 13:33:21,688 [INFO] data.okx_websocket: 取消訂閱 Ticker: BTC-USDT
+2026-01-30 13:33:21,688 [INFO] data.okx_websocket: 取消訂閱 Ticker: ETH-USDT
+2026-01-30 13:33:21,688 [INFO] data.okx_websocket: 取消訂閱 Ticker: LIT-USDT
+2026-01-30 13:33:21,689 [INFO] data.okx_websocket: 取消訂閱 Ticker: HYPE-USDT
+2026-01-30 13:33:21,689 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 0
+2026-01-30 13:33:25,572 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 1
+2026-01-30 13:33:25,572 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:33:25,785 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 2
+2026-01-30 13:33:25,786 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:33:25,894 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', 'USDC-USDT', 'XAUT-USDT', 'DOGE-USDT', 'SOL-USDT', 'XRP-USDT', 'BTC-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 13:33:25,895 [INFO] data.okx_websocket: 訂閱 Ticker: FOGO-USDT
+2026-01-30 13:33:25,895 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: FOGO-USDT
+2026-01-30 13:33:25,895 [INFO] API: 已訂閱 Ticker: FOGO-USDT
+2026-01-30 13:33:25,895 [INFO] data.okx_websocket: 訂閱 Ticker: USDC-USDT
+2026-01-30 13:33:25,896 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: USDC-USDT
+2026-01-30 13:33:25,896 [INFO] API: 已訂閱 Ticker: USDC-USDT
+2026-01-30 13:33:25,896 [INFO] data.okx_websocket: 訂閱 Ticker: XAUT-USDT
+2026-01-30 13:33:25,896 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XAUT-USDT
+2026-01-30 13:33:25,896 [INFO] API: 已訂閱 Ticker: XAUT-USDT
+2026-01-30 13:33:25,896 [INFO] data.okx_websocket: 訂閱 Ticker: DOGE-USDT
+2026-01-30 13:33:25,896 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: DOGE-USDT
+2026-01-30 13:33:25,896 [INFO] API: 已訂閱 Ticker: DOGE-USDT
+2026-01-30 13:33:25,896 [INFO] data.okx_websocket: 訂閱 Ticker: SOL-USDT
+2026-01-30 13:33:25,896 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: SOL-USDT
+2026-01-30 13:33:25,896 [INFO] API: 已訂閱 Ticker: SOL-USDT
+2026-01-30 13:33:25,896 [INFO] data.okx_websocket: 訂閱 Ticker: XRP-USDT
+2026-01-30 13:33:25,896 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XRP-USDT
+2026-01-30 13:33:25,896 [INFO] API: 已訂閱 Ticker: XRP-USDT
+2026-01-30 13:33:25,896 [INFO] data.okx_websocket: 訂閱 Ticker: BTC-USDT
+2026-01-30 13:33:25,898 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: BTC-USDT
+2026-01-30 13:33:25,898 [INFO] API: 已訂閱 Ticker: BTC-USDT
+2026-01-30 13:33:25,898 [INFO] data.okx_websocket: 訂閱 Ticker: ETH-USDT
+2026-01-30 13:33:25,898 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: ETH-USDT
+2026-01-30 13:33:25,898 [INFO] API: 已訂閱 Ticker: ETH-USDT
+2026-01-30 13:33:25,898 [INFO] data.okx_websocket: 訂閱 Ticker: LIT-USDT
+2026-01-30 13:33:25,898 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: LIT-USDT
+2026-01-30 13:33:25,898 [INFO] API: 已訂閱 Ticker: LIT-USDT
+2026-01-30 13:33:25,898 [INFO] data.okx_websocket: 訂閱 Ticker: HYPE-USDT
+2026-01-30 13:33:25,898 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: HYPE-USDT
+2026-01-30 13:33:25,898 [INFO] API: 已訂閱 Ticker: HYPE-USDT
+2026-01-30 13:33:25,898 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', 'USDC-USDT', 'XAUT-USDT', 'DOGE-USDT', 'SOL-USDT', 'XRP-USDT', 'BTC-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 13:33:25,930 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'FOGO-USDT'}
+2026-01-30 13:33:25,967 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'USDC-USDT'}
+2026-01-30 13:33:25,967 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XAUT-USDT'}
+2026-01-30 13:33:25,967 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'DOGE-USDT'}
+2026-01-30 13:33:25,967 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'SOL-USDT'}
+2026-01-30 13:33:25,967 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XRP-USDT'}
+2026-01-30 13:33:25,967 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'BTC-USDT'}
+2026-01-30 13:33:25,967 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'ETH-USDT'}
+2026-01-30 13:33:25,967 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'LIT-USDT'}
+2026-01-30 13:33:25,969 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'HYPE-USDT'}
+2026-01-30 13:33:29,420 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:33:29,724 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:33:32,247 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:33:32,247 [INFO] data.okx_websocket: 取消訂閱 Ticker: FOGO-USDT
+2026-01-30 13:33:32,247 [INFO] data.okx_websocket: 取消訂閱 Ticker: USDC-USDT
+2026-01-30 13:33:32,247 [INFO] data.okx_websocket: 取消訂閱 Ticker: XAUT-USDT
+2026-01-30 13:33:32,247 [INFO] data.okx_websocket: 取消訂閱 Ticker: DOGE-USDT
+2026-01-30 13:33:32,247 [INFO] data.okx_websocket: 取消訂閱 Ticker: SOL-USDT
+2026-01-30 13:33:32,249 [INFO] data.okx_websocket: 取消訂閱 Ticker: XRP-USDT
+2026-01-30 13:33:32,249 [INFO] data.okx_websocket: 取消訂閱 Ticker: BTC-USDT
+2026-01-30 13:33:32,249 [INFO] data.okx_websocket: 取消訂閱 Ticker: ETH-USDT
+2026-01-30 13:33:32,249 [INFO] data.okx_websocket: 取消訂閱 Ticker: LIT-USDT
+2026-01-30 13:33:32,249 [INFO] data.okx_websocket: 取消訂閱 Ticker: HYPE-USDT
+2026-01-30 13:33:32,249 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 1
+2026-01-30 13:33:32,314 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:33:32,314 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 0
+2026-01-30 13:33:35,654 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 1
+2026-01-30 13:33:35,655 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:33:35,911 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', 'USDC-USDT', 'XAUT-USDT', 'DOGE-USDT', 'SOL-USDT', 'XRP-USDT', 'BTC-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 13:33:35,911 [INFO] data.okx_websocket: 訂閱 Ticker: FOGO-USDT
+2026-01-30 13:33:35,911 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: FOGO-USDT
+2026-01-30 13:33:35,911 [INFO] API: 已訂閱 Ticker: FOGO-USDT
+2026-01-30 13:33:35,911 [INFO] data.okx_websocket: 訂閱 Ticker: USDC-USDT
+2026-01-30 13:33:35,911 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: USDC-USDT
+2026-01-30 13:33:35,911 [INFO] API: 已訂閱 Ticker: USDC-USDT
+2026-01-30 13:33:35,913 [INFO] data.okx_websocket: 訂閱 Ticker: XAUT-USDT
+2026-01-30 13:33:35,913 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XAUT-USDT
+2026-01-30 13:33:35,913 [INFO] API: 已訂閱 Ticker: XAUT-USDT
+2026-01-30 13:33:35,913 [INFO] data.okx_websocket: 訂閱 Ticker: DOGE-USDT
+2026-01-30 13:33:35,913 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: DOGE-USDT
+2026-01-30 13:33:35,913 [INFO] API: 已訂閱 Ticker: DOGE-USDT
+2026-01-30 13:33:35,913 [INFO] data.okx_websocket: 訂閱 Ticker: SOL-USDT
+2026-01-30 13:33:35,913 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: SOL-USDT
+2026-01-30 13:33:35,913 [INFO] API: 已訂閱 Ticker: SOL-USDT
+2026-01-30 13:33:35,913 [INFO] data.okx_websocket: 訂閱 Ticker: XRP-USDT
+2026-01-30 13:33:35,913 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XRP-USDT
+2026-01-30 13:33:35,913 [INFO] API: 已訂閱 Ticker: XRP-USDT
+2026-01-30 13:33:35,913 [INFO] data.okx_websocket: 訂閱 Ticker: BTC-USDT
+2026-01-30 13:33:35,913 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: BTC-USDT
+2026-01-30 13:33:35,913 [INFO] API: 已訂閱 Ticker: BTC-USDT
+2026-01-30 13:33:35,913 [INFO] data.okx_websocket: 訂閱 Ticker: ETH-USDT
+2026-01-30 13:33:35,915 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: ETH-USDT
+2026-01-30 13:33:35,915 [INFO] API: 已訂閱 Ticker: ETH-USDT
+2026-01-30 13:33:35,915 [INFO] data.okx_websocket: 訂閱 Ticker: LIT-USDT
+2026-01-30 13:33:35,915 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: LIT-USDT
+2026-01-30 13:33:35,915 [INFO] API: 已訂閱 Ticker: LIT-USDT
+2026-01-30 13:33:35,915 [INFO] data.okx_websocket: 訂閱 Ticker: HYPE-USDT
+2026-01-30 13:33:35,915 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: HYPE-USDT
+2026-01-30 13:33:35,915 [INFO] API: 已訂閱 Ticker: HYPE-USDT
+2026-01-30 13:33:35,948 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'FOGO-USDT'}
+2026-01-30 13:33:35,985 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'USDC-USDT'}
+2026-01-30 13:33:35,985 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XAUT-USDT'}
+2026-01-30 13:33:35,985 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'DOGE-USDT'}
+2026-01-30 13:33:35,986 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'SOL-USDT'}
+2026-01-30 13:33:35,986 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XRP-USDT'}
+2026-01-30 13:33:35,986 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'BTC-USDT'}
+2026-01-30 13:33:35,986 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'ETH-USDT'}
+2026-01-30 13:33:35,986 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'LIT-USDT'}
+2026-01-30 13:33:35,987 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'HYPE-USDT'}
+2026-01-30 13:33:39,501 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:33:39,717 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:33:54,497 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:34:01,590 [INFO] API: Cache miss/refresh (locked), waiting for background analysis... (Request refresh: True)
+2026-01-30 13:34:02,020 [INFO] API: Screener cache saved to DB
+2026-01-30 13:34:02,021 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:34:08,001 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:34:08,211 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:34:48,468 [INFO] API: Updating funding rates...
+2026-01-30 13:34:55,231 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:35:03,656 [INFO] API: Screener cache saved to DB
+2026-01-30 13:35:03,656 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:35:21,479 [INFO] API: Funding Rate cache saved (254 symbols)
+2026-01-30 13:35:21,480 [INFO] API: Funding rates updated: 254 symbols
+2026-01-30 13:35:40,238 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:35:40,239 [INFO] data.okx_websocket: 取消訂閱 Ticker: FOGO-USDT
+2026-01-30 13:35:40,240 [INFO] data.okx_websocket: 取消訂閱 Ticker: USDC-USDT
+2026-01-30 13:35:40,241 [INFO] data.okx_websocket: 取消訂閱 Ticker: XAUT-USDT
+2026-01-30 13:35:40,242 [INFO] data.okx_websocket: 取消訂閱 Ticker: DOGE-USDT
+2026-01-30 13:35:40,242 [INFO] data.okx_websocket: 取消訂閱 Ticker: SOL-USDT
+2026-01-30 13:35:40,242 [INFO] data.okx_websocket: 取消訂閱 Ticker: XRP-USDT
+2026-01-30 13:35:40,242 [INFO] data.okx_websocket: 取消訂閱 Ticker: BTC-USDT
+2026-01-30 13:35:40,243 [INFO] data.okx_websocket: 取消訂閱 Ticker: ETH-USDT
+2026-01-30 13:35:40,243 [INFO] data.okx_websocket: 取消訂閱 Ticker: LIT-USDT
+2026-01-30 13:35:40,243 [INFO] data.okx_websocket: 取消訂閱 Ticker: HYPE-USDT
+2026-01-30 13:35:40,244 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 0
+2026-01-30 13:35:45,973 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 1
+2026-01-30 13:35:45,974 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:35:46,443 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 2
+2026-01-30 13:35:46,443 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:35:46,506 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', 'USDC-USDT', 'XAUT-USDT', 'DOGE-USDT', 'SOL-USDT', 'XRP-USDT', 'BTC-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 13:35:46,506 [INFO] data.okx_websocket: 訂閱 Ticker: FOGO-USDT
+2026-01-30 13:35:46,506 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: FOGO-USDT
+2026-01-30 13:35:46,506 [INFO] API: 已訂閱 Ticker: FOGO-USDT
+2026-01-30 13:35:46,506 [INFO] data.okx_websocket: 訂閱 Ticker: USDC-USDT
+2026-01-30 13:35:46,508 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: USDC-USDT
+2026-01-30 13:35:46,508 [INFO] API: 已訂閱 Ticker: USDC-USDT
+2026-01-30 13:35:46,508 [INFO] data.okx_websocket: 訂閱 Ticker: XAUT-USDT
+2026-01-30 13:35:46,508 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XAUT-USDT
+2026-01-30 13:35:46,508 [INFO] API: 已訂閱 Ticker: XAUT-USDT
+2026-01-30 13:35:46,509 [INFO] data.okx_websocket: 訂閱 Ticker: DOGE-USDT
+2026-01-30 13:35:46,509 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: DOGE-USDT
+2026-01-30 13:35:46,509 [INFO] API: 已訂閱 Ticker: DOGE-USDT
+2026-01-30 13:35:46,509 [INFO] data.okx_websocket: 訂閱 Ticker: SOL-USDT
+2026-01-30 13:35:46,509 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: SOL-USDT
+2026-01-30 13:35:46,509 [INFO] API: 已訂閱 Ticker: SOL-USDT
+2026-01-30 13:35:46,510 [INFO] data.okx_websocket: 訂閱 Ticker: XRP-USDT
+2026-01-30 13:35:46,510 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XRP-USDT
+2026-01-30 13:35:46,510 [INFO] API: 已訂閱 Ticker: XRP-USDT
+2026-01-30 13:35:46,510 [INFO] data.okx_websocket: 訂閱 Ticker: BTC-USDT
+2026-01-30 13:35:46,510 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: BTC-USDT
+2026-01-30 13:35:46,512 [INFO] API: 已訂閱 Ticker: BTC-USDT
+2026-01-30 13:35:46,512 [INFO] data.okx_websocket: 訂閱 Ticker: ETH-USDT
+2026-01-30 13:35:46,512 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: ETH-USDT
+2026-01-30 13:35:46,512 [INFO] API: 已訂閱 Ticker: ETH-USDT
+2026-01-30 13:35:46,513 [INFO] data.okx_websocket: 訂閱 Ticker: LIT-USDT
+2026-01-30 13:35:46,513 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: LIT-USDT
+2026-01-30 13:35:46,513 [INFO] API: 已訂閱 Ticker: LIT-USDT
+2026-01-30 13:35:46,513 [INFO] data.okx_websocket: 訂閱 Ticker: HYPE-USDT
+2026-01-30 13:35:46,513 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: HYPE-USDT
+2026-01-30 13:35:46,513 [INFO] API: 已訂閱 Ticker: HYPE-USDT
+2026-01-30 13:35:46,513 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', 'USDC-USDT', 'XAUT-USDT', 'DOGE-USDT', 'SOL-USDT', 'XRP-USDT', 'BTC-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 13:35:46,543 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'FOGO-USDT'}
+2026-01-30 13:35:46,579 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'USDC-USDT'}
+2026-01-30 13:35:46,580 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XAUT-USDT'}
+2026-01-30 13:35:46,580 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'DOGE-USDT'}
+2026-01-30 13:35:46,581 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'SOL-USDT'}
+2026-01-30 13:35:46,581 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XRP-USDT'}
+2026-01-30 13:35:46,582 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'BTC-USDT'}
+2026-01-30 13:35:46,582 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'ETH-USDT'}
+2026-01-30 13:35:46,582 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'LIT-USDT'}
+2026-01-30 13:35:46,583 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'HYPE-USDT'}
+2026-01-30 13:35:48,714 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:35:48,939 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:35:56,371 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:36:03,447 [INFO] API: Screener cache saved to DB
+2026-01-30 13:36:03,447 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:36:16,636 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:36:16,636 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 1
+2026-01-30 13:36:16,636 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:36:16,636 [INFO] data.okx_websocket: 取消訂閱 Ticker: FOGO-USDT
+2026-01-30 13:36:16,636 [INFO] data.okx_websocket: 取消訂閱 Ticker: USDC-USDT
+2026-01-30 13:36:16,636 [INFO] data.okx_websocket: 取消訂閱 Ticker: XAUT-USDT
+2026-01-30 13:36:16,636 [INFO] data.okx_websocket: 取消訂閱 Ticker: DOGE-USDT
+2026-01-30 13:36:16,636 [INFO] data.okx_websocket: 取消訂閱 Ticker: SOL-USDT
+2026-01-30 13:36:16,638 [INFO] data.okx_websocket: 取消訂閱 Ticker: XRP-USDT
+2026-01-30 13:36:16,638 [INFO] data.okx_websocket: 取消訂閱 Ticker: BTC-USDT
+2026-01-30 13:36:16,638 [INFO] data.okx_websocket: 取消訂閱 Ticker: ETH-USDT
+2026-01-30 13:36:16,638 [INFO] data.okx_websocket: 取消訂閱 Ticker: LIT-USDT
+2026-01-30 13:36:16,638 [INFO] data.okx_websocket: 取消訂閱 Ticker: HYPE-USDT
+2026-01-30 13:36:16,638 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 0
+2026-01-30 13:36:16,743 [INFO] API: 🛑 Shutting down application...
+2026-01-30 13:36:29,235 [WARNING] API: ⚠️ Rate limiting not available: No module named 'slowapi'
+2026-01-30 13:36:29,235 [WARNING] API: Install slowapi: pip install slowapi
+2026-01-30 13:36:29,236 [INFO] API: ✅ Audit logging enabled
+2026-01-30 13:36:29,279 [INFO] API: 🚀 Pi Crypto Insight API Server 啟動中...
+2026-01-30 13:36:29,281 [INFO] API: 🏠 本地網址: http://localhost:8111
+2026-01-30 13:36:29,281 [INFO] API: 📱 請在 Pi Browser 中使用 HTTPS 網址訪問 (如透過 ngrok)
+2026-01-30 13:36:29,310 [INFO] API: 🔄 Initializing database...
+2026-01-30 13:36:39,953 [INFO] API: ✅ Database initialized
+2026-01-30 13:36:39,954 [WARNING] API: [WARNING] 未找到 OKX API 憑證
+2026-01-30 13:36:39,955 [WARNING] API: 請在 .env 文件中設置以下變數：
+2026-01-30 13:36:39,955 [WARNING] API: OKX_API_KEY=您的API密鑰
+2026-01-30 13:36:39,956 [WARNING] API: OKX_API_SECRET=您的API私鑰
+2026-01-30 13:36:39,958 [WARNING] API: OKX_PASSPHRASE=您的API密碼
+2026-01-30 13:36:39,959 [INFO] API: ✅ OKX Connector 初始化成功
+2026-01-30 13:36:39,962 [WARNING] API: create_llm_client_from_config: Creating new client for user_provided/gpt-4o-mini (System Keys)
+2026-01-30 13:36:39,963 [INFO] API: Initializing LLM: Provider=openai, Model=gpt-4o-mini
+2026-01-30 13:36:39,963 [ERROR] API: Failed to initialize LLM client for user_provided/gpt-4o-mini: Unable to import langchain_openai. Please install with `pip install -U langchain-openai`
+2026-01-30 13:36:39,963 [INFO] API: Notice: System-level API key not found for CryptoQueryParser (Unable to import langchain_openai. Please install with `pip install -U langchain-openai`). Will rely on user-provided keys.
+2026-01-30 13:36:39,963 [INFO] API: >> 使用 Admin Agent 架構 (任務分派 + 會議討論)
+2026-01-30 13:36:39,963 [INFO] API: ✅ CryptoAnalysisBot 初始化成功
+2026-01-30 13:36:40,668 [INFO] API: Loaded screener cache from DB (Timestamp: 2026-01-30 13:36:03)
+2026-01-30 13:36:42,599 [INFO] API: Loaded Market Pulse cache from DB (271 symbols)
+2026-01-30 13:36:43,017 [INFO] API: Loaded Funding Rate cache from DB (254 symbols)
+2026-01-30 13:36:43,017 [INFO] API: 📊 Starting Market Pulse task in API process...
+2026-01-30 13:36:43,018 [INFO] API: 🚀 Starting initial Screener analysis...
+2026-01-30 13:36:43,018 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:36:43,018 [INFO] API: 🚀 [Background] Initializing Market Pulse task...
+2026-01-30 13:36:43,020 [INFO] API: 📦 Current cache has 271 symbols
+2026-01-30 13:36:43,021 [INFO] API: 📊 Cache age: newest=7.9min, oldest=96.7min (threshold=240min)
+2026-01-30 13:36:43,021 [INFO] API: ✅ All cache is fresh! Sleeping for 143.3 minutes until next update.
+2026-01-30 13:36:43,021 [INFO] API: 💤 Sleeping for 8596.979881s...
+2026-01-30 13:36:48,025 [INFO] API: Updating funding rates...
+2026-01-30 13:36:50,047 [INFO] API: Screener cache saved to DB
+2026-01-30 13:36:50,049 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:37:20,165 [INFO] API: Funding Rate cache saved (254 symbols)
+2026-01-30 13:37:20,511 [INFO] API: Funding rates updated: 254 symbols
+2026-01-30 13:37:37,278 [INFO] API: 執行自定義市場篩選: okx, Symbols: 7
+2026-01-30 13:37:37,279 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:37:37,281 [WARNING] API: create_llm_client_from_config: Creating new client for openai/gpt-4o-mini (System Keys)
+2026-01-30 13:37:37,281 [WARNING] analysis.market_pulse: MarketPulseAnalyzer initialized WITHOUT LLM (Fallback Mode): Missing OpenAI API Key.
+2026-01-30 13:37:37,282 [INFO] analysis.market_pulse: ✅ MarketPulseAnalyzer 實例已創建（懶加載）
+2026-01-30 13:37:37,797 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 1
+2026-01-30 13:37:37,800 [INFO] API: 正在啟動 OKX Ticker WebSocket...
+2026-01-30 13:37:37,800 [INFO] API: OKX Ticker WebSocket 啟動任務已創建
+2026-01-30 13:37:37,801 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:37:37,801 [INFO] data.okx_websocket: 正在連接 OKX Ticker WebSocket: wss://ws.okx.com:8443/ws/v5/public
+2026-01-30 13:37:38,749 [INFO] data.okx_websocket: OKX Ticker WebSocket 連接成功
+2026-01-30 13:37:44,158 [INFO] API: 收到 Ticker 訂閱請求: ['PI-USDT', 'DOT-USDT', 'LINK-USDT', 'DOGE-USDT', 'SOL-USDT', 'XRP-USDT', 'ETH-USDT']
+2026-01-30 13:37:44,158 [INFO] data.okx_websocket: 訂閱 Ticker: PI-USDT
+2026-01-30 13:37:44,158 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: PI-USDT
+2026-01-30 13:37:44,158 [INFO] API: 已訂閱 Ticker: PI-USDT
+2026-01-30 13:37:44,158 [INFO] data.okx_websocket: 訂閱 Ticker: DOT-USDT
+2026-01-30 13:37:44,160 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: DOT-USDT
+2026-01-30 13:37:44,160 [INFO] API: 已訂閱 Ticker: DOT-USDT
+2026-01-30 13:37:44,160 [INFO] data.okx_websocket: 訂閱 Ticker: LINK-USDT
+2026-01-30 13:37:44,161 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: LINK-USDT
+2026-01-30 13:37:44,161 [INFO] API: 已訂閱 Ticker: LINK-USDT
+2026-01-30 13:37:44,161 [INFO] data.okx_websocket: 訂閱 Ticker: DOGE-USDT
+2026-01-30 13:37:44,161 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: DOGE-USDT
+2026-01-30 13:37:44,161 [INFO] API: 已訂閱 Ticker: DOGE-USDT
+2026-01-30 13:37:44,161 [INFO] data.okx_websocket: 訂閱 Ticker: SOL-USDT
+2026-01-30 13:37:44,163 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: SOL-USDT
+2026-01-30 13:37:44,163 [INFO] API: 已訂閱 Ticker: SOL-USDT
+2026-01-30 13:37:44,163 [INFO] data.okx_websocket: 訂閱 Ticker: XRP-USDT
+2026-01-30 13:37:44,163 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XRP-USDT
+2026-01-30 13:37:44,163 [INFO] API: 已訂閱 Ticker: XRP-USDT
+2026-01-30 13:37:44,163 [INFO] data.okx_websocket: 訂閱 Ticker: ETH-USDT
+2026-01-30 13:37:44,163 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: ETH-USDT
+2026-01-30 13:37:44,163 [INFO] API: 已訂閱 Ticker: ETH-USDT
+2026-01-30 13:37:45,193 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'PI-USDT'}
+2026-01-30 13:37:45,194 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'DOT-USDT'}
+2026-01-30 13:37:45,194 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'LINK-USDT'}
+2026-01-30 13:37:45,194 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'DOGE-USDT'}
+2026-01-30 13:37:45,195 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'SOL-USDT'}
+2026-01-30 13:37:45,195 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XRP-USDT'}
+2026-01-30 13:37:45,195 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'ETH-USDT'}
+2026-01-30 13:37:48,030 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:37:48,030 [INFO] data.okx_websocket: 取消訂閱 Ticker: PI-USDT
+2026-01-30 13:37:48,031 [INFO] data.okx_websocket: 取消訂閱 Ticker: DOT-USDT
+2026-01-30 13:37:48,031 [INFO] data.okx_websocket: 取消訂閱 Ticker: LINK-USDT
+2026-01-30 13:37:48,031 [INFO] data.okx_websocket: 取消訂閱 Ticker: DOGE-USDT
+2026-01-30 13:37:48,031 [INFO] data.okx_websocket: 取消訂閱 Ticker: SOL-USDT
+2026-01-30 13:37:48,031 [INFO] data.okx_websocket: 取消訂閱 Ticker: XRP-USDT
+2026-01-30 13:37:48,031 [INFO] data.okx_websocket: 取消訂閱 Ticker: ETH-USDT
+2026-01-30 13:37:48,031 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 0
+2026-01-30 13:38:07,401 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:38:10,066 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 1
+2026-01-30 13:38:10,470 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:38:11,310 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', 'XAUT-USDT', 'USDC-USDT', 'DOGE-USDT', 'SOL-USDT', 'XRP-USDT', 'BTC-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 13:38:11,311 [INFO] data.okx_websocket: 訂閱 Ticker: FOGO-USDT
+2026-01-30 13:38:11,311 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: FOGO-USDT
+2026-01-30 13:38:11,311 [INFO] API: 已訂閱 Ticker: FOGO-USDT
+2026-01-30 13:38:11,311 [INFO] data.okx_websocket: 訂閱 Ticker: XAUT-USDT
+2026-01-30 13:38:11,311 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XAUT-USDT
+2026-01-30 13:38:11,311 [INFO] API: 已訂閱 Ticker: XAUT-USDT
+2026-01-30 13:38:11,311 [INFO] data.okx_websocket: 訂閱 Ticker: USDC-USDT
+2026-01-30 13:38:11,311 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: USDC-USDT
+2026-01-30 13:38:11,311 [INFO] API: 已訂閱 Ticker: USDC-USDT
+2026-01-30 13:38:11,312 [INFO] data.okx_websocket: 訂閱 Ticker: DOGE-USDT
+2026-01-30 13:38:11,312 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: DOGE-USDT
+2026-01-30 13:38:11,312 [INFO] API: 已訂閱 Ticker: DOGE-USDT
+2026-01-30 13:38:11,312 [INFO] data.okx_websocket: 訂閱 Ticker: SOL-USDT
+2026-01-30 13:38:11,312 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: SOL-USDT
+2026-01-30 13:38:11,312 [INFO] API: 已訂閱 Ticker: SOL-USDT
+2026-01-30 13:38:11,312 [INFO] data.okx_websocket: 訂閱 Ticker: XRP-USDT
+2026-01-30 13:38:11,312 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XRP-USDT
+2026-01-30 13:38:11,312 [INFO] API: 已訂閱 Ticker: XRP-USDT
+2026-01-30 13:38:11,312 [INFO] data.okx_websocket: 訂閱 Ticker: BTC-USDT
+2026-01-30 13:38:11,312 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: BTC-USDT
+2026-01-30 13:38:11,312 [INFO] API: 已訂閱 Ticker: BTC-USDT
+2026-01-30 13:38:11,313 [INFO] data.okx_websocket: 訂閱 Ticker: ETH-USDT
+2026-01-30 13:38:11,313 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: ETH-USDT
+2026-01-30 13:38:11,313 [INFO] API: 已訂閱 Ticker: ETH-USDT
+2026-01-30 13:38:11,313 [INFO] data.okx_websocket: 訂閱 Ticker: LIT-USDT
+2026-01-30 13:38:11,313 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: LIT-USDT
+2026-01-30 13:38:11,313 [INFO] API: 已訂閱 Ticker: LIT-USDT
+2026-01-30 13:38:11,313 [INFO] data.okx_websocket: 訂閱 Ticker: HYPE-USDT
+2026-01-30 13:38:11,313 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: HYPE-USDT
+2026-01-30 13:38:11,313 [INFO] API: 已訂閱 Ticker: HYPE-USDT
+2026-01-30 13:38:11,332 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'FOGO-USDT'}
+2026-01-30 13:38:11,354 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XAUT-USDT'}
+2026-01-30 13:38:11,355 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'USDC-USDT'}
+2026-01-30 13:38:11,355 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'DOGE-USDT'}
+2026-01-30 13:38:11,355 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'SOL-USDT'}
+2026-01-30 13:38:11,356 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XRP-USDT'}
+2026-01-30 13:38:11,356 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'BTC-USDT'}
+2026-01-30 13:38:11,356 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'ETH-USDT'}
+2026-01-30 13:38:11,356 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'LIT-USDT'}
+2026-01-30 13:38:11,356 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'HYPE-USDT'}
+2026-01-30 13:38:15,016 [INFO] API: Screener cache saved to DB
+2026-01-30 13:38:15,839 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:38:15,892 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:38:16,113 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:38:18,574 [INFO] API: Requesting symbol list for exchange: okx
+2026-01-30 13:38:18,843 [INFO] API: Successfully fetched 297 symbols from okx
+2026-01-30 13:38:23,669 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:38:23,895 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:39:10,034 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:39:16,641 [INFO] API: Screener cache saved to DB
+2026-01-30 13:39:16,642 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:39:20,531 [INFO] API: Updating funding rates...
+2026-01-30 13:39:52,847 [INFO] API: Funding Rate cache saved (254 symbols)
+2026-01-30 13:39:52,847 [INFO] API: Funding rates updated: 254 symbols
+2026-01-30 13:40:10,236 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:40:18,150 [INFO] API: Screener cache saved to DB
+2026-01-30 13:40:18,151 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:41:11,027 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:41:18,730 [INFO] API: Screener cache saved to DB
+2026-01-30 13:41:18,730 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:41:52,858 [INFO] API: Updating funding rates...
+2026-01-30 13:42:11,656 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:42:18,891 [INFO] API: Screener cache saved to DB
+2026-01-30 13:42:18,892 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:42:26,208 [INFO] API: Funding Rate cache saved (254 symbols)
+2026-01-30 13:42:26,210 [INFO] API: Funding rates updated: 254 symbols
+2026-01-30 13:43:12,219 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:43:19,075 [INFO] API: Screener cache saved to DB
+2026-01-30 13:43:19,076 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:44:12,455 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:44:19,524 [INFO] API: Screener cache saved to DB
+2026-01-30 13:44:19,524 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:44:26,226 [INFO] API: Updating funding rates...
+2026-01-30 13:44:38,906 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:44:38,906 [INFO] data.okx_websocket: 取消訂閱 Ticker: FOGO-USDT
+2026-01-30 13:44:38,906 [INFO] data.okx_websocket: 取消訂閱 Ticker: XAUT-USDT
+2026-01-30 13:44:38,906 [INFO] data.okx_websocket: 取消訂閱 Ticker: USDC-USDT
+2026-01-30 13:44:38,906 [INFO] data.okx_websocket: 取消訂閱 Ticker: DOGE-USDT
+2026-01-30 13:44:38,906 [INFO] data.okx_websocket: 取消訂閱 Ticker: SOL-USDT
+2026-01-30 13:44:38,906 [INFO] data.okx_websocket: 取消訂閱 Ticker: XRP-USDT
+2026-01-30 13:44:38,906 [INFO] data.okx_websocket: 取消訂閱 Ticker: BTC-USDT
+2026-01-30 13:44:38,906 [INFO] data.okx_websocket: 取消訂閱 Ticker: ETH-USDT
+2026-01-30 13:44:38,909 [INFO] data.okx_websocket: 取消訂閱 Ticker: LIT-USDT
+2026-01-30 13:44:38,909 [INFO] data.okx_websocket: 取消訂閱 Ticker: HYPE-USDT
+2026-01-30 13:44:38,909 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 0
+2026-01-30 13:44:56,620 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 1
+2026-01-30 13:44:56,621 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:44:57,032 [INFO] API: 執行自定義市場篩選: okx, Symbols: 7
+2026-01-30 13:45:00,620 [INFO] API: Funding Rate cache saved (254 symbols)
+2026-01-30 13:45:01,005 [INFO] API: Funding rates updated: 254 symbols
+2026-01-30 13:45:01,011 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:45:01,276 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:45:03,071 [INFO] API: 收到 Ticker 訂閱請求: ['PI-USDT', 'DOT-USDT', 'LINK-USDT', 'DOGE-USDT', 'SOL-USDT', 'XRP-USDT', 'ETH-USDT']
+2026-01-30 13:45:03,072 [INFO] data.okx_websocket: 訂閱 Ticker: PI-USDT
+2026-01-30 13:45:03,072 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: PI-USDT
+2026-01-30 13:45:03,072 [INFO] API: 已訂閱 Ticker: PI-USDT
+2026-01-30 13:45:03,072 [INFO] data.okx_websocket: 訂閱 Ticker: DOT-USDT
+2026-01-30 13:45:03,072 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: DOT-USDT
+2026-01-30 13:45:03,072 [INFO] API: 已訂閱 Ticker: DOT-USDT
+2026-01-30 13:45:03,072 [INFO] data.okx_websocket: 訂閱 Ticker: LINK-USDT
+2026-01-30 13:45:03,072 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: LINK-USDT
+2026-01-30 13:45:03,072 [INFO] API: 已訂閱 Ticker: LINK-USDT
+2026-01-30 13:45:03,073 [INFO] data.okx_websocket: 訂閱 Ticker: DOGE-USDT
+2026-01-30 13:45:03,073 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: DOGE-USDT
+2026-01-30 13:45:03,073 [INFO] API: 已訂閱 Ticker: DOGE-USDT
+2026-01-30 13:45:03,073 [INFO] data.okx_websocket: 訂閱 Ticker: SOL-USDT
+2026-01-30 13:45:03,073 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: SOL-USDT
+2026-01-30 13:45:03,073 [INFO] API: 已訂閱 Ticker: SOL-USDT
+2026-01-30 13:45:03,073 [INFO] data.okx_websocket: 訂閱 Ticker: XRP-USDT
+2026-01-30 13:45:03,073 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XRP-USDT
+2026-01-30 13:45:03,073 [INFO] API: 已訂閱 Ticker: XRP-USDT
+2026-01-30 13:45:03,073 [INFO] data.okx_websocket: 訂閱 Ticker: ETH-USDT
+2026-01-30 13:45:03,073 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: ETH-USDT
+2026-01-30 13:45:03,073 [INFO] API: 已訂閱 Ticker: ETH-USDT
+2026-01-30 13:45:03,096 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'PI-USDT'}
+2026-01-30 13:45:03,120 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'DOT-USDT'}
+2026-01-30 13:45:03,120 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'LINK-USDT'}
+2026-01-30 13:45:03,120 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'DOGE-USDT'}
+2026-01-30 13:45:03,121 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'SOL-USDT'}
+2026-01-30 13:45:03,134 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XRP-USDT'}
+2026-01-30 13:45:03,135 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'ETH-USDT'}
+2026-01-30 13:45:05,971 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:45:05,971 [INFO] data.okx_websocket: 取消訂閱 Ticker: PI-USDT
+2026-01-30 13:45:05,971 [INFO] data.okx_websocket: 取消訂閱 Ticker: DOT-USDT
+2026-01-30 13:45:05,971 [INFO] data.okx_websocket: 取消訂閱 Ticker: LINK-USDT
+2026-01-30 13:45:05,971 [INFO] data.okx_websocket: 取消訂閱 Ticker: DOGE-USDT
+2026-01-30 13:45:05,971 [INFO] data.okx_websocket: 取消訂閱 Ticker: SOL-USDT
+2026-01-30 13:45:05,971 [INFO] data.okx_websocket: 取消訂閱 Ticker: XRP-USDT
+2026-01-30 13:45:05,972 [INFO] data.okx_websocket: 取消訂閱 Ticker: ETH-USDT
+2026-01-30 13:45:05,972 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 0
+2026-01-30 13:45:17,064 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:45:24,084 [INFO] API: Screener cache saved to DB
+2026-01-30 13:45:24,094 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:45:27,479 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 1
+2026-01-30 13:45:27,483 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:45:28,846 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', 'XAUT-USDT', 'USDC-USDT', 'DOGE-USDT', 'SOL-USDT', 'XRP-USDT', 'BTC-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 13:45:28,847 [INFO] data.okx_websocket: 訂閱 Ticker: FOGO-USDT
+2026-01-30 13:45:28,847 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: FOGO-USDT
+2026-01-30 13:45:28,847 [INFO] API: 已訂閱 Ticker: FOGO-USDT
+2026-01-30 13:45:28,847 [INFO] data.okx_websocket: 訂閱 Ticker: XAUT-USDT
+2026-01-30 13:45:28,847 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XAUT-USDT
+2026-01-30 13:45:28,847 [INFO] API: 已訂閱 Ticker: XAUT-USDT
+2026-01-30 13:45:28,847 [INFO] data.okx_websocket: 訂閱 Ticker: USDC-USDT
+2026-01-30 13:45:28,847 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: USDC-USDT
+2026-01-30 13:45:28,847 [INFO] API: 已訂閱 Ticker: USDC-USDT
+2026-01-30 13:45:28,847 [INFO] data.okx_websocket: 訂閱 Ticker: DOGE-USDT
+2026-01-30 13:45:28,847 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: DOGE-USDT
+2026-01-30 13:45:28,847 [INFO] API: 已訂閱 Ticker: DOGE-USDT
+2026-01-30 13:45:28,847 [INFO] data.okx_websocket: 訂閱 Ticker: SOL-USDT
+2026-01-30 13:45:28,847 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: SOL-USDT
+2026-01-30 13:45:28,847 [INFO] API: 已訂閱 Ticker: SOL-USDT
+2026-01-30 13:45:28,847 [INFO] data.okx_websocket: 訂閱 Ticker: XRP-USDT
+2026-01-30 13:45:28,847 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XRP-USDT
+2026-01-30 13:45:28,847 [INFO] API: 已訂閱 Ticker: XRP-USDT
+2026-01-30 13:45:28,847 [INFO] data.okx_websocket: 訂閱 Ticker: BTC-USDT
+2026-01-30 13:45:28,847 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: BTC-USDT
+2026-01-30 13:45:28,847 [INFO] API: 已訂閱 Ticker: BTC-USDT
+2026-01-30 13:45:28,848 [INFO] data.okx_websocket: 訂閱 Ticker: ETH-USDT
+2026-01-30 13:45:28,848 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: ETH-USDT
+2026-01-30 13:45:28,848 [INFO] API: 已訂閱 Ticker: ETH-USDT
+2026-01-30 13:45:28,849 [INFO] data.okx_websocket: 訂閱 Ticker: LIT-USDT
+2026-01-30 13:45:28,849 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: LIT-USDT
+2026-01-30 13:45:28,849 [INFO] API: 已訂閱 Ticker: LIT-USDT
+2026-01-30 13:45:28,849 [INFO] data.okx_websocket: 訂閱 Ticker: HYPE-USDT
+2026-01-30 13:45:28,849 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: HYPE-USDT
+2026-01-30 13:45:28,849 [INFO] API: 已訂閱 Ticker: HYPE-USDT
+2026-01-30 13:45:28,849 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', 'XAUT-USDT', 'USDC-USDT', 'DOGE-USDT', 'SOL-USDT', 'XRP-USDT', 'BTC-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 13:45:30,410 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'FOGO-USDT'}
+2026-01-30 13:45:30,410 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XAUT-USDT'}
+2026-01-30 13:45:30,410 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'USDC-USDT'}
+2026-01-30 13:45:30,410 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'DOGE-USDT'}
+2026-01-30 13:45:30,410 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'SOL-USDT'}
+2026-01-30 13:45:30,410 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XRP-USDT'}
+2026-01-30 13:45:30,410 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'BTC-USDT'}
+2026-01-30 13:45:30,410 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'ETH-USDT'}
+2026-01-30 13:45:30,410 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'LIT-USDT'}
+2026-01-30 13:45:30,410 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'HYPE-USDT'}
+2026-01-30 13:45:31,047 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:45:31,403 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:45:33,070 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:45:33,071 [INFO] data.okx_websocket: 取消訂閱 Ticker: FOGO-USDT
+2026-01-30 13:45:33,071 [INFO] data.okx_websocket: 取消訂閱 Ticker: XAUT-USDT
+2026-01-30 13:45:33,071 [INFO] data.okx_websocket: 取消訂閱 Ticker: USDC-USDT
+2026-01-30 13:45:33,072 [INFO] data.okx_websocket: 取消訂閱 Ticker: DOGE-USDT
+2026-01-30 13:45:33,072 [INFO] data.okx_websocket: 取消訂閱 Ticker: SOL-USDT
+2026-01-30 13:45:33,073 [INFO] data.okx_websocket: 取消訂閱 Ticker: XRP-USDT
+2026-01-30 13:45:33,073 [INFO] data.okx_websocket: 取消訂閱 Ticker: BTC-USDT
+2026-01-30 13:45:33,073 [INFO] data.okx_websocket: 取消訂閱 Ticker: ETH-USDT
+2026-01-30 13:45:33,074 [INFO] data.okx_websocket: 取消訂閱 Ticker: LIT-USDT
+2026-01-30 13:45:33,074 [INFO] data.okx_websocket: 取消訂閱 Ticker: HYPE-USDT
+2026-01-30 13:45:33,074 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 0
+2026-01-30 13:45:51,683 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 1
+2026-01-30 13:45:52,395 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:45:55,007 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 2
+2026-01-30 13:45:55,007 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:45:55,416 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:45:55,416 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', 'XAUT-USDT', 'USDC-USDT', 'DOGE-USDT', 'SOL-USDT', 'XRP-USDT', 'BTC-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 13:45:55,417 [INFO] data.okx_websocket: 訂閱 Ticker: FOGO-USDT
+2026-01-30 13:45:55,417 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: FOGO-USDT
+2026-01-30 13:45:55,417 [INFO] API: 已訂閱 Ticker: FOGO-USDT
+2026-01-30 13:45:55,417 [INFO] data.okx_websocket: 訂閱 Ticker: XAUT-USDT
+2026-01-30 13:45:55,417 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XAUT-USDT
+2026-01-30 13:45:55,417 [INFO] API: 已訂閱 Ticker: XAUT-USDT
+2026-01-30 13:45:55,417 [INFO] data.okx_websocket: 訂閱 Ticker: USDC-USDT
+2026-01-30 13:45:55,417 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: USDC-USDT
+2026-01-30 13:45:55,417 [INFO] API: 已訂閱 Ticker: USDC-USDT
+2026-01-30 13:45:55,417 [INFO] data.okx_websocket: 訂閱 Ticker: DOGE-USDT
+2026-01-30 13:45:55,417 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: DOGE-USDT
+2026-01-30 13:45:55,417 [INFO] API: 已訂閱 Ticker: DOGE-USDT
+2026-01-30 13:45:55,419 [INFO] data.okx_websocket: 訂閱 Ticker: SOL-USDT
+2026-01-30 13:45:55,419 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: SOL-USDT
+2026-01-30 13:45:55,419 [INFO] API: 已訂閱 Ticker: SOL-USDT
+2026-01-30 13:45:55,419 [INFO] data.okx_websocket: 訂閱 Ticker: XRP-USDT
+2026-01-30 13:45:55,419 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XRP-USDT
+2026-01-30 13:45:55,419 [INFO] API: 已訂閱 Ticker: XRP-USDT
+2026-01-30 13:45:55,419 [INFO] data.okx_websocket: 訂閱 Ticker: BTC-USDT
+2026-01-30 13:45:55,419 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: BTC-USDT
+2026-01-30 13:45:55,419 [INFO] API: 已訂閱 Ticker: BTC-USDT
+2026-01-30 13:45:55,419 [INFO] data.okx_websocket: 訂閱 Ticker: ETH-USDT
+2026-01-30 13:45:55,419 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: ETH-USDT
+2026-01-30 13:45:55,420 [INFO] API: 已訂閱 Ticker: ETH-USDT
+2026-01-30 13:45:55,420 [INFO] data.okx_websocket: 訂閱 Ticker: LIT-USDT
+2026-01-30 13:45:55,420 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: LIT-USDT
+2026-01-30 13:45:55,420 [INFO] API: 已訂閱 Ticker: LIT-USDT
+2026-01-30 13:45:55,420 [INFO] data.okx_websocket: 訂閱 Ticker: HYPE-USDT
+2026-01-30 13:45:55,420 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: HYPE-USDT
+2026-01-30 13:45:55,420 [INFO] API: 已訂閱 Ticker: HYPE-USDT
+2026-01-30 13:45:55,421 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', 'XAUT-USDT', 'USDC-USDT', 'DOGE-USDT', 'SOL-USDT', 'XRP-USDT', 'BTC-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 13:45:55,440 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'FOGO-USDT'}
+2026-01-30 13:45:55,463 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XAUT-USDT'}
+2026-01-30 13:45:55,463 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'USDC-USDT'}
+2026-01-30 13:45:55,463 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'DOGE-USDT'}
+2026-01-30 13:45:55,463 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'SOL-USDT'}
+2026-01-30 13:45:55,463 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XRP-USDT'}
+2026-01-30 13:45:55,463 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'BTC-USDT'}
+2026-01-30 13:45:55,463 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'ETH-USDT'}
+2026-01-30 13:45:55,464 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'LIT-USDT'}
+2026-01-30 13:45:55,464 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'HYPE-USDT'}
+2026-01-30 13:45:55,656 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:46:03,190 [INFO] API: 執行自定義市場篩選: okx, Symbols: 9
+2026-01-30 13:46:18,577 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:46:18,794 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:46:19,353 [INFO] API: 執行自定義市場篩選: okx, Symbols: 9
+2026-01-30 13:46:37,196 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:46:43,619 [INFO] API: Screener cache saved to DB
+2026-01-30 13:46:43,619 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:47:01,001 [INFO] API: Updating funding rates...
+2026-01-30 13:47:33,266 [INFO] API: Funding Rate cache saved (254 symbols)
+2026-01-30 13:47:33,266 [INFO] API: Funding rates updated: 254 symbols
+2026-01-30 13:47:38,085 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:47:39,775 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:47:39,775 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 1
+2026-01-30 13:47:39,775 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:47:39,777 [INFO] data.okx_websocket: 取消訂閱 Ticker: FOGO-USDT
+2026-01-30 13:47:39,778 [INFO] data.okx_websocket: 取消訂閱 Ticker: XAUT-USDT
+2026-01-30 13:47:39,778 [INFO] data.okx_websocket: 取消訂閱 Ticker: USDC-USDT
+2026-01-30 13:47:39,778 [INFO] data.okx_websocket: 取消訂閱 Ticker: DOGE-USDT
+2026-01-30 13:47:39,778 [INFO] data.okx_websocket: 取消訂閱 Ticker: SOL-USDT
+2026-01-30 13:47:39,778 [INFO] data.okx_websocket: 取消訂閱 Ticker: XRP-USDT
+2026-01-30 13:47:39,778 [INFO] data.okx_websocket: 取消訂閱 Ticker: BTC-USDT
+2026-01-30 13:47:39,778 [INFO] data.okx_websocket: 取消訂閱 Ticker: ETH-USDT
+2026-01-30 13:47:39,780 [INFO] data.okx_websocket: 取消訂閱 Ticker: LIT-USDT
+2026-01-30 13:47:39,780 [INFO] data.okx_websocket: 取消訂閱 Ticker: HYPE-USDT
+2026-01-30 13:47:39,780 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 0
+2026-01-30 13:47:45,858 [INFO] API: Screener cache saved to DB
+2026-01-30 13:47:46,674 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:47:53,540 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 1
+2026-01-30 13:47:54,250 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:47:55,368 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 2
+2026-01-30 13:47:55,368 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:47:55,391 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 3
+2026-01-30 13:47:55,392 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:47:55,392 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', 'XAUT-USDT', 'USDC-USDT', 'DOGE-USDT', 'SOL-USDT', 'XRP-USDT', 'BTC-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 13:47:55,393 [INFO] data.okx_websocket: 訂閱 Ticker: FOGO-USDT
+2026-01-30 13:47:55,393 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: FOGO-USDT
+2026-01-30 13:47:55,393 [INFO] API: 已訂閱 Ticker: FOGO-USDT
+2026-01-30 13:47:55,393 [INFO] data.okx_websocket: 訂閱 Ticker: XAUT-USDT
+2026-01-30 13:47:55,394 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XAUT-USDT
+2026-01-30 13:47:55,394 [INFO] API: 已訂閱 Ticker: XAUT-USDT
+2026-01-30 13:47:55,394 [INFO] data.okx_websocket: 訂閱 Ticker: USDC-USDT
+2026-01-30 13:47:55,394 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: USDC-USDT
+2026-01-30 13:47:55,394 [INFO] API: 已訂閱 Ticker: USDC-USDT
+2026-01-30 13:47:55,394 [INFO] data.okx_websocket: 訂閱 Ticker: DOGE-USDT
+2026-01-30 13:47:55,395 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: DOGE-USDT
+2026-01-30 13:47:55,395 [INFO] API: 已訂閱 Ticker: DOGE-USDT
+2026-01-30 13:47:55,395 [INFO] data.okx_websocket: 訂閱 Ticker: SOL-USDT
+2026-01-30 13:47:55,396 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: SOL-USDT
+2026-01-30 13:47:55,396 [INFO] API: 已訂閱 Ticker: SOL-USDT
+2026-01-30 13:47:55,396 [INFO] data.okx_websocket: 訂閱 Ticker: XRP-USDT
+2026-01-30 13:47:55,396 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XRP-USDT
+2026-01-30 13:47:55,396 [INFO] API: 已訂閱 Ticker: XRP-USDT
+2026-01-30 13:47:55,396 [INFO] data.okx_websocket: 訂閱 Ticker: BTC-USDT
+2026-01-30 13:47:55,396 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: BTC-USDT
+2026-01-30 13:47:55,396 [INFO] API: 已訂閱 Ticker: BTC-USDT
+2026-01-30 13:47:55,396 [INFO] data.okx_websocket: 訂閱 Ticker: ETH-USDT
+2026-01-30 13:47:55,396 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: ETH-USDT
+2026-01-30 13:47:55,396 [INFO] API: 已訂閱 Ticker: ETH-USDT
+2026-01-30 13:47:55,396 [INFO] data.okx_websocket: 訂閱 Ticker: LIT-USDT
+2026-01-30 13:47:55,396 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: LIT-USDT
+2026-01-30 13:47:55,396 [INFO] API: 已訂閱 Ticker: LIT-USDT
+2026-01-30 13:47:55,397 [INFO] data.okx_websocket: 訂閱 Ticker: HYPE-USDT
+2026-01-30 13:47:55,397 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: HYPE-USDT
+2026-01-30 13:47:55,397 [INFO] API: 已訂閱 Ticker: HYPE-USDT
+2026-01-30 13:47:55,397 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', 'XAUT-USDT', 'USDC-USDT', 'DOGE-USDT', 'SOL-USDT', 'XRP-USDT', 'BTC-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 13:47:55,414 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'FOGO-USDT'}
+2026-01-30 13:47:55,438 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XAUT-USDT'}
+2026-01-30 13:47:55,438 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'USDC-USDT'}
+2026-01-30 13:47:55,438 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'DOGE-USDT'}
+2026-01-30 13:47:55,438 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'SOL-USDT'}
+2026-01-30 13:47:55,438 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XRP-USDT'}
+2026-01-30 13:47:55,438 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'BTC-USDT'}
+2026-01-30 13:47:55,438 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'ETH-USDT'}
+2026-01-30 13:47:55,438 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'LIT-USDT'}
+2026-01-30 13:47:55,439 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'HYPE-USDT'}
+2026-01-30 13:47:57,976 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:47:58,222 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:48:44,289 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:48:52,456 [INFO] API: Screener cache saved to DB
+2026-01-30 13:48:52,456 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:49:33,274 [INFO] API: Updating funding rates...
+2026-01-30 13:49:44,836 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:49:53,228 [INFO] API: Screener cache saved to DB
+2026-01-30 13:49:53,228 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:50:06,013 [INFO] API: Funding Rate cache saved (254 symbols)
+2026-01-30 13:50:06,015 [INFO] API: Funding rates updated: 254 symbols
+2026-01-30 13:50:45,666 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:50:53,115 [INFO] API: Screener cache saved to DB
+2026-01-30 13:50:53,116 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:50:59,464 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:50:59,465 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 2
+2026-01-30 13:50:59,465 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:50:59,465 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 1
+2026-01-30 13:50:59,466 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:50:59,466 [INFO] data.okx_websocket: 取消訂閱 Ticker: FOGO-USDT
+2026-01-30 13:50:59,466 [INFO] data.okx_websocket: 取消訂閱 Ticker: XAUT-USDT
+2026-01-30 13:50:59,466 [INFO] data.okx_websocket: 取消訂閱 Ticker: USDC-USDT
+2026-01-30 13:50:59,466 [INFO] data.okx_websocket: 取消訂閱 Ticker: DOGE-USDT
+2026-01-30 13:50:59,466 [INFO] data.okx_websocket: 取消訂閱 Ticker: SOL-USDT
+2026-01-30 13:50:59,468 [INFO] data.okx_websocket: 取消訂閱 Ticker: XRP-USDT
+2026-01-30 13:50:59,468 [INFO] data.okx_websocket: 取消訂閱 Ticker: BTC-USDT
+2026-01-30 13:50:59,468 [INFO] data.okx_websocket: 取消訂閱 Ticker: ETH-USDT
+2026-01-30 13:50:59,468 [INFO] data.okx_websocket: 取消訂閱 Ticker: LIT-USDT
+2026-01-30 13:50:59,468 [INFO] data.okx_websocket: 取消訂閱 Ticker: HYPE-USDT
+2026-01-30 13:50:59,468 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 0
+2026-01-30 13:51:27,038 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 1
+2026-01-30 13:51:27,038 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:51:28,222 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', 'USDC-USDT', 'XAUT-USDT', 'DOGE-USDT', 'SOL-USDT', 'XRP-USDT', 'BTC-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 13:51:28,224 [INFO] data.okx_websocket: 訂閱 Ticker: FOGO-USDT
+2026-01-30 13:51:28,224 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: FOGO-USDT
+2026-01-30 13:51:28,225 [INFO] API: 已訂閱 Ticker: FOGO-USDT
+2026-01-30 13:51:28,225 [INFO] data.okx_websocket: 訂閱 Ticker: USDC-USDT
+2026-01-30 13:51:28,225 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: USDC-USDT
+2026-01-30 13:51:28,225 [INFO] API: 已訂閱 Ticker: USDC-USDT
+2026-01-30 13:51:28,225 [INFO] data.okx_websocket: 訂閱 Ticker: XAUT-USDT
+2026-01-30 13:51:28,225 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XAUT-USDT
+2026-01-30 13:51:28,225 [INFO] API: 已訂閱 Ticker: XAUT-USDT
+2026-01-30 13:51:28,226 [INFO] data.okx_websocket: 訂閱 Ticker: DOGE-USDT
+2026-01-30 13:51:28,226 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: DOGE-USDT
+2026-01-30 13:51:28,226 [INFO] API: 已訂閱 Ticker: DOGE-USDT
+2026-01-30 13:51:28,226 [INFO] data.okx_websocket: 訂閱 Ticker: SOL-USDT
+2026-01-30 13:51:28,226 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: SOL-USDT
+2026-01-30 13:51:28,226 [INFO] API: 已訂閱 Ticker: SOL-USDT
+2026-01-30 13:51:28,226 [INFO] data.okx_websocket: 訂閱 Ticker: XRP-USDT
+2026-01-30 13:51:28,227 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XRP-USDT
+2026-01-30 13:51:28,227 [INFO] API: 已訂閱 Ticker: XRP-USDT
+2026-01-30 13:51:28,227 [INFO] data.okx_websocket: 訂閱 Ticker: BTC-USDT
+2026-01-30 13:51:28,228 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: BTC-USDT
+2026-01-30 13:51:28,228 [INFO] API: 已訂閱 Ticker: BTC-USDT
+2026-01-30 13:51:28,228 [INFO] data.okx_websocket: 訂閱 Ticker: ETH-USDT
+2026-01-30 13:51:28,228 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: ETH-USDT
+2026-01-30 13:51:28,228 [INFO] API: 已訂閱 Ticker: ETH-USDT
+2026-01-30 13:51:28,229 [INFO] data.okx_websocket: 訂閱 Ticker: LIT-USDT
+2026-01-30 13:51:28,229 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: LIT-USDT
+2026-01-30 13:51:28,229 [INFO] API: 已訂閱 Ticker: LIT-USDT
+2026-01-30 13:51:28,229 [INFO] data.okx_websocket: 訂閱 Ticker: HYPE-USDT
+2026-01-30 13:51:28,229 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: HYPE-USDT
+2026-01-30 13:51:28,230 [INFO] API: 已訂閱 Ticker: HYPE-USDT
+2026-01-30 13:51:28,230 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', 'USDC-USDT', 'XAUT-USDT', 'DOGE-USDT', 'SOL-USDT', 'XRP-USDT', 'BTC-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 13:51:28,233 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:51:28,247 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'FOGO-USDT'}
+2026-01-30 13:51:28,270 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'USDC-USDT'}
+2026-01-30 13:51:28,270 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XAUT-USDT'}
+2026-01-30 13:51:28,270 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'DOGE-USDT'}
+2026-01-30 13:51:28,270 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'SOL-USDT'}
+2026-01-30 13:51:28,270 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XRP-USDT'}
+2026-01-30 13:51:28,270 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'BTC-USDT'}
+2026-01-30 13:51:28,270 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'ETH-USDT'}
+2026-01-30 13:51:28,271 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'LIT-USDT'}
+2026-01-30 13:51:28,271 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'HYPE-USDT'}
+2026-01-30 13:51:28,474 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:51:38,706 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:51:38,934 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:51:48,542 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:51:48,543 [INFO] data.okx_websocket: 取消訂閱 Ticker: FOGO-USDT
+2026-01-30 13:51:48,543 [INFO] data.okx_websocket: 取消訂閱 Ticker: USDC-USDT
+2026-01-30 13:51:48,543 [INFO] data.okx_websocket: 取消訂閱 Ticker: XAUT-USDT
+2026-01-30 13:51:48,543 [INFO] data.okx_websocket: 取消訂閱 Ticker: DOGE-USDT
+2026-01-30 13:51:48,543 [INFO] data.okx_websocket: 取消訂閱 Ticker: SOL-USDT
+2026-01-30 13:51:48,544 [INFO] data.okx_websocket: 取消訂閱 Ticker: XRP-USDT
+2026-01-30 13:51:48,544 [INFO] data.okx_websocket: 取消訂閱 Ticker: BTC-USDT
+2026-01-30 13:51:48,544 [INFO] data.okx_websocket: 取消訂閱 Ticker: ETH-USDT
+2026-01-30 13:51:48,544 [INFO] data.okx_websocket: 取消訂閱 Ticker: LIT-USDT
+2026-01-30 13:51:48,544 [INFO] data.okx_websocket: 取消訂閱 Ticker: HYPE-USDT
+2026-01-30 13:51:48,544 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 0
+2026-01-30 13:52:03,517 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:52:06,034 [INFO] API: Updating funding rates...
+2026-01-30 13:52:11,969 [INFO] API: Screener cache saved to DB
+2026-01-30 13:52:11,988 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:52:19,624 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 1
+2026-01-30 13:52:20,028 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:52:20,435 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 2
+2026-01-30 13:52:20,437 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:52:20,484 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', 'USDC-USDT', 'XAUT-USDT', 'DOGE-USDT', 'SOL-USDT', 'XRP-USDT', 'BTC-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 13:52:20,484 [INFO] data.okx_websocket: 訂閱 Ticker: FOGO-USDT
+2026-01-30 13:52:20,484 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: FOGO-USDT
+2026-01-30 13:52:20,484 [INFO] API: 已訂閱 Ticker: FOGO-USDT
+2026-01-30 13:52:20,484 [INFO] data.okx_websocket: 訂閱 Ticker: USDC-USDT
+2026-01-30 13:52:20,484 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: USDC-USDT
+2026-01-30 13:52:20,484 [INFO] API: 已訂閱 Ticker: USDC-USDT
+2026-01-30 13:52:20,485 [INFO] data.okx_websocket: 訂閱 Ticker: XAUT-USDT
+2026-01-30 13:52:20,485 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XAUT-USDT
+2026-01-30 13:52:20,486 [INFO] API: 已訂閱 Ticker: XAUT-USDT
+2026-01-30 13:52:20,486 [INFO] data.okx_websocket: 訂閱 Ticker: DOGE-USDT
+2026-01-30 13:52:20,486 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: DOGE-USDT
+2026-01-30 13:52:20,486 [INFO] API: 已訂閱 Ticker: DOGE-USDT
+2026-01-30 13:52:20,486 [INFO] data.okx_websocket: 訂閱 Ticker: SOL-USDT
+2026-01-30 13:52:20,486 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: SOL-USDT
+2026-01-30 13:52:20,486 [INFO] API: 已訂閱 Ticker: SOL-USDT
+2026-01-30 13:52:20,486 [INFO] data.okx_websocket: 訂閱 Ticker: XRP-USDT
+2026-01-30 13:52:20,486 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XRP-USDT
+2026-01-30 13:52:20,486 [INFO] API: 已訂閱 Ticker: XRP-USDT
+2026-01-30 13:52:20,486 [INFO] data.okx_websocket: 訂閱 Ticker: BTC-USDT
+2026-01-30 13:52:20,486 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: BTC-USDT
+2026-01-30 13:52:20,486 [INFO] API: 已訂閱 Ticker: BTC-USDT
+2026-01-30 13:52:20,486 [INFO] data.okx_websocket: 訂閱 Ticker: ETH-USDT
+2026-01-30 13:52:20,486 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: ETH-USDT
+2026-01-30 13:52:20,486 [INFO] API: 已訂閱 Ticker: ETH-USDT
+2026-01-30 13:52:20,488 [INFO] data.okx_websocket: 訂閱 Ticker: LIT-USDT
+2026-01-30 13:52:20,488 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: LIT-USDT
+2026-01-30 13:52:20,488 [INFO] API: 已訂閱 Ticker: LIT-USDT
+2026-01-30 13:52:20,488 [INFO] data.okx_websocket: 訂閱 Ticker: HYPE-USDT
+2026-01-30 13:52:20,488 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: HYPE-USDT
+2026-01-30 13:52:20,488 [INFO] API: 已訂閱 Ticker: HYPE-USDT
+2026-01-30 13:52:20,488 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', 'USDC-USDT', 'XAUT-USDT', 'DOGE-USDT', 'SOL-USDT', 'XRP-USDT', 'BTC-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 13:52:20,506 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'FOGO-USDT'}
+2026-01-30 13:52:20,529 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'USDC-USDT'}
+2026-01-30 13:52:20,529 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XAUT-USDT'}
+2026-01-30 13:52:20,529 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'DOGE-USDT'}
+2026-01-30 13:52:20,529 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'SOL-USDT'}
+2026-01-30 13:52:20,529 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XRP-USDT'}
+2026-01-30 13:52:20,529 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'BTC-USDT'}
+2026-01-30 13:52:20,543 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'ETH-USDT'}
+2026-01-30 13:52:20,543 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'LIT-USDT'}
+2026-01-30 13:52:20,543 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'HYPE-USDT'}
+2026-01-30 13:52:23,524 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:52:23,944 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:52:40,204 [INFO] API: Funding Rate cache saved (254 symbols)
+2026-01-30 13:52:40,204 [INFO] API: Funding rates updated: 254 symbols
+2026-01-30 13:53:09,679 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:53:17,284 [INFO] API: Screener cache saved to DB
+2026-01-30 13:53:17,284 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:53:20,370 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:53:20,370 [INFO] data.okx_websocket: 取消訂閱 Ticker: FOGO-USDT
+2026-01-30 13:53:20,371 [INFO] data.okx_websocket: 取消訂閱 Ticker: USDC-USDT
+2026-01-30 13:53:20,371 [INFO] data.okx_websocket: 取消訂閱 Ticker: XAUT-USDT
+2026-01-30 13:53:20,371 [INFO] data.okx_websocket: 取消訂閱 Ticker: DOGE-USDT
+2026-01-30 13:53:20,371 [INFO] data.okx_websocket: 取消訂閱 Ticker: SOL-USDT
+2026-01-30 13:53:20,372 [INFO] data.okx_websocket: 取消訂閱 Ticker: XRP-USDT
+2026-01-30 13:53:20,372 [INFO] data.okx_websocket: 取消訂閱 Ticker: BTC-USDT
+2026-01-30 13:53:20,372 [INFO] data.okx_websocket: 取消訂閱 Ticker: ETH-USDT
+2026-01-30 13:53:20,372 [INFO] data.okx_websocket: 取消訂閱 Ticker: LIT-USDT
+2026-01-30 13:53:20,372 [INFO] data.okx_websocket: 取消訂閱 Ticker: HYPE-USDT
+2026-01-30 13:53:20,372 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 1
+2026-01-30 13:53:20,373 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:53:20,373 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 0
+2026-01-30 13:53:37,149 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 1
+2026-01-30 13:53:37,560 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:53:38,395 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', 'USDC-USDT', 'XAUT-USDT', 'DOGE-USDT', 'SOL-USDT', 'XRP-USDT', 'BTC-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 13:53:38,396 [INFO] data.okx_websocket: 訂閱 Ticker: FOGO-USDT
+2026-01-30 13:53:38,396 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: FOGO-USDT
+2026-01-30 13:53:38,396 [INFO] API: 已訂閱 Ticker: FOGO-USDT
+2026-01-30 13:53:38,396 [INFO] data.okx_websocket: 訂閱 Ticker: USDC-USDT
+2026-01-30 13:53:38,396 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: USDC-USDT
+2026-01-30 13:53:38,396 [INFO] API: 已訂閱 Ticker: USDC-USDT
+2026-01-30 13:53:38,397 [INFO] data.okx_websocket: 訂閱 Ticker: XAUT-USDT
+2026-01-30 13:53:38,397 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XAUT-USDT
+2026-01-30 13:53:38,397 [INFO] API: 已訂閱 Ticker: XAUT-USDT
+2026-01-30 13:53:38,397 [INFO] data.okx_websocket: 訂閱 Ticker: DOGE-USDT
+2026-01-30 13:53:38,397 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: DOGE-USDT
+2026-01-30 13:53:38,397 [INFO] API: 已訂閱 Ticker: DOGE-USDT
+2026-01-30 13:53:38,397 [INFO] data.okx_websocket: 訂閱 Ticker: SOL-USDT
+2026-01-30 13:53:38,398 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: SOL-USDT
+2026-01-30 13:53:38,399 [INFO] API: 已訂閱 Ticker: SOL-USDT
+2026-01-30 13:53:38,399 [INFO] data.okx_websocket: 訂閱 Ticker: XRP-USDT
+2026-01-30 13:53:38,399 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XRP-USDT
+2026-01-30 13:53:38,399 [INFO] API: 已訂閱 Ticker: XRP-USDT
+2026-01-30 13:53:38,399 [INFO] data.okx_websocket: 訂閱 Ticker: BTC-USDT
+2026-01-30 13:53:38,399 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: BTC-USDT
+2026-01-30 13:53:38,399 [INFO] API: 已訂閱 Ticker: BTC-USDT
+2026-01-30 13:53:38,399 [INFO] data.okx_websocket: 訂閱 Ticker: ETH-USDT
+2026-01-30 13:53:38,399 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: ETH-USDT
+2026-01-30 13:53:38,399 [INFO] API: 已訂閱 Ticker: ETH-USDT
+2026-01-30 13:53:38,399 [INFO] data.okx_websocket: 訂閱 Ticker: LIT-USDT
+2026-01-30 13:53:38,399 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: LIT-USDT
+2026-01-30 13:53:38,400 [INFO] API: 已訂閱 Ticker: LIT-USDT
+2026-01-30 13:53:38,400 [INFO] data.okx_websocket: 訂閱 Ticker: HYPE-USDT
+2026-01-30 13:53:38,400 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: HYPE-USDT
+2026-01-30 13:53:38,400 [INFO] API: 已訂閱 Ticker: HYPE-USDT
+2026-01-30 13:53:38,418 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'FOGO-USDT'}
+2026-01-30 13:53:38,443 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'USDC-USDT'}
+2026-01-30 13:53:38,443 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XAUT-USDT'}
+2026-01-30 13:53:38,443 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'DOGE-USDT'}
+2026-01-30 13:53:38,443 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'SOL-USDT'}
+2026-01-30 13:53:38,443 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XRP-USDT'}
+2026-01-30 13:53:38,443 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'BTC-USDT'}
+2026-01-30 13:53:38,443 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'ETH-USDT'}
+2026-01-30 13:53:38,443 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'LIT-USDT'}
+2026-01-30 13:53:38,454 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'HYPE-USDT'}
+2026-01-30 13:53:43,008 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:53:43,226 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:53:49,793 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:53:49,793 [INFO] data.okx_websocket: 取消訂閱 Ticker: FOGO-USDT
+2026-01-30 13:53:49,793 [INFO] data.okx_websocket: 取消訂閱 Ticker: USDC-USDT
+2026-01-30 13:53:49,793 [INFO] data.okx_websocket: 取消訂閱 Ticker: XAUT-USDT
+2026-01-30 13:53:49,794 [INFO] data.okx_websocket: 取消訂閱 Ticker: DOGE-USDT
+2026-01-30 13:53:49,794 [INFO] data.okx_websocket: 取消訂閱 Ticker: SOL-USDT
+2026-01-30 13:53:49,794 [INFO] data.okx_websocket: 取消訂閱 Ticker: XRP-USDT
+2026-01-30 13:53:49,794 [INFO] data.okx_websocket: 取消訂閱 Ticker: BTC-USDT
+2026-01-30 13:53:49,795 [INFO] data.okx_websocket: 取消訂閱 Ticker: ETH-USDT
+2026-01-30 13:53:49,795 [INFO] data.okx_websocket: 取消訂閱 Ticker: LIT-USDT
+2026-01-30 13:53:49,795 [INFO] data.okx_websocket: 取消訂閱 Ticker: HYPE-USDT
+2026-01-30 13:53:49,795 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 0
+2026-01-30 13:54:03,063 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 1
+2026-01-30 13:54:03,063 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:54:04,310 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 2
+2026-01-30 13:54:04,310 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:54:05,954 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 3
+2026-01-30 13:54:05,954 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:54:05,974 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', 'USDC-USDT', 'XAUT-USDT', 'DOGE-USDT', 'SOL-USDT', 'XRP-USDT', 'BTC-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 13:54:05,976 [INFO] data.okx_websocket: 訂閱 Ticker: FOGO-USDT
+2026-01-30 13:54:05,976 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: FOGO-USDT
+2026-01-30 13:54:05,976 [INFO] API: 已訂閱 Ticker: FOGO-USDT
+2026-01-30 13:54:05,976 [INFO] data.okx_websocket: 訂閱 Ticker: USDC-USDT
+2026-01-30 13:54:05,976 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: USDC-USDT
+2026-01-30 13:54:05,976 [INFO] API: 已訂閱 Ticker: USDC-USDT
+2026-01-30 13:54:05,976 [INFO] data.okx_websocket: 訂閱 Ticker: XAUT-USDT
+2026-01-30 13:54:05,976 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XAUT-USDT
+2026-01-30 13:54:05,977 [INFO] API: 已訂閱 Ticker: XAUT-USDT
+2026-01-30 13:54:05,977 [INFO] data.okx_websocket: 訂閱 Ticker: DOGE-USDT
+2026-01-30 13:54:05,977 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: DOGE-USDT
+2026-01-30 13:54:05,977 [INFO] API: 已訂閱 Ticker: DOGE-USDT
+2026-01-30 13:54:05,977 [INFO] data.okx_websocket: 訂閱 Ticker: SOL-USDT
+2026-01-30 13:54:05,977 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: SOL-USDT
+2026-01-30 13:54:05,978 [INFO] API: 已訂閱 Ticker: SOL-USDT
+2026-01-30 13:54:05,978 [INFO] data.okx_websocket: 訂閱 Ticker: XRP-USDT
+2026-01-30 13:54:05,978 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XRP-USDT
+2026-01-30 13:54:05,978 [INFO] API: 已訂閱 Ticker: XRP-USDT
+2026-01-30 13:54:05,979 [INFO] data.okx_websocket: 訂閱 Ticker: BTC-USDT
+2026-01-30 13:54:05,979 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: BTC-USDT
+2026-01-30 13:54:05,979 [INFO] API: 已訂閱 Ticker: BTC-USDT
+2026-01-30 13:54:05,979 [INFO] data.okx_websocket: 訂閱 Ticker: ETH-USDT
+2026-01-30 13:54:05,979 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: ETH-USDT
+2026-01-30 13:54:05,979 [INFO] API: 已訂閱 Ticker: ETH-USDT
+2026-01-30 13:54:05,979 [INFO] data.okx_websocket: 訂閱 Ticker: LIT-USDT
+2026-01-30 13:54:05,979 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: LIT-USDT
+2026-01-30 13:54:05,979 [INFO] API: 已訂閱 Ticker: LIT-USDT
+2026-01-30 13:54:05,979 [INFO] data.okx_websocket: 訂閱 Ticker: HYPE-USDT
+2026-01-30 13:54:05,979 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: HYPE-USDT
+2026-01-30 13:54:05,980 [INFO] API: 已訂閱 Ticker: HYPE-USDT
+2026-01-30 13:54:05,981 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', 'USDC-USDT', 'XAUT-USDT', 'DOGE-USDT', 'SOL-USDT', 'XRP-USDT', 'BTC-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 13:54:05,985 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:54:05,997 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'FOGO-USDT'}
+2026-01-30 13:54:06,019 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'USDC-USDT'}
+2026-01-30 13:54:06,019 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XAUT-USDT'}
+2026-01-30 13:54:06,019 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'DOGE-USDT'}
+2026-01-30 13:54:06,019 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'SOL-USDT'}
+2026-01-30 13:54:06,019 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XRP-USDT'}
+2026-01-30 13:54:06,019 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'BTC-USDT'}
+2026-01-30 13:54:06,019 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'ETH-USDT'}
+2026-01-30 13:54:06,019 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'LIT-USDT'}
+2026-01-30 13:54:06,019 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'HYPE-USDT'}
+2026-01-30 13:54:06,223 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:54:24,059 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:54:31,458 [INFO] API: Screener cache saved to DB
+2026-01-30 13:54:31,459 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:54:40,207 [INFO] API: Updating funding rates...
+2026-01-30 13:54:42,858 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:54:42,858 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 2
+2026-01-30 13:54:42,859 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:54:42,859 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 1
+2026-01-30 13:54:42,860 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:54:42,860 [INFO] data.okx_websocket: 取消訂閱 Ticker: FOGO-USDT
+2026-01-30 13:54:42,860 [INFO] data.okx_websocket: 取消訂閱 Ticker: USDC-USDT
+2026-01-30 13:54:42,860 [INFO] data.okx_websocket: 取消訂閱 Ticker: XAUT-USDT
+2026-01-30 13:54:42,862 [INFO] data.okx_websocket: 取消訂閱 Ticker: DOGE-USDT
+2026-01-30 13:54:42,862 [INFO] data.okx_websocket: 取消訂閱 Ticker: SOL-USDT
+2026-01-30 13:54:42,863 [INFO] data.okx_websocket: 取消訂閱 Ticker: XRP-USDT
+2026-01-30 13:54:42,863 [INFO] data.okx_websocket: 取消訂閱 Ticker: BTC-USDT
+2026-01-30 13:54:42,863 [INFO] data.okx_websocket: 取消訂閱 Ticker: ETH-USDT
+2026-01-30 13:54:42,863 [INFO] data.okx_websocket: 取消訂閱 Ticker: LIT-USDT
+2026-01-30 13:54:42,863 [INFO] data.okx_websocket: 取消訂閱 Ticker: HYPE-USDT
+2026-01-30 13:54:42,863 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 0
+2026-01-30 13:54:55,815 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 1
+2026-01-30 13:54:55,815 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:54:57,030 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 2
+2026-01-30 13:54:57,032 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:54:57,047 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 3
+2026-01-30 13:54:57,047 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:54:57,049 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', 'USDC-USDT', 'XAUT-USDT', 'DOGE-USDT', 'SOL-USDT', 'XRP-USDT', 'BTC-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 13:54:57,049 [INFO] data.okx_websocket: 訂閱 Ticker: FOGO-USDT
+2026-01-30 13:54:57,049 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: FOGO-USDT
+2026-01-30 13:54:57,049 [INFO] API: 已訂閱 Ticker: FOGO-USDT
+2026-01-30 13:54:57,049 [INFO] data.okx_websocket: 訂閱 Ticker: USDC-USDT
+2026-01-30 13:54:57,049 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: USDC-USDT
+2026-01-30 13:54:57,049 [INFO] API: 已訂閱 Ticker: USDC-USDT
+2026-01-30 13:54:57,049 [INFO] data.okx_websocket: 訂閱 Ticker: XAUT-USDT
+2026-01-30 13:54:57,049 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XAUT-USDT
+2026-01-30 13:54:57,049 [INFO] API: 已訂閱 Ticker: XAUT-USDT
+2026-01-30 13:54:57,049 [INFO] data.okx_websocket: 訂閱 Ticker: DOGE-USDT
+2026-01-30 13:54:57,050 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: DOGE-USDT
+2026-01-30 13:54:57,050 [INFO] API: 已訂閱 Ticker: DOGE-USDT
+2026-01-30 13:54:57,050 [INFO] data.okx_websocket: 訂閱 Ticker: SOL-USDT
+2026-01-30 13:54:57,050 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: SOL-USDT
+2026-01-30 13:54:57,050 [INFO] API: 已訂閱 Ticker: SOL-USDT
+2026-01-30 13:54:57,050 [INFO] data.okx_websocket: 訂閱 Ticker: XRP-USDT
+2026-01-30 13:54:57,050 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XRP-USDT
+2026-01-30 13:54:57,050 [INFO] API: 已訂閱 Ticker: XRP-USDT
+2026-01-30 13:54:57,050 [INFO] data.okx_websocket: 訂閱 Ticker: BTC-USDT
+2026-01-30 13:54:57,050 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: BTC-USDT
+2026-01-30 13:54:57,050 [INFO] API: 已訂閱 Ticker: BTC-USDT
+2026-01-30 13:54:57,050 [INFO] data.okx_websocket: 訂閱 Ticker: ETH-USDT
+2026-01-30 13:54:57,050 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: ETH-USDT
+2026-01-30 13:54:57,050 [INFO] API: 已訂閱 Ticker: ETH-USDT
+2026-01-30 13:54:57,050 [INFO] data.okx_websocket: 訂閱 Ticker: LIT-USDT
+2026-01-30 13:54:57,052 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: LIT-USDT
+2026-01-30 13:54:57,052 [INFO] API: 已訂閱 Ticker: LIT-USDT
+2026-01-30 13:54:57,052 [INFO] data.okx_websocket: 訂閱 Ticker: HYPE-USDT
+2026-01-30 13:54:57,052 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: HYPE-USDT
+2026-01-30 13:54:57,052 [INFO] API: 已訂閱 Ticker: HYPE-USDT
+2026-01-30 13:54:57,052 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', 'USDC-USDT', 'XAUT-USDT', 'DOGE-USDT', 'SOL-USDT', 'XRP-USDT', 'BTC-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 13:54:57,069 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'FOGO-USDT'}
+2026-01-30 13:54:57,090 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'USDC-USDT'}
+2026-01-30 13:54:57,090 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XAUT-USDT'}
+2026-01-30 13:54:57,090 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'DOGE-USDT'}
+2026-01-30 13:54:57,090 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'SOL-USDT'}
+2026-01-30 13:54:57,091 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XRP-USDT'}
+2026-01-30 13:54:57,106 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'BTC-USDT'}
+2026-01-30 13:54:57,106 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'ETH-USDT'}
+2026-01-30 13:54:57,106 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'LIT-USDT'}
+2026-01-30 13:54:57,106 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'HYPE-USDT'}
+2026-01-30 13:55:02,714 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:55:02,993 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:55:09,428 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:55:09,428 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 2
+2026-01-30 13:55:09,428 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:55:09,428 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 1
+2026-01-30 13:55:09,429 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:55:09,429 [INFO] data.okx_websocket: 取消訂閱 Ticker: FOGO-USDT
+2026-01-30 13:55:09,429 [INFO] data.okx_websocket: 取消訂閱 Ticker: USDC-USDT
+2026-01-30 13:55:09,429 [INFO] data.okx_websocket: 取消訂閱 Ticker: XAUT-USDT
+2026-01-30 13:55:09,429 [INFO] data.okx_websocket: 取消訂閱 Ticker: DOGE-USDT
+2026-01-30 13:55:09,429 [INFO] data.okx_websocket: 取消訂閱 Ticker: SOL-USDT
+2026-01-30 13:55:09,429 [INFO] data.okx_websocket: 取消訂閱 Ticker: XRP-USDT
+2026-01-30 13:55:09,429 [INFO] data.okx_websocket: 取消訂閱 Ticker: BTC-USDT
+2026-01-30 13:55:09,429 [INFO] data.okx_websocket: 取消訂閱 Ticker: ETH-USDT
+2026-01-30 13:55:09,429 [INFO] data.okx_websocket: 取消訂閱 Ticker: LIT-USDT
+2026-01-30 13:55:09,429 [INFO] data.okx_websocket: 取消訂閱 Ticker: HYPE-USDT
+2026-01-30 13:55:09,429 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 0
+2026-01-30 13:55:13,094 [INFO] API: Funding Rate cache saved (254 symbols)
+2026-01-30 13:55:13,468 [INFO] API: Funding rates updated: 254 symbols
+2026-01-30 13:55:22,094 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 1
+2026-01-30 13:55:22,485 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:55:22,877 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 2
+2026-01-30 13:55:22,878 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:55:22,893 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', 'USDC-USDT', 'XAUT-USDT', 'DOGE-USDT', 'SOL-USDT', 'XRP-USDT', 'BTC-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 13:55:22,894 [INFO] data.okx_websocket: 訂閱 Ticker: FOGO-USDT
+2026-01-30 13:55:22,894 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: FOGO-USDT
+2026-01-30 13:55:22,894 [INFO] API: 已訂閱 Ticker: FOGO-USDT
+2026-01-30 13:55:22,894 [INFO] data.okx_websocket: 訂閱 Ticker: USDC-USDT
+2026-01-30 13:55:22,894 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: USDC-USDT
+2026-01-30 13:55:22,894 [INFO] API: 已訂閱 Ticker: USDC-USDT
+2026-01-30 13:55:22,894 [INFO] data.okx_websocket: 訂閱 Ticker: XAUT-USDT
+2026-01-30 13:55:22,895 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XAUT-USDT
+2026-01-30 13:55:22,895 [INFO] API: 已訂閱 Ticker: XAUT-USDT
+2026-01-30 13:55:22,896 [INFO] data.okx_websocket: 訂閱 Ticker: DOGE-USDT
+2026-01-30 13:55:22,896 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: DOGE-USDT
+2026-01-30 13:55:22,896 [INFO] API: 已訂閱 Ticker: DOGE-USDT
+2026-01-30 13:55:22,896 [INFO] data.okx_websocket: 訂閱 Ticker: SOL-USDT
+2026-01-30 13:55:22,897 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: SOL-USDT
+2026-01-30 13:55:22,897 [INFO] API: 已訂閱 Ticker: SOL-USDT
+2026-01-30 13:55:22,897 [INFO] data.okx_websocket: 訂閱 Ticker: XRP-USDT
+2026-01-30 13:55:22,897 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: XRP-USDT
+2026-01-30 13:55:22,897 [INFO] API: 已訂閱 Ticker: XRP-USDT
+2026-01-30 13:55:22,897 [INFO] data.okx_websocket: 訂閱 Ticker: BTC-USDT
+2026-01-30 13:55:22,897 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: BTC-USDT
+2026-01-30 13:55:22,897 [INFO] API: 已訂閱 Ticker: BTC-USDT
+2026-01-30 13:55:22,897 [INFO] data.okx_websocket: 訂閱 Ticker: ETH-USDT
+2026-01-30 13:55:22,897 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: ETH-USDT
+2026-01-30 13:55:22,897 [INFO] API: 已訂閱 Ticker: ETH-USDT
+2026-01-30 13:55:22,897 [INFO] data.okx_websocket: 訂閱 Ticker: LIT-USDT
+2026-01-30 13:55:22,897 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: LIT-USDT
+2026-01-30 13:55:22,898 [INFO] API: 已訂閱 Ticker: LIT-USDT
+2026-01-30 13:55:22,898 [INFO] data.okx_websocket: 訂閱 Ticker: HYPE-USDT
+2026-01-30 13:55:22,898 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: HYPE-USDT
+2026-01-30 13:55:22,898 [INFO] API: 已訂閱 Ticker: HYPE-USDT
+2026-01-30 13:55:22,898 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', 'USDC-USDT', 'XAUT-USDT', 'DOGE-USDT', 'SOL-USDT', 'XRP-USDT', 'BTC-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 13:55:22,915 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'FOGO-USDT'}
+2026-01-30 13:55:22,936 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'USDC-USDT'}
+2026-01-30 13:55:22,936 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XAUT-USDT'}
+2026-01-30 13:55:22,936 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'DOGE-USDT'}
+2026-01-30 13:55:22,937 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'SOL-USDT'}
+2026-01-30 13:55:22,937 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'XRP-USDT'}
+2026-01-30 13:55:22,937 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'BTC-USDT'}
+2026-01-30 13:55:22,937 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'ETH-USDT'}
+2026-01-30 13:55:22,937 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'LIT-USDT'}
+2026-01-30 13:55:22,937 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'HYPE-USDT'}
+2026-01-30 13:55:29,747 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:55:29,948 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:55:38,692 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:55:45,885 [INFO] API: Screener cache saved to DB
+2026-01-30 13:55:45,885 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:56:05,841 [INFO] API: 執行自定義市場篩選: okx, Symbols: 9
+2026-01-30 13:56:11,590 [INFO] API: 收到 Ticker 訂閱請求: ['1INCH-USDT']
+2026-01-30 13:56:11,590 [INFO] data.okx_websocket: 訂閱 Ticker: 1INCH-USDT
+2026-01-30 13:56:11,590 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: 1INCH-USDT
+2026-01-30 13:56:11,590 [INFO] API: 已訂閱 Ticker: 1INCH-USDT
+2026-01-30 13:56:11,614 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': '1INCH-USDT'}
+2026-01-30 13:56:23,281 [INFO] API: 執行自定義市場篩選: okx, Symbols: 13
+2026-01-30 13:56:31,025 [INFO] API: 收到 Ticker 訂閱請求: ['ANIME-USDT', 'AIXBT-USDT', 'APE-USDT']
+2026-01-30 13:56:31,025 [INFO] data.okx_websocket: 訂閱 Ticker: ANIME-USDT
+2026-01-30 13:56:31,026 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: ANIME-USDT
+2026-01-30 13:56:31,026 [INFO] API: 已訂閱 Ticker: ANIME-USDT
+2026-01-30 13:56:31,027 [INFO] data.okx_websocket: 訂閱 Ticker: AIXBT-USDT
+2026-01-30 13:56:31,027 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: AIXBT-USDT
+2026-01-30 13:56:31,027 [INFO] API: 已訂閱 Ticker: AIXBT-USDT
+2026-01-30 13:56:31,027 [INFO] data.okx_websocket: 訂閱 Ticker: APE-USDT
+2026-01-30 13:56:31,027 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: APE-USDT
+2026-01-30 13:56:31,027 [INFO] API: 已訂閱 Ticker: APE-USDT
+2026-01-30 13:56:31,047 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'ANIME-USDT'}
+2026-01-30 13:56:31,053 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'AIXBT-USDT'}
+2026-01-30 13:56:31,054 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'APE-USDT'}
+2026-01-30 13:56:39,034 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:56:46,239 [INFO] API: Screener cache saved to DB
+2026-01-30 13:56:46,239 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:57:13,460 [INFO] API: Updating funding rates...
+2026-01-30 13:57:23,247 [INFO] API: 執行自定義市場篩選: okx, Symbols: 13
+2026-01-30 13:57:39,742 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:57:46,651 [INFO] API: Funding Rate cache saved (254 symbols)
+2026-01-30 13:57:46,651 [INFO] API: Funding rates updated: 254 symbols
+2026-01-30 13:57:47,361 [INFO] API: Screener cache saved to DB
+2026-01-30 13:57:47,361 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:57:57,814 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:57:57,814 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 1
+2026-01-30 13:57:57,814 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 13:57:57,815 [INFO] data.okx_websocket: 取消訂閱 Ticker: FOGO-USDT
+2026-01-30 13:57:57,816 [INFO] data.okx_websocket: 取消訂閱 Ticker: USDC-USDT
+2026-01-30 13:57:57,817 [INFO] data.okx_websocket: 取消訂閱 Ticker: XAUT-USDT
+2026-01-30 13:57:57,817 [INFO] data.okx_websocket: 取消訂閱 Ticker: DOGE-USDT
+2026-01-30 13:57:57,817 [INFO] data.okx_websocket: 取消訂閱 Ticker: SOL-USDT
+2026-01-30 13:57:57,817 [INFO] data.okx_websocket: 取消訂閱 Ticker: XRP-USDT
+2026-01-30 13:57:57,817 [INFO] data.okx_websocket: 取消訂閱 Ticker: BTC-USDT
+2026-01-30 13:57:57,817 [INFO] data.okx_websocket: 取消訂閱 Ticker: ETH-USDT
+2026-01-30 13:57:57,818 [INFO] data.okx_websocket: 取消訂閱 Ticker: LIT-USDT
+2026-01-30 13:57:57,818 [INFO] data.okx_websocket: 取消訂閱 Ticker: HYPE-USDT
+2026-01-30 13:57:57,818 [INFO] data.okx_websocket: 取消訂閱 Ticker: 1INCH-USDT
+2026-01-30 13:57:57,818 [INFO] data.okx_websocket: 取消訂閱 Ticker: ANIME-USDT
+2026-01-30 13:57:57,818 [INFO] data.okx_websocket: 取消訂閱 Ticker: AIXBT-USDT
+2026-01-30 13:57:57,818 [INFO] data.okx_websocket: 取消訂閱 Ticker: APE-USDT
+2026-01-30 13:57:57,818 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 0
+2026-01-30 13:58:10,802 [WARNING] API: AUDIT [tip_post]: user=None(None), resource=None/None, success=False
+2026-01-30 13:58:11,206 [WARNING] API: AUDIT [tip_post]: user=None(None), resource=None/None, success=False
+2026-01-30 13:58:12,423 [WARNING] API: AUDIT [tip_post]: user=None(None), resource=None/None, success=False
+2026-01-30 13:58:12,824 [WARNING] API: AUDIT [tip_post]: user=None(None), resource=None/None, success=False
+2026-01-30 13:58:14,043 [INFO] API: 執行自定義市場篩選: okx, Symbols: 9
+2026-01-30 13:58:16,882 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 1
+2026-01-30 13:58:16,883 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:58:16,888 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:58:16,908 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 2
+2026-01-30 13:58:16,908 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 13:58:17,110 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:58:20,947 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', '1INCH-USDT', 'USDC-USDT', 'DOGE-USDT', 'SOL-USDT', 'BTC-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 13:58:20,947 [INFO] data.okx_websocket: 訂閱 Ticker: FOGO-USDT
+2026-01-30 13:58:20,947 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: FOGO-USDT
+2026-01-30 13:58:20,947 [INFO] API: 已訂閱 Ticker: FOGO-USDT
+2026-01-30 13:58:20,948 [INFO] data.okx_websocket: 訂閱 Ticker: 1INCH-USDT
+2026-01-30 13:58:20,949 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: 1INCH-USDT
+2026-01-30 13:58:20,949 [INFO] API: 已訂閱 Ticker: 1INCH-USDT
+2026-01-30 13:58:20,949 [INFO] data.okx_websocket: 訂閱 Ticker: USDC-USDT
+2026-01-30 13:58:20,949 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: USDC-USDT
+2026-01-30 13:58:20,949 [INFO] API: 已訂閱 Ticker: USDC-USDT
+2026-01-30 13:58:20,949 [INFO] data.okx_websocket: 訂閱 Ticker: DOGE-USDT
+2026-01-30 13:58:20,949 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: DOGE-USDT
+2026-01-30 13:58:20,949 [INFO] API: 已訂閱 Ticker: DOGE-USDT
+2026-01-30 13:58:20,950 [INFO] data.okx_websocket: 訂閱 Ticker: SOL-USDT
+2026-01-30 13:58:20,950 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: SOL-USDT
+2026-01-30 13:58:20,951 [INFO] API: 已訂閱 Ticker: SOL-USDT
+2026-01-30 13:58:20,951 [INFO] data.okx_websocket: 訂閱 Ticker: BTC-USDT
+2026-01-30 13:58:20,951 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: BTC-USDT
+2026-01-30 13:58:20,951 [INFO] API: 已訂閱 Ticker: BTC-USDT
+2026-01-30 13:58:20,951 [INFO] data.okx_websocket: 訂閱 Ticker: ETH-USDT
+2026-01-30 13:58:20,951 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: ETH-USDT
+2026-01-30 13:58:20,951 [INFO] API: 已訂閱 Ticker: ETH-USDT
+2026-01-30 13:58:20,951 [INFO] data.okx_websocket: 訂閱 Ticker: LIT-USDT
+2026-01-30 13:58:20,951 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: LIT-USDT
+2026-01-30 13:58:20,951 [INFO] API: 已訂閱 Ticker: LIT-USDT
+2026-01-30 13:58:20,951 [INFO] data.okx_websocket: 訂閱 Ticker: HYPE-USDT
+2026-01-30 13:58:20,951 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: HYPE-USDT
+2026-01-30 13:58:20,951 [INFO] API: 已訂閱 Ticker: HYPE-USDT
+2026-01-30 13:58:22,984 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'FOGO-USDT'}
+2026-01-30 13:58:22,984 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': '1INCH-USDT'}
+2026-01-30 13:58:22,984 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'USDC-USDT'}
+2026-01-30 13:58:22,984 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'DOGE-USDT'}
+2026-01-30 13:58:22,984 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'SOL-USDT'}
+2026-01-30 13:58:22,984 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'BTC-USDT'}
+2026-01-30 13:58:22,984 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'ETH-USDT'}
+2026-01-30 13:58:22,985 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'LIT-USDT'}
+2026-01-30 13:58:22,985 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'HYPE-USDT'}
+2026-01-30 13:58:25,015 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:58:25,225 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:58:39,346 [INFO] API: 執行自定義市場篩選: okx, Symbols: 10
+2026-01-30 13:58:50,164 [INFO] API: 收到 Ticker 訂閱請求: ['2Z-USDT', 'A-USDT']
+2026-01-30 13:58:50,165 [INFO] data.okx_websocket: 訂閱 Ticker: 2Z-USDT
+2026-01-30 13:58:50,166 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: 2Z-USDT
+2026-01-30 13:58:50,166 [INFO] API: 已訂閱 Ticker: 2Z-USDT
+2026-01-30 13:58:50,166 [INFO] data.okx_websocket: 訂閱 Ticker: A-USDT
+2026-01-30 13:58:50,166 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: A-USDT
+2026-01-30 13:58:50,166 [INFO] API: 已訂閱 Ticker: A-USDT
+2026-01-30 13:58:50,576 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': '2Z-USDT'}
+2026-01-30 13:58:50,584 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:58:50,599 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'A-USDT'}
+2026-01-30 13:58:50,820 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:58:51,224 [INFO] API: Starting heavy screener analysis...
+2026-01-30 13:58:56,823 [INFO] API: Screener cache saved to DB
+2026-01-30 13:58:57,019 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 13:59:01,377 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:59:01,609 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:59:34,596 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 13:59:34,809 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 13:59:46,671 [INFO] API: Updating funding rates...
+2026-01-30 13:59:55,603 [INFO] API: Starting heavy screener analysis...
+2026-01-30 14:00:03,788 [INFO] API: Screener cache saved to DB
+2026-01-30 14:00:04,206 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 14:00:04,678 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 14:00:04,928 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 14:00:18,279 [INFO] API: Funding Rate cache saved (254 symbols)
+2026-01-30 14:00:18,279 [INFO] API: Funding rates updated: 254 symbols
+2026-01-30 14:00:34,763 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 14:00:34,980 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 14:00:59,809 [INFO] API: Starting heavy screener analysis...
+2026-01-30 14:01:02,639 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 14:01:02,642 [INFO] data.okx_websocket: 取消訂閱 Ticker: FOGO-USDT
+2026-01-30 14:01:02,642 [INFO] data.okx_websocket: 取消訂閱 Ticker: 1INCH-USDT
+2026-01-30 14:01:02,644 [INFO] data.okx_websocket: 取消訂閱 Ticker: USDC-USDT
+2026-01-30 14:01:02,644 [INFO] data.okx_websocket: 取消訂閱 Ticker: DOGE-USDT
+2026-01-30 14:01:02,644 [INFO] data.okx_websocket: 取消訂閱 Ticker: SOL-USDT
+2026-01-30 14:01:02,645 [INFO] data.okx_websocket: 取消訂閱 Ticker: BTC-USDT
+2026-01-30 14:01:02,645 [INFO] data.okx_websocket: 取消訂閱 Ticker: ETH-USDT
+2026-01-30 14:01:02,645 [INFO] data.okx_websocket: 取消訂閱 Ticker: LIT-USDT
+2026-01-30 14:01:02,646 [INFO] data.okx_websocket: 取消訂閱 Ticker: HYPE-USDT
+2026-01-30 14:01:02,646 [INFO] data.okx_websocket: 取消訂閱 Ticker: 2Z-USDT
+2026-01-30 14:01:02,646 [INFO] data.okx_websocket: 取消訂閱 Ticker: A-USDT
+2026-01-30 14:01:02,646 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 1
+2026-01-30 14:01:02,647 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 14:01:02,647 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 0
+2026-01-30 14:01:03,471 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 14:01:03,472 [ERROR] data.okx_websocket: 處理 Ticker 消息錯誤: Set changed size during iteration
+2026-01-30 14:01:03,877 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 14:01:07,116 [INFO] API: Screener cache saved to DB
+2026-01-30 14:01:07,501 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 14:01:23,868 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 14:01:25,079 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 14:01:27,561 [INFO] API: 執行自定義市場篩選: okx, Symbols: 10
+2026-01-30 14:01:31,096 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 1
+2026-01-30 14:01:31,096 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 14:01:33,767 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', '2Z-USDT', '1INCH-USDT', 'A-USDT', 'DOGE-USDT', 'SOL-USDT', 'BTC-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 14:01:33,769 [INFO] data.okx_websocket: 訂閱 Ticker: FOGO-USDT
+2026-01-30 14:01:33,770 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: FOGO-USDT
+2026-01-30 14:01:33,771 [INFO] API: 已訂閱 Ticker: FOGO-USDT
+2026-01-30 14:01:33,771 [INFO] data.okx_websocket: 訂閱 Ticker: 2Z-USDT
+2026-01-30 14:01:33,772 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: 2Z-USDT
+2026-01-30 14:01:33,772 [INFO] API: 已訂閱 Ticker: 2Z-USDT
+2026-01-30 14:01:33,772 [INFO] data.okx_websocket: 訂閱 Ticker: 1INCH-USDT
+2026-01-30 14:01:33,772 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: 1INCH-USDT
+2026-01-30 14:01:33,773 [INFO] API: 已訂閱 Ticker: 1INCH-USDT
+2026-01-30 14:01:33,773 [INFO] data.okx_websocket: 訂閱 Ticker: A-USDT
+2026-01-30 14:01:33,773 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: A-USDT
+2026-01-30 14:01:33,773 [INFO] API: 已訂閱 Ticker: A-USDT
+2026-01-30 14:01:33,773 [INFO] data.okx_websocket: 訂閱 Ticker: DOGE-USDT
+2026-01-30 14:01:33,773 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: DOGE-USDT
+2026-01-30 14:01:33,774 [INFO] API: 已訂閱 Ticker: DOGE-USDT
+2026-01-30 14:01:33,774 [INFO] data.okx_websocket: 訂閱 Ticker: SOL-USDT
+2026-01-30 14:01:33,774 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: SOL-USDT
+2026-01-30 14:01:33,774 [INFO] API: 已訂閱 Ticker: SOL-USDT
+2026-01-30 14:01:33,774 [INFO] data.okx_websocket: 訂閱 Ticker: BTC-USDT
+2026-01-30 14:01:33,774 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: BTC-USDT
+2026-01-30 14:01:33,774 [INFO] API: 已訂閱 Ticker: BTC-USDT
+2026-01-30 14:01:33,774 [INFO] data.okx_websocket: 訂閱 Ticker: ETH-USDT
+2026-01-30 14:01:33,774 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: ETH-USDT
+2026-01-30 14:01:33,775 [INFO] API: 已訂閱 Ticker: ETH-USDT
+2026-01-30 14:01:33,775 [INFO] data.okx_websocket: 訂閱 Ticker: LIT-USDT
+2026-01-30 14:01:33,775 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: LIT-USDT
+2026-01-30 14:01:33,775 [INFO] API: 已訂閱 Ticker: LIT-USDT
+2026-01-30 14:01:33,776 [INFO] data.okx_websocket: 訂閱 Ticker: HYPE-USDT
+2026-01-30 14:01:33,776 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: HYPE-USDT
+2026-01-30 14:01:33,776 [INFO] API: 已訂閱 Ticker: HYPE-USDT
+2026-01-30 14:01:35,011 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'FOGO-USDT'}
+2026-01-30 14:01:35,011 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': '2Z-USDT'}
+2026-01-30 14:01:35,011 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': '1INCH-USDT'}
+2026-01-30 14:01:35,011 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'A-USDT'}
+2026-01-30 14:01:35,011 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'DOGE-USDT'}
+2026-01-30 14:01:35,012 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'SOL-USDT'}
+2026-01-30 14:01:35,012 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'BTC-USDT'}
+2026-01-30 14:01:35,012 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'ETH-USDT'}
+2026-01-30 14:01:35,013 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'LIT-USDT'}
+2026-01-30 14:01:35,013 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'HYPE-USDT'}
+2026-01-30 14:01:38,258 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 14:01:38,501 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 14:01:59,205 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 14:01:59,433 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 14:02:16,223 [INFO] API: Starting heavy screener analysis...
+2026-01-30 14:02:18,274 [INFO] API: Updating funding rates...
+2026-01-30 14:02:22,149 [INFO] API: Screener cache saved to DB
+2026-01-30 14:02:22,150 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 14:02:29,540 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 14:02:29,808 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 14:02:51,159 [INFO] API: Funding Rate cache saved (254 symbols)
+2026-01-30 14:02:51,159 [INFO] API: Funding rates updated: 254 symbols
+2026-01-30 14:02:59,423 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 14:02:59,658 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 14:03:18,358 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 14:03:18,359 [INFO] data.okx_websocket: 取消訂閱 Ticker: FOGO-USDT
+2026-01-30 14:03:18,359 [INFO] data.okx_websocket: 取消訂閱 Ticker: 2Z-USDT
+2026-01-30 14:03:18,359 [INFO] data.okx_websocket: 取消訂閱 Ticker: 1INCH-USDT
+2026-01-30 14:03:18,360 [INFO] data.okx_websocket: 取消訂閱 Ticker: A-USDT
+2026-01-30 14:03:18,360 [INFO] data.okx_websocket: 取消訂閱 Ticker: DOGE-USDT
+2026-01-30 14:03:18,361 [INFO] data.okx_websocket: 取消訂閱 Ticker: SOL-USDT
+2026-01-30 14:03:18,361 [INFO] data.okx_websocket: 取消訂閱 Ticker: BTC-USDT
+2026-01-30 14:03:18,361 [INFO] data.okx_websocket: 取消訂閱 Ticker: ETH-USDT
+2026-01-30 14:03:18,361 [INFO] data.okx_websocket: 取消訂閱 Ticker: LIT-USDT
+2026-01-30 14:03:18,361 [INFO] data.okx_websocket: 取消訂閱 Ticker: HYPE-USDT
+2026-01-30 14:03:18,361 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 0
+2026-01-30 14:03:21,619 [INFO] API: Starting heavy screener analysis...
+2026-01-30 14:03:29,738 [INFO] API: Screener cache saved to DB
+2026-01-30 14:03:30,899 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 14:03:30,907 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 1
+2026-01-30 14:03:31,300 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 14:03:31,302 [INFO] API: 執行自定義市場篩選: okx, Symbols: 10
+2026-01-30 14:03:31,694 [INFO] API: Ticker WebSocket 客戶端連接，當前連接數: 2
+2026-01-30 14:03:31,695 [INFO] API: OKX Ticker WebSocket 已在運行中
+2026-01-30 14:03:36,916 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 14:03:37,181 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 14:03:37,976 [INFO] API: 收到 Ticker 訂閱請求: ['FOGO-USDT', '2Z-USDT', '1INCH-USDT', 'A-USDT', 'DOGE-USDT', 'SOL-USDT', 'BTC-USDT', 'ETH-USDT', 'LIT-USDT', 'HYPE-USDT']
+2026-01-30 14:03:37,976 [INFO] data.okx_websocket: 訂閱 Ticker: FOGO-USDT
+2026-01-30 14:03:37,976 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: FOGO-USDT
+2026-01-30 14:03:37,976 [INFO] API: 已訂閱 Ticker: FOGO-USDT
+2026-01-30 14:03:37,976 [INFO] data.okx_websocket: 訂閱 Ticker: 2Z-USDT
+2026-01-30 14:03:37,977 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: 2Z-USDT
+2026-01-30 14:03:37,977 [INFO] API: 已訂閱 Ticker: 2Z-USDT
+2026-01-30 14:03:37,977 [INFO] data.okx_websocket: 訂閱 Ticker: 1INCH-USDT
+2026-01-30 14:03:37,977 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: 1INCH-USDT
+2026-01-30 14:03:37,977 [INFO] API: 已訂閱 Ticker: 1INCH-USDT
+2026-01-30 14:03:37,977 [INFO] data.okx_websocket: 訂閱 Ticker: A-USDT
+2026-01-30 14:03:37,977 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: A-USDT
+2026-01-30 14:03:37,977 [INFO] API: 已訂閱 Ticker: A-USDT
+2026-01-30 14:03:37,978 [INFO] data.okx_websocket: 訂閱 Ticker: DOGE-USDT
+2026-01-30 14:03:37,978 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: DOGE-USDT
+2026-01-30 14:03:37,978 [INFO] API: 已訂閱 Ticker: DOGE-USDT
+2026-01-30 14:03:37,978 [INFO] data.okx_websocket: 訂閱 Ticker: SOL-USDT
+2026-01-30 14:03:37,978 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: SOL-USDT
+2026-01-30 14:03:37,978 [INFO] API: 已訂閱 Ticker: SOL-USDT
+2026-01-30 14:03:37,979 [INFO] data.okx_websocket: 訂閱 Ticker: BTC-USDT
+2026-01-30 14:03:37,979 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: BTC-USDT
+2026-01-30 14:03:37,979 [INFO] API: 已訂閱 Ticker: BTC-USDT
+2026-01-30 14:03:37,979 [INFO] data.okx_websocket: 訂閱 Ticker: ETH-USDT
+2026-01-30 14:03:37,979 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: ETH-USDT
+2026-01-30 14:03:37,979 [INFO] API: 已訂閱 Ticker: ETH-USDT
+2026-01-30 14:03:37,979 [INFO] data.okx_websocket: 訂閱 Ticker: LIT-USDT
+2026-01-30 14:03:37,979 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: LIT-USDT
+2026-01-30 14:03:37,980 [INFO] API: 已訂閱 Ticker: LIT-USDT
+2026-01-30 14:03:37,980 [INFO] data.okx_websocket: 訂閱 Ticker: HYPE-USDT
+2026-01-30 14:03:37,980 [INFO] data.okx_websocket: 添加 Ticker 訂閱回調: HYPE-USDT
+2026-01-30 14:03:37,981 [INFO] API: 已訂閱 Ticker: HYPE-USDT
+2026-01-30 14:03:38,020 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'FOGO-USDT'}
+2026-01-30 14:03:38,021 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': '2Z-USDT'}
+2026-01-30 14:03:38,021 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': '1INCH-USDT'}
+2026-01-30 14:03:38,021 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'A-USDT'}
+2026-01-30 14:03:38,021 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'DOGE-USDT'}
+2026-01-30 14:03:38,021 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'SOL-USDT'}
+2026-01-30 14:03:38,022 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'BTC-USDT'}
+2026-01-30 14:03:38,022 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'ETH-USDT'}
+2026-01-30 14:03:38,022 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'LIT-USDT'}
+2026-01-30 14:03:38,022 [INFO] data.okx_websocket: Ticker 訂閱確認: {'channel': 'tickers', 'instId': 'HYPE-USDT'}
+2026-01-30 14:03:46,410 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 14:03:46,633 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 14:04:02,021 [INFO] API: 執行自定義市場篩選: okx, Symbols: 2
+2026-01-30 14:04:02,809 [INFO] API: Cache miss for PROGRESS, triggering immediate analysis...
+2026-01-30 14:04:03,065 [WARNING] API: On-demand analysis failed for PROGRESS: 無法獲取 PROGRESS 的價格數據
+2026-01-30 14:04:04,997 [INFO] API: 執行自定義市場篩選: okx, Symbols: 2
+2026-01-30 14:04:29,274 [INFO] API: Starting heavy screener analysis...
+2026-01-30 14:04:36,183 [INFO] API: Screener cache saved to DB
+2026-01-30 14:04:36,183 [INFO] API: Heavy screener analysis complete. (Top: 10)
+2026-01-30 14:04:51,162 [INFO] API: Updating funding rates...
+2026-01-30 14:05:00,694 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 14:05:00,694 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 1
+2026-01-30 14:05:00,694 [INFO] API: Ticker WebSocket 客戶端主動斷開
+2026-01-30 14:05:00,695 [INFO] data.okx_websocket: 取消訂閱 Ticker: FOGO-USDT
+2026-01-30 14:05:00,695 [INFO] data.okx_websocket: 取消訂閱 Ticker: 2Z-USDT
+2026-01-30 14:05:00,695 [INFO] data.okx_websocket: 取消訂閱 Ticker: 1INCH-USDT
+2026-01-30 14:05:00,695 [INFO] data.okx_websocket: 取消訂閱 Ticker: A-USDT
+2026-01-30 14:05:00,695 [INFO] data.okx_websocket: 取消訂閱 Ticker: DOGE-USDT
+2026-01-30 14:05:00,695 [INFO] data.okx_websocket: 取消訂閱 Ticker: SOL-USDT
+2026-01-30 14:05:00,696 [INFO] data.okx_websocket: 取消訂閱 Ticker: BTC-USDT
+2026-01-30 14:05:00,696 [INFO] data.okx_websocket: 取消訂閱 Ticker: ETH-USDT
+2026-01-30 14:05:00,696 [INFO] data.okx_websocket: 取消訂閱 Ticker: LIT-USDT
+2026-01-30 14:05:00,696 [INFO] data.okx_websocket: 取消訂閱 Ticker: HYPE-USDT
+2026-01-30 14:05:00,696 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 0
+2026-01-30 14:05:00,800 [INFO] API: 🛑 Shutting down application...

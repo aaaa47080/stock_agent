@@ -41,9 +41,7 @@ logging.basicConfig(
 from api.utils import logger
 import api.globals as globals
 from api.services import (
-    load_screener_cache,
     load_market_pulse_cache,
-    load_funding_rate_cache,
     update_screener_task,
     update_market_pulse_task,
     funding_rate_update_task
@@ -85,9 +83,8 @@ async def lifespan(app: FastAPI):
         globals.bot = None
     
     # Startup: 嘗試載入快取
-    load_screener_cache()
-    load_market_pulse_cache()
-    load_funding_rate_cache()
+    # [Optimization] Screener/Funding are now In-Memory Only, no DB load needed
+    load_market_pulse_cache() # Market Pulse remains persistent (slow updates)
 
     # Startup: 啟動背景篩選器更新任務
     asyncio.create_task(update_screener_task())

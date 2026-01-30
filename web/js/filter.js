@@ -142,31 +142,69 @@ function renderSymbolList(symbols) {
     const searchVal = document.getElementById('symbol-search').value.toUpperCase().trim();
     const filtered = symbols.filter(s => s.includes(searchVal));
 
-    const toRender = filtered.sort((a, b) => {
-        const aSelected = window.globalSelectedSymbols && window.globalSelectedSymbols.includes(a);
-        const bSelected = window.globalSelectedSymbols && window.globalSelectedSymbols.includes(b);
-        if (aSelected && !bSelected) return -1;
-        if (!aSelected && bSelected) return 1;
-        return a.localeCompare(b);
-    }).slice(0, 200);
+    const selected = [];
+    const unselected = [];
 
-    if (toRender.length === 0) {
-        container.innerHTML = '<div class="text-center py-8 text-slate-500">沒有找到符合的幣種</div>';
-    } else {
-        toRender.forEach(s => {
-            const isChecked = window.globalSelectedSymbols && window.globalSelectedSymbols.includes(s);
-            const div = document.createElement('div');
-            div.className = `flex items-center justify-between p-3 rounded-lg cursor-pointer transition select-none ${isChecked ? 'bg-blue-900/30 border border-blue-500/50' : 'hover:bg-slate-800 border border-transparent'}`;
-            div.onclick = () => toggleSymbolSelection(s);
-            div.innerHTML = `
-                <span class="text-sm font-mono ${isChecked ? 'text-blue-300 font-bold' : 'text-slate-300'}">${s}</span>
-                <div class="w-5 h-5 rounded border ${isChecked ? 'bg-blue-600 border-blue-600' : 'border-slate-600 bg-slate-800'} flex items-center justify-center transition">
-                    ${isChecked ? '<i data-lucide="check" class="w-3.5 h-3.5 text-white"></i>' : ''}
-                </div>
-            `;
+    // [Optimization] Split into two lists for better UX
+    filtered.sort().forEach(s => {
+        if (window.globalSelectedSymbols && window.globalSelectedSymbols.includes(s)) {
+            selected.push(s);
+        } else {
+            unselected.push(s);
+        }
+    });
+
+    // Render "Selected" section first
+    if (selected.length > 0) {
+        const header = document.createElement('div');
+        // [Fix] Removed sticky positioning to prevent blocking the view when scrolling
+        header.className = "text-xs font-bold text-primary/80 uppercase tracking-wider px-3 py-2 mt-2 bg-surfaceHighlight/30 rounded-lg border border-primary/10";
+        header.innerHTML = `已選擇 (Selected) <span class="ml-1 px-1.5 py-0.5 bg-primary/20 rounded-full text-primary text-[10px]">${selected.length}</span>`;
+        container.appendChild(header);
+
+        selected.forEach(s => {
+            const div = createSymbolItem(s, true);
             container.appendChild(div);
         });
     }
+
+    // Render "All" section
+    if (unselected.length > 0) {
+        if (selected.length > 0) {
+            const divider = document.createElement('div');
+            divider.className = "text-xs font-bold text-textMuted uppercase tracking-wider px-3 py-2 mt-4 mb-2 border-b border-white/5";
+            divider.innerText = "未選擇 (Unselected)";
+            container.appendChild(divider);
+        }
+
+        // Limit rendering for performance if search is empty
+        const limit = searchVal ? 200 : 100;
+        unselected.slice(0, limit).forEach(s => {
+            const div = createSymbolItem(s, false);
+            container.appendChild(div);
+        });
+    }
+
+    if (selected.length === 0 && unselected.length === 0) {
+        container.innerHTML = '<div class="text-center py-8 text-slate-500">沒有找到符合的幣種</div>';
+    }
+
+    document.getElementById('selected-count-modal').innerText = (window.globalSelectedSymbols || []).length;
+    lucide.createIcons();
+}
+
+// Helper to create list item
+function createSymbolItem(s, isChecked) {
+    const div = document.createElement('div');
+    div.className = `flex items-center justify-between p-3 rounded-lg cursor-pointer transition select-none ${isChecked ? 'bg-blue-900/20 border border-blue-500/30' : 'hover:bg-slate-800 border border-transparent'}`;
+    div.onclick = () => toggleSymbolSelection(s);
+    div.innerHTML = `
+        <span class="text-sm font-mono ${isChecked ? 'text-blue-300 font-bold' : 'text-slate-300'}">${s}</span>
+        <div class="w-5 h-5 rounded border ${isChecked ? 'bg-blue-600 border-blue-600' : 'border-slate-600 bg-slate-800'} flex items-center justify-center transition">
+            ${isChecked ? '<i data-lucide="check" class="w-3.5 h-3.5 text-white"></i>' : ''}
+        </div>
+    `;
+    return div;
 
     document.getElementById('selected-count-modal').innerText = (window.globalSelectedSymbols || []).length;
     lucide.createIcons();
@@ -177,6 +215,17 @@ function toggleSymbolSelection(s) {
         window.globalSelectedSymbols = window.globalSelectedSymbols.filter(item => item !== s);
     } else {
         if (!window.globalSelectedSymbols) window.globalSelectedSymbols = [];
+
+        // [Restriction] Max 10 items limit as requested by user
+        if (window.globalSelectedSymbols.length >= 10) {
+            if (typeof showToast === 'function') {
+                showToast('最多只能選擇 10 個幣種', 'warning');
+            } else {
+                alert('最多只能選擇 10 個幣種 (Max 10 items)');
+            }
+            return;
+        }
+
         window.globalSelectedSymbols.push(s);
     }
     renderSymbolList(window.allMarketSymbols || []);
@@ -233,11 +282,4 @@ function applyGlobalFilter() {
     if (!document.getElementById('pulse-tab').classList.contains('hidden')) {
         checkMarketPulse(true);
     }
-}
-
-function clearGlobalFilter() {
-    window.globalSelectedSymbols = [...DEFAULT_MARKET_SYMBOLS];
-    localStorage.removeItem('marketWatchSymbols');
-    console.log('[Filter] 已重置為預設熱門幣種');
-    applyGlobalFilter();
 }

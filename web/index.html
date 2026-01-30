@@ -680,8 +680,7 @@
                         class="flex-1 bg-background border border-white/5 rounded-xl px-3 py-2 text-xs text-textMuted outline-none">
                         <option value="okx">OKX</option>
                     </select>
-                    <button onclick="clearGlobalFilter()"
-                        class="px-3 py-2 bg-background border border-white/5 rounded-xl text-xs text-textMuted uppercase hover:bg-white/5 transition">Reset</button>
+
                 </div>
             </div>
 
@@ -805,24 +804,34 @@
                 </div>
             </div>
             <script>
-                // 嚴格檢測 Pi Browser 環境
+                // Optimized Pi Browser Detection (Polling vs Immediate Fail)
                 (function () {
-                    const isValidPiBrowser = typeof window.Pi !== 'undefined' &&
-                        window.Pi !== null &&
-                        typeof window.Pi.authenticate === 'function' &&
-                        typeof window.Pi.init === 'function';
+                    let attempts = 0;
+                    const maxAttempts = 30; // Check for 3 seconds (30 * 100ms)
 
-                    console.log('Pi Browser 環境檢測:', {
-                        hasPi: typeof window.Pi !== 'undefined',
-                        hasAuth: typeof window.Pi?.authenticate === 'function',
-                        hasInit: typeof window.Pi?.init === 'function',
-                        result: isValidPiBrowser
-                    });
+                    const checkPi = () => {
+                        const isValidPiBrowser = typeof window.Pi !== 'undefined' &&
+                            window.Pi !== null &&
+                            typeof window.Pi.authenticate === 'function' &&
+                            typeof window.Pi.init === 'function';
 
-                    if (isValidPiBrowser) {
-                        document.getElementById('pi-login-btn').style.display = 'flex';
-                        document.getElementById('not-pi-browser-msg').style.display = 'none';
-                    }
+                        if (isValidPiBrowser) {
+                            console.log('✅ Pi SDK Detected (Attempt ' + (attempts + 1) + ')');
+                            document.getElementById('pi-login-btn').style.display = 'flex';
+                            document.getElementById('not-pi-browser-msg').style.display = 'none';
+                            return; // Stop checking
+                        }
+
+                        attempts++;
+                        if (attempts < maxAttempts) {
+                            setTimeout(checkPi, 100); // Poll every 100ms
+                        } else {
+                            console.warn('⚠️ Pi SDK not detected after 3 seconds.');
+                            // Keep default "Not Pi Browser" message
+                        }
+                    };
+
+                    checkPi(); // Start checking
                 })();
             </script>
 

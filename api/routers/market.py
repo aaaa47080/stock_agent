@@ -141,7 +141,7 @@ async def run_screener(request: ScreenerRequest):
                 None, 
                 lambda: screen_top_cryptos(
                     exchange=request.exchange, 
-                    limit=10, 
+                    limit=50, # [Optimization] Consistent 50 limit for fallback
                     interval="1d",
                     target_symbols=None
                 )
