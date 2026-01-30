@@ -32,9 +32,21 @@ from fastapi import Depends
 
 router = APIRouter()
 
+# In-memory cache for static symbol lists
+SYMBOL_CACHE = {
+    "okx": {"data": None, "timestamp": 0}
+}
+
 @router.get("/api/market/symbols")
 async def get_market_symbols(exchange: str = "okx"):
-    """Get all available symbols for a given exchange."""
+    """Get all available symbols for a given exchange (Cached for 60 minutes)."""
+    # Check cache
+    now = datetime.now().timestamp()
+    if exchange in SYMBOL_CACHE:
+         cache = SYMBOL_CACHE[exchange]
+         if cache["data"] and (now - cache["timestamp"]) < 3600:
+             return {"symbols": cache["data"]}
+
     logger.info(f"Requesting symbol list for exchange: {exchange}")
     try:
         loop = asyncio.get_running_loop()
@@ -46,10 +58,21 @@ async def get_market_symbols(exchange: str = "okx"):
 
         symbols = await loop.run_in_executor(None, fetch_task)
         
+        # Update cache
+        SYMBOL_CACHE[exchange] = {
+            "data": symbols,
+            "timestamp": now
+        }
+        
         logger.info(f"Successfully fetched {len(symbols)} symbols from {exchange}")
         return {"symbols": symbols}
     except Exception as e:
         logger.error(f"Failed to fetch symbols from {exchange}: {e}")
+        # Return stale cache if available when error occurs
+        if exchange in SYMBOL_CACHE and SYMBOL_CACHE[exchange]["data"]:
+             logger.warning("Returning stale cache due to error.")
+             return {"symbols": SYMBOL_CACHE[exchange]["data"]}
+        
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/api/screener")

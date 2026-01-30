@@ -241,20 +241,49 @@ async def refresh_all_market_pulse_data(target_symbols: List[str] = None):
     FIXED_SOURCES = ['google', 'cryptopanic', 'newsapi', 'cryptocompare']
     sem = asyncio.Semaphore(2)  # 減少並發數，避免 OKX API SSL 連接問題
     
+    # [Optimization] Batch saving variables
+    unsaved_changes = 0
+    BATCH_SIZE = 10  # Reduced DB write frequency by 90%
+    save_lock = asyncio.Lock()
+
+    async def _safe_save_cache():
+        """Helper to save cache securely using lock"""
+        async with save_lock:
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, set_cache, "MARKET_PULSE", MARKET_PULSE_CACHE)
+            logger.info(f"💾 [Batch Save] Saved Market Pulse cache to DB")
+
     async def _tracked_update(sym):
+        nonlocal unsaved_changes
         try:
             await update_single_market_pulse(sym, FIXED_SOURCES, semaphore=sem)
-            # 成功後強制寫入 DB，確保續傳點被永久保存
+            
+            # Update success behavior: Mark timestamp but DON'T save immediately
             if sym in MARKET_PULSE_CACHE:
                 MARKET_PULSE_CACHE[sym]["timestamp"] = window_start_iso
-                loop = asyncio.get_running_loop()
-                await loop.run_in_executor(None, set_cache, "MARKET_PULSE", MARKET_PULSE_CACHE)
+                
+                # Check if we should trigger a batch save
+                should_save = False
+                async with save_lock: # Reuse lock for counter safety if needed, or just be loose about it
+                     unsaved_changes += 1
+                     if unsaved_changes >= BATCH_SIZE:
+                         should_save = True
+                         unsaved_changes = 0 # Reset counter
+                
+                if should_save:
+                    await _safe_save_cache()
+
         finally:
             ANALYSIS_STATUS["completed"] += 1
 
     tasks = [_tracked_update(sym) for sym in symbols_to_process]
     await asyncio.gather(*tasks)
     
+    # Final save to capture any remaining unsaved changes
+    if unsaved_changes > 0:
+        logger.info(f"💾 [Final Save] Saving remaining {unsaved_changes} updates...")
+        await _safe_save_cache()
+
     ANALYSIS_STATUS["is_running"] = False
     return window_start_iso
 
@@ -347,8 +376,29 @@ async def update_market_pulse_task():
         except Exception as e:
             logger.error(f"❌ [Background] Market Pulse update cycle error: {e}")
         
-        # 之後的迴圈都等待完整的間隔時間
-        initial_sleep_time = MARKET_PULSE_UPDATE_INTERVAL
+        # [Optimization] Align next update to the next 4-hour wall clock mark
+        # Instead of sleeping fixed 4 hours, we sleep until 00:00, 04:00, 08:00...
+        now = datetime.now()
+        current_block = now.hour // 4
+        next_block_hour = (current_block + 1) * 4
+        
+        # Handle day rollover (e.g. 24 -> 00 of next day)
+        if next_block_hour >= 24:
+            next_target = now.replace(hour=0, minute=0, second=0, microsecond=0) + getattr(datetime, 'timedelta')(days=1)
+        else:
+            next_target = now.replace(hour=next_block_hour, minute=0, second=0, microsecond=0)
+            
+        # Add a small buffer (e.g., 60 seconds) to ensure data providers have closed their candles
+        next_target += getattr(datetime, 'timedelta')(seconds=60)
+        
+        seconds_until_next = (next_target - datetime.now()).total_seconds()
+        
+        # Safety check: if calculation is weird, fallback to 5 minutes
+        if seconds_until_next < 0:
+             seconds_until_next = 300
+             
+        initial_sleep_time = seconds_until_next
+        logger.info(f"📅 Next scheduled update aligned to: {next_target} (in {initial_sleep_time/60:.1f} minutes)")
 
 async def update_screener_prices_fast():
     """
