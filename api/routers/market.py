@@ -17,7 +17,6 @@ from api.globals import (
     ANALYSIS_STATUS
 )
 from api.services import (
-    save_screener_cache,
     save_market_pulse_cache,
     update_funding_rates,
     refresh_all_market_pulse_data
@@ -166,8 +165,8 @@ async def run_screener(request: ScreenerRequest):
             cached_screener_result["timestamp"] = timestamp_str
             cached_screener_result["data"] = result_data
             
-            loop = asyncio.get_running_loop()
-            await loop.run_in_executor(None, save_screener_cache, cached_screener_result)
+            # [Optimization] RAM Only - No DB write
+            logger.info("Manual screener refresh complete (RAM updated).")
             return result_data
         except Exception as e:
             logger.error(f"篩選器錯誤: {e}", exc_info=True)

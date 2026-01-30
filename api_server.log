@@ -10009,3 +10009,10 @@ ConnectionResetError: [WinError 10054] 遠端主機已強制關閉一個現存�
 2026-01-30 14:05:00,696 [INFO] data.okx_websocket: 取消訂閱 Ticker: HYPE-USDT
 2026-01-30 14:05:00,696 [INFO] API: Ticker WebSocket 客戶端斷開，當前連接數: 0
 2026-01-30 14:05:00,800 [INFO] API: 🛑 Shutting down application...
+2026-01-30 15:40:46,262 [WARNING] API: ⚠️ Rate limiting not available: No module named 'slowapi'
+2026-01-30 15:40:46,263 [WARNING] API: Install slowapi: pip install slowapi
+2026-01-30 15:40:46,264 [INFO] API: ✅ Audit logging enabled
+2026-01-30 15:40:46,310 [INFO] API: 🚀 Pi Crypto Insight API Server 啟動中...
+2026-01-30 15:40:46,310 [INFO] API: 🏠 本地網址: http://localhost:8111
+2026-01-30 15:40:46,310 [INFO] API: 📱 請在 Pi Browser 中使用 HTTPS 網址訪問 (如透過 ngrok)
+2026-01-30 15:40:46,408 [INFO] API: 🔄 Initializing database...

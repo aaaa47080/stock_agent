@@ -998,6 +998,17 @@
 
         // Navigation Logic (Updated with Smooth Transitions)
         async function switchTab(tabId, fromPopState = false) {
+            // [Security] Strict Login Check
+            if (window.AuthManager && !window.AuthManager.isLoggedIn()) {
+                const modal = document.getElementById('login-modal');
+                if (modal && modal.classList.contains('hidden')) {
+                    console.warn('⚠️ Access denied: User not logged in. Showing login modal.');
+                    modal.classList.remove('hidden');
+                    // Optional: prevent switching if we want to lock them on a specific tab, 
+                    // but showing the modal overlay is usually enough.
+                }
+            }
+
             const currentTab = document.querySelector('.tab-content:not(.hidden)');
             const targetTab = document.getElementById(tabId + '-tab');
 

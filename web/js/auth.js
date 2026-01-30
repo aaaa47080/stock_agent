@@ -902,25 +902,9 @@ window.handlePiLogin = async () => {
         return;
     }
 
-    // 第二步：快速驗證 Pi Browser 環境是否有效（1.5 秒內）
-    DebugLog.info('開始快速環境驗證...');
-    const envCheck = await AuthManager.verifyPiBrowserEnvironment();
-
-    if (!envCheck.valid) {
-        DebugLog.warn('Pi Browser 環境驗證失敗', envCheck);
-        if (typeof showAlert === 'function') {
-            await showAlert({
-                title: 'Pi Browser 環境異常',
-                message: '無法連接到 Pi Network。\n\n請確認：\n1. 您正在使用 Pi Browser\n2. 已登入 Pi 帳號\n3. 網路連線正常',
-                type: 'warning'
-            });
-        } else if (typeof showToast === 'function') {
-            showToast('Pi Browser 環境異常，請確認已登入 Pi 帳號', 'warning');
-        } else {
-            alert('Pi Browser 環境異常，請確認已登入 Pi 帳號');
-        }
-        return;
-    }
+    // 第二步：(已優化) 跳過耗時的環境驗證，直接進行認證
+    // 原本的 verifyPiBrowserEnvironment 可能導致 1.5 秒延遲
+    DebugLog.info('跳過環境檢查，直接請求認證...');
 
     // 第三步：環境有效，進行認證
     DebugLog.info('環境驗證通過，開始認證...');
