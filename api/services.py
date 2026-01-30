@@ -6,7 +6,8 @@ from typing import List, Dict, Any
 from core.database import get_cache, set_cache
 from core.config import (
     SUPPORTED_EXCHANGES, MARKET_PULSE_TARGETS, 
-    MARKET_PULSE_UPDATE_INTERVAL, FUNDING_RATE_UPDATE_INTERVAL
+    MARKET_PULSE_UPDATE_INTERVAL, FUNDING_RATE_UPDATE_INTERVAL,
+    SCREENER_UPDATE_INTERVAL_MINUTES
 )
 from analysis.crypto_screener import screen_top_cryptos
 from analysis.market_pulse import get_market_pulse

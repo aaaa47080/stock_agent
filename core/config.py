@@ -163,10 +163,10 @@ SCREENER_DEFAULT_INTERVAL = "1d"
 SCREENER_TARGET_SYMBOLS = ["BTC", "ETH", "SOL", "PI"]
 
 # 自動更新間隔 (分鐘)
-SCREENER_UPDATE_INTERVAL_MINUTES = 5  # [Optimization] Increased to 5 minutes to reduce load
+SCREENER_UPDATE_INTERVAL_MINUTES = int(os.getenv("SCREENER_UPDATE_INTERVAL_MINUTES", "5"))
 
 # 資金費率自動更新間隔 (秒)
-FUNDING_RATE_UPDATE_INTERVAL = 300  # [Optimization] Increased to 5 minutes to reduce load
+FUNDING_RATE_UPDATE_INTERVAL = int(os.getenv("FUNDING_RATE_UPDATE_INTERVAL", "300"))
 
 # === 市場脈動 (Market Pulse) 配置 ===
 # 固定監控的幣種列表 (優先級最高)
