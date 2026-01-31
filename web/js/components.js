@@ -158,6 +158,12 @@ const Components = {
                     <span>好友</span>
                     <span id="friends-request-badge" class="hidden px-1.5 py-0.5 text-xs bg-danger text-white rounded-full">0</span>
                 </button>
+                <button onclick="SocialHub.switchSubTab('blocked')" id="social-tab-blocked"
+                    class="social-sub-tab flex-1 py-2.5 px-4 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 text-textMuted hover:text-textMain hover:bg-white/5">
+                    <i data-lucide="ban" class="w-4 h-4"></i>
+                    <span>黑名單</span>
+                    <span id="blocked-count-badge" class="hidden px-1.5 py-0.5 text-xs bg-white/10 text-white rounded-full">0</span>
+                </button>
             </div>
 
             <!-- ==================== MESSAGES SUB-TAB ==================== -->
@@ -286,14 +292,15 @@ const Components = {
                             <h3 class="font-bold text-textMuted text-lg flex items-center gap-2">
                                 <i data-lucide="ban" class="w-5 h-5 text-danger"></i>
                                 Blocked Users
-                                <span id="blocked-count-badge" class="px-2 py-0.5 text-xs bg-white/10 text-textMuted rounded-full">0</span>
+                                <!-- Badge moved to tab -->
                             </h3>
                             <i data-lucide="chevron-down" id="blocked-chevron" class="w-5 h-5 text-textMuted transition-transform"></i>
                         </button>
                         <div id="blocked-list" class="px-6 pb-6 hidden">
-                            <div class="space-y-2" id="blocked-users-container">
+                            <!-- Content moved to blocked tab -->
+                            <div class="space-y-2">
                                 <div class="text-center text-textMuted py-4 opacity-50">
-                                    No blocked users
+                                    Moved to 'Blocked' tab
                                 </div>
                             </div>
                         </div>
