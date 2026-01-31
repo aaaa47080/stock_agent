@@ -364,7 +364,7 @@ def get_all_configs(category: Optional[str] = None, public_only: bool = True) ->
             params.append(category)
 
         if public_only:
-            query += ' AND is_public = TRUE'
+            query += ' AND is_public = 1'
 
         c.execute(query, params)
         rows = c.fetchall()
@@ -454,7 +454,7 @@ def set_config(key: str, value: Any, value_type: str = 'string',
                 description = EXCLUDED.description,
                 is_public = EXCLUDED.is_public,
                 updated_at = CURRENT_TIMESTAMP
-        ''', (key, serialized_value, value_type, category, description, is_public))
+        ''', (key, serialized_value, value_type, category, description, int(is_public)))
 
         # 寫入審計日誌
         _write_audit_log(c, key, old_value, serialized_value, changed_by)

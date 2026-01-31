@@ -530,16 +530,21 @@ async def websocket_endpoint(websocket: WebSocket):
                 return
 
             # Verify Token
-            try:
-                payload = verify_token(token)
-                user_id = payload.get("sub")
-                if not user_id:
-                    raise HTTPException(status_code=401, detail="Invalid token payload")
-            except Exception as e:
-                logger.warning(f"WebSocket auth failed: {e}")
-                await websocket.send_json({"type": "error", "message": "Invalid Token"})
-                await websocket.close()
-                return
+            if os.getenv("TEST_MODE") == "True" and token.startswith("test-"):
+                 # Development: Allow raw test tokens
+                 user_id = token
+                 logger.info(f"WebSocket Dev Auth: {user_id}")
+            else:
+                try:
+                    payload = verify_token(token)
+                    user_id = payload.get("sub")
+                    if not user_id:
+                        raise HTTPException(status_code=401, detail="Invalid token payload")
+                except Exception as e:
+                    logger.warning(f"WebSocket auth failed: {e}")
+                    await websocket.send_json({"type": "error", "message": "Invalid Token"})
+                    await websocket.close()
+                    return
 
             # Optional: Check if the token user matches the claimed user_id if provided
             if auth_message.get("user_id") and auth_message["user_id"] != user_id:

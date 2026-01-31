@@ -356,24 +356,12 @@ def mark_as_read(conversation_id: int, user_id: str) -> Dict:
         if not conv:
             return {"success": False, "error": "conversation_not_found"}
 
-        # DEBUG: 記錄更新前的訊息狀態
-        c.execute('''
-            SELECT id, from_user_id, to_user_id, is_read
-            FROM dm_messages
-            WHERE conversation_id = %s
-            ORDER BY id DESC LIMIT 5
-        ''', (conversation_id,))
-        before_rows = c.fetchall()
-        print(f"[DEBUG mark_as_read] user_id={user_id}, conv_id={conversation_id}")
-        print(f"[DEBUG mark_as_read] 更新前訊息: {before_rows}")
-
         c.execute('''
             UPDATE dm_messages
-            SET is_read = TRUE, read_at = NOW()
-            WHERE conversation_id = %s AND to_user_id = %s AND from_user_id != %s AND is_read = FALSE
+            SET is_read = 1, read_at = NOW()
+            WHERE conversation_id = %s AND to_user_id = %s AND from_user_id != %s AND is_read = 0
         ''', (conversation_id, user_id, user_id))
         updated_count = c.rowcount
-        print(f"[DEBUG mark_as_read] 更新了 {updated_count} 條訊息 (to_user_id={user_id})")
 
         # 重置對話中當前用戶的未讀數
         if conv["user1_id"] == user_id:
@@ -382,16 +370,6 @@ def mark_as_read(conversation_id: int, user_id: str) -> Dict:
             c.execute('UPDATE dm_conversations SET user2_unread_count = 0 WHERE id = %s', (conversation_id,))
 
         conn.commit()
-
-        # DEBUG: 記錄更新後的訊息狀態
-        c.execute('''
-            SELECT id, from_user_id, to_user_id, is_read
-            FROM dm_messages
-            WHERE conversation_id = %s
-            ORDER BY id DESC LIMIT 5
-        ''', (conversation_id,))
-        after_rows = c.fetchall()
-        print(f"[DEBUG mark_as_read] 更新後訊息: {after_rows}")
 
         return {
             "success": True,

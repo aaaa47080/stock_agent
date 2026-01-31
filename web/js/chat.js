@@ -105,7 +105,9 @@ async function loadSessions() {
 
     try {
         // 使用 user_id 來過濾該用戶的 sessions
-        const userId = window.currentUserId || 'local_user';
+        // Use dynamic userId or default to TestUser if in Test Mode (detected by window.TEST_MODE or similar, but simpler to just try test-user-001 if specific test setup)
+        // Better: Use the window.currentUserId which should be set by auth.
+        const userId = window.currentUserId || (window.currentUser ? window.currentUser.user_id : null) || 'local_user';
         const res = await fetch(`/api/chat/sessions?user_id=${encodeURIComponent(userId)}`);
         const data = await res.json();
         const list = document.getElementById('chat-session-list');
@@ -475,7 +477,7 @@ async function deleteSession(event, sessionId) {
         await fetch(`/api/chat/sessions/${sessionId}`, { method: 'DELETE' });
 
         // 重新獲取 sessions 列表（需要傳入 user_id）
-        const userId = window.currentUserId || 'local_user';
+        const userId = window.currentUserId || (window.currentUser ? window.currentUser.user_id : null) || 'local_user';
         const res = await fetch(`/api/chat/sessions?user_id=${encodeURIComponent(userId)}`);
         const sessions = await res.json();
 
@@ -530,7 +532,7 @@ async function sendMessage() {
     // Lazy Creation: 如果沒有 currentSessionId，先建立新的 Session
     if (!currentSessionId) {
         try {
-            const userId = window.currentUserId || 'local_user';
+            const userId = window.currentUserId || (window.currentUser ? window.currentUser.user_id : null) || 'local_user';
             // 這裡可以傳遞 title (e.g., text.substring(0, 20)) 但後端通常會預設為 New Chat 或由第一條訊息生成
             const createRes = await fetch(`/api/chat/sessions?user_id=${encodeURIComponent(userId)}`, { method: 'POST' });
             const createData = await createRes.json();

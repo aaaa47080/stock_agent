@@ -21,7 +21,7 @@ from api.services import (
     update_funding_rates,
     refresh_all_market_pulse_data
 )
-from analysis.crypto_screener import screen_top_cryptos
+from analysis.crypto_screener_light import screen_top_cryptos_light as screen_top_cryptos
 from analysis.market_pulse import get_market_pulse
 import numpy as np
 from datetime import datetime
@@ -83,33 +83,35 @@ async def run_screener(request: ScreenerRequest):
         logger.info(f"執行自定義市場篩選: {request.exchange}, Symbols: {len(request.symbols)}")
         try:
              loop = asyncio.get_running_loop()
+             
+             # [Feature] Trigger background analysis for these symbols if missing
+             from api.services import trigger_on_demand_analysis
+             loop.create_task(trigger_on_demand_analysis(request.symbols))
+             
+             # [Optimization] Use lightweight screener - no need to rename columns
              summary_df, top_performers, oversold, overbought = await loop.run_in_executor(
                 None, 
                 lambda: screen_top_cryptos(
                     exchange=request.exchange, 
                     limit=len(request.symbols), 
                     interval="1d",
-                    target_symbols=request.symbols
+                    target_symbols=request.symbols,
+                    market_pulse_data=MARKET_PULSE_CACHE # Pass cache to merge signals
                 )
             )
-             # ... formatting ...
-             rename_map = {
-                "Current Price": "Close", 
-                "24h Change %": "price_change_24h", 
-                "7d Change %": "price_change_7d", "Signals": "signals"
-            }
-             top_performers = top_performers.rename(columns=rename_map).replace({np.nan: None})
-             oversold = oversold.rename(columns=rename_map).replace({np.nan: None})
-             overbought = overbought.rename(columns=rename_map).replace({np.nan: None})
+             # Lightweight screener already returns correct column names
+             top_performers = top_performers.replace({np.nan: None}) if not top_performers.empty else top_performers
+             oversold = oversold.replace({np.nan: None}) if not oversold.empty else oversold
+             overbought = overbought.replace({np.nan: None}) if not overbought.empty else overbought
              return {
-                "top_performers": top_performers.to_dict(orient="records"),
-                "oversold": oversold.to_dict(orient="records"),
-                "overbought": overbought.to_dict(orient="records"),
+                "top_gainers": top_performers.to_dict(orient="records"), 
+                "top_losers": oversold.to_dict(orient="records"),
+                "top_volume": summary_df.to_dict(orient="records"),
                 "last_updated": datetime.now().isoformat()
             }
         except Exception as e:
-             logger.error(f"自定義篩選失敗: {e}", exc_info=True)
-             raise HTTPException(status_code=500, detail=str(e))
+            logger.error(f"自定義篩選失敗: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail=str(e))
 
     # 2. 檢查快取
     if not request.refresh and cached_screener_result["data"] is not None:
@@ -120,52 +122,44 @@ async def run_screener(request: ScreenerRequest):
         # 如果是強制刷新，我們還是得等
         logger.info(f"Cache miss/refresh (locked), waiting for background analysis... (Request refresh: {request.refresh})")
         async with screener_lock:
-             # 等待鎖釋放後，再次檢查快取
-             # 如果是強制刷新，且剛跑完的數據很新 (e.g. < 5秒)，或許可以用？ 
-             # 但簡單起見，如果鎖釋放了，通常代表有新數據，直接返回即可
              if cached_screener_result["data"] is not None:
                  return cached_screener_result["data"]
 
     # 4. 若等待後仍無數據，或未鎖定，則執行同步更新 (Double-check Locking)
-    # 使用鎖防止多個請求同時觸發
     async with screener_lock:
-        # Double check: 如果是並發請求，前一個可能已經更新了
         if not request.refresh and cached_screener_result["data"] is not None:
             return cached_screener_result["data"]
             
         logger.info(f"無快取且無背景任務，執行即時市場篩選: {request.exchange}")
         try:
             loop = asyncio.get_running_loop()
-            summary_df, top_performers, oversold, overbought = await loop.run_in_executor(
+            df_volume, df_gainers, df_losers, _ = await loop.run_in_executor(
                 None, 
                 lambda: screen_top_cryptos(
                     exchange=request.exchange, 
-                    limit=50, # [Optimization] Consistent 50 limit for fallback
+                    limit=10,
                     interval="1d",
-                    target_symbols=None
+                    target_symbols=None,
+                    market_pulse_data=MARKET_PULSE_CACHE # Pass cache to merge signals
                 )
             )
-            # ... formatting ...
-            rename_map = {
-                "Current Price": "Close", "24h Change %": "price_change_24h", 
-                "7d Change %": "price_change_7d", "Signals": "signals"
-            }
-            top_performers = top_performers.rename(columns=rename_map).replace({np.nan: None})
-            oversold = oversold.rename(columns=rename_map).replace({np.nan: None})
-            overbought = overbought.rename(columns=rename_map).replace({np.nan: None})
+            
+            # Handle potential None/NaN
+            top_performers = df_gainers.replace({np.nan: None}) if not df_gainers.empty else df_gainers
+            top_losers = df_losers.replace({np.nan: None}) if not df_losers.empty else df_losers
+            top_volume = df_volume.replace({np.nan: None}) if not df_volume.empty else df_volume
             
             timestamp_str = datetime.now().isoformat()
             result_data = {
-                "top_performers": top_performers.to_dict(orient="records"),
-                "oversold": oversold.to_dict(orient="records"),
-                "overbought": overbought.to_dict(orient="records"),
+                "top_gainers": top_performers.to_dict(orient="records"), 
+                "top_losers": top_losers.to_dict(orient="records"),      
+                "top_volume": top_volume.to_dict(orient="records"),      
                 "last_updated": timestamp_str
             }
             
             cached_screener_result["timestamp"] = timestamp_str
             cached_screener_result["data"] = result_data
             
-            # [Optimization] RAM Only - No DB write
             logger.info("Manual screener refresh complete (RAM updated).")
             return result_data
         except Exception as e:
@@ -217,10 +211,15 @@ async def get_klines_data(request: KlineRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/api/funding-rates")
-async def get_funding_rates(refresh: bool = False):
+async def get_funding_rates(refresh: bool = False, symbols: str = None, limit: int = 5):
     """
-    獲取所有幣種的資金費率。
+    獲取資金費率（支援按幣種篩選）
     資金費率為正表示多頭付給空頭（市場看多），負值表示空頭付給多頭（市場看空）。
+    
+    Args:
+        refresh: 是否強制刷新
+        symbols: 逗號分隔的幣種列表（如 "BTC,ETH,SOL"），為空時返回極端值
+        limit: 當 symbols 為空時，每個類別返回的數量（預設5個最高 + 5個最低）
     """
     try:
         # 如果要求刷新或快取為空，則更新
@@ -230,22 +229,53 @@ async def get_funding_rates(refresh: bool = False):
         data = FUNDING_RATE_CACHE.get("data", {})
         timestamp = FUNDING_RATE_CACHE.get("timestamp")
 
-        # 計算極端值統計
-        rates = [(sym, info.get("fundingRate", 0)) for sym, info in data.items()]
-        sorted_by_rate = sorted(rates, key=lambda x: x[1], reverse=True)
+        # 解析 symbols 參數
+        if symbols:
+            # 用戶指定了幣種列表
+            symbol_list = [s.strip().upper() for s in symbols.split(',') if s.strip()]
+            # 只返回這些幣種的資金費率
+            filtered_data = {}
+            for sym in symbol_list:
+                # 嘗試多種格式匹配
+                normalized_sym = sym.replace("-USDT", "").replace("-SWAP", "").replace("USDT", "")
+                if normalized_sym in data:
+                    filtered_data[normalized_sym] = data[normalized_sym]
+            
+            # 從 filtered_data 中計算 top_bullish 和 top_bearish
+            if filtered_data:
+                rates = [(sym, info.get("fundingRate", 0)) for sym, info in filtered_data.items()]
+                sorted_by_rate = sorted(rates, key=lambda x: x[1], reverse=True)
+                top_bullish = sorted_by_rate[:min(5, len(sorted_by_rate))]
+                top_bearish = sorted_by_rate[-min(5, len(sorted_by_rate)):][::-1] if len(sorted_by_rate) > 5 else []
+            else:
+                top_bullish = []
+                top_bearish = []
+            
+            return {
+                "timestamp": timestamp,
+                "total_count": len(data),
+                "filtered_count": len(filtered_data),
+                "data": filtered_data,
+                "top_bullish": [{"symbol": s, "fundingRate": r} for s, r in top_bullish],
+                "top_bearish": [{"symbol": s, "fundingRate": r} for s, r in top_bearish]
+            }
+        else:
+            # 沒有指定幣種，返回極端值（Top 10）
+            rates = [(sym, info.get("fundingRate", 0)) for sym, info in data.items()]
+            sorted_by_rate = sorted(rates, key=lambda x: x[1], reverse=True)
 
-        # 前5個最高（多頭擁擠）
-        top_bullish = sorted_by_rate[:5]
-        # 後5個最低（空頭擁擠）
-        top_bearish = sorted_by_rate[-5:][::-1]
+            # 前N個最高（多頭擁擠）
+            top_bullish = sorted_by_rate[:limit]
+            # 後N個最低（空頭擁擠）
+            top_bearish = sorted_by_rate[-limit:][::-1]
 
-        return {
-            "timestamp": timestamp,
-            "total_count": len(data),
-            "data": data,
-            "top_bullish": [{"symbol": s, "fundingRate": r} for s, r in top_bullish],
-            "top_bearish": [{"symbol": s, "fundingRate": r} for s, r in top_bearish]
-        }
+            return {
+                "timestamp": timestamp,
+                "total_count": len(data),
+                "data": {sym: data[sym] for sym, _ in top_bullish + top_bearish},  # 只返回極端值
+                "top_bullish": [{"symbol": s, "fundingRate": r} for s, r in top_bullish],
+                "top_bearish": [{"symbol": s, "fundingRate": r} for s, r in top_bearish]
+            }
     except Exception as e:
         logger.error(f"獲取資金費率失敗: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

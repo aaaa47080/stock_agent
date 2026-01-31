@@ -59,19 +59,17 @@ const Components = {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <h4 class="text-xs font-bold text-success mb-4 flex items-center gap-2 opacity-80 uppercase tracking-wider">
-                                <span class="w-1.5 h-1.5 rounded-full bg-success"></span> Oversold Radar
+                                <i data-lucide="trending-up" class="w-4 h-4 text-success"></i> Top Gainers (24H)
                             </h4>
-                            <div id="oversold-list" class="space-y-3"></div>
+                            <div id="top-gainers-list" class="space-y-3"></div>
                         </div>
                         <div>
                             <h4 class="text-xs font-bold text-danger mb-4 flex items-center gap-2 opacity-80 uppercase tracking-wider">
-                                <span class="w-1.5 h-1.5 rounded-full bg-danger"></span> Overbought Radar
+                                <i data-lucide="trending-down" class="w-4 h-4 text-danger"></i> Top Losers (24H)
                             </h4>
-                            <div id="overbought-list" class="space-y-3"></div>
+                            <div id="top-losers-list" class="space-y-3"></div>
                         </div>
                     </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <h4 class="text-xs font-bold text-secondary mb-4 flex items-center gap-2 opacity-80 uppercase tracking-wider">
                                 <i data-lucide="zap" class="w-3.5 h-3.5 text-accent"></i> Bullish Squeeze (Low Funding)
@@ -332,7 +330,20 @@ const Components = {
                         </div>
                     </div>
 
-                    <button onclick="handleLogout()" class="w-full py-3 bg-white/5 hover:bg-danger/10 text-textMuted hover:text-danger border border-white/5 hover:border-danger/20 font-bold rounded-xl transition flex items-center justify-center gap-2">
+                    <!-- TEST MODE: Multi-User Switcher -->
+                    <div id="dev-user-switcher" class="mt-4 pt-4 border-t border-white/5">
+                        <p class="text-[10px] text-textMuted uppercase tracking-wider mb-2 font-bold opacity-50">Dev: Switch User</p>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="handleDevSwitchUser('test-user-001')" class="py-2 bg-white/5 hover:bg-primary/20 hover:text-primary rounded-lg text-xs font-mono transition border border-white/5">
+                                User 001
+                            </button>
+                            <button onclick="handleDevSwitchUser('test-user-002')" class="py-2 bg-white/5 hover:bg-accent/20 hover:text-accent rounded-lg text-xs font-mono transition border border-white/5">
+                                User 002
+                            </button>
+                        </div>
+                    </div>
+
+                    <button onclick="handleLogout()" class="w-full py-3 bg-white/5 hover:bg-danger/10 text-textMuted hover:text-danger border border-white/5 hover:border-danger/20 font-bold rounded-xl transition flex items-center justify-center gap-2 mt-4">
                         <i data-lucide="log-out" class="w-4 h-4"></i>
                         Logout
                     </button>

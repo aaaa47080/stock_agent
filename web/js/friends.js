@@ -14,6 +14,17 @@ const FriendsAPI = {
         return null;
     },
 
+    _getAuthHeaders() {
+        const headers = { 'Content-Type': 'application/json' };
+        if (typeof AuthManager !== 'undefined' && AuthManager.currentUser) {
+            const token = AuthManager.currentUser.accessToken || AuthManager.currentUser.piAccessToken;
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+        }
+        return headers;
+    },
+
     /**
      * 搜尋用戶
      * @param {string} query - 搜尋關鍵字
@@ -23,7 +34,9 @@ const FriendsAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error('請先登入');
 
-        const res = await fetch(`/api/friends/search?q=${encodeURIComponent(query)}&user_id=${userId}&limit=${limit}`);
+        const res = await fetch(`/api/friends/search?q=${encodeURIComponent(query)}&user_id=${userId}&limit=${limit}`, {
+            headers: this._getAuthHeaders()
+        });
         if (!res.ok) {
             const err = await res.json();
             throw new Error(err.detail || '搜尋失敗');
@@ -38,7 +51,9 @@ const FriendsAPI = {
     async getProfile(targetUserId) {
         const userId = this._getUserId();
         const query = userId ? `?user_id=${userId}` : '';
-        const res = await fetch(`/api/friends/profile/${targetUserId}${query}`);
+        const res = await fetch(`/api/friends/profile/${targetUserId}${query}`, {
+            headers: this._getAuthHeaders()
+        });
         if (!res.ok) {
             const err = await res.json();
             throw new Error(err.detail || '取得用戶資料失敗');
@@ -56,7 +71,7 @@ const FriendsAPI = {
 
         const res = await fetch(`/api/friends/request?user_id=${userId}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: this._getAuthHeaders(),
             body: JSON.stringify({ target_user_id: targetUserId })
         });
         if (!res.ok) {
@@ -76,7 +91,7 @@ const FriendsAPI = {
 
         const res = await fetch(`/api/friends/accept?user_id=${userId}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: this._getAuthHeaders(),
             body: JSON.stringify({ target_user_id: requesterId })
         });
         if (!res.ok) {
@@ -96,7 +111,7 @@ const FriendsAPI = {
 
         const res = await fetch(`/api/friends/reject?user_id=${userId}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: this._getAuthHeaders(),
             body: JSON.stringify({ target_user_id: requesterId })
         });
         if (!res.ok) {
@@ -116,7 +131,7 @@ const FriendsAPI = {
 
         const res = await fetch(`/api/friends/cancel?user_id=${userId}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: this._getAuthHeaders(),
             body: JSON.stringify({ target_user_id: targetUserId })
         });
         if (!res.ok) {
@@ -135,7 +150,8 @@ const FriendsAPI = {
         if (!userId) throw new Error('請先登入');
 
         const res = await fetch(`/api/friends/remove?user_id=${userId}&target_user_id=${friendId}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: this._getAuthHeaders()
         });
         if (!res.ok) {
             const err = await res.json();
@@ -153,7 +169,9 @@ const FriendsAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error('請先登入');
 
-        const res = await fetch(`/api/friends/list?user_id=${userId}&limit=${limit}&offset=${offset}`);
+        const res = await fetch(`/api/friends/list?user_id=${userId}&limit=${limit}&offset=${offset}`, {
+            headers: this._getAuthHeaders()
+        });
         if (!res.ok) {
             const err = await res.json();
             throw new Error(err.detail || '取得好友列表失敗');
@@ -168,7 +186,9 @@ const FriendsAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error('請先登入');
 
-        const res = await fetch(`/api/friends/requests/received?user_id=${userId}`);
+        const res = await fetch(`/api/friends/requests/received?user_id=${userId}`, {
+            headers: this._getAuthHeaders()
+        });
         if (!res.ok) {
             const err = await res.json();
             throw new Error(err.detail || '取得好友請求失敗');
@@ -183,7 +203,9 @@ const FriendsAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error('請先登入');
 
-        const res = await fetch(`/api/friends/requests/sent?user_id=${userId}`);
+        const res = await fetch(`/api/friends/requests/sent?user_id=${userId}`, {
+            headers: this._getAuthHeaders()
+        });
         if (!res.ok) {
             const err = await res.json();
             throw new Error(err.detail || '取得已發送請求失敗');
@@ -199,7 +221,9 @@ const FriendsAPI = {
         const userId = this._getUserId();
         if (!userId) return { status: null, is_friend: false };
 
-        const res = await fetch(`/api/friends/status/${targetUserId}?user_id=${userId}`);
+        const res = await fetch(`/api/friends/status/${targetUserId}?user_id=${userId}`, {
+            headers: this._getAuthHeaders()
+        });
         if (!res.ok) {
             return { status: null, is_friend: false };
         }
@@ -213,7 +237,9 @@ const FriendsAPI = {
         const userId = this._getUserId();
         if (!userId) return { friends_count: 0, pending_received: 0 };
 
-        const res = await fetch(`/api/friends/counts?user_id=${userId}`);
+        const res = await fetch(`/api/friends/counts?user_id=${userId}`, {
+            headers: this._getAuthHeaders()
+        });
         if (!res.ok) {
             return { friends_count: 0, pending_received: 0 };
         }
@@ -230,7 +256,7 @@ const FriendsAPI = {
 
         const res = await fetch(`/api/friends/block?user_id=${userId}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: this._getAuthHeaders(),
             body: JSON.stringify({ target_user_id: targetUserId })
         });
         if (!res.ok) {
@@ -250,7 +276,7 @@ const FriendsAPI = {
 
         const res = await fetch(`/api/friends/unblock?user_id=${userId}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: this._getAuthHeaders(),
             body: JSON.stringify({ target_user_id: targetUserId })
         });
         if (!res.ok) {
@@ -267,7 +293,9 @@ const FriendsAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error('請先登入');
 
-        const res = await fetch(`/api/friends/blocked?user_id=${userId}`);
+        const res = await fetch(`/api/friends/blocked?user_id=${userId}`, {
+            headers: this._getAuthHeaders()
+        });
         if (!res.ok) {
             const err = await res.json();
             throw new Error(err.detail || '取得封鎖名單失敗');

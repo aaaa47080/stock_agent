@@ -74,5 +74,10 @@ def get_klines(symbol: str, exchange: str = "okx", interval: str = "1d", limit: 
             continue
             
     # If we get here, no exchange worked
-    print(f"Error in get_klines for {symbol}: {last_exception}")
+    if isinstance(last_exception, SymbolNotFoundError):
+        # This is expected for some symbols, just log as warning
+        from api.utils import logger
+        logger.warning(f"Symbol '{symbol}' not found on any supported exchange.")
+    else:
+        print(f"Error in get_klines for {symbol}: {last_exception}")
     return None

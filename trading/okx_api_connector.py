@@ -378,13 +378,13 @@ class OKXAPIConnector:
         params = {"instId": instId}
         return self._make_request("GET", endpoint, params=params)
 
-    def get_funding_rate_history(self, instId: str, limit: int = 100) -> dict:
+    def get_funding_rate_history(self, instId: str, limit: int = 42) -> dict:
         """
         獲取資金費率歷史數據
 
         Args:
             instId: 永續合約ID
-            limit: 獲取數量 (Max 100)
+            limit: 獲取數量 (預設 42 筆 ≈ 14 天，Max 100)
         """
         endpoint = "/public/funding-rate-history"
         params = {"instId": instId, "limit": str(limit)}
@@ -412,7 +412,8 @@ class OKXAPIConnector:
         import time
         def fetch_single_rate(inst_id):
             try:
-                time.sleep(0.1)  # 100ms 間隔，避免觸發限流
+                # [Optimization] 50ms sleep with 10 workers = ~20 req/s (Safe for OKX public limit)
+                time.sleep(0.05)
                 res = self.get_funding_rate(inst_id)
                 if res.get("code") == "0" and res.get("data"):
                     return inst_id, res["data"][0]
@@ -421,8 +422,8 @@ class OKXAPIConnector:
             return inst_id, None
 
         # 批量獲取資金費率 (並行處理)
-        # 減少並發數到 3，避免 SSL 連接問題
-        with ThreadPoolExecutor(max_workers=3) as executor:
+        # 增加並發數到 10 以加速獲取 (OKX 限頻通常允許更高)
+        with ThreadPoolExecutor(max_workers=10) as executor:
             future_to_inst = {executor.submit(fetch_single_rate, inst.get("instId")): inst for inst in usdt_swaps}
             
             for future in as_completed(future_to_inst):

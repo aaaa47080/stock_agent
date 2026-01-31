@@ -7,3 +7,12 @@
 <solve>Market Watch ç„¡æ³•é¡¯ç¤ºæ•¸æ“šï¼Œæ§åˆ¶å°å ±éŒ¯ Uncaught ReferenceError: refreshScreener is not definedï¼Œä¸”å‹•æ…‹ç”Ÿæˆçš„ HTML æŒ‰éˆ•é»æ“Šç„¡æ•ˆã€‚<solve><answer>1. è®Šæ•¸èˆ‡å‡½æ•¸ä½œç”¨åŸŸä¿®æ­£ï¼šå°‡ market.js å’Œ filter.js ä¸­æ‰€æœ‰é ‚å±¤ const/let æ”¹ç‚º var ä»¥é¿å…é‡è¤‡å®£å‘ŠéŒ¯èª¤ (SyntaxError)ï¼Œä¸¦å°‡é—œéµå‡½æ•¸ (refreshScreener) æ˜ç¢ºæ›è¼‰è‡³ window ç‰©ä»¶ã€‚2. HTML å¼•ç”¨ä¿®å¾©ï¼šç™¼ç¾ index.html éºå¤±äº†å° market.js èˆ‡ filter.js çš„ <script> å¼•ç”¨ï¼Œè£œå›ä¸¦åŠ å…¥ç‰ˆæœ¬è™Ÿ (?v=46) å¼·åˆ¶åˆ·æ–°ã€‚3. å‹•æ…‹ HTML ä¿®æ­£ï¼šå°‡ onclick='refreshScreener()' æ”¹ç‚º onclick='window.refreshScreener(true, true)' ä»¥ç¢ºä¿å…¨åŸŸè¨ªå•ï¼Œä¸¦ä¿®æ”¹ filter.js ä¸­çš„ç›´æ¥å‘¼å«ã€‚4. é‚è¼¯é‚„åŸï¼šé‚„åŸèˆŠç‰ˆé‚è¼¯ï¼Œå…è¨±å‰ç«¯å‚³é€ç©ºå¹£ç¨®åˆ—è¡¨ä»¥è§¸ç™¼å¾Œç«¯ 'Auto Mode' (è‡ªå‹•å›å‚³ç†±é–€å¹£ç¨®)ã€‚<answer>
 <solve>Chat Åã¥Ü 503 Service Unavailable ¿ù»~¡A¾É­P²á¤ÑµLªk¶}©l¡C<solve><answer>­ì¦]¡GCryptoQueryParser ªì©l¤Æ®É¨Ì¿àÀô¹ÒÅÜ¼Æ¤¤ªº API Key¡A­Y¨Ï¥Î user_provided ¼Ò¦¡¥B¨t²Î Key ¯Ê¥¢¡A·|¤Şµo²§±`¡C­×´_¡G¦b interfaces/chat_interface.py ¤¤±N¿ù»~®·Àò½d³òÂX¤j¬° Exception ¨Ã°O¿ı¤é»x¡A¤¹³\¦b¨t²Î Key ¯Ê¥¢®ÉÀu¶®­°¯Å¡A¨Ì¾a¥Î¤á´£¨Ñªº Key ¹B¦æ¡C¦P®É¦b pi/routers/analysis.py ¼W¥[¸Ô²Óªº¿ù»~ Traceback ¤é»x¡C<answer>
 <solve>²á¤Ñµo°e®É¥X²{¡uÂù­«°T®§¡v¥B UI ¥d¦b Loading ª¬ºA¡C<solve><answer>­ì¦]¡G«eºİ web/js/chat.js ¦b°õ¦æ fetch «á¥¼ÀË¬d esponse.ok¡A¾É­P«áºİ³ø¿ù (¦p 503) ®É«eºİ¥¼©ß¥X¿ù»~¡AÅı¥Î¤á¥H¬°µo°e¥¢±Ñ¨Ã­«¸Õ¡A¹ê»Ú¤W«áºİ¥i¯à¤w³¡¤À³B²z¡C­×´_¡G¦b chat.js ªº fetch «á¤è±j¨îÀË¬d if (!response.ok)¡A­Y¥¢±Ñ«h¥ß§Y©ß¥X¿ù»~¨Ã¤¤Â_ UI ¬yµ{¡AÁ×§K¿ù»~ª¬ºA´İ¯d¡C<answer>
+
+<solve>PostgreSQL æŸ¥è©¢éŒ¯èª¤ï¼šoperator does not exist: integer = booleanï¼Œå°è‡´ is_read (INTEGER) æ¬„ä½ç„¡æ³•èˆ‡ FALSE æ¯”è¼ƒã€‚<solve>
+<answer>å°‡æ‰€æœ‰æ¶‰åŠ INTEGER é¡å‹æ¨™èªŒä½ï¼ˆå¦‚ is_read, is_publicï¼‰çš„ SQL æŸ¥è©¢ä¸­çš„ TRUE/FALSE æ”¹ç‚º 1/0ã€‚ç¢ºä¿ Python å‚³å…¥åƒæ•¸ä¹Ÿè½‰æ›ç‚º intã€‚<answer>
+
+<solve>æ½›åœ¨çš„å®‰å…¨é¢¨éšªï¼šæ¸¬è©¦ä»£ç¢¼ï¼ˆå¦‚ dev-loginï¼‰å¦‚æœç•™åœ¨ç”Ÿç”¢ç’°å¢ƒå¯èƒ½è¢«æ¿«ç”¨ã€‚<solve>
+<answer>1. ç¢ºä¿æ‰€æœ‰æ¸¬è©¦ä»£ç¢¼åš´æ ¼è¢« if TEST_MODE: åŒ…è£¹ã€‚
+2. åœ¨ pi_server.py å•Ÿå‹•æ™‚æª¢æŸ¥ TEST_MODE ä¸¦ç™¼å‡ºå¼·çƒˆè­¦å‘Šã€‚
+3. ç”Ÿç”¢ç’°å¢ƒç¢ºä¿ TEST_MODE ç’°å¢ƒè®Šæ•¸æœªè¨­ç½®æˆ–ç‚º Falseã€‚
+4. dev-login é‚è¼¯å·²å¯©æŸ¥ï¼Œåƒ…å…è¨±ç™»éŒ„ç‚ºé å®šç¾©çš„æ¸¬è©¦ç”¨æˆ¶ï¼Œä¸æ¥å—ä»»æ„ç”¨æˆ¶åã€‚<answer>

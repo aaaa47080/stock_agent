@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 import uvicorn
 from dotenv import load_dotenv
 from contextlib import asynccontextmanager
@@ -66,6 +67,11 @@ async def lifespan(app: FastAPI):
     loop = asyncio.get_running_loop()
     await loop.run_in_executor(None, init_db)
     logger.info("✅ Database initialized")
+
+    from core.config import TEST_MODE
+    if TEST_MODE:
+        logger.warning("⚠️⚠️⚠️ TEST_MODE IS ENABLED! THIS SHOULD NOT BE ON IN PRODUCTION! ⚠️⚠️⚠️")
+        logger.warning("Test-only endpoints (e.g., /dev-login) are active.")
     
     # Startup: Initialize Global Instances
     try:
@@ -161,10 +167,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# --- 4. GZip Compression (Performance Optimization) ---
+# 自動壓縮大於1KB的響應，減少帶寬消耗，提升加載速度
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+logger.info("✅ GZip compression enabled")
+
 from fastapi import Response
 import time
 
-# 服务启动时间
+# 服務啟動時間
 SERVICE_START_TIME = time.time()
 
 # ================================================================
@@ -183,12 +194,12 @@ app.include_router(friends_router) # 好友功能 API
 app.include_router(messages_router) # 私訊功能 API
 app.include_router(audit_router)   # 審計日誌查詢 API (管理員專用)
 
-# --- 健康检查端点（用于负载均衡和监控）---
+# --- 健康檢查端點（用於負載均衡和監控）---
 @app.get("/health")
 async def health_check():
     """
-    健康检查端点 - 用于负载均衡器确认服务存活
-    返回 200 表示服务正常运行
+    健康檢查端點 - 用於負載均衡器確認服務存活
+    返回 200 表示服務正常運行
     """
     return {
         "status": "healthy",
@@ -199,19 +210,19 @@ async def health_check():
 @app.get("/ready")
 async def readiness_check():
     """
-    就绪检查端点 - 确认服务可以接受请求
-    检查关键组件是否已初始化
+    就緒檢查端點 - 確認服務可以接受請求
+    檢查關鍵組件是否已初始化
     """
     ready = True
     components = {}
     
-    # 检查 OKX Connector
+    # 檢查 OKX Connector
     components["okx_connector"] = globals.okx_connector is not None
     
-    # 检查 Bot
+    # 檢查 Bot
     components["crypto_bot"] = globals.bot is not None
     
-    # 检查数据库
+    # 檢查數據庫
     try:
         from core.database import init_db
         components["database"] = True
@@ -286,9 +297,26 @@ def _read_log(filepath):
     except FileNotFoundError:
         raise
 
-# --- 靜態檔案與頁面 ---
+# --- 靜態檔案與頁面 (帶緩存優化) ---
+class CachedStaticFiles(StaticFiles):
+    """
+    帶緩存優化的靜態文件服務
+    為靜態資源添加 Cache-Control 頭，提升二次訪問速度
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+    
+    def file_response(self, *args, **kwargs):
+        response = super().file_response(*args, **kwargs)
+        # 設置緩存 1 天 (86400 秒)
+        # public: 允許中間代理緩存
+        # max-age: 瀏覽器緩存時長
+        response.headers["Cache-Control"] = "public, max-age=86400"
+        return response
+
 if os.path.exists("web"):
-    app.mount("/static", StaticFiles(directory="web"), name="static")
+    app.mount("/static", CachedStaticFiles(directory="web"), name="static")
+    logger.info("✅ Static files mounted with caching (1 day)")
 
 if __name__ == "__main__":
     logger.info("🚀 Pi Crypto Insight API Server 啟動中...")

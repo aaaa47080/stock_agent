@@ -239,6 +239,12 @@ async def approve_payment(request: ApprovePaymentRequest, current_user: dict = D
     if not PI_API_KEY or PI_API_KEY == "your_pi_api_key_here":
         # Security Fix: Fail strictly if key is not configured
         msg = "Server configuration error: PI_API_KEY not set"
+        
+        # TEST_MODE: Allow bypass if key is missing but we represent a test user
+        if TEST_MODE and current_user.get("user_id") == TEST_USER.get("uid"):
+             logger.info("TEST_MODE: Mocking payment approval")
+             return {"status": "ok", "message": "Payment approved (Test Mode)", "data": {"status": "approved"}}
+
         logger.error(msg)
         raise HTTPException(status_code=500, detail=msg)
 
@@ -311,6 +317,11 @@ async def complete_payment(request: CompletePaymentRequest, current_user: dict =
     logger.info(f"Pi Payment Completion Requested: {request.paymentId} by User {current_user['user_id']}")
 
     if not PI_API_KEY or PI_API_KEY == "your_pi_api_key_here":
+        # TEST_MODE: Allow bypass
+        if TEST_MODE and current_user.get("user_id") == TEST_USER.get("uid"):
+             logger.info("TEST_MODE: Mocking payment completion")
+             return {"status": "ok", "message": "Payment completed (Test Mode)", "data": {"status": "completed"}, "txid": request.txid}
+
         msg = "Server configuration error: PI_API_KEY not set"
         logger.error(msg)
         raise HTTPException(status_code=500, detail=msg)
@@ -369,6 +380,15 @@ async def get_wallet_status(user_id: str, current_user: dict = Depends(get_curre
     獲取用戶錢包綁定狀態
     """
     try:
+        # TEST_MODE: Mock wallet status for test user
+        if TEST_MODE and (user_id == TEST_USER.get("uid") or user_id.startswith("test-user-")):
+            return {
+                "success": True,
+                "is_linked": True,
+                "wallet_address": f"GDTESTWALLET{user_id.replace('-', '').upper()}123",
+                "linked_at": "2024-01-01T00:00:00Z"
+            }
+
         loop = asyncio.get_running_loop()
         # Security Check
         if current_user["user_id"] != user_id:

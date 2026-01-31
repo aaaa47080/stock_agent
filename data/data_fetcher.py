@@ -165,6 +165,13 @@ class BinanceDataFetcher:
         print("Could not retrieve tickers to determine top symbols.")
         return []
 
+    def get_tickers(self):
+        """
+        Get all tickers (raw data) from Binance Spot.
+        """
+        endpoint = "/ticker/24hr"
+        return self._make_request(self.spot_base_url, endpoint)
+
     def get_all_symbols(self, quote_asset='USDT'):
         """Get all trading symbols quoted in the specified asset."""
         cache_key = f"binance_all_symbols_{quote_asset}"
@@ -288,7 +295,7 @@ class OkxDataFetcher:
         }
         return interval_map.get(interval.lower(), '1D')
 
-    def _make_request(self, endpoint, params=None):
+    def _make_request(self, endpoint, params=None, timeout=20):
         """發送 HTTP 請求到 OKX API (With Retries)"""
         proxies = None
         https_proxy = os.getenv("HTTPS_PROXY")
@@ -307,7 +314,7 @@ class OkxDataFetcher:
 
         for attempt in range(max_retries):
             try:
-                response = requests.get(url, params=params, timeout=20, proxies=proxies)
+                response = requests.get(url, params=params, timeout=timeout, proxies=proxies)
                 response.raise_for_status()
 
                 data = response.json()
@@ -317,7 +324,14 @@ class OkxDataFetcher:
                     return data.get('data', [])
                 else:
                     error_msg = data.get('msg', 'Unknown error')
-                    print(f"OKX API 錯誤: {error_msg}")
+                    error_code = data.get('code')
+                    
+                    # 51001: Instrument ID doesn't exist (Common when checking availability)
+                    if error_code == '51001': 
+                        # Log as warning instead of error print
+                        logger.warning(f"OKX API Warning (51001): {error_msg}")
+                    else:
+                        print(f"OKX API 錯誤: {error_msg}")
                     return None
 
             except requests.exceptions.HTTPError as http_err:
@@ -367,6 +381,14 @@ class OkxDataFetcher:
             
         print("Could not retrieve tickers from OKX to determine top symbols.")
         return []
+
+    def get_tickers(self, instType='SPOT'):
+        """
+        Get all tickers (raw data) from OKX.
+        """
+        endpoint = "/market/tickers"
+        params = {'instType': instType}
+        return self._make_request(endpoint, params)
 
     def get_all_symbols(self, quote_asset='USDT'):
         """Get all trading symbols quoted in the specified asset."""

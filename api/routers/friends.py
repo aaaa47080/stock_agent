@@ -445,8 +445,10 @@ async def get_counts(
     取得好友相關數量（好友數、待處理請求數）
     """
     try:
+        print(f"[DEBUG_FRIENDS] Auth check: current={current_user.get('user_id')} target={user_id}")
         if current_user["user_id"] != user_id:
-             raise HTTPException(status_code=403, detail="Not authorized")
+             print(f"[DEBUG_FRIENDS] 403 Mismatch! Current: '{current_user.get('user_id')}' vs Target: '{user_id}'")
+             raise HTTPException(status_code=403, detail=f"Not authorized. user_id={user_id}, current={current_user.get('user_id')}")
         loop = asyncio.get_running_loop()
         friends_count = await loop.run_in_executor(None, get_friends_count, user_id)
         pending_received = await loop.run_in_executor(None, get_pending_count, user_id)
