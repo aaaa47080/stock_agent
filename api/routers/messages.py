@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconn
 from typing import Optional, Set, Dict
 from pydantic import BaseModel, Field
 import json
+import os
 
 import asyncio
 from functools import partial
@@ -14,6 +15,7 @@ from core.database import (
     get_conversations,
     get_conversation_by_id,
     get_conversation_with_user,
+    get_conversation_with_messages,
     send_dm_message,
     get_dm_messages,
     mark_as_read,
@@ -24,11 +26,13 @@ from core.database import (
     increment_greeting_count,
     send_greeting,
     search_messages,
-    is_friend,
-    is_blocked,
-    get_user_by_id,
     get_user_membership,
-    update_last_active,
+    get_user_by_id,  # 還需要：greeting 和 WebSocket 端點使用
+    delete_dm_message,
+    hide_dm_message_for_user,
+    hide_conversation_for_user,
+    # 優化後不再需要：is_friend, is_blocked, update_last_active
+    # 這些已被 validate_message_send 和 send_dm_message 內部處理替代
 )
 from fastapi import Depends
 from api.deps import get_current_user, verify_token
@@ -193,31 +197,25 @@ async def get_conversation_with_user_endpoint(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    取得與特定用戶的對話和訊息
+    取得與特定用戶的對話和訊息（優化版：單一數據庫連接）
     """
     if current_user["user_id"] != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
     try:
         loop = asyncio.get_running_loop()
-        
-        # 取得或建立對話
-        conv = await loop.run_in_executor(
-            None,
-            partial(get_or_create_conversation, user_id, other_user_id)
-        )
 
-        # 取得訊息
+        # 使用優化的合併函數（只需一個數據庫連接）
         result = await loop.run_in_executor(
             None,
-            partial(get_dm_messages, conv["id"], user_id, limit=limit)
+            partial(get_conversation_with_messages, user_id, other_user_id, limit)
         )
 
-        return {
-            "success": True,
-            "conversation": conv,
-            "messages": result.get("messages", []),
-            "has_more": result.get("has_more", False)
-        }
+        if not result.get("success"):
+            raise HTTPException(status_code=500, detail=result.get("error", "取得對話失敗"))
+
+        return result
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"取得對話失敗: {e}")
         raise HTTPException(status_code=500, detail=f"取得對話失敗: {str(e)}")
@@ -230,33 +228,32 @@ async def send_message_endpoint(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    發送訊息（僅限好友）
+    發送訊息（僅限好友）- 優化版本
     """
     if current_user["user_id"] != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
     try:
-        # 驗證用戶存在
         loop = asyncio.get_running_loop()
-        sender_exists = await loop.run_in_executor(None, get_user_by_id, user_id)
-        if not sender_exists:
-            raise HTTPException(status_code=401, detail="用戶不存在")
-            
-        receiver_exists = await loop.run_in_executor(None, get_user_by_id, request.to_user_id)
-        if not receiver_exists:
-            raise HTTPException(status_code=404, detail="接收者不存在")
-
-        # 檢查是否被封鎖
-        blocked = await loop.run_in_executor(None, partial(is_blocked, user_id, request.to_user_id))
-        if blocked:
-            raise HTTPException(status_code=403, detail="無法發送訊息給此用戶")
-
-        # 檢查是否為好友
-        friend = await loop.run_in_executor(None, partial(is_friend, user_id, request.to_user_id))
-        if not friend:
-            raise HTTPException(status_code=403, detail="只能發送訊息給好友")
-
-        # 更新用戶最後活動時間
-        await loop.run_in_executor(None, update_last_active, user_id)
+        
+        # 優化：使用單一查詢驗證所有條件（替代 4 個獨立查詢）
+        from core.database import validate_message_send
+        validation = await loop.run_in_executor(
+            None, 
+            partial(validate_message_send, user_id, request.to_user_id)
+        )
+        
+        if not validation["valid"]:
+            error = validation["error"]
+            if error == "sender_not_found":
+                raise HTTPException(status_code=401, detail="用戶不存在")
+            elif error == "receiver_not_found":
+                raise HTTPException(status_code=404, detail="接收者不存在")
+            elif error == "blocked":
+                raise HTTPException(status_code=403, detail="無法發送訊息給此用戶")
+            elif error == "not_friends":
+                raise HTTPException(status_code=403, detail="只能發送訊息給好友")
+            else:
+                raise HTTPException(status_code=400, detail="驗證失敗")
 
         # 檢查訊息限制
         is_pro = _check_user_is_pro(user_id)
@@ -268,7 +265,7 @@ async def send_message_endpoint(
                 detail=f"已達每日訊息上限 ({limit_check['limit']} 條)，升級 Pro 會員可無限發送"
             )
 
-        # 發送訊息
+        # 發送訊息（內部會處理 update_last_active）
         result = await loop.run_in_executor(
             None,
             partial(send_dm_message, user_id, request.to_user_id, request.content)
@@ -476,12 +473,11 @@ async def get_message_limits_endpoint(
     try:
         from core.database import get_config
         is_pro = _check_user_is_pro(user_id)
-        
+
         loop = asyncio.get_running_loop()
         message_limit = await loop.run_in_executor(None, partial(check_message_limit, user_id, is_pro))
         greeting_limit = await loop.run_in_executor(None, partial(check_greeting_limit, user_id, is_pro))
         max_length = await loop.run_in_executor(None, partial(get_config, 'limit_message_max_length', 500))
-
         return {
             "success": True,
             "is_pro": is_pro,
@@ -494,6 +490,102 @@ async def get_message_limits_endpoint(
         raise HTTPException(status_code=500, detail=f"取得限制狀態失敗: {str(e)}")
 
 
+@router.delete("/api/messages/{message_id}")
+async def delete_message_endpoint(
+    message_id: int,
+    user_id: str = Query(..., description="用戶 ID"),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    刪除訊息
+    """
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    try:
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, partial(delete_dm_message, message_id, user_id))
+
+        if not result["success"]:
+            error = result.get("error", "")
+            if error == "message_not_found":
+                raise HTTPException(status_code=404, detail="訊息不存在")
+            elif error == "permission_denied":
+                raise HTTPException(status_code=403, detail="無權刪除此訊息")
+            else:
+                raise HTTPException(status_code=400, detail=f"刪除失敗: {error}")
+
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"刪除訊息失敗: {e}")
+        raise HTTPException(status_code=500, detail=f"刪除訊息失敗: {str(e)}")
+
+
+@router.post("/api/messages/{message_id}/hide")
+async def hide_message_endpoint(
+    message_id: int,
+    user_id: str = Query(..., description="用戶 ID"),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    隱藏訊息（只對自己隱藏，不影響對方）
+    類似 WhatsApp 的「為我刪除」功能
+    """
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    try:
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, partial(hide_dm_message_for_user, message_id, user_id))
+
+        if not result["success"]:
+            error = result.get("error", "")
+            if error == "message_not_found":
+                raise HTTPException(status_code=404, detail="訊息不存在")
+            else:
+                raise HTTPException(status_code=400, detail=f"隱藏失敗: {error}")
+
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"隱藏訊息失敗: {e}")
+        raise HTTPException(status_code=500, detail=f"隱藏訊息失敗: {str(e)}")
+
+
+@router.delete("/api/conversations/{conversation_id}")
+async def delete_conversation_endpoint(
+    conversation_id: int,
+    user_id: str = Query(..., description="用戶 ID"),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    刪除對話（隱藏整段對話，只對自己隱藏）
+    類似 WhatsApp 的「刪除對話」功能
+    """
+    logger.info(f"刪除對話請求: conversation_id={conversation_id}, user_id={user_id}, current_user={current_user.get('user_id')}")
+    
+    if current_user["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    try:
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, partial(hide_conversation_for_user, conversation_id, user_id))
+
+        logger.info(f"刪除對話結果: {result}")
+
+        if not result["success"]:
+            error = result.get("error", "")
+            if error == "conversation_not_found":
+                raise HTTPException(status_code=404, detail="對話不存在")
+            else:
+                raise HTTPException(status_code=400, detail=f"刪除對話失敗: {error}")
+
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"刪除對話失敗: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"刪除對話失敗: {str(e)}")
 
 
 # ============================================================================

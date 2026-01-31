@@ -46,8 +46,29 @@ const MessagesPage = {
         // 連接 WebSocket
         this.setupWebSocket();
 
-        // 處理 URL 參數（直接開啟與某人的對話）
+        // 處理 URL 參數
         const params = new URLSearchParams(window.location.search);
+
+        // 設置返回按鈕 - 根據來源返回正確頁面
+        const source = params.get('source');
+        const backBtn = document.getElementById('back-btn');
+        if (backBtn) {
+            if (source === 'friends' || source === 'social') {
+                // 從好友頁面來的，返回好友頁面
+                backBtn.href = '/static/index.html#friends';
+                backBtn.onclick = (e) => {
+                    e.preventDefault();
+                    sessionStorage.setItem('activeTab', 'friends');
+                    if (typeof smoothNavigate === 'function') {
+                        smoothNavigate('/static/index.html');
+                    } else {
+                        window.location.href = '/static/index.html';
+                    }
+                };
+            }
+        }
+
+        // 直接開啟與某人的對話
         const withUserId = params.get('with');
         if (withUserId) {
             await this.openConversationWith(withUserId);
@@ -123,6 +144,12 @@ const MessagesPage = {
             ).join('');
 
             if (window.lucide) lucide.createIcons();
+
+            // Loop: Auto-select first conversation on desktop if none selected
+            if (!this.isMobile && this.conversations.length > 0 && !this.currentConversationId) {
+                const first = this.conversations[0];
+                this.selectConversation(first.id, first.other_user_id, first.other_username);
+            }
         } catch (e) {
             console.error('載入對話列表失敗:', e);
             listEl.innerHTML = `<div class="p-4 text-center text-danger">${e.message}</div>`;
@@ -140,19 +167,19 @@ const MessagesPage = {
         // 更新 UI
         this.showChatSection();
         this.updateChatHeader(otherUsername);
+
+        // 載入訊息 (主要操作)
         await this.loadMessages();
 
-        // 標記已讀
-        await MessagesAPI.markAsRead(conversationId);
+        // 標記已讀 (後台執行，不阻塞 UI)
+        MessagesAPI.markAsRead(conversationId).catch(e => console.error('標記已讀失敗:', e));
 
-        // 更新對話列表中的未讀狀態
+        // 更新對話列表中的未讀狀態 (本地更新)
         this.updateConversationUnread(conversationId, 0);
 
-        // Focus input after loading
-        setTimeout(() => {
-            const input = document.getElementById('message-input');
-            if (input) input.focus();
-        }, 100);
+        // Focus input
+        const input = document.getElementById('message-input');
+        if (input) input.focus();
     },
 
     /**
@@ -169,19 +196,19 @@ const MessagesPage = {
 
             // 取得用戶名
             const conv = this.conversations.find(c => c.other_user_id === userId);
-            this.currentOtherUsername = conv?.other_username || userId;
+            this.currentOtherUsername = conv?.other_username || result.conversation.other_username || userId;
 
             this.showChatSection();
             this.updateChatHeader(this.currentOtherUsername);
             this.renderMessages(result.messages || []);
 
-            // 標記已讀
+            // 標記已讀 (後台執行)
             if (result.conversation.id) {
-                await MessagesAPI.markAsRead(result.conversation.id);
+                MessagesAPI.markAsRead(result.conversation.id).catch(e => console.error('標記已讀失敗:', e));
             }
 
-            // 重新載入對話列表以更新順序
-            await this.loadConversations();
+            // 延遲更新對話列表 (不阻塞主要操作)
+            setTimeout(() => this.loadConversations(), 500);
 
         } catch (e) {
             console.error('開啟對話失敗:', e);
@@ -197,29 +224,7 @@ const MessagesPage = {
         if (messagesContainer) messagesContainer.innerHTML = MessagesUI.renderLoadingState();
 
         try {
-
             const result = await MessagesAPI.getMessages(this.currentConversationId, 10);  // 初始只載入 10 條
-
-            // DEBUG: 顯示每條訊息的 is_read 狀態
-            console.log('=== DEBUG: 訊息載入結果 ===');
-            let debugInfo = '=== DEBUG ===\n';
-            result.messages?.forEach((msg, i) => {
-                const line = `${i + 1}: from=${msg.from_user_id?.substring(0, 8)}, to=${msg.to_user_id?.substring(0, 8)}, is_read=${msg.is_read}`;
-                console.log(line);
-                debugInfo += line + '\n';
-            });
-            console.log('===========================');
-
-            // 顯示在頁面上
-            let debugPanel = document.getElementById('debug-panel');
-            if (!debugPanel) {
-                debugPanel = document.createElement('div');
-                debugPanel.id = 'debug-panel';
-                debugPanel.style.cssText = 'position:fixed;top:60px;left:10px;right:10px;background:#000;color:#0f0;font-size:11px;padding:10px;border-radius:8px;z-index:9999;max-height:200px;overflow:auto;font-family:monospace;white-space:pre;opacity:0.95;';
-                debugPanel.onclick = () => debugPanel.remove();
-                document.body.appendChild(debugPanel);
-            }
-            debugPanel.textContent = debugInfo + '\n(點擊關閉)';
 
             this.hasMoreMessages = result.has_more || false;
             this.oldestMessageId = result.messages && result.messages.length > 0
@@ -459,7 +464,11 @@ const MessagesPage = {
         if (!content || !this.currentOtherUserId) return;
 
         const sendBtn = document.getElementById('send-btn');
-        if (sendBtn) sendBtn.disabled = true;
+        // Lock button visually and functionally
+        if (sendBtn) {
+            sendBtn.disabled = true;
+            sendBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
 
         try {
             const result = await MessagesAPI.sendMessage(this.currentOtherUserId, content);
@@ -482,12 +491,21 @@ const MessagesPage = {
             }
         } catch (e) {
             console.error('發送訊息失敗:', e);
-            showToast(e.message, 'error');
+            if (typeof showToast === 'function') {
+                showToast(e.message, 'error');
+            } else {
+                alert(e.message || '發送失敗');
+            }
         } finally {
-            if (sendBtn) sendBtn.disabled = false;
-            this.updateSendButton();
+            // Restore button state - ensure button is re-enabled
+            if (sendBtn) {
+                sendBtn.disabled = false;
+                sendBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+            this.updateCharCount();
+
             // Focus back to input
-            input.focus();
+            if (input) input.focus();
         }
     },
 
@@ -510,6 +528,54 @@ const MessagesPage = {
     },
 
     /**
+     * 收回訊息
+     */
+    async recallMessage(messageId) {
+        if (!confirm('確定要收回這條訊息嗎？對方會看到「對方已收回訊息」')) return;
+
+        try {
+            const userId = MessagesAPI._getUserId();
+            if (!userId) return;
+
+            const res = await fetch(`/api/messages/${messageId}?user_id=${userId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${MessagesAPI._getToken()}`
+                }
+            });
+
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+                // 更新 DOM：將訊息替換為「已收回」樣式
+                const msgEl = document.getElementById(`msg-${messageId}`);
+                if (msgEl) {
+                    const timeStr = msgEl.querySelector('.text-xs.text-textMuted')?.textContent || '';
+                    msgEl.outerHTML = `
+                        <div id="msg-${messageId}" class="flex justify-end mb-4">
+                            <div class="flex flex-col items-end">
+                                <div class="px-4 py-2 rounded-2xl bg-white/5 border border-white/10">
+                                    <span class="text-textMuted/60 text-sm italic">你已收回訊息</span>
+                                </div>
+                                <div class="text-xs text-textMuted/50 mt-1 px-1">${timeStr}</div>
+                            </div>
+                        </div>
+                    `;
+                }
+            } else {
+                throw new Error(data.error || data.detail || '收回失敗');
+            }
+        } catch (e) {
+            console.error('收回訊息失敗:', e);
+            if (typeof showToast === 'function') {
+                showToast(e.message, 'error');
+            } else {
+                alert(e.message || '收回失敗');
+            }
+        }
+    },
+
+    /**
      * 處理輸入框按鍵
      */
     handleInputKeydown(event) {
@@ -525,16 +591,18 @@ const MessagesPage = {
     autoResizeInput(textarea) {
         textarea.style.height = 'auto';
         textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
-        this.updateSendButton();
+        this.updateCharCount();
     },
 
     /**
      * 更新發送按鈕狀態
      */
+    /**
+     * updateSendButton - Deprecated, logic moved to updateCharCount
+     * Kept for compatibility if called from elsewhere, but redirects to updateCharCount
+     */
     updateSendButton() {
-        const input = document.getElementById('message-input');
-        const sendBtn = document.getElementById('send-btn');
-        if (sendBtn) sendBtn.disabled = !input.value.trim();
+        this.updateCharCount();
     },
 
     /**
@@ -544,16 +612,29 @@ const MessagesPage = {
         const input = document.getElementById('message-input');
         const charCount = document.getElementById('char-count');
         const warning = document.getElementById('input-limit-warning');
+        const sendBtn = document.getElementById('send-btn');
 
         if (!input) return;
 
         const currentLength = input.value.length;
+        const hasContent = input.value.trim().length > 0;
         const maxLength = this.maxMessageLength;
 
-        // 更新計數顯示
+        // 1. Update Button State (Robust Logic from friends.js)
+        if (sendBtn) {
+            if (hasContent) {
+                sendBtn.disabled = false;
+                sendBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            } else {
+                sendBtn.disabled = true;
+                sendBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        // 2. Update Char Count Text
         if (charCount) charCount.textContent = `${currentLength}/${maxLength}`;
 
-        // 根據字數改變顏色
+        // 3. Update Warning / Colors
         if (charCount && warning) {
             if (currentLength >= maxLength) {
                 charCount.classList.remove('text-textMuted/50');
@@ -763,6 +844,27 @@ const MessagesPage = {
         } catch (e) {
             resultsEl.innerHTML = `<div class="p-4 text-center text-danger">${e.message}</div>`;
         }
+    },
+
+    /**
+     * 切換側邊欄
+     */
+    toggleSidebar() {
+        const sidebar = document.getElementById('conversation-sidebar');
+        if (!sidebar) return;
+
+        // Toggle visibility with animation classes if possible, but basic hidden is safer for now
+        if (sidebar.classList.contains('hidden')) {
+            sidebar.classList.remove('hidden');
+            // Ensure width classes are present
+            sidebar.classList.add('md:w-80', 'lg:w-96');
+        } else {
+            sidebar.classList.add('hidden');
+            sidebar.classList.remove('md:w-80', 'lg:w-96');
+        }
+
+        // Force layout update if needed
+        window.dispatchEvent(new Event('resize'));
     }
 };
 

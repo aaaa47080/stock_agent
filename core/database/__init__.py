@@ -135,7 +135,9 @@ from .messages import (
     get_conversations,
     get_conversation_by_id,
     get_conversation_with_user,
+    get_conversation_with_messages,  # 優化版：一次取得對話和訊息
     # 訊息操作
+    validate_message_send,  # 優化：合併驗證查詢
     send_message as send_dm_message,
     get_messages as get_dm_messages,
     mark_as_read,
@@ -149,6 +151,9 @@ from .messages import (
     send_greeting,
     # 搜尋（Pro）
     search_messages,
+    delete_dm_message,
+    hide_dm_message_for_user,  # 只對自己隱藏訊息
+    hide_conversation_for_user,  # 隱藏整段對話
 )
 
 # 系統快取
@@ -284,6 +289,10 @@ __all__ = [
     'increment_greeting_count',
     'send_greeting',
     'search_messages',
+    'delete_dm_message',
+    'hide_dm_message_for_user',
+    'hide_conversation_for_user',
+    'get_conversation_with_messages',
     # 快取
     'set_cache',
     'get_cache',

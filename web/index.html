@@ -1079,6 +1079,24 @@
                 }
             }
 
+            // [Sidebar Visibility Logic]
+            // Show chat sidebar ONLY in 'chat' tab (AI chatbot history)
+            const globalSidebar = document.getElementById('chat-sidebar');
+            const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+            if (globalSidebar) {
+                if (tabId === 'chat') {
+                    // Show sidebar only in chat tab
+                    globalSidebar.style.display = '';
+                    globalSidebar.classList.remove('hidden');
+                } else {
+                    // Hide sidebar in all other tabs
+                    globalSidebar.style.setProperty('display', 'none', 'important');
+                    globalSidebar.classList.add('hidden');
+                    // Also hide mobile backdrop
+                    if (sidebarBackdrop) sidebarBackdrop.classList.add('hidden');
+                }
+            }
+
             // Show target tab
             const target = document.getElementById(tabId + '-tab');
             if (target) {

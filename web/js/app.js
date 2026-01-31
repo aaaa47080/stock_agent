@@ -418,11 +418,10 @@ window.initializeUIStatus = function () {
     console.log('[App] APIKeyManager exists:', !!window.APIKeyManager);
     console.log('[App] getCurrentKey:', window.APIKeyManager?.getCurrentKey());
 
+    // 只在初始化時檢查一次
     checkApiKeyStatus();
-    // 每10秒檢查一次 API 狀態
-    if (!window.apiKeyStatusInterval) {
-        window.apiKeyStatusInterval = setInterval(checkApiKeyStatus, 10000);
-    }
+    // 移除定期輪詢 - API Key 設定後狀態就確定了
+    // 狀態變更時應該主動調用 checkApiKeyStatus() 而非輪詢
 };
 
 // 頁面加載時不再自動執行，由 index.html 統一調度
@@ -543,11 +542,8 @@ function onTabSwitch(tab) {
             initFriends();
         }
 
-        // Auto-refresh every 5 seconds (polling for requests)
-        window.friendsInterval = setInterval(() => {
-            // Slient refresh (optional arg can be added to loadFriendsTabData to avoid spinners if needed)
-            if (typeof loadFriendsTabData === 'function') loadFriendsTabData();
-        }, 5000);
+        // 移除自動輪詢 - Friends 更新應該透過 WebSocket 或用戶手動刷新
+        // 不需要每 5 秒重新載入整個列表，這會造成閃爍和不必要的 API 請求
     }
 }
 

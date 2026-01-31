@@ -101,6 +101,7 @@ def get_or_create_conversation(user1_id: str, user2_id: str) -> Dict:
 def get_conversations(user_id: str, limit: int = 50, offset: int = 0) -> List[Dict]:
     """
     取得用戶的對話列表，按最後訊息時間排序
+    排除所有訊息都已被用戶刪除的對話
     """
     conn = get_connection()
     c = conn.cursor()
@@ -123,10 +124,16 @@ def get_conversations(user_id: str, limit: int = 50, offset: int = 0) -> List[Di
             LEFT JOIN dm_messages m ON m.id = c.last_message_id
             LEFT JOIN users u1 ON u1.user_id = c.user1_id
             LEFT JOIN users u2 ON u2.user_id = c.user2_id
-            WHERE c.user1_id = %s OR c.user2_id = %s
+            WHERE (c.user1_id = %s OR c.user2_id = %s)
+            -- 排除所有訊息都被刪除的對話
+            AND EXISTS (
+                SELECT 1 FROM dm_messages msg
+                LEFT JOIN dm_message_deletions del ON del.message_id = msg.id AND del.user_id = %s
+                WHERE msg.conversation_id = c.id AND del.id IS NULL
+            )
             ORDER BY c.last_message_at DESC NULLS LAST, c.created_at DESC
             LIMIT %s OFFSET %s
-        ''', (user_id, user_id, user_id, user_id, user_id, limit, offset))
+        ''', (user_id, user_id, user_id, user_id, user_id, user_id, limit, offset))
 
         rows = c.fetchall()
         conversations = []
@@ -150,6 +157,11 @@ def get_conversations(user_id: str, limit: int = 50, offset: int = 0) -> List[Di
             })
 
         return conversations
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"get_conversations error for user {user_id}: {str(e)}", exc_info=True)
+        raise
     finally:
         conn.close()
 
@@ -187,9 +199,77 @@ def get_conversation_by_id(conversation_id: int, user_id: str) -> Optional[Dict]
 # 訊息操作
 # ============================================================================
 
+def validate_message_send(from_user_id: str, to_user_id: str) -> Dict:
+    """
+    優化的訊息發送驗證（合併多個檢查到單一查詢）
+    
+    檢查：
+    1. 發送者和接收者是否存在
+    2. 是否為好友
+    3. 是否被封鎖
+    
+    Returns:
+        {
+            "valid": bool,
+            "error": str (如果 valid=False),
+            "sender_exists": bool,
+            "receiver_exists": bool,
+            "are_friends": bool,
+            "is_blocked": bool
+        }
+    """
+    conn = get_connection()
+    c = conn.cursor()
+    try:
+        # 單一查詢檢查所有條件
+        c.execute('''
+            SELECT 
+                EXISTS(SELECT 1 FROM users WHERE user_id = %s) as sender_exists,
+                EXISTS(SELECT 1 FROM users WHERE user_id = %s) as receiver_exists,
+                EXISTS(
+                    SELECT 1 FROM friendships 
+                    WHERE ((user_id = %s AND friend_id = %s) 
+                           OR (user_id = %s AND friend_id = %s))
+                    AND status = 'accepted'
+                ) as are_friends,
+                EXISTS(
+                    SELECT 1 FROM friendships 
+                    WHERE ((user_id = %s AND friend_id = %s) 
+                           OR (user_id = %s AND friend_id = %s))
+                    AND status = 'blocked'
+                ) as is_blocked
+        ''', (from_user_id, to_user_id, from_user_id, to_user_id, to_user_id, from_user_id, from_user_id, to_user_id, to_user_id, from_user_id))
+        
+        result = c.fetchone()
+        sender_exists = result[0]
+        receiver_exists = result[1]
+        are_friends = result[2]
+        is_blocked = result[3]
+        
+        # 驗證邏輯
+        if not sender_exists:
+            return {"valid": False, "error": "sender_not_found"}
+        if not receiver_exists:
+            return {"valid": False, "error": "receiver_not_found"}
+        if is_blocked:
+            return {"valid": False, "error": "blocked"}
+        if not are_friends:
+            return {"valid": False, "error": "not_friends"}
+        
+        return {
+            "valid": True,
+            "sender_exists": sender_exists,
+            "receiver_exists": receiver_exists,
+            "are_friends": are_friends,
+            "is_blocked": is_blocked
+        }
+    finally:
+        conn.close()
+
+
 def send_message(from_user_id: str, to_user_id: str, content: str, message_type: str = 'text') -> Dict:
     """
-    發送訊息
+    發送訊息（優化版：單一資料庫連接）
     """
     if from_user_id == to_user_id:
         return {"success": False, "error": "cannot_message_self"}
@@ -202,15 +282,39 @@ def send_message(from_user_id: str, to_user_id: str, content: str, message_type:
     if len(content) > max_length:
         return {"success": False, "error": "message_too_long", "max_length": max_length}
 
-
     conn = get_connection()
     c = conn.cursor()
     try:
-        # 取得或建立對話
-        conv = get_or_create_conversation(from_user_id, to_user_id)
-        conversation_id = conv["id"]
+        # 1. 更新發送者最後活動時間（內聯，避免額外連接）
+        c.execute('UPDATE users SET last_active_at = NOW() WHERE user_id = %s', (from_user_id,))
+        
+        # 2. 取得或建立對話（內聯，避免額外連接）
+        # 排序確保唯一性
+        user1_id, user2_id = (from_user_id, to_user_id) if from_user_id < to_user_id else (to_user_id, from_user_id)
+        
+        c.execute('''
+            SELECT id, user1_id, user2_id
+            FROM dm_conversations
+            WHERE user1_id = %s AND user2_id = %s
+        ''', (user1_id, user2_id))
+        conv_row = c.fetchone()
+        
+        if conv_row:
+            conversation_id = conv_row[0]
+            conv_user1_id = conv_row[1]
+            conv_user2_id = conv_row[2]
+        else:
+            # 建立新對話
+            c.execute('''
+                INSERT INTO dm_conversations (user1_id, user2_id, created_at)
+                VALUES (%s, %s, NOW())
+                RETURNING id
+            ''', (user1_id, user2_id))
+            conversation_id = c.fetchone()[0]
+            conv_user1_id = user1_id
+            conv_user2_id = user2_id
 
-        # 插入訊息
+        # 3. 插入訊息
         c.execute('''
             INSERT INTO dm_messages (conversation_id, from_user_id, to_user_id, content, message_type, created_at)
             VALUES (%s, %s, %s, %s, %s, NOW())
@@ -218,9 +322,8 @@ def send_message(from_user_id: str, to_user_id: str, content: str, message_type:
         ''', (conversation_id, from_user_id, to_user_id, content.strip(), message_type))
         message_id = c.fetchone()[0]
 
-        # 更新對話的最後訊息和未讀數
-        # 確定哪個用戶的未讀數要增加
-        if conv["user1_id"] == to_user_id:
+        # 4. 更新對話的最後訊息和未讀數
+        if conv_user1_id == to_user_id:
             unread_field = "user1_unread_count"
         else:
             unread_field = "user2_unread_count"
@@ -233,9 +336,7 @@ def send_message(from_user_id: str, to_user_id: str, content: str, message_type:
             WHERE id = %s
         ''', (message_id, conversation_id))
 
-        conn.commit()
-
-        # 取得完整的訊息資料（包含用戶名稱）
+        # 5. 取得完整的訊息資料（包含用戶名稱）
         c.execute('''
             SELECT m.id, m.conversation_id, m.from_user_id, m.to_user_id, m.content,
                    m.message_type, m.is_read, m.read_at, m.created_at,
@@ -246,6 +347,8 @@ def send_message(from_user_id: str, to_user_id: str, content: str, message_type:
             WHERE m.id = %s
         ''', (message_id,))
         msg_row = c.fetchone()
+
+        conn.commit()
 
         return {
             "success": True,
@@ -277,12 +380,15 @@ def get_messages(conversation_id: int, user_id: str, limit: int = 50, before_id:
     conn = get_connection()
     c = conn.cursor()
     try:
-        # 驗證用戶是對話參與者
-        conv = get_conversation_by_id(conversation_id, user_id)
-        if not conv:
+        # 驗證用戶是對話參與者 (內聯查詢，避免額外連接)
+        c.execute('''
+            SELECT id FROM dm_conversations
+            WHERE id = %s AND (user1_id = %s OR user2_id = %s)
+        ''', (conversation_id, user_id, user_id))
+        if not c.fetchone():
             return {"success": False, "error": "conversation_not_found"}
 
-        # 查詢訊息（包含用戶名稱）
+        # 查詢訊息（包含用戶名稱，排除被當前用戶刪除的訊息）
         if before_id:
             c.execute('''
                 SELECT m.id, m.conversation_id, m.from_user_id, m.to_user_id, m.content,
@@ -291,10 +397,11 @@ def get_messages(conversation_id: int, user_id: str, limit: int = 50, before_id:
                 FROM dm_messages m
                 LEFT JOIN users u1 ON m.from_user_id = u1.user_id
                 LEFT JOIN users u2 ON m.to_user_id = u2.user_id
-                WHERE m.conversation_id = %s AND m.id < %s
+                LEFT JOIN dm_message_deletions d ON d.message_id = m.id AND d.user_id = %s
+                WHERE m.conversation_id = %s AND m.id < %s AND d.id IS NULL
                 ORDER BY m.created_at DESC, m.id DESC
                 LIMIT %s
-            ''', (conversation_id, before_id, limit))
+            ''', (user_id, conversation_id, before_id, limit))
         else:
             c.execute('''
                 SELECT m.id, m.conversation_id, m.from_user_id, m.to_user_id, m.content,
@@ -303,17 +410,13 @@ def get_messages(conversation_id: int, user_id: str, limit: int = 50, before_id:
                 FROM dm_messages m
                 LEFT JOIN users u1 ON m.from_user_id = u1.user_id
                 LEFT JOIN users u2 ON m.to_user_id = u2.user_id
-                WHERE m.conversation_id = %s
+                LEFT JOIN dm_message_deletions d ON d.message_id = m.id AND d.user_id = %s
+                WHERE m.conversation_id = %s AND d.id IS NULL
                 ORDER BY m.created_at DESC, m.id DESC
                 LIMIT %s
-            ''', (conversation_id, limit))
+            ''', (user_id, conversation_id, limit))
 
         rows = c.fetchall()
-
-        # DEBUG: Check what is being returned
-        print(f"[DEBUG get_messages] conv_id={conversation_id}, user_id={user_id}, count={len(rows)}")
-        for r in rows[:3]:
-            print(f"[DEBUG get_messages] id={r[0]}, from={r[2]}, to={r[3]}, is_read={r[6]}")
 
         messages = [
             {
@@ -606,6 +709,73 @@ def search_messages(user_id: str, query: str, limit: int = 50) -> List[Dict]:
 # 輔助函數
 # ============================================================================
 
+
+def delete_dm_message(message_id: int, user_id: str) -> Dict:
+    """
+    收回私訊訊息 (僅限發送者)
+    不會真的刪除訊息，而是標記為已收回，讓對方看到「訊息已收回」
+    """
+    conn = get_connection()
+    c = conn.cursor()
+    try:
+        # 檢查訊息是否存在且發送者是否為當前用戶
+        c.execute('SELECT from_user_id, message_type FROM dm_messages WHERE id = %s', (message_id,))
+        row = c.fetchone()
+
+        if not row:
+            return {"success": False, "error": "message_not_found"}
+
+        if row[0] != user_id:
+            return {"success": False, "error": "permission_denied"}
+
+        if row[1] == 'recalled':
+            return {"success": False, "error": "already_recalled"}
+
+        # 收回訊息：將 message_type 設為 'recalled'，保留原始內容但前端不顯示
+        c.execute('''
+            UPDATE dm_messages
+            SET message_type = 'recalled'
+            WHERE id = %s
+        ''', (message_id,))
+        conn.commit()
+
+        return {"success": True, "recalled": True}
+    except Exception as e:
+        conn.rollback()
+        return {"success": False, "error": str(e)}
+    finally:
+        conn.close()
+
+
+def hide_dm_message_for_user(message_id: int, user_id: str) -> Dict:
+    """
+    隱藏私訊訊息（只對自己隱藏，不影響對方）
+    類似 WhatsApp 的「為我刪除」功能
+    """
+    conn = get_connection()
+    c = conn.cursor()
+    try:
+        # 檢查訊息是否存在
+        c.execute('SELECT id FROM dm_messages WHERE id = %s', (message_id,))
+        if not c.fetchone():
+            return {"success": False, "error": "message_not_found"}
+
+        # 插入刪除記錄（使用 ON CONFLICT 避免重複）
+        c.execute('''
+            INSERT INTO dm_message_deletions (message_id, user_id)
+            VALUES (%s, %s)
+            ON CONFLICT (message_id, user_id) DO NOTHING
+        ''', (message_id, user_id))
+        conn.commit()
+
+        return {"success": True, "hidden": True}
+    except Exception as e:
+        conn.rollback()
+        return {"success": False, "error": str(e)}
+    finally:
+        conn.close()
+
+
 def get_conversation_with_user(user_id: str, other_user_id: str) -> Optional[Dict]:
     """
     取得與特定用戶的對話
@@ -632,5 +802,148 @@ def get_conversation_with_user(user_id: str, other_user_id: str) -> Optional[Dic
             "user2_id": row[2],
             "last_message_at": row[3].isoformat() if row[3] else None
         }
+    finally:
+        conn.close()
+
+
+def get_conversation_with_messages(user_id: str, other_user_id: str, limit: int = 50) -> Dict:
+    """
+    一次性取得對話和訊息（優化版本，只用一個連接）
+    """
+    # 排序以確保唯一性
+    u1, u2 = (user_id, other_user_id) if user_id < other_user_id else (other_user_id, user_id)
+
+    conn = get_connection()
+    c = conn.cursor()
+    try:
+        # 1. 檢查或建立對話
+        c.execute('''
+            SELECT id, user1_id, user2_id, last_message_at, user1_unread_count, user2_unread_count, created_at
+            FROM dm_conversations
+            WHERE user1_id = %s AND user2_id = %s
+        ''', (u1, u2))
+        row = c.fetchone()
+
+        if row:
+            conv = {
+                "id": row[0],
+                "user1_id": row[1],
+                "user2_id": row[2],
+                "last_message_at": row[3].isoformat() if row[3] else None,
+                "user1_unread_count": row[4],
+                "user2_unread_count": row[5],
+                "created_at": row[6].isoformat() if row[6] else None,
+                "is_new": False
+            }
+        else:
+            # 建立新對話
+            c.execute('''
+                INSERT INTO dm_conversations (user1_id, user2_id, created_at)
+                VALUES (%s, %s, NOW())
+                RETURNING id, created_at
+            ''', (u1, u2))
+            new_row = c.fetchone()
+            conn.commit()
+            conv = {
+                "id": new_row[0],
+                "user1_id": u1,
+                "user2_id": u2,
+                "last_message_at": None,
+                "user1_unread_count": 0,
+                "user2_unread_count": 0,
+                "created_at": new_row[1].isoformat() if new_row[1] else None,
+                "is_new": True
+            }
+
+        # 2. 取得訊息（使用同一個連接，排除被當前用戶刪除的訊息）
+        c.execute('''
+            SELECT m.id, m.conversation_id, m.from_user_id, m.to_user_id, m.content,
+                   m.message_type, m.is_read, m.read_at, m.created_at,
+                   u1.username as from_username, u2.username as to_username
+            FROM dm_messages m
+            LEFT JOIN users u1 ON m.from_user_id = u1.user_id
+            LEFT JOIN users u2 ON m.to_user_id = u2.user_id
+            LEFT JOIN dm_message_deletions d ON d.message_id = m.id AND d.user_id = %s
+            WHERE m.conversation_id = %s AND d.id IS NULL
+            ORDER BY m.created_at DESC, m.id DESC
+            LIMIT %s
+        ''', (user_id, conv["id"], limit))
+
+        rows = c.fetchall()
+        messages = [
+            {
+                "id": r[0],
+                "conversation_id": r[1],
+                "from_user_id": r[2],
+                "to_user_id": r[3],
+                "content": r[4],
+                "message_type": r[5],
+                "is_read": bool(r[6]),
+                "read_at": r[7].isoformat() if r[7] else None,
+                "created_at": r[8].isoformat() if r[8] else None,
+                "from_username": r[9],
+                "to_username": r[10]
+            }
+            for r in rows
+        ]
+        messages.reverse()  # 按時間正序
+
+        # 檢查是否有更多
+        has_more = len(rows) >= limit
+
+        return {
+            "success": True,
+            "conversation": conv,
+            "messages": messages,
+            "has_more": has_more
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+    finally:
+        conn.close()
+
+
+def hide_conversation_for_user(conversation_id: int, user_id: str) -> Dict:
+    """
+    隱藏整段對話（刪除對話，只對自己隱藏所有訊息）
+    類似 WhatsApp 的「刪除對話」功能
+    """
+    conn = get_connection()
+    c = conn.cursor()
+    try:
+        # 驗證用戶是對話參與者
+        c.execute('''
+            SELECT id FROM dm_conversations
+            WHERE id = %s AND (user1_id = %s OR user2_id = %s)
+        ''', (conversation_id, user_id, user_id))
+        if not c.fetchone():
+            return {"success": False, "error": "conversation_not_found"}
+
+        # 獲取該對話中所有訊息的 ID
+        c.execute('''
+            SELECT id FROM dm_messages
+            WHERE conversation_id = %s
+        ''', (conversation_id,))
+        message_ids = [row[0] for row in c.fetchall()]
+
+        if not message_ids:
+            # 沒有訊息，但對話存在，仍然返回成功
+            return {"success": True, "hidden_count": 0}
+
+        # 批量插入刪除記錄（使用 ON CONFLICT 避免重複）
+        values = [(msg_id, user_id) for msg_id in message_ids]
+        from psycopg2.extras import execute_values
+        execute_values(c, '''
+            INSERT INTO dm_message_deletions (message_id, user_id)
+            VALUES %s
+            ON CONFLICT (message_id, user_id) DO NOTHING
+        ''', values)
+        
+        conn.commit()
+
+        return {"success": True, "hidden_count": len(message_ids)}
+    except Exception as e:
+        conn.rollback()
+        return {"success": False, "error": str(e)}
     finally:
         conn.close()

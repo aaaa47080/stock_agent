@@ -117,7 +117,6 @@ const MessagesAPI = {
 
         const res = await fetch(`/api/messages/read?user_id=${userId}`, {
             method: 'POST',
-            method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${this._getToken()}`
@@ -543,6 +542,22 @@ const MessagesUI = {
     renderMessageBubble(msg, isPro = false) {
         const isMine = msg.from_user_id === this.currentUserId;
         const timeStr = this.formatTime(msg.created_at);
+        const isRecalled = msg.message_type === 'recalled';
+
+        // 如果是已收回的訊息
+        if (isRecalled) {
+            const recalledText = isMine ? '你已收回訊息' : '對方已收回訊息';
+            return `
+                <div id="msg-${msg.id}" class="flex ${isMine ? 'justify-end' : 'justify-start'} mb-4" data-message-id="${msg.id}">
+                    <div class="flex flex-col ${isMine ? 'items-end' : 'items-start'}">
+                        <div class="px-4 py-2 rounded-2xl bg-white/5 border border-white/10">
+                            <span class="text-textMuted/60 text-sm italic">${recalledText}</span>
+                        </div>
+                        <div class="text-xs text-textMuted/50 mt-1 px-1">${timeStr}</div>
+                    </div>
+                </div>
+            `;
+        }
 
         // 已讀狀態（僅 Pro 可見）
         let readStatus = '';
@@ -557,17 +572,29 @@ const MessagesUI = {
             ? '<span class="text-xs text-accent mr-1">👋</span>'
             : '';
 
+        // 收回按鈕（只有自己的訊息可以收回）
+        const recallBtn = isMine ? `
+            <button onclick="event.stopPropagation(); MessagesPage.recallMessage(${msg.id})"
+                    class="p-1 text-textMuted/30 hover:text-warning opacity-0 group-hover:opacity-100 transition"
+                    title="收回訊息">
+                <i data-lucide="undo-2" class="w-3.5 h-3.5"></i>
+            </button>
+        ` : '';
+
         if (isMine) {
             // 自己的訊息 - 靠右對齊
             return `
-                <div class="flex justify-end mb-4" data-message-id="${msg.id}">
-                    <div class="flex flex-col items-end" style="max-width: 70%;">
-                        <div class="bg-primary text-background px-4 py-2.5 rounded-2xl rounded-br-md">
-                            ${greetingBadge}<span class="whitespace-pre-wrap break-words">${this._escapeHtml(msg.content)}</span>
-                        </div>
-                        <div class="flex items-center gap-2 mt-1 px-1">
-                            ${readStatus}
-                            <span class="text-xs text-textMuted">${timeStr}</span>
+                <div id="msg-${msg.id}" class="flex justify-end mb-4 group" data-message-id="${msg.id}">
+                    <div class="flex items-start gap-1">
+                        ${recallBtn}
+                        <div class="flex flex-col items-end" style="max-width: 70%;">
+                            <div class="bg-primary text-background px-4 py-2.5 rounded-2xl rounded-br-md">
+                                ${greetingBadge}<span class="whitespace-pre-wrap break-words">${this._escapeHtml(msg.content)}</span>
+                            </div>
+                            <div class="flex items-center gap-2 mt-1 px-1">
+                                ${readStatus}
+                                <span class="text-xs text-textMuted">${timeStr}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -575,7 +602,7 @@ const MessagesUI = {
         } else {
             // 對方的訊息 - 靠左對齊
             return `
-                <div class="flex justify-start mb-4" data-message-id="${msg.id}">
+                <div id="msg-${msg.id}" class="flex justify-start mb-4" data-message-id="${msg.id}">
                     <div class="flex flex-col items-start" style="max-width: 70%;">
                         <div class="bg-surface border border-white/10 text-textMain px-4 py-2.5 rounded-2xl rounded-bl-md">
                             ${greetingBadge}<span class="whitespace-pre-wrap break-words">${this._escapeHtml(msg.content)}</span>
@@ -673,5 +700,5 @@ async function updateUnreadBadge() {
 
 window.updateUnreadBadge = updateUnreadBadge;
 
-// 定期更新未讀數量（每 30 秒）
-setInterval(updateUnreadBadge, 30000);
+// 移除定期輪詢 - 未讀數量應該透過 WebSocket 即時更新
+// WebSocket 收到 new_message 時會觸發 updateUnreadBadge()

@@ -534,6 +534,20 @@ def init_db():
         )
     ''')
 
+    # 私訊刪除記錄表（只對自己隱藏，不影響對方）
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS dm_message_deletions (
+            id              SERIAL PRIMARY KEY,
+            message_id      INTEGER NOT NULL,
+            user_id         TEXT NOT NULL,
+            deleted_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+            UNIQUE (message_id, user_id),
+            FOREIGN KEY (message_id) REFERENCES dm_messages(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES users(user_id)
+        )
+    ''')
+
     # 用戶訊息限制追蹤表
     c.execute('''
         CREATE TABLE IF NOT EXISTS user_message_limits (
@@ -641,8 +655,13 @@ def init_db():
             ''', (key, value, value_type, category, description, is_public))
 
     # ========================================================================
-    # 索引
+    # 索引 (Indexes) - 優化查詢效能
     # ========================================================================
+    
+    # 1. AI 對話歷史索引 (Optimized for get_chat_history)
+    c.execute('CREATE INDEX IF NOT EXISTS idx_conversation_history_session_timestamp ON conversation_history(session_id, timestamp)')
+    
+    # 2. 其他索引
     c.execute('CREATE INDEX IF NOT EXISTS idx_posts_board_id ON posts(board_id)')
     c.execute('CREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts(user_id)')
     c.execute('CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at)')
@@ -668,6 +687,8 @@ def init_db():
     c.execute('CREATE INDEX IF NOT EXISTS idx_dm_messages_created ON dm_messages(created_at DESC)')
     c.execute('CREATE INDEX IF NOT EXISTS idx_dm_messages_from_user ON dm_messages(from_user_id)')
     c.execute('CREATE INDEX IF NOT EXISTS idx_dm_messages_to_user ON dm_messages(to_user_id)')
+    # 優化: 複合索引加速分頁查詢 (conversation_id + created_at)
+    c.execute('CREATE INDEX IF NOT EXISTS idx_dm_messages_conversation_created ON dm_messages(conversation_id, created_at DESC)')
     c.execute('CREATE INDEX IF NOT EXISTS idx_user_message_limits ON user_message_limits(user_id, date)')
 
     conn.commit()

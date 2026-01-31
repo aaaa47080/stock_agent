@@ -74,10 +74,12 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     from core.database.user import get_user_by_id
     import asyncio
     
+    user_id = None
+
     # If using regular authentication (not skipped via TEST_MODE without token)
     if token:
-        # TEST_MODE: Allow raw "test-user-xxx" tokens to switch identities
-        if TEST_MODE and token.startswith("test-user-"):
+        # TEST_MODE: Allow raw "test-user-xxx" tokens or "local_user" to switch identities
+        if TEST_MODE and (token.startswith("test-user-") or token == "local_user"):
             user_id = token
             # Use mock user logic below
         else:

@@ -60,6 +60,9 @@ from core.database import init_db
 from interfaces.chat_interface import CryptoAnalysisBot
 from trading.okx_api_connector import OKXAPIConnector
 
+from fastapi import Request
+from fastapi.responses import JSONResponse
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: Initialize database
@@ -119,6 +122,27 @@ async def lifespan(app: FastAPI):
         logger.error(f"❌ 關閉連接池時出錯: {e}")
 
 app = FastAPI(title="Crypto Trading System API", version="1.2.0", lifespan=lifespan)
+
+# --- Global Exception Handler (Fix 500 Internal Server Error) ---
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """
+    Catch-all exception handler to ensure all 500 errors return JSON
+    and are properly logged with traceback.
+    """
+    import traceback
+    error_msg = f"{type(exc).__name__}: {str(exc)}"
+    logger.error(f"🔥 Unhandled 500 Error at {request.method} {request.url.path}: {error_msg}")
+    logger.error(traceback.format_exc())
+    
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Internal Server Error",
+            "error": error_msg,
+            "path": request.url.path
+        }
+    )
 
 # ================================================================
 # Security Enhancements (Phase 7)

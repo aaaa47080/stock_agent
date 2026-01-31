@@ -410,8 +410,15 @@ async def get_market_pulse_api(
             enabled_sources = sources.split(',') if sources else None
             loop = asyncio.get_running_loop()
             
-            # 立即執行分析
-            result = await loop.run_in_executor(None, lambda: get_market_pulse(base_symbol, enabled_sources=enabled_sources))
+            # 限制並發分析數量，避免耗盡資料庫連接池 (MAX_POOL_SIZE=20)
+            # 保留大部分連接給 UI 快速響應 (Chat, Friends List)
+            # 定義全局信號量 (Lazy initialization)
+            if not hasattr(router, "analysis_semaphore"):
+                router.analysis_semaphore = asyncio.Semaphore(5)
+
+            async with router.analysis_semaphore:
+                # 立即執行分析
+                result = await loop.run_in_executor(None, lambda: get_market_pulse(base_symbol, enabled_sources=enabled_sources))
             
             if result and "error" not in result:
                 # 成功後寫入快取，造福後續請求

@@ -104,11 +104,18 @@ async function loadSessions() {
     }
 
     try {
-        // 使用 user_id 來過濾該用戶的 sessions
-        // Use dynamic userId or default to TestUser if in Test Mode (detected by window.TEST_MODE or similar, but simpler to just try test-user-001 if specific test setup)
-        // Better: Use the window.currentUserId which should be set by auth.
-        const userId = window.currentUserId || (window.currentUser ? window.currentUser.user_id : null) || 'local_user';
-        const res = await fetch(`/api/chat/sessions?user_id=${encodeURIComponent(userId)}`);
+        // 使用 AuthManager 獲取用戶 ID
+        const isLoggedIn = window.AuthManager?.isLoggedIn();
+        if (!isLoggedIn) return; // Should be handled by top check, but safe to keep
+
+        const userId = AuthManager.currentUser.user_id;
+        const token = AuthManager.currentUser.accessToken;
+
+        const res = await fetch(`/api/chat/sessions?user_id=${encodeURIComponent(userId)}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         const data = await res.json();
         const list = document.getElementById('chat-session-list');
         list.innerHTML = '';
@@ -335,9 +342,12 @@ async function deleteSelectedSessions() {
     if (!confirmed) return;
 
     try {
-        // 批量刪除
+        const token = AuthManager.currentUser.accessToken;
         const deletePromises = Array.from(selectedSessions).map(sessionId =>
-            fetch(`/api/chat/sessions/${sessionId}`, { method: 'DELETE' })
+            fetch(`/api/chat/sessions/${sessionId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
         );
         await Promise.all(deletePromises);
 
@@ -359,7 +369,11 @@ async function deleteSelectedSessions() {
 async function toggleStarSession(event, sessionId, newStatus) {
     event.stopPropagation();
     try {
-        await fetch(`/api/chat/sessions/${sessionId}/pin?is_pinned=${newStatus}`, { method: 'PUT' });
+        const token = AuthManager.currentUser.accessToken;
+        await fetch(`/api/chat/sessions/${sessionId}/pin?is_pinned=${newStatus}`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
         await loadSessions();
     } catch (e) {
         console.error("Failed to toggle star:", e);
@@ -474,12 +488,19 @@ async function deleteSession(event, sessionId) {
     if (!confirmed) return;
 
     try {
-        await fetch(`/api/chat/sessions/${sessionId}`, { method: 'DELETE' });
+        const token = AuthManager.currentUser.accessToken;
+        await fetch(`/api/chat/sessions/${sessionId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
 
         // 重新獲取 sessions 列表（需要傳入 user_id）
-        const userId = window.currentUserId || (window.currentUser ? window.currentUser.user_id : null) || 'local_user';
-        const res = await fetch(`/api/chat/sessions?user_id=${encodeURIComponent(userId)}`);
-        const sessions = await res.json();
+        const userId = AuthManager.currentUser.user_id;
+        const res = await fetch(`/api/chat/sessions?user_id=${encodeURIComponent(userId)}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        const sessions = data.sessions;
 
         if (currentSessionId === sessionId) {
             // 如果刪除的是當前 session，先清空聊天區域
@@ -532,9 +553,14 @@ async function sendMessage() {
     // Lazy Creation: 如果沒有 currentSessionId，先建立新的 Session
     if (!currentSessionId) {
         try {
-            const userId = window.currentUserId || (window.currentUser ? window.currentUser.user_id : null) || 'local_user';
+            const userId = AuthManager.currentUser.user_id;
+            const token = AuthManager.currentUser.accessToken;
+
             // 這裡可以傳遞 title (e.g., text.substring(0, 20)) 但後端通常會預設為 New Chat 或由第一條訊息生成
-            const createRes = await fetch(`/api/chat/sessions?user_id=${encodeURIComponent(userId)}`, { method: 'POST' });
+            const createRes = await fetch(`/api/chat/sessions?user_id=${encodeURIComponent(userId)}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             const createData = await createRes.json();
             currentSessionId = createData.session_id;
 
@@ -592,9 +618,13 @@ async function sendMessage() {
     window.currentAnalysisController = new AbortController();
 
     try {
+        const token = AuthManager.currentUser.accessToken;
         const response = await fetch('/api/analyze', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
             body: JSON.stringify({
                 message: text,
                 manual_selection: selection,
@@ -857,7 +887,12 @@ async function loadChatHistory(sessionId = 'default') {
     }
 
     try {
-        const res = await fetch(`/api/chat/history?session_id=${sessionId}`);
+        const token = AuthManager.currentUser.accessToken;
+        const res = await fetch(`/api/chat/history?session_id=${sessionId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         const data = await res.json();
 
         const container = document.getElementById('chat-messages');
@@ -939,8 +974,18 @@ async function initChat() {
     await loadSessions();
 
     // 2. 檢查是否有現有的 session，如果沒有才創建新的
-    const userId = window.currentUserId || 'local_user';
-    const sessionsRes = await fetch(`/api/chat/sessions?user_id=${encodeURIComponent(userId)}`);
+    const userId = window.currentUserId || AuthManager.currentUser?.user_id || 'local_user';
+    const token = AuthManager.currentUser?.accessToken;
+
+    // Safety check
+    if (!token) {
+        console.error('initChat: No token found');
+        return;
+    }
+
+    const sessionsRes = await fetch(`/api/chat/sessions?user_id=${encodeURIComponent(userId)}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
     const sessionsData = await sessionsRes.json();
     let sessions = sessionsData.sessions || [];
 
@@ -957,7 +1002,10 @@ async function initChat() {
                 newChatCount++;
                 // If we already found one "New Chat" (the newest one), delete this one
                 if (newChatCount > 1) {
-                    cleanupPromises.push(fetch(`/api/chat/sessions/${s.id}`, { method: 'DELETE' }));
+                    cleanupPromises.push(fetch(`/api/chat/sessions/${s.id}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    }));
                 }
             }
         }
@@ -966,7 +1014,9 @@ async function initChat() {
             console.log(`Cleaning up ${cleanupPromises.length} redundant sessions...`);
             await Promise.allSettled(cleanupPromises);
             // Reload list to reflect changes
-            const refreshedRes = await fetch(`/api/chat/sessions?user_id=${encodeURIComponent(userId)}`);
+            const refreshedRes = await fetch(`/api/chat/sessions?user_id=${encodeURIComponent(userId)}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
             const refreshedData = await refreshedRes.json();
             sessions = refreshedData.sessions || [];
             await loadSessions();

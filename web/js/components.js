@@ -178,52 +178,54 @@ const Components = {
                     </div>
                 </div>
 
-                <!-- Chat Window (Right) -->
-                <div id="social-chat-section" class="hidden md:flex flex-1 flex-col bg-background">
-                    <!-- Chat Header -->
-                    <div id="social-chat-header" class="p-4 border-b border-white/5 flex items-center gap-3 hidden">
-                        <button onclick="SocialHub.backToConvList()" class="md:hidden p-2 hover:bg-white/5 rounded-lg transition">
-                            <i data-lucide="arrow-left" class="w-5 h-5"></i>
-                        </button>
-                        <div id="social-chat-avatar" class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">U</div>
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-2">
-                                <span id="social-chat-username" class="font-bold text-textMain truncate">User</span>
-                                <span id="social-chat-badge"></span>
-                            </div>
-                        </div>
-                        <a id="social-chat-profile-link" href="#" onclick="sessionStorage.setItem('returnToTab', 'friends')" class="p-2 hover:bg-white/5 rounded-lg transition" title="查看資料">
-                            <i data-lucide="user" class="w-5 h-5"></i>
-                        </a>
-                    </div>
-
-                    <!-- Messages Container -->
-                    <div id="social-messages-container" class="flex-1 overflow-y-auto p-4">
-                        <div class="flex flex-col items-center justify-center h-full text-textMuted">
-                            <i data-lucide="message-square" class="w-16 h-16 opacity-30 mb-4"></i>
-                            <p>選擇一個對話開始聊天</p>
+                <!-- Chat Section (Desktop: inline, Mobile: hidden) -->
+                <div id="social-chat-section" class="hidden md:flex flex-1 flex-col bg-background relative h-full">
+                    <!-- Empty State (shown when no conversation selected) -->
+                    <div id="social-chat-empty" class="flex-1 flex items-center justify-center">
+                        <div class="text-center text-textMuted opacity-60">
+                            <i data-lucide="message-circle" class="w-12 h-12 mx-auto mb-4"></i>
+                            <p class="text-lg font-medium mb-2">選擇一個對話</p>
+                            <p class="text-sm">點擊左側的對話開始聊天</p>
                         </div>
                     </div>
 
-                    <!-- Message Input -->
-                    <div id="social-msg-input-container" class="p-4 border-t border-white/5 hidden">
-                        <form id="social-msg-form" onsubmit="SocialHub.sendMessage(event)" class="flex items-end gap-3">
-                            <div class="flex-1">
-                                <div class="bg-surface border border-white/10 rounded-2xl px-4 py-3 focus-within:border-primary/50 transition">
-                                    <textarea id="social-msg-input"
-                                        class="w-full bg-transparent text-textMain placeholder-textMuted resize-none leading-6 py-0 outline-none"
-                                        placeholder="輸入訊息..." rows="1" maxlength="500"
-                                        onkeydown="SocialHub.handleInputKeydown(event)"
-                                        oninput="SocialHub.autoResizeInput(this); SocialHub.updateCharCount()"></textarea>
+                    <!-- Chat Content (hidden until conversation selected) -->
+                    <div id="social-chat-content" class="hidden flex-1 flex flex-col h-full">
+                        <!-- Chat Header -->
+                        <div id="social-chat-header" class="p-3 border-b border-white/5 flex items-center gap-3 bg-surface/50">
+                            <a id="social-chat-profile-link" href="#" class="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition">
+                                <div id="social-chat-avatar" class="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold flex-shrink-0">U</div>
+                                <span id="social-chat-username" class="font-bold text-textMain truncate">Username</span>
+                            </a>
+                        </div>
+
+                        <!-- Messages Container -->
+                        <div id="social-messages-container" class="flex-1 overflow-y-auto p-4 messages-scroll">
+                            <!-- Messages will be rendered here -->
+                        </div>
+
+                        <!-- Message Input -->
+                        <div id="social-msg-input-container" class="p-3 border-t border-white/5 bg-surface/30">
+                            <form id="social-msg-form" onsubmit="SocialHub.sendMessage(event)" class="w-full">
+                                <div class="flex items-end gap-2">
+                                    <div class="flex-1 bg-background border border-white/10 rounded-xl px-3 py-2 focus-within:border-primary/50 transition">
+                                        <textarea id="social-msg-input"
+                                            class="w-full bg-transparent text-textMain placeholder-textMuted resize-none leading-6 outline-none text-sm"
+                                            placeholder="輸入訊息..." rows="1" maxlength="500"
+                                            onkeydown="SocialHub.handleInputKeydown(event)"
+                                            oninput="SocialHub.autoResizeInput(this); SocialHub.updateCharCount()"></textarea>
+                                    </div>
+                                    <button type="submit" id="social-send-btn"
+                                        class="p-2.5 bg-primary hover:brightness-110 text-background rounded-xl transition disabled:opacity-50 shadow-lg shadow-primary/20 flex-shrink-0"
+                                        disabled>
+                                        <i data-lucide="send" class="w-5 h-5"></i>
+                                    </button>
                                 </div>
-                                <div class="flex items-center justify-between mt-1 px-2">
-                                    <span id="social-char-count" class="text-xs text-textMuted/50">0/500</span>
+                                <div class="flex items-center justify-end mt-1 px-1">
+                                    <span id="social-char-count" class="text-[10px] text-textMuted/50">0/500</span>
                                 </div>
-                            </div>
-                            <button type="submit" id="social-send-btn" class="p-3 bg-primary hover:brightness-110 text-background rounded-xl transition disabled:opacity-50" disabled>
-                                <i data-lucide="send" class="w-5 h-5"></i>
-                            </button>
-                        </form>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>
