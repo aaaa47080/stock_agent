@@ -344,6 +344,7 @@ if os.path.exists("web"):
 
 if __name__ == "__main__":
     logger.info("🚀 Pi Crypto Insight API Server 啟動中...")
+    logger.info("VERIFICATION_TAG: Fix-500-Masking-v3-Robust") 
     logger.info(f"🏠 本地網址: http://localhost:8111")
     logger.info("📱 請在 Pi Browser 中使用 HTTPS 網址訪問 (如透過 ngrok)")
     uvicorn.run(app, host="0.0.0.0", port=8111)

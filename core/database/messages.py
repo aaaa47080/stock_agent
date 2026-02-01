@@ -102,6 +102,7 @@ def get_conversations(user_id: str, limit: int = 50, offset: int = 0) -> List[Di
     """
     取得用戶的對話列表，按最後訊息時間排序
     排除所有訊息都已被用戶刪除的對話
+    排除當前用戶已封鎖的對話（LINE 模式：封鎖後對話從列表隱藏，解除封鎖後恢復）
     """
     conn = get_connection()
     c = conn.cursor()
@@ -131,9 +132,16 @@ def get_conversations(user_id: str, limit: int = 50, offset: int = 0) -> List[Di
                 LEFT JOIN dm_message_deletions del ON del.message_id = msg.id AND del.user_id = %s
                 WHERE msg.conversation_id = c.id AND del.id IS NULL
             )
+            -- 排除當前用戶已封鎖的對話（LINE 模式）
+            AND NOT EXISTS (
+                SELECT 1 FROM friendships f
+                WHERE f.user_id = %s
+                AND f.friend_id = CASE WHEN c.user1_id = %s THEN c.user2_id ELSE c.user1_id END
+                AND f.status = 'blocked'
+            )
             ORDER BY c.last_message_at DESC NULLS LAST, c.created_at DESC
             LIMIT %s OFFSET %s
-        ''', (user_id, user_id, user_id, user_id, user_id, user_id, limit, offset))
+        ''', (user_id, user_id, user_id, user_id, user_id, user_id, user_id, user_id, limit, offset))
 
         rows = c.fetchall()
         conversations = []

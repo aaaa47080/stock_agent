@@ -17,7 +17,9 @@ const FriendsAPI = {
     _getAuthHeaders() {
         const headers = { 'Content-Type': 'application/json' };
         if (typeof AuthManager !== 'undefined' && AuthManager.currentUser) {
-            const token = AuthManager.currentUser.accessToken || AuthManager.currentUser.piAccessToken;
+            const userId = AuthManager.currentUser.user_id || AuthManager.currentUser.uid;
+            // 優先使用標準 Token，若無則在測試模式下使用 user_id
+            const token = AuthManager.currentUser.accessToken || AuthManager.currentUser.piAccessToken || userId;
             if (token) {
                 headers['Authorization'] = `Bearer ${token}`;
             }
@@ -347,13 +349,20 @@ const FriendsUI = {
     getFriendButton(userId, status, isRequester) {
         if (status === 'accepted') {
             return `
-                <button onclick="FriendsUI.handleRemoveFriend('${userId}')"
-                        class="friend-btn bg-success/10 text-success px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 border border-success/20 hover:bg-danger/10 hover:text-danger hover:border-danger/20 transition group">
-                    <i data-lucide="user-check" class="w-4 h-4 group-hover:hidden"></i>
-                    <i data-lucide="user-minus" class="w-4 h-4 hidden group-hover:block"></i>
-                    <span class="group-hover:hidden">好友</span>
-                    <span class="hidden group-hover:inline">移除</span>
-                </button>
+                <div class="flex gap-2">
+                    <button onclick="FriendsUI.handleRemoveFriend('${userId}')"
+                            class="friend-btn bg-white/5 text-textMuted px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 border border-white/10 hover:bg-danger/10 hover:text-danger hover:border-danger/20 transition group">
+                        <i data-lucide="user-check" class="w-4 h-4 group-hover:hidden"></i>
+                        <i data-lucide="user-minus" class="w-4 h-4 hidden group-hover:block"></i>
+                        <span class="group-hover:hidden">好友</span>
+                        <span class="hidden group-hover:inline">移除</span>
+                    </button>
+                    <button onclick="FriendsUI.handleBlock('${userId}')"
+                            class="friend-btn bg-danger/5 text-danger/80 px-2 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 border border-danger/10 hover:bg-danger/20 hover:text-danger transition"
+                            title="封鎖用戶">
+                        <i data-lucide="ban" class="w-4 h-4"></i>
+                    </button>
+                </div>
             `;
         }
         if (status === 'pending') {
@@ -592,11 +601,8 @@ const FriendsUI = {
             if (typeof showToast === 'function') {
                 showToast('已封鎖用戶', 'info');
             }
-            if (typeof refreshFriendsUI === 'function') {
-                refreshFriendsUI();
-            } else {
-                location.reload();
-            }
+            // Refresh in-place without reloading
+            await loadFriendsTabData();
         } catch (error) {
             if (typeof showToast === 'function') {
                 showToast(error.message, 'error');
@@ -615,17 +621,35 @@ const FriendsUI = {
             if (typeof showToast === 'function') {
                 showToast('已解除封鎖', 'success');
             }
-            if (typeof refreshFriendsUI === 'function') {
-                refreshFriendsUI();
-            } else {
-                location.reload();
-            }
+            // Refresh in-place without reloading
+            await loadFriendsTabData();
         } catch (error) {
             if (typeof showToast === 'function') {
                 showToast(error.message, 'error');
             } else {
                 alert(error.message);
             }
+        }
+    },
+
+    // Toggle between Friends list and Blocked list view
+    toggleBlockedView() {
+        const friendsView = document.getElementById('friends-view-container');
+        const blockedView = document.getElementById('blocked-view-container');
+        const toggleBtnSpan = document.querySelector('button[onclick="FriendsUI.toggleBlockedView()"] span');
+
+        if (!friendsView || !blockedView) return;
+
+        if (friendsView.classList.contains('hidden')) {
+            // Switch to Friends View
+            friendsView.classList.remove('hidden');
+            blockedView.classList.add('hidden');
+            if (toggleBtnSpan) toggleBtnSpan.textContent = '管理黑名單';
+        } else {
+            // Switch to Blocked View
+            friendsView.classList.add('hidden');
+            blockedView.classList.remove('hidden');
+            if (toggleBtnSpan) toggleBtnSpan.textContent = '返回好友列表';
         }
     },
 
@@ -718,7 +742,7 @@ async function loadFriendsTabData() {
     const isLoggedIn = AuthManager.isLoggedIn();
     const pendingListEl = document.getElementById('pending-requests-list');
     const friendsListEl = document.getElementById('friends-list');
-    const blockedListEl = document.getElementById('blocked-users-container');
+    const blockedListEl = document.getElementById('blocked-users-list');
 
     // Reset badges
     updateBadge('friends-badge-total', 0);
@@ -799,7 +823,8 @@ async function loadFriendsTabData() {
                     };
                     return FriendsUI.renderUserCard(u);
                 }).join('');
-                updateBadge('blocked-count-badge', blockedRes.blocked_users.length);
+                // updateBadge('blocked-count-badge', blockedRes.blocked_users.length); // Tab badge removed
+                updateBadge('blocked-count-badge-content', blockedRes.blocked_users.length, true); // Content header badge (if kept) or could be reused
             }
         }
 
@@ -926,9 +951,12 @@ const SocialHub = {
         // Show/Hide Content
         document.getElementById('social-content-messages').classList.add('hidden');
         document.getElementById('social-content-friends').classList.add('hidden');
-        document.getElementById(`social-content-${tabName}`).classList.remove('hidden');
+        // document.getElementById('social-content-blocked').classList.add('hidden'); // Tab removed
 
-        // If switching to friends, load data if needed
+        const contentEl = document.getElementById(`social-content-${tabName}`);
+        if (contentEl) contentEl.classList.remove('hidden');
+
+        // If switching to friends load data if needed
         if (tabName === 'friends') {
             loadFriendsTabData();
         } else {
@@ -1097,6 +1125,11 @@ const SocialHub = {
             const data = await res.json();
 
             if (!data.success) throw new Error(data.error || '載入失敗');
+
+            // Set current conversation ID for deletion checks
+            if (data.conversation?.id) {
+                this.currentConversationId = data.conversation.id;
+            }
 
             if (!data.messages || data.messages.length === 0) {
                 container.innerHTML = `
@@ -1333,6 +1366,9 @@ const SocialHub = {
                         this.currentChatUserId = null;
                         this.currentChatUsername = null;
                         this.currentConversationId = null;
+
+                        // Force refresh icons in empty state
+                        if (window.lucide) lucide.createIcons();
                     }
                 }
 

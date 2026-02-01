@@ -71,6 +71,8 @@ async def search_users_endpoint(
             user["is_friend"] = status.get("status") == "accepted" if status else False
 
         return {"success": True, "users": users, "count": len(users)}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"搜尋用戶失敗: {e}")
         raise HTTPException(status_code=500, detail=f"搜尋失敗: {str(e)}")
@@ -90,6 +92,8 @@ async def get_user_profile(
         if not profile:
             raise HTTPException(status_code=404, detail="用戶不存在")
         return {"success": True, "profile": profile}
+    except HTTPException:
+        raise
     except HTTPException:
         raise
     except Exception as e:
@@ -141,6 +145,8 @@ async def send_request(
         return result
     except HTTPException:
         raise
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"發送好友請求失敗: {e}")
         raise HTTPException(status_code=500, detail=f"發送請求失敗: {str(e)}")
@@ -166,6 +172,8 @@ async def accept_request(
             raise HTTPException(status_code=400, detail="找不到此好友請求")
 
         return result
+    except HTTPException:
+        raise
     except HTTPException:
         raise
     except Exception as e:
@@ -194,6 +202,8 @@ async def reject_request(
         return result
     except HTTPException:
         raise
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"拒絕好友請求失敗: {e}")
         raise HTTPException(status_code=500, detail=f"拒絕請求失敗: {str(e)}")
@@ -220,6 +230,8 @@ async def cancel_request(
         return result
     except HTTPException:
         raise
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"取消好友請求失敗: {e}")
         raise HTTPException(status_code=500, detail=f"取消請求失敗: {str(e)}")
@@ -244,6 +256,8 @@ async def remove_friend_endpoint(
             raise HTTPException(status_code=400, detail="你們不是好友")
 
         return result
+    except HTTPException:
+        raise
     except HTTPException:
         raise
     except Exception as e:
@@ -282,6 +296,8 @@ async def block_user_endpoint(
         return result
     except HTTPException:
         raise
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"封鎖用戶失敗: {e}")
         raise HTTPException(status_code=500, detail=f"封鎖失敗: {str(e)}")
@@ -308,6 +324,8 @@ async def unblock_user_endpoint(
         return result
     except HTTPException:
         raise
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"解除封鎖失敗: {e}")
         raise HTTPException(status_code=500, detail=f"解除封鎖失敗: {str(e)}")
@@ -331,7 +349,12 @@ async def get_blocked_list(
             "blocked_users": blocked,
             "count": len(blocked)
         }
+    except HTTPException:
+        raise
     except Exception as e:
+        # Check if it's an HTTPException that wasn't caught (e.g. import mismatch)
+        if hasattr(e, "status_code") and hasattr(e, "detail"):
+            raise e
         logger.error(f"取得封鎖名單失敗: {e}")
         raise HTTPException(status_code=500, detail=f"取得封鎖名單失敗: {str(e)}")
 
@@ -363,7 +386,12 @@ async def get_friends(
             "count": len(friends),
             "total": count
         }
+    except HTTPException:
+        raise
     except Exception as e:
+        # Check if it's an HTTPException that wasn't caught (e.g. import mismatch)
+        if hasattr(e, "status_code") and hasattr(e, "detail"):
+            raise e
         logger.error(f"取得好友列表失敗: {e}")
         raise HTTPException(status_code=500, detail=f"取得好友列表失敗: {str(e)}")
 
@@ -386,6 +414,8 @@ async def get_received_requests(
             "requests": requests,
             "count": len(requests)
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"取得好友請求失敗: {e}")
         raise HTTPException(status_code=500, detail=f"取得好友請求失敗: {str(e)}")
@@ -409,6 +439,8 @@ async def get_sent_requests(
             "requests": requests,
             "count": len(requests)
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"取得已發送請求失敗: {e}")
         raise HTTPException(status_code=500, detail=f"取得已發送請求失敗: {str(e)}")
@@ -431,6 +463,10 @@ async def get_status(
             "is_friend": status.get("status") == "accepted" if status else False,
             "details": status
         }
+    except HTTPException:
+        raise
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"取得好友狀態失敗: {e}")
         raise HTTPException(status_code=500, detail=f"取得狀態失敗: {str(e)}")
@@ -457,6 +493,10 @@ async def get_counts(
             "friends_count": friends_count,
             "pending_received": pending_received,
         }
+    except HTTPException:
+        raise
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"取得好友數量失敗: {e}")
         raise HTTPException(status_code=500, detail=f"取得數量失敗: {str(e)}")

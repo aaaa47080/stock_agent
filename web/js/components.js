@@ -158,12 +158,6 @@ const Components = {
                     <span>好友</span>
                     <span id="friends-request-badge" class="hidden px-1.5 py-0.5 text-xs bg-danger text-white rounded-full">0</span>
                 </button>
-                <button onclick="SocialHub.switchSubTab('blocked')" id="social-tab-blocked"
-                    class="social-sub-tab flex-1 py-2.5 px-4 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 text-textMuted hover:text-textMain hover:bg-white/5">
-                    <i data-lucide="ban" class="w-4 h-4"></i>
-                    <span>黑名單</span>
-                    <span id="blocked-count-badge" class="hidden px-1.5 py-0.5 text-xs bg-white/10 text-white rounded-full">0</span>
-                </button>
             </div>
 
             <!-- ==================== MESSAGES SUB-TAB ==================== -->
@@ -277,30 +271,38 @@ const Components = {
                                 My Friends
                                 <span id="friends-count-badge" class="hidden px-2 py-0.5 text-xs bg-white/10 text-textMuted rounded-full">0</span>
                             </h3>
-                            <div id="friends-list" class="space-y-2">
-                                <div class="text-center text-textMuted py-6 opacity-50">
-                                    <i data-lucide="loader-2" class="w-5 h-5 animate-spin mx-auto mb-2"></i>
-                                    Loading friends...
+                        <!-- My Friends -->
+                        <div class="bg-surface border border-white/5 rounded-2xl p-6 relative">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-bold text-secondary text-lg flex items-center gap-2">
+                                    <i data-lucide="users" class="w-5 h-5 text-success"></i>
+                                    My Friends
+                                    <span id="friends-count-badge" class="hidden px-2 py-0.5 text-xs bg-white/10 text-textMuted rounded-full">0</span>
+                                </h3>
+                                <button onclick="FriendsUI.toggleBlockedView()" class="text-xs text-textMuted hover:text-danger transition flex items-center gap-1">
+                                    <i data-lucide="ban" class="w-3 h-3"></i>
+                                    <span>管理黑名單</span>
+                                </button>
+                            </div>
+                            
+                            <!-- Friends List View -->
+                            <div id="friends-view-container">
+                                <div id="friends-list" class="space-y-2">
+                                    <div class="text-center text-textMuted py-6 opacity-50">
+                                        <i data-lucide="loader-2" class="w-5 h-5 animate-spin mx-auto mb-2"></i>
+                                        Loading friends...
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
 
-                    <!-- Blocked Users (Collapsible) -->
-                    <div class="bg-surface border border-white/5 rounded-2xl overflow-hidden">
-                        <button onclick="document.getElementById('blocked-list').classList.toggle('hidden'); document.getElementById('blocked-chevron').classList.toggle('rotate-180');" class="w-full p-6 flex items-center justify-between hover:bg-white/5 transition">
-                            <h3 class="font-bold text-textMuted text-lg flex items-center gap-2">
-                                <i data-lucide="ban" class="w-5 h-5 text-danger"></i>
-                                Blocked Users
-                                <!-- Badge moved to tab -->
-                            </h3>
-                            <i data-lucide="chevron-down" id="blocked-chevron" class="w-5 h-5 text-textMuted transition-transform"></i>
-                        </button>
-                        <div id="blocked-list" class="px-6 pb-6 hidden">
-                            <!-- Content moved to blocked tab -->
-                            <div class="space-y-2">
-                                <div class="text-center text-textMuted py-4 opacity-50">
-                                    Moved to 'Blocked' tab
+                            <!-- Blocked List View (Hidden by default) -->
+                            <div id="blocked-view-container" class="hidden">
+                                <div class="flex items-center gap-2 mb-4 p-3 bg-danger/5 rounded-lg border border-danger/10">
+                                    <i data-lucide="info" class="w-4 h-4 text-danger"></i>
+                                    <p class="text-xs text-textMuted">被封鎖的用戶無法向您發送訊息或好友請求。</p>
+                                </div>
+                                <div id="blocked-users-list" class="space-y-2">
+                                    <!-- Blocked users injected here -->
                                 </div>
                             </div>
                         </div>
@@ -309,7 +311,7 @@ const Components = {
                     <div class="h-20"></div>
                 </div>
             </div>
-        </div>
+         </div>
     `,
 
     // Tab: Settings (保持原樣，這裡省略以節省空間)

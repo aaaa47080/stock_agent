@@ -160,7 +160,8 @@ SCREENER_DEFAULT_INTERVAL = "1d"
 
 # === 自動篩選器/市場掃描配置 ===
 # 指定要每天自動分析的重點幣種 (減少數量以提升效能，建議 3-5 個)
-SCREENER_TARGET_SYMBOLS = ["BTC", "ETH", "SOL", "PI"]
+# 注意：僅包含 OKX 交易所實際存在的幣種
+SCREENER_TARGET_SYMBOLS = ["BTC", "ETH", "SOL"]
 
 # 自動更新間隔 (分鐘)
 SCREENER_UPDATE_INTERVAL_MINUTES = int(os.getenv("SCREENER_UPDATE_INTERVAL_MINUTES", "5"))
@@ -170,7 +171,8 @@ FUNDING_RATE_UPDATE_INTERVAL = int(os.getenv("FUNDING_RATE_UPDATE_INTERVAL", "30
 
 # === 市場脈動 (Market Pulse) 配置 ===
 # 固定監控的幣種列表 (優先級最高)
-MARKET_PULSE_TARGETS = ["BTC", "ETH", "SOL", "PI"]
+# 注意：僅包含 OKX 交易所實際存在的幣種
+MARKET_PULSE_TARGETS = ["BTC", "ETH", "SOL"]
 
 # 自動排名的幣種數量 (已停用 - 改為全市場掃描)
 # MARKET_PULSE_BATCH_SIZE = 20

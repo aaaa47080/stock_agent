@@ -328,8 +328,14 @@ class OkxDataFetcher:
                     
                     # 51001: Instrument ID doesn't exist (Common when checking availability)
                     if error_code == '51001': 
-                        # Log as warning instead of error print
-                        logger.warning(f"OKX API Warning (51001): {error_msg}")
+                        # 僅在非測試模式下記錄警告，避免日誌噪音
+                        try:
+                            from core.config import TEST_MODE
+                            if not TEST_MODE:
+                                logger.warning(f"OKX API Warning (51001): {error_msg}")
+                        except:
+                            # 如果無法導入 TEST_MODE，默認記錄警告
+                            logger.warning(f"OKX API Warning (51001): {error_msg}")
                     else:
                         print(f"OKX API 錯誤: {error_msg}")
                     return None
