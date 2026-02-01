@@ -62,6 +62,11 @@ class PooledConnection:
         """關閉連接（實際上是歸還到池中）"""
         if not self._returned and self._pool and self._conn:
             try:
+                # 先 rollback 任何未提交的事務，避免連接狀態不一致
+                try:
+                    self._conn.rollback()
+                except Exception:
+                    pass
                 # 歸還連接到池中，而不是真正關閉
                 self._pool.putconn(self._conn)
                 self._returned = True
