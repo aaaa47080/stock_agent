@@ -65,11 +65,21 @@ from fastapi.responses import JSONResponse
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Initialize database
-    logger.info("🔄 Initializing database...")
-    loop = asyncio.get_running_loop()
-    await loop.run_in_executor(None, init_db)
-    logger.info("✅ Database initialized")
+    # Startup: Initialize database (with retry + graceful fallback)
+    skip_db_init = os.getenv('SKIP_DB_INIT', 'false').lower() == 'true'
+
+    if not skip_db_init:
+        logger.info("🔄 Initializing database...")
+        loop = asyncio.get_running_loop()
+        try:
+            # init_db 內部已有重試機制（10次，每次間隔3秒）
+            await loop.run_in_executor(None, init_db)
+            logger.info("✅ Database initialized")
+        except Exception as e:
+            logger.error(f"⚠️ 資料庫初始化失敗: {e}")
+            logger.warning("⏭️ 應用程式將繼續運行，部分功能可能無法使用")
+    else:
+        logger.info("⏭️ 跳過資料庫初始化 (SKIP_DB_INIT=true)")
 
     from core.config import TEST_MODE
     if TEST_MODE:
