@@ -1,4 +1,3 @@
-
 # Environment Variables
 .env
 .env.local
@@ -14,3 +13,24 @@ env/
 # IDE
 .vscode/
 .idea/
+.claude/
+
+# Logs
+*.log
+frontend_debug.log
+
+# Database (local)
+*.db
+user_data.db
+
+# Archive (test/debug/temp files)
+_archive/
+
+# Build/Deploy artifacts
+docs/
+*.pyc
+*.pyo
+
+# OS files
+.DS_Store
+Thumbs.db

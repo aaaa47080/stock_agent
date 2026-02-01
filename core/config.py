@@ -6,9 +6,10 @@ load_dotenv(override=True)
 
 # === 測試模式配置 ===
 # 設為 True 時，跳過登入驗證，自動以測試用戶身份登入
-# 注意：僅供開發測試使用，正式環境請設為 False
-# 可透過環境變數 TEST_MODE=false 來關閉
-TEST_MODE = os.getenv("TEST_MODE", "true").lower() == "true"
+# ⚠️ 安全警告：測試模式會繞過付費、認證等安全檢查
+# ⚠️ 預設為 False（安全），開發時需明確設置 TEST_MODE=true
+# 可透過環境變數 TEST_MODE=true 來啟用（僅限開發環境）
+TEST_MODE = os.getenv("TEST_MODE", "false").lower() == "true"
 
 # 測試用戶資料（TEST_MODE=True 時使用）
 TEST_USER = {

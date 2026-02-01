@@ -146,6 +146,18 @@ const ForumAPI = {
         return null;
     },
 
+    _getAuthHeaders() {
+        const headers = { 'Content-Type': 'application/json' };
+        if (typeof AuthManager !== 'undefined' && AuthManager.currentUser) {
+            // 修正：使用 accessToken 而不是 token
+            const token = AuthManager.currentUser.accessToken || AuthManager.currentUser.token || localStorage.getItem('auth_token');
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+        }
+        return headers;
+    },
+
     // Boards
     async getBoards() {
         const res = await fetch('/api/forum/boards');
@@ -170,7 +182,7 @@ const ForumAPI = {
 
         const res = await fetch(`/api/forum/posts?user_id=${encodeURIComponent(userId)}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: this._getAuthHeaders(),
             body: JSON.stringify(data)
         });
         if (!res.ok) {
@@ -207,7 +219,7 @@ const ForumAPI = {
         const query = new URLSearchParams({ user_id: userId }).toString();
         const res = await fetch(`/api/forum/posts/${postId}/comments?${query}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: this._getAuthHeaders(),
             body: JSON.stringify(data)
         });
         if (!res.ok) {
@@ -352,6 +364,7 @@ const ForumAPI = {
 
         try {
             const res = await fetch(`/api/forum/me/limits?user_id=${userId}`, {
+                headers: this._getAuthHeaders(),
                 signal: controller.signal
             });
             clearTimeout(id);
@@ -452,7 +465,10 @@ const ForumApp = {
         const container = document.getElementById('post-list');
         if (!container) return;
 
-        container.innerHTML = '<div class="text-center py-10 text-textMuted"><i class="animate-spin" data-lucide="loader-2"></i> Loading...</div>';
+        container.innerHTML = `<div class="flex flex-col items-center justify-center py-10 text-textMuted gap-2">
+            <i class="animate-spin" data-lucide="loader-2"></i>
+            <span>Loading...</span>
+        </div>`;
         if (window.lucide) lucide.createIcons();
 
         try {
@@ -557,12 +573,21 @@ const ForumApp = {
         await this.loadPostDetail(postId);
         await this.loadComments(postId);
 
-        // 綁定按鈕事件
-        document.getElementById('btn-push')?.addEventListener('click', () => this.handlePush(postId));
-        document.getElementById('btn-boo')?.addEventListener('click', () => this.handleBoo(postId));
-        document.getElementById('btn-reply')?.addEventListener('click', () => this.toggleReplyForm());
-        document.getElementById('btn-tip')?.addEventListener('click', () => this.handleTip(postId));
-        document.getElementById('submit-reply')?.addEventListener('click', () => this.submitReply(postId));
+        // 綁定按鈕事件 - 使用克隆替換法防止重複綁定
+        const bindButton = (id, handler) => {
+            const btn = document.getElementById(id);
+            if (btn) {
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+                newBtn.addEventListener('click', handler);
+            }
+        };
+
+        bindButton('btn-push', () => this.handlePush(postId));
+        bindButton('btn-boo', () => this.handleBoo(postId));
+        bindButton('btn-reply', () => this.toggleReplyForm());
+        bindButton('btn-tip', () => this.handleTip(postId));
+        bindButton('submit-reply', () => this.submitReply(postId));
     },
 
     async loadPostDetail(id) {
@@ -694,16 +719,46 @@ const ForumApp = {
     },
 
     async submitReply(postId) {
+        // 防連點保護：如果正在提交中，直接返回
+        if (this.isSubmittingReply) {
+            console.log('[submitReply] 🚫 Already submitting, ignoring duplicate click');
+            return;
+        }
+
         const content = document.getElementById('reply-content').value;
         if (!content) return;
 
+        const submitBtn = document.getElementById('submit-reply');
+
         try {
+            // 設置提交中標誌
+            this.isSubmittingReply = true;
+
+            // 禁用按鈕並顯示載入狀態
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<div class="flex items-center gap-2 justify-center"><svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span>發送中</span></div>';
+            }
+
             await ForumAPI.createComment(postId, { type: 'comment', content });
+
+            // 清空輸入框並關閉回覆表單
             document.getElementById('reply-content').value = '';
             this.toggleReplyForm();
+
+            // 重新載入評論列表
             this.loadComments(postId);
+
+            showToast('評論發送成功', 'success');
         } catch (e) {
             showToast(e.message, 'error');
+        } finally {
+            // 恢復按鈕狀態並清除提交中標誌
+            this.isSubmittingReply = false;
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<div class="flex items-center gap-2 justify-center"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg><span>送出評論</span></div>';
+            }
         }
     },
 
@@ -1102,9 +1157,19 @@ const ForumApp = {
                 txHash = "pro_member_free";
                 console.log('[CreatePost] Pro member, skipping payment');
             } else {
+                // 關鍵修復：檢查真實的 Pi Browser UA，而非僅檢查 SDK 存在
+                const userAgent = navigator.userAgent || '';
+                const isRealPiBrowser = userAgent.includes('PiBrowser');
+
+                console.log('[CreatePost] 🔍 Environment:', {
+                    ua: userAgent.substring(0, 60),
+                    hasPiUA: isRealPiBrowser,
+                    hasSDK: typeof window.Pi !== 'undefined'
+                });
+
                 try {
-                    if (isPi && window.Pi) {
-                        console.log('[CreatePost] Starting Pi Payment flow...');
+                    if (isRealPiBrowser && window.Pi) {
+                        console.log('[CreatePost] 💳 Real Pi Browser - Starting payment...');
                         try {
                             await Pi.authenticate(['payments'], () => { });
                         } catch (authErr) {

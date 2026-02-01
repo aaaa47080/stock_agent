@@ -648,7 +648,12 @@ async function loadPremiumStatus() {
                 return;
             }
 
-            const response = await fetch(`/api/premium/status/${userId}`);
+            const response = await fetch(`/api/premium/status/${userId}`, {
+                headers: {
+                    'Authorization': `Bearer ${AuthManager.currentUser.accessToken || localStorage.getItem('auth_token')}`
+                }
+            });
+
             const result = await response.json();
 
             if (!response.ok) {
@@ -940,3 +945,52 @@ window.handleLinkWallet = handleLinkWallet;
 window.handleSettingsLinkWallet = handleSettingsLinkWallet;
 window.loadPremiumStatus = loadPremiumStatus;
 window.handleUpgradeToPremium = handleUpgradeToPremium;
+
+// ========================================
+// Dev Mode: Switch User (Test Mode Only)
+// ========================================
+window.handleDevSwitchUser = async function (userId) {
+    console.log(`[Dev] Switching to user: ${userId}`);
+
+    try {
+        // 使用 dev-login endpoint 並指定用戶 ID
+        const res = await fetch('/api/user/dev-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userId })
+        });
+
+        const result = await res.json();
+
+        if (!res.ok) {
+            if (typeof showToast === 'function') {
+                showToast(result.detail || 'Switch failed', 'error');
+            }
+            return;
+        }
+
+        // 更新 AuthManager
+        AuthManager.currentUser = {
+            uid: result.user.uid,
+            user_id: result.user.uid,
+            username: result.user.username,
+            accessToken: result.access_token,
+            authMethod: result.user.authMethod
+        };
+
+        localStorage.setItem('pi_user', JSON.stringify(AuthManager.currentUser));
+
+        if (typeof showToast === 'function') {
+            showToast(`切換到 ${result.user.username}`, 'success');
+        }
+
+        // 重新載入頁面以更新所有狀態
+        setTimeout(() => window.location.reload(), 500);
+
+    } catch (e) {
+        console.error('Dev switch user error:', e);
+        if (typeof showToast === 'function') {
+            showToast('切換用戶失敗', 'error');
+        }
+    }
+};

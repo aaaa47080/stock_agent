@@ -20,6 +20,13 @@ from core.database import (
 from .models import CreatePostRequest, UpdatePostRequest
 import asyncio
 from functools import partial
+import logging
+import time
+
+# Import TEST_MODE for development/testing bypass
+from core.config import TEST_MODE, TEST_USER
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/forum/posts", tags=["Forum - Posts"])
 
@@ -115,13 +122,20 @@ async def create_new_post(request: CreatePostRequest, user_id: str = Query(..., 
                 detail=f"已達每日發文上限 ({limit_check['limit']} 篇)，升級 PRO 會員可無限發文"
             )
 
-        # 免費會員需要付費
+        # 免費會員需要付費 (測試模式下跳過)
+        is_test_user = TEST_MODE and (user_id.startswith("test-user-") or user_id == TEST_USER.get("uid"))
+        
         if not membership["is_pro"] and not request.payment_tx_hash:
-            prices = await loop.run_in_executor(None, get_prices)
-            raise HTTPException(
-                status_code=402,
-                detail=f"免費會員發文需支付 {prices.get('create_post', 1)} Pi，請提供 payment_tx_hash"
-            )
+            if is_test_user:
+                # TEST_MODE: Mock payment for test users
+                request.payment_tx_hash = f"test_post_{int(time.time() * 1000)}"
+                logger.info(f"TEST_MODE: Bypassing payment requirement for user {user_id}")
+            else:
+                prices = await loop.run_in_executor(None, get_prices)
+                raise HTTPException(
+                    status_code=402,
+                    detail=f"免費會員發文需支付 {prices.get('create_post', 1)} Pi，請提供 payment_tx_hash"
+                )
 
         # 創建文章（跳過限制檢查，因為上面已經檢查過了）
         result = await loop.run_in_executor(

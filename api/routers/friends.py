@@ -69,6 +69,8 @@ async def search_users_endpoint(
             status = await loop.run_in_executor(None, get_friendship_status, user_id, user["user_id"])
             user["friend_status"] = status.get("status") if status else None
             user["is_friend"] = status.get("status") == "accepted" if status else False
+            # 重要：返回 is_requester 讓前端知道是誰發起的請求
+            user["is_requester"] = status.get("is_requester") if status else False
 
         return {"success": True, "users": users, "count": len(users)}
     except HTTPException:
@@ -461,6 +463,7 @@ async def get_status(
             "success": True,
             "status": status.get("status") if status else None,
             "is_friend": status.get("status") == "accepted" if status else False,
+            "is_requester": status.get("is_requester") if status else False,
             "details": status
         }
     except HTTPException:

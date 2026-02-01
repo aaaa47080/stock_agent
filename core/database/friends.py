@@ -91,6 +91,8 @@ def get_public_user_profile(user_id: str, viewer_user_id: str = None) -> Optiona
             friendship = get_friendship_status(viewer_user_id, user_id)
             profile["friend_status"] = friendship.get("status") if friendship else None
             profile["is_friend"] = friendship.get("status") == "accepted" if friendship else False
+            # 重要：返回 is_requester 讓前端知道是誰發起的請求
+            profile["is_requester"] = friendship.get("is_requester") if friendship else False
 
         # 取得論壇統計（公開）
         c.execute('SELECT COUNT(*) FROM posts WHERE user_id = %s AND is_hidden = 0', (user_id,))

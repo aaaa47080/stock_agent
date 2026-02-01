@@ -81,23 +81,36 @@ async def check_username_availability(username: str):
         raise HTTPException(status_code=500, detail="檢查失敗")
 
 # --- Dev/Test Login Endpoint ---
+from pydantic import BaseModel
+from typing import Optional
+
+class DevLoginRequest(BaseModel):
+    user_id: Optional[str] = None
+
 @router.post("/api/user/dev-login")
-async def dev_login():
+async def dev_login(request: DevLoginRequest = None):
     """
     僅在 TEST_MODE=True 時可用的開發測試登入
     返回測試用戶的 JWT Token
+    可選：傳入 user_id 以切換到特定測試用戶
     """
     if not TEST_MODE:
         raise HTTPException(status_code=403, detail="Test mode is disabled")
-    
-    # 創建測試用戶的 Token
-    test_user_id = TEST_USER.get("uid", "test-user-001")
-    test_username = TEST_USER.get("username", "TestUser")
-    
+
+    # 如果有指定 user_id，使用它；否則使用默認值
+    if request and request.user_id:
+        test_user_id = request.user_id
+        # 根據 user_id 生成不同的 username
+        suffix = test_user_id.split('-')[-1] if '-' in test_user_id else test_user_id[-3:]
+        test_username = f"TestUser_{suffix}"
+    else:
+        test_user_id = TEST_USER.get("uid", "test-user-001")
+        test_username = TEST_USER.get("username", "TestUser")
+
     access_token = create_access_token(
         data={"sub": test_user_id, "username": test_username}
     )
-    
+
     return {
         "success": True,
         "access_token": access_token,
@@ -110,8 +123,6 @@ async def dev_login():
     }
 
 # --- Pi Network User Endpoints ---
-
-from pydantic import BaseModel
 
 class PiUserSyncRequest(BaseModel):
     pi_uid: str

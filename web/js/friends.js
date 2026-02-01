@@ -350,14 +350,14 @@ const FriendsUI = {
         if (status === 'accepted') {
             return `
                 <div class="flex gap-2">
-                    <button onclick="FriendsUI.handleRemoveFriend('${userId}')"
+                    <button onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleRemoveFriend('${userId}')"
                             class="friend-btn bg-white/5 text-textMuted px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 border border-white/10 hover:bg-danger/10 hover:text-danger hover:border-danger/20 transition group">
                         <i data-lucide="user-check" class="w-4 h-4 group-hover:hidden"></i>
                         <i data-lucide="user-minus" class="w-4 h-4 hidden group-hover:block"></i>
                         <span class="group-hover:hidden">好友</span>
                         <span class="hidden group-hover:inline">移除</span>
                     </button>
-                    <button onclick="FriendsUI.handleBlock('${userId}')"
+                    <button onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleBlock('${userId}')"
                             class="friend-btn bg-danger/5 text-danger/80 px-2 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 border border-danger/10 hover:bg-danger/20 hover:text-danger transition"
                             title="封鎖用戶">
                         <i data-lucide="ban" class="w-4 h-4"></i>
@@ -368,7 +368,7 @@ const FriendsUI = {
         if (status === 'pending') {
             if (isRequester) {
                 return `
-                    <button onclick="FriendsUI.handleCancelRequest('${userId}')"
+                    <button onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleCancelRequest('${userId}')"
                             class="friend-btn bg-white/5 text-textMuted px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 border border-white/10 hover:bg-danger/10 hover:text-danger hover:border-danger/20 transition">
                         <i data-lucide="clock" class="w-4 h-4"></i>
                         <span>等待中</span>
@@ -377,11 +377,11 @@ const FriendsUI = {
             }
             return `
                 <div class="flex gap-2">
-                    <button onclick="FriendsUI.handleAcceptRequest('${userId}')"
+                    <button onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleAcceptRequest('${userId}')"
                             class="bg-success/10 hover:bg-success/20 text-success px-3 py-1.5 rounded-lg text-sm font-bold transition">
                         <i data-lucide="check" class="w-4 h-4"></i>
                     </button>
-                    <button onclick="FriendsUI.handleRejectRequest('${userId}')"
+                    <button onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleRejectRequest('${userId}')"
                             class="bg-danger/10 hover:bg-danger/20 text-danger px-3 py-1.5 rounded-lg text-sm font-bold transition">
                         <i data-lucide="x" class="w-4 h-4"></i>
                     </button>
@@ -390,7 +390,7 @@ const FriendsUI = {
         }
         if (status === 'blocked') {
             return `
-                <button onclick="FriendsUI.handleUnblock('${userId}')"
+                <button onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleUnblock('${userId}')"
                         class="friend-btn bg-danger/10 text-danger px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 border border-danger/20 hover:bg-danger/20 transition">
                     <i data-lucide="ban" class="w-4 h-4"></i>
                     <span>已封鎖</span>
@@ -399,7 +399,7 @@ const FriendsUI = {
         }
         // 預設：加好友按鈕
         return `
-            <button onclick="FriendsUI.handleAddFriend('${userId}')"
+            <button onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleAddFriend('${userId}')"
                     class="friend-btn bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 transition border border-primary/20">
                 <i data-lucide="user-plus" class="w-4 h-4"></i>
                 <span>加好友</span>
@@ -459,12 +459,27 @@ const FriendsUI = {
             if (typeof showToast === 'function') {
                 showToast('好友請求已發送', 'success');
             }
-            // 重新載入頁面或更新 UI
-            if (typeof refreshFriendsUI === 'function') {
-                refreshFriendsUI();
-            } else {
-                location.reload();
-            }
+
+            // 就地更新按鈕狀態（不刷新頁面，避免搜索結果消失）
+            // 找到包含這個用戶的卡片，更新按鈕
+            const cards = document.querySelectorAll('.user-card');
+            cards.forEach(card => {
+                const btn = card.querySelector(`button[onclick*="handleAddFriend('${userId}')"]`);
+                if (btn) {
+                    // 替換為「等待中」按鈕
+                    btn.outerHTML = `
+                        <button onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleCancelRequest('${userId}')"
+                                class="friend-btn bg-white/5 text-textMuted px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 border border-white/10 hover:bg-danger/10 hover:text-danger hover:border-danger/20 transition">
+                            <i data-lucide="clock" class="w-4 h-4"></i>
+                            <span>等待中</span>
+                        </button>
+                    `;
+                }
+            });
+
+            // 重新渲染 Lucide 圖標
+            if (window.lucide) lucide.createIcons();
+
         } catch (error) {
             if (typeof showToast === 'function') {
                 showToast(error.message, 'error');
@@ -529,11 +544,26 @@ const FriendsUI = {
             if (typeof showToast === 'function') {
                 showToast('已取消請求', 'info');
             }
-            if (typeof refreshFriendsUI === 'function') {
-                refreshFriendsUI();
-            } else {
-                location.reload();
-            }
+
+            // 就地更新按鈕狀態（不刷新頁面）
+            const cards = document.querySelectorAll('.user-card');
+            cards.forEach(card => {
+                const btn = card.querySelector(`button[onclick*="handleCancelRequest('${userId}')"]`);
+                if (btn) {
+                    // 替換為「加好友」按鈕
+                    btn.outerHTML = `
+                        <button onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleAddFriend('${userId}')"
+                                class="friend-btn bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 transition border border-primary/20">
+                            <i data-lucide="user-plus" class="w-4 h-4"></i>
+                            <span>加好友</span>
+                        </button>
+                    `;
+                }
+            });
+
+            // 重新渲染 Lucide 圖標
+            if (window.lucide) lucide.createIcons();
+
         } catch (error) {
             if (typeof showToast === 'function') {
                 showToast(error.message, 'error');
@@ -679,6 +709,19 @@ const FriendsUI = {
 };
 
 window.FriendsUI = FriendsUI;
+
+// 定義 refreshFriendsUI 函數，讓所有好友操作都能正常更新
+function refreshFriendsUI() {
+    // 如果在好友 Tab 中，重新載入好友數據
+    if (typeof loadFriendsTabData === 'function') {
+        loadFriendsTabData();
+    }
+    // 如果 SocialHub 存在，刷新
+    if (typeof SocialHub !== 'undefined' && SocialHub.refresh) {
+        SocialHub.refresh();
+    }
+}
+window.refreshFriendsUI = refreshFriendsUI;
 
 // ========================================
 // Helper Functions
@@ -874,6 +917,9 @@ async function handleFriendSearch(query) {
             } else {
                 resultsEl.innerHTML = renderEmptyState('找不到符合的用戶');
             }
+
+            // 重新初始化 Lucide 圖標
+            if (window.lucide) lucide.createIcons();
 
         } catch (e) {
             resultsEl.innerHTML = `<div class="text-center text-danger py-4">${e.message}</div>`;
