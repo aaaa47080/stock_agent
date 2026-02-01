@@ -38,7 +38,7 @@ Look for these startup messages:
 ### Test Rate Limiting
 ```bash
 # Make 150 rapid requests - should get 429 after ~100
-for i in {1..150}; do curl http://localhost:8111/api/forum/posts; done
+for i in {1..150}; do curl http://localhost:8080/api/forum/posts; done
 ```
 
 ### Test Audit Logs

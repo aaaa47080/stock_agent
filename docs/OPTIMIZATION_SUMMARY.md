@@ -140,8 +140,8 @@ chmod +x start_production.sh
 bash scripts/test_health.sh
 
 # 或手动测试
-curl http://localhost:8111/health
-curl http://localhost:8111/ready
+curl http://localhost:8080/health
+curl http://localhost:8080/ready
 ```
 
 ---

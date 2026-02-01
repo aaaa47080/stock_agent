@@ -52,13 +52,13 @@ tunnel: <YOUR_TUNNEL_ID>
 credentials-file: /home/user/.cloudflared/<YOUR_TUNNEL_ID>.json
 
 ingress:
-  # 主應用 - 轉發到 8111 端口
+  # 主應用 - 轉發到 8080 端口
   - hostname: your-domain.com
-    service: http://localhost:8111
+    service: http://localhost:8080
 
   # API 路徑
   - hostname: api.your-domain.com
-    service: http://localhost:8111
+    service: http://localhost:8080
 
   # 默認 - 必須有
   - service: http_status:404
@@ -89,8 +89,8 @@ net start cloudflared
 如果只是臨時測試，可以使用：
 
 ```bash
-# 直接轉發 8111 端口，會生成臨時 URL
-cloudflared tunnel --url http://localhost:8111
+# 直接轉發 8080 端口，會生成臨時 URL
+cloudflared tunnel --url http://localhost:8080
 ```
 
 這會輸出類似：

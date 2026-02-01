@@ -20,7 +20,7 @@ winget install cloudflare.cloudflared
 ### 步驟 2：啟動 Tunnel
 
 ```bash
-cloudflared tunnel --url http://localhost:8111
+cloudflared tunnel --url http://localhost:8080
 ```
 
 ### 步驟 3：取得公開 URL

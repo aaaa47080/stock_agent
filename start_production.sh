@@ -138,7 +138,7 @@ start_server() {
         --config "$CONFIG_FILE" \
         --workers "$WORKERS" \
         --worker-class uvicorn.workers.UvicornWorker \
-        --bind 0.0.0.0:8111 \
+        --bind 0.0.0.0:8080 \
         --daemon
     
     sleep 2
@@ -148,7 +148,7 @@ start_server() {
         PID=$(cat "$PID_FILE")
         if ps -p "$PID" > /dev/null 2>&1; then
             print_success "✅ 服务已启动 (PID: $PID)"
-            print_success "🏠 本地网址: http://localhost:8111"
+            print_success "🏠 本地网址: http://localhost:8080"
             print_success "📊 访问日志: ${LOG_DIR}/gunicorn_access.log"
             print_success "❌ 错误日志: ${LOG_DIR}/gunicorn_error.log"
             return 0

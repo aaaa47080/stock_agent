@@ -1,5 +1,5 @@
 #!/bin/bash
-PORT=8111
+PORT=8080
 
 # 找出佔用 Port 的 PID
 PID=$(lsof -t -i:$PORT)

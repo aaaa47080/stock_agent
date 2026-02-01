@@ -1,10 +1,10 @@
 @echo off
 REM ========================================
 REM Cloudflare Tunnel 啟動腳本 (Windows)
-REM 將本地 8111 端口暴露到公網
+REM 將本地 8080 端口暴露到公網
 REM ========================================
 
-set PORT=8111
+set PORT=8080
 
 echo ==========================================
 echo   Cloudflare Tunnel 啟動器

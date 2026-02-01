@@ -113,7 +113,7 @@ graph LR
    ```
 
 4. **訪問介面**：
-   在瀏覽器開啟 `http://localhost:8111`，前往 **Settings** 輸入 API 金鑰。
+   在瀏覽器開啟 `http://localhost:8080`，前往 **Settings** 輸入 API 金鑰。
 
 ### 生產模式
 

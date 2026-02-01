@@ -14,7 +14,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 # 配置
-API_URL="${API_URL:-http://localhost:8111}"
+API_URL="${API_URL:-http://localhost:8080}"
 TIMEOUT=5
 
 echo "🔍 开始健康检查..."

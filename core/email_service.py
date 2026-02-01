@@ -13,7 +13,7 @@ from typing import Optional
 # 從環境變數讀取配置
 SMTP_EMAIL = os.getenv("SMTP_EMAIL", "")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
-RESET_URL_BASE = os.getenv("RESET_URL_BASE", "http://localhost:8111")
+RESET_URL_BASE = os.getenv("RESET_URL_BASE", "http://localhost:8080")
 
 # Gmail SMTP 設定 (SSL 模式)
 SMTP_SERVER = "smtp.gmail.com"

@@ -1,7 +1,7 @@
 #!/bin/bash
 pkill ngrok
 # 設定 Port 號
-PORT=8111
+PORT=8080
 
 echo "=========================================="
 echo "🚀 正在啟動 ngrok 隧道 (Port: $PORT)..."

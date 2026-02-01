@@ -132,7 +132,7 @@ gunicorn api_server:app \
     --config gunicorn.conf.py \
     --workers 9 \
     --worker-class uvicorn.workers.UvicornWorker \
-    --bind 0.0.0.0:8111 \
+    --bind 0.0.0.0:8080 \
     --daemon
 
 # 查看进程
@@ -186,7 +186,7 @@ sudo systemctl status pi-crypto-insight
 访问健康检查端点:
 ```bash
 # 服务存活检查
-curl http://localhost:8111/health
+curl http://localhost:8080/health
 
 # 预期响应 (200 OK):
 {
@@ -196,7 +196,7 @@ curl http://localhost:8111/health
 }
 
 # 就绪检查 (检查组件状态)
-curl http://localhost:8111/ready
+curl http://localhost:8080/ready
 
 # 预期响应 (200 OK):
 {
@@ -308,7 +308,7 @@ kill -HUP $(cat logs/gunicorn.pid)
 ### 负载均衡配置 (Nginx 示例)
 ```nginx
 upstream pi_crypto_backend {
-    server 127.0.0.1:8111;
+    server 127.0.0.1:8080;
     server 127.0.0.1:8112;
     server 127.0.0.1:8113;
 }

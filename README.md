@@ -113,7 +113,7 @@ graph LR
    ```
 
 4. **Access the UI**:
-   Open `http://localhost:8111`, go to **Settings**, and enter your API keys.
+   Open `http://localhost:8080`, go to **Settings**, and enter your API keys.
 
 ### Production Mode
 

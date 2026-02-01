@@ -95,7 +95,7 @@
 ```python
 # 单 Uvicorn 进程运行
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8111)
+    uvicorn.run(app, host="0.0.0.0", port=8080)
 ```
 
 **问题**：
@@ -106,7 +106,7 @@ if __name__ == "__main__":
 **建议**：
 ```bash
 # 使用多 Worker
-gunicorn api_server:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8111
+gunicorn api_server:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8080
 ```
 
 ---

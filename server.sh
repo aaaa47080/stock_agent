@@ -9,7 +9,7 @@ VENV_PATH="$SCRIPT_DIR/.venv"
 PID_FILE="$SCRIPT_DIR/.api_server.pid"
 LOG_FILE="$SCRIPT_DIR/api_server.log"
 SERVER_SCRIPT="$SCRIPT_DIR/api_server.py"
-PORT=8111
+PORT=8080
 
 # 顏色定義
 RED='\033[0;31m'

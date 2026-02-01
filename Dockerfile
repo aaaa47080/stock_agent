@@ -28,7 +28,7 @@ COPY . .
 RUN mkdir -p /app/logs && chmod 777 /app/logs
 
 # 暴露端口
-EXPOSE 8111
+EXPOSE 8080
 
 # 使用 Gunicorn 啟動 (生產環境)
 CMD ["gunicorn", "--config", "gunicorn.conf.py", "api_server:app"]
