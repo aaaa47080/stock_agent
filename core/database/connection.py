@@ -43,13 +43,55 @@ _pool_lock = threading.Lock()
 _db_initialized = False
 
 
+class _StandaloneConnection:
+    """
+    獨立連接包裝類 - 用於繞過連接池直接創建的連接
+
+    當連接池中所有連接都失效時，我們會直接創建新連接。
+    這個包裝類確保 close() 時真正關閉連接（而不是歸還到池中）。
+    """
+
+    def __init__(self, conn):
+        self._conn = conn
+        self._closed = False
+
+    def close(self):
+        """真正關閉連接"""
+        if not self._closed and self._conn:
+            try:
+                self._conn.rollback()
+            except Exception:
+                pass
+            try:
+                self._conn.close()
+                self._closed = True
+            except Exception as e:
+                print(f"⚠️ 關閉獨立連接失敗: {e}")
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False
+
+    def __getattr__(self, name):
+        """代理所有其他屬性到原始連接"""
+        return getattr(self._conn, name)
+
+    def __del__(self):
+        """析構時確保連接被關閉"""
+        if not self._closed:
+            self.close()
+
+
 class PooledConnection:
     """
     連接池包裝類 - 確保連接正確歸還到池中
-    
+
     問題：psycopg2 的 ThreadedConnectionPool 需要顯式調用 putconn() 來歸還連接，
     但調用 conn.close() 不會自動歸還，導致連接洩漏。
-    
+
     解決方案：包裝原始連接，讓 close() 自動調用 putconn() 歸還連接。
     """
     
@@ -163,11 +205,13 @@ def get_connection():
 
     # 從池中獲取連接（帶重試機制和健康檢查）
     last_error = None
+    bad_conn_count = 0  # 追蹤壞連接數量
+
     for attempt in range(MAX_RETRIES):
         raw_conn = None
         try:
             raw_conn = _connection_pool.getconn()
-            
+
             # === 連接健康檢查 ===
             # 檢查 1: 連接是否已關閉
             if raw_conn.closed:
@@ -176,8 +220,9 @@ def get_connection():
                 except:
                     pass
                 raw_conn = None
+                bad_conn_count += 1
                 continue
-            
+
             # 檢查 2: 執行簡單查詢驗證連接是否真的可用（防止 SSL 斷開）
             try:
                 test_cursor = raw_conn.cursor()
@@ -192,12 +237,30 @@ def get_connection():
                 except:
                     pass
                 raw_conn = None
+                bad_conn_count += 1
+
+                # 如果連續遇到多個壞連接，可能整個池都壞了，創建新連接繞過池
+                if bad_conn_count >= 3:
+                    print(f"⚠️ 連接池可能已失效（{bad_conn_count} 個壞連接），嘗試創建新連接...")
+                    try:
+                        fresh_conn = psycopg2.connect(DATABASE_URL, **CONNECTION_OPTIONS)
+                        # 驗證新連接
+                        test_cur = fresh_conn.cursor()
+                        test_cur.execute("SELECT 1")
+                        test_cur.fetchone()
+                        test_cur.close()
+                        print(f"✅ 成功創建新連接繞過連接池")
+                        # 返回一個不依賴連接池的包裝（close 時真正關閉）
+                        return _StandaloneConnection(fresh_conn)
+                    except Exception as new_conn_error:
+                        print(f"❌ 創建新連接也失敗: {new_conn_error}")
+                        last_error = new_conn_error
                 continue
-            
+
             # 連接健康，包裝後返回
             # PooledConnection 確保 close() 時自動調用 putconn()
             return PooledConnection(raw_conn, _connection_pool)
-            
+
         except pool.PoolError as e:
             last_error = e
             if raw_conn:
@@ -210,6 +273,16 @@ def get_connection():
                 delay = RETRY_DELAY_BASE * (2 ** attempt)
                 print(f"⚠️ 連接池暫時耗盡，等待 {delay:.1f}s 後重試 (嘗試 {attempt + 1}/{MAX_RETRIES})...")
                 time.sleep(delay)
+
+                # 連接池耗盡時，嘗試直接創建連接
+                if attempt >= 2:
+                    print(f"⚠️ 連接池持續耗盡，嘗試創建新連接...")
+                    try:
+                        fresh_conn = psycopg2.connect(DATABASE_URL, **CONNECTION_OPTIONS)
+                        print(f"✅ 成功創建新連接繞過連接池")
+                        return _StandaloneConnection(fresh_conn)
+                    except Exception as new_conn_error:
+                        print(f"❌ 創建新連接也失敗: {new_conn_error}")
             else:
                 print(f"❌ 無法從連接池獲取連接（已重試 {MAX_RETRIES} 次）: {e}")
                 raise
@@ -222,7 +295,7 @@ def get_connection():
                     pass
             print(f"❌ 無法從連接池獲取連接: {e}")
             raise
-    
+
     # 如果所有重試都失敗
     raise Exception(f"連接池耗盡，無法獲取連接: {last_error}")
 
