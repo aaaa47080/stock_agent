@@ -20,13 +20,22 @@ if not DATABASE_URL:
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL environment variable is not set. Please check your .env file.")
 
-# 連接池配置 - 增加最大連接數以支援並發分析任務
+# 連接池配置 - 針對 Zeabur 優化
 MIN_POOL_SIZE = 2   # 最小連接數
-MAX_POOL_SIZE = 20  # 最大連接數（增加以支持並發 screener 任務）
+MAX_POOL_SIZE = 10  # 最大連接數（平衡並發需求和資源限制）
 
 # 連接獲取配置
-MAX_RETRIES = 5          # 增加重試次數
-RETRY_DELAY_BASE = 0.3   # 縮短重試延遲
+MAX_RETRIES = 5          # 重試次數
+RETRY_DELAY_BASE = 0.3   # 重試延遲
+
+# 連接參數 - 防止連接超時和斷開
+CONNECTION_OPTIONS = {
+    'connect_timeout': 10,      # 連接超時 10 秒
+    'keepalives': 1,            # 啟用 TCP keepalive
+    'keepalives_idle': 30,      # 空閒 30 秒後發送 keepalive
+    'keepalives_interval': 10,  # keepalive 間隔 10 秒
+    'keepalives_count': 3,      # 3 次失敗後斷開
+}
 
 # 全局連接池
 _connection_pool = None
@@ -104,7 +113,8 @@ def init_connection_pool():
                         _connection_pool = psycopg2.pool.ThreadedConnectionPool(
                             MIN_POOL_SIZE,
                             MAX_POOL_SIZE,
-                            DATABASE_URL
+                            DATABASE_URL,
+                            **CONNECTION_OPTIONS  # 添加連接超時和 keepalive 參數
                         )
                         print(f"✅ 線程安全數據庫連接池已初始化 (min={MIN_POOL_SIZE}, max={MAX_POOL_SIZE})")
                         break
@@ -215,13 +225,34 @@ def get_connection():
 def close_all_connections():
     """關閉所有連接池連接（應用關閉時調用）"""
     global _connection_pool
-    
+
     if _connection_pool:
         try:
             _connection_pool.closeall()
             print("✅ 所有數據庫連接已關閉")
         except Exception as e:
             print(f"❌ 關閉連接池失敗: {e}")
+
+
+def reset_connection_pool():
+    """
+    重置連接池（用於 Gunicorn worker fork 後）
+
+    在多進程環境中（如 Gunicorn），連接池在 fork 前創建會導致所有 worker 共享
+    同一個連接池，造成連接衝突。此函數用於在 fork 後重新初始化連接池。
+    """
+    global _connection_pool, _db_initialized
+
+    with _pool_lock:
+        if _connection_pool:
+            try:
+                _connection_pool.closeall()
+            except Exception:
+                pass
+        _connection_pool = None
+        _db_initialized = False
+
+    print(f"🔄 連接池已重置 (PID: {os.getpid()})")
 
 
 
@@ -239,7 +270,7 @@ def init_db():
     conn = None
     for attempt in range(INIT_MAX_RETRIES):
         try:
-            conn = psycopg2.connect(DATABASE_URL)
+            conn = psycopg2.connect(DATABASE_URL, **CONNECTION_OPTIONS)
             break
         except psycopg2.OperationalError as e:
             if attempt < INIT_MAX_RETRIES - 1:

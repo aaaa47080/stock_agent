@@ -15,7 +15,13 @@
       "Bash(for file in D:/okx/stock_agent/web/js/*.js)",
       "Bash(do echo \"Checking $file\")",
       "Bash(echo:*)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(D:okxstock_agent.venvScriptspython.exe -c \"\nimport psycopg2\ntry:\n    conn = psycopg2.connect\\(\n        host=''postgresql.zeabur.app'',\n        port=5432,\n        user=''root'',\n        password=''4fIu8g6csU3FVZDO9bWP7AM1rGvBT520'',\n        database=''zeabur'',\n        connect_timeout=15\n    \\)\n    cur = conn.cursor\\(\\)\n    cur.execute\\(''SELECT version\\(\\)''\\)\n    version = cur.fetchone\\(\\)[0]\n    print\\(''Connection SUCCESS!''\\)\n    print\\(''PostgreSQL version:'', version\\)\n    cur.close\\(\\)\n    conn.close\\(\\)\nexcept Exception as e:\n    print\\(''Connection FAILED:'', str\\(e\\)\\)\n\")",
+      "Bash(\"D:/okx/stock_agent/.venv/Scripts/python.exe\" -c \"\nimport psycopg2\ntry:\n    conn = psycopg2.connect\\(\n        host=''postgresql.zeabur.app'',\n        port=5432,\n        user=''root'',\n        password=''4fIu8g6csU3FVZDO9bWP7AM1rGvBT520'',\n        database=''zeabur'',\n        connect_timeout=15\n    \\)\n    cur = conn.cursor\\(\\)\n    cur.execute\\(''SELECT version\\(\\)''\\)\n    version = cur.fetchone\\(\\)[0]\n    print\\(''Connection SUCCESS!''\\)\n    print\\(''PostgreSQL version:'', version\\)\n    cur.close\\(\\)\n    conn.close\\(\\)\nexcept Exception as e:\n    print\\(''Connection FAILED:'', str\\(e\\)\\)\n\")",
+      "Bash(ping:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(\"D:/okx/stock_agent/.venv/Scripts/python.exe\" -c \"\nimport psycopg2\ntry:\n    conn = psycopg2.connect\\(\n        host=''postgresql.zeabur.app'',\n        port=5432,\n        user=''root'',\n        password=''4fIu8g6csU3FVZDO9bWP7AM1rGvBT520'',\n        database=''zeabur'',\n        connect_timeout=10\n    \\)\n    cur = conn.cursor\\(\\)\n    cur.execute\\(''SELECT version\\(\\)''\\)\n    version = cur.fetchone\\(\\)[0]\n    print\\(''SUCCESS!''\\)\n    print\\(''Version:'', version\\)\n    cur.close\\(\\)\n    conn.close\\(\\)\nexcept Exception as e:\n    print\\(''FAILED:'', str\\(e\\)\\)\n\")",
+      "Bash(\"D:/okx/stock_agent/.venv/Scripts/python.exe\" -c:*)"
     ]
   }
 }

@@ -14,10 +14,10 @@ backlog = 2048
 # ========================================
 # Worker Processes
 # ========================================
-# 固定為 4 workers（适用于内存密集型应用，如 AI/ML）
+# 默認 2 workers（適用於 Zeabur 等雲平台的免費/基礎方案）
 # AI 库（LangChain、LangGraph）非常耗内存，过多 workers 会导致 OOM
 # 可通过环境变量 WEB_CONCURRENCY 覆盖
-workers = int(os.getenv("WEB_CONCURRENCY", 4))
+workers = int(os.getenv("WEB_CONCURRENCY", 2))
 
 # Uvicorn worker 以支持异步
 worker_class = "uvicorn.workers.UvicornWorker"
@@ -92,8 +92,16 @@ def pre_fork(server, worker):
     pass
 
 def post_fork(server, worker):
-    """Fork worker 后"""
+    """Fork worker 后 - 重置數據庫連接池避免連接衝突"""
     print(f"👷 Worker {worker.pid} 已启动")
+
+    # 重置連接池，讓每個 worker 創建自己的連接
+    # 這是解決 preload_app=True 導致連接共享問題的關鍵
+    try:
+        from core.database.connection import reset_connection_pool
+        reset_connection_pool()
+    except Exception as e:
+        print(f"⚠️ Worker {worker.pid} 連接池重置失敗: {e}")
 
 def worker_exit(server, worker):
     """Worker 退出时"""
