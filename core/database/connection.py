@@ -82,25 +82,44 @@ class PooledConnection:
 
 
 def init_connection_pool():
-    """初始化線程安全連接池（單例模式）"""
+    """
+    初始化線程安全連接池（單例模式）
+
+    包含重試機制，適用於容器環境（如 Zeabur）中 PostgreSQL 可能尚未完全啟動的情況
+    """
     global _connection_pool
-    
+
+    # 連接池初始化重試配置
+    POOL_INIT_MAX_RETRIES = 10
+    POOL_INIT_RETRY_DELAY = 3  # 秒
+
     if _connection_pool is None:
         with _pool_lock:
             if _connection_pool is None:
-                try:
-                    # 使用 ThreadedConnectionPool 替代 SimpleConnectionPool
-                    # ThreadedConnectionPool 是線程安全的，適用於多線程環境
-                    _connection_pool = psycopg2.pool.ThreadedConnectionPool(
-                        MIN_POOL_SIZE,
-                        MAX_POOL_SIZE,
-                        DATABASE_URL
-                    )
-                    print(f"✅ 線程安全數據庫連接池已初始化 (min={MIN_POOL_SIZE}, max={MAX_POOL_SIZE})")
-                except Exception as e:
-                    print(f"❌ 連接池初始化失敗: {e}")
-                    raise
-    
+                last_error = None
+                for attempt in range(POOL_INIT_MAX_RETRIES):
+                    try:
+                        # 使用 ThreadedConnectionPool 替代 SimpleConnectionPool
+                        # ThreadedConnectionPool 是線程安全的，適用於多線程環境
+                        _connection_pool = psycopg2.pool.ThreadedConnectionPool(
+                            MIN_POOL_SIZE,
+                            MAX_POOL_SIZE,
+                            DATABASE_URL
+                        )
+                        print(f"✅ 線程安全數據庫連接池已初始化 (min={MIN_POOL_SIZE}, max={MAX_POOL_SIZE})")
+                        break
+                    except psycopg2.OperationalError as e:
+                        last_error = e
+                        if attempt < POOL_INIT_MAX_RETRIES - 1:
+                            print(f"⚠️ 資料庫連接失敗（{e}），{POOL_INIT_RETRY_DELAY} 秒後重試... (嘗試 {attempt + 1}/{POOL_INIT_MAX_RETRIES})")
+                            time.sleep(POOL_INIT_RETRY_DELAY)
+                        else:
+                            print(f"❌ 連接池初始化失敗（已重試 {POOL_INIT_MAX_RETRIES} 次）: {e}")
+                            raise
+                    except Exception as e:
+                        print(f"❌ 連接池初始化失敗: {e}")
+                        raise
+
     return _connection_pool
 
 
@@ -207,9 +226,29 @@ def close_all_connections():
 
 
 def init_db():
-    """初始化資料庫 - 建立所有資料表"""
+    """
+    初始化資料庫 - 建立所有資料表
+
+    包含重試機制，適用於容器環境（如 Zeabur）中 PostgreSQL 可能尚未完全啟動的情況
+    """
+    # 重試配置
+    INIT_MAX_RETRIES = 10
+    INIT_RETRY_DELAY = 3  # 秒
+
     # 直接創建連接而不是從池中獲取（避免初始化時的循環依賴）
-    conn = psycopg2.connect(DATABASE_URL)
+    conn = None
+    for attempt in range(INIT_MAX_RETRIES):
+        try:
+            conn = psycopg2.connect(DATABASE_URL)
+            break
+        except psycopg2.OperationalError as e:
+            if attempt < INIT_MAX_RETRIES - 1:
+                print(f"⚠️ 資料庫連接失敗（{e}），{INIT_RETRY_DELAY} 秒後重試... (嘗試 {attempt + 1}/{INIT_MAX_RETRIES})")
+                time.sleep(INIT_RETRY_DELAY)
+            else:
+                print(f"❌ 資料庫連接失敗（已重試 {INIT_MAX_RETRIES} 次）: {e}")
+                raise
+
     c = conn.cursor()
 
     # ========================================================================
