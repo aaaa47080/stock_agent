@@ -433,7 +433,7 @@ BEGIN
         RETURN QUERY
         SELECT
             user_record.user_id,
-            GREATEST(0, points_before) - GREATEST(0, points_before - 1) AS points_deducted;
+            1 AS points_deducted;
     END LOOP;
 
     RETURN;
