@@ -222,8 +222,8 @@ async def add_audit_headers(request: Request, call_next):
     # In production, you might use a proper correlation ID system
     import hashlib
     import time
-    
-    trace_id = hashlib.md5(
+
+    trace_id = hashlib.sha256(
         f"{request.client.host if request.client else 'unknown'}"
         f"{request.url.path}{time.time()}".encode()
     ).hexdigest()[:16]
