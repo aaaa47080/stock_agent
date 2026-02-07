@@ -73,7 +73,13 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     from core.config import TEST_MODE, TEST_USER
     from core.database.user import get_user_by_id
     import asyncio
-    
+
+    # 安全檢查：禁止在生產環境啟用 TEST_MODE
+    if TEST_MODE:
+        env = os.getenv("ENVIRONMENT", "development").lower()
+        if env in ["production", "prod"]:
+            raise ValueError("🚨 SECURITY ALERT: TEST_MODE must not be enabled in production environment")
+
     user_id = None
 
     # If using regular authentication (not skipped via TEST_MODE without token)

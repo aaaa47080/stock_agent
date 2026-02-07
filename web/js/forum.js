@@ -324,6 +324,63 @@ const ForumAPI = {
         return await res.json();
     },
 
+    // Delete Post
+    async deletePost(postId) {
+        const userId = this._getUserId();
+        if (!userId) throw new Error('Please login first');
+
+        const res = await fetch(`/api/forum/posts/${postId}?user_id=${encodeURIComponent(userId)}`, {
+            method: 'DELETE',
+            headers: this._getAuthHeaders()
+        });
+        if (!res.ok) {
+            let errorMsg = 'Failed to delete post';
+            try {
+                const err = await res.json();
+                if (typeof err.detail === 'string') {
+                    errorMsg = err.detail;
+                } else if (Array.isArray(err.detail)) {
+                    errorMsg = err.detail.map(e => `${e.loc.join('.')}: ${e.msg}`).join('\n');
+                } else if (err.message) {
+                    errorMsg = err.message;
+                }
+            } catch (e) {
+                errorMsg = `Status ${res.status}: ${res.statusText}`;
+            }
+            throw new Error(errorMsg);
+        }
+        return await res.json();
+    },
+
+    // Update Post
+    async updatePost(postId, data) {
+        const userId = this._getUserId();
+        if (!userId) throw new Error('Please login first');
+
+        const res = await fetch(`/api/forum/posts/${postId}?user_id=${encodeURIComponent(userId)}`, {
+            method: 'PUT',
+            headers: this._getAuthHeaders(),
+            body: JSON.stringify(data)
+        });
+        if (!res.ok) {
+            let errorMsg = 'Failed to update post';
+            try {
+                const err = await res.json();
+                if (typeof err.detail === 'string') {
+                    errorMsg = err.detail;
+                } else if (Array.isArray(err.detail)) {
+                    errorMsg = err.detail.map(e => `${e.loc.join('.')}: ${e.msg}`).join('\n');
+                } else if (err.message) {
+                    errorMsg = err.message;
+                }
+            } catch (e) {
+                errorMsg = `Status ${res.status}: ${res.statusText}`;
+            }
+            throw new Error(errorMsg);
+        }
+        return await res.json();
+    },
+
     // My Stats (Me)
     async getMyStats() {
         const userId = this._getUserId();
@@ -588,6 +645,8 @@ const ForumApp = {
         bindButton('btn-reply', () => this.toggleReplyForm());
         bindButton('btn-tip', () => this.handleTip(postId));
         bindButton('submit-reply', () => this.submitReply(postId));
+        bindButton('btn-delete', () => this.handleDelete(postId));
+        bindButton('btn-edit', () => this.handleEdit(postId));
     },
 
     async loadPostDetail(id) {
@@ -602,12 +661,38 @@ const ForumApp = {
 
             document.getElementById('post-category').textContent = post.category;
             document.getElementById('post-title').textContent = post.title;
-            document.getElementById('post-author').innerHTML = `<a href="/static/forum/profile.html?id=${post.user_id}" class="hover:text-primary transition">${post.username || post.user_id}</a>`;
+
+            // 安全地創建作者鏈接（防止 XSS）
+            const authorContainer = document.getElementById('post-author');
+            authorContainer.innerHTML = '';
+            if (typeof SecurityUtils !== 'undefined') {
+                const authorLink = SecurityUtils.createSafeLink(
+                    `/static/forum/profile.html?id=${SecurityUtils.encodeURL(post.user_id)}`,
+                    post.username || post.user_id,
+                    { className: 'hover:text-primary transition' }
+                );
+                authorContainer.appendChild(authorLink);
+            } else {
+                // Fallback: 使用 textContent
+                const authorLink = document.createElement('a');
+                authorLink.href = `/static/forum/profile.html?id=${encodeURIComponent(post.user_id)}`;
+                authorLink.textContent = post.username || post.user_id;
+                authorLink.className = 'hover:text-primary transition';
+                authorContainer.appendChild(authorLink);
+            }
+
             document.getElementById('post-date').textContent = formatTWDate(post.created_at, true);
 
-            // 使用 markdown-it 渲染內容
-            const md = window.markdownit ? window.markdownit() : { render: t => t };
-            document.getElementById('post-content').innerHTML = md.render(post.content);
+            // 安全地渲染 Markdown 內容（防止 XSS）
+            const contentContainer = document.getElementById('post-content');
+            if (typeof SecurityUtils !== 'undefined') {
+                // 使用 SecurityUtils 安全渲染
+                contentContainer.innerHTML = SecurityUtils.renderMarkdownSafely(post.content);
+            } else {
+                // Fallback: 基本的 markdown 渲染
+                const md = window.markdownit ? window.markdownit({ html: false }) : { render: t => t };
+                contentContainer.innerHTML = md.render(post.content);
+            }
 
             // Tags
             const tagsContainer = document.getElementById('post-tags');
@@ -620,6 +705,9 @@ const ForumApp = {
                 } catch (e) { }
             }
 
+            // 顯示作者操作按鈕（編輯/刪除）
+            this.updateAuthorActions(post);
+
             // Stats
             this.updatePostStats(post);
 
@@ -629,6 +717,43 @@ const ForumApp = {
         } catch (e) {
             showToast('文章載入失敗', 'error');
             console.error(e);
+        }
+    },
+
+    updateAuthorActions(post) {
+        const currentUserId = AuthManager.currentUser?.user_id || AuthManager.currentUser?.uid;
+        const isAuthor = currentUserId && post.user_id && currentUserId === post.user_id;
+
+        // 尋找或創建作者操作按鈕容器
+        let actionsContainer = document.getElementById('author-actions');
+        if (!actionsContainer) {
+            // 在標題下方插入操作按鈕容器
+            const titleEl = document.getElementById('post-title');
+            if (titleEl) {
+                actionsContainer = document.createElement('div');
+                actionsContainer.id = 'author-actions';
+                actionsContainer.className = 'flex gap-2 mt-4 mb-4';
+                titleEl.parentNode.insertBefore(actionsContainer, titleEl.nextSibling);
+            }
+        }
+
+        if (actionsContainer) {
+            if (isAuthor) {
+                actionsContainer.innerHTML = `
+                    <button id="btn-edit"
+                        class="bg-white/5 hover:bg-white/10 text-secondary px-3 py-1.5 rounded-lg flex items-center gap-2 transition text-sm border border-white/10">
+                        <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
+                        <span>編輯</span>
+                    </button>
+                    <button id="btn-delete"
+                        class="bg-danger/10 hover:bg-danger/20 text-danger px-3 py-1.5 rounded-lg flex items-center gap-2 transition text-sm border border-danger/20">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        <span>刪除</span>
+                    </button>
+                `;
+            } else {
+                actionsContainer.innerHTML = '';
+            }
         }
     },
 
@@ -760,6 +885,48 @@ const ForumApp = {
                 submitBtn.innerHTML = '<div class="flex items-center gap-2 justify-center"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg><span>送出評論</span></div>';
             }
         }
+    },
+
+    async handleDelete(postId) {
+        if (!AuthManager.currentUser) {
+            return showToast('請先登入', 'warning');
+        }
+
+        // 確認刪除
+        const confirmed = await showConfirm({
+            title: '確認刪除',
+            message: '確定要刪除這篇文章嗎？\n刪除後將無法恢復。',
+            type: 'warning',
+            confirmText: '確認刪除',
+            cancelText: '取消'
+        });
+
+        if (!confirmed) return;
+
+        try {
+            await ForumAPI.deletePost(postId);
+            showToast('文章已刪除', 'success');
+
+            // 延遲後導航回首頁
+            setTimeout(() => {
+                if (typeof smoothNavigate === 'function') {
+                    smoothNavigate('/static/forum/index.html');
+                } else {
+                    window.location.href = '/static/forum/index.html';
+                }
+            }, 1000);
+        } catch (e) {
+            showToast('刪除失敗: ' + e.message, 'error');
+        }
+    },
+
+    async handleEdit(postId) {
+        if (!AuthManager.currentUser) {
+            return showToast('請先登入', 'warning');
+        }
+
+        // TODO: 實現編輯功能 - 可以創建一個編輯模態框或導航到編輯頁面
+        showToast('編輯功能開發中', 'info');
     },
 
     async handleTip(postId) {

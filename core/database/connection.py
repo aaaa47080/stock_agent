@@ -622,6 +622,81 @@ def init_db():
     ''')
 
     # ========================================================================
+    # 可疑錢包追蹤系統資料表
+    # ========================================================================
+
+    # 詐騙舉報表
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS scam_reports (
+            id SERIAL PRIMARY KEY,
+
+            -- 錢包資訊
+            scam_wallet_address TEXT NOT NULL UNIQUE,
+            blockchain_type TEXT DEFAULT 'pi_network',
+
+            -- 舉報者資訊
+            reporter_user_id TEXT NOT NULL,
+            reporter_wallet_address TEXT NOT NULL,
+            reporter_wallet_masked TEXT NOT NULL,
+
+            -- 詐騙資訊
+            scam_type TEXT NOT NULL,
+            description TEXT NOT NULL,
+            transaction_hash TEXT,
+
+            -- 驗證狀態
+            verification_status TEXT DEFAULT 'pending',
+
+            -- 社群投票統計
+            approve_count INTEGER DEFAULT 0,
+            reject_count INTEGER DEFAULT 0,
+
+            -- 元數據
+            comment_count INTEGER DEFAULT 0,
+            view_count INTEGER DEFAULT 0,
+
+            -- 時間戳
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+            -- 外鍵
+            FOREIGN KEY (reporter_user_id) REFERENCES users(user_id)
+        )
+    ''')
+
+    # 投票表
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS scam_report_votes (
+            id SERIAL PRIMARY KEY,
+            report_id INTEGER NOT NULL,
+            user_id TEXT NOT NULL,
+            vote_type TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+            UNIQUE(report_id, user_id),
+            FOREIGN KEY (report_id) REFERENCES scam_reports(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES users(user_id)
+        )
+    ''')
+
+    # 評論表
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS scam_report_comments (
+            id SERIAL PRIMARY KEY,
+            report_id INTEGER NOT NULL,
+            user_id TEXT NOT NULL,
+            content TEXT NOT NULL,
+            transaction_hash TEXT,
+            attachment_url TEXT,
+            is_hidden INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+            FOREIGN KEY (report_id) REFERENCES scam_reports(id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES users(user_id)
+        )
+    ''')
+
+    # ========================================================================
     # 好友功能資料表
     # ========================================================================
 
@@ -821,6 +896,16 @@ def init_db():
     c.execute('CREATE INDEX IF NOT EXISTS idx_tips_to_user ON tips(to_user_id)')
     c.execute('CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(name)')
     c.execute('CREATE INDEX IF NOT EXISTS idx_user_daily_comments_user_date ON user_daily_comments(user_id, date)')
+
+    # 可疑錢包追蹤系統索引
+    c.execute('CREATE INDEX IF NOT EXISTS idx_scam_wallet ON scam_reports(scam_wallet_address)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_scam_type ON scam_reports(scam_type)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_scam_status ON scam_reports(verification_status)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_scam_created ON scam_reports(created_at DESC)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_vote_report ON scam_report_votes(report_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_vote_user ON scam_report_votes(user_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_comment_report ON scam_report_comments(report_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_comment_created ON scam_report_comments(created_at DESC)')
 
     # 好友功能索引
     c.execute('CREATE INDEX IF NOT EXISTS idx_friendships_user_id ON friendships(user_id)')

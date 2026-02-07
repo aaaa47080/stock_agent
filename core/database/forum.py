@@ -402,9 +402,41 @@ def delete_post(post_id: int, user_id: str) -> bool:
     conn = get_connection()
     c = conn.cursor()
     try:
+        # 執行軟刪除
         c.execute('UPDATE posts SET is_hidden = 1 WHERE id = %s AND user_id = %s', (post_id, user_id))
+        success = c.rowcount > 0
+
+        # 如果刪除成功，記錄審計日誌
+        if success:
+            try:
+                c.execute('''
+                    INSERT INTO audit_logs (
+                        user_id, action, resource_type, resource_id,
+                        endpoint, method, success
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                ''', (user_id, 'DELETE_POST', 'post', str(post_id), '/api/forum/posts/{id}', 'DELETE', True))
+            except Exception as e:
+                # 審計日誌失敗不應該影響主操作
+                print(f"⚠️ 審計日誌記錄失敗: {e}")
+
         conn.commit()
-        return c.rowcount > 0
+        return success
+    except Exception as e:
+        conn.rollback()
+        # 記錄失敗的審計日誌
+        try:
+            c.execute('''
+                INSERT INTO audit_logs (
+                    user_id, action, resource_type, resource_id,
+                    endpoint, method, success, error_message
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ''', (user_id, 'DELETE_POST', 'post', str(post_id), '/api/forum/posts/{id}', 'DELETE', False, str(e)))
+            conn.commit()
+        except:
+            pass
+        raise
     finally:
         conn.close()
 
