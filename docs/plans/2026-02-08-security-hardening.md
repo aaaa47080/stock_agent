@@ -88,7 +88,7 @@ CORS_ORIGINS=https://yourdomain.com,https://app.minepi.com
 
 ```python
 # Before (INSECURE):
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev_secret_key_change_in_production_7382")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "INSECURE_DEV_KEY_MUST_REPLACE")
 
 # After (SECURE):
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
