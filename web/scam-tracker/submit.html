@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>舉報可疑錢包 - 可疑錢包追蹤</title>
+    <link rel="icon" type="image/png" href="/static/img/title_icon.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        background: '#1a1a1c',
+                        surface: '#252529',
+                        surfaceHighlight: '#323236',
+                        primary: '#d4b693',
+                        secondary: '#e4e4e7',
+                        textMain: '#f4f4f5',
+                        textMuted: '#a1a1aa',
+                        success: '#86efac',
+                        danger: '#fda4af',
+                        warning: '#fde68a'
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Mulish:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body class="bg-background text-textMain min-h-screen">
+
+    <!-- Navbar -->
+    <nav class="sticky top-0 z-50 bg-surface/95 backdrop-blur-xl border-b border-white/5 px-4 py-3">
+        <div class="max-w-2xl mx-auto flex items-center justify-between">
+            <a href="/static/scam-tracker/index.html" class="flex items-center gap-2 text-secondary font-bold hover:text-primary transition">
+                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+                <span>取消</span>
+            </a>
+            <div class="font-bold text-lg text-primary">舉報可疑錢包</div>
+            <div class="w-16"></div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="max-w-2xl mx-auto p-4">
+
+        <div class="bg-surface border border-white/5 rounded-2xl p-6">
+
+            <!-- PRO Notice -->
+            <div class="bg-primary/10 border border-primary/30 rounded-xl p-4 mb-6">
+                <div class="flex items-start gap-3">
+                    <i data-lucide="shield" class="w-5 h-5 text-primary mt-0.5"></i>
+                    <div>
+                        <h4 class="font-bold text-primary mb-1">僅限 PRO 會員</h4>
+                        <p class="text-sm text-textMuted">舉報功能僅開放給 PRO 會員使用，以確保舉報品質。</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form -->
+            <form id="scam-report-form" class="space-y-5">
+
+                <!-- Scam Wallet Address -->
+                <div>
+                    <label class="block text-sm font-bold text-secondary mb-2">
+                        可疑錢包地址 <span class="text-danger">*</span>
+                    </label>
+                    <input type="text" id="scam-wallet" required
+                        class="w-full bg-background border border-white/10 rounded-xl px-4 py-3 font-mono text-textMain focus:border-primary outline-none"
+                        placeholder="G 開頭，56 字符">
+                    <p class="text-xs text-textMuted mt-1">請輸入您認為可疑的錢包地址</p>
+                </div>
+
+                <!-- Reporter Wallet Address -->
+                <div>
+                    <label class="block text-sm font-bold text-secondary mb-2">
+                        您的錢包地址 <span class="text-danger">*</span>
+                    </label>
+                    <input type="text" id="reporter-wallet" required
+                        class="w-full bg-background border border-white/10 rounded-xl px-4 py-3 font-mono text-textMain focus:border-primary outline-none"
+                        placeholder="G 開頭，56 字符">
+                    <p class="text-xs text-textMuted mt-1">您的錢包地址將被遮罩顯示以保護隱私</p>
+                </div>
+
+                <!-- Scam Type -->
+                <div>
+                    <label class="block text-sm font-bold text-secondary mb-2">
+                        詐騙類型 <span class="text-danger">*</span>
+                    </label>
+                    <select id="scam-type" required
+                        class="w-full bg-background border border-white/10 rounded-xl px-4 py-3 text-textMain focus:border-primary outline-none">
+                        <option value="">請選擇詐騙類型</option>
+                    </select>
+                </div>
+
+                <!-- Description -->
+                <div>
+                    <label class="block text-sm font-bold text-secondary mb-2">
+                        詐騙描述 <span class="text-danger">*</span>
+                    </label>
+                    <textarea id="description" required minlength="20" maxlength="2000"
+                        class="w-full bg-background border border-white/10 rounded-xl px-4 py-3 text-textMain focus:border-primary outline-none min-h-[150px]"
+                        placeholder="請詳細描述詐騙過程，包括：如何接觸、詐騙方式、損失金額等..."></textarea>
+                    <div class="flex justify-between mt-1">
+                        <p class="text-xs text-textMuted">最少 20 字，最多 2000 字</p>
+                        <p class="text-xs text-textMuted"><span id="char-count">0</span>/2000</p>
+                    </div>
+                </div>
+
+                <!-- Transaction Hash (Optional) -->
+                <div>
+                    <label class="block text-sm font-bold text-secondary mb-2">
+                        交易哈希（選填）
+                    </label>
+                    <input type="text" id="tx-hash"
+                        class="w-full bg-background border border-white/10 rounded-xl px-4 py-3 font-mono text-textMain focus:border-primary outline-none"
+                        placeholder="64 字符十六進制">
+                    <p class="text-xs text-textMuted mt-1">如果有交易記錄，可提供作為證據</p>
+                </div>
+
+                <!-- Warning -->
+                <div class="bg-warning/10 border border-warning/30 rounded-xl p-4">
+                    <div class="flex items-start gap-3">
+                        <i data-lucide="alert-triangle" class="w-5 h-5 text-warning mt-0.5"></i>
+                        <div>
+                            <h4 class="font-bold text-warning mb-1">重要提醒</h4>
+                            <p class="text-sm text-textMuted">請確保您的舉報真實有效。惡意誣陷將導致您的帳號被限制使用此功能。</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Daily Limit Notice -->
+                <div id="daily-limit-notice" class="bg-surfaceHighlight rounded-xl p-4">
+                    <p class="text-sm text-textMuted text-center">
+                        今日剩餘舉報次數：<span id="remaining-quota" class="font-bold text-primary">-</span>
+                    </p>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" id="btn-submit"
+                    class="w-full bg-primary text-background py-4 rounded-xl font-bold hover:opacity-90 transition flex items-center justify-center gap-2">
+                    <i data-lucide="send" class="w-5 h-5"></i>
+                    提交舉報
+                </button>
+
+            </form>
+
+        </div>
+
+    </main>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-24 right-4 z-[100] flex flex-col gap-2"></div>
+
+    <!-- Scripts -->
+    <script src="/static/config.js"></script>
+    <script src="/static/js/logger.js"></script>
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/auth.js"></script>
+    <script src="/static/js/apiKeyManager.js"></script>
+    <script src="/static/scam-tracker/js/scam-tracker.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof initializeAuth === 'function') initializeAuth();
+            if (typeof ScamTrackerApp !== 'undefined') ScamTrackerApp.initSubmitPage();
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>

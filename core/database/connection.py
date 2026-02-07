@@ -7,6 +7,7 @@ from psycopg2 import pool
 import os
 import threading
 import time
+import json
 
 # PostgreSQL 連接字符串
 DATABASE_URL = os.environ.get("DATABASE_URL")
@@ -867,7 +868,30 @@ def init_db():
         ('limit_daily_message_premium', 'null', 'int', 'limits', '高級會員每日私訊上限 (null=無限)', 1),
         ('limit_monthly_greeting', '5', 'int', 'limits', '高級會員每月打招呼上限', 1),
         ('limit_message_max_length', '500', 'int', 'limits', '單則訊息最大字數', 1),
+        # 可疑錢包追蹤配置
+        ('scam_report_daily_limit_pro', '5', 'int', 'scam_tracker', 'PRO 用戶每日可舉報可疑錢包數量', 1),
+        ('scam_comment_require_pro', 'true', 'bool', 'scam_tracker', '評論是否僅限 PRO 用戶', 1),
+        ('scam_verification_vote_threshold', '10', 'int', 'scam_tracker', '達到「已驗證」所需的最低總投票數', 1),
+        ('scam_verification_approve_rate', '0.7', 'float', 'scam_tracker', '達到「已驗證」所需的贊同率（0-1）', 1),
+        ('scam_wallet_mask_length', '4', 'int', 'scam_tracker', '錢包地址遮罩顯示長度（前後各保留字符數）', 1),
+        ('scam_list_page_size', '20', 'int', 'scam_tracker', '列表每頁顯示數量', 1),
     ]
+
+    # 詐騙類型配置（JSON）
+    scam_types_config = json.dumps([
+        {'id': 'fake_official', 'name': '假冒官方', 'icon': '🎭'},
+        {'id': 'investment_scam', 'name': '投資詐騙', 'icon': '💰'},
+        {'id': 'fake_airdrop', 'name': '空投詐騙', 'icon': '🎁'},
+        {'id': 'trading_fraud', 'name': '交易詐騙', 'icon': '🔄'},
+        {'id': 'gambling', 'name': '賭博騙局', 'icon': '🎰'},
+        {'id': 'phishing', 'name': '釣魚網站', 'icon': '🎣'},
+        {'id': 'other', 'name': '其他詐騙', 'icon': '⚠️'}
+    ], ensure_ascii=False)
+
+    default_configs.append((
+        'scam_types', scam_types_config, 'json', 'scam_tracker',
+        '詐騙類型列表（可動態新增）', 1
+    ))
 
     for key, value, value_type, category, description, is_public in default_configs:
         c.execute('SELECT COUNT(*) FROM system_config WHERE key = %s', (key,))
