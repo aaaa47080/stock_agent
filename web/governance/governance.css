@@ -1,0 +1,756 @@
+/* ============================================
+   社群治理系統樣式
+   ============================================ */
+
+/* 變數定義 */
+:root {
+    --primary-color: #4a90e2;
+    --success-color: #52c41a;
+    --warning-color: #faad14;
+    --error-color: #ff4d4f;
+    --info-color: #1890ff;
+    --text-color: #333;
+    --text-secondary: #666;
+    --border-color: #e0e0e0;
+    --bg-color: #f5f5f5;
+    --card-bg: #ffffff;
+    --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* 標籤切換 */
+.tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+
+.tab-btn {
+    padding: 12px 24px;
+    border: 2px solid var(--border-color);
+    background: var(--card-bg);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.tab-btn:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.tab-btn.active {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+.pro-badge {
+    background: var(--warning-color);
+    color: white;
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    margin-left: 4px;
+}
+
+/* 標籤內容 */
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* 卡片 */
+.card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow);
+}
+
+.card h2 {
+    margin: 0 0 16px 0;
+    font-size: 24px;
+    color: var(--text-color);
+}
+
+.card h3 {
+    margin: 20px 0 12px 0;
+    font-size: 18px;
+    color: var(--text-color);
+}
+
+.card .hint {
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+}
+
+/* 表單 */
+.governance-form {
+    max-width: 600px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-size: 16px;
+    box-sizing: border-box;
+    transition: border-color 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.hint-text {
+    color: var(--text-secondary);
+    font-size: 14px;
+    display: block;
+    margin-top: 4px;
+}
+
+.optional {
+    font-weight: normal;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+/* 按鈕 */
+.form-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-primary {
+    background: var(--primary-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #357abd;
+}
+
+.btn-success {
+    background: var(--success-color);
+    color: white;
+}
+
+.btn-danger {
+    background: var(--error-color);
+    color: white;
+}
+
+.btn-link {
+    background: none;
+    color: var(--primary-color);
+    padding: 8px 16px;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* 限制資訊 */
+.limit-info {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+/* 檢舉列表 */
+.reports-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.report-item {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px;
+    transition: box-shadow 0.3s ease;
+}
+
+.report-item:hover {
+    box-shadow: var(--shadow);
+}
+
+.report-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin-bottom: 12px;
+}
+
+.report-id {
+    font-weight: 500;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.report-status {
+    padding: 4px 12px;
+    border-radius: 16px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.status-pending {
+    background: #fff7e6;
+    color: #fa8c16;
+}
+
+.status-approved {
+    background: #f6ffed;
+    color: #52c41a;
+}
+
+.status-rejected {
+    background: #fff1f0;
+    color: #ff4d4f;
+}
+
+.report-content {
+    display: flex;
+    gap: 16px;
+}
+
+.report-icon {
+    font-size: 32px;
+}
+
+.report-details {
+    flex: 1;
+}
+
+.report-type {
+    display: inline-block;
+    padding: 4px 8px;
+    background: var(--info-color);
+    color: white;
+    border-radius: 4px;
+    font-size: 12px;
+    margin-bottom: 8px;
+}
+
+.report-description {
+    color: var(--text-color);
+    margin: 8px 0;
+}
+
+.report-meta {
+    color: var(--text-secondary);
+    font-size: 14px;
+    display: flex;
+    gap: 16px;
+}
+
+/* 投票區域 */
+.vote-section {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+}
+
+.vote-buttons {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.vote-btn {
+    flex: 1;
+    padding: 12px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    background: white;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.vote-btn:hover {
+    border-color: var(--primary-color);
+}
+
+.vote-btn.approve:hover {
+    background: var(--success-color);
+    border-color: var(--success-color);
+    color: white;
+}
+
+.vote-btn.reject:hover {
+    background: var(--error-color);
+    border-color: var(--error-color);
+    color: white;
+}
+
+.vote-stats {
+    display: flex;
+    gap: 16px;
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.vote-stat {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* 違規記錄 */
+.points-summary {
+    background: linear-gradient(135deg, var(--primary-color), var(--info-color));
+    color: white;
+    padding: 24px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+}
+
+.points-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.points-value {
+    font-size: 48px;
+    font-weight: bold;
+}
+
+.points-label {
+    opacity: 0.9;
+}
+
+.points-actions {
+    display: flex;
+    gap: 24px;
+}
+
+.points-action {
+    text-align: center;
+}
+
+.points-action-value {
+    font-size: 24px;
+    font-weight: bold;
+}
+
+.points-action-label {
+    opacity: 0.9;
+    font-size: 14px;
+}
+
+/* 違規列表 */
+.violations-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.violation-item {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.violation-level {
+    padding: 4px 12px;
+    border-radius: 16px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.level-mild {
+    background: #f6ffed;
+    color: #52c41a;
+}
+
+.level-medium {
+    background: #fff7e6;
+    color: #fa8c16;
+}
+
+.level-severe {
+    background: #fff1f0;
+    color: #ff4d4f;
+}
+
+.level-critical {
+    background: #2c0000;
+    color: #ff4d4f;
+}
+
+.violation-details {
+    flex: 1;
+}
+
+.violation-type {
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.violation-meta {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+/* 排行榜 */
+.leaderboard-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.leaderboard-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: var(--bg-color);
+    border-radius: 8px;
+}
+
+.leaderboard-rank {
+    font-size: 24px;
+    font-weight: bold;
+    width: 40px;
+    text-align: center;
+}
+
+.rank-1 {
+    color: #ffd700;
+}
+
+.rank-2 {
+    color: #c0c0c0;
+}
+
+.rank-3 {
+    color: #cd7f32;
+}
+
+.leaderboard-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--primary-color);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+}
+
+.leaderboard-info {
+    flex: 1;
+}
+
+.leaderboard-name {
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.leaderboard-stats {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.leaderboard-score {
+    text-align: right;
+}
+
+.reputation-score {
+    font-size: 24px;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.accuracy-rate {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+/* 聲望顯示 */
+.reputation-display {
+    display: flex;
+    gap: 24px;
+    padding: 16px;
+    background: var(--bg-color);
+    border-radius: 8px;
+}
+
+.reputation-stat {
+    flex: 1;
+    text-align: center;
+}
+
+.reputation-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.reputation-label {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+/* 篩選器 */
+.filter-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.filter-btn {
+    padding: 8px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    background: white;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.filter-btn:hover {
+    border-color: var(--primary-color);
+}
+
+.filter-btn.active {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+/* PRO 專用提示 */
+.pro-only-notice {
+    text-align: center;
+    padding: 48px 24px;
+}
+
+.pro-only-notice h3 {
+    font-size: 24px;
+    margin-bottom: 16px;
+}
+
+.pro-only-notice p {
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+}
+
+/* 資訊卡片 */
+.info-card {
+    background: #f0f7ff;
+    border: 1px solid #91d5ff;
+}
+
+.info-card h3 {
+    margin-bottom: 12px;
+}
+
+.rules-list {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.rules-list li {
+    margin-bottom: 8px;
+    color: var(--text-secondary);
+}
+
+/* 表格 */
+.points-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+}
+
+.points-table th,
+.points-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.points-table th {
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.points-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* 載入狀態 */
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-secondary);
+}
+
+.spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border-color);
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* 空狀態 */
+.empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--text-secondary);
+}
+
+/* 模態框 */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+}
+
+.modal.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    position: relative;
+}
+
+.close-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--text-secondary);
+}
+
+.close-btn:hover {
+    color: var(--text-color);
+}
+
+/* 訊息提示 */
+.toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    padding: 16px 24px;
+    border-radius: 8px;
+    color: white;
+    font-weight: 500;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+    z-index: 1001;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toast.success {
+    background: var(--success-color);
+}
+
+.toast.error {
+    background: var(--error-color);
+}
+
+.toast.info {
+    background: var(--info-color);
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+    .tabs {
+        flex-direction: column;
+    }
+
+    .tab-btn {
+        width: 100%;
+    }
+
+    .report-content {
+        flex-direction: column;
+    }
+
+    .vote-buttons {
+        flex-direction: column;
+    }
+
+    .points-actions {
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .leaderboard-item {
+        flex-wrap: wrap;
+    }
+}

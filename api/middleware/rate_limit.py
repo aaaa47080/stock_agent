@@ -39,21 +39,26 @@ limiter = Limiter(
 RATE_LIMITS = {
     # Authentication endpoints (very strict to prevent brute force)
     "auth": "5/minute",
-    
+
     # Write operations (stricter)
     "write": "30/minute",
-    
+
     # Payment operations (strict to prevent abuse)
     "payment": "10/minute",
-    
+
     # Read operations (more lenient)
     "read": "100/minute",
-    
+
     # Admin operations (moderate)
     "admin": "50/hour",
-    
+
     # Public endpoints (lenient)
     "public": "200/minute",
+
+    # Community Governance endpoints
+    "governance_report": "10/hour",  # Report submission (strict)
+    "governance_vote": "30/hour",    # Voting (PRO members only)
+    "governance_read": "100/hour",   # Reading governance data
 }
 
 
@@ -89,6 +94,15 @@ def get_rate_limit_for_route(request: Request) -> str:
     # Public read endpoints (forum, market data)
     if any(x in path for x in ['/forum/posts', '/forum/boards', '/market', '/agents/']):
         return RATE_LIMITS["public"]
+
+    # Community Governance endpoints
+    if '/governance' in path:
+        if '/reports' in path and method == 'post':
+            return RATE_LIMITS["governance_report"]
+        elif '/vote' in path and method == 'post':
+            return RATE_LIMITS["governance_vote"]
+        else:
+            return RATE_LIMITS["governance_read"]
     
     # Default read operations
     if method == 'get':

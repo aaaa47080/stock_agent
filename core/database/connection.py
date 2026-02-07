@@ -18,8 +18,8 @@ if not DATABASE_URL:
     load_dotenv()
     DATABASE_URL = os.environ.get("DATABASE_URL")
 
-if not DATABASE_URL:
-    raise ValueError("DATABASE_URL environment variable is not set. Please check your .env file.")
+# 允許在測試環境中延遲初始化（不立即拋出錯誤）
+# 實際連接時才會驗證 DATABASE_URL 是否有效
 
 # 連接池配置 - 針對 Zeabur 優化
 MIN_POOL_SIZE = 2   # 最小連接數
@@ -145,6 +145,13 @@ def init_connection_pool():
     包含重試機制，適用於容器環境（如 Zeabur）中 PostgreSQL 可能尚未完全啟動的情況
     """
     global _connection_pool
+
+    # 驗證 DATABASE_URL 是否存在
+    if not DATABASE_URL:
+        raise ValueError(
+            "DATABASE_URL environment variable is not set. "
+            "Please set it in your .env file or environment."
+        )
 
     # 連接池初始化重試配置
     POOL_INIT_MAX_RETRIES = 10

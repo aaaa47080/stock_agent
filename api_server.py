@@ -55,6 +55,7 @@ from api.routers.friends import router as friends_router
 from api.routers.messages import router as messages_router
 from api.routers.audit import router as audit_router  # Audit log admin API
 from api.routers.scam_tracker import router as scam_tracker_router  # Scam tracker API
+from api.routers.governance import router as governance_router  # Community governance API
 
 # Import database and core modules (but don't initialize at module level)
 from core.database import init_db
@@ -229,6 +230,7 @@ app.include_router(friends_router) # 好友功能 API
 app.include_router(messages_router) # 私訊功能 API
 app.include_router(audit_router)   # 審計日誌查詢 API (管理員專用)
 app.include_router(scam_tracker_router)  # 可疑錢包追蹤系統 API
+app.include_router(governance_router)  # 社群治理系統 API
 
 # --- 健康檢查端點（用於負載均衡和監控）---
 @app.get("/health")

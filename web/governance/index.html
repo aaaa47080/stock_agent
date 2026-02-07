@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>社群治理系統 - 社區監督</title>
+    <link rel="stylesheet" href="../../styles.css">
+    <link rel="stylesheet" href="governance.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 頂部導航 -->
+        <header class="governance-header">
+            <h1>🛡️ 社群治理系統</h1>
+            <p class="subtitle">由 PRO 會員共同維護的社區監督平台</p>
+        </header>
+
+        <!-- 標籤切換 -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="report">提交檢舉</button>
+            <button class="tab-btn" data-tab="review">審核隊列 <span class="pro-badge">PRO</span></button>
+            <button class="tab-btn" data-tab="my-reports">我的檢舉</button>
+            <button class="tab-btn" data-tab="violations">違規記錄</button>
+            <button class="tab-btn" data-tab="leaderboard">審核排行</button>
+        </div>
+
+        <!-- 提交檢舉 -->
+        <div id="report-tab" class="tab-content active">
+            <div class="card">
+                <h2>📝 提交內容檢舉</h2>
+                <p class="hint">發現違規內容？請填寫以下資訊，PRO 審核員將會進行審議。</p>
+
+                <form id="report-form" class="governance-form">
+                    <div class="form-group">
+                        <label>內容類型</label>
+                        <select id="content-type" name="content_type" required>
+                            <option value="">請選擇...</option>
+                            <option value="post">文章</option>
+                            <option value="comment">評論</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>內容 ID</label>
+                        <input type="number" id="content-id" name="content_id" placeholder="輸入內容 ID" required>
+                        <small class="hint-text">可在內容網址中找到 ID</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>檢舉類型</label>
+                        <select id="report-type" name="report_type" required>
+                            <option value="">請選擇...</option>
+                            <option value="spam">垃圾信息</option>
+                            <option value="harassment">騷擾</option>
+                            <option value="misinformation">虛假信息</option>
+                            <option value="scam">詐騙</option>
+                            <option value="illegal">違法內容</option>
+                            <option value="other">其他</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>詳細說明 <span class="optional">(選填)</span></label>
+                        <textarea id="description" name="description" rows="4"
+                                  placeholder="請描述具體違規情況，提供更多細節有助於審核..."></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">提交檢舉</button>
+                        <span id="daily-limit" class="limit-info"></span>
+                    </div>
+                </form>
+            </div>
+
+            <!-- 檢舉規則說明 -->
+            <div class="card info-card">
+                <h3>📋 檢舉規則</h3>
+                <ul class="rules-list">
+                    <li>免費用戶每日可檢舉 5 次，PRO 會員可檢舉 10 次</li>
+                    <li>同一用戶對同一內容只能檢舉一次</li>
+                    <li>無法檢舉自己的內容</li>
+                    <li>惡意檢舉可能導致您的帳號受罰</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- 審核隊列 (PRO 專用) -->
+        <div id="review-tab" class="tab-content">
+            <div class="pro-only-notice" id="pro-notice" style="display: none;">
+                <h3>🔒 此功能僅限 PRO 會員使用</h3>
+                <p>升級為 PRO 會員即可參與社區治理，審核檢舉並累積聲望分數。</p>
+                <a href="/forum/premium.html" class="btn btn-primary">升級 PRO</a>
+            </div>
+
+            <div id="review-content" style="display: none;">
+                <div class="card">
+                    <h2>⚖️ 待審核檢舉</h2>
+                    <p class="hint">作為 PRO 審核員，您可以投票決定檢舉是否成立。</p>
+
+                    <div id="pending-reports-list" class="reports-list">
+                        <!-- 動態載入待審核檢舉 -->
+                    </div>
+
+                    <div class="loading" id="review-loading" style="display: none;">
+                        <span class="spinner"></span> 載入中...
+                    </div>
+
+                    <div class="empty-state" id="review-empty" style="display: none;">
+                        <p>🎉 目前沒有待審核的檢舉</p>
+                    </div>
+                </div>
+
+                <div class="card info-card">
+                    <h3>📊 審核聲望</h3>
+                    <div id="my-reputation" class="reputation-display">
+                        <p>載入中...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 我的檢舉 -->
+        <div id="my-reports-tab" class="tab-content">
+            <div class="card">
+                <h2>📋 我的檢舉記錄</h2>
+
+                <div class="filter-bar">
+                    <button class="filter-btn active" data-status="all">全部</button>
+                    <button class="filter-btn" data-status="pending">待審核</button>
+                    <button class="filter-btn" data-status="approved">已通過</button>
+                    <button class="filter-btn" data-status="rejected">已拒絕</button>
+                </div>
+
+                <div id="my-reports-list" class="reports-list">
+                    <!-- 動態載入檢舉記錄 -->
+                </div>
+
+                <div class="loading" id="my-reports-loading" style="display: none;">
+                    <span class="spinner"></span> 載入中...
+                </div>
+
+                <div class="empty-state" id="my-reports-empty" style="display: none;">
+                    <p>您還沒有提交過檢舉</p>
+                    <a href="#" class="btn btn-link" onclick="switchTab('report')">提交第一個檢舉</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 違規記錄 -->
+        <div id="violations-tab" class="tab-content">
+            <div class="card">
+                <h2>⚠️ 違規記錄</h2>
+
+                <div id="violation-points" class="points-summary">
+                    <!-- 動態載入違規點數 -->
+                </div>
+
+                <h3>違規歷史</h3>
+                <div id="violations-list" class="violations-list">
+                    <!-- 動態載入違規記錄 -->
+                </div>
+
+                <div class="loading" id="violations-loading" style="display: none;">
+                    <span class="spinner"></span> 載入中...
+                </div>
+            </div>
+
+            <div class="card info-card">
+                <h3>📊 點數與處罰說明</h3>
+                <table class="points-table">
+                    <thead>
+                        <tr>
+                            <th>累積點數</th>
+                            <th>處罰</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>1-4 點</td><td>無處罰</td></tr>
+                        <tr><td>5-9 點</td><td>⚠️ 警告</td></tr>
+                        <tr><td>10-19 點</td><td>🚫 暫停 3 天</td></tr>
+                        <tr><td>20-29 點</td><td>🚫 暫停 7 天</td></tr>
+                        <tr><td>30-39 點</td><td>🚫 暫停 30 天</td></tr>
+                        <tr><td>40+ 點</td><td>⛔ 永久停權</td></tr>
+                    </tbody>
+                </table>
+                <p class="hint"><small>* 30 天內無新違規，點數將自動遞減 1 點</small></p>
+            </div>
+        </div>
+
+        <!-- 審核排行 -->
+        <div id="leaderboard-tab" class="tab-content">
+            <div class="card">
+                <h2>🏆 審核員排行榜</h2>
+                <p class="hint">感謝這些 PRO 會員對社區治理的貢獻！</p>
+
+                <div id="leaderboard-list" class="leaderboard-list">
+                    <!-- 動態載入排行榜 -->
+                </div>
+
+                <div class="loading" id="leaderboard-loading" style="display: none;">
+                    <span class="spinner"></span> 載入中...
+                </div>
+            </div>
+
+            <div class="card info-card">
+                <h3>🎖️ 聲望系統說明</h3>
+                <ul class="rules-list">
+                    <li>正確投票（與最終結果一致）：+1 聲望分</li>
+                    <li>錯誤投票（與最終結果相反）：-1 聲望分</li>
+                    <li>聲望分數越高，投票權重越大</li>
+                    <li>準確率 > 90% 可獲得額外權重加成</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- 檢舉詳情模態框 -->
+    <div id="report-detail-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <div id="report-detail-content">
+                <!-- 動態載入檢舉詳情 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 訊息提示 -->
+    <div id="toast" class="toast"></div>
+
+    <script src="../../config.js"></script>
+    <script src="governance.js"></script>
+</body>
+</html>
