@@ -36,6 +36,253 @@ SYMBOL_CACHE = {
     "okx": {"data": None, "timestamp": 0}
 }
 
+# ============================================================================
+# Helper Functions - Reduce complexity of endpoint handlers
+# ============================================================================
+
+def _normalize_funding_symbol(symbol: str) -> str:
+    """Normalize funding rate symbol by removing suffixes."""
+    return symbol.upper().replace("-USDT", "").replace("-SWAP", "").replace("USDT", "")
+
+
+def _filter_funding_data_by_symbols(data: dict, symbol_list: list) -> dict:
+    """Filter funding rate data for specific symbols."""
+    filtered_data = {}
+    for sym in symbol_list:
+        normalized_sym = _normalize_funding_symbol(sym)
+        if normalized_sym in data:
+            filtered_data[normalized_sym] = data[normalized_sym]
+    return filtered_data
+
+
+def _parse_symbols_param(symbols: str) -> list:
+    """Parse comma-separated symbols parameter."""
+    return [s.strip().upper() for s in symbols.split(',') if s.strip()]
+
+
+def _compute_top_bottom_rates(rates: list, limit: int) -> tuple:
+    """Compute top bullish and bearish rates from sorted list."""
+    top_bullish = rates[:limit]
+    top_bearish = rates[-limit:][::-1]
+    return top_bullish, top_bearish
+
+
+def _sort_funding_rates(data: dict) -> list:
+    """Sort funding rates by rate value (descending)."""
+    return sorted(
+        [(sym, info.get("fundingRate", 0)) for sym, info in data.items()],
+        key=lambda x: x[1],
+        reverse=True
+    )
+
+
+def _format_funding_rates_response(
+    timestamp: str,
+    total_count: int,
+    top_bullish: list,
+    top_bearish: list,
+    filtered_data: dict = None,
+    filtered_count: int = None
+) -> dict:
+    """Format funding rates API response."""
+    response = {
+        "timestamp": timestamp,
+        "total_count": total_count,
+        "top_bullish": [{"symbol": s, "fundingRate": r} for s, r in top_bullish],
+        "top_bearish": [{"symbol": s, "fundingRate": r} for s, r in top_bearish]
+    }
+
+    if filtered_data is not None:
+        response["data"] = filtered_data
+        response["filtered_count"] = filtered_count
+    else:
+        # For non-filtered results, include only the extreme values
+        response["data"] = {
+            sym: FUNDING_RATE_CACHE.get("data", {}).get(sym)
+            for sym, _ in top_bullish + top_bearish
+        }
+
+    return response
+
+
+def _normalize_market_symbol(symbol: str) -> str:
+    """Normalize market pulse symbol by removing suffixes."""
+    return symbol.upper().replace("USDT", "").replace("BUSD", "").replace("-", "")
+
+
+def _try_get_cached_pulse(symbol: str, deep_analysis: bool) -> dict:
+    """Try to get market pulse from cache (returns None if miss)."""
+    if not deep_analysis and symbol in MARKET_PULSE_CACHE:
+        cached_data = MARKET_PULSE_CACHE[symbol].copy()
+        cached_data["source_mode"] = "public_cache"
+        return cached_data
+    return None
+
+
+async def _perform_deep_analysis(
+    symbol: str,
+    sources: str,
+    llm_key: str,
+    llm_provider: str
+) -> dict:
+    """Perform deep analysis using user's LLM key."""
+    from utils.llm_client import create_llm_client_from_config
+    from analysis.market_pulse import MarketPulseAnalyzer
+
+    logger.info(f"🔬 Deep Analysis Mode: Using User Key for {symbol}")
+    user_client, _ = create_llm_client_from_config({
+        "provider": llm_provider,
+        "api_key": llm_key
+    })
+
+    analyzer = MarketPulseAnalyzer(client=user_client)
+    loop = asyncio.get_running_loop()
+    enabled_sources = sources.split(',') if sources else None
+
+    result = await loop.run_in_executor(
+        None,
+        lambda: analyzer.analyze_movement(symbol, enabled_sources=enabled_sources)
+    )
+
+    # Cache successful results
+    if result and "error" not in result:
+        result["source_mode"] = "deep_analysis"
+        result["analyzed_by"] = llm_provider
+        MARKET_PULSE_CACHE[symbol] = result
+        await loop.run_in_executor(None, save_market_pulse_cache)
+
+    return result
+
+
+async def _perform_on_demand_analysis(symbol: str, sources: str) -> dict:
+    """Perform on-demand market pulse analysis."""
+    from analysis.market_pulse import get_market_pulse
+
+    enabled_sources = sources.split(',') if sources else None
+    loop = asyncio.get_running_loop()
+
+    # Limit concurrent analysis
+    if not hasattr(router, "analysis_semaphore"):
+        router.analysis_semaphore = asyncio.Semaphore(5)
+
+    async with router.analysis_semaphore:
+        result = await loop.run_in_executor(
+            None,
+            lambda: get_market_pulse(symbol, enabled_sources=enabled_sources)
+        )
+
+    if result and "error" not in result:
+        result["source_mode"] = "on_demand"
+        MARKET_PULSE_CACHE[symbol] = result
+        # Async save without blocking
+        asyncio.create_task(asyncio.to_thread(save_market_pulse_cache))
+        return result
+
+    return None
+
+
+def _create_pending_pulse_response(symbol: str) -> dict:
+    """Create a pending response for market pulse analysis."""
+    return {
+        "symbol": symbol,
+        "status": "pending",
+        "source_mode": "awaiting_update",
+        "message": "分析中，請稍候再試",
+        "current_price": 0,
+        "change_24h": 0,
+        "change_1h": 0,
+        "report": {
+            "summary": "系統正在為此幣種生成初始報告，請稍後刷新頁面。",
+            "key_points": [],
+            "highlights": [],
+            "risks": []
+        }
+    }
+
+
+def _replace_nan_in_dataframe(df):
+    """Replace NaN values with None in dataframe."""
+    if df.empty:
+        return df
+    return df.replace({np.nan: None})
+
+
+def _format_screener_response(df_gainers, df_losers, df_volume) -> dict:
+    """Format screener results as API response."""
+    top_performers = _replace_nan_in_dataframe(df_gainers)
+    top_losers = _replace_nan_in_dataframe(df_losers)
+    top_volume = _replace_nan_in_dataframe(df_volume)
+
+    return {
+        "top_gainers": top_performers.to_dict(orient="records"),
+        "top_losers": top_losers.to_dict(orient="records"),
+        "top_volume": top_volume.to_dict(orient="records"),
+        "last_updated": datetime.now().isoformat()
+    }
+
+
+async def _run_custom_screener(request: ScreenerRequest):
+    """Run custom screener for specific symbols."""
+    from api.services import trigger_on_demand_analysis
+
+    logger.info(f"執行自定義市場篩選: {request.exchange}, Symbols: {len(request.symbols)}")
+    loop = asyncio.get_running_loop()
+
+    # Trigger background analysis
+    loop.create_task(trigger_on_demand_analysis(request.symbols))
+
+    # Run screener
+    summary_df, top_performers, oversold, overbought = await loop.run_in_executor(
+        None,
+        lambda: screen_top_cryptos(
+            exchange=request.exchange,
+            limit=len(request.symbols),
+            interval="1d",
+            target_symbols=request.symbols,
+            market_pulse_data=MARKET_PULSE_CACHE
+        )
+    )
+
+    return {
+        "top_gainers": _replace_nan_in_dataframe(top_performers).to_dict(orient="records"),
+        "top_losers": _replace_nan_in_dataframe(oversold).to_dict(orient="records"),
+        "top_volume": _replace_nan_in_dataframe(summary_df).to_dict(orient="records"),
+        "last_updated": datetime.now().isoformat()
+    }
+
+
+def _try_get_cached_screener(refresh: bool):
+    """Try to get cached screener result."""
+    if not refresh and cached_screener_result["data"] is not None:
+        return cached_screener_result["data"]
+    return None
+
+
+async def _run_default_screener(exchange: str):
+    """Run default screener for top 10 cryptocurrencies."""
+    loop = asyncio.get_running_loop()
+    df_volume, df_gainers, df_losers, _ = await loop.run_in_executor(
+        None,
+        lambda: screen_top_cryptos(
+            exchange=exchange,
+            limit=10,
+            interval="1d",
+            target_symbols=None,
+            market_pulse_data=MARKET_PULSE_CACHE
+        )
+    )
+
+    result_data = _format_screener_response(df_gainers, df_losers, df_volume)
+
+    # Update cache
+    timestamp_str = datetime.now().isoformat()
+    cached_screener_result["timestamp"] = timestamp_str
+    cached_screener_result["data"] = result_data
+
+    logger.info("Manual screener refresh complete (RAM updated).")
+    return result_data
+
+
 @router.get("/api/market/symbols")
 async def get_market_symbols(exchange: str = "okx"):
     """Get all available symbols for a given exchange (Cached for 60 minutes)."""
@@ -77,91 +324,36 @@ async def get_market_symbols(exchange: str = "okx"):
 @router.post("/api/screener")
 async def run_screener(request: ScreenerRequest):
     """回傳市場篩選數據 (優先使用快取，並支援等待背景任務)"""
-    
-    # 1. 自定義請求：直接執行
+
+    # 1. Custom symbol request - execute directly
     if request.symbols and len(request.symbols) > 0:
-        logger.info(f"執行自定義市場篩選: {request.exchange}, Symbols: {len(request.symbols)}")
         try:
-             loop = asyncio.get_running_loop()
-             
-             # [Feature] Trigger background analysis for these symbols if missing
-             from api.services import trigger_on_demand_analysis
-             loop.create_task(trigger_on_demand_analysis(request.symbols))
-             
-             # [Optimization] Use lightweight screener - no need to rename columns
-             summary_df, top_performers, oversold, overbought = await loop.run_in_executor(
-                None, 
-                lambda: screen_top_cryptos(
-                    exchange=request.exchange, 
-                    limit=len(request.symbols), 
-                    interval="1d",
-                    target_symbols=request.symbols,
-                    market_pulse_data=MARKET_PULSE_CACHE # Pass cache to merge signals
-                )
-            )
-             # Lightweight screener already returns correct column names
-             top_performers = top_performers.replace({np.nan: None}) if not top_performers.empty else top_performers
-             oversold = oversold.replace({np.nan: None}) if not oversold.empty else oversold
-             overbought = overbought.replace({np.nan: None}) if not overbought.empty else overbought
-             return {
-                "top_gainers": top_performers.to_dict(orient="records"), 
-                "top_losers": oversold.to_dict(orient="records"),
-                "top_volume": summary_df.to_dict(orient="records"),
-                "last_updated": datetime.now().isoformat()
-            }
+            return await _run_custom_screener(request)
         except Exception as e:
             logger.error(f"自定義篩選失敗: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail=str(e))
 
-    # 2. 檢查快取
-    if not request.refresh and cached_screener_result["data"] is not None:
-        return cached_screener_result["data"]
-    
-    # 3. 若快取為空或強制刷新，檢查是否背景任務正在運行
+    # 2. Try to return cached result
+    cached = _try_get_cached_screener(request.refresh)
+    if cached:
+        return cached
+
+    # 3. If background task is running, wait for it
     if screener_lock.locked():
-        # 如果是強制刷新，我們還是得等
         logger.info(f"Cache miss/refresh (locked), waiting for background analysis... (Request refresh: {request.refresh})")
         async with screener_lock:
-             if cached_screener_result["data"] is not None:
-                 return cached_screener_result["data"]
+            if cached_screener_result["data"] is not None:
+                return cached_screener_result["data"]
 
-    # 4. 若等待後仍無數據，或未鎖定，則執行同步更新 (Double-check Locking)
+    # 4. Double-check locking pattern - execute if still no data
     async with screener_lock:
-        if not request.refresh and cached_screener_result["data"] is not None:
-            return cached_screener_result["data"]
-            
+        cached = _try_get_cached_screener(request.refresh)
+        if cached:
+            return cached
+
         logger.info(f"無快取且無背景任務，執行即時市場篩選: {request.exchange}")
         try:
-            loop = asyncio.get_running_loop()
-            df_volume, df_gainers, df_losers, _ = await loop.run_in_executor(
-                None, 
-                lambda: screen_top_cryptos(
-                    exchange=request.exchange, 
-                    limit=10,
-                    interval="1d",
-                    target_symbols=None,
-                    market_pulse_data=MARKET_PULSE_CACHE # Pass cache to merge signals
-                )
-            )
-            
-            # Handle potential None/NaN
-            top_performers = df_gainers.replace({np.nan: None}) if not df_gainers.empty else df_gainers
-            top_losers = df_losers.replace({np.nan: None}) if not df_losers.empty else df_losers
-            top_volume = df_volume.replace({np.nan: None}) if not df_volume.empty else df_volume
-            
-            timestamp_str = datetime.now().isoformat()
-            result_data = {
-                "top_gainers": top_performers.to_dict(orient="records"), 
-                "top_losers": top_losers.to_dict(orient="records"),      
-                "top_volume": top_volume.to_dict(orient="records"),      
-                "last_updated": timestamp_str
-            }
-            
-            cached_screener_result["timestamp"] = timestamp_str
-            cached_screener_result["data"] = result_data
-            
-            logger.info("Manual screener refresh complete (RAM updated).")
-            return result_data
+            return await _run_default_screener(request.exchange)
         except Exception as e:
             logger.error(f"篩選器錯誤: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail=str(e))
@@ -215,67 +407,53 @@ async def get_funding_rates(refresh: bool = False, symbols: str = None, limit: i
     """
     獲取資金費率（支援按幣種篩選）
     資金費率為正表示多頭付給空頭（市場看多），負值表示空頭付給多頭（市場看空）。
-    
+
     Args:
         refresh: 是否強制刷新
         symbols: 逗號分隔的幣種列表（如 "BTC,ETH,SOL"），為空時返回極端值
         limit: 當 symbols 為空時，每個類別返回的數量（預設5個最高 + 5個最低）
     """
     try:
-        # 如果要求刷新或快取為空，則更新
+        # Refresh cache if needed
         if refresh or not FUNDING_RATE_CACHE.get("data"):
             await update_funding_rates()
 
         data = FUNDING_RATE_CACHE.get("data", {})
         timestamp = FUNDING_RATE_CACHE.get("timestamp")
 
-        # 解析 symbols 參數
+        # Handle filtered symbols case
         if symbols:
-            # 用戶指定了幣種列表
-            symbol_list = [s.strip().upper() for s in symbols.split(',') if s.strip()]
-            # 只返回這些幣種的資金費率
-            filtered_data = {}
-            for sym in symbol_list:
-                # 嘗試多種格式匹配
-                normalized_sym = sym.replace("-USDT", "").replace("-SWAP", "").replace("USDT", "")
-                if normalized_sym in data:
-                    filtered_data[normalized_sym] = data[normalized_sym]
-            
-            # 從 filtered_data 中計算 top_bullish 和 top_bearish
+            symbol_list = _parse_symbols_param(symbols)
+            filtered_data = _filter_funding_data_by_symbols(data, symbol_list)
+
             if filtered_data:
-                rates = [(sym, info.get("fundingRate", 0)) for sym, info in filtered_data.items()]
-                sorted_by_rate = sorted(rates, key=lambda x: x[1], reverse=True)
-                top_bullish = sorted_by_rate[:min(5, len(sorted_by_rate))]
-                top_bearish = sorted_by_rate[-min(5, len(sorted_by_rate)):][::-1] if len(sorted_by_rate) > 5 else []
+                sorted_rates = _sort_funding_rates(filtered_data)
+                top_bullish = sorted_rates[:min(5, len(sorted_rates))]
+                top_bearish = sorted_rates[-min(5, len(sorted_rates)):][::-1] if len(sorted_rates) > 5 else []
             else:
                 top_bullish = []
                 top_bearish = []
-            
-            return {
-                "timestamp": timestamp,
-                "total_count": len(data),
-                "filtered_count": len(filtered_data),
-                "data": filtered_data,
-                "top_bullish": [{"symbol": s, "fundingRate": r} for s, r in top_bullish],
-                "top_bearish": [{"symbol": s, "fundingRate": r} for s, r in top_bearish]
-            }
-        else:
-            # 沒有指定幣種，返回極端值（Top 10）
-            rates = [(sym, info.get("fundingRate", 0)) for sym, info in data.items()]
-            sorted_by_rate = sorted(rates, key=lambda x: x[1], reverse=True)
 
-            # 前N個最高（多頭擁擠）
-            top_bullish = sorted_by_rate[:limit]
-            # 後N個最低（空頭擁擠）
-            top_bearish = sorted_by_rate[-limit:][::-1]
+            return _format_funding_rates_response(
+                timestamp=timestamp,
+                total_count=len(data),
+                top_bullish=top_bullish,
+                top_bearish=top_bearish,
+                filtered_data=filtered_data,
+                filtered_count=len(filtered_data)
+            )
 
-            return {
-                "timestamp": timestamp,
-                "total_count": len(data),
-                "data": {sym: data[sym] for sym, _ in top_bullish + top_bearish},  # 只返回極端值
-                "top_bullish": [{"symbol": s, "fundingRate": r} for s, r in top_bullish],
-                "top_bearish": [{"symbol": s, "fundingRate": r} for s, r in top_bearish]
-            }
+        # Handle default case (return extreme values)
+        sorted_rates = _sort_funding_rates(data)
+        top_bullish, top_bearish = _compute_top_bottom_rates(sorted_rates, limit)
+
+        return _format_funding_rates_response(
+            timestamp=timestamp,
+            total_count=len(data),
+            top_bullish=top_bullish,
+            top_bearish=top_bearish
+        )
+
     except Exception as e:
         logger.error(f"獲取資金費率失敗: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
@@ -361,96 +539,47 @@ async def get_market_pulse_api(
     - 深度分析模式：deep_analysis=true + 私人金鑰 → 即時使用用戶 API Key 分析
     """
     try:
-        base_symbol = symbol.upper().replace("USDT", "").replace("BUSD", "").replace("-", "")
+        base_symbol = _normalize_market_symbol(symbol)
 
-        # 1. 優先讀取公共快取（除非用戶明確要求深度分析）
-        if not deep_analysis and base_symbol in MARKET_PULSE_CACHE:
-            cached_data = MARKET_PULSE_CACHE[base_symbol].copy()  # 返回副本，避免修改原始快取
-            cached_data["source_mode"] = "public_cache"  # 標記數據來源
-            return cached_data
+        # 1. Try public cache first
+        cached = _try_get_cached_pulse(base_symbol, deep_analysis)
+        if cached:
+            return cached
 
-        # 2. 深度分析模式：用戶選擇使用私人金鑰即時分析
+        # 2. Deep analysis mode with user's LLM key
         if deep_analysis and x_user_llm_key and x_user_llm_provider:
             try:
-                from utils.llm_client import create_llm_client_from_config
-                from analysis.market_pulse import MarketPulseAnalyzer
-
-                logger.info(f"🔬 Deep Analysis Mode: Using User Key for {base_symbol}")
-                user_client, _ = create_llm_client_from_config({
-                    "provider": x_user_llm_provider,
-                    "api_key": x_user_llm_key
-                })
-
-                analyzer = MarketPulseAnalyzer(client=user_client)
-                loop = asyncio.get_running_loop()
-                enabled_sources = sources.split(',') if sources else None
-
-                result = await loop.run_in_executor(None, lambda: analyzer.analyze_movement(base_symbol, enabled_sources=enabled_sources))
-
-                # 深度分析結果也更新到公共快取，讓其他人也受益
-                if result and "error" not in result:
-                    result["source_mode"] = "deep_analysis"  # 標記為深度分析
-                    result["analyzed_by"] = x_user_llm_provider  # 記錄分析來源
-                    MARKET_PULSE_CACHE[base_symbol] = result
-                    await loop.run_in_executor(None, save_market_pulse_cache)
-                return result
+                result = await _perform_deep_analysis(
+                    base_symbol, sources, x_user_llm_key, x_user_llm_provider
+                )
+                if result:
+                    return result
+                # Fall through to cache fallback
+                if base_symbol in MARKET_PULSE_CACHE:
+                    return MARKET_PULSE_CACHE[base_symbol]
             except Exception as e:
                 logger.error(f"Deep analysis failed: {e}")
-                # 深度分析失敗時，回退到快取
+                # Fall back to cache
                 if base_symbol in MARKET_PULSE_CACHE:
                     return MARKET_PULSE_CACHE[base_symbol]
 
-        # 3. 快取未命中：立即執行按需分析 (On-Demand Analysis)
+        # 3. On-demand analysis
         logger.info(f"Cache miss for {base_symbol}, triggering immediate analysis...")
-        
-        try:
-            from analysis.market_pulse import get_market_pulse
-            
-            # 使用預設來源
-            enabled_sources = sources.split(',') if sources else None
-            loop = asyncio.get_running_loop()
-            
-            # 限制並發分析數量，避免耗盡資料庫連接池 (MAX_POOL_SIZE=20)
-            # 保留大部分連接給 UI 快速響應 (Chat, Friends List)
-            # 定義全局信號量 (Lazy initialization)
-            if not hasattr(router, "analysis_semaphore"):
-                router.analysis_semaphore = asyncio.Semaphore(5)
 
-            async with router.analysis_semaphore:
-                # 立即執行分析
-                result = await loop.run_in_executor(None, lambda: get_market_pulse(base_symbol, enabled_sources=enabled_sources))
-            
-            if result and "error" not in result:
-                # 成功後寫入快取，造福後續請求
-                result["source_mode"] = "on_demand"
-                MARKET_PULSE_CACHE[base_symbol] = result
-                # 異步保存到檔案，不阻塞
-                asyncio.create_task(asyncio.to_thread(save_market_pulse_cache))
+        try:
+            result = await _perform_on_demand_analysis(base_symbol, sources)
+            if result:
                 return result
-            else:
-                # 分析失敗的 fallback
-                logger.warning(f"On-demand analysis failed for {base_symbol}: {result.get('error')}")
-                # 繼續向下執行，返回 pending 狀態
-                
+
+            # Analysis failed - log and return pending
+            logger.warning(f"On-demand analysis failed for {base_symbol}")
+
         except Exception as e:
             logger.error(f"Error during on-demand analysis for {base_symbol}: {e}")
 
-        return {
-            "symbol": base_symbol,
-            "status": "pending",
-            "source_mode": "awaiting_update",
-            "message": "分析中，請稍候再試",
-            "current_price": 0,
-            "change_24h": 0,
-            "change_1h": 0,
-            "report": {
-                "summary": "系統正在為此幣種生成初始報告，請稍後刷新頁面。",
-                "key_points": [],
-                "highlights": [],
-                "risks": []
-            }
-        }
-            
+        # Return pending response
+        return _create_pending_pulse_response(base_symbol)
+
     except HTTPException:
         raise
     except Exception as e:
