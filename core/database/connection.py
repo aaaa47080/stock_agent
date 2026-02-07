@@ -61,13 +61,18 @@ class _StandaloneConnection:
         if not self._closed and self._conn:
             try:
                 self._conn.rollback()
-            except Exception:
+            except Exception as e:
+                # Rollback failed, connection may be corrupted
+                # Try close anyway
                 pass
             try:
                 self._conn.close()
                 self._closed = True
             except Exception as e:
-                print(f"⚠️ 關閉獨立連接失敗: {e}")
+                # Log instead of just printing
+                import logging
+                logging.warning(f"Failed to close standalone connection: {e}")
+                self._closed = True  # Mark as closed even if close failed
 
     def __enter__(self):
         return self
@@ -317,7 +322,9 @@ def close_all_connections():
             _connection_pool.closeall()
             print("✅ 所有數據庫連接已關閉")
         except Exception as e:
-            print(f"❌ 關閉連接池失敗: {e}")
+            logging.error(f"Failed to close connection pool: {e}")
+        finally:
+            _connection_pool = None  # Ensure pool is cleared even on error
 
 
 def reset_connection_pool():
