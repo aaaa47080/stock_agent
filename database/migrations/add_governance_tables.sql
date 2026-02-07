@@ -17,10 +17,10 @@ CREATE TABLE IF NOT EXISTS user_violation_points (
     points INTEGER DEFAULT 0 NOT NULL,
 
     -- 最后违规时间（用于判断是否可以递减点数）
-    last_violation_at TIMESTAMP WITH TIME ZONE,
+    last_violation_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     -- 最后递减点数的时间（防止频繁递减）
-    last_decrement_at TIMESTAMP WITH TIME ZONE,
+    last_decrement_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     -- 总违规次数（累计）
     total_violations INTEGER DEFAULT 0 NOT NULL,
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS user_violation_points (
     suspension_count INTEGER DEFAULT 0 NOT NULL,
 
     -- 更新时间
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     -- 外键约束
     CONSTRAINT fk_violation_points_user
@@ -94,13 +94,13 @@ CREATE TABLE IF NOT EXISTS user_violations (
         CHECK (action_taken IN ('warning', 'suspend_3d', 'suspend_7d', 'suspend_30d', 'suspend_permanent', 'none', 'decrease_points')),
 
     -- 暂停结束时间
-    suspended_until TIMESTAMP WITH TIME ZONE,
+    suspended_until TIMESTAMP,
 
     -- 处理人
     processed_by TEXT,
 
     -- 创建时间
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     -- 外键约束
     CONSTRAINT fk_violations_user
@@ -179,10 +179,10 @@ CREATE TABLE IF NOT EXISTS content_reports (
         CHECK (reject_count >= 0),
 
     -- 创建时间
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     -- 更新时间
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     -- 外键约束
     CONSTRAINT fk_report_reporter
@@ -242,7 +242,7 @@ CREATE TABLE IF NOT EXISTS report_review_votes (
         CHECK (vote_weight > 0),
 
     -- 投票时间
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     -- 外键约束
     CONSTRAINT fk_review_report
@@ -314,7 +314,7 @@ CREATE TABLE IF NOT EXISTS user_activity_logs (
     user_agent TEXT,
 
     -- 创建时间
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     -- 外键约束
     CONSTRAINT fk_activity_user
@@ -367,7 +367,7 @@ CREATE TABLE IF NOT EXISTS audit_reputation (
         CHECK (reputation_score >= 0),
 
     -- 更新时间
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     -- 外键约束
     CONSTRAINT fk_audit_reputation_user
@@ -402,7 +402,6 @@ RETURNS TABLE (
 DECLARE
     -- 游标：遍历需要递减点数的用户
     user_record RECORD;
-    points_before INTEGER;
 BEGIN
     -- 遍历所有有点数的用户
     FOR user_record IN
@@ -418,9 +417,6 @@ BEGIN
           )
         ORDER BY points DESC
     LOOP
-        -- 记录递减前的点数
-        points_before := user_record.points;
-
         -- 更新用户点数（最多减到0）
         UPDATE user_violation_points
         SET
@@ -435,8 +431,6 @@ BEGIN
             user_record.user_id,
             1 AS points_deducted;
     END LOOP;
-
-    RETURN;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -564,4 +558,62 @@ JOIN users u ON u.user_id = ar.user_id
 WHERE ar.total_reviews >= 10
 ORDER BY ar.accuracy_rate DESC, ar.total_reviews DESC
 LIMIT 50;
+*/
+
+-- ================================================================
+-- 回滚脚本 (ROLLBACK)
+-- ================================================================
+-- 如需回滚此迁移，请取消以下注释并按顺序执行
+-- 注意：必须按照依赖关系逆序删除，先删除有外键依赖的表
+
+/*
+-- 1. 删除触发器
+DROP TRIGGER IF EXISTS trg_audit_reputation_updated_at ON audit_reputation;
+DROP TRIGGER IF EXISTS trg_user_violation_points_updated_at ON user_violation_points;
+
+-- 2. 删除触发器函数
+DROP FUNCTION IF EXISTS update_audit_reputation_updated_at();
+DROP FUNCTION IF EXISTS update_user_violation_points_updated_at();
+
+-- 3. 删除业务函数
+DROP FUNCTION IF EXISTS decrement_violation_points();
+
+-- 4. 删除索引（按依赖顺序）
+DROP INDEX IF EXISTS idx_audit_accuracy;
+DROP INDEX IF EXISTS idx_audit_reputation;
+DROP INDEX IF EXISTS idx_activity_failures;
+DROP INDEX IF EXISTS idx_activity_resource;
+DROP INDEX IF EXISTS idx_activity_type;
+DROP INDEX IF EXISTS idx_user_activity;
+DROP INDEX IF EXISTS idx_review_user;
+DROP INDEX IF EXISTS idx_review_report;
+DROP INDEX IF EXISTS idx_report_type;
+DROP INDEX IF EXISTS idx_report_created;
+DROP INDEX IF EXISTS idx_report_status;
+DROP INDEX IF EXISTS idx_report_content;
+DROP INDEX IF EXISTS idx_violations_type;
+DROP INDEX IF EXISTS idx_violations_level;
+DROP INDEX IF EXISTS idx_violations_user;
+DROP INDEX IF EXISTS idx_violations_suspended;
+DROP INDEX IF EXISTS idx_violation_last_violation;
+DROP INDEX IF EXISTS idx_violation_points;
+
+-- 5. 删除表（按依赖关系逆序）
+-- audit_reputation 没有被其他表依赖，可以删除
+DROP TABLE IF EXISTS audit_reputation;
+
+-- user_activity_logs 依赖 users 表，但没有被其他表依赖
+DROP TABLE IF EXISTS user_activity_logs;
+
+-- report_review_votes 依赖 content_reports
+DROP TABLE IF EXISTS report_review_votes;
+
+-- content_reports 依赖 users
+DROP TABLE IF EXISTS content_reports;
+
+-- user_violations 依赖 users
+DROP TABLE IF EXISTS user_violations;
+
+-- user_violation_points 依赖 users，且被其他表依赖
+DROP TABLE IF EXISTS user_violation_points;
 */
