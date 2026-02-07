@@ -15,69 +15,111 @@ SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 
-# Security check: Ensure JWT_SECRET_KEY is set and strong
-if not SECRET_KEY:
-    raise ValueError(
-        "🚨 SECURITY ERROR: JWT_SECRET_KEY environment variable is required.\n"
-        "Generate a strong key using: openssl rand -hex 32\n"
-        "Then set it in your .env file: JWT_SECRET_KEY=<your-key>"
-    )
-if len(SECRET_KEY) < 32:
-    raise ValueError(
-        "🚨 SECURITY ERROR: JWT_SECRET_KEY must be at least 32 characters long.\n"
-        f"Current length: {len(SECRET_KEY)} characters.\n"
-        "Generate a stronger key using: openssl rand -hex 32"
-    )
+# Stage 3 Security: Enable JWT key rotation (opt-in via environment)
+USE_KEY_ROTATION = os.getenv("USE_KEY_ROTATION", "false").lower() == "true"
+
+if USE_KEY_ROTATION:
+    from core.key_rotation import get_key_manager
+    key_manager = get_key_manager()
+else:
+    # Security check: Ensure JWT_SECRET_KEY is set and strong when not using rotation
+    if not SECRET_KEY:
+        raise ValueError(
+            "🚨 SECURITY ERROR: JWT_SECRET_KEY environment variable is required.\n"
+            "Generate a strong key using: openssl rand -hex 32\n"
+            "Then set it in your .env file: JWT_SECRET_KEY=<your-key>\n"
+            "Alternatively, enable key rotation with: USE_KEY_ROTATION=true"
+        )
+    if len(SECRET_KEY) < 32:
+        raise ValueError(
+            "🚨 SECURITY ERROR: JWT_SECRET_KEY must be at least 32 characters long.\n"
+            f"Current length: {len(SECRET_KEY)} characters.\n"
+            "Generate a stronger key using: openssl rand -hex 32"
+        )
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/user/login", auto_error=False)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    """Create a new JWT access token"""
+    """
+    Create a new JWT access token.
+
+    Stage 3 Security: Uses key rotation manager when enabled.
+    New tokens are signed with the current primary key.
+    """
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
         expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    
+
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+    # Stage 3: Use key rotation if enabled
+    if USE_KEY_ROTATION:
+        key = key_manager.get_current_key()
+        # Include key ID in token for tracking
+        to_encode["_kid"] = key_manager.get_primary_key_id()
+        encoded_jwt = jwt.encode(to_encode, key, algorithm=ALGORITHM)
+    else:
+        encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
     return encoded_jwt
 
 def verify_token(token: str) -> dict:
     """
     Verify the token and return the payload.
     Used for WebSocket authentication or where Depends() cannot be used.
+
+    Stage 3 Security: Supports key rotation when enabled.
+    Tries all active keys to validate tokens signed with old keys.
     """
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    if USE_KEY_ROTATION:
+        payload = key_manager.verify_token_with_any_key(token, algorithms=[ALGORITHM])
+        if payload is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+            )
         return payload
-    except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-        )
+    else:
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            return payload
+        except JWTError:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+            )
 
 async def get_current_user_id(token: str = Depends(oauth2_scheme)) -> str:
     """
     Validate the token and return the user_id.
     This dependency can be used to protect endpoints.
+
+    Stage 3 Security: Supports key rotation when enabled.
     """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
+
     if not token:
         raise credentials_exception
-        
+
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if USE_KEY_ROTATION:
+            payload = key_manager.verify_token_with_any_key(token, algorithms=[ALGORITHM])
+            if payload is None:
+                raise credentials_exception
+        else:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
         user_id: str = payload.get("sub")
         if user_id is None:
             raise credentials_exception
         return user_id
-    except JWTError:
+    except (JWTError, HTTPException):
         raise credentials_exception
 
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:

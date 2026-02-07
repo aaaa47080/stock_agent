@@ -4,7 +4,7 @@ Comprehensive Audit Logging System
 Logs all sensitive operations for security monitoring, compliance, and debugging.
 Supports both automatic middleware-based logging and manual action logging.
 """
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from fastapi import Request
 import json
@@ -275,3 +275,77 @@ def audit(action: str, resource_type: Optional[str] = None):
         
         return wrapper
     return decorator
+
+
+# ============================================================================
+# Audit Log Cleanup (Stage 2 Security)
+# ============================================================================
+
+def cleanup_old_logs(days_to_keep: int = 90) -> int:
+    """
+    Delete audit logs older than specified days.
+
+    This function should be called periodically (e.g., daily) to prevent
+    unlimited growth of the audit_logs table.
+
+    Args:
+        days_to_keep: Number of days of logs to retain (default: 90)
+
+    Returns:
+        Number of logs deleted
+    """
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        cutoff_date = datetime.utcnow() - timedelta(days=days_to_keep)
+
+        cursor.execute("""
+            DELETE FROM audit_logs
+            WHERE created_at < %s
+        """, (cutoff_date,))
+
+        deleted = cursor.rowcount
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        logger.info(f"🧹 Cleaned up {deleted} old audit logs (older than {days_to_keep} days)")
+        return deleted
+
+    except Exception as e:
+        logger.error(f"Failed to cleanup old audit logs: {e}")
+        return 0
+
+
+async def audit_log_cleanup_task():
+    """
+    Scheduled task to run audit log cleanup daily.
+
+    This should be started in api_server.py's lifespan function.
+    Uses a simple sleep loop to run cleanup at 3 AM daily.
+
+    Example:
+        asyncio.create_task(audit_log_cleanup_task())
+    """
+    import asyncio
+    from datetime import datetime as dt
+
+    while True:
+        now = dt.utcnow()
+        # Calculate seconds until 3 AM next UTC day
+        tomorrow = now.replace(hour=3, minute=0, second=0, microsecond=0)
+        if now >= tomorrow:
+            # Already past 3 AM today, schedule for tomorrow
+            from datetime import timedelta
+            tomorrow = tomorrow + timedelta(days=1)
+
+        seconds_until_cleanup = (tomorrow - now).total_seconds()
+
+        logger.info(f"📅 Audit log cleanup scheduled for {tomorrow} (in {seconds_until_cleanup:.0f}s)")
+
+        await asyncio.sleep(seconds_until_cleanup)
+
+        # Run cleanup
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, cleanup_old_logs, 90)

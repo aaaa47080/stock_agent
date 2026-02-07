@@ -120,6 +120,25 @@ async def lifespan(app: FastAPI):
 
     # Startup: 啟動 Funding Rate 定期更新任務
     asyncio.create_task(funding_rate_update_task())
+
+    # Startup: 啟動審計日誌清理任務 (Stage 2 Security)
+    # 每天凌晨 3 點自動清理超過 90 天的舊日誌
+    try:
+        from core.audit import audit_log_cleanup_task
+        asyncio.create_task(audit_log_cleanup_task())
+        logger.info("✅ Audit log cleanup task scheduled (daily at 3 AM UTC)")
+    except ImportError:
+        logger.warning("⚠️ Audit log cleanup task not available")
+
+    # Startup: 啟動 JWT 密鑰輪換任務 (Stage 3 Security)
+    # 每月 1 號凌晨 2 點自動輪換 JWT 密鑰
+    if os.getenv("USE_KEY_ROTATION", "false").lower() == "true":
+        try:
+            from core.key_rotation import key_rotation_task
+            asyncio.create_task(key_rotation_task())
+            logger.info("✅ JWT key rotation task scheduled (monthly on 1st at 2 AM UTC)")
+        except ImportError:
+            logger.warning("⚠️ Key rotation task not available")
     
     yield
     
@@ -135,25 +154,36 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Crypto Trading System API", version="1.2.0", lifespan=lifespan)
 
+# 🔒 Security: Stage 2 - Production environment detection
+IS_PRODUCTION = os.getenv("ENVIRONMENT", "development").lower() in ["production", "prod"]
+
 # --- Global Exception Handler (Fix 500 Internal Server Error) ---
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """
     Catch-all exception handler to ensure all 500 errors return JSON
     and are properly logged with traceback.
+
+    Stage 2 Security: Hide error details in production to prevent information leakage.
     """
     import traceback
     error_msg = f"{type(exc).__name__}: {str(exc)}"
+
+    # Log full details for debugging
     logger.error(f"🔥 Unhandled 500 Error at {request.method} {request.url.path}: {error_msg}")
-    logger.error(traceback.format_exc())
-    
+    if not IS_PRODUCTION:
+        logger.error(traceback.format_exc())
+
+    # Response varies by environment - hide details in production
+    response_content = {
+        "detail": "Internal Server Error",
+        "error": error_msg if not IS_PRODUCTION else "An error occurred",
+        "path": request.url.path
+    }
+
     return JSONResponse(
         status_code=500,
-        content={
-            "detail": "Internal Server Error",
-            "error": error_msg,
-            "path": request.url.path
-        }
+        content=response_content
     )
 
 # ================================================================
@@ -210,6 +240,43 @@ app.add_middleware(
 # 自動壓縮大於1KB的響應，減少帶寬消耗，提升加載速度
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 logger.info("✅ GZip compression enabled")
+
+# --- 5. Security Headers Middleware (Stage 2 Security) ---
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    """
+    Stage 2 Security: Add security headers to all responses.
+
+    Headers added:
+    - X-Content-Type-Options: Prevent MIME type sniffing
+    - X-Frame-Options: Prevent clickjacking
+    - X-XSS-Protection: Enable XSS filter
+    - Referrer-Policy: Control referrer information
+    - Strict-Transport-Security (production): Force HTTPS
+    - Content-Security-Policy (production): Control resource loading
+    """
+    response = await call_next(request)
+
+    # Basic security headers (always on)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+    # Production-only headers (require HTTPS)
+    if IS_PRODUCTION:
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://cdn.minepi.com; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: https:; "
+            "connect-src 'self' https://api.minepi.com"
+        )
+
+    return response
+
+logger.info("✅ Security headers enabled")
 
 from fastapi import Response
 import time

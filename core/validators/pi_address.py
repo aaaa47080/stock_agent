@@ -34,8 +34,8 @@ def validate_pi_address(address: str) -> Tuple[bool, str]:
     if not address.startswith('G'):
         return False, "Pi Network 地址必須以 'G' 開頭"
 
-    # 檢查字符集（Base32）
-    pattern = r'^G[A-Z2-7]{55}$'
+    # 檢查字符集（Base32: A-Z, 2-7，注意不包含 '1'）
+    pattern = r'^G[A-Z234567]{55}$'
     if not re.match(pattern, address):
         return False, "地址包含無效字符（僅允許 A-Z 和 2-7）"
 

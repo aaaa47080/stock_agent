@@ -26,7 +26,9 @@ class TestPiAddressValidator:
 
     def test_valid_address_with_base32_chars(self):
         """Test valid address with mixed Base32 characters"""
-        valid_addr = 'G' + 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'[:55]
+        # Base32 charset: A-Z and 2-7 (no '1')
+        base32_charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
+        valid_addr = 'G' + ''.join(base32_charset[i % len(base32_charset)] for i in range(55))
         is_valid, error = validate_pi_address(valid_addr)
         assert is_valid is True
         assert error == ""

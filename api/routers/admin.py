@@ -379,3 +379,216 @@ async def get_config_audit_log(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get audit log: {str(e)}")
+
+
+# ============================================================================
+# Stage 3 Security: JWT Key Rotation Management API
+# ============================================================================
+
+@router.post("/api/admin/security/keys/rotate")
+async def manual_rotate_key(x_admin_key: Optional[str] = Header(None)):
+    """
+    Manually trigger JWT key rotation.
+
+    This generates a new primary key and deprecates the old one.
+    Existing tokens signed with the old key remain valid until they expire.
+
+    需要管理員權限
+    """
+    verify_admin_key(x_admin_key)
+
+    # Check if key rotation is enabled
+    if os.getenv("USE_KEY_ROTATION", "false").lower() != "true":
+        raise HTTPException(
+            status_code=400,
+            detail="Key rotation is not enabled. Set USE_KEY_ROTATION=true to enable."
+        )
+
+    try:
+        from core.key_rotation import get_key_manager
+        from core.audit import audit_log
+
+        key_manager = get_key_manager()
+        result = key_manager.rotate_key()
+
+        # Log audit event
+        audit_log(
+            action="key_rotation_manual",
+            user_id="admin",
+            metadata=result
+        )
+
+        return {
+            "success": True,
+            "message": "Key rotation completed successfully",
+            "result": {
+                "old_key_id": result["old_key_id"][:8] + "...",
+                "new_key_id": result["new_key_id"][:8] + "...",
+                "rotated_at": result["rotated_at"]
+            }
+        }
+
+    except ImportError:
+        raise HTTPException(status_code=500, detail="Key rotation module not available")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Key rotation failed: {str(e)}")
+
+
+@router.get("/api/admin/security/keys/status")
+async def get_keys_status(x_admin_key: Optional[str] = Header(None)):
+    """
+    Get the status of all JWT keys.
+
+    Returns information about the current primary key,
+    deprecated keys, and their expiration dates.
+
+    需要管理員權限
+    """
+    verify_admin_key(x_admin_key)
+
+    # Check if key rotation is enabled
+    if os.getenv("USE_KEY_ROTATION", "false").lower() != "true":
+        raise HTTPException(
+            status_code=400,
+            detail="Key rotation is not enabled. Set USE_KEY_ROTATION=true to enable."
+        )
+
+    try:
+        from core.key_rotation import get_key_manager
+
+        key_manager = get_key_manager()
+        status = key_manager.get_keys_status()
+
+        return {
+            "success": True,
+            "key_rotation_enabled": True,
+            "status": status
+        }
+
+    except ImportError:
+        raise HTTPException(status_code=500, detail="Key rotation module not available")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get key status: {str(e)}")
+
+
+# ============================================================================
+# Stage 4 Security: Security Monitoring API
+# ============================================================================
+
+@router.get("/api/admin/security/events")
+async def get_security_events(
+    hours: int = 24,
+    x_admin_key: Optional[str] = Header(None)
+):
+    """
+    Get recent security events.
+
+    Args:
+        hours: Number of hours to look back (default: 24, max: 168)
+
+    需要管理員權限
+    """
+    verify_admin_key(x_admin_key)
+
+    # Validate hours parameter
+    hours = min(max(1, hours), 168)
+
+    try:
+        from core.security_monitor import get_security_monitor
+
+        monitor = get_security_monitor()
+        events = monitor.get_recent_events(hours=hours)
+
+        return {
+            "success": True,
+            "events": events,
+            "total": len(events),
+            "period_hours": hours
+        }
+
+    except ImportError:
+        raise HTTPException(status_code=500, detail="Security monitor not available")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get security events: {str(e)}")
+
+
+@router.get("/api/admin/security/statistics")
+async def get_security_statistics(
+    days: int = 7,
+    x_admin_key: Optional[str] = Header(None)
+):
+    """
+    Get security statistics for the last N days.
+
+    Args:
+        days: Number of days to analyze (default: 7, max: 30)
+
+    需要管理員權限
+    """
+    verify_admin_key(x_admin_key)
+
+    # Validate days parameter
+    days = min(max(1, days), 30)
+
+    try:
+        from core.security_monitor import get_security_monitor
+
+        monitor = get_security_monitor()
+        stats = monitor.get_statistics(days=days)
+
+        return {
+            "success": True,
+            "statistics": stats
+        }
+
+    except ImportError:
+        raise HTTPException(status_code=500, detail="Security monitor not available")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get security statistics: {str(e)}")
+
+
+@router.post("/api/admin/security/test-alert")
+async def test_security_alert(
+    channel: str = "telegram",
+    x_admin_key: Optional[str] = Header(None)
+):
+    """
+    Send a test security alert to verify alert configuration.
+
+    Args:
+        channel: Alert channel to test (telegram or email)
+
+    需要管理員權限
+    """
+    verify_admin_key(x_admin_key)
+
+    if channel not in ["telegram", "email"]:
+        raise HTTPException(status_code=400, detail="Invalid channel. Use 'telegram' or 'email'")
+
+    try:
+        from core.alert_dispatcher import get_alert_dispatcher
+
+        dispatcher = get_alert_dispatcher()
+        success = dispatcher.send(
+            channel=channel,
+            severity="low",
+            title="🧪 Security Alert Test",
+            message="This is a test security alert from the Pi Crypto Insight system.\n\n"
+                   "If you received this, your alert configuration is working correctly!"
+        )
+
+        if success:
+            return {
+                "success": True,
+                "message": f"Test alert sent successfully via {channel}"
+            }
+        else:
+            return {
+                "success": False,
+                "message": f"Failed to send test alert via {channel}. Check your configuration."
+            }
+
+    except ImportError:
+        raise HTTPException(status_code=500, detail="Alert dispatcher not available")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to send test alert: {str(e)}")
