@@ -436,3 +436,161 @@ input[type="password"]::-ms-reveal,
 input[type="password"]::-ms-clear {
     display: none;
 }
+
+/* ========================================
+ * Feature Menu - Navigation Customization
+ * ======================================== */
+
+/* Modal Active State */
+#feature-menu-modal:not(.hidden) .feature-menu-content {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+}
+
+/* Feature Menu Item */
+.feature-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.feature-menu-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.feature-menu-item.disabled {
+    opacity: 0.5;
+}
+
+.feature-menu-item.disabled .feature-item-icon {
+    opacity: 0.3;
+}
+
+.feature-menu-item.disabled .feature-item-label {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+/* Feature Item Icon */
+.feature-item-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    transition: all 0.2s ease;
+}
+
+.feature-menu-item:hover .feature-item-icon {
+    background: rgba(212, 182, 147, 0.1);
+}
+
+.feature-item-icon svg {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+/* Feature Item Label */
+.feature-item-label {
+    flex: 1;
+    font-weight: 600;
+    color: #e4e4e7;
+    transition: color 0.2s ease;
+}
+
+/* Toggle Switch */
+.feature-toggle {
+    position: relative;
+    width: 3rem;
+    height: 1.75rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 1rem;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.feature-toggle::after {
+    content: '';
+    position: absolute;
+    top: 0.125rem;
+    left: 0.125rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    background: white;
+    border-radius: 50%;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.feature-toggle.enabled {
+    background: #d4b693;
+}
+
+.feature-toggle.enabled::after {
+    transform: translateX(1.25rem);
+}
+
+/* Shake Animation for Invalid Action */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-4px); }
+    40%, 80% { transform: translateX(4px); }
+}
+
+.feature-menu-item.shake {
+    animation: shake 0.4s ease-in-out;
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* Warning Banner Animation */
+@keyframes warningPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+#feature-menu-warning:not(.hidden) {
+    animation: warningPulse 2s ease-in-out infinite;
+}
+
+/* Nav Item Transition (for when items are added/removed) */
+.nav-btn {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nav-btn.nav-item-enter {
+    animation: navItemEnter 0.3s ease-out forwards;
+}
+
+.nav-btn.nav-item-exit {
+    animation: navItemExit 0.2s ease-in forwards;
+}
+
+@keyframes navItemEnter {
+    from {
+        opacity: 0;
+        transform: scale(0.8) translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+@keyframes navItemExit {
+    from {
+        opacity: 1;
+        transform: scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+}

@@ -53,6 +53,7 @@
     <script src="/static/js/premium.js"></script>
     <script src="/static/js/friends.js?v=2"></script>
     <script src="/static/js/messages.js?v=2"></script>
+    <script src="/static/js/nav-config.js?v=1"></script>
     <!-- Fonts -->
     <link
         href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Mulish:wght@300;400;600;800&family=JetBrains+Mono:wght@400;500&display=swap"
@@ -183,7 +184,7 @@
                             id="nav-toggle-icon"></i>
                     </button>
 
-                    <!-- Navigation Buttons (Scrollable) -->
+                    <!-- Navigation Buttons (Scrollable) - Dynamically Rendered -->
                     <div id="nav-buttons"
                         class="flex items-center gap-1 overflow-x-auto max-w-[160px] md:max-w-none transition-all duration-300 px-1 pb-1"
                         style="scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.2) transparent;">
@@ -201,55 +202,7 @@
                                 border-radius: 9999px;
                             }
                         </style>
-
-                        <button onclick="switchTab('chat')"
-                            class="nav-btn shrink-0 w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5"
-                            title="Chat" data-tab="chat">
-                            <i data-lucide="message-circle" class="w-5 h-5"></i>
-                            <span class="text-[9px] font-medium opacity-80">Chat</span>
-                        </button>
-                        <button onclick="switchTab('market')"
-                            class="nav-btn shrink-0 w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5"
-                            title="Market" data-tab="market">
-                            <i data-lucide="bar-chart-2" class="w-5 h-5"></i>
-                            <span class="text-[9px] font-medium opacity-80">Market</span>
-                        </button>
-                        <button onclick="switchTab('pulse')"
-                            class="nav-btn shrink-0 w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5"
-                            title="Pulse" data-tab="pulse">
-                            <i data-lucide="activity" class="w-5 h-5"></i>
-                            <span class="text-[9px] font-medium opacity-80">Pulse</span>
-                        </button>
-                        <button onclick="switchTab('wallet')"
-                            class="nav-btn shrink-0 w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5"
-                            title="Wallet" data-tab="wallet">
-                            <i data-lucide="credit-card" class="w-5 h-5"></i>
-                            <span class="text-[9px] font-medium opacity-80">Wallet</span>
-                        </button>
-                        <button onclick="switchTab('assets')"
-                            class="nav-btn shrink-0 w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5"
-                            title="Assets" data-tab="assets">
-                            <i data-lucide="wallet" class="w-5 h-5"></i>
-                            <span class="text-[9px] font-medium opacity-80">Assets</span>
-                        </button>
-                        <button onclick="switchTab('friends')"
-                            class="nav-btn shrink-0 w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5"
-                            title="Friends" data-tab="friends">
-                            <i data-lucide="users" class="w-5 h-5"></i>
-                            <span class="text-[9px] font-medium opacity-80">Friends</span>
-                        </button>
-                        <button onclick="navigateToForum()"
-                            class="nav-btn w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5"
-                            title="Forum">
-                            <i data-lucide="messages-square" class="w-5 h-5"></i>
-                            <span class="text-[9px] font-medium opacity-80">Forum</span>
-                        </button>
-                        <button onclick="switchTab('settings')"
-                            class="nav-btn w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200 gap-0.5"
-                            title="Settings" data-tab="settings">
-                            <i data-lucide="settings-2" class="w-5 h-5"></i>
-                            <span class="text-[9px] font-medium opacity-80">Settings</span>
-                        </button>
+                        <!-- Navigation buttons will be dynamically rendered here -->
                     </div>
 
                     <!-- Drag Handle -->
@@ -1056,6 +1009,15 @@
         }
 
         async function executeTabSwitch(tabId, fromPopState = false) {
+            // Check if the target tab is enabled in user preferences
+            if (window.NavPreferences && !NavPreferences.isItemEnabled(tabId)) {
+                console.log(`Tab '${tabId}' is disabled, redirecting to first enabled tab`);
+                const enabledItems = NavPreferences.getEnabledItems();
+                if (enabledItems.length > 0) {
+                    tabId = enabledItems[0].id;
+                }
+            }
+
             localStorage.setItem('activeTab', tabId);
             currentActiveTab = tabId; // Update current active tab
 
@@ -1112,12 +1074,12 @@
                     icon.classList.remove('text-primary');
                     icon.classList.add('text-textMuted');
                 }
-                btn.classList.remove('bg-primary/10', 'text-primary');
-                btn.classList.add('text-textMuted', 'hover:bg-white/5', 'hover:text-primary');
+                btn.classList.remove('bg-white/5', 'text-primary');
+                btn.classList.add('text-textMuted');
             });
 
             // Highlight Active
-            const activeBtn = document.querySelector(`button[data-tab="${tabId}"]`) || document.querySelector(`button[onclick*="switchTab('${tabId}')"]`);
+            const activeBtn = document.querySelector(`.nav-btn[data-tab="${tabId}"]`);
             if (activeBtn) {
                 const icon = activeBtn.querySelector('i');
                 const label = activeBtn.querySelector('span');
@@ -1126,8 +1088,8 @@
                     icon.classList.remove('text-textMuted');
                     icon.classList.add('text-primary');
                 }
-                activeBtn.classList.remove('text-textMuted', 'hover:bg-white/5', 'hover:text-primary');
-                activeBtn.classList.add('bg-primary/10', 'text-primary');
+                activeBtn.classList.remove('text-textMuted');
+                activeBtn.classList.add('bg-white/5', 'text-primary');
             }
 
             // Trigger tab-specific initialization
@@ -1195,6 +1157,239 @@
         const greeting = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
         document.getElementById('greeting-time').innerText = greeting;
 
+        // ========================================
+        // Navigation Rendering & Feature Menu
+        // ========================================
+
+        /**
+         * Render navigation buttons based on user preferences
+         */
+        function renderNavButtons() {
+            if (!window.NavPreferences) {
+                console.warn('NavPreferences not loaded yet');
+                return;
+            }
+
+            const container = document.getElementById('nav-buttons');
+            if (!container) return;
+
+            const enabledItems = NavPreferences.getEnabledItems();
+            const activeTab = localStorage.getItem('activeTab') || 'chat';
+
+            container.innerHTML = '';
+
+            enabledItems.forEach(item => {
+                const button = document.createElement('button');
+                const isActive = item.id === activeTab;
+
+                button.className = `nav-btn shrink-0 w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 transition-all duration-200 gap-0.5 nav-item-enter ${isActive ? 'text-primary bg-white/5' : 'text-textMuted hover:text-primary'}`;
+                button.title = item.label;
+                button.dataset.tab = item.id;
+
+                if (item.id === 'forum') {
+                    button.onclick = function() { navigateToForum(); };
+                } else {
+                    button.onclick = function() { switchTab(item.id); };
+                }
+
+                button.innerHTML = `
+                    <i data-lucide="${item.icon}" class="w-5 h-5 ${isActive ? 'text-primary' : 'text-textMuted'}"></i>
+                    <span class="text-[9px] font-medium opacity-80">${item.label}</span>
+                `;
+
+                container.appendChild(button);
+            });
+
+            // Re-initialize Lucide icons
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+        }
+
+        /**
+         * Feature Menu Manager
+         * Handles the navigation customization modal
+         */
+        const FeatureMenu = {
+            _tempPreferences: null,
+            _modal: null,
+
+            /**
+             * Open the feature menu modal
+             */
+            open() {
+                if (!window.NavPreferences) {
+                    console.error('NavPreferences not loaded');
+                    return;
+                }
+
+                // Inject feature menu component if not already in DOM
+                if (!document.getElementById('feature-menu-modal')) {
+                    if (window.Components && window.Components.featureMenu) {
+                        const container = document.createElement('div');
+                        container.innerHTML = window.Components.featureMenu;
+                        document.body.appendChild(container.firstElementChild);
+                    } else {
+                        console.error('Feature menu component not available');
+                        return;
+                    }
+                }
+
+                this._modal = document.getElementById('feature-menu-modal');
+                const itemsContainer = document.getElementById('feature-menu-items');
+                const warningBanner = document.getElementById('feature-menu-warning');
+
+                // Store current preferences for temp state
+                const currentEnabled = NavPreferences.loadPreferences().enabledItems;
+                this._tempPreferences = new Set(currentEnabled);
+
+                // Clear and render items
+                itemsContainer.innerHTML = '';
+
+                window.NAV_ITEMS.forEach(item => {
+                    const isEnabled = this._tempPreferences.has(item.id);
+                    const itemEl = document.createElement('div');
+                    itemEl.className = `feature-menu-item ${!isEnabled ? 'disabled' : ''}`;
+                    itemEl.dataset.itemId = item.id;
+
+                    itemEl.innerHTML = `
+                        <div class="feature-item-icon">
+                            <i data-lucide="${item.icon}"></i>
+                        </div>
+                        <span class="feature-item-label">${item.label}</span>
+                        <div class="feature-toggle ${isEnabled ? 'enabled' : ''}"></div>
+                    `;
+
+                    itemEl.addEventListener('click', () => this.toggleItem(item.id, itemEl));
+                    itemsContainer.appendChild(itemEl);
+                });
+
+                // Initialize Lucide icons
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+
+                // Show modal with animation
+                this._modal.classList.remove('hidden');
+                requestAnimationFrame(() => {
+                    this._modal.querySelector('.feature-menu-content').classList.add('modal-content-active');
+                });
+            },
+
+            /**
+             * Toggle a navigation item on/off
+             */
+            toggleItem(itemId, element) {
+                const isCurrentlyEnabled = this._tempPreferences.has(itemId);
+
+                if (isCurrentlyEnabled) {
+                    // Check if we can disable (minimum 2 items)
+                    if (this._tempPreferences.size <= NavPreferences.MIN_ENABLED_ITEMS) {
+                        // Show warning and shake animation
+                        const warningBanner = document.getElementById('feature-menu-warning');
+                        warningBanner.classList.remove('hidden');
+                        element.classList.add('shake');
+                        setTimeout(() => element.classList.remove('shake'), 400);
+
+                        // Auto-hide warning after 3 seconds
+                        setTimeout(() => warningBanner.classList.add('hidden'), 3000);
+                        return;
+                    }
+                    this._tempPreferences.delete(itemId);
+                } else {
+                    this._tempPreferences.add(itemId);
+                }
+
+                // Update UI
+                const toggle = element.querySelector('.feature-toggle');
+                if (this._tempPreferences.has(itemId)) {
+                    toggle.classList.add('enabled');
+                    element.classList.remove('disabled');
+                } else {
+                    toggle.classList.remove('enabled');
+                    element.classList.add('disabled');
+                }
+
+                // Hide warning if we have enough items
+                const warningBanner = document.getElementById('feature-menu-warning');
+                if (this._tempPreferences.size >= NavPreferences.MIN_ENABLED_ITEMS) {
+                    warningBanner.classList.add('hidden');
+                }
+            },
+
+            /**
+             * Save changes and close modal
+             */
+            save() {
+                if (this._tempPreferences.size < NavPreferences.MIN_ENABLED_ITEMS) {
+                    alert(`At least ${NavPreferences.MIN_ENABLED_ITEMS} items must be enabled`);
+                    return;
+                }
+
+                // Save preferences
+                const preferences = {
+                    version: NavPreferences.PREFERENCES_VERSION,
+                    enabledItems: Array.from(this._tempPreferences)
+                };
+                NavPreferences.savePreferences(preferences);
+
+                // Re-render navigation
+                renderNavButtons();
+
+                // Close modal
+                this.close();
+
+                // Show success feedback
+                this.showToast('Navigation preferences saved');
+            },
+
+            /**
+             * Reset to defaults
+             */
+            resetToDefaults() {
+                if (confirm('Reset all navigation items to default?')) {
+                    NavPreferences.resetToDefaults();
+                    renderNavButtons();
+                    this.close();
+                    this.showToast('Navigation reset to defaults');
+                }
+            },
+
+            /**
+             * Close the modal without saving
+             */
+            close() {
+                if (this._modal) {
+                    const content = this._modal.querySelector('.feature-menu-content');
+                    content.classList.remove('modal-content-active');
+
+                    setTimeout(() => {
+                        this._modal.classList.add('hidden');
+                        this._tempPreferences = null;
+                    }, 200);
+                }
+            },
+
+            /**
+             * Show a toast notification
+             */
+            showToast(message) {
+                // Simple toast implementation
+                const toast = document.createElement('div');
+                toast.className = 'fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-success text-white px-6 py-3 rounded-xl shadow-lg z-50 animate-fade-in-up';
+                toast.textContent = message;
+                document.body.appendChild(toast);
+
+                setTimeout(() => {
+                    toast.style.opacity = '0';
+                    setTimeout(() => toast.remove(), 300);
+                }, 2000);
+            }
+        };
+
+        // Expose FeatureMenu globally
+        window.FeatureMenu = FeatureMenu;
+
         document.addEventListener('DOMContentLoaded', async () => {
             console.log('DOM fully loaded, starting controlled initialization...');
 
@@ -1240,7 +1435,10 @@
                 } catch (e) { console.error('Auth Init Error:', e); }
             }
 
-            // 2. 載入預設分頁（優先順序：sessionStorage returnToTab > URL hash > localStorage）
+            // 2. Render navigation buttons based on user preferences
+            renderNavButtons();
+
+            // 3. 載入預設分頁（優先順序：sessionStorage returnToTab > URL hash > localStorage）
             const validTabs = ['chat', 'market', 'pulse', 'wallet', 'assets', 'friends', 'settings'];
             const returnToTab = sessionStorage.getItem('returnToTab');
             const hashTab = window.location.hash.replace('#', '');

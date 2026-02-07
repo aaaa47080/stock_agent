@@ -529,6 +529,31 @@ const Components = {
                     </div>
                 </div>
 
+                <!-- Navigation Customization -->
+                <div class="bg-surface p-6 md:p-8 rounded-3xl border border-white/5">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                                <i data-lucide="layout-grid" class="w-5 h-5 text-primary"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-serif text-primary">Navigation Customization</h3>
+                                <p class="text-xs text-textMuted">Customize your bottom navigation bar</p>
+                            </div>
+                        </div>
+                        <button onclick="FeatureMenu.open()" class="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl transition font-bold text-sm flex items-center gap-2">
+                            <i data-lucide="settings-2" class="w-4 h-4"></i>
+                            Customize
+                        </button>
+                    </div>
+                    <div class="mt-4 bg-background/50 rounded-xl p-4 border border-white/5">
+                        <p class="text-sm text-textMuted leading-relaxed">
+                            <i data-lucide="info" class="w-4 h-4 inline-block mr-1 opacity-60"></i>
+                            Choose which features appear in your bottom navigation bar. At least 2 items must be enabled.
+                        </p>
+                    </div>
+                </div>
+
                 <!-- Premium Membership -->
                 <div class="bg-surface p-6 md:p-8 rounded-3xl border border-white/5">
                     <div class="flex items-center gap-3 mb-6">
@@ -621,6 +646,70 @@ const Components = {
                     CryptoMind v1.2.0-Pi-Integrated
                 </div>
              </div>
+        </div>
+    `,
+
+    // Feature Menu: Navigation Customization
+    featureMenu: `
+        <div id="feature-menu-modal" class="fixed inset-0 z-50 hidden">
+            <!-- Backdrop -->
+            <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="FeatureMenu.close()"></div>
+
+            <!-- Modal Container -->
+            <div class="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
+                <div class="feature-menu-content bg-surface rounded-3xl border border-white/5 shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col pointer-events-auto transform transition-all duration-300 scale-95 opacity-0">
+
+                    <!-- Header -->
+                    <div class="p-6 border-b border-white/5">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                                    <i data-lucide="layout-grid" class="w-5 h-5 text-primary"></i>
+                                </div>
+                                <div>
+                                    <h2 class="text-xl font-serif text-secondary">Customize Navigation</h2>
+                                    <p class="text-xs text-textMuted">Choose which features appear in your bottom navigation</p>
+                                </div>
+                            </div>
+                            <button onclick="FeatureMenu.close()" class="p-2 hover:bg-white/5 rounded-full text-textMuted transition">
+                                <i data-lucide="x" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Warning Banner -->
+                    <div id="feature-menu-warning" class="hidden mx-6 mt-4 p-3 bg-warning/10 border border-warning/20 rounded-xl">
+                        <div class="flex items-start gap-2">
+                            <i data-lucide="alert-triangle" class="w-4 h-4 text-warning flex-shrink-0 mt-0.5"></i>
+                            <p class="text-xs text-warning">At least 2 items must be enabled in your navigation bar.</p>
+                        </div>
+                    </div>
+
+                    <!-- Items Grid -->
+                    <div class="flex-1 overflow-y-auto p-6">
+                        <div id="feature-menu-items" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <!-- Items will be dynamically inserted here -->
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="p-6 border-t border-white/5 space-y-3">
+                        <div class="flex items-center gap-3">
+                            <button onclick="FeatureMenu.save()" class="flex-1 py-3 bg-primary hover:brightness-110 text-background font-bold rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-primary/20">
+                                <i data-lucide="check" class="w-4 h-4"></i>
+                                Save Changes
+                            </button>
+                            <button onclick="FeatureMenu.resetToDefaults()" class="px-4 py-3 bg-white/5 hover:bg-white/10 text-textMuted rounded-xl transition flex items-center justify-center gap-2 border border-white/5">
+                                <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                                Reset
+                            </button>
+                        </div>
+                        <button onclick="FeatureMenu.close()" class="w-full py-2.5 text-textMuted hover:text-textMain text-sm transition">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     `,
 
