@@ -9,10 +9,25 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configuration
-# 在生產環境中，這些應該從環境變數讀取
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev_secret_key_change_in_production_7382")
+# 🔒 Security: JWT_SECRET_KEY must be set via environment variable
+# Generate a secure key: openssl rand -hex 32
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
+
+# Security check: Ensure JWT_SECRET_KEY is set and strong
+if not SECRET_KEY:
+    raise ValueError(
+        "🚨 SECURITY ERROR: JWT_SECRET_KEY environment variable is required.\n"
+        "Generate a strong key using: openssl rand -hex 32\n"
+        "Then set it in your .env file: JWT_SECRET_KEY=<your-key>"
+    )
+if len(SECRET_KEY) < 32:
+    raise ValueError(
+        "🚨 SECURITY ERROR: JWT_SECRET_KEY must be at least 32 characters long.\n"
+        f"Current length: {len(SECRET_KEY)} characters.\n"
+        "Generate a stronger key using: openssl rand -hex 32"
+    )
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/user/login", auto_error=False)
 

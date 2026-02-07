@@ -187,20 +187,23 @@ except ImportError as e:
     logger.warning(f"⚠️ Audit logging not available: {e}")
 
 # --- 3. CORS ---
-origins = [
-    "http://localhost",
-    "http://localhost:3000",
-    "http://localhost:8080",
-    "https://app.minepi.com", # Pi Browser 環境
-    "*", # 開發階段允許所有,生產環境請限制
-]
+# 🔒 Security: Read allowed origins from environment variable
+# Default to localhost for development, production MUST override this
+_cors_origins_raw = os.getenv("CORS_ORIGINS", "http://localhost:8080,https://app.minepi.com")
+origins = [origin.strip() for origin in _cors_origins_raw.split(",") if origin.strip()]
+
+# Security check: warn if wildcard is accidentally configured
+if "*" in origins or "" in origins:
+    logger.warning("⚠️ SECURITY: Wildcard CORS origin detected! This should NOT be used in production.")
+
+logger.info(f"🔒 CORS allowed origins: {origins}")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-API-Key", "X-OKX-API-KEY", "X-OKX-SECRET-KEY", "X-OKX-PASSPHRASE"],
 )
 
 # --- 4. GZip Compression (Performance Optimization) ---

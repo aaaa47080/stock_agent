@@ -11,6 +11,41 @@ load_dotenv(override=True)
 # 可透過環境變數 TEST_MODE=true 來啟用（僅限開發環境）
 TEST_MODE = os.getenv("TEST_MODE", "false").lower() == "true"
 
+# 🔒 Security: Multi-layer protection for TEST_MODE
+if TEST_MODE:
+    # Check 1: Environment must NOT be production
+    env = os.getenv("ENVIRONMENT", "development").lower()
+    if env in ["production", "prod"]:
+        raise ValueError(
+            "🚨 SECURITY ALERT: TEST_MODE is ENABLED in a PRODUCTION environment!\n"
+            "This is NOT allowed. TEST_MODE bypasses security checks.\n"
+            "Please set TEST_MODE=false or remove it from environment variables."
+        )
+
+    # Check 2: Must explicitly confirm understanding of risks
+    confirmation = os.getenv("TEST_MODE_CONFIRMATION", "")
+    if confirmation != "I_UNDERSTAND_THE_RISKS":
+        raise ValueError(
+            "🚨 SECURITY ALERT: TEST_MODE requires explicit confirmation.\n"
+            "To enable TEST_MODE in development, set:\n"
+            "  TEST_MODE=true\n"
+            "  TEST_MODE_CONFIRMATION=I_UNDERSTAND_THE_RISKS"
+        )
+
+    # Check 3: IP whitelist (optional but recommended)
+    ip_whitelist = os.getenv("TEST_MODE_IP_WHITELIST", "")
+    if ip_whitelist:
+        # Simple format check (IP should have dots)
+        if "." not in ip_whitelist:
+            raise ValueError(
+                "🚨 SECURITY ALERT: TEST_MODE_IP_WHITELIST must be a valid IP address.\n"
+                "Example: TEST_MODE_IP_WHITELIST=127.0.0.1"
+            )
+
+    # All checks passed - log warning but allow
+    import logging
+    logging.warning("⚠️⚠️⚠️ TEST_MODE IS ENABLED - SECURITY CHECKS ARE BYPASSED ⚠️⚠️⚠️")
+
 # 測試用戶資料（TEST_MODE=True 時使用）
 TEST_USER = {
     "uid": "test-user-001",
