@@ -564,8 +564,8 @@ async def websocket_klines(websocket: WebSocket):
                     "interval": interval,
                     "data": kline
                 })
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Failed to send kline update: {e}")
 
         while True:
             try:
@@ -621,8 +621,8 @@ async def websocket_klines(websocket: WebSocket):
                 from data.okx_websocket import okx_ws_manager
                 old_symbol, old_interval = current_subscription
                 await okx_ws_manager.unsubscribe(old_symbol, old_interval)
-            except:
-                pass
+            except Exception as e:
+                logger.debug(f"Failed to unsubscribe from kline stream: {e}")
         kline_manager.disconnect(websocket)
 
 
@@ -714,8 +714,8 @@ async def websocket_tickers(websocket: WebSocket):
                         "symbol": symbol,
                         "data": ticker
                     })
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Failed to send ticker update: {e}")
             return on_ticker_update
 
         while True:
@@ -787,6 +787,6 @@ async def websocket_tickers(websocket: WebSocket):
             from data.okx_websocket import okx_ticker_ws_manager
             for symbol, callback in current_callbacks.items():
                 await okx_ticker_ws_manager.unsubscribe(symbol, callback)
-        except:
-            pass
+        except Exception as e:
+            logger.debug(f"Failed to cleanup ticker subscriptions: {e}")
         ticker_manager.disconnect(websocket)

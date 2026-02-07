@@ -31,7 +31,8 @@ from core.database import (
     delete_dm_message,
     hide_dm_message_for_user,
     hide_conversation_for_user,
-    # 優化後不再需要：is_friend, is_blocked, update_last_active
+    is_blocked,  # greeting 端點需要檢查封鎖狀態
+    # 優化後不再需要：is_friend, update_last_active
     # 這些已被 validate_message_send 和 send_dm_message 內部處理替代
 )
 from fastapi import Depends

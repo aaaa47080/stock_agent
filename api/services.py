@@ -324,7 +324,8 @@ async def trigger_on_demand_analysis(symbols: List[str]):
                 ts = datetime.fromisoformat(existing["timestamp"])
                 if ts >= window_start:
                     is_fresh = True
-            except: pass
+            except Exception as e:
+                logger.debug(f"Failed to parse timestamp for {s}: {e}")
             
         if not is_fresh:
             to_update.append(norm)

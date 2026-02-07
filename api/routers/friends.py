@@ -96,8 +96,6 @@ async def get_user_profile(
         return {"success": True, "profile": profile}
     except HTTPException:
         raise
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"取得用戶資料失敗: {e}")
         raise HTTPException(status_code=500, detail=f"取得資料失敗: {str(e)}")
@@ -147,8 +145,6 @@ async def send_request(
         return result
     except HTTPException:
         raise
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"發送好友請求失敗: {e}")
         raise HTTPException(status_code=500, detail=f"發送請求失敗: {str(e)}")
@@ -174,8 +170,6 @@ async def accept_request(
             raise HTTPException(status_code=400, detail="找不到此好友請求")
 
         return result
-    except HTTPException:
-        raise
     except HTTPException:
         raise
     except Exception as e:
@@ -204,8 +198,6 @@ async def reject_request(
         return result
     except HTTPException:
         raise
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"拒絕好友請求失敗: {e}")
         raise HTTPException(status_code=500, detail=f"拒絕請求失敗: {str(e)}")
@@ -232,8 +224,6 @@ async def cancel_request(
         return result
     except HTTPException:
         raise
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"取消好友請求失敗: {e}")
         raise HTTPException(status_code=500, detail=f"取消請求失敗: {str(e)}")
@@ -258,8 +248,6 @@ async def remove_friend_endpoint(
             raise HTTPException(status_code=400, detail="你們不是好友")
 
         return result
-    except HTTPException:
-        raise
     except HTTPException:
         raise
     except Exception as e:
@@ -298,8 +286,6 @@ async def block_user_endpoint(
         return result
     except HTTPException:
         raise
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"封鎖用戶失敗: {e}")
         raise HTTPException(status_code=500, detail=f"封鎖失敗: {str(e)}")
@@ -324,8 +310,6 @@ async def unblock_user_endpoint(
             raise HTTPException(status_code=400, detail="此用戶未被封鎖")
 
         return result
-    except HTTPException:
-        raise
     except HTTPException:
         raise
     except Exception as e:
@@ -468,8 +452,6 @@ async def get_status(
         }
     except HTTPException:
         raise
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"取得好友狀態失敗: {e}")
         raise HTTPException(status_code=500, detail=f"取得狀態失敗: {str(e)}")
@@ -496,8 +478,6 @@ async def get_counts(
             "friends_count": friends_count,
             "pending_received": pending_received,
         }
-    except HTTPException:
-        raise
     except HTTPException:
         raise
     except Exception as e:

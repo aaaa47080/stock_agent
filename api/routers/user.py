@@ -205,7 +205,6 @@ async def get_pi_user(pi_uid: str, current_user: dict = Depends(get_current_user
     # 這裡假設 current_user["user_id"] 可能不直接等於 pi_uid，需查表。
     # 簡單起見，先確保已登入。若需嚴格權限，需查詢 pi_uid 對應的 user_id
     # 安全起見，還是檢查一下是否為本人或有權限
-    pass  # We will implement logic inside 
     try:
         loop = asyncio.get_running_loop()
         user = await loop.run_in_executor(None, get_user_by_pi_uid, pi_uid)
