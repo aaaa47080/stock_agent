@@ -1,12 +1,14 @@
 """
 論壇功能相關資料庫操作
 包含：看板、文章、回覆、打賞、標籤
+
+Refactored to use DatabaseBase for unified CRUD operations.
 """
 import json
 from typing import List, Dict, Optional
 from datetime import datetime
 
-from .connection import get_connection
+from .base import DatabaseBase
 from .user import get_user_membership
 from .system_config import get_limits
 
@@ -17,47 +19,27 @@ from .system_config import get_limits
 
 def get_boards(active_only: bool = True) -> List[Dict]:
     """獲取看板列表"""
-    conn = get_connection()
-    c = conn.cursor()
-    try:
-        if active_only:
-            c.execute('SELECT id, name, slug, description, post_count, is_active FROM boards WHERE is_active = 1')
-        else:
-            c.execute('SELECT id, name, slug, description, post_count, is_active FROM boards')
-        rows = c.fetchall()
-        return [
-            {
-                "id": r[0],
-                "name": r[1],
-                "slug": r[2],
-                "description": r[3],
-                "post_count": r[4],
-                "is_active": bool(r[5])
-            } for r in rows
-        ]
-    finally:
-        conn.close()
+    if active_only:
+        results = DatabaseBase.query_all(
+            'SELECT id, name, slug, description, post_count, is_active FROM boards WHERE is_active = 1'
+        )
+    else:
+        results = DatabaseBase.query_all(
+            'SELECT id, name, slug, description, post_count, is_active FROM boards'
+        )
+    # Convert is_active to bool for consistency
+    return [{**r, "is_active": bool(r["is_active"])} for r in results]
 
 
 def get_board_by_slug(slug: str) -> Optional[Dict]:
     """根據 slug 獲取看板詳情"""
-    conn = get_connection()
-    c = conn.cursor()
-    try:
-        c.execute('SELECT id, name, slug, description, post_count, is_active FROM boards WHERE slug = %s', (slug,))
-        row = c.fetchone()
-        if row:
-            return {
-                "id": row[0],
-                "name": row[1],
-                "slug": row[2],
-                "description": row[3],
-                "post_count": row[4],
-                "is_active": bool(row[5])
-            }
-        return None
-    finally:
-        conn.close()
+    result = DatabaseBase.query_one(
+        'SELECT id, name, slug, description, post_count, is_active FROM boards WHERE slug = %s',
+        (slug,)
+    )
+    if result:
+        result["is_active"] = bool(result["is_active"])
+    return result
 
 
 # ============================================================================
