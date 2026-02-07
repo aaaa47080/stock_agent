@@ -777,32 +777,20 @@ def get_tips_total_received(user_id: str) -> float:
 
 def get_trending_tags(limit: int = 10) -> List[Dict]:
     """獲取熱門標籤（按最近使用頻率）"""
-    conn = get_connection()
-    c = conn.cursor()
-    try:
-        c.execute('''
-            SELECT id, name, post_count, last_used_at
-            FROM tags
-            WHERE last_used_at > NOW() - INTERVAL '7 days'
-            ORDER BY post_count DESC
-            LIMIT %s
-        ''', (limit,))
-        rows = c.fetchall()
+    results = DatabaseBase.query_all('''
+        SELECT id, name, post_count, last_used_at
+        FROM tags
+        WHERE last_used_at > NOW() - INTERVAL '7 days'
+        ORDER BY post_count DESC
+        LIMIT %s
+    ''', (limit,))
 
-        result = []
-        for r in rows:
-            last_used_at = r[3]
-            if last_used_at and not isinstance(last_used_at, str):
-                last_used_at = last_used_at.strftime('%Y-%m-%d %H:%M:%S')
-            result.append({
-                "id": r[0],
-                "name": r[1],
-                "post_count": r[2],
-                "last_used_at": last_used_at
-            })
-        return result
-    finally:
-        conn.close()
+    # Format datetime fields
+    for r in results:
+        last_used_at = r.get("last_used_at")
+        if last_used_at and not isinstance(last_used_at, str):
+            r["last_used_at"] = last_used_at.strftime('%Y-%m-%d %H:%M:%S')
+    return results
 
 
 def get_posts_by_tag(tag_name: str, limit: int = 20, offset: int = 0) -> List[Dict]:
@@ -812,27 +800,13 @@ def get_posts_by_tag(tag_name: str, limit: int = 20, offset: int = 0) -> List[Di
 
 def search_tags(query: str, limit: int = 10) -> List[Dict]:
     """搜尋標籤"""
-    conn = get_connection()
-    c = conn.cursor()
-    try:
-        c.execute('''
-            SELECT id, name, post_count
-            FROM tags
-            WHERE name LIKE %s
-            ORDER BY post_count DESC
-            LIMIT %s
-        ''', (f'%{query.upper()}%', limit))
-        rows = c.fetchall()
-
-        return [
-            {
-                "id": r[0],
-                "name": r[1],
-                "post_count": r[2]
-            } for r in rows
-        ]
-    finally:
-        conn.close()
+    return DatabaseBase.query_all('''
+        SELECT id, name, post_count
+        FROM tags
+        WHERE name LIKE %s
+        ORDER BY post_count DESC
+        LIMIT %s
+    ''', (f'%{query.upper()}%', limit))
 
 
 # ============================================================================
@@ -841,10 +815,9 @@ def search_tags(query: str, limit: int = 10) -> List[Dict]:
 
 def get_user_forum_stats(user_id: str) -> Dict:
     """獲取用戶論壇統計資料"""
-    conn = get_connection()
-    c = conn.cursor()
-    try:
+    with DatabaseBase() as db:
         # 文章數
+        c = db.connection.cursor()
         c.execute('SELECT COUNT(*) FROM posts WHERE user_id = %s AND is_hidden = 0', (user_id,))
         post_count = c.fetchone()[0]
 
@@ -865,63 +838,50 @@ def get_user_forum_stats(user_id: str) -> Dict:
             "total_pushes": total_pushes,
             "tips_received": tips_total
         }
-    finally:
-        conn.close()
 
 
 def get_user_payment_history(user_id: str, limit: int = 50) -> List[Dict]:
     """獲取用戶的所有付款記錄（包含發文費和會員費）"""
-    conn = get_connection()
-    c = conn.cursor()
-    try:
-        # 使用 UNION（自動去重）合併發文紀錄和會員購買紀錄
-        # 避免同一個 tx_hash 出現兩次
-        query = '''
-            SELECT type, id, title, amount, tx_hash, created_at FROM (
-                -- 文章支付紀錄
-                SELECT
-                    'post' as type,
-                    id,
-                    title,
-                    1.0 as amount,
-                    payment_tx_hash as tx_hash,
-                    created_at
-                FROM posts
-                WHERE user_id = %s AND payment_tx_hash IS NOT NULL AND payment_tx_hash != 'pro_member_free'
+    # 使用 UNION（自動去重）合併發文紀錄和會員購買紀錄
+    # 避免同一個 tx_hash 出現兩次
+    query = '''
+        SELECT type, id, title, amount, tx_hash, created_at FROM (
+            -- 文章支付紀錄
+            SELECT
+                'post' as type,
+                id,
+                title,
+                1.0 as amount,
+                payment_tx_hash as tx_hash,
+                created_at
+            FROM posts
+            WHERE user_id = %s AND payment_tx_hash IS NOT NULL AND payment_tx_hash != 'pro_member_free'
 
-                UNION
+            UNION
 
-                -- 會員購買紀錄
-                SELECT
-                    'membership' as type,
-                    id,
-                    'Premium Membership (' || months || ' Month)' as title,
-                    amount,
-                    tx_hash,
-                    created_at
-                FROM membership_payments
-                WHERE user_id = %s
-            ) AS combined
-            ORDER BY created_at DESC
-            LIMIT %s
-        '''
+            -- 會員購買紀錄
+            SELECT
+                'membership' as type,
+                id,
+                'Premium Membership (' || months || ' Month)' as title,
+                amount,
+                tx_hash,
+                created_at
+            FROM membership_payments
+            WHERE user_id = %s
+        ) AS combined
+        ORDER BY created_at DESC
+        LIMIT %s
+    '''
 
-        c.execute(query, (user_id, user_id, limit))
-        rows = c.fetchall()
+    results = DatabaseBase.query_all(query, (user_id, user_id, limit))
 
-        result = []
-        for r in rows:
-            created_at = r[5]
-            if created_at and not isinstance(created_at, str):
-                created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
-            result.append({
-                "type": r[0],
-                "ref_id": r[1],
-                "title": r[2],
-                "amount": r[3],
-                "tx_hash": r[4],
-                "created_at": created_at
-            })
-        return result
-    finally:
-        conn.close()
+    # Format datetime fields
+    for r in results:
+        created_at = r.get("created_at")
+        if created_at and not isinstance(created_at, str):
+            r["created_at"] = created_at.strftime('%Y-%m-%d %H:%M:%S')
+        # Rename 'id' to 'ref_id' for clarity
+        r["ref_id"] = r.pop("id")
+
+    return results
