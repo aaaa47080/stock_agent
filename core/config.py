@@ -1,5 +1,13 @@
 import os
+import sys
 from dotenv import load_dotenv
+
+# Fix Windows console encoding (cp950 cannot handle emoji/unicode)
+if sys.platform == "win32":
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    if hasattr(sys.stderr, 'reconfigure'):
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 
 # Load environment variables with override to ensure .env file values take precedence
 load_dotenv(override=True)

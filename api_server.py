@@ -10,6 +10,13 @@ import uvicorn
 from dotenv import load_dotenv
 from contextlib import asynccontextmanager
 
+# Fix Windows console encoding (cp950 cannot handle emoji/unicode)
+if sys.platform == "win32":
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    if hasattr(sys.stderr, 'reconfigure'):
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
 # 將專案根目錄加入 Python 路徑
 project_root = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, project_root)
@@ -27,7 +34,7 @@ file_handler = logging.FileHandler("api_server.log", encoding='utf-8')
 file_handler.setLevel(logging.INFO)
 file_handler.setFormatter(log_formatter)
 
-# Create console handler
+# Create console handler (use UTF-8 wrapped stdout)
 console_handler = logging.StreamHandler(sys.stdout)
 console_handler.setLevel(logging.INFO)
 console_handler.setFormatter(log_formatter)
@@ -126,7 +133,7 @@ async def lifespan(app: FastAPI):
     try:
         from core.audit import audit_log_cleanup_task
         asyncio.create_task(audit_log_cleanup_task())
-        logger.info("✅ Audit log cleanup task scheduled (daily at 3 AM UTC)")
+        logger.info("✅ Audit log cleanup task scheduled (daily at 3 AM UTC)")摁
     except ImportError:
         logger.warning("⚠️ Audit log cleanup task not available")
 

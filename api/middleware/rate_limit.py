@@ -291,7 +291,7 @@ class PersistentRateLimiter:
 
 
 # Global persistent rate limiter instance
-persistent_limiter = Optional[PersistentRateLimiter] = None
+persistent_limiter: Optional[PersistentRateLimiter] = None
 
 def get_persistent_limiter() -> PersistentRateLimiter:
     """
