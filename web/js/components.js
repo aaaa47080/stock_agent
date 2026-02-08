@@ -11,15 +11,15 @@ const Components = {
         <div class="mb-6 md:mb-8">
             <!-- 標題行 -->
             <div class="flex items-center justify-between mb-3">
-                <h2 class="font-serif text-2xl md:text-3xl text-secondary">Market Watch</h2>
+                <h2 class="font-serif text-2xl md:text-3xl text-secondary" data-i18n="market.title"></h2>
                 <div class="flex items-center gap-2">
                     <!-- 狀態指示器 -->
-                    <div class="flex items-center gap-1.5" title="Live Update Status">
+                    <div class="flex items-center gap-1.5" data-i18n="market.liveStatus" data-i18n-attr="title">
                         <div id="ticker-ws-indicator" class="w-2 h-2 rounded-full bg-gray-500 transition-colors"></div>
                         <span class="text-[9px] text-textMuted uppercase tracking-wider hidden md:inline">LIVE</span>
                     </div>
                     <!-- 刷新按鈕 -->
-                    <button onclick="refreshScreener(true, true)" class="p-2 hover:bg-white/5 rounded-full text-textMuted transition">
+                    <button onclick="refreshScreener(true, true)" class="p-2 hover:bg-white/5 rounded-full text-textMuted transition" data-i18n="market.refresh" data-i18n-attr="title">
                         <i data-lucide="refresh-cw" class="w-4 h-4"></i>
                     </button>
                 </div>
@@ -28,11 +28,11 @@ const Components = {
             <div class="flex flex-wrap items-center gap-2 md:gap-3">
                 <button onclick="openGlobalFilter()" class="flex items-center gap-2 px-3 py-1.5 bg-surface hover:bg-surfaceHighlight rounded-lg text-textMuted hover:text-primary transition border border-white/5">
                     <i data-lucide="filter" class="w-4 h-4"></i>
-                    <span class="text-xs font-bold">Filter</span>
-                    <span id="global-count-badge" class="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded">Auto</span>
+                    <span class="text-xs font-bold" data-i18n="market.filter"></span>
+                    <span id="global-count-badge" class="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded" data-i18n="market.autoBadge"></span>
                 </button>
                 <div id="active-filter-indicator" class="hidden flex items-center gap-1 text-xs text-primary">
-                    <span id="filter-count">0</span> selected
+                    <span id="filter-count">0</span> <span data-i18n="market.selected"></span>
                 </div>
                 <span id="screener-last-updated" class="text-[10px] text-textMuted opacity-60 hidden md:inline"></span>
             </div>
@@ -42,7 +42,7 @@ const Components = {
             <section>
                 <div class="flex items-center gap-3 mb-6 px-2">
                     <div class="h-px flex-1 bg-gradient-to-r from-primary/30 to-transparent"></div>
-                    <h3 class="text-xs font-bold text-primary uppercase tracking-[0.2em] whitespace-nowrap">Top Performers</h3>
+                    <h3 class="text-xs font-bold text-primary uppercase tracking-[0.2em] whitespace-nowrap" data-i18n="market.topPerformers"></h3>
                     <div class="h-px flex-1 bg-gradient-to-l from-primary/30 to-transparent"></div>
                 </div>
                 <div id="top-list" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
@@ -51,7 +51,7 @@ const Components = {
             <section>
                 <div class="flex items-center gap-3 mb-8 px-2">
                     <div class="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent"></div>
-                    <h3 class="text-xs font-bold text-textMuted uppercase tracking-[0.2em] whitespace-nowrap">Market Dynamics</h3>
+                    <h3 class="text-xs font-bold text-textMuted uppercase tracking-[0.2em] whitespace-nowrap" data-i18n="market.marketDynamics"></h3>
                     <div class="h-px flex-1 bg-gradient-to-l from-white/10 to-transparent"></div>
                 </div>
 
@@ -59,26 +59,26 @@ const Components = {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <h4 class="text-xs font-bold text-success mb-4 flex items-center gap-2 opacity-80 uppercase tracking-wider">
-                                <i data-lucide="trending-up" class="w-4 h-4 text-success"></i> Top Gainers (24H)
+                                <i data-lucide="trending-up" class="w-4 h-4 text-success"></i> <span data-i18n="market.topGainers"></span>
                             </h4>
                             <div id="top-gainers-list" class="space-y-3"></div>
                         </div>
                         <div>
                             <h4 class="text-xs font-bold text-danger mb-4 flex items-center gap-2 opacity-80 uppercase tracking-wider">
-                                <i data-lucide="trending-down" class="w-4 h-4 text-danger"></i> Top Losers (24H)
+                                <i data-lucide="trending-down" class="w-4 h-4 text-danger"></i> <span data-i18n="market.topLosers"></span>
                             </h4>
                             <div id="top-losers-list" class="space-y-3"></div>
                         </div>
                     </div>
                         <div>
                             <h4 class="text-xs font-bold text-secondary mb-4 flex items-center gap-2 opacity-80 uppercase tracking-wider">
-                                <i data-lucide="zap" class="w-3.5 h-3.5 text-accent"></i> Bullish Squeeze (Low Funding)
+                                <i data-lucide="zap" class="w-3.5 h-3.5 text-accent"></i> <span data-i18n="market.bullishSqueeze"></span>
                             </h4>
                             <div id="low-funding-list" class="space-y-3"></div>
                         </div>
                         <div>
                             <h4 class="text-xs font-bold text-secondary mb-4 flex items-center gap-2 opacity-80 uppercase tracking-wider">
-                                <i data-lucide="flame" class="w-3.5 h-3.5 text-danger"></i> Overheated (High Funding)
+                                <i data-lucide="flame" class="w-3.5 h-3.5 text-danger"></i> <span data-i18n="market.overheated"></span>
                             </h4>
                             <div id="high-funding-list" class="space-y-3"></div>
                         </div>
@@ -91,8 +91,8 @@ const Components = {
     // Tab: Pulse
     pulse: `
         <div class="flex justify-between items-end mb-4">
-            <h2 class="font-serif text-3xl text-secondary">Market Pulse</h2>
-            <button id="pulse-refresh-btn" onclick="refreshMarketPulse()" class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition">
+            <h2 class="font-serif text-3xl text-secondary" data-i18n="pulse.title"></h2>
+            <button id="pulse-refresh-btn" onclick="refreshMarketPulse()" class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition" data-i18n="pulse.refresh" data-i18n-attr="title">
                 <i id="pulse-refresh-icon" data-lucide="refresh-cw" class="w-4 h-4"></i>
             </button>
         </div>
@@ -101,16 +101,16 @@ const Components = {
         <div class="flex flex-wrap items-center gap-2 md:gap-3 mb-8">
             <button onclick="openGlobalFilter()" class="flex items-center gap-2 px-3 py-1.5 bg-surface hover:bg-surfaceHighlight rounded-lg text-textMuted hover:text-primary transition border border-white/5">
                 <i data-lucide="filter" class="w-4 h-4"></i>
-                <span class="text-xs font-bold">Filter</span>
-                <!-- Reusing the global count badge ID might cause conflicts if IDs must be unique, 
-                     but since tabs are hidden, it might be okay. 
-                     Safest is to use a class or a new ID and update logic to target multiple. 
+                <span class="text-xs font-bold" data-i18n="pulse.filter"></span>
+                <!-- Reusing the global count badge ID might cause conflicts if IDs must be unique,
+                     but since tabs are hidden, it might be okay.
+                     Safest is to use a class or a new ID and update logic to target multiple.
                      However, the logic in market.js updates 'document.getElementById...'.
                      Let's use a NEW ID for Pulse and update logic to sync both. -->
-                <span id="pulse-count-badge" class="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded">Auto</span>
+                <span id="pulse-count-badge" class="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded" data-i18n="pulse.autoBadge"></span>
             </button>
             <div id="active-pulse-filter-indicator" class="hidden flex items-center gap-1 text-xs text-primary">
-                <span id="pulse-filter-count">0</span> selected
+                <span id="pulse-filter-count">0</span> <span data-i18n="pulse.selected"></span>
             </div>
         </div>
 
@@ -118,7 +118,7 @@ const Components = {
             <div class="flex justify-between items-center mb-2">
                 <span class="text-xs font-bold text-primary flex items-center gap-2">
                     <i data-lucide="loader" class="w-3 h-3 animate-spin"></i>
-                    Scanning
+                    <span data-i18n="pulse.scanning"></span>
                 </span>
                 <span id="analysis-progress-text" class="text-xs text-textMuted">0%</span>
             </div>
@@ -135,7 +135,7 @@ const Components = {
         <div class="h-full flex flex-col">
             <!-- Header with Tab Switcher -->
             <div class="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-surface/50">
-                <h2 class="font-serif text-2xl text-secondary">Social</h2>
+                <h2 class="font-serif text-2xl text-secondary" data-i18n="friends.title"></h2>
                 <div class="flex items-center gap-2">
                     <span id="friends-badge-total" class="hidden px-2 py-0.5 text-xs bg-danger text-white rounded-full">0</span>
                     <button onclick="SocialHub.refresh()" class="p-2 hover:bg-white/5 rounded-full text-textMuted transition">
@@ -149,13 +149,13 @@ const Components = {
                 <button onclick="SocialHub.switchSubTab('messages')" id="social-tab-messages"
                     class="social-sub-tab flex-1 py-2.5 px-4 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 bg-primary text-background">
                     <i data-lucide="message-circle" class="w-4 h-4"></i>
-                    <span>聊天</span>
+                    <span data-i18n="friends.messages"></span>
                     <span id="messages-unread-badge" class="hidden px-1.5 py-0.5 text-xs bg-danger text-white rounded-full">0</span>
                 </button>
                 <button onclick="SocialHub.switchSubTab('friends')" id="social-tab-friends"
                     class="social-sub-tab flex-1 py-2.5 px-4 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 text-textMuted hover:text-textMain hover:bg-white/5">
                     <i data-lucide="users" class="w-4 h-4"></i>
-                    <span>好友</span>
+                    <span data-i18n="friends.friends"></span>
                     <span id="friends-request-badge" class="hidden px-1.5 py-0.5 text-xs bg-danger text-white rounded-full">0</span>
                 </button>
             </div>
