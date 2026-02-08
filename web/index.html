@@ -44,6 +44,7 @@
     </script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/i18next@23.7.6/i18next.min.js"></script>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -1524,6 +1525,15 @@
             console.log('Subscribed Ticker Symbols:', Array.from(window.subscribedTickerSymbols || []));
             console.log('Pending Ticker Symbols:', Array.from(window.pendingTickerSymbols || []));
         };
+    </script>
+    <script src="/static/js/i18n.js"></script>
+    <script>
+        // 初始化 i18n
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.I18n) {
+                window.I18n.init();
+            }
+        });
     </script>
 </body>
 
