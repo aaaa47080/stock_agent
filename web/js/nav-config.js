@@ -4,15 +4,15 @@
  */
 
 const NAV_ITEMS = [
-    { id: 'chat', icon: 'message-circle', label: 'Chat', defaultEnabled: true },
-    { id: 'market', icon: 'bar-chart-2', label: 'Market', defaultEnabled: true },
-    { id: 'pulse', icon: 'activity', label: 'Pulse', defaultEnabled: true },
-    { id: 'wallet', icon: 'credit-card', label: 'Wallet', defaultEnabled: true },
-    { id: 'assets', icon: 'wallet', label: 'Assets', defaultEnabled: true },
-    { id: 'friends', icon: 'users', label: 'Friends', defaultEnabled: true },
-    { id: 'forum', icon: 'messages-square', label: 'Forum', defaultEnabled: true },
-    { id: 'safety', icon: 'shield-alert', label: 'Safety', defaultEnabled: true },
-    { id: 'settings', icon: 'settings-2', label: 'Settings', defaultEnabled: true, locked: true }
+    { id: 'chat', icon: 'message-circle', label: 'Chat', i18nKey: 'nav.chat', defaultEnabled: true },
+    { id: 'market', icon: 'bar-chart-2', label: 'Market', i18nKey: 'nav.market', defaultEnabled: true },
+    { id: 'pulse', icon: 'activity', label: 'Pulse', i18nKey: 'nav.pulse', defaultEnabled: true },
+    { id: 'wallet', icon: 'credit-card', label: 'Wallet', i18nKey: 'nav.wallet', defaultEnabled: true },
+    { id: 'assets', icon: 'wallet', label: 'Assets', i18nKey: 'nav.assets', defaultEnabled: true },
+    { id: 'friends', icon: 'users', label: 'Friends', i18nKey: 'nav.friends', defaultEnabled: true },
+    { id: 'forum', icon: 'messages-square', label: 'Forum', i18nKey: 'nav.forum', defaultEnabled: true },
+    { id: 'safety', icon: 'shield-alert', label: 'Safety', i18nKey: 'nav.safety', defaultEnabled: true },
+    { id: 'settings', icon: 'settings-2', label: 'Settings', i18nKey: 'nav.settings', defaultEnabled: true, locked: true }
 ];
 
 /**

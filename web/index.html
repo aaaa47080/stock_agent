@@ -1202,8 +1202,11 @@
                 const button = document.createElement('button');
                 const isActive = item.id === activeTab;
 
+                // Use i18n key if available, otherwise fall back to label
+                const labelText = item.i18nKey && window.I18n ? window.I18n.t(item.i18nKey) : item.label;
+
                 button.className = `nav-btn shrink-0 w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 transition-all duration-200 gap-0.5 nav-item-enter ${isActive ? 'text-primary bg-white/5' : 'text-textMuted hover:text-primary'}`;
-                button.title = item.label;
+                button.title = labelText;
                 button.dataset.tab = item.id;
 
                 if (item.id === 'forum') {
@@ -1214,7 +1217,7 @@
 
                 button.innerHTML = `
                     <i data-lucide="${item.icon}" class="w-5 h-5 ${isActive ? 'text-primary' : 'text-textMuted'}"></i>
-                    <span class="text-[9px] font-medium opacity-80">${item.label}</span>
+                    <span class="text-[9px] font-medium opacity-80">${labelText}</span>
                 `;
 
                 container.appendChild(button);
@@ -1275,11 +1278,14 @@
                     itemEl.className = `feature-menu-item ${!isEnabled ? 'disabled' : ''}`;
                     itemEl.dataset.itemId = item.id;
 
+                    // Use i18n key if available, otherwise fall back to label
+                    const labelText = item.i18nKey && window.I18n ? window.I18n.t(item.i18nKey) : item.label;
+
                     itemEl.innerHTML = `
                         <div class="feature-item-icon">
                             <i data-lucide="${item.icon}"></i>
                         </div>
-                        <span class="feature-item-label">${item.label}</span>
+                        <span class="feature-item-label">${labelText}</span>
                         <div class="feature-toggle ${isEnabled ? 'enabled' : ''}"></div>
                     `;
 

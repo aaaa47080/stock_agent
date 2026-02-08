@@ -10,10 +10,16 @@
     "close": "關閉"
   },
   "nav": {
-    "market": "市場分析",
-    "forum": "社群論壇",
+    "chat": "聊天",
+    "market": "市場",
+    "pulse": "脈動",
+    "wallet": "錢包",
+    "assets": "資產",
+    "friends": "好友",
+    "forum": "論壇",
+    "safety": "安全",
+    "settings": "設定",
     "governance": "治理中心",
-    "safety": "詐騙檢舉",
     "login": "登入",
     "logout": "登出",
     "profile": "個人資料"

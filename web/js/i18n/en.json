@@ -10,10 +10,16 @@
     "close": "Close"
   },
   "nav": {
-    "market": "Market Analysis",
-    "forum": "Community Forum",
+    "chat": "Chat",
+    "market": "Market",
+    "pulse": "Pulse",
+    "wallet": "Wallet",
+    "assets": "Assets",
+    "friends": "Friends",
+    "forum": "Forum",
+    "safety": "Safety",
+    "settings": "Settings",
     "governance": "Governance",
-    "safety": "Scam Report",
     "login": "Login",
     "logout": "Logout",
     "profile": "Profile"
