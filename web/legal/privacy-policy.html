@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy - PI CryptoMind</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .navbar {
+            background: rgba(26, 26, 46, 0.95);
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .navbar-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1rem;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .navbar h1 {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .lang-toggle {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            transition: transform 0.3s;
+        }
+
+        .lang-toggle:hover {
+            transform: scale(1.05);
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem 6rem;
+        }
+
+        .prose h2 {
+            color: #fff;
+            margin: 2rem 0 1rem;
+            font-size: 1.5rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 0.5rem;
+        }
+
+        .prose h3 {
+            color: #b8b8d1;
+            margin: 1.5rem 0 0.8rem;
+            font-size: 1.2rem;
+        }
+
+        .prose p,
+        .prose ul {
+            margin: 0.8rem 0;
+            color: #c0c0d0;
+        }
+
+        .prose ul {
+            padding-left: 2rem;
+        }
+
+        .prose li {
+            margin: 0.5rem 0;
+        }
+
+        .prose strong {
+            color: #fff;
+        }
+
+        .footer {
+            background: rgba(26, 26, 46, 0.95);
+            padding: 2rem 1.5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+
+        .footer-links {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .footer-links a {
+            color: #667eea;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .footer-links a:hover {
+            color: #764ba2;
+        }
+
+        .copyright {
+            color: #808090;
+            font-size: 0.9rem;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .effective-date {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 1rem;
+            border-left: 3px solid #667eea;
+            margin: 1.5rem 0;
+            border-radius: 4px;
+        }
+
+        .highlight {
+            background: rgba(255, 215, 0, 0.1);
+            border-left: 3px solid #ffd700;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="navbar-left">
+            <button class="back-btn" onclick="window.location.href='../../index.html'">← 返回</button>
+            <h1 id="nav-title">隱私政策</h1>
+        </div>
+        <button class="lang-toggle" onclick="toggleLanguage()">
+            🌐 <span id="lang-label">English</span>
+        </button>
+    </nav>
+
+    <div class="container">
+        <!-- Chinese Content -->
+        <div id="content-zh" class="prose">
+            <div class="effective-date">
+                <strong>生效日期：</strong>2026年2月8日
+            </div>
+
+            <p>PI CryptoMind 重視您的隱私。本政策說明我們如何收集、使用和保護您的個人資料。</p>
+
+            <h2>1. 我們收集的資料</h2>
+            <h3>1.1 身份資訊</h3>
+            <ul>
+                <li><strong>Pi 錢包地址</strong>：用於帳戶識別和交易記錄</li>
+                <li><strong>暱稱與個人資料</strong>：您在平台上設定的顯示資訊</li>
+            </ul>
+            <h3>1.2 使用數據</h3>
+            <ul>
+                <li>瀏覽記錄、功能使用習慣</li>
+                <li>論壇發文、評論、打賞記錄</li>
+                <li>詐騙檢舉與治理系統參與記錄</li>
+                <li>API 請求日誌（IP 位址、時間戳）</li>
+            </ul>
+            <h3>1.3 交易資訊</h3>
+            <ul>
+                <li>Pi 支付記錄（PRO 會員續費、打賞）</li>
+                <li>交易金額、時間、收款方資訊</li>
+            </ul>
+
+            <div class="highlight">
+                <h3>🔒 重要：API 金鑰安全性</h3>
+                <p><strong>您的 OKX API 金鑰僅存儲在您的瀏覽器 localStorage 中，絕不上傳至我們的伺服器。</strong></p>
+                <p>這表示：</p>
+                <ul>
+                    <li>✅ 您的 API 金鑰只存在於您的裝置上</li>
+                    <li>✅ 我們無法存取您的交易所帳戶</li>
+                    <li>✅ 更換裝置需重新輸入 API 金鑰</li>
+                    <li>✅ 清除瀏覽器快取將刪除本地金鑰</li>
+                </ul>
+            </div>
+
+            <h2>2. 資料使用方式</h2>
+            <h3>2.1 服務提供</h3>
+            <ul>
+                <li>驗證身份並維護帳戶安全</li>
+                <li>提供個人化市場分析和投資組合追蹤</li>
+                <li>處理 Pi 支付交易</li>
+            </ul>
+            <h3>2.2 社群管理</h3>
+            <ul>
+                <li>偵測並防範詐騙、濫用行為</li>
+                <li>執行治理系統的懲罰與申訴機制</li>
+                <li>審核論壇內容是否符合社群守則</li>
+            </ul>
+            <h3>2.3 安全與防護</h3>
+            <ul>
+                <li>監控可疑活動（異常登入、惡意檢舉）</li>
+                <li>維護系統穩定性與資料完整性</li>
+            </ul>
+
+            <h2>3. 資料分享與第三方</h2>
+            <h3>3.1 Pi Network SDK</h3>
+            <p>我們使用 Pi Network 官方 SDK 進行身份驗證和支付處理。您的錢包地址和交易資訊會與 Pi Network 共享，受其<a
+                    href="https://minepi.com/privacy-policy" target="_blank" style="color: #667eea;">隱私政策</a>約束。</p>
+            <h3>3.2 OKX API</h3>
+            <p>市場數據通過 OKX public API 獲取。<strong>我們不會將您的個人資訊發送給 OKX。</strong></p>
+            <h3>3.3 法律要求</h3>
+            <p>在以下情況下，我們可能需要披露資料：</p>
+            <ul>
+                <li>遵守法律義務或政府要求</li>
+                <li>保護平台、用戶或公眾的權利與安全</li>
+                <li>調查涉嫌違法行為（詐騙、洗錢等）</li>
+            </ul>
+
+            <h2>4. 用戶權利</h2>
+            <h3>4.1 存取與下載</h3>
+            <p>您可以在「設定」頁面查看並下載您的個人資料。</p>
+            <h3>4.2 修改資料</h3>
+            <p>您可以隨時更新個人資料設定（暱稱、顯示圖片）。</p>
+            <h3>4.3 刪除帳戶</h3>
+            <p>您可以申請刪除帳戶。刪除後：</p>
+            <ul>
+                <li>個人資料將被移除</li>
+                <li>論壇發文可能保留但匿名化（顯示為「已刪除用戶」）</li>
+                <li><strong>已發送的 Pi 打賞無法撤回</strong></li>
+                <li>已支付的會員費用不予退款</li>
+            </ul>
+
+            <h2>5. Cookie 與追蹤技術</h2>
+            <h3>5.1 必要 Cookie</h3>
+            <p>我們僅使用必要的 Cookie 來維護登入狀態和語言偏好。</p>
+            <h3>5.2 無廣告追蹤</h3>
+            <p><strong>我們不使用第三方廣告追蹤器或分析工具。</strong></p>
+
+            <h2>6. 資料保留期限</h2>
+            <ul>
+                <li><strong>帳戶資料</strong>：帳戶活躍期間 + 刪除後 30 天</li>
+                <li><strong>交易記錄</strong>：7 年（符合金融法規要求）</li>
+                <li><strong>治理記錄</strong>：永久保留（防範重複違規）</li>
+                <li><strong>API 日誌</strong>：90 天</li>
+            </ul>
+
+            <h2>7. 兒童隱私</h2>
+            <p>本平台不向 <strong>13 歲以下兒童</strong>提供服務。我們不會故意收集兒童的個人資料。若發現未成年用戶，我們將立即刪除相關帳戶。</p>
+
+            <h2>8. 跨境資料傳輸</h2>
+            <p>您的資料主要存儲在台灣伺服器。使用 Pi Network SDK 時，資料可能傳輸至 Pi Network 的全球基礎設施。我們確保所有傳輸符合 GDPR 等國際標準。</p>
+
+            <h2>9. 資料安全措施</h2>
+            <ul>
+                <li>資料庫加密（AES-256）</li>
+                <li>HTTPS 加密傳輸</li>
+                <li>定期安全審計與漏洞修補</li>
+                <li>限制員工存取權限（最小權限原則）</li>
+            </ul>
+
+            <h2>10. 隱私政策變更</h2>
+            <p>我們可能更新本政策。重大變更將通過平台公告通知，並要求您重新確認同意。</p>
+
+            <h2>11. 聯絡我們</h2>
+            <p>如有隱私相關疑問或數據請求，請聯絡：</p>
+            <ul>
+                <li>Email: <strong>privacy@picryptomind.io</strong></li>
+                <li>平台論壇：私訊 @Admin</li>
+            </ul>
+        </div>
+
+        <!-- English Content -->
+        <div id="content-en" class="prose hidden">
+            <div class="effective-date">
+                <strong>Effective Date:</strong> February 8, 2026
+            </div>
+
+            <p>PI CryptoMind values your privacy. This policy explains how we collect, use, and protect your personal
+                data.</p>
+
+            <h2>1. Information We Collect</h2>
+            <h3>1.1 Identity Information</h3>
+            <ul>
+                <li><strong>Pi Wallet Address</strong>: Used for account identification and transaction records</li>
+                <li><strong>Nickname & Profile</strong>: Display information you set on the platform</li>
+            </ul>
+            <h3>1.2 Usage Data</h3>
+            <ul>
+                <li>Browsing history, feature usage patterns</li>
+                <li>Forum posts, comments, tipping records</li>
+                <li>Scam reporting and governance participation</li>
+                <li>API request logs (IP addresses, timestamps)</li>
+            </ul>
+            <h3>1.3 Transaction Information</h3>
+            <ul>
+                <li>Pi payment records (PRO subscription, tips)</li>
+                <li>Transaction amounts, timestamps, recipient info</li>
+            </ul>
+
+            <div class="highlight">
+                <h3>🔒 Important: API Key Security</h3>
+                <p><strong>Your OKX API keys are stored ONLY in your browser's localStorage and are NEVER uploaded to
+                        our servers.</strong></p>
+                <p>This means:</p>
+                <ul>
+                    <li>✅ Your API keys exist only on your device</li>
+                    <li>✅ We cannot access your exchange account</li>
+                    <li>✅ Switching devices requires re-entering API keys</li>
+                    <li>✅ Clearing browser cache deletes local keys</li>
+                </ul>
+            </div>
+
+            <h2>2. How We Use Data</h2>
+            <h3>2.1 Service Provision</h3>
+            <ul>
+                <li>Verify identity and maintain account security</li>
+                <li>Provide personalized market analysis and portfolio tracking</li>
+                <li>Process Pi payment transactions</li>
+            </ul>
+            <h3>2.2 Community Management</h3>
+            <ul>
+                <li>Detect and prevent fraud, abuse</li>
+                <li>Execute governance penalties and appeals</li>
+                <li>Moderate forum content against community guidelines</li>
+            </ul>
+            <h3>2.3 Security & Protection</h3>
+            <ul>
+                <li>Monitor suspicious activity (abnormal logins, malicious reports)</li>
+                <li>Maintain system stability and data integrity</li>
+            </ul>
+
+            <h2>3. Data Sharing & Third Parties</h2>
+            <h3>3.1 Pi Network SDK</h3>
+            <p>We use Pi Network official SDK for authentication and payment processing. Your wallet address and
+                transaction info are shared with Pi Network, subject to their <a
+                    href="https://minepi.com/privacy-policy" target="_blank" style="color: #667eea;">Privacy Policy</a>.
+            </p>
+            <h3>3.2 OKX API</h3>
+            <p>Market data is fetched via OKX public API. <strong>We do not send your personal information to
+                    OKX.</strong></p>
+            <h3>3.3 Legal Requirements</h3>
+            <p>We may disclose data when:</p>
+            <ul>
+                <li>Complying with legal obligations or government requests</li>
+                <li>Protecting rights and safety of platform, users, or public</li>
+                <li>Investigating suspected illegal activities (fraud, money laundering)</li>
+            </ul>
+
+            <h2>4. User Rights</h2>
+            <h3>4.1 Access & Download</h3>
+            <p>You can view and download your personal data in Settings.</p>
+            <h3>4.2 Modify Data</h3>
+            <p>You can update profile settings (nickname, avatar) anytime.</p>
+            <h3>4.3 Account Deletion</h3>
+            <p>You can request account deletion. After deletion:</p>
+            <ul>
+                <li>Personal data will be removed</li>
+                <li>Forum posts may be retained but anonymized (shown as "Deleted User")</li>
+                <li><strong>Sent Pi tips are irreversible</strong></li>
+                <li>Paid membership fees are non-refundable</li>
+            </ul>
+
+            <h2>5. Cookies & Tracking</h2>
+            <h3>5.1 Necessary Cookies</h3>
+            <p>We only use necessary cookies to maintain login state and language preference.</p>
+            <h3>5.2 No Ad Tracking</h3>
+            <p><strong>We do not use third-party ad trackers or analytics tools.</strong></p>
+
+            <h2>6. Data Retention</h2>
+            <ul>
+                <li><strong>Account Data</strong>: During active period + 30 days after deletion</li>
+                <li><strong>Transaction Records</strong>: 7 years (financial regulation compliance)</li>
+                <li><strong>Governance Records</strong>: Permanent (prevent repeat violations)</li>
+                <li><strong>API Logs</strong>: 90 days</li>
+            </ul>
+
+            <h2>7. Children's Privacy</h2>
+            <p>This platform does not offer services to children <strong>under 13</strong>. We do not knowingly collect
+                children's personal data. Underage accounts will be deleted immediately upon discovery.</p>
+
+            <h2>8. Cross-Border Data Transfer</h2>
+            <p>Your data is primarily stored on Taiwan servers. When using Pi Network SDK, data may transfer to Pi
+                Network's global infrastructure. We ensure all transfers comply with GDPR and international standards.
+            </p>
+
+            <h2>9. Data Security Measures</h2>
+            <ul>
+                <li>Database encryption (AES-256)</li>
+                <li>HTTPS encrypted transmission</li>
+                <li>Regular security audits and vulnerability patches</li>
+                <li>Restricted employee access (least privilege principle)</li>
+            </ul>
+
+            <h2>10. Privacy Policy Changes</h2>
+            <p>We may update this policy. Major changes will be announced on the platform and require your
+                re-confirmation.</p>
+
+            <h2>11. Contact Us</h2>
+            <p>For privacy questions or data requests, contact:</p>
+            <ul>
+                <li>Email: <strong>privacy@picryptomind.io</strong></li>
+                <li>Platform Forum: DM @Admin</li>
+            </ul>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-links">
+            <a href="terms-of-service.html">Terms of Service</a>
+            <a href="privacy-policy.html">Privacy Policy</a>
+            <a href="community-guidelines.html">Community Guidelines</a>
+            <a href="../../index.html">返回平台</a>
+        </div>
+        <div class="copyright">
+            © 2026 PI CryptoMind. All rights reserved.
+        </div>
+    </footer>
+
+    <script>
+        function toggleLanguage() {
+            const zhContent = document.getElementById('content-zh');
+            const enContent = document.getElementById('content-en');
+            const langLabel = document.getElementById('lang-label');
+            const navTitle = document.getElementById('nav-title');
+
+            if (zhContent.classList.contains('hidden')) {
+                zhContent.classList.remove('hidden');
+                enContent.classList.add('hidden');
+                langLabel.textContent = 'English';
+                navTitle.textContent = '隱私政策';
+                localStorage.setItem('legalPageLang', 'zh');
+            } else {
+                zhContent.classList.add('hidden');
+                enContent.classList.remove('hidden');
+                langLabel.textContent = '中文';
+                navTitle.textContent = 'Privacy Policy';
+                localStorage.setItem('legalPageLang', 'en');
+            }
+        }
+
+        // Load saved language preference
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedLang = localStorage.getItem('legalPageLang');
+            if (savedLang === 'en') {
+                toggleLanguage();
+            }
+        });
+    </script>
+</body>
+
+</html>

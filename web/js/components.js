@@ -642,8 +642,62 @@ const Components = {
                     Save All Settings
                 </button>
 
+                <!-- About & Legal -->
+                <div class="bg-surface p-6 md:p-8 rounded-3xl border border-white/5">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                            <i data-lucide="info" class="w-5 h-5 text-primary"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-serif text-primary">About & Legal</h3>
+                            <p class="text-xs text-textMuted">Terms, Privacy, and Community Guidelines</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <a href="/static/legal/terms-of-service.html" target="_blank" class="block w-full p-4 bg-background/50 hover:bg-background rounded-xl border border-white/5 hover:border-primary/20 transition group">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <i data-lucide="file-text" class="w-4 h-4 text-textMuted group-hover:text-primary transition"></i>
+                                    <div>
+                                        <p class="text-sm font-medium text-secondary">Terms of Service</p>
+                                        <p class="text-xs text-textMuted">Usage rules and policies</p>
+                                    </div>
+                                </div>
+                                <i data-lucide="external-link" class="w-4 h-4 text-textMuted group-hover:text-primary transition"></i>
+                            </div>
+                        </a>
+
+                        <a href="/static/legal/privacy-policy.html" target="_blank" class="block w-full p-4 bg-background/50 hover:bg-background rounded-xl border border-white/5 hover:border-primary/20 transition group">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <i data-lucide="shield" class="w-4 h-4 text-textMuted group-hover:text-primary transition"></i>
+                                    <div>
+                                        <p class="text-sm font-medium text-secondary">Privacy Policy</p>
+                                        <p class="text-xs text-textMuted">Data protection and privacy</p>
+                                    </div>
+                                </div>
+                                <i data-lucide="external-link" class="w-4 h-4 text-textMuted group-hover:text-primary transition"></i>
+                            </div>
+                        </a>
+
+                        <a href="/static/legal/community-guidelines.html" target="_blank" class="block w-full p-4 bg-background/50 hover:bg-background rounded-xl border border-white/5 hover:border-primary/20 transition group">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <i data-lucide="users" class="w-4 h-4 text-textMuted group-hover:text-primary transition"></i>
+                                    <div>
+                                        <p class="text-sm font-medium text-secondary">Community Guidelines</p>
+                                        <p class="text-xs text-textMuted">Governance and moderation rules</p>
+                                    </div>
+                                </div>
+                                <i data-lucide="external-link" class="w-4 h-4 text-textMuted group-hover:text-primary transition"></i>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
                 <div class="text-center pt-8 opacity-20 text-[10px] font-mono tracking-widest uppercase">
-                    CryptoMind v1.2.0-Pi-Integrated
+                    PI CryptoMind v1.2.0-Pi-Integrated
                 </div>
              </div>
         </div>

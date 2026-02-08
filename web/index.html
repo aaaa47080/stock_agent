@@ -937,7 +937,7 @@
     <script src="/static/js/apiKeyManager.js?v=47" onerror="alert('apiKeyManager.js 載入失敗')"></script>
     <script src="/static/js/auth.js?v=47" onerror="alert('auth.js 載入失敗')"></script>
     <script src="/static/js/okxKeyManager.js?v=47"></script>
-    <script src="/static/js/components.js?v=50"></script>
+    <script src="/static/js/components.js?v=52"></script>
     <script src="/static/js/llmSettings.js?v=47"></script>
     <script src="/static/js/filter.js?v=47"></script>
     <script src="/static/js/chat.js?v=47"></script>
@@ -1203,9 +1203,9 @@
                 button.dataset.tab = item.id;
 
                 if (item.id === 'forum') {
-                    button.onclick = function() { navigateToForum(); };
+                    button.onclick = function () { navigateToForum(); };
                 } else {
-                    button.onclick = function() { switchTab(item.id); };
+                    button.onclick = function () { switchTab(item.id); };
                 }
 
                 button.innerHTML = `

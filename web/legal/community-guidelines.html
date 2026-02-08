@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Community Guidelines - PI CryptoMind</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .navbar {
+            background: rgba(26, 26, 46, 0.95);
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .navbar-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1rem;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .navbar h1 {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .lang-toggle {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            transition: transform 0.3s;
+        }
+
+        .lang-toggle:hover {
+            transform: scale(1.05);
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem 6rem;
+        }
+
+        .prose h2 {
+            color: #fff;
+            margin: 2rem 0 1rem;
+            font-size: 1.5rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 0.5rem;
+        }
+
+        .prose h3 {
+            color: #b8b8d1;
+            margin: 1.5rem 0 0.8rem;
+            font-size: 1.2rem;
+        }
+
+        .prose p,
+        .prose ul,
+        .prose ol {
+            margin: 0.8rem 0;
+            color: #c0c0d0;
+        }
+
+        .prose ul,
+        .prose ol {
+            padding-left: 2rem;
+        }
+
+        .prose li {
+            margin: 0.5rem 0;
+        }
+
+        .prose strong {
+            color: #fff;
+        }
+
+        .footer {
+            background: rgba(26, 26, 46, 0.95);
+            padding: 2rem 1.5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+
+        .footer-links {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .footer-links a {
+            color: #667eea;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .footer-links a:hover {
+            color: #764ba2;
+        }
+
+        .copyright {
+            color: #808090;
+            font-size: 0.9rem;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .effective-date {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 1rem;
+            border-left: 3px solid #667eea;
+            margin: 1.5rem 0;
+            border-radius: 4px;
+        }
+
+        .violation-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .violation-table th,
+        .violation-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .violation-table th {
+            background: rgba(102, 126, 234, 0.2);
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .severity-mild {
+            color: #ffd700;
+        }
+
+        .severity-medium {
+            color: #ffa500;
+        }
+
+        .severity-severe {
+            color: #ff6347;
+        }
+
+        .severity-critical {
+            color: #dc143c;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="navbar-left">
+            <button class="back-btn" onclick="window.location.href='../../index.html'">← 返回</button>
+            <h1 id="nav-title">社群守則</h1>
+        </div>
+        <button class="lang-toggle" onclick="toggleLanguage()">
+            🌐 <span id="lang-label">English</span>
+        </button>
+    </nav>
+
+    <div class="container">
+        <!-- Chinese Content -->
+        <div id="content-zh" class="prose">
+            <div class="effective-date">
+                <strong>生效日期：</strong>2026年2月8日
+            </div>
+
+            <p>PI CryptoMind 致力於打造安全、友善、高品質的加密貨幣社群。所有用戶都應遵守以下守則。</p>
+
+            <h2>1. 核心原則</h2>
+            <ul>
+                <li><strong>尊重他人</strong>：避免人身攻擊、歧視、騷擾行為</li>
+                <li><strong>誠實透明</strong>：不發布虛假資訊或操縱市場數據</li>
+                <li><strong>保護社群</strong>：舉報詐騙、濫用行為，共同維護安全環境</li>
+                <li><strong>理性討論</strong>：歡迎不同觀點，但請以建設性方式表達</li>
+            </ul>
+
+            <h2>2. 違規類型與嚴重程度</h2>
+            <table class="violation-table">
+                <thead>
+                    <tr>
+                        <th>違規類型</th>
+                        <th>說明</th>
+                        <th>示例</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>spam</strong></td>
+                        <td>垃圾訊息、重複發文、無意義內容</td>
+                        <td>連續發布相同廣告、一句話「頂」</td>
+                    </tr>
+                    <tr>
+                        <td><strong>harassment</strong></td>
+                        <td>騷擾、霸凌、人身攻擊</td>
+                        <td>辱罵、跟蹤騷擾、仇恨言論</td>
+                    </tr>
+                    <tr>
+                        <td><strong>misinformation</strong></td>
+                        <td>故意散布虛假市場資訊</td>
+                        <td>捏造項目破產消息、假冒官方公告</td>
+                    </tr>
+                    <tr>
+                        <td><strong>scam</strong></td>
+                        <td>詐騙、釣魚、傳銷</td>
+                        <td>假投資平台、龐氏騙局、假空投</td>
+                    </tr>
+                    <tr>
+                        <td><strong>illegal</strong></td>
+                        <td>違法內容</td>
+                        <td>洗錢、販毒、侵犯智財權</td>
+                    </tr>
+                    <tr>
+                        <td><strong>other</strong></td>
+                        <td>其他違反守則行為</td>
+                        <td>未分類的不當行為</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>違規等級與積分</h3>
+            <ul>
+                <li><span class="severity-mild">● 輕微 (Mild)</span>：1 分 - 初次無意違規、輕微不當用語</li>
+                <li><span class="severity-medium">● 中度 (Medium)</span>：3 分 - 重複垃圾訊息、輕度騷擾</li>
+                <li><span class="severity-severe">● 嚴重 (Severe)</span>：5 分 - 故意散布假消息、嚴重騷擾</li>
+                <li><span class="severity-critical">● 極嚴重 (Critical)</span>：30 分 - 詐騙、違法行為</li>
+            </ul>
+
+            <h2>3. 處罰機制</h2>
+            <p>違規積分累計達到以下門檻將觸發自動處罰：</p>
+            <table class="violation-table">
+                <thead>
+                    <tr>
+                        <th>積分門檻</th>
+                        <th>處罰措施</th>
+                        <th>說明</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>5 分</td>
+                        <td><strong>警告 (Warning)</strong></td>
+                        <td>系統發送警告通知，無其他限制</td>
+                    </tr>
+                    <tr>
+                        <td>10 分</td>
+                        <td><strong>暫停 3 天</strong></td>
+                        <td>禁止發文、評論、檢舉</td>
+                    </tr>
+                    <tr>
+                        <td>20 分</td>
+                        <td><strong>暫停 7 天</strong></td>
+                        <td>禁止除閱讀外所有互動功能</td>
+                    </tr>
+                    <tr>
+                        <td>30 分</td>
+                        <td><strong>暫停 30 天</strong></td>
+                        <td>嚴重違規，長期禁止社群參與</td>
+                    </tr>
+                    <tr>
+                        <td>40 分</td>
+                        <td><strong>永久封禁 (Ban)</strong></td>
+                        <td>帳戶永久停用，無法申訴</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h2>4. 檢舉系統</h2>
+            <h3>4.1 檢舉次數限制</h3>
+            <ul>
+                <li><strong>Free 用戶</strong>：5 次/天</li>
+                <li><strong>PRO 用戶</strong>：10 次/天</li>
+            </ul>
+            <h3>4.2 檢舉流程</h3>
+            <ol>
+                <li>點擊違規內容的「檢舉」按鈕</li>
+                <li>選擇違規類型（spam, harassment, misinformation, scam, illegal, other）</li>
+                <li>評估嚴重程度（mild, medium, severe, critical）</li>
+                <li>提供證據說明（截圖、連結、文字描述）</li>
+                <li>提交檢舉</li>
+            </ol>
+            <h3>4.3 PRO 審核員制度</h3>
+            <ul>
+                <li>PRO 用戶可擔任社群審核員</li>
+                <li>每個檢舉案件需 <strong>3 位審核員</strong>投票</li>
+                <li>達到 <strong>70% 共識</strong>（至少 2/3 票同意）即執行處罰</li>
+                <li>若審核員惡意投票將被取消資格</li>
+            </ul>
+
+            <h2>5. 申訴流程</h2>
+            <h3>5.1 誰可以申訴</h3>
+            <p>被處罰（暫停或警告）的用戶可在 <strong>7 天內</strong>提交申訴。</p>
+            <h3>5.2 如何申訴</h3>
+            <ol>
+                <li>前往「個人設定」→「治理記錄」</li>
+                <li>找到爭議處罰記錄，點擊「申訴」</li>
+                <li>提供證據說明為何該處罰不當</li>
+                <li>等待管理員審核（通常 3 個工作日內回覆）</li>
+            </ol>
+            <h3>5.3 申訴結果</h3>
+            <ul>
+                <li><strong>申訴成立</strong>：撤銷處罰，扣除積分</li>
+                <li><strong>部分成立</strong>：降低處罰等級</li>
+                <li><strong>申訴駁回</strong>：維持原處罰</li>
+            </ul>
+
+            <h2>6. 特殊規則</h2>
+            <h3>6.1 論壇發文規範</h3>
+            <ul>
+                <li>標題需清晰描述內容，不得使用誤導性標題</li>
+                <li>禁止發布純圖片無文字說明的帖子</li>
+                <li>引用他人內容需註明來源</li>
+                <li>討論幣種時應基於事實，避免無根據的「喊單」</li>
+            </ul>
+            <h3>6.2 打賞功能</h3>
+            <ul>
+                <li>打賞是自願行為，<strong>一旦發送不可撤回</strong></li>
+                <li>不得以打賞進行賄賂或操縱投票</li>
+                <li>發現異常打賞模式（刷票、洗錢）將凍結帳戶</li>
+            </ul>
+            <h3>6.3 詐騙檢舉特別提醒</h3>
+            <ul>
+                <li>檢舉詐騙時請提供<strong>具體證據</strong>（網站截圖、對話記錄）</li>
+                <li>被檢舉者有權查看檢舉理由（匿名處理檢舉人身份）</li>
+                <li>誣告詐騙將受到比一般惡意檢舉更嚴重的處罰</li>
+            </ul>
+
+            <h2>7. 管理員權限</h2>
+            <p>管理員保留以下權力：</p>
+            <ul>
+                <li>直接處罰明顯違規內容，無需 PRO 審核流程</li>
+                <li>調整違規積分（若發現系統誤判）</li>
+                <li>永久封禁涉嫌犯罪的帳戶並報警</li>
+                <li>修改社群守則（重大變更將公告）</li>
+            </ul>
+
+            <h2>8. 免責聲明</h2>
+            <ul>
+                <li>平台不對用戶發布的內容準確性負責</li>
+                <li>檢舉系統依賴社群自治，可能存在誤判</li>
+                <li>被檢舉不代表有罪，需經審核流程</li>
+                <li>平台不對因治理系統產生的爭議承擔法律責任</li>
+            </ul>
+
+            <h2>9. 更新記錄</h2>
+            <p>社群守則會根據實際運作情況調整。查看 <a href="../../index.html" style="color: #667eea;">平台公告</a>獲取最新變更。</p>
+
+            <h2>10. 聯絡我們</h2>
+            <p>若對治理系統有疑問或發現漏洞，請聯絡：</p>
+            <ul>
+                <li>Email: <strong>governance@picryptomind.io</strong></li>
+                <li>論壇私訊：@GovernanceTeam</li>
+            </ul>
+        </div>
+
+        <!-- English Content -->
+        <div id="content-en" class="prose hidden">
+            <div class="effective-date">
+                <strong>Effective Date:</strong> February 8, 2026
+            </div>
+
+            <p>PI CryptoMind is committed to building a safe, friendly, and high-quality cryptocurrency community. All
+                users must comply with these guidelines.</p>
+
+            <h2>1. Core Principles</h2>
+            <ul>
+                <li><strong>Respect Others</strong>: Avoid personal attacks, discrimination, harassment</li>
+                <li><strong>Honesty & Transparency</strong>: No false information or market manipulation</li>
+                <li><strong>Protect Community</strong>: Report scams and abuse to maintain a safe environment</li>
+                <li><strong>Rational Discussion</strong>: Welcome diverse views, but express them constructively</li>
+            </ul>
+
+            <h2>2. Violation Types & Severity</h2>
+            <table class="violation-table">
+                <thead>
+                    <tr>
+                        <th>Violation Type</th>
+                        <th>Description</th>
+                        <th>Examples</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>spam</strong></td>
+                        <td>Spam messages, repetitive posts, meaningless content</td>
+                        <td>Repeated ads, one-word "bump" posts</td>
+                    </tr>
+                    <tr>
+                        <td><strong>harassment</strong></td>
+                        <td>Harassment, bullying, personal attacks</td>
+                        <td>Insults, stalking, hate speech</td>
+                    </tr>
+                    <tr>
+                        <td><strong>misinformation</strong></td>
+                        <td>Deliberately spreading false market info</td>
+                        <td>Fabricated bankruptcy news, fake announcements</td>
+                    </tr>
+                    <tr>
+                        <td><strong>scam</strong></td>
+                        <td>Scams, phishing, pyramid schemes</td>
+                        <td>Fake investment platforms, Ponzi schemes, fake airdrops</td>
+                    </tr>
+                    <tr>
+                        <td><strong>illegal</strong></td>
+                        <td>Illegal content</td>
+                        <td>Money laundering, drugs, IP infringement</td>
+                    </tr>
+                    <tr>
+                        <td><strong>other</strong></td>
+                        <td>Other guideline violations</td>
+                        <td>Uncategorized misconduct</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Severity Levels & Points</h3>
+            <ul>
+                <li><span class="severity-mild">● Mild</span>: 1 pt - First-time unintentional violations, minor
+                    inappropriate language</li>
+                <li><span class="severity-medium">● Medium</span>: 3 pts - Repeated spam, mild harassment</li>
+                <li><span class="severity-severe">● Severe</span>: 5 pts - Deliberate misinformation, serious harassment
+                </li>
+                <li><span class="severity-critical">● Critical</span>: 30 pts - Scams, illegal activities</li>
+            </ul>
+
+            <h2>3. Penalty System</h2>
+            <p>Accumulated violation points trigger automatic penalties at these thresholds:</p>
+            <table class="violation-table">
+                <thead>
+                    <tr>
+                        <th>Point Threshold</th>
+                        <th>Penalty</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>5 pts</td>
+                        <td><strong>Warning</strong></td>
+                        <td>System sends warning notification, no other restrictions</td>
+                    </tr>
+                    <tr>
+                        <td>10 pts</td>
+                        <td><strong>3-day Suspension</strong></td>
+                        <td>Cannot post, comment, or report</td>
+                    </tr>
+                    <tr>
+                        <td>20 pts</td>
+                        <td><strong>7-day Suspension</strong></td>
+                        <td>All interactions blocked except reading</td>
+                    </tr>
+                    <tr>
+                        <td>30 pts</td>
+                        <td><strong>30-day Suspension</strong></td>
+                        <td>Serious violation, long-term community ban</td>
+                    </tr>
+                    <tr>
+                        <td>40 pts</td>
+                        <td><strong>Permanent Ban</strong></td>
+                        <td>Account permanently disabled, no appeals</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h2>4. Report System</h2>
+            <h3>4.1 Report Limits</h3>
+            <ul>
+                <li><strong>Free Users</strong>: 5 reports/day</li>
+                <li><strong>PRO Users</strong>: 10 reports/day</li>
+            </ul>
+            <h3>4.2 Report Process</h3>
+            <ol>
+                <li>Click "Report" button on violating content</li>
+                <li>Select violation type (spam, harassment, misinformation, scam, illegal, other)</li>
+                <li>Assess severity (mild, medium, severe, critical)</li>
+                <li>Provide evidence (screenshots, links, text description)</li>
+                <li>Submit report</li>
+            </ol>
+            <h3>4.3 PRO Moderator System</h3>
+            <ul>
+                <li>PRO users can serve as community moderators</li>
+                <li>Each report requires <strong>3 moderator votes</strong></li>
+                <li><strong>70% consensus</strong> (at least 2/3 agree) to execute penalty</li>
+                <li>Malicious voting revokes moderator status</li>
+            </ul>
+
+            <h2>5. Appeal Process</h2>
+            <h3>5.1 Who Can Appeal</h3>
+            <p>Users with warnings or suspensions can appeal within <strong>7 days</strong>.</p>
+            <h3>5.2 How to Appeal</h3>
+            <ol>
+                <li>Go to "Settings" → "Governance Records"</li>
+                <li>Find disputed penalty, click "Appeal"</li>
+                <li>Provide evidence why the penalty is unjust</li>
+                <li>Wait for admin review (usually within 3 business days)</li>
+            </ol>
+            <h3>5.3 Appeal Outcomes</h3>
+            <ul>
+                <li><strong>Appeal Granted</strong>: Penalty revoked, points removed</li>
+                <li><strong>Partially Granted</strong>: Penalty downgraded</li>
+                <li><strong>Appeal Denied</strong>: Original penalty stands</li>
+            </ul>
+
+            <h2>6. Special Rules</h2>
+            <h3>6.1 Forum Posting Guidelines</h3>
+            <ul>
+                <li>Titles must clearly describe content, no clickbait</li>
+                <li>No image-only posts without text explanation</li>
+                <li>Cite sources when quoting others</li>
+                <li>Coin discussions should be fact-based, avoid baseless "shilling"</li>
+            </ul>
+            <h3>6.2 Tipping Feature</h3>
+            <ul>
+                <li>Tipping is voluntary, <strong>irreversible once sent</strong></li>
+                <li>No bribery or vote manipulation via tips</li>
+                <li>Abnormal tipping patterns (vote manipulation, money laundering) freeze account</li>
+            </ul>
+            <h3>6.3 Scam Reporting Reminder</h3>
+            <ul>
+                <li>Provide <strong>concrete evidence</strong> (website screenshots, chat logs)</li>
+                <li>Reported users can view report reasons (reporter identity anonymized)</li>
+                <li>False scam reports receive harsher penalties than general malicious reports</li>
+            </ul>
+
+            <h2>7. Administrator Powers</h2>
+            <p>Administrators reserve rights to:</p>
+            <ul>
+                <li>Directly penalize obvious violations without PRO review</li>
+                <li>Adjust violation points (if system misjudgment found)</li>
+                <li>Permanently ban accounts suspected of crimes and report to authorities</li>
+                <li>Modify community guidelines (major changes will be announced)</li>
+            </ul>
+
+            <h2>8. Disclaimers</h2>
+            <ul>
+                <li>Platform not responsible for accuracy of user-generated content</li>
+                <li>Report system relies on community governance, may have misjudgments</li>
+                <li>Being reported doesn't imply guilt, requires review process</li>
+                <li>Platform not liable for disputes arising from governance system</li>
+            </ul>
+
+            <h2>9. Update Log</h2>
+            <p>Guidelines adjust based on operational needs. Check <a href="../../index.html"
+                    style="color: #667eea;">platform announcements</a> for latest changes.</p>
+
+            <h2>10. Contact Us</h2>
+            <p>For governance questions or to report system bugs, contact:</p>
+            <ul>
+                <li>Email: <strong>governance@picryptomind.io</strong></li>
+                <li>Forum DM: @GovernanceTeam</li>
+            </ul>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-links">
+            <a href="terms-of-service.html">Terms of Service</a>
+            <a href="privacy-policy.html">Privacy Policy</a>
+            <a href="community-guidelines.html">Community Guidelines</a>
+            <a href="../../index.html">返回平台</a>
+        </div>
+        <div class="copyright">
+            © 2026 PI CryptoMind. All rights reserved.
+        </div>
+    </footer>
+
+    <script>
+        function toggleLanguage() {
+            const zhContent = document.getElementById('content-zh');
+            const enContent = document.getElementById('content-en');
+            const langLabel = document.getElementById('lang-label');
+            const navTitle = document.getElementById('nav-title');
+
+            if (zhContent.classList.contains('hidden')) {
+                zhContent.classList.remove('hidden');
+                enContent.classList.add('hidden');
+                langLabel.textContent = 'English';
+                navTitle.textContent = '社群守則';
+                localStorage.setItem('legalPageLang', 'zh');
+            } else {
+                zhContent.classList.add('hidden');
+                enContent.classList.remove('hidden');
+                langLabel.textContent = '中文';
+                navTitle.textContent = 'Community Guidelines';
+                localStorage.setItem('legalPageLang', 'en');
+            }
+        }
+
+        // Load saved language preference
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedLang = localStorage.getItem('legalPageLang');
+            if (savedLang === 'en') {
+                toggleLanguage();
+            }
+        });
+    </script>
+</body>
+
+</html>

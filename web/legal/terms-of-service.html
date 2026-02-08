@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terms of Service - PI CryptoMind</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        background: '#1a1a1c',
+                        surface: '#252529',
+                        surfaceHighlight: '#323236',
+                        primary: '#d4b693',
+                        secondary: '#e4e4e7',
+                        accent: '#c084fc',
+                        textMain: '#f4f4f5',
+                        textMuted: '#a1a1aa',
+                    },
+                    fontFamily: {
+                        serif: ['Lora', 'serif'],
+                        sans: ['Mulish', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Mulish:wght@300;400;600;800&display=swap"
+        rel="stylesheet">
+</head>
+
+<body class="bg-background text-textMain font-sans min-h-screen">
+    <!-- Navbar -->
+    <nav class="sticky top-0 z-50 bg-surface/95 backdrop-blur-xl border-b border-white/5">
+        <div class="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <button onclick="window.location.href='/static/index.html'"
+                    class="px-4 py-2 bg-surfaceHighlight hover:bg-white/10 text-textMuted hover:text-secondary rounded-xl transition flex items-center gap-2">
+                    ← <span id="back-text">返回</span>
+                </button>
+                <h1 id="nav-title" class="text-xl font-serif text-secondary">服務條款</h1>
+            </div>
+            <button onclick="toggleLanguage()"
+                class="px-4 py-2 bg-gradient-to-r from-primary to-accent text-background font-bold rounded-xl hover:brightness-110 transition flex items-center gap-2">
+                🌐 <span id="lang-label">English</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Content -->
+    <div class="max-w-4xl mx-auto px-6 py-12 pb-32">
+        <!-- Chinese Content -->
+        <div id="content-zh" class="prose prose-invert max-w-none">
+            <div class="bg-primary/10 border-l-4 border-primary rounded-lg p-6 mb-8">
+                <p class="text-sm text-textMuted m-0"><strong class="text-secondary">生效日期：</strong>2026年2月8日</p>
+            </div>
+
+            <h2 class="text-2xl font-serif text-secondary mt-12 mb-6 pb-3 border-b border-white/10">1. 接受條款</h2>
+            <p class="text-textMuted mb-6">歡迎使用 PI CryptoMind。使用本平台即表示您同意以下條款。若您不同意,請勿使用本服務。</p>
+
+            <h2 class="text-2xl font-serif text-secondary mt-12 mb-6 pb-3 border-b border-white/10">2. 帳戶與錢包綁定</h2>
+            <h3 class="text-xl text-primary mt-8 mb-4">2.1 Pi 錢包綁定</h3>
+            <ul class="space-y-2 text-textMuted mb-6">
+                <li>本平台使用 Pi Network 官方 SDK 進行身份驗證</li>
+                <li>您的 Pi 錢包地址將作為唯一識別碼</li>
+                <li>您有責任保護錢包的安全性</li>
+            </ul>
+            <h3 class="text-xl text-primary mt-8 mb-4">2.2 帳戶責任</h3>
+            <ul class="space-y-2 text-textMuted mb-6">
+                <li>您對帳戶下的所有活動負責</li>
+                <li>不得與他人共享錢包存取權限</li>
+                <li>發現未授權使用時應立即通知我們</li>
+            </ul>
+
+            <h2 class="text-2xl font-serif text-secondary mt-12 mb-6 pb-3 border-b border-white/10">3. 使用規範</h2>
+            <p class="text-textMuted mb-4">您同意<strong class="text-secondary">不得</strong>：</p>
+            <ul class="space-y-2 text-textMuted mb-6">
+                <li>發布欺詐、誹謗、騷擾或非法內容</li>
+                <li>操縱市場數據或發布虛假資訊</li>
+                <li>濫用檢舉系統或進行惡意檢舉</li>
+                <li>企圖繞過安全機制或入侵系統</li>
+                <li>使用機器人或自動化工具刷取數據</li>
+            </ul>
+
+            <h2 class="text-2xl font-serif text-secondary mt-12 mb-6 pb-3 border-b border-white/10">4. 高級會員 (PRO)</h2>
+            <h3 class="text-xl text-primary mt-8 mb-4">4.1 付款方式</h3>
+            <p class="text-textMuted mb-6">PRO 會員費用以 Pi 支付，交易通過 Pi Network 官方 Payment API 處理。</p>
+            <h3 class="text-xl text-primary mt-8 mb-4">4.2 不退款政策</h3>
+            <p class="text-textMuted mb-4">由於加密貨幣交易的不可逆性，<strong class="text-secondary">已支付的會員費用不予退款</strong>，除非：</p>
+            <ul class="space-y-2 text-textMuted mb-6">
+                <li>系統錯誤導致重複扣款</li>
+                <li>服務長期（連續 7 天以上）無法使用</li>
+            </ul>
+            <h3 class="text-xl text-primary mt-8 mb-4">4.3 PRO 特權</h3>
+            <ul class="space-y-2 text-textMuted mb-6">
+                <li>解鎖高級市場分析工具</li>
+                <li>無限論壇發文數量</li>
+                <li>擔任社群審核員資格（需 3 人共識）</li>
+                <li>提高詐騙檢舉次數上限（10 次/天）</li>
+            </ul>
+
+            <h2 class="text-2xl font-serif text-secondary mt-12 mb-6 pb-3 border-b border-white/10">5. 論壇使用</h2>
+            <h3 class="text-xl text-primary mt-8 mb-4">5.1 發文與打賞</h3>
+            <ul class="space-y-2 text-textMuted mb-6">
+                <li>Free 用戶：每日 3 篇發文上限</li>
+                <li>PRO 用戶：無限制</li>
+                <li>打賞功能使用 Pi 幣，一旦發送<strong class="text-secondary">不可撤回</strong></li>
+            </ul>
+            <h3 class="text-xl text-primary mt-8 mb-4">5.2 內容審核</h3>
+            <p class="text-textMuted mb-6">我們保留刪除違規內容的權利，無需事先通知。詳見<a href="community-guidelines.html"
+                    class="text-primary hover:text-accent transition underline">社群守則</a>。</p>
+
+            <h2 class="text-2xl font-serif text-secondary mt-12 mb-6 pb-3 border-b border-white/10">6. 詐騙舉報與治理系統</h2>
+            <h3 class="text-xl text-primary mt-8 mb-4">6.1 檢舉機制</h3>
+            <ul class="space-y-2 text-textMuted mb-6">
+                <li>Free 用戶：5 次/天</li>
+                <li>PRO 用戶：10 次/天</li>
+                <li>惡意檢舉將導致帳戶暫停</li>
+            </ul>
+            <h3 class="text-xl text-primary mt-8 mb-4">6.2 違規處罰</h3>
+            <p class="text-textMuted mb-4">根據違規等級累計積分（1-30 分），達到門檻將觸發：</p>
+            <ul class="space-y-2 text-textMuted mb-6">
+                <li>5 分：警告</li>
+                <li>10 分：暫停 3 天</li>
+                <li>20 分：暫停 7 天</li>
+                <li>30 分：暫停 30 天</li>
+                <li>40 分：永久封禁</li>
+            </ul>
+            <h3 class="text-xl text-primary mt-8 mb-4">6.3 申訴流程</h3>
+            <p class="text-textMuted mb-6">被處罰用戶可在 7 天內提交申訴，需提供證據說明誤判理由。</p>
+
+            <h2 class="text-2xl font-serif text-secondary mt-12 mb-6 pb-3 border-b border-white/10">7. 智慧財產權</h2>
+            <ul class="space-y-2 text-textMuted mb-6">
+                <li>您發布的內容保留您的版權</li>
+                <li>但您授予本平台非獨家、全球性的使用權</li>
+                <li>平台原創內容（代碼、設計、商標）歸 PI CryptoMind 所有</li>
+            </ul>
+
+            <h2 class="text-2xl font-serif text-secondary mt-12 mb-6 pb-3 border-b border-white/10">8. 免責聲明</h2>
+            <h3 class="text-xl text-primary mt-8 mb-4">8.1 非投資建議</h3>
+            <p class="text-textMuted mb-6"><strong
+                    class="text-secondary">本平台提供的所有市場分析、數據、資訊僅供參考，不構成投資建議。</strong>您應自行判斷並承擔投資風險。</p>
+            <h3 class="text-xl text-primary mt-8 mb-4">8.2 加密貨幣風險</h3>
+            <p class="text-textMuted mb-6">加密貨幣交易具有高風險，價格波動劇烈。您可能損失全部本金。請謹慎評估自身風險承受能力。</p>
+            <h3 class="text-xl text-primary mt-8 mb-4">8.3 第三方內容</h3>
+            <p class="text-textMuted mb-6">用戶發布的內容不代表平台立場。我們不對其準確性、合法性負責。</p>
+
+            <h2 class="text-2xl font-serif text-secondary mt-12 mb-6 pb-3 border-b border-white/10">9. 責任限制</h2>
+            <p class="text-textMuted mb-4">在法律允許的最大範圍內，PI CryptoMind 不對以下情況負責：</p>
+            <ul class="space-y-2 text-textMuted mb-6">
+                <li>因使用或無法使用服務而導致的損失</li>
+                <li>第三方服務（Pi Network、OKX API）中斷造成的影響</li>
+                <li>資料傳輸錯誤、駭客攻擊等技術問題</li>
+                <li>基於平台資訊做出的投資決策</li>
+            </ul>
+
+            <h2 class="text-2xl font-serif text-secondary mt-12 mb-6 pb-3 border-b border-white/10">10. 終止服務</h2>
+            <p class="text-textMuted mb-4">我們保留隨時終止或暫停您的帳戶的權利，特別是在以下情況：</p>
+            <ul class="space-y-2 text-textMuted mb-6">
+                <li>違反本條款或社群守則</li>
+                <li>涉嫌欺詐、違法行為</li>
+                <li>長期（90 天以上）未使用帳戶</li>
+            </ul>
+
+            <h2 class="text-2xl font-serif text-secondary mt-12 mb-6 pb-3 border-b border-white/10">11. 管轄法律</h2>
+            <p class="text-textMuted mb-6">本條款受<strong
+                    class="text-secondary">中華民國法律</strong>管轄。爭議應優先通過友好協商解決，協商不成時提交台灣地區法院仲裁。</p>
+
+            <h2 class="text-2xl font-serif text-secondary mt-12 mb-6 pb-3 border-b border-white/10">12. 條款變更</h2>
+            <p class="text-textMuted mb-6">我們可能不定期更新本條款。重大變更將通過平台公告通知。繼續使用服務即視為接受新條款。</p>
+
+            <h2 class="text-2xl font-serif text-secondary mt-12 mb-6 pb-3 border-b border-white/10">13. 聯絡我們</h2>
+            <p class="text-textMuted mb-6">如有疑問，請通過平台論壇私訊管理員或發送電子郵件至：<strong
+                    class="text-primary">support@picryptomind.io</strong></p>
+        </div>
+
+        <!-- English Content -->
+        <div id="content-en" class="prose prose-invert max-w-none hidden">
+            <div class="bg-primary/10 border-l-4 border-primary rounded-lg p-6 mb-8">
+                <p class="text-sm text-textMuted m-0"><strong class="text-secondary">Effective Date:</strong> February
+                    8, 2026</p>
+            </div>
+
+            <h2 class="text-2xl font-serif text-secondary mt-12 mb-6 pb-3 border-b border-white/10">1. Acceptance of
+                Terms</h2>
+            <p class="text-textMuted mb-6">Welcome to PI CryptoMind. By using this platform, you agree to these Terms of
+                Service. If you do not agree, please do not use our services.</p>
+
+            <h2 class="text-2xl font-serif text-secondary mt-12 mb-6 pb-3 border-b border-white/10">2. Account & Wallet
+                Binding</h2>
+            <h3 class="text-xl text-primary mt-8 mb-4">2.1 Pi Wallet Binding</h3>
+            <ul class="space-y-2 text-textMuted mb-6">
+                <li>This platform uses Pi Network official SDK for authentication</li>
+                <li>Your Pi wallet address serves as a unique identifier</li>
+                <li>You are responsible for wallet security</li>
+            </ul>
+            <h3 class="text-xl text-primary mt-8 mb-4">2.2 Account Responsibility</h3>
+            <ul class="space-y-2 text-textMuted mb-6">
+                <li>You are responsible for all activities under your account</li>
+                <li>Do not share wallet access with others</li>
+                <li>Notify us immediately if unauthorized use is detected</li>
+            </ul>
+
+            <h2 class="text-2xl font-serif text-secondary mt-12 mb-6 pb-3 border-b border-white/10">3. Usage Rules</h2>
+            <p class="text-textMuted mb-4">You agree <strong class="text-secondary">NOT to</strong>:</p>
+            <ul class="space-y-2 text-textMuted mb-6">
+                <li>Post fraudulent, defamatory, harassing, or illegal content</li>
+                <li>Manipulate market data or publish false information</li>
+                <li>Abuse the report system or file malicious reports</li>
+                <li>Attempt to bypass security mechanisms or hack the system</li>
+                <li>Use bots or automated tools to scrape data</li>
+            </ul>
+
+            <h2 class="text-2xl font-serif text-secondary mt-12 mb-6 pb-3 border-b border-white/10">4. PRO Membership
+            </h2>
+            <h3 class="text-xl text-primary mt-8 mb-4">4.1 Payment Method</h3>
+            <p class="text-textMuted mb-6">PRO membership fees are paid in Pi via Pi Network official Payment API.</p>
+            <h3 class="text-xl text-primary mt-8 mb-4">4.2 No Refund Policy</h3>
+            <p class="text-textMuted mb-4">Due to the irreversible nature of cryptocurrency transactions, <strong
+                    class="text-secondary">paid membership fees are non-refundable</strong>, except when:</p>
+            <ul class="space-y-2 text-textMuted mb-6">
+                <li>System error causes duplicate charges</li>
+                <li>Service is unavailable for extended periods (7+ consecutive days)</li>
+            </ul>
+            <h3 class="text-xl text-primary mt-8 mb-4">4.3 PRO Benefits</h3>
+            <ul class="space-y-2 text-textMuted mb-6">
+                <li>Unlock advanced market analysis tools</li>
+                <li>Unlimited forum posts</li>
+                <li>Community moderator eligibility (requires 3-person consensus)</li>
+                <li>Increased scam report limit (10/day)</li>
+            </ul>
+
+            <h2 class="text-2xl font-serif text-secondary mt-12 mb-6 pb-3 border-b border-white/10">5. Forum Usage</h2>
+            <h3 class="text-xl text-primary mt-8 mb-4">5.1 Posting & Tipping</h3>
+            <ul class="space-y-2 text-textMuted mb-6">
+                <li>Free users: 3 posts/day limit</li>
+                <li>PRO users: Unlimited</li>
+                <li>Tips sent in Pi are <strong class="text-secondary">irreversible</strong></li>
+            </ul>
+            <h3 class="text-xl text-primary mt-8 mb-4">5.2 Content Moderation</h3>
+            <p class="text-textMuted mb-6">We reserve the right to remove violating content without prior notice. See <a
+                    href="community-guidelines.html"
+                    class="text-primary hover:text-accent transition underline">Community Guidelines</a>.</p>
+
+            <h2 class="text-2xl font-serif text-secondary mt-12 mb-6 pb-3 border-b border-white/10">6. Scam Reports &
+                Governance</h2>
+            <h3 class="text-xl text-primary mt-8 mb-4">6.1 Report System</h3>
+            <ul class="space-y-2 text-textMuted mb-6">
+                <li>Free users: 5 reports/day</li>
+                <li>PRO users: 10 reports/day</li>
+                <li>Malicious reports will lead to account suspension</li>
+            </ul>
+            <h3 class="text-xl text-primary mt-8 mb-4">6.2 Violation Penalties</h3>
+            <p class="text-textMuted mb-4">Violation points (1-30) accumulate based on severity. Thresholds trigger:</p>
+            <ul class="space-y-2 text-textMuted mb-6">
+                <li>5 pts: Warning</li>
+                <li>10 pts: 3-day suspension</li>
+                <li>20 pts: 7-day suspension</li>
+                <li>30 pts: 30-day suspension</li>
+                <li>40 pts: Permanent ban</li>
+            </ul>
+            <h3 class="text-xl text-primary mt-8 mb-4">6.3 Appeal Process</h3>
+            <p class="text-textMuted mb-6">Penalized users may submit appeals within 7 days with evidence of
+                misjudgment.</p>
+
+            <h2 class="text-2xl font-serif text-secondary mt-12 mb-6 pb-3 border-b border-white/10">7. Intellectual
+                Property</h2>
+            <ul class="space-y-2 text-textMuted mb-6">
+                <li>You retain copyright to content you post</li>
+                <li>But you grant the platform a non-exclusive, worldwide license to use it</li>
+                <li>Platform original content (code, design, trademarks) belongs to PI CryptoMind</li>
+            </ul>
+
+            <h2 class="text-2xl font-serif text-secondary mt-12 mb-6 pb-3 border-b border-white/10">8. Disclaimers</h2>
+            <h3 class="text-xl text-primary mt-8 mb-4">8.1 Not Investment Advice</h3>
+            <p class="text-textMuted mb-6"><strong class="text-secondary">All market analysis, data, and information on
+                    this platform are for reference only and do not constitute investment advice.</strong> You must
+                judge independently and bear investment risks.</p>
+            <h3 class="text-xl text-primary mt-8 mb-4">8.2 Cryptocurrency Risks</h3>
+            <p class="text-textMuted mb-6">Cryptocurrency trading carries high risks with severe price volatility. You
+                may lose your entire principal. Please carefully assess your risk tolerance.</p>
+            <h3 class="text-xl text-primary mt-8 mb-4">8.3 Third-Party Content</h3>
+            <p class="text-textMuted mb-6">User-generated content does not represent platform views. We are not
+                responsible for its accuracy or legality.</p>
+
+            <h2 class="text-2xl font-serif text-secondary mt-12 mb-6 pb-3 border-b border-white/10">9. Limitation of
+                Liability</h2>
+            <p class="text-textMuted mb-4">To the maximum extent permitted by law, PI CryptoMind is not liable for:</p>
+            <ul class="space-y-2 text-textMuted mb-6">
+                <li>Losses from using or inability to use services</li>
+                <li>Disruptions from third-party services (Pi Network, OKX API)</li>
+                <li>Data transmission errors, hacking, or technical issues</li>
+                <li>Investment decisions made based on platform information</li>
+            </ul>
+
+            <h2 class="text-2xl font-serif text-secondary mt-12 mb-6 pb-3 border-b border-white/10">10. Service
+                Termination</h2>
+            <p class="text-textMuted mb-4">We reserve the right to terminate or suspend your account at any time,
+                especially for:</p>
+            <ul class="space-y-2 text-textMuted mb-6">
+                <li>Violations of these Terms or Community Guidelines</li>
+                <li>Suspected fraud or illegal activities</li>
+                <li>Prolonged inactivity (90+ days)</li>
+            </ul>
+
+            <h2 class="text-2xl font-serif text-secondary mt-12 mb-6 pb-3 border-b border-white/10">11. Governing Law
+            </h2>
+            <p class="text-textMuted mb-6">These Terms are governed by the <strong class="text-secondary">Laws of the
+                    Republic of China (Taiwan)</strong>. Disputes should be resolved through friendly negotiation first,
+                and if unsuccessful, submitted to Taiwan courts for arbitration.</p>
+
+            <h2 class="text-2xl font-serif text-secondary mt-12 mb-6 pb-3 border-b border-white/10">12. Changes to Terms
+            </h2>
+            <p class="text-textMuted mb-6">We may update these Terms periodically. Major changes will be announced on
+                the platform. Continued use constitutes acceptance of new terms.</p>
+
+            <h2 class="text-2xl font-serif text-secondary mt-12 mb-6 pb-3 border-b border-white/10">13. Contact Us</h2>
+            <p class="text-textMuted mb-6">For questions, contact administrators via platform forum DM or email: <strong
+                    class="text-primary">support@picryptomind.io</strong></p>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="border-t border-white/5 bg-surface/50 backdrop-blur-xl">
+        <div class="max-w-5xl mx-auto px-6 py-8">
+            <div class="flex flex-wrap justify-center gap-6 mb-4 text-sm">
+                <a href="terms-of-service.html" class="text-primary hover:text-accent transition">Terms of Service</a>
+                <a href="privacy-policy.html" class="text-primary hover:text-accent transition">Privacy Policy</a>
+                <a href="community-guidelines.html" class="text-primary hover:text-accent transition">Community
+                    Guidelines</a>
+                <a href="/static/index.html" class="text-textMuted hover:text-secondary transition"
+                    id="back-platform">返回平台</a>
+            </div>
+            <p class="text-center text-textMuted text-xs">© 2026 PI CryptoMind. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        function toggleLanguage() {
+            const zhContent = document.getElementById('content-zh');
+            const enContent = document.getElementById('content-en');
+            const langLabel = document.getElementById('lang-label');
+            const navTitle = document.getElementById('nav-title');
+            const backText = document.getElementById('back-text');
+            const backPlatform = document.getElementById('back-platform');
+
+            if (zhContent.classList.contains('hidden')) {
+                zhContent.classList.remove('hidden');
+                enContent.classList.add('hidden');
+                langLabel.textContent = 'English';
+                navTitle.textContent = '服務條款';
+                backText.textContent = '返回';
+                backPlatform.textContent = '返回平台';
+                localStorage.setItem('legalPageLang', 'zh');
+            } else {
+                zhContent.classList.add('hidden');
+                enContent.classList.remove('hidden');
+                langLabel.textContent = '中文';
+                navTitle.textContent = 'Terms of Service';
+                backText.textContent = 'Back';
+                backPlatform.textContent = 'Back to Platform';
+                localStorage.setItem('legalPageLang', 'en');
+            }
+        }
+
+        // Load saved language preference
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedLang = localStorage.getItem('legalPageLang');
+            if (savedLang === 'en') {
+                toggleLanguage();
+            }
+        });
+    </script>
+</body>
+
+</html>

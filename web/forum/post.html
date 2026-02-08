@@ -253,7 +253,8 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-textMuted mb-2">Description <span class="text-textMuted/60">(optional)</span></label>
+                    <label class="block text-sm font-medium text-textMuted mb-2">Description <span
+                            class="text-textMuted/60">(optional)</span></label>
                     <textarea id="report-description" rows="3"
                         class="w-full bg-background border border-white/10 rounded-xl p-3 text-textMain focus:border-primary outline-none resize-none"
                         placeholder="Please provide more details about the violation..."></textarea>
@@ -308,7 +309,7 @@
             if (!reportBtn) return;
 
             // Open modal
-            reportBtn.addEventListener('click', function() {
+            reportBtn.addEventListener('click', function () {
                 const postId = ForumApp?.currentPostId;
                 if (postId) {
                     document.getElementById('report-content-id').value = postId;
@@ -331,7 +332,7 @@
             });
 
             // Submit report
-            form?.addEventListener('submit', async function(e) {
+            form?.addEventListener('submit', async function (e) {
                 e.preventDefault();
 
                 const contentType = document.getElementById('report-content-type').value;
@@ -380,6 +381,25 @@
             });
         }
     </script>
+
+    <!-- Footer -->
+    <footer class="bg-surface/95 border-t border-white/5 mt-12 py-8">
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="text-center md:text-left">
+                    <p class="text-xs text-textMuted">© 2026 PI CryptoMind. All rights reserved.</p>
+                </div>
+                <div class="flex flex-wrap justify-center gap-4">
+                    <a href="/static/legal/terms-of-service.html"
+                        class="text-xs text-textMuted hover:text-primary transition">Terms of Service</a>
+                    <a href="/static/legal/privacy-policy.html"
+                        class="text-xs text-textMuted hover:text-primary transition">Privacy Policy</a>
+                    <a href="/static/legal/community-guidelines.html"
+                        class="text-xs text-textMuted hover:text-primary transition">Community Guidelines</a>
+                </div>
+            </div>
+        </div>
+    </footer>
 </body>
 
 </html>
