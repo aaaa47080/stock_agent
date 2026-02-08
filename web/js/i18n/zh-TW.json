@@ -1,0 +1,73 @@
+{
+  "common": {
+    "loading": "載入中...",
+    "error": "發生錯誤",
+    "save": "儲存",
+    "cancel": "取消",
+    "confirm": "確認",
+    "delete": "刪除",
+    "search": "搜尋",
+    "close": "關閉"
+  },
+  "nav": {
+    "market": "市場分析",
+    "forum": "社群論壇",
+    "governance": "治理中心",
+    "safety": "詐騙檢舉",
+    "login": "登入",
+    "logout": "登出",
+    "profile": "個人資料"
+  },
+  "market": {
+    "title": "Market Watch",
+    "filter": "篩選",
+    "autoBadge": "自動",
+    "liveStatus": "LIVE",
+    "refresh": "重新整理",
+    "topPerformers": "Top Performers",
+    "marketDynamics": "Market Dynamics",
+    "topGainers": "Top Gainers (24H)",
+    "topLosers": "Top Losers (24H)",
+    "bullishSqueeze": "Bullish Squeeze (Low Funding)",
+    "overheated": "Overheated (High Funding)",
+    "selected": "已選擇"
+  },
+  "pulse": {
+    "title": "Market Pulse",
+    "filter": "篩選",
+    "autoBadge": "自動",
+    "selected": "已選擇",
+    "scanning": "掃描中",
+    "refresh": "重新整理"
+  },
+  "forum": {
+    "title": "社群論壇",
+    "newPost": "發文",
+    "categories": {
+      "analysis": "分析",
+      "question": "提問",
+      "tutorial": "教學",
+      "news": "新聞",
+      "chat": "閒聊",
+      "insight": "洞察"
+    },
+    "scamTracker": "詐騙追蹤",
+    "submitReport": "提交檢舉"
+  },
+  "friends": {
+    "title": "社群",
+    "messages": "訊息",
+    "friends": "好友"
+  },
+  "governance": {
+    "title": "社群治理",
+    "proposals": "提案",
+    "vote": "投票",
+    "passed": "已通過",
+    "rejected": "已否決"
+  },
+  "safety": {
+    "title": "詐騙檢舉",
+    "submitReport": "提交檢舉"
+  }
+}

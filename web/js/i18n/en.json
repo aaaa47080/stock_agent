@@ -1,0 +1,73 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error occurred",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "delete": "Delete",
+    "search": "Search",
+    "close": "Close"
+  },
+  "nav": {
+    "market": "Market Analysis",
+    "forum": "Community Forum",
+    "governance": "Governance",
+    "safety": "Scam Report",
+    "login": "Login",
+    "logout": "Logout",
+    "profile": "Profile"
+  },
+  "market": {
+    "title": "Market Watch",
+    "filter": "Filter",
+    "autoBadge": "Auto",
+    "liveStatus": "LIVE",
+    "refresh": "Refresh",
+    "topPerformers": "Top Performers",
+    "marketDynamics": "Market Dynamics",
+    "topGainers": "Top Gainers (24H)",
+    "topLosers": "Top Losers (24H)",
+    "bullishSqueeze": "Bullish Squeeze (Low Funding)",
+    "overheated": "Overheated (High Funding)",
+    "selected": "selected"
+  },
+  "pulse": {
+    "title": "Market Pulse",
+    "filter": "Filter",
+    "autoBadge": "Auto",
+    "selected": "selected",
+    "scanning": "Scanning",
+    "refresh": "Refresh"
+  },
+  "forum": {
+    "title": "Community Forum",
+    "newPost": "New Post",
+    "categories": {
+      "analysis": "Analysis",
+      "question": "Question",
+      "tutorial": "Tutorial",
+      "news": "News",
+      "chat": "Chat",
+      "insight": "Insight"
+    },
+    "scamTracker": "Scam Tracker",
+    "submitReport": "Submit Report"
+  },
+  "friends": {
+    "title": "Social",
+    "messages": "Messages",
+    "friends": "Friends"
+  },
+  "governance": {
+    "title": "Governance",
+    "proposals": "Proposals",
+    "vote": "Vote",
+    "passed": "Passed",
+    "rejected": "Rejected"
+  },
+  "safety": {
+    "title": "Scam Report",
+    "submitReport": "Submit Report"
+  }
+}
