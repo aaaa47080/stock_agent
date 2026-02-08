@@ -206,6 +206,9 @@
                         <!-- Navigation buttons will be dynamically rendered here -->
                     </div>
 
+                    <!-- Language Switcher -->
+                    <div class="lang-switcher-container"></div>
+
                     <!-- Drag Handle -->
                     <div
                         class="drag-handle w-8 h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-textMuted/50 hover:text-textMuted cursor-grab active:cursor-grabbing transition-all duration-200 ml-0.5">
@@ -1527,11 +1530,16 @@
         };
     </script>
     <script src="/static/js/i18n.js"></script>
+    <script src="/static/js/components/LanguageSwitcher.js"></script>
     <script>
         // 初始化 i18n
         document.addEventListener('DOMContentLoaded', () => {
             if (window.I18n) {
                 window.I18n.init();
+            }
+            // 初始化語系切換器
+            if (window.LanguageSwitcher) {
+                new LanguageSwitcher('.lang-switcher-container');
             }
         });
     </script>
