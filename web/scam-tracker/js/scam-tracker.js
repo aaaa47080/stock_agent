@@ -648,8 +648,8 @@ const ScamTrackerApp = {
             return;
         }
 
-        if (address.length !== 56 || !address.startsWith('G')) {
-            showToast('地址格式錯誤', 'error');
+        if (!/^G[A-Z234567]{55}$/.test(address)) {
+            showToast('地址格式錯誤（需 G 開頭，56 字元，僅 A-Z 及 2-7）', 'error');
             return;
         }
 
@@ -726,12 +726,12 @@ const ScamTrackerApp = {
         const txHash = document.getElementById('tx-hash').value.trim().toLowerCase();
 
         // 驗證
-        if (scamWallet.length !== 56 || !scamWallet.startsWith('G')) {
-            showToast('可疑錢包地址格式錯誤', 'error');
+        if (!/^G[A-Z234567]{55}$/.test(scamWallet)) {
+            showToast('可疑錢包地址格式錯誤（需 G 開頭，56 字元，僅 A-Z 及 2-7）', 'error');
             return;
         }
-        if (reporterWallet.length !== 56 || !reporterWallet.startsWith('G')) {
-            showToast('您的錢包地址格式錯誤', 'error');
+        if (!/^G[A-Z234567]{55}$/.test(reporterWallet)) {
+            showToast('您的錢包地址格式錯誤（需 G 開頭，56 字元，僅 A-Z 及 2-7）', 'error');
             return;
         }
         if (!scamType) {
@@ -742,8 +742,8 @@ const ScamTrackerApp = {
             showToast('描述長度必須在 20-2000 字之間', 'error');
             return;
         }
-        if (txHash && txHash.length !== 64) {
-            showToast('交易哈希格式錯誤', 'error');
+        if (txHash && !/^[a-f0-9]{64}$/.test(txHash)) {
+            showToast('交易哈希格式錯誤（需 64 位十六進制字元）', 'error');
             return;
         }
 

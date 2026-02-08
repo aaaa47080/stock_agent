@@ -53,7 +53,7 @@
     <script src="/static/js/premium.js"></script>
     <script src="/static/js/friends.js?v=2"></script>
     <script src="/static/js/messages.js?v=2"></script>
-    <script src="/static/js/nav-config.js?v=1"></script>
+    <script src="/static/js/nav-config.js?v=5"></script>
     <!-- Fonts -->
     <link
         href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Mulish:wght@300;400;600;800&family=JetBrains+Mono:wght@400;500&display=swap"
@@ -503,6 +503,12 @@
                 <!-- Dynamic Content Injected via components.js -->
             </div>
 
+            <!-- Tab: Safety (Scam Tracker & Governance) -->
+            <div id="safety-tab"
+                class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40">
+                <!-- Dynamic Content Injected via components.js -->
+            </div>
+
             <!-- Tab: Settings -->
             <div id="settings-tab"
                 class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40 will-change-transform">
@@ -931,7 +937,7 @@
     <script src="/static/js/apiKeyManager.js?v=47" onerror="alert('apiKeyManager.js 載入失敗')"></script>
     <script src="/static/js/auth.js?v=47" onerror="alert('auth.js 載入失敗')"></script>
     <script src="/static/js/okxKeyManager.js?v=47"></script>
-    <script src="/static/js/components.js?v=47"></script>
+    <script src="/static/js/components.js?v=50"></script>
     <script src="/static/js/llmSettings.js?v=47"></script>
     <script src="/static/js/filter.js?v=47"></script>
     <script src="/static/js/chat.js?v=47"></script>
@@ -943,6 +949,8 @@
     <script src="/static/js/wallet.js?v=47"></script>
     <script src="/static/js/debate.js?v=47"></script>
     <script src="/static/js/committeeManager.js?v=47"></script>
+    <script src="/static/scam-tracker/js/scam-tracker.js?v=48"></script>
+    <script src="/static/js/safetyTab.js?v=52"></script>
     <script>
         lucide.createIcons();
 
@@ -984,7 +992,7 @@
 
         // 監聽瀏覽器返回/前進按鈕
         window.addEventListener('popstate', (event) => {
-            const validTabs = ['chat', 'market', 'pulse', 'wallet', 'assets', 'friends', 'settings'];
+            const validTabs = ['chat', 'market', 'pulse', 'wallet', 'assets', 'friends', 'safety', 'settings'];
             let targetTab = 'chat';
 
             if (event.state && event.state.tab) {
@@ -1035,7 +1043,7 @@
             });
 
             // Dynamic Component Injection (Lazy Loading)
-            if (['market', 'pulse', 'settings', 'friends'].includes(tabId)) {
+            if (['market', 'pulse', 'settings', 'friends', 'safety'].includes(tabId)) {
                 if (window.Components && typeof window.Components.inject === 'function') {
                     await window.Components.inject(tabId);
                 }
@@ -1115,6 +1123,9 @@
             if (tabId === 'friends') {
                 if (window.SocialHub) window.SocialHub.init();
             }
+            if (tabId === 'safety') {
+                if (window.SafetyTab) window.SafetyTab.init();
+            }
             if (tabId === 'settings') {
                 // 💡 修正：注入內容後，立即更新用戶資料顯示
                 if (window.AuthManager && typeof window.AuthManager._updateUI === 'function') {
@@ -1146,6 +1157,11 @@
                 // 🌟 確保 Committee Manager 被重新初始化 (因為 Settings UI 是動態注入的)
                 if (window.CommitteeManager && typeof window.CommitteeManager.init === 'function') {
                     window.CommitteeManager.init();
+                }
+
+                // 更新 OKX 連接狀態 UI
+                if (typeof updateOKXStatusUI === 'function') {
+                    updateOKXStatusUI();
                 }
             }
 
@@ -1247,6 +1263,9 @@
                 itemsContainer.innerHTML = '';
 
                 window.NAV_ITEMS.forEach(item => {
+                    // Skip locked items - they are always enabled and not configurable
+                    if (item.locked) return;
+
                     const isEnabled = this._tempPreferences.has(item.id);
                     const itemEl = document.createElement('div');
                     itemEl.className = `feature-menu-item ${!isEnabled ? 'disabled' : ''}`;
@@ -1280,6 +1299,10 @@
              * Toggle a navigation item on/off
              */
             toggleItem(itemId, element) {
+                // Locked items cannot be toggled
+                const navItem = window.NAV_ITEMS.find(i => i.id === itemId);
+                if (navItem && navItem.locked) return;
+
                 const isCurrentlyEnabled = this._tempPreferences.has(itemId);
 
                 if (isCurrentlyEnabled) {
@@ -1371,19 +1394,12 @@
             },
 
             /**
-             * Show a toast notification
+             * Show a toast notification (delegates to global showToast)
              */
             showToast(message) {
-                // Simple toast implementation
-                const toast = document.createElement('div');
-                toast.className = 'fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-success text-white px-6 py-3 rounded-xl shadow-lg z-50 animate-fade-in-up';
-                toast.textContent = message;
-                document.body.appendChild(toast);
-
-                setTimeout(() => {
-                    toast.style.opacity = '0';
-                    setTimeout(() => toast.remove(), 300);
-                }, 2000);
+                if (typeof window.showToast === 'function') {
+                    window.showToast(message, 'success');
+                }
             }
         };
 
@@ -1439,7 +1455,7 @@
             renderNavButtons();
 
             // 3. 載入預設分頁（優先順序：sessionStorage returnToTab > URL hash > localStorage）
-            const validTabs = ['chat', 'market', 'pulse', 'wallet', 'assets', 'friends', 'settings'];
+            const validTabs = ['chat', 'market', 'pulse', 'wallet', 'assets', 'friends', 'safety', 'settings'];
             const returnToTab = sessionStorage.getItem('returnToTab');
             const hashTab = window.location.hash.replace('#', '');
             const savedTab = localStorage.getItem('activeTab') || 'chat';

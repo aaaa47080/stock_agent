@@ -351,6 +351,32 @@ def check_daily_report_limit(db, user_id: str, daily_limit: int) -> bool:
             conn.close()
 
 
+def get_daily_report_usage(db, user_id: str) -> int:
+    """
+    Get the number of reports a user has submitted today
+
+    Args:
+        db: Database connection (optional)
+        user_id: User ID
+
+    Returns:
+        Number of reports submitted today
+    """
+    conn = db or get_connection()
+    c = conn.cursor()
+    try:
+        today = datetime.utcnow().strftime('%Y-%m-%d')
+        c.execute('''
+            SELECT COUNT(*) FROM content_reports
+            WHERE reporter_user_id = %s
+            AND DATE(created_at) = %s
+        ''', (user_id, today))
+        return c.fetchone()[0]
+    finally:
+        if not db:
+            conn.close()
+
+
 # ============================================================================
 # Voting
 # ============================================================================

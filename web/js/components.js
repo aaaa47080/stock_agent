@@ -649,6 +649,271 @@ const Components = {
         </div>
     `,
 
+    // Tab: Safety (Scam Tracker + Governance)
+    safety: `
+        <div class="max-w-4xl mx-auto space-y-6">
+            <!-- Header -->
+            <div class="flex items-center justify-between">
+                <h2 class="font-serif text-2xl md:text-3xl text-secondary flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-danger/10 flex items-center justify-center">
+                        <i data-lucide="shield-alert" class="w-5 h-5 text-danger"></i>
+                    </div>
+                    Community Safety
+                </h2>
+                <div class="flex items-center gap-2">
+                    <button onclick="SafetyTab.openGovernanceModal()" class="px-3 py-2 bg-accent/10 hover:bg-accent/20 text-accent rounded-xl text-sm font-bold flex items-center gap-1.5 transition">
+                        <i data-lucide="scale" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">Governance</span>
+                    </button>
+                    <button onclick="SafetyTab.openSubmitModal()" class="px-3 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl text-sm font-bold flex items-center gap-1.5 transition">
+                        <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">Report Wallet</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Search -->
+            <div class="bg-surface border border-white/5 rounded-2xl p-4">
+                <div class="flex gap-2">
+                    <input type="text" id="safety-search-wallet" placeholder="Search wallet address..."
+                        class="flex-1 bg-background border border-white/10 rounded-xl px-4 py-2.5 text-textMain focus:border-primary outline-none text-sm"
+                        onkeypress="if(event.key==='Enter') SafetyTab.handleSearch()">
+                    <button onclick="SafetyTab.handleSearch()" class="bg-primary text-background px-5 py-2.5 rounded-xl font-bold hover:brightness-110 transition text-sm">
+                        <i data-lucide="search" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="flex flex-wrap gap-2">
+                <select id="safety-filter-type" onchange="SafetyTab.applyFilters()"
+                    class="bg-surface border border-white/5 rounded-xl px-3 py-2 text-textMuted text-xs font-bold outline-none focus:border-primary/50 cursor-pointer">
+                    <option value="">All Types</option>
+                </select>
+                <select id="safety-filter-status" onchange="SafetyTab.applyFilters()"
+                    class="bg-surface border border-white/5 rounded-xl px-3 py-2 text-textMuted text-xs font-bold outline-none focus:border-primary/50 cursor-pointer">
+                    <option value="">All Status</option>
+                    <option value="verified">Verified</option>
+                    <option value="pending">Pending</option>
+                    <option value="disputed">Disputed</option>
+                </select>
+                <select id="safety-sort-by" onchange="SafetyTab.applyFilters()"
+                    class="bg-surface border border-white/5 rounded-xl px-3 py-2 text-textMuted text-xs font-bold outline-none focus:border-primary/50 cursor-pointer">
+                    <option value="latest">Latest</option>
+                    <option value="most_voted">Most Voted</option>
+                    <option value="most_viewed">Most Viewed</option>
+                </select>
+            </div>
+
+            <!-- Report List -->
+            <div id="safety-report-list" class="space-y-3">
+                <div class="text-center text-textMuted py-8">
+                    <i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto mb-2"></i>
+                    Loading...
+                </div>
+            </div>
+
+            <!-- Load More -->
+            <div class="text-center">
+                <button id="safety-btn-load-more" onclick="SafetyTab.loadMore()" class="bg-surface hover:bg-surfaceHighlight text-textMuted px-6 py-3 rounded-xl font-bold transition border border-white/5 hidden">
+                    Load More
+                </button>
+            </div>
+        </div>
+
+        <!-- Submit Scam Report Modal -->
+        <div id="safety-submit-modal" class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4">
+            <div class="bg-surface w-full max-w-lg max-h-[85vh] flex flex-col rounded-[2rem] border border-white/5 shadow-2xl">
+                <div class="p-6 border-b border-white/5 flex justify-between items-center shrink-0">
+                    <h3 class="font-serif text-xl text-secondary flex items-center gap-2">
+                        <i data-lucide="alert-triangle" class="w-5 h-5 text-danger"></i> Report Scam Wallet
+                    </h3>
+                    <button onclick="SafetyTab.closeSubmitModal()" class="w-8 h-8 rounded-full bg-background flex items-center justify-center text-textMuted hover:text-secondary transition">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <div class="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+                    <div>
+                        <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Scam Wallet Address <span class="text-danger">*</span></label>
+                        <input type="text" id="safety-scam-wallet" placeholder="G..."
+                            class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition font-mono text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Your Wallet Address <span class="text-danger">*</span></label>
+                        <input type="text" id="safety-reporter-wallet" placeholder="G..."
+                            class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition font-mono text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Scam Type <span class="text-danger">*</span></label>
+                        <select id="safety-scam-type"
+                            class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition text-sm">
+                            <option value="">Select type...</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Description <span class="text-danger">*</span></label>
+                        <textarea id="safety-description" rows="4" placeholder="Describe the scam details (min 20 chars)..."
+                            class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition text-sm resize-none"></textarea>
+                        <p class="text-[10px] text-textMuted mt-1"><span id="safety-char-count">0</span> / 2000</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Transaction Hash <span class="text-textMuted/50">(Optional)</span></label>
+                        <input type="text" id="safety-tx-hash" placeholder="64-char hash..."
+                            class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition font-mono text-sm">
+                    </div>
+                </div>
+                <div class="p-6 border-t border-white/5 shrink-0">
+                    <button onclick="SafetyTab.submitReport()" id="safety-btn-submit"
+                        class="w-full py-3.5 bg-danger hover:brightness-110 text-white font-bold rounded-xl transition shadow-lg flex items-center justify-center gap-2">
+                        <i data-lucide="send" class="w-4 h-4"></i> Submit Report
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scam Report Detail Modal -->
+        <div id="safety-detail-modal" class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4">
+            <div class="bg-surface w-full max-w-lg max-h-[85vh] flex flex-col rounded-[2rem] border border-white/5 shadow-2xl">
+                <div class="p-6 border-b border-white/5 flex justify-between items-center shrink-0">
+                    <h3 class="font-serif text-xl text-secondary">Report Detail</h3>
+                    <button onclick="SafetyTab.closeDetailModal()" class="w-8 h-8 rounded-full bg-background flex items-center justify-center text-textMuted hover:text-secondary transition">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <div id="safety-detail-content" class="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                    <div class="text-center text-textMuted py-8">Loading...</div>
+                </div>
+                <div class="p-6 border-t border-white/5 shrink-0">
+                    <div class="flex gap-3">
+                        <button onclick="SafetyTab.voteOnDetail('approve')" class="flex-1 py-3 bg-success/10 hover:bg-success/20 text-success font-bold rounded-xl transition flex items-center justify-center gap-2">
+                            <i data-lucide="thumbs-up" class="w-4 h-4"></i> Confirm (<span id="safety-detail-approve">0</span>)
+                        </button>
+                        <button onclick="SafetyTab.voteOnDetail('reject')" class="flex-1 py-3 bg-danger/10 hover:bg-danger/20 text-danger font-bold rounded-xl transition flex items-center justify-center gap-2">
+                            <i data-lucide="thumbs-down" class="w-4 h-4"></i> Dispute (<span id="safety-detail-reject">0</span>)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Governance Report Modal -->
+        <div id="governance-modal" class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4">
+            <div class="bg-surface w-full max-w-lg max-h-[85vh] flex flex-col rounded-[2rem] border border-white/5 shadow-2xl">
+                <div class="p-6 border-b border-white/5 flex justify-between items-center shrink-0">
+                    <h3 class="font-serif text-xl text-secondary flex items-center gap-2">
+                        <i data-lucide="scale" class="w-5 h-5 text-accent"></i> Community Governance
+                    </h3>
+                    <button onclick="SafetyTab.closeGovernanceModal()" class="w-8 h-8 rounded-full bg-background flex items-center justify-center text-textMuted hover:text-secondary transition">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <!-- Governance Tabs -->
+                <div class="flex border-b border-white/5 px-6 pt-2 gap-1 overflow-x-auto shrink-0">
+                    <button onclick="SafetyTab.switchGovTab('gov-report')" class="gov-tab-btn px-3 py-2 text-xs font-bold rounded-t-lg border-b-2 border-primary text-primary transition" data-gov-tab="gov-report">Report</button>
+                    <button onclick="SafetyTab.switchGovTab('gov-my-reports')" class="gov-tab-btn px-3 py-2 text-xs font-bold rounded-t-lg border-b-2 border-transparent text-textMuted hover:text-secondary transition" data-gov-tab="gov-my-reports">My Reports</button>
+                    <button onclick="SafetyTab.switchGovTab('gov-review')" class="gov-tab-btn px-3 py-2 text-xs font-bold rounded-t-lg border-b-2 border-transparent text-textMuted hover:text-secondary transition" data-gov-tab="gov-review">Review <span class="text-[9px] bg-accent/20 text-accent px-1.5 py-0.5 rounded ml-1">PRO</span></button>
+                    <button onclick="SafetyTab.switchGovTab('gov-leaderboard')" class="gov-tab-btn px-3 py-2 text-xs font-bold rounded-t-lg border-b-2 border-transparent text-textMuted hover:text-secondary transition" data-gov-tab="gov-leaderboard">Ranking</button>
+                </div>
+
+                <div class="flex-1 overflow-y-auto custom-scrollbar">
+                    <!-- Report Tab -->
+                    <div id="gov-report-tab" class="gov-tab-content p-6 space-y-4">
+                        <p class="text-textMuted text-sm">Found a violation? PRO reviewers will review your report.</p>
+                        <div>
+                            <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Content Type <span class="text-danger">*</span></label>
+                            <select id="gov-content-type" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition text-sm">
+                                <option value="">Select...</option>
+                                <option value="post">Post</option>
+                                <option value="comment">Comment</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Content ID <span class="text-danger">*</span></label>
+                            <input type="number" id="gov-content-id" placeholder="Enter content ID"
+                                class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition text-sm">
+                            <p class="text-[10px] text-textMuted mt-1">Found in the content URL</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Violation Type <span class="text-danger">*</span></label>
+                            <select id="gov-report-type" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition text-sm">
+                                <option value="">Select...</option>
+                                <option value="spam">Spam</option>
+                                <option value="harassment">Harassment</option>
+                                <option value="misinformation">Misinformation</option>
+                                <option value="scam">Scam</option>
+                                <option value="illegal">Illegal Content</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Description <span class="text-textMuted/50">(Optional)</span></label>
+                            <textarea id="gov-description" rows="3" placeholder="Describe the violation..."
+                                class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition text-sm resize-none"></textarea>
+                        </div>
+                        <button onclick="SafetyTab.submitGovernanceReport()" class="w-full py-3 bg-accent hover:brightness-110 text-white font-bold rounded-xl transition shadow-lg flex items-center justify-center gap-2">
+                            <i data-lucide="send" class="w-4 h-4"></i> Submit Report
+                        </button>
+                        <div id="gov-quota-display" class="bg-background/50 rounded-xl p-4 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <h4 class="text-xs font-bold text-textMuted flex items-center gap-1"><i data-lucide="info" class="w-3 h-3"></i> Daily Quota</h4>
+                                <span id="gov-quota-badge" class="text-[10px] px-2 py-0.5 rounded bg-white/5 text-textMuted">--</span>
+                            </div>
+                            <div class="w-full bg-white/5 rounded-full h-2">
+                                <div id="gov-quota-bar" class="h-2 rounded-full bg-accent transition-all" style="width: 0%"></div>
+                            </div>
+                            <div class="text-[11px] text-textMuted/70 flex justify-between">
+                                <span id="gov-quota-text">Loading...</span>
+                                <span id="gov-quota-tier" class="text-textMuted/50"></span>
+                            </div>
+                            <ul class="text-[11px] text-textMuted/70 space-y-1 list-disc list-inside border-t border-white/5 pt-2">
+                                <li>One report per content per user</li>
+                                <li>Cannot report your own content</li>
+                                <li>False reports may result in penalties</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- My Reports Tab -->
+                    <div id="gov-my-reports-tab" class="gov-tab-content hidden p-6">
+                        <div class="flex gap-2 mb-4 overflow-x-auto pb-1">
+                            <button onclick="SafetyTab.loadMyGovReports('all', this)" class="gov-filter-btn px-3 py-1.5 text-xs font-bold rounded-lg bg-white/5 text-primary border border-primary/20">All</button>
+                            <button onclick="SafetyTab.loadMyGovReports('pending', this)" class="gov-filter-btn px-3 py-1.5 text-xs font-bold rounded-lg bg-white/5 text-textMuted border border-white/5">Pending</button>
+                            <button onclick="SafetyTab.loadMyGovReports('approved', this)" class="gov-filter-btn px-3 py-1.5 text-xs font-bold rounded-lg bg-white/5 text-textMuted border border-white/5">Approved</button>
+                            <button onclick="SafetyTab.loadMyGovReports('rejected', this)" class="gov-filter-btn px-3 py-1.5 text-xs font-bold rounded-lg bg-white/5 text-textMuted border border-white/5">Rejected</button>
+                        </div>
+                        <div id="gov-my-reports-list" class="space-y-3">
+                            <div class="text-center text-textMuted py-8 text-sm">Select a filter to load reports</div>
+                        </div>
+                    </div>
+
+                    <!-- Review Tab (PRO) -->
+                    <div id="gov-review-tab" class="gov-tab-content hidden p-6">
+                        <div id="gov-pro-notice" class="text-center py-8">
+                            <div class="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i data-lucide="lock" class="w-8 h-8 text-accent"></i>
+                            </div>
+                            <h4 class="font-bold text-secondary mb-2">PRO Members Only</h4>
+                            <p class="text-textMuted text-sm mb-4">Upgrade to PRO to review reports and earn reputation.</p>
+                        </div>
+                        <div id="gov-review-content" class="hidden space-y-3">
+                            <div id="gov-pending-list" class="space-y-3">
+                                <div class="text-center text-textMuted py-4 text-sm">Loading...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Leaderboard Tab -->
+                    <div id="gov-leaderboard-tab" class="gov-tab-content hidden p-6">
+                        <div id="gov-leaderboard-list" class="space-y-2">
+                            <div class="text-center text-textMuted py-8 text-sm">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `,
+
     // Feature Menu: Navigation Customization
     featureMenu: `
         <div id="feature-menu-modal" class="fixed inset-0 z-50 hidden">

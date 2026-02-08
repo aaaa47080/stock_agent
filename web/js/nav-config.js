@@ -11,7 +11,8 @@ const NAV_ITEMS = [
     { id: 'assets', icon: 'wallet', label: 'Assets', defaultEnabled: true },
     { id: 'friends', icon: 'users', label: 'Friends', defaultEnabled: true },
     { id: 'forum', icon: 'messages-square', label: 'Forum', defaultEnabled: true },
-    { id: 'settings', icon: 'settings-2', label: 'Settings', defaultEnabled: true }
+    { id: 'safety', icon: 'shield-alert', label: 'Safety', defaultEnabled: true },
+    { id: 'settings', icon: 'settings-2', label: 'Settings', defaultEnabled: true, locked: true }
 ];
 
 /**
@@ -20,7 +21,7 @@ const NAV_ITEMS = [
  */
 const NavPreferences = {
     STORAGE_KEY: 'userNavPreferences',
-    PREFERENCES_VERSION: 1,
+    PREFERENCES_VERSION: 2,
     MIN_ENABLED_ITEMS: 2,
 
     /**
@@ -79,6 +80,10 @@ const NavPreferences = {
      * @returns {boolean}
      */
     canDisableItem(itemId) {
+        // Locked items can never be disabled
+        const item = NAV_ITEMS.find(i => i.id === itemId);
+        if (item && item.locked) return false;
+
         const preferences = this.loadPreferences();
         const currentlyEnabled = preferences.enabledItems.filter(id => id !== itemId);
         return currentlyEnabled.length >= this.MIN_ENABLED_ITEMS;
@@ -142,6 +147,32 @@ const NavPreferences = {
                 if (!validation.valid) {
                     console.warn('Invalid preferences loaded, resetting to defaults:', validation.errors);
                     return this._getDefaultPreferences();
+                }
+
+                let changed = false;
+
+                // Version migration: add new default items when version bumps
+                if (!preferences.version || preferences.version < this.PREFERENCES_VERSION) {
+                    NAV_ITEMS.filter(i => i.defaultEnabled).forEach(item => {
+                        if (!preferences.enabledItems.includes(item.id)) {
+                            preferences.enabledItems.push(item.id);
+                            changed = true;
+                        }
+                    });
+                    preferences.version = this.PREFERENCES_VERSION;
+                    changed = true;
+                }
+
+                // Ensure locked items are always included
+                NAV_ITEMS.filter(i => i.locked).forEach(item => {
+                    if (!preferences.enabledItems.includes(item.id)) {
+                        preferences.enabledItems.push(item.id);
+                        changed = true;
+                    }
+                });
+
+                if (changed) {
+                    this.savePreferences(preferences);
                 }
 
                 return preferences;
@@ -218,6 +249,10 @@ const NavPreferences = {
         };
     }
 };
+
+// Make available on window for cross-script access
+window.NAV_ITEMS = NAV_ITEMS;
+window.NavPreferences = NavPreferences;
 
 // Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
