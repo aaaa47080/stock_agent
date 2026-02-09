@@ -126,13 +126,13 @@
         <div class="p-4">
             <button onclick="createNewChat()"
                 class="w-full py-3 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-xl flex items-center justify-center gap-2 transition font-bold text-sm">
-                <i data-lucide="plus" class="w-4 h-4"></i> New Chat
+                <i data-lucide="plus" class="w-4 h-4"></i> <span data-i18n="sidebar.newChat">New Chat</span>
             </button>
         </div>
 
         <div class="flex-1 overflow-y-auto custom-scrollbar px-2 space-y-1" id="chat-session-list">
             <!-- Sessions injected via JS -->
-            <div class="text-center text-xs text-textMuted/40 py-4">No history</div>
+            <div class="text-center text-xs text-textMuted/40 py-4" data-i18n="sidebar.noHistory">No history</div>
         </div>
 
         <div class="p-4 border-t border-white/5">
@@ -144,12 +144,12 @@
                 </div>
                 <div class="flex-1 text-left">
                     <div class="flex items-center gap-1.5">
-                        <div class="font-bold truncate" id="sidebar-user-name">Guest</div>
+                        <div class="font-bold truncate" id="sidebar-user-name" data-i18n="common.guest">Guest</div>
                         <div id="sidebar-premium-badge"
                             class="hidden px-1.5 py-0.5 rounded text-[8px] font-black bg-gradient-to-r from-yellow-500 to-orange-500 text-background leading-none uppercase tracking-tighter">
                             PRO</div>
                     </div>
-                    <div class="text-[10px] opacity-60">Settings</div>
+                    <div class="text-[10px] opacity-60" data-i18n="sidebar.settings">Settings</div>
                 </div>
             </button>
         </div>
@@ -235,28 +235,31 @@
                         style="animation-delay: 0.1s; animation-fill-mode: forwards;">
                         <div class="flex flex-col items-center justify-center mb-8">
                             <h1 class="font-serif text-3xl md:text-4xl leading-tight text-center">
-                                <span class="text-secondary">Welcome to</span><br>
+                                <span class="text-secondary" data-i18n="chat.welcomeTo">Welcome to</span><br>
                                 <span
                                     class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">CryptoMind</span>
                             </h1>
                             <p class="text-textMuted mt-2">Good <span id="greeting-time">day</span>.</p>
                         </div>
-                        <p class="text-textMuted text-lg font-light leading-relaxed text-center">
+                        <p class="text-textMuted text-lg font-light leading-relaxed text-center" data-i18n="chat.subtitle">
                             AI-powered crypto analysis and trading insights. Monitor markets and make informed
                             decisions.
                         </p>
 
                         <div class="flex flex-wrap gap-3 mt-8 justify-center">
                             <button onclick="quickAsk('Analyze BTC trend')"
-                                class="px-5 py-2.5 rounded-full bg-surface hover:bg-surfaceHighlight border border-white/5 text-sm text-textMuted hover:text-primary transition shadow-sm">
+                                class="px-5 py-2.5 rounded-full bg-surface hover:bg-surfaceHighlight border border-white/5 text-sm text-textMuted hover:text-primary transition shadow-sm"
+                                data-i18n="chat.btnBtcTrend">
                                 Bitcoin Trend
                             </button>
                             <button onclick="quickAsk('ETH Funding Rates')"
-                                class="px-5 py-2.5 rounded-full bg-surface hover:bg-surfaceHighlight border border-white/5 text-sm text-textMuted hover:text-primary transition shadow-sm">
+                                class="px-5 py-2.5 rounded-full bg-surface hover:bg-surfaceHighlight border border-white/5 text-sm text-textMuted hover:text-primary transition shadow-sm"
+                                data-i18n="chat.btnEthRates">
                                 ETH Rates
                             </button>
                             <button onclick="quickAsk('Market Sentiment')"
-                                class="px-5 py-2.5 rounded-full bg-surface hover:bg-surfaceHighlight border border-white/5 text-sm text-textMuted hover:text-primary transition shadow-sm">
+                                class="px-5 py-2.5 rounded-full bg-surface hover:bg-surfaceHighlight border border-white/5 text-sm text-textMuted hover:text-primary transition shadow-sm"
+                                data-i18n="chat.btnSentiment">
                                 Global Sentiment
                             </button>
                         </div>
@@ -272,15 +275,15 @@
                             class="w-14 h-14 bg-gradient-to-r from-primary to-accent rounded-full flex items-center justify-center mx-auto mb-4 text-white shadow-lg shadow-primary/30">
                             <i data-lucide="key" class="w-7 h-7"></i>
                         </div>
-                        <h3 class="font-serif text-2xl mb-2 text-secondary">Unlock Pi Intelligence</h3>
-                        <p class="text-textMuted text-sm mb-6 leading-relaxed">Connect an API key to enable AI
-                            analysis.<br>Your keys are stored locally and securely.</p>
+                        <h3 class="font-serif text-2xl mb-2 text-secondary" data-i18n="chat.unlockTitle">Unlock Pi Intelligence</h3>
+                        <p class="text-textMuted text-sm mb-6 leading-relaxed"><span data-i18n="chat.unlockDesc">Connect an API key to enable AI
+                            analysis.</span><br><span data-i18n="chat.unlockDesc2">Your keys are stored locally and securely.</span></p>
                         <button onclick="switchTab('settings');"
                             class="w-full py-3.5 bg-gradient-to-r from-primary to-accent text-background font-bold rounded-2xl hover:brightness-110 transition shadow-lg shadow-primary/20">
                             <i data-lucide="settings" class="w-4 h-4 inline-block mr-2"></i>
-                            Configure API Key
+                            <span data-i18n="chat.configureApiKey">Configure API Key</span>
                         </button>
-                        <p class="text-textMuted/60 text-xs mt-4">You can still use other features below</p>
+                        <p class="text-textMuted/60 text-xs mt-4" data-i18n="chat.otherFeatures">You can still use other features below</p>
                     </div>
                 </div>
 
@@ -295,12 +298,12 @@
                                 <label class="flex items-center gap-2 cursor-pointer select-none">
                                     <input type="checkbox" class="analysis-checkbox accent-primary w-4 h-4 rounded-full"
                                         value="Technical Analysis" checked>
-                                    <span class="text-sm text-secondary">Technical</span>
+                                    <span class="text-sm text-secondary" data-i18n="chat.technical">Technical</span>
                                 </label>
                                 <label class="flex items-center gap-2 cursor-pointer select-none">
                                     <input type="checkbox" class="analysis-checkbox accent-primary w-4 h-4 rounded-full"
                                         value="News Analysis" checked>
-                                    <span class="text-sm text-secondary">News</span>
+                                    <span class="text-sm text-secondary" data-i18n="chat.news">News</span>
                                 </label>
                             </div>
                         </div>
@@ -314,7 +317,7 @@
                             </button>
                             <input type="text" id="user-input" disabled
                                 class="flex-1 bg-transparent border-none outline-none text-base text-secondary placeholder-textMuted/50 px-2 font-light relative z-10 opacity-50 cursor-not-allowed"
-                                placeholder="System Locked - Please Configure API Key" autocomplete="off"
+                                placeholder="System Locked - Please Configure API Key" data-i18n="chat.systemLocked" data-i18n-attr="placeholder" autocomplete="off"
                                 onkeypress="if(event.key === 'Enter') sendMessage()">
                             <button onclick="sendMessage()" id="send-btn" disabled
                                 class="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-accent text-background flex items-center justify-center hover:scale-105 active:scale-95 transition shadow-lg shadow-primary/20 opacity-50 cursor-not-allowed">
@@ -343,7 +346,7 @@
                 <div class="max-w-3xl mx-auto space-y-6">
                     <!-- Header -->
                     <div class="flex justify-between items-end">
-                        <h2 class="font-serif text-3xl text-secondary">Wallet History</h2>
+                        <h2 class="font-serif text-3xl text-secondary" data-i18n="wallet.title">Wallet History</h2>
                         <button onclick="WalletApp.loadData()"
                             class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition"><i
                                 data-lucide="refresh-cw" class="w-4 h-4"></i></button>
@@ -359,12 +362,12 @@
                                 <i data-lucide="credit-card" class="w-8 h-8 text-primary"></i>
                             </div>
                             <div>
-                                <div class="text-textMuted text-xs font-bold uppercase tracking-wider mb-2">Total
+                                <div class="text-textMuted text-xs font-bold uppercase tracking-wider mb-2" data-i18n="wallet.totalActivity">Total
                                     Activity</div>
                                 <div class="flex gap-8">
                                     <div>
                                         <span
-                                            class="text-[10px] text-textMuted uppercase tracking-wider block mb-0.5">Spent
+                                            class="text-[10px] text-textMuted uppercase tracking-wider block mb-0.5" data-i18n="wallet.spentOut">Spent
                                             (Out)</span>
                                         <div class="text-danger font-bold text-xl flex items-center gap-1">
                                             <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
@@ -373,7 +376,7 @@
                                     </div>
                                     <div>
                                         <span
-                                            class="text-[10px] text-textMuted uppercase tracking-wider block mb-0.5">Received
+                                            class="text-[10px] text-textMuted uppercase tracking-wider block mb-0.5" data-i18n="wallet.receivedIn">Received
                                             (In)</span>
                                         <div class="text-success font-bold text-xl flex items-center gap-1">
                                             <i data-lucide="arrow-down-left" class="w-4 h-4"></i>
@@ -389,7 +392,7 @@
                     <div class="bg-surface border border-white/5 rounded-[2rem] p-6 min-h-[400px]">
                         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                             <h3 class="font-bold text-secondary text-lg flex items-center gap-2">
-                                <i data-lucide="history" class="w-5 h-5 text-primary"></i> Transactions
+                                <i data-lucide="history" class="w-5 h-5 text-primary"></i> <span data-i18n="wallet.transactions">Transactions</span>
                             </h3>
 
                             <!-- Filters -->
@@ -397,20 +400,20 @@
                                 <div class="flex gap-2 overflow-x-auto pb-1 md:pb-0 hide-scrollbar">
                                     <select id="wallet-filter-type" onchange="WalletApp.applyFilters()"
                                         class="bg-surfaceHighlight border border-white/10 text-textMuted text-xs font-bold rounded-xl px-3 py-2 outline-none focus:border-primary/50 transition cursor-pointer">
-                                        <option value="all">All Types</option>
-                                        <option value="in">💰 Income (In)</option>
-                                        <option value="out">💸 Expense (Out)</option>
-                                        <option value="membership">👑 Premium</option>
-                                        <option value="tip">🎁 Tips</option>
-                                        <option value="post">📝 Post Fees</option>
+                                        <option value="all" data-i18n="wallet.allTypes">All Types</option>
+                                        <option value="in" data-i18n="wallet.income">💰 Income (In)</option>
+                                        <option value="out" data-i18n="wallet.expense">💸 Expense (Out)</option>
+                                        <option value="membership" data-i18n="wallet.premium">👑 Premium</option>
+                                        <option value="tip" data-i18n="wallet.tips">🎁 Tips</option>
+                                        <option value="post" data-i18n="wallet.postFees">📝 Post Fees</option>
                                     </select>
                                     <select id="wallet-filter-time" onchange="WalletApp.handleTimeFilterChange(this)"
                                         class="bg-surfaceHighlight border border-white/10 text-textMuted text-xs font-bold rounded-xl px-3 py-2 outline-none focus:border-primary/50 transition cursor-pointer">
-                                        <option value="all">All Time</option>
-                                        <option value="7">Last 7 Days</option>
-                                        <option value="30">Last 30 Days</option>
-                                        <option value="90">Last 3 Months</option>
-                                        <option value="custom">📅 Custom Range</option>
+                                        <option value="all" data-i18n="wallet.allTime">All Time</option>
+                                        <option value="7" data-i18n="wallet.last7Days">Last 7 Days</option>
+                                        <option value="30" data-i18n="wallet.last30Days">Last 30 Days</option>
+                                        <option value="90" data-i18n="wallet.last3Months">Last 3 Months</option>
+                                        <option value="custom" data-i18n="wallet.customRange">📅 Custom Range</option>
                                     </select>
                                 </div>
 
@@ -420,7 +423,7 @@
                                     <input type="date" id="wallet-date-start"
                                         class="bg-background border border-white/10 rounded-lg px-2 py-1 text-xs text-secondary outline-none focus:border-primary/50 min-w-[120px]"
                                         onchange="WalletApp.applyFilters()">
-                                    <span class="text-textMuted text-xs">to</span>
+                                    <span class="text-textMuted text-xs" data-i18n="common.to">to</span>
                                     <input type="date" id="wallet-date-end"
                                         class="bg-background border border-white/10 rounded-lg px-2 py-1 text-xs text-secondary outline-none focus:border-primary/50 min-w-[120px]"
                                         onchange="WalletApp.applyFilters()">
@@ -429,7 +432,7 @@
                         </div>
 
                         <div id="wallet-tx-list" class="space-y-2">
-                            <div class="text-center text-textMuted py-10 opacity-50">
+                            <div class="text-center text-textMuted py-10 opacity-50" data-i18n="wallet.loadingHistory">
                                 <i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto mb-2"></i>
                                 Loading history...
                             </div>
@@ -446,7 +449,7 @@
             <div id="assets-tab"
                 class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40 relative">
                 <div class="flex justify-between items-end mb-8">
-                    <h2 class="font-serif text-3xl text-secondary">Portfolio</h2>
+                    <h2 class="font-serif text-3xl text-secondary" data-i18n="assets.portfolio">Portfolio</h2>
                     <button onclick="refreshAssets()"
                         class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition"><i
                             data-lucide="refresh-cw" class="w-4 h-4"></i></button>
@@ -458,12 +461,12 @@
                         class="w-20 h-20 bg-gradient-to-br from-primary/20 to-accent/20 rounded-full flex items-center justify-center mx-auto mb-6">
                         <i data-lucide="wallet" class="w-10 h-10 text-primary"></i>
                     </div>
-                    <h3 class="font-serif text-xl text-secondary mb-2">Connect Your Exchange</h3>
-                    <p class="text-textMuted mb-8 text-sm">Link your OKX account to view portfolio and positions.</p>
+                    <h3 class="font-serif text-xl text-secondary mb-2" data-i18n="assets.connectExchange">Connect Your Exchange</h3>
+                    <p class="text-textMuted mb-8 text-sm" data-i18n="assets.linkDescription">Link your OKX account to view portfolio and positions.</p>
                     <button onclick="switchTab('settings')"
                         class="px-8 py-3.5 bg-gradient-to-r from-primary to-accent text-background font-bold rounded-2xl transition flex items-center gap-2 mx-auto shadow-lg shadow-primary/20 hover:scale-105">
                         <i data-lucide="settings" class="w-4 h-4"></i>
-                        Go to Settings
+                        <span data-i18n="assets.goToSettings">Go to Settings</span>
                     </button>
                 </div>
 
@@ -473,14 +476,14 @@
                         class="bg-gradient-to-br from-surface to-surfaceHighlight p-8 rounded-[2.5rem] mb-6 text-center border border-white/5 relative overflow-hidden">
                         <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-10 -mt-10">
                         </div>
-                        <span class="text-sm text-textMuted font-medium uppercase tracking-widest">Total Equity</span>
+                        <span class="text-sm text-textMuted font-medium uppercase tracking-widest" data-i18n="assets.totalEquity">Total Equity</span>
                         <h1 class="text-4xl md:text-5xl font-serif text-secondary mt-2 mb-2" id="total-equity">--</h1>
-                        <span class="text-xs text-textMuted/50 font-mono" id="asset-update-time">Updated: --:--</span>
+                        <span class="text-xs text-textMuted/50 font-mono" id="asset-update-time" data-i18n="assets.updated">Updated: --:--</span>
                     </div>
 
                     <!-- Spot Assets Section -->
                     <div class="bg-surface p-6 rounded-3xl border border-white/5 mb-6">
-                        <h3 class="font-bold text-sm text-textMuted mb-4">Spot Assets</h3>
+                        <h3 class="font-bold text-sm text-textMuted mb-4" data-i18n="assets.spotAssets">Spot Assets</h3>
                         <div id="spot-assets-list" class="space-y-4">
                             <!-- Injected via JS -->
                         </div>
@@ -488,7 +491,7 @@
 
                     <div class="bg-surface rounded-3xl border border-white/5 overflow-hidden">
                         <div class="p-4 border-b border-white/5 flex justify-between items-center">
-                            <h3 class="font-bold text-sm text-textMuted pl-2">Active Positions</h3>
+                            <h3 class="font-bold text-sm text-textMuted pl-2" data-i18n="assets.activePositions">Active Positions</h3>
                             <div id="positions-summary"></div>
                         </div>
                         <div class="overflow-x-auto">
@@ -570,9 +573,9 @@
                 <!-- Auto Refresh Toggle -->
                 <button id="auto-refresh-btn" onclick="toggleAutoRefresh()"
                     class="px-2 py-1 text-[10px] rounded-lg bg-surface/50 text-textMuted hover:bg-white/5 transition flex items-center gap-1"
-                    title="自動更新">
+                    title="自動更新" data-i18n="chart.autoRefresh" data-i18n-attr="title">
                     <i data-lucide="refresh-cw" class="w-3 h-3"></i>
-                    <span id="auto-refresh-status">OFF</span>
+                    <span id="auto-refresh-status" data-i18n="chart.off">OFF</span>
                 </button>
                 <!-- OHLCV Info Display -->
                 <div id="ohlcv-info" class="flex flex-wrap items-center gap-2 text-[10px] font-mono ml-auto">
@@ -603,20 +606,20 @@
         class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-6">
         <div class="bg-surface w-full max-w-md p-8 rounded-[2.5rem] border border-white/5 shadow-2xl">
             <div class="flex justify-between items-center mb-6">
-                <h3 class="font-serif text-xl text-secondary">Connect OKX</h3>
+                <h3 class="font-serif text-xl text-secondary" data-i18n="modals.apiKey.title">Connect OKX</h3>
                 <button onclick="closeApiKeyModal()"
                     class="w-8 h-8 rounded-full bg-background flex items-center justify-center text-textMuted hover:text-secondary transition"><i
                         data-lucide="x" class="w-4 h-4"></i></button>
             </div>
             <form id="apikey-form" onsubmit="saveApiKeys(event)" class="space-y-4">
-                <input type="text" id="input-api-key" placeholder="API Key"
+                <input type="text" id="input-api-key" placeholder="API Key" data-i18n="modals.apiKey.apiKeyPlaceholder" data-i18n-attr="placeholder"
                     class="w-full bg-background border border-white/5 rounded-2xl p-4 text-secondary outline-none focus:border-primary/50 transition">
-                <input type="password" id="input-secret-key" placeholder="Secret Key"
+                <input type="password" id="input-secret-key" placeholder="Secret Key" data-i18n="modals.apiKey.secretKeyPlaceholder" data-i18n-attr="placeholder"
                     class="w-full bg-background border border-white/5 rounded-2xl p-4 text-secondary outline-none focus:border-primary/50 transition">
-                <input type="password" id="input-passphrase" placeholder="Passphrase"
+                <input type="password" id="input-passphrase" placeholder="Passphrase" data-i18n="modals.apiKey.passphrasePlaceholder" data-i18n-attr="placeholder"
                     class="w-full bg-background border border-white/5 rounded-2xl p-4 text-secondary outline-none focus:border-primary/50 transition">
                 <button type="submit"
-                    class="w-full bg-secondary hover:bg-white text-background font-bold py-4 rounded-2xl transition">Secure
+                    class="w-full bg-secondary hover:bg-white text-background font-bold py-4 rounded-2xl transition" data-i18n="modals.apiKey.secureConnect">Secure
                     Connect</button>
             </form>
         </div>
@@ -628,14 +631,14 @@
         <div
             class="bg-surface w-full max-w-md h-[80vh] flex flex-col rounded-[2.5rem] border border-white/5 shadow-2xl overflow-hidden">
             <div class="p-6 border-b border-white/5 flex justify-between items-center">
-                <h3 class="font-serif text-xl text-secondary">Asset Filter</h3>
+                <h3 class="font-serif text-xl text-secondary" data-i18n="modals.filter.title">Asset Filter</h3>
                 <button onclick="document.getElementById('global-filter-modal').classList.add('hidden')"
                     class="w-8 h-8 rounded-full bg-background flex items-center justify-center text-textMuted hover:text-secondary"><i
                         data-lucide="x" class="w-4 h-4"></i></button>
             </div>
 
             <div class="p-4 bg-background/50 space-y-3">
-                <input type="text" id="symbol-search" placeholder="Search (e.g. BTC)..."
+                <input type="text" id="symbol-search" placeholder="Search (e.g. BTC)..." data-i18n="modals.filter.searchPlaceholder" data-i18n-attr="placeholder"
                     class="w-full bg-background border border-white/5 rounded-2xl px-5 py-3 text-secondary focus:border-primary/50 outline-none transition"
                     oninput="renderSymbolList(allMarketSymbols)">
                 <div class="flex gap-2">
@@ -652,7 +655,7 @@
             <div class="p-6 border-t border-white/5">
                 <button onclick="applyGlobalFilter()"
                     class="w-full bg-primary text-background font-bold py-4 rounded-2xl transition shadow-lg shadow-primary/20">
-                    Apply Filter (<span id="selected-count-modal">0</span>)
+                    <span data-i18n="modals.filter.applyFilter">Apply Filter</span> (<span id="selected-count-modal">0</span>)
                 </button>
             </div>
         </div>
@@ -685,10 +688,10 @@
                 class="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-6 text-success">
                 <i data-lucide="check" class="w-8 h-8"></i>
             </div>
-            <h3 class="text-center font-serif text-xl text-secondary mb-2">Connected</h3>
-            <p class="text-center text-textMuted text-sm mb-6">AI brain is now online.</p>
+            <h3 class="text-center font-serif text-xl text-secondary mb-2" data-i18n="modals.apiTest.connected">Connected</h3>
+            <p class="text-center text-textMuted text-sm mb-6" data-i18n="modals.apiTest.successMessage">AI brain is now online.</p>
             <button onclick="document.getElementById('api-test-modal').classList.add('hidden')"
-                class="w-full py-3 bg-secondary text-background font-bold rounded-2xl">Continue</button>
+                class="w-full py-3 bg-secondary text-background font-bold rounded-2xl" data-i18n="common.continue">Continue</button>
         </div>
     </div>
 
@@ -702,18 +705,20 @@
                 <i data-lucide="alert-triangle" class="w-8 h-8"></i>
             </div>
             <!-- Title -->
-            <h3 id="confirm-modal-title" class="text-center font-serif text-xl text-secondary mb-2">確認操作</h3>
+            <h3 id="confirm-modal-title" class="text-center font-serif text-xl text-secondary mb-2" data-i18n="modals.confirm.defaultTitle">確認操作</h3>
             <!-- Message -->
-            <p id="confirm-modal-message" class="text-center text-textMuted text-sm mb-8 whitespace-pre-line">確定要執行此操作嗎？
+            <p id="confirm-modal-message" class="text-center text-textMuted text-sm mb-8 whitespace-pre-line" data-i18n="modals.confirm.defaultMessage">確定要執行此操作嗎？
             </p>
             <!-- Buttons -->
             <div id="confirm-modal-buttons" class="flex gap-3">
                 <button id="confirm-modal-cancel"
-                    class="flex-1 py-3 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-2xl transition border border-white/5">
+                    class="flex-1 py-3 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-2xl transition border border-white/5"
+                    data-i18n="common.cancel">
                     取消
                 </button>
                 <button id="confirm-modal-confirm"
-                    class="flex-1 py-3 bg-danger hover:brightness-110 text-white font-bold rounded-2xl transition shadow-lg">
+                    class="flex-1 py-3 bg-danger hover:brightness-110 text-white font-bold rounded-2xl transition shadow-lg"
+                    data-i18n="common.confirm">
                     確認
                 </button>
             </div>
@@ -737,8 +742,8 @@
                     <img src="/static/img/title_icon.png" alt="CryptoMind Logo"
                         class="w-full h-full object-contain drop-shadow-lg">
                 </div>
-                <h2 class="font-serif text-2xl text-secondary mb-2">Welcome to CryptoMind</h2>
-                <p class="text-textMuted text-sm">Connect your wallet or login to continue</p>
+                <h2 class="font-serif text-2xl text-secondary mb-2" data-i18n="login.welcomeTitle">Welcome to CryptoMind</h2>
+                <p class="text-textMuted text-sm" data-i18n="login.welcomeSubtitle">Connect your wallet or login to continue</p>
             </div>
 
             <!-- Pi Network Login -->
@@ -747,21 +752,21 @@
                 <button id="pi-login-btn" onclick="safePiLogin()"
                     class="w-full py-4 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-bold rounded-2xl mb-4 flex items-center justify-center gap-3 transition shadow-lg"
                     style="display:none;">
-                    <img src="/static/img/pi-logo.png" alt="Pi" class="w-6 h-6"> Connect Pi Wallet
+                    <img src="/static/img/pi-logo.png" alt="Pi" class="w-6 h-6"> <span data-i18n="login.connectPiWallet">Connect Pi Wallet</span>
                 </button>
                 <!-- 非 Pi Browser 提示：默認顯示 -->
                 <div id="not-pi-browser-msg" class="text-center py-6">
                     <div class="w-16 h-16 mx-auto mb-4 bg-primary/10 rounded-full flex items-center justify-center">
                         <img src="/static/img/pi-logo.png" alt="Pi" class="w-8 h-8 opacity-50">
                     </div>
-                    <p class="text-secondary font-bold mb-2">請使用 Pi Browser 開啟</p>
-                    <p class="text-textMuted text-sm mb-4">Please open this app in Pi Browser</p>
+                    <p class="text-secondary font-bold mb-2" data-i18n="login.usePiBrowser">請使用 Pi Browser 開啟</p>
+                    <p class="text-textMuted text-sm mb-4" data-i18n="login.usePiBrowserDesc">Please open this app in Pi Browser</p>
                     <div class="bg-background/50 rounded-xl p-4 text-left">
-                        <p class="text-xs text-textMuted mb-2">步驟 Steps:</p>
+                        <p class="text-xs text-textMuted mb-2" data-i18n="login.stepsTitle">步驟 Steps:</p>
                         <ol class="text-xs text-textMuted/80 space-y-1 list-decimal list-inside">
-                            <li>開啟 Pi Browser App</li>
-                            <li>在網址列輸入本應用網址</li>
-                            <li>點擊 Connect Pi Wallet 登入</li>
+                            <li data-i18n="login.step1">開啟 Pi Browser App</li>
+                            <li data-i18n="login.step2">在網址列輸入本應用網址</li>
+                            <li data-i18n="login.step3">點擊 Connect Pi Wallet 登入</li>
                         </ol>
                     </div>
                 </div>
@@ -941,13 +946,13 @@
     <script src="/static/js/apiKeyManager.js?v=47" onerror="alert('apiKeyManager.js 載入失敗')"></script>
     <script src="/static/js/auth.js?v=47" onerror="alert('auth.js 載入失敗')"></script>
     <script src="/static/js/okxKeyManager.js?v=47"></script>
-    <script src="/static/js/components.js?v=52"></script>
+    <script src="/static/js/components.js?v=55"></script>
     <script src="/static/js/llmSettings.js?v=47"></script>
     <script src="/static/js/filter.js?v=47"></script>
     <script src="/static/js/chat.js?v=47"></script>
     <script src="/static/js/market.js?v=47"></script>
     <script src="/static/js/assets.js?v=47"></script>
-    <script src="/static/js/pulse.js?v=47"></script>
+    <script src="/static/js/pulse.js?v=50"></script>
     <script src="/static/js/trade.js?v=47"></script>
     <script src="/static/js/forum.js?v=47"></script>
     <script src="/static/js/wallet.js?v=47"></script>
@@ -1454,6 +1459,14 @@
                 UI: !!window.initializeUIStatus
             });
 
+            // 0. 初始化 i18n（必須在 renderNavButtons 之前完成）
+            if (window.I18n) {
+                try {
+                    await window.I18n.init();
+                    console.log('i18n ready');
+                } catch (e) { console.error('i18n Init Error:', e); }
+            }
+
             // 1. 初始化認證系統（支援測試模式自動登入）
             if (typeof initializeAuth === 'function') {
                 try {
@@ -1463,6 +1476,16 @@
 
             // 2. Render navigation buttons based on user preferences
             renderNavButtons();
+
+            // 2.5 初始化語系切換器
+            if (window.LanguageSwitcher) {
+                new LanguageSwitcher('.lang-switcher-container');
+            }
+
+            // 監聽語言切換事件，重新渲染導覽列標籤
+            window.addEventListener('languageChanged', () => {
+                renderNavButtons();
+            });
 
             // 3. 載入預設分頁（優先順序：sessionStorage returnToTab > URL hash > localStorage）
             const validTabs = ['chat', 'market', 'pulse', 'wallet', 'assets', 'friends', 'safety', 'settings'];
@@ -1535,20 +1558,145 @@
             console.log('Pending Ticker Symbols:', Array.from(window.pendingTickerSymbols || []));
         };
     </script>
-    <script src="/static/js/i18n.js"></script>
-    <script src="/static/js/components/LanguageSwitcher.js"></script>
+    <!-- Legal Page Modal -->
+    <div id="legal-modal" class="fixed inset-0 z-[9999] bg-background hidden flex-col">
+        <nav class="sticky top-0 z-10 bg-surface/95 backdrop-blur-xl border-b border-white/5">
+            <div class="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <button onclick="closeLegalModal()"
+                        class="px-4 py-2 bg-surfaceHighlight hover:bg-white/10 text-textMuted hover:text-secondary rounded-xl transition flex items-center gap-2">
+                        <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                        <span id="legal-back-text">Back</span>
+                    </button>
+                    <h1 id="legal-title" class="text-xl font-serif text-secondary"></h1>
+                </div>
+            </div>
+        </nav>
+        <div id="legal-content" class="flex-1 overflow-y-auto">
+            <div class="max-w-4xl mx-auto px-6 py-12 pb-32"></div>
+        </div>
+    </div>
+
     <script>
-        // 初始化 i18n
-        document.addEventListener('DOMContentLoaded', () => {
-            if (window.I18n) {
-                window.I18n.init();
+        const LEGAL_PAGE_MAP = {
+            terms: 'terms-of-service.html',
+            privacy: 'privacy-policy.html',
+            guidelines: 'community-guidelines.html'
+        };
+
+        async function showLegalPage(type) {
+            const filename = LEGAL_PAGE_MAP[type];
+            if (!filename) return;
+
+            const modal = document.getElementById('legal-modal');
+            const contentArea = document.querySelector('#legal-content > div');
+            const titleEl = document.getElementById('legal-title');
+            const backEl = document.getElementById('legal-back-text');
+
+            // Show modal with loading
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            contentArea.innerHTML = '<div class="flex items-center justify-center py-20"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>';
+
+            const lang = window.I18n ? window.I18n.getLanguage() : 'en';
+            backEl.textContent = lang === 'zh-TW' ? '返回' : 'Back';
+
+            try {
+                const res = await fetch(`/static/legal/${filename}`);
+                const html = await res.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+
+                const zhDiv = doc.getElementById('content-zh');
+                const enDiv = doc.getElementById('content-en');
+
+                if (!zhDiv || !enDiv) {
+                    contentArea.innerHTML = '<p class="text-center text-textMuted py-20">Content not found.</p>';
+                    return;
+                }
+
+                // Store both versions
+                contentArea.innerHTML = '';
+                const zhClone = zhDiv.cloneNode(true);
+                const enClone = enDiv.cloneNode(true);
+                zhClone.id = 'legal-content-zh';
+                enClone.id = 'legal-content-en';
+                contentArea.appendChild(zhClone);
+                contentArea.appendChild(enClone);
+
+                // Show correct language
+                _updateLegalLanguage(lang);
+
+                // Set title from nav-title in the fetched doc
+                const navTitle = doc.getElementById('nav-title');
+                if (navTitle) {
+                    const zhTitle = navTitle.textContent;
+                    // Find EN title from the toggle logic
+                    const titles = {
+                        terms: { 'zh-TW': '服務條款', en: 'Terms of Service' },
+                        privacy: { 'zh-TW': '隱私權政策', en: 'Privacy Policy' },
+                        guidelines: { 'zh-TW': '社群守則', en: 'Community Guidelines' }
+                    };
+                    titleEl.textContent = (titles[type] && titles[type][lang]) || zhTitle;
+                    modal.dataset.type = type;
+                }
+            } catch (e) {
+                contentArea.innerHTML = `<p class="text-center text-danger py-20">Failed to load: ${e.message}</p>`;
             }
-            // 初始化語系切換器
-            if (window.LanguageSwitcher) {
-                new LanguageSwitcher('.lang-switcher-container');
+
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function _updateLegalLanguage(lang) {
+            const zh = document.getElementById('legal-content-zh');
+            const en = document.getElementById('legal-content-en');
+            if (!zh || !en) return;
+
+            if (lang === 'zh-TW') {
+                zh.classList.remove('hidden');
+                en.classList.add('hidden');
+            } else {
+                zh.classList.add('hidden');
+                en.classList.remove('hidden');
+            }
+
+            const backEl = document.getElementById('legal-back-text');
+            if (backEl) backEl.textContent = lang === 'zh-TW' ? '返回' : 'Back';
+
+            const titleEl = document.getElementById('legal-title');
+            const modal = document.getElementById('legal-modal');
+            const type = modal?.dataset?.type;
+            if (titleEl && type) {
+                const titles = {
+                    terms: { 'zh-TW': '服務條款', en: 'Terms of Service' },
+                    privacy: { 'zh-TW': '隱私權政策', en: 'Privacy Policy' },
+                    guidelines: { 'zh-TW': '社群守則', en: 'Community Guidelines' }
+                };
+                titleEl.textContent = (titles[type] && titles[type][lang]) || '';
+            }
+        }
+
+        function closeLegalModal() {
+            const modal = document.getElementById('legal-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            const contentArea = document.querySelector('#legal-content > div');
+            if (contentArea) contentArea.innerHTML = '';
+            delete modal.dataset.type;
+        }
+
+        // Re-render legal content on language change
+        window.addEventListener('languageChanged', (e) => {
+            const modal = document.getElementById('legal-modal');
+            if (modal && !modal.classList.contains('hidden')) {
+                const lang = e.detail?.language || (window.I18n ? window.I18n.getLanguage() : 'en');
+                _updateLegalLanguage(lang);
             }
         });
     </script>
+
+    <script src="/static/js/i18n.js?v=4"></script>
+    <script src="/static/js/components/LanguageSwitcher.js?v=2"></script>
 </body>
 
 </html>

@@ -70,8 +70,8 @@
     async function initI18n() {
         // 載入翻譯檔
         const [zhTW, en] = await Promise.all([
-            fetch('/static/js/i18n/zh-TW.json').then(r => r.json()).catch(() => ({})),
-            fetch('/static/js/i18n/en.json').then(r => r.json()).catch(() => ({}))
+            fetch('/static/js/i18n/zh-TW.json?v=3').then(r => r.json()).catch(() => ({})),
+            fetch('/static/js/i18n/en.json?v=3').then(r => r.json()).catch(() => ({}))
         ]);
 
         // 確定使用的語言
@@ -134,7 +134,9 @@
         },
         getLanguage: function() {
             return i18n ? i18n.language : 'en';
-        }
+        },
+        // 供組件動態注入後呼叫，更新新加入的 data-i18n 元素
+        updatePageContent: updatePageContent
     };
 
 })();

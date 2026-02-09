@@ -596,30 +596,32 @@ input[type="password"]::-ms-clear {
 }
 
 /* ========================================
- * Language Switcher Styles
+ * Language Switcher Styles (Compact Nav Bar)
  * ======================================== */
 
 .lang-switcher {
     position: relative;
-    display: inline-block;
+    display: inline-flex;
 }
 
 .lang-trigger {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
     background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 0.5rem;
+    border: none;
+    border-radius: 9999px;
     cursor: pointer;
     transition: all 0.2s ease;
     user-select: none;
+    color: #a1a1aa;
 }
 
 .lang-trigger:hover {
     background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.15);
 }
 
 .lang-trigger:focus {
@@ -632,31 +634,18 @@ input[type="password"]::-ms-clear {
     line-height: 1;
 }
 
-.lang-name {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--text-secondary, #a1a1aa);
-}
-
-.lang-arrow {
-    transition: transform 0.2s ease;
-}
-
-.lang-arrow.rotate-180 {
-    transform: rotate(180deg);
-}
-
+/* Dropdown opens UPWARD since nav is at bottom */
 .lang-dropdown {
     position: absolute;
-    top: calc(100% + 0.5rem);
+    bottom: calc(100% + 0.5rem);
     right: 0;
     min-width: 10rem;
-    background: var(--surface, #252529);
+    background: #252529;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 0.5rem;
+    border-radius: 0.75rem;
     overflow: hidden;
     z-index: 1000;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
 }
 
 .lang-dropdown.hidden {
@@ -667,7 +656,7 @@ input[type="password"]::-ms-clear {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.75rem 1rem;
+    padding: 0.625rem 1rem;
     cursor: pointer;
     transition: background 0.15s ease;
 }
@@ -685,6 +674,12 @@ input[type="password"]::-ms-clear {
     background: rgba(212, 182, 147, 0.1);
 }
 
-.lang-option.active .lang-name {
-    color: var(--primary, #d4b693);
+.lang-option-name {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #a1a1aa;
+}
+
+.lang-option.active .lang-option-name {
+    color: #d4b693;
 }

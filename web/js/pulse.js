@@ -28,14 +28,15 @@ function formatPrice(price) {
  * 將時間戳轉換為「多久以前」
  */
 function getTimeAgo(timestamp) {
-    if (!timestamp) return "未知時間";
+    const t = window.I18n ? window.I18n.t.bind(window.I18n) : (k) => k;
+    if (!timestamp) return t('pulse.unknownTime');
     const seconds = Math.floor((new Date() - new Date(timestamp)) / 1000);
-    if (seconds / 31536000 > 1) return Math.floor(seconds / 31536000) + " 年前";
-    if (seconds / 2592000 > 1) return Math.floor(seconds / 2592000) + " 個月前";
-    if (seconds / 86400 > 1) return Math.floor(seconds / 86400) + " 天前";
-    if (seconds / 3600 > 1) return Math.floor(seconds / 3600) + " 小時前";
-    if (seconds / 60 > 1) return Math.floor(seconds / 60) + " 分鐘前";
-    return seconds < 10 ? "剛剛" : Math.floor(seconds) + " 秒前";
+    if (seconds / 31536000 > 1) return Math.floor(seconds / 31536000) + t('pulse.yearsAgo');
+    if (seconds / 2592000 > 1) return Math.floor(seconds / 2592000) + t('pulse.monthsAgo');
+    if (seconds / 86400 > 1) return Math.floor(seconds / 86400) + t('pulse.daysAgo');
+    if (seconds / 3600 > 1) return Math.floor(seconds / 3600) + t('pulse.hoursAgo');
+    if (seconds / 60 > 1) return Math.floor(seconds / 60) + t('pulse.minsAgo');
+    return seconds < 10 ? t('pulse.justNow') : Math.floor(seconds) + t('pulse.secsAgo');
 }
 
 /**
@@ -237,7 +238,7 @@ function renderPendingCard(card, data) {
             <p class="text-textMuted text-sm mb-4">Awaiting scheduled update</p>
             <button onclick="triggerDeepAnalysis('${data.symbol}')" class="px-4 py-2.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-xl transition flex items-center gap-2 mx-auto border border-primary/20">
                 <i data-lucide="zap" class="w-4 h-4"></i>
-                Deep Analysis
+                ${(window.I18n ? window.I18n.t('pulse.deepAnalysis') : 'Deep Analysis')}
             </button>
         </div>
     `;
@@ -245,9 +246,49 @@ function renderPendingCard(card, data) {
 }
 
 /**
- * 渲染 Pulse 卡片
+ * Build translated summary from i18n data or fallback
+ */
+function _buildPulseSummary(report, t) {
+    const i18n = report.summary_i18n;
+    if (i18n) {
+        const trend = i18n.trend === 'up' ? t('pulse.up24h') : t('pulse.down24h');
+        const rsi = t('pulse.' + i18n.rsi_status);
+        const price = formatPrice(i18n.price);
+        const reason = i18n.reason_key ? t(i18n.reason_key) : '';
+        return `<strong>[${t('pulse.quickPreview')}]</strong> ${i18n.symbol} ${t('pulse.currentPrice')} ${price}, 24H ${trend} ${i18n.change_pct.toFixed(2)}%. RSI: ${rsi} (${i18n.rsi_value}). ${reason}`;
+    }
+    return report.summary || '';
+}
+
+/**
+ * Build translated key points from i18n data or fallback
+ */
+function _buildPulseKeyPoints(report, t) {
+    if (report.key_points_i18n && report.key_points_i18n.length > 0) {
+        return report.key_points_i18n.map(kp => {
+            const label = t('pulse.' + kp.key);
+            if (kp.key === 'priceAction') {
+                return `<strong>${label}</strong>: 1H ${kp.values.h1}, 24H ${kp.values.h24}`;
+            } else if (kp.key === 'techSignals') {
+                const macdKey = 'pulse.macd' + kp.values.macd;
+                const volBase = (kp.values.volume || 'Normal').split(' ')[0];
+                const volKey = 'pulse.volume' + volBase;
+                const volExtra = kp.values.volume.includes('(') ? ' ' + kp.values.volume.match(/\(.*\)/)?.[0] : '';
+                return `<strong>${label}</strong>: MACD ${t(macdKey)}, ${t('pulse.volume')} ${t(volKey)}${volExtra}`;
+            } else if (kp.key === 'newsActivity') {
+                return `<strong>${label}</strong>: ${kp.values.count} ${t('pulse.newsFound')}`;
+            }
+            return `<strong>${label}</strong>`;
+        });
+    }
+    return report.key_points || [];
+}
+
+/**
+ * Render Pulse Card
  */
 function renderPulseCard(card, data, report) {
+    const t = window.I18n ? window.I18n.t.bind(window.I18n) : (k) => k;
     const isPositive = data.change_24h > 0;
     const timeString = getTimeAgo(data.timestamp);
     const uniqueSources = data.news_sources ? [...new Set(data.news_sources.map(n => n.source.split(' ')[0]))].join(', ') : '';
@@ -276,20 +317,21 @@ function renderPulseCard(card, data, report) {
                 </div>
                 <span class="px-2 py-1 rounded-lg bg-background text-[10px] text-textMuted border border-white/5">1H: ${data.change_1h > 0 ? '+' : ''}${data.change_1h.toFixed(2)}%</span>
             </div>
-            <p class="text-secondary/90 text-sm font-light leading-relaxed">${report.summary}</p>
+            <p class="text-secondary/90 text-sm font-light leading-relaxed">${_buildPulseSummary(report, t)}</p>
         </div>
     `;
 
     html += `<div class="p-5 flex-1 overflow-y-auto custom-scrollbar space-y-5">`;
 
     if (report.key_points?.length > 0) {
+        const kpItems = _buildPulseKeyPoints(report, t);
         html += `
             <div>
                 <h4 class="text-xs font-bold text-accent mb-2 flex items-center gap-1 uppercase tracking-wider">
-                    <i data-lucide="sparkles" class="w-3 h-3"></i> Key Points
+                    <i data-lucide="sparkles" class="w-3 h-3"></i> ${t('pulse.keyPoints')}
                 </h4>
                 <ul class="space-y-2">
-                    ${report.key_points.map((point, idx) => `
+                    ${kpItems.map((point, idx) => `
                         <li class="flex gap-2 text-xs text-secondary/80">
                             <span class="text-primary/50 font-mono">${idx + 1}.</span>
                             <span>${point}</span>
@@ -304,12 +346,12 @@ function renderPulseCard(card, data, report) {
         html += `
             <div>
                 <h4 class="text-xs font-bold text-accent mb-2 flex items-center gap-1 uppercase tracking-wider">
-                    <i data-lucide="zap" class="w-3 h-3"></i> Highlights
+                    <i data-lucide="zap" class="w-3 h-3"></i> ${t('pulse.highlights')}
                 </h4>
                 <div class="space-y-2">
                     ${report.highlights.map(item => `
                         <div class="bg-background/50 rounded-xl p-3 border border-white/5">
-                            <div class="text-xs font-semibold text-secondary mb-1">${item.title}</div>
+                            <div class="text-xs font-semibold text-secondary mb-1">${item.title_key ? t('pulse.' + item.title_key) : item.title}</div>
                             <div class="text-[11px] text-textMuted leading-normal">${item.content}</div>
                         </div>
                     `).join('')}
@@ -322,13 +364,13 @@ function renderPulseCard(card, data, report) {
         html += `
             <div>
                 <h4 class="text-xs font-bold text-danger mb-2 flex items-center gap-1 uppercase tracking-wider">
-                    <i data-lucide="alert-triangle" class="w-3 h-3"></i> Risks
+                    <i data-lucide="alert-triangle" class="w-3 h-3"></i> ${t('pulse.risks')}
                 </h4>
                 <ul class="space-y-1">
-                    ${report.risks.map(risk => `
+                    ${(report.risks_i18n || report.risks).map(risk => `
                         <li class="flex gap-2 text-xs text-textMuted">
                             <i data-lucide="alert-circle" class="w-3 h-3 text-danger/50 mt-0.5 shrink-0"></i>
-                            <span>${risk}</span>
+                            <span>${risk.startsWith('pulse.') ? t(risk) : risk}</span>
                         </li>
                     `).join('')}
                 </ul>
@@ -340,8 +382,8 @@ function renderPulseCard(card, data, report) {
 
     const sourceMode = data.source_mode || 'public_cache';
     const sourceBadge = sourceMode === 'deep_analysis'
-        ? `<span class="px-1.5 py-0.5 bg-primary/20 text-primary rounded-lg border border-primary/30 flex items-center gap-1"><i data-lucide="zap" class="w-2.5 h-2.5"></i>Deep</span>`
-        : `<span class="px-1.5 py-0.5 bg-background text-textMuted rounded-lg border border-white/5">Public</span>`;
+        ? `<span class="px-1.5 py-0.5 bg-primary/20 text-primary rounded-lg border border-primary/30 flex items-center gap-1"><i data-lucide="zap" class="w-2.5 h-2.5"></i>${t('pulse.deep')}</span>`
+        : `<span class="px-1.5 py-0.5 bg-background text-textMuted rounded-lg border border-white/5">${t('pulse.public')}</span>`;
 
     html += `
         <div class="p-4 border-t border-white/5 bg-background/30 flex justify-between items-center text-[10px] text-textMuted">
@@ -351,13 +393,13 @@ function renderPulseCard(card, data, report) {
             </div>
             <div class="flex gap-2">
                 <button onclick="showNewsList('${data.symbol}')" class="px-2.5 py-1.5 hover:bg-surfaceHighlight rounded-lg transition text-accent flex items-center gap-1">
-                    <i data-lucide="newspaper" class="w-3 h-3"></i> News
+                    <i data-lucide="newspaper" class="w-3 h-3"></i> ${t('pulse.news')}
                 </button>
                 <button onclick="triggerDeepAnalysis('${data.symbol}')" class="px-2.5 py-1.5 hover:bg-primary/10 rounded-lg transition text-primary flex items-center gap-1 border border-primary/10">
-                    <i data-lucide="microscope" class="w-3 h-3"></i> Deep
+                    <i data-lucide="microscope" class="w-3 h-3"></i> ${t('pulse.deep')}
                 </button>
                 <button onclick="switchTab('chat'); quickAsk('${data.symbol} analysis')" class="px-2.5 py-1.5 bg-accent/10 text-accent hover:bg-accent/20 rounded-lg transition flex items-center gap-1 border border-accent/20">
-                    <i data-lucide="bot" class="w-3 h-3"></i> Detail
+                    <i data-lucide="bot" class="w-3 h-3"></i> ${t('pulse.detail')}
                 </button>
             </div>
         </div>
@@ -371,13 +413,14 @@ function renderPulseCard(card, data, report) {
  * 渲染錯誤卡片
  */
 function renderErrorCard(card, symbol, errorMsg) {
+    const t = window.I18n ? window.I18n.t.bind(window.I18n) : (k) => k;
     card.innerHTML = `
         <div class="p-6 h-full flex flex-col items-center justify-center min-h-[200px] text-center text-red-400">
             <i data-lucide="alert-octagon" class="w-8 h-8 mb-2 opacity-80"></i>
-            <h3 class="text-sm font-bold mb-1">載入失敗</h3>
+            <h3 class="text-sm font-bold mb-1">${t('pulse.loadFailed')}</h3>
             <p class="text-xs opacity-70 mb-4 px-2 line-clamp-2">${errorMsg}</p>
             <button onclick="fetchPulseForSymbol('${symbol}', true)" class="text-xs bg-red-500/10 hover:bg-red-500/20 px-4 py-2 rounded-xl transition border border-red-500/20">
-                重試
+                ${t('pulse.retry')}
             </button>
         </div>
     `;
@@ -391,12 +434,13 @@ async function triggerDeepAnalysis(symbol) {
     const userKey = window.APIKeyManager?.getCurrentKey();
 
     if (!userKey) {
+        const t = window.I18n ? window.I18n.t.bind(window.I18n) : (k) => k;
         if (typeof showAlert === 'function') {
             showAlert({
-                title: '未設置 API Key',
-                message: '請先在設定中配置您的 API Key 才能使用深度分析功能。',
+                title: t('pulse.noApiKeyTitle'),
+                message: t('pulse.noApiKeyMessage'),
                 type: 'warning',
-                confirmText: '前往設定'
+                confirmText: t('pulse.goToSettings')
             }).then(() => {
                 if (typeof switchTab === 'function') switchTab('settings');
             });
@@ -405,12 +449,13 @@ async function triggerDeepAnalysis(symbol) {
     }
 
     const card = document.getElementById(`pulse-card-${symbol}`);
+    const t = window.I18n ? window.I18n.t.bind(window.I18n) : (k) => k;
     if (card) {
         card.innerHTML = `
             <div class="p-6 h-full flex flex-col items-center justify-center min-h-[200px]">
                 <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-400 mb-3"></div>
-                <div class="text-amber-400 text-sm font-medium">深度分析中...</div>
-                <div class="text-slate-500 text-xs mt-1">使用 ${userKey.provider.toUpperCase()} 進行即時分析</div>
+                <div class="text-amber-400 text-sm font-medium">${t('pulse.deepAnalyzing')}</div>
+                <div class="text-slate-500 text-xs mt-1">${t('pulse.usingProvider', {provider: userKey.provider.toUpperCase()})}</div>
             </div>
         `;
     }
@@ -437,20 +482,21 @@ function showNewsList(symbol) {
     if (symbolTitle) symbolTitle.innerText = symbol;
     if (listContent) listContent.innerHTML = '';
 
+    const t = window.I18n ? window.I18n.t.bind(window.I18n) : (k) => k;
     if (!data.news_sources || data.news_sources.length === 0) {
-        listContent.innerHTML = `<div class="text-slate-500 text-center py-4">暫無相關新聞</div>`;
+        listContent.innerHTML = `<div class="text-slate-500 text-center py-4">${t('pulse.noNews')}</div>`;
     } else {
         data.news_sources.forEach(news => {
             const item = document.createElement('div');
             item.className = 'bg-slate-800/50 border border-slate-700 p-3 rounded-xl hover:bg-slate-800 transition group';
             const linkHtml = news.url && news.url !== '#'
-                ? `<a href="${news.url}" target="_blank" class="text-[10px] text-blue-500 hover:underline">查看原文</a>`
-                : `<span class="text-[10px] text-slate-500">無連結</span>`;
+                ? `<a href="${news.url}" target="_blank" class="text-[10px] text-blue-500 hover:underline">${t('pulse.viewOriginal')}</a>`
+                : `<span class="text-[10px] text-slate-500">${t('pulse.noLink')}</span>`;
             item.innerHTML = `
                 <div class="flex justify-between items-start mb-1">
-                    <span class="text-[10px] px-1.5 py-0.5 bg-blue-900/30 text-blue-400 rounded border border-blue-500/20">${news.source || '未知來源'}</span>
+                    <span class="text-[10px] px-1.5 py-0.5 bg-blue-900/30 text-blue-400 rounded border border-blue-500/20">${news.source || t('pulse.unknownSource')}</span>
                 </div>
-                <h4 class="text-sm font-semibold text-slate-200 mb-2 group-hover:text-blue-300 transition line-clamp-2">${news.title || '無標題'}</h4>
+                <h4 class="text-sm font-semibold text-slate-200 mb-2 group-hover:text-blue-300 transition line-clamp-2">${news.title || t('pulse.noTitle')}</h4>
                 ${linkHtml}
             `;
             listContent.appendChild(item);
@@ -492,7 +538,8 @@ async function pollAnalysisProgress() {
             } else {
                 if (!container.classList.contains('hidden')) {
                     bar.style.width = '100%';
-                    text.innerText = '完成';
+                    const t = window.I18n ? window.I18n.t.bind(window.I18n) : (k) => k;
+                    text.innerText = t('pulse.done');
                     await new Promise(r => setTimeout(r, 2000));
                     container.classList.add('hidden');
                     loadPulseData(false);
@@ -506,6 +553,26 @@ async function pollAnalysisProgress() {
         isPollingProgress = false;
     }
 }
+
+/**
+ * Re-render all pulse cards with current language (called on language change)
+ */
+function reRenderPulseCards() {
+    for (const [symbol, data] of Object.entries(currentPulseData)) {
+        const card = document.getElementById(`pulse-card-${symbol}`);
+        if (!card || !data) continue;
+        const report = data.report || { summary: data.explanation, key_points: [], highlights: [], risks: [] };
+        if (report.summary) {
+            renderPulseCard(card, data, report);
+        }
+    }
+}
+
+// Listen for language changes to re-render cards
+window.addEventListener('languageChanged', () => {
+    console.log('[Pulse] Language changed, re-rendering cards...');
+    reRenderPulseCards();
+});
 
 // ========================================
 // Export all functions to window

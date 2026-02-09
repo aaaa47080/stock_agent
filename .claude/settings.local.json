@@ -77,7 +77,8 @@
       "Bash(cmd /c \"taskkill /IM python.exe /F\")",
       "Bash(cmd /c \"taskkill /PID 27024 /F\")",
       "Bash(cmd /c \"taskkill /F /IM python.exe\")",
-      "Bash(cmd /c \"taskkill /PID 27024 /F /T\")"
+      "Bash(cmd /c \"taskkill /PID 27024 /F /T\")",
+      "mcp__plugin_playwright_playwright__browser_close"
     ]
   }
 }

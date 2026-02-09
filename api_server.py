@@ -133,7 +133,7 @@ async def lifespan(app: FastAPI):
     try:
         from core.audit import audit_log_cleanup_task
         asyncio.create_task(audit_log_cleanup_task())
-        logger.info("✅ Audit log cleanup task scheduled (daily at 3 AM UTC)")摁
+        logger.info("✅ Audit log cleanup task scheduled (daily at 3 AM UTC)")
     except ImportError:
         logger.warning("⚠️ Audit log cleanup task not available")
 

@@ -91,10 +91,10 @@ class MarketPulseAnalyzer:
             vol_sma_20 = df['Volume'].rolling(window=20).mean().iloc[-1]
             current_vol = safe_float(latest['Volume'])
             vol_ratio = current_vol / vol_sma_20 if vol_sma_20 > 0 else 1.0
-            vol_status = f"放量 ({vol_ratio:.1f}x)" if vol_ratio > 1.5 else ("縮量" if vol_ratio < 0.7 else "正常")
+            vol_status = f"High ({vol_ratio:.1f}x)" if vol_ratio > 1.5 else ("Low" if vol_ratio < 0.7 else "Normal")
 
-            macd_trend = "增強" if macd_hist > prev_macd_hist else "減弱"
-            macd_signal = "黃金交叉" if macd_hist > 0 and prev_macd_hist <= 0 else ("死亡交叉" if macd_hist < 0 and prev_macd_hist >= 0 else "延續")
+            macd_trend = "Strengthening" if macd_hist > prev_macd_hist else "Weakening"
+            macd_signal = "Golden Cross" if macd_hist > 0 and prev_macd_hist <= 0 else ("Death Cross" if macd_hist < 0 and prev_macd_hist >= 0 else "Continuing")
             
             technicals = {
                 "RSI": rsi_14,
@@ -132,33 +132,51 @@ class MarketPulseAnalyzer:
         if self.client and not skip_llm:
             report = self._generate_structured_report(symbol, current_price, change_1h, change_24h, technicals, news_data)
         else:
-            # Fallback Report (Fast Rule-based)
-            trend_str = "上漲" if change_24h > 0 else "下跌"
-            rsi_status = "超買" if technicals.get('RSI', 50) > 70 else "超賣" if technicals.get('RSI', 50) < 30 else "中性"
-            
+            # Fallback Report (Fast Rule-based) - Use i18n keys for frontend translation
+            trend_str = "up" if change_24h > 0 else "down"
+            rsi_val = technicals.get('RSI', 50)
+            rsi_status = "overbought" if rsi_val > 70 else "oversold" if rsi_val < 30 else "neutral"
+            macd_trend = technicals.get('MACD_Trend', 'N/A')
+            vol_status = technicals.get('Volume_Status', 'N/A')
+
             if self.client:
-                reason = "AI 分析正在後台排隊中，稍後刷新即可查看完整報告。"
-                risk_msg = "此為即時數據快照，AI 深度分析運算中..."
+                reason_key = "pulse.aiQueued"
+                risk_key = "pulse.aiQueued"
             else:
-                reason = "如需完整 AI 深度分析，請點擊下方的「深度」按鈕並配置您的 API Key。"
-                risk_msg = "未配置 AI 金鑰，僅顯示基礎數據。"
-            
+                reason_key = "pulse.configureForDeep"
+                risk_key = "pulse.noApiKey"
+
             report = {
-                "summary": f"**[快速預覽]** {symbol} 現價 ${current_price:,.2f}，24小時{trend_str} {abs(change_24h):.2f}%。技術指標顯示 RSI 為 {rsi_status} ({technicals.get('RSI',0):.1f})。\n\n> {reason}",
+                "summary_i18n": {
+                    "symbol": symbol,
+                    "price": current_price,
+                    "trend": trend_str,
+                    "change_pct": abs(change_24h),
+                    "rsi_status": rsi_status,
+                    "rsi_value": round(rsi_val, 1),
+                    "reason_key": reason_key
+                },
+                "summary": f"**[Quick Preview]** {symbol} ${current_price:,.2f}, 24H {trend_str} {abs(change_24h):.2f}%. RSI: {rsi_status} ({rsi_val:.1f}).",
+                "key_points_i18n": [
+                    {"key": "priceAction", "values": {"h1": f"{change_1h:+.2f}%", "h24": f"{change_24h:+.2f}%"}},
+                    {"key": "techSignals", "values": {"macd": macd_trend, "volume": vol_status}},
+                    {"key": "newsActivity", "values": {"count": len(news_data)}}
+                ],
                 "key_points": [
-                    f"**價格走勢**: 1H {change_1h:+.2f}%, 24H {change_24h:+.2f}%",
-                    f"**技術信號**: MACD {technicals.get('MACD_Trend', 'N/A')}, 成交量 {technicals.get('Volume_Status', 'N/A')}",
-                    f"**新聞動態**: 檢索到 {len(news_data)} 條相關新聞"
+                    f"**Price Action**: 1H {change_1h:+.2f}%, 24H {change_24h:+.2f}%",
+                    f"**Tech Signals**: MACD {macd_trend}, Volume {vol_status}",
+                    f"**News**: {len(news_data)} articles found"
                 ],
                 "highlights": [
-                    {"title": "技術面概覽", "content": f"RSI: {technicals.get('RSI',0):.1f}, MACD: {technicals.get('MACD_Signal','N/A')}"}
+                    {"title_key": "techOverview", "title": "Technical Overview", "content": f"RSI: {rsi_val:.1f}, MACD: {technicals.get('MACD_Signal','N/A')}"}
                 ],
-                "risks": [risk_msg]
+                "risks_i18n": [risk_key],
+                "risks": [risk_key]
             }
             if news_data:
                 top_news = news_data[0]
                 report["highlights"].append({
-                    "title": "最新消息",
+                    "title_key": "latestNews", "title": "Latest News",
                     "content": f"[{top_news.get('source')}] {top_news.get('title')}"
                 })
 

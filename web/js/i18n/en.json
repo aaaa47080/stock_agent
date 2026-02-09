@@ -7,8 +7,20 @@
     "confirm": "Confirm",
     "delete": "Delete",
     "search": "Search",
-    "close": "Close"
+    "close": "Close",
+    "continue": "Continue",
+    "update": "Update",
+    "all": "All",
+    "other": "Other",
+    "select": "Select...",
+    "guest": "Guest",
+    "user": "User",
+    "username": "Username",
+    "to": "to",
+    "required": "Required",
+    "optional": "Optional"
   },
+
   "nav": {
     "chat": "Chat",
     "market": "Market",
@@ -22,13 +34,46 @@
     "governance": "Governance",
     "login": "Login",
     "logout": "Logout",
-    "profile": "Profile"
+    "profile": "Profile",
+    "collapse": "Collapse/Expand"
   },
+
+  "sidebar": {
+    "newChat": "New Chat",
+    "noHistory": "No history",
+    "settings": "Settings"
+  },
+
+  "chat": {
+    "welcomeTo": "Welcome to",
+    "subtitle": "AI-powered crypto analysis and trading insights. Monitor markets and make informed decisions.",
+    "good": "Good",
+    "morning": "morning",
+    "afternoon": "afternoon",
+    "evening": "evening",
+    "quickBtcTrend": "Analyze BTC trend",
+    "btnBtcTrend": "Bitcoin Trend",
+    "quickEthRates": "ETH Funding Rates",
+    "btnEthRates": "ETH Rates",
+    "quickSentiment": "Market Sentiment",
+    "btnSentiment": "Global Sentiment",
+    "unlockTitle": "Unlock Pi Intelligence",
+    "unlockDesc": "Connect an API key to enable AI analysis.",
+    "unlockDesc2": "Your keys are stored locally and securely.",
+    "configureApiKey": "Configure API Key",
+    "otherFeatures": "You can still use other features below",
+    "technical": "Technical",
+    "news": "News",
+    "systemLocked": "System Locked - Please Configure API Key",
+    "connecting": "Connecting..."
+  },
+
   "market": {
     "title": "Market Watch",
     "filter": "Filter",
     "autoBadge": "Auto",
     "liveStatus": "LIVE",
+    "liveTooltip": "Real-time updates connected",
     "refresh": "Refresh",
     "topPerformers": "Top Performers",
     "marketDynamics": "Market Dynamics",
@@ -36,16 +81,327 @@
     "topLosers": "Top Losers (24H)",
     "bullishSqueeze": "Bullish Squeeze (Low Funding)",
     "overheated": "Overheated (High Funding)",
-    "selected": "selected"
+    "selected": "selected",
+    "perfLabel": "24H Perf",
+    "shortsPaying": "Shorts Paying",
+    "longsPaying": "Longs Paying",
+    "history": "History"
   },
+
   "pulse": {
     "title": "Market Pulse",
     "filter": "Filter",
     "autoBadge": "Auto",
     "selected": "selected",
     "scanning": "Scanning",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "keyPoints": "Key Points",
+    "highlights": "Highlights",
+    "risks": "Risks",
+    "news": "News",
+    "deep": "Deep",
+    "detail": "Detail",
+    "deepAnalysis": "Deep Analysis",
+    "public": "Public",
+    "unknownTime": "Unknown",
+    "justNow": "Just now",
+    "secsAgo": "s ago",
+    "minsAgo": "m ago",
+    "hoursAgo": "h ago",
+    "daysAgo": "d ago",
+    "monthsAgo": "mo ago",
+    "yearsAgo": "y ago",
+    "quickPreview": "Quick Preview",
+    "currentPrice": "currently at",
+    "up24h": "up",
+    "down24h": "down",
+    "in24h": "in 24h",
+    "rsiShows": "RSI shows",
+    "overbought": "Overbought",
+    "oversold": "Oversold",
+    "neutral": "Neutral",
+    "priceAction": "Price Action",
+    "techSignals": "Technical Signals",
+    "macdStrengthening": "Strengthening",
+    "macdWeakening": "Weakening",
+    "volume": "Volume",
+    "volumeHigh": "High",
+    "volumeLow": "Low",
+    "volumeNormal": "Normal",
+    "newsActivity": "News Activity",
+    "newsFound": "news articles found",
+    "techOverview": "Technical Overview",
+    "latestNews": "Latest News",
+    "noApiKey": "No API key configured, showing basic data only.",
+    "aiQueued": "AI analysis is queued, refresh later for the full report.",
+    "configureForDeep": "For full AI deep analysis, click the Deep button below and configure your API Key.",
+    "loadFailed": "Load Failed",
+    "retry": "Retry",
+    "noApiKeyTitle": "API Key Not Set",
+    "noApiKeyMessage": "Please configure your API Key in Settings to use deep analysis.",
+    "goToSettings": "Go to Settings",
+    "deepAnalyzing": "Deep Analyzing...",
+    "usingProvider": "Real-time analysis via {{provider}}",
+    "noNews": "No related news",
+    "viewOriginal": "View Original",
+    "noLink": "No link",
+    "unknownSource": "Unknown source",
+    "noTitle": "No title",
+    "done": "Done",
+    "awaitingUpdate": "Awaiting scheduled update",
+    "analyzing": "Analyzing"
   },
+
+  "wallet": {
+    "title": "Wallet History",
+    "totalActivity": "Total Activity",
+    "spentOut": "Spent (Out)",
+    "receivedIn": "Received (In)",
+    "transactions": "Transactions",
+    "loadingHistory": "Loading history...",
+    "allTypes": "All Types",
+    "income": "Income (In)",
+    "expense": "Expense (Out)",
+    "premium": "Premium",
+    "tips": "Tips",
+    "postFees": "Post Fees",
+    "allTime": "All Time",
+    "last7Days": "Last 7 Days",
+    "last30Days": "Last 30 Days",
+    "last3Months": "Last 3 Months",
+    "customRange": "Custom Range"
+  },
+
+  "assets": {
+    "portfolio": "Portfolio",
+    "connectExchange": "Connect Your Exchange",
+    "linkDescription": "Link your OKX account to view portfolio and positions.",
+    "goToSettings": "Go to Settings",
+    "totalEquity": "Total Equity",
+    "updated": "Updated: --:--",
+    "spotAssets": "Spot Assets",
+    "activePositions": "Active Positions"
+  },
+
+  "chart": {
+    "defaultTitle": "BTC Chart",
+    "autoRefresh": "Auto Refresh",
+    "off": "OFF",
+    "on": "ON"
+  },
+
+  "modals": {
+    "apiKey": {
+      "title": "Connect OKX",
+      "apiKeyPlaceholder": "API Key",
+      "secretKeyPlaceholder": "Secret Key",
+      "passphrasePlaceholder": "Passphrase",
+      "secureConnect": "Secure Connect"
+    },
+    "filter": {
+      "title": "Asset Filter",
+      "searchPlaceholder": "Search (e.g. BTC)...",
+      "applyFilter": "Apply Filter"
+    },
+    "news": {
+      "title": "News"
+    },
+    "apiTest": {
+      "connected": "Connected",
+      "successMessage": "AI brain is now online.",
+      "continue": "Continue"
+    },
+    "confirm": {
+      "defaultTitle": "Confirm Action",
+      "defaultMessage": "Are you sure you want to proceed?"
+    }
+  },
+
+  "login": {
+    "welcomeTitle": "Welcome to CryptoMind",
+    "welcomeSubtitle": "Connect your wallet or login to continue",
+    "connectPiWallet": "Connect Pi Wallet",
+    "usePiBrowser": "Please open in Pi Browser",
+    "usePiBrowserDesc": "Please open this app in Pi Browser",
+    "stepsTitle": "Steps:",
+    "step1": "Open Pi Browser App",
+    "step2": "Enter this app's URL in the address bar",
+    "step3": "Click Connect Pi Wallet to login"
+  },
+
+  "friends": {
+    "title": "Social",
+    "messages": "Messages",
+    "friends": "Friends",
+    "selectConversation": "Select a conversation",
+    "clickToStart": "Click a conversation on the left to start chatting",
+    "dailySent": "Sent today:",
+    "upgradePro": "Upgrade Pro",
+    "typeMessage": "Type a message...",
+    "findFriends": "Find Friends",
+    "searchPlaceholder": "Search by username...",
+    "friendRequests": "Friend Requests",
+    "loadingRequests": "Loading requests...",
+    "myFriends": "My Friends",
+    "manageBlocked": "Manage Blocklist",
+    "loadingFriends": "Loading friends...",
+    "blockedInfo": "Blocked users cannot send you messages or friend requests."
+  },
+
+  "settings": {
+    "title": "Settings",
+    "profile": {
+      "uid": "UID: --",
+      "devSwitchUser": "Dev: Switch User",
+      "logout": "Logout"
+    },
+    "wallet": {
+      "title": "Pi Wallet",
+      "description": "Connect your Pi wallet for transactions",
+      "loading": "Loading",
+      "benefits": "After linking your Pi Wallet:",
+      "benefit1": "Post on the forum (costs",
+      "benefit2": "Tip quality content creators",
+      "benefit3": "Receive tips from other users",
+      "linkButton": "Link Pi Wallet",
+      "requirePiBrowser": "Must be opened in Pi Browser",
+      "connected": "Pi Wallet Connected"
+    },
+    "ai": {
+      "title": "AI Intelligence",
+      "description": "Configure your LLM provider",
+      "provider": "Provider",
+      "apiKey": "API Key",
+      "test": "TEST",
+      "model": "Model",
+      "selectModel": "Select a model",
+      "modelPlaceholder": "e.g., openai/gpt-4o, anthropic/claude-3.5-sonnet",
+      "saveConfig": "Save AI Configuration"
+    },
+    "committee": {
+      "title": "Committee Mode",
+      "description": "Multi-model consensus",
+      "selectProvider": "Select Provider...",
+      "noKeyHint": "Please set up API Key in AI Intelligence first",
+      "selectProviderFirst": "Select Provider first...",
+      "bullTeam": "Bull Team",
+      "bearTeam": "Bear Team",
+      "noMembers": "No members added yet"
+    },
+    "navigation": {
+      "title": "Navigation Customization",
+      "description": "Customize your bottom navigation bar",
+      "customize": "Customize",
+      "info": "Choose which features appear in your bottom navigation bar. At least 2 items must be enabled."
+    },
+    "premium": {
+      "title": "Premium Membership",
+      "description": "Unlock advanced features",
+      "benefits": "Premium members enjoy:",
+      "benefit1": "Unlimited posting",
+      "benefit2": "Unlimited replies",
+      "benefit3": "Early access to new features",
+      "benefit4": "Exclusive premium badge",
+      "upgradeButton": "Upgrade to Premium -",
+      "oneTimePayment": "One-time payment, effective immediately"
+    },
+    "exchange": {
+      "title": "Exchange Keys",
+      "description": "Connect your OKX account",
+      "notConnected": "No exchange connected",
+      "connectButton": "Connect OKX",
+      "connected": "OKX Connected",
+      "storedLocally": "API key stored locally",
+      "update": "Update",
+      "disconnect": "Disconnect"
+    },
+    "legal": {
+      "title": "About & Legal",
+      "description": "Terms, Privacy, and Community Guidelines",
+      "termsTitle": "Terms of Service",
+      "termsDesc": "Usage rules and policies",
+      "privacyTitle": "Privacy Policy",
+      "privacyDesc": "Data protection and privacy",
+      "guidelinesTitle": "Community Guidelines",
+      "guidelinesDesc": "Governance and moderation rules"
+    },
+    "saveAll": "Save All Settings"
+  },
+
+  "safety": {
+    "title": "Community Safety",
+    "governance": "Governance",
+    "reportWallet": "Report Wallet",
+    "searchPlaceholder": "Search wallet address...",
+    "loadMore": "Load More",
+    "filters": {
+      "allTypes": "All Types",
+      "allStatus": "All Status",
+      "verified": "Verified",
+      "pending": "Pending",
+      "disputed": "Disputed",
+      "latest": "Latest",
+      "mostVoted": "Most Voted",
+      "mostViewed": "Most Viewed"
+    },
+    "submit": {
+      "title": "Report Scam Wallet",
+      "scamWallet": "Scam Wallet Address",
+      "yourWallet": "Your Wallet Address",
+      "scamType": "Scam Type",
+      "selectType": "Select type...",
+      "description": "Description",
+      "descPlaceholder": "Describe the scam details (min 20 chars)...",
+      "txHash": "Transaction Hash",
+      "txHashPlaceholder": "64-char hash...",
+      "submitButton": "Submit Report"
+    },
+    "detail": {
+      "title": "Report Detail",
+      "confirm": "Confirm",
+      "dispute": "Dispute"
+    },
+    "gov": {
+      "title": "Community Governance",
+      "reportTab": "Report",
+      "myReportsTab": "My Reports",
+      "reviewTab": "Review",
+      "rankingTab": "Ranking",
+      "reportDesc": "Found a violation? PRO reviewers will review your report.",
+      "contentType": "Content Type",
+      "post": "Post",
+      "comment": "Comment",
+      "contentId": "Content ID",
+      "enterContentId": "Enter content ID",
+      "contentIdHint": "Found in the content URL",
+      "violationType": "Violation Type",
+      "spam": "Spam",
+      "harassment": "Harassment",
+      "misinformation": "Misinformation",
+      "scam": "Scam",
+      "illegal": "Illegal Content",
+      "describeViolation": "Describe the violation...",
+      "submitReport": "Submit Report",
+      "dailyQuota": "Daily Quota",
+      "rule1": "One report per content per user",
+      "rule2": "Cannot report your own content",
+      "rule3": "False reports may result in penalties",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "selectFilter": "Select a filter to load reports",
+      "proOnly": "PRO Members Only",
+      "proDesc": "Upgrade to PRO to review reports and earn reputation."
+    }
+  },
+
+  "featureMenu": {
+    "title": "Customize Navigation",
+    "description": "Choose which features appear in your bottom navigation",
+    "minWarning": "At least 2 items must be enabled in your navigation bar.",
+    "saveChanges": "Save Changes",
+    "reset": "Reset"
+  },
+
   "forum": {
     "title": "Community Forum",
     "newPost": "New Post",
@@ -60,20 +416,12 @@
     "scamTracker": "Scam Tracker",
     "submitReport": "Submit Report"
   },
-  "friends": {
-    "title": "Social",
-    "messages": "Messages",
-    "friends": "Friends"
-  },
+
   "governance": {
     "title": "Governance",
     "proposals": "Proposals",
     "vote": "Vote",
     "passed": "Passed",
     "rejected": "Rejected"
-  },
-  "safety": {
-    "title": "Scam Report",
-    "submitReport": "Submit Report"
   }
 }

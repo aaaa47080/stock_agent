@@ -1,5 +1,5 @@
 // ========================================
-// LanguageSwitcher.js - 語系切換器組件
+// LanguageSwitcher.js - 語系切換器組件 (Nav Bar Compact Version)
 // ========================================
 
 class LanguageSwitcher {
@@ -28,15 +28,13 @@ class LanguageSwitcher {
 
     init() {
         this.render();
-        this.attachEvents();
         this.syncWithI18n();
     }
 
     syncWithI18n() {
-        // 監聽語言變更事件，同步切換器狀態
         window.addEventListener('languageChanged', (e) => {
             this.currentLang = e.detail.language;
-            this.render();
+            this.updateDisplay();
         });
     }
 
@@ -48,28 +46,36 @@ class LanguageSwitcher {
 
         this.container.innerHTML = `
             <div class="lang-switcher">
-                <div class="lang-trigger" role="button" tabindex="0" aria-label="Language selector" aria-expanded="${this.isOpen ? 'true' : 'false'}">
+                <button class="lang-trigger" type="button" aria-label="Language selector" aria-expanded="false">
                     <span class="lang-flag">${flags[this.currentLang] || '🇺🇸'}</span>
-                    <span class="lang-name">${names[this.currentLang] || 'English'}</span>
-                    <svg class="lang-arrow ${this.isOpen ? 'rotate-180' : ''}" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M6 9l6 6 6-6"/>
-                    </svg>
-                </div>
-                <div class="lang-dropdown ${this.isOpen ? '' : 'hidden'}" role="menu">
+                </button>
+                <div class="lang-dropdown hidden" role="menu">
                     <div class="lang-option ${this.currentLang === 'zh-TW' ? 'active' : ''}" role="menuitem" data-lang="zh-TW" tabindex="0">
                         <span class="lang-flag">🇹🇼</span>
-                        <span class="lang-name">繁體中文</span>
+                        <span class="lang-option-name">繁體中文</span>
                     </div>
                     <div class="lang-option ${this.currentLang === 'en' ? 'active' : ''}" role="menuitem" data-lang="en" tabindex="0">
                         <span class="lang-flag">🇺🇸</span>
-                        <span class="lang-name">English</span>
+                        <span class="lang-option-name">English</span>
                     </div>
                 </div>
             </div>
         `;
 
-        // 重新綁定事件
         this.attachEvents();
+    }
+
+    updateDisplay() {
+        if (!this.container) return;
+        const flags = { 'zh-TW': '🇹🇼', 'en': '🇺🇸' };
+        const flagEl = this.container.querySelector('.lang-trigger .lang-flag');
+        if (flagEl) {
+            flagEl.textContent = flags[this.currentLang] || '🇺🇸';
+        }
+        // Update active state
+        this.container.querySelectorAll('.lang-option').forEach(opt => {
+            opt.classList.toggle('active', opt.dataset.lang === this.currentLang);
+        });
     }
 
     attachEvents() {
@@ -80,37 +86,31 @@ class LanguageSwitcher {
         const dropdown = switcher.querySelector('.lang-dropdown');
         const options = switcher.querySelectorAll('.lang-option');
 
-        // 移除舊的監聽器（避免重複）
-        const newTrigger = trigger.cloneNode(true);
-        trigger.parentNode.replaceChild(newTrigger, trigger);
-
-        const updatedTrigger = switcher.querySelector('.lang-trigger');
-
-        // 切換下拉顯示
-        updatedTrigger.addEventListener('click', (e) => {
+        // Toggle dropdown
+        trigger.addEventListener('click', (e) => {
             e.stopPropagation();
-            this.toggle();
+            this.isOpen = !this.isOpen;
+            dropdown.classList.toggle('hidden', !this.isOpen);
+            trigger.setAttribute('aria-expanded', this.isOpen ? 'true' : 'false');
         });
 
-        // 鍵盤支援
-        updatedTrigger.addEventListener('keydown', (e) => {
+        // Keyboard support for trigger
+        trigger.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                this.toggle();
+                trigger.click();
             }
         });
 
-        // 選項點擊事件
+        // Option click events
         options.forEach(option => {
-            const newOption = option.cloneNode(true);
-            option.parentNode.replaceChild(newOption, option);
-
-            newOption.addEventListener('click', (e) => {
+            option.addEventListener('click', (e) => {
+                e.stopPropagation();
                 const lang = e.currentTarget.dataset.lang;
                 this.changeLanguage(lang);
             });
 
-            newOption.addEventListener('keydown', (e) => {
+            option.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
                     const lang = e.currentTarget.dataset.lang;
@@ -119,30 +119,20 @@ class LanguageSwitcher {
             });
         });
 
-        // 點擊外部關閉
-        document.removeEventListener('click', this.handleOutsideClick);
-        this.handleOutsideClick = () => this.close();
-        document.addEventListener('click', this.handleOutsideClick);
-    }
-
-    toggle() {
-        this.isOpen = !this.isOpen;
-        this.render();
-    }
-
-    open() {
-        this.isOpen = true;
-        this.render();
-    }
-
-    close() {
-        this.isOpen = false;
-        this.render();
+        // Close on outside click
+        this._outsideClickHandler = () => {
+            if (this.isOpen) {
+                this.isOpen = false;
+                dropdown.classList.add('hidden');
+                trigger.setAttribute('aria-expanded', 'false');
+            }
+        };
+        document.addEventListener('click', this._outsideClickHandler);
     }
 
     async changeLanguage(lang) {
         if (lang === this.currentLang) {
-            this.close();
+            this._closeDropdown();
             return;
         }
 
@@ -154,14 +144,28 @@ class LanguageSwitcher {
             console.warn('Failed to save language preference:', e);
         }
 
-        // 呼叫 I18n 模組切換語言
+        // Call I18n module to switch language
         if (window.I18n) {
             await window.I18n.changeLanguage(lang);
         }
 
-        this.close();
+        this.updateDisplay();
+        this._closeDropdown();
+
+        // Re-render nav buttons to update labels
+        if (typeof renderNavButtons === 'function') {
+            renderNavButtons();
+        }
+    }
+
+    _closeDropdown() {
+        this.isOpen = false;
+        const dropdown = this.container.querySelector('.lang-dropdown');
+        const trigger = this.container.querySelector('.lang-trigger');
+        if (dropdown) dropdown.classList.add('hidden');
+        if (trigger) trigger.setAttribute('aria-expanded', 'false');
     }
 }
 
-// 暴露到全域，供其他模組使用
+// Expose globally
 window.LanguageSwitcher = LanguageSwitcher;

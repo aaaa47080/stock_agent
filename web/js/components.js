@@ -172,8 +172,8 @@ const Components = {
                     <!-- Message Limit Info (Non-Pro) -->
                     <div id="social-msg-limit" class="p-3 border-t border-white/5 bg-background/50 text-xs text-textMuted hidden">
                         <div class="flex items-center justify-between">
-                            <span>今日已發送: <span id="social-limit-used">0</span>/<span id="social-limit-total">20</span></span>
-                            <a href="/static/forum/premium.html" onclick="sessionStorage.setItem('returnToTab', 'friends')" class="text-primary hover:underline">升級 Pro</a>
+                            <span><span data-i18n="friends.dailySent">Sent today:</span> <span id="social-limit-used">0</span>/<span id="social-limit-total">20</span></span>
+                            <a href="/static/forum/premium.html" onclick="sessionStorage.setItem('returnToTab', 'friends')" class="text-primary hover:underline" data-i18n="friends.upgradePro">Upgrade Pro</a>
                         </div>
                     </div>
                 </div>
@@ -184,8 +184,8 @@ const Components = {
                     <div id="social-chat-empty" class="flex-1 flex items-center justify-center">
                         <div class="text-center text-textMuted opacity-60">
                             <i data-lucide="message-circle" class="w-12 h-12 mx-auto mb-4"></i>
-                            <p class="text-lg font-medium mb-2">選擇一個對話</p>
-                            <p class="text-sm">點擊左側的對話開始聊天</p>
+                            <p class="text-lg font-medium mb-2" data-i18n="friends.selectConversation">Select a conversation</p>
+                            <p class="text-sm" data-i18n="friends.clickToStart">Click a conversation on the left to start chatting</p>
                         </div>
                     </div>
 
@@ -211,7 +211,7 @@ const Components = {
                                     <div class="flex-1 bg-background border border-white/10 rounded-xl px-3 py-2 focus-within:border-primary/50 transition">
                                         <textarea id="social-msg-input"
                                             class="w-full bg-transparent text-textMain placeholder-textMuted resize-none leading-6 outline-none text-sm"
-                                            placeholder="輸入訊息..." rows="1" maxlength="500"
+                                            placeholder="Type a message..." data-i18n="friends.typeMessage" data-i18n-attr="placeholder" rows="1" maxlength="500"
                                             onkeydown="SocialHub.handleInputKeydown(event)"
                                             oninput="SocialHub.autoResizeInput(this); SocialHub.updateCharCount()"></textarea>
                                     </div>
@@ -237,10 +237,10 @@ const Components = {
                     <div class="bg-surface border border-white/5 rounded-2xl p-6">
                         <h3 class="font-bold text-secondary text-lg mb-4 flex items-center gap-2">
                             <i data-lucide="search" class="w-5 h-5"></i>
-                            Find Friends
+                            <span data-i18n="friends.findFriends">Find Friends</span>
                         </h3>
                         <div class="relative">
-                            <input type="text" id="friend-search-input" placeholder="Search by username..."
+                            <input type="text" id="friend-search-input" placeholder="Search by username..." data-i18n="friends.searchPlaceholder" data-i18n-attr="placeholder"
                                    class="w-full bg-background border border-white/10 rounded-xl px-4 py-3 pl-10 text-secondary outline-none focus:border-primary/50 transition"
                                    oninput="if(typeof handleFriendSearch === 'function') handleFriendSearch(this.value)">
                             <i data-lucide="search" class="w-5 h-5 text-textMuted absolute left-3 top-1/2 -translate-y-1/2"></i>
@@ -253,13 +253,13 @@ const Components = {
                         <div class="bg-surface border border-white/5 rounded-2xl p-6">
                             <h3 class="font-bold text-secondary text-lg mb-4 flex items-center gap-2">
                                 <i data-lucide="user-plus" class="w-5 h-5 text-primary"></i>
-                                Friend Requests
+                                <span data-i18n="friends.friendRequests">Friend Requests</span>
                                 <span id="pending-count-badge" class="hidden px-2 py-0.5 text-xs bg-danger text-white rounded-full"></span>
                             </h3>
                             <div id="pending-requests-list" class="space-y-2">
                                 <div class="text-center text-textMuted py-6 opacity-50">
                                     <i data-lucide="loader-2" class="w-5 h-5 animate-spin mx-auto mb-2"></i>
-                                    Loading requests...
+                                    <span data-i18n="friends.loadingRequests">Loading requests...</span>
                                 </div>
                             </div>
                         </div>
@@ -268,7 +268,7 @@ const Components = {
                         <div class="bg-surface border border-white/5 rounded-2xl p-6">
                             <h3 class="font-bold text-secondary text-lg mb-4 flex items-center gap-2">
                                 <i data-lucide="users" class="w-5 h-5 text-success"></i>
-                                My Friends
+                                <span data-i18n="friends.myFriends">My Friends</span>
                                 <span id="friends-count-badge" class="hidden px-2 py-0.5 text-xs bg-white/10 text-textMuted rounded-full">0</span>
                             </h3>
                         <!-- My Friends -->
@@ -276,12 +276,12 @@ const Components = {
                             <div class="flex items-center justify-between mb-4">
                                 <h3 class="font-bold text-secondary text-lg flex items-center gap-2">
                                     <i data-lucide="users" class="w-5 h-5 text-success"></i>
-                                    My Friends
+                                    <span data-i18n="friends.myFriends">My Friends</span>
                                     <span id="friends-count-badge" class="hidden px-2 py-0.5 text-xs bg-white/10 text-textMuted rounded-full">0</span>
                                 </h3>
                                 <button onclick="FriendsUI.toggleBlockedView()" class="text-xs text-textMuted hover:text-danger transition flex items-center gap-1">
                                     <i data-lucide="ban" class="w-3 h-3"></i>
-                                    <span>管理黑名單</span>
+                                    <span data-i18n="friends.manageBlocked">Manage Blocklist</span>
                                 </button>
                             </div>
                             
@@ -290,7 +290,7 @@ const Components = {
                                 <div id="friends-list" class="space-y-2">
                                     <div class="text-center text-textMuted py-6 opacity-50">
                                         <i data-lucide="loader-2" class="w-5 h-5 animate-spin mx-auto mb-2"></i>
-                                        Loading friends...
+                                        <span data-i18n="friends.loadingFriends">Loading friends...</span>
                                     </div>
                                 </div>
                             </div>
@@ -299,7 +299,7 @@ const Components = {
                             <div id="blocked-view-container" class="hidden">
                                 <div class="flex items-center gap-2 mb-4 p-3 bg-danger/5 rounded-lg border border-danger/10">
                                     <i data-lucide="info" class="w-4 h-4 text-danger"></i>
-                                    <p class="text-xs text-textMuted">被封鎖的用戶無法向您發送訊息或好友請求。</p>
+                                    <p class="text-xs text-textMuted" data-i18n="friends.blockedInfo">Blocked users cannot send you messages or friend requests.</p>
                                 </div>
                                 <div id="blocked-users-list" class="space-y-2">
                                     <!-- Blocked users injected here -->
@@ -317,7 +317,7 @@ const Components = {
     // Tab: Settings (保持原樣，這裡省略以節省空間)
     settings: `
         <div class="max-w-2xl mx-auto">
-             <h2 class="font-serif text-3xl text-secondary mb-8">Settings</h2>
+             <h2 class="font-serif text-3xl text-secondary mb-8" data-i18n="settings.title">Settings</h2>
 
              <div class="space-y-10">
                 <!-- User Profile Section -->
@@ -337,13 +337,13 @@ const Components = {
                         </div>
                         <div id="premium-status-badge" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-textMuted">
                             <i data-lucide="loader" class="w-3 h-3 animate-spin"></i>
-                            Loading
+                            <span data-i18n="settings.wallet.loading">Loading</span>
                         </div>
                     </div>
 
                     <!-- TEST MODE: Multi-User Switcher -->
                     <div id="dev-user-switcher" class="mt-4 pt-4 border-t border-white/5">
-                        <p class="text-[10px] text-textMuted uppercase tracking-wider mb-2 font-bold opacity-50">Dev: Switch User</p>
+                        <p class="text-[10px] text-textMuted uppercase tracking-wider mb-2 font-bold opacity-50" data-i18n="settings.profile.devSwitchUser">Dev: Switch User</p>
                         <div class="grid grid-cols-2 gap-2">
                             <button onclick="handleDevSwitchUser('test-user-001')" class="py-2 bg-white/5 hover:bg-primary/20 hover:text-primary rounded-lg text-xs font-mono transition border border-white/5">
                                 User 001
@@ -356,7 +356,7 @@ const Components = {
 
                     <button onclick="handleLogout()" class="w-full py-3 bg-white/5 hover:bg-danger/10 text-textMuted hover:text-danger border border-white/5 hover:border-danger/20 font-bold rounded-xl transition flex items-center justify-center gap-2 mt-4">
                         <i data-lucide="log-out" class="w-4 h-4"></i>
-                        Logout
+                        <span data-i18n="settings.profile.logout">Logout</span>
                     </button>
                 </div>
 
@@ -368,13 +368,13 @@ const Components = {
                                 <i data-lucide="wallet" class="w-5 h-5 text-primary"></i>
                             </div>
                             <div>
-                                <h3 class="text-lg font-serif text-primary">Pi Wallet</h3>
-                                <p class="text-xs text-textMuted">連接您的 Pi 錢包以進行交易</p>
+                                <h3 class="text-lg font-serif text-primary" data-i18n="settings.wallet.title">Pi Wallet</h3>
+                                <p class="text-xs text-textMuted" data-i18n="settings.wallet.description">Connect your Pi wallet for transactions</p>
                             </div>
                         </div>
                         <div id="settings-wallet-status-badge" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-textMuted">
                             <i data-lucide="loader" class="w-3 h-3 animate-spin"></i>
-                            載入中
+                            <span data-i18n="settings.wallet.loading">Loading</span>
                         </div>
                     </div>
 
@@ -383,19 +383,19 @@ const Components = {
                             <div class="bg-background/50 rounded-xl p-4 border border-white/5 mb-4">
                                 <p class="text-sm text-textMuted leading-relaxed">
                                     <i data-lucide="info" class="w-4 h-4 inline-block mr-1 opacity-60"></i>
-                                    綁定 Pi 錢包後可以：
+                                    <span data-i18n="settings.wallet.benefits">After linking your Pi Wallet:</span>
                                 </p>
                                 <ul class="text-xs text-textMuted mt-2 space-y-1 ml-5">
-                                    <li>• 在論壇發布文章（需支付 <span data-price="create_post"><i data-lucide="loader" class="w-3 h-3 animate-spin inline-block"></i></span>）</li>
-                                    <li>• 打賞優質內容創作者</li>
-                                    <li>• 接收來自其他用戶的打賞</li>
+                                    <li><span data-i18n="settings.wallet.benefit1">Post on the forum (costs</span> <span data-price="create_post"><i data-lucide="loader" class="w-3 h-3 animate-spin inline-block"></i></span>)</li>
+                                    <li data-i18n="settings.wallet.benefit2">Tip quality content creators</li>
+                                    <li data-i18n="settings.wallet.benefit3">Receive tips from other users</li>
                                 </ul>
                             </div>
                             <button onclick="handleSettingsLinkWallet()" class="w-full py-3.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 font-bold rounded-xl transition flex items-center justify-center gap-2">
                                 <i data-lucide="link" class="w-4 h-4"></i>
-                                綁定 Pi 錢包
+                                <span data-i18n="settings.wallet.linkButton">Link Pi Wallet</span>
                             </button>
-                            <p class="text-[10px] text-textMuted/60 text-center mt-2">需要在 Pi Browser 中開啟</p>
+                            <p class="text-[10px] text-textMuted/60 text-center mt-2" data-i18n="settings.wallet.requirePiBrowser">Must be opened in Pi Browser</p>
                         </div>
 
                         <div id="wallet-linked" class="hidden">
@@ -405,7 +405,7 @@ const Components = {
                                         <i data-lucide="check-circle" class="w-5 h-5 text-success"></i>
                                     </div>
                                     <div>
-                                        <p class="text-sm font-bold text-success">Pi 錢包已連接</p>
+                                        <p class="text-sm font-bold text-success" data-i18n="settings.wallet.connected">Pi Wallet Connected</p>
                                         <p id="settings-wallet-username" class="text-xs text-textMuted font-mono">@username</p>
                                     </div>
                                 </div>
@@ -422,8 +422,8 @@ const Components = {
                                 <i data-lucide="brain" class="w-5 h-5 text-primary"></i>
                             </div>
                             <div>
-                                <h3 class="text-lg font-serif text-primary">AI Intelligence</h3>
-                                <p class="text-xs text-textMuted">Configure your LLM provider</p>
+                                <h3 class="text-lg font-serif text-primary" data-i18n="settings.ai.title">AI Intelligence</h3>
+                                <p class="text-xs text-textMuted" data-i18n="settings.ai.description">Configure your LLM provider</p>
                             </div>
                         </div>
                         <div id="llm-status-badge" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium">
@@ -432,7 +432,7 @@ const Components = {
 
                     <div class="space-y-6">
                         <div>
-                            <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Provider</label>
+                            <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2" data-i18n="settings.ai.provider">Provider</label>
                             <select id="llm-provider-select" onchange="updateLLMKeyInput(); updateAvailableModels()" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3.5 text-secondary outline-none focus:border-primary/50 transition appearance-none">
                                 <option value="openai">OpenAI</option>
                                 <option value="google_gemini">Google Gemini</option>
@@ -441,25 +441,25 @@ const Components = {
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">API Key</label>
+                            <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2" data-i18n="settings.ai.apiKey">API Key</label>
                             <div class="flex gap-3">
                                 <input type="password" id="llm-api-key-input" class="flex-1 bg-background border border-white/5 rounded-xl px-4 py-3.5 text-secondary outline-none focus:border-primary/50 font-mono text-sm" placeholder="sk-...">
-                                <button onclick="testLLMKey()" class="px-5 bg-surfaceHighlight hover:bg-white/10 text-secondary rounded-xl transition font-bold text-xs whitespace-nowrap">TEST</button>
+                                <button onclick="testLLMKey()" class="px-5 bg-surfaceHighlight hover:bg-white/10 text-secondary rounded-xl transition font-bold text-xs whitespace-nowrap" data-i18n="settings.ai.test">TEST</button>
                             </div>
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Model</label>
+                            <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2" data-i18n="settings.ai.model">Model</label>
                             <select id="llm-model-select" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3.5 text-secondary outline-none focus:border-primary/50 transition appearance-none" style="display: block;">
-                                <option value="">Select a model</option>
+                                <option value="" data-i18n="settings.ai.selectModel">Select a model</option>
                             </select>
                             <input type="text" id="llm-model-input" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3.5 text-sm text-secondary outline-none focus:border-primary/50 transition mt-3"
-                                   placeholder="e.g., openai/gpt-4o, anthropic/claude-3.5-sonnet"
+                                   placeholder="e.g., openai/gpt-4o, anthropic/claude-3.5-sonnet" data-i18n="settings.ai.modelPlaceholder" data-i18n-attr="placeholder"
                                    style="display: none;" />
                             <p id="llm-key-status" class="mt-2 text-xs text-textMuted hidden"></p>
                         </div>
 
-                        <button id="save-llm-key-btn" onclick="saveLLMKey()" class="w-full py-3.5 bg-primary text-background font-bold rounded-xl shadow-lg shadow-primary/10 opacity-50 cursor-not-allowed transition mt-2" disabled>
+                        <button id="save-llm-key-btn" onclick="saveLLMKey()" class="w-full py-3.5 bg-primary text-background font-bold rounded-xl shadow-lg shadow-primary/10 opacity-50 cursor-not-allowed transition mt-2" disabled data-i18n="settings.ai.saveConfig">
                             Save AI Configuration
                         </button>
                     </div>
@@ -473,8 +473,8 @@ const Components = {
                                 <i data-lucide="users" class="w-5 h-5 text-accent"></i>
                             </div>
                             <div>
-                                <h3 class="text-lg font-serif text-accent">Committee Mode</h3>
-                                <p class="text-xs text-textMuted">Multi-model consensus</p>
+                                <h3 class="text-lg font-serif text-accent" data-i18n="settings.committee.title">Committee Mode</h3>
+                                <p class="text-xs text-textMuted" data-i18n="settings.committee.description">Multi-model consensus</p>
                             </div>
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer">
@@ -485,45 +485,45 @@ const Components = {
 
                     <div id="committee-management-panel" class="hidden space-y-6 pt-6 mt-6 border-t border-white/5">
                         <div>
-                            <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Provider</label>
+                            <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2" data-i18n="settings.ai.provider">Provider</label>
                             <select id="committee-provider-select" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3.5 text-sm text-secondary outline-none focus:border-accent/50 transition appearance-none">
-                                <option value="">Select Provider...</option>
+                                <option value="" data-i18n="settings.committee.selectProvider">Select Provider...</option>
                             </select>
-                            <p id="committee-no-key-hint" class="text-xs text-warning mt-2 hidden">
-                                請先在 AI Intelligence 區塊設定 API Key
+                            <p id="committee-no-key-hint" class="text-xs text-warning mt-2 hidden" data-i18n="settings.committee.noKeyHint">
+                                Please set up API Key in AI Intelligence first
                             </p>
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Model</label>
+                            <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2" data-i18n="settings.ai.model">Model</label>
                             <select id="committee-model-select" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3.5 text-sm text-secondary outline-none focus:border-accent/50 transition appearance-none" disabled>
-                                <option value="">先選擇 Provider...</option>
+                                <option value="" data-i18n="settings.committee.selectProviderFirst">Select Provider first...</option>
                             </select>
                         </div>
 
                         <div class="grid grid-cols-2 gap-3">
                             <button id="add-bull-btn" class="py-3 bg-success/10 text-success rounded-xl text-sm font-bold border border-success/20 hover:bg-success/20 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                                <i data-lucide="plus" class="w-4 h-4"></i> Bull Team
+                                <i data-lucide="plus" class="w-4 h-4"></i> <span data-i18n="settings.committee.bullTeam">Bull Team</span>
                             </button>
                             <button id="add-bear-btn" class="py-3 bg-danger/10 text-danger rounded-xl text-sm font-bold border border-danger/20 hover:bg-danger/20 transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                                <i data-lucide="plus" class="w-4 h-4"></i> Bear Team
+                                <i data-lucide="plus" class="w-4 h-4"></i> <span data-i18n="settings.committee.bearTeam">Bear Team</span>
                             </button>
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">
                             <div class="bg-background p-4 rounded-xl">
                                 <span class="text-success font-bold text-sm flex items-center gap-2 mb-3">
-                                    <span class="w-2 h-2 rounded-full bg-success"></span> Bull Team
+                                    <span class="w-2 h-2 rounded-full bg-success"></span> <span data-i18n="settings.committee.bullTeam">Bull Team</span>
                                 </span>
                                 <ul id="bull-committee-list" class="space-y-2 text-xs"></ul>
-                                <p id="bull-empty-hint" class="text-textMuted/50 text-xs">尚未添加成員</p>
+                                <p id="bull-empty-hint" class="text-textMuted/50 text-xs" data-i18n="settings.committee.noMembers">No members added yet</p>
                             </div>
                             <div class="bg-background p-4 rounded-xl">
                                 <span class="text-danger font-bold text-sm flex items-center gap-2 mb-3">
-                                    <span class="w-2 h-2 rounded-full bg-danger"></span> Bear Team
+                                    <span class="w-2 h-2 rounded-full bg-danger"></span> <span data-i18n="settings.committee.bearTeam">Bear Team</span>
                                 </span>
                                 <ul id="bear-committee-list" class="space-y-2 text-xs"></ul>
-                                <p id="bear-empty-hint" class="text-textMuted/50 text-xs">尚未添加成員</p>
+                                <p id="bear-empty-hint" class="text-textMuted/50 text-xs" data-i18n="settings.committee.noMembers">No members added yet</p>
                             </div>
                         </div>
                     </div>
@@ -537,19 +537,19 @@ const Components = {
                                 <i data-lucide="layout-grid" class="w-5 h-5 text-primary"></i>
                             </div>
                             <div>
-                                <h3 class="text-lg font-serif text-primary">Navigation Customization</h3>
-                                <p class="text-xs text-textMuted">Customize your bottom navigation bar</p>
+                                <h3 class="text-lg font-serif text-primary" data-i18n="settings.navigation.title">Navigation Customization</h3>
+                                <p class="text-xs text-textMuted" data-i18n="settings.navigation.description">Customize your bottom navigation bar</p>
                             </div>
                         </div>
                         <button onclick="FeatureMenu.open()" class="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl transition font-bold text-sm flex items-center gap-2">
                             <i data-lucide="settings-2" class="w-4 h-4"></i>
-                            Customize
+                            <span data-i18n="settings.navigation.customize">Customize</span>
                         </button>
                     </div>
                     <div class="mt-4 bg-background/50 rounded-xl p-4 border border-white/5">
                         <p class="text-sm text-textMuted leading-relaxed">
                             <i data-lucide="info" class="w-4 h-4 inline-block mr-1 opacity-60"></i>
-                            Choose which features appear in your bottom navigation bar. At least 2 items must be enabled.
+                            <span data-i18n="settings.navigation.info">Choose which features appear in your bottom navigation bar. At least 2 items must be enabled.</span>
                         </p>
                     </div>
                 </div>
@@ -561,8 +561,8 @@ const Components = {
                             <i data-lucide="star" class="w-5 h-5 text-white"></i>
                         </div>
                         <div>
-                            <h3 class="text-lg font-serif text-yellow-400">Premium Membership</h3>
-                            <p class="text-xs text-textMuted">Unlock advanced features</p>
+                            <h3 class="text-lg font-serif text-yellow-400" data-i18n="settings.premium.title">Premium Membership</h3>
+                            <p class="text-xs text-textMuted" data-i18n="settings.premium.description">Unlock advanced features</p>
                         </div>
                     </div>
 
@@ -570,22 +570,22 @@ const Components = {
                         <div class="bg-background/50 rounded-xl p-4 border border-white/5">
                             <p class="text-sm text-textMuted leading-relaxed">
                                 <i data-lucide="crown" class="w-4 h-4 inline-block mr-1 text-yellow-400"></i>
-                                高級會員享有：
+                                <span data-i18n="settings.premium.benefits">Premium members enjoy:</span>
                             </p>
                             <ul class="text-xs text-textMuted mt-2 space-y-1 ml-5">
-                                <li>• 無限發文權限</li>
-                                <li>• 無限回覆權限</li>
-                                <li>• 優先訪問新功能</li>
-                                <li>• 專屬高級會員標識</li>
+                                <li data-i18n="settings.premium.benefit1">Unlimited posting</li>
+                                <li data-i18n="settings.premium.benefit2">Unlimited replies</li>
+                                <li data-i18n="settings.premium.benefit3">Early access to new features</li>
+                                <li data-i18n="settings.premium.benefit4">Exclusive premium badge</li>
                             </ul>
                         </div>
 
                         <button onclick="handleUpgradeToPremium()" class="w-full py-3.5 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-background font-bold rounded-xl transition flex items-center justify-center gap-2 upgrade-premium-btn">
                             <i data-lucide="zap" class="w-4 h-4"></i>
-                            <span>升級到高級會員 - <span data-price="premium"><i data-lucide="loader" class="w-3 h-3 animate-spin"></i></span></span>
+                            <span><span data-i18n="settings.premium.upgradeButton">Upgrade to Premium -</span> <span data-price="premium"><i data-lucide="loader" class="w-3 h-3 animate-spin"></i></span></span>
                         </button>
 
-                        <p class="text-[10px] text-textMuted/60 text-center">一次性付費，立即生效</p>
+                        <p class="text-[10px] text-textMuted/60 text-center" data-i18n="settings.premium.oneTimePayment">One-time payment, effective immediately</p>
                     </div>
                 </div>
 
@@ -597,8 +597,8 @@ const Components = {
                                 <i data-lucide="key" class="w-5 h-5 text-secondary"></i>
                             </div>
                             <div>
-                                <h3 class="text-lg font-serif text-secondary">Exchange Keys</h3>
-                                <p class="text-xs text-textMuted">Connect your OKX account</p>
+                                <h3 class="text-lg font-serif text-secondary" data-i18n="settings.exchange.title">Exchange Keys</h3>
+                                <p class="text-xs text-textMuted" data-i18n="settings.exchange.description">Connect your OKX account</p>
                             </div>
                         </div>
                         <div id="okx-status-badge" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium">
@@ -608,10 +608,10 @@ const Components = {
                     <div id="okx-not-connected" class="hidden">
                         <div class="text-center py-4 mb-4 bg-background/50 rounded-xl">
                             <i data-lucide="unplug" class="w-8 h-8 text-textMuted mx-auto mb-2"></i>
-                            <p class="text-sm text-textMuted">No exchange connected</p>
+                            <p class="text-sm text-textMuted" data-i18n="settings.exchange.notConnected">No exchange connected</p>
                         </div>
                         <button onclick="document.getElementById('apikey-modal').classList.remove('hidden')" class="w-full py-3.5 bg-gradient-to-r from-primary to-accent text-background font-bold rounded-2xl transition flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02]">
-                            <i data-lucide="plug" class="w-4 h-4"></i> Connect OKX
+                            <i data-lucide="plug" class="w-4 h-4"></i> <span data-i18n="settings.exchange.connectButton">Connect OKX</span>
                         </button>
                     </div>
 
@@ -622,23 +622,23 @@ const Components = {
                                     <i data-lucide="check" class="w-5 h-5 text-success"></i>
                                 </div>
                                 <div>
-                                    <p class="text-sm font-medium text-secondary">OKX Connected</p>
-                                    <p class="text-xs text-textMuted">API key stored locally</p>
+                                    <p class="text-sm font-medium text-secondary" data-i18n="settings.exchange.connected">OKX Connected</p>
+                                    <p class="text-xs text-textMuted" data-i18n="settings.exchange.storedLocally">API key stored locally</p>
                                 </div>
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-3">
                             <button onclick="document.getElementById('apikey-modal').classList.remove('hidden')" class="py-3 bg-surfaceHighlight hover:bg-white/10 border border-white/5 text-secondary rounded-xl transition flex items-center justify-center gap-2 text-sm font-medium">
-                                <i data-lucide="edit-3" class="w-4 h-4"></i> Update
+                                <i data-lucide="edit-3" class="w-4 h-4"></i> <span data-i18n="settings.exchange.update">Update</span>
                             </button>
                             <button onclick="disconnectOKX()" class="py-3 bg-danger/10 hover:bg-danger/20 border border-danger/20 text-danger rounded-xl transition flex items-center justify-center gap-2 text-sm font-medium">
-                                <i data-lucide="unplug" class="w-4 h-4"></i> Disconnect
+                                <i data-lucide="unplug" class="w-4 h-4"></i> <span data-i18n="settings.exchange.disconnect">Disconnect</span>
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <button onclick="saveSettings()" id="btn-save-settings" class="w-full py-4 bg-secondary text-background font-bold rounded-2xl shadow-xl hover:scale-[1.02] transition">
+                <button onclick="saveSettings()" id="btn-save-settings" class="w-full py-4 bg-secondary text-background font-bold rounded-2xl shadow-xl hover:scale-[1.02] transition" data-i18n="settings.saveAll">
                     Save All Settings
                 </button>
 
@@ -649,48 +649,48 @@ const Components = {
                             <i data-lucide="info" class="w-5 h-5 text-primary"></i>
                         </div>
                         <div>
-                            <h3 class="text-lg font-serif text-primary">About & Legal</h3>
-                            <p class="text-xs text-textMuted">Terms, Privacy, and Community Guidelines</p>
+                            <h3 class="text-lg font-serif text-primary" data-i18n="settings.legal.title">About & Legal</h3>
+                            <p class="text-xs text-textMuted" data-i18n="settings.legal.description">Terms, Privacy, and Community Guidelines</p>
                         </div>
                     </div>
 
                     <div class="space-y-3">
-                        <a href="/static/legal/terms-of-service.html" target="_blank" class="block w-full p-4 bg-background/50 hover:bg-background rounded-xl border border-white/5 hover:border-primary/20 transition group">
+                        <a href="javascript:void(0)" onclick="showLegalPage('terms')" class="block w-full p-4 bg-background/50 hover:bg-background rounded-xl border border-white/5 hover:border-primary/20 transition group cursor-pointer">
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-3">
                                     <i data-lucide="file-text" class="w-4 h-4 text-textMuted group-hover:text-primary transition"></i>
                                     <div>
-                                        <p class="text-sm font-medium text-secondary">Terms of Service</p>
-                                        <p class="text-xs text-textMuted">Usage rules and policies</p>
+                                        <p class="text-sm font-medium text-secondary" data-i18n="settings.legal.termsTitle">Terms of Service</p>
+                                        <p class="text-xs text-textMuted" data-i18n="settings.legal.termsDesc">Usage rules and policies</p>
                                     </div>
                                 </div>
-                                <i data-lucide="external-link" class="w-4 h-4 text-textMuted group-hover:text-primary transition"></i>
+                                <i data-lucide="chevron-right" class="w-4 h-4 text-textMuted group-hover:text-primary transition"></i>
                             </div>
                         </a>
 
-                        <a href="/static/legal/privacy-policy.html" target="_blank" class="block w-full p-4 bg-background/50 hover:bg-background rounded-xl border border-white/5 hover:border-primary/20 transition group">
+                        <a href="javascript:void(0)" onclick="showLegalPage('privacy')" class="block w-full p-4 bg-background/50 hover:bg-background rounded-xl border border-white/5 hover:border-primary/20 transition group cursor-pointer">
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-3">
                                     <i data-lucide="shield" class="w-4 h-4 text-textMuted group-hover:text-primary transition"></i>
                                     <div>
-                                        <p class="text-sm font-medium text-secondary">Privacy Policy</p>
-                                        <p class="text-xs text-textMuted">Data protection and privacy</p>
+                                        <p class="text-sm font-medium text-secondary" data-i18n="settings.legal.privacyTitle">Privacy Policy</p>
+                                        <p class="text-xs text-textMuted" data-i18n="settings.legal.privacyDesc">Data protection and privacy</p>
                                     </div>
                                 </div>
-                                <i data-lucide="external-link" class="w-4 h-4 text-textMuted group-hover:text-primary transition"></i>
+                                <i data-lucide="chevron-right" class="w-4 h-4 text-textMuted group-hover:text-primary transition"></i>
                             </div>
                         </a>
 
-                        <a href="/static/legal/community-guidelines.html" target="_blank" class="block w-full p-4 bg-background/50 hover:bg-background rounded-xl border border-white/5 hover:border-primary/20 transition group">
+                        <a href="javascript:void(0)" onclick="showLegalPage('guidelines')" class="block w-full p-4 bg-background/50 hover:bg-background rounded-xl border border-white/5 hover:border-primary/20 transition group cursor-pointer">
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-3">
                                     <i data-lucide="users" class="w-4 h-4 text-textMuted group-hover:text-primary transition"></i>
                                     <div>
-                                        <p class="text-sm font-medium text-secondary">Community Guidelines</p>
-                                        <p class="text-xs text-textMuted">Governance and moderation rules</p>
+                                        <p class="text-sm font-medium text-secondary" data-i18n="settings.legal.guidelinesTitle">Community Guidelines</p>
+                                        <p class="text-xs text-textMuted" data-i18n="settings.legal.guidelinesDesc">Governance and moderation rules</p>
                                     </div>
                                 </div>
-                                <i data-lucide="external-link" class="w-4 h-4 text-textMuted group-hover:text-primary transition"></i>
+                                <i data-lucide="chevron-right" class="w-4 h-4 text-textMuted group-hover:text-primary transition"></i>
                             </div>
                         </a>
                     </div>
@@ -712,16 +712,16 @@ const Components = {
                     <div class="w-10 h-10 rounded-xl bg-danger/10 flex items-center justify-center">
                         <i data-lucide="shield-alert" class="w-5 h-5 text-danger"></i>
                     </div>
-                    Community Safety
+                    <span data-i18n="safety.title">Community Safety</span>
                 </h2>
                 <div class="flex items-center gap-2">
                     <button onclick="SafetyTab.openGovernanceModal()" class="px-3 py-2 bg-accent/10 hover:bg-accent/20 text-accent rounded-xl text-sm font-bold flex items-center gap-1.5 transition">
                         <i data-lucide="scale" class="w-4 h-4"></i>
-                        <span class="hidden sm:inline">Governance</span>
+                        <span class="hidden sm:inline" data-i18n="safety.governance">Governance</span>
                     </button>
                     <button onclick="SafetyTab.openSubmitModal()" class="px-3 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl text-sm font-bold flex items-center gap-1.5 transition">
                         <i data-lucide="alert-triangle" class="w-4 h-4"></i>
-                        <span class="hidden sm:inline">Report Wallet</span>
+                        <span class="hidden sm:inline" data-i18n="safety.reportWallet">Report Wallet</span>
                     </button>
                 </div>
             </div>
@@ -729,7 +729,7 @@ const Components = {
             <!-- Search -->
             <div class="bg-surface border border-white/5 rounded-2xl p-4">
                 <div class="flex gap-2">
-                    <input type="text" id="safety-search-wallet" placeholder="Search wallet address..."
+                    <input type="text" id="safety-search-wallet" placeholder="Search wallet address..." data-i18n="safety.searchPlaceholder" data-i18n-attr="placeholder"
                         class="flex-1 bg-background border border-white/10 rounded-xl px-4 py-2.5 text-textMain focus:border-primary outline-none text-sm"
                         onkeypress="if(event.key==='Enter') SafetyTab.handleSearch()">
                     <button onclick="SafetyTab.handleSearch()" class="bg-primary text-background px-5 py-2.5 rounded-xl font-bold hover:brightness-110 transition text-sm">
@@ -742,20 +742,20 @@ const Components = {
             <div class="flex flex-wrap gap-2">
                 <select id="safety-filter-type" onchange="SafetyTab.applyFilters()"
                     class="bg-surface border border-white/5 rounded-xl px-3 py-2 text-textMuted text-xs font-bold outline-none focus:border-primary/50 cursor-pointer">
-                    <option value="">All Types</option>
+                    <option value="" data-i18n="safety.filters.allTypes">All Types</option>
                 </select>
                 <select id="safety-filter-status" onchange="SafetyTab.applyFilters()"
                     class="bg-surface border border-white/5 rounded-xl px-3 py-2 text-textMuted text-xs font-bold outline-none focus:border-primary/50 cursor-pointer">
-                    <option value="">All Status</option>
-                    <option value="verified">Verified</option>
-                    <option value="pending">Pending</option>
-                    <option value="disputed">Disputed</option>
+                    <option value="" data-i18n="safety.filters.allStatus">All Status</option>
+                    <option value="verified" data-i18n="safety.filters.verified">Verified</option>
+                    <option value="pending" data-i18n="safety.filters.pending">Pending</option>
+                    <option value="disputed" data-i18n="safety.filters.disputed">Disputed</option>
                 </select>
                 <select id="safety-sort-by" onchange="SafetyTab.applyFilters()"
                     class="bg-surface border border-white/5 rounded-xl px-3 py-2 text-textMuted text-xs font-bold outline-none focus:border-primary/50 cursor-pointer">
-                    <option value="latest">Latest</option>
-                    <option value="most_voted">Most Voted</option>
-                    <option value="most_viewed">Most Viewed</option>
+                    <option value="latest" data-i18n="safety.filters.latest">Latest</option>
+                    <option value="most_voted" data-i18n="safety.filters.mostVoted">Most Voted</option>
+                    <option value="most_viewed" data-i18n="safety.filters.mostViewed">Most Viewed</option>
                 </select>
             </div>
 
@@ -763,13 +763,13 @@ const Components = {
             <div id="safety-report-list" class="space-y-3">
                 <div class="text-center text-textMuted py-8">
                     <i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto mb-2"></i>
-                    Loading...
+                    <span data-i18n="common.loading">Loading...</span>
                 </div>
             </div>
 
             <!-- Load More -->
             <div class="text-center">
-                <button id="safety-btn-load-more" onclick="SafetyTab.loadMore()" class="bg-surface hover:bg-surfaceHighlight text-textMuted px-6 py-3 rounded-xl font-bold transition border border-white/5 hidden">
+                <button id="safety-btn-load-more" onclick="SafetyTab.loadMore()" class="bg-surface hover:bg-surfaceHighlight text-textMuted px-6 py-3 rounded-xl font-bold transition border border-white/5 hidden" data-i18n="safety.loadMore">
                     Load More
                 </button>
             </div>
@@ -780,7 +780,7 @@ const Components = {
             <div class="bg-surface w-full max-w-lg max-h-[85vh] flex flex-col rounded-[2rem] border border-white/5 shadow-2xl">
                 <div class="p-6 border-b border-white/5 flex justify-between items-center shrink-0">
                     <h3 class="font-serif text-xl text-secondary flex items-center gap-2">
-                        <i data-lucide="alert-triangle" class="w-5 h-5 text-danger"></i> Report Scam Wallet
+                        <i data-lucide="alert-triangle" class="w-5 h-5 text-danger"></i> <span data-i18n="safety.submit.title">Report Scam Wallet</span>
                     </h3>
                     <button onclick="SafetyTab.closeSubmitModal()" class="w-8 h-8 rounded-full bg-background flex items-center justify-center text-textMuted hover:text-secondary transition">
                         <i data-lucide="x" class="w-4 h-4"></i>
@@ -788,38 +788,38 @@ const Components = {
                 </div>
                 <div class="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
                     <div>
-                        <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Scam Wallet Address <span class="text-danger">*</span></label>
+                        <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2"><span data-i18n="safety.submit.scamWallet">Scam Wallet Address</span> <span class="text-danger">*</span></label>
                         <input type="text" id="safety-scam-wallet" placeholder="G..."
                             class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition font-mono text-sm">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Your Wallet Address <span class="text-danger">*</span></label>
+                        <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2"><span data-i18n="safety.submit.yourWallet">Your Wallet Address</span> <span class="text-danger">*</span></label>
                         <input type="text" id="safety-reporter-wallet" placeholder="G..."
                             class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition font-mono text-sm">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Scam Type <span class="text-danger">*</span></label>
+                        <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2"><span data-i18n="safety.submit.scamType">Scam Type</span> <span class="text-danger">*</span></label>
                         <select id="safety-scam-type"
                             class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition text-sm">
-                            <option value="">Select type...</option>
+                            <option value="" data-i18n="safety.submit.selectType">Select type...</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Description <span class="text-danger">*</span></label>
-                        <textarea id="safety-description" rows="4" placeholder="Describe the scam details (min 20 chars)..."
+                        <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2"><span data-i18n="safety.submit.description">Description</span> <span class="text-danger">*</span></label>
+                        <textarea id="safety-description" rows="4" placeholder="Describe the scam details (min 20 chars)..." data-i18n="safety.submit.descPlaceholder" data-i18n-attr="placeholder"
                             class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition text-sm resize-none"></textarea>
                         <p class="text-[10px] text-textMuted mt-1"><span id="safety-char-count">0</span> / 2000</p>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Transaction Hash <span class="text-textMuted/50">(Optional)</span></label>
-                        <input type="text" id="safety-tx-hash" placeholder="64-char hash..."
+                        <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2"><span data-i18n="safety.submit.txHash">Transaction Hash</span> <span class="text-textMuted/50">(Optional)</span></label>
+                        <input type="text" id="safety-tx-hash" placeholder="64-char hash..." data-i18n="safety.submit.txHashPlaceholder" data-i18n-attr="placeholder"
                             class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition font-mono text-sm">
                     </div>
                 </div>
                 <div class="p-6 border-t border-white/5 shrink-0">
                     <button onclick="SafetyTab.submitReport()" id="safety-btn-submit"
                         class="w-full py-3.5 bg-danger hover:brightness-110 text-white font-bold rounded-xl transition shadow-lg flex items-center justify-center gap-2">
-                        <i data-lucide="send" class="w-4 h-4"></i> Submit Report
+                        <i data-lucide="send" class="w-4 h-4"></i> <span data-i18n="safety.submit.submitButton">Submit Report</span>
                     </button>
                 </div>
             </div>
@@ -829,21 +829,21 @@ const Components = {
         <div id="safety-detail-modal" class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4">
             <div class="bg-surface w-full max-w-lg max-h-[85vh] flex flex-col rounded-[2rem] border border-white/5 shadow-2xl">
                 <div class="p-6 border-b border-white/5 flex justify-between items-center shrink-0">
-                    <h3 class="font-serif text-xl text-secondary">Report Detail</h3>
+                    <h3 class="font-serif text-xl text-secondary" data-i18n="safety.detail.title">Report Detail</h3>
                     <button onclick="SafetyTab.closeDetailModal()" class="w-8 h-8 rounded-full bg-background flex items-center justify-center text-textMuted hover:text-secondary transition">
                         <i data-lucide="x" class="w-4 h-4"></i>
                     </button>
                 </div>
                 <div id="safety-detail-content" class="flex-1 overflow-y-auto p-6 custom-scrollbar">
-                    <div class="text-center text-textMuted py-8">Loading...</div>
+                    <div class="text-center text-textMuted py-8" data-i18n="common.loading">Loading...</div>
                 </div>
                 <div class="p-6 border-t border-white/5 shrink-0">
                     <div class="flex gap-3">
                         <button onclick="SafetyTab.voteOnDetail('approve')" class="flex-1 py-3 bg-success/10 hover:bg-success/20 text-success font-bold rounded-xl transition flex items-center justify-center gap-2">
-                            <i data-lucide="thumbs-up" class="w-4 h-4"></i> Confirm (<span id="safety-detail-approve">0</span>)
+                            <i data-lucide="thumbs-up" class="w-4 h-4"></i> <span data-i18n="safety.detail.confirm">Confirm</span> (<span id="safety-detail-approve">0</span>)
                         </button>
                         <button onclick="SafetyTab.voteOnDetail('reject')" class="flex-1 py-3 bg-danger/10 hover:bg-danger/20 text-danger font-bold rounded-xl transition flex items-center justify-center gap-2">
-                            <i data-lucide="thumbs-down" class="w-4 h-4"></i> Dispute (<span id="safety-detail-reject">0</span>)
+                            <i data-lucide="thumbs-down" class="w-4 h-4"></i> <span data-i18n="safety.detail.dispute">Dispute</span> (<span id="safety-detail-reject">0</span>)
                         </button>
                     </div>
                 </div>
@@ -855,7 +855,7 @@ const Components = {
             <div class="bg-surface w-full max-w-lg max-h-[85vh] flex flex-col rounded-[2rem] border border-white/5 shadow-2xl">
                 <div class="p-6 border-b border-white/5 flex justify-between items-center shrink-0">
                     <h3 class="font-serif text-xl text-secondary flex items-center gap-2">
-                        <i data-lucide="scale" class="w-5 h-5 text-accent"></i> Community Governance
+                        <i data-lucide="scale" class="w-5 h-5 text-accent"></i> <span data-i18n="safety.gov.title">Community Governance</span>
                     </h3>
                     <button onclick="SafetyTab.closeGovernanceModal()" class="w-8 h-8 rounded-full bg-background flex items-center justify-center text-textMuted hover:text-secondary transition">
                         <i data-lucide="x" class="w-4 h-4"></i>
@@ -864,53 +864,53 @@ const Components = {
 
                 <!-- Governance Tabs -->
                 <div class="flex border-b border-white/5 px-6 pt-2 gap-1 overflow-x-auto shrink-0">
-                    <button onclick="SafetyTab.switchGovTab('gov-report')" class="gov-tab-btn px-3 py-2 text-xs font-bold rounded-t-lg border-b-2 border-primary text-primary transition" data-gov-tab="gov-report">Report</button>
-                    <button onclick="SafetyTab.switchGovTab('gov-my-reports')" class="gov-tab-btn px-3 py-2 text-xs font-bold rounded-t-lg border-b-2 border-transparent text-textMuted hover:text-secondary transition" data-gov-tab="gov-my-reports">My Reports</button>
-                    <button onclick="SafetyTab.switchGovTab('gov-review')" class="gov-tab-btn px-3 py-2 text-xs font-bold rounded-t-lg border-b-2 border-transparent text-textMuted hover:text-secondary transition" data-gov-tab="gov-review">Review <span class="text-[9px] bg-accent/20 text-accent px-1.5 py-0.5 rounded ml-1">PRO</span></button>
-                    <button onclick="SafetyTab.switchGovTab('gov-leaderboard')" class="gov-tab-btn px-3 py-2 text-xs font-bold rounded-t-lg border-b-2 border-transparent text-textMuted hover:text-secondary transition" data-gov-tab="gov-leaderboard">Ranking</button>
+                    <button onclick="SafetyTab.switchGovTab('gov-report')" class="gov-tab-btn px-3 py-2 text-xs font-bold rounded-t-lg border-b-2 border-primary text-primary transition" data-gov-tab="gov-report" data-i18n="safety.gov.reportTab">Report</button>
+                    <button onclick="SafetyTab.switchGovTab('gov-my-reports')" class="gov-tab-btn px-3 py-2 text-xs font-bold rounded-t-lg border-b-2 border-transparent text-textMuted hover:text-secondary transition" data-gov-tab="gov-my-reports" data-i18n="safety.gov.myReportsTab">My Reports</button>
+                    <button onclick="SafetyTab.switchGovTab('gov-review')" class="gov-tab-btn px-3 py-2 text-xs font-bold rounded-t-lg border-b-2 border-transparent text-textMuted hover:text-secondary transition" data-gov-tab="gov-review"><span data-i18n="safety.gov.reviewTab">Review</span> <span class="text-[9px] bg-accent/20 text-accent px-1.5 py-0.5 rounded ml-1">PRO</span></button>
+                    <button onclick="SafetyTab.switchGovTab('gov-leaderboard')" class="gov-tab-btn px-3 py-2 text-xs font-bold rounded-t-lg border-b-2 border-transparent text-textMuted hover:text-secondary transition" data-gov-tab="gov-leaderboard" data-i18n="safety.gov.rankingTab">Ranking</button>
                 </div>
 
                 <div class="flex-1 overflow-y-auto custom-scrollbar">
                     <!-- Report Tab -->
                     <div id="gov-report-tab" class="gov-tab-content p-6 space-y-4">
-                        <p class="text-textMuted text-sm">Found a violation? PRO reviewers will review your report.</p>
+                        <p class="text-textMuted text-sm" data-i18n="safety.gov.reportDesc">Found a violation? PRO reviewers will review your report.</p>
                         <div>
-                            <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Content Type <span class="text-danger">*</span></label>
+                            <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2"><span data-i18n="safety.gov.contentType">Content Type</span> <span class="text-danger">*</span></label>
                             <select id="gov-content-type" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition text-sm">
                                 <option value="">Select...</option>
-                                <option value="post">Post</option>
-                                <option value="comment">Comment</option>
+                                <option value="post" data-i18n="safety.gov.post">Post</option>
+                                <option value="comment" data-i18n="safety.gov.comment">Comment</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Content ID <span class="text-danger">*</span></label>
-                            <input type="number" id="gov-content-id" placeholder="Enter content ID"
+                            <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2"><span data-i18n="safety.gov.contentId">Content ID</span> <span class="text-danger">*</span></label>
+                            <input type="number" id="gov-content-id" placeholder="Enter content ID" data-i18n="safety.gov.enterContentId" data-i18n-attr="placeholder"
                                 class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition text-sm">
-                            <p class="text-[10px] text-textMuted mt-1">Found in the content URL</p>
+                            <p class="text-[10px] text-textMuted mt-1" data-i18n="safety.gov.contentIdHint">Found in the content URL</p>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Violation Type <span class="text-danger">*</span></label>
+                            <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2"><span data-i18n="safety.gov.violationType">Violation Type</span> <span class="text-danger">*</span></label>
                             <select id="gov-report-type" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition text-sm">
                                 <option value="">Select...</option>
-                                <option value="spam">Spam</option>
-                                <option value="harassment">Harassment</option>
-                                <option value="misinformation">Misinformation</option>
-                                <option value="scam">Scam</option>
-                                <option value="illegal">Illegal Content</option>
+                                <option value="spam" data-i18n="safety.gov.spam">Spam</option>
+                                <option value="harassment" data-i18n="safety.gov.harassment">Harassment</option>
+                                <option value="misinformation" data-i18n="safety.gov.misinformation">Misinformation</option>
+                                <option value="scam" data-i18n="safety.gov.scam">Scam</option>
+                                <option value="illegal" data-i18n="safety.gov.illegal">Illegal Content</option>
                                 <option value="other">Other</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Description <span class="text-textMuted/50">(Optional)</span></label>
-                            <textarea id="gov-description" rows="3" placeholder="Describe the violation..."
+                            <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2"><span data-i18n="safety.submit.description">Description</span> <span class="text-textMuted/50">(Optional)</span></label>
+                            <textarea id="gov-description" rows="3" placeholder="Describe the violation..." data-i18n="safety.gov.describeViolation" data-i18n-attr="placeholder"
                                 class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition text-sm resize-none"></textarea>
                         </div>
                         <button onclick="SafetyTab.submitGovernanceReport()" class="w-full py-3 bg-accent hover:brightness-110 text-white font-bold rounded-xl transition shadow-lg flex items-center justify-center gap-2">
-                            <i data-lucide="send" class="w-4 h-4"></i> Submit Report
+                            <i data-lucide="send" class="w-4 h-4"></i> <span data-i18n="safety.gov.submitReport">Submit Report</span>
                         </button>
                         <div id="gov-quota-display" class="bg-background/50 rounded-xl p-4 space-y-3">
                             <div class="flex items-center justify-between">
-                                <h4 class="text-xs font-bold text-textMuted flex items-center gap-1"><i data-lucide="info" class="w-3 h-3"></i> Daily Quota</h4>
+                                <h4 class="text-xs font-bold text-textMuted flex items-center gap-1"><i data-lucide="info" class="w-3 h-3"></i> <span data-i18n="safety.gov.dailyQuota">Daily Quota</span></h4>
                                 <span id="gov-quota-badge" class="text-[10px] px-2 py-0.5 rounded bg-white/5 text-textMuted">--</span>
                             </div>
                             <div class="w-full bg-white/5 rounded-full h-2">
@@ -921,9 +921,9 @@ const Components = {
                                 <span id="gov-quota-tier" class="text-textMuted/50"></span>
                             </div>
                             <ul class="text-[11px] text-textMuted/70 space-y-1 list-disc list-inside border-t border-white/5 pt-2">
-                                <li>One report per content per user</li>
-                                <li>Cannot report your own content</li>
-                                <li>False reports may result in penalties</li>
+                                <li data-i18n="safety.gov.rule1">One report per content per user</li>
+                                <li data-i18n="safety.gov.rule2">Cannot report your own content</li>
+                                <li data-i18n="safety.gov.rule3">False reports may result in penalties</li>
                             </ul>
                         </div>
                     </div>
@@ -931,13 +931,13 @@ const Components = {
                     <!-- My Reports Tab -->
                     <div id="gov-my-reports-tab" class="gov-tab-content hidden p-6">
                         <div class="flex gap-2 mb-4 overflow-x-auto pb-1">
-                            <button onclick="SafetyTab.loadMyGovReports('all', this)" class="gov-filter-btn px-3 py-1.5 text-xs font-bold rounded-lg bg-white/5 text-primary border border-primary/20">All</button>
-                            <button onclick="SafetyTab.loadMyGovReports('pending', this)" class="gov-filter-btn px-3 py-1.5 text-xs font-bold rounded-lg bg-white/5 text-textMuted border border-white/5">Pending</button>
-                            <button onclick="SafetyTab.loadMyGovReports('approved', this)" class="gov-filter-btn px-3 py-1.5 text-xs font-bold rounded-lg bg-white/5 text-textMuted border border-white/5">Approved</button>
-                            <button onclick="SafetyTab.loadMyGovReports('rejected', this)" class="gov-filter-btn px-3 py-1.5 text-xs font-bold rounded-lg bg-white/5 text-textMuted border border-white/5">Rejected</button>
+                            <button onclick="SafetyTab.loadMyGovReports('all', this)" class="gov-filter-btn px-3 py-1.5 text-xs font-bold rounded-lg bg-white/5 text-primary border border-primary/20" data-i18n="common.all">All</button>
+                            <button onclick="SafetyTab.loadMyGovReports('pending', this)" class="gov-filter-btn px-3 py-1.5 text-xs font-bold rounded-lg bg-white/5 text-textMuted border border-white/5" data-i18n="safety.filters.pending">Pending</button>
+                            <button onclick="SafetyTab.loadMyGovReports('approved', this)" class="gov-filter-btn px-3 py-1.5 text-xs font-bold rounded-lg bg-white/5 text-textMuted border border-white/5" data-i18n="safety.gov.approved">Approved</button>
+                            <button onclick="SafetyTab.loadMyGovReports('rejected', this)" class="gov-filter-btn px-3 py-1.5 text-xs font-bold rounded-lg bg-white/5 text-textMuted border border-white/5" data-i18n="safety.gov.rejected">Rejected</button>
                         </div>
                         <div id="gov-my-reports-list" class="space-y-3">
-                            <div class="text-center text-textMuted py-8 text-sm">Select a filter to load reports</div>
+                            <div class="text-center text-textMuted py-8 text-sm" data-i18n="safety.gov.selectFilter">Select a filter to load reports</div>
                         </div>
                     </div>
 
@@ -947,12 +947,12 @@ const Components = {
                             <div class="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <i data-lucide="lock" class="w-8 h-8 text-accent"></i>
                             </div>
-                            <h4 class="font-bold text-secondary mb-2">PRO Members Only</h4>
-                            <p class="text-textMuted text-sm mb-4">Upgrade to PRO to review reports and earn reputation.</p>
+                            <h4 class="font-bold text-secondary mb-2" data-i18n="safety.gov.proOnly">PRO Members Only</h4>
+                            <p class="text-textMuted text-sm mb-4" data-i18n="safety.gov.proDesc">Upgrade to PRO to review reports and earn reputation.</p>
                         </div>
                         <div id="gov-review-content" class="hidden space-y-3">
                             <div id="gov-pending-list" class="space-y-3">
-                                <div class="text-center text-textMuted py-4 text-sm">Loading...</div>
+                                <div class="text-center text-textMuted py-4 text-sm" data-i18n="common.loading">Loading...</div>
                             </div>
                         </div>
                     </div>
@@ -960,7 +960,7 @@ const Components = {
                     <!-- Leaderboard Tab -->
                     <div id="gov-leaderboard-tab" class="gov-tab-content hidden p-6">
                         <div id="gov-leaderboard-list" class="space-y-2">
-                            <div class="text-center text-textMuted py-8 text-sm">Loading...</div>
+                            <div class="text-center text-textMuted py-8 text-sm" data-i18n="common.loading">Loading...</div>
                         </div>
                     </div>
                 </div>
@@ -986,8 +986,8 @@ const Components = {
                                     <i data-lucide="layout-grid" class="w-5 h-5 text-primary"></i>
                                 </div>
                                 <div>
-                                    <h2 class="text-xl font-serif text-secondary">Customize Navigation</h2>
-                                    <p class="text-xs text-textMuted">Choose which features appear in your bottom navigation</p>
+                                    <h2 class="text-xl font-serif text-secondary" data-i18n="featureMenu.title">Customize Navigation</h2>
+                                    <p class="text-xs text-textMuted" data-i18n="featureMenu.description">Choose which features appear in your bottom navigation</p>
                                 </div>
                             </div>
                             <button onclick="FeatureMenu.close()" class="p-2 hover:bg-white/5 rounded-full text-textMuted transition">
@@ -1000,7 +1000,7 @@ const Components = {
                     <div id="feature-menu-warning" class="hidden mx-6 mt-4 p-3 bg-warning/10 border border-warning/20 rounded-xl">
                         <div class="flex items-start gap-2">
                             <i data-lucide="alert-triangle" class="w-4 h-4 text-warning flex-shrink-0 mt-0.5"></i>
-                            <p class="text-xs text-warning">At least 2 items must be enabled in your navigation bar.</p>
+                            <p class="text-xs text-warning" data-i18n="featureMenu.minWarning">At least 2 items must be enabled in your navigation bar.</p>
                         </div>
                     </div>
 
@@ -1016,14 +1016,14 @@ const Components = {
                         <div class="flex items-center gap-3">
                             <button onclick="FeatureMenu.save()" class="flex-1 py-3 bg-primary hover:brightness-110 text-background font-bold rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-primary/20">
                                 <i data-lucide="check" class="w-4 h-4"></i>
-                                Save Changes
+                                <span data-i18n="featureMenu.saveChanges">Save Changes</span>
                             </button>
                             <button onclick="FeatureMenu.resetToDefaults()" class="px-4 py-3 bg-white/5 hover:bg-white/10 text-textMuted rounded-xl transition flex items-center justify-center gap-2 border border-white/5">
                                 <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
-                                Reset
+                                <span data-i18n="featureMenu.reset">Reset</span>
                             </button>
                         </div>
-                        <button onclick="FeatureMenu.close()" class="w-full py-2.5 text-textMuted hover:text-textMain text-sm transition">
+                        <button onclick="FeatureMenu.close()" class="w-full py-2.5 text-textMuted hover:text-textMain text-sm transition" data-i18n="common.cancel">
                             Cancel
                         </button>
                     </div>
@@ -1062,6 +1062,11 @@ const Components = {
         // 初始化 Lucide 圖標
         if (window.lucide) {
             window.lucide.createIcons();
+        }
+
+        // 更新 i18n 翻譯（動態注入的 data-i18n 元素需要重新翻譯）
+        if (window.I18n && typeof window.I18n.updatePageContent === 'function') {
+            window.I18n.updatePageContent();
         }
 
         console.log(`[Components] ${id} injected successfully`);

@@ -7,8 +7,20 @@
     "confirm": "確認",
     "delete": "刪除",
     "search": "搜尋",
-    "close": "關閉"
+    "close": "關閉",
+    "continue": "繼續",
+    "update": "更新",
+    "all": "全部",
+    "other": "其他",
+    "select": "選擇...",
+    "guest": "訪客",
+    "user": "使用者",
+    "username": "用戶名",
+    "to": "至",
+    "required": "必填",
+    "optional": "選填"
   },
+
   "nav": {
     "chat": "聊天",
     "market": "市場",
@@ -22,30 +34,374 @@
     "governance": "治理中心",
     "login": "登入",
     "logout": "登出",
-    "profile": "個人資料"
+    "profile": "個人資料",
+    "collapse": "收縮/展開"
   },
+
+  "sidebar": {
+    "newChat": "新對話",
+    "noHistory": "沒有歷史紀錄",
+    "settings": "設定"
+  },
+
+  "chat": {
+    "welcomeTo": "歡迎來到",
+    "subtitle": "AI 驅動的加密貨幣分析與交易洞察。監控市場，做出明智決策。",
+    "good": "午安",
+    "morning": "早安",
+    "afternoon": "午安",
+    "evening": "晚安",
+    "quickBtcTrend": "分析 BTC 趨勢",
+    "btnBtcTrend": "比特幣趨勢",
+    "quickEthRates": "ETH 資金費率",
+    "btnEthRates": "ETH 費率",
+    "quickSentiment": "市場情緒",
+    "btnSentiment": "全球情緒",
+    "unlockTitle": "解鎖 Pi 智慧分析",
+    "unlockDesc": "連接 API 金鑰以啟用 AI 分析。",
+    "unlockDesc2": "您的金鑰安全儲存在本地。",
+    "configureApiKey": "設定 API 金鑰",
+    "otherFeatures": "您仍可使用下方其他功能",
+    "technical": "技術面",
+    "news": "新聞",
+    "systemLocked": "系統鎖定 - 請先設定 API 金鑰",
+    "connecting": "連接中..."
+  },
+
   "market": {
-    "title": "Market Watch",
+    "title": "市場總覽",
     "filter": "篩選",
     "autoBadge": "自動",
-    "liveStatus": "LIVE",
+    "liveStatus": "即時",
+    "liveTooltip": "即時更新已連接",
     "refresh": "重新整理",
-    "topPerformers": "Top Performers",
-    "marketDynamics": "Market Dynamics",
-    "topGainers": "Top Gainers (24H)",
-    "topLosers": "Top Losers (24H)",
-    "bullishSqueeze": "Bullish Squeeze (Low Funding)",
-    "overheated": "Overheated (High Funding)",
-    "selected": "已選擇"
+    "topPerformers": "熱門幣種",
+    "marketDynamics": "市場動態",
+    "topGainers": "24小時漲幅榜",
+    "topLosers": "24小時跌幅榜",
+    "bullishSqueeze": "看漲擠壓 (低資金費率)",
+    "overheated": "過熱 (高資金費率)",
+    "selected": "已選擇",
+    "perfLabel": "24小時表現",
+    "shortsPaying": "空方支付",
+    "longsPaying": "多方支付",
+    "history": "歷史"
   },
+
   "pulse": {
-    "title": "Market Pulse",
+    "title": "市場脈動",
     "filter": "篩選",
     "autoBadge": "自動",
     "selected": "已選擇",
     "scanning": "掃描中",
-    "refresh": "重新整理"
+    "refresh": "重新整理",
+    "keyPoints": "重點摘要",
+    "highlights": "亮點",
+    "risks": "風險",
+    "news": "新聞",
+    "deep": "深度",
+    "detail": "詳情",
+    "deepAnalysis": "深度分析",
+    "public": "公開",
+    "unknownTime": "未知時間",
+    "justNow": "剛剛",
+    "secsAgo": " 秒前",
+    "minsAgo": " 分鐘前",
+    "hoursAgo": " 小時前",
+    "daysAgo": " 天前",
+    "monthsAgo": " 個月前",
+    "yearsAgo": " 年前",
+    "quickPreview": "快速預覽",
+    "currentPrice": "現價",
+    "up24h": "上漲",
+    "down24h": "下跌",
+    "in24h": "24小時",
+    "rsiShows": "RSI 為",
+    "overbought": "超買",
+    "oversold": "超賣",
+    "neutral": "中性",
+    "priceAction": "價格走勢",
+    "techSignals": "技術信號",
+    "macdStrengthening": "增強",
+    "macdWeakening": "減弱",
+    "volume": "成交量",
+    "volumeHigh": "放量",
+    "volumeLow": "縮量",
+    "volumeNormal": "正常",
+    "newsActivity": "新聞動態",
+    "newsFound": "條相關新聞",
+    "techOverview": "技術面概覽",
+    "latestNews": "最新消息",
+    "noApiKey": "未配置 AI 金鑰，僅顯示基礎數據。",
+    "aiQueued": "AI 分析正在後台排隊中，稍後刷新即可查看完整報告。",
+    "configureForDeep": "如需完整 AI 深度分析，請點擊下方的「深度」按鈕並配置您的 API Key。",
+    "loadFailed": "載入失敗",
+    "retry": "重試",
+    "noApiKeyTitle": "未設置 API Key",
+    "noApiKeyMessage": "請先在設定中配置您的 API Key 才能使用深度分析功能。",
+    "goToSettings": "前往設定",
+    "deepAnalyzing": "深度分析中...",
+    "usingProvider": "使用 {{provider}} 進行即時分析",
+    "noNews": "暫無相關新聞",
+    "viewOriginal": "查看原文",
+    "noLink": "無連結",
+    "unknownSource": "未知來源",
+    "noTitle": "無標題",
+    "done": "完成",
+    "awaitingUpdate": "等待排程更新",
+    "analyzing": "分析中"
   },
+
+  "wallet": {
+    "title": "錢包紀錄",
+    "totalActivity": "交易總覽",
+    "spentOut": "支出",
+    "receivedIn": "收入",
+    "transactions": "交易明細",
+    "loadingHistory": "載入紀錄中...",
+    "allTypes": "所有類型",
+    "income": "收入",
+    "expense": "支出",
+    "premium": "高級會員",
+    "tips": "打賞",
+    "postFees": "發文費用",
+    "allTime": "所有時間",
+    "last7Days": "最近 7 天",
+    "last30Days": "最近 30 天",
+    "last3Months": "最近 3 個月",
+    "customRange": "自訂範圍"
+  },
+
+  "assets": {
+    "portfolio": "投資組合",
+    "connectExchange": "連接您的交易所",
+    "linkDescription": "連接您的 OKX 帳戶以查看投資組合和持倉。",
+    "goToSettings": "前往設定",
+    "totalEquity": "總資產",
+    "updated": "更新時間：--:--",
+    "spotAssets": "現貨資產",
+    "activePositions": "活躍持倉"
+  },
+
+  "chart": {
+    "defaultTitle": "BTC 圖表",
+    "autoRefresh": "自動更新",
+    "off": "關閉",
+    "on": "開啟"
+  },
+
+  "modals": {
+    "apiKey": {
+      "title": "連接 OKX",
+      "apiKeyPlaceholder": "API 金鑰",
+      "secretKeyPlaceholder": "私鑰",
+      "passphrasePlaceholder": "密碼短語",
+      "secureConnect": "安全連接"
+    },
+    "filter": {
+      "title": "資產篩選",
+      "searchPlaceholder": "搜尋（例如 BTC）...",
+      "applyFilter": "套用篩選"
+    },
+    "news": {
+      "title": "新聞"
+    },
+    "apiTest": {
+      "connected": "已連接",
+      "successMessage": "AI 大腦已上線。",
+      "continue": "繼續"
+    },
+    "confirm": {
+      "defaultTitle": "確認操作",
+      "defaultMessage": "確定要執行此操作嗎？"
+    }
+  },
+
+  "login": {
+    "welcomeTitle": "歡迎使用 CryptoMind",
+    "welcomeSubtitle": "連接錢包或登入以繼續",
+    "connectPiWallet": "連接 Pi 錢包",
+    "usePiBrowser": "請使用 Pi Browser 開啟",
+    "usePiBrowserDesc": "請在 Pi Browser 中開啟此應用程式",
+    "stepsTitle": "操作步驟：",
+    "step1": "開啟 Pi Browser App",
+    "step2": "在網址列輸入本應用網址",
+    "step3": "點擊「連接 Pi 錢包」登入"
+  },
+
+  "friends": {
+    "title": "社群",
+    "messages": "訊息",
+    "friends": "好友",
+    "selectConversation": "選擇一個對話",
+    "clickToStart": "點擊左側的對話開始聊天",
+    "dailySent": "今日已發送：",
+    "upgradePro": "升級 Pro",
+    "typeMessage": "輸入訊息...",
+    "findFriends": "尋找好友",
+    "searchPlaceholder": "搜尋用戶名...",
+    "friendRequests": "好友請求",
+    "loadingRequests": "載入請求中...",
+    "myFriends": "我的好友",
+    "manageBlocked": "管理黑名單",
+    "loadingFriends": "載入好友中...",
+    "blockedInfo": "被封鎖的用戶無法向您發送訊息或好友請求。"
+  },
+
+  "settings": {
+    "title": "設定",
+    "profile": {
+      "uid": "UID：--",
+      "devSwitchUser": "開發：切換用戶",
+      "logout": "登出"
+    },
+    "wallet": {
+      "title": "Pi 錢包",
+      "description": "連接您的 Pi 錢包以進行交易",
+      "loading": "載入中",
+      "benefits": "綁定 Pi 錢包後可以：",
+      "benefit1": "在論壇發布文章（需支付",
+      "benefit2": "打賞優質內容創作者",
+      "benefit3": "接收來自其他用戶的打賞",
+      "linkButton": "綁定 Pi 錢包",
+      "requirePiBrowser": "需要在 Pi Browser 中開啟",
+      "connected": "Pi 錢包已連接"
+    },
+    "ai": {
+      "title": "AI 智慧分析",
+      "description": "設定您的 LLM 供應商",
+      "provider": "供應商",
+      "apiKey": "API 金鑰",
+      "test": "測試",
+      "model": "模型",
+      "selectModel": "選擇模型",
+      "modelPlaceholder": "例如：openai/gpt-4o, anthropic/claude-3.5-sonnet",
+      "saveConfig": "儲存 AI 設定"
+    },
+    "committee": {
+      "title": "委員會模式",
+      "description": "多模型共識機制",
+      "selectProvider": "選擇供應商...",
+      "noKeyHint": "請先在 AI 智慧分析區塊設定 API 金鑰",
+      "selectProviderFirst": "先選擇供應商...",
+      "bullTeam": "多方團隊",
+      "bearTeam": "空方團隊",
+      "noMembers": "尚未添加成員"
+    },
+    "navigation": {
+      "title": "導覽列自訂",
+      "description": "自訂您的底部導覽列",
+      "customize": "自訂",
+      "info": "選擇要顯示在底部導覽列的功能。至少需啟用 2 個項目。"
+    },
+    "premium": {
+      "title": "高級會員",
+      "description": "解鎖進階功能",
+      "benefits": "高級會員享有：",
+      "benefit1": "無限發文權限",
+      "benefit2": "無限回覆權限",
+      "benefit3": "優先訪問新功能",
+      "benefit4": "專屬高級會員標識",
+      "upgradeButton": "升級到高級會員 -",
+      "oneTimePayment": "一次性付費，立即生效"
+    },
+    "exchange": {
+      "title": "交易所金鑰",
+      "description": "連接您的 OKX 帳戶",
+      "notConnected": "尚未連接交易所",
+      "connectButton": "連接 OKX",
+      "connected": "OKX 已連接",
+      "storedLocally": "API 金鑰安全儲存在本地",
+      "update": "更新",
+      "disconnect": "斷開連接"
+    },
+    "legal": {
+      "title": "關於與法律",
+      "description": "服務條款、隱私權政策與社群規範",
+      "termsTitle": "服務條款",
+      "termsDesc": "使用規則與政策",
+      "privacyTitle": "隱私權政策",
+      "privacyDesc": "資料保護與隱私",
+      "guidelinesTitle": "社群規範",
+      "guidelinesDesc": "治理與審核規則"
+    },
+    "saveAll": "儲存所有設定"
+  },
+
+  "safety": {
+    "title": "社群安全",
+    "governance": "治理中心",
+    "reportWallet": "檢舉錢包",
+    "searchPlaceholder": "搜尋錢包地址...",
+    "loadMore": "載入更多",
+    "filters": {
+      "allTypes": "所有類型",
+      "allStatus": "所有狀態",
+      "verified": "已驗證",
+      "pending": "待審核",
+      "disputed": "有爭議",
+      "latest": "最新",
+      "mostVoted": "最多投票",
+      "mostViewed": "最多瀏覽"
+    },
+    "submit": {
+      "title": "檢舉詐騙錢包",
+      "scamWallet": "詐騙錢包地址",
+      "yourWallet": "您的錢包地址",
+      "scamType": "詐騙類型",
+      "selectType": "選擇類型...",
+      "description": "描述",
+      "descPlaceholder": "描述詐騙詳情（至少 20 字）...",
+      "txHash": "交易雜湊",
+      "txHashPlaceholder": "64 位元雜湊值...",
+      "submitButton": "提交檢舉"
+    },
+    "detail": {
+      "title": "檢舉詳情",
+      "confirm": "確認",
+      "dispute": "提出異議"
+    },
+    "gov": {
+      "title": "社群治理",
+      "reportTab": "檢舉",
+      "myReportsTab": "我的檢舉",
+      "reviewTab": "審核",
+      "rankingTab": "排行榜",
+      "reportDesc": "發現違規內容？PRO 審核員將審查您的檢舉。",
+      "contentType": "內容類型",
+      "post": "文章",
+      "comment": "評論",
+      "contentId": "內容 ID",
+      "enterContentId": "輸入內容 ID",
+      "contentIdHint": "可在內容網址中找到",
+      "violationType": "違規類型",
+      "spam": "垃圾訊息",
+      "harassment": "騷擾",
+      "misinformation": "不實訊息",
+      "scam": "詐騙",
+      "illegal": "違法內容",
+      "describeViolation": "描述違規情況...",
+      "submitReport": "提交檢舉",
+      "dailyQuota": "每日配額",
+      "rule1": "每人每項內容限檢舉一次",
+      "rule2": "不可檢舉自己的內容",
+      "rule3": "虛假檢舉可能導致處罰",
+      "approved": "已批准",
+      "rejected": "已駁回",
+      "selectFilter": "選擇篩選條件以載入檢舉",
+      "proOnly": "僅限 PRO 會員",
+      "proDesc": "升級至 PRO 以審核檢舉並獲得聲望。"
+    }
+  },
+
+  "featureMenu": {
+    "title": "自訂導覽列",
+    "description": "選擇要顯示在底部導覽列的功能",
+    "minWarning": "導覽列至少需啟用 2 個項目。",
+    "saveChanges": "儲存變更",
+    "reset": "重設"
+  },
+
   "forum": {
     "title": "社群論壇",
     "newPost": "發文",
@@ -60,20 +416,12 @@
     "scamTracker": "詐騙追蹤",
     "submitReport": "提交檢舉"
   },
-  "friends": {
-    "title": "社群",
-    "messages": "訊息",
-    "friends": "好友"
-  },
+
   "governance": {
     "title": "社群治理",
     "proposals": "提案",
     "vote": "投票",
     "passed": "已通過",
     "rejected": "已否決"
-  },
-  "safety": {
-    "title": "詐騙檢舉",
-    "submitReport": "提交檢舉"
   }
 }
