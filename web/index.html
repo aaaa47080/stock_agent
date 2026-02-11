@@ -850,6 +850,25 @@
                 })();
             </script>
 
+            <!-- 測試模式登入按鈕：僅在 TEST_MODE 時顯示 -->
+            <div id="dev-login-area" style="display:none;" class="mt-4 pt-4 border-t border-white/10">
+                <button onclick="window.AuthManager && AuthManager.loginAsMockUser().then(r => r.success && window.location.reload())"
+                    class="w-full py-3 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 font-bold rounded-2xl flex items-center justify-center gap-2 transition border border-amber-500/30 text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    Test Mode Login
+                </button>
+                <p class="text-[10px] text-amber-500/50 text-center mt-1.5">僅測試環境可用 · Dev only</p>
+            </div>
+            <script>
+                // 測試模式偵測：若啟用則顯示 dev login 按鈕
+                fetch('/api/config').then(r => r.json()).then(cfg => {
+                    if (cfg.test_mode) {
+                        const el = document.getElementById('dev-login-area');
+                        if (el) el.style.display = 'block';
+                    }
+                }).catch(() => {});
+            </script>
+
             <!-- ============================================================
                  EMAIL LOGIN DISABLED - Pi SDK Exclusive Authentication
                  官方要求：只允許 Pi SDK 登入，不允許其他登入方式
