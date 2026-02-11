@@ -800,34 +800,53 @@
                 </div>
             </div>
             <script>
-                // Optimized Pi Browser Detection (Polling vs Immediate Fail)
-                (function () {
+                // Pi Browser Detection: 分兩階段
+                // 第一階段：確認 Pi SDK 已載入（最多等 3 秒）
+                // 第二階段：用 nativeFeaturesList 驗證是否真正在 Pi Browser（最多再等 1.5 秒）
+                // nativeFeaturesList 是 Pi Browser 專屬 native bridge，普通瀏覽器不具備
+                (async function () {
+                    // 階段一：等待 Pi SDK script 載入
                     let attempts = 0;
-                    const maxAttempts = 30; // Check for 3 seconds (30 * 100ms)
+                    const maxAttempts = 30;
+                    const hasPiSDK = await new Promise((resolve) => {
+                        const check = () => {
+                            const detected = typeof window.Pi !== 'undefined' &&
+                                window.Pi !== null &&
+                                typeof window.Pi.authenticate === 'function' &&
+                                typeof window.Pi.init === 'function';
+                            if (detected) { resolve(true); return; }
+                            attempts++;
+                            if (attempts < maxAttempts) setTimeout(check, 100);
+                            else resolve(false);
+                        };
+                        check();
+                    });
 
-                    const checkPi = () => {
-                        const isValidPiBrowser = typeof window.Pi !== 'undefined' &&
-                            window.Pi !== null &&
-                            typeof window.Pi.authenticate === 'function' &&
-                            typeof window.Pi.init === 'function';
+                    if (!hasPiSDK) {
+                        console.warn('⚠️ Pi SDK not detected after 3 seconds.');
+                        return; // 保持預設「請使用 Pi Browser」提示
+                    }
 
-                        if (isValidPiBrowser) {
-                            console.log('✅ Pi SDK Detected (Attempt ' + (attempts + 1) + ')');
-                            document.getElementById('pi-login-btn').style.display = 'flex';
-                            document.getElementById('not-pi-browser-msg').style.display = 'none';
-                            return; // Stop checking
-                        }
+                    // 階段二：確認 nativeFeaturesList 存在（Pi Browser 專屬）
+                    if (typeof window.Pi.nativeFeaturesList !== 'function') {
+                        console.warn('⚠️ Pi SDK loaded but nativeFeaturesList unavailable - not a real Pi Browser.');
+                        return; // 保持預設「請使用 Pi Browser」提示
+                    }
 
-                        attempts++;
-                        if (attempts < maxAttempts) {
-                            setTimeout(checkPi, 100); // Poll every 100ms
-                        } else {
-                            console.warn('⚠️ Pi SDK not detected after 3 seconds.');
-                            // Keep default "Not Pi Browser" message
-                        }
-                    };
-
-                    checkPi(); // Start checking
+                    // 階段三：呼叫 nativeFeaturesList 做最終驗證（1.5 秒超時）
+                    try {
+                        Pi.init({ version: "2.0", sandbox: false });
+                        const features = await Promise.race([
+                            Pi.nativeFeaturesList(),
+                            new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 1500))
+                        ]);
+                        console.log('✅ Pi Browser verified, features:', features);
+                        document.getElementById('pi-login-btn').style.display = 'flex';
+                        document.getElementById('not-pi-browser-msg').style.display = 'none';
+                    } catch (e) {
+                        console.warn('⚠️ Pi Browser environment check failed:', e.message);
+                        // 保持預設「請使用 Pi Browser」提示
+                    }
                 })();
             </script>
 

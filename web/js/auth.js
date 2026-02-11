@@ -71,21 +71,24 @@ const AuthManager = {
             return { valid: false, reason: 'Pi SDK 不存在' };
         }
 
+        // nativeFeaturesList 是 Pi Browser 專屬的 native bridge API
+        // 若不存在，代表目前不在真正的 Pi Browser 環境中
+        if (typeof window.Pi.nativeFeaturesList !== 'function') {
+            DebugLog.warn('verifyPiBrowserEnvironment: nativeFeaturesList 不可用，非 Pi Browser 環境');
+            return { valid: false, reason: '非 Pi Browser 環境 (nativeFeaturesList 不可用)' };
+        }
+
         try {
             this.initPiSDK();
 
             // 使用 nativeFeaturesList 做快速環境檢測（1.5 秒超時）
             const QUICK_TIMEOUT = 1500;
 
-            const featuresPromise = window.Pi.nativeFeaturesList
-                ? Pi.nativeFeaturesList()
-                : Promise.resolve([]);
-
             const timeoutPromise = new Promise((_, reject) => {
                 setTimeout(() => reject(new Error('TIMEOUT')), QUICK_TIMEOUT);
             });
 
-            const features = await Promise.race([featuresPromise, timeoutPromise]);
+            const features = await Promise.race([Pi.nativeFeaturesList(), timeoutPromise]);
 
             DebugLog.info('Pi Browser 環境驗證成功', { features });
             return { valid: true, features };
@@ -907,12 +910,28 @@ window.handlePiLogin = async () => {
         return;
     }
 
-    // 第二步：(已優化) 跳過耗時的環境驗證，直接進行認證
-    // 原本的 verifyPiBrowserEnvironment 可能導致 1.5 秒延遲
-    DebugLog.info('跳過環境檢查，直接請求認證...');
+    // 第二步：快速驗證是否真的在 Pi Browser 環境（最多 1.5 秒）
+    // 避免非 Pi Browser 環境等待 60 秒後才顯示失敗
+    DebugLog.info('驗證 Pi Browser 環境...');
+    const envCheck = await AuthManager.verifyPiBrowserEnvironment();
+    if (!envCheck.valid) {
+        DebugLog.warn('Pi Browser 環境驗證失敗', { reason: envCheck.reason });
+        if (typeof showAlert === 'function') {
+            await showAlert({
+                title: '需要 Pi Browser',
+                message: '此應用需要使用 Pi Browser 才能登入。\n\n請複製此網址到 Pi Browser 中開啟。',
+                type: 'warning'
+            });
+        } else if (typeof showToast === 'function') {
+            showToast('請在 Pi Browser 中開啟此頁面才能登入', 'warning');
+        } else {
+            alert('請在 Pi Browser 中開啟此頁面才能登入');
+        }
+        return;
+    }
 
     // 第三步：環境有效，進行認證
-    DebugLog.info('環境驗證通過，開始認證...');
+    DebugLog.info('Pi Browser 環境驗證通過，開始認證...');
     try {
         const res = await AuthManager.authenticateWithPi();
         DebugLog.info('Pi 登入結果', res);
