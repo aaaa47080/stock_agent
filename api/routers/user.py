@@ -394,9 +394,10 @@ async def get_wallet_status(user_id: str, current_user: dict = Depends(get_curre
         if TEST_MODE and (user_id == TEST_USER.get("uid") or user_id.startswith("test-user-")):
             return {
                 "success": True,
-                "is_linked": True,
-                "wallet_address": f"GDTESTWALLET{user_id.replace('-', '').upper()}123",
-                "linked_at": "2024-01-01T00:00:00Z"
+                "has_wallet": True,
+                "auth_method": "pi_network",
+                "pi_uid": user_id,
+                "pi_username": TEST_USER.get("username", "TestUser")
             }
 
         loop = asyncio.get_running_loop()

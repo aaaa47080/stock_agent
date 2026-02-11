@@ -111,7 +111,12 @@ function getLimit(key) {
 function formatTWDate(dateStr, full = false) {
     if (!dateStr) return '';
     try {
-        const date = new Date(dateStr);
+        // Server stores UTC — append 'Z' if no timezone info so JS parses as UTC
+        let normalized = dateStr;
+        if (typeof dateStr === 'string' && !dateStr.endsWith('Z') && !dateStr.includes('+') && !/\d{2}:\d{2}:\d{2}-/.test(dateStr)) {
+            normalized = dateStr.replace(' ', 'T') + 'Z';
+        }
+        const date = new Date(normalized);
         const now = new Date();
         const diff = now - date;
 
@@ -564,8 +569,9 @@ const ForumApp = {
                 // 日期格式化
                 const date = formatTWDate(post.created_at);
 
-                // 計算推噓淨值
-                const netLikes = (post.push_count || 0) - (post.boo_count || 0);
+                // 推噓數
+                const pushCount = Math.max(0, post.push_count || 0);
+                const booCount = Math.max(0, post.boo_count || 0);
 
                 el.innerHTML = `
                     <div class="flex items-center justify-between mb-2">
@@ -575,7 +581,8 @@ const ForumApp = {
                             <span class="text-xs text-textMuted">• ${date}</span>
                         </div>
                         <div class="flex items-center gap-3 text-xs text-textMuted">
-                            <span class="flex items-center gap-1 ${netLikes > 0 ? 'text-success' : ''}"><i data-lucide="thumbs-up" class="w-3 h-3"></i> ${netLikes}</span>
+                            <span class="flex items-center gap-1 ${pushCount > 0 ? 'text-success' : ''}"><i data-lucide="thumbs-up" class="w-3 h-3"></i> ${pushCount}</span>
+                            <span class="flex items-center gap-1 ${booCount > 0 ? 'text-danger' : ''}"><i data-lucide="thumbs-down" class="w-3 h-3"></i> ${booCount}</span>
                             <span class="flex items-center gap-1"><i data-lucide="message-square" class="w-3 h-3"></i> ${post.comment_count}</span>
                             ${post.tips_total > 0 ? `<span class="flex items-center gap-1 text-primary"><i data-lucide="gift" class="w-3 h-3"></i> ${post.tips_total}</span>` : ''}
                         </div>
@@ -818,21 +825,70 @@ const ForumApp = {
 
     async handlePush(postId) {
         if (!AuthManager.currentUser) return showToast('請先登入', 'warning');
+        const post = this.currentPost;
+        if (!post) return;
+
+        // Optimistic UI update
+        const wasPush = post.viewer_vote === 'push';
+        const wasBoo = post.viewer_vote === 'boo';
+        if (wasPush) {
+            post.push_count = Math.max(0, (post.push_count || 0) - 1);
+            post.viewer_vote = null;
+        } else {
+            post.push_count = (post.push_count || 0) + 1;
+            if (wasBoo) post.boo_count = Math.max(0, (post.boo_count || 0) - 1);
+            post.viewer_vote = 'push';
+        }
+        this.updatePostStats(post);
+
         try {
             await ForumAPI.pushPost(postId);
-            // 重新載入以更新數字
-            this.loadPostDetail(postId);
         } catch (e) {
+            // Revert on failure
+            if (wasPush) {
+                post.push_count = (post.push_count || 0) + 1;
+                post.viewer_vote = 'push';
+            } else {
+                post.push_count = Math.max(0, (post.push_count || 0) - 1);
+                if (wasBoo) post.boo_count = (post.boo_count || 0) + 1;
+                post.viewer_vote = wasBoo ? 'boo' : null;
+            }
+            this.updatePostStats(post);
             showToast(e.message, 'error');
         }
     },
 
     async handleBoo(postId) {
         if (!AuthManager.currentUser) return showToast('請先登入', 'warning');
+        const post = this.currentPost;
+        if (!post) return;
+
+        // Optimistic UI update
+        const wasBoo = post.viewer_vote === 'boo';
+        const wasPush = post.viewer_vote === 'push';
+        if (wasBoo) {
+            post.boo_count = Math.max(0, (post.boo_count || 0) - 1);
+            post.viewer_vote = null;
+        } else {
+            post.boo_count = (post.boo_count || 0) + 1;
+            if (wasPush) post.push_count = Math.max(0, (post.push_count || 0) - 1);
+            post.viewer_vote = 'boo';
+        }
+        this.updatePostStats(post);
+
         try {
             await ForumAPI.booPost(postId);
-            this.loadPostDetail(postId);
         } catch (e) {
+            // Revert on failure
+            if (wasBoo) {
+                post.boo_count = (post.boo_count || 0) + 1;
+                post.viewer_vote = 'boo';
+            } else {
+                post.boo_count = Math.max(0, (post.boo_count || 0) - 1);
+                if (wasPush) post.push_count = (post.push_count || 0) + 1;
+                post.viewer_vote = wasPush ? 'push' : null;
+            }
+            this.updatePostStats(post);
             showToast(e.message, 'error');
         }
     },
@@ -1707,7 +1763,7 @@ const ForumApp = {
                 const el = document.createElement('div');
                 el.className = 'flex items-center justify-between border-b border-white/5 pb-3 last:border-0 last:pb-0';
 
-                const netVotes = (post.push_count || 0) - (post.boo_count || 0);
+                const pushCount = Math.max(0, post.push_count || 0);
 
                 el.innerHTML = `
                     <div class="overflow-hidden mr-4">
@@ -1719,7 +1775,8 @@ const ForumApp = {
                     </div>
                     <div class="flex items-center gap-3 text-xs text-textMuted shrink-0">
                         <span class="flex items-center gap-1"><i data-lucide="message-square" class="w-3 h-3"></i> ${post.comment_count}</span>
-                        <span class="flex items-center gap-1 ${netVotes > 0 ? 'text-success' : ''}"><i data-lucide="thumbs-up" class="w-3 h-3"></i> ${netVotes}</span>
+                        <span class="flex items-center gap-1 ${pushCount > 0 ? 'text-success' : ''}"><i data-lucide="thumbs-up" class="w-3 h-3"></i> ${pushCount}</span>
+                        <span class="flex items-center gap-1 ${post.boo_count > 0 ? 'text-danger' : ''}"><i data-lucide="thumbs-down" class="w-3 h-3"></i> ${post.boo_count || 0}</span>
                     </div>
                 `;
                 container.appendChild(el);

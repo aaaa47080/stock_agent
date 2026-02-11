@@ -558,20 +558,75 @@ const SafetyTab = {
                     return;
                 }
 
-                pendingList.innerHTML = reports.map(r => `
-                    <div class="bg-background rounded-xl p-4 space-y-3">
+                pendingList.innerHTML = reports.map(r => {
+                    // Check if user has already voted
+                    if (r.viewer_vote) {
+                        const isApprove = r.viewer_vote === 'approve';
+                        const voteTextKey = isApprove ? 'safety.gov.votedViolation' : 'safety.gov.votedNotViolation';
+                        const voteClass = isApprove ? 'bg-success/20 text-success' : 'bg-danger/20 text-danger';
+
+                        // Use I18n.t if available, otherwise fallback
+                        const voteText = (window.I18n && window.I18n.t) ? window.I18n.t(voteTextKey) : (isApprove ? 'Voted: Violation' : 'Voted: Not Violation');
+
+                        return `
+                        <div class="bg-background rounded-xl p-4 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs text-textMuted">#${r.id}</span>
+                                <span class="text-xs bg-warning/20 text-warning px-2 py-0.5 rounded">pending</span>
+                            </div>
+                            <div class="text-sm text-secondary">${r.content_type === 'post' ? 'Post' : 'Comment'} #${r.content_id} - ${r.report_type}</div>
+                            ${r.description ? `<p class="text-xs text-textMuted">${this._escapeHTML(r.description)}</p>` : ''}
+                            <div class="text-center py-2 rounded-lg font-bold text-sm ${voteClass}">
+                                ${voteText}
+                            </div>
+                        </div>`;
+                    }
+
+                    // Not voted: Show buttons
+                    return `
+                    <div class="bg-background rounded-xl p-4 space-y-3" id="gov-report-card-${r.id}">
                         <div class="flex items-center justify-between">
                             <span class="text-xs text-textMuted">#${r.id}</span>
                             <span class="text-xs bg-warning/20 text-warning px-2 py-0.5 rounded">pending</span>
                         </div>
                         <div class="text-sm text-secondary">${r.content_type === 'post' ? 'Post' : 'Comment'} #${r.content_id} - ${r.report_type}</div>
                         ${r.description ? `<p class="text-xs text-textMuted">${this._escapeHTML(r.description)}</p>` : ''}
-                        <div class="flex gap-2">
-                            <button onclick="SafetyTab.govVote(${r.id}, 'approve')" class="flex-1 py-2 bg-success/10 hover:bg-success/20 text-success text-xs font-bold rounded-lg transition">Violation</button>
-                            <button onclick="SafetyTab.govVote(${r.id}, 'reject')" class="flex-1 py-2 bg-danger/10 hover:bg-danger/20 text-danger text-xs font-bold rounded-lg transition">Not Violation</button>
+                        
+                        <!-- Actions Container -->
+                        <div id="gov-actions-${r.id}">
+                            <div class="flex gap-2">
+                                <button onclick="SafetyTab.govVoteConfirm(${r.id}, 'approve')" class="flex-1 py-2 bg-success/10 hover:bg-success/20 text-success text-xs font-bold rounded-lg transition">Violation</button>
+                                <button onclick="SafetyTab.govVoteConfirm(${r.id}, 'reject')" class="flex-1 py-2 bg-danger/10 hover:bg-danger/20 text-danger text-xs font-bold rounded-lg transition">Not Violation</button>
+                            </div>
+                        </div>
+
+                        <!-- Confirmation Container (Hidden by default) -->
+                        <div id="gov-confirm-${r.id}" class="hidden animate-fade-in-down">
+                            <div class="bg-surfaceHighlight rounded-lg p-3 text-center border border-white/5">
+                                <p class="text-xs text-warning mb-3 whitespace-pre-line" data-i18n="safety.gov.confirmVoteMessage">Votes cannot be changed.</p>
+                                <div class="flex gap-2 justify-center">
+                                    <button onclick="SafetyTab.govVoteCancel(${r.id})" 
+                                        class="px-4 py-1.5 bg-white/5 hover:bg-white/10 text-textMuted text-xs rounded-lg transition"
+                                        data-i18n="safety.gov.btnCancel">
+                                        Cancel
+                                    </button>
+                                    <button id="gov-confirm-btn-${r.id}" onclick="" 
+                                        class="px-4 py-1.5 bg-primary text-background text-xs font-bold rounded-lg transition hover:brightness-110 shadow-lg shadow-primary/20"
+                                        data-i18n="safety.gov.btnConfirm">
+                                        Confirm
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                `).join('');
+                    `;
+                }).join('');
+
+                // Update translations for injected content
+                if (window.I18n && window.I18n.updatePageContent) {
+                    window.I18n.updatePageContent();
+                }
+
             } else {
                 const result = await res.json();
                 if (result.detail && result.detail.includes('PRO')) {
@@ -580,7 +635,33 @@ const SafetyTab = {
                 }
             }
         } catch (error) {
+            console.error(error);
             pendingList.innerHTML = '<div class="text-center text-danger py-4 text-sm">Failed to load</div>';
+        }
+    },
+
+    govVoteConfirm(reportId, voteType) {
+        // Hide buttons, show confirmation
+        const actions = document.getElementById(`gov-actions-${reportId}`);
+        const confirm = document.getElementById(`gov-confirm-${reportId}`);
+        const confirmBtn = document.getElementById(`gov-confirm-btn-${reportId}`);
+
+        if (actions && confirm && confirmBtn) {
+            actions.classList.add('hidden');
+            confirm.classList.remove('hidden');
+            // Bind the actual vote action to the confirm button
+            confirmBtn.onclick = () => this.govVote(reportId, voteType);
+        }
+    },
+
+    govVoteCancel(reportId) {
+        // Revert to buttons
+        const actions = document.getElementById(`gov-actions-${reportId}`);
+        const confirm = document.getElementById(`gov-confirm-${reportId}`);
+
+        if (actions && confirm) {
+            actions.classList.remove('hidden');
+            confirm.classList.add('hidden');
         }
     },
 

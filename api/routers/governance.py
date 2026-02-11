@@ -3,7 +3,7 @@
 
 提供檢舉管理、審核投票、違規記錄、活動日誌等接口
 """
-from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi import APIRouter, HTTPException, Query, Depends, Request
 from typing import Optional, List
 import asyncio
 from functools import partial
@@ -64,7 +64,8 @@ router = APIRouter(prefix="/api/governance", tags=["Community Governance"])
 @router.post("/reports")
 @limiter.limit("10/hour")  # 每小時最多 10 次檢舉
 async def submit_report(
-    request: ReportCreateRequest,
+    request: Request,
+    report_data: ReportCreateRequest,
     current_user: dict = Depends(get_current_user)
 ):
     """
@@ -95,10 +96,10 @@ async def submit_report(
                 create_report,
                 None,
                 reporter_user_id=user_id,
-                content_type=request.content_type,
-                content_id=request.content_id,
-                report_type=request.report_type,
-                description=request.description
+                content_type=report_data.content_type,
+                content_id=report_data.content_id,
+                report_type=report_data.report_type,
+                description=report_data.description
             )
         )
 
@@ -180,7 +181,7 @@ async def list_pending_reports(
         loop = asyncio.get_running_loop()
         reports = await loop.run_in_executor(
             None,
-            partial(get_pending_reports, None, limit=limit, offset=offset, exclude_user_id=user_id)
+            partial(get_pending_reports, None, limit=limit, offset=offset, exclude_user_id=user_id, viewer_user_id=user_id)
         )
 
         return {
@@ -276,7 +277,8 @@ async def list_my_reports(
 @limiter.limit("30/hour")  # 每小時最多 30 次投票
 async def vote_on_pending_report(
     report_id: int,
-    request: VoteRequest,
+    request: Request,
+    vote_data: VoteRequest,
     current_user: dict = Depends(get_current_user)
 ):
     """
@@ -307,7 +309,7 @@ async def vote_on_pending_report(
                 None,
                 report_id=report_id,
                 reviewer_user_id=user_id,
-                vote_type=request.vote_type
+                vote_type=vote_data.vote_type
             )
         )
 

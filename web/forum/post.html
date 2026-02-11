@@ -287,8 +287,8 @@
     <script src="/static/js/security-utils.js"></script>
     <script src="/static/js/app.js?v=38"></script>
     <script src="/static/js/apiKeyManager.js?v=38"></script>
-    <script src="/static/js/auth.js?v=38"></script>
-    <script src="/static/js/forum.js?v=38"></script>
+    <script src="/static/js/auth.js?v=49"></script>
+    <script src="/static/js/forum.js?v=50"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             if (typeof initializeAuth === 'function') initializeAuth();
@@ -346,7 +346,8 @@
                 }
 
                 try {
-                    const token = localStorage.getItem('access_token');
+                    const token = (typeof AuthManager !== 'undefined' && AuthManager.currentUser?.accessToken)
+                        || localStorage.getItem('access_token');
                     if (!token) {
                         showToast('Please login first', 'error');
                         return;

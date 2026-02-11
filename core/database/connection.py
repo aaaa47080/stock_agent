@@ -852,6 +852,99 @@ def init_db():
     c.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_endpoint ON audit_logs(endpoint)')
     
     # ========================================================================
+    # 社群治理系統 (Community Governance)
+    # ========================================================================
+
+    # 內容檢舉表
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS content_reports (
+            id SERIAL PRIMARY KEY,
+            content_type VARCHAR(20) NOT NULL,
+            content_id INTEGER NOT NULL,
+            reporter_user_id VARCHAR(255) NOT NULL,
+            report_type VARCHAR(50) NOT NULL,
+            description TEXT,
+            review_status VARCHAR(20) DEFAULT 'pending',
+            violation_level VARCHAR(20),
+            approve_count INTEGER DEFAULT 0,
+            reject_count INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT NOW(),
+            updated_at TIMESTAMP DEFAULT NOW()
+        )
+    ''')
+
+    # 檢舉審核投票表
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS report_review_votes (
+            id SERIAL PRIMARY KEY,
+            report_id INTEGER NOT NULL REFERENCES content_reports(id),
+            reviewer_user_id VARCHAR(255) NOT NULL,
+            vote_type VARCHAR(20) NOT NULL,
+            vote_weight FLOAT DEFAULT 1.0,
+            created_at TIMESTAMP DEFAULT NOW(),
+            UNIQUE(report_id, reviewer_user_id)
+        )
+    ''')
+
+    # 用戶違規記錄表
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS user_violations (
+            id SERIAL PRIMARY KEY,
+            user_id VARCHAR(255) NOT NULL,
+            violation_level VARCHAR(20) NOT NULL,
+            violation_type VARCHAR(50),
+            points INTEGER DEFAULT 0,
+            source_type VARCHAR(20),
+            source_id INTEGER,
+            action_taken VARCHAR(50),
+            suspended_until TIMESTAMP,
+            processed_by VARCHAR(255),
+            created_at TIMESTAMP DEFAULT NOW()
+        )
+    ''')
+
+    # 用戶違規點數表
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS user_violation_points (
+            user_id VARCHAR(255) PRIMARY KEY,
+            points INTEGER DEFAULT 0,
+            total_violations INTEGER DEFAULT 0,
+            last_violation_at TIMESTAMP,
+            suspension_count INTEGER DEFAULT 0,
+            updated_at TIMESTAMP DEFAULT NOW()
+        )
+    ''')
+
+    # 審核信譽表
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS audit_reputation (
+            user_id VARCHAR(255) PRIMARY KEY,
+            total_reviews INTEGER DEFAULT 0,
+            correct_votes INTEGER DEFAULT 0,
+            accuracy_rate FLOAT DEFAULT 0.0,
+            reputation_score INTEGER DEFAULT 0,
+            updated_at TIMESTAMP DEFAULT NOW()
+        )
+    ''')
+
+    # 用戶活動日誌表
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS user_activity_logs (
+            id SERIAL PRIMARY KEY,
+            user_id VARCHAR(255) NOT NULL,
+            activity_type VARCHAR(100) NOT NULL,
+            resource_type VARCHAR(50),
+            resource_id INTEGER,
+            metadata JSONB,
+            success BOOLEAN DEFAULT TRUE,
+            error_message TEXT,
+            ip_address VARCHAR(45),
+            user_agent TEXT,
+            created_at TIMESTAMP DEFAULT NOW()
+        )
+    ''')
+
+    # ========================================================================
     # 初始化預設數據
     # ========================================================================
 
@@ -944,6 +1037,16 @@ def init_db():
     c.execute('CREATE INDEX IF NOT EXISTS idx_vote_user ON scam_report_votes(user_id)')
     c.execute('CREATE INDEX IF NOT EXISTS idx_comment_report ON scam_report_comments(report_id)')
     c.execute('CREATE INDEX IF NOT EXISTS idx_comment_created ON scam_report_comments(created_at DESC)')
+
+    # 社群治理系統索引
+    c.execute('CREATE INDEX IF NOT EXISTS idx_content_reports_status ON content_reports(review_status)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_content_reports_reporter ON content_reports(reporter_user_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_content_reports_content ON content_reports(content_type, content_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_content_reports_created ON content_reports(created_at DESC)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_report_review_votes_report ON report_review_votes(report_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_user_violations_user ON user_violations(user_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_user_activity_logs_user ON user_activity_logs(user_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_user_activity_logs_type ON user_activity_logs(activity_type)')
 
     # 好友功能索引
     c.execute('CREATE INDEX IF NOT EXISTS idx_friendships_user_id ON friendships(user_id)')

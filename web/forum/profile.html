@@ -159,7 +159,7 @@
     </main>
 
     <!-- Scripts -->
-    <script src="/static/js/auth.js?v=2"></script>
+    <script src="/static/js/auth.js?v=49"></script>
     <script src="/static/js/friends.js?v=2"></script>
     <script>
         // ========================================
@@ -249,16 +249,26 @@
             });
         }
 
+        // Normalize server UTC timestamp for JS parsing
+        function parseUTCDate(dateString) {
+            if (!dateString) return null;
+            let s = dateString;
+            if (typeof s === 'string' && !s.endsWith('Z') && !s.includes('+') && !/\d{2}:\d{2}:\d{2}-/.test(s)) {
+                s = s.replace(' ', 'T') + 'Z';
+            }
+            return new Date(s);
+        }
+
         // Format date
         function formatDate(dateString) {
             if (!dateString) return '-';
-            const date = new Date(dateString);
+            const date = parseUTCDate(dateString);
             return date.toLocaleDateString('zh-TW', { year: 'numeric', month: 'short' });
         }
 
         function formatTimeAgo(dateString) {
             if (!dateString) return '';
-            const date = new Date(dateString);
+            const date = parseUTCDate(dateString);
             const now = new Date();
             const diff = now - date;
 
@@ -472,7 +482,7 @@
                             <div class="flex items-center gap-3 text-xs text-textMuted flex-shrink-0">
                                 <span class="flex items-center gap-1">
                                     <i data-lucide="thumbs-up" class="w-3 h-3"></i>
-                                    ${post.push_count || 0}
+                                    ${Math.max(0, post.push_count || 0)}
                                 </span>
                                 <span class="flex items-center gap-1">
                                     <i data-lucide="message-square" class="w-3 h-3"></i>

@@ -20,7 +20,6 @@
     "required": "Required",
     "optional": "Optional"
   },
-
   "nav": {
     "chat": "Chat",
     "market": "Market",
@@ -37,13 +36,11 @@
     "profile": "Profile",
     "collapse": "Collapse/Expand"
   },
-
   "sidebar": {
     "newChat": "New Chat",
     "noHistory": "No history",
     "settings": "Settings"
   },
-
   "chat": {
     "welcomeTo": "Welcome to",
     "subtitle": "AI-powered crypto analysis and trading insights. Monitor markets and make informed decisions.",
@@ -67,7 +64,6 @@
     "systemLocked": "System Locked - Please Configure API Key",
     "connecting": "Connecting..."
   },
-
   "market": {
     "title": "Market Watch",
     "filter": "Filter",
@@ -87,7 +83,6 @@
     "longsPaying": "Longs Paying",
     "history": "History"
   },
-
   "pulse": {
     "title": "Market Pulse",
     "filter": "Filter",
@@ -151,7 +146,6 @@
     "awaitingUpdate": "Awaiting scheduled update",
     "analyzing": "Analyzing"
   },
-
   "wallet": {
     "title": "Wallet History",
     "totalActivity": "Total Activity",
@@ -171,7 +165,6 @@
     "last3Months": "Last 3 Months",
     "customRange": "Custom Range"
   },
-
   "assets": {
     "portfolio": "Portfolio",
     "connectExchange": "Connect Your Exchange",
@@ -182,14 +175,12 @@
     "spotAssets": "Spot Assets",
     "activePositions": "Active Positions"
   },
-
   "chart": {
     "defaultTitle": "BTC Chart",
     "autoRefresh": "Auto Refresh",
     "off": "OFF",
     "on": "ON"
   },
-
   "modals": {
     "apiKey": {
       "title": "Connect OKX",
@@ -216,7 +207,6 @@
       "defaultMessage": "Are you sure you want to proceed?"
     }
   },
-
   "login": {
     "welcomeTitle": "Welcome to CryptoMind",
     "welcomeSubtitle": "Connect your wallet or login to continue",
@@ -228,7 +218,6 @@
     "step2": "Enter this app's URL in the address bar",
     "step3": "Click Connect Pi Wallet to login"
   },
-
   "friends": {
     "title": "Social",
     "messages": "Messages",
@@ -247,7 +236,6 @@
     "loadingFriends": "Loading friends...",
     "blockedInfo": "Blocked users cannot send you messages or friend requests."
   },
-
   "settings": {
     "title": "Settings",
     "profile": {
@@ -327,7 +315,6 @@
     },
     "saveAll": "Save All Settings"
   },
-
   "safety": {
     "title": "Community Safety",
     "governance": "Governance",
@@ -390,10 +377,15 @@
       "rejected": "Rejected",
       "selectFilter": "Select a filter to load reports",
       "proOnly": "PRO Members Only",
-      "proDesc": "Upgrade to PRO to review reports and earn reputation."
+      "proDesc": "Upgrade to PRO to review reports and earn reputation.",
+      "confirmVoteTitle": "Confirm Vote",
+      "confirmVoteMessage": "Once voted, it cannot be modified. Are you sure you want to submit this vote?",
+      "votedViolation": "Voted: Violation",
+      "votedNotViolation": "Voted: Not Violation",
+      "btnConfirm": "Confirm Vote",
+      "btnCancel": "Cancel"
     }
   },
-
   "featureMenu": {
     "title": "Customize Navigation",
     "description": "Choose which features appear in your bottom navigation",
@@ -401,7 +393,6 @@
     "saveChanges": "Save Changes",
     "reset": "Reset"
   },
-
   "forum": {
     "title": "Community Forum",
     "newPost": "New Post",
@@ -416,7 +407,6 @@
     "scamTracker": "Scam Tracker",
     "submitReport": "Submit Report"
   },
-
   "governance": {
     "title": "Governance",
     "proposals": "Proposals",

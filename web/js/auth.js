@@ -155,8 +155,8 @@ const AuthManager = {
 
             DebugLog.info('呼叫 Pi.authenticate...');
 
-            // 呼叫 Pi SDK 認證 (包含 payments 權限) - 3 秒超時（快速反饋）
-            const AUTH_TIMEOUT = 10000;
+            // 呼叫 Pi SDK 認證 (包含 payments 權限) - 60 秒超時（用戶需要時間確認授權視窗）
+            const AUTH_TIMEOUT = 60000;
 
             const authPromise = Pi.authenticate(['username', 'payments'], (payment) => {
                 DebugLog.warn('發現未完成的支付', payment);

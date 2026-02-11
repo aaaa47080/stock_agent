@@ -570,17 +570,15 @@ def trader_decision_node(state: AgentState) -> Dict:
 
     trader = Trader(user_client)
     trader_decision = trader.make_decision(
-        analyst_reports=state['analyst_reports'],
         bull_argument=state['bull_argument'],
         bear_argument=state['bear_argument'],
         neutral_argument=state.get('neutral_argument'),
         fact_checks=state.get('fact_checks'),
-        debate_judgment=state.get('debate_judgment'), # Added
+        debate_judgment=state.get('debate_judgment'),
         current_price=state['current_price'],
         market_data=state['market_data'],
         market_type=state['market_data']['market_type'],
-        leverage=state['market_data']['leverage'],
-        feedback=feedback, # 將回饋傳遞給 Trader
+        feedback=feedback,
         account_balance=state.get('account_balance')
     )
     

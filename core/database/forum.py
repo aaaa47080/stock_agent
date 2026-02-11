@@ -9,6 +9,7 @@ from typing import List, Dict, Optional
 from datetime import datetime
 
 from .base import DatabaseBase
+from .connection import get_connection
 from .user import get_user_membership
 from .system_config import get_limits
 
@@ -388,8 +389,22 @@ def delete_post(post_id: int, user_id: str) -> bool:
         c.execute('UPDATE posts SET is_hidden = 1 WHERE id = %s AND user_id = %s', (post_id, user_id))
         success = c.rowcount > 0
 
-        # 如果刪除成功，記錄審計日誌
+        # 如果刪除成功，更新標籤統計與記錄審計日誌
         if success:
+            # 1. 更新標籤統計 (Decrement tag counts)
+            try:
+                # 獲取該文章的標籤
+                c.execute('SELECT tag_id FROM post_tags WHERE post_id = %s', (post_id,))
+                tag_rows = c.fetchall()
+                if tag_rows:
+                    for (tag_id,) in tag_rows:
+                        # 減少標籤的使用計數
+                        c.execute('UPDATE tags SET post_count = GREATEST(0, post_count - 1) WHERE id = %s', (tag_id,))
+            except Exception as e:
+                print(f"⚠️ 更新標籤統計失敗: {e}")
+                # 不影響刪除主流程
+
+            # 2. 記錄審計日誌
             try:
                 c.execute('''
                     INSERT INTO audit_logs (
@@ -612,48 +627,42 @@ def get_comments(post_id: int, include_hidden: bool = False) -> List[Dict]:
 
 def get_daily_comment_count(user_id: str) -> Dict:
     """獲取用戶今日回覆數"""
-    conn = get_connection()
-    c = conn.cursor()
-    try:
-        today = datetime.utcnow().strftime('%Y-%m-%d')
-        c.execute('SELECT comment_count FROM user_daily_comments WHERE user_id = %s AND date = %s', (user_id, today))
-        row = c.fetchone()
-        count = row[0] if row else 0
+    today = datetime.utcnow().strftime('%Y-%m-%d')
+    row = DatabaseBase.query_one(
+        'SELECT comment_count FROM user_daily_comments WHERE user_id = %s AND date = %s',
+        (user_id, today)
+    )
+    count = row['comment_count'] if row else 0
 
-        membership = get_user_membership(user_id)
-        limits = get_limits()
-        limit = limits["daily_comment_premium"] if membership['is_pro'] else limits["daily_comment_free"]
+    membership = get_user_membership(user_id)
+    limits = get_limits()
+    limit = limits["daily_comment_premium"] if membership['is_pro'] else limits["daily_comment_free"]
 
-        return {
-            "count": count,
-            "limit": limit,
-            "remaining": None if limit is None else max(0, limit - count)
-        }
-    finally:
-        conn.close()
+    return {
+        "count": count,
+        "limit": limit,
+        "remaining": None if limit is None else max(0, limit - count)
+    }
 
 
 def get_daily_post_count(user_id: str) -> Dict:
     """獲取用戶今日發文數"""
-    conn = get_connection()
-    c = conn.cursor()
-    try:
-        today = datetime.utcnow().strftime('%Y-%m-%d')
-        c.execute('SELECT post_count FROM user_daily_posts WHERE user_id = %s AND date = %s', (user_id, today))
-        row = c.fetchone()
-        count = row[0] if row else 0
+    today = datetime.utcnow().strftime('%Y-%m-%d')
+    row = DatabaseBase.query_one(
+        'SELECT post_count FROM user_daily_posts WHERE user_id = %s AND date = %s',
+        (user_id, today)
+    )
+    count = row['post_count'] if row else 0
 
-        membership = get_user_membership(user_id)
-        limits = get_limits()
-        limit = limits["daily_post_premium"] if membership['is_pro'] else limits["daily_post_free"]
+    membership = get_user_membership(user_id)
+    limits = get_limits()
+    limit = limits["daily_post_premium"] if membership['is_pro'] else limits["daily_post_free"]
 
-        return {
-            "count": count,
-            "limit": limit,
-            "remaining": None if limit is None else max(0, limit - count)
-        }
-    finally:
-        conn.close()
+    return {
+        "count": count,
+        "limit": limit,
+        "remaining": None if limit is None else max(0, limit - count)
+    }
 
 
 # ============================================================================

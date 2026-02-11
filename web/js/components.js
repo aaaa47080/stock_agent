@@ -351,6 +351,12 @@ const Components = {
                             <button onclick="handleDevSwitchUser('test-user-002')" class="py-2 bg-white/5 hover:bg-accent/20 hover:text-accent rounded-lg text-xs font-mono transition border border-white/5">
                                 User 002
                             </button>
+                            <button onclick="handleDevSwitchUser('test-user-003')" class="py-2 bg-white/5 hover:bg-success/20 hover:text-success rounded-lg text-xs font-mono transition border border-white/5">
+                                User 003 (PRO)
+                            </button>
+                            <button onclick="handleDevSwitchUser('test-user-004')" class="py-2 bg-white/5 hover:bg-warning/20 hover:text-warning rounded-lg text-xs font-mono transition border border-white/5">
+                                User 004 (PRO)
+                            </button>
                         </div>
                     </div>
 

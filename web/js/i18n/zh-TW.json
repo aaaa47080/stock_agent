@@ -20,7 +20,6 @@
     "required": "必填",
     "optional": "選填"
   },
-
   "nav": {
     "chat": "聊天",
     "market": "市場",
@@ -37,13 +36,11 @@
     "profile": "個人資料",
     "collapse": "收縮/展開"
   },
-
   "sidebar": {
     "newChat": "新對話",
     "noHistory": "沒有歷史紀錄",
     "settings": "設定"
   },
-
   "chat": {
     "welcomeTo": "歡迎來到",
     "subtitle": "AI 驅動的加密貨幣分析與交易洞察。監控市場，做出明智決策。",
@@ -67,7 +64,6 @@
     "systemLocked": "系統鎖定 - 請先設定 API 金鑰",
     "connecting": "連接中..."
   },
-
   "market": {
     "title": "市場總覽",
     "filter": "篩選",
@@ -87,7 +83,6 @@
     "longsPaying": "多方支付",
     "history": "歷史"
   },
-
   "pulse": {
     "title": "市場脈動",
     "filter": "篩選",
@@ -151,7 +146,6 @@
     "awaitingUpdate": "等待排程更新",
     "analyzing": "分析中"
   },
-
   "wallet": {
     "title": "錢包紀錄",
     "totalActivity": "交易總覽",
@@ -171,7 +165,6 @@
     "last3Months": "最近 3 個月",
     "customRange": "自訂範圍"
   },
-
   "assets": {
     "portfolio": "投資組合",
     "connectExchange": "連接您的交易所",
@@ -182,14 +175,12 @@
     "spotAssets": "現貨資產",
     "activePositions": "活躍持倉"
   },
-
   "chart": {
     "defaultTitle": "BTC 圖表",
     "autoRefresh": "自動更新",
     "off": "關閉",
     "on": "開啟"
   },
-
   "modals": {
     "apiKey": {
       "title": "連接 OKX",
@@ -216,7 +207,6 @@
       "defaultMessage": "確定要執行此操作嗎？"
     }
   },
-
   "login": {
     "welcomeTitle": "歡迎使用 CryptoMind",
     "welcomeSubtitle": "連接錢包或登入以繼續",
@@ -228,7 +218,6 @@
     "step2": "在網址列輸入本應用網址",
     "step3": "點擊「連接 Pi 錢包」登入"
   },
-
   "friends": {
     "title": "社群",
     "messages": "訊息",
@@ -247,7 +236,6 @@
     "loadingFriends": "載入好友中...",
     "blockedInfo": "被封鎖的用戶無法向您發送訊息或好友請求。"
   },
-
   "settings": {
     "title": "設定",
     "profile": {
@@ -327,7 +315,6 @@
     },
     "saveAll": "儲存所有設定"
   },
-
   "safety": {
     "title": "社群安全",
     "governance": "治理中心",
@@ -390,10 +377,15 @@
       "rejected": "已駁回",
       "selectFilter": "選擇篩選條件以載入檢舉",
       "proOnly": "僅限 PRO 會員",
-      "proDesc": "升級至 PRO 以審核檢舉並獲得聲望。"
+      "proDesc": "升級至 PRO 以審核檢舉並獲得聲望。",
+      "confirmVoteTitle": "確認投票",
+      "confirmVoteMessage": "投票後無法修改。\n請問確認要送出此投票嗎？",
+      "votedViolation": "已投票：違規",
+      "votedNotViolation": "已投票：未違規",
+      "btnConfirm": "確認投票",
+      "btnCancel": "取消"
     }
   },
-
   "featureMenu": {
     "title": "自訂導覽列",
     "description": "選擇要顯示在底部導覽列的功能",
@@ -401,7 +393,6 @@
     "saveChanges": "儲存變更",
     "reset": "重設"
   },
-
   "forum": {
     "title": "社群論壇",
     "newPost": "發文",
@@ -416,7 +407,6 @@
     "scamTracker": "詐騙追蹤",
     "submitReport": "提交檢舉"
   },
-
   "governance": {
     "title": "社群治理",
     "proposals": "提案",

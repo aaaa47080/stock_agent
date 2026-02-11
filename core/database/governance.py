@@ -136,7 +136,7 @@ def create_report(db, reporter_user_id: str, content_type: str, content_id: int,
 
 
 def get_pending_reports(db, limit: int = 20, offset: int = 0,
-                        exclude_user_id: str = None) -> List[Dict]:
+                        exclude_user_id: str = None, viewer_user_id: str = None) -> List[Dict]:
     """
     Get pending reports for review
 
@@ -145,6 +145,7 @@ def get_pending_reports(db, limit: int = 20, offset: int = 0,
         limit: Maximum number of reports to return
         offset: Pagination offset
         exclude_user_id: Exclude reports from this user
+        viewer_user_id: ID of user viewing the reports (to check for existing votes)
 
     Returns:
         List of report dictionaries
@@ -156,12 +157,14 @@ def get_pending_reports(db, limit: int = 20, offset: int = 0,
             SELECT cr.id, cr.content_type, cr.content_id, cr.reporter_user_id,
                    cr.report_type, cr.description, cr.review_status, cr.violation_level,
                    cr.approve_count, cr.reject_count, cr.created_at, cr.updated_at,
-                   u.username as reporter_username
+                   u.username as reporter_username,
+                   rrv.vote_type as viewer_vote
             FROM content_reports cr
             LEFT JOIN users u ON cr.reporter_user_id = u.user_id
+            LEFT JOIN report_review_votes rrv ON cr.id = rrv.report_id AND rrv.reviewer_user_id = %s
             WHERE cr.review_status = 'pending'
         '''
-        params = []
+        params = [viewer_user_id]
 
         if exclude_user_id:
             query += ' AND cr.reporter_user_id != %s'
@@ -195,7 +198,8 @@ def get_pending_reports(db, limit: int = 20, offset: int = 0,
                 "reject_count": r[9],
                 "created_at": created_at,
                 "updated_at": updated_at,
-                "reporter_username": r[12]
+                "reporter_username": r[12],
+                "viewer_vote": r[13] # Will be 'approve', 'reject', or None
             })
 
         return result
@@ -410,12 +414,19 @@ def vote_on_report(db, report_id: int, reviewer_user_id: str, vote_type: str) ->
     c = conn.cursor()
     try:
         # Check report status
-        c.execute('SELECT review_status FROM content_reports WHERE id = %s', (report_id,))
+        c.execute('SELECT review_status, reporter_user_id FROM content_reports WHERE id = %s', (report_id,))
         row = c.fetchone()
         if not row:
             return {"success": False, "error": "report_not_found"}
-        if row[0] != 'pending':
+        
+        review_status, reporter_user_id = row
+
+        if review_status != 'pending':
             return {"success": False, "error": "report_not_pending"}
+
+        # Prevent reporter from voting on their own report
+        if reviewer_user_id == reporter_user_id:
+            return {"success": False, "error": "cannot_vote_on_own_report"}
 
         # Check for existing vote
         c.execute('''
