@@ -238,6 +238,12 @@
                 <input type="hidden" id="report-content-type" value="post">
                 <input type="hidden" id="report-content-id">
 
+                <div id="report-error"
+                    class="hidden bg-danger/10 border border-danger/20 text-danger text-sm p-3 rounded-xl mb-4 flex items-start gap-2">
+                    <i data-lucide="alert-circle" class="w-4 h-4 mt-0.5 shrink-0"></i>
+                    <span id="report-error-msg"></span>
+                </div>
+
                 <div>
                     <label class="block text-sm font-medium text-textMuted mb-2">Report Type</label>
                     <select id="report-type" required
@@ -314,6 +320,9 @@
                 if (postId) {
                     document.getElementById('report-content-id').value = postId;
                     document.getElementById('report-content-type').value = 'post';
+                    // Clear previous error
+                    const errorDiv = document.getElementById('report-error');
+                    if (errorDiv) errorDiv.classList.add('hidden');
                     modal.classList.remove('hidden');
                 }
             });
@@ -340,10 +349,25 @@
                 const reportType = document.getElementById('report-type').value;
                 const description = document.getElementById('report-description').value;
 
+                const errorDiv = document.getElementById('report-error');
+                const errorMsg = document.getElementById('report-error-msg');
+
+                const showError = (msg) => {
+                    if (errorDiv && errorMsg) {
+                        errorMsg.textContent = msg;
+                        errorDiv.classList.remove('hidden');
+                    } else {
+                        showToast(msg, 'error');
+                    }
+                };
+
                 if (!reportType) {
-                    showToast('Please select a report type', 'error');
+                    showError('Please select a report type');
                     return;
                 }
+
+                // Clear previous error
+                if (errorDiv) errorDiv.classList.add('hidden');
 
                 try {
                     const token = (typeof AuthManager !== 'undefined' && AuthManager.currentUser?.accessToken)
@@ -373,11 +397,11 @@
                         showToast('Report submitted successfully', 'success');
                         closeModal();
                     } else {
-                        showToast(result.detail || 'Failed to submit report', 'error');
+                        showError(result.detail || 'Failed to submit report');
                     }
                 } catch (error) {
                     console.error('Report error:', error);
-                    showToast('Failed to submit report', 'error');
+                    showError('Failed to submit report');
                 }
             });
         }

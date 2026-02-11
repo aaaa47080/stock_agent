@@ -328,90 +328,62 @@
       "pending": "待審核",
       "disputed": "有爭議",
       "latest": "最新",
-      "mostVoted": "最多投票",
-      "mostViewed": "最多瀏覽"
-    },
-    "submit": {
-      "title": "檢舉詐騙錢包",
-      "scamWallet": "詐騙錢包地址",
-      "yourWallet": "您的錢包地址",
-      "scamType": "詐騙類型",
-      "selectType": "選擇類型...",
-      "description": "描述",
-      "descPlaceholder": "描述詐騙詳情（至少 20 字）...",
-      "txHash": "交易雜湊",
-      "txHashPlaceholder": "64 位元雜湊值...",
-      "submitButton": "提交檢舉"
-    },
-    "detail": {
-      "title": "檢舉詳情",
-      "confirm": "確認",
-      "dispute": "提出異議"
+      "popular": "熱門"
     },
     "gov": {
-      "title": "社群治理",
+      "reportTitle": "檢舉內容",
+      "violationType": "違規類型",
+      "spam": "垃圾訊息",
+      "harassment": "騷擾或霸凌",
+      "misinformation": "錯誤資訊",
+      "scam": "詐騙",
+      "illegal": "違法內容",
+      "other": "其他",
+      "describeViolation": "請描述違規情況...",
+      "submitReport": "提交檢舉",
       "reportTab": "檢舉",
       "myReportsTab": "我的檢舉",
       "reviewTab": "審核",
       "rankingTab": "排行榜",
-      "reportDesc": "發現違規內容？PRO 審核員將審查您的檢舉。",
+      "reportDesc": "發現違規內容？提交檢舉由 PRO 成員審核。",
       "contentType": "內容類型",
       "post": "文章",
-      "comment": "評論",
+      "comment": "留言",
       "contentId": "內容 ID",
       "enterContentId": "輸入內容 ID",
-      "contentIdHint": "可在內容網址中找到",
-      "violationType": "違規類型",
-      "spam": "垃圾訊息",
-      "harassment": "騷擾",
-      "misinformation": "不實訊息",
-      "scam": "詐騙",
-      "illegal": "違法內容",
-      "describeViolation": "描述違規情況...",
-      "submitReport": "提交檢舉",
-      "dailyQuota": "每日配額",
-      "rule1": "每人每項內容限檢舉一次",
-      "rule2": "不可檢舉自己的內容",
-      "rule3": "虛假檢舉可能導致處罰",
-      "approved": "已批准",
-      "rejected": "已駁回",
+      "contentIdHint": "可在內容連結中找到",
+      "dailyQuota": "每日額度",
+      "rule1": "每則內容每人限檢舉一次",
+      "rule2": "不能檢舉自己的內容",
+      "rule3": "惡意檢舉可能會受到懲罰",
+      "approved": "已通過",
+      "rejected": "已否決",
       "selectFilter": "選擇篩選條件以載入檢舉",
-      "proOnly": "僅限 PRO 會員",
-      "proDesc": "升級至 PRO 以審核檢舉並獲得聲望。",
+      "proOnly": "PRO 會員專屬",
+      "proDesc": "升級 PRO 以審核檢舉並獲得聲譽。",
       "confirmVoteTitle": "確認投票",
-      "confirmVoteMessage": "投票後無法修改。\n請問確認要送出此投票嗎？",
-      "votedViolation": "已投票：違規",
-      "votedNotViolation": "已投票：未違規",
+      "confirmVoteMessage": "一旦投票，將無法修改。確定要提交此投票嗎？",
+      "votedViolation": "已投：違規",
+      "votedNotViolation": "已投：無違規",
       "btnConfirm": "確認投票",
-      "btnCancel": "取消"
-    }
-  },
-  "featureMenu": {
-    "title": "自訂導覽列",
-    "description": "選擇要顯示在底部導覽列的功能",
-    "minWarning": "導覽列至少需啟用 2 個項目。",
-    "saveChanges": "儲存變更",
-    "reset": "重設"
-  },
-  "forum": {
-    "title": "社群論壇",
-    "newPost": "發文",
-    "categories": {
-      "analysis": "分析",
-      "question": "提問",
-      "tutorial": "教學",
-      "news": "新聞",
-      "chat": "閒聊",
-      "insight": "洞察"
+      "btnCancel": "取消",
+      "btnViolation": "違規",
+      "btnNotViolation": "無違規"
     },
-    "scamTracker": "詐騙追蹤",
-    "submitReport": "提交檢舉"
-  },
-  "governance": {
-    "title": "社群治理",
-    "proposals": "提案",
-    "vote": "投票",
-    "passed": "已通過",
-    "rejected": "已否決"
+    "submit": {
+      "selectType": "選擇類型...",
+      "description": "詳細描述",
+      "yourWallet": "您的錢包地址",
+      "scamType": "詐騙類型",
+      "txHash": "交易雜湊",
+      "txHashPlaceholder": "64 位元交易雜湊...",
+      "descPlaceholder": "描述詐騙細節（至少 20 字）...",
+      "submitButton": "提交檢舉"
+    },
+    "detail": {
+      "title": "檢舉詳情",
+      "confirm": "確認詐騙",
+      "dispute": "有異議"
+    }
   }
 }

@@ -328,28 +328,19 @@
       "pending": "Pending",
       "disputed": "Disputed",
       "latest": "Latest",
-      "mostVoted": "Most Voted",
-      "mostViewed": "Most Viewed"
-    },
-    "submit": {
-      "title": "Report Scam Wallet",
-      "scamWallet": "Scam Wallet Address",
-      "yourWallet": "Your Wallet Address",
-      "scamType": "Scam Type",
-      "selectType": "Select type...",
-      "description": "Description",
-      "descPlaceholder": "Describe the scam details (min 20 chars)...",
-      "txHash": "Transaction Hash",
-      "txHashPlaceholder": "64-char hash...",
-      "submitButton": "Submit Report"
-    },
-    "detail": {
-      "title": "Report Detail",
-      "confirm": "Confirm",
-      "dispute": "Dispute"
+      "popular": "Popular"
     },
     "gov": {
-      "title": "Community Governance",
+      "reportTitle": "Report Content",
+      "violationType": "Violation Type",
+      "spam": "Spam",
+      "harassment": "Harassment",
+      "misinformation": "Misinformation",
+      "scam": "Scam",
+      "illegal": "Illegal Content",
+      "other": "Other",
+      "describeViolation": "Describe the violation...",
+      "submitReport": "Submit Report",
       "reportTab": "Report",
       "myReportsTab": "My Reports",
       "reviewTab": "Review",
@@ -361,14 +352,6 @@
       "contentId": "Content ID",
       "enterContentId": "Enter content ID",
       "contentIdHint": "Found in the content URL",
-      "violationType": "Violation Type",
-      "spam": "Spam",
-      "harassment": "Harassment",
-      "misinformation": "Misinformation",
-      "scam": "Scam",
-      "illegal": "Illegal Content",
-      "describeViolation": "Describe the violation...",
-      "submitReport": "Submit Report",
       "dailyQuota": "Daily Quota",
       "rule1": "One report per content per user",
       "rule2": "Cannot report your own content",
@@ -383,35 +366,24 @@
       "votedViolation": "Voted: Violation",
       "votedNotViolation": "Voted: Not Violation",
       "btnConfirm": "Confirm Vote",
-      "btnCancel": "Cancel"
-    }
-  },
-  "featureMenu": {
-    "title": "Customize Navigation",
-    "description": "Choose which features appear in your bottom navigation",
-    "minWarning": "At least 2 items must be enabled in your navigation bar.",
-    "saveChanges": "Save Changes",
-    "reset": "Reset"
-  },
-  "forum": {
-    "title": "Community Forum",
-    "newPost": "New Post",
-    "categories": {
-      "analysis": "Analysis",
-      "question": "Question",
-      "tutorial": "Tutorial",
-      "news": "News",
-      "chat": "Chat",
-      "insight": "Insight"
+      "btnCancel": "Cancel",
+      "btnViolation": "Violation",
+      "btnNotViolation": "Not Violation"
     },
-    "scamTracker": "Scam Tracker",
-    "submitReport": "Submit Report"
-  },
-  "governance": {
-    "title": "Governance",
-    "proposals": "Proposals",
-    "vote": "Vote",
-    "passed": "Passed",
-    "rejected": "Rejected"
+    "submit": {
+      "selectType": "Select type...",
+      "description": "Description",
+      "yourWallet": "Your Wallet Address",
+      "scamType": "Scam Type",
+      "txHash": "Transaction Hash",
+      "txHashPlaceholder": "64-char hash...",
+      "descPlaceholder": "Describe the scam details (min 20 chars)...",
+      "submitButton": "Submit Report"
+    },
+    "detail": {
+      "title": "Report Detail",
+      "confirm": "Confirm",
+      "dispute": "Dispute"
+    }
   }
 }

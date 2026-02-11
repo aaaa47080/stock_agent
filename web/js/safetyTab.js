@@ -370,6 +370,7 @@ const SafetyTab = {
         if (modal) modal.classList.remove('hidden');
         if (window.lucide) lucide.createIcons();
         this.loadGovQuota();
+        this.loadMyGovReports('all');
     },
 
     async loadGovQuota() {
@@ -437,50 +438,7 @@ const SafetyTab = {
         if (tabId === 'gov-leaderboard') this.loadGovLeaderboard();
     },
 
-    async submitGovernanceReport() {
-        const contentType = document.getElementById('gov-content-type').value;
-        const contentId = parseInt(document.getElementById('gov-content-id').value);
-        const reportType = document.getElementById('gov-report-type').value;
-        const description = (document.getElementById('gov-description').value || '').trim();
-
-        if (!contentType || !contentId || !reportType) {
-            this._toast('Please fill all required fields', 'error');
-            return;
-        }
-
-        const token = this._getToken();
-        if (!token) { this._toast('Please login first', 'error'); return; }
-
-        try {
-            const res = await fetch('/api/governance/reports', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    content_type: contentType,
-                    content_id: contentId,
-                    report_type: reportType,
-                    description: description || null
-                })
-            });
-
-            const result = await res.json();
-            if (res.ok) {
-                this._toast('Report submitted!', 'success');
-                document.getElementById('gov-content-type').value = '';
-                document.getElementById('gov-content-id').value = '';
-                document.getElementById('gov-report-type').value = '';
-                document.getElementById('gov-description').value = '';
-                this.loadGovQuota();
-            } else {
-                this._toast(result.detail || 'Submit failed', 'error');
-            }
-        } catch (error) {
-            this._toast('Submit failed', 'error');
-        }
-    },
+    // submitGovernanceReport removed - using dedicated report modal now
 
     async loadMyGovReports(status, clickedBtn) {
         // Update filter button styles
@@ -595,8 +553,16 @@ const SafetyTab = {
                         <!-- Actions Container -->
                         <div id="gov-actions-${r.id}">
                             <div class="flex gap-2">
-                                <button onclick="SafetyTab.govVoteConfirm(${r.id}, 'approve')" class="flex-1 py-2 bg-success/10 hover:bg-success/20 text-success text-xs font-bold rounded-lg transition">Violation</button>
-                                <button onclick="SafetyTab.govVoteConfirm(${r.id}, 'reject')" class="flex-1 py-2 bg-danger/10 hover:bg-danger/20 text-danger text-xs font-bold rounded-lg transition">Not Violation</button>
+                                <button onclick="SafetyTab.govVoteConfirm(${r.id}, 'approve')" 
+                                    class="flex-1 py-2 bg-success/10 hover:bg-success/20 text-success text-xs font-bold rounded-lg transition"
+                                    data-i18n="safety.gov.btnViolation">
+                                    Violation
+                                </button>
+                                <button onclick="SafetyTab.govVoteConfirm(${r.id}, 'reject')" 
+                                    class="flex-1 py-2 bg-danger/10 hover:bg-danger/20 text-danger text-xs font-bold rounded-lg transition"
+                                    data-i18n="safety.gov.btnNotViolation">
+                                    Not Violation
+                                </button>
                             </div>
                         </div>
 

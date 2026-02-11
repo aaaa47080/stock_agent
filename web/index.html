@@ -241,7 +241,8 @@
                             </h1>
                             <p class="text-textMuted mt-2">Good <span id="greeting-time">day</span>.</p>
                         </div>
-                        <p class="text-textMuted text-lg font-light leading-relaxed text-center" data-i18n="chat.subtitle">
+                        <p class="text-textMuted text-lg font-light leading-relaxed text-center"
+                            data-i18n="chat.subtitle">
                             AI-powered crypto analysis and trading insights. Monitor markets and make informed
                             decisions.
                         </p>
@@ -275,15 +276,19 @@
                             class="w-14 h-14 bg-gradient-to-r from-primary to-accent rounded-full flex items-center justify-center mx-auto mb-4 text-white shadow-lg shadow-primary/30">
                             <i data-lucide="key" class="w-7 h-7"></i>
                         </div>
-                        <h3 class="font-serif text-2xl mb-2 text-secondary" data-i18n="chat.unlockTitle">Unlock Pi Intelligence</h3>
-                        <p class="text-textMuted text-sm mb-6 leading-relaxed"><span data-i18n="chat.unlockDesc">Connect an API key to enable AI
-                            analysis.</span><br><span data-i18n="chat.unlockDesc2">Your keys are stored locally and securely.</span></p>
+                        <h3 class="font-serif text-2xl mb-2 text-secondary" data-i18n="chat.unlockTitle">Unlock Pi
+                            Intelligence</h3>
+                        <p class="text-textMuted text-sm mb-6 leading-relaxed"><span data-i18n="chat.unlockDesc">Connect
+                                an API key to enable AI
+                                analysis.</span><br><span data-i18n="chat.unlockDesc2">Your keys are stored locally and
+                                securely.</span></p>
                         <button onclick="switchTab('settings');"
                             class="w-full py-3.5 bg-gradient-to-r from-primary to-accent text-background font-bold rounded-2xl hover:brightness-110 transition shadow-lg shadow-primary/20">
                             <i data-lucide="settings" class="w-4 h-4 inline-block mr-2"></i>
                             <span data-i18n="chat.configureApiKey">Configure API Key</span>
                         </button>
-                        <p class="text-textMuted/60 text-xs mt-4" data-i18n="chat.otherFeatures">You can still use other features below</p>
+                        <p class="text-textMuted/60 text-xs mt-4" data-i18n="chat.otherFeatures">You can still use other
+                            features below</p>
                     </div>
                 </div>
 
@@ -317,7 +322,8 @@
                             </button>
                             <input type="text" id="user-input" disabled
                                 class="flex-1 bg-transparent border-none outline-none text-base text-secondary placeholder-textMuted/50 px-2 font-light relative z-10 opacity-50 cursor-not-allowed"
-                                placeholder="System Locked - Please Configure API Key" data-i18n="chat.systemLocked" data-i18n-attr="placeholder" autocomplete="off"
+                                placeholder="System Locked - Please Configure API Key" data-i18n="chat.systemLocked"
+                                data-i18n-attr="placeholder" autocomplete="off"
                                 onkeypress="if(event.key === 'Enter') sendMessage()">
                             <button onclick="sendMessage()" id="send-btn" disabled
                                 class="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-accent text-background flex items-center justify-center hover:scale-105 active:scale-95 transition shadow-lg shadow-primary/20 opacity-50 cursor-not-allowed">
@@ -362,12 +368,13 @@
                                 <i data-lucide="credit-card" class="w-8 h-8 text-primary"></i>
                             </div>
                             <div>
-                                <div class="text-textMuted text-xs font-bold uppercase tracking-wider mb-2" data-i18n="wallet.totalActivity">Total
+                                <div class="text-textMuted text-xs font-bold uppercase tracking-wider mb-2"
+                                    data-i18n="wallet.totalActivity">Total
                                     Activity</div>
                                 <div class="flex gap-8">
                                     <div>
-                                        <span
-                                            class="text-[10px] text-textMuted uppercase tracking-wider block mb-0.5" data-i18n="wallet.spentOut">Spent
+                                        <span class="text-[10px] text-textMuted uppercase tracking-wider block mb-0.5"
+                                            data-i18n="wallet.spentOut">Spent
                                             (Out)</span>
                                         <div class="text-danger font-bold text-xl flex items-center gap-1">
                                             <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
@@ -375,8 +382,8 @@
                                         </div>
                                     </div>
                                     <div>
-                                        <span
-                                            class="text-[10px] text-textMuted uppercase tracking-wider block mb-0.5" data-i18n="wallet.receivedIn">Received
+                                        <span class="text-[10px] text-textMuted uppercase tracking-wider block mb-0.5"
+                                            data-i18n="wallet.receivedIn">Received
                                             (In)</span>
                                         <div class="text-success font-bold text-xl flex items-center gap-1">
                                             <i data-lucide="arrow-down-left" class="w-4 h-4"></i>
@@ -392,7 +399,8 @@
                     <div class="bg-surface border border-white/5 rounded-[2rem] p-6 min-h-[400px]">
                         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                             <h3 class="font-bold text-secondary text-lg flex items-center gap-2">
-                                <i data-lucide="history" class="w-5 h-5 text-primary"></i> <span data-i18n="wallet.transactions">Transactions</span>
+                                <i data-lucide="history" class="w-5 h-5 text-primary"></i> <span
+                                    data-i18n="wallet.transactions">Transactions</span>
                             </h3>
 
                             <!-- Filters -->
@@ -461,8 +469,10 @@
                         class="w-20 h-20 bg-gradient-to-br from-primary/20 to-accent/20 rounded-full flex items-center justify-center mx-auto mb-6">
                         <i data-lucide="wallet" class="w-10 h-10 text-primary"></i>
                     </div>
-                    <h3 class="font-serif text-xl text-secondary mb-2" data-i18n="assets.connectExchange">Connect Your Exchange</h3>
-                    <p class="text-textMuted mb-8 text-sm" data-i18n="assets.linkDescription">Link your OKX account to view portfolio and positions.</p>
+                    <h3 class="font-serif text-xl text-secondary mb-2" data-i18n="assets.connectExchange">Connect Your
+                        Exchange</h3>
+                    <p class="text-textMuted mb-8 text-sm" data-i18n="assets.linkDescription">Link your OKX account to
+                        view portfolio and positions.</p>
                     <button onclick="switchTab('settings')"
                         class="px-8 py-3.5 bg-gradient-to-r from-primary to-accent text-background font-bold rounded-2xl transition flex items-center gap-2 mx-auto shadow-lg shadow-primary/20 hover:scale-105">
                         <i data-lucide="settings" class="w-4 h-4"></i>
@@ -476,9 +486,11 @@
                         class="bg-gradient-to-br from-surface to-surfaceHighlight p-8 rounded-[2.5rem] mb-6 text-center border border-white/5 relative overflow-hidden">
                         <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-10 -mt-10">
                         </div>
-                        <span class="text-sm text-textMuted font-medium uppercase tracking-widest" data-i18n="assets.totalEquity">Total Equity</span>
+                        <span class="text-sm text-textMuted font-medium uppercase tracking-widest"
+                            data-i18n="assets.totalEquity">Total Equity</span>
                         <h1 class="text-4xl md:text-5xl font-serif text-secondary mt-2 mb-2" id="total-equity">--</h1>
-                        <span class="text-xs text-textMuted/50 font-mono" id="asset-update-time" data-i18n="assets.updated">Updated: --:--</span>
+                        <span class="text-xs text-textMuted/50 font-mono" id="asset-update-time"
+                            data-i18n="assets.updated">Updated: --:--</span>
                     </div>
 
                     <!-- Spot Assets Section -->
@@ -491,7 +503,8 @@
 
                     <div class="bg-surface rounded-3xl border border-white/5 overflow-hidden">
                         <div class="p-4 border-b border-white/5 flex justify-between items-center">
-                            <h3 class="font-bold text-sm text-textMuted pl-2" data-i18n="assets.activePositions">Active Positions</h3>
+                            <h3 class="font-bold text-sm text-textMuted pl-2" data-i18n="assets.activePositions">Active
+                                Positions</h3>
                             <div id="positions-summary"></div>
                         </div>
                         <div class="overflow-x-auto">
@@ -612,14 +625,18 @@
                         data-lucide="x" class="w-4 h-4"></i></button>
             </div>
             <form id="apikey-form" onsubmit="saveApiKeys(event)" class="space-y-4">
-                <input type="text" id="input-api-key" placeholder="API Key" data-i18n="modals.apiKey.apiKeyPlaceholder" data-i18n-attr="placeholder"
+                <input type="text" id="input-api-key" placeholder="API Key" data-i18n="modals.apiKey.apiKeyPlaceholder"
+                    data-i18n-attr="placeholder"
                     class="w-full bg-background border border-white/5 rounded-2xl p-4 text-secondary outline-none focus:border-primary/50 transition">
-                <input type="password" id="input-secret-key" placeholder="Secret Key" data-i18n="modals.apiKey.secretKeyPlaceholder" data-i18n-attr="placeholder"
+                <input type="password" id="input-secret-key" placeholder="Secret Key"
+                    data-i18n="modals.apiKey.secretKeyPlaceholder" data-i18n-attr="placeholder"
                     class="w-full bg-background border border-white/5 rounded-2xl p-4 text-secondary outline-none focus:border-primary/50 transition">
-                <input type="password" id="input-passphrase" placeholder="Passphrase" data-i18n="modals.apiKey.passphrasePlaceholder" data-i18n-attr="placeholder"
+                <input type="password" id="input-passphrase" placeholder="Passphrase"
+                    data-i18n="modals.apiKey.passphrasePlaceholder" data-i18n-attr="placeholder"
                     class="w-full bg-background border border-white/5 rounded-2xl p-4 text-secondary outline-none focus:border-primary/50 transition">
                 <button type="submit"
-                    class="w-full bg-secondary hover:bg-white text-background font-bold py-4 rounded-2xl transition" data-i18n="modals.apiKey.secureConnect">Secure
+                    class="w-full bg-secondary hover:bg-white text-background font-bold py-4 rounded-2xl transition"
+                    data-i18n="modals.apiKey.secureConnect">Secure
                     Connect</button>
             </form>
         </div>
@@ -638,7 +655,8 @@
             </div>
 
             <div class="p-4 bg-background/50 space-y-3">
-                <input type="text" id="symbol-search" placeholder="Search (e.g. BTC)..." data-i18n="modals.filter.searchPlaceholder" data-i18n-attr="placeholder"
+                <input type="text" id="symbol-search" placeholder="Search (e.g. BTC)..."
+                    data-i18n="modals.filter.searchPlaceholder" data-i18n-attr="placeholder"
                     class="w-full bg-background border border-white/5 rounded-2xl px-5 py-3 text-secondary focus:border-primary/50 outline-none transition"
                     oninput="renderSymbolList(allMarketSymbols)">
                 <div class="flex gap-2">
@@ -655,7 +673,8 @@
             <div class="p-6 border-t border-white/5">
                 <button onclick="applyGlobalFilter()"
                     class="w-full bg-primary text-background font-bold py-4 rounded-2xl transition shadow-lg shadow-primary/20">
-                    <span data-i18n="modals.filter.applyFilter">Apply Filter</span> (<span id="selected-count-modal">0</span>)
+                    <span data-i18n="modals.filter.applyFilter">Apply Filter</span> (<span
+                        id="selected-count-modal">0</span>)
                 </button>
             </div>
         </div>
@@ -688,10 +707,13 @@
                 class="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-6 text-success">
                 <i data-lucide="check" class="w-8 h-8"></i>
             </div>
-            <h3 class="text-center font-serif text-xl text-secondary mb-2" data-i18n="modals.apiTest.connected">Connected</h3>
-            <p class="text-center text-textMuted text-sm mb-6" data-i18n="modals.apiTest.successMessage">AI brain is now online.</p>
+            <h3 class="text-center font-serif text-xl text-secondary mb-2" data-i18n="modals.apiTest.connected">
+                Connected</h3>
+            <p class="text-center text-textMuted text-sm mb-6" data-i18n="modals.apiTest.successMessage">AI brain is now
+                online.</p>
             <button onclick="document.getElementById('api-test-modal').classList.add('hidden')"
-                class="w-full py-3 bg-secondary text-background font-bold rounded-2xl" data-i18n="common.continue">Continue</button>
+                class="w-full py-3 bg-secondary text-background font-bold rounded-2xl"
+                data-i18n="common.continue">Continue</button>
         </div>
     </div>
 
@@ -705,9 +727,11 @@
                 <i data-lucide="alert-triangle" class="w-8 h-8"></i>
             </div>
             <!-- Title -->
-            <h3 id="confirm-modal-title" class="text-center font-serif text-xl text-secondary mb-2" data-i18n="modals.confirm.defaultTitle">確認操作</h3>
+            <h3 id="confirm-modal-title" class="text-center font-serif text-xl text-secondary mb-2"
+                data-i18n="modals.confirm.defaultTitle">確認操作</h3>
             <!-- Message -->
-            <p id="confirm-modal-message" class="text-center text-textMuted text-sm mb-8 whitespace-pre-line" data-i18n="modals.confirm.defaultMessage">確定要執行此操作嗎？
+            <p id="confirm-modal-message" class="text-center text-textMuted text-sm mb-8 whitespace-pre-line"
+                data-i18n="modals.confirm.defaultMessage">確定要執行此操作嗎？
             </p>
             <!-- Buttons -->
             <div id="confirm-modal-buttons" class="flex gap-3">
@@ -742,8 +766,10 @@
                     <img src="/static/img/title_icon.png" alt="CryptoMind Logo"
                         class="w-full h-full object-contain drop-shadow-lg">
                 </div>
-                <h2 class="font-serif text-2xl text-secondary mb-2" data-i18n="login.welcomeTitle">Welcome to CryptoMind</h2>
-                <p class="text-textMuted text-sm" data-i18n="login.welcomeSubtitle">Connect your wallet or login to continue</p>
+                <h2 class="font-serif text-2xl text-secondary mb-2" data-i18n="login.welcomeTitle">Welcome to CryptoMind
+                </h2>
+                <p class="text-textMuted text-sm" data-i18n="login.welcomeSubtitle">Connect your wallet or login to
+                    continue</p>
             </div>
 
             <!-- Pi Network Login -->
@@ -752,7 +778,8 @@
                 <button id="pi-login-btn" onclick="safePiLogin()"
                     class="w-full py-4 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-bold rounded-2xl mb-4 flex items-center justify-center gap-3 transition shadow-lg"
                     style="display:none;">
-                    <img src="/static/img/pi-logo.png" alt="Pi" class="w-6 h-6"> <span data-i18n="login.connectPiWallet">Connect Pi Wallet</span>
+                    <img src="/static/img/pi-logo.png" alt="Pi" class="w-6 h-6"> <span
+                        data-i18n="login.connectPiWallet">Connect Pi Wallet</span>
                 </button>
                 <!-- 非 Pi Browser 提示：默認顯示 -->
                 <div id="not-pi-browser-msg" class="text-center py-6">
@@ -760,7 +787,8 @@
                         <img src="/static/img/pi-logo.png" alt="Pi" class="w-8 h-8 opacity-50">
                     </div>
                     <p class="text-secondary font-bold mb-2" data-i18n="login.usePiBrowser">請使用 Pi Browser 開啟</p>
-                    <p class="text-textMuted text-sm mb-4" data-i18n="login.usePiBrowserDesc">Please open this app in Pi Browser</p>
+                    <p class="text-textMuted text-sm mb-4" data-i18n="login.usePiBrowserDesc">Please open this app in Pi
+                        Browser</p>
                     <div class="bg-background/50 rounded-xl p-4 text-left">
                         <p class="text-xs text-textMuted mb-2" data-i18n="login.stepsTitle">步驟 Steps:</p>
                         <ol class="text-xs text-textMuted/80 space-y-1 list-decimal list-inside">
@@ -940,6 +968,57 @@
         </div>
     </div>
     -->
+
+    <!-- Report Modal -->
+    <div id="report-modal"
+        class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[80] hidden flex items-center justify-center p-4">
+        <div class="bg-surface w-full max-w-sm flex flex-col rounded-[2rem] border border-white/5 shadow-2xl">
+            <div class="p-6 border-b border-white/5 flex justify-between items-center shrink-0">
+                <h3 class="font-serif text-xl text-secondary" data-i18n="safety.gov.reportTitle">Report Content</h3>
+                <button onclick="ForumApp.closeReportModal()"
+                    class="w-8 h-8 rounded-full bg-background flex items-center justify-center text-textMuted hover:text-secondary transition">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="report-content-type">
+                <input type="hidden" id="report-content-id">
+
+                <div>
+                    <div id="report-error"
+                        class="hidden bg-danger/10 border border-danger/20 text-danger text-sm p-3 rounded-xl mb-3 flex items-start gap-2">
+                        <i data-lucide="alert-circle" class="w-4 h-4 mt-0.5 shrink-0"></i>
+                        <span id="report-error-msg"></span>
+                    </div>
+                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2"
+                        data-i18n="safety.gov.violationType">Violation Type</label>
+                    <select id="report-type"
+                        class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition text-sm">
+                        <option value="" data-i18n="safety.submit.selectType">Select type...</option>
+                        <option value="spam" data-i18n="safety.gov.spam">Spam</option>
+                        <option value="harassment" data-i18n="safety.gov.harassment">Harassment</option>
+                        <option value="misinformation" data-i18n="safety.gov.misinformation">Misinformation</option>
+                        <option value="scam" data-i18n="safety.gov.scam">Scam</option>
+                        <option value="illegal" data-i18n="safety.gov.illegal">Illegal Content</option>
+                        <option value="other" data-i18n="safety.gov.other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2"><span
+                            data-i18n="safety.submit.description">Description</span> <span
+                            class="text-textMuted/50">(Optional)</span></label>
+                    <textarea id="report-description" rows="3" placeholder="Describe the violation..."
+                        data-i18n="safety.gov.describeViolation" data-i18n-attr="placeholder"
+                        class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition text-sm resize-none"></textarea>
+                </div>
+                <button onclick="ForumApp.submitReport()" id="btn-submit-report"
+                    class="w-full py-3 bg-danger hover:brightness-110 text-white font-bold rounded-xl transition shadow-lg flex items-center justify-center gap-2">
+                    <i data-lucide="flag" class="w-4 h-4"></i> <span data-i18n="safety.gov.submitReport">Submit
+                        Report</span>
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- Scripts -->
     <script src="/static/js/app.js?v=47" onerror="alert('app.js 載入失敗')"></script>

@@ -812,12 +812,18 @@ const ForumApp = {
                 el.innerHTML = `
                     <div class="flex justify-between items-start mb-1">
                         <a href="/static/forum/profile.html?id=${comment.user_id}" class="font-bold text-sm text-secondary hover:text-primary transition">${comment.username || comment.user_id}</a>
-                        <span class="text-xs text-textMuted">${formatTWDate(comment.created_at, true)}</span>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-textMuted">${formatTWDate(comment.created_at, true)}</span>
+                            <button onclick="ForumApp.openReportModal('comment', ${comment.id})" class="text-textMuted hover:text-danger p-1 rounded transition" title="Report">
+                                <i data-lucide="flag" class="w-3 h-3"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="text-textMain text-sm">${comment.content}</div>
                 `;
                 container.appendChild(el);
             });
+            if (window.lucide) lucide.createIcons();
         } catch (e) {
             console.error(e);
         }
@@ -1942,6 +1948,94 @@ const ForumApp = {
 
         document.body.appendChild(modal);
         if (window.lucide) lucide.createIcons();
+    },
+
+    // ===========================================
+    // Reporting Logic
+    // ===========================================
+    openReportModal(type, id) {
+        if (!AuthManager.currentUser) return showToast('請先登入', 'warning');
+
+        const modal = document.getElementById('report-modal');
+        if (!modal) return;
+
+        document.getElementById('report-content-type').value = type;
+        document.getElementById('report-content-id').value = id;
+        document.getElementById('report-type').value = '';
+        document.getElementById('report-description').value = '';
+
+        // Clear previous errors
+        const errorDiv = document.getElementById('report-error');
+        if (errorDiv) errorDiv.classList.add('hidden');
+
+        modal.classList.remove('hidden');
+        if (window.lucide) lucide.createIcons();
+    },
+
+    closeReportModal() {
+        const modal = document.getElementById('report-modal');
+        if (modal) modal.classList.add('hidden');
+    },
+
+    async submitReport() {
+        const contentType = document.getElementById('report-content-type').value;
+        const contentId = document.getElementById('report-content-id').value;
+        const reportType = document.getElementById('report-type').value;
+        const description = document.getElementById('report-description').value;
+
+        const errorDiv = document.getElementById('report-error');
+        const errorMsg = document.getElementById('report-error-msg');
+
+        const showError = (msg) => {
+            if (errorDiv && errorMsg) {
+                errorMsg.textContent = msg;
+                errorDiv.classList.remove('hidden');
+            } else {
+                showToast(msg, 'error');
+            }
+        };
+
+        if (!reportType) {
+            return showError('請選擇違規類型');
+        }
+
+        const btn = document.getElementById('btn-submit-report');
+        if (!btn) return;
+
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="animate-spin" data-lucide="loader-2"></i> Submitting...';
+        if (window.lucide) lucide.createIcons();
+
+        // Clear previous error
+        if (errorDiv) errorDiv.classList.add('hidden');
+
+        try {
+            const res = await fetch('/api/governance/reports', {
+                method: 'POST',
+                headers: ForumAPI._getAuthHeaders(),
+                body: JSON.stringify({
+                    content_type: contentType,
+                    content_id: parseInt(contentId),
+                    report_type: reportType,
+                    description: description
+                })
+            });
+
+            if (res.ok) {
+                showToast('舉報提交成功，我們會盡快審核', 'success');
+                this.closeReportModal();
+            } else {
+                const err = await res.json();
+                showError(err.detail || '提交失敗');
+            }
+        } catch (e) {
+            showError('提交失敗: ' + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            if (window.lucide) lucide.createIcons();
+        }
     }
 };
 

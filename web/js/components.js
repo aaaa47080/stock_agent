@@ -870,72 +870,15 @@ const Components = {
 
                 <!-- Governance Tabs -->
                 <div class="flex border-b border-white/5 px-6 pt-2 gap-1 overflow-x-auto shrink-0">
-                    <button onclick="SafetyTab.switchGovTab('gov-report')" class="gov-tab-btn px-3 py-2 text-xs font-bold rounded-t-lg border-b-2 border-primary text-primary transition" data-gov-tab="gov-report" data-i18n="safety.gov.reportTab">Report</button>
-                    <button onclick="SafetyTab.switchGovTab('gov-my-reports')" class="gov-tab-btn px-3 py-2 text-xs font-bold rounded-t-lg border-b-2 border-transparent text-textMuted hover:text-secondary transition" data-gov-tab="gov-my-reports" data-i18n="safety.gov.myReportsTab">My Reports</button>
+                    <button onclick="SafetyTab.switchGovTab('gov-my-reports')" class="gov-tab-btn px-3 py-2 text-xs font-bold rounded-t-lg border-b-2 border-primary text-primary transition" data-gov-tab="gov-my-reports" data-i18n="safety.gov.myReportsTab">My Reports</button>
                     <button onclick="SafetyTab.switchGovTab('gov-review')" class="gov-tab-btn px-3 py-2 text-xs font-bold rounded-t-lg border-b-2 border-transparent text-textMuted hover:text-secondary transition" data-gov-tab="gov-review"><span data-i18n="safety.gov.reviewTab">Review</span> <span class="text-[9px] bg-accent/20 text-accent px-1.5 py-0.5 rounded ml-1">PRO</span></button>
                     <button onclick="SafetyTab.switchGovTab('gov-leaderboard')" class="gov-tab-btn px-3 py-2 text-xs font-bold rounded-t-lg border-b-2 border-transparent text-textMuted hover:text-secondary transition" data-gov-tab="gov-leaderboard" data-i18n="safety.gov.rankingTab">Ranking</button>
                 </div>
 
                 <div class="flex-1 overflow-y-auto custom-scrollbar">
-                    <!-- Report Tab -->
-                    <div id="gov-report-tab" class="gov-tab-content p-6 space-y-4">
-                        <p class="text-textMuted text-sm" data-i18n="safety.gov.reportDesc">Found a violation? PRO reviewers will review your report.</p>
-                        <div>
-                            <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2"><span data-i18n="safety.gov.contentType">Content Type</span> <span class="text-danger">*</span></label>
-                            <select id="gov-content-type" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition text-sm">
-                                <option value="">Select...</option>
-                                <option value="post" data-i18n="safety.gov.post">Post</option>
-                                <option value="comment" data-i18n="safety.gov.comment">Comment</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2"><span data-i18n="safety.gov.contentId">Content ID</span> <span class="text-danger">*</span></label>
-                            <input type="number" id="gov-content-id" placeholder="Enter content ID" data-i18n="safety.gov.enterContentId" data-i18n-attr="placeholder"
-                                class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition text-sm">
-                            <p class="text-[10px] text-textMuted mt-1" data-i18n="safety.gov.contentIdHint">Found in the content URL</p>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2"><span data-i18n="safety.gov.violationType">Violation Type</span> <span class="text-danger">*</span></label>
-                            <select id="gov-report-type" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition text-sm">
-                                <option value="">Select...</option>
-                                <option value="spam" data-i18n="safety.gov.spam">Spam</option>
-                                <option value="harassment" data-i18n="safety.gov.harassment">Harassment</option>
-                                <option value="misinformation" data-i18n="safety.gov.misinformation">Misinformation</option>
-                                <option value="scam" data-i18n="safety.gov.scam">Scam</option>
-                                <option value="illegal" data-i18n="safety.gov.illegal">Illegal Content</option>
-                                <option value="other">Other</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2"><span data-i18n="safety.submit.description">Description</span> <span class="text-textMuted/50">(Optional)</span></label>
-                            <textarea id="gov-description" rows="3" placeholder="Describe the violation..." data-i18n="safety.gov.describeViolation" data-i18n-attr="placeholder"
-                                class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition text-sm resize-none"></textarea>
-                        </div>
-                        <button onclick="SafetyTab.submitGovernanceReport()" class="w-full py-3 bg-accent hover:brightness-110 text-white font-bold rounded-xl transition shadow-lg flex items-center justify-center gap-2">
-                            <i data-lucide="send" class="w-4 h-4"></i> <span data-i18n="safety.gov.submitReport">Submit Report</span>
-                        </button>
-                        <div id="gov-quota-display" class="bg-background/50 rounded-xl p-4 space-y-3">
-                            <div class="flex items-center justify-between">
-                                <h4 class="text-xs font-bold text-textMuted flex items-center gap-1"><i data-lucide="info" class="w-3 h-3"></i> <span data-i18n="safety.gov.dailyQuota">Daily Quota</span></h4>
-                                <span id="gov-quota-badge" class="text-[10px] px-2 py-0.5 rounded bg-white/5 text-textMuted">--</span>
-                            </div>
-                            <div class="w-full bg-white/5 rounded-full h-2">
-                                <div id="gov-quota-bar" class="h-2 rounded-full bg-accent transition-all" style="width: 0%"></div>
-                            </div>
-                            <div class="text-[11px] text-textMuted/70 flex justify-between">
-                                <span id="gov-quota-text">Loading...</span>
-                                <span id="gov-quota-tier" class="text-textMuted/50"></span>
-                            </div>
-                            <ul class="text-[11px] text-textMuted/70 space-y-1 list-disc list-inside border-t border-white/5 pt-2">
-                                <li data-i18n="safety.gov.rule1">One report per content per user</li>
-                                <li data-i18n="safety.gov.rule2">Cannot report your own content</li>
-                                <li data-i18n="safety.gov.rule3">False reports may result in penalties</li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <!-- My Reports Tab -->
-                    <div id="gov-my-reports-tab" class="gov-tab-content hidden p-6">
+                    
+                    <!-- My Reports Tab (Active by Default) -->
+                    <div id="gov-my-reports-tab" class="gov-tab-content p-6">
                         <div class="flex gap-2 mb-4 overflow-x-auto pb-1">
                             <button onclick="SafetyTab.loadMyGovReports('all', this)" class="gov-filter-btn px-3 py-1.5 text-xs font-bold rounded-lg bg-white/5 text-primary border border-primary/20" data-i18n="common.all">All</button>
                             <button onclick="SafetyTab.loadMyGovReports('pending', this)" class="gov-filter-btn px-3 py-1.5 text-xs font-bold rounded-lg bg-white/5 text-textMuted border border-white/5" data-i18n="safety.filters.pending">Pending</button>
@@ -957,6 +900,19 @@ const Components = {
                             <p class="text-textMuted text-sm mb-4" data-i18n="safety.gov.proDesc">Upgrade to PRO to review reports and earn reputation.</p>
                         </div>
                         <div id="gov-review-content" class="hidden space-y-3">
+                            <div id="gov-quota-display" class="bg-background/50 rounded-xl p-4 space-y-3 mb-4">
+                                <div class="flex items-center justify-between">
+                                    <h4 class="text-xs font-bold text-textMuted flex items-center gap-1"><i data-lucide="info" class="w-3 h-3"></i> <span data-i18n="safety.gov.dailyQuota">Daily Quota</span></h4>
+                                    <span id="gov-quota-badge" class="text-[10px] px-2 py-0.5 rounded bg-white/5 text-textMuted">--</span>
+                                </div>
+                                <div class="w-full bg-white/5 rounded-full h-2">
+                                    <div id="gov-quota-bar" class="h-2 rounded-full bg-accent transition-all" style="width: 0%"></div>
+                                </div>
+                                <div class="text-[11px] text-textMuted/70 flex justify-between">
+                                    <span id="gov-quota-text">Loading...</span>
+                                    <span id="gov-quota-tier" class="text-textMuted/50"></span>
+                                </div>
+                            </div>
                             <div id="gov-pending-list" class="space-y-3">
                                 <div class="text-center text-textMuted py-4 text-sm" data-i18n="common.loading">Loading...</div>
                             </div>
@@ -1046,7 +1002,7 @@ const Components = {
     async inject(id) {
         const container = document.getElementById(id + '-tab');
         if (!container || !this[id]) {
-            console.error(`[Components] inject failed: container=${!!container}, template=${!!this[id]}`);
+            console.error(`[Components] inject failed: container = ${!!container}, template = ${!!this[id]} `);
             return false;
         }
 
