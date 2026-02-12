@@ -15,7 +15,10 @@ const NotificationService = {
     // 重连定时器
     reconnectTimer: null,
 
-    // 模拟数据（Phase 1 使用）
+    // 是否已登录
+    isLoggedIn: false,
+
+    // 模拟数据（Phase 1 使用，作为后备）
     mockNotifications: [
         {
             id: 'notif_001',
@@ -58,18 +61,66 @@ const NotificationService = {
     /**
      * 初始化通知服务
      */
-    init() {
-        // Phase 1: 使用模拟数据
-        this.notifications = [...this.mockNotifications];
-        this.updateUnreadCount();
+    async init() {
+        // 检查是否登录
+        this.isLoggedIn = window.AuthManager && window.AuthManager.isLoggedIn();
 
-        // 触发初始更新
-        this.notifyUpdate();
+        if (this.isLoggedIn) {
+            // 已登录：从 API 获取真实数据
+            await this.fetchNotifications();
 
-        console.log('[NotificationService] Initialized with mock data');
+            // 连接 WebSocket
+            this.connectWebSocket();
+        } else {
+            // 未登录：使用模拟数据
+            this.notifications = [...this.mockNotifications];
+            this.updateUnreadCount();
+            this.notifyUpdate();
+            console.log('[NotificationService] Using mock data (not logged in)');
+        }
+    },
 
-        // Phase 2: 连接 WebSocket
-        // this.connectWebSocket();
+    /**
+     * 从 API 获取通知
+     */
+    async fetchNotifications() {
+        try {
+            const userId = localStorage.getItem('userId');
+            const token = localStorage.getItem('token');
+
+            if (!userId || !token) {
+                console.log('[NotificationService] No credentials, using mock data');
+                this.notifications = [...this.mockNotifications];
+                this.updateUnreadCount();
+                this.notifyUpdate();
+                return;
+            }
+
+            const response = await fetch(`/api/notifications?user_id=${userId}&limit=50`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.notifications = data.notifications || [];
+                this.unreadCount = data.unread_count || 0;
+                this.notifyUpdate();
+                console.log('[NotificationService] Loaded from API:', this.notifications.length, 'notifications');
+            } else {
+                console.warn('[NotificationService] API failed, using mock data');
+                this.notifications = [...this.mockNotifications];
+                this.updateUnreadCount();
+                this.notifyUpdate();
+            }
+        } catch (error) {
+            console.error('[NotificationService] Fetch error:', error);
+            // 网络错误时使用模拟数据
+            this.notifications = [...this.mockNotifications];
+            this.updateUnreadCount();
+            this.notifyUpdate();
+        }
     },
 
     /**
@@ -96,22 +147,54 @@ const NotificationService = {
     /**
      * 标记通知为已读
      */
-    markAsRead(notificationId) {
+    async markAsRead(notificationId) {
         const notification = this.notifications.find(n => n.id === notificationId);
         if (notification && !notification.is_read) {
             notification.is_read = true;
             this.updateUnreadCount();
             this.notifyUpdate();
+
+            // 同步到服务器
+            if (this.isLoggedIn) {
+                try {
+                    const userId = localStorage.getItem('userId');
+                    const token = localStorage.getItem('token');
+                    await fetch(`/api/notifications/${notificationId}/read?user_id=${userId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                } catch (error) {
+                    console.error('[NotificationService] Mark as read error:', error);
+                }
+            }
         }
     },
 
     /**
      * 标记所有通知为已读
      */
-    markAllAsRead() {
+    async markAllAsRead() {
         this.notifications.forEach(n => n.is_read = true);
         this.updateUnreadCount();
         this.notifyUpdate();
+
+        // 同步到服务器
+        if (this.isLoggedIn) {
+            try {
+                const userId = localStorage.getItem('userId');
+                const token = localStorage.getItem('token');
+                await fetch(`/api/notifications/read-all?user_id=${userId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+            } catch (error) {
+                console.error('[NotificationService] Mark all read error:', error);
+            }
+        }
     },
 
     /**
@@ -144,6 +227,14 @@ const NotificationService = {
      * 连接 WebSocket (Phase 2)
      */
     connectWebSocket() {
+        const userId = localStorage.getItem('userId');
+        const token = localStorage.getItem('token');
+
+        if (!userId || !token) {
+            console.log('[NotificationService] No credentials for WebSocket');
+            return;
+        }
+
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}/ws/notifications`;
 
@@ -153,16 +244,13 @@ const NotificationService = {
             this.ws.onopen = () => {
                 console.log('[NotificationService] WebSocket connected');
                 // 发送认证信息
-                const userId = localStorage.getItem('userId');
-                if (userId) {
-                    this.ws.send(JSON.stringify({ type: 'auth', user_id: userId }));
-                }
+                this.ws.send(JSON.stringify({ type: 'auth', user_id: userId }));
             };
 
             this.ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 if (data.type === 'notification') {
-                    this.addNotification(data.notification);
+                    this.addNotification(data.data);
                 }
             };
 

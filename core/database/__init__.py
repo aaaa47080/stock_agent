@@ -179,10 +179,27 @@ from .system_config import (
     # 配置管理
     get_config_metadata,
     list_all_configs_with_metadata,
-    invalidate_cache as invalidate_config_cache,
+    invalidate_config_cache,
     # 審計日誌
     get_config_history,
     init_audit_table,
+)
+
+# 通知功能
+from .notifications import (
+    create_notifications_table,
+    create_notification,
+    get_notifications,
+    get_unread_count,
+    mark_notification_as_read,
+    mark_all_as_read,
+    delete_notification,
+    notify_friend_request,
+    notify_friend_accepted,
+    notify_new_message,
+    notify_post_interaction,
+    notify_system_update,
+    notify_announcement,
 )
 
 
@@ -313,4 +330,18 @@ __all__ = [
     # 審計日誌
     'get_config_history',
     'init_audit_table',
+    # 通知功能
+    'create_notifications_table',
+    'create_notification',
+    'get_notifications',
+    'get_unread_count',
+    'mark_notification_as_read',
+    'mark_all_as_read',
+    'delete_notification',
+    'notify_friend_request',
+    'notify_friend_accepted',
+    'notify_new_message',
+    'notify_post_interaction',
+    'notify_system_update',
+    'notify_announcement',
 ]
