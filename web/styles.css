@@ -683,3 +683,42 @@ input[type="password"]::-ms-clear {
 .lang-option.active .lang-option-name {
     color: #d4b693;
 }
+
+/* ========================================
+ * Forum Pages with Global Navigation
+ * ======================================== */
+
+/* Forum pages WITH global nav - add bottom padding to prevent content occlusion */
+body[data-page="index"] main,
+body[data-page="dashboard"] main {
+    padding-bottom: 120px;
+}
+
+/* Deep content pages - no bottom padding needed (nav is hidden) */
+body[data-page="post"] main,
+body[data-page="create"] main,
+body[data-page="profile"] main,
+body[data-page="messages"] main,
+body[data-page="wallet"] main,
+body[data-page="premium"] main {
+    padding-bottom: 0;
+}
+
+/* Ensure proper z-index layering */
+#global-nav-container {
+    z-index: 9999;
+}
+
+/* Forum page navbars should stay below global nav */
+nav.sticky {
+    z-index: 50;
+}
+
+/* Toast/Modal containers should be above global nav */
+#toast-container,
+.modal,
+#confirm-modal,
+#report-modal {
+    z-index: 10000;
+}
+}
