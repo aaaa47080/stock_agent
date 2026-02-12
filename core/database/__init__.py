@@ -179,7 +179,7 @@ from .system_config import (
     # 配置管理
     get_config_metadata,
     list_all_configs_with_metadata,
-    invalidate_config_cache,
+    invalidate_cache as invalidate_config_cache,
     # 審計日誌
     get_config_history,
     init_audit_table,
