@@ -166,12 +166,22 @@
     <script src="/static/js/friends.js?v=2"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
-            // 1. 初始化認證（等待完成）
+            // 1. 初始化 i18n（必須先完成，才能正確翻譯導覽列）
+            if (window.I18n) {
+                try {
+                    await window.I18n.init();
+                    console.log('[Forum] i18n ready');
+                } catch (e) {
+                    console.error('[Forum] i18n Init Error:', e);
+                }
+            }
+
+            // 2. 初始化認證（等待完成）
             if (typeof AuthManager !== 'undefined') {
                 await AuthManager.init();
             }
 
-            // 2. 初始化 ForumApp
+            // 3. 初始化 ForumApp
             if (typeof ForumApp !== 'undefined') {
                 ForumApp.init();
             }
