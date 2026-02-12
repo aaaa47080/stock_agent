@@ -1024,7 +1024,7 @@ const Components = {
                             <i data-lucide="filter" class="w-4 h-4"></i> Filter
                         </h3>
                         <div class="space-y-1">
-                            <select id="forum-category-filter"
+                            <select id="category-filter"
                                 class="appearance-none w-full bg-background border border-white/10 rounded-lg p-2 text-sm text-textMain focus:border-primary outline-none">
                                 <option value="">All Categories</option>
                                 <option value="analysis">Analysis [分析]</option>
@@ -1041,7 +1041,7 @@ const Components = {
                         <h3 class="font-bold text-secondary mb-3 flex items-center gap-2">
                             <i data-lucide="trending-up" class="w-4 h-4"></i> Trending Tags
                         </h3>
-                        <div id="forum-trending-tags" class="space-y-1">
+                        <div id="trending-tags" class="space-y-1">
                             <div class="text-xs text-textMuted">Loading...</div>
                         </div>
                     </div>
@@ -1049,7 +1049,7 @@ const Components = {
 
                 <!-- Post List -->
                 <div class="md:col-span-3 overflow-y-auto custom-scrollbar">
-                    <div id="forum-post-list" class="space-y-3 pr-2">
+                    <div id="post-list" class="space-y-3 pr-2">
                         <div class="text-center text-textMuted py-8">
                             <i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto mb-2"></i>
                             <span>載入中...</span>
