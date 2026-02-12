@@ -399,8 +399,8 @@ const FriendsUI = {
         }
         // 預設：加好友按鈕
         return `
-            <button onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleAddFriend('${userId}')"
-                    class="friend-btn bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 transition border border-primary/20">
+            <button id="add-friend-btn-${userId}" onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleAddFriend('${userId}')"
+                    class="friend-btn bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 transition border border-primary/20 disabled:opacity-50 disabled:cursor-not-allowed">
                 <i data-lucide="user-plus" class="w-4 h-4"></i>
                 <span>加好友</span>
             </button>
@@ -454,33 +454,39 @@ const FriendsUI = {
      * 處理加好友
      */
     async handleAddFriend(userId) {
+        const btn = document.getElementById(`add-friend-btn-${userId}`);
+
+        // 立即顯示加載狀態
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>發送中...</span>';
+            if (window.lucide) window.lucide.createIcons();
+        }
+
         try {
             await FriendsAPI.sendRequest(userId);
             if (typeof showToast === 'function') {
                 showToast('好友請求已發送', 'success');
             }
 
-            // 就地更新按鈕狀態（不刷新頁面，避免搜索結果消失）
-            // 找到包含這個用戶的卡片，更新按鈕
-            const cards = document.querySelectorAll('.user-card');
-            cards.forEach(card => {
-                const btn = card.querySelector(`button[onclick*="handleAddFriend('${userId}')"]`);
-                if (btn) {
-                    // 替換為「等待中」按鈕
-                    btn.outerHTML = `
-                        <button onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleCancelRequest('${userId}')"
-                                class="friend-btn bg-white/5 text-textMuted px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 border border-white/10 hover:bg-danger/10 hover:text-danger hover:border-danger/20 transition">
-                            <i data-lucide="clock" class="w-4 h-4"></i>
-                            <span>等待中</span>
-                        </button>
-                    `;
-                }
-            });
-
-            // 重新渲染 Lucide 圖標
-            if (window.lucide) lucide.createIcons();
+            // 更新為「等待中」按鈕
+            if (btn) {
+                btn.id = `cancel-request-btn-${userId}`;
+                btn.disabled = false;
+                btn.className = 'friend-btn bg-white/5 text-textMuted px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 border border-white/10 hover:bg-danger/10 hover:text-danger hover:border-danger/20 transition';
+                btn.innerHTML = '<i data-lucide="clock" class="w-4 h-4"></i><span>等待中</span>';
+                btn.onclick = (e) => { e.stopPropagation(); e.preventDefault(); FriendsUI.handleCancelRequest(userId); };
+                if (window.lucide) window.lucide.createIcons();
+            }
 
         } catch (error) {
+            // 恢復按鈕狀態
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i data-lucide="user-plus" class="w-4 h-4"></i><span>加好友</span>';
+                if (window.lucide) window.lucide.createIcons();
+            }
+
             if (typeof showToast === 'function') {
                 showToast(error.message, 'error');
             } else {
@@ -575,32 +581,39 @@ const FriendsUI = {
      * 處理取消請求
      */
     async handleCancelRequest(userId) {
+        const btn = document.getElementById(`cancel-request-btn-${userId}`);
+
+        // 立即顯示加載狀態
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>取消中...</span>';
+            if (window.lucide) window.lucide.createIcons();
+        }
+
         try {
             await FriendsAPI.cancelRequest(userId);
             if (typeof showToast === 'function') {
                 showToast('已取消請求', 'info');
             }
 
-            // 就地更新按鈕狀態（不刷新頁面）
-            const cards = document.querySelectorAll('.user-card');
-            cards.forEach(card => {
-                const btn = card.querySelector(`button[onclick*="handleCancelRequest('${userId}')"]`);
-                if (btn) {
-                    // 替換為「加好友」按鈕
-                    btn.outerHTML = `
-                        <button onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleAddFriend('${userId}')"
-                                class="friend-btn bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 transition border border-primary/20">
-                            <i data-lucide="user-plus" class="w-4 h-4"></i>
-                            <span>加好友</span>
-                        </button>
-                    `;
-                }
-            });
-
-            // 重新渲染 Lucide 圖標
-            if (window.lucide) lucide.createIcons();
+            // 更新為「加好友」按鈕
+            if (btn) {
+                btn.id = `add-friend-btn-${userId}`;
+                btn.disabled = false;
+                btn.className = 'friend-btn bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 transition border border-primary/20 disabled:opacity-50 disabled:cursor-not-allowed';
+                btn.innerHTML = '<i data-lucide="user-plus" class="w-4 h-4"></i><span>加好友</span>';
+                btn.onclick = (e) => { e.stopPropagation(); e.preventDefault(); FriendsUI.handleAddFriend(userId); };
+                if (window.lucide) window.lucide.createIcons();
+            }
 
         } catch (error) {
+            // 恢復按鈕狀態
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i data-lucide="clock" class="w-4 h-4"></i><span>等待中</span>';
+                if (window.lucide) window.lucide.createIcons();
+            }
+
             if (typeof showToast === 'function') {
                 showToast(error.message, 'error');
             } else {

@@ -52,7 +52,7 @@
     <script src="/static/config.js"></script>
     <script src="/static/js/logger.js"></script>
     <script src="/static/js/premium.js"></script>
-    <script src="/static/js/friends.js?v=3"></script>
+    <script src="/static/js/friends.js?v=4"></script>
     <script src="/static/js/messages.js?v=2"></script>
     <script src="/static/js/nav-config.js?v=5"></script>
     <!-- Fonts -->
@@ -136,6 +136,9 @@
         </div>
 
         <div class="p-4 border-t border-white/5">
+            <!-- 通知图标 -->
+            <div id="notification-bell-container" class="mb-2"></div>
+            <!-- 用户设置按钮 -->
             <button onclick="switchTab('settings')"
                 class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl text-textMuted hover:text-secondary transition text-sm">
                 <div class="w-8 h-8 rounded-full bg-surfaceHighlight flex items-center justify-center text-xs font-bold overflow-hidden"
@@ -525,6 +528,12 @@
 
             <!-- Tab: Safety (Scam Tracker & Governance) -->
             <div id="safety-tab"
+                class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40">
+                <!-- Dynamic Content Injected via components.js -->
+            </div>
+
+            <!-- Tab: Forum -->
+            <div id="forum-tab"
                 class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40">
                 <!-- Dynamic Content Injected via components.js -->
             </div>
@@ -1072,7 +1081,10 @@
     <script src="/static/js/apiKeyManager.js?v=47" onerror="alert('apiKeyManager.js 載入失敗')"></script>
     <script src="/static/js/auth.js?v=48" onerror="alert('auth.js 載入失敗')"></script>
     <script src="/static/js/okxKeyManager.js?v=47"></script>
-    <script src="/static/js/components.js?v=55"></script>
+    <script src="/static/js/components.js?v=56"></script>
+    <script src="/static/js/notification-service.js?v=1"></script>
+    <script src="/static/js/components/NotificationBell.js?v=1"></script>
+    <script src="/static/js/components/NotificationPanel.js?v=1"></script>
     <script src="/static/js/llmSettings.js?v=47"></script>
     <script src="/static/js/filter.js?v=47"></script>
     <script src="/static/js/chat.js?v=47"></script>
@@ -1127,7 +1139,7 @@
 
         // 監聽瀏覽器返回/前進按鈕
         window.addEventListener('popstate', (event) => {
-            const validTabs = ['chat', 'market', 'pulse', 'wallet', 'assets', 'friends', 'safety', 'settings'];
+            const validTabs = ['chat', 'market', 'pulse', 'wallet', 'assets', 'friends', 'forum', 'safety', 'settings'];
             let targetTab = 'chat';
 
             if (event.state && event.state.tab) {
@@ -1261,6 +1273,9 @@
             if (tabId === 'safety') {
                 if (window.SafetyTab) window.SafetyTab.init();
             }
+            if (tabId === 'forum') {
+                if (window.ForumApp) window.ForumApp.init();
+            }
             if (tabId === 'settings') {
                 // 💡 修正：注入內容後，立即更新用戶資料顯示
                 if (window.AuthManager && typeof window.AuthManager._updateUI === 'function') {
@@ -1347,11 +1362,8 @@
                 button.title = labelText;
                 button.dataset.tab = item.id;
 
-                if (item.id === 'forum') {
-                    button.onclick = function () { navigateToForum(); };
-                } else {
-                    button.onclick = function () { switchTab(item.id); };
-                }
+                // All tabs including forum use SPA navigation (switchTab)
+                button.onclick = function () { switchTab(item.id); };
 
                 button.innerHTML = `
                     <i data-lucide="${item.icon}" class="w-5 h-5 ${isActive ? 'text-primary' : 'text-textMuted'}"></i>
@@ -1615,13 +1627,20 @@
                 new LanguageSwitcher('.lang-switcher-container');
             }
 
+            // 2.6 初始化通知組件
+            const notificationBellContainer = document.getElementById('notification-bell-container');
+            if (notificationBellContainer && window.NotificationBell && window.NotificationService) {
+                window.notificationBell = new NotificationBell(notificationBellContainer);
+                console.log('NotificationBell initialized');
+            }
+
             // 監聽語言切換事件，重新渲染導覽列標籤
             window.addEventListener('languageChanged', () => {
                 renderNavButtons();
             });
 
             // 3. 載入預設分頁（優先順序：sessionStorage returnToTab > URL hash > localStorage）
-            const validTabs = ['chat', 'market', 'pulse', 'wallet', 'assets', 'friends', 'safety', 'settings'];
+            const validTabs = ['chat', 'market', 'pulse', 'wallet', 'assets', 'friends', 'forum', 'safety', 'settings'];
             const returnToTab = sessionStorage.getItem('returnToTab');
             const hashTab = window.location.hash.replace('#', '');
             const savedTab = localStorage.getItem('activeTab') || 'chat';

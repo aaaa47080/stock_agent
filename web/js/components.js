@@ -994,6 +994,72 @@ const Components = {
         </div>
     `,
 
+    // Tab: Forum
+    forum: `
+        <div class="h-full flex flex-col">
+            <!-- Header -->
+            <div class="flex items-center justify-between mb-4 px-2">
+                <h2 class="font-serif text-2xl md:text-3xl text-secondary flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <i data-lucide="messages-square" class="w-5 h-5 text-primary"></i>
+                    </div>
+                    <span>Pi Forum</span>
+                </h2>
+                <div class="flex items-center gap-2">
+                    <!-- 發文按鈕 -->
+                    <a href="/static/forum/create.html"
+                        class="bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 transition">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">發文</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Main Content Grid -->
+            <div class="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4 overflow-hidden">
+                <!-- Sidebar (Filters & Trending) -->
+                <aside class="md:col-span-1 space-y-4 overflow-y-auto custom-scrollbar">
+                    <div class="bg-surface border border-white/5 rounded-2xl p-4">
+                        <h3 class="font-bold text-secondary mb-3 flex items-center gap-2">
+                            <i data-lucide="filter" class="w-4 h-4"></i> Filter
+                        </h3>
+                        <div class="space-y-1">
+                            <select id="forum-category-filter"
+                                class="appearance-none w-full bg-background border border-white/10 rounded-lg p-2 text-sm text-textMain focus:border-primary outline-none">
+                                <option value="">All Categories</option>
+                                <option value="analysis">Analysis [分析]</option>
+                                <option value="question">Question [請益]</option>
+                                <option value="tutorial">Tutorial [教學]</option>
+                                <option value="news">News [新聞]</option>
+                                <option value="chat">Chat [閒聊]</option>
+                                <option value="insight">Insight [心得]</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="bg-surface border border-white/5 rounded-2xl p-4">
+                        <h3 class="font-bold text-secondary mb-3 flex items-center gap-2">
+                            <i data-lucide="trending-up" class="w-4 h-4"></i> Trending Tags
+                        </h3>
+                        <div id="forum-trending-tags" class="space-y-1">
+                            <div class="text-xs text-textMuted">Loading...</div>
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- Post List -->
+                <div class="md:col-span-3 overflow-y-auto custom-scrollbar">
+                    <div id="forum-post-list" class="space-y-3 pr-2">
+                        <div class="text-center text-textMuted py-8">
+                            <i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto mb-2"></i>
+                            <span>載入中...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `,
+
     /**
      * 同步注入組件並確保 DOM 更新完成
      * @param {string} id - 分頁 ID (如 'market', 'pulse', 'settings')
