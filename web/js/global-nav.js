@@ -37,8 +37,7 @@ const GlobalNav = {
         const navHTML = this.getNavTemplate();
         document.body.insertAdjacentHTML('beforeend', navHTML);
 
-        // Initialize components
-        this.renderNavButtons();
+        // Initialize language switcher and draggable first
         this.initLanguageSwitcher();
         this.initDraggable();
         this.restoreNavState();
@@ -46,6 +45,21 @@ const GlobalNav = {
         // Initialize Lucide icons
         if (window.lucide) {
             window.lucide.createIcons();
+        }
+
+        // Wait for I18n to be ready before rendering buttons
+        // Check if I18n is already initialized, otherwise wait for it
+        if (window.I18n && window.I18n.t) {
+            // I18n is ready, render immediately
+            this.renderNavButtons();
+        } else {
+            // Wait for I18n to be initialized
+            const checkI18n = setInterval(() => {
+                if (window.I18n && window.I18n.t) {
+                    clearInterval(checkI18n);
+                    this.renderNavButtons();
+                }
+            }, 100);
         }
     },
 
@@ -115,6 +129,7 @@ const GlobalNav = {
         const enabledItems = NavPreferences.getEnabledItems();
         const pageType = document.body.dataset.page;
 
+        // Clear existing buttons
         container.innerHTML = '';
 
         enabledItems.forEach(item => {
@@ -122,7 +137,15 @@ const GlobalNav = {
             const isActive = pageType === item.id || (pageType === 'index' && item.id === 'forum');
 
             // Use i18n key if available, otherwise fall back to label
-            const labelText = item.i18nKey && window.I18n ? window.I18n.t(item.i18nKey) : item.label;
+            let labelText = item.label; // Default fallback
+            if (item.i18nKey && window.I18n) {
+                try {
+                    labelText = window.I18n.t(item.i18nKey);
+                } catch (e) {
+                    console.warn('Translation error for key:', item.i18nKey, e);
+                    labelText = item.label; // Fallback to label
+                }
+            }
 
             button.className = `nav-btn shrink-0 w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 transition-all duration-200 gap-0.5 nav-item-enter ${isActive ? 'text-primary bg-white/5' : 'text-textMuted hover:text-primary'}`;
             button.title = labelText;
@@ -404,6 +427,13 @@ const GlobalNav = {
         this.renderNavButtons();
     }
 };
+
+// Listen for language changes and re-render buttons
+window.addEventListener('languageChanged', () => {
+    if (document.getElementById('nav-buttons')) {
+        GlobalNav.renderNavButtons();
+    }
+});
 
 // Auto-initialize when DOM is ready
 if (document.readyState === 'loading') {
