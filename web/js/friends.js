@@ -377,12 +377,12 @@ const FriendsUI = {
             }
             return `
                 <div class="flex gap-2">
-                    <button onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleAcceptRequest('${userId}')"
-                            class="bg-success/10 hover:bg-success/20 text-success px-3 py-1.5 rounded-lg text-sm font-bold transition">
+                    <button id="accept-btn-${userId}" onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleAcceptRequest('${userId}')"
+                            class="bg-success/10 hover:bg-success/20 text-success px-3 py-1.5 rounded-lg text-sm font-bold transition disabled:opacity-50 disabled:cursor-not-allowed">
                         <i data-lucide="check" class="w-4 h-4"></i>
                     </button>
-                    <button onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleRejectRequest('${userId}')"
-                            class="bg-danger/10 hover:bg-danger/20 text-danger px-3 py-1.5 rounded-lg text-sm font-bold transition">
+                    <button id="reject-btn-${userId}" onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleRejectRequest('${userId}')"
+                            class="bg-danger/10 hover:bg-danger/20 text-danger px-3 py-1.5 rounded-lg text-sm font-bold transition disabled:opacity-50 disabled:cursor-not-allowed">
                         <i data-lucide="x" class="w-4 h-4"></i>
                     </button>
                 </div>
@@ -493,6 +493,16 @@ const FriendsUI = {
      * 處理接受請求
      */
     async handleAcceptRequest(userId) {
+        const acceptBtn = document.getElementById(`accept-btn-${userId}`);
+        const rejectBtn = document.getElementById(`reject-btn-${userId}`);
+
+        // 禁用按鈕防止重複點擊
+        if (acceptBtn) {
+            acceptBtn.disabled = true;
+            acceptBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>';
+        }
+        if (rejectBtn) rejectBtn.disabled = true;
+
         try {
             await FriendsAPI.acceptRequest(userId);
             if (typeof showToast === 'function') {
@@ -504,6 +514,14 @@ const FriendsUI = {
                 location.reload();
             }
         } catch (error) {
+            // 恢復按鈕狀態
+            if (acceptBtn) {
+                acceptBtn.disabled = false;
+                acceptBtn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i>';
+                if (window.lucide) window.lucide.createIcons();
+            }
+            if (rejectBtn) rejectBtn.disabled = false;
+
             if (typeof showToast === 'function') {
                 showToast(error.message, 'error');
             } else {
@@ -516,6 +534,16 @@ const FriendsUI = {
      * 處理拒絕請求
      */
     async handleRejectRequest(userId) {
+        const acceptBtn = document.getElementById(`accept-btn-${userId}`);
+        const rejectBtn = document.getElementById(`reject-btn-${userId}`);
+
+        // 禁用按鈕防止重複點擊
+        if (rejectBtn) {
+            rejectBtn.disabled = true;
+            rejectBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>';
+        }
+        if (acceptBtn) acceptBtn.disabled = true;
+
         try {
             await FriendsAPI.rejectRequest(userId);
             if (typeof showToast === 'function') {
@@ -527,6 +555,14 @@ const FriendsUI = {
                 location.reload();
             }
         } catch (error) {
+            // 恢復按鈕狀態
+            if (rejectBtn) {
+                rejectBtn.disabled = false;
+                rejectBtn.innerHTML = '<i data-lucide="x" class="w-4 h-4"></i>';
+                if (window.lucide) window.lucide.createIcons();
+            }
+            if (acceptBtn) acceptBtn.disabled = false;
+
             if (typeof showToast === 'function') {
                 showToast(error.message, 'error');
             } else {

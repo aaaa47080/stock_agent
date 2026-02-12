@@ -137,6 +137,8 @@
                 } catch (e) {
                     console.warn('Failed to save language preference:', e);
                 }
+                // 手動觸發事件，確保所有組件都能收到通知
+                window.dispatchEvent(new CustomEvent('languageChanged', { detail: { language: lang } }));
             }
         },
         getLanguage: function() {
