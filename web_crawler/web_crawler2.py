@@ -5,9 +5,15 @@ from urllib.parse import urlsplit, urlunsplit
 
 import trafilatura
 from playwright.async_api import async_playwright
+from summarize_futunn_posts import (
+    DEFAULT_SYSTEM_PROMPT,
+    create_summary_chain_from_env,
+    summarize_articles,
+)
 
 MAIN_URL = "https://news.futunn.com/main?chain_id=FBB0EGgLsPxZBN.1klpic0&global_content=%7B%22promote_id%22%3A13766,%22sub_promote_id%22%3A1,%22f%22%3A%22nn%2F%22%7D&lang=zh-cn"
 TSM_URL = "https://www.futunn.com/hk/stock/TSM-US/news?global_content=%7B%22promote_id%22%3A13643,%22sub_promote_id%22%3A60%7D"
+STOCK_NEWS_TEMPLATE = "https://www.futunn.com/hk/stock/{ticker}-US/news?global_content=%7B%22promote_id%22%3A13643,%22sub_promote_id%22%3A60%7D"
 
 OUT_FILE = "futunn_main_posts.jsonl"
 SCROLL_ROUNDS = 0          # 想抓更多就加大
@@ -17,43 +23,72 @@ PRESET_URLS = {"main": MAIN_URL, "tsm": TSM_URL}
 
 
 def parse_args():
-    arg_parser = argparse.ArgumentParser(description="Crawl futunn news pages with playwright and trafilatura")
-    arg_parser.add_argument("--url", default=None, help="Target page to scan for article links (overrides preset)")
-    arg_parser.add_argument("--preset", choices=list(PRESET_URLS.keys()), default=None, help="Preset page to crawl when --url is not provided; omit for interactive prompt")
-    arg_parser.add_argument("--output", default=OUT_FILE, help="JSONL output file path")
-    arg_parser.add_argument(
+    parser = argparse.ArgumentParser(description="Crawl futunn news pages with playwright and trafilatura")
+    parser.add_argument("--url", default=None, help="Target page to scan for article links (overrides preset)")
+    parser.add_argument("--preset", choices=list(PRESET_URLS.keys()), default=None, help="Preset page to crawl when --url is not provided; omit for interactive prompt")
+    parser.add_argument("--output", default=OUT_FILE, help="JSONL output file path")
+    parser.add_argument(
         "--scroll-rounds",
         type=int,
         default=SCROLL_ROUNDS,
         help="Number of scroll events to trigger lazy loading",
     )
-    arg_parser.add_argument("--limit", type=int, default=LIMIT, help="Maximum articles to fetch (<=0 means no limit)")
-    arg_parser.add_argument("--include-flash", action="store_true", help="When set also keep /flash/ links")
+    parser.add_argument("--limit", type=int, default=LIMIT, help="Maximum articles to fetch (<=0 means no limit)")
+    parser.add_argument("--include-flash", action="store_true", help="When set also keep /flash/ links")
 
-    return arg_parser.parse_args()
+    parser.add_argument(
+        "--summary-output",
+        default="futunn_main_summaries.jsonl",
+        help="Write batch summaries to this JSONL file",
+    )
+    parser.add_argument(
+        "--skip-summary",
+        action="store_true",
+        help="Do not summarize content during crawling",
+    )
+    parser.add_argument(
+        "--summary-batch-size",
+        type=int,
+        default=3,
+        help="Number of fetched articles per summarize batch",
+    )
+    parser.add_argument(
+        "--summary-max-content-chars",
+        type=int,
+        default=6000,
+        help="Trim content length before sending to LLM",
+    )
+    parser.add_argument(
+        "--summary-system-prompt",
+        default=DEFAULT_SYSTEM_PROMPT,
+        help="System prompt used by LLM summarizer",
+    )
+    parser.add_argument(
+        "--summary-temperature",
+        type=float,
+        default=0.2,
+        help="LLM temperature for summaries",
+    )
+
+    return parser.parse_args()
+
+
+def build_stock_news_url(target: str) -> str:
+    candidate = target.strip()
+    if candidate.lower().startswith("http://") or candidate.lower().startswith("https://"):
+        return candidate
+    ticker = candidate.upper()
+    return STOCK_NEWS_TEMPLATE.format(ticker=ticker)
 
 
 def select_target_url():
-    prompt = """請選擇要爬取的頁面：
-1. 主頁 (Main)
-2. 台積電新聞 (TSM)
-3. 輸入自訂網址
-輸入編號：
-"""
+    prompt = "請輸入想爬取的美股代號（例如 TSM）或完整 Futunn URL："
     while True:
-        choice = input(prompt).strip()
-        if choice == "1":
-            return PRESET_URLS["main"]
-        if choice == "2":
-            return PRESET_URLS["tsm"]
-        if choice == "3":
-            custom = input("請輸入完整網址：").strip()
-            if custom:
-                return custom
-            print("網址不可為空。")
-        else:
-            print("請輸入 1、2 或 3。")
-
+        entry = input(prompt).strip()
+        if not entry:
+            print("請輸入有效的代號或 URL。")
+            continue
+        return build_stock_news_url(entry)
 
 def canonical_url(url: str) -> str:
     sp = urlsplit(url)
@@ -73,6 +108,15 @@ def clean_text(text: str) -> str:
         if idx != -1:
             text = text[:idx].strip()
     return text.strip()
+
+
+def resolve_effective_title(article_title: str, list_title: str) -> str:
+    article_title = (article_title or "").strip()
+    list_title = (list_title or "").strip()
+    generic_titles = {"新聞", "新闻", "News"}
+    if not article_title or article_title in generic_titles:
+        return list_title or article_title
+    return article_title
 
 
 async def collect_main_links(page, main_url: str, scroll_rounds: int = 6, only_post: bool = True):
@@ -151,6 +195,16 @@ async def fetch_article_via_playwright(context, url: str):
         await page.close()
 
 
+def process_summary_batch(
+    pending_rows: list[dict],
+    summary_chain,
+    summary_max_content_chars: int,
+) -> list[str]:
+    if not pending_rows:
+        return []
+    return summarize_articles(summary_chain, pending_rows, max_content_chars=summary_max_content_chars)
+
+
 async def main():
     args = parse_args()
     if args.url:
@@ -165,6 +219,13 @@ async def main():
     if limit is not None and limit <= 0:
         limit = None
     only_post = not args.include_flash
+    summary_batch_size = args.summary_batch_size if args.summary_batch_size > 0 else 1
+    summary_chain = None
+    if not args.skip_summary:
+        summary_chain = create_summary_chain_from_env(
+            system_prompt=args.summary_system_prompt,
+            temperature=args.summary_temperature,
+        )
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
@@ -184,20 +245,68 @@ async def main():
             await browser.close()
             return
 
-        with open(out_file, "w", encoding="utf-8") as f:
-            for i, it in enumerate(links, 1):
-                url = it["url"]
-                print(f"[{i}/{len(links)}] fetch:", it.get("title", "")[:60], url)
-                art = await fetch_article_via_playwright(context, url)
+        with open(out_file, "w", encoding="utf-8-sig") as f:
+            summary_fp = None
+            if not args.skip_summary:
+                summary_fp = open(args.summary_output, "w", encoding="utf-8-sig")
+            try:
+                pending_batch: list[dict] = []
 
-                # 立即看到成果（抓一篇就停時很有用）
-                print("  -> title:", art["title"][:80])
-                print("  -> content_len:", len(art["content"] or ""))
+                for i, it in enumerate(links, 1):
+                    url = it["url"]
+                    art = await fetch_article_via_playwright(context, url)
+                    art["title"] = resolve_effective_title(art.get("title", ""), it.get("title", ""))
+                    art["_idx"] = i
 
-                f.write(json.dumps(art, ensure_ascii=False) + "\n")
+                    f.write(json.dumps({k: v for k, v in art.items() if not k.startswith("_")}, ensure_ascii=False) + "\n")
+                    pending_batch.append(art)
+
+                    should_flush = len(pending_batch) >= summary_batch_size or i == len(links)
+                    if not should_flush:
+                        continue
+
+                    summaries = []
+                    if summary_chain is not None:
+                        summaries = process_summary_batch(
+                            pending_batch,
+                            summary_chain,
+                            summary_max_content_chars=args.summary_max_content_chars,
+                        )
+                    else:
+                        summaries = ["(skip summary)"] * len(pending_batch)
+
+                    for item, summary in zip(pending_batch, summaries):
+                        fetch_text = item.get("title", "").strip()[:60]
+                        one_line_summary = " | ".join(
+                            part.strip() for part in summary.splitlines() if part.strip()
+                        )
+                        print(
+                            f"[{item.get('_idx')}/{len(links)}] "
+                            f"fetch: {fetch_text} \n"
+                            f"summary: {one_line_summary} \n"
+                            f"url: {item['url']}"
+                            f"\n=================================\n"
+                        )
+                        if summary_fp is not None:
+                            summary_fp.write(
+                                json.dumps(
+                                    {
+                                        "url": item["url"],
+                                        "title": item["title"],
+                                        "summary": summary,
+                                    },
+                                    ensure_ascii=False,
+                                )
+                                + "\n"
+                            )
+                    pending_batch.clear()
+            finally:
+                if summary_fp is not None:
+                    summary_fp.close()
 
         print(f"saved -> {out_file}")
-        await browser.close()
+        if not args.skip_summary:
+            print(f"summaries saved -> {args.summary_output}")
 
 
 if __name__ == "__main__":
