@@ -252,18 +252,12 @@ const AuthManager = {
             const configRes = await fetch('/api/config');
             const config = await configRes.json();
 
-            if (config.test_mode && config.test_user && !this.currentUser) {
-                console.log('🧪 [Test Mode] 自動登入測試用戶');
-                this.currentUser = {
-                    uid: config.test_user.uid,
-                    user_id: config.test_user.uid,
-                    username: config.test_user.username,
-                    accessToken: config.test_user.accessToken,
-                    authMethod: 'test_mode'
-                };
-                localStorage.setItem('pi_user', JSON.stringify(this.currentUser));
-                this._updateUI(true);
-                if (typeof initChat === 'function') initChat();
+            if (config.test_mode && !this.currentUser) {
+                console.log('🧪 [Test Mode] 自動登入測試用戶（透過 dev-login endpoint）');
+                const result = await this.loginAsMockUser();
+                if (!result.success) {
+                    console.warn('🧪 [Test Mode] 自動登入失敗:', result.error);
+                }
             }
         } catch (e) {
             console.warn('Failed to check test mode:', e);
