@@ -1334,7 +1334,14 @@
                 const isActive = item.id === activeTab;
 
                 // Use i18n key if available, otherwise fall back to label
-                const labelText = item.i18nKey && window.I18n ? window.I18n.t(item.i18nKey) : item.label;
+                let labelText = item.label; // Default fallback
+                if (item.i18nKey && window.I18n && window.I18n.isReady && window.I18n.isReady()) {
+                    const translated = window.I18n.t(item.i18nKey);
+                    // Only use translation if it's different from the key (translation succeeded)
+                    if (translated !== item.i18nKey) {
+                        labelText = translated;
+                    }
+                }
 
                 button.className = `nav-btn shrink-0 w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 transition-all duration-200 gap-0.5 nav-item-enter ${isActive ? 'text-primary bg-white/5' : 'text-textMuted hover:text-primary'}`;
                 button.title = labelText;
@@ -1821,7 +1828,7 @@
         });
     </script>
 
-    <script src="/static/js/i18n.js?v=4"></script>
+    <script src="/static/js/i18n.js?v=5"></script>
     <script src="/static/js/components/LanguageSwitcher.js?v=2"></script>
 </body>
 

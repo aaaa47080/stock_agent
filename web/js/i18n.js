@@ -122,6 +122,10 @@
         t: function(key, options) {
             return i18n ? i18n.t(key, options) : key;
         },
+        // 檢查 i18n 是否已完全初始化
+        isReady: function() {
+            return i18n !== null;
+        },
         changeLanguage: async function(lang) {
             if (i18n) {
                 await i18n.changeLanguage(lang);

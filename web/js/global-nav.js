@@ -48,14 +48,22 @@ const GlobalNav = {
         }
 
         // Wait for I18n to be ready before rendering buttons
-        // Check if I18n is already initialized, otherwise wait for it
-        if (window.I18n && window.I18n.t) {
-            // I18n is ready, render immediately
+        // Check if I18n is fully initialized (not just function exists), otherwise wait for it
+        if (window.I18n && window.I18n.isReady && window.I18n.isReady()) {
+            // I18n is fully initialized, render immediately
             this.renderNavButtons();
         } else {
-            // Wait for I18n to be initialized
+            // Wait for I18n to be initialized with timeout
+            let attempts = 0;
+            const maxAttempts = 50; // 5 seconds max (50 * 100ms)
             const checkI18n = setInterval(() => {
-                if (window.I18n && window.I18n.t) {
+                attempts++;
+                if (window.I18n && window.I18n.isReady && window.I18n.isReady()) {
+                    clearInterval(checkI18n);
+                    this.renderNavButtons();
+                } else if (attempts >= maxAttempts) {
+                    // Timeout: render with fallback labels
+                    console.warn('[GlobalNav] I18n init timeout, using fallback labels');
                     clearInterval(checkI18n);
                     this.renderNavButtons();
                 }
@@ -138,12 +146,16 @@ const GlobalNav = {
 
             // Use i18n key if available, otherwise fall back to label
             let labelText = item.label; // Default fallback
-            if (item.i18nKey && window.I18n) {
+            if (item.i18nKey && window.I18n && window.I18n.isReady && window.I18n.isReady()) {
                 try {
-                    labelText = window.I18n.t(item.i18nKey);
+                    const translated = window.I18n.t(item.i18nKey);
+                    // Only use translation if it's different from the key (translation succeeded)
+                    if (translated !== item.i18nKey) {
+                        labelText = translated;
+                    }
                 } catch (e) {
                     console.warn('Translation error for key:', item.i18nKey, e);
-                    labelText = item.label; // Fallback to label
+                    // labelText already set to item.label above
                 }
             }
 
