@@ -4,13 +4,29 @@
 
 class LanguageSwitcher {
     constructor(containerSelector = '.lang-switcher-container') {
-        this.container = document.querySelector(containerSelector);
+        // Support both selector string and DOM element
+        if (typeof containerSelector === 'string') {
+            this.container = document.querySelector(containerSelector);
+        } else if (containerSelector instanceof HTMLElement) {
+            this.container = containerSelector;
+        } else {
+            this.container = null;
+        }
+
         this.currentLang = this.getSavedLanguage() || this.detectBrowserLanguage();
         this.isOpen = false;
 
         if (this.container) {
             this.init();
         }
+    }
+
+    /**
+     * Static init method for easy initialization from other modules
+     * @param {string|HTMLElement} container - Selector string or DOM element
+     */
+    static init(container) {
+        return new LanguageSwitcher(container);
     }
 
     getSavedLanguage() {
@@ -32,10 +48,20 @@ class LanguageSwitcher {
     }
 
     syncWithI18n() {
+        // Listen for language change events
         window.addEventListener('languageChanged', (e) => {
             this.currentLang = e.detail.language;
             this.updateDisplay();
         });
+
+        // If I18n is already initialized, sync with its current language
+        if (window.I18n && window.I18n.isReady && window.I18n.isReady()) {
+            const i18nLang = window.I18n.getLanguage();
+            if (i18nLang && i18nLang !== this.currentLang) {
+                this.currentLang = i18nLang;
+                this.updateDisplay();
+            }
+        }
     }
 
     render() {

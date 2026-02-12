@@ -109,6 +109,9 @@
                 window.dispatchEvent(new CustomEvent('languageChanged', { detail: { language: lng } }));
             });
 
+            // 觸發初始化完成事件，讓其他組件知道 i18n 已準備好
+            window.dispatchEvent(new CustomEvent('languageChanged', { detail: { language: language } }));
+
             console.log('i18n initialized with language:', language);
 
         } catch (error) {
