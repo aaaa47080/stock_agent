@@ -58,6 +58,7 @@ from api.routers import system, analysis, market, trading, user, agents
 from api.routers.forum import router as forum_router
 from api.routers.premium import router as premium_router
 from api.routers.admin import router as admin_router
+from api.routers.admin_panel import router as admin_panel_router
 from api.routers.friends import router as friends_router
 from api.routers.messages import router as messages_router
 from api.routers.audit import router as audit_router  # Audit log admin API
@@ -304,6 +305,7 @@ app.include_router(agents.router)  # Agent 管理 API
 app.include_router(forum_router)   # 論壇 API
 app.include_router(premium_router) # 高級會員 API
 app.include_router(admin_router)   # 管理員 API（配置管理）
+app.include_router(admin_panel_router)  # 管理後台 API（廣播+用戶管理）
 app.include_router(friends_router) # 好友功能 API
 app.include_router(messages_router) # 私訊功能 API
 app.include_router(audit_router)   # 審計日誌查詢 API (管理員專用)

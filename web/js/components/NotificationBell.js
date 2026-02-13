@@ -1,11 +1,16 @@
 // ========================================
-// NotificationBell.js - 通知圖標組件
+// NotificationBell.js - 通知圖標組件（支援多實例）
 // ========================================
+
+let _bellInstanceCount = 0;
 
 class NotificationBell {
     constructor(container) {
         this.container = container;
         this.isPanelOpen = false;
+        this.instanceId = ++_bellInstanceCount;
+        this.btnId = `notification-bell-btn-${this.instanceId}`;
+        this.badgeId = `notification-badge-${this.instanceId}`;
         this.init();
     }
 
@@ -23,12 +28,12 @@ class NotificationBell {
     render() {
         this.container.innerHTML = `
             <div class="notification-bell relative">
-                <button id="notification-bell-btn"
+                <button id="${this.btnId}"
                         class="relative p-2 hover:bg-white/5 rounded-full text-textMuted hover:text-primary transition"
                         aria-label="通知">
                     <i data-lucide="bell" class="w-5 h-5"></i>
                     <!-- 未读徽章 -->
-                    <span id="notification-badge"
+                    <span id="${this.badgeId}"
                           class="absolute -top-0.5 -right-0.5 w-4 h-4 bg-danger text-white text-[10px] font-bold rounded-full flex items-center justify-center hidden">
                         0
                     </span>
@@ -43,7 +48,7 @@ class NotificationBell {
     }
 
     attachEvents() {
-        const btn = document.getElementById('notification-bell-btn');
+        const btn = document.getElementById(this.btnId);
         if (btn) {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -51,16 +56,21 @@ class NotificationBell {
             });
         }
 
-        // 点击外部关闭面板
-        document.addEventListener('click', (e) => {
-            if (this.isPanelOpen && !e.target.closest('.notification-bell') && !e.target.closest('.notification-panel')) {
-                this.closePanel();
-            }
-        });
+        // 点击外部关闭面板（只綁定一次，由第一個實例處理）
+        if (this.instanceId === 1) {
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.notification-bell') && !e.target.closest('.notification-panel')) {
+                    // 關閉所有實例的面板狀態
+                    if (window.notificationBell) window.notificationBell.isPanelOpen = false;
+                    if (window.notificationBellDesktop) window.notificationBellDesktop.isPanelOpen = false;
+                    if (window.notificationPanel) window.notificationPanel.hide();
+                }
+            });
+        }
     }
 
     updateBadge(count) {
-        const badge = document.getElementById('notification-badge');
+        const badge = document.getElementById(this.badgeId);
         if (badge) {
             if (count > 0) {
                 badge.classList.remove('hidden');
@@ -72,7 +82,9 @@ class NotificationBell {
     }
 
     togglePanel() {
-        if (this.isPanelOpen) {
+        // 同步所有實例的狀態
+        const isOpen = window.notificationPanel && window.notificationPanel.isVisible;
+        if (isOpen) {
             this.closePanel();
         } else {
             this.openPanel();

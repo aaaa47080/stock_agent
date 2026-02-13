@@ -168,7 +168,14 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
             user = await loop.run_in_executor(None, get_user_by_id, test_user_id)
             
             if user:
+                if not user.get("is_active", True):
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="Account has been suspended"
+                    )
                 return user
+        except HTTPException:
+            raise
         except Exception as e:
             # If database fetch fails, return mock user
             pass
@@ -188,3 +195,20 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
+
+async def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
+    """
+    Require admin role. Use as dependency on admin-only endpoints.
+    """
+    if current_user.get("role") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    if not current_user.get("is_active", True):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is disabled"
+        )
+    return current_user

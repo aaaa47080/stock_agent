@@ -251,7 +251,7 @@ const ForumAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error('Please login first');
 
-        const res = await fetch(`/api/forum/posts/${postId}/push?user_id=${userId}`, { method: 'POST' });
+        const res = await fetch(`/api/forum/posts/${postId}/push?user_id=${userId}`, { method: 'POST', headers: this._getAuthHeaders() });
         if (!res.ok) {
             let errorMsg = 'Failed to push';
             try {
@@ -274,7 +274,7 @@ const ForumAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error('Please login first');
 
-        const res = await fetch(`/api/forum/posts/${postId}/boo?user_id=${userId}`, { method: 'POST' });
+        const res = await fetch(`/api/forum/posts/${postId}/boo?user_id=${userId}`, { method: 'POST', headers: this._getAuthHeaders() });
         if (!res.ok) {
             let errorMsg = 'Failed to boo';
             try {
@@ -307,7 +307,7 @@ const ForumAPI = {
 
         const res = await fetch(`/api/forum/posts/${postId}/tip?user_id=${userId}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: this._getAuthHeaders(),
             body: JSON.stringify({ amount, tx_hash: txHash })
         });
         if (!res.ok) {
@@ -390,31 +390,41 @@ const ForumAPI = {
     async getMyStats() {
         const userId = this._getUserId();
         if (!userId) throw new Error('User not logged in');
-        const res = await fetch(`/api/forum/me/stats?user_id=${userId}`);
+        const res = await fetch(`/api/forum/me/stats?user_id=${userId}`, {
+            headers: this._getAuthHeaders()
+        });
         return await res.json();
     },
     async getMyPosts() {
         const userId = this._getUserId();
         if (!userId) throw new Error('User not logged in');
-        const res = await fetch(`/api/forum/me/posts?user_id=${userId}`);
+        const res = await fetch(`/api/forum/me/posts?user_id=${userId}`, {
+            headers: this._getAuthHeaders()
+        });
         return await res.json();
     },
     async getMyTipsSent() {
         const userId = this._getUserId();
         if (!userId) throw new Error('User not logged in');
-        const res = await fetch(`/api/forum/me/tips/sent?user_id=${userId}`);
+        const res = await fetch(`/api/forum/me/tips/sent?user_id=${userId}`, {
+            headers: this._getAuthHeaders()
+        });
         return await res.json();
     },
     async getMyTipsReceived() {
         const userId = this._getUserId();
         if (!userId) throw new Error('User not logged in');
-        const res = await fetch(`/api/forum/me/tips/received?user_id=${userId}`);
+        const res = await fetch(`/api/forum/me/tips/received?user_id=${userId}`, {
+            headers: this._getAuthHeaders()
+        });
         return await res.json();
     },
     async getMyPayments() {
         const userId = this._getUserId();
         if (!userId) throw new Error('User not logged in');
-        const res = await fetch(`/api/forum/me/payments?user_id=${userId}`);
+        const res = await fetch(`/api/forum/me/payments?user_id=${userId}`, {
+            headers: this._getAuthHeaders()
+        });
         return await res.json();
     },
     async checkLimits() {
@@ -472,6 +482,11 @@ const ForumApp = {
             else if (page === 'post') this.initPostPage();
             else if (page === 'create') this.initCreatePage();
             else if (page === 'dashboard') this.initDashboardPage();
+            else if (!page) {
+                // SPA 模式：沒有 data-page 屬性，預設載入首頁
+                console.log('ForumApp: SPA mode detected, loading index page');
+                this.initIndexPage();
+            }
 
             this.updateAuthUI();
         } catch (err) {

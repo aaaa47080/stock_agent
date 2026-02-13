@@ -368,7 +368,7 @@ const FriendsUI = {
         if (status === 'pending') {
             if (isRequester) {
                 return `
-                    <button onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleCancelRequest('${userId}')"
+                    <button id="cancel-request-btn-${userId}" onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleCancelRequest('${userId}')"
                             class="friend-btn bg-white/5 text-textMuted px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 border border-white/10 hover:bg-danger/10 hover:text-danger hover:border-danger/20 transition">
                         <i data-lucide="clock" class="w-4 h-4"></i>
                         <span>等待中</span>

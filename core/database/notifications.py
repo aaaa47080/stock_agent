@@ -4,6 +4,7 @@
 from .connection import get_connection
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+from psycopg2.extras import Json
 import uuid
 
 
@@ -69,7 +70,7 @@ def create_notification(
                 INSERT INTO notifications (id, user_id, type, title, body, data, is_read, created_at)
                 VALUES (%s, %s, %s, %s, %s, %s, FALSE, NOW())
                 RETURNING id, user_id, type, title, body, data, is_read, created_at
-            """, (notification_id, user_id, notification_type, title, body, data))
+            """, (notification_id, user_id, notification_type, title, body, Json(data) if data else None))
 
             row = cur.fetchone()
             conn.commit()

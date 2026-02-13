@@ -202,14 +202,25 @@ class NotificationPanel {
         // 根据通知类型跳转
         switch (notification.type) {
             case 'friend_request':
-            case 'message':
                 if (typeof switchTab === 'function') {
                     switchTab('friends');
                 }
                 break;
+            case 'message':
+                if (typeof switchTab === 'function') {
+                    switchTab('friends');
+                }
+                if (notification.data && notification.data.from_user_id && window.SocialHub) {
+                    const fromUsername = notification.data.from_username || '';
+                    setTimeout(() => SocialHub.openConversation(notification.data.from_user_id, fromUsername), 300);
+                }
+                break;
             case 'post_interaction':
-                if (notification.data.post_id && typeof viewPost === 'function') {
-                    viewPost(notification.data.post_id);
+                if (typeof switchTab === 'function') {
+                    switchTab('forum');
+                }
+                if (notification.data && notification.data.post_id && window.ForumApp) {
+                    setTimeout(() => ForumApp.loadPostDetail(notification.data.post_id), 300);
                 }
                 break;
         }

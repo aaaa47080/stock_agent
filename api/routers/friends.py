@@ -33,6 +33,7 @@ from functools import partial
 
 from api.deps import get_current_user
 from fastapi import Depends
+from api.routers.notifications import push_notification_to_user
 
 router = APIRouter()
 
@@ -145,16 +146,19 @@ async def send_request(
                 detail=error_messages.get(result["error"], result["error"])
             )
 
-        # 發送好友請求通知給目標用戶
+        # 發送好友請求通知給目標用戶（DB + WebSocket 推送）
         try:
             current_username = current_user.get("username", user_id)
-            await loop.run_in_executor(
+            notification = await loop.run_in_executor(
                 None,
                 notify_friend_request,
                 request.target_user_id,
                 user_id,
                 current_username
             )
+            # 即時推送給在線用戶
+            if notification:
+                await push_notification_to_user(request.target_user_id, notification)
             logger.info(f"Friend request notification sent to {request.target_user_id}")
         except Exception as notify_error:
             logger.warning(f"Failed to send friend request notification: {notify_error}")
@@ -186,16 +190,19 @@ async def accept_request(
         if not result["success"]:
             raise HTTPException(status_code=400, detail="找不到此好友請求")
 
-        # 發送好友接受通知給原請求者
+        # 發送好友接受通知給原請求者（DB + WebSocket 推送）
         try:
             current_username = current_user.get("username", user_id)
-            await loop.run_in_executor(
+            notification = await loop.run_in_executor(
                 None,
                 notify_friend_accepted,
                 request.target_user_id,
                 user_id,
                 current_username
             )
+            # 即時推送給在線用戶
+            if notification:
+                await push_notification_to_user(request.target_user_id, notification)
             logger.info(f"Friend accepted notification sent to {request.target_user_id}")
         except Exception as notify_error:
             logger.warning(f"Failed to send friend accepted notification: {notify_error}")

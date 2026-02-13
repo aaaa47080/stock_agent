@@ -52,9 +52,9 @@
     <script src="/static/config.js"></script>
     <script src="/static/js/logger.js"></script>
     <script src="/static/js/premium.js"></script>
-    <script src="/static/js/friends.js?v=4"></script>
+    <script src="/static/js/friends.js?v=5"></script>
     <script src="/static/js/messages.js?v=2"></script>
-    <script src="/static/js/nav-config.js?v=5"></script>
+    <script src="/static/js/nav-config.js?v=6"></script>
     <!-- Fonts -->
     <link
         href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Mulish:wght@300;400;600;800&family=JetBrains+Mono:wght@400;500&display=swap"
@@ -136,8 +136,6 @@
         </div>
 
         <div class="p-4 border-t border-white/5">
-            <!-- 通知图标 -->
-            <div id="notification-bell-container" class="mb-2"></div>
             <!-- 用户设置按钮 -->
             <button onclick="switchTab('settings')"
                 class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl text-textMuted hover:text-secondary transition text-sm">
@@ -171,8 +169,11 @@
             <button onclick="toggleSidebar()" class="p-2 -ml-2 hover:bg-white/5 rounded-full text-textMuted"><i
                     data-lucide="menu" class="w-5 h-5"></i></button>
             <span class="font-serif text-secondary">CryptoMind</span>
-            <div class="w-9"></div> <!-- Spacer -->
+            <div id="notification-bell-mobile" class="flex items-center"></div>
         </header>
+
+        <!-- Desktop Notification Bell (固定右上角，所有頁面可見) -->
+        <div id="notification-bell-desktop" class="hidden md:block fixed top-4 right-4 z-50"></div>
 
         <div class="flex-1 relative w-full h-full overflow-hidden">
 
@@ -542,6 +543,10 @@
             <div id="settings-tab"
                 class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40 will-change-transform">
                 <!-- Dynamic Content Injected via components.js -->
+            </div>
+            <div id="admin-tab"
+                class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40 will-change-transform">
+                <!-- Dynamic Content Injected via components.js (admin only) -->
             </div>
     </main>
 
@@ -1079,25 +1084,27 @@
     <!-- Scripts -->
     <script src="/static/js/app.js?v=47" onerror="alert('app.js 載入失敗')"></script>
     <script src="/static/js/apiKeyManager.js?v=47" onerror="alert('apiKeyManager.js 載入失敗')"></script>
-    <script src="/static/js/auth.js?v=48" onerror="alert('auth.js 載入失敗')"></script>
+    <script src="/static/js/auth.js?v=50" onerror="alert('auth.js 載入失敗')"></script>
     <script src="/static/js/okxKeyManager.js?v=47"></script>
-    <script src="/static/js/components.js?v=58"></script>
-    <script src="/static/js/notification-service.js?v=2"></script>
-    <script src="/static/js/components/NotificationBell.js?v=1"></script>
-    <script src="/static/js/components/NotificationPanel.js?v=1"></script>
+    <script src="/static/js/components.js?v=59"></script>
+    <script src="/static/js/notification-service.js?v=3"></script>
+    <script src="/static/js/components/NotificationBell.js?v=2"></script>
+    <script src="/static/js/components/NotificationPanel.js?v=2"></script>
     <script src="/static/js/llmSettings.js?v=47"></script>
     <script src="/static/js/filter.js?v=47"></script>
     <script src="/static/js/chat.js?v=47"></script>
     <script src="/static/js/market.js?v=47"></script>
     <script src="/static/js/assets.js?v=47"></script>
     <script src="/static/js/pulse.js?v=50"></script>
-    <script src="/static/js/trade.js?v=47"></script>
-    <script src="/static/js/forum.js?v=47"></script>
+    <script src="/static/js/trade.js?v=48"></script>
+    <script src="/static/js/forum.js?v=50"></script>
     <script src="/static/js/wallet.js?v=47"></script>
     <script src="/static/js/debate.js?v=47"></script>
     <script src="/static/js/committeeManager.js?v=47"></script>
     <script src="/static/scam-tracker/js/scam-tracker.js?v=48"></script>
     <script src="/static/js/safetyTab.js?v=52"></script>
+    <script src="/static/js/admin.js?v=2"></script>
+    <script src="/static/js/admin-stats.js?v=1"></script>
     <script>
         lucide.createIcons();
 
@@ -1139,7 +1146,7 @@
 
         // 監聽瀏覽器返回/前進按鈕
         window.addEventListener('popstate', (event) => {
-            const validTabs = ['chat', 'market', 'pulse', 'wallet', 'assets', 'friends', 'forum', 'safety', 'settings'];
+            const validTabs = ['chat', 'market', 'pulse', 'wallet', 'assets', 'friends', 'forum', 'safety', 'settings', 'admin'];
             let targetTab = 'chat';
 
             if (event.state && event.state.tab) {
@@ -1190,7 +1197,7 @@
             });
 
             // Dynamic Component Injection (Lazy Loading)
-            if (['market', 'pulse', 'forum', 'settings', 'friends', 'safety'].includes(tabId)) {
+            if (['market', 'pulse', 'forum', 'settings', 'friends', 'safety', 'admin'].includes(tabId)) {
                 if (window.Components && typeof window.Components.inject === 'function') {
                     await window.Components.inject(tabId);
                 }
@@ -1276,6 +1283,9 @@
             if (tabId === 'forum') {
                 if (window.ForumApp) window.ForumApp.init();
             }
+            if (tabId === 'admin') {
+                if (window.AdminPanel) AdminPanel.init();
+            }
             if (tabId === 'settings') {
                 // 💡 修正：注入內容後，立即更新用戶資料顯示
                 if (window.AuthManager && typeof window.AuthManager._updateUI === 'function') {
@@ -1345,6 +1355,12 @@
             container.innerHTML = '';
 
             enabledItems.forEach(item => {
+                // Hide admin-only tabs for non-admin users
+                if (item.adminOnly) {
+                    const user = window.AuthManager && AuthManager.currentUser;
+                    if (!user || user.role !== 'admin') return;
+                }
+
                 const button = document.createElement('button');
                 const isActive = item.id === activeTab;
 
@@ -1627,11 +1643,17 @@
                 new LanguageSwitcher('.lang-switcher-container');
             }
 
-            // 2.6 初始化通知組件
-            const notificationBellContainer = document.getElementById('notification-bell-container');
-            if (notificationBellContainer && window.NotificationBell && window.NotificationService) {
-                window.notificationBell = new NotificationBell(notificationBellContainer);
-                console.log('NotificationBell initialized');
+            // 2.6 初始化通知組件（手機版 + 桌面版）
+            if (window.NotificationBell && window.NotificationService) {
+                const mobileBell = document.getElementById('notification-bell-mobile');
+                const desktopBell = document.getElementById('notification-bell-desktop');
+                if (mobileBell) {
+                    window.notificationBell = new NotificationBell(mobileBell);
+                }
+                if (desktopBell) {
+                    window.notificationBellDesktop = new NotificationBell(desktopBell);
+                }
+                console.log('NotificationBell initialized (global)');
             }
 
             // 監聽語言切換事件，重新渲染導覽列標籤
@@ -1640,7 +1662,7 @@
             });
 
             // 3. 載入預設分頁（優先順序：sessionStorage returnToTab > URL hash > localStorage）
-            const validTabs = ['chat', 'market', 'pulse', 'wallet', 'assets', 'friends', 'forum', 'safety', 'settings'];
+            const validTabs = ['chat', 'market', 'pulse', 'wallet', 'assets', 'friends', 'forum', 'safety', 'settings', 'admin'];
             const returnToTab = sessionStorage.getItem('returnToTab');
             const hashTab = window.location.hash.replace('#', '');
             const savedTab = localStorage.getItem('activeTab') || 'chat';

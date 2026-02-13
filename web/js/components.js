@@ -1060,6 +1060,13 @@ const Components = {
         </div>
     `,
 
+    // Tab: Admin Panel (admin-only)
+    admin: `
+        <div id="admin-content" class="max-w-5xl mx-auto p-4">
+            <div class="text-center text-textMuted py-12">Loading admin panel...</div>
+        </div>
+    `,
+
     /**
      * 同步注入組件並確保 DOM 更新完成
      * @param {string} id - 分頁 ID (如 'market', 'pulse', 'settings')

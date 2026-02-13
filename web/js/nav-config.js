@@ -12,6 +12,7 @@ const NAV_ITEMS = [
     { id: 'friends', icon: 'users', label: 'Friends', i18nKey: 'nav.friends', defaultEnabled: true },
     { id: 'forum', icon: 'messages-square', label: 'Forum', i18nKey: 'nav.forum', defaultEnabled: true },
     { id: 'safety', icon: 'shield-alert', label: 'Safety', i18nKey: 'nav.safety', defaultEnabled: true },
+    { id: 'admin', icon: 'shield', label: 'Admin', i18nKey: 'nav.admin', defaultEnabled: true, locked: true, adminOnly: true },
     { id: 'settings', icon: 'settings-2', label: 'Settings', i18nKey: 'nav.settings', defaultEnabled: true, locked: true }
 ];
 
@@ -21,7 +22,7 @@ const NAV_ITEMS = [
  */
 const NavPreferences = {
     STORAGE_KEY: 'userNavPreferences',
-    PREFERENCES_VERSION: 2,
+    PREFERENCES_VERSION: 3,
     MIN_ENABLED_ITEMS: 2,
 
     /**

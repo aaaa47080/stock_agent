@@ -461,9 +461,21 @@ def init_db():
             last_active_at TIMESTAMP,
             membership_tier TEXT DEFAULT 'free',
             membership_expires_at TIMESTAMP,
+            role TEXT DEFAULT 'user',
+            is_active BOOLEAN DEFAULT TRUE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+
+    # Migration: add role and is_active columns if missing (safe to re-run)
+    for col_sql in [
+        "ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'",
+        "ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT TRUE",
+    ]:
+        try:
+            c.execute(col_sql)
+        except Exception:
+            conn.rollback()  # Column already exists
 
     # 建立會員支付記錄表 (Membership Payments)
     c.execute('''
@@ -475,6 +487,19 @@ def init_db():
             tx_hash TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(user_id)
+        )
+    ''')
+
+    # 管理員廣播紀錄表 (Admin Broadcasts)
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS admin_broadcasts (
+            id SERIAL PRIMARY KEY,
+            admin_user_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            body TEXT NOT NULL,
+            type TEXT DEFAULT 'announcement',
+            recipient_count INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT NOW()
         )
     ''')
 

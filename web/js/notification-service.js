@@ -72,12 +72,24 @@ const NotificationService = {
             // 连接 WebSocket
             this.connectWebSocket();
         } else {
-            // 未登录：使用模拟数据
-            this.notifications = [...this.mockNotifications];
-            this.updateUnreadCount();
+            // 未登录：顯示空列表
+            this.notifications = [];
+            this.unreadCount = 0;
             this.notifyUpdate();
-            console.log('[NotificationService] Using mock data (not logged in)');
+            console.log('[NotificationService] Not logged in, empty notifications');
         }
+    },
+
+    /**
+     * 獲取用戶憑證
+     */
+    _getCredentials() {
+        if (typeof AuthManager !== 'undefined' && AuthManager.currentUser) {
+            const userId = AuthManager.currentUser.user_id || AuthManager.currentUser.uid;
+            const token = AuthManager.currentUser.accessToken || AuthManager.currentUser.token;
+            return { userId, token };
+        }
+        return { userId: null, token: null };
     },
 
     /**
@@ -85,13 +97,12 @@ const NotificationService = {
      */
     async fetchNotifications() {
         try {
-            const userId = localStorage.getItem('userId');
-            const token = localStorage.getItem('token');
+            const { userId, token } = this._getCredentials();
 
             if (!userId || !token) {
-                console.log('[NotificationService] No credentials, using mock data');
-                this.notifications = [...this.mockNotifications];
-                this.updateUnreadCount();
+                console.log('[NotificationService] No credentials, empty notifications');
+                this.notifications = [];
+                this.unreadCount = 0;
                 this.notifyUpdate();
                 return;
             }
@@ -109,16 +120,15 @@ const NotificationService = {
                 this.notifyUpdate();
                 console.log('[NotificationService] Loaded from API:', this.notifications.length, 'notifications');
             } else {
-                console.warn('[NotificationService] API failed, using mock data');
-                this.notifications = [...this.mockNotifications];
-                this.updateUnreadCount();
+                console.warn('[NotificationService] API failed, status:', response.status);
+                this.notifications = [];
+                this.unreadCount = 0;
                 this.notifyUpdate();
             }
         } catch (error) {
             console.error('[NotificationService] Fetch error:', error);
-            // 网络错误时使用模拟数据
-            this.notifications = [...this.mockNotifications];
-            this.updateUnreadCount();
+            this.notifications = [];
+            this.unreadCount = 0;
             this.notifyUpdate();
         }
     },
@@ -157,14 +167,15 @@ const NotificationService = {
             // 同步到服务器
             if (this.isLoggedIn) {
                 try {
-                    const userId = localStorage.getItem('userId');
-                    const token = localStorage.getItem('token');
-                    await fetch(`/api/notifications/${notificationId}/read?user_id=${userId}`, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${token}`
-                        }
-                    });
+                    const { userId, token } = this._getCredentials();
+                    if (userId && token) {
+                        await fetch(`/api/notifications/${notificationId}/read?user_id=${userId}`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`
+                            }
+                        });
+                    }
                 } catch (error) {
                     console.error('[NotificationService] Mark as read error:', error);
                 }
@@ -183,14 +194,15 @@ const NotificationService = {
         // 同步到服务器
         if (this.isLoggedIn) {
             try {
-                const userId = localStorage.getItem('userId');
-                const token = localStorage.getItem('token');
-                await fetch(`/api/notifications/read-all?user_id=${userId}`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
+                const { userId, token } = this._getCredentials();
+                if (userId && token) {
+                    await fetch(`/api/notifications/read-all?user_id=${userId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                }
             } catch (error) {
                 console.error('[NotificationService] Mark all read error:', error);
             }
@@ -227,8 +239,7 @@ const NotificationService = {
      * 连接 WebSocket (Phase 2)
      */
     connectWebSocket() {
-        const userId = localStorage.getItem('userId');
-        const token = localStorage.getItem('token');
+        const { userId, token } = this._getCredentials();
 
         if (!userId || !token) {
             console.log('[NotificationService] No credentials for WebSocket');

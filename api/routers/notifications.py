@@ -43,7 +43,7 @@ class NotificationConnectionManager:
         self._lock = asyncio.Lock()
 
     async def connect(self, websocket: WebSocket, user_id: str):
-        await websocket.accept()
+        # 注意：websocket.accept() 已在 endpoint 中調用，此處只需註冊連接
         async with self._lock:
             if user_id not in self.active_connections:
                 self.active_connections[user_id] = set()

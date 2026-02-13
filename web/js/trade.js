@@ -146,7 +146,12 @@ async function runBacktest() {
     resultDiv.classList.remove('hidden');
     resultDiv.innerHTML = '<div class="animate-pulse">回測中...</div>';
     try {
-        const res = await fetch('/api/backtest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ symbol: symbol, signal_type: strategy, interval: '1h' }) });
+        const authHeaders = { 'Content-Type': 'application/json' };
+        if (typeof AuthManager !== 'undefined' && AuthManager.currentUser) {
+            const token = AuthManager.currentUser.accessToken || AuthManager.currentUser.token;
+            if (token) authHeaders['Authorization'] = `Bearer ${token}`;
+        }
+        const res = await fetch('/api/backtest', { method: 'POST', headers: authHeaders, body: JSON.stringify({ symbol: symbol, signal_type: strategy, interval: '1h' }) });
         const data = await res.json();
         if (data.error) throw new Error(data.error);
         const isProfitable = data.return_pct > 0;

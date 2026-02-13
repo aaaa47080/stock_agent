@@ -83,14 +83,23 @@ def get_user_by_id(user_id: str) -> Optional[Dict]:
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('SELECT user_id, username, email, auth_method FROM users WHERE user_id = %s', (user_id,))
+        c.execute('''
+            SELECT user_id, username, email, auth_method,
+                   role, is_active, membership_tier, membership_expires_at, created_at
+            FROM users WHERE user_id = %s
+        ''', (user_id,))
         row = c.fetchone()
         if row:
             return {
                 "user_id": row[0],
                 "username": row[1],
                 "email": row[2],
-                "auth_method": row[3]
+                "auth_method": row[3],
+                "role": row[4] or "user",
+                "is_active": row[5] if row[5] is not None else True,
+                "membership_tier": row[6] or "free",
+                "membership_expires_at": row[7].isoformat() if row[7] else None,
+                "created_at": row[8].isoformat() if row[8] else None
             }
         return None
     finally:

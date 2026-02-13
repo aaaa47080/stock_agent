@@ -1,9 +1,0 @@
-# Zeabur 配置文件
-# 文檔: https: //zeabur.com/docs
-{
-    "build_command": "pip install -r requirements.txt",
-    "start_command": "python api_server.py",
-    "environment": {
-        "PYTHON_VERSION": "3.12.7"
-    }
-}

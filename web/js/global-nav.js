@@ -141,6 +141,12 @@ const GlobalNav = {
         container.innerHTML = '';
 
         enabledItems.forEach(item => {
+            // Hide admin-only tabs for non-admin users
+            if (item.adminOnly) {
+                const user = window.AuthManager && AuthManager.currentUser;
+                if (!user || user.role !== 'admin') return;
+            }
+
             const button = document.createElement('button');
             const isActive = pageType === item.id || (pageType === 'index' && item.id === 'forum');
 
