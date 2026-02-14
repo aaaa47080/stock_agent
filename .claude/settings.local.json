@@ -86,7 +86,10 @@
       "Bash(D:\\\\okx\\\\stock_agent\\\\.venv\\\\Scripts\\\\python.exe:*)",
       "Bash(.venv/Scripts/python.exe:*)",
       "Bash(.venv\\\\Scripts\\\\python.exe:*)",
-      "Bash(D:/okx/stock_agent/.venv/Scripts/python.exe -c \"import py_compile; py_compile.compile\\(''D:/okx/stock_agent/api/routers/admin_panel.py'', doraise=True\\); print\\(''OK''\\)\")"
+      "Bash(D:/okx/stock_agent/.venv/Scripts/python.exe -c \"import py_compile; py_compile.compile\\(''D:/okx/stock_agent/api/routers/admin_panel.py'', doraise=True\\); print\\(''OK''\\)\")",
+      "Bash(sort:*)",
+      "mcp__plugin_episodic-memory_episodic-memory__search",
+      "mcp__plugin_episodic-memory_episodic-memory__read"
     ]
   }
 }

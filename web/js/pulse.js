@@ -455,7 +455,7 @@ async function triggerDeepAnalysis(symbol) {
             <div class="p-6 h-full flex flex-col items-center justify-center min-h-[200px]">
                 <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-400 mb-3"></div>
                 <div class="text-amber-400 text-sm font-medium">${t('pulse.deepAnalyzing')}</div>
-                <div class="text-slate-500 text-xs mt-1">${t('pulse.usingProvider', {provider: userKey.provider.toUpperCase()})}</div>
+                <div class="text-slate-500 text-xs mt-1">${t('pulse.usingProvider', { provider: userKey.provider.toUpperCase() })}</div>
             </div>
         `;
     }
@@ -473,7 +473,7 @@ async function triggerDeepAnalysis(symbol) {
  */
 function showNewsList(symbol) {
     const data = currentPulseData[symbol];
-    if (!data || !data.news_sources) return;
+    if (!data) return;
 
     const modal = document.getElementById('news-modal');
     const listContent = document.getElementById('news-list-content');
@@ -483,10 +483,12 @@ function showNewsList(symbol) {
     if (listContent) listContent.innerHTML = '';
 
     const t = window.I18n ? window.I18n.t.bind(window.I18n) : (k) => k;
-    if (!data.news_sources || data.news_sources.length === 0) {
+    const sources = data.news_sources || [];
+
+    if (sources.length === 0) {
         listContent.innerHTML = `<div class="text-slate-500 text-center py-4">${t('pulse.noNews')}</div>`;
     } else {
-        data.news_sources.forEach(news => {
+        sources.forEach(news => {
             const item = document.createElement('div');
             item.className = 'bg-slate-800/50 border border-slate-700 p-3 rounded-xl hover:bg-slate-800 transition group';
             const linkHtml = news.url && news.url !== '#'
