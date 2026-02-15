@@ -12,6 +12,7 @@ from .task import Task, TaskType
 from .technical import TechnicalAgent
 from .orchestrator import Orchestrator
 from .memory import ConversationContext, ConversationMemory
+from .tool_registry import ToolRegistry, ToolInfo
 
 __all__ = [
     "AgentState",
@@ -24,4 +25,6 @@ __all__ = [
     "Orchestrator",
     "ConversationContext",
     "ConversationMemory",
+    "ToolRegistry",
+    "ToolInfo",
 ]
