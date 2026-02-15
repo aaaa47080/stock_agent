@@ -10,6 +10,7 @@ from .base import AgentState, ProfessionalAgent
 from .models import Viewpoint, DiscussionRound
 from .task import Task, TaskType
 from .technical import TechnicalAgent
+from .orchestrator import Orchestrator
 
 __all__ = [
     "AgentState",
@@ -19,4 +20,5 @@ __all__ = [
     "Task",
     "TaskType",
     "TechnicalAgent",
+    "Orchestrator",
 ]
