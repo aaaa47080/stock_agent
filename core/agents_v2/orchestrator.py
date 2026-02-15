@@ -130,3 +130,20 @@ class Orchestrator:
             return TaskType.DEEP_ANALYSIS
 
         return TaskType.ANALYSIS
+
+    def gather_participants(self, task: Task) -> List[ProfessionalAgent]:
+        """
+        讓 Agents 自主決定是否參與
+
+        Args:
+            task: 當前任務
+
+        Returns:
+            願意參與的 Agent 列表
+        """
+        participants = []
+        for agent in self.agents.values():
+            should_join, reason = agent.should_participate(task)
+            if should_join:
+                participants.append(agent)
+        return participants

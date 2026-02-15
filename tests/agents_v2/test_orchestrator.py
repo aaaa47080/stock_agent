@@ -98,3 +98,57 @@ class TestOrchestratorTaskParsing:
         orchestrator = Orchestrator()
         task = orchestrator.parse_task("BTC 歷史回測分析")
         assert task.needs_backtest is True
+
+
+class TestOrchestratorGatherParticipants:
+    """Test Orchestrator participant gathering"""
+
+    def test_gather_participants_for_analysis(self):
+        """Should gather agents that want to participate"""
+        from core.agents_v2.technical import TechnicalAgent
+
+        orchestrator = Orchestrator()
+        orchestrator.register_agent(TechnicalAgent())
+
+        task = Task(
+            query="分析 BTC",
+            type=TaskType.ANALYSIS,
+            symbols=["BTC"]
+        )
+
+        participants = orchestrator.gather_participants(task)
+        assert len(participants) == 1
+        assert participants[0].expertise == "technical_analysis"
+
+    def test_gather_participants_for_simple_price(self):
+        """TechnicalAgent should not participate in simple price query"""
+        from core.agents_v2.technical import TechnicalAgent
+
+        orchestrator = Orchestrator()
+        orchestrator.register_agent(TechnicalAgent())
+
+        task = Task(
+            query="BTC 現價",
+            type=TaskType.SIMPLE_PRICE,
+            symbols=["BTC"]
+        )
+
+        participants = orchestrator.gather_participants(task)
+        assert len(participants) == 0
+
+    def test_gather_participants_multiple_agents(self):
+        """Should gather multiple participating agents"""
+        from core.agents_v2.technical import TechnicalAgent
+
+        orchestrator = Orchestrator()
+        orchestrator.register_agent(TechnicalAgent())
+        # In future we'll add more agents
+
+        task = Task(
+            query="深度分析 BTC",
+            type=TaskType.DEEP_ANALYSIS,
+            symbols=["BTC"]
+        )
+
+        participants = orchestrator.gather_participants(task)
+        assert len(participants) >= 1
