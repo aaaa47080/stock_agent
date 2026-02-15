@@ -1,7 +1,7 @@
 """Tests for Conversation Memory"""
 import pytest
 from datetime import datetime
-from core.agents_v2.memory import ConversationContext
+from core.agents_v2.memory import ConversationContext, ConversationMemory
 
 
 class TestConversationContext:
@@ -46,3 +46,48 @@ class TestConversationContext:
 
         assert len(context.analysis_history) == 1
         assert context.analysis_history[0]["symbol"] == "BTC"
+
+
+class TestConversationMemory:
+    """Test ConversationMemory service"""
+
+    def test_memory_creation(self):
+        """Memory should start empty"""
+        memory = ConversationMemory()
+        assert memory.sessions == {}
+
+    def test_get_or_create(self):
+        """Should create new context if not exists"""
+        memory = ConversationMemory()
+        context = memory.get_or_create("session-1")
+        assert context.session_id == "session-1"
+        assert "session-1" in memory.sessions
+
+    def test_get_existing(self):
+        """Should return existing context"""
+        memory = ConversationMemory()
+        context1 = memory.get_or_create("session-1")
+        context1.main_topic = "BTC 分析"
+
+        context2 = memory.get_or_create("session-1")
+        assert context2.main_topic == "BTC 分析"
+
+    def test_update_with_query(self):
+        """Should extract symbols from query"""
+        memory = ConversationMemory()
+        context = memory.get_or_create("session-1")
+
+        memory.update_with_query(context, "分析 BTC 和 ETH")
+        assert "BTC" in context.symbols_mentioned
+        assert "ETH" in context.symbols_mentioned
+
+    def test_get_relevant_context(self):
+        """Should return relevant context for session"""
+        memory = ConversationMemory()
+        context = memory.get_or_create("session-1")
+        context.main_topic = "Crypto Analysis"
+        context.add_symbol("BTC")
+
+        relevant = memory.get_relevant_context("session-1")
+        assert relevant["main_topic"] == "Crypto Analysis"
+        assert "BTC" in relevant["symbols"]

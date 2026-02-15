@@ -11,6 +11,7 @@ from .models import Viewpoint, DiscussionRound
 from .task import Task, TaskType
 from .technical import TechnicalAgent
 from .orchestrator import Orchestrator
+from .memory import ConversationContext, ConversationMemory
 
 __all__ = [
     "AgentState",
@@ -21,4 +22,6 @@ __all__ = [
     "TaskType",
     "TechnicalAgent",
     "Orchestrator",
+    "ConversationContext",
+    "ConversationMemory",
 ]
