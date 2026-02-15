@@ -4,7 +4,7 @@ This package contains the new Agent-driven architecture that replaces
 the flow-driven system with a more flexible, professional agent model.
 """
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 from .base import AgentState, ProfessionalAgent
 from .models import Viewpoint, DiscussionRound
@@ -21,6 +21,21 @@ from .hitl import (
     ReviewPoint,
     create_hitl_manager_with_defaults,
     create_trading_checkpoints,
+)
+from .feedback import (
+    FeedbackCollector,
+    Feedback,
+    FeedbackType,
+    FeedbackSource,
+    AgentPerformance,
+    create_quick_feedback,
+)
+from .codebook import (
+    Codebook,
+    Experience,
+    ExperienceCategory,
+    MarketCondition,
+    ExperienceMatch,
 )
 
 __all__ = [
@@ -54,4 +69,17 @@ __all__ = [
     "ReviewPoint",
     "create_hitl_manager_with_defaults",
     "create_trading_checkpoints",
+    # Feedback (Phase 8)
+    "FeedbackCollector",
+    "Feedback",
+    "FeedbackType",
+    "FeedbackSource",
+    "AgentPerformance",
+    "create_quick_feedback",
+    # Codebook (Phase 9)
+    "Codebook",
+    "Experience",
+    "ExperienceCategory",
+    "MarketCondition",
+    "ExperienceMatch",
 ]
