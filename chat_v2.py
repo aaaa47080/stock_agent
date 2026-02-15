@@ -33,6 +33,36 @@ from core.agents_v2 import (
 class ChatBot:
     """交互式聊天机器人"""
 
+    # 股票/加密货币相关关键词
+    CRYPTO_KEYWORDS = {
+        # 加密货币名称
+        'BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'ADA', 'DOGE', 'DOT', 'AVAX',
+        'MATIC', 'LINK', 'UNI', 'ATOM', 'LTC', 'BCH', 'ETC', 'FIL', 'NEAR',
+        'APT', 'ARB', 'OP', 'PI', 'USDT', 'USD',
+        # 分析相关
+        '分析', '技術', '技术', '價格', '价格', '走勢', '走势', '行情',
+        '買', '买', '賣', '卖', '漲', '涨', '跌', '多', '空',
+        'RSI', 'MACD', 'MA', 'KDJ', '布林', '支撐', '支撑', '阻力',
+        '指標', '指标', '圖表', '图表', 'K線', 'k線',
+        '情緒', '情绪', '新聞', '新闻', '基本面', '鏈上', '链上',
+        '倉位', '仓位', '止損', '止损', '止盈', '槓桿', '杠杆',
+        '交易', '投資', '投资', '現貨', '现货', '合約', '合约',
+        '深度', '辯論', '辩论', '回測', '回测',
+        '多少', '現價', '现价', '報價', '报价',
+        '怎麼樣', '怎么样', '如何', '看法', '建議', '建议',
+        'crypto', 'bitcoin', 'ethereum', 'trade', 'trading',
+    }
+
+    # 普通问候/闲聊
+    GREETING_PATTERNS = {
+        '你好', '您好', 'hi', 'hello', 'hey', '哈囉', '哈喽',
+        '早安', '午安', '晚安', '早上好', '下午好', '晚上好',
+        '是誰', '是谁', '你是誰', '你是谁', '介紹', '介绍',
+        '幫助', '帮助', 'help', '功能', '可以做什麼', '可以做什么',
+        '謝謝', '谢谢', 'thanks', 'thank', '再見', '再见', 'bye',
+        '測試', '测试', 'test', '試試', '试试',
+    }
+
     def __init__(self):
         self.orch = Orchestrator(enable_hitl=True)
         self.collector = FeedbackCollector()
@@ -40,6 +70,102 @@ class ChatBot:
         self.session_id = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         self.pending_review = None
         self.analysis_history = []
+
+    def is_crypto_related(self, query: str) -> bool:
+        """判断是否与加密货币/股票相关"""
+        query_upper = query.upper()
+        query_lower = query.lower()
+
+        # 检查是否有加密货币关键词
+        for keyword in self.CRYPTO_KEYWORDS:
+            if keyword.upper() in query_upper or keyword.lower() in query_lower:
+                return True
+
+        return False
+
+    def is_greeting(self, query: str) -> bool:
+        """判断是否是问候/闲聊"""
+        query_lower = query.lower().strip()
+
+        for pattern in self.GREETING_PATTERNS:
+            if pattern in query_lower:
+                return True
+
+        # 太短的输入通常是问候
+        if len(query.strip()) <= 3:
+            return True
+
+        return False
+
+    def handle_general_chat(self, query: str) -> str:
+        """处理普通对话"""
+        query_lower = query.lower().strip()
+
+        # 问候
+        if any(g in query_lower for g in ['你好', '您好', 'hi', 'hello', 'hey', '哈囉', '哈喽']):
+            return """
+👋 你好！我是 Agent V2 測試助手。
+
+我可以幫你：
+  • 分析加密貨幣（BTC, ETH, SOL 等）
+  • 查看技術指標
+  • 提供交易建議
+  • 收集反饋並學習
+
+試試輸入：
+  "分析 BTC" 或 "ETH 技術面怎麼樣"
+            """
+
+        # 自我介绍
+        if any(g in query_lower for g in ['是誰', '是谁', '你是誰', '你是谁', '介紹', '介绍']):
+            return """
+🤖 我是 Agent V2 系統的測試助手。
+
+這是一個新架構的 Agent 系統，具有：
+  • Human-in-the-Loop (HITL) - 人機協作
+  • Feedback Collector - 反饋收集
+  • Codebook - 經驗學習
+  • LangGraph 整合
+
+輸入 /help 查看更多功能。
+            """
+
+        # 帮助
+        if any(g in query_lower for g in ['幫助', '帮助', 'help', '功能', '可以做什麼', '可以做什么']):
+            return self.show_help()
+
+        # 感谢
+        if any(g in query_lower for g in ['謝謝', '谢谢', 'thanks', 'thank']):
+            return "😊 不客氣！有什麼需要幫忙的嗎？"
+
+        # 再见
+        if any(g in query_lower for g in ['再見', '再见', 'bye']):
+            return "👋 再見！隨時歡迎回來！"
+
+        # 测试
+        if any(g in query_lower for g in ['測試', '测试', 'test', '試試', '试试']):
+            return """
+🧪 測試模式已啟動！
+
+你可以：
+  1. 輸入股票/加密貨幣相關問題
+  2. 使用 /status 查看系統狀態
+  3. 使用 /hitl 開關人機協作
+
+例如：分析 BTC
+            """
+
+        # 默认回复
+        return f"""
+🤔 我不太理解「{query}」的意思。
+
+我是加密貨幣分析助手，請試試：
+  • 分析 BTC
+  • ETH 技術面怎麼樣
+  • 深度分析 SOL
+
+輸入 /help 查看更多功能。
+            """
 
     def clear_screen(self):
         """清屏（使用 ANSI escape code）"""
@@ -82,7 +208,15 @@ class ChatBot:
         if self.pending_review:
             return self.handle_review_response(query)
 
-        # 解析任务
+        # 先判断是否是问候/闲聊
+        if self.is_greeting(query):
+            return self.handle_general_chat(query)
+
+        # 再判断是否与加密货币相关
+        if not self.is_crypto_related(query):
+            return self.handle_general_chat(query)
+
+        # 是加密货币相关问题，进行解析
         return self.analyze(query)
 
     def analyze(self, query: str) -> str:
