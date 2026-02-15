@@ -4,7 +4,7 @@ This package contains the new Agent-driven architecture that replaces
 the flow-driven system with a more flexible, professional agent model.
 """
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 from .base import AgentState, ProfessionalAgent
 from .models import Viewpoint, DiscussionRound
@@ -36,6 +36,18 @@ from .codebook import (
     ExperienceCategory,
     MarketCondition,
     ExperienceMatch,
+)
+from .adapters import (
+    LegacyAgentAdapter,
+    DebaterAdapter,
+    create_technical_adapter,
+    create_sentiment_adapter,
+    create_fundamental_adapter,
+    create_news_adapter,
+    create_bull_researcher_adapter,
+    create_bear_researcher_adapter,
+    create_neutral_researcher_adapter,
+    register_legacy_agents,
 )
 
 __all__ = [
@@ -82,4 +94,15 @@ __all__ = [
     "ExperienceCategory",
     "MarketCondition",
     "ExperienceMatch",
+    # Adapters (Phase 10)
+    "LegacyAgentAdapter",
+    "DebaterAdapter",
+    "create_technical_adapter",
+    "create_sentiment_adapter",
+    "create_fundamental_adapter",
+    "create_news_adapter",
+    "create_bull_researcher_adapter",
+    "create_bear_researcher_adapter",
+    "create_neutral_researcher_adapter",
+    "register_legacy_agents",
 ]
