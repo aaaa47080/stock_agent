@@ -4,13 +4,14 @@ This package contains the new Agent-driven architecture that replaces
 the flow-driven system with a more flexible, professional agent model.
 """
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 from .base import AgentState, ProfessionalAgent
 from .models import Viewpoint, DiscussionRound
-from .task import Task, TaskType
+from .task import Task, TaskType, ParsedIntent
 from .technical import TechnicalAgent
 from .orchestrator import Orchestrator
+from .llm_parser import LLMTaskParser
 from .memory import ConversationContext, ConversationMemory
 from .tool_registry import ToolRegistry, ToolInfo
 from .config import GraphConfig, AgentFeatureConfig, FeatureToggle, create_default_config
@@ -60,6 +61,9 @@ __all__ = [
     # Task
     "Task",
     "TaskType",
+    "ParsedIntent",
+    # LLM Parser
+    "LLMTaskParser",
     # Agents
     "TechnicalAgent",
     "Orchestrator",

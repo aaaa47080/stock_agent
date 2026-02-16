@@ -17,6 +17,7 @@ try:
     LANGCHAIN_AVAILABLE = True
 except ImportError:
     LANGCHAIN_AVAILABLE = False
+    BaseChatModel = None  # Define dummy if not available
     print("Warning: langchain not installed. Please install langchain langchain-openai langchain-google-genai")
 
 # Import settings

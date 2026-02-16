@@ -7,7 +7,7 @@ Agent V2 交互式聊天测试界面
 
 功能：
 - 像聊天机器人一样与 Agent 交互
-- 测试任务解析
+- 所有任务解析使用 LLM（不再是硬編碼規則）
 - 测试 HITL 人机协作
 - 查看系统状态
 """
@@ -18,6 +18,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from datetime import datetime
 from typing import Optional
 
+from langchain_core.messages import HumanMessage
+from langchain_core.language_models import BaseChatModel
+
+from utils.llm_client import LLMClientFactory
+from utils.utils import get_crypto_news_google, get_crypto_news
 from core.agents_v2 import (
     Orchestrator,
     FeedbackCollector,
@@ -27,145 +32,283 @@ from core.agents_v2 import (
     MarketCondition,
     HITLState,
     create_default_config,
+    LLMTaskParser,
+    ConversationMemory,
 )
 
 
 class ChatBot:
-    """交互式聊天机器人"""
+    """交互式聊天机器人 - 完全由 LLM 驱动"""
 
-    # 股票/加密货币相关关键词
-    CRYPTO_KEYWORDS = {
-        # 加密货币名称
-        'BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'ADA', 'DOGE', 'DOT', 'AVAX',
-        'MATIC', 'LINK', 'UNI', 'ATOM', 'LTC', 'BCH', 'ETC', 'FIL', 'NEAR',
-        'APT', 'ARB', 'OP', 'PI', 'USDT', 'USD',
-        # 分析相关
-        '分析', '技術', '技术', '價格', '价格', '走勢', '走势', '行情',
-        '買', '买', '賣', '卖', '漲', '涨', '跌', '多', '空',
-        'RSI', 'MACD', 'MA', 'KDJ', '布林', '支撐', '支撑', '阻力',
-        '指標', '指标', '圖表', '图表', 'K線', 'k線',
-        '情緒', '情绪', '新聞', '新闻', '基本面', '鏈上', '链上',
-        '倉位', '仓位', '止損', '止损', '止盈', '槓桿', '杠杆',
-        '交易', '投資', '投资', '現貨', '现货', '合約', '合约',
-        '深度', '辯論', '辩论', '回測', '回测',
-        '多少', '現價', '现价', '報價', '报价',
-        '怎麼樣', '怎么样', '如何', '看法', '建議', '建议',
-        'crypto', 'bitcoin', 'ethereum', 'trade', 'trading',
-    }
+    def __init__(self, llm_client: BaseChatModel = None):
+        """
+        初始化 ChatBot
 
-    # 普通问候/闲聊
-    GREETING_PATTERNS = {
-        '你好', '您好', 'hi', 'hello', 'hey', '哈囉', '哈喽',
-        '早安', '午安', '晚安', '早上好', '下午好', '晚上好',
-        '是誰', '是谁', '你是誰', '你是谁', '介紹', '介绍',
-        '幫助', '帮助', 'help', '功能', '可以做什麼', '可以做什么',
-        '謝謝', '谢谢', 'thanks', 'thank', '再見', '再见', 'bye',
-        '測試', '测试', 'test', '試試', '试试',
-    }
+        Args:
+            llm_client: LangChain LLM client（如果未提供，会自动创建）
+        """
+        # 必须有 LLM client
+        self.llm_client = llm_client or LLMClientFactory.create_client("openai", "gpt-4o-mini")
 
-    def __init__(self):
-        self.orch = Orchestrator(enable_hitl=True)
+        # Orchestrator 使用同样的 LLM client
+        self.orch = Orchestrator(llm_client=self.llm_client, enable_hitl=True)
+        self.parser = LLMTaskParser(self.llm_client)
+
         self.collector = FeedbackCollector()
         self.codebook = Codebook()
         self.session_id = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         self.pending_review = None
         self.analysis_history = []
 
-    def is_crypto_related(self, query: str) -> bool:
-        """判断是否与加密货币/股票相关"""
-        query_upper = query.upper()
+        # Phase 2: 对话记忆系统
+        self.memory = ConversationMemory()
+        self.message_history = []  # 完整消息历史
+
+    def classify_intent(self, query: str) -> str:
+        """
+        使用 LLM 分类用户意图（完全由 LLM 驱动，支持对话上下文）
+
+        Returns:
+            "greeting" - 问候/闲聊
+            "crypto_analysis" - 加密货币分析
+            "follow_up" - 跟进问题（如「刚才那个怎么样」「它呢」）
+            "general_chat" - 一般闲聊、其他话题
+            "memory_query" - 询问之前的对话内容
+        """
+        # 构建上下文
+        context = self._get_recent_context()
+
+        prompt = f"""判断以下用户输入的意图，只回复一个类别：
+
+{context}
+
+当前用户输入：{query}
+
+类别选项：
+- greeting: 问候、打招呼
+- crypto_analysis: 加密货币/股票分析、价格查询、技术分析、投资建议
+- news_query: 新闻查询（如「最新新闻」「有什么新闻」「Pi Network 新闻」）
+- follow_up: 跟进问题（如「刚才那个怎么样」「它呢」「继续」）
+- general_chat: 一般闲聊、其他话题（如天气、笑话等）
+- memory_query: 询问之前的对话内容（如「我问了什么」「刚才说了什么」）
+
+只回复类别名称，不要其他内容。"""
+
+        try:
+            response = self.llm_client.invoke([HumanMessage(content=prompt)])
+            intent = response.content.strip().lower()
+
+            # 标准化
+            if "greeting" in intent:
+                return "greeting"
+            elif "news" in intent:
+                return "news_query"
+            elif "crypto" in intent or "analysis" in intent:
+                return "crypto_analysis"
+            elif "follow" in intent:
+                return "follow_up"
+            elif "memory" in intent:
+                return "memory_query"
+            elif "general" in intent or "chat" in intent:
+                return "general_chat"
+            else:
+                return "general_chat"
+
+        except Exception as e:
+            print(f"[意圖分類錯誤: {e}]")
+            return "general_chat"
+
+    def _get_recent_context(self) -> str:
+        """构建最近对话上下文（用于意图分类）"""
+        if not self.message_history:
+            return "（这是对话的开始，没有之前的对话历史）"
+
+        recent = self.message_history[-6:]  # 最近 3 轮对话
+        context_parts = ["最近的对话："]
+
+        for msg in recent:
+            role = "用户" if msg["role"] == "user" else "助手"
+            # 截断过长的消息
+            content = msg["content"][:100] + "..." if len(msg["content"]) > 100 else msg["content"]
+            context_parts.append(f"  {role}: {content}")
+
+        return "\n".join(context_parts)
+
+    def _build_conversation_context(self) -> str:
+        """构建对话上下文（用于 LLM 回复生成）"""
+        context_parts = []
+
+        # 添加分析历史
+        if self.analysis_history:
+            recent = self.analysis_history[-3:]
+            context_parts.append("最近分析过的内容：")
+            for h in recent:
+                symbols = ', '.join(h['symbols']) if h['symbols'] else '无'
+                context_parts.append(f"  - {h['query']} (符号: {symbols})")
+
+        # 添加消息历史
+        if self.message_history:
+            recent_msgs = self.message_history[-6:]
+            if context_parts:
+                context_parts.append("")  # 空行
+            context_parts.append("最近的对话：")
+            for msg in recent_msgs:
+                role = "用户" if msg["role"] == "user" else "助手"
+                content = msg["content"][:80] + "..." if len(msg["content"]) > 80 else msg["content"]
+                context_parts.append(f"  {role}: {content}")
+
+        return "\n".join(context_parts) if context_parts else ""
+
+    def handle_general_chat(self, query: str, intent: str = None) -> str:
+        """处理普通对话（使用 LLM 生成智能回复）"""
+
+        # 构建包含对话历史的 prompt
+        context = self._build_conversation_context()
+
+        prompt = f"""你是 Agent V2，一个友善的 AI 助手。你的主要专长是加密货币分析，但你也可以进行自然对话。
+
+{context}
+
+用户输入：{query}
+
+请用繁体中文简短回覆（2-3 句话）。
+
+回复原则：
+- 如果是问候，友善回应
+- 如果是问你的功能，说明你可以分析加密货币（BTC, ETH, SOL 等）
+- 如果是其他问题（如天气、闲聊），自然地回应，并适时引导回你的专长
+- 不要生硬地拒绝用户，保持友善和对话流畅性
+- 如果用户之前分析过某个币种，可以提及作为上下文"""
+
+        try:
+            response = self.llm_client.invoke([HumanMessage(content=prompt)])
+            return response.content
+        except Exception as e:
+            return f"[回覆生成錯誤: {e}]\n請輸入 /help 查看功能。"
+
+    def handle_follow_up(self, query: str) -> str:
+        """处理跟进问题（利用对话记忆）"""
+
+        # 获取最近的上下文
+        ctx = self.memory.get_or_create(self.session_id)
+
+        # 检查是否有历史符号
+        if ctx.symbols_mentioned:
+            last_symbol = ctx.symbols_mentioned[-1]
+            # 将跟进问题转换为完整分析请求
+            enhanced_query = f"{last_symbol} {query}"
+            return self.analyze(enhanced_query)
+
+        # 检查分析历史
+        if self.analysis_history:
+            last_analysis = self.analysis_history[-1]
+            if last_analysis.get('symbols'):
+                last_symbol = last_analysis['symbols'][0]
+                enhanced_query = f"{last_symbol} {query}"
+                return self.analyze(enhanced_query)
+
+        # 没有历史符号，询问用户
+        return "🤔 我不确定你指的是哪个币种。请明确告诉我你想了解哪个加密货币，例如「BTC 怎么样」"
+
+    def handle_memory_query(self, query: str) -> str:
+        """处理记忆查询（用户询问之前的对话内容）"""
+
+        # 构建对话摘要
+        context = self._build_conversation_context()
+
+        prompt = f"""用户想知道之前对话的内容。
+
+{context}
+
+用户问题：{query}
+
+请用繁体中文友善地回答，总结用户之前问过的问题和你分析过的内容。
+保持简洁（2-3 句话）。"""
+
+        try:
+            response = self.llm_client.invoke([HumanMessage(content=prompt)])
+            return response.content
+        except Exception as e:
+            # Fallback：直接显示历史
+            if self.analysis_history:
+                last = self.analysis_history[-1]
+                return f"你刚才问了「{last['query']}」，我分析了 {', '.join(last['symbols'])}。"
+            return "我们还没有进行过任何分析对话。"
+
+    def handle_news_query(self, query: str) -> str:
+        """处理新闻查询（使用 Google News RSS）"""
+
+        # 从查询中提取可能的符号
+        symbols_to_try = []
+
+        # 常见加密货币符号
+        crypto_keywords = {
+            'BTC': ['btc', 'bitcoin', '比特幣'],
+            'ETH': ['eth', 'ethereum', '以太坊'],
+            'SOL': ['sol', 'solana'],
+            'PI': ['pi', 'pi network', 'pi幣'],
+            'DOGE': ['doge', 'dogecoin'],
+            'XRP': ['xrp', 'ripple'],
+            'BNB': ['bnb', 'binance'],
+        }
+
         query_lower = query.lower()
+        for symbol, keywords in crypto_keywords.items():
+            if any(kw in query_lower for kw in keywords):
+                symbols_to_try.append(symbol)
+                break
 
-        # 检查是否有加密货币关键词
-        for keyword in self.CRYPTO_KEYWORDS:
-            if keyword.upper() in query_upper or keyword.lower() in query_lower:
-                return True
+        # 如果没有特定符号，尝试从上下文获取
+        if not symbols_to_try:
+            ctx = self.memory.get_or_create(self.session_id)
+            if ctx.symbols_mentioned:
+                symbols_to_try = [ctx.symbols_mentioned[-1]]
 
-        return False
+        # 如果还是没有，使用通用搜索
+        if not symbols_to_try:
+            symbols_to_try = ['crypto']  # 通用加密货币新闻
 
-    def is_greeting(self, query: str) -> bool:
-        """判断是否是问候/闲聊"""
-        query_lower = query.lower().strip()
+        output = []
+        output.append(f"\n📰 新闻查询")
+        output.append("─" * 40)
 
-        for pattern in self.GREETING_PATTERNS:
-            if pattern in query_lower:
-                return True
+        for symbol in symbols_to_try[:2]:  # 最多查 2 个符号
+            output.append(f"\n🔍 {symbol} 相关新闻：\n")
 
-        # 太短的输入通常是问候
-        if len(query.strip()) <= 3:
-            return True
+            try:
+                # 使用 Google News RSS
+                news_list = get_crypto_news_google(symbol, limit=5)
 
-        return False
+                if news_list:
+                    for i, news in enumerate(news_list, 1):
+                        title = news.get('title', 'No Title')
+                        source = news.get('source', 'Unknown')
+                        url = news.get('url', '')
+                        pub_date = news.get('published_at', '')
 
-    def handle_general_chat(self, query: str) -> str:
-        """处理普通对话"""
-        query_lower = query.lower().strip()
+                        # 格式化日期
+                        if pub_date and pub_date != 'N/A':
+                            try:
+                                from email.utils import parsedate_to_datetime
+                                dt = parsedate_to_datetime(pub_date)
+                                pub_date = dt.strftime('%m/%d %H:%M')
+                            except:
+                                pub_date = pub_date[:16] if len(pub_date) > 16 else pub_date
 
-        # 问候
-        if any(g in query_lower for g in ['你好', '您好', 'hi', 'hello', 'hey', '哈囉', '哈喽']):
-            return """
-👋 你好！我是 Agent V2 測試助手。
+                        output.append(f"  {i}. {title}")
+                        output.append(f"     📅 {pub_date} | 📎 {source}")
+                        if url:
+                            output.append(f"     🔗 {url[:60]}...")
+                        output.append("")
+                else:
+                    output.append(f"  ⚠️ 无法获取 {symbol} 的新闻，请稍后再试")
+                    output.append("")
 
-我可以幫你：
-  • 分析加密貨幣（BTC, ETH, SOL 等）
-  • 查看技術指標
-  • 提供交易建議
-  • 收集反饋並學習
+            except Exception as e:
+                output.append(f"  ❌ 新闻获取失败: {str(e)}")
+                output.append("")
 
-試試輸入：
-  "分析 BTC" 或 "ETH 技術面怎麼樣"
-            """
-
-        # 自我介绍
-        if any(g in query_lower for g in ['是誰', '是谁', '你是誰', '你是谁', '介紹', '介绍']):
-            return """
-🤖 我是 Agent V2 系統的測試助手。
-
-這是一個新架構的 Agent 系統，具有：
-  • Human-in-the-Loop (HITL) - 人機協作
-  • Feedback Collector - 反饋收集
-  • Codebook - 經驗學習
-  • LangGraph 整合
-
-輸入 /help 查看更多功能。
-            """
-
-        # 帮助
-        if any(g in query_lower for g in ['幫助', '帮助', 'help', '功能', '可以做什麼', '可以做什么']):
-            return self.show_help()
-
-        # 感谢
-        if any(g in query_lower for g in ['謝謝', '谢谢', 'thanks', 'thank']):
-            return "😊 不客氣！有什麼需要幫忙的嗎？"
-
-        # 再见
-        if any(g in query_lower for g in ['再見', '再见', 'bye']):
-            return "👋 再見！隨時歡迎回來！"
-
-        # 测试
-        if any(g in query_lower for g in ['測試', '测试', 'test', '試試', '试试']):
-            return """
-🧪 測試模式已啟動！
-
-你可以：
-  1. 輸入股票/加密貨幣相關問題
-  2. 使用 /status 查看系統狀態
-  3. 使用 /hitl 開關人機協作
-
-例如：分析 BTC
-            """
-
-        # 默认回复
-        return f"""
-🤔 我不太理解「{query}」的意思。
-
-我是加密貨幣分析助手，請試試：
-  • 分析 BTC
-  • ETH 技術面怎麼樣
-  • 深度分析 SOL
-
-輸入 /help 查看更多功能。
-            """
+        return "\n".join(output)
 
     def clear_screen(self):
         """清屏（使用 ANSI escape code）"""
@@ -200,24 +343,78 @@ class ChatBot:
         """处理用户查询"""
         query = query.strip()
 
+        # 记录用户消息
+        self._add_message("user", query)
+
         # 处理指令
         if query.startswith("/"):
-            return self.handle_command(query)
+            result = self.handle_command(query)
+            self._add_message("assistant", result)
+            return result
 
         # 检查是否有待处理的审核
         if self.pending_review:
-            return self.handle_review_response(query)
+            result = self.handle_review_response(query)
+            self._add_message("assistant", result)
+            return result
 
-        # 先判断是否是问候/闲聊
-        if self.is_greeting(query):
-            return self.handle_general_chat(query)
+        # 使用意图分类决定如何处理
+        intent = self.classify_intent(query)
 
-        # 再判断是否与加密货币相关
-        if not self.is_crypto_related(query):
-            return self.handle_general_chat(query)
+        if intent == "greeting":
+            result = self.handle_general_chat(query, intent)
+        elif intent == "general_chat":
+            result = self.handle_general_chat(query, intent)
+        elif intent == "news_query":
+            result = self.handle_news_query(query)
+        elif intent == "follow_up":
+            result = self.handle_follow_up(query)
+        elif intent == "memory_query":
+            result = self.handle_memory_query(query)
+        elif intent == "crypto_analysis":
+            result = self.analyze(query)
+        else:
+            # 默认作为一般对话处理
+            result = self.handle_general_chat(query, intent)
 
-        # 是加密货币相关问题，进行解析
-        return self.analyze(query)
+        # 记录助手回复
+        self._add_message("assistant", result)
+        return result
+
+    def _add_message(self, role: str, content: str):
+        """添加消息到历史"""
+        # 过滤掉一些不需要记录的内容
+        if content == "QUIT" or content == "" or content.startswith("\033["):
+            return
+
+        self.message_history.append({
+            "role": role,
+            "content": content,
+            "timestamp": datetime.now().isoformat()
+        })
+
+        # 保持最近 50 条消息
+        if len(self.message_history) > 50:
+            self.message_history = self.message_history[-50:]
+
+        # 更新 ConversationMemory
+        ctx = self.memory.get_or_create(self.session_id)
+        self.memory.update_with_query(ctx, content if role == "user" else "")
+
+    def handle_unknown(self, query: str) -> str:
+        """处理无法识别的输入（使用 LLM）"""
+        prompt = f"""用戶輸入：{query}
+
+你無法理解這個輸入的意圖。請用繁體中文友善地：
+1. 說明你不確定這個請求
+2. 提示用戶可以問加密貨幣相關問題
+3. 保持簡短（2-3 句話）"""
+
+        try:
+            response = self.llm_client.invoke([HumanMessage(content=prompt)])
+            return response.content
+        except Exception:
+            return f"🤔 我不確定「{query}」是什麼意思。\n試試問我加密貨幣問題，如「分析 BTC」"
 
     def analyze(self, query: str) -> str:
         """分析用户查询"""
