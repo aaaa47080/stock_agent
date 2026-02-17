@@ -98,7 +98,14 @@
       "Bash(git -C /Users/a1031737/agent_stock/stock_agent log --oneline -3)",
       "Bash(git -C /Users/a1031737/agent_stock/stock_agent add core/agents_v2/config.py tests/agents_v2/test_config.py core/agents_v2/__init__.py)",
       "Bash(git -C /Users/a1031737/agent_stock/stock_agent status)",
-      "Bash(.venv/bin/python3:*)"
+      "Bash(.venv/bin/python3:*)",
+      "WebFetch(domain:docs.langchain.com)",
+      "mcp__plugin_playwright_playwright__browser_type",
+      "mcp__plugin_playwright_playwright__browser_select_option",
+      "mcp__plugin_playwright_playwright__browser_run_code",
+      "Bash(pkill:*)",
+      "WebFetch(domain:arxiv.org)",
+      "Bash(__NEW_LINE_3cc4a38a67bee5a5__ python -c \"\nimport sys\nsys.path.insert\\(0, ''D:/okx/stock_agent''\\)\nfrom core.agents.prompt_registry import PromptRegistry\nPromptRegistry.load\\(''D:/okx/stock_agent/core/agents/prompts''\\)\ns = PromptRegistry.get\\(''chat_agent'', ''system''\\)\nprint\\(''system prompt \\(first 60 chars\\):'', s[:60]\\)\nr = PromptRegistry.render\\(''chat_agent'', ''response'', query=''hi'', history=''none'', memory_facts=''無''\\)\nprint\\(''response render OK:'', len\\(r\\), ''chars''\\)\nm = PromptRegistry.render\\(''manager'', ''extract_memory'', user_message=''test'', assistant_message=''ok'', existing_facts=''[]'', turn_index=1\\)\nprint\\(''extract_memory render OK:'', len\\(m\\), ''chars''\\)\n\")"
     ]
   }
 }

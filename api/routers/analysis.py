@@ -98,24 +98,15 @@ async def get_history(session_id: str = "default", current_user: dict = Depends(
 @router.post("/api/analyze")
 async def analyze_crypto(request: QueryRequest, current_user: dict = Depends(get_current_user)):
     """
-    處理分析請求，並以串流 (Streaming) 方式回傳結果。
-    使用執行緒池避免阻塞事件循環。
-    ⭐ 新版：使用用戶提供的 API key
-    """
-    if not globals.bot:
-        logger.warning("分析服務尚未就緒 - CryptoAnalysisBot 未初始化")
-        # 檢查是否是因為缺少配置導致的初始化失敗
-        try:
-            from interfaces.chat_interface import CryptoAnalysisBot
-            # 嘗試重新初始化
-            globals.bot = CryptoAnalysisBot()
-            logger.info("CryptoAnalysisBot 重新初始化成功")
-        except Exception as e:
-            import traceback
-            error_details = traceback.format_exc()
-            logger.error(f"CryptoAnalysisBot 初始化失敗: {error_details}")
-            raise HTTPException(status_code=503, detail=f"分析服務尚未就緒: {str(e)}\n\nTraceback:\n{error_details}")
+    處理分析請求，以串流 (SSE) 方式回傳結果。
 
+    V4 整合：使用 V4 ManagerAgent 處理所有請求。
+    - 一般請求：invoke graph → SSE 串流最終回應
+    - HITL 模式：
+        第一次觸發 interrupt() → SSE 回傳 {type: "hitl_question"}
+        前端帶 resume_answer 重送 → Command(resume=...) 繼續 graph
+    Fallback：若 V4 啟動失敗，退回至 CryptoAnalysisBot。
+    """
     # ⭐ 驗證用戶是否提供了 API key
     if not request.user_api_key or not request.user_provider:
         raise HTTPException(
@@ -129,24 +120,117 @@ async def analyze_crypto(request: QueryRequest, current_user: dict = Depends(get
             provider=request.user_provider,
             api_key=request.user_api_key
         )
-        # logger.info(f"✅ 使用用戶的 {request.user_provider} client")
     except Exception as e:
         logger.error(f"❌ 創建用戶 LLM client 失敗: {e}")
-        raise HTTPException(
-            status_code=400,
-            detail=f"API Key 無效: {str(e)}"
-        )
+        raise HTTPException(status_code=400, detail=f"API Key 無效: {str(e)}")
 
     logger.info(f"收到分析請求 (Session: {request.session_id}): {request.message[:50]}...")
 
-    # 1. 保存用戶訊息 (指定 Session ID)
+    # ── 嘗試使用 V4 Manager ──────────────────────────────
+    try:
+        from core.agents.bootstrap import bootstrap as v4_bootstrap
+        from langgraph.types import Command
+
+        # 每個請求建立帶用戶 LLM 的 V4 manager（checkpointer 走 PostgresSaver 跨實例保持 state）
+        manager = v4_bootstrap(user_client, web_mode=True)
+        config = {"configurable": {"thread_id": request.session_id}}
+
+        # 判斷是否是 HITL resume（帶 resume_answer 的請求）
+        if request.resume_answer is not None:
+            initial_input = Command(resume=request.resume_answer)
+            logger.info(f"[V4] HITL resume: session={request.session_id}, answer='{request.resume_answer[:30]}'")
+        else:
+            # 全新請求：保存用戶訊息到 DB
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(
+                None, partial(save_chat_message, "user", request.message,
+                              session_id=request.session_id, user_id=current_user.get("user_id"))
+            )
+
+            # 載入對話歷史（從 DB），確保連續對話有上下文
+            # 不依賴 checkpointer（每次 bootstrap 都是新 InMemorySaver，無持久狀態）
+            existing_messages = []
+            try:
+                db_history = await loop.run_in_executor(
+                    None, partial(get_chat_history, session_id=request.session_id, limit=20)
+                )
+                # get_chat_history 回傳 ORDER BY timestamp ASC（舊→新），直接用
+                for msg in db_history:
+                    role = "assistant" if msg.get("role") == "assistant" else "user"
+                    content = msg.get("content", "")
+                    if content:
+                        existing_messages.append({"role": role, "content": content})
+            except Exception as e:
+                logger.warning(f"載入對話歷史失敗: {e}")
+
+            # 將新用戶訊息加入，保留最多 20 條（10 輪）
+            messages = existing_messages + [{"role": "user", "content": request.message}]
+            if len(messages) > 20:
+                messages = messages[-20:]
+
+            initial_input = {
+                "query": request.message,
+                "session_id": request.session_id,
+                "messages": messages,
+            }
+
+        async def event_generator_v4():
+            try:
+                loop = asyncio.get_running_loop()
+                result = await loop.run_in_executor(
+                    None, lambda: manager.graph.invoke(initial_input, config)
+                )
+
+                # 檢查是否被 interrupt() 暫停（HITL 問題）
+                interrupt_events = result.get("__interrupt__", [])
+                if interrupt_events:
+                    interrupt_data = interrupt_events[0].value  # e.g. {"type": "clarification", "question": "..."}
+                    yield f"data: {json.dumps({'type': 'hitl_question', 'data': interrupt_data, 'thread_id': request.session_id})}\n\n"
+                    yield f"data: {json.dumps({'done': True, 'waiting': True})}\n\n"
+                    return
+
+                # 正常回應：按 chunk 串流輸出
+                response = result.get("final_response", "（無回應）")
+                chunk_size = 50
+                for i in range(0, len(response), chunk_size):
+                    yield f"data: {json.dumps({'content': response[i:i+chunk_size]})}\n\n"
+                    await asyncio.sleep(0.005)
+
+                # 保存 AI 完整回應
+                inner_loop = asyncio.get_running_loop()
+                await inner_loop.run_in_executor(
+                    None, partial(save_chat_message, "assistant", response,
+                                  session_id=request.session_id, user_id=current_user.get("user_id"))
+                )
+                yield f"data: {json.dumps({'done': True})}\n\n"
+
+            except Exception as e:
+                logger.error(f"[V4] 分析過程發生錯誤: {e}", exc_info=True)
+                yield f"data: {json.dumps({'error': str(e)})}\n\n"
+
+        return StreamingResponse(event_generator_v4(), media_type="text/event-stream")
+
+    except Exception as bootstrap_err:
+        logger.warning(f"⚠️ V4 Manager 啟動失敗，退回 V1 bot: {bootstrap_err}")
+
+    # ── Fallback: 使用 V1 CryptoAnalysisBot ─────────────
+    if not globals.bot:
+        try:
+            from interfaces.chat_interface import CryptoAnalysisBot
+            globals.bot = CryptoAnalysisBot()
+            logger.info("CryptoAnalysisBot 重新初始化成功")
+        except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            logger.error(f"CryptoAnalysisBot 初始化失敗: {error_details}")
+            raise HTTPException(status_code=503, detail=f"分析服務尚未就緒: {str(e)}")
+
     loop = asyncio.get_running_loop()
     await loop.run_in_executor(None, partial(save_chat_message, "user", request.message, session_id=request.session_id))
 
-    async def event_generator():
+    async def event_generator_v1():
         full_response = ""
         try:
-            # ⭐ 使用 iterate_in_threadpool 將同步生成器轉為異步
             async for part in iterate_in_threadpool(
                 globals.bot.process_message(
                     request.message,
@@ -155,28 +239,23 @@ async def analyze_crypto(request: QueryRequest, current_user: dict = Depends(get
                     request.manual_selection,
                     request.auto_execute,
                     request.market_type,
-                    user_llm_client=user_client,  # ⭐ 傳入用戶的 client
-                    user_provider=request.user_provider,  # ⭐ 傳入 provider 類型
-                    user_api_key=request.user_api_key, # ⭐ 傳入原始 Key 字串 (用於 Agent 重建)
-                    user_model=request.user_model  # ⭐ 傳入用戶選擇的模型
+                    user_llm_client=user_client,
+                    user_provider=request.user_provider,
+                    user_api_key=request.user_api_key,
+                    user_model=request.user_model
                 )
             ):
                 full_response += part
-                # 包裝成 JSON 格式發送給前端
                 yield f"data: {json.dumps({'content': part})}\n\n"
-            
-            # 2. 保存 AI 完整回應 (指定 Session ID)
-            # 注意: 這裡不能直接存取外層 loop，因為我們在 generator 內部。但在 Python 3.7+ 的 async generator 中應該沒問題，
-            # 或者我們可以獲取新的 loop。安全起見獲取 loop。
+
             inner_loop = asyncio.get_running_loop()
             await inner_loop.run_in_executor(None, partial(save_chat_message, "assistant", full_response, session_id=request.session_id))
-
             yield f"data: {json.dumps({'done': True})}\n\n"
         except Exception as e:
-            logger.error(f"分析過程發生未預期錯誤: {e}", exc_info=True)
+            logger.error(f"[V1] 分析過程發生未預期錯誤: {e}", exc_info=True)
             yield f"data: {json.dumps({'error': 'Internal Server Error'})}\n\n"
 
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    return StreamingResponse(event_generator_v1(), media_type="text/event-stream")
 
 @router.post("/api/chat/clear")
 async def clear_chat_history_endpoint(session_id: str = "default", current_user: dict = Depends(get_current_user)):

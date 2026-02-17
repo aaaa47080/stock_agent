@@ -529,6 +529,148 @@ async function deleteSession(event, sessionId) {
     }
 }
 
+// ── HITL Web Mode ─────────────────────────────────────────────────────────────
+// Stores context needed to resume the graph after user answers a HITL question
+let _hitlContext = null;
+
+function showHITLModal(interruptData) {
+    const modal = document.getElementById('hitl-modal');
+    const questionEl = document.getElementById('hitl-question-text');
+    const optionsEl = document.getElementById('hitl-options-container');
+    const customInput = document.getElementById('hitl-custom-input');
+
+    if (!modal) return;
+
+    questionEl.textContent = interruptData.question || '請確認執行計畫';
+    optionsEl.innerHTML = '';
+    customInput.value = '';
+
+    const options = interruptData.options || [];
+    options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.textContent = opt;
+        btn.className = 'w-full text-left px-5 py-3 rounded-2xl bg-background border border-white/5 text-secondary text-sm hover:border-primary/50 hover:bg-primary/5 transition';
+        btn.onclick = () => window.submitHITLAnswer(opt);
+        optionsEl.appendChild(btn);
+    });
+
+    modal.classList.remove('hidden');
+    if (lucide) lucide.createIcons();
+}
+
+function closeHITLModal() {
+    const modal = document.getElementById('hitl-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+window.submitHITLAnswer = async function(answer) {
+    if (!answer || !answer.trim()) return;
+    if (!_hitlContext) return;
+
+    closeHITLModal();
+
+    const ctx = _hitlContext;
+    _hitlContext = null;
+
+    // Show "resuming" indicator on existing botMsgDiv
+    if (ctx.botMsgDiv) {
+        ctx.botMsgDiv.innerHTML = `
+            <div class="process-container" style="border-style: dashed; opacity: 0.7;">
+                <div class="flex items-center gap-2 px-4 py-3">
+                    <i data-lucide="loader-2" class="w-4 h-4 animate-spin text-primary"></i>
+                    <span class="font-medium text-sm text-textMuted">AI 正在繼續處理...</span>
+                </div>
+            </div>`;
+        if (lucide) lucide.createIcons();
+    }
+
+    const token = AuthManager.currentUser.accessToken;
+    let fullContent = '';
+
+    try {
+        const response = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                message: ctx.originalMessage,
+                session_id: ctx.sessionId,
+                user_api_key: ctx.userKey.key,
+                user_provider: ctx.userKey.provider,
+                user_model: ctx.userSelectedModel,
+                resume_answer: answer.trim()
+            })
+        });
+
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({}));
+            throw new Error(errData.detail || `Server Error (${response.status})`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            const chunk = decoder.decode(value);
+            for (const line of chunk.split('\n')) {
+                if (!line.startsWith('data: ')) continue;
+                let data;
+                try { data = JSON.parse(line.substring(6)); } catch { continue; }
+
+                if (data.type === 'hitl_question') {
+                    // Nested HITL — save new context and show modal again
+                    _hitlContext = ctx;  // reuse same context
+                    showHITLModal(data.data);
+                    return;
+                }
+                if (data.waiting) return;
+
+                if (data.content) {
+                    fullContent += data.content;
+                    if (ctx.botMsgDiv) {
+                        ctx.botMsgDiv.innerHTML = renderStoredBotMessage(fullContent, true, null);
+                    }
+                }
+                if (data.done) {
+                    if (ctx.botMsgDiv) {
+                        const totalTime = ((Date.now() - ctx.startTime) / 1000).toFixed(1);
+                        ctx.botMsgDiv.innerHTML = renderStoredBotMessage(fullContent, false, totalTime);
+                        const badge = document.createElement('div');
+                        badge.className = 'mt-4 text-xs text-textMuted/60 font-mono';
+                        badge.textContent = `分析完成，耗時 ${totalTime}s`;
+                        ctx.botMsgDiv.appendChild(badge);
+                        if (lucide) lucide.createIcons();
+                    }
+                    isAnalyzing = false;
+                    loadSessions();
+                }
+                if (data.error) {
+                    if (ctx.botMsgDiv) {
+                        ctx.botMsgDiv.innerHTML = `<span class="text-red-400">Error: ${data.error}</span>`;
+                    }
+                    isAnalyzing = false;
+                }
+            }
+        }
+    } catch (err) {
+        console.error('[HITL resume error]', err);
+        if (ctx.botMsgDiv) {
+            ctx.botMsgDiv.innerHTML = `<span class="text-red-400">恢復分析失敗：${err.message}</span>`;
+        }
+        isAnalyzing = false;
+    } finally {
+        const input = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        if (input) { input.disabled = false; input.classList.remove('opacity-50'); input.focus(); }
+        if (sendBtn) { sendBtn.disabled = false; sendBtn.classList.remove('opacity-50', 'cursor-not-allowed'); }
+    }
+};
+// ── End HITL ─────────────────────────────────────────────────────────────────
+
 async function sendMessage() {
     const input = document.getElementById('user-input');
     const sendBtn = document.getElementById('send-btn');
@@ -617,6 +759,16 @@ async function sendMessage() {
 
     window.currentAnalysisController = new AbortController();
 
+    // Pre-build HITL resume context (used if server sends hitl_question)
+    const _hitlResumeContext = {
+        originalMessage: text,
+        sessionId: currentSessionId,
+        userKey,
+        userSelectedModel,
+        botMsgDiv,
+        startTime,
+    };
+
     try {
         const token = AuthManager.currentUser.accessToken;
         const response = await fetch('/api/analyze', {
@@ -657,10 +809,11 @@ async function sendMessage() {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let fullContent = '';
+        let hitlPaused = false;
 
         while (true) {
             const { value, done } = await reader.read();
-            if (done) break;
+            if (done || hitlPaused) break;
 
             const chunk = decoder.decode(value);
             const lines = chunk.split('\n');
@@ -668,7 +821,22 @@ async function sendMessage() {
 
             for (const line of lines) {
                 if (line.startsWith('data: ')) {
-                    const data = JSON.parse(line.substring(6));
+                    let data;
+                    try { data = JSON.parse(line.substring(6)); } catch { continue; }
+
+                    // ── HITL: server needs user input ──────────────────────
+                    if (data.type === 'hitl_question') {
+                        clearInterval(timerInterval);
+                        _hitlContext = _hitlResumeContext;
+                        showHITLModal(data.data || {question: '請確認', options: []});
+                    }
+                    if (data.waiting) {
+                        // Graph paused, waiting for HITL resume — stop reading outer loop too
+                        hitlPaused = true;
+                        break;
+                    }
+                    // ── End HITL ────────────────────────────────────────────
+
                     if (data.content) {
                         fullContent += data.content;
                         // 實時更新內容，傳入 isStreaming=true 和當前耗時

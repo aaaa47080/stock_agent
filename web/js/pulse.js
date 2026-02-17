@@ -150,13 +150,18 @@ async function refreshMarketPulse() {
 
         if (userKey) {
             console.log("[Pulse] Using User Key for Deep Refresh...");
+            // Create loading placeholders first so triggerDeepAnalysis has cards to update
+            await loadPulseData(true);
             await Promise.allSettled(targets.map(symbol => triggerDeepAnalysis(symbol)));
-            await loadPulseData(false);
         } else {
             console.log("[Pulse] Triggering Background Public Refresh...");
+            const token = window.AuthManager?.currentUser?.accessToken;
             const res = await fetch('/api/market-pulse/refresh-all', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                },
                 body: JSON.stringify({ symbols: targets })
             });
             if (!res.ok) throw new Error("Refresh failed");
@@ -179,7 +184,7 @@ async function refreshMarketPulse() {
 async function fetchPulseForSymbol(symbol, forceRefresh = false, deepAnalysis = false) {
     const card = document.getElementById(`pulse-card-${symbol}`);
     if (!card) {
-        console.warn(`[Pulse] Card not found for ${symbol}`);
+        console.log(`[Pulse] Card not ready for ${symbol}, skipping`);
         return;
     }
 

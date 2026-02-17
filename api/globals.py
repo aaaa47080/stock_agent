@@ -41,3 +41,4 @@ def get_symbol_lock(symbol: str) -> asyncio.Lock:
 # Global Instances
 bot = None
 okx_connector = None
+v4_manager = None  # ManagerAgent (V4) — 替代 CryptoAnalysisBot

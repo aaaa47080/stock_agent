@@ -13,5 +13,20 @@
     "intent": "news",
     "timestamp": "2026-02-16T12:02:47.614736",
     "usage_count": 2
+  },
+  {
+    "query": "請問目前PI價格是多少",
+    "plan": [
+      {
+        "step": 1,
+        "description": "獲取目前 PI 的即時價格",
+        "agent": "technical",
+        "tool_hint": "get_crypto_price"
+      }
+    ],
+    "reasoning": "Successfully executed plan",
+    "intent": "news",
+    "timestamp": "2026-02-16T14:13:17.214298",
+    "usage_count": 1
   }
 ]

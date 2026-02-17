@@ -1,0 +1,162 @@
+classify:
+  description: "分析使用者查詢，選擇最適合的 Agent"
+  template: |
+    你是一個多功能 AI 助手系統的管理者。
+    分析使用者的查詢，選擇最適合處理的 Agent。
+
+    使用者查詢：{query}
+
+    === 可用的 Agent（從系統 Registry 自動載入）===
+    {agents_info}
+
+    === 可用的工具（從系統 Registry 自動載入）===
+    {tools_info}
+
+    請以 JSON 格式回覆：
+    {{
+        "complexity": "simple|complex|ambiguous",
+        "agent": "從上方 Agent 列表中選擇一個名稱",
+        "symbols": [],
+        "entities": [],
+        "ambiguity_question": "question if ambiguous, else null"
+    }}
+
+    欄位說明：
+    - symbols: 只填加密貨幣幣種（BTC/ETH/PI 等）；非加密貨幣查詢留空
+    - entities: 所有關鍵實體（幣種、主題、平台功能名稱、人名等），比 symbols 更廣義
+
+    ⚠️ 重要：請忽略「對話歷史」中出現的幣種，除非「當前問題」明確提及或暗示要延續討論。
+    例如：
+    - 歷史：「PI 價格多少？」當前：「值得買嗎？」 → symbols=["PI"] (延續討論)
+    - 歷史：「PI 價格多少？」當前：「你好」 → symbols=[] (新話題)
+
+    判斷規則：
+    - simple: 只需要一個 Agent 就能完成
+      範例：「BTC 新聞」→ simple/news、「ETH 價格」→ simple/chat、「你好」→ simple/chat
+      範例：「BTC 技術分析」→ simple/technical（只需要技術指標）
+      範例：「我是 User」、「我叫 Danny」、「我是小明」→ simple/chat (自我介紹)
+      範例：「我剛才問什麼」、「對話歷史」→ simple/chat (歷史回顧)
+      範例：「台北天氣」→ simple/chat（一般問題由 chat 回答）
+      範例：「這個平台怎麼使用」→ simple/chat（平台問題由 chat 回答）
+      範例：「你是誰」→ simple/chat（系統說明由 chat 回答）
+    - complex: 需要完整多維度分析或投資建議
+      ⚠️ complex 時，若需要完整投資分析報告，優先選擇 full_analysis agent。
+      範例：「PI 值得買嗎」→ complex/full_analysis（需要四維分析+辯論+裁決）
+      範例：「幫我完整分析 ETH」→ complex/full_analysis
+      範例：「BTC 深度分析」→ complex/full_analysis
+      範例：「SOL 現在值得投資嗎」→ complex/full_analysis
+      範例：「ETH 目前推薦嗎」→ complex/full_analysis
+    - ambiguous: 缺少關鍵資訊（如「分析一下」但沒指定幣種）
+
+    ⚠️ 重要：包含「值得買」「推薦」「該不該投資」「前景如何」「深度分析」「完整分析」的查詢
+       一律視為 complex，且優先選擇 full_analysis agent！
+
+    agent 選擇規則：
+    - 仔細閱讀每個 Agent 的 description 和 capabilities
+    - 包含投資建議、完整分析、多維度評估等需求 → full_analysis
+    - 只需要技術指標 → technical；只需要新聞 → news；閒聊/價格/平台問題/一般知識 → chat
+    - 如果都不匹配，選擇 fallback Agent（通常是 chat）
+    - complex 情況下，選擇最重要的那個 Agent（其他會在 plan 階段加入）
+
+plan:
+  description: "根據分類結果制定執行計畫"
+  template: |
+    根據以下分析結果，制定執行計畫。
+
+    原始查詢：{query}
+    主要 Agent：{agent}
+    相關幣種：{symbols}
+    使用者補充：{clarifications}
+
+    可用的 Agent：
+    {agents_info}
+
+    可用的工具：
+    {tools_info}
+
+    請以 JSON 格式回覆：
+    {{
+        "plan": [
+            {{"step": 1, "description": "步驟描述", "agent": "agent_name", "tool_hint": "tool_name_or_null"}}
+        ]
+    }}
+
+    規則：
+    - 每個 step 只指派一個 agent
+    - agent 名稱必須從上方 Agent 列表中選擇
+    - tool_hint 可以是 null（讓 agent 自己決定）
+
+hitl_confirm_plan:
+  description: "格式化執行計畫給使用者確認"
+  template: |
+    以下是為您的查詢制定的執行計畫：
+
+    查詢：{query}
+
+    計畫步驟：
+    {plan_text}
+
+    請問是否按此計畫執行？
+
+synthesize:
+  description: "綜合所有 Agent 的結果，生成最終報告"
+  template: |
+    綜合以下各 Agent 的分析結果，生成一份完整的報告。
+
+    原始查詢：{query}
+    使用者補充資訊：{clarifications}
+
+    各 Agent 結果：
+    {results}
+
+    請用繁體中文提供一份結構清晰、重點突出的綜合報告。
+    包含所有相關的分析數據和建議。
+    在結尾提供整體結論。
+
+extract_memory:
+  description: "從對話中萃取結構化事實，不做摘要"
+  template: |
+    從以下最新對話輪次中提取重要事實。只提取「明確說出的」事實，不推斷。
+
+    使用者說：{user_message}
+    助手回覆：{assistant_message}
+
+    已存在事實（避免重複）：{existing_facts}
+    當前輪次編號：{turn_index}
+
+    請以 JSON 回覆，只包含本輪新增或更新的事實：
+    {{"facts": [
+      {{"key": "user_name", "value": "Danny", "source_turn": {turn_index}, "confidence": "high"}}
+    ]}}
+
+    規則：
+    - 只保留「未來對話有用」的事實（使用者名稱、偏好、關注主題）
+    - 不提取一次性數字（如具體價格、今日新聞）
+    - key 用 snake_case 英文
+    - confidence: high=使用者明確說出, medium=可推斷, low=不確定
+    - 無新事實則回覆 {{"facts": []}}
+    - 最多 3 個事實
+
+retry_scope:
+  description: "判斷重試範圍"
+  template: |
+    使用者對分析結果不滿意，需要判斷重試範圍。
+
+    原始查詢：{query}
+    使用者反饋：{feedback}
+
+    之前的計畫：
+    {plan_text}
+
+    各步驟結果：
+    {results}
+
+    請判斷需要重做哪些步驟：
+    {{
+        "scope": "partial|full_replan",
+        "steps_to_retry": [1, 2]
+    }}
+
+    規則：
+    - partial: 只重做部分步驟（大多數情況）
+    - full_replan: 完全重新規劃（僅在使用者需求根本改變時使用）

@@ -70,6 +70,8 @@ class AgentState(TypedDict):
     selected_analysts: Optional[List[str]] # 指定要運行的分析師 ["technical", "sentiment", "fundamental", "news"]
     perform_trading_decision: bool         # 是否進行後續的辯論與交易決策
     execute_trade: bool                    # 是否自動執行交易 (新增)
+    analysis_mode: Optional[str]           # "analysis_only" | "debate_report" | "full_trading"（覆蓋 perform_trading_decision）
+    formatted_report: Optional[str]        # debate_report 模式下的最終報告文字
 
     # --- 各階段的產出 ---
     analyst_reports: List[AnalystReport]
@@ -327,15 +329,22 @@ def analyst_team_node(state: AgentState) -> Dict:
 def after_analyst_team_router(state: AgentState) -> str:
     """
     路由節點: 在分析師完成後，決定下一步。
-    如果不需要交易決策 (例如只問 RSI 或 新聞)，則直接結束。
+    - analysis_only: 直接結束
+    - debate_report / full_trading: 進入辯論流程
+    向後兼容：perform_trading_decision=True → full_trading, False → analysis_only
     """
-    perform_trading_decision = state.get('perform_trading_decision', True)
-    
-    if perform_trading_decision:
-        return "proceed_to_debate"
-    else:
-        print("  >> 用戶僅請求特定分析，跳過辯論與交易決策階段。")
+    analysis_mode = state.get('analysis_mode')
+    if analysis_mode is None:
+        # 向後兼容
+        perform_trading_decision = state.get('perform_trading_decision', True)
+        analysis_mode = "full_trading" if perform_trading_decision else "analysis_only"
+
+    if analysis_mode == "analysis_only":
+        print("  >> [analysis_only] 跳過辯論與交易決策階段。")
         return "end_process"
+    else:
+        # debate_report 或 full_trading 都進入辯論
+        return "proceed_to_debate"
 
 def research_debate_node(state: AgentState) -> Dict:
     """
@@ -549,6 +558,79 @@ def debate_judgment_node(state: AgentState) -> Dict:
     print(f"  >> [裁決結果] 勝出方: {debate_judgment.winning_stance} | 理由: {debate_judgment.key_takeaway}")
     
     return {"debate_judgment": debate_judgment}
+
+def after_debate_judgment_router(state: AgentState) -> str:
+    """
+    路由節點: 辯論裁決後，依 analysis_mode 決定下一步。
+    - debate_report: 格式化報告後結束（不執行交易）
+    - full_trading: 繼續交易員決策
+    """
+    analysis_mode = state.get('analysis_mode')
+    if analysis_mode is None:
+        analysis_mode = "full_trading" if state.get('perform_trading_decision', True) else "analysis_only"
+
+    if analysis_mode == "debate_report":
+        print("  >> [debate_report] 裁決完成，格式化分析報告。")
+        return "format_report"
+    return "proceed_to_trader"
+
+
+def format_analysis_report_node(state: AgentState) -> Dict:
+    """
+    節點（debate_report 模式）: 格式化不含交易決策的分析報告。
+    包含：價格資訊、各分析師報告摘要、辯論裁決、關鍵結論。
+    """
+    print("\n[format_analysis_report] 整合分析報告...")
+
+    symbol = state.get("symbol", "未知")
+    current_price = state.get("current_price", 0)
+    market_data = state.get("market_data", {})
+    analyst_reports = state.get("analyst_reports", [])
+    judgment = state.get("debate_judgment")
+
+    # --- 價格區塊 ---
+    price_block = f"## 📊 {symbol} 市場分析報告\n\n"
+    price_block += f"**當前價格**: ${current_price:,.4f}\n"
+    change_24h = market_data.get("price_change_24h") or market_data.get("change_24h")
+    if change_24h:
+        price_block += f"**24h 變化**: {change_24h}\n"
+    price_block += "\n"
+
+    # --- 分析師報告區塊 ---
+    analyst_block = "## 🔍 分析師報告\n\n"
+    for report in analyst_reports:
+        if report:
+            analyst_type = getattr(report, "analyst_type", "")
+            summary = getattr(report, "summary", "") or getattr(report, "analysis", "")
+            signals = getattr(report, "key_signals", [])
+            analyst_block += f"### {analyst_type.capitalize()} 分析師\n"
+            if summary:
+                analyst_block += f"{summary}\n"
+            if signals:
+                for s in signals[:3]:
+                    analyst_block += f"- {s}\n"
+            analyst_block += "\n"
+
+    # --- 辯論裁決區塊 ---
+    judgment_block = ""
+    if judgment:
+        winning_stance = getattr(judgment, "winning_stance", "N/A")
+        key_takeaway = getattr(judgment, "key_takeaway", "")
+        confidence = getattr(judgment, "confidence_score", None)
+        judgment_block = "## ⚖️ 辯論裁決\n\n"
+        judgment_block += f"**裁決方向**: {winning_stance}\n"
+        if confidence is not None:
+            judgment_block += f"**信心分數**: {confidence}/10\n"
+        if key_takeaway:
+            judgment_block += f"\n**關鍵結論**: {key_takeaway}\n"
+        judgment_block += "\n"
+
+    report_text = price_block + analyst_block + judgment_block
+    report_text += "\n---\n*本報告由 AI 分析師生成，僅供參考，不構成投資建議。*\n"
+
+    print(f"  >> 報告生成完成，長度: {len(report_text)} 字元")
+    return {"formatted_report": report_text}
+
 
 def trader_decision_node(state: AgentState) -> Dict:
     """
@@ -772,6 +854,7 @@ workflow.add_node("prepare_data", prepare_data_node)
 workflow.add_node("run_analyst_team", analyst_team_node)
 workflow.add_node("run_research_debate", research_debate_node)
 workflow.add_node("run_debate_judgment", debate_judgment_node) # 新增
+workflow.add_node("format_analysis_report", format_analysis_report_node)  # debate_report 模式
 workflow.add_node("run_trader_decision", trader_decision_node)
 workflow.add_node("run_risk_management", risk_management_node)
 workflow.add_node("run_fund_manager_approval", fund_manager_approval_node)
@@ -803,7 +886,17 @@ workflow.add_conditional_edges(
     }
 )
 
-workflow.add_edge("run_debate_judgment", "run_trader_decision")
+# 裁決後：debate_report → format_analysis_report → END；full_trading → trader
+workflow.add_conditional_edges(
+    "run_debate_judgment",
+    after_debate_judgment_router,
+    {
+        "format_report": "format_analysis_report",
+        "proceed_to_trader": "run_trader_decision",
+    }
+)
+workflow.add_edge("format_analysis_report", END)
+
 # 交易員決策後，進入風險管理
 workflow.add_edge("run_trader_decision", "run_risk_management")
 

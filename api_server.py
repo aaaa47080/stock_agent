@@ -111,6 +111,15 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"❌ CryptoAnalysisBot 初始化失敗: {e}")
         globals.bot = None
+
+    # 預熱 V4 bootstrap（純載入 PromptRegistry + AgentRegistry，不建立 LLM）
+    # 實際 LLM client 由各請求的 user_api_key 決定，所以 startup 僅驗證模組可 import
+    try:
+        from core.agents.bootstrap import bootstrap as _v4_bootstrap  # noqa: F401
+        logger.info("✅ V4 ManagerAgent 模組載入成功（LLM 將在首次請求時初始化）")
+    except Exception as e:
+        logger.warning(f"⚠️ V4 ManagerAgent 模組載入失敗（將 fallback 至 V1 bot）: {e}")
+    globals.v4_manager = None  # 實際 manager 按需在 analysis.py 中建立
     
     # Startup: 嘗試載入快取
     # [Optimization] Screener/Funding are now In-Memory Only, no DB load needed

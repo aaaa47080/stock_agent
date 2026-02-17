@@ -970,6 +970,42 @@ def init_db():
     ''')
 
     # ========================================================================
+    # Agent 分析系統
+    # ========================================================================
+
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS analysis_reports (
+            id SERIAL PRIMARY KEY,
+            session_id VARCHAR(255),
+            user_id VARCHAR(255),
+            symbol VARCHAR(50),
+            interval VARCHAR(10) DEFAULT '1d',
+            report_text TEXT,
+            metadata JSONB DEFAULT '{}',
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        )
+    ''')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_analysis_reports_session ON analysis_reports(session_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_analysis_reports_user ON analysis_reports(user_id)')
+
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS agent_codebook (
+            id VARCHAR(255) PRIMARY KEY,
+            query TEXT NOT NULL,
+            intent VARCHAR(100),
+            symbols JSONB DEFAULT '[]',
+            plan JSONB DEFAULT '[]',
+            complexity VARCHAR(20) DEFAULT 'simple',
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            ttl_days INTEGER DEFAULT 14,
+            use_count INTEGER DEFAULT 0,
+            fail_count INTEGER DEFAULT 0,
+            replaced_by VARCHAR(255),
+            correction_reason TEXT
+        )
+    ''')
+
+    # ========================================================================
     # 初始化預設數據
     # ========================================================================
 
