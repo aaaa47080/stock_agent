@@ -178,13 +178,28 @@ class ManagerAgent:
         query = state.get("query", "")
 
         # ── Pre-check: Universal Symbol Resolution ──
-        tokens = re.findall(r'[A-Z]{2,5}|\d{4,6}|[\u4e00-\u9fff]{2,6}', query)
+        # Extract candidate tokens:
+        #   - Latin: case-insensitive, 2-5 chars → uppercase for comparison
+        #   - Digits: 4-6 digits (TW stock codes)
+        #   - CJK: extract entire CJK runs, then try all 2-4 char substrings (sliding window)
+        candidate_tokens: list[str] = []
+        # Latin + digit tokens
+        for t in re.findall(r'[A-Za-z]{2,5}|\d{4,6}', query):
+            candidate_tokens.append(t.upper() if re.match(r'[A-Za-z]', t) else t)
+        # CJK sliding window: find each CJK run, try 2/3/4-char substrings
+        for cjk_run in re.findall(r'[\u4e00-\u9fff]+', query):
+            for length in (2, 3, 4):
+                for start in range(len(cjk_run) - length + 1):
+                    candidate_tokens.append(cjk_run[start:start + length])
+
+        market_to_agent = {"crypto": "crypto", "tw": "tw_stock", "us": "us_stock"}
         multi_market_plan = None
-        for token in tokens[:3]:
+        single_market_hit: tuple[str, str] | None = None  # (market, symbol)
+
+        for token in candidate_tokens[:12]:
             resolution = self.universal_resolver.resolve(token)
             markets = self.universal_resolver.matched_markets(resolution)
             if len(markets) > 1:
-                market_to_agent = {"crypto": "crypto", "tw": "tw_stock", "us": "us_stock"}
                 steps = []
                 for i, market in enumerate(markets, 1):
                     symbol = resolution[market]
@@ -196,7 +211,12 @@ class ManagerAgent:
                     })
                 multi_market_plan = steps
                 break
+            elif len(markets) == 1 and single_market_hit is None:
+                market = markets[0]
+                if market in ("tw", "crypto"):   # Strong unambiguous signals
+                    single_market_hit = (market, resolution[market])
 
+        # Multi-market: build deterministic plan, skip LLM
         if multi_market_plan:
             return {
                 "complexity":     "complex",
@@ -204,6 +224,16 @@ class ManagerAgent:
                 "topics":         [s["description"] for s in multi_market_plan],
                 "plan":           multi_market_plan,
                 "plan_confirmed": True,
+            }
+
+        # Single-market fast-path: route directly, skip LLM
+        if single_market_hit:
+            market, symbol = single_market_hit
+            return {
+                "complexity":         "simple",
+                "intent":             market_to_agent[market],
+                "topics":             [symbol],
+                "ambiguity_question": None,
             }
 
         # ── Normal LLM classification ──
