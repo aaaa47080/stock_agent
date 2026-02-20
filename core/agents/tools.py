@@ -55,10 +55,75 @@ def get_crypto_price(symbol: str = "BTC") -> dict:
 # 所有工具列表（供 Manager prompt 用）
 # ============================================
 
+@tool
+def web_search(query: str, purpose: str = "general") -> str:
+    """
+    Perform a general web search to find information not available in the internal database.
+    Use this for:
+    1. Looking up current events, news, or market sentiment.
+    2. Finding specific facts (e.g., "Pi Network current price", "competitors of Solana").
+    3. Verifying information.
+    """
+    from core.tools.web_search import web_search_tool
+    return web_search_tool.invoke({"query": query, "purpose": purpose})
+
+# ============================================
+# 所有工具列表（供 Manager prompt 用）
+# ============================================
+
+# ============================================
+# 台股工具 (TW Stock Tools)
+# ============================================
+
+@tool
+def tw_price(ticker: str) -> dict:
+    """獲取台股即時價格（yfinance）"""
+    from core.tools.tw_stock_tools import tw_stock_price
+    return tw_stock_price.invoke({"ticker": ticker})
+
+
+@tool
+def tw_technical(ticker: str) -> dict:
+    """計算台股技術指標 RSI/MACD/KD/MA"""
+    from core.tools.tw_stock_tools import tw_technical_analysis
+    return tw_technical_analysis.invoke({"ticker": ticker})
+
+
+@tool
+def tw_fundamentals_tool(ticker: str) -> dict:
+    """獲取台股基本面資料"""
+    from core.tools.tw_stock_tools import tw_fundamentals
+    return tw_fundamentals.invoke({"ticker": ticker})
+
+
+@tool
+def tw_institutional_tool(ticker: str) -> dict:
+    """獲取台股三大法人籌碼資料"""
+    from core.tools.tw_stock_tools import tw_institutional
+    return tw_institutional.invoke({"ticker": ticker})
+
+
+@tool
+def tw_news_tool(ticker: str, company_name: str = "") -> list:
+    """獲取台股新聞"""
+    from core.tools.tw_stock_tools import tw_news
+    return tw_news.invoke({"ticker": ticker, "company_name": company_name})
+
+
+# ============================================
+# 所有工具列表（供 Manager prompt 用）
+# ============================================
+
 ALL_TOOLS = [
     google_news,
     aggregate_news,
     technical_analysis,
     price_data,
     get_crypto_price,
+    web_search,
+    tw_price,
+    tw_technical,
+    tw_fundamentals_tool,
+    tw_institutional_tool,
+    tw_news_tool,
 ]
