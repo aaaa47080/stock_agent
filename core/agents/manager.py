@@ -1,81 +1,97 @@
 """
 Agent V4 — Manager Agent (LangGraph Edition)
 
-Uses LangGraph StateGraph to orchestrate:
+Orchestrates the agent loop via a LangGraph StateGraph:
   classify → plan → execute → synthesize → feedback
 
-Same public API: manager.process(query) → str
+HITL points use interrupt() so web mode can pause/resume properly.
 """
 from __future__ import annotations
 import json
 import re
-from typing import List, Optional, Dict, Any, TypedDict
 from uuid import uuid4
-from dataclasses import asdict
-
-from langgraph.graph import StateGraph, END
-from langgraph.checkpoint.memory import InMemorySaver
-from langgraph.types import interrupt, Command
+from dataclasses import asdict, fields
+from datetime import datetime
+from typing import Optional, List, Dict
 try:
-    from langgraph.checkpoint.postgres import PostgresSaver
-    HAS_POSTGRES = True
+    from typing import NotRequired
 except ImportError:
-    HAS_POSTGRES = False
+    from typing_extensions import NotRequired
+from typing_extensions import TypedDict
+
 from langchain_core.messages import HumanMessage
+from langgraph.graph import StateGraph, END
+from langgraph.types import interrupt, Command
+from langgraph.checkpoint.memory import MemorySaver
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+from api.utils import logger  # Added logger
 
 from .models import (
     TaskComplexity, SubTask, ExecutionContext,
     AgentResult, CollaborationRequest,
 )
 from .agent_registry import AgentRegistry
+from .tool_registry import ToolRegistry
 from .router import AgentRouter
-from .hitl import HITLManager
+# from .hitl import HITLManager
 from .codebook import Codebook
 from .prompt_registry import PromptRegistry
+from .watcher import WatcherAgent
+from core.tools.universal_resolver import UniversalSymbolResolver
+
+# 模組級共用 checkpointer：跨 bootstrap() 呼叫持久化 session state
+_checkpointer = MemorySaver()
 
 
-# ══════════════════════════════════════════
-# 1. State Definition (like V1's AgentState)
-# ══════════════════════════════════════════
+AGENT_ICONS: Dict[str, str] = {
+    "full_analysis": "📊",
+    "technical":     "📈",
+    "sentiment":     "💬",
+    "fundamental":   "🏢",
+    "news":          "📰",
+    "chat":          "🤖",
+}
 
-class V4State(TypedDict, total=False):
-    """State that flows through the LangGraph nodes."""
-    # Input
+
+from typing import Annotated
+import operator
+
+class ManagerState(TypedDict):
+    """LangGraph 節點間傳遞的狀態包。"""
+    # 必填（初始化時提供）
+    # Use reducer to prevent "Can receive only one value per step" error during HITL resumes
+    session_id: Annotated[str, lambda x, y: y]
     query: str
-    session_id: str
-
-    # Conversation memory (short-term)
-    messages: List[dict]     # [{"role": "user"|"assistant", "content": str}, ...]
-    memory: List[dict]       # structured extracted facts (MemoryFact dicts)
-
-    # Classification results
-    agent_name: str
-    complexity: str          # "simple" | "complex" | "ambiguous"
-    symbols: List[str]
-    entities: List[str]      # generic named entities (superset of symbols)
-    ambiguity_question: Optional[str]
-
-    # Planning
-    plan: List[dict]         # serialized SubTask dicts
-    codebook_entry_id: Optional[str]
-
-    # Execution
-    results: List[dict]      # serialized AgentResult dicts
-    context: Optional[dict]  # serialized ExecutionContext
-
-    # Output
-    final_response: str
-
-    # Flow control
-    clarification: Optional[str]  # user answer for ambiguous
-    needs_synthesis: bool
-    plan_user_modification: Optional[str]  # user's requested modification to plan
-    plan_cancelled: bool
-
-    # Satisfaction loop
-    satisfaction_retry: bool       # True = user wants retry
-    satisfaction_feedback: Optional[str]  # user's retry feedback
-    satisfaction_skip: bool        # True = simple task, skip satisfaction
+    # 執行中填入
+    complexity: NotRequired[Optional[str]]          # "simple" | "complex" | "ambiguous"
+    intent: NotRequired[Optional[str]]
+    topics: NotRequired[Optional[List[str]]]
+    ambiguity_question: NotRequired[Optional[str]]
+    plan: NotRequired[Optional[List[dict]]]         # List[SubTask as dict]
+    agent_results: NotRequired[Optional[List[dict]]]
+    user_clarifications: NotRequired[Optional[List[str]]]
+    retry_count: NotRequired[Optional[int]]
+    codebook_entry_id: NotRequired[Optional[str]]
+    final_response: NotRequired[Optional[str]]
+    plan_confirmed: NotRequired[Optional[bool]]
+    history: NotRequired[Optional[str]]             # 從 DB 載入的對話歷史（純文字）
+    # 計畫協商（Plan Negotiation HITL）
+    plan_negotiating: NotRequired[Optional[bool]]   # 是否進入計畫協商模式
+    negotiation_request: NotRequired[Optional[str]] # 用戶的修改請求文字
+    negotiation_response: NotRequired[Optional[str]]# LLM 的可行性回應
+    negotiate_count: NotRequired[Optional[int]]     # 協商次數（防無限循環）
+    current_tool_result: NotRequired[Optional[str]] # 當前協商輪次的工具執行結果
+    # Pre-Research 階段
+    research_data: NotRequired[Optional[dict]]           # tool 執行結果
+    research_summary: NotRequired[Optional[str]]          # 人類可讀摘要（Markdown）
+    research_clarifications: NotRequired[Optional[List[str]]]  # 用戶在 pre_research 補充的方向
+    current_step_index: NotRequired[int] # 當前執行步驟索引 (0-based)
+    # 語言偏好
+    language: NotRequired[Optional[str]]                  # "zh-TW" | "en"
+    # 計畫討論（使用者在 HITL 提問，取消計畫後直接回答）
+    is_discussion: NotRequired[Optional[bool]]
+    discussion_question: NotRequired[Optional[str]]
 
 
 class ManagerAgent:
@@ -83,795 +99,1018 @@ class ManagerAgent:
         self,
         llm_client,
         agent_registry: AgentRegistry,
-        all_tools: list,
-        hitl: HITLManager,
-        codebook: Codebook,
+        tool_registry: ToolRegistry,
+        codebook,
         web_mode: bool = False,
     ):
         self.llm = llm_client
         self.agent_registry = agent_registry
-        self.all_tools = all_tools  # list of @tool functions
-        self.hitl = hitl
+        self.tool_registry = tool_registry
+        # self.hitl = hitl # Removed
         self.codebook = codebook
         self.router = AgentRouter(agent_registry)
         self.web_mode = web_mode
+        self.progress_callback = None
+        self.watcher = WatcherAgent(llm_client)
+        self.universal_resolver = UniversalSymbolResolver()
 
-        # Initialize Checkpointer (Postgres or Memory)
-        self.checkpointer = self._init_checkpointer()
-        
-        # Build and compile the LangGraph
+        # 編譯 LangGraph
         self.graph = self._build_graph()
 
-    def _init_checkpointer(self):
-        """Initialize appropriate checkpointer based on config."""
-        import os
-        db_url = os.environ.get("DATABASE_URL")
-        
-        if db_url and HAS_POSTGRES:
-            try:
-                # Use synchronous connection for simplicity in this version
-                # Note: creating a new pool for the manager instance
-                # from_conn_string returns a context manager, need to enter it
-                # STORE CM in self to prevent GC from closing the pool!
-                self._checkpointer_cm = PostgresSaver.from_conn_string(db_url)
-                checkpointer = self._checkpointer_cm.__enter__()
-                
-                # DEBUG: Trace persistence object
-                print(f"[DEBUG] Checkpointer Type: {type(checkpointer)}")
-                # print(f"[DEBUG] Checkpointer Dir: {dir(checkpointer)}")
-                
-                checkpointer.setup()  # Ensure tables exist
-                print(f"[Manager] Using PostgresSaver for memory ✅")
-                return checkpointer
-            except Exception as e:
-                print(f"[Manager] Failed to init PostgresSaver: {e}. Falling back to InMemorySaver.")
-        
-        print(f"[Manager] Using InMemorySaver for memory ⚠️ (state lost on restart)")
-        return InMemorySaver()
-
-    # ══════════════════════════════════════════
-    # 2. Graph Construction (like V1's workflow)
-    # ══════════════════════════════════════════
+    # ── Graph 建構 ──────────────────────────────────────────────────────────
 
     def _build_graph(self):
-        """Build the LangGraph StateGraph — similar to V1's graph.py pattern."""
-        workflow = StateGraph(V4State)
+        workflow = StateGraph(ManagerState)
 
-        # Add nodes
-        workflow.add_node("classify", self._classify_node)
-        workflow.add_node("ask_user", self._ask_user_node)
-        workflow.add_node("plan", self._plan_node)
-        workflow.add_node("confirm_plan", self._confirm_plan_node)
-        workflow.add_node("execute", self._execute_node)
-        workflow.add_node("synthesize", self._synthesize_node)
-        workflow.add_node("feedback", self._feedback_node)
-        workflow.add_node("save_messages", self._save_messages_node)
-        workflow.add_node("extract_memory", self._extract_memory_node)
-        workflow.add_node("ask_satisfaction", self._ask_satisfaction_node)
-        workflow.add_node("save_codebook", self._save_codebook_node)
+        workflow.add_node("classify",       self._classify_node)
+        workflow.add_node("clarify",        self._clarify_node)
+        workflow.add_node("pre_research",   self._pre_research_node)   # 複雜任務預研究
+        workflow.add_node("plan",           self._plan_node)
+        workflow.add_node("confirm_plan",   self._confirm_plan_node)
+        workflow.add_node("negotiate_plan", self._negotiate_plan_node)  # 計畫協商
+        workflow.add_node("discuss",        self._discuss_node)         # 計畫討論問題回答
+        workflow.add_node("execute",        self._execute_node)
+        workflow.add_node("watcher",        self._watcher_node)
+        workflow.add_node("synthesize",     self._synthesize_node)
+        workflow.add_node("save",           self._save_node)
 
-        # Set entry point
         workflow.set_entry_point("classify")
 
-        # Edges — conditional routing after classification
-        workflow.add_conditional_edges(
-            "classify",
-            self._after_classify_router,
-            {
-                "simple": "execute",
-                "complex": "plan",
-                "ambiguous": "ask_user",
+        workflow.add_conditional_edges("classify", self._after_classify, {
+            "clarify":      "clarify",
+            "pre_research": "pre_research",   # complex → 先預研究
+            "plan":         "plan",           # simple  → 直接規劃
+        })
+        workflow.add_edge("clarify",      "classify")    # 澄清後重新分類
+        workflow.add_conditional_edges("pre_research", self._after_pre_research, {
+            "plan": "plan",   # 用戶確認方向 → 進入規劃
+            "save": "save",   # 用戶提問 → 回答後結束
+        })
+
+        workflow.add_conditional_edges("plan", self._after_plan, {
+            "confirm": "confirm_plan",
+            "execute": "execute",                  # simple 直接執行
+        })
+        workflow.add_conditional_edges("confirm_plan", self._after_confirm, {
+            "execute":   "execute",
+            "negotiate": "negotiate_plan",         # 用戶提出修改 → 協商
+            "discuss":   "discuss",               # 用戶提問 → 討論回答後結束
+            "end":       END,
+        })
+        workflow.add_edge("negotiate_plan", "confirm_plan")  # 協商後回到確認
+        workflow.add_edge("discuss",        "save")          # 討論回答後儲存結束
+
+        # Execution Loop: execute -> check -> (execute | watcher)
+        workflow.add_conditional_edges("execute", self._after_execute, {
+            "continue": "execute",
+            "done":     "watcher"
+        })
+        
+        workflow.add_edge("watcher",   "synthesize")
+        workflow.add_edge("synthesize", "save")
+        workflow.add_edge("save",       END)
+
+        return workflow.compile(checkpointer=_checkpointer)
+
+    # ── 節點實作 ─────────────────────────────────────────────────────────────
+
+    async def _classify_node(self, state: ManagerState) -> dict:
+        query = state.get("query", "")
+
+        # ── Pre-check: Universal Symbol Resolution ──
+        tokens = re.findall(r'[A-Z]{2,5}|\d{4,6}|[\u4e00-\u9fff]{2,6}', query)
+        multi_market_plan = None
+        for token in tokens[:3]:
+            resolution = self.universal_resolver.resolve(token)
+            markets = self.universal_resolver.matched_markets(resolution)
+            if len(markets) > 1:
+                market_to_agent = {"crypto": "crypto", "tw": "tw_stock", "us": "us_stock"}
+                steps = []
+                for i, market in enumerate(markets, 1):
+                    symbol = resolution[market]
+                    steps.append({
+                        "step": i,
+                        "description": f"分析 {symbol}（{market} 市場）",
+                        "agent": market_to_agent[market],
+                        "tool_hint": None,
+                    })
+                multi_market_plan = steps
+                break
+
+        if multi_market_plan:
+            return {
+                "complexity":     "complex",
+                "intent":         multi_market_plan[0]["agent"],
+                "topics":         [s["description"] for s in multi_market_plan],
+                "plan":           multi_market_plan,
+                "plan_confirmed": True,
             }
+
+        # ── Normal LLM classification ──
+        agents_info = self.agent_registry.agents_info_for_prompt()
+        tools_info  = ", ".join([t.name for t in self.tool_registry.list_all_tools()])
+        prompt = PromptRegistry.render(
+            "manager", "classify",
+            query=state.get("query", ""),
+            agents_info=agents_info,
+            tools_info=tools_info,
         )
+        try:
+            # LLM invoke is sync, run in executor if needed, but usually fast enough or client handles it.
+            # Ideally user_client should be async, but let's assume sync client for now and wrap if needed.
+            # For strict async, we should use llm.ainvoke if available, or run_in_executor.
+            # Assuming llm_client supports invoke (sync).
+            import asyncio
+            loop = asyncio.get_running_loop()
+            response = await loop.run_in_executor(None, lambda: self.llm.invoke([HumanMessage(content=prompt)]))
+            data = self._parse_json(self._llm_content(response)) or {}
+        except Exception as e:
+            print(f"[Manager] classify error: {e}")
+            data = {"complexity": "simple", "intent": "chat", "topics": []}
 
-        # ask_user loops back to classify
-        workflow.add_edge("ask_user", "classify")
+        # 相容舊版 prompt 回傳 "agent" 欄位
+        intent = data.get("intent") or data.get("agent", "chat")
+        complexity = data.get("complexity", "simple")
 
-        # plan → confirm_plan (HITL: user confirms/modifies/cancels)
-        workflow.add_edge("plan", "confirm_plan")
-
-        # Conditional after confirm_plan
-        workflow.add_conditional_edges(
-            "confirm_plan",
-            self._after_confirm_router,
-            {
-                "execute": "execute",
-                "modify": "plan",     # loop back to re-plan
-                "cancel": "feedback", # skip to end
-            }
-        )
-
-        # Conditional after execute: single result → feedback, multi → synthesize
-        workflow.add_conditional_edges(
-            "execute",
-            self._after_execute_router,
-            {
-                "single": "feedback",
-                "multi": "synthesize",
-            }
-        )
-
-        # synthesize → feedback
-        workflow.add_edge("synthesize", "feedback")
-
-        # feedback → save_messages → extract_memory → ask_satisfaction → END/save_codebook/retry
-        workflow.add_edge("feedback", "save_messages")
-        workflow.add_edge("save_messages", "extract_memory")
-        workflow.add_edge("extract_memory", "ask_satisfaction")
-        workflow.add_conditional_edges(
-            "ask_satisfaction",
-            self._after_satisfaction_router,
-            {
-                "skip": END,           # simple task — no confirmation needed
-                "save": "save_codebook",  # satisfied — persist to codebook
-                "retry": "execute",    # not satisfied — re-execute with feedback
-            }
-        )
-        workflow.add_edge("save_codebook", END)
-
-        # Compile with checkpointer for short-term memory
-        # self.checkpointer is initialized in __init__
-        graph = workflow.compile(checkpointer=self.checkpointer)
-        print("[Manager] LangGraph workflow compiled ✅ (with memory)")
-        return graph
-
-    # ══════════════════════════════════════════
-    # 3. Router Functions (like V1's routers)
-    # ══════════════════════════════════════════
-
-    def _after_classify_router(self, state: V4State) -> str:
-        """Route after classification — same pattern as V1's after_analyst_team_router."""
-        complexity = state.get("complexity", "simple")
-        if complexity == "ambiguous":
-            return "ambiguous"
-        elif complexity == "complex":
-            return "complex"
-        else:
-            return "simple"
-
-    def _after_execute_router(self, state: V4State) -> str:
-        """Route after execution — single result or needs synthesis."""
-        if state.get("needs_synthesis", False):
-            return "multi"
-        return "single"
-
-    def _after_confirm_router(self, state: V4State) -> str:
-        """Route after plan confirmation — execute, modify, or cancel."""
-        if state.get("plan_cancelled", False):
-            return "cancel"
-        if state.get("plan_user_modification"):
-            return "modify"
-        return "execute"
-
-    def _after_satisfaction_router(self, state: V4State) -> str:
-        """Route after satisfaction check."""
-        if state.get("satisfaction_skip"):
-            return "skip"
-        if state.get("satisfaction_retry"):
-            return "retry"
-        return "save"
-
-    def _make_hitl_fn(self):
-        """Build HITL callback for sub-agents — wraps interrupt() or hitl.ask()."""
-        if self.web_mode:
-            def ask(question, options=None):
-                return interrupt({
-                    "type": "sub_agent_hitl",
-                    "question": question,
-                    "options": options or [],
-                })
-            return ask
-        return lambda q, opts=None: self.hitl.ask(q, opts)
-
-    # ══════════════════════════════════════════
-    # 4. Node Functions (like V1's node functions)
-    # ══════════════════════════════════════════
-
-    def _classify_node(self, state: V4State) -> dict:
-        """Node 1: Classify the user query — pick agent from dynamic registry."""
-        query = state["query"]
-
-        # If we have a clarification from ask_user, append it
-        clarification = state.get("clarification")
-        if clarification:
-            query = f"{query}\n使用者補充：{clarification}"
-
-        # Build conversation context from messages (short-term memory)
-        messages = state.get("messages", [])
-        if len(messages) > 1:  # has previous turns
-            recent = messages[-6:]  # last 3 turns
-            context_lines = []
-            for m in recent[:-1]:  # exclude current query (already in query)
-                role = "用戶" if m["role"] == "user" else "助手"
-                context_lines.append(f"{role}: {m['content'][:100]}")
-            if context_lines:
-                query = "對話歷史：\n" + "\n".join(context_lines) + f"\n\n當前問題：{query}"
-
-        # Inject structured memory facts into classify context
-        memory = state.get("memory", [])
-        if memory:
-            facts_str = "; ".join(f"{f['key']}={f['value']}" for f in memory[:5])
-            query = f"[已知事實: {facts_str}]\n\n{query}"
-
-        classification = self._classify(query)
-        complexity = classification.get("complexity", "simple")
-        agent_name = classification.get("agent", "chat")
-        symbols = classification.get("symbols", [])
-        entities = classification.get("entities", symbols)
-
-        # Validate agent exists
-        if not self.agent_registry.get(agent_name):
-            agent_name = "chat"
-
-        print(f"[Node: classify] agent={agent_name}, complexity={complexity}, symbols={symbols}, entities={entities}")
+        # 若 LLM 回傳不認識的 agent name，fallback 到 chat
+        known_agents = {m.name for m in self.agent_registry.list_all()}
+        if intent not in known_agents:
+            logger.warning(f"[Classify] Unknown agent '{intent}', falling back to chat")
+            intent = "chat"
 
         return {
-            "agent_name": agent_name,
-            "complexity": complexity,
-            "symbols": symbols,
-            "entities": entities,
-            "ambiguity_question": classification.get("ambiguity_question"),
+            "complexity":         complexity,
+            "intent":             intent,
+            "topics":             data.get("topics", []),
+            "ambiguity_question": data.get("ambiguity_question"),
         }
 
-    def _ask_user_node(self, state: V4State) -> dict:
-        """Node: Ask user for clarification when query is ambiguous.
+    async def _clarify_node(self, state: ManagerState) -> dict:
+        """HITL Point 1：歧義澄清。"""
+        question = state.get("ambiguity_question") or "請問您具體想了解什麼？"
+        answer = interrupt({
+            "type":     "clarification",
+            "question": question,
+        })
+        new_query = f"{state.get('query', '')}\n使用者補充：{answer}"
+        clarifications = list(state.get("user_clarifications") or []) + [answer]
+        return {"query": new_query, "user_clarifications": clarifications}
 
-        Web mode: uses LangGraph interrupt() — pauses graph, saves state via
-        checkpointer, resumes when client sends Command(resume=answer).
-        CLI mode: uses HITLManager.ask() which reads from stdin.
-        """
-        question = state.get("ambiguity_question", "請問您想分析什麼？")
+    async def _pre_research_node(self, state: ManagerState) -> dict:
+        """Pre-Research 節點：自動收集資料，一次 HITL 讓用戶補充或確認分析方向。"""
+        import asyncio
+        query  = state.get("query", "")
+        topics = state.get("topics") or []
+        loop = asyncio.get_running_loop()
 
-        if self.web_mode:
-            answer = interrupt({"type": "clarification", "question": question})
-        else:
-            answer = self.hitl.ask(question)
+        # 1. 從 topics/query 提取主要幣種
+        symbol = await self._extract_research_symbol(topics, query)
 
-        print(f"[Node: ask_user] question='{question}', answer='{answer}'")
-        return {"clarification": answer}
+        # 2. 發送 progress 事件（讓前端顯示「正在收集資料」）
+        if self.progress_callback:
+            self.progress_callback({"type": "research_start", "symbol": symbol})
 
-    def _confirm_plan_node(self, state: V4State) -> dict:
-        """Node: Show plan to user and ask confirm/modify/cancel.
+        # 3. 自動執行工具（不 interrupt）
+        research_data: dict = {}
 
-        Web mode: uses LangGraph interrupt() with a single round-trip.
-          - "確認執行" / "1" / "" → proceed
-          - "取消" / "2" → cancel
-          - anything else → treat as free-text modification request
-        CLI mode: multi-step stdin interaction (original behaviour).
-        """
-        plan = state.get("plan", [])
-        plan_text = "\n".join(
-            f"  {i+1}. [{p.get('agent', '?')}] {p.get('description', '')}"
-            for i, p in enumerate(plan)
+        news_meta  = self.tool_registry.get("google_news",      caller_agent="manager")
+        price_meta = self.tool_registry.get("get_crypto_price", caller_agent="manager")
+
+        if news_meta:
+            try:
+                # Wrap tool execution
+                result = await loop.run_in_executor(None, lambda: news_meta.handler.invoke({"symbol": symbol, "limit": 5}))
+                if result:
+                    research_data["news"] = result
+            except Exception as e:
+                print(f"[PreResearch] google_news failed: {e}")
+
+        if price_meta:
+            try:
+                result = await loop.run_in_executor(None, lambda: price_meta.handler.invoke({"symbol": symbol}))
+                if result:
+                    research_data["price"] = result
+            except Exception as e:
+                print(f"[PreResearch] get_crypto_price failed: {e}")
+
+        # 4. 格式化 Markdown 摘要
+        research_summary = self._format_research_summary(research_data, symbol)
+
+        CONFIRM_TOKENS = {"confirm", "開始規劃", "可以", "ok", "繼續", "執行", ""}
+        clarifications = list(state.get("research_clarifications") or [])
+
+        # 5. HITL 循環：用戶可以問問題或給方向，直到確認為止
+        qa_question = None
+        qa_answer   = None
+        first_iteration = True
+
+        while True:
+            if first_iteration:
+                msg = f"我已整理 **{symbol}** 的即時資料供您參考："
+                summary_tosend = research_summary
+                q_prompt = "想聚焦哪個方向？（例如：只看技術面 / 重點看新聞）若有疑問也可直接問，留空確認開始分析。"
+            else:
+                msg = "還有其他問題嗎？"
+                summary_tosend = None # Suppress summary
+                q_prompt = "若無其他問題，請直接確認開始規劃。"
+
+            payload = {
+                "type":             "pre_research",
+                "message":          msg,
+                "research_summary": summary_tosend,
+                "question":         q_prompt,
+            }
+            # 若有 Q&A 答案，附在 payload 讓前端顯示為主聊天訊息
+            if qa_question and qa_answer:
+                # Embed in message for guaranteed visibility
+                # msg = f"💡 **關於「{qa_question}」的回答**：\n{qa_answer}\n\n(已更新 {symbol} 資料如上)"
+                # Actually, prepend it to the message
+                msg = f"💡 **回答**：{qa_question}\n\n{qa_answer}\n\n---\n{msg}"
+                
+                payload["qa_question"] = qa_question
+                payload["qa_answer"]   = qa_answer
+                payload["message"]     = msg # Update message
+                qa_question = qa_answer = None  # 只傳一次
+
+            user_response = interrupt(payload)
+            first_iteration = False # Mark as not first iteration after interrupt returns
+            # user_response might be a dict (from chat.js wrapper) or string
+            if isinstance(user_response, dict):
+                action = user_response.get("action", "")
+                resp   = user_response.get("text") or user_response.get("value") or ""
+            else:
+                action = ""
+                resp   = str(user_response or "")
+
+            resp = resp.strip()
+
+            # discuss_question action：使用者提問，取消 pre_research，直接以聊天回答
+            if action == "discuss_question" and resp:
+                qa_answer = await self._answer_research_question(resp, research_summary, symbol)
+                print(f"[PreResearch] discuss_question: '{resp}' → '{qa_answer[:60]}...'")
+                return {
+                    "research_data":           research_data,
+                    "research_summary":        research_summary,
+                    "research_clarifications": clarifications,
+                    "is_discussion":           True,
+                    "discussion_question":     resp,
+                    "final_response":          qa_answer,
+                }
+
+            # 確認詞 → 直接進入 plan
+            if resp.lower() in CONFIRM_TOKENS:
+                break
+
+            # 偵測是否為問題（含問號，或以提問詞開頭）
+            QUESTION_STARTERS = (
+                "你覺得", "你認為", "你建議", "哪個", "哪則", "哪一", "哪些",
+                "為什麼", "什麼", "怎麼", "如何", "多少", "幾個", "是否",
+                "What", "Which", "How", "Why", "Who", "When", "Where",
+                "Is", "Are", "Do", "Does", "Can", "Could", "Would", "Should"
+            )
+            resp_stripped = resp.strip()
+            is_question = (
+                resp_stripped.endswith("?") or resp_stripped.endswith("？") or
+                any(resp_stripped.lower().startswith(w.lower()) for w in QUESTION_STARTERS)
+            )
+
+            print(f"[PreResearch] HITL Input: '{resp}' | IsQuestion: {is_question}")
+
+            if is_question:
+                qa_question = resp
+                qa_answer   = await self._answer_research_question(resp, research_summary, symbol)
+                print(f"[PreResearch] QA Answer: {qa_answer[:50]}...")
+            else:
+                # 方向提示 → 加入 clarifications，進入 plan
+                clarifications.append(resp)
+                break
+
+        return {
+            "research_data":           research_data,
+            "research_summary":        research_summary,
+            "research_clarifications": clarifications,
+        }
+
+    async def _answer_research_question(self, question: str, research_summary: str, symbol: str) -> str:
+        """用 LLM 根據已收集的研究資料回答用戶的問題。"""
+        import asyncio
+        loop = asyncio.get_running_loop()
+        prompt = (
+            f"以下是關於 {symbol} 的即時市場資料：\n\n"
+            f"{research_summary}\n\n"
+            f"請根據以上資料，用繁體中文回答用戶的問題：\n"
+            f"問題：{question}\n\n"
+            f"回答時請直接針對問題。若引用新聞，必須保留原始 Markdown 連結格式 [標題](url)，不要省略連結。"
         )
+        try:
+            response = await loop.run_in_executor(None, lambda: self.llm.invoke([HumanMessage(content=prompt)]))
+            return self._llm_content(response).strip()
+        except Exception as e:
+            print(f"[PreResearch] answer_question failed: {e}")
+            return "抱歉，暫時無法回答這個問題，請直接開始分析。"
 
-        prompt = f"以下是為您的查詢制定的執行計畫：\n\n查詢：{state['query']}\n\n計畫步驟：\n{plan_text}\n\n請問是否按此計畫執行？"
-
-        if self.web_mode:
-            answer = interrupt({
-                "type": "plan_confirm",
-                "question": prompt,
-                "options": ["確認執行", "取消", "修改計畫"],
-            })
-            # In web mode, simplify: non-confirm responses become free-text modification
-            if answer in ["取消", "2"]:
-                print("[Node: confirm_plan] User cancelled (web)")
-                return {"plan_cancelled": True, "final_response": "已取消任務。"}
-            if answer not in ["確認執行", "1", ""]:
-                print(f"[Node: confirm_plan] User modification (web): {answer}")
-                return {"plan_user_modification": answer, "plan_cancelled": False}
-            print("[Node: confirm_plan] User confirmed (web)")
-            return {"plan_confirmed": True, "plan_cancelled": False}
+    async def _extract_research_symbol(self, topics: list, query: str) -> str:
+        """從 topics 或 query 提取主要幣種。"""
+        import asyncio
+        loop = asyncio.get_running_loop()
+        if topics:
+            candidate = topics[0]
         else:
-            answer = self.hitl.ask(prompt, options=["確認執行", "取消", "修改計畫"])
+            candidate = query
 
-        if answer in ["取消", "2"]:
-            print("[Node: confirm_plan] User cancelled")
-            return {"plan_cancelled": True, "final_response": "已取消任務。"}
+        try:
+            prompt = (
+                f"從以下文字中提取加密貨幣的交易所 ticker 代號（例如 BTC、ETH、PI、SOL）。"
+                f"只回覆 ticker 本身（純英文大寫縮寫），不要其他文字。若無法識別則回覆 BTC。\n\n文字：{candidate}"
+            )
+            response = await loop.run_in_executor(None, lambda: self.llm.invoke([HumanMessage(content=prompt)]))
+            return self._llm_content(response).strip().upper().split()[0]
+        except Exception:
+            return "BTC"
 
-        if answer in ["修改計畫", "3"] or (answer not in ["確認執行", "1", ""] and len(answer) > 2):
-            # Step 1: Ask which step to modify
-            if answer in ["修改計畫", "3"]:
-                step_options = [f"{i+1}" for i in range(len(plan))] + ["全部"]
-                step_answer = self.hitl.ask(
-                    f"請選擇要修改的步驟編號（1-{len(plan)}），或輸入「全部」重新規劃整個計畫："
-                )
-            else:
-                # User typed modification directly
-                modification = answer
-                print(f"[Node: confirm_plan] User modification: {modification}")
-                return {"plan_user_modification": modification, "plan_cancelled": False}
+    def _format_research_summary(self, research_data: dict, symbol: str) -> str:
+        # Pure sync helper, no change needed
+        parts = []
+        price = research_data.get("price")
+        if price:
+            price_info = price.get("price_info", "") if isinstance(price, dict) else str(price)
+            if price_info:
+                parts.append(price_info)
 
-            # Step 2: Get modification details for the selected step
-            if step_answer.strip() in ["全部", "all", "0"]:
-                modification = self.hitl.ask("請描述您想要的整體修改：")
-            else:
+        news = research_data.get("news")
+        if news and isinstance(news, list):
+            lines = [f"📰 **{symbol} 最新新聞**\n"]
+            for i, item in enumerate(news[:5], 1):
+                if isinstance(item, dict):
+                    title    = item.get("title", "")
+                    link     = item.get("url") or item.get("link", "")
+                    date_raw = item.get("published_at") or item.get("published", "")
+                else:
+                    title, link, date_raw = str(item), "", ""
+                date_str = f"（{str(date_raw)[:10]}）" if date_raw else ""
+                if link:
+                    lines.append(f"{i}. [{title}]({link}){date_str}")
+                else:
+                    lines.append(f"{i}. {title}{date_str}")
+            parts.append("\n".join(lines))
+
+        if not parts:
+            return f"*（{symbol} 資料暫時無法取得，將直接進行規劃）*"
+
+        return "\n\n".join(parts)
+
+    async def _plan_node(self, state: ManagerState) -> dict:
+        import asyncio
+        loop = asyncio.get_running_loop()
+        query = state.get("query", "")
+
+        # Multi-market pre-confirmed plan: skip LLM planning
+        if state.get("plan_confirmed") and state.get("plan"):
+            return {}
+
+        if state.get("complexity") == "simple":
+            plan = [asdict(SubTask(
+                step=1,
+                description=query,
+                agent=state.get("intent", "chat"),
+                tool_hint=None,
+            ))]
+            return {"plan": plan, "codebook_entry_id": None}
+
+        # Complex 任務：LLM planning + codebook 記憶
+        similar = self.codebook.find_similar_entries(
+            query, state.get("intent", "chat"), state.get("topics") or [], limit=3
+        )
+        agents_info = self.agent_registry.agents_info_for_prompt()
+        tools_info  = ", ".join([t.name for t in self.tool_registry.list_all_tools()])
+
+        past_text = "無"
+        if similar:
+            past_text = ""
+            for i, e in enumerate(similar):
+                plan_summary = "; ".join(f"{t['agent']}: {t['description']}" for t in e.plan)
+                past_text += f"[{i+1}] Query: {e.query}\n    Plan: {plan_summary}\n"
+
+        prompt = PromptRegistry.render(
+            "manager", "plan",
+            query=query,
+            agent=state.get("intent", "chat"),
+            topics=", ".join(state.get("topics") or []),
+            clarifications="; ".join(state.get("user_clarifications") or []) or "無",
+            past_experience=past_text,
+            agents_info=agents_info,
+            tools_info=tools_info,
+            research_summary=state.get("research_summary") or "無",
+            research_clarifications="; ".join(state.get("research_clarifications") or []) or "無",
+        )
+        try:
+            response = await loop.run_in_executor(None, lambda: self.llm.invoke([HumanMessage(content=prompt)]))
+            data = self._parse_json(self._llm_content(response)) or {}
+            plan_raw = data.get("plan", [])
+            valid_fields = {f.name for f in fields(SubTask)}
+            plan = []
+            for p in plan_raw:
+                task_data = {k: v for k, v in p.items() if k in valid_fields}
+                plan.append(asdict(SubTask(**task_data)))
+        except Exception as e:
+            import traceback
+            print(f"[Manager] plan error: {e}\n{traceback.format_exc()}")
+            plan = [asdict(SubTask(
+                step=1, description=state["query"],
+                agent=state.get("intent", "chat"), tool_hint=None
+            ))]
+
+        codebook_entry_id = similar[0].id if similar else None
+        return {"plan": plan, "codebook_entry_id": codebook_entry_id, "current_step_index": 0}
+
+    async def _confirm_plan_node(self, state: ManagerState) -> dict:
+        """HITL Point 2：複雜任務計畫確認（支援協商模式）。"""
+        plan = state.get("plan") or []
+        negotiation_response = state.get("negotiation_response")
+
+        plan_with_icons = [
+            {**t, "icon": AGENT_ICONS.get(t.get("agent", ""), "🔧")}
+            for t in plan
+        ]
+
+        interrupt_payload = {
+            "type":    "confirm_plan",
+            "message": "針對您的問題，我規劃了以下分析步驟：",
+            "plan":    plan_with_icons,
+        }
+        if negotiation_response:
+            interrupt_payload["negotiation_response"] = negotiation_response
+
+        interrupt_payload["negotiation_limit_reached"] = (state.get("negotiate_count", 0) > 3)
+
+        answer = interrupt(interrupt_payload)
+
+        parsed = answer
+        if isinstance(answer, str):
+            stripped = answer.strip()
+            if stripped.startswith("{"):
                 try:
-                    step_idx = int(step_answer.strip()) - 1
-                    if 0 <= step_idx < len(plan):
-                        step_info = plan[step_idx]
-                        modification_detail = self.hitl.ask(
-                            f"第 {step_idx+1} 步目前為：[{step_info.get('agent', '?')}] {step_info.get('description', '')}\n"
-                            f"請描述您想如何修改這一步："
-                        )
-                        modification = f"修改第 {step_idx+1} 步 [{step_info.get('agent', '?')}]: {step_info.get('description', '')} → 用戶想改成: {modification_detail}"
-                    else:
-                        modification = self.hitl.ask(f"步驟編號超出範圍（1-{len(plan)}），請直接描述您想要的修改：")
-                except ValueError:
-                    modification = step_answer  # treat as free text modification
+                    parsed = json.loads(stripped)
+                except json.JSONDecodeError:
+                    parsed = stripped
 
-            print(f"[Node: confirm_plan] User modification: {modification}")
-            return {"plan_user_modification": modification, "plan_cancelled": False}
+        if isinstance(parsed, dict):
+            action = parsed.get("action", "")
+            if action == "execute_custom":
+                selected = parsed.get("selected_steps", [])
+                filtered = [t for t in plan if t.get("step") in selected]
+                return {
+                    "plan_confirmed": True,
+                    "plan_negotiating": False,
+                    "plan": filtered or plan,
+                    "current_step_index": 0,
+                }
+            elif action == "cancel":
+                return {"plan_confirmed": False, "plan_negotiating": False}
+            elif action == "discuss_question":
+                # User asked a discussion question during plan confirmation — cancel plan, answer in chat
+                question_text = parsed.get("text", "").strip()
+                return {
+                    "plan_confirmed":      False,
+                    "plan_negotiating":    False,
+                    "is_discussion":       True,
+                    "discussion_question": question_text,
+                }
+            elif action == "modify_request":
+                request_text = parsed.get("text", "").strip()
+                return {
+                    "plan_confirmed":      False,
+                    "plan_negotiating":    True,
+                    "negotiation_request": request_text,
+                    "negotiation_response": None,
+                }
 
-        print("[Node: confirm_plan] User confirmed")
-        return {"plan_user_modification": None, "plan_cancelled": False}
+        # If not a dict (action), treat as raw text input
+        text_input = str(parsed).strip()
+        
+        # Explicit confirmation keywords
+        CONFIRM_KEYWORDS = ["ok", "confirm", "start", "execute", "yes", "go", "开始", "執行", "確認", "好"]
+        CANCEL_KEYWORDS = ["cancel", "stop", "no", "取消", "停止"]
 
-    def _build_history_for_agent(self, agent_name: str, messages: list, memory: list) -> dict:
-        """Build agent-appropriate context — different agents need different history depth."""
-        if agent_name == "chat":
-            # Conversational agent: 5 full turns + memory facts for personalization
-            recent = messages[-10:]
-            context_lines = [
-                f"{'用戶' if m['role'] == 'user' else '助手'}: {m['content'][:200]}"
-                for m in recent[:-1]
-            ]
-            history_str = "\n".join(context_lines) or "這是新對話的開始"
-            memory_facts = "\n".join(
-                f"- {f['key']}: {f['value']}"
-                for f in memory
-                if f.get("confidence") in ("high", "medium")
-            ) or "無"
-            return {"history": history_str, "memory_facts": memory_facts}
+        if text_input.lower() in CONFIRM_KEYWORDS:
+             return {"plan_confirmed": True, "plan_negotiating": False}
+        
+        if text_input.lower() in CANCEL_KEYWORDS:
+             return {"plan_confirmed": False, "plan_negotiating": False}
 
-        elif agent_name in ("technical", "news", "full_analysis"):
-            # Analytical agents: only last 2 turns for disambiguation
-            recent = messages[-4:]
-            context_lines = [
-                f"{'用戶' if m['role'] == 'user' else '助手'}: {m['content'][:100]}"
-                for m in recent[:-1]
-            ]
-            history_str = "\n".join(context_lines) or "這是新對話的開始"
-            return {"history": history_str}
+        # Anything else is treated as a modification request
+        return {
+            "plan_confirmed":      False,
+            "plan_negotiating":    True,
+            "negotiation_request": text_input,
+            "negotiation_response": None,
+        }
 
-        else:
-            # Default: last 3 turns
-            recent = messages[-6:]
-            context_lines = [
-                f"{'用戶' if m['role'] == 'user' else '助手'}: {m['content'][:100]}"
-                for m in recent[:-1]
-            ]
-            return {"history": "\n".join(context_lines) or "這是新對話的開始"}
+    async def _negotiate_plan_node(self, state: ManagerState) -> dict:
+        import asyncio
+        loop = asyncio.get_running_loop()
+        plan    = state.get("plan") or []
+        request = state.get("negotiation_request") or ""
+        count   = (state.get("negotiate_count") or 0) + 1
 
-    def _plan_node(self, state: V4State) -> dict:
-        """Node: Create execution plan (codebook lookup or LLM planning)."""
-        query = state["query"]
-        agent_name = state["agent_name"]
-        symbols = state.get("symbols", [])
+        if count > 3:
+            return {
+                "negotiate_count":       count,
+                "plan_negotiating":      False,
+                "negotiation_response":  "已達協商上限（3次），請直接確認或取消目前計畫。",
+            }
 
-        # If user requested modification, append to query for re-planning
-        user_mod = state.get("plan_user_modification")
-        if user_mod:
-            query = f"{query}\n使用者要求修改計畫：{user_mod}"
-            print(f"[Node: plan] Re-planning with user modification: {user_mod}")
-        else:
-            # Codebook lookup only on first plan (not re-plan)
-            match = self.codebook.find_match(query, agent_name, symbols)
-            if match:
-                print(f"[Node: plan] Codebook hit: {match.id[:8]}...")
-                plan = match.plan  # already dicts
-                return {"plan": plan, "codebook_entry_id": match.id}
-
-        # LLM planning
-        subtasks = self._plan(query, agent_name, symbols)
-        plan = [asdict(t) for t in subtasks]
-        # Clear result field to avoid serialization issues
-        for p in plan:
-            p["result"] = None
-
-        print(f"[Node: plan] LLM plan with {len(plan)} steps")
-        return {"plan": plan, "codebook_entry_id": None, "plan_user_modification": None}
-
-    def _execute_node(self, state: V4State) -> dict:
-        """Node: Execute the plan — dispatch to registered agents."""
-        query = state["query"]
-
-        # Retry with user feedback from satisfaction check
-        retry_feedback = state.get("satisfaction_feedback")
-        if retry_feedback:
-            query = f"{query}\n\n使用者補充：{retry_feedback}"
-
-        agent_name = state["agent_name"]
-        complexity = state.get("complexity", "simple")
-        symbols = state.get("symbols", [])
-        session_id = state.get("session_id", str(uuid4()))
-
-        # Build plan from state
-        plan_dicts = state.get("plan")
-        if plan_dicts:
-            plan = [SubTask(**p) for p in plan_dicts]
-        else:
-            # Simple path: single-step plan
-            plan = [SubTask(step=1, description=query, agent=agent_name, tool_hint=None)]
-
-        # Build ExecutionContext
-        context = ExecutionContext(
-            session_id=session_id,
-            original_query=query,
-            complexity=TaskComplexity(complexity),
-            intent=agent_name,
-            symbols=symbols,
-            plan=plan,
-            codebook_entry_id=state.get("codebook_entry_id"),
+        plan_text   = "\n".join(
+            f"步驟 {t.get('step')}: [{t.get('agent')}] {t.get('description', '')}"
+            for t in plan
         )
+        agents_info = self.agent_registry.agents_info_for_prompt()
+        tools_info  = ", ".join([t.name for t in self.tool_registry.list_all_tools()])
 
-        # Execute all tasks
-        results = []
-        messages = state.get("messages", [])
-        memory = state.get("memory", [])
-        hitl_fn = self._make_hitl_fn()
+        prompt = PromptRegistry.render(
+            "manager", "negotiate_plan",
+            query=state.get("query", ""),
+            plan_text=plan_text,
+            negotiation_request=request,
+            tool_results=state.get("current_tool_result", "無"),
+            agents_info=agents_info,
+            tools_info=tools_info,
+        )
+        try:
+            response     = await loop.run_in_executor(None, lambda: self.llm.invoke([HumanMessage(content=prompt)]))
+            data         = self._parse_json(self._llm_content(response)) or {}
 
-        for task in plan:
-            task.status = "in_progress"
-            task.context = self._build_history_for_agent(task.agent, messages, memory)
+            tool_call = data.get("tool_call")
+            if tool_call:
+                tool_depth = state.get("tool_depth", 0)
+                if tool_depth < 3:
+                    t_name = tool_call.get("name")
+                    t_args = tool_call.get("args") or {}
+                    print(f"[Manager] Negotiate Tool Call: {t_name}({t_args})")
+                    
+                    tool = self.tool_registry.get(t_name, caller_agent="manager")
+                    if tool:
+                        try:
+                            if hasattr(tool.handler, "invoke"):
+                                t_result = await loop.run_in_executor(None, lambda: tool.handler.invoke(t_args))
+                            else:
+                                t_result = await loop.run_in_executor(None, lambda: tool.handler(**t_args))
+                            t_output = (
+                                f"--- Auto-Tool Execution ---\n"
+                                f"Tool: {t_name}\n"
+                                f"Result: {str(t_result)[:2000]}"
+                            )
+                            state["current_tool_result"] = t_output
+                            state["tool_depth"] = tool_depth + 1
+                            # Recursive call - in async we return the node result, so we call it again?
+                            # LangGraph nodes usually shouldn't recurse directly if they are async... 
+                            # actually they can.
+                            return await self._negotiate_plan_node(state)
+                        except Exception as te:
+                            print(f"[Manager] Tool execution failed: {te}")
+                    else:
+                        print(f"[Manager] Tool {t_name} not found")
 
-            agent = self.router.route(task.agent)
-            if agent is None:
-                task.status = "failed"
-                task.result = AgentResult(
-                    success=False, message=f"Agent '{task.agent}' not found",
-                    agent_name=task.agent,
-                )
-                results.append(asdict(task.result))
-                continue
+            new_plan_raw = data.get("modified_plan", [])
+            valid_fields = {f.name for f in fields(SubTask)}
+            new_plan = []
+            if new_plan_raw:
+                for p in new_plan_raw:
+                    # Ensure required fields exist
+                    if "step" not in p:
+                        continue # Skip invalid steps
+                    
+                    task_data = {k: v for k, v in p.items() if k in valid_fields}
+                    
+                    # Provide defaults for required fields if missing
+                    if "description" not in task_data:
+                        task_data["description"] = "執行步驟"
+                    if "agent" not in task_data:
+                        task_data["agent"] = "chat"
+                        
+                    new_plan.append(asdict(SubTask(**task_data)))
+            else:
+                new_plan = plan
+            negotiation_response = data.get("explanation", "已根據您的建議調整計畫，請確認。")
+        
+        except Exception as e:
+            import traceback
+            print(f"[Manager] negotiate_plan error: {e}\n{traceback.format_exc()}")
+            new_plan             = plan
+            negotiation_response = "無法處理修改請求，請重新嘗試或直接執行原計畫。"
 
-            agent.hitl_fn = hitl_fn
-            result = agent.execute(task)
-            agent.hitl_fn = None  # cleanup
-            task.status = "completed" if result.success else "failed"
-            task.result = result
-            context.agent_results.append(result)
-            results.append({
-                "success": result.success,
-                "message": result.message,
-                "agent_name": result.agent_name,
-                "data": result.data,
-            })
+        if "tool_depth" in state:
+            del state["tool_depth"]
+        if "current_tool_result" in state:
+            del state["current_tool_result"]
 
-            # Handle collaboration
-            if result.needs_collaboration:
-                collab_result = self._handle_collaboration(result.needs_collaboration, context)
-                if collab_result:
-                    context.agent_results.append(collab_result)
-                    results.append({
-                        "success": collab_result.success,
-                        "message": collab_result.message,
-                        "agent_name": collab_result.agent_name,
+        return {
+            "plan":                  new_plan,
+            "negotiate_count":       count,
+            "plan_negotiating":      False,
+            "negotiation_response":  negotiation_response,
+        }
+
+    async def _discuss_node(self, state: ManagerState) -> dict:
+        """
+        計畫討論節點：使用者在 confirm_plan HITL 中提問（非修改計畫）。
+        取消計畫狀態，用 LLM 根據研究資料直接回答問題，結果作為 final_response。
+        """
+        import asyncio
+        loop = asyncio.get_running_loop()
+        question = state.get("discussion_question") or ""
+        research_summary = state.get("research_summary") or ""
+        plan = state.get("plan") or []
+        query = state.get("query") or ""
+        history = state.get("history") or ""
+
+        # 提供計畫內容和研究資料作為上下文
+        plan_text = "\n".join(
+            f"步驟 {t.get('step')}: [{t.get('agent')}] {t.get('description', '')}"
+            for t in plan
+        ) if plan else "（無計畫）"
+
+        context_parts = []
+        if research_summary:
+            context_parts.append(f"【即時市場資料】\n{research_summary}")
+        if plan_text != "（無計畫）":
+            context_parts.append(f"【剛才規劃的分析步驟】\n{plan_text}")
+        if query:
+            context_parts.append(f"【原始分析請求】\n{query}")
+
+        context = "\n\n".join(context_parts) if context_parts else "（暫無額外背景資料）"
+
+        prompt = (
+            f"以下是剛才分析討論的背景資料：\n\n{context}\n\n"
+            f"對話歷史：\n{history}\n\n"
+            f"使用者提問：{question}\n\n"
+            f"請用繁體中文直接回答使用者的問題。若問題涉及計畫步驟或市場資料，請根據上下文作答。"
+            f"若引用新聞，必須保留原始 Markdown 連結格式 [標題](url)，不要省略連結。"
+            f"保持回答清晰、具體、有幫助。計畫已取消，後續使用者可再次提出分析請求。"
+        )
+        try:
+            response = await loop.run_in_executor(None, lambda: self.llm.invoke([HumanMessage(content=prompt)]))
+            answer = self._llm_content(response).strip()
+        except Exception as e:
+            logger.error(f"[Discuss] LLM error: {e}")
+            answer = "抱歉，暫時無法回答這個問題。請重新提問或發起新的分析。"
+
+        logger.info(f"[Discuss] Answered question: {question[:50]}...")
+        return {
+            "final_response": answer,
+            "plan_confirmed":  False,
+            "is_discussion":   True,
+        }
+
+    async def _execute_node(self, state: ManagerState) -> dict:
+        import asyncio
+        loop = asyncio.get_running_loop()
+        plan = state.get("plan") or []
+        results = state.get("agent_results") or []
+        idx = state.get("current_step_index", 0)
+
+        if idx >= len(plan):
+            return {}
+
+        task_dict = plan[idx]
+        task = SubTask(**{k: v for k, v in task_dict.items()
+                          if k in SubTask.__dataclass_fields__})
+        task.context = {"history": self._build_history(state)}
+
+        logger.info(f"[Manager] Executing step {idx+1}/{len(plan)}: {task.agent} - {task.description}")
+
+        agent = self.router.route(task.agent)
+        if not agent:
+            result_data = {
+                "success": False, 
+                "message": f"Agent {task.agent} not found",
+                "agent_name": task.agent,
+                "step_index": idx
+            }
+        else:
+            if self.progress_callback:
+                self.progress_callback({
+                    "type": "agent_start",
+                    "agent": agent.name,
+                    "step": task.step,
+                    "description": task.description
+                })
+
+            try:
+                # Execute agent in executor to prevent blocking
+                res = await loop.run_in_executor(None, agent.execute, task)
+                
+                result_data = {
+                    "success":    res.success,
+                    "message":    res.message,
+                    "agent_name": res.agent_name,
+                    "data":       res.data,
+                    "step_index": idx
+                }
+                
+                if self.progress_callback:
+                    self.progress_callback({
+                        "type": "agent_finish",
+                        "agent": res.agent_name,
+                        "step": task.step,
+                        "success": res.success
                     })
 
-        print(f"[Node: execute] {len(results)} results")
+            except Exception as e:
+                logger.error(f"[{agent.name}] Execution error: {e}")
+                result_data = {
+                    "success": False, 
+                    "message": f"執行發生錯誤: {str(e)}", 
+                    "agent_name": agent.name,
+                    "step_index": idx
+                }
 
-        # Serialize context for downstream nodes
-        needs_synthesis = len(results) > 1 and complexity == "complex"
-
-        # For simple case, store the response directly
-        final_response = ""
-        if not needs_synthesis and results:
-            r = results[0]
-            final_response = r["message"] if r["success"] else f"執行失敗：{r['message']}"
-
+        new_results = list(results) + [result_data]
+        
         return {
-            "results": results,
-            "needs_synthesis": needs_synthesis,
-            "final_response": final_response,
-            "context": {
-                "session_id": session_id,
-                "original_query": query,
-                "complexity": complexity,
-                "intent": agent_name,
-                "symbols": symbols,
-                "plan": [asdict(t) for t in plan],
-                "codebook_entry_id": state.get("codebook_entry_id"),
-                "agent_results": results,
-            },
+            "agent_results": new_results, 
+            "current_step_index": idx + 1,
+            "retry_count": (state.get("retry_count") or 0)
         }
 
-    def _synthesize_node(self, state: V4State) -> dict:
-        """Node: Synthesize multiple agent results into final report."""
-        results = state.get("results", [])
+    async def _watcher_node(self, state: ManagerState) -> dict:
+        """Watcher Node: Critique execution results."""
+        import asyncio
+        loop = asyncio.get_running_loop()
+        results = state.get("agent_results") or []
+        query = state.get("query", "")
+        
+        if state.get("complexity") != "complex":
+            return {}
 
-        results_text = "\n\n".join(
-            f"### [{r.get('agent_name', '?')}]\n{r.get('message', '')}"
-            for r in results
-            if r.get("success")
+        logger.info("[Watcher] Reviewing results...")
+        
+        for res in results:
+            if not res.get("success"): 
+                continue
+                
+            # Wrap watcher critique in executor
+            # Assuming self.watcher.critique is sync
+            critique = await loop.run_in_executor(
+                None, 
+                lambda: self.watcher.critique(
+                    query=query,
+                    step_description=f"Agent: {res.get('agent_name')}", 
+                    result=res.get("message", "")
+                )
+            )
+            
+            if critique.get("status") == "FAIL":
+                logger.warning(f"[Watcher] Flagged result from {res.get('agent_name')}: {critique.get('feedback')}")
+                res["watcher_feedback"] = critique.get("feedback")
+                
+        return {"agent_results": results}
+
+    async def _synthesize_node(self, state: ManagerState) -> dict:
+        import asyncio
+        loop = asyncio.get_running_loop()
+        results = state.get("agent_results") or []
+
+        if state.get("complexity") == "simple":
+            for r in results:
+                if r.get("success") and r.get("message"):
+                    return {"final_response": r["message"]}
+            
+            failure_context = "\n".join(
+                f"- [{r.get('agent_name', '?')}] {r.get('message', '未知錯誤')}"
+                for r in results if r
+            )
+            chat_agent = self.router.route("chat")
+            if chat_agent:
+                try:
+                    fallback_task = SubTask(step=1, description=state.get("query", ""), agent="chat")
+                    fallback_task.context = {
+                        "history":        self._build_history(state),
+                        "agent_failures": failure_context,
+                    }
+                    fallback_result = await loop.run_in_executor(None, chat_agent.execute, fallback_task)
+                    if fallback_result.success and fallback_result.message:
+                        return {"final_response": fallback_result.message}
+                except Exception as e:
+                    logger.error(f"[Synthesize] chat fallback failed: {e}")
+            return {"final_response": f"⚠️ 無法取得分析數據：\n{failure_context}"}
+
+        successful = [r for r in results if r.get("success")]
+        if not successful:
+            failed_info = "; ".join(
+                f"{r.get('agent_name', '?')}: {r.get('message', '')[:100]}"
+                for r in results
+            )
+            return {"final_response": f"⚠️ 所有分析步驟均失敗，無法生成報告。\n\n原因：{failed_info}"}
+
+        AGENT_LABELS = {
+            "crypto":   "🔐 加密貨幣",
+            "tw_stock": "🇹🇼 台股",
+            "us_stock": "📈 美股",
+            "chat":     "💬 對話",
+        }
+        results_text = "\n\n---\n\n".join(
+            f"## {AGENT_LABELS.get(r['agent_name'], r['agent_name'])}\n\n{r['message']}"
+            for r in successful
         )
-        if not results_text:
-            results_text = "（所有 Agent 均未產生結果）"
+        
+        plan = state.get("plan") or []
+        plan_summary = "\n".join(
+            f"{i+1}. [{t.get('agent')}] {t.get('description')}" 
+            for i, t in enumerate(plan)
+        ) or "（無計畫）"
 
         prompt = PromptRegistry.render(
             "manager", "synthesize",
             query=state["query"],
-            clarifications=state.get("clarification") or "無",
+            plan_summary=plan_summary,
+            clarifications="; ".join(state.get("user_clarifications") or []) or "無",
             results=results_text,
         )
         try:
-            response = self.llm.invoke([HumanMessage(content=prompt)])
-            final_response = response.content
+            response = await loop.run_in_executor(None, lambda: self.llm.invoke([HumanMessage(content=prompt)]))
+            final = self._llm_content(response)
         except Exception:
-            final_response = results_text
+            final = results_text or "（無法生成回應）"
 
-        print(f"[Node: synthesize] Generated report ({len(final_response)} chars)")
-        return {"final_response": final_response}
+        return {"final_response": final}
 
-    def _feedback_node(self, state: V4State) -> dict:
-        """Node: Prepare context for downstream nodes (codebook save moved to save_codebook)."""
+    async def _save_node(self, state: ManagerState) -> dict:
+        # Saving to codebook might involve IO or vector DB operations, better wrap it.
+        import asyncio
+        loop = asyncio.get_running_loop()
+        
+        complexity = state.get('complexity')
+        has_resp = bool(state.get('final_response'))
+        has_plan = bool(state.get('plan'))
+        logger.info(f"[DEBUG] _save_node: complexity={complexity}, has_response={has_resp}, has_plan={has_plan}")
+        
+        if complexity == "complex" and has_resp and has_plan and not state.get("is_discussion"):
+            def do_save():
+                logger.info("[DEBUG] _save_node: Saving to codebook...")
+                from .hierarchical_memory import MemoryEntry
+                from datetime import datetime
+                plan_clean = [{k: v for k, v in t.items() if k not in ("result", "icon")} for t in (state.get("plan") or [])]
+                entry = MemoryEntry(
+                    id=str(uuid4()),
+                    query=state["query"],
+                    intent=state.get("intent", "chat"),
+                    topics=state.get("topics") or [],
+                    plan=plan_clean,
+                    complexity=complexity,
+                    created_at=datetime.now().isoformat(),
+                    ttl_days=14,
+                )
+                primary_topic = (state.get("topics") or ["DEFAULT"])[0].upper()
+                try:
+                    self.codebook._persist_entry(entry, primary_topic)
+                    self.codebook._cache[entry.id] = entry
+                    self.codebook._update_index(entry)
+                    logger.info(f"[DEBUG] _save_node: Saved entry {entry.id}")
+                    return {"codebook_entry_id": entry.id}
+                except Exception as e:
+                    logger.error(f"[DEBUG] _save_node: Failed to save to codebook: {e}")
+                    return {}
+
+            return await loop.run_in_executor(None, do_save)
+
         return {}
 
-    def _save_codebook_node(self, state: V4State) -> dict:
-        """Node: Save successful, user-satisfied execution to codebook."""
-        ctx_data = state.get("context")
-        if not ctx_data:
-            return {}
-        try:
-            plan = []
-            for p in ctx_data.get("plan", []):
-                p_copy = p.copy()
-                p_copy["result"] = None
-                plan.append(SubTask(**p_copy))
+    # ── 路由函數 ─────────────────────────────────────────────────────────────
 
-            context = ExecutionContext(
-                session_id=ctx_data.get("session_id", ""),
-                original_query=ctx_data.get("original_query", ""),
-                complexity=TaskComplexity(ctx_data.get("complexity", "simple")),
-                intent=ctx_data.get("intent", "chat"),
-                symbols=ctx_data.get("symbols", []),
-                plan=plan,
-                codebook_entry_id=ctx_data.get("codebook_entry_id"),
-            )
-            has_success = any(r.get("success") for r in state.get("results", []))
-            if has_success:
-                self.codebook.save(context)
-                print("[Node: save_codebook] Saved to codebook ✅")
-        except Exception as e:
-            print(f"[Node: save_codebook] error: {e}")
-        return {}
+    def _after_pre_research(self, state: ManagerState) -> str:
+        """pre_research 結束後：若使用者提問（discuss_question），直接結束；否則進入 plan。"""
+        return "save" if state.get("is_discussion") else "plan"
 
-    def _save_messages_node(self, state: V4State) -> dict:
-        """Append assistant response to messages for next-turn memory."""
-        response = state.get("final_response", "")
-        messages = state.get("messages", [])
-        if response:
-            messages = messages + [{"role": "assistant", "content": response}]
-        return {"messages": messages}
-
-    def _ask_satisfaction_node(self, state: V4State) -> dict:
-        """Node: Ask user for satisfaction on complex tasks only."""
-        complexity = state.get("complexity", "simple")
-        if complexity != "complex":
-            return {"satisfaction_skip": True, "satisfaction_retry": False}
-
-        final_response = state.get("final_response", "")
-
-        if self.web_mode:
-            answer = interrupt({
-                "type": "satisfaction",
-                "question": "這個結果符合您的需求嗎？",
-                "options": ["滿意", "不滿意，需要補充"],
-                "preview": final_response[:300],
-            })
-            if answer in ("滿意", "1", ""):
-                return {"satisfaction_retry": False, "satisfaction_skip": False}
-            return {
-                "satisfaction_retry": True,
-                "satisfaction_feedback": answer,
-                "satisfaction_skip": False,
-            }
+    def _after_classify(self, state: ManagerState) -> str:
+        if state.get("plan_confirmed"):
+            return "plan"   # Multi-market: skip pre_research, plan node will no-op
+        if state.get("complexity") == "ambiguous":
+            return "clarify"
+        elif state.get("complexity") == "complex":
+            return "pre_research"   # complex 任務先做預研究
         else:
-            satisfied, feedback = self.hitl.ask_satisfaction(final_response)
-            if satisfied:
-                return {"satisfaction_retry": False, "satisfaction_skip": False}
-            return {
-                "satisfaction_retry": True,
-                "satisfaction_feedback": feedback,
-                "satisfaction_skip": False,
-            }
+            return "plan"
 
-    def _extract_memory_node(self, state: V4State) -> dict:
-        """Extract structured facts from the latest turn — avoids summarization pitfalls."""
-        messages = state.get("messages", [])
-        if len(messages) < 3:  # need at least one complete turn
-            return {}
+    def _after_plan(self, state: ManagerState) -> str:
+        if state.get("plan_confirmed"):
+            return "execute"
+        return "confirm" if state.get("complexity") == "complex" else "execute"
 
-        # Find last user + assistant messages
-        last_user = last_assistant = None
-        for m in reversed(messages):
-            if m["role"] == "assistant" and last_assistant is None:
-                last_assistant = m["content"]
-            elif m["role"] == "user" and last_user is None:
-                last_user = m["content"]
-            if last_user and last_assistant:
-                break
+    def _after_confirm(self, state: ManagerState) -> str:
+        if state.get("plan_negotiating"):
+            return "negotiate"
+        if state.get("is_discussion"):
+            return "discuss"
+        return "execute" if state.get("plan_confirmed") else "end"
 
-        if not last_user or not last_assistant:
-            return {}
+    def _after_execute(self, state: ManagerState) -> str:
+        idx = state.get("current_step_index", 0)
+        plan = state.get("plan") or []
+        if idx < len(plan):
+            return "continue"
+        return "done"
 
-        existing_facts = state.get("memory", [])
-        turn_index = len(messages) // 2
-
-        prompt = PromptRegistry.render(
-            "manager", "extract_memory",
-            user_message=last_user[:300],
-            assistant_message=last_assistant[:300],
-            existing_facts=json.dumps(existing_facts, ensure_ascii=False),
-            turn_index=turn_index,
-        )
-
-        try:
-            response = self.llm.invoke([HumanMessage(content=prompt)])
-            new_facts = self._parse_json(response.content).get("facts", [])
-
-            # Merge: same key overwrites existing
-            fact_map = {f["key"]: f for f in existing_facts if f.get("key")}
-            for f in new_facts:
-                if f.get("key") and f.get("value"):
-                    fact_map[f["key"]] = f
-
-            updated = list(fact_map.values())[-20:]  # cap at 20 facts
-            print(f"[Node: extract_memory] {len(updated)} facts total")
-            return {"memory": updated}
-        except Exception as e:
-            print(f"[Node: extract_memory] error: {e}")
-            return {}
-
-    # ══════════════════════════════════════════
-    # 5. Public API (unchanged — same as before)
-    # ══════════════════════════════════════════
+    # ── CLI 入口 ─────────────────────────────────────────────────────────────
 
     def process(self, query: str, session_id: str = None) -> str:
-        """Main entry point — invoke the LangGraph with memory."""
+        """CLI 模式：自動處理 interrupt，使用 HITLManager 提問。"""
         if session_id is None:
             session_id = str(uuid4())
 
-        # Build config with thread_id for checkpointer (short-term memory)
         config = {"configurable": {"thread_id": session_id}}
-
-        # Get existing messages and memory from previous turns (if any)
-        existing_messages = []
-        existing_memory = []
-        try:
-            checkpoint = self.checkpointer.get(config)
-            if checkpoint and checkpoint.get("channel_values"):
-                existing_messages = checkpoint["channel_values"].get("messages", [])
-                existing_memory = checkpoint["channel_values"].get("memory", [])
-        except Exception:
-            pass
-
-        # Append current user message
-        messages = existing_messages + [{"role": "user", "content": query}]
-
-        # Keep last 10 messages (5 turns) — structured memory carries long-term context
-        if len(messages) > 10:
-            messages = messages[-10:]
-
-        # Invoke the compiled graph
-        initial_state: V4State = {
-            "query": query,
-            "session_id": session_id,
-            "messages": messages,
-            "memory": existing_memory,
+        initial = {
+            "session_id":          session_id,
+            "query":               query,
+            "agent_results":       [],
+            "user_clarifications": [],
+            "retry_count":         0,
         }
 
-        result = self.graph.invoke(initial_state, config)
+        result = self.graph.invoke(initial, config)
 
-        # Append assistant response to messages for next turn
-        response = result.get("final_response", "無回應")
-        return response
+        # CLI loop：自動處理所有 interrupt
+        while result.get("__interrupt__"):
+            iv     = result["__interrupt__"][0].value
+            itype  = iv.get("type", "")
+
+            if itype == "confirm_plan":
+                # CLI 模式：顯示計畫步驟並詢問是否執行
+                plan = iv.get("plan", [])
+                plan_text = "\n".join(
+                    f"  {t.get('icon','🔧')} {t.get('description','')}" for t in plan
+                )
+                question = f"{iv.get('message','執行計畫？')}\n{plan_text}"
+                options  = ["執行", "取消"]
+            else:
+                question = iv.get("question", "請回答：")
+                options  = iv.get("options")
+
+            answer = input(f"\n[HITL] {question} (Options: {options}): ")
+            result = self.graph.invoke(Command(resume=answer), config)
+
+        return result.get("final_response") or "（無回應）"
 
     def get_status(self) -> dict:
-        """Return system status for diagnostics."""
-        agents = [m.name for m in self.agent_registry.list_all()]
-        tools = [t.name for t in self.all_tools]
         return {
-            "agents": agents,
-            "tools": tools,
-            "codebook": self.codebook.stats(),
+            "agents":          [m.name for m in self.agent_registry.list_all()],
+            "tools":           [t.name for t in self.tool_registry.list_all_tools()],
+            "codebook":        self.codebook.stats(),
+            "active_sessions": 0,  # checkpointer manages this now
         }
 
-    # ══════════════════════════════════════════
-    # Internal Helpers (same as before)
-    # ══════════════════════════════════════════
+    # ── 工具方法 ─────────────────────────────────────────────────────────────
 
-    def _classify(self, query: str) -> dict:
-        agents_info = self.agent_registry.agents_info_for_prompt()
-        tools_info = self._build_tools_info()
-        prompt = PromptRegistry.render(
-            "manager", "classify",
-            query=query,
-            agents_info=agents_info,
-            tools_info=tools_info,
-        )
+    def _build_history(self, state: ManagerState) -> str:
+        """組合 DB 載入的歷史 + 本輪 clarifications，提供給 agent 作上下文。"""
+        parts = []
+
+        # DB 歷史（由 analysis.py 在請求進入時載入）
+        db_history = (state.get("history") or "").strip()
+        if db_history:
+            parts.append(db_history)
+
+        # 本輪 HITL 補充說明
+        clarifications = state.get("user_clarifications") or []
+        if clarifications:
+            parts.append("\n".join(f"補充 {i+1}: {c}" for i, c in enumerate(clarifications)))
+
+        return "\n".join(parts) if parts else "這是新對話的開始"
+
+    @staticmethod
+    def _llm_content(response) -> str:
+        """安全地從 LLM 回應提取文字。content 可能是 str、list 或 dict（部分 LangChain adapter）。"""
+        content = response.content
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            # Google / Anthropic multi-part format: [{type: "text", text: "..."}]
+            parts = []
+            for block in content:
+                if isinstance(block, dict):
+                    parts.append(block.get("text", ""))
+                else:
+                    parts.append(str(block))
+            return "".join(parts)
+        if isinstance(content, dict):
+            return content.get("text", str(content))
+        return str(content)
+
+    def _parse_json(self, text) -> Optional[dict]:
+        if not isinstance(text, str):
+            text = str(text)
+        clean = text.strip()
+        if "```json" in clean:
+            clean = clean.split("```json")[1].split("```")[0].strip()
+        elif "```" in clean:
+            clean = clean.split("```")[1].split("```")[0].strip()
         try:
-            response = self.llm.invoke([HumanMessage(content=prompt)])
-            result = self._parse_json(response.content)
-            if result:
-                return result
-        except Exception as e:
-            print(f"[Manager] classify error: {e}")
-
-        return {
-            "complexity": "simple",
-            "agent": "chat",
-            "symbols": [],
-            "ambiguity_question": None,
-        }
-
-    def _build_tools_info(self) -> str:
-        """Dynamic tool descriptions for prompts — from @tool functions."""
-        return "\n".join(
-            f"- {t.name}: {t.description}"
-            for t in self.all_tools
-        )
-
-    def _plan(self, query: str, agent_name: str, symbols: List[str]) -> List[SubTask]:
-        tools_info = self._build_tools_info()
-        agents_info = self.agent_registry.agents_info_for_prompt()
-        prompt = PromptRegistry.render(
-            "manager", "plan",
-            query=query,
-            agent=agent_name,
-            symbols=", ".join(symbols) if symbols else "未指定",
-            clarifications="無",
-            agents_info=agents_info,
-            tools_info=tools_info,
-        )
-        try:
-            response = self.llm.invoke([HumanMessage(content=prompt)])
-            result = self._parse_json(response.content)
-            plan_data = result.get("plan", [])
-            return [
-                SubTask(
-                    step=item.get("step", i + 1),
-                    description=item.get("description", query),
-                    agent=item.get("agent", agent_name),
-                    tool_hint=item.get("tool_hint"),
-                )
-                for i, item in enumerate(plan_data)
-            ]
-        except Exception as e:
-            print(f"[Manager] plan error: {e}")
-
-        return [SubTask(step=1, description=query, agent=agent_name, tool_hint=None)]
-
-    def _handle_collaboration(self, request: CollaborationRequest, context: ExecutionContext) -> Optional[AgentResult]:
-        """Handle a collaboration request from one agent to another."""
-        agent = self.router.route_collaboration(request)
-        if agent is None:
-            print(f"[Manager] collaboration failed: no agent for '{request.needed_agent}'")
+            return json.loads(clean)
+        except json.JSONDecodeError:
+            try:
+                match = re.search(r'\{.*\}', text.replace('\n', ''), re.DOTALL)
+                if match:
+                    return json.loads(match.group(0))
+            except Exception:
+                pass
             return None
-
-        collab_task = SubTask(
-            step=len(context.plan) + 1,
-            description=request.context,
-            agent=request.needed_agent,
-            tool_hint=None,
-        )
-        return agent.execute(collab_task)
-
-    def _parse_json(self, content: str) -> dict:
-        """Parse JSON from LLM response (handles markdown blocks, etc)."""
-        try:
-            return json.loads(content)
-        except Exception:
-            pass
-        try:
-            cleaned = re.sub(r'```json\s*|\s*```', '', content)
-            return json.loads(cleaned)
-        except Exception:
-            pass
-        try:
-            start = content.find('{')
-            end = content.rfind('}')
-            if start != -1 and end != -1:
-                return json.loads(content[start:end + 1])
-        except Exception:
-            pass
-        return {}

@@ -2,61 +2,42 @@ classify:
   description: "分析使用者查詢，選擇最適合的 Agent"
   template: |
     你是一個多功能 AI 助手系統的管理者。
-    分析使用者的查詢，選擇最適合處理的 Agent。
+    根據使用者查詢，從下方 Agent 清單中選擇最合適的 Agent 處理。
 
     使用者查詢：{query}
 
-    === 可用的 Agent（從系統 Registry 自動載入）===
+    === 可用的 Agent ===
     {agents_info}
 
-    === 可用的工具（從系統 Registry 自動載入）===
+    === 可用的工具 ===
     {tools_info}
+
+    **選擇規則：**
+    1. 根據每個 Agent 的 description 和 capabilities 判斷，選最符合查詢意圖的 agent
+    2. 台股相關（含股票代號如 2330、公司名稱如台積電、或明確提到台股/上市/上櫃）→ tw_stock
+    3. 加密貨幣相關（BTC/ETH/SOL 等）→ crypto
+    4. 美股相關（NYSE/NASDAQ ticker）→ us_stock
+    5. 若無完全匹配，選 chat（fallback）
+    6. 查詢模糊且缺少必要資訊（如「分析一下」但未指定標的），設為 ambiguous
+
+    **complexity 判斷：**
+    - simple：單一 Agent 可獨立完成
+    - complex：需要多面向分析，如「值得買嗎」「完整分析」「推薦嗎」「前景如何」「深度分析」
+    - ambiguous：缺少必要資訊（如「分析一下」但未指定幣種）
+
+    ⚠️ 只考慮「當前查詢」本身。忽略對話歷史中的幣種，除非當前查詢明確延續上一個話題。
 
     請以 JSON 格式回覆：
     {{
         "complexity": "simple|complex|ambiguous",
-        "agent": "從上方 Agent 列表中選擇一個名稱",
-        "symbols": [],
-        "entities": [],
+        "intent": "從上方 Agent 列表中選擇一個名稱",
+        "topics": [],
         "ambiguity_question": "question if ambiguous, else null"
     }}
 
     欄位說明：
-    - symbols: 只填加密貨幣幣種（BTC/ETH/PI 等）；非加密貨幣查詢留空
-    - entities: 所有關鍵實體（幣種、主題、平台功能名稱、人名等），比 symbols 更廣義
-
-    ⚠️ 重要：請忽略「對話歷史」中出現的幣種，除非「當前問題」明確提及或暗示要延續討論。
-    例如：
-    - 歷史：「PI 價格多少？」當前：「值得買嗎？」 → symbols=["PI"] (延續討論)
-    - 歷史：「PI 價格多少？」當前：「你好」 → symbols=[] (新話題)
-
-    判斷規則：
-    - simple: 只需要一個 Agent 就能完成
-      範例：「BTC 新聞」→ simple/news、「ETH 價格」→ simple/chat、「你好」→ simple/chat
-      範例：「BTC 技術分析」→ simple/technical（只需要技術指標）
-      範例：「我是 User」、「我叫 Danny」、「我是小明」→ simple/chat (自我介紹)
-      範例：「我剛才問什麼」、「對話歷史」→ simple/chat (歷史回顧)
-      範例：「台北天氣」→ simple/chat（一般問題由 chat 回答）
-      範例：「這個平台怎麼使用」→ simple/chat（平台問題由 chat 回答）
-      範例：「你是誰」→ simple/chat（系統說明由 chat 回答）
-    - complex: 需要完整多維度分析或投資建議
-      ⚠️ complex 時，若需要完整投資分析報告，優先選擇 full_analysis agent。
-      範例：「PI 值得買嗎」→ complex/full_analysis（需要四維分析+辯論+裁決）
-      範例：「幫我完整分析 ETH」→ complex/full_analysis
-      範例：「BTC 深度分析」→ complex/full_analysis
-      範例：「SOL 現在值得投資嗎」→ complex/full_analysis
-      範例：「ETH 目前推薦嗎」→ complex/full_analysis
-    - ambiguous: 缺少關鍵資訊（如「分析一下」但沒指定幣種）
-
-    ⚠️ 重要：包含「值得買」「推薦」「該不該投資」「前景如何」「深度分析」「完整分析」的查詢
-       一律視為 complex，且優先選擇 full_analysis agent！
-
-    agent 選擇規則：
-    - 仔細閱讀每個 Agent 的 description 和 capabilities
-    - 包含投資建議、完整分析、多維度評估等需求 → full_analysis
-    - 只需要技術指標 → technical；只需要新聞 → news；閒聊/價格/平台問題/一般知識 → chat
-    - 如果都不匹配，選擇 fallback Agent（通常是 chat）
-    - complex 情況下，選擇最重要的那個 Agent（其他會在 plan 階段加入）
+    - topics: 最核心的 1-2 個關鍵字（幣種如 BTC/ETH，或主題如 KYC/Fee）
+    - ambiguity_question: 若 ambiguous，詢問使用者缺少的資訊；否則填 null
 
 plan:
   description: "根據分類結果制定執行計畫"
@@ -65,8 +46,16 @@ plan:
 
     原始查詢：{query}
     主要 Agent：{agent}
-    相關幣種：{symbols}
+    相關主題：{topics}
     使用者補充：{clarifications}
+
+    === 預研究資料（執行計畫前已自動收集）===
+    {research_summary}
+
+    用戶對研究資料的補充需求：{research_clarifications}
+
+    === 過往類似經驗（僅供參考）===
+    {past_experience}
 
     可用的 Agent：
     {agents_info}
@@ -85,6 +74,10 @@ plan:
     - 每個 step 只指派一個 agent
     - agent 名稱必須從上方 Agent 列表中選擇
     - tool_hint 可以是 null（讓 agent 自己決定）
+    - ⚠️ **抽象規劃原則**：
+        - 請根據 **資訊需求** 進行規劃，而不是受限於你看到的工具。
+        - 即使某工具可能不支援特定資產，仍應列出該步驟，Agent 會自行嘗試替代方法。
+        - 不要因為覺得「工具不夠」就跳過重要步驟；Agent 無法完成時會自行拒絕。
 
 hitl_confirm_plan:
   description: "格式化執行計畫給使用者確認"
@@ -104,14 +97,26 @@ synthesize:
     綜合以下各 Agent 的分析結果，生成一份完整的報告。
 
     原始查詢：{query}
+    實際執行計畫：{plan_summary}
     使用者補充資訊：{clarifications}
 
     各 Agent 結果：
     {results}
 
     請用繁體中文提供一份結構清晰、重點突出的綜合報告。
-    包含所有相關的分析數據和建議。
-    在結尾提供整體結論。
+    
+    ⚠️ **排版風格要求 (Visual Style Requirements)**：
+    1. **保留格式**：若 Agent 結果中包含 Markdown 表格、連結或清單，請**盡量保留**。
+    2. **資訊面板**：使用引用區塊 (`>`) 來強調關鍵摘要、價格數據或重要結論。
+    3. **Emoji 裝飾**：使用 Emoji (📊, 📰, 💡, 💰) 來區分不同板塊，使閱讀體驗更佳。
+    4. **條列分明**：使用列點 (Bullet Points) 呈現細節，避免大段落文字。
+    5. **連結保留**：必須保留新聞或資料來源的原始連結 `[Title](url)`。
+
+    報告結構建議：
+    - **💡 綜合結論**：(使用引用區塊，直接回答用戶核心問題)
+    - **📊 市場數據/技術分析**：(整合技術指標與價格)
+    - **📰 關鍵新聞**：(保留新聞標題連結與摘要)
+    - **👉 建議操作**：(基於分析的具體建議)
 
 extract_memory:
   description: "從對話中萃取結構化事實，不做摘要"
@@ -136,6 +141,54 @@ extract_memory:
     - confidence: high=使用者明確說出, medium=可推斷, low=不確定
     - 無新事實則回覆 {{"facts": []}}
     - 最多 3 個事實
+
+negotiate_plan:
+  description: "評估用戶提出的計畫修改請求，說明可行性並給出修訂計畫"
+  template: |
+    你是一個 AI 分析系統的規劃助手。
+    用戶對以下執行計畫提出了修改請求，請評估可行性並給出回應。
+
+    原始查詢：{query}
+
+    當前計畫：
+    {plan_text}
+
+    === 工具執行結果 (Evidence) ===
+    {tool_results}
+
+    用戶的修改請求：{negotiation_request}
+
+    === 可用的 Agent ===
+    {agents_info}
+
+    === 可用的工具 ===
+    {tools_info}
+
+    請輸出 JSON 格式：
+    {{
+        "explanation": "給用戶的說明（若有工具結果，請詳細列出重點）",
+        "modified_plan": [ ... ],
+        "tool_call": {{ "name": "...", "args": {{...}} }}
+    }}
+
+    規則：
+    - ⚠️ **排版風格要求 (Visual Style Requirements)**：
+        1. **保留格式**：若工具結果包含 Markdown 表格或連結，請**盡量保留**。
+        2. **資訊面板**：使用引用區塊 (`>`) 來強調關鍵摘要、價格數據或重要結論。
+        3. **Emoji 裝飾**：使用 Emoji (📊, 📰, 💡, 💰) 來區分不同板塊。
+        4. **條列分明**：使用列點 (Bullet Points) 呈現細節。
+        5. **連結保留**：必須保留新聞或資料來源的原始連結 `[Title](url)`。
+
+    - ⚠️ **最高優先級**：
+        1. 若用戶詢問資訊且**工具結果為空**或**不相關**，**必須**回傳 `tool_call` 重新查詢。
+        2. 若**工具執行結果**已包含用戶所需資訊，則**不要**再呼叫工具，直接在 `explanation` 中詳細回答。
+    - **關於回答 (Explanation)**：
+        - 若 `tool_results` 有內容，**必須**詳細列出（使用列點 bullet points），保留具體數字、日期、標題。
+        - 不要只說「已查詢」，要實際列出查詢結果。
+        - 若工具結果顯示的資產與原計畫不同，以當前結果為準回答。
+    - 關於修改計畫：
+        - 根據用戶請求調整計畫。
+        - 如果用戶只是想**增加**或**深入**，請保留原計畫。
 
 retry_scope:
   description: "判斷重試範圍"
