@@ -1,0 +1,7 @@
+stub:
+  description: "美股功能開發中佔位提示詞"
+  template: |
+    美股分析功能即將推出。
+    偵測到的標的：{ticker}（{exchange}）
+    目前支援：台股（.TW）、加密貨幣。
+    美股完整分析敬請期待！
