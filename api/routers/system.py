@@ -141,10 +141,12 @@ async def validate_key(request: KeyValidationRequest, current_user: dict = Depen
             base_url=base_url
         )
         
-        # 嘗試調用
-        # 使用 run_in_executor 避免阻塞，因為 llm.invoke 可能包含網路請求
+        # 使用 run_in_executor 避免阻塞，並加上 15 秒 timeout
         loop = asyncio.get_running_loop()
-        response = await loop.run_in_executor(None, lambda: llm.invoke([HumanMessage(content=test_prompt)]))
+        response = await asyncio.wait_for(
+            loop.run_in_executor(None, lambda: llm.invoke([HumanMessage(content=test_prompt)])),
+            timeout=15.0
+        )
         reply_text = response.content
 
         return {
@@ -155,6 +157,9 @@ async def validate_key(request: KeyValidationRequest, current_user: dict = Depen
             "model": model_to_test
         }
         
+    except asyncio.TimeoutError:
+        logger.warning(f"Key validation timed out for {provider}")
+        return {"valid": False, "message": "驗證失敗: 請求超時 (15秒)，請檢查網絡連接或稍後再試。"}
     except Exception as e:
         logger.warning(f"Key validation failed for {provider}: {e}")
         error_msg = str(e)
@@ -179,9 +184,6 @@ async def validate_key(request: KeyValidationRequest, current_user: dict = Depen
 @router.get("/api/config")
 async def get_config():
     """回傳前端需要的配置資訊"""
-    # Reload .env to pick up manual changes
-    load_dotenv(override=True)
-
     current_provider = core_config.BULL_RESEARCHER_MODEL.get("provider", "openai")
 
     # Helper to check key existence using Factory logic

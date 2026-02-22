@@ -789,7 +789,7 @@ def get_trending_tags(limit: int = 10) -> List[Dict]:
     results = DatabaseBase.query_all('''
         SELECT id, name, post_count, last_used_at
         FROM tags
-        WHERE last_used_at > NOW() - INTERVAL '7 days'
+        WHERE last_used_at > NOW() - INTERVAL '7 days' AND post_count > 0
         ORDER BY post_count DESC
         LIMIT %s
     ''', (limit,))

@@ -980,6 +980,12 @@ const ForumApp = {
 
         if (!confirmed) return;
 
+        const btnElement = document.getElementById('btn-delete');
+        if (btnElement) {
+            btnElement.disabled = true;
+            btnElement.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+
         try {
             await ForumAPI.deletePost(postId);
             showToast('文章已刪除', 'success');
@@ -993,6 +999,10 @@ const ForumApp = {
                 }
             }, 1000);
         } catch (e) {
+            if (btnElement) {
+                btnElement.disabled = false;
+                btnElement.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
             showToast('刪除失敗: ' + e.message, 'error');
         }
     },

@@ -1,4 +1,4 @@
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 from pydantic import BaseModel
 from core.config import (
     SUPPORTED_EXCHANGES, DEFAULT_INTERVAL, DEFAULT_KLINES_LIMIT
@@ -17,7 +17,8 @@ class QueryRequest(BaseModel):
     user_provider: str  # "openai", "google_gemini", "openrouter"
     user_model: Optional[str] = None  # 用戶選擇的模型名稱
     session_id: str = "default"  # 會話 ID
-    resume_answer: Optional[str] = None  # HITL 回答（None = 新請求；有值 = resume interrupt）
+    resume_answer: Optional[Any] = None  # HITL 回答（Accepts str or dict）
+    language: str = "zh-TW"  # 用戶語言偏好（"zh-TW" | "en"）
 
 class ScreenerRequest(BaseModel):
     exchange: str = SUPPORTED_EXCHANGES[0]

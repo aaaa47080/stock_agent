@@ -105,7 +105,15 @@
       "mcp__plugin_playwright_playwright__browser_run_code",
       "Bash(pkill:*)",
       "WebFetch(domain:arxiv.org)",
-      "Bash(__NEW_LINE_3cc4a38a67bee5a5__ python -c \"\nimport sys\nsys.path.insert\\(0, ''D:/okx/stock_agent''\\)\nfrom core.agents.prompt_registry import PromptRegistry\nPromptRegistry.load\\(''D:/okx/stock_agent/core/agents/prompts''\\)\ns = PromptRegistry.get\\(''chat_agent'', ''system''\\)\nprint\\(''system prompt \\(first 60 chars\\):'', s[:60]\\)\nr = PromptRegistry.render\\(''chat_agent'', ''response'', query=''hi'', history=''none'', memory_facts=''無''\\)\nprint\\(''response render OK:'', len\\(r\\), ''chars''\\)\nm = PromptRegistry.render\\(''manager'', ''extract_memory'', user_message=''test'', assistant_message=''ok'', existing_facts=''[]'', turn_index=1\\)\nprint\\(''extract_memory render OK:'', len\\(m\\), ''chars''\\)\n\")"
+      "Bash(__NEW_LINE_3cc4a38a67bee5a5__ python -c \"\nimport sys\nsys.path.insert\\(0, ''D:/okx/stock_agent''\\)\nfrom core.agents.prompt_registry import PromptRegistry\nPromptRegistry.load\\(''D:/okx/stock_agent/core/agents/prompts''\\)\ns = PromptRegistry.get\\(''chat_agent'', ''system''\\)\nprint\\(''system prompt \\(first 60 chars\\):'', s[:60]\\)\nr = PromptRegistry.render\\(''chat_agent'', ''response'', query=''hi'', history=''none'', memory_facts=''無''\\)\nprint\\(''response render OK:'', len\\(r\\), ''chars''\\)\nm = PromptRegistry.render\\(''manager'', ''extract_memory'', user_message=''test'', assistant_message=''ok'', existing_facts=''[]'', turn_index=1\\)\nprint\\(''extract_memory render OK:'', len\\(m\\), ''chars''\\)\n\")",
+      "WebFetch(domain:langchain-ai.github.io)",
+      "Bash(\"D:/okx/stock_agent/core/agents/manager.py\":*)",
+      "Bash(printf:*)",
+      "Bash(/tmp/gen_manager.py:*)",
+      "Bash(PYTHONIOENCODING=utf-8 python:*)",
+      "mcp__plugin_playwright_playwright__browser_resize",
+      "Bash(tasklist:*)",
+      "Bash(ss:*)"
     ]
   }
 }

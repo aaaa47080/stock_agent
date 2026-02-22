@@ -1,7 +1,14 @@
 import asyncio
+import concurrent.futures
 import numpy as np
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
+
+# 專用背景任務 executor，避免佔用 user request 的 default thread pool
+_background_executor = concurrent.futures.ThreadPoolExecutor(max_workers=2, thread_name_prefix="bg-task")
+
+# 防止 screener 快速更新重疊執行
+_price_update_running = False
 
 from core.database import get_cache, set_cache
 from core.config import (
@@ -125,7 +132,7 @@ async def update_single_market_pulse(symbol: str, fixed_sources: List[str], sema
             # 注意: run_in_executor 本身不能直接 cancel，但在這裡 wrap 一層 wait_for 可以讓 asyncio 繼續往下走
             result = await asyncio.wait_for(
                 loop.run_in_executor(
-                    None, 
+                    _background_executor,
                     lambda: get_market_pulse(symbol, enabled_sources=fixed_sources)
                 ),
                 timeout=180.0
@@ -552,8 +559,9 @@ async def _fetch_okx_tickers():
     fetcher = get_data_fetcher("okx")
     loop = asyncio.get_running_loop()
 
+    # 使用專用背景 executor，不擠佔 user request 的 default thread pool
     tickers_result = await loop.run_in_executor(
-        None,
+        _background_executor,
         lambda: fetcher._make_request(
             fetcher.market_base_url,
             "/market/tickers",
@@ -618,7 +626,12 @@ async def update_screener_prices_fast():
     """
     快速更新任務：只更新 cached_screener_result 中的價格資訊。
     不重新計算指標或排名，僅抓取當前最新價格 (Ticker)。
+    有防重疊機制：若上一次更新仍在執行，直接跳過。
     """
+    global _price_update_running
+    if _price_update_running:
+        return  # 上一次還沒完，跳過此輪
+    _price_update_running = True
     try:
         # Collect symbols to update
         symbols = _collect_screener_symbols()
@@ -636,6 +649,8 @@ async def update_screener_prices_fast():
 
     except Exception as e:
         logger.debug(f"Screener price update failed: {e}")
+    finally:
+        _price_update_running = False
 
 async def run_screener_analysis():
     """執行實際的分析工作並更新快取 (重型任務)"""
@@ -649,12 +664,13 @@ async def run_screener_analysis():
         try:
             exchange = SUPPORTED_EXCHANGES[0]
             loop = asyncio.get_running_loop()
-            
+
             # Use lightweight screener for background task
             from analysis.crypto_screener_light import screen_top_cryptos_light
-            
+
+            # 使用專用背景 executor，不擠佔 user request 的 default thread pool
             df_volume, df_gainers, df_losers, _ = await loop.run_in_executor(
-                None,
+                _background_executor,
                 lambda: screen_top_cryptos_light(
                     exchange=exchange,
                     limit=10,
@@ -689,29 +705,86 @@ async def run_screener_analysis():
         except Exception as e:
             logger.error(f"❌ [分析任務] 執行失敗: {e}")
 
+async def _screener_ticker_callback(symbol: str, parsed: dict):
+    """
+    OKX WebSocket ticker push callback。
+    每當 OKX 推送新 ticker 時直接更新 screener 快取，達到真正即時。
+    """
+    data = cached_screener_result.get("data")
+    if not data:
+        return
+
+    last = parsed.get("last", 0)
+    change = parsed.get("change24h", 0)
+    # 正規化：BTC-USDT / BTC / BTCUSDT 都統一比較
+    symbol_key = symbol.upper().replace("/", "").replace("-", "")
+
+    all_list_names = ["top_volume", "top_gainers", "top_losers",
+                      "top_performers", "oversold", "overbought"]
+    for list_name in all_list_names:
+        for item in data.get(list_name) or []:
+            item_key = item.get("Symbol", "").upper().replace("/", "").replace("-", "")
+            if item_key == symbol_key:
+                item["Close"] = last
+                item["price_change_24h"] = change
+
+    cached_screener_result["data"]["last_updated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+async def _subscribe_screener_symbols_to_ws():
+    """
+    將 screener 快取內的幣種訂閱到 OKX Ticker WebSocket，
+    取代 REST polling，讓價格由 OKX 主動推送。
+    """
+    from data.okx_websocket import okx_ticker_ws_manager
+
+    data = cached_screener_result.get("data")
+    if not data:
+        return
+
+    symbols = set()
+    all_list_names = ["top_volume", "top_gainers", "top_losers",
+                      "top_performers", "oversold", "overbought"]
+    for list_name in all_list_names:
+        for item in data.get(list_name) or []:
+            sym = item.get("Symbol", "")
+            if sym:
+                # 轉為 BTCUSDT 格式再訂閱，_get_okx_inst_id 會自行轉換
+                symbols.add(sym.upper().replace("/", "").replace("-", ""))
+
+    if not symbols:
+        return
+
+    await okx_ticker_ws_manager.unsubscribe_all()
+    await okx_ticker_ws_manager.subscribe_many(list(symbols), _screener_ticker_callback)
+    logger.info(f"[Screener WS] 已訂閱 {len(symbols)} 個即時 ticker：{symbols}")
+
+
 async def update_screener_task():
     """
     背景任務：
-    1. 每秒執行快速價格更新 (Fast Update)
-    2. 每 N 分鐘執行完整分析 (Heavy Analysis) - 降低頻率以避免 API 封禁
+    1. 啟動時執行完整分析，並將結果幣種訂閱到 OKX Ticker WebSocket
+    2. WebSocket push → 即時更新快取（取代 REST polling）
+    3. 每 N 分鐘重新執行完整分析並更新訂閱清單（應對漲跌幅排名變動）
     """
-    logger.info("🚀 Starting initial Screener analysis (In-Memory)...")
-    # Immediately run analysis on startup
-    await run_screener_analysis()
-    
-    # [Optimization] Use config variable (minutes -> seconds)
-    update_interval_sec = SCREENER_UPDATE_INTERVAL_MINUTES * 60
-    logger.info(f"Screener background task interval set to {SCREENER_UPDATE_INTERVAL_MINUTES} min ({update_interval_sec}s)")
+    from data.okx_websocket import okx_ticker_ws_manager
 
-    counter = 1
+    logger.info("🚀 Starting Screener: initial analysis + WebSocket price feed...")
+
+    # 啟動 Ticker WebSocket（連線到 OKX public endpoint）
+    await okx_ticker_ws_manager.start()
+
+    # 初始完整分析
+    await run_screener_analysis()
+
+    # 訂閱分析結果幣種到 WebSocket，之後由 push 更新價格
+    await _subscribe_screener_symbols_to_ws()
+
+    update_interval_sec = SCREENER_UPDATE_INTERVAL_MINUTES * 60
+    logger.info(f"Screener heavy analysis interval: {SCREENER_UPDATE_INTERVAL_MINUTES} min. Price feed: OKX WebSocket (real-time).")
+
+    # 定期重新分析（更新排名 / 訂閱清單），價格由 WS 持續推送
     while True:
-        # 每秒都嘗試更新價格
-        asyncio.create_task(update_screener_prices_fast())
-        
-        # 定期執行完整分析
-        if counter % update_interval_sec == 0:
-            asyncio.create_task(run_screener_analysis())
-            counter = 0 # Reset counter to prevent overflow
-        
-        counter += 1
-        await asyncio.sleep(1)
+        await asyncio.sleep(update_interval_sec)
+        await run_screener_analysis()
+        await _subscribe_screener_symbols_to_ws()

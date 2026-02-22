@@ -13,7 +13,7 @@ class CreatePostRequest(BaseModel):
     """發表文章請求"""
     board_slug: str = Field(..., description="看板 slug")
     category: str = Field(..., description="分類: analysis/question/tutorial/news/chat/insight")
-    title: str = Field(..., max_length=50, description="標題，限 50 字")
+    title: str = Field(..., max_length=200, description="標題，限 200 字")
     content: str = Field(..., description="內容")
     tags: Optional[List[str]] = Field(None, max_length=5, description="標籤，最多 5 個")
     payment_tx_hash: Optional[str] = Field(None, description="Pi 支付交易哈希（免費會員需提供）")
@@ -21,7 +21,7 @@ class CreatePostRequest(BaseModel):
 
 class UpdatePostRequest(BaseModel):
     """編輯文章請求"""
-    title: Optional[str] = Field(None, max_length=50)
+    title: Optional[str] = Field(None, max_length=200)
     content: Optional[str] = None
     category: Optional[str] = None
 

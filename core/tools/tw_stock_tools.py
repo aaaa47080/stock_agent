@@ -148,11 +148,11 @@ def tw_institutional(ticker: str) -> dict:
         # Extract code from ticker (e.g., "2330.TW" → "2330")
         code = ticker.split(".")[0]
         url = f"https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY?stockNo={code}"
-        resp = httpx.get(url, timeout=10)
+        resp = httpx.get(url, timeout=10, verify=False)
 
         # TWSE institutional API (3-party)
         inst_url = "https://openapi.twse.com.tw/v1/exchangeReport/MI_INDEX3"
-        inst_resp = httpx.get(inst_url, timeout=10, params={"stockNo": code})
+        inst_resp = httpx.get(inst_url, timeout=10, params={"stockNo": code}, verify=False)
 
         if inst_resp.status_code == 200:
             data = inst_resp.json()
@@ -172,8 +172,8 @@ def tw_institutional(ticker: str) -> dict:
         # Fallback: just return basic info
         return {
             "ticker": ticker,
-            "note":   "法人資料暫時無法取得，請稍後再試",
-            "source": "TWSE openapi",
+            "note":   "TWSE 法人 API 目前維護中或無法連線。若需外資或三大法人買賣超資訊，建議直接使用 web_search 工具搜尋「(股票代號或名稱) 外資買賣超」。",
+            "source": "TWSE openapi (失敗)",
         }
     except Exception as e:
         return {"ticker": ticker, "error": str(e)}
@@ -195,7 +195,7 @@ def tw_news(ticker: str, company_name: str = "", limit: int = 8) -> list:
         query = quote(f"{search_term} 股票")
         rss_url = f"https://news.google.com/rss/search?q={query}&hl=zh-TW&gl=TW&ceid=TW:zh-Hant"
 
-        resp = httpx.get(rss_url, timeout=10, follow_redirects=True)
+        resp = httpx.get(rss_url, timeout=10, follow_redirects=True, verify=False)
         if resp.status_code != 200:
             return []
 
@@ -218,3 +218,153 @@ def tw_news(ticker: str, company_name: str = "", limit: int = 8) -> list:
         return items
     except Exception as e:
         return [{"error": str(e)}]
+
+
+# ── TWSE OpenAPI Tools ────────────────────────────────────────────────────────
+
+TWSE_BASE = "https://openapi.twse.com.tw/v1"
+
+@tool
+def tw_major_news(limit: int = 10) -> list:
+    """獲取上市公司今日重大訊息（公告）清單。
+    資料來源：TWSE OpenAPI t187ap04_L。
+    包含公司代號、公司名稱、主旨、發言時間等。
+    limit: 回傳筆數上限（預設10）"""
+    try:
+        import httpx
+        resp = httpx.get(f"{TWSE_BASE}/opendata/t187ap04_L", timeout=15, verify=False)
+        data = resp.json() if resp.status_code == 200 else []
+        results = []
+        for item in (data or [])[:limit]:
+            subject = item.get("主旨 ", "").strip() or item.get("主旨", "").strip()
+            results.append({
+                "date":    item.get("發言日期", ""),
+                "time":    item.get("發言時間", ""),
+                "code":    item.get("公司代號", ""),
+                "name":    item.get("公司名稱", ""),
+                "subject": subject,
+                "rule":    item.get("符合條款", ""),
+            })
+        return results
+    except Exception as e:
+        return [{"error": str(e)}]
+
+
+@tool
+def tw_pe_ratio(code: str) -> dict:
+    """獲取台股個股本益比(P/E)、殖利率、股價淨值比(PBR)。
+    資料來源：TWSE OpenAPI BWIBBU_d（今日數據）。
+    code: 股票代號，如 '2330'（台積電）、'2317'（鴻海）"""
+    try:
+        import httpx
+        resp = httpx.get(f"{TWSE_BASE}/exchangeReport/BWIBBU_d", timeout=15, verify=False)
+        data = resp.json() if resp.status_code == 200 else []
+        matching = [d for d in (data or []) if d.get("Code", "") == code]
+        if not matching:
+            resp2 = httpx.get(f"{TWSE_BASE}/exchangeReport/BWIBBU_ALL", timeout=15, verify=False)
+            data2 = resp2.json() if resp2.status_code == 200 else []
+            matching = [d for d in (data2 or []) if d.get("Code", "") == code]
+        if not matching:
+            return {"code": code, "error": f"查無 {code} 的本益比資料（可能非上市股票）"}
+        d = matching[0]
+        return {
+            "code":           d.get("Code", code),
+            "name":           d.get("Name", ""),
+            "date":           d.get("Date", ""),
+            "pe_ratio":       d.get("PEratio", "N/A"),
+            "dividend_yield": d.get("DividendYield", "N/A"),
+            "pb_ratio":       d.get("PBratio", "N/A"),
+            "dividend_year":  d.get("DividendYear", ""),
+            "source":         "TWSE OpenAPI",
+        }
+    except Exception as e:
+        return {"code": code, "error": str(e)}
+
+
+@tool
+def tw_monthly_revenue(code: str = "") -> list:
+    """獲取台股上市公司月營業收入資料。
+    資料來源：TWSE OpenAPI t187ap05_L。
+    包含當月營收、月增率、年增率、累計營收。
+    code: 股票代號（如 '2330'），若為空字串則返回全市場前30筆"""
+    try:
+        import httpx
+        resp = httpx.get(f"{TWSE_BASE}/opendata/t187ap05_L", timeout=15, verify=False)
+        data = resp.json() if resp.status_code == 200 else []
+        if code:
+            data = [d for d in (data or []) if d.get("公司代號", "") == code]
+        else:
+            data = (data or [])[:30]
+        results = []
+        for item in data:
+            results.append({
+                "code":            item.get("公司代號", ""),
+                "name":            item.get("公司名稱", ""),
+                "industry":        item.get("產業別", ""),
+                "ym":              item.get("資料年月", ""),
+                "current_revenue": item.get("營業收入-當月營收", ""),
+                "mom_pct":         item.get("營業收入-上月比較增減(%)", ""),
+                "yoy_pct":         item.get("營業收入-去年當月增減(%)", ""),
+                "ytd_revenue":     item.get("累計營業收入-當月累計營收", ""),
+                "ytd_yoy_pct":     item.get("累計營業收入-前期比較增減(%)", ""),
+            })
+        return results
+    except Exception as e:
+        return [{"error": str(e)}]
+
+
+@tool
+def tw_dividend_info(code: str = "") -> list:
+    """獲取台股上市公司股利分派情形。
+    資料來源：TWSE OpenAPI t187ap45_L。
+    包含現金股利、配股、股東會日期等。
+    code: 股票代號（如 '2330'），若為空字串則返回近期所有公司前30筆"""
+    try:
+        import httpx
+        resp = httpx.get(f"{TWSE_BASE}/opendata/t187ap45_L", timeout=15, verify=False)
+        data = resp.json() if resp.status_code == 200 else []
+        if code:
+            data = [d for d in (data or []) if d.get("公司代號", "") == code]
+        else:
+            data = (data or [])[:30]
+        results = []
+        for item in data:
+            results.append({
+                "code":            item.get("公司代號", ""),
+                "name":            item.get("公司名稱", ""),
+                "year":            item.get("股利年度", ""),
+                "progress":        item.get("決議（擬議）進度", ""),
+                "board_date":      item.get("董事會（擬議）股利分派日", ""),
+                "shareholder_mtg": item.get("股東會日期", ""),
+                "cash_dividend":   item.get("股東配發-盈餘分配之現金股利(元/股)", ""),
+                "stock_dividend":  item.get("股東配發-盈餘轉增資配股(元/股)", ""),
+            })
+        return results
+    except Exception as e:
+        return [{"error": str(e)}]
+
+
+@tool
+def tw_foreign_holding_top20() -> list:
+    """獲取集中市場外資及陸資持股前 20 名彙總表。
+    資料來源：TWSE OpenAPI MI_QFIIS_sort_20。
+    包含持股比率、尚可投資比率、法令投資上限等。
+    適合用來了解外資最集中持股的台股標的。"""
+    try:
+        import httpx
+        resp = httpx.get(f"{TWSE_BASE}/fund/MI_QFIIS_sort_20", timeout=15, verify=False)
+        data = resp.json() if resp.status_code == 200 else []
+        results = []
+        for item in (data or []):
+            results.append({
+                "rank":          item.get("Rank", ""),
+                "code":          item.get("Code", ""),
+                "name":          item.get("Name", ""),
+                "held_pct":      item.get("SharesHeldPer", ""),
+                "available_pct": item.get("AvailableInvestPer", ""),
+                "upper_limit":   item.get("Upperlimit", ""),
+            })
+        return results
+    except Exception as e:
+        return [{"error": str(e)}]
+

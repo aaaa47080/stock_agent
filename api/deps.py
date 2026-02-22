@@ -155,17 +155,11 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
                 # Fallback to default test user if validation fails in TEST_MODE
                 user_id = None
 
-    # TEST_MODE Logic: Skip validation if token is missing or is a raw mock token
-    if TEST_MODE:
-        # Determine ID: Provided raw token OR Default from config
-        if not user_id:
-            user_id = TEST_USER.get("uid", "test-user-001")
-        
-        test_user_id = user_id
-        
+    # Fetch from DB for BOTH normal mode and test mode (if user_id is set)
+    if user_id:
         try:
             loop = asyncio.get_running_loop()
-            user = await loop.run_in_executor(None, get_user_by_id, test_user_id)
+            user = await loop.run_in_executor(None, get_user_by_id, user_id)
             
             if user:
                 if not user.get("is_active", True):
@@ -176,20 +170,24 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
                 return user
         except HTTPException:
             raise
-        except Exception as e:
-            # If database fetch fails, return mock user
+        except Exception:
+            # DB fetch fails or user doesn't exist
             pass
-        
-        # Return mock test user for development
+
+    # If we are in TEST_MODE, return mock test user when DB fetch fails or no token
+    if TEST_MODE:
+        if not user_id:
+            user_id = TEST_USER.get("uid", "test-user-001")
+            
         return {
-            "user_id": test_user_id,
-            "username": f"TestUser_{test_user_id[-3:]}", # Diff names: TestUser_001, TestUser_002
-            "pi_uid": test_user_id,
+            "user_id": user_id,
+            "username": f"TestUser_{user_id[-3:]}",
+            "pi_uid": user_id,
             "is_premium": False,
             "created_at": datetime.utcnow().isoformat(),
         }
     
-    # If not in TEST_MODE and no token provided
+    # If not in TEST_MODE and no valid user found
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",

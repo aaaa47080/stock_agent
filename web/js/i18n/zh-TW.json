@@ -64,6 +64,14 @@
     "systemLocked": "系統鎖定 - 請先設定 API 金鑰",
     "connecting": "連接中..."
   },
+  "crypto": {
+    "title": "加密貨幣"
+  },
+  "twstock": {
+    "title": "台股",
+    "comingSoon": "台股板塊即將登場",
+    "comingSoonDesc": "我們正在整合台股的即時數據。敬請期待這個市場的高級 AI 分析功能。"
+  },
   "market": {
     "title": "市場總覽",
     "filter": "篩選",

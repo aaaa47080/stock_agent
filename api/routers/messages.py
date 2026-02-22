@@ -136,12 +136,7 @@ async def get_conversations_endpoint(
     if current_user["user_id"] != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
     try:
-        # 驗證用戶存在
         loop = asyncio.get_running_loop()
-        user_exists = await loop.run_in_executor(None, get_user_by_id, user_id)
-        if not user_exists:
-            raise HTTPException(status_code=401, detail="用戶不存在")
-
         conversations = await loop.run_in_executor(
             None, 
             partial(get_conversations, user_id, limit=limit, offset=offset)

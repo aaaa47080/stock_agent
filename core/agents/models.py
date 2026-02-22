@@ -40,7 +40,7 @@ class SubTask:
     step: int
     description: str
     agent: str
-    tool_hint: Optional[str]
+    tool_hint: Optional[str] = None
     status: Literal["pending", "in_progress", "completed", "failed"] = "pending"
     result: Optional[AgentResult] = None
     context: dict = field(default_factory=dict)
@@ -61,7 +61,7 @@ class ExecutionContext:
     original_query: str
     complexity: TaskComplexity
     intent: str
-    symbols: List[str]
+    topics: List[str]
     plan: List[SubTask]
     user_clarifications: List[str] = field(default_factory=list)
     agent_results: List[AgentResult] = field(default_factory=list)

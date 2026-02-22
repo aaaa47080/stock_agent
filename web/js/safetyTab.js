@@ -11,7 +11,9 @@ const SafetyTab = {
 
     _getToken() {
         if (typeof AuthManager !== 'undefined' && AuthManager.currentUser) {
-            return AuthManager.currentUser.accessToken || null;
+            const user = AuthManager.currentUser;
+            const userId = user.user_id || user.uid;
+            return user.accessToken || user.piAccessToken || userId;
         }
         return localStorage.getItem('auth_token') || null;
     },

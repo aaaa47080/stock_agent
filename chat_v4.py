@@ -1,185 +1,193 @@
 #!/usr/bin/env python3
 """
-Agent V4 交互式聊天介面
+Agent V4 交互式聊天介面 (LangGraph 版)
 
-運行方式：
-    python3 chat_v4.py
+用法：
+    python chat_v4.py                     # 互動模式
+    python chat_v4.py "你好"              # 單次查詢
+    python chat_v4.py --debug "BTC 分析"  # 顯示 classify/plan 詳細資訊
 
-功能：
-- Manager Agent 統籌調度
-- 自動分類 → 規劃 → 執行 → 綜合
-- Codebook 自學習
-- 品質自動檢查
-- 真正的 Human-In-The-Loop
+互動模式快捷指令：
+    /help          — 說明
+    /status        — Agent / Tool / Codebook 狀態
+    /new           — 開啟新 session
+    /session       — 顯示目前 session_id
+    /debug on|off  — 切換 debug 模式
+    /exit /quit    — 退出
 """
 import sys
 import os
+import argparse
 import traceback
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
+from uuid import uuid4
 from datetime import datetime
-from typing import Optional
 
-from utils.llm_client import LLMClientFactory
-from core.agents import bootstrap, ManagerAgent
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 
-class ChatBotV4:
+# ── LLM 建立 ──────────────────────────────────────────────────────────────────
+
+def build_llm():
+    """從環境變數或 .env 讀取 API key，建立 LLM client。"""
+    api_key  = os.environ.get("OPENAI_API_KEY") or os.environ.get("LLM_API_KEY")
+    provider = os.environ.get("LLM_PROVIDER", "openai")
+
+    if not api_key:
+        env_file = os.path.join(os.path.dirname(__file__), ".env")
+        if os.path.exists(env_file):
+            with open(env_file) as f:
+                for line in f:
+                    line = line.strip()
+                    if "=" in line and not line.startswith("#"):
+                        k, v = line.split("=", 1)
+                        if k.strip() in ("OPENAI_API_KEY", "LLM_API_KEY"):
+                            api_key = v.strip().strip("'\"")
+                            break
+
+    if not api_key:
+        print("❌  找不到 API Key。\n"
+              "    請設定環境變數 OPENAI_API_KEY，或在 .env 加入 OPENAI_API_KEY=sk-...")
+        sys.exit(1)
+
+    from utils.user_client_factory import create_user_llm_client
+    return create_user_llm_client(provider=provider, api_key=api_key)
+
+
+# ── 查詢執行 ──────────────────────────────────────────────────────────────────
+
+def run_query(manager, query: str, session_id: str, debug: bool = False) -> str:
     """
-    Agent V4 交互式聊天機器人
-
-    特點：
-    - Manager Agent 統籌調度
-    - Codebook 自學習（重複問題自動加速）
-    - 品質自動檢查 + 自我修正
-    - Human-In-The-Loop 確認
+    執行單次查詢。
+    debug=True 時，在 LLM 回應後印出 classify/plan 細節。
     """
+    from langgraph.types import Command
 
-    def __init__(self, llm_client=None):
-        """初始化 ChatBot V4"""
-        self.llm_client = llm_client or LLMClientFactory.create_client("openai", "gpt-5-nano")
-        self.manager = bootstrap(self.llm_client)
-        self.session_id = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        self.message_count = 0
+    config  = {"configurable": {"thread_id": session_id}}
+    initial = {
+        "session_id":          session_id,
+        "query":               query,
+        "agent_results":       [],
+        "user_clarifications": [],
+        "retry_count":         0,
+    }
 
-    def process(self, query: str) -> str:
-        """處理使用者查詢"""
-        self.message_count += 1
-        return self.manager.process(query, self.session_id)
+    result = manager.graph.invoke(initial, config)
 
-    def print_banner(self):
-        """顯示歡迎訊息"""
-        print("""
-╔═══════════════════════════════════════════════════════════════╗
-║                                                               ║
-║     🤖 Agent V4 - 自學習多 Agent 協作系統                      ║
-║                                                               ║
-║     核心特性：                                                ║
-║       • Manager Agent 自動分類 → 規劃 → 執行                 ║
-║       • Codebook 自學習（重複問題自動加速）                    ║
-║       • 品質自檢 + 自我修正                                  ║
-║       • Human-In-The-Loop 確認                                ║
-║                                                               ║
-║     指令：                                                    ║
-║       /help     - 顯示幫助                                   ║
-║       /status   - 查看系統狀態                               ║
-║       /reset    - 重置會話                                   ║
-║       /quit     - 退出                                       ║
-║                                                               ║
-║     示例：                                                    ║
-║       "請給我 BTC 最新新聞"                                   ║
-║       "分析 ETH 技術面"                                       ║
-║       "你好"                                                  ║
-║       "PI Network 有什麼消息"                                 ║
-║                                                               ║
-╚═══════════════════════════════════════════════════════════════╝
-        """)
+    if debug:
+        _print_debug(result)
 
-    def show_help(self) -> str:
-        """顯示幫助"""
-        return """
-📖 Agent V4 使用說明
+    # ── CLI HITL loop ──
+    while result.get("__interrupt__"):
+        iv       = result["__interrupt__"][0].value
+        question = iv.get("question", "請回答：")
+        options  = iv.get("options")
+        print(f"\n🤔  {question}")
+        if options:
+            for i, o in enumerate(options, 1):
+                print(f"    {i}. {o}")
+        print()
+        try:
+            answer = input("你的回答 > ").strip()
+        except (EOFError, KeyboardInterrupt):
+            answer = ""
+        result = manager.graph.invoke(Command(resume=answer), config)
+        if debug:
+            _print_debug(result)
 
-基本使用：
-  直接輸入問題，系統會自動判斷需要調度哪些 Agent
+    return result.get("final_response") or "（無回應）"
 
-可用的 Sub-Agents：
-  • TechAgent  - 技術分析（RSI, MACD, 均線），含預計算訊號
-  • NewsAgent  - 多來源新聞搜集和分析
-  • ChatAgent  - 一般對話和問候
 
-V4 新功能：
-  • Codebook 自學習 - 類似問題會自動加速
-  • 品質自檢 - 自動檢查 Agent 輸出品質
-  • 自我修正 - 不滿意時自動重試
+def _print_debug(result: dict):
+    print(f"\n  ┌─ [debug] ────────────────────────────────")
+    print(f"  │  complexity : {result.get('complexity')}")
+    print(f"  │  intent     : {result.get('intent')}")
+    print(f"  │  topics     : {result.get('topics')}")
+    for i, t in enumerate(result.get("plan") or []):
+        print(f"  │  plan[{i}]    : [{t.get('agent')}] {t.get('description', '')[:60]}")
+    print(f"  └──────────────────────────────────────────")
 
-指令：
-  /help     - 顯示此幫助
-  /status   - 查看系統狀態
-  /reset    - 重置當前會話
-  /quit     - 退出程式
 
-範例對話：
-  > 你好
-  > 請給我 BTC 最新新聞
-  > 分析 ETH 技術面
-  > 深度分析 SOL
-        """
+# ── 互動模式 ──────────────────────────────────────────────────────────────────
 
-    def show_status(self) -> str:
-        """顯示系統狀態"""
-        status = self.manager.get_status()
-        agents_list = ", ".join(status.get("agents", []))
-        tools_list = ", ".join(status.get("tools", []))
-        cb = status.get("codebook", {})
+BANNER = """
+╔══════════════════════════════════════════════════════════╗
+║         🤖  Agent V4  —  LangGraph CLI 測試工具          ║
+╠══════════════════════════════════════════════════════════╣
+║  輸入問題直接送出，/help 查看指令                         ║
+╚══════════════════════════════════════════════════════════╝"""
 
-        return f"""
-📊 系統狀態
+def interactive(manager, debug: bool):
+    session_id = str(uuid4())
+    print(BANNER)
+    print(f"  session: {session_id[:8]}...\n")
 
-會話 ID: {self.session_id}
-訊息數量: {self.message_count}
+    while True:
+        try:
+            query = input("你 > ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\n再見！")
+            break
 
-Agents: {agents_list}
-Tools: {tools_list}
+        if not query:
+            continue
 
-Codebook: {cb.get('active', 0)} 條有效 / {cb.get('total', 0)} 條總計
-        """
-
-    def reset(self) -> str:
-        """重置會話"""
-        self.session_id = f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        self.message_count = 0
-        self.manager = bootstrap(self.llm_client)
-        return "🔄 會話已重置。開始新的對話吧！"
-
-    def run(self):
-        """運行交互循環"""
-        self.print_banner()
-
-        while True:
+        if query in ("/exit", "/quit"):
+            print("再見！")
+            break
+        elif query == "/help":
+            print(
+                "  /exit /quit    — 退出\n"
+                "  /status        — Agent / Tool / Codebook 狀態\n"
+                "  /new           — 開啟新 session\n"
+                "  /session       — 顯示 session_id\n"
+                "  /debug on|off  — 切換 debug 模式"
+            )
+        elif query == "/status":
+            s = manager.get_status()
+            print(f"  agents  : {s['agents']}")
+            print(f"  tools   : {s['tools']}")
+            print(f"  codebook: {s['codebook']}")
+        elif query == "/new":
+            session_id = str(uuid4())
+            print(f"  新 session: {session_id[:8]}...")
+        elif query == "/session":
+            print(f"  session: {session_id}")
+        elif query == "/debug on":
+            debug = True
+            print("  debug 已開啟")
+        elif query == "/debug off":
+            debug = False
+            print("  debug 已關閉")
+        else:
             try:
-                query = input("\n💬 > ").strip()
-
-                if not query:
-                    continue
-
-                # 處理指令
-                if query.startswith("/"):
-                    cmd = query.lower().strip()
-
-                    if cmd == "/help":
-                        print(self.show_help())
-                        continue
-                    elif cmd == "/status":
-                        print(self.show_status())
-                        continue
-                    elif cmd == "/reset":
-                        print(self.reset())
-                        continue
-                    elif cmd == "/quit":
-                        print("\n👋 再見！感謝使用 Agent V4！")
-                        break
-                    else:
-                        print(f"❓ 未知指令: {cmd}\n輸入 /help 查看可用指令")
-                        continue
-
-                # 處理查詢
-                print()
-                result = self.process(query)
-                print(result)
-
-            except KeyboardInterrupt:
-                print("\n\n👋 再見！")
-                break
+                response = run_query(manager, query, session_id, debug=debug)
+                print(f"\n助手 > {response}\n")
             except Exception as e:
-                traceback.print_exc()
-                print(f"\n❌ 錯誤: {e}")
+                print(f"\n❌ 錯誤: {e}\n")
+                if debug:
+                    traceback.print_exc()
 
+
+# ── 入口 ─────────────────────────────────────────────────────────────────────
 
 def main():
-    """主函數"""
-    bot = ChatBotV4()
-    bot.run()
+    parser = argparse.ArgumentParser(description="V4 Agent CLI 測試")
+    parser.add_argument("query", nargs="?", help="單次查詢（省略則進入互動模式）")
+    parser.add_argument("--debug", "-d", action="store_true", help="顯示 classify/plan 細節")
+    args = parser.parse_args()
+
+    print("載入 V4 Agent...", end=" ", flush=True)
+    llm     = build_llm()
+    from core.agents.bootstrap import bootstrap
+    manager = bootstrap(llm, web_mode=False)  # CLI 模式：HITL 可讀 stdin
+    print("✅\n")
+
+    if args.query:
+        session_id = str(uuid4())
+        resp = run_query(manager, args.query, session_id, debug=args.debug)
+        print(f"\n助手 > {resp}")
+    else:
+        interactive(manager, debug=args.debug)
 
 
 if __name__ == "__main__":

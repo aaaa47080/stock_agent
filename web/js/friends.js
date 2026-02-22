@@ -1137,7 +1137,7 @@ const SocialHub = {
                     </div>
                 </div>
                 <!-- 刪除對話按鈕（hover 時顯示，右下位置避免與時間重疊） -->
-                <button onclick="event.stopPropagation(); SocialHub.deleteConversation(${conv.id})"
+                <button onclick="event.stopPropagation(); SocialHub.deleteConversation(${conv.id}, this)"
                         class="absolute right-3 bottom-3 p-1.5 text-textMuted/40 hover:text-danger opacity-0 group-hover:opacity-100 transition-all duration-200"
                         title="刪除對話">
                     <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
@@ -1289,19 +1289,19 @@ const SocialHub = {
         // 對方的訊息：只有刪除（只對自己隱藏）
         const msgActions = isMe ? `
             <div class="absolute ${isMe ? '-left-16' : '-right-16'} top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                <button onclick="event.stopPropagation(); SocialHub.recallMessage(${msg.id})"
-                        class="p-1 text-textMuted/50 hover:text-warning transition" title="收回訊息">
+                <button onclick="event.stopPropagation(); SocialHub.recallMessage(${msg.id}, this)"
+                        class="p-1 text-textMuted/50 hover:text-warning transition disabled:opacity-50 disabled:cursor-not-allowed" title="收回訊息">
                     <i data-lucide="undo-2" class="w-3.5 h-3.5"></i>
                 </button>
-                <button onclick="event.stopPropagation(); SocialHub.hideMessage(${msg.id})"
-                        class="p-1 text-textMuted/50 hover:text-danger transition" title="刪除（只對自己）">
+                <button onclick="event.stopPropagation(); SocialHub.hideMessage(${msg.id}, this)"
+                        class="p-1 text-textMuted/50 hover:text-danger transition disabled:opacity-50 disabled:cursor-not-allowed" title="刪除（只對自己）">
                     <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                 </button>
             </div>
         ` : `
             <div class="absolute ${isMe ? '-left-8' : '-right-8'} top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition">
-                <button onclick="event.stopPropagation(); SocialHub.hideMessage(${msg.id})"
-                        class="p-1 text-textMuted/50 hover:text-danger transition" title="刪除（只對自己）">
+                <button onclick="event.stopPropagation(); SocialHub.hideMessage(${msg.id}, this)"
+                        class="p-1 text-textMuted/50 hover:text-danger transition disabled:opacity-50 disabled:cursor-not-allowed" title="刪除（只對自己）">
                     <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                 </button>
             </div>
@@ -1323,8 +1323,10 @@ const SocialHub = {
     /**
      * 收回訊息
      */
-    recallMessage: async function (messageId) {
+    recallMessage: async function (messageId, btnElement) {
         if (!confirm('確定要收回這條訊息嗎？對方會看到「對方已收回訊息」')) return;
+
+        if (btnElement) btnElement.disabled = true;
 
         try {
             const myId = FriendsAPI._getUserId();
@@ -1365,14 +1367,17 @@ const SocialHub = {
             } else {
                 alert(e.message || '收回失敗');
             }
+            if (btnElement) btnElement.disabled = false;
         }
     },
 
     /**
      * 隱藏訊息（只對自己隱藏）
      */
-    hideMessage: async function (messageId) {
+    hideMessage: async function (messageId, btnElement) {
         if (!confirm('確定要刪除這條訊息嗎？（只對你隱藏，對方仍可見）')) return;
+
+        if (btnElement) btnElement.disabled = true;
 
         try {
             const myId = FriendsAPI._getUserId();
@@ -1403,13 +1408,14 @@ const SocialHub = {
             } else {
                 alert(e.message || '刪除失敗');
             }
+            if (btnElement) btnElement.disabled = false;
         }
     },
 
     /**
      * 刪除對話（隱藏整段對話）
      */
-    deleteConversation: async function (conversationId) {
+    deleteConversation: async function (conversationId, btnElement) {
         // 使用平台風格的確認對話框
         const confirmed = typeof showConfirm === 'function'
             ? await showConfirm({
@@ -1422,6 +1428,8 @@ const SocialHub = {
             : confirm('確定要刪除這段對話嗎？所有訊息將從列表中移除。\n（之後如需再聊，會是乾淨的聊天室）');
 
         if (!confirmed) return;
+
+        if (btnElement) btnElement.disabled = true;
 
         try {
             const myId = FriendsAPI._getUserId();
@@ -1495,6 +1503,7 @@ const SocialHub = {
             } else {
                 alert(e.message || '刪除失敗');
             }
+            if (btnElement) btnElement.disabled = false;
         }
     },
 

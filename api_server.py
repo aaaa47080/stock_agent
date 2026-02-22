@@ -45,6 +45,13 @@ logging.basicConfig(
     handlers=[file_handler, console_handler]
 )
 
+# 靜音 Windows asyncio WinError 10054（客戶端斷線時的無害噪音）
+class _SuppressWinError10054(logging.Filter):
+    def filter(self, record):
+        return 'WinError 10054' not in (record.getMessage())
+
+logging.getLogger('asyncio').addFilter(_SuppressWinError10054())
+
 # Import from refactored modules
 from api.utils import logger
 import api.globals as globals
@@ -54,7 +61,7 @@ from api.services import (
     update_market_pulse_task,
     funding_rate_update_task
 )
-from api.routers import system, analysis, market, trading, user, agents
+from api.routers import system, analysis, market, trading, user, agents, twstock
 from api.routers.forum import router as forum_router
 from api.routers.premium import router as premium_router
 from api.routers.admin import router as admin_router
@@ -163,6 +170,14 @@ async def lifespan(app: FastAPI):
     # Shutdown: Clean up resources
     logger.info("🛑 Shutting down application...")
     
+    # 關閉 Screener Ticker WebSocket
+    try:
+        from data.okx_websocket import okx_ticker_ws_manager
+        await okx_ticker_ws_manager.stop()
+        logger.info("✅ Screener Ticker WebSocket 已關閉")
+    except Exception as e:
+        logger.error(f"❌ 關閉 Ticker WebSocket 時出錯: {e}")
+
     # 關閉數據庫連接池
     try:
         from core.database import close_all_connections
@@ -308,6 +323,7 @@ SERVICE_START_TIME = time.time()
 app.include_router(system.router)
 app.include_router(analysis.router)
 app.include_router(market.router)
+app.include_router(twstock.router)
 app.include_router(trading.router)
 app.include_router(user.router)
 app.include_router(agents.router)  # Agent 管理 API
@@ -436,10 +452,9 @@ class CachedStaticFiles(StaticFiles):
     
     def file_response(self, *args, **kwargs):
         response = super().file_response(*args, **kwargs)
-        # 設置緩存 1 天 (86400 秒)
-        # public: 允許中間代理緩存
-        # max-age: 瀏覽器緩存時長
-        response.headers["Cache-Control"] = "public, max-age=86400"
+        # 設置緩存 1 天 (86400 秒) -> 改為 0 (No Cache) 以便調試
+        # response.headers["Cache-Control"] = "public, max-age=86400"
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         return response
 
 if os.path.exists("web"):

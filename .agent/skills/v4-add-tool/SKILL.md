@@ -1,56 +1,65 @@
 ---
 name: Add V4 Tool
-description: How to add a new @tool function to the Agent V4 system. Use when the user asks to add a new tool or capability.
+description: How to add a new tool function to the Agent V4 system. Use when the user asks to add a new tool or capability.
 ---
 
-# Add a New @tool to Agent V4
+# Add a New Tool to Agent V4
 
-Follow these steps exactly to add a new tool.
+Follow these steps to add a new tool using the `ToolRegistry`.
 
-## Step 1: Add @tool function to `core/agents/tools.py`
+## Step 1: Add tool function to `core/agents/tools.py`
 
-Add a new function with the `@tool` decorator. The docstring becomes the tool description used by the LLM classifier.
+Define a standard Python function. Type hints and docstrings are crucial.
 
 ```python
-@tool
-def new_tool_name(param1: str = "default", param2: int = 5) -> dict:
-    """清晰描述這個工具做什麼（中文或英文皆可）"""
+def new_tool_name(param1: str, param2: int = 5) -> dict:
+    """
+    清晰描述這個工具做什麼。
+    LLM 會閱讀此描述來決定是否使用。
+    """
     # Implementation here
-    return {"result": ...}
+    return {"result": f"processed {param1}"}
 ```
 
 **Rules:**
-- Function name = tool name (snake_case)
-- Docstring = LLM sees this to decide when to use the tool
-- Parameters must have type hints and defaults
-- Return type should be `dict`, `list`, or `str`
+- Function name = snake_case
+- Docstring = Tool description for LLM
+- Arguments = Must have type hints
 
-## Step 2: Add to ALL_TOOLS list
+## Step 2: Register in `core/agents/bootstrap.py`
 
-In the same `tools.py`, add the new tool to `ALL_TOOLS`:
-
-```python
-ALL_TOOLS = [
-    google_news, aggregate_news,
-    technical_analysis, price_data, get_crypto_price,
-    new_tool_name,  # ← add here
-]
-```
-
-## Step 3: Assign to agent(s) in `core/agents/bootstrap.py`
-
-Import the tool and add it to the relevant agent's tool list:
+Import the function and register it with `ToolMetadata`.
 
 ```python
 from .tools import ..., new_tool_name
 
-# Add to the agent that should use it
-tech = TechAgent(llm_client, [technical_analysis, price_data, get_crypto_price, new_tool_name], hitl)
+def bootstrap(...):
+    # ...
+    # Register the tool
+    tool_registry.register(ToolMetadata(
+        name="new_tool_name",
+        description="描述工具用途（通常複製 docstring）",
+        input_schema={"param1": "str", "param2": "int"},
+        handler=new_tool_name,
+        allowed_agents=["technical", "full_analysis"], # 限制哪些 Agent 可用
+    ))
 ```
 
-## Step 4: Use in agent's execute() (if needed)
+## Step 3: Update Agent Capability (Optional)
 
-In the agent's `execute()` method, call the tool:
+If this is a major new capability, update the Agent's description in `bootstrap.py` so the Manager knows to route relevant queries to it.
+
+```python
+agent_registry.register(tech, AgentMetadata(
+    # ...
+    allowed_tools=["technical_analysis", "new_tool_name"], # Ensure it's in allowed list (if strict check enabled)
+))
+```
+*Note: `ToolRegistry` checks `allowed_agents` on the tool side, but keeping AgentMetadata aligned is good practice.*
+
+## Step 4: Use in Agent (if custom logic needed)
+
+Agents can call tools via `self._use_tool()`:
 
 ```python
 result = self._use_tool("new_tool_name", {"param1": "value"})
@@ -60,17 +69,6 @@ if result.success:
 
 ## Step 5: Verify
 
-Run:
 ```bash
-python -c "from core.agents.bootstrap import bootstrap; from utils.llm_client import LLMClientFactory; llm = LLMClientFactory.create_client('openai', 'gpt-4o-mini'); m = bootstrap(llm); print('Tools:', [t.name for t in m.all_tools])"
+python -c "from core.agents.bootstrap import bootstrap; from utils.llm_client import LLMClientFactory; llm = LLMClientFactory.create_client('openai', 'gpt-4o-mini'); m = bootstrap(llm); print('Tools:', [t.name for t in m.tool_registry.list_all_tools()])"
 ```
-
-## Files Changed
-
-| File | Change |
-|---|---|
-| `core/agents/tools.py` | Add `@tool` function + `ALL_TOOLS` |
-| `core/agents/bootstrap.py` | Add tool to agent's list |
-| `core/agents/agents/xxx_agent.py` | Optional: `_use_tool()` call |
-| **prompts** | **No change needed** |
-| **manager.py** | **No change needed** |

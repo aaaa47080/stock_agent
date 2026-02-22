@@ -16,6 +16,9 @@ from .manager import ManagerAgent
 from .tools import (
     technical_analysis, price_data, get_crypto_price,
     google_news, aggregate_news, web_search,
+    get_fear_and_greed_index, get_trending_tokens, get_futures_data,
+    get_current_time_taipei, get_defillama_tvl, get_crypto_categories_and_gainers,
+    get_token_unlocks, get_token_supply,
     tw_price, tw_technical, tw_fundamentals_tool, tw_institutional_tool, tw_news_tool,
 )
 
@@ -42,6 +45,14 @@ class LanguageAwareLLM:
         else:
             messages.insert(0, SystemMessage(content=self._lang_msg))
         return self._llm.invoke(messages, **kwargs)
+
+    def bind_tools(self, tools, **kwargs):
+        """Delegate bind_tools but preserve language injection in the returned wrapper."""
+        bound = self._llm.bind_tools(tools, **kwargs)
+        wrapper = LanguageAwareLLM.__new__(LanguageAwareLLM)
+        wrapper._llm = bound
+        wrapper._lang_msg = self._lang_msg
+        return wrapper
 
     def __getattr__(self, name):
         return getattr(self._llm, name)
@@ -90,6 +101,62 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW") -> Ma
         allowed_agents=["technical", "crypto", "chat", "full_analysis", "manager"],
     ))
     tool_registry.register(ToolMetadata(
+        name="get_fear_and_greed_index",
+        description="獲取全球加密貨幣市場恐慌與貪婪指數 (Fear & Greed Index)",
+        input_schema={},
+        handler=get_fear_and_greed_index,
+        allowed_agents=["crypto", "chat", "manager"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="get_trending_tokens",
+        description="獲取目前全網最熱門搜尋的加密貨幣 (Trending Tokens)",
+        input_schema={},
+        handler=get_trending_tokens,
+        allowed_agents=["crypto", "chat", "manager"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="get_futures_data",
+        description="獲取加密貨幣永續合約的資金費率與多空情緒 (Funding Rates)",
+        input_schema={"symbol": "str"},
+        handler=get_futures_data,
+        allowed_agents=["crypto"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="get_current_time_taipei",
+        description="獲取目前台灣/UTC+8的精準時間與日期",
+        input_schema={},
+        handler=get_current_time_taipei,
+        allowed_agents=["crypto", "chat", "tw_stock", "manager"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="get_defillama_tvl",
+        description="從 DefiLlama 獲取特定協議或公鏈的 TVL (總鎖倉價值)",
+        input_schema={"protocol_name": "str"},
+        handler=get_defillama_tvl,
+        allowed_agents=["crypto", "manager"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="get_crypto_categories_and_gainers",
+        description="獲取 CoinGecko 上表現最佳的加密貨幣板塊與熱點 (Sectors)",
+        input_schema={},
+        handler=get_crypto_categories_and_gainers,
+        allowed_agents=["crypto", "manager"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="get_token_unlocks",
+        description="獲取代幣未來的解鎖日程與數量 (Token Unlocks)。當需要評估代幣拋壓時使用。",
+        input_schema={"symbol": "str"},
+        handler=get_token_unlocks,
+        allowed_agents=["crypto", "manager"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="get_token_supply",
+        description="獲取代幣的總發行量、最大供應量與目前市場流通量 (Tokenomics)。",
+        input_schema={"symbol": "str"},
+        handler=get_token_supply,
+        allowed_agents=["crypto", "manager"],
+    ))
+    tool_registry.register(ToolMetadata(
         name="web_search",
         description="通用網絡搜索 (DuckDuckGo)",
         input_schema={"query": "str", "purpose": "str"},
@@ -103,7 +170,7 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW") -> Ma
         description="獲取台股即時價格和近期 OHLCV",
         input_schema={"ticker": "str"},
         handler=tw_price,
-        allowed_agents=["tw_stock"],
+        allowed_agents=["tw_stock", "chat"],
     ))
     tool_registry.register(ToolMetadata(
         name="tw_technical_analysis",
@@ -139,35 +206,42 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW") -> Ma
 
     # ── Create Agents ──
 
-    # Legacy agents (kept for backward compatibility; not routed by default)
-    tech = TechAgent(lang_llm, tool_registry)
-    agent_registry.register(tech, AgentMetadata(
-        name="technical",
-        display_name="Tech Agent (Legacy)",
-        description="[Legacy] 加密貨幣技術分析。新查詢請使用 crypto agent。",
-        capabilities=["RSI", "MACD", "MA", "technical analysis"],
-        allowed_tools=["technical_analysis", "price_data", "get_crypto_price"],
-        priority=1,
-    ))
+    # Legacy agents (hidden from LLM classify; kept for backward compatibility via direct name lookup)
+    # tech = TechAgent(lang_llm, tool_registry)
+    # agent_registry.register(tech, AgentMetadata(
+    #     name="technical",
+    #     display_name="Tech Agent (Legacy)",
+    #     description="[Legacy] 加密貨幣技術分析。新查詢請使用 crypto agent。",
+    #     capabilities=["RSI", "MACD", "MA", "technical analysis"],
+    #     allowed_tools=["technical_analysis", "price_data", "get_crypto_price"],
+    #     priority=1,
+    #     hidden=True,
+    # ))
 
-    news = NewsAgent(lang_llm, tool_registry)
-    agent_registry.register(news, AgentMetadata(
-        name="news",
-        display_name="News Agent (Legacy)",
-        description="[Legacy] 加密貨幣新聞。新查詢請使用 crypto agent。",
-        capabilities=["news", "新聞"],
-        allowed_tools=["google_news", "aggregate_news", "web_search"],
-        priority=1,
-    ))
+    # news = NewsAgent(lang_llm, tool_registry)
+    # agent_registry.register(news, AgentMetadata(
+    #     name="news",
+    #     display_name="News Agent (Legacy)",
+    #     description="[Legacy] 加密貨幣新聞。新查詢請使用 crypto agent。",
+    #     capabilities=["news", "新聞"],
+    #     allowed_tools=["google_news", "aggregate_news", "web_search"],
+    #     priority=1,
+    #     hidden=True,
+    # ))
 
     # New unified agents
     crypto = CryptoAgent(lang_llm, tool_registry)
     agent_registry.register(crypto, AgentMetadata(
         name="crypto",
         display_name="Crypto Agent",
-        description="加密貨幣全方位分析 — 技術指標（RSI/MACD/均線）+ 即時新聞。適合 BTC/ETH/SOL 等加密貨幣的技術分析、新聞查詢、整體分析。",
-        capabilities=["RSI", "MACD", "MA", "technical analysis", "crypto news", "加密貨幣", "技術指標", "K線", "加密貨幣新聞"],
-        allowed_tools=["technical_analysis", "price_data", "get_crypto_price", "google_news", "aggregate_news", "web_search"],
+        description="加密貨幣專業分析師 — 提供即時價格、時間、技術指標、合約資金費率、解鎖日程(Unlocks)、代幣發行流通量(Supply)、恐慌貪婪指數、全網熱門幣種、TVL鎖倉量、最強板塊與最新新聞。不直接提供交易決策。",
+        capabilities=["RSI", "MACD", "MA", "technical analysis", "crypto news", "加密貨幣", "技術指標", "資金費率", "恐慌貪婪指數", "熱門幣種", "多空情緒", "TVL", "板塊", "時間", "解鎖", "unlock", "流通量", "發行量", "supply"],
+        allowed_tools=[
+            "get_current_time_taipei", "technical_analysis", "price_data", "get_crypto_price", 
+            "google_news", "aggregate_news", "web_search",
+            "get_fear_and_greed_index", "get_trending_tokens", "get_futures_data",
+            "get_defillama_tvl", "get_crypto_categories_and_gainers", "get_token_unlocks", "get_token_supply"
+        ],
         priority=10,
     ))
 
@@ -175,29 +249,29 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW") -> Ma
     agent_registry.register(tw, AgentMetadata(
         name="tw_stock",
         display_name="TW Stock Agent",
-        description="台灣股市全方位分析 — 即時價格、技術指標（RSI/MACD/KD/均線）、基本面（P/E/EPS）、三大法人籌碼、台股新聞。適合台積電、鴻海、聯發科等台股查詢，接受股票代號（2330）或公司名稱（台積電）。",
-        capabilities=["台股", "台灣股市", "上市", "上櫃", "股票代號", "RSI", "MACD", "KD", "均線", "本益比", "EPS", "外資", "投信", "法人", "籌碼"],
-        allowed_tools=["tw_stock_price", "tw_technical_analysis", "tw_fundamentals", "tw_institutional", "tw_news"],
+        description="台灣股市全方位分析 — 即時價格、時間、技術指標（RSI/MACD/KD/均線）、基本面（P/E/EPS）、三大法人籌碼、台股新聞。適合台積電、鴻海、聯發科等台股查詢，接受股票代號（2330）或公司名稱（台積電）。",
+        capabilities=["台股", "台灣股市", "上市", "上櫃", "股票代號", "RSI", "MACD", "KD", "均線", "本益比", "EPS", "外資", "投信", "法人", "籌碼", "股價", "台股股價", "即時股價", "時間"],
+        allowed_tools=["get_current_time_taipei", "tw_stock_price", "tw_technical_analysis", "tw_fundamentals", "tw_institutional", "tw_news", "web_search"],
         priority=10,
     ))
 
-    us = USStockAgent(lang_llm, tool_registry)
-    agent_registry.register(us, AgentMetadata(
-        name="us_stock",
-        display_name="US Stock Agent",
-        description="美股分析（開發中）— 識別 NYSE/NASDAQ 股票代號，提供基本信息。適合 AAPL/TSLA/TSM 等美股查詢。",
-        capabilities=["美股", "US stock", "NYSE", "NASDAQ", "AAPL", "TSLA", "TSM", "NVDA"],
-        allowed_tools=[],
-        priority=5,
-    ))
+    # us = USStockAgent(lang_llm, tool_registry)
+    # agent_registry.register(us, AgentMetadata(
+    #     name="us_stock",
+    #     display_name="US Stock Agent",
+    #     description="美股分析（開發中）— 識別 NYSE/NASDAQ 股票代號，提供基本信息。適合 AAPL/TSLA/TSM 等美股查詢。",
+    #     capabilities=["美股", "US stock", "NYSE", "NASDAQ", "AAPL", "TSLA", "TSM", "NVDA"],
+    #     allowed_tools=[],
+    #     priority=5,
+    # ))
 
     chat = ChatAgent(lang_llm, tool_registry)
     agent_registry.register(chat, AgentMetadata(
         name="chat",
         display_name="Chat Agent",
-        description="一般對話助手 — 處理閒聊、問候、自我介紹、平台使用說明、即時價格查詢、一般知識問答，以及主觀意見問題。不負責主動搜尋新聞或執行技術分析。",
-        capabilities=["conversation", "greeting", "help", "general knowledge", "price lookup", "即時價格", "平台說明", "閒聊"],
-        allowed_tools=["get_crypto_price", "web_search"],
+        description="一般對話助手 — 處理閒聊、問候、自我介紹、平台使用說明、系統時間查詢、即時價格查詢、一般知識問答，以及主觀意見問題。不負責主動搜尋新聞或執行技術分析。",
+        capabilities=["conversation", "greeting", "help", "general knowledge", "price lookup", "即時價格", "平台說明", "閒聊", "時間", "現在幾點"],
+        allowed_tools=["get_current_time_taipei", "get_crypto_price", "web_search"],
         priority=1,
     ))
 

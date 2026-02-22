@@ -15,6 +15,7 @@ class AgentMetadata:
     capabilities: List[str]
     allowed_tools: List[str]
     priority: int = 0
+    hidden: bool = False   # If True, excluded from LLM classify prompt
 
 
 class AgentRegistry:
@@ -39,6 +40,8 @@ class AgentRegistry:
     def agents_info_for_prompt(self) -> str:
         lines = []
         for m in self.list_all():
+            if m.hidden:
+                continue
             caps = ", ".join(m.capabilities)
             lines.append(f"- {m.name}: {m.description} (capabilities: {caps})")
         return "\n".join(lines)

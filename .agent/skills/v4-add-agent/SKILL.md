@@ -123,8 +123,8 @@ If the agent needs new tools, follow the **Add V4 Tool** skill first.
 from .agents import ..., NewAgent
 from .tools import ..., new_tool  # if new tools were created
 
-# Create agent with its tools
-new_agent = NewAgent(llm_client, [new_tool, get_crypto_price], hitl)
+# Create agent with tool registry
+new_agent = NewAgent(llm_client, tool_registry, hitl)
 agent_registry.register(new_agent, AgentMetadata(
     name="new_agent_name",       # must match agent's name property
     display_name="New Agent",

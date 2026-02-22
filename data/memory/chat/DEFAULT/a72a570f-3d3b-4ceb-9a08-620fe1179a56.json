@@ -1,0 +1,26 @@
+{
+  "id": "a72a570f-3d3b-4ceb-9a08-620fe1179a56",
+  "query": "你好",
+  "intent": "chat",
+  "topics": [],
+  "plan": [
+    {
+      "step": 1,
+      "description": "你好",
+      "agent": "chat",
+      "tool_hint": null,
+      "status": "completed",
+      "result": null,
+      "context": {
+        "history": "這是新對話的開始"
+      }
+    }
+  ],
+  "complexity": "simple",
+  "created_at": "2026-02-17T01:51:11.175655",
+  "ttl_days": 90,
+  "use_count": 0,
+  "fail_count": 0,
+  "replaced_by": null,
+  "correction_reason": null
+}

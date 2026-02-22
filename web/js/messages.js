@@ -23,7 +23,9 @@ const MessagesAPI = {
      */
     _getToken() {
         if (typeof AuthManager !== 'undefined' && AuthManager.currentUser) {
-            return AuthManager.currentUser.accessToken;
+            const user = AuthManager.currentUser;
+            const userId = user.user_id || user.uid;
+            return user.accessToken || user.piAccessToken || userId;
         }
         return null;
     },
@@ -574,8 +576,8 @@ const MessagesUI = {
 
         // 收回按鈕（只有自己的訊息可以收回）
         const recallBtn = isMine ? `
-            <button onclick="event.stopPropagation(); MessagesPage.recallMessage(${msg.id})"
-                    class="p-1 text-textMuted/30 hover:text-warning opacity-0 group-hover:opacity-100 transition"
+            <button onclick="event.stopPropagation(); MessagesPage.recallMessage(${msg.id}, this)"
+                    class="p-1 text-textMuted/30 hover:text-warning opacity-0 group-hover:opacity-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
                     title="收回訊息">
                 <i data-lucide="undo-2" class="w-3.5 h-3.5"></i>
             </button>

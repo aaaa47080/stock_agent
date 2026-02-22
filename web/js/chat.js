@@ -20,6 +20,13 @@ function appendMessage(role, content) {
 
     if (role === 'bot') {
         div.innerHTML = md.render(content);
+        // Wrap tables in overflow-x container for proper horizontal scroll + border styling
+        div.querySelectorAll('table').forEach(table => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'table-wrapper';
+            table.parentNode.insertBefore(wrapper, table);
+            wrapper.appendChild(table);
+        });
         const match = content.match(/\b([A-Z]{2,5})\b/);
         if (match && !content.includes('載入中') && !content.includes('Error')) {
             const symbol = match[1];
@@ -139,7 +146,7 @@ async function loadSessions() {
                     </button>
                     <div class="flex-1"></div>
                     <span class="text-[10px] text-textMuted/50">${selectedSessions.size} 已選</span>
-                    <button onclick="deleteSelectedSessions()" class="p-1.5 ${selectedSessions.size > 0 ? 'text-danger hover:bg-danger/10' : 'text-textMuted/30 cursor-not-allowed'} rounded-lg transition" ${selectedSessions.size === 0 ? 'disabled' : ''} title="刪除已選">
+                    <button onclick="deleteSelectedSessions(this)" class="p-1.5 ${selectedSessions.size > 0 ? 'text-danger hover:bg-danger/10' : 'text-textMuted/30 cursor-not-allowed'} rounded-lg transition" ${selectedSessions.size === 0 ? 'disabled' : ''} title="刪除已選">
                         <i data-lucide="trash-2" class="w-4 h-4"></i>
                     </button>
                     <button onclick="exitEditMode()" class="p-1.5 text-textMuted hover:text-secondary hover:bg-white/5 rounded-lg transition" title="完成">
@@ -213,8 +220,10 @@ async function loadSessions() {
 
         // 更新收藏區的 chevron 樣式
         updateStarredChevron();
+        return data.sessions || [];
     } catch (e) {
         console.error("Failed to load sessions:", e);
+        return [];
     }
 }
 
@@ -223,6 +232,7 @@ function createSessionItem(session) {
     const isActive = session.id === currentSessionId;
     const isSelected = selectedSessions.has(session.id);
     const div = document.createElement('div');
+    div.dataset.sessionId = session.id;
     div.className = `group flex items-center gap-2 p-3 rounded-xl cursor-pointer transition text-sm mb-1 ${isActive ? 'bg-surfaceHighlight text-primary' : 'hover:bg-white/5 text-textMuted hover:text-secondary'} ${isSelected ? 'bg-primary/10 border border-primary/20' : ''}`;
 
     if (isEditMode) {
@@ -327,7 +337,7 @@ function toggleSelectAll() {
     loadSessions();
 }
 
-async function deleteSelectedSessions() {
+async function deleteSelectedSessions(btnElement) {
     if (selectedSessions.size === 0) return;
 
     const count = selectedSessions.size;
@@ -340,6 +350,11 @@ async function deleteSelectedSessions() {
     });
 
     if (!confirmed) return;
+
+    if (btnElement) {
+        btnElement.disabled = true;
+        btnElement.classList.add('opacity-50', 'cursor-not-allowed');
+    }
 
     try {
         const token = AuthManager.currentUser.accessToken;
@@ -363,6 +378,10 @@ async function deleteSelectedSessions() {
         await loadSessions();
     } catch (e) {
         console.error("Failed to delete sessions:", e);
+        if (btnElement) {
+            btnElement.disabled = false;
+            btnElement.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
     }
 }
 
@@ -444,6 +463,20 @@ function showWelcomeScreen() {
     lucide.createIcons();
 }
 
+// 直接更新側邊欄的 active 高亮，不重新拉取 sessions
+function updateSessionActiveState(newSessionId) {
+    document.querySelectorAll('[data-session-id]').forEach(el => {
+        const isActive = el.dataset.sessionId === newSessionId;
+        if (isActive) {
+            el.classList.add('bg-surfaceHighlight', 'text-primary');
+            el.classList.remove('hover:bg-white/5', 'text-textMuted', 'hover:text-secondary');
+        } else {
+            el.classList.remove('bg-surfaceHighlight', 'text-primary');
+            el.classList.add('hover:bg-white/5', 'text-textMuted', 'hover:text-secondary');
+        }
+    });
+}
+
 async function switchSession(sessionId) {
     if (sessionId === currentSessionId) return;
 
@@ -461,8 +494,8 @@ async function switchSession(sessionId) {
         switchTab('chat');
     }
 
-    // Update sidebar active state
-    await loadSessions();
+    // 直接更新 DOM active 狀態，省掉一次 GET /api/chat/sessions
+    updateSessionActiveState(sessionId);
 
     // Load history
     await loadChatHistory(sessionId);
@@ -476,6 +509,7 @@ async function switchSession(sessionId) {
 
 async function deleteSession(event, sessionId) {
     event.stopPropagation();
+    const btnElement = event.currentTarget;
 
     const confirmed = await showConfirmDialog({
         title: '刪除對話',
@@ -487,45 +521,54 @@ async function deleteSession(event, sessionId) {
 
     if (!confirmed) return;
 
+    if (btnElement) {
+        btnElement.disabled = true;
+        btnElement.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+
+    // ── Step 1: Optimistic UI — remove immediately, find next session ──────────
+    const sessionDiv = event.target.closest('[data-session-id]');
+    let nextSessionId = null;
+
+    if (sessionDiv) {
+        const allItems = [...document.querySelectorAll('[data-session-id]')];
+        const idx = allItems.indexOf(sessionDiv);
+        const sibling = allItems[idx + 1] || allItems[idx - 1];
+        if (sibling) nextSessionId = sibling.dataset.sessionId;
+        sessionDiv.remove();
+    }
+
+    const wasActive = currentSessionId === sessionId;
+    if (wasActive) {
+        const container = document.getElementById('chat-messages');
+        if (container) container.innerHTML = '';
+        currentSessionId = nextSessionId || null;
+        if (!nextSessionId) showWelcomeScreen();
+    }
+
+    // ── Step 2: Fire DELETE + load next session history in parallel ───────────
     try {
         const token = AuthManager.currentUser.accessToken;
-        await fetch(`/api/chat/sessions/${sessionId}`, {
+        const deletePromise = fetch(`/api/chat/sessions/${sessionId}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
-        // 重新獲取 sessions 列表（需要傳入 user_id）
-        const userId = AuthManager.currentUser.user_id;
-        const res = await fetch(`/api/chat/sessions?user_id=${encodeURIComponent(userId)}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await res.json();
-        const sessions = data.sessions;
+        // Start loading next session's history immediately (if applicable)
+        const historyPromise = (wasActive && nextSessionId)
+            ? loadChatHistory(nextSessionId)
+            : Promise.resolve();
 
-        if (currentSessionId === sessionId) {
-            // 如果刪除的是當前 session，先清空聊天區域
-            const container = document.getElementById('chat-messages');
-            if (container) {
-                container.innerHTML = '';
-            }
-
-            if (sessions && sessions.length > 0) {
-                // 切換到第一個現有 session
-                currentSessionId = sessions[0].session_id;
-                await loadSessions();
-                await loadChatHistory(currentSessionId);
-            } else {
-                // 沒有其他 session 了，顯示歡迎畫面
-                currentSessionId = null;
-                await loadSessions();
-                showWelcomeScreen();
-            }
-        } else {
-            // 刪除的不是當前 session，只需刷新列表
-            await loadSessions();
-        }
+        await deletePromise;
+        // Sync sessions sidebar after DELETE, alongside any remaining history load
+        await Promise.all([loadSessions(), historyPromise]);
     } catch (e) {
         console.error("Failed to delete session:", e);
+        if (btnElement) {
+            btnElement.disabled = false;
+            btnElement.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+        await loadSessions();
     }
 }
 
@@ -563,7 +606,310 @@ function closeHITLModal() {
     if (modal) modal.classList.add('hidden');
 }
 
-window.submitHITLAnswer = async function(answer) {
+// ── Pre-Research Card (pre_research HITL) ────────────────────────────────────
+
+function renderPreResearchCard(idata, targetDiv) {
+    console.log('[renderPreResearchCard] idata:', idata);
+    if (!targetDiv) return;
+    const summary = idata.research_summary || '';
+    const message = idata.message || '已整理即時資料供您參考：';
+    const question = idata.question || '有特別想深入的方向嗎？';
+
+    // 若後端有 Q&A 回答，在主聊天顯示（純問答泡泡，不加 AI War Room 按鈕）
+    if (idata.qa_question && idata.qa_answer) {
+        const container = document.getElementById('chat-messages');
+        if (container) {
+            const qaDiv = document.createElement('div');
+            qaDiv.className = 'message-bubble bot-bubble prose';
+            const qHtml = window.md ? window.md.renderInline(idata.qa_question) : idata.qa_question;
+            const aHtml = window.md ? window.md.render(idata.qa_answer) : idata.qa_answer;
+            qaDiv.innerHTML = `<p class="text-xs text-textMuted/60 mb-1">💬 ${qHtml}</p>${aHtml}`;
+            container.appendChild(qaDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+    }
+
+    const summaryHtml = summary && window.md
+        ? window.md.render(summary)
+        : (summary ? summary.replace(/\n/g, '<br>') : '');
+    const messageHtml = window.md
+        ? window.md.renderInline(message)
+        : message;
+
+    // Use a compact card if no summary is provided (e.g., follow-up Q&A)
+    if (!summary) {
+        targetDiv.innerHTML = `
+            <div class="pre-research-card-compact rounded-2xl border border-blue-500/20 bg-blue-500/5 overflow-hidden">
+                <div class="px-5 pt-4 pb-2">
+                    <p class="text-sm text-secondary mb-2">${messageHtml}</p>
+                    <p class="text-xs text-textMuted mb-2">${question}</p>
+                </div>
+                <div class="flex gap-2 px-5 py-3 border-t border-white/5 bg-background/30">
+                    <button onclick="submitPreResearch()"
+                        class="flex-1 bg-primary/20 hover:bg-primary/30 text-primary border
+                               border-primary/30 rounded-xl py-2 text-sm font-medium transition">
+                        確認開始規劃
+                    </button>
+                    <!-- No cancel button needed in compact mode usually, but can keep -->
+                </div>
+            </div>`;
+    } else {
+        // Full card with summary
+        targetDiv.innerHTML = `
+            <div class="pre-research-card rounded-2xl border border-blue-500/20 bg-blue-500/5 overflow-hidden">
+                <div class="px-5 pt-5 pb-4">
+                    <p class="text-sm text-secondary mb-3">${messageHtml}</p>
+                    <div class="prose prose-sm prose-invert max-w-none text-secondary leading-relaxed
+                                max-h-72 overflow-y-auto bg-white/5 rounded-xl px-4 py-3 mb-4">
+                        ${summaryHtml}
+                    </div>
+                    <p class="text-sm text-secondary mb-2">${question}</p>
+                    <!-- Pre-Research Input Removed: Use main chat input -->
+                </div>
+                <div class="flex gap-2 px-5 py-4 border-t border-white/5 bg-background/30">
+                    <button onclick="submitPreResearch()"
+                        class="flex-1 bg-primary/20 hover:bg-primary/30 text-primary border
+                               border-primary/30 rounded-xl py-2.5 text-sm font-medium transition">
+                        開始規劃
+                    </button>
+                    <button onclick="window.submitHITLAnswer('取消')"
+                        class="px-4 bg-white/5 hover:bg-white/10 text-secondary border
+                               border-white/10 rounded-xl py-2.5 text-sm transition">
+                        取消
+                    </button>
+                </div>
+            </div>`;
+    }
+
+    if (window.lucide) lucide.createIcons();
+}
+
+window.submitPreResearch = function () {
+    // No specific input from card anymore, just confirm.
+    // If user wants to specify, they type in main chat.
+    window.submitHITLAnswer('confirm');
+};
+
+// ── HITL Question Detection ───────────────────────────────────────────────────
+// Returns true if the user input looks like a conversational question (not a plan modification)
+function _isDiscussionQuestion(text) {
+    const t = text.trim();
+    const QUESTION_STARTERS = [
+        '你覺得', '你認為', '你建議', '你怎麼看', '你的看法', '你的意見',
+        '哪個', '哪則', '哪一', '哪些', '哪種', '哪裡',
+        '為什麼', '什麼是', '什麼意思', '什麼叫', '怎麼', '如何', '多少', '幾個',
+        '是否', '有沒有', '能不能', '可以', '請問', '告訴我', '解釋',
+        'what', 'which', 'how', 'why', 'who', 'when', 'where',
+        'is ', 'are ', 'do ', 'does ', 'can ', 'could ', 'would ', 'should ', 'will ',
+        'tell me', 'explain', 'what is',
+    ];
+    if (t.endsWith('?') || t.endsWith('？')) return true;
+    const lower = t.toLowerCase();
+    return QUESTION_STARTERS.some(s => lower.startsWith(s.toLowerCase()));
+}
+
+// ── Plan Card (confirm_plan HITL) ──────────────────────────────────────────────
+
+function renderPlanCard(interruptData, targetDiv) {
+    if (!targetDiv) return;
+    const plan = interruptData.plan || [];
+    const message = interruptData.message || '針對您的問題，我規劃了以下分析步驟：';
+
+    const stepsHtml = plan.map(t => `
+        <div class="plan-step flex items-center gap-3 py-2.5 px-3 rounded-xl hover:bg-white/5 transition"
+             data-step="${t.step}" data-selected="true">
+            <div class="plan-check w-5 h-5 rounded border border-primary/30 bg-primary/10
+                        flex items-center justify-center flex-shrink-0">
+                <i data-lucide="check" class="w-3 h-3 text-primary"></i>
+            </div>
+            <span class="text-base leading-none">${t.icon || '🔧'}</span>
+            <span class="text-sm text-secondary flex-1">${t.description || t.agent}</span>
+        </div>`).join('');
+
+    // Negotiation Response as a clearer "Chat" element BEFORE the card
+    const negotiationResponse = interruptData.negotiation_response
+        ? `<div class="mb-4 text-base text-secondary leading-relaxed border-l-2 border-primary/40 pl-3">
+             <span class="text-xs font-bold text-primary block mb-1">🤖 說明：</span>
+             ${interruptData.negotiation_response}
+           </div>`
+        : '';
+
+    targetDiv.innerHTML = `
+        ${negotiationResponse}
+        <div class="plan-card rounded-2xl border border-primary/20 bg-primary/5 overflow-hidden"
+             id="active-plan-card">
+            <div class="px-5 pt-5 pb-3">
+                <div class="flex items-center gap-2 mb-3">
+                    <div class="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
+                        <i data-lucide="list-checks" class="w-4 h-4 text-primary"></i>
+                    </div>
+                    <span class="text-sm font-medium text-primary">AI 執行計畫</span>
+                </div>
+                
+                <p class="text-sm text-textMuted mb-3">${message}</p>
+                <div class="plan-steps space-y-0.5">${stepsHtml}</div>
+                
+                <!-- Negotiation Instructions (Shown in custom mode) -->
+                <div id="plan-negotiate-container" class="hidden mt-3 pt-3 border-t border-white/5 animate-fade-in-up">
+                    <p class="text-xs text-textMuted bg-white/5 px-3 py-2 rounded-lg border border-white/10">
+                        <i data-lucide="info" class="w-3 h-3 inline mr-1"></i>
+                        若需調整計畫（例如：「增加基本面分析」），請直接在下方<b>聊天輸入框</b>打字即可。
+                    </p>
+                </div>
+            </div>
+            <div class="plan-actions flex gap-2 px-5 py-4 border-t border-white/5 bg-background/30">
+                <button id="plan-execute-btn" onclick="window.executePlan('all')"
+                    class="flex-1 py-2.5 bg-primary hover:bg-primary/80 text-background font-bold
+                           rounded-xl text-sm transition flex items-center justify-center gap-1.5">
+                    <i data-lucide="play" class="w-4 h-4"></i>執行全部
+                </button>
+                <button id="plan-customize-btn" onclick="window.togglePlanCustomize()"
+                    class="px-4 py-2.5 bg-white/5 hover:bg-white/10 text-textMuted rounded-xl
+                           text-sm transition flex items-center gap-1.5 ${interruptData.negotiation_limit_reached ? 'hidden' : ''}"
+                    ${interruptData.negotiation_limit_reached ? 'disabled' : ''}>
+                    <i data-lucide="settings-2" class="w-4 h-4"></i>自訂/挑選
+                </button>
+                <button onclick="window.executePlan('cancel')"
+                    class="px-4 py-2.5 bg-white/5 hover:bg-white/10 text-textMuted
+                           hover:text-danger rounded-xl text-sm transition">
+                    取消
+                </button>
+            </div>
+        </div>`;
+    if (lucide) lucide.createIcons();
+}
+
+window.togglePlanCustomize = function () {
+    const card = document.getElementById('active-plan-card');
+    if (!card) return;
+
+    // Toggle class
+    const isCustom = card.classList.toggle('plan-custom-mode');
+
+    const executeBtn = document.getElementById('plan-execute-btn');
+    const customizeBtn = document.getElementById('plan-customize-btn');
+    const negotiateContainer = document.getElementById('plan-negotiate-container');
+
+    if (isCustom) {
+        // Show negotiation instruction
+        if (negotiateContainer) negotiateContainer.classList.remove('hidden');
+
+        // Enable clicking steps to toggle
+        card.querySelectorAll('.plan-step').forEach(step => {
+            step.style.cursor = 'pointer';
+            step.onclick = () => window.togglePlanStep(step);
+        });
+
+        // Update Buttons
+        if (customizeBtn) {
+            customizeBtn.innerHTML = '<i data-lucide="rotate-ccw" class="w-4 h-4"></i>重置';
+            customizeBtn.classList.add('bg-primary/10', 'text-primary');
+        }
+
+        // Initial button state update
+        window.updateCustomExecuteButton();
+
+    } else {
+        // Hide negotiation instruction
+        if (negotiateContainer) {
+            negotiateContainer.classList.add('hidden');
+        }
+
+        // Reset all steps to selected
+        card.querySelectorAll('.plan-step').forEach(step => {
+            step.dataset.selected = 'true';
+            step.style.cursor = '';
+            step.onclick = null;
+            step.classList.remove('opacity-40');
+            const check = step.querySelector('.plan-check');
+            if (check) {
+                check.className = 'plan-check w-5 h-5 rounded border border-primary/30 bg-primary/10 flex items-center justify-center flex-shrink-0';
+                check.innerHTML = '<i data-lucide="check" class="w-3 h-3 text-primary"></i>';
+            }
+        });
+
+        // Reset Buttons
+        if (executeBtn) {
+            executeBtn.onclick = () => window.executePlan('all');
+            executeBtn.classList.remove('bg-white/10', 'text-white');
+            executeBtn.classList.add('bg-primary', 'text-background');
+            executeBtn.innerHTML = '<i data-lucide="play" class="w-4 h-4"></i>執行全部';
+        }
+        if (customizeBtn) {
+            customizeBtn.innerHTML = '<i data-lucide="settings-2" class="w-4 h-4"></i>自訂/挑選';
+            customizeBtn.classList.remove('bg-primary/10', 'text-primary');
+        }
+    }
+    if (lucide) lucide.createIcons();
+};
+
+window.updateCustomExecuteButton = function () {
+    const executeBtn = document.getElementById('plan-execute-btn');
+    if (!executeBtn) return;
+
+    // Main chat input is used for negotiation now, but execute button here is for "selected steps".
+    // "execute_custom" action sends { selected_steps: [...] }.
+
+    executeBtn.onclick = () => window.executePlan('custom');
+
+    // Style remains Primary for execution
+    executeBtn.classList.remove('bg-white/10', 'text-white');
+    executeBtn.classList.add('bg-primary', 'text-background');
+    executeBtn.innerHTML = '<i data-lucide="play" class="w-4 h-4"></i>執行已選步驟';
+
+    if (lucide) lucide.createIcons();
+};
+
+window.togglePlanStep = function (step) {
+    const wasSelected = step.dataset.selected === 'true';
+    const nowSelected = !wasSelected;
+    step.dataset.selected = String(nowSelected);
+    step.classList.toggle('opacity-40', !nowSelected);
+    const check = step.querySelector('.plan-check');
+    if (!check) return;
+    if (nowSelected) {
+        check.className = 'plan-check w-5 h-5 rounded border border-primary/30 bg-primary/10 flex items-center justify-center flex-shrink-0';
+        check.innerHTML = '<i data-lucide="check" class="w-3 h-3 text-primary"></i>';
+        if (lucide) lucide.createIcons({ nodes: [check] });
+    } else {
+        check.className = 'plan-check w-5 h-5 rounded border border-white/20 flex items-center justify-center flex-shrink-0';
+        check.innerHTML = '';
+    }
+};
+
+window.executePlan = function (mode) {
+    if (mode === 'cancel') { window.submitHITLAnswer('取消'); return; }
+    if (mode === 'all') { window.submitHITLAnswer('執行'); return; }
+
+    if (mode === 'custom') {
+        // Check negotiation text first
+        const input = document.getElementById('plan-negotiate-input');
+        const text = input ? input.value.trim() : '';
+
+        if (text) {
+            window.submitHITLAnswer(JSON.stringify({ action: 'modify_request', text: text }));
+            return;
+        }
+
+        const card = document.getElementById('active-plan-card');
+        if (!card) { window.submitHITLAnswer('執行'); return; }
+
+        const selected = [];
+        card.querySelectorAll('.plan-step').forEach(step => {
+            if (step.dataset.selected === 'true') selected.push(parseInt(step.dataset.step, 10));
+        });
+
+        if (selected.length === 0) {
+            // Hint user to select something or cancel
+            alert('請至少選擇一個步驟，或點擊「取消」');
+            return;
+        }
+
+        window.submitHITLAnswer(JSON.stringify({ action: 'execute_custom', selected_steps: selected }));
+    }
+};
+
+window.submitHITLAnswer = async function (answer) {
     if (!answer || !answer.trim()) return;
     if (!_hitlContext) return;
 
@@ -572,17 +918,49 @@ window.submitHITLAnswer = async function(answer) {
     const ctx = _hitlContext;
     _hitlContext = null;
 
-    // Show "resuming" indicator on existing botMsgDiv
+    // ── History Preservation ──
+    // Instead of overwriting the old bot message, we mark it as "done" by REMOVING the buttons
+    // and create a NEW bot message for the response/next step.
+    // ── History Preservation ──
+    // Instead of overwriting the old bot message, we mark it as "done" by REMOVING the buttons
+
+    // 1. Clean up specific context message if it exists
     if (ctx.botMsgDiv) {
-        ctx.botMsgDiv.innerHTML = `
-            <div class="process-container" style="border-style: dashed; opacity: 0.7;">
-                <div class="flex items-center gap-2 px-4 py-3">
-                    <i data-lucide="loader-2" class="w-4 h-4 animate-spin text-primary"></i>
-                    <span class="font-medium text-sm text-textMuted">AI 正在繼續處理...</span>
-                </div>
-            </div>`;
-        if (lucide) lucide.createIcons();
+        const oldBtns = ctx.botMsgDiv.querySelectorAll('button');
+        oldBtns.forEach(b => b.remove());
+        const btnContainer = ctx.botMsgDiv.querySelector('.flex.gap-2.border-t');
+        if (btnContainer) btnContainer.remove();
+
+        const oldCard = ctx.botMsgDiv.querySelector('#active-plan-card');
+        if (oldCard) oldCard.removeAttribute('id');
     }
+
+    // 2. Force Clean: Remove ALL persistence buttons from previous HITL cards in the chat
+    // This ensures even if context was lost, we don't leave active buttons.
+    document.querySelectorAll('.pre-research-card button, .plan-card button, .pre-research-card-compact button').forEach(btn => {
+        // If the button is not in the NEW botMsgDiv (which isn't created yet), remove it.
+        // Since we haven't created the new div yet, ALL existing buttons are "old".
+        const parent = btn.closest('.flex');
+        if (parent && parent.className.includes('gap-2') && parent.className.includes('border-t')) {
+            parent.remove();
+        } else {
+            btn.remove();
+        }
+    });
+
+    // Create NEW bot message for the response logic
+    const botMsgDiv = appendMessage('bot', '');
+    ctx.botMsgDiv = botMsgDiv; // Update context to point to new div for streaming
+
+    // Initial "Thinking" UI
+    botMsgDiv.innerHTML = `
+        <div class="process-container" style="border-style: dashed; opacity: 0.7;">
+            <div class="flex items-center gap-2 px-4 py-3">
+                <i data-lucide="loader-2" class="w-4 h-4 animate-spin text-primary"></i>
+                <span class="font-medium text-sm text-textMuted">AI 正在思考調研...</span>
+            </div>
+        </div>`;
+    if (window.lucide) lucide.createIcons();
 
     const token = AuthManager.currentUser.accessToken;
     let fullContent = '';
@@ -600,7 +978,15 @@ window.submitHITLAnswer = async function(answer) {
                 user_api_key: ctx.userKey.key,
                 user_provider: ctx.userKey.provider,
                 user_model: ctx.userSelectedModel,
-                resume_answer: answer.trim()
+                language: window.I18n?.getLanguage() || 'zh-TW',
+                // Ensure resume_answer is an object if it's a JSON string
+                resume_answer: (() => {
+                    const trimmed = answer.trim();
+                    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+                        try { return JSON.parse(trimmed); } catch (e) { return trimmed; }
+                    }
+                    return trimmed;
+                })()
             })
         });
 
@@ -622,9 +1008,29 @@ window.submitHITLAnswer = async function(answer) {
                 try { data = JSON.parse(line.substring(6)); } catch { continue; }
 
                 if (data.type === 'hitl_question') {
-                    // Nested HITL — save new context and show modal again
-                    _hitlContext = ctx;  // reuse same context
-                    showHITLModal(data.data);
+                    // Nested HITL — reuse same context, dispatch by type
+                    _hitlContext = ctx;
+                    const idata = data.data || {};
+                    _hitlContext.hitlType = idata.type;
+                    if (idata.type === 'pre_research') {
+                        renderPreResearchCard(idata, ctx.botMsgDiv);
+                    } else if (idata.type === 'confirm_plan') {
+                        renderPlanCard(idata, ctx.botMsgDiv);
+                    } else {
+                        // Inline clarification (no modal, no stale spinner)
+                        const question = idata.question || '請問您具體想了解什麼？';
+                        ctx.botMsgDiv.innerHTML = `
+                            <div class="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+                                <div class="px-5 py-4 flex items-start gap-3">
+                                    <i data-lucide="help-circle" class="w-4 h-4 text-primary mt-0.5 flex-shrink-0"></i>
+                                    <div>
+                                        <p class="text-sm text-secondary">${question}</p>
+                                        <p class="text-xs text-textMuted mt-1.5">請在下方輸入框回覆</p>
+                                    </div>
+                                </div>
+                            </div>`;
+                        if (window.lucide) lucide.createIcons({ nodes: [ctx.botMsgDiv] });
+                    }
                     return;
                 }
                 if (data.waiting) return;
@@ -659,28 +1065,124 @@ window.submitHITLAnswer = async function(answer) {
     } catch (err) {
         console.error('[HITL resume error]', err);
         if (ctx.botMsgDiv) {
-            ctx.botMsgDiv.innerHTML = `<span class="text-red-400">恢復分析失敗：${err.message}</span>`;
+            // Fix [object Object] by properly stringifying error detail if it's an object
+            const errorMsg = typeof err.message === 'object' ? JSON.stringify(err.message) : (err.message || String(err));
+            ctx.botMsgDiv.innerHTML = `<span class="text-red-400">恢復分析失敗：${errorMsg}</span>`;
         }
         isAnalyzing = false;
     } finally {
         const input = document.getElementById('user-input');
         const sendBtn = document.getElementById('send-btn');
-        if (input) { input.disabled = false; input.classList.remove('opacity-50'); input.focus(); }
-        if (sendBtn) { sendBtn.disabled = false; sendBtn.classList.remove('opacity-50', 'cursor-not-allowed'); }
+        // 只有在 HITL 完全解決（_hitlContext=null）時才重新啟用輸入
+        // 若後端再次 interrupt（Q&A 循環），_hitlContext 已被恢復，保持禁用
+        if (_hitlContext === null) {
+            isAnalyzing = false;
+            if (input) { input.disabled = false; input.classList.remove('opacity-50'); input.focus(); }
+            if (sendBtn) { sendBtn.disabled = false; sendBtn.classList.remove('opacity-50', 'cursor-not-allowed'); }
+        }
     }
 };
 // ── End HITL ─────────────────────────────────────────────────────────────────
+
+// ── Global Helper for Button Cleanup ─────────────────────────────────────────
+// ── Global Helper for Button Cleanup ─────────────────────────────────────────
+function cleanupStaleButtons() {
+    // Target ALL buttons within the chat container to ensure thorough cleanup
+    const chatBtns = document.querySelectorAll('#chat-messages button');
+    chatBtns.forEach(btn => {
+        // If the button is inside a bordered action bar (common in our cards), remove the bar.
+        // Otherwise just remove the button.
+        const parent = btn.closest('.flex');
+        if (parent && parent.className.includes('border-t')) {
+            parent.remove();
+        } else {
+            btn.remove();
+        }
+    });
+}
 
 async function sendMessage() {
     const input = document.getElementById('user-input');
     const sendBtn = document.getElementById('send-btn');
     const text = input.value.trim();
-    if (!text || isAnalyzing) return;
+    if (!text && !isAnalyzing) return; // Allow empty text if we are just stopping? No, stop is a separate click.
+
+    // ── Global Cleanup ──
+    // Force remove old buttons on any new interaction
+    cleanupStaleButtons();
+
+    // ── Input State Management for "Stop" capability ─────────────────────
+    if (isAnalyzing) {
+        // If we are in HITL pause (waiting for input), allow typing
+        // But isAnalyzing is technically false during HITL pause (set in finally block)
+        // Wait, in my previous edit, I set isAnalyzing = false in finally if hitlPaused.
+        // So this block only runs if isAnalyzing is TRUE (streaming).
+        // So clicking button here means STOP.
+
+        // However, if the user hits ENTER in the input box...
+        // If input is enabled (which it shouldn't be during streaming, but IS during HITL pause),
+        // we need to check if we are actually in HITL mode.
+
+        // Wait, if isAnalyzing is true, input SHOULD be disabled. 
+        // If isAnalyzing is false (HITL pause), we fall through to Start Analysis logic below.
+
+        stopAnalysis();
+        return;
+    }
+
+    // ── HITL Input Routing ───────────────────────────────────────────────
+    // If we have a pending HITL context, this input is an answer/negotiation
+    if (_hitlContext && _hitlContext.sessionId === currentSessionId) {
+        const hitlType = _hitlContext.hitlType;
+
+        // Clear input immediately
+        input.value = '';
+
+        // If it's a plan confirmation or pre_research, check if this is a question or modification
+        if (hitlType === 'confirm_plan' || hitlType === 'pre_research') {
+            appendMessage('user', text);
+            const isQuestion = _isDiscussionQuestion(text);
+            if (isQuestion) {
+                // User is asking a question about the plan/data — cancel the card and answer via chat
+                window.submitHITLAnswer(JSON.stringify({ action: 'discuss_question', text: text }));
+            } else {
+                // User is giving a direction/modification — keep HITL flow
+                if (hitlType === 'confirm_plan') {
+                    window.submitHITLAnswer(JSON.stringify({ action: 'modify_request', text: text }));
+                } else {
+                    window.submitHITLAnswer(text);
+                }
+            }
+            return;
+        }
+
+        // For other HITL types (e.g. simple clarification), send raw text
+        appendMessage('user', text);
+        window.submitHITLAnswer(text);
+        return;
+    }
+
+    if (!text) return;
+
+    // ── Start Analysis ───────────────────────────────────────────────────
+    isAnalyzing = true;
+
+    // Change Send button to Stop button
+    sendBtn.classList.remove('bg-primary', 'hover:brightness-110');
+    sendBtn.classList.add('bg-red-500', 'hover:bg-red-600', 'text-white');
+    sendBtn.innerHTML = '<i data-lucide="square" class="w-4 h-4 fill-current"></i>'; // Stop icon
+    if (window.lucide) lucide.createIcons({ nodes: [sendBtn] });
+
+    // Disable Input but keep Button enabled (as Stop)
+    input.disabled = true;
+    input.classList.add('opacity-50');
+    // sendBtn.disabled = true; // Don't disable, we need it for Stop
 
     // 檢查用戶是否有設置 API key（從 localStorage）
     const userKey = window.APIKeyManager?.getCurrentKey();
 
     if (!userKey) {
+        resetChatUI(); // Helper to reset UI state
         showAlert({
             title: '未設置 API Key',
             message: '請先在系統設定中輸入您的 API Key 才能使用分析功能。\n\n您需要 OpenAI、Google Gemini 或 OpenRouter API Key。',
@@ -691,6 +1193,18 @@ async function sendMessage() {
         });
         return;
     }
+
+    // Enable UI for sending (transition to analysis state)
+    sendBtn.disabled = false;
+    input.classList.remove('opacity-50');
+    sendBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+
+    const _sendIcon = sendBtn.querySelector('i[data-lucide]');
+    // Note: We changed icon to Stop square earlier, so we don't want to reset it to arrow-up yet!
+    // The previous code block was copy-pasted wrong.
+    // We already set it to square icon at the top of function.
+
+    // Remove the redundant error check block that was here.
 
     // Lazy Creation: 如果沒有 currentSessionId，先建立新的 Session
     if (!currentSessionId) {
@@ -723,12 +1237,6 @@ async function sendMessage() {
 
     input.value = '';
     appendMessage('user', text);
-    isAnalyzing = true;
-
-    input.disabled = true;
-    sendBtn.disabled = true;
-    input.classList.add('opacity-50');
-    sendBtn.classList.add('opacity-50', 'cursor-not-allowed');
 
     const botMsgDiv = appendMessage('bot', '');
     const startTime = Date.now();
@@ -769,6 +1277,9 @@ async function sendMessage() {
         startTime,
     };
 
+    // Declared OUTSIDE try so finally can read it
+    let hitlPaused = false;
+
     try {
         const token = AuthManager.currentUser.accessToken;
         const response = await fetch('/api/analyze', {
@@ -785,7 +1296,8 @@ async function sendMessage() {
                 user_api_key: userKey.key,
                 user_provider: userKey.provider,
                 user_model: userSelectedModel,
-                session_id: currentSessionId
+                session_id: currentSessionId,
+                language: window.I18n?.getLanguage() || 'zh-TW'
             }),
             signal: window.currentAnalysisController.signal
         });
@@ -809,7 +1321,6 @@ async function sendMessage() {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let fullContent = '';
-        let hitlPaused = false;
 
         while (true) {
             const { value, done } = await reader.read();
@@ -828,20 +1339,73 @@ async function sendMessage() {
                     if (data.type === 'hitl_question') {
                         clearInterval(timerInterval);
                         _hitlContext = _hitlResumeContext;
-                        showHITLModal(data.data || {question: '請確認', options: []});
+                        const idata = data.data || {};
+                        // Store HITL type for sendMessage routing
+                        _hitlContext.hitlType = idata.type;
+
+                        if (idata.type === 'pre_research') {
+                            renderPreResearchCard(idata, botMsgDiv);
+                        } else if (idata.type === 'confirm_plan') {
+                            renderPlanCard(idata, botMsgDiv);
+                        } else {
+                            // Render clarification question inline (clear spinner, show question)
+                            const question = idata.question || '請問您具體想了解什麼？';
+                            botMsgDiv.innerHTML = `
+                                <div class="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+                                    <div class="px-5 py-4 flex items-start gap-3">
+                                        <i data-lucide="help-circle" class="w-4 h-4 text-primary mt-0.5 flex-shrink-0"></i>
+                                        <div>
+                                            <p class="text-sm text-secondary">${question}</p>
+                                            <p class="text-xs text-textMuted mt-1.5">請在下方輸入框回覆</p>
+                                        </div>
+                                    </div>
+                                </div>`;
+                            if (window.lucide) lucide.createIcons({ nodes: [botMsgDiv] });
+                        }
                     }
                     if (data.waiting) {
-                        // Graph paused, waiting for HITL resume — stop reading outer loop too
                         hitlPaused = true;
                         break;
                     }
-                    // ── End HITL ────────────────────────────────────────────
+
+                    // ── Meta Update (Codebook ID) ───────────────────────────
+                    if (data.type === 'meta') {
+                        if (data.codebook_id) {
+                            botMsgDiv.dataset.codebookId = data.codebook_id;
+                        }
+                    }
+
+                    // ── Progress Update (Parallel Execution) ────────────────
+                    if (data.type === 'progress') {
+                        const pData = data.data || {};
+                        const stepNum = pData.step;
+                        const stepEl = document.querySelector(`.plan-step[data-step="${stepNum}"]`);
+                        if (stepEl) {
+                            const check = stepEl.querySelector('.plan-check');
+                            if (pData.type === 'agent_start') {
+                                if (check) check.innerHTML = '<i data-lucide="loader-2" class="w-3 h-3 text-primary animate-spin"></i>';
+                                stepEl.classList.add('bg-primary/5', 'border-primary/20');
+                            } else if (pData.type === 'agent_finish') {
+                                if (check) {
+                                    if (pData.success) {
+                                        check.innerHTML = '<i data-lucide="check" class="w-3 h-3 text-primary"></i>';
+                                    } else {
+                                        check.innerHTML = '<i data-lucide="alert-circle" class="w-3 h-3 text-danger"></i>';
+                                        stepEl.classList.add('border-danger/20');
+                                    }
+                                }
+                                stepEl.classList.remove('bg-primary/5', 'animate-pulse');
+                            }
+                            if (lucide) lucide.createIcons();
+                        }
+                    }
 
                     if (data.content) {
                         fullContent += data.content;
                         // 實時更新內容，傳入 isStreaming=true 和當前耗時
                         botMsgDiv.innerHTML = renderStoredBotMessage(fullContent, true, currentElapsed);
                     }
+
                     if (data.done) {
                         clearInterval(timerInterval);
                         isAnalyzing = false;
@@ -851,14 +1415,32 @@ async function sendMessage() {
                         botMsgDiv.innerHTML = renderStoredBotMessage(fullContent, false, totalTime);
 
                         const timeBadge = document.createElement('div');
-                        timeBadge.className = 'mt-4 text-xs text-textMuted/60 font-mono';
-                        timeBadge.innerHTML = `分析完成，耗時 ${totalTime}s`;
+                        timeBadge.className = 'mt-4 flex items-center justify-between text-xs text-textMuted/60 font-mono';
+
+                        let feedbackHtml = '';
+                        const codebookId = botMsgDiv.dataset.codebookId;
+                        if (codebookId) {
+                            feedbackHtml = `
+                                <div class="flex items-center gap-2">
+                                    <span class="opacity-50">分析品質回饋：</span>
+                                    <button onclick="submitFeedback('${codebookId}', 1, this)" class="p-1 hover:text-success transition" title="有幫助">
+                                        <i data-lucide="thumbs-up" class="w-3.5 h-3.5"></i>
+                                    </button>
+                                    <button onclick="submitFeedback('${codebookId}', -1, this)" class="p-1 hover:text-danger transition" title="需改進">
+                                        <i data-lucide="thumbs-down" class="w-3.5 h-3.5"></i>
+                                    </button>
+                                </div>
+                            `;
+                        }
+
+                        timeBadge.innerHTML = `<span>分析完成，耗時 ${totalTime}s</span>${feedbackHtml}`;
                         botMsgDiv.appendChild(timeBadge);
                         lucide.createIcons();
 
                         // Refresh sessions list (to update title if it was new)
                         loadSessions();
                     }
+
                     if (data.error) {
                         clearInterval(timerInterval);
                         botMsgDiv.innerHTML = `<span class="text-red-400">Error: ${data.error}</span>`;
@@ -878,14 +1460,84 @@ async function sendMessage() {
         clearInterval(timerInterval);
         isAnalyzing = false;
     } finally {
-        window.currentAnalysisController = null;
         clearInterval(timerInterval);
+
+        if (hitlPaused) {
+            // HITL paused: Unlock input so user can type negotiation/answer
+            // But keep "Stop" button hidden or converted back to Send?
+            // If we unlock input, user can type and hit Send. 
+            // sendMessage needs to handle this state.
+
+            isAnalyzing = false; // Logically not "analyzing" (streaming), but waiting.
+            const input = document.getElementById('user-input');
+            const sendBtn = document.getElementById('send-btn');
+
+            if (input) {
+                input.disabled = false;
+                input.classList.remove('opacity-50');
+                input.focus();
+                input.placeholder = "輸入回應或是調整計畫...";
+            }
+            if (sendBtn) {
+                sendBtn.disabled = false;
+                sendBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-red-500', 'hover:bg-red-600', 'text-white');
+                sendBtn.classList.add('bg-primary', 'hover:brightness-110');
+                sendBtn.innerHTML = '<i data-lucide="arrow-up" class="w-5 h-5"></i>'; // use Send icon
+                if (window.lucide) lucide.createIcons({ nodes: [sendBtn] });
+            }
+
+        } else {
+            // Normal finish or Abort
+            resetChatUI();
+        }
+    }
+}
+
+function stopAnalysis() {
+    if (window.currentAnalysisController) {
+        window.currentAnalysisController.abort();
+        window.currentAnalysisController = null;
+    }
+
+    // IMPORTANT: Clear HITL context so subsequent messages are treated as new queries
+    window._hitlContext = null;
+
+    // Append "Stopped" message
+    const chatContainer = document.getElementById('chat-messages');
+    if (chatContainer) {
+        const stopMsg = document.createElement('div');
+        stopMsg.className = 'flex justify-center my-4 opacity-0 animate-fade-in-up';
+        stopMsg.style.animationFillMode = 'forwards';
+        stopMsg.innerHTML = '<span class="px-3 py-1 rounded-full bg-red-500/10 text-red-500 text-xs font-mono border border-red-500/20">⛔ 分析已終止</span>';
+        chatContainer.appendChild(stopMsg);
+        setTimeout(() => chatContainer.scrollTop = chatContainer.scrollHeight, 100);
+    }
+
+    resetChatUI();
+}
+
+function resetChatUI() {
+    isAnalyzing = false;
+    const input = document.getElementById('user-input');
+    const sendBtn = document.getElementById('send-btn');
+
+    if (window.currentAnalysisController) {
+        // If called directly (not via stopAnalysis), ensure we nullify
+        // But usually stopAnalysis does the aborting.
+    }
+
+    if (input) {
         input.disabled = false;
-        sendBtn.disabled = false;
         input.classList.remove('opacity-50');
-        sendBtn.classList.remove('opacity-50', 'cursor-not-allowed');
         input.focus();
     }
+    if (sendBtn) {
+        sendBtn.disabled = false;
+        sendBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-red-500', 'hover:bg-red-600', 'text-white');
+        sendBtn.classList.add('bg-primary', 'hover:brightness-110');
+        sendBtn.innerHTML = '<i data-lucide="arrow-up" class="w-5 h-5"></i>';
+    }
+    if (window.lucide) lucide.createIcons();
 }
 
 // Reuse the renderStoredBotMessage function from previous step
@@ -998,8 +1650,10 @@ function renderStoredBotMessage(fullContent, isStreaming = false, elapsedTime = 
         `;
     }
 
+    const renderMd = (text) => md ? md.render(text) : `<pre>${text.replace(/</g, '&lt;')}</pre>`;
+
     if (resultContent.trim()) {
-        html += `<div class="result-container prose mt-4">${md.render(resultContent)}</div>`;
+        html += `<div class="result-container prose mt-4">${renderMd(resultContent)}</div>`;
     } else if (!hasProcessContent) {
         let timerHtml = '';
         if (isStreaming && elapsedTime) {
@@ -1008,7 +1662,7 @@ function renderStoredBotMessage(fullContent, isStreaming = false, elapsedTime = 
                             <span id="loading-timer">${elapsedTime}s</span>
                           </div>`;
         }
-        html = timerHtml + md.render(fullContent);
+        html = timerHtml + renderMd(fullContent);
     }
 
     const proposalMatch = fullContent.match(/<!-- TRADE_PROPOSAL_START (.*?) TRADE_PROPOSAL_END -->/);
@@ -1032,6 +1686,21 @@ function renderStoredBotMessage(fullContent, isStreaming = false, elapsedTime = 
         } catch (e) { console.error("Error parsing proposal", e); }
     }
 
+    // Wrap <table> elements for proper overflow + border styling
+    if (html.includes('<table')) {
+        const temp = document.createElement('div');
+        temp.innerHTML = html;
+        temp.querySelectorAll('table').forEach(table => {
+            if (!table.parentElement.classList.contains('table-wrapper')) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'table-wrapper';
+                table.parentNode.insertBefore(wrapper, table);
+                wrapper.appendChild(table);
+            }
+        });
+        html = temp.innerHTML;
+    }
+
     return html;
 }
 
@@ -1046,6 +1715,85 @@ function toggleProcessState(summaryElement) {
     }, 0);
 }
 
+// ── 對話歷史動態載入狀態 ──────────────────────────────────────────────────────
+let _historyOldestTimestamp = null;  // 目前可見訊息中最舊的時間戳
+let _historyHasMore = false;         // 是否還有更舊的訊息
+let _historyLoading = false;         // 防止重複載入
+let _historySessionId = null;        // 目前載入的 session
+
+/** 將單條歷史訊息渲染為 DOM 節點（不 append，只 create）。 */
+function _buildHistoryMsgEl(msg) {
+    const role = msg.role === 'assistant' ? 'bot' : 'user';
+    const div = document.createElement('div');
+    div.className = `message-bubble ${role === 'user' ? 'user-message' : 'bot-bubble prose'}`;
+
+    if (role === 'bot') {
+        const savedState = window.lastProcessOpenState;
+        window.lastProcessOpenState = false;
+        div.innerHTML = renderStoredBotMessage(msg.content);
+        window.lastProcessOpenState = savedState;
+    } else {
+        div.textContent = msg.content;
+    }
+
+    if (msg.timestamp) {
+        const footer = document.createElement('div');
+        footer.className = 'mt-2 text-[10px] text-textMuted/30 font-mono';
+        const date = new Date(msg.timestamp + 'Z');
+        footer.textContent = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        div.appendChild(footer);
+    }
+    return div;
+}
+
+/** 載入更舊的訊息（向上捲動觸發）。 */
+async function loadMoreHistory() {
+    if (_historyLoading || !_historyHasMore || !_historyOldestTimestamp) return;
+    _historyLoading = true;
+
+    const container = document.getElementById('chat-messages');
+
+    // 顯示頂部 loading 指示器
+    const loader = document.createElement('div');
+    loader.id = 'history-loader';
+    loader.className = 'text-center text-xs text-textMuted/40 py-2';
+    loader.textContent = '載入更多訊息…';
+    container.prepend(loader);
+
+    try {
+        const token = AuthManager.currentUser.accessToken;
+        const url = `/api/chat/history?session_id=${encodeURIComponent(_historySessionId)}&before_timestamp=${encodeURIComponent(_historyOldestTimestamp)}`;
+        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+
+        loader.remove();
+
+        if (data.history && data.history.length > 0) {
+            // 記錄捲動位置，prepend 後還原（避免畫面跳動）
+            const oldScrollHeight = container.scrollHeight;
+
+            const frag = document.createDocumentFragment();
+            data.history.forEach(msg => frag.appendChild(_buildHistoryMsgEl(msg)));
+            container.prepend(frag);
+            lucide.createIcons();
+
+            // 還原捲動位置
+            container.scrollTop = container.scrollHeight - oldScrollHeight;
+
+            // 更新狀態
+            _historyOldestTimestamp = data.history[0].timestamp;
+            _historyHasMore = data.has_more;
+        } else {
+            _historyHasMore = false;
+        }
+    } catch (e) {
+        loader.remove();
+        console.error('[history] loadMoreHistory error:', e);
+    } finally {
+        _historyLoading = false;
+    }
+}
+
 async function loadChatHistory(sessionId = 'default') {
     // 🔒 安全檢查：未登入時不載入聊天歷史
     const isLoggedIn = window.AuthManager?.isLoggedIn();
@@ -1054,12 +1802,16 @@ async function loadChatHistory(sessionId = 'default') {
         return;
     }
 
+    // 重置動態載入狀態
+    _historyOldestTimestamp = null;
+    _historyHasMore = false;
+    _historyLoading = false;
+    _historySessionId = sessionId;
+
     try {
         const token = AuthManager.currentUser.accessToken;
-        const res = await fetch(`/api/chat/history?session_id=${sessionId}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
+        const res = await fetch(`/api/chat/history?session_id=${encodeURIComponent(sessionId)}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
 
@@ -1067,26 +1819,18 @@ async function loadChatHistory(sessionId = 'default') {
         container.innerHTML = '';
 
         if (data.history && data.history.length > 0) {
-            data.history.forEach(msg => {
-                const role = msg.role === 'assistant' ? 'bot' : 'user';
-                const div = appendMessage(role, msg.content);
-
-                if (role === 'bot') {
-                    // 在渲染歷史消息時，暫時重置狀態以避免影響當前活動的分析
-                    const savedState = window.lastProcessOpenState;
-                    window.lastProcessOpenState = false;
-                    div.innerHTML = renderStoredBotMessage(msg.content);
-                    // 恢復原來的狀態
-                    window.lastProcessOpenState = savedState;
-                    const footer = document.createElement('div');
-                    footer.className = 'mt-2 text-[10px] text-textMuted/30 font-mono';
-                    const date = new Date(msg.timestamp + 'Z');
-                    footer.textContent = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    div.appendChild(footer);
-                }
-            });
+            data.history.forEach(msg => container.appendChild(_buildHistoryMsgEl(msg)));
             lucide.createIcons();
+
+            // 更新動態載入狀態
+            _historyOldestTimestamp = data.history[0].timestamp;
+            _historyHasMore = data.has_more;
+
+            // 初始捲到底
             setTimeout(() => { container.scrollTop = container.scrollHeight; }, 100);
+
+            // 掛載捲動偵測（只掛一次）
+            _attachHistoryScrollListener(container);
         } else {
             // Welcome message for empty session
             container.innerHTML = `
@@ -1111,6 +1855,18 @@ async function loadChatHistory(sessionId = 'default') {
     } catch (e) {
         console.error("Failed to load history:", e);
     }
+}
+
+/** 捲動偵測：接近頂部 80px 時觸發 loadMoreHistory。只掛一個 listener。 */
+let _scrollListenerAttached = false;
+function _attachHistoryScrollListener(container) {
+    if (_scrollListenerAttached) return;
+    _scrollListenerAttached = true;
+    container.addEventListener('scroll', () => {
+        if (container.scrollTop < 80 && _historyHasMore && !_historyLoading) {
+            loadMoreHistory();
+        }
+    }, { passive: true });
 }
 
 async function initChat() {
@@ -1138,9 +1894,6 @@ async function initChat() {
     chatInitialized = true;
     console.log('initChat: initializing chat...');
 
-    // 1. 先載入現有 sessions
-    await loadSessions();
-
     // 2. 檢查是否有現有的 session，如果沒有才創建新的
     const userId = window.currentUserId || AuthManager.currentUser?.user_id || 'local_user';
     const token = AuthManager.currentUser?.accessToken;
@@ -1151,11 +1904,8 @@ async function initChat() {
         return;
     }
 
-    const sessionsRes = await fetch(`/api/chat/sessions?user_id=${encodeURIComponent(userId)}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const sessionsData = await sessionsRes.json();
-    let sessions = sessionsData.sessions || [];
+    // 1. 載入 sessions（同時渲染側邊欄並取得資料，不重複 fetch）
+    let sessions = await loadSessions();
 
     // Auto-cleanup: Remove older "New Chat" sessions to prevent accumulation
     // Keep the most recent "New Chat" (if any) and delete the rest
@@ -1181,13 +1931,8 @@ async function initChat() {
         if (cleanupPromises.length > 0) {
             console.log(`Cleaning up ${cleanupPromises.length} redundant sessions...`);
             await Promise.allSettled(cleanupPromises);
-            // Reload list to reflect changes
-            const refreshedRes = await fetch(`/api/chat/sessions?user_id=${encodeURIComponent(userId)}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const refreshedData = await refreshedRes.json();
-            sessions = refreshedData.sessions || [];
-            await loadSessions();
+            // 清理後重新整理側邊欄（合併原本的兩次 fetch+loadSessions 為一次）
+            sessions = await loadSessions();
         }
     }
 
@@ -1308,3 +2053,42 @@ function showConfirmDialog(options = {}) {
 
 // 暴露到全局
 window.showConfirmDialog = showConfirmDialog;
+
+window.submitFeedback = async function (codebookId, score, btn) {
+    if (!codebookId) return;
+
+    // Disable buttons to prevent spam
+    const parent = btn.parentElement;
+    const buttons = parent.querySelectorAll('button');
+    buttons.forEach(b => b.disabled = true);
+
+    try {
+        const token = AuthManager.currentUser.accessToken;
+        await fetch('/api/chat/feedback', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                codebook_entry_id: codebookId,
+                score: score
+            })
+        });
+
+        // UI Feedback
+        if (score > 0) {
+            btn.innerHTML = '<i data-lucide="check-circle" class="w-3.5 h-3.5 text-success fill-success/20"></i>';
+            btn.classList.add('text-success');
+        } else {
+            btn.innerHTML = '<i data-lucide="x-circle" class="w-3.5 h-3.5 text-danger fill-danger/20"></i>';
+            btn.classList.add('text-danger');
+        }
+        lucide.createIcons();
+
+    } catch (e) {
+        console.error("Feedback failed:", e);
+        // Re-enable on error
+        buttons.forEach(b => b.disabled = false);
+    }
+};

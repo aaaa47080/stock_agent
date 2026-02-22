@@ -58,28 +58,7 @@ class TestV4Classify:
         assert any(m.name == "full_analysis" for m in agents)
         assert any(m.name == "chat" for m in agents)
 
-    def test_full_analysis_agent_registered(self):
-        """bootstrap 後 full_analysis agent 應在 registry 中。"""
-        from core.agents.agent_registry import AgentRegistry, AgentMetadata
-        from core.agents.agents.full_analysis_agent import FullAnalysisAgent
-        from core.agents.hitl import HITLManager
-
-        registry = AgentRegistry()
-        hitl = HITLManager()
-        llm = MagicMock()
-
-        full = FullAnalysisAgent(llm, [], hitl)
-        registry.register(full, AgentMetadata(
-            name="full_analysis",
-            display_name="深度分析",
-            description="完整市場分析",
-            capabilities=["full_analysis"],
-            allowed_tools=[],
-            priority=20,
-        ))
-
-        names = [m.name for m in registry.list_all()]
-        assert "full_analysis" in names
+    # def test_full_analysis_agent_registered(self): ... REMOVED
 
 
 # ─────────────────────────────────────
@@ -181,102 +160,10 @@ class TestAnalysisReportDB:
 # 3. FullAnalysisAgent Tests
 # ─────────────────────────────────────
 
-class TestFullAnalysisAgent:
-    """Test FullAnalysisAgent with mocked graph.invoke."""
-
-    def _make_agent(self) -> "FullAnalysisAgent":
-        from core.agents.agents.full_analysis_agent import FullAnalysisAgent
-        from core.agents.hitl import HITLManager
-        llm = MagicMock()
-        hitl = HITLManager()
-        return FullAnalysisAgent(llm, [], hitl)
-
-    def test_agent_name(self):
-        """agent.name 應為 'full_analysis'。"""
-        agent = self._make_agent()
-        assert agent.name == "full_analysis"
-
-    def test_execute_returns_agent_result(self):
-        """execute() 應返回 AgentResult，success=True，message 非空。"""
-        from core.agents.models import SubTask, AgentResult
-
-        fake_report = "## BTC 分析報告\n\n**裁決方向**: neutral\n"
-        mock_graph_result = {"formatted_report": fake_report}
-
-        agent = self._make_agent()
-
-        with patch("core.tools.helpers.find_available_exchange", return_value=("okx", "BTC-USDT")):
-            with patch("core.graph.app") as mock_app:
-                mock_app.invoke.return_value = mock_graph_result
-                task = SubTask(
-                    step=1,
-                    agent="full_analysis",
-                    description="幫我完整分析 BTC",
-                    tool_hint=None,
-                )
-                result = agent.execute(task)
-
-        assert isinstance(result, AgentResult)
-        assert result.success is True
-        assert fake_report in result.message
-        assert result.agent_name == "full_analysis"
-
-    def test_execute_exchange_not_found(self):
-        """找不到交易所時應返回 success=False。"""
-        from core.agents.models import SubTask
-
-        agent = self._make_agent()
-        with patch("core.tools.helpers.find_available_exchange", return_value=(None, None)):
-            task = SubTask(
-                step=1,
-                agent="full_analysis",
-                description="分析 FAKECOIN",
-                tool_hint=None,
-            )
-            result = agent.execute(task)
-
-        assert result.success is False
-        assert "FAKECOIN" in result.message or "找不到" in result.message
-
-    def test_execute_graph_error_returns_failure(self):
-        """graph.invoke 拋出例外時應返回 success=False。"""
-        from core.agents.models import SubTask
-
-        agent = self._make_agent()
-        with patch("core.tools.helpers.find_available_exchange", return_value=("okx", "BTC-USDT")):
-            with patch("core.graph.app") as mock_app:
-                mock_app.invoke.side_effect = RuntimeError("OKX API 連線失敗")
-                task = SubTask(
-                    step=1,
-                    agent="full_analysis",
-                    description="分析 BTC",
-                    tool_hint=None,
-                )
-                result = agent.execute(task)
-
-        assert result.success is False
-
-    def test_extract_symbol_btc(self):
-        """_extract_symbol 應從描述中抽取 BTC。"""
-        agent = self._make_agent()
-        assert agent._extract_symbol("幫我分析比特幣") == "BTC"
-        assert agent._extract_symbol("BTC 現在值得投資嗎") == "BTC"
-
-    def test_extract_symbol_eth(self):
-        """_extract_symbol 應從描述中抽取 ETH。"""
-        agent = self._make_agent()
-        assert agent._extract_symbol("以太坊深度分析") == "ETH"
-        assert agent._extract_symbol("幫我看看 ETH") == "ETH"
-
-    def test_extract_interval_default(self):
-        """預設時間週期應為 1d。"""
-        agent = self._make_agent()
-        assert agent._extract_interval("分析 BTC") == "1d"
-
-    def test_extract_interval_1h(self):
-        """有 1小時 關鍵字應返回 1h。"""
-        agent = self._make_agent()
-        assert agent._extract_interval("BTC 1小時分析") == "1h"
+# ─────────────────────────────────────
+# 3. FullAnalysisAgent Tests (REMOVED)
+# ─────────────────────────────────────
+# Class TestFullAnalysisAgent removed as the agent is deprecated.
 
 
 # ─────────────────────────────────────

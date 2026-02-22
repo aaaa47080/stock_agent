@@ -43,7 +43,7 @@
         }
     </script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js"></script>
+    <script src="/static/js/vendor/markdown-it.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/i18next@23.7.6/i18next.min.js"></script>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
@@ -55,13 +55,14 @@
     <script src="/static/js/friends.js?v=5"></script>
     <script src="/static/js/messages.js?v=2"></script>
     <script src="/static/js/nav-config.js?v=6"></script>
+    <script src="/static/js/twstock.js?v=4"></script>
     <!-- Fonts -->
     <link
         href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Mulish:wght@300;400;600;800&family=JetBrains+Mono:wght@400;500&display=swap"
         rel="stylesheet">
 
     <!-- Custom Styles -->
-    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="/static/styles.css?v=4">
 
     <script>
         // Pi 登入（含防重複點擊機制）
@@ -338,21 +339,19 @@
                 </div>
             </div>
 
-            <!-- Tab: Market -->
-            <div id="market-tab"
-                class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40">
+            <!-- Tab: Crypto -->
+            <div id="crypto-tab" class="tab-content hidden h-full overflow-hidden relative">
                 <!-- Dynamic Content Injected via components.js -->
             </div>
 
-            <!-- Tab: Pulse -->
-            <div id="pulse-tab"
-                class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40">
+            <!-- Tab: TW Stock -->
+            <div id="twstock-tab" class="tab-content hidden h-full overflow-hidden relative">
                 <!-- Dynamic Content Injected via components.js -->
             </div>
 
             <!-- Tab: Wallet -->
             <div id="wallet-tab"
-                class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40">
+                class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:pl-6 md:pr-16 py-6 pb-40">
                 <div class="max-w-3xl mx-auto space-y-6">
                     <!-- Header -->
                     <div class="flex justify-between items-end md:pr-14">
@@ -459,7 +458,7 @@
 
             <!-- Tab: Assets -->
             <div id="assets-tab"
-                class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40 relative">
+                class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:pl-6 md:pr-16 py-6 pb-40 relative">
                 <div class="flex justify-between items-end mb-8 md:pr-14">
                     <h2 class="font-serif text-3xl text-secondary" data-i18n="assets.portfolio">Portfolio</h2>
                     <button onclick="refreshAssets()"
@@ -529,13 +528,13 @@
 
             <!-- Tab: Safety (Scam Tracker & Governance) -->
             <div id="safety-tab"
-                class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40">
+                class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:pl-6 md:pr-16 py-6 pb-40">
                 <!-- Dynamic Content Injected via components.js -->
             </div>
 
             <!-- Tab: Forum -->
             <div id="forum-tab"
-                class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40">
+                class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:pl-6 md:pr-16 py-6 pb-40">
                 <!-- Dynamic Content Injected via components.js -->
             </div>
 
@@ -624,6 +623,56 @@
             </div>
             <div id="chart-container" class="flex-1 w-full relative"></div>
             <div id="volume-container" class="w-full h-40 border-t border-white/5"></div>
+        </div>
+    </div>
+
+    <!-- TW Stock Chart Modal -->
+    <div id="twstock-chart-section"
+        class="hidden fixed inset-0 z-[60] bg-background/95 backdrop-blur flex flex-col p-4 md:p-6">
+        <div class="flex flex-col gap-3 mb-3">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <h3 id="twstock-chart-title" class="text-lg md:text-xl font-serif text-secondary">TW Stock Chart
+                    </h3>
+                    <span id="twstock-chart-updated" class="text-[10px] text-textMuted opacity-60"></span>
+                </div>
+                <button onclick="window.TWStockTab.closeTwChart()"
+                    class="w-10 h-10 rounded-full bg-surface flex items-center justify-center text-textMuted hover:text-secondary transition"><i
+                        data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <!-- Toolbar -->
+            <div class="flex flex-wrap items-center gap-2">
+                <!-- Timeframe Selector -->
+                <div class="flex gap-0.5 bg-surface/50 p-1 rounded-xl overflow-x-auto">
+                    <button onclick="window.TWStockTab.changeChartInterval('1d')"
+                        class="tw-chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap bg-white/10 text-primary"
+                        data-interval="1d">1D</button>
+                    <button onclick="window.TWStockTab.changeChartInterval('1wk')"
+                        class="tw-chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap"
+                        data-interval="1wk">1W</button>
+                    <button onclick="window.TWStockTab.changeChartInterval('1mo')"
+                        class="tw-chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap"
+                        data-interval="1mo">1M</button>
+                </div>
+                <div class="flex items-center gap-2 text-xs text-textMuted ml-4 px-2 py-1 bg-surface/30 rounded-lg">
+                    <i data-lucide="info" class="w-3 h-3"></i> 盤後延遲資料 (yfinance)
+                </div>
+                <!-- OHLCV Info Display -->
+                <div id="tw-ohlcv-info" class="flex flex-wrap items-center gap-2 text-[10px] font-mono ml-auto">
+                    <span class="text-textMuted">O:<span id="tw-info-open" class="text-secondary ml-0.5">-</span></span>
+                    <span class="text-textMuted">H:<span id="tw-info-high" class="text-success ml-0.5">-</span></span>
+                    <span class="text-textMuted">L:<span id="tw-info-low" class="text-danger ml-0.5">-</span></span>
+                    <span class="text-textMuted">C:<span id="tw-info-close"
+                            class="text-secondary ml-0.5">-</span></span>
+                    <span class="text-textMuted">Vol:<span id="tw-info-volume"
+                            class="text-primary ml-0.5">-</span></span>
+                </div>
+            </div>
+        </div>
+        <!-- Chart Area -->
+        <div class="flex-1 w-full bg-surface rounded-3xl border border-white/5 overflow-hidden flex flex-col">
+            <div id="twstock-chart-container" class="flex-1 w-full relative"></div>
+            <div id="twstock-volume-container" class="w-full h-40 border-t border-white/5"></div>
         </div>
     </div>
 
@@ -766,7 +815,7 @@
     <!-- Toast Container - 桌面右上角，移动端底部中央 -->
     <div id="toast-container" class="fixed z-[110] flex flex-col gap-3 pointer-events-none
         bottom-28 left-4 right-4 items-center
-        md:bottom-auto md:top-6 md:left-auto md:right-6 md:items-end">
+        md:bottom-auto md:top-24 md:left-auto md:right-4 md:items-end">
         <!-- Toasts will be injected here -->
     </div>
 
@@ -866,9 +915,13 @@
 
             <!-- 測試模式登入按鈕：僅在 TEST_MODE 時顯示 -->
             <div id="dev-login-area" style="display:none;" class="mt-2">
-                <button id="dev-login-btn" onclick="window.AuthManager && AuthManager.loginAsMockUser().then(r => r.success && window.location.reload())"
+                <button id="dev-login-btn"
+                    onclick="window.AuthManager && AuthManager.loginAsMockUser().then(r => r.success && window.location.reload())"
                     class="w-full py-4 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold rounded-2xl flex items-center justify-center gap-3 transition border border-amber-500/30 shadow-lg">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    </svg>
                     Test Mode Login
                 </button>
                 <p class="text-[10px] text-amber-500/50 text-center mt-2">僅測試環境可用 · Dev only</p>
@@ -889,7 +942,7 @@
                         const subtitle = document.querySelector('#login-modal p[data-i18n="login.welcomeSubtitle"]');
                         if (subtitle) subtitle.textContent = 'Test mode enabled - click below to login';
                     }
-                }).catch(() => {});
+                }).catch(() => { });
             </script>
 
             <!-- ============================================================
@@ -1082,17 +1135,17 @@
     </div>
 
     <!-- Scripts -->
-    <script src="/static/js/app.js?v=47" onerror="alert('app.js 載入失敗')"></script>
+    <script src="/static/js/app.js?v=49" onerror="alert('app.js 載入失敗')"></script>
     <script src="/static/js/apiKeyManager.js?v=47" onerror="alert('apiKeyManager.js 載入失敗')"></script>
     <script src="/static/js/auth.js?v=50" onerror="alert('auth.js 載入失敗')"></script>
     <script src="/static/js/okxKeyManager.js?v=47"></script>
-    <script src="/static/js/components.js?v=60"></script>
+    <script src="/static/js/components.js?v=66"></script>
     <script src="/static/js/notification-service.js?v=3"></script>
     <script src="/static/js/components/NotificationBell.js?v=2"></script>
     <script src="/static/js/components/NotificationPanel.js?v=2"></script>
-    <script src="/static/js/llmSettings.js?v=47"></script>
+    <script src="/static/js/llmSettings.js?v=48"></script>
     <script src="/static/js/filter.js?v=47"></script>
-    <script src="/static/js/chat.js?v=48"></script>
+    <script src="/static/js/chat.js?v=1001"></script>
     <script src="/static/js/market.js?v=47"></script>
     <script src="/static/js/assets.js?v=47"></script>
     <script src="/static/js/pulse.js?v=51"></script>
@@ -1105,6 +1158,7 @@
     <script src="/static/js/safetyTab.js?v=52"></script>
     <script src="/static/js/admin.js?v=2"></script>
     <script src="/static/js/admin-stats.js?v=1"></script>
+    <script src="/static/js/twstock.js?v=5"></script>
     <script>
         lucide.createIcons();
 
@@ -1146,7 +1200,7 @@
 
         // 監聽瀏覽器返回/前進按鈕
         window.addEventListener('popstate', (event) => {
-            const validTabs = ['chat', 'market', 'pulse', 'wallet', 'assets', 'friends', 'forum', 'safety', 'settings', 'admin'];
+            const validTabs = ['chat', 'crypto', 'twstock', 'wallet', 'assets', 'friends', 'forum', 'safety', 'settings', 'admin'];
             let targetTab = 'chat';
 
             if (event.state && event.state.tab) {
@@ -1197,7 +1251,7 @@
             });
 
             // Dynamic Component Injection (Lazy Loading)
-            if (['market', 'pulse', 'forum', 'settings', 'friends', 'safety', 'admin'].includes(tabId)) {
+            if (['crypto', 'twstock', 'forum', 'settings', 'friends', 'safety', 'admin'].includes(tabId)) {
                 if (window.Components && typeof window.Components.inject === 'function') {
                     await window.Components.inject(tabId);
                 }
@@ -1255,22 +1309,18 @@
             }
 
             // Trigger tab-specific initialization
-            if (tabId === 'market') {
+            if (tabId === 'crypto') {
                 if (typeof connectTickerWebSocket === 'function') connectTickerWebSocket();
-                if (typeof initMarket === 'function') {
-                    await initMarket();
-                } else if (typeof refreshScreener === 'function') {
-                    await refreshScreener(true);
+                if (typeof initCrypto === 'function') {
+                    await initCrypto();
+                }
+            }
+            if (tabId === 'twstock') {
+                if (window.TWStockTab && typeof window.TWStockTab.initTwStock === 'function') {
+                    window.TWStockTab.initTwStock();
                 }
             }
             if (tabId === 'assets' && typeof refreshAssets === 'function') refreshAssets();
-            if (tabId === 'pulse') {
-                if (typeof initPulse === 'function') {
-                    await initPulse();
-                } else if (typeof checkMarketPulse === 'function') {
-                    await checkMarketPulse(true);
-                }
-            }
             if (tabId === 'wallet') {
                 if (window.WalletApp) window.WalletApp.init();
             }
@@ -1323,6 +1373,9 @@
                 if (typeof updateOKXStatusUI === 'function') {
                     updateOKXStatusUI();
                 }
+            }
+            if (tabId === 'chat') {
+                if (typeof checkApiKeyStatus === 'function') checkApiKeyStatus();
             }
 
             if (typeof onTabSwitch === 'function') onTabSwitch(tabId);
@@ -1662,7 +1715,7 @@
             });
 
             // 3. 載入預設分頁（優先順序：sessionStorage returnToTab > URL hash > localStorage）
-            const validTabs = ['chat', 'market', 'pulse', 'wallet', 'assets', 'friends', 'forum', 'safety', 'settings', 'admin'];
+            const validTabs = ['chat', 'crypto', 'twstock', 'wallet', 'assets', 'friends', 'forum', 'safety', 'settings', 'admin'];
             const returnToTab = sessionStorage.getItem('returnToTab');
             const hashTab = window.location.hash.replace('#', '');
             const savedTab = localStorage.getItem('activeTab') || 'chat';

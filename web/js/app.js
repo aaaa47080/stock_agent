@@ -9,6 +9,7 @@ if (typeof lucide !== 'undefined') {
 
 // markdown-it 可能不存在於所有頁面
 const md = window.markdownit ? window.markdownit({ html: true, linkify: true }) : null;
+window.md = md;
 window.isAnalyzing = false;
 let marketRefreshInterval = null;
 
@@ -511,13 +512,13 @@ function onTabSwitch(tab) {
     }
 
     // Set up new intervals based on tab
-    if (tab === 'market') {
+    if (tab === 'crypto' || tab === 'market') {
         marketRefreshInterval = setInterval(() => {
             if (typeof refreshScreener === 'function') refreshScreener(false);
         }, 60000);
     }
 
-    if (tab === 'pulse') {
+    if (tab === 'crypto' || tab === 'pulse') {
         window.pulseInterval = setInterval(() => {
             if (typeof checkMarketPulse === 'function') checkMarketPulse(false);
         }, 30000);
@@ -654,16 +655,19 @@ async function openSettings() {
         await window.Components.inject('settings');
     }
 
-    // Load current config
+    // Load current config — fetch both endpoints in parallel
     try {
-        const res = await fetch('/api/config');
-        const data = await res.json();
+        const [configRes, modelConfigRes] = await Promise.all([
+            fetch('/api/config'),
+            fetch('/api/model-config')
+        ]);
+        const data = await configRes.json();
+        const modelConfigData = await modelConfigRes.json();
         const settings = data.current_settings || {};
+        const preloadedModelConfig = modelConfigData.model_config || null;
 
         // Update Valid Keys state based on backend existence
         const setStatus = (provider, hasKey) => {
-            // Note: We don't have visual indicators for "Server has key" in the new simplified UI yet,
-            // but we maintain the validKeys state for logic.
             validKeys[provider] = hasKey;
         };
 
@@ -681,9 +685,9 @@ async function openSettings() {
             const providerSelect = document.getElementById('llm-provider-select');
             if (providerSelect) {
                 providerSelect.value = settings.primary_model_provider;
-                // 觸發更新
+                // 觸發更新，傳入預載的 modelConfig 避免重複 fetch
                 if (typeof updateLLMKeyInput === 'function') updateLLMKeyInput();
-                if (typeof updateAvailableModels === 'function') await updateAvailableModels();
+                if (typeof updateAvailableModels === 'function') await updateAvailableModels(preloadedModelConfig);
             }
         }
         if (settings.primary_model_name) {
@@ -698,25 +702,17 @@ async function openSettings() {
 
         // Load committee configuration from backend
         if (window.CommitteeManager) {
-            // Load saved configuration (if any)
             window.CommitteeManager.loadConfig({
                 bull: settings.bull_committee_models || [],
                 bear: settings.bear_committee_models || []
             });
-
-            // 🔧 Ensure events are bound after settings component injection
             window.CommitteeManager.bindEvents();
-
-            // Toggle panel visibility based on checkbox
             window.CommitteeManager.togglePanel(settings.enable_committee);
         }
 
-        // Load premium membership status
+        // Load premium membership status (no artificial delay needed)
         if (typeof loadPremiumStatus === 'function') {
-            // 延遲加載，確保組件已注入
-            setTimeout(() => {
-                loadPremiumStatus();
-            }, 1000);
+            loadPremiumStatus();
         }
 
     } catch (e) {
@@ -799,14 +795,23 @@ document.addEventListener('DOMContentLoaded', () => {
     let xOffset = 0, yOffset = 0; // Saved Offset
     let animationFrameId = null;
 
-    // Load saved position
+    // Load saved position (with bounds clamp to avoid loading an off-screen position)
     const savedPos = localStorage.getItem('navPosition');
     if (savedPos) {
-        const { x, y } = JSON.parse(savedPos);
-        xOffset = x;
-        yOffset = y;
-        // Apply immediately without animation
-        setTranslate(xOffset, yOffset, container);
+        try {
+            const { x, y } = JSON.parse(savedPos);
+            const viewW = window.innerWidth;
+            const viewH = window.innerHeight;
+            const navHeight = nav.getBoundingClientRect().height || 65;
+            // Clamp on load: allow upward drag only within bottom 55% of screen
+            const maxUp = -(viewH * 0.55 - navHeight);
+            const maxDown = 80;
+            xOffset = Math.max(-(viewW / 2) + 80, Math.min((viewW / 2) - 80, x));
+            yOffset = Math.max(maxUp, Math.min(maxDown, y));
+            setTranslate(xOffset, yOffset, container);
+        } catch (e) {
+            localStorage.removeItem('navPosition');
+        }
     }
 
     const dragHandle = nav.querySelector('.drag-handle');

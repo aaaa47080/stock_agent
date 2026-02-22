@@ -64,6 +64,14 @@
     "systemLocked": "System Locked - Please Configure API Key",
     "connecting": "Connecting..."
   },
+  "crypto": {
+    "title": "Crypto"
+  },
+  "twstock": {
+    "title": "TW Stock",
+    "comingSoon": "Taiwan Stocks Coming Soon",
+    "comingSoonDesc": "We are currently integrating real-time data for Taiwan Stocks. Stay tuned for advanced AI analytics in this market."
+  },
   "market": {
     "title": "Market Watch",
     "filter": "Filter",

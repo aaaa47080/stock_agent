@@ -177,79 +177,19 @@ class ManagerAgent:
     async def _classify_node(self, state: ManagerState) -> dict:
         query = state.get("query", "")
 
-        # ── Pre-check: Universal Symbol Resolution ──
-        # Extract candidate tokens:
-        #   - Latin: case-insensitive, 2-5 chars → uppercase for comparison
-        #   - Digits: 4-6 digits (TW stock codes)
-        #   - CJK: extract entire CJK runs, then try all 2-4 char substrings (sliding window)
-        candidate_tokens: list[str] = []
-        # Latin + digit tokens
-        for t in re.findall(r'[A-Za-z]{2,5}|\d{4,6}', query):
-            candidate_tokens.append(t.upper() if re.match(r'[A-Za-z]', t) else t)
-        # CJK sliding window: find each CJK run, try 2/3/4-char substrings
-        for cjk_run in re.findall(r'[\u4e00-\u9fff]+', query):
-            for length in (2, 3, 4):
-                for start in range(len(cjk_run) - length + 1):
-                    candidate_tokens.append(cjk_run[start:start + length])
-
-        market_to_agent = {"crypto": "crypto", "tw": "tw_stock", "us": "us_stock"}
-        multi_market_plan = None
-        single_market_hit: tuple[str, str] | None = None  # (market, symbol)
-
-        for token in candidate_tokens[:12]:
-            resolution = self.universal_resolver.resolve(token)
-            markets = self.universal_resolver.matched_markets(resolution)
-            if len(markets) > 1:
-                steps = []
-                for i, market in enumerate(markets, 1):
-                    symbol = resolution[market]
-                    steps.append({
-                        "step": i,
-                        "description": f"分析 {symbol}（{market} 市場）",
-                        "agent": market_to_agent[market],
-                        "tool_hint": None,
-                    })
-                multi_market_plan = steps
-                break
-            elif len(markets) == 1 and single_market_hit is None:
-                market = markets[0]
-                if market in ("tw", "crypto"):   # Strong unambiguous signals
-                    single_market_hit = (market, resolution[market])
-
-        # Multi-market: build deterministic plan, skip LLM
-        if multi_market_plan:
-            return {
-                "complexity":     "complex",
-                "intent":         multi_market_plan[0]["agent"],
-                "topics":         [s["description"] for s in multi_market_plan],
-                "plan":           multi_market_plan,
-                "plan_confirmed": True,
-            }
-
-        # Single-market fast-path: route directly, skip LLM
-        if single_market_hit:
-            market, symbol = single_market_hit
-            return {
-                "complexity":         "simple",
-                "intent":             market_to_agent[market],
-                "topics":             [symbol],
-                "ambiguity_question": None,
-            }
-
-        # ── Normal LLM classification ──
+        # ── LLM Classification（含 symbol 萃取）──
+        # LLM 一次完成：agent 選擇 + 各市場 symbol 萃取（含代詞解析）
         agents_info = self.agent_registry.agents_info_for_prompt()
         tools_info  = ", ".join([t.name for t in self.tool_registry.list_all_tools()])
+        history     = state.get("history") or "（無對話歷史）"
         prompt = PromptRegistry.render(
             "manager", "classify",
-            query=state.get("query", ""),
+            query=query,
             agents_info=agents_info,
             tools_info=tools_info,
+            history=history,
         )
         try:
-            # LLM invoke is sync, run in executor if needed, but usually fast enough or client handles it.
-            # Ideally user_client should be async, but let's assume sync client for now and wrap if needed.
-            # For strict async, we should use llm.ainvoke if available, or run_in_executor.
-            # Assuming llm_client supports invoke (sync).
             import asyncio
             loop = asyncio.get_running_loop()
             response = await loop.run_in_executor(None, lambda: self.llm.invoke([HumanMessage(content=prompt)]))
@@ -259,8 +199,38 @@ class ManagerAgent:
             data = {"complexity": "simple", "intent": "chat", "topics": []}
 
         # 相容舊版 prompt 回傳 "agent" 欄位
-        intent = data.get("intent") or data.get("agent", "chat")
+        intent     = data.get("intent") or data.get("agent", "chat")
         complexity = data.get("complexity", "simple")
+        symbols    = data.get("symbols") or {}
+
+        # ── Symbol-based routing（從 LLM 萃取的 symbols 驅動）──
+        market_to_agent = {"crypto": "crypto", "tw": "tw_stock", "us": "us_stock"}
+        matched = [(m, symbols[m]) for m in ("crypto", "tw", "us") if symbols.get(m)]
+
+        if len(matched) > 1:
+            # 多市場：建立確定性 plan，跳過 HITL planning
+            steps = [
+                {
+                    "step": i,
+                    "description": f"分析 {sym}",
+                    "agent": market_to_agent[mkt],
+                    "tool_hint": None,
+                }
+                for i, (mkt, sym) in enumerate(matched, 1)
+            ]
+            return {
+                "complexity":     "complex",
+                "intent":         steps[0]["agent"],
+                "topics":         [sym for _, sym in matched],
+                "plan":           steps,
+                "plan_confirmed": True,
+            }
+        elif len(matched) == 1:
+            # 單一市場：覆蓋 intent（LLM 萃取比 agent 選擇更可靠）
+            mkt, sym = matched[0]
+            intent = market_to_agent[mkt]
+            if not data.get("topics"):
+                data["topics"] = [sym]
 
         # 若 LLM 回傳不認識的 agent name，fallback 到 chat
         known_agents = {m.name for m in self.agent_registry.list_all()}
@@ -422,19 +392,48 @@ class ManagerAgent:
         }
 
     async def _answer_research_question(self, question: str, research_summary: str, symbol: str) -> str:
-        """用 LLM 根據已收集的研究資料回答用戶的問題。"""
+        """用 LLM 根據已收集的研究資料回答用戶的問題。若資料不足，自動用 web_search 補充。"""
         import asyncio
         loop = asyncio.get_running_loop()
-        prompt = (
+
+        # 先嘗試從現有資料回答，若 LLM 判斷資料不足則補充 web_search
+        probe_prompt = (
             f"以下是關於 {symbol} 的即時市場資料：\n\n"
             f"{research_summary}\n\n"
-            f"請根據以上資料，用繁體中文回答用戶的問題：\n"
-            f"問題：{question}\n\n"
-            f"回答時請直接針對問題。若引用新聞，必須保留原始 Markdown 連結格式 [標題](url)，不要省略連結。"
+            f"用戶問題：{question}\n\n"
+            f"若上述資料已足夠回答問題，請直接回答（繁體中文）。"
+            f"若資料不足（例如問及總發行量、市值、白皮書、開發團隊等標準工具未涵蓋的資訊），"
+            f"請只回覆 JSON：{{\"need_search\": true, \"search_query\": \"具體搜尋關鍵字\"}}"
         )
         try:
-            response = await loop.run_in_executor(None, lambda: self.llm.invoke([HumanMessage(content=prompt)]))
-            return self._llm_content(response).strip()
+            response = await loop.run_in_executor(None, lambda: self.llm.invoke([HumanMessage(content=probe_prompt)]))
+            raw = self._llm_content(response).strip()
+
+            # 檢查是否需要 web_search
+            parsed = self._parse_json(raw)
+            if parsed and parsed.get("need_search"):
+                search_query = parsed.get("search_query", f"{symbol} {question}")
+                ws_tool = self.tool_registry.get("web_search", caller_agent="manager")
+                search_result = ""
+                if ws_tool:
+                    try:
+                        sr = await loop.run_in_executor(
+                            None, lambda: ws_tool.handler.invoke({"query": search_query, "purpose": "research"})
+                        )
+                        search_result = str(sr)[:1500]
+                    except Exception as e:
+                        print(f"[PreResearch] web_search failed: {e}")
+
+                # 有了搜尋結果，重新請 LLM 回答
+                final_prompt = (
+                    f"用戶問：{question}\n\n"
+                    f"網路搜尋結果：\n{search_result}\n\n"
+                    f"請根據搜尋結果用繁體中文回答，若有連結請保留 Markdown 格式 [標題](url)。"
+                )
+                response2 = await loop.run_in_executor(None, lambda: self.llm.invoke([HumanMessage(content=final_prompt)]))
+                return self._llm_content(response2).strip()
+
+            return raw
         except Exception as e:
             print(f"[PreResearch] answer_question failed: {e}")
             return "抱歉，暫時無法回答這個問題，請直接開始分析。"
