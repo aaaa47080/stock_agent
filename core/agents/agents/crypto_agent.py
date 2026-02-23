@@ -3,6 +3,7 @@ Agent V4 — Crypto Agent (ReAct)
 
 Dynamic tool-calling agent for crypto analysis.
 LLM decides which tools to call based on the query — no fixed pipeline.
+Supports multi-language responses.
 """
 import re
 from typing import List
@@ -27,7 +28,8 @@ class CryptoAgent:
     def execute(self, task: SubTask) -> AgentResult:
         """Execute crypto analysis via ReAct tool-calling loop."""
         history = (task.context or {}).get("history", "")
-        symbol  = self._extract_symbol(task.description, history=history)
+        language = (task.context or {}).get("language", "zh-TW")  # 獲取用戶語言偏好
+        symbol  = self._extract_symbol(task.description, history=history, language=language)
 
         # Collect available LangChain @tool objects from registry
         allowed_metas = self.tool_registry.list_for_agent(self.name)
@@ -53,10 +55,10 @@ class CryptoAgent:
         # Bind tools — LanguageAwareLLM.bind_tools() preserves language injection
         llm_with_tools = self.llm.bind_tools(tools)
 
-        system_prompt = PromptRegistry.get("crypto_agent", "system")
+        system_prompt = PromptRegistry.get("crypto_agent", "system", language)
         messages: List = [
             SystemMessage(content=system_prompt),
-            HumanMessage(content=f"[標的參考: {symbol}]\n\n{task.description}"),
+            HumanMessage(content=f"[標的參考：{symbol}]\n\n{task.description}"),
         ]
 
         last_response = None
@@ -78,9 +80,18 @@ class CryptoAgent:
                 ))
 
         final_text = (last_response.content if last_response else "") or "（無分析結果）"
+        
+        # 根據語言選擇回應前綴
+        prefix_map = {
+            "zh-TW": "🔐 **{symbol} 加密貨幣分析**",
+            "zh-CN": "🔐 **{symbol} 加密货币分析**",
+            "en": "🔐 **{symbol} Cryptocurrency Analysis**",
+        }
+        prefix = prefix_map.get(language, prefix_map["zh-TW"]).format(symbol=symbol)
+        
         return AgentResult(
             success=True,
-            message=f"🔐 **{symbol} 加密貨幣分析**\n\n{final_text}",
+            message=f"{prefix}\n\n{final_text}",
             agent_name=self.name,
             data={"symbol": symbol},
             quality="pass",
@@ -96,17 +107,20 @@ class CryptoAgent:
         except Exception as e:
             return f"[Tool '{tool_name}' error: {e}]"
 
-    def _extract_symbol(self, description: str, history: str = "") -> str:
+    def _extract_symbol(self, description: str, history: str = "", language: str = "zh-TW") -> str:
         """Extract crypto ticker from description, using history for pronoun resolution."""
         try:
             history_hint = f"\n\n近期對話歷史：\n{history[-400:]}" if history else ""
-            prompt = (
-                f"從以下文字中提取加密貨幣的交易所 ticker 代號（例如 BTC、ETH、PI、SOL）。"
-                f"若有代詞（它/他/這個幣），請從對話歷史推斷所指幣種。"
-                f"只回覆 ticker（純英文大寫），不要其他文字。若完全無法識別則回覆 BTC。"
-                f"\n\n文字：{description}{history_hint}"
-            )
-            response = self.llm.invoke([HumanMessage(content=prompt)])
+            
+            # 根據語言選擇提示詞
+            if language == "zh-TW":
+                prompt_text = f"從以下文字中提取加密貨幣的交易所 ticker 代號（例如 BTC、ETH、PI、SOL）。若有代詞（它/他/這個幣），請從對話歷史推斷所指幣種。只回覆 ticker（純英文大寫），不要其他文字。若完全無法識別則回覆 BTC。\n\n文字：{description}{history_hint}"
+            elif language == "zh-CN":
+                prompt_text = f"从以下文字中提取加密货币的交易所 ticker 代号（例如 BTC、ETH、PI、SOL）。若有代词（它/他/这个币），请从对话历史推断所指币种。只回复 ticker（纯英文大写），不要其他文字。若完全无法识别则回复 BTC。\n\n文字：{description}{history_hint}"
+            else:
+                prompt_text = f"Extract the exchange ticker symbol from the following text (e.g., BTC, ETH, PI, SOL). If there are pronouns, infer the coin from the conversation history. Reply only with the ticker (uppercase English letters), nothing else. If completely unrecognizable, reply BTC.\n\nText: {description}{history_hint}"
+            
+            response = self.llm.invoke([HumanMessage(content=prompt_text)])
             return response.content.strip().upper().split()[0]
         except Exception:
             return "BTC"

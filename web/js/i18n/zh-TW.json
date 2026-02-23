@@ -81,22 +81,22 @@
     "refresh": "重新整理",
     "topPerformers": "熱門幣種",
     "marketDynamics": "市場動態",
-    "topGainers": "24小時漲幅榜",
-    "topLosers": "24小時跌幅榜",
+    "topGainers": "24 小時漲幅榜",
+    "topLosers": "24 小時跌幅榜",
     "bullishSqueeze": "看漲擠壓 (低資金費率)",
     "overheated": "過熱 (高資金費率)",
     "selected": "已選擇",
-    "perfLabel": "24小時表現",
+    "perfLabel": "24 小時表現",
     "shortsPaying": "空方支付",
     "longsPaying": "多方支付",
     "history": "歷史"
   },
   "pulse": {
     "title": "市場脈動",
-    "filter": "篩選",
+    "filter": "篩選信號",
     "autoBadge": "自動",
     "selected": "已選擇",
-    "scanning": "掃描中",
+    "scanning": "掃描市場中...",
     "refresh": "重新整理",
     "keyPoints": "重點摘要",
     "highlights": "亮點",
@@ -118,7 +118,7 @@
     "currentPrice": "現價",
     "up24h": "上漲",
     "down24h": "下跌",
-    "in24h": "24小時",
+    "in24h": "24 小時",
     "rsiShows": "RSI 為",
     "overbought": "超買",
     "oversold": "超賣",
@@ -213,6 +213,23 @@
     "confirm": {
       "defaultTitle": "確認操作",
       "defaultMessage": "確定要執行此操作嗎？"
+    },
+    "api": {
+      "title": "API 配置",
+      "provider": "供應商",
+      "apiKey": "API 金鑰",
+      "test": "測試連接",
+      "testing": "測試中...",
+      "success": "連接成功",
+      "failed": "連接失敗",
+      "save": "儲存配置"
+    },
+    "premium": {
+      "title": "升級到高級會員",
+      "price": "價格",
+      "benefits": "會員權益",
+      "confirmPurchase": "確認購買",
+      "cancel": "取消"
     }
   },
   "login": {
@@ -242,7 +259,20 @@
     "myFriends": "我的好友",
     "manageBlocked": "管理黑名單",
     "loadingFriends": "載入好友中...",
-    "blockedInfo": "被封鎖的用戶無法向您發送訊息或好友請求。"
+    "blockedInfo": "被封鎖的用戶無法向您發送訊息或好友請求。",
+    "noFriends": "尚無好友",
+    "noRequests": "沒有好友請求",
+    "accept": "接受",
+    "reject": "拒絕",
+    "sendRequest": "發送請求",
+    "requestSent": "請求已發送",
+    "alreadyFriends": "已是好友",
+    "block": "封鎖",
+    "unblock": "解除封鎖",
+    "sendMessage": "發送訊息",
+    "messageSent": "訊息已發送",
+    "messageFailed": "發送訊息失敗",
+    "dailyLimitReached": "已達每日上限"
   },
   "settings": {
     "title": "設定",
@@ -272,7 +302,10 @@
       "model": "模型",
       "selectModel": "選擇模型",
       "modelPlaceholder": "例如：openai/gpt-4o, anthropic/claude-3.5-sonnet",
-      "saveConfig": "儲存 AI 設定"
+      "saveConfig": "儲存 AI 設定",
+      "testing": "測試中...",
+      "testSuccess": "API 金鑰有效",
+      "testFailed": "API 金鑰無效"
     },
     "committee": {
       "title": "委員會模式",
@@ -282,13 +315,17 @@
       "selectProviderFirst": "先選擇供應商...",
       "bullTeam": "多方團隊",
       "bearTeam": "空方團隊",
-      "noMembers": "尚未添加成員"
+      "noMembers": "尚未添加成員",
+      "addMember": "添加成員",
+      "removeMember": "移除成員"
     },
     "navigation": {
       "title": "導覽列自訂",
       "description": "自訂您的底部導覽列",
       "customize": "自訂",
-      "info": "選擇要顯示在底部導覽列的功能。至少需啟用 2 個項目。"
+      "info": "選擇要顯示在底部導覽列的功能。至少需啟用 2 個項目。",
+      "reset": "恢復預設",
+      "saved": "設定已儲存"
     },
     "premium": {
       "title": "高級會員",
@@ -299,7 +336,9 @@
       "benefit3": "優先訪問新功能",
       "benefit4": "專屬高級會員標識",
       "upgradeButton": "升級到高級會員 -",
-      "oneTimePayment": "一次性付費，立即生效"
+      "oneTimePayment": "一次性付費，立即生效",
+      "purchased": "高級會員已啟用",
+      "validUntil": "有效期至"
     },
     "exchange": {
       "title": "交易所金鑰",
@@ -309,7 +348,10 @@
       "connected": "OKX 已連接",
       "storedLocally": "API 金鑰安全儲存在本地",
       "update": "更新",
-      "disconnect": "斷開連接"
+      "disconnect": "斷開連接",
+      "testConnection": "測試連接",
+      "connectionSuccess": "連接成功",
+      "connectionFailed": "連接失敗"
     },
     "legal": {
       "title": "關於與法律",
@@ -321,7 +363,8 @@
       "guidelinesTitle": "社群規範",
       "guidelinesDesc": "治理與審核規則"
     },
-    "saveAll": "儲存所有設定"
+    "saveAll": "儲存所有設定",
+    "savedSuccess": "設定已成功儲存"
   },
   "safety": {
     "title": "社群安全",
@@ -336,9 +379,12 @@
       "pending": "待審核",
       "disputed": "有爭議",
       "latest": "最新",
-      "popular": "熱門"
+      "popular": "熱門",
+      "mostVoted": "最多投票",
+      "mostViewed": "最多瀏覽"
     },
     "gov": {
+      "title": "社群治理",
       "reportTitle": "檢舉內容",
       "violationType": "違規類型",
       "spam": "垃圾訊息",
@@ -376,22 +422,112 @@
       "btnConfirm": "確認投票",
       "btnCancel": "取消",
       "btnViolation": "違規",
-      "btnNotViolation": "無違規"
+      "btnNotViolation": "無違規",
+      "myReports": "我的檢舉",
+      "noReports": "尚無檢舉"
     },
     "submit": {
-      "selectType": "選擇類型...",
+      "title": "檢舉詐騙錢包",
+      "scamWallet": "詐騙錢包地址",
       "description": "詳細描述",
       "yourWallet": "您的錢包地址",
       "scamType": "詐騙類型",
       "txHash": "交易雜湊",
       "txHashPlaceholder": "64 位元交易雜湊...",
       "descPlaceholder": "描述詐騙細節（至少 20 字）...",
-      "submitButton": "提交檢舉"
+      "submitButton": "提交檢舉",
+      "selectType": "選擇類型...",
+      "success": "檢舉已成功提交",
+      "failed": "提交檢舉失敗"
     },
     "detail": {
       "title": "檢舉詳情",
-      "confirm": "確認詐騙",
-      "dispute": "有異議"
+      "confirm": "確認",
+      "dispute": "有異議",
+      "reportedBy": "檢舉人",
+      "reportedAt": "檢舉時間",
+      "status": "狀態",
+      "votes": "投票",
+      "comments": "評論"
+    },
+    "submitReport": "提交檢舉"
+  },
+  "featureMenu": {
+    "title": "自訂導覽列",
+    "description": "選擇要顯示在底部導覽列的功能",
+    "save": "儲存",
+    "saveChanges": "儲存變更",
+    "cancel": "取消",
+    "reset": "恢復預設",
+    "minWarning": "請至少選擇 {{min}} 個項目"
+  },
+  "forum": {
+    "title": "論壇",
+    "newPost": "發表文章",
+    "editPost": "編輯文章",
+    "deletePost": "刪除文章",
+    "confirmDelete": "確定要刪除此文章嗎？",
+    "titlePlaceholder": "文章標題...",
+    "contentPlaceholder": "撰寫文章內容...",
+    "selectBoard": "選擇看板",
+    "publish": "發布",
+    "cancel": "取消",
+    "postSuccess": "文章已成功發布",
+    "postFailed": "發布文章失敗",
+    "noPosts": "尚無文章",
+    "views": "次瀏覽",
+    "comments": "則評論",
+    "lastReply": "最後回覆",
+    "by": "由",
+    "boards": {
+      "general": "綜合討論",
+      "crypto": "加密貨幣",
+      "twstock": "台股",
+      "usstock": "美股",
+      "trading": "交易策略",
+      "technology": "科技",
+      "offtopic": "閒聊"
     }
+  },
+  "admin": {
+    "title": "管理後台",
+    "users": "用戶管理",
+    "posts": "文章管理",
+    "reports": "檢舉管理",
+    "config": "系統配置",
+    "stats": "統計數據",
+    "broadcast": "發送廣播"
+  },
+  "notification": {
+    "title": "通知",
+    "markAllRead": "全部標為已讀",
+    "noNotifications": "沒有通知",
+    "systemUpdate": "系統更新",
+    "newFeature": "新功能上線"
+  },
+  "error": {
+    "networkError": "網路錯誤，請檢查您的連線。",
+    "serverError": "伺服器錯誤，請稍後再試。",
+    "unauthorized": "請登入後繼續。",
+    "forbidden": "您沒有權限訪問此內容。",
+    "notFound": "找不到內容。",
+    "rateLimit": "請求過於頻繁，請稍候再試。",
+    "unknown": "發生未知錯誤。"
+  },
+  "success": {
+    "saved": "已成功儲存",
+    "deleted": "已成功刪除",
+    "updated": "已成功更新",
+    "created": "已成功建立",
+    "sent": "已成功發送"
+  },
+  "time": {
+    "justNow": "剛剛",
+    "minutesAgo": "{{count}}分鐘前",
+    "hoursAgo": "{{count}}小時前",
+    "daysAgo": "{{count}}天前",
+    "weeksAgo": "{{count}}週前",
+    "monthsAgo": "{{count}}個月前",
+    "yearsAgo": "{{count}}年前"
   }
 }

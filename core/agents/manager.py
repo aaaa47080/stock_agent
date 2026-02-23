@@ -797,6 +797,7 @@ class ManagerAgent:
         plan = state.get("plan") or []
         results = state.get("agent_results") or []
         idx = state.get("current_step_index", 0)
+        language = state.get("language", "zh-TW")  # 獲取用戶語言偏好
 
         if idx >= len(plan):
             return {}
@@ -804,7 +805,10 @@ class ManagerAgent:
         task_dict = plan[idx]
         task = SubTask(**{k: v for k, v in task_dict.items()
                           if k in SubTask.__dataclass_fields__})
-        task.context = {"history": self._build_history(state)}
+        task.context = {
+            "history": self._build_history(state),
+            "language": language,  # 傳遞語言參數給 Agent
+        }
 
         logger.info(f"[Manager] Executing step {idx+1}/{len(plan)}: {task.agent} - {task.description}")
 

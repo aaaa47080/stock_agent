@@ -56,6 +56,7 @@
     <script src="/static/js/messages.js?v=2"></script>
     <script src="/static/js/nav-config.js?v=6"></script>
     <script src="/static/js/twstock.js?v=4"></script>
+    <script src="/static/js/usstock.js?v=1"></script>
     <!-- Fonts -->
     <link
         href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Mulish:wght@300;400;600;800&family=JetBrains+Mono:wght@400;500&display=swap"
@@ -346,6 +347,11 @@
 
             <!-- Tab: TW Stock -->
             <div id="twstock-tab" class="tab-content hidden h-full overflow-hidden relative">
+                <!-- Dynamic Content Injected via components.js -->
+            </div>
+
+            <!-- Tab: US Stock -->
+            <div id="usstock-tab" class="tab-content hidden h-full overflow-hidden relative">
                 <!-- Dynamic Content Injected via components.js -->
             </div>
 
@@ -1318,6 +1324,11 @@
             if (tabId === 'twstock') {
                 if (window.TWStockTab && typeof window.TWStockTab.initTwStock === 'function') {
                     window.TWStockTab.initTwStock();
+                }
+            }
+            if (tabId === 'usstock') {
+                if (window.USStockTab && typeof window.USStockTab.init === 'function') {
+                    window.USStockTab.init();
                 }
             }
             if (tabId === 'assets' && typeof refreshAssets === 'function') refreshAssets();

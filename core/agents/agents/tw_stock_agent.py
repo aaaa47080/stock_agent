@@ -25,11 +25,17 @@ class TWStockAgent:
     def execute(self, task: SubTask) -> AgentResult:
         """Execute TW stock analysis."""
         # 1. Resolve ticker
+        language = (task.context or {}).get("language", "zh-TW")  # 獲取用戶語言偏好
         ticker = self._extract_ticker(task.description)
         if not ticker:
+            msg_map = {
+                "zh-TW": "無法識別台股代號，請提供股票代號（如 2330）或公司名稱（如 台積電）。",
+                "zh-CN": "无法识别台股代号，请提供股票代号（如 2330）或公司名称（如 台积电）。",
+                "en": "Unable to recognize TW stock ticker. Please provide stock code (e.g., 2330) or company name (e.g., TSMC).",
+            }
             return AgentResult(
                 success=False,
-                message="無法識別台股代號，請提供股票代號（如 2330）或公司名稱（如 台積電）。",
+                message=msg_map.get(language, msg_map["zh-TW"]),
                 agent_name=self.name,
                 quality="fail",
             )
@@ -49,9 +55,14 @@ class TWStockAgent:
         # If nothing fetched at all, refuse
         all_empty = not any([price_data, technical_data, fundamentals_data, institutional_data, news_data])
         if all_empty:
+            msg_map = {
+                "zh-TW": f"無法獲取 {ticker} 的資料，請稍後再試。",
+                "zh-CN": f"无法获取 {ticker} 的资料，请稍后再试。",
+                "en": f"Unable to fetch data for {ticker}. Please try again later.",
+            }
             return AgentResult(
                 success=False,
-                message=f"無法獲取 {ticker} 的資料，請稍後再試。",
+                message=msg_map.get(language, msg_map["zh-TW"]),
                 agent_name=self.name,
                 quality="fail",
             )
@@ -59,10 +70,10 @@ class TWStockAgent:
         # 4. Format data for prompt
         def fmt(d):
             if not d:
-                return "（未擷取）"
+                return "（未擷取）" if language == "zh-TW" else "(Not fetched)" if language == "en" else "（未抓取）"
             if isinstance(d, list):
                 if not d:
-                    return "（無資料）"
+                    return "（無資料）" if language == "zh-TW" else "(No data)" if language == "en" else "（无资料）"
                 return "\n".join(
                     f"- [{item.get('title','')}]({item.get('url','')})"
                     f" _({item.get('source','')})_"
@@ -71,7 +82,7 @@ class TWStockAgent:
             return json.dumps(d, ensure_ascii=False, indent=2)
 
         prompt = PromptRegistry.render(
-            "tw_stock_agent", "analysis",
+            "tw_stock_agent", "analysis", language,
             ticker=ticker,
             company_name=company_name,
             query=task.description,
@@ -84,9 +95,16 @@ class TWStockAgent:
 
         try:
             response = self.llm.invoke([HumanMessage(content=prompt)])
-            analysis_text = f"🇹🇼 **{company_name or ticker} 台股分析**\n\n{response.content}"
+            
+            # Multi-language prefix
+            prefix_map = {
+                "zh-TW": f"🇹🇼 **{company_name or ticker} 台股分析**",
+                "zh-CN": f"🇹🇼 **{company_name or ticker} 台股分析**",
+                "en": f"🇹🇼 **{company_name or ticker} TW Stock Analysis**",
+            }
+            analysis_text = f"{prefix_map.get(language, prefix_map['zh-TW'])}\n\n{response.content}"
         except Exception as e:
-            analysis_text = f"分析生成失敗：{e}"
+            analysis_text = f"分析生成失敗：{e}" if language == "zh-TW" else f"Analysis generation failed: {e}"
 
         return AgentResult(
             success=True,
