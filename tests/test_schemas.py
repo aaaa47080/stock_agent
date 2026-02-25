@@ -7,7 +7,6 @@ from pydantic import ValidationError
 from core.tools.schemas import (
     TechnicalAnalysisInput,
     NewsAnalysisInput,
-    FullInvestmentAnalysisInput,
     PriceInput,
     CurrentTimeInput,
     MarketPulseInput,
@@ -69,52 +68,6 @@ class TestNewsAnalysisInput:
         """Test setting include_sentiment to False"""
         model = NewsAnalysisInput(symbol="BTC", include_sentiment=False)
         assert model.include_sentiment is False
-
-
-class TestFullInvestmentAnalysisInput:
-    """Tests for FullInvestmentAnalysisInput schema"""
-
-    def test_required_symbol(self):
-        """Test that symbol is required"""
-        model = FullInvestmentAnalysisInput(symbol="BTC")
-        assert model.symbol == "BTC"
-
-    def test_all_defaults(self):
-        """Test all default values"""
-        model = FullInvestmentAnalysisInput(symbol="ETH")
-        assert model.interval == "1d"
-        assert model.include_futures is True
-        assert model.leverage == 5
-
-    def test_custom_leverage(self):
-        """Test custom leverage value"""
-        model = FullInvestmentAnalysisInput(symbol="BTC", leverage=10)
-        assert model.leverage == 10
-
-    def test_leverage_minimum(self):
-        """Test leverage minimum value (ge=1)"""
-        model = FullInvestmentAnalysisInput(symbol="BTC", leverage=1)
-        assert model.leverage == 1
-
-    def test_leverage_maximum(self):
-        """Test leverage maximum value (le=125)"""
-        model = FullInvestmentAnalysisInput(symbol="BTC", leverage=125)
-        assert model.leverage == 125
-
-    def test_leverage_below_minimum_raises_error(self):
-        """Test that leverage below 1 raises ValidationError"""
-        with pytest.raises(ValidationError):
-            FullInvestmentAnalysisInput(symbol="BTC", leverage=0)
-
-    def test_leverage_above_maximum_raises_error(self):
-        """Test that leverage above 125 raises ValidationError"""
-        with pytest.raises(ValidationError):
-            FullInvestmentAnalysisInput(symbol="BTC", leverage=126)
-
-    def test_include_futures_false(self):
-        """Test setting include_futures to False"""
-        model = FullInvestmentAnalysisInput(symbol="BTC", include_futures=False)
-        assert model.include_futures is False
 
 
 class TestPriceInput:
