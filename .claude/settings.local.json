@@ -113,7 +113,9 @@
       "Bash(PYTHONIOENCODING=utf-8 python:*)",
       "mcp__plugin_playwright_playwright__browser_resize",
       "Bash(tasklist:*)",
-      "Bash(ss:*)"
+      "Bash(ss:*)",
+      "Bash(awk NR>=148 && NR<=155:*)",
+      "Bash(grep Version:*)"
     ]
   }
 }

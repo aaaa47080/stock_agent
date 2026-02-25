@@ -19,7 +19,7 @@ Features:
 """
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, List, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import asyncio
 import yfinance as yf
 import pandas as pd
@@ -110,6 +110,7 @@ class YahooFinanceProvider(StockDataProvider):
             
             data = {
                 "symbol": symbol,
+                "name": info.get("shortName") or info.get("longName") or symbol,
                 "price": last_price,
                 "change": last_price - prev_close if prev_close else 0,
                 "change_percent": ((last_price - prev_close) / prev_close * 100) if prev_close else 0,
@@ -320,22 +321,60 @@ class YahooFinanceProvider(StockDataProvider):
             
             data = []
             for item in news[:limit]:
+                # yfinance 1.2+ nests data under "content"; fall back to flat for older versions
+                content = item.get("content", {}) if isinstance(item.get("content"), dict) else {}
+
+                title = (content.get("title") or item.get("title", "")).strip()
+                if not title:
+                    continue
+
+                canonical = content.get("canonicalUrl") or {}
+                clickthrough = content.get("clickThroughUrl") or {}
+                url = (
+                    canonical.get("url")
+                    or clickthrough.get("url")
+                    or item.get("link", "")
+                )
+
+                provider = content.get("provider") or {}
+                source = (
+                    provider.get("displayName")
+                    or item.get("publisher", "")
+                )
+
+                pub_date = content.get("pubDate") or item.get("providerPublishTime")
+                # pubDate may be ISO string or unix timestamp
+                if isinstance(pub_date, str):
+                    try:
+                        dt = datetime.fromisoformat(pub_date.replace("Z", "+00:00"))
+                        pub_at = int(dt.timestamp())
+                        pub_str = dt.strftime("%Y-%m-%d %H:%M")
+                    except Exception:
+                        pub_at = None
+                        pub_str = pub_date
+                elif isinstance(pub_date, (int, float)):
+                    pub_at = int(pub_date)
+                    pub_str = datetime.fromtimestamp(pub_at).strftime("%Y-%m-%d %H:%M")
+                else:
+                    pub_at = None
+                    pub_str = None
+
                 news_item = {
-                    "title": item.get("title", "無標題"),
-                    "url": item.get("link", ""),
-                    "source": item.get("publisher", "未知來源"),
-                    "published_at": item.get("providerPublishTime"),
-                    "published_at_str": datetime.fromtimestamp(item.get("providerPublishTime", 0)).strftime("%Y-%m-%d %H:%M") if item.get("providerPublishTime") else None,
+                    "title": title,
+                    "url": url,
+                    "source": source,
+                    "published_at": pub_at,
+                    "published_at_str": pub_str,
                     "thumbnail": None,
                 }
-                
-                # 獲取縮圖
+
+                # 獲取縮圖 (legacy flat structure)
                 thumbnail = item.get("thumbnail", {})
                 if thumbnail and isinstance(thumbnail, dict):
                     resolutions = thumbnail.get("resolutions", [])
                     if resolutions and len(resolutions) > 0:
                         news_item["thumbnail"] = resolutions[0].get("url")
-                
+
                 data.append(news_item)
             
             self._set_cache(cache_key, data, "news")

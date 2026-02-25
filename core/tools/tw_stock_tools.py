@@ -123,7 +123,7 @@ def tw_fundamentals(ticker: str) -> dict:
             "company_name":        info.get("longName") or info.get("shortName"),
             "pe_ratio":            info.get("trailingPE"),
             "pb_ratio":            info.get("priceToBook"),
-            "dividend_yield_pct":  round(info.get("dividendYield", 0) * 100, 2) if info.get("dividendYield") else None,
+            "dividend_yield_pct":  round(info.get("dividendYield", 0), 2) if info.get("dividendYield") else None,
             "eps_ttm":             info.get("trailingEps"),
             "revenue_growth":      info.get("revenueGrowth"),
             "profit_margins":      info.get("profitMargins"),
@@ -138,45 +138,94 @@ def tw_fundamentals(ticker: str) -> dict:
 
 # ── Institutional (三大法人) ────────────────────────────────────────────────
 
+def _parse_inst_number(s: str) -> int | None:
+    """Parse institutional buy/sell number string (may have commas or be empty)."""
+    if s is None or s == "" or s == "--":
+        return None
+    try:
+        return int(str(s).replace(",", "").strip())
+    except (ValueError, AttributeError):
+        return None
+
+
 @tool
 def tw_institutional(ticker: str) -> dict:
     """獲取台股三大法人籌碼資料（外資、投信、自營商買賣超）。
-    資料來源：TWSE 官方 openapi"""
-    try:
-        import httpx
+    資料來源：TWSE T86（非 openapi，穩定性較高）"""
+    import httpx
+    from datetime import date, timedelta
 
-        # Extract code from ticker (e.g., "2330.TW" → "2330")
-        code = ticker.split(".")[0]
-        url = f"https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY?stockNo={code}"
-        resp = httpx.get(url, timeout=10, verify=False)
+    # Extract code from ticker (e.g., "2330.TW" → "2330")
+    code = ticker.split(".")[0]
 
-        # TWSE institutional API (3-party)
-        inst_url = "https://openapi.twse.com.tw/v1/exchangeReport/MI_INDEX3"
-        inst_resp = httpx.get(inst_url, timeout=10, params={"stockNo": code}, verify=False)
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Referer": "https://www.twse.com.tw/",
+    }
 
-        if inst_resp.status_code == 200:
-            data = inst_resp.json()
-            matching = [d for d in data if d.get("證券代號", "") == code]
-            if matching:
-                d = matching[0]
-                return {
-                    "ticker":           ticker,
-                    "date":             d.get("日期", ""),
-                    "foreign_net":      d.get("外陸資買賣超股數(不含外資自營商)", ""),
-                    "investment_trust": d.get("投信買賣超股數", ""),
-                    "dealer_net":       d.get("自營商買賣超股數", ""),
-                    "total_3party_net": d.get("三大法人買賣超股數", ""),
-                    "source":           "TWSE openapi",
-                }
+    # Try T86 endpoint: try today and past 5 trading days
+    for days_back in range(0, 6):
+        try:
+            target_date = date.today() - timedelta(days=days_back)
+            # Skip weekends
+            if target_date.weekday() >= 5:
+                continue
+            date_str = target_date.strftime("%Y%m%d")
+            url = (
+                f"https://www.twse.com.tw/rwd/zh/fund/T86"
+                f"?response=json&date={date_str}&selectType=ALLBUT0999"
+            )
+            resp = httpx.get(url, timeout=12, headers=headers, verify=False)
+            if resp.status_code != 200:
+                continue
 
-        # Fallback: just return basic info
-        return {
-            "ticker": ticker,
-            "note":   "TWSE 法人 API 目前維護中或無法連線。若需外資或三大法人買賣超資訊，建議直接使用 web_search 工具搜尋「(股票代號或名稱) 外資買賣超」。",
-            "source": "TWSE openapi (失敗)",
-        }
-    except Exception as e:
-        return {"ticker": ticker, "error": str(e)}
+            payload = resp.json()
+            # payload has keys: stat, date, title, fields, data
+            if payload.get("stat") != "OK":
+                continue
+
+            fields = payload.get("fields", [])
+            rows = payload.get("data", [])
+            if not rows:
+                continue
+
+            # T86 has fixed column order (19 cols):
+            # 0:代號 1:名稱 2:外陸資買進 3:外陸資賣出 4:外陸資買賣超
+            # 5:外資自營買進 6:外資自營賣出 7:外資自營買賣超
+            # 8:投信買進 9:投信賣出 10:投信買賣超
+            # 11:自營買賣超(合計) ... 18:三大法人買賣超
+            if len(fields) < 19:
+                continue
+
+            matching = [r for r in rows if len(r) >= 19 and r[0].strip() == code]
+            if not matching:
+                continue
+
+            r = matching[0]
+            foreign_net = _parse_inst_number(r[4])
+            trust_net   = _parse_inst_number(r[10])
+            dealer_net  = _parse_inst_number(r[11])
+            total_net   = _parse_inst_number(r[18])
+
+            return {
+                "ticker":           ticker,
+                "date":             payload.get("date", date_str),
+                "foreign_net":      foreign_net,
+                "investment_trust": trust_net,
+                "dealer_net":       dealer_net,
+                "total_3party_net": total_net,
+                "source":           "TWSE T86",
+            }
+
+        except Exception:
+            continue
+
+    # All attempts failed
+    return {
+        "ticker": ticker,
+        "note":   "TWSE 法人 API 目前無法取得資料，可能為非交易日或資料尚未更新。",
+        "source": "TWSE T86 (失敗)",
+    }
 
 
 # ── News ────────────────────────────────────────────────────────────────────

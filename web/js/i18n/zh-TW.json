@@ -22,6 +22,9 @@
   },
   "nav": {
     "chat": "聊天",
+    "crypto": "加密貨幣",
+    "twstock": "台股",
+    "usstock": "美股",
     "market": "市場",
     "pulse": "脈動",
     "wallet": "錢包",
@@ -30,6 +33,7 @@
     "forum": "論壇",
     "safety": "安全",
     "settings": "設定",
+    "admin": "管理",
     "governance": "治理中心",
     "login": "登入",
     "logout": "登出",
@@ -71,6 +75,9 @@
     "title": "台股",
     "comingSoon": "台股板塊即將登場",
     "comingSoonDesc": "我們正在整合台股的即時數據。敬請期待這個市場的高級 AI 分析功能。"
+  },
+  "usstock": {
+    "title": "美股"
   },
   "market": {
     "title": "市場總覽",

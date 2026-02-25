@@ -10,7 +10,9 @@ from core.tools.tw_stock_tools import (
     tw_technical_analysis,
     tw_fundamentals,
     tw_institutional,
-    tw_news
+    tw_news,
+    tw_monthly_revenue,
+    tw_dividend_info,
 )
 
 # ── Simple in-memory cache (key → (data, expiry_time)) ──────────────────────
@@ -40,19 +42,23 @@ router = APIRouter(prefix="/api/twstock", tags=["TW Stock"])
 # Default preset symbols for Taiwan Stocks (e.g., TSMC, Foxconn, MediaTek)
 DEFAULT_TW_SYMBOLS = ["2330", "2317", "2454", "2308", "2881", "2412", "2882", "2891", "1301", "2002"]
 
-import asyncio
 import yfinance as yf
 
-_STOCK_INFO_CACHE = {}
+_STOCK_INFO_CACHE = {}  # {symbol: (result, expires_at)}
 
 async def _get_stock_info(symbol: str):
     """
     獲取台股名稱及所屬交易所(處理.TW與.TWO)。
     This function caches the result to avoid slow repeated yfinance info calls.
+    Successful lookups cached for 1 hour; fallback cached for 5 minutes.
     """
+    import time
     symbol = symbol.replace('.TW', '').replace('.TWO', '')
+    now = time.time()
     if symbol in _STOCK_INFO_CACHE:
-        return _STOCK_INFO_CACHE[symbol]
+        cached_result, expires_at = _STOCK_INFO_CACHE[symbol]
+        if now < expires_at:
+            return cached_result
     
     def fetch():
         # 1. 嘗試 TWSE (.TW)
@@ -78,7 +84,9 @@ async def _get_stock_info(symbol: str):
         return {"formatted_symbol": f"{symbol}.TW", "name": symbol, "exchange": "TWSE"} # Fallback
 
     result = await asyncio.to_thread(fetch)
-    _STOCK_INFO_CACHE[symbol] = result
+    is_fallback = result["name"] == symbol  # fallback returns symbol as name
+    ttl = 300 if is_fallback else 3600
+    _STOCK_INFO_CACHE[symbol] = (result, now + ttl)
     return result
 
 @router.get("/market")
@@ -94,21 +102,22 @@ async def get_tw_market(symbols: Optional[str] = None):
         # Fetch all stock infos concurrently
         infos = await asyncio.gather(*[_get_stock_info(sym) for sym in target_symbols])
 
-        for symbol, info in zip(target_symbols, infos):
-            formatted_symbol = info["formatted_symbol"]
-            
-            # Use to_thread to avoid blocking the event loop with synchronous tool invocation
-            price_data = await asyncio.to_thread(lambda sym=formatted_symbol: tw_stock_price.invoke({"ticker": sym}))
-            
+        async def fetch_price(symbol, info):
+            fmt = info["formatted_symbol"]
+            price_data = await asyncio.to_thread(lambda sym=fmt: tw_stock_price.invoke({"ticker": sym}))
             if "error" not in price_data:
-                results.append({
+                return {
                     "Symbol": symbol,
                     "Name": info["name"],
                     "Exchange": info["exchange"],
-                    "Close": price_data.get("current_price") or price_data.get("prev_close"),
+                    "Close": price_data.get("current_price") if price_data.get("current_price") is not None else price_data.get("prev_close"),
                     "price_change_24h": price_data.get("change_pct", 0),
                     "Volume": price_data.get("recent_ohlcv", [-1])[0].get("volume", 0) if price_data.get("recent_ohlcv") else 0,
-                })
+                }
+            return None
+
+        price_results = await asyncio.gather(*[fetch_price(sym, inf) for sym, inf in zip(target_symbols, infos)])
+        results = [r for r in price_results if r is not None]
 
         return {
             "top_performers": results,
@@ -132,13 +141,18 @@ async def get_tw_pulse(symbol: str):
         price = await asyncio.to_thread(lambda: tw_stock_price.invoke({"ticker": formatted_symbol}))
         
         # Check for invalid symbols gracefully
-        if "error" in price or not price.get("current_price"):
+        if "error" in price or price.get("current_price") is None:
             raise HTTPException(status_code=404, detail=f"查無台股代號「{symbol}」或目前無法獲取其即時數據。")
             
-        tech = await asyncio.to_thread(lambda: tw_technical_analysis.invoke({"ticker": formatted_symbol}))
-        funds = await asyncio.to_thread(lambda: tw_fundamentals.invoke({"ticker": formatted_symbol}))
-        inst = await asyncio.to_thread(lambda: tw_institutional.invoke({"ticker": formatted_symbol}))
-        news = await asyncio.to_thread(lambda: tw_news.invoke({"ticker": formatted_symbol, "company_name": company_name}))
+        code = symbol.split(".")[0]
+        tech, funds, inst, news, rev_list, div_list = await asyncio.gather(
+            asyncio.to_thread(lambda: tw_technical_analysis.invoke({"ticker": formatted_symbol})),
+            asyncio.to_thread(lambda: tw_fundamentals.invoke({"ticker": formatted_symbol})),
+            asyncio.to_thread(lambda: tw_institutional.invoke({"ticker": formatted_symbol})),
+            asyncio.to_thread(lambda: tw_news.invoke({"ticker": formatted_symbol, "company_name": company_name})),
+            asyncio.to_thread(lambda: tw_monthly_revenue.invoke({"code": code})),
+            asyncio.to_thread(lambda: tw_dividend_info.invoke({"code": code})),
+        )
 
         # Generate a dynamic AI-like summary based on the data
         curr_price = price.get("current_price", 0)
@@ -200,7 +214,9 @@ async def get_tw_pulse(symbol: str):
             "technical_indicators": tech,
             "fundamentals": funds,
             "institutional": inst,
-            "news": news
+            "news": news,
+            "monthly_revenue": rev_list[0] if isinstance(rev_list, list) and rev_list and "error" not in rev_list[0] else None,
+            "dividend_info": div_list[0] if isinstance(div_list, list) and div_list and "error" not in div_list[0] else None,
         }
 
     except Exception as e:
@@ -214,9 +230,9 @@ async def get_tw_klines(symbol: str, interval: str = "1d", limit: int = 100):
     interval: '1d', '1wk', '1mo'
     """
     try:
-        import yfinance as yf
-        formatted_symbol = f"{symbol}.TW" if not symbol.endswith(".TW") and not symbol.endswith(".TWO") else symbol
-        
+        info = await _get_stock_info(symbol)
+        formatted_symbol = info["formatted_symbol"]
+
         # Calculate period based on interval and limit
         # For TW stocks via yfinance, 1d is usually fine for a few months/years
         period = "1y"

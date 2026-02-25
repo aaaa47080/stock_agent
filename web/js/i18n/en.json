@@ -22,6 +22,9 @@
   },
   "nav": {
     "chat": "Chat",
+    "crypto": "Crypto",
+    "twstock": "TW Stock",
+    "usstock": "US Stock",
     "market": "Market",
     "pulse": "Pulse",
     "wallet": "Wallet",
@@ -30,6 +33,7 @@
     "forum": "Forum",
     "safety": "Safety",
     "settings": "Settings",
+    "admin": "Admin",
     "governance": "Governance",
     "login": "Login",
     "logout": "Logout",
@@ -71,6 +75,9 @@
     "title": "TW Stock",
     "comingSoon": "Taiwan Stocks Coming Soon",
     "comingSoonDesc": "We are currently integrating real-time data for Taiwan Stocks. Stay tuned for advanced AI analytics in this market."
+  },
+  "usstock": {
+    "title": "US Stock"
   },
   "market": {
     "title": "Market Watch",

@@ -321,11 +321,141 @@ const Components = {
         </div>
     `,
 
+    // Tab: US Stock
+    usstock: `
+        <div class="h-full flex flex-col px-4 md:px-6 pt-6 md:pt-8">
+            <!-- Header -->
+            <div class="flex items-center justify-between mb-4 pr-12 md:pr-16">
+                <h2 class="font-serif text-3xl text-secondary" data-i18n="usstock.title">US Stock</h2>
+                <div class="flex items-center gap-2">
+                    <button onclick="window.USStockTab.refreshCurrent()" class="p-2 hover:bg-white/5 rounded-full text-textMuted transition">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Sub-tab Navigation -->
+            <div class="flex gap-1 p-1 bg-background/50 border border-white/5 rounded-xl mb-6">
+                <button id="usstock-btn-market" onclick="window.USStockTab.switchSubTab('market')"
+                    class="usstock-sub-tab flex-1 py-2 px-4 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 bg-primary text-background shadow-md">
+                    <i data-lucide="bar-chart-2" class="w-4 h-4"></i>
+                    <span data-i18n="nav.market">Market Watch</span>
+                </button>
+                <button id="usstock-btn-pulse" onclick="window.USStockTab.switchSubTab('pulse')"
+                    class="usstock-sub-tab flex-1 py-2 px-4 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 text-textMuted hover:text-textMain hover:bg-white/5">
+                    <i data-lucide="activity" class="w-4 h-4"></i>
+                    <span data-i18n="nav.pulse">AI Pulse</span>
+                </button>
+            </div>
+
+            <!-- Content Area -->
+            <div class="flex-1 overflow-visible relative">
+
+                <!-- Market Watch Content -->
+                <div id="usstock-market-content" class="absolute inset-0 overflow-y-auto custom-scrollbar pb-32">
+                    <div class="space-y-8">
+
+                        <!-- ① Watchlist -->
+                        <section>
+                            <div class="flex items-center gap-3 mb-4 px-1">
+                                <div class="h-px flex-1 bg-gradient-to-r from-primary/40 to-transparent"></div>
+                                <h3 class="text-[10px] font-black text-primary uppercase tracking-[0.25em] whitespace-nowrap flex items-center gap-1.5">
+                                    <i data-lucide="star" class="w-3 h-3 text-yellow-400"></i>
+                                    自選清單
+                                </h3>
+                                <div class="h-px flex-1 bg-gradient-to-l from-primary/40 to-transparent"></div>
+                            </div>
+                            <div id="usstock-screener-controls" class="px-1"></div>
+                            <div id="usstock-market-loader" class="hidden items-center justify-center py-10 flex">
+                                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                            </div>
+                            <div id="usstock-screener-list" class="space-y-2 px-1"></div>
+                        </section>
+
+                        <!-- ② 大盤指數 (collapsible) -->
+                        <section>
+                            <div class="flex items-center gap-2 mb-4 px-1">
+                                <div class="h-px flex-1 bg-gradient-to-r from-primary/40 to-transparent"></div>
+                                <button onclick="window.USStockTab.toggleSection('indices')" class="flex items-center gap-1.5 group">
+                                    <h3 class="text-[10px] font-black text-primary uppercase tracking-[0.25em] whitespace-nowrap flex items-center gap-1.5">
+                                        <i data-lucide="trending-up" class="w-3 h-3"></i>
+                                        大盤指數
+                                    </h3>
+                                    <i id="usstock-chevron-indices" data-lucide="chevron-up" class="w-3.5 h-3.5 text-primary/60 group-hover:text-primary transition-transform duration-200"></i>
+                                </button>
+                                <div class="h-px flex-1 bg-gradient-to-l from-primary/40 to-transparent"></div>
+                            </div>
+                            <div id="usstock-section-body-indices">
+                                <div id="usstock-info-indices-loader" class="hidden py-6 flex items-center justify-center">
+                                    <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+                                </div>
+                                <div id="usstock-info-indices" class="grid grid-cols-1 sm:grid-cols-3 gap-3 px-1"></div>
+                            </div>
+                        </section>
+
+                        <!-- ③ 今日新聞 (collapsible) -->
+                        <section>
+                            <div class="flex items-center gap-2 mb-4 px-1">
+                                <div class="h-px flex-1 bg-gradient-to-r from-yellow-500/40 to-transparent"></div>
+                                <button onclick="window.USStockTab.toggleSection('news')" class="flex items-center gap-1.5 group">
+                                    <h3 class="text-[10px] font-black text-yellow-400 uppercase tracking-[0.25em] whitespace-nowrap flex items-center gap-1.5">
+                                        <i data-lucide="megaphone" class="w-3 h-3"></i>
+                                        今日美股新聞
+                                    </h3>
+                                    <i id="usstock-chevron-news" data-lucide="chevron-up" class="w-3.5 h-3.5 text-yellow-400/60 group-hover:text-yellow-400 transition-transform duration-200"></i>
+                                </button>
+                                <div class="h-px flex-1 bg-gradient-to-l from-yellow-500/40 to-transparent"></div>
+                            </div>
+                            <div id="usstock-section-body-news">
+                                <div id="usstock-info-news-loader" class="hidden py-6 flex items-center justify-center">
+                                    <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-yellow-400"></div>
+                                </div>
+                                <div id="usstock-info-news" class="space-y-2 px-1"></div>
+                            </div>
+                        </section>
+
+                    </div>
+                </div>
+
+                <!-- AI Pulse Content -->
+                <div id="usstock-pulse-content" class="absolute inset-0 overflow-y-auto custom-scrollbar hidden pb-32">
+                    <div class="max-w-5xl mx-auto pt-4 px-2">
+                        <div class="relative mb-8">
+                            <div class="absolute inset-0 bg-gradient-to-r from-primary/10 via-accent/5 to-transparent rounded-3xl blur-2xl opacity-50"></div>
+                            <div class="relative flex items-center gap-3 bg-surface/60 backdrop-blur-xl border border-white/10 p-2 rounded-2xl shadow-xl">
+                                <div class="pl-4 flex-shrink-0">
+                                    <i data-lucide="search" class="w-5 h-5 text-primary/70"></i>
+                                </div>
+                                <input type="text" id="usstockPulseSearchInput" placeholder="輸入美股代號 (如: AAPL)"
+                                    class="flex-1 bg-transparent border-none outline-none text-textMain placeholder-textMuted/50 text-base font-mono tracking-wider focus:ring-0 w-full min-w-0"
+                                    oninput="this.value = this.value.replace(/[^A-Za-z.^]/g, '').toUpperCase()">
+                                <button id="usstockPulseSearchBtn" class="bg-primary/20 hover:bg-primary text-primary hover:text-background border border-primary/30 hover:border-primary transition-all duration-300 px-6 py-3 rounded-xl font-bold tracking-[0.1em] text-sm flex items-center gap-2 flex-shrink-0">
+                                    <span class="hidden sm:inline">深度分析</span>
+                                    <i data-lucide="zap" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="usstock-pulse-loader" class="hidden items-center justify-center py-20 flex flex-col">
+                            <div class="w-16 h-16 relative">
+                                <div class="absolute inset-0 border-4 border-primary/20 rounded-full"></div>
+                                <div class="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin"></div>
+                                <i data-lucide="brain" class="absolute inset-0 m-auto w-6 h-6 text-primary animate-pulse"></i>
+                            </div>
+                            <p class="text-[11px] text-primary font-bold tracking-widest uppercase mt-6 animate-pulse">AI 正在深度分析技術面與基本面...</p>
+                        </div>
+                        <div id="usstock-pulse-result" class="space-y-6 hidden"></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    `,
+
 
     // Tab: Friends (Integrated Social Hub - Friends + Messages)
     friends: `
-    < div class="h-full flex flex-col" >
-            < !--Header with Tab Switcher-- >
+    <div class="h-full flex flex-col">
+            <!-- Header with Tab Switcher -->
             <div class="flex items-center justify-between pl-4 pr-4 md:pr-16 py-3 border-b border-white/5 bg-surface/50">
                 <h2 class="font-serif text-2xl text-secondary" data-i18n="friends.title"></h2>
                 <div class="flex items-center gap-2">
@@ -336,7 +466,7 @@ const Components = {
                 </div>
             </div>
 
-            <!--Sub - tab Navigation-- >
+            <!-- Sub-tab Navigation -->
             <div class="flex gap-1 p-2 bg-background/50 border-b border-white/5">
                 <button onclick="SocialHub.switchSubTab('messages')" id="social-tab-messages"
                     class="social-sub-tab flex-1 py-2.5 px-4 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 bg-primary text-background">
@@ -508,7 +638,7 @@ const Components = {
 
     // Tab: Settings (保持原樣，這裡省略以節省空間)
     settings: `
-    < div class="max-w-2xl mx-auto" >
+    <div class="max-w-2xl mx-auto">
              <h2 class="font-serif text-3xl text-secondary mb-8" data-i18n="settings.title">Settings</h2>
 
              <div class="space-y-10">
@@ -839,8 +969,8 @@ const Components = {
 
     // Tab: Safety (Scam Tracker + Governance)
     safety: `
-    < div class="max-w-4xl mx-auto space-y-6" >
-            < !--Header -->
+    <div class="max-w-4xl mx-auto space-y-6">
+            <!-- Header -->
             <div class="flex items-center justify-between">
                 <h2 class="font-serif text-2xl md:text-3xl text-secondary flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-danger/10 flex items-center justify-center">
@@ -860,7 +990,7 @@ const Components = {
                 </div>
             </div>
 
-            <!--Search -->
+            <!-- Search -->
             <div class="bg-surface border border-white/5 rounded-2xl p-4">
                 <div class="flex gap-2">
                     <input type="text" id="safety-search-wallet" placeholder="Search wallet address..." data-i18n="safety.searchPlaceholder" data-i18n-attr="placeholder"
@@ -872,7 +1002,7 @@ const Components = {
                 </div>
             </div>
 
-            <!--Filters -->
+            <!-- Filters -->
             <div class="flex flex-wrap gap-2">
                 <select id="safety-filter-type" onchange="SafetyTab.applyFilters()"
                     class="bg-surface border border-white/5 rounded-xl px-3 py-2 text-textMuted text-xs font-bold outline-none focus:border-primary/50 cursor-pointer">
@@ -893,7 +1023,7 @@ const Components = {
                 </select>
             </div>
 
-            <!--Report List-- >
+            <!-- Report List -->
             <div id="safety-report-list" class="space-y-3">
                 <div class="text-center text-textMuted py-8">
                     <i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto mb-2"></i>
@@ -901,15 +1031,15 @@ const Components = {
                 </div>
             </div>
 
-            <!--Load More-- >
+            <!-- Load More -->
     <div class="text-center">
         <button id="safety-btn-load-more" onclick="SafetyTab.loadMore()" class="bg-surface hover:bg-surfaceHighlight text-textMuted px-6 py-3 rounded-xl font-bold transition border border-white/5 hidden" data-i18n="safety.loadMore">
             Load More
         </button>
     </div>
-        </div >
+        </div>
 
-        < !--Submit Scam Report Modal-- >
+        <!-- Submit Scam Report Modal -->
         <div id="safety-submit-modal" class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4">
             <div class="bg-surface w-full max-w-lg max-h-[85vh] flex flex-col rounded-[2rem] border border-white/5 shadow-2xl">
                 <div class="p-6 border-b border-white/5 flex justify-between items-center shrink-0">
@@ -959,7 +1089,7 @@ const Components = {
             </div>
         </div>
 
-        <!--Scam Report Detail Modal-- >
+        <!-- Scam Report Detail Modal -->
         <div id="safety-detail-modal" class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4">
             <div class="bg-surface w-full max-w-lg max-h-[85vh] flex flex-col rounded-[2rem] border border-white/5 shadow-2xl">
                 <div class="p-6 border-b border-white/5 flex justify-between items-center shrink-0">
@@ -984,7 +1114,7 @@ const Components = {
             </div>
         </div>
 
-        <!--Governance Report Modal-- >
+        <!-- Governance Report Modal -->
     <div id="governance-modal" class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4">
         <div class="bg-surface w-full max-w-lg max-h-[85vh] flex flex-col rounded-[2rem] border border-white/5 shadow-2xl">
             <div class="p-6 border-b border-white/5 flex justify-between items-center shrink-0">
@@ -1060,11 +1190,11 @@ const Components = {
 
     // Feature Menu: Navigation Customization
     featureMenu: `
-    < div id = "feature-menu-modal" class="fixed inset-0 z-50 hidden" >
-            < !--Backdrop -->
+    <div id="feature-menu-modal" class="fixed inset-0 z-50 hidden">
+            <!-- Backdrop -->
             <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="FeatureMenu.close()"></div>
 
-            <!--Modal Container-- >
+            <!-- Modal Container -->
     <div class="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
         <div class="feature-menu-content bg-surface rounded-3xl border border-white/5 shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col pointer-events-auto transform transition-all duration-300 scale-95 opacity-0">
 
@@ -1119,13 +1249,13 @@ const Components = {
             </div>
         </div>
     </div>
-        </div >
+        </div>
     `,
 
     // Tab: Forum
     forum: `
-    < div class="h-full flex flex-col" >
-            < !--Header -->
+    <div class="h-full flex flex-col">
+            <!-- Header -->
             <div class="flex items-center justify-between mb-4 px-2">
                 <h2 class="font-serif text-2xl md:text-3xl text-secondary flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -1143,7 +1273,7 @@ const Components = {
                 </div>
             </div>
 
-            <!--Main Content Grid-- >
+            <!-- Main Content Grid -->
     <div class="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4 overflow-hidden">
         <!-- Sidebar (Filters & Trending) -->
         <aside class="md:col-span-1 space-y-4 overflow-y-auto custom-scrollbar">
@@ -1190,9 +1320,9 @@ const Components = {
 
     // Tab: Admin Panel (admin-only)
     admin: `
-    < div id = "admin-content" class="max-w-5xl mx-auto p-4" >
+    <div id="admin-content" class="max-w-5xl mx-auto p-4">
         <div class="text-center text-textMuted py-12">Loading admin panel...</div>
-        </div >
+        </div>
     `,
 
     /**

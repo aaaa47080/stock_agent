@@ -7,6 +7,7 @@ const NAV_ITEMS = [
     { id: 'chat', icon: 'message-circle', label: 'Chat', i18nKey: 'nav.chat', defaultEnabled: true },
     { id: 'crypto', icon: 'zap', label: 'Crypto', i18nKey: 'nav.crypto', defaultEnabled: true },
     { id: 'twstock', icon: 'bar-chart', label: 'TW Stock', i18nKey: 'nav.twstock', defaultEnabled: true },
+    { id: 'usstock', icon: 'trending-up', label: 'US Stock', i18nKey: 'nav.usstock', defaultEnabled: true },
     { id: 'wallet', icon: 'credit-card', label: 'Wallet', i18nKey: 'nav.wallet', defaultEnabled: true },
     { id: 'assets', icon: 'wallet', label: 'Assets', i18nKey: 'nav.assets', defaultEnabled: true },
     { id: 'friends', icon: 'users', label: 'Friends', i18nKey: 'nav.friends', defaultEnabled: true },
@@ -22,7 +23,7 @@ const NAV_ITEMS = [
  */
 const NavPreferences = {
     STORAGE_KEY: 'userNavPreferences',
-    PREFERENCES_VERSION: 4,
+    PREFERENCES_VERSION: 5,
     MIN_ENABLED_ITEMS: 2,
     _cache: null,
 

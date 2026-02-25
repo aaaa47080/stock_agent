@@ -12,6 +12,7 @@ window.TWStockTab = {
     initTwStock: function () {
         this.loadTwStockSelection();
         this.renderWatchlistControls();
+        this.bindEvents();
         this.refreshCurrent(true);
     },
 
@@ -345,23 +346,89 @@ window.TWStockTab = {
     },
 
     renderAIPulse: function (container, data) {
-        const rep = data.report || {};
+        const rep  = data.report || {};
+        const tech = data.technical_indicators || {};
+        const fund = data.fundamentals || {};
+        const inst = data.institutional || {};
 
         const isPos = data.change_24h > 0;
         const isNeg = data.change_24h < 0;
         const colorClass = isPos ? 'text-success' : (isNeg ? 'text-danger' : 'text-textMuted');
-        const bgClass = isPos ? 'bg-success/10' : (isNeg ? 'bg-danger/10' : 'bg-white/5');
-        const sign = isPos ? '+' : '';
-        const icon = isPos ? 'trending-up' : (isNeg ? 'trending-down' : 'minus');
+        const bgClass    = isPos ? 'bg-success/10' : (isNeg ? 'bg-danger/10' : 'bg-white/5');
+        const sign       = isPos ? '+' : '';
+        const icon       = isPos ? 'trending-up' : (isNeg ? 'trending-down' : 'minus');
 
-        let html = `
-                < !--Hero Price Section(Glassmorphism)-- >
+        // ── Helpers ────────────────────────────────────────────────────────
+        const fv = (v, d = 2) => (v != null && !isNaN(Number(v))) ? Number(v).toFixed(d) : 'N/A';
+        const fvPct = (v, d = 1) => (v != null && !isNaN(Number(v))) ? Number(v).toFixed(d) + '%' : 'N/A';
+        const fmtMktCap = (v) => {
+            if (!v || isNaN(v)) return 'N/A';
+            if (v >= 1e12) return (v / 1e12).toFixed(2) + ' 兆';
+            if (v >= 1e8)  return (v / 1e8).toFixed(1) + ' 億';
+            return Number(v).toLocaleString();
+        };
+        const parseInst = (v) => {
+            if (!v || v === 'N/A' || v === '') return null;
+            const n = parseInt(String(v).replace(/,/g, ''), 10);
+            return isNaN(n) ? null : n;
+        };
+        const instRow = (label, raw) => {
+            const n = parseInst(raw);
+            if (n === null) return `<div class="flex items-center justify-between py-2 border-b border-white/5 last:border-0"><span class="text-xs text-textMuted">${label}</span><span class="text-xs text-textMuted font-mono">N/A</span></div>`;
+            const c  = n > 0 ? 'text-success' : 'text-danger';
+            const ic = n > 0 ? 'arrow-up' : 'arrow-down';
+            return `<div class="flex items-center justify-between py-2 border-b border-white/5 last:border-0"><span class="text-xs text-textMuted">${label}</span><span class="text-xs font-bold font-mono ${c} flex items-center gap-1"><i data-lucide="${ic}" class="w-3 h-3"></i>${n > 0 ? '+' : ''}${n.toLocaleString()} 股</span></div>`;
+        };
+        const pctRow = (label, raw, isAlready100 = false) => {
+            if (raw == null || isNaN(Number(raw))) return `<div class="flex items-center justify-between py-2 border-b border-white/5 last:border-0"><span class="text-xs text-textMuted">${label}</span><span class="text-xs text-textMuted font-mono">N/A</span></div>`;
+            const val = isAlready100 ? Number(raw) : Number(raw) * 100;
+            const c   = val > 0 ? 'text-success' : (val < 0 ? 'text-danger' : 'text-textMuted');
+            return `<div class="flex items-center justify-between py-2 border-b border-white/5 last:border-0"><span class="text-xs text-textMuted">${label}</span><span class="text-xs font-bold font-mono ${c}">${val > 0 ? '+' : ''}${val.toFixed(1)}%</span></div>`;
+        };
+
+        // RSI colour & label
+        const rsiVal = tech.rsi_14;
+        const rsiColor      = rsiVal == null ? 'text-textMuted' : rsiVal < 30 ? 'text-success' : rsiVal > 70 ? 'text-danger' : 'text-secondary';
+        const rsiLabelText  = rsiVal == null ? '' : rsiVal < 30 ? '超賣' : rsiVal > 70 ? '超買' : '中性';
+        const rsiLabelStyle = rsiVal == null ? '' : rsiVal < 30 ? 'bg-success/20 text-success' : rsiVal > 70 ? 'bg-danger/20 text-danger' : 'bg-white/10 text-textMuted';
+
+        // MACD
+        const macdObj  = (typeof tech.macd === 'object' && tech.macd !== null) ? tech.macd : {};
+        const macdHist = macdObj.histogram;
+        const macdHistColor = macdHist == null ? 'text-textMuted' : macdHist > 0 ? 'text-success' : 'text-danger';
+
+        // MA position
+        const close = data.current_price || 0;
+        const maPosBadge = (maVal) => {
+            if (!maVal || !close) return '';
+            return close >= maVal
+                ? '<span class="text-[9px] ml-1 px-1 rounded bg-success/20 text-success">上方</span>'
+                : '<span class="text-[9px] ml-1 px-1 rounded bg-danger/20 text-danger">下方</span>';
+        };
+
+        // 52W progress bar
+        const low52  = fund['52w_low'];
+        const high52 = fund['52w_high'];
+        let w52Html  = '<div class="text-xs text-textMuted">N/A</div>';
+        if (low52 && high52 && close && high52 > low52) {
+            const pct = Math.min(100, Math.max(0, ((close - low52) / (high52 - low52)) * 100));
+            w52Html = `
+                <div class="flex justify-between text-[9px] text-textMuted mb-1">
+                    <span>低 ${fv(low52)}</span><span>現價 ${pct.toFixed(0)}%</span><span>高 ${fv(high52)}</span>
+                </div>
+                <div class="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                    <div class="h-full rounded-full bg-gradient-to-r from-danger via-yellow-500 to-success" style="width:${pct}%"></div>
+                </div>`;
+        }
+
+        const maArr = tech.ma || {};
+
+        const html = `
+            <!-- Hero Price Section -->
             <div class="relative overflow-hidden bg-surface/80 backdrop-blur-xl rounded-3xl p-6 mb-6 border border-white/10 shadow-2xl shadow-black/20">
-                <!-- Decorative background elements -->
                 <div class="absolute -top-24 -right-24 w-48 h-48 bg-primary/20 rounded-full blur-3xl opacity-50"></div>
                 ${isPos ? '<div class="absolute -bottom-24 -left-24 w-48 h-48 bg-success/10 rounded-full blur-3xl opacity-50"></div>' : ''}
                 ${isNeg ? '<div class="absolute -bottom-24 -left-24 w-48 h-48 bg-danger/10 rounded-full blur-3xl opacity-50"></div>' : ''}
-                
                 <div class="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div class="flex items-center gap-5">
                         <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center shadow-inner">
@@ -377,8 +444,7 @@ window.TWStockTab = {
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="text-right md:text-right mt-2 md:mt-0 ml-20 md:ml-0 flex flex-col items-start md:items-end">
+                    <div class="mt-2 md:mt-0 ml-20 md:ml-0 flex flex-col items-start md:items-end">
                         <div class="text-[10px] text-textMuted uppercase tracking-[0.2em] mb-1 font-bold">Current Price</div>
                         <div class="text-4xl font-mono font-black text-secondary tracking-tight mb-2 flex items-center gap-2">
                             <span class="text-xl text-primary font-serif font-medium">$</span>${data.current_price}
@@ -391,11 +457,10 @@ window.TWStockTab = {
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Left Column: Summary & Metrics -->
-                <div class="lg:col-span-2 space-y-6">
-                    <!-- AI Executive Summary -->
-                    <div class="bg-surface/60 backdrop-blur-md border border-primary/20 rounded-2xl p-6 shadow-lg shadow-primary/5 relative overflow-hidden group">
+            <!-- AI Summary + News -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                <div class="lg:col-span-2">
+                    <div class="bg-surface/60 backdrop-blur-md border border-primary/20 rounded-2xl p-6 shadow-lg shadow-primary/5 relative overflow-hidden h-full">
                         <div class="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-primary via-accent to-primary"></div>
                         <h3 class="font-serif text-lg text-primary mb-4 flex items-center gap-3">
                             <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
@@ -403,56 +468,189 @@ window.TWStockTab = {
                             </div>
                             Pulse AI Intelligence Summary
                         </h3>
-                        <p class="text-textMain text-sm leading-relaxed whitespace-pre-line ml-11">${rep.summary}</p>
-                    </div>
-                    
-                    <!-- Core Performance Metrics -->
-                    <div class="bg-surface/40 backdrop-blur-sm border border-white/5 rounded-2xl p-6">
-                        <h3 class="font-bold text-secondary mb-5 flex items-center gap-2 text-sm uppercase tracking-wider">
-                            <i data-lucide="activity" class="w-4 h-4 text-accent"></i> Core Metrics Analysis
-                        </h3>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            ${(rep.key_points || []).map(p => {
-            // Extract the key and value (assuming format "Key: Value")
-            const parts = p.split(':');
-            const t_key = parts[0]?.trim() || '';
-            const t_val = parts.slice(1).join(':')?.trim() || p;
-            return `
-                                    <div class="bg-background/80 rounded-xl p-4 border border-white/5 hover:border-white/10 transition-colors flex flex-col justify-center">
-                                        <div class="text-[10px] text-textMuted uppercase tracking-wider mb-1 opacity-70">${t_key}</div>
-                                        <div class="font-bold text-secondary text-base font-mono truncate">${t_val}</div>
-                                    </div>
-                                `;
-        }).join('')}
-                        </div>
+                        <p class="text-textMain text-sm leading-relaxed whitespace-pre-line ml-11">${rep.summary || ''}</p>
                     </div>
                 </div>
-
-                <!-- Right Column: Institutional & News -->
-                <div class="space-y-6">
-                    <!-- Related News -->
+                <div>
                     ${rep.highlights && rep.highlights.length > 0 ? `
                         <div class="bg-surface/40 backdrop-blur-sm border border-white/5 rounded-2xl p-6 h-full">
-                            <h3 class="font-bold text-secondary mb-5 flex items-center gap-2 text-sm uppercase tracking-wider">
+                            <h3 class="font-bold text-secondary mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">
                                 <i data-lucide="rss" class="w-4 h-4 text-yellow-500"></i> Market Sentiments
                             </h3>
-                            <div class="space-y-4 relative before:absolute before:inset-0 before:ml-2 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-white/10 before:to-transparent">
-                                ${rep.highlights.map((h, i) => `
-                                    <div class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-                                        <!-- Timeline dot -->
-                                        <div class="flex items-center justify-center w-5 h-5 rounded-full border-4 border-background bg-yellow-500/80 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 shadow-yellow-500/20"></div>
-                                        <!-- Content -->
-                                        <a href="${h.url || '#'}" target="_blank" rel="noopener noreferrer" class="block w-[calc(100%-2rem)] md:w-[calc(50%-1.5rem)] bg-surfaceHighlight p-3 rounded-lg border border-white/5 shadow-md hover:border-white/20 transition-colors cursor-pointer group-hover:shadow-lg">
-                                            <p class="text-xs text-textMain leading-relaxed line-clamp-3 group-hover:text-primary transition-colors" title="${h.title || h}">${h.title || h}</p>
-                                        </a>
-                                    </div>
+                            <div class="space-y-3">
+                                ${rep.highlights.map(h => `
+                                    <a href="${h.url || '#'}" target="_blank" rel="noopener noreferrer"
+                                       class="block bg-surfaceHighlight p-3 rounded-lg border border-white/5 hover:border-white/20 transition-colors">
+                                        <p class="text-xs text-textMain leading-relaxed line-clamp-3 hover:text-primary transition-colors">${h.title || ''}</p>
+                                    </a>
                                 `).join('')}
                             </div>
                         </div>
                     ` : ''}
                 </div>
             </div>
-            `;
+
+            <!-- Section A: Technical Analysis -->
+            <div class="bg-surface/40 backdrop-blur-sm border border-white/5 rounded-2xl p-6 mb-6">
+                <h3 class="font-bold text-secondary mb-5 flex items-center gap-2 text-sm uppercase tracking-wider">
+                    <i data-lucide="activity" class="w-4 h-4 text-accent"></i> Technical Analysis
+                </h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <!-- RSI -->
+                    <div class="bg-background/80 rounded-xl p-4 border border-white/5 hover:border-white/10 transition-colors">
+                        <div class="text-[10px] text-textMuted uppercase tracking-wider mb-2">RSI (14)</div>
+                        <div class="flex items-end justify-between mb-2">
+                            <span class="text-2xl font-black font-mono ${rsiColor}">${rsiVal != null ? Number(rsiVal).toFixed(1) : 'N/A'}</span>
+                            ${rsiLabelText ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${rsiLabelStyle}">${rsiLabelText}</span>` : ''}
+                        </div>
+                        ${rsiVal != null ? `<div class="h-1.5 rounded-full bg-white/10 overflow-hidden"><div class="h-full rounded-full" style="width:${Math.min(100,Number(rsiVal))}%;background:${Number(rsiVal)<30?'#86efac':Number(rsiVal)>70?'#fda4af':'#a1a1aa'}"></div></div>` : ''}
+                    </div>
+                    <!-- MACD -->
+                    <div class="bg-background/80 rounded-xl p-4 border border-white/5 hover:border-white/10 transition-colors">
+                        <div class="text-[10px] text-textMuted uppercase tracking-wider mb-2">MACD (12/26/9)</div>
+                        <div class="space-y-1.5">
+                            <div class="flex justify-between text-xs"><span class="text-textMuted">MACD</span><span class="font-mono text-secondary">${fv(macdObj.macd, 3)}</span></div>
+                            <div class="flex justify-between text-xs"><span class="text-textMuted">Signal</span><span class="font-mono text-secondary">${fv(macdObj.signal, 3)}</span></div>
+                            <div class="flex justify-between text-xs"><span class="text-textMuted">Histogram</span><span class="font-bold font-mono ${macdHistColor}">${fv(macdHist, 3)}</span></div>
+                        </div>
+                    </div>
+                    <!-- KD -->
+                    <div class="bg-background/80 rounded-xl p-4 border border-white/5 hover:border-white/10 transition-colors">
+                        <div class="text-[10px] text-textMuted uppercase tracking-wider mb-2">KD 隨機指標</div>
+                        <div class="space-y-1.5">
+                            <div class="flex justify-between text-xs"><span class="text-textMuted">K 值</span><span class="font-bold font-mono text-secondary">${fv((tech.kd||{}).k)}</span></div>
+                            <div class="flex justify-between text-xs"><span class="text-textMuted">D 值</span><span class="font-bold font-mono text-secondary">${fv((tech.kd||{}).d)}</span></div>
+                        </div>
+                    </div>
+                    <!-- MA -->
+                    <div class="bg-background/80 rounded-xl p-4 border border-white/5 hover:border-white/10 transition-colors">
+                        <div class="text-[10px] text-textMuted uppercase tracking-wider mb-2">移動平均線</div>
+                        <div class="space-y-1.5">
+                            ${[['MA5', maArr.ma5], ['MA20', maArr.ma20], ['MA60', maArr.ma60]].map(([l,v]) =>
+                                `<div class="flex justify-between text-xs items-center"><span class="text-textMuted">${l}</span><span class="font-mono text-secondary">${fv(v)}${v ? maPosBadge(v) : ''}</span></div>`
+                            ).join('')}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section B + C: Fundamentals + Institutional -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Section B: Fundamentals -->
+                <div class="bg-surface/40 backdrop-blur-sm border border-white/5 rounded-2xl p-6">
+                    <h3 class="font-bold text-secondary mb-5 flex items-center gap-2 text-sm uppercase tracking-wider">
+                        <i data-lucide="bar-chart-2" class="w-4 h-4 text-primary"></i> Fundamental Analysis
+                    </h3>
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="bg-background/60 rounded-lg p-3 border border-white/5">
+                            <div class="text-[9px] text-textMuted uppercase mb-1">本益比 P/E</div>
+                            <div class="font-bold font-mono text-secondary">${fv(fund.pe_ratio)}</div>
+                        </div>
+                        <div class="bg-background/60 rounded-lg p-3 border border-white/5">
+                            <div class="text-[9px] text-textMuted uppercase mb-1">股價淨值比 P/B</div>
+                            <div class="font-bold font-mono text-secondary">${fv(fund.pb_ratio)}</div>
+                        </div>
+                        <div class="bg-background/60 rounded-lg p-3 border border-white/5">
+                            <div class="text-[9px] text-textMuted uppercase mb-1">EPS (TTM)</div>
+                            <div class="font-bold font-mono text-secondary">${fv(fund.eps_ttm)}</div>
+                        </div>
+                        <div class="bg-background/60 rounded-lg p-3 border border-white/5">
+                            <div class="text-[9px] text-textMuted uppercase mb-1">殖利率</div>
+                            <div class="font-bold font-mono ${fund.dividend_yield_pct > 4 ? 'text-success' : 'text-secondary'}">${fund.dividend_yield_pct != null ? fv(fund.dividend_yield_pct) + '%' : 'N/A'}</div>
+                        </div>
+                        <div class="bg-background/60 rounded-lg p-3 border border-white/5">
+                            <div class="text-[9px] text-textMuted uppercase mb-1">毛利率</div>
+                            <div class="font-bold font-mono text-secondary">${fund.profit_margins != null ? fvPct(fund.profit_margins * 100) : 'N/A'}</div>
+                        </div>
+                        <div class="bg-background/60 rounded-lg p-3 border border-white/5">
+                            <div class="text-[9px] text-textMuted uppercase mb-1">市值</div>
+                            <div class="font-bold font-mono text-secondary text-xs">${fmtMktCap(fund.market_cap)}</div>
+                        </div>
+                    </div>
+                    <div class="bg-background/60 rounded-lg p-3 border border-white/5">
+                        <div class="text-[9px] text-textMuted uppercase mb-2">52 週高低點</div>
+                        ${w52Html}
+                    </div>
+                </div>
+
+                <!-- Section C: Institutional -->
+                <div class="bg-surface/40 backdrop-blur-sm border border-white/5 rounded-2xl p-6">
+                    <h3 class="font-bold text-secondary mb-5 flex items-center gap-2 text-sm uppercase tracking-wider">
+                        <i data-lucide="users" class="w-4 h-4 text-yellow-500"></i> 三大法人籌碼
+                    </h3>
+                    <div class="space-y-0">
+                        ${instRow('外資買賣超', inst.foreign_net)}
+                        ${instRow('投信買賣超', inst.investment_trust)}
+                        ${instRow('自營商買賣超', inst.dealer_net)}
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-white/10">
+                        ${instRow('三大法人合計', inst.total_3party_net)}
+                    </div>
+                    ${inst.date ? `<div class="mt-3 text-[10px] text-textMuted flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i> 資料日期：${inst.date}</div>` : ''}
+                    ${inst.note ? `<div class="mt-2 text-[10px] text-textMuted/70 leading-relaxed border-t border-white/5 pt-2">${inst.note}</div>` : ''}
+                </div>
+            </div>
+
+            ${(data.monthly_revenue || data.dividend_info) ? `
+            <!-- Section D + E: Monthly Revenue + Dividend -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                ${data.monthly_revenue ? `
+                <div class="bg-surface/40 backdrop-blur-sm border border-white/5 rounded-2xl p-6">
+                    <h3 class="font-bold text-secondary mb-5 flex items-center gap-2 text-sm uppercase tracking-wider">
+                        <i data-lucide="trending-up" class="w-4 h-4 text-success"></i> 月營收
+                        ${data.monthly_revenue.ym ? `<span class="text-[10px] text-textMuted font-normal ml-1">${data.monthly_revenue.ym}</span>` : ''}
+                    </h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="col-span-2 bg-background/60 rounded-lg p-3 border border-white/5">
+                            <div class="text-[9px] text-textMuted uppercase mb-1">當月營收</div>
+                            <div class="font-bold font-mono text-secondary text-lg">${data.monthly_revenue.current_revenue ? Number(String(data.monthly_revenue.current_revenue).replace(/,/g,'')).toLocaleString() + ' 千元' : 'N/A'}</div>
+                        </div>
+                        <div class="bg-background/60 rounded-lg p-3 border border-white/5">
+                            <div class="text-[9px] text-textMuted uppercase mb-1">月增率 MoM</div>
+                            <div class="font-bold font-mono ${Number(data.monthly_revenue.mom_pct) > 0 ? 'text-success' : Number(data.monthly_revenue.mom_pct) < 0 ? 'text-danger' : 'text-secondary'}">${data.monthly_revenue.mom_pct != null ? (Number(data.monthly_revenue.mom_pct) > 0 ? '+' : '') + Number(data.monthly_revenue.mom_pct).toFixed(1) + '%' : 'N/A'}</div>
+                        </div>
+                        <div class="bg-background/60 rounded-lg p-3 border border-white/5">
+                            <div class="text-[9px] text-textMuted uppercase mb-1">年增率 YoY</div>
+                            <div class="font-bold font-mono ${Number(data.monthly_revenue.yoy_pct) > 0 ? 'text-success' : Number(data.monthly_revenue.yoy_pct) < 0 ? 'text-danger' : 'text-secondary'}">${data.monthly_revenue.yoy_pct != null ? (Number(data.monthly_revenue.yoy_pct) > 0 ? '+' : '') + Number(data.monthly_revenue.yoy_pct).toFixed(1) + '%' : 'N/A'}</div>
+                        </div>
+                        <div class="bg-background/60 rounded-lg p-3 border border-white/5">
+                            <div class="text-[9px] text-textMuted uppercase mb-1">累計營收</div>
+                            <div class="font-bold font-mono text-secondary text-xs">${data.monthly_revenue.ytd_revenue ? Number(String(data.monthly_revenue.ytd_revenue).replace(/,/g,'')).toLocaleString() + ' 千元' : 'N/A'}</div>
+                        </div>
+                        <div class="bg-background/60 rounded-lg p-3 border border-white/5">
+                            <div class="text-[9px] text-textMuted uppercase mb-1">累計年增率</div>
+                            <div class="font-bold font-mono ${Number(data.monthly_revenue.ytd_yoy_pct) > 0 ? 'text-success' : Number(data.monthly_revenue.ytd_yoy_pct) < 0 ? 'text-danger' : 'text-secondary'}">${data.monthly_revenue.ytd_yoy_pct != null ? (Number(data.monthly_revenue.ytd_yoy_pct) > 0 ? '+' : '') + Number(data.monthly_revenue.ytd_yoy_pct).toFixed(1) + '%' : 'N/A'}</div>
+                        </div>
+                    </div>
+                </div>
+                ` : '<div></div>'}
+
+                ${data.dividend_info ? `
+                <div class="bg-surface/40 backdrop-blur-sm border border-white/5 rounded-2xl p-6">
+                    <h3 class="font-bold text-secondary mb-5 flex items-center gap-2 text-sm uppercase tracking-wider">
+                        <i data-lucide="gift" class="w-4 h-4 text-yellow-500"></i> 股利資訊
+                        ${data.dividend_info.year ? `<span class="text-[10px] text-textMuted font-normal ml-1">${data.dividend_info.year} 年度</span>` : ''}
+                    </h3>
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="bg-background/60 rounded-lg p-3 border border-white/5">
+                            <div class="text-[9px] text-textMuted uppercase mb-1">現金股利</div>
+                            <div class="font-bold font-mono ${Number(data.dividend_info.cash_dividend) > 0 ? 'text-success' : 'text-secondary'}">${data.dividend_info.cash_dividend || 'N/A'} 元</div>
+                        </div>
+                        <div class="bg-background/60 rounded-lg p-3 border border-white/5">
+                            <div class="text-[9px] text-textMuted uppercase mb-1">股票股利</div>
+                            <div class="font-bold font-mono text-secondary">${data.dividend_info.stock_dividend || 'N/A'} 元</div>
+                        </div>
+                    </div>
+                    <div class="space-y-0">
+                        ${data.dividend_info.board_date ? `<div class="flex justify-between py-2 border-b border-white/5"><span class="text-xs text-textMuted">董事會日期</span><span class="text-xs font-mono text-secondary">${data.dividend_info.board_date}</span></div>` : ''}
+                        ${data.dividend_info.shareholder_mtg ? `<div class="flex justify-between py-2 border-b border-white/5"><span class="text-xs text-textMuted">股東會日期</span><span class="text-xs font-mono text-secondary">${data.dividend_info.shareholder_mtg}</span></div>` : ''}
+                        ${data.dividend_info.progress ? `<div class="flex justify-between py-2"><span class="text-xs text-textMuted">決議進度</span><span class="text-xs text-secondary text-right max-w-[60%]">${data.dividend_info.progress}</span></div>` : ''}
+                    </div>
+                </div>
+                ` : '<div></div>'}
+            </div>
+            ` : ''}
+        `;
 
         container.innerHTML = html;
         if (window.lucide) window.lucide.createIcons();
@@ -461,7 +659,11 @@ window.TWStockTab = {
     jumpToPulse: function (symbol) {
         const inputEl = document.getElementById('twstockPulseSearchInput');
         if (inputEl) inputEl.value = symbol;
-        this.switchSubTab('pulse');
+        if (this.activeSubTab === 'pulse') {
+            this.refreshAIPulse(symbol);
+        } else {
+            this.switchSubTab('pulse');
+        }
     },
 
     // Chart logic
@@ -507,7 +709,7 @@ window.TWStockTab = {
 
         try {
             const authHeaders = typeof _getAuthHeaders === 'function' ? await _getAuthHeaders() : {};
-            const res = await fetch(`/ api / twstock / klines / ${encodeURIComponent(symbol)}?interval = ${this.twCurrentChartInterval}& limit=200`, {
+            const res = await fetch(`/api/twstock/klines/${encodeURIComponent(symbol)}?interval=${this.twCurrentChartInterval}&limit=200`, {
                 headers: authHeaders
             });
 
@@ -549,12 +751,14 @@ window.TWStockTab = {
                 grid: { vertLines: { color: 'rgba(255,255,255,0.05)' }, horzLines: { color: 'rgba(255,255,255,0.05)' } },
                 crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
                 rightPriceScale: { borderColor: 'rgba(255,255,255,0.1)' },
-                timeScale: { borderColor: 'rgba(255,255,255,0.1)', timeVisible: true },
+                timeScale: { borderColor: 'rgba(255,255,255,0.1)', timeVisible: true, rightOffset: 5 },
+                handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
+                handleScale: { mouseWheel: true, pinchScale: true, axisPressedMouseMove: { time: true, price: false } },
             });
 
-            // Configure Volume Scale overlay
+            // Configure Volume Scale overlay (bottom 25% of chart)
             this.twChart.priceScale('vol').applyOptions({
-                scaleMargins: { top: 0.82, bottom: 0 },
+                scaleMargins: { top: 0.75, bottom: 0 },
                 borderVisible: false,
             });
 
@@ -641,7 +845,8 @@ window.TWStockTab = {
                 }
             });
 
-            // Handle resize
+            // Handle resize — remove old handler first to prevent leaks
+            window.removeEventListener('resize', this._twChartResizeHandler);
             const onResize = () => {
                 if (chartSection && !chartSection.classList.contains('hidden') && this.twChart) {
                     // Get parent container height to ensure we fill the available space minus toolbar
@@ -652,7 +857,7 @@ window.TWStockTab = {
                     this.twChart.applyOptions({ width: chartContainer.clientWidth, height: chartHeight });
                 }
             };
-            window.removeEventListener('resize', onResize);
+            this._twChartResizeHandler = onResize;
             window.addEventListener('resize', onResize);
 
             // Trigger initial resize to fit vertically
@@ -660,15 +865,17 @@ window.TWStockTab = {
 
         } catch (error) {
             console.error('[TW Stock] Chart Data Error:', error);
-            chartContainer.innerHTML = `< div class="text-danger h-full flex flex-col items-center justify-center text-sm p-4 text-center" >
+            chartContainer.innerHTML = `<div class="text-danger h-full flex flex-col items-center justify-center text-sm p-4 text-center">
             <i data-lucide="alert-triangle" class="w-8 h-8 mb-2"></i>
         讀取失敗：${error.message}
-            </div > `;
+            </div>`;
             if (window.lucide) window.lucide.createIcons();
         }
     },
 
     closeTwChart: function () {
+        window.removeEventListener('resize', this._twChartResizeHandler);
+        this._twChartResizeHandler = null;
         const section = document.getElementById('twstock-chart-section');
         if (section) section.classList.add('hidden');
         if (this.twChart) {
@@ -690,7 +897,8 @@ window.TWStockTab = {
         const searchBtn = document.getElementById('twstockPulseSearchBtn');
         const inputEl = document.getElementById('twstockPulseSearchInput');
 
-        if (searchBtn && inputEl) {
+        if (searchBtn && inputEl && !searchBtn.dataset.bound) {
+            searchBtn.dataset.bound = 'true';
             searchBtn.addEventListener('click', () => {
                 const sym = inputEl.value.trim();
                 if (sym) {
@@ -716,8 +924,8 @@ window.TWStockTab = {
             const sections = ['pe', 'news', 'dividend', 'foreign'];
             sections.forEach(sec => {
                 const isHidden = prefs[sec] === false; // visible by default
-                const bodyEl = document.getElementById(`twstock - section - body - ${sec} `);
-                const chevronEl = document.getElementById(`twstock - chevron - ${sec} `);
+                const bodyEl = document.getElementById(`twstock-section-body-${sec}`);
+                const chevronEl = document.getElementById(`twstock-chevron-${sec}`);
                 if (bodyEl && chevronEl) {
                     if (isHidden) {
                         bodyEl.classList.add('hidden');
@@ -734,8 +942,8 @@ window.TWStockTab = {
     },
 
     toggleSection: function (sectionKey) {
-        const bodyEl = document.getElementById(`twstock - section - body - ${sectionKey} `);
-        const chevronEl = document.getElementById(`twstock - chevron - ${sectionKey} `);
+        const bodyEl = document.getElementById(`twstock-section-body-${sectionKey}`);
+        const chevronEl = document.getElementById(`twstock-chevron-${sectionKey}`);
         if (!bodyEl || !chevronEl) return;
 
         const isCurrentlyHidden = bodyEl.classList.contains('hidden');
@@ -785,7 +993,7 @@ window.TWStockTab = {
             const symbols = window.twStockSelectedSymbols || [];
             let url = '/api/twstock/opendata/news?limit=15';
             if (symbols.length > 0) {
-                url += `& symbols=${encodeURIComponent(symbols.join(','))} `;
+                url += `&symbols=${encodeURIComponent(symbols.join(','))}`;
             }
 
             const res = await fetch(url, { headers: authHeaders });
@@ -1015,13 +1223,6 @@ async function initTwStock() {
     }
 
     window.TWStockTab.bindEvents();
-
-    // Bind info tab button
-    const infoBtn = document.getElementById('twstock-btn-info');
-    if (infoBtn && !infoBtn.dataset.bound) {
-        infoBtn.addEventListener('click', () => window.TWStockTab.switchSubTab('info'));
-        infoBtn.dataset.bound = "true";
-    }
 
     // Refresh current sub-tab data (avoid switchSubTab early-return when already on same tab)
     window.TWStockTab.refreshCurrent(true);

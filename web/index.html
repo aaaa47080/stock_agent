@@ -54,9 +54,9 @@
     <script src="/static/js/premium.js"></script>
     <script src="/static/js/friends.js?v=5"></script>
     <script src="/static/js/messages.js?v=2"></script>
-    <script src="/static/js/nav-config.js?v=6"></script>
-    <script src="/static/js/twstock.js?v=4"></script>
-    <script src="/static/js/usstock.js?v=1"></script>
+    <script src="/static/js/nav-config.js?v=7"></script>
+    <script src="/static/js/twstock.js?v=6"></script>
+    <script src="/static/js/usstock.js?v=7"></script>
     <!-- Fonts -->
     <link
         href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Mulish:wght@300;400;600;800&family=JetBrains+Mono:wght@400;500&display=swap"
@@ -682,6 +682,51 @@
         </div>
     </div>
 
+    <!-- US Stock Chart Modal -->
+    <div id="usstock-chart-section"
+        class="hidden fixed inset-0 z-[60] bg-background/95 backdrop-blur flex flex-col p-4 md:p-6">
+        <div class="flex flex-col gap-3 mb-3">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <h3 id="usstock-chart-title" class="text-lg md:text-xl font-serif text-secondary">US Stock Chart</h3>
+                    <span id="usstock-chart-updated" class="text-[10px] text-textMuted opacity-60"></span>
+                </div>
+                <button onclick="window.USStockTab.closeChart()"
+                    class="w-10 h-10 rounded-full bg-surface flex items-center justify-center text-textMuted hover:text-secondary transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <!-- Toolbar -->
+            <div class="flex flex-wrap items-center gap-2">
+                <div class="flex gap-0.5 bg-surface/50 p-1 rounded-xl overflow-x-auto">
+                    <button onclick="window.USStockTab.changeChartInterval('1d')"
+                        class="us-chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap bg-white/10 text-primary"
+                        data-interval="1d">1D</button>
+                    <button onclick="window.USStockTab.changeChartInterval('1wk')"
+                        class="us-chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap"
+                        data-interval="1wk">1W</button>
+                    <button onclick="window.USStockTab.changeChartInterval('1mo')"
+                        class="us-chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap"
+                        data-interval="1mo">1M</button>
+                </div>
+                <div class="flex items-center gap-2 text-xs text-textMuted ml-4 px-2 py-1 bg-surface/30 rounded-lg">
+                    <i data-lucide="info" class="w-3 h-3"></i> 盤後延遲資料 (yfinance)
+                </div>
+                <div id="us-ohlcv-info" class="flex flex-wrap items-center gap-2 text-[10px] font-mono ml-auto">
+                    <span class="text-textMuted">O:<span id="us-info-open" class="text-secondary ml-0.5">-</span></span>
+                    <span class="text-textMuted">H:<span id="us-info-high" class="text-success ml-0.5">-</span></span>
+                    <span class="text-textMuted">L:<span id="us-info-low" class="text-danger ml-0.5">-</span></span>
+                    <span class="text-textMuted">C:<span id="us-info-close" class="text-secondary ml-0.5">-</span></span>
+                    <span class="text-textMuted">Vol:<span id="us-info-volume" class="text-primary ml-0.5">-</span></span>
+                </div>
+            </div>
+        </div>
+        <div class="flex-1 w-full bg-surface rounded-3xl border border-white/5 overflow-hidden flex flex-col">
+            <div id="usstock-chart-container" class="flex-1 w-full relative"></div>
+            <div id="usstock-volume-container" class="w-full h-40 border-t border-white/5"></div>
+        </div>
+    </div>
+
     <!-- Modals -->
     <!-- API Key Modal -->
     <div id="apikey-modal"
@@ -1145,7 +1190,7 @@
     <script src="/static/js/apiKeyManager.js?v=47" onerror="alert('apiKeyManager.js 載入失敗')"></script>
     <script src="/static/js/auth.js?v=50" onerror="alert('auth.js 載入失敗')"></script>
     <script src="/static/js/okxKeyManager.js?v=47"></script>
-    <script src="/static/js/components.js?v=66"></script>
+    <script src="/static/js/components.js?v=68"></script>
     <script src="/static/js/notification-service.js?v=3"></script>
     <script src="/static/js/components/NotificationBell.js?v=2"></script>
     <script src="/static/js/components/NotificationPanel.js?v=2"></script>
@@ -1164,7 +1209,7 @@
     <script src="/static/js/safetyTab.js?v=52"></script>
     <script src="/static/js/admin.js?v=2"></script>
     <script src="/static/js/admin-stats.js?v=1"></script>
-    <script src="/static/js/twstock.js?v=5"></script>
+    <script src="/static/js/twstock.js?v=6"></script>
     <script>
         lucide.createIcons();
 
@@ -1206,7 +1251,7 @@
 
         // 監聽瀏覽器返回/前進按鈕
         window.addEventListener('popstate', (event) => {
-            const validTabs = ['chat', 'crypto', 'twstock', 'wallet', 'assets', 'friends', 'forum', 'safety', 'settings', 'admin'];
+            const validTabs = ['chat', 'crypto', 'twstock', 'usstock', 'wallet', 'assets', 'friends', 'forum', 'safety', 'settings', 'admin'];
             let targetTab = 'chat';
 
             if (event.state && event.state.tab) {
@@ -1248,6 +1293,10 @@
                 history.pushState({ tab: tabId }, '', '#' + tabId);
             }
 
+            // Close any open stock chart overlays (they are fixed-position, not inside tab DOM)
+            if (window.TWStockTab && typeof window.TWStockTab.closeTwChart === 'function') window.TWStockTab.closeTwChart();
+            if (window.USStockTab && typeof window.USStockTab.closeChart === 'function') window.USStockTab.closeChart();
+
             // Hide all tabs
             document.querySelectorAll('.tab-content').forEach(el => {
                 el.classList.add('hidden');
@@ -1257,7 +1306,7 @@
             });
 
             // Dynamic Component Injection (Lazy Loading)
-            if (['crypto', 'twstock', 'forum', 'settings', 'friends', 'safety', 'admin'].includes(tabId)) {
+            if (['crypto', 'twstock', 'usstock', 'forum', 'settings', 'friends', 'safety', 'admin'].includes(tabId)) {
                 if (window.Components && typeof window.Components.inject === 'function') {
                     await window.Components.inject(tabId);
                 }
@@ -1726,7 +1775,7 @@
             });
 
             // 3. 載入預設分頁（優先順序：sessionStorage returnToTab > URL hash > localStorage）
-            const validTabs = ['chat', 'crypto', 'twstock', 'wallet', 'assets', 'friends', 'forum', 'safety', 'settings', 'admin'];
+            const validTabs = ['chat', 'crypto', 'twstock', 'usstock', 'wallet', 'assets', 'friends', 'forum', 'safety', 'settings', 'admin'];
             const returnToTab = sessionStorage.getItem('returnToTab');
             const hashTab = window.location.hash.replace('#', '');
             const savedTab = localStorage.getItem('activeTab') || 'chat';
