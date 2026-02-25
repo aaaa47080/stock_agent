@@ -66,14 +66,9 @@ class Settings:
     RECENT_HISTORY_DAYS: int = 5           # 最近歷史數據天數
 
     # ============================================================================
-    # 多模型辯論配置（可選）
+    # 委員會模式配置
     # ============================================================================
-    ENABLE_MULTI_MODEL_DEBATE: bool = True   # ✅ 默認啟用多輪辯論
     ENABLE_COMMITTEE_MODE: bool = False
-
-    # 辯論輪數配置
-    DEBATE_ROUNDS: int = 2              # 多空研究員之間的辯論輪數（每輪雙方各發言一次）
-    COMMITTEE_DISCUSSION_ROUNDS: int = 1  # 委員會內部討論輪數
 
     # ============================================================================
     # 調試配置
@@ -113,4 +108,3 @@ settings = Settings()
 FAST_THINKING_MODEL = Settings.FAST_THINKING_MODEL
 DEEP_THINKING_MODEL = Settings.DEEP_THINKING_MODEL
 MAX_REPLANS = Settings.MAX_REPLANS
-ENABLE_MULTI_MODEL_DEBATE = Settings.ENABLE_MULTI_MODEL_DEBATE

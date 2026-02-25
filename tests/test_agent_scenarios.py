@@ -14,19 +14,19 @@ from core.agents.hierarchical_memory import FileSystemCodebook, MemoryEntry
 SCENARIOS = [
     # --- Crypto: Bitcoin ---
     {"query": "BTC 價格", "topics": ["BTC"], "expected_agent": "chat", "intent": "chat"},
-    {"query": "比特幣技術分析", "topics": ["BTC"], "expected_agent": "technical", "intent": "technical"},
-    {"query": "BTC 新聞", "topics": ["BTC"], "expected_agent": "news", "intent": "news"},
+    {"query": "比特幣技術分析", "topics": ["BTC"], "expected_agent": "crypto", "intent": "technical"},
+    {"query": "BTC 新聞", "topics": ["BTC"], "expected_agent": "crypto", "intent": "news"},
     {"query": "比特幣值得買嗎", "topics": ["BTC"], "expected_agent": "full_analysis", "intent": "full_analysis"},
     
     # --- Crypto: Ethereum ---
-    {"query": "ETH 以太坊走勢", "topics": ["ETH"], "expected_agent": "technical", "intent": "technical"},
-    {"query": "以太坊升級新聞", "topics": ["ETH"], "expected_agent": "news", "intent": "news"},
+    {"query": "ETH 以太坊走勢", "topics": ["ETH"], "expected_agent": "crypto", "intent": "technical"},
+    {"query": "以太坊升級新聞", "topics": ["ETH"], "expected_agent": "crypto", "intent": "news"},
     {"query": "ETH 做空建議", "topics": ["ETH"], "expected_agent": "full_analysis", "intent": "full_analysis"},
 
     # --- Crypto: Altcoins ---
     {"query": "SOL 價格", "topics": ["SOL"], "expected_agent": "chat", "intent": "chat"},
-    {"query": "Pi 幣什麼時候上主網", "topics": ["PI"], "expected_agent": "news", "intent": "news"},
-    {"query": "DOGE 狗狗幣分析", "topics": ["DOGE"], "expected_agent": "technical", "intent": "technical"},
+    {"query": "Pi 幣什麼時候上主網", "topics": ["PI"], "expected_agent": "crypto", "intent": "news"},
+    {"query": "DOGE 狗狗幣分析", "topics": ["DOGE"], "expected_agent": "crypto", "intent": "technical"},
 
     # --- Platform: Account & Security ---
     {"query": "如何重設密碼", "topics": ["ACCOUNT"], "expected_agent": "chat", "intent": "platform_support"},
@@ -59,7 +59,7 @@ SCENARIOS = [
 
     # --- Extended: DeFi & Earn ---
     {"query": "怎麼參與質押賺幣", "topics": ["EARN", "STAKING"], "expected_agent": "chat", "intent": "platform_support"},
-    {"query": "ETH 質押收益率", "topics": ["ETH", "STAKING"], "expected_agent": "technical", "intent": "technical"},
+    {"query": "ETH 質押收益率", "topics": ["ETH", "STAKING"], "expected_agent": "crypto", "intent": "technical"},
     {"query": "流動性挖礦是什麼", "topics": ["DEFI"], "expected_agent": "chat", "intent": "platform_support"},
     
     # --- Extended: Platform Technical ---
@@ -80,10 +80,10 @@ SCENARIOS = [
     {"query": "如何止損", "topics": ["STOP_LOSS", "TRADE"], "expected_agent": "chat", "intent": "platform_support"},
 
     # --- Extended: More Crypto ---
-    {"query": "XRP 官司結果", "topics": ["XRP"], "expected_agent": "news", "intent": "news"},
-    {"query": "BNB 銷毀紀錄", "topics": ["BNB"], "expected_agent": "news", "intent": "news"},
-    {"query": "ADA 技術面如何", "topics": ["ADA"], "expected_agent": "technical", "intent": "technical"},
-    {"query": "DOT 生態發展", "topics": ["DOT"], "expected_agent": "news", "intent": "news"},
+    {"query": "XRP 官司結果", "topics": ["XRP"], "expected_agent": "crypto", "intent": "news"},
+    {"query": "BNB 銷毀紀錄", "topics": ["BNB"], "expected_agent": "crypto", "intent": "news"},
+    {"query": "ADA 技術面如何", "topics": ["ADA"], "expected_agent": "crypto", "intent": "technical"},
+    {"query": "DOT 生態發展", "topics": ["DOT"], "expected_agent": "crypto", "intent": "news"},
 
     # --- Extended: Fun/Edge ---
     {"query": "比特幣會跌到零嗎", "topics": ["BTC"], "expected_agent": "full_analysis", "intent": "full_analysis"},

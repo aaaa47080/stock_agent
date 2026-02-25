@@ -77,10 +77,6 @@ except ImportError:
 
 
 
-# === 多模型辯論配置 ===
-
-ENABLE_MULTI_MODEL_DEBATE = True
-
 ENABLE_COMMITTEE_MODE = True
 
 
@@ -115,12 +111,6 @@ BEAR_RESEARCHER_MODEL = {
 
 # 交易員 (用戶付費)
 TRADER_MODEL = {
-    "provider": "user_provided",
-    "model": default_openai_model,
-}
-
-# 裁判 (用戶付費)
-JUDGE_MODEL = {
     "provider": "user_provided",
     "model": default_openai_model,
 }
