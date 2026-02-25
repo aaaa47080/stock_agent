@@ -19,14 +19,12 @@ from core.config import DEFAULT_KLINES_LIMIT
 from .schemas import (
     TechnicalAnalysisInput,
     NewsAnalysisInput,
-    FullInvestmentAnalysisInput,
     PriceInput,
     MarketPulseInput,
     BacktestStrategyInput,
     ExtractCryptoSymbolsInput
 )
 from .helpers import normalize_symbol, find_available_exchange, extract_crypto_symbols
-from .formatters import format_full_analysis_result
 
 
 @tool(args_schema=TechnicalAnalysisInput)
@@ -257,87 +255,6 @@ def news_analysis_tool(
 
     except Exception as e:
         return f"新聞分析時發生錯誤: {str(e)}"
-
-
-@tool(args_schema=FullInvestmentAnalysisInput)
-def full_investment_analysis_tool(
-    symbol: str,
-    interval: str = "1d",
-    include_futures: bool = True,
-    leverage: int = 5
-) -> str:
-    """
-    執行完整的加密貨幣投資分析。
-
-    這是最全面的分析工具，包括：
-    - 4 位 AI 分析師並行分析 (技術、情緒、基本面、新聞)
-    - 多空研究員辯論 (三方辯論模式)
-    - 交易決策生成 (具體買賣建議)
-    - 風險評估
-    - 基金經理最終審批
-
-    適用情境：
-    - 用戶詢問「XXX 可以投資嗎？」
-    - 用戶詢問「應該買入還是賣出？」
-    - 用戶需要完整的投資建議和交易計劃
-    - 用戶想要多空辯論結果
-
-    **注意**：此工具執行時間較長 (30秒-2分鐘)，因為需要完整分析流程。
-    """
-    try:
-        # 延遲導入以避免循環依賴
-        from core.graph import app as langgraph_app
-
-        # 自動選擇交易所
-        exchange, normalized_symbol = find_available_exchange(symbol)
-        if exchange is None:
-            return f"錯誤：無法在支持的交易所中找到 {symbol} 交易對。請確認幣種名稱是否正確。"
-
-        # 準備現貨分析狀態
-        spot_state = {
-            "symbol": normalized_symbol,
-            "exchange": exchange,
-            "interval": interval,
-            "limit": DEFAULT_KLINES_LIMIT,
-            "market_type": "spot",
-            "leverage": 1,
-            "include_multi_timeframe": interval == "1d",
-            "short_term_interval": "1h",
-            "medium_term_interval": "4h",
-            "long_term_interval": "1d",
-            "preloaded_data": None,
-            "account_balance": None,
-            "selected_analysts": ["technical", "sentiment", "fundamental", "news"],
-            "perform_trading_decision": True
-        }
-
-        # 執行分析
-        result = langgraph_app.invoke(spot_state)
-
-        # 格式化結果
-        output = format_full_analysis_result(result, "現貨", symbol, interval)
-
-        # 如果需要合約分析
-        if include_futures:
-            futures_state = spot_state.copy()
-            futures_state.update({
-                "market_type": "futures",
-                "leverage": leverage
-            })
-
-            try:
-                futures_result = langgraph_app.invoke(futures_state)
-                output += "\n\n---\n\n"
-                output += format_full_analysis_result(futures_result, f"合約 ({leverage}x槓桿)", symbol, interval)
-            except Exception as e:
-                output += f"\n\n(合約分析暫時無法完成: {str(e)})"
-
-        return output
-
-    except SymbolNotFoundError:
-        return f"錯誤：找不到交易對 {symbol}。請確認幣種名稱是否正確。"
-    except Exception as e:
-        return f"完整投資分析時發生錯誤: {str(e)}"
 
 
 @tool(args_schema=PriceInput)

@@ -8,7 +8,6 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
 from core.tools import _find_available_exchange
-from core.graph import app as graph_app
 from api.models import QueryRequest, BacktestRequest
 from api.utils import logger
 from analysis.simple_backtester import run_simple_backtest
@@ -306,62 +305,6 @@ async def clear_chat_history_endpoint(session_id: str = "default", current_user:
     await loop.run_in_executor(None, db_clear_history, session_id)
     
     return {"status": "success", "message": "Chat history cleared"}
-
-@router.get("/api/debate/{symbol}", dependencies=[Depends(get_current_user)])
-async def get_debate_analysis(symbol: str):
-    """
-    獲取 AI 辯論詳情 (用於前端視覺化顯示)。
-    執行完整的 ReAct Agent 流程，但只回傳辯論相關的結構化數據。
-    """
-    try:
-        # 1. 準備參數
-        clean_symbol = symbol.upper().replace("USDT", "").replace("BUSD", "").replace("-", "")
-        exchange, normalized_symbol = _find_available_exchange(clean_symbol)
-        
-        if not exchange:
-            raise HTTPException(status_code=404, detail=f"找不到交易對 {clean_symbol}")
-
-        state_input = {
-            "symbol": normalized_symbol,
-            "exchange": exchange,
-            "interval": "1d",
-            "limit": 100,
-            "market_type": "spot",
-            "leverage": 1,
-            "include_multi_timeframe": True,
-            "short_term_interval": "1h",
-            "medium_term_interval": "4h",
-            "long_term_interval": "1d",
-            "preloaded_data": None,
-            "account_balance": None,
-            "selected_analysts": ["technical", "sentiment", "fundamental", "news"],
-            "perform_trading_decision": True
-        }
-
-        logger.info(f"開始執行 AI 辯論分析: {normalized_symbol}")
-
-        # 2. 執行圖 (放入執行緒池)
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, lambda: graph_app.invoke(state_input))
-        
-        # 3. 提取辯論數據
-        # 注意: result 中的物件是 Pydantic Model，FastAPI 可以自動序列化，但為了保險起見，我們先轉 dict
-        response_data = {
-            "symbol": normalized_symbol,
-            "bull_argument": result.get("bull_argument"),
-            "bear_argument": result.get("bear_argument"),
-            "neutral_argument": result.get("neutral_argument"),
-            "debate_judgment": result.get("debate_judgment"),
-            "final_decision": result.get("final_approval")
-        }
-        
-        return response_data
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"AI 辯論分析失敗: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/api/backtest", dependencies=[Depends(get_current_user)])
 async def run_backtest_api(request: BacktestRequest):

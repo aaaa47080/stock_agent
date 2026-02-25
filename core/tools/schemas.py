@@ -33,27 +33,6 @@ class NewsAnalysisInput(BaseModel):
     )
 
 
-class FullInvestmentAnalysisInput(BaseModel):
-    """完整投資分析工具的輸入參數"""
-    symbol: str = Field(
-        description="加密貨幣交易對符號，如 'BTC', 'ETH', 'PI'。"
-    )
-    interval: str = Field(
-        default="1d",
-        description="主要分析的時間週期。預設為日線 '1d'。"
-    )
-    include_futures: bool = Field(
-        default=True,
-        description="是否同時分析合約市場。預設為 True。"
-    )
-    leverage: int = Field(
-        default=5,
-        ge=1,
-        le=125,
-        description="合約分析使用的槓桿倍數。預設 5 倍。"
-    )
-
-
 class PriceInput(BaseModel):
     """價格查詢工具的輸入參數"""
     symbol: str = Field(

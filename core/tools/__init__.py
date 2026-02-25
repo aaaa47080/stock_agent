@@ -11,7 +11,6 @@ from typing import List
 from .schemas import (
     TechnicalAnalysisInput,
     NewsAnalysisInput,
-    FullInvestmentAnalysisInput,
     PriceInput,
     CurrentTimeInput,
     MarketPulseInput,
@@ -32,15 +31,11 @@ from .helpers import (
 _normalize_symbol = normalize_symbol
 _find_available_exchange = find_available_exchange
 
-# 導入格式化函數
-from .formatters import format_full_analysis_result, format_compact_analysis_result
-
 # 導入所有工具
 from .utility_tools import get_current_time_tool, introduction_tool
 from .crypto_tools import (
     technical_analysis_tool,
     news_analysis_tool,
-    full_investment_analysis_tool,
     get_crypto_price_tool,
     explain_market_movement_tool,
     backtest_strategy_tool,
@@ -59,7 +54,6 @@ def get_crypto_tools() -> List:
         get_crypto_price_tool,
         technical_analysis_tool,
         news_analysis_tool,
-        full_investment_analysis_tool,
         explain_market_movement_tool,
         backtest_strategy_tool,
         extract_crypto_symbols_tool,
@@ -76,7 +70,6 @@ TOOL_MAP = {
     "get_crypto_price_tool": get_crypto_price_tool,
     "technical_analysis_tool": technical_analysis_tool,
     "news_analysis_tool": news_analysis_tool,
-    "full_investment_analysis_tool": full_investment_analysis_tool,
     "explain_market_movement_tool": explain_market_movement_tool,
     "backtest_strategy_tool": backtest_strategy_tool,
     "extract_crypto_symbols_tool": extract_crypto_symbols_tool,
@@ -131,7 +124,6 @@ __all__ = [
     # Schemas
     'TechnicalAnalysisInput',
     'NewsAnalysisInput',
-    'FullInvestmentAnalysisInput',
     'PriceInput',
     'CurrentTimeInput',
     'MarketPulseInput',
@@ -143,14 +135,11 @@ __all__ = [
     'extract_crypto_symbols',
     '_normalize_symbol',  # 向後兼容
     '_find_available_exchange',  # 向後兼容
-    # Formatters
-    'format_full_analysis_result',
     # Tools
     'get_current_time_tool',
     'get_crypto_price_tool',
     'technical_analysis_tool',
     'news_analysis_tool',
-    'full_investment_analysis_tool',
     'explain_market_movement_tool',
     'backtest_strategy_tool',
     'extract_crypto_symbols_tool',

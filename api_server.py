@@ -61,7 +61,7 @@ from api.services import (
     update_market_pulse_task,
     funding_rate_update_task
 )
-from api.routers import system, analysis, market, trading, user, agents, twstock, usstock
+from api.routers import system, analysis, market, trading, user, twstock, usstock
 from api.routers.forum import router as forum_router
 from api.routers.premium import router as premium_router
 from api.routers.admin import router as admin_router
@@ -75,7 +75,6 @@ from api.routers.notifications import router as notifications_router  # Notifica
 
 # Import database and core modules (but don't initialize at module level)
 from core.database import init_db
-from interfaces.chat_interface import CryptoAnalysisBot
 from trading.okx_api_connector import OKXAPIConnector
 
 from fastapi import Request
@@ -112,13 +111,6 @@ async def lifespan(app: FastAPI):
         logger.error(f"❌ OKX Connector 初始化失敗: {e}")
         globals.okx_connector = None
     
-    try:
-        globals.bot = CryptoAnalysisBot()
-        logger.info("✅ CryptoAnalysisBot 初始化成功")
-    except Exception as e:
-        logger.error(f"❌ CryptoAnalysisBot 初始化失敗: {e}")
-        globals.bot = None
-
     # 預熱 V4 bootstrap（純載入 PromptRegistry + AgentRegistry，不建立 LLM）
     # 實際 LLM client 由各請求的 user_api_key 決定，所以 startup 僅驗證模組可 import
     try:
@@ -327,7 +319,6 @@ app.include_router(twstock.router)
 app.include_router(usstock.router)
 app.include_router(trading.router)
 app.include_router(user.router)
-app.include_router(agents.router)  # Agent 管理 API
 app.include_router(forum_router)   # 論壇 API
 app.include_router(premium_router) # 高級會員 API
 app.include_router(admin_router)   # 管理員 API（配置管理）
@@ -363,9 +354,6 @@ async def readiness_check():
     
     # 檢查 OKX Connector
     components["okx_connector"] = globals.okx_connector is not None
-    
-    # 檢查 Bot
-    components["crypto_bot"] = globals.bot is not None
     
     # 檢查數據庫
     try:
