@@ -85,5 +85,5 @@ def test_bootstrap_creates_all_agents():
     agent_names = {m.name for m in manager.agent_registry.list_all()}
     assert "crypto"   in agent_names, "CryptoAgent not registered"
     assert "tw_stock" in agent_names, "TWStockAgent not registered"
-    assert "us_stock" in agent_names, "USStockAgent not registered"
     assert "chat"     in agent_names, "ChatAgent not registered"
+    # us_stock intentionally not registered yet (USStockAgent is a stub)

@@ -103,8 +103,8 @@ class TestCheckDailyPostLimit:
         """Test free user within limit"""
         with patch('core.database.forum.get_connection') as mock_conn:
             mock_cursor = MagicMock()
-            mock_conn.return_value.__enter__.return_value.cursor.return_value = mock_cursor
-            mock_cursor.fetchone.return_value = {"count": 3}
+            mock_conn.return_value.cursor.return_value = mock_cursor
+            mock_cursor.fetchone.return_value = (3,)
 
             with patch('core.database.forum.get_user_membership') as mock_membership:
                 mock_membership.return_value = {"is_pro": False}
@@ -120,8 +120,8 @@ class TestCheckDailyPostLimit:
         """Test free user at limit"""
         with patch('core.database.forum.get_connection') as mock_conn:
             mock_cursor = MagicMock()
-            mock_conn.return_value.__enter__.return_value.cursor.return_value = mock_cursor
-            mock_cursor.fetchone.return_value = {"count": 5}
+            mock_conn.return_value.cursor.return_value = mock_cursor
+            mock_cursor.fetchone.return_value = (5,)
 
             with patch('core.database.forum.get_user_membership') as mock_membership:
                 mock_membership.return_value = {"is_pro": False}
