@@ -132,7 +132,7 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW") -> Ma
         description="獲取目前台灣/UTC+8的精準時間與日期",
         input_schema={},
         handler=get_current_time_taipei,
-        allowed_agents=["crypto", "chat", "tw_stock", "manager"],
+        allowed_agents=["crypto", "chat", "tw_stock", "us_stock", "manager"],
     ))
     tool_registry.register(ToolMetadata(
         name="get_defillama_tvl",
@@ -205,6 +205,57 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW") -> Ma
         input_schema={"ticker": "str", "company_name": "str"},
         handler=tw_news_tool,
         allowed_agents=["tw_stock"],
+    ))
+
+    # ── Register US Stock Tools ──
+    tool_registry.register(ToolMetadata(
+        name="us_stock_price",
+        description="獲取美股即時價格數據（15分鐘延遲，Yahoo Finance）",
+        input_schema={"symbol": "str"},
+        handler=us_stock_price,
+        allowed_agents=["us_stock", "chat"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="us_technical_analysis",
+        description="計算美股技術指標：RSI、MACD、布林帶、均線",
+        input_schema={"symbol": "str"},
+        handler=us_technical_analysis,
+        allowed_agents=["us_stock"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="us_fundamentals",
+        description="獲取美股基本面：P/E、EPS、ROE、市值、股息率",
+        input_schema={"symbol": "str"},
+        handler=us_fundamentals,
+        allowed_agents=["us_stock"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="us_earnings",
+        description="獲取美股財報數據和財報日曆",
+        input_schema={"symbol": "str"},
+        handler=us_earnings,
+        allowed_agents=["us_stock"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="us_news",
+        description="獲取美股相關最新新聞",
+        input_schema={"symbol": "str", "limit": "int (optional, default 5)"},
+        handler=us_news,
+        allowed_agents=["us_stock"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="us_institutional_holders",
+        description="獲取美股機構持倉數據",
+        input_schema={"symbol": "str"},
+        handler=us_institutional_holders,
+        allowed_agents=["us_stock"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="us_insider_transactions",
+        description="獲取美股內部人交易記錄",
+        input_schema={"symbol": "str"},
+        handler=us_insider_transactions,
+        allowed_agents=["us_stock"],
     ))
 
     # ── Wrap LLM with language awareness ──
