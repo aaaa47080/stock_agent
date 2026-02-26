@@ -1948,11 +1948,15 @@
         async function deleteUserAlert(alertId) {
             try {
                 const token = window.AuthManager && window.AuthManager.currentUser && window.AuthManager.currentUser.accessToken;
-                await fetch('/api/alerts/' + alertId, {
+                const resp = await fetch('/api/alerts/' + alertId, {
                     method: 'DELETE',
                     headers: { 'Authorization': 'Bearer ' + token },
                 });
-                loadUserAlerts();
+                if (resp.ok) {
+                    loadUserAlerts();
+                } else {
+                    if (typeof window.showToast === 'function') window.showToast('刪除失敗', 'error');
+                }
             } catch (e) {
                 if (typeof window.showToast === 'function') window.showToast('刪除失敗', 'error');
             }
