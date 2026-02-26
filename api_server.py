@@ -73,6 +73,7 @@ from api.routers.scam_tracker import router as scam_tracker_router  # Scam track
 from api.routers.governance import router as governance_router  # Community governance API
 from api.routers.notifications import router as notifications_router  # Notifications API
 from api.routers.alerts import router as alerts_router  # Price Alerts API
+from api.alert_checker import price_alert_check_task
 
 # Import database and core modules (but don't initialize at module level)
 from core.database import init_db
@@ -138,6 +139,10 @@ async def lifespan(app: FastAPI):
 
     # Startup: 啟動 Funding Rate 定期更新任務
     asyncio.create_task(funding_rate_update_task())
+
+    # Startup: 啟動價格警報檢查任務
+    asyncio.create_task(price_alert_check_task())
+    logger.info("Price alert checker task started")
 
     # Startup: 啟動審計日誌清理任務 (Stage 2 Security)
     # 每天凌晨 3 點自動清理超過 90 天的舊日誌
