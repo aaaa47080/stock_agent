@@ -254,7 +254,9 @@ class ManagerAgent:
         })
         new_query = f"{state.get('query', '')}\n使用者補充：{answer}"
         clarifications = list(state.get("user_clarifications") or []) + [answer]
-        return {"query": new_query, "user_clarifications": clarifications}
+        # Reset topics so _classify_node re-derives them from the updated query,
+        # preventing stale topics from carrying incorrect symbols into pre_research.
+        return {"query": new_query, "user_clarifications": clarifications, "topics": []}
 
     async def _pre_research_node(self, state: ManagerState) -> dict:
         """Pre-Research 節點：自動收集資料，一次 HITL 讓用戶補充或確認分析方向。"""
@@ -439,7 +441,7 @@ class ManagerAgent:
             return "抱歉，暫時無法回答這個問題，請直接開始分析。"
 
     async def _extract_research_symbol(self, topics: list, query: str) -> str:
-        """從 topics 或 query 提取主要幣種。"""
+        """從 topics 或 query 提取主要交易代號（加密貨幣或股票）。"""
         import asyncio
         loop = asyncio.get_running_loop()
         if topics:
@@ -449,13 +451,15 @@ class ManagerAgent:
 
         try:
             prompt = (
-                f"從以下文字中提取加密貨幣的交易所 ticker 代號（例如 BTC、ETH、PI、SOL）。"
-                f"只回覆 ticker 本身（純英文大寫縮寫），不要其他文字。若無法識別則回覆 BTC。\n\n文字：{candidate}"
+                f"從以下文字中提取金融資產的交易代號（ticker），包含加密貨幣（如 BTC、ETH、SOL）"
+                f"或股票（如 AAPL、INTC、TSLA、2330）。"
+                f"只回覆 ticker 本身（純英文大寫縮寫或數字代號），不要其他文字。"
+                f"若無法識別，直接回覆原文字。\n\n文字：{candidate}"
             )
             response = await loop.run_in_executor(None, lambda: self.llm.invoke([HumanMessage(content=prompt)]))
             return self._llm_content(response).strip().upper().split()[0]
         except Exception:
-            return "BTC"
+            return candidate.strip().upper().split()[0] if candidate.strip() else "BTC"
 
     def _format_research_summary(self, research_data: dict, symbol: str) -> str:
         # Pure sync helper, no change needed
@@ -1020,8 +1024,8 @@ class ManagerAgent:
             return "plan"   # Multi-market: skip pre_research, plan node will no-op
         if state.get("complexity") == "ambiguous":
             return "clarify"
-        elif state.get("complexity") == "complex":
-            return "pre_research"   # complex 任務先做預研究
+        elif state.get("complexity") == "complex" and state.get("intent") == "crypto":
+            return "pre_research"   # complex 加密貨幣任務先做預研究
         else:
             return "plan"
 
