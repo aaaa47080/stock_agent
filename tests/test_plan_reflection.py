@@ -57,7 +57,7 @@ def _make_manager():
 
 
 def _run(coro):
-    return asyncio.get_event_loop().run_until_complete(coro)
+    return asyncio.run(coro)
 
 
 def test_reflect_plan_approved_returns_approved_true():

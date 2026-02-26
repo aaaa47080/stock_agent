@@ -85,6 +85,7 @@ class ManagerState(TypedDict):
     # Plan Reflection
     plan_reflection_count: NotRequired[Optional[int]]         # how many times reflect_plan has looped
     plan_reflection_suggestion: NotRequired[Optional[str]]    # improvement hint fed back to plan node
+    plan_reflection_approved: NotRequired[Optional[bool]]     # True = plan passed quality gate
     # Pre-Research 階段
     research_data: NotRequired[Optional[dict]]           # tool 執行結果
     research_summary: NotRequired[Optional[str]]          # 人類可讀摘要（Markdown）
@@ -595,6 +596,8 @@ class ManagerAgent:
             previous_suggestion=previous_suggestion,
         )
 
+        approved = True
+        suggestion = None
         try:
             response = await loop.run_in_executor(
                 None, lambda: self.llm.invoke([HumanMessage(content=prompt)])
@@ -606,10 +609,8 @@ class ManagerAgent:
             logger.info(f"[Reflect] approved={approved} reason={reason}")
         except Exception as e:
             logger.warning(f"[Reflect] reflection error, auto-approving: {e}")
-            approved   = True
-            suggestion = None
 
-        count = state.get("plan_reflection_count") or 0
+        count = state.get("plan_reflection_count", 0) or 0
         if not approved:
             count += 1
 
