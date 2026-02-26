@@ -140,7 +140,7 @@ def test_after_reflect_plan_max_retries_fallback_to_confirm():
     from core.config import PLAN_REFLECTION_MAX_RETRIES
     manager = _make_manager()
     state = {"complexity": "complex", "plan_reflection_approved": False,
-             "plan_reflection_count": PLAN_REFLECTION_MAX_RETRIES,
+             "plan_reflection_count": PLAN_REFLECTION_MAX_RETRIES + 1,
              "plan_confirmed": False}
     assert manager._after_reflect_plan(state) == "confirm"
 
@@ -191,3 +191,13 @@ def test_classify_node_resets_reflection_state():
     src = inspect.getsource(ManagerAgent._classify_node)
     assert "plan_reflection_count" in src
     assert "plan_reflection_approved" in src
+
+
+def test_after_reflect_plan_mid_loop_still_re_plans():
+    """count=2 (< MAX_RETRIES=3) should still route to re_plan, not confirm."""
+    from core.config import PLAN_REFLECTION_MAX_RETRIES
+    manager = _make_manager()
+    state = {"complexity": "complex", "plan_reflection_approved": False,
+             "plan_reflection_count": PLAN_REFLECTION_MAX_RETRIES - 1,
+             "plan_confirmed": False}
+    assert manager._after_reflect_plan(state) == "re_plan"

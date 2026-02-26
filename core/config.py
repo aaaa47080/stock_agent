@@ -182,7 +182,7 @@ DEFAULT_FUTURES_LEVERAGE = 5
 # 並行分析的最大工作線程數
 MAX_ANALYSIS_WORKERS = 2
 
-# Plan Reflection: max times the plan node re-runs due to reflection feedback
+# Plan Reflection: max number of re-planning attempts allowed when reflection rejects the plan
 PLAN_REFLECTION_MAX_RETRIES = 3
 
 # Gradio 介面的預設值

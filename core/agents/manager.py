@@ -233,6 +233,10 @@ class ManagerAgent:
                 "topics":         [sym for _, sym in matched],
                 "plan":           steps,
                 "plan_confirmed": True,
+                # Reset reflection state to prevent leakage
+                "plan_reflection_count":      0,
+                "plan_reflection_suggestion": None,
+                "plan_reflection_approved":   None,
             }
         elif len(matched) == 1:
             # 單一市場：覆蓋 intent（LLM 萃取比 agent 選擇更可靠）
@@ -581,6 +585,10 @@ class ManagerAgent:
         if state.get("complexity") != "complex":
             return {"plan_reflection_approved": True}
 
+        # Pre-confirmed plans (multi-market) — skip reflection
+        if state.get("plan_confirmed"):
+            return {"plan_reflection_approved": True}
+
         loop = asyncio.get_running_loop()
         query               = state.get("query", "")
         plan                = state.get("plan") or []
@@ -613,6 +621,8 @@ class ManagerAgent:
                 None, lambda: self.llm.invoke([HumanMessage(content=prompt)])
             )
             data       = self._parse_json(self._llm_content(response)) or {}
+            if not data:
+                logger.warning("[Reflect] LLM returned unparseable JSON, auto-approving")
             approved   = bool(data.get("approved", True))
             suggestion = data.get("suggestion") or None
             reason     = data.get("reason", "")
@@ -1116,7 +1126,7 @@ class ManagerAgent:
         approved = state.get("plan_reflection_approved", True)
         count    = state.get("plan_reflection_count", 0)
 
-        if approved or count >= PLAN_REFLECTION_MAX_RETRIES:
+        if approved or count > PLAN_REFLECTION_MAX_RETRIES:
             return "confirm"   # proceed to user confirmation
         return "re_plan"       # loop back to plan node for a better plan
 
