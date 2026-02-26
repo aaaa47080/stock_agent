@@ -715,10 +715,10 @@ class ManagerAgent:
                     
                     task_data = {k: v for k, v in p.items() if k in valid_fields}
                     
-                    # Provide defaults for required fields if missing
-                    if "description" not in task_data:
+                    # Provide defaults for required fields if missing or empty
+                    if not task_data.get("description"):
                         task_data["description"] = "執行步驟"
-                    if "agent" not in task_data:
+                    if not task_data.get("agent"):
                         task_data["agent"] = "chat"
                         
                     new_plan.append(asdict(SubTask(**task_data)))

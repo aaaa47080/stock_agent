@@ -45,6 +45,8 @@ classify:
     3. us（美股）：
        - 識別美股公司名稱或 ticker，轉成大寫 ticker
        - 範例："蘋果" → "AAPL"、"特斯拉" → "TSLA"、"台積電ADR" → "TSM"
+       - ⚠️「美超微」「美超微電腦」「超微電腦」= Super Micro Computer = "SMCI"（伺服器廠商）
+       - ⚠️「超微」「超微半導體」= Advanced Micro Devices = "AMD"（注意：SMCI ≠ AMD）
     4. 代詞處理：查詢中出現「它」「他」「這個幣」「這支股票」等代詞時，從對話歷史推斷所指標的
     5. 無標的 → 回傳 null（禁止猜測或亂填，寧可 null 也不要填錯）
 
@@ -198,7 +200,9 @@ negotiate_plan:
     請輸出 JSON 格式：
     {{
         "explanation": "給用戶的說明（若有工具結果，請詳細列出重點）",
-        "modified_plan": [ ... ],
+        "modified_plan": [
+            {{"step": 1, "description": "步驟的完整說明文字（必填，不可為空）", "agent": "agent_name", "tool_hint": null}}
+        ],
         "tool_call": {{ "name": "...", "args": {{...}} }}
     }}
 
