@@ -248,3 +248,34 @@ retry_scope:
     規則：
     - partial: 只重做部分步驟（大多數情況）
     - full_replan: 完全重新規劃（僅在使用者需求根本改變時使用）
+
+reflect_plan:
+  description: "審核計畫是否真的回答了使用者查詢"
+  template: |
+    你是一個計畫品質審核員。嚴格判斷以下執行計畫是否真的能回答使用者的查詢。
+
+    使用者查詢：{query}
+    對話歷史：{history}
+    提取的主題（標的）：{topics}
+    使用者澄清補充：{clarifications}
+    上一輪建議（若有）：{previous_suggestion}
+
+    執行計畫：
+    {plan_text}
+
+    可用的 Agent：
+    {agents_info}
+
+    **審核標準：**
+    1. 標的正確性：計畫中使用的 agent 和 symbol 是否對應查詢中的資產？
+       （例如：用戶問 INTC 但計畫查 AMD → 不通過）
+    2. 問題覆蓋性：步驟加總是否能回答用戶的核心問題？
+       （例如：用戶問「值得買嗎」但計畫只查新聞，沒有技術面 → 不通過）
+    3. 步驟合理性：步驟數量和描述是否清晰合理？（1-6 步為宜）
+
+    回覆 JSON 格式（不加任何其他文字）：
+    {{
+        "approved": true 或 false,
+        "reason": "一句話說明通過或不通過的原因",
+        "suggestion": "若不通過，給規劃節點的具體改善建議（通過則填 null）"
+    }}
