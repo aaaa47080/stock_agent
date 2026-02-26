@@ -237,6 +237,27 @@
       "benefits": "會員權益",
       "confirmPurchase": "確認購買",
       "cancel": "取消"
+    },
+    "priceAlert": {
+      "title": "設定價格警報",
+      "condition": "條件",
+      "above": "價格高於",
+      "below": "價格低於",
+      "changePctUp": "漲幅達 (%)",
+      "changePctDown": "跌幅達 (%)",
+      "targetLabel": "目標值",
+      "targetPlaceholder": "輸入目標值",
+      "repeat": "持續通知（觸發後不刪除）",
+      "confirm": "確認",
+      "cancel": "取消",
+      "myAlerts": "我的警報",
+      "noAlerts": "尚無警報",
+      "deleteAlert": "刪除",
+      "limitExceeded": "已達警報上限（最多 20 個）",
+      "setFailed": "設定失敗",
+      "deleteFailed": "刪除失敗",
+      "networkError": "網路錯誤",
+      "invalidTarget": "請輸入有效的目標值"
     }
   },
   "login": {

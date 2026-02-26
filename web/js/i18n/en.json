@@ -237,6 +237,27 @@
       "benefits": "Benefits",
       "confirmPurchase": "Confirm Purchase",
       "cancel": "Cancel"
+    },
+    "priceAlert": {
+      "title": "Set Price Alert",
+      "condition": "Condition",
+      "above": "Price above",
+      "below": "Price below",
+      "changePctUp": "Rise by (%)",
+      "changePctDown": "Drop by (%)",
+      "targetLabel": "Target value",
+      "targetPlaceholder": "Enter target value",
+      "repeat": "Persistent (don't delete after trigger)",
+      "confirm": "Confirm",
+      "cancel": "Cancel",
+      "myAlerts": "My Alerts",
+      "noAlerts": "No alerts set",
+      "deleteAlert": "Delete",
+      "limitExceeded": "Alert limit reached (max 20)",
+      "setFailed": "Failed to set alert",
+      "deleteFailed": "Failed to delete",
+      "networkError": "Network error",
+      "invalidTarget": "Please enter a valid target value"
     }
   },
   "login": {

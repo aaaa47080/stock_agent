@@ -200,9 +200,9 @@ const Components = {
 
                             <!-- My Alerts (TW Stock) -->
                             <div id="alert-list-section-twstock" class="mt-4 px-1">
-                                <h4 class="text-gray-400 text-xs font-medium uppercase tracking-wide mb-2">我的警報</h4>
-                                <div id="alert-list-twstock" class="space-y-1">
-                                    <p class="text-gray-500 text-xs">尚無警報</p>
+                                <h4 class="text-textMuted text-xs font-medium uppercase tracking-wide mb-2" data-i18n="modals.priceAlert.myAlerts">我的警報</h4>
+                                <div id="alert-list-twstock" class="space-y-0">
+                                    <p class="text-textMuted text-xs py-1" data-i18n="modals.priceAlert.noAlerts">尚無警報</p>
                                 </div>
                             </div>
                         </section>
@@ -381,9 +381,9 @@ const Components = {
 
                             <!-- My Alerts (US Stock) -->
                             <div id="alert-list-section-usstock" class="mt-4 px-1">
-                                <h4 class="text-gray-400 text-xs font-medium uppercase tracking-wide mb-2">我的警報</h4>
-                                <div id="alert-list-usstock" class="space-y-1">
-                                    <p class="text-gray-500 text-xs">尚無警報</p>
+                                <h4 class="text-textMuted text-xs font-medium uppercase tracking-wide mb-2" data-i18n="modals.priceAlert.myAlerts">我的警報</h4>
+                                <div id="alert-list-usstock" class="space-y-0">
+                                    <p class="text-textMuted text-xs py-1" data-i18n="modals.priceAlert.noAlerts">尚無警報</p>
                                 </div>
                             </div>
                         </section>

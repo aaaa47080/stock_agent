@@ -1186,39 +1186,55 @@
     </div>
 
     <!-- Price Alert Modal -->
-    <div id="alert-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
-        <div class="bg-gray-800 rounded-xl p-6 w-full max-w-sm mx-4 shadow-2xl">
-            <h3 class="text-lg font-semibold text-white mb-4">🔔 設定價格警報</h3>
-            <p id="alert-symbol-label" class="text-gray-300 text-sm mb-4"></p>
-            <div class="space-y-3">
+    <!-- Price Alert Modal -->
+    <div id="alert-modal" class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-6">
+        <div class="bg-surface w-full max-w-sm rounded-[2.5rem] border border-white/5 shadow-2xl overflow-hidden">
+            <!-- Header -->
+            <div class="flex justify-between items-center px-6 pt-6 pb-4 border-b border-white/5">
+                <h3 class="font-serif text-lg text-secondary" data-i18n="modals.priceAlert.title">設定價格警報</h3>
+                <button onclick="closeAlertModal()"
+                        class="w-8 h-8 rounded-full bg-background flex items-center justify-center text-textMuted hover:text-secondary transition">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <!-- Symbol label -->
+            <div class="px-6 pt-4">
+                <p id="alert-symbol-label" class="text-primary text-sm font-mono"></p>
+            </div>
+            <!-- Form -->
+            <div class="px-6 py-4 space-y-4">
                 <div>
-                    <label class="text-gray-400 text-xs mb-1 block">條件</label>
-                    <select id="alert-condition" class="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm">
-                        <option value="above">價格高於</option>
-                        <option value="below">價格低於</option>
-                        <option value="change_pct_up">漲幅達 (%)</option>
-                        <option value="change_pct_down">跌幅達 (%)</option>
+                    <label class="text-textMuted text-xs mb-1.5 block" data-i18n="modals.priceAlert.condition">條件</label>
+                    <select id="alert-condition"
+                            class="w-full bg-background border border-white/5 rounded-2xl px-4 py-3 text-secondary text-sm outline-none focus:border-primary/50 transition">
+                        <option value="above" data-i18n="modals.priceAlert.above">價格高於</option>
+                        <option value="below" data-i18n="modals.priceAlert.below">價格低於</option>
+                        <option value="change_pct_up" data-i18n="modals.priceAlert.changePctUp">漲幅達 (%)</option>
+                        <option value="change_pct_down" data-i18n="modals.priceAlert.changePctDown">跌幅達 (%)</option>
                     </select>
                 </div>
                 <div>
-                    <label class="text-gray-400 text-xs mb-1 block">目標值</label>
-                    <input type="number" id="alert-target" placeholder="輸入目標值" step="0.01"
-                           class="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm" />
+                    <label class="text-textMuted text-xs mb-1.5 block" data-i18n="modals.priceAlert.targetLabel">目標值</label>
+                    <input type="number" id="alert-target" step="0.01"
+                           data-i18n-attr="placeholder" data-i18n="modals.priceAlert.targetPlaceholder"
+                           placeholder="輸入目標值"
+                           class="w-full bg-background border border-white/5 rounded-2xl px-4 py-3 text-secondary text-sm outline-none focus:border-primary/50 transition" />
                 </div>
-                <div class="flex items-center gap-2">
-                    <input type="checkbox" id="alert-repeat" class="rounded" />
-                    <label for="alert-repeat" class="text-gray-400 text-sm">持續通知（觸發後不刪除）</label>
+                <div class="flex items-center gap-3">
+                    <input type="checkbox" id="alert-repeat"
+                           class="w-4 h-4 rounded accent-primary" />
+                    <label for="alert-repeat" class="text-textMuted text-sm cursor-pointer"
+                           data-i18n="modals.priceAlert.repeat">持續通知（觸發後不刪除）</label>
                 </div>
             </div>
-            <div class="flex gap-3 mt-5">
+            <!-- Footer -->
+            <div class="flex gap-3 px-6 pb-6">
                 <button onclick="submitAlert()"
-                        class="flex-1 bg-yellow-500 hover:bg-yellow-400 text-black font-medium rounded-lg py-2 text-sm transition-colors">
-                    確認
-                </button>
+                        class="flex-1 bg-primary hover:brightness-110 text-background font-semibold py-3 rounded-2xl text-sm transition shadow-lg shadow-primary/20"
+                        data-i18n="modals.priceAlert.confirm">確認</button>
                 <button onclick="closeAlertModal()"
-                        class="flex-1 bg-gray-600 hover:bg-gray-500 text-white rounded-lg py-2 text-sm transition-colors">
-                    取消
-                </button>
+                        class="flex-1 bg-background hover:bg-surfaceHighlight text-textMuted hover:text-secondary border border-white/5 py-3 rounded-2xl text-sm transition"
+                        data-i18n="modals.priceAlert.cancel">取消</button>
             </div>
         </div>
     </div>
@@ -1228,7 +1244,7 @@
     <script src="/static/js/apiKeyManager.js?v=47" onerror="alert('apiKeyManager.js 載入失敗')"></script>
     <script src="/static/js/auth.js?v=50" onerror="alert('auth.js 載入失敗')"></script>
     <script src="/static/js/okxKeyManager.js?v=47"></script>
-    <script src="/static/js/components.js?v=68"></script>
+    <script src="/static/js/components.js?v=69"></script>
     <script src="/static/js/notification-service.js?v=3"></script>
     <script src="/static/js/components/NotificationBell.js?v=2"></script>
     <script src="/static/js/components/NotificationPanel.js?v=2"></script>
@@ -1334,6 +1350,8 @@
             // Close any open stock chart overlays (they are fixed-position, not inside tab DOM)
             if (window.TWStockTab && typeof window.TWStockTab.closeTwChart === 'function') window.TWStockTab.closeTwChart();
             if (window.USStockTab && typeof window.USStockTab.closeChart === 'function') window.USStockTab.closeChart();
+            // Close price alert modal if open
+            if (typeof window.closeAlertModal === 'function') window.closeAlertModal();
 
             // Hide all tabs
             document.querySelectorAll('.tab-content').forEach(el => {
@@ -1896,6 +1914,10 @@
             document.getElementById('alert-target').value = '';
             document.getElementById('alert-repeat').checked = false;
             document.getElementById('alert-modal').classList.remove('hidden');
+            // Re-init Lucide icons (X button inside modal)
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            // Re-apply i18n translations
+            if (window.I18n && typeof window.I18n.updatePageContent === 'function') window.I18n.updatePageContent();
         }
 
         function closeAlertModal() {
@@ -1907,8 +1929,10 @@
             const target = parseFloat(document.getElementById('alert-target').value);
             const repeat = document.getElementById('alert-repeat').checked;
 
+            const t = (key) => window.I18n ? window.I18n.t(key) : key;
+
             if (!target || isNaN(target) || target <= 0) {
-                if (typeof window.showToast === 'function') window.showToast('請輸入有效的目標值', 'error');
+                if (typeof window.showToast === 'function') window.showToast(t('modals.priceAlert.invalidTarget'), 'error');
                 return;
             }
 
@@ -1920,15 +1944,15 @@
                     body: JSON.stringify({ symbol: _alertSymbol, market: _alertMarket, condition, target, repeat }),
                 });
                 if (resp.ok) {
-                    if (typeof window.showToast === 'function') window.showToast('警報已設定', 'success');
+                    if (typeof window.showToast === 'function') window.showToast('✅ ' + t('modals.priceAlert.confirm'));
                     closeAlertModal();
                     loadUserAlerts();
                 } else {
                     const err = await resp.json().catch(() => ({}));
-                    if (typeof window.showToast === 'function') window.showToast((err.detail || '設定失敗'), 'error');
+                    if (typeof window.showToast === 'function') window.showToast((err.detail || t('modals.priceAlert.setFailed')), 'error');
                 }
             } catch (e) {
-                if (typeof window.showToast === 'function') window.showToast('網路錯誤', 'error');
+                if (typeof window.showToast === 'function') window.showToast(t('modals.priceAlert.networkError'), 'error');
             }
         }
 
@@ -1955,29 +1979,46 @@
                 if (resp.ok) {
                     loadUserAlerts();
                 } else {
-                    if (typeof window.showToast === 'function') window.showToast('刪除失敗', 'error');
+                    const t = (key) => window.I18n ? window.I18n.t(key) : key;
+                    if (typeof window.showToast === 'function') window.showToast(t('modals.priceAlert.deleteFailed'), 'error');
                 }
             } catch (e) {
-                if (typeof window.showToast === 'function') window.showToast('刪除失敗', 'error');
+                const t = (key) => window.I18n ? window.I18n.t(key) : key;
+                if (typeof window.showToast === 'function') window.showToast(t('modals.priceAlert.deleteFailed'), 'error');
             }
         }
 
         function renderAlertList(alerts) {
-            // Render into all visible alert list containers (twstock / usstock)
-            const containerIds = ['alert-list-twstock', 'alert-list-usstock'];
-            const condMap = { above: '>', below: '<', change_pct_up: '漲幅≥', change_pct_down: '跌幅≥' };
+            const t = (key) => window.I18n ? window.I18n.t(key) : key;
+            // condition labels come from i18n
+            const condMap = {
+                above: t('modals.priceAlert.above'),
+                below: t('modals.priceAlert.below'),
+                change_pct_up: t('modals.priceAlert.changePctUp'),
+                change_pct_down: t('modals.priceAlert.changePctDown'),
+            };
+            const noAlertsHtml = '<p class="text-textMuted text-xs py-1">' + t('modals.priceAlert.noAlerts') + '</p>';
+            const deleteLabel = t('modals.priceAlert.deleteAlert');
 
+            const containerIds = ['alert-list-twstock', 'alert-list-usstock'];
             containerIds.forEach(function(cid) {
                 const container = document.getElementById(cid);
                 if (!container) return;
                 if (alerts.length === 0) {
-                    container.innerHTML = '<p class="text-gray-500 text-xs">尚無警報</p>';
+                    container.innerHTML = noAlertsHtml;
                     return;
                 }
                 container.innerHTML = alerts.map(function(a) {
-                    return '<div class="flex justify-between items-center py-1 text-sm">' +
-                        '<span class="text-gray-300">' + a.symbol + ' ' + (condMap[a.condition] || a.condition) + ' ' + a.target + (a.repeat ? ' 🔁' : '') + '</span>' +
-                        '<button onclick="deleteUserAlert(\'' + a.id + '\')" class="text-red-400 hover:text-red-300 text-xs ml-2">刪除</button>' +
+                    const label = condMap[a.condition] || a.condition;
+                    return '<div class="flex justify-between items-center py-1.5 border-b border-white/5 last:border-0">' +
+                        '<span class="text-secondary text-xs font-mono">' +
+                            a.symbol + ' <span class="text-primary">' + label + '</span> ' + a.target +
+                            (a.repeat ? ' <span class="text-textMuted">🔁</span>' : '') +
+                        '</span>' +
+                        '<button onclick="deleteUserAlert(\'' + a.id + '\')" ' +
+                            'class="text-danger hover:brightness-125 text-xs ml-2 transition">' +
+                            deleteLabel +
+                        '</button>' +
                         '</div>';
                 }).join('');
             });
