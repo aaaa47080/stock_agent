@@ -23,7 +23,6 @@ from utils.settings import Settings
 from api.models import APIKeySettings, UserSettings, KeyValidationRequest
 from api.utils import update_env_file, logger
 from trading.okx_api_connector import OKXAPIConnector
-from interfaces.chat_interface import CryptoAnalysisBot
 import api.globals as globals
 
 router = APIRouter()
@@ -141,10 +140,12 @@ async def validate_key(request: KeyValidationRequest, current_user: dict = Depen
             base_url=base_url
         )
         
-        # 嘗試調用
-        # 使用 run_in_executor 避免阻塞，因為 llm.invoke 可能包含網路請求
+        # 使用 run_in_executor 避免阻塞，並加上 15 秒 timeout
         loop = asyncio.get_running_loop()
-        response = await loop.run_in_executor(None, lambda: llm.invoke([HumanMessage(content=test_prompt)]))
+        response = await asyncio.wait_for(
+            loop.run_in_executor(None, lambda: llm.invoke([HumanMessage(content=test_prompt)])),
+            timeout=15.0
+        )
         reply_text = response.content
 
         return {
@@ -155,6 +156,9 @@ async def validate_key(request: KeyValidationRequest, current_user: dict = Depen
             "model": model_to_test
         }
         
+    except asyncio.TimeoutError:
+        logger.warning(f"Key validation timed out for {provider}")
+        return {"valid": False, "message": "驗證失敗: 請求超時 (15秒)，請檢查網絡連接或稍後再試。"}
     except Exception as e:
         logger.warning(f"Key validation failed for {provider}: {e}")
         error_msg = str(e)
@@ -179,9 +183,6 @@ async def validate_key(request: KeyValidationRequest, current_user: dict = Depen
 @router.get("/api/config")
 async def get_config():
     """回傳前端需要的配置資訊"""
-    # Reload .env to pick up manual changes
-    load_dotenv(override=True)
-
     current_provider = core_config.BULL_RESEARCHER_MODEL.get("provider", "openai")
 
     # Helper to check key existence using Factory logic
@@ -308,17 +309,6 @@ async def update_user_settings(settings: UserSettings, current_user: dict = Depe
             loop = asyncio.get_running_loop()
             await loop.run_in_executor(None, partial(update_env_file, env_updates, project_root))
 
-        # 6. Re-initialize CryptoAnalysisBot if it wasn't initialized or needs refresh
-        try:
-            # Re-initialize only if keys were updated or bot is missing
-            if env_updates or globals.bot is None:
-                logger.info("Re-initializing CryptoAnalysisBot with new settings...")
-                globals.bot = CryptoAnalysisBot()
-                logger.info("CryptoAnalysisBot re-initialized successfully")
-        except Exception as e:
-            logger.error(f"Failed to re-initialize CryptoAnalysisBot: {e}")
-            # Don't fail the request, just log it. The user might need to fix the key.
-            
         return {"success": True, "message": "系統設置已更新！(模式與模型已切換)"}
         
     except Exception as e:

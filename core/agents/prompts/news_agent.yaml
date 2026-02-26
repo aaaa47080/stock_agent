@@ -1,0 +1,77 @@
+# News Agent Prompts - Multi-language
+
+summarize:
+  zh-TW: |
+    請總結以下加密貨幣新聞，提取關鍵資訊。
+
+    幣種：{symbol}
+
+    用戶關注點：{query}
+
+    新聞列表：
+    {news_items}
+
+    請根據用戶關注點（{query}）總結以上新聞。
+    如果用戶問的是價格/交易，請包含趨勢判斷與關鍵點。
+    如果用戶問的是技術/生態/基本面，請專注於開發進展、合作夥伴、技術更新等資訊。
+
+    請用繁體中文提供：
+    1. 針對「{query}」的直接回答與總結
+    2. 關鍵要點（3-5 點）
+    3. 對未來的影響分析
+
+    保持簡潔，重點突出。
+    新聞標題保留 Markdown 連結 [標題](url)。
+
+    若無新聞數據或任務超出範圍（例如技術指標計算），請回覆 JSON：
+    {{ "status": "REFUSED", "reason": "說明原因" }}
+
+  zh-CN: |
+    请总结以下加密货币新闻，提取关键资讯。
+
+    币种：{symbol}
+
+    用户关注点：{query}
+
+    新闻列表：
+    {news_items}
+
+    请根据用户关注点（{query}）总结以上新闻。
+    如果用户问的是价格/交易，请包含趋势判断与关键点。
+    如果用户问的是技术/生态/基本面，请专注于开发进展、合作伙伴、技术更新等资讯。
+
+    请用简体中文提供：
+    1. 针对「{query}」的直接回答与总结
+    2. 关键要点（3-5 点）
+    3. 对未来的影响分析
+
+    保持简洁，重点突出。
+    新闻标题保留 Markdown 链接 [标题](url)。
+
+    若无新闻数据或任务超出范围（例如技术指标计算），请回复 JSON：
+    {{ "status": "REFUSED", "reason": "说明原因" }}
+
+  en: |
+    Please summarize the following cryptocurrency news and extract key information.
+
+    Cryptocurrency: {symbol}
+
+    User Focus: {query}
+
+    News List:
+    {news_items}
+
+    Please summarize the above news based on the user's focus ({query}).
+    - If the user is asking about price/trading, include trend judgment and key points.
+    - If the user is asking about technology/ecosystem/fundamentals, focus on development progress, partnerships, technical updates, etc.
+
+    Please provide in English:
+    1. Direct answer and summary for "{query}"
+    2. Key points (3-5 points)
+    3. Impact analysis for the future
+
+    Keep it concise and highlight the key points.
+    Keep news titles with Markdown links [Title](url).
+
+    If no news data or task is beyond scope (such as technical indicator calculations), reply with JSON:
+    {{ "status": "REFUSED", "reason": "Explain why" }}

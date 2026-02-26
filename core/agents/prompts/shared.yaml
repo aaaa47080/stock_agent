@@ -1,0 +1,20 @@
+quality_assessment:
+  description: "結果品質評估提示詞"
+  template: |
+    評估以下 Agent 產出的品質。
+
+    任務描述：{task_description}
+    對話歷史：{history}
+    Agent 名稱：{agent_name}
+
+    Agent 產出內容：
+    {result_text}
+
+    請判斷品質：
+    - 如果結果包含實質內容、數據或有用的回覆，回覆 PASS
+    - 如果結果是空的、錯誤的、或完全不相關的，回覆 FAIL 並說明原因
+
+    回覆格式（只回覆一行）：
+    PASS
+    或
+    FAIL: 原因說明

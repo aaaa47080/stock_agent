@@ -141,6 +141,12 @@ const GlobalNav = {
         container.innerHTML = '';
 
         enabledItems.forEach(item => {
+            // Hide admin-only tabs for non-admin users
+            if (item.adminOnly) {
+                const user = window.AuthManager && AuthManager.currentUser;
+                if (!user || user.role !== 'admin') return;
+            }
+
             const button = document.createElement('button');
             const isActive = pageType === item.id || (pageType === 'index' && item.id === 'forum');
 
@@ -203,13 +209,14 @@ const GlobalNav = {
      * Navigate to forum
      */
     navigateToForum() {
-        // Save current tab for return navigation
-        const hash = window.location.hash;
-        if (hash) {
-            localStorage.setItem('lastActiveTab', hash.substring(1));
+        // Check if we're in the main SPA
+        if (typeof switchTab === 'function') {
+            // We're in the main app, use SPA navigation
+            switchTab('forum');
+        } else {
+            // Fallback: navigate to main app with forum hash
+            window.location.href = '/static/index.html#forum';
         }
-
-        window.location.href = '/static/forum/index.html';
     },
 
     /**

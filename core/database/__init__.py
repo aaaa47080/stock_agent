@@ -185,6 +185,30 @@ from .system_config import (
     init_audit_table,
 )
 
+# 分析報告（Agent 輸出）
+from .analysis import (
+    save_analysis_report,
+    get_analysis_reports,
+    get_analysis_report_by_id,
+)
+
+# 通知功能
+from .notifications import (
+    create_notifications_table,
+    create_notification,
+    get_notifications,
+    get_unread_count,
+    mark_notification_as_read,
+    mark_all_as_read,
+    delete_notification,
+    notify_friend_request,
+    notify_friend_accepted,
+    notify_new_message,
+    notify_post_interaction,
+    notify_system_update,
+    notify_announcement,
+)
+
 
 # 定義公開 API
 __all__ = [
@@ -313,4 +337,22 @@ __all__ = [
     # 審計日誌
     'get_config_history',
     'init_audit_table',
+    # 分析報告
+    'save_analysis_report',
+    'get_analysis_reports',
+    'get_analysis_report_by_id',
+    # 通知功能
+    'create_notifications_table',
+    'create_notification',
+    'get_notifications',
+    'get_unread_count',
+    'mark_notification_as_read',
+    'mark_all_as_read',
+    'delete_notification',
+    'notify_friend_request',
+    'notify_friend_accepted',
+    'notify_new_message',
+    'notify_post_interaction',
+    'notify_system_update',
+    'notify_announcement',
 ]

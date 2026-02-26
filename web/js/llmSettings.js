@@ -70,8 +70,9 @@ async function fetchModelConfig() {
 
 /**
  * 根據選擇的 provider 更新可用模型列表
+ * @param {Object|null} preloadedConfig - 可選的預先載入模型配置，傳入可避免重複 fetch
  */
-async function updateAvailableModels() {
+async function updateAvailableModels(preloadedConfig = null) {
     const providerSelect = document.getElementById('llm-provider-select');
     const modelSelect = document.getElementById('llm-model-select');
     const modelInput = document.getElementById('llm-model-input');
@@ -99,8 +100,8 @@ async function updateAvailableModels() {
         // 清空當前選項
         modelSelect.innerHTML = '';
 
-        // 從後端獲取模型配置
-        const modelConfig = await fetchModelConfig();
+        // 使用預先載入的配置或從後端獲取
+        const modelConfig = preloadedConfig || await fetchModelConfig();
 
         // 添加默認選項
         const defaultOption = document.createElement('option');
@@ -401,6 +402,13 @@ async function testLLMKey() {
         if (result.valid) {
             showLLMKeyStatus('success', `✅ ${result.message}`);
 
+            // ✅ Auto-save key after successful test (fixes: features showing "no API key" after test)
+            window.APIKeyManager.setKey(provider, key);
+            window.APIKeyManager.setSelectedProvider(provider);
+            if (selectedModel) {
+                window.APIKeyManager.setModelForProvider(provider, selectedModel);
+            }
+
             // 保存測試結果到 localStorage，以便 saveLLMKey 檢查
             localStorage.setItem(`last_test_result_${provider}`, 'success');
             localStorage.setItem(`last_test_key_${provider}`, key);
@@ -418,6 +426,12 @@ async function testLLMKey() {
             if (typeof checkApiKeyStatus === 'function') {
                 checkApiKeyStatus();
             }
+
+            // 更新 LLM 狀態 UI 和 Provider 下拉選單
+            if (typeof updateLLMStatusUI === 'function') {
+                updateLLMStatusUI();
+            }
+            updateProviderDropdownStatus();
 
             // 顯示測試結果 Modal
             if (result.reply) {

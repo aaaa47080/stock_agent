@@ -1,0 +1,26 @@
+{
+  "id": "d0298346-7d35-4364-8cb1-33fc0d8bf648",
+  "query": "BTC現在多少錢",
+  "intent": "chat",
+  "topics": [],
+  "plan": [
+    {
+      "step": 1,
+      "description": "BTC現在多少錢",
+      "agent": "chat",
+      "tool_hint": null,
+      "status": "completed",
+      "result": null,
+      "context": {
+        "history": "這是新對話的開始"
+      }
+    }
+  ],
+  "complexity": "simple",
+  "created_at": "2026-02-17T22:54:45.382863",
+  "ttl_days": 90,
+  "use_count": 0,
+  "fail_count": 0,
+  "replaced_by": null,
+  "correction_reason": null
+}

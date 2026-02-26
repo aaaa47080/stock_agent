@@ -311,6 +311,110 @@ input[type=range]:focus {
     margin-top: 1.5rem; /* Distinct separation */
 }
 
+/* Prose: Table inside chat bubble */
+.prose .table-wrapper {
+    overflow-x: auto;
+    margin: 1rem 0;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-left: 3px solid rgba(212, 182, 147, 0.55);
+    background: rgba(255, 255, 255, 0.03);
+}
+.prose table {
+    width: 100%;
+    min-width: 240px;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    margin: 0;
+}
+.prose th {
+    background: rgba(212, 182, 147, 0.1);
+    padding: 10px 16px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #a1a1aa;
+    white-space: nowrap;
+    text-align: left;
+}
+.prose td {
+    padding: 10px 16px;
+    font-size: 0.85rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+/* 第一欄（標籤欄）較暗 */
+.prose td:first-child, .prose th:first-child {
+    color: #a1a1aa;
+    font-size: 0.8rem;
+}
+/* 第二欄（數值欄）醒目 */
+.prose td:last-child {
+    color: #f4f4f5;
+    font-weight: 600;
+}
+.prose tr:last-child td {
+    border-bottom: none;
+}
+.prose tr:hover td {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+/* Prose: Ordered list inside chat bubble */
+.prose ol {
+    list-style: none;
+    padding-left: 0;
+    counter-reset: prose-counter;
+}
+.prose ol li {
+    position: relative;
+    padding-left: 2rem;
+    margin-bottom: 0.5rem;
+    counter-increment: prose-counter;
+}
+.prose ol li::before {
+    content: counter(prose-counter);
+    position: absolute;
+    left: 0;
+    top: 0.05em;
+    width: 1.35rem;
+    height: 1.35rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(212, 182, 147, 0.15);
+    color: #d4b693;
+    border-radius: 50%;
+    font-size: 0.7rem;
+    font-weight: 700;
+    font-family: 'Mulish', sans-serif;
+    flex-shrink: 0;
+}
+
+/* Prose: Links */
+.prose a {
+    color: #d4b693;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    text-decoration-color: rgba(212, 182, 147, 0.35);
+}
+.prose a:hover {
+    text-decoration-color: #d4b693;
+}
+
+/* Prose: h4 (smaller heading level in analysis results) */
+.prose h4 {
+    font-family: 'Lora', serif;
+    color: #d4d4d8;
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-top: 1rem;
+    margin-bottom: 0.4rem;
+}
+
 /* Spinner */
 .spinner {
     border: 2px solid rgba(255, 255, 255, 0.1);

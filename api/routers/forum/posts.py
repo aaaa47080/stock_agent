@@ -89,13 +89,6 @@ async def create_new_post(request: CreatePostRequest, user_id: str = Query(..., 
             raise HTTPException(status_code=403, detail="Not authorized to post as this user")
 
         loop = asyncio.get_running_loop()
-        # 驗證用戶是否存在
-        user = await loop.run_in_executor(None, get_user_by_id, user_id)
-        if not user:
-            raise HTTPException(
-                status_code=401,
-                detail="用戶不存在或憑證失效，請重新登入 (User not found, please relogin)"
-            )
 
         # 驗證分類
         if request.category not in VALID_CATEGORIES:

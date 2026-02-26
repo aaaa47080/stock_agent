@@ -151,19 +151,36 @@ def save_chat_message(role: str, content: str, session_id: str = "default",
         conn.close()
 
 
-def get_chat_history(session_id: str = "default", limit: int = 50) -> List[Dict]:
-    """獲取對話歷史"""
+def get_chat_history(
+    session_id: str = "default",
+    limit: int = 20,
+    before_timestamp: str = None,
+) -> List[Dict]:
+    """獲取對話歷史（最新 limit 條，ASC 排序）。
+
+    before_timestamp: 若提供，只返回比此時間更早的訊息（向上捲動載入舊訊息用）。
+    """
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
-            SELECT role, content, metadata, timestamp
-            FROM conversation_history
-            WHERE session_id = %s
-            ORDER BY timestamp ASC
-            LIMIT %s
-        ''', (session_id, limit))
-        rows = c.fetchall()
+        if before_timestamp:
+            c.execute('''
+                SELECT role, content, metadata, timestamp
+                FROM conversation_history
+                WHERE session_id = %s AND timestamp < %s
+                ORDER BY timestamp DESC
+                LIMIT %s
+            ''', (session_id, before_timestamp, limit))
+        else:
+            c.execute('''
+                SELECT role, content, metadata, timestamp
+                FROM conversation_history
+                WHERE session_id = %s
+                ORDER BY timestamp DESC
+                LIMIT %s
+            ''', (session_id, limit))
+
+        rows = list(reversed(c.fetchall()))  # DESC 取到後反轉成 ASC
 
         history = []
         for row in rows:

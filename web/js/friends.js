@@ -368,7 +368,7 @@ const FriendsUI = {
         if (status === 'pending') {
             if (isRequester) {
                 return `
-                    <button onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleCancelRequest('${userId}')"
+                    <button id="cancel-request-btn-${userId}" onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleCancelRequest('${userId}')"
                             class="friend-btn bg-white/5 text-textMuted px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 border border-white/10 hover:bg-danger/10 hover:text-danger hover:border-danger/20 transition">
                         <i data-lucide="clock" class="w-4 h-4"></i>
                         <span>等待中</span>
@@ -399,8 +399,8 @@ const FriendsUI = {
         }
         // 預設：加好友按鈕
         return `
-            <button onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleAddFriend('${userId}')"
-                    class="friend-btn bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 transition border border-primary/20">
+            <button id="add-friend-btn-${userId}" onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleAddFriend('${userId}')"
+                    class="friend-btn bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 transition border border-primary/20 disabled:opacity-50 disabled:cursor-not-allowed">
                 <i data-lucide="user-plus" class="w-4 h-4"></i>
                 <span>加好友</span>
             </button>
@@ -454,33 +454,39 @@ const FriendsUI = {
      * 處理加好友
      */
     async handleAddFriend(userId) {
+        const btn = document.getElementById(`add-friend-btn-${userId}`);
+
+        // 立即顯示加載狀態
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>發送中...</span>';
+            if (window.lucide) window.lucide.createIcons();
+        }
+
         try {
             await FriendsAPI.sendRequest(userId);
             if (typeof showToast === 'function') {
                 showToast('好友請求已發送', 'success');
             }
 
-            // 就地更新按鈕狀態（不刷新頁面，避免搜索結果消失）
-            // 找到包含這個用戶的卡片，更新按鈕
-            const cards = document.querySelectorAll('.user-card');
-            cards.forEach(card => {
-                const btn = card.querySelector(`button[onclick*="handleAddFriend('${userId}')"]`);
-                if (btn) {
-                    // 替換為「等待中」按鈕
-                    btn.outerHTML = `
-                        <button onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleCancelRequest('${userId}')"
-                                class="friend-btn bg-white/5 text-textMuted px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 border border-white/10 hover:bg-danger/10 hover:text-danger hover:border-danger/20 transition">
-                            <i data-lucide="clock" class="w-4 h-4"></i>
-                            <span>等待中</span>
-                        </button>
-                    `;
-                }
-            });
-
-            // 重新渲染 Lucide 圖標
-            if (window.lucide) lucide.createIcons();
+            // 更新為「等待中」按鈕
+            if (btn) {
+                btn.id = `cancel-request-btn-${userId}`;
+                btn.disabled = false;
+                btn.className = 'friend-btn bg-white/5 text-textMuted px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 border border-white/10 hover:bg-danger/10 hover:text-danger hover:border-danger/20 transition';
+                btn.innerHTML = '<i data-lucide="clock" class="w-4 h-4"></i><span>等待中</span>';
+                btn.onclick = (e) => { e.stopPropagation(); e.preventDefault(); FriendsUI.handleCancelRequest(userId); };
+                if (window.lucide) window.lucide.createIcons();
+            }
 
         } catch (error) {
+            // 恢復按鈕狀態
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i data-lucide="user-plus" class="w-4 h-4"></i><span>加好友</span>';
+                if (window.lucide) window.lucide.createIcons();
+            }
+
             if (typeof showToast === 'function') {
                 showToast(error.message, 'error');
             } else {
@@ -575,32 +581,39 @@ const FriendsUI = {
      * 處理取消請求
      */
     async handleCancelRequest(userId) {
+        const btn = document.getElementById(`cancel-request-btn-${userId}`);
+
+        // 立即顯示加載狀態
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>取消中...</span>';
+            if (window.lucide) window.lucide.createIcons();
+        }
+
         try {
             await FriendsAPI.cancelRequest(userId);
             if (typeof showToast === 'function') {
                 showToast('已取消請求', 'info');
             }
 
-            // 就地更新按鈕狀態（不刷新頁面）
-            const cards = document.querySelectorAll('.user-card');
-            cards.forEach(card => {
-                const btn = card.querySelector(`button[onclick*="handleCancelRequest('${userId}')"]`);
-                if (btn) {
-                    // 替換為「加好友」按鈕
-                    btn.outerHTML = `
-                        <button onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleAddFriend('${userId}')"
-                                class="friend-btn bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 transition border border-primary/20">
-                            <i data-lucide="user-plus" class="w-4 h-4"></i>
-                            <span>加好友</span>
-                        </button>
-                    `;
-                }
-            });
-
-            // 重新渲染 Lucide 圖標
-            if (window.lucide) lucide.createIcons();
+            // 更新為「加好友」按鈕
+            if (btn) {
+                btn.id = `add-friend-btn-${userId}`;
+                btn.disabled = false;
+                btn.className = 'friend-btn bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 transition border border-primary/20 disabled:opacity-50 disabled:cursor-not-allowed';
+                btn.innerHTML = '<i data-lucide="user-plus" class="w-4 h-4"></i><span>加好友</span>';
+                btn.onclick = (e) => { e.stopPropagation(); e.preventDefault(); FriendsUI.handleAddFriend(userId); };
+                if (window.lucide) window.lucide.createIcons();
+            }
 
         } catch (error) {
+            // 恢復按鈕狀態
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i data-lucide="clock" class="w-4 h-4"></i><span>等待中</span>';
+                if (window.lucide) window.lucide.createIcons();
+            }
+
             if (typeof showToast === 'function') {
                 showToast(error.message, 'error');
             } else {
@@ -1124,7 +1137,7 @@ const SocialHub = {
                     </div>
                 </div>
                 <!-- 刪除對話按鈕（hover 時顯示，右下位置避免與時間重疊） -->
-                <button onclick="event.stopPropagation(); SocialHub.deleteConversation(${conv.id})"
+                <button onclick="event.stopPropagation(); SocialHub.deleteConversation(${conv.id}, this)"
                         class="absolute right-3 bottom-3 p-1.5 text-textMuted/40 hover:text-danger opacity-0 group-hover:opacity-100 transition-all duration-200"
                         title="刪除對話">
                     <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
@@ -1276,19 +1289,19 @@ const SocialHub = {
         // 對方的訊息：只有刪除（只對自己隱藏）
         const msgActions = isMe ? `
             <div class="absolute ${isMe ? '-left-16' : '-right-16'} top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                <button onclick="event.stopPropagation(); SocialHub.recallMessage(${msg.id})"
-                        class="p-1 text-textMuted/50 hover:text-warning transition" title="收回訊息">
+                <button onclick="event.stopPropagation(); SocialHub.recallMessage(${msg.id}, this)"
+                        class="p-1 text-textMuted/50 hover:text-warning transition disabled:opacity-50 disabled:cursor-not-allowed" title="收回訊息">
                     <i data-lucide="undo-2" class="w-3.5 h-3.5"></i>
                 </button>
-                <button onclick="event.stopPropagation(); SocialHub.hideMessage(${msg.id})"
-                        class="p-1 text-textMuted/50 hover:text-danger transition" title="刪除（只對自己）">
+                <button onclick="event.stopPropagation(); SocialHub.hideMessage(${msg.id}, this)"
+                        class="p-1 text-textMuted/50 hover:text-danger transition disabled:opacity-50 disabled:cursor-not-allowed" title="刪除（只對自己）">
                     <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                 </button>
             </div>
         ` : `
             <div class="absolute ${isMe ? '-left-8' : '-right-8'} top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition">
-                <button onclick="event.stopPropagation(); SocialHub.hideMessage(${msg.id})"
-                        class="p-1 text-textMuted/50 hover:text-danger transition" title="刪除（只對自己）">
+                <button onclick="event.stopPropagation(); SocialHub.hideMessage(${msg.id}, this)"
+                        class="p-1 text-textMuted/50 hover:text-danger transition disabled:opacity-50 disabled:cursor-not-allowed" title="刪除（只對自己）">
                     <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                 </button>
             </div>
@@ -1310,8 +1323,10 @@ const SocialHub = {
     /**
      * 收回訊息
      */
-    recallMessage: async function (messageId) {
+    recallMessage: async function (messageId, btnElement) {
         if (!confirm('確定要收回這條訊息嗎？對方會看到「對方已收回訊息」')) return;
+
+        if (btnElement) btnElement.disabled = true;
 
         try {
             const myId = FriendsAPI._getUserId();
@@ -1352,14 +1367,17 @@ const SocialHub = {
             } else {
                 alert(e.message || '收回失敗');
             }
+            if (btnElement) btnElement.disabled = false;
         }
     },
 
     /**
      * 隱藏訊息（只對自己隱藏）
      */
-    hideMessage: async function (messageId) {
+    hideMessage: async function (messageId, btnElement) {
         if (!confirm('確定要刪除這條訊息嗎？（只對你隱藏，對方仍可見）')) return;
+
+        if (btnElement) btnElement.disabled = true;
 
         try {
             const myId = FriendsAPI._getUserId();
@@ -1390,13 +1408,14 @@ const SocialHub = {
             } else {
                 alert(e.message || '刪除失敗');
             }
+            if (btnElement) btnElement.disabled = false;
         }
     },
 
     /**
      * 刪除對話（隱藏整段對話）
      */
-    deleteConversation: async function (conversationId) {
+    deleteConversation: async function (conversationId, btnElement) {
         // 使用平台風格的確認對話框
         const confirmed = typeof showConfirm === 'function'
             ? await showConfirm({
@@ -1409,6 +1428,8 @@ const SocialHub = {
             : confirm('確定要刪除這段對話嗎？所有訊息將從列表中移除。\n（之後如需再聊，會是乾淨的聊天室）');
 
         if (!confirmed) return;
+
+        if (btnElement) btnElement.disabled = true;
 
         try {
             const myId = FriendsAPI._getUserId();
@@ -1482,6 +1503,7 @@ const SocialHub = {
             } else {
                 alert(e.message || '刪除失敗');
             }
+            if (btnElement) btnElement.disabled = false;
         }
     },
 

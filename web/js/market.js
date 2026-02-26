@@ -11,16 +11,70 @@ var marketInitialized = false;
 var isFirstLoad = true;
 
 /**
- * 主要初始化函數 - 確保組件已注入並加載數據
- * 這是進入 Market 頁面時唯一需要調用的函數
+ * Crypto 專區控制器
+ * 管理 Market Watch 與 AI Pulse 的子標籤切換
  */
-async function initMarket() {
-    console.log('[Market] initMarket called');
+window.CryptoTab = {
+    activeSubTab: 'market', // 'market' | 'pulse'
+
+    switchSubTab: function (tabId) {
+        if (this.activeSubTab === tabId) return;
+
+        // 1. 更新按鈕選中狀態
+        document.querySelectorAll('.crypto-sub-tab').forEach(btn => {
+            if (btn.id === `crypto-tab-${tabId}`) {
+                btn.classList.add('bg-primary', 'text-background', 'shadow-md');
+                btn.classList.remove('text-textMuted', 'hover:text-textMain', 'hover:bg-white/5');
+            } else {
+                btn.classList.remove('bg-primary', 'text-background', 'shadow-md');
+                btn.classList.add('text-textMuted', 'hover:text-textMain', 'hover:bg-white/5');
+            }
+        });
+
+        // 2. 切換內容區域顯示
+        const contentMarket = document.getElementById('crypto-content-market');
+        const contentPulse = document.getElementById('crypto-content-pulse');
+
+        if (contentMarket && contentPulse) {
+            if (tabId === 'market') {
+                contentMarket.classList.remove('hidden');
+                contentPulse.classList.add('hidden');
+            } else {
+                contentMarket.classList.add('hidden');
+                contentPulse.classList.remove('hidden');
+            }
+        }
+
+        this.activeSubTab = tabId;
+
+        // 3. 觸發對應的資料載入與 UI 更新
+        this.refreshCurrent(true); // force refresh on switch usually isn't needed, but good for first time
+    },
+
+    refreshCurrent: function (isFirstLoadForTab = false) {
+        if (this.activeSubTab === 'market') {
+            if (typeof window.refreshScreener === 'function') {
+                window.refreshScreener(isFirstLoadForTab);
+            }
+        } else if (this.activeSubTab === 'pulse') {
+            if (typeof window.checkMarketPulse === 'function') {
+                window.checkMarketPulse(false); // checkMarketPulse in pulse.js
+            }
+        }
+    }
+};
+
+/**
+ * 主要初始化函數 - 確保組件已注入並加載數據
+ * 這是進入 Crypto 頁面時唯一需要調用的函數
+ */
+async function initCrypto() {
+    console.log('[Crypto] initCrypto called');
 
     // 1. 確保組件已注入
-    if (window.Components && !window.Components.isInjected('market')) {
-        console.log('[Market] Injecting component...');
-        await window.Components.inject('market');
+    if (window.Components && !window.Components.isInjected('crypto')) {
+        console.log('[Crypto] Injecting component...');
+        await window.Components.inject('crypto');
     }
 
     // 2. 等待 DOM 元素出現
@@ -34,11 +88,11 @@ async function initMarket() {
     }
 
     if (!topList) {
-        console.error('[Market] top-list not found after injection!');
+        console.error('[Crypto] top-list not found after injection!');
         return;
     }
 
-    console.log('[Market] DOM ready, loading data...');
+    console.log('[Crypto] DOM ready, loading data...');
     marketInitialized = true;
 
     // 3. 加載數據
@@ -46,7 +100,7 @@ async function initMarket() {
     if (typeof loadSavedSymbolSelection === 'function') {
         loadSavedSymbolSelection();
     } else {
-        console.warn('[Market] loadSavedSymbolSelection not found! Check if filter.js is loaded.');
+        console.warn('[Crypto] loadSavedSymbolSelection not found! Check if filter.js is loaded.');
     }
 
     // Double check: 允許空列表，這會觸發後端的 "Auto" 模式 (返回市值前排行)
@@ -54,16 +108,11 @@ async function initMarket() {
         window.globalSelectedSymbols = [];
     }
 
-    // 確保 refreshScreener 全域可用後才呼叫
-    if (typeof window.refreshScreener === 'function') {
-        await window.refreshScreener(true);
-    } else {
-        await refreshScreener(true);
-    }
+    // 初期化時總是先載入當前 active 的 sub-tab
+    window.CryptoTab.refreshCurrent();
 }
 
-// Export functions and variables to window to ensure global access even after script reload
-window.initMarket = initMarket;
+window.initCrypto = initCrypto; // Export initCrypto for global usage
 
 // Define refreshScreener before exporting it ensuring it is hoisted or available
 // However, since it's an async function defined below, we might need to rely on var hoisting or assignment.

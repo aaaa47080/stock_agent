@@ -10,9 +10,14 @@ from core.database import (
     get_comments,
     get_daily_comment_count,
 )
+from core.database.notifications import notify_post_interaction
+from api.routers.notifications import push_notification_to_user
 from .models import AddCommentRequest
 import asyncio
+import logging
 from functools import partial
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/forum/posts", tags=["Forum - Comments"])
 
@@ -103,6 +108,24 @@ async def add_new_comment(
                 )
             raise HTTPException(status_code=500, detail=result.get("error", "新增回覆失敗"))
 
+        # 通知文章作者（不通知自己）
+        if post["user_id"] != user_id:
+            try:
+                from_username = current_user.get("username", user_id)
+                notification = await loop.run_in_executor(
+                    None,
+                    notify_post_interaction,
+                    post["user_id"],
+                    from_username,
+                    request.type,
+                    post_id,
+                    post["title"]
+                )
+                if notification:
+                    await push_notification_to_user(post["user_id"], notification)
+            except Exception as notify_error:
+                logger.warning(f"Failed to send comment notification: {notify_error}")
+
         return {
             "success": True,
             "message": "回覆成功",
@@ -150,6 +173,24 @@ async def push_post(
                 raise HTTPException(status_code=429, detail="已達每日回覆上限")
             raise HTTPException(status_code=500, detail=result.get("error", "推文失敗"))
 
+        # 通知文章作者（不通知自己）
+        if post["user_id"] != user_id:
+            try:
+                from_username = current_user.get("username", user_id)
+                notification = await loop.run_in_executor(
+                    None,
+                    notify_post_interaction,
+                    post["user_id"],
+                    from_username,
+                    "push",
+                    post_id,
+                    post["title"]
+                )
+                if notification:
+                    await push_notification_to_user(post["user_id"], notification)
+            except Exception as notify_error:
+                logger.warning(f"Failed to send push notification: {notify_error}")
+
         return {"success": True, "message": "推文成功"}
     except HTTPException:
         raise
@@ -192,6 +233,24 @@ async def boo_post(
             if result.get("error") == "daily_limit_reached":
                 raise HTTPException(status_code=429, detail="已達每日回覆上限")
             raise HTTPException(status_code=500, detail=result.get("error", "噓文失敗"))
+
+        # 通知文章作者（不通知自己）
+        if post["user_id"] != user_id:
+            try:
+                from_username = current_user.get("username", user_id)
+                notification = await loop.run_in_executor(
+                    None,
+                    notify_post_interaction,
+                    post["user_id"],
+                    from_username,
+                    "boo",
+                    post_id,
+                    post["title"]
+                )
+                if notification:
+                    await push_notification_to_user(post["user_id"], notification)
+            except Exception as notify_error:
+                logger.warning(f"Failed to send boo notification: {notify_error}")
 
         return {"success": True, "message": "噓文成功"}
     except HTTPException:

@@ -142,9 +142,12 @@ class TestReportManagement:
         mock_conn.cursor.return_value = mock_cursor
 
         now = datetime.now()
+        # 14 columns: id, content_type, content_id, reporter_user_id, report_type,
+        # description, review_status, violation_level, approve_count, reject_count,
+        # created_at, updated_at, reporter_username, viewer_vote
         mock_cursor.fetchall.return_value = [
             (1, 'post', 123, 'test-user-001', 'spam', 'Test desc',
-             'pending', None, 0, 0, now, now, 'reporter_user')
+             'pending', None, 0, 0, now, now, 'reporter_user', None)
         ]
 
         reports = get_pending_reports(None, 20, 0, None)
@@ -230,7 +233,7 @@ class TestVoting:
         mock_conn.cursor.return_value = mock_cursor
 
         mock_cursor.fetchone.side_effect = [
-            ('pending',),  # Report status
+            ('pending', 'reporter-user-id'),  # Report status with reporter_user_id (2 columns)
             None,  # No existing vote
             (1,),  # Insert returning ID
         ]
@@ -265,7 +268,7 @@ class TestVoting:
         mock_conn.cursor.return_value = mock_cursor
 
         mock_cursor.fetchone.side_effect = [
-            ('pending',),  # Report status
+            ('pending', 'reporter-user-id'),  # Report status with reporter_user_id (2 columns)
             (1, 'approve'),  # Existing vote
         ]
 

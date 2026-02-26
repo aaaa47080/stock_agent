@@ -461,9 +461,21 @@ def init_db():
             last_active_at TIMESTAMP,
             membership_tier TEXT DEFAULT 'free',
             membership_expires_at TIMESTAMP,
+            role TEXT DEFAULT 'user',
+            is_active BOOLEAN DEFAULT TRUE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+
+    # Migration: add role and is_active columns if missing (safe to re-run)
+    for col_sql in [
+        "ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'",
+        "ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT TRUE",
+    ]:
+        try:
+            c.execute(col_sql)
+        except Exception:
+            conn.rollback()  # Column already exists
 
     # 建立會員支付記錄表 (Membership Payments)
     c.execute('''
@@ -475,6 +487,19 @@ def init_db():
             tx_hash TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(user_id)
+        )
+    ''')
+
+    # 管理員廣播紀錄表 (Admin Broadcasts)
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS admin_broadcasts (
+            id SERIAL PRIMARY KEY,
+            admin_user_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            body TEXT NOT NULL,
+            type TEXT DEFAULT 'announcement',
+            recipient_count INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT NOW()
         )
     ''')
 
@@ -941,6 +966,42 @@ def init_db():
             ip_address VARCHAR(45),
             user_agent TEXT,
             created_at TIMESTAMP DEFAULT NOW()
+        )
+    ''')
+
+    # ========================================================================
+    # Agent 分析系統
+    # ========================================================================
+
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS analysis_reports (
+            id SERIAL PRIMARY KEY,
+            session_id VARCHAR(255),
+            user_id VARCHAR(255),
+            symbol VARCHAR(50),
+            interval VARCHAR(10) DEFAULT '1d',
+            report_text TEXT,
+            metadata JSONB DEFAULT '{}',
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        )
+    ''')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_analysis_reports_session ON analysis_reports(session_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_analysis_reports_user ON analysis_reports(user_id)')
+
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS agent_codebook (
+            id VARCHAR(255) PRIMARY KEY,
+            query TEXT NOT NULL,
+            intent VARCHAR(100),
+            symbols JSONB DEFAULT '[]',
+            plan JSONB DEFAULT '[]',
+            complexity VARCHAR(20) DEFAULT 'simple',
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            ttl_days INTEGER DEFAULT 14,
+            use_count INTEGER DEFAULT 0,
+            fail_count INTEGER DEFAULT 0,
+            replaced_by VARCHAR(255),
+            correction_reason TEXT
         )
     ''')
 

@@ -5,13 +5,15 @@
 
 const NAV_ITEMS = [
     { id: 'chat', icon: 'message-circle', label: 'Chat', i18nKey: 'nav.chat', defaultEnabled: true },
-    { id: 'market', icon: 'bar-chart-2', label: 'Market', i18nKey: 'nav.market', defaultEnabled: true },
-    { id: 'pulse', icon: 'activity', label: 'Pulse', i18nKey: 'nav.pulse', defaultEnabled: true },
+    { id: 'crypto', icon: 'zap', label: 'Crypto', i18nKey: 'nav.crypto', defaultEnabled: true },
+    { id: 'twstock', icon: 'bar-chart', label: 'TW Stock', i18nKey: 'nav.twstock', defaultEnabled: true },
+    { id: 'usstock', icon: 'trending-up', label: 'US Stock', i18nKey: 'nav.usstock', defaultEnabled: true },
     { id: 'wallet', icon: 'credit-card', label: 'Wallet', i18nKey: 'nav.wallet', defaultEnabled: true },
     { id: 'assets', icon: 'wallet', label: 'Assets', i18nKey: 'nav.assets', defaultEnabled: true },
     { id: 'friends', icon: 'users', label: 'Friends', i18nKey: 'nav.friends', defaultEnabled: true },
     { id: 'forum', icon: 'messages-square', label: 'Forum', i18nKey: 'nav.forum', defaultEnabled: true },
     { id: 'safety', icon: 'shield-alert', label: 'Safety', i18nKey: 'nav.safety', defaultEnabled: true },
+    { id: 'admin', icon: 'shield', label: 'Admin', i18nKey: 'nav.admin', defaultEnabled: true, locked: true, adminOnly: true },
     { id: 'settings', icon: 'settings-2', label: 'Settings', i18nKey: 'nav.settings', defaultEnabled: true, locked: true }
 ];
 
@@ -21,8 +23,9 @@ const NAV_ITEMS = [
  */
 const NavPreferences = {
     STORAGE_KEY: 'userNavPreferences',
-    PREFERENCES_VERSION: 2,
+    PREFERENCES_VERSION: 5,
     MIN_ENABLED_ITEMS: 2,
+    _cache: null,
 
     /**
      * Get all enabled navigation items
@@ -137,6 +140,7 @@ const NavPreferences = {
      * @returns {Object} Preferences object
      */
     loadPreferences() {
+        if (this._cache) return this._cache;
         try {
             const stored = localStorage.getItem(this.STORAGE_KEY);
             if (stored) {
@@ -175,13 +179,16 @@ const NavPreferences = {
                     this.savePreferences(preferences);
                 }
 
+                this._cache = preferences;
                 return preferences;
             }
         } catch (error) {
             console.error('Error loading navigation preferences:', error);
         }
 
-        return this._getDefaultPreferences();
+        const defaults = this._getDefaultPreferences();
+        this._cache = defaults;
+        return defaults;
     },
 
     /**
@@ -198,6 +205,7 @@ const NavPreferences = {
 
         try {
             localStorage.setItem(this.STORAGE_KEY, JSON.stringify(preferences));
+            this._cache = preferences;  // 更新 cache，避免下次重新解析
             return true;
         } catch (error) {
             console.error('Error saving navigation preferences:', error);

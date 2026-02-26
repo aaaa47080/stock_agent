@@ -45,6 +45,13 @@ logging.basicConfig(
     handlers=[file_handler, console_handler]
 )
 
+# 靜音 Windows asyncio WinError 10054（客戶端斷線時的無害噪音）
+class _SuppressWinError10054(logging.Filter):
+    def filter(self, record):
+        return 'WinError 10054' not in (record.getMessage())
+
+logging.getLogger('asyncio').addFilter(_SuppressWinError10054())
+
 # Import from refactored modules
 from api.utils import logger
 import api.globals as globals
@@ -54,19 +61,20 @@ from api.services import (
     update_market_pulse_task,
     funding_rate_update_task
 )
-from api.routers import system, analysis, market, trading, user, agents
+from api.routers import system, analysis, market, trading, user, twstock, usstock
 from api.routers.forum import router as forum_router
 from api.routers.premium import router as premium_router
 from api.routers.admin import router as admin_router
+from api.routers.admin_panel import router as admin_panel_router
 from api.routers.friends import router as friends_router
 from api.routers.messages import router as messages_router
 from api.routers.audit import router as audit_router  # Audit log admin API
 from api.routers.scam_tracker import router as scam_tracker_router  # Scam tracker API
 from api.routers.governance import router as governance_router  # Community governance API
+from api.routers.notifications import router as notifications_router  # Notifications API
 
 # Import database and core modules (but don't initialize at module level)
 from core.database import init_db
-from interfaces.chat_interface import CryptoAnalysisBot
 from trading.okx_api_connector import OKXAPIConnector
 
 from fastapi import Request
@@ -103,12 +111,14 @@ async def lifespan(app: FastAPI):
         logger.error(f"❌ OKX Connector 初始化失敗: {e}")
         globals.okx_connector = None
     
+    # 預熱 V4 bootstrap（純載入 PromptRegistry + AgentRegistry，不建立 LLM）
+    # 實際 LLM client 由各請求的 user_api_key 決定，所以 startup 僅驗證模組可 import
     try:
-        globals.bot = CryptoAnalysisBot()
-        logger.info("✅ CryptoAnalysisBot 初始化成功")
+        from core.agents.bootstrap import bootstrap as _v4_bootstrap  # noqa: F401
+        logger.info("✅ V4 ManagerAgent 模組載入成功（LLM 將在首次請求時初始化）")
     except Exception as e:
-        logger.error(f"❌ CryptoAnalysisBot 初始化失敗: {e}")
-        globals.bot = None
+        logger.warning(f"⚠️ V4 ManagerAgent 模組載入失敗（將 fallback 至 V1 bot）: {e}")
+    globals.v4_manager = None  # 實際 manager 按需在 analysis.py 中建立
     
     # Startup: 嘗試載入快取
     # [Optimization] Screener/Funding are now In-Memory Only, no DB load needed
@@ -152,6 +162,14 @@ async def lifespan(app: FastAPI):
     # Shutdown: Clean up resources
     logger.info("🛑 Shutting down application...")
     
+    # 關閉 Screener Ticker WebSocket
+    try:
+        from data.okx_websocket import okx_ticker_ws_manager
+        await okx_ticker_ws_manager.stop()
+        logger.info("✅ Screener Ticker WebSocket 已關閉")
+    except Exception as e:
+        logger.error(f"❌ 關閉 Ticker WebSocket 時出錯: {e}")
+
     # 關閉數據庫連接池
     try:
         from core.database import close_all_connections
@@ -297,17 +315,20 @@ SERVICE_START_TIME = time.time()
 app.include_router(system.router)
 app.include_router(analysis.router)
 app.include_router(market.router)
+app.include_router(twstock.router)
+app.include_router(usstock.router)
 app.include_router(trading.router)
 app.include_router(user.router)
-app.include_router(agents.router)  # Agent 管理 API
 app.include_router(forum_router)   # 論壇 API
 app.include_router(premium_router) # 高級會員 API
 app.include_router(admin_router)   # 管理員 API（配置管理）
+app.include_router(admin_panel_router)  # 管理後台 API（廣播+用戶管理）
 app.include_router(friends_router) # 好友功能 API
 app.include_router(messages_router) # 私訊功能 API
 app.include_router(audit_router)   # 審計日誌查詢 API (管理員專用)
 app.include_router(scam_tracker_router)  # 可疑錢包追蹤系統 API
 app.include_router(governance_router)  # 社群治理系統 API
+app.include_router(notifications_router)  # 通知系統 API
 
 # --- 健康檢查端點（用於負載均衡和監控）---
 @app.get("/health")
@@ -333,9 +354,6 @@ async def readiness_check():
     
     # 檢查 OKX Connector
     components["okx_connector"] = globals.okx_connector is not None
-    
-    # 檢查 Bot
-    components["crypto_bot"] = globals.bot is not None
     
     # 檢查數據庫
     try:
@@ -423,10 +441,9 @@ class CachedStaticFiles(StaticFiles):
     
     def file_response(self, *args, **kwargs):
         response = super().file_response(*args, **kwargs)
-        # 設置緩存 1 天 (86400 秒)
-        # public: 允許中間代理緩存
-        # max-age: 瀏覽器緩存時長
-        response.headers["Cache-Control"] = "public, max-age=86400"
+        # 設置緩存 1 天 (86400 秒) -> 改為 0 (No Cache) 以便調試
+        # response.headers["Cache-Control"] = "public, max-age=86400"
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         return response
 
 if os.path.exists("web"):

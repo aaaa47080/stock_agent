@@ -1,0 +1,28 @@
+{
+  "id": "bcf1b519-80c8-48a7-a620-62bf6f3d423d",
+  "query": "你好",
+  "intent": "chat",
+  "topics": [
+    "BTC"
+  ],
+  "plan": [
+    {
+      "step": 1,
+      "description": "你好",
+      "agent": "chat",
+      "tool_hint": null,
+      "status": "completed",
+      "result": null,
+      "context": {
+        "history": "這是新對話的開始"
+      }
+    }
+  ],
+  "complexity": "simple",
+  "created_at": "2026-02-17T01:48:08.656460",
+  "ttl_days": 90,
+  "use_count": 0,
+  "fail_count": 0,
+  "replaced_by": null,
+  "correction_reason": null
+}

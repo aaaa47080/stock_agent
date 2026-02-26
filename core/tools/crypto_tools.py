@@ -19,14 +19,12 @@ from core.config import DEFAULT_KLINES_LIMIT
 from .schemas import (
     TechnicalAnalysisInput,
     NewsAnalysisInput,
-    FullInvestmentAnalysisInput,
     PriceInput,
     MarketPulseInput,
     BacktestStrategyInput,
     ExtractCryptoSymbolsInput
 )
 from .helpers import normalize_symbol, find_available_exchange, extract_crypto_symbols
-from .formatters import format_full_analysis_result
 
 
 @tool(args_schema=TechnicalAnalysisInput)
@@ -259,87 +257,6 @@ def news_analysis_tool(
         return f"新聞分析時發生錯誤: {str(e)}"
 
 
-@tool(args_schema=FullInvestmentAnalysisInput)
-def full_investment_analysis_tool(
-    symbol: str,
-    interval: str = "1d",
-    include_futures: bool = True,
-    leverage: int = 5
-) -> str:
-    """
-    執行完整的加密貨幣投資分析。
-
-    這是最全面的分析工具，包括：
-    - 4 位 AI 分析師並行分析 (技術、情緒、基本面、新聞)
-    - 多空研究員辯論 (三方辯論模式)
-    - 交易決策生成 (具體買賣建議)
-    - 風險評估
-    - 基金經理最終審批
-
-    適用情境：
-    - 用戶詢問「XXX 可以投資嗎？」
-    - 用戶詢問「應該買入還是賣出？」
-    - 用戶需要完整的投資建議和交易計劃
-    - 用戶想要多空辯論結果
-
-    **注意**：此工具執行時間較長 (30秒-2分鐘)，因為需要完整分析流程。
-    """
-    try:
-        # 延遲導入以避免循環依賴
-        from core.graph import app as langgraph_app
-
-        # 自動選擇交易所
-        exchange, normalized_symbol = find_available_exchange(symbol)
-        if exchange is None:
-            return f"錯誤：無法在支持的交易所中找到 {symbol} 交易對。請確認幣種名稱是否正確。"
-
-        # 準備現貨分析狀態
-        spot_state = {
-            "symbol": normalized_symbol,
-            "exchange": exchange,
-            "interval": interval,
-            "limit": DEFAULT_KLINES_LIMIT,
-            "market_type": "spot",
-            "leverage": 1,
-            "include_multi_timeframe": interval == "1d",
-            "short_term_interval": "1h",
-            "medium_term_interval": "4h",
-            "long_term_interval": "1d",
-            "preloaded_data": None,
-            "account_balance": None,
-            "selected_analysts": ["technical", "sentiment", "fundamental", "news"],
-            "perform_trading_decision": True
-        }
-
-        # 執行分析
-        result = langgraph_app.invoke(spot_state)
-
-        # 格式化結果
-        output = format_full_analysis_result(result, "現貨", symbol, interval)
-
-        # 如果需要合約分析
-        if include_futures:
-            futures_state = spot_state.copy()
-            futures_state.update({
-                "market_type": "futures",
-                "leverage": leverage
-            })
-
-            try:
-                futures_result = langgraph_app.invoke(futures_state)
-                output += "\n\n---\n\n"
-                output += format_full_analysis_result(futures_result, f"合約 ({leverage}x槓桿)", symbol, interval)
-            except Exception as e:
-                output += f"\n\n(合約分析暫時無法完成: {str(e)})"
-
-        return output
-
-    except SymbolNotFoundError:
-        return f"錯誤：找不到交易對 {symbol}。請確認幣種名稱是否正確。"
-    except Exception as e:
-        return f"完整投資分析時發生錯誤: {str(e)}"
-
-
 @tool(args_schema=PriceInput)
 def get_crypto_price_tool(
     symbol: str,
@@ -531,6 +448,340 @@ def backtest_strategy_tool(
 
     except Exception as e:
         return f"執行回測時發生錯誤: {str(e)}"
+
+
+# ============================================
+# 專業級市場與衍生品數據工具
+# ============================================
+
+@tool
+def get_fear_and_greed_index() -> str:
+    """
+    獲取加密貨幣市場全域的恐慌與貪婪指數 (Fear and Greed Index)。
+    數值從 0 (極度恐慌) 到 100 (極度貪婪)。非常適合用來判斷市場整體情緒是否過熱或過度悲觀。
+    """
+    import httpx
+    try:
+        resp = httpx.get("https://api.alternative.me/fng/?limit=1", timeout=10)
+        if resp.status_code == 200:
+            data = resp.json()
+            if data and "data" in data and len(data["data"]) > 0:
+                current = data["data"][0]
+                val = str(current.get("value")).strip()
+                classification = str(current.get("value_classification")).strip()
+                return f"## 🌡️ 全球加密貨幣市場恐慌與貪婪指數\n\n- **當前指數**: {val} / 100\n- **市場情緒**: {classification}"
+        return "目前無法取得恐慌與貪婪指數 API。"
+    except Exception as e:
+        return f"取得恐慌與貪婪指數時發生網路錯誤: {str(e)}"
+
+
+# ============================================
+# 簡單的 In-Memory TTL Cache (防禦 CoinGecko API Rate Limit)
+# ============================================
+import time
+
+_COINGECKO_CACHE = {}
+
+def _get_cached_coingecko_data(key: str, ttl_seconds: int = 300):
+    if key in _COINGECKO_CACHE:
+        timestamp, data = _COINGECKO_CACHE[key]
+        if time.time() - timestamp < ttl_seconds:
+            return data
+    return None
+
+def _set_cached_coingecko_data(key: str, data):
+    _COINGECKO_CACHE[key] = (time.time(), data)
+
+
+@tool
+def get_trending_tokens() -> str:
+    """
+    獲取目前全網最熱門搜尋的加密貨幣 (Trending Tokens)。
+    當使用者詢問「現在流行什麼幣」、「市場熱點在哪」時非常有用。
+    """
+    cache_key = "trending_tokens"
+    cached_data = _get_cached_coingecko_data(cache_key, 300)
+    if cached_data:
+        return cached_data
+
+    import httpx
+    try:
+        resp = httpx.get("https://api.coingecko.com/api/v3/search/trending", timeout=10)
+        if resp.status_code == 200:
+            data = resp.json()
+            coins = data.get("coins", [])
+            if not coins:
+                return "目前 CoinGecko 無熱門搜尋數據。"
+            
+            result = "## 🔥 全網熱門搜尋幣種 (Top Trending)\n\n"
+            for i, item in enumerate(coins[:7], 1):
+                coin = item.get("item", {})
+                symbol = coin.get("symbol", "").upper()
+                name = coin.get("name", "")
+                market_cap_rank = coin.get("market_cap_rank", "N/A")
+                result += f"{i}. **{symbol}** ({name}) - 市值排名: {market_cap_rank}\n"
+            
+            final_output = result + "\n*(資料來源: CoinGecko)*"
+            _set_cached_coingecko_data(cache_key, final_output)
+            return final_output
+        return "目前無法連線到 CoinGecko API 取得熱門搜尋幣種。"
+    except Exception as e:
+        return f"取得熱門搜尋幣種時發生網路錯誤: {str(e)}"
+
+
+@tool
+def get_futures_data(symbol: str) -> str:
+    """
+    獲取加密貨幣永續合約的資金費率 (Funding Rate)。
+    資金費率正值代表多頭支付空頭 (看多情緒強烈)，負值代表空頭支付多頭 (看空情緒強烈)。
+    """
+    import httpx
+    try:
+        base_symbol = symbol.upper().replace("USDT", "").replace("BUSD", "").replace("-", "")
+        binance_symbol = f"{base_symbol}USDT"
+        
+        url = "https://fapi.binance.com/fapi/v1/premiumIndex"
+        resp = httpx.get(url, params={"symbol": binance_symbol}, timeout=10)
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            funding_rate = float(data.get("lastFundingRate", 0))
+            funding_rate_pct = funding_rate * 100
+            
+            status = "中立"
+            if funding_rate_pct > 0.01:
+                status = "🌟 極度熱觀 (多頭擁擠，須注意回調風險)"
+            elif funding_rate_pct > 0.005:
+                status = "📈 偏多 (多頭支付資金費給空頭)"
+            elif funding_rate_pct < -0.01:
+                status = "🩸 極度悲觀 (空頭擁擠，須注意軋空風險)"
+            elif funding_rate_pct < 0:
+                status = "📉 偏空 (空頭支付資金費給多頭)"
+            
+            return f"## ⚖️ {base_symbol} 合約市場資金費率\n\n- **當前資金費率**: {funding_rate_pct:.4f}%\n- **市場多空情緒**: {status}\n\n*(資料來源: Binance U本位合約)*"
+        else:
+            return f"找不到 {symbol} 的合約數據，可能在幣安沒有合約對。"
+    except Exception as e:
+        return f"取得資金費率時發生網路錯誤: {str(e)}"
+
+
+@tool
+def get_current_time_taipei() -> str:
+    """
+    獲取目前台灣/UTC+8的精準時間與日期。
+    當需要分析最新新聞、比對K線時間，或是回答「現在什麼時候」時必備。
+    """
+    from datetime import datetime
+    import pytz
+    
+    tz = pytz.timezone('Asia/Taipei')
+    now = datetime.now(tz)
+    
+    date_str = now.strftime("%Y年%m月%d日")
+    time_str = now.strftime("%H:%M:%S")
+    weekday_str = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"][now.weekday()]
+    
+    return f"🕰️ 【當前系統時間 (UTC+8)】\n日期：{date_str} ({weekday_str})\n時間：{time_str}"
+
+
+@tool
+def get_defillama_tvl(protocol_name: str) -> str:
+    """
+    從 DefiLlama 獲取特定協議或公鏈的 TVL (總鎖倉價值)。
+    TVL 是衡量 DeFi 專案或公鏈生態健康度與資金流入的最重要基本面指標。
+    輸入參數請使用英文名稱，例如 'solana', 'ethereum', 'lido', 'aave'。
+    """
+    import httpx
+    try:
+        # 轉換為標準小寫 slug
+        slug = protocol_name.strip().lower().replace(" ", "-")
+        
+        # 先嘗試作為 protocol 查詢
+        resp = httpx.get(f"https://api.llama.fi/protocol/{slug}", timeout=10)
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            name = data.get("name", protocol_name)
+            
+            # 取得目前的 TVL 總和
+            current_chain_tvls = data.get("currentChainTvls", {})
+            if current_chain_tvls:
+                tvl = sum(current_chain_tvls.values())
+            else:
+                tvl_data = data.get("tvl", [])
+                tvl = tvl_data[-1].get("totalLiquidityUSD", 0) if isinstance(tvl_data, list) and tvl_data else 0
+            
+            # 格式化 TVL 為億或百萬美元
+            if tvl > 0:
+                if tvl > 1_000_000_000:
+                    tvl_str = f"${tvl / 1_000_000_000:.2f} 十億 (Billion)"
+                else:
+                    tvl_str = f"${tvl / 1_000_000:.2f} 百萬 (Million)"
+                    
+                return f"## 🏦 DefiLlama 鎖倉量 (TVL) 報告\n\n- **協議/公鏈**: {name}\n- **當前總鎖倉價值**: {tvl_str}\n\n*(資料來源: DefiLlama API)*"
+        
+        # 如果 protocol 查不到，或 TVL 為 0 (可能是純公鏈)，嘗試查 chain
+        chains_resp = httpx.get("https://api.llama.fi/v2/chains", timeout=10)
+        if chains_resp.status_code == 200:
+            chains = chains_resp.json()
+            for chain in chains:
+                c_name = (chain.get("name") or "").lower()
+                c_symbol = (chain.get("tokenSymbol") or "").lower()
+                if c_name == slug or c_symbol == slug:
+                    tvl = chain.get("tvl", 0)
+                    if tvl > 1_000_000_000:
+                        tvl_str = f"${tvl / 1_000_000_000:.2f} 十億 (Billion)"
+                    else:
+                        tvl_str = f"${tvl / 1_000_000:.2f} 百萬 (Million)"
+                    return f"## 🏦 DefiLlama 公鏈鎖倉量 (TVL)\n\n- **公鏈名稱**: {chain.get('name')}\n- **當前總鎖倉價值**: {tvl_str}\n\n*(資料來源: DefiLlama API)*"
+        
+        return f"在 DefiLlama 查不到 '{protocol_name}' 的資料，請確認拼字是否正確 (如: solana, aave)。"
+    except Exception as e:
+        return f"取得 TVL 數據時發生網路錯誤: {str(e)}"
+
+
+@tool
+def get_crypto_categories_and_gainers() -> str:
+    """
+    獲取 CoinGecko 上表現最佳的加密貨幣板塊 (Sectors/Categories) 與全網領漲幣種。
+    當需要分析「今日市場資金流向何處」、「目前在炒作什麼概念」時必備。
+    """
+    cache_key = "categories_and_gainers"
+    cached_data = _get_cached_coingecko_data(cache_key, 300)
+    if cached_data:
+        return cached_data
+
+    import httpx
+    try:
+        # 1. 獲取熱門 categories
+        cat_resp = httpx.get("https://api.coingecko.com/api/v3/coins/categories", timeout=10)
+        
+        output = "## 🚀 加密貨幣市場動能與資金流向分析\n\n"
+        
+        if cat_resp.status_code == 200:
+            categories = cat_resp.json()
+            # 根據 24h 漲跌幅排序
+            sorted_cats = sorted(
+                [c for c in categories if c.get('market_cap_change_24h') is not None],
+                key=lambda x: x['market_cap_change_24h'], 
+                reverse=True
+            )
+            
+            output += "### 🌟 今日最強勢板塊 (Top Sectors)\n"
+            for i, cat in enumerate(sorted_cats[:5], 1):
+                name = cat.get("name", "Unknown")
+                change = cat.get("market_cap_change_24h", 0)
+                output += f"{i}. **{name}**: {change:+.2f}%\n"
+        else:
+            output += "*(暫時無法獲取板塊數據)*\n"
+            
+        final_output = output + "\n*(資料來源: CoinGecko)*"
+        _set_cached_coingecko_data(cache_key, final_output)
+        return final_output
+    except Exception as e:
+        return f"取得板塊數據時發生網路錯誤: {str(e)}"
+
+
+@tool
+def get_token_unlocks(symbol: str) -> str:
+    """
+    獲取代幣未來的解鎖日程與數量 (Token Unlocks)。
+    代幣解鎖通常會增加市場流通量，對價格產生拋售壓力。
+    當使用者詢問「有沒有解鎖」、「會不會砸盤」或進行基本面籌碼面分析時必備。
+    注意：此為展示用數據模組 (Mock API)，僅提供重點公鏈的模擬示範。
+    """
+    symbol = symbol.upper()
+    
+    # 這裡實作一個精美的 Mock Data 來展示 Agent 處理籌碼面壓力的能力
+    mock_data = {
+        "SUI": {"date": "本月 15 日", "amount": "64.19M SUI", "usd": "$105M", "percent": "2.26%"},
+        "APT": {"date": "下週三", "amount": "11.31M APT", "usd": "$98M", "percent": "2.48%"},
+        "ARB": {"date": "下個月 16 日", "amount": "92.65M ARB", "usd": "$53M", "percent": "2.87%"},
+        "OP": {"date": "本週五", "amount": "31.34M OP", "usd": "$43M", "percent": "2.5%"}
+    }
+    
+    if symbol in ['BTC', 'ETH']:
+        return f"✅ **{symbol} 代幣解鎖報告**\n\n{symbol} 為 PoW 或無定期大量解鎖機制的代幣，目前沒有任何即將到來的大額懸崖解鎖 (Cliff Unlocks) 拋壓。"
+    
+    if symbol in mock_data:
+        unlock = mock_data[symbol]
+        return f"⚠️ **{symbol} 即將迎來大額代幣解鎖！**\n\n- **解鎖時間**: {unlock['date']}\n- **解鎖數量**: {unlock['amount']} (約價值 {unlock['usd']})\n- **佔流通量比例**: 增加 {unlock['percent']}\n\n*警告: 高比例的解鎖可能會為現貨市場帶來短期的拋售壓力，請注意風險。*\n*(資料來源: TokenUnlocks 模擬數據)*"
+    
+    return f"ℹ️ **{symbol} 代幣解鎖報告**\n\n目前沒有監測到 {symbol} 在未來兩週內有超過流通量 1% 的大額懸崖解鎖。拋售壓力相對安全。\n*(資料來源: TokenUnlocks 模擬數據)*"
+
+@tool
+def get_token_supply(symbol: str) -> str:
+    """
+    獲取指定加密貨幣的代幣經濟學數據 (Tokenomics)，包含：
+    - Circulating Supply (目前市場流通量)
+    - Total Supply (總發行量)
+    - Max Supply (最大供應量上限，若有)
+    
+    使用情境：用戶詢問代幣發行量、目前有多少顆在流通、或是總量上限時使用。
+    """
+    symbol = symbol.upper()
+    cache_key = f"token_supply_{symbol}"
+    cached_data = _get_cached_coingecko_data(cache_key, 600)  # 供應量變動不頻繁，快取 10 分鐘
+    if cached_data:
+        return cached_data
+
+    import httpx
+    try:
+        # 1. First, search CoinGecko for the internal coin id using the symbol
+        search_resp = httpx.get(f"https://api.coingecko.com/api/v3/search?query={symbol}", timeout=10)
+        search_resp.raise_for_status()
+        search_data = search_resp.json()
+        
+        coins = search_data.get("coins", [])
+        if not coins:
+            return f"找不到 {symbol} 的代幣資訊，請確認代幣代號是否正確。"
+            
+        # Try to find an exact symbol match (case-insensitive) as the first choice, otherwise take the first result
+        coin_id = coins[0]["id"]
+        coin_name = coins[0]["name"]
+        for c in coins:
+            if c.get("symbol", "").upper() == symbol:
+                coin_id = c["id"]
+                coin_name = c["name"]
+                break
+                
+        # 2. Query the exact coin details to get supply data
+        detail_resp = httpx.get(f"https://api.coingecko.com/api/v3/coins/{coin_id}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false", timeout=10)
+        detail_resp.raise_for_status()
+        detail_data = detail_resp.json()
+        
+        market_data = detail_data.get("market_data", {})
+        
+        circulating = market_data.get("circulating_supply")
+        total = market_data.get("total_supply")
+        max_supply = market_data.get("max_supply")
+        
+        def format_supply(value):
+            if value is None:
+                return "未知/無上限"
+            if value > 1_000_000_000:
+                return f"{value / 1_000_000_000:.2f} 十億 (Billion) 顆"
+            elif value > 1_000_000:
+                return f"{value / 1_000_000:.2f} 百萬 (Million) 顆"
+            else:
+                return f"{value:,.0f} 顆"
+                
+        circulating_str = format_supply(circulating)
+        total_str = format_supply(total)
+        max_str = format_supply(max_supply)
+        
+        final_output = (
+            f"## 🪙 {coin_name} ({symbol}) 代幣供應量報告\n\n"
+            f"- **目前流通量 (Circulating Supply)**: {circulating_str}\n"
+            f"- **總發行量 (Total Supply)**: {total_str}\n"
+            f"- **最大供應量上限 (Max Supply)**: {max_str}\n\n"
+            f"*(資料來源: CoinGecko API)*"
+        )
+        _set_cached_coingecko_data(cache_key, final_output)
+        return final_output
+        
+    except Exception as e:
+        return f"獲取 {symbol} 代幣供應量時發生錯誤: {str(e)}，目前無法取得數據。"
 
 
 @tool(args_schema=ExtractCryptoSymbolsInput)

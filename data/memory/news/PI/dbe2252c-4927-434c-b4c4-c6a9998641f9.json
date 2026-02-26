@@ -1,0 +1,28 @@
+{
+  "id": "dbe2252c-4927-434c-b4c4-c6a9998641f9",
+  "query": "我叫小明，我喜歡 PI 幣",
+  "intent": "news",
+  "topics": [
+    "PI"
+  ],
+  "plan": [
+    {
+      "step": 1,
+      "description": "獲取有關 PI 幣的最新新聞和動態。",
+      "agent": "news",
+      "tool_hint": "aggregate_news",
+      "status": "completed",
+      "result": null,
+      "context": {
+        "history": "這是新對話的開始"
+      }
+    }
+  ],
+  "complexity": "complex",
+  "created_at": "2026-02-17T01:46:26.751702",
+  "ttl_days": 3,
+  "use_count": 0,
+  "fail_count": 0,
+  "replaced_by": null,
+  "correction_reason": null
+}

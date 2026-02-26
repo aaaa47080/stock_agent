@@ -38,6 +38,8 @@ from core.database import (
 from fastapi import Depends
 from api.deps import get_current_user, verify_token
 from api.utils import logger
+from core.database.notifications import notify_new_message
+from api.routers.notifications import push_notification_to_user
 
 router = APIRouter()
 
@@ -134,12 +136,7 @@ async def get_conversations_endpoint(
     if current_user["user_id"] != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
     try:
-        # 驗證用戶存在
         loop = asyncio.get_running_loop()
-        user_exists = await loop.run_in_executor(None, get_user_by_id, user_id)
-        if not user_exists:
-            raise HTTPException(status_code=401, detail="用戶不存在")
-
         conversations = await loop.run_in_executor(
             None, 
             partial(get_conversations, user_id, limit=limit, offset=offset)
@@ -291,6 +288,23 @@ async def send_message_endpoint(
             "message": result["message"]
         })
 
+        # 發送通知到接收者的通知中心
+        try:
+            msg = result["message"]
+            notification = await loop.run_in_executor(
+                None,
+                notify_new_message,
+                request.to_user_id,
+                user_id,
+                msg.get("from_username", user_id),
+                msg["content"],
+                str(msg["conversation_id"])
+            )
+            if notification:
+                await push_notification_to_user(request.to_user_id, notification)
+        except Exception as notify_error:
+            logger.warning(f"Failed to send message notification: {notify_error}")
+
         return result
     except HTTPException:
         raise
@@ -397,6 +411,23 @@ async def send_greeting_endpoint(
             "type": "new_message",
             "message": result["message"]
         })
+
+        # 發送通知到接收者的通知中心
+        try:
+            msg = result["message"]
+            notification = await loop.run_in_executor(
+                None,
+                notify_new_message,
+                request.to_user_id,
+                user_id,
+                msg.get("from_username", user_id),
+                msg["content"],
+                str(msg["conversation_id"])
+            )
+            if notification:
+                await push_notification_to_user(request.to_user_id, notification)
+        except Exception as notify_error:
+            logger.warning(f"Failed to send greeting notification: {notify_error}")
 
         return result
     except HTTPException:

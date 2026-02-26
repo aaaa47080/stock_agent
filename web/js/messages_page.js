@@ -530,12 +530,17 @@ const MessagesPage = {
     /**
      * 收回訊息
      */
-    async recallMessage(messageId) {
+    async recallMessage(messageId, btnElement) {
         if (!confirm('確定要收回這條訊息嗎？對方會看到「對方已收回訊息」')) return;
+
+        if (btnElement) btnElement.disabled = true;
 
         try {
             const userId = MessagesAPI._getUserId();
-            if (!userId) return;
+            if (!userId) {
+                if (btnElement) btnElement.disabled = false;
+                return;
+            }
 
             const res = await fetch(`/api/messages/${messageId}?user_id=${userId}`, {
                 method: 'DELETE',
@@ -572,6 +577,7 @@ const MessagesPage = {
             } else {
                 alert(e.message || '收回失敗');
             }
+            if (btnElement) btnElement.disabled = false;
         }
     },
 

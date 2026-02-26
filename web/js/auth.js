@@ -344,6 +344,15 @@ const AuthManager = {
             }, 300);
         }
 
+        // 登入後重新初始化通知服務（取得真實通知 + 連接 WebSocket）
+        if (isLoggedIn && window.NotificationService) {
+            window.NotificationService.init();
+        }
+
+        // 重新渲染導覽列（根據 role 顯示/隱藏 admin tab）
+        if (typeof renderNavButtons === 'function') renderNavButtons();
+        if (window.GlobalNav && typeof GlobalNav.renderNavButtons === 'function') GlobalNav.renderNavButtons();
+
         if (window.lucide) lucide.createIcons();
     },
 

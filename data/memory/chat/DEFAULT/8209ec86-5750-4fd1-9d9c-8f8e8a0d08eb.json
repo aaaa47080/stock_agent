@@ -1,0 +1,23 @@
+{
+  "id": "8209ec86-5750-4fd1-9d9c-8f8e8a0d08eb",
+  "query": "你好",
+  "intent": "chat",
+  "topics": [],
+  "plan": [
+    {
+      "step": 1,
+      "description": "你好",
+      "agent": "chat",
+      "tool_hint": null,
+      "status": "completed",
+      "result": null
+    }
+  ],
+  "complexity": "simple",
+  "created_at": "2026-02-17T01:21:19.937885",
+  "ttl_days": 90,
+  "use_count": 0,
+  "fail_count": 0,
+  "replaced_by": null,
+  "correction_reason": null
+}

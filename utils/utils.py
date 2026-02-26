@@ -318,10 +318,15 @@ def get_crypto_news_google(symbol: str = "BTC", limit: int = 5) -> List[Dict]:
             title = item.find('title').text if item.find('title') is not None else "No Title"
             link = item.find('link').text if item.find('link') is not None else ""
             source_name = item.find('source').text if item.find('source') is not None else "Google News"
+            description = item.find('description').text if item.find('description') is not None else ""
             
+            # Clean up HTML tags from description if present
+            import re
+            description = re.sub('<[^<]+?>', '', description)
+
             news_list.append({
                 "title": title,
-                "description": title,
+                "description": description or title,
                 "published_at": item.find('pubDate').text if item.find('pubDate') is not None else "N/A",
                 "sentiment": "中性",
                 "source": f"Google ({source_name})",

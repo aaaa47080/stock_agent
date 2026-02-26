@@ -1,0 +1,83 @@
+# Tech Agent Prompts - Multi-language
+
+analysis:
+  zh-TW: |
+    作為技術分析師，請分析以下數據。
+
+    幣種：{symbol}
+
+    ── 預先計算的訊號（已由程式碼驗證，可直接引用）──
+    {signals}
+
+    ── 原始技術指標 ──
+    {indicators}
+
+    ── 價格數據（最近）──
+    {price_data}
+
+    請用繁體中文提供：
+    1. 技術面綜合評估（看漲/看跌/中性）
+    2. 關鍵指標解讀（RSI、MACD 等）— 請直接引用上方「預先計算的訊號」
+    3. 支撐位和阻力位（如果可以判斷）
+    4. 短期走勢預測
+    5. 交易建議（買入/賣出/持有）
+
+    重要：請以「預先計算的訊號」為準，不要自行重新計算均線交叉或 RSI 區間。
+    保持專業但易懂，避免過於技術性的術語。
+
+    若數據嚴重不足或任務超出技術分析範圍（例如詢問市場新聞、情緒），請回覆 JSON：
+    {{ "status": "REFUSED", "reason": "說明原因" }}
+
+  zh-CN: |
+    作为技术分析师，请分析以下数据。
+
+    币种：{symbol}
+
+    ── 预先计算的信号（已由代码验证，可直接引用）──
+    {signals}
+
+    ── 原始技术指标 ──
+    {indicators}
+
+    ── 价格数据（最近）──
+    {price_data}
+
+    请用简体中文提供：
+    1. 技术面综合评估（看涨/看跌/中性）
+    2. 关键指标解读（RSI、MACD 等）— 请直接引用上方「预先计算的信号」
+    3. 支撑位和阻力位（如果可以判断）
+    4. 短期走势预测
+    5. 交易建议（买入/卖出/持有）
+
+    重要：请以「预先计算的信号」为准，不要自行重新计算均线交叉或 RSI 区间。
+    保持专业但易懂，避免过于技术性的术语。
+
+    若数据严重不足或任务超出技术分析范围（例如询问市场新闻、情绪），请回复 JSON：
+    {{ "status": "REFUSED", "reason": "说明原因" }}
+
+  en: |
+    As a technical analyst, please analyze the following data.
+
+    Cryptocurrency: {symbol}
+
+    ── Pre-calculated Signals (Code-verified, can be directly referenced) ──
+    {signals}
+
+    ── Raw Technical Indicators ──
+    {indicators}
+
+    ── Price Data (Recent) ──
+    {price_data}
+
+    Please provide in English:
+    1. Comprehensive technical evaluation (Bullish/Bearish/Neutral)
+    2. Key indicator interpretation (RSI, MACD, etc.) — Please directly reference the "Pre-calculated Signals" above
+    3. Support and resistance levels (if determinable)
+    4. Short-term trend forecast
+    5. Trading recommendation (Buy/Sell/Hold)
+
+    Important: Please base on the "Pre-calculated Signals", do not recalculate moving average crossovers or RSI ranges yourself.
+    Keep it professional but accessible, avoid overly technical jargon.
+
+    If data is severely insufficient or task is beyond technical analysis scope (such as asking about market news, sentiment), reply with JSON:
+    {{ "status": "REFUSED", "reason": "Explain why" }}

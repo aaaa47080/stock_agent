@@ -1,0 +1,23 @@
+{
+  "id": "47b80212-9fa6-4707-b4f6-b9a702af11f6",
+  "query": "請問台北今天天氣好嗎",
+  "intent": "chat",
+  "topics": [],
+  "plan": [
+    {
+      "step": 1,
+      "description": "請問台北今天天氣好嗎",
+      "agent": "chat",
+      "tool_hint": null,
+      "status": "completed",
+      "result": null
+    }
+  ],
+  "complexity": "simple",
+  "created_at": "2026-02-17T01:27:58.822345",
+  "ttl_days": 90,
+  "use_count": 0,
+  "fail_count": 0,
+  "replaced_by": null,
+  "correction_reason": null
+}
