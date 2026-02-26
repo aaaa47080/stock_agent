@@ -112,9 +112,9 @@ class TestUserRegisterRequest:
 
     def test_required_fields(self):
         """Test required fields"""
-        request = UserRegisterRequest(username="testuser", password="testpass")
+        request = UserRegisterRequest(username="testuser", password="testpass")  # pragma: allowlist secret
         assert request.username == "testuser"
-        assert request.password == "testpass"
+        assert request.password == "testpass"  # pragma: allowlist secret
 
     def test_missing_fields(self):
         """Test that missing fields raise ValidationError"""
@@ -127,9 +127,9 @@ class TestUserLoginRequest:
 
     def test_required_fields(self):
         """Test required fields"""
-        request = UserLoginRequest(username="testuser", password="testpass")
+        request = UserLoginRequest(username="testuser", password="testpass")  # pragma: allowlist secret
         assert request.username == "testuser"
-        assert request.password == "testpass"
+        assert request.password == "testpass"  # pragma: allowlist secret
 
 
 class TestKlineRequest:
@@ -196,12 +196,12 @@ class TestUserSettings:
     def test_custom_values(self):
         """Test with custom values"""
         settings = UserSettings(
-            openai_api_key="sk-test",
+            openai_api_key="sk-test",  # pragma: allowlist secret
             primary_model_provider="openai",
             primary_model_name="gpt-4",
             enable_committee=True
         )
-        assert settings.openai_api_key == "sk-test"
+        assert settings.openai_api_key == "sk-test"  # pragma: allowlist secret
         assert settings.primary_model_provider == "openai"
         assert settings.enable_committee is True
 
@@ -224,11 +224,11 @@ class TestUserSettings:
         """Test OKX key settings"""
         settings = UserSettings(
             okx_api_key="okx-key",
-            okx_secret_key="okx-secret",
-            okx_passphrase="okx-pass"
+            okx_secret_key="okx-secret",  # pragma: allowlist secret
+            okx_passphrase="okx-pass"  # pragma: allowlist secret
         )
         assert settings.okx_api_key == "okx-key"
-        assert settings.okx_secret_key == "okx-secret"
+        assert settings.okx_secret_key == "okx-secret"  # pragma: allowlist secret
 
 
 class TestAPIKeySettings:
@@ -238,17 +238,17 @@ class TestAPIKeySettings:
         """Test required fields"""
         settings = APIKeySettings(
             api_key="test-key",
-            secret_key="test-secret",
-            passphrase="test-pass"
+            secret_key="test-secret",  # pragma: allowlist secret
+            passphrase="test-pass"  # pragma: allowlist secret
         )
         assert settings.api_key == "test-key"
-        assert settings.secret_key == "test-secret"
-        assert settings.passphrase == "test-pass"
+        assert settings.secret_key == "test-secret"  # pragma: allowlist secret
+        assert settings.passphrase == "test-pass"  # pragma: allowlist secret
 
     def test_missing_fields(self):
         """Test that missing fields raise ValidationError"""
         with pytest.raises(ValidationError):
-            APIKeySettings(api_key="key", secret_key="secret")  # Missing passphrase
+            APIKeySettings(api_key="key", secret_key="secret")  # Missing passphrase  # pragma: allowlist secret
 
 
 class TestTradeExecutionRequest:
@@ -332,10 +332,10 @@ class TestKeyValidationRequest:
         """Test required fields"""
         request = KeyValidationRequest(
             provider="openai",
-            api_key="sk-test-key"
+            api_key="sk-test-key"  # pragma: allowlist secret
         )
         assert request.provider == "openai"
-        assert request.api_key == "sk-test-key"
+        assert request.api_key == "sk-test-key"  # pragma: allowlist secret
         assert request.model is None
 
     def test_with_model(self):
