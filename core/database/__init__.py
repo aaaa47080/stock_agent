@@ -210,6 +210,18 @@ from .notifications import (
 )
 
 
+# Price Alerts
+from .price_alerts import (
+    create_price_alerts_table,
+    create_alert,
+    get_user_alerts,
+    delete_alert,
+    get_active_alerts,
+    mark_alert_triggered,
+    count_user_alerts,
+)
+
+
 # 定義公開 API
 __all__ = [
     # 連接
@@ -355,4 +367,12 @@ __all__ = [
     'notify_post_interaction',
     'notify_system_update',
     'notify_announcement',
+    # Price Alerts
+    'create_price_alerts_table',
+    'create_alert',
+    'get_user_alerts',
+    'delete_alert',
+    'get_active_alerts',
+    'mark_alert_triggered',
+    'count_user_alerts',
 ]
