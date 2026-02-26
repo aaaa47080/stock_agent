@@ -47,6 +47,9 @@ def create_price_alerts_table() -> None:
         conn.close()
 
 
+MAX_ALERTS_PER_USER = 20
+
+
 def create_alert(
     user_id: str,
     symbol: str,
@@ -54,8 +57,13 @@ def create_alert(
     condition: str,
     target: float,
     repeat: bool = False,
+    max_alerts: int = MAX_ALERTS_PER_USER,
 ) -> Dict[str, Any]:
-    """Create a new price alert. Returns the created alert dict."""
+    """Create a new price alert. Returns the created alert dict.
+
+    Raises ValueError on invalid market/condition or if the user has reached max_alerts.
+    The count check and insert are performed in a single transaction to prevent races.
+    """
     if market not in VALID_MARKETS:
         raise ValueError(f"Invalid market '{market}'. Must be one of {VALID_MARKETS}")
     if condition not in VALID_CONDITIONS:
@@ -68,6 +76,12 @@ def create_alert(
     conn = get_connection()
     try:
         with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM price_alerts WHERE user_id = %s", (user_id,))
+            count = cur.fetchone()[0]
+            if count >= max_alerts:
+                raise ValueError(
+                    f"已達警報上限（最多 {max_alerts} 個），請刪除舊警報後再試。"
+                )
             cur.execute(
                 """
                 INSERT INTO price_alerts (id, user_id, symbol, market, condition, target, repeat, triggered, created_at)

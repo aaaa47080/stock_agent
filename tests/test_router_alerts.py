@@ -15,24 +15,23 @@ def client():
 
 class TestCreateAlert:
     def test_create_alert_success(self, client):
-        with patch("api.routers.alerts.count_user_alerts", return_value=0):
-            with patch("api.routers.alerts.create_alert", return_value={
-                "id": "alert-1", "symbol": "AAPL", "market": "us_stock",
-                "condition": "above", "target": 200.0, "repeat": 0,
-                "triggered": 0, "created_at": "2026-02-26T00:00:00",
-            }):
-                resp = client.post("/api/alerts", json={
-                    "symbol": "AAPL",
-                    "market": "us_stock",
-                    "condition": "above",
-                    "target": 200.0,
-                    "repeat": False,
-                }, headers={"Authorization": "Bearer test"})
+        with patch("api.routers.alerts.create_alert", return_value={
+            "id": "alert-1", "symbol": "AAPL", "market": "us_stock",
+            "condition": "above", "target": 200.0, "repeat": 0,
+            "triggered": 0, "created_at": "2026-02-26T00:00:00",
+        }):
+            resp = client.post("/api/alerts", json={
+                "symbol": "AAPL",
+                "market": "us_stock",
+                "condition": "above",
+                "target": 200.0,
+                "repeat": False,
+            }, headers={"Authorization": "Bearer test"})
         assert resp.status_code == 200
         assert resp.json()["alert"]["symbol"] == "AAPL"
 
     def test_create_alert_limit_exceeded(self, client):
-        with patch("api.routers.alerts.count_user_alerts", return_value=20):
+        with patch("api.routers.alerts.create_alert", side_effect=ValueError("已達警報上限")):
             resp = client.post("/api/alerts", json={
                 "symbol": "BTC",
                 "market": "crypto",

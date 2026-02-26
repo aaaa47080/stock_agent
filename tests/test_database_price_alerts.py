@@ -15,6 +15,7 @@ class TestCreateAlert:
     def test_create_alert_returns_dict_with_id(self):
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
+        mock_cursor.fetchone.return_value = (0,)  # count=0, under limit
         mock_conn.cursor.return_value.__enter__ = MagicMock(return_value=mock_cursor)
         mock_conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
 

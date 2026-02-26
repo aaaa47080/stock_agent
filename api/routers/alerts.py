@@ -10,7 +10,7 @@ from api.deps import get_current_user
 from api.models import CreateAlertRequest
 from core.database import (
     create_alert, get_user_alerts, delete_alert,
-    count_user_alerts, create_price_alerts_table,
+    create_price_alerts_table,
 )
 from api.utils import logger
 
@@ -23,8 +23,6 @@ try:
 except Exception as e:
     logger.warning(f"Could not initialize price_alerts table: {e}")
 
-MAX_ALERTS_PER_USER = 20
-
 
 @router.post("/api/alerts")
 async def create_alert_endpoint(
@@ -34,13 +32,6 @@ async def create_alert_endpoint(
     """Create a new price alert."""
     user_id = current_user["user_id"]
     loop = asyncio.get_running_loop()
-
-    count = await loop.run_in_executor(None, count_user_alerts, user_id)
-    if count >= MAX_ALERTS_PER_USER:
-        raise HTTPException(
-            status_code=400,
-            detail=f"已達警報上限（最多 {MAX_ALERTS_PER_USER} 個），請刪除舊警報後再試。"
-        )
 
     try:
         alert = await loop.run_in_executor(
