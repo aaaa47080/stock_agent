@@ -108,17 +108,22 @@ async def _check_all_alerts():
         if triggered:
             body = build_alert_body(alert, current_price)
             try:
-                create_and_push_notification(
-                    user_id=alert["user_id"],
-                    notification_type="price_alert",
-                    title=f"🔔 {alert['symbol']} 價格警報",
-                    body=body,
-                    data={
-                        "symbol": alert["symbol"],
-                        "market": alert["market"],
-                        "current_price": current_price,
-                        "alert_id": alert["id"],
-                    },
+                from functools import partial
+                await loop.run_in_executor(
+                    None,
+                    partial(
+                        create_and_push_notification,
+                        user_id=alert["user_id"],
+                        notification_type="price_alert",
+                        title=f"🔔 {alert['symbol']} 價格警報",
+                        body=body,
+                        data={
+                            "symbol": alert["symbol"],
+                            "market": alert["market"],
+                            "current_price": current_price,
+                            "alert_id": alert["id"],
+                        },
+                    ),
                 )
                 logger.info(f"Alert triggered: {alert['symbol']} ({alert['condition']} {alert['target']})")
             except Exception as e:
