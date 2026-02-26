@@ -4,7 +4,7 @@ Price Alerts Database Module
 Manages user price alerts for Crypto, TW Stock, and US Stock markets.
 """
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Any
 
 from .connection import get_connection
@@ -31,12 +31,14 @@ def create_price_alerts_table() -> None:
                     created_at  TEXT NOT NULL,
                     CONSTRAINT fk_alert_user
                         FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
-                );
-                CREATE INDEX IF NOT EXISTS idx_price_alerts_user
-                    ON price_alerts(user_id);
-                CREATE INDEX IF NOT EXISTS idx_price_alerts_active
-                    ON price_alerts(triggered) WHERE triggered = 0;
+                )
             """)
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS idx_price_alerts_user ON price_alerts(user_id)"
+            )
+            cur.execute(
+                "CREATE INDEX IF NOT EXISTS idx_price_alerts_active ON price_alerts(triggered) WHERE triggered = 0"
+            )
             conn.commit()
     except Exception as e:
         conn.rollback()
@@ -60,7 +62,7 @@ def create_alert(
         raise ValueError(f"Invalid condition '{condition}'. Must be one of {VALID_CONDITIONS}")
 
     alert_id = str(uuid.uuid4())
-    created_at = datetime.utcnow().isoformat()
+    created_at = datetime.now(timezone.utc).isoformat()
     repeat_int = 1 if repeat else 0
 
     conn = get_connection()
