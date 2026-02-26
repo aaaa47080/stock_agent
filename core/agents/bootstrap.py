@@ -22,6 +22,12 @@ from .tools import (
     tw_price, tw_technical, tw_fundamentals_tool, tw_institutional_tool, tw_news_tool,
 )
 
+# Import @tool functions — US stock
+from core.tools.us_stock_tools import (
+    us_stock_price, us_technical_analysis, us_fundamentals,
+    us_earnings, us_news, us_institutional_holders, us_insider_transactions,
+)
+
 # Import agent classes
 from .agents import TechAgent, NewsAgent, ChatAgent, TWStockAgent, USStockAgent, CryptoAgent
 
