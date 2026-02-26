@@ -559,6 +559,66 @@ class ManagerAgent:
         codebook_entry_id = similar[0].id if similar else None
         return {"plan": plan, "codebook_entry_id": codebook_entry_id, "current_step_index": 0}
 
+    async def _reflect_plan_node(self, state: ManagerState) -> dict:
+        """Reflection quality gate: checks whether the plan actually answers the user's query.
+        Only runs for complex queries. Simple queries are approved immediately.
+        """
+        import asyncio
+        from core.config import PLAN_REFLECTION_MAX_RETRIES
+
+        # Simple queries — skip reflection, approve immediately
+        if state.get("complexity") != "complex":
+            return {"plan_reflection_approved": True}
+
+        loop = asyncio.get_running_loop()
+        query               = state.get("query", "")
+        plan                = state.get("plan") or []
+        history             = state.get("history") or "（無）"
+        topics              = ", ".join(state.get("topics") or []) or "未知"
+        clarifications      = "; ".join(state.get("user_clarifications") or []) or "無"
+        previous_suggestion = state.get("plan_reflection_suggestion") or "無"
+        agents_info         = self.agent_registry.agents_info_for_prompt()
+
+        plan_text = "\n".join(
+            f"{p.get('step', i + 1)}. [{p.get('agent', '')}] {p.get('description', '')}"
+            for i, p in enumerate(plan)
+        )
+
+        prompt = PromptRegistry.render(
+            "manager", "reflect_plan",
+            query=query,
+            history=history,
+            topics=topics,
+            clarifications=clarifications,
+            plan_text=plan_text,
+            agents_info=agents_info,
+            previous_suggestion=previous_suggestion,
+        )
+
+        try:
+            response = await loop.run_in_executor(
+                None, lambda: self.llm.invoke([HumanMessage(content=prompt)])
+            )
+            data       = self._parse_json(self._llm_content(response)) or {}
+            approved   = bool(data.get("approved", True))
+            suggestion = data.get("suggestion") or None
+            reason     = data.get("reason", "")
+            logger.info(f"[Reflect] approved={approved} reason={reason}")
+        except Exception as e:
+            logger.warning(f"[Reflect] reflection error, auto-approving: {e}")
+            approved   = True
+            suggestion = None
+
+        count = state.get("plan_reflection_count") or 0
+        if not approved:
+            count += 1
+
+        return {
+            "plan_reflection_approved":   approved,
+            "plan_reflection_count":      count,
+            "plan_reflection_suggestion": suggestion if not approved else None,
+        }
+
     async def _confirm_plan_node(self, state: ManagerState) -> dict:
         """HITL Point 2：複雜任務計畫確認（支援協商模式）。"""
         plan = state.get("plan") or []
@@ -1036,6 +1096,16 @@ class ManagerAgent:
         if state.get("plan_confirmed"):
             return "execute"
         return "confirm" if state.get("complexity") == "complex" else "execute"
+
+    def _after_reflect_plan(self, state: ManagerState) -> str:
+        """Route after reflection: confirm if approved or max retries hit, else re-plan."""
+        from core.config import PLAN_REFLECTION_MAX_RETRIES
+        approved = state.get("plan_reflection_approved", True)
+        count    = state.get("plan_reflection_count", 0)
+
+        if approved or count >= PLAN_REFLECTION_MAX_RETRIES:
+            return "confirm"   # proceed to user confirmation
+        return "re_plan"       # loop back to plan node for a better plan
 
     def _after_confirm(self, state: ManagerState) -> str:
         if state.get("plan_negotiating"):
