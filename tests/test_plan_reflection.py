@@ -143,3 +143,26 @@ def test_after_reflect_plan_max_retries_fallback_to_confirm():
              "plan_reflection_count": PLAN_REFLECTION_MAX_RETRIES,
              "plan_confirmed": False}
     assert manager._after_reflect_plan(state) == "confirm"
+
+
+def test_graph_has_reflect_plan_node():
+    manager = _make_manager()
+    nodes = list(manager.graph.get_graph().nodes.keys())
+    assert "reflect_plan" in nodes
+
+
+def test_graph_reflect_plan_connects_to_plan_on_re_plan():
+    manager = _make_manager()
+    graph = manager.graph.get_graph()
+    edges = [(e.source, e.target) for e in graph.edges]
+    # reflect_plan should be able to route back to plan
+    targets_from_reflect = [t for (s, t) in edges if s == "reflect_plan"]
+    assert "plan" in targets_from_reflect
+
+
+def test_plan_node_passes_reflection_suggestion_to_prompt():
+    """Verify _plan_node includes reflection_suggestion in its render call."""
+    import inspect
+    from core.agents.manager import ManagerAgent
+    src = inspect.getsource(ManagerAgent._plan_node)
+    assert "reflection_suggestion" in src

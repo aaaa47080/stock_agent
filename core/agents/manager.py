@@ -130,6 +130,7 @@ class ManagerAgent:
         workflow.add_node("clarify",        self._clarify_node)
         workflow.add_node("pre_research",   self._pre_research_node)   # 複雜任務預研究
         workflow.add_node("plan",           self._plan_node)
+        workflow.add_node("reflect_plan",   self._reflect_plan_node)  # Plan quality gate
         workflow.add_node("confirm_plan",   self._confirm_plan_node)
         workflow.add_node("negotiate_plan", self._negotiate_plan_node)  # 計畫協商
         workflow.add_node("discuss",        self._discuss_node)         # 計畫討論問題回答
@@ -152,8 +153,12 @@ class ManagerAgent:
         })
 
         workflow.add_conditional_edges("plan", self._after_plan, {
-            "confirm": "confirm_plan",
-            "execute": "execute",                  # simple 直接執行
+            "reflect_plan": "reflect_plan",   # complex → quality gate
+            "execute":      "execute",        # simple  → direct execute
+        })
+        workflow.add_conditional_edges("reflect_plan", self._after_reflect_plan, {
+            "confirm":  "confirm_plan",   # approved → show to user
+            "re_plan":  "plan",           # rejected → re-plan with suggestion
         })
         workflow.add_conditional_edges("confirm_plan", self._after_confirm, {
             "execute":   "execute",
@@ -539,6 +544,7 @@ class ManagerAgent:
             tools_info=tools_info,
             research_summary=state.get("research_summary") or "無",
             research_clarifications="; ".join(state.get("research_clarifications") or []) or "無",
+            reflection_suggestion=state.get("plan_reflection_suggestion") or "無",
         )
         try:
             response = await loop.run_in_executor(None, lambda: self.llm.invoke([HumanMessage(content=prompt)]))
@@ -1096,7 +1102,9 @@ class ManagerAgent:
     def _after_plan(self, state: ManagerState) -> str:
         if state.get("plan_confirmed"):
             return "execute"
-        return "confirm" if state.get("complexity") == "complex" else "execute"
+        if state.get("complexity") == "complex":
+            return "reflect_plan"   # complex → quality gate before user confirmation
+        return "execute"
 
     def _after_reflect_plan(self, state: ManagerState) -> str:
         """Route after reflection: confirm if approved or max retries hit, else re-plan."""

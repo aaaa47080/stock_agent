@@ -75,6 +75,7 @@ plan:
     主要 Agent：{agent}
     相關主題：{topics}
     使用者補充：{clarifications}
+    Reflection 建議（前次計畫被拒原因，若有請修正）：{reflection_suggestion}
 
     === 預研究資料（執行計畫前已自動收集）===
     {research_summary}
