@@ -76,7 +76,7 @@ def test_universal_resolver_tw_digit():
 
 
 def test_bootstrap_creates_all_agents():
-    """bootstrap() registers all 5 agent types."""
+    """bootstrap() registers all 4 active agent types: crypto, tw_stock, us_stock, chat."""
     from core.agents.bootstrap import bootstrap
 
     mock_llm = make_mock_llm()
