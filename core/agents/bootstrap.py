@@ -312,15 +312,26 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW") -> Ma
         priority=10,
     ))
 
-    # us = USStockAgent(lang_llm, tool_registry)
-    # agent_registry.register(us, AgentMetadata(
-    #     name="us_stock",
-    #     display_name="US Stock Agent",
-    #     description="美股分析（開發中）— 識別 NYSE/NASDAQ 股票代號，提供基本信息。適合 AAPL/TSLA/TSM 等美股查詢。",
-    #     capabilities=["美股", "US stock", "NYSE", "NASDAQ", "AAPL", "TSLA", "TSM", "NVDA"],
-    #     allowed_tools=[],
-    #     priority=5,
-    # ))
+    us = USStockAgent(lang_llm, tool_registry)
+    agent_registry.register(us, AgentMetadata(
+        name="us_stock",
+        display_name="US Stock Agent",
+        description="美股全方位分析 — 即時價格（15分鐘延遲）、技術指標（RSI/MACD/MA/布林帶）、"
+                    "基本面（P/E、EPS、ROE、市值）、財報數據與日曆、機構持倉、"
+                    "內部人交易、最新新聞。適合 AAPL/TSLA/NVDA/TSM/MSFT/AMZN/GOOGL/META 等 "
+                    "NYSE/NASDAQ 股票查詢，接受股票代號或公司名稱（如 Apple、Tesla）。",
+        capabilities=[
+            "美股", "US stock", "NYSE", "NASDAQ",
+            "AAPL", "TSLA", "NVDA", "TSM", "MSFT", "AMZN", "GOOGL", "META",
+            "標普500", "道瓊", "那斯達克", "S&P500", "Apple", "Tesla", "Nvidia",
+        ],
+        allowed_tools=[
+            "us_stock_price", "us_technical_analysis", "us_fundamentals",
+            "us_earnings", "us_news", "us_institutional_holders",
+            "us_insider_transactions", "get_current_time_taipei",
+        ],
+        priority=8,
+    ))
 
     chat = ChatAgent(lang_llm, tool_registry)
     agent_registry.register(chat, AgentMetadata(
