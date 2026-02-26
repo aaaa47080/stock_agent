@@ -248,10 +248,14 @@ class ManagerAgent:
             intent = "chat"
 
         return {
-            "complexity":         complexity,
-            "intent":             intent,
-            "topics":             data.get("topics", []),
-            "ambiguity_question": data.get("ambiguity_question"),
+            "complexity":                 complexity,
+            "intent":                     intent,
+            "topics":                     data.get("topics", []),
+            "ambiguity_question":         data.get("ambiguity_question"),
+            # Reset reflection state for each new query to prevent leakage
+            "plan_reflection_count":      0,
+            "plan_reflection_suggestion": None,
+            "plan_reflection_approved":   None,
         }
 
     async def _clarify_node(self, state: ManagerState) -> dict:
@@ -1139,11 +1143,13 @@ class ManagerAgent:
 
         config = {"configurable": {"thread_id": session_id}}
         initial = {
-            "session_id":          session_id,
-            "query":               query,
-            "agent_results":       [],
-            "user_clarifications": [],
-            "retry_count":         0,
+            "session_id":                session_id,
+            "query":                     query,
+            "agent_results":             [],
+            "user_clarifications":       [],
+            "retry_count":               0,
+            "plan_reflection_count":     0,
+            "plan_reflection_suggestion": None,
         }
 
         result = self.graph.invoke(initial, config)

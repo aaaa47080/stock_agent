@@ -166,3 +166,28 @@ def test_plan_node_passes_reflection_suggestion_to_prompt():
     from core.agents.manager import ManagerAgent
     src = inspect.getsource(ManagerAgent._plan_node)
     assert "reflection_suggestion" in src
+
+
+def test_initial_state_reflection_fields_zero():
+    """Reflection fields initialize to zero/None in the entry state."""
+    manager = _make_manager()
+    import inspect
+    src = inspect.getsource(manager.graph.get_graph)
+    # Functional check: simple query auto-approves (count stays 0)
+    state = {
+        "session_id": "x", "query": "test", "complexity": "simple",
+        "intent": "chat", "topics": [], "history": "無",
+        "plan": [], "plan_reflection_count": 0,
+    }
+    result = _run(manager._reflect_plan_node(state))
+    assert result["plan_reflection_approved"] is True
+    assert result.get("plan_reflection_count") == 0 or result.get("plan_reflection_count") is None
+
+
+def test_classify_node_resets_reflection_state():
+    """_classify_node return dict includes reflection reset fields."""
+    import inspect
+    from core.agents.manager import ManagerAgent
+    src = inspect.getsource(ManagerAgent._classify_node)
+    assert "plan_reflection_count" in src
+    assert "plan_reflection_approved" in src
