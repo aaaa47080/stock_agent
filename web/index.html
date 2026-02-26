@@ -1185,6 +1185,44 @@
         </div>
     </div>
 
+    <!-- Price Alert Modal -->
+    <div id="alert-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+        <div class="bg-gray-800 rounded-xl p-6 w-full max-w-sm mx-4 shadow-2xl">
+            <h3 class="text-lg font-semibold text-white mb-4">🔔 設定價格警報</h3>
+            <p id="alert-symbol-label" class="text-gray-300 text-sm mb-4"></p>
+            <div class="space-y-3">
+                <div>
+                    <label class="text-gray-400 text-xs mb-1 block">條件</label>
+                    <select id="alert-condition" class="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm">
+                        <option value="above">價格高於</option>
+                        <option value="below">價格低於</option>
+                        <option value="change_pct_up">漲幅達 (%)</option>
+                        <option value="change_pct_down">跌幅達 (%)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-gray-400 text-xs mb-1 block">目標值</label>
+                    <input type="number" id="alert-target" placeholder="輸入目標值" step="0.01"
+                           class="w-full bg-gray-700 text-white rounded-lg px-3 py-2 text-sm" />
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" id="alert-repeat" class="rounded" />
+                    <label for="alert-repeat" class="text-gray-400 text-sm">持續通知（觸發後不刪除）</label>
+                </div>
+            </div>
+            <div class="flex gap-3 mt-5">
+                <button onclick="submitAlert()"
+                        class="flex-1 bg-yellow-500 hover:bg-yellow-400 text-black font-medium rounded-lg py-2 text-sm transition-colors">
+                    確認
+                </button>
+                <button onclick="closeAlertModal()"
+                        class="flex-1 bg-gray-600 hover:bg-gray-500 text-white rounded-lg py-2 text-sm transition-colors">
+                    取消
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="/static/js/app.js?v=49" onerror="alert('app.js 載入失敗')"></script>
     <script src="/static/js/apiKeyManager.js?v=47" onerror="alert('apiKeyManager.js 載入失敗')"></script>
@@ -1374,11 +1412,13 @@
                 if (window.TWStockTab && typeof window.TWStockTab.initTwStock === 'function') {
                     window.TWStockTab.initTwStock();
                 }
+                if (typeof window.loadUserAlerts === 'function') window.loadUserAlerts();
             }
             if (tabId === 'usstock') {
                 if (window.USStockTab && typeof window.USStockTab.init === 'function') {
                     window.USStockTab.init();
                 }
+                if (typeof window.loadUserAlerts === 'function') window.loadUserAlerts();
             }
             if (tabId === 'assets' && typeof refreshAssets === 'function') refreshAssets();
             if (tabId === 'wallet') {
@@ -1844,6 +1884,109 @@
             console.log('Subscribed Ticker Symbols:', Array.from(window.subscribedTickerSymbols || []));
             console.log('Pending Ticker Symbols:', Array.from(window.pendingTickerSymbols || []));
         };
+
+        // ── Price Alert UI ──────────────────────────────────────────────────────
+        let _alertSymbol = '';
+        let _alertMarket = '';
+
+        function openAlertModal(symbol, market) {
+            _alertSymbol = symbol;
+            _alertMarket = market;
+            document.getElementById('alert-symbol-label').textContent = symbol + ' (' + market + ')';
+            document.getElementById('alert-target').value = '';
+            document.getElementById('alert-repeat').checked = false;
+            document.getElementById('alert-modal').classList.remove('hidden');
+        }
+
+        function closeAlertModal() {
+            document.getElementById('alert-modal').classList.add('hidden');
+        }
+
+        async function submitAlert() {
+            const condition = document.getElementById('alert-condition').value;
+            const target = parseFloat(document.getElementById('alert-target').value);
+            const repeat = document.getElementById('alert-repeat').checked;
+
+            if (!target || isNaN(target) || target <= 0) {
+                if (typeof window.showToast === 'function') window.showToast('請輸入有效的目標值', 'error');
+                return;
+            }
+
+            try {
+                const token = window.AuthManager && window.AuthManager.currentUser && window.AuthManager.currentUser.accessToken;
+                const resp = await fetch('/api/alerts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ symbol: _alertSymbol, market: _alertMarket, condition, target, repeat }),
+                });
+                if (resp.ok) {
+                    if (typeof window.showToast === 'function') window.showToast('警報已設定', 'success');
+                    closeAlertModal();
+                    loadUserAlerts();
+                } else {
+                    const err = await resp.json().catch(() => ({}));
+                    if (typeof window.showToast === 'function') window.showToast((err.detail || '設定失敗'), 'error');
+                }
+            } catch (e) {
+                if (typeof window.showToast === 'function') window.showToast('網路錯誤', 'error');
+            }
+        }
+
+        async function loadUserAlerts() {
+            try {
+                const token = window.AuthManager && window.AuthManager.currentUser && window.AuthManager.currentUser.accessToken;
+                if (!token) return;
+                const resp = await fetch('/api/alerts', { headers: { 'Authorization': 'Bearer ' + token } });
+                if (!resp.ok) return;
+                const data = await resp.json();
+                renderAlertList(data.alerts || []);
+            } catch (e) {
+                // silent fail — user may not be logged in
+            }
+        }
+
+        async function deleteUserAlert(alertId) {
+            try {
+                const token = window.AuthManager && window.AuthManager.currentUser && window.AuthManager.currentUser.accessToken;
+                await fetch('/api/alerts/' + alertId, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + token },
+                });
+                loadUserAlerts();
+            } catch (e) {
+                if (typeof window.showToast === 'function') window.showToast('刪除失敗', 'error');
+            }
+        }
+
+        function renderAlertList(alerts) {
+            // Render into all visible alert list containers (twstock / usstock)
+            const containerIds = ['alert-list-twstock', 'alert-list-usstock'];
+            const condMap = { above: '>', below: '<', change_pct_up: '漲幅≥', change_pct_down: '跌幅≥' };
+
+            containerIds.forEach(function(cid) {
+                const container = document.getElementById(cid);
+                if (!container) return;
+                if (alerts.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-xs">尚無警報</p>';
+                    return;
+                }
+                container.innerHTML = alerts.map(function(a) {
+                    return '<div class="flex justify-between items-center py-1 text-sm">' +
+                        '<span class="text-gray-300">' + a.symbol + ' ' + (condMap[a.condition] || a.condition) + ' ' + a.target + (a.repeat ? ' 🔁' : '') + '</span>' +
+                        '<button onclick="deleteUserAlert(\'' + a.id + '\')" class="text-red-400 hover:text-red-300 text-xs ml-2">刪除</button>' +
+                        '</div>';
+                }).join('');
+            });
+        }
+
+        // Expose alert functions globally so onclick handlers and tab init can call them
+        window.openAlertModal = openAlertModal;
+        window.closeAlertModal = closeAlertModal;
+        window.submitAlert = submitAlert;
+        window.loadUserAlerts = loadUserAlerts;
+        window.deleteUserAlert = deleteUserAlert;
+        window.renderAlertList = renderAlertList;
+        // ── End Price Alert UI ─────────────────────────────────────────────────
     </script>
     <!-- Legal Page Modal -->
     <div id="legal-modal" class="fixed inset-0 z-[9999] bg-background hidden flex-col">

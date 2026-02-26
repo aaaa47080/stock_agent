@@ -197,6 +197,14 @@ const Components = {
                                 <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                             </div>
                             <div id="twstock-screener-list" class="space-y-2 px-1"></div>
+
+                            <!-- My Alerts (TW Stock) -->
+                            <div id="alert-list-section-twstock" class="mt-4 px-1">
+                                <h4 class="text-gray-400 text-xs font-medium uppercase tracking-wide mb-2">我的警報</h4>
+                                <div id="alert-list-twstock" class="space-y-1">
+                                    <p class="text-gray-500 text-xs">尚無警報</p>
+                                </div>
+                            </div>
                         </section>
 
                         <!-- ② PE / Valuation section -->
@@ -370,6 +378,14 @@ const Components = {
                                 <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                             </div>
                             <div id="usstock-screener-list" class="space-y-2 px-1"></div>
+
+                            <!-- My Alerts (US Stock) -->
+                            <div id="alert-list-section-usstock" class="mt-4 px-1">
+                                <h4 class="text-gray-400 text-xs font-medium uppercase tracking-wide mb-2">我的警報</h4>
+                                <div id="alert-list-usstock" class="space-y-1">
+                                    <p class="text-gray-500 text-xs">尚無警報</p>
+                                </div>
+                            </div>
                         </section>
 
                         <!-- ② 大盤指數 (collapsible) -->

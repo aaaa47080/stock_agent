@@ -291,6 +291,7 @@ window.TWStockTab = {
                         <button onclick="window.TWStockTab.showTwChart('${sym}', event)" class="w-8 h-8 rounded-lg flex items-center justify-center text-textMuted hover:text-primary hover:bg-primary/10 transition-colors ml-2 border border-white/5" title="View Chart">
                             <i data-lucide="bar-chart-2" class="w-4 h-4"></i>
                         </button>
+                        <button onclick="openAlertModal('${sym}', 'tw_stock'); event.stopPropagation();" class="w-8 h-8 rounded-lg flex items-center justify-center text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10 transition-colors border border-white/5" title="設定價格警報">🔔</button>
                         <button onclick="window.TWStockTab.removeTwStock('${sym}', event)" class="w-8 h-8 rounded-lg flex items-center justify-center text-textMuted hover:text-danger hover:bg-danger/10 transition-colors border border-white/5" title="Remove from Watchlist">
                             <i data-lucide="trash-2" class="w-4 h-4"></i>
                         </button>
