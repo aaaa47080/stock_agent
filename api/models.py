@@ -1,4 +1,4 @@
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Literal
 from pydantic import BaseModel
 from core.config import (
     SUPPORTED_EXCHANGES, DEFAULT_INTERVAL, DEFAULT_KLINES_LIMIT
@@ -217,3 +217,12 @@ class ConsensusResponse(BaseModel):
     reject_count: int
     approve_rate: float
     reason: Optional[str] = None
+
+
+# Price Alerts
+class CreateAlertRequest(BaseModel):
+    symbol: str
+    market: Literal["crypto", "tw_stock", "us_stock"]
+    condition: Literal["above", "below", "change_pct_up", "change_pct_down"]
+    target: float
+    repeat: bool = False
