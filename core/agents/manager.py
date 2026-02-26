@@ -82,6 +82,9 @@ class ManagerState(TypedDict):
     negotiation_response: NotRequired[Optional[str]]# LLM 的可行性回應
     negotiate_count: NotRequired[Optional[int]]     # 協商次數（防無限循環）
     current_tool_result: NotRequired[Optional[str]] # 當前協商輪次的工具執行結果
+    # Plan Reflection
+    plan_reflection_count: NotRequired[Optional[int]]         # how many times reflect_plan has looped
+    plan_reflection_suggestion: NotRequired[Optional[str]]    # improvement hint fed back to plan node
     # Pre-Research 階段
     research_data: NotRequired[Optional[dict]]           # tool 執行結果
     research_summary: NotRequired[Optional[str]]          # 人類可讀摘要（Markdown）
