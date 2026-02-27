@@ -96,6 +96,10 @@ class ManagerState(TypedDict):
     # 計畫討論（使用者在 HITL 提問，取消計畫後直接回答）
     is_discussion: NotRequired[Optional[bool]]
     discussion_question: NotRequired[Optional[str]]
+    # Discuss Mode: free-form Q&A after plan is shown, without re-entering planning
+    discuss_mode: NotRequired[Optional[bool]]             # True = discussion mode active
+    discuss_plan_snapshot: NotRequired[Optional[List[dict]]]  # frozen plan being discussed
+    replan_request: NotRequired[Optional[bool]]           # True = user wants a new plan
 
 
 class ManagerAgent:
@@ -1160,6 +1164,9 @@ class ManagerAgent:
             "retry_count":               0,
             "plan_reflection_count":     0,
             "plan_reflection_suggestion": None,
+            "discuss_mode":              False,
+            "discuss_plan_snapshot":     None,
+            "replan_request":            False,
         }
 
         result = self.graph.invoke(initial, config)
