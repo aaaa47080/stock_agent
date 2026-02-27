@@ -890,53 +890,86 @@ class ManagerAgent:
 
     async def _discuss_node(self, state: ManagerState) -> dict:
         """
-        計畫討論節點：使用者在 confirm_plan HITL 中提問（非修改計畫）。
-        取消計畫狀態，用 LLM 根據研究資料直接回答問題，結果作為 final_response。
+        討論模式節點：回答使用者在計畫確認前提出的任何問題。
+        支援工具呼叫（遞迴模式，同 negotiate_plan）。
+        保持 discuss_mode=True，不取消計畫。
         """
         import asyncio
         loop = asyncio.get_running_loop()
-        question = state.get("discussion_question") or ""
-        research_summary = state.get("research_summary") or ""
-        plan = state.get("plan") or []
-        query = state.get("query") or ""
-        history = state.get("history") or ""
 
-        # 提供計畫內容和研究資料作為上下文
+        # Use discuss_plan_snapshot if available (frozen from confirm_plan),
+        # otherwise fall back to current plan
+        plan = state.get("discuss_plan_snapshot") or state.get("plan") or []
+        # For multi-turn discuss: question is either from confirm_plan (first turn)
+        # or from the new user message (subsequent turns)
+        question = state.get("discussion_question") or state.get("query") or ""
+        query    = state.get("query") or ""
+        history  = state.get("history") or ""
+
         plan_text = "\n".join(
             f"步驟 {t.get('step')}: [{t.get('agent')}] {t.get('description', '')}"
             for t in plan
-        ) if plan else "（無計畫）"
+        ) if plan else "（無待執行計畫）"
 
-        context_parts = []
-        if research_summary:
-            context_parts.append(f"【即時市場資料】\n{research_summary}")
-        if plan_text != "（無計畫）":
-            context_parts.append(f"【剛才規劃的分析步驟】\n{plan_text}")
-        if query:
-            context_parts.append(f"【原始分析請求】\n{query}")
+        tools_info   = ", ".join([t.name for t in self.tool_registry.list_all_tools()])
+        tool_results = state.get("current_tool_result", "無")
 
-        context = "\n\n".join(context_parts) if context_parts else "（暫無額外背景資料）"
-
-        prompt = (
-            f"以下是剛才分析討論的背景資料：\n\n{context}\n\n"
-            f"對話歷史：\n{history}\n\n"
-            f"使用者提問：{question}\n\n"
-            f"請用繁體中文直接回答使用者的問題。若問題涉及計畫步驟或市場資料，請根據上下文作答。"
-            f"若引用新聞，必須保留原始 Markdown 連結格式 [標題](url)，不要省略連結。"
-            f"保持回答清晰、具體、有幫助。計畫已取消，後續使用者可再次提出分析請求。"
+        prompt = PromptRegistry.render(
+            "manager", "discuss",
+            query=query,
+            plan_text=plan_text,
+            history=history,
+            tools_info=tools_info,
+            tool_results=tool_results,
+            question=question,
         )
+
         try:
-            response = await loop.run_in_executor(None, lambda: self.llm.invoke([HumanMessage(content=prompt)]))
-            answer = self._llm_content(response).strip()
+            response = await loop.run_in_executor(
+                None, lambda: self.llm.invoke([HumanMessage(content=prompt)])
+            )
+            data = self._parse_json(self._llm_content(response)) or {}
         except Exception as e:
             logger.error(f"[Discuss] LLM error: {e}")
-            answer = "抱歉，暫時無法回答這個問題。請重新提問或發起新的分析。"
+            data = {"answer": "抱歉，暫時無法回答這個問題，請重新提問。", "tool_call": None}
 
-        logger.info(f"[Discuss] Answered question: {question[:50]}...")
+        # Handle tool call (recursive pattern — same as negotiate_plan)
+        tool_call = data.get("tool_call")
+        if tool_call:
+            tool_depth = state.get("tool_depth", 0)
+            if tool_depth < 3:
+                t_name = tool_call.get("name")
+                t_args = tool_call.get("args") or {}
+                logger.info(f"[Discuss] Tool call: {t_name}({t_args})")
+                tool = self.tool_registry.get(t_name, caller_agent="manager")
+                if tool:
+                    try:
+                        t_result = await loop.run_in_executor(
+                            None, lambda: tool.handler.invoke(t_args)
+                        )
+                        state["current_tool_result"] = (
+                            f"--- Tool: {t_name} ---\n{str(t_result)[:2000]}"
+                        )
+                        state["tool_depth"] = tool_depth + 1
+                        return await self._discuss_node(state)
+                    except Exception as te:
+                        logger.warning(f"[Discuss] Tool {t_name} failed: {te}")
+                else:
+                    logger.warning(f"[Discuss] Tool {t_name} not found")
+
+        # Clean up tool state
+        state.pop("tool_depth", None)
+        state.pop("current_tool_result", None)
+
+        answer = data.get("answer") or "抱歉，無法回答這個問題。"
+        logger.info(f"[Discuss] Answered: {question[:50]}...")
+
         return {
-            "final_response": answer,
-            "plan_confirmed":  False,
-            "is_discussion":   True,
+            "final_response":        answer,
+            "is_discussion":         True,
+            "discuss_mode":          True,          # keep mode active for follow-up questions
+            "discuss_plan_snapshot": plan,           # preserve snapshot for subsequent turns
+            "discussion_question":   None,           # clear for next turn (use query instead)
         }
 
     async def _execute_node(self, state: ManagerState) -> dict:
