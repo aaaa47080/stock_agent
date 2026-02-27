@@ -255,16 +255,23 @@ class ManagerAgent:
             logger.warning(f"[Classify] Unknown agent '{intent}', falling back to chat")
             intent = "chat"
 
-        return {
+        replan_request = bool(data.get("replan_request", False))
+        result = {
             "complexity":                 complexity,
             "intent":                     intent,
             "topics":                     data.get("topics", []),
             "ambiguity_question":         data.get("ambiguity_question"),
+            "replan_request":             replan_request,
             # Reset reflection state for each new query to prevent leakage
             "plan_reflection_count":      0,
             "plan_reflection_suggestion": None,
             "plan_reflection_approved":   None,
         }
+        # If user explicitly re-requests planning, exit discuss mode
+        if replan_request:
+            result["discuss_mode"] = False
+            result["discuss_plan_snapshot"] = None
+        return result
 
     async def _clarify_node(self, state: ManagerState) -> dict:
         """HITL Point 1：歧義澄清。"""
