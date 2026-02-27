@@ -79,6 +79,7 @@ plan:
     相關主題：{topics}
     使用者補充：{clarifications}
     Reflection 建議（前次計畫被拒原因，若有請修正）：{reflection_suggestion}
+    討論摘要（若使用者在計畫確認前有問答，請融合這些資訊進行規劃）：{discussion_summary}
 
     === 預研究資料（執行計畫前已自動收集）===
     {research_summary}

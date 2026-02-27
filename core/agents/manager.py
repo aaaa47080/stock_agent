@@ -565,6 +565,7 @@ class ManagerAgent:
             research_summary=state.get("research_summary") or "無",
             research_clarifications="; ".join(state.get("research_clarifications") or []) or "無",
             reflection_suggestion=state.get("plan_reflection_suggestion") or "無",
+            discussion_summary=state.get("discussion_summary") or "無",
         )
         try:
             response = await loop.run_in_executor(None, lambda: self.llm.invoke([HumanMessage(content=prompt)]))
