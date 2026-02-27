@@ -719,17 +719,7 @@ class ManagerAgent:
 
         # If not a dict (action) OR modify_request — unified intent detection path
 
-        # Explicit confirmation keywords (fast path — no LLM needed)
-        CONFIRM_KEYWORDS = ["ok", "confirm", "start", "execute", "yes", "go", "开始", "執行", "確認", "好"]
-        CANCEL_KEYWORDS = ["cancel", "stop", "no", "取消", "停止"]
-
-        if text_input.lower() in CONFIRM_KEYWORDS:
-            return {"plan_confirmed": True, "plan_negotiating": False}
-
-        if text_input.lower() in CANCEL_KEYWORDS:
-            return {"plan_confirmed": False, "plan_negotiating": False}
-
-        # Use LLM to distinguish question vs. modification request
+        # Use LLM to classify all user intent — no hardcoded keywords
         plan_text_for_detection = "\n".join(
             f"步驟 {t.get('step')}: [{t.get('agent')}] {t.get('description', '')}"
             for t in plan
