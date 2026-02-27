@@ -149,6 +149,7 @@ class ManagerAgent:
             "clarify":      "clarify",
             "pre_research": "pre_research",   # complex → 先預研究
             "plan":         "plan",           # simple  → 直接規劃
+            "discuss":      "discuss",        # discuss_mode active → continue Q&A
         })
         workflow.add_edge("clarify",      "classify")    # 澄清後重新分類
         workflow.add_conditional_edges("pre_research", self._after_pre_research, {
@@ -1197,6 +1198,11 @@ class ManagerAgent:
         return "save" if state.get("is_discussion") else "plan"
 
     def _after_classify(self, state: ManagerState) -> str:
+        # Discuss mode: user is in free-form Q&A after a plan was shown
+        # Route to discuss unless user explicitly requested re-planning
+        if state.get("discuss_mode") and not state.get("replan_request"):
+            return "discuss"
+
         if state.get("plan_confirmed"):
             return "plan"   # Multi-market: skip pre_research, plan node will no-op
         if state.get("complexity") == "ambiguous":
