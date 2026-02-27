@@ -707,16 +707,17 @@ class ManagerAgent:
                     "discussion_question": question_text,
                 }
             elif action == "modify_request":
-                request_text = parsed.get("text", "").strip()
-                return {
-                    "plan_confirmed":      False,
-                    "plan_negotiating":    True,
-                    "negotiation_request": request_text,
-                    "negotiation_response": None,
-                }
+                # Don't blindly treat as modification — fall through to intent detection below
+                text_input = parsed.get("text", "").strip()
+            else:
+                text_input = str(parsed).strip()
+        else:
+            text_input = str(parsed).strip()
 
-        # If not a dict (action), treat as raw text input
-        text_input = str(parsed).strip()
+        if not text_input:
+            text_input = str(parsed).strip() if not isinstance(parsed, dict) else ""
+
+        # If not a dict (action) OR modify_request — unified intent detection path
 
         # Explicit confirmation keywords (fast path — no LLM needed)
         CONFIRM_KEYWORDS = ["ok", "confirm", "start", "execute", "yes", "go", "开始", "執行", "確認", "好"]
