@@ -715,24 +715,73 @@ class ManagerAgent:
 
         # If not a dict (action), treat as raw text input
         text_input = str(parsed).strip()
-        
-        # Explicit confirmation keywords
+
+        # Explicit confirmation keywords (fast path — no LLM needed)
         CONFIRM_KEYWORDS = ["ok", "confirm", "start", "execute", "yes", "go", "开始", "執行", "確認", "好"]
         CANCEL_KEYWORDS = ["cancel", "stop", "no", "取消", "停止"]
 
         if text_input.lower() in CONFIRM_KEYWORDS:
-             return {"plan_confirmed": True, "plan_negotiating": False}
-        
-        if text_input.lower() in CANCEL_KEYWORDS:
-             return {"plan_confirmed": False, "plan_negotiating": False}
+            return {"plan_confirmed": True, "plan_negotiating": False}
 
-        # Anything else is treated as a modification request
+        if text_input.lower() in CANCEL_KEYWORDS:
+            return {"plan_confirmed": False, "plan_negotiating": False}
+
+        # Use LLM to distinguish question vs. modification request
+        plan_text_for_detection = "\n".join(
+            f"步驟 {t.get('step')}: [{t.get('agent')}] {t.get('description', '')}"
+            for t in plan
+        )
+        intent = await self._detect_confirm_intent(text_input, plan_text_for_detection)
+
+        if intent == "confirm":
+            return {"plan_confirmed": True, "plan_negotiating": False}
+        if intent == "cancel":
+            return {"plan_confirmed": False, "plan_negotiating": False}
+        if intent == "question":
+            return {
+                "plan_confirmed":        False,
+                "plan_negotiating":      False,
+                "is_discussion":         True,
+                "discussion_question":   text_input,
+                "discuss_mode":          True,
+                "discuss_plan_snapshot": list(plan),   # freeze current plan
+            }
+        # intent == "modify"
         return {
             "plan_confirmed":      False,
             "plan_negotiating":    True,
             "negotiation_request": text_input,
             "negotiation_response": None,
         }
+
+    async def _detect_confirm_intent(self, text: str, plan_text: str) -> str:
+        """
+        Use LLM to classify user's intent during plan confirmation.
+        Returns: 'question' | 'modify' | 'confirm' | 'cancel'
+        """
+        import asyncio
+        loop = asyncio.get_running_loop()
+        prompt = (
+            f"當前分析計畫：\n{plan_text}\n\n"
+            f"使用者輸入：{text}\n\n"
+            f"判斷使用者意圖，只回覆以下一個詞：\n"
+            f"- question：詢問資訊、意見或問題（包含計畫相關問題、市場數據、計畫優缺點等）\n"
+            f"- modify：明確要求修改計畫步驟（如移除、新增、替換某步驟）\n"
+            f"- confirm：確認執行計畫\n"
+            f"- cancel：取消計畫\n\n"
+            f"只回覆一個詞，不加任何標點或說明。"
+        )
+        try:
+            response = await loop.run_in_executor(
+                None, lambda: self.llm.invoke([HumanMessage(content=prompt)])
+            )
+            intent = self._llm_content(response).strip().lower().split()[0]
+            if intent in ("question", "modify", "confirm", "cancel"):
+                return intent
+            return "question"  # safe default
+        except Exception as e:
+            logger.warning(f"[ConfirmPlan] intent detection failed: {e}, defaulting to question")
+            return "question"
 
     async def _negotiate_plan_node(self, state: ManagerState) -> dict:
         import asyncio
