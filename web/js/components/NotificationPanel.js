@@ -201,6 +201,14 @@ class NotificationPanel {
     handleNotificationClick(notification) {
         // 根据通知类型跳转
         switch (notification.type) {
+            case 'announcement':
+            case 'system': {
+                // 顯示全文 modal
+                this.hide();
+                if (window.notificationBell) window.notificationBell.isPanelOpen = false;
+                this._showAnnouncementModal(notification);
+                return; // skip default hide-and-close below
+            }
             case 'friend_request':
                 if (typeof switchTab === 'function') {
                     switchTab('friends');
@@ -230,6 +238,43 @@ class NotificationPanel {
         if (window.notificationBell) {
             window.notificationBell.isPanelOpen = false;
         }
+    }
+
+    _showAnnouncementModal(notification) {
+        // 移除舊的 modal（如果有）
+        const existing = document.getElementById('notif-detail-modal');
+        if (existing) existing.remove();
+
+        const timeStr = NotificationService.formatTime(notification.created_at);
+        const modal = document.createElement('div');
+        modal.id = 'notif-detail-modal';
+        modal.className = 'fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-4';
+        modal.innerHTML = `
+            <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" id="notif-modal-backdrop"></div>
+            <div class="relative w-full max-w-md bg-surface border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+                <div class="flex items-center justify-between px-5 pt-5 pb-3 border-b border-white/5">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="megaphone" class="w-4 h-4 text-primary"></i>
+                        <span class="text-sm font-bold text-primary">公告</span>
+                    </div>
+                    <button id="notif-modal-close" class="w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/10 transition text-textMuted">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <div class="px-5 py-4 max-h-[60vh] overflow-y-auto">
+                    <h3 class="text-base font-semibold text-secondary mb-3">${notification.title || ''}</h3>
+                    <p class="text-sm text-textMuted leading-relaxed whitespace-pre-wrap">${notification.body || ''}</p>
+                </div>
+                ${timeStr ? `<div class="px-5 pb-4 pt-1 text-[10px] text-textMuted/50">${timeStr}</div>` : ''}
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+        if (window.lucide) lucide.createIcons({ nodes: [modal] });
+
+        const close = () => modal.remove();
+        document.getElementById('notif-modal-close').addEventListener('click', close);
+        document.getElementById('notif-modal-backdrop').addEventListener('click', close);
     }
 
     handleAction(notificationId, action, notification) {

@@ -294,10 +294,17 @@ const NotificationService = {
      * 格式化时间
      */
     formatTime(dateString) {
-        const date = new Date(dateString);
+        if (!dateString) return '';
+        // PostgreSQL returns "2026-02-28 18:02:54.123" (space) — Android/Pi Browser
+        // requires ISO 8601 "2026-02-28T18:02:54" (T) for reliable parsing
+        const normalized = typeof dateString === 'string'
+            ? dateString.replace(' ', 'T').replace(/(\.\d+)$/, '') // strip microseconds
+            : dateString;
+        const date = new Date(normalized);
+        if (isNaN(date.getTime())) return '';
+
         const now = new Date();
         const diff = now - date;
-
         const minutes = Math.floor(diff / 60000);
         const hours = Math.floor(diff / 3600000);
         const days = Math.floor(diff / 86400000);
