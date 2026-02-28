@@ -291,7 +291,8 @@ async def security_headers_middleware(request: Request, call_next):
 
     # Basic security headers (always on)
     response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
+    # X-Frame-Options intentionally omitted — Pi Browser loads DApps in WebView;
+    # frame-ancestors is controlled via CSP below.
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
 
@@ -300,10 +301,15 @@ async def security_headers_middleware(request: Request, call_next):
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://cdn.minepi.com; "
-            "style-src 'self' 'unsafe-inline'; "
+            # Pi SDK + CDN libraries (Tailwind, Lucide)
+            "script-src 'self' 'unsafe-inline' https://sdk.minepi.com https://cdn.minepi.com "
+            "https://cdn.jsdelivr.net https://unpkg.com; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; "
             "img-src 'self' data: https:; "
-            "connect-src 'self' https://api.minepi.com"
+            # Pi API + WebSocket + external data sources
+            "connect-src 'self' https://api.minepi.com https://sdk.minepi.com wss: ws:; "
+            # Allow Pi Browser / Pi Sandbox to embed this app
+            "frame-ancestors 'self' https://app.minepi.com https://sandbox.minepi.com"
         )
 
     return response
