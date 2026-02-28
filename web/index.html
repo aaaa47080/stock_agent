@@ -896,21 +896,57 @@
                         data-i18n="login.connectPiWallet">Connect Pi Wallet</span>
                 </button>
                 <!-- 非 Pi Browser 提示：默認顯示 -->
-                <div id="not-pi-browser-msg" class="text-center py-6">
-                    <div class="w-16 h-16 mx-auto mb-4 bg-primary/10 rounded-full flex items-center justify-center">
-                        <img src="/static/img/pi-logo.png" alt="Pi" class="w-8 h-8 opacity-50">
+                <div id="not-pi-browser-msg" class="text-center py-4">
+                    <!-- Pi Logo 光暈 -->
+                    <div class="relative w-20 h-20 mx-auto mb-5">
+                        <div class="absolute inset-0 rounded-full bg-accent/20 animate-pulse"></div>
+                        <div class="absolute inset-1 rounded-full bg-accent/10"></div>
+                        <div class="relative w-full h-full rounded-full bg-surface border border-accent/30 flex items-center justify-center shadow-lg">
+                            <img src="/static/img/pi-logo.png" alt="Pi" class="w-10 h-10">
+                        </div>
                     </div>
-                    <p class="text-secondary font-bold mb-2" data-i18n="login.usePiBrowser">請使用 Pi Browser 開啟</p>
-                    <p class="text-textMuted text-sm mb-4" data-i18n="login.usePiBrowserDesc">Please open this app in Pi
-                        Browser</p>
-                    <div class="bg-background/50 rounded-xl p-4 text-left">
-                        <p class="text-xs text-textMuted mb-2" data-i18n="login.stepsTitle">步驟 Steps:</p>
-                        <ol class="text-xs text-textMuted/80 space-y-1 list-decimal list-inside">
-                            <li data-i18n="login.step1">開啟 Pi Browser App</li>
-                            <li data-i18n="login.step2">在網址列輸入本應用網址</li>
-                            <li data-i18n="login.step3">點擊 Connect Pi Wallet 登入</li>
-                        </ol>
+
+                    <!-- 標題 -->
+                    <p class="text-secondary font-bold text-lg mb-1" data-i18n="login.usePiBrowser">請使用 Pi Browser 開啟</p>
+                    <p class="text-textMuted text-sm mb-5" data-i18n="login.usePiBrowserDesc">Please open this app in Pi Browser</p>
+
+                    <!-- 步驟卡片 -->
+                    <div class="space-y-2 text-left mb-5">
+                        <div class="flex items-center gap-3 bg-surfaceHighlight rounded-xl p-3">
+                            <div class="w-7 h-7 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center flex-shrink-0">
+                                <span class="text-primary text-xs font-bold">1</span>
+                            </div>
+                            <span class="text-secondary text-sm" data-i18n="login.step1">開啟 Pi Browser App</span>
+                        </div>
+                        <div class="flex items-center gap-3 bg-surfaceHighlight rounded-xl p-3">
+                            <div class="w-7 h-7 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center flex-shrink-0">
+                                <span class="text-primary text-xs font-bold">2</span>
+                            </div>
+                            <span class="text-secondary text-sm" data-i18n="login.step2">在網址列輸入本應用網址</span>
+                        </div>
+                        <div class="flex items-center gap-3 bg-surfaceHighlight rounded-xl p-3">
+                            <div class="w-7 h-7 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center flex-shrink-0">
+                                <span class="text-primary text-xs font-bold">3</span>
+                            </div>
+                            <span class="text-secondary text-sm" data-i18n="login.step3">點擊 Connect Pi Wallet 登入</span>
+                        </div>
                     </div>
+
+                    <!-- 複製網址按鈕 -->
+                    <button onclick="(function(btn){
+                        navigator.clipboard.writeText(window.location.href).then(function(){
+                            btn.innerHTML='<svg xmlns=\'http://www.w3.org/2000/svg\' class=\'w-4 h-4\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\'><polyline points=\'20 6 9 17 4 12\'></polyline></svg> 已複製！';
+                            btn.classList.add('bg-accent/30','border-accent/50');
+                            setTimeout(function(){
+                                btn.innerHTML='<svg xmlns=\'http://www.w3.org/2000/svg\' class=\'w-4 h-4\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\'><rect x=\'9\' y=\'9\' width=\'13\' height=\'13\' rx=\'2\' ry=\'2\'></rect><path d=\'M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1\'></path></svg> 複製網址到 Pi Browser';
+                                btn.classList.remove('bg-accent/30','border-accent/50');
+                            },2000);
+                        });
+                    })(this)"
+                        class="w-full py-3 flex items-center justify-center gap-2 rounded-2xl border border-accent/30 bg-accent/10 hover:bg-accent/20 text-accent text-sm font-semibold transition-all">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        複製網址到 Pi Browser
+                    </button>
                 </div>
             </div>
             <script>

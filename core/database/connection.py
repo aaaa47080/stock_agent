@@ -468,14 +468,10 @@ def init_db():
     ''')
 
     # Migration: add role and is_active columns if missing (safe to re-run)
-    for col_sql in [
-        "ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'",
-        "ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT TRUE",
-    ]:
-        try:
-            c.execute(col_sql)
-        except Exception:
-            conn.rollback()  # Column already exists
+    # Use IF NOT EXISTS to avoid rolling back the entire transaction on new DBs
+    # where these columns already exist in the CREATE TABLE statement above.
+    c.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'user'")
+    c.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE")
 
     # 建立會員支付記錄表 (Membership Payments)
     c.execute('''
@@ -500,17 +496,6 @@ def init_db():
             type TEXT DEFAULT 'announcement',
             recipient_count INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT NOW()
-        )
-    ''')
-
-    # 建立密碼重置 Token 表
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS password_reset_tokens (
-            token TEXT PRIMARY KEY,
-            user_id TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            expires_at TIMESTAMP NOT NULL,
-            FOREIGN KEY (user_id) REFERENCES users(user_id)
         )
     ''')
 
@@ -987,23 +972,6 @@ def init_db():
     ''')
     c.execute('CREATE INDEX IF NOT EXISTS idx_analysis_reports_session ON analysis_reports(session_id)')
     c.execute('CREATE INDEX IF NOT EXISTS idx_analysis_reports_user ON analysis_reports(user_id)')
-
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS agent_codebook (
-            id VARCHAR(255) PRIMARY KEY,
-            query TEXT NOT NULL,
-            intent VARCHAR(100),
-            symbols JSONB DEFAULT '[]',
-            plan JSONB DEFAULT '[]',
-            complexity VARCHAR(20) DEFAULT 'simple',
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-            ttl_days INTEGER DEFAULT 14,
-            use_count INTEGER DEFAULT 0,
-            fail_count INTEGER DEFAULT 0,
-            replaced_by VARCHAR(255),
-            correction_reason TEXT
-        )
-    ''')
 
     # ========================================================================
     # 初始化預設數據
