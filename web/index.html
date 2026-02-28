@@ -1278,9 +1278,9 @@
     <!-- Scripts -->
     <script src="/static/js/app.js?v=51" onerror="alert('app.js 載入失敗')"></script>
     <script src="/static/js/apiKeyManager.js?v=47" onerror="alert('apiKeyManager.js 載入失敗')"></script>
-    <script src="/static/js/auth.js?v=52" onerror="alert('auth.js 載入失敗')"></script>
+    <script src="/static/js/auth.js?v=53" onerror="alert('auth.js 載入失敗')"></script>
     <script src="/static/js/okxKeyManager.js?v=47"></script>
-    <script src="/static/js/components.js?v=71"></script>
+    <script src="/static/js/components.js?v=72"></script>
     <script src="/static/js/notification-service.js?v=3"></script>
     <script src="/static/js/components/NotificationBell.js?v=2"></script>
     <script src="/static/js/components/NotificationPanel.js?v=2"></script>
@@ -1495,12 +1495,7 @@
                     window.AuthManager._updateUI(window.AuthManager.isLoggedIn());
                 }
                 if (typeof loadSettingsWalletStatus === 'function') loadSettingsWalletStatus();
-                // 加載高級會員狀態 - 延遲執行以確保組件已注入
-                if (typeof loadPremiumStatus === 'function') {
-                    setTimeout(() => {
-                        loadPremiumStatus();
-                    }, 1000);
-                }
+                if (typeof loadPremiumStatus === 'function') loadPremiumStatus();
                 // 確保 Settings 中的 LLM 狀態被更新
                 if (typeof updateLLMStatusUI === 'function') updateLLMStatusUI();
 

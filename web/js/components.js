@@ -809,8 +809,8 @@ const Components = {
                     </div>
                 </div>
 
-                <!-- Tool Settings -->
-                <div class="bg-surface p-6 md:p-8 rounded-3xl border border-white/5">
+                <!-- Tool Settings (hidden until feature is ready) -->
+                <div class="bg-surface p-6 md:p-8 rounded-3xl border border-white/5 hidden">
                     <div class="flex items-center justify-between mb-6">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">

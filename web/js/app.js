@@ -547,17 +547,6 @@ function onTabSwitch(tab) {
         // 不需要每 5 秒重新載入整個列表，這會造成閃爍和不必要的 API 請求
     }
 
-    // Settings Tab — load tool settings list
-    if (tab === 'settings') {
-        const initSettings = () => {
-            if (typeof initToolSettings === 'function') initToolSettings();
-        };
-        if (window.Components && !window.Components.isInjected('settings')) {
-            window.Components.inject('settings').then(initSettings);
-        } else {
-            initSettings();
-        }
-    }
 }
 
 // Make it globally accessible
@@ -665,11 +654,6 @@ async function openSettings() {
     // Ensure component is injected
     if (window.Components && typeof window.Components.inject === 'function') {
         await window.Components.inject('settings');
-    }
-
-    // Load tool settings (fire-and-forget — shows its own spinner)
-    if (typeof initToolSettings === 'function') {
-        initToolSettings();
     }
 
     // Load current config — fetch both endpoints in parallel

@@ -352,10 +352,7 @@ const AuthManager = {
 
         // 更新會員狀態顯示
         if (isLoggedIn && typeof loadPremiumStatus === 'function') {
-            // 延遲執行以確保UI已更新
-            setTimeout(() => {
-                loadPremiumStatus();
-            }, 300);
+            loadPremiumStatus();
         }
 
         // 登入後重新初始化通知服務（取得真實通知 + 連接 WebSocket）
@@ -632,103 +629,70 @@ async function handleLinkWallet() {
     }
 }
 
-// 載入高級會員狀態
+// 套用 premium badge UI（抽出共用邏輯）
+function _applyPremiumBadgeUI(statusBadge, upgradeBtn, isPro, expiresAt) {
+    const sidebarBadge = document.getElementById('sidebar-premium-badge');
+    if (isPro) {
+        const expiryText = expiresAt ? ` · ${new Date(expiresAt).toLocaleDateString('zh-TW')} 到期` : '';
+        statusBadge.innerHTML = `
+            <i data-lucide="star" class="w-3 h-3 text-yellow-400"></i>
+            <span class="font-bold text-yellow-400">高級會員${expiryText}</span>
+        `;
+        statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400 border border-yellow-500/30 shadow-sm shadow-yellow-500/10';
+        if (sidebarBadge) sidebarBadge.classList.remove('hidden');
+        if (upgradeBtn) {
+            upgradeBtn.disabled = true;
+            upgradeBtn.innerHTML = '<i data-lucide="check-circle" class="w-4 h-4"></i> 已是高級會員';
+            upgradeBtn.className = 'w-full py-3.5 bg-gradient-to-r from-green-500 to-emerald-500 text-background font-bold rounded-xl transition flex items-center justify-center gap-2 cursor-default';
+        }
+    } else {
+        statusBadge.innerHTML = `
+            <i data-lucide="user" class="w-3 h-3"></i>
+            <span class="font-bold text-textMuted">免費會員</span>
+        `;
+        statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-textMuted';
+        if (sidebarBadge) sidebarBadge.classList.add('hidden');
+    }
+    if (window.lucide) lucide.createIcons();
+}
+
+// 載入高級會員狀態（即時顯示快取值，後台更新精確到期日）
 async function loadPremiumStatus() {
-    // 使用延遲加載，確保組件已注入
-    setTimeout(async () => {
-        const statusBadge = document.getElementById('premium-status-badge');
-        const upgradeBtn = document.querySelector('.upgrade-premium-btn');
+    const statusBadge = document.getElementById('premium-status-badge');
+    const upgradeBtn = document.querySelector('.upgrade-premium-btn');
 
-        // 如果元素不存在（Settings 頁面未載入），直接返回
-        if (!statusBadge) {
-            console.log('Premium status badge not found, may not be on settings page');
-            return;
-        }
+    if (!statusBadge) return;
 
-        try {
-            if (!AuthManager.currentUser) {
-                const sidebarBadge = document.getElementById('sidebar-premium-badge');
-                if (sidebarBadge) sidebarBadge.classList.add('hidden');
+    if (!AuthManager.currentUser) {
+        const sidebarBadge = document.getElementById('sidebar-premium-badge');
+        if (sidebarBadge) sidebarBadge.classList.add('hidden');
+        statusBadge.innerHTML = `<i data-lucide="x-circle" class="w-3 h-3"></i> 未登入`;
+        statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-textMuted';
+        if (upgradeBtn) upgradeBtn.disabled = true;
+        if (window.lucide) lucide.createIcons();
+        return;
+    }
 
-                statusBadge.innerHTML = `
-                    <i data-lucide="x-circle" class="w-3 h-3"></i>
-                    未登入
-                `;
-                statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-textMuted';
-                if (upgradeBtn) upgradeBtn.disabled = true;
-                return;
-            }
+    // ── 即時顯示：從 currentUser 快取直接讀取，無需等待 API ──
+    const cachedTier = AuthManager.currentUser.membership_tier || 'free';
+    _applyPremiumBadgeUI(statusBadge, upgradeBtn, cachedTier === 'premium');
 
-            const userId = AuthManager.currentUser.uid || AuthManager.currentUser.user_id;
-            if (!userId) {
-                statusBadge.innerHTML = `
-                    <i data-lucide="alert-circle" class="w-3 h-3"></i>
-                    無法獲取用戶ID
-                `;
-                statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-danger/10 text-danger';
-                if (upgradeBtn) upgradeBtn.disabled = true;
-                return;
-            }
+    // ── 後台更新：呼叫 API 取得精確到期日 ──
+    try {
+        const userId = AuthManager.currentUser.uid || AuthManager.currentUser.user_id;
+        const response = await fetch(`/api/premium/status/${userId}`, {
+            headers: { 'Authorization': `Bearer ${AuthManager.currentUser.accessToken}` }
+        });
+        if (!response.ok) return; // 保留快取顯示，不覆蓋
 
-            const response = await fetch(`/api/premium/status/${userId}`, {
-                headers: {
-                    'Authorization': `Bearer ${AuthManager.currentUser.accessToken || localStorage.getItem('auth_token')}`
-                }
-            });
-
-            const result = await response.json();
-
-            if (!response.ok) {
-                throw new Error(result.detail || '獲取會員狀態失敗');
-            }
-
-            const membership = result.membership;
-            const sidebarBadge = document.getElementById('sidebar-premium-badge');
-
-            if (membership.is_pro) {
-                // 高級會員
-                statusBadge.innerHTML = `
-                    <i data-lucide="star" class="w-3 h-3 text-yellow-400"></i>
-                    <span class="font-bold text-yellow-400">高級會員</span>
-                `;
-                statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400 border border-yellow-500/30 shadow-sm shadow-yellow-500/10';
-
-                if (sidebarBadge) {
-                    sidebarBadge.classList.remove('hidden');
-                }
-
-                if (upgradeBtn) upgradeBtn.disabled = true;
-                if (upgradeBtn) {
-                    upgradeBtn.innerHTML = '<i data-lucide="check-circle" class="w-4 h-4"></i> 已是高級會員';
-                    upgradeBtn.className = 'w-full py-3.5 bg-gradient-to-r from-green-500 to-emerald-500 text-background font-bold rounded-xl transition flex items-center justify-center gap-2 cursor-default';
-                }
-            } else {
-                // 免費會員
-                statusBadge.innerHTML = `
-                    <i data-lucide="user" class="w-3 h-3"></i>
-                    <span class="font-bold text-textMuted">免費會員</span>
-                `;
-                statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-textMuted';
-
-                if (sidebarBadge) {
-                    sidebarBadge.classList.add('hidden');
-                }
-
-                if (upgradeBtn) upgradeBtn.disabled = false;
-            }
-
-            if (window.lucide) lucide.createIcons();
-        } catch (e) {
-            console.error('loadPremiumStatus error:', e);
-            if (statusBadge) {
-                statusBadge.innerHTML = `
-                    <i data-lucide="alert-circle" class="w-3 h-3"></i>
-                    <span class="font-bold text-danger">載入失敗</span>
-                `;
-                statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-danger/10 text-danger';
-            }
-        }
-    }, 500); // 延遲500毫秒，確保組件已注入
+        const result = await response.json();
+        const membership = result.membership;
+        // Re-apply with accurate expiry date from API
+        _applyPremiumBadgeUI(statusBadge, upgradeBtn, membership.is_pro, membership.expires_at);
+    } catch (e) {
+        // Cached display already shown — silently ignore API errors
+        console.warn('loadPremiumStatus API error (cached display retained):', e);
+    }
 }
 
 // 處理高級會員升級按鈕
