@@ -45,3 +45,4 @@ Thumbs.db
 
 # Git worktrees
 .worktrees/
+key.txt
