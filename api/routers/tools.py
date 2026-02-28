@@ -17,6 +17,7 @@ router = APIRouter()
 @router.get("/api/tools")
 async def list_tools(current_user: dict = Depends(get_current_user)):
     """Return all tools with per-user enabled/locked status."""
+    from core.database.tools import seed_tools_catalog
     user_tier = current_user.get("membership_tier", "free")
     user_id   = current_user.get("user_id")
     loop = asyncio.get_running_loop()
@@ -24,6 +25,16 @@ async def list_tools(current_user: dict = Depends(get_current_user)):
         None,
         partial(get_tools_for_frontend, user_tier, user_id),
     )
+    # Auto-seed if catalog is empty (first request after fresh DB)
+    if not tools:
+        try:
+            await loop.run_in_executor(None, seed_tools_catalog)
+            tools = await loop.run_in_executor(
+                None,
+                partial(get_tools_for_frontend, user_tier, user_id),
+            )
+        except Exception as e:
+            logger.warning(f"[tools] auto-seed failed: {e}")
     return {"tools": tools, "user_tier": user_tier}
 
 
