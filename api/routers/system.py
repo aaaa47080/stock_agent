@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Header
 from fastapi.responses import FileResponse
 from dotenv import load_dotenv
 from utils.llm_client import LLMClientFactory
+from core.model_config import OPENAI_DEFAULT_MODEL, GEMINI_DEFAULT_MODEL
 from fastapi import Depends
 from api.deps import get_current_user
 from api.routers.admin import verify_admin_key
@@ -125,11 +126,11 @@ async def validate_key(request: KeyValidationRequest, current_user: dict = Depen
             model_to_test = user_model
         else:
             if provider == "google_gemini":
-                model_to_test = "gemini-2.0-flash-exp"
+                model_to_test = GEMINI_DEFAULT_MODEL
             elif provider == "openrouter":
-                model_to_test = "gpt-4o-mini" # 或其他默認
+                model_to_test = OPENAI_DEFAULT_MODEL
             else:
-                model_to_test = "gpt-4o-mini"
+                model_to_test = OPENAI_DEFAULT_MODEL
 
         # 嘗試初始化 LLM
         llm = init_chat_model(
@@ -167,7 +168,7 @@ async def validate_key(request: KeyValidationRequest, current_user: dict = Depen
         elif "429" in error_msg or "quota" in error_msg.lower() or "rate" in error_msg.lower() or "exceeded your current quota" in error_msg.lower():
             error_msg = "額度不足或請求過多 (429)，請檢查您的計費詳情和用量限制。"
         elif "404" in error_msg or "not found" in error_msg.lower():
-             error_msg = "連接成功但模型不可用 (404)。請檢查模型名稱是否正確。"
+             error_msg = "模型目前不可用 (404)。可能原因：① 模型名稱錯誤 ② Free tier 暫時無負載（稍後重試）③ 模型已下架。"
         elif "400" in error_msg:
             if "API_KEY_INVALID" in error_msg or "API key not valid" in error_msg:
                 error_msg = "API Key 無效，請檢查 Key 是否正確。"
@@ -194,11 +195,8 @@ async def get_config():
         "default_interval": DEFAULT_INTERVAL,
         "default_limit": DEFAULT_KLINES_LIMIT,
         "current_settings": {
-            "enable_committee": core_config.ENABLE_COMMITTEE_MODE,
             "primary_model_provider": current_provider,
             "primary_model_name": core_config.BULL_RESEARCHER_MODEL.get("model"),
-            "bull_committee_models": core_config.BULL_COMMITTEE_MODELS,
-            "bear_committee_models": core_config.BEAR_COMMITTEE_MODELS,
             # Mask keys for security
             "has_openai_key": has_key("openai"),
             "has_google_key": has_key("google_gemini"),
@@ -278,17 +276,13 @@ async def update_user_settings(settings: UserSettings, current_user: dict = Depe
         # ⚠️ OKX Keys are NO LONGER stored in backend (BYOK Mode)
         # They are managed client-side via OKXKeyManager
 
-        # 2. Update Committee Mode
-        Settings.update(ENABLE_COMMITTEE_MODE=settings.enable_committee)
-        core_config.ENABLE_COMMITTEE_MODE = settings.enable_committee
-        
-        # 3. Update Model Configuration
+        # 2. Update Model Configuration
         new_model_config = {
             "provider": settings.primary_model_provider,
             "model": settings.primary_model_name
         }
         
-        logger.info(f"Updating model config to: {new_model_config}, Committee Mode: {settings.enable_committee}")
+        logger.info(f"Updating model config to: {new_model_config}")
         
         # 更新核心配置中的模型定義
         core_config.BULL_RESEARCHER_MODEL = new_model_config
@@ -297,14 +291,7 @@ async def update_user_settings(settings: UserSettings, current_user: dict = Depe
         # 同步更新合成模型，確保委員會模式下的總結也能正常執行
         core_config.SYNTHESIS_MODEL = new_model_config
         
-        # 4. Update Committee Lists (若有提供)
-        if settings.bull_committee_models is not None:
-            core_config.BULL_COMMITTEE_MODELS = settings.bull_committee_models
-            
-        if settings.bear_committee_models is not None:
-            core_config.BEAR_COMMITTEE_MODELS = settings.bear_committee_models
-
-        # 5. Save to .env file for persistence
+        # 4. Save to .env file for persistence
         if env_updates:
             loop = asyncio.get_running_loop()
             await loop.run_in_executor(None, partial(update_env_file, env_updates, project_root))

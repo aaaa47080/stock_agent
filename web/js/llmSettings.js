@@ -264,36 +264,6 @@ function saveLLMKey() {
         updateLLMStatusUI();
     }
 
-    // 更新 Committee Manager providers if it exists
-    if (window.CommitteeManager && typeof window.CommitteeManager.updateProviders === 'function') {
-        window.CommitteeManager.updateProviders();
-
-        // 🛡️ [修正] Committee Mode 驗證 (在單模型保存成功後才檢查)
-        const committeeCheckbox = document.getElementById('set-committee-mode');
-        if (committeeCheckbox && committeeCheckbox.checked) {
-            const config = window.CommitteeManager.getConfig();
-            const hasBull = Array.isArray(config.bull) && config.bull.length > 0;
-            const hasBear = Array.isArray(config.bear) && config.bear.length > 0;
-
-            if (!hasBull || !hasBear) {
-                // 不阻止保存，但彈出警告
-                const missing = [];
-                if (!hasBull) missing.push("多頭(Bull)");
-                if (!hasBear) missing.push("空頭(Bear)");
-
-                alert(`⚠️ API Key 已保存，但 Committee Mode 未完整配置！\n\n缺少: ${missing.join(", ")}\n\n請在下方 Committee Management 面板添加成員，否則辯論功能將無法正常運作。`);
-
-                showLLMKeyStatus('error', '⚠️ API Key 已保存，但 Committee Mode 未完整配置 (無成員)！');
-
-                // 滾動到 committee 面板
-                const panel = document.getElementById('committee-management-panel');
-                if (panel) {
-                    panel.classList.remove('hidden');
-                    panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            }
-        }
-    }
 }
 
 /**
@@ -443,10 +413,6 @@ async function testLLMKey() {
                 }
             }
 
-            // 更新 Committee Manager providers if it exists
-            if (window.CommitteeManager && typeof window.CommitteeManager.updateProviders === 'function') {
-                window.CommitteeManager.updateProviders();
-            }
         } else {
             // 清除之前的測試結果
             localStorage.removeItem(`last_test_result_${provider}`);

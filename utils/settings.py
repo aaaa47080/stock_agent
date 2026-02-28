@@ -5,6 +5,7 @@
 from typing import Dict, Any
 import os
 from dotenv import load_dotenv
+from core.model_config import OPENAI_DEFAULT_MODEL
 
 load_dotenv()
 
@@ -29,8 +30,8 @@ class Settings:
     # ============================================================================
     # LLM 模型配置
     # ============================================================================
-    FAST_THINKING_MODEL: str = "gpt-4o-mini"  # 用於快速分析（分析師）
-    DEEP_THINKING_MODEL: str = "gpt-4o-mini"       # 用於深度思考（交易員、風險管理）
+    FAST_THINKING_MODEL: str = OPENAI_DEFAULT_MODEL  # 用於快速分析（分析師）
+    DEEP_THINKING_MODEL: str = OPENAI_DEFAULT_MODEL  # 用於深度思考（交易員、風險管理）
 
     # ============================================================================
     # 系統行為配置
@@ -64,11 +65,6 @@ class Settings:
     # ============================================================================
     TECHNICAL_INDICATOR_PERIOD: int = 30    # 技術指標計算週期
     RECENT_HISTORY_DAYS: int = 5           # 最近歷史數據天數
-
-    # ============================================================================
-    # 委員會模式配置
-    # ============================================================================
-    ENABLE_COMMITTEE_MODE: bool = False
 
     # ============================================================================
     # 調試配置

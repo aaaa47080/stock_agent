@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from core.config import (
     SUPPORTED_EXCHANGES, DEFAULT_INTERVAL, DEFAULT_KLINES_LIMIT
 )
+from core.model_config import GEMINI_DEFAULT_MODEL
 
 # 定義請求模型
 class QueryRequest(BaseModel):
@@ -57,18 +58,8 @@ class UserSettings(BaseModel):
     openrouter_api_key: Optional[str] = None
     
     # 模型選擇
-    primary_model_provider: str = "google_gemini" # openai, google_gemini, openrouter
-    # 從模型配置文件獲取默認模型
-    try:
-        from core.model_config import get_default_model
-        primary_model_name: str = get_default_model("google_gemini")  # 默認為 Google Gemini
-    except ImportError:
-        primary_model_name: str = "gemini-3-flash-preview"  # 備用默認值
-    
-    # 委員會模式
-    enable_committee: bool = False
-    bull_committee_models: Optional[List[Dict[str, str]]] = None # List of {"provider": "...", "model": "..."}
-    bear_committee_models: Optional[List[Dict[str, str]]] = None # List of {"provider": "...", "model": "..."}
+    primary_model_provider: str = "google_gemini"  # openai, google_gemini, openrouter
+    primary_model_name: str = GEMINI_DEFAULT_MODEL  # 默認為 Google Gemini
     
     # OKX Keys (可選，若要在這裡統一管理)
     okx_api_key: Optional[str] = None

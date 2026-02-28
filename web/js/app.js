@@ -546,6 +546,18 @@ function onTabSwitch(tab) {
         // 移除自動輪詢 - Friends 更新應該透過 WebSocket 或用戶手動刷新
         // 不需要每 5 秒重新載入整個列表，這會造成閃爍和不必要的 API 請求
     }
+
+    // Settings Tab — load tool settings list
+    if (tab === 'settings') {
+        const initSettings = () => {
+            if (typeof initToolSettings === 'function') initToolSettings();
+        };
+        if (window.Components && !window.Components.isInjected('settings')) {
+            window.Components.inject('settings').then(initSettings);
+        } else {
+            initSettings();
+        }
+    }
 }
 
 // Make it globally accessible
@@ -655,6 +667,11 @@ async function openSettings() {
         await window.Components.inject('settings');
     }
 
+    // Load tool settings (fire-and-forget — shows its own spinner)
+    if (typeof initToolSettings === 'function') {
+        initToolSettings();
+    }
+
     // Load current config — fetch both endpoints in parallel
     try {
         const [configRes, modelConfigRes] = await Promise.all([
@@ -678,9 +695,6 @@ async function openSettings() {
         // Update Provider Select Options based on validity
         updateProviderOptions();
 
-        const committeeMode = document.getElementById('set-committee-mode');
-        if (committeeMode) committeeMode.checked = settings.enable_committee;
-
         if (settings.primary_model_provider) {
             const providerSelect = document.getElementById('llm-provider-select');
             if (providerSelect) {
@@ -698,16 +712,6 @@ async function openSettings() {
             } else if (modelInput) {
                 modelInput.value = settings.primary_model_name;
             }
-        }
-
-        // Load committee configuration from backend
-        if (window.CommitteeManager) {
-            window.CommitteeManager.loadConfig({
-                bull: settings.bull_committee_models || [],
-                bear: settings.bear_committee_models || []
-            });
-            window.CommitteeManager.bindEvents();
-            window.CommitteeManager.togglePanel(settings.enable_committee);
         }
 
         // Load premium membership status (no artificial delay needed)
@@ -975,37 +979,6 @@ async function saveSettings() {
     const btn = document.getElementById('btn-save-settings');
     if (!btn) return;
 
-    // 🛡️ Validate Committee Mode Configuration BEFORE saving
-    const committeeCheckbox = document.getElementById('set-committee-mode');
-    const committeeConfig = window.CommitteeManager ? window.CommitteeManager.getConfig() : { bull: [], bear: [] };
-
-    if (committeeCheckbox && committeeCheckbox.checked) {
-        const hasBull = Array.isArray(committeeConfig.bull) && committeeConfig.bull.length > 0;
-        const hasBear = Array.isArray(committeeConfig.bear) && committeeConfig.bear.length > 0;
-
-        if (!hasBull || !hasBear) {
-            const missing = [];
-            if (!hasBull) missing.push("多頭(Bull)");
-            if (!hasBear) missing.push("空頭(Bear)");
-
-            await showAlert({
-                title: '⚠️ Committee Mode 配置不完整',
-                message: `請為 ${missing.join(" 和 ")} 添加至少一個 AI 模型，否則無法啟用 Committee Mode。\n\n請在下方的 Committee Management 面板中添加成員。`,
-                type: 'warning',
-                confirmText: '我知道了'
-            });
-
-            // 滾動到 committee 面板
-            const panel = document.getElementById('committee-management-panel');
-            if (panel) {
-                panel.classList.remove('hidden');
-                panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-
-            return; // 阻止保存
-        }
-    }
-
     // 1. 僅停用並變灰，不改變文字內容 (不閃爍)
     btn.disabled = true;
     btn.classList.add('opacity-50', 'cursor-not-allowed');
@@ -1016,7 +989,6 @@ async function saveSettings() {
         google_api_key: null,
         openrouter_api_key: null,
 
-        enable_committee: document.getElementById('set-committee-mode') ? document.getElementById('set-committee-mode').checked : false,
         primary_model_provider: document.getElementById('llm-provider-select') ? document.getElementById('llm-provider-select').value : '',
         primary_model_name: (function () {
             const select = document.getElementById('llm-model-select');
@@ -1025,9 +997,6 @@ async function saveSettings() {
             if (provider === 'openrouter') return input ? input.value : '';
             return select ? select.value : '';
         })(),
-
-        bull_committee_models: committeeConfig.bull,
-        bear_committee_models: committeeConfig.bear
     };
 
     let success = false;

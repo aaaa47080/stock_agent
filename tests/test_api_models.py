@@ -190,8 +190,6 @@ class TestUserSettings:
         assert settings.openai_api_key is None
         assert settings.google_api_key is None
         assert settings.primary_model_provider == "google_gemini"
-        assert settings.enable_committee is False
-        assert settings.bull_committee_models is None
 
     def test_custom_values(self):
         """Test with custom values"""
@@ -199,26 +197,9 @@ class TestUserSettings:
             openai_api_key="sk-test",  # pragma: allowlist secret
             primary_model_provider="openai",
             primary_model_name="gpt-4",
-            enable_committee=True
         )
         assert settings.openai_api_key == "sk-test"  # pragma: allowlist secret
         assert settings.primary_model_provider == "openai"
-        assert settings.enable_committee is True
-
-    def test_committee_models(self):
-        """Test committee model settings"""
-        settings = UserSettings(
-            enable_committee=True,
-            bull_committee_models=[
-                {"provider": "openai", "model": "gpt-4"},
-                {"provider": "google_gemini", "model": "gemini-pro"}
-            ],
-            bear_committee_models=[
-                {"provider": "openrouter", "model": "llama-2"}
-            ]
-        )
-        assert len(settings.bull_committee_models) == 2
-        assert len(settings.bear_committee_models) == 1
 
     def test_okx_keys(self):
         """Test OKX key settings"""

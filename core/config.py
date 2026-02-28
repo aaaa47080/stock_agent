@@ -62,90 +62,44 @@ TEST_USER = {
 }
 
 # === AI 模型配置 ===
+# 所有模型名稱統一由 core/model_config.py 管理，在此不再硬寫字串。
+from core.model_config import OPENAI_DEFAULT_MODEL, GEMINI_DEFAULT_MODEL
 
-# 基礎模型（用於分析師團隊 - 需用戶 Key）
-
-# 從模型配置文件獲取默認模型
-try:
-    from core.model_config import get_default_model
-    FAST_THINKING_MODEL = get_default_model("openai")
-    DEEP_THINKING_MODEL = get_default_model("openai")
-except ImportError:
-    # 如果配置文件不可用，使用默認值
-    FAST_THINKING_MODEL = "gpt-4o-mini"
-    DEEP_THINKING_MODEL = "gpt-4o-mini"
-
-
-
-ENABLE_COMMITTEE_MODE = True
-
-
+FAST_THINKING_MODEL = OPENAI_DEFAULT_MODEL   # 用於快速分析（分析師）
+DEEP_THINKING_MODEL = OPENAI_DEFAULT_MODEL   # 用於深度思考（交易員、風險管理）
 
 # ============================================================================
-
 # [User-Side] 需要用戶 API Key 的功能
-
 # ============================================================================
-
-
 
 # 多頭研究員 (用戶付費)
-try:
-    from core.model_config import get_default_model
-    default_openai_model = get_default_model("openai")
-    default_gemini_model = get_default_model("google_gemini")
-except ImportError:
-    default_openai_model = "gpt-4o-mini"
-    default_gemini_model = "gemini-3-flash-preview"
-
 BULL_RESEARCHER_MODEL = {
     "provider": "user_provided",
-    "model": default_openai_model,
+    "model": OPENAI_DEFAULT_MODEL,
 }
 
 # 空頭研究員 (用戶付費)
 BEAR_RESEARCHER_MODEL = {
     "provider": "user_provided",
-    "model": default_openai_model,
+    "model": OPENAI_DEFAULT_MODEL,
 }
 
 # 交易員 (用戶付費)
 TRADER_MODEL = {
     "provider": "user_provided",
-    "model": default_openai_model,
+    "model": OPENAI_DEFAULT_MODEL,
 }
 
-# 委員會成員 (用戶付費)
-BULL_COMMITTEE_MODELS = [
-    {"provider": "user_provided", "model": default_openai_model},
-    {"provider": "user_provided", "model": default_openai_model},
-]
-
-BEAR_COMMITTEE_MODELS = [
-    {"provider": "user_provided", "model": default_openai_model},
-    {"provider": "user_provided", "model": default_openai_model},
-]
-
-
-
 # 綜合模型 (用戶付費)
-try:
-    from core.model_config import get_default_model
-    default_openai_model = get_default_model("openai")
-except ImportError:
-    default_openai_model = "gpt-4o-mini"
-
 SYNTHESIS_MODEL = {
     "provider": "user_provided",
-    "model": default_openai_model,
+    "model": OPENAI_DEFAULT_MODEL,
 }
 
 # 查詢解析 (用戶付費)
 QUERY_PARSER_MODEL_CONFIG = {
     "provider": "user_provided",
-
-    "model": "gpt-4o-mini",
-
+    "model": OPENAI_DEFAULT_MODEL,
 }
 
 
@@ -161,11 +115,8 @@ QUERY_PARSER_MODEL_CONFIG = {
 # 市場脈動分析器 (平台付費 - 用於生成公共報告)
 
 MARKET_PULSE_MODEL = {
-
-    "provider": "openai", # 使用伺服器端的 .env KEY
-
-    "model": "gpt-4o-mini",
-
+    "provider": "openai",  # 使用伺服器端的 .env KEY
+    "model": OPENAI_DEFAULT_MODEL,
 }
 
 

@@ -809,6 +809,30 @@ const Components = {
                     </div>
                 </div>
 
+                <!-- Tool Settings -->
+                <div class="bg-surface p-6 md:p-8 rounded-3xl border border-white/5">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                                <i data-lucide="wrench" class="w-5 h-5 text-primary"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-serif text-primary">工具設定</h3>
+                                <p class="text-xs text-textMuted">選擇 AI 分析時使用的工具</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="tool-settings-list" class="space-y-1">
+                        <!-- Populated by initToolSettings() -->
+                    </div>
+                    <div id="tool-settings-free-notice" class="mt-4 hidden">
+                        <div class="bg-yellow-400/5 border border-yellow-400/20 rounded-xl p-3 text-xs text-yellow-300/80 flex items-start gap-2">
+                            <i data-lucide="lock" class="w-3.5 h-3.5 mt-0.5 flex-shrink-0"></i>
+                            <span>升級 Premium 會員即可自由開關所有工具，並解鎖 PRO 專屬資料來源。</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Navigation Customization -->
                 <div class="bg-surface p-6 md:p-8 rounded-3xl border border-white/5">
                     <div class="flex items-center justify-between">

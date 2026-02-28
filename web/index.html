@@ -1240,15 +1240,16 @@
     </div>
 
     <!-- Scripts -->
-    <script src="/static/js/app.js?v=49" onerror="alert('app.js 載入失敗')"></script>
+    <script src="/static/js/app.js?v=51" onerror="alert('app.js 載入失敗')"></script>
     <script src="/static/js/apiKeyManager.js?v=47" onerror="alert('apiKeyManager.js 載入失敗')"></script>
     <script src="/static/js/auth.js?v=50" onerror="alert('auth.js 載入失敗')"></script>
     <script src="/static/js/okxKeyManager.js?v=47"></script>
-    <script src="/static/js/components.js?v=69"></script>
+    <script src="/static/js/components.js?v=70"></script>
     <script src="/static/js/notification-service.js?v=3"></script>
     <script src="/static/js/components/NotificationBell.js?v=2"></script>
     <script src="/static/js/components/NotificationPanel.js?v=2"></script>
     <script src="/static/js/llmSettings.js?v=48"></script>
+    <script src="/static/js/toolSettings.js?v=2"></script>
     <script src="/static/js/filter.js?v=47"></script>
     <script src="/static/js/chat.js?v=1001"></script>
     <script src="/static/js/market.js?v=47"></script>
@@ -1257,8 +1258,6 @@
     <script src="/static/js/trade.js?v=48"></script>
     <script src="/static/js/forum.js?v=50"></script>
     <script src="/static/js/wallet.js?v=47"></script>
-    <script src="/static/js/debate.js?v=47"></script>
-    <script src="/static/js/committeeManager.js?v=47"></script>
     <script src="/static/scam-tracker/js/scam-tracker.js?v=48"></script>
     <script src="/static/js/safetyTab.js?v=52"></script>
     <script src="/static/js/admin.js?v=2"></script>
@@ -1480,11 +1479,6 @@
                 // 確保 LLM 模型列表已更新
                 if (typeof window.updateAvailableModels === 'function') {
                     window.updateAvailableModels();
-                }
-
-                // 🌟 確保 Committee Manager 被重新初始化 (因為 Settings UI 是動態注入的)
-                if (window.CommitteeManager && typeof window.CommitteeManager.init === 'function') {
-                    window.CommitteeManager.init();
                 }
 
                 // 更新 OKX 連接狀態 UI
