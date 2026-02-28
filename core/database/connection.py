@@ -473,6 +473,9 @@ def init_db():
     c.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'user'")
     c.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE")
 
+    # Migration: drop unused columns (safe to re-run with IF EXISTS)
+    c.execute("ALTER TABLE scam_report_comments DROP COLUMN IF EXISTS attachment_url")
+
     # 建立會員支付記錄表 (Membership Payments)
     c.execute('''
         CREATE TABLE IF NOT EXISTS membership_payments (
@@ -712,7 +715,6 @@ def init_db():
             user_id TEXT NOT NULL,
             content TEXT NOT NULL,
             transaction_hash TEXT,
-            attachment_url TEXT,
             is_hidden INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
