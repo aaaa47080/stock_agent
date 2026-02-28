@@ -201,6 +201,8 @@ const AuthManager = {
                 username: syncResult.user.username,
                 accessToken: syncResult.access_token,
                 authMethod: syncResult.user.auth_method,
+                role: syncResult.user.role || 'user',
+                membership_tier: syncResult.user.membership_tier || 'free',
                 pi_uid: auth.user.uid,
                 pi_username: auth.user.username,
                 piAccessToken: auth.accessToken
@@ -253,6 +255,16 @@ const AuthManager = {
         try {
             const configRes = await fetch('/api/config');
             const config = await configRes.json();
+
+            // Show/hide dev-user-switcher based on test_mode
+            const switcher = document.getElementById('dev-user-switcher');
+            if (switcher) {
+                if (config.test_mode) {
+                    switcher.classList.remove('hidden');
+                } else {
+                    switcher.classList.add('hidden');
+                }
+            }
 
             if (config.test_mode && !this.currentUser) {
                 console.log('🧪 [Test Mode] 自動登入測試用戶（透過 dev-login endpoint）');

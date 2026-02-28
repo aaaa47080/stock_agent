@@ -172,7 +172,7 @@ def create_or_get_pi_user(pi_uid: str, username: str) -> Dict:
     c = conn.cursor()
     try:
         # 檢查 pi_uid 是否已存在
-        c.execute('SELECT user_id, username, auth_method, pi_username FROM users WHERE pi_uid = %s', (pi_uid,))
+        c.execute('SELECT user_id, username, auth_method, pi_username, role, membership_tier FROM users WHERE pi_uid = %s', (pi_uid,))
         row = c.fetchone()
         if row:
             print(f"[DEBUG] Found existing Pi user: {row}")
@@ -185,6 +185,8 @@ def create_or_get_pi_user(pi_uid: str, username: str) -> Dict:
                 "user_id": row[0],
                 "username": row[1],
                 "auth_method": row[2],
+                "role": row[4] or "user",
+                "membership_tier": row[5] or "free",
                 "is_new": False
             }
 
@@ -220,6 +222,8 @@ def create_or_get_pi_user(pi_uid: str, username: str) -> Dict:
             "user_id": user_id,
             "username": username,
             "auth_method": "pi_network",
+            "role": "user",
+            "membership_tier": "free",
             "is_new": True
         }
     except ValueError:

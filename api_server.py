@@ -98,6 +98,14 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"⚠️ 資料庫初始化失敗: {e}")
             logger.warning("⏭️ 應用程式將繼續運行，部分功能可能無法使用")
+
+        # Seed tools catalog (idempotent — skips existing rows)
+        try:
+            from core.database.tools import seed_tools_catalog
+            await loop.run_in_executor(None, seed_tools_catalog)
+            logger.info("✅ Tools catalog seeded")
+        except Exception as e:
+            logger.warning(f"⚠️ Tools catalog seeding failed: {e}")
     else:
         logger.info("⏭️ 跳過資料庫初始化 (SKIP_DB_INIT=true)")
 

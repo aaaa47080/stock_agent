@@ -206,7 +206,9 @@ async def sync_pi_user(request: PiUserSyncRequest):
             "user": {
                 "user_id": result["user_id"],
                 "username": result["username"],
-                "auth_method": result["auth_method"]
+                "auth_method": result["auth_method"],
+                "role": result.get("role", "user"),
+                "membership_tier": result.get("membership_tier", "free"),
             },
             "is_new_user": result.get("is_new", False)
         }
