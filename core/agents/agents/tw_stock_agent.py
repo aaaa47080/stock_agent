@@ -115,28 +115,54 @@ class TWStockAgent:
         )
 
     def _extract_ticker(self, description: str) -> str:
-        """Try to extract a TW ticker from the description text."""
+        """
+        Extract TW stock ticker from description.
+
+        Strategy:
+        1. Explicit [TICKER] prefix injected by _plan_node (e.g., [2330.TW])
+        2. Symbol resolver: numeric code or company name
+        3. LLM fallback: "你是台股專家，萃取股票代碼，只回傳代碼，無法辨識回傳 None"
+        """
         import re
 
-        # Try direct digit match first
-        match = re.search(r'\b(\d{4,6})\b', description)
-        if match:
-            resolved = self.resolver.resolve(match.group(1))
+        # 1. Fast path: explicit prefix "[2330.TW] ..." from _plan_node
+        prefix_match = re.match(r'^\[([^\]]+)\]', description.strip())
+        if prefix_match:
+            candidate = prefix_match.group(1)
+            resolved = self.resolver.resolve(candidate)
             if resolved:
                 return resolved
 
-        # Try resolver on whole description or key noun phrases
-        # Split by common delimiters and try each word
-        words = re.split(r'[\s,，。！？、「」【】]+', description)
+        # 2. Symbol resolver: try numeric code, then word-by-word
+        digit_match = re.search(r'\b(\d{4,6})\b', description)
+        if digit_match:
+            resolved = self.resolver.resolve(digit_match.group(1))
+            if resolved:
+                return resolved
+
+        words = re.split(r'[\s,，。！？、「」【】\[\]]+', description)
         for word in words:
             if 2 <= len(word) <= 8:
                 resolved = self.resolver.resolve(word)
                 if resolved:
                     return resolved
 
-        # Try the whole description as a last resort
-        resolved = self.resolver.resolve(description[:20])
-        return resolved or ""
+        # 3. LLM fallback — handles any form of company name
+        if self.llm:
+            try:
+                prompt_text = PromptRegistry.render(
+                    "tw_stock_agent", "extract_symbol",
+                    description=description
+                )
+                response = self.llm.invoke([HumanMessage(content=prompt_text)])
+                result = response.content.strip().split()[0]
+                if result.upper() != "NONE" and re.match(r'^\d{4,6}$', result):
+                    resolved = self.resolver.resolve(result)
+                    return resolved or result
+            except Exception:
+                pass
+
+        return ""
 
     def _get_company_name(self, ticker: str) -> str:
         """Lookup company name from resolved ticker."""
@@ -148,32 +174,34 @@ class TWStockAgent:
         return ""
 
     def _classify_intent(self, query: str) -> dict:
-        """Determine which data categories are relevant to the query."""
-        q = query.lower()
-
-        tech_kw  = ["技術", "rsi", "macd", "kd", "均線", "ma", "k線", "走勢", "technical"]
-        fund_kw  = ["基本面", "本益比", "pe", "eps", "獲利", "財報", "殖利率", "stock price"]
-        inst_kw  = ["法人", "外資", "投信", "自營", "籌碼", "買超", "賣超"]
-        news_kw  = ["新聞", "消息", "動態", "最新", "近況", "利多", "利空", "事件"]
-        price_kw = ["價格", "現價", "多少", "price", "報價"]
-
-        has_tech  = any(k in q for k in tech_kw)
-        has_fund  = any(k in q for k in fund_kw)
-        has_inst  = any(k in q for k in inst_kw)
-        has_news  = any(k in q for k in news_kw)
-        has_price = any(k in q for k in price_kw)
-
-        # If none specifically detected, fetch price + technical + news (default full view)
-        if not any([has_tech, has_fund, has_inst, has_news, has_price]):
-            return {"price": True, "technical": True, "fundamentals": False, "institutional": False, "news": True}
-
-        return {
-            "price":        has_price or has_tech,
-            "technical":    has_tech or (not any([has_fund, has_inst, has_news])),
-            "fundamentals": has_fund,
-            "institutional": has_inst,
-            "news":         has_news,
+        """
+        Use LLM to determine which data categories are needed.
+        Returns dict with boolean flags for each data category.
+        """
+        default_full = {
+            "price": True, "technical": True, "fundamentals": False,
+            "institutional": False, "news": True,
         }
+        if not self.llm:
+            return default_full
+
+        try:
+            prompt_text = PromptRegistry.render(
+                "tw_stock_agent", "classify_intent",
+                query=query
+            )
+            response = self.llm.invoke([HumanMessage(content=prompt_text)])
+            import json, re
+            raw = response.content.strip()
+            m = re.search(r'\{[^}]+\}', raw, re.DOTALL)
+            if m:
+                data = json.loads(m.group())
+                keys = ["price", "technical", "fundamentals", "institutional", "news"]
+                return {k: bool(data.get(k, False)) for k in keys}
+        except Exception:
+            pass
+
+        return default_full
 
     def _run_tool(self, tool_name: str, args: dict):
         """Run a registered tool, return result or empty fallback."""

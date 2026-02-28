@@ -356,25 +356,39 @@ async function deleteSelectedSessions(btnElement) {
         btnElement.classList.add('opacity-50', 'cursor-not-allowed');
     }
 
+    // ── Optimistic UI: remove all selected items + toolbar immediately ───────
+    const toDelete = Array.from(selectedSessions);
+    toDelete.forEach(sid => {
+        const div = document.querySelector(`[data-session-id="${sid}"]`);
+        if (div) div.remove();
+    });
+    // Remove edit toolbar immediately so the count/buttons don't linger
+    document.querySelector('#chat-session-list .edit-toolbar')?.remove();
+
+    // 如果當前 session 被刪除了，清空聊天區域
+    if (selectedSessions.has(currentSessionId)) {
+        currentSessionId = null;
+        showWelcomeScreen();
+    }
+
+    // Clear any HITL context for deleted sessions
+    if (_hitlContext?.sessionId && selectedSessions.has(_hitlContext.sessionId)) {
+        _hitlContext = null;
+    }
+
+    // 清空選中並退出編輯模式
+    selectedSessions.clear();
+    isEditMode = false;
+
     try {
         const token = AuthManager.currentUser.accessToken;
-        const deletePromises = Array.from(selectedSessions).map(sessionId =>
+        await Promise.all(toDelete.map(sessionId =>
             fetch(`/api/chat/sessions/${sessionId}`, {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${token}` }
             })
-        );
-        await Promise.all(deletePromises);
-
-        // 如果當前 session 被刪除了，清空聊天區域
-        if (selectedSessions.has(currentSessionId)) {
-            currentSessionId = null;
-            showWelcomeScreen();
-        }
-
-        // 清空選中並退出編輯模式
-        selectedSessions.clear();
-        isEditMode = false;
+        ));
+        // Rebuild sidebar (clears edit toolbar and syncs with server)
         await loadSessions();
     } catch (e) {
         console.error("Failed to delete sessions:", e);
@@ -382,6 +396,7 @@ async function deleteSelectedSessions(btnElement) {
             btnElement.disabled = false;
             btnElement.classList.remove('opacity-50', 'cursor-not-allowed');
         }
+        await loadSessions();
     }
 }
 
@@ -546,28 +561,27 @@ async function deleteSession(event, sessionId) {
         if (!nextSessionId) showWelcomeScreen();
     }
 
+    // Clear any lingering HITL context for this session to prevent ghost re-creation
+    if (_hitlContext?.sessionId === sessionId) _hitlContext = null;
+
     // ── Step 2: Fire DELETE + load next session history in parallel ───────────
+    // No need to call loadSessions() — optimistic UI already removed the item
     try {
         const token = AuthManager.currentUser.accessToken;
-        const deletePromise = fetch(`/api/chat/sessions/${sessionId}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        // Start loading next session's history immediately (if applicable)
-        const historyPromise = (wasActive && nextSessionId)
-            ? loadChatHistory(nextSessionId)
-            : Promise.resolve();
-
-        await deletePromise;
-        // Sync sessions sidebar after DELETE, alongside any remaining history load
-        await Promise.all([loadSessions(), historyPromise]);
+        await Promise.all([
+            fetch(`/api/chat/sessions/${sessionId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            }),
+            (wasActive && nextSessionId) ? loadChatHistory(nextSessionId) : Promise.resolve()
+        ]);
     } catch (e) {
         console.error("Failed to delete session:", e);
         if (btnElement) {
             btnElement.disabled = false;
             btnElement.classList.remove('opacity-50', 'cursor-not-allowed');
         }
+        // Restore sidebar on failure
         await loadSessions();
     }
 }
@@ -690,29 +704,23 @@ window.submitPreResearch = function () {
     window.submitHITLAnswer('confirm');
 };
 
-// ── HITL Question Detection ───────────────────────────────────────────────────
-// Returns true if the user input looks like a conversational question (not a plan modification)
-function _isDiscussionQuestion(text) {
-    const t = text.trim();
-    const QUESTION_STARTERS = [
-        '你覺得', '你認為', '你建議', '你怎麼看', '你的看法', '你的意見',
-        '哪個', '哪則', '哪一', '哪些', '哪種', '哪裡',
-        '為什麼', '什麼是', '什麼意思', '什麼叫', '怎麼', '如何', '多少', '幾個',
-        '是否', '有沒有', '能不能', '可以', '請問', '告訴我', '解釋',
-        'what', 'which', 'how', 'why', 'who', 'when', 'where',
-        'is ', 'are ', 'do ', 'does ', 'can ', 'could ', 'would ', 'should ', 'will ',
-        'tell me', 'explain', 'what is',
-    ];
-    if (t.endsWith('?') || t.endsWith('？')) return true;
-    const lower = t.toLowerCase();
-    return QUESTION_STARTERS.some(s => lower.startsWith(s.toLowerCase()));
-}
+// ── Removed client-side _isDiscussionQuestion check to rely on backend ──
 
 // ── Plan Card (confirm_plan HITL) ──────────────────────────────────────────────
 
 function renderPlanCard(interruptData, targetDiv) {
     if (!targetDiv) return;
     const plan = interruptData.plan || [];
+
+    // 計畫為空時顯示錯誤訊息，不渲染空計畫卡
+    if (plan.length === 0) {
+        targetDiv.innerHTML = `
+            <div class="rounded-2xl border border-red-500/20 bg-red-500/5 px-5 py-4 text-sm text-textMuted">
+                ⚠️ 無法為此查詢建立執行計畫，請換個方式描述您的問題。
+            </div>`;
+        return;
+    }
+
     const message = interruptData.message || '針對您的問題，我規劃了以下分析步驟：';
 
     const stepsHtml = plan.map(t => `
@@ -878,8 +886,8 @@ window.togglePlanStep = function (step) {
 };
 
 window.executePlan = function (mode) {
-    if (mode === 'cancel') { window.submitHITLAnswer('取消'); return; }
-    if (mode === 'all') { window.submitHITLAnswer('執行'); return; }
+    if (mode === 'cancel') { window.submitHITLAnswer(JSON.stringify({action: 'cancel'})); return; }
+    if (mode === 'all') { window.submitHITLAnswer(JSON.stringify({action: 'execute'})); return; }
 
     if (mode === 'custom') {
         // Check negotiation text first
@@ -1138,21 +1146,11 @@ async function sendMessage() {
         // Clear input immediately
         input.value = '';
 
-        // If it's a plan confirmation or pre_research, check if this is a question or modification
+        // If it's a plan confirmation or pre_research, send the user's raw text 
+        // and let the backend's LLM determine if it's a question, modification, or confirmation.
         if (hitlType === 'confirm_plan' || hitlType === 'pre_research') {
             appendMessage('user', text);
-            const isQuestion = _isDiscussionQuestion(text);
-            if (isQuestion) {
-                // User is asking a question about the plan/data — cancel the card and answer via chat
-                window.submitHITLAnswer(JSON.stringify({ action: 'discuss_question', text: text }));
-            } else {
-                // User is giving a direction/modification — keep HITL flow
-                if (hitlType === 'confirm_plan') {
-                    window.submitHITLAnswer(JSON.stringify({ action: 'modify_request', text: text }));
-                } else {
-                    window.submitHITLAnswer(text);
-                }
-            }
+            window.submitHITLAnswer(text);
             return;
         }
 

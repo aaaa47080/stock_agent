@@ -61,8 +61,6 @@ class USStockAgent:
                 quality="fail",
             )
 
-        company_name = self._get_company_name(ticker)
-
         # 2. Classify intent
         intent = self._classify_intent(task.description)
 
@@ -112,6 +110,9 @@ class USStockAgent:
                 )
             return json.dumps(d, ensure_ascii=False, indent=2, default=str)
 
+        # Get company name from price_data (yfinance shortName) — no hardcode needed
+        company_name = self._get_company_name(ticker, price_data)
+
         # 5. Render prompt with multi-language support
         prompt = PromptRegistry.render(
             "us_stock_agent", "analysis", language,
@@ -160,201 +161,72 @@ class USStockAgent:
 
     def _extract_ticker(self, description: str) -> str:
         """
-        Extract US stock ticker from description.
-        
+        Extract US stock ticker from description using LLM as primary resolver.
+
         Strategy:
-        1. Try direct match for uppercase letters (e.g., AAPL, TSLA)
-        2. Try company name lookup (case-insensitive, longer names first)
-        3. Return UNKNOWN if not found
+        1. Explicit [TICKER] prefix injected by _plan_node (zero-cost fast path)
+        2. LLM: "你是美股專家，萃取股票代碼，只回傳代碼，無法辨識回傳 None"
         """
         import re
-        
-        # Try direct match for uppercase letters (2-5 chars)
-        match = re.search(r'\b([A-Z]{2,5})\b', description)
-        if match:
-            candidate = match.group(1)
-            # Filter out common words
-            stopwords = {
-                "A", "I", "IS", "IN", "OF", "THE", "AND", "OR", "FOR", 
-                "BTC", "ETH", "SOL", "ADA", "DOT", "PI", "USD", "EUR",
-                "RSI", "MACD", "MA", "KD", "PE", "EPS", "ROE", "CEO", "CFO",
-            }
-            if candidate not in stopwords:
-                return candidate
-        
-        # Try company name lookup (case-insensitive)
-        company_names = {
-            "APPLE": "AAPL",
-            "MICROSOFT": "MSFT",
-            "GOOGLE": "GOOGL",
-            "ALPHABET": "GOOGL",
-            "AMAZON": "AMZN",
-            "TESLA": "TSLA",
-            "META": "META",
-            "FACEBOOK": "META",
-            "NVIDIA": "NVDA",
-            "NETFLIX": "NFLX",
-            "INTEL": "INTC",
-            "AMD": "AMD",
-            "ADVANCED MICRO DEVICES": "AMD",
-            "JPMORGAN": "JPM",
-            "JPMORGAN CHASE": "JPM",
-            "BANK OF AMERICA": "BAC",
-            "WALMART": "WMT",
-            "EXXON": "XOM",
-            "EXXON MOBIL": "XOM",
-            "JOHNSON & JOHNSON": "JNJ",
-            "J&J": "JNJ",
-            "VISA": "V",
-            "PROCTER & GAMBLE": "PG",
-            "P&G": "PG",
-            "BERKSHIRE HATHAWAY": "BRK",
-            "UNITEDHEALTH": "UNH",
-            "HOME DEPOT": "HD",
-            "MASTERCARD": "MA",
-            "CHEVRON": "CVX",
-            "COCA COLA": "KO",
-            "COCA-COLA": "KO",
-            "PEPSI": "PEP",
-            "PEPSICO": "PEP",
-            "ABBVIE": "ABBV",
-            "PFIZER": "PFE",
-            "MERCK": "MRK",
-            "DISNEY": "DIS",
-            "WALT DISNEY": "DIS",
-            "CISCO": "CSCO",
-            "VERIZON": "VZ",
-            "COMCAST": "CMCSA",
-            "ADOBE": "ADBE",
-            "SALESFORCE": "CRM",
-            "ORACLE": "ORCL",
-            "IBM": "IBM",
-            "BOEING": "BA",
-            "GOLDMAN SACHS": "GS",
-            "MORGAN STANLEY": "MS",
-            "AMERICAN EXPRESS": "AXP",
-            "AMEX": "AXP",
-            "MCDONALD": "MCD",
-            "MCDONALD'S": "MCD",
-            "NIKE": "NKE",
-            "STARBUCKS": "SBUX",
-            "COSTCO": "COST",
-            "TARGET": "TGT",
-        }
-        
-        desc_upper = description.upper()
-        # Sort by length (longer names first) to avoid partial matches
-        for name in sorted(company_names.keys(), key=len, reverse=True):
-            if name in desc_upper:
-                return company_names[name]
-        
+
+        # 1. Fast path: explicit prefix "[SMCI] ..." put by _plan_node
+        prefix_match = re.match(r'^\[([A-Z]{1,6})\]', description.strip())
+        if prefix_match:
+            return prefix_match.group(1)
+
+        # 2. LLM as primary extractor — handles any language, any format
+        if self.llm:
+            try:
+                prompt_text = PromptRegistry.render(
+                    "us_stock_agent", "extract_symbol",
+                    description=description
+                )
+                response = self.llm.invoke([HumanMessage(content=prompt_text)])
+                result = response.content.strip().upper().split()[0]
+                if result != "NONE" and re.match(r'^[A-Z]{1,6}$', result):
+                    return result
+            except Exception:
+                pass
+
         return "UNKNOWN"
 
-    def _get_company_name(self, ticker: str) -> str:
-        """Lookup company name from ticker."""
-        company_map = {
-            "AAPL": "Apple Inc.",
-            "MSFT": "Microsoft Corporation",
-            "GOOGL": "Alphabet Inc. Class A",
-            "GOOG": "Alphabet Inc. Class C",
-            "AMZN": "Amazon.com Inc.",
-            "TSLA": "Tesla Inc.",
-            "META": "Meta Platforms Inc.",
-            "NVDA": "NVIDIA Corporation",
-            "NFLX": "Netflix Inc.",
-            "INTC": "Intel Corporation",
-            "AMD": "Advanced Micro Devices Inc.",
-            "JPM": "JPMorgan Chase & Co.",
-            "BAC": "Bank of America Corporation",
-            "WMT": "Walmart Inc.",
-            "XOM": "Exxon Mobil Corporation",
-            "JNJ": "Johnson & Johnson",
-            "V": "Visa Inc.",
-            "PG": "Procter & Gamble Co.",
-            "BRK": "Berkshire Hathaway Inc.",
-            "UNH": "UnitedHealth Group Inc.",
-            "HD": "Home Depot Inc.",
-            "MA": "Mastercard Inc.",
-            "CVX": "Chevron Corporation",
-            "KO": "Coca-Cola Company",
-            "PEP": "PepsiCo Inc.",
-            "ABBV": "AbbVie Inc.",
-            "PFE": "Pfizer Inc.",
-            "MRK": "Merck & Co. Inc.",
-            "DIS": "Walt Disney Company",
-            "CSCO": "Cisco Systems Inc.",
-            "VZ": "Verizon Communications Inc.",
-            "CMCSA": "Comcast Corporation",
-            "ADBE": "Adobe Inc.",
-            "CRM": "Salesforce Inc.",
-            "ORCL": "Oracle Corporation",
-            "IBM": "International Business Machines",
-            "BA": "Boeing Company",
-            "GS": "Goldman Sachs Group Inc.",
-            "MS": "Morgan Stanley",
-            "AXP": "American Express Company",
-            "MCD": "McDonald's Corporation",
-            "NKE": "Nike Inc.",
-            "SBUX": "Starbucks Corporation",
-            "COST": "Costco Wholesale Corporation",
-            "TGT": "Target Corporation",
-        }
-        return company_map.get(ticker, "")
+    def _get_company_name(self, ticker: str, price_data: dict = None) -> str:
+        """Get company name from price_data (yfinance shortName) or return ticker as fallback."""
+        if price_data and isinstance(price_data, dict):
+            name = price_data.get("name") or price_data.get("shortName") or price_data.get("longName")
+            if name and name != ticker:
+                return name
+        return ticker
 
     def _classify_intent(self, query: str) -> dict:
         """
-        Determine which data categories are relevant to the query.
-        
-        Keywords for each category:
-        - technical: RSI, MACD, MA, trend, chart, 技術，技术
-        - fundamental: PE, EPS, revenue, 基本面，估值，financial
-        - earnings: earning, 财报，財報，EPS, revenue
-        - news: news, 消息，新闻，動態，动态
-        - price: price, 價格，价格，quote, 股價，股价
-        - institutional: institutional, 機構，机构，holding, 持倉
+        Use LLM to determine which data categories are needed.
+        Returns dict with boolean flags for each data category.
         """
-        q = query.lower()
-        
-        tech_kw = [
-            "technical", "rsi", "macd", "ma", "trend", "chart", 
-            "技術", "技术", "指標", "指标", "均線", "均线", "kd", "bollinger"
-        ]
-        fund_kw = [
-            "fundamental", "pe", "eps", "revenue", "基本面", "估值",
-            "financial", "profit", "margin", "roe", "roa", "debt",
-            "價值", "价值", "評估", "评估"
-        ]
-        earn_kw = ["earning", "财报", "財報", "eps", "revenue", "quarterly", "quarter"]
-        news_kw = ["news", "消息", "新闻", "動態", "动态", "latest", "recent"]
-        price_kw = ["price", "價格", "价格", "quote", "股價", "股价", "current", "now"]
-        inst_kw = ["institutional", "機構", "机构", "holding", "持倉", "持仓", "fund"]
-        
-        has_tech = any(k in q for k in tech_kw)
-        has_fund = any(k in q for k in fund_kw)
-        has_earn = any(k in q for k in earn_kw)
-        has_news = any(k in q for k in news_kw)
-        has_price = any(k in q for k in price_kw)
-        has_inst = any(k in q for k in inst_kw)
-        
-        # Default: fetch price + technical + news (most common use case)
-        if not any([has_tech, has_fund, has_earn, has_news, has_price, has_inst]):
-            return {
-                "price": True,
-                "technical": True,
-                "fundamentals": False,
-                "earnings": False,
-                "news": True,
-                "institutional": False,
-            }
-        
-        return {
-            "price": has_price or has_tech,  # Always need price for technical analysis
-            "technical": has_tech,
-            "fundamentals": has_fund,
-            "earnings": has_earn,
-            "news": has_news,
-            "institutional": has_inst,
+        default_full = {
+            "price": True, "technical": True, "fundamentals": False,
+            "earnings": False, "news": True, "institutional": False,
         }
+        if not self.llm:
+            return default_full
+
+        try:
+            prompt_text = PromptRegistry.render(
+                "us_stock_agent", "classify_intent",
+                query=query
+            )
+            response = self.llm.invoke([HumanMessage(content=prompt_text)])
+            import json, re
+            raw = response.content.strip()
+            m = re.search(r'\{[^}]+\}', raw, re.DOTALL)
+            if m:
+                data = json.loads(m.group())
+                keys = ["price", "technical", "fundamentals", "earnings", "news", "institutional"]
+                return {k: bool(data.get(k, False)) for k in keys}
+        except Exception:
+            pass
+
+        return default_full
 
     def _run_tool(self, tool_name: str, args: dict):
         """

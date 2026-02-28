@@ -31,8 +31,8 @@ class ChatAgent:
         if self._is_price_query(task, query):
             return self._handle_price_query(query, task, language)
 
-        # Build system prompt from registry
-        system_prompt = PromptRegistry.get("chat_agent", "system", language)
+        # Build system prompt from registry (use render so {current_time_tw} gets filled)
+        system_prompt = PromptRegistry.render("chat_agent", "system", language)
 
         # Build response prompt
         history = "這是新對話的開始" if language == "zh-TW" else "This is the start of a new conversation"
@@ -69,16 +69,20 @@ class ChatAgent:
         )
 
     def _is_price_query(self, task: SubTask, query: str) -> bool:
-        """Detect if the task is a simple price query."""
+        """Use LLM to detect if the task is a simple crypto price query."""
         if task.tool_hint == "get_crypto_price":
             return True
-        query_lower = query.lower()
-        price_keywords = ['價格', '多少錢', '多少', '現價', '現在價格', 'price', '報價']
-        has_price_keyword = any(kw in query_lower for kw in price_keywords)
-        # Only treat as price query if it doesn't also ask for analysis
-        analysis_keywords = ['分析', '技術', 'rsi', 'macd', '走勢分析', '指標']
-        has_analysis_keyword = any(kw in query_lower for kw in analysis_keywords)
-        return has_price_keyword and not has_analysis_keyword
+        try:
+            prompt = (
+                "判斷以下使用者訊息是否為「單純查詢加密貨幣即時價格」的請求。\n"
+                "只回傳 true 或 false，不加任何說明。\n"
+                "若訊息包含分析、技術指標、趨勢判斷等需求，回傳 false。\n\n"
+                f"使用者訊息：{query}"
+            )
+            response = self.llm.invoke([HumanMessage(content=prompt)])
+            return response.content.strip().lower().startswith("true")
+        except Exception:
+            return False
 
     def _handle_price_query(self, query: str, task: SubTask, language: str = "zh-TW") -> AgentResult:
         """Handle a simple price lookup query."""
@@ -162,18 +166,19 @@ class ChatAgent:
             return f"### 💰 **{symbol}**\n\n```json\n{str(data)}\n```"
 
     def _extract_symbol(self, description: str) -> str:
-        """Extract crypto symbol from description."""
-        crypto_map = {
-            'BTC': ['btc', 'bitcoin', '比特幣', '比特币'],
-            'ETH': ['eth', 'ethereum', '以太坊'],
-            'SOL': ['sol', 'solana'],
-            'PI': ['pi', 'pi network', 'pi 幣', 'pi 币'],
-            'DOGE': ['doge', 'dogecoin'],
-            'XRP': ['xrp', 'ripple'],
-            'BNB': ['bnb', 'binance'],
-        }
-        desc_lower = description.lower()
-        for symbol, keywords in crypto_map.items():
-            if any(kw in desc_lower for kw in keywords):
-                return symbol
+        """Use LLM to extract crypto symbol from description."""
+        try:
+            prompt = (
+                "你是加密貨幣專家。從以下使用者訊息中萃取加密貨幣交易代號（ticker）。\n"
+                "只回傳代號本身（如 BTC、ETH、SOL），不加任何說明。\n"
+                "若無法辨識，回傳 BTC。\n\n"
+                f"使用者訊息：{description}"
+            )
+            response = self.llm.invoke([HumanMessage(content=prompt)])
+            result = response.content.strip().upper().split()[0]
+            import re
+            if re.match(r'^[A-Z]{2,10}$', result):
+                return result
+        except Exception:
+            pass
         return "BTC"

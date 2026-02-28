@@ -221,6 +221,16 @@ from .price_alerts import (
     count_user_alerts,
 )
 
+# 工具系統
+from .tools import (
+    seed_tools_catalog,
+    get_allowed_tools,
+    check_tool_quota,
+    increment_tool_usage,
+    get_tools_for_frontend,
+    update_user_tool_preference,
+)
+
 
 # 定義公開 API
 __all__ = [
@@ -375,4 +385,11 @@ __all__ = [
     'get_active_alerts',
     'mark_alert_triggered',
     'count_user_alerts',
+    # 工具系統
+    'seed_tools_catalog',
+    'get_allowed_tools',
+    'check_tool_quota',
+    'increment_tool_usage',
+    'get_tools_for_frontend',
+    'update_user_tool_preference',
 ]

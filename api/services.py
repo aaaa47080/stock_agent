@@ -16,7 +16,6 @@ from core.config import (
     MARKET_PULSE_UPDATE_INTERVAL, FUNDING_RATE_UPDATE_INTERVAL,
     SCREENER_UPDATE_INTERVAL_MINUTES
 )
-from analysis.crypto_screener import screen_top_cryptos
 from analysis.market_pulse import get_market_pulse
 from trading.okx_api_connector import OKXAPIConnector
 from data.data_fetcher import get_data_fetcher

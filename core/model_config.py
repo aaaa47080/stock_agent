@@ -1,25 +1,40 @@
 """
 模型配置文件 - 統一管理所有 LLM 模型配置
+
+在此修改模型名稱，全系統自動同步（後端 + 前端）。
 """
 
-# 模型配置
+# ============================================================================
+# 具名常數 —— 在此修改即可全系統生效
+# ============================================================================
+
+OPENAI_DEFAULT_MODEL = "gpt-5-mini"       # OpenAI 預設模型（快速/一般分析）
+OPENAI_PRO_MODEL     = "gpt-5.2-pro"      # OpenAI 進階模型（深度分析）
+OPENAI_LEGACY_MODEL  = "gpt-4o"           # OpenAI 舊版相容模型（保留以便切換）
+GEMINI_DEFAULT_MODEL = "gemini-3.1-flash-preview"  # Google Gemini 預設模型（快速）
+GEMINI_PRO_MODEL     = "gemini-3.1-pro-preview"   # Google Gemini 進階模型
+
+# ============================================================================
+# 模型配置（供前端 /api/model-config 端點使用）
+# ============================================================================
 MODEL_CONFIG = {
     "openai": {
-        "default_model": "gpt-4o-mini",
+        "default_model": OPENAI_DEFAULT_MODEL,
         "available_models": [
-            {"value": "gpt-4o", "display": "gpt-4o"},
-            {"value": "gpt-4o-mini", "display": "gpt-4o-mini"},
-            {"value": "gpt-4-turbo", "display": "gpt-4-turbo"}
+            {"value": OPENAI_LEGACY_MODEL,  "display": OPENAI_LEGACY_MODEL},
+            {"value": OPENAI_DEFAULT_MODEL, "display": OPENAI_DEFAULT_MODEL},
+            {"value": OPENAI_PRO_MODEL,     "display": OPENAI_PRO_MODEL},
         ]
     },
     "google_gemini": {
-        "default_model": "gemini-3-flash-preview",
+        "default_model": GEMINI_DEFAULT_MODEL,
         "available_models": [
-            {"value": "gemini-3-flash-preview", "display": "Gemini 3 Flash Preview"}
+            {"value": GEMINI_DEFAULT_MODEL, "display": "Gemini 3.1 Flash Preview"},
+            {"value": GEMINI_PRO_MODEL,     "display": "Gemini 3.1 Pro Preview"},
         ]
     },
     "openrouter": {
-        "default_model": "gpt-4o-mini",  # 作為參考，實際使用時由用戶自行輸入
+        "default_model": OPENAI_DEFAULT_MODEL,  # 作為參考，實際使用時由用戶自行輸入
         "available_models": []  # OpenRouter 有太多模型，讓用戶自行輸入
     }
 }
@@ -46,7 +61,7 @@ def get_default_model(provider):
     Returns:
         str: 默認模型名稱
     """
-    return MODEL_CONFIG.get(provider, {}).get("default_model", "gpt-4o-mini")
+    return MODEL_CONFIG.get(provider, {}).get("default_model", OPENAI_DEFAULT_MODEL)
 
 def get_all_providers():
     """

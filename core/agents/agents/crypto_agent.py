@@ -109,18 +109,25 @@ class CryptoAgent:
 
     def _extract_symbol(self, description: str, history: str = "", language: str = "zh-TW") -> str:
         """Extract crypto ticker from description, using history for pronoun resolution."""
+        import re
+
+        # Fast path: explicit prefix "[BTC] ..." injected by _plan_node
+        prefix_match = re.match(r'^\[([A-Z]{1,10})\]', description.strip())
+        if prefix_match:
+            return prefix_match.group(1)
+
+        # LLM as primary extractor — handles any language, pronouns, abbreviations
         try:
             history_hint = f"\n\n近期對話歷史：\n{history[-400:]}" if history else ""
-            
-            # 根據語言選擇提示詞
-            if language == "zh-TW":
-                prompt_text = f"從以下文字中提取加密貨幣的交易所 ticker 代號（例如 BTC、ETH、PI、SOL）。若有代詞（它/他/這個幣），請從對話歷史推斷所指幣種。只回覆 ticker（純英文大寫），不要其他文字。若完全無法識別則回覆 BTC。\n\n文字：{description}{history_hint}"
-            elif language == "zh-CN":
-                prompt_text = f"从以下文字中提取加密货币的交易所 ticker 代号（例如 BTC、ETH、PI、SOL）。若有代词（它/他/这个币），请从对话历史推断所指币种。只回复 ticker（纯英文大写），不要其他文字。若完全无法识别则回复 BTC。\n\n文字：{description}{history_hint}"
-            else:
-                prompt_text = f"Extract the exchange ticker symbol from the following text (e.g., BTC, ETH, PI, SOL). If there are pronouns, infer the coin from the conversation history. Reply only with the ticker (uppercase English letters), nothing else. If completely unrecognizable, reply BTC.\n\nText: {description}{history_hint}"
-            
+            prompt_text = PromptRegistry.get(self.name + "_agent", "extract_symbol", language).format(
+                description=description,
+                history_hint=history_hint
+            )
             response = self.llm.invoke([HumanMessage(content=prompt_text)])
-            return response.content.strip().upper().split()[0]
+            result = response.content.strip().upper().split()[0]
+            if result != "NONE":
+                return result
         except Exception:
-            return "BTC"
+            pass
+
+        return "BTC"

@@ -2,22 +2,22 @@ critique:
   description: "Watcher Agent critique prompt"
   template: |
     User Query: {query}
-    
+
     Current Plan Step:
     {step_description}
-    
+
     Execution Result:
     {result}
-    
-    You are the Watcher Agent. Your job is to verify if this result is RELEVANT and USEFUL for answering the User Query.
-    
+
+    You are the Watcher Agent. Verify if this result is RELEVANT and USEFUL for answering the User Query.
+
     Rules:
-    1. If the result is an error or empty -> FAIL.
-    2. If the result is unrelated to the query (e.g., asked for PI, got BTC info without context) -> FAIL (unless it's a general market check).
-    3. If the result is relevant -> PASS.
-    
-    Output JSON only:
+    1. FAIL — result is an error, empty, or completely unrelated to the query
+    2. PASS — result contains useful information (even if tangentially related, e.g., BTC market context when asking about PI)
+    3. When in doubt, lean toward PASS
+
+    Output JSON only (feedback ≤ 30 words):
     {{
       "status": "PASS" or "FAIL",
-      "feedback": "Short explanation of why it failed or what is missing."
+      "feedback": "One sentence explaining why."
     }}

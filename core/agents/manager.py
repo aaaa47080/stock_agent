@@ -35,7 +35,6 @@ from .agent_registry import AgentRegistry
 from .tool_registry import ToolRegistry
 from .router import AgentRouter
 # from .hitl import HITLManager
-from .codebook import Codebook
 from .prompt_registry import PromptRegistry
 from .watcher import WatcherAgent
 from core.tools.universal_resolver import UniversalSymbolResolver
@@ -45,6 +44,9 @@ _checkpointer = MemorySaver()
 
 
 AGENT_ICONS: Dict[str, str] = {
+    "crypto":        "🪙",
+    "tw_stock":      "📈",
+    "us_stock":      "🦅",
     "full_analysis": "📊",
     "technical":     "📈",
     "sentiment":     "💬",
@@ -72,7 +74,6 @@ class ManagerState(TypedDict):
     agent_results: NotRequired[Optional[List[dict]]]
     user_clarifications: NotRequired[Optional[List[str]]]
     retry_count: NotRequired[Optional[int]]
-    codebook_entry_id: NotRequired[Optional[str]]
     final_response: NotRequired[Optional[str]]
     plan_confirmed: NotRequired[Optional[bool]]
     history: NotRequired[Optional[str]]             # 從 DB 載入的對話歷史（純文字）
@@ -100,6 +101,7 @@ class ManagerState(TypedDict):
     discuss_mode: NotRequired[Optional[bool]]             # True = discussion mode active
     discuss_plan_snapshot: NotRequired[Optional[List[dict]]]  # frozen plan being discussed
     replan_request: NotRequired[Optional[bool]]           # True = user wants a new plan
+    reroute_classify: NotRequired[Optional[bool]]         # True = confirm_plan redirects to classify
 
 
 class ManagerAgent:
@@ -108,14 +110,12 @@ class ManagerAgent:
         llm_client,
         agent_registry: AgentRegistry,
         tool_registry: ToolRegistry,
-        codebook,
         web_mode: bool = False,
     ):
         self.llm = llm_client
         self.agent_registry = agent_registry
         self.tool_registry = tool_registry
         # self.hitl = hitl # Removed
-        self.codebook = codebook
         self.router = AgentRouter(agent_registry)
         self.web_mode = web_mode
         self.progress_callback = None
@@ -141,7 +141,6 @@ class ManagerAgent:
         workflow.add_node("execute",        self._execute_node)
         workflow.add_node("watcher",        self._watcher_node)
         workflow.add_node("synthesize",     self._synthesize_node)
-        workflow.add_node("save",           self._save_node)
 
         workflow.set_entry_point("classify")
 
@@ -149,12 +148,12 @@ class ManagerAgent:
             "clarify":      "clarify",
             "pre_research": "pre_research",   # complex → 先預研究
             "plan":         "plan",           # simple  → 直接規劃
-            "discuss":      "discuss",        # discuss_mode active → continue Q&A
         })
         workflow.add_edge("clarify",      "classify")    # 澄清後重新分類
         workflow.add_conditional_edges("pre_research", self._after_pre_research, {
             "plan": "plan",   # 用戶確認方向 → 進入規劃
-            "save": "save",   # 用戶提問 → 回答後結束
+            "end": END,       # 用戶提問 → 回答後結束
+            "classify": "classify", # 用戶給予全新主題 → 重新分類
         })
 
         workflow.add_conditional_edges("plan", self._after_plan, {
@@ -167,12 +166,13 @@ class ManagerAgent:
         })
         workflow.add_conditional_edges("confirm_plan", self._after_confirm, {
             "execute":   "execute",
-            "negotiate": "negotiate_plan",         # 用戶提出修改 → 協商
-            "discuss":   "discuss",               # 用戶提問 → 討論回答後結束
+            "negotiate": "negotiate_plan",    # 用戶提出修改 → 協商
+            "classify":  "classify",          # 用戶提問 → 取消計畫，走正常 agent 流程
+            "discuss":   "discuss",           # 舊版相容（保留）
             "end":       END,
         })
         workflow.add_edge("negotiate_plan", "confirm_plan")  # 協商後回到確認
-        workflow.add_edge("discuss",        "save")          # 討論回答後儲存結束
+        workflow.add_edge("discuss",        END)             # 討論回答後儲存結束
 
         # Execution Loop: execute -> check -> (execute | watcher)
         workflow.add_conditional_edges("execute", self._after_execute, {
@@ -181,8 +181,7 @@ class ManagerAgent:
         })
         
         workflow.add_edge("watcher",   "synthesize")
-        workflow.add_edge("synthesize", "save")
-        workflow.add_edge("save",       END)
+        workflow.add_edge("synthesize", END)
 
         return workflow.compile(checkpointer=_checkpointer)
 
@@ -257,21 +256,29 @@ class ManagerAgent:
             intent = "chat"
 
         replan_request = bool(data.get("replan_request", False))
+
+        # ── Fallback: Force complex for investment queries just in case LLM classify fails ──
+        invest_keywords = ["投資", "買進", "進場", "分析", "值得買", "買"]
+        if complexity == "simple" and any(k in query for k in invest_keywords) and data.get("topics"):
+            logger.info(f"[Classify] Forcing complexity to 'complex' due to investment keywords in query: {query}")
+            complexity = "complex"
+            if intent == "chat" and symbols:
+                if symbols.get("crypto"): intent = "crypto"
+                elif symbols.get("tw"): intent = "tw_stock"
+                elif symbols.get("us"): intent = "us_stock"
+
         result = {
             "complexity":                 complexity,
             "intent":                     intent,
             "topics":                     data.get("topics", []),
             "ambiguity_question":         data.get("ambiguity_question"),
             "replan_request":             replan_request,
+            "reroute_classify":           False,  # clear flag to prevent loop
             # Reset reflection state for each new query to prevent leakage
             "plan_reflection_count":      0,
             "plan_reflection_suggestion": None,
             "plan_reflection_approved":   None,
         }
-        # If user explicitly re-requests planning, exit discuss mode
-        if replan_request:
-            result["discuss_mode"] = False
-            result["discuss_plan_snapshot"] = None
         return result
 
     async def _clarify_node(self, state: ManagerState) -> dict:
@@ -327,99 +334,11 @@ class ManagerAgent:
         # 4. 格式化 Markdown 摘要
         research_summary = self._format_research_summary(research_data, symbol)
 
-        CONFIRM_TOKENS = {"confirm", "開始規劃", "可以", "ok", "繼續", "執行", ""}
-        clarifications = list(state.get("research_clarifications") or [])
-
-        # 5. HITL 循環：用戶可以問問題或給方向，直到確認為止
-        qa_question = None
-        qa_answer   = None
-        first_iteration = True
-
-        while True:
-            if first_iteration:
-                msg = f"我已整理 **{symbol}** 的即時資料供您參考："
-                summary_tosend = research_summary
-                q_prompt = "想聚焦哪個方向？（例如：只看技術面 / 重點看新聞）若有疑問也可直接問，留空確認開始分析。"
-            else:
-                msg = "還有其他問題嗎？"
-                summary_tosend = None # Suppress summary
-                q_prompt = "若無其他問題，請直接確認開始規劃。"
-
-            payload = {
-                "type":             "pre_research",
-                "message":          msg,
-                "research_summary": summary_tosend,
-                "question":         q_prompt,
-            }
-            # 若有 Q&A 答案，附在 payload 讓前端顯示為主聊天訊息
-            if qa_question and qa_answer:
-                # Embed in message for guaranteed visibility
-                # msg = f"💡 **關於「{qa_question}」的回答**：\n{qa_answer}\n\n(已更新 {symbol} 資料如上)"
-                # Actually, prepend it to the message
-                msg = f"💡 **回答**：{qa_question}\n\n{qa_answer}\n\n---\n{msg}"
-                
-                payload["qa_question"] = qa_question
-                payload["qa_answer"]   = qa_answer
-                payload["message"]     = msg # Update message
-                qa_question = qa_answer = None  # 只傳一次
-
-            user_response = interrupt(payload)
-            first_iteration = False # Mark as not first iteration after interrupt returns
-            # user_response might be a dict (from chat.js wrapper) or string
-            if isinstance(user_response, dict):
-                action = user_response.get("action", "")
-                resp   = user_response.get("text") or user_response.get("value") or ""
-            else:
-                action = ""
-                resp   = str(user_response or "")
-
-            resp = resp.strip()
-
-            # discuss_question action：使用者提問，取消 pre_research，直接以聊天回答
-            if action == "discuss_question" and resp:
-                qa_answer = await self._answer_research_question(resp, research_summary, symbol)
-                print(f"[PreResearch] discuss_question: '{resp}' → '{qa_answer[:60]}...'")
-                return {
-                    "research_data":           research_data,
-                    "research_summary":        research_summary,
-                    "research_clarifications": clarifications,
-                    "is_discussion":           True,
-                    "discussion_question":     resp,
-                    "final_response":          qa_answer,
-                }
-
-            # 確認詞 → 直接進入 plan
-            if resp.lower() in CONFIRM_TOKENS:
-                break
-
-            # 偵測是否為問題（含問號，或以提問詞開頭）
-            QUESTION_STARTERS = (
-                "你覺得", "你認為", "你建議", "哪個", "哪則", "哪一", "哪些",
-                "為什麼", "什麼", "怎麼", "如何", "多少", "幾個", "是否",
-                "What", "Which", "How", "Why", "Who", "When", "Where",
-                "Is", "Are", "Do", "Does", "Can", "Could", "Would", "Should"
-            )
-            resp_stripped = resp.strip()
-            is_question = (
-                resp_stripped.endswith("?") or resp_stripped.endswith("？") or
-                any(resp_stripped.lower().startswith(w.lower()) for w in QUESTION_STARTERS)
-            )
-
-            print(f"[PreResearch] HITL Input: '{resp}' | IsQuestion: {is_question}")
-
-            if is_question:
-                qa_question = resp
-                qa_answer   = await self._answer_research_question(resp, research_summary, symbol)
-                print(f"[PreResearch] QA Answer: {qa_answer[:50]}...")
-            else:
-                # 方向提示 → 加入 clarifications，進入 plan
-                clarifications.append(resp)
-                break
-
+        # pre_research 靜默完成，不中斷使用者，直接帶著資料進入 plan
         return {
             "research_data":           research_data,
             "research_summary":        research_summary,
-            "research_clarifications": clarifications,
+            "research_clarifications": list(state.get("research_clarifications") or []),
         }
 
     async def _answer_research_question(self, question: str, research_summary: str, symbol: str) -> str:
@@ -428,13 +347,11 @@ class ManagerAgent:
         loop = asyncio.get_running_loop()
 
         # 先嘗試從現有資料回答，若 LLM 判斷資料不足則補充 web_search
-        probe_prompt = (
-            f"以下是關於 {symbol} 的即時市場資料：\n\n"
-            f"{research_summary}\n\n"
-            f"用戶問題：{question}\n\n"
-            f"若上述資料已足夠回答問題，請直接回答（繁體中文）。"
-            f"若資料不足（例如問及總發行量、市值、白皮書、開發團隊等標準工具未涵蓋的資訊），"
-            f"請只回覆 JSON：{{\"need_search\": true, \"search_query\": \"具體搜尋關鍵字\"}}"
+        probe_prompt = PromptRegistry.render(
+            "manager", "research_question_probe",
+            symbol=symbol,
+            research_summary=research_summary,
+            question=question
         )
         try:
             response = await loop.run_in_executor(None, lambda: self.llm.invoke([HumanMessage(content=probe_prompt)]))
@@ -456,10 +373,10 @@ class ManagerAgent:
                         print(f"[PreResearch] web_search failed: {e}")
 
                 # 有了搜尋結果，重新請 LLM 回答
-                final_prompt = (
-                    f"用戶問：{question}\n\n"
-                    f"網路搜尋結果：\n{search_result}\n\n"
-                    f"請根據搜尋結果用繁體中文回答，若有連結請保留 Markdown 格式 [標題](url)。"
+                final_prompt = PromptRegistry.render(
+                    "manager", "research_question_final",
+                    question=question,
+                    search_result=search_result
                 )
                 response2 = await loop.run_in_executor(None, lambda: self.llm.invoke([HumanMessage(content=final_prompt)]))
                 return self._llm_content(response2).strip()
@@ -479,11 +396,9 @@ class ManagerAgent:
             candidate = query
 
         try:
-            prompt = (
-                f"從以下文字中提取金融資產的交易代號（ticker），包含加密貨幣（如 BTC、ETH、SOL）"
-                f"或股票（如 AAPL、INTC、TSLA、2330）。"
-                f"只回覆 ticker 本身（純英文大寫縮寫或數字代號），不要其他文字。"
-                f"若無法識別，直接回覆原文字。\n\n文字：{candidate}"
+            prompt = PromptRegistry.render(
+                "manager", "extract_symbol",
+                candidate=candidate
             )
             response = await loop.run_in_executor(None, lambda: self.llm.invoke([HumanMessage(content=prompt)]))
             return self._llm_content(response).strip().upper().split()[0]
@@ -531,27 +446,20 @@ class ManagerAgent:
             return {}
 
         if state.get("complexity") == "simple":
+            # Prepend extracted ticker(s) so sub-agents can identify the symbol
+            topics = state.get("topics") or []
+            ticker_prefix = f"[{' '.join(topics)}] " if topics else ""
             plan = [asdict(SubTask(
                 step=1,
-                description=query,
+                description=f"{ticker_prefix}{query}",
                 agent=state.get("intent", "chat"),
                 tool_hint=None,
             ))]
-            return {"plan": plan, "codebook_entry_id": None}
+            return {"plan": plan, "current_step_index": 0}
 
-        # Complex 任務：LLM planning + codebook 記憶
-        similar = self.codebook.find_similar_entries(
-            query, state.get("intent", "chat"), state.get("topics") or [], limit=3
-        )
+        # Complex 任務：強制交由 LLM 動態規劃，不再依賴 Codebook 樣本複製
         agents_info = self.agent_registry.agents_info_for_prompt()
         tools_info  = ", ".join([t.name for t in self.tool_registry.list_all_tools()])
-
-        past_text = "無"
-        if similar:
-            past_text = ""
-            for i, e in enumerate(similar):
-                plan_summary = "; ".join(f"{t['agent']}: {t['description']}" for t in e.plan)
-                past_text += f"[{i+1}] Query: {e.query}\n    Plan: {plan_summary}\n"
 
         prompt = PromptRegistry.render(
             "manager", "plan",
@@ -559,7 +467,7 @@ class ManagerAgent:
             agent=state.get("intent", "chat"),
             topics=", ".join(state.get("topics") or []),
             clarifications="; ".join(state.get("user_clarifications") or []) or "無",
-            past_experience=past_text,
+            past_experience="無",
             agents_info=agents_info,
             tools_info=tools_info,
             research_summary=state.get("research_summary") or "無",
@@ -573,19 +481,28 @@ class ManagerAgent:
             plan_raw = data.get("plan", [])
             valid_fields = {f.name for f in fields(SubTask)}
             plan = []
+            # 注入 [TOPIC] 前綴，讓 sub-agent 能直接取得 symbol，避免 fallback 到 BTC
+            topics = state.get("topics") or []
+            ticker_prefix = f"[{' '.join(topics)}] " if topics else ""
             for p in plan_raw:
                 task_data = {k: v for k, v in p.items() if k in valid_fields}
-                plan.append(asdict(SubTask(**task_data)))
+                subtask = SubTask(**task_data)
+                if ticker_prefix and not subtask.description.startswith("["):
+                    subtask.description = ticker_prefix + subtask.description
+                plan.append(asdict(subtask))
         except Exception as e:
             import traceback
             print(f"[Manager] plan error: {e}\n{traceback.format_exc()}")
+            plan = []
+
+        # 若計畫為空（LLM 回傳空陣列或解析失敗），建立預設單步計畫
+        if not plan:
             plan = [asdict(SubTask(
                 step=1, description=state["query"],
                 agent=state.get("intent", "chat"), tool_hint=None
             ))]
 
-        codebook_entry_id = similar[0].id if similar else None
-        return {"plan": plan, "codebook_entry_id": codebook_entry_id, "current_step_index": 0}
+        return {"plan": plan, "current_step_index": 0}
 
     async def _reflect_plan_node(self, state: ManagerState) -> dict:
         """Reflection quality gate: checks whether the plan actually answers the user's query.
@@ -686,7 +603,10 @@ class ManagerAgent:
 
         if isinstance(parsed, dict):
             action = parsed.get("action", "")
-            if action == "execute_custom":
+            if action == "execute":
+                # User clicked "Execute All" — confirm immediately, no LLM needed
+                return {"plan_confirmed": True, "plan_negotiating": False, "current_step_index": 0}
+            elif action == "execute_custom":
                 selected = parsed.get("selected_steps", [])
                 filtered = [t for t in plan if t.get("step") in selected]
                 return {
@@ -698,13 +618,16 @@ class ManagerAgent:
             elif action == "cancel":
                 return {"plan_confirmed": False, "plan_negotiating": False}
             elif action == "discuss_question":
-                # User asked a discussion question during plan confirmation — cancel plan, answer in chat
+                # User asked a question — cancel plan, re-route to classify for normal agent handling
                 question_text = parsed.get("text", "").strip()
                 return {
-                    "plan_confirmed":      False,
-                    "plan_negotiating":    False,
-                    "is_discussion":       True,
-                    "discussion_question": question_text,
+                    "plan_confirmed":        False,
+                    "plan_negotiating":      False,
+                    "plan":                  [],
+                    "query":                 question_text,
+                    "reroute_classify":      True,
+                    "discuss_mode":          False,
+                    "discuss_plan_snapshot": None,
                 }
             elif action == "modify_request":
                 # Don't blindly treat as modification — fall through to intent detection below
@@ -731,13 +654,15 @@ class ManagerAgent:
         if intent == "cancel":
             return {"plan_confirmed": False, "plan_negotiating": False}
         if intent == "question":
+            # Cancel plan, re-route to classify — specialized agents will handle the question
             return {
                 "plan_confirmed":        False,
                 "plan_negotiating":      False,
-                "is_discussion":         True,
-                "discussion_question":   text_input,
-                "discuss_mode":          True,
-                "discuss_plan_snapshot": list(plan),   # freeze current plan
+                "plan":                  [],
+                "query":                 text_input,
+                "reroute_classify":      True,
+                "discuss_mode":          False,
+                "discuss_plan_snapshot": None,
             }
         # intent == "modify"
         return {
@@ -754,15 +679,10 @@ class ManagerAgent:
         """
         import asyncio
         loop = asyncio.get_running_loop()
-        prompt = (
-            f"當前分析計畫：\n{plan_text}\n\n"
-            f"使用者輸入：{text}\n\n"
-            f"判斷使用者意圖，只回覆以下一個詞：\n"
-            f"- question：詢問資訊、意見或問題（包含計畫相關問題、市場數據、計畫優缺點等）\n"
-            f"- modify：明確要求修改計畫步驟（如移除、新增、替換某步驟）\n"
-            f"- confirm：確認執行計畫\n"
-            f"- cancel：取消計畫\n\n"
-            f"只回覆一個詞，不加任何標點或說明。"
+        prompt = PromptRegistry.render(
+            "manager", "confirm_intent",
+            plan_text=plan_text,
+            text=text
         )
         try:
             response = await loop.run_in_executor(
@@ -969,75 +889,78 @@ class ManagerAgent:
         import asyncio
         loop = asyncio.get_running_loop()
         plan = state.get("plan") or []
-        results = state.get("agent_results") or []
+        existing_results = state.get("agent_results") or []
         idx = state.get("current_step_index", 0)
-        language = state.get("language", "zh-TW")  # 獲取用戶語言偏好
+        language = state.get("language", "zh-TW")
 
         if idx >= len(plan):
             return {}
 
-        task_dict = plan[idx]
-        task = SubTask(**{k: v for k, v in task_dict.items()
-                          if k in SubTask.__dataclass_fields__})
-        task.context = {
-            "history": self._build_history(state),
-            "language": language,  # 傳遞語言參數給 Agent
-        }
+        history = self._build_history(state)
 
-        logger.info(f"[Manager] Executing step {idx+1}/{len(plan)}: {task.agent} - {task.description}")
-
-        agent = self.router.route(task.agent)
-        if not agent:
-            result_data = {
-                "success": False, 
-                "message": f"Agent {task.agent} not found",
-                "agent_name": task.agent,
-                "step_index": idx
+        async def _run_one(task_dict, step_idx: int) -> dict:
+            task = SubTask(**{k: v for k, v in task_dict.items()
+                              if k in SubTask.__dataclass_fields__})
+            task.context = {
+                "history":  history,
+                "language": language,
             }
-        else:
+            logger.info(f"[Manager] Executing step {step_idx+1}/{len(plan)}: {task.agent} - {task.description}")
+
+            agent = self.router.route(task.agent)
+            if not agent:
+                return {
+                    "success": False,
+                    "message": f"Agent {task.agent} not found",
+                    "agent_name": task.agent,
+                    "step_index": step_idx,
+                }
+
             if self.progress_callback:
                 self.progress_callback({
                     "type": "agent_start",
                     "agent": agent.name,
                     "step": task.step,
-                    "description": task.description
+                    "description": task.description,
                 })
-
             try:
-                # Execute agent in executor to prevent blocking
                 res = await loop.run_in_executor(None, agent.execute, task)
-                
                 result_data = {
                     "success":    res.success,
                     "message":    res.message,
                     "agent_name": res.agent_name,
                     "data":       res.data,
-                    "step_index": idx
+                    "step_index": step_idx,
                 }
-                
                 if self.progress_callback:
                     self.progress_callback({
                         "type": "agent_finish",
                         "agent": res.agent_name,
                         "step": task.step,
-                        "success": res.success
+                        "success": res.success,
                     })
-
             except Exception as e:
                 logger.error(f"[{agent.name}] Execution error: {e}")
                 result_data = {
-                    "success": False, 
-                    "message": f"執行發生錯誤: {str(e)}", 
+                    "success":    False,
+                    "message":    f"執行發生錯誤: {str(e)}",
                     "agent_name": agent.name,
-                    "step_index": idx
+                    "step_index": step_idx,
                 }
+            return result_data
 
-        new_results = list(results) + [result_data]
-        
+        # Run all remaining steps in parallel
+        remaining = plan[idx:]
+        tasks = [_run_one(task_dict, idx + i) for i, task_dict in enumerate(remaining)]
+        new_results = await asyncio.gather(*tasks)
+
+        # Sort by step_index to preserve plan order
+        new_results = sorted(new_results, key=lambda r: r.get("step_index", 0))
+
         return {
-            "agent_results": new_results, 
-            "current_step_index": idx + 1,
-            "retry_count": (state.get("retry_count") or 0)
+            "agent_results": list(existing_results) + list(new_results),
+            "current_step_index": len(plan),   # mark all steps done
+            "retry_count": (state.get("retry_count") or 0),
         }
 
     async def _watcher_node(self, state: ManagerState) -> dict:
@@ -1142,59 +1065,15 @@ class ManagerAgent:
 
         return {"final_response": final}
 
-    async def _save_node(self, state: ManagerState) -> dict:
-        # Saving to codebook might involve IO or vector DB operations, better wrap it.
-        import asyncio
-        loop = asyncio.get_running_loop()
-        
-        complexity = state.get('complexity')
-        has_resp = bool(state.get('final_response'))
-        has_plan = bool(state.get('plan'))
-        logger.info(f"[DEBUG] _save_node: complexity={complexity}, has_response={has_resp}, has_plan={has_plan}")
-        
-        if complexity == "complex" and has_resp and has_plan and not state.get("is_discussion"):
-            def do_save():
-                logger.info("[DEBUG] _save_node: Saving to codebook...")
-                from .hierarchical_memory import MemoryEntry
-                from datetime import datetime
-                plan_clean = [{k: v for k, v in t.items() if k not in ("result", "icon")} for t in (state.get("plan") or [])]
-                entry = MemoryEntry(
-                    id=str(uuid4()),
-                    query=state["query"],
-                    intent=state.get("intent", "chat"),
-                    topics=state.get("topics") or [],
-                    plan=plan_clean,
-                    complexity=complexity,
-                    created_at=datetime.now().isoformat(),
-                    ttl_days=14,
-                )
-                primary_topic = (state.get("topics") or ["DEFAULT"])[0].upper()
-                try:
-                    self.codebook._persist_entry(entry, primary_topic)
-                    self.codebook._cache[entry.id] = entry
-                    self.codebook._update_index(entry)
-                    logger.info(f"[DEBUG] _save_node: Saved entry {entry.id}")
-                    return {"codebook_entry_id": entry.id}
-                except Exception as e:
-                    logger.error(f"[DEBUG] _save_node: Failed to save to codebook: {e}")
-                    return {}
-
-            return await loop.run_in_executor(None, do_save)
-
-        return {}
-
     # ── 路由函數 ─────────────────────────────────────────────────────────────
 
     def _after_pre_research(self, state: ManagerState) -> str:
-        """pre_research 結束後：若使用者提問（discuss_question），直接結束；否則進入 plan。"""
-        return "save" if state.get("is_discussion") else "plan"
+        """pre_research 結束後：若使用者提問（discuss_question），直接結束；若提出全新主題則重新分類；否則進入 plan。"""
+        if state.get("reroute_classify"):
+            return "classify"
+        return "end" if state.get("is_discussion") else "plan"
 
     def _after_classify(self, state: ManagerState) -> str:
-        # Discuss mode: user is in free-form Q&A after a plan was shown
-        # Route to discuss unless user explicitly requested re-planning
-        if state.get("discuss_mode") and not state.get("replan_request"):
-            return "discuss"
-
         if state.get("plan_confirmed"):
             return "plan"   # Multi-market: skip pre_research, plan node will no-op
         if state.get("complexity") == "ambiguous":
@@ -1222,6 +1101,8 @@ class ManagerAgent:
         return "re_plan"       # loop back to plan node for a better plan
 
     def _after_confirm(self, state: ManagerState) -> str:
+        if state.get("reroute_classify"):
+            return "classify"
         if state.get("plan_negotiating"):
             return "negotiate"
         if state.get("is_discussion"):
@@ -1284,7 +1165,6 @@ class ManagerAgent:
         return {
             "agents":          [m.name for m in self.agent_registry.list_all()],
             "tools":           [t.name for t in self.tool_registry.list_all_tools()],
-            "codebook":        self.codebook.stats(),
             "active_sessions": 0,  # checkpointer manages this now
         }
 

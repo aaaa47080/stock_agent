@@ -8,6 +8,7 @@ import json
 import re
 from typing import Dict, Any, List, Union, Optional
 from dotenv import load_dotenv
+from core.model_config import OPENAI_DEFAULT_MODEL, OPENAI_LEGACY_MODEL, GEMINI_DEFAULT_MODEL
 
 # LangChain Imports
 try:
@@ -109,9 +110,9 @@ class LLMClientFactory:
             # Default model names if not provided
             if not model:
                 if provider == "google_gemini":
-                    model = "gemini-1.5-pro"
+                    model = GEMINI_DEFAULT_MODEL
                 else:
-                    model = "gpt-4o"
+                    model = OPENAI_LEGACY_MODEL
 
             logger.info(f"Initializing LLM: Provider={lc_provider}, Model={model}")
             
@@ -205,7 +206,7 @@ def create_llm_client_from_config(config: Dict[str, str], user_client: Any = Non
     Returns:
         (client, model_name)
     """
-    model_from_config = config.get("model", "gpt-4o")
+    model_from_config = config.get("model", OPENAI_DEFAULT_MODEL)
     
     # 1. Use user_client if provided
     if user_client:
@@ -227,7 +228,7 @@ if __name__ == "__main__":
     # Simple Test
     try:
         print("Testing OpenAI Client...")
-        llm = LLMClientFactory.create_client("openai", "gpt-4o-mini")
+        llm = LLMClientFactory.create_client("openai", "gpt-5-mini")
         res = llm.invoke([HumanMessage(content="Hello, say 'test'!")])
         print(f"Response: {res.content}")
     except Exception as e:

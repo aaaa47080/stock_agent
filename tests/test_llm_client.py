@@ -121,7 +121,7 @@ class TestSupportsJsonMode:
         """Test that GPT-4 models support JSON mode"""
         assert supports_json_mode("gpt-4") is True
         assert supports_json_mode("gpt-4o") is True
-        assert supports_json_mode("gpt-4-turbo") is True
+        assert supports_json_mode("gpt-5.2-pro") is True
 
     def test_gpt35_supports_json(self):
         """Test that GPT-3.5 models support JSON mode"""

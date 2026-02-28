@@ -73,6 +73,7 @@ from api.routers.scam_tracker import router as scam_tracker_router  # Scam track
 from api.routers.governance import router as governance_router  # Community governance API
 from api.routers.notifications import router as notifications_router  # Notifications API
 from api.routers.alerts import router as alerts_router  # Price Alerts API
+from api.routers.tools import router as tools_router   # Tool preferences API
 from api.alert_checker import price_alert_check_task
 
 # Import database and core modules (but don't initialize at module level)
@@ -336,6 +337,7 @@ app.include_router(scam_tracker_router)  # 可疑錢包追蹤系統 API
 app.include_router(governance_router)  # 社群治理系統 API
 app.include_router(notifications_router)  # 通知系統 API
 app.include_router(alerts_router)  # 價格警報 API
+app.include_router(tools_router)   # 工具偏好 API
 
 # --- 健康檢查端點（用於負載均衡和監控）---
 @app.get("/health")

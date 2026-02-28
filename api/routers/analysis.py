@@ -131,7 +131,8 @@ async def analyze_crypto(request: QueryRequest, current_user: dict = Depends(get
     try:
         user_client = create_user_llm_client(
             provider=request.user_provider,
-            api_key=request.user_api_key
+            api_key=request.user_api_key,
+            model=request.user_model,
         )
     except Exception as e:
         logger.error(f"❌ 創建用戶 LLM client 失敗: {e}")
@@ -144,7 +145,13 @@ async def analyze_crypto(request: QueryRequest, current_user: dict = Depends(get
         from core.agents.bootstrap import bootstrap as v4_bootstrap
         from langgraph.types import Command
 
-        manager = v4_bootstrap(user_client, web_mode=True, language=request.language)
+        manager = v4_bootstrap(
+            user_client,
+            web_mode=True,
+            language=request.language,
+            user_tier=current_user.get("membership_tier", "free"),
+            user_id=current_user.get("user_id"),
+        )
         config  = {"configurable": {"thread_id": request.session_id}}
 
         # resume_answer → 繼續被 interrupt 暫停的 graph

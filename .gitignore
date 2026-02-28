@@ -20,6 +20,13 @@ env/
 *.log
 frontend_debug.log
 
+# Coverage
+htmlcov/
+.coverage
+
+# Playwright MCP
+.playwright-mcp/
+
 # Database (local)
 *.db
 user_data.db

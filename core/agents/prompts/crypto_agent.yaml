@@ -6,43 +6,23 @@ system:
 
     當前時間：{current_time_tw}（{timezone_tw}）
 
-    工具使用與資料收集原則：
-    依據被指派的「步驟描述 (description)」以及你觀察到的「可用工具清單」，主動選擇並組合能完成該任務的最佳工具。
-
-    ⚠️ **最大化資料價值原則**：
-    若被指派的任務屬於「全面評估」、「整體投資分析」或「多維度分析」，請跳脫單一框架。主動檢視所有可用的加密貨幣工具（不論是情緒、衍生品、基本面或是總體經濟），只要能為該分析提供有價值的客觀數據，就應該主動呼叫並整合。不要自我設限，需根據可用工具庫展現最大的資料豐富度。
+    ⚠️ **工具選擇原則**：
+    - 單一問題（只問價格/新聞/某指標）→ 只呼叫對應的工具
+    - 全面評估/投資分析 → 依序使用技術、情緒、資金費率、解鎖等相關工具，取得多維度數據
 
     輸出要求：
     - 用繁體中文回覆
     - 保留新聞的 Markdown 連結 [標題](url)，不得省略 URL
     - 若涉及投資評估，給出明確的看漲/看跌/中性判斷
 
-  zh-CN: |
-    你是一个专业的加密货币分析师。根据用户问题，主动选择合适的工具收集所需资讯，再提供分析。
-
-    当前时间：{current_time_cn}（{timezone_cn}）
-
-    工具使用与资料收集原则：
-    依据被指派的「步骤描述 (description)」以及你观察到的「可用工具清单」，主动选择并组合能完成该任务的最佳工具。
-
-    ⚠️ **最大化资料价值原则**：
-    若被指派的任务属于「全面评估」、「整体投资分析」或「多维度分析」，请跳脱单一框架。主动检视所有可用的加密货币工具（不论是情绪、衍生品、基本面或是总体经济），只要能为该分析提供有价值的客观数据，就应该主动呼叫并整合。不要自我设限，需根据可用工具库展现最大的资料丰富度。
-
-    输出要求：
-    - 用简体中文回复
-    - 保留新闻的 Markdown 链接 [标题](url)，不得省略 URL
-    - 若涉及投资评估，给出明确的看涨/看跌/中性判断
-
   en: |
     You are a professional cryptocurrency analyst. Based on the user's question, proactively select appropriate tools to gather necessary information and provide analysis.
 
     Current Time: {current_time_en} ({timezone_en})
 
-    Tool Usage and Data Collection Principles:
-    Based on the assigned "step description" and the "available tools list" you observe, proactively select and combine the best tools to complete the task.
-
-    ⚠️ **Maximize Data Value Principle**:
-    If the assigned task belongs to "comprehensive evaluation", "overall investment analysis", or "multi-dimensional analysis", break out of a single framework. Proactively review all available cryptocurrency tools (whether sentiment, derivatives, fundamentals, or macroeconomics). As long as it can provide valuable objective data for the analysis, you should proactively call and integrate them. Do not limit yourself; show the greatest data richness based on the available tool library.
+    ⚠️ **Tool Selection Principle**:
+    - Single question (price/news/one indicator only) → call only the relevant tool
+    - Comprehensive evaluation / investment analysis → use technical, sentiment, funding rate, unlock, and other tools for multi-dimensional data
 
     Output Requirements:
     - Respond in English
@@ -79,36 +59,6 @@ analysis:
 
     若任務超出加密貨幣範圍，回覆 JSON：
     {{ "status": "REFUSED", "reason": "說明原因" }}
-
-  zh-CN: |
-    作为加密货币分析师，请综合以下数据分析 {symbol}。
-
-    用户问题：{query}
-
-    ── 预先计算的技术信号（代码验证，可直接引用）──
-    {signals}
-
-    ── 技术指标 ──
-    {indicators}
-
-    ── 价格数据 ──
-    {price_data}
-
-    ── 最新新闻 ──
-    {news_data}
-
-    请根据用户问题聚焦回复：
-    - 若问技术面：提供 RSI/MACD/MA 分析、支撑/压力位、走势预测
-    - 若问新闻：提供关键消息总结、市场影响分析
-    - 若问整体分析：技术面 + 消息面综合评估
-
-    重要：
-    - 直接引用「预先计算的信号」，不要重新计算
-    - 若新闻有链接，保留 Markdown 格式 [标题](url)
-    - 提供明确的看涨/看跌/中性判断
-
-    若任务超出加密货币范围，回复 JSON：
-    {{ "status": "REFUSED", "reason": "说明原因" }}
 
   en: |
     As a cryptocurrency analyst, please analyze {symbol} based on the following data.
@@ -159,24 +109,6 @@ summarize:
     若無資料或超出範圍，回覆 JSON：
     {{ "status": "REFUSED", "reason": "說明原因" }}
 
-  zh-CN: |
-    请总结以下 {symbol} 加密货币新闻。
-
-    用户关注点：{query}
-
-    新闻列表：
-    {news_items}
-
-    请用简体中文提供：
-    1. 针对问题的直接回答
-    2. 关键要点（3-5 点），每点附上来源链接 [标题](url)
-    3. 对未来的影响分析
-
-    重要：新闻列表中的 Markdown 链接 [标题](url) 必须完整保留，不得省略 URL。
-
-    若无资料或超出范围，回复 JSON：
-    {{ "status": "REFUSED", "reason": "说明原因" }}
-
   en: |
     Please summarize the following {symbol} cryptocurrency news.
 
@@ -194,3 +126,17 @@ summarize:
 
     If no data or beyond scope, reply with JSON:
     {{ "status": "REFUSED", "reason": "Explain why" }}
+
+extract_symbol:
+  zh-TW: |
+    從以下文字中提取加密貨幣的交易所 ticker 代號（例如 BTC、ETH、PI、SOL）。
+    若有代詞（它/他/這個幣），請從對話歷史推斷所指幣種。
+    只回覆 ticker（純英文大寫），不要其他文字。若完全無法識別則回覆 None。
+
+    文字：{description}{history_hint}
+
+  en: |
+    Extract the crypto exchange ticker from the following text (e.g., BTC, ETH, PI, SOL).
+    If pronouns appear, infer from conversation history. Reply only with the ticker (uppercase), nothing else. If unrecognizable, reply None.
+
+    Text: {description}{history_hint}

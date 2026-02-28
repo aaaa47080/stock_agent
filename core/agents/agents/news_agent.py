@@ -141,11 +141,11 @@ class NewsAgent:
     def _extract_symbol(self, description: str) -> str:
         from langchain_core.messages import HumanMessage
         try:
-            prompt = (
-                f"從以下文字中提取加密貨幣的交易所 ticker 代號（例如 BTC、ETH、PI、SOL）。"
-                f"只回覆 ticker 本身（純英文大寫縮寫），不要其他文字。若無法識別則回覆 BTC。\n\n文字：{description}"
+            prompt_text = PromptRegistry.render(
+                "news_agent", "extract_symbol",
+                description=description
             )
-            response = self.llm.invoke([HumanMessage(content=prompt)])
+            response = self.llm.invoke([HumanMessage(content=prompt_text)])
             return response.content.strip().upper().split()[0]
         except Exception:
             return "BTC"

@@ -7,14 +7,16 @@
 from typing import Any
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage
+from core.model_config import OPENAI_DEFAULT_MODEL, GEMINI_DEFAULT_MODEL
 
-def create_user_llm_client(provider: str, api_key: str) -> Any:
+def create_user_llm_client(provider: str, api_key: str, model: str = None) -> Any:
     """
     根據用戶提供的 key 創建 LLM 客戶端 (LangChain BaseChatModel)
 
     Args:
         provider: "openai", "google_gemini", "openrouter"
         api_key: 用戶的 API key
+        model: 用戶選擇的模型名稱（可選，未提供則使用 provider 預設值）
 
     Returns:
         配置好的 LLM 客戶端 (BaseChatModel)
@@ -26,26 +28,26 @@ def create_user_llm_client(provider: str, api_key: str) -> Any:
         raise ValueError("API key 不能為空")
 
     api_key = api_key.strip()
-    
+
     lc_provider = "openai"
     base_url = None
-    default_model = "gpt-4o-mini"
+    default_model = OPENAI_DEFAULT_MODEL
 
     if provider == "openai":
         lc_provider = "openai"
-        default_model = "gpt-4o-mini"
+        default_model = OPENAI_DEFAULT_MODEL
     elif provider == "google_gemini":
         lc_provider = "google_genai"
-        default_model = "gemini-2.0-flash-exp"
+        default_model = GEMINI_DEFAULT_MODEL
     elif provider == "openrouter":
         lc_provider = "openai"
         base_url = "https://openrouter.ai/api/v1"
-        default_model = "gpt-4o-mini"
+        default_model = OPENAI_DEFAULT_MODEL
     else:
         raise ValueError(f"不支援的 provider: {provider}")
 
     return init_chat_model(
-        model=default_model, # 這只是一個默認值，實際調用時通常會指定模型，或由 invoke 時 bind 指定
+        model=model or default_model,
         model_provider=lc_provider,
         temperature=0.5,
         api_key=api_key,

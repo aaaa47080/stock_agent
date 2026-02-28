@@ -1126,6 +1126,66 @@ def init_db():
     c.execute('CREATE INDEX IF NOT EXISTS idx_dm_messages_conversation_created ON dm_messages(conversation_id, created_at DESC)')
     c.execute('CREATE INDEX IF NOT EXISTS idx_user_message_limits ON user_message_limits(user_id, date)')
 
+    # ========================================================================
+    # 工具系統資料表 (Tool Catalog & Permissions)
+    # ========================================================================
+
+    # 工具目錄：所有可用工具的 Metadata（取代 bootstrap.py hardcode）
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS tools_catalog (
+            tool_id          TEXT PRIMARY KEY,
+            display_name     TEXT NOT NULL,
+            description      TEXT,
+            category         TEXT NOT NULL,
+            tier_required    TEXT DEFAULT 'free',
+            quota_type       TEXT DEFAULT 'unlimited',
+            daily_limit_free INTEGER DEFAULT 0,
+            daily_limit_prem INTEGER,
+            source_type      TEXT DEFAULT 'native',
+            is_active        BOOLEAN DEFAULT TRUE,
+            created_at       TIMESTAMP DEFAULT NOW()
+        )
+    ''')
+
+    # Agent 可用工具設定（Admin 層控制）
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS agent_tool_permissions (
+            agent_id    TEXT NOT NULL,
+            tool_id     TEXT NOT NULL,
+            is_enabled  BOOLEAN DEFAULT TRUE,
+            PRIMARY KEY (agent_id, tool_id)
+        )
+    ''')
+
+    # 用戶工具偏好（用戶層個人化，Premium 才可改）
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS user_tool_preferences (
+            user_id     TEXT NOT NULL,
+            tool_id     TEXT NOT NULL,
+            is_enabled  BOOLEAN DEFAULT TRUE,
+            updated_at  TIMESTAMP DEFAULT NOW(),
+            PRIMARY KEY (user_id, tool_id)
+        )
+    ''')
+
+    # 工具每日使用量追蹤（Rate Limiting）
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS tool_usage_log (
+            user_id     TEXT NOT NULL,
+            tool_id     TEXT NOT NULL,
+            used_date   DATE NOT NULL DEFAULT CURRENT_DATE,
+            call_count  INTEGER DEFAULT 1,
+            PRIMARY KEY (user_id, tool_id, used_date)
+        )
+    ''')
+
+    # 工具系統索引
+    c.execute('CREATE INDEX IF NOT EXISTS idx_tools_catalog_category ON tools_catalog(category)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_tools_catalog_tier ON tools_catalog(tier_required)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_agent_tool_agent ON agent_tool_permissions(agent_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_user_tool_prefs_user ON user_tool_preferences(user_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_tool_usage_user_date ON tool_usage_log(user_id, used_date)')
+
     conn.commit()
     conn.close()
 

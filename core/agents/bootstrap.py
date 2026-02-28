@@ -8,7 +8,6 @@ from langchain_core.messages import SystemMessage
 
 from .agent_registry import AgentRegistry, AgentMetadata
 from .tool_registry import ToolRegistry, ToolMetadata
-from .hierarchical_memory import CodebookFactory, BaseHierarchicalCodebook
 from .prompt_registry import PromptRegistry
 from .manager import ManagerAgent
 
@@ -64,11 +63,37 @@ class LanguageAwareLLM:
         return getattr(self._llm, name)
 
 
-def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW") -> ManagerAgent:
+def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
+              user_tier: str = "free", user_id: str = None) -> ManagerAgent:
     PromptRegistry.load()
     agent_registry = AgentRegistry()
     tool_registry  = ToolRegistry()
-    codebook       = CodebookFactory()
+
+    # ── 動態工具清單（從 DB 讀取，依 user_tier 過濾）──────────────────────
+    # 首次啟動時自動 seed 工具目錄（冪等操作）
+    try:
+        from core.database.tools import seed_tools_catalog, get_allowed_tools as _get_tools
+        seed_tools_catalog()
+        def _tools(agent_id: str) -> list:
+            return _get_tools(agent_id, user_tier=user_tier, user_id=user_id)
+    except Exception as _e:
+        # DB 不可用時 fallback 到 hardcode
+        import logging
+        logging.warning(f"[bootstrap] Tool DB unavailable, using fallback: {_e}")
+        _FALLBACK = {
+            "crypto":   ["get_current_time_taipei","technical_analysis","price_data","get_crypto_price",
+                         "google_news","aggregate_news","web_search","get_fear_and_greed_index",
+                         "get_trending_tokens","get_futures_data","get_defillama_tvl",
+                         "get_crypto_categories_and_gainers","get_token_unlocks","get_token_supply"],
+            "tw_stock": ["get_current_time_taipei","tw_stock_price","tw_technical_analysis",
+                         "tw_fundamentals","tw_institutional","tw_news","tw_major_news",
+                         "tw_pe_ratio","tw_monthly_revenue","tw_dividend","tw_foreign_top20","web_search"],
+            "us_stock": ["us_stock_price","us_technical_analysis","us_fundamentals","us_earnings",
+                         "us_news","us_institutional_holders","us_insider_transactions","get_current_time_taipei"],
+            "chat":     ["get_current_time_taipei","get_crypto_price","web_search"],
+        }
+        def _tools(agent_id: str) -> list:
+            return _FALLBACK.get(agent_id, [])
 
     # ── Register Crypto Tools ──
     tool_registry.register(ToolMetadata(
@@ -293,12 +318,7 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW") -> Ma
         display_name="Crypto Agent",
         description="加密貨幣專業分析師 — 提供即時價格、時間、技術指標、合約資金費率、解鎖日程(Unlocks)、代幣發行流通量(Supply)、恐慌貪婪指數、全網熱門幣種、TVL鎖倉量、最強板塊與最新新聞。不直接提供交易決策。",
         capabilities=["RSI", "MACD", "MA", "technical analysis", "crypto news", "加密貨幣", "技術指標", "資金費率", "恐慌貪婪指數", "熱門幣種", "多空情緒", "TVL", "板塊", "時間", "解鎖", "unlock", "流通量", "發行量", "supply"],
-        allowed_tools=[
-            "get_current_time_taipei", "technical_analysis", "price_data", "get_crypto_price", 
-            "google_news", "aggregate_news", "web_search",
-            "get_fear_and_greed_index", "get_trending_tokens", "get_futures_data",
-            "get_defillama_tvl", "get_crypto_categories_and_gainers", "get_token_unlocks", "get_token_supply"
-        ],
+        allowed_tools=_tools("crypto"),
         priority=10,
     ))
 
@@ -308,7 +328,7 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW") -> Ma
         display_name="TW Stock Agent",
         description="台灣股市全方位分析 — 即時價格、時間、技術指標（RSI/MACD/KD/均線）、基本面（P/E/EPS）、三大法人籌碼、台股新聞。適合台積電、鴻海、聯發科等台股查詢，接受股票代號（2330）或公司名稱（台積電）。",
         capabilities=["台股", "台灣股市", "上市", "上櫃", "股票代號", "RSI", "MACD", "KD", "均線", "本益比", "EPS", "外資", "投信", "法人", "籌碼", "股價", "台股股價", "即時股價", "時間"],
-        allowed_tools=["get_current_time_taipei", "tw_stock_price", "tw_technical_analysis", "tw_fundamentals", "tw_institutional", "tw_news", "web_search"],
+        allowed_tools=_tools("tw_stock"),
         priority=10,
     ))
 
@@ -325,11 +345,7 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW") -> Ma
             "AAPL", "TSLA", "NVDA", "TSM", "MSFT", "AMZN", "GOOGL", "META",
             "標普500", "道瓊", "那斯達克", "S&P500", "Apple", "Tesla", "Nvidia",
         ],
-        allowed_tools=[
-            "us_stock_price", "us_technical_analysis", "us_fundamentals",
-            "us_earnings", "us_news", "us_institutional_holders",
-            "us_insider_transactions", "get_current_time_taipei",
-        ],
+        allowed_tools=_tools("us_stock"),
         priority=8,
     ))
 
@@ -339,7 +355,7 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW") -> Ma
         display_name="Chat Agent",
         description="一般對話助手 — 處理閒聊、問候、自我介紹、平台使用說明、系統時間查詢、即時價格查詢、一般知識問答，以及主觀意見問題。不負責主動搜尋新聞或執行技術分析。",
         capabilities=["conversation", "greeting", "help", "general knowledge", "price lookup", "即時價格", "平台說明", "閒聊", "時間", "現在幾點"],
-        allowed_tools=["get_current_time_taipei", "get_crypto_price", "web_search"],
+        allowed_tools=_tools("chat"),
         priority=1,
     ))
 
@@ -347,6 +363,5 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW") -> Ma
         llm_client=lang_llm,
         agent_registry=agent_registry,
         tool_registry=tool_registry,
-        codebook=codebook,
         web_mode=web_mode,
     )

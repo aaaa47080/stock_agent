@@ -17,15 +17,16 @@ We are looking for technical partners, business collaborations, and development 
 
 | Advantage | Description |
 |-----------|-------------|
-| 🧠 **AI Multi-Agent Analysis** | Technical, sentiment, fundamental, and news analysis in parallel |
-| 💬 **PTT-Style Community** | Crypto, US Stocks, TW Stocks discussion boards |
-| 💰 **Pi Ecosystem Integration** | Seamless payments for posting, tipping, and membership |
+| 🧠 **Agent V4 Architecture** | Interactive multi-market analysis (Crypto, US Stocks, TW Stocks) |
+| 💬 **PTT-Style Community** | Comprehensive discussion boards with native Pi tipping |
+| 💰 **Pi Ecosystem Integration** | Seamless Web3 payments for posting, tipping, and membership |
 | 🔐 **Privacy-First Design** | User data sovereignty, secure transactions |
 
 ### Unique Selling Points
 
 - **First AI analysis platform** integrated with Pi Network
-- **LangGraph multi-agent debate system** — Bull vs Bear showdown
+- **Interactive Agent V4 System** — Human-in-the-loop (HitL) intelligent planning & negotiation
+- **Multi-Market Support** — Seamless tracking across Crypto, US Stocks, and TW Stocks
 - **Complete community ecosystem** — Discussion + Social + Trading
 - **Real-time multi-exchange data** — OKX + Binance unified interface
 
@@ -61,27 +62,29 @@ We are looking for technical partners, business collaborations, and development 
 
 ## Feature Highlights
 
-### AI-Powered Analysis System
+### 🧠 Agent V4 Intelligent System
 
-**Multi-Agent Collaboration Architecture**
+**Multi-Market Agent Architecture**
 
 | Agent | Responsibility |
 |-------|---------------|
-| **Technical Analyst** | Candlestick patterns, technical indicators, support/resistance |
-| **Sentiment Analyst** | Community sentiment, fear & greed index |
-| **Fundamental Analyst** | On-chain data, project developments |
-| **News Analyst** | Real-time news, event-driven analysis |
+| **Crypto Agent** | Cryptocurrency market data, on-chain analysis, and web3 news |
+| **US Stock Agent** | NYSE/NASDAQ market data, SEC filings, and corporate news |
+| **TW Stock Agent** | Taiwan market tickers, local institutional movements, and news |
+| **Manager Agent** | Intelligent query classification and analysis flow orchestration |
 
-**Decision Mechanism**
+**Interactive Plan Execution (Human-in-the-loop)**
 
 ```
-User Query → [Tech Analyst] [Sentiment Analyst] [Fundamental Analyst] [News Analyst]
+User Query → [Manager Agent Classification]
                     ↓
-            [Bull Researcher] vs [Bear Researcher]
+        [Automatic Pre-research Data Gathering]
                     ↓
-                [Judge Agent]
+    [Propose Multi-step Execution Plan to User] ↔ User Negotiates/Modifies Plan
                     ↓
-            [Risk Manager] → Final Recommendation
+[Agents Execute Plan: Tech / Fundamentals / News]
+                    ↓
+          [Synthesize Final Report]
 ```
 
 ---
