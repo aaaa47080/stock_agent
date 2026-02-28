@@ -207,9 +207,11 @@ const AuthManager = {
             };
 
             localStorage.setItem('pi_user', JSON.stringify(this.currentUser));
-            this._updateUI(true);
-
-            if (typeof initChat === 'function') initChat();
+            // Note: _updateUI is NOT called here because handlePiLogin() will
+            // call window.location.reload() immediately after. The reload will
+            // trigger init() which calls _updateUI(true) naturally.
+            // Calling _updateUI(true) here would flash the app behind the
+            // login modal before the reload, causing the "two screens" effect.
 
             DebugLog.info('Pi 登入流程完成', { user: this.currentUser });
             return { success: true, user: this.currentUser };
@@ -939,6 +941,15 @@ window.handlePiLogin = async () => {
         const res = await AuthManager.authenticateWithPi();
         DebugLog.info('Pi 登入結果', res);
         if (res.success) {
+            // Show success state on the login modal before reload
+            // This prevents the login modal from being hidden and briefly
+            // flashing the app content before the page reloads.
+            const btn = document.getElementById('pi-login-btn');
+            if (btn) {
+                btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> 登入成功，載入中...';
+                btn.classList.remove('opacity-70');
+                btn.classList.add('bg-green-600');
+            }
             window.location.reload();
         } else {
             if (typeof showToast === 'function') {
