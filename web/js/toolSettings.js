@@ -41,7 +41,10 @@ async function initToolSettings() {
     lucide.createIcons();
 
     try {
-        const res = await fetch('/api/tools', { credentials: 'include' });
+        const token = window.AuthManager?.currentUser?.accessToken;
+        const res = await fetch('/api/tools', {
+            headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+        });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         _currentUserTier = data.user_tier || 'free';
@@ -203,10 +206,13 @@ async function toggleToolPreference(toolId, isEnabled, checkboxEl) {
     if (_currentUserTier !== 'premium') return;
 
     try {
+        const token = window.AuthManager?.currentUser?.accessToken;
         const res = await fetch(`/api/tools/${toolId}/preference`, {
             method: 'PUT',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+            },
             body: JSON.stringify({ is_enabled: isEnabled }),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);

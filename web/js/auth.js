@@ -398,8 +398,10 @@ async function getWalletStatus() {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
+        const token = AuthManager.currentUser?.accessToken;
         const res = await fetch(`/api/user/wallet-status/${uid}`, {
-            signal: controller.signal
+            signal: controller.signal,
+            headers: token ? { 'Authorization': 'Bearer ' + token } : {}
         });
 
         clearTimeout(timeoutId);
