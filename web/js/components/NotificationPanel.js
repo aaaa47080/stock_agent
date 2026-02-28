@@ -248,7 +248,7 @@ class NotificationPanel {
         const timeStr = NotificationService.formatTime(notification.created_at);
         const modal = document.createElement('div');
         modal.id = 'notif-detail-modal';
-        modal.className = 'fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-4';
+        modal.className = 'fixed inset-0 z-[9999] flex items-center justify-center p-4';
         modal.innerHTML = `
             <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" id="notif-modal-backdrop"></div>
             <div class="relative w-full max-w-md bg-surface border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
