@@ -556,7 +556,7 @@
     </main>
 
     <!-- Chart Modal (Moved from Watchlist) -->
-    <div id="chart-section" class="hidden fixed inset-0 z-[60] bg-background/95 backdrop-blur flex flex-col p-4 md:p-6">
+    <div id="chart-section" class="hidden fixed inset-0 z-[60] bg-background/95 backdrop-blur overflow-y-auto p-4 md:p-6">
         <div class="flex flex-col gap-3 mb-3">
             <div class="flex justify-between items-center">
                 <div class="flex items-center gap-3">
@@ -620,21 +620,21 @@
             </div>
         </div>
         <!-- Chart Area -->
-        <div class="flex-1 w-full bg-surface rounded-3xl border border-white/5 overflow-hidden flex flex-col">
+        <div class="w-full bg-surface rounded-3xl border border-white/5 overflow-hidden">
             <!-- Current Price Display -->
             <div class="px-4 pt-3 pb-1">
                 <div id="current-price-display" class="text-center text-2xl font-bold text-secondary font-mono">
                     <!-- Current price will be displayed here -->
                 </div>
             </div>
-            <div id="chart-container" class="flex-1 w-full relative"></div>
+            <div id="chart-container" class="h-[52vh] w-full relative"></div>
             <div id="volume-container" class="w-full h-40 border-t border-white/5"></div>
         </div>
     </div>
 
     <!-- TW Stock Chart Modal -->
     <div id="twstock-chart-section"
-        class="hidden fixed inset-0 z-[60] bg-background/95 backdrop-blur flex flex-col p-4 md:p-6">
+        class="hidden fixed inset-0 z-[60] bg-background/95 backdrop-blur overflow-y-auto p-4 md:p-6">
         <div class="flex flex-col gap-3 mb-3">
             <div class="flex justify-between items-center">
                 <div class="flex items-center gap-3">
@@ -676,15 +676,15 @@
             </div>
         </div>
         <!-- Chart Area -->
-        <div class="flex-1 w-full bg-surface rounded-3xl border border-white/5 overflow-hidden flex flex-col">
-            <div id="twstock-chart-container" class="flex-1 w-full relative"></div>
+        <div class="w-full bg-surface rounded-3xl border border-white/5 overflow-hidden">
+            <div id="twstock-chart-container" class="h-[52vh] w-full relative"></div>
             <div id="twstock-volume-container" class="w-full h-40 border-t border-white/5"></div>
         </div>
     </div>
 
     <!-- US Stock Chart Modal -->
     <div id="usstock-chart-section"
-        class="hidden fixed inset-0 z-[60] bg-background/95 backdrop-blur flex flex-col p-4 md:p-6">
+        class="hidden fixed inset-0 z-[60] bg-background/95 backdrop-blur overflow-y-auto p-4 md:p-6">
         <div class="flex flex-col gap-3 mb-3">
             <div class="flex justify-between items-center">
                 <div class="flex items-center gap-3">
@@ -721,8 +721,8 @@
                 </div>
             </div>
         </div>
-        <div class="flex-1 w-full bg-surface rounded-3xl border border-white/5 overflow-hidden flex flex-col">
-            <div id="usstock-chart-container" class="flex-1 w-full relative"></div>
+        <div class="w-full bg-surface rounded-3xl border border-white/5 overflow-hidden">
+            <div id="usstock-chart-container" class="h-[52vh] w-full relative"></div>
             <div id="usstock-volume-container" class="w-full h-40 border-t border-white/5"></div>
         </div>
     </div>
@@ -1288,7 +1288,7 @@
     <script src="/static/js/toolSettings.js?v=2"></script>
     <script src="/static/js/filter.js?v=47"></script>
     <script src="/static/js/chat.js?v=1001"></script>
-    <script src="/static/js/market.js?v=48"></script>
+    <script src="/static/js/market.js?v=49"></script>
     <script src="/static/js/assets.js?v=47"></script>
     <script src="/static/js/pulse.js?v=51"></script>
     <script src="/static/js/trade.js?v=48"></script>

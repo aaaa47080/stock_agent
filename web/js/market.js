@@ -880,20 +880,8 @@ async function showChart(symbol, interval = null) {
         chartContainer.innerHTML = '';
         if (chart) chart.remove();
 
-        // [Fix] 手動精確計算高度，避免依賴 Flexbox 在重繪時可能出現的延遲或誤差
-        // Parent = PriceHeader + Chart + Volume
-        const parentEl = chartContainer.parentElement;
-        const priceHeader = chartContainer.previousElementSibling;
-
-        // [Optimized Fix] 如果 parentEl.clientHeight 無法獲取 (e.g. 0)，則使用 window.innerHeight * 0.8 作為安全上限
-        const maxSafeHeight = window.innerHeight * 0.8;
-        const parentHeight = parentEl.clientHeight || maxSafeHeight;
-
-        const volHeight = volumeContainer ? 160 : 0; // volume panel is h-40 = 160px
-        const headerHeight = priceHeader ? priceHeader.offsetHeight : 50; // 估算 50px if null
-
-        // 減去所有其他元素的高度，並預留一點緩衝 (e.g. 2px) 避免邊緣溢出
-        const chartHeight = Math.max(100, Math.floor(parentHeight - volHeight - headerHeight - 2));
+        // chart-container has CSS h-[52vh], read actual rendered height with fallback
+        const chartHeight = chartContainer.clientHeight || Math.floor(window.innerHeight * 0.52);
 
         chart = LightweightCharts.createChart(chartContainer, {
             width: chartContainer.clientWidth,
