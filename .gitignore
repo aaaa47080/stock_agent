@@ -46,3 +46,5 @@ Thumbs.db
 # Git worktrees
 .worktrees/
 key.txt
+admin.txt
+payment_test.txt
