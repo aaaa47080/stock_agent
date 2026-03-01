@@ -160,13 +160,16 @@ def update_last_active(user_id: str) -> bool:
 # Pi Network 用戶
 # ============================================================================
 
-def create_or_get_pi_user(pi_uid: str, username: str) -> Dict:
+def create_or_get_pi_user(pi_uid: str, username: str = None) -> Dict:
     """
     創建或獲取 Pi Network 用戶
     - 如果 pi_uid 已存在，返回現有用戶
     - 如果 username 被其他用戶使用，拋出錯誤
     - 否則創建新用戶
     """
+    # Fallback: use pi_uid prefix if username is not provided
+    if not username:
+        username = f"pi_{pi_uid[:8]}"
     print(f"[DEBUG] create_or_get_pi_user called: pi_uid={pi_uid}, username={username}")
     conn = get_connection()
     c = conn.cursor()

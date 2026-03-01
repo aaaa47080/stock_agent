@@ -193,7 +193,13 @@ const AuthManager = {
             });
 
             const syncResult = await res.json();
-            if (!res.ok) throw new Error(syncResult.detail || 'Sync failed');
+            if (!res.ok) {
+                const detail = syncResult.detail;
+                const msg = Array.isArray(detail)
+                    ? detail.map(d => d.msg || JSON.stringify(d)).join('; ')
+                    : (typeof detail === 'string' ? detail : 'Sync failed');
+                throw new Error(msg);
+            }
 
             this.currentUser = {
                 uid: syncResult.user.user_id,

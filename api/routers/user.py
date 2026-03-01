@@ -149,8 +149,8 @@ async def dev_login(request: DevLoginRequest = None):
 
 class PiUserSyncRequest(BaseModel):
     pi_uid: str
-    username: str
-    access_token: str = None
+    username: Optional[str] = None
+    access_token: Optional[str] = None
 
 @router.post("/api/user/pi-sync")
 async def sync_pi_user(request: PiUserSyncRequest):
