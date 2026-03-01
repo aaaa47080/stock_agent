@@ -110,6 +110,16 @@
 </head>
 
 <body class="h-screen w-screen overflow-hidden flex bg-background text-textMain selection:bg-primary/30">
+    <script>
+        // Show login modal immediately for non-logged-in users (prevents blank screen)
+        // For logged-in users, modal stays hidden (prevents flash on reload)
+        if (!localStorage.getItem('pi_user')) {
+            document.addEventListener('DOMContentLoaded', function () {
+                var m = document.getElementById('login-modal');
+                if (m) m.classList.remove('hidden');
+            });
+        }
+    </script>
 
     <!-- Sidebar (Chat History) -->
     <aside id="chat-sidebar"
@@ -872,7 +882,7 @@
 
     <!-- Login Modal -->
     <div id="login-modal"
-        class="fixed inset-0 bg-background/95 backdrop-blur-xl z-[90] overflow-y-auto flex justify-center py-10 px-6">
+        class="fixed inset-0 bg-background/95 backdrop-blur-xl z-[90] overflow-y-auto flex justify-center py-10 px-6 hidden">
         <div class="bg-surface w-full max-w-md p-8 rounded-[2.5rem] border border-white/10 shadow-2xl my-auto">
             <!-- Header -->
             <div class="text-center mb-8">
