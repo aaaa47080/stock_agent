@@ -195,6 +195,10 @@ OKX_PASSPHRASE = os.getenv("OKX_PASSPHRASE", "")
 # True: 使用模擬盤 / False: 使用真實帳戶
 PAPER_TRADING = False
 
+# === Pi Network 域名驗證 ===
+# 從 Pi Developer Portal 取得，測試與正式環境不同
+PI_VALIDATION_KEY = os.getenv("PI_VALIDATION_KEY", "")
+
 # === Pi Network 支付價格配置 ===
 # 定義各種操作的 Pi 幣價格（用於後端驗證防止金額篡改）
 PI_PAYMENT_PRICES = {

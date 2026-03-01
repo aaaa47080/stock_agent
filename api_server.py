@@ -396,7 +396,7 @@ async def readiness_check():
 
 
 # --- Pi Network 域名驗證 ---
-PI_VALIDATION_KEY = "bb688627074252c72dd05212708965ba06070edde22821ac519aadc388ebf2f06cd0746217c4a1c466baeb1303311ef7333813683253a330e5d257522670a480"  # 從 Pi Developer Portal 取得
+from core.config import PI_VALIDATION_KEY
 
 @app.get("/validation-key.txt", response_class=PlainTextResponse)
 async def pi_validation():
