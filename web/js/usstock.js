@@ -236,29 +236,31 @@ window.USStockTab = {
             div.className = 'group bg-surface/20 hover:bg-surface/40 border border-white/5 rounded-2xl p-4 transition-all duration-300 cursor-pointer';
             div.onclick = () => window.USStockTab.jumpToPulse(sym);
             div.innerHTML = `
-                <div class="flex items-center justify-between gap-4">
-                    <div class="flex items-center gap-3 min-w-0">
-                        <div class="w-10 h-10 rounded-xl bg-background flex items-center justify-center text-xs font-bold text-primary border border-white/5 group-hover:scale-110 transition-transform flex-shrink-0">${abbr}</div>
-                        <div class="min-w-0">
-                            <div class="flex items-center gap-2">
-                                <span class="font-bold text-base text-secondary truncate sm:overflow-visible" title="${name}">${name}</span>
-                                <span class="text-[9px] text-textMuted font-bold tracking-wider uppercase opacity-60 flex-shrink-0">NASDAQ</span>
+                <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-background flex items-center justify-center text-xs font-bold text-primary border border-white/5 group-hover:scale-110 transition-transform flex-shrink-0 mt-0.5">${abbr}</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0">
+                                <div class="font-bold text-sm text-secondary leading-tight">${name}</div>
+                                <div class="text-[9px] text-textMuted font-bold tracking-wider uppercase opacity-60">NASDAQ</div>
                             </div>
+                            <div class="text-right flex-shrink-0">
+                                <div class="text-sm font-black ${color}">${sign}${chg.toFixed(2)}%</div>
+                                <div class="text-[9px] text-textMuted uppercase opacity-40 font-bold">24H</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between mt-1.5">
                             <div class="text-[11px] text-textMuted font-mono opacity-80">${price}</div>
+                            <div class="flex items-center gap-1">
+                                <button onclick="window.USStockTab.showChart('${sym}', event)" class="w-7 h-7 rounded-lg flex items-center justify-center text-textMuted hover:text-primary hover:bg-primary/10 transition-colors border border-white/5" title="View Chart">
+                                    <i data-lucide="bar-chart-2" class="w-3.5 h-3.5"></i>
+                                </button>
+                                <button onclick="openAlertModal('${sym}', 'us_stock'); event.stopPropagation();" class="w-7 h-7 rounded-lg flex items-center justify-center text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10 transition-colors border border-white/5" title="設定價格警報"><span class="text-xs leading-none">🔔</span></button>
+                                <button onclick="window.USStockTab.removeStock('${sym}', event)" class="w-7 h-7 rounded-lg flex items-center justify-center text-textMuted hover:text-danger hover:bg-danger/10 transition-colors border border-white/5" title="Remove">
+                                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                    <div class="flex items-center gap-2 flex-shrink-0">
-                        <div class="text-right">
-                            <div class="text-base font-black ${color}">${sign}${chg.toFixed(2)}%</div>
-                            <div class="text-[9px] text-textMuted uppercase opacity-40 font-bold mt-1">24H</div>
-                        </div>
-                        <button onclick="window.USStockTab.showChart('${sym}', event)" class="w-8 h-8 rounded-lg flex items-center justify-center text-textMuted hover:text-primary hover:bg-primary/10 transition-colors ml-2 border border-white/5" title="View Chart">
-                            <i data-lucide="bar-chart-2" class="w-4 h-4"></i>
-                        </button>
-                        <button onclick="openAlertModal('${sym}', 'us_stock'); event.stopPropagation();" class="w-8 h-8 rounded-lg flex items-center justify-center text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10 transition-colors border border-white/5" title="設定價格警報">🔔</button>
-                        <button onclick="window.USStockTab.removeStock('${sym}', event)" class="w-8 h-8 rounded-lg flex items-center justify-center text-textMuted hover:text-danger hover:bg-danger/10 transition-colors border border-white/5" title="Remove">
-                            <i data-lucide="trash-2" class="w-4 h-4"></i>
-                        </button>
                     </div>
                 </div>
             `;
@@ -724,7 +726,7 @@ window.USStockTab = {
         });
 
         chartEl.innerHTML = '<div class="animate-pulse text-textMuted h-full flex items-center justify-center">載入歷史數據中...</div>';
-        if (volumeEl) { volumeEl.innerHTML = ''; volumeEl.style.display = 'none'; }
+        if (volumeEl) { volumeEl.innerHTML = ''; volumeEl.style.display = ''; }
 
         try {
             const res = await fetch(`/api/usstock/klines/${encodeURIComponent(symbol)}?interval=${this._chartInterval}&limit=200`);
@@ -753,19 +755,48 @@ window.USStockTab = {
                 handleScale: { mouseWheel: true, pinchScale: true, axisPressedMouseMove: { time: true, price: false } },
             });
 
-            this._chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.75, bottom: 0 }, borderVisible: false });
-
             this._candleSeries = this._chart.addCandlestickSeries({
                 upColor: '#10B981', downColor: '#EF4444', borderVisible: false, wickUpColor: '#10B981', wickDownColor: '#EF4444'
             });
-            this._volumeSeries = this._chart.addHistogramSeries({ priceFormat: { type: 'volume' }, priceScaleId: 'vol' });
+
+            // Create separate volume chart
+            if (this._volumeChart) { this._volumeChart.remove(); this._volumeChart = null; }
+            this._volumeSeries = null;
+            if (volumeEl) {
+                this._volumeChart = LightweightCharts.createChart(volumeEl, {
+                    layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#A0AEC0' },
+                    grid: { vertLines: { color: 'rgba(255,255,255,0.05)' }, horzLines: { color: 'rgba(255,255,255,0.02)' } },
+                    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+                    rightPriceScale: { borderColor: 'rgba(255,255,255,0.1)', scaleMargins: { top: 0.1, bottom: 0.05 } },
+                    timeScale: { visible: false },
+                    handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
+                    handleScale: { mouseWheel: false, pinchScale: false },
+                });
+                this._volumeSeries = this._volumeChart.addHistogramSeries({ priceFormat: { type: 'volume' } });
+            }
 
             const candles = klineData.map(k => ({ time: k.time, open: k.open, high: k.high, low: k.low, close: k.close }));
             const volumes = klineData.map(k => ({ time: k.time, value: k.volume, color: k.close >= k.open ? 'rgba(16,185,129,0.4)' : 'rgba(239,68,68,0.4)' }));
 
             this._candleSeries.setData(candles);
-            this._volumeSeries.setData(volumes);
+            if (this._volumeSeries) this._volumeSeries.setData(volumes);
             this._chart.timeScale().fitContent();
+            if (this._volumeChart) {
+                this._volumeChart.timeScale().fitContent();
+                let _syncingRange = false;
+                this._chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+                    if (_syncingRange || !range || !this._volumeChart) return;
+                    _syncingRange = true;
+                    this._volumeChart.timeScale().setVisibleLogicalRange(range);
+                    _syncingRange = false;
+                });
+                this._volumeChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+                    if (_syncingRange || !range || !this._chart) return;
+                    _syncingRange = true;
+                    this._chart.timeScale().setVisibleLogicalRange(range);
+                    _syncingRange = false;
+                });
+            }
 
             // OHLCV hover
             const fmtVol = v => { if (v>=1e9) return (v/1e9).toFixed(2)+'B'; if (v>=1e6) return (v/1e6).toFixed(2)+'M'; if (v>=1e3) return (v/1e3).toFixed(2)+'K'; return v.toFixed(0); };
@@ -781,13 +812,26 @@ window.USStockTab = {
             if (candles.length) setHover(candles[candles.length-1], volumes[volumes.length-1]);
 
             this._chart.subscribeCrosshairMove(param => {
-                if (!param.time || param.point?.x < 0) { if (candles.length) setHover(candles[candles.length-1], volumes[volumes.length-1]); return; }
+                if (!param.time || param.point?.x < 0) {
+                    if (candles.length) setHover(candles[candles.length-1], volumes[volumes.length-1]);
+                    if (this._volumeChart) this._volumeChart.clearCrosshairPosition();
+                    return;
+                }
                 const c = param.seriesData.get(this._candleSeries);
-                const v = param.seriesData.get(this._volumeSeries);
+                // Look up volume by time since it's on a separate chart
+                const v = volumes.find(d => d.time === param.time);
                 if (c) setHover(c, v);
+                if (this._volumeChart && this._volumeSeries && v) {
+                    this._volumeChart.setCrosshairPosition(v.value, param.time, this._volumeSeries);
+                }
             });
 
-            const onResize = () => { if (!section.classList.contains('hidden') && this._chart) this._chart.applyOptions({ width: chartEl.clientWidth }); };
+            const onResize = () => {
+                if (!section.classList.contains('hidden') && this._chart) {
+                    this._chart.applyOptions({ width: chartEl.clientWidth });
+                    if (this._volumeChart && volumeEl) this._volumeChart.applyOptions({ width: volumeEl.clientWidth });
+                }
+            };
             window.removeEventListener('resize', this._onChartResize);
             this._onChartResize = onResize;
             window.addEventListener('resize', onResize);
@@ -806,6 +850,8 @@ window.USStockTab = {
         const section = document.getElementById('usstock-chart-section');
         if (section) section.classList.add('hidden');
         if (this._chart) { this._chart.remove(); this._chart = null; }
+        if (this._volumeChart) { this._volumeChart.remove(); this._volumeChart = null; }
+        this._volumeSeries = null;
         this._chartSymbol = null;
     },
 

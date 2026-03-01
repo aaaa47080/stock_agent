@@ -272,29 +272,31 @@ window.TWStockTab = {
             div.className = 'group bg-surface/20 hover:bg-surface/40 border border-white/5 rounded-2xl p-4 transition-all duration-300 cursor-pointer';
             div.onclick = () => window.TWStockTab.jumpToPulse(sym);
             div.innerHTML = `
-                <div class="flex items-center justify-between gap-4">
-                    <div class="flex items-center gap-3 min-w-0">
-                        <div class="w-10 h-10 rounded-xl bg-background flex items-center justify-center text-xs font-bold text-primary border border-white/5 group-hover:scale-110 transition-transform flex-shrink-0">${sym.substring(0, 2)}</div>
-                        <div class="min-w-0">
-                            <div class="flex items-center gap-2">
-                                <span class="font-bold text-base text-secondary truncate sm:overflow-visible break-normal" title="${name}">${name}</span>
-                                <span class="text-[9px] text-textMuted font-bold tracking-wider uppercase opacity-60 flex-shrink-0">${exchange}</span>
+                <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-background flex items-center justify-center text-xs font-bold text-primary border border-white/5 group-hover:scale-110 transition-transform flex-shrink-0 mt-0.5">${sym.substring(0, 2)}</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0">
+                                <div class="font-bold text-sm text-secondary leading-tight">${name}</div>
+                                <div class="text-[9px] text-textMuted font-bold tracking-wider uppercase opacity-60">${exchange}</div>
                             </div>
+                            <div class="text-right flex-shrink-0">
+                                <div class="text-sm font-black ${colorClass}">${sign}${change.toFixed(2)}%</div>
+                                <div class="text-[9px] text-textMuted uppercase opacity-40 font-bold">24H</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between mt-1.5">
                             <div class="text-[11px] text-textMuted font-mono opacity-80">$${price}</div>
+                            <div class="flex items-center gap-1">
+                                <button onclick="window.TWStockTab.showTwChart('${sym}', event)" class="w-7 h-7 rounded-lg flex items-center justify-center text-textMuted hover:text-primary hover:bg-primary/10 transition-colors border border-white/5" title="View Chart">
+                                    <i data-lucide="bar-chart-2" class="w-3.5 h-3.5"></i>
+                                </button>
+                                <button onclick="openAlertModal('${sym}', 'tw_stock'); event.stopPropagation();" class="w-7 h-7 rounded-lg flex items-center justify-center text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10 transition-colors border border-white/5" title="設定價格警報"><span class="text-xs leading-none">🔔</span></button>
+                                <button onclick="window.TWStockTab.removeTwStock('${sym}', event)" class="w-7 h-7 rounded-lg flex items-center justify-center text-textMuted hover:text-danger hover:bg-danger/10 transition-colors border border-white/5" title="Remove from Watchlist">
+                                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                    <div class="flex items-center gap-2 flex-shrink-0">
-                        <div class="text-right">
-                            <div class="text-base font-black ${colorClass}">${sign}${change.toFixed(2)}%</div>
-                            <div class="text-[9px] text-textMuted uppercase opacity-40 font-bold mt-1">24H Perf</div>
-                        </div>
-                        <button onclick="window.TWStockTab.showTwChart('${sym}', event)" class="w-8 h-8 rounded-lg flex items-center justify-center text-textMuted hover:text-primary hover:bg-primary/10 transition-colors ml-2 border border-white/5" title="View Chart">
-                            <i data-lucide="bar-chart-2" class="w-4 h-4"></i>
-                        </button>
-                        <button onclick="openAlertModal('${sym}', 'tw_stock'); event.stopPropagation();" class="w-8 h-8 rounded-lg flex items-center justify-center text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10 transition-colors border border-white/5" title="設定價格警報">🔔</button>
-                        <button onclick="window.TWStockTab.removeTwStock('${sym}', event)" class="w-8 h-8 rounded-lg flex items-center justify-center text-textMuted hover:text-danger hover:bg-danger/10 transition-colors border border-white/5" title="Remove from Watchlist">
-                            <i data-lucide="trash-2" class="w-4 h-4"></i>
-                        </button>
                     </div>
                 </div>
             `;
@@ -741,10 +743,10 @@ window.TWStockTab = {
                 this.twChart = null;
             }
 
-            // Create charts
+            // Show volume container as separate panel
             if (volumeContainer) {
                 volumeContainer.innerHTML = '';
-                volumeContainer.style.display = 'none'; // Hide the separate container, merge into main
+                volumeContainer.style.display = '';
             }
 
             this.twChart = LightweightCharts.createChart(chartContainer, {
@@ -757,20 +759,27 @@ window.TWStockTab = {
                 handleScale: { mouseWheel: true, pinchScale: true, axisPressedMouseMove: { time: true, price: false } },
             });
 
-            // Configure Volume Scale overlay (bottom 25% of chart)
-            this.twChart.priceScale('vol').applyOptions({
-                scaleMargins: { top: 0.75, bottom: 0 },
-                borderVisible: false,
-            });
-
             this.twCandleSeries = this.twChart.addCandlestickSeries({
                 upColor: '#10B981', downColor: '#EF4444', borderVisible: false, wickUpColor: '#10B981', wickDownColor: '#EF4444'
             });
 
-            this.twVolumeSeries = this.twChart.addHistogramSeries({
-                priceFormat: { type: 'volume' },
-                priceScaleId: 'vol',
-            });
+            // Create separate volume chart
+            if (this.twVolumeChart) { this.twVolumeChart.remove(); this.twVolumeChart = null; }
+            this.twVolumeSeries = null;
+            if (volumeContainer) {
+                this.twVolumeChart = LightweightCharts.createChart(volumeContainer, {
+                    layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#A0AEC0' },
+                    grid: { vertLines: { color: 'rgba(255,255,255,0.05)' }, horzLines: { color: 'rgba(255,255,255,0.02)' } },
+                    crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+                    rightPriceScale: { borderColor: 'rgba(255,255,255,0.1)', scaleMargins: { top: 0.1, bottom: 0.05 } },
+                    timeScale: { visible: false },
+                    handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
+                    handleScale: { mouseWheel: false, pinchScale: false },
+                });
+                this.twVolumeSeries = this.twVolumeChart.addHistogramSeries({
+                    priceFormat: { type: 'volume' },
+                });
+            }
 
             // Map data
             const formattedKlines = data.map(k => ({
@@ -788,8 +797,24 @@ window.TWStockTab = {
             }));
 
             this.twCandleSeries.setData(formattedKlines);
-            this.twVolumeSeries.setData(formattedVolume);
+            if (this.twVolumeSeries) this.twVolumeSeries.setData(formattedVolume);
             this.twChart.timeScale().fitContent();
+            if (this.twVolumeChart) {
+                this.twVolumeChart.timeScale().fitContent();
+                let _syncingRange = false;
+                this.twChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+                    if (_syncingRange || !range || !this.twVolumeChart) return;
+                    _syncingRange = true;
+                    this.twVolumeChart.timeScale().setVisibleLogicalRange(range);
+                    _syncingRange = false;
+                });
+                this.twVolumeChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+                    if (_syncingRange || !range || !this.twChart) return;
+                    _syncingRange = true;
+                    this.twChart.timeScale().setVisibleLogicalRange(range);
+                    _syncingRange = false;
+                });
+            }
 
             // Helper functions for formatting
             const formatPrice = (price) => price.toFixed(2);
@@ -837,12 +862,18 @@ window.TWStockTab = {
                     if (formattedKlines.length > 0) {
                         setHoverData(formattedKlines[formattedKlines.length - 1], formattedVolume[formattedVolume.length - 1]);
                     }
+                    if (this.twVolumeChart) this.twVolumeChart.clearCrosshairPosition();
                     return;
                 }
                 const dataPoint = param.seriesData.get(this.twCandleSeries);
-                const volPoint = param.seriesData.get(this.twVolumeSeries);
+                // Look up volume by time since it's on a separate chart
+                const volData = formattedVolume.find(v => v.time === param.time);
                 if (dataPoint) {
-                    setHoverData(dataPoint, volPoint);
+                    setHoverData(dataPoint, volData);
+                }
+                // Sync crosshair position to volume chart
+                if (this.twVolumeChart && this.twVolumeSeries && volData) {
+                    this.twVolumeChart.setCrosshairPosition(volData.value, param.time, this.twVolumeSeries);
                 }
             });
 
@@ -850,12 +881,10 @@ window.TWStockTab = {
             window.removeEventListener('resize', this._twChartResizeHandler);
             const onResize = () => {
                 if (chartSection && !chartSection.classList.contains('hidden') && this.twChart) {
-                    // Get parent container height to ensure we fill the available space minus toolbar
-                    const parentEl = chartContainer.parentElement;
-                    const headerHeight = chartContainer.previousElementSibling ? chartContainer.previousElementSibling.offsetHeight : 50;
-                    const chartHeight = Math.max(100, Math.floor((parentEl.clientHeight || window.innerHeight * 0.8) - headerHeight));
-
-                    this.twChart.applyOptions({ width: chartContainer.clientWidth, height: chartHeight });
+                    this.twChart.applyOptions({ width: chartContainer.clientWidth });
+                    if (this.twVolumeChart && volumeContainer) {
+                        this.twVolumeChart.applyOptions({ width: volumeContainer.clientWidth });
+                    }
                 }
             };
             this._twChartResizeHandler = onResize;
@@ -883,8 +912,11 @@ window.TWStockTab = {
             this.twChart.remove();
             this.twChart = null;
         }
-        const volContainer = document.getElementById('twstock-volume-container');
-        if (volContainer) volContainer.innerHTML = '';
+        if (this.twVolumeChart) {
+            this.twVolumeChart.remove();
+            this.twVolumeChart = null;
+        }
+        this.twVolumeSeries = null;
         this.twCurrentChartSymbol = null;
     },
 

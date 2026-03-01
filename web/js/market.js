@@ -846,7 +846,7 @@ async function showChart(symbol, interval = null) {
     }
 
     chartContainer.innerHTML = '<div class="animate-pulse text-textMuted h-full flex items-center justify-center">載入數據中...</div>';
-    if (volumeContainer) volumeContainer.innerHTML = '';
+    if (volumeContainer) { volumeContainer.innerHTML = ''; volumeContainer.style.display = ''; }
 
     try {
         const res = await fetch('/api/klines', {
@@ -889,7 +889,7 @@ async function showChart(symbol, interval = null) {
         const maxSafeHeight = window.innerHeight * 0.8;
         const parentHeight = parentEl.clientHeight || maxSafeHeight;
 
-        const volHeight = volumeContainer ? volumeContainer.clientHeight : 160;
+        const volHeight = volumeContainer ? 160 : 0; // volume panel is h-40 = 160px
         const headerHeight = priceHeader ? priceHeader.offsetHeight : 50; // 估算 50px if null
 
         // 減去所有其他元素的高度，並預留一點緩衝 (e.g. 2px) 避免邊緣溢出
@@ -922,47 +922,47 @@ async function showChart(symbol, interval = null) {
         const klinesMap = {};
         data.klines.forEach(k => { klinesMap[k.time] = k; });
 
-        // 添加成交量圖表（直接在主圖下方顯示）
-        // [Optimization] Merge Volume into Main Chart (Overlay) to fix "Blocked View" / Layout issues
-        // Clear volume container separate view
-        if (volumeContainer) {
-            volumeContainer.innerHTML = '';
-            volumeContainer.style.display = 'none'; // Hide separate container
-        }
-
-        // [Feature] Adaptive Volume Layout
-        // Adjust volume height based on screen space to be "Best Looking"
-        // < 600px (Mobile): Small volume (12%)
-        // > 600px (Desktop): Standard volume (18%) - kept modest to avoid blocking
-        const isSmallScreen = window.innerHeight < 600;
-        const volTopMargin = isSmallScreen ? 0.88 : 0.82;
-
-        // Configure Volume Scale (Adaptive Overlay)
-        chart.priceScale('vol').applyOptions({
-            scaleMargins: { top: volTopMargin, bottom: 0 },
-            borderVisible: false,
-        });
-
-        // Add Volume Series to Main Chart
-        volumeSeries = chart.addHistogramSeries({
-            priceFormat: { type: 'volume' },
-            priceScaleId: 'vol', // Use custom scale
-            color: '#26a69a',
-        });
-
-        // Remove old separate chart references
+        // Remove old volume chart reference
         if (window.volumeChart) {
             window.volumeChart.remove();
             window.volumeChart = null;
         }
 
-        // Populate Data with High Transparency (0.3)
+        // Populate volume data
         const volumeData = data.klines.map(k => ({
             time: k.time,
             value: k.volume || 0,
-            color: k.close >= k.open ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'
+            color: k.close >= k.open ? 'rgba(34, 197, 94, 0.4)' : 'rgba(239, 68, 68, 0.4)'
         }));
-        volumeSeries.setData(volumeData);
+
+        // Create separate volume chart
+        if (volumeContainer) {
+            window.volumeChart = LightweightCharts.createChart(volumeContainer, {
+                layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#94a3b8' },
+                grid: { vertLines: { color: 'rgba(51, 65, 85, 0.2)' }, horzLines: { color: 'rgba(51, 65, 85, 0.1)' } },
+                crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+                rightPriceScale: { borderColor: '#334155', scaleMargins: { top: 0.1, bottom: 0.05 } },
+                timeScale: { visible: false },
+                handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
+                handleScale: { mouseWheel: false, pinchScale: false },
+            });
+            volumeSeries = window.volumeChart.addHistogramSeries({ priceFormat: { type: 'volume' } });
+            volumeSeries.setData(volumeData);
+            // Sync time scales
+            let _syncingRange = false;
+            chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+                if (_syncingRange || !range || !window.volumeChart) return;
+                _syncingRange = true;
+                window.volumeChart.timeScale().setVisibleLogicalRange(range);
+                _syncingRange = false;
+            });
+            window.volumeChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+                if (_syncingRange || !range || !chart) return;
+                _syncingRange = true;
+                chart.timeScale().setVisibleLogicalRange(range);
+                _syncingRange = false;
+            });
+        }
 
         chart.timeScale().fitContent();
 
@@ -973,23 +973,10 @@ async function showChart(symbol, interval = null) {
 
             resizeFrame = requestAnimationFrame(() => {
                 if (!chart || !chartContainer) return;
-
-                // Resize Chart Container
-                const parent = chartContainer.parentElement;
-                if (parent) {
-                    const newHeight = Math.max(300, parent.clientHeight - 80);
-                    chart.resize(chartContainer.clientWidth, newHeight);
+                chart.applyOptions({ width: chartContainer.clientWidth });
+                if (window.volumeChart && volumeContainer) {
+                    window.volumeChart.applyOptions({ width: volumeContainer.clientWidth });
                 }
-
-                // Adaptive Volume Resize
-                // Mobile (<600px): Bottom 12% (Margin 0.88)
-                // Desktop (>600px): Bottom 18% (Margin 0.82) - 0.75 (25%) was too large/intrusive
-                const newIsSmall = window.innerHeight < 600;
-                const newMargin = newIsSmall ? 0.88 : 0.82;
-
-                chart.priceScale('vol').applyOptions({
-                    scaleMargins: { top: newMargin, bottom: 0 }
-                });
             });
         };
 
@@ -1024,6 +1011,7 @@ async function showChart(symbol, interval = null) {
                         currentPriceDisplay.className = `text-center text-2xl font-bold font-mono ${isUp ? 'text-success' : 'text-danger'}`;
                     }
                 }
+                if (window.volumeChart) window.volumeChart.clearCrosshairPosition();
                 return;
             }
 
@@ -1039,6 +1027,10 @@ async function showChart(symbol, interval = null) {
                     const isUp = kline.close >= kline.open;
                     currentPriceDisplay.textContent = `$${formattedPrice}`;
                     currentPriceDisplay.className = `text-center text-2xl font-bold font-mono ${isUp ? 'text-success' : 'text-danger'}`;
+                }
+                // Sync crosshair to volume chart
+                if (window.volumeChart && volumeSeries && kline.volume != null) {
+                    window.volumeChart.setCrosshairPosition(kline.volume, param.time, volumeSeries);
                 }
             }
         });
