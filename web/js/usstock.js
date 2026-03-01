@@ -110,15 +110,15 @@ window.USStockTab = {
         if (!container) return;
 
         container.innerHTML = `
-            <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
-                <h3 class="font-bold text-secondary flex items-center gap-2">
+            <div class="flex items-center gap-2 mb-4">
+                <h3 class="font-bold text-secondary flex items-center gap-2 flex-shrink-0">
                     <i data-lucide="star" class="w-4 h-4 text-yellow-500"></i> My US Stocks
                 </h3>
-                <div class="flex items-center gap-2">
+                <div class="flex-1 min-w-0">
                     <div class="relative">
                         <input type="text" id="usStockAddInput" placeholder="輸入美股代號 (如 AAPL)" maxlength="10"
                             oninput="this.value = this.value.replace(/[^A-Za-z.^]/g, '').toUpperCase()"
-                            class="w-52 bg-background/50 border border-white/10 rounded-lg pl-3 pr-10 py-1.5 text-sm focus:outline-none focus:border-primary transition-colors text-white placeholder-textMuted/50">
+                            class="w-full bg-background/50 border border-white/10 rounded-lg pl-3 pr-10 py-1.5 text-sm focus:outline-none focus:border-primary transition-colors text-white placeholder-textMuted/50">
                         <button onclick="window.USStockTab.addStock(document.getElementById('usStockAddInput').value)"
                             class="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-textMuted hover:text-primary transition-colors hover:bg-white/5 rounded">
                             <i data-lucide="plus" class="w-4 h-4"></i>

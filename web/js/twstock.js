@@ -114,15 +114,15 @@ window.TWStockTab = {
         if (!controlsContainer) return;
 
         controlsContainer.innerHTML = `
-            <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
-                <h3 class="font-bold text-secondary flex items-center gap-2">
+            <div class="flex items-center gap-2 mb-4">
+                <h3 class="font-bold text-secondary flex items-center gap-2 flex-shrink-0">
                     <i data-lucide="star" class="w-4 h-4 text-yellow-500"></i> My TW Stocks
                 </h3>
-                <div class="flex items-center gap-2">
+                <div class="flex-1 min-w-0">
                     <div class="relative">
                         <input type="text" id="twStockAddInput" placeholder="輸入台股代號 (如 2330)" maxlength="6"
                             oninput="this.value = this.value.replace(/[^0-9A-Za-z]/g, '').toUpperCase()"
-                            class="w-48 bg-background/50 border border-white/10 rounded-lg pl-3 pr-10 py-1.5 text-sm focus:outline-none focus:border-primary transition-colors text-white placeholder-textMuted/50">
+                            class="w-full bg-background/50 border border-white/10 rounded-lg pl-3 pr-10 py-1.5 text-sm focus:outline-none focus:border-primary transition-colors text-white placeholder-textMuted/50">
                         <button onclick="window.TWStockTab.addTwStock(document.getElementById('twStockAddInput').value)" class="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-textMuted hover:text-primary transition-colors hover:bg-white/5 rounded">
                             <i data-lucide="plus" class="w-4 h-4"></i>
                         </button>

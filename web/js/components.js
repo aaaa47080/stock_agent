@@ -47,9 +47,7 @@ const Components = {
                                     <span class="text-xs font-bold" data-i18n="market.filter">Filter</span>
                                     <span id="global-count-badge" class="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded" data-i18n="market.autoBadge">Auto</span>
                                 </button>
-                                <div id="active-filter-indicator" class="hidden flex items-center gap-1 text-xs text-primary">
-                                    <span id="filter-count">0</span> <span data-i18n="market.selected">Selected</span>
-                                </div>
+                                <div id="active-filter-indicator" class="hidden"><span id="filter-count"></span></div>
                             </div>
                             <!-- 狀態指示器 -->
                             <div class="flex items-center gap-2">
@@ -122,9 +120,7 @@ const Components = {
                             <span class="text-xs font-bold" data-i18n="pulse.filter">Filter Signals</span>
                             <span id="pulse-count-badge" class="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded" data-i18n="pulse.autoBadge">Auto</span>
                         </button>
-                        <div id="active-pulse-filter-indicator" class="hidden flex items-center gap-1 text-xs text-primary">
-                            <span id="pulse-filter-count">0</span> <span data-i18n="pulse.selected">Selected</span>
-                        </div>
+                        <div id="active-pulse-filter-indicator" class="hidden"><span id="pulse-filter-count"></span></div>
                     </div>
 
                     <div id="analysis-progress-container" class="hidden mb-6 bg-surface rounded-2xl p-4 border border-primary/10">
