@@ -6,51 +6,47 @@ PURPOSE: Send 0.1π to 10 unique Pi users on testnet to satisfy
          requirement for Mainnet App Wallet application.
 
 USAGE:
-  python scripts/testnet_a2u_bootstrap.py
+  PI_API_KEY=<testnet_api_key> PI_WALLET_SEED=<testnet_wallet_seed> python scripts/testnet_a2u_bootstrap.py
 
 REQUIREMENTS:
   pip install pi-python
 
 IMPORTANT:
   - This script is for TESTNET ONLY
-  - Run ONCE manually, then you can leave the file or delete it
+  - Run ONCE manually, never runs automatically
   - Will NOT run if TESTNET_A2U_DONE=true in environment
   - Has NO connection to api_server.py or production logic
-
-BEFORE RUNNING - fill in the config below:
-  1. TESTNET_API_KEY     → Pi Developer Portal → your app → Server API Key (Testnet)
-  2. TESTNET_WALLET_SEED → Pi Developer Portal → your app → Testnet Wallet → Private Seed
-  3. TARGET_UIDS         → 10 Pi user UIDs (ask friends to log in to testnet app once)
 """
 
 import os
 import sys
 import time
 
+# Allow importing pi_python.py from the same scripts/ directory
+sys.path.insert(0, os.path.dirname(__file__))
+
 # ============================================================
-# CONFIG — Fill these in before running
+# CONFIG
 # ============================================================
 
 TESTNET_API_KEY = os.getenv("PI_API_KEY", "")          # Server API Key (Testnet)
 TESTNET_WALLET_SEED = os.getenv("PI_WALLET_SEED", "")  # App Wallet Private Seed (Testnet)
 
-# Fill in 10 real Pi UIDs below.
-# Tip: Ask friends to open your testnet app once — their UID will be saved to DB.
-# Then run: SELECT pi_uid FROM users WHERE auth_method='pi_network' AND pi_uid IS NOT NULL;
+# UIDs from production DB (real Pi users who logged in to the app)
 TARGET_UIDS = [
-    # "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",  # friend 1
-    # "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",  # friend 2
-    # "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",  # friend 3
-    # "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",  # friend 4
-    # "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",  # friend 5
-    # "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",  # friend 6
-    # "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",  # friend 7
-    # "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",  # friend 8
-    # "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",  # friend 9
-    # "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",  # friend 10
+    "de596108-bd78-46cc-9948-4b8353ff638c",
+    "a6b83013-3a3a-4ea3-8b15-6b42e7cb081e",
+    "2ed34df1-0ab4-497f-a5c1-40a88001fbc6",
+    "aa97f39c-42d8-4e83-80a0-112f50175892",
+    "0562c1a7-d7ec-474e-9f07-ac8086a9272b",
+    "12e4b538-e6f9-4cc3-830d-76e04d18f160",
+    "ea724845-a7d3-456d-8f38-ba6c79cb04e8",
+    "c40ae050-25f5-4e8c-a7b7-884f5ec343ed",
+    "a58dccb3-bec7-4cde-bc95-3f377893281b",
+    "4100f9ae-23b6-4408-9cac-47bf50e29767",
 ]
 
-AMOUNT_PER_USER = 0.1   # Pi to send each user (minimum on testnet)
+AMOUNT_PER_USER = 0.1
 MEMO = "PI CryptoMind testnet A2U bootstrap"
 
 # ============================================================
@@ -67,21 +63,12 @@ def check_safety():
         sys.exit(1)
 
     if not TESTNET_API_KEY:
-        print("❌ Missing PI_API_KEY. Set it in environment or fill TESTNET_API_KEY above.")
+        print("❌ Missing PI_API_KEY. Set it as environment variable.")
         sys.exit(1)
 
     if not TESTNET_WALLET_SEED:
         print("❌ Missing PI_WALLET_SEED. Get it from Pi Developer Portal → Testnet Wallet.")
         sys.exit(1)
-
-    real_uids = [uid for uid in TARGET_UIDS if uid and not uid.startswith("#")]
-    if len(real_uids) < 10:
-        print(f"❌ Need 10 UIDs in TARGET_UIDS, currently have {len(real_uids)}.")
-        print("   Ask friends to log in to your testnet app, then get their UIDs from DB:")
-        print("   SELECT pi_uid FROM users WHERE auth_method='pi_network' AND pi_uid IS NOT NULL;")
-        sys.exit(1)
-
-    return real_uids
 
 # ============================================================
 # MAIN
@@ -92,12 +79,12 @@ def run():
     print("  PI CryptoMind — Testnet A2U Bootstrap")
     print("=" * 55)
 
-    real_uids = check_safety()
+    check_safety()
 
     try:
         from pi_python import PiNetwork
     except ImportError:
-        print("❌ pi-python not installed. Run: pip install pi-python")
+        print("❌ pi_python.py not found. Make sure scripts/pi_python.py exists.")
         sys.exit(1)
 
     pi = PiNetwork()
@@ -106,8 +93,8 @@ def run():
 
     results = {"success": [], "failed": []}
 
-    for i, uid in enumerate(real_uids[:10], 1):
-        print(f"[{i}/10] Sending {AMOUNT_PER_USER}π → UID: {uid[:16]}...")
+    for i, uid in enumerate(TARGET_UIDS, 1):
+        print(f"[{i}/10] Sending {AMOUNT_PER_USER}π → {uid[:16]}...")
         try:
             payment_data = {
                 "amount": AMOUNT_PER_USER,
@@ -130,20 +117,18 @@ def run():
             print(f"       ❌ Failed: {e}")
             results["failed"].append({"uid": uid, "error": str(e)})
 
-        # Pi requires sequential payments — wait between each
         if i < 10:
             time.sleep(2)
 
     print("\n" + "=" * 55)
     print(f"  Results: {len(results['success'])}/10 successful")
     if results["failed"]:
-        print(f"  Failed UIDs:")
+        print("  Failed:")
         for f in results["failed"]:
             print(f"    - {f['uid'][:16]}... : {f['error']}")
 
     if len(results["success"]) >= 10:
         print("\n🎉 Done! You can now apply for the Mainnet App Wallet.")
-        print("   Set TESTNET_A2U_DONE=true to prevent re-running.")
     print("=" * 55)
 
 
