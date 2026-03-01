@@ -599,14 +599,7 @@ const Components = {
                 </div>
 
                 <!-- My Friends -->
-                <div class="bg-surface border border-white/5 rounded-2xl p-6">
-                    <h3 class="font-bold text-secondary text-lg mb-4 flex items-center gap-2">
-                        <i data-lucide="users" class="w-5 h-5 text-success"></i>
-                        <span data-i18n="friends.myFriends">My Friends</span>
-                        <span id="friends-count-badge" class="hidden px-2 py-0.5 text-xs bg-white/10 text-textMuted rounded-full">0</span>
-                    </h3>
-                    <!-- My Friends -->
-                    <div class="bg-surface border border-white/5 rounded-2xl p-6 relative">
+                <div class="bg-surface border border-white/5 rounded-2xl p-6 relative">
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="font-bold text-secondary text-lg flex items-center gap-2">
                                 <i data-lucide="users" class="w-5 h-5 text-success"></i>
@@ -639,7 +632,6 @@ const Components = {
                                 <!-- Blocked users injected here -->
                             </div>
                         </div>
-                    </div>
                 </div>
 
                 <div class="h-20"></div>

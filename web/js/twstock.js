@@ -286,7 +286,7 @@ window.TWStockTab = {
                             </div>
                         </div>
                         <div class="flex items-center justify-between mt-1.5">
-                            <div class="text-[11px] text-textMuted font-mono opacity-80">$${price}</div>
+                            <div class="text-[11px] text-textMuted font-mono opacity-80">NT$${price}</div>
                             <div class="flex items-center gap-1">
                                 <button onclick="window.TWStockTab.showTwChart('${sym}', event)" class="w-7 h-7 rounded-lg flex items-center justify-center text-textMuted hover:text-primary hover:bg-primary/10 transition-colors border border-white/5" title="View Chart">
                                     <i data-lucide="bar-chart-2" class="w-3.5 h-3.5"></i>
