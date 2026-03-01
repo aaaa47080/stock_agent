@@ -295,9 +295,9 @@ async function refreshScreener(showLoading = false, forceRefresh = false) {
                             var pulseFilterCount = document.getElementById('pulse-filter-count');
                             var pulseBadge = document.getElementById('pulse-count-badge');
 
-                            if (indicator) { indicator.classList.remove('hidden'); filterCount.innerText = window.globalSelectedSymbols.length; }
+                            if (filterCount) filterCount.innerText = window.globalSelectedSymbols.length;
                             if (globalCount) globalCount.innerText = window.globalSelectedSymbols.length;
-                            if (pulseIndicator) { pulseIndicator.classList.remove('hidden'); pulseFilterCount.innerText = window.globalSelectedSymbols.length; }
+                            if (pulseFilterCount) pulseFilterCount.innerText = window.globalSelectedSymbols.length;
                             if (pulseBadge) pulseBadge.innerText = window.globalSelectedSymbols.length;
                         }
                     }

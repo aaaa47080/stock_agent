@@ -260,14 +260,8 @@ function applyGlobalFilter() {
         headerBadge.innerText = count > 0 ? count : 'Auto';
     }
 
-    if (count > 0) {
-        if (indicator) {
-            indicator.classList.remove('hidden');
-            document.getElementById('filter-count').innerText = count;
-        }
-    } else {
-        if (indicator) indicator.classList.add('hidden');
-    }
+    const filterCount = document.getElementById('filter-count');
+    if (filterCount) filterCount.innerText = count > 0 ? count : '';
 
     // Refresh both main components
     if (typeof window.refreshScreener === 'function') {
