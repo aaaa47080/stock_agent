@@ -161,7 +161,7 @@ const AuthManager = {
             // 呼叫 Pi SDK 認證 (包含 payments 權限) - 60 秒超時（用戶需要時間確認授權視窗）
             const AUTH_TIMEOUT = 60000;
 
-            const authPromise = Pi.authenticate(['username', 'payments'], (payment) => {
+            const authPromise = Pi.authenticate(['username', 'payments', 'wallet_address'], (payment) => {
                 DebugLog.warn('發現未完成的支付', payment);
                 fetch('/api/user/payment/complete', {
                     method: 'POST',
@@ -484,7 +484,7 @@ async function linkPiWallet() {
         AuthManager.initPiSDK();
 
         // 使用 Promise.race 實現超時
-        const authPromise = Pi.authenticate(['username', 'payments'], (payment) => {
+        const authPromise = Pi.authenticate(['username', 'payments', 'wallet_address'], (payment) => {
             console.warn('Incomplete payment found during wallet link:', payment);
         });
 
