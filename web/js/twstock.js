@@ -341,7 +341,7 @@ window.TWStockTab = {
 
         } catch (error) {
             console.error('[TW Stock] Pulse API Error:', error);
-            pulseContainer.innerHTML = `<div class="p-4 text-center text-danger bg-danger/10 rounded-xl text-sm">無法載入「${symbol}」的脈動分析：${SecurityUtils.escapeHTML(error.message || '')}</div>`;
+            pulseContainer.innerHTML = `<div class="p-4 text-center text-danger bg-danger/10 rounded-xl text-sm">無法載入「${SecurityUtils.escapeHTML(symbol || '')}」的脈動分析：${SecurityUtils.escapeHTML(error.message || '')}</div>`;
             pulseContainer.classList.remove('hidden');
         } finally {
             loader.classList.add('hidden');

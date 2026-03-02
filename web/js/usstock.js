@@ -429,7 +429,7 @@ window.USStockTab = {
             container.classList.remove('hidden');
         } catch (err) {
             console.error('[US Stock] Pulse error:', err);
-            container.innerHTML = `<div class="p-4 text-center text-danger bg-danger/10 rounded-xl text-sm">無法載入「${symbol}」的脈動分析：${SecurityUtils.escapeHTML(err.message || '')}</div>`;
+            container.innerHTML = `<div class="p-4 text-center text-danger bg-danger/10 rounded-xl text-sm">無法載入「${SecurityUtils.escapeHTML(symbol || '')}」的脈動分析：${SecurityUtils.escapeHTML(err.message || '')}</div>`;
             container.classList.remove('hidden');
         } finally {
             loader.classList.add('hidden');
