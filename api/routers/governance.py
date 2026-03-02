@@ -86,10 +86,9 @@ async def submit_report(
         user_id = current_user["user_id"]
 
         # Get user's daily limit
-        membership = get_user_membership(user_id)
-        daily_limit = PRO_DAILY_REPORT_LIMIT if membership.get("is_pro") else DEFAULT_DAILY_REPORT_LIMIT
-
         loop = asyncio.get_running_loop()
+        membership = await loop.run_in_executor(None, partial(get_user_membership, None, user_id))
+        daily_limit = PRO_DAILY_REPORT_LIMIT if membership.get("is_pro") else DEFAULT_DAILY_REPORT_LIMIT
         result = await loop.run_in_executor(
             None,
             partial(
@@ -138,11 +137,10 @@ async def get_report_quota(
     """
     try:
         user_id = current_user["user_id"]
-        membership = get_user_membership(user_id)
+        loop = asyncio.get_running_loop()
+        membership = await loop.run_in_executor(None, partial(get_user_membership, None, user_id))
         is_pro = membership.get("is_pro", False)
         daily_limit = PRO_DAILY_REPORT_LIMIT if is_pro else DEFAULT_DAILY_REPORT_LIMIT
-
-        loop = asyncio.get_running_loop()
         used_today = await loop.run_in_executor(
             None, partial(get_daily_report_usage, None, user_id)
         )
@@ -174,11 +172,11 @@ async def list_pending_reports(
         user_id = current_user["user_id"]
 
         # Check PRO membership
-        membership = get_user_membership(user_id)
+        loop = asyncio.get_running_loop()
+        membership = await loop.run_in_executor(None, partial(get_user_membership, None, user_id))
         if not membership.get("is_pro"):
             raise HTTPException(status_code=403, detail="此功能僅限 PRO 會員使用")
 
-        loop = asyncio.get_running_loop()
         reports = await loop.run_in_executor(
             None,
             partial(get_pending_reports, None, limit=limit, offset=offset, exclude_user_id=user_id, viewer_user_id=user_id)
@@ -211,10 +209,10 @@ async def get_report_detail(
         user_id = current_user["user_id"]
 
         # Check PRO membership for voting details
-        membership = get_user_membership(user_id)
+        loop = asyncio.get_running_loop()
+        membership = await loop.run_in_executor(None, partial(get_user_membership, None, user_id))
         is_pro = membership.get("is_pro")
 
-        loop = asyncio.get_running_loop()
         report = await loop.run_in_executor(None, partial(get_report_by_id, None, report_id))
 
         if not report:
@@ -297,11 +295,11 @@ async def vote_on_pending_report(
         user_id = current_user["user_id"]
 
         # Check PRO membership
-        membership = get_user_membership(user_id)
+        loop = asyncio.get_running_loop()
+        membership = await loop.run_in_executor(None, partial(get_user_membership, None, user_id))
         if not membership.get("is_pro"):
             raise HTTPException(status_code=403, detail="投票功能僅限 PRO 會員使用")
 
-        loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(
             None,
             partial(
@@ -497,13 +495,12 @@ async def get_user_violations_public(
     try:
         # Only show own violations unless PRO member
         requester_id = current_user["user_id"]
-        membership = get_user_membership(requester_id)
+        loop = asyncio.get_running_loop()
+        membership = await loop.run_in_executor(None, partial(get_user_membership, None, requester_id))
         is_pro = membership.get("is_pro")
 
         if user_id != requester_id and not is_pro:
             raise HTTPException(status_code=403, detail="無權查看其他用戶的違規記錄")
-
-        loop = asyncio.get_running_loop()
         points_data = await loop.run_in_executor(None, partial(get_user_violation_points, None, user_id))
         violations = await loop.run_in_executor(None, partial(get_user_violations, None, user_id, limit=20))
 
