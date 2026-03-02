@@ -52,7 +52,7 @@ from api.models import (
     VoteRequest,
     FinalizeReportRequest,
 )
-from api.deps import get_current_user
+from api.deps import get_current_user, require_admin
 from api.utils import logger
 
 router = APIRouter(prefix="/api/governance", tags=["Community Governance"])
@@ -364,7 +364,7 @@ async def vote_on_pending_report(
 async def finalize_report_decision(
     report_id: int,
     request: FinalizeReportRequest,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(require_admin)
 ):
     """
     完成檢舉處理（管理員功能）
@@ -380,11 +380,6 @@ async def finalize_report_decision(
     """
     try:
         user_id = current_user["user_id"]
-
-        # TODO: Add admin check
-        # is_admin = await check_is_admin(user_id)
-        # if not is_admin:
-        #     raise HTTPException(status_code=403, detail="此功能僅限管理員使用")
 
         loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(
