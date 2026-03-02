@@ -897,7 +897,7 @@ window.TWStockTab = {
             console.error('[TW Stock] Chart Data Error:', error);
             chartContainer.innerHTML = `<div class="text-danger h-full flex flex-col items-center justify-center text-sm p-4 text-center">
             <i data-lucide="alert-triangle" class="w-8 h-8 mb-2"></i>
-        讀取失敗：${error.message}
+        讀取失敗：${SecurityUtils.escapeHTML(error.message || '')}
             </div>`;
             if (window.lucide) window.lucide.createIcons();
         }

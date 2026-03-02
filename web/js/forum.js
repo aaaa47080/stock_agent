@@ -1608,7 +1608,7 @@ const ForumApp = {
                                     <div class="text-xs text-textMuted mb-1">交易 ID</div>
                                     <div class="text-textMain font-mono text-xs break-all" id="error-txhash">${txHash}</div>
                                 </div>
-                                <p class="text-xs opacity-60">錯誤訊息：${err.message}</p>
+                                <p class="text-xs opacity-60">錯誤訊息：${SecurityUtils.escapeHTML(err.message || '')}</p>
                             </div>
                             <div class="flex flex-col gap-2">
                                 <button id="copy-txhash-btn" class="w-full py-3 bg-primary hover:brightness-110 text-background font-bold rounded-2xl transition shadow-lg flex items-center justify-center gap-2">
