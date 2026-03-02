@@ -2151,7 +2151,7 @@
                     modal.dataset.type = type;
                 }
             } catch (e) {
-                contentArea.innerHTML = `<p class="text-center text-danger py-20">Failed to load: ${e.message}</p>`;
+                contentArea.innerHTML = `<p class="text-center text-danger py-20">Failed to load: ${SecurityUtils.escapeHTML(e.message || '')}</p>`;
             }
 
             if (window.lucide) lucide.createIcons();

@@ -625,7 +625,7 @@ async function showFundingHistory(symbol) {
     } catch (e) {
         console.error('Fetch failed:', e);
         if (overlay && overlayContent) {
-            overlayContent.innerHTML = `<div class="text-red-400 text-sm">載入失敗<br><span class="text-xs opacity-70">${e.message}</span></div>`;
+            overlayContent.innerHTML = `<div class="text-red-400 text-sm">載入失敗<br><span class="text-xs opacity-70">${SecurityUtils.escapeHTML(e.message || '')}</span></div>`;
         }
     }
 }

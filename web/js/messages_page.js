@@ -152,7 +152,7 @@ const MessagesPage = {
             }
         } catch (e) {
             console.error('載入對話列表失敗:', e);
-            listEl.innerHTML = `<div class="p-4 text-center text-danger">${e.message}</div>`;
+            listEl.innerHTML = `<div class="p-4 text-center text-danger">${SecurityUtils.escapeHTML(e.message || '')}</div>`;
         }
     },
 
@@ -212,7 +212,7 @@ const MessagesPage = {
 
         } catch (e) {
             console.error('開啟對話失敗:', e);
-            if (messagesContainer) messagesContainer.innerHTML = `<div class="p-4 text-center text-danger">${e.message}</div>`;
+            if (messagesContainer) messagesContainer.innerHTML = `<div class="p-4 text-center text-danger">${SecurityUtils.escapeHTML(e.message || '')}</div>`;
         }
     },
 
@@ -235,7 +235,7 @@ const MessagesPage = {
             this.setupScrollListener();  // 設置滾動監聽
         } catch (e) {
             console.error('載入訊息失敗:', e);
-            if (messagesContainer) messagesContainer.innerHTML = `<div class="p-4 text-center text-danger">${e.message}</div>`;
+            if (messagesContainer) messagesContainer.innerHTML = `<div class="p-4 text-center text-danger">${SecurityUtils.escapeHTML(e.message || '')}</div>`;
         }
     },
 
@@ -848,7 +848,7 @@ const MessagesPage = {
             `).join('');
 
         } catch (e) {
-            resultsEl.innerHTML = `<div class="p-4 text-center text-danger">${e.message}</div>`;
+            resultsEl.innerHTML = `<div class="p-4 text-center text-danger">${SecurityUtils.escapeHTML(e.message || '')}</div>`;
         }
     },
 

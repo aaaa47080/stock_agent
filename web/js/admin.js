@@ -397,7 +397,7 @@ const AdminPanel = {
 
                 if (window.lucide) lucide.createIcons();
             } catch (e) {
-                listEl.innerHTML = `<div class="text-center text-danger text-sm py-4">Failed to load users: ${e.message}</div>`;
+                listEl.innerHTML = `<div class="text-center text-danger text-sm py-4">Failed to load users: ${SecurityUtils.escapeHTML(e.message || '')}</div>`;
             }
         },
 
@@ -530,7 +530,7 @@ const AdminPanel = {
 
                 if (window.lucide) lucide.createIcons();
             } catch (e) {
-                content.innerHTML = `<div class="p-8 text-center text-danger text-sm">Failed to load user: ${e.message}</div>`;
+                content.innerHTML = `<div class="p-8 text-center text-danger text-sm">Failed to load user: ${SecurityUtils.escapeHTML(e.message || '')}</div>`;
             }
         },
 
@@ -684,7 +684,7 @@ const AdminPanel = {
                 `;
                 if (window.lucide) lucide.createIcons();
             } catch (e) {
-                document.getElementById('forum-posts-list').innerHTML = `<div class="text-danger text-sm py-4 text-center">${e.message}</div>`;
+                document.getElementById('forum-posts-list').innerHTML = `<div class="text-danger text-sm py-4 text-center">${SecurityUtils.escapeHTML(e.message || '')}</div>`;
             }
         },
 
@@ -792,7 +792,7 @@ const AdminPanel = {
                 `;
                 if (window.lucide) lucide.createIcons();
             } catch (e) {
-                el.innerHTML = `<div class="text-danger text-sm py-4 text-center">${e.message}</div>`;
+                el.innerHTML = `<div class="text-danger text-sm py-4 text-center">${SecurityUtils.escapeHTML(e.message || '')}</div>`;
             }
         },
 
@@ -922,7 +922,7 @@ const AdminPanel = {
 
                 if (window.lucide) lucide.createIcons();
             } catch (e) {
-                el.innerHTML = `<div class="text-danger text-sm py-4 text-center">${e.message}</div>`;
+                el.innerHTML = `<div class="text-danger text-sm py-4 text-center">${SecurityUtils.escapeHTML(e.message || '')}</div>`;
             }
         },
 
