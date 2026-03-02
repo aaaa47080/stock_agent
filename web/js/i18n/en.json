@@ -22,9 +22,6 @@
   },
   "nav": {
     "chat": "Chat",
-    "crypto": "Crypto",
-    "twstock": "TW Stock",
-    "usstock": "US Stock",
     "market": "Market",
     "pulse": "Pulse",
     "wallet": "Wallet",
@@ -33,12 +30,14 @@
     "forum": "Forum",
     "safety": "Safety",
     "settings": "Settings",
-    "admin": "Admin",
     "governance": "Governance",
     "login": "Login",
     "logout": "Logout",
     "profile": "Profile",
-    "collapse": "Collapse/Expand"
+    "collapse": "Collapse/Expand",
+    "crypto": "Crypto",
+    "twstock": "TW Stock",
+    "usstock": "US Stock"
   },
   "sidebar": {
     "newChat": "New Chat",
@@ -77,7 +76,9 @@
     "comingSoonDesc": "We are currently integrating real-time data for Taiwan Stocks. Stay tuned for advanced AI analytics in this market."
   },
   "usstock": {
-    "title": "US Stock"
+    "title": "US Stock",
+    "comingSoon": "US Stocks Coming Soon",
+    "comingSoonDesc": "We are currently integrating real-time data for US Stocks. Stay tuned for advanced AI analytics in this market."
   },
   "market": {
     "title": "Market Watch",
@@ -237,27 +238,6 @@
       "benefits": "Benefits",
       "confirmPurchase": "Confirm Purchase",
       "cancel": "Cancel"
-    },
-    "priceAlert": {
-      "title": "Set Price Alert",
-      "condition": "Condition",
-      "above": "Price above",
-      "below": "Price below",
-      "changePctUp": "Rise by (%)",
-      "changePctDown": "Drop by (%)",
-      "targetLabel": "Target value",
-      "targetPlaceholder": "Enter target value",
-      "repeat": "Persistent (don't delete after trigger)",
-      "confirm": "Confirm",
-      "cancel": "Cancel",
-      "myAlerts": "My Alerts",
-      "noAlerts": "No alerts set",
-      "deleteAlert": "Delete",
-      "limitExceeded": "Alert limit reached (max 20)",
-      "setFailed": "Failed to set alert",
-      "deleteFailed": "Failed to delete",
-      "networkError": "Network error",
-      "invalidTarget": "Please enter a valid target value"
     }
   },
   "login": {
