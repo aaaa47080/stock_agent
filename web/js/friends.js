@@ -810,7 +810,7 @@ function renderErrorState(message) {
     return `
         <div class="text-center py-6 text-danger opacity-80">
             <i data-lucide="alert-circle" class="w-5 h-5 mx-auto mb-2"></i>
-            <p class="text-sm">${message}</p>
+            <p class="text-sm">${SecurityUtils.escapeHTML(message || '')}</p>
         </div>
     `;
 }
@@ -971,7 +971,7 @@ async function handleFriendSearch(query) {
             if (window.lucide) lucide.createIcons();
 
         } catch (e) {
-            resultsEl.innerHTML = `<div class="text-center text-danger py-4">${e.message}</div>`;
+            resultsEl.innerHTML = `<div class="text-center text-danger py-4">${SecurityUtils.escapeHTML(e.message || '')}</div>`;
         }
     }, 500);
 }
@@ -1249,7 +1249,7 @@ const SocialHub = {
 
         } catch (e) {
             console.error('載入訊息失敗:', e);
-            container.innerHTML = `<div class="text-center text-danger py-4 text-sm">${e.message || '載入失敗'}</div>`;
+            container.innerHTML = `<div class="text-center text-danger py-4 text-sm">${SecurityUtils.escapeHTML(e.message || '載入失敗')}</div>`;
         }
 
         if (window.lucide) lucide.createIcons();

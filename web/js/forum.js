@@ -1606,9 +1606,9 @@ const ForumApp = {
                                 <p class="mb-2">您的支付已成功，但文章發布失敗。請保存以下交易 ID 並聯繫客服處理：</p>
                                 <div class="bg-background/50 p-3 rounded-xl border border-white/10 mb-3">
                                     <div class="text-xs text-textMuted mb-1">交易 ID</div>
-                                    <div class="text-textMain font-mono text-xs break-all" id="error-txhash">${txHash}</div>
+                                    <div class="text-textMain font-mono text-xs break-all" id="error-txhash">${SecurityUtils.escapeHTML(txHash || '')}</div>
                                 </div>
-                                <p class="text-xs opacity-60">錯誤訊息：${err.message}</p>
+                                <p class="text-xs opacity-60">錯誤訊息：${SecurityUtils.escapeHTML(err.message || '')}</p>
                             </div>
                             <div class="flex flex-col gap-2">
                                 <button id="copy-txhash-btn" class="w-full py-3 bg-primary hover:brightness-110 text-background font-bold rounded-2xl transition shadow-lg flex items-center justify-center gap-2">

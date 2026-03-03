@@ -233,7 +233,7 @@ window.TWStockTab = {
             this.renderMarketList(listContainer, topPerformers);
         } catch (error) {
             console.error('[TW Stock] Market API Error:', error);
-            listContainer.innerHTML = `<div class="p-4 text-center text-danger bg-danger/10 rounded-xl text-sm">無法載入台股市場數據：${error.message}</div>`;
+            listContainer.innerHTML = `<div class="p-4 text-center text-danger bg-danger/10 rounded-xl text-sm">無法載入台股市場數據：${SecurityUtils.escapeHTML(error.message || '')}</div>`;
         } finally {
             loader.classList.add('hidden');
         }
@@ -341,7 +341,7 @@ window.TWStockTab = {
 
         } catch (error) {
             console.error('[TW Stock] Pulse API Error:', error);
-            pulseContainer.innerHTML = `<div class="p-4 text-center text-danger bg-danger/10 rounded-xl text-sm">無法載入「${symbol}」的脈動分析：${error.message}</div>`;
+            pulseContainer.innerHTML = `<div class="p-4 text-center text-danger bg-danger/10 rounded-xl text-sm">無法載入「${SecurityUtils.escapeHTML(symbol || '')}」的脈動分析：${SecurityUtils.escapeHTML(error.message || '')}</div>`;
             pulseContainer.classList.remove('hidden');
         } finally {
             loader.classList.add('hidden');
@@ -897,7 +897,7 @@ window.TWStockTab = {
             console.error('[TW Stock] Chart Data Error:', error);
             chartContainer.innerHTML = `<div class="text-danger h-full flex flex-col items-center justify-center text-sm p-4 text-center">
             <i data-lucide="alert-triangle" class="w-8 h-8 mb-2"></i>
-        讀取失敗：${error.message}
+        讀取失敗：${SecurityUtils.escapeHTML(error.message || '')}
             </div>`;
             if (window.lucide) window.lucide.createIcons();
         }
@@ -1056,7 +1056,7 @@ window.TWStockTab = {
             `).join('');
         } catch (err) {
             console.error('[TW Info] News error:', err);
-            container.innerHTML = `<p class="text-danger text-xs text-center py-4">載入重大訊息失敗：${err.message}</p>`;
+            container.innerHTML = `<p class="text-danger text-xs text-center py-4">載入重大訊息失敗：${SecurityUtils.escapeHTML(err.message || '')}</p>`;
         } finally {
             this._showLoader('twstock-info-news-loader', false);
         }
@@ -1122,7 +1122,7 @@ window.TWStockTab = {
             }).join('');
         } catch (err) {
             console.error('[TW Info] PE error:', err);
-            container.innerHTML = `<p class="text-danger text-xs text-center py-4 col-span-full">載入本益比失敗：${err.message}</p>`;
+            container.innerHTML = `<p class="text-danger text-xs text-center py-4 col-span-full">載入本益比失敗：${SecurityUtils.escapeHTML(err.message || '')}</p>`;
         } finally {
             this._showLoader('twstock-info-pe-loader', false);
         }
@@ -1170,7 +1170,7 @@ window.TWStockTab = {
             if (window.lucide) window.lucide.createIcons();
         } catch (err) {
             console.error('[TW Info] Dividend error:', err);
-            container.innerHTML = `<p class="text-danger text-xs text-center py-4">載入股利資料失敗：${err.message}</p>`;
+            container.innerHTML = `<p class="text-danger text-xs text-center py-4">載入股利資料失敗：${SecurityUtils.escapeHTML(err.message || '')}</p>`;
         } finally {
             this._showLoader('twstock-info-div-loader', false);
         }
@@ -1228,7 +1228,7 @@ window.TWStockTab = {
             `;
         } catch (err) {
             console.error('[TW Info] Foreign holding error:', err);
-            container.innerHTML = `<p class="text-danger text-xs text-center py-4">載入外資持股失敗：${err.message}</p>`;
+            container.innerHTML = `<p class="text-danger text-xs text-center py-4">載入外資持股失敗：${SecurityUtils.escapeHTML(err.message || '')}</p>`;
         } finally {
             this._showLoader('twstock-info-foreign-loader', false);
         }

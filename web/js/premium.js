@@ -324,7 +324,12 @@ class PremiumManager {
             // 呼叫後端 API 完成或取消此支付
             await fetch('/api/user/payment/complete', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(window.AuthManager?.currentUser?.accessToken
+                        ? { 'Authorization': `Bearer ${window.AuthManager.currentUser.accessToken}` }
+                        : {})
+                },
                 body: JSON.stringify({
                     paymentId: payment.identifier,
                     txid: payment.transaction?.txid || null
@@ -362,7 +367,12 @@ class PremiumManager {
                         try {
                             const response = await fetch('/api/user/payment/approve', {
                                 method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    ...(window.AuthManager?.currentUser?.accessToken
+                                        ? { 'Authorization': `Bearer ${window.AuthManager.currentUser.accessToken}` }
+                                        : {})
+                                },
                                 body: JSON.stringify({ paymentId })
                             });
 
@@ -404,7 +414,12 @@ class PremiumManager {
 
                                 const response = await fetch('/api/user/payment/complete', {
                                     method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        ...(window.AuthManager?.currentUser?.accessToken
+                                            ? { 'Authorization': `Bearer ${window.AuthManager.currentUser.accessToken}` }
+                                            : {})
+                                    },
                                     body: JSON.stringify({ paymentId, txid })
                                 });
 
@@ -529,6 +544,9 @@ class PremiumManager {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                ...(window.AuthManager?.currentUser?.accessToken
+                    ? { 'Authorization': `Bearer ${window.AuthManager.currentUser.accessToken}` }
+                    : {})
             },
             body: JSON.stringify({
                 user_id: userId,

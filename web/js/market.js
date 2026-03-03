@@ -342,7 +342,7 @@ async function refreshScreener(showLoading = false, forceRefresh = false) {
                             <div class="flex flex-col items-center justify-center py-8 text-center text-red-400">
                                 <i data-lucide="wifi-off" class="w-8 h-8 mb-2 opacity-50"></i>
                                 <span class="text-sm font-medium">載入失敗</span>
-                                <div class="text-xs opacity-50 mt-1 mb-2">${err.message}</div>
+                                <div class="text-xs opacity-50 mt-1 mb-2">${SecurityUtils.escapeHTML(err.message || '')}</div>
                                 <button onclick="window.refreshScreener(true, true)" class="text-xs bg-red-500/10 hover:bg-red-500/20 px-3 py-1 rounded-full transition">重試</button>
                             </div>`;
                         }
@@ -625,7 +625,7 @@ async function showFundingHistory(symbol) {
     } catch (e) {
         console.error('Fetch failed:', e);
         if (overlay && overlayContent) {
-            overlayContent.innerHTML = `<div class="text-red-400 text-sm">載入失敗<br><span class="text-xs opacity-70">${e.message}</span></div>`;
+            overlayContent.innerHTML = `<div class="text-red-400 text-sm">載入失敗<br><span class="text-xs opacity-70">${SecurityUtils.escapeHTML(e.message || '')}</span></div>`;
         }
     }
 }

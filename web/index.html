@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Crypto Analyst</title>
     <link rel="icon" type="image/png" href="/static/img/title_icon.png">
 
@@ -52,6 +52,7 @@
     <script src="/static/config.js"></script>
     <script src="/static/js/logger.js"></script>
     <script src="/static/js/premium.js"></script>
+    <script src="/static/js/security-utils.js"></script>
     <script src="/static/js/friends.js?v=5"></script>
     <script src="/static/js/messages.js?v=2"></script>
     <script src="/static/js/nav-config.js?v=7"></script>
@@ -2151,7 +2152,7 @@
                     modal.dataset.type = type;
                 }
             } catch (e) {
-                contentArea.innerHTML = `<p class="text-center text-danger py-20">Failed to load: ${e.message}</p>`;
+                contentArea.innerHTML = `<p class="text-center text-danger py-20">Failed to load: ${SecurityUtils.escapeHTML(e.message || '')}</p>`;
             }
 
             if (window.lucide) lucide.createIcons();

@@ -338,7 +338,7 @@ const SafetyTab = {
             `;
             if (window.lucide) lucide.createIcons();
         } catch (error) {
-            content.innerHTML = `<div class="text-center text-danger py-8">${error.message || 'Failed to load'}</div>`;
+            content.innerHTML = `<div class="text-center text-danger py-8">${SecurityUtils.escapeHTML(error.message || 'Failed to load')}</div>`;
         }
     },
 

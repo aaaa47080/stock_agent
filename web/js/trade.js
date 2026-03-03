@@ -157,7 +157,7 @@ async function runBacktest() {
         const isProfitable = data.return_pct > 0;
         resultDiv.innerHTML = `<div class="flex justify-between items-center mb-2"><span class="font-bold text-secondary">${symbol} (${strategy})</span><span class="${isProfitable ? 'text-success' : 'text-danger'} font-bold">${data.return_pct.toFixed(2)}%</span></div><div class="grid grid-cols-2 gap-2 text-xs text-textMuted"><div>勝率: <span class="text-secondary">${data.win_rate.toFixed(1)}%</span></div><div>交易次數: <span class="text-secondary">${data.total_trades}</span></div><div>最大回撤: <span class="text-danger">${data.max_drawdown.toFixed(2)}%</span></div><div>淨利: <span class="${isProfitable ? 'text-success' : 'text-danger'}">$${(data.final_capital - data.initial_capital).toFixed(2)}</span></div></div>`;
     } catch (e) {
-        resultDiv.innerHTML = `<span class="text-danger">回測失敗: ${e.message}</span>`;
+        resultDiv.innerHTML = `<span class="text-danger">回測失敗: ${SecurityUtils.escapeHTML(e.message || '')}</span>`;
     }
 }
 

@@ -206,7 +206,7 @@ window.USStockTab = {
             this._renderWatchlist(listContainer, data.stocks || []);
         } catch (err) {
             console.error('[US Stock] Market error:', err);
-            listContainer.innerHTML = `<div class="p-4 text-center text-danger bg-danger/10 rounded-xl text-sm">無法載入美股數據：${err.message}</div>`;
+            listContainer.innerHTML = `<div class="p-4 text-center text-danger bg-danger/10 rounded-xl text-sm">無法載入美股數據：${SecurityUtils.escapeHTML(err.message || '')}</div>`;
         } finally {
             loader.classList.add('hidden');
         }
@@ -329,7 +329,7 @@ window.USStockTab = {
             }).join('');
         } catch (err) {
             console.error('[US Stock] Indices error:', err);
-            container.innerHTML = `<p class="text-danger text-xs text-center py-4 col-span-3">載入指數失敗：${err.message}</p>`;
+            container.innerHTML = `<p class="text-danger text-xs text-center py-4 col-span-3">載入指數失敗：${SecurityUtils.escapeHTML(err.message || '')}</p>`;
         } finally {
             this._showLoader('usstock-info-indices-loader', false);
         }
@@ -368,7 +368,7 @@ window.USStockTab = {
             }).join('');
         } catch (err) {
             console.error('[US Stock] News error:', err);
-            container.innerHTML = `<p class="text-danger text-xs text-center py-4">載入新聞失敗：${err.message}</p>`;
+            container.innerHTML = `<p class="text-danger text-xs text-center py-4">載入新聞失敗：${SecurityUtils.escapeHTML(err.message || '')}</p>`;
         } finally {
             this._showLoader('usstock-info-news-loader', false);
         }
@@ -429,7 +429,7 @@ window.USStockTab = {
             container.classList.remove('hidden');
         } catch (err) {
             console.error('[US Stock] Pulse error:', err);
-            container.innerHTML = `<div class="p-4 text-center text-danger bg-danger/10 rounded-xl text-sm">無法載入「${symbol}」的脈動分析：${err.message}</div>`;
+            container.innerHTML = `<div class="p-4 text-center text-danger bg-danger/10 rounded-xl text-sm">無法載入「${SecurityUtils.escapeHTML(symbol || '')}」的脈動分析：${SecurityUtils.escapeHTML(err.message || '')}</div>`;
             container.classList.remove('hidden');
         } finally {
             loader.classList.add('hidden');
@@ -839,7 +839,7 @@ window.USStockTab = {
 
         } catch (err) {
             console.error('[US Stock] Chart error:', err);
-            chartEl.innerHTML = `<div class="text-danger h-full flex flex-col items-center justify-center text-sm p-4 text-center"><i data-lucide="alert-triangle" class="w-8 h-8 mb-2"></i>讀取失敗：${err.message}</div>`;
+            chartEl.innerHTML = `<div class="text-danger h-full flex flex-col items-center justify-center text-sm p-4 text-center"><i data-lucide="alert-triangle" class="w-8 h-8 mb-2"></i>讀取失敗：${SecurityUtils.escapeHTML(err.message || '')}</div>`;
             if (window.lucide) window.lucide.createIcons();
         }
     },
