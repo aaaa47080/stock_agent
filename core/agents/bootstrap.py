@@ -21,6 +21,16 @@ from .tools import (
     tw_price, tw_technical, tw_fundamentals_tool, tw_institutional_tool, tw_news_tool,
 )
 
+# Import new free market data tools
+from core.tools.crypto_tools import (
+    get_gas_fees, get_whale_transactions, get_exchange_flow,
+)
+
+# Import Pi Network tools
+from core.tools.pi_tools import (
+    get_pi_price, get_pi_network_info, get_pi_ecosystem, get_pi_tools_guide,
+)
+
 # Import @tool functions — US stock
 from core.tools.us_stock_tools import (
     us_stock_price, us_technical_analysis, us_fundamentals,
@@ -84,13 +94,14 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
             "crypto":   ["get_current_time_taipei","technical_analysis","price_data","get_crypto_price",
                          "google_news","aggregate_news","web_search","get_fear_and_greed_index",
                          "get_trending_tokens","get_futures_data","get_defillama_tvl",
-                         "get_crypto_categories_and_gainers","get_token_unlocks","get_token_supply"],
+                         "get_crypto_categories_and_gainers","get_token_unlocks","get_token_supply",
+                         "get_gas_fees", "get_whale_transactions", "get_exchange_flow"],
             "tw_stock": ["get_current_time_taipei","tw_stock_price","tw_technical_analysis",
                          "tw_fundamentals","tw_institutional","tw_news","tw_major_news",
                          "tw_pe_ratio","tw_monthly_revenue","tw_dividend","tw_foreign_top20","web_search"],
             "us_stock": ["us_stock_price","us_technical_analysis","us_fundamentals","us_earnings",
                          "us_news","us_institutional_holders","us_insider_transactions","get_current_time_taipei"],
-            "chat":     ["get_current_time_taipei","get_crypto_price","web_search"],
+            "chat":     ["get_current_time_taipei","get_crypto_price","web_search", "get_pi_price", "get_pi_network_info", "get_pi_ecosystem"],
         }
         def _tools(agent_id: str) -> list:
             return _FALLBACK.get(agent_id, [])
@@ -193,6 +204,59 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         input_schema={"query": "str", "purpose": "str"},
         handler=web_search,
         allowed_agents=["chat", "news", "crypto", "manager"],
+    ))
+
+    # ── Register New Free Market Data Tools ──
+    tool_registry.register(ToolMetadata(
+        name="get_gas_fees",
+        description="獲取 Ethereum 網路的即時 Gas 費用",
+        input_schema={},
+        handler=get_gas_fees,
+        allowed_agents=["crypto", "chat", "manager"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="get_whale_transactions",
+        description="獲取加密貨幣的大額鏈上轉帳（鯨魚交易）",
+        input_schema={"symbol": "str", "min_value_usd": "int"},
+        handler=get_whale_transactions,
+        allowed_agents=["crypto", "chat", "manager"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="get_exchange_flow",
+        description="獲取加密貨幣交易所的資金流向數據",
+        input_schema={"symbol": "str"},
+        handler=get_exchange_flow,
+        allowed_agents=["crypto", "chat", "manager"],
+    ))
+
+    # ── Register Pi Network Tools ──
+    tool_registry.register(ToolMetadata(
+        name="get_pi_price",
+        description="獲取 Pi Network (PI) 幣的即時價格",
+        input_schema={},
+        handler=get_pi_price,
+        allowed_agents=["crypto", "chat", "manager"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="get_pi_network_info",
+        description="獲取 Pi Network 的專案資訊和市場數據",
+        input_schema={},
+        handler=get_pi_network_info,
+        allowed_agents=["crypto", "chat", "manager"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="get_pi_ecosystem",
+        description="獲取 Pi Network 生態系統資訊",
+        input_schema={},
+        handler=get_pi_ecosystem,
+        allowed_agents=["crypto", "chat"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="get_pi_tools_guide",
+        description="顯示 Pi Network 工具使用指南",
+        input_schema={},
+        handler=get_pi_tools_guide,
+        allowed_agents=["chat"],
     ))
 
     # ── Register TW Stock Tools ──

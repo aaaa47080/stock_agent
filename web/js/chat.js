@@ -4,6 +4,263 @@
 
 let currentSessionId = null;
 let chatInitialized = false;  // 防止重複初始化
+
+// 用於跟踪分析過程面板的展開狀態
+window.lastProcessOpenState = false;
+
+// 編輯模式（批量刪除）
+let isEditMode = false;
+let selectedSessions = new Set();
+
+// ========================================
+// MessageComponents - 結構化消息卡片組件
+// ========================================
+const MessageComponents = {
+    /**
+     * 價格卡片 - 用於顯示加密貨幣價格資訊
+     */
+    priceCard(symbol, data) {
+        const price = data.price || data.current_price || 'N/A';
+        const change = data.change_24h || data.change || 0;
+        const changeClass = change >= 0 ? 'text-success' : 'text-danger';
+        const changeIcon = change >= 0 ? '📈' : '📉';
+
+        return `
+            <div class="price-card bg-surface border border-white/10 rounded-2xl p-4 my-3 hover:border-primary/30 transition">
+                <div class="flex justify-between items-center mb-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl font-bold text-secondary">${symbol}</span>
+                        ${data.exchange ? `<span class="text-xs text-textMuted">(${data.exchange})</span>` : ''}
+                    </div>
+                    <span class="${changeClass} text-sm font-medium flex items-center gap-1">
+                        <span>${changeIcon}</span> ${change >= 0 ? '+' : ''}${Math.abs(change).toFixed(2)}%
+                    </span>
+                </div>
+                <div class="text-3xl font-mono text-secondary font-bold">
+                    ${typeof price === 'number' ? '$' + price.toLocaleString() : price}
+                </div>
+                ${data.high_24h || data.low_24h ? `
+                <div class="flex gap-4 mt-2 text-xs text-textMuted">
+                    ${data.high_24h ? `<span>H: $${data.high_24h}</span>` : ''}
+                    ${data.low_24h? `<span>L: $${data.low_24h}</span>` : ''}
+                    ${data.volume_24h ? `<span>Vol: ${data.volume_24h}</span>` : ''}
+                </div>
+                ` : ''}
+            </div>
+        `;
+    },
+
+    /**
+     * Pi 資訊卡片 - 用於顯示 Pi Network 相關資訊
+     */
+    piInfoCard(data) {
+        const title = data.title || 'Pi Network';
+        const content = data.content || '';
+        const icon = data.icon || '🥧';
+
+        return `
+            <div class="pi-info-card border border-purple-500/20 bg-purple-500/5 rounded-2xl p-4 my-3">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
+                        <span class="text-2xl">${icon}</span>
+                    </div>
+                    <div>
+                        <div class="text-sm font-medium text-secondary">${title}</div>
+                        <div class="text-xs text-textMuted">即時資訊</div>
+                    </div>
+                </div>
+                <div class="text-sm text-textMain">
+                    ${content}
+                </div>
+            </div>
+        `;
+    },
+
+    /**
+     * 市場指標卡片 - 用於顯示恐懼貪婪指數等
+     */
+    marketIndicatorCard(data) {
+        const name = data.name || '指標';
+        const value = data.value || 0;
+        const status = data.status || '';
+        const statusClass = status.includes('貪婪') || status.includes('Greed') ? 'text-success' :
+                         status.includes('恐慌') || status.includes('Fear') ? 'text-danger' : 'text-textMain';
+
+        return `
+            <div class="market-indicator-card bg-surface border border-white/10 rounded-xl p-4 my-3">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-sm text-textMuted">${name}</span>
+                    <span class="text-lg font-bold ${statusClass}">${value}/100</span>
+                </div>
+                <div class="text-xs ${statusClass}">${status}</div>
+            </div>
+        `;
+    },
+
+    /**
+     * Gas 費用卡片 - 用於顯示 Ethereum Gas 費用
+     */
+    gasFeeCard(data) {
+        const low = data.low || data.safe || 'N/A';
+        const average = data.average || data.propose || 'N/A';
+        const high = data.high || data.fast || 'N/A';
+
+        return `
+            <div class="gas-fee-card bg-surface border border-amber-500/20 rounded-xl p-4 my-3">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="text-xl">⛽</span>
+                    <span class="text-sm font-medium text-secondary">Ethereum Gas 費用 (Gwei)</span>
+                </div>
+                <div class="grid grid-cols-3 gap-2 text-center">
+                    <div class="bg-background/50 rounded-lg p-2">
+                        <div class="text-xs text-textMuted">🐢 慢速</div>
+                        <div class="text-sm font-mono text-secondary">${low}</div>
+                    </div>
+                    <div class="bg-background/50 rounded-lg p-2">
+                        <div class="text-xs text-textMuted">🚗 標準</div>
+                        <div class="text-sm font-mono text-secondary">${average}</div>
+                    </div>
+                    <div class="bg-background/50 rounded-lg p-2">
+                        <div class="text-xs text-textMuted">🚀 快速</div>
+                        <div class="text-sm font-mono text-secondary">${high}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+
+    /**
+     * 鯨魚交易卡片 - 用於顯示大額交易
+     */
+    whaleTransactionCard(data) {
+        const transactions = data.transactions || [];
+
+        if (transactions.length === 0) {
+            return `
+                <div class="whale-card bg-surface border border-blue-500/20 rounded-xl p-4 my-3">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-xl">🐋</span>
+                        <span class="text-sm font-medium text-secondary">鯨魚監控</span>
+                    </div>
+                    <div class="text-sm text-textMuted">目前沒有發現大額交易活動</div>
+                </div>
+            `;
+        }
+
+        let txList = transactions.slice(0, 5).map(tx => `
+            <div class="flex justify-between items-center py-2 border-b border-white/5 last:border-0">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs text-textMuted font-mono">${tx.hash || 'N/A'}</span>
+                </div>
+                <div class="text-right">
+                    <div class="text-sm font-medium ${tx.usd >= 1000000 ? 'text-warning' : 'text-secondary'}">$${(tx.usd || 0).toLocaleString()}</div>
+                    <div class="text-xs text-textMuted">${tx.amount || ''} ${tx.symbol || ''}</div>
+                </div>
+            </div>
+        `).join('');
+
+        return `
+            <div class="whale-card bg-surface border border-blue-500/20 rounded-xl p-4 my-3">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xl">🐋</span>
+                        <span class="text-sm font-medium text-secondary">鯨魚大額轉帳</span>
+                    </div>
+                    <span class="text-xs text-textMuted">≥ $${(data.min_value || 500000).toLocaleString()}</span>
+                </div>
+                <div class="divide-y divide-white/5">
+                    ${txList}
+                </div>
+            </div>
+        `;
+    },
+
+    /**
+     * 資金流向卡片 - 用於顯示交易所資金流
+     */
+    exchangeFlowCard(data) {
+        const symbol = data.symbol || 'BTC';
+        const flow = data.flow || '流出';
+        const flowClass = flow.includes('流出') ? 'text-success' : 'text-danger';
+        const interpretation = data.interpretation || '';
+
+        return `
+            <div class="flow-card bg-surface border border-white/10 rounded-xl p-4 my-3">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xl">🏦</span>
+                        <span class="text-sm font-medium text-secondary">${symbol} 交易所資金流向</span>
+                    </div>
+                    <span class="text-sm font-medium ${flowClass}">${flow}</span>
+                </div>
+                ${interpretation ? `<div class="text-xs text-textMuted">${interpretation}</div>` : ''}
+            </div>
+        `;
+    },
+
+    /**
+     * 通用資訊卡片 - 用於顯示任何類型的摘要資訊
+     */
+    infoCard(title, content, icon = '📊') {
+        return `
+            <div class="info-card bg-surface border border-white/10 rounded-xl p-4 my-3">
+                <div class="flex items-center gap-2 mb-2">
+                    <span class="text-xl">${icon}</span>
+                    <span class="text-sm font-medium text-secondary">${title}</span>
+                </div>
+                <div class="text-sm text-textMain">
+                    ${content}
+                </div>
+            </div>
+        `;
+    },
+
+    /**
+     * 檢測內容中的結構化數據並渲染為卡片
+     */
+    renderStructuredContent(content, data) {
+                // 如果有結構化數據，嘗試渲染卡片
+                if (data && typeof data === 'object') {
+                        let cardsHtml = '';
+
+                        // 價格數據
+                        if (data.price_data || data.symbol) {
+                                cardsHtml += this.priceCard(data.symbol || 'BTC', data.price_data || data);
+                        }
+
+                        // Pi 相關數據
+                        if (data.pi_data || data.pi_network) {
+                                cardsHtml += this.piInfoCard(data.pi_data || data.pi_network);
+                        }
+
+                        // Gas 費用數據
+                        if (data.gas_fees) {
+                                cardsHtml += this.gasFeeCard(data.gas_fees);
+                        }
+
+                        // 鯨魚交易數據
+                        if (data.whale_transactions) {
+                                cardsHtml += this.whaleTransactionCard(data.whale_transactions);
+                        }
+
+                        // 資金流向數據
+                        if (data.exchange_flow) {
+                                cardsHtml += this.exchangeFlowCard(data.exchange_flow);
+                        }
+
+                        // 如果有卡片，則在內容前插入
+                        if (cardsHtml) {
+                                return cardsHtml + content;
+                        }
+                }
+
+                // 沒有結構化數據，直接返回原始內容
+                return content;
+    }
+};
+
+// 全域暴露 MessageComponents
+window.MessageComponents = MessageComponents;
 // isAnalyzing is declared globally in app.js
 // 用於跟踪分析過程面板的展開狀態
 window.lastProcessOpenState = false;
@@ -19,7 +276,15 @@ function appendMessage(role, content) {
     div.className = `message-bubble ${role === 'user' ? 'user-message' : 'bot-bubble prose'}`;
 
     if (role === 'bot') {
-        div.innerHTML = md.render(content);
+        // BUG FIX: 檢查 md 對象是否存在且 render 方法可用
+        // 防止在 markdown 庫未載入時崩潰
+        if (typeof md !== 'undefined' && md && typeof md.render === 'function') {
+            div.innerHTML = md.render(content);
+        } else {
+            // 降級處理：使用純文本顯示，轉義 HTML 防止 XSS
+            div.textContent = content;
+            console.warn('[chat] markdown 庫未載入，使用純文本顯示');
+        }
         // Wrap tables in overflow-x container for proper horizontal scroll + border styling
         div.querySelectorAll('table').forEach(table => {
             const wrapper = document.createElement('div');
