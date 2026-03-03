@@ -72,29 +72,18 @@ DEEP_THINKING_MODEL = OPENAI_DEFAULT_MODEL   # 用於深度思考（交易員、
 # [User-Side] 需要用戶 API Key 的功能
 # ============================================================================
 
-# 多頭研究員 (用戶付費)
-BULL_RESEARCHER_MODEL = {
+# 主要 AI 模型配置（統一配置，簡化架構）
+# 原多模型辯論架構已簡化為單一模型
+PRIMARY_MODEL = {
     "provider": "user_provided",
     "model": OPENAI_DEFAULT_MODEL,
 }
 
-# 空頭研究員 (用戶付費)
-BEAR_RESEARCHER_MODEL = {
-    "provider": "user_provided",
-    "model": OPENAI_DEFAULT_MODEL,
-}
-
-# 交易員 (用戶付費)
-TRADER_MODEL = {
-    "provider": "user_provided",
-    "model": OPENAI_DEFAULT_MODEL,
-}
-
-# 綜合模型 (用戶付費)
-SYNTHESIS_MODEL = {
-    "provider": "user_provided",
-    "model": OPENAI_DEFAULT_MODEL,
-}
+# 向後兼容別名（deprecated，將在未來版本移除）
+BULL_RESEARCHER_MODEL = PRIMARY_MODEL
+BEAR_RESEARCHER_MODEL = PRIMARY_MODEL
+TRADER_MODEL = PRIMARY_MODEL
+SYNTHESIS_MODEL = PRIMARY_MODEL
 
 # 查詢解析 (用戶付費)
 QUERY_PARSER_MODEL_CONFIG = {

@@ -184,7 +184,7 @@ async def validate_key(request: KeyValidationRequest, current_user: dict = Depen
 @router.get("/api/config")
 async def get_config():
     """回傳前端需要的配置資訊"""
-    current_provider = core_config.BULL_RESEARCHER_MODEL.get("provider", "openai")
+    current_provider = core_config.PRIMARY_MODEL.get("provider", "openai")
 
     # Helper to check key existence using Factory logic
     def has_key(provider):
@@ -196,7 +196,7 @@ async def get_config():
         "default_limit": DEFAULT_KLINES_LIMIT,
         "current_settings": {
             "primary_model_provider": current_provider,
-            "primary_model_name": core_config.BULL_RESEARCHER_MODEL.get("model"),
+            "primary_model_name": core_config.PRIMARY_MODEL.get("model"),
             # Mask keys for security
             "has_openai_key": has_key("openai"),
             "has_google_key": has_key("google_gemini"),
@@ -281,14 +281,15 @@ async def update_user_settings(settings: UserSettings, current_user: dict = Depe
             "provider": settings.primary_model_provider,
             "model": settings.primary_model_name
         }
-        
+
         logger.info(f"Updating model config to: {new_model_config}")
-        
-        # 更新核心配置中的模型定義
+
+        # 更新核心配置中的模型定義（統一配置，向後兼容）
+        core_config.PRIMARY_MODEL = new_model_config
+        # 向後兼容：同步更新舊的別名（deprecated）
         core_config.BULL_RESEARCHER_MODEL = new_model_config
         core_config.BEAR_RESEARCHER_MODEL = new_model_config
         core_config.TRADER_MODEL = new_model_config
-        # 同步更新合成模型，確保委員會模式下的總結也能正常執行
         core_config.SYNTHESIS_MODEL = new_model_config
         
         # 4. Save to .env file for persistence
