@@ -87,9 +87,33 @@ const NotificationService = {
         if (typeof AuthManager !== 'undefined' && AuthManager.currentUser) {
             const userId = AuthManager.currentUser.user_id || AuthManager.currentUser.uid;
             const token = AuthManager.currentUser.accessToken || AuthManager.currentUser.token;
+
             return { userId, token };
         }
         return { userId: null, token: null };
+    },
+
+    /**
+     * 檢查 token 是否過期，     */
+    _isTokenExpired() {
+        const { userId, token } = this._getCredentials();
+
+        if (!userId || !token) {
+            return true;
+        }
+
+        // 檢查 AuthManager 是否有過期檢查方法
+        if (typeof AuthManager.isTokenExpired === 'function') {
+            return AuthManager.isTokenExpired();
+        }
+
+        // 備用檢查：檢查 accessTokenExpiry
+        const expiry = AuthManager.currentUser?.accessTokenExpiry;
+        if (!expiry) {
+            return true; // 沒有過期時間，假設已過期
+        }
+
+        return Date.now() > expiry;
     },
 
     /**
@@ -97,6 +121,15 @@ const NotificationService = {
      */
     async fetchNotifications() {
         try {
+            // 檢查 token 是否過期
+            if (this._isTokenExpired()) {
+                console.warn('[NotificationService] Token expired, clearing...');
+                if (typeof AuthManager !== 'undefined' && typeof AuthManager.clearExpiredToken === 'function') {
+                    AuthManager.clearExpiredToken();
+                }
+                return;
+            }
+
             const { userId, token } = this._getCredentials();
 
             if (!userId || !token) {
@@ -119,6 +152,17 @@ const NotificationService = {
                 this.unreadCount = data.unread_count || 0;
                 this.notifyUpdate();
                 console.log('[NotificationService] Loaded from API:', this.notifications.length, 'notifications');
+            } else if (response.status === 401) {
+                // 401 錯誤 - token 可能無效或已過期
+                console.warn('[NotificationService] 401 Unauthorized, token may be expired');
+                this.notifications = [];
+                this.unreadCount = 0;
+                this.notifyUpdate();
+
+                // 清除過期 token
+                if (typeof AuthManager !== 'undefined' && typeof AuthManager.clearExpiredToken === 'function') {
+                    AuthManager.clearExpiredToken();
+                }
             } else {
                 console.warn('[NotificationService] API failed, status:', response.status);
                 this.notifications = [];
