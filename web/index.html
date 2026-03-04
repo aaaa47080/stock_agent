@@ -25,7 +25,7 @@
                         success: '#86efac',        // Pastel Green
                         danger: '#fda4af',         // Pastel Red
                         textMain: '#f4f4f5',
-                        textMuted: '#a1a1aa',
+                        textMuted: '#b8b8bc',    // Improved contrast (4.6:1) for WCAG AA
                     },
                     fontFamily: {
                         serif: ['Lora', 'serif'],
@@ -111,6 +111,8 @@
 </head>
 
 <body class="h-screen w-screen overflow-hidden flex bg-background text-textMain selection:bg-primary/30">
+    <!-- Skip to main content link for keyboard users -->
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[9999] focus:px-4 focus:py-2 focus:bg-primary focus:text-background focus:rounded-lg focus:font-bold">跳到主要內容</a>
     <script>
         // Show login modal immediately for non-logged-in users (prevents blank screen)
         // For logged-in users, modal stays hidden (prevents flash on reload)
@@ -123,7 +125,7 @@
     </script>
 
     <!-- Sidebar (Chat History) -->
-    <aside id="chat-sidebar"
+    <aside id="chat-sidebar" role="complementary" aria-label="聊天歷史側邊欄"
         class="fixed inset-y-0 left-0 z-50 w-64 bg-surface/95 backdrop-blur-xl border-r border-white/5 transform -translate-x-full transition-transform duration-300 md:translate-x-0 md:static md:w-72 md:flex-shrink-0 flex flex-col">
         <div class="p-4 border-b border-white/5 flex items-center justify-between">
             <div class="flex items-center gap-2 text-secondary font-serif">
@@ -132,7 +134,7 @@
                 </div>
                 <span>CryptoMind</span>
             </div>
-            <button onclick="toggleSidebar()" class="md:hidden p-2 hover:bg-white/5 rounded-full text-textMuted"><i
+            <button onclick="toggleSidebar()" aria-label="關閉側邊欄" class="md:hidden p-2 hover:bg-white/5 rounded-full text-textMuted"><i
                     data-lucide="x" class="w-5 h-5"></i></button>
         </div>
 
@@ -174,7 +176,7 @@
         onclick="toggleSidebar()"></div>
 
     <!-- Main Content Container -->
-    <main class="flex-1 relative h-full flex flex-col w-full overflow-hidden">
+    <main id="main-content" role="main" aria-label="主要內容" class="flex-1 relative h-full flex flex-col w-full overflow-hidden">
 
         <!-- Mobile Header -->
         <header
@@ -192,10 +194,10 @@
 
             <!-- Global Floating Draggable Navigation -->
             <div id="global-nav-container" class="fixed bottom-24 left-1/2 z-50" style="transform: translateX(-50%);">
-                <nav id="draggable-nav"
+                <nav id="draggable-nav" role="navigation" aria-label="主要導航"
                     class="bg-surface/95 backdrop-blur-xl border border-white/10 rounded-full p-1.5 flex items-center gap-1 shadow-2xl shadow-black/40 select-none transition-all duration-300">
                     <!-- Collapse/Expand Toggle -->
-                    <button id="nav-toggle" onclick="toggleNavCollapse()"
+                    <button id="nav-toggle" onclick="toggleNavCollapse()" aria-label="收縮/展開導航" aria-expanded="true"
                         class="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200"
                         title="收縮/展開">
                         <i data-lucide="chevrons-left" class="w-4 h-4 transition-transform duration-300"
@@ -227,7 +229,7 @@
                     <div class="lang-switcher-container"></div>
 
                     <!-- Drag Handle -->
-                    <div
+                    <div role="separator" aria-label="拖曳導航列"
                         class="drag-handle w-8 h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-textMuted/50 hover:text-textMuted cursor-grab active:cursor-grabbing transition-all duration-200 ml-0.5">
                         <i data-lucide="grip-vertical" class="w-4 h-4"></i>
                     </div>
@@ -333,16 +335,17 @@
                         <!-- Input Box -->
                         <div
                             class="bg-surface/90 border border-white/10 rounded-[2rem] p-2 flex items-center gap-2 shadow-xl focus-within:ring-1 focus-within:ring-primary/50">
-                            <button onclick="toggleOptions()"
+                            <button onclick="toggleOptions()" aria-label="顯示選項"
                                 class="w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center text-textMuted hover:text-primary transition">
                                 <i data-lucide="plus" class="w-5 h-5"></i>
                             </button>
-                            <input type="text" id="user-input" disabled
+                            <label for="user-input" class="sr-only">輸入訊息</label>
+                            <input type="text" id="user-input" disabled aria-label="輸入訊息"
                                 class="flex-1 bg-transparent border-none outline-none text-base text-secondary placeholder-textMuted/50 px-2 font-light relative z-10 opacity-50 cursor-not-allowed"
                                 placeholder="System Locked - Please Configure API Key" data-i18n="chat.systemLocked"
                                 data-i18n-attr="placeholder" autocomplete="off"
                                 onkeypress="if(event.key === 'Enter') sendMessage()">
-                            <button onclick="sendMessage()" id="send-btn" disabled
+                            <button onclick="sendMessage()" id="send-btn" disabled aria-label="發送訊息"
                                 class="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-accent text-background flex items-center justify-center hover:scale-105 active:scale-95 transition shadow-lg shadow-primary/20 opacity-50 cursor-not-allowed">
                                 <i data-lucide="arrow-up" class="w-5 h-5"></i>
                             </button>
@@ -740,25 +743,34 @@
 
     <!-- Modals -->
     <!-- API Key Modal -->
-    <div id="apikey-modal"
+    <div id="apikey-modal" role="dialog" aria-modal="true" aria-labelledby="apikey-modal-title"
         class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-6">
         <div class="bg-surface w-full max-w-md p-8 rounded-[2.5rem] border border-white/5 shadow-2xl">
             <div class="flex justify-between items-center mb-6">
-                <h3 class="font-serif text-xl text-secondary" data-i18n="modals.apiKey.title">Connect OKX</h3>
-                <button onclick="closeApiKeyModal()"
+                <h3 id="apikey-modal-title" class="font-serif text-xl text-secondary" data-i18n="modals.apiKey.title">Connect OKX</h3>
+                <button onclick="closeApiKeyModal()" aria-label="關閉"
                     class="w-8 h-8 rounded-full bg-background flex items-center justify-center text-textMuted hover:text-secondary transition"><i
                         data-lucide="x" class="w-4 h-4"></i></button>
             </div>
             <form id="apikey-form" onsubmit="saveApiKeys(event)" class="space-y-4">
-                <input type="text" id="input-api-key" placeholder="API Key" data-i18n="modals.apiKey.apiKeyPlaceholder"
-                    data-i18n-attr="placeholder"
-                    class="w-full bg-background border border-white/5 rounded-2xl p-4 text-secondary outline-none focus:border-primary/50 transition">
-                <input type="password" id="input-secret-key" placeholder="Secret Key"
-                    data-i18n="modals.apiKey.secretKeyPlaceholder" data-i18n-attr="placeholder"
-                    class="w-full bg-background border border-white/5 rounded-2xl p-4 text-secondary outline-none focus:border-primary/50 transition">
-                <input type="password" id="input-passphrase" placeholder="Passphrase"
-                    data-i18n="modals.apiKey.passphrasePlaceholder" data-i18n-attr="placeholder"
-                    class="w-full bg-background border border-white/5 rounded-2xl p-4 text-secondary outline-none focus:border-primary/50 transition">
+                <div>
+                    <label for="input-api-key" class="sr-only">API Key</label>
+                    <input type="text" id="input-api-key" placeholder="API Key" data-i18n="modals.apiKey.apiKeyPlaceholder"
+                        data-i18n-attr="placeholder"
+                        class="w-full bg-background border border-white/5 rounded-2xl p-4 text-secondary outline-none focus:border-primary/50 transition">
+                </div>
+                <div>
+                    <label for="input-secret-key" class="sr-only">Secret Key</label>
+                    <input type="password" id="input-secret-key" placeholder="Secret Key"
+                        data-i18n="modals.apiKey.secretKeyPlaceholder" data-i18n-attr="placeholder"
+                        class="w-full bg-background border border-white/5 rounded-2xl p-4 text-secondary outline-none focus:border-primary/50 transition">
+                </div>
+                <div>
+                    <label for="input-passphrase" class="sr-only">Passphrase</label>
+                    <input type="password" id="input-passphrase" placeholder="Passphrase"
+                        data-i18n="modals.apiKey.passphrasePlaceholder" data-i18n-attr="placeholder"
+                        class="w-full bg-background border border-white/5 rounded-2xl p-4 text-secondary outline-none focus:border-primary/50 transition">
+                </div>
                 <button type="submit"
                     class="w-full bg-secondary hover:bg-white text-background font-bold py-4 rounded-2xl transition"
                     data-i18n="modals.apiKey.secureConnect">Secure
@@ -768,23 +780,27 @@
     </div>
 
     <!-- Global Filter Modal (Re-styled) -->
-    <div id="global-filter-modal"
+    <div id="global-filter-modal" role="dialog" aria-modal="true" aria-labelledby="global-filter-modal-title"
         class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4">
         <div
             class="bg-surface w-full max-w-md h-[80vh] flex flex-col rounded-[2.5rem] border border-white/5 shadow-2xl overflow-hidden">
             <div class="p-6 border-b border-white/5 flex justify-between items-center">
-                <h3 class="font-serif text-xl text-secondary" data-i18n="modals.filter.title">Asset Filter</h3>
-                <button onclick="document.getElementById('global-filter-modal').classList.add('hidden')"
+                <h3 id="global-filter-modal-title" class="font-serif text-xl text-secondary" data-i18n="modals.filter.title">Asset Filter</h3>
+                <button onclick="document.getElementById('global-filter-modal').classList.add('hidden')" aria-label="關閉"
                     class="w-8 h-8 rounded-full bg-background flex items-center justify-center text-textMuted hover:text-secondary"><i
                         data-lucide="x" class="w-4 h-4"></i></button>
             </div>
 
             <div class="p-4 bg-background/50 space-y-3">
-                <input type="text" id="symbol-search" placeholder="Search (e.g. BTC)..."
-                    data-i18n="modals.filter.searchPlaceholder" data-i18n-attr="placeholder"
-                    class="w-full bg-background border border-white/5 rounded-2xl px-5 py-3 text-secondary focus:border-primary/50 outline-none transition"
-                    oninput="renderSymbolList(allMarketSymbols)">
+                <div>
+                    <label for="symbol-search" class="sr-only">搜尋代幣</label>
+                    <input type="text" id="symbol-search" placeholder="Search (e.g. BTC)..."
+                        data-i18n="modals.filter.searchPlaceholder" data-i18n-attr="placeholder"
+                        class="w-full bg-background border border-white/5 rounded-2xl px-5 py-3 text-secondary focus:border-primary/50 outline-none transition"
+                        oninput="renderSymbolList(allMarketSymbols)">
+                </div>
                 <div class="flex gap-2">
+                    <label for="filter-exchange-select" class="sr-only">選擇交易所</label>
                     <select id="filter-exchange-select" onchange="switchFilterExchange(this.value)"
                         class="flex-1 bg-background border border-white/5 rounded-xl px-3 py-2 text-xs text-textMuted outline-none">
                         <option value="okx">OKX</option>
@@ -843,7 +859,7 @@
     </div>
 
     <!-- Confirm Dialog Modal -->
-    <div id="confirm-modal"
+    <div id="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title" aria-describedby="confirm-modal-message"
         class="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-6">
         <div
             class="bg-surface w-full max-w-sm p-8 rounded-[2.5rem] border border-white/5 shadow-2xl animate-fade-in-up">
@@ -875,14 +891,14 @@
     </div>
 
     <!-- Toast Container - 桌面右上角，移动端底部中央 -->
-    <div id="toast-container" class="fixed z-[110] flex flex-col gap-3 pointer-events-none
+    <div id="toast-container" role="status" aria-live="polite" aria-atomic="true" class="fixed z-[110] flex flex-col gap-3 pointer-events-none
         bottom-28 left-4 right-4 items-center
         md:bottom-auto md:top-24 md:left-auto md:right-4 md:items-end">
         <!-- Toasts will be injected here -->
     </div>
 
     <!-- Login Modal -->
-    <div id="login-modal"
+    <div id="login-modal" role="dialog" aria-modal="true" aria-labelledby="login-modal-title"
         class="fixed inset-0 bg-background/95 backdrop-blur-xl z-[90] overflow-y-auto flex justify-center py-10 px-6 hidden">
         <div class="bg-surface w-full max-w-md p-8 rounded-[2.5rem] border border-white/10 shadow-2xl my-auto">
             <!-- Header -->
@@ -891,7 +907,7 @@
                     <img src="/static/img/title_icon.png" alt="CryptoMind Logo"
                         class="w-full h-full object-contain drop-shadow-lg">
                 </div>
-                <h2 class="font-serif text-2xl text-secondary mb-2" data-i18n="login.welcomeTitle">Welcome to CryptoMind
+                <h2 id="login-modal-title" class="font-serif text-2xl text-secondary mb-2" data-i18n="login.welcomeTitle">Welcome to CryptoMind
                 </h2>
                 <p class="text-textMuted text-sm" data-i18n="login.welcomeSubtitle">Connect your wallet or login to
                     continue</p>
@@ -903,20 +919,11 @@
                 <button id="pi-login-btn" onclick="safePiLogin()"
                     class="w-full py-4 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-bold rounded-2xl mb-4 flex items-center justify-center gap-3 transition shadow-lg"
                     style="display:none;">
-                    <img src="/static/img/pi-logo.png" alt="Pi" class="w-6 h-6"> <span
+                    <i data-lucide="wallet" class="w-6 h-6"></i> <span
                         data-i18n="login.connectPiWallet">Connect Pi Wallet</span>
                 </button>
                 <!-- 非 Pi Browser 提示：默認顯示 -->
                 <div id="not-pi-browser-msg" class="text-center py-4">
-                    <!-- Pi Logo 光暈 -->
-                    <div class="relative w-20 h-20 mx-auto mb-5">
-                        <div class="absolute inset-0 rounded-full bg-accent/20 animate-pulse"></div>
-                        <div class="absolute inset-1 rounded-full bg-accent/10"></div>
-                        <div class="relative w-full h-full rounded-full bg-surface border border-accent/30 flex items-center justify-center shadow-lg">
-                            <img src="/static/img/pi-logo.png" alt="Pi" class="w-10 h-10">
-                        </div>
-                    </div>
-
                     <!-- 標題 -->
                     <p class="text-secondary font-bold text-lg mb-1" data-i18n="login.usePiBrowser">請使用 Pi Browser 開啟</p>
                     <p class="text-textMuted text-sm mb-5" data-i18n="login.usePiBrowserDesc">Please open this app in Pi Browser</p>
@@ -1291,7 +1298,7 @@
     <script src="/static/js/apiKeyManager.js?v=47" onerror="alert('apiKeyManager.js 載入失敗')"></script>
     <script src="/static/js/auth.js?v=55" onerror="alert('auth.js 載入失敗')"></script>
     <script src="/static/js/okxKeyManager.js?v=47"></script>
-    <script src="/static/js/components.js?v=74"></script>
+    <script src="/static/js/components.js?v=76"></script>
     <script src="/static/js/notification-service.js?v=4"></script>
     <script src="/static/js/components/NotificationBell.js?v=2"></script>
     <script src="/static/js/components/NotificationPanel.js?v=4"></script>
@@ -1301,7 +1308,7 @@
     <script src="/static/js/chat.js?v=1001"></script>
     <script src="/static/js/market.js?v=50"></script>
     <script src="/static/js/assets.js?v=47"></script>
-    <script src="/static/js/pulse.js?v=51"></script>
+    <script src="/static/js/pulse.js?v=52"></script>
     <script src="/static/js/trade.js?v=48"></script>
     <script src="/static/js/forum.js?v=50"></script>
     <script src="/static/js/wallet.js?v=47"></script>

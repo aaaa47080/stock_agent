@@ -27,6 +27,57 @@ const AuthManager = {
     currentUser: null,
     piInitialized: false,
 
+    // Token 過期時間（7 天，與後端 JWT_EXPIRE_HOURS 一致）
+    TOKEN_EXPIRY_MS: 7 * 24 * 60 * 60 * 1000,
+
+    /**
+     * 檢查 token 是否過期
+     * @returns {boolean} true = 已過期, false = 未過期
+     */
+    isTokenExpired() {
+        if (!this.currentUser) return true;
+
+        const expiry = this.currentUser.accessTokenExpiry;
+        if (!expiry) {
+            // 沒有過期時間，假設已過期（舊格式 token）
+            return true;
+        }
+
+        return Date.now() > expiry;
+    },
+
+    /**
+     * 檢查 token 是否即將過期（1 小時內）
+     * @returns {boolean} true = 即將過期
+     */
+    isTokenExpiringSoon() {
+        if (!this.currentUser) return true;
+
+        const expiry = this.currentUser.accessTokenExpiry;
+        if (!expiry) return true;
+
+        const oneHour = 60 * 60 * 1000;
+        return (expiry - Date.now()) < oneHour;
+    },
+
+    /**
+     * 清除過期的 token 並導向登入
+     */
+    clearExpiredToken() {
+        DebugLog.warn('Token 已過期，清除並導向登入');
+        this.currentUser = null;
+        localStorage.removeItem('pi_user');
+        this._updateUI(false);
+
+        // 顯示提示
+        if (typeof showToast === 'function') {
+            showToast('登入已過期，請重新登入', 'warning');
+        }
+
+        // 重整頁面以顯示登入 modal
+        window.location.reload();
+    },
+
     initPiSDK() {
         if (this.piInitialized) {
             DebugLog.info('initPiSDK: 已初始化，跳過');
@@ -128,6 +179,7 @@ const AuthManager = {
                 user_id: result.user.uid,
                 username: result.user.username,
                 accessToken: result.access_token,
+                accessTokenExpiry: Date.now() + this.TOKEN_EXPIRY_MS,
                 authMethod: result.user.authMethod
             };
 
@@ -206,6 +258,7 @@ const AuthManager = {
                 user_id: syncResult.user.user_id,
                 username: syncResult.user.username,
                 accessToken: syncResult.access_token,
+                accessTokenExpiry: Date.now() + this.TOKEN_EXPIRY_MS,
                 authMethod: syncResult.user.auth_method,
                 role: syncResult.user.role || 'user',
                 membership_tier: syncResult.user.membership_tier || 'free',
@@ -249,6 +302,14 @@ const AuthManager = {
         if (savedUser) {
             try {
                 this.currentUser = JSON.parse(savedUser);
+
+                // 檢查 token 是否過期
+                if (this.isTokenExpired()) {
+                    DebugLog.warn('Token 已過期，清除並導向登入');
+                    this.clearExpiredToken();
+                    return false;
+                }
+
                 this._updateUI(true);
             } catch (e) {
                 localStorage.removeItem('pi_user');
@@ -992,6 +1053,7 @@ window.handleDevSwitchUser = async function (userId) {
             user_id: result.user.uid,
             username: result.user.username,
             accessToken: result.access_token,
+            accessTokenExpiry: Date.now() + AuthManager.TOKEN_EXPIRY_MS,
             authMethod: result.user.authMethod
         };
 

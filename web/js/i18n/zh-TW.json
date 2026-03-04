@@ -18,7 +18,8 @@
     "username": "用戶名",
     "to": "至",
     "required": "必填",
-    "optional": "選填"
+    "optional": "選填",
+    "deepAnalysis": "深度分析"
   },
   "nav": {
     "chat": "聊天",
@@ -73,12 +74,22 @@
   "twstock": {
     "title": "台股",
     "comingSoon": "台股板塊即將登場",
-    "comingSoonDesc": "我們正在整合台股的即時數據。敬請期待這個市場的高級 AI 分析功能。"
+    "comingSoonDesc": "我們正在整合台股的即時數據。敬請期待這個市場的高級 AI 分析功能。",
+    "watchlist": "自選清單",
+    "valuationMetrics": "估值指標 (P/E · 殖利率 · P/B)",
+    "majorAnnouncements": "今日重大訊息",
+    "dividendCalendar": "股利分派行事曆",
+    "foreignHoldingTop20": "外資持股前 20 名",
+    "searchPlaceholder": "輸入台股代號 (如: 2330)",
+    "analyzingChip": "AI 正在深度分析籌碼與基本面..."
   },
   "usstock": {
     "title": "美股",
     "comingSoon": "美股板塊即將登場",
-    "comingSoonDesc": "我們正在整合美股的即時數據。敬請期待這個市場的高級 AI 分析功能。"
+    "comingSoonDesc": "我們正在整合美股的即時數據。敬請期待這個市場的高級 AI 分析功能。",
+    "marketIndices": "大盤指數",
+    "relatedNews": "相關新聞",
+    "searchPlaceholder": "輸入美股代號 (如: AAPL, TSLA)"
   },
   "market": {
     "title": "市場總覽",

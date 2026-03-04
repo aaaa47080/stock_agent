@@ -187,7 +187,7 @@ const Components = {
                                 <div class="h-px flex-1 bg-gradient-to-r from-primary/40 to-transparent"></div>
                                 <h3 class="text-[10px] font-black text-primary uppercase tracking-[0.25em] whitespace-nowrap flex items-center gap-1.5">
                                     <i data-lucide="star" class="w-3 h-3 text-yellow-400"></i>
-                                    自選清單
+                                    <span data-i18n="twstock.watchlist">自選清單</span>
                                 </h3>
                                 <div class="h-px flex-1 bg-gradient-to-l from-primary/40 to-transparent"></div>
                             </div>
@@ -206,7 +206,7 @@ const Components = {
                                 <button onclick="window.TWStockTab.toggleSection('pe')" class="flex items-center gap-1.5 group">
                                     <h3 class="text-[10px] font-black text-primary uppercase tracking-[0.25em] whitespace-nowrap flex items-center gap-1.5">
                                         <i data-lucide="percent" class="w-3 h-3"></i>
-                                        估值指標 (P/E · 殖利率 · P/B)
+                                        <span data-i18n="twstock.valuationMetrics">估值指標 (P/E · 殖利率 · P/B)</span>
                                     </h3>
                                     <i id="twstock-chevron-pe" data-lucide="chevron-up" class="w-3.5 h-3.5 text-primary/60 group-hover:text-primary transition-transform duration-200"></i>
                                 </button>
@@ -227,7 +227,7 @@ const Components = {
                                 <button onclick="window.TWStockTab.toggleSection('news')" class="flex items-center gap-1.5 group">
                                     <h3 class="text-[10px] font-black text-yellow-400 uppercase tracking-[0.25em] whitespace-nowrap flex items-center gap-1.5">
                                         <i data-lucide="megaphone" class="w-3 h-3"></i>
-                                        今日重大訊息
+                                        <span data-i18n="twstock.majorAnnouncements">今日重大訊息</span>
                                     </h3>
                                     <i id="twstock-chevron-news" data-lucide="chevron-up" class="w-3.5 h-3.5 text-yellow-400/60 group-hover:text-yellow-400 transition-transform duration-200"></i>
                                 </button>
@@ -248,7 +248,7 @@ const Components = {
                                 <button onclick="window.TWStockTab.toggleSection('dividend')" class="flex items-center gap-1.5 group">
                                     <h3 class="text-[10px] font-black text-success uppercase tracking-[0.25em] whitespace-nowrap flex items-center gap-1.5">
                                         <i data-lucide="calendar-check" class="w-3 h-3"></i>
-                                        股利分派行事曆
+                                        <span data-i18n="twstock.dividendCalendar">股利分派行事曆</span>
                                     </h3>
                                     <i id="twstock-chevron-dividend" data-lucide="chevron-up" class="w-3.5 h-3.5 text-success/60 group-hover:text-success transition-transform duration-200"></i>
                                 </button>
@@ -269,7 +269,7 @@ const Components = {
                                 <button onclick="window.TWStockTab.toggleSection('foreign')" class="flex items-center gap-1.5 group">
                                     <h3 class="text-[10px] font-black text-accent uppercase tracking-[0.25em] whitespace-nowrap flex items-center gap-1.5">
                                         <i data-lucide="globe" class="w-3 h-3"></i>
-                                        外資持股前 20 名
+                                        <span data-i18n="twstock.foreignHoldingTop20">外資持股前 20 名</span>
                                     </h3>
                                     <i id="twstock-chevron-foreign" data-lucide="chevron-up" class="w-3.5 h-3.5 text-accent/60 group-hover:text-accent transition-transform duration-200"></i>
                                 </button>
@@ -296,10 +296,10 @@ const Components = {
                                 <div class="pl-4 flex-shrink-0">
                                     <i data-lucide="search" class="w-5 h-5 text-primary/70"></i>
                                 </div>
-                                <input type="text" id="twstockPulseSearchInput" placeholder="輸入台股代號 (如: 2330)"
+                                <input type="text" id="twstockPulseSearchInput" placeholder="輸入台股代號 (如: 2330)" data-i18n="twstock.searchPlaceholder" data-i18n-attr="placeholder"
                                     class="flex-1 bg-transparent border-none outline-none text-textMain placeholder-textMuted/50 text-base font-mono tracking-wider focus:ring-0 w-full min-w-0">
                                 <button id="twstockPulseSearchBtn" class="bg-primary/20 hover:bg-primary text-primary hover:text-background border border-primary/30 hover:border-primary transition-all duration-300 px-6 py-3 rounded-xl font-bold tracking-[0.1em] text-sm flex items-center gap-2 flex-shrink-0">
-                                    <span class="hidden sm:inline">深度分析</span>
+                                    <span class="hidden sm:inline" data-i18n="common.deepAnalysis">深度分析</span>
                                     <i data-lucide="zap" class="w-4 h-4"></i>
                                 </button>
                             </div>
@@ -311,7 +311,7 @@ const Components = {
                                 <div class="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin"></div>
                                 <i data-lucide="brain" class="absolute inset-0 m-auto w-6 h-6 text-primary animate-pulse"></i>
                             </div>
-                            <p class="text-[11px] text-primary font-bold tracking-widest uppercase mt-6 animate-pulse">AI 正在深度分析籌碼與基本面...</p>
+                            <p class="text-[11px] text-primary font-bold tracking-widest uppercase mt-6 animate-pulse" data-i18n="twstock.analyzingChip">AI 正在深度分析籌碼與基本面...</p>
                         </div>
 
                         <div id="twstock-pulse-result" class="space-y-6 hidden"></div>
@@ -353,38 +353,53 @@ const Components = {
 
                 <!-- Market Watch Container -->
                 <div id="usstock-market-content" class="absolute inset-0 overflow-y-auto custom-scrollbar pb-32">
-                    <div class="space-y-8">
+                    <div class="space-y-6">
+                        <!-- Watchlist Controls -->
+                        <div id="usstock-screener-controls" class="px-1"></div>
 
-                        <!-- Market Indices Section -->
+                        <!-- Loading Indicator -->
+                        <div id="usstock-market-loader" class="hidden items-center justify-center py-10 flex">
+                            <div class="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full"></div>
+                        </div>
+
+                        <!-- Stock List -->
+                        <div id="usstock-screener-list" class="space-y-2 px-1"></div>
+
+                        <!-- Indices Section -->
                         <section>
                             <div class="flex items-center gap-3 mb-4 px-1">
                                 <div class="h-px flex-1 bg-gradient-to-r from-primary/40 to-transparent"></div>
                                 <h3 class="text-[10px] font-black text-primary uppercase tracking-[0.25em] whitespace-nowrap flex items-center gap-1.5">
                                     <i data-lucide="trending-up" class="w-3 h-3"></i>
-                                    大盤指數
+                                    <span data-i18n="usstock.marketIndices">大盤指數</span>
                                 </h3>
                                 <div class="h-px flex-1 bg-gradient-to-l from-primary/40 to-transparent"></div>
                             </div>
-                            <div id="usstock-market-indices" class="grid grid-cols-1 sm:grid-cols-3 gap-3 px-1">
-                                <div class="text-center text-textMuted py-8">載入中...</div>
+                            <div id="usstock-info-indices-loader" class="hidden py-6 flex items-center justify-center">
+                                <div class="animate-spin w-5 h-5 border-2 border-primary border-t-transparent rounded-full"></div>
+                            </div>
+                            <div id="usstock-info-indices" class="grid grid-cols-1 sm:grid-cols-3 gap-3 px-1">
+                                <div class="text-center text-textMuted py-8" data-i18n="common.loading">載入中...</div>
                             </div>
                         </section>
 
-                        <!-- Popular Stocks Section -->
+                        <!-- News Section -->
                         <section>
                             <div class="flex items-center gap-3 mb-4 px-1">
-                                <div class="h-px flex-1 bg-gradient-to-r from-primary/40 to-transparent"></div>
-                                <h3 class="text-[10px] font-black text-primary uppercase tracking-[0.25em] whitespace-nowrap flex items-center gap-1.5">
-                                    <i data-lucide="star" class="w-3 h-3 text-yellow-400"></i>
-                                    熱門美股
+                                <div class="h-px flex-1 bg-gradient-to-r from-yellow-500/40 to-transparent"></div>
+                                <h3 class="text-[10px] font-black text-yellow-400 uppercase tracking-[0.25em] whitespace-nowrap flex items-center gap-1.5">
+                                    <i data-lucide="newspaper" class="w-3 h-3"></i>
+                                    <span data-i18n="usstock.relatedNews">相關新聞</span>
                                 </h3>
-                                <div class="h-px flex-1 bg-gradient-to-l from-primary/40 to-transparent"></div>
+                                <div class="h-px flex-1 bg-gradient-to-l from-yellow-500/40 to-transparent"></div>
                             </div>
-                            <div id="usstock-popular-stocks" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 px-1">
-                                <div class="text-center text-textMuted py-8">載入中...</div>
+                            <div id="usstock-info-news-loader" class="hidden py-6 flex items-center justify-center">
+                                <div class="animate-spin w-5 h-5 border-2 border-yellow-400 border-t-transparent rounded-full"></div>
+                            </div>
+                            <div id="usstock-info-news" class="space-y-2 px-1">
+                                <div class="text-center text-textMuted py-8" data-i18n="common.loading">載入中...</div>
                             </div>
                         </section>
-
                     </div>
                 </div>
 
@@ -398,10 +413,10 @@ const Components = {
                                 <div class="pl-4 flex-shrink-0">
                                     <i data-lucide="search" class="w-5 h-5 text-primary/70"></i>
                                 </div>
-                                <input type="text" id="usstockPulseSearchInput" placeholder="輸入美股代號 (如: AAPL, TSLA)"
+                                <input type="text" id="usstockPulseSearchInput" placeholder="輸入美股代號 (如: AAPL, TSLA)" data-i18n="usstock.searchPlaceholder" data-i18n-attr="placeholder"
                                     class="flex-1 bg-transparent border-none outline-none text-textMain placeholder-textMuted/50 text-base font-mono tracking-wider focus:ring-0 w-full min-w-0">
                                 <button id="usstockPulseSearchBtn" class="bg-primary/20 hover:bg-primary text-primary hover:text-background border border-primary/30 hover:border-primary transition-all duration-300 px-6 py-3 rounded-xl font-bold tracking-[0.1em] text-sm flex items-center gap-2 flex-shrink-0">
-                                    <span class="hidden sm:inline">深度分析</span>
+                                    <span class="hidden sm:inline" data-i18n="common.deepAnalysis">深度分析</span>
                                     <i data-lucide="zap" class="w-4 h-4"></i>
                                 </button>
                             </div>
@@ -426,8 +441,8 @@ const Components = {
 
     // Tab: Friends (Integrated Social Hub - Friends + Messages)
     friends: `
-    < div class="h-full flex flex-col" >
-            < !--Header with Tab Switcher-- >
+    <div class="h-full flex flex-col">
+            <!--Header with Tab Switcher-->
             <div class="flex items-center justify-between pl-4 pr-4 md:pr-16 py-3 border-b border-white/5 bg-surface/50">
                 <h2 class="font-serif text-2xl text-secondary" data-i18n="friends.title"></h2>
                 <div class="flex items-center gap-2">
@@ -438,7 +453,7 @@ const Components = {
                 </div>
             </div>
 
-            <!--Sub - tab Navigation-- >
+            <!--Sub-tab Navigation-->
             <div class="flex gap-1 p-2 bg-background/50 border-b border-white/5">
                 <button onclick="SocialHub.switchSubTab('messages')" id="social-tab-messages"
                     class="social-sub-tab flex-1 py-2.5 px-4 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 bg-primary text-background">
@@ -610,7 +625,7 @@ const Components = {
 
     // Tab: Settings (保持原樣，這裡省略以節省空間)
     settings: `
-    < div class="max-w-2xl mx-auto" >
+    <div class="max-w-2xl mx-auto">
              <h2 class="font-serif text-3xl text-secondary mb-8" data-i18n="settings.title">Settings</h2>
 
              <div class="space-y-10">
@@ -635,8 +650,8 @@ const Components = {
                         </div>
                     </div>
 
-                    <!-- TEST MODE: Multi-User Switcher -->
-                    <div id="dev-user-switcher" class="mt-4 pt-4 border-t border-white/5">
+                    <!-- TEST MODE: Multi-User Switcher (預設隱藏，由 auth.js 根據 API 控制) -->
+                    <div id="dev-user-switcher" class="mt-4 pt-4 border-t border-white/5 hidden">
                         <p class="text-[10px] text-textMuted uppercase tracking-wider mb-2 font-bold opacity-50" data-i18n="settings.profile.devSwitchUser">Dev: Switch User</p>
                         <div class="grid grid-cols-2 gap-2">
                             <button onclick="handleDevSwitchUser('test-user-001')" class="py-2 bg-white/5 hover:bg-primary/20 hover:text-primary rounded-lg text-xs font-mono transition border border-white/5">
@@ -936,13 +951,13 @@ const Components = {
                     PI CryptoMind v1.2.0-Pi-Integrated
                 </div>
              </div>
-        </div >
+        </div>
     `,
 
     // Tab: Safety (Scam Tracker + Governance)
     safety: `
-    < div class="max-w-4xl mx-auto space-y-6" >
-            < !--Header -->
+    <div class="max-w-4xl mx-auto space-y-6">
+            <!--Header -->
             <div class="flex items-center justify-between">
                 <h2 class="font-serif text-2xl md:text-3xl text-secondary flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-danger/10 flex items-center justify-center">
@@ -995,7 +1010,7 @@ const Components = {
                 </select>
             </div>
 
-            <!--Report List-- >
+            <!--Report List-->
             <div id="safety-report-list" class="space-y-3">
                 <div class="text-center text-textMuted py-8">
                     <i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto mb-2"></i>
@@ -1003,15 +1018,15 @@ const Components = {
                 </div>
             </div>
 
-            <!--Load More-- >
+            <!--Load More-->
     <div class="text-center">
         <button id="safety-btn-load-more" onclick="SafetyTab.loadMore()" class="bg-surface hover:bg-surfaceHighlight text-textMuted px-6 py-3 rounded-xl font-bold transition border border-white/5 hidden" data-i18n="safety.loadMore">
             Load More
         </button>
     </div>
-        </div >
+        </div>
 
-        < !--Submit Scam Report Modal-- >
+        <!--Submit Scam Report Modal-->
         <div id="safety-submit-modal" class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4">
             <div class="bg-surface w-full max-w-lg max-h-[85vh] flex flex-col rounded-[2rem] border border-white/5 shadow-2xl">
                 <div class="p-6 border-b border-white/5 flex justify-between items-center shrink-0">
@@ -1061,7 +1076,7 @@ const Components = {
             </div>
         </div>
 
-        <!--Scam Report Detail Modal-- >
+        <!--Scam Report Detail Modal-->
         <div id="safety-detail-modal" class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4">
             <div class="bg-surface w-full max-w-lg max-h-[85vh] flex flex-col rounded-[2rem] border border-white/5 shadow-2xl">
                 <div class="p-6 border-b border-white/5 flex justify-between items-center shrink-0">
@@ -1086,7 +1101,7 @@ const Components = {
             </div>
         </div>
 
-        <!--Governance Report Modal-- >
+        <!--Governance Report Modal-->
     <div id="governance-modal" class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4">
         <div class="bg-surface w-full max-w-lg max-h-[85vh] flex flex-col rounded-[2rem] border border-white/5 shadow-2xl">
             <div class="p-6 border-b border-white/5 flex justify-between items-center shrink-0">
@@ -1226,8 +1241,8 @@ const Components = {
 
     // Tab: Forum
     forum: `
-    < div class="h-full flex flex-col" >
-            < !--Header -->
+    <div class="h-full flex flex-col">
+            <!--Header -->
             <div class="flex items-center justify-between mb-4 px-2">
                 <h2 class="font-serif text-2xl md:text-3xl text-secondary flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -1245,7 +1260,7 @@ const Components = {
                 </div>
             </div>
 
-            <!--Main Content Grid-- >
+            <!--Main Content Grid-->
     <div class="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4 overflow-hidden">
         <!-- Sidebar (Filters & Trending) -->
         <aside class="md:col-span-1 space-y-4 overflow-y-auto custom-scrollbar">
@@ -1287,14 +1302,14 @@ const Components = {
             </div>
         </div>
     </div>
-        </div >
+        </div>
     `,
 
     // Tab: Admin Panel (admin-only)
     admin: `
-    < div id = "admin-content" class="max-w-5xl mx-auto p-4" >
+    <div id="admin-content" class="max-w-5xl mx-auto p-4">
         <div class="text-center text-textMuted py-12">Loading admin panel...</div>
-        </div >
+        </div>
     `,
 
     /**

@@ -49,6 +49,7 @@ numpy==2.2.6
 pandas-ta==0.4.71b0
 yfinance
 python-okx==0.4.0
+rapidfuzz>=3.0.0  # 台股符號模糊匹配
 
 # === Backtesting ===
 backtrader==1.9.78.123

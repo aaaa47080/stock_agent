@@ -18,7 +18,8 @@
     "username": "Username",
     "to": "to",
     "required": "Required",
-    "optional": "Optional"
+    "optional": "Optional",
+    "deepAnalysis": "Deep Analysis"
   },
   "nav": {
     "chat": "Chat",
@@ -73,12 +74,22 @@
   "twstock": {
     "title": "TW Stock",
     "comingSoon": "Taiwan Stocks Coming Soon",
-    "comingSoonDesc": "We are currently integrating real-time data for Taiwan Stocks. Stay tuned for advanced AI analytics in this market."
+    "comingSoonDesc": "We are currently integrating real-time data for Taiwan Stocks. Stay tuned for advanced AI analytics in this market.",
+    "watchlist": "Watchlist",
+    "valuationMetrics": "Valuation Metrics (P/E · Yield · P/B)",
+    "majorAnnouncements": "Today's Major Announcements",
+    "dividendCalendar": "Dividend Calendar",
+    "foreignHoldingTop20": "Foreign Holdings Top 20",
+    "searchPlaceholder": "Enter TW stock code (e.g. 2330)",
+    "analyzingChip": "AI is analyzing chips and fundamentals..."
   },
   "usstock": {
     "title": "US Stock",
     "comingSoon": "US Stocks Coming Soon",
-    "comingSoonDesc": "We are currently integrating real-time data for US Stocks. Stay tuned for advanced AI analytics in this market."
+    "comingSoonDesc": "We are currently integrating real-time data for US Stocks. Stay tuned for advanced AI analytics in this market.",
+    "marketIndices": "Market Indices",
+    "relatedNews": "Related News",
+    "searchPlaceholder": "Enter US stock symbol (e.g. AAPL, TSLA)"
   },
   "market": {
     "title": "Market Watch",

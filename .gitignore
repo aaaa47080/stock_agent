@@ -9,7 +9,6 @@ __pycache__/
 venv/
 .venv/
 env/
-.claude
 
 # IDE
 .vscode/
@@ -47,4 +46,4 @@ Thumbs.db
 .worktrees/
 key.txt
 admin.txt
-payment_test.txt.claude/settings.local.json
+payment_test.txt
