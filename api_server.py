@@ -1,7 +1,7 @@
 import os
 import sys
 import asyncio
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import PlainTextResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -50,6 +50,7 @@ logging.getLogger('asyncio').addFilter(_SuppressWinError10054())
 
 # Import from refactored modules
 from api.utils import logger
+from api.deps import get_current_user, require_admin
 import api.globals as globals
 from api.services import (
     load_market_pulse_cache,
@@ -414,8 +415,11 @@ class FrontendLog(BaseModel):
     data: Optional[dict] = None
 
 @app.post("/api/debug-log")
-async def receive_frontend_log(log: FrontendLog):
-    """接收前端 debug log 並寫入檔案"""
+async def receive_frontend_log(
+    log: FrontendLog,
+    current_user: dict = Depends(get_current_user)
+):
+    """接收前端 debug log 並寫入檔案 (需登入)"""
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     log_line = f"[{timestamp}] [{log.level.upper()}] {log.message}"
     if log.data:
@@ -433,8 +437,8 @@ def _append_log(filepath, content):
         f.write(content + "\n")
 
 @app.get("/api/debug-log", response_class=PlainTextResponse)
-async def get_debug_logs():
-    """查看 debug logs"""
+async def get_debug_logs(admin: dict = Depends(require_admin)):
+    """查看 debug logs (需管理員權限)"""
     try:
         loop = asyncio.get_running_loop()
         content = await loop.run_in_executor(None, lambda: _read_log("frontend_debug.log"))
