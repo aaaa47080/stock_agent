@@ -616,17 +616,17 @@ class KlineConnectionManager:
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.add(websocket)
-        logger.info(f"WebSocket 客戶端連接，當前連接數: {len(self.active_connections)}")
+        logger.debug(f"WebSocket 客戶端連接，當前連接數: {len(self.active_connections)}")
 
     def disconnect(self, websocket: WebSocket):
         self.active_connections.discard(websocket)
         if websocket in self.subscriptions:
             del self.subscriptions[websocket]
-        logger.info(f"WebSocket 客戶端斷開，當前連接數: {len(self.active_connections)}")
+        logger.debug(f"WebSocket 客戶端斷開，當前連接數: {len(self.active_connections)}")
 
     def subscribe(self, websocket: WebSocket, symbol: str, interval: str):
         self.subscriptions[websocket] = {"symbol": symbol, "interval": interval}
-        logger.info(f"客戶端訂閱: {symbol} {interval}")
+        logger.debug(f"客戶端訂閱: {symbol} {interval}")
 
     def unsubscribe(self, websocket: WebSocket):
         if websocket in self.subscriptions:
@@ -770,13 +770,13 @@ class TickerConnectionManager:
         await websocket.accept()
         self.active_connections.add(websocket)
         self.subscribed_symbols[websocket] = set()
-        logger.info(f"Ticker WebSocket 客戶端連接，當前連接數: {len(self.active_connections)}")
+        logger.debug(f"Ticker WebSocket 客戶端連接，當前連接數: {len(self.active_connections)}")
 
     def disconnect(self, websocket: WebSocket):
         self.active_connections.discard(websocket)
         if websocket in self.subscribed_symbols:
             del self.subscribed_symbols[websocket]
-        logger.info(f"Ticker WebSocket 客戶端斷開，當前連接數: {len(self.active_connections)}")
+        logger.debug(f"Ticker WebSocket 客戶端斷開，當前連接數: {len(self.active_connections)}")
 
     def subscribe(self, websocket: WebSocket, symbols: list):
         if websocket not in self.subscribed_symbols:
@@ -860,7 +860,7 @@ async def websocket_tickers(websocket: WebSocket):
                     if isinstance(symbols, str):
                         symbols = [symbols]
 
-                    logger.info(f"收到 Ticker 訂閱請求: {symbols}")
+                    logger.debug(f"收到 Ticker 訂閱請求: {symbols}")
 
                     # 訂閱每個 symbol
                     for symbol in symbols:
@@ -869,7 +869,7 @@ async def websocket_tickers(websocket: WebSocket):
                             callback = await create_ticker_callback(symbol)
                             current_callbacks[symbol] = callback
                             await okx_ticker_ws_manager.subscribe(symbol, callback)
-                            logger.info(f"已訂閱 Ticker: {symbol}")
+                            logger.debug(f"已訂閱 Ticker: {symbol}")
 
                     ticker_manager.subscribe(websocket, symbols)
                     await websocket.send_json({

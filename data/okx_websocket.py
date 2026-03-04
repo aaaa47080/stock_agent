@@ -144,7 +144,7 @@ class OKXWebSocketManager:
         }
 
         await self.ws.send(json.dumps(subscribe_msg))
-        logger.info(f"訂閱: {inst_id} {channel}")
+        logger.debug(f"訂閱: {inst_id} {channel}")
 
     async def _send_unsubscribe(self, symbol: str, interval: str):
         """發送取消訂閱請求"""
@@ -164,7 +164,7 @@ class OKXWebSocketManager:
         }
 
         await self.ws.send(json.dumps(unsubscribe_msg))
-        logger.info(f"取消訂閱: {inst_id} {channel}")
+        logger.debug(f"取消訂閱: {inst_id} {channel}")
 
     async def _handle_message(self, message: str):
         """處理接收到的消息"""
@@ -177,14 +177,14 @@ class OKXWebSocketManager:
             # 訂閱確認
             if "event" in data:
                 if data["event"] == "subscribe":
-                    logger.info(f"訂閱確認: {data.get('arg', {})}")
+                    logger.debug(f"訂閱確認: {data.get('arg', {})}")
                 elif data["event"] == "error":
                     logger.error(f"訂閱錯誤: {data}")
                 return
 
             # K線數據推送
             if "data" in data and "arg" in data:
-                logger.info(f"收到 K 線推送: {data['arg']}")
+                logger.debug(f"收到 K 線推送: {data['arg']}")
                 arg = data["arg"]
                 channel = arg.get("channel", "")
                 inst_id = arg.get("instId", "")
@@ -249,7 +249,7 @@ class OKXWebSocketManager:
                 await self._send_subscribe(symbol, interval)
 
         self.subscriptions[channel_key].add(callback)
-        logger.info(f"添加訂閱回調: {channel_key}")
+        logger.debug(f"添加訂閱回調: {channel_key}")
 
     async def unsubscribe(self, symbol: str, interval: str, callback: Callable = None):
         """取消訂閱"""
@@ -385,7 +385,7 @@ class OKXTickerWebSocketManager:
         }
 
         await self.ws.send(json.dumps(subscribe_msg))
-        logger.info(f"訂閱 Ticker: {inst_id}")
+        logger.debug(f"訂閱 Ticker: {inst_id}")
 
     async def _send_unsubscribe(self, symbol: str):
         """發送取消訂閱請求"""
@@ -402,7 +402,7 @@ class OKXTickerWebSocketManager:
         }
 
         await self.ws.send(json.dumps(unsubscribe_msg))
-        logger.info(f"取消訂閱 Ticker: {inst_id}")
+        logger.debug(f"取消訂閱 Ticker: {inst_id}")
 
     async def _handle_message(self, message: str):
         """處理接收到的消息"""
@@ -415,7 +415,7 @@ class OKXTickerWebSocketManager:
             # 訂閱確認
             if "event" in data:
                 if data["event"] == "subscribe":
-                    logger.info(f"Ticker 訂閱確認: {data.get('arg', {})}")
+                    logger.debug(f"Ticker 訂閱確認: {data.get('arg', {})}")
                 elif data["event"] == "error":
                     logger.error(f"Ticker 訂閱錯誤: {data}")
                 return

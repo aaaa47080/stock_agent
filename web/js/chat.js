@@ -278,8 +278,16 @@ function appendMessage(role, content) {
     if (role === 'bot') {
         // BUG FIX: 檢查 md 對象是否存在且 render 方法可用
         // 防止在 markdown 庫未載入時崩潰
+        // 安全修復: 使用 SecurityUtils 清理 HTML 防止 XSS
         if (typeof md !== 'undefined' && md && typeof md.render === 'function') {
-            div.innerHTML = md.render(content);
+            const rendered = md.render(content);
+            // 使用 SecurityUtils.sanitizeHTML 清理，如果不存在則降級為 textContent
+            if (typeof SecurityUtils !== 'undefined' && SecurityUtils.sanitizeHTML) {
+                div.innerHTML = SecurityUtils.sanitizeHTML(rendered);
+            } else {
+                div.innerHTML = rendered;
+                console.warn('[chat] SecurityUtils 未載入，XSS 防護可能不足');
+            }
         } else {
             // 降級處理：使用純文本顯示，轉義 HTML 防止 XSS
             div.textContent = content;
@@ -294,19 +302,31 @@ function appendMessage(role, content) {
         });
         const match = content.match(/\b([A-Z]{2,5})\b/);
         if (match && !content.includes('載入中') && !content.includes('Error')) {
-            const symbol = match[1];
-            const actionsDiv = document.createElement('div');
-            actionsDiv.className = 'flex gap-2 mt-4 pt-4 border-t border-white/5';
-            actionsDiv.innerHTML = `
-                <button onclick="startDebateInChat('${symbol}')" class="text-xs bg-gradient-to-r from-success/20 to-danger/20 text-secondary px-3 py-1.5 rounded-full hover:from-success/30 hover:to-danger/30 border border-white/10 transition flex items-center gap-1.5">
-                    <i data-lucide="swords" class="w-3 h-3"></i> AI War Room
-                </button>
-                <button onclick="showChart('${symbol}');" class="text-xs bg-primary/10 text-primary px-3 py-1.5 rounded-full hover:bg-primary/20 border border-primary/20 transition flex items-center gap-1.5">
-                    <i data-lucide="bar-chart" class="w-3 h-3"></i> Chart
-                </button>
-            `;
-            div.appendChild(actionsDiv);
-            setTimeout(() => lucide.createIcons(), 0);
+            // 安全修復: 驗證 symbol 只包含合法的大寫字母
+            let symbol = match[1];
+            if (!/^[A-Z]{2,5}$/.test(symbol)) {
+                console.warn('[chat] 無效的股票代號:', symbol);
+                symbol = '';
+            }
+            if (symbol) {
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'flex gap-2 mt-4 pt-4 border-t border-white/5';
+                // 使用安全的 DOM 操作而非 innerHTML
+                const debateBtn = document.createElement('button');
+                debateBtn.className = 'text-xs bg-gradient-to-r from-success/20 to-danger/20 text-secondary px-3 py-1.5 rounded-full hover:from-success/30 hover:to-danger/30 border border-white/10 transition flex items-center gap-1.5';
+                debateBtn.innerHTML = '<i data-lucide="swords" class="w-3 h-3"></i> AI War Room';
+                debateBtn.onclick = () => startDebateInChat(symbol);
+                actionsDiv.appendChild(debateBtn);
+
+                const chartBtn = document.createElement('button');
+                chartBtn.className = 'text-xs bg-primary/10 text-primary px-3 py-1.5 rounded-full hover:bg-primary/20 border border-primary/20 transition flex items-center gap-1.5';
+                chartBtn.innerHTML = '<i data-lucide="bar-chart" class="w-3 h-3"></i> Chart';
+                chartBtn.onclick = () => showChart(symbol);
+                actionsDiv.appendChild(chartBtn);
+
+                div.appendChild(actionsDiv);
+                setTimeout(() => lucide.createIcons(), 0);
+            }
         }
     } else {
         div.textContent = content;
