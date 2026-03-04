@@ -118,7 +118,8 @@
       "Bash(grep Version:*)",
       "Bash(git pull:*)",
       "Bash(git config:*)",
-      "mcp__plugin_superpowers-chrome_chrome__use_browser"
+      "mcp__plugin_superpowers-chrome_chrome__use_browser",
+      "Bash(git check-ignore:*)"
     ]
   }
 }
