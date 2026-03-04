@@ -116,10 +116,9 @@
       "Bash(ss:*)",
       "Bash(awk NR>=148 && NR<=155:*)",
       "Bash(grep Version:*)",
-      "Bash(PI_API_KEY=\"kr89j7ntnqcoutagrparu bkqovvyxxqf9zrjmiolk94gqurkqqxndphqj8b aqxu9\" PI_WALLET_SEED=\"***REMOVED***\" python:*)",
-      "Bash(PI_API_KEY=\"***REMOVED***\" PI_WALLET_SEED=\"***REMOVED***\" python:*)",
       "Bash(git pull:*)",
-      "Bash(git config:*)"
+      "Bash(git config:*)",
+      "mcp__plugin_superpowers-chrome_chrome__use_browser"
     ]
   }
 }
