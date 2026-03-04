@@ -1,0 +1,24 @@
+id: CB-2026-0304-001
+date: 2026-03-04
+type: security
+severity: high
+
+problem: |
+  SQL injection vulnerability in INTERVAL clauses across multiple files
+  - Used f-string formatting: f"INTERVAL '{days} days'"
+  - Used % formatting: INTERVAL '%s months' % (months,)
+  - User input directly interpolated into SQL strings
+
+solution: |
+  Parameterized queries with proper tuple parameters
+  - BEFORE: c.execute(f"... INTERVAL '{days} days'")
+  - AFTER: c.execute("... INTERVAL %s", (f"{days} days",))
+  - psycopg2 handles escaping automatically
+
+files:
+  - api/routers/admin_panel.py: 4
+  - core/database/user.py: 3
+  - scripts/cron_governance.py: 1
+
+keywords: [sql-injection, security, parameterized-query, owasp, psycopg2]
+refs: [OWASP-Top-10, CWE-89]

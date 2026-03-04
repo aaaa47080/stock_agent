@@ -14,6 +14,7 @@ env/
 .vscode/
 .idea/
 .claude/
+!.claude/skills/
 
 # Logs
 *.log
@@ -35,6 +36,7 @@ _archive/
 
 # Build/Deploy artifacts
 docs/
+!docs/codebook/
 *.pyc
 *.pyo
 

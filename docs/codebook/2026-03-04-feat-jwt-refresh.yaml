@@ -1,0 +1,38 @@
+id: CB-2026-0304-002
+date: 2026-03-04
+type: feat
+
+problem: |
+  JWT token expires after 7 days with no refresh mechanism
+  - Users forced to re-login when token expires
+  - Poor UX, especially for active Pi Browser users
+  - No automatic token renewal
+
+solution: |
+  Auto-refresh JWT using Pi SDK as implicit refresh token
+  - Added needsRefresh() - checks if token expires within 24h
+  - Added startTokenRefreshTimer() - hourly check interval
+  - Added silentRefresh() - calls Pi.authenticate() + pi-sync
+  - Token refreshes seamlessly in background
+  - BEFORE: Token expires → user logged out
+  - AFTER: Token expires → auto-refresh via Pi SDK → user continues
+
+files:
+  - web/js/auth.js: +120 lines
+
+keywords: [jwt, pi-sdk, auth, auto-refresh, token-management, session]
+
+context: |
+  Decision: Use Pi SDK instead of traditional OAuth2 refresh tokens
+  Reasons:
+  - Pi Browser environment is inherently more secure
+  - Pi SDK auth.accessToken is long-lived
+  - Simpler implementation with fewer attack vectors
+  - Users already in Pi Network ecosystem
+  - No need for httpOnly cookies or refresh token storage
+
+  Trade-offs:
+  - Only works in Pi Browser (acceptable for Pi-only app)
+  - Requires Pi SDK to be available (graceful degradation exists)
+
+refs: [Pi-SDK-Docs, OAuth2-Refresh-Token-Best-Practices]
