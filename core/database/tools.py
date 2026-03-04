@@ -1,6 +1,11 @@
 """
 工具系統資料庫操作
 包含：工具目錄管理、Agent 工具權限、用戶工具偏好、使用量追蹤
+
+會員等級：free / plus / premium
+- free: 免費用戶
+- plus: 輕量付費（3 Pi/月）
+- premium: 完整功能（5 Pi/月）
 """
 from typing import List, Dict, Optional
 from .connection import get_connection
@@ -11,7 +16,7 @@ from .connection import get_connection
 # ============================================================================
 
 _TOOLS_SEED = [
-    # ── Crypto 基礎 ─────────────────────────────────────────────────────────
+    # ── Crypto 基礎 (Free) ─────────────────────────────────────────────────────────
     {
         "tool_id": "get_crypto_price",
         "display_name": "即時加密貨幣價格",
@@ -20,6 +25,7 @@ _TOOLS_SEED = [
         "tier_required": "free",
         "quota_type": "unlimited",
         "daily_limit_free": None,
+        "daily_limit_plus": None,
         "daily_limit_prem": None,
     },
     {
@@ -30,6 +36,7 @@ _TOOLS_SEED = [
         "tier_required": "free",
         "quota_type": "unlimited",
         "daily_limit_free": None,
+        "daily_limit_plus": None,
         "daily_limit_prem": None,
     },
     {
@@ -40,6 +47,7 @@ _TOOLS_SEED = [
         "tier_required": "free",
         "quota_type": "unlimited",
         "daily_limit_free": None,
+        "daily_limit_plus": None,
         "daily_limit_prem": None,
     },
     {
@@ -49,10 +57,35 @@ _TOOLS_SEED = [
         "category": "crypto_basic",
         "tier_required": "free",
         "quota_type": "shared_limited",
-        "daily_limit_free": 20,
+        "daily_limit_free": 10,
+        "daily_limit_plus": 30,
         "daily_limit_prem": None,
     },
-    # ── Crypto 技術分析 ─────────────────────────────────────────────────────
+    # ── 新增：市值排行 (Free) ─────────────────────────────────────────────────────
+    {
+        "tool_id": "get_crypto_market_cap",
+        "display_name": "加密貨幣市值排行",
+        "description": "查詢加密貨幣總市值排行 Top 100",
+        "category": "crypto_basic",
+        "tier_required": "free",
+        "quota_type": "shared_limited",
+        "daily_limit_free": 5,
+        "daily_limit_plus": 20,
+        "daily_limit_prem": None,
+    },
+    # ── 新增：經濟日曆 (Free) ─────────────────────────────────────────────────────
+    {
+        "tool_id": "get_economic_calendar",
+        "display_name": "全球經濟日曆",
+        "description": "查詢重要經濟事件與數據發布時間",
+        "category": "general",
+        "tier_required": "free",
+        "quota_type": "unlimited",
+        "daily_limit_free": None,
+        "daily_limit_plus": None,
+        "daily_limit_prem": None,
+    },
+    # ── Crypto 技術分析 (Free) ─────────────────────────────────────────────────────
     {
         "tool_id": "technical_analysis",
         "display_name": "加密貨幣技術指標",
@@ -61,6 +94,7 @@ _TOOLS_SEED = [
         "tier_required": "free",
         "quota_type": "unlimited",
         "daily_limit_free": None,
+        "daily_limit_plus": None,
         "daily_limit_prem": None,
     },
     {
@@ -71,9 +105,10 @@ _TOOLS_SEED = [
         "tier_required": "free",
         "quota_type": "unlimited",
         "daily_limit_free": None,
+        "daily_limit_plus": None,
         "daily_limit_prem": None,
     },
-    # ── 新聞 ────────────────────────────────────────────────────────────────
+    # ── 新聞 (Free) ────────────────────────────────────────────────────────────────
     {
         "tool_id": "google_news",
         "display_name": "Google 新聞",
@@ -81,7 +116,8 @@ _TOOLS_SEED = [
         "category": "news",
         "tier_required": "free",
         "quota_type": "shared_limited",
-        "daily_limit_free": 30,
+        "daily_limit_free": 10,
+        "daily_limit_plus": 30,
         "daily_limit_prem": None,
     },
     {
@@ -91,7 +127,8 @@ _TOOLS_SEED = [
         "category": "news",
         "tier_required": "free",
         "quota_type": "shared_limited",
-        "daily_limit_free": 20,
+        "daily_limit_free": 10,
+        "daily_limit_plus": 30,
         "daily_limit_prem": None,
     },
     {
@@ -101,29 +138,32 @@ _TOOLS_SEED = [
         "category": "general",
         "tier_required": "free",
         "quota_type": "shared_limited",
-        "daily_limit_free": 20,
+        "daily_limit_free": 10,
+        "daily_limit_plus": 30,
         "daily_limit_prem": None,
     },
-    # ── Crypto 衍生品（Premium）───────────────────────────────────────────
+    # ── Crypto 衍生品 (Plus+) ────────────────────────────────────────────
     {
         "tool_id": "get_futures_data",
         "display_name": "合約資金費率",
         "description": "查詢永續合約資金費率與多空情緒",
         "category": "derivatives",
-        "tier_required": "premium",
+        "tier_required": "plus",
         "quota_type": "unlimited",
         "daily_limit_free": 0,
+        "daily_limit_plus": None,
         "daily_limit_prem": None,
     },
-    # ── Crypto 鏈上數據（Premium）─────────────────────────────────────────
+    # ── Crypto 鏈上數據 (Plus+) ──────────────────────────────────────────
     {
         "tool_id": "get_defillama_tvl",
         "display_name": "DeFi TVL 鎖倉量",
         "description": "從 DefiLlama 查詢協議/公鏈 TVL",
         "category": "onchain",
-        "tier_required": "premium",
+        "tier_required": "plus",
         "quota_type": "shared_limited",
         "daily_limit_free": 0,
+        "daily_limit_plus": 30,
         "daily_limit_prem": 50,
     },
     {
@@ -131,11 +171,36 @@ _TOOLS_SEED = [
         "display_name": "加密板塊與漲幅排行",
         "description": "CoinGecko 最強板塊與熱點",
         "category": "onchain",
-        "tier_required": "premium",
+        "tier_required": "plus",
         "quota_type": "shared_limited",
         "daily_limit_free": 0,
+        "daily_limit_plus": 20,
         "daily_limit_prem": 30,
     },
+    {
+        "tool_id": "get_token_supply",
+        "display_name": "代幣流通供應量",
+        "description": "查詢代幣總發行量、最大供應量與流通量",
+        "category": "onchain",
+        "tier_required": "plus",
+        "quota_type": "unlimited",
+        "daily_limit_free": 0,
+        "daily_limit_plus": None,
+        "daily_limit_prem": None,
+    },
+    # ── 新增：DEX 交易量 (Plus+) ───────────────────────────────────────────────
+    {
+        "tool_id": "get_dex_volume",
+        "display_name": "DEX 交易量排行",
+        "description": "查詢去中心化交易所交易量與熱門幣對",
+        "category": "onchain",
+        "tier_required": "plus",
+        "quota_type": "shared_limited",
+        "daily_limit_free": 0,
+        "daily_limit_plus": 20,
+        "daily_limit_prem": 30,
+    },
+    # ── Crypto 鏈上數據 (Premium) ──────────────────────────────────────────
     {
         "tool_id": "get_token_unlocks",
         "display_name": "代幣解鎖日程",
@@ -144,19 +209,22 @@ _TOOLS_SEED = [
         "tier_required": "premium",
         "quota_type": "shared_limited",
         "daily_limit_free": 0,
+        "daily_limit_plus": 0,
         "daily_limit_prem": 50,
     },
+    # ── 新增：鯨魚追蹤 (Premium) ─────────────────────────────────────────────
     {
-        "tool_id": "get_token_supply",
-        "display_name": "代幣流通供應量",
-        "description": "查詢代幣總發行量、最大供應量與流通量",
+        "tool_id": "get_whale_alerts",
+        "display_name": "鯨魚追蹤警報",
+        "description": "追蹤大額鏈上轉帳與鯨魚動向",
         "category": "onchain",
         "tier_required": "premium",
-        "quota_type": "unlimited",
+        "quota_type": "shared_limited",
         "daily_limit_free": 0,
-        "daily_limit_prem": None,
+        "daily_limit_plus": 0,
+        "daily_limit_prem": 20,
     },
-    # ── 台股 基礎 ───────────────────────────────────────────────────────────
+    # ── 台股 基礎 (Free) ───────────────────────────────────────────────────────────
     {
         "tool_id": "tw_stock_price",
         "display_name": "台股即時股價",
@@ -165,6 +233,7 @@ _TOOLS_SEED = [
         "tier_required": "free",
         "quota_type": "unlimited",
         "daily_limit_free": None,
+        "daily_limit_plus": None,
         "daily_limit_prem": None,
     },
     {
@@ -175,6 +244,7 @@ _TOOLS_SEED = [
         "tier_required": "free",
         "quota_type": "unlimited",
         "daily_limit_free": None,
+        "daily_limit_plus": None,
         "daily_limit_prem": None,
     },
     {
@@ -184,7 +254,8 @@ _TOOLS_SEED = [
         "category": "tw_stock",
         "tier_required": "free",
         "quota_type": "shared_limited",
-        "daily_limit_free": 20,
+        "daily_limit_free": 10,
+        "daily_limit_plus": 30,
         "daily_limit_prem": None,
     },
     {
@@ -194,18 +265,20 @@ _TOOLS_SEED = [
         "category": "tw_stock",
         "tier_required": "free",
         "quota_type": "shared_limited",
-        "daily_limit_free": 20,
+        "daily_limit_free": 10,
+        "daily_limit_plus": 30,
         "daily_limit_prem": None,
     },
-    # ── 台股 進階（Premium）─────────────────────────────────────────────────
+    # ── 台股 進階 (Plus+) ──────────────────────────────────────────────────
     {
         "tool_id": "tw_fundamentals",
         "display_name": "台股基本面",
         "description": "P/E、EPS、ROE 等基本面資料",
         "category": "tw_stock",
-        "tier_required": "premium",
+        "tier_required": "plus",
         "quota_type": "unlimited",
         "daily_limit_free": 0,
+        "daily_limit_plus": None,
         "daily_limit_prem": None,
     },
     {
@@ -213,9 +286,10 @@ _TOOLS_SEED = [
         "display_name": "台股法人籌碼",
         "description": "外資、投信、自營商三大法人買賣超",
         "category": "tw_stock",
-        "tier_required": "premium",
+        "tier_required": "plus",
         "quota_type": "unlimited",
         "daily_limit_free": 0,
+        "daily_limit_plus": None,
         "daily_limit_prem": None,
     },
     {
@@ -223,9 +297,10 @@ _TOOLS_SEED = [
         "display_name": "台股本益比",
         "description": "P/E 比、股息殖利率、P/B 比",
         "category": "tw_stock",
-        "tier_required": "premium",
+        "tier_required": "plus",
         "quota_type": "unlimited",
         "daily_limit_free": 0,
+        "daily_limit_plus": None,
         "daily_limit_prem": None,
     },
     {
@@ -233,9 +308,10 @@ _TOOLS_SEED = [
         "display_name": "台股月營收",
         "description": "月營收數據含 MoM、YoY 成長率",
         "category": "tw_stock",
-        "tier_required": "premium",
+        "tier_required": "plus",
         "quota_type": "unlimited",
         "daily_limit_free": 0,
+        "daily_limit_plus": None,
         "daily_limit_prem": None,
     },
     {
@@ -243,11 +319,13 @@ _TOOLS_SEED = [
         "display_name": "台股股利",
         "description": "現金股利、股票股利、除權息日期",
         "category": "tw_stock",
-        "tier_required": "premium",
+        "tier_required": "plus",
         "quota_type": "unlimited",
         "daily_limit_free": 0,
+        "daily_limit_plus": None,
         "daily_limit_prem": None,
     },
+    # ── 台股 進階 (Premium) ──────────────────────────────────────────────────
     {
         "tool_id": "tw_foreign_top20",
         "display_name": "外資持股 Top 20",
@@ -256,9 +334,10 @@ _TOOLS_SEED = [
         "tier_required": "premium",
         "quota_type": "shared_limited",
         "daily_limit_free": 0,
+        "daily_limit_plus": 0,
         "daily_limit_prem": 30,
     },
-    # ── 美股 基礎 ───────────────────────────────────────────────────────────
+    # ── 美股 基礎 (Free) ───────────────────────────────────────────────────────────
     {
         "tool_id": "us_stock_price",
         "display_name": "美股即時股價",
@@ -267,6 +346,7 @@ _TOOLS_SEED = [
         "tier_required": "free",
         "quota_type": "unlimited",
         "daily_limit_free": None,
+        "daily_limit_plus": None,
         "daily_limit_prem": None,
     },
     {
@@ -277,6 +357,7 @@ _TOOLS_SEED = [
         "tier_required": "free",
         "quota_type": "unlimited",
         "daily_limit_free": None,
+        "daily_limit_plus": None,
         "daily_limit_prem": None,
     },
     {
@@ -286,18 +367,20 @@ _TOOLS_SEED = [
         "category": "us_stock",
         "tier_required": "free",
         "quota_type": "shared_limited",
-        "daily_limit_free": 20,
+        "daily_limit_free": 10,
+        "daily_limit_plus": 30,
         "daily_limit_prem": None,
     },
-    # ── 美股 進階（Premium）─────────────────────────────────────────────────
+    # ── 美股 進階 (Plus+) ──────────────────────────────────────────────────
     {
         "tool_id": "us_fundamentals",
         "display_name": "美股基本面",
         "description": "P/E、EPS、ROE、市值、股息率",
         "category": "us_stock",
-        "tier_required": "premium",
+        "tier_required": "plus",
         "quota_type": "unlimited",
         "daily_limit_free": 0,
+        "daily_limit_plus": None,
         "daily_limit_prem": None,
     },
     {
@@ -305,11 +388,13 @@ _TOOLS_SEED = [
         "display_name": "美股財報",
         "description": "財報數據與財報日曆",
         "category": "us_stock",
-        "tier_required": "premium",
+        "tier_required": "plus",
         "quota_type": "unlimited",
         "daily_limit_free": 0,
+        "daily_limit_plus": None,
         "daily_limit_prem": None,
     },
+    # ── 美股 進階 (Premium) ──────────────────────────────────────────────────
     {
         "tool_id": "us_institutional_holders",
         "display_name": "美股機構持倉",
@@ -318,6 +403,7 @@ _TOOLS_SEED = [
         "tier_required": "premium",
         "quota_type": "unlimited",
         "daily_limit_free": 0,
+        "daily_limit_plus": 0,
         "daily_limit_prem": None,
     },
     {
@@ -328,6 +414,7 @@ _TOOLS_SEED = [
         "tier_required": "premium",
         "quota_type": "unlimited",
         "daily_limit_free": 0,
+        "daily_limit_plus": 0,
         "daily_limit_prem": None,
     },
 ]
@@ -337,13 +424,16 @@ _AGENT_DEFAULT_TOOLS: Dict[str, List[str]] = {
     "crypto": [
         "get_current_time_taipei", "technical_analysis", "price_data", "get_crypto_price",
         "google_news", "aggregate_news", "web_search",
-        "get_fear_and_greed_index", "get_trending_tokens", "get_futures_data",
-        "get_defillama_tvl", "get_crypto_categories_and_gainers", "get_token_unlocks", "get_token_supply",
+        "get_fear_and_greed_index", "get_trending_tokens", "get_crypto_market_cap",
+        "get_economic_calendar", "get_futures_data",
+        "get_defillama_tvl", "get_crypto_categories_and_gainers", "get_token_unlocks",
+        "get_token_supply", "get_dex_volume", "get_whale_alerts",
     ],
     "tw_stock": [
         "get_current_time_taipei", "tw_stock_price", "tw_technical_analysis",
         "tw_fundamentals", "tw_institutional", "tw_news", "tw_major_news",
-        "tw_pe_ratio", "tw_monthly_revenue", "tw_dividend", "tw_foreign_top20", "web_search",
+        "tw_pe_ratio", "tw_monthly_revenue", "tw_dividend", "tw_foreign_top20",
+        "web_search",
     ],
     "us_stock": [
         "us_stock_price", "us_technical_analysis", "us_fundamentals",
@@ -359,6 +449,14 @@ _AGENT_DEFAULT_TOOLS: Dict[str, List[str]] = {
 # ============================================================================
 # DB 操作函數
 # ============================================================================
+
+# 會員等級權限順序
+TIER_HIERARCHY = {"free": 0, "plus": 1, "premium": 2}
+
+def _get_tier_level(tier: str) -> int:
+    """取得會員等級數值"""
+    return TIER_HIERARCHY.get(tier, 0)
+
 
 def seed_tools_catalog():
     """
@@ -407,7 +505,7 @@ def get_allowed_tools(agent_id: str, user_tier: str = "free", user_id: Optional[
     1. tools_catalog.is_active = TRUE
     2. agent_tool_permissions.is_enabled = TRUE
     3. tools_catalog.tier_required <= user_tier
-       (premium 用戶可用全部；free 用戶只能用 tier_required='free')
+       (premium > plus > free)
     4. （可選）用戶偏好：user_tool_preferences.is_enabled = FALSE 的排除
 
     若 DB 資料為空（首次啟動前尚未 seed），回傳 hardcode fallback。
@@ -415,11 +513,13 @@ def get_allowed_tools(agent_id: str, user_tier: str = "free", user_id: Optional[
     conn = get_connection()
     c = conn.cursor()
     try:
-        # 組合 tier 條件
-        if user_tier == "premium":
-            tier_condition = "tc.tier_required IN ('free', 'premium')"
-        else:
-            tier_condition = "tc.tier_required = 'free'"
+        # 組合 tier 條件（三級會員）
+        user_tier_level = _get_tier_level(user_tier)
+        tier_conditions = []
+        for tier, level in TIER_HIERARCHY.items():
+            if level <= user_tier_level:
+                tier_conditions.append(f"'{tier}'")
+        tier_condition = f"tc.tier_required IN ({', '.join(tier_conditions)})"
 
         query = f'''
             SELECT tc.tool_id
@@ -431,8 +531,8 @@ def get_allowed_tools(agent_id: str, user_tier: str = "free", user_id: Optional[
               AND {tier_condition}
         '''
 
-        # 排除用戶主動關閉的工具（Premium 功能）
-        if user_id and user_tier == "premium":
+        # 排除用戶主動關閉的工具（Plus/Premium 功能）
+        if user_id and user_tier in ("plus", "premium"):
             query = f'''
                 SELECT tc.tool_id
                 FROM tools_catalog tc
@@ -467,24 +567,30 @@ def get_allowed_tools(agent_id: str, user_tier: str = "free", user_id: Optional[
 def _get_fallback_tools(agent_id: str, user_tier: str) -> List[str]:
     """DB 不可用時的 hardcode fallback（與原 bootstrap.py 一致）"""
     all_tools = _AGENT_DEFAULT_TOOLS.get(agent_id, [])
-    if user_tier == "premium":
-        return all_tools
-    # Free 用戶只拿 seed 資料中 tier_required='free' 的
-    free_tool_ids = {t["tool_id"] for t in _TOOLS_SEED if t["tier_required"] == "free"}
-    return [t for t in all_tools if t in free_tool_ids]
+    user_tier_level = _get_tier_level(user_tier)
+
+    # 過濾用戶可用等級的工具
+    allowed_tools = []
+    for t in _TOOLS_SEED:
+        tool_tier_level = _get_tier_level(t["tier_required"])
+        if tool_tier_level <= user_tier_level and t["tool_id"] in all_tools:
+            allowed_tools.append(t["tool_id"])
+
+    return allowed_tools
 
 
 def check_tool_quota(user_id: str, tool_id: str, user_tier: str) -> bool:
     """
     檢查用戶今日對某工具是否還有額度。
     回傳 True = 可以使用；False = 已達上限。
-    unlimited 或 premium 且 daily_limit_prem is None 一律回傳 True。
+
+    支援三級會員：free / plus / premium
     """
     conn = get_connection()
     c = conn.cursor()
     try:
         c.execute('''
-            SELECT quota_type, daily_limit_free, daily_limit_prem
+            SELECT quota_type, daily_limit_free, daily_limit_plus, daily_limit_prem
             FROM tools_catalog WHERE tool_id = %s AND is_active = TRUE
         ''', (tool_id,))
         row = c.fetchone()
@@ -492,12 +598,19 @@ def check_tool_quota(user_id: str, tool_id: str, user_tier: str) -> bool:
         if not row:
             return True  # 找不到 → 不限制
 
-        quota_type, limit_free, limit_prem = row
+        quota_type, limit_free, limit_plus, limit_prem = row
 
         if quota_type == "unlimited":
             return True
 
-        limit = limit_prem if user_tier == "premium" else limit_free
+        # 根據用戶等級選擇對應限制
+        if user_tier == "premium":
+            limit = limit_prem
+        elif user_tier == "plus":
+            limit = limit_plus if limit_plus is not None else limit_free
+        else:
+            limit = limit_free
+
         if limit is None:
             return True   # NULL = 無限
         if limit == 0:
@@ -543,12 +656,12 @@ def get_tools_for_frontend(user_tier: str, user_id: Optional[str] = None) -> Lis
     """
     回傳前端設定頁需要的工具清單。
     包含每個工具的 display_name、category、tier_required、
-    以及用戶當前的 is_enabled 狀態（Premium 才有個人偏好）。
+    以及用戶當前的 is_enabled 狀態（Plus/Premium 才有個人偏好）。
     """
     conn = get_connection()
     c = conn.cursor()
     try:
-        if user_id and user_tier == "premium":
+        if user_id and user_tier in ("plus", "premium"):
             c.execute('''
                 SELECT tc.tool_id, tc.display_name, tc.description, tc.category,
                        tc.tier_required, tc.quota_type,
@@ -569,6 +682,8 @@ def get_tools_for_frontend(user_tier: str, user_id: Optional[str] = None) -> Lis
             ''')
 
         rows = c.fetchall()
+        user_tier_level = _get_tier_level(user_tier)
+
         return [
             {
                 "tool_id": r[0],
@@ -578,7 +693,7 @@ def get_tools_for_frontend(user_tier: str, user_id: Optional[str] = None) -> Lis
                 "tier_required": r[4],
                 "quota_type": r[5],
                 "is_enabled": r[6],
-                "locked": r[4] == "premium" and user_tier != "premium",
+                "locked": _get_tier_level(r[4]) > user_tier_level,
             }
             for r in rows
         ]
@@ -590,7 +705,7 @@ def get_tools_for_frontend(user_tier: str, user_id: Optional[str] = None) -> Lis
 
 
 def update_user_tool_preference(user_id: str, tool_id: str, is_enabled: bool):
-    """更新用戶對某工具的個人偏好（僅 Premium 可用）"""
+    """更新用戶對某工具的個人偏好（僅 Plus/Premium 可用）"""
     conn = get_connection()
     c = conn.cursor()
     try:

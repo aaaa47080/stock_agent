@@ -14,11 +14,35 @@ router = APIRouter(prefix="/api/premium", tags=["Premium"])
 
 class UpgradeRequest(BaseModel):
     user_id: str
-    months: int = 1
+    plan: str = "premium_monthly"  # plus_monthly, premium_monthly, premium_yearly
     tx_hash: Optional[str] = None  # Pi 支付交易哈希
 
 
 from api.deps import get_current_user
+
+@router.get("/pricing")
+async def get_pricing_plans():
+    """獲取會員定價方案"""
+    from core.config import PI_PAYMENT_PRICES
+    return {
+        "success": True,
+        "pricing": {
+            "plus": {
+                "monthly": PI_PAYMENT_PRICES.get("plus_monthly", 3.0),
+                "yearly": PI_PAYMENT_PRICES.get("plus_yearly", 25.0),
+            },
+            "premium": {
+                "monthly": PI_PAYMENT_PRICES.get("premium_monthly", 5.0),
+                "yearly": PI_PAYMENT_PRICES.get("premium_yearly", 40.0),
+            }
+        },
+        "pi_price_usd": 0.17,  # 參考價格
+        "savings": {
+            "plus_yearly_save": 11.0,      # Plus 年費省 11 Pi
+            "premium_yearly_save": 20.0,  # Premium 年費省 20 Pi
+        }
+    }
+
 
 @router.post("/upgrade")
 async def upgrade_to_premium(request: UpgradeRequest, current_user: dict = Depends(get_current_user)):
@@ -26,10 +50,10 @@ async def upgrade_to_premium(request: UpgradeRequest, current_user: dict = Depen
         raise HTTPException(status_code=403, detail="Not authorized")
     """
     升級到高級會員
-    
+
     Args:
         user_id: 用戶ID
-        months: 訂閱月份 (默認為1個月)
+        plan: 訂閱方案 (plus_monthly, plus_yearly, premium_monthly, premium_yearly)
         tx_hash: Pi 支付交易哈希 (正式環境需要)
     """
     try:
