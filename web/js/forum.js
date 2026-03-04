@@ -834,7 +834,7 @@ const ForumApp = {
                             </button>
                         </div>
                     </div>
-                    <div class="text-textMain text-sm">${comment.content}</div>
+                    <div class="text-textMain text-sm">${escapeHtml(comment.content)}</div>
                 `;
                 container.appendChild(el);
             });

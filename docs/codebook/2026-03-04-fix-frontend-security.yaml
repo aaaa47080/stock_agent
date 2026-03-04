@@ -1,0 +1,33 @@
+id: CB-2026-0304-003
+date: 2026-03-04
+type: security
+severity: high
+
+problem: |
+  前端評估發現多個安全和性能問題：
+  - XSS 漏洞：forum.js, pulse.js, chat.js 中用戶內容未轉義直接插入 innerHTML
+  - CSS 性能：全局 `*` 過渡動畫導致頁面渲染變慢
+  - 變數重複：chat.js 中變數重複聲明可能導致狀態不一致
+  - WebSocket：無限重連無最大重試限制，可能造成資源浪費
+
+solution: |
+  1. XSS 修復：添加全局 escapeHtml() 函數
+     - BEFORE: `${comment.content}` 直接插入
+     - AFTER: `${escapeHtml(comment.content)}` 轉義後插入
+  2. CSS 性能：限制過渡動畫範圍
+     - BEFORE: `* { transition: ... }` 所有元素
+     - AFTER: `button, a, input, .btn, .card { transition: ... }` 僅交互元素
+  3. WebSocket：添加重連限制
+     - BEFORE: 無限重連，固定 5 秒間隔
+     - AFTER: 最多 5 次，指數退避 (5s → 10s → 20s → 40s → 60s)
+
+files:
+  - web/js/app.js: +17
+  - web/js/forum.js: 1
+  - web/js/pulse.js: 1
+  - web/js/chat.js: -7
+  - web/js/notification-service.js: +23
+  - web/styles.css: 2
+
+keywords: [xss, security, css-performance, websocket, escapeHtml, exponential-backoff]
+refs: [OWASP-XSS-Prevention, CWE-79]

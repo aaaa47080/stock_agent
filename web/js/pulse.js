@@ -374,7 +374,7 @@ function renderPulseCard(card, data, report) {
                     ${report.highlights.map(item => `
                         <div class="bg-background/50 rounded-xl p-3 border border-white/5">
                             <div class="text-xs font-semibold text-secondary mb-1">${item.title_key ? t('pulse.' + item.title_key) : item.title}</div>
-                            <div class="text-[11px] text-textMuted leading-normal">${item.content}</div>
+                            <div class="text-[11px] text-textMuted leading-normal">${escapeHtml(item.content)}</div>
                         </div>
                     `).join('')}
                 </div>

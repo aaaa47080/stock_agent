@@ -15,6 +15,10 @@ const NotificationService = {
     // 重连定时器
     reconnectTimer: null,
 
+    // 重连尝试次数（防止无限重连）
+    reconnectAttempts: 0,
+    MAX_RECONNECT_ATTEMPTS: 5,
+
     // 是否已登录
     isLoggedIn: false,
 
@@ -298,6 +302,8 @@ const NotificationService = {
 
             this.ws.onopen = () => {
                 console.log('[NotificationService] WebSocket connected');
+                // 重置重连计数器
+                this.reconnectAttempts = 0;
                 // 发送认证信息
                 this.ws.send(JSON.stringify({ type: 'auth', user_id: userId }));
             };
@@ -323,15 +329,28 @@ const NotificationService = {
     },
 
     /**
-     * 安排重连
+     * 安排重连（带最大重试次数和指数退避）
      */
     scheduleReconnect() {
         if (this.reconnectTimer) {
             clearTimeout(this.reconnectTimer);
         }
+
+        // 检查是否超过最大重试次数
+        if (this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS) {
+            console.warn('[NotificationService] Max reconnect attempts reached, stopping');
+            return;
+        }
+
+        // 指数退避：5s, 10s, 20s, 40s, 80s
+        const delay = Math.min(5000 * Math.pow(2, this.reconnectAttempts), 60000);
+        this.reconnectAttempts++;
+
+        console.log(`[NotificationService] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.MAX_RECONNECT_ATTEMPTS})`);
+
         this.reconnectTimer = setTimeout(() => {
             this.connectWebSocket();
-        }, 5000);
+        }, delay);
     },
 
     /**

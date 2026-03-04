@@ -262,12 +262,7 @@ const MessageComponents = {
 // 全域暴露 MessageComponents
 window.MessageComponents = MessageComponents;
 // isAnalyzing is declared globally in app.js
-// 用於跟踪分析過程面板的展開狀態
-window.lastProcessOpenState = false;
-
-// 編輯模式（批量刪除）
-let isEditMode = false;
-let selectedSessions = new Set();
+// Note: lastProcessOpenState, isEditMode, selectedSessions are already declared at the top of this file
 
 function appendMessage(role, content) {
     const container = document.getElementById('chat-messages');
@@ -1349,7 +1344,7 @@ window.submitHITLAnswer = async function (answer) {
                 }
                 if (data.error) {
                     if (ctx.botMsgDiv) {
-                        ctx.botMsgDiv.innerHTML = `<span class="text-red-400">Error: ${data.error}</span>`;
+                        ctx.botMsgDiv.innerHTML = `<span class="text-red-400">Error: ${escapeHtml(data.error)}</span>`;
                     }
                     isAnalyzing = false;
                 }
@@ -1726,7 +1721,7 @@ async function sendMessage() {
 
                     if (data.error) {
                         clearInterval(timerInterval);
-                        botMsgDiv.innerHTML = `<span class="text-red-400">Error: ${data.error}</span>`;
+                        botMsgDiv.innerHTML = `<span class="text-red-400">Error: ${escapeHtml(data.error)}</span>`;
                         isAnalyzing = false;
                     }
                 }

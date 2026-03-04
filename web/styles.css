@@ -22,8 +22,8 @@ code, pre, .font-mono {
     font-family: 'JetBrains Mono', monospace;
 }
 
-/* Smooth Transitions */
-* {
+/* Smooth Transitions - Only for interactive elements (performance fix) */
+button, a, input, select, textarea, .btn, .tab-btn, .nav-btn, .card, .modal, .toast, [role="button"] {
     transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     transition-duration: 150ms;

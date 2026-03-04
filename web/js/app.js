@@ -15,6 +15,26 @@ window.isAnalyzing = false;
 let marketRefreshInterval = null;
 
 // ========================================
+// 安全工具函數
+// ========================================
+
+/**
+ * 轉義 HTML 特殊字符，防止 XSS 攻擊
+ * @param {string} str - 要轉義的字符串
+ * @returns {string} 轉義後的字符串
+ */
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+window.escapeHtml = escapeHtml;
+
+// ========================================
 // 自定義對話框系統 (替代原生 alert/confirm)
 // ========================================
 
