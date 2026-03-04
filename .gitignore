@@ -9,7 +9,6 @@ __pycache__/
 venv/
 .venv/
 env/
-.claude
 
 # IDE
 .vscode/
@@ -49,4 +48,3 @@ key.txt
 admin.txt
 payment_test.txt
 
-.claude/settings.local.json
