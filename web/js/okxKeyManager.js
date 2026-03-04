@@ -2,6 +2,25 @@
 // OKX API Key Manager (BYOK Mode)
 // Bring Your Own Keys - 前端安全管理
 // ========================================
+//
+// ⚠️ 安全警告 / SECURITY WARNING ⚠️
+// =====================================
+// 本模組使用 Base64 編碼存儲 OKX API 憑證，這不是真正的加密！
+// Base64 編碼可以被輕易解碼（使用 atob() 函數）。
+//
+// 風險：
+// - 任何能存取瀏覽器 localStorage 的人都可以取得您的 API 憑證
+// - XSS 攻擊可以竊取完整的 OKX 交易權限
+// - 惡意瀏覽器擴展可以讀取這些憑證
+//
+// 建議：
+// - 只在您信任的設備上使用此功能
+// - 為您的 OKX API Key 設置 IP 白名單限制
+// - 定期輪換 API Key
+// - 使用只讀權限的 API Key（如果不需要交易功能）
+//
+// 未來改進：應該使用後端代理來處理 OKX API 請求
+// ========================================
 
 class OKXKeyManager {
     constructor() {
@@ -9,7 +28,8 @@ class OKXKeyManager {
     }
 
     /**
-     * 保存 OKX API 金鑰到 localStorage（加密存儲）
+     * 保存 OKX API 金鑰到 localStorage
+     * ⚠️ 警告：Base64 編碼不是加密，憑證可被輕易解碼
      * @param {Object} credentials - {api_key, secret_key, passphrase}
      */
     saveCredentials(credentials) {
@@ -17,12 +37,13 @@ class OKXKeyManager {
             throw new Error('所有 OKX API 憑證欄位都是必填的');
         }
 
-        // 簡單的 Base64 編碼（注意：這不是加密，只是混淆）
-        // 在生產環境中，應該使用更強的加密方式
+        // ⚠️ 安全警告：Base64 不是加密！
+        // 這只是混淆，任何人都可以使用 atob() 解碼
+        // 強烈建議為 API Key 設置 IP 白名單和權限限制
         const encoded = btoa(JSON.stringify(credentials));
         localStorage.setItem(this.STORAGE_KEY, encoded);
 
-        console.log('[OKXKeyManager] OKX 憑證已保存到本地瀏覽器');
+        console.warn('[OKXKeyManager] ⚠️ 憑證已存儲（Base64 編碼，非加密）。請確保您的 API Key 已設置適當的權限限制。');
     }
 
     /**
@@ -36,6 +57,7 @@ class OKXKeyManager {
         }
 
         try {
+            // 注意：Base64 可以被任何人解碼
             const decoded = atob(encoded);
             return JSON.parse(decoded);
         } catch (e) {

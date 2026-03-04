@@ -8,7 +8,8 @@ if (typeof lucide !== 'undefined') {
 }
 
 // markdown-it 可能不存在於所有頁面
-const md = window.markdownit ? window.markdownit({ html: true, linkify: true }) : null;
+// 安全修復: 關閉 HTML 功能以防止 XSS 攻擊
+const md = window.markdownit ? window.markdownit({ html: false, linkify: true, breaks: true }) : null;
 window.md = md;
 window.isAnalyzing = false;
 let marketRefreshInterval = null;
