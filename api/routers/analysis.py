@@ -4,7 +4,7 @@ import os
 import uuid
 from typing import Optional
 from functools import partial
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
 from core.tools import _find_available_exchange
@@ -13,6 +13,7 @@ from api.utils import logger
 from analysis.simple_backtester import run_simple_backtest
 import core.config as core_config
 from utils.user_client_factory import create_user_llm_client
+from api.middleware.rate_limit import limiter
 
 # Import DB functions
 from core.database import (
@@ -109,7 +110,8 @@ async def get_history(
 # --- Analysis Endpoint ---
 
 @router.post("/api/analyze")
-async def analyze_crypto(request: QueryRequest, current_user: dict = Depends(get_current_user)):
+@limiter.limit("10/minute")
+async def analyze_crypto(request: Request, body: QueryRequest, current_user: dict = Depends(get_current_user)):
     """
     處理分析請求，以串流 (SSE) 方式回傳結果。
 
@@ -121,7 +123,7 @@ async def analyze_crypto(request: QueryRequest, current_user: dict = Depends(get
     若 V4 啟動失敗則回傳 503。
     """
     # ⭐ 驗證用戶是否提供了 API key
-    if not request.user_api_key or not request.user_provider:
+    if not body.user_api_key or not body.user_provider:
         raise HTTPException(
             status_code=400,
             detail="缺少 API Key。請在系統設定中輸入您的 LLM API Key。"
@@ -130,15 +132,15 @@ async def analyze_crypto(request: QueryRequest, current_user: dict = Depends(get
     # ⭐ 使用用戶提供的 key 創建 LLM 客戶端
     try:
         user_client = create_user_llm_client(
-            provider=request.user_provider,
-            api_key=request.user_api_key,
-            model=request.user_model,
+            provider=body.user_provider,
+            api_key=body.user_api_key,
+            model=body.user_model,
         )
     except Exception as e:
         logger.error(f"❌ 創建用戶 LLM client 失敗: {e}")
         raise HTTPException(status_code=400, detail=f"API Key 無效: {str(e)}")
 
-    logger.info(f"收到分析請求 (Session: {request.session_id}): {request.message[:50]}...")
+    logger.info(f"收到分析請求 (Session: {body.session_id}): {body.message[:50]}...")
 
     # ── 嘗試使用 V4 Manager ──────────────────────────────
     try:
@@ -148,26 +150,26 @@ async def analyze_crypto(request: QueryRequest, current_user: dict = Depends(get
         manager = v4_bootstrap(
             user_client,
             web_mode=True,
-            language=request.language,
+            language=body.language,
             user_tier=current_user.get("membership_tier", "free"),
             user_id=current_user.get("user_id"),
         )
-        config  = {"configurable": {"thread_id": request.session_id}}
+        config  = {"configurable": {"thread_id": body.session_id}}
 
         # resume_answer → 繼續被 interrupt 暫停的 graph
-        if request.resume_answer is not None:
-            logger.info(f"[V4] HITL resume: session={request.session_id}")
-            graph_input = Command(resume=request.resume_answer)
+        if body.resume_answer is not None:
+            logger.info(f"[V4] HITL resume: session={body.session_id}")
+            graph_input = Command(resume=body.resume_answer)
         else:
             # 新請求：儲存到 DB + 載入對話歷史（平行執行，節省一個 DB round trip）
             loop = asyncio.get_running_loop()
             _, db_history_raw = await asyncio.gather(
                 loop.run_in_executor(
-                    None, partial(save_chat_message, "user", request.message,
-                                  session_id=request.session_id, user_id=current_user.get("user_id"))
+                    None, partial(save_chat_message, "user", body.message,
+                                  session_id=body.session_id, user_id=current_user.get("user_id"))
                 ),
                 loop.run_in_executor(
-                    None, partial(get_chat_history, session_id=request.session_id, limit=20)
+                    None, partial(get_chat_history, session_id=body.session_id, limit=20)
                 )
             )
 
@@ -180,7 +182,7 @@ async def analyze_crypto(request: QueryRequest, current_user: dict = Depends(get
                     role    = "助手" if msg.get("role") == "assistant" else "用戶"
                     content = (msg.get("content") or "").strip()
                     # 排除剛存入的當前訊息（最後一條 user 訊息）
-                    if content and content != request.message:
+                    if content and content != body.message:
                         lines.append(f"{role}: {content}")
                 history_text = "\n".join(lines[-18:])  # 最近 18 條
             except Exception as e:
@@ -192,13 +194,13 @@ async def analyze_crypto(request: QueryRequest, current_user: dict = Depends(get
             graph_input = Command(
                 goto="classify",
                 update={
-                    "session_id":          request.session_id,
-                    "query":               request.message,
+                    "session_id":          body.session_id,
+                    "query":               body.message,
                     "history":             history_text,
                     "agent_results":       [],
                     "user_clarifications": [],
                     "retry_count":         0,
-                    "language":            request.language,
+                    "language":            body.language,
                     "plan":                None,   # Explicitly clear plan
                     "current_step_index":  0,      # Reset execution cursor (CRITICAL: prevents step-skip on subsequent queries)
                     "negotiate_count":     0,      # Reset negotiation
@@ -263,20 +265,20 @@ async def analyze_crypto(request: QueryRequest, current_user: dict = Depends(get
                     inner_loop = asyncio.get_running_loop()
                     await inner_loop.run_in_executor(
                         None, partial(save_chat_message, "assistant", response,
-                                      session_id=request.session_id, user_id=current_user.get("user_id"))
+                                      session_id=body.session_id, user_id=current_user.get("user_id"))
                     )
                     
                     # Stream codebook ID if available (for feedback)
                     if result.get("codebook_entry_id"):
-                        print(f"[DEBUG] event_generator_v4: Streaming codebook_id={result.get('codebook_entry_id')}")
+                        logger.debug(f"event_generator_v4: Streaming codebook_id={result.get('codebook_entry_id')}")
                         yield f"data: {json.dumps({'type': 'meta', 'codebook_id': result['codebook_entry_id']})}\n\n"
                     else:
-                        print(f"[DEBUG] event_generator_v4: No codebook_id in result. Keys: {result.keys()}")
+                        logger.debug(f"event_generator_v4: No codebook_id in result. Keys: {result.keys()}")
 
                     yield f"data: {json.dumps({'done': True})}\n\n"
 
                 except asyncio.CancelledError:
-                    logger.warning(f"[V4] Client disconnected, cancelling task for session {request.session_id}")
+                    logger.warning(f"[V4] Client disconnected, cancelling task for session {body.session_id}")
                     if not invoke_task.done():
                         invoke_task.cancel()
                         try:
@@ -286,10 +288,11 @@ async def analyze_crypto(request: QueryRequest, current_user: dict = Depends(get
                     raise
                 except Exception as e:
                     logger.error(f"[V4] 分析過程發生錯誤: {e}", exc_info=True)
-                    yield f"data: {json.dumps({'error': str(e)})}\n\n"
+                    # SSE 錯誤處理：確保客戶端收到錯誤並結束流
+                    yield f"data: {json.dumps({'error': str(e), 'done': True})}\n\n"
                 finally:
                     if not invoke_task.done():
-                        logger.info(f"[V4] Generator exiting, ensuring task cancelled for session {request.session_id}")
+                        logger.info(f"[V4] Generator exiting, ensuring task cancelled for session {body.session_id}")
                         invoke_task.cancel()
                         # We don't await here to avoid delaying the generator exit, 
                         # but the task will be cancelled in the background.
@@ -297,7 +300,8 @@ async def analyze_crypto(request: QueryRequest, current_user: dict = Depends(get
             except Exception as e:
                 # Catch-all for the outer try block logic (e.g. queue setup errors)
                 logger.error(f"[V4] Event generator error: {e}", exc_info=True)
-                yield f"data: {json.dumps({'error': str(e)})}\n\n"
+                # SSE 錯誤處理：確保客戶端收到錯誤並結束流
+                yield f"data: {json.dumps({'error': str(e), 'done': True})}\n\n"
 
         return StreamingResponse(event_generator_v4(), media_type="text/event-stream")
 
@@ -346,6 +350,7 @@ async def run_backtest_api(request: BacktestRequest):
 
     except HTTPException:
         raise
+    except Exception as e:
         logger.error(f"回測執行失敗: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 

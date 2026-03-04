@@ -5,6 +5,7 @@ Implements per-IP and per-user rate limiting to prevent API abuse and DDoS attac
 
 Stage 2 Security: Added persistent rate limiting that survives server restarts.
 """
+import os
 import json
 import time
 from pathlib import Path
@@ -32,10 +33,13 @@ def get_user_identifier(request: Request) -> str:
 
 
 # Initialize rate limiter
+# Use environment variable REDIS_URL for distributed systems, fallback to in-memory storage
+REDIS_URL = os.getenv("REDIS_URL", "memory://")
+
 limiter = Limiter(
     key_func=get_user_identifier,
     default_limits=["1000/hour", "100/minute"],  # Global default limits
-    storage_uri="memory://",  # Use in-memory storage (or redis:// for distributed systems)
+    storage_uri=REDIS_URL,
     strategy="fixed-window"  # Fixed window strategy
 )
 
@@ -59,6 +63,9 @@ RATE_LIMITS = {
 
     # Public endpoints (lenient)
     "public": "200/minute",
+
+    # AI Analysis endpoint (moderate - LLM calls are expensive)
+    "analysis": "10/minute",
 
     # Community Governance endpoints
     "governance_report": "10/hour",  # Report submission (strict)
@@ -96,6 +103,10 @@ def get_rate_limit_for_route(request: Request) -> str:
     if method in ['post', 'put', 'patch', 'delete']:
         return RATE_LIMITS["write"]
     
+    # AI Analysis endpoint (expensive LLM calls)
+    if '/analyze' in path or '/backtest' in path:
+        return RATE_LIMITS["analysis"]
+
     # Public read endpoints (forum, market data)
     if any(x in path for x in ['/forum/posts', '/forum/boards', '/market', '/agents/']):
         return RATE_LIMITS["public"]
