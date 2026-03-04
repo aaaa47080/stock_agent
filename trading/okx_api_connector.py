@@ -432,18 +432,28 @@ class OKXAPIConnector:
                     try:
                         symbol = instId.replace("-SWAP", "")
                         
+                        # 安全轉換函數：處理空字串和 None
+                        def safe_float(val, default=0.0):
+                            """將值轉換為 float，處理空字串和 None"""
+                            if val is None or val == "":
+                                return default
+                            try:
+                                return float(val)
+                            except (ValueError, TypeError):
+                                return default
+
                         # 從回應中直接獲取上下限，若無則使用預設值
                         # OKX API 回傳的 maxFundingRate/minFundingRate 是小數 (例如 0.00375)，需轉為 %
-                        max_rate = float(data.get("maxFundingRate", 0.0075)) * 100
-                        min_rate = float(data.get("minFundingRate", -0.0075)) * 100
-                        
+                        max_rate = safe_float(data.get("maxFundingRate"), 0.0075) * 100
+                        min_rate = safe_float(data.get("minFundingRate"), -0.0075) * 100
+
                         # 處理下次資金費率 (可能是空字串)
                         next_rate_val = data.get("nextFundingRate")
-                        next_rate = float(next_rate_val) * 100 if next_rate_val else None
+                        next_rate = safe_float(next_rate_val) * 100 if next_rate_val and next_rate_val != "" else None
 
                         funding_rates[symbol] = {
                             "instId": instId,
-                            "fundingRate": float(data.get("fundingRate", 0)) * 100,
+                            "fundingRate": safe_float(data.get("fundingRate"), 0) * 100,
                             "nextFundingRate": next_rate,
                             "fundingTime": data.get("fundingTime"),
                             "nextFundingTime": data.get("nextFundingTime"),
