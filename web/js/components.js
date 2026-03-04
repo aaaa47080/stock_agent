@@ -650,8 +650,8 @@ const Components = {
                         </div>
                     </div>
 
-                    <!-- TEST MODE: Multi-User Switcher -->
-                    <div id="dev-user-switcher" class="mt-4 pt-4 border-t border-white/5">
+                    <!-- TEST MODE: Multi-User Switcher (預設隱藏，由 auth.js 根據 API 控制) -->
+                    <div id="dev-user-switcher" class="mt-4 pt-4 border-t border-white/5 hidden">
                         <p class="text-[10px] text-textMuted uppercase tracking-wider mb-2 font-bold opacity-50" data-i18n="settings.profile.devSwitchUser">Dev: Switch User</p>
                         <div class="grid grid-cols-2 gap-2">
                             <button onclick="handleDevSwitchUser('test-user-001')" class="py-2 bg-white/5 hover:bg-primary/20 hover:text-primary rounded-lg text-xs font-mono transition border border-white/5">
