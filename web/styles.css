@@ -200,7 +200,7 @@ th {
     font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: #a1a1aa;
+    color: #b8b8bc;
     padding: 16px;
     text-align: left;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
@@ -268,7 +268,7 @@ input[type=range]:focus {
     padding: 0.75rem 1rem;
     cursor: pointer;
     font-size: 0.8rem;
-    color: #a1a1aa;
+    color: #b8b8bc;
     font-family: 'Mulish', sans-serif;
     transition: all 0.2s;
     list-style: none;
@@ -302,7 +302,7 @@ input[type=range]:focus {
 }
 
 .process-step-item {
-    color: #a1a1aa;
+    color: #b8b8bc;
     font-size: 0.85rem;
 }
 
@@ -337,7 +337,7 @@ input[type=range]:focus {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.07em;
-    color: #a1a1aa;
+    color: #b8b8bc;
     white-space: nowrap;
     text-align: left;
 }
@@ -348,7 +348,7 @@ input[type=range]:focus {
 }
 /* 第一欄（標籤欄）較暗 */
 .prose td:first-child, .prose th:first-child {
-    color: #a1a1aa;
+    color: #b8b8bc;
     font-size: 0.8rem;
 }
 /* 第二欄（數值欄）醒目 */
@@ -721,7 +721,7 @@ input[type="password"]::-ms-clear {
     cursor: pointer;
     transition: all 0.2s ease;
     user-select: none;
-    color: #a1a1aa;
+    color: #b8b8bc;
 }
 
 .lang-trigger:hover {
@@ -781,7 +781,7 @@ input[type="password"]::-ms-clear {
 .lang-option-name {
     font-size: 0.8125rem;
     font-weight: 500;
-    color: #a1a1aa;
+    color: #b8b8bc;
 }
 
 .lang-option.active .lang-option-name {

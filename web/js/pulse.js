@@ -46,34 +46,41 @@ function getTimeAgo(timestamp) {
 async function initPulse() {
     console.log('[Pulse] initPulse called');
 
-    // 1. 確保組件已注入
-    if (window.Components && !window.Components.isInjected('pulse')) {
-        console.log('[Pulse] Injecting component...');
-        await window.Components.inject('pulse');
-    }
+    try {
+        // 1. 確保 crypto 組件已注入（pulse-grid 在 crypto 模板中）
+        if (window.Components && !window.Components.isInjected('crypto')) {
+            console.log('[Pulse] Injecting crypto component...');
+            await window.Components.inject('crypto');
+        }
 
-    // 2. 等待 DOM 元素出現
-    let grid = document.getElementById('pulse-grid');
-    if (!grid) {
-        // 等待最多 500ms
-        for (let i = 0; i < 10; i++) {
-            await new Promise(r => setTimeout(r, 50));
-            grid = document.getElementById('pulse-grid');
-            if (grid) break;
+        // 2. 等待 DOM 元素出現
+        let grid = document.getElementById('pulse-grid');
+        if (!grid) {
+            // 等待最多 500ms
+            for (let i = 0; i < 10; i++) {
+                await new Promise(r => setTimeout(r, 50));
+                grid = document.getElementById('pulse-grid');
+                if (grid) break;
+            }
+        }
+
+        if (!grid) {
+            console.error('[Pulse] pulse-grid not found after injection!');
+            return;
+        }
+
+        console.log('[Pulse] pulse-grid found, loading data...');
+
+        // 3. 創建 loading 卡片並加載數據
+        await loadPulseData(true);
+
+        pulseInitialized = true;
+    } catch (error) {
+        console.error('[Pulse] initPulse error:', error);
+        if (typeof window.showError === 'function') {
+            window.showError('初始化失敗，請重新整理頁面');
         }
     }
-
-    if (!grid) {
-        console.error('[Pulse] pulse-grid not found after injection!');
-        return;
-    }
-
-    console.log('[Pulse] pulse-grid found, loading data...');
-
-    // 3. 創建 loading 卡片並加載數據
-    await loadPulseData(true);
-
-    pulseInitialized = true;
 }
 
 /**
@@ -86,36 +93,43 @@ async function loadPulseData(showLoading = false) {
         return;
     }
 
-    // [Sync] Ensure we use the shared "Top 5" selection from Market module
-    // If no selection exists, trigger Market initialization to populate Top 5
-    if (!window.globalSelectedSymbols || window.globalSelectedSymbols.length === 0) {
-        if (typeof window.initMarket === 'function') {
-            console.log('[Pulse] No selection found, initializing Market to get Top 5...');
-            await window.initMarket();
+    try {
+        // [Sync] Ensure we use the shared "Top 5" selection from Market module
+        // If no selection exists, trigger Market initialization to populate Top 5
+        if (!window.globalSelectedSymbols || window.globalSelectedSymbols.length === 0) {
+            if (typeof window.initMarket === 'function') {
+                console.log('[Pulse] No selection found, initializing Market to get Top 5...');
+                await window.initMarket();
+            }
+        }
+
+        const targets = (window.globalSelectedSymbols && window.globalSelectedSymbols.length > 0)
+            ? window.globalSelectedSymbols
+            : ['BTC', 'ETH', 'SOL', 'PI']; // Failsafe fallback
+
+        // 創建 loading placeholder
+        if (showLoading || grid.children.length === 0) {
+            grid.innerHTML = targets.map(symbol => `
+                <div id="pulse-card-${symbol}" class="bg-surface rounded-3xl border border-white/5 p-5 h-[300px] flex flex-col items-center justify-center">
+                    <div class="typing-indicator">
+                        <div class="typing-dots flex gap-1"><span></span><span></span><span></span></div>
+                        <span class="ml-2 text-textMuted text-sm">Analyzing ${symbol}...</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 並行加載所有數據
+        await Promise.all(targets.map(symbol => fetchPulseForSymbol(symbol, false)));
+
+        // 開始輪詢進度（如果有後台任務）
+        pollAnalysisProgress();
+    } catch (error) {
+        console.error('[Pulse] loadPulseData error:', error);
+        if (typeof window.showToast === 'function') {
+            window.showToast('載入數據時發生錯誤，請稍後重試', 'error');
         }
     }
-
-    const targets = (window.globalSelectedSymbols && window.globalSelectedSymbols.length > 0)
-        ? window.globalSelectedSymbols
-        : ['BTC', 'ETH', 'SOL', 'PI']; // Failsafe fallback
-
-    // 創建 loading placeholder
-    if (showLoading || grid.children.length === 0) {
-        grid.innerHTML = targets.map(symbol => `
-            <div id="pulse-card-${symbol}" class="bg-surface rounded-3xl border border-white/5 p-5 h-[300px] flex flex-col items-center justify-center">
-                <div class="typing-indicator">
-                    <div class="typing-dots flex gap-1"><span></span><span></span><span></span></div>
-                    <span class="ml-2 text-textMuted text-sm">Analyzing ${symbol}...</span>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    // 並行加載所有數據
-    await Promise.all(targets.map(symbol => fetchPulseForSymbol(symbol, false)));
-
-    // 開始輪詢進度（如果有後台任務）
-    pollAnalysisProgress();
 }
 
 /**
@@ -169,6 +183,9 @@ async function refreshMarketPulse() {
         }
     } catch (e) {
         console.error("Market Pulse Refresh Error:", e);
+        if (typeof window.showToast === 'function') {
+            window.showToast('刷新失敗，請稍後重試', 'error');
+        }
     } finally {
         setTimeout(() => {
             if (btn) btn.disabled = false;

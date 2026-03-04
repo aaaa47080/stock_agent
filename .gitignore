@@ -48,3 +48,5 @@ Thumbs.db
 key.txt
 admin.txt
 payment_test.txt
+
+.claude/settings.local.json
