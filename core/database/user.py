@@ -464,22 +464,23 @@ def upgrade_to_pro(user_id: str, months: int = 1, tx_hash: str = None) -> bool:
                 pass
 
         # 2. 更新會員狀態
+        # SQL injection fix: Use parameterized query for INTERVAL
         if is_active_pro:
             # 續費：從原到期日往後順延
             c.execute('''
                 UPDATE users
                 SET membership_tier = 'pro',
-                    membership_expires_at = membership_expires_at + INTERVAL '%s months'
+                    membership_expires_at = membership_expires_at + INTERVAL %s
                 WHERE user_id = %s
-            ''' % (months, '%s'), (user_id,))
+            ''', (f"{months} months", user_id))
         else:
             # 新購或已過期：從現在開始計算
             c.execute('''
                 UPDATE users
                 SET membership_tier = 'pro',
-                    membership_expires_at = NOW() + INTERVAL '%s months'
+                    membership_expires_at = NOW() + INTERVAL %s
                 WHERE user_id = %s
-            ''' % (months, '%s'), (user_id,))
+            ''', (f"{months} months", user_id))
 
         # 3. 如果有交易哈希，記錄支付流水帳
         if tx_hash:
@@ -541,12 +542,13 @@ def get_failed_attempts(username: str, hours: int = LOCKOUT_HOURS) -> int:
     conn = get_connection()
     c = conn.cursor()
     try:
+        # SQL injection fix: Use parameterized query for INTERVAL
         c.execute('''
             SELECT COUNT(*) FROM login_attempts
             WHERE username = %s
               AND success = 0
-              AND attempt_time > NOW() - INTERVAL '%s hours'
-        ''' % ('%s', hours), (username,))
+              AND attempt_time > NOW() - INTERVAL %s
+        ''', (username, f"{hours} hours"))
         return c.fetchone()[0]
     finally:
         conn.close()

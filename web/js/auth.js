@@ -26,9 +26,13 @@ window.DebugLog = DebugLog;
 const AuthManager = {
     currentUser: null,
     piInitialized: false,
+    _refreshTimer: null,
 
-    // Token 過期時間（7 天，與後端 JWT_EXPIRE_HOURS 一致）
+    // Token 過期時間（7 天，與後端 ACCESS_TOKEN_EXPIRE_MINUTES 一致）
     TOKEN_EXPIRY_MS: 7 * 24 * 60 * 60 * 1000,
+
+    // 在過期前多久開始刷新（1 天）
+    REFRESH_BEFORE_EXPIRY_MS: 24 * 60 * 60 * 1000,
 
     /**
      * 檢查 token 是否過期
@@ -61,6 +65,21 @@ const AuthManager = {
     },
 
     /**
+     * 檢查 token 是否需要刷新（過期前 1 天內）
+     * @returns {boolean} true = 需要刷新
+     */
+    needsRefresh() {
+        if (!this.currentUser) return false;
+
+        const expiry = this.currentUser.accessTokenExpiry;
+        if (!expiry) return false;
+
+        const timeUntilExpiry = expiry - Date.now();
+        // 在過期前 REFRESH_BEFORE_EXPIRY_MS 毫秒內需要刷新
+        return timeUntilExpiry > 0 && timeUntilExpiry < this.REFRESH_BEFORE_EXPIRY_MS;
+    },
+
+    /**
      * 清除過期的 token 並導向登入
      */
     clearExpiredToken() {
@@ -76,6 +95,124 @@ const AuthManager = {
 
         // 重整頁面以顯示登入 modal
         window.location.reload();
+    },
+
+    /**
+     * 啟動 token 自動刷新定時器
+     * 每小時檢查一次，如果 token 快過期則自動刷新
+     */
+    startTokenRefreshTimer() {
+        // 清除舊的定時器
+        if (this._refreshTimer) {
+            clearInterval(this._refreshTimer);
+        }
+
+        // 每小時檢查一次
+        this._refreshTimer = setInterval(async () => {
+            if (!this.currentUser) return;
+
+            DebugLog.info('Token refresh check', {
+                needsRefresh: this.needsRefresh(),
+                isExpired: this.isTokenExpired(),
+                timeUntilExpiry: this.currentUser.accessTokenExpiry
+                    ? Math.round((this.currentUser.accessTokenExpiry - Date.now()) / 1000 / 60) + ' minutes'
+                    : 'unknown'
+            });
+
+            if (this.isTokenExpired()) {
+                // Token 已過期，嘗試自動刷新
+                DebugLog.info('Token 已過期，嘗試自動刷新');
+                await this.silentRefresh();
+            } else if (this.needsRefresh()) {
+                // Token 快過期，提前刷新
+                DebugLog.info('Token 快過期，提前刷新');
+                await this.silentRefresh();
+            }
+        }, 60 * 60 * 1000); // 每小時檢查一次
+
+        DebugLog.info('Token refresh timer started');
+    },
+
+    /**
+     * 靜默刷新 token（使用 Pi SDK 重新認證）
+     * @returns {Promise<{success: boolean, error?: string}>}
+     */
+    async silentRefresh() {
+        // 只有 Pi 用戶才能靜默刷新
+        if (!this.currentUser?.pi_uid) {
+            DebugLog.warn('非 Pi 用戶，無法靜默刷新');
+            return { success: false, error: 'Not a Pi user' };
+        }
+
+        // 檢查是否在 Pi Browser 環境
+        if (!this.isPiBrowser()) {
+            DebugLog.warn('非 Pi Browser 環境，無法靜默刷新');
+            return { success: false, error: 'Not in Pi Browser' };
+        }
+
+        try {
+            DebugLog.info('開始靜默刷新 token...');
+
+            // 確保 Pi SDK 已初始化
+            if (!this.piInitialized) {
+                this.initPiSDK();
+            }
+
+            // 重新調用 Pi SDK 認證
+            const auth = await Pi.authenticate(['username', 'payments', 'wallet_address'], (payment) => {
+                DebugLog.warn('刷新時發現未完成的支付', payment);
+            });
+
+            DebugLog.info('Pi SDK 重新認證成功', { username: auth.user.username });
+
+            // 同步到後端獲取新的 JWT
+            const res = await fetch('/api/user/pi-sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    pi_uid: auth.user.uid,
+                    username: auth.user.username,
+                    access_token: auth.accessToken
+                })
+            });
+
+            if (!res.ok) {
+                const result = await res.json();
+                throw new Error(result.detail || 'Sync failed');
+            }
+
+            const syncResult = await res.json();
+
+            // 更新本地用戶資料
+            this.currentUser = {
+                ...this.currentUser,
+                accessToken: syncResult.access_token,
+                accessTokenExpiry: Date.now() + this.TOKEN_EXPIRY_MS,
+                piAccessToken: auth.accessToken
+            };
+
+            localStorage.setItem('pi_user', JSON.stringify(this.currentUser));
+
+            DebugLog.info('Token 靜默刷新成功', {
+                newExpiry: new Date(this.currentUser.accessTokenExpiry).toISOString()
+            });
+
+            return { success: true };
+        } catch (error) {
+            DebugLog.error('靜默刷新失敗', { error: error.message });
+            return { success: false, error: error.message };
+        }
+    },
+
+    /**
+     * 停止 token 自動刷新定時器
+     */
+    stopTokenRefreshTimer() {
+        if (this._refreshTimer) {
+            clearInterval(this._refreshTimer);
+            this._refreshTimer = null;
+            DebugLog.info('Token refresh timer stopped');
+        }
     },
 
     initPiSDK() {
@@ -268,6 +405,9 @@ const AuthManager = {
             };
 
             localStorage.setItem('pi_user', JSON.stringify(this.currentUser));
+
+            // 啟動 token 自動刷新定時器
+            this.startTokenRefreshTimer();
             // Note: _updateUI is NOT called here because handlePiLogin() will
             // call window.location.reload() immediately after. The reload will
             // trigger init() which calls _updateUI(true) naturally.
@@ -346,6 +486,19 @@ const AuthManager = {
 
         // Ensure Pi SDK is initialized on startup
         this.initPiSDK();
+
+        // 啟動 token 自動刷新定時器（僅對已登入的 Pi 用戶）
+        if (this.currentUser?.pi_uid) {
+            this.startTokenRefreshTimer();
+
+            // 如果 token 快過期，立即嘗試刷新
+            if (this.needsRefresh()) {
+                DebugLog.info('Token 快過期，啟動時立即刷新');
+                this.silentRefresh().catch(e => {
+                    DebugLog.warn('啟動時刷新失敗，將在定時器中重試', { error: e.message });
+                });
+            }
+        }
 
         return !!this.currentUser;
     },
@@ -435,6 +588,7 @@ const AuthManager = {
     },
 
     logout() {
+        this.stopTokenRefreshTimer();
         this.currentUser = null;
         localStorage.removeItem('pi_user');
         this._updateUI(false);

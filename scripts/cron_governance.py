@@ -120,10 +120,11 @@ def cleanup_old_activity_logs(days_to_keep: int = 90):
 
     try:
         # 刪除超過保留期的日誌
+        # SQL injection fix: Use parameterized query for INTERVAL
         c.execute('''
             DELETE FROM user_activity_logs
-            WHERE created_at < NOW() - INTERVAL '%s days'
-        ''', (days_to_keep,))
+            WHERE created_at < NOW() - INTERVAL %s
+        ''', (f"{days_to_keep} days",))
 
         deleted_count = c.rowcount
         conn.commit()

@@ -1012,13 +1012,14 @@ async def admin_stats_users(
         conn = get_connection()
         try:
             with conn.cursor() as c:
-                c.execute(f"""
+                # SQL injection fix: Use parameterized query for INTERVAL
+                c.execute("""
                     SELECT DATE(created_at) as date, COUNT(*) as count
                     FROM users
-                    WHERE created_at >= NOW() - INTERVAL '{days} days'
+                    WHERE created_at >= NOW() - INTERVAL %s
                     GROUP BY DATE(created_at)
                     ORDER BY date ASC
-                """)
+                """, (f"{days} days",))
                 rows = c.fetchall()
                 return [{"date": r[0].isoformat(), "count": r[1]} for r in rows]
         finally:
@@ -1040,22 +1041,23 @@ async def admin_stats_forum(
         conn = get_connection()
         try:
             with conn.cursor() as c:
-                c.execute(f"""
+                # SQL injection fix: Use parameterized query for INTERVAL
+                c.execute("""
                     SELECT DATE(created_at) as date, COUNT(*) as count
                     FROM posts
-                    WHERE created_at >= NOW() - INTERVAL '{days} days'
+                    WHERE created_at >= NOW() - INTERVAL %s
                     GROUP BY DATE(created_at)
                     ORDER BY date ASC
-                """)
+                """, (f"{days} days",))
                 posts = [{"date": r[0].isoformat(), "count": r[1]} for r in c.fetchall()]
 
-                c.execute(f"""
+                c.execute("""
                     SELECT DATE(created_at) as date, COUNT(*) as count
                     FROM forum_comments
-                    WHERE created_at >= NOW() - INTERVAL '{days} days' AND type = 'comment'
+                    WHERE created_at >= NOW() - INTERVAL %s AND type = 'comment'
                     GROUP BY DATE(created_at)
                     ORDER BY date ASC
-                """)
+                """, (f"{days} days",))
                 comments = [{"date": r[0].isoformat(), "count": r[1]} for r in c.fetchall()]
 
                 return {"posts": posts, "comments": comments}
@@ -1078,27 +1080,28 @@ async def admin_stats_revenue(
         conn = get_connection()
         try:
             with conn.cursor() as c:
-                c.execute(f"""
+                # SQL injection fix: Use parameterized query for INTERVAL
+                c.execute("""
                     SELECT DATE(created_at) as date,
                            COALESCE(SUM(amount), 0) as amount,
                            COUNT(*) as count
                     FROM tips
-                    WHERE created_at >= NOW() - INTERVAL '{days} days'
+                    WHERE created_at >= NOW() - INTERVAL %s
                     GROUP BY DATE(created_at)
                     ORDER BY date ASC
-                """)
+                """, (f"{days} days",))
                 tips = [{"date": r[0].isoformat(), "amount": float(r[1]), "count": r[2]}
                         for r in c.fetchall()]
 
-                c.execute(f"""
+                c.execute("""
                     SELECT DATE(created_at) as date,
                            COALESCE(SUM(amount), 0) as amount,
                            COUNT(*) as count
                     FROM membership_payments
-                    WHERE created_at >= NOW() - INTERVAL '{days} days'
+                    WHERE created_at >= NOW() - INTERVAL %s
                     GROUP BY DATE(created_at)
                     ORDER BY date ASC
-                """)
+                """, (f"{days} days",))
                 memberships = [{"date": r[0].isoformat(), "amount": float(r[1]), "count": r[2]}
                                for r in c.fetchall()]
 
