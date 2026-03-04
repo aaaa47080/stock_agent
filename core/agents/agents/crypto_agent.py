@@ -12,6 +12,7 @@ from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 
 from ..models import SubTask, AgentResult
 from ..prompt_registry import PromptRegistry
+from utils.settings import Settings
 
 
 class CryptoAgent:
@@ -74,8 +75,10 @@ class CryptoAgent:
             # Execute each tool call and feed results back
             for tc in tool_calls:
                 result = self._run_tool(tc["name"], tc.get("args") or {})
+                # 使用可配置的截斷長度，避免硬編碼
+                max_len = Settings.TOOL_MAX_RESULT_LENGTH
                 messages.append(ToolMessage(
-                    content=str(result)[:2000],
+                    content=str(result)[:max_len],
                     tool_call_id=tc["id"],
                 ))
 

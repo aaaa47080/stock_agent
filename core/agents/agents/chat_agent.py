@@ -5,12 +5,15 @@ Agent V4 — Chat Agent
 也處理簡單的價格查詢（使用 get_crypto_price 工具）。
 Supports multi-language responses.
 """
+import logging
 from typing import Optional
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from ..models import SubTask, AgentResult
 from ..prompt_registry import PromptRegistry
+
+logger = logging.getLogger(__name__)
 
 
 class ChatAgent:
@@ -59,7 +62,15 @@ class ChatAgent:
             response = self.llm.invoke(messages)
             reply = response.content
         except Exception as e:
-            print(f"[ChatAgent] LLM Invoke Failed: {e}")
+            # 記錄詳細錯誤信息，包含異常類型和堆棧
+            logger.error(
+                f"[ChatAgent] LLM Invoke Failed\n"
+                f"  Error Type: {type(e).__name__}\n"
+                f"  Error Message: {e}\n"
+                f"  Query: {query[:100]}...\n"
+                f"  Language: {language}",
+                exc_info=True  # 包含完整的堆棧追蹤
+            )
             reply = "服務暫時無法使用，請稍後再試。" if language == "zh-TW" else "Service temporarily unavailable, please try again later."
 
         return AgentResult(
