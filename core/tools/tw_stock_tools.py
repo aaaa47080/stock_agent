@@ -175,7 +175,7 @@ def tw_institutional(ticker: str) -> dict:
                 f"https://www.twse.com.tw/rwd/zh/fund/T86"
                 f"?response=json&date={date_str}&selectType=ALLBUT0999"
             )
-            resp = httpx.get(url, timeout=12, headers=headers, verify=False)
+            resp = httpx.get(url, timeout=12, headers=headers)
             if resp.status_code != 200:
                 continue
 
@@ -244,7 +244,7 @@ def tw_news(ticker: str, company_name: str = "", limit: int = 8) -> list:
         query = quote(f"{search_term} 股票")
         rss_url = f"https://news.google.com/rss/search?q={query}&hl=zh-TW&gl=TW&ceid=TW:zh-Hant"
 
-        resp = httpx.get(rss_url, timeout=10, follow_redirects=True, verify=False)
+        resp = httpx.get(rss_url, timeout=10, follow_redirects=True)
         if resp.status_code != 200:
             return []
 
@@ -281,7 +281,7 @@ def tw_major_news(limit: int = 10) -> list:
     limit: 回傳筆數上限（預設10）"""
     try:
         import httpx
-        resp = httpx.get(f"{TWSE_BASE}/opendata/t187ap04_L", timeout=15, verify=False)
+        resp = httpx.get(f"{TWSE_BASE}/opendata/t187ap04_L", timeout=15)
         data = resp.json() if resp.status_code == 200 else []
         results = []
         for item in (data or [])[:limit]:
@@ -306,11 +306,11 @@ def tw_pe_ratio(code: str) -> dict:
     code: 股票代號，如 '2330'（台積電）、'2317'（鴻海）"""
     try:
         import httpx
-        resp = httpx.get(f"{TWSE_BASE}/exchangeReport/BWIBBU_d", timeout=15, verify=False)
+        resp = httpx.get(f"{TWSE_BASE}/exchangeReport/BWIBBU_d", timeout=15)
         data = resp.json() if resp.status_code == 200 else []
         matching = [d for d in (data or []) if d.get("Code", "") == code]
         if not matching:
-            resp2 = httpx.get(f"{TWSE_BASE}/exchangeReport/BWIBBU_ALL", timeout=15, verify=False)
+            resp2 = httpx.get(f"{TWSE_BASE}/exchangeReport/BWIBBU_ALL", timeout=15)
             data2 = resp2.json() if resp2.status_code == 200 else []
             matching = [d for d in (data2 or []) if d.get("Code", "") == code]
         if not matching:
@@ -338,7 +338,7 @@ def tw_monthly_revenue(code: str = "") -> list:
     code: 股票代號（如 '2330'），若為空字串則返回全市場前30筆"""
     try:
         import httpx
-        resp = httpx.get(f"{TWSE_BASE}/opendata/t187ap05_L", timeout=15, verify=False)
+        resp = httpx.get(f"{TWSE_BASE}/opendata/t187ap05_L", timeout=15)
         data = resp.json() if resp.status_code == 200 else []
         if code:
             data = [d for d in (data or []) if d.get("公司代號", "") == code]
@@ -370,7 +370,7 @@ def tw_dividend_info(code: str = "") -> list:
     code: 股票代號（如 '2330'），若為空字串則返回近期所有公司前30筆"""
     try:
         import httpx
-        resp = httpx.get(f"{TWSE_BASE}/opendata/t187ap45_L", timeout=15, verify=False)
+        resp = httpx.get(f"{TWSE_BASE}/opendata/t187ap45_L", timeout=15)
         data = resp.json() if resp.status_code == 200 else []
         if code:
             data = [d for d in (data or []) if d.get("公司代號", "") == code]
@@ -401,7 +401,7 @@ def tw_foreign_holding_top20() -> list:
     適合用來了解外資最集中持股的台股標的。"""
     try:
         import httpx
-        resp = httpx.get(f"{TWSE_BASE}/fund/MI_QFIIS_sort_20", timeout=15, verify=False)
+        resp = httpx.get(f"{TWSE_BASE}/fund/MI_QFIIS_sort_20", timeout=15)
         data = resp.json() if resp.status_code == 200 else []
         results = []
         for item in (data or []):

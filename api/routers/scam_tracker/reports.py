@@ -51,7 +51,7 @@ async def list_scam_reports(
         }
     except Exception as e:
         logger.error(f"List scam reports failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"獲取舉報列表失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取舉報列表失敗，請稍後再試")
 
 
 @router.get("/search", response_model=dict)
@@ -87,7 +87,7 @@ async def search_scam_wallet(
         raise
     except Exception as e:
         logger.error(f"Search scam wallet failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"搜尋失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="搜尋失敗，請稍後再試")
 
 
 @router.get("/config", response_model=dict)
@@ -108,7 +108,7 @@ async def get_scam_tracker_config():
         }
     except Exception as e:
         logger.error(f"Get scam tracker config failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"獲取配置失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取配置失敗，請稍後再試")
 
 
 @router.get("/{report_id}", response_model=dict)
@@ -141,7 +141,7 @@ async def get_scam_report_detail(
         raise
     except Exception as e:
         logger.error(f"Get scam report detail failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"獲取舉報詳情失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取舉報詳情失敗，請稍後再試")
 
 
 @router.post("", response_model=dict)
@@ -227,4 +227,4 @@ async def create_new_scam_report(
         raise
     except Exception as e:
         logger.error(f"Create scam report failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"提交舉報失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="提交舉報失敗，請稍後再試")

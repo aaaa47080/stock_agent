@@ -3,8 +3,7 @@
 // ========================================
 
 // 預設熱門幣種列表 (當用戶未選擇時顯示)
-// 預設熱門幣種列表 (當用戶未選擇時顯示)
-var DEFAULT_MARKET_SYMBOLS = [
+const DEFAULT_MARKET_SYMBOLS = [
     'BTC-USDT', 'ETH-USDT', 'SOL-USDT', 'DOGE-USDT', 'XRP-USDT',
     'BNB-USDT', 'ADA-USDT', 'AVAX-USDT', 'DOT-USDT', 'LINK-USDT'
 ];
@@ -205,9 +204,6 @@ function createSymbolItem(s, isChecked) {
         </div>
     `;
     return div;
-
-    document.getElementById('selected-count-modal').innerText = (window.globalSelectedSymbols || []).length;
-    lucide.createIcons();
 }
 
 function toggleSymbolSelection(s) {

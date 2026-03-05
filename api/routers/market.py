@@ -320,7 +320,7 @@ async def get_market_symbols(exchange: str = "okx"):
              logger.warning("Returning stale cache due to error.")
              return {"symbols": SYMBOL_CACHE[exchange]["data"]}
         
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="獲取交易對列表失敗，請稍後再試")
 
 @router.post("/api/screener")
 async def run_screener(request: ScreenerRequest):
@@ -332,7 +332,7 @@ async def run_screener(request: ScreenerRequest):
             return await _run_custom_screener(request)
         except Exception as e:
             logger.error(f"自定義篩選失敗: {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail="自定義篩選失敗，請稍後再試")
 
     # 2. Try to return cached result
     cached = _try_get_cached_screener(request.refresh)
@@ -357,7 +357,7 @@ async def run_screener(request: ScreenerRequest):
             return await _run_default_screener(request.exchange)
         except Exception as e:
             logger.error(f"篩選器錯誤: {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail="市場篩選失敗，請稍後再試")
 
 @router.post("/api/klines")
 async def get_klines_data(request: KlineRequest):
@@ -401,7 +401,7 @@ async def get_klines_data(request: KlineRequest):
         raise
     except Exception as e:
         logger.error(f"獲取 K 線數據失敗: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="獲取 K 線數據失敗，請稍後再試")
 
 @router.get("/api/funding-rates")
 async def get_funding_rates(refresh: bool = False, symbols: str = None, limit: int = 5):
@@ -457,7 +457,7 @@ async def get_funding_rates(refresh: bool = False, symbols: str = None, limit: i
 
     except Exception as e:
         logger.error(f"獲取資金費率失敗: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="獲取資金費率失敗，請稍後再試")
 
 @router.get("/api/funding-rate/{symbol}")
 async def get_single_funding_rate(symbol: str):
@@ -487,7 +487,7 @@ async def get_single_funding_rate(symbol: str):
         return {"error": "Not found"}
     except Exception as e:
         logger.error(f"Error fetching single funding rate: {e}")
-        return {"error": str(e)}
+        return {"error": "獲取資金費率失敗"}
 
 @router.get("/api/funding-rate-history/{symbol}")
 async def get_funding_rate_history(symbol: str):
@@ -521,7 +521,7 @@ async def get_funding_rate_history(symbol: str):
         return {"error": "Failed to fetch history", "details": result}
     except Exception as e:
         logger.error(f"Error fetching history: {e}")
-        return {"error": str(e)}
+        return {"error": "獲取歷史數據失敗"}
 
 @router.get("/api/market-pulse/{symbol}")
 async def get_market_pulse_api(
@@ -585,7 +585,7 @@ async def get_market_pulse_api(
         raise
     except Exception as e:
         logger.error(f"市場脈動分析失敗: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="市場脈動分析失敗，請稍後再試")
 
 @router.post("/api/market-pulse/refresh-all", dependencies=[Depends(get_current_user)])
 async def api_refresh_all_market_pulse(request: RefreshPulseRequest):
@@ -595,7 +595,7 @@ async def api_refresh_all_market_pulse(request: RefreshPulseRequest):
         return {"status": "success", "timestamp": timestamp}
     except Exception as e:
         logger.error(f"Manual refresh failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="刷新失敗，請稍後再試")
 
 @router.get("/api/market-pulse/progress")
 async def get_market_pulse_progress():

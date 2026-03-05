@@ -138,7 +138,7 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
         )
     except Exception as e:
         logger.error(f"❌ 創建用戶 LLM client 失敗: {e}")
-        raise HTTPException(status_code=400, detail=f"API Key 無效: {str(e)}")
+        raise HTTPException(status_code=400, detail="API Key 無效，請檢查您的設定")
 
     logger.info(f"收到分析請求 (Session: {body.session_id}): {body.message[:50]}...")
 
@@ -346,4 +346,4 @@ async def run_backtest_api(request: BacktestRequest):
         raise
     except Exception as e:
         logger.error(f"回測執行失敗: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="回測執行失敗，請稍後再試")

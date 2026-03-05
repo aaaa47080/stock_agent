@@ -6,6 +6,7 @@ from typing import Optional, List
 from pydantic import BaseModel, Field
 import json
 import asyncio
+import os
 
 from core.database.notifications import (
     create_notifications_table,
@@ -16,8 +17,9 @@ from core.database.notifications import (
     delete_notification,
     create_notification,
 )
+from core.database.user import get_user_by_id
 from api.utils import logger
-from api.deps import get_current_user
+from api.deps import get_current_user, verify_token
 from fastapi import Depends
 
 router = APIRouter()
@@ -128,7 +130,7 @@ async def get_notifications_endpoint(
         raise
     except Exception as e:
         logger.error(f"獲取通知失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"獲取通知失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取通知失敗，請稍後再試")
 
 
 @router.get("/api/notifications/unread-count")
@@ -149,7 +151,7 @@ async def get_unread_count_endpoint(
         raise
     except Exception as e:
         logger.error(f"獲取未讀數量失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"獲取未讀數量失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取未讀數量失敗，請稍後再試")
 
 
 @router.post("/api/notifications/{notification_id}/read")
@@ -174,7 +176,7 @@ async def mark_as_read_endpoint(
         raise
     except Exception as e:
         logger.error(f"標記已讀失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"標記已讀失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="標記已讀失敗，請稍後再試")
 
 
 @router.post("/api/notifications/read-all")
@@ -195,7 +197,7 @@ async def mark_all_as_read_endpoint(
         raise
     except Exception as e:
         logger.error(f"標記全部已讀失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"標記全部已讀失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="標記全部已讀失敗，請稍後再試")
 
 
 @router.delete("/api/notifications/{notification_id}")
@@ -220,7 +222,7 @@ async def delete_notification_endpoint(
         raise
     except Exception as e:
         logger.error(f"刪除通知失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"刪除通知失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="刪除通知失敗，請稍後再試")
 
 
 # ============================================================================
@@ -232,10 +234,12 @@ async def notification_websocket(websocket: WebSocket):
     """
     通知 WebSocket 端點
 
+    🔒 Security Fix: 現在需要 JWT Token 驗證，不能僅依賴客戶端提供的 user_id
+
     客戶端連接後需要發送認證消息:
     {
         "type": "auth",
-        "user_id": "用戶ID"
+        "token": "JWT_TOKEN"  # 必須提供有效的 JWT Token
     }
 
     服務器會推送:
@@ -252,26 +256,65 @@ async def notification_websocket(websocket: WebSocket):
         # 等待認證消息
         auth_message = await asyncio.wait_for(
             websocket.receive_text(),
-            timeout=10.0
+            timeout=30.0
         )
         auth_data = json.loads(auth_message)
 
         if auth_data.get("type") != "auth":
+            await websocket.send_json({"type": "error", "message": "Authentication required"})
             await websocket.close(code=4001, reason="Authentication required")
             return
 
-        user_id = auth_data.get("user_id")
-        if not user_id:
-            await websocket.close(code=4002, reason="User ID required")
+        # 🔒 Security: 必須提供有效的 JWT Token
+        token = auth_data.get("token") or auth_data.get("access_token")
+        if not token:
+            await websocket.send_json({"type": "error", "message": "JWT Token required"})
+            await websocket.close(code=4002, reason="JWT Token required")
+            return
+
+        # 驗證 JWT Token
+        if os.getenv("TEST_MODE") == "True" and token.startswith("test-"):
+            # Development: Allow raw test tokens
+            user_id = token
+            logger.info(f"Notification WebSocket Dev Auth: {user_id}")
+        else:
+            try:
+                payload = verify_token(token)
+                user_id = payload.get("sub")
+                if not user_id:
+                    raise HTTPException(status_code=401, detail="Invalid token payload")
+            except Exception as e:
+                logger.warning(f"Notification WebSocket auth failed: {e}")
+                await websocket.send_json({"type": "error", "message": "Invalid Token"})
+                await websocket.close(code=4003, reason="Invalid Token")
+                return
+
+        # Security: 檢查 token 中的 user_id 與聲稱的 user_id 是否匹配（如果提供）
+        claimed_user_id = auth_data.get("user_id")
+        if claimed_user_id and claimed_user_id != user_id:
+            logger.warning(f"Notification WebSocket auth mismatch: Token user {user_id} != Claimed {claimed_user_id}")
+            await websocket.send_json({"type": "error", "message": "User ID mismatch"})
+            await websocket.close(code=4004, reason="User ID mismatch")
+            return
+
+        # 驗證用戶存在
+        loop = asyncio.get_running_loop()
+        user_exists = await loop.run_in_executor(None, get_user_by_id, user_id)
+        if not user_exists:
+            await websocket.send_json({"type": "error", "message": "User not found"})
+            await websocket.close(code=4005, reason="User not found")
             return
 
         # 註冊連接
         await notification_manager.connect(websocket, user_id)
 
+        logger.info(f"User {user_id} authenticated successfully via notification WebSocket")
+
         # 發送連接成功消息
         await websocket.send_json({
             "type": "connected",
-            "message": "Connected to notification service"
+            "message": "Connected to notification service",
+            "user_id": user_id
         })
 
         # 保持連接，處理客戶端消息（主要是心跳）

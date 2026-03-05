@@ -69,7 +69,7 @@ async def tip_post(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"打賞失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="打賞失敗，請稍後再試")
 
 
 @router.get("/tips/sent")
@@ -94,7 +94,7 @@ async def get_sent_tips(
             "count": len(tips),
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"獲取打賞記錄失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取打賞記錄失敗，請稍後再試")
 
 
 @router.get("/tips/received")
@@ -121,4 +121,4 @@ async def get_received_tips(
             "total_received": total,
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"獲取打賞記錄失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取打賞記錄失敗，請稍後再試")

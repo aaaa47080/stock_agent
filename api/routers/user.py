@@ -341,7 +341,7 @@ async def approve_payment(request: ApprovePaymentRequest, current_user: dict = D
         raise  # 重新拋出我們自己的 HTTPException
     except Exception as e:
         logger.error(f"Pi Payment Approval Failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Payment approval failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Payment approval failed, please try again later")
 
 
 @router.post("/api/user/payment/complete")
@@ -377,7 +377,7 @@ async def complete_payment(request: CompletePaymentRequest, current_user: dict =
         raise HTTPException(status_code=e.response.status_code, detail=f"Pi API Error: {e.response.text}")
     except Exception as e:
         logger.error(f"Pi Payment Completion Failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Payment completion failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Payment completion failed, please try again later")
 
 # --- Pi Wallet Linking Endpoints ---
 

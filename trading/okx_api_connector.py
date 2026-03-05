@@ -161,11 +161,11 @@ class OKXAPIConnector:
             return result
 
         except requests.exceptions.RequestException as e:
-            print(f"[ERROR] 請求異常: {str(e)}")
-            return {"code": "000000", "msg": f"請求錯誤: {str(e)}", "data": []}
+            logger.error(f"OKX API 請求異常: {e}")
+            return {"code": "000000", "msg": "請求錯誤", "data": []}
         except Exception as e:
-            print(f"[ERROR] 其他異常: {str(e)}")
-            return {"code": "000000", "msg": f"未知錯誤: {str(e)}", "data": []}
+            logger.error(f"OKX API 其他異常: {e}")
+            return {"code": "000000", "msg": "未知錯誤", "data": []}
 
     # --- 帳戶資訊相關 ---
 
@@ -461,7 +461,7 @@ class OKXAPIConnector:
                             "minFundingRate": min_rate
                         }
                     except Exception as e:
-                        print(f"[ERROR] Error processing funding rate for {instId}: {e}")
+                        logger.error(f"Error processing funding rate for {instId}: {e}")
 
         return funding_rates
 

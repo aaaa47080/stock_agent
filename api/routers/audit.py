@@ -110,7 +110,7 @@ async def get_audit_logs(
         }
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to query audit logs: {str(e)}")
+        raise HTTPException(status_code=500, detail="查詢審計日誌失敗")
 
 
 @router.get("/suspicious", dependencies=[Depends(verify_admin_key)])
@@ -173,7 +173,7 @@ async def get_suspicious_activity(
         }
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to analyze suspicious activity: {str(e)}")
+        raise HTTPException(status_code=500, detail="分析可疑活動失敗")
 
 
 @router.get("/user/{user_id}", dependencies=[Depends(verify_admin_key)])
@@ -237,7 +237,7 @@ async def get_user_activity(
         }
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get user activity: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取用戶活動失敗")
 
 
 @router.get("/stats", dependencies=[Depends(verify_admin_key)])
@@ -302,4 +302,4 @@ async def get_audit_stats(
         }
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get audit statistics: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取審計統計失敗")

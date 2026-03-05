@@ -10,6 +10,7 @@ from utils.okx_auth import get_okx_connector_from_request, validate_okx_credenti
 import api.globals as globals
 from fastapi import Depends
 from api.deps import get_current_user
+from api.middleware.rate_limit import limiter
 
 router = APIRouter()
 
@@ -45,7 +46,7 @@ async def test_okx_connection(request: Request, current_user: dict = Depends(get
         logger.error(f"測試連接失敗: {e}", exc_info=True)
         return {
             "success": False,
-            "message": f"測試失敗: {str(e)}"
+            "message": "連接測試失敗，請檢查憑證是否正確"
         }
 
 @router.get("/api/account/assets")
@@ -105,7 +106,7 @@ async def get_account_assets(request: Request, current_user: dict = Depends(get_
         raise
     except Exception as e:
         logger.error(f"獲取帳戶資產失敗: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="獲取帳戶資產失敗，請稍後再試")
 
 @router.get("/api/account/positions")
 async def get_account_positions(request: Request, current_user: dict = Depends(get_current_user)):
@@ -157,9 +158,10 @@ async def get_account_positions(request: Request, current_user: dict = Depends(g
         raise
     except Exception as e:
         logger.error(f"獲取持倉失敗: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="獲取持倉失敗，請稍後再試")
 
 @router.post("/api/trade/execute")
+@limiter.limit("5/minute")  # 🔒 Security: 交易端點速率限制，防止高頻交易濫用
 async def execute_trade_api(trade_request: TradeExecutionRequest, request: Request, current_user: dict = Depends(get_current_user)):
     """
     手動確認後執行交易 (Human-in-the-loop) - BYOK Mode
@@ -210,4 +212,4 @@ async def execute_trade_api(trade_request: TradeExecutionRequest, request: Reque
         raise
     except Exception as e:
         logger.error(f"交易執行失敗: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="交易執行失敗，請稍後再試")

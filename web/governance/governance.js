@@ -414,7 +414,7 @@ async function loadViolationPoints() {
     const listElement = document.getElementById('violations-list');
     const loadingElement = document.getElementById('violations-loading');
 
-    loadingElement.style.display = 'true';
+    loadingElement.style.display = 'block';
 
     try {
         const response = await fetch(`${API_BASE}/violations`, {

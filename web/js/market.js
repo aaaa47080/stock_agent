@@ -619,7 +619,7 @@ async function showFundingHistory(symbol) {
         } else if (data.error) {
             console.error('API returned error:', data.error);
             if (overlay && overlayContent) {
-                overlayContent.innerHTML = `<div class="text-red-400 text-sm">載入失敗<br><span class="text-xs opacity-70">${data.error}</span></div>`;
+                overlayContent.innerHTML = `<div class="text-red-400 text-sm">載入失敗<br><span class="text-xs opacity-70">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(data.error) : data.error}</span></div>`;
             }
         } else {
             console.error('History data missing:', data);

@@ -2,6 +2,9 @@
 // trade.js - 交易功能
 // ========================================
 
+// 全局變量 - 當前提議
+let currentProposal = null;
+
 function showProposalModal(data) {
     currentProposal = data;
     const modal = document.getElementById('proposal-modal');

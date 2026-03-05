@@ -69,7 +69,7 @@ async def list_posts(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"獲取文章列表失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取文章列表失敗，請稍後再試")
 
 
 from api.deps import get_current_user
@@ -162,7 +162,7 @@ async def create_new_post(request: CreatePostRequest, user_id: str = Query(..., 
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"發表文章失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="發表文章失敗，請稍後再試")
 
 
 @router.get("/{post_id}")
@@ -187,7 +187,7 @@ async def get_post_detail(post_id: int, user_id: Optional[str] = Query(None, des
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"獲取文章詳情失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取文章詳情失敗，請稍後再試")
 
 
 @router.put("/{post_id}")
@@ -231,7 +231,7 @@ async def update_post_content(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"更新文章失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="更新文章失敗，請稍後再試")
 
 
 @router.delete("/{post_id}")
@@ -257,4 +257,4 @@ async def delete_post_by_id(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"刪除文章失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="刪除文章失敗，請稍後再試")

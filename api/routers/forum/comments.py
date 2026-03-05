@@ -47,7 +47,7 @@ async def list_comments(post_id: int):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"獲取回覆列表失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取回覆列表失敗，請稍後再試")
 
 
 @router.post("/{post_id}/comments")
@@ -134,7 +134,7 @@ async def add_new_comment(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"新增回覆失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="新增回覆失敗，請稍後再試")
 
 
 @router.post("/{post_id}/push")
@@ -195,7 +195,7 @@ async def push_post(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"推文失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="推文失敗，請稍後再試")
 
 
 @router.post("/{post_id}/boo")
@@ -256,7 +256,7 @@ async def boo_post(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"噓文失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="噓文失敗，請稍後再試")
 
 
 @router.get("/{post_id}/comment-status")
@@ -282,4 +282,4 @@ async def get_comment_status(
             "remaining": daily_count["remaining"],
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"獲取回覆狀態失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取回覆狀態失敗，請稍後再試")

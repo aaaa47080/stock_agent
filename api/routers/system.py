@@ -58,7 +58,8 @@ async def write_debug_log(request: DebugLogRequest, x_admin_key: str = Header(No
 
         return {"success": True}
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        logger.error(f"Failed to write debug log: {e}")
+        return {"success": False, "error": "寫入日誌失敗"}
 
 @router.get("/api/debug/log", dependencies=[Depends(verify_admin_key)])
 async def read_debug_log(lines: int = 50, x_admin_key: str = Header(None)):
@@ -73,7 +74,8 @@ async def read_debug_log(lines: int = 50, x_admin_key: str = Header(None)):
 
         return {"lines": last_lines, "total": len(all_lines)}
     except Exception as e:
-        return {"lines": [], "error": str(e)}
+        logger.error(f"Failed to read debug log: {e}")
+        return {"lines": [], "error": "讀取日誌失敗"}
 
 @router.delete("/api/debug/log", dependencies=[Depends(verify_admin_key)])
 async def clear_debug_log():
@@ -83,7 +85,8 @@ async def clear_debug_log():
             f.write("")
         return {"success": True, "message": "Log cleared"}
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        logger.error(f"Failed to clear debug log: {e}")
+        return {"success": False, "error": "清空日誌失敗"}
 
 @router.get("/health")
 async def health_check():
@@ -301,7 +304,7 @@ async def update_user_settings(settings: UserSettings, current_user: dict = Depe
         
     except Exception as e:
         logger.error(f"Failed to update settings: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="更新設置失敗，請稍後再試")
 
 @router.post("/api/settings/keys")
 async def update_api_keys(settings: APIKeySettings, current_user: dict = Depends(get_current_user)):
@@ -340,7 +343,7 @@ async def update_api_keys(settings: APIKeySettings, current_user: dict = Depends
         
     except Exception as e:
         logger.error(f"Failed to update API keys: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="更新 API 金鑰失敗，請稍後再試")
 
 @router.get("/")
 async def read_index():

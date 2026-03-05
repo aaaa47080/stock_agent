@@ -16,6 +16,7 @@ class UpgradeRequest(BaseModel):
     user_id: str
     plan: str = "premium_monthly"  # plus_monthly, premium_monthly, premium_yearly
     tx_hash: Optional[str] = None  # Pi 支付交易哈希
+    months: int = 1  # 訂閱月數
 
 
 from api.deps import get_current_user
@@ -46,8 +47,6 @@ async def get_pricing_plans():
 
 @router.post("/upgrade")
 async def upgrade_to_premium(request: UpgradeRequest, current_user: dict = Depends(get_current_user)):
-    if current_user["user_id"] != request.user_id:
-        raise HTTPException(status_code=403, detail="Not authorized")
     """
     升級到高級會員
 
@@ -55,7 +54,12 @@ async def upgrade_to_premium(request: UpgradeRequest, current_user: dict = Depen
         user_id: 用戶ID
         plan: 訂閱方案 (plus_monthly, plus_yearly, premium_monthly, premium_yearly)
         tx_hash: Pi 支付交易哈希 (正式環境需要)
+        months: 訂閱月數
     """
+    # 驗證用戶授權
+    if current_user["user_id"] != request.user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
     try:
         loop = asyncio.get_running_loop()
         # 檢查當前會員狀態
@@ -99,7 +103,7 @@ async def upgrade_to_premium(request: UpgradeRequest, current_user: dict = Depen
         raise
     except Exception as e:
         logger.error(f"升級高級會員失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"升級失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="升級失敗，請稍後再試")
 
 
 @router.get("/status/{user_id}")
@@ -127,7 +131,7 @@ async def get_premium_status(user_id: str, current_user: dict = Depends(get_curr
         raise
     except Exception as e:
         logger.error(f"獲取高級會員狀態失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"獲取狀態失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取狀態失敗，請稍後再試")
 
 
 # 添加到現有的路由器列表

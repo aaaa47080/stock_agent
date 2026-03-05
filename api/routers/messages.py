@@ -153,7 +153,7 @@ async def get_conversations_endpoint(
         raise
     except Exception as e:
         logger.error(f"取得對話列表失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"取得對話列表失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="取得對話列表失敗，請稍後再試")
 
 
 @router.get("/api/messages/conversation/{conversation_id}")
@@ -184,7 +184,7 @@ async def get_messages_endpoint(
         raise
     except Exception as e:
         logger.error(f"取得訊息失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"取得訊息失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="取得訊息失敗，請稍後再試")
 
 
 @router.get("/api/messages/with/{other_user_id}")
@@ -216,7 +216,7 @@ async def get_conversation_with_user_endpoint(
         raise
     except Exception as e:
         logger.error(f"取得對話失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"取得對話失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="取得對話失敗，請稍後再試")
 
 
 @router.post("/api/messages/send")
@@ -310,7 +310,7 @@ async def send_message_endpoint(
         raise
     except Exception as e:
         logger.error(f"發送訊息失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"發送訊息失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="發送訊息失敗，請稍後再試")
 
 
 @router.post("/api/messages/read")
@@ -351,7 +351,7 @@ async def mark_read_endpoint(
         raise
     except Exception as e:
         logger.error(f"標記已讀失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"標記已讀失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="標記已讀失敗，請稍後再試")
 
 
 @router.post("/api/messages/greeting")
@@ -434,7 +434,7 @@ async def send_greeting_endpoint(
         raise
     except Exception as e:
         logger.error(f"發送打招呼失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"發送打招呼失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="發送打招呼失敗，請稍後再試")
 
 
 @router.get("/api/messages/search")
@@ -467,7 +467,7 @@ async def search_messages_endpoint(
         raise
     except Exception as e:
         logger.error(f"搜尋訊息失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"搜尋訊息失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="搜尋訊息失敗，請稍後再試")
 
 
 @router.get("/api/messages/unread-count")
@@ -489,7 +489,7 @@ async def get_unread_count_endpoint(
         }
     except Exception as e:
         logger.error(f"取得未讀數量失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"取得未讀數量失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="取得未讀數量失敗，請稍後再試")
 
 
 @router.get("/api/messages/limits")
@@ -519,7 +519,7 @@ async def get_message_limits_endpoint(
         }
     except Exception as e:
         logger.error(f"取得限制狀態失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"取得限制狀態失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="取得限制狀態失敗，請稍後再試")
 
 
 @router.delete("/api/messages/{message_id}")
@@ -551,7 +551,7 @@ async def delete_message_endpoint(
         raise
     except Exception as e:
         logger.error(f"刪除訊息失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"刪除訊息失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="刪除訊息失敗，請稍後再試")
 
 
 @router.post("/api/messages/{message_id}/hide")
@@ -582,7 +582,7 @@ async def hide_message_endpoint(
         raise
     except Exception as e:
         logger.error(f"隱藏訊息失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"隱藏訊息失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="隱藏訊息失敗，請稍後再試")
 
 
 @router.delete("/api/conversations/{conversation_id}")
@@ -617,7 +617,7 @@ async def delete_conversation_endpoint(
         raise
     except Exception as e:
         logger.error(f"刪除對話失敗: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"刪除對話失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="刪除對話失敗，請稍後再試")
 
 
 # ============================================================================

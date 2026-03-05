@@ -103,7 +103,7 @@ async def read_debug_log(lines: int = 50):
             "log_content": "".join(recent_lines)
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to read log file: {str(e)}")
+        raise HTTPException(status_code=500, detail="讀取日誌檔案失敗")
 
 
 @router.get("/api/admin/config", dependencies=[Depends(verify_admin_key)])
@@ -378,7 +378,7 @@ async def get_config_audit_log(
             "history": history
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get audit log: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取審計日誌失敗")
 
 
 # ============================================================================
@@ -431,7 +431,7 @@ async def manual_rotate_key(x_admin_key: Optional[str] = Header(None)):
     except ImportError:
         raise HTTPException(status_code=500, detail="Key rotation module not available")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Key rotation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="金鑰輪換失敗")
 
 
 @router.get("/api/admin/security/keys/status")
@@ -468,7 +468,7 @@ async def get_keys_status(x_admin_key: Optional[str] = Header(None)):
     except ImportError:
         raise HTTPException(status_code=500, detail="Key rotation module not available")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get key status: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取金鑰狀態失敗")
 
 
 # ============================================================================
@@ -509,7 +509,7 @@ async def get_security_events(
     except ImportError:
         raise HTTPException(status_code=500, detail="Security monitor not available")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get security events: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取安全事件失敗")
 
 
 @router.get("/api/admin/security/statistics")
@@ -544,7 +544,7 @@ async def get_security_statistics(
     except ImportError:
         raise HTTPException(status_code=500, detail="Security monitor not available")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get security statistics: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取安全統計失敗")
 
 
 @router.post("/api/admin/security/test-alert")
@@ -591,4 +591,4 @@ async def test_security_alert(
     except ImportError:
         raise HTTPException(status_code=500, detail="Alert dispatcher not available")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to send test alert: {str(e)}")
+        raise HTTPException(status_code=500, detail="發送測試警報失敗")

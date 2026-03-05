@@ -81,7 +81,7 @@ async def search_users_endpoint(
         raise
     except Exception as e:
         logger.error(f"搜尋用戶失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"搜尋失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="搜尋失敗，請稍後再試")
 
 
 @router.get("/api/friends/profile/{target_user_id}")
@@ -102,7 +102,7 @@ async def get_user_profile(
         raise
     except Exception as e:
         logger.error(f"取得用戶資料失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"取得資料失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="取得資料失敗，請稍後再試")
 
 
 # ============================================================================
@@ -168,7 +168,7 @@ async def send_request(
         raise
     except Exception as e:
         logger.error(f"發送好友請求失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"發送請求失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="發送請求失敗，請稍後再試")
 
 
 @router.post("/api/friends/accept")
@@ -212,7 +212,7 @@ async def accept_request(
         raise
     except Exception as e:
         logger.error(f"接受好友請求失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"接受請求失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="接受請求失敗，請稍後再試")
 
 
 @router.post("/api/friends/reject")
@@ -238,7 +238,7 @@ async def reject_request(
         raise
     except Exception as e:
         logger.error(f"拒絕好友請求失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"拒絕請求失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="拒絕請求失敗，請稍後再試")
 
 
 @router.post("/api/friends/cancel")
@@ -264,7 +264,7 @@ async def cancel_request(
         raise
     except Exception as e:
         logger.error(f"取消好友請求失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"取消請求失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="取消請求失敗，請稍後再試")
 
 
 @router.delete("/api/friends/remove")
@@ -290,7 +290,7 @@ async def remove_friend_endpoint(
         raise
     except Exception as e:
         logger.error(f"移除好友失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"移除好友失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="移除好友失敗，請稍後再試")
 
 
 # ============================================================================
@@ -326,7 +326,7 @@ async def block_user_endpoint(
         raise
     except Exception as e:
         logger.error(f"封鎖用戶失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"封鎖失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="封鎖失敗，請稍後再試")
 
 
 @router.post("/api/friends/unblock")
@@ -352,7 +352,7 @@ async def unblock_user_endpoint(
         raise
     except Exception as e:
         logger.error(f"解除封鎖失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"解除封鎖失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="解除封鎖失敗，請稍後再試")
 
 
 @router.get("/api/friends/blocked")
@@ -380,7 +380,7 @@ async def get_blocked_list(
         if hasattr(e, "status_code") and hasattr(e, "detail"):
             raise e
         logger.error(f"取得封鎖名單失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"取得封鎖名單失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="取得封鎖名單失敗，請稍後再試")
 
 
 # ============================================================================
@@ -417,7 +417,7 @@ async def get_friends(
         if hasattr(e, "status_code") and hasattr(e, "detail"):
             raise e
         logger.error(f"取得好友列表失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"取得好友列表失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="取得好友列表失敗，請稍後再試")
 
 
 @router.get("/api/friends/requests/received")
@@ -442,7 +442,7 @@ async def get_received_requests(
         raise
     except Exception as e:
         logger.error(f"取得好友請求失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"取得好友請求失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="取得好友請求失敗，請稍後再試")
 
 
 @router.get("/api/friends/requests/sent")
@@ -467,7 +467,7 @@ async def get_sent_requests(
         raise
     except Exception as e:
         logger.error(f"取得已發送請求失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"取得已發送請求失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="取得已發送請求失敗，請稍後再試")
 
 
 @router.get("/api/friends/status/{target_user_id}")
@@ -492,7 +492,7 @@ async def get_status(
         raise
     except Exception as e:
         logger.error(f"取得好友狀態失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"取得狀態失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="取得狀態失敗，請稍後再試")
 
 
 @router.get("/api/friends/counts")
@@ -520,4 +520,4 @@ async def get_counts(
         raise
     except Exception as e:
         logger.error(f"取得好友數量失敗: {e}")
-        raise HTTPException(status_code=500, detail=f"取得數量失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="取得數量失敗，請稍後再試")

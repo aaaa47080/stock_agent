@@ -73,4 +73,4 @@ async def vote_on_report(
         raise
     except Exception as e:
         logger.error(f"Vote on scam report failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"投票失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="投票失敗，請稍後再試")

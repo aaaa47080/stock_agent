@@ -123,7 +123,7 @@ async def submit_report(
         raise
     except Exception as e:
         logger.error(f"Submit report error: {e}")
-        raise HTTPException(status_code=500, detail=f"提交檢舉失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="提交檢舉失敗，請稍後再試")
 
 
 @router.get("/report-quota")
@@ -153,7 +153,7 @@ async def get_report_quota(
         }
     except Exception as e:
         logger.error(f"Get report quota error: {e}")
-        raise HTTPException(status_code=500, detail=f"獲取配額失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取配額失敗，請稍後再試")
 
 
 @router.get("/reports/pending")
@@ -192,7 +192,7 @@ async def list_pending_reports(
         raise
     except Exception as e:
         logger.error(f"List pending reports error: {e}")
-        raise HTTPException(status_code=500, detail=f"獲取待審核列表失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取待審核列表失敗，請稍後再試")
 
 
 @router.get("/reports/{report_id}")
@@ -232,7 +232,7 @@ async def get_report_detail(
         raise
     except Exception as e:
         logger.error(f"Get report detail error: {e}")
-        raise HTTPException(status_code=500, detail=f"獲取檢舉詳情失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取檢舉詳情失敗，請稍後再試")
 
 
 @router.get("/reports")
@@ -264,7 +264,7 @@ async def list_my_reports(
 
     except Exception as e:
         logger.error(f"List my reports error: {e}")
-        raise HTTPException(status_code=500, detail=f"獲取檢舉記錄失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取檢舉記錄失敗，請稍後再試")
 
 
 # ============================================================================
@@ -355,7 +355,7 @@ async def vote_on_pending_report(
         raise
     except Exception as e:
         logger.error(f"Vote on report error: {e}")
-        raise HTTPException(status_code=500, detail=f"投票失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="投票失敗，請稍後再試")
 
 
 @router.post("/reports/{report_id}/finalize")
@@ -426,7 +426,7 @@ async def finalize_report_decision(
         raise
     except Exception as e:
         logger.error(f"Finalize report error: {e}")
-        raise HTTPException(status_code=500, detail=f"處理檢舉失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="處理檢舉失敗，請稍後再試")
 
 
 # ============================================================================
@@ -479,7 +479,7 @@ async def get_my_violation_points(
 
     except Exception as e:
         logger.error(f"Get violation points error: {e}")
-        raise HTTPException(status_code=500, detail=f"獲取違規記錄失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取違規記錄失敗，請稍後再試")
 
 
 @router.get("/violations/{user_id}")
@@ -516,7 +516,7 @@ async def get_user_violations_public(
         raise
     except Exception as e:
         logger.error(f"Get user violations error: {e}")
-        raise HTTPException(status_code=500, detail=f"獲取違規記錄失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取違規記錄失敗，請稍後再試")
 
 
 # ============================================================================
@@ -552,7 +552,7 @@ async def get_my_activity_logs(
 
     except Exception as e:
         logger.error(f"Get activity logs error: {e}")
-        raise HTTPException(status_code=500, detail=f"獲取活動日誌失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取活動日誌失敗，請稍後再試")
 
 
 # ============================================================================
@@ -589,7 +589,7 @@ async def get_governance_statistics(
 
     except Exception as e:
         logger.error(f"Get statistics error: {e}")
-        raise HTTPException(status_code=500, detail=f"獲取統計數據失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取統計數據失敗，請稍後再試")
 
 
 @router.get("/reviewers/leaderboard")
@@ -616,7 +616,7 @@ async def get_review_leaderboard(
 
     except Exception as e:
         logger.error(f"Get leaderboard error: {e}")
-        raise HTTPException(status_code=500, detail=f"獲取排行榜失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取排行榜失敗，請稍後再試")
 
 
 # ============================================================================
@@ -654,4 +654,4 @@ async def get_my_reputation(
 
     except Exception as e:
         logger.error(f"Get reputation error: {e}")
-        raise HTTPException(status_code=500, detail=f"獲取聲望失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取聲望失敗，請稍後再試")

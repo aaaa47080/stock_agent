@@ -38,7 +38,7 @@ async def list_tags(
             "count": len(tags),
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"獲取標籤列表失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取標籤列表失敗，請稍後再試")
 
 
 @router.get("/trending")
@@ -55,7 +55,7 @@ async def get_hot_tags(limit: int = Query(10, ge=1, le=20)):
             "count": len(tags),
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"獲取熱門標籤失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取熱門標籤失敗，請稍後再試")
 
 
 @router.get("/{tag_name}/posts")
@@ -77,4 +77,4 @@ async def get_posts_with_tag(
             "count": len(posts),
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"獲取標籤文章失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取標籤文章失敗，請稍後再試")

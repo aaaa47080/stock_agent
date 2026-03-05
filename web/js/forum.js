@@ -722,7 +722,7 @@ const ForumApp = {
                 try {
                     const tags = JSON.parse(post.tags);
                     tagsContainer.innerHTML = tags.map(tag =>
-                        `<span class="text-sm bg-primary/10 text-primary px-3 py-1 rounded-full">#${tag}</span>`
+                        `<span class="text-sm bg-primary/10 text-primary px-3 py-1 rounded-full">#${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(tag) : tag}</span>`
                     ).join('');
                 } catch (e) { }
             }

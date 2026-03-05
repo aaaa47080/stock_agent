@@ -27,7 +27,7 @@ async def _fetch_twse(url: str, params: dict = None, cache_key: str = None) -> A
         if datetime.now() < expiry:
             return data
     try:
-        async with httpx.AsyncClient(verify=False, timeout=15) as client:
+        async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.get(url, params=params)
             resp.raise_for_status()
             data = resp.json()
@@ -126,7 +126,7 @@ async def get_tw_market(symbols: Optional[str] = None):
 
     except Exception as e:
         logger.error(f"Failed to fetch TW market data: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="獲取台股市場數據失敗，請稍後再試")
 
 @router.get("/pulse/{symbol}")
 async def get_tw_pulse(symbol: str):
@@ -221,7 +221,7 @@ async def get_tw_pulse(symbol: str):
 
     except Exception as e:
         logger.error(f"Failed to fetch TW pulse data for {symbol}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="獲取台股脈動數據失敗，請稍後再試")
 
 @router.get("/klines/{symbol}")
 async def get_tw_klines(symbol: str, interval: str = "1d", limit: int = 100):
@@ -268,18 +268,18 @@ async def get_tw_klines(symbol: str, interval: str = "1d", limit: int = 100):
                 
         # Keep only the requested limit
         klines = klines[-limit:]
-        
+
         return {
             "symbol": symbol,
             "interval": interval,
             "data": klines
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Failed to fetch TW klines data for {symbol}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="獲取台股 K 線數據失敗，請稍後再試")
 
 
 # ── TWSE OpenAPI 代理端點 ─────────────────────────────────────────────────────
@@ -313,7 +313,7 @@ async def get_tw_major_news(limit: int = 15, symbols: str = Query(None, descript
         return {"data": results, "total": len(results), "last_updated": datetime.now().isoformat()}
     except Exception as e:
         logger.error(f"[TW News] {e}", exc_info=True)
-        raise HTTPException(status_code=502, detail=f"TWSE 重大訊息 API 呼叫失敗：{e}")
+        raise HTTPException(status_code=502, detail="TWSE 重大訊息 API 呼叫失敗，請稍後再試")
 
 
 @router.get("/opendata/pe_ratio/{symbol}")
@@ -346,7 +346,7 @@ async def get_tw_pe_ratio(symbol: str):
         raise
     except Exception as e:
         logger.error(f"[TW PE Ratio] {e}", exc_info=True)
-        raise HTTPException(status_code=502, detail=f"TWSE 本益比 API 呼叫失敗：{e}")
+        raise HTTPException(status_code=502, detail="TWSE 本益比 API 呼叫失敗，請稍後再試")
 
 
 @router.get("/opendata/monthly_revenue")
@@ -372,7 +372,7 @@ async def get_tw_monthly_revenue(limit: int = 50):
         return {"data": results, "total": len(results), "last_updated": datetime.now().isoformat()}
     except Exception as e:
         logger.error(f"[TW Monthly Revenue] {e}", exc_info=True)
-        raise HTTPException(status_code=502, detail=f"TWSE 月營收 API 呼叫失敗：{e}")
+        raise HTTPException(status_code=502, detail="TWSE 月營收 API 呼叫失敗，請稍後再試")
 
 
 @router.get("/opendata/dividend")
@@ -403,7 +403,7 @@ async def get_tw_dividend(limit: int = 50, symbols: str = Query(None, descriptio
         return {"data": results, "total": len(results), "last_updated": datetime.now().isoformat()}
     except Exception as e:
         logger.error(f"[TW Dividend] {e}", exc_info=True)
-        raise HTTPException(status_code=502, detail=f"TWSE 股利 API 呼叫失敗：{e}")
+        raise HTTPException(status_code=502, detail="TWSE 股利 API 呼叫失敗，請稍後再試")
 
 
 @router.get("/opendata/foreign_holding")
@@ -429,4 +429,4 @@ async def get_tw_foreign_holding():
         return {"data": results, "total": len(results), "last_updated": datetime.now().isoformat()}
     except Exception as e:
         logger.error(f"[TW Foreign Holding] {e}", exc_info=True)
-        raise HTTPException(status_code=502, detail=f"TWSE 外資持股 API 呼叫失敗：{e}")
+        raise HTTPException(status_code=502, detail="TWSE 外資持股 API 呼叫失敗，請稍後再試")

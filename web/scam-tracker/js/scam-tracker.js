@@ -323,7 +323,7 @@ const ScamTrackerApp = {
                 </div>
 
                 <div class="font-mono text-primary text-sm md:text-base mb-2 break-all">
-                    ${report.scam_wallet_address}
+                    ${this.escapeHTML(report.scam_wallet_address)}
                 </div>
 
                 <p class="text-textMuted text-sm mb-4 line-clamp-2">
@@ -350,7 +350,7 @@ const ScamTrackerApp = {
                         </span>
                     </div>
                     <span class="text-xs text-textMuted hidden sm:block">
-                        舉報者: ${report.reporter_wallet_masked}
+                        舉報者: ${this.escapeHTML(report.reporter_wallet_masked)}
                     </span>
                 </div>
             </div>
@@ -373,7 +373,7 @@ const ScamTrackerApp = {
             const container = document.getElementById('report-detail');
             if (container) {
                 container.innerHTML =
-                    '<div class="text-center text-danger py-8">載入失敗：' + error.message + '</div>';
+                    '<div class="text-center text-danger py-8">載入失敗: ' + this.escapeHTML(error.message) + '</div>';
             }
         }
     },
@@ -395,8 +395,8 @@ const ScamTrackerApp = {
             <div class="mb-4">
                 <label class="text-xs text-textMuted">可疑錢包地址</label>
                 <div class="flex items-center gap-2 bg-background rounded-xl p-3 mt-1">
-                    <code class="flex-1 font-mono text-primary text-sm break-all">${report.scam_wallet_address}</code>
-                    <button onclick="navigator.clipboard.writeText('${report.scam_wallet_address}'); showToast('已複製', 'success')"
+                    <code class="flex-1 font-mono text-primary text-sm break-all" id="wallet-address-display">${this.escapeHTML(report.scam_wallet_address)}</code>
+                    <button onclick="navigator.clipboard.writeText(document.getElementById('wallet-address-display').textContent); showToast('已複製', 'success')"
                         class="text-textMuted hover:text-primary transition flex-shrink-0">
                         <i data-lucide="copy" class="w-4 h-4"></i>
                     </button>
@@ -407,8 +407,8 @@ const ScamTrackerApp = {
             <div class="mb-4">
                 <label class="text-xs text-textMuted">交易哈希</label>
                 <div class="flex items-center gap-2 bg-background rounded-xl p-3 mt-1">
-                    <code class="flex-1 font-mono text-xs text-textMuted break-all">${report.transaction_hash}</code>
-                    <button onclick="navigator.clipboard.writeText('${report.transaction_hash}'); showToast('已複製', 'success')"
+                    <code class="flex-1 font-mono text-xs text-textMuted break-all" id="tx-hash-display">${this.escapeHTML(report.transaction_hash)}</code>
+                    <button onclick="navigator.clipboard.writeText(document.getElementById('tx-hash-display').textContent); showToast('已複製', 'success')"
                         class="text-textMuted hover:text-primary transition flex-shrink-0">
                         <i data-lucide="copy" class="w-4 h-4"></i>
                     </button>
@@ -424,7 +424,7 @@ const ScamTrackerApp = {
             </div>
 
             <div class="flex items-center justify-between text-xs text-textMuted border-t border-white/5 pt-4">
-                <span>舉報者: ${report.reporter_wallet_masked}</span>
+                <span>舉報者: ${this.escapeHTML(report.reporter_wallet_masked)}</span>
                 <span>查看: ${report.view_count}</span>
             </div>
         `;

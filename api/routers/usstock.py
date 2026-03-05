@@ -255,7 +255,7 @@ async def get_us_klines(symbol: str, interval: str = "1d", limit: int = 200):
     try:
         klines = await asyncio.to_thread(fetch)
     except Exception as e:
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail="無法獲取股票數據")
 
     data = {"symbol": sym, "interval": interval, "data": klines}
     _set_cache(cache_key, data, ttl=300)

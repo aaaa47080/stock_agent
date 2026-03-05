@@ -45,7 +45,7 @@ async def get_my_limits(user_id: str = Query(..., description="用戶 ID"), curr
             "membership": membership
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"獲取限制狀態失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取限制狀態失敗，請稍後再試")
 
 
 @router.get("/stats")
@@ -80,7 +80,7 @@ async def get_my_stats(user_id: str = Query(..., description="用戶 ID"), curre
             }
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"獲取統計資料失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取統計資料失敗，請稍後再試")
 
 
 @router.get("/posts")
@@ -106,7 +106,7 @@ async def get_my_posts(
             "count": len(posts),
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"獲取文章列表失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取文章列表失敗，請稍後再試")
 
 
 @router.get("/tips/sent")
@@ -131,7 +131,7 @@ async def get_my_sent_tips(
             "count": len(tips),
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"獲取打賞記錄失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取打賞記錄失敗，請稍後再試")
 
 
 @router.get("/tips/received")
@@ -158,7 +158,7 @@ async def get_my_received_tips(
             "total_received": total,
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"獲取打賞記錄失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取打賞記錄失敗，請稍後再試")
 
 
 @router.get("/payments")
@@ -183,7 +183,7 @@ async def get_my_payments(
             "count": len(payments),
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"獲取付款記錄失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取付款記錄失敗，請稍後再試")
 
 
 @router.get("/membership")
@@ -203,4 +203,4 @@ async def get_my_membership(user_id: str = Query(..., description="用戶 ID"), 
             "membership": membership,
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"獲取會員狀態失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取會員狀態失敗，請稍後再試")

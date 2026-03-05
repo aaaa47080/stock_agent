@@ -45,7 +45,7 @@ async def list_scam_comments(
         }
     except Exception as e:
         logger.error(f"List scam comments failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"獲取評論列表失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="獲取評論列表失敗，請稍後再試")
 
 
 @router.post("/{report_id}", response_model=dict)
@@ -111,4 +111,4 @@ async def add_comment_to_report(
         raise
     except Exception as e:
         logger.error(f"Add scam comment failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"添加評論失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail="添加評論失敗，請稍後再試")
