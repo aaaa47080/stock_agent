@@ -164,6 +164,14 @@
             margin: 1rem 0;
             border-radius: 4px;
         }
+
+        .pi-notice {
+            background: rgba(102, 126, 234, 0.15);
+            border-left: 3px solid #667eea;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+        }
     </style>
 </head>
 
@@ -182,7 +190,13 @@
         <!-- Chinese Content -->
         <div id="content-zh" class="prose">
             <div class="effective-date">
-                <strong>生效日期：</strong>2026年3月1日（最後更新）
+                <strong>生效日期：</strong>2026年3月5日（最後更新）<br>
+                <strong>版本：</strong>v2.0
+            </div>
+
+            <div class="pi-notice">
+                <strong>🔗 Pi Network 生態系聲明</strong><br>
+                PI CryptoMind 是 Pi Network 生態系的一部分。我們使用 Pi Network 官方 SDK 進行身份驗證和支付處理。您的部分資料將與 Pi Network 共享，受其<a href="https://socialchain.app/privacy" target="_blank" style="color: #667eea;">隱私政策</a>約束。
             </div>
 
             <p>PI CryptoMind 重視您的隱私。本政策說明我們如何收集、使用和保護您的個人資料。</p>
@@ -204,7 +218,7 @@
             </ul>
             <h3>1.3 交易資訊</h3>
             <ul>
-                <li>Pi 支付記錄（PRO 會員、發文費用、打賞）</li>
+                <li>Pi 支付記錄（會員訂閱、發文費用、打賞）</li>
                 <li>交易金額、時間、收款方資訊</li>
             </ul>
             <h3>1.4 AI 分析使用記錄</h3>
@@ -247,19 +261,27 @@
             </ul>
 
             <h2>3. 資料分享與第三方</h2>
-            <h3>3.1 Pi Network SDK</h3>
-            <p>我們使用 Pi Network 官方 SDK 進行身份驗證和支付處理。您的錢包地址和交易資訊會與 Pi Network 共享，受其<a
-                    href="https://minepi.com/privacy-policy" target="_blank" style="color: #667eea;">隱私政策</a>約束。</p>
+            <h3>3.1 Pi Network（重要）</h3>
+            <div class="pi-notice">
+                <p>我們使用 Pi Network 官方 SDK 進行身份驗證和支付處理。以下資料會與 Pi Network 共享：</p>
+                <ul>
+                    <li>您的 Pi 錢包地址</li>
+                    <li>認證 Token（用於身份驗證）</li>
+                    <li>支付交易資訊（金額、時間）</li>
+                </ul>
+                <p>這些資料受 <a href="https://socialchain.app/privacy" target="_blank" style="color: #667eea;">Pi Network 隱私政策</a> 約束。Pi Network 可能將資料儲存於全球伺服器。</p>
+            </div>
             <h3>3.2 OKX API</h3>
             <p>加密貨幣市場數據通過 OKX public API 獲取。<strong>我們不會將您的個人資訊發送給 OKX。</strong></p>
             <h3>3.3 yfinance（台股 / 美股資料）</h3>
             <p>台灣股市及美國股市資料通過 yfinance 開源套件獲取，屬延遲盤後資料。<strong>我們不會將您的個人資訊發送給 yfinance 或相關資料提供商。</strong></p>
-            <h3>3.5 法律要求</h3>
+            <h3>3.4 法律要求</h3>
             <p>在以下情況下，我們可能需要披露資料：</p>
             <ul>
                 <li>遵守法律義務或政府要求</li>
                 <li>保護平台、用戶或公眾的權利與安全</li>
                 <li>調查涉嫌違法行為（詐騙、洗錢等）</li>
+                <li>回應 Pi Network 的合規要求</li>
             </ul>
 
             <h2>4. 用戶權利</h2>
@@ -274,6 +296,7 @@
                 <li>論壇發文可能保留但匿名化（顯示為「已刪除用戶」）</li>
                 <li><strong>已發送的 Pi 打賞無法撤回</strong></li>
                 <li>已支付的會員費用不予退款</li>
+                <li><strong>Pi Network 端的資料需依其政策處理</strong></li>
             </ul>
 
             <h2>5. Cookie 與追蹤技術</h2>
@@ -288,20 +311,27 @@
                 <li><strong>交易記錄</strong>：7 年（符合金融法規要求）</li>
                 <li><strong>治理記錄</strong>：永久保留（防範重複違規）</li>
                 <li><strong>API 日誌</strong>：90 天</li>
+                <li><strong>Pi Network 資料</strong>：依 Pi Network 政策保留</li>
             </ul>
 
-            <h2>7. 兒童隱私</h2>
-            <p>本平台不向 <strong>13 歲以下兒童</strong>提供服務。我們不會故意收集兒童的個人資料。若發現未成年用戶，我們將立即刪除相關帳戶。</p>
+            <h2>7. 年齡限制</h2>
+            <p>本平台<strong>不向 18 歲以下用戶提供服務</strong>。我們不會故意收集未成年人的個人資料。若發現未成年用戶，我們將立即刪除相關帳戶並通知 Pi Network。</p>
 
             <h2>8. 跨境資料傳輸</h2>
-            <p>您的資料主要存儲在台灣伺服器。使用 Pi Network SDK 時，資料可能傳輸至 Pi Network 的全球基礎設施。我們確保所有傳輸符合 GDPR 等國際標準。</p>
+            <p>您的資料主要存儲在台灣伺服器。使用 Pi Network SDK 時，資料可能傳輸至 Pi Network 的全球基礎設施（可能位於美國或其他國家）。我們確保所有傳輸符合：</p>
+            <ul>
+                <li>GDPR（歐盟通用數據保護條例）</li>
+                <li>台灣個人資料保護法</li>
+                <li>Pi Network 隱私政策要求</li>
+            </ul>
 
             <h2>9. 資料安全措施</h2>
             <ul>
                 <li>資料庫加密（AES-256）</li>
-                <li>HTTPS 加密傳輸</li>
+                <li>HTTPS 加密傳輸（SSL/TLS）</li>
                 <li>定期安全審計與漏洞修補</li>
                 <li>限制員工存取權限（最小權限原則）</li>
+                <li>API 金鑰不存儲於伺服器</li>
             </ul>
 
             <h2>10. 隱私政策變更</h2>
@@ -313,16 +343,31 @@
                 <li>平台論壇：私訊 <strong>@Admin</strong></li>
                 <li>平台網址：<strong>pi-crypto-insight.zeabur.app</strong></li>
             </ul>
+
+            <div class="pi-notice" style="margin-top: 2rem;">
+                <strong>📎 相關政策連結</strong>
+                <ul style="margin-top: 0.5rem;">
+                    <li><a href="https://socialchain.app/privacy" target="_blank" style="color: #667eea;">Pi Network 隱私政策</a></li>
+                    <li><a href="https://socialchain.app/tos" target="_blank" style="color: #667eea;">Pi Network 服務條款</a></li>
+                    <li><a href="terms-of-service.html" style="color: #667eea;">PI CryptoMind 服務條款</a></li>
+                    <li><a href="community-guidelines.html" style="color: #667eea;">PI CryptoMind 社群守則</a></li>
+                </ul>
+            </div>
         </div>
 
         <!-- English Content -->
         <div id="content-en" class="prose hidden">
             <div class="effective-date">
-                <strong>Effective Date:</strong> March 1, 2026 (Last Updated)
+                <strong>Effective Date:</strong> March 5, 2026 (Last Updated)<br>
+                <strong>Version:</strong> v2.0
             </div>
 
-            <p>PI CryptoMind values your privacy. This policy explains how we collect, use, and protect your personal
-                data.</p>
+            <div class="pi-notice">
+                <strong>🔗 Pi Network Ecosystem Declaration</strong><br>
+                PI CryptoMind is part of the Pi Network ecosystem. We use Pi Network official SDK for authentication and payment processing. Some of your data is shared with Pi Network and subject to their <a href="https://socialchain.app/privacy" target="_blank" style="color: #667eea;">Privacy Policy</a>.
+            </div>
+
+            <p>PI CryptoMind values your privacy. This policy explains how we collect, use, and protect your personal data.</p>
 
             <h2>1. Information We Collect</h2>
             <h3>1.1 Identity Information</h3>
@@ -341,7 +386,7 @@
             </ul>
             <h3>1.3 Transaction Information</h3>
             <ul>
-                <li>Pi payment records (PRO membership, post fees, tips)</li>
+                <li>Pi payment records (membership, post fees, tips)</li>
                 <li>Transaction amounts, timestamps, recipient info</li>
             </ul>
             <h3>1.4 AI Analysis Usage</h3>
@@ -352,8 +397,7 @@
 
             <div class="highlight">
                 <h3>🔒 Important: API Key Security</h3>
-                <p><strong>Your OKX API keys are stored ONLY in your browser's localStorage and are NEVER uploaded to
-                        our servers.</strong></p>
+                <p><strong>Your OKX API keys are stored ONLY in your browser's localStorage and are NEVER uploaded to our servers.</strong></p>
                 <p>This means:</p>
                 <ul>
                     <li>✅ Your API keys exist only on your device</li>
@@ -385,11 +429,16 @@
             </ul>
 
             <h2>3. Data Sharing & Third Parties</h2>
-            <h3>3.1 Pi Network SDK</h3>
-            <p>We use Pi Network official SDK for authentication and payment processing. Your wallet address and
-                transaction info are shared with Pi Network, subject to their <a
-                    href="https://minepi.com/privacy-policy" target="_blank" style="color: #667eea;">Privacy Policy</a>.
-            </p>
+            <h3>3.1 Pi Network (Important)</h3>
+            <div class="pi-notice">
+                <p>We use Pi Network official SDK for authentication and payment processing. The following data is shared with Pi Network:</p>
+                <ul>
+                    <li>Your Pi wallet address</li>
+                    <li>Authentication tokens (for identity verification)</li>
+                    <li>Payment transaction info (amount, timestamp)</li>
+                </ul>
+                <p>This data is subject to <a href="https://socialchain.app/privacy" target="_blank" style="color: #667eea;">Pi Network Privacy Policy</a>. Pi Network may store data on global servers.</p>
+            </div>
             <h3>3.2 OKX API</h3>
             <p>Cryptocurrency market data is fetched via OKX public API. <strong>We do not send your personal information to OKX.</strong></p>
             <h3>3.3 yfinance (TW & US Stock Data)</h3>
@@ -400,6 +449,7 @@
                 <li>Complying with legal obligations or government requests</li>
                 <li>Protecting rights and safety of platform, users, or public</li>
                 <li>Investigating suspected illegal activities (fraud, money laundering)</li>
+                <li>Responding to Pi Network compliance requirements</li>
             </ul>
 
             <h2>4. User Rights</h2>
@@ -414,6 +464,7 @@
                 <li>Forum posts may be retained but anonymized (shown as "Deleted User")</li>
                 <li><strong>Sent Pi tips are irreversible</strong></li>
                 <li>Paid membership fees are non-refundable</li>
+                <li><strong>Pi Network-side data is subject to their policy</strong></li>
             </ul>
 
             <h2>5. Cookies & Tracking</h2>
@@ -428,28 +479,31 @@
                 <li><strong>Transaction Records</strong>: 7 years (financial regulation compliance)</li>
                 <li><strong>Governance Records</strong>: Permanent (prevent repeat violations)</li>
                 <li><strong>API Logs</strong>: 90 days</li>
+                <li><strong>Pi Network Data</strong>: Per Pi Network policy</li>
             </ul>
 
-            <h2>7. Children's Privacy</h2>
-            <p>This platform does not offer services to children <strong>under 13</strong>. We do not knowingly collect
-                children's personal data. Underage accounts will be deleted immediately upon discovery.</p>
+            <h2>7. Age Restriction</h2>
+            <p>This platform <strong>does not provide services to users under 18 years of age</strong>. We do not knowingly collect personal data from minors. Underage accounts will be deleted immediately upon discovery, and Pi Network will be notified.</p>
 
             <h2>8. Cross-Border Data Transfer</h2>
-            <p>Your data is primarily stored on Taiwan servers. When using Pi Network SDK, data may transfer to Pi
-                Network's global infrastructure. We ensure all transfers comply with GDPR and international standards.
-            </p>
+            <p>Your data is primarily stored on Taiwan servers. When using Pi Network SDK, data may transfer to Pi Network's global infrastructure (potentially in the US or other countries). We ensure all transfers comply with:</p>
+            <ul>
+                <li>GDPR (General Data Protection Regulation)</li>
+                <li>Taiwan Personal Data Protection Act</li>
+                <li>Pi Network Privacy Policy requirements</li>
+            </ul>
 
             <h2>9. Data Security Measures</h2>
             <ul>
                 <li>Database encryption (AES-256)</li>
-                <li>HTTPS encrypted transmission</li>
+                <li>HTTPS encrypted transmission (SSL/TLS)</li>
                 <li>Regular security audits and vulnerability patches</li>
                 <li>Restricted employee access (least privilege principle)</li>
+                <li>API keys not stored on servers</li>
             </ul>
 
             <h2>10. Privacy Policy Changes</h2>
-            <p>We may update this policy. Major changes will be announced on the platform and require your
-                re-confirmation.</p>
+            <p>We may update this policy. Major changes will be announced on the platform and require your re-confirmation.</p>
 
             <h2>11. Contact Us</h2>
             <p>For privacy questions or data requests, contact:</p>
@@ -457,6 +511,16 @@
                 <li>Platform Forum: DM <strong>@Admin</strong></li>
                 <li>Platform URL: <strong>pi-crypto-insight.zeabur.app</strong></li>
             </ul>
+
+            <div class="pi-notice" style="margin-top: 2rem;">
+                <strong>📎 Related Policy Links</strong>
+                <ul style="margin-top: 0.5rem;">
+                    <li><a href="https://socialchain.app/privacy" target="_blank" style="color: #667eea;">Pi Network Privacy Policy</a></li>
+                    <li><a href="https://socialchain.app/tos" target="_blank" style="color: #667eea;">Pi Network Terms of Service</a></li>
+                    <li><a href="terms-of-service.html" style="color: #667eea;">PI CryptoMind Terms of Service</a></li>
+                    <li><a href="community-guidelines.html" style="color: #667eea;">PI CryptoMind Community Guidelines</a></li>
+                </ul>
+            </div>
         </div>
     </div>
 
