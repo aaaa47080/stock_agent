@@ -591,8 +591,8 @@ const ForumApp = {
                 el.innerHTML = `
                     <div class="flex items-center justify-between mb-2">
                         <div class="flex items-center gap-2">
-                            <span class="text-xs font-bold text-secondary bg-white/10 px-2 py-0.5 rounded uppercase">${post.category}</span>
-                            <a href="/static/forum/profile.html?id=${post.user_id}" class="text-xs text-textMuted hover:text-primary transition" onclick="event.stopPropagation()">${post.username || post.user_id}</a>
+                            <span class="text-xs font-bold text-secondary bg-white/10 px-2 py-0.5 rounded uppercase">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.category) : post.category}</span>
+                            <a href="/static/forum/profile.html?id=${post.user_id}" class="text-xs text-textMuted hover:text-primary transition" onclick="event.stopPropagation()">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.username || post.user_id) : (post.username || post.user_id)}</a>
                             <span class="text-xs text-textMuted">• ${date}</span>
                         </div>
                         <div class="flex items-center gap-3 text-xs text-textMuted">
@@ -602,7 +602,7 @@ const ForumApp = {
                             ${post.tips_total > 0 ? `<span class="flex items-center gap-1 text-primary"><i data-lucide="gift" class="w-3 h-3"></i> ${post.tips_total}</span>` : ''}
                         </div>
                     </div>
-                    <h3 class="font-bold text-lg text-textMain mb-2 truncate">${post.title}</h3>
+                    <h3 class="font-bold text-lg text-textMain mb-2 truncate">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.title || '') : (post.title || '')}</h3>
                     <div class="flex items-center">
                         ${tagsHtml}
                     </div>
@@ -625,7 +625,7 @@ const ForumApp = {
             const tags = response.tags || [];
 
             container.innerHTML = tags.map(tag => `
-                <a href="#" class="block text-sm text-textMuted hover:text-primary transition py-1">#${tag.name} <span class="text-xs opacity-50">(${tag.post_count})</span></a>
+                <a href="#" class="block text-sm text-textMuted hover:text-primary transition py-1">#${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(tag.name) : tag.name} <span class="text-xs opacity-50">(${tag.post_count})</span></a>
             `).join('');
         } catch (e) {
             console.error('Failed to load tags', e);
@@ -826,7 +826,7 @@ const ForumApp = {
                 el.className = 'border-b border-white/5 py-3';
                 el.innerHTML = `
                     <div class="flex justify-between items-start mb-1">
-                        <a href="/static/forum/profile.html?id=${comment.user_id}" class="font-bold text-sm text-secondary hover:text-primary transition">${comment.username || comment.user_id}</a>
+                        <a href="/static/forum/profile.html?id=${comment.user_id}" class="font-bold text-sm text-secondary hover:text-primary transition">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(comment.username || comment.user_id) : (comment.username || comment.user_id)}</a>
                         <div class="flex items-center gap-2">
                             <span class="text-xs text-textMuted">${formatTWDate(comment.created_at, true)}</span>
                             <button onclick="ForumApp.openReportModal('comment', ${comment.id})" class="text-textMuted hover:text-danger p-1 rounded transition" title="Report">
@@ -1803,10 +1803,10 @@ const ForumApp = {
 
                 el.innerHTML = `
                     <div class="overflow-hidden mr-4">
-                         <a href="/static/forum/post.html?id=${post.id}" class="font-bold text-textMain hover:text-primary transition truncate block">${post.title}</a>
+                         <a href="/static/forum/post.html?id=${post.id}" class="font-bold text-textMain hover:text-primary transition truncate block">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.title || '') : (post.title || '')}</a>
                          <div class="text-xs text-textMuted mt-1 flex items-center gap-2">
                             <span>${formatTWDate(post.created_at)}</span>
-                            <span class="bg-white/10 px-1.5 rounded text-[10px] uppercase">${post.category}</span>
+                            <span class="bg-white/10 px-1.5 rounded text-[10px] uppercase">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.category) : post.category}</span>
                          </div>
                     </div>
                     <div class="flex items-center gap-3 text-xs text-textMuted shrink-0">

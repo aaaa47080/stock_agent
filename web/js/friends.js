@@ -350,14 +350,14 @@ const FriendsUI = {
         if (status === 'accepted') {
             return `
                 <div class="flex gap-2">
-                    <button onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleRemoveFriend('${userId}')"
+                    <button onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleRemoveFriend('${encodeURIComponent(userId)}')"
                             class="friend-btn bg-white/5 text-textMuted px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 border border-white/10 hover:bg-danger/10 hover:text-danger hover:border-danger/20 transition group">
                         <i data-lucide="user-check" class="w-4 h-4 group-hover:hidden"></i>
                         <i data-lucide="user-minus" class="w-4 h-4 hidden group-hover:block"></i>
                         <span class="group-hover:hidden">好友</span>
                         <span class="hidden group-hover:inline">移除</span>
                     </button>
-                    <button onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleBlock('${userId}')"
+                    <button onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleBlock('${encodeURIComponent(userId)}')"
                             class="friend-btn bg-danger/5 text-danger/80 px-2 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 border border-danger/10 hover:bg-danger/20 hover:text-danger transition"
                             title="封鎖用戶">
                         <i data-lucide="ban" class="w-4 h-4"></i>
@@ -368,7 +368,7 @@ const FriendsUI = {
         if (status === 'pending') {
             if (isRequester) {
                 return `
-                    <button id="cancel-request-btn-${userId}" onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleCancelRequest('${userId}')"
+                    <button id="cancel-request-btn-${userId}" onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleCancelRequest('${encodeURIComponent(userId)}')"
                             class="friend-btn bg-white/5 text-textMuted px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 border border-white/10 hover:bg-danger/10 hover:text-danger hover:border-danger/20 transition">
                         <i data-lucide="clock" class="w-4 h-4"></i>
                         <span>等待中</span>
@@ -377,11 +377,11 @@ const FriendsUI = {
             }
             return `
                 <div class="flex gap-2">
-                    <button id="accept-btn-${userId}" onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleAcceptRequest('${userId}')"
+                    <button id="accept-btn-${userId}" onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleAcceptRequest('${encodeURIComponent(userId)}')"
                             class="bg-success/10 hover:bg-success/20 text-success px-3 py-1.5 rounded-lg text-sm font-bold transition disabled:opacity-50 disabled:cursor-not-allowed">
                         <i data-lucide="check" class="w-4 h-4"></i>
                     </button>
-                    <button id="reject-btn-${userId}" onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleRejectRequest('${userId}')"
+                    <button id="reject-btn-${userId}" onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleRejectRequest('${encodeURIComponent(userId)}')"
                             class="bg-danger/10 hover:bg-danger/20 text-danger px-3 py-1.5 rounded-lg text-sm font-bold transition disabled:opacity-50 disabled:cursor-not-allowed">
                         <i data-lucide="x" class="w-4 h-4"></i>
                     </button>
@@ -390,7 +390,7 @@ const FriendsUI = {
         }
         if (status === 'blocked') {
             return `
-                <button onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleUnblock('${userId}')"
+                <button onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleUnblock('${encodeURIComponent(userId)}')"
                         class="friend-btn bg-danger/10 text-danger px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 border border-danger/20 hover:bg-danger/20 transition">
                     <i data-lucide="ban" class="w-4 h-4"></i>
                     <span>已封鎖</span>
@@ -399,7 +399,7 @@ const FriendsUI = {
         }
         // 預設：加好友按鈕
         return `
-            <button id="add-friend-btn-${userId}" onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleAddFriend('${userId}')"
+            <button id="add-friend-btn-${userId}" onclick="event.stopPropagation(); event.preventDefault(); FriendsUI.handleAddFriend('${encodeURIComponent(userId)}')"
                     class="friend-btn bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 transition border border-primary/20 disabled:opacity-50 disabled:cursor-not-allowed">
                 <i data-lucide="user-plus" class="w-4 h-4"></i>
                 <span>加好友</span>
@@ -417,7 +417,7 @@ const FriendsUI = {
 
         // 如果是好友，顯示發訊息按鈕
         const messageBtn = (user.friend_status === 'accepted') ? `
-            <button onclick="event.stopPropagation(); FriendsUI.openChat('${user.user_id}', '${user.username || user.user_id}')"
+            <button onclick="event.stopPropagation(); FriendsUI.openChat('${encodeURIComponent(user.user_id)}', SecurityUtils.escapeHTML(user.username || user.user_id))"
                class="p-2 hover:bg-white/5 rounded-lg transition text-textMuted hover:text-primary"
                title="發訊息">
                 <i data-lucide="message-circle" class="w-4 h-4"></i>
@@ -1117,7 +1117,7 @@ const SocialHub = {
 
         return `
             <div id="conv-${conv.id}" class="relative group">
-                <div onclick="SocialHub.openConversation('${conv.other_user_id}', '${username}')"
+                <div onclick="SocialHub.openConversation('${encodeURIComponent(conv.other_user_id)}', SecurityUtils.escapeHTML(username))"
                      class="p-4 border-b border-white/5 cursor-pointer transition ${activeClass}">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-full bg-surfaceHighlight flex items-center justify-center text-textMuted font-bold flex-shrink-0 relative">

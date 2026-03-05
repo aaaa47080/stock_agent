@@ -506,11 +506,17 @@ const MessagesUI = {
             preview = preview.substring(0, 30) + '...';
         }
 
+        // 安全轉義用戶數據，防止 XSS
+        const escapedUserId = encodeURIComponent(conv.other_user_id);
+        const escapedUsername = (typeof SecurityUtils !== 'undefined')
+            ? SecurityUtils.escapeHTML(conv.other_username)
+            : this._escapeHtml(conv.other_username);
+
         return `
             <div class="conversation-item cursor-pointer p-3 border-b border-white/5 ${activeClass} ${unreadBgClass} transition relative"
                  data-conversation-id="${conv.id}"
                  data-other-user-id="${conv.other_user_id}"
-                 onclick="MessagesPage.selectConversation(${conv.id}, '${conv.other_user_id}', '${conv.other_username}')">
+                 onclick="MessagesPage.selectConversation(${conv.id}, '${escapedUserId}', '${escapedUsername}')">
                 ${unreadIndicator}
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold flex-shrink-0 ${unreadAvatarClass}">

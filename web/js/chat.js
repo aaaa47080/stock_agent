@@ -12,8 +12,23 @@ window.lastProcessOpenState = false;
 let isEditMode = false;
 let selectedSessions = new Set();
 
-// HITL (Human-in-the-Loop) 上下文 - 必須在頂部聲明以避免暫時性死區
-let _hitlContext = null;
+// HITL (Human-in-the-Loop) 上下文 - 使用 Map 以避免多會話並發時的競態條件
+// Key: sessionId, Value: HITL context object
+const _hitlContextMap = new Map();
+
+// Backward compatibility: expose a getter that returns context for current session
+Object.defineProperty(window, '_hitlContext', {
+    get() {
+        return _hitlContextMap.get(currentSessionId);
+    },
+    set(value) {
+        if (value === null) {
+            _hitlContextMap.delete(currentSessionId);
+        } else {
+            _hitlContextMap.set(currentSessionId, value);
+        }
+    }
+});
 
 // ========================================
 // MessageComponents - 結構化消息卡片組件
@@ -536,10 +551,10 @@ function createSessionItem(session) {
             <i data-lucide="message-square" class="w-4 h-4 opacity-70"></i>
             <div class="flex-1 truncate">${session.title || 'New Chat'}</div>
             <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                <button onclick="toggleStarSession(event, '${session.id}', ${!session.is_pinned})" class="p-1 hover:text-yellow-500 transition" title="${session.is_pinned ? '取消收藏' : '收藏'}">
+                <button onclick="toggleStarSession(event, '${encodeURIComponent(session.id)}', ${!session.is_pinned})" class="p-1 hover:text-yellow-500 transition" title="${session.is_pinned ? '取消收藏' : '收藏'}">
                     <i data-lucide="star" class="w-3.5 h-3.5 ${session.is_pinned ? 'fill-yellow-500 text-yellow-500' : ''}"></i>
                 </button>
-                <button onclick="deleteSession(event, '${session.id}')" class="p-1 hover:text-danger transition" title="Delete Chat">
+                <button onclick="deleteSession(event, '${encodeURIComponent(session.id)}')" class="p-1 hover:text-danger transition" title="Delete Chat">
                     <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                 </button>
             </div>
@@ -685,6 +700,8 @@ async function deleteSelectedSessions(btnElement) {
 
 async function toggleStarSession(event, sessionId, newStatus) {
     event.stopPropagation();
+    // Decode sessionId that was encoded for XSS protection
+    sessionId = decodeURIComponent(sessionId);
     try {
         const token = AuthManager.currentUser.accessToken;
         await fetch(`/api/chat/sessions/${sessionId}/pin?is_pinned=${newStatus}`, {
@@ -807,6 +824,8 @@ async function switchSession(sessionId) {
 
 async function deleteSession(event, sessionId) {
     event.stopPropagation();
+    // Decode sessionId that was encoded for XSS protection
+    sessionId = decodeURIComponent(sessionId);
     const btnElement = event.currentTarget;
 
     const confirmed = await showConfirm({

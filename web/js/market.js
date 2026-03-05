@@ -131,6 +131,8 @@ var currentChartSymbol = null;
 var currentChartInterval = '1h';
 var autoRefreshEnabled = true; // 預設開啟即時更新
 var autoRefreshTimer = null;
+var reconnectAttempts = 0;
+const MAX_RECONNECT_ATTEMPTS = 5;
 var chartKlinesData = []; // 儲存當前 K 線數據供更新用
 var isChartHovered = false; // 追蹤圖表是否被懸停
 
@@ -139,6 +141,7 @@ var isChartHovered = false; // 追蹤圖表是否被懸停
 // WebSocket 連接
 var klineWebSocket = null;
 var wsReconnectTimer = null;
+var wsConnectionCheckTimer = null;
 var wsConnected = false;
 
 // Market Watch WebSocket
@@ -146,6 +149,8 @@ var wsConnected = false;
 var marketWsConnected = false;
 var marketWebSocket = null;
 var tickerReconnectTimer = null;
+var tickerReconnectAttempts = 0;
+const MAX_TICKET_RECONNECT_ATTEMPTS = 5;
 var subscribedTickerSymbols = new Set();
 var pendingTickerSymbols = new Set(); // 等待連接後訂閱的 symbols
 
@@ -1171,6 +1176,8 @@ function connectWebSocket() {
             console.log('WebSocket 連接成功');
             wsConnected = true;
             updateWsStatus(true);
+            // Reset reconnect attempts on successful connection
+            reconnectAttempts = 0;
 
             // 如果已經有訂閱，重新訂閱
             if (currentChartSymbol && autoRefreshEnabled) {
@@ -1198,12 +1205,17 @@ function connectWebSocket() {
             updateWsStatus(false);
             stopLiveTimeUpdates(); // Stop live time updates when disconnected
 
-            // 自動重連
-            if (autoRefreshEnabled) {
+            // 自動重連 - 限制最大重連次數
+            if (autoRefreshEnabled && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+                reconnectAttempts++;
+                console.log(`嘗試重新連接 WebSocket... (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
                 wsReconnectTimer = setTimeout(() => {
-                    console.log('嘗試重新連接 WebSocket...');
                     connectWebSocket();
                 }, 3000);
+            } else if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+                console.error('WebSocket 重連次數達到上限，停止重連');
+                autoRefreshEnabled = false;
+                updateAutoRefreshButton();
             }
         };
 
@@ -1365,6 +1377,23 @@ function updateWsStatus(connected) {
     }
 }
 
+function updateAutoRefreshButton() {
+    const btn = document.getElementById('auto-refresh-btn');
+    const status = document.getElementById('auto-refresh-status');
+
+    if (!autoRefreshEnabled) {
+        if (btn) {
+            btn.classList.remove('text-success', 'bg-success/10', 'text-primary', 'bg-primary/10', 'text-warning', 'bg-warning/10');
+            btn.classList.add('text-textMuted');
+        }
+        if (status) status.textContent = 'OFF';
+    } else if (wsConnected) {
+        updateWsStatus(true);
+    } else {
+        updateWsStatus(false);
+    }
+}
+
 // Timer for updating live time display
 let liveTimeUpdateTimer = null;
 
@@ -1415,18 +1444,30 @@ function startAutoRefresh() {
 
     // 訂閱當前幣種
     if (currentChartSymbol) {
+        // Clear any existing connection check timer
+        if (wsConnectionCheckTimer) {
+            clearInterval(wsConnectionCheckTimer);
+            wsConnectionCheckTimer = null;
+        }
+        
         // 等待連接建立後訂閱
-        const checkConnection = setInterval(() => {
+        wsConnectionCheckTimer = setInterval(() => {
             if (wsConnected) {
                 subscribeKline(currentChartSymbol, currentChartInterval);
-                clearInterval(checkConnection);
+                clearInterval(wsConnectionCheckTimer);
+                wsConnectionCheckTimer = null;
                 // Start live time updates when connection is established
                 startLiveTimeUpdates();
             }
         }, 100);
 
         // 5秒後停止檢查
-        setTimeout(() => clearInterval(checkConnection), 5000);
+        setTimeout(() => {
+            if (wsConnectionCheckTimer) {
+                clearInterval(wsConnectionCheckTimer);
+                wsConnectionCheckTimer = null;
+            }
+        }, 5000);
     }
 }
 
@@ -1537,6 +1578,8 @@ function connectTickerWebSocket() {
             console.log('Ticker WebSocket 連接成功');
             marketWsConnected = true;
             updateTickerWsStatus(true);
+            // Reset reconnect attempts on successful connection
+            tickerReconnectAttempts = 0;
 
             // 訂閱等待中的 symbols
             if (pendingTickerSymbols.size > 0) {
@@ -1567,11 +1610,16 @@ function connectTickerWebSocket() {
             marketWsConnected = false;
             updateTickerWsStatus(false);
 
-            // 自動重連
-            tickerReconnectTimer = setTimeout(() => {
-                console.log('嘗試重新連接 Ticker WebSocket...');
-                connectTickerWebSocket();
-            }, 3000);
+            // 自動重連 - 限制最大重連次數
+            if (tickerReconnectAttempts < MAX_TICKET_RECONNECT_ATTEMPTS) {
+                tickerReconnectAttempts++;
+                console.log(`嘗試重新連接 Ticker WebSocket... (${tickerReconnectAttempts}/${MAX_TICKET_RECONNECT_ATTEMPTS})`);
+                tickerReconnectTimer = setTimeout(() => {
+                    connectTickerWebSocket();
+                }, 3000);
+            } else {
+                console.error('Ticker WebSocket 重連次數達到上限，停止重連');
+            }
         };
 
         marketWebSocket.onerror = (error) => {
@@ -1767,3 +1815,66 @@ window.refreshScreener = refreshScreener; // CRITICAL: Export for index.html to 
 window.showFundingHistory = showFundingHistory;
 window.closeFundingHistory = closeFundingHistory;
 
+
+// ========================================
+// Cleanup function for memory leak prevention
+// ========================================
+function cleanupMarketResources() {
+    console.log('[Market] Cleaning up resources...');
+    
+    // Clear live time update timer
+    if (liveTimeUpdateTimer) {
+        clearInterval(liveTimeUpdateTimer);
+        liveTimeUpdateTimer = null;
+    }
+    
+    // Clear WebSocket reconnect timers
+    if (wsReconnectTimer) {
+        clearTimeout(wsReconnectTimer);
+        wsReconnectTimer = null;
+    }
+    
+    if (wsConnectionCheckTimer) {
+        clearInterval(wsConnectionCheckTimer);
+        wsConnectionCheckTimer = null;
+    }
+    
+    if (tickerReconnectTimer) {
+        clearTimeout(tickerReconnectTimer);
+        tickerReconnectTimer = null;
+    }
+    
+    // Remove resize event listener
+    if (window._marketResizeHandler) {
+        window.removeEventListener('resize', window._marketResizeHandler);
+        window._marketResizeHandler = null;
+    }
+    
+    // Close WebSocket connections
+    if (klineWebSocket) {
+        klineWebSocket.close();
+        klineWebSocket = null;
+    }
+    
+    if (marketWebSocket) {
+        marketWebSocket.close();
+        marketWebSocket = null;
+    }
+    
+    // Reset reconnect attempts
+    reconnectAttempts = 0;
+    tickerReconnectAttempts = 0;
+    
+    console.log('[Market] Resources cleaned up');
+}
+
+// Register cleanup on page unload
+window.addEventListener('beforeunload', cleanupMarketResources);
+
+// Also cleanup on visibility change when leaving the page
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+        // Optional: cleanup when tab becomes hidden
+        // cleanupMarketResources();
+    }
+});
