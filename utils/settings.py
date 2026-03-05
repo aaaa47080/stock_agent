@@ -47,6 +47,9 @@ class Settings:
     # 風險管理
     MAX_REPLANS: int = 10                # 風險管理回饋的最大重規劃次數（原本是1）
 
+    # Tool 配置
+    TOOL_MAX_RESULT_LENGTH: int = 8000  # 工具結果最大長度（字符）
+
     # LLM 緩存
     ENABLE_LLM_CACHE: bool = True       # 是否啟用 LLM 緩存
     LLM_CACHE_TTL: int = 3600           # 緩存有效期（秒），1小時
