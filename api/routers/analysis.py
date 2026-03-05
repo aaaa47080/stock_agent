@@ -157,6 +157,7 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
         config  = {"configurable": {"thread_id": body.session_id}}
 
         # resume_answer → 繼續被 interrupt 暫停的 graph
+        graph_input: Command  # Type annotation for mypy
         if body.resume_answer is not None:
             logger.info(f"[V4] HITL resume: session={body.session_id}")
             graph_input = Command(resume=body.resume_answer)
@@ -267,13 +268,6 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
                         None, partial(save_chat_message, "assistant", response,
                                       session_id=body.session_id, user_id=current_user.get("user_id"))
                     )
-                    
-                    # Stream codebook ID if available (for feedback)
-                    if result.get("codebook_entry_id"):
-                        logger.debug(f"event_generator_v4: Streaming codebook_id={result.get('codebook_entry_id')}")
-                        yield f"data: {json.dumps({'type': 'meta', 'codebook_id': result['codebook_entry_id']})}\n\n"
-                    else:
-                        logger.debug(f"event_generator_v4: No codebook_id in result. Keys: {result.keys()}")
 
                     yield f"data: {json.dumps({'done': True})}\n\n"
 
@@ -352,43 +346,4 @@ async def run_backtest_api(request: BacktestRequest):
         raise
     except Exception as e:
         logger.error(f"回測執行失敗: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
-
-class FeedbackRequest(QueryRequest.__base__):
-    codebook_entry_id: str
-    score: int  # 1 (like) or -1 (dislike)
-
-@router.post("/api/chat/feedback", dependencies=[Depends(get_current_user)])
-async def submit_feedback_endpoint(request: FeedbackRequest):
-    """
-    提交對分析結果的隱式反饋 (Thumbs Up/Down)。
-    更新 Codebook 中對應條目的分數。
-    """
-    try:
-        from core.agents.codebook import Codebook
-        
-        # Instantiate Codebook (it handles its own persistence)
-        codebook = Codebook()
-        
-        # Update score
-        # Note: Codebook.update_score method needs to exist or we use _cache/persist
-        # Let's check available methods in Codebook later, assuming we need to implement it or use internal
-        # For now, let's implement a direct update logic if method doesn't exist, or just log it
-        
-        # Actually, let's just log it for now if we didn't add update_score to Codebook, 
-        # but the plan said "Implicit Feedback (Codebook)". 
-        # I should check Codebook class. 
-        # But to be safe, I will implement a safe update.
-        
-        if request.score > 0:
-            logger.info(f"👍 User liked entry {request.codebook_entry_id}")
-            # codebook.upvote(request.codebook_entry_id) # Hypothetical
-        else:
-            logger.info(f"👎 User disliked entry {request.codebook_entry_id}")
-            # codebook.downvote(request.codebook_entry_id) # Hypothetical
-
-        return {"status": "success", "message": "Feedback received"}
-
-    except Exception as e:
-        logger.error(f"Feedback error: {e}")
         raise HTTPException(status_code=500, detail=str(e))

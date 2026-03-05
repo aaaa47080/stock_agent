@@ -47,12 +47,10 @@ def _make_manager():
     agent_registry.list_all.return_value = []
     tool_registry = MagicMock()
     tool_registry.list_all_tools.return_value = []
-    codebook = MagicMock()
     return ManagerAgent(
         llm_client=llm,
         agent_registry=agent_registry,
         tool_registry=tool_registry,
-        codebook=codebook,
     )
 
 

@@ -1671,7 +1671,12 @@ const ForumApp = {
             usernameEl.textContent = user.username || user.pi_username || 'User';
         }
         if (avatarEl && user.username) {
-            avatarEl.innerHTML = `<span class="text-primary font-bold">${user.username[0].toUpperCase()}</span>`;
+            // XSS Fix: 使用 textContent 替代 innerHTML
+            const span = document.createElement('span');
+            span.className = 'text-primary font-bold';
+            span.textContent = user.username[0].toUpperCase();
+            avatarEl.innerHTML = '';
+            avatarEl.appendChild(span);
         }
 
         const loaders = [

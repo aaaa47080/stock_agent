@@ -41,14 +41,10 @@ def _make_manager_agent(mock_llm):
     tool_registry.list_all_tools.return_value = []
     tool_registry.get.return_value = None
 
-    codebook = MagicMock()
-    codebook.find_similar_entries.return_value = []
-
     return ManagerAgent(
         llm_client=mock_llm,
         agent_registry=agent_registry,
         tool_registry=tool_registry,
-        codebook=codebook,
         web_mode=True,
     )
 

@@ -137,7 +137,7 @@ const NotificationService = {
             const { userId, token } = this._getCredentials();
 
             if (!userId || !token) {
-                console.log('[NotificationService] No credentials, empty notifications');
+                if (window.DEBUG_MODE) console.log('[NotificationService] No credentials, empty notifications');
                 this.notifications = [];
                 this.unreadCount = 0;
                 this.notifyUpdate();
@@ -290,7 +290,7 @@ const NotificationService = {
         const { userId, token } = this._getCredentials();
 
         if (!userId || !token) {
-            console.log('[NotificationService] No credentials for WebSocket');
+            if (window.DEBUG_MODE) console.log('[NotificationService] No credentials for WebSocket');
             return;
         }
 

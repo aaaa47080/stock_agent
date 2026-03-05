@@ -74,7 +74,7 @@ class LanguageAwareLLM:
 
 
 def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
-              user_tier: str = "free", user_id: str = None) -> ManagerAgent:
+              user_tier: str = "free", user_id: Optional[str] = None) -> ManagerAgent:
     PromptRegistry.load()
     agent_registry = AgentRegistry()
     tool_registry  = ToolRegistry()

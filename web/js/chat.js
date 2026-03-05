@@ -12,6 +12,9 @@ window.lastProcessOpenState = false;
 let isEditMode = false;
 let selectedSessions = new Set();
 
+// HITL (Human-in-the-Loop) 上下文 - 必須在頂部聲明以避免暫時性死區
+let _hitlContext = null;
+
 // ========================================
 // MessageComponents - 結構化消息卡片組件
 // ========================================
@@ -621,7 +624,7 @@ async function deleteSelectedSessions(btnElement) {
     if (selectedSessions.size === 0) return;
 
     const count = selectedSessions.size;
-    const confirmed = await showConfirmDialog({
+    const confirmed = await showConfirm({
         title: '批量刪除',
         message: `確定要刪除 ${count} 個對話嗎？此操作無法復原。`,
         confirmText: '刪除',
@@ -806,7 +809,7 @@ async function deleteSession(event, sessionId) {
     event.stopPropagation();
     const btnElement = event.currentTarget;
 
-    const confirmed = await showConfirmDialog({
+    const confirmed = await showConfirm({
         title: '刪除對話',
         message: '確定要刪除這個對話嗎？此操作無法復原。',
         confirmText: '刪除',
@@ -868,7 +871,6 @@ async function deleteSession(event, sessionId) {
 
 // ── HITL Web Mode ─────────────────────────────────────────────────────────────
 // Stores context needed to resume the graph after user answers a HITL question
-let _hitlContext = null;
 
 function showHITLModal(interruptData) {
     const modal = document.getElementById('hitl-modal');
@@ -915,20 +917,26 @@ function renderPreResearchCard(idata, targetDiv) {
         if (container) {
             const qaDiv = document.createElement('div');
             qaDiv.className = 'message-bubble bot-bubble prose';
-            const qHtml = window.md ? window.md.renderInline(idata.qa_question) : idata.qa_question;
-            const aHtml = window.md ? window.md.render(idata.qa_answer) : idata.qa_answer;
+            // XSS Fix: 使用 SecurityUtils 清理 HTML
+            const qRaw = window.md ? window.md.renderInline(idata.qa_question) : idata.qa_question;
+            const aRaw = window.md ? window.md.render(idata.qa_answer) : idata.qa_answer;
+            const qHtml = window.SecurityUtils ? window.SecurityUtils.sanitizeHTML(qRaw) : qRaw;
+            const aHtml = window.SecurityUtils ? window.SecurityUtils.sanitizeHTML(aRaw) : aRaw;
             qaDiv.innerHTML = `<p class="text-xs text-textMuted/60 mb-1">💬 ${qHtml}</p>${aHtml}`;
             container.appendChild(qaDiv);
             container.scrollTop = container.scrollHeight;
         }
     }
 
-    const summaryHtml = summary && window.md
+    // XSS Fix: 使用 SecurityUtils 清理 HTML
+    const summaryRaw = summary && window.md
         ? window.md.render(summary)
         : (summary ? summary.replace(/\n/g, '<br>') : '');
-    const messageHtml = window.md
+    const summaryHtml = window.SecurityUtils ? window.SecurityUtils.sanitizeHTML(summaryRaw) : summaryRaw;
+    const messageRaw = window.md
         ? window.md.renderInline(message)
         : message;
+    const messageHtml = window.SecurityUtils ? window.SecurityUtils.sanitizeHTML(messageRaw) : messageRaw;
 
     // Use a compact card if no summary is provided (e.g., follow-up Q&A)
     if (!summary) {
@@ -1354,7 +1362,9 @@ window.submitHITLAnswer = async function (answer) {
         console.error('[HITL resume error]', err);
         if (ctx.botMsgDiv) {
             // Fix [object Object] by properly stringifying error detail if it's an object
-            const errorMsg = typeof err.message === 'object' ? JSON.stringify(err.message) : (err.message || String(err));
+            // XSS Fix: 使用 escapeHtml 转义错误消息
+            const rawError = typeof err.message === 'object' ? JSON.stringify(err.message) : (err.message || String(err));
+            const errorMsg = escapeHtml(rawError);
             ctx.botMsgDiv.innerHTML = `<span class="text-red-400">恢復分析失敗：${errorMsg}</span>`;
         }
         isAnalyzing = false;
@@ -1457,7 +1467,7 @@ async function sendMessage() {
     // sendBtn.disabled = true; // Don't disable, we need it for Stop
 
     // 檢查用戶是否有設置 API key（從 localStorage）
-    const userKey = window.APIKeyManager?.getCurrentKey();
+    const userKey = await window.APIKeyManager?.getCurrentKey();
 
     if (!userKey) {
         resetChatUI(); // Helper to reset UI state
@@ -2250,87 +2260,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, 100);
 });
-
-// ========================================
-// 自訂確認對話框
-// ========================================
-
-/**
- * 顯示自訂確認對話框
- * @param {Object} options - 配置選項
- * @param {string} options.title - 標題
- * @param {string} options.message - 訊息內容
- * @param {string} options.confirmText - 確認按鈕文字 (預設: "確認")
- * @param {string} options.cancelText - 取消按鈕文字 (預設: "取消")
- * @param {string} options.type - 類型: "danger" | "warning" | "info" (預設: "danger")
- * @returns {Promise<boolean>} - 用戶確認返回 true，取消返回 false
- */
-function showConfirmDialog(options = {}) {
-    return new Promise((resolve) => {
-        const modal = document.getElementById('confirm-modal');
-        const iconContainer = document.getElementById('confirm-modal-icon');
-        const title = document.getElementById('confirm-modal-title');
-        const message = document.getElementById('confirm-modal-message');
-        const confirmBtn = document.getElementById('confirm-modal-confirm');
-        const cancelBtn = document.getElementById('confirm-modal-cancel');
-
-        // 設置內容
-        title.textContent = options.title || '確認操作';
-        message.textContent = options.message || '確定要執行此操作嗎？';
-        confirmBtn.textContent = options.confirmText || '確認';
-        cancelBtn.textContent = options.cancelText || '取消';
-
-        // 設置圖示和顏色
-        const type = options.type || 'danger';
-        const iconConfig = {
-            danger: { icon: 'trash-2', bgClass: 'bg-danger/10', textClass: 'text-danger', btnClass: 'bg-danger' },
-            warning: { icon: 'alert-triangle', bgClass: 'bg-yellow-500/10', textClass: 'text-yellow-500', btnClass: 'bg-yellow-500' },
-            info: { icon: 'info', bgClass: 'bg-primary/10', textClass: 'text-primary', btnClass: 'bg-primary' }
-        };
-        const config = iconConfig[type] || iconConfig.danger;
-
-        // 更新圖示容器
-        iconContainer.className = `w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 ${config.bgClass}`;
-        iconContainer.innerHTML = `<i data-lucide="${config.icon}" class="w-8 h-8 ${config.textClass}"></i>`;
-
-        // 更新確認按鈕顏色
-        confirmBtn.className = `flex-1 py-3 ${config.btnClass} hover:brightness-110 text-white font-bold rounded-2xl transition shadow-lg`;
-
-        // 重新渲染圖示
-        lucide.createIcons();
-
-        // 顯示 modal
-        modal.classList.remove('hidden');
-
-        // 清除之前的事件監聽器
-        const newConfirmBtn = confirmBtn.cloneNode(true);
-        const newCancelBtn = cancelBtn.cloneNode(true);
-        confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-        cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
-
-        // 綁定事件
-        newConfirmBtn.addEventListener('click', () => {
-            modal.classList.add('hidden');
-            resolve(true);
-        });
-
-        newCancelBtn.addEventListener('click', () => {
-            modal.classList.add('hidden');
-            resolve(false);
-        });
-
-        // 點擊背景關閉
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                modal.classList.add('hidden');
-                resolve(false);
-            }
-        }, { once: true });
-    });
-}
-
-// 暴露到全局
-window.showConfirmDialog = showConfirmDialog;
 
 window.submitFeedback = async function (codebookId, score, btn) {
     if (!codebookId) return;

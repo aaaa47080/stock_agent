@@ -8,7 +8,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from core.agents.manager import ManagerAgent, ManagerState
 from core.agents.agent_registry import AgentRegistry
 from core.agents.tool_registry import ToolRegistry
-from core.agents.codebook import Codebook
 from langchain_core.messages import AIMessage
 
 # Mock LLM
@@ -66,17 +65,9 @@ async def main():
     llm = MockLLM()
     agent_registry = MockAgentRegistry()
     tool_registry = MockToolRegistry()
-    
-    # Mock Codebook to avoid DB dependency
-    class MockCodebook:
-        def find_similar_entries(self, *args, **kwargs): return []
-        def _persist_entry(self, *args, **kwargs): pass
-        def _update_index(self, *args, **kwargs): pass
-        def _cache(self): return {}
-    codebook = MockCodebook()
-    
+
     # Patch Router
-    manager = ManagerAgent(llm, agent_registry, tool_registry, codebook)
+    manager = ManagerAgent(llm, agent_registry, tool_registry)
     manager.router = MockRouter()
     
     # Test Async Invoke

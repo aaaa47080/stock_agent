@@ -4,12 +4,12 @@
 ⭐ 重要：完全使用用戶提供的 key，不從 .env 讀取
 """
 
-from typing import Any
+from typing import Any, Optional
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage
 from core.model_config import OPENAI_DEFAULT_MODEL, GEMINI_DEFAULT_MODEL
 
-def create_user_llm_client(provider: str, api_key: str, model: str = None) -> Any:
+def create_user_llm_client(provider: str, api_key: str, model: Optional[str] = None) -> Any:
     """
     根據用戶提供的 key 創建 LLM 客戶端 (LangChain BaseChatModel)
 

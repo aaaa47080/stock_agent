@@ -257,6 +257,15 @@ class ManagerAgent:
 
         replan_request = bool(data.get("replan_request", False))
 
+        # ── Handle discuss_mode ──
+        # When replan_request=True, clear discuss_mode to exit discussion and start fresh planning
+        # When replan_request=False and discuss_mode=True, preserve discuss_mode for routing
+        current_discuss_mode = state.get("discuss_mode", False)
+        if replan_request:
+            discuss_mode = False  # Exit discussion mode when user wants to replan
+        else:
+            discuss_mode = current_discuss_mode  # Preserve discuss_mode otherwise
+
         # ── Fallback: Force complex for investment queries just in case LLM classify fails ──
         invest_keywords = ["投資", "買進", "進場", "分析", "值得買", "買"]
         if complexity == "simple" and any(k in query for k in invest_keywords) and data.get("topics"):
@@ -273,6 +282,7 @@ class ManagerAgent:
             "topics":                     data.get("topics", []),
             "ambiguity_question":         data.get("ambiguity_question"),
             "replan_request":             replan_request,
+            "discuss_mode":               discuss_mode,
             "reroute_classify":           False,  # clear flag to prevent loop
             # Reset reflection state for each new query to prevent leakage
             "plan_reflection_count":      0,
@@ -1076,6 +1086,9 @@ class ManagerAgent:
     def _after_classify(self, state: ManagerState) -> str:
         if state.get("plan_confirmed"):
             return "plan"   # Multi-market: skip pre_research, plan node will no-op
+        # When in discuss_mode without replan_request, route to discuss node for Q&A
+        if state.get("discuss_mode") and not state.get("replan_request"):
+            return "discuss"
         if state.get("complexity") == "ambiguous":
             return "clarify"
         elif state.get("complexity") == "complex" and state.get("intent") == "crypto":

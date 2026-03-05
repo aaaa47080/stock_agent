@@ -137,7 +137,7 @@ def interactive(manager, debug: bool):
         elif query == "/help":
             print(
                 "  /exit /quit    — 退出\n"
-                "  /status        — Agent / Tool / Codebook 狀態\n"
+                "  /status        — Agent / Tool 狀態\n"
                 "  /new           — 開啟新 session\n"
                 "  /session       — 顯示 session_id\n"
                 "  /debug on|off  — 切換 debug 模式"
@@ -146,7 +146,6 @@ def interactive(manager, debug: bool):
             s = manager.get_status()
             print(f"  agents  : {s['agents']}")
             print(f"  tools   : {s['tools']}")
-            print(f"  codebook: {s['codebook']}")
         elif query == "/new":
             session_id = str(uuid4())
             print(f"  新 session: {session_id[:8]}...")

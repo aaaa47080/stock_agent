@@ -106,7 +106,7 @@ def delete_session(session_id: str):
 # ============================================================================
 
 def save_chat_message(role: str, content: str, session_id: str = "default",
-                      user_id: str = "local_user", metadata: Optional[Dict] = None):
+                      user_id: Optional[str] = "local_user", metadata: Optional[Dict] = None):
     """保存對話訊息，並自動更新 session 的 updated_at 和標題"""
     conn = get_connection()
     c = conn.cursor()
@@ -154,7 +154,7 @@ def save_chat_message(role: str, content: str, session_id: str = "default",
 def get_chat_history(
     session_id: str = "default",
     limit: int = 20,
-    before_timestamp: str = None,
+    before_timestamp: Optional[str] = None,
 ) -> List[Dict]:
     """獲取對話歷史（最新 limit 條，ASC 排序）。
 

@@ -160,10 +160,10 @@ async function refreshMarketPulse() {
         const targets = (window.globalSelectedSymbols && window.globalSelectedSymbols.length > 0)
             ? window.globalSelectedSymbols
             : ['BTC', 'ETH', 'SOL', 'PI'];
-        const userKey = window.APIKeyManager?.getCurrentKey();
+        const userKey = await window.APIKeyManager?.getCurrentKey();
 
         if (userKey) {
-            console.log("[Pulse] Using User Key for Deep Refresh...");
+            if (window.DEBUG_MODE) console.log("[Pulse] Using User Key for Deep Refresh...");
             // Create loading placeholders first so triggerDeepAnalysis has cards to update
             await loadPulseData(true);
             await Promise.allSettled(targets.map(symbol => triggerDeepAnalysis(symbol)));
@@ -212,7 +212,7 @@ async function fetchPulseForSymbol(symbol, forceRefresh = false, deepAnalysis = 
 
         const headers = {};
         if (deepAnalysis) {
-            const userKey = window.APIKeyManager?.getCurrentKey();
+            const userKey = await window.APIKeyManager?.getCurrentKey();
             if (userKey) {
                 headers['X-User-LLM-Key'] = userKey.key;
                 headers['X-User-LLM-Provider'] = userKey.provider;
@@ -453,7 +453,7 @@ function renderErrorCard(card, symbol, errorMsg) {
  * 深度分析
  */
 async function triggerDeepAnalysis(symbol) {
-    const userKey = window.APIKeyManager?.getCurrentKey();
+    const userKey = await window.APIKeyManager?.getCurrentKey();
 
     if (!userKey) {
         const t = window.I18n ? window.I18n.t.bind(window.I18n) : (k) => k;

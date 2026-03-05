@@ -3,23 +3,21 @@
 // Bring Your Own Keys - 前端安全管理
 // ========================================
 //
-// ⚠️ 安全警告 / SECURITY WARNING ⚠️
+// 🔐 安全改進 / SECURITY IMPROVEMENT
 // =====================================
-// 本模組使用 Base64 編碼存儲 OKX API 憑證，這不是真正的加密！
-// Base64 編碼可以被輕易解碼（使用 atob() 函數）。
+// 本模組使用 Web Crypto API (AES-GCM) 進行真正的加密存儲。
+// 加密密鑰從用戶會話令牌派生，只有在登入狀態下才能解密。
 //
-// 風險：
-// - 任何能存取瀏覽器 localStorage 的人都可以取得您的 API 憑證
-// - XSS 攻擊可以竊取完整的 OKX 交易權限
-// - 惡意瀏覽器擴展可以讀取這些憑證
+// 仍然存在的風險：
+// - 在用戶登入期間，XSS 攻擊仍可能獲取解密後的憑證
+// - 惡意瀏覽器擴展仍可能在運行時讀取憑證
 //
 // 建議：
-// - 只在您信任的設備上使用此功能
 // - 為您的 OKX API Key 設置 IP 白名單限制
 // - 定期輪換 API Key
 // - 使用只讀權限的 API Key（如果不需要交易功能）
 //
-// 未來改進：應該使用後端代理來處理 OKX API 請求
+// 最佳方案：使用後端代理來處理 OKX API 請求
 // ========================================
 
 class OKXKeyManager {
@@ -28,38 +26,142 @@ class OKXKeyManager {
     }
 
     /**
-     * 保存 OKX API 金鑰到 localStorage
-     * ⚠️ 警告：Base64 編碼不是加密，憑證可被輕易解碼
+     * 從用戶會話獲取加密密鑰
+     * @returns {Promise<CryptoKey|null>}
+     */
+    async _getEncryptionKey() {
+        try {
+            // 從 AuthManager 獲取用戶令牌作為密鑰源
+            const user = window.AuthManager?.currentUser;
+            if (!user || !user.accessToken) {
+                console.warn('[OKXKeyManager] 未登入，無法獲取加密密鑰');
+                return null;
+            }
+
+            // 使用 PBKDF2 從令牌派生密鑰
+            const encoder = new TextEncoder();
+            const keyMaterial = await crypto.subtle.importKey(
+                'raw',
+                encoder.encode(user.accessToken),
+                'PBKDF2',
+                false,
+                ['deriveKey']
+            );
+
+            // 派生 AES-GCM 密鑰
+            const salt = encoder.encode('okx-key-encryption-salt');
+            const key = await crypto.subtle.deriveKey(
+                {
+                    name: 'PBKDF2',
+                    salt: salt,
+                    iterations: 100000,
+                    hash: 'SHA-256'
+                },
+                keyMaterial,
+                { name: 'AES-GCM', length: 256 },
+                false,
+                ['encrypt', 'decrypt']
+            );
+
+            return key;
+        } catch (e) {
+            console.error('[OKXKeyManager] 獲取加密密鑰失敗', e);
+            return null;
+        }
+    }
+
+    /**
+     * 加密數據
+     * @param {string} data - 要加密的數據
+     * @returns {Promise<string|null>} - Base64 編碼的加密數據
+     */
+    async _encrypt(data) {
+        try {
+            const key = await this._getEncryptionKey();
+            if (!key) return null;
+
+            const encoder = new TextEncoder();
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const encrypted = await crypto.subtle.encrypt(
+                { name: 'AES-GCM', iv: iv },
+                key,
+                encoder.encode(data)
+            );
+
+            // 合併 IV 和加密數據
+            const combined = new Uint8Array(iv.length + encrypted.byteLength);
+            combined.set(iv);
+            combined.set(new Uint8Array(encrypted), iv.length);
+
+            return btoa(String.fromCharCode(...combined));
+        } catch (e) {
+            console.error('[OKXKeyManager] 加密失敗', e);
+            return null;
+        }
+    }
+
+    /**
+     * 解密數據
+     * @param {string} encryptedData - Base64 編碼的加密數據
+     * @returns {Promise<string|null>} - 解密後的數據
+     */
+    async _decrypt(encryptedData) {
+        try {
+            const key = await this._getEncryptionKey();
+            if (!key) return null;
+
+            const combined = Uint8Array.from(atob(encryptedData), c => c.charCodeAt(0));
+            const iv = combined.slice(0, 12);
+            const data = combined.slice(12);
+
+            const decrypted = await crypto.subtle.decrypt(
+                { name: 'AES-GCM', iv: iv },
+                key,
+                data
+            );
+
+            return new TextDecoder().decode(decrypted);
+        } catch (e) {
+            console.error('[OKXKeyManager] 解密失敗', e);
+            return null;
+        }
+    }
+
+    /**
+     * 保存 OKX API 金鑰到 localStorage（加密存儲）
      * @param {Object} credentials - {api_key, secret_key, passphrase}
      */
-    saveCredentials(credentials) {
+    async saveCredentials(credentials) {
         if (!credentials.api_key || !credentials.secret_key || !credentials.passphrase) {
             throw new Error('所有 OKX API 憑證欄位都是必填的');
         }
 
-        // ⚠️ 安全警告：Base64 不是加密！
-        // 這只是混淆，任何人都可以使用 atob() 解碼
-        // 強烈建議為 API Key 設置 IP 白名單和權限限制
-        const encoded = btoa(JSON.stringify(credentials));
-        localStorage.setItem(this.STORAGE_KEY, encoded);
+        const encrypted = await this._encrypt(JSON.stringify(credentials));
+        if (!encrypted) {
+            throw new Error('無法加密憑證，請確保已登入');
+        }
 
-        console.warn('[OKXKeyManager] ⚠️ 憑證已存儲（Base64 編碼，非加密）。請確保您的 API Key 已設置適當的權限限制。');
+        localStorage.setItem(this.STORAGE_KEY, encrypted);
+        console.log('[OKXKeyManager] 🔐 憑證已安全加密存儲');
     }
 
     /**
-     * 從 localStorage 讀取 OKX API 金鑰
-     * @returns {Object|null} - {api_key, secret_key, passphrase} 或 null
+     * 從 localStorage 讀取 OKX API 金鑰（自動解密）
+     * @returns {Promise<Object|null>} - {api_key, secret_key, passphrase} 或 null
      */
-    getCredentials() {
-        const encoded = localStorage.getItem(this.STORAGE_KEY);
-        if (!encoded) {
+    async getCredentials() {
+        const encrypted = localStorage.getItem(this.STORAGE_KEY);
+        if (!encrypted) {
             return null;
         }
 
         try {
-            // 注意：Base64 可以被任何人解碼
-            const decoded = atob(encoded);
-            return JSON.parse(decoded);
+            const decrypted = await this._decrypt(encrypted);
+            if (!decrypted) {
+                console.warn('[OKXKeyManager] 無法解密憑證，可能需要重新登入');
+                return null;
+            }
+            return JSON.parse(decrypted);
         } catch (e) {
             console.error('[OKXKeyManager] 讀取憑證失敗', e);
             return null;
@@ -71,7 +173,7 @@ class OKXKeyManager {
      * @returns {boolean}
      */
     hasCredentials() {
-        return !!this.getCredentials();
+        return !!localStorage.getItem(this.STORAGE_KEY);
     }
 
     /**
@@ -79,15 +181,15 @@ class OKXKeyManager {
      */
     clearCredentials() {
         localStorage.removeItem(this.STORAGE_KEY);
-        console.log('[OKXKeyManager] OKX 憑證已清除');
+        if (window.DEBUG_MODE) console.log('[OKXKeyManager] OKX 憑證已清除');
     }
 
     /**
-     * 獲取 API 請求頭（包含憑證）
-     * @returns {Object} - 包含 OKX 憑證的 headers
+     * 獲取 API 請求頭（包含憑證）- 異步版本
+     * @returns {Promise<Object>} - 包含 OKX 憑證的 headers
      */
-    getAuthHeaders() {
-        const credentials = this.getCredentials();
+    async getAuthHeaders() {
+        const credentials = await this.getCredentials();
         if (!credentials) {
             return {};
         }
@@ -141,28 +243,43 @@ class OKXKeyManager {
     }
 
     /**
-     * 獲取憑證狀態顯示信息
-     * @returns {Object} - {hasKey: boolean, maskedKey: string}
+     * 獲取憑證狀態顯示信息 - 異步版本
+     * @returns {Promise<Object>} - {hasKey: boolean, maskedKey: string}
      */
-    getStatus() {
-        const credentials = this.getCredentials();
-        if (!credentials) {
+    async getStatus() {
+        if (!this.hasCredentials()) {
             return {
                 hasKey: false,
                 maskedKey: ''
             };
         }
 
-        // 顯示前 4 位和後 4 位，中間用 * 遮蔽
-        const maskKey = (key) => {
-            if (!key || key.length < 8) return '****';
-            return key.substring(0, 4) + '****' + key.substring(key.length - 4);
-        };
+        try {
+            const credentials = await this.getCredentials();
+            if (!credentials) {
+                return {
+                    hasKey: false,
+                    maskedKey: ''
+                };
+            }
 
-        return {
-            hasKey: true,
-            maskedKey: maskKey(credentials.api_key)
-        };
+            // 顯示前 4 位和後 4 位，中間用 * 遮蔽
+            const maskKey = (key) => {
+                if (!key || key.length < 8) return '****';
+                return key.substring(0, 4) + '****' + key.substring(key.length - 4);
+            };
+
+            return {
+                hasKey: true,
+                maskedKey: maskKey(credentials.api_key)
+            };
+        } catch (e) {
+            console.error('[OKXKeyManager] 獲取狀態失敗', e);
+            return {
+                hasKey: false,
+                maskedKey: ''
+            };
+        }
     }
 }
 
@@ -238,4 +355,4 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(updateOKXStatusUI, 100);
 });
 
-console.log('[OKXKeyManager] OKX API 金鑰管理器已初始化（BYOK 模式）');
+if (window.DEBUG_MODE) console.log('[OKXKeyManager] OKX API 金鑰管理器已初始化（BYOK 模式）');

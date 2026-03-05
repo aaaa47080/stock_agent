@@ -66,4 +66,3 @@ class ExecutionContext:
     user_clarifications: List[str] = field(default_factory=list)
     agent_results: List[AgentResult] = field(default_factory=list)
     retry_count: int = 0
-    codebook_entry_id: Optional[str] = None

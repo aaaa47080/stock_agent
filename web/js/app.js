@@ -328,17 +328,17 @@ window.showAlert = showAlert;
 // ========================================
 // API Key Status Check
 // ========================================
-function checkApiKeyStatus() {
-    console.log('[App] checkApiKeyStatus called');
+async function checkApiKeyStatus() {
+    if (window.DEBUG_MODE) console.log('[App] checkApiKeyStatus called');
 
     const indicator = document.getElementById('api-status-indicator');
     const statusText = document.getElementById('api-status-text');
     const statusDot = indicator ? indicator.querySelector('span') : null;
 
-    // Check LLM Key
-    const currentKey = window.APIKeyManager?.getCurrentKey();
+    // Check LLM Key (async)
+    const currentKey = await window.APIKeyManager?.getCurrentKey();
     const hasLlmKey = !!currentKey;
-    console.log('[App] hasLlmKey:', hasLlmKey, 'currentKey:', currentKey);
+    if (window.DEBUG_MODE) console.log('[App] hasLlmKey:', hasLlmKey);
 
     // Check OKX Key
     const hasOkxKey = window.OKXKeyManager?.hasCredentials();
@@ -364,14 +364,14 @@ function checkApiKeyStatus() {
 
     // 2. Control Chat Tab Overlay (LLM Key)
     const llmOverlay = document.getElementById('no-llm-key-warning');
-    console.log('[App] llmOverlay element:', !!llmOverlay, 'hasLlmKey:', hasLlmKey);
+    if (window.DEBUG_MODE) console.log('[App] llmOverlay element:', !!llmOverlay, 'hasLlmKey:', hasLlmKey);
     if (llmOverlay) {
         if (hasLlmKey) {
             llmOverlay.classList.add('hidden');
-            console.log('[App] Hiding LLM overlay (has key)');
+            if (window.DEBUG_MODE) console.log('[App] Hiding LLM overlay (has key)');
         } else {
             llmOverlay.classList.remove('hidden');
-            console.log('[App] Showing LLM overlay (no key)');
+            if (window.DEBUG_MODE) console.log('[App] Showing LLM overlay (no key)');
         }
     }
 
@@ -392,9 +392,9 @@ function checkApiKeyStatus() {
 // ========================================
 // 更新聊天 UI 狀態（根據 API key 是否存在）
 // ========================================
-function updateChatUIState(hasApiKey) {
+async function updateChatUIState(hasApiKey) {
     if (hasApiKey === undefined) {
-        hasApiKey = !!window.APIKeyManager?.getCurrentKey();
+        hasApiKey = !!(await window.APIKeyManager?.getCurrentKey());
     }
 
     // 1. 建議按鈕區域
@@ -436,9 +436,9 @@ function updateChatUIState(hasApiKey) {
 
 // 暴露到全局供 index.html 控制初始化順序
 window.initializeUIStatus = function () {
-    console.log('[App] initializeUIStatus called');
-    console.log('[App] APIKeyManager exists:', !!window.APIKeyManager);
-    console.log('[App] getCurrentKey:', window.APIKeyManager?.getCurrentKey());
+    if (window.DEBUG_MODE) console.log('[App] initializeUIStatus called');
+    if (window.DEBUG_MODE) console.log('[App] APIKeyManager exists:', !!window.APIKeyManager);
+    // Note: getCurrentKey() is async, so we can't check it synchronously in debug log
 
     // 只在初始化時檢查一次
     checkApiKeyStatus();
@@ -572,6 +572,32 @@ function onTabSwitch(tab) {
 
 // Make it globally accessible
 window.onTabSwitch = onTabSwitch;
+
+// ========================================
+// Memory Leak Fix: Cleanup on page unload
+// ========================================
+window.cleanupIntervals = function() {
+    // Clear market refresh interval
+    if (marketRefreshInterval) {
+        clearInterval(marketRefreshInterval);
+        marketRefreshInterval = null;
+    }
+    // Clear pulse interval
+    if (window.pulseInterval) {
+        clearInterval(window.pulseInterval);
+        window.pulseInterval = null;
+    }
+    // Clear assets interval
+    if (window.assetsInterval) {
+        clearInterval(window.assetsInterval);
+        window.assetsInterval = null;
+    }
+};
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+    window.cleanupIntervals();
+});
 
 // ========================================
 // Utility Functions

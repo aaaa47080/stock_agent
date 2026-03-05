@@ -9,7 +9,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.agents.manager import ManagerAgent
 from core.agents.models import ExecutionContext, SubTask, TaskComplexity
-from core.agents.hierarchical_memory import FileSystemCodebook, MemoryEntry
 
 # 50 Test Scenarios
 SCENARIOS = [
@@ -99,14 +98,12 @@ class TestAgentScenarios(unittest.TestCase):
         self.llm = MagicMock()
         self.agent_registry = MagicMock()
         self.tool_registry = MagicMock()
-        self.codebook = MagicMock() # Mock codebook to verify calls
 
         # Setup Manager
         self.manager = ManagerAgent(
             llm_client=self.llm,
             agent_registry=self.agent_registry,
             tool_registry=self.tool_registry,
-            codebook=self.codebook
         )
 
     @pytest.mark.skip(reason="_classify removed; test needs rework for new graph-based API")
