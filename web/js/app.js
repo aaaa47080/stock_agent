@@ -489,7 +489,6 @@ if (typeof window.currentPulseData === 'undefined') {
 }
 
 // Trade Proposal
-let currentProposal = null;
 
 // Analysis Abort Controller
 window.currentAnalysisController = null;
