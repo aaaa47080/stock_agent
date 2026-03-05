@@ -66,6 +66,7 @@
     "technical": "技術面",
     "news": "新聞",
     "systemLocked": "系統鎖定 - 請先設定 API 金鑰",
+    "placeholderReady": "發送指令給 AI Agent...",
     "connecting": "連接中..."
   },
   "crypto": {

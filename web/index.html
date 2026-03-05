@@ -69,7 +69,7 @@
     </script>
     <script src="https://unpkg.com/lucide@0.452.0/dist/umd/lucide.min.js" integrity="sha384-LSySZmn0vvhTQgRk/a4hpHC8UqzwD4/KwvbBryuft3BxzKIjaCd099VvkzXYA9dC" crossorigin="anonymous"></script>
     <script src="/static/js/vendor/markdown-it.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/i18next@23.7.6/i18next.min.js" integrity="sha384-XA8CVHq/bhLKlJPiPXM8T6frO0gQxNPug4VGepuN3O45hRlkrJcLmMi8Q6YQx8VG" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/i18next@23.7.6/i18next.min.js" crossorigin="anonymous"></script>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
     <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js" integrity="sha384-rcCMiCptH4kTlEbg0euOTUKWe72TESbrjElatnG+9BfbmUIV268UK/Pro5biJdGm" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" integrity="sha384-9nhczxUqK87bcKHh20fSQcTGD4qq5GhayNYSYWqwBkINBhOfQLg/P5HG5lF1urn4" crossorigin="anonymous"></script>
@@ -367,8 +367,8 @@
                             <label for="user-input" class="sr-only">輸入訊息</label>
                             <input type="text" id="user-input" disabled aria-label="輸入訊息"
                                 class="flex-1 bg-transparent border-none outline-none text-base text-secondary placeholder-textMuted/50 px-2 font-light relative z-10 opacity-50 cursor-not-allowed"
-                                placeholder="System Locked - Please Configure API Key" data-i18n="chat.systemLocked"
-                                data-i18n-attr="placeholder" autocomplete="off"
+                                placeholder="Send a command to AI Agent..."
+                                autocomplete="off"
                                 onkeypress="if(event.key === 'Enter') sendMessage()">
                             <button onclick="sendMessage()" id="send-btn" disabled aria-label="發送訊息"
                                 class="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-accent text-background flex items-center justify-center hover:scale-105 active:scale-95 transition shadow-lg shadow-primary/20 opacity-50 cursor-not-allowed">

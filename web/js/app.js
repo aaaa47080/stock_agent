@@ -422,7 +422,9 @@ async function updateChatUIState(hasApiKey) {
 
     if (userInput) {
         userInput.disabled = !hasApiKey;
-        userInput.placeholder = hasApiKey ? 'Send a command to AI Agent...' : 'System Locked - Please Configure API Key';
+        userInput.placeholder = hasApiKey 
+            ? (window.I18n?.t('chat.placeholderReady') || 'Send a command to AI Agent...') 
+            : (window.I18n?.t('chat.systemLocked') || 'System Locked - Please Configure API Key');
         userInput.classList.toggle('opacity-50', !hasApiKey);
         userInput.classList.toggle('cursor-not-allowed', !hasApiKey);
     }

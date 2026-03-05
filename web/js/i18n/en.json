@@ -66,6 +66,7 @@
     "technical": "Technical",
     "news": "News",
     "systemLocked": "System Locked - Please Configure API Key",
+    "placeholderReady": "Send a command to AI Agent...",
     "connecting": "Connecting..."
   },
   "crypto": {
