@@ -49,3 +49,6 @@ Thumbs.db
 key.txt
 admin.txt
 payment_test.txt
+
+pw_test/
+.selenium_screenshot.py
