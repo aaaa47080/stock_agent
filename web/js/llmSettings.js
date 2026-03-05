@@ -506,7 +506,18 @@ function updateProviderDropdownStatus() {
 /**
  * 页面加载时初始化
  */
-window.addEventListener('DOMContentLoaded', async () => {
+window.addEventListener('DOMContentLoaded', () => {
+    // 使用獨立的初始化函數處理異步邏輯，確保錯誤不會靜默失敗
+    initializeLLMSettings().catch(error => {
+        console.error('LLM Settings initialization failed:', error);
+        showLLMKeyStatus('error', '初始化失敗，請重新整理頁面');
+    });
+});
+
+/**
+ * 異步初始化 LLM 設定
+ */
+async function initializeLLMSettings() {
     // 1. 初始化 Provider 下拉選單狀態 (顯示 ✅)
     updateProviderDropdownStatus();
 
@@ -544,8 +555,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     // 這樣即使默認選中 OpenAI 且有 Key，也會正確顯示 placeholder
     updateLLMKeyInput();
 
-    // 4. 更新可用模型列表
-    await updateAvailableModels();
+    // 4. 更新可用模型列表（包含錯誤處理）
+    try {
+        await updateAvailableModels();
+    } catch (error) {
+        console.error('Failed to update available models:', error);
+        // 繼續初始化流程，即使模型列表更新失敗
+    }
 
     // 5. 再次確保模型被選中 (因為 updateAvailableModels 會重置選項)
     if (providerSelect && providerSelect.dataset.savedModel) {
@@ -574,9 +590,15 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     // 添加事件監聽器以在選擇改變時更新按鈕狀態
     if (providerSelect) {
-        providerSelect.addEventListener('change', function () {
+        providerSelect.addEventListener('change', async function () {
             updateLLMKeyInput(); // 確保切換時更新 placeholder
-            const currentKeyObj = window.APIKeyManager.getCurrentKey();
+
+            // 切換 provider 時更新可用模型列表
+            try {
+                await updateAvailableModels();
+            } catch (error) {
+                console.error('Failed to update models on provider change:', error);
+            }
 
             // 如果切換到的 provider 已有保存的 key
             const existingKey = window.APIKeyManager.getKey(this.value);
@@ -622,7 +644,7 @@ window.addEventListener('DOMContentLoaded', async () => {
             }
         });
     }
-});
+}
 
 // Expose functions globally
 window.updateLLMKeyInput = updateLLMKeyInput;

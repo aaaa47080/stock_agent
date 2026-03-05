@@ -3,8 +3,33 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://sdk.minepi.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https: wss:; frame-ancestors 'none'; base-uri 'self'; form-action 'self';">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Crypto Analyst</title>
+
+    <!-- SEO Meta Tags -->
+    <title>CryptoMind - AI Crypto Analyst | 智能加密貨幣分析平台</title>
+    <meta name="description" content="CryptoMind 是一個 AI 驅動的加密貨幣分析平台，提供實時市場分析、智能交易建議和深度研究報告。支援 Bitcoin、Ethereum、Pi Network 等主流加密貨幣。">
+    <meta name="keywords" content="加密貨幣, AI分析, 比特幣, Bitcoin, Ethereum, Pi Network, 交易分析, 區塊鏈, cryptocurrency, trading">
+    <meta name="author" content="CryptoMind">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://cryptomind.app/">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://cryptomind.app/">
+    <meta property="og:title" content="CryptoMind - AI Crypto Analyst">
+    <meta property="og:description" content="AI 驅動的加密貨幣分析平台，提供實時市場分析和智能交易建議">
+    <meta property="og:image" content="/static/img/title_icon.png">
+    <meta property="og:locale" content="zh_TW">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://cryptomind.app/">
+    <meta name="twitter:title" content="CryptoMind - AI Crypto Analyst">
+    <meta name="twitter:description" content="AI 驅動的加密貨幣分析平台，提供實時市場分析和智能交易建議">
+    <meta name="twitter:image" content="/static/img/title_icon.png">
+
+    <!-- Favicon -->
     <link rel="icon" type="image/png" href="/static/img/title_icon.png">
 
     <!-- Core Libraries -->
@@ -42,13 +67,13 @@
             }
         }
     </script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide@0.452.0/dist/umd/lucide.min.js" integrity="sha384-LSySZmn0vvhTQgRk/a4hpHC8UqzwD4/KwvbBryuft3BxzKIjaCd099VvkzXYA9dC" crossorigin="anonymous"></script>
     <script src="/static/js/vendor/markdown-it.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/i18next@23.7.6/i18next.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/i18next@23.7.6/i18next.min.js" integrity="sha384-XA8CVHq/bhLKlJPiPXM8T6frO0gQxNPug4VGepuN3O45hRlkrJcLmMi8Q6YQx8VG" crossorigin="anonymous"></script>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
-    <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js" integrity="sha384-rcCMiCptH4kTlEbg0euOTUKWe72TESbrjElatnG+9BfbmUIV268UK/Pro5biJdGm" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" integrity="sha384-9nhczxUqK87bcKHh20fSQcTGD4qq5GhayNYSYWqwBkINBhOfQLg/P5HG5lF1urn4" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js" integrity="sha384-zPzbVRXfR492Sd5D+HydTYCxxgHAfgVO8KERbLlpeH5unsmbAEXrscGUUqLZG9BM" crossorigin="anonymous"></script>
     <script src="/static/config.js"></script>
     <script src="/static/js/logger.js"></script>
     <script src="/static/js/premium.js"></script>
