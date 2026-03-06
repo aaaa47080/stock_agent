@@ -21,7 +21,7 @@ from .tools import (
     get_token_unlocks, get_token_supply,
     tw_price, tw_technical, tw_fundamentals_tool, tw_institutional_tool, tw_news_tool,
     tw_major_news_tool, tw_pe_ratio_tool, tw_monthly_revenue_tool,
-    tw_dividend_tool, tw_foreign_top20_tool, tw_institutional_daily_tool,
+    tw_dividend_tool, tw_foreign_top20_tool,
 )
 
 # Import new free market data tools
@@ -101,8 +101,7 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
                          "get_gas_fees", "get_whale_transactions", "get_exchange_flow"],
             "tw_stock": ["get_current_time_taipei","tw_stock_price","tw_technical_analysis",
                          "tw_fundamentals","tw_institutional","tw_news","tw_major_news",
-                         "tw_pe_ratio","tw_monthly_revenue","tw_dividend","tw_foreign_top20",
-                         "tw_institutional_daily","web_search"],
+                         "tw_pe_ratio","tw_monthly_revenue","tw_dividend","tw_foreign_top20","web_search"],
             "us_stock": ["us_stock_price","us_technical_analysis","us_fundamentals","us_earnings",
                          "us_news","us_institutional_holders","us_insider_transactions","get_current_time_taipei"],
             "chat":     ["get_current_time_taipei","get_crypto_price","web_search", "get_pi_price", "get_pi_network_info", "get_pi_ecosystem"],
@@ -333,13 +332,6 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         description="獲取外資及陸資持股台股前20名，含持股比率與可投資上限",
         input_schema={},
         handler=tw_foreign_top20_tool,
-        allowed_agents=["tw_stock"],
-    ))
-    tool_registry.register(ToolMetadata(
-        name="tw_institutional_daily",
-        description="獲取台股三大法人（外資、投信、自營商）每日買賣超彙總表（TWSE 官方數據）",
-        input_schema={"limit": "int (optional, default 20)"},
-        handler=tw_institutional_daily_tool,
         allowed_agents=["tw_stock"],
     ))
 
