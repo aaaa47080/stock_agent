@@ -246,4 +246,7 @@ ALL_TOOLS = [
     tw_monthly_revenue_tool,
     tw_dividend_tool,
     tw_foreign_top20_tool,
+    # DexScreener tools
+    get_dex_pair_info_tool,
+    get_trending_dex_pairs_tool,
 ]

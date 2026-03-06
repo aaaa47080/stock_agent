@@ -22,6 +22,8 @@ from .tools import (
     tw_price, tw_technical, tw_fundamentals_tool, tw_institutional_tool, tw_news_tool,
     tw_major_news_tool, tw_pe_ratio_tool, tw_monthly_revenue_tool,
     tw_dividend_tool, tw_foreign_top20_tool,
+    # DexScreener tools
+    get_dex_pair_info_tool, get_trending_dex_pairs_tool,
 )
 
 # Import new free market data tools
@@ -98,7 +100,8 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
                          "google_news","aggregate_news","web_search","get_fear_and_greed_index",
                          "get_trending_tokens","get_futures_data","get_defillama_tvl",
                          "get_crypto_categories_and_gainers","get_token_unlocks","get_token_supply",
-                         "get_gas_fees", "get_whale_transactions", "get_exchange_flow"],
+                         "get_gas_fees", "get_whale_transactions", "get_exchange_flow",
+                         "get_dex_pair_info", "get_trending_dex_pairs"],
             "tw_stock": ["get_current_time_taipei","tw_stock_price","tw_technical_analysis",
                          "tw_fundamentals","tw_institutional","tw_news","tw_major_news",
                          "tw_pe_ratio","tw_monthly_revenue","tw_dividend","tw_foreign_top20","web_search"],
@@ -230,6 +233,22 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         input_schema={"symbol": "str"},
         handler=get_exchange_flow,
         allowed_agents=["crypto", "chat", "manager"],
+    ))
+
+    # ── Register DexScreener Tools ──
+    tool_registry.register(ToolMetadata(
+        name="get_dex_pair_info",
+        description="獲取 DEX 代幣對的詳細資訊（價格、流動性、交易量）。輸入代幣合約地址。",
+        input_schema={"token_address": "str"},
+        handler=get_dex_pair_info_tool,
+        allowed_agents=["crypto", "manager"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="get_trending_dex_pairs",
+        description="搜索熱門 DEX 交易對（如 PEPE、WIF、DOGE）。輸入代幣名稱或符號。",
+        input_schema={"query": "str"},
+        handler=get_trending_dex_pairs_tool,
+        allowed_agents=["crypto", "manager"],
     ))
 
     # ── Register Pi Network Tools ──
