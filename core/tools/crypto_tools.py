@@ -1075,6 +1075,297 @@ def get_exchange_flow(symbol: str = "BTC") -> str:
 # ============================================
 
 DEXSCREENER_BASE = "https://api.dexscreener.com/latest"
+ETHERSCAN_BASE = "https://api.etherscan.io/api"
+
+
+# ============================================
+# Etherscan 鏈上數據工具 (免費 API)
+# ============================================
+
+@tool
+def get_eth_balance(address: str) -> dict:
+    """查詢 Ethereum 地址的 ETH 餘額。
+
+    資料來源：Etherscan API（免費）。
+    適用於查詢任何以太坊地址的即時 ETH 餘額。
+
+    Args:
+        address: 以太坊地址（如 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045）
+    """
+    import httpx
+
+    # 驗證地址格式
+    if not address.startswith("0x") or len(address) != 42:
+        return {"error": "無效的以太坊地址格式，請提供以 0x 開頭的 42 字符地址"}
+
+    try:
+        url = f"{ETHERSCAN_BASE}?module=account&action=balance&address={address}&tag=latest"
+        resp = httpx.get(url, timeout=10)
+
+        if resp.status_code != 200:
+            return {"error": f"Etherscan API 錯誤: {resp.status_code}"}
+
+        data = resp.json()
+
+        if data.get("status") != "1":
+            return {"error": data.get("message", "查詢失敗")}
+
+        balance_wei = int(data.get("result", 0))
+        balance_eth = balance_wei / 1e18
+
+        # 獲取當前 ETH 價格
+        try:
+            price_resp = httpx.get(
+                "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd",
+                timeout=10
+            )
+            eth_price = price_resp.json().get("ethereum", {}).get("usd", 0) if price_resp.status_code == 200 else 0
+        except Exception:
+            eth_price = 0
+
+        balance_usd = balance_eth * eth_price
+
+        return {
+            "address": address,
+            "balance_wei": balance_wei,
+            "balance_eth": round(balance_eth, 6),
+            "balance_usd": round(balance_usd, 2) if eth_price > 0 else None,
+            "eth_price": eth_price,
+            "explorer_url": f"https://etherscan.io/address/{address}",
+            "source": "Etherscan"
+        }
+
+    except Exception as e:
+        return {"error": f"查詢 ETH 餘額失敗: {str(e)}"}
+
+
+@tool
+def get_erc20_token_balance(address: str, contract_address: str) -> dict:
+    """查詢 Ethereum 地址的 ERC20 代幣餘額。
+
+    資料來源：Etherscan API（免費）。
+    適用於查詢任何 ERC20 代幣（如 USDT、USDC、LINK 等）的持有量。
+
+    Args:
+        address: 以太坊錢包地址
+        contract_address: ERC20 代幣合約地址（如 USDT: 0xdAC17F958D2ee523a2206206994597C13D831ec7）
+    """
+    import httpx
+
+    try:
+        url = f"{ETHERSCAN_BASE}?module=account&action=tokenbalance&contractaddress={contract_address}&address={address}&tag=latest"
+        resp = httpx.get(url, timeout=10)
+
+        if resp.status_code != 200:
+            return {"error": f"Etherscan API 錯誤: {resp.status_code}"}
+
+        data = resp.json()
+
+        if data.get("status") != "1":
+            return {"error": data.get("message", "查詢失敗")}
+
+        balance_raw = int(data.get("result", 0))
+
+        # 嘗試獲取代幣資訊（使用 DexScreener）
+        token_symbol = "Unknown"
+        token_name = "Unknown"
+        decimals = 18  # 預設
+
+        try:
+            dex_url = f"{DEXSCREENER_BASE}/dex/tokens/{contract_address}"
+            dex_resp = httpx.get(dex_url, timeout=10)
+            if dex_resp.status_code == 200:
+                dex_data = dex_resp.json()
+                if dex_data.get("pairs"):
+                    pair = dex_data["pairs"][0]
+                    base_token = pair.get("baseToken", {})
+                    if base_token.get("address", "").lower() == contract_address.lower():
+                        token_symbol = base_token.get("symbol", "Unknown")
+                        token_name = base_token.get("name", "Unknown")
+        except Exception:
+            pass
+
+        # 計算實際餘額（假設 18 位小數，大多數代幣）
+        balance = balance_raw / (10 ** decimals)
+
+        return {
+            "wallet_address": address,
+            "contract_address": contract_address,
+            "balance_raw": balance_raw,
+            "balance": round(balance, 4),
+            "token_symbol": token_symbol,
+            "token_name": token_name,
+            "decimals": decimals,
+            "explorer_url": f"https://etherscan.io/token/{contract_address}?a={address}",
+            "source": "Etherscan"
+        }
+
+    except Exception as e:
+        return {"error": f"查詢 ERC20 餘額失敗: {str(e)}"}
+
+
+@tool
+def get_address_transactions(address: str, limit: int = 10) -> dict:
+    """查詢 Ethereum 地址的最近交易記錄。
+
+    資料來源：Etherscan API（免費）。
+    適用於追蹤地址的交易活動、資金流向。
+
+    Args:
+        address: 以太坊地址
+        limit: 返回的交易數量（最多 50）
+    """
+    import httpx
+    from datetime import datetime
+
+    limit = min(limit, 50)  # 限制最多 50 筆
+
+    try:
+        url = f"{ETHERSCAN_BASE}?module=account&action=txlist&address={address}&startblock=0&endblock=99999999&page=1&offset={limit}&sort=desc"
+        resp = httpx.get(url, timeout=15)
+
+        if resp.status_code != 200:
+            return {"error": f"Etherscan API 錯誤: {resp.status_code}"}
+
+        data = resp.json()
+
+        if data.get("status") != "1":
+            return {"error": data.get("message", "查詢失敗"), "note": "可能該地址沒有交易記錄"}
+
+        transactions = data.get("result", [])
+
+        # 獲取 ETH 價格用於計算 USD 價值
+        try:
+            price_resp = httpx.get(
+                "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd",
+                timeout=10
+            )
+            eth_price = price_resp.json().get("ethereum", {}).get("usd", 0) if price_resp.status_code == 200 else 0
+        except Exception:
+            eth_price = 0
+
+        formatted_txs = []
+        for tx in transactions:
+            value_wei = int(tx.get("value", 0))
+            value_eth = value_wei / 1e18
+
+            timestamp = datetime.fromtimestamp(int(tx.get("timeStamp", 0)))
+
+            # 判斷交易方向
+            is_sent = tx.get("from", "").lower() == address.lower()
+
+            formatted_txs.append({
+                "hash": tx.get("hash", ""),
+                "timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                "from": tx.get("from", ""),
+                "to": tx.get("to", ""),
+                "direction": "發送" if is_sent else "接收",
+                "value_eth": round(value_eth, 6),
+                "value_usd": round(value_eth * eth_price, 2) if eth_price > 0 else None,
+                "gas_used": tx.get("gasUsed", "0"),
+                "confirmations": tx.get("confirmations", "0"),
+                "tx_url": f"https://etherscan.io/tx/{tx.get('hash', '')}"
+            })
+
+        return {
+            "address": address,
+            "total_transactions": len(formatted_txs),
+            "transactions": formatted_txs,
+            "eth_price": eth_price,
+            "source": "Etherscan"
+        }
+
+    except Exception as e:
+        return {"error": f"查詢交易記錄失敗: {str(e)}"}
+
+
+@tool
+def get_contract_info(contract_address: str) -> dict:
+    """查詢 Ethereum 智能合約的基本資訊。
+
+    資料來源：Etherscan API（免費）。
+    適用於分析代幣合約、DeFi 協議等。
+
+    Args:
+        contract_address: 智能合約地址
+    """
+    import httpx
+
+    try:
+        # 獲取合約創建者資訊
+        url = f"{ETHERSCAN_BASE}?module=contract&action=getcontractcreation&contractaddresses={contract_address}"
+        resp = httpx.get(url, timeout=10)
+
+        contract_info = {
+            "address": contract_address,
+            "explorer_url": f"https://etherscan.io/address/{contract_address}",
+            "source": "Etherscan"
+        }
+
+        if resp.status_code == 200:
+            data = resp.json()
+            if data.get("status") == "1" and data.get("result"):
+                creation_info = data["result"][0]
+                contract_info["creator"] = creation_info.get("contractCreator", "")
+                contract_info["tx_hash"] = creation_info.get("txHash", "")
+                contract_info["creation_code"] = creation_info.get("code", "")[:100] + "..." if len(creation_info.get("code", "")) > 100 else creation_info.get("code", "")
+
+        # 嘗試從 DexScreener 獲取更多資訊
+        try:
+            dex_url = f"{DEXSCREENER_BASE}/dex/tokens/{contract_address}"
+            dex_resp = httpx.get(dex_url, timeout=10)
+            if dex_resp.status_code == 200:
+                dex_data = dex_resp.json()
+                if dex_data.get("pairs"):
+                    pair = dex_data["pairs"][0]
+                    base_token = pair.get("baseToken", {})
+                    contract_info["token_symbol"] = base_token.get("symbol", "")
+                    contract_info["token_name"] = base_token.get("name", "")
+                    contract_info["price_usd"] = pair.get("priceUsd", "")
+                    contract_info["liquidity_usd"] = pair.get("liquidity", {}).get("usd", 0)
+                    contract_info["chain"] = pair.get("chainId", "")
+        except Exception:
+            pass
+
+        return contract_info
+
+    except Exception as e:
+        return {"error": f"查詢合約資訊失敗: {str(e)}"}
+
+
+@tool
+def get_eth_price_from_etherscan() -> dict:
+    """從 Etherscan 獲取 ETH 的即時價格。
+
+    資料來源：Etherscan Gas Tracker API（免費）。
+    適用於快速查詢 ETH/USD 價格。
+    """
+    import httpx
+
+    try:
+        url = f"{ETHERSCAN_BASE}?module=stats&action=ethprice"
+        resp = httpx.get(url, timeout=10)
+
+        if resp.status_code != 200:
+            return {"error": f"Etherscan API 錯誤: {resp.status_code}"}
+
+        data = resp.json()
+
+        if data.get("status") != "1":
+            return {"error": data.get("message", "查詢失敗")}
+
+        result = data.get("result", {})
+
+        return {
+            "eth_btc": result.get("ethbtc", ""),
+            "eth_btc_timestamp": result.get("ethbtc_timestamp", ""),
+            "eth_usd": result.get("ethusd", ""),
+            "eth_usd_timestamp": result.get("ethusd_timestamp", ""),
+            "source": "Etherscan"
+        }
+
+    except Exception as e:
+        return {"error": f"查詢 ETH 價格失敗: {str(e)}"}
 
 
 @tool

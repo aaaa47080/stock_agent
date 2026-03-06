@@ -218,6 +218,45 @@ def get_trending_dex_pairs_tool(query: str) -> list:
 
 
 # ============================================
+# Etherscan 鏈上數據工具
+# ============================================
+
+@tool
+def get_eth_balance_tool(address: str) -> dict:
+    """查詢以太坊地址的 ETH 餘額"""
+    from core.tools.crypto_tools import get_eth_balance
+    return get_eth_balance.invoke({"address": address})
+
+
+@tool
+def get_erc20_token_balance_tool(address: str, contract_address: str) -> dict:
+    """查詢以太坊地址的 ERC20 代幣餘額"""
+    from core.tools.crypto_tools import get_erc20_token_balance
+    return get_erc20_token_balance.invoke({"address": address, "contract_address": contract_address})
+
+
+@tool
+def get_address_transactions_tool(address: str, limit: int = 10) -> dict:
+    """查詢以太坊地址的最近交易記錄"""
+    from core.tools.crypto_tools import get_address_transactions
+    return get_address_transactions.invoke({"address": address, "limit": limit})
+
+
+@tool
+def get_contract_info_tool(contract_address: str) -> dict:
+    """查詢以太坊智能合約的基本資訊"""
+    from core.tools.crypto_tools import get_contract_info
+    return get_contract_info.invoke({"contract_address": contract_address})
+
+
+@tool
+def get_eth_price_etherscan_tool() -> dict:
+    """從 Etherscan 獲取 ETH 即時價格"""
+    from core.tools.crypto_tools import get_eth_price_from_etherscan
+    return get_eth_price_from_etherscan.invoke({})
+
+
+# ============================================
 # 所有工具列表（供 Manager prompt 用）
 # ============================================
 
@@ -249,4 +288,10 @@ ALL_TOOLS = [
     # DexScreener tools
     get_dex_pair_info_tool,
     get_trending_dex_pairs_tool,
+    # Etherscan tools
+    get_eth_balance_tool,
+    get_erc20_token_balance_tool,
+    get_address_transactions_tool,
+    get_contract_info_tool,
+    get_eth_price_etherscan_tool,
 ]

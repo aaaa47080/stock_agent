@@ -24,6 +24,9 @@ from .tools import (
     tw_dividend_tool, tw_foreign_top20_tool,
     # DexScreener tools
     get_dex_pair_info_tool, get_trending_dex_pairs_tool,
+    # Etherscan tools
+    get_eth_balance_tool, get_erc20_token_balance_tool,
+    get_address_transactions_tool, get_contract_info_tool, get_eth_price_etherscan_tool,
 )
 
 # Import new free market data tools
@@ -101,7 +104,9 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
                          "get_trending_tokens","get_futures_data","get_defillama_tvl",
                          "get_crypto_categories_and_gainers","get_token_unlocks","get_token_supply",
                          "get_gas_fees", "get_whale_transactions", "get_exchange_flow",
-                         "get_dex_pair_info", "get_trending_dex_pairs"],
+                         "get_dex_pair_info", "get_trending_dex_pairs",
+                         "get_eth_balance", "get_erc20_token_balance", "get_address_transactions",
+                         "get_contract_info", "get_eth_price_etherscan"],
             "tw_stock": ["get_current_time_taipei","tw_stock_price","tw_technical_analysis",
                          "tw_fundamentals","tw_institutional","tw_news","tw_major_news",
                          "tw_pe_ratio","tw_monthly_revenue","tw_dividend","tw_foreign_top20","web_search"],
@@ -249,6 +254,43 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         input_schema={"query": "str"},
         handler=get_trending_dex_pairs_tool,
         allowed_agents=["crypto", "manager"],
+    ))
+
+    # ── Register Etherscan On-chain Tools ──
+    tool_registry.register(ToolMetadata(
+        name="get_eth_balance",
+        description="查詢以太坊地址的 ETH 餘額。輸入 0x 開頭的 42 字符地址。",
+        input_schema={"address": "str"},
+        handler=get_eth_balance_tool,
+        allowed_agents=["crypto", "manager"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="get_erc20_token_balance",
+        description="查詢以太坊地址的 ERC20 代幣餘額。需要錢包地址和代幣合約地址。",
+        input_schema={"address": "str", "contract_address": "str"},
+        handler=get_erc20_token_balance_tool,
+        allowed_agents=["crypto", "manager"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="get_address_transactions",
+        description="查詢以太坊地址的最近交易記錄。可追蹤資金流向。",
+        input_schema={"address": "str", "limit": "int (optional)"},
+        handler=get_address_transactions_tool,
+        allowed_agents=["crypto", "manager"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="get_contract_info",
+        description="查詢以太坊智能合約的基本資訊（創建者、代幣資訊等）。",
+        input_schema={"contract_address": "str"},
+        handler=get_contract_info_tool,
+        allowed_agents=["crypto", "manager"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="get_eth_price_etherscan",
+        description="從 Etherscan 獲取 ETH 即時價格。",
+        input_schema={},
+        handler=get_eth_price_etherscan_tool,
+        allowed_agents=["crypto", "chat", "manager"],
     ))
 
     # ── Register Pi Network Tools ──
