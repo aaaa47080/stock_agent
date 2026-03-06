@@ -137,7 +137,32 @@ def get_usd_twd_rate() -> dict:
 
     專門用於快速查詢台幣匯率。
     """
-    return get_forex_rate.invoke({"pair": "USD/TWD"})
+    import yfinance as yf
+
+    symbol = "TWD=X"
+    try:
+        ticker = yf.Ticker(symbol)
+        info = ticker.fast_info
+
+        current_rate = getattr(info, "last_price", None)
+        prev_close = getattr(info, "previous_close", None)
+
+        change_pct = None
+        if current_rate and prev_close and prev_close != 0:
+            change_pct = round((current_rate - prev_close) / prev_close * 100, 4)
+
+        return {
+            "pair": "USD/TWD",
+            "name": CURRENCY_NAMES.get(symbol, symbol),
+            "symbol": symbol,
+            "current_rate": round(current_rate, 4) if current_rate else None,
+            "previous_close": round(prev_close, 4) if prev_close else None,
+            "change_pct": change_pct,
+            "source": "yfinance",
+        }
+
+    except Exception as e:
+        return {"error": f"查詢美元/台幣匯率失敗: {str(e)}"}
 
 
 @tool
@@ -145,37 +170,51 @@ def get_central_bank_rates() -> dict:
     """獲取主要央行利率。
 
     包含：美國聯準會(Fed)、歐洲央行(ECB)、日本央行(BOJ)、台灣央行。
-    資料來源：FRED API（免費）
+
+    注意：此功能需要配置 FRED API key 或 Trading Economics API。
+    若未配置 API key，將返回提示訊息。
     """
-    # 使用 FRED API 獲取聯邦基金利率
-    # FRED API 是免費的，但需要 API key
-    # 這裡使用靜態數據作為替代
+    import os
+
+    # 檢查是否有 FRED API key
+    fred_api_key = os.environ.get("FRED_API_KEY")
+
+    if not fred_api_key:
+        return {
+            "error": "此功能需要 FRED_API_KEY。",
+            "hint": "請在 .env 文件中設置 FRED_API_KEY=your_key",
+            "alternative": "您可以使用 web_search 工具搜索 'Federal Reserve interest rate' 獲取最新利率資訊"
+        }
+
     try:
+        import httpx
+
+        # 使用 FRED API 獲取聯邦基金利率
+        url = f"https://api.stlouisfed.org/fred/series/observations?series_id=DFEDTARU&api_key={fred_api_key}&file_type=json&observation_start=2024-01-01"
+        resp = httpx.get(url, timeout=10)
+
         results = {}
 
-        # 嘗試從Trading Economics公開數據獲取
-        # 注意：這是一個簡化版本，實際應用可能需要付費 API
-        results["美國 Fed"] = {
-            "rate": "5.25-5.50%",
-            "note": "聯邦基金利率目標區間（數據可能過時）"
-        }
-        results["歐洲央行 ECB"] = {
-            "rate": "4.50%",
-            "note": "主要再融資利率（數據可能過時）"
-        }
-        results["日本央行 BOJ"] = {
-            "rate": "0.10%",
-            "note": "政策利率（數據可能過時）"
-        }
-        results["台灣央行"] = {
-            "rate": "1.875%",
-            "note": "重貼現率（數據可能過時）"
+        if resp.status_code == 200:
+            data = resp.json()
+            observations = data.get("observations", [])
+            if observations:
+                latest = observations[-1]
+                results["美國 Fed"] = {
+                    "rate": f"{float(latest.get('value', 0)):.2f}%",
+                    "date": latest.get("date", ""),
+                    "note": "聯邦基金利率目標區間上限"
+                }
+
+        # 其他央行利率（這些需要其他 API 或數據源）
+        results["說明"] = {
+            "note": "ECB、BOJ、台灣央行利率需要其他數據源",
+            "suggestion": "請使用 web_search 工具查詢"
         }
 
         return {
             "central_bank_rates": results,
-            "source": "靜態數據（建議使用 FRED API 獲取即時數據）",
-            "note": "利率數據需要定期更新"
+            "source": "FRED API"
         }
 
     except Exception as e:
