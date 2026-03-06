@@ -40,8 +40,23 @@ def get_market_indices() -> dict:
     包含：S&P 500、道瓊、那斯達克、VIX恐慌指數、費城半導體。
     """
     import yfinance as yf
+    from datetime import datetime
+    import pytz
 
     results = {}
+    errors = []
+
+    # 檢查是否為美股交易時間（美東時間 9:30-16:00）
+    try:
+        et_tz = pytz.timezone('America/New_York')
+        now_et = datetime.now(et_tz)
+        is_trading_hours = (
+            now_et.weekday() < 5 and  # 週一到週五
+            9 <= now_et.hour < 16  # 9:00 - 16:00
+        )
+        market_status = "交易中" if is_trading_hours else "已收盤/非交易時間"
+    except Exception:
+        market_status = "未知"
 
     for name, symbol in MARKET_INDICES.items():
         try:
@@ -50,24 +65,41 @@ def get_market_indices() -> dict:
             current = getattr(info, "last_price", None)
             prev = getattr(info, "previous_close", None)
 
+            # 如果無法獲取當前價格，嘗試使用歷史數據
+            if current is None:
+                hist = ticker.history(period="5d")
+                if not hist.empty:
+                    current = float(hist["Close"].iloc[-1])
+                    prev = float(hist["Close"].iloc[-2]) if len(hist) >= 2 else None
+
             change_pct = None
             if current and prev and prev != 0:
                 change_pct = round((current - prev) / prev * 100, 2)
 
-            results[name] = {
-                "name": INDEX_NAMES.get(symbol, symbol),
-                "symbol": symbol,
-                "price": round(current, 2) if current else None,
-                "change_pct": change_pct,
-            }
-        except Exception:
-            results[name] = {"error": "無法取得數據"}
+            if current:
+                results[name] = {
+                    "name": INDEX_NAMES.get(symbol, symbol),
+                    "symbol": symbol,
+                    "price": round(current, 2),
+                    "change_pct": change_pct,
+                }
+            else:
+                errors.append(f"{name}: 無法獲取價格數據")
 
-    return {
+        except Exception as e:
+            errors.append(f"{name}: {str(e)}")
+
+    response = {
         "market_indices": results,
         "source": "yfinance",
-        "note": "指數價格可能有15分鐘延遲"
+        "market_status": market_status,
     }
+
+    if errors:
+        response["errors"] = errors
+        response["note"] = "部分指數無法獲取數據，可能為非交易時間"
+
+    return response
 
 
 @tool
