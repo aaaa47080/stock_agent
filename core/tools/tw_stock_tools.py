@@ -416,3 +416,69 @@ def tw_foreign_holding_top20() -> list:
     except Exception as e:
         return [{"error": str(e)}]
 
+
+# ── Institutional Daily Summary (TWT44U) ─────────────────────────────────────
+
+@tool
+def tw_institutional_daily(limit: int = 20) -> list:
+    """獲取台股三大法人（外資、投信、自營商）每日買賣超彙總表。
+    資料來源：TWSE TWT44U（每日更新）。
+    適合查看當日法人整體動向與市場熱點。"""
+    import httpx
+    from datetime import date, timedelta
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Referer": "https://www.twse.com.tw/",
+        "Accept": "application/json",
+    }
+
+    # Try today and past 5 trading days
+    for days_back in range(0, 6):
+        try:
+            target_date = date.today() - timedelta(days=days_back)
+            # Skip weekends
+            if target_date.weekday() >= 5:
+                continue
+            date_str = target_date.strftime("%Y%m%d")
+
+            # TWT44U endpoint for institutional daily summary
+            url = f"{TWSE_BASE}/fund/TWT44U?response=json&date={date_str}"
+            resp = httpx.get(url, timeout=15, headers=headers)
+
+            if resp.status_code != 200:
+                continue
+
+            payload = resp.json()
+            if payload.get("stat") != "OK":
+                continue
+
+            rows = payload.get("data", [])
+            if not rows:
+                continue
+
+            results = []
+            for row in rows[:limit]:
+                if len(row) < 12:
+                    continue
+                results.append({
+                    "date": payload.get("date", date_str),
+                    "code": row[0] if len(row) > 0 else "",
+                    "name": row[1] if len(row) > 1 else "",
+                    "foreign_buy": row[2] if len(row) > 2 else None,
+                    "foreign_sell": row[3] if len(row) > 3 else None,
+                    "foreign_net": row[4] if len(row) > 4 else None,
+                    "trust_buy": row[5] if len(row) > 5 else None,
+                    "trust_sell": row[6] if len(row) > 6 else None,
+                    "trust_net": row[7] if len(row) > 7 else None,
+                    "dealer_net": row[10] if len(row) > 10 else None,
+                    "total_net": row[11] if len(row) > 11 else None,
+                })
+
+            return results
+
+        except Exception:
+            continue
+
+    return [{"note": "目前無法取得法人買賣超資料，可能為非交易日或資料尚未更新"}]
+

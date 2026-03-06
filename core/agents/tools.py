@@ -199,6 +199,15 @@ def tw_foreign_top20_tool() -> list:
     return tw_foreign_holding_top20.invoke({})
 
 
+@tool
+def tw_institutional_daily_tool(limit: int = 20) -> list:
+    """獲取台股三大法人（外資、投信、自營商）每日買賣超彙總表。
+    資料來源：TWSE TWT44U（每日更新）。
+    適合查看當日法人整體動向與市場熱點。"""
+    from core.tools.tw_stock_tools import tw_institutional_daily
+    return tw_institutional_daily.invoke({"limit": limit})
+
+
 # ============================================
 # 所有工具列表（供 Manager prompt 用）
 # ============================================
@@ -228,4 +237,5 @@ ALL_TOOLS = [
     tw_monthly_revenue_tool,
     tw_dividend_tool,
     tw_foreign_top20_tool,
+    tw_institutional_daily_tool,
 ]
