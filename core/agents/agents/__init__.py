@@ -4,5 +4,5 @@ from .chat_agent import ChatAgent
 from .tw_stock_agent import TWStockAgent
 from .us_stock_agent import USStockAgent
 from .crypto_agent import CryptoAgent
-
+from .commodity_agent import CommodityAgent
 __all__ = ["TechAgent", "NewsAgent", "ChatAgent", "TWStockAgent", "USStockAgent", "CryptoAgent"]
