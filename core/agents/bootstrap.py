@@ -30,6 +30,11 @@ from .tools import (
     # Commodity tools
     get_commodity_price_tool, get_commodity_futures_tool,
     get_all_commodities_prices_tool, get_gold_silver_ratio_tool, get_oil_analysis_tool,
+    # Forex tools
+    get_forex_rate_tool, get_all_forex_rates_tool, get_usd_twd_rate_tool, get_central_bank_rates_tool,
+    # Economic tools
+    get_market_indices_tool, get_vix_index_tool, get_sp500_performance_tool,
+    get_sector_performance_tool, get_economic_calendar_tool,
 )
 
 # Import new free market data tools
@@ -49,7 +54,7 @@ from core.tools.us_stock_tools import (
 )
 
 # Import agent classes
-from .agents import ChatAgent, TWStockAgent, USStockAgent, CryptoAgent, CommodityAgent
+from .agents import ChatAgent, TWStockAgent, USStockAgent, CryptoAgent, CommodityAgent, ForexAgent, EconomicAgent
 
 
 class LanguageAwareLLM:
@@ -118,6 +123,10 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
             "chat":     ["get_current_time_taipei","get_crypto_price","web_search", "get_pi_price", "get_pi_network_info", "get_pi_ecosystem"],
             "commodity": ["get_commodity_price","get_commodity_futures_price","get_all_commodities_prices",
                          "get_gold_silver_ratio","get_oil_price_analysis","get_current_time_taipei","web_search"],
+            "forex":    ["get_forex_rate","get_all_forex_rates","get_usd_twd_rate","get_central_bank_rates",
+                         "get_current_time_taipei","web_search"],
+            "economic": ["get_market_indices","get_vix_index","get_sp500_performance","get_sector_performance",
+                         "get_economic_calendar","get_current_time_taipei","web_search"],
         }
         def _tools(agent_id: str) -> list:
             return _FALLBACK.get(agent_id, [])
@@ -333,6 +342,73 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         input_schema={},
         handler=get_oil_analysis_tool,
         allowed_agents=["commodity", "manager"],
+    ))
+
+    # ── Register Forex Tools ──
+    tool_registry.register(ToolMetadata(
+        name="get_forex_rate",
+        description="查詢外匯即時匯率（USD/TWD、USD/JPY、EUR/USD等主要貨幣對）。",
+        input_schema={"pair": "str (如 USD/TWD、EUR/USD)"},
+        handler=get_forex_rate_tool,
+        allowed_agents=["forex", "chat", "manager"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="get_all_forex_rates",
+        description="獲取所有主要貨幣對的即時匯率一覽表。",
+        input_schema={},
+        handler=get_all_forex_rates_tool,
+        allowed_agents=["forex", "chat", "manager"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="get_usd_twd_rate",
+        description="查詢美元/台幣即時匯率（專用快捷工具）。",
+        input_schema={},
+        handler=get_usd_twd_rate_tool,
+        allowed_agents=["forex", "chat", "tw_stock", "manager"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="get_central_bank_rates",
+        description="獲取主要央行利率（Fed、ECB、BOJ、台灣央行）。",
+        input_schema={},
+        handler=get_central_bank_rates_tool,
+        allowed_agents=["forex", "manager"],
+    ))
+
+    # ── Register Economic Tools ──
+    tool_registry.register(ToolMetadata(
+        name="get_market_indices",
+        description="獲取美股主要市場指數（S&P 500、道瓊、那斯達克、VIX恐慌指數）。",
+        input_schema={},
+        handler=get_market_indices_tool,
+        allowed_agents=["economic", "chat", "manager"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="get_vix_index",
+        description="獲取 VIX 恐慌指數詳細資訊和市場情緒判讀。",
+        input_schema={},
+        handler=get_vix_index_tool,
+        allowed_agents=["economic", "chat", "manager"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="get_sp500_performance",
+        description="獲取 S&P 500 指數詳細表現和各期間報酬。",
+        input_schema={},
+        handler=get_sp500_performance_tool,
+        allowed_agents=["economic", "manager"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="get_sector_performance",
+        description="獲取美股 11 大板塊表現（科技、金融、能源等）。",
+        input_schema={},
+        handler=get_sector_performance_tool,
+        allowed_agents=["economic", "manager"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="get_economic_calendar",
+        description="獲取近期重要經濟事件行事曆（利率決議、CPI、非農等）。",
+        input_schema={},
+        handler=get_economic_calendar_tool,
+        allowed_agents=["economic", "manager"],
     ))
 
     # ── Register Pi Network Tools ──
@@ -564,6 +640,28 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         capabilities=["黃金", "白銀", "原油", "石油", "天然氣", "銅", "commodity", "gold", "silver", "oil", "natural_gas", "copper", "金銀比", "期貨", "ETF", "WTI", "布蘭特"],
         allowed_tools=_tools("commodity"),
         priority=9,
+    ))
+
+    # ── Forex Agent ──
+    forex = ForexAgent(lang_llm, tool_registry)
+    agent_registry.register(forex, AgentMetadata(
+        name="forex",
+        display_name="Forex Agent",
+        description="外匯專業分析師 — 提供主要貨幣對匯率（USD/TWD、EUR/USD、USD/JPY等）、央行利率資訊。適合投資者了解匯率走勢和外匯市場動態。",
+        capabilities=["外匯", "匯率", "forex", "貨幣", "USD/TWD", "EUR/USD", "USD/JPY", "美元", "台幣", "日圓", "歐元", "央行利率", "Fed", "ECB"],
+        allowed_tools=_tools("forex"),
+        priority=8,
+    ))
+
+    # ── Economic Agent ──
+    economic = EconomicAgent(lang_llm, tool_registry)
+    agent_registry.register(economic, AgentMetadata(
+        name="economic",
+        display_name="Economic Agent",
+        description="經濟數據專業分析師 — 提供市場指數（S&P 500、道瓊、那斯達克）、VIX恐慌指數、板塊表現、經濟事件行事曆。適合投資者了解宏觀經濟和市場情緒。",
+        capabilities=["經濟", "指數", "VIX", "恐慌指數", "S&P 500", "道瓊", "那斯達克", "板塊", "市場情緒", "經濟數據", "GDP", "CPI", "非農"],
+        allowed_tools=_tools("economic"),
+        priority=7,
     ))
 
     chat = ChatAgent(lang_llm, tool_registry)

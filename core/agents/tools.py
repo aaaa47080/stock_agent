@@ -296,6 +296,77 @@ def get_oil_analysis_tool() -> dict:
 
 
 # ============================================
+# 外匯工具 (Forex Tools)
+# ============================================
+
+@tool
+def get_forex_rate_tool(pair: str) -> dict:
+    """查詢外匯即時匯率（USD/TWD、USD/JPY、EUR/USD等）"""
+    from core.tools.forex_tools import get_forex_rate
+    return get_forex_rate.invoke({"pair": pair})
+
+
+@tool
+def get_all_forex_rates_tool() -> dict:
+    """獲取所有主要貨幣對的即時匯率一覽表"""
+    from core.tools.forex_tools import get_all_forex_rates
+    return get_all_forex_rates.invoke({})
+
+
+@tool
+def get_usd_twd_rate_tool() -> dict:
+    """查詢美元/台幣即時匯率"""
+    from core.tools.forex_tools import get_usd_twd_rate
+    return get_usd_twd_rate.invoke({})
+
+
+@tool
+def get_central_bank_rates_tool() -> dict:
+    """獲取主要央行利率（Fed、ECB、BOJ、台灣央行）"""
+    from core.tools.forex_tools import get_central_bank_rates
+    return get_central_bank_rates.invoke({})
+
+
+# ============================================
+# 經濟數據工具 (Economic Tools)
+# ============================================
+
+@tool
+def get_market_indices_tool() -> dict:
+    """獲取美股主要市場指數（S&P 500、道瓊、那斯達克、VIX）"""
+    from core.tools.economic_tools import get_market_indices
+    return get_market_indices.invoke({})
+
+
+@tool
+def get_vix_index_tool() -> dict:
+    """獲取 VIX 恐慌指數詳細資訊和市場情緒判讀"""
+    from core.tools.economic_tools import get_vix_index
+    return get_vix_index.invoke({})
+
+
+@tool
+def get_sp500_performance_tool() -> dict:
+    """獲取 S&P 500 指數詳細表現和各期間報酬"""
+    from core.tools.economic_tools import get_sp500_performance
+    return get_sp500_performance.invoke({})
+
+
+@tool
+def get_sector_performance_tool() -> dict:
+    """獲取美股 11 大板塊表現（科技、金融、能源等）"""
+    from core.tools.economic_tools import get_us_sector_performance
+    return get_us_sector_performance.invoke({})
+
+
+@tool
+def get_economic_calendar_tool() -> dict:
+    """獲取近期重要經濟事件行事曆"""
+    from core.tools.economic_tools import get_economic_calendar
+    return get_economic_calendar.invoke({})
+
+
+# ============================================
 # 所有工具列表（供 Manager prompt 用）
 # ============================================
 
@@ -339,4 +410,15 @@ ALL_TOOLS = [
     get_all_commodities_prices_tool,
     get_gold_silver_ratio_tool,
     get_oil_analysis_tool,
+    # Forex tools
+    get_forex_rate_tool,
+    get_all_forex_rates_tool,
+    get_usd_twd_rate_tool,
+    get_central_bank_rates_tool,
+    # Economic tools
+    get_market_indices_tool,
+    get_vix_index_tool,
+    get_sp500_performance_tool,
+    get_sector_performance_tool,
+    get_economic_calendar_tool,
 ]
