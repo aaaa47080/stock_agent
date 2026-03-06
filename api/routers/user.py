@@ -222,6 +222,20 @@ async def sync_pi_user(request: PiUserSyncRequest):
         logger.error(f"Pi 用戶同步失敗: {e}")
         raise HTTPException(status_code=500, detail="同步失敗")
 
+@router.get("/api/user/me")
+async def get_current_user_profile(current_user: dict = Depends(get_current_user)):
+    """獲取當前登入用戶的資料"""
+    return {
+        "success": True,
+        "user": {
+            "user_id": current_user.get("user_id"),
+            "username": current_user.get("username"),
+            "role": current_user.get("role", "user"),
+            "auth_method": current_user.get("auth_method"),
+        }
+    }
+
+
 @router.get("/api/user/pi/{pi_uid}")
 async def get_pi_user(pi_uid: str, current_user: dict = Depends(get_current_user)):
     """根據 Pi UID 獲取用戶資料"""
