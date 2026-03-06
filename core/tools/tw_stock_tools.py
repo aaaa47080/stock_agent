@@ -8,7 +8,6 @@ Data sources (free-first):
   - FinMind: richer fundamentals (free tier, rate-limited)
 """
 from langchain_core.tools import tool
-from typing import Optional
 
 
 # ── Price ──────────────────────────────────────────────────────────────────
@@ -249,7 +248,7 @@ def tw_news(ticker: str, company_name: str = "", limit: int = 8) -> list:
             return []
 
         root = ET.fromstring(resp.content)
-        ns   = {"media": "http://search.yahoo.com/mrss/"}
+        _ = {"media": "http://search.yahoo.com/mrss/"}  # namespace not used
         items = []
 
         for item in root.findall(".//item")[:limit]:

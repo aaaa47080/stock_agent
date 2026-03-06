@@ -3,10 +3,6 @@ Tests for OKX API connector in trading/okx_api_connector.py
 """
 import pytest
 from unittest.mock import patch, MagicMock
-import base64
-import hmac
-import hashlib
-import json
 
 from trading.okx_api_connector import OKXAPIConnector
 
@@ -35,7 +31,7 @@ class TestOKXAPIConnectorInit:
         }, clear=True):
             with patch('trading.okx_api_connector.logger') as mock_logger:
                 OKXAPIConnector._has_warned_missing_creds = False
-                connector = OKXAPIConnector()
+                _ = OKXAPIConnector()
                 assert mock_logger.warning.called
 
     def test_custom_base_url(self):

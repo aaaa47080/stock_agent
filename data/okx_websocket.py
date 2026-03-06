@@ -6,7 +6,6 @@ import asyncio
 import json
 import logging
 from typing import Dict, Set, Callable, Optional
-from datetime import datetime
 
 try:
     import websockets
@@ -474,7 +473,7 @@ class OKXTickerWebSocketManager:
             if open24h == 0:
                 return 0
             return ((last - open24h) / open24h) * 100
-        except:
+        except Exception:
             return 0
 
     async def subscribe(self, symbol: str, callback: Callable):

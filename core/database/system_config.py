@@ -123,7 +123,7 @@ class ConfigCacheManager:
                         # 收到失效通知，清除本地快取
                         self._memory_cache = {}
                         self._memory_timestamp = 0
-                        print(f"[ConfigCache] 收到快取失效通知，已清除本地快取")
+                        print("[ConfigCache] 收到快取失效通知，已清除本地快取")
             except Exception as e:
                 print(f"[ConfigCache] Pub/Sub 監聽器錯誤: {e}")
 
@@ -236,7 +236,7 @@ class ConfigCacheManager:
                 "key": key,
                 "timestamp": time.time()
             }))
-            print(f"[ConfigCache] 已發布快取失效通知")
+            print("[ConfigCache] 已發布快取失效通知")
 
         except Exception as e:
             print(f"[ConfigCache] Redis 失效操作失敗: {e}")

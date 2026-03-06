@@ -2,7 +2,7 @@
 內容審核過濾器
 """
 import re
-from typing import Dict, List
+from typing import Dict
 
 
 def filter_sensitive_content(text: str) -> Dict:

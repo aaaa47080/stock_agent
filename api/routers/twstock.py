@@ -1,8 +1,11 @@
-from fastapi import APIRouter, HTTPException, Depends, Query
-from typing import List, Optional, Any
-from datetime import datetime, timedelta
 import asyncio
+import time
 import httpx
+from typing import Optional, Any
+from datetime import datetime, timedelta
+
+import yfinance as yf
+from fastapi import APIRouter, HTTPException, Query
 
 from api.utils import logger
 from core.tools.tw_stock_tools import (
@@ -42,8 +45,6 @@ router = APIRouter(prefix="/api/twstock", tags=["TW Stock"])
 # Default preset symbols for Taiwan Stocks (e.g., TSMC, Foxconn, MediaTek)
 DEFAULT_TW_SYMBOLS = ["2330", "2317", "2454", "2308", "2881", "2412", "2882", "2891", "1301", "2002"]
 
-import yfinance as yf
-
 _STOCK_INFO_CACHE = {}  # {symbol: (result, expires_at)}
 
 async def _get_stock_info(symbol: str):
@@ -52,7 +53,6 @@ async def _get_stock_info(symbol: str):
     This function caches the result to avoid slow repeated yfinance info calls.
     Successful lookups cached for 1 hour; fallback cached for 5 minutes.
     """
-    import time
     symbol = symbol.replace('.TW', '').replace('.TWO', '')
     now = time.time()
     if symbol in _STOCK_INFO_CACHE:

@@ -1,13 +1,11 @@
 import asyncio
 from datetime import datetime
-from typing import Optional
 from fastapi import APIRouter, HTTPException, Request
 
 from api.models import TradeExecutionRequest
 from api.utils import logger
 from trading.trade_executor import TradeExecutor
 from utils.okx_auth import get_okx_connector_from_request, validate_okx_credentials
-import api.globals as globals
 from fastapi import Depends
 from api.deps import get_current_user
 from api.middleware.rate_limit import limiter

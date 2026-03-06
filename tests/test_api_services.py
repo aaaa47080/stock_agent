@@ -2,8 +2,7 @@
 Tests for API services in api/services.py
 """
 import pytest
-from unittest.mock import patch, MagicMock
-from datetime import datetime
+from unittest.mock import patch
 
 from api.services import (
     save_market_pulse_cache,
@@ -25,7 +24,7 @@ class TestMarketPulseCache:
 
     def test_save_market_pulse_cache_with_logging(self):
         """Test cache save with logging"""
-        with patch('api.services.set_cache') as mock_set:
+        with patch('api.services.set_cache') as _:
             with patch('api.services.MARKET_PULSE_CACHE', {}):
                 with patch('api.services.logger') as mock_logger:
                     save_market_pulse_cache(silent=False)
@@ -130,7 +129,7 @@ class TestCacheDataFlow:
 
         # Simulate load
         with patch('api.services.get_cache', return_value=test_data):
-            with patch('api.services.MARKET_PULSE_CACHE', {}) as cache:
+            with patch('api.services.MARKET_PULSE_CACHE', {}) as _:
                 load_market_pulse_cache()
                 # Cache should be updated
 

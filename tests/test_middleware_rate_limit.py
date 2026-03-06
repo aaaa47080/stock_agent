@@ -4,11 +4,8 @@ Tests for rate limit middleware in api/middleware/rate_limit.py
 import pytest
 from unittest.mock import patch, MagicMock
 from fastapi import Request
-from pathlib import Path
 import json
 import time
-import tempfile
-import os
 
 from api.middleware.rate_limit import (
     get_user_identifier,

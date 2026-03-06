@@ -2,7 +2,6 @@
 Tests for LLM client utilities
 """
 import pytest
-import json
 
 from utils.llm_client import (
     extract_json_from_response,

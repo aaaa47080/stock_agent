@@ -431,7 +431,7 @@ def delete_post(post_id: int, user_id: str) -> bool:
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             ''', (user_id, 'DELETE_POST', 'post', str(post_id), '/api/forum/posts/{id}', 'DELETE', False, str(e)))
             conn.commit()
-        except:
+        except Exception:
             pass
         raise
     finally:

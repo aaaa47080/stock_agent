@@ -2,7 +2,7 @@
 Tests for database connection in core/database/connection.py
 """
 import pytest
-from unittest.mock import patch, MagicMock, PropertyMock
+from unittest.mock import patch, MagicMock
 import threading
 
 from core.database.connection import (

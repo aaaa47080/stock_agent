@@ -310,7 +310,7 @@ def send_message(from_user_id: str, to_user_id: str, content: str, message_type:
         if conv_row:
             conversation_id = conv_row[0]
             conv_user1_id = conv_row[1]
-            conv_user2_id = conv_row[2]
+            _ = conv_row[2]  # conv_user2_id not used
         else:
             # 建立新對話
             c.execute('''
@@ -320,7 +320,7 @@ def send_message(from_user_id: str, to_user_id: str, content: str, message_type:
             ''', (user1_id, user2_id))
             conversation_id = c.fetchone()[0]
             conv_user1_id = user1_id
-            conv_user2_id = user2_id
+            _ = user2_id  # conv_user2_id not needed
 
         # 3. 插入訊息
         c.execute('''

@@ -2,11 +2,9 @@
 import pytest
 from unittest.mock import MagicMock, patch
 from core.database.price_alerts import (
-    create_price_alerts_table,
     create_alert,
     get_user_alerts,
     delete_alert,
-    get_active_alerts,
     mark_alert_triggered,
 )
 

@@ -5,7 +5,7 @@ import os
 # Add project root to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from core.agents.manager import ManagerAgent, ManagerState
+from core.agents.manager import ManagerAgent
 from core.agents.agent_registry import AgentRegistry
 from core.agents.tool_registry import ToolRegistry
 from langchain_core.messages import AIMessage
@@ -45,7 +45,6 @@ class MockAgent:
         self.name = name
     
     def execute(self, task):
-        import time
         # Simulate work (blocking, to prove run_in_executor works if events still fire?)
         # Actually in async test, we just want to ensure it runs.
         return type("AgentResult", (), {

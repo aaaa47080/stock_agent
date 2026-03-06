@@ -1,23 +1,30 @@
 import os
+import asyncio
 import httpx
+from functools import partial
+from typing import Optional
+
 from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel
+
 from api.deps import create_access_token, get_current_user
 from api.models import (
     WatchlistRequest
 )
 from api.utils import logger
+from core.config import TEST_MODE, TEST_USER
+from core.database import (
+    add_to_watchlist, remove_from_watchlist, get_watchlist,
+    create_or_get_pi_user, get_user_by_pi_uid, is_username_available,
+    link_pi_wallet, get_user_wallet_status,
+    get_prices
+)
+from core.database.user import get_user_by_id, create_or_get_pi_user as create_or_get_pi_user_from_user, upgrade_to_pro
+from api.pi_verification import verify_pi_access_token
 
 # Pi Network API 配置
 PI_API_KEY = os.getenv("PI_API_KEY", "")
 PI_API_BASE = "https://api.minepi.com/v2"
-from core.database import (
-    add_to_watchlist, remove_from_watchlist, get_watchlist,
-    create_or_get_pi_user, get_user_by_pi_uid, is_username_available,
-    link_pi_wallet, get_user_wallet_status
-)
-import asyncio
-from functools import partial
-from core.config import TEST_MODE, TEST_USER
 
 router = APIRouter()
 
@@ -81,8 +88,6 @@ async def check_username_availability(username: str):
         raise HTTPException(status_code=500, detail="檢查失敗")
 
 # --- Dev/Test Login Endpoint ---
-from pydantic import BaseModel
-from typing import Optional
 
 class DevLoginRequest(BaseModel):
     user_id: Optional[str] = None
@@ -112,17 +117,14 @@ async def dev_login(request: DevLoginRequest = None):
     )
 
     # Ensure test user exists in DB to prevent foreign key issues
-    from core.database.user import get_user_by_id, create_or_get_pi_user, upgrade_to_pro
-    import asyncio
-    
     try:
         loop = asyncio.get_running_loop()
         existing_user = await loop.run_in_executor(None, get_user_by_id, test_user_id)
         if not existing_user:
             await loop.run_in_executor(
-                None, 
-                create_or_get_pi_user, 
-                test_user_id, 
+                None,
+                create_or_get_pi_user_from_user,
+                test_user_id,
                 test_username
             )
             print(f"[DEV LOGIN] Created missing mock user {test_username} ({test_user_id}) in DB.")
@@ -163,9 +165,6 @@ async def sync_pi_user(request: PiUserSyncRequest):
     # Server-side verification of Pi Access Token
     if request.access_token:
         try:
-            # Import verification module
-            from api.pi_verification import verify_pi_access_token
-            
             # Verify token against Pi Network API
             pi_user_data = await verify_pi_access_token(
                 request.access_token, 
@@ -253,9 +252,6 @@ async def get_pi_user(pi_uid: str, current_user: dict = Depends(get_current_user
 
 
 # --- Pi Payment Handling Endpoints ---
-
-# 從數據庫獲取動態價格配置
-from core.database import get_prices
 
 class ApprovePaymentRequest(BaseModel):
     paymentId: str

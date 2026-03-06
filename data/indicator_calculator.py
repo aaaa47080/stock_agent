@@ -1,5 +1,4 @@
 import pandas as pd
-import pandas_ta as ta
 from data.data_fetcher import get_data_fetcher, SymbolNotFoundError
 import sys # Import sys for exiting gracefully
 

@@ -137,7 +137,6 @@ from .messages import (
     get_conversation_with_user,
     get_conversation_with_messages,  # 優化版：一次取得對話和訊息
     # 訊息操作
-    validate_message_send,  # 優化：合併驗證查詢
     send_message as send_dm_message,
     get_messages as get_dm_messages,
     mark_as_read,
@@ -197,7 +196,6 @@ from .notifications import (
     create_notifications_table,
     create_notification,
     get_notifications,
-    get_unread_count,
     mark_notification_as_read,
     mark_all_as_read,
     delete_notification,

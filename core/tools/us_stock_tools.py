@@ -14,10 +14,9 @@ Available Tools:
 - us_insider_transactions: Insider trading data
 """
 from langchain.tools import tool
-from typing import Optional, List, Dict
-import asyncio
+from typing import List, Dict
 
-from .us_data_provider import get_us_data_provider, USDataProvider
+from .us_data_provider import get_us_data_provider
 
 
 @tool("us_stock_price")
@@ -42,7 +41,7 @@ def us_stock_price(symbol: str) -> Dict:
         # 使用同步方式執行異步函數
         import asyncio
         try:
-            loop = asyncio.get_running_loop()
+            _ = asyncio.get_running_loop()
             # 如果在已有 event loop 的環境中（如 Jupyter）
             import nest_asyncio
             nest_asyncio.apply()
@@ -78,7 +77,7 @@ def us_technical_analysis(symbol: str) -> Dict:
         provider = get_us_data_provider()
         import asyncio
         try:
-            loop = asyncio.get_running_loop()
+            _ = asyncio.get_running_loop()
             import nest_asyncio
             nest_asyncio.apply()
         except RuntimeError:
@@ -106,7 +105,7 @@ def us_fundamentals(symbol: str) -> Dict:
         provider = get_us_data_provider()
         import asyncio
         try:
-            loop = asyncio.get_running_loop()
+            _ = asyncio.get_running_loop()
             import nest_asyncio
             nest_asyncio.apply()
         except RuntimeError:
@@ -134,7 +133,7 @@ def us_earnings(symbol: str) -> Dict:
         provider = get_us_data_provider()
         import asyncio
         try:
-            loop = asyncio.get_running_loop()
+            _ = asyncio.get_running_loop()
             import nest_asyncio
             nest_asyncio.apply()
         except RuntimeError:
@@ -163,13 +162,13 @@ def us_news(symbol: str, limit: int = 5) -> List[Dict]:
         provider = get_us_data_provider()
         import asyncio
         try:
-            loop = asyncio.get_running_loop()
+            _ = asyncio.get_running_loop()
             import nest_asyncio
             nest_asyncio.apply()
         except RuntimeError:
             pass
         return asyncio.run(provider.get_news(symbol, min(limit, 20)))
-    except Exception as e:
+    except Exception:
         return []
 
 
@@ -188,7 +187,7 @@ def us_institutional_holders(symbol: str) -> Dict:
         provider = get_us_data_provider()
         import asyncio
         try:
-            loop = asyncio.get_running_loop()
+            _ = asyncio.get_running_loop()
             import nest_asyncio
             nest_asyncio.apply()
         except RuntimeError:
@@ -216,7 +215,7 @@ def us_insider_transactions(symbol: str) -> Dict:
         provider = get_us_data_provider()
         import asyncio
         try:
-            loop = asyncio.get_running_loop()
+            _ = asyncio.get_running_loop()
             import nest_asyncio
             nest_asyncio.apply()
         except RuntimeError:
@@ -265,7 +264,6 @@ def register_us_stock_tools(tool_registry):
 # ============ 快速測試 ============
 
 if __name__ == "__main__":
-    import json
     
     print("測試美股工具...")
     print("=" * 70)

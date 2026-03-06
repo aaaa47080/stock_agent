@@ -4,7 +4,6 @@ Tests for audit middleware in api/middleware/audit.py
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 from fastapi import Request
-import time
 
 from api.middleware.audit import (
     _extract_user_from_request,
@@ -173,7 +172,7 @@ class TestAuditMiddleware:
 
         call_next = AsyncMock(return_value=MagicMock(status_code=200))
 
-        response = await audit_middleware(request, call_next)
+        _ = await audit_middleware(request, call_next)
 
         # Should call next without logging
         call_next.assert_called_once()
@@ -195,7 +194,7 @@ class TestAuditMiddleware:
         call_next = AsyncMock(return_value=response_mock)
 
         with patch('api.middleware.audit.logger') as mock_logger:
-            response = await audit_middleware(request, call_next)
+            _ = await audit_middleware(request, call_next)
 
             # Should log to file
             assert mock_logger.info.called or True  # May or may not log depending on sensitivity
@@ -219,7 +218,7 @@ class TestAuditMiddleware:
         with patch('api.middleware.audit.AuditLogger') as mock_audit:
             mock_audit.log = MagicMock()
 
-            response = await audit_middleware(request, call_next)
+            _ = await audit_middleware(request, call_next)
 
             # Call_next should be called
             call_next.assert_called_once()

@@ -2,8 +2,6 @@
 依赖包清理分析脚本
 分析项目实际使用的包，生成精简的 requirements.txt
 """
-import ast
-import os
 from pathlib import Path
 from typing import Set
 import re
@@ -284,12 +282,12 @@ def generate_clean_requirements():
     with open(req_file, 'w', encoding='utf-8') as f:
         f.writelines(clean_lines)
     
-    print(f"\n📊 清理总结:")
-    print(f"  原始包数: {len([l for l in lines if l.strip() and not l.strip().startswith('#')])}")
+    print("\n📊 清理总结:")
+    print(f"  原始包数: {len([line for line in lines if line.strip() and not line.strip().startswith('#')])}")
     print(f"  移除包数: {len(removed_packages)}")
-    print(f"  保留包数: {len([l for l in clean_lines if l.strip() and not l.strip().startswith('#')])}")
+    print(f"  保留包数: {len([line for line in clean_lines if line.strip() and not line.strip().startswith('#')])}")
     
-    print(f"\n🗑️  已移除的包:")
+    print("\n🗑️  已移除的包:")
     for pkg in removed_packages:
         print(f"  - {pkg}")
 

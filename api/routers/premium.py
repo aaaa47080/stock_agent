@@ -1,14 +1,16 @@
 """
 高級會員相關 API
 """
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
-from typing import Optional
-
-from core.database import get_user_membership, upgrade_to_pro
-from api.utils import logger
 import asyncio
 from functools import partial
+from typing import Optional
+
+from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel
+
+from core.database import get_user_membership, upgrade_to_pro
+from api.deps import get_current_user
+from api.utils import logger
 
 router = APIRouter(prefix="/api/premium", tags=["Premium"])
 
@@ -17,9 +19,6 @@ class UpgradeRequest(BaseModel):
     plan: str = "premium_monthly"  # plus_monthly, premium_monthly, premium_yearly
     tx_hash: Optional[str] = None  # Pi 支付交易哈希
     months: int = 1  # 訂閱月數
-
-
-from api.deps import get_current_user
 
 @router.get("/pricing")
 async def get_pricing_plans():

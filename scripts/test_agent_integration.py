@@ -13,7 +13,6 @@ from core.agents.agents.chat_agent import ChatAgent
 from core.agents.agents.crypto_agent import CryptoAgent
 from core.agents.models import SubTask
 from core.agents.prompt_registry import PromptRegistry
-from core.agents.agent_registry import AgentRegistry
 from core.agents.tool_registry import ToolRegistry
 
 
@@ -97,26 +96,26 @@ async def test_chat_agent_multilingual():
             
             # 檢查結果
             if result.success:
-                print(f"  ✅ 執行成功")
+                print("  ✅ 執行成功")
                 print(f"  回應预览：{result.message[:100]}...")
                 
                 # 檢查語言是否正確
                 response_lower = result.message.lower()
                 if tc['language'] == "zh-TW":
                     if any(kw in result.message for kw in ["你", "您", "繁體", "台灣"]):
-                        print(f"  ✅ 語言正確（繁體中文）")
+                        print("  ✅ 語言正確（繁體中文）")
                     else:
-                        print(f"  ⚠️ 可能不是繁體中文")
+                        print("  ⚠️ 可能不是繁體中文")
                 elif tc['language'] == "zh-CN":
                     if any(kw in result.message for kw in ["你", "你好", "简体", "台湾"]):
-                        print(f"  ✅ 語言正確（簡體中文）")
+                        print("  ✅ 語言正確（簡體中文）")
                     else:
-                        print(f"  ⚠️ 可能不是簡體中文")
+                        print("  ⚠️ 可能不是簡體中文")
                 elif tc['language'] == "en":
                     if any(kw in response_lower for kw in ["you", "hello", "i am", "assistant"]):
-                        print(f"  ✅ 語言正確（英文）")
+                        print("  ✅ 語言正確（英文）")
                     else:
-                        print(f"  ⚠️ 可能不是英文")
+                        print("  ⚠️ 可能不是英文")
             else:
                 print(f"  ❌ 執行失敗：{result.message}")
                 
@@ -186,20 +185,20 @@ async def test_crypto_agent_multilingual():
             
             # 檢查結果
             if result.success:
-                print(f"  ✅ 執行成功")
+                print("  ✅ 執行成功")
                 print(f"  回應预览：{result.message[:150]}...")
                 
                 # 檢查是否有正確的前綴
                 if "🔐" in result.message:
-                    print(f"  ✅ 包含正確的前綴標識")
+                    print("  ✅ 包含正確的前綴標識")
                 
                 # 檢查語言
                 if tc['language'] == "zh-TW" and "加密貨幣" in result.message:
-                    print(f"  ✅ 語言正確（繁體中文）")
+                    print("  ✅ 語言正確（繁體中文）")
                 elif tc['language'] == "zh-CN" and "加密货币" in result.message:
-                    print(f"  ✅ 語言正確（簡體中文）")
+                    print("  ✅ 語言正確（簡體中文）")
                 elif tc['language'] == "en" and "Cryptocurrency" in result.message:
-                    print(f"  ✅ 語言正確（英文）")
+                    print("  ✅ 語言正確（英文）")
             else:
                 print(f"  ❌ 執行失敗：{result.message}")
                 
@@ -237,20 +236,20 @@ async def test_prompt_with_time():
                 if expected_time in prompt:
                     print(f"  ✅ 時間已正確替換：{expected_time}")
                 else:
-                    print(f"  ⚠️ 時間可能未替換")
+                    print("  ⚠️ 時間可能未替換")
                     print(f"     預期：{expected_time}")
             elif lang == "zh-CN":
                 expected_time = now.strftime("%Y 年 %m 月 %d 日 %H:%M")
                 if expected_time in prompt:
                     print(f"  ✅ 時間已正確替換：{expected_time}")
                 else:
-                    print(f"  ⚠️ 時間可能未替換")
+                    print("  ⚠️ 時間可能未替換")
             elif lang == "en":
                 expected_time = now.strftime("%B %d, %Y %H:%M")
                 if expected_time in prompt:
                     print(f"  ✅ 時間已正確替換：{expected_time}")
                 else:
-                    print(f"  ⚠️ 時間可能未替換")
+                    print("  ⚠️ 時間可能未替換")
             
             # 顯示 Prompt 開頭
             preview = prompt[:200].replace('\n', ' ')

@@ -39,7 +39,15 @@ def run_tests():
         try:
             # Dynamic import
             spec = __import__(f"tests.{module_name}", fromlist=[""])
-            tests.run_module(spec, module_name, errors)
+            # Run tests in the module if it has a run_tests function
+            if hasattr(spec, 'run_tests'):
+                result = spec.run_tests()
+                if result:
+                    passed += 1
+                else:
+                    failed += 1
+            else:
+                print(f"  No run_tests() function in {module_name}")
         except Exception as e:
             print(f"ERROR loading {test_file.name}: {e}")
             traceback.print_exc()

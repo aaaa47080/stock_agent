@@ -3,7 +3,6 @@ Tests for API request/response models in api/models.py
 """
 import pytest
 from pydantic import ValidationError
-from unittest.mock import patch, MagicMock
 
 from api.models import (
     QueryRequest,

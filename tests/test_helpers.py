@@ -2,7 +2,6 @@
 Tests for helper functions in core/tools/helpers.py
 """
 import pytest
-from unittest.mock import patch, MagicMock
 
 from core.tools.helpers import (
     normalize_symbol,

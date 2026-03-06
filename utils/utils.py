@@ -4,9 +4,8 @@ import time
 import requests
 import pandas as pd
 import numpy as np
-from urllib.parse import urlparse
 from datetime import datetime, timedelta
-from typing import List, Dict, Optional
+from typing import List, Dict
 import concurrent.futures
 from cachetools import cached, TTLCache
 from api.utils import logger
@@ -382,15 +381,15 @@ def audit_crypto_news(symbol: str, news_list: List[Dict]) -> List[Dict]:
     api_key = Settings.OPENAI_API_KEY or os.getenv("OPENAI_API_KEY", "")
     if not api_key or not api_key.startswith("sk-") or len(api_key) < 20:
         if not getattr(audit_crypto_news, '_has_warned', False):
-            logger.warning(f">> ⚠️ 新聞審查員跳過：未配置有效的 OpenAI API Key")
+            logger.warning(">> ⚠️ 新聞審查員跳過：未配置有效的 OpenAI API Key")
             audit_crypto_news._has_warned = True
         return news_list
 
     try:
         client, model = create_llm_client_from_config(MARKET_PULSE_MODEL)
-    except Exception as e:
+    except Exception:
         if not getattr(audit_crypto_news, '_has_warned', False):
-            logger.warning(f">> ⚠️ 無法啟動新聞審查員 (未配置 API Key)，跳過審查。")
+            logger.warning(">> ⚠️ 無法啟動新聞審查員 (未配置 API Key)，跳過審查。")
             audit_crypto_news._has_warned = True
         return news_list
     
@@ -494,7 +493,7 @@ def get_crypto_news(symbol: str = "BTC", limit: int = 5, enabled_sources: List[s
     # 排序
     try:
         unique_news.sort(key=lambda x: x.get("published_at", ""), reverse=True)
-    except:
+    except Exception:
         pass
 
     # 🚀 調用 LLM 審查員進行最後篩選

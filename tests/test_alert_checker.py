@@ -1,6 +1,4 @@
 """Tests for price alert background checker."""
-import pytest
-from unittest.mock import patch, MagicMock
 
 
 class TestIsConditionMet:

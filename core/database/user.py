@@ -52,7 +52,7 @@ def create_user(username: str, password: str) -> Dict:
         ''', (user_id, username, password_hash))
         conn.commit()
         return {"user_id": user_id, "username": username}
-    except psycopg2.IntegrityError as e:
+    except psycopg2.IntegrityError:
         conn.rollback()
         raise ValueError("Username already exists")
     finally:
@@ -441,7 +441,7 @@ def upgrade_to_pro(user_id: str, months: int = 1, tx_hash: str = None) -> bool:
             existing = c.fetchone()
             if existing:
                 print(f"[Upgrade] Duplicate tx_hash detected: {tx_hash} already used by user {existing[0]}")
-                raise ValueError(f"此交易已被處理（transaction hash已存在）")
+                raise ValueError("此交易已被處理（transaction hash已存在）")
 
         # 1. 查詢當前狀態，決定是「新購」還是「續費」
         c.execute('SELECT membership_tier, membership_expires_at FROM users WHERE user_id = %s', (user_id,))

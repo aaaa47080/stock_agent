@@ -1,7 +1,7 @@
 """
 可疑錢包追蹤系統 - 數據庫操作層
 """
-from typing import Optional, Dict, List, Tuple
+from typing import Optional, Dict, List
 from datetime import datetime
 from .connection import get_connection
 from .system_config import get_config

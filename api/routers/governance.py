@@ -4,10 +4,9 @@
 提供檢舉管理、審核投票、違規記錄、活動日誌等接口
 """
 from fastapi import APIRouter, HTTPException, Query, Depends, Request
-from typing import Optional, List
+from typing import Optional
 import asyncio
 from functools import partial
-import logging
 
 from api.middleware.rate_limit import limiter
 
@@ -17,7 +16,6 @@ from core.database.governance import (
     get_pending_reports,
     get_report_by_id,
     get_user_reports,
-    check_daily_report_limit,
     get_daily_report_usage,
     # Voting
     vote_on_report,
@@ -27,13 +25,8 @@ from core.database.governance import (
     # Violations
     get_user_violation_points,
     get_user_violations,
-    check_user_suspension,
-    # Audit Reputation
     get_audit_reputation,
     calculate_vote_weight,
-    update_audit_reputation,
-    # Activity Logging
-    log_activity,
     get_user_activity_logs,
     # Helpers
     get_report_statistics,
@@ -41,9 +34,6 @@ from core.database.governance import (
     # Constants
     PRO_DAILY_REPORT_LIMIT,
     DEFAULT_DAILY_REPORT_LIMIT,
-    MIN_VOTES_REQUIRED,
-    CONSENSUS_APPROVE_THRESHOLD,
-    CONSENSUS_REJECT_THRESHOLD,
 )
 
 from core.database.user import get_user_membership

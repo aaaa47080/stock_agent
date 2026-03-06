@@ -11,10 +11,8 @@ import asyncio
 from functools import partial
 
 from core.database import (
-    get_or_create_conversation,
     get_conversations,
     get_conversation_by_id,
-    get_conversation_with_user,
     get_conversation_with_messages,
     send_dm_message,
     get_dm_messages,
@@ -32,7 +30,8 @@ from core.database import (
     hide_dm_message_for_user,
     hide_conversation_for_user,
     is_blocked,  # greeting 端點需要檢查封鎖狀態
-    # 優化後不再需要：is_friend, update_last_active
+    update_last_active,  # WebSocket 端點需要更新用戶最後活動時間
+    # 優化後不再需要：is_friend
     # 這些已被 validate_message_send 和 send_dm_message 內部處理替代
 )
 from fastapi import Depends

@@ -22,7 +22,7 @@ def batch_expire_memberships():
         count_before = c.fetchone()[0]
 
         if count_before == 0:
-            print(f"[Cron] 沒有過期會員需要處理")
+            print("[Cron] 沒有過期會員需要處理")
             return
 
         # 批量更新過期會員

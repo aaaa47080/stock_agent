@@ -2,7 +2,6 @@
 Tests for utility functions in utils/utils.py
 """
 import pytest
-from unittest.mock import patch, MagicMock
 import pandas as pd
 import numpy as np
 

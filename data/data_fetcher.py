@@ -333,7 +333,7 @@ class OkxDataFetcher:
                             from core.config import TEST_MODE
                             if not TEST_MODE:
                                 logger.warning(f"OKX API Warning (51001): {error_msg}")
-                        except:
+                        except Exception:
                             # 如果無法導入 TEST_MODE，默認記錄警告
                             logger.warning(f"OKX API Warning (51001): {error_msg}")
                     else:

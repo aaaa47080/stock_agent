@@ -1,26 +1,28 @@
 import os
-import sys
+import json
 import asyncio
 from functools import partial
-from fastapi import APIRouter, HTTPException, Header
+from typing import Any, Optional
+from datetime import datetime
+
+from fastapi import APIRouter, HTTPException, Header, Depends
 from fastapi.responses import FileResponse
-from dotenv import load_dotenv
-from utils.llm_client import LLMClientFactory
-from core.model_config import OPENAI_DEFAULT_MODEL, GEMINI_DEFAULT_MODEL
-from fastapi import Depends
-from api.deps import get_current_user
-from api.routers.admin import verify_admin_key
+from pydantic import BaseModel
 
 # LangChain Imports
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage
 
+from utils.llm_client import LLMClientFactory
+from core.model_config import OPENAI_DEFAULT_MODEL, GEMINI_DEFAULT_MODEL, MODEL_CONFIG
 from core.config import (
     SUPPORTED_EXCHANGES, DEFAULT_INTERVAL, DEFAULT_KLINES_LIMIT
 )
 from core.database import get_prices, get_limits
 import core.config as core_config
 from utils.settings import Settings
+from api.deps import get_current_user
+from api.routers.admin import verify_admin_key
 from api.models import APIKeySettings, UserSettings, KeyValidationRequest
 from api.utils import update_env_file, logger
 from trading.okx_api_connector import OKXAPIConnector
@@ -33,8 +35,6 @@ project_root = os.getcwd()
 FRONTEND_DEBUG_LOG = os.path.join(project_root, "frontend_debug.log")
 
 # Pydantic model for debug log
-from pydantic import BaseModel
-from typing import Any, Optional
 
 class DebugLogRequest(BaseModel):
     level: str = "info"
@@ -44,12 +44,10 @@ class DebugLogRequest(BaseModel):
 @router.post("/api/debug/log", dependencies=[Depends(verify_admin_key)])
 async def write_debug_log(request: DebugLogRequest, x_admin_key: str = Header(None)):
     """接收前端日誌並寫入 frontend_debug.log"""
-    from datetime import datetime
     try:
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
         log_line = f"[{timestamp}] [{request.level.upper()}] {request.message}"
         if request.data:
-            import json
             log_line += f" | {json.dumps(request.data, ensure_ascii=False, default=str)}"
         log_line += "\n"
 
@@ -219,7 +217,6 @@ async def get_config():
 @router.get("/api/model-config")
 async def get_model_config():
     """獲取模型配置資訊"""
-    from core.model_config import MODEL_CONFIG
     return {"model_config": MODEL_CONFIG}
 
 @router.get("/api/config/prices")

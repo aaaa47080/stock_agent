@@ -8,7 +8,6 @@ import ssl
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from typing import Optional
 
 # 從環境變數讀取配置
 SMTP_EMAIL = os.getenv("SMTP_EMAIL", "")

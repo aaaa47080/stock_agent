@@ -20,7 +20,6 @@ import os
 import argparse
 import traceback
 from uuid import uuid4
-from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -98,13 +97,13 @@ def run_query(manager, query: str, session_id: str, debug: bool = False) -> str:
 
 
 def _print_debug(result: dict):
-    print(f"\n  ┌─ [debug] ────────────────────────────────")
+    print("\n  ┌─ [debug] ────────────────────────────────")
     print(f"  │  complexity : {result.get('complexity')}")
     print(f"  │  intent     : {result.get('intent')}")
     print(f"  │  topics     : {result.get('topics')}")
     for i, t in enumerate(result.get("plan") or []):
         print(f"  │  plan[{i}]    : [{t.get('agent')}] {t.get('description', '')[:60]}")
-    print(f"  └──────────────────────────────────────────")
+    print("  └──────────────────────────────────────────")
 
 
 # ── 互動模式 ──────────────────────────────────────────────────────────────────

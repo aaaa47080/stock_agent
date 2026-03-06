@@ -2,7 +2,7 @@
 Tests for OKX authentication utilities
 """
 import pytest
-from unittest.mock import patch, MagicMock, Mock
+from unittest.mock import patch, MagicMock
 from fastapi import HTTPException, Request
 
 from utils.okx_auth import (

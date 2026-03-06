@@ -216,7 +216,8 @@ class USStockAgent:
                 query=query
             )
             response = self.llm.invoke([HumanMessage(content=prompt_text)])
-            import json, re
+            import json
+            import re
             raw = response.content.strip()
             m = re.search(r'\{[^}]+\}', raw, re.DOTALL)
             if m:

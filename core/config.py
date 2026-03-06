@@ -1,3 +1,5 @@
+# ruff: noqa: E402
+# ^ E402 ignored because config validation code needs to run before imports
 import os
 import sys
 from dotenv import load_dotenv
@@ -63,7 +65,7 @@ TEST_USER = {
 
 # === AI 模型配置 ===
 # 所有模型名稱統一由 core/model_config.py 管理，在此不再硬寫字串。
-from core.model_config import OPENAI_DEFAULT_MODEL, GEMINI_DEFAULT_MODEL
+from core.model_config import OPENAI_DEFAULT_MODEL
 
 FAST_THINKING_MODEL = OPENAI_DEFAULT_MODEL   # 用於快速分析（分析師）
 DEEP_THINKING_MODEL = OPENAI_DEFAULT_MODEL   # 用於深度思考（交易員、風險管理）

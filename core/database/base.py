@@ -12,7 +12,7 @@ Key features:
 - Transaction management (commit/rollback)
 """
 import psycopg2
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Optional
 from contextlib import contextmanager
 
 from .connection import get_connection

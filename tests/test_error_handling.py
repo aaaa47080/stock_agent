@@ -2,7 +2,7 @@
 Tests for error handling utilities
 """
 import pytest
-from unittest.mock import patch, Mock, MagicMock
+from unittest.mock import patch
 from core.error_handling import log_and_suppress, safe_execute, ErrorContext
 
 

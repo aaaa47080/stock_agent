@@ -3,7 +3,6 @@ Tests for backtest engine in analysis/backtest_engine.py
 """
 import pytest
 import pandas as pd
-import numpy as np
 
 from analysis.backtest_engine import BacktestEngine, TradeRecord
 

@@ -42,7 +42,7 @@ class TestTradeExecutorInit:
             mock_class.return_value = mock_instance
 
             with patch('builtins.print') as mock_print:
-                executor = TradeExecutor()
+                _ = TradeExecutor()
                 # Should print warning
                 assert mock_print.called or True
 

@@ -2,7 +2,7 @@
 Tests for admin router in api/routers/admin.py
 """
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from fastapi import HTTPException
 
 from api.routers.admin import (

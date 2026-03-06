@@ -1,7 +1,6 @@
 import sys
 import os
 import json
-from datetime import datetime
 from trading.okx_api_connector import OKXAPIConnector
 from typing import List, Dict
 
@@ -228,7 +227,7 @@ def execute_futures_trade(okx_api: OKXAPIConnector, symbol: str, action: str, tr
     leverage_result = okx_api.set_leverage(instId=futures_symbol, lever=str(leverage), mgnMode="cross", posSide=pos_side)
     if leverage_result.get("code") != "0":
         print(f"[WARNING] Failed to set leverage for {futures_symbol}. Reason: {leverage_result.get('msg')}")
-        print(f"[INFO] This might be because leverage is already set or the instrument doesn't require leverage setting. Continuing with trade...")
+        print("[INFO] This might be because leverage is already set or the instrument doesn't require leverage setting. Continuing with trade...")
     else:
         print(f"[INFO] Leverage for {futures_symbol} set to {leverage}x successfully.")
 
@@ -290,7 +289,7 @@ def execute_futures_trade(okx_api: OKXAPIConnector, symbol: str, action: str, tr
     stop_loss = trade_data.get("stop_loss")
     take_profit = trade_data.get("take_profit")
 
-    print(f"[INFO] Futures Order Details:")
+    print("[INFO] Futures Order Details:")
     print(f"        Margin: ${margin_amount:.2f} USDT")
     print(f"        Leverage: {leverage}x")
     print(f"        Contract Value: ${contract_value_usd:.2f} USDT ({int(sz)} contracts)")

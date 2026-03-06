@@ -2,7 +2,7 @@
 Tests for messages router in api/routers/messages.py
 """
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import MagicMock, AsyncMock
 from fastapi import WebSocket
 
 from api.routers.messages import (

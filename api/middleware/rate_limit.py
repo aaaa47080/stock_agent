@@ -9,11 +9,12 @@ import os
 import json
 import time
 from pathlib import Path
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from fastapi import Request
-from typing import Callable, Optional
+from fastapi.responses import JSONResponse
+from typing import Optional
 
 def get_user_identifier(request: Request) -> str:
     """
@@ -129,14 +130,12 @@ def get_rate_limit_for_route(request: Request) -> str:
 
 
 # Exception handler for rate limit exceeded
-async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
     """
     Custom handler for rate limit exceeded errors
-    
+
     Returns a JSON response with retry information
     """
-    from fastapi.responses import JSONResponse
-    
     return JSONResponse(
         status_code=429,
         content={
@@ -193,7 +192,7 @@ class PersistentRateLimiter:
             if self.storage_path.exists():
                 with open(self.storage_path, 'r') as f:
                     self.state = json.load(f)
-        except (json.JSONDecodeError, IOError) as e:
+        except (json.JSONDecodeError, IOError):
             # If file is corrupted, start fresh
             self.state = {}
 

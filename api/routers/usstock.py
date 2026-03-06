@@ -71,7 +71,7 @@ async def get_us_market(symbols: Optional[str] = None):
     stocks = [r for r in results if r]
     # Validate: if no results, return error-friendly empty
     if not stocks and target:
-        raise HTTPException(status_code=404, detail=f"找不到股票代號或目前無法獲取數據")
+        raise HTTPException(status_code=404, detail="找不到股票代號或目前無法獲取數據")
     data = {"stocks": stocks, "last_updated": datetime.now().isoformat()}
     _set_cache(cache_key, data)
     return data
@@ -254,7 +254,7 @@ async def get_us_klines(symbol: str, interval: str = "1d", limit: int = 200):
 
     try:
         klines = await asyncio.to_thread(fetch)
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=404, detail="無法獲取股票數據")
 
     data = {"symbol": sym, "interval": interval, "data": klines}

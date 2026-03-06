@@ -17,7 +17,7 @@ def clear_market_pulse_cache():
         count = c.fetchone()[0]
 
         if count > 0:
-            print(f"Found 'MARKET_PULSE' cache. Deleting...")
+            print("Found 'MARKET_PULSE' cache. Deleting...")
             c.execute("DELETE FROM system_cache WHERE key = 'MARKET_PULSE'")
             conn.commit()
             print("✅ Market Pulse cache cleared successfully.")

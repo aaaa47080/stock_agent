@@ -2,7 +2,6 @@
 Pytest configuration and fixtures
 """
 import os
-import sys
 
 # Set test environment variables before any imports
 os.environ.setdefault('DATABASE_URL', 'postgresql://test:test@localhost:5432/test')

@@ -23,13 +23,7 @@ from .helpers import (
     normalize_symbol,
     find_available_exchange,
     extract_crypto_symbols,
-    CRYPTO_SYMBOLS,
-    COMMON_WORDS
 )
-
-# 為了向後兼容，提供帶下劃線前綴的別名
-_normalize_symbol = normalize_symbol
-_find_available_exchange = find_available_exchange
 
 # 導入所有工具
 from .utility_tools import get_current_time_tool, introduction_tool
@@ -41,6 +35,10 @@ from .crypto_tools import (
     backtest_strategy_tool,
     extract_crypto_symbols_tool
 )
+
+# 為了向後兼容，提供帶下劃線前綴的別名
+_normalize_symbol = normalize_symbol
+_find_available_exchange = find_available_exchange
 
 
 # ============================================================================

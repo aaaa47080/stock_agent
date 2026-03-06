@@ -3,6 +3,7 @@
 所有與加密貨幣相關的 LangChain 工具
 """
 
+import time
 from typing import Optional, Dict
 from langchain_core.tools import tool
 
@@ -14,7 +15,6 @@ from data.data_processor import (
     analyze_market_structure
 )
 from utils.utils import safe_float, get_crypto_news
-from core.config import DEFAULT_KLINES_LIMIT
 
 from .schemas import (
     TechnicalAnalysisInput,
@@ -478,7 +478,6 @@ def get_fear_and_greed_index() -> str:
 # ============================================
 # 簡單的 In-Memory TTL Cache (防禦 CoinGecko API Rate Limit)
 # ============================================
-import time
 
 _COINGECKO_CACHE = {}
 
@@ -923,7 +922,7 @@ def get_whale_transactions(symbol: str = "BTC", min_value_usd: int = 500000) -> 
                     for tx in whale_txs:
                         output += f"| {tx['hash']} | {tx['btc']:.4f} BTC | ${tx['usd']:,.0f} | {tx['time']} |\n"
 
-                    output += f"\n⚠️ **解讀**: 大額轉帳可能代表機構資金移動或交易所冷錢包操作。\n"
+                    output += "\n⚠️ **解讀**: 大額轉帳可能代表機構資金移動或交易所冷錢包操作。\n"
                     output += "\n*(資料來源: Blockchain.com)*"
 
                     _set_cached_coingecko_data(cache_key, output)
@@ -970,7 +969,7 @@ def get_whale_transactions(symbol: str = "BTC", min_value_usd: int = 500000) -> 
                     _set_cached_coingecko_data(cache_key, output)
                     return output
 
-        return f"目前僅支援 BTC 和 ETH 的鯨魚交易追蹤。請使用 BTC 或 ETH 作為參數。"
+        return "目前僅支援 BTC 和 ETH 的鯨魚交易追蹤。請使用 BTC 或 ETH 作為參數。"
 
     except Exception as e:
         return f"取得鯨魚交易數據時發生錯誤: {str(e)}"
@@ -1065,7 +1064,7 @@ def get_exchange_flow(symbol: str = "BTC") -> str:
             _set_cached_coingecko_data(cache_key, output)
             return output
 
-        return f"目前僅支援 BTC 和 ETH 的交易所流向分析。"
+        return "目前僅支援 BTC 和 ETH 的交易所流向分析。"
 
     except Exception as e:
         return f"取得交易所流向數據時發生錯誤: {str(e)}"

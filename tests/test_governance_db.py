@@ -2,13 +2,12 @@
 Tests for governance database operations
 """
 import pytest
-from unittest.mock import Mock, patch, MagicMock, call
+from unittest.mock import Mock, patch
 from datetime import datetime, timedelta
 from core.database.governance import (
     create_report,
     get_pending_reports,
     get_report_by_id,
-    get_user_reports,
     check_daily_report_limit,
     vote_on_report,
     get_report_votes,
@@ -28,8 +27,6 @@ from core.database.governance import (
     get_content_author,
     get_report_statistics,
     get_top_reviewers,
-    PRO_DAILY_REPORT_LIMIT,
-    DEFAULT_DAILY_REPORT_LIMIT,
 )
 
 

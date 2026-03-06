@@ -2,7 +2,6 @@
 Tests for market router in api/routers/market.py
 """
 import pytest
-from unittest.mock import patch, MagicMock
 
 from api.routers.market import (
     _normalize_funding_symbol,

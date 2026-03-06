@@ -6,7 +6,6 @@ Agent V4 — Chat Agent
 Supports multi-language responses.
 """
 import logging
-from typing import Optional
 
 from langchain_core.messages import HumanMessage, SystemMessage
 

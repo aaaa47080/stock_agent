@@ -3,7 +3,6 @@ Agent V4 — News Agent
 
 新聞搜集 Agent: 多來源新聞聚合與總結。
 """
-from typing import Optional
 
 from langchain_core.messages import HumanMessage
 

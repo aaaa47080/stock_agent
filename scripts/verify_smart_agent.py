@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.smart_agents import SmartTechnicalAnalyst
 from utils.llm_client import create_llm_client_from_config
-from core.config import DEEP_THINKING_MODEL, FAST_THINKING_MODEL
+from core.config import FAST_THINKING_MODEL
 
 
 def main():

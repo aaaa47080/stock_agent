@@ -2,7 +2,6 @@
 Tests for admin panel router in api/routers/admin_panel.py
 """
 import pytest
-from unittest.mock import patch, MagicMock
 
 from api.routers.admin_panel import (
     router,

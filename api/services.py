@@ -1,8 +1,10 @@
+# ruff: noqa: E402
+# ^ E402 ignored because module-level variables need to be set before imports
 import asyncio
 import concurrent.futures
 import numpy as np
 from datetime import datetime, timedelta
-from typing import List, Dict, Any
+from typing import List
 
 # 專用背景任務 executor，避免佔用 user request 的 default thread pool
 _background_executor = concurrent.futures.ThreadPoolExecutor(max_workers=2, thread_name_prefix="bg-task")
@@ -36,7 +38,7 @@ def save_market_pulse_cache(silent=True):
     try:
         set_cache("MARKET_PULSE", MARKET_PULSE_CACHE)
         if not silent:
-            logger.info(f"Market Pulse cache saved to DB")
+            logger.info("Market Pulse cache saved to DB")
     except Exception as e:
         logger.error(f"Failed to save Market Pulse cache: {e}")
 
@@ -58,7 +60,7 @@ def save_funding_rate_cache(silent=True):
     try:
         set_cache("FUNDING_RATES", FUNDING_RATE_CACHE.get("data", {}))
         if not silent:
-            logger.info(f"Funding Rate cache saved to DB")
+            logger.info("Funding Rate cache saved to DB")
     except Exception as e:
         logger.error(f"Failed to save Funding Rate cache: {e}")
 
@@ -291,7 +293,7 @@ async def refresh_all_market_pulse_data(target_symbols: List[str] = None):
         async with save_lock:
             loop = asyncio.get_running_loop()
             await loop.run_in_executor(None, set_cache, "MARKET_PULSE", MARKET_PULSE_CACHE)
-            logger.info(f"💾 [Batch Save] Saved Market Pulse cache")
+            logger.info("💾 [Batch Save] Saved Market Pulse cache")
 
     async def _tracked_update(sym):
         nonlocal unsaved_changes
@@ -330,7 +332,8 @@ async def trigger_on_demand_analysis(symbols: List[str]):
     Trigger immediate background analysis for specific symbols if they are stale.
     Designed for "Analyze what user is interested in" feature.
     """
-    if not symbols: return
+    if not symbols:
+        return
     
     # 1. Check validity (skip if recently updated)
     now = datetime.now()

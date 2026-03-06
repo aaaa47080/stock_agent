@@ -9,10 +9,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pandas as pd
 from typing import List, Optional
-from data.data_fetcher import get_data_fetcher, SymbolNotFoundError
-import concurrent.futures
+from data.data_fetcher import get_data_fetcher
 import time
-import random
 
 def calculate_rsi_simple(series: pd.Series, period: int = 14) -> float:
     """快速计算RSI - 只返回最新值"""

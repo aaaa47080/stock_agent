@@ -3,7 +3,6 @@ import json
 from typing import Optional, Set
 from fastapi import APIRouter, HTTPException, Header, WebSocket, WebSocketDisconnect
 
-from core.config import SUPPORTED_EXCHANGES
 from data.market_data import get_klines
 from trading.okx_api_connector import OKXAPIConnector
 from api.models import KlineRequest, ScreenerRequest, RefreshPulseRequest
@@ -13,7 +12,6 @@ from api.globals import (
     FUNDING_RATE_CACHE,
     MARKET_PULSE_CACHE,
     screener_lock,
-    get_symbol_lock,
     ANALYSIS_STATUS
 )
 from api.services import (
@@ -26,7 +24,6 @@ from analysis.market_pulse import get_market_pulse
 import numpy as np
 from datetime import datetime
 
-from api.routers.admin import verify_admin_key
 from api.deps import get_current_user
 from fastapi import Depends
 
@@ -157,7 +154,6 @@ async def _perform_deep_analysis(
 
 async def _perform_on_demand_analysis(symbol: str, sources: str) -> dict:
     """Perform on-demand market pulse analysis."""
-    from analysis.market_pulse import get_market_pulse
 
     enabled_sources = sources.split(',') if sources else None
     loop = asyncio.get_running_loop()

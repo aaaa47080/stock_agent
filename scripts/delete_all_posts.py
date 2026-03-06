@@ -43,7 +43,7 @@ def delete_all_posts(dry_run: bool = True):
         
         # 顯示統計
         print(f"\n{'='*60}")
-        print(f"📊 資料庫現有資料統計:")
+        print("📊 資料庫現有資料統計:")
         print(f"{'='*60}\n")
         print(f"   文章總數: {total_posts}")
         print(f"   回覆/推噓總數: {total_comments}")
@@ -149,7 +149,7 @@ def delete_all_posts(dry_run: bool = True):
         conn.commit()
         
         print(f"\n{'='*60}")
-        print(f"✅ 刪除完成！")
+        print("✅ 刪除完成！")
         print(f"{'='*60}\n")
         print("已清空所有論壇資料:")
         print(f"   - {deleted_posts} 篇文章")

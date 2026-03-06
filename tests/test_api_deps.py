@@ -2,7 +2,7 @@
 Tests for API dependencies in api/deps.py
 """
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch
 from datetime import datetime, timedelta
 from fastapi import HTTPException
 from jose import jwt
@@ -76,7 +76,7 @@ class TestVerifyToken:
 
     def test_verify_valid_token(self):
         """Test verifying a valid token"""
-        from api.deps import create_access_token, verify_token, SECRET_KEY, ALGORITHM
+        from api.deps import create_access_token, verify_token
 
         data = {"sub": "user-123"}
         token = create_access_token(data)

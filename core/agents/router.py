@@ -3,7 +3,6 @@ Agent V4 — Router
 
 Routes tasks to the correct agent, handles collaboration requests.
 """
-from typing import Optional
 from .agent_registry import AgentRegistry
 from .models import CollaborationRequest
 

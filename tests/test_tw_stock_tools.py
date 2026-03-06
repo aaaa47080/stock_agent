@@ -1,5 +1,4 @@
 """Tests for TW stock tool functions — require internet."""
-import pytest
 from core.tools.tw_stock_tools import (
     tw_stock_price,
     tw_technical_analysis,

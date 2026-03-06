@@ -46,7 +46,7 @@ async def list_comments(post_id: int):
         }
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="獲取回覆列表失敗，請稍後再試")
 
 
@@ -133,7 +133,7 @@ async def add_new_comment(
         }
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="新增回覆失敗，請稍後再試")
 
 
@@ -194,7 +194,7 @@ async def push_post(
         return {"success": True, "message": "推文成功"}
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="推文失敗，請稍後再試")
 
 
@@ -255,7 +255,7 @@ async def boo_post(
         return {"success": True, "message": "噓文成功"}
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="噓文失敗，請稍後再試")
 
 
@@ -281,5 +281,5 @@ async def get_comment_status(
             "daily_limit": daily_count["limit"],
             "remaining": daily_count["remaining"],
         }
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="獲取回覆狀態失敗，請稍後再試")

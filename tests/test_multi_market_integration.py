@@ -2,8 +2,7 @@
 Integration tests for multi-market agent dispatch.
 Uses mocked LLM to avoid real API calls.
 """
-import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 
 def make_mock_llm(content="分析報告"):

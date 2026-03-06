@@ -2,7 +2,7 @@
 from __future__ import annotations
 import asyncio
 from typing import get_type_hints
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────

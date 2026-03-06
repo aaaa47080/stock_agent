@@ -1,7 +1,7 @@
 """
 文章相關 API
 """
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional
 
 from core.database import (
@@ -13,9 +13,7 @@ from core.database import (
     delete_post,
     get_user_membership,
     check_daily_post_limit,
-    get_user_by_id,
     get_prices,
-    get_limits,
 )
 from .models import CreatePostRequest, UpdatePostRequest
 import asyncio
@@ -25,6 +23,7 @@ import time
 
 # Import TEST_MODE for development/testing bypass
 from core.config import TEST_MODE, TEST_USER
+from api.deps import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -68,12 +67,9 @@ async def list_posts(
         return {"success": True, "posts": posts, "count": len(posts)}
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="獲取文章列表失敗，請稍後再試")
 
-
-from api.deps import get_current_user
-from fastapi import Depends
 
 @router.post("")
 async def create_new_post(request: CreatePostRequest, user_id: str = Query(..., description="用戶 ID"), current_user: dict = Depends(get_current_user)):
@@ -161,7 +157,7 @@ async def create_new_post(request: CreatePostRequest, user_id: str = Query(..., 
         }
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="發表文章失敗，請稍後再試")
 
 
@@ -186,7 +182,7 @@ async def get_post_detail(post_id: int, user_id: Optional[str] = Query(None, des
         return {"success": True, "post": post}
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="獲取文章詳情失敗，請稍後再試")
 
 
@@ -230,7 +226,7 @@ async def update_post_content(
         return {"success": True, "message": "文章更新成功"}
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="更新文章失敗，請稍後再試")
 
 
@@ -256,5 +252,5 @@ async def delete_post_by_id(
         return {"success": True, "message": "文章已刪除"}
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="刪除文章失敗，請稍後再試")

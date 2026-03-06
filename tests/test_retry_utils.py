@@ -2,7 +2,7 @@
 Tests for retry utilities
 """
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import time
 
 from utils.retry_utils import retry_on_failure
@@ -140,7 +140,7 @@ class TestRetryOnFailure:
         """Test that backoff increases delay between retries"""
         delays = []
 
-        original_sleep = time.sleep
+        _ = time.sleep  # original_sleep not used
         def mock_sleep(duration):
             delays.append(duration)
             # Don't actually sleep

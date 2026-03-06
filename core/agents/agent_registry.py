@@ -3,8 +3,8 @@ Agent V4 — Agent Registry
 
 Manages agent registration and capability-based discovery.
 """
-from dataclasses import dataclass, field
-from typing import List, Optional, Dict
+from dataclasses import dataclass
+from typing import List, Dict
 
 
 @dataclass

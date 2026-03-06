@@ -2,7 +2,6 @@
 Tests for governance router in api/routers/governance.py
 """
 import pytest
-from unittest.mock import patch, MagicMock
 
 from api.routers.governance import (
     router,

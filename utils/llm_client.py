@@ -6,7 +6,7 @@ import os
 import logging
 import json
 import re
-from typing import Dict, Any, List, Union, Optional
+from typing import Dict, Any
 from dotenv import load_dotenv
 from core.model_config import OPENAI_DEFAULT_MODEL, OPENAI_LEGACY_MODEL, GEMINI_DEFAULT_MODEL
 
@@ -14,7 +14,7 @@ from core.model_config import OPENAI_DEFAULT_MODEL, OPENAI_LEGACY_MODEL, GEMINI_
 try:
     from langchain.chat_models import init_chat_model
     from langchain_core.language_models import BaseChatModel
-    from langchain_core.messages import HumanMessage, SystemMessage, AIMessage, BaseMessage
+    from langchain_core.messages import HumanMessage
     LANGCHAIN_AVAILABLE = True
 except ImportError:
     LANGCHAIN_AVAILABLE = False
@@ -180,7 +180,7 @@ def extract_json_from_response(response_text: str) -> dict:
     if first_brace != -1 and last_brace != -1:
         try:
             return json.loads(response_text[first_brace:last_brace + 1])
-        except:
+        except Exception:
             pass
             
     # Try dirtyjson if available

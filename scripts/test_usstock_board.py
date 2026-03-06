@@ -195,7 +195,7 @@ def test_prompt_templates():
             if expected_time in prompt:
                 print(f"  [OK] 時間注入成功 ({expected_time})")
             else:
-                print(f"  [WARN] 時間注入可能失敗")
+                print("  [WARN] 時間注入可能失敗")
         except Exception as e:
             print(f"  [WARN] Prompt 渲染測試跳過：{e}")
         

@@ -2,7 +2,6 @@
 Governance System Validators
 """
 from typing import Dict, Optional
-import re
 
 
 def validate_report_type(report_type: str) -> Dict:

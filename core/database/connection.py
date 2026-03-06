@@ -8,6 +8,7 @@ import os
 import threading
 import time
 import json
+import logging
 
 # PostgreSQL 連接字符串
 DATABASE_URL = os.environ.get("DATABASE_URL")
@@ -61,7 +62,7 @@ class _StandaloneConnection:
         if not self._closed and self._conn:
             try:
                 self._conn.rollback()
-            except Exception as e:
+            except Exception:
                 # Rollback failed, connection may be corrupted
                 # Try close anyway
                 pass
@@ -122,7 +123,7 @@ class PooledConnection:
                 # 如果歸還失敗，嘗試真正關閉
                 try:
                     self._conn.close()
-                except:
+                except Exception:
                     pass
                 print(f"⚠️ 連接歸還失敗: {e}")
     
@@ -165,7 +166,6 @@ def init_connection_pool():
     if _connection_pool is None:
         with _pool_lock:
             if _connection_pool is None:
-                last_error = None
                 for attempt in range(POOL_INIT_MAX_RETRIES):
                     try:
                         # 使用 ThreadedConnectionPool 替代 SimpleConnectionPool
@@ -179,7 +179,7 @@ def init_connection_pool():
                         print(f"✅ 線程安全數據庫連接池已初始化 (min={MIN_POOL_SIZE}, max={MAX_POOL_SIZE})")
                         break
                     except psycopg2.OperationalError as e:
-                        last_error = e
+                        _ = e  # Capture for potential future use
                         if attempt < POOL_INIT_MAX_RETRIES - 1:
                             print(f"⚠️ 資料庫連接失敗（{e}），{POOL_INIT_RETRY_DELAY} 秒後重試... (嘗試 {attempt + 1}/{POOL_INIT_MAX_RETRIES})")
                             time.sleep(POOL_INIT_RETRY_DELAY)
@@ -230,7 +230,7 @@ def get_connection():
             if raw_conn.closed:
                 try:
                     _connection_pool.putconn(raw_conn, close=True)
-                except:
+                except Exception:
                     pass
                 raw_conn = None
                 bad_conn_count += 1
@@ -247,7 +247,7 @@ def get_connection():
                 print(f"⚠️ 偵測到壞掉的連接（{type(health_error).__name__}），重新獲取...")
                 try:
                     _connection_pool.putconn(raw_conn, close=True)
-                except:
+                except Exception:
                     pass
                 raw_conn = None
                 bad_conn_count += 1
@@ -262,7 +262,7 @@ def get_connection():
                         test_cur.execute("SELECT 1")
                         test_cur.fetchone()
                         test_cur.close()
-                        print(f"✅ 成功創建新連接繞過連接池")
+                        print("✅ 成功創建新連接繞過連接池")
                         # 返回一個不依賴連接池的包裝（close 時真正關閉）
                         return _StandaloneConnection(fresh_conn)
                     except Exception as new_conn_error:
@@ -279,7 +279,7 @@ def get_connection():
             if raw_conn:
                 try:
                     _connection_pool.putconn(raw_conn, close=True)
-                except:
+                except Exception:
                     pass
             if attempt < MAX_RETRIES - 1:
                 # 使用指數退避
@@ -289,10 +289,10 @@ def get_connection():
 
                 # 連接池耗盡時，嘗試直接創建連接
                 if attempt >= 2:
-                    print(f"⚠️ 連接池持續耗盡，嘗試創建新連接...")
+                    print("⚠️ 連接池持續耗盡，嘗試創建新連接...")
                     try:
                         fresh_conn = psycopg2.connect(DATABASE_URL, **CONNECTION_OPTIONS)
-                        print(f"✅ 成功創建新連接繞過連接池")
+                        print("✅ 成功創建新連接繞過連接池")
                         return _StandaloneConnection(fresh_conn)
                     except Exception as new_conn_error:
                         print(f"❌ 創建新連接也失敗: {new_conn_error}")
@@ -304,7 +304,7 @@ def get_connection():
             if raw_conn:
                 try:
                     _connection_pool.putconn(raw_conn, close=True)
-                except:
+                except Exception:
                     pass
             print(f"❌ 無法從連接池獲取連接: {e}")
             raise

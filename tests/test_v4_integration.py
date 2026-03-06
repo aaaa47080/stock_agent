@@ -11,8 +11,7 @@ V4 整合測試：
 import sys
 import os
 import pytest
-from unittest.mock import patch, MagicMock, PropertyMock
-from typing import Optional
+from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -26,7 +25,6 @@ class TestV4Classify:
 
     def test_classify_result_structure(self):
         """after_classify_node 返回的 dict 應包含 agent, complexity, symbols。"""
-        from core.agents.manager import ManagerAgent
         # We test the classify node logic via the router directly
         from core.agents.agent_registry import AgentRegistry, AgentMetadata
         from core.agents.router import AgentRouter
@@ -53,7 +51,7 @@ class TestV4Classify:
             priority=1,
         ))
 
-        router = AgentRouter(registry)
+        _ = AgentRouter(registry)
         agents = registry.list_all()
         assert any(m.name == "full_analysis" for m in agents)
         assert any(m.name == "chat" for m in agents)
@@ -130,7 +128,6 @@ class TestAnalysisReportDB:
 
     def test_get_analysis_report_by_id_returns_dict(self):
         """get_analysis_report_by_id 應返回完整報告 dict，含 user_id。"""
-        import json
         mock_row = {
             "id": 1,
             "session_id": "sess-001",
@@ -181,7 +178,6 @@ class TestAPIModels:
     def test_query_request_has_resume_answer(self):
         """QueryRequest 應有 resume_answer 欄位，預設為 None。"""
         from api.models import QueryRequest
-        import inspect
         fields = QueryRequest.model_fields
         assert "resume_answer" in fields
         assert fields["resume_answer"].default is None
@@ -189,7 +185,6 @@ class TestAPIModels:
     def test_query_request_resume_answer_optional(self):
         """resume_answer 應為 Optional[str]。"""
         from api.models import QueryRequest
-        import typing
         annotation = QueryRequest.model_fields["resume_answer"].annotation
         # Should be Optional[str] (i.e., Union[str, None])
         args = getattr(annotation, "__args__", None)

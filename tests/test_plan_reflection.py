@@ -1,5 +1,10 @@
 """Tests for Plan Reflection feature."""
+import asyncio
+from unittest.mock import MagicMock
+
 from core.config import PLAN_REFLECTION_MAX_RETRIES
+from core.agents.manager import ManagerState
+from core.agents.prompt_registry import PromptRegistry
 
 
 def test_plan_reflection_max_retries_exists():
@@ -7,16 +12,10 @@ def test_plan_reflection_max_retries_exists():
     assert PLAN_REFLECTION_MAX_RETRIES >= 1
 
 
-from core.agents.manager import ManagerState
-
-
 def test_manager_state_has_reflection_fields():
     hints = ManagerState.__annotations__
     assert "plan_reflection_count" in hints
     assert "plan_reflection_suggestion" in hints
-
-
-from core.agents.prompt_registry import PromptRegistry
 
 
 def test_reflect_plan_prompt_renders():
@@ -32,10 +31,6 @@ def test_reflect_plan_prompt_renders():
     )
     assert "INTC" in result
     assert "approved" in result
-
-
-import asyncio
-from unittest.mock import MagicMock
 
 
 def _make_manager():
@@ -170,7 +165,7 @@ def test_initial_state_reflection_fields_zero():
     """Reflection fields initialize to zero/None in the entry state."""
     manager = _make_manager()
     import inspect
-    src = inspect.getsource(manager.graph.get_graph)
+    _ = inspect.getsource(manager.graph.get_graph)  # src not used
     # Functional check: simple query auto-approves (count stays 0)
     state = {
         "session_id": "x", "query": "test", "complexity": "simple",

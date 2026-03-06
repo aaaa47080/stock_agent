@@ -2,7 +2,6 @@
 Tests for user router in api/routers/user.py
 """
 import pytest
-from unittest.mock import patch, MagicMock
 
 from api.routers.user import (
     router,

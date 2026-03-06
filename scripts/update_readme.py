@@ -1,5 +1,3 @@
-import sys
-
 def update_readme(filename, is_cn):
     with open(filename, 'r', encoding='utf-8') as f:
         content = f.read()
@@ -40,8 +38,7 @@ This project has evolved from a Proof of Concept (PoC) into a fully implemented 
     marker = marker_cn if is_cn else marker_en
     
     if marker in content:
-        new_content = content.replace(marker, insert_text + "
-" + marker)
+        new_content = content.replace(marker, insert_text + "\n" + marker)
         with open(filename, 'w', encoding='utf-8') as f:
             f.write(new_content)
         print(f"Successfully updated {filename}")

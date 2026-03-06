@@ -1,9 +1,7 @@
-import datetime
 import backtrader as bt
 import pandas as pd
 import pandas_ta as ta
-import numpy as np
-from typing import Dict, Optional
+from typing import Dict
 
 # Define a custom data feed that supports additional indicators if needed
 class PandasData(bt.feeds.PandasData):

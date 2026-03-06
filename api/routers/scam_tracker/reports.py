@@ -16,7 +16,7 @@ from core.database.scam_tracker import (
 )
 from core.database.system_config import get_config
 from core.database.user import get_user_by_id
-from .models import ScamReportCreate, ScamReportResponse, ScamReportDetailResponse
+from .models import ScamReportCreate
 
 logger = logging.getLogger(__name__)
 

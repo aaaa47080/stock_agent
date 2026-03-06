@@ -2,7 +2,6 @@
 可疑錢包追蹤系統 - 評論 API
 """
 from fastapi import APIRouter, HTTPException, Query, Depends
-from typing import Optional
 import asyncio
 from functools import partial
 import logging

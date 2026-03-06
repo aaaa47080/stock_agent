@@ -1,5 +1,3 @@
-import os
-import sys
 import requests
 import json
 
@@ -26,7 +24,7 @@ def bootstrap_admin():
         print(f"Status Code: {response.status_code}")
         try:
             print("Response:", json.dumps(response.json(), indent=2, ensure_ascii=False))
-        except:
+        except Exception:
             print("Response Text:", response.text)
             
         if response.status_code == 200:

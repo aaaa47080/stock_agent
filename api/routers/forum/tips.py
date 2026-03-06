@@ -68,7 +68,7 @@ async def tip_post(
         }
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="打賞失敗，請稍後再試")
 
 
@@ -93,7 +93,7 @@ async def get_sent_tips(
             "tips": tips,
             "count": len(tips),
         }
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="獲取打賞記錄失敗，請稍後再試")
 
 
@@ -120,5 +120,5 @@ async def get_received_tips(
             "count": len(tips),
             "total_received": total,
         }
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="獲取打賞記錄失敗，請稍後再試")

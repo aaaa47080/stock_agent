@@ -2,7 +2,7 @@
 通知 API 端點
 """
 from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconnect
-from typing import Optional, List
+from typing import Optional
 from pydantic import BaseModel, Field
 import json
 import asyncio

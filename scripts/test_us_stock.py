@@ -13,7 +13,6 @@ from core.tools.us_stock_tools import (
     us_stock_price,
     us_technical_analysis,
     us_fundamentals,
-    us_earnings,
     us_news,
 )
 from core.agents.agents.us_stock_agent import USStockAgent
@@ -105,7 +104,7 @@ def test_tools():
                 if "error" in result:
                     print(f"  ❌ 錯誤：{result['error']}")
                 else:
-                    print(f"  ✅ 成功獲取數據")
+                    print("  ✅ 成功獲取數據")
             elif isinstance(result, list):
                 print(f"  ✅ 獲取 {len(result)} 筆數據")
         except Exception as e:
@@ -182,16 +181,16 @@ def test_agent():
             try:
                 result = agent.execute(task)
                 if result.success:
-                    print(f"  ✅ 執行成功")
+                    print("  ✅ 執行成功")
                     print(f"  回應预览：{result.message[:150]}...")
                     
                     # 檢查語言
                     if tc['language'] == "zh-TW" and "美股分析" in result.message:
-                        print(f"  ✅ 語言正確（繁體中文）")
+                        print("  ✅ 語言正確（繁體中文）")
                     elif tc['language'] == "zh-CN" and "美股分析" in result.message:
-                        print(f"  ✅ 語言正確（簡體中文）")
+                        print("  ✅ 語言正確（簡體中文）")
                     elif tc['language'] == "en" and "US Stock Analysis" in result.message:
-                        print(f"  ✅ 語言正確（英文）")
+                        print("  ✅ 語言正確（英文）")
                 else:
                     print(f"  ❌ 執行失敗：{result.message}")
             except Exception as e:

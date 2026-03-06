@@ -44,7 +44,7 @@ async def get_my_limits(user_id: str = Query(..., description="用戶 ID"), curr
             },
             "membership": membership
         }
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="獲取限制狀態失敗，請稍後再試")
 
 
@@ -79,7 +79,7 @@ async def get_my_stats(user_id: str = Query(..., description="用戶 ID"), curre
                 "daily_comments": daily_comments,
             }
         }
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="獲取統計資料失敗，請稍後再試")
 
 
@@ -105,7 +105,7 @@ async def get_my_posts(
             "posts": posts,
             "count": len(posts),
         }
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="獲取文章列表失敗，請稍後再試")
 
 
@@ -130,7 +130,7 @@ async def get_my_sent_tips(
             "tips": tips,
             "count": len(tips),
         }
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="獲取打賞記錄失敗，請稍後再試")
 
 
@@ -157,7 +157,7 @@ async def get_my_received_tips(
             "count": len(tips),
             "total_received": total,
         }
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="獲取打賞記錄失敗，請稍後再試")
 
 
@@ -182,7 +182,7 @@ async def get_my_payments(
             "payments": payments,
             "count": len(payments),
         }
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="獲取付款記錄失敗，請稍後再試")
 
 
@@ -202,5 +202,5 @@ async def get_my_membership(user_id: str = Query(..., description="用戶 ID"), 
             "success": True,
             "membership": membership,
         }
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="獲取會員狀態失敗，請稍後再試")

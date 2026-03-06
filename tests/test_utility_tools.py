@@ -3,8 +3,6 @@ Tests for utility tools in core/tools/utility_tools.py
 """
 import pytest
 from unittest.mock import patch, mock_open
-from datetime import datetime
-from zoneinfo import ZoneInfo
 
 from core.tools.utility_tools import get_current_time_tool, introduction_tool
 

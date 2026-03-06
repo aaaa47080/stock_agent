@@ -2,7 +2,6 @@
 Gunicorn 生產環境配置文件
 用於多進程部署 Pi Crypto Insight API Server
 """
-import multiprocessing
 import os
 
 # ========================================

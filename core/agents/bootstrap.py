@@ -39,7 +39,7 @@ from core.tools.us_stock_tools import (
 )
 
 # Import agent classes
-from .agents import TechAgent, NewsAgent, ChatAgent, TWStockAgent, USStockAgent, CryptoAgent
+from .agents import ChatAgent, TWStockAgent, USStockAgent, CryptoAgent
 
 
 class LanguageAwareLLM:

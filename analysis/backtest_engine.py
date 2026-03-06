@@ -17,9 +17,8 @@
 """
 
 import pandas as pd
-import pandas_ta as ta
 import numpy as np
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List
 from dataclasses import dataclass
 
 

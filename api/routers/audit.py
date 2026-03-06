@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from api.routers.admin import verify_admin_key
 from core.database import get_connection
 from datetime import datetime, timedelta
-from typing import Optional, List
+from typing import Optional
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/admin/audit", tags=["Audit Logs"])
@@ -109,7 +109,7 @@ async def get_audit_logs(
             "offset": offset
         }
         
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="查詢審計日誌失敗")
 
 
@@ -172,7 +172,7 @@ async def get_suspicious_activity(
             "alert_count": len(failed_logins) + len(failed_payments)
         }
         
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="分析可疑活動失敗")
 
 
@@ -236,7 +236,7 @@ async def get_user_activity(
             "statistics": stats
         }
         
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="獲取用戶活動失敗")
 
 
@@ -301,5 +301,5 @@ async def get_audit_stats(
             "top_actions": top_actions
         }
         
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="獲取審計統計失敗")

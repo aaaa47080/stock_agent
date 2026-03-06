@@ -1,5 +1,4 @@
 from data.data_fetcher import get_data_fetcher, SymbolNotFoundError
-import pandas as pd
 import sys
 import os
 

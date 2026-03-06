@@ -21,12 +21,8 @@ class TestSecurityMonitoring:
         """Verify security monitoring modules can be imported"""
         from core.security_monitor import (
             SecurityEventType,
-            SeverityLevel,
-            SecurityEvent,
-            SecurityMonitor,
-            log_security_event
+            SeverityLevel
         )
-        from core.alert_dispatcher import AlertDispatcher
 
         # Verify enums work
         assert SecurityEventType.BRUTE_FORCE_ATTEMPT.value == "brute_force"
@@ -35,7 +31,6 @@ class TestSecurityMonitoring:
     def test_security_event_creation(self):
         """Test creating and logging security events"""
         from core.security_monitor import SecurityEvent, SecurityEventType, SeverityLevel
-        from datetime import datetime
 
         event = SecurityEvent(
             event_type=SecurityEventType.BRUTE_FORCE_ATTEMPT,

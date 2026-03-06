@@ -1,8 +1,7 @@
 """
 Web Search Tool using DuckDuckGo (Free)
 """
-import json
-from typing import List, Dict, Optional
+from typing import List, Dict
 from langchain_core.tools import tool
 from duckduckgo_search import DDGS
 from api.utils import logger

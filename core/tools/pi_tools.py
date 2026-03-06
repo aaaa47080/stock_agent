@@ -11,11 +11,8 @@ Pi Network 工具模組
 """
 import os
 import httpx
-from typing import Optional, Dict, Any
 from langchain_core.tools import tool
-from datetime import datetime
 
-from api.utils import logger
 
 PI_API_KEY = os.getenv("PI_API_KEY", "")
 PI_API_BASE = "https://api.minepi.com/v2"

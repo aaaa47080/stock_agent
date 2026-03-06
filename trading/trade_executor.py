@@ -2,14 +2,13 @@ import argparse
 import glob
 import os
 import sys
-import json
 from typing import Optional, Dict
 
 # Add the project root directory to the Python path to allow imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from trading.okx_api_connector import OKXAPIConnector
-from core.config import MINIMUM_INVESTMENT_USD, EXCHANGE_MINIMUM_ORDER_USD
+from core.config import EXCHANGE_MINIMUM_ORDER_USD
 
 class TradeExecutor:
     """
@@ -152,11 +151,13 @@ class TradeExecutor:
 
         # 3. Calculate Contract Size (sz) - quantity in contracts (张)
         ticker = self.okx.get_ticker(symbol)
-        if ticker.get("code") != "0": return {"status": "failed", "error": "Ticker failed"}
+        if ticker.get("code") != "0":
+            return {"status": "failed", "error": "Ticker failed"}
         last_price = float(ticker["data"][0]["last"])
 
         inst_info = self.okx.get_instruments("SWAP", symbol)
-        if inst_info.get("code") != "0": return {"status": "failed", "error": "Instruments failed"}
+        if inst_info.get("code") != "0":
+            return {"status": "failed", "error": "Instruments failed"}
         
         inst_data = inst_info["data"][0]
         ct_val = float(inst_data.get("ctVal", 1)) # Contract Value (e.g. 1 PI per contract)
@@ -198,7 +199,8 @@ class TradeExecutor:
 # Helper for CLI
 def find_latest_analysis_file(pattern: str) -> str:
     files = glob.glob(pattern)
-    if not files: files = glob.glob(os.path.join("..", pattern))
+    if not files:
+        files = glob.glob(os.path.join("..", pattern))
     return max(files, key=os.path.getctime) if files else None
 
 def main():

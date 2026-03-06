@@ -2,9 +2,8 @@
 Tests for scam tracker database operations
 """
 import pytest
-import sys
 import os
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 # Set required environment variables for testing BEFORE any imports
 os.environ['DATABASE_URL'] = 'postgresql://test:test@localhost:5432/test'
@@ -24,7 +23,6 @@ with patch('core.database.connection.get_connection') as mock_conn:
     from core.database.scam_tracker import (
         create_scam_report,
         get_scam_reports,
-        get_scam_report_by_id,
         search_wallet,
         vote_scam_report,
         add_scam_comment,

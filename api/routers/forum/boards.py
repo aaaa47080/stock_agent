@@ -22,7 +22,7 @@ async def list_boards():
         loop = asyncio.get_running_loop()
         boards = await loop.run_in_executor(None, partial(get_boards, active_only=True))
         return {"success": True, "boards": boards}
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="獲取看板列表失敗，請稍後再試")
 
 
@@ -45,5 +45,5 @@ async def get_board(slug: str):
         return {"success": True, "board": board}
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="獲取看板詳情失敗，請稍後再試")

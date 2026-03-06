@@ -2,7 +2,6 @@
 Python 文件清理工具
 扫描项目中未被引用的 Python 文件，生成删除建议
 """
-import os
 from pathlib import Path
 from typing import Set, Dict, List
 import re

@@ -30,7 +30,7 @@ class PiNetwork:
             self.open_payments = {}
             self.network = network
             self.fee = self.server.fetch_base_fee()
-        except:
+        except Exception:
             return False
 
     def get_balance(self):
@@ -40,7 +40,7 @@ class PiNetwork:
                 if i["asset_type"] == "native":
                     return float(i["balance"])
             return 0
-        except:
+        except Exception:
             return 0
 
     def get_payment(self, payment_id):
@@ -124,7 +124,7 @@ class PiNetwork:
             print("HTTP-Response: " + str(re.status_code))
             print("HTTP-Response Data: " + str(result_dict))
             return result_dict
-        except:
+        except Exception:
             return False
 
     def set_horizon_client(self, network):

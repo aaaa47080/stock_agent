@@ -3,8 +3,7 @@ Tests for database base class (TDD - Red phase)
 Tests the unified CRUD operations that will eliminate duplicate database code
 """
 import pytest
-from unittest.mock import Mock, patch, MagicMock
-from datetime import datetime
+from unittest.mock import Mock, patch
 from collections import namedtuple
 
 
@@ -116,7 +115,7 @@ class TestDatabaseBaseClass:
             mock_conn = Mock()
             mock_get_conn.return_value = mock_conn
 
-            with DatabaseBase() as db:
+            with DatabaseBase() as _:
                 pass  # Do nothing
 
             mock_conn.close.assert_called_once()

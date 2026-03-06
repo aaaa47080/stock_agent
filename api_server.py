@@ -1,3 +1,5 @@
+# ruff: noqa: E402
+# ^ E402 ignored because we need to modify sys.path before importing local modules
 import os
 import sys
 import asyncio
@@ -229,12 +231,11 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 # --- 1. Rate Limiting ---
 try:
-    from slowapi import _rate_limit_exceeded_handler
     from slowapi.errors import RateLimitExceeded
     from api.middleware.rate_limit import limiter, rate_limit_exceeded_handler
     
     app.state.limiter = limiter
-    app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+    app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)  # type: ignore[arg-type]
     logger.info("✅ Rate limiting enabled")
 except ImportError as e:
     logger.warning(f"⚠️ Rate limiting not available: {e}")
@@ -377,9 +378,8 @@ async def readiness_check():
     
     # 檢查數據庫
     try:
-        from core.database import init_db
         components["database"] = True
-    except Exception as e:
+    except Exception:
         components["database"] = False
         ready = False
     
@@ -476,6 +476,6 @@ if os.path.exists("web"):
 if __name__ == "__main__":
     logger.info("🚀 Pi Crypto Insight API Server 啟動中...")
     logger.info("VERIFICATION_TAG: Fix-500-Masking-v3-Robust") 
-    logger.info(f"🏠 本地網址: http://localhost:8080")
+    logger.info("🏠 本地網址: http://localhost:8080")
     logger.info("📱 請在 Pi Browser 中使用 HTTPS 網址訪問 (如透過 ngrok)")
     uvicorn.run(app, host="0.0.0.0", port=8080)

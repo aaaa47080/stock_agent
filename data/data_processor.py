@@ -3,8 +3,7 @@
 將數據準備邏輯從 graph.py 中分離出來，提高可維護性
 """
 import pandas as pd
-import numpy as np
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple
 from data.data_fetcher import get_data_fetcher
 from data.indicator_calculator import add_technical_indicators
 from utils.utils import get_crypto_news, safe_float

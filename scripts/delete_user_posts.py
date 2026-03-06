@@ -69,7 +69,7 @@ def delete_user_posts(username: str, dry_run: bool = True):
             print()
         
         print(f"{'='*60}")
-        print(f"📊 統計:")
+        print("📊 統計:")
         print(f"   文章總數: {len(posts)}")
         print(f"   回覆/推噓總數: {total_comments}")
         print(f"   打賞總額: {total_tips} Pi")
@@ -105,7 +105,7 @@ def delete_user_posts(username: str, dry_run: bool = True):
         post_ids_tuple = tuple(post_ids)
         
         # 3. 刪除回覆/推噓
-        c.execute(f'''
+        c.execute('''
             DELETE FROM forum_comments 
             WHERE post_id IN %s
         ''', (post_ids_tuple,))
@@ -113,7 +113,7 @@ def delete_user_posts(username: str, dry_run: bool = True):
         print(f"✓ 已刪除 {deleted_comments} 條回覆/推噓")
         
         # 4. 刪除打賞記錄
-        c.execute(f'''
+        c.execute('''
             DELETE FROM tips 
             WHERE post_id IN %s
         ''', (post_ids_tuple,))
@@ -121,7 +121,7 @@ def delete_user_posts(username: str, dry_run: bool = True):
         print(f"✓ 已刪除 {deleted_tips} 條打賞記錄")
         
         # 5. 刪除文章標籤關聯
-        c.execute(f'''
+        c.execute('''
             DELETE FROM post_tags 
             WHERE post_id IN %s
         ''', (post_ids_tuple,))
@@ -138,7 +138,7 @@ def delete_user_posts(username: str, dry_run: bool = True):
         board_counts = c.fetchall()
         
         # 7. 刪除文章本身
-        c.execute(f'''
+        c.execute('''
             DELETE FROM posts 
             WHERE user_id = %s
         ''', (user_id,))
@@ -164,13 +164,13 @@ def delete_user_posts(username: str, dry_run: bool = True):
                 WHERE pt.tag_id = t.id
             )
         ''')
-        print(f"✓ 已重新計算標籤文章計數")
+        print("✓ 已重新計算標籤文章計數")
         
         # 提交事務
         conn.commit()
         
         print(f"\n{'='*60}")
-        print(f"✅ 刪除完成！")
+        print("✅ 刪除完成！")
         print(f"{'='*60}\n")
         print(f"已刪除用戶 '{username}' 的:")
         print(f"   - {deleted_posts} 篇文章")

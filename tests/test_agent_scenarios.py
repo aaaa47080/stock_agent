@@ -8,7 +8,7 @@ import pytest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.agents.manager import ManagerAgent
-from core.agents.models import ExecutionContext, SubTask, TaskComplexity
+from core.agents.models import ExecutionContext, TaskComplexity
 
 # 50 Test Scenarios
 SCENARIOS = [

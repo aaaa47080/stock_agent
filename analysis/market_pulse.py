@@ -3,8 +3,7 @@ import sys
 import json
 import logging
 from datetime import datetime
-from typing import Dict, Optional, List, Any
-import pandas as pd
+from typing import Dict, List
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -16,8 +15,7 @@ from core.config import MARKET_PULSE_MODEL
 from utils.llm_client import create_llm_client_from_config, extract_json_from_response
 
 # LangChain Imports
-from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_core.language_models import BaseChatModel
+from langchain_core.messages import HumanMessage
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -79,8 +77,10 @@ class MarketPulseAnalyzer:
                 macd_hist = safe_float(latest.get(macd_hist_col, 0))
                 prev_macd_hist = safe_float(prev.get(macd_hist_col, 0))
                 import math
-                if isinstance(macd_hist, float) and math.isnan(macd_hist): macd_hist = 0.0
-                if isinstance(prev_macd_hist, float) and math.isnan(prev_macd_hist): prev_macd_hist = 0.0
+                if isinstance(macd_hist, float) and math.isnan(macd_hist):
+                    macd_hist = 0.0
+                if isinstance(prev_macd_hist, float) and math.isnan(prev_macd_hist):
+                    prev_macd_hist = 0.0
             else:
                 macd_hist = 0.0
                 prev_macd_hist = 0.0

@@ -46,7 +46,6 @@ def test_resolve_unknown(resolver):
 def test_stock_list_cached(resolver):
     """第二次呼叫使用快取（不再 HTTP 請求）"""
     resolver.resolve("台積電")
-    import httpx
     with pytest.raises(Exception) if False else __import__('contextlib').nullcontext():
         # Just verify cache is populated
         assert resolver._cache is not None

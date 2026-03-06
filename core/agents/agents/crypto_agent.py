@@ -112,7 +112,6 @@ class CryptoAgent:
 
     def _extract_symbol(self, description: str, history: str = "", language: str = "zh-TW") -> str:
         """Extract crypto ticker from description, using history for pronoun resolution."""
-        import re
 
         # Fast path: explicit prefix "[BTC] ..." injected by _plan_node
         prefix_match = re.match(r'^\[([A-Z]{1,10})\]', description.strip())

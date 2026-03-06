@@ -9,7 +9,6 @@ NOTE: V3 tools return `.data` as formatted strings (Markdown), not dicts.
       This agent handles both string and dict data formats.
 """
 import re
-from typing import Optional
 
 from langchain_core.messages import HumanMessage
 
@@ -40,7 +39,7 @@ class TechAgent:
                 # Direct invoke handler
                 res = ta_tool.handler.invoke({"symbol": symbol, "interval": "1d"})
                 raw_indicators = res
-            except Exception as e:
+            except Exception:
                 pass
 
         # Step 2: Get price data
@@ -50,7 +49,7 @@ class TechAgent:
             try:
                 res = p_tool.handler.invoke({"symbol": symbol})
                 raw_price = res
-            except Exception as e:
+            except Exception:
                 pass
 
         # Step 3: Check data
@@ -104,8 +103,10 @@ class TechAgent:
 
     def _parse_indicators(self, raw) -> dict:
         """Parse indicator data."""
-        if isinstance(raw, dict): return raw
-        if not isinstance(raw, str): return {}
+        if isinstance(raw, dict):
+            return raw
+        if not isinstance(raw, str):
+            return {}
         parsed = {}
         for match in re.finditer(r'\|\s*(RSI\s*\(\d+\)|MACD|MA\d+|MA\s*\d+|布林帶[上下]軌)\s*\|\s*\$?([-\d.]+)', raw):
             key_norm = re.sub(r'\s*\(\d+\)', '', match.group(1).strip()).replace(' ', '')
@@ -113,7 +114,8 @@ class TechAgent:
         return parsed
 
     def _build_signals(self, indicators: dict) -> str:
-        if not indicators: return "（無可用訊號數據）"
+        if not indicators:
+            return "（無可用訊號數據）"
         signals = []
         # ... simplified signal logic ...
         ma7 = float(indicators.get("MA7") or indicators.get("ma7") or 0)

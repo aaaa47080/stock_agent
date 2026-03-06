@@ -5,7 +5,7 @@ Verifies Pi Access Tokens against the Pi Network API to prevent identity spoofin
 """
 import os
 import httpx
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 from fastapi import HTTPException
 from api.utils import logger
 

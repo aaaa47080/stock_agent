@@ -2,7 +2,6 @@
 Tests for governance Pydantic models
 """
 import pytest
-from pydantic import ValidationError
 from api.models import (
     ReportCreateRequest,
     ReportResponse,

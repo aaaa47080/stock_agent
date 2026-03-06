@@ -11,8 +11,7 @@ import json
 import re
 from uuid import uuid4
 from dataclasses import asdict, fields
-from datetime import datetime
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Annotated
 try:
     from typing import NotRequired
 except ImportError:
@@ -23,13 +22,11 @@ from langchain_core.messages import HumanMessage
 from langgraph.graph import StateGraph, END
 from langgraph.types import interrupt, Command
 from langgraph.checkpoint.memory import MemorySaver
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from api.utils import logger  # Added logger
 
 from .models import (
-    TaskComplexity, SubTask, ExecutionContext,
-    AgentResult, CollaborationRequest,
+    SubTask,
 )
 from .agent_registry import AgentRegistry
 from .tool_registry import ToolRegistry
@@ -55,9 +52,6 @@ AGENT_ICONS: Dict[str, str] = {
     "chat":          "🤖",
 }
 
-
-from typing import Annotated
-import operator
 
 class ManagerState(TypedDict):
     """LangGraph 節點間傳遞的狀態包。"""
@@ -272,9 +266,12 @@ class ManagerAgent:
             logger.info(f"[Classify] Forcing complexity to 'complex' due to investment keywords in query: {query}")
             complexity = "complex"
             if intent == "chat" and symbols:
-                if symbols.get("crypto"): intent = "crypto"
-                elif symbols.get("tw"): intent = "tw_stock"
-                elif symbols.get("us"): intent = "us_stock"
+                if symbols.get("crypto"):
+                    intent = "crypto"
+                elif symbols.get("tw"):
+                    intent = "tw_stock"
+                elif symbols.get("us"):
+                    intent = "us_stock"
 
         result = {
             "complexity":                 complexity,
@@ -519,7 +516,6 @@ class ManagerAgent:
         Only runs for complex queries. Simple queries are approved immediately.
         """
         import asyncio
-        from core.config import PLAN_REFLECTION_MAX_RETRIES
 
         # Simple queries — skip reflection, approve immediately
         if state.get("complexity") != "complex":

@@ -29,7 +29,7 @@ async def progress_monitor(task):
     
     # ANSI Colors
     CYAN = '\033[96m'
-    GREEN = '\033[92m'
+    _ = '\033[92m'  # GREEN not used
     YELLOW = '\033[93m'
     RESET = '\033[0m'
     
@@ -82,7 +82,7 @@ async def run_worker():
         task = asyncio.create_task(refresh_all_market_pulse_data())
         
         try:
-            timestamp = await task
+            _ = await task  # timestamp not used
             print(f"[{datetime.now().strftime('%H:%M:%S')}] ✅ 掃描完成！數據已更新。")
             print(f"   - 下次更新時間: {MARKET_PULSE_UPDATE_INTERVAL/3600:.1f} 小時後")
         except Exception as e:
@@ -93,7 +93,8 @@ async def run_worker():
         step_time = MARKET_PULSE_UPDATE_INTERVAL / wait_steps
         
         for _ in range(wait_steps):
-            if not running: break
+            if not running:
+                break
             await asyncio.sleep(step_time)
 
 if __name__ == "__main__":

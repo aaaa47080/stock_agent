@@ -3,7 +3,6 @@ Tests for governance API endpoints
 Note: These are unit tests for the API layer using mocked database layer.
 """
 import pytest
-from datetime import datetime
 import sys
 import os
 

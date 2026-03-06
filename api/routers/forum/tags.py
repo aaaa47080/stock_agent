@@ -37,7 +37,7 @@ async def list_tags(
             "tags": tags,
             "count": len(tags),
         }
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="獲取標籤列表失敗，請稍後再試")
 
 
@@ -54,7 +54,7 @@ async def get_hot_tags(limit: int = Query(10, ge=1, le=20)):
             "tags": tags,
             "count": len(tags),
         }
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="獲取熱門標籤失敗，請稍後再試")
 
 
@@ -76,5 +76,5 @@ async def get_posts_with_tag(
             "posts": posts,
             "count": len(posts),
         }
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="獲取標籤文章失敗，請稍後再試")

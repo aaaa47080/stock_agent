@@ -31,9 +31,9 @@ def test_prompt_registry():
         
         # 檢查是否包含時間變數
         if "{current_time_" in prompt or "當前時間" in prompt or "Current Time" in prompt:
-            print(f"    ✓ 包含時間資訊")
+            print("    ✓ 包含時間資訊")
         else:
-            print(f"    ✗ 缺少時間資訊")
+            print("    ✗ 缺少時間資訊")
     
     # 測試渲染（帶時間）
     print("\n[1.2] Prompt Rendering with Time")
@@ -117,13 +117,13 @@ def test_time_variables():
     
     # 渲染帶時間的 prompt
     prompt = PromptRegistry.render("crypto_agent", "system", "zh-TW", include_time=True)
-    
-    expected_vars = [
+
+    _ = [  # expected_vars not used
         "current_time_tw",
         "current_date_tw",
         "timezone_tw",
     ]
-    
+
     print("\n檢查時間變數注入:")
     now = datetime.now()
     
@@ -136,9 +136,9 @@ def test_time_variables():
     
     # 時區
     if "台灣時間" in prompt or "UTC+8" in prompt:
-        print(f"  ✓ 時區資訊存在")
+        print("  ✓ 時區資訊存在")
     else:
-        print(f"  ✗ 時區資訊缺失")
+        print("  ✗ 時區資訊缺失")
     
     print()
 

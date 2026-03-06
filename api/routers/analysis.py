@@ -1,13 +1,11 @@
 import json
 import asyncio
-import os
 import uuid
 from typing import Optional
 from functools import partial
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
-from core.tools import _find_available_exchange
 from api.models import QueryRequest, BacktestRequest
 from api.utils import logger
 from analysis.simple_backtester import run_simple_backtest

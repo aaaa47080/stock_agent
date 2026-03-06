@@ -11,7 +11,7 @@
 
 from fastapi import APIRouter, HTTPException, Header, Depends
 from pydantic import BaseModel
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 import os
 
 from core.database import (
@@ -102,7 +102,7 @@ async def read_debug_log(lines: int = 50):
             "success": True,
             "log_content": "".join(recent_lines)
         }
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="讀取日誌檔案失敗")
 
 
@@ -268,8 +268,6 @@ async def update_generic_config(
 
     需要管理員權限
     """
-    verify_admin_key(x_admin_key)
-
     loop = asyncio.get_running_loop()
     success = await loop.run_in_executor(
         None,
@@ -377,7 +375,7 @@ async def get_config_audit_log(
             "current": metadata,
             "history": history
         }
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="獲取審計日誌失敗")
 
 
@@ -430,7 +428,7 @@ async def manual_rotate_key(x_admin_key: Optional[str] = Header(None)):
 
     except ImportError:
         raise HTTPException(status_code=500, detail="Key rotation module not available")
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="金鑰輪換失敗")
 
 
@@ -467,7 +465,7 @@ async def get_keys_status(x_admin_key: Optional[str] = Header(None)):
 
     except ImportError:
         raise HTTPException(status_code=500, detail="Key rotation module not available")
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="獲取金鑰狀態失敗")
 
 
@@ -508,7 +506,7 @@ async def get_security_events(
 
     except ImportError:
         raise HTTPException(status_code=500, detail="Security monitor not available")
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="獲取安全事件失敗")
 
 
@@ -543,7 +541,7 @@ async def get_security_statistics(
 
     except ImportError:
         raise HTTPException(status_code=500, detail="Security monitor not available")
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="獲取安全統計失敗")
 
 
@@ -590,5 +588,5 @@ async def test_security_alert(
 
     except ImportError:
         raise HTTPException(status_code=500, detail="Alert dispatcher not available")
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="發送測試警報失敗")

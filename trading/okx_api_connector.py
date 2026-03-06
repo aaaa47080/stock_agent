@@ -4,7 +4,6 @@ import hmac
 import hashlib
 import base64
 import datetime
-from typing import Dict, List, Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 from dotenv import load_dotenv

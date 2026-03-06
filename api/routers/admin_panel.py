@@ -8,18 +8,16 @@
 """
 from fastapi import APIRouter, HTTPException, Query, Depends
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional
 import asyncio
 import os
 from functools import partial
-from datetime import datetime, timedelta
 import logging
 import json
 import uuid
 
 from api.deps import require_admin, get_current_user
 from core.database.connection import get_connection
-from core.database.notifications import create_notification
 from api.routers.notifications import push_notification_to_user, notification_manager
 from core.database.system_config import list_all_configs_with_metadata, set_config
 from core.database.governance import finalize_report, get_report_by_id
@@ -839,7 +837,7 @@ async def admin_resolve_report(
         raise HTTPException(status_code=400, detail="Report already resolved")
 
     # 2. Finalize via governance system
-    result = await loop.run_in_executor(
+    _ = await loop.run_in_executor(
         None, partial(finalize_report, None, report_id, request.decision,
                       request.violation_level, admin_user["user_id"])
     )

@@ -59,7 +59,7 @@ class PooledConnection:
                 # 如果歸還失敗，嘗試真正關閉
                 try:
                     self._conn.close()
-                except Exception as close_err:
+                except Exception:
                     pass  # 連接可能已經斷開
                 print(f"⚠️ 連接歸還失敗: {e}")
     
@@ -138,7 +138,7 @@ def get_connection():
             if raw_conn.closed:
                 try:
                     _connection_pool.putconn(raw_conn, close=True)
-                except Exception as cleanup_err:
+                except Exception:
                     pass  # 清理失敗可忽略
                 raw_conn = None
                 continue
@@ -154,7 +154,7 @@ def get_connection():
                 print(f"⚠️ 偵測到壞掉的連接（{type(health_error).__name__}），重新獲取...")
                 try:
                     _connection_pool.putconn(raw_conn, close=True)
-                except Exception as cleanup_err:
+                except Exception:
                     pass  # 清理失敗可忽略
                 raw_conn = None
                 continue
@@ -167,7 +167,7 @@ def get_connection():
             if raw_conn:
                 try:
                     _connection_pool.putconn(raw_conn, close=True)
-                except Exception as cleanup_err:
+                except Exception:
                     pass  # 清理失敗可忽略
             if attempt < MAX_RETRIES - 1:
                 delay = RETRY_DELAY_BASE * (2 ** attempt)
@@ -181,7 +181,7 @@ def get_connection():
             if raw_conn:
                 try:
                     _connection_pool.putconn(raw_conn, close=True)
-                except Exception as cleanup_err:
+                except Exception:
                     pass  # 清理失敗可忽略
             print(f"❌ 無法從連接池獲取連接: {e}")
             raise

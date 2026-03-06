@@ -1,7 +1,7 @@
 
 import asyncio
 import operator
-from typing import Annotated, TypedDict, Union
+from typing import Annotated, TypedDict
 from langgraph.graph import StateGraph, END
 from langgraph.types import Command, interrupt
 from langgraph.checkpoint.memory import MemorySaver
@@ -22,7 +22,7 @@ async def node_b(state: State):
     return {"history": ["B"]}
 
 async def node_c(state: State):
-    print(f"--- Node C ---")
+    print("--- Node C ---")
     return {"history": ["C"]}
 
 def build_graph():
@@ -65,7 +65,7 @@ async def main():
     
     try:
         async for event in graph.astream(command, config):
-            kind = event.get("type", "unknown")
+            _ = event.get("type", "unknown")  # kind not used
             if "node_a" in event:
                 print(f"Event from node_a: {event['node_a']}")
             if "node_b" in event:

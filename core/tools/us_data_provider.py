@@ -19,8 +19,7 @@ Features:
 """
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, List, Any
-from datetime import datetime, timedelta, timezone
-import asyncio
+from datetime import datetime
 import yfinance as yf
 import pandas as pd
 import numpy as np
@@ -423,7 +422,7 @@ class YahooFinanceProvider(StockDataProvider):
                     next_date = earnings_calendar.index[0]
                     data["next_earnings_date"] = next_date.strftime("%Y-%m-%d") if hasattr(next_date, "strftime") else str(next_date)
                     data["next_earnings_date_str"] = next_date.strftime("%Y 年 %m 月 %d 日") if hasattr(next_date, "strftime") else str(next_date)
-                except:
+                except Exception:
                     pass
             
             # 處理財報歷史
@@ -442,11 +441,11 @@ class YahooFinanceProvider(StockDataProvider):
                             try:
                                 surprise_pct = ((history_item["eps_actual"] - history_item["eps_estimate"]) / history_item["eps_estimate"]) * 100
                                 history_item["surprise_percent"] = round(surprise_pct, 2)
-                            except:
+                            except Exception:
                                 history_item["surprise_percent"] = None
                         
                         data["earnings_history"].append(history_item)
-                except:
+                except Exception:
                     pass
             
             self._set_cache(cache_key, data, "earnings")
@@ -499,7 +498,7 @@ class YahooFinanceProvider(StockDataProvider):
                     shares_outstanding = info.get("sharesOutstanding", 0)
                     if shares_outstanding:
                         data["percent_held"] = round((data["total_shares_held"] / shares_outstanding) * 100, 2)
-                except:
+                except Exception:
                     pass
             
             self._set_cache(cache_key, data, "institutional")
@@ -545,7 +544,7 @@ class YahooFinanceProvider(StockDataProvider):
                             "shares_total": row.get("Shares Total", 0),
                         }
                         data["transactions"].append(transaction)
-                except:
+                except Exception:
                     pass
             
             self._set_cache(cache_key, data, "insider")

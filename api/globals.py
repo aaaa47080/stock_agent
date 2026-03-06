@@ -1,9 +1,6 @@
 import asyncio
 import logging
-from core.config import (
-    MARKET_PULSE_TARGETS, MARKET_PULSE_UPDATE_INTERVAL,
-    FUNDING_RATE_UPDATE_INTERVAL
-)
+from typing import Optional, Any
 
 # 設定日誌
 logger = logging.getLogger("API")
@@ -39,5 +36,5 @@ def get_symbol_lock(symbol: str) -> asyncio.Lock:
     return symbol_locks[symbol]
 
 # Global Instances
-okx_connector = None
-v4_manager = None  # ManagerAgent (V4) — 替代 CryptoAnalysisBot
+okx_connector: Optional[Any] = None
+v4_manager: Optional[Any] = None  # ManagerAgent (V4) — 替代 CryptoAnalysisBot

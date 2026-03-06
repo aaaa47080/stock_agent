@@ -1,5 +1,4 @@
 """Tests for TWStockAgent."""
-import pytest
 from unittest.mock import MagicMock, patch
 from core.agents.agents.tw_stock_agent import TWStockAgent
 from core.agents.models import SubTask, AgentResult

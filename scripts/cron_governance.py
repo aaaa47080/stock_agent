@@ -4,7 +4,7 @@
 
 功能：對30天內無新違規且上次遞減超過30天的用戶，每日自動遞減1點
 """
-from datetime import datetime, timedelta
+from datetime import datetime
 from core.database.connection import get_connection
 
 
@@ -188,7 +188,6 @@ def get_governance_statistics():
 
 
 if __name__ == "__main__":
-    import sys
 
     print("=" * 50)
     print("社群治理系統 - 定時任務")

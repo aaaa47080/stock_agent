@@ -2,7 +2,6 @@
 Tests for friends router in api/routers/friends.py
 """
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
 
 from api.routers.friends import (
     router,

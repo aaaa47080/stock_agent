@@ -4,7 +4,7 @@
 """
 
 import re
-from typing import Tuple, Optional, List, Dict
+from typing import Tuple, Optional, List
 
 from data.data_fetcher import get_data_fetcher
 from core.config import SUPPORTED_EXCHANGES
