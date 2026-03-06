@@ -26,15 +26,6 @@ class UpdatePostRequest(BaseModel):
     category: Optional[str] = None
 
 
-class PostListQuery(BaseModel):
-    """文章列表查詢參數"""
-    board_slug: Optional[str] = None
-    category: Optional[str] = None
-    tag: Optional[str] = None
-    limit: int = Field(20, ge=1, le=100)
-    offset: int = Field(0, ge=0)
-
-
 # ============================================================================
 # 回覆相關
 # ============================================================================
@@ -69,20 +60,3 @@ class PiPaymentCallback(BaseModel):
     from_address: str
     to_address: str
     status: str
-
-
-# ============================================================================
-# 通用回應
-# ============================================================================
-
-class SuccessResponse(BaseModel):
-    """成功回應"""
-    success: bool = True
-    message: Optional[str] = None
-
-
-class ErrorResponse(BaseModel):
-    """錯誤回應"""
-    success: bool = False
-    error: str
-    detail: Optional[str] = None

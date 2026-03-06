@@ -131,8 +131,3 @@ async def get_premium_status(user_id: str, current_user: dict = Depends(get_curr
     except Exception as e:
         logger.error(f"獲取高級會員狀態失敗: {e}")
         raise HTTPException(status_code=500, detail="獲取狀態失敗，請稍後再試")
-
-
-# 添加到現有的路由器列表
-def register_router(app):
-    app.include_router(router)
