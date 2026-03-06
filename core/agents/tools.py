@@ -257,6 +257,45 @@ def get_eth_price_etherscan_tool() -> dict:
 
 
 # ============================================
+# 大宗商品工具 (Commodity Tools)
+# ============================================
+
+@tool
+def get_commodity_price_tool(commodity: str) -> dict:
+    """查詢大宗商品即時價格（黃金、白銀、石油、天然氣、銅等）"""
+    from core.tools.commodity_tools import get_commodity_price
+    return get_commodity_price.invoke({"commodity": commodity})
+
+
+@tool
+def get_commodity_futures_tool(futures_type: str) -> dict:
+    """查詢商品期貨價格（原油、黃金、白銀、天然氣期貨）"""
+    from core.tools.commodity_tools import get_commodity_futures_price
+    return get_commodity_futures_price.invoke({"futures_type": futures_type})
+
+
+@tool
+def get_all_commodities_prices_tool() -> dict:
+    """獲取所有主要大宗商品價格一覽表"""
+    from core.tools.commodity_tools import get_all_commodities_prices
+    return get_all_commodities_prices.invoke({})
+
+
+@tool
+def get_gold_silver_ratio_tool() -> dict:
+    """獲取金銀比（重要的市場情緒指標）"""
+    from core.tools.commodity_tools import get_gold_silver_ratio
+    return get_gold_silver_ratio.invoke({})
+
+
+@tool
+def get_oil_analysis_tool() -> dict:
+    """獲取原油價格綜合分析（WTI vs 布蘭特）"""
+    from core.tools.commodity_tools import get_oil_price_analysis
+    return get_oil_price_analysis.invoke({})
+
+
+# ============================================
 # 所有工具列表（供 Manager prompt 用）
 # ============================================
 
@@ -294,4 +333,10 @@ ALL_TOOLS = [
     get_address_transactions_tool,
     get_contract_info_tool,
     get_eth_price_etherscan_tool,
+    # Commodity tools
+    get_commodity_price_tool,
+    get_commodity_futures_tool,
+    get_all_commodities_prices_tool,
+    get_gold_silver_ratio_tool,
+    get_oil_analysis_tool,
 ]

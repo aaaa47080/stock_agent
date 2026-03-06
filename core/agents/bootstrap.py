@@ -27,6 +27,9 @@ from .tools import (
     # Etherscan tools
     get_eth_balance_tool, get_erc20_token_balance_tool,
     get_address_transactions_tool, get_contract_info_tool, get_eth_price_etherscan_tool,
+    # Commodity tools
+    get_commodity_price_tool, get_commodity_futures_tool,
+    get_all_commodities_prices_tool, get_gold_silver_ratio_tool, get_oil_analysis_tool,
 )
 
 # Import new free market data tools
@@ -46,7 +49,7 @@ from core.tools.us_stock_tools import (
 )
 
 # Import agent classes
-from .agents import ChatAgent, TWStockAgent, USStockAgent, CryptoAgent
+from .agents import ChatAgent, TWStockAgent, USStockAgent, CryptoAgent, CommodityAgent
 
 
 class LanguageAwareLLM:
@@ -113,6 +116,8 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
             "us_stock": ["us_stock_price","us_technical_analysis","us_fundamentals","us_earnings",
                          "us_news","us_institutional_holders","us_insider_transactions","get_current_time_taipei"],
             "chat":     ["get_current_time_taipei","get_crypto_price","web_search", "get_pi_price", "get_pi_network_info", "get_pi_ecosystem"],
+            "commodity": ["get_commodity_price","get_commodity_futures_price","get_all_commodities_prices",
+                         "get_gold_silver_ratio","get_oil_price_analysis","get_current_time_taipei","web_search"],
         }
         def _tools(agent_id: str) -> list:
             return _FALLBACK.get(agent_id, [])
@@ -291,6 +296,43 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         input_schema={},
         handler=get_eth_price_etherscan_tool,
         allowed_agents=["crypto", "chat", "manager"],
+    ))
+
+    # ── Register Commodity Tools ──
+    tool_registry.register(ToolMetadata(
+        name="get_commodity_price",
+        description="查詢大宗商品即時價格（黃金、白銀、石油、天然氣、銅等）。",
+        input_schema={"commodity": "str (gold, silver, oil, natural_gas, copper)"},
+        handler=get_commodity_price_tool,
+        allowed_agents=["commodity", "crypto", "chat", "manager"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="get_commodity_futures_price",
+        description="查詢商品期貨價格（WTI原油、布蘭特原油、黃金期貨、白銀期貨等）。",
+        input_schema={"futures_type": "str (crude_oil, brent_oil, gold, silver, natural_gas)"},
+        handler=get_commodity_futures_tool,
+        allowed_agents=["commodity", "crypto", "manager"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="get_all_commodities_prices",
+        description="獲取所有主要大宗商品價格一覽表。",
+        input_schema={},
+        handler=get_all_commodities_prices_tool,
+        allowed_agents=["commodity", "chat", "manager"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="get_gold_silver_ratio",
+        description="獲取金銀比（Gold-Silver Ratio），重要的市場情緒指標。",
+        input_schema={},
+        handler=get_gold_silver_ratio_tool,
+        allowed_agents=["commodity", "manager"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="get_oil_price_analysis",
+        description="獲取原油價格綜合分析（WTI vs 布蘭特原油比較）。",
+        input_schema={},
+        handler=get_oil_analysis_tool,
+        allowed_agents=["commodity", "manager"],
     ))
 
     # ── Register Pi Network Tools ──
@@ -511,6 +553,17 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         ],
         allowed_tools=_tools("us_stock"),
         priority=8,
+    ))
+
+    # ── Commodity Agent ──
+    commodity = CommodityAgent(lang_llm, tool_registry)
+    agent_registry.register(commodity, AgentMetadata(
+        name="commodity",
+        display_name="Commodity Agent",
+        description="大宗商品專業分析師 — 提供黃金、白銀、原油、天然氣、銅等商品的即時價格、期貨價格、金銀比分析。適合投資者了解商品市場動態、避險情緒。",
+        capabilities=["黃金", "白銀", "原油", "石油", "天然氣", "銅", "commodity", "gold", "silver", "oil", "natural_gas", "copper", "金銀比", "期貨", "ETF", "WTI", "布蘭特"],
+        allowed_tools=_tools("commodity"),
+        priority=9,
     ))
 
     chat = ChatAgent(lang_llm, tool_registry)
