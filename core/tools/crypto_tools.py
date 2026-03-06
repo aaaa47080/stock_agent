@@ -1068,3 +1068,178 @@ def get_exchange_flow(symbol: str = "BTC") -> str:
 
     except Exception as e:
         return f"取得交易所流向數據時發生錯誤: {str(e)}"
+
+
+# ============================================
+# DexScreener DEX 數據工具 (免費 API，無需認證)
+# ============================================
+
+DEXSCREENER_BASE = "https://api.dexscreener.com/latest"
+
+
+@tool
+def get_dex_pair_info(token_address: str) -> dict:
+    """獲取 DEX 代幣對的詳細資訊（價格、流動性、交易量）。
+
+    資料來源：DexScreener API（免費、無需認證）。
+    支援多鏈：Ethereum、BSC、Solana、Base、Arbitrum 等。
+
+    Args:
+        token_address: 代幣合約地址（如 0x2170Ed0880ac9A755fd29B2688956BD959F933F8 為 ETH）
+    """
+    import httpx
+
+    try:
+        url = f"{DEXSCREENER_BASE}/dex/tokens/{token_address}"
+        resp = httpx.get(url, timeout=10)
+
+        if resp.status_code != 200:
+            return {"error": f"DexScreener API 錯誤: {resp.status_code}"}
+
+        data = resp.json()
+
+        if not data.get("pairs"):
+            return {"error": "未找到該代幣的 DEX 交易對"}
+
+        pairs = data["pairs"]
+
+        # 整理輸出，選擇流動性最高的交易對
+        sorted_pairs = sorted(
+            pairs,
+            key=lambda x: float(x.get("liquidity", {}).get("usd", 0) or 0),
+            reverse=True
+        )
+
+        results = []
+        for pair in sorted_pairs[:5]:  # 最多返回 5 個交易對
+            liquidity = pair.get("liquidity", {})
+            volume = pair.get("volume", {})
+
+            results.append({
+                "chain": pair.get("chainId", ""),
+                "dex": pair.get("dexId", ""),
+                "pair_address": pair.get("pairAddress", ""),
+                "base_token": pair.get("baseToken", {}).get("symbol", ""),
+                "quote_token": pair.get("quoteToken", {}).get("symbol", ""),
+                "price_usd": pair.get("priceUsd", ""),
+                "price_native": pair.get("priceNative", ""),
+                "liquidity_usd": liquidity.get("usd", 0),
+                "volume_24h": volume.get("h24", 0),
+                "txns_24h": volume.get("h24", {}).get("txns", 0) if isinstance(volume.get("h24"), dict) else 0,
+                "price_change_24h": pair.get("priceChange", {}).get("h24", 0),
+                "url": pair.get("url", ""),
+            })
+
+        return {
+            "token_address": token_address,
+            "pairs_found": len(pairs),
+            "top_pairs": results
+        }
+
+    except Exception as e:
+        return {"error": f"獲取 DEX 資訊失敗: {str(e)}"}
+
+
+@tool
+def get_trending_dex_pairs(chain_id: str = "") -> list:
+    """獲取 DexScreener 上的熱門 DEX 交易對。
+
+    資料來源：DexScreener API（免費、無需認證）。
+    返回按交易量或流動性排序的熱門交易對。
+
+    Args:
+        chain_id: 可選的鏈 ID 過濾（如 ethereum、bsc、solana、base、arbitrum）
+    """
+    import httpx
+
+    try:
+        url = f"{DEXSCREENER_BASE}/dex/trending/{chain_id}" if chain_id else f"{DEXSCREENER_BASE}/dex/trending"
+        resp = httpx.get(url, timeout=10)
+
+        if resp.status_code != 200:
+            return [{"error": f"DexScreener API 錯誤: {resp.status_code}"}]
+
+        data = resp.json()
+
+        if not data.get("pairs"):
+            return [{"note": "目前沒有熱門交易對數據"}]
+
+        results = []
+        for pair in data["pairs"][:10]:  # 最多返回 10 個
+            base_token = pair.get("baseToken", {})
+            quote_token = pair.get("quoteToken", {})
+            liquidity = pair.get("liquidity", {})
+            volume = pair.get("volume", {})
+
+            results.append({
+                "chain": pair.get("chainId", ""),
+                "dex": pair.get("dexId", ""),
+                "pair_address": pair.get("pairAddress", ""),
+                "base_token": base_token.get("symbol", ""),
+                "base_token_name": base_token.get("name", ""),
+                "quote_token": quote_token.get("symbol", ""),
+                "price_usd": pair.get("priceUsd", ""),
+                "liquidity_usd": liquidity.get("usd", 0),
+                "volume_24h_usd": volume.get("h24", {}).get("usd", 0) if isinstance(volume.get("h24"), dict) else 0,
+                "price_change_24h": pair.get("priceChange", {}).get("h24", 0),
+                "url": pair.get("url", ""),
+            })
+
+        return results
+
+    except Exception as e:
+        return [{"error": f"獲取熱門 DEX 交易對失敗: {str(e)}"}]
+
+
+@tool
+def search_dex_pairs(query: str) -> list:
+    """在 DexScreener 上搜索 DEX 交易對。
+
+    資料來源：DexScreener API（免費、無需認證）。
+    可用於搜索代幣名稱或符號。
+
+    Args:
+        query: 搜索關鍵詞（如 PEPE、WIF、doge）
+    """
+    import httpx
+
+    if not query or len(query) < 2:
+        return [{"error": "搜索關鍵詞至少需要 2 個字符"}]
+
+    try:
+        url = f"{DEXSCREENER_BASE}/dex/search?q={query}"
+        resp = httpx.get(url, timeout=10)
+
+        if resp.status_code != 200:
+            return [{"error": f"DexScreener API 錯誤: {resp.status_code}"}]
+
+        data = resp.json()
+
+        if not data.get("pairs"):
+            return [{"note": f"未找到與 '{query}' 相關的 DEX 交易對"}]
+
+        results = []
+        for pair in data["pairs"][:10]:  # 最多返回 10 個
+            base_token = pair.get("baseToken", {})
+            quote_token = pair.get("quoteToken", {})
+            liquidity = pair.get("liquidity", {})
+            volume = pair.get("volume", {})
+
+            results.append({
+                "chain": pair.get("chainId", ""),
+                "dex": pair.get("dexId", ""),
+                "pair_address": pair.get("pairAddress", ""),
+                "base_token": base_token.get("symbol", ""),
+                "base_token_name": base_token.get("name", ""),
+                "quote_token": quote_token.get("symbol", ""),
+                "price_usd": pair.get("priceUsd", ""),
+                "liquidity_usd": liquidity.get("usd", 0),
+                "volume_24h_usd": volume.get("h24", {}).get("usd", 0) if isinstance(volume.get("h24"), dict) else 0,
+                "price_change_24h": pair.get("priceChange", {}).get("h24", 0),
+                "url": pair.get("url", ""),
+            })
+
+        return results
+
+    except Exception as e:
+        return [{"error": f"搜索 DEX 交易對失敗: {str(e)}"}]

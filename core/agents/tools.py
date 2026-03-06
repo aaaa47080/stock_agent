@@ -200,6 +200,24 @@ def tw_foreign_top20_tool() -> list:
 
 
 # ============================================
+# DexScreener DEX 數據工具
+# ============================================
+
+@tool
+def get_dex_pair_info_tool(token_address: str) -> dict:
+    """獲取 DEX 代幣對的詳細資訊（價格、流動性、交易量）"""
+    from core.tools.crypto_tools import get_dex_pair_info
+    return get_dex_pair_info.invoke({"token_address": token_address})
+
+
+@tool
+def get_trending_dex_pairs_tool(query: str) -> list:
+    """搜索熱門 DEX 交易對（如 PEPE、WIF、DOGE）"""
+    from core.tools.crypto_tools import get_trending_dex_pairs
+    return get_trending_dex_pairs.invoke({"query": query})
+
+
+# ============================================
 # 所有工具列表（供 Manager prompt 用）
 # ============================================
 
