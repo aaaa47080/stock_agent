@@ -20,6 +20,8 @@ from .tools import (
     get_current_time_taipei, get_defillama_tvl, get_crypto_categories_and_gainers,
     get_token_unlocks, get_token_supply,
     tw_price, tw_technical, tw_fundamentals_tool, tw_institutional_tool, tw_news_tool,
+    tw_major_news_tool, tw_pe_ratio_tool, tw_monthly_revenue_tool,
+    tw_dividend_tool, tw_foreign_top20_tool,
 )
 
 # Import new free market data tools
@@ -294,6 +296,42 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         description="獲取台股相關新聞（Google News RSS）",
         input_schema={"ticker": "str", "company_name": "str"},
         handler=tw_news_tool,
+        allowed_agents=["tw_stock"],
+    ))
+    # ── Register TWSE OpenAPI Tools ──
+    tool_registry.register(ToolMetadata(
+        name="tw_major_news",
+        description="獲取台股上市公司今日重大訊息（TWSE 官方數據）",
+        input_schema={"limit": "int (optional, default 10)"},
+        handler=tw_major_news_tool,
+        allowed_agents=["tw_stock"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="tw_pe_ratio",
+        description="獲取台股個股本益比(P/E)、殖利率(Dividend Yield)、股價淨值比(P/B)",
+        input_schema={"code": "str (股票代號，如 2330)"},
+        handler=tw_pe_ratio_tool,
+        allowed_agents=["tw_stock"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="tw_monthly_revenue",
+        description="獲取台股月營收資料，含月增率與年增率",
+        input_schema={"code": "str (股票代號，空白為全市場)"},
+        handler=tw_monthly_revenue_tool,
+        allowed_agents=["tw_stock"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="tw_dividend",
+        description="獲取台股股利分派資訊（現金股利、配股、除息日）",
+        input_schema={"code": "str (股票代號，空白為全市場)"},
+        handler=tw_dividend_tool,
+        allowed_agents=["tw_stock"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="tw_foreign_top20",
+        description="獲取外資及陸資持股台股前20名，含持股比率與可投資上限",
+        input_schema={},
+        handler=tw_foreign_top20_tool,
         allowed_agents=["tw_stock"],
     ))
 
