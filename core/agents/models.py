@@ -2,8 +2,8 @@
 Agent Models — Shared data structures
 
 包含：
-- V1 兼容類別（TaskComplexity, CollaborationRequest, AgentResult, SubTask）
-- V2 核心類別（ExecutionMode, TaskNode, TaskGraph, ManagerStateV2 等）
+- 基礎類別（TaskComplexity, CollaborationRequest, AgentResult, SubTask）
+- 核心類別（ExecutionMode, TaskNode, TaskGraph, ManagerState 等）
 """
 from __future__ import annotations
 from dataclasses import dataclass, field
@@ -12,11 +12,11 @@ from enum import Enum
 
 
 # ============================================================================
-# V1 兼容類別（向後兼容）
+# 基礎類別
 # ============================================================================
 
 class TaskComplexity(Enum):
-    """任務複雜度（V1 兼容）"""
+    """任務複雜度"""
     SIMPLE    = "simple"
     COMPLEX   = "complex"
     AMBIGUOUS = "ambiguous"
@@ -24,7 +24,7 @@ class TaskComplexity(Enum):
 
 @dataclass
 class CollaborationRequest:
-    """協作請求（V1 兼容）"""
+    """協作請求（基礎）"""
     requesting_agent: str
     needed_agent: str
     context: str
@@ -33,7 +33,7 @@ class CollaborationRequest:
 
 @dataclass
 class AgentResult:
-    """Agent 執行結果（V1 兼容）"""
+    """Agent 執行結果（基礎）"""
     success: bool
     message: str
     agent_name: str
@@ -45,7 +45,7 @@ class AgentResult:
 
 @dataclass
 class SubTask:
-    """子任務（V1 兼容）"""
+    """子任務（基礎）"""
     step: int
     description: str
     agent: str
@@ -359,8 +359,8 @@ class IntentUnderstanding:
 # ============================================================================
 
 @dataclass
-class AgentResultV2:
-    """Agent 執行結果 V2"""
+class TaskResult:
+    """任務執行結果"""
     success: bool
     message: str
     agent_name: str
@@ -386,7 +386,7 @@ class ExecutionResult:
     mode: ExecutionMode
 
     # 執行詳情
-    task_results: Dict[str, AgentResultV2] = field(default_factory=dict)
+    task_results: Dict[str, TaskResult] = field(default_factory=dict)
 
     # 彙總策略
     aggregation_strategy: Literal["last_only", "combine_all", "custom"] = "last_only"
@@ -396,7 +396,7 @@ class ExecutionResult:
 # Manager 狀態（LangGraph 用）
 # ============================================================================
 
-class ManagerStateV2(TypedDict, total=False):
+class ManagerState(TypedDict, total=False):
     """
     LangGraph 狀態包
 
@@ -427,7 +427,7 @@ class ManagerStateV2(TypedDict, total=False):
     current_task_id: Optional[str]  # 當前執行的任務
 
     # === 執行 ===
-    task_results: Annotated[Dict, task_results_reducer]  # {task_id: AgentResultV2} - 使用自定義 reducer
+    task_results: Annotated[Dict, task_results_reducer]  # {task_id: TaskResult} - 使用自定義 reducer
     hitl_type: Optional[str]
     hitl_question: Optional[str]
     hitl_confirmed: Optional[bool]  # HITL 是否已被確認（用於 resume 後跳過 interrupt）

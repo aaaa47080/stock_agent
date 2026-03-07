@@ -1,14 +1,12 @@
 """
-Agent V2 — Manager Agent (新版架構)
+Manager Agent — 多 Agent 協調中心
 
-核心改進：
+核心功能：
 1. 開放式意圖理解 - 不使用硬編碼類別/關鍵字
 2. Vending vs Restaurant 模式 - 簡單任務快速路由
 3. DAG 執行引擎 - 支援垂直/水平任務
 4. 選擇性上下文傳輸 - Sub-Agent 只接收必要資訊
 5. 短期記憶整合 - 對話上下文管理
-
-Feature Flag: ENABLE_MANAGER_V2=true 啟用
 """
 from __future__ import annotations
 import json
@@ -22,7 +20,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from api.utils import logger
 
 from .models import (
-    ManagerStateV2,
+    ManagerState,
     TaskNode,
     TaskGraph,
     AgentContext,
@@ -238,7 +236,7 @@ class ManagerAgent:
 
     def _build_graph(self) -> StateGraph:
         """建立 LangGraph 狀態圖 - 簡化版統一規劃流程"""
-        builder = StateGraph(ManagerStateV2)
+        builder = StateGraph(ManagerState)
 
         # 添加節點
         builder.add_node("understand_intent", self._understand_intent_node)
@@ -278,7 +276,7 @@ class ManagerAgent:
     # 節點實現
     # ========================================================================
 
-    async def _understand_intent_node(self, state: ManagerStateV2) -> Dict:
+    async def _understand_intent_node(self, state: ManagerState) -> Dict:
         """意圖理解節點 - 統一的規劃入口"""
         query = state["query"]
         history = state.get("history", "")
@@ -355,7 +353,7 @@ class ManagerAgent:
             }
 
         except Exception as e:
-            logger.error(f"[V2] Intent understanding failed: {e}")
+            logger.error(f"[Manager]Intent understanding failed: {e}")
             # 錯誤時使用 fallback
             fallback_task = TaskNode(
                 id="fallback_task",
@@ -373,7 +371,7 @@ class ManagerAgent:
                 "task_graph": self._task_graph_to_dict(TaskGraph(root=fallback_task)),
             }
 
-    async def _execute_task_node(self, state: ManagerStateV2) -> Dict:
+    async def _execute_task_node(self, state: ManagerState) -> Dict:
         """執行任務節點 - 支援真正的並行執行
 
         執行策略：
@@ -461,7 +459,7 @@ class ManagerAgent:
 
         return {"current_task_id": None}
 
-    async def _aggregate_results_node(self, state: ManagerStateV2) -> Dict:
+    async def _aggregate_results_node(self, state: ManagerState) -> Dict:
         """彙總結果節點 - 根據聚合策略處理
 
         聚合策略：
@@ -499,7 +497,7 @@ class ManagerAgent:
 
         return {"final_response": final_result}
 
-    async def _synthesize_response_node(self, state: ManagerStateV2) -> Dict:
+    async def _synthesize_response_node(self, state: ManagerState) -> Dict:
         """生成最終回應節點
 
         修復：檢查是否為新查詢，避免重複返回舊的 final_response
@@ -548,7 +546,7 @@ class ManagerAgent:
                     "_processed_query": current_query,
                 }
             except Exception as e:
-                logger.error(f"[V2] Synthesis failed: {e}")
+                logger.error(f"[Manager]Synthesis failed: {e}")
                 return {
                     "final_response": "抱歉，無法處理您的請求。",
                     "_processed_query": current_query,
@@ -623,7 +621,7 @@ class ManagerAgent:
                 "_processed_query": current_query,
             }
         except Exception as e:
-            logger.error(f"[V2] Synthesis failed: {e}")
+            logger.error(f"[Manager]Synthesis failed: {e}")
             return {
                 "final_response": "\n".join(results_text),
                 "_processed_query": current_query,
@@ -633,7 +631,7 @@ class ManagerAgent:
     # 條件路由
     # ========================================================================
 
-    def _after_intent_understanding(self, state: ManagerStateV2) -> str:
+    def _after_intent_understanding(self, state: ManagerState) -> str:
         """意圖理解後的路由
 
         - clarify: 需要向用戶詢問更多資訊
@@ -647,7 +645,7 @@ class ManagerAgent:
 
         return "execute"
 
-    def _after_task_execution(self, state: ManagerStateV2) -> str:
+    def _after_task_execution(self, state: ManagerState) -> str:
         """任務執行後的路由"""
         current_task_id = state.get("current_task_id")
 
@@ -755,7 +753,7 @@ class ManagerAgent:
             response = self.llm.invoke(messages)
             return response.content
 
-    async def _execute_single_task(self, task: TaskNode, state: ManagerStateV2, completed_results: Dict) -> Dict:
+    async def _execute_single_task(self, task: TaskNode, state: ManagerState, completed_results: Dict) -> Dict:
         """執行單個任務"""
         agent = self.agent_registry.get(task.agent)
         if not agent:
@@ -788,7 +786,7 @@ class ManagerAgent:
                 "task_id": task.id,
             }
         except Exception as e:
-            logger.error(f"[V2] Task {task.id} failed: {e}")
+            logger.error(f"[Manager]Task {task.id} failed: {e}")
             return {
                 "success": False,
                 "message": f"執行失敗: {str(e)}",

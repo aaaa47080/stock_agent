@@ -3,7 +3,7 @@ __version__ = "5.0.0"
 from .bootstrap import bootstrap
 from .models import (
     TaskComplexity, CollaborationRequest, AgentResult, SubTask,
-    ManagerStateV2, TaskNode, TaskGraph, AgentContext,
+    ManagerState, TaskNode, TaskGraph, AgentContext,
 )
 from .prompt_registry import PromptRegistry
 from .description_loader import AgentDescriptionLoader, get_agent_descriptions
@@ -17,5 +17,5 @@ __all__ = [
     "TaskComplexity", "CollaborationRequest", "AgentResult", "SubTask",
     "PromptRegistry", "AgentDescriptionLoader", "get_agent_descriptions",
     "AgentRegistry", "ToolRegistry", "AgentRouter",
-    "ManagerStateV2", "TaskNode", "TaskGraph", "AgentContext",
+    "ManagerState", "TaskNode", "TaskGraph", "AgentContext",
 ]
