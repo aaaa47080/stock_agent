@@ -117,7 +117,8 @@ def get_token_supply(symbol: str) -> str:
         md = detail_resp.json().get("market_data", {})
 
         def fmt(v):
-            if v is None: return "未知"
+            if v is None:
+                return "未知"
             return f"{v/1_000_000_000:.2f}B" if v > 1_000_000_000 else f"{v/1_000_000:.2f}M"
 
         result = f"## 🪙 {symbol} 供應量\n\n- 流通: {fmt(md.get('circulating_supply'))}\n- 總量: {fmt(md.get('total_supply'))}\n- 上限: {fmt(md.get('max_supply'))}\n\n*(來源: CoinGecko)*"

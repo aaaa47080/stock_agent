@@ -5,7 +5,7 @@ from functools import partial
 from typing import Any, Optional
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException, Header, Depends
+from fastapi import APIRouter, HTTPException, Header, Depends, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
@@ -27,6 +27,7 @@ from api.models import APIKeySettings, UserSettings, KeyValidationRequest
 from api.utils import update_env_file, logger
 from trading.okx_api_connector import OKXAPIConnector
 import api.globals as globals
+from api.middleware.rate_limit import limiter
 
 router = APIRouter()
 
@@ -92,11 +93,23 @@ async def health_check():
     return {"status": "ok", "service": "Crypto Trading API"}
 
 @router.post("/api/settings/validate-key")
-async def validate_key(request: KeyValidationRequest, current_user: dict = Depends(get_current_user)):
+@limiter.limit("10/minute")  # 🔒 Security: 防止滥用 LLM 验证
+async def validate_key(request: KeyValidationRequest, current_user: dict = Depends(get_current_user), http_request: Request = None):
     """測試 API Key 是否有效，並嘗試進行對話"""
     provider = request.provider
     key = request.api_key
     user_model = request.model  # 用戶選擇的模型
+
+    # Audit log for sensitive operation
+    try:
+        from core.audit import audit_log
+        audit_log(
+            action="api_key_validation",
+            user_id=current_user.get("user_id"),
+            metadata={"provider": provider}
+        )
+    except ImportError:
+        pass
 
     if not key or len(key) < 5:
         return {"valid": False, "message": "Key 為空或過短"}
@@ -245,7 +258,8 @@ async def get_forum_limits():
     }
 
 @router.post("/api/settings/update")
-async def update_user_settings(settings: UserSettings, current_user: dict = Depends(get_current_user)):
+@limiter.limit("10/minute")  # 🔒 Security: 防止设置滥用
+async def update_user_settings(settings: UserSettings, current_user: dict = Depends(get_current_user), http_request: Request = None):
     """
     更新用戶設置 (LLM API Keys, 模型選擇, 委員會模式)
 
@@ -254,6 +268,17 @@ async def update_user_settings(settings: UserSettings, current_user: dict = Depe
     - 金鑰僅存儲在用戶瀏覽器的 localStorage 中
     - 每次請求時從前端傳遞，後端不存儲
     """
+    # Audit log for sensitive operation
+    try:
+        from core.audit import audit_log
+        audit_log(
+            action="settings_update",
+            user_id=current_user.get("user_id"),
+            metadata={"provider": settings.primary_model_provider}
+        )
+    except ImportError:
+        pass
+
     try:
         env_updates = {}
 
@@ -304,9 +329,21 @@ async def update_user_settings(settings: UserSettings, current_user: dict = Depe
         raise HTTPException(status_code=500, detail="更新設置失敗，請稍後再試")
 
 @router.post("/api/settings/keys")
-async def update_api_keys(settings: APIKeySettings, current_user: dict = Depends(get_current_user)):
+@limiter.limit("5/minute")  # 🔒 Security: 更严格的限制，因为涉及交易密钥
+async def update_api_keys(settings: APIKeySettings, current_user: dict = Depends(get_current_user), http_request: Request = None):
     """接收前端傳來的 API Keys，寫入 .env 並熱重載連接器"""
-    
+
+    # Audit log for sensitive operation
+    try:
+        from core.audit import audit_log
+        audit_log(
+            action="okx_keys_update",
+            user_id=current_user.get("user_id"),
+            metadata={}
+        )
+    except ImportError:
+        pass
+
     try:
         # 1. Update .env file for persistence
         loop = asyncio.get_running_loop()

@@ -445,3 +445,243 @@ async def get_wallet_status(user_id: str, current_user: dict = Depends(get_curre
     except Exception as e:
         logger.error(f"Get wallet status error: {e}")
         raise HTTPException(status_code=500, detail="獲取狀態失敗")
+
+
+# --- User API Key Management Endpoints ---
+
+class SaveAPIKeyRequest(BaseModel):
+    provider: str
+    api_key: str
+    model: Optional[str] = None
+
+class DeleteAPIKeyRequest(BaseModel):
+    provider: str
+
+class SaveModelRequest(BaseModel):
+    provider: str
+    model: str
+
+
+@router.post("/api/user/api-keys")
+async def save_user_api_key_endpoint(
+    request: SaveAPIKeyRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    儲存用戶的 API Key（加密後存入資料庫）
+
+    支援的 provider:
+    - openai
+    - google_gemini
+    - anthropic
+    - groq
+    - openrouter
+    """
+    from core.database.user_api_keys import save_user_api_key
+
+    user_id = current_user["user_id"]
+
+    try:
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(
+            None,
+            save_user_api_key,
+            user_id,
+            request.provider,
+            request.api_key,
+            request.model
+        )
+
+        if not result["success"]:
+            raise HTTPException(status_code=400, detail=result.get("error", "Failed to save API key"))
+
+        logger.info(f"API key saved for user {user_id}, provider: {request.provider}")
+
+        # Audit log for sensitive operation
+        try:
+            from core.audit import audit_log
+            audit_log(
+                action="api_key_saved",
+                user_id=user_id,
+                metadata={"provider": request.provider}
+            )
+        except ImportError:
+            pass
+
+        return {"success": True, "message": "API Key 已安全儲存"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Save API key error: {e}")
+        raise HTTPException(status_code=500, detail="儲存失敗")
+
+
+@router.get("/api/user/api-keys")
+async def get_user_api_keys_endpoint(current_user: dict = Depends(get_current_user)):
+    """
+    獲取用戶所有 API Key 的狀態（遮蔽版本，用於前端顯示）
+    """
+    from core.database.user_api_keys import get_all_user_api_keys
+    
+    user_id = current_user["user_id"]
+    
+    try:
+        loop = asyncio.get_running_loop()
+        keys = await loop.run_in_executor(None, get_all_user_api_keys, user_id)
+        return {"success": True, "keys": keys}
+        
+    except Exception as e:
+        logger.error(f"Get API keys error: {e}")
+        raise HTTPException(status_code=500, detail="獲取失敗")
+
+
+@router.get("/api/user/api-keys/{provider}")
+async def get_user_api_key_endpoint(
+    provider: str, 
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    獲取特定 provider 的 API Key 狀態（遮蔽版本）
+    """
+    from core.database.user_api_keys import get_user_api_key_masked
+    
+    user_id = current_user["user_id"]
+    
+    try:
+        loop = asyncio.get_running_loop()
+        key_info = await loop.run_in_executor(
+            None, 
+            get_user_api_key_masked, 
+            user_id, 
+            provider
+        )
+        return {"success": True, **key_info}
+        
+    except Exception as e:
+        logger.error(f"Get API key error: {e}")
+        raise HTTPException(status_code=500, detail="獲取失敗")
+
+
+@router.delete("/api/user/api-keys/{provider}")
+async def delete_user_api_key_endpoint(
+    provider: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    刪除用戶的 API Key
+    """
+    from core.database.user_api_keys import delete_user_api_key
+
+    user_id = current_user["user_id"]
+
+    try:
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(
+            None,
+            delete_user_api_key,
+            user_id,
+            provider
+        )
+
+        if not result["success"]:
+            raise HTTPException(status_code=400, detail=result.get("error", "Failed to delete"))
+
+        logger.info(f"API key deleted for user {user_id}, provider: {provider}")
+
+        # Audit log for sensitive operation
+        try:
+            from core.audit import audit_log
+            audit_log(
+                action="api_key_deleted",
+                user_id=user_id,
+                metadata={"provider": provider}
+            )
+        except ImportError:
+            pass
+
+        return {"success": True, "message": "API Key 已刪除"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete API key error: {e}")
+        raise HTTPException(status_code=500, detail="刪除失敗")
+
+
+@router.post("/api/user/api-keys/model")
+async def save_user_model_endpoint(
+    request: SaveModelRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    儲存用戶選擇的模型（不更改 API Key）
+    """
+    from core.database.user_api_keys import save_user_model_selection
+    
+    user_id = current_user["user_id"]
+    
+    try:
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(
+            None,
+            save_user_model_selection,
+            user_id,
+            request.provider,
+            request.model
+        )
+        
+        if not result["success"]:
+            raise HTTPException(status_code=400, detail=result.get("error", "Failed to save model"))
+        
+        return {"success": True, "message": "模型選擇已儲存"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Save model error: {e}")
+        raise HTTPException(status_code=500, detail="儲存失敗")
+
+
+@router.get("/api/user/api-keys/{provider}/full")
+async def get_user_api_key_full_endpoint(
+    provider: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    獲取完整的 API Key（僅用於實際 API 調用）
+
+    注意：此端點返回完整的 API Key，僅在需要調用 LLM 時使用
+    """
+    from core.database.user_api_keys import get_user_api_key
+
+    user_id = current_user["user_id"]
+
+    try:
+        loop = asyncio.get_running_loop()
+        key = await loop.run_in_executor(
+            None,
+            get_user_api_key,
+            user_id,
+            provider
+        )
+
+        if key is None:
+            return {"success": False, "key": None}
+
+        # Audit log for sensitive operation (full key access)
+        try:
+            from core.audit import audit_log
+            audit_log(
+                action="api_key_full_access",
+                user_id=user_id,
+                metadata={"provider": provider}
+            )
+        except ImportError:
+            pass
+
+        return {"success": True, "key": key}
+
+    except Exception as e:
+        logger.error(f"Get full API key error: {e}")
+        raise HTTPException(status_code=500, detail="獲取失敗")

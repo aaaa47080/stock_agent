@@ -72,38 +72,53 @@ RATE_LIMITS = {
     "governance_report": "10/hour",  # Report submission (strict)
     "governance_vote": "30/hour",    # Voting (PRO members only)
     "governance_read": "100/hour",   # Reading governance data
+
+    # Sensitive API Key endpoints (very strict to prevent key theft)
+    "api_key_full": "10/minute",     # Getting full API key
+    "api_key_write": "20/minute",    # Saving/deleting API keys
 }
 
 
 def get_rate_limit_for_route(request: Request) -> str:
     """
     Determine appropriate rate limit based on route and method
-    
+
     Args:
         request: FastAPI request object
-        
+
     Returns:
         Rate limit string (e.g., "30/minute")
     """
     method = request.method.lower()
     path = request.url.path.lower()
-    
+
     # Authentication endpoints
     if any(x in path for x in ['/login', '/pi-sync', '/dev-login']):
         return RATE_LIMITS["auth"]
-    
+
+    # Sensitive API Key endpoints (very strict)
+    if '/api-keys' in path:
+        # Full key retrieval is most sensitive
+        if '/full' in path:
+            return RATE_LIMITS["api_key_full"]
+        # Write operations (save/delete)
+        if method in ['post', 'put', 'delete']:
+            return RATE_LIMITS["api_key_write"]
+        # Read operations (masked keys)
+        return RATE_LIMITS["read"]
+
     # Payment endpoints
     if '/payment' in path or '/tip' in path:
         return RATE_LIMITS["payment"]
-    
+
     # Admin endpoints
     if '/admin' in path:
         return RATE_LIMITS["admin"]
-    
+
     # Write operations
     if method in ['post', 'put', 'patch', 'delete']:
         return RATE_LIMITS["write"]
-    
+
     # AI Analysis endpoint (expensive LLM calls)
     if '/analyze' in path or '/backtest' in path:
         return RATE_LIMITS["analysis"]
@@ -120,11 +135,11 @@ def get_rate_limit_for_route(request: Request) -> str:
             return RATE_LIMITS["governance_vote"]
         else:
             return RATE_LIMITS["governance_read"]
-    
+
     # Default read operations
     if method == 'get':
         return RATE_LIMITS["read"]
-    
+
     # Default fallback
     return "100/minute"
 

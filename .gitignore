@@ -52,3 +52,6 @@ payment_test.txt
 
 pw_test/
 .selenium_screenshot.py
+
+# API Key 加密配置 (敏感)
+config/api_key_encryption.json

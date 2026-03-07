@@ -67,7 +67,7 @@ def get_whale_transactions(symbol: str = "BTC", min_value_usd: int = 500000) -> 
                     set_cached_data(cache_key, result)
                     return result
                 return "近期無大額 BTC 轉帳。"
-        return f"目前僅支援 BTC。"
+        return "目前僅支援 BTC。"
     except Exception as e:
         return f"錯誤: {str(e)}"
 

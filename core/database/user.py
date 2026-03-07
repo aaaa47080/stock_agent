@@ -224,7 +224,7 @@ def create_or_get_pi_user(pi_uid: str, username: str = None) -> Dict:
         }
     except ValueError:
         raise
-    except Exception as e:
+    except Exception:
         conn.rollback()
         raise
     finally:

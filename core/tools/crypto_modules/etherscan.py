@@ -3,7 +3,6 @@ Etherscan 工具
 ETH Balance, ERC20 Balance, Address Transactions, Contract Info, ETH Price
 """
 import os
-from typing import Dict
 from langchain_core.tools import tool
 import httpx
 

@@ -7,7 +7,6 @@ from typing import Dict
 from langchain_core.tools import tool
 import httpx
 
-from .common import get_cached_data, set_cached_data
 
 
 _COINGECKO_CACHE: Dict = {}

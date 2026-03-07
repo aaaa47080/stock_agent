@@ -2,7 +2,6 @@
 DexScreener 工具
 DEX Pair Info, Trending Pairs, Search Pairs
 """
-from typing import List
 from langchain_core.tools import tool
 import httpx
 
@@ -27,7 +26,6 @@ def get_dex_pair_info(token_address: str) -> dict:
             best_pair = max(pairs, key=lambda x: x.get("liquidity", {}).get("usd", 0) or 0)
 
             base_token = best_pair.get("baseToken", {})
-            quote_token = best_pair.get("quoteToken", {})
 
             return {
                 "symbol": base_token.get("symbol", "Unknown"),

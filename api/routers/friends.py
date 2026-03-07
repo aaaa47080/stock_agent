@@ -88,10 +88,15 @@ async def search_users_endpoint(
 async def get_user_profile(
     target_user_id: str,
     user_id: Optional[str] = Query(None, description="查看者的用戶 ID"),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     取得用戶的公開資料
     """
+    # 驗證 user_id 與 current_user 一致
+    if user_id and current_user["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
     try:
         loop = asyncio.get_running_loop()
         profile = await loop.run_in_executor(None, partial(get_public_user_profile, target_user_id, viewer_user_id=user_id))
@@ -474,11 +479,15 @@ async def get_sent_requests(
 async def get_status(
     target_user_id: str,
     user_id: str = Query(..., description="當前用戶 ID"),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     取得與特定用戶的好友狀態
     """
     try:
+        if current_user["user_id"] != user_id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+
         loop = asyncio.get_running_loop()
         status = await loop.run_in_executor(None, get_friendship_status, user_id, target_user_id)
         return {

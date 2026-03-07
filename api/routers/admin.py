@@ -470,6 +470,96 @@ async def get_keys_status(x_admin_key: Optional[str] = Header(None)):
 
 
 # ============================================================================
+# API Key Encryption Rotation Management API
+# ============================================================================
+
+@router.post("/api/admin/security/api-keys/rotate")
+async def manual_rotate_api_key_encryption(x_admin_key: Optional[str] = Header(None)):
+    """
+    Manually trigger API key encryption rotation.
+
+    This generates a new encryption key and re-encrypts all stored API keys.
+
+    需要管理員權限
+    """
+    verify_admin_key(x_admin_key)
+
+    try:
+        from utils.encryption import rotate_encryption_key
+        from core.audit import audit_log
+
+        result = rotate_encryption_key()
+
+        if result.get("success"):
+            # Log audit event
+            audit_log(
+                action="api_key_encryption_rotation_manual",
+                user_id="admin",
+                metadata=result
+            )
+
+            return {
+                "success": True,
+                "message": "API key encryption rotation completed successfully",
+                "result": {
+                    "re_encrypted_count": result.get("re_encrypted_count", 0)
+                }
+            }
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Rotation failed: {result.get('error', 'Unknown error')}"
+            )
+
+    except ImportError:
+        raise HTTPException(status_code=500, detail="Encryption module not available")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"輪換失敗: {str(e)}")
+
+
+@router.get("/api/admin/security/api-keys/status")
+async def get_api_key_encryption_status(x_admin_key: Optional[str] = Header(None)):
+    """
+    Get the status of API key encryption.
+
+    Returns information about the encryption key creation and last rotation.
+
+    需要管理員權限
+    """
+    verify_admin_key(x_admin_key)
+
+    try:
+        from utils.encryption import (
+            get_key_rotation_status,
+            should_rotate_api_key_encryption
+        )
+
+        status = get_key_rotation_status()
+        interval_days = int(os.getenv("API_KEY_ROTATION_INTERVAL_DAYS", "90"))
+        should_rotate = should_rotate_api_key_encryption(interval_days)
+
+        return {
+            "success": True,
+            "encryption_enabled": True,
+            "rotation_interval_days": interval_days,
+            "should_rotate": should_rotate,
+            "status": {
+                "exists": status.get("exists", False),
+                "created_at": status.get("created_at"),
+                "last_rotation": status.get("last_rotation"),
+                "version": status.get("version", 1)
+            }
+        }
+
+    except ImportError:
+        raise HTTPException(status_code=500, detail="Encryption module not available")
+    except Exception:
+        raise HTTPException(status_code=500, detail="獲取加密狀態失敗")
+
+
+# ============================================================================
 # Stage 4 Security: Security Monitoring API
 # ============================================================================
 

@@ -346,9 +346,9 @@ def get_key_manager() -> KeyRotationManager:
 
 async def key_rotation_task():
     """
-    Scheduled task to automatically rotate JWT keys.
+    Scheduled task to automatically rotate JWT keys and API key encryption.
 
-    Runs key rotation if it's due (every 30 days by default).
+    Runs key rotation if it's due (every 30 days by default for JWT, 90 days for API key encryption).
     Checks every hour and performs rotation when needed.
 
     This should be started in api_server.py's lifespan function:
@@ -366,11 +366,12 @@ async def key_rotation_task():
 
     while True:
         try:
+            # JWT Key Rotation
             if manager.should_rotate(rotation_interval_days):
-                logger.info("🔑 Key rotation is due, performing rotation...")
+                logger.info("🔑 JWT key rotation is due, performing rotation...")
                 result = manager.rotate_key()
                 logger.info(
-                    f"✅ Key rotation completed: "
+                    f"✅ JWT key rotation completed: "
                     f"{result['old_key_id'][:8]}... -> {result['new_key_id'][:8]}..."
                 )
 
@@ -379,10 +380,43 @@ async def key_rotation_task():
                     from core.audit import audit_log
                     audit_log(
                         action="key_rotation_automatic",
-                        metadata=result
+                        metadata={"type": "jwt", **result}
                     )
                 except ImportError:
                     pass
+
+            # API Key Encryption Rotation
+            try:
+                from utils.encryption import (
+                    should_rotate_api_key_encryption,
+                    rotate_encryption_key
+                )
+
+                api_key_interval = int(os.getenv("API_KEY_ROTATION_INTERVAL_DAYS", "90"))
+
+                if should_rotate_api_key_encryption(api_key_interval):
+                    logger.info("🔐 API key encryption rotation is due, performing rotation...")
+                    result = rotate_encryption_key()
+                    if result.get("success"):
+                        logger.info(
+                            f"✅ API key encryption rotation completed: "
+                            f"re-encrypted {result.get('re_encrypted_count', 0)} keys"
+                        )
+                        # Log audit event
+                        try:
+                            from core.audit import audit_log
+                            audit_log(
+                                action="api_key_encryption_rotation_automatic",
+                                metadata=result
+                            )
+                        except ImportError:
+                            pass
+                    else:
+                        logger.error(f"❌ API key encryption rotation failed: {result.get('error')}")
+            except ImportError:
+                logger.debug("API key encryption module not available")
+            except Exception as e:
+                logger.error(f"❌ API key encryption rotation check failed: {e}")
 
         except Exception as e:
             logger.error(f"❌ Key rotation failed: {e}")
