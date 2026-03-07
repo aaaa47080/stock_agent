@@ -154,7 +154,7 @@ async def interactive_test():
         print("❌ 請先在 .env 中設置 ENABLE_MANAGER_V2=true")
         return
     
-    from core.agents.bootstrap_v2 import bootstrap_v2
+    from core.agents.bootstrap import bootstrap
     from utils.user_client_factory import create_user_llm_client
     
     api_key = os.getenv("OPENAI_API_KEY") or os.getenv("OPENROUTER_API_KEY")
@@ -170,8 +170,8 @@ async def interactive_test():
         model="gpt-4o-mini",
     )
     
-    print("🔧 初始化 ManagerAgent V2...")
-    manager = bootstrap_v2(llm, web_mode=False, language="zh-TW")
+    print("🔧 初始化 ManagerAgent...")
+    manager = bootstrap(llm, web_mode=False, language="zh-TW")
     
     print_banner()
     

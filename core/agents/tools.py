@@ -38,7 +38,7 @@ def google_news(symbol: str = "BTC", limit: int = 5) -> list:
 
 @tool
 def aggregate_news(symbol: str = "BTC", limit: int = 5) -> list:
-    """從多個來源聚合加密貨幣新聞（Google + CryptoCompare）。
+    """從多個來源聚合加密貨幣新聞。
 
     ⚠️ 觸發條件：當用戶問題包含以下關鍵字時，必須使用此工具：
     - 「新聞」「消息」「動態」「資訊」「事件」
@@ -59,7 +59,7 @@ def aggregate_news(symbol: str = "BTC", limit: int = 5) -> list:
         包含 title, url, description, source 的新聞列表
     """
     from utils.utils import get_crypto_news
-    return get_crypto_news(symbol=symbol, limit=limit, enabled_sources=["google", "cryptocompare"])
+    return get_crypto_news(symbol=symbol, limit=limit)
 
 
 # ============================================

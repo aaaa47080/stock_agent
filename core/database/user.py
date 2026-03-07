@@ -170,7 +170,6 @@ def create_or_get_pi_user(pi_uid: str, username: str = None) -> Dict:
     # Fallback: use pi_uid prefix if username is not provided
     if not username:
         username = f"pi_{pi_uid[:8]}"
-    print(f"[DEBUG] create_or_get_pi_user called: pi_uid={pi_uid}, username={username}")
     conn = get_connection()
     c = conn.cursor()
     try:
@@ -178,12 +177,10 @@ def create_or_get_pi_user(pi_uid: str, username: str = None) -> Dict:
         c.execute('SELECT user_id, username, auth_method, pi_username, role, membership_tier FROM users WHERE pi_uid = %s', (pi_uid,))
         row = c.fetchone()
         if row:
-            print(f"[DEBUG] Found existing Pi user: {row}")
             # 如果 pi_username 為空，更新它
             if not row[3]:
                 c.execute('UPDATE users SET pi_username = %s WHERE pi_uid = %s', (username, pi_uid))
                 conn.commit()
-                print(f"[DEBUG] Updated pi_username for existing user: {username}")
             return {
                 "user_id": row[0],
                 "username": row[1],
@@ -202,24 +199,20 @@ def create_or_get_pi_user(pi_uid: str, username: str = None) -> Dict:
             # 使用 UUID 的前8位作為後綴，降低衝突機率
             suffix = str(uuid.uuid4()).replace('-', '')[:8]
             username = f"{original_username}_{suffix}"
-            print(f"[DEBUG] Username conflict: {original_username} taken. Assigned new username: {username}")
 
             # 理論上8位 UUID 衝突機率極低，但仍然檢查
             c.execute('SELECT 1 FROM users WHERE username = %s', (username,))
             if c.fetchone():
                 # 極端情況：使用完整 UUID 確保唯一
                 username = f"{original_username}_{str(uuid.uuid4())}"
-                print(f"[DEBUG] Secondary collision detected, using full UUID: {username}")
 
         # 創建新 Pi 用戶
-        print(f"[DEBUG] Creating new Pi user: pi_uid={pi_uid}, username={username}")
         user_id = pi_uid
         c.execute('''
             INSERT INTO users (user_id, username, password_hash, auth_method, pi_uid, pi_username, created_at)
             VALUES (%s, %s, NULL, 'pi_network', %s, %s, NOW())
         ''', (user_id, username, pi_uid, username))
         conn.commit()
-        print(f"[DEBUG] Pi user created successfully: user_id={user_id}")
 
         return {
             "user_id": user_id,
@@ -232,7 +225,6 @@ def create_or_get_pi_user(pi_uid: str, username: str = None) -> Dict:
     except ValueError:
         raise
     except Exception as e:
-        print(f"[ERROR] create_or_get_pi_user failed: {type(e).__name__}: {e}")
         conn.rollback()
         raise
     finally:

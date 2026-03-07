@@ -61,10 +61,11 @@ trafilatura
 # === Caching / Rate Limiting ===
 cachetools==6.2.2
 tenacity==9.1.2
+redis>=5.0.0
+
+# === Web / Scraping ===
+playwright>=1.40.0
 
 # === Scheduling / Utilities ===
-schedule==1.2.2
 python-dateutil==2.9.0.post0
-six==1.17.0
 pytz==2025.2
-tqdm==4.67.1

@@ -211,6 +211,5 @@ class TWStockAgent:
             return None
         try:
             return tool.handler.invoke(args)
-        except Exception as e:
-            print(f"[TWStockAgent] {tool_name} failed: {e}")
+        except Exception:
             return None

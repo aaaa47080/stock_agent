@@ -30,175 +30,14 @@ from .models import (
 from .agent_registry import AgentRegistry
 from .tool_registry import ToolRegistry
 from .router import AgentRouter
+from .prompt_registry import PromptRegistry
 
 # 模組級共用 checkpointer
 _checkpointer = MemorySaver()
 
 
 # ============================================================================
-# Prompt 模板 - 開放式設計（無硬編碼）
-# ============================================================================
-
-INTENT_UNDERSTANDING_PROMPT = """你是一個任務規劃專家。分析用戶的查詢，規劃執行步驟。
-
-## 可用的專業 Agents
-
-{agents_info}
-
----
-
-## 分析原則
-
-1. **理解本質** - 用戶想解決什麼問題？需要什麼資訊？
-2. **選擇 Agent** - 根據 agent 描述，選擇最適合的 agent
-3. **判斷複雜度** - 需要多少步驟？有沒有依賴關係？
-4. **識別實體** - 用戶提到了哪些標的
-5. **判斷清晰度** - 用戶的問題是否足夠清楚？還是需要澄清？
-
-## ⚠️ 重要：新聞查詢處理規則
-
-當用戶問題包含以下關鍵字時，任務描述**必須**明確提到「新聞」：
-- 「新聞」「消息」「動態」「資訊」「事件」
-- 「最新」「最近」「近期」+ 市場相關
-- 「發生了什麼」「有什麼消息」「市場情緒」
-
-範例：
-- 用戶：「BTC 最新新聞」→ 任務描述：「查詢 BTC 的最新新聞」
-- 用戶：「比特幣有什麼消息」→ 任務描述：「獲取比特幣的最新市場消息與動態」
-- ❌ 錯誤：任務描述寫「查詢 BTC 價格」（會導致只返回價格）
-
-## ⚠️ 重要：恐慌指數路由規則
-
-「恐慌指數」需要根據**對話上下文**決定路由到哪個 Agent：
-
-- **加密貨幣上下文**（用戶提到 BTC、ETH、加密貨幣等）→ 路由到 `crypto` agent
-  - 使用「加密貨幣恐慌貪婪指數」工具
-  - 任務描述範例：「獲取加密貨幣市場的恐慌貪婪指數」
-
-- **傳統金融上下文**（用戶提到美股、大盤、VIX 等）→ 路由到 `economic` agent
-  - 使用「VIX 恐慌指數」工具
-  - 任務描述範例：「獲取 VIX 恐慌指數」
-
-範例：
-- 用戶：「BTC 現在適合投資嗎？以恐慌指數來看」→ 路由到 `crypto` agent
-- 用戶：「美股大盤的恐慌指數是多少」→ 路由到 `economic` agent
-- ❌ 錯誤：在加密貨幣上下文中路由到 `economic` agent
-
-## 輸出格式
-
-請以 JSON 格式輸出：
-
-```json
-{{
-  "status": "ready 或 clarify",
-  "user_intent": "用一句話描述用戶的核心意圖",
-  "entities": {{
-    "symbol": "識別出的標的（如有）",
-    "market": "市場類型"
-  }},
-  "clarification_question": "如果需要澄清，這裡是詢問用戶的問題",
-  "tasks": [
-    {{
-      "id": "task_1",
-      "name": "任務名稱",
-      "agent": "選擇的 agent",
-      "description": "具體描述（包含標的和查詢類型，如新聞/價格/技術分析）",
-      "dependencies": []
-    }}
-  ],
-  "aggregation_strategy": "combine_all 或 last_only"
-}}
-```
-
-## Status 說明
-
-- **ready**: 用戶問題清楚，可以直接執行任務
-- **clarify**: 用戶問題模糊，需要詢問更多資訊
-
-## ⚠️ 重要：多輪對話上下文推斷
-
-當用戶問題沒有明確提到標的時，**必須先從對話歷史推斷**：
-
-範例：
-- 歷史：「用戶: BTC 價格多少」「助手: 目前比特幣價格為 $68,000」
-- 用戶：「那請問最新新聞是什麼」
-- ✅ 正確推斷：用戶想查詢 BTC 的新聞，任務描述應為「查詢 BTC 的最新新聞」
-- ❌ 錯誤：要求澄清「請問您想查詢哪個資產的新聞？」
-
-**只有在對話歷史完全沒有提及任何標的時，才需要澄清。**
-
-## ⚠️ 重要：何時「不需要」澄清？
-
-**以下情況絕對不要返回 clarify，必須直接規劃任務：**
-
-1. **用戶已經指定了標的**（如 BTC、台積電、黃金等）→ 直接規劃任務
-2. **用戶問「A還是B」「比較A和B」** → 創建並行任務查詢兩者
-3. **用戶問「建議投資」「可以買嗎」「值得嗎」** → 創建綜合分析任務
-4. **對話歷史中已有標的資訊** → 從歷史推斷，不要澄清
-
-## 何時才需要澄清？
-
-**只有在以下情況才返回 clarify：**
-- 這是全新對話（無歷史），**且**用戶完全沒有指定任何標的
-- 例如：第一句就是「分析一下」「多少錢」（沒說是什麼）
-
-## 任務規劃指南
-
-- **簡單查詢**（價格、匯率、單一標的）→ 只需要一個任務
-- **新聞查詢**（最新消息、動態）→ 任務描述必須明確提到「新聞」
-- **比較查詢**（兩個標的差異、A還是B）→ **必須**創建兩個並行任務
-- **投資建議**（值得投資嗎、可以買嗎）→ 創建綜合分析任務（價格+技術分析+市場情緒）
-- **複雜分析**（投資建議、綜合報告）→ 多個任務，可能有依賴關係
-
-## ⚠️ 重要：比較查詢的任務規劃
-
-當用戶問「A還是B」「比較A和B」「A和B哪個好」時，**必須**創建兩個並行任務：
-
-範例：
-- 用戶：「1000元投資BTC還是台積電比較好？」
-- ✅ 正確規劃：
-  ```json
-  {{
-    "status": "ready",
-    "tasks": [
-      {{
-        "id": "task_1",
-        "name": "查詢 BTC 價格與分析",
-        "agent": "crypto",
-        "description": "查詢 BTC 目前價格，並評估 1000 元台幣能購買的數量",
-        "dependencies": []
-      }},
-      {{
-        "id": "task_2",
-        "name": "查詢台積電股價與分析",
-        "agent": "tw_stock",
-        "description": "查詢台積電(2330)目前股價，並評估 1000 元台幣能購買的股數（考慮零股）",
-        "dependencies": []
-      }}
-    ],
-    "aggregation_strategy": "combine_all"
-  }}
-  ```
-- ❌ 錯誤：返回 `status: clarify` 詢問「您想查詢哪些資訊？」
-
-## 聚合策略
-
-- **combine_all**: 合併所有結果（適用於並行任務）
-- **last_only**: 只取最後結果（適用於順序任務）
-
-## 用戶查詢
-
-{query}
-
-## 對話歷史（如有）
-
-{history}
-
-請輸出 JSON："""
-
-
-# ============================================================================
-# ManagerAgent V2
+# ManagerAgent
 # ============================================================================
 
 class ManagerAgent:
@@ -242,6 +81,7 @@ class ManagerAgent:
         builder.add_node("understand_intent", self._understand_intent_node)
         builder.add_node("execute_task", self._execute_task_node)
         builder.add_node("aggregate_results", self._aggregate_results_node)
+        builder.add_node("reflect_on_results", self._reflect_on_results_node)
         builder.add_node("synthesize_response", self._synthesize_response_node)
 
         # 設定入口
@@ -253,6 +93,7 @@ class ManagerAgent:
             self._after_intent_understanding,
             {
                 "clarify": END,  # 需要澄清，直接結束（返回 clarification_question）
+                "direct_response": END,  # 簡單打招呼/閒聊，直接結束
                 "execute": "execute_task",  # 可以執行
             }
         )
@@ -267,7 +108,8 @@ class ManagerAgent:
             }
         )
 
-        builder.add_edge("aggregate_results", "synthesize_response")
+        builder.add_edge("aggregate_results", "reflect_on_results")
+        builder.add_edge("reflect_on_results", "synthesize_response")
         builder.add_edge("synthesize_response", END)
 
         return builder.compile(checkpointer=_checkpointer)
@@ -298,8 +140,9 @@ class ManagerAgent:
         from .description_loader import get_agent_descriptions
         agents_info = get_agent_descriptions().get_routing_guide()
 
-        # 調用 LLM 進行意圖理解和任務規劃
-        prompt = INTENT_UNDERSTANDING_PROMPT.format(
+        # 使用 PromptRegistry 獲取 prompt
+        prompt = PromptRegistry.render(
+            "manager", "intent_understanding",
             agents_info=agents_info,
             query=query,
             history=history or "（無歷史記錄）"
@@ -322,6 +165,19 @@ class ManagerAgent:
                         "clarification_question": clarification,
                     },
                     "final_response": clarification,
+                    "_processed_query": query,
+                }
+            
+            # 如果可以直接回應（打招呼、道謝等閒聊）
+            if status == "direct_response":
+                text = intent_data.get("direct_response_text", "你好！請問有什麼我可以幫忙的？")
+                return {
+                    **state_reset,
+                    "intent_understanding": {
+                        "status": "direct_response",
+                        "user_intent": intent_data.get("user_intent", query),
+                    },
+                    "final_response": text,
                     "_processed_query": query,
                 }
 
@@ -497,6 +353,75 @@ class ManagerAgent:
 
         return {"final_response": final_result}
 
+    async def _reflect_on_results_node(self, state: ManagerState) -> Dict:
+        """結果品質審查節點
+
+        檢查 agent 執行結果，過濾異常訊息（如 XXX、N/A、error 等），
+        決定是否需要重試或清理結果。
+        """
+        query = state.get("query", "")
+        task_results = state.get("task_results", {})
+
+        self._emit_progress("reflect_on_results", "正在檢查結果品質...")
+
+        # 如果沒有任務結果，直接返回
+        if not task_results:
+            return {}
+
+        # 格式化結果供 LLM 審查
+        results_text = []
+        for task_id, result in task_results.items():
+            agent = result.get("agent_name", "unknown")
+            msg = result.get("message", "")
+            success = result.get("success", False)
+            results_text.append(f"[{task_id}] agent={agent}, success={success}\n{msg[:500]}...")  # 截斷避免過長
+
+        if not results_text:
+            return {}
+
+        # 調用 LLM 進行審查
+        prompt = PromptRegistry.render(
+            "manager", "reflect_on_results",
+            query=query,
+            results="\n\n".join(results_text)
+        )
+
+        try:
+            response = await self._llm_invoke(prompt)
+            reflection_data = self._parse_json_response(response)
+
+            if not reflection_data:
+                return {}
+
+            issues = reflection_data.get("issues", [])
+            needs_retry = reflection_data.get("needs_retry", False)
+            cleaned_results = reflection_data.get("cleaned_results")
+
+            # 如果需要重試，記錄日誌（目前不實現自動重試，避免複雜度）
+            if needs_retry:
+                logger.warning(f"[Reflection] 檢測到問題需要重試: {issues}")
+                # TODO: 未來可以實現自動重試邏輯
+
+            # 如果有清理後的結果，更新 task_results
+            if cleaned_results:
+                updated_task_results = dict(task_results)
+                for task_id, cleaned in cleaned_results.items():
+                    if task_id in updated_task_results:
+                        if cleaned is None:
+                            # 移除有問題的結果
+                            del updated_task_results[task_id]
+                            logger.info(f"[Reflection] 移除異常結果: {task_id}")
+                        else:
+                            # 更新為清理後的結果
+                            updated_task_results[task_id]["message"] = cleaned
+                return {"task_results": updated_task_results}
+
+            return {}
+
+        except Exception as e:
+            logger.error(f"[Reflection] 審查失敗: {e}")
+            return {}  # 失敗時不影響流程，繼續使用原始結果
+
     async def _synthesize_response_node(self, state: ManagerState) -> Dict:
         """生成最終回應節點
 
@@ -635,6 +560,7 @@ class ManagerAgent:
         """意圖理解後的路由
 
         - clarify: 需要向用戶詢問更多資訊
+        - direct_response: 直接產生回應（打招呼等跳過任務執行）
         - execute: 可以直接執行任務
         """
         intent = state.get("intent_understanding", {})
@@ -642,6 +568,8 @@ class ManagerAgent:
 
         if status == "clarify":
             return "clarify"
+        if status == "direct_response":
+            return "direct_response"
 
         return "execute"
 

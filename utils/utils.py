@@ -234,9 +234,9 @@ def get_crypto_news_cryptocompare(symbol: str = "BTC", limit: int = 5) -> List[D
     logger.debug(f">> 正在從 CryptoCompare 撈取 {symbol} 的專業報導...")
     url = "https://min-api.cryptocompare.com/data/v2/news/"
     params = {"categories": symbol, "excludeCategories": "Sponsored", "lang": "EN"}
-    
+
     try:
-        response = requests.get(url, params=params, timeout=10)
+        response = requests.get(url, params=params, timeout=15)
         response.raise_for_status()
         data = response.json()
         
