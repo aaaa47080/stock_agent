@@ -1,12 +1,18 @@
 """
 Community Governance Database Operations
+Contains: Report management, voting, violations, audit reputation, activity logging, helpers
 
-This module now imports from the governance subpackage for better organization.
-All functions and constants are still available from this module for backward compatibility.
+This module is split into submodules for better organization:
+- constants: Governance thresholds and limits
+- reports: Report creation and management
+- voting: Vote casting and consensus
+- violations: Violation points and suspensions
+- reputation: Audit reputation tracking
+- activity: Activity logging
+- helpers: Utility functions
 """
 
-from .governance import (
-    # Constants
+from .constants import (
     VIOLATION_LEVELS,
     REPORT_TYPES,
     VIOLATION_ACTIONS,
@@ -16,33 +22,45 @@ from .governance import (
     CONSENSUS_REJECT_THRESHOLD,
     DEFAULT_DAILY_REPORT_LIMIT,
     PRO_DAILY_REPORT_LIMIT,
-    # Reports
+)
+
+from .reports import (
     create_report,
     get_pending_reports,
     get_report_by_id,
     get_user_reports,
     check_daily_report_limit,
     get_daily_report_usage,
-    # Voting
+)
+
+from .voting import (
     vote_on_report,
     get_report_votes,
     check_report_consensus,
     finalize_report,
-    # Violations
+)
+
+from .violations import (
     add_violation_points,
     get_user_violation_points,
     get_user_violations,
     determine_suspension_action,
     apply_suspension,
     check_user_suspension,
-    # Reputation
+)
+
+from .reputation import (
     get_audit_reputation,
     calculate_vote_weight,
     update_audit_reputation,
-    # Activity
+)
+
+from .activity import (
     log_activity,
     get_user_activity_logs,
-    # Helpers
+)
+
+from .helpers import (
     get_content_author,
     get_report_statistics,
     get_top_reviewers,
