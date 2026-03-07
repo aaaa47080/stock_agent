@@ -13,6 +13,10 @@ class ForexAgent:
         self.llm = llm_client
         self.tools = tool_registry
 
+    @property
+    def name(self) -> str:
+        return "forex"
+
     def process(self, query: str, context: dict = None) -> str:
         """處理外匯相關查詢"""
         system_prompt = """你是一位專業的外匯分析師。

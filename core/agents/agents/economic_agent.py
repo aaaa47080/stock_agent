@@ -13,6 +13,10 @@ class EconomicAgent:
         self.llm = llm_client
         self.tools = tool_registry
 
+    @property
+    def name(self) -> str:
+        return "economic"
+
     def process(self, query: str, context: dict = None) -> str:
         """處理經濟數據相關查詢"""
         system_prompt = """你是一位專業的經濟數據分析師。

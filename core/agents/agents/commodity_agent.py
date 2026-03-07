@@ -13,6 +13,10 @@ class CommodityAgent:
         self.llm = llm_client
         self.tools = tool_registry
 
+    @property
+    def name(self) -> str:
+        return "commodity"
+
     def process(self, query: str, context: dict = None) -> str:
         """處理大宗商品相關查詢"""
         system_prompt = """你是一位專業的大宗商品分析師。

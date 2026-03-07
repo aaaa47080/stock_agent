@@ -76,6 +76,21 @@ class Settings:
     VERBOSE_LOGGING: bool = False       # 詳細日誌
     SAVE_REPORTS: bool = True           # 是否保存報告到文件
 
+    # ============================================================================
+    # Feature Flags (實驗性功能)
+    # ============================================================================
+    # 新版 ManagerAgent V2 - 開放式意圖理解 + DAG 執行引擎
+    # 設為 True 時，使用新版 manager_v2.py
+    # 設為 False 時，使用現有 manager.py（穩定版）
+    ENABLE_MANAGER_V2: bool = os.getenv("ENABLE_MANAGER_V2", "true").lower() == "true"
+
+    # Manager V2 子功能開關
+    MANAGER_V2_OPEN_INTENT: bool = True      # 開放式意圖理解（無硬編碼）
+    MANAGER_V2_DAG_EXECUTION: bool = True    # DAG 執行引擎
+    MANAGER_V2_PARALLEL_GROUPS: bool = True  # 水平並行執行
+    MANAGER_V2_SHORT_MEMORY: bool = True     # 短期記憶整合
+    MANAGER_V2_SUBAGENT_CONTEXT: bool = True # Sub-Agent 選擇性上下文
+
     @classmethod
     def to_dict(cls) -> Dict[str, Any]:
         """將配置轉換為字典"""

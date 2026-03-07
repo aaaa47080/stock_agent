@@ -229,6 +229,11 @@ price lookup, 即時價格, 平台說明, 閒聊, 時間
 | `web_search` | 網絡搜索 | `query`, `purpose` |
 | `get_dex_pair_info` | DEX 代幣對詳細資訊 | `token_address` |
 | `get_trending_dex_pairs` | 熱門 DEX 交易對搜索 | `query` |
+| `get_eth_balance` | ETH 餘額查詢 | `address` |
+| `get_erc20_token_balance` | ERC20 代幣餘額 | `address`, `contract_address` |
+| `get_address_transactions` | 地址交易記錄 | `address`, `limit` |
+| `get_contract_info` | 智能合約資訊 | `contract_address` |
+| `get_eth_price_etherscan` | ETH 即時價格 | 無 |
 
 ### 台股工具 (TWStockAgent)
 
@@ -270,6 +275,35 @@ price lookup, 即時價格, 平台說明, 閒聊, 時間
 | `get_pi_price` | Pi Network 價格 | 無 |
 | `get_pi_network_info` | Pi Network 資訊 | 無 |
 | `get_pi_ecosystem` | Pi 生態系統資訊 | 無 |
+
+### 大宗商品工具 (CommodityAgent)
+
+| 工具名 | 描述 | 輸入參數 |
+|--------|------|----------|
+| `get_commodity_price_tool` | 商品即時價格（黃金、白銀、石油等） | `commodity` |
+| `get_commodity_futures_tool` | 商品期貨價格 | `futures_type` |
+| `get_all_commodities_prices_tool` | 所有商品價格一覽 | 無 |
+| `get_gold_silver_ratio_tool` | 金銀比 | 無 |
+| `get_oil_analysis_tool` | 原油分析（WTI vs 布蘭特） | 無 |
+
+### 外匯工具 (ForexAgent)
+
+| 工具名 | 描述 | 輸入參數 |
+|--------|------|----------|
+| `get_forex_rate_tool` | 外匯即時匯率 | `pair` |
+| `get_all_forex_rates_tool` | 所有主要貨幣對匯率 | 無 |
+| `get_usd_twd_rate_tool` | 美元/台幣匯率 | 無 |
+| `get_central_bank_rates_tool` | 央行利率（需 FRED_API_KEY） | 無 |
+
+### 經濟數據工具 (EconomicAgent)
+
+| 工具名 | 描述 | 輸入參數 |
+|--------|------|----------|
+| `get_market_indices_tool` | 美股主要指數（S&P 500、道瓊、那斯達克、VIX） | 無 |
+| `get_vix_index_tool` | VIX 恐慌指數詳情 | 無 |
+| `get_sp500_performance_tool` | S&P 500 表現 | 無 |
+| `get_sector_performance_tool` | 美股 11 大板塊表現 | 無 |
+| `get_economic_calendar_tool` | 經濟事件行事曆 | 無 |
 
 ---
 
@@ -408,6 +442,9 @@ core/agents/
     ├── tw_stock_agent.py    # 台股 Agent
     ├── us_stock_agent.py    # 美股 Agent
     ├── chat_agent.py        # 對話 Agent
+    ├── commodity_agent.py   # 大宗商品 Agent
+    ├── forex_agent.py       # 外匯 Agent
+    ├── economic_agent.py    # 經濟數據 Agent
     ├── tech_agent.py        # (Legacy) 技術分析
     └── news_agent.py        # (Legacy) 新聞分析
 
@@ -416,6 +453,9 @@ core/tools/
 ├── crypto_tools.py          # 加密貨幣工具
 ├── tw_stock_tools.py        # 台股工具
 ├── us_stock_tools.py        # 美股工具
+├── commodity_tools.py       # 大宗商品工具
+├── forex_tools.py           # 外匯工具
+├── economic_tools.py        # 經濟數據工具
 ├── pi_tools.py              # Pi Network 工具
 └── utility_tools.py         # 通用工具
 ```
@@ -426,9 +466,9 @@ core/tools/
 
 | 項目 | 數量 |
 |------|------|
-| 活躍 Agent | 4 |
-| 註冊工具 | 40 |
-| 支援市場 | 3 |
+| 活躍 Agent | 7 |
+| 註冊工具 | 44 |
+| 支援市場 | 5 |
 | 數據源 | 10+ |
 
 ---

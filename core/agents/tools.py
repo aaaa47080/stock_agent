@@ -13,14 +13,51 @@ from langchain_core.tools import tool
 
 @tool
 def google_news(symbol: str = "BTC", limit: int = 5) -> list:
-    """從 Google News RSS 獲取加密貨幣相關新聞，無需 API Key"""
+    """獲取加密貨幣最新新聞。
+
+    ⚠️ 觸發條件：當用戶問題包含以下關鍵字時，必須使用此工具：
+    - 「新聞」「消息」「動態」「資訊」「事件」
+    - 「最新」「最近」「近期」+ 任何市場相關詞
+    - 「發生了什麼」「有什麼消息」「市場情緒」
+
+    ⚠️ 輸出格式：返回的新聞列表包含 title 和 url 欄位。
+    你必須將結果格式化為 Markdown 連結格式：
+    - **正確格式**：[標題](url)
+    - **錯誤格式**：只顯示標題而省略 URL
+
+    Args:
+        symbol: 幣種代碼，如 BTC、ETH、SOL
+        limit: 返回新聞數量，預設 5
+
+    Returns:
+        包含 title, url, description, source 的新聞列表
+    """
     from utils.utils import get_crypto_news_google
     return get_crypto_news_google(symbol=symbol, limit=limit)
 
 
 @tool
 def aggregate_news(symbol: str = "BTC", limit: int = 5) -> list:
-    """從多個來源聚合加密貨幣新聞（Google, CryptoCompare）"""
+    """從多個來源聚合加密貨幣新聞（Google + CryptoCompare）。
+
+    ⚠️ 觸發條件：當用戶問題包含以下關鍵字時，必須使用此工具：
+    - 「新聞」「消息」「動態」「資訊」「事件」
+    - 「最新」「最近」「近期」+ 任何市場相關詞
+    - 「發生了什麼」「有什麼消息」「市場情緒」
+    - 需要更全面的新聞來源時（比 google_news 更完整）
+
+    ⚠️ 輸出格式：返回的新聞列表包含 title 和 url 欄位。
+    你必須將結果格式化為 Markdown 連結格式：
+    - **正確格式**：[標題](url)
+    - **錯誤格式**：只顯示標題而省略 URL
+
+    Args:
+        symbol: 幣種代碼，如 BTC、ETH、SOL
+        limit: 返回新聞數量，預設 5
+
+    Returns:
+        包含 title, url, description, source 的新聞列表
+    """
     from utils.utils import get_crypto_news
     return get_crypto_news(symbol=symbol, limit=limit, enabled_sources=["google", "cryptocompare"])
 
@@ -110,12 +147,18 @@ def get_token_supply(symbol: str) -> str:
 
 @tool
 def web_search(query: str, purpose: str = "general") -> str:
-    """
-    Perform a general web search to find information not available in the internal database.
-    Use this for:
-    1. Looking up current events, news, or market sentiment.
-    2. Finding specific facts (e.g., "Pi Network current price", "competitors of Solana").
-    3. Verifying information.
+    """通用網絡搜索 (DuckDuckGo)，用於獲取即時資訊。
+
+    ⚠️ 觸發條件：
+    1. 需要最新/即時資訊，且其他專用工具無法滿足時
+    2. 用戶問「宏觀市場」「整體經濟」「全球事件」等超出單一幣種範圍的問題
+    3. 專用新聞工具（google_news/aggregate_news）返回空結果時的備選方案
+
+    注意：對於加密貨幣新聞，應優先使用 google_news 或 aggregate_news
+
+    Args:
+        query: 搜索關鍵字，如 "Bitcoin ETF approval news 2024"
+        purpose: 搜索目的說明
     """
     from core.tools.web_search import web_search_tool
     return web_search_tool.invoke({"query": query, "purpose": purpose})

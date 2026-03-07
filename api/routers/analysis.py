@@ -12,11 +12,12 @@ from analysis.simple_backtester import run_simple_backtest
 import core.config as core_config
 from utils.user_client_factory import create_user_llm_client
 from api.middleware.rate_limit import limiter
+from utils.settings import Settings  # Feature Flags
 
 # Import DB functions
 from core.database import (
-    save_chat_message, 
-    get_chat_history, 
+    save_chat_message,
+    get_chat_history,
     clear_chat_history as db_clear_history,
     get_sessions,
     create_session,
@@ -140,18 +141,35 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
 
     logger.info(f"收到分析請求 (Session: {body.session_id}): {body.message[:50]}...")
 
-    # ── 嘗試使用 V4 Manager ──────────────────────────────
+    # ── V2 Manager（開放式意圖理解 + DAG 執行）──────────────────────────
+    # V2 is now the default. Set ENABLE_MANAGER_V2=false for emergency rollback.
+    use_v2 = Settings.ENABLE_MANAGER_V2
+
     try:
-        from core.agents.bootstrap import bootstrap as v4_bootstrap
         from langgraph.types import Command
 
-        manager = v4_bootstrap(
-            user_client,
-            web_mode=True,
-            language=body.language,
-            user_tier=current_user.get("membership_tier", "free"),
-            user_id=current_user.get("user_id"),
-        )
+        if use_v2:
+            # 使用 V2 Manager
+            from core.agents.bootstrap_v2 import bootstrap_v2
+            logger.info("[V2] ✅ Using ManagerAgentV2")
+            manager = bootstrap_v2(
+                user_client,
+                web_mode=True,
+                language=body.language,
+                user_tier=current_user.get("membership_tier", "free"),
+                user_id=current_user.get("user_id"),
+            )
+        else:
+            # 緊急回滾：使用 V1 Manager
+            from core.agents.bootstrap import bootstrap as v1_bootstrap
+            logger.warning("[V1] ⚠️ Using ManagerAgent V1 (rollback mode)")
+            manager = v1_bootstrap(
+                user_client,
+                web_mode=True,
+                language=body.language,
+                user_tier=current_user.get("membership_tier", "free"),
+                user_id=current_user.get("user_id"),
+            )
         config  = {"configurable": {"thread_id": body.session_id}}
 
         # resume_answer → 繼續被 interrupt 暫停的 graph
@@ -187,26 +205,40 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
             except Exception as e:
                 logger.warning(f"[V4] 載入對話歷史失敗: {e}")
 
-            # Force graph to restart from 'classify' node with new input
-            # This ensures we don't get stuck in a previous interrupted state (like confirm_plan)
-            # when the user sends a fresh query.
-            graph_input = Command(
-                goto="classify",
-                update={
-                    "session_id":          body.session_id,
-                    "query":               body.message,
-                    "history":             history_text,
-                    "agent_results":       [],
-                    "user_clarifications": [],
-                    "retry_count":         0,
-                    "language":            body.language,
-                    "plan":                None,   # Explicitly clear plan
-                    "current_step_index":  0,      # Reset execution cursor (CRITICAL: prevents step-skip on subsequent queries)
-                    "negotiate_count":     0,      # Reset negotiation
-                    "plan_negotiating":    False,
-                    "plan_confirmed":      False,
-                }
-            )
+            # Force graph to restart from appropriate node with new input
+            # This ensures we don't get stuck in a previous interrupted state
+            if use_v2:
+                # V2 狀態結構
+                graph_input = Command(
+                    goto="understand_intent",
+                    update={
+                        "session_id": body.session_id,
+                        "query": body.message,
+                        "history": history_text,
+                        "task_results": {},
+                        "language": body.language,
+                        "execution_mode": "vending",  # default, will be updated by intent understanding
+                    }
+                )
+            else:
+                # V1 狀態結構
+                graph_input = Command(
+                    goto="classify",
+                    update={
+                        "session_id":          body.session_id,
+                        "query":               body.message,
+                        "history":             history_text,
+                        "agent_results":       [],
+                        "user_clarifications": [],
+                        "retry_count":         0,
+                        "language":            body.language,
+                        "plan":                None,
+                        "current_step_index":  0,
+                        "negotiate_count":     0,
+                        "plan_negotiating":    False,
+                        "plan_confirmed":      False,
+                    }
+                )
 
         async def event_generator_v4():
             try:
