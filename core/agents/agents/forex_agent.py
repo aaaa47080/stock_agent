@@ -1,39 +1,44 @@
 """
-Forex Agent - 外匯專業分析師
+Agent V4 — Forex Agent
 
-負責處理貨幣對匯率、央行利率等外匯相關查詢。
+外匯分析 Agent：使用 LangChain create_agent 實現 ReAct 循環。
+LLM 自動決定調用哪些工具、參數是什麼。
 """
-from langchain_core.messages import HumanMessage, SystemMessage
+import logging
+
+from ..base_react_agent import BaseReActAgent
+from ..prompt_registry import PromptRegistry
+
+logger = logging.getLogger(__name__)
 
 
-class ForexAgent:
-    """外匯專業分析師"""
-
-    def __init__(self, llm_client, tool_registry):
-        self.llm = llm_client
-        self.tools = tool_registry
+class ForexAgent(BaseReActAgent):
+    """外匯分析 Agent - 使用 ReAct 循環自動調用工具。"""
 
     @property
     def name(self) -> str:
         return "forex"
 
-    def process(self, query: str, context: dict = None) -> str:
-        """處理外匯相關查詢"""
-        system_prompt = """你是一位專業的外匯分析師。
-你的職責是協助用戶查詢和分析各國貨幣匯率、央行利率等外匯市場資訊。
+    def _get_system_prompt(self, language: str) -> str:
+        """獲取外匯分析專用的系統提示詞。"""
+        try:
+            return PromptRegistry.get("forex_agent", "system", language)
+        except Exception:
+            if language == "zh-TW":
+                return """你是一個專業的外匯分析師。
 
-可用工具：
-- get_forex_rate: 查詢特定貨幣對匯率（如 USD/TWD、EUR/USD）
-- get_all_forex_rates: 獲取所有主要貨幣對匯率一覽
-- get_usd_twd_rate: 快速查詢美元/台幣匯率
-- get_central_bank_rates: 獲取主要央行利率
+根據用戶的問題和可用工具的描述，自動決定：
+1. 是否需要調用工具
+2. 調用哪個工具
+3. 傳入什麼參數（如貨幣對）
 
-請根據用戶問題選擇適當的工具，並提供專業、準確的回答。
-回答時請使用繁體中文。"""
+可處理：匯率查詢、央行利率、貨幣對分析等。"""
+            else:
+                return """You are a professional forex analyst.
 
-        messages = [
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=query)
-        ]
+Based on the user's question and available tool descriptions, automatically decide:
+1. Whether to call tools
+2. Which tools to call
+3. What parameters to pass (e.g., currency pair)
 
-        return self.llm.invoke(messages)
+Can handle: exchange rate queries, central bank rates, currency pair analysis, etc."""

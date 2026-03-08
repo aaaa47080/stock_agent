@@ -1,40 +1,44 @@
 """
-Commodity Agent - 大宗商品專業分析師
+Agent V4 — Commodity Agent
 
-負責處理黃金、白銀、石油、天然氣、銅等大宗商品的查詢。
+大宗商品分析 Agent：使用 LangChain create_agent 實現 ReAct 循環。
+LLM 自動決定調用哪些工具、參數是什麼。
 """
-from langchain_core.messages import HumanMessage, SystemMessage
+import logging
+
+from ..base_react_agent import BaseReActAgent
+from ..prompt_registry import PromptRegistry
+
+logger = logging.getLogger(__name__)
 
 
-class CommodityAgent:
-    """大宗商品專業分析師"""
-
-    def __init__(self, llm_client, tool_registry):
-        self.llm = llm_client
-        self.tools = tool_registry
+class CommodityAgent(BaseReActAgent):
+    """大宗商品分析 Agent - 使用 ReAct 循環自動調用工具。"""
 
     @property
     def name(self) -> str:
         return "commodity"
 
-    def process(self, query: str, context: dict = None) -> str:
-        """處理大宗商品相關查詢"""
-        system_prompt = """你是一位專業的大宗商品分析師。
-你的職責是協助用戶查詢和分析黃金、白銀、石油、天然氣、銅等大宗商品。
+    def _get_system_prompt(self, language: str) -> str:
+        """獲取大宗商品分析專用的系統提示詞。"""
+        try:
+            return PromptRegistry.get("commodity_agent", "system", language)
+        except Exception:
+            if language == "zh-TW":
+                return """你是一個專業的大宗商品分析師。
 
-可用工具：
-- get_commodity_price: 查詢商品 ETF 價格（黃金、白銀、石油等）
-- get_commodity_futures_price: 查詢商品期貨價格
-- get_all_commodities_prices: 獲取所有主要商品價格一覽表
-- get_gold_silver_ratio: 獲取金銀比（市場情緒指標）
-- get_oil_price_analysis: 獲取原油價格綜合分析（WTI vs 布蘭特）
+根據用戶的問題和可用工具的描述，自動決定：
+1. 是否需要調用工具
+2. 調用哪個工具
+3. 傳入什麼參數（如商品代號）
 
-請根據用戶問題選擇適當的工具，並提供專業、準確的回答。
-回答時請使用繁體中文。"""
+可處理：黃金、白銀、石油、天然氣、銅等大宗商品的價格和分析。"""
+            else:
+                return """You are a professional commodity analyst.
 
-        messages = [
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=query)
-        ]
+Based on the user's question and available tool descriptions, automatically decide:
+1. Whether to call tools
+2. Which tools to call
+3. What parameters to pass (e.g., commodity symbol)
 
-        return self.llm.invoke(messages)
+Can handle: gold, silver, oil, natural gas, copper and other commodity prices and analysis."""
