@@ -19,6 +19,7 @@ from .schemas import (
     ResolveReportRequest,
     UpdateConfigRequest,
 )
+from .auth import verify_admin_key
 
 router = APIRouter(prefix="/api/admin", tags=["Admin Panel"])
 router.include_router(notifications_router)
@@ -36,6 +37,7 @@ __all__ = [
     "forum_router",
     "config_router",
     "stats_router",
+    "verify_admin_key",
     "BroadcastRequest",
     "SetRoleRequest",
     "SetMembershipRequest",

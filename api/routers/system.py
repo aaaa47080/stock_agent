@@ -94,11 +94,11 @@ async def health_check():
 
 @router.post("/api/settings/validate-key")
 @limiter.limit("10/minute")  # 🔒 Security: 防止滥用 LLM 验证
-async def validate_key(request: KeyValidationRequest, current_user: dict = Depends(get_current_user), http_request: Request = None):
+async def validate_key(body: KeyValidationRequest, request: Request, current_user: dict = Depends(get_current_user)):
     """測試 API Key 是否有效，並嘗試進行對話"""
-    provider = request.provider
-    key = request.api_key
-    user_model = request.model  # 用戶選擇的模型
+    provider = body.provider
+    key = body.api_key
+    user_model = body.model  # 用戶選擇的模型
 
     # Audit log for sensitive operation
     try:
@@ -259,7 +259,7 @@ async def get_forum_limits():
 
 @router.post("/api/settings/update")
 @limiter.limit("10/minute")  # 🔒 Security: 防止设置滥用
-async def update_user_settings(settings: UserSettings, current_user: dict = Depends(get_current_user), http_request: Request = None):
+async def update_user_settings(settings: UserSettings, request: Request, current_user: dict = Depends(get_current_user)):
     """
     更新用戶設置 (LLM API Keys, 模型選擇, 委員會模式)
 
@@ -330,7 +330,7 @@ async def update_user_settings(settings: UserSettings, current_user: dict = Depe
 
 @router.post("/api/settings/keys")
 @limiter.limit("5/minute")  # 🔒 Security: 更严格的限制，因为涉及交易密钥
-async def update_api_keys(settings: APIKeySettings, current_user: dict = Depends(get_current_user), http_request: Request = None):
+async def update_api_keys(settings: APIKeySettings, request: Request, current_user: dict = Depends(get_current_user)):
     """接收前端傳來的 API Keys，寫入 .env 並熱重載連接器"""
 
     # Audit log for sensitive operation
