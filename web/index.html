@@ -1447,14 +1447,22 @@
             }
 
             // [Sidebar Visibility Logic]
-            // Show chat sidebar in ALL tabs for better UX and engagement
-            // Users can access chat history from anywhere and seamlessly switch contexts
+            // Show chat sidebar only in analysis/research tabs where users might want to chat
+            // Utility/admin tabs (wallet, assets, friends, forum, safety, settings, admin) don't need it
+            const tabsWithSidebar = ['chat', 'crypto', 'twstock', 'usstock'];
             const globalSidebar = document.getElementById('chat-sidebar');
             const sidebarBackdrop = document.getElementById('sidebar-backdrop');
             if (globalSidebar) {
-                // Always show sidebar (commercial best practice like Slack/Discord)
-                globalSidebar.style.display = '';
-                globalSidebar.classList.remove('hidden');
+                if (tabsWithSidebar.includes(tabId)) {
+                    // Show sidebar in analysis tabs - users can ask AI about what they see
+                    globalSidebar.style.display = '';
+                    globalSidebar.classList.remove('hidden');
+                } else {
+                    // Hide sidebar in utility/admin tabs - not relevant there
+                    globalSidebar.style.setProperty('display', 'none', 'important');
+                    globalSidebar.classList.add('hidden');
+                    if (sidebarBackdrop) sidebarBackdrop.classList.add('hidden');
+                }
             }
 
             // Show target tab
