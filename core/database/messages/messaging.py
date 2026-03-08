@@ -1,7 +1,7 @@
 """
 私訊訊息操作
 """
-from typing import Dict
+from typing import Dict, Optional
 
 from ..connection import get_connection
 from .conversations import get_conversation_by_id
@@ -182,7 +182,7 @@ def send_message(from_user_id: str, to_user_id: str, content: str, message_type:
         conn.close()
 
 
-def get_messages(conversation_id: int, user_id: str, limit: int = 50, before_id: int = None) -> Dict:
+def get_messages(conversation_id: int, user_id: str, limit: int = 50, before_id: Optional[int] = None) -> Dict:
     """
     取得對話中的訊息（分頁）
     """

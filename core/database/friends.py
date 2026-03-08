@@ -2,7 +2,7 @@
 好友功能資料庫操作
 包含：用戶搜尋、好友請求、好友管理、封鎖功能
 """
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 
 from .connection import get_connection
 
@@ -11,7 +11,7 @@ from .connection import get_connection
 # 用戶搜尋 / 發現
 # ============================================================================
 
-def search_users(query: str, limit: int = 20, exclude_user_id: str = None) -> List[Dict]:
+def search_users(query: str, limit: int = 20, exclude_user_id: Optional[str] = None) -> List[Dict]:
     """
     以用戶名搜尋用戶（部分匹配）
     用於尋找要加為好友的用戶
@@ -24,7 +24,7 @@ def search_users(query: str, limit: int = 20, exclude_user_id: str = None) -> Li
             FROM users
             WHERE username LIKE %s
         '''
-        params = [f'%{query}%']
+        params: List[Any] = [f'%{query}%']
 
         if exclude_user_id:
             sql += ' AND user_id != %s'
@@ -53,7 +53,7 @@ def search_users(query: str, limit: int = 20, exclude_user_id: str = None) -> Li
         conn.close()
 
 
-def get_public_user_profile(user_id: str, viewer_user_id: str = None) -> Optional[Dict]:
+def get_public_user_profile(user_id: str, viewer_user_id: Optional[str] = None) -> Optional[Dict]:
     """
     取得用戶的公開資料
     如果查看者是好友，會返回更多資訊

@@ -40,6 +40,7 @@ from .tools import (
 # Import new free market data tools
 from core.tools.crypto_tools import (
     get_gas_fees, get_whale_transactions, get_exchange_flow,
+    get_staking_yield,
 )
 
 # Import Pi Network tools
@@ -112,6 +113,7 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
                          "get_trending_tokens","get_futures_data","get_defillama_tvl",
                          "get_crypto_categories_and_gainers","get_token_unlocks","get_token_supply",
                          "get_gas_fees", "get_whale_transactions", "get_exchange_flow",
+                         "get_staking_yield",
                          "get_dex_pair_info", "get_trending_dex_pairs",
                          "get_eth_balance", "get_erc20_token_balance", "get_address_transactions",
                          "get_contract_info", "get_eth_price_etherscan"],
@@ -251,6 +253,13 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         description="獲取加密貨幣交易所的資金流向數據",
         input_schema={"symbol": "str"},
         handler=get_exchange_flow,
+        allowed_agents=["crypto", "chat", "manager"],
+    ))
+    tool_registry.register(ToolMetadata(
+        name="get_staking_yield",
+        description="獲取加密貨幣的質押年化收益率(APY)。支援 SOL、ETH、ADA、ATOM 等主流 PoS 代幣。",
+        input_schema={"symbol": "str"},
+        handler=get_staking_yield,
         allowed_agents=["crypto", "chat", "manager"],
     ))
 
@@ -598,8 +607,8 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
     agent_registry.register(crypto, AgentMetadata(
         name="crypto",
         display_name="Crypto Agent",
-        description="加密貨幣專業分析師 — 提供即時價格、時間、技術指標、合約資金費率、解鎖日程(Unlocks)、代幣發行流通量(Supply)、恐慌貪婪指數、全網熱門幣種、TVL鎖倉量、最強板塊與最新新聞。不直接提供交易決策。",
-        capabilities=["RSI", "MACD", "MA", "technical analysis", "crypto news", "加密貨幣", "技術指標", "資金費率", "恐慌貪婪指數", "熱門幣種", "多空情緒", "TVL", "板塊", "時間", "解鎖", "unlock", "流通量", "發行量", "supply"],
+        description="加密貨幣專業分析師 — 提供即時價格、時間、技術指標、合約資金費率、質押收益率(APY)、解鎖日程(Unlocks)、代幣發行流通量(Supply)、恐慌貪婪指數、全網熱門幣種、TVL鎖倉量、最強板塊、鯨魚交易與最新新聞。不直接提供交易決策。",
+        capabilities=["RSI", "MACD", "MA", "technical analysis", "crypto news", "加密貨幣", "技術指標", "資金費率", "恐慌貪婪指數", "熱門幣種", "多空情緒", "TVL", "板塊", "時間", "解鎖", "unlock", "流通量", "發行量", "supply", "質押", "staking", "收益率", "APY", "鯨魚", "whale"],
         allowed_tools=_tools("crypto"),
         priority=10,
     ))

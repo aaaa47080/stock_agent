@@ -23,6 +23,7 @@ from .crypto_modules import (
     get_token_unlocks,
     get_token_supply,
     extract_crypto_symbols_tool,
+    get_staking_yield,
     # On-chain
     get_gas_fees,
     get_whale_transactions,
@@ -58,6 +59,7 @@ __all__ = [
     "get_token_unlocks",
     "get_token_supply",
     "extract_crypto_symbols_tool",
+    "get_staking_yield",
     # On-chain
     "get_gas_fees",
     "get_whale_transactions",

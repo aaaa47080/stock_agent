@@ -1,10 +1,11 @@
 """
 私訊功能配置讀取
 """
+from typing import Any
 from ..connection import get_connection
 
 
-def _get_message_config(key: str, default: any = None):
+def _get_message_config(key: str, default: Any = None):
     """從 system_config 表讀取配置值"""
     conn = get_connection()
     c = conn.cursor()

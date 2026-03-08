@@ -20,9 +20,9 @@ from pathlib import Path
 from api.utils import logger
 
 try:
-    from jose import jwt
+    from jose import jwt  # type: ignore[import-untyped]
 except ImportError:
-    import jwt
+    import jwt  # type: ignore[import-not-found]
 
 
 class KeyRotationManager:
@@ -185,7 +185,7 @@ class KeyRotationManager:
 
         return result
 
-    def verify_token_with_any_key(self, token: str, algorithms: List[str] = None) -> Optional[Dict]:
+    def verify_token_with_any_key(self, token: str, algorithms: Optional[List[str]] = None) -> Optional[Dict]:
         """
         Verify token using any active key.
 

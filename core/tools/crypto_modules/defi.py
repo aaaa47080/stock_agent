@@ -133,3 +133,142 @@ def extract_crypto_symbols_tool(user_query: str) -> Dict:
     """從查詢中提取加密貨幣符號"""
     symbols = extract_crypto_symbols(user_query)
     return {"original_query": user_query, "extracted_symbols": symbols, "count": len(symbols)}
+
+
+@tool
+def get_staking_yield(symbol: str) -> str:
+    """獲取加密貨幣的質押年化收益率（APY）。
+
+    使用 DefiLlama Yields API 獲取實時質押/借貸收益率數據。
+    支援任何在 DeFi 協議中有質押池的代幣。
+    """
+    symbol = symbol.upper()
+    cache_key = f"staking_yield_{symbol}"
+    cached = get_cached_data(cache_key, 600)
+    if cached:
+        return cached
+
+    try:
+        # 使用 DefiLlama Yields API - 獲取所有質押池數據
+        resp = httpx.get("https://yields.llama.fi/pools", timeout=15)
+
+        if resp.status_code != 200:
+            return "無法獲取質押收益率數據（API 錯誤）"
+
+        all_pools = resp.json().get("data", [])
+
+        # 篩選與該代幣相關的質押池
+        # 优先級：原生質押 > LST > 借貸
+        relevant_pools = []
+        for pool in all_pools:
+            pool_symbol = pool.get("symbol", "").upper()
+            underlying = pool.get("underlyingTokens") or []  # 確保不是 None
+            pool_name = pool.get("poolName", "").upper()
+            chain = pool.get("chain", "")
+
+            # 檢查是否匹配目標代幣
+            is_match = (
+                symbol == pool_symbol or
+                symbol in pool_name or
+                (underlying and any(symbol == t.upper() for t in underlying)) or
+                f"{symbol}2" in pool_symbol or  # stETH, stSOL 等
+                f"S{symbol}" in pool_symbol
+            )
+
+            if is_match:
+                apy = pool.get("apy", 0) or 0
+                tvl = pool.get("tvlUsd", 0) or 0
+                pool_type = pool.get("apyBaseBorrow", None) is not None and "借貸" or "質押"
+                if "stake" in pool.get("poolName", "").lower() or "staking" in pool.get("poolName", "").lower():
+                    pool_type = "原生質押"
+
+                relevant_pools.append({
+                    "pool": pool.get("poolName", "Unknown"),
+                    "project": pool.get("project", ""),
+                    "chain": chain,
+                    "apy": apy,
+                    "tvl": tvl,
+                    "type": pool_type,
+                })
+
+        if not relevant_pools:
+            # 嘗試通過 CoinGecko 獲取基本信息
+            return _get_staking_info_from_coingecko(symbol)
+
+        # 按 TVL 排序，優先顯示高 TVL 池
+        relevant_pools.sort(key=lambda x: x["tvl"], reverse=True)
+
+        # 取前 5 個池
+        top_pools = relevant_pools[:5]
+
+        result = f"## 💰 {symbol} 質押/借貸收益率\n\n"
+        result += "| 協議 | 鏈 | 類型 | APY | TVL |\n"
+        result += "|---|---|---|---|---|\n"
+
+        for p in top_pools:
+            tvl_str = f"${p['tvl']/1_000_000:.1f}M" if p['tvl'] > 1_000_000 else f"${p['tvl']/1_000:.0f}K"
+            result += f"| {p['project']} | {p['chain']} | {p['type']} | {p['apy']:.2f}% | {tvl_str} |\n"
+
+        result += "\n> ⚠️ 收益率會隨市場變化，過去收益不代表未來。\n"
+        result += "> 📊 數據來源: DefiLlama Yields\n"
+
+        set_cached_data(cache_key, result)
+        return result
+
+    except Exception as e:
+        return f"獲取質押收益率時發生錯誤: {str(e)}"
+
+
+def _get_staking_info_from_coingecko(symbol: str) -> str:
+    """從 CoinGecko 獲取代幣質押信息（備用方案）"""
+    try:
+        # 搜索代幣
+        search_resp = httpx.get(f"https://api.coingecko.com/api/v3/search?query={symbol}", timeout=10)
+        coins = search_resp.json().get("coins", [])
+
+        if not coins:
+            return f"找不到 {symbol} 的質押數據。請確認代幣符號是否正確。"
+
+        coin_id = coins[0]["id"]
+        for c in coins:
+            if c.get("symbol", "").upper() == symbol:
+                coin_id = c["id"]
+                break
+
+        # 獲取代幣詳細信息
+        detail_resp = httpx.get(
+            f"https://api.coingecko.com/api/v3/coins/{coin_id}?localization=false&tickers=false&market_data=true",
+            timeout=10
+        )
+
+        if detail_resp.status_code != 200:
+            return f"無法獲取 {symbol} 的詳細信息。"
+
+        data = detail_resp.json()
+
+        # 檢查是否有質押信息
+        # CoinGecko 不直接提供質押 APY，返回基本信息
+        result = f"## {symbol} 質押資訊\n\n"
+
+        # 檢查共識機制
+        categories = data.get("categories", [])
+        is_pos = any("proof-of-stake" in c.lower() or "pos" in c.lower() for c in categories)
+        is_pow = any("proof-of-work" in c.lower() or "pow" in c.lower() for c in categories)
+
+        if is_pow or symbol.upper() in ["BTC", "DOGE", "LTC", "BCH"]:
+            result += f"❌ {symbol} 使用工作量證明（PoW）機制，不支援原生質押。\n\n"
+            result += "💡 **替代方案**:\n"
+            result += "- 透過交易所理財產品（如 Binance Earn）獲取收益\n"
+            result += "- 使用借貸協議（如 Aave、Compound）提供流動性\n"
+        elif is_pos or symbol.upper() in ["ETH", "SOL", "ADA", "ATOM", "DOT", "MATIC", "AVAX", "NEAR", "SUI"]:
+            result += f"✅ {symbol} 支援原生質押。\n\n"
+            result += "📊 **建議**: 使用 DefiLlama 或官方錢包查看即時質押收益率。\n"
+            result += f"- 鏈: {data.get('asset_platform_id', 'Unknown')}\n"
+        else:
+            result += f"ℹ️ 未能確定 {symbol} 的質押支援狀態。\n"
+            result += "請查看該項目的官方文檔了解質押選項。\n"
+
+        return result
+
+    except Exception as e:
+        return f"獲取質押信息時發生錯誤: {str(e)}"

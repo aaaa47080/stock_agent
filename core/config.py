@@ -182,6 +182,18 @@ OKX_API_KEY = os.getenv("OKX_API_KEY", "")
 OKX_API_SECRET = os.getenv("OKX_API_SECRET", "")
 OKX_PASSPHRASE = os.getenv("OKX_PASSPHRASE", "")
 
+# === 第三方 API Keys（已停用） ===
+# ⚠️ 以下 API Keys 已不再使用，因為：
+# 1. 公開平台不適合共享 API Key（配額限制問題）
+# 2. 改為引導用戶到專業網站查詢
+# 3. 保留配置供未來可能的平台統一 Key 方案使用
+
+# Etherscan API（已停用 - 改為引導到 etherscan.io）
+ETHERSCAN_API_KEY = os.getenv("ETHERSCAN_API_KEY", "")
+
+# Whale Alert API（已停用 - 改為引導到 whale-alert.io）
+WHALE_ALERT_API_KEY = os.getenv("WHALE_ALERT_API_KEY", "")
+
 # 是否使用模擬盤 (Paper Trading)
 # True: 使用模擬盤 / False: 使用真實帳戶
 PAPER_TRADING = False

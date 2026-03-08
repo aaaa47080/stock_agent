@@ -86,7 +86,7 @@ class BaseReActAgent:
         子類應該 override 來提供特定的提示詞。
         """
         try:
-            return PromptRegistry.get(f"{self.name}_agent", "system", language)
+            return PromptRegistry.render(f"{self.name}_agent", "system", language=language, include_time=True)
         except Exception:
             # 默認提示詞
             if language == "zh-TW":

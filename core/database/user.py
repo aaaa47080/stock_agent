@@ -160,7 +160,7 @@ def update_last_active(user_id: str) -> bool:
 # Pi Network 用戶
 # ============================================================================
 
-def create_or_get_pi_user(pi_uid: str, username: str = None) -> Dict:
+def create_or_get_pi_user(pi_uid: str, username: Optional[str] = None) -> Dict:
     """
     創建或獲取 Pi Network 用戶
     - 如果 pi_uid 已存在，返回現有用戶
@@ -422,7 +422,7 @@ def expire_user_membership(user_id: str) -> bool:
         conn.close()
 
 
-def upgrade_to_pro(user_id: str, months: int = 1, tx_hash: str = None) -> bool:
+def upgrade_to_pro(user_id: str, months: int = 1, tx_hash: Optional[str] = None) -> bool:
     """升級用戶為 PRO 會員並記錄支付（支援續費順延）"""
     conn = get_connection()
     c = conn.cursor()
@@ -508,7 +508,7 @@ MAX_LOGIN_ATTEMPTS = 5
 LOCKOUT_HOURS = 24
 
 
-def record_login_attempt(username: str, success: bool, ip_address: str = None):
+def record_login_attempt(username: str, success: bool, ip_address: Optional[str] = None):
     """記錄登入嘗試"""
     conn = get_connection()
     c = conn.cursor()

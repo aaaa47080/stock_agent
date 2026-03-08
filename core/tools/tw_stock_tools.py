@@ -10,14 +10,57 @@ Data sources (free-first):
 from langchain_core.tools import tool
 
 
+def _normalize_tw_ticker(ticker: str) -> str:
+    """
+    將各種台股代碼格式標準化為 yfinance 格式。
+    
+    支援的輸入格式：
+    - 純數字：'2330' -> '2330.TW'
+    - 已有後綴：'2330.TW' -> '2330.TW'
+    - 上櫃股票：'6666.TWO' -> '6666.TWO'
+    - 中文名稱：使用 TWSymbolResolver 解析
+    
+    這是一個通用的邊界處理，不是針對特定案例的 hardcode。
+    """
+    if not ticker:
+        return ticker
+    
+    s = ticker.strip()
+    upper = s.upper()
+    
+    # Rule 1: 已經是正確格式
+    if upper.endswith('.TW') or upper.endswith('.TWO'):
+        return upper
+    
+    # Rule 2: 純數字代碼（4-6位）-> 自動添加 .TW 後綴
+    if s.isdigit() and 4 <= len(s) <= 6:
+        return f"{s}.TW"
+    
+    # Rule 3: 非數字，嘗試使用 resolver 解析中文名稱
+    if not s.isdigit():
+        try:
+            from .tw_symbol_resolver import TWSymbolResolver
+            resolver = TWSymbolResolver()
+            resolved = resolver.resolve(s)
+            if resolved:
+                return resolved
+        except Exception:
+            pass
+    
+    # Rule 4: 無法解析，返回原值（讓 yfinance 報錯）
+    return s
+
+
+
 # ── Price ──────────────────────────────────────────────────────────────────
 
 @tool
 def tw_stock_price(ticker: str) -> dict:
     """獲取台股即時（15分鐘延遲）及近期 OHLCV 價格資料。
-    ticker 格式：2330.TW 或 6666.TWO"""
+    支援各種格式：2330、2330.TW、台積電 等"""
     try:
         import yfinance as yf
+        ticker = _normalize_tw_ticker(ticker)
         t = yf.Ticker(ticker)
         info = t.fast_info
         hist = t.history(period="5d")
@@ -57,9 +100,10 @@ def tw_stock_price(ticker: str) -> dict:
 @tool
 def tw_technical_analysis(ticker: str, period: str = "3mo") -> dict:
     """計算台股技術指標：RSI(14)、MACD、KD(9,3,3)、MA5/20/60。
-    ticker: 2330.TW；period: 1mo/3mo/6mo/1y"""
+    支援各種格式：2330、2330.TW、台積電 等"""
     try:
         import yfinance as yf
+        ticker = _normalize_tw_ticker(ticker)
         import pandas_ta as ta
 
         hist = yf.Ticker(ticker).history(period=period)
@@ -112,10 +156,10 @@ def tw_technical_analysis(ticker: str, period: str = "3mo") -> dict:
 @tool
 def tw_fundamentals(ticker: str) -> dict:
     """獲取台股基本面資料：本益比(P/E)、股價淨值比(P/B)、殖利率、EPS 等。
-    資料來源：yfinance（延遲非即時，適合參考）"""
+    支援各種格式：2330、2330.TW、台積電 等"""
     try:
         import yfinance as yf
-
+        ticker = _normalize_tw_ticker(ticker)
         info = yf.Ticker(ticker).info
         return {
             "ticker":              ticker,

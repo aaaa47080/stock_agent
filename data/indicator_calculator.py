@@ -1,4 +1,5 @@
 import pandas as pd
+import pandas_ta  # noqa: F401 - 導入 pandas_ta 擴展，通過 df.ta.xxx 使用
 from data.data_fetcher import get_data_fetcher, SymbolNotFoundError
 import sys # Import sys for exiting gracefully
 

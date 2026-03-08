@@ -7,7 +7,7 @@
 - plus: 輕量付費（3 Pi/月）
 - premium: 完整功能（5 Pi/月）
 """
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from .connection import get_connection
 
 
@@ -15,7 +15,7 @@ from .connection import get_connection
 # 工具目錄 Seed 資料
 # ============================================================================
 
-_TOOLS_SEED = [
+_TOOLS_SEED: List[Dict[str, Any]] = [
     # ── Crypto 基礎 (Free) ─────────────────────────────────────────────────────────
     {
         "tool_id": "get_crypto_price",

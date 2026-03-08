@@ -104,3 +104,39 @@ def extract_crypto_symbols(text: str) -> List[str]:
 
     # 去重並過濾常見非幣種詞
     return list(set(m for m in matches if m not in COMMON_WORDS))
+
+
+def format_price(price: float) -> str:
+    """
+    智能價格格式化函數
+
+    根據價格大小自動選擇適當的小數位數，
+    確保低價代幣（如 SHIB、PEPE）能正確顯示。
+
+    Args:
+        price: 價格數值
+
+    Returns:
+        格式化後的價格字符串
+    """
+    if price is None or price == 0:
+        return "N/A"
+
+    abs_price = abs(price)
+
+    # 根據價格範圍選擇小數位數
+    if abs_price >= 1000:
+        # 高價幣（如 BTC）：整數 + 2 位小數
+        return f"${price:,.2f}"
+    elif abs_price >= 1:
+        # 中價幣（如 ETH, SOL）：2 位小數
+        return f"${price:.2f}"
+    elif abs_price >= 0.01:
+        # 低價幣（如 DOGE）：4 位小數
+        return f"${price:.4f}"
+    elif abs_price >= 0.0001:
+        # 超低價幣（如 SHIB）：6 位小數
+        return f"${price:.6f}"
+    else:
+        # 極低價幣（如 PEPE）：8 位小數
+        return f"${price:.8f}"

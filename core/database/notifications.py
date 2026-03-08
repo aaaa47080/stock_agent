@@ -46,7 +46,7 @@ def create_notification(
     title: str,
     body: str,
     data: Optional[Dict[str, Any]] = None
-) -> Dict[str, Any]:
+) -> Optional[Dict[str, Any]]:
     """
     創建新通知
 
@@ -263,7 +263,7 @@ def delete_notification(notification_id: str, user_id: str) -> bool:
 # 輔助函數：創建特定類型的通知
 # ============================================================================
 
-def notify_friend_request(to_user_id: str, from_user_id: str, from_username: str) -> Dict[str, Any]:
+def notify_friend_request(to_user_id: str, from_user_id: str, from_username: str) -> Optional[Dict[str, Any]]:
     """創建好友請求通知"""
     return create_notification(
         user_id=to_user_id,
@@ -277,7 +277,7 @@ def notify_friend_request(to_user_id: str, from_user_id: str, from_username: str
     )
 
 
-def notify_friend_accepted(to_user_id: str, from_user_id: str, from_username: str) -> Dict[str, Any]:
+def notify_friend_accepted(to_user_id: str, from_user_id: str, from_username: str) -> Optional[Dict[str, Any]]:
     """創建好友接受通知"""
     return create_notification(
         user_id=to_user_id,
@@ -292,7 +292,7 @@ def notify_friend_accepted(to_user_id: str, from_user_id: str, from_username: st
     )
 
 
-def notify_new_message(to_user_id: str, from_user_id: str, from_username: str, message_preview: str, conversation_id: str) -> Dict[str, Any]:
+def notify_new_message(to_user_id: str, from_user_id: str, from_username: str, message_preview: str, conversation_id: str) -> Optional[Dict[str, Any]]:
     """創建新消息通知"""
     return create_notification(
         user_id=to_user_id,
@@ -307,7 +307,7 @@ def notify_new_message(to_user_id: str, from_user_id: str, from_username: str, m
     )
 
 
-def notify_post_interaction(to_user_id: str, from_username: str, interaction_type: str, post_id: int, post_title: str) -> Dict[str, Any]:
+def notify_post_interaction(to_user_id: str, from_username: str, interaction_type: str, post_id: int, post_title: str) -> Optional[Dict[str, Any]]:
     """創建帖子互動通知"""
     interaction_text = {
         "like": "讚了",
@@ -327,7 +327,7 @@ def notify_post_interaction(to_user_id: str, from_username: str, interaction_typ
     )
 
 
-def notify_system_update(user_id: str, version: str, message: str = None) -> Dict[str, Any]:
+def notify_system_update(user_id: str, version: str, message: Optional[str] = None) -> Optional[Dict[str, Any]]:
     """創建系統更新通知"""
     return create_notification(
         user_id=user_id,

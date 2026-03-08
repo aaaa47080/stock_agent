@@ -21,7 +21,7 @@ from ..schemas import (
     MarketPulseInput,
     BacktestStrategyInput,
 )
-from ..helpers import normalize_symbol, find_available_exchange
+from ..helpers import normalize_symbol, find_available_exchange, format_price
 
 
 @tool(args_schema=TechnicalAnalysisInput)
@@ -62,7 +62,7 @@ def technical_analysis_tool(
         return f"""## {symbol} 技術分析報告 ({interval} 週期)
 
 ### 價格資訊
-- **當前價格**: ${current_price:.4f}
+- **當前價格**: {format_price(current_price)}
 - **7日趨勢**: {trend}
 - **波動率**: {market_structure.get('波動率', 0):.2f}%
 
@@ -70,12 +70,12 @@ def technical_analysis_tool(
 | 指標 | 數值 | 解讀 |
 | RSI (14) | {rsi:.2f} | {rsi_status} |
 | MACD | {macd:.6f} | {macd_status} |
-| MA7 | ${indicators.get('MA_7', 0):.4f} | - |
-| MA25 | ${indicators.get('MA_25', 0):.4f} | - |
+| MA7 | {format_price(indicators.get('MA_7', 0))} | - |
+| MA25 | {format_price(indicators.get('MA_25', 0))} | - |
 
 ### 關鍵價位
-- **支撐位**: ${support:.4f}
-- **壓力位**: {resistance:.4f}
+- **支撐位**: {format_price(support)}
+- **壓力位**: {format_price(resistance)}
 
 交易所: {exchange.upper()} | 交易對: {normalized_symbol}
 """
@@ -152,7 +152,7 @@ def get_crypto_price_tool(symbol: str, exchange: Optional[str] = None) -> str:
         except Exception:
             pass
 
-        return f"## {symbol} 即時價格\n\n- **價格**: ${current_price:.4f}\n- **24h變化**: {change_text}\n- **交易所**: {exchange.upper()}"
+        return f"## {symbol} 即時價格\n\n- **價格**: {format_price(current_price)}\n- **24h變化**: {change_text}\n- **交易所**: {exchange.upper()}"
     except SymbolNotFoundError:
         return f"錯誤：找不到交易對 {symbol}。"
     except Exception as e:

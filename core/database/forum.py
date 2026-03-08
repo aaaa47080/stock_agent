@@ -5,7 +5,7 @@
 Refactored to use DatabaseBase for unified CRUD operations.
 """
 import json
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from datetime import datetime
 
 from .base import DatabaseBase
@@ -86,7 +86,7 @@ def check_daily_post_limit(user_id: str) -> Dict:
 
 
 def create_post(board_id: int, user_id: str, category: str, title: str, content: str,
-                tags: List[str] = None, payment_tx_hash: str = None,
+                tags: Optional[List[str]] = None, payment_tx_hash: Optional[str] = None,
                 skip_limit_check: bool = False) -> Dict:
     """
     創建新文章
@@ -199,7 +199,7 @@ def create_post(board_id: int, user_id: str, category: str, title: str, content:
         conn.close()
 
 
-def get_posts(board_id: int = None, category: str = None, tag: str = None,
+def get_posts(board_id: Optional[int] = None, category: Optional[str] = None, tag: Optional[str] = None,
               limit: int = 20, offset: int = 0, include_hidden: bool = False) -> List[Dict]:
     """獲取文章列表"""
     conn = get_connection()
@@ -215,7 +215,7 @@ def get_posts(board_id: int = None, category: str = None, tag: str = None,
             LEFT JOIN boards b ON p.board_id = b.id
             WHERE 1=1
         '''
-        params = []
+        params: List[Any] = []
 
         if board_id:
             query += ' AND p.board_id = %s'
@@ -273,7 +273,7 @@ def get_posts(board_id: int = None, category: str = None, tag: str = None,
         conn.close()
 
 
-def get_post_by_id(post_id: int, increment_view: bool = True, viewer_user_id: str = None) -> Optional[Dict]:
+def get_post_by_id(post_id: int, increment_view: bool = True, viewer_user_id: Optional[str] = None) -> Optional[Dict]:
     """獲取文章詳情"""
     conn = get_connection()
     c = conn.cursor()
@@ -345,8 +345,8 @@ def get_post_by_id(post_id: int, increment_view: bool = True, viewer_user_id: st
         conn.close()
 
 
-def update_post(post_id: int, user_id: str, title: str = None, content: str = None,
-                category: str = None) -> bool:
+def update_post(post_id: int, user_id: str, title: Optional[str] = None, content: Optional[str] = None,
+                category: Optional[str] = None) -> bool:
     """更新文章（只有作者可以更新）"""
     conn = get_connection()
     c = conn.cursor()
@@ -357,7 +357,7 @@ def update_post(post_id: int, user_id: str, title: str = None, content: str = No
             return False
 
         updates = []
-        params = []
+        params: List[Any] = []
 
         if title is not None:
             updates.append('title = %s')
@@ -487,8 +487,8 @@ def get_user_posts(user_id: str, limit: int = 20, offset: int = 0) -> List[Dict]
 # 回覆 (Comments)
 # ============================================================================
 
-def add_comment(post_id: int, user_id: str, comment_type: str, content: str = None,
-                parent_id: int = None) -> Dict:
+def add_comment(post_id: int, user_id: str, comment_type: str, content: Optional[str] = None,
+                parent_id: Optional[int] = None) -> Dict:
     """
     新增回覆
     comment_type: 'push' / 'boo' / 'comment'

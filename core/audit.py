@@ -182,7 +182,7 @@ def _sanitize_request_data(data: Dict[str, Any]) -> Dict[str, Any]:
         'email', 'phone', 'wallet_address'
     }
     
-    sanitized = {}
+    sanitized: Dict[str, Any] = {}
     for key, value in data.items():
         key_lower = key.lower()
         
