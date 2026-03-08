@@ -253,38 +253,44 @@ const AuthManager = {
         return hasPiSDK;
     },
 
-    // 異步快速檢測 Pi Browser 環境是否有效（使用 nativeFeaturesList）
+    // 異步快速檢測 Pi Browser 環境是否有效
+    // 注意：nativeFeaturesList 在某些 Pi Browser 版本中可能不可用，
+    // 但只要 Pi SDK 存在（有 authenticate 和 init 方法），就應該允許用戶嘗試登入
     async verifyPiBrowserEnvironment() {
         if (!this.isPiBrowser()) {
             return { valid: false, reason: 'Pi SDK 不存在' };
         }
 
-        // nativeFeaturesList 是 Pi Browser 專屬的 native bridge API
-        // 若不存在，代表目前不在真正的 Pi Browser 環境中
-        if (typeof window.Pi.nativeFeaturesList !== 'function') {
-            DebugLog.warn('verifyPiBrowserEnvironment: nativeFeaturesList 不可用，非 Pi Browser 環境');
-            return { valid: false, reason: '非 Pi Browser 環境 (nativeFeaturesList 不可用)' };
-        }
-
+        // Pi SDK 存在，嘗試初始化
         try {
             this.initPiSDK();
-
-            // 使用 nativeFeaturesList 做快速環境檢測（1.5 秒超時）
-            const QUICK_TIMEOUT = 1500;
-
-            const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => reject(new Error('TIMEOUT')), QUICK_TIMEOUT);
-            });
-
-            const features = await Promise.race([Pi.nativeFeaturesList(), timeoutPromise]);
-
-            DebugLog.info('Pi Browser 環境驗證成功', { features });
-            return { valid: true, features };
-
-        } catch (error) {
-            DebugLog.warn('Pi Browser 環境驗證失敗', { error: error.message });
-            return { valid: false, reason: error.message };
+        } catch (e) {
+            DebugLog.warn('Pi SDK 初始化失敗', { error: e.message });
         }
+
+        // 嘗試使用 nativeFeaturesList 做額外驗證（可選）
+        // 如果可用就使用，不可用也沒關係，因為 Pi SDK 已經存在
+        if (typeof window.Pi.nativeFeaturesList === 'function') {
+            try {
+                const QUICK_TIMEOUT = 1500;
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error('TIMEOUT')), QUICK_TIMEOUT);
+                });
+
+                const features = await Promise.race([Pi.nativeFeaturesList(), timeoutPromise]);
+                DebugLog.info('Pi Browser 環境驗證成功 (nativeFeaturesList)', { features });
+                return { valid: true, features };
+            } catch (error) {
+                // nativeFeaturesList 失敗不應阻止登入，因為 Pi SDK 已存在
+                DebugLog.warn('nativeFeaturesList 驗證失敗，但 Pi SDK 存在，允許繼續', { error: error.message });
+            }
+        } else {
+            DebugLog.info('nativeFeaturesList 不可用，但 Pi SDK 存在，允許繼續');
+        }
+
+        // Pi SDK 存在，允許用戶嘗試登入
+        // 真正的認證會由 Pi.authenticate() 處理
+        return { valid: true, reason: 'Pi SDK 已載入' };
     },
 
     isLoggedIn() {
