@@ -718,7 +718,7 @@ async function createNewChat() {
     try {
         // 先切換到 Chat tab（確保用戶能看到效果）
         if (typeof switchTab === 'function') {
-            switchTab('chat');
+            await switchTab('chat');
         }
 
         // 如果當前已經是新對話狀態 (currentSessionId 為 null)，直接返回
@@ -804,9 +804,9 @@ async function switchSession(sessionId) {
 
     currentSessionId = sessionId;
 
-    // 自動切換到 Chat 標籤頁
+    // 自動切換到 Chat 標籤頁（確保等待完成再載入歷史）
     if (typeof switchTab === 'function') {
-        switchTab('chat');
+        await switchTab('chat');
     }
 
     // 直接更新 DOM active 狀態，省掉一次 GET /api/chat/sessions
