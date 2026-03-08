@@ -55,3 +55,6 @@ pw_test/
 
 # API Key 加密配置 (敏感)
 config/api_key_encryption.json
+
+# JWT Keys (敏感)
+config/keys/
