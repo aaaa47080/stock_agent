@@ -694,17 +694,21 @@ async function linkPiWallet() {
             });
         } else if (typeof showToast === 'function') {
             showToast('Pi Browser 環境異常', 'warning');
-        }
+            }
         return { success: false, error: 'Pi Browser 環境異常' };
     }
 
-    // 顯示連接中提示
-    if (typeof showToast === 'function') showToast('正在連接 Pi 錢包...', 'info', 0);
+
+    // 第三步：顯示詳細的提示，告訴用戶即將看到 Pi SDK 的權限請求對話框
+    if (typeof showToast === 'function') {
+        showToast('即將顯示 Pi Network 權限請求對話框...\n請點擊「允許」授予以下權限：\n• username (用戶名)\n• payments (支付)\n• wallet_address (錢包地址)', 'info', 0);
+    }
 
     try {
         AuthManager.initPiSDK();
 
         // 使用 Promise.race 實現超時
+        // Pi SDK 會顯示一個全屏的權限請求對話框
         const authPromise = Pi.authenticate(['username', 'payments', 'wallet_address'], (payment) => {
             console.warn('Incomplete payment found during wallet link:', payment);
         });
