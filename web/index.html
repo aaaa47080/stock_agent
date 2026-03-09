@@ -1020,26 +1020,36 @@
                         return; // 保持預設「請使用 Pi Browser」提示
                     }
 
-                    // 階段二：確認 nativeFeaturesList 存在（Pi Browser 專屬）
-                    if (typeof window.Pi.nativeFeaturesList !== 'function') {
-                        console.warn('⚠️ Pi SDK loaded but nativeFeaturesList unavailable - not a real Pi Browser.');
-                        return; // 保持預設「請使用 Pi Browser」提示
-                    }
+                    // 階段二：嘗試使用 nativeFeaturesList 做額外驗證（可選）
+                    // 如果可用就使用，不可用也沒關係，因為 Pi SDK 已經存在
+                    // 這與 auth.js 的 verifyPiBrowserEnvironment() 邏輯一致
 
-                    // 階段三：呼叫 nativeFeaturesList 做最終驗證（1.5 秒超時）
                     try {
                         Pi.init({ version: "2.0", sandbox: false });
-                        const features = await Promise.race([
-                            Pi.nativeFeaturesList(),
-                            new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 1500))
-                        ]);
-                        console.log('✅ Pi Browser verified, features:', features);
-                        document.getElementById('pi-login-btn').style.display = 'flex';
-                        document.getElementById('not-pi-browser-msg').style.display = 'none';
-                    } catch (e) {
-                        console.warn('⚠️ Pi Browser environment check failed:', e.message);
-                        // 保持預設「請使用 Pi Browser」提示
+                    } catch (initError) {
+                        console.warn('⚠️ Pi SDK init failed:', initError.message);
                     }
+
+                    if (typeof window.Pi.nativeFeaturesList === 'function') {
+                        // 有 nativeFeaturesList，做額外驗證
+                        try {
+                            const features = await Promise.race([
+                                Pi.nativeFeaturesList(),
+                                new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 1500))
+                            ]);
+                            console.log('✅ Pi Browser verified (nativeFeaturesList), features:', features);
+                        } catch (e) {
+                            console.warn('⚠️ nativeFeaturesList failed but Pi SDK exists, allowing login:', e.message);
+                        }
+                    } else {
+                        console.log('ℹ️ nativeFeaturesList unavailable, but Pi SDK exists - allowing login attempt');
+                    }
+
+                    // Pi SDK 存在，顯示登入按鈕讓用戶嘗試
+                    // 真正的認證會由 Pi.authenticate() 處理
+                    console.log('✅ Pi SDK loaded - showing login button');
+                    document.getElementById('pi-login-btn').style.display = 'flex';
+                    document.getElementById('not-pi-browser-msg').style.display = 'none';
                 })();
             </script>
 
