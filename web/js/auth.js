@@ -99,7 +99,7 @@ const AuthManager = {
 
     /**
      * 啟動 token 自動刷新定時器
-     * 每小時檢查一次，如果 token 快過期則自動刷新
+     * 每 10 分鐘檢查一次，如果 token 快過期則自動刷新
      */
     startTokenRefreshTimer() {
         // 清除舊的定時器
@@ -107,7 +107,7 @@ const AuthManager = {
             clearInterval(this._refreshTimer);
         }
 
-        // 每小時檢查一次
+        // 每 30 分鐘檢查一次（平衡用戶體驗和及時刷新）
         this._refreshTimer = setInterval(async () => {
             if (!this.currentUser) return;
 
@@ -128,9 +128,20 @@ const AuthManager = {
                 DebugLog.info('Token 快過期，提前刷新');
                 await this.silentRefresh();
             }
-        }, 60 * 60 * 1000); // 每小時檢查一次
+        }, 30 * 60 * 1000); // 每 30 分鐘檢查一次
 
-        DebugLog.info('Token refresh timer started');
+        // 監聽頁面可見性變化（用戶回到頁面時檢查）
+        this._visibilityHandler = async () => {
+            if (document.visibilityState === 'visible' && this.currentUser) {
+                DebugLog.info('頁面重新可見，檢查 token 狀態');
+                if (this.isTokenExpired() || this.needsRefresh()) {
+                    await this.silentRefresh();
+                }
+            }
+        };
+        document.addEventListener('visibilitychange', this._visibilityHandler);
+
+        DebugLog.info('Token refresh timer started (30 min interval + visibility check)');
     },
 
     /**
@@ -146,19 +157,19 @@ const AuthManager = {
 
         // 檢查是否在 Pi Browser 環境
         if (!this.isPiBrowser()) {
-            DebugLog.warn('非 Pi Browser 環境，無法靜默刷新');
-            return { success: false, error: 'Not in Pi Browser' };
+            DebugLog.warn('非 Pi Browser 環境，嘗試使用後端刷新');
+            // 嘗試使用後端刷新
+            return await this.backendTokenRefresh();
         }
 
         try {
             DebugLog.info('開始靜默刷新 token...');
 
-            // 確保 Pi SDK 已初始化
-            if (!this.piInitialized) {
-                this.initPiSDK();
-            }
+            // 確保 Pi SDK 已初始化（異步等待）
+            await this.initPiSDKAsync();
 
             // 重新調用 Pi SDK 認證
+            // 注意：如果用戶已經授權過，這不會顯示權限對話框
             const auth = await Pi.authenticate(['username', 'payments', 'wallet_address'], (payment) => {
                 DebugLog.warn('刷新時發現未完成的支付', payment);
             });
@@ -199,7 +210,55 @@ const AuthManager = {
 
             return { success: true };
         } catch (error) {
-            DebugLog.error('靜默刷新失敗', { error: error.message });
+            DebugLog.error('靜默刷新失敗，嘗試後端刷新', { error: error.message });
+            // 嘗試使用後端刷新作為備用方案
+            return await this.backendTokenRefresh();
+        }
+    },
+
+    /**
+     * 使用後端刷新 token（備用方案，不需要 Pi SDK）
+     * @returns {Promise<{success: boolean, error?: string}>}
+     */
+    async backendTokenRefresh() {
+        if (!this.currentUser?.accessToken) {
+            return { success: false, error: 'No token to refresh' };
+        }
+
+        try {
+            DebugLog.info('嘗試後端 token 刷新...');
+
+            const res = await fetch('/api/user/refresh-token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.currentUser.accessToken}`
+                }
+            });
+
+            if (!res.ok) {
+                const result = await res.json();
+                throw new Error(result.detail || 'Refresh failed');
+            }
+
+            const result = await res.json();
+
+            // 更新本地用戶資料
+            this.currentUser = {
+                ...this.currentUser,
+                accessToken: result.access_token,
+                accessTokenExpiry: Date.now() + this.TOKEN_EXPIRY_MS
+            };
+
+            localStorage.setItem('pi_user', JSON.stringify(this.currentUser));
+
+            DebugLog.info('後端 token 刷新成功', {
+                newExpiry: new Date(this.currentUser.accessTokenExpiry).toISOString()
+            });
+
+            return { success: true };
+        } catch (error) {
+            DebugLog.error('後端刷新也失敗', { error: error.message });
             return { success: false, error: error.message };
         }
     },
@@ -213,6 +272,35 @@ const AuthManager = {
             this._refreshTimer = null;
             DebugLog.info('Token refresh timer stopped');
         }
+        if (this._visibilityHandler) {
+            document.removeEventListener('visibilitychange', this._visibilityHandler);
+            this._visibilityHandler = null;
+        }
+    },
+
+    /**
+     * 異步初始化 Pi SDK
+     * @returns {Promise<boolean>}
+     */
+    async initPiSDKAsync() {
+        if (this.piInitialized) {
+            DebugLog.info('initPiSDKAsync: 已初始化，跳過');
+            return true;
+        }
+        if (window.Pi) {
+            try {
+                // Official Guide: Initialize SDK early
+                await Pi.init({ version: "2.0", sandbox: false });
+                this.piInitialized = true;
+                DebugLog.info('Pi SDK 異步初始化成功');
+                return true;
+            } catch (e) {
+                DebugLog.error('Pi SDK 異步初始化失敗', { error: e.message, stack: e.stack });
+                return false;
+            }
+        }
+        DebugLog.warn('initPiSDKAsync: window.Pi 不存在');
+        return false;
     },
 
     initPiSDK() {
