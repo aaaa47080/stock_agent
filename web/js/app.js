@@ -733,7 +733,7 @@ async function openSettings() {
                 providerSelect.value = settings.primary_model_provider;
                 // 觸發更新，傳入預載的 modelConfig 避免重複 fetch
                 if (typeof updateLLMKeyInput === 'function') updateLLMKeyInput();
-                if (typeof updateAvailableModels === 'function') await updateAvailableModels(preloadedModelConfig);
+                if (typeof window.updateAvailableModels === 'function') await window.updateAvailableModels(preloadedModelConfig);
             }
         }
         if (settings.primary_model_name) {
@@ -765,6 +765,93 @@ function closeSettings() {
     if (typeof checkApiKeyStatus === 'function') {
         checkApiKeyStatus();
     }
+}
+
+// ========================================
+// LLM Model Selection
+// ========================================
+
+/**
+ * 更新可用模型列表
+ * @param {Object|null} preloadedConfig - 預載的模型配置（可選）
+ */
+window.updateAvailableModels = async function(preloadedConfig = null) {
+    const providerSelect = document.getElementById('llm-provider-select');
+    const modelSelect = document.getElementById('llm-model-select');
+    const modelInput = document.getElementById('llm-model-input');
+
+    if (!providerSelect || !modelSelect) {
+        console.warn('[updateAvailableModels] Required elements not found');
+        return;
+    }
+
+    const provider = providerSelect.value;
+    console.log('[updateAvailableModels] Provider:', provider);
+
+    // 獲取模型配置
+    let modelConfig = preloadedConfig;
+
+    if (!modelConfig) {
+        try {
+            const response = await fetch('/api/model-config');
+            if (response.ok) {
+                const data = await response.json();
+                modelConfig = data.model_config;
+            }
+        } catch (e) {
+            console.error('[updateAvailableModels] Failed to fetch model config:', e);
+        }
+    }
+
+    // 清空現有選項
+    modelSelect.innerHTML = '<option value="" data-i18n="settings.ai.selectModel">Select a model</option>';
+
+    // OpenRouter 使用文字輸入框
+    if (provider === 'openrouter') {
+        modelSelect.style.display = 'none';
+        if (modelInput) {
+            modelInput.style.display = 'block';
+            modelInput.placeholder = 'e.g., openai/gpt-4o, anthropic/claude-3.5-sonnet';
+        }
+        return;
+    }
+
+    // 其他 provider 使用下拉選單
+    modelSelect.style.display = 'block';
+    if (modelInput) {
+        modelInput.style.display = 'none';
+    }
+
+    // 填充模型選項
+    const models = modelConfig?.[provider]?.available_models || [];
+
+    if (models.length === 0) {
+        console.warn('[updateAvailableModels] No models found for provider:', provider);
+        // 添加一個提示選項
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'No models available';
+        option.disabled = true;
+        modelSelect.appendChild(option);
+        return;
+    }
+
+    models.forEach(model => {
+        const option = document.createElement('option');
+        option.value = model.value;
+        option.textContent = model.display || model.value;
+        modelSelect.appendChild(option);
+    });
+
+    // 設置當前選擇的模型
+    const savedModel = window.APIKeyManager?.getModelForProvider?.(provider);
+    if (savedModel) {
+        modelSelect.value = savedModel;
+    } else if (modelConfig?.[provider]?.default_model) {
+        modelSelect.value = modelConfig[provider].default_model;
+    }
+
+    console.log('[updateAvailableModels] Loaded', models.length, 'models for', provider);
 }
 
 // Allow external modules (like llmSettings.js) to update key validity
