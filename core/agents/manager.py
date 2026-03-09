@@ -410,6 +410,9 @@ class ManagerAgent:
         # 格式化結果供 LLM 審查
         results_text = []
         for task_id, result in task_results.items():
+            # 防禦性編程：確保 result 是 dict
+            if isinstance(result, str):
+                result = {"agent_name": "unknown", "message": result, "success": False}
             agent = result.get("agent_name", "unknown")
             msg = result.get("message", "")
             success = result.get("success", False)
