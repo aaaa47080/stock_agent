@@ -5,7 +5,7 @@ Assembles all components: tools → agents → manager.
 Instantiates ToolRegistry and registers tools with permission checks.
 """
 from langchain_core.messages import SystemMessage
-from typing import Optional
+from typing import Optional, Dict
 
 from .agent_registry import AgentRegistry, AgentMetadata
 from .tool_registry import ToolRegistry, ToolMetadata
