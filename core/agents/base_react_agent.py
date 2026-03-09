@@ -54,7 +54,11 @@ class BaseReActAgent:
         3. LLM 決定繼續調用工具或給出最終答案
         4. 循環直到完成
         """
-        language = (task.context or {}).get("language", "zh-TW")
+        # 防禦性編程：確保 context 是 dict
+        context = task.context or {}
+        if isinstance(context, str):
+            context = {}
+        language = context.get("language", "zh-TW")
 
         # 獲取該 agent 專用的 tools
         tools = self._get_tools()

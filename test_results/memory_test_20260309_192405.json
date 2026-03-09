@@ -1,0 +1,214 @@
+{
+  "scenario": "memory_system_test",
+  "user_id": "memory_test_user",
+  "session_id": "test_session_1773055334",
+  "total_rounds": 14,
+  "test_results": [
+    {
+      "name": "基礎記憶存取",
+      "description": "測試長期記憶的基本存取功能",
+      "difficulty": 1,
+      "passed": true,
+      "error": null,
+      "details": {
+        "written": "# Test Memory\n- 用戶喜歡比特幣\n- 用戶使用繁體中文",
+        "read": "# Test Memory\n- 用戶喜歡比特幣\n- 用戶使用繁體中文"
+      }
+    },
+    {
+      "name": "資訊回憶",
+      "description": "測試系統能否回憶之前對話中提到的資訊",
+      "difficulty": 2,
+      "passed": false,
+      "error": "系統未能回憶資訊，回應: 請問您能告訴我您所指的幸運數字是什麼嗎？",
+      "details": {
+        "response": "請問您能告訴我您所指的幸運數字是什麼嗎？"
+      }
+    },
+    {
+      "name": "偏好記憶",
+      "description": "測試用戶偏好設定能否被記住",
+      "difficulty": 3,
+      "passed": true,
+      "error": null,
+      "details": {
+        "response": "您希望分析 ETH 的哪個方面？例如價格走勢、技術指標或市場新聞？",
+        "note": "部分符合"
+      }
+    },
+    {
+      "name": "多輪資訊累積",
+      "description": "測試多輪對話中資訊能否正確累積",
+      "difficulty": 4,
+      "passed": false,
+      "error": "系統只記住了 0/3 個資訊: 請告訴我您持有的加密貨幣名稱或代碼，以便我幫您總結。",
+      "details": {}
+    },
+    {
+      "name": "跨話題關聯",
+      "description": "測試系統能否將不同話題的資訊關聯起來",
+      "difficulty": 5,
+      "passed": true,
+      "error": null,
+      "details": {
+        "response": "您想查詢的比特幣價格是最新的還是特定時間的價格？"
+      }
+    },
+    {
+      "name": "記憶更新",
+      "description": "測試系統能否更新過時的資訊",
+      "difficulty": 6,
+      "passed": false,
+      "error": "系統未正確更新記憶: 您是想了解風險承受度的定義，還是想知道如何評估自己的風險承受度？",
+      "details": {}
+    },
+    {
+      "name": "歷史記錄查詢",
+      "description": "測試系統能否從歷史記錄中找回資訊",
+      "difficulty": 7,
+      "passed": true,
+      "error": null,
+      "details": {
+        "history_count": 10
+      }
+    },
+    {
+      "name": "記憶整合",
+      "description": "測試記憶整合功能",
+      "difficulty": 8,
+      "passed": true,
+      "error": null,
+      "details": {
+        "memory_before": "# Test Memory\n- 用戶喜歡比特幣\n- 用戶使用繁體中文",
+        "memory_after": "# Long-term Memory\n\n## User Preferences\n- 用戶喜歡比特幣\n- 用戶使用繁體中文\n- 用戶喜歡用技術分析\n- 用戶持有比特幣\n- 用戶偏好短期交易"
+      }
+    },
+    {
+      "name": "多會話隔離",
+      "description": "測試不同會話的記憶是否正確隔離",
+      "difficulty": 9,
+      "passed": true,
+      "error": null,
+      "details": {
+        "session1_memory": "# Session 1 Memory\n- 這是會話 1 的記憶",
+        "session2_memory": "# Session 2 Memory\n- 這是會話 2 的記憶"
+      }
+    },
+    {
+      "name": "長期記憶壓縮",
+      "description": "測試系統能否將大量對話壓縮成簡潔的記憶",
+      "difficulty": 10,
+      "passed": true,
+      "error": null,
+      "details": {
+        "note": "壓縮但保留關鍵資訊",
+        "memory": "# Long-term Memory\n\n## User Preferences\n- 用戶喜歡比特幣\n- 用戶使用繁體中文\n- 用戶喜歡用技術分析\n- 用戶持有比特幣\n- 用戶偏好短期交易\n- 用戶對以太幣的投資價值感興趣\n- 用戶對SOL的投資價值感興趣\n- 用戶對XRP的投資價值感興趣\n- 用戶對DOGE的投資價值感興趣"
+      }
+    }
+  ],
+  "conversation": [
+    {
+      "round": 1,
+      "user": "我的幸運數字是 354",
+      "assistant": "請問您有什麼具體的查詢或需求嗎？",
+      "mode": "unknown",
+      "duration": 3.12
+    },
+    {
+      "round": 2,
+      "user": "我剛才告訴你的幸運數字是多少？",
+      "assistant": "請問您能告訴我您所指的幸運數字是什麼嗎？",
+      "mode": "unknown",
+      "duration": 1.75
+    },
+    {
+      "round": 3,
+      "user": "請記住我的投資偏好：我偏好使用技術分析來做決策，我不喜歡基本面分析。",
+      "assistant": "請問您想要分析哪一個標的或市場？例如：某支股票、加密貨幣或大宗商品等。",
+      "mode": "unknown",
+      "duration": 2.18
+    },
+    {
+      "round": 4,
+      "user": "根據我的偏好，你會建議我如何分析 ETH？",
+      "assistant": "您希望分析 ETH 的哪個方面？例如價格走勢、技術指標或市場新聞？",
+      "mode": "unknown",
+      "duration": 2.18
+    },
+    {
+      "round": 5,
+      "user": "告訴你，我持有 0.5 個比特幣",
+      "assistant": "你目前持有 0.5 個比特幣，根據最新的市場數據，比特幣的即時價格為 $67,474.90。這意味著你持有的比特幣價值約為：\n\n0.5 BTC × $67,474.90 = $33,737.45\n\n這是一個相當可觀的資產，且比特幣在過去 24 小時內的價格變化為 +0.24%，顯示出一定的穩定性。\n\n### 比特幣持有分析\n- **持有數量**: 0.5 BTC\n- **目前價值**: 約 $33,737.45\n- **近期變化**: +0.24%\n\n### 投資建議\n比特幣作為一種數位資產，具有高波動性與潛在的高報酬，但同時也伴隨著相對較高的風險。適合對市場有一定了解並能承受風險的投資者。\n\n如果你考慮進一步投資或交易，建議保持對市場動態的關注，並根據自身的風險承受能力做出明智的決策。\n\n如有其他問題或需要進一步的分析，隨時告訴我！",
+      "mode": "unknown",
+      "duration": 13.5
+    },
+    {
+      "round": 6,
+      "user": "告訴你，我持有 5 個以太幣",
+      "assistant": "您想了解有關以太幣的哪些資訊？例如價格、技術分析或市場新聞？",
+      "mode": "unknown",
+      "duration": 2.3
+    },
+    {
+      "round": 7,
+      "user": "告訴你，我還持有 1000 個 SOL",
+      "assistant": "請問您想查詢有關 SOL 的哪些資訊？例如價格、技術分析或其他？",
+      "mode": "unknown",
+      "duration": 2.16
+    },
+    {
+      "round": 8,
+      "user": "請總結我目前持有的加密貨幣部位",
+      "assistant": "請告訴我您持有的加密貨幣名稱或代碼，以便我幫您總結。",
+      "mode": "unknown",
+      "duration": 2.6
+    },
+    {
+      "round": 9,
+      "user": "現在 BTC 價格多少？",
+      "assistant": "目前 BTC 的即時價格為 **$67,499.30**，在過去 24 小時內變化為 **+0.27%**，數據來源於 OKX 交易所。\n\n如果您有其他問題或需要進一步的資訊，隨時告訴我！",
+      "mode": "unknown",
+      "duration": 9.92
+    },
+    {
+      "round": 10,
+      "user": "我有 10000 美元可以投資",
+      "assistant": "您對於投資的市場或標的有特定的偏好嗎？例如股票、加密貨幣、大宗商品等。",
+      "mode": "unknown",
+      "duration": 2.14
+    },
+    {
+      "round": 11,
+      "user": "根據剛才的 BTC 價格，那 10000 美元能買多少 BTC？",
+      "assistant": "您想查詢的比特幣價格是最新的還是特定時間的價格？",
+      "mode": "unknown",
+      "duration": 2.19
+    },
+    {
+      "round": 12,
+      "user": "請記住：我的風險承受度是保守型",
+      "assistant": "請問您想查詢哪個市場或標的呢？例如，股票、商品、加密貨幣等。",
+      "mode": "unknown",
+      "duration": 2.07
+    },
+    {
+      "round": 13,
+      "user": "我的風險承受度改變了，現在是積極型",
+      "assistant": "您希望獲得哪些具體的建議或資訊，來適應您的積極型風險承受度？例如，您是想了解投資策略、資產配置還是特定市場的資訊？",
+      "mode": "unknown",
+      "duration": 2.6
+    },
+    {
+      "round": 14,
+      "user": "我的風險承受度是什麼？",
+      "assistant": "您是想了解風險承受度的定義，還是想知道如何評估自己的風險承受度？",
+      "mode": "unknown",
+      "duration": 9.02
+    }
+  ],
+  "summary": {
+    "total": 10,
+    "passed": 7,
+    "failed": 3
+  }
+}

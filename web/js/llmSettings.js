@@ -358,6 +358,10 @@ async function saveLLMKey() {
             if (typeof window.APIKeyManager?.setSelectedProvider === 'function') {
                 window.APIKeyManager.setSelectedProvider(provider);
             }
+            // 保存模型到 localStorage（解決重啟後模型不顯示問題）
+            if (model && typeof window.APIKeyManager?.setModelForProvider === 'function') {
+                window.APIKeyManager.setModelForProvider(provider, model);
+            }
             if (typeof checkApiKeyStatus === 'function') {
                 checkApiKeyStatus();
             }

@@ -1,0 +1,213 @@
+{
+  "scenario": "memory_system_test",
+  "user_id": "memory_test_user",
+  "session_id": "test_session_1773053298",
+  "total_rounds": 14,
+  "test_results": [
+    {
+      "name": "基礎記憶存取",
+      "description": "測試長期記憶的基本存取功能",
+      "difficulty": 1,
+      "passed": true,
+      "error": null,
+      "details": {
+        "written": "# Test Memory\n- 用戶喜歡比特幣\n- 用戶使用繁體中文",
+        "read": "# Test Memory\n- 用戶喜歡比特幣\n- 用戶使用繁體中文"
+      }
+    },
+    {
+      "name": "資訊回憶",
+      "description": "測試系統能否回憶之前對話中提到的資訊",
+      "difficulty": 2,
+      "passed": false,
+      "error": "系統未能回憶資訊，回應: 請問您指的是哪個幸運數字？",
+      "details": {
+        "response": "請問您指的是哪個幸運數字？"
+      }
+    },
+    {
+      "name": "偏好記憶",
+      "description": "測試用戶偏好設定能否被記住",
+      "difficulty": 3,
+      "passed": true,
+      "error": null,
+      "details": {
+        "response": "請問您希望從哪些方面來分析 ETH？例如價格走勢、技術指標、新聞資訊等。",
+        "note": "部分符合"
+      }
+    },
+    {
+      "name": "多輪資訊累積",
+      "description": "測試多輪對話中資訊能否正確累積",
+      "difficulty": 4,
+      "passed": false,
+      "error": "系統只記住了 0/3 個資訊: 請問您持有哪些加密貨幣？",
+      "details": {}
+    },
+    {
+      "name": "跨話題關聯",
+      "description": "測試系統能否將不同話題的資訊關聯起來",
+      "difficulty": 5,
+      "passed": true,
+      "error": null,
+      "details": {
+        "response": "請問您想查詢當前的比特幣價格嗎？"
+      }
+    },
+    {
+      "name": "記憶更新",
+      "description": "測試系統能否更新過時的資訊",
+      "difficulty": 6,
+      "passed": false,
+      "error": "系統未正確更新記憶: 您是想了解風險承受度的定義，還是想知道如何評估自己的風險承受度？",
+      "details": {}
+    },
+    {
+      "name": "歷史記錄查詢",
+      "description": "測試系統能否從歷史記錄中找回資訊",
+      "difficulty": 7,
+      "passed": true,
+      "error": null,
+      "details": {
+        "history_count": 4
+      }
+    },
+    {
+      "name": "記憶整合",
+      "description": "測試記憶整合功能",
+      "difficulty": 8,
+      "passed": true,
+      "error": null,
+      "details": {
+        "memory_before": "# Test Memory\n- 用戶喜歡比特幣\n- 用戶使用繁體中文",
+        "memory_after": "# Long-term Memory\n\n## User Preferences\n- 用戶喜歡比特幣\n- 用戶使用繁體中文\n- 用戶喜歡用技術分析\n- 用戶偏好短期交易\n- 用戶持有比特幣"
+      }
+    },
+    {
+      "name": "多會話隔離",
+      "description": "測試不同會話的記憶是否正確隔離",
+      "difficulty": 9,
+      "passed": false,
+      "error": "會話記憶隔離失敗: s1=# Session 2 Memory\n- 這是會話 2 的記憶, s2=# Session 2 Memory\n- 這是會話 2 的記憶",
+      "details": {}
+    },
+    {
+      "name": "長期記憶壓縮",
+      "description": "測試系統能否將大量對話壓縮成簡潔的記憶",
+      "difficulty": 10,
+      "passed": true,
+      "error": null,
+      "details": {
+        "original_length": 142,
+        "compressed_length": 116,
+        "compression_ratio": 81.7,
+        "memory": "# Long-term Memory\n\n## Session 2 Memory\n- 這是會話 2 的記憶\n\n## User Preferences\n- 使用者對加密貨幣的投資價值感興趣，包括比特幣、以太幣、SOL、XRP和DOGE。"
+      }
+    }
+  ],
+  "conversation": [
+    {
+      "round": 1,
+      "user": "我的幸運數字是 327",
+      "assistant": "請問您有什麼特定的查詢或需要幫助的地方嗎？",
+      "mode": "unknown",
+      "duration": 2.79
+    },
+    {
+      "round": 2,
+      "user": "我剛才告訴你的幸運數字是多少？",
+      "assistant": "請問您指的是哪個幸運數字？",
+      "mode": "unknown",
+      "duration": 1.75
+    },
+    {
+      "round": 3,
+      "user": "請記住我的投資偏好：我偏好使用技術分析來做決策，我不喜歡基本面分析。",
+      "assistant": "請問您對哪個市場或標的感興趣？例如股票、外匯、加密貨幣等。",
+      "mode": "unknown",
+      "duration": 2.88
+    },
+    {
+      "round": 4,
+      "user": "根據我的偏好，你會建議我如何分析 ETH？",
+      "assistant": "請問您希望從哪些方面來分析 ETH？例如價格走勢、技術指標、新聞資訊等。",
+      "mode": "unknown",
+      "duration": 2.98
+    },
+    {
+      "round": 5,
+      "user": "告訴你，我持有 0.5 個比特幣",
+      "assistant": "您好！根據您持有的 0.5 個比特幣和當前的市場價格資訊，讓我為您提供一些分析。\n\n### 當前比特幣市場價格\n- **價格**: $67,668.10\n- **24小時變化**: +0.23%\n\n### 您持有的比特幣價值計算\n您擁有 0.5 個比特幣，根據當前的市場價格，您的比特幣價值為：\n\\[ \n0.5 \\text{ BTC} \\times 67,668.10 \\text{ USD/BTC} = 33,834.05 \\text{ USD} \n\\]\n因此，您持有的 0.5 個比特幣目前的市場價值約為 33,834.05 美元。\n\n### 最新比特幣相關新聞\n1. **比特幣價格突破 $73,000** - 這顯示出市場的波動性回歸，可能意味著未來的價格變化會更加劇烈。\n2. **美國比特幣公司擴展資金庫至 6,500 BTC** - 這可能反映出機構對比特幣的信心增強。\n\n### 投資分析\n- **風險與潛在報酬**：\n  - 比特幣的價格波動性較大，短期內可能會有較高的風險，但長期來看，許多投資者認為其潛在報酬也相對可觀。\n- **適合的投資者類型**：\n  - 適合風險承受能力",
+      "mode": "unknown",
+      "duration": 62.08
+    },
+    {
+      "round": 6,
+      "user": "告訴你，我持有 5 個以太幣",
+      "assistant": "您想了解有關以太幣的哪些具體資訊？例如價格、技術分析或市場動態？",
+      "mode": "unknown",
+      "duration": 16.67
+    },
+    {
+      "round": 7,
+      "user": "告訴你，我還持有 1000 個 SOL",
+      "assistant": "您想了解有關 SOL 的哪些資訊？例如價格、技術分析或市場新聞？",
+      "mode": "unknown",
+      "duration": 1.7
+    },
+    {
+      "round": 8,
+      "user": "請總結我目前持有的加密貨幣部位",
+      "assistant": "請問您持有哪些加密貨幣？",
+      "mode": "unknown",
+      "duration": 1.95
+    },
+    {
+      "round": 9,
+      "user": "現在 BTC 價格多少？",
+      "assistant": "目前 BTC 的即時價格為 $67,660.00，24 小時內變化為 +0.21%，數據來源於 OKX 交易所。\n\n如果您對於投資 BTC 有興趣，請考慮以下幾點：\n\n1. **風險與潛在報酬**：比特幣作為一種加密貨幣，具有高波動性，可能帶來高回報，但同時也伴隨著較高的風險。投資者應該具備一定的風險承受能力。\n\n2. **適合的投資者類型**：如果您是風險偏好較高的投資者，並且了解加密貨幣市場的波動性，那麼比特幣可能適合您。反之，若您偏好穩定的投資，可能需要尋找其他選擇。\n\n3. **小額投資的可行性**：若您考慮進行小額投資，您可以根據自己的預算來計算能購買的 BTC 數量。例如，如果您的預算是 $1,000，您可以購買約 0.0147 BTC（$1,000 ÷ $67,660.00）。這樣的投資方式可以降低進入門檻，讓更多人有機會參與。\n\n希望這些資訊能幫助您做出明智的投資決策！如果您有任何其他問題，隨時可以詢問。",
+      "mode": "unknown",
+      "duration": 15.39
+    },
+    {
+      "round": 10,
+      "user": "我有 10000 美元可以投資",
+      "assistant": "您對於投資的領域有特定的偏好嗎？例如股票、加密貨幣或大宗商品等？",
+      "mode": "unknown",
+      "duration": 3.93
+    },
+    {
+      "round": 11,
+      "user": "根據剛才的 BTC 價格，那 10000 美元能買多少 BTC？",
+      "assistant": "請問您想查詢當前的比特幣價格嗎？",
+      "mode": "unknown",
+      "duration": 1.74
+    },
+    {
+      "round": 12,
+      "user": "請記住：我的風險承受度是保守型",
+      "assistant": "請問您想查詢哪方面的資訊？例如股票、商品、加密貨幣等。",
+      "mode": "unknown",
+      "duration": 3.14
+    },
+    {
+      "round": 13,
+      "user": "我的風險承受度改變了，現在是積極型",
+      "assistant": "您希望獲得哪些方面的建議或資訊？例如，特定的投資標的、資產配置建議，還是其他相關問題？",
+      "mode": "unknown",
+      "duration": 2.27
+    },
+    {
+      "round": 14,
+      "user": "我的風險承受度是什麼？",
+      "assistant": "您是想了解風險承受度的定義，還是想知道如何評估自己的風險承受度？",
+      "mode": "unknown",
+      "duration": 3.81
+    }
+  ],
+  "summary": {
+    "total": 10,
+    "passed": 6,
+    "failed": 4
+  }
+}
