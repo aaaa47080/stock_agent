@@ -26,6 +26,9 @@ const APIKeyManager = {
     _lastFetchTime: 0,
     CACHE_TTL: 30000, // 30 秒
 
+    // ⚡ 新增：完整 API Key 內存緩存（發送訊息時使用，    _fullKeyCache: {},  // { provider: key }
+    _fullKeyCacheTime: {},  // { provider: timestamp }
+
     /**
      * 檢查是否應該使用後端儲存
      * @returns {boolean}
@@ -86,6 +89,8 @@ const APIKeyManager = {
 
                 // 清除緩存，強制下次重新獲取
                 this._maskedKeysCache = null;
+                // ⚡ 更新內存緩存（避免下次請求）
+                this._fullKeyCache[provider] = key.trim();
 
                 if (window.DEBUG_MODE) {
                     console.log(`🔐 ${provider} API Key saved to backend (encrypted)`);
@@ -123,6 +128,11 @@ const APIKeyManager = {
      * @returns {Promise<string|null>}
      */
     async getKey(provider) {
+        // ⚡ 優先檢查內存緩存（快速路徑）
+        if (this._fullKeyCache[provider]) {
+            return this._fullKeyCache[provider];
+        }
+
         if (this._shouldUseBackend()) {
             try {
                 // 嘗試從 localStorage 讀取（可能是舊數據需要遷移）
@@ -134,6 +144,8 @@ const APIKeyManager = {
                         console.log(`[APIKeyManager] 遷移 ${provider} key 到後端...`);
                         await this.setKey(provider, decrypted);
                         localStorage.removeItem(`user_${provider}_api_key`);
+                        // 保存到緩存
+                        this._fullKeyCache[provider] = decrypted;
                         return decrypted;
                     }
                 }
@@ -146,7 +158,12 @@ const APIKeyManager = {
 
                 if (response.ok) {
                     const data = await response.json();
-                    return data.key || null;
+                    const key = data.key || null;
+                    // ⚡ 保存到緩存
+                    if (key) {
+                        this._fullKeyCache[provider] = key;
+                    }
+                    return key;
                 } else if (response.status === 404) {
                     return null;
                 } else {
