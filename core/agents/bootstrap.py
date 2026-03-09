@@ -691,3 +691,27 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         user_id=user_id,
         session_id=None,  # Session ID will be set per request
     )
+
+
+
+# ── Manager Instance Cache ─────────────────────────────────────────────────────
+_manager_cache: Dict[str, ManagerAgent] = {}
+
+
+def get_manager_instance(user_id: str, session_id: str = "default") -> ManagerAgent:
+    """
+    獲取或創建用戶的 ManagerAgent 實例。
+
+    ⚠️ 注意：此函數需要外部調用 bootstrap() 來獲取完整的 LLM 配置。
+    目前 bootstrap() 每次請求都會被調用，所以此函數主要用於：
+    1. 記憶整合等需要訪問 Manager 的特殊操作
+    2. 在同一會話中重用 Manager 實例
+
+    如果緩存中沒有對應的 Manager，返回 None（因為無法在此處獲取 LLM 配置）。
+    """
+    key = f"{user_id}:{session_id}"
+    if key in _manager_cache:
+        return _manager_cache[key]
+
+    # 無法在模組級創建 Manager（需要 LLM 配置），返回 None
+    return None

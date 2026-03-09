@@ -300,8 +300,83 @@ async def clear_chat_history_endpoint(session_id: str = "default", current_user:
     """清除對話歷史"""
     loop = asyncio.get_running_loop()
     await loop.run_in_executor(None, db_clear_history, session_id)
-    
+
     return {"status": "success", "message": "Chat history cleared"}
+
+
+# === 會話管理 API ===
+
+
+@router.post("/api/chat/new-session")
+async def create_new_session(current_user: dict = Depends(get_current_user)):
+    """創建新對話會話並整合舊會話記憶"""
+    user_id = current_user.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="未授權")
+
+    # 獲取舊會話的 Manager 實例並整合
+    from core.agents.bootstrap import get_manager_instance
+    old_manager = get_manager_instance(user_id, "default")
+
+    # 整合舊會話記憶
+    if old_manager and hasattr(old_manager, '_message_count') and old_manager._message_count > 0:
+        logger.info(f"[API] Consolidating old session for user {user_id}")
+        if hasattr(old_manager, 'consolidate_session_memory'):
+            await old_manager.consolidate_session_memory()
+
+    # 創建新會話
+    new_session_id = str(uuid.uuid4())
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(
+        None, partial(create_session, user_id, new_session_id)
+    )
+    # 清除緩存中的舊 Manager 實例
+    from core.agents.bootstrap import _manager_cache
+    old_key = f"{user_id}:default"
+    if old_key in _manager_cache:
+        del _manager_cache[old_key]
+
+    return {
+        "session_id": new_session_id,
+        "title": "New Chat Session",
+        "message": "已整合舊會話記憶並創建新會話"
+    }
+
+
+# === 閒置整合 API ===
+
+
+@router.post("/api/chat/idle-consolidate")
+async def trigger_idle_consolidation(current_user: dict = Depends(get_current_user)):
+    """
+    手動觸發閒置整合（當用戶閒置一段時間後調用）
+
+    Returns:
+        成功: {"status": "success", "message": "閒置整合完成"}
+        跳過: {"status": "skipped", "message": "無需整合"}
+    """
+    user_id = current_user.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="未授權")
+
+    # 獲取 Manager 實例
+    from core.agents.bootstrap import get_manager_instance
+    manager = get_manager_instance(user_id, "default")
+
+    if not manager:
+        return {"status": "skipped", "message": "無 Manager 實例"}
+
+    # 檢查是否需要整合
+    if not manager.check_idle_consolidation():
+        return {"status": "skipped", "message": "無需整合"}
+
+    try:
+        # 執行整合
+        await manager._background_memory_consolidation()
+        return {"status": "success", "message": "閒置整合完成"}
+    except Exception as e:
+        logger.error(f"閒置整合失敗: {e}")
+        return {"status": "error", "message": str(e)}
 
 @router.post("/api/backtest", dependencies=[Depends(get_current_user)])
 async def run_backtest_api(request: BacktestRequest):

@@ -12,6 +12,7 @@ Manager Agent — 多 Agent 協調中心
 from __future__ import annotations
 
 import json
+import time
 import asyncio
 from typing import Optional, List, Dict, Callable
 
@@ -38,7 +39,8 @@ from .prompt_registry import PromptRegistry
 _checkpointer = MemorySaver()
 
 # Memory consolidation trigger threshold
-MEMORY_CONSOLIDATION_THRESHOLD = 30
+MEMORY_CONSOLIDATION_THRESHOLD = 12  # 降到 12 則（約 6 輪對話）
+MEMORY_IDLE_TIMEOUT = 300  # 閒置 5 分鐘後整合
 
 
 # ============================================================================
@@ -84,6 +86,15 @@ class ManagerAgent:
 
         # 進度回調
         self.progress_callback: Optional[Callable] = None
+
+        # 記憶整合控制（nanobot 風格）
+        self._consolidating = False  # 是否正在整合中
+        self._consolidation_lock = asyncio.Lock()  # 整合鎖
+        self._last_consolidated_index = 0  # 已整合的消息索引
+        self._consolidation_task: Optional[asyncio.Task] = None  # 背景整合任務
+
+        self._message_count = 0  # 當前會話消息計數
+        self._last_activity_time = time.time()  # 最後活動時間（用於閒置整合）
 
         # 建立 LangGraph
         self.graph = self._build_graph()
@@ -145,6 +156,11 @@ class ManagerAgent:
         """意圖理解節點 - 統一的規劃入口"""
         query = state["query"]
         history = state.get("history", "")
+
+        # 閒置整合檢查（在新對話開始時自動檢查）
+        if self.check_idle_consolidation():
+            logger.info("[Manager] Auto-triggering idle consolidation")
+            asyncio.create_task(self._background_memory_consolidation())
 
         self._emit_progress("understand_intent", "正在分析您的請求...")
 
@@ -564,12 +580,28 @@ class ManagerAgent:
 
         try:
             response = await self._llm_invoke(prompt)
+
+            # 追蹤對話歷史並觸發記憶整合
+            await self._track_conversation(
+                user_message=current_query,
+                assistant_response=response,
+                tools_used=list(task_results.keys()) if task_results else []
+            )
+
             return {
                 "final_response": response,
                 "_processed_query": current_query,
             }
         except Exception as e:
             logger.error(f"[Manager]Synthesis failed: {e}")
+
+            # 即使失敗也追蹤
+            await self._track_conversation(
+                user_message=current_query,
+                assistant_response="\n".join(results_text),
+                tools_used=[]
+            )
+
             return {
                 "final_response": "\n".join(results_text),
                 "_processed_query": current_query,
@@ -662,47 +694,159 @@ class ManagerAgent:
             logger.warning(f"[Manager] Failed to get long-term memory: {e}")
             return ""
 
-    async def add_to_conversation_history(
+    async def _track_conversation(
         self,
-        role: str,
-        content: str,
-        tools_used: Optional[List[str]] = None,
+        user_message: str,
+        assistant_response: str,
+        tools_used: Optional[List[str]] = None
     ) -> None:
         """
-        添加訊息到對話歷史，並在達到閾值時觸發記憶整合。
+        追蹤對話歷史並在達到閾值時自動觸發記憶整合（nanobot 風格）
 
         Args:
-            role: 'user' 或 'assistant'
-            content: 訊息內容
+            user_message: 用戶訊息
+            assistant_response: 助手回應
             tools_used: 使用的工具列表
         """
+        # 更新活動時間
+        self._last_activity_time = time.time()
+
         # 添加到短期記憶
         memory = self._get_memory(self.session_id)
-        memory.add_message(role, content)
+        memory.add_message("user", user_message)
+        memory.add_message("assistant", assistant_response)
 
-        # 檢查是否需要觸發記憶整合
-        history_len = len(memory.conversation_history)
-        if history_len >= MEMORY_CONSOLIDATION_THRESHOLD:
-            await self._trigger_memory_consolidation()
+        self._message_count += 2
 
-    async def _trigger_memory_consolidation(self) -> bool:
+        # 計算未整合的消息數量
+        unconsolidated = self._message_count - self._last_consolidated_index
+
+        # 檢查是否需要觸發記憶整合（異步背景執行，不阻塞當前回應）
+        if unconsolidated >= MEMORY_CONSOLIDATION_THRESHOLD and not self._consolidating:
+            logger.info(
+                f"[Manager] Triggering memory consolidation: "
+                f"{unconsolidated} unconsolidated messages"
+            )
+            # 創建背景任務進行整合
+            self._consolidation_task = asyncio.create_task(
+                self._background_memory_consolidation()
+            )
+
+    def check_idle_consolidation(self) -> bool:
         """
-        觸發記憶整合：將舊對話整合到長期記憶。
+        檢查是否需要因閒置而整合記憶
 
         Returns:
-            True 如果整合成功，False 否則
+            True 如果需要整合
+        """
+        if self._consolidating:
+            return False
+
+        idle_time = time.time() - self._last_activity_time
+        unconsolidated = self._message_count - self._last_consolidated_index
+
+        # 閒置超過 5 分鐘且有未整合消息
+        if idle_time >= MEMORY_IDLE_TIMEOUT and unconsolidated > 0:
+            logger.info(
+                f"[Manager] Idle consolidation triggered: "
+                f"idle={idle_time:.0f}s, unconsolidated={unconsolidated}"
+            )
+            return True
+        return False
+
+    async def switch_session(self, new_session_id: str) -> None:
+        """
+        切換會話並整合舊會話記憶
+
+        Args:
+            new_session_id: 新會話 ID
+        """
+        # 整合舊會話的所有記憶
+        if self._message_count > self._last_consolidated_index:
+            logger.info(
+                f"[Manager] Session switch: consolidating {self._message_count - self._last_consolidated_index} messages"
+            )
+            await self.consolidate_session_memory()
+
+        # 切換到新會話
+        old_session_id = self.session_id
+        self.session_id = new_session_id
+
+        # 重置新會話的計數器
+        self._message_count = 0
+        self._last_consolidated_index = 0
+        self._memory_store = None  # 重置記憶存儲以使用新 session_id
+
+        logger.info(f"[Manager] Switched session: {old_session_id} -> {new_session_id}")
+
+    async def _background_memory_consolidation(self) -> bool:
+        """
+        背景記憶整合（nanobot 風格）
+
+        - 異步執行，不阻塞對話
+        - 使用鎖防止重複整合
+        - 追蹤已整合的索引
+
+        Returns:
+            True 如果整合成功
+        """
+        if self._consolidating:
+            return False
+
+        async with self._consolidation_lock:
+            self._consolidating = True
+            try:
+                return await self._do_consolidation(archive_all=False)
+            finally:
+                self._consolidating = False
+
+    async def _do_consolidation(self, archive_all: bool = False) -> bool:
+        """
+        執行實際的記憶整合
+
+        Args:
+            archive_all: 是否整合所有消息
+
+        Returns:
+            True 如果成功
         """
         try:
             memory = self._get_memory(self.session_id)
             memory_store = self._get_memory_store()
 
+            if not memory.conversation_history:
+                return True
+
+            # 計算要整合的消息範圍
+            if archive_all:
+                messages_to_consolidate = memory.conversation_history
+                keep_count = 0
+            else:
+                keep_count = MEMORY_CONSOLIDATION_THRESHOLD // 2
+                start_idx = self._last_consolidated_index
+                end_idx = len(memory.conversation_history) - keep_count
+
+                if end_idx <= start_idx:
+                    return True  # 沒有新消息需要整合
+
+                messages_to_consolidate = memory.conversation_history[start_idx:end_idx]
+
+                if not messages_to_consolidate:
+                    return True
+
+            logger.info(
+                f"[Manager] Consolidating {len(messages_to_consolidate)} messages, "
+                f"keeping {keep_count} recent"
+            )
+
             # 準備訊息格式
             messages = []
-            for msg in memory.conversation_history:
+            for i, msg in enumerate(messages_to_consolidate):
+                from datetime import datetime
                 messages.append({
                     "role": msg.get("role", "unknown"),
                     "content": msg.get("content", ""),
-                    "timestamp": "",  # ShortTermMemory 沒有時間戳
+                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
                     "tools_used": [],
                 })
 
@@ -710,14 +854,21 @@ class ManagerAgent:
             success = await memory_store.consolidate(
                 messages=messages,
                 llm=self.llm,
-                memory_window=20,  # 保留最近 20 條訊息
+                memory_window=keep_count,
+                archive_all=archive_all,
             )
 
             if success:
-                logger.info(f"[Manager] Memory consolidation completed for user {self.user_id}")
-                # 清理已整合的短期記憶
-                if len(memory.conversation_history) > 20:
-                    memory.conversation_history = memory.conversation_history[-20:]
+                # 更新整合索引
+                if archive_all:
+                    self._last_consolidated_index = len(memory.conversation_history)
+                else:
+                    self._last_consolidated_index = len(memory.conversation_history) - keep_count
+
+                logger.info(
+                    f"[Manager] Memory consolidation done: "
+                    f"last_consolidated_index={self._last_consolidated_index}"
+                )
 
             return success
 
@@ -727,41 +878,13 @@ class ManagerAgent:
 
     async def consolidate_session_memory(self) -> bool:
         """
-        會話結束時整合所有記憶。
+        會話結束時整合所有記憶（手動調用或 /new 命令）
 
         Returns:
-            True 如果整合成功，False 否則
+            True 如果整合成功
         """
-        try:
-            memory = self._get_memory(self.session_id)
-            memory_store = self._get_memory_store()
-
-            if not memory.conversation_history:
-                return True
-
-            messages = []
-            for msg in memory.conversation_history:
-                messages.append({
-                    "role": msg.get("role", "unknown"),
-                    "content": msg.get("content", ""),
-                    "timestamp": "",
-                    "tools_used": [],
-                })
-
-            success = await memory_store.consolidate(
-                messages=messages,
-                llm=self.llm,
-                archive_all=True,
-            )
-
-            if success:
-                logger.info(f"[Manager] Session memory archived for user {self.user_id}")
-
-            return success
-
-        except Exception as e:
-            logger.error(f"[Manager] Session memory consolidation failed: {e}")
-            return False
+        async with self._consolidation_lock:
+            return await self._do_consolidation(archive_all=True)
 
     def _get_agents_description(self) -> str:
         """獲取所有 agents 的描述"""

@@ -354,6 +354,10 @@ async function saveLLMKey() {
             if (typeof window.setKeyValidity === 'function') {
                 window.setKeyValidity(provider, true);
             }
+            // 緻加：設置選中的 provider（關鍵！）
+            if (typeof window.APIKeyManager?.setSelectedProvider === 'function') {
+                window.APIKeyManager.setSelectedProvider(provider);
+            }
             if (typeof checkApiKeyStatus === 'function') {
                 checkApiKeyStatus();
             }

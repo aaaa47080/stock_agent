@@ -76,8 +76,9 @@ def technical_analysis(symbol: str = "BTC", interval: str = "1d") -> dict:
 @tool
 def price_data(symbol: str = "BTC") -> list:
     """獲取加密貨幣的即時價格和歷史K線數據"""
-    from utils.utils import get_binance_klines
-    return get_binance_klines(symbol=f"{symbol}USDT", interval="1d", limit=30)
+    from core.tools.crypto_tools import get_crypto_price_tool
+    result = get_crypto_price_tool.invoke({"symbol": symbol})
+    return result.get("price_info", result) if result else []
 
 
 @tool
