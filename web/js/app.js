@@ -803,9 +803,6 @@ window.updateAvailableModels = async function(preloadedConfig = null) {
         }
     }
 
-    // 清空現有選項
-    modelSelect.innerHTML = '<option value="" data-i18n="settings.ai.selectModel">Select a model</option>';
-
     // OpenRouter 使用文字輸入框
     if (provider === 'openrouter') {
         modelSelect.style.display = 'none';
@@ -825,6 +822,9 @@ window.updateAvailableModels = async function(preloadedConfig = null) {
     // 填充模型選項
     const models = modelConfig?.[provider]?.available_models || [];
 
+    // 清空現有選項（不添加 placeholder）
+    modelSelect.innerHTML = '';
+
     if (models.length === 0) {
         console.warn('[updateAvailableModels] No models found for provider:', provider);
         // 添加一個提示選項
@@ -843,12 +843,14 @@ window.updateAvailableModels = async function(preloadedConfig = null) {
         modelSelect.appendChild(option);
     });
 
-    // 設置當前選擇的模型
+    // 設置當前選擇的模型（優先使用已保存的，其次使用 default_model，最後使用第一個）
     const savedModel = window.APIKeyManager?.getModelForProvider?.(provider);
-    if (savedModel) {
+    if (savedModel && models.some(m => m.value === savedModel)) {
         modelSelect.value = savedModel;
     } else if (modelConfig?.[provider]?.default_model) {
         modelSelect.value = modelConfig[provider].default_model;
+    } else if (models.length > 0) {
+        modelSelect.value = models[0].value;
     }
 
     console.log('[updateAvailableModels] Loaded', models.length, 'models for', provider);

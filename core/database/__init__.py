@@ -229,6 +229,12 @@ from .tools import (
     update_user_tool_preference,
 )
 
+# 記憶系統
+from .memory import (
+    MemoryStore,
+    get_memory_store,
+)
+
 
 # 定義公開 API
 __all__ = [
@@ -390,4 +396,7 @@ __all__ = [
     'increment_tool_usage',
     'get_tools_for_frontend',
     'update_user_tool_preference',
+    # 記憶系統
+    'MemoryStore',
+    'get_memory_store',
 ]

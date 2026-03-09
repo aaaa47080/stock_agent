@@ -702,6 +702,14 @@ def create_indexes(c):
     c.execute('CREATE INDEX IF NOT EXISTS idx_user_tool_prefs_user ON user_tool_preferences(user_id)')
     c.execute('CREATE INDEX IF NOT EXISTS idx_tool_usage_user_date ON tool_usage_log(user_id, used_date)')
 
+    # 記憶系統索引
+    c.execute('CREATE INDEX IF NOT EXISTS idx_user_memory_user ON user_memory(user_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_user_memory_session ON user_memory(session_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_user_memory_type ON user_memory(memory_type)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_user_history_user ON user_history_log(user_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_user_history_session ON user_history_log(session_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_user_history_created ON user_history_log(created_at DESC)')
+
 
 def init_default_data(c):
     """Initialize default data (boards, system config)"""
@@ -765,6 +773,47 @@ def init_default_data(c):
             ''', (key, value, value_type, category, description, is_public))
 
 
+def create_memory_tables(c):
+    """Create user memory tables for persistent agent memory"""
+    # 用戶長期記憶表 (MEMORY.md equivalent)
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS user_memory (
+            id SERIAL PRIMARY KEY,
+            user_id VARCHAR(255) NOT NULL,
+            session_id VARCHAR(255),
+            memory_type VARCHAR(20) NOT NULL DEFAULT 'long_term',
+            content TEXT,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+            UNIQUE(user_id, session_id, memory_type)
+        )
+    ''')
+
+    # 用戶對話歷史日誌表 (HISTORY.md equivalent)
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS user_history_log (
+            id SERIAL PRIMARY KEY,
+            user_id VARCHAR(255) NOT NULL,
+            session_id VARCHAR(255),
+            entry TEXT NOT NULL,
+            tools_used TEXT,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        )
+    ''')
+
+    # 用戶記憶快取表 (for fast access)
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS user_memory_cache (
+            user_id VARCHAR(255) PRIMARY KEY,
+            session_id VARCHAR(255),
+            long_term_memory TEXT,
+            last_consolidated_index INTEGER DEFAULT 0,
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        )
+    ''')
+
+
 def create_all_tables(c):
     """Create all database tables"""
     create_basic_tables(c)
@@ -778,5 +827,6 @@ def create_all_tables(c):
     create_governance_tables(c)
     create_analysis_tables(c)
     create_tool_tables(c)
+    create_memory_tables(c)
     create_indexes(c)
     init_default_data(c)

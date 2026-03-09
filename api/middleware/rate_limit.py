@@ -76,6 +76,9 @@ RATE_LIMITS = {
     # Sensitive API Key endpoints (very strict to prevent key theft)
     "api_key_full": "10/minute",     # Getting full API key
     "api_key_write": "20/minute",    # Saving/deleting API keys
+
+    # Token refresh (moderate - prevent token abuse)
+    "token_refresh": "5/minute",     # Refresh token endpoint
 }
 
 
@@ -95,6 +98,10 @@ def get_rate_limit_for_route(request: Request) -> str:
     # Authentication endpoints
     if any(x in path for x in ['/login', '/pi-sync', '/dev-login']):
         return RATE_LIMITS["auth"]
+
+    # Token refresh endpoint (moderate security)
+    if '/refresh-token' in path:
+        return RATE_LIMITS["token_refresh"]
 
     # Sensitive API Key endpoints (very strict)
     if '/api-keys' in path:

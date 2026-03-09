@@ -114,7 +114,7 @@ async def validate_key(body: KeyValidationRequest, request: Request, current_use
     if not key or len(key) < 5:
         return {"valid": False, "message": "Key 為空或過短"}
 
-    test_prompt = "你好請問今天天氣好麻 (請簡短回答)"
+    test_prompt = "Hello, please respond briefly to confirm this is working."
 
     try:
         reply_text = ""

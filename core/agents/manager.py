@@ -7,8 +7,10 @@ Manager Agent — 多 Agent 協調中心
 3. DAG 執行引擎 - 支援垂直/水平任務
 4. 選擇性上下文傳輸 - Sub-Agent 只接收必要資訊
 5. 短期記憶整合 - 對話上下文管理
+6. 長期記憶整合 - 持久化用戶偏好與歷史
 """
 from __future__ import annotations
+
 import json
 import asyncio
 from typing import Optional, List, Dict, Callable
@@ -35,6 +37,9 @@ from .prompt_registry import PromptRegistry
 # 模組級共用 checkpointer
 _checkpointer = MemorySaver()
 
+# Memory consolidation trigger threshold
+MEMORY_CONSOLIDATION_THRESHOLD = 30
+
 
 # ============================================================================
 # ManagerAgent
@@ -49,6 +54,7 @@ class ManagerAgent:
     - Vending/Restaurant 雙模式
     - DAG 任務執行
     - 選擇性上下文傳輸
+    - 長期記憶整合（持久化）
     """
 
     def __init__(
@@ -57,6 +63,8 @@ class ManagerAgent:
         agent_registry: AgentRegistry,
         tool_registry: ToolRegistry,
         web_mode: bool = False,
+        user_id: Optional[str] = None,
+        session_id: Optional[str] = None,
     ):
         self.llm = llm_client
         self.agent_registry = agent_registry
@@ -64,14 +72,29 @@ class ManagerAgent:
         self.web_mode = web_mode
         self.router = AgentRouter(agent_registry)
 
+        # 用戶和會話標識
+        self.user_id = user_id or "anonymous"
+        self.session_id = session_id or "default"
+
         # 短期記憶（每個 session 獨立）
         self._memory_cache: Dict[str, ShortTermMemory] = {}
+
+        # 長期記憶存儲（延遲初始化）
+        self._memory_store = None
 
         # 進度回調
         self.progress_callback: Optional[Callable] = None
 
         # 建立 LangGraph
         self.graph = self._build_graph()
+
+    def _get_memory_store(self):
+        """延遲初始化 MemoryStore"""
+        if self._memory_store is None:
+            from core.database.memory import MemoryStore
+
+            self._memory_store = MemoryStore(self.user_id, self.session_id)
+        return self._memory_store
 
     def _build_graph(self) -> StateGraph:
         """建立 LangGraph 狀態圖 - 簡化版統一規劃流程"""
@@ -629,6 +652,116 @@ class ManagerAgent:
         if session_id not in self._memory_cache:
             self._memory_cache[session_id] = ShortTermMemory()
         return self._memory_cache[session_id]
+
+    def get_long_term_memory_context(self) -> str:
+        """獲取長期記憶上下文（用於 LLM prompt）"""
+        try:
+            memory_store = self._get_memory_store()
+            return memory_store.get_memory_context(include_history=True, history_limit=10)
+        except Exception as e:
+            logger.warning(f"[Manager] Failed to get long-term memory: {e}")
+            return ""
+
+    async def add_to_conversation_history(
+        self,
+        role: str,
+        content: str,
+        tools_used: Optional[List[str]] = None,
+    ) -> None:
+        """
+        添加訊息到對話歷史，並在達到閾值時觸發記憶整合。
+
+        Args:
+            role: 'user' 或 'assistant'
+            content: 訊息內容
+            tools_used: 使用的工具列表
+        """
+        # 添加到短期記憶
+        memory = self._get_memory(self.session_id)
+        memory.add_message(role, content)
+
+        # 檢查是否需要觸發記憶整合
+        history_len = len(memory.conversation_history)
+        if history_len >= MEMORY_CONSOLIDATION_THRESHOLD:
+            await self._trigger_memory_consolidation()
+
+    async def _trigger_memory_consolidation(self) -> bool:
+        """
+        觸發記憶整合：將舊對話整合到長期記憶。
+
+        Returns:
+            True 如果整合成功，False 否則
+        """
+        try:
+            memory = self._get_memory(self.session_id)
+            memory_store = self._get_memory_store()
+
+            # 準備訊息格式
+            messages = []
+            for msg in memory.conversation_history:
+                messages.append({
+                    "role": msg.get("role", "unknown"),
+                    "content": msg.get("content", ""),
+                    "timestamp": "",  # ShortTermMemory 沒有時間戳
+                    "tools_used": [],
+                })
+
+            # 執行整合
+            success = await memory_store.consolidate(
+                messages=messages,
+                llm=self.llm,
+                memory_window=20,  # 保留最近 20 條訊息
+            )
+
+            if success:
+                logger.info(f"[Manager] Memory consolidation completed for user {self.user_id}")
+                # 清理已整合的短期記憶
+                if len(memory.conversation_history) > 20:
+                    memory.conversation_history = memory.conversation_history[-20:]
+
+            return success
+
+        except Exception as e:
+            logger.error(f"[Manager] Memory consolidation failed: {e}")
+            return False
+
+    async def consolidate_session_memory(self) -> bool:
+        """
+        會話結束時整合所有記憶。
+
+        Returns:
+            True 如果整合成功，False 否則
+        """
+        try:
+            memory = self._get_memory(self.session_id)
+            memory_store = self._get_memory_store()
+
+            if not memory.conversation_history:
+                return True
+
+            messages = []
+            for msg in memory.conversation_history:
+                messages.append({
+                    "role": msg.get("role", "unknown"),
+                    "content": msg.get("content", ""),
+                    "timestamp": "",
+                    "tools_used": [],
+                })
+
+            success = await memory_store.consolidate(
+                messages=messages,
+                llm=self.llm,
+                archive_all=True,
+            )
+
+            if success:
+                logger.info(f"[Manager] Session memory archived for user {self.user_id}")
+
+            return success
+
+        except Exception as e:
+            logger.error(f"[Manager] Session memory consolidation failed: {e}")
+            return False
 
     def _get_agents_description(self) -> str:
         """獲取所有 agents 的描述"""

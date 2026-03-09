@@ -696,6 +696,11 @@ async def refresh_token(current_user: dict = Depends(get_current_user)):
 
     當無法使用 Pi SDK 靜默刷新時，可以使用此端點刷新 token。
     需要有效的 JWT token 才能調用。
+
+    安全措施：
+    - 需要有效的 JWT token（已通過 get_current_user 驗證）
+    - 速率限制：5次/分鐘（在 rate_limit.py 中配置）
+    - 稽核日誌記錄所有刷新操作
     """
     try:
         # 生成新的 JWT token
@@ -704,6 +709,17 @@ async def refresh_token(current_user: dict = Depends(get_current_user)):
         )
 
         logger.info(f"Token refreshed for user: {current_user['user_id']}")
+
+        # Audit log for security monitoring
+        try:
+            from core.audit import audit_log
+            audit_log(
+                action="token_refresh",
+                user_id=current_user["user_id"],
+                metadata={"method": "backend_refresh"}
+            )
+        except ImportError:
+            pass
 
         return {
             "success": True,

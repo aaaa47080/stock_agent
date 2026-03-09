@@ -688,4 +688,6 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         agent_registry=agent_registry,
         tool_registry=tool_registry,
         web_mode=web_mode,
+        user_id=user_id,
+        session_id=None,  # Session ID will be set per request
     )

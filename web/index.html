@@ -3,7 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://sdk.minepi.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https: wss:; frame-ancestors 'none'; base-uri 'self'; form-action 'self';">
+    <!-- CSP: frame-ancestors is set via HTTP header in api_server.py -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://sdk.minepi.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https: wss:; base-uri 'self'; form-action 'self';">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <!-- SEO Meta Tags -->
@@ -1337,7 +1338,7 @@
     <script src="/static/js/notification-service.js?v=4"></script>
     <script src="/static/js/components/NotificationBell.js?v=2"></script>
     <script src="/static/js/components/NotificationPanel.js?v=4"></script>
-    <script src="/static/js/llmSettings.js?v=48"></script>
+    <script src="/static/js/llmSettings.js?v=50"></script>
     <script src="/static/js/toolSettings.js?v=2"></script>
     <script src="/static/js/filter.js?v=48"></script>
     <script src="/static/js/chat.js?v=1001"></script>
@@ -1883,6 +1884,13 @@
                 try {
                     await initializeAuth();
                 } catch (e) { console.error('Auth Init Error:', e); }
+            }
+
+            // 1.5 載入已保存的 API Key 狀態（必須在 Auth 完成後）
+            if (typeof window.loadSavedApiKeys === 'function') {
+                try {
+                    await window.loadSavedApiKeys();
+                } catch (e) { console.error('Load API Keys Error:', e); }
             }
 
             // 2. Render navigation buttons based on user preferences
