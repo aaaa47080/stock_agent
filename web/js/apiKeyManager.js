@@ -48,7 +48,8 @@ const APIKeyManager = {
      * @returns {Object}
      */
     async _getAuthHeaders() {
-        const token = await window.AuthManager?.getToken?.();
+        // 與其他模組一致的 token 獲取方式
+        const token = window.AuthManager?.currentUser?.accessToken || window.AuthManager?.currentUser?.token;
         return {
             'Content-Type': 'application/json',
             'Authorization': token ? `Bearer ${token}` : ''
