@@ -114,7 +114,15 @@ class BaseReActAgent:
                 "messages": [HumanMessage(content=task.description)]
             })
 
-            # 提取最終消息
+            # 提取最終消息 - 防禦性編程：確保 result 是 dict
+            if isinstance(result, str):
+                # agent.invoke 返回了字串而非字典
+                reply = result
+                return AgentResult(
+                    success=True,
+                    message=reply,
+                    agent_name=self.name,
+                )
             messages = result.get("messages", [])
             if messages:
                 final_message = messages[-1]
