@@ -653,7 +653,6 @@ def create_indexes(c):
     c.execute('CREATE INDEX IF NOT EXISTS idx_users_membership ON users(membership_tier)')
     # ✅ 效能修復：membership_payments 補 user_id index
     c.execute('CREATE INDEX IF NOT EXISTS idx_membership_payments_user ON membership_payments(user_id)')
-    c.execute('CREATE INDEX IF NOT EXISTS idx_membership_payments_status ON membership_payments(status)')
     # ✅ 效能修復：login_attempts 補 user_id + created_at index
     c.execute('CREATE INDEX IF NOT EXISTS idx_login_attempts_user ON login_attempts(user_id)')
     c.execute('CREATE INDEX IF NOT EXISTS idx_login_attempts_created ON login_attempts(created_at DESC)')

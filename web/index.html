@@ -158,8 +158,45 @@
                         var m = document.getElementById('login-modal');
                         if (m) m.classList.remove('hidden');
                     });
+                    return;
                 }
-                // Token 有效 → 保持 modal hidden，等 auth.js init() 正常處理
+                // Token 有效 → 還需要檢測 Pi 環境
+                // 如果不在 Pi Browser 中，仍需顯示提示（除非是測試模式）
+                document.addEventListener('DOMContentLoaded', function () {
+                    // 先檢查是否為測試模式
+                    var testModeCheck = fetch('/api/config').then(r => r.json()).catch(function() { return { test_mode: false }; });
+
+                    var attempts = 0;
+                    var maxAttempts = 30; // 最多等 3 秒
+                    var checkPiSDK = function () {
+                        var hasPiSDK = typeof window.Pi !== 'undefined' &&
+                            window.Pi !== null &&
+                            typeof window.Pi.authenticate === 'function';
+                        if (hasPiSDK) {
+                            // Pi SDK 存在，保持 modal hidden，讓 auth.js 正常處理
+                            console.log('✅ Token valid + Pi SDK detected, normal flow');
+                            return;
+                        }
+                        attempts++;
+                        if (attempts < maxAttempts) {
+                            setTimeout(checkPiSDK, 100);
+                        } else {
+                            // Pi SDK 不存在 → 非 Pi 環境
+                            // 檢查是否為測試模式，測試模式下不強制顯示 modal
+                            testModeCheck.then(function(cfg) {
+                                if (cfg && cfg.test_mode) {
+                                    console.log('✅ Test mode: skipping Pi Browser check');
+                                    return;
+                                }
+                                // 非測試模式，顯示 login modal 提示用戶
+                                console.warn('⚠️ Token valid but NOT in Pi Browser, showing login modal');
+                                var m = document.getElementById('login-modal');
+                                if (m) m.classList.remove('hidden');
+                            });
+                        }
+                    };
+                    checkPiSDK();
+                });
             } catch (e) {
                 localStorage.removeItem('pi_user');
                 document.addEventListener('DOMContentLoaded', function () {

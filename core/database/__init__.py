@@ -230,11 +230,17 @@ from .tools import (
     update_user_tool_preference,
 )
 
-# 記憶系統
-from .memory import (
-    MemoryStore,
-    get_memory_store,
-)
+# 記憶系統（延遲導入以避免循環依賴）
+try:
+    from .memory import (
+        MemoryStore,
+        get_memory_store,
+    )
+except ImportError as e:
+    import logging
+    logging.warning(f"Failed to import memory module: {e}")
+    MemoryStore = None
+    get_memory_store = None
 
 
 # 定義公開 API
