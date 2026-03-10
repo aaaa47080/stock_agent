@@ -21,6 +21,7 @@ from core.database import (
     get_pending_requests_sent,
     get_friendship_status,
     get_friends_count,
+    get_bulk_friendship_status,
     get_pending_count,
     get_user_by_id,
     # 通知功能
@@ -68,13 +69,15 @@ async def search_users_endpoint(
         loop = asyncio.get_running_loop()
         users = await loop.run_in_executor(None, partial(search_users, query=q, limit=limit, exclude_user_id=user_id))
 
-        # 為每個用戶添加好友狀態
-        for user in users:
-            status = await loop.run_in_executor(None, get_friendship_status, user_id, user["user_id"])
-            user["friend_status"] = status.get("status") if status else None
-            user["is_friend"] = status.get("status") == "accepted" if status else False
-            # 重要：返回 is_requester 讓前端知道是誰發起的請求
-            user["is_requester"] = status.get("is_requester") if status else False
+        # ✅ 效能修復：用批次查詢取代 N+1 個別查詢
+        if users:
+            other_ids = [u["user_id"] for u in users]
+            bulk_status = await loop.run_in_executor(None, get_bulk_friendship_status, user_id, other_ids)
+            for u in users:
+                status = bulk_status.get(u["user_id"])
+                u["friend_status"] = status.get("status") if status else None
+                u["is_friend"] = status.get("status") == "accepted" if status else False
+                u["is_requester"] = status.get("is_requester") if status else False
 
         return {"success": True, "users": users, "count": len(users)}
     except HTTPException:

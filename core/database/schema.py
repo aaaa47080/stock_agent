@@ -645,6 +645,18 @@ def create_indexes(c):
     """Create all indexes for optimization"""
     # AI 對話歷史索引
     c.execute('CREATE INDEX IF NOT EXISTS idx_conversation_history_session_timestamp ON conversation_history(session_id, timestamp)')
+    # ✅ 效能修復：sessions 表缺少 user_id index，導致 get_sessions() 全表掃描
+    c.execute('CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_sessions_updated_at ON sessions(updated_at DESC)')
+    # ✅ 效能修復：users 表常用查詢欄位補 index
+    c.execute('CREATE INDEX IF NOT EXISTS idx_users_last_active ON users(last_active_at DESC)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_users_membership ON users(membership_tier)')
+    # ✅ 效能修復：membership_payments 補 user_id index
+    c.execute('CREATE INDEX IF NOT EXISTS idx_membership_payments_user ON membership_payments(user_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_membership_payments_status ON membership_payments(status)')
+    # ✅ 效能修復：login_attempts 補 user_id + created_at index
+    c.execute('CREATE INDEX IF NOT EXISTS idx_login_attempts_user ON login_attempts(user_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_login_attempts_created ON login_attempts(created_at DESC)')
 
     # 論壇索引
     c.execute('CREATE INDEX IF NOT EXISTS idx_posts_board_id ON posts(board_id)')

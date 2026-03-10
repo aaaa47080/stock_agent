@@ -18,8 +18,14 @@ SUPPORTED_PROVIDERS = [
 ]
 
 
+# ✅ 效能優化：只建表一次，避免每個 DB 函式都重複 CREATE TABLE IF NOT EXISTS
+_table_initialized = False
+
 def _ensure_table_exists():
-    """確保 user_api_keys 表存在"""
+    """確保 user_api_keys 表存在（只執行一次）"""
+    global _table_initialized
+    if _table_initialized:
+        return
     conn = get_connection()
     c = conn.cursor()
     try:
@@ -37,7 +43,10 @@ def _ensure_table_exists():
                 FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
             )
         ''')
+        # 確保 index 存在
+        c.execute('CREATE INDEX IF NOT EXISTS idx_user_api_keys_user_id ON user_api_keys(user_id)')
         conn.commit()
+        _table_initialized = True
     finally:
         conn.close()
 
@@ -113,13 +122,8 @@ def get_user_api_key(user_id: str, provider: str) -> Optional[str]:
         if not row:
             return None
         
-        # 更新最後使用時間
-        c.execute('''
-            UPDATE user_api_keys SET last_used_at = NOW()
-            WHERE user_id = %s AND provider = %s
-        ''', (user_id, provider))
-        conn.commit()
-        
+        # ✅ 效能優化：移除讀操作的 UPDATE last_used_at，讀取不應觸發寫入
+        # last_used_at 僅在 save_user_api_key 時更新即可
         return decrypt_api_key(row[0])
     finally:
         conn.close()

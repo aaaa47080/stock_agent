@@ -569,3 +569,50 @@ def is_friend(user_id: str, other_user_id: str) -> bool:
         return c.fetchone() is not None
     finally:
         conn.close()
+
+
+def get_bulk_friendship_status(user_id: str, other_user_ids: list) -> dict:
+    """
+    ✅ 效能優化：批次查詢多個用戶的好友狀態，解決 N+1 問題
+    一次 DB 查詢取代 N 次個別查詢
+    
+    Returns: {other_user_id: status_dict or None}
+    """
+    if not other_user_ids:
+        return {}
+    
+    conn = get_connection()
+    c = conn.cursor()
+    try:
+        placeholders = ','.join(['%s'] * len(other_user_ids))
+        c.execute(f'''
+            SELECT id, user_id, friend_id, status, created_at, updated_at
+            FROM friendships
+            WHERE (user_id = %s AND friend_id IN ({placeholders}))
+               OR (friend_id = %s AND user_id IN ({placeholders}))
+        ''', [user_id] + other_user_ids + [user_id] + other_user_ids)
+
+        rows = c.fetchall()
+        result = {uid: None for uid in other_user_ids}
+        
+        for row in rows:
+            uid1, uid2 = row[1], row[2]
+            other = uid2 if uid1 == user_id else uid1
+            created_at = row[4]
+            updated_at = row[5]
+            if created_at and not isinstance(created_at, str):
+                created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
+            if updated_at and not isinstance(updated_at, str):
+                updated_at = updated_at.strftime('%Y-%m-%d %H:%M:%S')
+            result[other] = {
+                "id": row[0],
+                "requester_id": row[1],
+                "target_id": row[2],
+                "status": row[3],
+                "created_at": created_at,
+                "updated_at": updated_at,
+                "is_requester": row[1] == user_id
+            }
+        return result
+    finally:
+        conn.close()

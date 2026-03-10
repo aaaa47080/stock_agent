@@ -45,6 +45,11 @@ _connection_pool = None
 _pool_lock = threading.Lock()
 _db_initialized = False
 
+# ✅ 效能優化：連接健康檢查頻率限制，避免每次取連線都 SELECT 1
+# 只有連接超過 30 秒沒使用才重新驗證
+_conn_last_verified: dict = {}  # {conn_id: timestamp}
+_HEALTH_CHECK_INTERVAL = 30  # 秒
+
 
 class _StandaloneConnection:
     """
@@ -236,11 +241,20 @@ def get_connection():
                 continue
 
             # 檢查 2: 執行簡單查詢驗證連接是否真的可用（防止 SSL 斷開）
+            # ✅ 效能優化：加頻率限制，30 秒內用過的連接不重複健康檢查
+            conn_id = id(raw_conn)
+            now = time.time()
+            needs_health_check = (
+                conn_id not in _conn_last_verified or
+                (now - _conn_last_verified[conn_id]) > _HEALTH_CHECK_INTERVAL
+            )
             try:
-                test_cursor = raw_conn.cursor()
-                test_cursor.execute("SELECT 1")
-                test_cursor.fetchone()
-                test_cursor.close()
+                if needs_health_check:
+                    test_cursor = raw_conn.cursor()
+                    test_cursor.execute("SELECT 1")
+                    test_cursor.fetchone()
+                    test_cursor.close()
+                    _conn_last_verified[conn_id] = now
             except Exception as health_error:
                 # 連接已斷開（SSL 錯誤等），關閉並丟棄
                 print(f"⚠️ 偵測到壞掉的連接（{type(health_error).__name__}），重新獲取...")

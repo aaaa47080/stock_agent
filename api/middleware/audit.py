@@ -94,9 +94,14 @@ async def audit_middleware(request: Request, call_next):
     needs_db = _is_sensitive_action(action, path, request.method)
     
     if needs_db:
-        # 🔴 安全敏感操作 → 写入数据库
+        # ✅ 效能修覆：AuditLogger.log 是同步 DB 寫入，直接呼叫會 block event loop
+        # 改用 run_in_executor 背景執行，不阻塞請求回應
+        import asyncio
+        from functools import partial
         try:
-            AuditLogger.log(
+            loop = asyncio.get_event_loop()
+            loop.run_in_executor(None, partial(
+                AuditLogger.log,
                 action=action,
                 user_id=user.get("user_id") if user else None,
                 username=user.get("username") if user else None,
@@ -107,7 +112,7 @@ async def audit_middleware(request: Request, call_next):
                 response_code=response.status_code,
                 success=success,
                 duration_ms=duration_ms
-            )
+            ))
         except Exception as e:
             logger.error(f"Database audit logging failed: {e}")
     else:
