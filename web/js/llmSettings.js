@@ -362,8 +362,17 @@ async function saveLLMKey() {
             if (model && typeof window.APIKeyManager?.setModelForProvider === 'function') {
                 window.APIKeyManager.setModelForProvider(provider, model);
             }
+            // ✅ 修復：立即更新 _fullKeyCache，避免 checkApiKeyStatus 拿到舊快取
+            if (window.APIKeyManager) {
+                window.APIKeyManager._fullKeyCache[provider] = apiKey;
+                window.APIKeyManager._maskedKeysCache = null;
+            }
             if (typeof checkApiKeyStatus === 'function') {
-                checkApiKeyStatus();
+                await checkApiKeyStatus();
+            }
+            // ✅ 修復：存完金鑰後自動跳到 chat 頁面
+            if (typeof switchTab === 'function') {
+                setTimeout(() => switchTab('chat'), 500);
             }
         } else {
             // 正確處理錯誤消息
