@@ -130,6 +130,22 @@ def create_user_tables(c):
         )
     ''')
 
+    # 建立用戶 API Keys 表 (BYOK - Bring Your Own Key)
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS user_api_keys (
+            id SERIAL PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            provider TEXT NOT NULL,
+            encrypted_key TEXT NOT NULL,
+            model_selection TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_used_at TIMESTAMP,
+            UNIQUE(user_id, provider),
+            FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+        )
+    ''')
+
 
 def create_forum_tables(c):
     """Create forum-related tables (boards, posts, forum_comments, tips, tags, post_tags, daily counts)"""
@@ -656,6 +672,8 @@ def create_indexes(c):
     # ✅ 效能修復：login_attempts 補 username + attempt_time index（表結構沒有 user_id 和 created_at）
     c.execute('CREATE INDEX IF NOT EXISTS idx_login_attempts_username ON login_attempts(username)')
     c.execute('CREATE INDEX IF NOT EXISTS idx_login_attempts_time ON login_attempts(attempt_time DESC)')
+    # ✅ user_api_keys 索引
+    c.execute('CREATE INDEX IF NOT EXISTS idx_user_api_keys_user ON user_api_keys(user_id)')
 
     # 論壇索引
     c.execute('CREATE INDEX IF NOT EXISTS idx_posts_board_id ON posts(board_id)')
