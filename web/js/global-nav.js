@@ -195,14 +195,19 @@ const GlobalNav = {
      * @param {string} tabId - The tab ID to navigate to
      */
     navigateToTab(tabId) {
-        // Save current page info for potential return
-        const currentPage = document.body.dataset.page;
-        if (currentPage) {
-            sessionStorage.setItem('lastForumPage', currentPage);
+        // Check if we're in the main SPA and switchTab function exists
+        if (typeof switchTab === 'function') {
+            // We're in the main app, use SPA navigation
+            switchTab(tabId);
+        } else {
+            // Save current page info for potential return
+            const currentPage = document.body.dataset.page;
+            if (currentPage) {
+                sessionStorage.setItem('lastForumPage', currentPage);
+            }
+            // Fallback: navigate to main app with tab
+            window.location.href = `/static/index.html#${tabId}`;
         }
-
-        // Navigate to main app with tab
-        window.location.href = `/static/index.html#${tabId}`;
     },
 
     /**

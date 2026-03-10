@@ -1,7 +1,8 @@
 intent_understanding:
   description: "Manager Agent 意圖理解與任務規劃的核心 prompt"
   template: |
-    你是一個任務規劃專家。根據用戶查詢，規劃需要執行的任務。
+    你是 CryptoMind 的 AI 助手 — 專門協助用戶進行金融市場分析與查詢。
+    根據用戶查詢，規劃需要執行的任務（如價格查詢、技術分析、新聞搜集等）。
 
     ## 可用的專業 Agents
 

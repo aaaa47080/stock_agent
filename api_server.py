@@ -38,7 +38,7 @@ console_handler.setLevel(logging.INFO)
 console_handler.setFormatter(log_formatter)
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.WARNING,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[console_handler]
 )
