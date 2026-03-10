@@ -136,13 +136,38 @@
     <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[9999] focus:px-4 focus:py-2 focus:bg-primary focus:text-background focus:rounded-lg focus:font-bold">跳到主要內容</a>
     <script>
         // Show login modal immediately for non-logged-in users (prevents blank screen)
-        // For logged-in users, modal stays hidden (prevents flash on reload)
-        if (!localStorage.getItem('pi_user')) {
-            document.addEventListener('DOMContentLoaded', function () {
-                var m = document.getElementById('login-modal');
-                if (m) m.classList.remove('hidden');
-            });
-        }
+        // For logged-in users, validate token first then decide
+        (function () {
+            var saved = localStorage.getItem('pi_user');
+            if (!saved) {
+                // 完全沒有登入紀錄 → 直接顯示 modal
+                document.addEventListener('DOMContentLoaded', function () {
+                    var m = document.getElementById('login-modal');
+                    if (m) m.classList.remove('hidden');
+                });
+                return;
+            }
+            // 有登入紀錄 → 先驗證 token 是否過期
+            try {
+                var user = JSON.parse(saved);
+                var expiry = user.accessTokenExpiry;
+                if (!expiry || Date.now() > expiry) {
+                    // Token 已過期，清除並顯示 modal
+                    localStorage.removeItem('pi_user');
+                    document.addEventListener('DOMContentLoaded', function () {
+                        var m = document.getElementById('login-modal');
+                        if (m) m.classList.remove('hidden');
+                    });
+                }
+                // Token 有效 → 保持 modal hidden，等 auth.js init() 正常處理
+            } catch (e) {
+                localStorage.removeItem('pi_user');
+                document.addEventListener('DOMContentLoaded', function () {
+                    var m = document.getElementById('login-modal');
+                    if (m) m.classList.remove('hidden');
+                });
+            }
+        })();
     </script>
 
     <!-- Sidebar (Chat History) -->
