@@ -4,24 +4,24 @@
 
 const _CATEGORY_LABELS = {
     crypto_basic: '加密貨幣基礎',
-    technical:    '技術分析',
-    derivatives:  '衍生品市場',
-    news:         '新聞資訊',
-    onchain:      '鏈上數據',
-    tw_stock:     '台灣股市',
-    us_stock:     '美國股市',
-    general:      '通用工具',
+    technical: '技術分析',
+    derivatives: '衍生品市場',
+    news: '新聞資訊',
+    onchain: '鏈上數據',
+    tw_stock: '台灣股市',
+    us_stock: '美國股市',
+    general: '通用工具',
 };
 
 const _CATEGORY_ICONS = {
     crypto_basic: 'bitcoin',
-    technical:    'bar-chart-2',
-    derivatives:  'activity',
-    news:         'newspaper',
-    onchain:      'database',
-    tw_stock:     'trending-up',
-    us_stock:     'dollar-sign',
-    general:      'wrench',
+    technical: 'bar-chart-2',
+    derivatives: 'activity',
+    news: 'newspaper',
+    onchain: 'database',
+    tw_stock: 'trending-up',
+    us_stock: 'dollar-sign',
+    general: 'wrench',
 };
 
 let _currentUserTier = 'free';
@@ -43,7 +43,7 @@ async function initToolSettings() {
     try {
         const token = window.AuthManager?.currentUser?.accessToken;
         const res = await fetch('/api/tools', {
-            headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+            headers: token ? { Authorization: 'Bearer ' + token } : {},
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
@@ -66,22 +66,23 @@ function renderToolList(container, tools) {
 
     // Group by category (preserve insertion order from backend)
     const groups = {};
-    tools.forEach(t => {
+    tools.forEach((t) => {
         if (!groups[t.category]) groups[t.category] = [];
         groups[t.category].push(t);
     });
 
-    const html = Object.entries(groups).map(([cat, items], idx) => {
-        const label    = _CATEGORY_LABELS[cat] || cat;
-        const icon     = _CATEGORY_ICONS[cat] || 'tool';
-        const rows     = items.map(t => _renderToolRow(t)).join('');
-        const total    = items.length;
-        const enabled  = items.filter(t => !t.locked && t.is_enabled).length;
-        const catId    = `tool-cat-${cat}`;
-        // First category expanded by default, rest collapsed
-        const expanded = idx === 0;
+    const html = Object.entries(groups)
+        .map(([cat, items], idx) => {
+            const label = _CATEGORY_LABELS[cat] || cat;
+            const icon = _CATEGORY_ICONS[cat] || 'tool';
+            const rows = items.map((t) => _renderToolRow(t)).join('');
+            const total = items.length;
+            const enabled = items.filter((t) => !t.locked && t.is_enabled).length;
+            const catId = `tool-cat-${cat}`;
+            // First category expanded by default, rest collapsed
+            const expanded = idx === 0;
 
-        return `
+            return `
             <div class="mb-1">
                 <button onclick="toggleToolCategory('${catId}')"
                     class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-white/5 transition group"
@@ -97,7 +98,8 @@ function renderToolList(container, tools) {
                     ${rows}
                 </div>
             </div>`;
-    }).join('');
+        })
+        .join('');
 
     container.innerHTML = html;
     lucide.createIcons();
@@ -115,12 +117,14 @@ function renderToolList(container, tools) {
 
 function _renderToolRow(tool) {
     const isPremiumLocked = tool.locked;
-    const quotaBadge = tool.quota_type === 'shared_limited'
-        ? `<span class="text-[10px] text-yellow-400/70 font-mono ml-1">有額度</span>`
-        : '';
-    const tierBadge = tool.tier_required === 'premium'
-        ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-yellow-400/10 text-yellow-400 font-bold ml-1">PRO</span>`
-        : '';
+    const quotaBadge =
+        tool.quota_type === 'shared_limited'
+            ? `<span class="text-[10px] text-yellow-400/70 font-mono ml-1">有額度</span>`
+            : '';
+    const tierBadge =
+        tool.tier_required === 'premium'
+            ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-yellow-400/10 text-yellow-400 font-bold ml-1">PRO</span>`
+            : '';
 
     if (isPremiumLocked) {
         // Free user sees locked premium tool — greyed out, no toggle
@@ -140,9 +144,7 @@ function _renderToolRow(tool) {
     const checked = tool.is_enabled ? 'checked' : '';
     const canToggle = _currentUserTier === 'premium';
     const disabledAttr = canToggle ? '' : 'disabled';
-    const wrapperClass = canToggle
-        ? 'cursor-pointer'
-        : 'cursor-not-allowed opacity-60';
+    const wrapperClass = canToggle ? 'cursor-pointer' : 'cursor-not-allowed opacity-60';
     const toggleTitle = canToggle ? '' : 'title="升級 Premium 可自訂工具"';
 
     return `
@@ -171,7 +173,7 @@ function _renderToolRow(tool) {
  */
 function toggleToolCategory(catId) {
     const panel = document.getElementById(catId);
-    const btn   = panel?.previousElementSibling;
+    const btn = panel?.previousElementSibling;
     if (!panel || !btn) return;
 
     const isOpen = btn.getAttribute('aria-expanded') === 'true';
@@ -193,9 +195,13 @@ function toggleToolCategory(catId) {
         const icon = btn.querySelector('[data-lucide="chevron-down"]');
         if (icon) icon.classList.add('rotate-180');
         // Remove max-height after transition
-        panel.addEventListener('transitionend', () => {
-            panel.style.maxHeight = 'none';
-        }, { once: true });
+        panel.addEventListener(
+            'transitionend',
+            () => {
+                panel.style.maxHeight = 'none';
+            },
+            { once: true }
+        );
     }
 }
 
@@ -211,7 +217,7 @@ async function toggleToolPreference(toolId, isEnabled, checkboxEl) {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
-                ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+                ...(token ? { Authorization: 'Bearer ' + token } : {}),
             },
             body: JSON.stringify({ is_enabled: isEnabled }),
         });
@@ -225,6 +231,6 @@ async function toggleToolPreference(toolId, isEnabled, checkboxEl) {
     }
 }
 
-window.initToolSettings     = initToolSettings;
+window.initToolSettings = initToolSettings;
 window.toggleToolPreference = toggleToolPreference;
-window.toggleToolCategory   = toggleToolCategory;
+window.toggleToolCategory = toggleToolCategory;

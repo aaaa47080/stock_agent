@@ -438,7 +438,6 @@ const Components = {
         </div>
     `,
 
-
     // Tab: Friends (Integrated Social Hub - Friends + Messages)
     friends: `
     <div class="h-full flex flex-col">
@@ -1320,7 +1319,9 @@ const Components = {
     async inject(id) {
         const container = document.getElementById(id + '-tab');
         if (!container || !this[id]) {
-            console.error(`[Components] inject failed: container = ${!!container}, template = ${!!this[id]} `);
+            console.error(
+                `[Components] inject failed: container = ${!!container}, template = ${!!this[id]} `
+            );
             return false;
         }
 
@@ -1337,7 +1338,7 @@ const Components = {
         this._injected[id] = true;
 
         // ✅ 效能優化：用 requestAnimationFrame 取代 setTimeout(50ms)，等 DOM paint 完成即可
-        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
         // 初始化 Lucide 圖標
         if (window.lucide) {
@@ -1366,7 +1367,7 @@ const Components = {
     async forceInject(id) {
         this._injected[id] = false;
         return this.inject(id);
-    }
+    },
 };
 
 // 標記組件系統已就緒

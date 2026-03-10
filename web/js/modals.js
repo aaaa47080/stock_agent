@@ -25,7 +25,8 @@ function openAlertModal(symbol, market) {
     // Re-init Lucide icons (X button inside modal)
     if (typeof lucide !== 'undefined') lucide.createIcons();
     // Re-apply i18n translations
-    if (window.I18n && typeof window.I18n.updatePageContent === 'function') window.I18n.updatePageContent();
+    if (window.I18n && typeof window.I18n.updatePageContent === 'function')
+        window.I18n.updatePageContent();
 }
 
 /**
@@ -43,30 +44,43 @@ async function submitAlert() {
     const target = parseFloat(document.getElementById('alert-target').value);
     const repeat = document.getElementById('alert-repeat').checked;
 
-    const t = (key) => window.I18n ? window.I18n.t(key) : key;
+    const t = (key) => (window.I18n ? window.I18n.t(key) : key);
 
     if (!target || isNaN(target) || target <= 0) {
-        if (typeof window.showToast === 'function') window.showToast(t('modals.priceAlert.invalidTarget'), 'error');
+        if (typeof window.showToast === 'function')
+            window.showToast(t('modals.priceAlert.invalidTarget'), 'error');
         return;
     }
 
     try {
-        const token = window.AuthManager && window.AuthManager.currentUser && window.AuthManager.currentUser.accessToken;
+        const token =
+            window.AuthManager &&
+            window.AuthManager.currentUser &&
+            window.AuthManager.currentUser.accessToken;
         const resp = await fetch('/api/alerts', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-            body: JSON.stringify({ symbol: _alertSymbol, market: _alertMarket, condition, target, repeat }),
+            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+            body: JSON.stringify({
+                symbol: _alertSymbol,
+                market: _alertMarket,
+                condition,
+                target,
+                repeat,
+            }),
         });
         if (resp.ok) {
-            if (typeof window.showToast === 'function') window.showToast('✅ ' + t('modals.priceAlert.confirm'));
+            if (typeof window.showToast === 'function')
+                window.showToast('✅ ' + t('modals.priceAlert.confirm'));
             closeAlertModal();
             loadUserAlerts();
         } else {
             const err = await resp.json().catch(() => ({}));
-            if (typeof window.showToast === 'function') window.showToast((err.detail || t('modals.priceAlert.setFailed')), 'error');
+            if (typeof window.showToast === 'function')
+                window.showToast(err.detail || t('modals.priceAlert.setFailed'), 'error');
         }
     } catch (e) {
-        if (typeof window.showToast === 'function') window.showToast(t('modals.priceAlert.networkError'), 'error');
+        if (typeof window.showToast === 'function')
+            window.showToast(t('modals.priceAlert.networkError'), 'error');
     }
 }
 
@@ -75,9 +89,12 @@ async function submitAlert() {
  */
 async function loadUserAlerts() {
     try {
-        const token = window.AuthManager && window.AuthManager.currentUser && window.AuthManager.currentUser.accessToken;
+        const token =
+            window.AuthManager &&
+            window.AuthManager.currentUser &&
+            window.AuthManager.currentUser.accessToken;
         if (!token) return;
-        const resp = await fetch('/api/alerts', { headers: { 'Authorization': 'Bearer ' + token } });
+        const resp = await fetch('/api/alerts', { headers: { Authorization: 'Bearer ' + token } });
         if (!resp.ok) return;
         const data = await resp.json();
         renderAlertList(data.alerts || []);
@@ -92,20 +109,25 @@ async function loadUserAlerts() {
  */
 async function deleteUserAlert(alertId) {
     try {
-        const token = window.AuthManager && window.AuthManager.currentUser && window.AuthManager.currentUser.accessToken;
+        const token =
+            window.AuthManager &&
+            window.AuthManager.currentUser &&
+            window.AuthManager.currentUser.accessToken;
         const resp = await fetch('/api/alerts/' + alertId, {
             method: 'DELETE',
-            headers: { 'Authorization': 'Bearer ' + token },
+            headers: { Authorization: 'Bearer ' + token },
         });
         if (resp.ok) {
             loadUserAlerts();
         } else {
-            const t = (key) => window.I18n ? window.I18n.t(key) : key;
-            if (typeof window.showToast === 'function') window.showToast(t('modals.priceAlert.deleteFailed'), 'error');
+            const t = (key) => (window.I18n ? window.I18n.t(key) : key);
+            if (typeof window.showToast === 'function')
+                window.showToast(t('modals.priceAlert.deleteFailed'), 'error');
         }
     } catch (e) {
-        const t = (key) => window.I18n ? window.I18n.t(key) : key;
-        if (typeof window.showToast === 'function') window.showToast(t('modals.priceAlert.deleteFailed'), 'error');
+        const t = (key) => (window.I18n ? window.I18n.t(key) : key);
+        if (typeof window.showToast === 'function')
+            window.showToast(t('modals.priceAlert.deleteFailed'), 'error');
     }
 }
 
@@ -114,7 +136,7 @@ async function deleteUserAlert(alertId) {
  * @param {Array} alerts - Array of alert objects
  */
 function renderAlertList(alerts) {
-    const t = (key) => window.I18n ? window.I18n.t(key) : key;
+    const t = (key) => (window.I18n ? window.I18n.t(key) : key);
     // condition labels come from i18n
     const condMap = {
         above: t('modals.priceAlert.above'),
@@ -122,30 +144,41 @@ function renderAlertList(alerts) {
         change_pct_up: t('modals.priceAlert.changePctUp'),
         change_pct_down: t('modals.priceAlert.changePctDown'),
     };
-    const noAlertsHtml = '<p class="text-textMuted text-xs py-1">' + t('modals.priceAlert.noAlerts') + '</p>';
+    const noAlertsHtml =
+        '<p class="text-textMuted text-xs py-1">' + t('modals.priceAlert.noAlerts') + '</p>';
     const deleteLabel = t('modals.priceAlert.deleteAlert');
 
     const containerIds = ['alert-list-twstock', 'alert-list-usstock'];
-    containerIds.forEach(function(cid) {
+    containerIds.forEach(function (cid) {
         const container = document.getElementById(cid);
         if (!container) return;
         if (alerts.length === 0) {
             container.innerHTML = noAlertsHtml;
             return;
         }
-        container.innerHTML = alerts.map(function(a) {
-            const label = condMap[a.condition] || a.condition;
-            return '<div class="flex justify-between items-center py-1.5 border-b border-white/5 last:border-0">' +
-                '<span class="text-secondary text-xs font-mono">' +
-                    a.symbol + ' <span class="text-primary">' + label + '</span> ' + a.target +
+        container.innerHTML = alerts
+            .map(function (a) {
+                const label = condMap[a.condition] || a.condition;
+                return (
+                    '<div class="flex justify-between items-center py-1.5 border-b border-white/5 last:border-0">' +
+                    '<span class="text-secondary text-xs font-mono">' +
+                    a.symbol +
+                    ' <span class="text-primary">' +
+                    label +
+                    '</span> ' +
+                    a.target +
                     (a.repeat ? ' <span class="text-textMuted">🔁</span>' : '') +
-                '</span>' +
-                '<button onclick="deleteUserAlert(\'' + a.id + '\')" ' +
+                    '</span>' +
+                    '<button onclick="deleteUserAlert(\'' +
+                    a.id +
+                    '\')" ' +
                     'class="text-danger hover:brightness-125 text-xs ml-2 transition">' +
                     deleteLabel +
-                '</button>' +
-                '</div>';
-        }).join('');
+                    '</button>' +
+                    '</div>'
+                );
+            })
+            .join('');
     });
 }
 
@@ -166,7 +199,7 @@ window.renderAlertList = renderAlertList;
 const LEGAL_PAGE_MAP = {
     terms: 'terms-of-service.html',
     privacy: 'privacy-policy.html',
-    guidelines: 'community-guidelines.html'
+    guidelines: 'community-guidelines.html',
 };
 
 /**
@@ -185,7 +218,8 @@ async function showLegalPage(type) {
     // Show modal with loading
     modal.classList.remove('hidden');
     modal.classList.add('flex');
-    contentArea.innerHTML = '<div class="flex items-center justify-center py-20"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>';
+    contentArea.innerHTML =
+        '<div class="flex items-center justify-center py-20"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>';
 
     const lang = window.I18n ? window.I18n.getLanguage() : 'en';
     backEl.textContent = lang === 'zh-TW' ? '返回' : 'Back';
@@ -200,7 +234,8 @@ async function showLegalPage(type) {
         const enDiv = doc.getElementById('content-en');
 
         if (!zhDiv || !enDiv) {
-            contentArea.innerHTML = '<p class="text-center text-textMuted py-20">Content not found.</p>';
+            contentArea.innerHTML =
+                '<p class="text-center text-textMuted py-20">Content not found.</p>';
             return;
         }
 
@@ -224,7 +259,7 @@ async function showLegalPage(type) {
             const titles = {
                 terms: { 'zh-TW': '服務條款', en: 'Terms of Service' },
                 privacy: { 'zh-TW': '隱私權政策', en: 'Privacy Policy' },
-                guidelines: { 'zh-TW': '社群守則', en: 'Community Guidelines' }
+                guidelines: { 'zh-TW': '社群守則', en: 'Community Guidelines' },
             };
             titleEl.textContent = (titles[type] && titles[type][lang]) || zhTitle;
             modal.dataset.type = type;
@@ -263,7 +298,7 @@ function _updateLegalLanguage(lang) {
         const titles = {
             terms: { 'zh-TW': '服務條款', en: 'Terms of Service' },
             privacy: { 'zh-TW': '隱私權政策', en: 'Privacy Policy' },
-            guidelines: { 'zh-TW': '社群守則', en: 'Community Guidelines' }
+            guidelines: { 'zh-TW': '社群守則', en: 'Community Guidelines' },
         };
         titleEl.textContent = (titles[type] && titles[type][lang]) || '';
     }

@@ -140,7 +140,7 @@ const GlobalNav = {
         // Clear existing buttons
         container.innerHTML = '';
 
-        enabledItems.forEach(item => {
+        enabledItems.forEach((item) => {
             // Hide admin-only tabs for non-admin users
             if (item.adminOnly) {
                 const user = window.AuthManager && AuthManager.currentUser;
@@ -171,9 +171,13 @@ const GlobalNav = {
 
             // Set click handler
             if (item.id === 'forum') {
-                button.onclick = function () { GlobalNav.navigateToForum(); };
+                button.onclick = function () {
+                    GlobalNav.navigateToForum();
+                };
             } else {
-                button.onclick = function () { GlobalNav.navigateToTab(item.id); };
+                button.onclick = function () {
+                    GlobalNav.navigateToTab(item.id);
+                };
             }
 
             button.innerHTML = `
@@ -282,9 +286,11 @@ const GlobalNav = {
 
         // State Variables
         let isDragging = false;
-        let currentX = 0, currentY = 0;
+        let currentX = 0,
+            currentY = 0;
         let initialX, initialY;
-        let xOffset = 0, yOffset = 0;
+        let xOffset = 0,
+            yOffset = 0;
         let animationFrameId = null;
 
         // Load saved position
@@ -351,8 +357,8 @@ const GlobalNav = {
             const navHeight = navRect.height;
             const padding = 10;
 
-            const minX = -(viewW / 2) + (navWidth / 2) + padding;
-            const maxX = (viewW / 2) - (navWidth / 2) - padding;
+            const minX = -(viewW / 2) + navWidth / 2 + padding;
+            const maxX = viewW / 2 - navWidth / 2 - padding;
 
             // Reset transition for smooth snap
             container.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)';
@@ -449,7 +455,7 @@ const GlobalNav = {
      */
     refreshButtons() {
         this.renderNavButtons();
-    }
+    },
 };
 
 // Listen for language changes and re-render buttons

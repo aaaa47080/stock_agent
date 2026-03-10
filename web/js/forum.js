@@ -6,10 +6,10 @@
 // Pi 支付價格配置（從後端動態獲取）
 // ============================================
 window.PiPrices = {
-    create_post: null,  // 完全依賴後端配置
+    create_post: null, // 完全依賴後端配置
     tip: null,
     premium: null,
-    loaded: false
+    loaded: false,
 };
 
 // ============================================
@@ -20,7 +20,7 @@ window.ForumLimits = {
     daily_post_premium: null,
     daily_comment_free: null,
     daily_comment_premium: null,
-    loaded: false
+    loaded: false,
 };
 
 // 從後端載入價格配置
@@ -55,7 +55,7 @@ function updatePriceDisplays() {
     }
 
     const priceElements = document.querySelectorAll('[data-price]');
-    priceElements.forEach(el => {
+    priceElements.forEach((el) => {
         const priceKey = el.getAttribute('data-price');
         const price = window.PiPrices[priceKey];
 
@@ -113,7 +113,12 @@ function formatTWDate(dateStr, full = false) {
     try {
         // Server stores UTC — append 'Z' if no timezone info so JS parses as UTC
         let normalized = dateStr;
-        if (typeof dateStr === 'string' && !dateStr.endsWith('Z') && !dateStr.includes('+') && !/\d{2}:\d{2}:\d{2}-/.test(dateStr)) {
+        if (
+            typeof dateStr === 'string' &&
+            !dateStr.endsWith('Z') &&
+            !dateStr.includes('+') &&
+            !/\d{2}:\d{2}:\d{2}-/.test(dateStr)
+        ) {
             normalized = dateStr.replace(' ', 'T') + 'Z';
         }
         const date = new Date(normalized);
@@ -155,7 +160,10 @@ const ForumAPI = {
         const headers = { 'Content-Type': 'application/json' };
         if (typeof AuthManager !== 'undefined' && AuthManager.currentUser) {
             // 修正：使用 accessToken 而不是 token
-            const token = AuthManager.currentUser.accessToken || AuthManager.currentUser.token || localStorage.getItem('auth_token');
+            const token =
+                AuthManager.currentUser.accessToken ||
+                AuthManager.currentUser.token ||
+                localStorage.getItem('auth_token');
             if (token) {
                 headers['Authorization'] = `Bearer ${token}`;
             }
@@ -188,7 +196,7 @@ const ForumAPI = {
         const res = await fetch(`/api/forum/posts?user_id=${encodeURIComponent(userId)}`, {
             method: 'POST',
             headers: this._getAuthHeaders(),
-            body: JSON.stringify(data)
+            body: JSON.stringify(data),
         });
         if (!res.ok) {
             let errorMsg = 'Failed to create post';
@@ -198,7 +206,7 @@ const ForumAPI = {
                     errorMsg = err.detail;
                 } else if (Array.isArray(err.detail)) {
                     // Pydantic validation error
-                    errorMsg = err.detail.map(e => `${e.loc.join('.')}: ${e.msg}`).join('\n');
+                    errorMsg = err.detail.map((e) => `${e.loc.join('.')}: ${e.msg}`).join('\n');
                 } else if (err.message) {
                     errorMsg = err.message;
                 } else {
@@ -225,7 +233,7 @@ const ForumAPI = {
         const res = await fetch(`/api/forum/posts/${postId}/comments?${query}`, {
             method: 'POST',
             headers: this._getAuthHeaders(),
-            body: JSON.stringify(data)
+            body: JSON.stringify(data),
         });
         if (!res.ok) {
             let errorMsg = 'Failed to create comment';
@@ -234,7 +242,7 @@ const ForumAPI = {
                 if (typeof err.detail === 'string') {
                     errorMsg = err.detail;
                 } else if (Array.isArray(err.detail)) {
-                    errorMsg = err.detail.map(e => `${e.loc.join('.')}: ${e.msg}`).join('\n');
+                    errorMsg = err.detail.map((e) => `${e.loc.join('.')}: ${e.msg}`).join('\n');
                 } else if (err.message) {
                     errorMsg = err.message;
                 } else {
@@ -251,7 +259,10 @@ const ForumAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error('Please login first');
 
-        const res = await fetch(`/api/forum/posts/${postId}/push?user_id=${userId}`, { method: 'POST', headers: this._getAuthHeaders() });
+        const res = await fetch(`/api/forum/posts/${postId}/push?user_id=${userId}`, {
+            method: 'POST',
+            headers: this._getAuthHeaders(),
+        });
         if (!res.ok) {
             let errorMsg = 'Failed to push';
             try {
@@ -259,7 +270,7 @@ const ForumAPI = {
                 if (typeof err.detail === 'string') {
                     errorMsg = err.detail;
                 } else if (Array.isArray(err.detail)) {
-                    errorMsg = err.detail.map(e => `${e.loc.join('.')}: ${e.msg}`).join('\n');
+                    errorMsg = err.detail.map((e) => `${e.loc.join('.')}: ${e.msg}`).join('\n');
                 } else if (err.message) {
                     errorMsg = err.message;
                 }
@@ -274,7 +285,10 @@ const ForumAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error('Please login first');
 
-        const res = await fetch(`/api/forum/posts/${postId}/boo?user_id=${userId}`, { method: 'POST', headers: this._getAuthHeaders() });
+        const res = await fetch(`/api/forum/posts/${postId}/boo?user_id=${userId}`, {
+            method: 'POST',
+            headers: this._getAuthHeaders(),
+        });
         if (!res.ok) {
             let errorMsg = 'Failed to boo';
             try {
@@ -282,7 +296,7 @@ const ForumAPI = {
                 if (typeof err.detail === 'string') {
                     errorMsg = err.detail;
                 } else if (Array.isArray(err.detail)) {
-                    errorMsg = err.detail.map(e => `${e.loc.join('.')}: ${e.msg}`).join('\n');
+                    errorMsg = err.detail.map((e) => `${e.loc.join('.')}: ${e.msg}`).join('\n');
                 } else if (err.message) {
                     errorMsg = err.message;
                 }
@@ -308,7 +322,7 @@ const ForumAPI = {
         const res = await fetch(`/api/forum/posts/${postId}/tip?user_id=${userId}`, {
             method: 'POST',
             headers: this._getAuthHeaders(),
-            body: JSON.stringify({ amount, tx_hash: txHash })
+            body: JSON.stringify({ amount, tx_hash: txHash }),
         });
         if (!res.ok) {
             let errorMsg = 'Failed to tip';
@@ -317,7 +331,7 @@ const ForumAPI = {
                 if (typeof err.detail === 'string') {
                     errorMsg = err.detail;
                 } else if (Array.isArray(err.detail)) {
-                    errorMsg = err.detail.map(e => `${e.loc.join('.')}: ${e.msg}`).join('\n');
+                    errorMsg = err.detail.map((e) => `${e.loc.join('.')}: ${e.msg}`).join('\n');
                 } else if (err.message) {
                     errorMsg = err.message;
                 }
@@ -334,10 +348,13 @@ const ForumAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error('Please login first');
 
-        const res = await fetch(`/api/forum/posts/${postId}?user_id=${encodeURIComponent(userId)}`, {
-            method: 'DELETE',
-            headers: this._getAuthHeaders()
-        });
+        const res = await fetch(
+            `/api/forum/posts/${postId}?user_id=${encodeURIComponent(userId)}`,
+            {
+                method: 'DELETE',
+                headers: this._getAuthHeaders(),
+            }
+        );
         if (!res.ok) {
             let errorMsg = 'Failed to delete post';
             try {
@@ -345,7 +362,7 @@ const ForumAPI = {
                 if (typeof err.detail === 'string') {
                     errorMsg = err.detail;
                 } else if (Array.isArray(err.detail)) {
-                    errorMsg = err.detail.map(e => `${e.loc.join('.')}: ${e.msg}`).join('\n');
+                    errorMsg = err.detail.map((e) => `${e.loc.join('.')}: ${e.msg}`).join('\n');
                 } else if (err.message) {
                     errorMsg = err.message;
                 }
@@ -362,11 +379,14 @@ const ForumAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error('Please login first');
 
-        const res = await fetch(`/api/forum/posts/${postId}?user_id=${encodeURIComponent(userId)}`, {
-            method: 'PUT',
-            headers: this._getAuthHeaders(),
-            body: JSON.stringify(data)
-        });
+        const res = await fetch(
+            `/api/forum/posts/${postId}?user_id=${encodeURIComponent(userId)}`,
+            {
+                method: 'PUT',
+                headers: this._getAuthHeaders(),
+                body: JSON.stringify(data),
+            }
+        );
         if (!res.ok) {
             let errorMsg = 'Failed to update post';
             try {
@@ -374,7 +394,7 @@ const ForumAPI = {
                 if (typeof err.detail === 'string') {
                     errorMsg = err.detail;
                 } else if (Array.isArray(err.detail)) {
-                    errorMsg = err.detail.map(e => `${e.loc.join('.')}: ${e.msg}`).join('\n');
+                    errorMsg = err.detail.map((e) => `${e.loc.join('.')}: ${e.msg}`).join('\n');
                 } else if (err.message) {
                     errorMsg = err.message;
                 }
@@ -391,7 +411,7 @@ const ForumAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error('User not logged in');
         const res = await fetch(`/api/forum/me/stats?user_id=${userId}`, {
-            headers: this._getAuthHeaders()
+            headers: this._getAuthHeaders(),
         });
         return await res.json();
     },
@@ -399,7 +419,7 @@ const ForumAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error('User not logged in');
         const res = await fetch(`/api/forum/me/posts?user_id=${userId}`, {
-            headers: this._getAuthHeaders()
+            headers: this._getAuthHeaders(),
         });
         return await res.json();
     },
@@ -407,7 +427,7 @@ const ForumAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error('User not logged in');
         const res = await fetch(`/api/forum/me/tips/sent?user_id=${userId}`, {
-            headers: this._getAuthHeaders()
+            headers: this._getAuthHeaders(),
         });
         return await res.json();
     },
@@ -415,7 +435,7 @@ const ForumAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error('User not logged in');
         const res = await fetch(`/api/forum/me/tips/received?user_id=${userId}`, {
-            headers: this._getAuthHeaders()
+            headers: this._getAuthHeaders(),
         });
         return await res.json();
     },
@@ -423,7 +443,7 @@ const ForumAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error('User not logged in');
         const res = await fetch(`/api/forum/me/payments?user_id=${userId}`, {
-            headers: this._getAuthHeaders()
+            headers: this._getAuthHeaders(),
         });
         return await res.json();
     },
@@ -437,7 +457,7 @@ const ForumAPI = {
         try {
             const res = await fetch(`/api/forum/me/limits?user_id=${userId}`, {
                 headers: this._getAuthHeaders(),
-                signal: controller.signal
+                signal: controller.signal,
             });
             clearTimeout(id);
             return await res.json();
@@ -470,7 +490,10 @@ const ForumApp = {
             // 確保 AuthManager 已初始化（從 localStorage 載入用戶資訊）
             if (typeof AuthManager !== 'undefined' && typeof AuthManager.init === 'function') {
                 AuthManager.init();
-                console.log('ForumApp: AuthManager initialized, currentUser:', AuthManager.currentUser);
+                console.log(
+                    'ForumApp: AuthManager initialized, currentUser:',
+                    AuthManager.currentUser
+                );
             }
 
             this.bindEvents();
@@ -505,15 +528,15 @@ const ForumApp = {
         const guestElements = document.querySelectorAll('.guest-only');
 
         if (user) {
-            authElements.forEach(el => el.classList.remove('hidden'));
-            guestElements.forEach(el => el.classList.add('hidden'));
+            authElements.forEach((el) => el.classList.remove('hidden'));
+            guestElements.forEach((el) => el.classList.add('hidden'));
 
             // 更新用戶顯示名稱
             const nameEls = document.querySelectorAll('.user-display-name');
-            nameEls.forEach(el => el.textContent = user.username);
+            nameEls.forEach((el) => (el.textContent = user.username));
         } else {
-            authElements.forEach(el => el.classList.add('hidden'));
-            guestElements.forEach(el => el.classList.remove('hidden'));
+            authElements.forEach((el) => el.classList.add('hidden'));
+            guestElements.forEach((el) => el.classList.remove('hidden'));
         }
     },
 
@@ -535,7 +558,9 @@ const ForumApp = {
         try {
             const boards = await ForumAPI.getBoards();
             // 渲染看板列表 (如果有的話)
-        } catch (e) { console.error('Error loading boards:', e); }
+        } catch (e) {
+            console.error('Error loading boards:', e);
+        }
     },
 
     async loadPosts(filters = {}) {
@@ -555,13 +580,15 @@ const ForumApp = {
             container.innerHTML = '';
 
             if (posts.length === 0) {
-                container.innerHTML = '<div class="text-center py-10 text-textMuted">暫無文章</div>';
+                container.innerHTML =
+                    '<div class="text-center py-10 text-textMuted">暫無文章</div>';
                 return;
             }
 
-            posts.forEach(post => {
+            posts.forEach((post) => {
                 const el = document.createElement('div');
-                el.className = 'bg-surface hover:bg-surfaceHighlight border border-white/5 rounded-xl p-4 transition cursor-pointer mb-3';
+                el.className =
+                    'bg-surface hover:bg-surfaceHighlight border border-white/5 rounded-xl p-4 transition cursor-pointer mb-3';
                 el.onclick = () => {
                     if (typeof smoothNavigate === 'function') {
                         smoothNavigate(`/static/forum/post.html?id=${post.id}`);
@@ -575,11 +602,14 @@ const ForumApp = {
                 try {
                     if (post.tags) {
                         const tags = JSON.parse(post.tags);
-                        tagsHtml = tags.map(tag =>
-                            `<span class="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full mr-1">#${tag}</span>`
-                        ).join('');
+                        tagsHtml = tags
+                            .map(
+                                (tag) =>
+                                    `<span class="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full mr-1">#${tag}</span>`
+                            )
+                            .join('');
                     }
-                } catch (e) { }
+                } catch (e) {}
 
                 // 日期格式化
                 const date = formatTWDate(post.created_at);
@@ -592,7 +622,7 @@ const ForumApp = {
                     <div class="flex items-center justify-between mb-2">
                         <div class="flex items-center gap-2">
                             <span class="text-xs font-bold text-secondary bg-white/10 px-2 py-0.5 rounded uppercase">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.category) : post.category}</span>
-                            <a href="/static/forum/profile.html?id=${post.user_id}" class="text-xs text-textMuted hover:text-primary transition" onclick="event.stopPropagation()">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.username || post.user_id) : (post.username || post.user_id)}</a>
+                            <a href="/static/forum/profile.html?id=${post.user_id}" class="text-xs text-textMuted hover:text-primary transition" onclick="event.stopPropagation()">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.username || post.user_id) : post.username || post.user_id}</a>
                             <span class="text-xs text-textMuted">• ${date}</span>
                         </div>
                         <div class="flex items-center gap-3 text-xs text-textMuted">
@@ -602,7 +632,7 @@ const ForumApp = {
                             ${post.tips_total > 0 ? `<span class="flex items-center gap-1 text-primary"><i data-lucide="gift" class="w-3 h-3"></i> ${post.tips_total}</span>` : ''}
                         </div>
                     </div>
-                    <h3 class="font-bold text-lg text-textMain mb-2 truncate">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.title || '') : (post.title || '')}</h3>
+                    <h3 class="font-bold text-lg text-textMain mb-2 truncate">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.title || '') : post.title || ''}</h3>
                     <div class="flex items-center">
                         ${tagsHtml}
                     </div>
@@ -624,9 +654,13 @@ const ForumApp = {
             const response = await ForumAPI.getTrendingTags();
             const tags = response.tags || [];
 
-            container.innerHTML = tags.map(tag => `
+            container.innerHTML = tags
+                .map(
+                    (tag) => `
                 <a href="#" class="block text-sm text-textMuted hover:text-primary transition py-1">#${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(tag.name) : tag.name} <span class="text-xs opacity-50">(${tag.post_count})</span></a>
-            `).join('');
+            `
+                )
+                .join('');
         } catch (e) {
             console.error('Failed to load tags', e);
         }
@@ -712,7 +746,9 @@ const ForumApp = {
                 contentContainer.innerHTML = SecurityUtils.renderMarkdownSafely(post.content);
             } else {
                 // Fallback: 基本的 markdown 渲染
-                const md = window.markdownit ? window.markdownit({ html: false }) : { render: t => t };
+                const md = window.markdownit
+                    ? window.markdownit({ html: false })
+                    : { render: (t) => t };
                 contentContainer.innerHTML = md.render(post.content);
             }
 
@@ -721,10 +757,13 @@ const ForumApp = {
             if (post.tags && tagsContainer) {
                 try {
                     const tags = JSON.parse(post.tags);
-                    tagsContainer.innerHTML = tags.map(tag =>
-                        `<span class="text-sm bg-primary/10 text-primary px-3 py-1 rounded-full">#${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(tag) : tag}</span>`
-                    ).join('');
-                } catch (e) { }
+                    tagsContainer.innerHTML = tags
+                        .map(
+                            (tag) =>
+                                `<span class="text-sm bg-primary/10 text-primary px-3 py-1 rounded-full">#${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(tag) : tag}</span>`
+                        )
+                        .join('');
+                } catch (e) {}
             }
 
             // 顯示作者操作按鈕（編輯/刪除）
@@ -735,7 +774,6 @@ const ForumApp = {
 
             // Re-render icons
             if (window.lucide) window.lucide.createIcons();
-
         } catch (e) {
             showToast('文章載入失敗', 'error');
             console.error(e);
@@ -819,14 +857,14 @@ const ForumApp = {
                 return;
             }
 
-            comments.forEach(comment => {
+            comments.forEach((comment) => {
                 if (comment.type !== 'comment') return; // 只顯示一般回覆
 
                 const el = document.createElement('div');
                 el.className = 'border-b border-white/5 py-3';
                 el.innerHTML = `
                     <div class="flex justify-between items-start mb-1">
-                        <a href="/static/forum/profile.html?id=${comment.user_id}" class="font-bold text-sm text-secondary hover:text-primary transition">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(comment.username || comment.user_id) : (comment.username || comment.user_id)}</a>
+                        <a href="/static/forum/profile.html?id=${comment.user_id}" class="font-bold text-sm text-secondary hover:text-primary transition">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(comment.username || comment.user_id) : comment.username || comment.user_id}</a>
                         <div class="flex items-center gap-2">
                             <span class="text-xs text-textMuted">${formatTWDate(comment.created_at, true)}</span>
                             <button onclick="ForumApp.openReportModal('comment', ${comment.id})" class="text-textMuted hover:text-danger p-1 rounded transition" title="Report">
@@ -939,7 +977,8 @@ const ForumApp = {
             // 禁用按鈕並顯示載入狀態
             if (submitBtn) {
                 submitBtn.disabled = true;
-                submitBtn.innerHTML = '<div class="flex items-center gap-2 justify-center"><svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span>發送中</span></div>';
+                submitBtn.innerHTML =
+                    '<div class="flex items-center gap-2 justify-center"><svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span>發送中</span></div>';
             }
 
             await ForumAPI.createComment(postId, { type: 'comment', content });
@@ -959,7 +998,8 @@ const ForumApp = {
             this.isSubmittingReply = false;
             if (submitBtn) {
                 submitBtn.disabled = false;
-                submitBtn.innerHTML = '<div class="flex items-center gap-2 justify-center"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg><span>送出評論</span></div>';
+                submitBtn.innerHTML =
+                    '<div class="flex items-center gap-2 justify-center"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg><span>送出評論</span></div>';
             }
         }
     },
@@ -975,7 +1015,7 @@ const ForumApp = {
             message: '確定要刪除這篇文章嗎？\n刪除後將無法恢復。',
             type: 'warning',
             confirmText: '確認刪除',
-            cancelText: '取消'
+            cancelText: '取消',
         });
 
         if (!confirmed) return;
@@ -1043,13 +1083,13 @@ const ForumApp = {
                 : `確認打賞 ${tipAmount} Pi 給作者？\n（測試模式：非 Pi Browser 環境）`,
             type: 'info',
             confirmText: '確認打賞',
-            cancelText: '取消'
+            cancelText: '取消',
         });
 
         if (!confirmed) return;
 
         try {
-            let txHash = "";
+            let txHash = '';
 
             if (isPi && window.Pi) {
                 // === Pi 真實支付流程 ===
@@ -1064,7 +1104,7 @@ const ForumApp = {
                 }
 
                 try {
-                    await Pi.authenticate(['payments'], () => { });
+                    await Pi.authenticate(['payments'], () => {});
                 } catch (authErr) {
                     showToast('支付權限不足，請重新登入', 'error');
                     return;
@@ -1075,42 +1115,49 @@ const ForumApp = {
 
                 showToast('正在處理支付...', 'info', 0);
 
-                await Pi.createPayment({
-                    amount: tipAmount,
-                    memo: `打賞文章 #${postId}`,
-                    metadata: { type: "tip", post_id: postId }
-                }, {
-                    onReadyForServerApproval: async (paymentId) => {
-                        try {
-                            await fetch('/api/user/payment/approve', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ paymentId })
-                            });
-                        } catch (e) { console.error(e); }
+                await Pi.createPayment(
+                    {
+                        amount: tipAmount,
+                        memo: `打賞文章 #${postId}`,
+                        metadata: { type: 'tip', post_id: postId },
                     },
-                    onReadyForServerCompletion: async (paymentId, txid) => {
-                        txHash = txid;
-                        paymentComplete = true;
-                        try {
-                            await fetch('/api/user/payment/complete', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ paymentId, txid })
-                            });
-                        } catch (e) { console.error(e); }
-                    },
-                    onCancel: (paymentId) => {
-                        paymentError = 'CANCELLED';
-                    },
-                    onError: (error) => {
-                        paymentError = error?.message || 'PAYMENT_ERROR';
+                    {
+                        onReadyForServerApproval: async (paymentId) => {
+                            try {
+                                await fetch('/api/user/payment/approve', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ paymentId }),
+                                });
+                            } catch (e) {
+                                console.error(e);
+                            }
+                        },
+                        onReadyForServerCompletion: async (paymentId, txid) => {
+                            txHash = txid;
+                            paymentComplete = true;
+                            try {
+                                await fetch('/api/user/payment/complete', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ paymentId, txid }),
+                                });
+                            } catch (e) {
+                                console.error(e);
+                            }
+                        },
+                        onCancel: (paymentId) => {
+                            paymentError = 'CANCELLED';
+                        },
+                        onError: (error) => {
+                            paymentError = error?.message || 'PAYMENT_ERROR';
+                        },
                     }
-                });
+                );
 
                 const startTime = Date.now();
-                while (!paymentComplete && !paymentError && (Date.now() - startTime) < 120000) {
-                    await new Promise(r => setTimeout(r, 300));
+                while (!paymentComplete && !paymentError && Date.now() - startTime < 120000) {
+                    await new Promise((r) => setTimeout(r, 300));
                 }
 
                 const toastContainer = document.getElementById('toast-container');
@@ -1125,15 +1172,13 @@ const ForumApp = {
                     showToast('支付超時，請重試', 'warning');
                     return;
                 }
-
             } else {
-                txHash = "mock_tip_" + Date.now();
+                txHash = 'mock_tip_' + Date.now();
             }
 
             await ForumAPI.tipPost(postId, tipAmount, txHash);
             showToast('打賞成功！感謝您的支持', 'success');
             this.loadPostDetail(postId);
-
         } catch (e) {
             showToast('打賞失敗: ' + e.message, 'error');
         }
@@ -1164,7 +1209,11 @@ const ForumApp = {
                     const isPro = limitsData.membership?.is_pro || false;
                     // 使用後端返回的限制，fallback 使用動態載入的配置
                     const defaultLimit = getLimit('daily_post_free');
-                    const postLimit = limitsData.limits?.post || { count: 0, limit: defaultLimit, remaining: defaultLimit };
+                    const postLimit = limitsData.limits?.post || {
+                        count: 0,
+                        limit: defaultLimit,
+                        remaining: defaultLimit,
+                    };
 
                     // Update Daily Limit Display
                     if (limitDisplay) {
@@ -1176,10 +1225,16 @@ const ForumApp = {
                                 </div>
                             `;
                         } else {
-                            const total = postLimit.limit !== null ? postLimit.limit : (getLimit('daily_post_free') || 0);
+                            const total =
+                                postLimit.limit !== null
+                                    ? postLimit.limit
+                                    : getLimit('daily_post_free') || 0;
                             const used = postLimit.count || 0;
                             // Ensure remaining logic is consistent
-                            const remaining = (postLimit.remaining !== undefined) ? postLimit.remaining : (total - used);
+                            const remaining =
+                                postLimit.remaining !== undefined
+                                    ? postLimit.remaining
+                                    : total - used;
                             const isLow = remaining <= 0;
 
                             limitDisplay.innerHTML = `
@@ -1207,10 +1262,11 @@ const ForumApp = {
                     }
 
                     const costElements = document.querySelectorAll('.text-sm.text-textMuted');
-                    costElements.forEach(el => {
+                    costElements.forEach((el) => {
                         if (el.textContent.includes('Cost to post:')) {
                             if (isPro) {
-                                el.innerHTML = 'Cost to post: <span class="text-success font-bold">FREE</span> <br><span class="text-xs opacity-60">(For PRO members)</span>';
+                                el.innerHTML =
+                                    'Cost to post: <span class="text-success font-bold">FREE</span> <br><span class="text-xs opacity-60">(For PRO members)</span>';
                             } else {
                                 // Reset to default if needed or keep existing
                             }
@@ -1219,7 +1275,9 @@ const ForumApp = {
                 }
             } catch (error) {
                 console.warn('[CreatePost] Failed to update UI status:', error);
-                if (limitDisplay) limitDisplay.innerHTML = '<span class="text-danger text-xs">Connection Error</span>';
+                if (limitDisplay)
+                    limitDisplay.innerHTML =
+                        '<span class="text-danger text-xs">Connection Error</span>';
             }
         };
 
@@ -1313,7 +1371,8 @@ const ForumApp = {
                 if (submitBtn.disabled) return; // Already processing
                 submitBtn.disabled = true;
                 originalBtnContent = submitBtn.innerHTML;
-                submitBtn.innerHTML = '<i class="animate-spin" data-lucide="loader-2"></i> Processing...';
+                submitBtn.innerHTML =
+                    '<i class="animate-spin" data-lucide="loader-2"></i> Processing...';
                 if (window.lucide) lucide.createIcons();
             }
 
@@ -1337,7 +1396,10 @@ const ForumApp = {
             const content = document.getElementById('input-content').value;
             const category = document.getElementById('input-category').value;
             const tagsStr = document.getElementById('input-tags').value;
-            const tags = tagsStr.split(' ').map(t => t.replace('#', '').trim()).filter(t => t);
+            const tags = tagsStr
+                .split(' ')
+                .map((t) => t.replace('#', '').trim())
+                .filter((t) => t);
 
             const postAmount = getPrice('create_post');
             if (postAmount === null) {
@@ -1346,7 +1408,7 @@ const ForumApp = {
                 return;
             }
             const isPi = AuthManager.isPiBrowser();
-            let txHash = "";
+            let txHash = '';
 
             const userId = AuthManager.currentUser?.user_id || AuthManager.currentUser?.uid;
             let isProMember = false;
@@ -1368,7 +1430,8 @@ const ForumApp = {
 
                             // Custom Styled Modal
                             const modal = document.createElement('div');
-                            modal.className = 'fixed inset-0 bg-background/90 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-fade-in';
+                            modal.className =
+                                'fixed inset-0 bg-background/90 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-fade-in';
                             modal.innerHTML = `
                                             <div class="bg-surface w-full max-w-sm p-6 rounded-3xl border border-white/10 shadow-2xl animate-scale-in text-center">
                                                 <div class="w-16 h-16 bg-warning/10 rounded-full flex items-center justify-center mx-auto mb-5 border border-warning/20">
@@ -1399,16 +1462,18 @@ const ForumApp = {
                     }
                 } catch (error) {
                     console.warn('[CreatePost] Failed to check limits:', error);
-                    // Optional: Decide whether to block or proceed if check fails. 
-                    // Ideally we should probably warn but maybe let them try? 
+                    // Optional: Decide whether to block or proceed if check fails.
+                    // Ideally we should probably warn but maybe let them try?
                     // For safety, let's proceed but log the error.
                 }
             }
 
-            console.log(`[CreatePost] User: ${userId}, IsPro: ${isProMember}, Amount: ${postAmount}`);
+            console.log(
+                `[CreatePost] User: ${userId}, IsPro: ${isProMember}, Amount: ${postAmount}`
+            );
 
             if (isProMember) {
-                txHash = "pro_member_free";
+                txHash = 'pro_member_free';
                 console.log('[CreatePost] Pro member, skipping payment');
             } else {
                 // 關鍵修復：檢查真實的 Pi Browser UA，而非僅檢查 SDK 存在
@@ -1418,14 +1483,14 @@ const ForumApp = {
                 console.log('[CreatePost] 🔍 Environment:', {
                     ua: userAgent.substring(0, 60),
                     hasPiUA: isRealPiBrowser,
-                    hasSDK: typeof window.Pi !== 'undefined'
+                    hasSDK: typeof window.Pi !== 'undefined',
                 });
 
                 try {
                     if (isRealPiBrowser && window.Pi) {
                         console.log('[CreatePost] 💳 Real Pi Browser - Starting payment...');
                         try {
-                            await Pi.authenticate(['payments'], () => { });
+                            await Pi.authenticate(['payments'], () => {});
                         } catch (authErr) {
                             console.error('[CreatePost] Pi Auth failed:', authErr);
                             showToast('支付權限不足，請重新登入', 'error');
@@ -1437,63 +1502,82 @@ const ForumApp = {
                         let paymentError = null;
                         let serverCompletionCalled = false;
 
-                        await Pi.createPayment({
-                            amount: postAmount,
-                            memo: `發文: ${title.substring(0, 20)}`,
-                            metadata: { type: "create_post" }
-                        }, {
-                            onReadyForServerApproval: async (paymentId) => {
-                                console.log('[CreatePost] onReadyForServerApproval', paymentId);
-                                try {
-                                    await fetch('/api/user/payment/approve', {
+                        await Pi.createPayment(
+                            {
+                                amount: postAmount,
+                                memo: `發文: ${title.substring(0, 20)}`,
+                                metadata: { type: 'create_post' },
+                            },
+                            {
+                                onReadyForServerApproval: async (paymentId) => {
+                                    console.log('[CreatePost] onReadyForServerApproval', paymentId);
+                                    try {
+                                        await fetch('/api/user/payment/approve', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ paymentId }),
+                                        });
+                                    } catch (e) {
+                                        console.error('[CreatePost] Approve failed:', e);
+                                        // Don't throw here, let Pi SDK handle timeout if needed
+                                    }
+                                },
+                                onReadyForServerCompletion: async (paymentId, txid) => {
+                                    console.log(
+                                        '[CreatePost] onReadyForServerCompletion',
+                                        paymentId,
+                                        txid
+                                    );
+                                    txHash = txid; // CRITICAL: Capture txid immediately
+                                    serverCompletionCalled = true;
+
+                                    // Non-blocking call to server completion
+                                    fetch('/api/user/payment/complete', {
                                         method: 'POST',
                                         headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ paymentId })
-                                    });
-                                } catch (e) {
-                                    console.error('[CreatePost] Approve failed:', e);
-                                    // Don't throw here, let Pi SDK handle timeout if needed
-                                }
-                            },
-                            onReadyForServerCompletion: async (paymentId, txid) => {
-                                console.log('[CreatePost] onReadyForServerCompletion', paymentId, txid);
-                                txHash = txid; // CRITICAL: Capture txid immediately
-                                serverCompletionCalled = true;
-
-                                // Non-blocking call to server completion
-                                fetch('/api/user/payment/complete', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ paymentId, txid })
-                                }).then(res => {
-                                    console.log('[CreatePost] Server completion notified:', res.status);
-                                }).catch(err => {
-                                    console.error('[CreatePost] Server completion notification failed (ignoring):', err);
-                                }).finally(() => {
-                                    paymentComplete = true; // Mark done regardless of backend success
-                                });
-                            },
-                            onCancel: (paymentId) => {
-                                console.log('[CreatePost] Payment cancelled', paymentId);
-                                paymentError = 'CANCELLED';
-                            },
-                            onError: (error) => {
-                                console.error('[CreatePost] Payment error', error);
-                                paymentError = error?.message || 'ERROR';
+                                        body: JSON.stringify({ paymentId, txid }),
+                                    })
+                                        .then((res) => {
+                                            console.log(
+                                                '[CreatePost] Server completion notified:',
+                                                res.status
+                                            );
+                                        })
+                                        .catch((err) => {
+                                            console.error(
+                                                '[CreatePost] Server completion notification failed (ignoring):',
+                                                err
+                                            );
+                                        })
+                                        .finally(() => {
+                                            paymentComplete = true; // Mark done regardless of backend success
+                                        });
+                                },
+                                onCancel: (paymentId) => {
+                                    console.log('[CreatePost] Payment cancelled', paymentId);
+                                    paymentError = 'CANCELLED';
+                                },
+                                onError: (error) => {
+                                    console.error('[CreatePost] Payment error', error);
+                                    paymentError = error?.message || 'ERROR';
+                                },
                             }
-                        });
+                        );
 
                         // Wait for txHash (preferred) or paymentComplete flag
                         console.log('[CreatePost] Waiting for payment result...');
                         const startTime = Date.now();
 
-                        while (!txHash && !paymentError && (Date.now() - startTime) < 120000) {
+                        while (!txHash && !paymentError && Date.now() - startTime < 120000) {
                             if (serverCompletionCalled && txHash) break; // We have what we need
-                            await new Promise(r => setTimeout(r, 500));
+                            await new Promise((r) => setTimeout(r, 500));
                         }
 
                         if (paymentError) {
-                            showToast(paymentError === 'CANCELLED' ? '支付已取消' : '支付失敗', 'warning');
+                            showToast(
+                                paymentError === 'CANCELLED' ? '支付已取消' : '支付失敗',
+                                'warning'
+                            );
                             resetButton();
                             return;
                         }
@@ -1506,10 +1590,9 @@ const ForumApp = {
                         }
 
                         console.log('[CreatePost] Payment successful, txHash:', txHash);
-
                     } else {
                         console.log('[CreatePost] Mock payment (Non-Pi Env)');
-                        txHash = "mock_" + Date.now();
+                        txHash = 'mock_' + Date.now();
                     }
                 } catch (paymentError) {
                     console.error('[CreatePost] Exception during payment setup:', paymentError);
@@ -1526,7 +1609,7 @@ const ForumApp = {
                     title,
                     content,
                     tags,
-                    payment_tx_hash: txHash
+                    payment_tx_hash: txHash,
                 };
 
                 console.log('[Forum] Sending post data:', postData);
@@ -1538,7 +1621,8 @@ const ForumApp = {
 
                 // Success Modal
                 const successModal = document.createElement('div');
-                successModal.className = 'fixed inset-0 bg-background/90 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-fade-in';
+                successModal.className =
+                    'fixed inset-0 bg-background/90 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-fade-in';
                 successModal.innerHTML = `
                                 <div class="bg-surface w-full max-w-sm p-6 rounded-3xl border border-white/10 shadow-2xl animate-scale-in text-center">
                                     <div class="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-5 border border-success/20">
@@ -1585,17 +1669,18 @@ const ForumApp = {
                 // Update button state (just in case)
                 if (submitBtn) {
                     submitBtn.disabled = true;
-                    submitBtn.innerHTML = '<i class="w-4 h-4 animate-spin" data-lucide="loader-2"></i> Redirecting...';
+                    submitBtn.innerHTML =
+                        '<i class="w-4 h-4 animate-spin" data-lucide="loader-2"></i> Redirecting...';
                     if (window.lucide) lucide.createIcons();
                 }
-
             } catch (err) {
                 console.error('[Forum] CreatePost API failed:', err);
                 // If payment was made but post failed, we should alert the user to copy their content
-                if (txHash && txHash !== "pro_member_free" && !txHash.startsWith("mock_")) {
+                if (txHash && txHash !== 'pro_member_free' && !txHash.startsWith('mock_')) {
                     // 顯示友好的錯誤 Modal 而非 alert
                     const errorModal = document.createElement('div');
-                    errorModal.className = 'fixed inset-0 bg-background/90 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-fade-in';
+                    errorModal.className =
+                        'fixed inset-0 bg-background/90 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-fade-in';
                     errorModal.innerHTML = `
                         <div class="bg-surface w-full max-w-md p-6 rounded-3xl border border-white/10 shadow-2xl animate-scale-in">
                             <div class="w-16 h-16 bg-danger/10 rounded-full flex items-center justify-center mx-auto mb-5 border border-danger/20">
@@ -1626,18 +1711,21 @@ const ForumApp = {
 
                     // 複製功能
                     document.getElementById('copy-txhash-btn').onclick = () => {
-                        navigator.clipboard.writeText(txHash).then(() => {
-                            showToast('交易 ID 已複製', 'success');
-                        }).catch(() => {
-                            // Fallback for older browsers
-                            const textArea = document.createElement('textarea');
-                            textArea.value = txHash;
-                            document.body.appendChild(textArea);
-                            textArea.select();
-                            document.execCommand('copy');
-                            document.body.removeChild(textArea);
-                            showToast('交易 ID 已複製', 'success');
-                        });
+                        navigator.clipboard
+                            .writeText(txHash)
+                            .then(() => {
+                                showToast('交易 ID 已複製', 'success');
+                            })
+                            .catch(() => {
+                                // Fallback for older browsers
+                                const textArea = document.createElement('textarea');
+                                textArea.value = txHash;
+                                document.body.appendChild(textArea);
+                                textArea.select();
+                                document.execCommand('copy');
+                                document.body.removeChild(textArea);
+                                showToast('交易 ID 已複製', 'success');
+                            });
                     };
                 } else {
                     showToast('發布失敗: ' + err.message, 'error');
@@ -1680,10 +1768,12 @@ const ForumApp = {
         }
 
         const loaders = [
-            this.loadWalletStatus().catch(err => console.error('Wallet Status Load Failed:', err)),
-            this.loadStats().catch(err => console.error('Stats Load Failed:', err)),
-            this.loadMyPosts().catch(err => console.error('Posts Load Failed:', err)),
-            this.loadTransactions().catch(err => console.error('Tx Load Failed:', err))
+            this.loadWalletStatus().catch((err) =>
+                console.error('Wallet Status Load Failed:', err)
+            ),
+            this.loadStats().catch((err) => console.error('Stats Load Failed:', err)),
+            this.loadMyPosts().catch((err) => console.error('Posts Load Failed:', err)),
+            this.loadTransactions().catch((err) => console.error('Tx Load Failed:', err)),
         ];
 
         await Promise.allSettled(loaders);
@@ -1714,7 +1804,8 @@ const ForumApp = {
                 if (iconEl) {
                     iconEl.classList.remove('bg-primary/20');
                     iconEl.classList.add('bg-success/20');
-                    iconEl.innerHTML = '<i data-lucide="check-circle" class="w-7 h-7 text-success"></i>';
+                    iconEl.innerHTML =
+                        '<i data-lucide="check-circle" class="w-7 h-7 text-success"></i>';
                 }
 
                 if (status.pi_username) {
@@ -1770,10 +1861,13 @@ const ForumApp = {
             const tipsSentEl = document.getElementById('dash-tips-sent');
             if (tipsSentEl) {
                 if (sentData.success && sentData.tips) {
-                    const totalSent = sentData.tips.reduce((acc, tip) => acc + (tip.amount || 0), 0);
+                    const totalSent = sentData.tips.reduce(
+                        (acc, tip) => acc + (tip.amount || 0),
+                        0
+                    );
                     tipsSentEl.textContent = totalSent.toFixed(1);
                 } else {
-                    tipsSentEl.textContent = "0";
+                    tipsSentEl.textContent = '0';
                 }
             }
         } catch (e) {
@@ -1791,19 +1885,21 @@ const ForumApp = {
 
             container.innerHTML = '';
             if (posts.length === 0) {
-                container.innerHTML = '<div class="text-center text-textMuted py-4">No posts yet</div>';
+                container.innerHTML =
+                    '<div class="text-center text-textMuted py-4">No posts yet</div>';
                 return;
             }
 
-            posts.forEach(post => {
+            posts.forEach((post) => {
                 const el = document.createElement('div');
-                el.className = 'flex items-center justify-between border-b border-white/5 pb-3 last:border-0 last:pb-0';
+                el.className =
+                    'flex items-center justify-between border-b border-white/5 pb-3 last:border-0 last:pb-0';
 
                 const pushCount = Math.max(0, post.push_count || 0);
 
                 el.innerHTML = `
                     <div class="overflow-hidden mr-4">
-                         <a href="/static/forum/post.html?id=${post.id}" class="font-bold text-textMain hover:text-primary transition truncate block">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.title || '') : (post.title || '')}</a>
+                         <a href="/static/forum/post.html?id=${post.id}" class="font-bold text-textMain hover:text-primary transition truncate block">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.title || '') : post.title || ''}</a>
                          <div class="text-xs text-textMuted mt-1 flex items-center gap-2">
                             <span>${formatTWDate(post.created_at)}</span>
                             <span class="bg-white/10 px-1.5 rounded text-[10px] uppercase">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.category) : post.category}</span>
@@ -1832,7 +1928,7 @@ const ForumApp = {
             // 使用 Promise.allSettled 確保部分 API 失敗時仍能顯示可用數據
             const results = await Promise.allSettled([
                 ForumAPI.getMyPayments(),
-                ForumAPI.getMyTipsSent()
+                ForumAPI.getMyTipsSent(),
             ]);
 
             // 記錄失敗的 API
@@ -1844,33 +1940,44 @@ const ForumApp = {
             });
 
             // 提取數據，失敗時使用空數組
-            const paymentsData = results[0].status === 'fulfilled' ? results[0].value : { payments: [] };
-            const tipsSentData = results[1].status === 'fulfilled' ? results[1].value : { tips: [] };
+            const paymentsData =
+                results[0].status === 'fulfilled' ? results[0].value : { payments: [] };
+            const tipsSentData =
+                results[1].status === 'fulfilled' ? results[1].value : { tips: [] };
 
             const payments = (paymentsData.payments || [])
                 // 保留 PRO 會員免費發文記錄但標記為免費
-                .map(p => {
+                .map((p) => {
                     const isFree = p.tx_hash === 'pro_member_free';
                     return {
                         ...p,
                         type: isFree ? 'post_payment_free' : 'post_payment',
                         amount: isFree ? 0 : -(p.amount || getPrice('create_post') || 0),
-                        isFree: isFree
+                        isFree: isFree,
                     };
                 });
-            const tips = (tipsSentData.tips || []).map(t => ({ ...t, type: 'tip_sent', amount: -t.amount, title: `Tip: ${t.post_title || 'Post'}` }));
+            const tips = (tipsSentData.tips || []).map((t) => ({
+                ...t,
+                type: 'tip_sent',
+                amount: -t.amount,
+                title: `Tip: ${t.post_title || 'Post'}`,
+            }));
 
-            const allTx = [...payments, ...tips].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            const allTx = [...payments, ...tips].sort(
+                (a, b) => new Date(b.created_at) - new Date(a.created_at)
+            );
 
             container.innerHTML = '';
             if (allTx.length === 0) {
-                container.innerHTML = '<div class="text-center text-textMuted py-4">No transactions</div>';
+                container.innerHTML =
+                    '<div class="text-center text-textMuted py-4">No transactions</div>';
                 return;
             }
 
             allTx.slice(0, 20).forEach((tx, idx) => {
                 const el = document.createElement('div');
-                el.className = 'flex items-center justify-between border-b border-white/5 py-4 hover:bg-white/5 px-2 rounded-xl transition cursor-pointer last:border-0';
+                el.className =
+                    'flex items-center justify-between border-b border-white/5 py-4 hover:bg-white/5 px-2 rounded-xl transition cursor-pointer last:border-0';
 
                 el.dataset.txData = JSON.stringify(tx);
                 el.onclick = function () {
@@ -1891,8 +1998,14 @@ const ForumApp = {
                     title = tx.title || 'Tip Sent';
                 }
 
-                const amountClass = tx.isFree ? 'text-success' : (tx.amount < 0 ? 'text-danger' : 'text-success');
-                const amountText = tx.isFree ? 'FREE' : `${tx.amount > 0 ? '+' : ''}${Math.abs(tx.amount).toFixed(1)} Pi`;
+                const amountClass = tx.isFree
+                    ? 'text-success'
+                    : tx.amount < 0
+                      ? 'text-danger'
+                      : 'text-success';
+                const amountText = tx.isFree
+                    ? 'FREE'
+                    : `${tx.amount > 0 ? '+' : ''}${Math.abs(tx.amount).toFixed(1)} Pi`;
 
                 el.innerHTML = `
                     <div class="flex items-center gap-3 overflow-hidden">
@@ -1921,13 +2034,16 @@ const ForumApp = {
 
     showTransactionDetail(tx) {
         const txId = tx.tx_hash || tx.payment_tx_hash || 'N/A';
-        const typeLabel = tx.type === 'post_payment' ? 'Post Publication Fee' : 'Article Tip Support';
+        const typeLabel =
+            tx.type === 'post_payment' ? 'Post Publication Fee' : 'Article Tip Support';
         const status = 'Completed';
-        const memo = tx.title || (tx.type === 'post_payment' ? 'Forum Posting Fee' : 'Tip to Author');
+        const memo =
+            tx.title || (tx.type === 'post_payment' ? 'Forum Posting Fee' : 'Tip to Author');
 
         const modal = document.createElement('div');
         modal.id = 'tx-detail-modal';
-        modal.className = 'fixed inset-0 bg-background/90 backdrop-blur-md z-[110] flex items-center justify-center p-4 animate-fade-in';
+        modal.className =
+            'fixed inset-0 bg-background/90 backdrop-blur-md z-[110] flex items-center justify-center p-4 animate-fade-in';
         modal.innerHTML = `
             <div class="bg-surface w-full max-w-md p-6 rounded-3xl border border-white/10 shadow-2xl animate-scale-in">
                 <div class="flex justify-between items-center mb-6">
@@ -2048,8 +2164,8 @@ const ForumApp = {
                     content_type: contentType,
                     content_id: parseInt(contentId),
                     report_type: reportType,
-                    description: description
-                })
+                    description: description,
+                }),
             });
 
             if (res.ok) {
@@ -2066,7 +2182,7 @@ const ForumApp = {
             btn.innerHTML = originalText;
             if (window.lucide) lucide.createIcons();
         }
-    }
+    },
 };
 
 // 暴露到全局

@@ -9,7 +9,9 @@ if (typeof lucide !== 'undefined') {
 
 // markdown-it 可能不存在於所有頁面
 // 安全修復: 關閉 HTML 功能以防止 XSS 攻擊
-const md = window.markdownit ? window.markdownit({ html: false, linkify: true, breaks: true }) : null;
+const md = window.markdownit
+    ? window.markdownit({ html: false, linkify: true, breaks: true })
+    : null;
 window.md = md;
 window.isAnalyzing = false;
 let marketRefreshInterval = null;
@@ -52,14 +54,14 @@ function showToast(message, type = 'info', duration = 3000) {
         success: 'check-circle',
         error: 'x-circle',
         warning: 'alert-triangle',
-        info: 'info'
+        info: 'info',
     };
 
     const colors = {
         success: 'bg-success/20 border-success/30 text-success',
         error: 'bg-danger/20 border-danger/30 text-danger',
         warning: 'bg-primary/20 border-primary/30 text-primary',
-        info: 'bg-accent/20 border-accent/30 text-accent'
+        info: 'bg-accent/20 border-accent/30 text-accent',
     };
 
     const toast = document.createElement('div');
@@ -138,15 +140,17 @@ function initPageTransition() {
     });
 
     // 為所有返回主應用的連結添加平滑過渡
-    document.querySelectorAll('a[href="/static/index.html"], a[href^="/static/index.html#"]').forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            smoothNavigate(link.href);
+    document
+        .querySelectorAll('a[href="/static/index.html"], a[href^="/static/index.html#"]')
+        .forEach((link) => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                smoothNavigate(link.href);
+            });
         });
-    });
 
     // 為所有論壇內部連結添加平滑過渡
-    document.querySelectorAll('a[href^="/static/forum/"]').forEach(link => {
+    document.querySelectorAll('a[href^="/static/forum/"]').forEach((link) => {
         // 排除當前頁面的連結
         if (link.href === window.location.href) return;
 
@@ -191,7 +195,7 @@ function showConfirm(options = {}) {
             message = '確定要執行此操作嗎？',
             type = 'warning',
             confirmText = '確認',
-            cancelText = '取消'
+            cancelText = '取消',
         } = options;
 
         // 設置圖標和顏色
@@ -199,7 +203,7 @@ function showConfirm(options = {}) {
             danger: { icon: 'alert-triangle', bg: 'bg-danger/20', color: 'text-danger' },
             warning: { icon: 'alert-circle', bg: 'bg-primary/20', color: 'text-primary' },
             info: { icon: 'info', bg: 'bg-accent/20', color: 'text-accent' },
-            success: { icon: 'check-circle', bg: 'bg-success/20', color: 'text-success' }
+            success: { icon: 'check-circle', bg: 'bg-success/20', color: 'text-success' },
         };
 
         const config = iconConfig[type] || iconConfig.warning;
@@ -217,9 +221,11 @@ function showConfirm(options = {}) {
         // 根據類型設置確認按鈕樣式
         if (confirmBtn) {
             if (type === 'danger') {
-                confirmBtn.className = 'flex-1 py-3 bg-danger hover:brightness-110 text-white font-bold rounded-2xl transition shadow-lg';
+                confirmBtn.className =
+                    'flex-1 py-3 bg-danger hover:brightness-110 text-white font-bold rounded-2xl transition shadow-lg';
             } else {
-                confirmBtn.className = 'flex-1 py-3 bg-primary hover:brightness-110 text-background font-bold rounded-2xl transition shadow-lg';
+                confirmBtn.className =
+                    'flex-1 py-3 bg-primary hover:brightness-110 text-background font-bold rounded-2xl transition shadow-lg';
             }
         }
 
@@ -271,19 +277,14 @@ function showAlert(options = {}) {
             return;
         }
 
-        const {
-            title = '提示',
-            message = '',
-            type = 'info',
-            confirmText = '確定'
-        } = options;
+        const { title = '提示', message = '', type = 'info', confirmText = '確定' } = options;
 
         // 設置圖標和顏色
         const iconConfig = {
             danger: { icon: 'x-circle', bg: 'bg-danger/20', color: 'text-danger' },
             warning: { icon: 'alert-triangle', bg: 'bg-primary/20', color: 'text-primary' },
             info: { icon: 'info', bg: 'bg-accent/20', color: 'text-accent' },
-            success: { icon: 'check-circle', bg: 'bg-success/20', color: 'text-success' }
+            success: { icon: 'check-circle', bg: 'bg-success/20', color: 'text-success' },
         };
 
         const config = iconConfig[type] || iconConfig.info;
@@ -355,25 +356,35 @@ async function checkApiKeyStatus() {
     // 1. Update Top Bar Indicator (LLM Status)
     if (indicator && statusText && statusDot) {
         if (hasLlmKey) {
-            const providerName = currentKey.provider === 'openai' ? 'OpenAI' :
-                currentKey.provider === 'google_gemini' ? 'Gemini' :
-                    currentKey.provider === 'openrouter' ? 'OpenRouter' : currentKey.provider;
+            const providerName =
+                currentKey.provider === 'openai'
+                    ? 'OpenAI'
+                    : currentKey.provider === 'google_gemini'
+                      ? 'Gemini'
+                      : currentKey.provider === 'openrouter'
+                        ? 'OpenRouter'
+                        : currentKey.provider;
 
-            statusDot.className = 'w-2 h-2 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse';
+            statusDot.className =
+                'w-2 h-2 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse';
             statusText.textContent = `AI Online: ${providerName}`;
             statusText.className = 'text-emerald-400 font-mono tracking-tight';
             statusText.onclick = null;
         } else {
             statusDot.className = 'w-2 h-2 bg-rose-500 rounded-full animate-pulse';
             statusText.textContent = 'SYSTEM OFFLINE (NO KEY)';
-            statusText.className = 'text-rose-400 font-mono tracking-tight cursor-pointer hover:underline';
-            statusText.onclick = () => { if (typeof openSettings === 'function') openSettings(); };
+            statusText.className =
+                'text-rose-400 font-mono tracking-tight cursor-pointer hover:underline';
+            statusText.onclick = () => {
+                if (typeof openSettings === 'function') openSettings();
+            };
         }
     }
 
     // 2. Control Chat Tab Overlay (LLM Key)
     const llmOverlay = document.getElementById('no-llm-key-warning');
-    if (window.DEBUG_MODE) console.log('[App] llmOverlay element:', !!llmOverlay, 'hasLlmKey:', hasLlmKey);
+    if (window.DEBUG_MODE)
+        console.log('[App] llmOverlay element:', !!llmOverlay, 'hasLlmKey:', hasLlmKey);
     if (llmOverlay) {
         if (hasLlmKey) {
             llmOverlay.classList.add('hidden');
@@ -431,9 +442,9 @@ async function updateChatUIState(hasApiKey) {
 
     if (userInput) {
         userInput.disabled = !hasApiKey;
-        userInput.placeholder = hasApiKey 
-            ? (window.I18n?.t('chat.placeholderReady') || 'Send a command to AI Agent...') 
-            : (window.I18n?.t('chat.systemLocked') || 'System Locked - Please Configure API Key');
+        userInput.placeholder = hasApiKey
+            ? window.I18n?.t('chat.placeholderReady') || 'Send a command to AI Agent...'
+            : window.I18n?.t('chat.systemLocked') || 'System Locked - Please Configure API Key';
         userInput.classList.toggle('opacity-50', !hasApiKey);
         userInput.classList.toggle('cursor-not-allowed', !hasApiKey);
     }
@@ -460,7 +471,6 @@ window.initializeUIStatus = function () {
 // 頁面加載時不再自動執行，由 index.html 統一調度
 // window.addEventListener('DOMContentLoaded', () => { ... });
 
-
 // --- Global Filter Logic Variables ---
 window.allMarketSymbols = [];
 window.globalSelectedSymbols = []; // Unified selection
@@ -471,7 +481,7 @@ window.currentFilterExchange = 'okx';
 let validKeys = {
     openai: false,
     google_gemini: false,
-    openrouter: false
+    openrouter: false,
 };
 
 function updateProviderOptions() {
@@ -479,7 +489,7 @@ function updateProviderOptions() {
     const select = document.getElementById('llm-provider-select');
     if (!select) return;
 
-    Array.from(select.options).forEach(opt => {
+    Array.from(select.options).forEach((opt) => {
         const provider = opt.value;
         if (validKeys[provider]) {
             if (!opt.text.includes('✅')) {
@@ -578,7 +588,6 @@ function onTabSwitch(tab) {
         // 移除自動輪詢 - Friends 更新應該透過 WebSocket 或用戶手動刷新
         // 不需要每 5 秒重新載入整個列表，這會造成閃爍和不必要的 API 請求
     }
-
 }
 
 // Make it globally accessible
@@ -587,7 +596,7 @@ window.onTabSwitch = onTabSwitch;
 // ========================================
 // Memory Leak Fix: Cleanup on page unload
 // ========================================
-window.cleanupIntervals = function() {
+window.cleanupIntervals = function () {
     // Clear market refresh interval
     if (marketRefreshInterval) {
         clearInterval(marketRefreshInterval);
@@ -613,7 +622,9 @@ window.addEventListener('beforeunload', () => {
 // ========================================
 // Utility Functions
 // ========================================
-function updateUserId(uid) { currentUserId = uid || 'guest'; }
+function updateUserId(uid) {
+    currentUserId = uid || 'guest';
+}
 
 /**
  * 顯示全局錯誤提示 (Unified Error Display)
@@ -627,7 +638,8 @@ window.showError = function (title, message, isQuotaError = false) {
     if (!modal) {
         modal = document.createElement('div');
         modal.id = 'global-error-modal';
-        modal.className = 'fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm hidden';
+        modal.className =
+            'fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm hidden';
         modal.innerHTML = `
             <div class="bg-surface border border-red-500/30 rounded-3xl w-[90%] max-w-md p-6 shadow-2xl transform transition-all scale-95 opacity-0" id="global-error-content">
                 <div class="flex items-center gap-3 mb-4 text-red-400">
@@ -664,7 +676,7 @@ window.showError = function (title, message, isQuotaError = false) {
     const quotaActions = document.getElementById('quota-error-actions');
 
     titleEl.innerText = title;
-    msgEl.innerText = message || "發生未知錯誤";
+    msgEl.innerText = message || '發生未知錯誤';
 
     if (isQuotaError) {
         quotaActions.classList.remove('hidden');
@@ -718,7 +730,7 @@ async function openSettings() {
     try {
         const [configRes, modelConfigRes] = await Promise.all([
             fetch('/api/config'),
-            fetch('/api/model-config')
+            fetch('/api/model-config'),
         ]);
         const data = await configRes.json();
         const modelConfigData = await modelConfigRes.json();
@@ -743,7 +755,8 @@ async function openSettings() {
                 providerSelect.value = settings.primary_model_provider;
                 // 觸發更新，傳入預載的 modelConfig 避免重複 fetch
                 if (typeof updateLLMKeyInput === 'function') updateLLMKeyInput();
-                if (typeof window.updateAvailableModels === 'function') await window.updateAvailableModels(preloadedModelConfig);
+                if (typeof window.updateAvailableModels === 'function')
+                    await window.updateAvailableModels(preloadedModelConfig);
             }
         }
         if (settings.primary_model_name) {
@@ -760,9 +773,8 @@ async function openSettings() {
         if (typeof loadPremiumStatus === 'function') {
             loadPremiumStatus();
         }
-
     } catch (e) {
-        console.error("Failed to load settings", e);
+        console.error('Failed to load settings', e);
     }
 }
 
@@ -785,7 +797,7 @@ function closeSettings() {
  * 更新可用模型列表
  * @param {Object|null} preloadedConfig - 預載的模型配置（可選）
  */
-window.updateAvailableModels = async function(preloadedConfig = null) {
+window.updateAvailableModels = async function (preloadedConfig = null) {
     const providerSelect = document.getElementById('llm-provider-select');
     const modelSelect = document.getElementById('llm-model-select');
     const modelInput = document.getElementById('llm-model-input');
@@ -846,7 +858,7 @@ window.updateAvailableModels = async function(preloadedConfig = null) {
         return;
     }
 
-    models.forEach(model => {
+    models.forEach((model) => {
         const option = document.createElement('option');
         option.value = model.value;
         option.textContent = model.display || model.value;
@@ -855,7 +867,7 @@ window.updateAvailableModels = async function(preloadedConfig = null) {
 
     // 設置當前選擇的模型（優先使用已保存的，其次使用 default_model，最後使用第一個）
     const savedModel = window.APIKeyManager?.getModelForProvider?.(provider);
-    if (savedModel && models.some(m => m.value === savedModel)) {
+    if (savedModel && models.some((m) => m.value === savedModel)) {
         modelSelect.value = savedModel;
     } else if (modelConfig?.[provider]?.default_model) {
         modelSelect.value = modelConfig[provider].default_model;
@@ -864,7 +876,7 @@ window.updateAvailableModels = async function(preloadedConfig = null) {
     }
 
     console.log('[updateAvailableModels] Loaded', models.length, 'models for', provider);
-}
+};
 
 // Allow external modules (like llmSettings.js) to update key validity
 window.setKeyValidity = function (provider, isValid) {
@@ -925,9 +937,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // State Variables
     let isDragging = false;
-    let currentX = 0, currentY = 0; // Current Translation
+    let currentX = 0,
+        currentY = 0; // Current Translation
     let initialX, initialY; // Touch/Mouse Start Position
-    let xOffset = 0, yOffset = 0; // Saved Offset
+    let xOffset = 0,
+        yOffset = 0; // Saved Offset
     let animationFrameId = null;
 
     // Load saved position (with bounds clamp to avoid loading an off-screen position)
@@ -941,7 +955,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Clamp on load: allow upward drag only within bottom 55% of screen
             const maxUp = -(viewH * 0.55 - navHeight);
             const maxDown = 80;
-            xOffset = Math.max(-(viewW / 2) + 80, Math.min((viewW / 2) - 80, x));
+            xOffset = Math.max(-(viewW / 2) + 80, Math.min(viewW / 2 - 80, x));
             yOffset = Math.max(maxUp, Math.min(maxDown, y));
             setTranslate(xOffset, yOffset, container);
         } catch (e) {
@@ -1005,8 +1019,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Boundaries (Note: container is strictly centered horizontally by default via CSS)
         // offsetX represents deviation from that center.
-        const minX = -(viewW / 2) + (navWidth / 2) + padding;
-        const maxX = (viewW / 2) - (navWidth / 2) - padding;
+        const minX = -(viewW / 2) + navWidth / 2 + padding;
+        const maxX = viewW / 2 - navWidth / 2 - padding;
 
         // Vertical boundaries
         // Initial bottom is 24px (approx 96px from bottom).
@@ -1100,7 +1114,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Fix resize reset
     window.addEventListener('resize', () => {
         if (!isDragging) {
-            // Reset to center x if window resizes drastically? 
+            // Reset to center x if window resizes drastically?
             // Or just clamp. For now, keep simple.
         }
     });
@@ -1120,11 +1134,15 @@ async function saveSettings() {
         google_api_key: null,
         openrouter_api_key: null,
 
-        primary_model_provider: document.getElementById('llm-provider-select') ? document.getElementById('llm-provider-select').value : '',
+        primary_model_provider: document.getElementById('llm-provider-select')
+            ? document.getElementById('llm-provider-select').value
+            : '',
         primary_model_name: (function () {
             const select = document.getElementById('llm-model-select');
             const input = document.getElementById('llm-model-input');
-            const provider = document.getElementById('llm-provider-select') ? document.getElementById('llm-provider-select').value : '';
+            const provider = document.getElementById('llm-provider-select')
+                ? document.getElementById('llm-provider-select').value
+                : '';
             if (provider === 'openrouter') return input ? input.value : '';
             return select ? select.value : '';
         })(),
@@ -1136,7 +1154,7 @@ async function saveSettings() {
         const res = await fetch('/api/settings/update', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
         });
         const result = await res.json();
 
@@ -1157,7 +1175,6 @@ async function saveSettings() {
                     btn.classList.remove('opacity-50', 'cursor-not-allowed');
                 }, 500);
             }, 500);
-
         } else {
             showToast('保存設定失敗: ' + (result.detail || '未知錯誤'), 'error');
         }

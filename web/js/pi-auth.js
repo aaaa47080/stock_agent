@@ -1,0 +1,240 @@
+// ========================================
+// pi-auth.js - Pi Network SDK 初始化與認證
+// ========================================
+
+/**
+ * 初始化 Pi 登入防重複點擊機制
+ */
+window._piLoginInProgress = false;
+
+/**
+ * 安全的 Pi 登入函數（含防重複點擊機制）
+ */
+window.safePiLogin = async function () {
+    // 防止重複點擊
+    if (window._piLoginInProgress) {
+        console.log('登入已在進行中，忽略重複點擊');
+        return;
+    }
+
+    const btn = document.getElementById('pi-login-btn');
+    const originalText = btn ? btn.innerHTML : '';
+
+    try {
+        window._piLoginInProgress = true;
+
+        // 更新按鈕狀態為 Loading
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML =
+                '<svg class="animate-spin w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> 連接中...';
+            btn.classList.add('opacity-70', 'cursor-not-allowed');
+        }
+
+        if (typeof handlePiLogin === 'function') {
+            return await handlePiLogin();
+        }
+        // 如果 JS 尚未載入完成，等待後重試
+        await new Promise((r) => setTimeout(r, 500));
+        if (typeof handlePiLogin === 'function') {
+            return await handlePiLogin();
+        }
+    } finally {
+        window._piLoginInProgress = false;
+        // 恢復按鈕狀態
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            btn.classList.remove('opacity-70', 'cursor-not-allowed');
+        }
+    }
+};
+
+// ========================================
+// Login Modal 顯示邏輯
+// ========================================
+
+/**
+ * 為未登入用戶顯示 login modal
+ * 檢查本地存儲的 token 是否有效，決定是否顯示登入介面
+ */
+(function () {
+    var saved = localStorage.getItem('pi_user');
+    if (!saved) {
+        // 完全沒有登入紀錄 → 直接顯示 modal
+        document.addEventListener('DOMContentLoaded', function () {
+            var m = document.getElementById('login-modal');
+            if (m) m.classList.remove('hidden');
+        });
+        return;
+    }
+    // 有登入紀錄 → 先驗證 token 是否過期
+    try {
+        var user = JSON.parse(saved);
+        var expiry = user.accessTokenExpiry;
+        if (!expiry || Date.now() > expiry) {
+            // Token 已過期，清除並顯示 modal
+            localStorage.removeItem('pi_user');
+            document.addEventListener('DOMContentLoaded', function () {
+                var m = document.getElementById('login-modal');
+                if (m) m.classList.remove('hidden');
+            });
+            return;
+        }
+        // Token 有效 → 還需要檢測 Pi 環境
+        // 如果不在 Pi Browser 中，仍需顯示提示（除非是測試模式）
+        document.addEventListener('DOMContentLoaded', function () {
+            // 先檢查是否為測試模式
+            var testModeCheck = fetch('/api/config')
+                .then((r) => r.json())
+                .catch(function () {
+                    return { test_mode: false };
+                });
+
+            var attempts = 0;
+            var maxAttempts = 30; // 最多等 3 秒
+            var checkPiSDK = function () {
+                var hasPiSDK =
+                    typeof window.Pi !== 'undefined' &&
+                    window.Pi !== null &&
+                    typeof window.Pi.authenticate === 'function';
+                if (hasPiSDK) {
+                    // Pi SDK 存在，保持 modal hidden，讓 auth.js 正常處理
+                    console.log('✅ Token valid + Pi SDK detected, normal flow');
+                    return;
+                }
+                attempts++;
+                if (attempts < maxAttempts) {
+                    setTimeout(checkPiSDK, 100);
+                } else {
+                    // Pi SDK 不存在 → 非 Pi 環境
+                    // 檢查是否為測試模式，測試模式下不強制顯示 modal
+                    testModeCheck.then(function (cfg) {
+                        if (cfg && cfg.test_mode) {
+                            console.log('✅ Test mode: skipping Pi Browser check');
+                            return;
+                        }
+                        // 非測試模式，顯示 login modal 提示用戶
+                        console.warn('⚠️ Token valid but NOT in Pi Browser, showing login modal');
+                        var m = document.getElementById('login-modal');
+                        if (m) m.classList.remove('hidden');
+                    });
+                }
+            };
+            checkPiSDK();
+        });
+    } catch (e) {
+        localStorage.removeItem('pi_user');
+        document.addEventListener('DOMContentLoaded', function () {
+            var m = document.getElementById('login-modal');
+            if (m) m.classList.remove('hidden');
+        });
+    }
+})();
+
+// ========================================
+// Pi SDK 初始化（在 login modal 內）
+// ========================================
+
+/**
+ * 初始化 Pi SDK 並檢測 Pi Browser 環境
+ * 在 login modal 內執行，確保 Pi SDK 正確載入
+ */
+(function () {
+    // 第一階段：確認 Pi SDK 已載入（最多等 3 秒）
+    // 第二階段：用 nativeFeaturesList 驗證是否真正在 Pi Browser（最多再等 1.5 秒）
+    // nativeFeaturesList 是 Pi Browser 專屬 native bridge，普通瀏覽器不具備
+    (async function () {
+        // 階段一：等待 Pi SDK script 載入
+        let attempts = 0;
+        const maxAttempts = 30;
+        const hasPiSDK = await new Promise((resolve) => {
+            const check = () => {
+                const detected =
+                    typeof window.Pi !== 'undefined' &&
+                    window.Pi !== null &&
+                    typeof window.Pi.authenticate === 'function' &&
+                    typeof window.Pi.init === 'function';
+                if (detected) {
+                    resolve(true);
+                    return;
+                }
+                attempts++;
+                if (attempts < maxAttempts) setTimeout(check, 100);
+                else resolve(false);
+            };
+            check();
+        });
+
+        if (!hasPiSDK) {
+            console.warn('⚠️ Pi SDK not detected after 3 seconds.');
+            return; // 保持預設「請使用 Pi Browser」提示
+        }
+
+        // 階段二：嘗試使用 nativeFeaturesList 做額外驗證（可選）
+        // 如果可用就使用，不可用也沒關係，因為 Pi SDK 已經存在
+        // 這與 auth.js 的 verifyPiBrowserEnvironment() 邏輯一致
+
+        try {
+            Pi.init({ version: '2.0', sandbox: false });
+        } catch (initError) {
+            console.warn('⚠️ Pi SDK init failed:', initError.message);
+        }
+
+        if (typeof window.Pi.nativeFeaturesList === 'function') {
+            // 有 nativeFeaturesList，做額外驗證
+            try {
+                const features = await Promise.race([
+                    Pi.nativeFeaturesList(),
+                    new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error('TIMEOUT')), 1500)
+                    ),
+                ]);
+                console.log('✅ Pi Browser verified (nativeFeaturesList), features:', features);
+            } catch (e) {
+                console.warn(
+                    '⚠️ nativeFeaturesList failed but Pi SDK exists, allowing login:',
+                    e.message
+                );
+            }
+        } else {
+            console.log(
+                'ℹ️ nativeFeaturesList unavailable, but Pi SDK exists - allowing login attempt'
+            );
+        }
+
+        // Pi SDK 存在，顯示登入按鈕讓用戶嘗試
+        // 真正的認證會由 Pi.authenticate() 處理
+        console.log('✅ Pi SDK loaded - showing login button');
+        document.getElementById('pi-login-btn').style.display = 'flex';
+        document.getElementById('not-pi-browser-msg').style.display = 'none';
+    })();
+})();
+
+// ========================================
+// 測試模式登入
+// ========================================
+
+/**
+ * 檢測測試模式並顯示測試登入按鈕
+ */
+fetch('/api/config')
+    .then((r) => r.json())
+    .then((cfg) => {
+        if (cfg.test_mode) {
+            // 顯示測試模式登入區域
+            const devArea = document.getElementById('dev-login-area');
+            if (devArea) devArea.style.display = 'block';
+
+            // 隱藏 Pi 錢包區域（測試模式不需要 Pi Browser）
+            const piArea = document.getElementById('pi-login-area');
+            if (piArea) piArea.style.display = 'none';
+
+            // 更新副標題文字
+            const subtitle = document.querySelector(
+                '#login-modal p[data-i18n="login.welcomeSubtitle"]'
+            );
+            if (subtitle) subtitle.textContent = 'Test mode enabled - click below to login';
+        }
+    })
+    .catch(() => {});

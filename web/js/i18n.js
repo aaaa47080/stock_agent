@@ -2,7 +2,7 @@
 // i18n.js - 國際化初始化模組
 // ========================================
 
-(function() {
+(function () {
     'use strict';
 
     let i18n = null;
@@ -21,13 +21,13 @@
     function detectBrowserLanguage() {
         const lang = navigator.language || navigator.userLanguage || 'en';
         // zh-TW 或 zh-HK 使用繁體中文，其他使用英文
-        return (lang === 'zh-TW' || lang === 'zh-HK') ? 'zh-TW' : 'en';
+        return lang === 'zh-TW' || lang === 'zh-HK' ? 'zh-TW' : 'en';
     }
 
     // 更新頁面所有帶 data-i18n 的元素
     function updatePageContent() {
         const elements = document.querySelectorAll('[data-i18n]');
-        elements.forEach(el => {
+        elements.forEach((el) => {
             const key = el.getAttribute('data-i18n');
             if (!i18n || !key) return;
 
@@ -70,8 +70,12 @@
     async function initI18n() {
         // 載入翻譯檔
         const [zhTW, en] = await Promise.all([
-            fetch('/static/js/i18n/zh-TW.json?v=3').then(r => r.json()).catch(() => ({})),
-            fetch('/static/js/i18n/en.json?v=3').then(r => r.json()).catch(() => ({}))
+            fetch('/static/js/i18n/zh-TW.json?v=3')
+                .then((r) => r.json())
+                .catch(() => ({})),
+            fetch('/static/js/i18n/en.json?v=3')
+                .then((r) => r.json())
+                .catch(() => ({})),
         ]);
 
         // 確定使用的語言
@@ -88,11 +92,11 @@
                 fallbackLng: 'en',
                 resources: {
                     'zh-TW': { translation: zhTW },
-                    'en': { translation: en }
+                    en: { translation: en },
                 },
                 interpolation: {
-                    escapeValue: false
-                }
+                    escapeValue: false,
+                },
             });
 
             // 等待 DOM 準備好後更新內容
@@ -106,14 +110,17 @@
             i18n.on('languageChanged', (lng) => {
                 updatePageContent();
                 // 觸發自定義事件，讓其他組件知道語言已切換
-                window.dispatchEvent(new CustomEvent('languageChanged', { detail: { language: lng } }));
+                window.dispatchEvent(
+                    new CustomEvent('languageChanged', { detail: { language: lng } })
+                );
             });
 
             // 觸發初始化完成事件，讓其他組件知道 i18n 已準備好
-            window.dispatchEvent(new CustomEvent('languageChanged', { detail: { language: language } }));
+            window.dispatchEvent(
+                new CustomEvent('languageChanged', { detail: { language: language } })
+            );
 
             console.log('i18n initialized with language:', language);
-
         } catch (error) {
             console.error('Failed to initialize i18n:', error);
         }
@@ -122,14 +129,14 @@
     // 暴露給外部的 API
     window.I18n = {
         init: initI18n,
-        t: function(key, options) {
+        t: function (key, options) {
             return i18n ? i18n.t(key, options) : key;
         },
         // 檢查 i18n 是否已完全初始化
-        isReady: function() {
+        isReady: function () {
             return i18n !== null;
         },
-        changeLanguage: async function(lang) {
+        changeLanguage: async function (lang) {
             if (i18n) {
                 await i18n.changeLanguage(lang);
                 try {
@@ -138,14 +145,15 @@
                     console.warn('Failed to save language preference:', e);
                 }
                 // 手動觸發事件，確保所有組件都能收到通知
-                window.dispatchEvent(new CustomEvent('languageChanged', { detail: { language: lang } }));
+                window.dispatchEvent(
+                    new CustomEvent('languageChanged', { detail: { language: lang } })
+                );
             }
         },
-        getLanguage: function() {
+        getLanguage: function () {
             return i18n ? i18n.language : 'en';
         },
         // 供組件動態注入後呼叫，更新新加入的 data-i18n 元素
-        updatePageContent: updatePageContent
+        updatePageContent: updatePageContent,
     };
-
 })();

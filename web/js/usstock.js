@@ -5,7 +5,18 @@
 
 window.USStockTab = {
     activeSubTab: 'market',
-    defaultSymbols: ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'META', 'NVDA', 'NFLX', 'AMD', 'INTC'],
+    defaultSymbols: [
+        'AAPL',
+        'MSFT',
+        'GOOGL',
+        'AMZN',
+        'TSLA',
+        'META',
+        'NVDA',
+        'NFLX',
+        'AMD',
+        'INTC',
+    ],
 
     // ── Init ─────────────────────────────────────────────────────────────────
 
@@ -48,7 +59,10 @@ window.USStockTab = {
 
     addStock: async function (symbol) {
         if (!symbol) return;
-        const sym = symbol.toUpperCase().replace(/[^A-Z.^]/g, '').trim();
+        const sym = symbol
+            .toUpperCase()
+            .replace(/[^A-Z.^]/g, '')
+            .trim();
         if (sym.length < 1) return;
 
         const input = document.getElementById('usStockAddInput');
@@ -62,7 +76,8 @@ window.USStockTab = {
         let originalIcon = '';
         if (btn) {
             originalIcon = btn.innerHTML;
-            btn.innerHTML = '<div class="w-4 h-4 border-2 border-primary/50 border-t-primary rounded-full animate-spin"></div>';
+            btn.innerHTML =
+                '<div class="w-4 h-4 border-2 border-primary/50 border-t-primary rounded-full animate-spin"></div>';
             btn.disabled = true;
         }
 
@@ -70,7 +85,10 @@ window.USStockTab = {
             const res = await fetch(`/api/usstock/market?symbols=${encodeURIComponent(sym)}`);
             if (!res.ok) {
                 let msg = `找不到美股代號「${sym}」的交易資料`;
-                try { const d = await res.json(); if (d.detail) msg = d.detail; } catch(e) {}
+                try {
+                    const d = await res.json();
+                    if (d.detail) msg = d.detail;
+                } catch (e) {}
                 throw new Error(msg);
             }
             const data = await res.json();
@@ -90,14 +108,17 @@ window.USStockTab = {
             console.error('[US Stock] Validation error:', e);
             if (window.showToast) window.showToast(`新增失敗：${e.message}`, 'error');
         } finally {
-            if (btn) { btn.innerHTML = originalIcon; btn.disabled = false; }
+            if (btn) {
+                btn.innerHTML = originalIcon;
+                btn.disabled = false;
+            }
             if (input) input.value = '';
         }
     },
 
     removeStock: function (symbol, event) {
         if (event) event.stopPropagation();
-        window.usStockSelectedSymbols = window.usStockSelectedSymbols.filter(s => s !== symbol);
+        window.usStockSelectedSymbols = window.usStockSelectedSymbols.filter((s) => s !== symbol);
         this.saveWatchlist();
         this.refreshMarketWatch();
         this.refreshMarketInfo();
@@ -142,18 +163,20 @@ window.USStockTab = {
     switchSubTab: function (tabId) {
         if (this.activeSubTab === tabId) return;
 
-        const marketBtn     = document.getElementById('usstock-btn-market');
-        const pulseBtn      = document.getElementById('usstock-btn-pulse');
+        const marketBtn = document.getElementById('usstock-btn-market');
+        const pulseBtn = document.getElementById('usstock-btn-pulse');
         const marketContent = document.getElementById('usstock-market-content');
-        const pulseContent  = document.getElementById('usstock-pulse-content');
+        const pulseContent = document.getElementById('usstock-pulse-content');
 
         if (!marketBtn || !pulseBtn || !marketContent || !pulseContent) return;
 
-        const active   = 'usstock-sub-tab flex-1 py-2 px-4 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 bg-primary text-background shadow-md';
-        const inactive = 'usstock-sub-tab flex-1 py-2 px-4 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 text-textMuted hover:text-textMain hover:bg-white/5';
+        const active =
+            'usstock-sub-tab flex-1 py-2 px-4 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 bg-primary text-background shadow-md';
+        const inactive =
+            'usstock-sub-tab flex-1 py-2 px-4 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 text-textMuted hover:text-textMain hover:bg-white/5';
 
-        [marketContent, pulseContent].forEach(el => el.classList.add('hidden'));
-        [marketBtn, pulseBtn].forEach(el => el.className = inactive);
+        [marketContent, pulseContent].forEach((el) => el.classList.add('hidden'));
+        [marketBtn, pulseBtn].forEach((el) => (el.className = inactive));
 
         if (tabId === 'market') {
             marketBtn.className = active;
@@ -191,7 +214,7 @@ window.USStockTab = {
 
     refreshMarketWatch: async function () {
         const listContainer = document.getElementById('usstock-screener-list');
-        const loader        = document.getElementById('usstock-market-loader');
+        const loader = document.getElementById('usstock-market-loader');
         if (!listContainer || !loader) return;
 
         loader.classList.remove('hidden');
@@ -199,8 +222,8 @@ window.USStockTab = {
 
         try {
             const syms = window.usStockSelectedSymbols || this.defaultSymbols;
-            const url  = `/api/usstock/market?symbols=${encodeURIComponent(syms.join(','))}`;
-            const res  = await fetch(url);
+            const url = `/api/usstock/market?symbols=${encodeURIComponent(syms.join(','))}`;
+            const res = await fetch(url);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             this._renderWatchlist(listContainer, data.stocks || []);
@@ -214,26 +237,33 @@ window.USStockTab = {
 
     _renderWatchlist: function (container, items) {
         if (!items || items.length === 0) {
-            container.innerHTML = '<p class="text-textMuted text-[10px] italic py-6 text-center opacity-50 uppercase tracking-widest">暫無市場數據</p>';
+            container.innerHTML =
+                '<p class="text-textMuted text-[10px] italic py-6 text-center opacity-50 uppercase tracking-widest">暫無市場數據</p>';
             return;
         }
 
-        const esc = (s) => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        const esc = (s) =>
+            String(s || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
 
         const frag = document.createDocumentFragment();
-        items.forEach(item => {
-            const sym      = esc(item.symbol);
-            const name     = esc(item.name || sym);
-            const price    = item.price != null ? `$${item.price.toFixed(2)}` : '-';
-            const chg      = item.changePercent != null ? parseFloat(item.changePercent) : 0;
-            const isPos    = chg > 0;
-            const isNeg    = chg < 0;
-            const color    = isPos ? 'text-success' : (isNeg ? 'text-danger' : 'text-textMuted');
-            const sign     = isPos ? '+' : '';
-            const abbr     = sym.substring(0, 2);
+        items.forEach((item) => {
+            const sym = esc(item.symbol);
+            const name = esc(item.name || sym);
+            const price = item.price != null ? `$${item.price.toFixed(2)}` : '-';
+            const chg = item.changePercent != null ? parseFloat(item.changePercent) : 0;
+            const isPos = chg > 0;
+            const isNeg = chg < 0;
+            const color = isPos ? 'text-success' : isNeg ? 'text-danger' : 'text-textMuted';
+            const sign = isPos ? '+' : '';
+            const abbr = sym.substring(0, 2);
 
             const div = document.createElement('div');
-            div.className = 'group bg-surface/20 hover:bg-surface/40 border border-white/5 rounded-2xl p-4 transition-all duration-300 cursor-pointer';
+            div.className =
+                'group bg-surface/20 hover:bg-surface/40 border border-white/5 rounded-2xl p-4 transition-all duration-300 cursor-pointer';
             div.onclick = () => window.USStockTab.jumpToPulse(sym);
             div.innerHTML = `
                 <div class="flex items-start gap-3">
@@ -286,10 +316,7 @@ window.USStockTab = {
 
     refreshMarketInfo: async function () {
         this.initSectionToggles();
-        await Promise.all([
-            this._loadIndicesSection(),
-            this._loadNewsSection(),
-        ]);
+        await Promise.all([this._loadIndicesSection(), this._loadNewsSection()]);
     },
 
     _showLoader: function (id, show) {
@@ -309,15 +336,17 @@ window.USStockTab = {
             const data = await res.json();
             const indices = data.indices || [];
             if (!indices.length) {
-                container.innerHTML = '<p class="text-textMuted text-xs italic text-center py-6 opacity-50 col-span-3">暫無指數資料</p>';
+                container.innerHTML =
+                    '<p class="text-textMuted text-xs italic text-center py-6 opacity-50 col-span-3">暫無指數資料</p>';
                 return;
             }
-            container.innerHTML = indices.map(idx => {
-                const chg   = idx.change != null ? parseFloat(idx.change) : 0;
-                const chgP  = idx.changePercent != null ? parseFloat(idx.changePercent) : 0;
-                const color = chg >= 0 ? 'text-success' : 'text-danger';
-                const arrow = chg >= 0 ? '↑' : '↓';
-                return `
+            container.innerHTML = indices
+                .map((idx) => {
+                    const chg = idx.change != null ? parseFloat(idx.change) : 0;
+                    const chgP = idx.changePercent != null ? parseFloat(idx.changePercent) : 0;
+                    const color = chg >= 0 ? 'text-success' : 'text-danger';
+                    const arrow = chg >= 0 ? '↑' : '↓';
+                    return `
                 <div class="relative overflow-hidden rounded-2xl border border-white/8 bg-gradient-to-br from-surface to-background hover:border-primary/30 transition-all duration-200 group cursor-default">
                     <div class="absolute top-0 right-0 w-16 h-16 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-all"></div>
                     <div class="relative p-4">
@@ -326,7 +355,8 @@ window.USStockTab = {
                         <div class="text-xs ${color} font-bold mt-1">${arrow} ${Math.abs(chg).toFixed(2)} (${chgP.toFixed(2)}%)</div>
                     </div>
                 </div>`;
-            }).join('');
+                })
+                .join('');
         } catch (err) {
             console.error('[US Stock] Indices error:', err);
             container.innerHTML = `<p class="text-danger text-xs text-center py-4 col-span-3">載入指數失敗：${SecurityUtils.escapeHTML(err.message || '')}</p>`;
@@ -341,18 +371,22 @@ window.USStockTab = {
         this._showLoader('usstock-info-news-loader', true);
         try {
             const syms = (window.usStockSelectedSymbols || this.defaultSymbols).slice(0, 5);
-            const url  = `/api/usstock/news?symbols=${encodeURIComponent(syms.join(','))}&limit=15`;
-            const res  = await fetch(url);
+            const url = `/api/usstock/news?symbols=${encodeURIComponent(syms.join(','))}&limit=15`;
+            const res = await fetch(url);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const json = await res.json();
             const items = json.data || [];
             if (!items.length) {
-                container.innerHTML = '<p class="text-textMuted text-xs italic text-center py-6 opacity-50">目前無新聞</p>';
+                container.innerHTML =
+                    '<p class="text-textMuted text-xs italic text-center py-6 opacity-50">目前無新聞</p>';
                 return;
             }
-            container.innerHTML = items.map(item => {
-                const pub = item.publisher ? `<span class="text-[9px] bg-yellow-500/10 text-yellow-400 px-1.5 py-0.5 rounded font-mono">${item.publisher}</span>` : '';
-                return `
+            container.innerHTML = items
+                .map((item) => {
+                    const pub = item.publisher
+                        ? `<span class="text-[9px] bg-yellow-500/10 text-yellow-400 px-1.5 py-0.5 rounded font-mono">${item.publisher}</span>`
+                        : '';
+                    return `
                 <div class="bg-surface/40 border border-yellow-500/10 hover:border-yellow-500/30 rounded-xl p-3 transition-colors">
                     <div class="flex items-start gap-3">
                         <div class="flex-shrink-0 w-12 text-center">
@@ -365,7 +399,8 @@ window.USStockTab = {
                         </div>
                     </div>
                 </div>`;
-            }).join('');
+                })
+                .join('');
         } catch (err) {
             console.error('[US Stock] News error:', err);
             container.innerHTML = `<p class="text-danger text-xs text-center py-4">載入新聞失敗：${SecurityUtils.escapeHTML(err.message || '')}</p>`;
@@ -379,20 +414,22 @@ window.USStockTab = {
     initSectionToggles: function () {
         try {
             const prefs = JSON.parse(localStorage.getItem('usstock_section_prefs') || '{}');
-            ['indices', 'news'].forEach(sec => {
-                const isHidden  = prefs[sec] === false;
-                const bodyEl    = document.getElementById(`usstock-section-body-${sec}`);
+            ['indices', 'news'].forEach((sec) => {
+                const isHidden = prefs[sec] === false;
+                const bodyEl = document.getElementById(`usstock-section-body-${sec}`);
                 const chevronEl = document.getElementById(`usstock-chevron-${sec}`);
                 if (bodyEl && chevronEl) {
                     bodyEl.classList.toggle('hidden', isHidden);
                     chevronEl.classList.toggle('rotate-180', isHidden);
                 }
             });
-        } catch (e) { /* ignore */ }
+        } catch (e) {
+            /* ignore */
+        }
     },
 
     toggleSection: function (key) {
-        const bodyEl    = document.getElementById(`usstock-section-body-${key}`);
+        const bodyEl = document.getElementById(`usstock-section-body-${key}`);
         const chevronEl = document.getElementById(`usstock-chevron-${key}`);
         if (!bodyEl || !chevronEl) return;
 
@@ -404,24 +441,31 @@ window.USStockTab = {
             const prefs = JSON.parse(localStorage.getItem('usstock_section_prefs') || '{}');
             prefs[key] = wasHidden; // true = now visible
             localStorage.setItem('usstock_section_prefs', JSON.stringify(prefs));
-        } catch (e) { /* ignore */ }
+        } catch (e) {
+            /* ignore */
+        }
     },
 
     // ── AI Pulse ─────────────────────────────────────────────────────────────
 
     refreshAIPulse: async function (symbol) {
         const container = document.getElementById('usstock-pulse-result');
-        const loader    = document.getElementById('usstock-pulse-loader');
+        const loader = document.getElementById('usstock-pulse-loader');
         if (!container || !loader) return;
 
         loader.classList.remove('hidden');
         container.classList.add('hidden');
 
         try {
-            const res = await fetch(`/api/usstock/pulse/${encodeURIComponent(symbol.toUpperCase())}`);
+            const res = await fetch(
+                `/api/usstock/pulse/${encodeURIComponent(symbol.toUpperCase())}`
+            );
             if (!res.ok) {
                 let msg = `HTTP ${res.status}`;
-                try { const d = await res.json(); if (d.detail) msg = d.detail; } catch (e) {}
+                try {
+                    const d = await res.json();
+                    if (d.detail) msg = d.detail;
+                } catch (e) {}
                 throw new Error(msg);
             }
             const data = await res.json();
@@ -437,39 +481,55 @@ window.USStockTab = {
     },
 
     _renderAIPulse: function (container, data) {
-        const rep  = data.report || {};
+        const rep = data.report || {};
         const tech = data.technical_indicators || {};
         const fund = data.fundamentals || {};
-        const chg  = data.change_24h || 0;
+        const chg = data.change_24h || 0;
         const isPos = chg > 0;
         const isNeg = chg < 0;
-        const color = isPos ? 'text-success' : (isNeg ? 'text-danger' : 'text-textMuted');
-        const bg    = isPos ? 'bg-success/10' : (isNeg ? 'bg-danger/10' : 'bg-white/5');
-        const sign  = isPos ? '+' : '';
-        const icon  = isPos ? 'trending-up' : (isNeg ? 'trending-down' : 'minus');
+        const color = isPos ? 'text-success' : isNeg ? 'text-danger' : 'text-textMuted';
+        const bg = isPos ? 'bg-success/10' : isNeg ? 'bg-danger/10' : 'bg-white/5';
+        const sign = isPos ? '+' : '';
+        const icon = isPos ? 'trending-up' : isNeg ? 'trending-down' : 'minus';
 
         // ── Helpers ────────────────────────────────────────────────────────
-        const fv = (v, d = 2) => (v != null && !isNaN(Number(v))) ? Number(v).toFixed(d) : 'N/A';
-        const fmtPct = (v, d = 1) => (v != null && !isNaN(Number(v))) ? (Number(v) * 100).toFixed(d) + '%' : 'N/A';
-        const fmtPctDirect = (v, d = 2) => (v != null && !isNaN(Number(v))) ? Number(v).toFixed(d) + '%' : 'N/A';
+        const fv = (v, d = 2) => (v != null && !isNaN(Number(v)) ? Number(v).toFixed(d) : 'N/A');
+        const fmtPct = (v, d = 1) =>
+            v != null && !isNaN(Number(v)) ? (Number(v) * 100).toFixed(d) + '%' : 'N/A';
+        const fmtPctDirect = (v, d = 2) =>
+            v != null && !isNaN(Number(v)) ? Number(v).toFixed(d) + '%' : 'N/A';
         const fmtLarge = (v) => {
             if (!v || isNaN(v)) return 'N/A';
             if (v >= 1e12) return '$' + (v / 1e12).toFixed(2) + 'T';
-            if (v >= 1e9)  return '$' + (v / 1e9).toFixed(2) + 'B';
-            if (v >= 1e6)  return '$' + (v / 1e6).toFixed(1) + 'M';
+            if (v >= 1e9) return '$' + (v / 1e9).toFixed(2) + 'B';
+            if (v >= 1e6) return '$' + (v / 1e6).toFixed(1) + 'M';
             return '$' + Number(v).toLocaleString();
         };
 
         // RSI
-        const rsiVal  = tech.rsi;
-        const rsiSig  = tech.rsi_signal || '';
-        const rsiColor = rsiSig === 'oversold' ? 'text-success' : rsiSig === 'overbought' ? 'text-danger' : 'text-secondary';
-        const rsiLabelMap = { oversold: ['超賣', 'bg-success/20 text-success'], overbought: ['超買', 'bg-danger/20 text-danger'], neutral: ['中性', 'bg-white/10 text-textMuted'] };
+        const rsiVal = tech.rsi;
+        const rsiSig = tech.rsi_signal || '';
+        const rsiColor =
+            rsiSig === 'oversold'
+                ? 'text-success'
+                : rsiSig === 'overbought'
+                  ? 'text-danger'
+                  : 'text-secondary';
+        const rsiLabelMap = {
+            oversold: ['超賣', 'bg-success/20 text-success'],
+            overbought: ['超買', 'bg-danger/20 text-danger'],
+            neutral: ['中性', 'bg-white/10 text-textMuted'],
+        };
         const [rsiLabelTxt, rsiLabelStyle] = rsiLabelMap[rsiSig] || ['', ''];
 
         // MACD
         const macdTrend = tech.macd_trend || '';
-        const macdHistColor = macdTrend === 'bullish' ? 'text-success' : macdTrend === 'bearish' ? 'text-danger' : 'text-textMuted';
+        const macdHistColor =
+            macdTrend === 'bullish'
+                ? 'text-success'
+                : macdTrend === 'bearish'
+                  ? 'text-danger'
+                  : 'text-textMuted';
 
         // MA position
         const close = data.current_price || 0;
@@ -482,28 +542,53 @@ window.USStockTab = {
 
         // Bollinger Bands signal
         const bbSig = tech.bb_signal || '';
-        const bbSigMap = { overbought: ['突破上軌', 'text-danger'], oversold: ['跌破下軌', 'text-success'], neutral: ['帶內', 'text-textMuted'] };
+        const bbSigMap = {
+            overbought: ['突破上軌', 'text-danger'],
+            oversold: ['跌破下軌', 'text-success'],
+            neutral: ['帶內', 'text-textMuted'],
+        };
         const [bbLbl, bbLblColor] = bbSigMap[bbSig] || ['N/A', 'text-textMuted'];
 
         // Volume signal
         const volSig = tech.vol_signal || '';
-        const volSigMap = { high: ['放量', 'text-success'], low: ['縮量', 'text-danger'], normal: ['正常', 'text-textMuted'] };
+        const volSigMap = {
+            high: ['放量', 'text-success'],
+            low: ['縮量', 'text-danger'],
+            normal: ['正常', 'text-textMuted'],
+        };
         const [volLbl, volLblColor] = volSigMap[volSig] || ['N/A', 'text-textMuted'];
 
         // Overall signal badge
         const overallSig = tech.summary_en || '';
-        const overallMap = { Bullish: ['Bullish', 'bg-success/20 text-success border-success/30'], Bearish: ['Bearish', 'bg-danger/20 text-danger border-danger/30'], Neutral: ['Neutral', 'bg-white/10 text-textMuted border-white/10'] };
-        const [overallLbl, overallStyle] = overallMap[overallSig] || ['—', 'bg-white/10 text-textMuted border-white/10'];
+        const overallMap = {
+            Bullish: ['Bullish', 'bg-success/20 text-success border-success/30'],
+            Bearish: ['Bearish', 'bg-danger/20 text-danger border-danger/30'],
+            Neutral: ['Neutral', 'bg-white/10 text-textMuted border-white/10'],
+        };
+        const [overallLbl, overallStyle] = overallMap[overallSig] || [
+            '—',
+            'bg-white/10 text-textMuted border-white/10',
+        ];
 
         // Analyst recommendation
         const recRaw = (fund.analyst_recommendation || '').toLowerCase();
-        const recMap = { buy: ['買入', 'bg-success/20 text-success'], 'strong buy': ['強力買入', 'bg-success/30 text-success'], hold: ['持有', 'bg-yellow-500/20 text-yellow-400'], sell: ['賣出', 'bg-danger/20 text-danger'], 'strong sell': ['強力賣出', 'bg-danger/30 text-danger'] };
-        const [recLbl, recStyle] = recMap[recRaw] || (recRaw ? [recRaw, 'bg-white/10 text-textMuted'] : ['N/A', 'bg-white/10 text-textMuted']);
+        const recMap = {
+            buy: ['買入', 'bg-success/20 text-success'],
+            'strong buy': ['強力買入', 'bg-success/30 text-success'],
+            hold: ['持有', 'bg-yellow-500/20 text-yellow-400'],
+            sell: ['賣出', 'bg-danger/20 text-danger'],
+            'strong sell': ['強力賣出', 'bg-danger/30 text-danger'],
+        };
+        const [recLbl, recStyle] =
+            recMap[recRaw] ||
+            (recRaw
+                ? [recRaw, 'bg-white/10 text-textMuted']
+                : ['N/A', 'bg-white/10 text-textMuted']);
 
         // 52W progress bar
-        const low52  = fund['52_week_low'];
+        const low52 = fund['52_week_low'];
         const high52 = fund['52_week_high'];
-        let w52Html  = '<div class="text-xs text-textMuted">N/A</div>';
+        let w52Html = '<div class="text-xs text-textMuted">N/A</div>';
         if (low52 && high52 && close && high52 > low52) {
             const pct = Math.min(100, Math.max(0, ((close - low52) / (high52 - low52)) * 100));
             w52Html = `
@@ -565,21 +650,29 @@ window.USStockTab = {
                     </div>
                 </div>
                 <div>
-                    ${rep.highlights && rep.highlights.length > 0 ? `
+                    ${
+                        rep.highlights && rep.highlights.length > 0
+                            ? `
                         <div class="bg-surface/40 backdrop-blur-sm border border-white/5 rounded-2xl p-6 h-full">
                             <h3 class="font-bold text-secondary mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">
                                 <i data-lucide="rss" class="w-4 h-4 text-yellow-500"></i> Market Sentiments
                             </h3>
                             <div class="space-y-3">
-                                ${rep.highlights.map(h => `
+                                ${rep.highlights
+                                    .map(
+                                        (h) => `
                                     <a href="${h.url || '#'}" target="_blank" rel="noopener noreferrer"
                                        class="block bg-surfaceHighlight p-3 rounded-lg border border-white/5 hover:border-white/20 transition-colors">
                                         <p class="text-xs text-textMain leading-relaxed line-clamp-3 hover:text-primary transition-colors">${h.title || ''}</p>
                                     </a>
-                                `).join('')}
+                                `
+                                    )
+                                    .join('')}
                             </div>
                         </div>
-                    ` : ''}
+                    `
+                            : ''
+                    }
                 </div>
             </div>
 
@@ -599,7 +692,7 @@ window.USStockTab = {
                             <span class="text-2xl font-black font-mono ${rsiColor}">${rsiVal != null ? Number(rsiVal).toFixed(1) : 'N/A'}</span>
                             ${rsiLabelTxt ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${rsiLabelStyle}">${rsiLabelTxt}</span>` : ''}
                         </div>
-                        ${rsiVal != null ? `<div class="h-1.5 rounded-full bg-white/10 overflow-hidden"><div class="h-full rounded-full" style="width:${Math.min(100,Number(rsiVal))}%;background:${Number(rsiVal)<30?'#86efac':Number(rsiVal)>70?'#fda4af':'#a1a1aa'}"></div></div>` : ''}
+                        ${rsiVal != null ? `<div class="h-1.5 rounded-full bg-white/10 overflow-hidden"><div class="h-full rounded-full" style="width:${Math.min(100, Number(rsiVal))}%;background:${Number(rsiVal) < 30 ? '#86efac' : Number(rsiVal) > 70 ? '#fda4af' : '#a1a1aa'}"></div></div>` : ''}
                     </div>
                     <!-- MACD -->
                     <div class="bg-background/80 rounded-xl p-4 border border-white/5 hover:border-white/10 transition-colors">
@@ -614,9 +707,16 @@ window.USStockTab = {
                     <div class="bg-background/80 rounded-xl p-4 border border-white/5 hover:border-white/10 transition-colors">
                         <div class="text-[10px] text-textMuted uppercase tracking-wider mb-2">移動平均線</div>
                         <div class="space-y-1.5">
-                            ${[['MA20', tech.ma_20], ['MA50', tech.ma_50], ['MA200', tech.ma_200]].map(([l,v]) =>
-                                `<div class="flex justify-between text-xs items-center"><span class="text-textMuted">${l}</span><span class="font-mono text-secondary">$${fv(v)}${v ? maPosBadge(v) : ''}</span></div>`
-                            ).join('')}
+                            ${[
+                                ['MA20', tech.ma_20],
+                                ['MA50', tech.ma_50],
+                                ['MA200', tech.ma_200],
+                            ]
+                                .map(
+                                    ([l, v]) =>
+                                        `<div class="flex justify-between text-xs items-center"><span class="text-textMuted">${l}</span><span class="font-mono text-secondary">$${fv(v)}${v ? maPosBadge(v) : ''}</span></div>`
+                                )
+                                .join('')}
                         </div>
                     </div>
                     <!-- Bollinger Bands -->
@@ -703,10 +803,10 @@ window.USStockTab = {
     showChart: async function (symbol, event) {
         if (event) event.stopPropagation();
 
-        const section   = document.getElementById('usstock-chart-section');
-        const chartEl   = document.getElementById('usstock-chart-container');
-        const volumeEl  = document.getElementById('usstock-volume-container');
-        const titleEl   = document.getElementById('usstock-chart-title');
+        const section = document.getElementById('usstock-chart-section');
+        const chartEl = document.getElementById('usstock-chart-container');
+        const volumeEl = document.getElementById('usstock-volume-container');
+        const titleEl = document.getElementById('usstock-chart-title');
 
         if (!section || !chartEl || typeof LightweightCharts === 'undefined') {
             console.error('[US Stock] Chart elements or LightweightCharts missing');
@@ -718,65 +818,131 @@ window.USStockTab = {
         if (titleEl) titleEl.textContent = `${symbol} (${this._chartInterval.toUpperCase()})`;
         if (window.lucide) window.lucide.createIcons();
 
-        document.querySelectorAll('.us-chart-interval-btn').forEach(btn => {
+        document.querySelectorAll('.us-chart-interval-btn').forEach((btn) => {
             const active = btn.dataset.interval === this._chartInterval;
             btn.classList.toggle('bg-white/10', active);
             btn.classList.toggle('text-primary', active);
             btn.classList.toggle('text-textMuted', !active);
         });
 
-        chartEl.innerHTML = '<div class="animate-pulse text-textMuted h-full flex items-center justify-center">載入歷史數據中...</div>';
-        if (volumeEl) { volumeEl.innerHTML = ''; volumeEl.style.display = ''; }
+        chartEl.innerHTML =
+            '<div class="animate-pulse text-textMuted h-full flex items-center justify-center">載入歷史數據中...</div>';
+        if (volumeEl) {
+            volumeEl.innerHTML = '';
+            volumeEl.style.display = '';
+        }
 
         try {
-            const res = await fetch(`/api/usstock/klines/${encodeURIComponent(symbol)}?interval=${this._chartInterval}&limit=200`);
-            if (!res.ok) { const d = await res.json().catch(()=>{}); throw new Error(d?.detail || `HTTP ${res.status}`); }
+            const res = await fetch(
+                `/api/usstock/klines/${encodeURIComponent(symbol)}?interval=${this._chartInterval}&limit=200`
+            );
+            if (!res.ok) {
+                const d = await res.json().catch(() => {});
+                throw new Error(d?.detail || `HTTP ${res.status}`);
+            }
             const responseData = await res.json();
-            const klineData    = responseData.data || [];
+            const klineData = responseData.data || [];
 
             if (!klineData.length) {
-                chartEl.innerHTML = '<div class="text-danger h-full flex items-center justify-center">無法載入數據</div>';
+                chartEl.innerHTML =
+                    '<div class="text-danger h-full flex items-center justify-center">無法載入數據</div>';
                 return;
             }
 
             const updatedEl = document.getElementById('usstock-chart-updated');
-            if (updatedEl) updatedEl.textContent = `載入時間: ${new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})}`;
+            if (updatedEl)
+                updatedEl.textContent = `載入時間: ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
 
             chartEl.innerHTML = '';
-            if (this._chart) { this._chart.remove(); this._chart = null; }
+            if (this._chart) {
+                this._chart.remove();
+                this._chart = null;
+            }
 
             this._chart = LightweightCharts.createChart(chartEl, {
-                layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#A0AEC0' },
-                grid: { vertLines: { color: 'rgba(255,255,255,0.05)' }, horzLines: { color: 'rgba(255,255,255,0.05)' } },
+                layout: {
+                    background: { type: 'solid', color: 'transparent' },
+                    textColor: '#A0AEC0',
+                },
+                grid: {
+                    vertLines: { color: 'rgba(255,255,255,0.05)' },
+                    horzLines: { color: 'rgba(255,255,255,0.05)' },
+                },
                 crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
                 rightPriceScale: { borderColor: 'rgba(255,255,255,0.1)' },
-                timeScale: { borderColor: 'rgba(255,255,255,0.1)', timeVisible: true, rightOffset: 5 },
-                handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
-                handleScale: { mouseWheel: true, pinchScale: true, axisPressedMouseMove: { time: true, price: false } },
+                timeScale: {
+                    borderColor: 'rgba(255,255,255,0.1)',
+                    timeVisible: true,
+                    rightOffset: 5,
+                },
+                handleScroll: {
+                    mouseWheel: true,
+                    pressedMouseMove: true,
+                    horzTouchDrag: true,
+                    vertTouchDrag: false,
+                },
+                handleScale: {
+                    mouseWheel: true,
+                    pinchScale: true,
+                    axisPressedMouseMove: { time: true, price: false },
+                },
             });
 
             this._candleSeries = this._chart.addCandlestickSeries({
-                upColor: '#10B981', downColor: '#EF4444', borderVisible: false, wickUpColor: '#10B981', wickDownColor: '#EF4444'
+                upColor: '#10B981',
+                downColor: '#EF4444',
+                borderVisible: false,
+                wickUpColor: '#10B981',
+                wickDownColor: '#EF4444',
             });
 
             // Create separate volume chart
-            if (this._volumeChart) { this._volumeChart.remove(); this._volumeChart = null; }
+            if (this._volumeChart) {
+                this._volumeChart.remove();
+                this._volumeChart = null;
+            }
             this._volumeSeries = null;
             if (volumeEl) {
                 this._volumeChart = LightweightCharts.createChart(volumeEl, {
-                    layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#A0AEC0' },
-                    grid: { vertLines: { color: 'rgba(255,255,255,0.05)' }, horzLines: { color: 'rgba(255,255,255,0.02)' } },
+                    layout: {
+                        background: { type: 'solid', color: 'transparent' },
+                        textColor: '#A0AEC0',
+                    },
+                    grid: {
+                        vertLines: { color: 'rgba(255,255,255,0.05)' },
+                        horzLines: { color: 'rgba(255,255,255,0.02)' },
+                    },
                     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-                    rightPriceScale: { borderColor: 'rgba(255,255,255,0.1)', scaleMargins: { top: 0.1, bottom: 0.05 } },
+                    rightPriceScale: {
+                        borderColor: 'rgba(255,255,255,0.1)',
+                        scaleMargins: { top: 0.1, bottom: 0.05 },
+                    },
                     timeScale: { visible: false },
-                    handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
+                    handleScroll: {
+                        mouseWheel: false,
+                        pressedMouseMove: false,
+                        horzTouchDrag: false,
+                        vertTouchDrag: false,
+                    },
                     handleScale: { mouseWheel: false, pinchScale: false },
                 });
-                this._volumeSeries = this._volumeChart.addHistogramSeries({ priceFormat: { type: 'volume' } });
+                this._volumeSeries = this._volumeChart.addHistogramSeries({
+                    priceFormat: { type: 'volume' },
+                });
             }
 
-            const candles = klineData.map(k => ({ time: k.time, open: k.open, high: k.high, low: k.low, close: k.close }));
-            const volumes = klineData.map(k => ({ time: k.time, value: k.volume, color: k.close >= k.open ? 'rgba(16,185,129,0.4)' : 'rgba(239,68,68,0.4)' }));
+            const candles = klineData.map((k) => ({
+                time: k.time,
+                open: k.open,
+                high: k.high,
+                low: k.low,
+                close: k.close,
+            }));
+            const volumes = klineData.map((k) => ({
+                time: k.time,
+                value: k.volume,
+                color: k.close >= k.open ? 'rgba(16,185,129,0.4)' : 'rgba(239,68,68,0.4)',
+            }));
 
             this._candleSeries.setData(candles);
             if (this._volumeSeries) this._volumeSeries.setData(volumes);
@@ -799,27 +965,43 @@ window.USStockTab = {
             }
 
             // OHLCV hover
-            const fmtVol = v => { if (v>=1e9) return (v/1e9).toFixed(2)+'B'; if (v>=1e6) return (v/1e6).toFixed(2)+'M'; if (v>=1e3) return (v/1e3).toFixed(2)+'K'; return v.toFixed(0); };
+            const fmtVol = (v) => {
+                if (v >= 1e9) return (v / 1e9).toFixed(2) + 'B';
+                if (v >= 1e6) return (v / 1e6).toFixed(2) + 'M';
+                if (v >= 1e3) return (v / 1e3).toFixed(2) + 'K';
+                return v.toFixed(0);
+            };
             const setHover = (c, v) => {
                 if (!c) return;
-                const setEl = (id, txt, cls) => { const el = document.getElementById(id); if (el) { el.textContent = txt; if (cls) el.className = cls + ' ml-0.5'; } };
-                setEl('us-info-open',   c.open.toFixed(2));
-                setEl('us-info-high',   c.high.toFixed(2));
-                setEl('us-info-low',    c.low.toFixed(2));
-                setEl('us-info-close',  c.close.toFixed(2), c.close >= c.open ? 'text-success' : 'text-danger');
+                const setEl = (id, txt, cls) => {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.textContent = txt;
+                        if (cls) el.className = cls + ' ml-0.5';
+                    }
+                };
+                setEl('us-info-open', c.open.toFixed(2));
+                setEl('us-info-high', c.high.toFixed(2));
+                setEl('us-info-low', c.low.toFixed(2));
+                setEl(
+                    'us-info-close',
+                    c.close.toFixed(2),
+                    c.close >= c.open ? 'text-success' : 'text-danger'
+                );
                 if (v) setEl('us-info-volume', fmtVol(typeof v === 'object' ? v.value : v));
             };
-            if (candles.length) setHover(candles[candles.length-1], volumes[volumes.length-1]);
+            if (candles.length) setHover(candles[candles.length - 1], volumes[volumes.length - 1]);
 
-            this._chart.subscribeCrosshairMove(param => {
+            this._chart.subscribeCrosshairMove((param) => {
                 if (!param.time || param.point?.x < 0) {
-                    if (candles.length) setHover(candles[candles.length-1], volumes[volumes.length-1]);
+                    if (candles.length)
+                        setHover(candles[candles.length - 1], volumes[volumes.length - 1]);
                     if (this._volumeChart) this._volumeChart.clearCrosshairPosition();
                     return;
                 }
                 const c = param.seriesData.get(this._candleSeries);
                 // Look up volume by time since it's on a separate chart
-                const v = volumes.find(d => d.time === param.time);
+                const v = volumes.find((d) => d.time === param.time);
                 if (c) setHover(c, v);
                 if (this._volumeChart && this._volumeSeries && v) {
                     this._volumeChart.setCrosshairPosition(v.value, param.time, this._volumeSeries);
@@ -829,14 +1011,14 @@ window.USStockTab = {
             const onResize = () => {
                 if (!section.classList.contains('hidden') && this._chart) {
                     this._chart.applyOptions({ width: chartEl.clientWidth });
-                    if (this._volumeChart && volumeEl) this._volumeChart.applyOptions({ width: volumeEl.clientWidth });
+                    if (this._volumeChart && volumeEl)
+                        this._volumeChart.applyOptions({ width: volumeEl.clientWidth });
                 }
             };
             window.removeEventListener('resize', this._onChartResize);
             this._onChartResize = onResize;
             window.addEventListener('resize', onResize);
             setTimeout(onResize, 50);
-
         } catch (err) {
             console.error('[US Stock] Chart error:', err);
             chartEl.innerHTML = `<div class="text-danger h-full flex flex-col items-center justify-center text-sm p-4 text-center"><i data-lucide="alert-triangle" class="w-8 h-8 mb-2"></i>讀取失敗：${SecurityUtils.escapeHTML(err.message || '')}</div>`;
@@ -849,8 +1031,14 @@ window.USStockTab = {
         this._onChartResize = null;
         const section = document.getElementById('usstock-chart-section');
         if (section) section.classList.add('hidden');
-        if (this._chart) { this._chart.remove(); this._chart = null; }
-        if (this._volumeChart) { this._volumeChart.remove(); this._volumeChart = null; }
+        if (this._chart) {
+            this._chart.remove();
+            this._chart = null;
+        }
+        if (this._volumeChart) {
+            this._volumeChart.remove();
+            this._volumeChart = null;
+        }
         this._volumeSeries = null;
         this._chartSymbol = null;
     },
@@ -864,12 +1052,20 @@ window.USStockTab = {
     // ── Events ────────────────────────────────────────────────────────────────
 
     bindEvents: function () {
-        const btn   = document.getElementById('usstockPulseSearchBtn');
+        const btn = document.getElementById('usstockPulseSearchBtn');
         const input = document.getElementById('usstockPulseSearchInput');
         if (btn && input && !btn.dataset.bound) {
             btn.dataset.bound = 'true';
-            btn.addEventListener('click', () => { const s = input.value.trim(); if (s) this.refreshAIPulse(s); });
-            input.addEventListener('keypress', (e) => { if (e.key === 'Enter') { const s = input.value.trim(); if (s) this.refreshAIPulse(s); } });
+            btn.addEventListener('click', () => {
+                const s = input.value.trim();
+                if (s) this.refreshAIPulse(s);
+            });
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    const s = input.value.trim();
+                    if (s) this.refreshAIPulse(s);
+                }
+            });
         }
     },
 };

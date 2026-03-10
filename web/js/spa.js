@@ -49,7 +49,19 @@ async function switchTab(tabId, fromPopState = false) {
 
 // 監聽瀏覽器返回/前進按鈕
 window.addEventListener('popstate', (event) => {
-    const validTabs = ['chat', 'crypto', 'twstock', 'usstock', 'wallet', 'assets', 'friends', 'forum', 'safety', 'settings', 'admin'];
+    const validTabs = [
+        'chat',
+        'crypto',
+        'twstock',
+        'usstock',
+        'wallet',
+        'assets',
+        'friends',
+        'forum',
+        'safety',
+        'settings',
+        'admin',
+    ];
     let targetTab = 'chat';
 
     if (event.state && event.state.tab) {
@@ -100,13 +112,15 @@ async function executeTabSwitch(tabId, fromPopState = false) {
     }
 
     // Close any open stock chart overlays (they are fixed-position, not inside tab DOM)
-    if (window.TWStockTab && typeof window.TWStockTab.closeTwChart === 'function') window.TWStockTab.closeTwChart();
-    if (window.USStockTab && typeof window.USStockTab.closeChart === 'function') window.USStockTab.closeChart();
+    if (window.TWStockTab && typeof window.TWStockTab.closeTwChart === 'function')
+        window.TWStockTab.closeTwChart();
+    if (window.USStockTab && typeof window.USStockTab.closeChart === 'function')
+        window.USStockTab.closeChart();
     // Close price alert modal if open
     if (typeof window.closeAlertModal === 'function') window.closeAlertModal();
 
     // Hide all tabs
-    document.querySelectorAll('.tab-content').forEach(el => {
+    document.querySelectorAll('.tab-content').forEach((el) => {
         el.classList.add('hidden');
         el.style.opacity = '';
         el.style.transform = '';
@@ -114,7 +128,18 @@ async function executeTabSwitch(tabId, fromPopState = false) {
     });
 
     // Dynamic Component Injection (Lazy Loading)
-    if (['crypto', 'twstock', 'usstock', 'forum', 'settings', 'friends', 'safety', 'admin'].includes(tabId)) {
+    if (
+        [
+            'crypto',
+            'twstock',
+            'usstock',
+            'forum',
+            'settings',
+            'friends',
+            'safety',
+            'admin',
+        ].includes(tabId)
+    ) {
         if (window.Components && typeof window.Components.inject === 'function') {
             await window.Components.inject(tabId);
         }
@@ -146,7 +171,7 @@ async function executeTabSwitch(tabId, fromPopState = false) {
     }
 
     // Update Nav Icons
-    document.querySelectorAll('.nav-btn').forEach(btn => {
+    document.querySelectorAll('.nav-btn').forEach((btn) => {
         const icon = btn.querySelector('i');
         const label = btn.querySelector('span');
 
@@ -213,22 +238,27 @@ async function executeTabSwitch(tabId, fromPopState = false) {
         if (window.AuthManager && typeof window.AuthManager._updateUI === 'function') {
             window.AuthManager._updateUI(window.AuthManager.isLoggedIn());
         }
-        if (typeof loadSettingsWalletStatus === 'function') settingsInits.push(loadSettingsWalletStatus());
+        if (typeof loadSettingsWalletStatus === 'function')
+            settingsInits.push(loadSettingsWalletStatus());
         if (typeof loadPremiumStatus === 'function') settingsInits.push(loadPremiumStatus());
-        if (typeof updateLLMStatusUI === 'function') settingsInits.push(Promise.resolve(updateLLMStatusUI()));
+        if (typeof updateLLMStatusUI === 'function')
+            settingsInits.push(Promise.resolve(updateLLMStatusUI()));
         if (typeof updateOKXStatusUI === 'function') updateOKXStatusUI();
         if (typeof updatePriceDisplays === 'function') updatePriceDisplays();
-        if (window.PremiumManager && typeof window.PremiumManager.updatePriceDisplay === 'function') {
+        if (
+            window.PremiumManager &&
+            typeof window.PremiumManager.updatePriceDisplay === 'function'
+        ) {
             window.PremiumManager.updatePriceDisplay();
         }
         if (typeof window.updateAvailableModels === 'function') window.updateAvailableModels();
         // 並行發出所有 API 請求
-        Promise.all(settingsInits).catch(e => console.warn('Settings init error:', e));
+        Promise.all(settingsInits).catch((e) => console.warn('Settings init error:', e));
     }
     if (tabId === 'chat') {
         // ✅ 效能優化：checkApiKeyStatus 加 TTL 快取，避免每次切換都打後端 API
         const now = Date.now();
-        if (!window._lastApiKeyCheck || (now - window._lastApiKeyCheck) > 30000) {
+        if (!window._lastApiKeyCheck || now - window._lastApiKeyCheck > 30000) {
             window._lastApiKeyCheck = now;
             // 確保 APIKeyManager 已初始化
             if (typeof checkApiKeyStatus === 'function' && window.APIKeyManager) {
@@ -261,7 +291,7 @@ function renderNavButtons() {
 
     container.innerHTML = '';
 
-    enabledItems.forEach(item => {
+    enabledItems.forEach((item) => {
         // Hide admin-only tabs for non-admin users
         if (item.adminOnly) {
             const user = window.AuthManager && AuthManager.currentUser;
@@ -286,7 +316,9 @@ function renderNavButtons() {
         button.dataset.tab = item.id;
 
         // All tabs including forum use SPA navigation (switchTab)
-        button.onclick = function () { switchTab(item.id); };
+        button.onclick = function () {
+            switchTab(item.id);
+        };
 
         button.innerHTML = `
             <i data-lucide="${item.icon}" class="w-5 h-5 ${isActive ? 'text-primary' : 'text-textMuted'}"></i>
@@ -342,7 +374,7 @@ const FeatureMenu = {
         // Clear and render items
         itemsContainer.innerHTML = '';
 
-        window.NAV_ITEMS.forEach(item => {
+        window.NAV_ITEMS.forEach((item) => {
             // Skip locked items - they are always enabled and not configurable
             if (item.locked) return;
 
@@ -352,7 +384,8 @@ const FeatureMenu = {
             itemEl.dataset.itemId = item.id;
 
             // Use i18n key if available, otherwise fall back to label
-            const labelText = item.i18nKey && window.I18n ? window.I18n.t(item.i18nKey) : item.label;
+            const labelText =
+                item.i18nKey && window.I18n ? window.I18n.t(item.i18nKey) : item.label;
 
             itemEl.innerHTML = `
                 <div class="feature-item-icon">
@@ -374,7 +407,9 @@ const FeatureMenu = {
         // Show modal with animation
         this._modal.classList.remove('hidden');
         requestAnimationFrame(() => {
-            this._modal.querySelector('.feature-menu-content').classList.add('modal-content-active');
+            this._modal
+                .querySelector('.feature-menu-content')
+                .classList.add('modal-content-active');
         });
     },
 
@@ -383,7 +418,7 @@ const FeatureMenu = {
      */
     toggleItem(itemId, element) {
         // Locked items cannot be toggled
-        const navItem = window.NAV_ITEMS.find(i => i.id === itemId);
+        const navItem = window.NAV_ITEMS.find((i) => i.id === itemId);
         if (navItem && navItem.locked) return;
 
         const isCurrentlyEnabled = this._tempPreferences.has(itemId);
@@ -435,7 +470,7 @@ const FeatureMenu = {
         // Save preferences
         const preferences = {
             version: NavPreferences.PREFERENCES_VERSION,
-            enabledItems: Array.from(this._tempPreferences)
+            enabledItems: Array.from(this._tempPreferences),
         };
         NavPreferences.savePreferences(preferences);
 
@@ -483,7 +518,7 @@ const FeatureMenu = {
         if (typeof window.showToast === 'function') {
             window.showToast(message, 'success');
         }
-    }
+    },
 };
 
 // Expose FeatureMenu globally
@@ -518,7 +553,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const start = Date.now();
             // ✅ 效能優化：polling 間隔從 100ms 降到 10ms，加快啟動速度
             const interval = setInterval(() => {
-                if (window[key] || (Date.now() - start) > timeout) {
+                if (window[key] || Date.now() - start > timeout) {
                     clearInterval(interval);
                     resolve(window[key]);
                 }
@@ -529,15 +564,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 確保核心腳本都已載入
     console.log('Waiting for core systems...');
     await Promise.all([
-        waitForGlobal('Components').then(v => console.log('Components ready:', !!v)),
-        waitForGlobal('initializeAuth').then(v => console.log('Auth ready:', !!v)),
-        waitForGlobal('initializeUIStatus').then(v => console.log('UI ready:', !!v))
+        waitForGlobal('Components').then((v) => console.log('Components ready:', !!v)),
+        waitForGlobal('initializeAuth').then((v) => console.log('Auth ready:', !!v)),
+        waitForGlobal('initializeUIStatus').then((v) => console.log('UI ready:', !!v)),
     ]);
 
     console.log('Core systems ready status:', {
         Components: !!window.Components,
         Auth: !!window.initializeAuth,
-        UI: !!window.initializeUIStatus
+        UI: !!window.initializeUIStatus,
     });
 
     // 0. 初始化 i18n（必須在 renderNavButtons 之前完成）
@@ -545,21 +580,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             await window.I18n.init();
             console.log('i18n ready');
-        } catch (e) { console.error('i18n Init Error:', e); }
+        } catch (e) {
+            console.error('i18n Init Error:', e);
+        }
     }
 
     // 1. 初始化認證系統（支援測試模式自動登入）
     if (typeof initializeAuth === 'function') {
         try {
             await initializeAuth();
-        } catch (e) { console.error('Auth Init Error:', e); }
+        } catch (e) {
+            console.error('Auth Init Error:', e);
+        }
     }
 
     // 1.5 載入已保存的 API Key 狀態（必須在 Auth 完成後）
     if (typeof window.loadSavedApiKeys === 'function') {
         try {
             await window.loadSavedApiKeys();
-        } catch (e) { console.error('Load API Keys Error:', e); }
+        } catch (e) {
+            console.error('Load API Keys Error:', e);
+        }
     }
 
     // 2. Render navigation buttons based on user preferences
@@ -589,7 +630,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // 3. 載入預設分頁（優先順序：sessionStorage returnToTab > URL hash > localStorage）
-    const validTabs = ['chat', 'crypto', 'twstock', 'usstock', 'wallet', 'assets', 'friends', 'forum', 'safety', 'settings', 'admin'];
+    const validTabs = [
+        'chat',
+        'crypto',
+        'twstock',
+        'usstock',
+        'wallet',
+        'assets',
+        'friends',
+        'forum',
+        'safety',
+        'settings',
+        'admin',
+    ];
     const returnToTab = sessionStorage.getItem('returnToTab');
     const hashTab = window.location.hash.replace('#', '');
     const savedTab = localStorage.getItem('activeTab') || 'chat';
@@ -604,20 +657,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
         initialTab = savedTab;
     }
-    console.log('Initial tab switching to:', initialTab, '(returnTo:', returnToTab, ', hash:', hashTab, ', saved:', savedTab, ')');
+    console.log(
+        'Initial tab switching to:',
+        initialTab,
+        '(returnTo:',
+        returnToTab,
+        ', hash:',
+        hashTab,
+        ', saved:',
+        savedTab,
+        ')'
+    );
 
     // 清除 hash 並設置正確的初始歷史狀態
     history.replaceState({ tab: initialTab }, '', '#' + initialTab);
 
     try {
         await switchTab(initialTab, true); // fromPopState=true 避免重複 pushState
-    } catch (e) { console.error('Initial Tab Error:', e); }
+    } catch (e) {
+        console.error('Initial Tab Error:', e);
+    }
 
     // 3. 更新 UI 狀態
     if (typeof initializeUIStatus === 'function') {
         try {
             initializeUIStatus();
-        } catch (e) { console.error('UI Init Error:', e); }
+        } catch (e) {
+            console.error('UI Init Error:', e);
+        }
     }
 
     // 4. 延遲啟動 Ticker WebSocket

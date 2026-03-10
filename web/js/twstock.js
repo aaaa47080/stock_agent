@@ -7,7 +7,18 @@
 
 window.TWStockTab = {
     activeSubTab: 'market', // 'market' | 'pulse'
-    defaultSymbols: ['2330', '2317', '2454', '2308', '2881', '2412', '2882', '2891', '1301', '2002'],
+    defaultSymbols: [
+        '2330',
+        '2317',
+        '2454',
+        '2308',
+        '2881',
+        '2412',
+        '2882',
+        '2891',
+        '1301',
+        '2002',
+    ],
 
     initTwStock: function () {
         this.loadTwStockSelection();
@@ -59,14 +70,18 @@ window.TWStockTab = {
         let originalIcon = '';
         if (btn) {
             originalIcon = btn.innerHTML;
-            btn.innerHTML = '<div class="w-4 h-4 border-2 border-primary/50 border-t-primary rounded-full animate-spin"></div>';
+            btn.innerHTML =
+                '<div class="w-4 h-4 border-2 border-primary/50 border-t-primary rounded-full animate-spin"></div>';
             btn.disabled = true;
         }
 
         try {
             // Validate symbol with backend
-            const authHeaders = typeof _getAuthHeaders === 'function' ? await _getAuthHeaders() : {};
-            const res = await fetch(`/api/twstock/market?symbols=${encodeURIComponent(sym)}`, { headers: authHeaders });
+            const authHeaders =
+                typeof _getAuthHeaders === 'function' ? await _getAuthHeaders() : {};
+            const res = await fetch(`/api/twstock/market?symbols=${encodeURIComponent(sym)}`, {
+                headers: authHeaders,
+            });
 
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
@@ -81,7 +96,10 @@ window.TWStockTab = {
             } else {
                 // Invalid symbol or no data returned
                 if (window.showToast) {
-                    window.showToast(`找不到台股代號「${sym}」的交易資料，或該股票已下市。`, 'error');
+                    window.showToast(
+                        `找不到台股代號「${sym}」的交易資料，或該股票已下市。`,
+                        'error'
+                    );
                 } else {
                     alert(`找不到台股代號「${sym}」。`);
                 }
@@ -103,7 +121,7 @@ window.TWStockTab = {
         if (event) {
             event.stopPropagation(); // prevent jumping to pulse
         }
-        window.twStockSelectedSymbols = window.twStockSelectedSymbols.filter(s => s !== symbol);
+        window.twStockSelectedSymbols = window.twStockSelectedSymbols.filter((s) => s !== symbol);
         this.saveTwStockSelection();
         this.refreshMarketWatch();
         this.refreshMarketInfo(); // Update News, Dividend, PE
@@ -159,12 +177,14 @@ window.TWStockTab = {
             return;
         }
 
-        const activeClass = "twstock-sub-tab flex-1 py-2 px-4 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 bg-primary text-background shadow-md";
-        const inactiveClass = "twstock-sub-tab flex-1 py-2 px-4 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 text-textMuted hover:text-textMain hover:bg-white/5";
+        const activeClass =
+            'twstock-sub-tab flex-1 py-2 px-4 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 bg-primary text-background shadow-md';
+        const inactiveClass =
+            'twstock-sub-tab flex-1 py-2 px-4 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 text-textMuted hover:text-textMain hover:bg-white/5';
 
         // Hide all content panes
-        [marketContent, pulseContent].forEach(el => el && el.classList.add('hidden'));
-        [marketBtn, pulseBtn].forEach(el => el && (el.className = inactiveClass));
+        [marketContent, pulseContent].forEach((el) => el && el.classList.add('hidden'));
+        [marketBtn, pulseBtn].forEach((el) => el && (el.className = inactiveClass));
 
         if (tabId === 'market') {
             marketBtn.className = activeClass;
@@ -213,7 +233,8 @@ window.TWStockTab = {
         listContainer.innerHTML = '';
 
         try {
-            const authHeaders = typeof _getAuthHeaders === 'function' ? await _getAuthHeaders() : {};
+            const authHeaders =
+                typeof _getAuthHeaders === 'function' ? await _getAuthHeaders() : {};
             let url = '/api/twstock/market';
 
             // Append symbols if we have a watchlist
@@ -222,7 +243,7 @@ window.TWStockTab = {
             }
 
             const response = await fetch(url, {
-                headers: authHeaders
+                headers: authHeaders,
             });
 
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -241,7 +262,8 @@ window.TWStockTab = {
 
     renderMarketList: function (container, items) {
         if (!items || items.length === 0) {
-            container.innerHTML = '<p class="text-textMuted text-[10px] italic py-6 text-center opacity-50 uppercase tracking-widest">暫無市場數據</p>';
+            container.innerHTML =
+                '<p class="text-textMuted text-[10px] italic py-6 text-center opacity-50 uppercase tracking-widest">暫無市場數據</p>';
             return;
         }
 
@@ -249,27 +271,33 @@ window.TWStockTab = {
         const escapeHtml = (unsafe) => {
             if (!unsafe) return '';
             return String(unsafe)
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
         };
 
         const fragment = document.createDocumentFragment();
-        items.forEach(item => {
+        items.forEach((item) => {
             const sym = escapeHtml(item.Symbol || 'N/A');
             const name = escapeHtml(item.Name || sym);
             const exchange = escapeHtml(item.Exchange || '台股');
-            const price = item.Close ? parseFloat(item.Close).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-';
+            const price = item.Close
+                ? parseFloat(item.Close).toLocaleString(undefined, {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                  })
+                : '-';
             const change = item.price_change_24h ? parseFloat(item.price_change_24h) : 0;
             const isPos = change > 0;
             const isNeg = change < 0;
-            const colorClass = isPos ? 'text-success' : (isNeg ? 'text-danger' : 'text-textMuted');
+            const colorClass = isPos ? 'text-success' : isNeg ? 'text-danger' : 'text-textMuted';
             const sign = isPos ? '+' : '';
 
             const div = document.createElement('div');
-            div.className = 'group bg-surface/20 hover:bg-surface/40 border border-white/5 rounded-2xl p-4 transition-all duration-300 cursor-pointer';
+            div.className =
+                'group bg-surface/20 hover:bg-surface/40 border border-white/5 rounded-2xl p-4 transition-all duration-300 cursor-pointer';
             div.onclick = () => window.TWStockTab.jumpToPulse(sym);
             div.innerHTML = `
                 <div class="flex items-start gap-3">
@@ -318,9 +346,10 @@ window.TWStockTab = {
         pulseContainer.classList.add('hidden');
 
         try {
-            const authHeaders = typeof _getAuthHeaders === 'function' ? await _getAuthHeaders() : {};
+            const authHeaders =
+                typeof _getAuthHeaders === 'function' ? await _getAuthHeaders() : {};
             const response = await fetch(`/api/twstock/pulse/${encodeURIComponent(symbol)}`, {
-                headers: authHeaders
+                headers: authHeaders,
             });
 
             if (!response.ok) {
@@ -328,7 +357,7 @@ window.TWStockTab = {
                 try {
                     const errData = await response.json();
                     if (errData.detail) errorMsg = errData.detail;
-                } catch (e) { }
+                } catch (e) {}
                 throw new Error(errorMsg);
             }
 
@@ -337,8 +366,8 @@ window.TWStockTab = {
             pulseContainer.classList.remove('hidden');
 
             const titleEl = document.getElementById('twstock-pulse-title');
-            if (titleEl) titleEl.textContent = `Taiwan Stock AI Pulse: ${data.company_name || symbol}`;
-
+            if (titleEl)
+                titleEl.textContent = `Taiwan Stock AI Pulse: ${data.company_name || symbol}`;
         } catch (error) {
             console.error('[TW Stock] Pulse API Error:', error);
             pulseContainer.innerHTML = `<div class="p-4 text-center text-danger bg-danger/10 rounded-xl text-sm">無法載入「${SecurityUtils.escapeHTML(symbol || '')}」的脈動分析：${SecurityUtils.escapeHTML(error.message || '')}</div>`;
@@ -349,25 +378,26 @@ window.TWStockTab = {
     },
 
     renderAIPulse: function (container, data) {
-        const rep  = data.report || {};
+        const rep = data.report || {};
         const tech = data.technical_indicators || {};
         const fund = data.fundamentals || {};
         const inst = data.institutional || {};
 
         const isPos = data.change_24h > 0;
         const isNeg = data.change_24h < 0;
-        const colorClass = isPos ? 'text-success' : (isNeg ? 'text-danger' : 'text-textMuted');
-        const bgClass    = isPos ? 'bg-success/10' : (isNeg ? 'bg-danger/10' : 'bg-white/5');
-        const sign       = isPos ? '+' : '';
-        const icon       = isPos ? 'trending-up' : (isNeg ? 'trending-down' : 'minus');
+        const colorClass = isPos ? 'text-success' : isNeg ? 'text-danger' : 'text-textMuted';
+        const bgClass = isPos ? 'bg-success/10' : isNeg ? 'bg-danger/10' : 'bg-white/5';
+        const sign = isPos ? '+' : '';
+        const icon = isPos ? 'trending-up' : isNeg ? 'trending-down' : 'minus';
 
         // ── Helpers ────────────────────────────────────────────────────────
-        const fv = (v, d = 2) => (v != null && !isNaN(Number(v))) ? Number(v).toFixed(d) : 'N/A';
-        const fvPct = (v, d = 1) => (v != null && !isNaN(Number(v))) ? Number(v).toFixed(d) + '%' : 'N/A';
+        const fv = (v, d = 2) => (v != null && !isNaN(Number(v)) ? Number(v).toFixed(d) : 'N/A');
+        const fvPct = (v, d = 1) =>
+            v != null && !isNaN(Number(v)) ? Number(v).toFixed(d) + '%' : 'N/A';
         const fmtMktCap = (v) => {
             if (!v || isNaN(v)) return 'N/A';
             if (v >= 1e12) return (v / 1e12).toFixed(2) + ' 兆';
-            if (v >= 1e8)  return (v / 1e8).toFixed(1) + ' 億';
+            if (v >= 1e8) return (v / 1e8).toFixed(1) + ' 億';
             return Number(v).toLocaleString();
         };
         const parseInst = (v) => {
@@ -377,28 +407,46 @@ window.TWStockTab = {
         };
         const instRow = (label, raw) => {
             const n = parseInst(raw);
-            if (n === null) return `<div class="flex items-center justify-between py-2 border-b border-white/5 last:border-0"><span class="text-xs text-textMuted">${label}</span><span class="text-xs text-textMuted font-mono">N/A</span></div>`;
-            const c  = n > 0 ? 'text-success' : 'text-danger';
+            if (n === null)
+                return `<div class="flex items-center justify-between py-2 border-b border-white/5 last:border-0"><span class="text-xs text-textMuted">${label}</span><span class="text-xs text-textMuted font-mono">N/A</span></div>`;
+            const c = n > 0 ? 'text-success' : 'text-danger';
             const ic = n > 0 ? 'arrow-up' : 'arrow-down';
             return `<div class="flex items-center justify-between py-2 border-b border-white/5 last:border-0"><span class="text-xs text-textMuted">${label}</span><span class="text-xs font-bold font-mono ${c} flex items-center gap-1"><i data-lucide="${ic}" class="w-3 h-3"></i>${n > 0 ? '+' : ''}${n.toLocaleString()} 股</span></div>`;
         };
         const pctRow = (label, raw, isAlready100 = false) => {
-            if (raw == null || isNaN(Number(raw))) return `<div class="flex items-center justify-between py-2 border-b border-white/5 last:border-0"><span class="text-xs text-textMuted">${label}</span><span class="text-xs text-textMuted font-mono">N/A</span></div>`;
+            if (raw == null || isNaN(Number(raw)))
+                return `<div class="flex items-center justify-between py-2 border-b border-white/5 last:border-0"><span class="text-xs text-textMuted">${label}</span><span class="text-xs text-textMuted font-mono">N/A</span></div>`;
             const val = isAlready100 ? Number(raw) : Number(raw) * 100;
-            const c   = val > 0 ? 'text-success' : (val < 0 ? 'text-danger' : 'text-textMuted');
+            const c = val > 0 ? 'text-success' : val < 0 ? 'text-danger' : 'text-textMuted';
             return `<div class="flex items-center justify-between py-2 border-b border-white/5 last:border-0"><span class="text-xs text-textMuted">${label}</span><span class="text-xs font-bold font-mono ${c}">${val > 0 ? '+' : ''}${val.toFixed(1)}%</span></div>`;
         };
 
         // RSI colour & label
         const rsiVal = tech.rsi_14;
-        const rsiColor      = rsiVal == null ? 'text-textMuted' : rsiVal < 30 ? 'text-success' : rsiVal > 70 ? 'text-danger' : 'text-secondary';
-        const rsiLabelText  = rsiVal == null ? '' : rsiVal < 30 ? '超賣' : rsiVal > 70 ? '超買' : '中性';
-        const rsiLabelStyle = rsiVal == null ? '' : rsiVal < 30 ? 'bg-success/20 text-success' : rsiVal > 70 ? 'bg-danger/20 text-danger' : 'bg-white/10 text-textMuted';
+        const rsiColor =
+            rsiVal == null
+                ? 'text-textMuted'
+                : rsiVal < 30
+                  ? 'text-success'
+                  : rsiVal > 70
+                    ? 'text-danger'
+                    : 'text-secondary';
+        const rsiLabelText =
+            rsiVal == null ? '' : rsiVal < 30 ? '超賣' : rsiVal > 70 ? '超買' : '中性';
+        const rsiLabelStyle =
+            rsiVal == null
+                ? ''
+                : rsiVal < 30
+                  ? 'bg-success/20 text-success'
+                  : rsiVal > 70
+                    ? 'bg-danger/20 text-danger'
+                    : 'bg-white/10 text-textMuted';
 
         // MACD
-        const macdObj  = (typeof tech.macd === 'object' && tech.macd !== null) ? tech.macd : {};
+        const macdObj = typeof tech.macd === 'object' && tech.macd !== null ? tech.macd : {};
         const macdHist = macdObj.histogram;
-        const macdHistColor = macdHist == null ? 'text-textMuted' : macdHist > 0 ? 'text-success' : 'text-danger';
+        const macdHistColor =
+            macdHist == null ? 'text-textMuted' : macdHist > 0 ? 'text-success' : 'text-danger';
 
         // MA position
         const close = data.current_price || 0;
@@ -410,9 +458,9 @@ window.TWStockTab = {
         };
 
         // 52W progress bar
-        const low52  = fund['52w_low'];
+        const low52 = fund['52w_low'];
         const high52 = fund['52w_high'];
-        let w52Html  = '<div class="text-xs text-textMuted">N/A</div>';
+        let w52Html = '<div class="text-xs text-textMuted">N/A</div>';
         if (low52 && high52 && close && high52 > low52) {
             const pct = Math.min(100, Math.max(0, ((close - low52) / (high52 - low52)) * 100));
             w52Html = `
@@ -475,21 +523,29 @@ window.TWStockTab = {
                     </div>
                 </div>
                 <div>
-                    ${rep.highlights && rep.highlights.length > 0 ? `
+                    ${
+                        rep.highlights && rep.highlights.length > 0
+                            ? `
                         <div class="bg-surface/40 backdrop-blur-sm border border-white/5 rounded-2xl p-6 h-full">
                             <h3 class="font-bold text-secondary mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">
                                 <i data-lucide="rss" class="w-4 h-4 text-yellow-500"></i> Market Sentiments
                             </h3>
                             <div class="space-y-3">
-                                ${rep.highlights.map(h => `
+                                ${rep.highlights
+                                    .map(
+                                        (h) => `
                                     <a href="${h.url || '#'}" target="_blank" rel="noopener noreferrer"
                                        class="block bg-surfaceHighlight p-3 rounded-lg border border-white/5 hover:border-white/20 transition-colors">
                                         <p class="text-xs text-textMain leading-relaxed line-clamp-3 hover:text-primary transition-colors">${h.title || ''}</p>
                                     </a>
-                                `).join('')}
+                                `
+                                    )
+                                    .join('')}
                             </div>
                         </div>
-                    ` : ''}
+                    `
+                            : ''
+                    }
                 </div>
             </div>
 
@@ -506,7 +562,7 @@ window.TWStockTab = {
                             <span class="text-2xl font-black font-mono ${rsiColor}">${rsiVal != null ? Number(rsiVal).toFixed(1) : 'N/A'}</span>
                             ${rsiLabelText ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${rsiLabelStyle}">${rsiLabelText}</span>` : ''}
                         </div>
-                        ${rsiVal != null ? `<div class="h-1.5 rounded-full bg-white/10 overflow-hidden"><div class="h-full rounded-full" style="width:${Math.min(100,Number(rsiVal))}%;background:${Number(rsiVal)<30?'#86efac':Number(rsiVal)>70?'#fda4af':'#a1a1aa'}"></div></div>` : ''}
+                        ${rsiVal != null ? `<div class="h-1.5 rounded-full bg-white/10 overflow-hidden"><div class="h-full rounded-full" style="width:${Math.min(100, Number(rsiVal))}%;background:${Number(rsiVal) < 30 ? '#86efac' : Number(rsiVal) > 70 ? '#fda4af' : '#a1a1aa'}"></div></div>` : ''}
                     </div>
                     <!-- MACD -->
                     <div class="bg-background/80 rounded-xl p-4 border border-white/5 hover:border-white/10 transition-colors">
@@ -521,17 +577,24 @@ window.TWStockTab = {
                     <div class="bg-background/80 rounded-xl p-4 border border-white/5 hover:border-white/10 transition-colors">
                         <div class="text-[10px] text-textMuted uppercase tracking-wider mb-2">KD 隨機指標</div>
                         <div class="space-y-1.5">
-                            <div class="flex justify-between text-xs"><span class="text-textMuted">K 值</span><span class="font-bold font-mono text-secondary">${fv((tech.kd||{}).k)}</span></div>
-                            <div class="flex justify-between text-xs"><span class="text-textMuted">D 值</span><span class="font-bold font-mono text-secondary">${fv((tech.kd||{}).d)}</span></div>
+                            <div class="flex justify-between text-xs"><span class="text-textMuted">K 值</span><span class="font-bold font-mono text-secondary">${fv((tech.kd || {}).k)}</span></div>
+                            <div class="flex justify-between text-xs"><span class="text-textMuted">D 值</span><span class="font-bold font-mono text-secondary">${fv((tech.kd || {}).d)}</span></div>
                         </div>
                     </div>
                     <!-- MA -->
                     <div class="bg-background/80 rounded-xl p-4 border border-white/5 hover:border-white/10 transition-colors">
                         <div class="text-[10px] text-textMuted uppercase tracking-wider mb-2">移動平均線</div>
                         <div class="space-y-1.5">
-                            ${[['MA5', maArr.ma5], ['MA20', maArr.ma20], ['MA60', maArr.ma60]].map(([l,v]) =>
-                                `<div class="flex justify-between text-xs items-center"><span class="text-textMuted">${l}</span><span class="font-mono text-secondary">${fv(v)}${v ? maPosBadge(v) : ''}</span></div>`
-                            ).join('')}
+                            ${[
+                                ['MA5', maArr.ma5],
+                                ['MA20', maArr.ma20],
+                                ['MA60', maArr.ma60],
+                            ]
+                                .map(
+                                    ([l, v]) =>
+                                        `<div class="flex justify-between text-xs items-center"><span class="text-textMuted">${l}</span><span class="font-mono text-secondary">${fv(v)}${v ? maPosBadge(v) : ''}</span></div>`
+                                )
+                                .join('')}
                         </div>
                     </div>
                 </div>
@@ -594,10 +657,14 @@ window.TWStockTab = {
                 </div>
             </div>
 
-            ${(data.monthly_revenue || data.dividend_info) ? `
+            ${
+                data.monthly_revenue || data.dividend_info
+                    ? `
             <!-- Section D + E: Monthly Revenue + Dividend -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-                ${data.monthly_revenue ? `
+                ${
+                    data.monthly_revenue
+                        ? `
                 <div class="bg-surface/40 backdrop-blur-sm border border-white/5 rounded-2xl p-6">
                     <h3 class="font-bold text-secondary mb-5 flex items-center gap-2 text-sm uppercase tracking-wider">
                         <i data-lucide="trending-up" class="w-4 h-4 text-success"></i> 月營收
@@ -606,7 +673,7 @@ window.TWStockTab = {
                     <div class="grid grid-cols-2 gap-3">
                         <div class="col-span-2 bg-background/60 rounded-lg p-3 border border-white/5">
                             <div class="text-[9px] text-textMuted uppercase mb-1">當月營收</div>
-                            <div class="font-bold font-mono text-secondary text-lg">${data.monthly_revenue.current_revenue ? Number(String(data.monthly_revenue.current_revenue).replace(/,/g,'')).toLocaleString() + ' 千元' : 'N/A'}</div>
+                            <div class="font-bold font-mono text-secondary text-lg">${data.monthly_revenue.current_revenue ? Number(String(data.monthly_revenue.current_revenue).replace(/,/g, '')).toLocaleString() + ' 千元' : 'N/A'}</div>
                         </div>
                         <div class="bg-background/60 rounded-lg p-3 border border-white/5">
                             <div class="text-[9px] text-textMuted uppercase mb-1">月增率 MoM</div>
@@ -618,7 +685,7 @@ window.TWStockTab = {
                         </div>
                         <div class="bg-background/60 rounded-lg p-3 border border-white/5">
                             <div class="text-[9px] text-textMuted uppercase mb-1">累計營收</div>
-                            <div class="font-bold font-mono text-secondary text-xs">${data.monthly_revenue.ytd_revenue ? Number(String(data.monthly_revenue.ytd_revenue).replace(/,/g,'')).toLocaleString() + ' 千元' : 'N/A'}</div>
+                            <div class="font-bold font-mono text-secondary text-xs">${data.monthly_revenue.ytd_revenue ? Number(String(data.monthly_revenue.ytd_revenue).replace(/,/g, '')).toLocaleString() + ' 千元' : 'N/A'}</div>
                         </div>
                         <div class="bg-background/60 rounded-lg p-3 border border-white/5">
                             <div class="text-[9px] text-textMuted uppercase mb-1">累計年增率</div>
@@ -626,9 +693,13 @@ window.TWStockTab = {
                         </div>
                     </div>
                 </div>
-                ` : '<div></div>'}
+                `
+                        : '<div></div>'
+                }
 
-                ${data.dividend_info ? `
+                ${
+                    data.dividend_info
+                        ? `
                 <div class="bg-surface/40 backdrop-blur-sm border border-white/5 rounded-2xl p-6">
                     <h3 class="font-bold text-secondary mb-5 flex items-center gap-2 text-sm uppercase tracking-wider">
                         <i data-lucide="gift" class="w-4 h-4 text-yellow-500"></i> 股利資訊
@@ -650,9 +721,13 @@ window.TWStockTab = {
                         ${data.dividend_info.progress ? `<div class="flex justify-between py-2"><span class="text-xs text-textMuted">決議進度</span><span class="text-xs text-secondary text-right max-w-[60%]">${data.dividend_info.progress}</span></div>` : ''}
                     </div>
                 </div>
-                ` : '<div></div>'}
+                `
+                        : '<div></div>'
+                }
             </div>
-            ` : ''}
+            `
+                    : ''
+            }
         `;
 
         container.innerHTML = html;
@@ -694,10 +769,11 @@ window.TWStockTab = {
         this.twCurrentChartSymbol = symbol;
         chartSection.classList.remove('hidden');
         if (window.lucide) window.lucide.createIcons();
-        if (titleEl) titleEl.textContent = `${symbol} (${this.twCurrentChartInterval.toUpperCase()})`;
+        if (titleEl)
+            titleEl.textContent = `${symbol} (${this.twCurrentChartInterval.toUpperCase()})`;
 
         // Update active interval button UI
-        document.querySelectorAll('.tw-chart-interval-btn').forEach(btn => {
+        document.querySelectorAll('.tw-chart-interval-btn').forEach((btn) => {
             if (btn.dataset.interval === this.twCurrentChartInterval) {
                 btn.classList.add('bg-white/10', 'text-primary');
                 btn.classList.remove('text-textMuted');
@@ -707,18 +783,26 @@ window.TWStockTab = {
             }
         });
 
-        chartContainer.innerHTML = '<div class="animate-pulse text-textMuted h-full flex items-center justify-center">載入歷史數據中...</div>';
+        chartContainer.innerHTML =
+            '<div class="animate-pulse text-textMuted h-full flex items-center justify-center">載入歷史數據中...</div>';
         if (volumeContainer) volumeContainer.innerHTML = '';
 
         try {
-            const authHeaders = typeof _getAuthHeaders === 'function' ? await _getAuthHeaders() : {};
-            const res = await fetch(`/api/twstock/klines/${encodeURIComponent(symbol)}?interval=${this.twCurrentChartInterval}&limit=200`, {
-                headers: authHeaders
-            });
+            const authHeaders =
+                typeof _getAuthHeaders === 'function' ? await _getAuthHeaders() : {};
+            const res = await fetch(
+                `/api/twstock/klines/${encodeURIComponent(symbol)}?interval=${this.twCurrentChartInterval}&limit=200`,
+                {
+                    headers: authHeaders,
+                }
+            );
 
             if (!res.ok) {
                 let msg = `HTTP ${res.status} `;
-                try { const d = await res.json(); msg = d.detail || msg; } catch (e) { }
+                try {
+                    const d = await res.json();
+                    msg = d.detail || msg;
+                } catch (e) {}
                 throw new Error(msg);
             }
 
@@ -726,7 +810,8 @@ window.TWStockTab = {
             const data = responseData.data || [];
 
             if (data.length === 0) {
-                chartContainer.innerHTML = '<div class="text-danger h-full flex items-center justify-center">無法載入數據或無歷史交易紀錄</div>';
+                chartContainer.innerHTML =
+                    '<div class="text-danger h-full flex items-center justify-center">無法載入數據或無歷史交易紀錄</div>';
                 return;
             }
 
@@ -750,30 +835,70 @@ window.TWStockTab = {
             }
 
             this.twChart = LightweightCharts.createChart(chartContainer, {
-                layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#A0AEC0' },
-                grid: { vertLines: { color: 'rgba(255,255,255,0.05)' }, horzLines: { color: 'rgba(255,255,255,0.05)' } },
+                layout: {
+                    background: { type: 'solid', color: 'transparent' },
+                    textColor: '#A0AEC0',
+                },
+                grid: {
+                    vertLines: { color: 'rgba(255,255,255,0.05)' },
+                    horzLines: { color: 'rgba(255,255,255,0.05)' },
+                },
                 crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
                 rightPriceScale: { borderColor: 'rgba(255,255,255,0.1)' },
-                timeScale: { borderColor: 'rgba(255,255,255,0.1)', timeVisible: true, rightOffset: 5 },
-                handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
-                handleScale: { mouseWheel: true, pinchScale: true, axisPressedMouseMove: { time: true, price: false } },
+                timeScale: {
+                    borderColor: 'rgba(255,255,255,0.1)',
+                    timeVisible: true,
+                    rightOffset: 5,
+                },
+                handleScroll: {
+                    mouseWheel: true,
+                    pressedMouseMove: true,
+                    horzTouchDrag: true,
+                    vertTouchDrag: false,
+                },
+                handleScale: {
+                    mouseWheel: true,
+                    pinchScale: true,
+                    axisPressedMouseMove: { time: true, price: false },
+                },
             });
 
             this.twCandleSeries = this.twChart.addCandlestickSeries({
-                upColor: '#10B981', downColor: '#EF4444', borderVisible: false, wickUpColor: '#10B981', wickDownColor: '#EF4444'
+                upColor: '#10B981',
+                downColor: '#EF4444',
+                borderVisible: false,
+                wickUpColor: '#10B981',
+                wickDownColor: '#EF4444',
             });
 
             // Create separate volume chart
-            if (this.twVolumeChart) { this.twVolumeChart.remove(); this.twVolumeChart = null; }
+            if (this.twVolumeChart) {
+                this.twVolumeChart.remove();
+                this.twVolumeChart = null;
+            }
             this.twVolumeSeries = null;
             if (volumeContainer) {
                 this.twVolumeChart = LightweightCharts.createChart(volumeContainer, {
-                    layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#A0AEC0' },
-                    grid: { vertLines: { color: 'rgba(255,255,255,0.05)' }, horzLines: { color: 'rgba(255,255,255,0.02)' } },
+                    layout: {
+                        background: { type: 'solid', color: 'transparent' },
+                        textColor: '#A0AEC0',
+                    },
+                    grid: {
+                        vertLines: { color: 'rgba(255,255,255,0.05)' },
+                        horzLines: { color: 'rgba(255,255,255,0.02)' },
+                    },
                     crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-                    rightPriceScale: { borderColor: 'rgba(255,255,255,0.1)', scaleMargins: { top: 0.1, bottom: 0.05 } },
+                    rightPriceScale: {
+                        borderColor: 'rgba(255,255,255,0.1)',
+                        scaleMargins: { top: 0.1, bottom: 0.05 },
+                    },
                     timeScale: { visible: false },
-                    handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
+                    handleScroll: {
+                        mouseWheel: false,
+                        pressedMouseMove: false,
+                        horzTouchDrag: false,
+                        vertTouchDrag: false,
+                    },
                     handleScale: { mouseWheel: false, pinchScale: false },
                 });
                 this.twVolumeSeries = this.twVolumeChart.addHistogramSeries({
@@ -782,18 +907,18 @@ window.TWStockTab = {
             }
 
             // Map data
-            const formattedKlines = data.map(k => ({
+            const formattedKlines = data.map((k) => ({
                 time: k.time,
                 open: k.open,
                 high: k.high,
                 low: k.low,
-                close: k.close
+                close: k.close,
             }));
 
-            const formattedVolume = data.map(k => ({
+            const formattedVolume = data.map((k) => ({
                 time: k.time,
                 value: k.volume,
-                color: k.close >= k.open ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'
+                color: k.close >= k.open ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)',
             }));
 
             this.twCandleSeries.setData(formattedKlines);
@@ -841,39 +966,59 @@ window.TWStockTab = {
                 if (lowEl) lowEl.textContent = formatPrice(kline.low);
                 if (closeEl) {
                     closeEl.textContent = formatPrice(kline.close);
-                    closeEl.className = color + " ml-0.5";
+                    closeEl.className = color + ' ml-0.5';
                 }
                 if (volEl && volumeData) {
                     // For histogram series, the value is just a number or an object with value
-                    const v = typeof volumeData === 'object' && volumeData.value !== undefined ? volumeData.value : volumeData;
+                    const v =
+                        typeof volumeData === 'object' && volumeData.value !== undefined
+                            ? volumeData.value
+                            : volumeData;
                     volEl.textContent = formatVolume(v);
                 }
             };
 
             // Set initial data to the last bar
             if (formattedKlines.length > 0) {
-                setHoverData(formattedKlines[formattedKlines.length - 1], formattedVolume[formattedVolume.length - 1]);
+                setHoverData(
+                    formattedKlines[formattedKlines.length - 1],
+                    formattedVolume[formattedVolume.length - 1]
+                );
             }
 
             // Hover tooltips
-            this.twChart.subscribeCrosshairMove(param => {
-                if (param.point === undefined || !param.time || param.point.x < 0 || param.point.x > chartContainer.clientWidth || param.point.y < 0 || param.point.y > chartContainer.clientHeight) {
+            this.twChart.subscribeCrosshairMove((param) => {
+                if (
+                    param.point === undefined ||
+                    !param.time ||
+                    param.point.x < 0 ||
+                    param.point.x > chartContainer.clientWidth ||
+                    param.point.y < 0 ||
+                    param.point.y > chartContainer.clientHeight
+                ) {
                     // Reset to last candle when mouse leaves chart
                     if (formattedKlines.length > 0) {
-                        setHoverData(formattedKlines[formattedKlines.length - 1], formattedVolume[formattedVolume.length - 1]);
+                        setHoverData(
+                            formattedKlines[formattedKlines.length - 1],
+                            formattedVolume[formattedVolume.length - 1]
+                        );
                     }
                     if (this.twVolumeChart) this.twVolumeChart.clearCrosshairPosition();
                     return;
                 }
                 const dataPoint = param.seriesData.get(this.twCandleSeries);
                 // Look up volume by time since it's on a separate chart
-                const volData = formattedVolume.find(v => v.time === param.time);
+                const volData = formattedVolume.find((v) => v.time === param.time);
                 if (dataPoint) {
                     setHoverData(dataPoint, volData);
                 }
                 // Sync crosshair position to volume chart
                 if (this.twVolumeChart && this.twVolumeSeries && volData) {
-                    this.twVolumeChart.setCrosshairPosition(volData.value, param.time, this.twVolumeSeries);
+                    this.twVolumeChart.setCrosshairPosition(
+                        volData.value,
+                        param.time,
+                        this.twVolumeSeries
+                    );
                 }
             });
 
@@ -892,7 +1037,6 @@ window.TWStockTab = {
 
             // Trigger initial resize to fit vertically
             setTimeout(onResize, 50);
-
         } catch (error) {
             console.error('[TW Stock] Chart Data Error:', error);
             chartContainer.innerHTML = `<div class="text-danger h-full flex flex-col items-center justify-center text-sm p-4 text-center">
@@ -955,7 +1099,7 @@ window.TWStockTab = {
         try {
             const prefs = JSON.parse(localStorage.getItem('twstock_section_prefs') || '{}');
             const sections = ['pe', 'news', 'dividend', 'foreign'];
-            sections.forEach(sec => {
+            sections.forEach((sec) => {
                 const isHidden = prefs[sec] === false; // visible by default
                 const bodyEl = document.getElementById(`twstock-section-body-${sec}`);
                 const chevronEl = document.getElementById(`twstock-chevron-${sec}`);
@@ -1034,10 +1178,13 @@ window.TWStockTab = {
             const json = await res.json();
             const items = json.data || [];
             if (!items.length) {
-                container.innerHTML = '<p class="text-textMuted text-xs italic text-center py-6 opacity-50">目前無重大訊息</p>';
+                container.innerHTML =
+                    '<p class="text-textMuted text-xs italic text-center py-6 opacity-50">目前無重大訊息</p>';
                 return;
             }
-            container.innerHTML = items.map(item => `
+            container.innerHTML = items
+                .map(
+                    (item) => `
             <div class="bg-surface/40 border border-yellow-500/10 hover:border-yellow-500/30 rounded-xl p-3 transition-colors cursor-default">
                 <div class="flex items-start gap-3">
                     <div class="flex-shrink-0 w-12 text-center">
@@ -1053,7 +1200,9 @@ window.TWStockTab = {
                     </div>
                 </div>
             </div>
-            `).join('');
+            `
+                )
+                .join('');
         } catch (err) {
             console.error('[TW Info] News error:', err);
             container.innerHTML = `<p class="text-danger text-xs text-center py-4">載入重大訊息失敗：${SecurityUtils.escapeHTML(err.message || '')}</p>`;
@@ -1070,25 +1219,35 @@ window.TWStockTab = {
         try {
             const targets = symbols.slice(0, 20); // Render up to 20 PE cards
             const results = await Promise.all(
-                targets.map(code =>
+                targets.map((code) =>
                     fetch(`/api/twstock/opendata/pe_ratio/${code}`, { headers: authHeaders })
-                        .then(r => r.ok ? r.json() : null)
+                        .then((r) => (r.ok ? r.json() : null))
                         .catch(() => null)
                 )
             );
-            const valid = results.filter(Boolean).filter(r => !r.error);
+            const valid = results.filter(Boolean).filter((r) => !r.error);
             if (!valid.length) {
-                container.innerHTML = '<p class="text-textMuted text-xs italic text-center py-6 opacity-50 col-span-full">無法取得估值資料（交易所休市中或無自選股）</p>';
+                container.innerHTML =
+                    '<p class="text-textMuted text-xs italic text-center py-6 opacity-50 col-span-full">無法取得估值資料（交易所休市中或無自選股）</p>';
                 return;
             }
-            container.innerHTML = valid.map(d => {
-                const pe = parseFloat(d.pe_ratio) || 0;
-                const dy = parseFloat(d.dividend_yield) || 0;
-                const pb = parseFloat(d.pb_ratio) || 0;
-                // Color-code PE: green=cheap, yellow=fair, red=expensive
-                const peColor = pe <= 0 ? 'text-textMuted' : pe < 15 ? 'text-success' : pe < 25 ? 'text-yellow-400' : 'text-danger';
-                const dyColor = dy <= 0 ? 'text-textMuted' : dy > 4 ? 'text-success' : 'text-secondary';
-                return `
+            container.innerHTML = valid
+                .map((d) => {
+                    const pe = parseFloat(d.pe_ratio) || 0;
+                    const dy = parseFloat(d.dividend_yield) || 0;
+                    const pb = parseFloat(d.pb_ratio) || 0;
+                    // Color-code PE: green=cheap, yellow=fair, red=expensive
+                    const peColor =
+                        pe <= 0
+                            ? 'text-textMuted'
+                            : pe < 15
+                              ? 'text-success'
+                              : pe < 25
+                                ? 'text-yellow-400'
+                                : 'text-danger';
+                    const dyColor =
+                        dy <= 0 ? 'text-textMuted' : dy > 4 ? 'text-success' : 'text-secondary';
+                    return `
             <div class="relative overflow-hidden rounded-2xl border border-white/8 bg-gradient-to-br from-surface to-background hover:border-primary/30 transition-all duration-200 group cursor-default">
                         <!--Subtle glow accent-->
                         <div class="absolute top-0 right-0 w-16 h-16 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-all"></div>
@@ -1119,7 +1278,8 @@ window.TWStockTab = {
                         </div>
                     </div>
             `;
-            }).join('');
+                })
+                .join('');
         } catch (err) {
             console.error('[TW Info] PE error:', err);
             container.innerHTML = `<p class="text-danger text-xs text-center py-4 col-span-full">載入本益比失敗：${SecurityUtils.escapeHTML(err.message || '')}</p>`;
@@ -1142,12 +1302,18 @@ window.TWStockTab = {
             const res = await fetch(url, { headers: authHeaders });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const json = await res.json();
-            const items = (json.data || []).filter(d => d.cash_dividend && d.cash_dividend !== '' && d.cash_dividend !== '0');
+            const items = (json.data || []).filter(
+                (d) => d.cash_dividend && d.cash_dividend !== '' && d.cash_dividend !== '0'
+            );
             if (!items.length) {
-                container.innerHTML = '<p class="text-textMuted text-xs italic text-center py-6 opacity-50">目前無股利分派資料</p>';
+                container.innerHTML =
+                    '<p class="text-textMuted text-xs italic text-center py-6 opacity-50">目前無股利分派資料</p>';
                 return;
             }
-            container.innerHTML = items.slice(0, 20).map(d => `
+            container.innerHTML = items
+                .slice(0, 20)
+                .map(
+                    (d) => `
             <div class="bg-surface/40 border border-success/10 hover:border-success/30 rounded-xl p-3 transition-colors">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
@@ -1166,7 +1332,9 @@ window.TWStockTab = {
                 </div>
                     ${d.shareholder_meeting ? `<div class="mt-2 pt-2 border-t border-white/5 text-[10px] text-textMuted flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i> 股東會：${d.shareholder_meeting}</div>` : ''}
                 </div>
-            `).join('');
+            `
+                )
+                .join('');
             if (window.lucide) window.lucide.createIcons();
         } catch (err) {
             console.error('[TW Info] Dividend error:', err);
@@ -1181,12 +1349,15 @@ window.TWStockTab = {
         if (!container) return;
         this._showLoader('twstock-info-foreign-loader', true);
         try {
-            const res = await fetch('/api/twstock/opendata/foreign_holding', { headers: authHeaders });
+            const res = await fetch('/api/twstock/opendata/foreign_holding', {
+                headers: authHeaders,
+            });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const json = await res.json();
             const items = json.data || [];
             if (!items.length) {
-                container.innerHTML = '<p class="text-textMuted text-xs italic text-center py-6 opacity-50">無外資持股資料</p>';
+                container.innerHTML =
+                    '<p class="text-textMuted text-xs italic text-center py-6 opacity-50">無外資持股資料</p>';
                 return;
             }
             container.innerHTML = `
@@ -1202,12 +1373,13 @@ window.TWStockTab = {
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-white/5">
-                        ${items.map((d, i) => {
-                const pct = parseFloat(d.held_pct) || 0;
-                const barW = Math.min(100, pct);
-                return `
+                        ${items
+                            .map((d, i) => {
+                                const pct = parseFloat(d.held_pct) || 0;
+                                const barW = Math.min(100, pct);
+                                return `
                                 <tr class="hover:bg-white/5 transition-colors">
-                                    <td class="py-2 px-2 text-textMuted font-mono">${d.rank || (i + 1)}</td>
+                                    <td class="py-2 px-2 text-textMuted font-mono">${d.rank || i + 1}</td>
                                     <td class="py-2 px-2 font-mono text-primary font-bold">${d.code}</td>
                                     <td class="py-2 px-2 text-secondary truncate max-w-[80px]">${d.name}</td>
                                     <td class="py-2 px-2 text-right">
@@ -1222,7 +1394,8 @@ window.TWStockTab = {
                                     <td class="py-2 px-2 text-right text-textMuted hidden sm:table-cell">${d.upper_limit_pct || '—'}%</td>
                                 </tr>
                             `;
-            }).join('')}
+                            })
+                            .join('')}
                     </tbody>
                 </table>
             `;
@@ -1232,7 +1405,7 @@ window.TWStockTab = {
         } finally {
             this._showLoader('twstock-info-foreign-loader', false);
         }
-    }
+    },
 };
 
 async function initTwStock() {
@@ -1247,12 +1420,12 @@ async function initTwStock() {
     // Bind click events if not already done
     if (marketBtn && !marketBtn.dataset.bound) {
         marketBtn.addEventListener('click', () => window.TWStockTab.switchSubTab('market'));
-        marketBtn.dataset.bound = "true";
+        marketBtn.dataset.bound = 'true';
     }
 
     if (pulseBtn && !pulseBtn.dataset.bound) {
         pulseBtn.addEventListener('click', () => window.TWStockTab.switchSubTab('pulse'));
-        pulseBtn.dataset.bound = "true";
+        pulseBtn.dataset.bound = 'true';
     }
 
     window.TWStockTab.bindEvents();

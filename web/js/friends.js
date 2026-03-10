@@ -19,7 +19,10 @@ const FriendsAPI = {
         if (typeof AuthManager !== 'undefined' && AuthManager.currentUser) {
             const userId = AuthManager.currentUser.user_id || AuthManager.currentUser.uid;
             // 優先使用標準 Token，若無則在測試模式下使用 user_id
-            const token = AuthManager.currentUser.accessToken || AuthManager.currentUser.piAccessToken || userId;
+            const token =
+                AuthManager.currentUser.accessToken ||
+                AuthManager.currentUser.piAccessToken ||
+                userId;
             if (token) {
                 headers['Authorization'] = `Bearer ${token}`;
             }
@@ -36,9 +39,12 @@ const FriendsAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error('請先登入');
 
-        const res = await fetch(`/api/friends/search?q=${encodeURIComponent(query)}&user_id=${userId}&limit=${limit}`, {
-            headers: this._getAuthHeaders()
-        });
+        const res = await fetch(
+            `/api/friends/search?q=${encodeURIComponent(query)}&user_id=${userId}&limit=${limit}`,
+            {
+                headers: this._getAuthHeaders(),
+            }
+        );
         if (!res.ok) {
             const err = await res.json();
             throw new Error(err.detail || '搜尋失敗');
@@ -54,7 +60,7 @@ const FriendsAPI = {
         const userId = this._getUserId();
         const query = userId ? `?user_id=${userId}` : '';
         const res = await fetch(`/api/friends/profile/${targetUserId}${query}`, {
-            headers: this._getAuthHeaders()
+            headers: this._getAuthHeaders(),
         });
         if (!res.ok) {
             const err = await res.json();
@@ -74,7 +80,7 @@ const FriendsAPI = {
         const res = await fetch(`/api/friends/request?user_id=${userId}`, {
             method: 'POST',
             headers: this._getAuthHeaders(),
-            body: JSON.stringify({ target_user_id: targetUserId })
+            body: JSON.stringify({ target_user_id: targetUserId }),
         });
         if (!res.ok) {
             const err = await res.json();
@@ -94,7 +100,7 @@ const FriendsAPI = {
         const res = await fetch(`/api/friends/accept?user_id=${userId}`, {
             method: 'POST',
             headers: this._getAuthHeaders(),
-            body: JSON.stringify({ target_user_id: requesterId })
+            body: JSON.stringify({ target_user_id: requesterId }),
         });
         if (!res.ok) {
             const err = await res.json();
@@ -114,7 +120,7 @@ const FriendsAPI = {
         const res = await fetch(`/api/friends/reject?user_id=${userId}`, {
             method: 'POST',
             headers: this._getAuthHeaders(),
-            body: JSON.stringify({ target_user_id: requesterId })
+            body: JSON.stringify({ target_user_id: requesterId }),
         });
         if (!res.ok) {
             const err = await res.json();
@@ -134,7 +140,7 @@ const FriendsAPI = {
         const res = await fetch(`/api/friends/cancel?user_id=${userId}`, {
             method: 'POST',
             headers: this._getAuthHeaders(),
-            body: JSON.stringify({ target_user_id: targetUserId })
+            body: JSON.stringify({ target_user_id: targetUserId }),
         });
         if (!res.ok) {
             const err = await res.json();
@@ -151,10 +157,13 @@ const FriendsAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error('請先登入');
 
-        const res = await fetch(`/api/friends/remove?user_id=${userId}&target_user_id=${friendId}`, {
-            method: 'DELETE',
-            headers: this._getAuthHeaders()
-        });
+        const res = await fetch(
+            `/api/friends/remove?user_id=${userId}&target_user_id=${friendId}`,
+            {
+                method: 'DELETE',
+                headers: this._getAuthHeaders(),
+            }
+        );
         if (!res.ok) {
             const err = await res.json();
             throw new Error(err.detail || '移除好友失敗');
@@ -171,9 +180,12 @@ const FriendsAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error('請先登入');
 
-        const res = await fetch(`/api/friends/list?user_id=${userId}&limit=${limit}&offset=${offset}`, {
-            headers: this._getAuthHeaders()
-        });
+        const res = await fetch(
+            `/api/friends/list?user_id=${userId}&limit=${limit}&offset=${offset}`,
+            {
+                headers: this._getAuthHeaders(),
+            }
+        );
         if (!res.ok) {
             const err = await res.json();
             throw new Error(err.detail || '取得好友列表失敗');
@@ -189,7 +201,7 @@ const FriendsAPI = {
         if (!userId) throw new Error('請先登入');
 
         const res = await fetch(`/api/friends/requests/received?user_id=${userId}`, {
-            headers: this._getAuthHeaders()
+            headers: this._getAuthHeaders(),
         });
         if (!res.ok) {
             const err = await res.json();
@@ -206,7 +218,7 @@ const FriendsAPI = {
         if (!userId) throw new Error('請先登入');
 
         const res = await fetch(`/api/friends/requests/sent?user_id=${userId}`, {
-            headers: this._getAuthHeaders()
+            headers: this._getAuthHeaders(),
         });
         if (!res.ok) {
             const err = await res.json();
@@ -224,7 +236,7 @@ const FriendsAPI = {
         if (!userId) return { status: null, is_friend: false };
 
         const res = await fetch(`/api/friends/status/${targetUserId}?user_id=${userId}`, {
-            headers: this._getAuthHeaders()
+            headers: this._getAuthHeaders(),
         });
         if (!res.ok) {
             return { status: null, is_friend: false };
@@ -240,7 +252,7 @@ const FriendsAPI = {
         if (!userId) return { friends_count: 0, pending_received: 0 };
 
         const res = await fetch(`/api/friends/counts?user_id=${userId}`, {
-            headers: this._getAuthHeaders()
+            headers: this._getAuthHeaders(),
         });
         if (!res.ok) {
             return { friends_count: 0, pending_received: 0 };
@@ -259,7 +271,7 @@ const FriendsAPI = {
         const res = await fetch(`/api/friends/block?user_id=${userId}`, {
             method: 'POST',
             headers: this._getAuthHeaders(),
-            body: JSON.stringify({ target_user_id: targetUserId })
+            body: JSON.stringify({ target_user_id: targetUserId }),
         });
         if (!res.ok) {
             const err = await res.json();
@@ -279,7 +291,7 @@ const FriendsAPI = {
         const res = await fetch(`/api/friends/unblock?user_id=${userId}`, {
             method: 'POST',
             headers: this._getAuthHeaders(),
-            body: JSON.stringify({ target_user_id: targetUserId })
+            body: JSON.stringify({ target_user_id: targetUserId }),
         });
         if (!res.ok) {
             const err = await res.json();
@@ -296,14 +308,14 @@ const FriendsAPI = {
         if (!userId) throw new Error('請先登入');
 
         const res = await fetch(`/api/friends/blocked?user_id=${userId}`, {
-            headers: this._getAuthHeaders()
+            headers: this._getAuthHeaders(),
         });
         if (!res.ok) {
             const err = await res.json();
             throw new Error(err.detail || '取得封鎖名單失敗');
         }
         return await res.json();
-    }
+    },
 };
 
 // 匯出到全域
@@ -412,17 +424,22 @@ const FriendsUI = {
      */
     renderUserCard(user, showActions = true) {
         const badge = this.getMembershipBadge(user.membership_tier);
-        const actionBtn = showActions ? this.getFriendButton(user.user_id, user.friend_status, user.is_requester) : '';
+        const actionBtn = showActions
+            ? this.getFriendButton(user.user_id, user.friend_status, user.is_requester)
+            : '';
         const initial = (user.username || 'U')[0].toUpperCase();
 
         // 如果是好友，顯示發訊息按鈕
-        const messageBtn = (user.friend_status === 'accepted') ? `
+        const messageBtn =
+            user.friend_status === 'accepted'
+                ? `
             <button onclick="event.stopPropagation(); FriendsUI.openChat('${encodeURIComponent(user.user_id)}', SecurityUtils.escapeHTML(user.username || user.user_id))"
                class="p-2 hover:bg-white/5 rounded-lg transition text-textMuted hover:text-primary"
                title="發訊息">
                 <i data-lucide="message-circle" class="w-4 h-4"></i>
             </button>
-        ` : '';
+        `
+                : '';
 
         return `
             <div class="user-card bg-surface border border-white/5 rounded-xl p-4 flex items-center justify-between hover:border-white/10 transition">
@@ -436,7 +453,7 @@ const FriendsUI = {
                             ${badge}
                         </div>
                         <div class="text-xs text-textMuted">
-                            ${user.last_active_at ? '上線 ' + this.formatTime(user.last_active_at) : (user.friends_since ? '成為好友 ' + this.formatTime(user.friends_since) : '')}
+                            ${user.last_active_at ? '上線 ' + this.formatTime(user.last_active_at) : user.friends_since ? '成為好友 ' + this.formatTime(user.friends_since) : ''}
                             ${user.requested_at ? '收到請求 ' + this.formatTime(user.requested_at) : ''}
                             ${user.sent_at ? '已發送請求 ' + this.formatTime(user.sent_at) : ''}
                         </div>
@@ -459,7 +476,8 @@ const FriendsUI = {
         // 立即顯示加載狀態
         if (btn) {
             btn.disabled = true;
-            btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>發送中...</span>';
+            btn.innerHTML =
+                '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>發送中...</span>';
             if (window.lucide) window.lucide.createIcons();
         }
 
@@ -473,17 +491,22 @@ const FriendsUI = {
             if (btn) {
                 btn.id = `cancel-request-btn-${userId}`;
                 btn.disabled = false;
-                btn.className = 'friend-btn bg-white/5 text-textMuted px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 border border-white/10 hover:bg-danger/10 hover:text-danger hover:border-danger/20 transition';
+                btn.className =
+                    'friend-btn bg-white/5 text-textMuted px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 border border-white/10 hover:bg-danger/10 hover:text-danger hover:border-danger/20 transition';
                 btn.innerHTML = '<i data-lucide="clock" class="w-4 h-4"></i><span>等待中</span>';
-                btn.onclick = (e) => { e.stopPropagation(); e.preventDefault(); FriendsUI.handleCancelRequest(userId); };
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    FriendsUI.handleCancelRequest(userId);
+                };
                 if (window.lucide) window.lucide.createIcons();
             }
-
         } catch (error) {
             // 恢復按鈕狀態
             if (btn) {
                 btn.disabled = false;
-                btn.innerHTML = '<i data-lucide="user-plus" class="w-4 h-4"></i><span>加好友</span>';
+                btn.innerHTML =
+                    '<i data-lucide="user-plus" class="w-4 h-4"></i><span>加好友</span>';
                 if (window.lucide) window.lucide.createIcons();
             }
 
@@ -586,7 +609,8 @@ const FriendsUI = {
         // 立即顯示加載狀態
         if (btn) {
             btn.disabled = true;
-            btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>取消中...</span>';
+            btn.innerHTML =
+                '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>取消中...</span>';
             if (window.lucide) window.lucide.createIcons();
         }
 
@@ -600,12 +624,17 @@ const FriendsUI = {
             if (btn) {
                 btn.id = `add-friend-btn-${userId}`;
                 btn.disabled = false;
-                btn.className = 'friend-btn bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 transition border border-primary/20 disabled:opacity-50 disabled:cursor-not-allowed';
-                btn.innerHTML = '<i data-lucide="user-plus" class="w-4 h-4"></i><span>加好友</span>';
-                btn.onclick = (e) => { e.stopPropagation(); e.preventDefault(); FriendsUI.handleAddFriend(userId); };
+                btn.className =
+                    'friend-btn bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 transition border border-primary/20 disabled:opacity-50 disabled:cursor-not-allowed';
+                btn.innerHTML =
+                    '<i data-lucide="user-plus" class="w-4 h-4"></i><span>加好友</span>';
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    FriendsUI.handleAddFriend(userId);
+                };
                 if (window.lucide) window.lucide.createIcons();
             }
-
         } catch (error) {
             // 恢復按鈕狀態
             if (btn) {
@@ -632,7 +661,7 @@ const FriendsUI = {
                 message: '確定要移除此好友嗎？',
                 type: 'warning',
                 confirmText: '確定移除',
-                cancelText: '取消'
+                cancelText: '取消',
             });
             if (!confirmed) return;
         } else if (!confirm('確定要移除此好友嗎？')) {
@@ -668,7 +697,7 @@ const FriendsUI = {
                 message: '封鎖後，對方將無法發送好友請求給你。確定要封鎖嗎？',
                 type: 'danger',
                 confirmText: '確定封鎖',
-                cancelText: '取消'
+                cancelText: '取消',
             });
             if (!confirmed) return;
         } else if (!confirm('確定要封鎖此用戶嗎？')) {
@@ -715,7 +744,9 @@ const FriendsUI = {
     toggleBlockedView() {
         const friendsView = document.getElementById('friends-view-container');
         const blockedView = document.getElementById('blocked-view-container');
-        const toggleBtnSpan = document.querySelector('button[onclick="FriendsUI.toggleBlockedView()"] span');
+        const toggleBtnSpan = document.querySelector(
+            'button[onclick="FriendsUI.toggleBlockedView()"] span'
+        );
 
         if (!friendsView || !blockedView) return;
 
@@ -754,7 +785,7 @@ const FriendsUI = {
                 SocialHub.openConversation(userId, username);
             }
         }
-    }
+    },
 };
 
 window.FriendsUI = FriendsUI;
@@ -853,9 +884,9 @@ async function loadFriendsTabData() {
     // Load Data in Parallel
     try {
         const [requestsRes, friendsRes, blockedRes] = await Promise.all([
-            FriendsAPI.getReceivedRequests().catch(e => ({ error: e })),
-            FriendsAPI.getFriends().catch(e => ({ error: e })),
-            FriendsAPI.getBlockedUsers().catch(e => ({ error: e }))
+            FriendsAPI.getReceivedRequests().catch((e) => ({ error: e })),
+            FriendsAPI.getFriends().catch((e) => ({ error: e })),
+            FriendsAPI.getBlockedUsers().catch((e) => ({ error: e })),
         ]);
 
         // Render Requests
@@ -865,15 +896,17 @@ async function loadFriendsTabData() {
             } else if (!requestsRes.requests || requestsRes.requests.length === 0) {
                 pendingListEl.innerHTML = renderEmptyState('沒有待處理的好友請求');
             } else {
-                pendingListEl.innerHTML = requestsRes.requests.map(req => {
-                    // Normalize data structure if needed
-                    const user = {
-                        ...req,
-                        friend_status: 'pending',
-                        is_requester: false // We are receiving, so we are NOT the requester
-                    };
-                    return FriendsUI.renderUserCard(user);
-                }).join('');
+                pendingListEl.innerHTML = requestsRes.requests
+                    .map((req) => {
+                        // Normalize data structure if needed
+                        const user = {
+                            ...req,
+                            friend_status: 'pending',
+                            is_requester: false, // We are receiving, so we are NOT the requester
+                        };
+                        return FriendsUI.renderUserCard(user);
+                    })
+                    .join('');
 
                 // Update badge
                 updateBadge('pending-count-badge', requestsRes.requests.length);
@@ -890,13 +923,15 @@ async function loadFriendsTabData() {
             } else if (!friendsRes.friends || friendsRes.friends.length === 0) {
                 friendsListEl.innerHTML = renderEmptyState('尚未添加任何好友');
             } else {
-                friendsListEl.innerHTML = friendsRes.friends.map(friend => {
-                    const user = {
-                        ...friend,
-                        friend_status: 'accepted'
-                    };
-                    return FriendsUI.renderUserCard(user);
-                }).join('');
+                friendsListEl.innerHTML = friendsRes.friends
+                    .map((friend) => {
+                        const user = {
+                            ...friend,
+                            friend_status: 'accepted',
+                        };
+                        return FriendsUI.renderUserCard(user);
+                    })
+                    .join('');
                 updateBadge('friends-count-badge', friendsRes.friends.length);
             }
         }
@@ -908,13 +943,15 @@ async function loadFriendsTabData() {
             } else if (!blockedRes.blocked_users || blockedRes.blocked_users.length === 0) {
                 blockedListEl.innerHTML = renderEmptyState('黑名單為空');
             } else {
-                blockedListEl.innerHTML = blockedRes.blocked_users.map(user => {
-                    const u = {
-                        ...user,
-                        friend_status: 'blocked'
-                    };
-                    return FriendsUI.renderUserCard(u);
-                }).join('');
+                blockedListEl.innerHTML = blockedRes.blocked_users
+                    .map((user) => {
+                        const u = {
+                            ...user,
+                            friend_status: 'blocked',
+                        };
+                        return FriendsUI.renderUserCard(u);
+                    })
+                    .join('');
                 // updateBadge('blocked-count-badge', blockedRes.blocked_users.length); // Tab badge removed
                 updateBadge('blocked-count-badge-content', blockedRes.blocked_users.length, true); // Content header badge (if kept) or could be reused
             }
@@ -922,7 +959,6 @@ async function loadFriendsTabData() {
 
         // Re-initialize icons after rendering dynamic content
         if (window.lucide) lucide.createIcons();
-
     } catch (e) {
         console.error('Failed to load friend data:', e);
         if (typeof showToast === 'function') showToast('載入好友數據失敗', 'error');
@@ -960,16 +996,15 @@ async function handleFriendSearch(query) {
             const res = await FriendsAPI.searchUsers(query);
 
             if (res.users && res.users.length > 0) {
-                resultsEl.innerHTML = res.users.map(user =>
-                    FriendsUI.renderUserCard(user)
-                ).join('');
+                resultsEl.innerHTML = res.users
+                    .map((user) => FriendsUI.renderUserCard(user))
+                    .join('');
             } else {
                 resultsEl.innerHTML = renderEmptyState('找不到符合的用戶');
             }
 
             // 重新初始化 Lucide 圖標
             if (window.lucide) lucide.createIcons();
-
         } catch (e) {
             resultsEl.innerHTML = `<div class="text-center text-danger py-4">${SecurityUtils.escapeHTML(e.message || '')}</div>`;
         }
@@ -1033,7 +1068,7 @@ const SocialHub = {
         this.activeSubTab = tabName;
 
         // Update Buttons
-        document.querySelectorAll('.social-sub-tab').forEach(btn => {
+        document.querySelectorAll('.social-sub-tab').forEach((btn) => {
             btn.classList.remove('bg-primary', 'text-background');
             btn.classList.add('text-textMuted', 'hover:text-textMain', 'hover:bg-white/5');
         });
@@ -1079,7 +1114,7 @@ const SocialHub = {
 
             console.log(`[SocialHub] Loading conversations for user ${myId}...`);
             const res = await fetch(`/api/messages/conversations?limit=20&user_id=${myId}`, {
-                headers: FriendsAPI._getAuthHeaders()
+                headers: FriendsAPI._getAuthHeaders(),
             });
             const data = await res.json();
             console.log('[SocialHub] Conversations loaded:', data);
@@ -1095,10 +1130,11 @@ const SocialHub = {
                     </div>
                 `;
             } else {
-                listEl.innerHTML = data.conversations.map(conv => this.renderConversationItem(conv)).join('');
+                listEl.innerHTML = data.conversations
+                    .map((conv) => this.renderConversationItem(conv))
+                    .join('');
             }
             if (window.lucide) lucide.createIcons();
-
         } catch (e) {
             console.error('Failed to load conversations:', e);
             listEl.innerHTML = `<div class="p-4 text-center text-danger text-sm">載入失敗</div>`;
@@ -1107,9 +1143,13 @@ const SocialHub = {
 
     renderConversationItem: function (conv) {
         const isActive = false; // TODO: Track active conversation
-        const activeClass = isActive ? 'bg-white/5 border-l-2 border-primary' : 'hover:bg-white/5 border-l-2 border-transparent';
-        const unreadBadge = conv.unread_count > 0 ?
-            `<span class="w-5 h-5 rounded-full bg-primary text-background text-[10px] font-bold flex items-center justify-center">${conv.unread_count}</span>` : '';
+        const activeClass = isActive
+            ? 'bg-white/5 border-l-2 border-primary'
+            : 'hover:bg-white/5 border-l-2 border-transparent';
+        const unreadBadge =
+            conv.unread_count > 0
+                ? `<span class="w-5 h-5 rounded-full bg-primary text-background text-[10px] font-bold flex items-center justify-center">${conv.unread_count}</span>`
+                : '';
 
         // 使用正確的字段名 (API 返回 other_username)
         const username = conv.other_username || conv.username || 'Unknown';
@@ -1193,7 +1233,7 @@ const SocialHub = {
         if (profileLink) profileLink.href = `/static/forum/profile.html?id=${userId}`;
 
         // 更新對話列表的選中狀態
-        document.querySelectorAll('#social-conv-list > div').forEach(item => {
+        document.querySelectorAll('#social-conv-list > div').forEach((item) => {
             item.classList.remove('bg-primary/10', 'border-l-2', 'border-primary');
         });
 
@@ -1215,7 +1255,7 @@ const SocialHub = {
             if (!myId) return;
 
             const res = await fetch(`/api/messages/with/${userId}?user_id=${myId}&limit=50`, {
-                headers: FriendsAPI._getAuthHeaders()
+                headers: FriendsAPI._getAuthHeaders(),
             });
             const data = await res.json();
 
@@ -1234,7 +1274,9 @@ const SocialHub = {
                     </div>
                 `;
             } else {
-                container.innerHTML = data.messages.map(msg => this.renderMessageBubble(msg)).join('');
+                container.innerHTML = data.messages
+                    .map((msg) => this.renderMessageBubble(msg))
+                    .join('');
                 container.scrollTop = container.scrollHeight;
             }
 
@@ -1243,10 +1285,9 @@ const SocialHub = {
                 fetch(`/api/messages/read?user_id=${myId}`, {
                     method: 'POST',
                     headers: FriendsAPI._getAuthHeaders(),
-                    body: JSON.stringify({ conversation_id: data.conversation.id })
-                }).catch(() => { });
+                    body: JSON.stringify({ conversation_id: data.conversation.id }),
+                }).catch(() => {});
             }
-
         } catch (e) {
             console.error('載入訊息失敗:', e);
             container.innerHTML = `<div class="text-center text-danger py-4 text-sm">${SecurityUtils.escapeHTML(e.message || '載入失敗')}</div>`;
@@ -1262,7 +1303,10 @@ const SocialHub = {
         const myId = FriendsAPI._getUserId();
         const isMe = msg.from_user_id === myId;
         const isRecalled = msg.message_type === 'recalled';
-        const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const time = new Date(msg.created_at).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+        });
 
         // 如果是已收回的訊息
         if (isRecalled) {
@@ -1287,7 +1331,8 @@ const SocialHub = {
         // 訊息選項按鈕（hover 時顯示）
         // 自己的訊息：收回（對方也看不到）+ 刪除（只對自己隱藏）
         // 對方的訊息：只有刪除（只對自己隱藏）
-        const msgActions = isMe ? `
+        const msgActions = isMe
+            ? `
             <div class="absolute ${isMe ? '-left-16' : '-right-16'} top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 transition">
                 <button onclick="event.stopPropagation(); SocialHub.recallMessage(${msg.id}, this)"
                         class="p-1 text-textMuted/50 hover:text-warning transition disabled:opacity-50 disabled:cursor-not-allowed" title="收回訊息">
@@ -1298,7 +1343,8 @@ const SocialHub = {
                     <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                 </button>
             </div>
-        ` : `
+        `
+            : `
             <div class="absolute ${isMe ? '-left-8' : '-right-8'} top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition">
                 <button onclick="event.stopPropagation(); SocialHub.hideMessage(${msg.id}, this)"
                         class="p-1 text-textMuted/50 hover:text-danger transition disabled:opacity-50 disabled:cursor-not-allowed" title="刪除（只對自己）">
@@ -1334,7 +1380,7 @@ const SocialHub = {
 
             const res = await fetch(`/api/messages/${messageId}?user_id=${myId}`, {
                 method: 'DELETE',
-                headers: FriendsAPI._getAuthHeaders()
+                headers: FriendsAPI._getAuthHeaders(),
             });
 
             const data = await res.json();
@@ -1385,7 +1431,7 @@ const SocialHub = {
 
             const res = await fetch(`/api/messages/${messageId}/hide?user_id=${myId}`, {
                 method: 'POST',
-                headers: FriendsAPI._getAuthHeaders()
+                headers: FriendsAPI._getAuthHeaders(),
             });
 
             const data = await res.json();
@@ -1417,15 +1463,19 @@ const SocialHub = {
      */
     deleteConversation: async function (conversationId, btnElement) {
         // 使用平台風格的確認對話框
-        const confirmed = typeof showConfirm === 'function'
-            ? await showConfirm({
-                title: '刪除對話',
-                message: '確定要刪除這段對話嗎？所有訊息將從列表中移除。\n\n之後如需再聊，會是乾淨的聊天室。',
-                type: 'warning',
-                confirmText: '刪除',
-                cancelText: '取消'
-            })
-            : confirm('確定要刪除這段對話嗎？所有訊息將從列表中移除。\n（之後如需再聊，會是乾淨的聊天室）');
+        const confirmed =
+            typeof showConfirm === 'function'
+                ? await showConfirm({
+                      title: '刪除對話',
+                      message:
+                          '確定要刪除這段對話嗎？所有訊息將從列表中移除。\n\n之後如需再聊，會是乾淨的聊天室。',
+                      type: 'warning',
+                      confirmText: '刪除',
+                      cancelText: '取消',
+                  })
+                : confirm(
+                      '確定要刪除這段對話嗎？所有訊息將從列表中移除。\n（之後如需再聊，會是乾淨的聊天室）'
+                  );
 
         if (!confirmed) return;
 
@@ -1437,7 +1487,7 @@ const SocialHub = {
 
             const res = await fetch(`/api/conversations/${conversationId}?user_id=${myId}`, {
                 method: 'DELETE',
-                headers: FriendsAPI._getAuthHeaders()
+                headers: FriendsAPI._getAuthHeaders(),
             });
 
             const data = await res.json();
@@ -1460,7 +1510,9 @@ const SocialHub = {
                         if (emptyState) emptyState.classList.remove('hidden');
 
                         // 清空訊息容器內容（重要！避免用戶誤以為訊息還在）
-                        const messagesContainer = document.getElementById('social-messages-container');
+                        const messagesContainer = document.getElementById(
+                            'social-messages-container'
+                        );
                         if (messagesContainer) {
                             messagesContainer.innerHTML = '';
                         }
@@ -1542,8 +1594,8 @@ const SocialHub = {
                 headers: FriendsAPI._getAuthHeaders(),
                 body: JSON.stringify({
                     to_user_id: this.currentChatUserId,
-                    content: content
-                })
+                    content: content,
+                }),
             });
 
             const data = await res.json();
@@ -1560,13 +1612,16 @@ const SocialHub = {
                     const emptyState = container.querySelector('.flex.flex-col.items-center');
                     if (emptyState) container.innerHTML = '';
 
-                    container.insertAdjacentHTML('beforeend', this.renderMessageBubble(data.message));
+                    container.insertAdjacentHTML(
+                        'beforeend',
+                        this.renderMessageBubble(data.message)
+                    );
                     container.scrollTop = container.scrollHeight;
                 }
 
                 // 異步更新對話列表（不等待，避免阻塞 UI）
                 // 訊息已經立即顯示，列表在背景更新
-                this.loadConversations().catch(err => {
+                this.loadConversations().catch((err) => {
                     console.warn('Background conversation list update failed:', err);
                 });
             } else {
@@ -1655,7 +1710,7 @@ const SocialHub = {
     startPolling: function () {
         // 移除自動輪詢 - 不需要定時刷新，訊息會在發送時即時更新
         // 如果未來需要即時通知，應該使用 WebSocket 而非輪詢
-    }
+    },
 };
 
 window.SocialHub = SocialHub;

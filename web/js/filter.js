@@ -4,8 +4,16 @@
 
 // 預設熱門幣種列表 (當用戶未選擇時顯示)
 const DEFAULT_MARKET_SYMBOLS = [
-    'BTC-USDT', 'ETH-USDT', 'SOL-USDT', 'DOGE-USDT', 'XRP-USDT',
-    'BNB-USDT', 'ADA-USDT', 'AVAX-USDT', 'DOT-USDT', 'LINK-USDT'
+    'BTC-USDT',
+    'ETH-USDT',
+    'SOL-USDT',
+    'DOGE-USDT',
+    'XRP-USDT',
+    'BNB-USDT',
+    'ADA-USDT',
+    'AVAX-USDT',
+    'DOT-USDT',
+    'LINK-USDT',
 ];
 
 // 從 localStorage 載入已保存的選擇
@@ -34,7 +42,10 @@ function loadSavedSymbolSelection() {
 function saveSymbolSelection() {
     try {
         if (window.globalSelectedSymbols && window.globalSelectedSymbols.length > 0) {
-            localStorage.setItem('marketWatchSymbols', JSON.stringify(window.globalSelectedSymbols));
+            localStorage.setItem(
+                'marketWatchSymbols',
+                JSON.stringify(window.globalSelectedSymbols)
+            );
             console.log('[Filter] 已保存選擇:', window.globalSelectedSymbols.length, '個幣種');
         } else {
             localStorage.removeItem('marketWatchSymbols');
@@ -73,7 +84,7 @@ async function switchFilterExchange(exchange) {
             message: '切換交易所將清除目前的選擇，是否繼續？',
             type: 'warning',
             confirmText: '繼續',
-            cancelText: '取消'
+            cancelText: '取消',
         });
 
         if (!confirmed) {
@@ -91,7 +102,8 @@ async function switchFilterExchange(exchange) {
 
 async function fetchSymbols(exchange) {
     const container = document.getElementById('symbol-list-container');
-    container.innerHTML = '<div class="text-center py-8 text-slate-500 animate-pulse">正在從交易所獲取幣種列表...</div>';
+    container.innerHTML =
+        '<div class="text-center py-8 text-slate-500 animate-pulse">正在從交易所獲取幣種列表...</div>';
 
     try {
         const res = await fetch(`/api/market/symbols?exchange=${exchange}`);
@@ -105,10 +117,11 @@ async function fetchSymbols(exchange) {
             window.allMarketSymbols = data.symbols.sort();
             renderSymbolList(window.allMarketSymbols);
         } else {
-            container.innerHTML = '<div class="text-center py-8 text-red-400">無法獲取幣種列表 (格式錯誤)</div>';
+            container.innerHTML =
+                '<div class="text-center py-8 text-red-400">無法獲取幣種列表 (格式錯誤)</div>';
         }
     } catch (e) {
-        console.error("Failed to fetch symbols", e);
+        console.error('Failed to fetch symbols', e);
 
         let errorMessage = '連線錯誤';
         let detail = e.message;
@@ -117,7 +130,11 @@ async function fetchSymbols(exchange) {
             errorMessage = 'API 請求過於頻繁';
         } else if (e.message.includes('500')) {
             errorMessage = '伺服器內部錯誤';
-        } else if (e.message.includes('timeout') || e.message.includes('NetworkError') || e.message.includes('Failed to fetch')) {
+        } else if (
+            e.message.includes('timeout') ||
+            e.message.includes('NetworkError') ||
+            e.message.includes('Failed to fetch')
+        ) {
             errorMessage = '網路連線失敗';
         }
 
@@ -139,13 +156,13 @@ function renderSymbolList(symbols) {
     container.innerHTML = '';
 
     const searchVal = document.getElementById('symbol-search').value.toUpperCase().trim();
-    const filtered = symbols.filter(s => s.includes(searchVal));
+    const filtered = symbols.filter((s) => s.includes(searchVal));
 
     const selected = [];
     const unselected = [];
 
     // [Optimization] Split into two lists for better UX
-    filtered.sort().forEach(s => {
+    filtered.sort().forEach((s) => {
         if (window.globalSelectedSymbols && window.globalSelectedSymbols.includes(s)) {
             selected.push(s);
         } else {
@@ -157,11 +174,12 @@ function renderSymbolList(symbols) {
     if (selected.length > 0) {
         const header = document.createElement('div');
         // [Fix] Removed sticky positioning to prevent blocking the view when scrolling
-        header.className = "text-xs font-bold text-primary/80 uppercase tracking-wider px-3 py-2 mt-2 bg-surfaceHighlight/30 rounded-lg border border-primary/10";
+        header.className =
+            'text-xs font-bold text-primary/80 uppercase tracking-wider px-3 py-2 mt-2 bg-surfaceHighlight/30 rounded-lg border border-primary/10';
         header.innerHTML = `已選擇 (Selected) <span class="ml-1 px-1.5 py-0.5 bg-primary/20 rounded-full text-primary text-[10px]">${selected.length}</span>`;
         container.appendChild(header);
 
-        selected.forEach(s => {
+        selected.forEach((s) => {
             const div = createSymbolItem(s, true);
             container.appendChild(div);
         });
@@ -171,24 +189,28 @@ function renderSymbolList(symbols) {
     if (unselected.length > 0) {
         if (selected.length > 0) {
             const divider = document.createElement('div');
-            divider.className = "text-xs font-bold text-textMuted uppercase tracking-wider px-3 py-2 mt-4 mb-2 border-b border-white/5";
-            divider.innerText = "未選擇 (Unselected)";
+            divider.className =
+                'text-xs font-bold text-textMuted uppercase tracking-wider px-3 py-2 mt-4 mb-2 border-b border-white/5';
+            divider.innerText = '未選擇 (Unselected)';
             container.appendChild(divider);
         }
 
         // Limit rendering for performance if search is empty
         const limit = searchVal ? 200 : 100;
-        unselected.slice(0, limit).forEach(s => {
+        unselected.slice(0, limit).forEach((s) => {
             const div = createSymbolItem(s, false);
             container.appendChild(div);
         });
     }
 
     if (selected.length === 0 && unselected.length === 0) {
-        container.innerHTML = '<div class="text-center py-8 text-slate-500">沒有找到符合的幣種</div>';
+        container.innerHTML =
+            '<div class="text-center py-8 text-slate-500">沒有找到符合的幣種</div>';
     }
 
-    document.getElementById('selected-count-modal').innerText = (window.globalSelectedSymbols || []).length;
+    document.getElementById('selected-count-modal').innerText = (
+        window.globalSelectedSymbols || []
+    ).length;
     lucide.createIcons();
 }
 
@@ -208,7 +230,7 @@ function createSymbolItem(s, isChecked) {
 
 function toggleSymbolSelection(s) {
     if (window.globalSelectedSymbols && window.globalSelectedSymbols.includes(s)) {
-        window.globalSelectedSymbols = window.globalSelectedSymbols.filter(item => item !== s);
+        window.globalSelectedSymbols = window.globalSelectedSymbols.filter((item) => item !== s);
     } else {
         if (!window.globalSelectedSymbols) window.globalSelectedSymbols = [];
 
@@ -231,9 +253,9 @@ function selectAllMatches() {
     const searchVal = document.getElementById('symbol-search').value.toUpperCase().trim();
     if (!searchVal) return;
 
-    const filtered = (window.allMarketSymbols || []).filter(s => s.includes(searchVal));
+    const filtered = (window.allMarketSymbols || []).filter((s) => s.includes(searchVal));
     let addedCount = 0;
-    filtered.forEach(s => {
+    filtered.forEach((s) => {
         if (!window.globalSelectedSymbols) window.globalSelectedSymbols = [];
         if (!window.globalSelectedSymbols.includes(s)) {
             window.globalSelectedSymbols.push(s);

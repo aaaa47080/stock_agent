@@ -10,10 +10,10 @@ const MessagesPage = {
     isPro: false,
     conversations: [],
     isMobile: window.innerWidth < 768,
-    maxMessageLength: 500,  // 預設值，會從 API 更新
-    hasMoreMessages: false,  // 是否還有更多訊息
-    isLoadingMore: false,    // 是否正在載入更多
-    oldestMessageId: null,   // 最舊訊息的 ID
+    maxMessageLength: 500, // 預設值，會從 API 更新
+    hasMoreMessages: false, // 是否還有更多訊息
+    isLoadingMore: false, // 是否正在載入更多
+    oldestMessageId: null, // 最舊訊息的 ID
 
     /**
      * 初始化頁面
@@ -139,9 +139,11 @@ const MessagesPage = {
                 return;
             }
 
-            listEl.innerHTML = this.conversations.map(conv =>
-                MessagesUI.renderConversationItem(conv, conv.id === this.currentConversationId)
-            ).join('');
+            listEl.innerHTML = this.conversations
+                .map((conv) =>
+                    MessagesUI.renderConversationItem(conv, conv.id === this.currentConversationId)
+                )
+                .join('');
 
             if (window.lucide) lucide.createIcons();
 
@@ -172,7 +174,7 @@ const MessagesPage = {
         await this.loadMessages();
 
         // 標記已讀 (後台執行，不阻塞 UI)
-        MessagesAPI.markAsRead(conversationId).catch(e => console.error('標記已讀失敗:', e));
+        MessagesAPI.markAsRead(conversationId).catch((e) => console.error('標記已讀失敗:', e));
 
         // 更新對話列表中的未讀狀態 (本地更新)
         this.updateConversationUnread(conversationId, 0);
@@ -195,8 +197,9 @@ const MessagesPage = {
             this.currentOtherUserId = userId;
 
             // 取得用戶名
-            const conv = this.conversations.find(c => c.other_user_id === userId);
-            this.currentOtherUsername = conv?.other_username || result.conversation.other_username || userId;
+            const conv = this.conversations.find((c) => c.other_user_id === userId);
+            this.currentOtherUsername =
+                conv?.other_username || result.conversation.other_username || userId;
 
             this.showChatSection();
             this.updateChatHeader(this.currentOtherUsername);
@@ -204,15 +207,17 @@ const MessagesPage = {
 
             // 標記已讀 (後台執行)
             if (result.conversation.id) {
-                MessagesAPI.markAsRead(result.conversation.id).catch(e => console.error('標記已讀失敗:', e));
+                MessagesAPI.markAsRead(result.conversation.id).catch((e) =>
+                    console.error('標記已讀失敗:', e)
+                );
             }
 
             // 延遲更新對話列表 (不阻塞主要操作)
             setTimeout(() => this.loadConversations(), 500);
-
         } catch (e) {
             console.error('開啟對話失敗:', e);
-            if (messagesContainer) messagesContainer.innerHTML = `<div class="p-4 text-center text-danger">${SecurityUtils.escapeHTML(e.message || '')}</div>`;
+            if (messagesContainer)
+                messagesContainer.innerHTML = `<div class="p-4 text-center text-danger">${SecurityUtils.escapeHTML(e.message || '')}</div>`;
         }
     },
 
@@ -224,18 +229,18 @@ const MessagesPage = {
         if (messagesContainer) messagesContainer.innerHTML = MessagesUI.renderLoadingState();
 
         try {
-            const result = await MessagesAPI.getMessages(this.currentConversationId, 10);  // 初始只載入 10 條
+            const result = await MessagesAPI.getMessages(this.currentConversationId, 10); // 初始只載入 10 條
 
             this.hasMoreMessages = result.has_more || false;
-            this.oldestMessageId = result.messages && result.messages.length > 0
-                ? result.messages[0].id
-                : null;
+            this.oldestMessageId =
+                result.messages && result.messages.length > 0 ? result.messages[0].id : null;
 
             this.renderMessages(result.messages || []);
-            this.setupScrollListener();  // 設置滾動監聽
+            this.setupScrollListener(); // 設置滾動監聽
         } catch (e) {
             console.error('載入訊息失敗:', e);
-            if (messagesContainer) messagesContainer.innerHTML = `<div class="p-4 text-center text-danger">${SecurityUtils.escapeHTML(e.message || '')}</div>`;
+            if (messagesContainer)
+                messagesContainer.innerHTML = `<div class="p-4 text-center text-danger">${SecurityUtils.escapeHTML(e.message || '')}</div>`;
         }
     },
 
@@ -260,7 +265,7 @@ const MessagesPage = {
 
             const result = await MessagesAPI.getMessages(
                 this.currentConversationId,
-                20,  // 每次載入 20 條舊訊息
+                20, // 每次載入 20 條舊訊息
                 this.oldestMessageId
             );
 
@@ -273,9 +278,10 @@ const MessagesPage = {
                 this.oldestMessageId = result.messages[0].id;
 
                 // 在頂部插入訊息
-                const messagesHTML = result.messages.reverse().map(msg =>
-                    MessagesUI.renderMessageBubble(msg, this.isPro)
-                ).join('');
+                const messagesHTML = result.messages
+                    .reverse()
+                    .map((msg) => MessagesUI.renderMessageBubble(msg, this.isPro))
+                    .join('');
                 container.insertAdjacentHTML('afterbegin', messagesHTML);
 
                 // 保持滾動位置
@@ -545,8 +551,8 @@ const MessagesPage = {
             const res = await fetch(`/api/messages/${messageId}?user_id=${userId}`, {
                 method: 'DELETE',
                 headers: {
-                    'Authorization': `Bearer ${MessagesAPI._getToken()}`
-                }
+                    Authorization: `Bearer ${MessagesAPI._getToken()}`,
+                },
             });
 
             const data = await res.json();
@@ -555,7 +561,8 @@ const MessagesPage = {
                 // 更新 DOM：將訊息替換為「已收回」樣式
                 const msgEl = document.getElementById(`msg-${messageId}`);
                 if (msgEl) {
-                    const timeStr = msgEl.querySelector('.text-xs.text-textMuted')?.textContent || '';
+                    const timeStr =
+                        msgEl.querySelector('.text-xs.text-textMuted')?.textContent || '';
                     msgEl.outerHTML = `
                         <div id="msg-${messageId}" class="flex justify-end mb-4">
                             <div class="flex flex-col items-end">
@@ -720,11 +727,14 @@ const MessagesPage = {
 
         if (avatar) avatar.textContent = MessagesUI.getInitial(username);
         if (usernameEl) usernameEl.textContent = username;
-        if (profileLink) profileLink.href = `/static/forum/profile.html?id=${this.currentOtherUserId}`;
+        if (profileLink)
+            profileLink.href = `/static/forum/profile.html?id=${this.currentOtherUserId}`;
 
         // 找到對話資訊更新徽章
         if (badge) {
-            const conv = this.conversations.find(c => c.other_user_id === this.currentOtherUserId);
+            const conv = this.conversations.find(
+                (c) => c.other_user_id === this.currentOtherUserId
+            );
             if (conv && conv.other_membership_tier === 'pro') {
                 badge.innerHTML = MessagesUI.getMembershipBadge('pro');
             } else {
@@ -737,7 +747,9 @@ const MessagesPage = {
      * 更新對話的未讀數
      */
     updateConversationUnread(conversationId, count) {
-        const item = document.querySelector(`.conversation-item[data-conversation-id="${conversationId}"]`);
+        const item = document.querySelector(
+            `.conversation-item[data-conversation-id="${conversationId}"]`
+        );
         if (item) {
             const badge = item.querySelector('.bg-primary.rounded-full');
             if (badge) {
@@ -775,7 +787,10 @@ const MessagesPage = {
                 // 其他對話的新訊息，更新對話列表
                 this.loadConversations();
                 const senderName = message.from_username || message.from_user_id;
-                const preview = message.content.length > 30 ? message.content.substring(0, 30) + '...' : message.content;
+                const preview =
+                    message.content.length > 30
+                        ? message.content.substring(0, 30) + '...'
+                        : message.content;
                 if (typeof showToast === 'function') {
                     showToast(`${senderName}: ${preview}`, 'info');
                 }
@@ -787,7 +802,7 @@ const MessagesPage = {
             if (this.isPro && conversationId === this.currentConversationId) {
                 // 將所有自己發送的訊息標記為已讀
                 const bubbles = document.querySelectorAll('.message-bubble');
-                bubbles.forEach(bubble => {
+                bubbles.forEach((bubble) => {
                     const status = bubble.querySelector('.text-textMuted:last-child');
                     if (status && status.textContent.includes('已送達')) {
                         status.innerHTML = '<span class="text-xs text-success">已讀</span>';
@@ -822,7 +837,8 @@ const MessagesPage = {
         if (!resultsEl) return;
 
         if (!query || query.length < 2) {
-            resultsEl.innerHTML = '<div class="text-center text-textMuted py-8">輸入至少 2 個字元</div>';
+            resultsEl.innerHTML =
+                '<div class="text-center text-textMuted py-8">輸入至少 2 個字元</div>';
             return;
         }
 
@@ -832,11 +848,14 @@ const MessagesPage = {
             const result = await MessagesAPI.searchMessages(query);
 
             if (!result.results || result.results.length === 0) {
-                resultsEl.innerHTML = '<div class="text-center text-textMuted py-8">找不到符合的訊息</div>';
+                resultsEl.innerHTML =
+                    '<div class="text-center text-textMuted py-8">找不到符合的訊息</div>';
                 return;
             }
 
-            resultsEl.innerHTML = result.results.map(msg => `
+            resultsEl.innerHTML = result.results
+                .map(
+                    (msg) => `
                 <div class="p-3 border-b border-white/5 hover:bg-white/5 cursor-pointer transition"
                      onclick="MessagesPage.openConversationWith('${msg.other_user_id}'); MessagesPage.toggleSearch();">
                     <div class="flex items-center gap-2 mb-1">
@@ -845,8 +864,9 @@ const MessagesPage = {
                     </div>
                     <p class="text-sm text-textMuted">${msg.content}</p>
                 </div>
-            `).join('');
-
+            `
+                )
+                .join('');
         } catch (e) {
             resultsEl.innerHTML = `<div class="p-4 text-center text-danger">${SecurityUtils.escapeHTML(e.message || '')}</div>`;
         }
@@ -871,7 +891,7 @@ const MessagesPage = {
 
         // Force layout update if needed
         window.dispatchEvent(new Event('resize'));
-    }
+    },
 };
 
 // Toast 函數
@@ -885,14 +905,14 @@ function showToast(message, type = 'info', duration = 3000) {
         success: 'bg-success/20 border-success/30 text-success',
         error: 'bg-danger/20 border-danger/30 text-danger',
         warning: 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400',
-        info: 'bg-primary/20 border-primary/30 text-primary'
+        info: 'bg-primary/20 border-primary/30 text-primary',
     };
 
     const icons = {
         success: 'check-circle',
         error: 'x-circle',
         warning: 'alert-triangle',
-        info: 'info'
+        info: 'info',
     };
 
     toast.className = `pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-2xl border backdrop-blur-xl shadow-xl animate-fade-in-up ${colors[type] || colors.info}`;

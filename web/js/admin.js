@@ -62,7 +62,7 @@ const AdminPanel = {
         this.currentSubPage = page;
 
         // Update sub-nav active state
-        document.querySelectorAll('.admin-subnav-btn').forEach(btn => {
+        document.querySelectorAll('.admin-subnav-btn').forEach((btn) => {
             btn.classList.remove('bg-primary/20', 'text-primary');
             btn.classList.add('text-textMuted', 'hover:bg-white/5');
         });
@@ -88,7 +88,9 @@ const AdminPanel = {
                 break;
             case 'stats':
                 if (window.AdminStatsManager) AdminStatsManager.render();
-                else document.getElementById('admin-subpage-content').innerHTML = '<div class="text-center text-textMuted py-12">Stats module loading...</div>';
+                else
+                    document.getElementById('admin-subpage-content').innerHTML =
+                        '<div class="text-center text-textMuted py-12">Stats module loading...</div>';
                 break;
         }
     },
@@ -167,8 +169,10 @@ const AdminPanel = {
                 const b = body?.value?.trim();
                 if (t || b) {
                     preview.classList.remove('hidden');
-                    document.getElementById('broadcast-preview-title').textContent = t || '(no title)';
-                    document.getElementById('broadcast-preview-body').textContent = b || '(no body)';
+                    document.getElementById('broadcast-preview-title').textContent =
+                        t || '(no title)';
+                    document.getElementById('broadcast-preview-body').textContent =
+                        b || '(no body)';
                 } else {
                     preview.classList.add('hidden');
                 }
@@ -185,18 +189,20 @@ const AdminPanel = {
             const btn = document.getElementById('broadcast-send-btn');
 
             if (!title || !body) {
-                if (typeof showToast === 'function') showToast('Please fill in title and body', 'error');
+                if (typeof showToast === 'function')
+                    showToast('Please fill in title and body', 'error');
                 return;
             }
 
             btn.disabled = true;
-            btn.innerHTML = '<div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Sending...';
+            btn.innerHTML =
+                '<div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Sending...';
 
             try {
                 const res = await fetch('/api/admin/notifications/broadcast', {
                     method: 'POST',
                     headers: AdminPanel._getAuthHeaders(),
-                    body: JSON.stringify({ title, body, type })
+                    body: JSON.stringify({ title, body, type }),
                 });
 
                 if (!res.ok) {
@@ -206,7 +212,10 @@ const AdminPanel = {
 
                 const data = await res.json();
                 if (typeof showToast === 'function') {
-                    showToast(`Sent to ${data.sent_count} users (${data.online_count} online)`, 'success');
+                    showToast(
+                        `Sent to ${data.sent_count} users (${data.online_count} online)`,
+                        'success'
+                    );
                 }
 
                 // Clear form
@@ -231,22 +240,26 @@ const AdminPanel = {
 
             try {
                 const res = await fetch('/api/admin/notifications/history?limit=20', {
-                    headers: AdminPanel._getAuthHeaders()
+                    headers: AdminPanel._getAuthHeaders(),
                 });
                 if (!res.ok) throw new Error('Failed to load');
 
                 const data = await res.json();
                 if (!data.broadcasts || data.broadcasts.length === 0) {
-                    container.innerHTML = '<div class="text-center text-textMuted text-sm py-8">No broadcasts yet</div>';
+                    container.innerHTML =
+                        '<div class="text-center text-textMuted text-sm py-8">No broadcasts yet</div>';
                     return;
                 }
 
-                container.innerHTML = data.broadcasts.map(b => {
-                    const typeLabel = b.type === 'system_update' ? 'System Update' : 'Announcement';
-                    const typeColor = b.type === 'system_update' ? 'text-success' : 'text-accent';
-                    const time = b.created_at ? new Date(b.created_at).toLocaleString() : '';
+                container.innerHTML = data.broadcasts
+                    .map((b) => {
+                        const typeLabel =
+                            b.type === 'system_update' ? 'System Update' : 'Announcement';
+                        const typeColor =
+                            b.type === 'system_update' ? 'text-success' : 'text-accent';
+                        const time = b.created_at ? new Date(b.created_at).toLocaleString() : '';
 
-                    return `
+                        return `
                         <div class="p-3 bg-background/50 rounded-xl border border-white/5">
                             <div class="flex items-center justify-between mb-1">
                                 <span class="text-xs font-medium ${typeColor}">${typeLabel}</span>
@@ -257,7 +270,8 @@ const AdminPanel = {
                             <div class="text-[10px] text-textMuted/60 mt-1">${b.recipient_count} recipients</div>
                         </div>
                     `;
-                }).join('');
+                    })
+                    .join('');
             } catch (e) {
                 container.innerHTML = `<div class="text-center text-danger text-sm py-4">Failed to load history</div>`;
             }
@@ -265,8 +279,12 @@ const AdminPanel = {
 
         _escapeHtml(str) {
             if (!str) return '';
-            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        }
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        },
     },
 
     // ========================================
@@ -357,7 +375,8 @@ const AdminPanel = {
             const listEl = document.getElementById('admin-user-list');
             if (!listEl) return;
 
-            listEl.innerHTML = '<div class="text-center text-textMuted text-sm py-8"><div class="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-2"></div>Loading...</div>';
+            listEl.innerHTML =
+                '<div class="text-center text-textMuted text-sm py-8"><div class="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-2"></div>Loading...</div>';
 
             try {
                 let url = `/api/admin/users?page=${this.currentPage}&limit=20`;
@@ -372,7 +391,8 @@ const AdminPanel = {
                 const totalPages = Math.ceil(total / 20);
 
                 if (users.length === 0) {
-                    listEl.innerHTML = '<div class="text-center text-textMuted text-sm py-8">No users found</div>';
+                    listEl.innerHTML =
+                        '<div class="text-center text-textMuted text-sm py-8">No users found</div>';
                     document.getElementById('admin-user-pagination')?.classList.add('hidden');
                     return;
                 }
@@ -380,7 +400,7 @@ const AdminPanel = {
                 listEl.innerHTML = `
                     <div class="text-xs text-textMuted mb-3">${total} users total</div>
                     <div class="space-y-2">
-                        ${users.map(u => this._renderUserRow(u)).join('')}
+                        ${users.map((u) => this._renderUserRow(u)).join('')}
                     </div>
                 `;
 
@@ -388,9 +408,11 @@ const AdminPanel = {
                 const pagEl = document.getElementById('admin-user-pagination');
                 if (pagEl && totalPages > 1) {
                     pagEl.classList.remove('hidden');
-                    document.getElementById('admin-users-page-info').textContent = `Page ${this.currentPage} / ${totalPages}`;
+                    document.getElementById('admin-users-page-info').textContent =
+                        `Page ${this.currentPage} / ${totalPages}`;
                     document.getElementById('admin-users-prev').disabled = this.currentPage <= 1;
-                    document.getElementById('admin-users-next').disabled = this.currentPage >= totalPages;
+                    document.getElementById('admin-users-next').disabled =
+                        this.currentPage >= totalPages;
                 } else if (pagEl) {
                     pagEl.classList.add('hidden');
                 }
@@ -402,12 +424,14 @@ const AdminPanel = {
         },
 
         _renderUserRow(user) {
-            const roleBadge = user.role === 'admin'
-                ? '<span class="text-[10px] px-1.5 py-0.5 bg-danger/20 text-danger rounded-full font-bold">ADMIN</span>'
-                : '';
-            const proBadge = user.membership_tier === 'pro'
-                ? '<span class="text-[10px] px-1.5 py-0.5 bg-accent/20 text-accent rounded-full font-bold">PRO</span>'
-                : '';
+            const roleBadge =
+                user.role === 'admin'
+                    ? '<span class="text-[10px] px-1.5 py-0.5 bg-danger/20 text-danger rounded-full font-bold">ADMIN</span>'
+                    : '';
+            const proBadge =
+                user.membership_tier === 'pro'
+                    ? '<span class="text-[10px] px-1.5 py-0.5 bg-accent/20 text-accent rounded-full font-bold">PRO</span>'
+                    : '';
             const statusDot = user.is_active
                 ? '<div class="w-2 h-2 rounded-full bg-success shrink-0" title="Active"></div>'
                 : '<div class="w-2 h-2 rounded-full bg-danger shrink-0" title="Suspended"></div>';
@@ -439,13 +463,18 @@ const AdminPanel = {
             if (!modal || !content) return;
 
             modal.classList.remove('hidden');
-            content.innerHTML = '<div class="p-8 text-center"><div class="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto"></div></div>';
+            content.innerHTML =
+                '<div class="p-8 text-center"><div class="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto"></div></div>';
 
             // Close on backdrop click
-            modal.onclick = (e) => { if (e.target === modal) modal.classList.add('hidden'); };
+            modal.onclick = (e) => {
+                if (e.target === modal) modal.classList.add('hidden');
+            };
 
             try {
-                const res = await fetch(`/api/admin/users/${userId}`, { headers: AdminPanel._getAuthHeaders() });
+                const res = await fetch(`/api/admin/users/${userId}`, {
+                    headers: AdminPanel._getAuthHeaders(),
+                });
                 if (!res.ok) throw new Error('Failed to load user');
                 const data = await res.json();
                 const u = data.user;
@@ -539,10 +568,14 @@ const AdminPanel = {
                 const res = await fetch(`/api/admin/users/${userId}/role`, {
                     method: 'PUT',
                     headers: AdminPanel._getAuthHeaders(),
-                    body: JSON.stringify({ role: newRole })
+                    body: JSON.stringify({ role: newRole }),
                 });
-                if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Failed'); }
-                if (typeof showToast === 'function') showToast(`Role updated to ${newRole}`, 'success');
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Failed');
+                }
+                if (typeof showToast === 'function')
+                    showToast(`Role updated to ${newRole}`, 'success');
                 this.openUserModal(userId); // Refresh modal
                 this.loadUsers(); // Refresh list
             } catch (e) {
@@ -558,10 +591,14 @@ const AdminPanel = {
                 const res = await fetch(`/api/admin/users/${userId}/membership`, {
                     method: 'PUT',
                     headers: AdminPanel._getAuthHeaders(),
-                    body: JSON.stringify(body)
+                    body: JSON.stringify(body),
                 });
-                if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Failed'); }
-                if (typeof showToast === 'function') showToast(`Membership set to ${tier}`, 'success');
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Failed');
+                }
+                if (typeof showToast === 'function')
+                    showToast(`Membership set to ${tier}`, 'success');
                 this.openUserModal(userId);
                 this.loadUsers();
             } catch (e) {
@@ -575,10 +612,14 @@ const AdminPanel = {
                 const res = await fetch(`/api/admin/users/${userId}/status`, {
                     method: 'PUT',
                     headers: AdminPanel._getAuthHeaders(),
-                    body: JSON.stringify({ active, reason })
+                    body: JSON.stringify({ active, reason }),
                 });
-                if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Failed'); }
-                if (typeof showToast === 'function') showToast(active ? 'Account reactivated' : 'Account suspended', 'success');
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Failed');
+                }
+                if (typeof showToast === 'function')
+                    showToast(active ? 'Account reactivated' : 'Account suspended', 'success');
                 this.openUserModal(userId);
                 this.loadUsers();
             } catch (e) {
@@ -588,8 +629,12 @@ const AdminPanel = {
 
         _escapeHtml(str) {
             if (!str) return '';
-            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        }
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        },
     },
 
     // ========================================
@@ -624,7 +669,7 @@ const AdminPanel = {
 
         switchView(view) {
             this.currentView = view;
-            document.querySelectorAll('.forum-view-btn').forEach(b => {
+            document.querySelectorAll('.forum-view-btn').forEach((b) => {
                 b.classList.remove('bg-primary/20', 'text-primary');
                 b.classList.add('text-textMuted', 'hover:bg-white/5');
             });
@@ -661,7 +706,10 @@ const AdminPanel = {
             `;
 
             const searchInput = document.getElementById('forum-search');
-            if (searchInput) searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') this.doSearch(); });
+            if (searchInput)
+                searchInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') this.doSearch();
+                });
 
             try {
                 let url = `/api/admin/forum/posts?page=${this.currentPage}&limit=20&status=${this.statusFilter}`;
@@ -674,23 +722,29 @@ const AdminPanel = {
 
                 const listEl = document.getElementById('forum-posts-list');
                 if (posts.length === 0) {
-                    listEl.innerHTML = '<div class="text-center text-textMuted text-sm py-8">No posts found</div>';
+                    listEl.innerHTML =
+                        '<div class="text-center text-textMuted text-sm py-8">No posts found</div>';
                     return;
                 }
 
                 listEl.innerHTML = `
                     <div class="text-xs text-textMuted mb-2">${data.total} posts</div>
-                    <div class="space-y-2">${posts.map(p => this._renderPostRow(p)).join('')}</div>
+                    <div class="space-y-2">${posts.map((p) => this._renderPostRow(p)).join('')}</div>
                 `;
                 if (window.lucide) lucide.createIcons();
             } catch (e) {
-                document.getElementById('forum-posts-list').innerHTML = `<div class="text-danger text-sm py-4 text-center">${SecurityUtils.escapeHTML(e.message || '')}</div>`;
+                document.getElementById('forum-posts-list').innerHTML =
+                    `<div class="text-danger text-sm py-4 text-center">${SecurityUtils.escapeHTML(e.message || '')}</div>`;
             }
         },
 
         _renderPostRow(p) {
-            const hiddenBadge = p.is_hidden ? '<span class="text-[10px] px-1.5 py-0.5 bg-danger/20 text-danger rounded-full">HIDDEN</span>' : '';
-            const pinnedBadge = p.is_pinned ? '<span class="text-[10px] px-1.5 py-0.5 bg-accent/20 text-accent rounded-full">PINNED</span>' : '';
+            const hiddenBadge = p.is_hidden
+                ? '<span class="text-[10px] px-1.5 py-0.5 bg-danger/20 text-danger rounded-full">HIDDEN</span>'
+                : '';
+            const pinnedBadge = p.is_pinned
+                ? '<span class="text-[10px] px-1.5 py-0.5 bg-accent/20 text-accent rounded-full">PINNED</span>'
+                : '';
             const time = p.created_at ? new Date(p.created_at).toLocaleDateString() : '';
 
             return `
@@ -735,10 +789,14 @@ const AdminPanel = {
                 const res = await fetch(`/api/admin/forum/posts/${postId}/visibility`, {
                     method: 'PATCH',
                     headers: AdminPanel._getAuthHeaders(),
-                    body: JSON.stringify({ is_hidden: !currentlyHidden })
+                    body: JSON.stringify({ is_hidden: !currentlyHidden }),
                 });
-                if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Failed'); }
-                if (typeof showToast === 'function') showToast(currentlyHidden ? 'Post shown' : 'Post hidden', 'success');
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Failed');
+                }
+                if (typeof showToast === 'function')
+                    showToast(currentlyHidden ? 'Post shown' : 'Post hidden', 'success');
                 this.loadPosts();
             } catch (e) {
                 if (typeof showToast === 'function') showToast(e.message, 'error');
@@ -750,10 +808,14 @@ const AdminPanel = {
                 const res = await fetch(`/api/admin/forum/posts/${postId}/pin`, {
                     method: 'PATCH',
                     headers: AdminPanel._getAuthHeaders(),
-                    body: JSON.stringify({ is_pinned: !currentlyPinned })
+                    body: JSON.stringify({ is_pinned: !currentlyPinned }),
                 });
-                if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Failed'); }
-                if (typeof showToast === 'function') showToast(currentlyPinned ? 'Post unpinned' : 'Post pinned', 'success');
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Failed');
+                }
+                if (typeof showToast === 'function')
+                    showToast(currentlyPinned ? 'Post unpinned' : 'Post pinned', 'success');
                 this.loadPosts();
             } catch (e) {
                 if (typeof showToast === 'function') showToast(e.message, 'error');
@@ -764,11 +826,12 @@ const AdminPanel = {
             const el = document.getElementById('forum-content');
             if (!el) return;
 
-            el.innerHTML = '<div class="text-center text-textMuted text-sm py-8">Loading reports...</div>';
+            el.innerHTML =
+                '<div class="text-center text-textMuted text-sm py-8">Loading reports...</div>';
 
             try {
                 const res = await fetch('/api/admin/forum/reports?status=pending&limit=50', {
-                    headers: AdminPanel._getAuthHeaders()
+                    headers: AdminPanel._getAuthHeaders(),
                 });
                 if (!res.ok) throw new Error('Failed to load reports');
                 const data = await res.json();
@@ -782,13 +845,14 @@ const AdminPanel = {
                 }
 
                 if (reports.length === 0) {
-                    el.innerHTML = '<div class="text-center text-textMuted text-sm py-8">No pending reports</div>';
+                    el.innerHTML =
+                        '<div class="text-center text-textMuted text-sm py-8">No pending reports</div>';
                     return;
                 }
 
                 el.innerHTML = `
                     <div class="text-xs text-textMuted mb-2">${data.total} pending reports</div>
-                    <div class="space-y-3">${reports.map(r => this._renderReportRow(r)).join('')}</div>
+                    <div class="space-y-3">${reports.map((r) => this._renderReportRow(r)).join('')}</div>
                 `;
                 if (window.lucide) lucide.createIcons();
             } catch (e) {
@@ -797,7 +861,13 @@ const AdminPanel = {
         },
 
         _renderReportRow(r) {
-            const typeColors = { spam: 'text-warning', harassment: 'text-danger', misinformation: 'text-accent', scam: 'text-danger', other: 'text-textMuted' };
+            const typeColors = {
+                spam: 'text-warning',
+                harassment: 'text-danger',
+                misinformation: 'text-accent',
+                scam: 'text-danger',
+                other: 'text-textMuted',
+            };
             const color = typeColors[r.report_type] || 'text-textMuted';
             const time = r.created_at ? new Date(r.created_at).toLocaleDateString() : '';
 
@@ -835,9 +905,12 @@ const AdminPanel = {
                 const res = await fetch(`/api/admin/forum/reports/${reportId}/resolve`, {
                     method: 'POST',
                     headers: AdminPanel._getAuthHeaders(),
-                    body: JSON.stringify(body)
+                    body: JSON.stringify(body),
                 });
-                if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Failed'); }
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Failed');
+                }
                 if (typeof showToast === 'function') showToast(`Report ${decision}`, 'success');
                 this.loadReports();
             } catch (e) {
@@ -847,8 +920,12 @@ const AdminPanel = {
 
         _esc(str) {
             if (!str) return '';
-            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        }
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        },
     },
 
     // ========================================
@@ -889,7 +966,9 @@ const AdminPanel = {
             if (!el) return;
 
             try {
-                const res = await fetch('/api/admin/config/all', { headers: AdminPanel._getAuthHeaders() });
+                const res = await fetch('/api/admin/config/all', {
+                    headers: AdminPanel._getAuthHeaders(),
+                });
                 if (!res.ok) throw new Error('Failed to load configs');
                 const data = await res.json();
                 this.configs = data.configs_by_category || {};
@@ -898,27 +977,32 @@ const AdminPanel = {
                     pricing: { icon: 'coins', label: 'Pricing' },
                     limits: { icon: 'gauge', label: 'Limits' },
                     general: { icon: 'settings', label: 'General' },
-                    scam_tracker: { icon: 'shield-alert', label: 'Scam Tracker' }
+                    scam_tracker: { icon: 'shield-alert', label: 'Scam Tracker' },
                 };
 
                 const order = ['pricing', 'limits', 'general', 'scam_tracker'];
-                const categories = [...order.filter(k => this.configs[k]), ...Object.keys(this.configs).filter(k => !order.includes(k))];
+                const categories = [
+                    ...order.filter((k) => this.configs[k]),
+                    ...Object.keys(this.configs).filter((k) => !order.includes(k)),
+                ];
 
-                el.innerHTML = categories.map(cat => {
-                    const info = categoryLabels[cat] || { icon: 'folder', label: cat };
-                    const items = this.configs[cat] || [];
-                    return `
+                el.innerHTML = categories
+                    .map((cat) => {
+                        const info = categoryLabels[cat] || { icon: 'folder', label: cat };
+                        const items = this.configs[cat] || [];
+                        return `
                         <div class="bg-surface rounded-2xl border border-white/5 p-5 mb-4">
                             <h3 class="font-bold text-secondary mb-3 flex items-center gap-2 text-sm">
                                 <i data-lucide="${info.icon}" class="w-4 h-4"></i> ${info.label}
                                 <span class="text-[10px] text-textMuted font-normal">(${items.length})</span>
                             </h3>
                             <div class="space-y-2">
-                                ${items.map(cfg => this._renderConfigRow(cfg)).join('')}
+                                ${items.map((cfg) => this._renderConfigRow(cfg)).join('')}
                             </div>
                         </div>
                     `;
-                }).join('');
+                    })
+                    .join('');
 
                 if (window.lucide) lucide.createIcons();
             } catch (e) {
@@ -988,10 +1072,14 @@ const AdminPanel = {
                 const res = await fetch(`/api/admin/config/${encodeURIComponent(key)}`, {
                     method: 'PUT',
                     headers: AdminPanel._getAuthHeaders(),
-                    body: JSON.stringify({ value: input.value })
+                    body: JSON.stringify({ value: input.value }),
                 });
-                if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Failed'); }
-                if (typeof showToast === 'function') showToast(`Config "${key}" updated`, 'success');
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Failed');
+                }
+                if (typeof showToast === 'function')
+                    showToast(`Config "${key}" updated`, 'success');
                 this.editingKey = null;
                 this.loadConfigs();
                 this.loadAuditLog();
@@ -1005,19 +1093,23 @@ const AdminPanel = {
             if (!el) return;
 
             try {
-                const res = await fetch('/api/admin/config/audit?limit=30', { headers: AdminPanel._getAuthHeaders() });
+                const res = await fetch('/api/admin/config/audit?limit=30', {
+                    headers: AdminPanel._getAuthHeaders(),
+                });
                 if (!res.ok) throw new Error('Failed');
                 const data = await res.json();
                 const logs = data.logs || [];
 
                 if (logs.length === 0) {
-                    el.innerHTML = '<div class="text-xs text-textMuted text-center py-4">No changes yet</div>';
+                    el.innerHTML =
+                        '<div class="text-xs text-textMuted text-center py-4">No changes yet</div>';
                     return;
                 }
 
-                el.innerHTML = logs.map(l => {
-                    const time = l.changed_at ? new Date(l.changed_at).toLocaleString() : '';
-                    return `
+                el.innerHTML = logs
+                    .map((l) => {
+                        const time = l.changed_at ? new Date(l.changed_at).toLocaleString() : '';
+                        return `
                         <div class="text-[10px] p-2 bg-background/50 rounded-lg border border-white/5">
                             <div class="flex justify-between mb-0.5">
                                 <span class="text-secondary font-medium truncate">${this._esc(l.key)}</span>
@@ -1030,17 +1122,23 @@ const AdminPanel = {
                             <div class="text-textMuted/50 mt-0.5">by ${this._esc(l.changed_by)}</div>
                         </div>
                     `;
-                }).join('');
+                    })
+                    .join('');
             } catch (e) {
-                el.innerHTML = '<div class="text-xs text-danger text-center py-4">Failed to load</div>';
+                el.innerHTML =
+                    '<div class="text-xs text-danger text-center py-4">Failed to load</div>';
             }
         },
 
         _esc(str) {
             if (!str) return '';
-            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        }
-    }
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        },
+    },
 };
 
 window.AdminPanel = AdminPanel;

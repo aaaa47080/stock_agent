@@ -28,32 +28,36 @@ async function refreshAssets() {
     totalEl.classList.add('animate-pulse');
 
     try {
-
         // ✅ 獲取認證頭
         const authHeaders = okxKeyManager.getAuthHeaders();
 
         // 1. Fetch Assets (帶上認證頭)
         const resAssets = await fetch('/api/account/assets', {
-            headers: authHeaders
+            headers: authHeaders,
         });
 
         if (!resAssets.ok) {
             // 如果是 401 錯誤，說明金鑰無效或缺失
             if (resAssets.status === 401) {
-                throw new Error("INVALID_OKX_KEY");
+                throw new Error('INVALID_OKX_KEY');
             }
-            throw new Error("API_ERROR");
+            throw new Error('API_ERROR');
         }
 
         const assetsData = await resAssets.json();
 
-        totalEl.innerText = assetsData.total_equity.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        totalEl.innerText = assetsData.total_equity.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        });
         totalEl.classList.remove('animate-pulse');
-        document.getElementById('asset-update-time').innerText = new Date(assetsData.update_time).toLocaleTimeString();
+        document.getElementById('asset-update-time').innerText = new Date(
+            assetsData.update_time
+        ).toLocaleTimeString();
 
         spotList.innerHTML = '';
         if (assetsData.details && assetsData.details.length > 0) {
-            assetsData.details.slice(0, 5).forEach(asset => {
+            assetsData.details.slice(0, 5).forEach((asset) => {
                 const div = document.createElement('div');
                 div.className = 'flex justify-between items-center text-sm';
                 div.innerHTML = `
@@ -71,13 +75,13 @@ async function refreshAssets() {
 
         // 2. Fetch Positions (帶上認證頭)
         const resPos = await fetch('/api/account/positions', {
-            headers: authHeaders
+            headers: authHeaders,
         });
         if (!resPos.ok) {
             if (resPos.status === 401) {
-                throw new Error("INVALID_OKX_KEY");
+                throw new Error('INVALID_OKX_KEY');
             }
-            throw new Error("API_ERROR");
+            throw new Error('API_ERROR');
         }
 
         const posData = await resPos.json();
@@ -88,11 +92,20 @@ async function refreshAssets() {
         if (posData.positions && posData.positions.length > 0) {
             let totalPnl = 0;
 
-            posData.positions.forEach(pos => {
+            posData.positions.forEach((pos) => {
                 const isLong = pos.side === 'long' || pos.size > 0;
                 const pnlClass = pos.pnl >= 0 ? 'text-success' : 'text-danger';
-                const sideClass = isLong ? 'bg-success/20 text-success' : 'bg-danger/20 text-danger';
-                const sideText = pos.side === 'net' ? (pos.size > 0 ? '多' : '空') : (pos.side === 'long' ? '多' : '空');
+                const sideClass = isLong
+                    ? 'bg-success/20 text-success'
+                    : 'bg-danger/20 text-danger';
+                const sideText =
+                    pos.side === 'net'
+                        ? pos.size > 0
+                            ? '多'
+                            : '空'
+                        : pos.side === 'long'
+                          ? '多'
+                          : '空';
 
                 totalPnl += pos.pnl;
 
@@ -125,19 +138,18 @@ async function refreshAssets() {
                     <span class="${totalPnl >= 0 ? 'text-success' : 'text-danger'} font-bold">${totalPnl > 0 ? '+' : ''}${totalPnl.toFixed(2)} USDT</span>
                 </div>
             `;
-
         } else {
-            posTable.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-textMuted">尚無持倉數據</td></tr>';
+            posTable.innerHTML =
+                '<tr><td colspan="6" class="px-4 py-8 text-center text-textMuted">尚無持倉數據</td></tr>';
             summaryEl.innerHTML = '<div class="text-textMuted text-xs">無持倉</div>';
         }
-
     } catch (e) {
-        console.error("Failed to fetch assets", e);
+        console.error('Failed to fetch assets', e);
         totalEl.classList.remove('animate-pulse');
-        totalEl.innerText = "---";
+        totalEl.innerText = '---';
 
         // 如果是金鑰無效，顯示 overlay
-        if (e.message === "INVALID_OKX_KEY") {
+        if (e.message === 'INVALID_OKX_KEY') {
             if (noKeyOverlay) noKeyOverlay.classList.remove('hidden');
             if (assetsContent) assetsContent.classList.add('hidden');
             lucide.createIcons();
@@ -195,7 +207,7 @@ async function saveApiKeys(event) {
         const validation = await okxKeyManager.validateCredentials({
             api_key: apiKey,
             secret_key: secretKey,
-            passphrase: passphrase
+            passphrase: passphrase,
         });
 
         if (!validation.valid) {
@@ -207,7 +219,7 @@ async function saveApiKeys(event) {
         okxKeyManager.saveCredentials({
             api_key: apiKey,
             secret_key: secretKey,
-            passphrase: passphrase
+            passphrase: passphrase,
         });
 
         showToast('OKX API 金鑰已保存\n金鑰僅存儲在您的瀏覽器中', 'success', 4000);
@@ -224,7 +236,6 @@ async function saveApiKeys(event) {
         if (typeof updateOKXStatusUI === 'function') {
             updateOKXStatusUI();
         }
-
     } catch (e) {
         showToast('系統錯誤: ' + e.message, 'error');
         console.error(e);

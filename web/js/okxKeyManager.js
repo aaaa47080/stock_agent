@@ -55,7 +55,7 @@ class OKXKeyManager {
                     name: 'PBKDF2',
                     salt: salt,
                     iterations: 100000,
-                    hash: 'SHA-256'
+                    hash: 'SHA-256',
                 },
                 keyMaterial,
                 { name: 'AES-GCM', length: 256 },
@@ -110,15 +110,11 @@ class OKXKeyManager {
             const key = await this._getEncryptionKey();
             if (!key) return null;
 
-            const combined = Uint8Array.from(atob(encryptedData), c => c.charCodeAt(0));
+            const combined = Uint8Array.from(atob(encryptedData), (c) => c.charCodeAt(0));
             const iv = combined.slice(0, 12);
             const data = combined.slice(12);
 
-            const decrypted = await crypto.subtle.decrypt(
-                { name: 'AES-GCM', iv: iv },
-                key,
-                data
-            );
+            const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, data);
 
             return new TextDecoder().decode(decrypted);
         } catch (e) {
@@ -197,7 +193,7 @@ class OKXKeyManager {
         return {
             'X-OKX-API-KEY': credentials.api_key,
             'X-OKX-SECRET-KEY': credentials.secret_key,
-            'X-OKX-PASSPHRASE': credentials.passphrase
+            'X-OKX-PASSPHRASE': credentials.passphrase,
         };
     }
 
@@ -212,20 +208,20 @@ class OKXKeyManager {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...this._createTempAuthHeaders(credentials)
-                }
+                    ...this._createTempAuthHeaders(credentials),
+                },
             });
 
             const result = await response.json();
             return {
                 valid: result.success === true,
-                message: result.message || (result.success ? '驗證成功' : '驗證失敗')
+                message: result.message || (result.success ? '驗證成功' : '驗證失敗'),
             };
         } catch (e) {
             console.error('[OKXKeyManager] 驗證失敗', e);
             return {
                 valid: false,
-                message: '無法連接到服務器: ' + e.message
+                message: '無法連接到服務器: ' + e.message,
             };
         }
     }
@@ -238,7 +234,7 @@ class OKXKeyManager {
         return {
             'X-OKX-API-KEY': credentials.api_key,
             'X-OKX-SECRET-KEY': credentials.secret_key,
-            'X-OKX-PASSPHRASE': credentials.passphrase
+            'X-OKX-PASSPHRASE': credentials.passphrase,
         };
     }
 
@@ -250,7 +246,7 @@ class OKXKeyManager {
         if (!this.hasCredentials()) {
             return {
                 hasKey: false,
-                maskedKey: ''
+                maskedKey: '',
             };
         }
 
@@ -259,7 +255,7 @@ class OKXKeyManager {
             if (!credentials) {
                 return {
                     hasKey: false,
-                    maskedKey: ''
+                    maskedKey: '',
                 };
             }
 
@@ -271,13 +267,13 @@ class OKXKeyManager {
 
             return {
                 hasKey: true,
-                maskedKey: maskKey(credentials.api_key)
+                maskedKey: maskKey(credentials.api_key),
             };
         } catch (e) {
             console.error('[OKXKeyManager] 獲取狀態失敗', e);
             return {
                 hasKey: false,
-                maskedKey: ''
+                maskedKey: '',
             };
         }
     }
@@ -303,7 +299,8 @@ function updateOKXStatusUI() {
             <span class="w-2 h-2 rounded-full bg-success animate-pulse"></span>
             <span class="text-success">Connected</span>
         `;
-        statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-success/10 border border-success/20';
+        statusBadge.className =
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-success/10 border border-success/20';
         notConnected.classList.add('hidden');
         connected.classList.remove('hidden');
     } else {
@@ -312,7 +309,8 @@ function updateOKXStatusUI() {
             <span class="w-2 h-2 rounded-full bg-textMuted"></span>
             <span class="text-textMuted">Not Connected</span>
         `;
-        statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 border border-white/10';
+        statusBadge.className =
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 border border-white/10';
         notConnected.classList.remove('hidden');
         connected.classList.add('hidden');
     }
@@ -329,7 +327,7 @@ async function disconnectOKX() {
         message: '確定要斷開 OKX 連接嗎？\n\n您的 API 金鑰將從瀏覽器中移除。',
         type: 'danger',
         confirmText: '斷開',
-        cancelText: '取消'
+        cancelText: '取消',
     });
 
     if (!confirmed) return;

@@ -4,59 +4,59 @@
 
 /**
  * LLM Settings 頁面功能
- * 
+ *
  * 流程：選擇 Provider/Model → 輸入 API Key → 測試連接 → 測試成功後啟用保存
  */
 
 // 狀態管理
 var llmState = {
-    testPassed: false,          // 測試是否通過
-    testPassedKey: "",          // 測試通過時的 API Key（用於保存）
-    testPassedModel: "",        // 測試通過時的 Model
-    isSaving: false,            // 是否正在保存
-    isTesting: false,           // 是否正在測試
-    savedKeys: {},              // 已保存的 API Key 狀態 { provider: { hasKey: true, maskedKey: "sk-...abc", model: "gpt-4o" } }
-    initialized: false          // 是否已初始化
+    testPassed: false, // 測試是否通過
+    testPassedKey: '', // 測試通過時的 API Key（用於保存）
+    testPassedModel: '', // 測試通過時的 Model
+    isSaving: false, // 是否正在保存
+    isTesting: false, // 是否正在測試
+    savedKeys: {}, // 已保存的 API Key 狀態 { provider: { hasKey: true, maskedKey: "sk-...abc", model: "gpt-4o" } }
+    initialized: false, // 是否已初始化
 };
 
 // ========================================
 // 載入已保存的 API Key 狀態（全局函數，由 index.html 在 Auth 完成後調用）
 // ========================================
 
-window.loadSavedApiKeys = async function() {
+window.loadSavedApiKeys = async function () {
     // 檢查是否已登入
     var token = null;
     if (typeof AuthManager !== 'undefined' && AuthManager.currentUser) {
         token = AuthManager.currentUser.accessToken || AuthManager.currentUser.token;
     }
     if (!token) {
-        token = localStorage.getItem("access_token") || localStorage.getItem("auth_token");
+        token = localStorage.getItem('access_token') || localStorage.getItem('auth_token');
     }
-    
+
     if (!token) {
-        console.log("[loadSavedApiKeys] No token, skipping");
+        console.log('[loadSavedApiKeys] No token, skipping');
         return;
     }
-    
+
     try {
-        var response = await fetch("/api/user/api-keys", {
-            method: "GET",
+        var response = await fetch('/api/user/api-keys', {
+            method: 'GET',
             headers: {
-                "Content-Type": "application/json",
-                ...llmGetAuthHeaders()
-            }
+                'Content-Type': 'application/json',
+                ...llmGetAuthHeaders(),
+            },
         });
 
         if (response.ok) {
             var data = await response.json();
             llmState.savedKeys = data.keys || {};
-            console.log("[loadSavedApiKeys] Loaded saved keys:", llmState.savedKeys);
+            console.log('[loadSavedApiKeys] Loaded saved keys:', llmState.savedKeys);
             updateBindingStatus();
         } else {
-            console.warn("[loadSavedApiKeys] Failed to load saved keys:", response.status);
+            console.warn('[loadSavedApiKeys] Failed to load saved keys:', response.status);
         }
     } catch (error) {
-        console.error("[loadSavedApiKeys] Error:", error);
+        console.error('[loadSavedApiKeys] Error:', error);
     }
 };
 
@@ -65,36 +65,40 @@ window.loadSavedApiKeys = async function() {
 // ========================================
 
 function updateBindingStatus() {
-    var providerSelect = document.getElementById("llm-provider-select");
-    var statusElement = document.getElementById("llm-binding-status");
-    var modelSelect = document.getElementById("llm-model-select");
-    
+    var providerSelect = document.getElementById('llm-provider-select');
+    var statusElement = document.getElementById('llm-binding-status');
+    var modelSelect = document.getElementById('llm-model-select');
+
     if (!providerSelect) return;
-    
+
     var provider = providerSelect.value;
     var keyInfo = llmState.savedKeys[provider];
-    
+
     // 創建或更新狀態顯示元素
     if (!statusElement) {
-        var apiKeyContainer = document.querySelector("#llm-api-key-input")?.parentElement?.parentElement;
+        var apiKeyContainer =
+            document.querySelector('#llm-api-key-input')?.parentElement?.parentElement;
         if (apiKeyContainer) {
-            statusElement = document.createElement("div");
-            statusElement.id = "llm-binding-status";
-            statusElement.className = "mt-2 text-xs";
+            statusElement = document.createElement('div');
+            statusElement.id = 'llm-binding-status';
+            statusElement.className = 'mt-2 text-xs';
             apiKeyContainer.appendChild(statusElement);
         }
     }
-    
+
     if (statusElement) {
         if (keyInfo && keyInfo.has_key) {
-            statusElement.innerHTML = '<span class="text-green-400">✓ 已綁定</span> <span class="text-textMuted">' + (keyInfo.masked_key || '') + '</span>';
-            statusElement.classList.remove("hidden");
-            
+            statusElement.innerHTML =
+                '<span class="text-green-400">✓ 已綁定</span> <span class="text-textMuted">' +
+                (keyInfo.masked_key || '') +
+                '</span>';
+            statusElement.classList.remove('hidden');
+
             // 如果有保存的模型，設置到 model select
             if (keyInfo.model && modelSelect) {
                 // 等待模型列表載入後再設置
-                setTimeout(function() {
-                    var optionExists = Array.from(modelSelect.options).some(function(opt) {
+                setTimeout(function () {
+                    var optionExists = Array.from(modelSelect.options).some(function (opt) {
                         return opt.value === keyInfo.model;
                     });
                     if (optionExists) {
@@ -113,8 +117,8 @@ function updateBindingStatus() {
 // ========================================
 
 function updateLLMKeyInput() {
-    var providerSelect = document.getElementById("llm-provider-select");
-    var apiKeyInput = document.getElementById("llm-api-key-input");
+    var providerSelect = document.getElementById('llm-provider-select');
+    var apiKeyInput = document.getElementById('llm-api-key-input');
 
     if (!providerSelect) return;
 
@@ -123,22 +127,22 @@ function updateLLMKeyInput() {
     // 根據 provider 更新 placeholder
     if (apiKeyInput) {
         var placeholders = {
-            openai: "sk-...",
-            google_gemini: "AIza...",
-            anthropic: "sk-ant-...",
-            groq: "gsk_...",
-            openrouter: "sk-or-..."
+            openai: 'sk-...',
+            google_gemini: 'AIza...',
+            anthropic: 'sk-ant-...',
+            groq: 'gsk_...',
+            openrouter: 'sk-or-...',
         };
-        apiKeyInput.placeholder = placeholders[provider] || "API Key...";
+        apiKeyInput.placeholder = placeholders[provider] || 'API Key...';
         // 清空輸入框
-        apiKeyInput.value = "";
+        apiKeyInput.value = '';
     }
-    
+
     // 更換 provider 時重置測試狀態
     llmState.testPassed = false;
-    llmState.testPassedKey = "";
+    llmState.testPassedKey = '';
     disableSaveButton();
-    
+
     // 更新綁定狀態顯示
     updateBindingStatus();
 }
@@ -148,27 +152,28 @@ function updateLLMKeyInput() {
 // ========================================
 
 function enableSaveButton() {
-    var saveBtn = document.getElementById("save-llm-key-btn");
+    var saveBtn = document.getElementById('save-llm-key-btn');
     if (saveBtn) {
         saveBtn.disabled = false;
-        saveBtn.classList.remove("opacity-50", "cursor-not-allowed");
+        saveBtn.classList.remove('opacity-50', 'cursor-not-allowed');
     }
 }
 
 function disableSaveButton() {
-    var saveBtn = document.getElementById("save-llm-key-btn");
+    var saveBtn = document.getElementById('save-llm-key-btn');
     if (saveBtn) {
         saveBtn.disabled = true;
-        saveBtn.classList.add("opacity-50", "cursor-not-allowed");
+        saveBtn.classList.add('opacity-50', 'cursor-not-allowed');
     }
 }
 
 function setSaveButtonLoading(loading) {
-    var saveBtn = document.getElementById("save-llm-key-btn");
+    var saveBtn = document.getElementById('save-llm-key-btn');
     if (saveBtn) {
         if (loading) {
             saveBtn.disabled = true;
-            saveBtn.innerHTML = '<span class="inline-flex items-center"><svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>儲存中...</span>';
+            saveBtn.innerHTML =
+                '<span class="inline-flex items-center"><svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>儲存中...</span>';
         } else {
             saveBtn.innerHTML = 'Save AI Configuration';
         }
@@ -181,22 +186,22 @@ function setSaveButtonLoading(loading) {
 
 async function testLLMKey() {
     if (llmState.isTesting) {
-        console.log("Test already in progress");
+        console.log('Test already in progress');
         return;
     }
-    
-    var providerSelect = document.getElementById("llm-provider-select");
-    var modelSelect = document.getElementById("llm-model-select");
-    var modelInput = document.getElementById("llm-model-input");
-    var apiKeyInput = document.getElementById("llm-api-key-input");
-    var testBtn = document.getElementById("test-llm-key-btn");
 
-    var provider = providerSelect ? providerSelect.value : "";
-    var model = "";
-    var apiKey = apiKeyInput ? apiKeyInput.value.trim() : "";
+    var providerSelect = document.getElementById('llm-provider-select');
+    var modelSelect = document.getElementById('llm-model-select');
+    var modelInput = document.getElementById('llm-model-input');
+    var apiKeyInput = document.getElementById('llm-api-key-input');
+    var testBtn = document.getElementById('test-llm-key-btn');
+
+    var provider = providerSelect ? providerSelect.value : '';
+    var model = '';
+    var apiKey = apiKeyInput ? apiKeyInput.value.trim() : '';
 
     // OpenRouter 從輸入框獲取
-    if (provider === "openrouter" && modelInput) {
+    if (provider === 'openrouter' && modelInput) {
         model = modelInput.value.trim();
     } else if (modelSelect) {
         model = modelSelect.value;
@@ -204,48 +209,49 @@ async function testLLMKey() {
 
     // 驗證
     if (!provider) {
-        llmShowToast("請選擇 Provider", "error");
+        llmShowToast('請選擇 Provider', 'error');
         return;
     }
 
     if (!model) {
-        llmShowToast("請選擇或輸入 Model", "error");
+        llmShowToast('請選擇或輸入 Model', 'error');
         return;
     }
 
     if (!apiKey) {
-        llmShowToast("請輸入 API Key 進行測試", "error");
+        llmShowToast('請輸入 API Key 進行測試', 'error');
         return;
     }
 
     llmState.isTesting = true;
-    
+
     // 顯示測試中狀態
     if (testBtn) {
         testBtn.disabled = true;
-        testBtn.innerHTML = '<span class="inline-flex items-center"><svg class="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>測試中...</span>';
+        testBtn.innerHTML =
+            '<span class="inline-flex items-center"><svg class="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>測試中...</span>';
     }
-    
-    llmShowToast("正在測試連接...", "info");
+
+    llmShowToast('正在測試連接...', 'info');
 
     try {
-        var response = await fetch("/api/settings/validate-key", {
-            method: "POST",
+        var response = await fetch('/api/settings/validate-key', {
+            method: 'POST',
             headers: {
-                "Content-Type": "application/json",
-                ...llmGetAuthHeaders()
+                'Content-Type': 'application/json',
+                ...llmGetAuthHeaders(),
             },
             body: JSON.stringify({
                 provider: provider,
                 model: model,
-                api_key: apiKey
-            })
+                api_key: apiKey,
+            }),
         });
 
         var data = await response.json();
 
         if (response.ok && data.valid) {
-            llmShowToast("✅ " + (data.message || "API Key 測試成功！"), "success");
+            llmShowToast('✅ ' + (data.message || 'API Key 測試成功！'), 'success');
             // 測試通過，啟用保存按鈕
             llmState.testPassed = true;
             llmState.testPassedKey = apiKey;
@@ -253,7 +259,7 @@ async function testLLMKey() {
             enableSaveButton();
         } else {
             // 正確處理錯誤消息
-            var errorMsg = "測試失敗";
+            var errorMsg = '測試失敗';
             if (typeof data.message === 'string') {
                 errorMsg = data.message;
             } else if (typeof data.error === 'string') {
@@ -261,23 +267,23 @@ async function testLLMKey() {
             } else if (data.detail && typeof data.detail === 'string') {
                 errorMsg = data.detail;
             }
-            llmShowToast(errorMsg, "error");
+            llmShowToast(errorMsg, 'error');
             llmState.testPassed = false;
-            llmState.testPassedKey = "";
+            llmState.testPassedKey = '';
             disableSaveButton();
         }
     } catch (error) {
-        console.error("Test LLM key error:", error);
-        llmShowToast("測試失敗，請稍後重試", "error");
+        console.error('Test LLM key error:', error);
+        llmShowToast('測試失敗，請稍後重試', 'error');
         llmState.testPassed = false;
-        llmState.testPassedKey = "";
+        llmState.testPassedKey = '';
         disableSaveButton();
     } finally {
         llmState.isTesting = false;
         // 恢復測試按鈕
         if (testBtn) {
             testBtn.disabled = false;
-            testBtn.textContent = "TEST";
+            testBtn.textContent = 'TEST';
         }
     }
 }
@@ -289,25 +295,25 @@ async function testLLMKey() {
 async function saveLLMKey() {
     // 防止重複點擊
     if (llmState.isSaving) {
-        console.log("Save already in progress");
+        console.log('Save already in progress');
         return;
     }
-    
+
     // 必須先測試通過
     if (!llmState.testPassed) {
-        llmShowToast("請先測試 API Key", "error");
+        llmShowToast('請先測試 API Key', 'error');
         return;
     }
-    
-    var providerSelect = document.getElementById("llm-provider-select");
-    var apiKeyInput = document.getElementById("llm-api-key-input");
 
-    var provider = providerSelect ? providerSelect.value : "";
-    var apiKey = llmState.testPassedKey;  // 使用測試通過的 API Key
+    var providerSelect = document.getElementById('llm-provider-select');
+    var apiKeyInput = document.getElementById('llm-api-key-input');
+
+    var provider = providerSelect ? providerSelect.value : '';
+    var apiKey = llmState.testPassedKey; // 使用測試通過的 API Key
     var model = llmState.testPassedModel; // 使用測試通過的 Model
 
     if (!provider || !model || !apiKey) {
-        llmShowToast("資料不完整，請重新測試", "error");
+        llmShowToast('資料不完整，請重新測試', 'error');
         return;
     }
 
@@ -315,41 +321,41 @@ async function saveLLMKey() {
     setSaveButtonLoading(true);
 
     try {
-        var response = await fetch("/api/user/api-keys", {
-            method: "POST",
+        var response = await fetch('/api/user/api-keys', {
+            method: 'POST',
             headers: {
-                "Content-Type": "application/json",
-                ...llmGetAuthHeaders()
+                'Content-Type': 'application/json',
+                ...llmGetAuthHeaders(),
             },
             body: JSON.stringify({
                 provider: provider,
                 model: model,
-                api_key: apiKey
-            })
+                api_key: apiKey,
+            }),
         });
 
         var data = await response.json();
 
         if (response.ok) {
-            llmShowToast("✅ 設置已保存", "success");
+            llmShowToast('✅ 設置已保存', 'success');
             // 清空 API Key 輸入框（安全考量）
             if (apiKeyInput) {
-                apiKeyInput.value = "";
+                apiKeyInput.value = '';
             }
             // 重置測試狀態
             llmState.testPassed = false;
-            llmState.testPassedKey = "";
-            llmState.testPassedModel = "";
+            llmState.testPassedKey = '';
+            llmState.testPassedModel = '';
             disableSaveButton();
-            
+
             // 更新已保存的狀態（使用後端返回的格式）
             llmState.savedKeys[provider] = {
                 has_key: true,
-                masked_key: apiKey.substring(0, 7) + "..." + apiKey.substring(apiKey.length - 4),
-                model: model
+                masked_key: apiKey.substring(0, 7) + '...' + apiKey.substring(apiKey.length - 4),
+                model: model,
             };
             updateBindingStatus();
-            
+
             // 更新全局狀態
             if (typeof window.setKeyValidity === 'function') {
                 window.setKeyValidity(provider, true);
@@ -378,25 +384,27 @@ async function saveLLMKey() {
             }
         } else {
             // 正確處理錯誤消息
-            var errorMsg = "保存失敗";
+            var errorMsg = '保存失敗';
             if (data.detail) {
                 if (typeof data.detail === 'string') {
                     errorMsg = data.detail;
                 } else if (Array.isArray(data.detail)) {
-                    errorMsg = data.detail.map(function(e) { 
-                        return e.msg || String(e);
-                    }).join(", ");
+                    errorMsg = data.detail
+                        .map(function (e) {
+                            return e.msg || String(e);
+                        })
+                        .join(', ');
                 } else {
                     errorMsg = JSON.stringify(data.detail);
                 }
             } else if (data.error) {
                 errorMsg = typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
             }
-            llmShowToast(errorMsg, "error");
+            llmShowToast(errorMsg, 'error');
         }
     } catch (error) {
-        console.error("Save LLM key error:", error);
-        llmShowToast("保存失敗，請稍後重試", "error");
+        console.error('Save LLM key error:', error);
+        llmShowToast('保存失敗，請稍後重試', 'error');
     } finally {
         llmState.isSaving = false;
         setSaveButtonLoading(false);
@@ -410,19 +418,19 @@ async function saveLLMKey() {
 function llmGetAuthHeaders() {
     var headers = {};
     var token = null;
-    
+
     // 優先使用 AuthManager（與 forum.js 一致）
     if (typeof AuthManager !== 'undefined' && AuthManager.currentUser) {
         token = AuthManager.currentUser.accessToken || AuthManager.currentUser.token;
     }
-    
+
     // 備用：檢查 localStorage
     if (!token) {
-        token = localStorage.getItem("access_token") || localStorage.getItem("auth_token");
+        token = localStorage.getItem('access_token') || localStorage.getItem('auth_token');
     }
-    
+
     if (token) {
-        headers["Authorization"] = "Bearer " + token;
+        headers['Authorization'] = 'Bearer ' + token;
     }
     return headers;
 }
@@ -433,27 +441,30 @@ function llmShowToast(message, type) {
         window.showToast(message, type);
         return;
     }
-    
-    type = type || "info";
+
+    type = type || 'info';
 
     // 移除舊的 toast
-    var oldToast = document.querySelector(".llm-toast");
+    var oldToast = document.querySelector('.llm-toast');
     if (oldToast) {
         oldToast.remove();
     }
 
-    var toast = document.createElement("div");
-    var bgColor = {
-        success: "bg-green-500",
-        error: "bg-red-500",
-        info: "bg-blue-500"
-    }[type] || "bg-blue-500";
+    var toast = document.createElement('div');
+    var bgColor =
+        {
+            success: 'bg-green-500',
+            error: 'bg-red-500',
+            info: 'bg-blue-500',
+        }[type] || 'bg-blue-500';
 
-    toast.className = "llm-toast fixed bottom-20 right-4 px-4 py-2 rounded-lg text-white text-sm z-50 shadow-lg " + bgColor;
+    toast.className =
+        'llm-toast fixed bottom-20 right-4 px-4 py-2 rounded-lg text-white text-sm z-50 shadow-lg ' +
+        bgColor;
     toast.textContent = message;
     document.body.appendChild(toast);
 
-    setTimeout(function() {
+    setTimeout(function () {
         toast.remove();
     }, 3000);
 }
@@ -462,57 +473,57 @@ function llmShowToast(message, type) {
 // 初始化（只綁定事件，不調用 API）
 // ========================================
 
-document.addEventListener("DOMContentLoaded", function() {
+document.addEventListener('DOMContentLoaded', function () {
     // 頁面載入時初始化 UI
     updateLLMKeyInput();
-    
+
     // 保存按鈕預設禁用
     disableSaveButton();
-    
+
     // 注意：不在此處調用 loadSavedApiKeys()，因為 AuthManager 可能還沒初始化
     // loadSavedApiKeys() 會由 index.html 在 initializeAuth() 完成後調用
-    
+
     // 綁定 provider select 變更事件
-    var providerSelect = document.getElementById("llm-provider-select");
+    var providerSelect = document.getElementById('llm-provider-select');
     if (providerSelect) {
-        providerSelect.addEventListener("change", function() {
+        providerSelect.addEventListener('change', function () {
             updateLLMKeyInput();
             if (typeof window.updateAvailableModels === 'function') {
                 window.updateAvailableModels();
             }
         });
     }
-    
+
     // 綁定 API Key 輸入變更事件（重置測試狀態）
-    var apiKeyInput = document.getElementById("llm-api-key-input");
+    var apiKeyInput = document.getElementById('llm-api-key-input');
     if (apiKeyInput) {
-        apiKeyInput.addEventListener("input", function() {
+        apiKeyInput.addEventListener('input', function () {
             llmState.testPassed = false;
-            llmState.testPassedKey = "";
+            llmState.testPassedKey = '';
             disableSaveButton();
         });
     }
-    
+
     // 綁定 model select 變更事件（重置測試狀態）
-    var modelSelect = document.getElementById("llm-model-select");
+    var modelSelect = document.getElementById('llm-model-select');
     if (modelSelect) {
-        modelSelect.addEventListener("change", function() {
+        modelSelect.addEventListener('change', function () {
             llmState.testPassed = false;
-            llmState.testPassedKey = "";
+            llmState.testPassedKey = '';
             disableSaveButton();
         });
     }
-    
+
     // 綁定 model input 變更事件（OpenRouter）
-    var modelInput = document.getElementById("llm-model-input");
+    var modelInput = document.getElementById('llm-model-input');
     if (modelInput) {
-        modelInput.addEventListener("input", function() {
+        modelInput.addEventListener('input', function () {
             llmState.testPassed = false;
-            llmState.testPassedKey = "";
+            llmState.testPassedKey = '';
             disableSaveButton();
         });
     }
 
     llmState.initialized = true;
-    console.log("LLM Settings 初始化完成（等待 Auth 完成後載入綁定狀態）");
+    console.log('LLM Settings 初始化完成（等待 Auth 完成後載入綁定狀態）');
 });

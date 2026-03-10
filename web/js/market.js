@@ -21,7 +21,7 @@ window.CryptoTab = {
         if (this.activeSubTab === tabId) return;
 
         // 1. 更新按鈕選中狀態
-        document.querySelectorAll('.crypto-sub-tab').forEach(btn => {
+        document.querySelectorAll('.crypto-sub-tab').forEach((btn) => {
             if (btn.id === `crypto-tab-${tabId}`) {
                 btn.classList.add('bg-primary', 'text-background', 'shadow-md');
                 btn.classList.remove('text-textMuted', 'hover:text-textMain', 'hover:bg-white/5');
@@ -61,7 +61,7 @@ window.CryptoTab = {
                 window.checkMarketPulse(false); // checkMarketPulse in pulse.js
             }
         }
-    }
+    },
 };
 
 /**
@@ -81,7 +81,7 @@ async function initCrypto() {
     let topList = document.getElementById('top-list');
     if (!topList) {
         for (let i = 0; i < 10; i++) {
-            await new Promise(r => setTimeout(r, 50));
+            await new Promise((r) => setTimeout(r, 50));
             topList = document.getElementById('top-list');
             if (topList) break;
         }
@@ -161,14 +161,16 @@ async function fetchFundingRates() {
         let url = '/api/funding-rates';
         if (window.globalSelectedSymbols && window.globalSelectedSymbols.length > 0) {
             // 過濾掉無效的符號（如 "PROGRESS" 等非幣種符號）
-            const validSymbols = window.globalSelectedSymbols.filter(sym => {
+            const validSymbols = window.globalSelectedSymbols.filter((sym) => {
                 // 只接受看起來像幣種的符號（2-10個字母，不包含特殊詞彙）
                 const invalidKeywords = ['PROGRESS', 'ALL', 'NONE', 'LOADING'];
-                return sym &&
+                return (
+                    sym &&
                     sym.length >= 2 &&
                     sym.length <= 10 &&
                     /^[A-Z0-9]+$/.test(sym) &&
-                    !invalidKeywords.includes(sym.toUpperCase());
+                    !invalidKeywords.includes(sym.toUpperCase())
+                );
             });
 
             if (validSymbols.length > 0) {
@@ -198,46 +200,81 @@ async function fetchFundingRates() {
 
 // 獲取資金費率顏色和狀態
 function getFundingRateStyle(rate) {
-    if (rate === null || rate === undefined) return { color: 'text-gray-500', bg: 'bg-gray-500/10', border: 'border-gray-500/20', label: '-' };
+    if (rate === null || rate === undefined)
+        return {
+            color: 'text-gray-500',
+            bg: 'bg-gray-500/10',
+            border: 'border-gray-500/20',
+            label: '-',
+        };
 
     const r = parseFloat(rate);
     // 🔥 極高費率 (> 0.1%): 市場過熱
-    if (r >= 0.1) return { color: 'text-red-500 font-bold', bg: 'bg-red-500/20', border: 'border-red-500/50', label: '極度過熱' };
+    if (r >= 0.1)
+        return {
+            color: 'text-red-500 font-bold',
+            bg: 'bg-red-500/20',
+            border: 'border-red-500/50',
+            label: '極度過熱',
+        };
 
     // 📈 偏高費率 (0.03% - 0.1%): 明顯看多
-    if (r >= 0.03) return { color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/30', label: '多頭擁擠' };
+    if (r >= 0.03)
+        return {
+            color: 'text-orange-400',
+            bg: 'bg-orange-500/10',
+            border: 'border-orange-500/30',
+            label: '多頭擁擠',
+        };
 
     // 🐂 正常偏多 (> 0.01%): 溫和看多
-    if (r > 0.01) return { color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', label: '看多' };
+    if (r > 0.01)
+        return {
+            color: 'text-emerald-400',
+            bg: 'bg-emerald-500/10',
+            border: 'border-emerald-500/20',
+            label: '看多',
+        };
 
     // 😐 基準費率 (0% - 0.01%): 市場平靜
-    if (r >= 0) return { color: 'text-gray-400', bg: 'bg-gray-500/10', border: 'border-gray-500/20', label: '中性' };
+    if (r >= 0)
+        return {
+            color: 'text-gray-400',
+            bg: 'bg-gray-500/10',
+            border: 'border-gray-500/20',
+            label: '中性',
+        };
 
     // 📉 負費率 (< 0%): 空頭擁擠 / 軋空機會 (Cyan/Blue)
-    return { color: 'text-cyan-400 font-medium', bg: 'bg-cyan-500/10', border: 'border-cyan-500/30', label: '看空/軋空' };
+    return {
+        color: 'text-cyan-400 font-medium',
+        bg: 'bg-cyan-500/10',
+        border: 'border-cyan-500/30',
+        label: '看空/軋空',
+    };
 }
 
 async function refreshScreener(showLoading = false, forceRefresh = false) {
     if (isScreenerLoading) return;
 
     let containers = {
-        'top': document.getElementById('top-list'),
-        'topGainers': document.getElementById('top-gainers-list'),
-        'topLosers': document.getElementById('top-losers-list'),
-        'highFunding': document.getElementById('high-funding-list'),
-        'lowFunding': document.getElementById('low-funding-list')
+        top: document.getElementById('top-list'),
+        topGainers: document.getElementById('top-gainers-list'),
+        topLosers: document.getElementById('top-losers-list'),
+        highFunding: document.getElementById('high-funding-list'),
+        lowFunding: document.getElementById('low-funding-list'),
     };
 
     // 如果主容器不存在，使用輪詢等待（最多等待 1 秒）
     if (!containers.top) {
         for (let i = 0; i < 10; i++) {
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise((resolve) => setTimeout(resolve, 100));
             containers = {
-                'top': document.getElementById('top-list'),
-                'topGainers': document.getElementById('top-gainers-list'),
-                'topLosers': document.getElementById('top-losers-list'),
-                'highFunding': document.getElementById('high-funding-list'),
-                'lowFunding': document.getElementById('low-funding-list')
+                top: document.getElementById('top-list'),
+                topGainers: document.getElementById('top-gainers-list'),
+                topLosers: document.getElementById('top-losers-list'),
+                highFunding: document.getElementById('high-funding-list'),
+                lowFunding: document.getElementById('low-funding-list'),
             };
             if (containers.top) break;
         }
@@ -251,8 +288,10 @@ async function refreshScreener(showLoading = false, forceRefresh = false) {
     // 如果容器是空的，強制顯示 loading，確保用戶知道正在加載
     const isTopEmpty = containers.top && containers.top.children.length === 0;
     if (showLoading || isTopEmpty) {
-        Object.values(containers).forEach(c => {
-            if (c) c.innerHTML = '<div class="animate-pulse flex items-center gap-4 p-4"><div class="w-12 h-12 bg-surfaceHighlight rounded-2xl"></div><div class="flex-1 space-y-2"><div class="h-4 bg-surfaceHighlight rounded w-1/3"></div><div class="h-3 bg-surfaceHighlight rounded w-1/4"></div></div></div>';
+        Object.values(containers).forEach((c) => {
+            if (c)
+                c.innerHTML =
+                    '<div class="animate-pulse flex items-center gap-4 p-4"><div class="w-12 h-12 bg-surfaceHighlight rounded-2xl"></div><div class="flex-1 space-y-2"><div class="h-4 bg-surfaceHighlight rounded w-1/3"></div><div class="h-3 bg-surfaceHighlight rounded w-1/4"></div></div></div>';
         });
     }
 
@@ -261,7 +300,7 @@ async function refreshScreener(showLoading = false, forceRefresh = false) {
     try {
         const body = {
             exchange: window.currentFilterExchange || 'okx',
-            refresh: forceRefresh
+            refresh: forceRefresh,
         };
         if (window.globalSelectedSymbols && window.globalSelectedSymbols.length > 0) {
             body.symbols = window.globalSelectedSymbols;
@@ -273,37 +312,48 @@ async function refreshScreener(showLoading = false, forceRefresh = false) {
         fetch('/api/screener', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
+            body: JSON.stringify(body),
         })
-            .then(async res => {
+            .then(async (res) => {
                 if (!res.ok) {
                     const errData = await res.json().catch(() => ({ detail: res.statusText }));
                     throw new Error(errData.detail || `Server Error: ${res.status}`);
                 }
                 return res.json();
             })
-            .then(screenerData => {
+            .then((screenerData) => {
                 // --- 處理篩選器結果 (Screener) ---
                 if (screenerData && !screenerData.error) {
                     // [Optimization] Auto-populate filter from VOLUME leaders (Hot)
-                    if (!window.globalSelectedSymbols || window.globalSelectedSymbols.length === 0) {
+                    if (
+                        !window.globalSelectedSymbols ||
+                        window.globalSelectedSymbols.length === 0
+                    ) {
                         const sourceList = screenerData.top_volume || screenerData.top_gainers;
                         if (sourceList && sourceList.length > 0) {
                             var top5 = sourceList.slice(0, 5);
-                            window.globalSelectedSymbols = top5.map(function (item) { return item.Symbol; });
+                            window.globalSelectedSymbols = top5.map(function (item) {
+                                return item.Symbol;
+                            });
 
                             var indicator = document.getElementById('active-filter-indicator');
                             var filterCount = document.getElementById('filter-count');
                             var globalCount = document.getElementById('global-count-badge');
                             // [Sync] Update Pulse Tab Indicators too
-                            var pulseIndicator = document.getElementById('active-pulse-filter-indicator');
+                            var pulseIndicator = document.getElementById(
+                                'active-pulse-filter-indicator'
+                            );
                             var pulseFilterCount = document.getElementById('pulse-filter-count');
                             var pulseBadge = document.getElementById('pulse-count-badge');
 
-                            if (filterCount) filterCount.innerText = window.globalSelectedSymbols.length;
-                            if (globalCount) globalCount.innerText = window.globalSelectedSymbols.length;
-                            if (pulseFilterCount) pulseFilterCount.innerText = window.globalSelectedSymbols.length;
-                            if (pulseBadge) pulseBadge.innerText = window.globalSelectedSymbols.length;
+                            if (filterCount)
+                                filterCount.innerText = window.globalSelectedSymbols.length;
+                            if (globalCount)
+                                globalCount.innerText = window.globalSelectedSymbols.length;
+                            if (pulseFilterCount)
+                                pulseFilterCount.innerText = window.globalSelectedSymbols.length;
+                            if (pulseBadge)
+                                pulseBadge.innerText = window.globalSelectedSymbols.length;
                         }
                     }
 
@@ -313,7 +363,11 @@ async function refreshScreener(showLoading = false, forceRefresh = false) {
 
                     if (screenerData.last_updated) {
                         const date = new Date(screenerData.last_updated);
-                        const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                        const timeStr = date.toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit',
+                        });
                         const lastUpdatedEl = document.getElementById('screener-last-updated');
                         if (lastUpdatedEl) lastUpdatedEl.textContent = `(更新於: ${timeStr})`;
                     }
@@ -325,23 +379,36 @@ async function refreshScreener(showLoading = false, forceRefresh = false) {
                     const displayList = screenerData.top_volume || [];
                     renderList(containers.top, displayList.slice(0, 5), 'price_change_24h', '%');
 
-                    renderList(containers.topGainers, screenerData.top_gainers || [], 'price_change_24h', '%');
-                    renderList(containers.topLosers, screenerData.top_losers || [], 'price_change_24h', '%');
+                    renderList(
+                        containers.topGainers,
+                        screenerData.top_gainers || [],
+                        'price_change_24h',
+                        '%'
+                    );
+                    renderList(
+                        containers.topLosers,
+                        screenerData.top_losers || [],
+                        'price_change_24h',
+                        '%'
+                    );
 
                     if (topCount === 0) {
-                        console.warn('[Market] Filter returned 0 items. Selected symbols:', window.globalSelectedSymbols);
+                        console.warn(
+                            '[Market] Filter returned 0 items. Selected symbols:',
+                            window.globalSelectedSymbols
+                        );
                     }
                 } else {
                     throw new Error(screenerData?.message || 'Unknown error');
                 }
             })
-            .catch(err => {
-                console.error("Screener Load Failed:", err.message);
+            .catch((err) => {
+                console.error('Screener Load Failed:', err.message);
 
                 // CRITICAL FIX: Don't clear UI if this was a background refresh (showLoading=false)
                 // Only clear and show error if it was a user-initiated or initial load
                 if (showLoading || isTopEmpty) {
-                    ['top', 'topGainers', 'topLosers'].forEach(key => {
+                    ['top', 'topGainers', 'topLosers'].forEach((key) => {
                         if (containers[key]) {
                             containers[key].innerHTML = `
                             <div class="flex flex-col items-center justify-center py-8 text-center text-red-400">
@@ -362,9 +429,8 @@ async function refreshScreener(showLoading = false, forceRefresh = false) {
                 // Screener loaded, stop main loading spinner
                 isScreenerLoading = false;
             });
-
     } catch (e) {
-        console.error("Critical Refresh Error:", e);
+        console.error('Critical Refresh Error:', e);
         isScreenerLoading = false;
     }
 
@@ -383,33 +449,38 @@ async function refreshScreener(showLoading = false, forceRefresh = false) {
     }
 
     // Fetch funding rates asynchronously without blocking
-    fetchFundingRates().then(fundingData => {
-        if (fundingData) {
-            if (containers.highFunding && containers.lowFunding) {
-                renderFundingRateList(containers.highFunding, fundingData.top_bullish, 'high');
-                renderFundingRateList(containers.lowFunding, fundingData.top_bearish, 'low');
+    fetchFundingRates()
+        .then((fundingData) => {
+            if (fundingData) {
+                if (containers.highFunding && containers.lowFunding) {
+                    renderFundingRateList(containers.highFunding, fundingData.top_bullish, 'high');
+                    renderFundingRateList(containers.lowFunding, fundingData.top_bearish, 'low');
+                }
+            } else {
+                // Funding Rate 失敗 - 顯示錯誤訊息
+                ['highFunding', 'lowFunding'].forEach((key) => {
+                    if (containers[key]) {
+                        containers[key].innerHTML =
+                            `<div class="text-center py-4 text-xs text-textMuted opacity-50">暫無數據</div>`;
+                    }
+                });
             }
-        } else {
-            // Funding Rate 失敗 - 顯示錯誤訊息
-            ['highFunding', 'lowFunding'].forEach(key => {
+        })
+        .catch((err) => {
+            console.error('Funding rate fetch error:', err);
+            ['highFunding', 'lowFunding'].forEach((key) => {
                 if (containers[key]) {
-                    containers[key].innerHTML = `<div class="text-center py-4 text-xs text-textMuted opacity-50">暫無數據</div>`;
+                    containers[key].innerHTML =
+                        `<div class="text-center py-4 text-xs text-red-400 opacity-50">載入失敗</div>`;
                 }
             });
-        }
-    }).catch(err => {
-        console.error('Funding rate fetch error:', err);
-        ['highFunding', 'lowFunding'].forEach(key => {
-            if (containers[key]) {
-                containers[key].innerHTML = `<div class="text-center py-4 text-xs text-red-400 opacity-50">載入失敗</div>`;
-            }
         });
-    });
 }
 
 function formatPrice(price) {
     const p = parseFloat(price);
-    if (p >= 1000) return p.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (p >= 1000)
+        return p.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     if (p >= 1) return p.toFixed(2);
     if (p >= 0.01) return p.toFixed(4);
     if (p >= 0.0001) return p.toFixed(6);
@@ -420,21 +491,23 @@ function renderList(container, items, key, unit) {
     if (!container) return;
     container.innerHTML = '';
     if (!items || items.length === 0) {
-        container.innerHTML = '<p class="text-textMuted text-[10px] italic py-6 text-center opacity-50 uppercase tracking-widest">No signals detected</p>';
+        container.innerHTML =
+            '<p class="text-textMuted text-[10px] italic py-6 text-center opacity-50 uppercase tracking-widest">No signals detected</p>';
         return;
     }
 
     // 收集所有 symbols 以便訂閱 WebSocket
     const symbolsToSubscribe = [];
 
-    items.forEach(item => {
+    items.forEach((item) => {
         const val = parseFloat(item[key]);
         let signalsHtml = '';
         if (item.signals && Array.isArray(item.signals)) {
-            item.signals.forEach(sig => {
+            item.signals.forEach((sig) => {
                 let colorClass = 'text-secondary bg-white/5';
                 if (sig.includes('突破')) colorClass = 'text-accent bg-accent/10';
-                else if (sig.includes('爆量') || sig.includes('金叉')) colorClass = 'text-primary bg-primary/10';
+                else if (sig.includes('爆量') || sig.includes('金叉'))
+                    colorClass = 'text-primary bg-primary/10';
                 else if (sig.includes('抄底')) colorClass = 'text-success bg-success/10';
                 signalsHtml += `<span class="text-[8px] px-1.5 py-0.5 rounded-md ${colorClass} border border-white/5 uppercase font-bold tracking-tighter">${sig.replace(/[^\u4e00-\u9fa5A-Za-z0-9]/g, '')}</span>`;
             });
@@ -443,7 +516,7 @@ function renderList(container, items, key, unit) {
         // RSI 能量條視覺化
         let rsiVisual = '';
         if (key === 'RSI_14') {
-            const rsiColor = val > 70 ? 'bg-danger' : (val < 30 ? 'bg-success' : 'bg-primary/40');
+            const rsiColor = val > 70 ? 'bg-danger' : val < 30 ? 'bg-success' : 'bg-primary/40';
             rsiVisual = `
                 <div class="w-full h-1 bg-white/5 rounded-full mt-2 overflow-hidden flex">
                     <div class="h-full ${rsiColor} transition-all duration-1000" style="width: ${val}%"></div>
@@ -452,9 +525,12 @@ function renderList(container, items, key, unit) {
         }
 
         const div = document.createElement('div');
-        div.className = "group relative bg-surface/20 hover:bg-surface/40 border border-white/5 rounded-2xl p-4 transition-all duration-300 cursor-pointer overflow-hidden";
+        div.className =
+            'group relative bg-surface/20 hover:bg-surface/40 border border-white/5 rounded-2xl p-4 transition-all duration-300 cursor-pointer overflow-hidden';
         div.dataset.symbol = item.Symbol; // 添加 data-symbol 屬性
-        div.onclick = () => { showChart(item.Symbol); };
+        div.onclick = () => {
+            showChart(item.Symbol);
+        };
 
         // 收集 symbol 用於 WebSocket 訂閱
         symbolsToSubscribe.push(item.Symbol);
@@ -472,7 +548,7 @@ function renderList(container, items, key, unit) {
                 </div>
 
                 <div class="text-right">
-                    <div class="text-base font-black ticker-change ${key === 'RSI_14' ? (val > 70 ? 'text-danger' : (val < 30 ? 'text-success' : 'text-secondary')) : (val > 0 ? 'text-success' : 'text-danger')}">
+                    <div class="text-base font-black ticker-change ${key === 'RSI_14' ? (val > 70 ? 'text-danger' : val < 30 ? 'text-success' : 'text-secondary') : val > 0 ? 'text-success' : 'text-danger'}">
                         ${val > 0 && key !== 'RSI_14' ? '+' : ''}${val.toFixed(2)}${unit}
                     </div>
                     <div class="flex flex-wrap justify-end gap-1 mt-1">
@@ -499,19 +575,23 @@ function renderFundingRateList(container, items, type) {
     if (!container) return;
     container.innerHTML = '';
     if (!items || items.length === 0) {
-        container.innerHTML = '<p class="text-textMuted text-[10px] italic py-6 text-center opacity-50 uppercase tracking-widest">No data</p>';
+        container.innerHTML =
+            '<p class="text-textMuted text-[10px] italic py-6 text-center opacity-50 uppercase tracking-widest">No data</p>';
         return;
     }
 
-    items.forEach(item => {
+    items.forEach((item) => {
         const rate = item.fundingRate;
         const frStyle = getFundingRateStyle(rate);
         const isPaying = rate > 0;
 
         const div = document.createElement('div');
-        div.className = "group bg-surface/20 hover:bg-surface/40 border border-white/5 rounded-2xl p-4 transition-all duration-300 cursor-pointer";
+        div.className =
+            'group bg-surface/20 hover:bg-surface/40 border border-white/5 rounded-2xl p-4 transition-all duration-300 cursor-pointer';
         // User Request: Clicking the card should open Funding History, not K-Line Chart
-        div.onclick = () => { showFundingHistory(item.symbol); };
+        div.onclick = () => {
+            showFundingHistory(item.symbol);
+        };
 
         div.innerHTML = `
             <div class="flex items-center justify-between">
@@ -545,7 +625,8 @@ async function showFundingHistory(symbol) {
     if (!modal) {
         modal = document.createElement('div');
         modal.id = 'funding-history-modal';
-        modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur-sm hidden';
+        modal.className =
+            'fixed inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur-sm hidden';
         modal.innerHTML = `
             <div class="bg-surface border border-white/5 rounded-3xl w-[90%] max-w-2xl p-6 shadow-2xl transform transition-all scale-95 opacity-0" id="funding-modal-content">
                 <div class="flex justify-between items-center mb-4">
@@ -602,7 +683,8 @@ async function showFundingHistory(symbol) {
         // Show loading state using overlay
         if (overlay && overlayContent) {
             overlay.classList.remove('hidden');
-            overlayContent.innerHTML = '<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div><div class="text-xs text-textMuted">載入數據中...</div>';
+            overlayContent.innerHTML =
+                '<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div><div class="text-xs text-textMuted">載入數據中...</div>';
         }
 
         const res = await fetch(url);
@@ -656,26 +738,28 @@ function renderHistoryChart(historyData) {
         historyChartInstance.destroy();
     }
 
-    const labels = historyData.map(d => {
+    const labels = historyData.map((d) => {
         const date = new Date(parseInt(d.time));
         return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:00`;
     });
 
-    const rates = historyData.map(d => d.rate);
-    const colors = rates.map(r => r >= 0 ? 'rgba(34, 197, 94, 0.7)' : 'rgba(239, 68, 68, 0.7)');
-    const borders = rates.map(r => r >= 0 ? 'rgba(34, 197, 94, 1)' : 'rgba(239, 68, 68, 1)');
+    const rates = historyData.map((d) => d.rate);
+    const colors = rates.map((r) => (r >= 0 ? 'rgba(34, 197, 94, 0.7)' : 'rgba(239, 68, 68, 0.7)'));
+    const borders = rates.map((r) => (r >= 0 ? 'rgba(34, 197, 94, 1)' : 'rgba(239, 68, 68, 1)'));
 
     historyChartInstance = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: labels,
-            datasets: [{
-                label: '資金費率 (%)',
-                data: rates,
-                backgroundColor: colors,
-                borderColor: borders,
-                borderWidth: 1
-            }]
+            datasets: [
+                {
+                    label: '資金費率 (%)',
+                    data: rates,
+                    backgroundColor: colors,
+                    borderColor: borders,
+                    borderWidth: 1,
+                },
+            ],
         },
         options: {
             responsive: true,
@@ -688,16 +772,16 @@ function renderHistoryChart(historyData) {
                 y: {
                     grid: { color: 'rgba(148, 163, 184, 0.1)' },
                     ticks: { color: '#94a3b8' },
-                    beginAtZero: false
+                    beginAtZero: false,
                 },
                 x: {
                     grid: { display: false },
                     ticks: {
                         display: true,
                         color: '#64748b',
-                        maxTicksLimit: 10
-                    }
-                }
+                        maxTicksLimit: 10,
+                    },
+                },
             },
             plugins: {
                 legend: { display: false },
@@ -712,26 +796,26 @@ function renderHistoryChart(historyData) {
                     callbacks: {
                         label: function (context) {
                             return `費率: ${context.raw.toFixed(4)}%`;
-                        }
-                    }
+                        },
+                    },
                 },
                 zoom: {
                     pan: {
                         enabled: true,
-                        mode: 'xy'
+                        mode: 'xy',
                     },
                     zoom: {
                         wheel: {
                             enabled: true,
                         },
                         pinch: {
-                            enabled: true
+                            enabled: true,
                         },
                         mode: 'xy',
-                    }
-                }
-            }
-        }
+                    },
+                },
+            },
+        },
     });
 }
 
@@ -806,7 +890,11 @@ async function showChart(symbol, interval = null) {
     const updatedEl = document.getElementById('chart-updated');
     if (updatedEl) {
         const now = new Date();
-        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const timeStr = now.toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+        });
         // Only update if it's not already showing LIVE status
         if (!updatedEl.textContent.includes('即時')) {
             updatedEl.textContent = `更新: ${timeStr}`;
@@ -814,7 +902,7 @@ async function showChart(symbol, interval = null) {
     }
 
     // Update active button state
-    document.querySelectorAll('.chart-interval-btn').forEach(btn => {
+    document.querySelectorAll('.chart-interval-btn').forEach((btn) => {
         if (btn.dataset.interval === currentChartInterval) {
             btn.classList.add('bg-white/10', 'text-primary');
             btn.classList.remove('text-textMuted');
@@ -829,7 +917,7 @@ async function showChart(symbol, interval = null) {
     const volumeContainer = document.getElementById('volume-container');
 
     if (!chartSection || !chartContainer) {
-        console.error("Chart DOM elements missing");
+        console.error('Chart DOM elements missing');
         return;
     }
 
@@ -837,7 +925,8 @@ async function showChart(symbol, interval = null) {
     lucide.createIcons();
 
     const titleEl = document.getElementById('chart-title');
-    if (titleEl) titleEl.textContent = `${currentChartSymbol} (${currentChartInterval.toUpperCase()})`;
+    if (titleEl)
+        titleEl.textContent = `${currentChartSymbol} (${currentChartInterval.toUpperCase()})`;
 
     // 更新自動更新按鈕狀態
     const btn = document.getElementById('auto-refresh-btn');
@@ -850,8 +939,12 @@ async function showChart(symbol, interval = null) {
         if (status) status.textContent = wsConnected ? 'LIVE' : '連接中...';
     }
 
-    chartContainer.innerHTML = '<div class="animate-pulse text-textMuted h-full flex items-center justify-center">載入數據中...</div>';
-    if (volumeContainer) { volumeContainer.innerHTML = ''; volumeContainer.style.display = ''; }
+    chartContainer.innerHTML =
+        '<div class="animate-pulse text-textMuted h-full flex items-center justify-center">載入數據中...</div>';
+    if (volumeContainer) {
+        volumeContainer.innerHTML = '';
+        volumeContainer.style.display = '';
+    }
 
     try {
         const res = await fetch('/api/klines', {
@@ -860,13 +953,14 @@ async function showChart(symbol, interval = null) {
             body: JSON.stringify({
                 symbol: currentChartSymbol,
                 interval: currentChartInterval,
-                limit: 200
-            })
+                limit: 200,
+            }),
         });
         const data = await res.json();
 
         if (!data.klines || data.klines.length === 0) {
-            chartContainer.innerHTML = '<div class="text-danger h-full flex items-center justify-center">無法載入數據</div>';
+            chartContainer.innerHTML =
+                '<div class="text-danger h-full flex items-center justify-center">無法載入數據</div>';
             return;
         }
 
@@ -874,7 +968,11 @@ async function showChart(symbol, interval = null) {
         const updatedEl = document.getElementById('chart-updated');
         if (updatedEl && data.updated_at) {
             const date = new Date(data.updated_at);
-            const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const timeStr = date.toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+            });
             updatedEl.textContent = `更新: ${timeStr}`;
         }
 
@@ -892,12 +990,25 @@ async function showChart(symbol, interval = null) {
             width: chartContainer.clientWidth,
             height: chartHeight,
             layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#94a3b8' },
-            grid: { vertLines: { color: 'rgba(51, 65, 85, 0.3)' }, horzLines: { color: 'rgba(51, 65, 85, 0.3)' } },
+            grid: {
+                vertLines: { color: 'rgba(51, 65, 85, 0.3)' },
+                horzLines: { color: 'rgba(51, 65, 85, 0.3)' },
+            },
             timeScale: { borderColor: '#334155', timeVisible: true },
             rightPriceScale: { autoScale: true, scaleMargins: { top: 0.1, bottom: 0.1 } },
-            handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
-            handleScale: { axisPressedMouseMove: { time: true, price: true }, axisDoubleClickReset: { time: true, price: true }, mouseWheel: true, pinch: true },
-            crosshair: { mode: LightweightCharts.CrosshairMode.Normal }
+            handleScroll: {
+                mouseWheel: true,
+                pressedMouseMove: true,
+                horzTouchDrag: true,
+                vertTouchDrag: true,
+            },
+            handleScale: {
+                axisPressedMouseMove: { time: true, price: true },
+                axisDoubleClickReset: { time: true, price: true },
+                mouseWheel: true,
+                pinch: true,
+            },
+            crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
         });
 
         candleSeries = chart.addCandlestickSeries({
@@ -907,13 +1018,19 @@ async function showChart(symbol, interval = null) {
             wickDownColor: '#ef4444',
             borderUpColor: '#22c55e',
             borderDownColor: '#ef4444',
-            priceFormat: { type: 'price', precision: priceDecimals, minMove: Math.pow(10, -priceDecimals) }
+            priceFormat: {
+                type: 'price',
+                precision: priceDecimals,
+                minMove: Math.pow(10, -priceDecimals),
+            },
         });
         candleSeries.setData(data.klines);
 
         // 儲存 klines 數據以便 crosshair 查詢
         const klinesMap = {};
-        data.klines.forEach(k => { klinesMap[k.time] = k; });
+        data.klines.forEach((k) => {
+            klinesMap[k.time] = k;
+        });
 
         // Remove old volume chart reference
         if (window.volumeChart) {
@@ -922,24 +1039,40 @@ async function showChart(symbol, interval = null) {
         }
 
         // Populate volume data
-        const volumeData = data.klines.map(k => ({
+        const volumeData = data.klines.map((k) => ({
             time: k.time,
             value: k.volume || 0,
-            color: k.close >= k.open ? 'rgba(34, 197, 94, 0.4)' : 'rgba(239, 68, 68, 0.4)'
+            color: k.close >= k.open ? 'rgba(34, 197, 94, 0.4)' : 'rgba(239, 68, 68, 0.4)',
         }));
 
         // Create separate volume chart
         if (volumeContainer) {
             window.volumeChart = LightweightCharts.createChart(volumeContainer, {
-                layout: { background: { type: 'solid', color: 'transparent' }, textColor: '#94a3b8' },
-                grid: { vertLines: { color: 'rgba(51, 65, 85, 0.2)' }, horzLines: { color: 'rgba(51, 65, 85, 0.1)' } },
+                layout: {
+                    background: { type: 'solid', color: 'transparent' },
+                    textColor: '#94a3b8',
+                },
+                grid: {
+                    vertLines: { color: 'rgba(51, 65, 85, 0.2)' },
+                    horzLines: { color: 'rgba(51, 65, 85, 0.1)' },
+                },
                 crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-                rightPriceScale: { borderColor: '#334155', scaleMargins: { top: 0.1, bottom: 0.05 } },
+                rightPriceScale: {
+                    borderColor: '#334155',
+                    scaleMargins: { top: 0.1, bottom: 0.05 },
+                },
                 timeScale: { visible: false },
-                handleScroll: { mouseWheel: false, pressedMouseMove: false, horzTouchDrag: false, vertTouchDrag: false },
+                handleScroll: {
+                    mouseWheel: false,
+                    pressedMouseMove: false,
+                    horzTouchDrag: false,
+                    vertTouchDrag: false,
+                },
                 handleScale: { mouseWheel: false, pinchScale: false },
             });
-            volumeSeries = window.volumeChart.addHistogramSeries({ priceFormat: { type: 'volume' } });
+            volumeSeries = window.volumeChart.addHistogramSeries({
+                priceFormat: { type: 'volume' },
+            });
             volumeSeries.setData(volumeData);
             // Sync time scales
             let _syncingRange = false;
@@ -981,7 +1114,7 @@ async function showChart(symbol, interval = null) {
         window.addEventListener('resize', adaptiveResizeHandler);
 
         // Crosshair 移動時更新 OHLCV 資訊
-        chart.subscribeCrosshairMove(param => {
+        chart.subscribeCrosshairMove((param) => {
             const infoOpen = document.getElementById('info-open');
             const infoHigh = document.getElementById('info-high');
             const infoLow = document.getElementById('info-low');
@@ -994,7 +1127,15 @@ async function showChart(symbol, interval = null) {
                 isChartHovered = false;
                 const lastKline = data.klines[data.klines.length - 1];
                 if (lastKline) {
-                    updateOHLCVDisplay(lastKline, infoOpen, infoHigh, infoLow, infoClose, infoVolume, priceDecimals);
+                    updateOHLCVDisplay(
+                        lastKline,
+                        infoOpen,
+                        infoHigh,
+                        infoLow,
+                        infoClose,
+                        infoVolume,
+                        priceDecimals
+                    );
 
                     // 恢復顯示最新價格
                     if (currentPriceDisplay) {
@@ -1012,7 +1153,15 @@ async function showChart(symbol, interval = null) {
             isChartHovered = true;
             const kline = klinesMap[param.time];
             if (kline) {
-                updateOHLCVDisplay(kline, infoOpen, infoHigh, infoLow, infoClose, infoVolume, priceDecimals);
+                updateOHLCVDisplay(
+                    kline,
+                    infoOpen,
+                    infoHigh,
+                    infoLow,
+                    infoClose,
+                    infoVolume,
+                    priceDecimals
+                );
 
                 // 顯示懸停位置的價格
                 if (currentPriceDisplay) {
@@ -1063,47 +1212,63 @@ async function showChart(symbol, interval = null) {
         let currentMargins = { top: 0.1, bottom: 0.1 };
 
         // 自定義滾輪行為
-        chartContainer.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            const rect = chartContainer.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            const chartWidth = rect.width;
-            const chartHeight = rect.height;
-            const priceScaleWidth = 70;
-            const timeScaleHeight = 30;
+        chartContainer.addEventListener(
+            'wheel',
+            (e) => {
+                e.preventDefault();
+                const rect = chartContainer.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const chartWidth = rect.width;
+                const chartHeight = rect.height;
+                const priceScaleWidth = 70;
+                const timeScaleHeight = 30;
 
-            const zoomIn = e.deltaY < 0;
-            const factor = zoomIn ? 0.9 : 1.1;
+                const zoomIn = e.deltaY < 0;
+                const factor = zoomIn ? 0.9 : 1.1;
 
-            if (x > chartWidth - priceScaleWidth) {
-                chart.priceScale('right').applyOptions({ autoScale: false });
-                const adjustment = zoomIn ? -0.03 : 0.03;
-                currentMargins.top = Math.max(0.02, Math.min(0.4, currentMargins.top + adjustment));
-                currentMargins.bottom = Math.max(0.02, Math.min(0.4, currentMargins.bottom + adjustment));
-                chart.priceScale('right').applyOptions({
-                    scaleMargins: { top: currentMargins.top, bottom: currentMargins.bottom }
-                });
-            } else if (y > chartHeight - timeScaleHeight) {
-                const timeScale = chart.timeScale();
-                const range = timeScale.getVisibleLogicalRange();
-                if (range) {
-                    const center = (range.from + range.to) / 2;
-                    const halfRange = (range.to - range.from) / 2 * factor;
-                    timeScale.setVisibleLogicalRange({ from: center - halfRange, to: center + halfRange });
+                if (x > chartWidth - priceScaleWidth) {
+                    chart.priceScale('right').applyOptions({ autoScale: false });
+                    const adjustment = zoomIn ? -0.03 : 0.03;
+                    currentMargins.top = Math.max(
+                        0.02,
+                        Math.min(0.4, currentMargins.top + adjustment)
+                    );
+                    currentMargins.bottom = Math.max(
+                        0.02,
+                        Math.min(0.4, currentMargins.bottom + adjustment)
+                    );
+                    chart.priceScale('right').applyOptions({
+                        scaleMargins: { top: currentMargins.top, bottom: currentMargins.bottom },
+                    });
+                } else if (y > chartHeight - timeScaleHeight) {
+                    const timeScale = chart.timeScale();
+                    const range = timeScale.getVisibleLogicalRange();
+                    if (range) {
+                        const center = (range.from + range.to) / 2;
+                        const halfRange = ((range.to - range.from) / 2) * factor;
+                        timeScale.setVisibleLogicalRange({
+                            from: center - halfRange,
+                            to: center + halfRange,
+                        });
+                    }
+                } else {
+                    chart.priceScale('right').applyOptions({ autoScale: true });
+                    currentMargins = { top: 0.1, bottom: 0.1 };
+                    const timeScale = chart.timeScale();
+                    const range = timeScale.getVisibleLogicalRange();
+                    if (range) {
+                        const center = (range.from + range.to) / 2;
+                        const halfRange = ((range.to - range.from) / 2) * factor;
+                        timeScale.setVisibleLogicalRange({
+                            from: center - halfRange,
+                            to: center + halfRange,
+                        });
+                    }
                 }
-            } else {
-                chart.priceScale('right').applyOptions({ autoScale: true });
-                currentMargins = { top: 0.1, bottom: 0.1 };
-                const timeScale = chart.timeScale();
-                const range = timeScale.getVisibleLogicalRange();
-                if (range) {
-                    const center = (range.from + range.to) / 2;
-                    const halfRange = (range.to - range.from) / 2 * factor;
-                    timeScale.setVisibleLogicalRange({ from: center - halfRange, to: center + halfRange });
-                }
-            }
-        }, { passive: false });
+            },
+            { passive: false }
+        );
 
         // 雙擊重置
         chartContainer.addEventListener('dblclick', () => {
@@ -1117,10 +1282,10 @@ async function showChart(symbol, interval = null) {
         const resizeHandler = () => { ... } 
         window.addEventListener('resize', resizeHandler);
         */
-
     } catch (err) {
         console.error(err);
-        chartContainer.innerHTML = '<div class="text-danger h-full flex items-center justify-center">連線錯誤</div>';
+        chartContainer.innerHTML =
+            '<div class="text-danger h-full flex items-center justify-center">連線錯誤</div>';
     }
 }
 
@@ -1208,7 +1373,9 @@ function connectWebSocket() {
             // 自動重連 - 限制最大重連次數
             if (autoRefreshEnabled && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
                 reconnectAttempts++;
-                console.log(`嘗試重新連接 WebSocket... (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`);
+                console.log(
+                    `嘗試重新連接 WebSocket... (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`
+                );
                 wsReconnectTimer = setTimeout(() => {
                     connectWebSocket();
                 }, 3000);
@@ -1224,7 +1391,6 @@ function connectWebSocket() {
             wsConnected = false;
             updateWsStatus(false);
         };
-
     } catch (e) {
         console.error('WebSocket 連接失敗:', e);
     }
@@ -1249,11 +1415,13 @@ function subscribeKline(symbol, interval) {
         return;
     }
 
-    klineWebSocket.send(JSON.stringify({
-        action: 'subscribe',
-        symbol: symbol,
-        interval: interval
-    }));
+    klineWebSocket.send(
+        JSON.stringify({
+            action: 'subscribe',
+            symbol: symbol,
+            interval: interval,
+        })
+    );
     console.log(`訂閱: ${symbol} ${interval}`);
 }
 
@@ -1294,7 +1462,7 @@ function updateChartWithKline(kline) {
         open: kline.open,
         high: kline.high,
         low: kline.low,
-        close: kline.close
+        close: kline.close,
     };
 
     // 使用 update 方法更新最新 K 線
@@ -1305,7 +1473,7 @@ function updateChartWithKline(kline) {
         volumeSeries.update({
             time: kline.time,
             value: kline.volume,
-            color: kline.close >= kline.open ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'
+            color: kline.close >= kline.open ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)',
         });
     }
 
@@ -1323,7 +1491,11 @@ function updateChartWithKline(kline) {
     const updatedEl = document.getElementById('chart-updated');
     if (updatedEl) {
         const now = new Date();
-        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const timeStr = now.toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+        });
         updatedEl.textContent = `即時 ${timeStr}`;
     }
 
@@ -1383,7 +1555,14 @@ function updateAutoRefreshButton() {
 
     if (!autoRefreshEnabled) {
         if (btn) {
-            btn.classList.remove('text-success', 'bg-success/10', 'text-primary', 'bg-primary/10', 'text-warning', 'bg-warning/10');
+            btn.classList.remove(
+                'text-success',
+                'bg-success/10',
+                'text-primary',
+                'bg-primary/10',
+                'text-warning',
+                'bg-warning/10'
+            );
             btn.classList.add('text-textMuted');
         }
         if (status) status.textContent = 'OFF';
@@ -1406,7 +1585,11 @@ function startLiveTimeUpdates() {
         const updatedEl = document.getElementById('chart-updated');
         if (updatedEl && wsConnected && autoRefreshEnabled) {
             const now = new Date();
-            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const timeStr = now.toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+            });
             updatedEl.textContent = `即時 ${timeStr}`;
         }
     }, 1000); // Update every second
@@ -1431,7 +1614,14 @@ function toggleAutoRefresh() {
         status.textContent = '連接中...';
         startAutoRefresh();
     } else {
-        btn.classList.remove('text-primary', 'bg-primary/10', 'text-success', 'bg-success/10', 'text-warning', 'bg-warning/10');
+        btn.classList.remove(
+            'text-primary',
+            'bg-primary/10',
+            'text-success',
+            'bg-success/10',
+            'text-warning',
+            'bg-warning/10'
+        );
         btn.classList.add('text-textMuted');
         status.textContent = 'OFF';
         stopAutoRefresh();
@@ -1449,7 +1639,7 @@ function startAutoRefresh() {
             clearInterval(wsConnectionCheckTimer);
             wsConnectionCheckTimer = null;
         }
-        
+
         // 等待連接建立後訂閱
         wsConnectionCheckTimer = setInterval(() => {
             if (wsConnected) {
@@ -1480,7 +1670,14 @@ function stopAutoRefresh() {
     const btn = document.getElementById('auto-refresh-btn');
     const status = document.getElementById('auto-refresh-status');
     if (btn) {
-        btn.classList.remove('text-primary', 'bg-primary/10', 'text-success', 'bg-success/10', 'text-warning', 'bg-warning/10');
+        btn.classList.remove(
+            'text-primary',
+            'bg-primary/10',
+            'text-success',
+            'bg-success/10',
+            'text-warning',
+            'bg-warning/10'
+        );
         btn.classList.add('text-textMuted');
     }
     if (status) status.textContent = 'OFF';
@@ -1497,8 +1694,8 @@ async function refreshChartData() {
             body: JSON.stringify({
                 symbol: currentChartSymbol,
                 interval: currentChartInterval,
-                limit: 200
-            })
+                limit: 200,
+            }),
         });
         const data = await res.json();
 
@@ -1508,10 +1705,10 @@ async function refreshChartData() {
         chartKlinesData = data.klines;
 
         if (volumeSeries) {
-            const volumeData = data.klines.map(k => ({
+            const volumeData = data.klines.map((k) => ({
                 time: k.time,
                 value: k.volume || 0,
-                color: k.close >= k.open ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'
+                color: k.close >= k.open ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)',
             }));
             volumeSeries.setData(volumeData);
         }
@@ -1519,7 +1716,11 @@ async function refreshChartData() {
         const updatedEl = document.getElementById('chart-updated');
         if (updatedEl) {
             const now = new Date();
-            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const timeStr = now.toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+            });
             updatedEl.textContent = `更新: ${timeStr}`;
         }
 
@@ -1548,7 +1749,6 @@ async function refreshChartData() {
                 }
             }
         }
-
     } catch (err) {
         console.error('Refresh failed:', err);
     }
@@ -1613,7 +1813,9 @@ function connectTickerWebSocket() {
             // 自動重連 - 限制最大重連次數
             if (tickerReconnectAttempts < MAX_TICKET_RECONNECT_ATTEMPTS) {
                 tickerReconnectAttempts++;
-                console.log(`嘗試重新連接 Ticker WebSocket... (${tickerReconnectAttempts}/${MAX_TICKET_RECONNECT_ATTEMPTS})`);
+                console.log(
+                    `嘗試重新連接 Ticker WebSocket... (${tickerReconnectAttempts}/${MAX_TICKET_RECONNECT_ATTEMPTS})`
+                );
                 tickerReconnectTimer = setTimeout(() => {
                     connectTickerWebSocket();
                 }, 3000);
@@ -1627,7 +1829,6 @@ function connectTickerWebSocket() {
             marketWsConnected = false;
             updateTickerWsStatus(false);
         };
-
     } catch (e) {
         console.error('Ticker WebSocket 連接失敗:', e);
     }
@@ -1649,22 +1850,24 @@ function disconnectTickerWebSocket() {
 
 function subscribeTickerSymbols(symbols) {
     // 過濾已訂閱的
-    const newSymbols = symbols.filter(s => !subscribedTickerSymbols.has(s.toUpperCase()));
+    const newSymbols = symbols.filter((s) => !subscribedTickerSymbols.has(s.toUpperCase()));
     if (newSymbols.length === 0) return;
 
     if (!marketWebSocket || marketWebSocket.readyState !== WebSocket.OPEN) {
         // WebSocket 未連接，加入等待列表
-        newSymbols.forEach(s => pendingTickerSymbols.add(s.toUpperCase()));
+        newSymbols.forEach((s) => pendingTickerSymbols.add(s.toUpperCase()));
         console.log(`Ticker WebSocket 未連接，已排隊等待: ${newSymbols.join(', ')}`);
         return;
     }
 
-    marketWebSocket.send(JSON.stringify({
-        action: 'subscribe',
-        symbols: newSymbols
-    }));
+    marketWebSocket.send(
+        JSON.stringify({
+            action: 'subscribe',
+            symbols: newSymbols,
+        })
+    );
 
-    newSymbols.forEach(s => subscribedTickerSymbols.add(s.toUpperCase()));
+    newSymbols.forEach((s) => subscribedTickerSymbols.add(s.toUpperCase()));
     console.log(`訂閱 Ticker: ${newSymbols.join(', ')}`);
 }
 
@@ -1673,12 +1876,14 @@ function unsubscribeTickerSymbols(symbols) {
         return;
     }
 
-    marketWebSocket.send(JSON.stringify({
-        action: 'unsubscribe',
-        symbols: symbols
-    }));
+    marketWebSocket.send(
+        JSON.stringify({
+            action: 'unsubscribe',
+            symbols: symbols,
+        })
+    );
 
-    symbols.forEach(s => subscribedTickerSymbols.delete(s.toUpperCase()));
+    symbols.forEach((s) => subscribedTickerSymbols.delete(s.toUpperCase()));
 }
 
 function handleTickerMessage(message) {
@@ -1710,22 +1915,24 @@ function updateMarketWatchItem(symbol, ticker) {
     // 尋找所有顯示該 symbol 的元素並更新價格
     // symbol 可能是 "BTC-USDT", "BTC", "BTCUSDT" 等格式
     // 統一處理為不帶後綴的格式
-    const normalizedSymbol = symbol.toUpperCase()
+    const normalizedSymbol = symbol
+        .toUpperCase()
         .replace('-USDT', '')
         .replace('USDT', '')
         .replace('-', '');
 
     // 更新所有列表中的價格
     const containers = ['top-list', 'oversold-list', 'overbought-list'];
-    containers.forEach(containerId => {
+    containers.forEach((containerId) => {
         const container = document.getElementById(containerId);
         if (!container) return;
 
         // 查找包含該 symbol 的卡片
         const cards = container.querySelectorAll('[data-symbol]');
 
-        cards.forEach(card => {
-            const cardSymbol = (card.dataset.symbol || '').toUpperCase()
+        cards.forEach((card) => {
+            const cardSymbol = (card.dataset.symbol || '')
+                .toUpperCase()
                 .replace('-USDT', '')
                 .replace('USDT', '')
                 .replace('-', '');
@@ -1793,8 +2000,8 @@ window.subscribeTickerSymbols = subscribeTickerSymbols;
 document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
         console.log('[Market] Tab hidden, pausing updates to save resources.');
-        // Optionally clear interval if we wanted to be very strict, 
-        // but app.js handles the main interval. 
+        // Optionally clear interval if we wanted to be very strict,
+        // but app.js handles the main interval.
         // We just note it here.
     } else {
         console.log('[Market] Tab visible, checking for stale data...');
@@ -1815,56 +2022,55 @@ window.refreshScreener = refreshScreener; // CRITICAL: Export for index.html to 
 window.showFundingHistory = showFundingHistory;
 window.closeFundingHistory = closeFundingHistory;
 
-
 // ========================================
 // Cleanup function for memory leak prevention
 // ========================================
 function cleanupMarketResources() {
     console.log('[Market] Cleaning up resources...');
-    
+
     // Clear live time update timer
     if (liveTimeUpdateTimer) {
         clearInterval(liveTimeUpdateTimer);
         liveTimeUpdateTimer = null;
     }
-    
+
     // Clear WebSocket reconnect timers
     if (wsReconnectTimer) {
         clearTimeout(wsReconnectTimer);
         wsReconnectTimer = null;
     }
-    
+
     if (wsConnectionCheckTimer) {
         clearInterval(wsConnectionCheckTimer);
         wsConnectionCheckTimer = null;
     }
-    
+
     if (tickerReconnectTimer) {
         clearTimeout(tickerReconnectTimer);
         tickerReconnectTimer = null;
     }
-    
+
     // Remove resize event listener
     if (window._marketResizeHandler) {
         window.removeEventListener('resize', window._marketResizeHandler);
         window._marketResizeHandler = null;
     }
-    
+
     // Close WebSocket connections
     if (klineWebSocket) {
         klineWebSocket.close();
         klineWebSocket = null;
     }
-    
+
     if (marketWebSocket) {
         marketWebSocket.close();
         marketWebSocket = null;
     }
-    
+
     // Reset reconnect attempts
     reconnectAttempts = 0;
     tickerReconnectAttempts = 0;
-    
+
     console.log('[Market] Resources cleaned up');
 }
 

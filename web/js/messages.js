@@ -38,9 +38,12 @@ const MessagesAPI = {
         if (!userId) throw new Error('請先登入');
 
         const token = this._getToken();
-        const res = await fetch(`/api/messages/conversations?user_id=${userId}&limit=${limit}&offset=${offset}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await fetch(
+            `/api/messages/conversations?user_id=${userId}&limit=${limit}&offset=${offset}`,
+            {
+                headers: { Authorization: `Bearer ${token}` },
+            }
+        );
         if (!res.ok) {
             const err = await res.json();
             throw new Error(err.detail || '取得對話列表失敗');
@@ -60,7 +63,7 @@ const MessagesAPI = {
 
         const token = this._getToken();
         const res = await fetch(url, {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) {
             const err = await res.json();
@@ -77,9 +80,12 @@ const MessagesAPI = {
         if (!userId) throw new Error('請先登入');
 
         const token = this._getToken();
-        const res = await fetch(`/api/messages/with/${otherUserId}?user_id=${userId}&limit=${limit}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await fetch(
+            `/api/messages/with/${otherUserId}?user_id=${userId}&limit=${limit}`,
+            {
+                headers: { Authorization: `Bearer ${token}` },
+            }
+        );
         if (!res.ok) {
             const err = await res.json();
             throw new Error(err.detail || '取得對話失敗');
@@ -98,9 +104,9 @@ const MessagesAPI = {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this._getToken()}`
+                Authorization: `Bearer ${this._getToken()}`,
             },
-            body: JSON.stringify({ to_user_id: toUserId, content })
+            body: JSON.stringify({ to_user_id: toUserId, content }),
         });
 
         if (!res.ok) {
@@ -121,9 +127,9 @@ const MessagesAPI = {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this._getToken()}`
+                Authorization: `Bearer ${this._getToken()}`,
             },
-            body: JSON.stringify({ conversation_id: conversationId })
+            body: JSON.stringify({ conversation_id: conversationId }),
         });
 
         if (!res.ok) {
@@ -144,9 +150,9 @@ const MessagesAPI = {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this._getToken()}`
+                Authorization: `Bearer ${this._getToken()}`,
             },
-            body: JSON.stringify({ to_user_id: toUserId, content })
+            body: JSON.stringify({ to_user_id: toUserId, content }),
         });
 
         if (!res.ok) {
@@ -164,9 +170,12 @@ const MessagesAPI = {
         if (!userId) throw new Error('請先登入');
 
         const token = this._getToken();
-        const res = await fetch(`/api/messages/search?user_id=${userId}&q=${encodeURIComponent(query)}&limit=${limit}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await fetch(
+            `/api/messages/search?user_id=${userId}&q=${encodeURIComponent(query)}&limit=${limit}`,
+            {
+                headers: { Authorization: `Bearer ${token}` },
+            }
+        );
         if (!res.ok) {
             const err = await res.json();
             throw new Error(err.detail || '搜尋訊息失敗');
@@ -184,7 +193,7 @@ const MessagesAPI = {
         try {
             const token = this._getToken();
             const res = await fetch(`/api/messages/unread-count?user_id=${userId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token}` },
             });
             if (!res.ok) return { unread_count: 0 };
             return await res.json();
@@ -203,18 +212,17 @@ const MessagesAPI = {
         try {
             const token = this._getToken();
             const res = await fetch(`/api/messages/limits?user_id=${userId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token}` },
             });
             if (!res.ok) return null;
             return await res.json();
         } catch {
             return null;
         }
-    }
+    },
 };
 
 window.MessagesAPI = MessagesAPI;
-
 
 // ============================================================================
 // MessagesWebSocket - WebSocket 連接管理
@@ -256,11 +264,13 @@ const MessagesWebSocket = {
         this.ws.onopen = () => {
             console.log('MessagesWebSocket: 連接成功，發送認證...');
             // 發送認證
-            this.ws.send(JSON.stringify({
-                action: 'auth',
-                user_id: userId,
-                token: MessagesAPI._getToken()
-            }));
+            this.ws.send(
+                JSON.stringify({
+                    action: 'auth',
+                    user_id: userId,
+                    token: MessagesAPI._getToken(),
+                })
+            );
         };
 
         this.ws.onmessage = (event) => {
@@ -284,7 +294,9 @@ const MessagesWebSocket = {
             // 自動重連
             if (this.reconnectAttempts < this.maxReconnectAttempts) {
                 this.reconnectAttempts++;
-                console.log(`MessagesWebSocket: ${this.reconnectDelay}ms 後重連 (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+                console.log(
+                    `MessagesWebSocket: ${this.reconnectDelay}ms 後重連 (${this.reconnectAttempts}/${this.maxReconnectAttempts})`
+                );
                 setTimeout(() => this.connect(), this.reconnectDelay);
             }
         };
@@ -399,11 +411,10 @@ const MessagesWebSocket = {
      */
     onDisconnect(callback) {
         this.onDisconnectCallback = callback;
-    }
+    },
 };
 
 window.MessagesWebSocket = MessagesWebSocket;
-
 
 // ============================================================================
 // MessagesUI - UI 渲染工具
@@ -461,7 +472,7 @@ const MessagesUI = {
             month: 'short',
             day: 'numeric',
             hour: '2-digit',
-            minute: '2-digit'
+            minute: '2-digit',
         });
     },
 
@@ -493,8 +504,12 @@ const MessagesUI = {
         // 未讀狀態樣式
         const unreadTextClass = hasUnread ? 'font-bold text-textMain' : 'text-textMuted';
         const unreadBgClass = hasUnread ? 'bg-primary/5' : '';
-        const unreadAvatarClass = hasUnread ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : '';
-        const unreadIndicator = hasUnread ? '<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r"></div>' : '';
+        const unreadAvatarClass = hasUnread
+            ? 'ring-2 ring-primary ring-offset-2 ring-offset-background'
+            : '';
+        const unreadIndicator = hasUnread
+            ? '<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r"></div>'
+            : '';
 
         // 活動狀態樣式
         const activeClass = isActive ? 'bg-primary/10 border-primary/30' : 'hover:bg-white/5';
@@ -508,9 +523,10 @@ const MessagesUI = {
 
         // 安全轉義用戶數據，防止 XSS
         const escapedUserId = encodeURIComponent(conv.other_user_id);
-        const escapedUsername = (typeof SecurityUtils !== 'undefined')
-            ? SecurityUtils.escapeHTML(conv.other_username)
-            : this._escapeHtml(conv.other_username);
+        const escapedUsername =
+            typeof SecurityUtils !== 'undefined'
+                ? SecurityUtils.escapeHTML(conv.other_username)
+                : this._escapeHtml(conv.other_username);
 
         return `
             <div class="conversation-item cursor-pointer p-3 border-b border-white/5 ${activeClass} ${unreadBgClass} transition relative"
@@ -532,11 +548,15 @@ const MessagesUI = {
                         </div>
                         <div class="flex items-center justify-between gap-2 mt-0.5">
                             <p class="text-sm ${unreadTextClass} truncate">${preview}</p>
-                            ${hasUnread ? `
+                            ${
+                                hasUnread
+                                    ? `
                                 <span class="flex-shrink-0 min-w-5 h-5 px-1.5 rounded-full bg-primary text-background text-xs font-bold flex items-center justify-center animate-pulse">
                                     ${conv.unread_count > 99 ? '99+' : conv.unread_count}
                                 </span>
-                            ` : ''}
+                            `
+                                    : ''
+                            }
                         </div>
                     </div>
                 </div>
@@ -576,18 +596,21 @@ const MessagesUI = {
         }
 
         // 打招呼訊息的標記
-        const greetingBadge = msg.message_type === 'greeting'
-            ? '<span class="text-xs text-accent mr-1">👋</span>'
-            : '';
+        const greetingBadge =
+            msg.message_type === 'greeting'
+                ? '<span class="text-xs text-accent mr-1">👋</span>'
+                : '';
 
         // 收回按鈕（只有自己的訊息可以收回）
-        const recallBtn = isMine ? `
+        const recallBtn = isMine
+            ? `
             <button onclick="event.stopPropagation(); MessagesPage.recallMessage(${msg.id}, this)"
                     class="p-1 text-textMuted/30 hover:text-warning opacity-0 group-hover:opacity-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
                     title="收回訊息">
                 <i data-lucide="undo-2" class="w-3.5 h-3.5"></i>
             </button>
-        ` : '';
+        `
+            : '';
 
         if (isMine) {
             // 自己的訊息 - 靠右對齊
@@ -668,11 +691,10 @@ const MessagesUI = {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
-    }
+    },
 };
 
 window.MessagesUI = MessagesUI;
-
 
 // ============================================================================
 // 全局未讀數量更新
@@ -688,7 +710,7 @@ async function updateUnreadBadge() {
 
         // 更新所有未讀徽章
         const badges = document.querySelectorAll('.messages-unread-badge');
-        badges.forEach(badge => {
+        badges.forEach((badge) => {
             if (count > 0) {
                 badge.textContent = count > 99 ? '99+' : count;
                 badge.classList.remove('hidden');
