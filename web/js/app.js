@@ -335,9 +335,18 @@ async function checkApiKeyStatus() {
     const statusText = document.getElementById('api-status-text');
     const statusDot = indicator ? indicator.querySelector('span') : null;
 
-    // Check LLM Key (async)
-    const currentKey = await window.APIKeyManager?.getCurrentKey();
-    const hasLlmKey = !!currentKey;
+    // Check LLM Key (async) - 添加錯誤處理
+    let currentKey = null;
+    let hasLlmKey = false;
+    try {
+        if (window.APIKeyManager && typeof window.APIKeyManager.getCurrentKey === 'function') {
+            currentKey = await window.APIKeyManager.getCurrentKey();
+            hasLlmKey = !!currentKey;
+        }
+    } catch (e) {
+        console.warn('[App] Error checking API key:', e);
+        hasLlmKey = false;
+    }
     if (window.DEBUG_MODE) console.log('[App] hasLlmKey:', hasLlmKey);
 
     // Check OKX Key
