@@ -15,6 +15,12 @@ async function getCachedUserKey(forceRefresh = false) {
 // 當 APIKeyManager 更新金鑰時，清除快取
 window.addEventListener('apiKeyUpdated', () => { _cachedUserKey = null; });
 
+// ✅ 效能優化：scoped lucide icon 初始化，避免全頁 DOM 掃描
+function createIconsIn(el) {
+    if (!window.lucide || !el) return;
+    window.lucide.createIcons({ nodes: Array.isArray(el) ? el : [el] });
+}
+
 // 用於跟踪分析過程面板的展開狀態
 window.lastProcessOpenState = false;
 
@@ -348,7 +354,7 @@ function appendMessage(role, content) {
                 actionsDiv.appendChild(chartBtn);
 
                 div.appendChild(actionsDiv);
-                setTimeout(() => lucide.createIcons(), 0);
+                setTimeout(() => createIconsIn(div), 0);
             }
         }
     } else {
@@ -363,7 +369,7 @@ function appendMessage(role, content) {
 function toggleOptions() {
     const panel = document.getElementById('analysis-options-panel');
     panel.classList.toggle('hidden');
-    lucide.createIcons();
+    createIconsIn(panel);
 }
 
 function toggleSidebar() {
@@ -524,7 +530,7 @@ async function loadSessions() {
             // 退出編輯模式（沒有對話了）
             if (isEditMode) exitEditMode();
         }
-        lucide.createIcons();
+        createIconsIn(document.getElementById('chat-session-list'));
 
         // 更新收藏區的 chevron 樣式
         updateStarredChevron();
@@ -785,7 +791,7 @@ function showWelcomeScreen() {
             </button>
         </div>
     </div>`;
-    lucide.createIcons();
+    createIconsIn(document.getElementById('chat-session-list'));
 }
 
 // 直接更新側邊欄的 active 高亮，不重新拉取 sessions
@@ -923,7 +929,7 @@ function showHITLModal(interruptData) {
     });
 
     modal.classList.remove('hidden');
-    if (lucide) lucide.createIcons();
+    if (lucide) createIconsIn(modal);
 }
 
 function closeHITLModal() {
@@ -1012,7 +1018,7 @@ function renderPreResearchCard(idata, targetDiv) {
             </div>`;
     }
 
-    if (window.lucide) lucide.createIcons();
+    if (window.lucide) createIconsIn(botMsgDiv);
 }
 
 window.submitPreResearch = function () {
@@ -1101,7 +1107,7 @@ function renderPlanCard(interruptData, targetDiv) {
                 </button>
             </div>
         </div>`;
-    if (lucide) lucide.createIcons();
+    if (lucide) createIconsIn(botMsgDiv);
 }
 
 window.togglePlanCustomize = function () {
@@ -1165,7 +1171,7 @@ window.togglePlanCustomize = function () {
             customizeBtn.classList.remove('bg-primary/10', 'text-primary');
         }
     }
-    if (lucide) lucide.createIcons();
+    if (lucide) createIconsIn(document.getElementById('chat-messages'));
 };
 
 window.updateCustomExecuteButton = function () {
@@ -1182,7 +1188,7 @@ window.updateCustomExecuteButton = function () {
     executeBtn.classList.add('bg-primary', 'text-background');
     executeBtn.innerHTML = '<i data-lucide="play" class="w-4 h-4"></i>執行已選步驟';
 
-    if (lucide) lucide.createIcons();
+    createIconsIn(executeBtn);
 };
 
 window.togglePlanStep = function (step) {
@@ -1285,7 +1291,7 @@ window.submitHITLAnswer = async function (answer) {
                 <span class="font-medium text-sm text-textMuted">AI 正在思考調研...</span>
             </div>
         </div>`;
-    if (window.lucide) lucide.createIcons();
+    if (window.lucide) createIconsIn(botMsgDiv);
 
     const token = AuthManager.currentUser.accessToken;
     let fullContent = '';
@@ -1374,7 +1380,7 @@ window.submitHITLAnswer = async function (answer) {
                         badge.className = 'mt-4 text-xs text-textMuted/60 font-mono';
                         badge.textContent = `分析完成，耗時 ${totalTime}s`;
                         ctx.botMsgDiv.appendChild(badge);
-                        if (lucide) lucide.createIcons();
+                        if (lucide) createIconsIn(ctx.botMsgDiv);
                     }
                     isAnalyzing = false;
                     loadSessions();
@@ -1713,7 +1719,7 @@ async function sendMessage() {
                                 }
                                 stepEl.classList.remove('bg-primary/5', 'animate-pulse');
                             }
-                            if (lucide) lucide.createIcons();
+                            if (lucide) createIconsIn(botMsgDiv);
                         }
                     }
 
@@ -1752,7 +1758,7 @@ async function sendMessage() {
 
                         timeBadge.innerHTML = `<span>分析完成，耗時 ${totalTime}s</span>${feedbackHtml}`;
                         botMsgDiv.appendChild(timeBadge);
-                        lucide.createIcons();
+                        lucide.createIcons({ nodes: [botMsgDiv] });
 
                         // Refresh sessions list (to update title if it was new)
                         loadSessions();
@@ -1854,7 +1860,7 @@ function resetChatUI() {
         sendBtn.classList.add('bg-primary', 'hover:brightness-110');
         sendBtn.innerHTML = '<i data-lucide="arrow-up" class="w-5 h-5"></i>';
     }
-    if (window.lucide) lucide.createIcons();
+    if (window.lucide) createIconsIn(sendBtn);
 }
 
 // Reuse the renderStoredBotMessage function from previous step
@@ -2092,7 +2098,7 @@ async function loadMoreHistory() {
             const frag = document.createDocumentFragment();
             data.history.forEach(msg => frag.appendChild(_buildHistoryMsgEl(msg)));
             container.prepend(frag);
-            lucide.createIcons();
+            createIconsIn(container);
 
             // 還原捲動位置
             container.scrollTop = container.scrollHeight - oldScrollHeight;
@@ -2137,7 +2143,7 @@ async function loadChatHistory(sessionId = 'default') {
 
         if (data.history && data.history.length > 0) {
             data.history.forEach(msg => container.appendChild(_buildHistoryMsgEl(msg)));
-            lucide.createIcons();
+            createIconsIn(container);
 
             // 更新動態載入狀態
             _historyOldestTimestamp = data.history[0].timestamp;
@@ -2167,7 +2173,7 @@ async function loadChatHistory(sessionId = 'default') {
                         </button>
                     </div>
                 </div>`;
-            lucide.createIcons();
+            createIconsIn(container);
         }
     } catch (e) {
         console.error("Failed to load history:", e);
@@ -2320,7 +2326,7 @@ window.submitFeedback = async function (codebookId, score, btn) {
             btn.innerHTML = '<i data-lucide="x-circle" class="w-3.5 h-3.5 text-danger fill-danger/20"></i>';
             btn.classList.add('text-danger');
         }
-        lucide.createIcons();
+        createIconsIn(btn);
 
     } catch (e) {
         console.error("Feedback failed:", e);

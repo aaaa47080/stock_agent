@@ -1336,8 +1336,8 @@ const Components = {
         container.innerHTML = this[id];
         this._injected[id] = true;
 
-        // 等待 DOM 更新完成（使用 setTimeout 比 requestAnimationFrame 更可靠）
-        await new Promise(resolve => setTimeout(resolve, 50));
+        // ✅ 效能優化：用 requestAnimationFrame 取代 setTimeout(50ms)，等 DOM paint 完成即可
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
         // 初始化 Lucide 圖標
         if (window.lucide) {

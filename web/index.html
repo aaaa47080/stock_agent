@@ -1545,35 +1545,29 @@
                 if (window.AdminPanel) AdminPanel.init();
             }
             if (tabId === 'settings') {
-                // 💡 修正：注入內容後，立即更新用戶資料顯示
+                // ✅ 效能優化：並行執行所有 settings 初始化，而非依序等待
+                const settingsInits = [];
                 if (window.AuthManager && typeof window.AuthManager._updateUI === 'function') {
                     window.AuthManager._updateUI(window.AuthManager.isLoggedIn());
                 }
-                if (typeof loadSettingsWalletStatus === 'function') loadSettingsWalletStatus();
-                if (typeof loadPremiumStatus === 'function') loadPremiumStatus();
-                // 確保 Settings 中的 LLM 狀態被更新
-                if (typeof updateLLMStatusUI === 'function') updateLLMStatusUI();
-
-                // 確保價格顯示被更新（通用價格更新 + Premium 模組）
-                if (typeof updatePriceDisplays === 'function') {
-                    updatePriceDisplays();
-                }
+                if (typeof loadSettingsWalletStatus === 'function') settingsInits.push(loadSettingsWalletStatus());
+                if (typeof loadPremiumStatus === 'function') settingsInits.push(loadPremiumStatus());
+                if (typeof updateLLMStatusUI === 'function') settingsInits.push(Promise.resolve(updateLLMStatusUI()));
+                if (typeof updateOKXStatusUI === 'function') updateOKXStatusUI();
+                if (typeof updatePriceDisplays === 'function') updatePriceDisplays();
                 if (window.PremiumManager && typeof window.PremiumManager.updatePriceDisplay === 'function') {
                     window.PremiumManager.updatePriceDisplay();
                 }
-
-                // 確保 LLM 模型列表已更新
-                if (typeof window.updateAvailableModels === 'function') {
-                    window.updateAvailableModels();
-                }
-
-                // 更新 OKX 連接狀態 UI
-                if (typeof updateOKXStatusUI === 'function') {
-                    updateOKXStatusUI();
-                }
-            }
+                if (typeof window.updateAvailableModels === 'function') window.updateAvailableModels();
+                // 並行發出所有 API 請求
+                Promise.all(settingsInits).catch(e => console.warn('Settings init error:', e));
             if (tabId === 'chat') {
-                if (typeof checkApiKeyStatus === 'function') checkApiKeyStatus();
+                // ✅ 效能優化：checkApiKeyStatus 加 TTL 快取，避免每次切換都打後端 API
+                const now = Date.now();
+                if (!window._lastApiKeyCheck || (now - window._lastApiKeyCheck) > 30000) {
+                    window._lastApiKeyCheck = now;
+                    if (typeof checkApiKeyStatus === 'function') checkApiKeyStatus();
+                }
             }
 
             if (typeof onTabSwitch === 'function') onTabSwitch(tabId);
@@ -1848,12 +1842,13 @@
                 return new Promise((resolve) => {
                     if (window[key]) return resolve(window[key]);
                     const start = Date.now();
+                    // ✅ 效能優化：polling 間隔從 100ms 降到 10ms，加快啟動速度
                     const interval = setInterval(() => {
                         if (window[key] || (Date.now() - start) > timeout) {
                             clearInterval(interval);
                             resolve(window[key]);
                         }
-                    }, 100);
+                    }, 10);
                 });
             };
 

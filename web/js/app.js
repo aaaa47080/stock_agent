@@ -547,9 +547,10 @@ function onTabSwitch(tab) {
     }
 
     if (tab === 'assets') {
+        // ✅ 效能優化：assets 刷新間隔從 10s 延長為 30s，減少不必要的 API 請求
         window.assetsInterval = setInterval(() => {
             if (typeof refreshAssets === 'function') refreshAssets();
-        }, 10000);
+        }, 30000);
     }
 
     // Friends Tab
