@@ -161,6 +161,14 @@ class ManagerAgent:
         query = state["query"]
         history = state.get("history", "")
 
+        # ✅ 修復：每次請求開始時從 state 同步 session_id
+        # bootstrap 複用 Manager 時 session_id 可能是上一個請求的
+        state_session_id = state.get("session_id")
+        if state_session_id and state_session_id != self.session_id:
+            self.session_id = state_session_id
+            self._memory_store = None  # 讓 MemoryStore 重新初始化
+            logger.debug(f"[Manager] session_id synced to: {state_session_id}")
+
         # 閒置整合檢查（在新對話開始時自動檢查）
         if self.check_idle_consolidation():
             logger.info("[Manager] Auto-triggering idle consolidation")
@@ -218,6 +226,11 @@ class ManagerAgent:
             # 如果可以直接回應（打招呼、道謝等閒聊）
             if status == "direct_response":
                 text = intent_data.get("direct_response_text", "你好！請問有什麼我可以幫忙的？")
+                # ✅ 修復：direct_response 也要追蹤對話，確保閒聊也能 extract_facts
+                asyncio.create_task(self._track_conversation(
+                    user_message=query,
+                    assistant_response=text,
+                ))
                 return {
                     **state_reset,
                     "intent_understanding": {

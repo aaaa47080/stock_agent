@@ -152,6 +152,7 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
             language=body.language,
             user_tier=current_user.get("membership_tier", "free"),
             user_id=current_user.get("user_id"),
+            session_id=body.session_id,
         )
         config  = {"configurable": {"thread_id": body.session_id}}
 
@@ -314,15 +315,18 @@ async def create_new_session(current_user: dict = Depends(get_current_user)):
     if not user_id:
         raise HTTPException(status_code=401, detail="未授權")
 
-    # 獲取舊會話的 Manager 實例並整合
-    from core.agents.bootstrap import get_manager_instance
-    old_manager = get_manager_instance(user_id, "default")
+    # ✅ 修復：get_manager_instance 現在只用 user_id 作 key
+    from core.agents.bootstrap import get_manager_instance, invalidate_manager_cache
+    old_manager = get_manager_instance(user_id)
 
-    # 整合舊會話記憶
+    # 整合舊會話記憶（在刪除 cache 前）
     if old_manager and hasattr(old_manager, '_message_count') and old_manager._message_count > 0:
         logger.info(f"[API] Consolidating old session for user {user_id}")
         if hasattr(old_manager, 'consolidate_session_memory'):
             await old_manager.consolidate_session_memory()
+
+    # ✅ 清除 Manager 緩存，下次請求重建（新 session 需要乾淨的 message_count）
+    invalidate_manager_cache(user_id)
 
     # 創建新會話
     new_session_id = str(uuid.uuid4())
@@ -330,11 +334,6 @@ async def create_new_session(current_user: dict = Depends(get_current_user)):
     await loop.run_in_executor(
         None, partial(create_session, user_id, new_session_id)
     )
-    # 清除緩存中的舊 Manager 實例
-    from core.agents.bootstrap import _manager_cache
-    old_key = f"{user_id}:default"
-    if old_key in _manager_cache:
-        del _manager_cache[old_key]
 
     return {
         "session_id": new_session_id,
@@ -359,9 +358,9 @@ async def trigger_idle_consolidation(current_user: dict = Depends(get_current_us
     if not user_id:
         raise HTTPException(status_code=401, detail="未授權")
 
-    # 獲取 Manager 實例
+    # ✅ 修復：只用 user_id 作 key
     from core.agents.bootstrap import get_manager_instance
-    manager = get_manager_instance(user_id, "default")
+    manager = get_manager_instance(user_id)
 
     if not manager:
         return {"status": "skipped", "message": "無 Manager 實例"}

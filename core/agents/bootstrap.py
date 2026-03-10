@@ -91,7 +91,8 @@ class LanguageAwareLLM:
 
 
 def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
-              user_tier: str = "free", user_id: Optional[str] = None) -> ManagerAgent:
+              user_tier: str = "free", user_id: Optional[str] = None,
+              session_id: Optional[str] = None) -> ManagerAgent:
     PromptRegistry.load()
     agent_registry = AgentRegistry()
     tool_registry  = ToolRegistry()
@@ -683,15 +684,33 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         priority=1,
     ))
 
-    return ManagerAgent(
+    # ✅ 關鍵修復：Manager 按 user_id 複用，保留 message_count/短期記憶/consolidation 狀態
+    # LLM key 改變時才重建（用 provider:model 作為 cache 的 key 一部分）
+    cache_key = f"{user_id}"
+    existing = _manager_cache.get(cache_key)
+
+    if existing is not None:
+        # 複用現有 Manager，但更新 LLM client（可能換了 key/model）和 session_id
+        existing.llm = lang_llm
+        if session_id:
+            existing.session_id = session_id
+            existing._memory_store = None  # 讓 MemoryStore 以新 session_id 重新初始化
+        # 同時更新所有 sub-agent 的 LLM
+        for agent in existing.agent_registry._agents.values():
+            if hasattr(agent, 'llm'):
+                agent.llm = lang_llm
+        return existing
+
+    manager = ManagerAgent(
         llm_client=lang_llm,
         agent_registry=agent_registry,
         tool_registry=tool_registry,
         web_mode=web_mode,
         user_id=user_id,
-        session_id=None,  # Session ID will be set per request
+        session_id=session_id or "default",
     )
-
+    _manager_cache[cache_key] = manager
+    return manager
 
 
 # ── Manager Instance Cache ─────────────────────────────────────────────────────
@@ -699,19 +718,10 @@ _manager_cache: Dict[str, ManagerAgent] = {}
 
 
 def get_manager_instance(user_id: str, session_id: str = "default") -> ManagerAgent:
-    """
-    獲取或創建用戶的 ManagerAgent 實例。
+    """獲取已緩存的 ManagerAgent 實例（供外部模組使用）"""
+    return _manager_cache.get(user_id)
 
-    ⚠️ 注意：此函數需要外部調用 bootstrap() 來獲取完整的 LLM 配置。
-    目前 bootstrap() 每次請求都會被調用，所以此函數主要用於：
-    1. 記憶整合等需要訪問 Manager 的特殊操作
-    2. 在同一會話中重用 Manager 實例
 
-    如果緩存中沒有對應的 Manager，返回 None（因為無法在此處獲取 LLM 配置）。
-    """
-    key = f"{user_id}:{session_id}"
-    if key in _manager_cache:
-        return _manager_cache[key]
-
-    # 無法在模組級創建 Manager（需要 LLM 配置），返回 None
-    return None
+def invalidate_manager_cache(user_id: str) -> None:
+    """清除指定用戶的 Manager 緩存（用戶登出或重置時）"""
+    _manager_cache.pop(user_id, None)

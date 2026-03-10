@@ -61,20 +61,19 @@ class MemoryStore:
     def write_long_term(self, content: str) -> None:
         """
         寫入長期記憶
-
-        Args:
-            content: 記憶內容
+        ✅ 固定用 session_id='global'，確保每個用戶只有一筆長期記憶
+        避免多 session 各存一筆、造成 read_long_term 只讀到其中一筆的問題
         """
         if not content:
             return
         DatabaseBase.execute(
             '''
             INSERT INTO user_memory (user_id, session_id, memory_type, content, updated_at)
-            VALUES (%s, %s, 'long_term', %s, NOW())
+            VALUES (%s, 'global', 'long_term', %s, NOW())
             ON CONFLICT (user_id, session_id, memory_type)
             DO UPDATE SET content = EXCLUDED.content, updated_at = NOW()
             ''',
-            (self.user_id, self.session_id, content)
+            (self.user_id, content)
         )
 
     # ==================== 歷史日誌操作 ====================
