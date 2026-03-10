@@ -26,7 +26,8 @@ const APIKeyManager = {
     _lastFetchTime: 0,
     CACHE_TTL: 30000, // 30 秒
 
-    // ⚡ 新增：完整 API Key 內存緩存（發送訊息時使用，    _fullKeyCache: {},  // { provider: key }
+    // ⚡ 新增：完整 API Key 內存緩存（發送訊息時使用）
+    _fullKeyCache: {},  // { provider: key }
     _fullKeyCacheTime: {},  // { provider: timestamp }
 
     /**
