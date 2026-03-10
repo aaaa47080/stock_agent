@@ -653,9 +653,9 @@ def create_indexes(c):
     c.execute('CREATE INDEX IF NOT EXISTS idx_users_membership ON users(membership_tier)')
     # ✅ 效能修復：membership_payments 補 user_id index
     c.execute('CREATE INDEX IF NOT EXISTS idx_membership_payments_user ON membership_payments(user_id)')
-    # ✅ 效能修復：login_attempts 補 user_id + created_at index
-    c.execute('CREATE INDEX IF NOT EXISTS idx_login_attempts_user ON login_attempts(user_id)')
-    c.execute('CREATE INDEX IF NOT EXISTS idx_login_attempts_created ON login_attempts(created_at DESC)')
+    # ✅ 效能修復：login_attempts 補 username + attempt_time index（表結構沒有 user_id 和 created_at）
+    c.execute('CREATE INDEX IF NOT EXISTS idx_login_attempts_username ON login_attempts(username)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_login_attempts_time ON login_attempts(attempt_time DESC)')
 
     # 論壇索引
     c.execute('CREATE INDEX IF NOT EXISTS idx_posts_board_id ON posts(board_id)')
