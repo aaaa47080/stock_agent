@@ -230,7 +230,10 @@ async function executeTabSwitch(tabId, fromPopState = false) {
         const now = Date.now();
         if (!window._lastApiKeyCheck || (now - window._lastApiKeyCheck) > 30000) {
             window._lastApiKeyCheck = now;
-            if (typeof checkApiKeyStatus === 'function') checkApiKeyStatus();
+            // 確保 APIKeyManager 已初始化
+            if (typeof checkApiKeyStatus === 'function' && window.APIKeyManager) {
+                checkApiKeyStatus();
+            }
         }
     }
 
