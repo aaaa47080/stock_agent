@@ -1622,6 +1622,7 @@
                 if (typeof window.updateAvailableModels === 'function') window.updateAvailableModels();
                 // 並行發出所有 API 請求
                 Promise.all(settingsInits).catch(e => console.warn('Settings init error:', e));
+            }
             if (tabId === 'chat') {
                 // ✅ 效能優化：checkApiKeyStatus 加 TTL 快取，避免每次切換都打後端 API
                 const now = Date.now();
