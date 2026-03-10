@@ -1238,16 +1238,39 @@ window.handlePiLogin = async () => {
         const res = await AuthManager.authenticateWithPi();
         DebugLog.info('Pi 登入結果', res);
         if (res.success) {
-            // Show success state on the login modal before reload
-            // This prevents the login modal from being hidden and briefly
-            // flashing the app content before the page reloads.
+            // ✅ 優化：不再 reload 整頁，改成直接更新 UI，消除空白畫面
             const btn = document.getElementById('pi-login-btn');
             if (btn) {
                 btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> 登入成功，載入中...';
                 btn.classList.remove('opacity-70');
                 btn.classList.add('bg-green-600');
             }
-            window.location.reload();
+
+            // 隱藏 login modal
+            const modal = document.getElementById('login-modal');
+            if (modal) modal.classList.add('hidden');
+
+            // 更新認證 UI 狀態
+            if (typeof AuthManager._updateUI === 'function') {
+                AuthManager._updateUI(true);
+            }
+
+            // 載入 API Keys 並更新狀態
+            if (typeof window.loadSavedApiKeys === 'function') {
+                await window.loadSavedApiKeys();
+            }
+            if (typeof checkApiKeyStatus === 'function') {
+                await checkApiKeyStatus();
+            }
+
+            // 跳到 chat tab（平滑切換）
+            if (typeof switchTab === 'function') {
+                await switchTab('chat');
+            }
+
+            if (typeof showToast === 'function') {
+                showToast('✅ 登入成功！歡迎回來', 'success');
+            }
         } else {
             if (typeof showToast === 'function') {
                 showToast('登入失敗: ' + res.error, 'error');

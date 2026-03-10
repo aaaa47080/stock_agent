@@ -5,6 +5,16 @@
 let currentSessionId = null;
 let chatInitialized = false;  // 防止重複初始化
 
+// ✅ 效能優化：預先快取 userKey，避免每次 sendMessage 都打後端 API
+let _cachedUserKey = null;
+async function getCachedUserKey(forceRefresh = false) {
+    if (!forceRefresh && _cachedUserKey) return _cachedUserKey;
+    _cachedUserKey = await window.APIKeyManager?.getCurrentKey() || null;
+    return _cachedUserKey;
+}
+// 當 APIKeyManager 更新金鑰時，清除快取
+window.addEventListener('apiKeyUpdated', () => { _cachedUserKey = null; });
+
 // 用於跟踪分析過程面板的展開狀態
 window.lastProcessOpenState = false;
 
@@ -1485,8 +1495,8 @@ async function sendMessage() {
     input.classList.add('opacity-50');
     // sendBtn.disabled = true; // Don't disable, we need it for Stop
 
-    // 檢查用戶是否有設置 API key（從 localStorage）
-    const userKey = await window.APIKeyManager?.getCurrentKey();
+    // 檢查用戶是否有設置 API key（使用快取，避免每次發送都打後端）
+    const userKey = await getCachedUserKey();
 
     if (!userKey) {
         resetChatUI(); // Helper to reset UI state

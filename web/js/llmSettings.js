@@ -367,6 +367,8 @@ async function saveLLMKey() {
                 window.APIKeyManager._fullKeyCache[provider] = apiKey;
                 window.APIKeyManager._maskedKeysCache = null;
             }
+            // ✅ 通知 chat.js 清除 userKey 快取
+            window.dispatchEvent(new Event('apiKeyUpdated'));
             if (typeof checkApiKeyStatus === 'function') {
                 await checkApiKeyStatus();
             }
