@@ -60,6 +60,10 @@ intent_understanding:
     - 先從對話歷史推斷
     - 只有在**完全無法推斷**時才返回 clarify
 
+    ## 用戶長期記憶（用戶偏好、關注主題、已知事實）
+
+    {long_term_memory}
+
     ## 用戶查詢
 
     {query}

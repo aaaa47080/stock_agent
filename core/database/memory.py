@@ -42,6 +42,7 @@ class MemoryStore:
     def read_long_term(self) -> str:
         """
         讀取用戶的長期記憶
+        ✅ 跨 session：讀取最新的長期記憶（不限 session，避免開新對話後記憶消失）
 
         Returns:
             長期記憶內容，如果不存在則返回空字符串
@@ -49,11 +50,11 @@ class MemoryStore:
         result = DatabaseBase.query_one(
             '''
             SELECT content FROM user_memory
-            WHERE user_id = %s AND session_id = %s AND memory_type = 'long_term'
+            WHERE user_id = %s AND memory_type = 'long_term'
             ORDER BY updated_at DESC
             LIMIT 1
             ''',
-            (self.user_id, self.session_id)
+            (self.user_id,)
         )
         return result['content'] if result else ""
 
@@ -99,6 +100,7 @@ class MemoryStore:
     def get_history(self, limit: int = 50) -> List[Dict[str, Any]]:
         """
         獲取歷史記錄
+        ✅ 跨 session：返回該用戶所有 session 的最近歷史（不限 session）
 
         Args:
             limit: 返回的記錄數量限制
@@ -135,12 +137,24 @@ class MemoryStore:
         Returns:
             格式化的記憶上下文字符串
         """
+        parts = []
+
+        # 1. 結構化事實（nanoclaw facts）
+        facts_text = self.facts_to_text()
+        if facts_text and facts_text != "（尚無已知事實）":
+            parts.append(f"## 已知用戶事實\n{facts_text}")
+
+        # 2. 長期記憶摘要（consolidation 產生）
         long_term = self.read_long_term()
-        if not long_term:
+        if long_term:
+            parts.append(f"## Long-term Memory\n{long_term}")
+
+        if not parts:
             return ""
 
-        context = f"## Long-term Memory\n{long_term}"
+        context = "\n\n".join(parts)
 
+        # 3. 歷史日誌
         if include_history:
             history = self.get_history(limit=history_limit)
             if history:
@@ -153,6 +167,149 @@ class MemoryStore:
                     context += f"\n\n## Recent History\n{history_text}"
 
         return context
+
+    # ==================== 結構化事實（nanoclaw extract_memory） ====================
+
+    def read_facts(self) -> dict:
+        """
+        讀取用戶的結構化事實 (key-value pairs)
+
+        Returns:
+            {key: {value, confidence, source_turn}} dict
+        """
+        results = DatabaseBase.query_all(
+            '''
+            SELECT key, value, confidence, source_turn
+            FROM user_facts
+            WHERE user_id = %s
+            ORDER BY updated_at DESC
+            ''',
+            (self.user_id,)
+        )
+        return {
+            r['key']: {
+                'value': r['value'],
+                'confidence': r['confidence'],
+                'source_turn': r['source_turn'],
+            }
+            for r in (results or [])
+        }
+
+    def write_facts(self, facts: list) -> None:
+        """
+        寫入結構化事實（upsert，新事實新增、已有的更新）
+
+        Args:
+            facts: [{'key': str, 'value': str, 'confidence': str, 'source_turn': int}]
+        """
+        if not facts:
+            return
+        for fact in facts:
+            key = fact.get('key', '').strip()
+            value = str(fact.get('value', '')).strip()
+            if not key or not value:
+                continue
+            DatabaseBase.execute(
+                '''
+                INSERT INTO user_facts (user_id, key, value, confidence, source_turn, updated_at)
+                VALUES (%s, %s, %s, %s, %s, NOW())
+                ON CONFLICT (user_id, key)
+                DO UPDATE SET
+                    value = EXCLUDED.value,
+                    confidence = EXCLUDED.confidence,
+                    source_turn = EXCLUDED.source_turn,
+                    updated_at = NOW()
+                ''',
+                (
+                    self.user_id,
+                    key,
+                    value,
+                    fact.get('confidence', 'high'),
+                    fact.get('source_turn'),
+                )
+            )
+
+    def facts_to_text(self) -> str:
+        """將結構化事實格式化為 LLM 可讀的文字"""
+        facts = self.read_facts()
+        if not facts:
+            return "（尚無已知事實）"
+        lines = []
+        for key, meta in facts.items():
+            conf_icon = {'high': '✅', 'medium': '🔶', 'low': '❓'}.get(meta['confidence'], '')
+            lines.append(f"- {key}: {meta['value']} {conf_icon}")
+        return "\n".join(lines)
+
+    async def extract_facts_from_turn(
+        self,
+        user_message: str,
+        assistant_message: str,
+        turn_index: int,
+        llm: any
+    ) -> bool:
+        """
+        nanoclaw extract_memory 核心實作：
+        從單輪對話中萃取結構化事實，立即寫入 PSQL
+        （輕量、逐輪執行，不像 consolidate 需要等累積）
+
+        Args:
+            user_message: 用戶訊息
+            assistant_message: 助手回覆
+            turn_index: 當前輪次編號
+            llm: LangChain LLM 實例
+        """
+        from langchain_core.messages import HumanMessage
+        existing_facts = self.facts_to_text()
+
+        prompt = f"""從以下最新對話輪次中提取重要事實。只提取「明確說出的」事實，不推斷。
+
+使用者說：{user_message}
+助手回覆：{assistant_message}
+
+已存在事實（避免重複）：
+{existing_facts}
+當前輪次編號：{turn_index}
+
+請以 JSON 回覆，只包含本輪新增或更新的事實：
+{{"facts": [
+  {{"key": "user_name", "value": "Danny", "source_turn": {turn_index}, "confidence": "high"}}
+]}}
+
+規則：
+- 只保留「未來對話有用」的事實（使用者名稱、偏好、關注主題、投資風格等）
+- 不提取一次性數字（如具體價格、今日新聞）
+- key 用 snake_case 英文
+- confidence: high=使用者明確說出, medium=可推斷, low=不確定
+- 無新事實則回覆 {{"facts": []}}
+- 最多 3 個事實"""
+
+        try:
+            response = llm.invoke([HumanMessage(content=prompt)])
+            raw = response.content.strip()
+
+            # 解析 JSON
+            json_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', raw)
+            json_str = json_match.group(1).strip() if json_match else raw
+            j_start = json_str.find('{')
+            j_end = json_str.rfind('}')
+            if j_start >= 0 and j_end > j_start:
+                json_str = json_str[j_start:j_end + 1]
+
+            result = json.loads(json_str)
+            facts = result.get('facts', [])
+
+            if facts:
+                self.write_facts(facts)
+                logger.info(f"[MemoryStore] Extracted {len(facts)} facts at turn {turn_index}")
+
+            return True
+
+        except json.JSONDecodeError as e:
+            logger.warning(f"[MemoryStore] extract_facts JSON parse failed: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"[MemoryStore] extract_facts failed: {e}")
+            return False
 
     # ==================== 整合索引管理 ====================
 

@@ -100,10 +100,14 @@ class ManagerAgent:
         self.graph = self._build_graph()
 
     def _get_memory_store(self):
-        """延遲初始化 MemoryStore"""
+        """
+        延遲初始化 MemoryStore
+        ✅ 跨 session 設計：記憶以 user_id 為主鍵，開新對話仍能讀到歷史記憶
+        session_id 只用於 write_long_term 時標記來源，讀取時不過濾
+        """
         if self._memory_store is None:
             from core.database.memory import MemoryStore
-
+            # 傳入 session_id 供寫入標記用，但讀取行為已改為跨 session
             self._memory_store = MemoryStore(self.user_id, self.session_id)
         return self._memory_store
 
@@ -180,11 +184,15 @@ class ManagerAgent:
         agents_info = get_agent_descriptions().get_routing_guide()
 
         # 使用 PromptRegistry 獲取 prompt
+        # 讀取長期記憶注入 prompt（nanoclaw 設計：記憶實際作用於意圖理解）
+        long_term_memory = self.get_long_term_memory_context()
+
         prompt = PromptRegistry.render(
             "manager", "intent_understanding",
             agents_info=agents_info,
             query=query,
-            history=history or "（無歷史記錄）"
+            history=history or "（無歷史記錄）",
+            long_term_memory=long_term_memory or "（尚無長期記憶）"
         )
 
         try:
@@ -502,12 +510,19 @@ class ManagerAgent:
 
         # 檢查是否有有效的結果
         if not task_results:
-            # 沒有執行結果，直接生成回應
-            prompt = f"""用戶問題：{current_query}
+            # 沒有執行結果，直接生成回應（注入長期記憶）
+            lt_memory = self.get_long_term_memory_context()
+            memory_section = f"\n\n## 用戶長期記憶\n{lt_memory}" if lt_memory else ""
+            prompt = f"""用戶問題：{current_query}{memory_section}
 
 請直接回答用戶的問題。如果是投資相關問題，請提供專業但中立的建議，並包含風險提示。"""
             try:
                 response = await self._llm_invoke(prompt)
+                await self._track_conversation(
+                    user_message=current_query,
+                    assistant_response=response,
+                    tools_used=[]
+                )
                 return {
                     "final_response": response,
                     "_processed_query": current_query,
@@ -535,10 +550,13 @@ class ManagerAgent:
         # 改進 prompt：讓 Manager 能夠綜合分析多個 sub-agent 的結果
         num_results = len(results_text)
 
+        lt_memory = self.get_long_term_memory_context()
+        memory_block = f"\n\n## 用戶長期記憶（偏好與歷史）\n{lt_memory}" if lt_memory else ""
+
         prompt = f"""你是 Manager Agent，負責綜合分析多個專業 Agent 的執行結果，回答用戶的問題。
 
 ## 用戶問題
-{current_query}
+{current_query}{memory_block}
 
 ## Sub-Agent 執行結果（共 {num_results} 個）
 {chr(10).join(results_text)}
@@ -704,7 +722,7 @@ class ManagerAgent:
         tools_used: Optional[List[str]] = None
     ) -> None:
         """
-        追蹤對話歷史並在達到閾值時自動觸發記憶整合（nanobot 風格）
+        追蹤對話歷史並在達到閾值時自動觸發記憶整合（nanoclaw 風格雙層）
 
         Args:
             user_message: 用戶訊息
@@ -720,11 +738,16 @@ class ManagerAgent:
         memory.add_message("assistant", assistant_response)
 
         self._message_count += 2
+        turn_index = self._message_count // 2  # 輪次編號（1 輪 = 1 user + 1 assistant）
+
+        # ✅ nanoclaw extract_memory：每輪對話立即萃取結構化事實（背景執行）
+        # 輕量操作，不需等到 consolidation threshold
+        asyncio.create_task(self._extract_facts_background(user_message, assistant_response, turn_index))
 
         # 計算未整合的消息數量
         unconsolidated = self._message_count - self._last_consolidated_index
 
-        # 檢查是否需要觸發記憶整合（異步背景執行，不阻塞當前回應）
+        # 達到閾值才觸發重量級 consolidation（摘要 + 長期記憶更新）
         if unconsolidated >= MEMORY_CONSOLIDATION_THRESHOLD and not self._consolidating:
             logger.info(
                 f"[Manager] Triggering memory consolidation: "
@@ -734,6 +757,24 @@ class ManagerAgent:
             self._consolidation_task = asyncio.create_task(
                 self._background_memory_consolidation()
             )
+
+    async def _extract_facts_background(
+        self,
+        user_message: str,
+        assistant_response: str,
+        turn_index: int
+    ) -> None:
+        """背景執行 nanoclaw 事實萃取，不阻塞對話回應"""
+        try:
+            memory_store = self._get_memory_store()
+            await memory_store.extract_facts_from_turn(
+                user_message=user_message,
+                assistant_message=assistant_response,
+                turn_index=turn_index,
+                llm=self.llm,
+            )
+        except Exception as e:
+            logger.warning(f"[Manager] extract_facts_background failed: {e}")
 
     def check_idle_consolidation(self) -> bool:
         """

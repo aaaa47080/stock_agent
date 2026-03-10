@@ -826,6 +826,24 @@ def create_memory_tables(c):
     ''')
 
 
+def create_user_facts_table(c):
+    """Create user_facts table for nanoclaw-style structured fact extraction"""
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS user_facts (
+            id SERIAL PRIMARY KEY,
+            user_id VARCHAR(255) NOT NULL,
+            key VARCHAR(100) NOT NULL,
+            value TEXT NOT NULL,
+            confidence VARCHAR(10) DEFAULT 'high',
+            source_turn INTEGER,
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+
+            UNIQUE(user_id, key)
+        )
+    ''')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_user_facts_user ON user_facts(user_id)')
+
+
 def create_all_tables(c):
     """Create all database tables"""
     create_basic_tables(c)
@@ -840,5 +858,6 @@ def create_all_tables(c):
     create_analysis_tables(c)
     create_tool_tables(c)
     create_memory_tables(c)
+    create_user_facts_table(c)
     create_indexes(c)
     init_default_data(c)
