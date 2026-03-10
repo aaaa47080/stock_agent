@@ -146,7 +146,15 @@ class ManagerAgent:
             }
         )
 
-        builder.add_edge("aggregate_results", "reflect_on_results")
+        # ⚡ 性能優化：簡單查詢跳過 reflection 節點
+        builder.add_conditional_edges(
+            "aggregate_results",
+            self._should_skip_reflection,
+            {
+                "reflect": "reflect_on_results",  # 複雜查詢需要審查
+                "skip": "synthesize_response",  # 簡單查詢直接生成回應
+            }
+        )
         builder.add_edge("reflect_on_results", "synthesize_response")
         builder.add_edge("synthesize_response", END)
 
@@ -158,6 +166,7 @@ class ManagerAgent:
 
     async def _understand_intent_node(self, state: ManagerState) -> Dict:
         """意圖理解節點 - 統一的規劃入口"""
+        _start = time.time()
         query = state["query"]
         history = state.get("history", "")
 
@@ -683,6 +692,39 @@ class ManagerAgent:
 
         return "aggregate"
 
+    def _should_skip_reflection(self, state: ManagerState) -> str:
+        """決定是否跳過 reflection 節點
+
+        ⚡ 性能優化：對於簡單查詢，跳過 reflection 節點可以節省一次 LLM 調用
+
+        跳過條件：
+        - 只有 1 個成功任務
+        - 或者所有任務都成功且總數不超過 2 個
+
+        返回:
+            "reflect" - 需要審查（複雜查詢）
+            "skip" - 跳過審查（簡單查詢）
+        """
+        task_results = state.get("task_results", {})
+
+        if not task_results:
+            return "skip"
+
+        # 統計成功/失敗任務數
+        success_count = sum(1 for r in task_results.values() if isinstance(r, dict) and r.get("success"))
+        total_count = len(task_results)
+
+        # 簡單查詢：單一成功任務
+        if total_count == 1 and success_count == 1:
+            return "skip"
+
+        # 簡單查詢：2 個以內且全部成功
+        if total_count <= 2 and success_count == total_count:
+            return "skip"
+
+        # 複雜查詢：需要 reflection 審查
+        return "reflect"
+
     # ========================================================================
     # 輔助方法
     # ========================================================================
@@ -696,9 +738,10 @@ class ManagerAgent:
             })
 
     async def _llm_invoke(self, prompt: str) -> str:
-        """調用 LLM"""
+        """調用 LLM（異步）"""
         messages = [HumanMessage(content=prompt)]
-        response = self.llm.invoke(messages)
+        # ⚡ 性能優化：使用 ainvoke 避免阻塞事件循環
+        response = await self.llm.ainvoke(messages)
         return response.content
 
     def _parse_json_response(self, response: str) -> dict:

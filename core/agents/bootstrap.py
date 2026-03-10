@@ -93,6 +93,24 @@ class LanguageAwareLLM:
 def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
               user_tier: str = "free", user_id: Optional[str] = None,
               session_id: Optional[str] = None) -> ManagerAgent:
+    # ✅ 性能優化：先檢查快取，命中則跳過昂貴的 registry 初始化
+    cache_key = f"{user_id}"
+    existing = _manager_cache.get(cache_key)
+
+    if existing is not None:
+        # 複用現有 Manager，但更新 LLM client（可能換了 key/model）和 session_id
+        lang_llm = LanguageAwareLLM(llm_client, language)
+        existing.llm = lang_llm
+        if session_id:
+            existing.session_id = session_id
+            existing._memory_store = None  # 讓 MemoryStore 以新 session_id 重新初始化
+        # 同時更新所有 sub-agent 的 LLM
+        for agent in existing.agent_registry._agents.values():
+            if hasattr(agent, 'llm'):
+                agent.llm = lang_llm
+        return existing
+
+    # 快取未命中，執行完整的初始化
     PromptRegistry.load()
     agent_registry = AgentRegistry()
     tool_registry  = ToolRegistry()
