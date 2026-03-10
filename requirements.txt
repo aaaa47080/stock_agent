@@ -29,6 +29,7 @@ google-generativeai==0.8.5
 
 # === Database ===
 psycopg2-binary==2.9.11
+alembic>=1.13.0
 
 # === Auth / Security ===
 python-jose[cryptography]==3.5.0
