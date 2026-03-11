@@ -124,7 +124,13 @@ def news_analysis_tool(symbol: str, include_sentiment: bool = True) -> str:
 
 @tool(args_schema=PriceInput)
 def get_crypto_price_tool(symbol: str, exchange: Optional[str] = None) -> str:
-    """查詢加密貨幣的即時價格"""
+    """
+    查詢在主流交易所上市的加密貨幣即時價格（支持 BTC、ETH、SOL 等）。
+
+    ⚠️ 此工具不支持 PI (Pi Network)，查詢 PI 價格請使用 get_pi_price 工具。
+
+    適用於 Binance、OKX 等主流交易所的代幣。
+    """
     try:
         if exchange is None:
             exchange, normalized_symbol = find_available_exchange(symbol)

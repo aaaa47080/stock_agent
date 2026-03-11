@@ -1,0 +1,16 @@
+{
+  "scenario": "interactive_user_test",
+  "session_id": "interactive_1772979482",
+  "total_rounds": 1,
+  "conversation": [
+    {
+      "round": 1,
+      "user": "SHIB 現在多少錢",
+      "assistant": "SHIB（Shiba Inu）的即時價格為 $0.00000530，過去24小時的變化為 -1.04%。這個價格來自於 OKX 交易所。\n\n如果您有進一步的問題或需要更多的資訊，隨時告訴我！",
+      "mode": "unknown",
+      "hitl": null,
+      "duration": 10.06,
+      "is_resume": false
+    }
+  ]
+}

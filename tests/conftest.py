@@ -7,6 +7,7 @@ import os
 os.environ.setdefault('DATABASE_URL', 'postgresql://test:test@localhost:5432/test')
 os.environ.setdefault('REDIS_URL', 'redis://localhost:6379/1')
 os.environ.setdefault('SECRET_KEY', 'test-secret-key-for-testing')
+os.environ.setdefault('JWT_SECRET_KEY', 'test-jwt-secret-key-for-testing-1234567890')
 os.environ.setdefault('PI_API_KEY', 'test-pi-api-key')
 os.environ.setdefault('PI_WALLET_PRIVATE_SEED', 'test-wallet-seed')
 

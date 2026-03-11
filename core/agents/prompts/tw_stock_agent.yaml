@@ -25,11 +25,12 @@ analysis:
     ── 最新新聞 ──
     {news_data}
 
-    請根據「使用者問題」決定回覆方向：
-    - 針對性問題（如「最新新聞？」）：直接聚焦回答，不塞未詢問的數據區塊
-    - 全面分析：依序呈現核心結論 → 關鍵數據 → 綜合判斷 → 風險提示（無特殊風險可省略）
+    請根據使用者問題提供相關分析，充分利用上述數據。
 
-    重要：引用具體數字；RSI > 70 超買、< 30 超賣；KD 金叉看漲、死叉看跌；新聞保留 [標題](url)
+    重要：
+    - 引用具體數字
+    - 若新聞有連結，保留 Markdown 格式 [標題](url)
+    - 提供明確的分析判斷
 
     若任務超出台股範圍，回覆 JSON：
     {{ "status": "REFUSED", "reason": "說明原因" }}
@@ -58,11 +59,12 @@ analysis:
     ── Latest News ──
     {news_data}
 
-    Adjust response based on the user's question:
-    - Specific question: Focus solely on answering it, don't force unasked sections
-    - Comprehensive analysis: Core conclusion → Key data → Judgment → Risk warnings (omit if none)
+    Please provide relevant analysis based on the user's question, making full use of the above data.
 
-    Important: Quote specific numbers; RSI > 70 overbought, < 30 oversold; keep news links [Title](url)
+    Important:
+    - Quote specific numbers
+    - If news has links, keep Markdown format [Title](url)
+    - Provide clear analytical judgment
 
     If the task is beyond Taiwan stock scope, reply with JSON:
     {{ "status": "REFUSED", "reason": "Explain why" }}
@@ -82,17 +84,10 @@ classify_intent:
   description: "判斷資料查詢意圖"
   template: |
     你是台股分析助手。根據使用者查詢，判斷需要哪些資料類別。
-    嚴格按照使用者的需求，不要多拉不需要的資料。
 
     使用者查詢：{query}
 
     回傳 JSON（只回傳 JSON，不加說明）：
     {{"price": bool, "technical": bool, "fundamentals": bool, "institutional": bool, "news": bool}}
 
-    判斷原則：
-    - 只問新聞/消息/動態 → news:true，其餘 false
-    - 只問股價/現價 → price:true，其餘 false
-    - 只問技術指標/RSI/MACD/KD → technical:true, price:true，其餘 false
-    - 只問基本面/本益比/EPS → fundamentals:true，其餘 false
-    - 只問法人/外資/籌碼 → institutional:true，其餘 false
-    - 全面分析/適不適合買/綜合評估 → 全部 true
+    根據使用者的問題意圖判斷需要哪些資料類型。

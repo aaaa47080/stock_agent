@@ -1,0 +1,211 @@
+"""
+Test script for the new memory system integration.
+
+Tests:
+1. MemoryStore CRUD operations
+2. ManagerAgent memory integration
+3. Database table creation
+"""
+import sys
+import os
+
+# Add project root to path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from core.database.memory import MemoryStore
+from core.database.connection import get_connection
+
+
+def test_memory_store_crud():
+    """Test MemoryStore CRUD operations"""
+    print("\n=== Testing MemoryStore CRUD ===")
+
+    store = MemoryStore(user_id="test_user_001", session_id="test_session")
+
+    # Test 1: Read default memory
+    print("1. Testing read_long_term()...")
+    memory = store.read_long_term()
+    assert isinstance(memory, str), "Memory should be a string"
+    assert len(memory) > 0, "Default memory should not be empty"
+    print(f"   ✅ Read memory: {memory[:50]}...")
+
+    # Test 2: Write long-term memory
+    print("2. Testing write_long_term()...")
+    test_memory = """# Long-term Memory
+
+## User Preferences
+- Language: zh-TW
+- Risk tolerance: conservative
+
+## Investment Interests
+- BTC, ETH
+
+## Notes
+Test memory updated at test runtime.
+"""
+    result = store.write_long_term(test_memory)
+    assert result is True, "Write should succeed"
+    print("   ✅ Write succeeded")
+
+    # Test 3: Read back the written memory
+    print("3. Testing read back...")
+    read_back = store.read_long_term()
+    assert read_back == test_memory, "Read back should match written"
+    print("   ✅ Read back matches")
+
+    # Test 4: Append history
+    print("4. Testing append_history()...")
+    result = store.append_history(
+        "[2026-03-09 12:00] USER asked about BTC price. ASSISTANT provided current price of $45,000.",
+        tools_used=["get_crypto_price"]
+    )
+    assert result is True, "Append should succeed"
+    print("   ✅ History appended")
+
+    # Test 5: Get history
+    print("5. Testing get_history()...")
+    history = store.get_history(limit=10)
+    assert isinstance(history, list), "History should be a list"
+    assert len(history) > 0, "Should have at least one entry"
+    print(f"   ✅ Got {len(history)} history entries")
+
+    # Test 6: Get memory context
+    print("6. Testing get_memory_context()...")
+    context = store.get_memory_context(include_history=True)
+    assert isinstance(context, str), "Context should be a string"
+    print(f"   ✅ Context length: {len(context)} chars")
+
+    # Test 7: Cleanup (reset to default for idempotent tests)
+    print("7. Resetting to default memory...")
+    store.write_long_term(store.read_long_term())  # Reset
+    print("   ✅ Reset complete")
+
+    return True
+
+
+def test_database_tables():
+    """Test that memory tables exist"""
+    print("\n=== Testing Database Tables ===")
+
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+
+            # Check user_memory table
+            cursor.execute("""
+                SELECT column_name FROM information_schema.columns
+                WHERE table_name = 'user_memory'
+            """)
+            columns = [row[0] for row in cursor.fetchall()]
+            print(f"1. user_memory columns: {columns}")
+            assert "user_id" in columns, "user_memory should have user_id"
+
+            # Check user_history_log table
+            cursor.execute("""
+                SELECT column_name FROM information_schema.columns
+                WHERE table_name = 'user_history_log'
+            """)
+            columns = [row[0] for row in cursor.fetchall()]
+            print(f"2. user_history_log columns: {columns}")
+            assert "user_id" in columns, "user_history_log should have user_id"
+
+            # Check user_memory_cache table
+            cursor.execute("""
+                SELECT column_name FROM information_schema.columns
+                WHERE table_name = 'user_memory_cache'
+            """)
+            columns = [row[0] for row in cursor.fetchall()]
+            print(f"3. user_memory_cache columns: {columns}")
+            assert "user_id" in columns, "user_memory_cache should have user_id"
+
+            print("   ✅ All tables exist with correct schema")
+            return True
+
+    except Exception as e:
+        print(f"   ❌ Table check failed: {e}")
+        return False
+
+
+def test_manager_memory_integration():
+    """Test ManagerAgent memory integration"""
+    print("\n=== Testing ManagerAgent Memory Integration ===")
+
+    from core.agents.manager import ManagerAgent
+    from core.agents.agent_registry import AgentRegistry
+    from core.agents.tool_registry import ToolRegistry
+
+    # Create minimal manager
+    try:
+        # Mock LLM for testing
+        class MockLLM:
+            def invoke(self, messages, **kwargs):
+                class MockResponse:
+                    content = '{"status": "ready"}'
+                return MockResponse()
+
+        manager = ManagerAgent(
+            llm_client=MockLLM(),
+            agent_registry=AgentRegistry(),
+            tool_registry=ToolRegistry(),
+            user_id="test_user_integration",
+            session_id="test_session_integration",
+        )
+
+        print(f"1. ManagerAgent created with user_id: {manager.user_id}")
+        print(f"2. Session ID: {manager.session_id}")
+
+        # Test memory context retrieval
+        context = manager.get_long_term_memory_context()
+        print(f"3. Memory context retrieved: {len(context)} chars")
+
+        # Test short-term memory
+        memory = manager._get_memory("test_session_integration")
+        print(f"4. Short-term memory cache works: {type(memory).__name__}")
+
+        print("   ✅ ManagerAgent memory integration works")
+        return True
+
+    except Exception as e:
+        print(f"   ❌ Integration test failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+def main():
+    """Run all tests"""
+    print("=" * 60)
+    print("Memory System Integration Tests")
+    print("=" * 60)
+
+    results = []
+
+    # Run tests
+    results.append(("Database Tables", test_database_tables()))
+    results.append(("MemoryStore CRUD", test_memory_store_crud()))
+    results.append(("ManagerAgent Integration", test_manager_memory_integration()))
+
+    # Summary
+    print("\n" + "=" * 60)
+    print("Test Summary")
+    print("=" * 60)
+
+    passed = sum(1 for _, r in results if r)
+    total = len(results)
+
+    for name, result in results:
+        status = "✅ PASS" if result else "❌ FAIL"
+        print(f"  {name}: {status}")
+
+    print(f"\nTotal: {passed}/{total} tests passed")
+
+    if passed == total:
+        print("\n🎉 All tests passed!")
+        return 0
+    else:
+        print("\n⚠️ Some tests failed")
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

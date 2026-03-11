@@ -7,6 +7,14 @@
  */
 window._piLoginInProgress = false;
 
+function isSafePiSdkContext() {
+    const isLocalhost =
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.hostname === '::1';
+    return window.location.protocol === 'https:' && !isLocalhost;
+}
+
 /**
  * 安全的 Pi 登入函數（含防重複點擊機制）
  */
@@ -145,6 +153,11 @@ window.safePiLogin = async function () {
     // 第二階段：用 nativeFeaturesList 驗證是否真正在 Pi Browser（最多再等 1.5 秒）
     // nativeFeaturesList 是 Pi Browser 專屬 native bridge，普通瀏覽器不具備
     (async function () {
+        if (!isSafePiSdkContext()) {
+            console.log('ℹ️ Skipping Pi SDK auto-init outside Pi Browser compatible context');
+            return;
+        }
+
         // 階段一：等待 Pi SDK script 載入
         let attempts = 0;
         const maxAttempts = 30;
@@ -176,9 +189,10 @@ window.safePiLogin = async function () {
         // 這與 auth.js 的 verifyPiBrowserEnvironment() 邏輯一致
 
         try {
-            Pi.init({ version: '2.0', sandbox: false });
+            await Pi.init({ version: '2.0', sandbox: false });
         } catch (initError) {
             console.warn('⚠️ Pi SDK init failed:', initError.message);
+            return;
         }
 
         if (typeof window.Pi.nativeFeaturesList === 'function') {
@@ -206,8 +220,10 @@ window.safePiLogin = async function () {
         // Pi SDK 存在，顯示登入按鈕讓用戶嘗試
         // 真正的認證會由 Pi.authenticate() 處理
         console.log('✅ Pi SDK loaded - showing login button');
-        document.getElementById('pi-login-btn').style.display = 'flex';
-        document.getElementById('not-pi-browser-msg').style.display = 'none';
+        const loginBtn = document.getElementById('pi-login-btn');
+        const notPiBrowserMsg = document.getElementById('not-pi-browser-msg');
+        if (loginBtn) loginBtn.style.display = 'flex';
+        if (notPiBrowserMsg) notPiBrowserMsg.style.display = 'none';
     })();
 })();
 

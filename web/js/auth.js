@@ -8,7 +8,7 @@ const DebugLog = {
         // 在开发环境中记录日志，在生产环境中可选择禁用
         // 为了减少网络请求，仅在特定条件下发送到服务器
         if (window.APP_CONFIG && window.APP_CONFIG.DEBUG_MODE === true) {
-            fetch('/api/debug/log', {
+            fetch('/api/debug-log', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ level, message, data }),
@@ -297,6 +297,10 @@ const AuthManager = {
      * @returns {Promise<boolean>}
      */
     async initPiSDKAsync() {
+        if (!isPiBrowser()) {
+            DebugLog.info('initPiSDKAsync: skipping outside secure Pi context');
+            return false;
+        }
         if (this.piInitialized) {
             DebugLog.info('initPiSDKAsync: 已初始化，跳過');
             return true;
@@ -318,6 +322,10 @@ const AuthManager = {
     },
 
     initPiSDK() {
+        if (!isPiBrowser()) {
+            DebugLog.info('initPiSDK: skipping outside secure Pi context');
+            return false;
+        }
         if (this.piInitialized) {
             DebugLog.info('initPiSDK: 已初始化，跳過');
             return true;
@@ -339,6 +347,16 @@ const AuthManager = {
     },
 
     isPiBrowser() {
+        const isLocalhost =
+            window.location.hostname === 'localhost' ||
+            window.location.hostname === '127.0.0.1' ||
+            window.location.hostname === '::1';
+        const isSecurePiContext = window.location.protocol === 'https:' && !isLocalhost;
+
+        if (!isSecurePiContext) {
+            return false;
+        }
+
         // 同步檢測：Pi SDK 必須存在且有必要方法
         const hasPiSDK =
             typeof window.Pi !== 'undefined' &&
@@ -602,8 +620,10 @@ const AuthManager = {
             console.warn('Failed to check test mode:', e);
         }
 
-        // Ensure Pi SDK is initialized on startup
-        this.initPiSDK();
+        // Only initialize Pi SDK in a secure Pi-compatible context.
+        if (isPiBrowser()) {
+            this.initPiSDK();
+        }
 
         // 啟動 token 自動刷新定時器（僅對已登入的 Pi 用戶）
         if (this.currentUser?.pi_uid) {
@@ -735,6 +755,16 @@ const AuthManager = {
 
 // 工具函式
 function isPiBrowser() {
+    const isLocalhost =
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.hostname === '::1';
+    const isSecurePiContext = window.location.protocol === 'https:' && !isLocalhost;
+
+    if (!isSecurePiContext) {
+        return false;
+    }
+
     // 嚴格檢測：Pi SDK 必須存在且有必要方法
     const hasPiSDK =
         typeof window.Pi !== 'undefined' &&

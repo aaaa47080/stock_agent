@@ -1,0 +1,34 @@
+{
+  "scenario": "interactive_user_test",
+  "session_id": "interactive_1773208560",
+  "total_rounds": 3,
+  "conversation": [
+    {
+      "round": 1,
+      "user": "妳好",
+      "assistant": "妳好！有什麼我可以幫妳的嗎？",
+      "mode": "vending",
+      "hitl": null,
+      "duration": 5.29,
+      "is_resume": false
+    },
+    {
+      "round": 2,
+      "user": "請問pi目前是多少",
+      "assistant": "目前，圓周率 π 的數值約為 3.14159。若您有其他相關問題或需要進一步的資訊，隨時可以問我！",
+      "mode": "vending",
+      "hitl": null,
+      "duration": 12.37,
+      "is_resume": false
+    },
+    {
+      "round": 3,
+      "user": "pｉ幣價格目前是多少",
+      "assistant": "抱歉，我無法提供即時的市場價格資訊，包括p幣的價格。建議您查看可靠的加密貨幣交易平台或金融新聞網站以獲取最新的價格資訊。\n\n如果您考慮投資加密貨幣，請注意這類投資具有高風險，價格波動劇烈，可能導致資本損失。在做出投資決策之前，建議您進行充分的研究並諮詢專業的財務顧問。",
+      "mode": "vending",
+      "hitl": null,
+      "duration": 10.74,
+      "is_resume": false
+    }
+  ]
+}

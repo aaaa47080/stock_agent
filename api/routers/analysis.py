@@ -30,6 +30,8 @@ from api.deps import get_current_user
 
 router = APIRouter()
 
+ANALYSIS_TIMEOUT_SECONDS = 180
+
 # --- Session Management Endpoints ---
 
 @router.get("/api/chat/sessions")
@@ -145,6 +147,7 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
 
         # 使用 ManagerAgent
         from core.agents.bootstrap import bootstrap
+        from core.agents.manager import MANAGER_GRAPH_RECURSION_LIMIT
         logger.info("✅ ManagerAgent initialized")
         manager = bootstrap(
             user_client,
@@ -154,7 +157,10 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
             user_id=current_user.get("user_id"),
             session_id=body.session_id,
         )
-        config  = {"configurable": {"thread_id": body.session_id}}
+        config  = {
+            "configurable": {"thread_id": body.session_id},
+            "recursion_limit": MANAGER_GRAPH_RECURSION_LIMIT,
+        }
 
         # resume_answer → 繼續被 interrupt 暫停的 graph
         graph_input: Command  # Type annotation for mypy
@@ -213,8 +219,13 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
 
                 manager.progress_callback = on_progress
 
-                # Start graph execution as an asyncio Task (since manager nodes are now async)
-                invoke_task = asyncio.create_task(manager.graph.ainvoke(graph_input, config))
+                # Put a hard cap on analysis runtime so the frontend never waits forever.
+                invoke_task = asyncio.create_task(
+                    asyncio.wait_for(
+                        manager.graph.ainvoke(graph_input, config),
+                        timeout=ANALYSIS_TIMEOUT_SECONDS,
+                    )
+                )
 
                 try:
                     while not invoke_task.done():
@@ -273,11 +284,17 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
                         except asyncio.CancelledError:
                             pass
                     raise
+                except asyncio.TimeoutError:
+                    logger.error(
+                        f"[V4] 分析超時: session={body.session_id}, timeout={ANALYSIS_TIMEOUT_SECONDS}s"
+                    )
+                    yield f"data: {json.dumps({'error': f'分析超時（超過 {ANALYSIS_TIMEOUT_SECONDS} 秒），請縮小問題範圍後重試。', 'done': True})}\n\n"
                 except Exception as e:
                     logger.error(f"[V4] 分析過程發生錯誤: {e}", exc_info=True)
                     # SSE 錯誤處理：確保客戶端收到錯誤並結束流
                     yield f"data: {json.dumps({'error': str(e), 'done': True})}\n\n"
                 finally:
+                    manager.progress_callback = None
                     if not invoke_task.done():
                         logger.info(f"[V4] Generator exiting, ensuring task cancelled for session {body.session_id}")
                         invoke_task.cancel()
@@ -315,15 +332,15 @@ async def create_new_session(current_user: dict = Depends(get_current_user)):
     if not user_id:
         raise HTTPException(status_code=401, detail="未授權")
 
-    # ✅ 修復：get_manager_instance 現在只用 user_id 作 key
-    from core.agents.bootstrap import get_manager_instance, invalidate_manager_cache
-    old_manager = get_manager_instance(user_id)
+    from core.agents.bootstrap import get_manager_instances, invalidate_manager_cache
+    old_managers = get_manager_instances(user_id)
 
     # 整合舊會話記憶（在刪除 cache 前）
-    if old_manager and hasattr(old_manager, '_message_count') and old_manager._message_count > 0:
-        logger.info(f"[API] Consolidating old session for user {user_id}")
-        if hasattr(old_manager, 'consolidate_session_memory'):
-            await old_manager.consolidate_session_memory()
+    for old_manager in old_managers:
+        if old_manager and hasattr(old_manager, '_message_count') and old_manager._message_count > 0:
+            logger.info(f"[API] Consolidating old session for user {user_id}: {old_manager.session_id}")
+            if hasattr(old_manager, 'consolidate_session_memory'):
+                await old_manager.consolidate_session_memory()
 
     # ✅ 清除 Manager 緩存，下次請求重建（新 session 需要乾淨的 message_count）
     invalidate_manager_cache(user_id)
@@ -332,7 +349,7 @@ async def create_new_session(current_user: dict = Depends(get_current_user)):
     new_session_id = str(uuid.uuid4())
     loop = asyncio.get_running_loop()
     await loop.run_in_executor(
-        None, partial(create_session, user_id, new_session_id)
+        None, partial(create_session, new_session_id, title="New Chat Session", user_id=user_id)
     )
 
     return {
@@ -358,21 +375,20 @@ async def trigger_idle_consolidation(current_user: dict = Depends(get_current_us
     if not user_id:
         raise HTTPException(status_code=401, detail="未授權")
 
-    # ✅ 修復：只用 user_id 作 key
-    from core.agents.bootstrap import get_manager_instance
-    manager = get_manager_instance(user_id)
+    from core.agents.bootstrap import get_manager_instances
+    managers = get_manager_instances(user_id)
 
-    if not manager:
+    if not managers:
         return {"status": "skipped", "message": "無 Manager 實例"}
 
-    # 檢查是否需要整合
-    if not manager.check_idle_consolidation():
+    target_managers = [manager for manager in managers if manager.check_idle_consolidation()]
+    if not target_managers:
         return {"status": "skipped", "message": "無需整合"}
 
     try:
-        # 執行整合
-        await manager._background_memory_consolidation()
-        return {"status": "success", "message": "閒置整合完成"}
+        for manager in target_managers:
+            await manager._background_memory_consolidation()
+        return {"status": "success", "message": f"閒置整合完成（{len(target_managers)} 個 session）"}
     except Exception as e:
         logger.error(f"閒置整合失敗: {e}")
         return {"status": "error", "message": str(e)}

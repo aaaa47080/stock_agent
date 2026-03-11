@@ -1,0 +1,2375 @@
+<!DOCTYPE html>
+<html lang="zh-TW" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <!-- CSP: frame-ancestors is set via HTTP header in api_server.py -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://sdk.minepi.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https: wss:; base-uri 'self'; form-action 'self';">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- SEO Meta Tags -->
+    <title>CryptoMind - AI Crypto Analyst | 智能加密貨幣分析平台</title>
+    <meta name="description" content="CryptoMind 是一個 AI 驅動的加密貨幣分析平台，提供實時市場分析、智能交易建議和深度研究報告。支援 Bitcoin、Ethereum、Pi Network 等主流加密貨幣。">
+    <meta name="keywords" content="加密貨幣, AI分析, 比特幣, Bitcoin, Ethereum, Pi Network, 交易分析, 區塊鏈, cryptocurrency, trading">
+    <meta name="author" content="CryptoMind">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://cryptomind.app/">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://cryptomind.app/">
+    <meta property="og:title" content="CryptoMind - AI Crypto Analyst">
+    <meta property="og:description" content="AI 驅動的加密貨幣分析平台，提供實時市場分析和智能交易建議">
+    <meta property="og:image" content="/static/img/title_icon.png">
+    <meta property="og:locale" content="zh_TW">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://cryptomind.app/">
+    <meta name="twitter:title" content="CryptoMind - AI Crypto Analyst">
+    <meta name="twitter:description" content="AI 驅動的加密貨幣分析平台，提供實時市場分析和智能交易建議">
+    <meta name="twitter:image" content="/static/img/title_icon.png">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/static/img/title_icon.png">
+
+    <!-- Core Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        // Pi.ai Inspired Warm Dark Palette
+                        background: '#1a1a1c',     // Deep Warm Charcoal
+                        surface: '#252529',        // Lighter Warm Charcoal
+                        surfaceHighlight: '#323236',
+                        primary: '#d4b693',        // Muted Gold / Sand
+                        secondary: '#e4e4e7',      // Soft White
+                        accent: '#c084fc',         // Soft Purple
+                        success: '#86efac',        // Pastel Green
+                        danger: '#fda4af',         // Pastel Red
+                        textMain: '#f4f4f5',
+                        textMuted: '#b8b8bc',    // Improved contrast (4.6:1) for WCAG AA
+                    },
+                    fontFamily: {
+                        serif: ['Lora', 'serif'],
+                        sans: ['Mulish', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    borderRadius: {
+                        '4xl': '2rem',
+                    },
+                    animation: {
+                        'spin-slow': 'spin 20s linear infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/lucide@0.452.0/dist/umd/lucide.min.js" integrity="sha384-LSySZmn0vvhTQgRk/a4hpHC8UqzwD4/KwvbBryuft3BxzKIjaCd099VvkzXYA9dC" crossorigin="anonymous"></script>
+    <script src="/static/js/vendor/markdown-it.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/i18next@23.7.6/i18next.min.js" crossorigin="anonymous"></script>
+    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+    <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js" integrity="sha384-rcCMiCptH4kTlEbg0euOTUKWe72TESbrjElatnG+9BfbmUIV268UK/Pro5biJdGm" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" integrity="sha384-9nhczxUqK87bcKHh20fSQcTGD4qq5GhayNYSYWqwBkINBhOfQLg/P5HG5lF1urn4" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js" integrity="sha384-zPzbVRXfR492Sd5D+HydTYCxxgHAfgVO8KERbLlpeH5unsmbAEXrscGUUqLZG9BM" crossorigin="anonymous"></script>
+    <script src="/static/config.js"></script>
+    <script src="/static/js/logger.js"></script>
+    <script src="/static/js/premium.js"></script>
+    <script src="/static/js/security-utils.js"></script>
+    <!-- Fonts -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Mulish:wght@300;400;600;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="/static/styles.css?v=4">
+
+    <script>
+        // Pi 登入（含防重複點擊機制）
+        window._piLoginInProgress = false;
+        window.safePiLogin = async function () {
+            // 防止重複點擊
+            if (window._piLoginInProgress) {
+                console.log('登入已在進行中，忽略重複點擊');
+                return;
+            }
+
+            const btn = document.getElementById('pi-login-btn');
+            const originalText = btn ? btn.innerHTML : '';
+
+            try {
+                window._piLoginInProgress = true;
+
+                // 更新按鈕狀態為 Loading
+                if (btn) {
+                    btn.disabled = true;
+                    btn.innerHTML = '<svg class="animate-spin w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> 連接中...';
+                    btn.classList.add('opacity-70', 'cursor-not-allowed');
+                }
+
+                if (typeof handlePiLogin === 'function') {
+                    return await handlePiLogin();
+                }
+                // 如果 JS 尚未載入完成，等待後重試
+                await new Promise(r => setTimeout(r, 500));
+                if (typeof handlePiLogin === 'function') {
+                    return await handlePiLogin();
+                }
+            } finally {
+                window._piLoginInProgress = false;
+                // 恢復按鈕狀態
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                    btn.classList.remove('opacity-70', 'cursor-not-allowed');
+                }
+            }
+        };
+    </script>
+</head>
+
+<body class="h-screen w-screen overflow-hidden flex bg-background text-textMain selection:bg-primary/30" data-page="index">
+    <!-- Skip to main content link for keyboard users -->
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[9999] focus:px-4 focus:py-2 focus:bg-primary focus:text-background focus:rounded-lg focus:font-bold">跳到主要內容</a>
+    <script>
+        // Show login modal immediately for non-logged-in users (prevents blank screen)
+        // For logged-in users, validate token first then decide
+        (function () {
+            var saved = localStorage.getItem('pi_user');
+            if (!saved) {
+                // 完全沒有登入紀錄 → 先檢查是否為測試模式，測試模式下 auth.js 會自動登入
+                document.addEventListener('DOMContentLoaded', function () {
+                    fetch('/api/config').then(function(r) { return r.json(); }).catch(function() { return { test_mode: false }; }).then(function(cfg) {
+                        if (cfg && cfg.test_mode) {
+                            console.log('✅ Test mode: skipping login modal (auth.js will auto-login)');
+                            return;
+                        }
+                        var m = document.getElementById('login-modal');
+                        if (m) m.classList.remove('hidden');
+                    });
+                });
+                return;
+            }
+            // 有登入紀錄 → 先驗證 token 是否過期
+            try {
+                var user = JSON.parse(saved);
+                var expiry = user.accessTokenExpiry;
+                if (!expiry || Date.now() > expiry) {
+                    // Token 已過期，清除並檢查測試模式
+                    localStorage.removeItem('pi_user');
+                    document.addEventListener('DOMContentLoaded', function () {
+                        fetch('/api/config').then(function(r) { return r.json(); }).catch(function() { return { test_mode: false }; }).then(function(cfg) {
+                            if (cfg && cfg.test_mode) {
+                                console.log('✅ Test mode: token expired but auth.js will auto-login');
+                                return;
+                            }
+                            var m = document.getElementById('login-modal');
+                            if (m) m.classList.remove('hidden');
+                        });
+                    });
+                    return;
+                }
+                // Token 有效 → 還需要檢測 Pi 環境
+                // 如果不在 Pi Browser 中，仍需顯示提示（除非是測試模式）
+                document.addEventListener('DOMContentLoaded', function () {
+                    // 先檢查是否為測試模式
+                    var testModeCheck = fetch('/api/config').then(r => r.json()).catch(function() { return { test_mode: false }; });
+
+                    var attempts = 0;
+                    var maxAttempts = 30; // 最多等 3 秒
+                    var checkPiSDK = function () {
+                        var hasPiSDK = typeof window.Pi !== 'undefined' &&
+                            window.Pi !== null &&
+                            typeof window.Pi.authenticate === 'function';
+                        if (hasPiSDK) {
+                            // Pi SDK 存在，保持 modal hidden，讓 auth.js 正常處理
+                            console.log('✅ Token valid + Pi SDK detected, normal flow');
+                            return;
+                        }
+                        attempts++;
+                        if (attempts < maxAttempts) {
+                            setTimeout(checkPiSDK, 100);
+                        } else {
+                            // Pi SDK 不存在 → 非 Pi 環境
+                            // 檢查是否為測試模式，測試模式下不強制顯示 modal
+                            testModeCheck.then(function(cfg) {
+                                if (cfg && cfg.test_mode) {
+                                    console.log('✅ Test mode: skipping Pi Browser check');
+                                    return;
+                                }
+                                // 非測試模式，顯示 login modal 提示用戶
+                                console.warn('⚠️ Token valid but NOT in Pi Browser, showing login modal');
+                                var m = document.getElementById('login-modal');
+                                if (m) m.classList.remove('hidden');
+                            });
+                        }
+                    };
+                    checkPiSDK();
+                });
+            } catch (e) {
+                localStorage.removeItem('pi_user');
+                document.addEventListener('DOMContentLoaded', function () {
+                    var m = document.getElementById('login-modal');
+                    if (m) m.classList.remove('hidden');
+                });
+            }
+        })();
+    </script>
+
+    <!-- Sidebar (Chat History) -->
+    <aside id="chat-sidebar" role="complementary" aria-label="聊天歷史側邊欄"
+        class="fixed inset-y-0 left-0 z-50 w-64 bg-surface/95 backdrop-blur-xl border-r border-white/5 transform -translate-x-full transition-transform duration-300 md:translate-x-0 md:static md:w-72 md:flex-shrink-0 flex flex-col">
+        <div class="p-4 border-b border-white/5 flex items-center justify-between">
+            <button onclick="switchTab('chat')" class="flex items-center gap-2 text-secondary font-serif hover:opacity-80 transition">
+                <div class="w-8 h-8 rounded-full overflow-hidden">
+                    <img src="/static/img/title_icon.png" alt="CryptoMind" class="w-full h-full object-cover">
+                </div>
+                <span>CryptoMind</span>
+            </button>
+            <button onclick="toggleSidebar()" aria-label="關閉側邊欄" class="md:hidden p-2 hover:bg-white/5 rounded-full text-textMuted"><i
+                    data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+
+        <div class="p-4">
+            <button onclick="createNewChat()"
+                class="w-full py-3 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-xl flex items-center justify-center gap-2 transition font-bold text-sm">
+                <i data-lucide="plus" class="w-4 h-4"></i> <span data-i18n="sidebar.newChat">New Chat</span>
+            </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto custom-scrollbar px-2 space-y-1" id="chat-session-list">
+            <!-- Sessions injected via JS -->
+            <div class="text-center text-xs text-textMuted/40 py-4" data-i18n="sidebar.noHistory">No history</div>
+        </div>
+
+        <div class="p-4 border-t border-white/5">
+            <!-- 用户设置按钮 -->
+            <button onclick="switchTab('settings')"
+                class="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl text-textMuted hover:text-secondary transition text-sm">
+                <div class="w-8 h-8 rounded-full bg-surfaceHighlight flex items-center justify-center text-xs font-bold overflow-hidden"
+                    id="sidebar-user-avatar">
+                    <i data-lucide="user" class="w-4 h-4"></i>
+                </div>
+                <div class="flex-1 text-left">
+                    <div class="flex items-center gap-1.5">
+                        <div class="font-bold truncate" id="sidebar-user-name" data-i18n="common.guest">Guest</div>
+                        <div id="sidebar-premium-badge"
+                            class="hidden px-1.5 py-0.5 rounded text-[8px] font-black bg-gradient-to-r from-yellow-500 to-orange-500 text-background leading-none uppercase tracking-tighter">
+                            PRO</div>
+                    </div>
+                    <div class="text-[10px] opacity-60" data-i18n="sidebar.settings">Settings</div>
+                </div>
+            </button>
+        </div>
+    </aside>
+
+    <!-- 點擊側邊欄外部區域關閉側邊欄 -->
+    <div id="sidebar-backdrop" class="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm hidden md:hidden"
+        onclick="toggleSidebar()"></div>
+
+    <!-- Main Content Container -->
+    <main id="main-content" role="main" aria-label="主要內容" class="flex-1 relative h-full flex flex-col w-full overflow-hidden">
+
+        <!-- Mobile Header -->
+        <header
+            class="md:hidden flex items-center justify-between px-4 py-3 border-b border-white/5 bg-background/80 backdrop-blur-sm z-40">
+            <button onclick="toggleSidebar()" class="p-2 -ml-2 hover:bg-white/5 rounded-full text-textMuted"><i
+                    data-lucide="menu" class="w-5 h-5"></i></button>
+            <span class="font-serif text-secondary">CryptoMind</span>
+            <div id="notification-bell-mobile" class="flex items-center"></div>
+        </header>
+
+        <!-- Desktop Notification Bell (固定右上角，所有頁面可見) -->
+        <div id="notification-bell-desktop" class="hidden md:block fixed top-4 right-4 z-50"></div>
+
+        <div class="flex-1 relative w-full h-full overflow-hidden">
+
+            <!-- Global Floating Draggable Navigation -->
+            <div id="global-nav-container" class="fixed bottom-24 left-1/2 z-50" style="transform: translateX(-50%);">
+                <nav id="draggable-nav" role="navigation" aria-label="主要導航"
+                    class="bg-surface/95 backdrop-blur-xl border border-white/10 rounded-full p-1.5 flex items-center gap-1 shadow-2xl shadow-black/40 select-none transition-all duration-300">
+                    <!-- Collapse/Expand Toggle -->
+                    <button id="nav-toggle" onclick="toggleNavCollapse()" aria-label="收縮/展開導航" aria-expanded="true"
+                        class="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200"
+                        title="收縮/展開">
+                        <i data-lucide="chevrons-left" class="w-4 h-4 transition-transform duration-300"
+                            id="nav-toggle-icon"></i>
+                    </button>
+
+                    <!-- Navigation Buttons (Scrollable) - Dynamically Rendered -->
+                    <div id="nav-buttons"
+                        class="flex items-center gap-1 overflow-x-auto max-w-[160px] md:max-w-none transition-all duration-300 px-1 pb-1"
+                        style="scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.2) transparent;">
+                        <style>
+                            #nav-buttons::-webkit-scrollbar {
+                                height: 3px;
+                            }
+
+                            #nav-buttons::-webkit-scrollbar-track {
+                                background: transparent;
+                            }
+
+                            #nav-buttons::-webkit-scrollbar-thumb {
+                                background-color: rgba(255, 255, 255, 0.2);
+                                border-radius: 9999px;
+                            }
+                        </style>
+                        <!-- Navigation buttons will be dynamically rendered here -->
+                    </div>
+
+                    <!-- Language Switcher -->
+                    <div class="lang-switcher-container"></div>
+
+                    <!-- Drag Handle -->
+                    <div role="separator" aria-label="拖曳導航列"
+                        class="drag-handle w-8 h-10 flex items-center justify-center rounded-full hover:bg-white/10 text-textMuted/50 hover:text-textMuted cursor-grab active:cursor-grabbing transition-all duration-200 ml-0.5">
+                        <i data-lucide="grip-vertical" class="w-4 h-4"></i>
+                    </div>
+                </nav>
+            </div>
+
+            <!-- Tab: Chat (Home) - Pi Network Theme -->
+            <div id="chat-tab" class="tab-content h-full flex flex-col relative">
+                <!-- Pi Network Animated Background -->
+                <div class="absolute inset-0 overflow-hidden -z-10 pointer-events-none">
+                    <div class="w-full h-full flex items-center justify-center opacity-25">
+                        <img src="/static/img/title_icon.png" alt="CryptoMind Logo"
+                            class="w-72 h-72 md:w-96 md:h-96 object-contain grayscale-0">
+                    </div>
+                </div>
+
+                <!-- Messages Area -->
+                <div id="chat-messages"
+                    class="flex-1 overflow-y-auto custom-scrollbar px-4 md:px-8 py-6 space-y-6 pb-32">
+                    <!-- Welcome -->
+                    <div class="bot-message opacity-0 animate-fade-in-up"
+                        style="animation-delay: 0.1s; animation-fill-mode: forwards;">
+                        <div class="flex flex-col items-center justify-center mb-8">
+                            <h1 class="font-serif text-3xl md:text-4xl leading-tight text-center">
+                                <span class="text-secondary" data-i18n="chat.welcomeTo">Welcome to</span><br>
+                                <span
+                                    class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">CryptoMind</span>
+                            </h1>
+                            <p class="text-textMuted mt-2">Good <span id="greeting-time">day</span>.</p>
+                        </div>
+                        <p class="text-textMuted text-lg font-light leading-relaxed text-center"
+                            data-i18n="chat.subtitle">
+                            AI-powered crypto analysis and trading insights. Monitor markets and make informed
+                            decisions.
+                        </p>
+
+                        <div class="flex flex-wrap gap-3 mt-8 justify-center">
+                            <button onclick="quickAsk('Analyze BTC trend')"
+                                class="px-5 py-2.5 rounded-full bg-surface hover:bg-surfaceHighlight border border-white/5 text-sm text-textMuted hover:text-primary transition shadow-sm"
+                                data-i18n="chat.btnBtcTrend">
+                                Bitcoin Trend
+                            </button>
+                            <button onclick="quickAsk('ETH Funding Rates')"
+                                class="px-5 py-2.5 rounded-full bg-surface hover:bg-surfaceHighlight border border-white/5 text-sm text-textMuted hover:text-primary transition shadow-sm"
+                                data-i18n="chat.btnEthRates">
+                                ETH Rates
+                            </button>
+                            <button onclick="quickAsk('Market Sentiment')"
+                                class="px-5 py-2.5 rounded-full bg-surface hover:bg-surfaceHighlight border border-white/5 text-sm text-textMuted hover:text-primary transition shadow-sm"
+                                data-i18n="chat.btnSentiment">
+                                Global Sentiment
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Warning Overlay (No Key) - 預設隱藏，無 key 時由 JS 顯示 -->
+                <div id="no-llm-key-warning"
+                    class="hidden absolute top-0 left-0 right-0 bottom-32 flex items-center justify-center z-40 p-4 bg-background/80 backdrop-blur-sm">
+                    <div
+                        class="bg-surface/95 backdrop-blur-xl rounded-3xl p-8 border border-white/10 shadow-2xl max-w-sm w-full text-center">
+                        <div
+                            class="w-14 h-14 bg-gradient-to-r from-primary to-accent rounded-full flex items-center justify-center mx-auto mb-4 text-white shadow-lg shadow-primary/30">
+                            <i data-lucide="key" class="w-7 h-7"></i>
+                        </div>
+                        <h3 class="font-serif text-2xl mb-2 text-secondary" data-i18n="chat.unlockTitle">Unlock Pi
+                            Intelligence</h3>
+                        <p class="text-textMuted text-sm mb-6 leading-relaxed"><span data-i18n="chat.unlockDesc">Connect
+                                an API key to enable AI
+                                analysis.</span><br><span data-i18n="chat.unlockDesc2">Your keys are stored locally and
+                                securely.</span></p>
+                        <button onclick="switchTab('settings');"
+                            class="w-full py-3.5 bg-gradient-to-r from-primary to-accent text-background font-bold rounded-2xl hover:brightness-110 transition shadow-lg shadow-primary/20">
+                            <i data-lucide="settings" class="w-4 h-4 inline-block mr-2"></i>
+                            <span data-i18n="chat.configureApiKey">Configure API Key</span>
+                        </button>
+                        <p class="text-textMuted/60 text-xs mt-4" data-i18n="chat.otherFeatures">You can still use other
+                            features below</p>
+                    </div>
+                </div>
+
+                <!-- Input Area -->
+                <div
+                    class="fixed bottom-0 left-0 md:left-72 right-0 z-40 bg-background/80 backdrop-blur-xl border-t border-white/5 px-4 md:px-8 py-4">
+                    <div class="relative w-full max-w-4xl mx-auto">
+                        <!-- Hidden Options -->
+                        <div id="analysis-options-panel"
+                            class="hidden absolute bottom-full left-0 right-0 mb-4 p-4 bg-surface rounded-3xl border border-white/5 shadow-xl animate-fade-in-up z-10">
+                            <div class="flex flex-wrap gap-4 justify-center">
+                                <label class="flex items-center gap-2 cursor-pointer select-none">
+                                    <input type="checkbox" class="analysis-checkbox accent-primary w-4 h-4 rounded-full"
+                                        value="Technical Analysis" checked>
+                                    <span class="text-sm text-secondary" data-i18n="chat.technical">Technical</span>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer select-none">
+                                    <input type="checkbox" class="analysis-checkbox accent-primary w-4 h-4 rounded-full"
+                                        value="News Analysis" checked>
+                                    <span class="text-sm text-secondary" data-i18n="chat.news">News</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Input Box -->
+                        <div
+                            class="bg-surface/90 border border-white/10 rounded-[2rem] p-2 flex items-center gap-2 shadow-xl focus-within:ring-1 focus-within:ring-primary/50">
+                            <button onclick="toggleOptions()" aria-label="顯示選項"
+                                class="w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center text-textMuted hover:text-primary transition">
+                                <i data-lucide="plus" class="w-5 h-5"></i>
+                            </button>
+                            <label for="user-input" class="sr-only">輸入訊息</label>
+                            <input type="text" id="user-input" disabled aria-label="輸入訊息"
+                                class="flex-1 bg-transparent border-none outline-none text-base text-secondary placeholder-textMuted/50 px-2 font-light relative z-10 opacity-50 cursor-not-allowed"
+                                placeholder="Send a command to AI Agent..."
+                                autocomplete="off"
+                                onkeypress="if(event.key === 'Enter') sendMessage()">
+                            <button onclick="sendMessage()" id="send-btn" disabled aria-label="發送訊息"
+                                class="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-accent text-background flex items-center justify-center hover:scale-105 active:scale-95 transition shadow-lg shadow-primary/20 opacity-50 cursor-not-allowed">
+                                <i data-lucide="arrow-up" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Crypto -->
+            <div id="crypto-tab" class="tab-content hidden h-full overflow-hidden relative">
+                <!-- Dynamic Content Injected via components.js -->
+            </div>
+
+            <!-- Tab: TW Stock -->
+            <div id="twstock-tab" class="tab-content hidden h-full overflow-hidden relative">
+                <!-- Dynamic Content Injected via components.js -->
+            </div>
+
+            <!-- Tab: US Stock -->
+            <div id="usstock-tab" class="tab-content hidden h-full overflow-hidden relative">
+                <!-- Dynamic Content Injected via components.js -->
+            </div>
+
+            <!-- Tab: Wallet -->
+            <div id="wallet-tab"
+                class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:pl-6 md:pr-16 py-6 pb-40">
+                <div class="max-w-3xl mx-auto space-y-6">
+                    <!-- Header -->
+                    <div class="flex justify-between items-end md:pr-14">
+                        <h2 class="font-serif text-3xl text-secondary" data-i18n="wallet.title">Wallet History</h2>
+                        <button onclick="WalletApp.loadData()"
+                            class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition"><i
+                                data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+                    </div>
+
+                    <!-- Balance / Status Card -->
+                    <div class="bg-surface border border-white/5 rounded-[2rem] p-6 relative overflow-hidden">
+                        <div class="absolute top-0 right-0 p-6 opacity-5 pointer-events-none">
+                            <i data-lucide="wallet" class="w-32 h-32 text-primary"></i>
+                        </div>
+                        <div class="flex items-center gap-5 relative z-10">
+                            <div class="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                                <i data-lucide="credit-card" class="w-8 h-8 text-primary"></i>
+                            </div>
+                            <div>
+                                <div class="text-textMuted text-xs font-bold uppercase tracking-wider mb-2"
+                                    data-i18n="wallet.totalActivity">Total
+                                    Activity</div>
+                                <div class="flex gap-8">
+                                    <div>
+                                        <span class="text-[10px] text-textMuted uppercase tracking-wider block mb-0.5"
+                                            data-i18n="wallet.spentOut">Spent
+                                            (Out)</span>
+                                        <div class="text-danger font-bold text-xl flex items-center gap-1">
+                                            <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
+                                            <span id="wallet-total-out">0.0</span> Pi
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span class="text-[10px] text-textMuted uppercase tracking-wider block mb-0.5"
+                                            data-i18n="wallet.receivedIn">Received
+                                            (In)</span>
+                                        <div class="text-success font-bold text-xl flex items-center gap-1">
+                                            <i data-lucide="arrow-down-left" class="w-4 h-4"></i>
+                                            <span id="wallet-total-in">0.0</span> Pi
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Transaction List -->
+                    <div class="bg-surface border border-white/5 rounded-[2rem] p-6 min-h-[400px]">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                            <h3 class="font-bold text-secondary text-lg flex items-center gap-2">
+                                <i data-lucide="history" class="w-5 h-5 text-primary"></i> <span
+                                    data-i18n="wallet.transactions">Transactions</span>
+                            </h3>
+
+                            <!-- Filters -->
+                            <div class="flex flex-col gap-2 items-end">
+                                <div class="flex gap-2 overflow-x-auto pb-1 md:pb-0 hide-scrollbar">
+                                    <select id="wallet-filter-type" onchange="WalletApp.applyFilters()"
+                                        class="bg-surfaceHighlight border border-white/10 text-textMuted text-xs font-bold rounded-xl px-3 py-2 outline-none focus:border-primary/50 transition cursor-pointer">
+                                        <option value="all" data-i18n="wallet.allTypes">All Types</option>
+                                        <option value="in" data-i18n="wallet.income">💰 Income (In)</option>
+                                        <option value="out" data-i18n="wallet.expense">💸 Expense (Out)</option>
+                                        <option value="membership" data-i18n="wallet.premium">👑 Premium</option>
+                                        <option value="tip" data-i18n="wallet.tips">🎁 Tips</option>
+                                        <option value="post" data-i18n="wallet.postFees">📝 Post Fees</option>
+                                    </select>
+                                    <select id="wallet-filter-time" onchange="WalletApp.handleTimeFilterChange(this)"
+                                        class="bg-surfaceHighlight border border-white/10 text-textMuted text-xs font-bold rounded-xl px-3 py-2 outline-none focus:border-primary/50 transition cursor-pointer">
+                                        <option value="all" data-i18n="wallet.allTime">All Time</option>
+                                        <option value="7" data-i18n="wallet.last7Days">Last 7 Days</option>
+                                        <option value="30" data-i18n="wallet.last30Days">Last 30 Days</option>
+                                        <option value="90" data-i18n="wallet.last3Months">Last 3 Months</option>
+                                        <option value="custom" data-i18n="wallet.customRange">📅 Custom Range</option>
+                                    </select>
+                                </div>
+
+                                <!-- Custom Date Inputs (Hidden by default) -->
+                                <div id="wallet-custom-date-range"
+                                    class="hidden flex items-center gap-2 bg-surfaceHighlight p-2 rounded-xl border border-white/5 animate-fade-in-down w-full md:w-auto justify-end">
+                                    <input type="date" id="wallet-date-start"
+                                        class="bg-background border border-white/10 rounded-lg px-2 py-1 text-xs text-secondary outline-none focus:border-primary/50 min-w-[120px]"
+                                        onchange="WalletApp.applyFilters()">
+                                    <span class="text-textMuted text-xs" data-i18n="common.to">to</span>
+                                    <input type="date" id="wallet-date-end"
+                                        class="bg-background border border-white/10 rounded-lg px-2 py-1 text-xs text-secondary outline-none focus:border-primary/50 min-w-[120px]"
+                                        onchange="WalletApp.applyFilters()">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="wallet-tx-list" class="space-y-2">
+                            <div class="text-center text-textMuted py-10 opacity-50" data-i18n="wallet.loadingHistory">
+                                <i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto mb-2"></i>
+                                Loading history...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+
+
+
+            <!-- Tab: Assets -->
+            <div id="assets-tab"
+                class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:pl-6 md:pr-16 py-6 pb-40 relative">
+                <div class="flex justify-between items-end mb-8 md:pr-14">
+                    <h2 class="font-serif text-3xl text-secondary" data-i18n="assets.portfolio">Portfolio</h2>
+                    <button onclick="refreshAssets()"
+                        class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition"><i
+                            data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+                </div>
+
+                <!-- No OKX Key -->
+                <div id="no-okx-key-overlay" class="hidden text-center py-16">
+                    <div
+                        class="w-20 h-20 bg-gradient-to-br from-primary/20 to-accent/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i data-lucide="wallet" class="w-10 h-10 text-primary"></i>
+                    </div>
+                    <h3 class="font-serif text-xl text-secondary mb-2" data-i18n="assets.connectExchange">Connect Your
+                        Exchange</h3>
+                    <p class="text-textMuted mb-8 text-sm" data-i18n="assets.linkDescription">Link your OKX account to
+                        view portfolio and positions.</p>
+                    <button onclick="switchTab('settings')"
+                        class="px-8 py-3.5 bg-gradient-to-r from-primary to-accent text-background font-bold rounded-2xl transition flex items-center gap-2 mx-auto shadow-lg shadow-primary/20 hover:scale-105">
+                        <i data-lucide="settings" class="w-4 h-4"></i>
+                        <span data-i18n="assets.goToSettings">Go to Settings</span>
+                    </button>
+                </div>
+
+                <!-- Assets Content (hidden when no OKX key) -->
+                <div id="assets-content">
+                    <div
+                        class="bg-gradient-to-br from-surface to-surfaceHighlight p-8 rounded-[2.5rem] mb-6 text-center border border-white/5 relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-10 -mt-10">
+                        </div>
+                        <span class="text-sm text-textMuted font-medium uppercase tracking-widest"
+                            data-i18n="assets.totalEquity">Total Equity</span>
+                        <h1 class="text-4xl md:text-5xl font-serif text-secondary mt-2 mb-2" id="total-equity">--</h1>
+                        <span class="text-xs text-textMuted/50 font-mono" id="asset-update-time"
+                            data-i18n="assets.updated">Updated: --:--</span>
+                    </div>
+
+                    <!-- Spot Assets Section -->
+                    <div class="bg-surface p-6 rounded-3xl border border-white/5 mb-6">
+                        <h3 class="font-bold text-sm text-textMuted mb-4" data-i18n="assets.spotAssets">Spot Assets</h3>
+                        <div id="spot-assets-list" class="space-y-4">
+                            <!-- Injected via JS -->
+                        </div>
+                    </div>
+
+                    <div class="bg-surface rounded-3xl border border-white/5 overflow-hidden">
+                        <div class="p-4 border-b border-white/5 flex justify-between items-center">
+                            <h3 class="font-bold text-sm text-textMuted pl-2" data-i18n="assets.activePositions">Active
+                                Positions</h3>
+                            <div id="positions-summary"></div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <tbody id="positions-table-body" class="divide-y divide-white/5">
+                                    <!-- Rows injected via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Friends (Global Social Hub) -->
+            <div id="friends-tab" class="tab-content hidden h-full overflow-hidden relative">
+                <!-- Dynamic Content Injected via components.js -->
+            </div>
+
+            <!-- Tab: Safety (Scam Tracker & Governance) -->
+            <div id="safety-tab"
+                class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:pl-6 md:pr-16 py-6 pb-40">
+                <!-- Dynamic Content Injected via components.js -->
+            </div>
+
+            <!-- Tab: Forum -->
+            <div id="forum-tab"
+                class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:pl-6 md:pr-16 py-6 pb-40">
+                <!-- Dynamic Content Injected via components.js -->
+            </div>
+
+            <!-- Tab: Settings -->
+            <div id="settings-tab"
+                class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40 will-change-transform">
+                <!-- Dynamic Content Injected via components.js -->
+            </div>
+            <div id="admin-tab"
+                class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:px-6 py-6 pb-40 will-change-transform">
+                <!-- Dynamic Content Injected via components.js (admin only) -->
+            </div>
+    </main>
+
+    <!-- Chart Modal (Moved from Watchlist) -->
+    <div id="chart-section" class="hidden fixed inset-0 z-[60] bg-background/95 backdrop-blur overflow-y-auto p-4 md:p-6">
+        <div class="flex flex-col gap-3 mb-3">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <h3 id="chart-title" class="text-lg md:text-xl font-serif text-secondary">BTC Chart</h3>
+                    <span id="chart-updated" class="text-[10px] text-textMuted opacity-60"></span>
+                </div>
+                <button onclick="closeChart()"
+                    class="w-10 h-10 rounded-full bg-surface flex items-center justify-center text-textMuted hover:text-secondary transition"><i
+                        data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <!-- Toolbar -->
+            <div class="flex flex-wrap items-center gap-2">
+                <!-- Timeframe Selector -->
+                <div class="flex gap-0.5 bg-surface/50 p-1 rounded-xl overflow-x-auto">
+                    <button onclick="changeChartInterval('1m')"
+                        class="chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap"
+                        data-interval="1m">1m</button>
+                    <button onclick="changeChartInterval('3m')"
+                        class="chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap"
+                        data-interval="3m">3m</button>
+                    <button onclick="changeChartInterval('5m')"
+                        class="chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap"
+                        data-interval="5m">5m</button>
+                    <button onclick="changeChartInterval('15m')"
+                        class="chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap"
+                        data-interval="15m">15m</button>
+                    <button onclick="changeChartInterval('30m')"
+                        class="chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap"
+                        data-interval="30m">30m</button>
+                    <button onclick="changeChartInterval('1h')"
+                        class="chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap"
+                        data-interval="1h">1H</button>
+                    <button onclick="changeChartInterval('2h')"
+                        class="chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap"
+                        data-interval="2h">2H</button>
+                    <button onclick="changeChartInterval('4h')"
+                        class="chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap"
+                        data-interval="4h">4H</button>
+                    <button onclick="changeChartInterval('1d')"
+                        class="chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap bg-white/10 text-primary"
+                        data-interval="1d">1D</button>
+                    <button onclick="changeChartInterval('1w')"
+                        class="chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap"
+                        data-interval="1w">1W</button>
+                </div>
+                <!-- Auto Refresh Toggle -->
+                <button id="auto-refresh-btn" onclick="toggleAutoRefresh()"
+                    class="px-2 py-1 text-[10px] rounded-lg bg-surface/50 text-textMuted hover:bg-white/5 transition flex items-center gap-1"
+                    title="自動更新" data-i18n="chart.autoRefresh" data-i18n-attr="title">
+                    <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+                    <span id="auto-refresh-status" data-i18n="chart.off">OFF</span>
+                </button>
+                <!-- OHLCV Info Display -->
+                <div id="ohlcv-info" class="flex flex-wrap items-center gap-2 text-[10px] font-mono ml-auto">
+                    <span class="text-textMuted">O:<span id="info-open" class="text-secondary ml-0.5">-</span></span>
+                    <span class="text-textMuted">H:<span id="info-high" class="text-success ml-0.5">-</span></span>
+                    <span class="text-textMuted">L:<span id="info-low" class="text-danger ml-0.5">-</span></span>
+                    <span class="text-textMuted">C:<span id="info-close" class="text-secondary ml-0.5">-</span></span>
+                    <span class="text-textMuted">Vol:<span id="info-volume" class="text-primary ml-0.5">-</span></span>
+                </div>
+            </div>
+        </div>
+        <!-- Chart Area -->
+        <div class="w-full bg-surface rounded-3xl border border-white/5 overflow-hidden">
+            <!-- Current Price Display -->
+            <div class="px-4 pt-3 pb-1">
+                <div id="current-price-display" class="text-center text-2xl font-bold text-secondary font-mono">
+                    <!-- Current price will be displayed here -->
+                </div>
+            </div>
+            <div id="chart-container" class="h-[52vh] w-full relative"></div>
+            <div id="volume-container" class="w-full h-40 border-t border-white/5"></div>
+        </div>
+    </div>
+
+    <!-- TW Stock Chart Modal -->
+    <div id="twstock-chart-section"
+        class="hidden fixed inset-0 z-[60] bg-background/95 backdrop-blur overflow-y-auto p-4 md:p-6">
+        <div class="flex flex-col gap-3 mb-3">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <h3 id="twstock-chart-title" class="text-lg md:text-xl font-serif text-secondary">TW Stock Chart
+                    </h3>
+                    <span id="twstock-chart-updated" class="text-[10px] text-textMuted opacity-60"></span>
+                </div>
+                <button onclick="window.TWStockTab.closeTwChart()"
+                    class="w-10 h-10 rounded-full bg-surface flex items-center justify-center text-textMuted hover:text-secondary transition"><i
+                        data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <!-- Toolbar -->
+            <div class="flex flex-wrap items-center gap-2">
+                <!-- Timeframe Selector -->
+                <div class="flex gap-0.5 bg-surface/50 p-1 rounded-xl overflow-x-auto">
+                    <button onclick="window.TWStockTab.changeChartInterval('1d')"
+                        class="tw-chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap bg-white/10 text-primary"
+                        data-interval="1d">1D</button>
+                    <button onclick="window.TWStockTab.changeChartInterval('1wk')"
+                        class="tw-chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap"
+                        data-interval="1wk">1W</button>
+                    <button onclick="window.TWStockTab.changeChartInterval('1mo')"
+                        class="tw-chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap"
+                        data-interval="1mo">1M</button>
+                </div>
+                <div class="flex items-center gap-2 text-xs text-textMuted ml-4 px-2 py-1 bg-surface/30 rounded-lg">
+                    <i data-lucide="info" class="w-3 h-3"></i> 盤後延遲資料 (yfinance)
+                </div>
+                <!-- OHLCV Info Display -->
+                <div id="tw-ohlcv-info" class="flex flex-wrap items-center gap-2 text-[10px] font-mono ml-auto">
+                    <span class="text-textMuted">O:<span id="tw-info-open" class="text-secondary ml-0.5">-</span></span>
+                    <span class="text-textMuted">H:<span id="tw-info-high" class="text-success ml-0.5">-</span></span>
+                    <span class="text-textMuted">L:<span id="tw-info-low" class="text-danger ml-0.5">-</span></span>
+                    <span class="text-textMuted">C:<span id="tw-info-close"
+                            class="text-secondary ml-0.5">-</span></span>
+                    <span class="text-textMuted">Vol:<span id="tw-info-volume"
+                            class="text-primary ml-0.5">-</span></span>
+                </div>
+            </div>
+        </div>
+        <!-- Chart Area -->
+        <div class="w-full bg-surface rounded-3xl border border-white/5 overflow-hidden">
+            <div id="twstock-chart-container" class="h-[52vh] w-full relative"></div>
+            <div id="twstock-volume-container" class="w-full h-40 border-t border-white/5"></div>
+        </div>
+    </div>
+
+    <!-- US Stock Chart Modal -->
+    <div id="usstock-chart-section"
+        class="hidden fixed inset-0 z-[60] bg-background/95 backdrop-blur overflow-y-auto p-4 md:p-6">
+        <div class="flex flex-col gap-3 mb-3">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <h3 id="usstock-chart-title" class="text-lg md:text-xl font-serif text-secondary">US Stock Chart</h3>
+                    <span id="usstock-chart-updated" class="text-[10px] text-textMuted opacity-60"></span>
+                </div>
+                <button onclick="window.USStockTab.closeChart()"
+                    class="w-10 h-10 rounded-full bg-surface flex items-center justify-center text-textMuted hover:text-secondary transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <!-- Toolbar -->
+            <div class="flex flex-wrap items-center gap-2">
+                <div class="flex gap-0.5 bg-surface/50 p-1 rounded-xl overflow-x-auto">
+                    <button onclick="window.USStockTab.changeChartInterval('1d')"
+                        class="us-chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap bg-white/10 text-primary"
+                        data-interval="1d">1D</button>
+                    <button onclick="window.USStockTab.changeChartInterval('1wk')"
+                        class="us-chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap"
+                        data-interval="1wk">1W</button>
+                    <button onclick="window.USStockTab.changeChartInterval('1mo')"
+                        class="us-chart-interval-btn px-2 py-1 text-[10px] rounded-lg text-textMuted hover:bg-white/5 transition whitespace-nowrap"
+                        data-interval="1mo">1M</button>
+                </div>
+                <div class="flex items-center gap-2 text-xs text-textMuted ml-4 px-2 py-1 bg-surface/30 rounded-lg">
+                    <i data-lucide="info" class="w-3 h-3"></i> 盤後延遲資料 (yfinance)
+                </div>
+                <div id="us-ohlcv-info" class="flex flex-wrap items-center gap-2 text-[10px] font-mono ml-auto">
+                    <span class="text-textMuted">O:<span id="us-info-open" class="text-secondary ml-0.5">-</span></span>
+                    <span class="text-textMuted">H:<span id="us-info-high" class="text-success ml-0.5">-</span></span>
+                    <span class="text-textMuted">L:<span id="us-info-low" class="text-danger ml-0.5">-</span></span>
+                    <span class="text-textMuted">C:<span id="us-info-close" class="text-secondary ml-0.5">-</span></span>
+                    <span class="text-textMuted">Vol:<span id="us-info-volume" class="text-primary ml-0.5">-</span></span>
+                </div>
+            </div>
+        </div>
+        <div class="w-full bg-surface rounded-3xl border border-white/5 overflow-hidden">
+            <div id="usstock-chart-container" class="h-[52vh] w-full relative"></div>
+            <div id="usstock-volume-container" class="w-full h-40 border-t border-white/5"></div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- API Key Modal -->
+    <div id="apikey-modal" role="dialog" aria-modal="true" aria-labelledby="apikey-modal-title"
+        class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-6">
+        <div class="bg-surface w-full max-w-md p-8 rounded-[2.5rem] border border-white/5 shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h3 id="apikey-modal-title" class="font-serif text-xl text-secondary" data-i18n="modals.apiKey.title">Connect OKX</h3>
+                <button onclick="closeApiKeyModal()" aria-label="關閉"
+                    class="w-8 h-8 rounded-full bg-background flex items-center justify-center text-textMuted hover:text-secondary transition"><i
+                        data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            <form id="apikey-form" onsubmit="saveApiKeys(event)" class="space-y-4">
+                <div>
+                    <label for="input-api-key" class="sr-only">API Key</label>
+                    <input type="text" id="input-api-key" placeholder="API Key" data-i18n="modals.apiKey.apiKeyPlaceholder"
+                        data-i18n-attr="placeholder"
+                        class="w-full bg-background border border-white/5 rounded-2xl p-4 text-secondary outline-none focus:border-primary/50 transition">
+                </div>
+                <div>
+                    <label for="input-secret-key" class="sr-only">Secret Key</label>
+                    <input type="password" id="input-secret-key" placeholder="Secret Key"
+                        data-i18n="modals.apiKey.secretKeyPlaceholder" data-i18n-attr="placeholder"
+                        class="w-full bg-background border border-white/5 rounded-2xl p-4 text-secondary outline-none focus:border-primary/50 transition">
+                </div>
+                <div>
+                    <label for="input-passphrase" class="sr-only">Passphrase</label>
+                    <input type="password" id="input-passphrase" placeholder="Passphrase"
+                        data-i18n="modals.apiKey.passphrasePlaceholder" data-i18n-attr="placeholder"
+                        class="w-full bg-background border border-white/5 rounded-2xl p-4 text-secondary outline-none focus:border-primary/50 transition">
+                </div>
+                <button type="submit"
+                    class="w-full bg-secondary hover:bg-white text-background font-bold py-4 rounded-2xl transition"
+                    data-i18n="modals.apiKey.secureConnect">Secure
+                    Connect</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Global Filter Modal (Re-styled) -->
+    <div id="global-filter-modal" role="dialog" aria-modal="true" aria-labelledby="global-filter-modal-title"
+        class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4">
+        <div
+            class="bg-surface w-full max-w-md h-[80vh] flex flex-col rounded-[2.5rem] border border-white/5 shadow-2xl overflow-hidden">
+            <div class="p-6 border-b border-white/5 flex justify-between items-center">
+                <h3 id="global-filter-modal-title" class="font-serif text-xl text-secondary" data-i18n="modals.filter.title">Asset Filter</h3>
+                <button onclick="document.getElementById('global-filter-modal').classList.add('hidden')" aria-label="關閉"
+                    class="w-8 h-8 rounded-full bg-background flex items-center justify-center text-textMuted hover:text-secondary"><i
+                        data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+
+            <div class="p-4 bg-background/50 space-y-3">
+                <div>
+                    <label for="symbol-search" class="sr-only">搜尋代幣</label>
+                    <input type="text" id="symbol-search" placeholder="Search (e.g. BTC)..."
+                        data-i18n="modals.filter.searchPlaceholder" data-i18n-attr="placeholder"
+                        class="w-full bg-background border border-white/5 rounded-2xl px-5 py-3 text-secondary focus:border-primary/50 outline-none transition"
+                        oninput="renderSymbolList(allMarketSymbols)">
+                </div>
+                <div class="flex gap-2">
+                    <label for="filter-exchange-select" class="sr-only">選擇交易所</label>
+                    <select id="filter-exchange-select" onchange="switchFilterExchange(this.value)"
+                        class="flex-1 bg-background border border-white/5 rounded-xl px-3 py-2 text-xs text-textMuted outline-none">
+                        <option value="okx">OKX</option>
+                    </select>
+
+                </div>
+            </div>
+
+            <div id="symbol-list-container" class="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar"></div>
+
+            <div class="p-6 border-t border-white/5">
+                <button onclick="applyGlobalFilter()"
+                    class="w-full bg-primary text-background font-bold py-4 rounded-2xl transition shadow-lg shadow-primary/20">
+                    <span data-i18n="modals.filter.applyFilter">Apply Filter</span> (<span
+                        id="selected-count-modal">0</span>)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- News Modal -->
+    <div id="news-modal"
+        class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-6">
+        <div
+            class="bg-surface w-full max-w-md max-h-[80vh] flex flex-col rounded-[2.5rem] border border-white/5 shadow-2xl">
+            <div class="p-6 border-b border-white/5 flex justify-between items-center shrink-0">
+                <h3 class="font-serif text-xl text-secondary flex items-center gap-2">
+                    <span id="news-modal-symbol" class="text-primary">BTC</span> News
+                </h3>
+                <button onclick="document.getElementById('news-modal').classList.add('hidden')"
+                    class="w-8 h-8 rounded-full bg-background flex items-center justify-center text-textMuted hover:text-secondary transition"><i
+                        data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            <div id="news-list-content" class="p-6 overflow-y-auto custom-scrollbar space-y-3">
+                <!-- News items injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- API Test Modal -->
+    <div id="api-test-modal"
+        class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[80] hidden flex items-center justify-center p-6">
+        <div class="bg-surface w-full max-w-sm p-8 rounded-[2.5rem] border border-success/20 shadow-2xl">
+            <div
+                class="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-6 text-success">
+                <i data-lucide="check" class="w-8 h-8"></i>
+            </div>
+            <h3 class="text-center font-serif text-xl text-secondary mb-2" data-i18n="modals.apiTest.connected">
+                Connected</h3>
+            <p class="text-center text-textMuted text-sm mb-6" data-i18n="modals.apiTest.successMessage">AI brain is now
+                online.</p>
+            <button onclick="document.getElementById('api-test-modal').classList.add('hidden')"
+                class="w-full py-3 bg-secondary text-background font-bold rounded-2xl"
+                data-i18n="common.continue">Continue</button>
+        </div>
+    </div>
+
+    <!-- Confirm Dialog Modal -->
+    <div id="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title" aria-describedby="confirm-modal-message"
+        class="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-6">
+        <div
+            class="bg-surface w-full max-w-sm p-8 rounded-[2.5rem] border border-white/5 shadow-2xl animate-fade-in-up">
+            <!-- Icon -->
+            <div id="confirm-modal-icon" class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
+                <i data-lucide="alert-triangle" class="w-8 h-8"></i>
+            </div>
+            <!-- Title -->
+            <h3 id="confirm-modal-title" class="text-center font-serif text-xl text-secondary mb-2"
+                data-i18n="modals.confirm.defaultTitle">確認操作</h3>
+            <!-- Message -->
+            <p id="confirm-modal-message" class="text-center text-textMuted text-sm mb-8 whitespace-pre-line"
+                data-i18n="modals.confirm.defaultMessage">確定要執行此操作嗎？
+            </p>
+            <!-- Buttons -->
+            <div id="confirm-modal-buttons" class="flex gap-3">
+                <button id="confirm-modal-cancel"
+                    class="flex-1 py-3 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-2xl transition border border-white/5"
+                    data-i18n="common.cancel">
+                    取消
+                </button>
+                <button id="confirm-modal-confirm"
+                    class="flex-1 py-3 bg-danger hover:brightness-110 text-white font-bold rounded-2xl transition shadow-lg"
+                    data-i18n="common.confirm">
+                    確認
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container - 桌面右上角，移动端底部中央 -->
+    <div id="toast-container" role="status" aria-live="polite" aria-atomic="true" class="fixed z-[110] flex flex-col gap-3 pointer-events-none
+        bottom-28 left-4 right-4 items-center
+        md:bottom-auto md:top-24 md:left-auto md:right-4 md:items-end">
+        <!-- Toasts will be injected here -->
+    </div>
+
+    <!-- Login Modal -->
+    <div id="login-modal" role="dialog" aria-modal="true" aria-labelledby="login-modal-title"
+        class="fixed inset-0 bg-background/95 backdrop-blur-xl z-[90] overflow-y-auto flex justify-center py-10 px-6 hidden">
+        <div class="bg-surface w-full max-w-md p-8 rounded-[2.5rem] border border-white/10 shadow-2xl my-auto">
+            <!-- Header -->
+            <div class="text-center mb-8">
+                <div class="w-24 h-24 mx-auto mb-4">
+                    <img src="/static/img/title_icon.png" alt="CryptoMind Logo"
+                        class="w-full h-full object-contain drop-shadow-lg">
+                </div>
+                <h2 id="login-modal-title" class="font-serif text-2xl text-secondary mb-2" data-i18n="login.welcomeTitle">Welcome to CryptoMind
+                </h2>
+                <p class="text-textMuted text-sm" data-i18n="login.welcomeSubtitle">Connect your wallet or login to
+                    continue</p>
+            </div>
+
+            <!-- Pi Network Login -->
+            <div id="pi-login-area">
+                <!-- 按鈕：默認隱藏，Pi Browser 中才顯示 -->
+                <button id="pi-login-btn" onclick="safePiLogin()"
+                    class="w-full py-4 bg-[#8B5CF6] hover:bg-[#7C3AED] text-white font-bold rounded-2xl mb-4 flex items-center justify-center gap-3 transition shadow-lg"
+                    style="display:none;">
+                    <i data-lucide="wallet" class="w-6 h-6"></i> <span
+                        data-i18n="login.connectPiWallet">Connect Pi Wallet</span>
+                </button>
+                <!-- 非 Pi Browser 提示：默認顯示 -->
+                <div id="not-pi-browser-msg" class="text-center py-4">
+                    <!-- 標題 -->
+                    <p class="text-secondary font-bold text-lg mb-1" data-i18n="login.usePiBrowser">請使用 Pi Browser 開啟</p>
+                    <p class="text-textMuted text-sm mb-5" data-i18n="login.usePiBrowserDesc">Please open this app in Pi Browser</p>
+
+                    <!-- 步驟卡片 -->
+                    <div class="space-y-2 text-left mb-5">
+                        <div class="flex items-center gap-3 bg-surfaceHighlight rounded-xl p-3">
+                            <div class="w-7 h-7 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center flex-shrink-0">
+                                <span class="text-primary text-xs font-bold">1</span>
+                            </div>
+                            <span class="text-secondary text-sm" data-i18n="login.step1">開啟 Pi Browser App</span>
+                        </div>
+                        <div class="flex items-center gap-3 bg-surfaceHighlight rounded-xl p-3">
+                            <div class="w-7 h-7 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center flex-shrink-0">
+                                <span class="text-primary text-xs font-bold">2</span>
+                            </div>
+                            <span class="text-secondary text-sm" data-i18n="login.step2">在網址列輸入本應用網址</span>
+                        </div>
+                        <div class="flex items-center gap-3 bg-surfaceHighlight rounded-xl p-3">
+                            <div class="w-7 h-7 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center flex-shrink-0">
+                                <span class="text-primary text-xs font-bold">3</span>
+                            </div>
+                            <span class="text-secondary text-sm" data-i18n="login.step3">點擊 Connect Pi Wallet 登入</span>
+                        </div>
+                    </div>
+
+                    <!-- 複製網址按鈕 -->
+                    <button onclick="(function(btn){
+                        navigator.clipboard.writeText(window.location.href).then(function(){
+                            btn.innerHTML='<svg xmlns=\'http://www.w3.org/2000/svg\' class=\'w-4 h-4\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\'><polyline points=\'20 6 9 17 4 12\'></polyline></svg> 已複製！';
+                            btn.classList.add('bg-accent/30','border-accent/50');
+                            setTimeout(function(){
+                                btn.innerHTML='<svg xmlns=\'http://www.w3.org/2000/svg\' class=\'w-4 h-4\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\'><rect x=\'9\' y=\'9\' width=\'13\' height=\'13\' rx=\'2\' ry=\'2\'></rect><path d=\'M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1\'></path></svg> 複製網址到 Pi Browser';
+                                btn.classList.remove('bg-accent/30','border-accent/50');
+                            },2000);
+                        });
+                    })(this)"
+                        class="w-full py-3 flex items-center justify-center gap-2 rounded-2xl border border-accent/30 bg-accent/10 hover:bg-accent/20 text-accent text-sm font-semibold transition-all">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        複製網址到 Pi Browser
+                    </button>
+                </div>
+            </div>
+            <script>
+                // Pi Browser Detection: 分兩階段
+                // 第一階段：確認 Pi SDK 已載入（最多等 3 秒）
+                // 第二階段：用 nativeFeaturesList 驗證是否真正在 Pi Browser（最多再等 1.5 秒）
+                // nativeFeaturesList 是 Pi Browser 專屬 native bridge，普通瀏覽器不具備
+                (async function () {
+                    // 階段一：等待 Pi SDK script 載入
+                    let attempts = 0;
+                    const maxAttempts = 30;
+                    const hasPiSDK = await new Promise((resolve) => {
+                        const check = () => {
+                            const detected = typeof window.Pi !== 'undefined' &&
+                                window.Pi !== null &&
+                                typeof window.Pi.authenticate === 'function' &&
+                                typeof window.Pi.init === 'function';
+                            if (detected) { resolve(true); return; }
+                            attempts++;
+                            if (attempts < maxAttempts) setTimeout(check, 100);
+                            else resolve(false);
+                        };
+                        check();
+                    });
+
+                    if (!hasPiSDK) {
+                        console.warn('⚠️ Pi SDK not detected after 3 seconds.');
+                        return; // 保持預設「請使用 Pi Browser」提示
+                    }
+
+                    // 階段二：嘗試使用 nativeFeaturesList 做額外驗證（可選）
+                    // 如果可用就使用，不可用也沒關係，因為 Pi SDK 已經存在
+                    // 這與 auth.js 的 verifyPiBrowserEnvironment() 邏輯一致
+
+                    try {
+                        Pi.init({ version: "2.0", sandbox: false });
+                        window.Pi._initialized = true;
+                    } catch (initError) {
+                        console.warn('⚠️ Pi SDK init failed:', initError.message);
+                    }
+
+                    if (typeof window.Pi !== 'undefined' && typeof window.Pi.nativeFeaturesList === 'function') {
+                        // 有 nativeFeaturesList，做額外驗證
+                        try {
+                            const features = await Promise.race([
+                                Pi.nativeFeaturesList(),
+                                new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 1500))
+                            ]);
+                            console.log('✅ Pi Browser verified (nativeFeaturesList), features:', features);
+                        } catch (e) {
+                            console.warn('⚠️ nativeFeaturesList failed but Pi SDK exists, allowing login:', e.message);
+                        }
+                    } else if (typeof window.Pi !== 'undefined') {
+                        console.log('ℹ️ nativeFeaturesList unavailable, but Pi SDK exists - allowing login attempt');
+                    } else {
+                        throw new Error("Pi SDK object not found after init");
+                    }
+
+                    // Pi SDK 存在，顯示登入按鈕讓用戶嘗試
+                    // 真正的認證會由 Pi.authenticate() 處理
+                    console.log('✅ Pi SDK loaded - showing login button');
+                    document.getElementById('pi-login-btn').style.display = 'flex';
+                    document.getElementById('not-pi-browser-msg').style.display = 'none';
+                })();
+            </script>
+
+            <!-- 測試模式登入按鈕：僅在 TEST_MODE 時顯示 -->
+            <div id="dev-login-area" style="display:none;" class="mt-2">
+                <button id="dev-login-btn"
+                    onclick="window.AuthManager && AuthManager.loginAsMockUser().then(r => r.success && window.location.reload())"
+                    class="w-full py-4 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold rounded-2xl flex items-center justify-center gap-3 transition border border-amber-500/30 shadow-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    </svg>
+                    Test Mode Login
+                </button>
+                <p class="text-[10px] text-amber-500/50 text-center mt-2">僅測試環境可用 · Dev only</p>
+            </div>
+            <script>
+                // 測試模式偵測：若啟用則顯示 dev login 按鈕，並隱藏 Pi 錢包區域
+                fetch('/api/config').then(r => r.json()).then(cfg => {
+                    if (cfg.test_mode) {
+                        // 顯示測試模式登入區域
+                        const devArea = document.getElementById('dev-login-area');
+                        if (devArea) devArea.style.display = 'block';
+
+                        // 隱藏 Pi 錢包區域（測試模式不需要 Pi Browser）
+                        const piArea = document.getElementById('pi-login-area');
+                        if (piArea) piArea.style.display = 'none';
+
+                        // 更新副標題文字
+                        const subtitle = document.querySelector('#login-modal p[data-i18n="login.welcomeSubtitle"]');
+                        if (subtitle) subtitle.textContent = 'Test mode enabled - click below to login';
+                    }
+                }).catch(() => { });
+            </script>
+
+            <!-- ============================================================
+                 EMAIL LOGIN DISABLED - Pi SDK Exclusive Authentication
+                 官方要求：只允許 Pi SDK 登入，不允許其他登入方式
+                 如需恢復，取消以下註解即可
+            ============================================================ -->
+            <!--
+            <div class="flex items-center gap-4 my-6">
+                <div class="flex-1 h-px bg-white/10"></div>
+                <span class="text-xs text-textMuted uppercase tracking-wider">or continue with email</span>
+                <div class="flex-1 h-px bg-white/10"></div>
+            </div>
+
+            <div class="flex p-1 bg-background/50 rounded-xl mb-6">
+                <button onclick="toggleAuthMode('login')" id="tab-login" class="flex-1 py-2 rounded-lg text-sm font-bold transition bg-surfaceHighlight text-secondary shadow-sm">Login</button>
+                <button onclick="toggleAuthMode('register')" id="tab-register" class="flex-1 py-2 rounded-lg text-sm font-bold text-textMuted transition hover:text-secondary">Register</button>
+            </div>
+
+            <div id="form-login" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Username</label>
+                    <input type="text" id="login-username" placeholder="Enter username"
+                        class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Password</label>
+                    <input type="password" id="login-password" placeholder="Enter password"
+                        class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition"
+                        onkeypress="if(event.key === 'Enter') handleCredentialLogin()">
+                </div>
+                <button onclick="handleCredentialLogin()" class="w-full py-3 bg-surfaceHighlight hover:bg-white/10 text-secondary font-bold rounded-xl transition border border-white/5">
+                    Login
+                </button>
+                <div class="text-center">
+                    <button onclick="showForgotPasswordModal()" class="text-sm text-primary hover:text-accent transition">
+                        Forgot Password?
+                    </button>
+                </div>
+            </div>
+
+            <div id="form-register" class="space-y-4 hidden">
+                <div>
+                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Username</label>
+                    <input type="text" id="reg-username" placeholder="At least 6 characters"
+                           class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition"
+                           minlength="6"
+                           onkeypress="if(event.key === 'Enter') checkUsernameAvailability()"
+                           onblur="checkUsernameAvailability()">
+                    <p id="reg-username-msg" class="text-xs mt-1 min-h-[1.25rem] transition-colors duration-300 text-textMuted/60">At least 6 characters</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Email <span class="text-danger">*</span></label>
+                    <input type="email" id="reg-email" placeholder="name@example.com"
+                           class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition"
+                           onblur="checkEmailAvailability()" required>
+                    <p id="reg-email-msg" class="text-xs text-textMuted/60 mt-1">Required for password recovery</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Password</label>
+                    <input type="password" id="reg-password" placeholder="8-15 characters" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition" minlength="8" maxlength="15">
+                    <p class="text-xs text-textMuted/60 mt-1">8-15 characters required</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Confirm Password</label>
+                    <input type="password" id="reg-confirm-password" placeholder="Confirm password" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition" minlength="8" maxlength="15">
+                </div>
+                <button onclick="handleRegister()" class="w-full py-3 bg-primary text-background font-bold rounded-xl transition hover:brightness-110 shadow-lg shadow-primary/20">
+                    Create Account
+                </button>
+            </div>
+            -->
+
+        </div>
+    </div>
+
+    <!-- ============================================================
+         FORGOT/RESET PASSWORD DISABLED - Pi SDK Exclusive Authentication
+    ============================================================ -->
+    <!--
+    <div id="forgot-password-modal" class="fixed inset-0 bg-background/95 backdrop-blur-xl z-[95] hidden flex items-center justify-center p-6">
+        <div class="bg-surface w-full max-w-md p-8 rounded-[2.5rem] border border-white/10 shadow-2xl">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 mx-auto mb-4 bg-primary/10 rounded-full flex items-center justify-center">
+                    <i data-lucide="key" class="w-8 h-8 text-primary"></i>
+                </div>
+                <h2 class="font-serif text-2xl text-secondary mb-2">Forgot Password</h2>
+                <p class="text-textMuted text-sm">Enter your email to receive a reset link</p>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Email Address</label>
+                    <input type="email" id="forgot-email" placeholder="name@example.com"
+                        class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition"
+                        onkeypress="if(event.key === 'Enter') handleForgotPassword()">
+                </div>
+                <button onclick="handleForgotPassword()" id="forgot-submit-btn" class="w-full py-3 bg-primary text-background font-bold rounded-xl transition hover:brightness-110 shadow-lg shadow-primary/20">
+                    Send Reset Link
+                </button>
+                <button onclick="hideForgotPasswordModal()" class="w-full py-3 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-xl transition border border-white/5">
+                    Back to Login
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="reset-password-modal" class="fixed inset-0 bg-background/95 backdrop-blur-xl z-[95] hidden flex items-center justify-center p-6">
+        <div class="bg-surface w-full max-w-md p-8 rounded-[2.5rem] border border-white/10 shadow-2xl">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 mx-auto mb-4 bg-success/10 rounded-full flex items-center justify-center">
+                    <i data-lucide="lock" class="w-8 h-8 text-success"></i>
+                </div>
+                <h2 class="font-serif text-2xl text-secondary mb-2">Reset Password</h2>
+                <p class="text-textMuted text-sm">Enter your new password</p>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">New Password</label>
+                    <input type="password" id="reset-new-password" placeholder="Enter new password"
+                        class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Confirm Password</label>
+                    <input type="password" id="reset-confirm-password" placeholder="Confirm new password"
+                        class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition"
+                        onkeypress="if(event.key === 'Enter') handleResetPassword()">
+                </div>
+                <button onclick="handleResetPassword()" id="reset-submit-btn" class="w-full py-3 bg-success text-background font-bold rounded-xl transition hover:brightness-110 shadow-lg shadow-success/20">
+                    Reset Password
+                </button>
+                <button onclick="hideResetPasswordModal()" class="w-full py-3 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-xl transition border border-white/5">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+    -->
+
+    <!-- Report Modal -->
+    <div id="report-modal"
+        class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[80] hidden flex items-center justify-center p-4">
+        <div class="bg-surface w-full max-w-sm flex flex-col rounded-[2rem] border border-white/5 shadow-2xl">
+            <div class="p-6 border-b border-white/5 flex justify-between items-center shrink-0">
+                <h3 class="font-serif text-xl text-secondary" data-i18n="safety.gov.reportTitle">Report Content</h3>
+                <button onclick="ForumApp.closeReportModal()"
+                    class="w-8 h-8 rounded-full bg-background flex items-center justify-center text-textMuted hover:text-secondary transition">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="report-content-type">
+                <input type="hidden" id="report-content-id">
+
+                <div>
+                    <div id="report-error"
+                        class="hidden bg-danger/10 border border-danger/20 text-danger text-sm p-3 rounded-xl mb-3 flex items-start gap-2">
+                        <i data-lucide="alert-circle" class="w-4 h-4 mt-0.5 shrink-0"></i>
+                        <span id="report-error-msg"></span>
+                    </div>
+                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2"
+                        data-i18n="safety.gov.violationType">Violation Type</label>
+                    <select id="report-type"
+                        class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition text-sm">
+                        <option value="" data-i18n="safety.submit.selectType">Select type...</option>
+                        <option value="spam" data-i18n="safety.gov.spam">Spam</option>
+                        <option value="harassment" data-i18n="safety.gov.harassment">Harassment</option>
+                        <option value="misinformation" data-i18n="safety.gov.misinformation">Misinformation</option>
+                        <option value="scam" data-i18n="safety.gov.scam">Scam</option>
+                        <option value="illegal" data-i18n="safety.gov.illegal">Illegal Content</option>
+                        <option value="other" data-i18n="safety.gov.other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2"><span
+                            data-i18n="safety.submit.description">Description</span> <span
+                            class="text-textMuted/50">(Optional)</span></label>
+                    <textarea id="report-description" rows="3" placeholder="Describe the violation..."
+                        data-i18n="safety.gov.describeViolation" data-i18n-attr="placeholder"
+                        class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition text-sm resize-none"></textarea>
+                </div>
+                <button onclick="ForumApp.submitReport()" id="btn-submit-report"
+                    class="w-full py-3 bg-danger hover:brightness-110 text-white font-bold rounded-xl transition shadow-lg flex items-center justify-center gap-2">
+                    <i data-lucide="flag" class="w-4 h-4"></i> <span data-i18n="safety.gov.submitReport">Submit
+                        Report</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Price Alert Modal -->
+    <!-- Price Alert Modal -->
+    <div id="alert-modal" class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-6">
+        <div class="bg-surface w-full max-w-sm rounded-[2.5rem] border border-white/5 shadow-2xl overflow-hidden">
+            <!-- Header -->
+            <div class="flex justify-between items-center px-6 pt-6 pb-4 border-b border-white/5">
+                <h3 class="font-serif text-lg text-secondary" data-i18n="modals.priceAlert.title">設定價格警報</h3>
+                <button onclick="closeAlertModal()"
+                        class="w-8 h-8 rounded-full bg-background flex items-center justify-center text-textMuted hover:text-secondary transition">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <!-- Symbol label -->
+            <div class="px-6 pt-4">
+                <p id="alert-symbol-label" class="text-primary text-sm font-mono"></p>
+            </div>
+            <!-- Form -->
+            <div class="px-6 py-4 space-y-4">
+                <div>
+                    <label class="text-textMuted text-xs mb-1.5 block" data-i18n="modals.priceAlert.condition">條件</label>
+                    <select id="alert-condition"
+                            class="w-full bg-background border border-white/5 rounded-2xl px-4 py-3 text-secondary text-sm outline-none focus:border-primary/50 transition">
+                        <option value="above" data-i18n="modals.priceAlert.above">價格高於</option>
+                        <option value="below" data-i18n="modals.priceAlert.below">價格低於</option>
+                        <option value="change_pct_up" data-i18n="modals.priceAlert.changePctUp">漲幅達 (%)</option>
+                        <option value="change_pct_down" data-i18n="modals.priceAlert.changePctDown">跌幅達 (%)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-textMuted text-xs mb-1.5 block" data-i18n="modals.priceAlert.targetLabel">目標值</label>
+                    <input type="number" id="alert-target" step="0.01"
+                           data-i18n-attr="placeholder" data-i18n="modals.priceAlert.targetPlaceholder"
+                           placeholder="輸入目標值"
+                           class="w-full bg-background border border-white/5 rounded-2xl px-4 py-3 text-secondary text-sm outline-none focus:border-primary/50 transition" />
+                </div>
+                <div class="flex items-center gap-3">
+                    <input type="checkbox" id="alert-repeat"
+                           class="w-4 h-4 rounded accent-primary" />
+                    <label for="alert-repeat" class="text-textMuted text-sm cursor-pointer"
+                           data-i18n="modals.priceAlert.repeat">持續通知（觸發後不刪除）</label>
+                </div>
+            </div>
+            <!-- Footer -->
+            <div class="flex gap-3 px-6 pb-6">
+                <button onclick="submitAlert()"
+                        class="flex-1 bg-primary hover:brightness-110 text-background font-semibold py-3 rounded-2xl text-sm transition shadow-lg shadow-primary/20"
+                        data-i18n="modals.priceAlert.confirm">確認</button>
+                <button onclick="closeAlertModal()"
+                        class="flex-1 bg-background hover:bg-surfaceHighlight text-textMuted hover:text-secondary border border-white/5 py-3 rounded-2xl text-sm transition"
+                        data-i18n="modals.priceAlert.cancel">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script defer src="/static/js/app.js?v=52" onerror="alert('app.js 載入失敗')"></script>
+    <script defer src="/static/js/apiKeyManager.js?v=47" onerror="alert('apiKeyManager.js 載入失敗')"></script>
+    <script defer src="/static/js/auth.js?v=56" onerror="alert('auth.js 載入失敗')"></script>
+    <script defer src="/static/js/okxKeyManager.js?v=47"></script>
+    <script defer src="/static/js/components.js?v=76"></script>
+    <script defer src="/static/js/notification-service.js?v=4"></script>
+    <script defer src="/static/js/components/NotificationBell.js?v=2"></script>
+    <script defer src="/static/js/components/NotificationPanel.js?v=4"></script>
+    <script defer src="/static/js/llmSettings.js?v=50"></script>
+    <script defer src="/static/js/toolSettings.js?v=2"></script>
+    <script defer src="/static/js/filter.js?v=48"></script>
+    <script defer src="/static/js/chat-state.js?v=1"></script>
+    <script defer src="/static/js/chat-sessions.js?v=1"></script>
+    <script defer src="/static/js/chat-stream-ui.js?v=1"></script>
+    <script defer src="/static/js/chat-hitl.js?v=1"></script>
+    <script defer src="/static/js/chat-analysis.js?v=1"></script>
+    <script defer src="/static/js/chat-history.js?v=1"></script>
+    <script defer src="/static/js/chat-init.js?v=1"></script>
+    <script defer src="/static/js/friends.js?v=5"></script>
+    <script defer src="/static/js/messages.js?v=2"></script>
+    <script defer src="/static/js/nav-config.js?v=7"></script>
+    <script defer src="/static/js/twstock.js?v=9"></script>
+    <script defer src="/static/js/usstock.js?v=9"></script>
+    <script defer src="/static/js/market-screener.js?v=1"></script>
+    <script defer src="/static/js/market-chart.js?v=1"></script>
+    <script defer src="/static/js/market-ws.js?v=1"></script>
+    <script defer src="/static/js/assets.js?v=47"></script>
+    <script defer src="/static/js/pulse.js?v=52"></script>
+    <script defer src="/static/js/trade.js?v=48"></script>
+    <script defer src="/static/js/forum-config.js?v=1"></script>
+    <script defer src="/static/js/forum-api.js?v=1"></script>
+    <script defer src="/static/js/forum-app.js?v=1"></script>
+    <script defer src="/static/js/wallet.js?v=47"></script>
+    <script defer src="/static/scam-tracker/js/scam-tracker.js?v=48"></script>
+    <script defer src="/static/js/safetyTab.js?v=52"></script>
+    <script defer src="/static/js/admin.js?v=2"></script>
+    <script defer src="/static/js/admin-stats.js?v=1"></script>
+    <script>
+        lucide.createIcons();
+
+        // Track current active tab to return to when closing sidebar
+        window.currentActiveTab = 'chat'; // Default to chat, make it global so chat.js can access it
+
+        // Navigation Logic (Updated with Smooth Transitions)
+        async function switchTab(tabId, fromPopState = false) {
+            // [Security] Strict Login Check
+            if (window.AuthManager && !window.AuthManager.isLoggedIn()) {
+                const modal = document.getElementById('login-modal');
+                if (modal && modal.classList.contains('hidden')) {
+                    console.warn('⚠️ Access denied: User not logged in. Showing login modal.');
+                    modal.classList.remove('hidden');
+                    // Optional: prevent switching if we want to lock them on a specific tab, 
+                    // but showing the modal overlay is usually enough.
+                }
+            }
+
+            const currentTab = document.querySelector('.tab-content:not(.hidden)');
+            const targetTab = document.getElementById(tabId + '-tab');
+
+            if (currentTab && currentTab.id !== tabId + '-tab') {
+                // 1. 先讓當前頁面淡出
+                currentTab.style.opacity = '0';
+                currentTab.style.transform = 'translateY(-5px)';
+                currentTab.style.transition = 'all 0.2s ease-in';
+
+                return new Promise((resolve) => {
+                    setTimeout(async () => {
+                        await executeTabSwitch(tabId, fromPopState);
+                        resolve();
+                    }, 150);
+                });
+            } else {
+                return await executeTabSwitch(tabId, fromPopState);
+            }
+        }
+
+        // 監聽瀏覽器返回/前進按鈕
+        window.addEventListener('popstate', (event) => {
+            const validTabs = ['chat', 'crypto', 'twstock', 'usstock', 'wallet', 'assets', 'friends', 'forum', 'safety', 'settings', 'admin'];
+            let targetTab = 'chat';
+
+            if (event.state && event.state.tab) {
+                targetTab = event.state.tab;
+            } else if (window.location.hash) {
+                const hashTab = window.location.hash.replace('#', '');
+                if (validTabs.includes(hashTab)) {
+                    targetTab = hashTab;
+                }
+            }
+
+            // 使用 fromPopState=true 避免再次 pushState
+            switchTab(targetTab, true);
+        });
+
+        // 跳轉到論壇（保存當前 tab 以便返回）
+        function navigateToForum() {
+            // 保存當前 tab 到 sessionStorage
+            const currentTab = localStorage.getItem('activeTab') || 'chat';
+            sessionStorage.setItem('returnToTab', currentTab);
+            smoothNavigate('/static/forum/index.html');
+        }
+
+        async function executeTabSwitch(tabId, fromPopState = false) {
+            // Check if the target tab is enabled in user preferences
+            if (window.NavPreferences && !NavPreferences.isItemEnabled(tabId)) {
+                console.log(`Tab '${tabId}' is disabled, redirecting to first enabled tab`);
+                const enabledItems = NavPreferences.getEnabledItems();
+                if (enabledItems.length > 0) {
+                    tabId = enabledItems[0].id;
+                }
+            }
+
+            localStorage.setItem('activeTab', tabId);
+            currentActiveTab = tabId; // Update current active tab
+
+            // 更新瀏覽器歷史記錄（只有非 popstate 觸發時才 push）
+            if (!fromPopState && window.location.hash !== '#' + tabId) {
+                history.pushState({ tab: tabId }, '', '#' + tabId);
+            }
+
+            // Close any open stock chart overlays (they are fixed-position, not inside tab DOM)
+            if (window.TWStockTab && typeof window.TWStockTab.closeTwChart === 'function') window.TWStockTab.closeTwChart();
+            if (window.USStockTab && typeof window.USStockTab.closeChart === 'function') window.USStockTab.closeChart();
+            // Close price alert modal if open
+            if (typeof window.closeAlertModal === 'function') window.closeAlertModal();
+
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(el => {
+                el.classList.add('hidden');
+                el.style.opacity = '';
+                el.style.transform = '';
+                el.style.transition = '';
+            });
+
+            // Dynamic Component Injection (Lazy Loading)
+            if (['crypto', 'twstock', 'usstock', 'forum', 'settings', 'friends', 'safety', 'admin'].includes(tabId)) {
+                if (window.Components && typeof window.Components.inject === 'function') {
+                    await window.Components.inject(tabId);
+                }
+            }
+
+            // [Sidebar Visibility Logic]
+            // Show chat sidebar only in analysis/research tabs where users might want to chat
+            // Utility/admin tabs (wallet, assets, friends, forum, safety, settings, admin) don't need it
+            const tabsWithSidebar = ['chat', 'crypto', 'twstock', 'usstock'];
+            const globalSidebar = document.getElementById('chat-sidebar');
+            const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+            if (globalSidebar) {
+                if (tabsWithSidebar.includes(tabId)) {
+                    // Show sidebar in analysis tabs - users can ask AI about what they see
+                    globalSidebar.style.display = '';
+                    globalSidebar.classList.remove('hidden');
+                } else {
+                    // Hide sidebar in utility/admin tabs - not relevant there
+                    globalSidebar.style.setProperty('display', 'none', 'important');
+                    globalSidebar.classList.add('hidden');
+                    if (sidebarBackdrop) sidebarBackdrop.classList.add('hidden');
+                }
+            }
+
+            // Show target tab
+            const target = document.getElementById(tabId + '-tab');
+            if (target) {
+                target.classList.remove('hidden');
+            }
+
+            // Update Nav Icons
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                const icon = btn.querySelector('i');
+                const label = btn.querySelector('span');
+
+                if (icon) {
+                    icon.classList.remove('text-primary');
+                    icon.classList.add('text-textMuted');
+                }
+                btn.classList.remove('bg-white/5', 'text-primary');
+                btn.classList.add('text-textMuted');
+            });
+
+            // Highlight Active
+            const activeBtn = document.querySelector(`.nav-btn[data-tab="${tabId}"]`);
+            if (activeBtn) {
+                const icon = activeBtn.querySelector('i');
+                const label = activeBtn.querySelector('span');
+
+                if (icon) {
+                    icon.classList.remove('text-textMuted');
+                    icon.classList.add('text-primary');
+                }
+                activeBtn.classList.remove('text-textMuted');
+                activeBtn.classList.add('bg-white/5', 'text-primary');
+            }
+
+            // Trigger tab-specific initialization
+            if (tabId === 'crypto') {
+                if (typeof connectTickerWebSocket === 'function') connectTickerWebSocket();
+                if (typeof initCrypto === 'function') {
+                    await initCrypto();
+                }
+            }
+            if (tabId === 'twstock') {
+                if (window.TWStockTab && typeof window.TWStockTab.initTwStock === 'function') {
+                    window.TWStockTab.initTwStock();
+                }
+                if (typeof window.loadUserAlerts === 'function') window.loadUserAlerts();
+            }
+            if (tabId === 'usstock') {
+                if (window.USStockTab && typeof window.USStockTab.init === 'function') {
+                    window.USStockTab.init();
+                }
+                if (typeof window.loadUserAlerts === 'function') window.loadUserAlerts();
+            }
+            if (tabId === 'assets' && typeof refreshAssets === 'function') refreshAssets();
+            if (tabId === 'wallet') {
+                if (window.WalletApp) window.WalletApp.init();
+            }
+            if (tabId === 'friends') {
+                if (window.SocialHub) window.SocialHub.init();
+            }
+            if (tabId === 'safety') {
+                if (window.SafetyTab) window.SafetyTab.init();
+            }
+            if (tabId === 'forum') {
+                if (window.ForumApp) window.ForumApp.init();
+            }
+            if (tabId === 'admin') {
+                if (window.AdminPanel) AdminPanel.init();
+            }
+            if (tabId === 'settings') {
+                // ✅ 效能優化：並行執行所有 settings 初始化，而非依序等待
+                const settingsInits = [];
+                if (window.AuthManager && typeof window.AuthManager._updateUI === 'function') {
+                    window.AuthManager._updateUI(window.AuthManager.isLoggedIn());
+                }
+                if (typeof loadSettingsWalletStatus === 'function') settingsInits.push(loadSettingsWalletStatus());
+                if (typeof loadPremiumStatus === 'function') settingsInits.push(loadPremiumStatus());
+                if (typeof updateLLMStatusUI === 'function') settingsInits.push(Promise.resolve(updateLLMStatusUI()));
+                if (typeof updateOKXStatusUI === 'function') updateOKXStatusUI();
+                if (typeof updatePriceDisplays === 'function') updatePriceDisplays();
+                if (window.PremiumManager && typeof window.PremiumManager.updatePriceDisplay === 'function') {
+                    window.PremiumManager.updatePriceDisplay();
+                }
+                if (typeof window.updateAvailableModels === 'function') window.updateAvailableModels();
+                // 並行發出所有 API 請求
+                Promise.all(settingsInits).catch(e => console.warn('Settings init error:', e));
+            }
+            if (tabId === 'chat') {
+                // ✅ 效能優化：checkApiKeyStatus 加 TTL 快取，避免每次切換都打後端 API
+                const now = Date.now();
+                if (!window._lastApiKeyCheck || (now - window._lastApiKeyCheck) > 30000) {
+                    window._lastApiKeyCheck = now;
+                    if (typeof checkApiKeyStatus === 'function') checkApiKeyStatus();
+                }
+            }
+
+            if (typeof onTabSwitch === 'function') onTabSwitch(tabId);
+        }
+
+        // Initialize Greeting Time
+        const hour = new Date().getHours();
+        const greeting = hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening';
+        document.getElementById('greeting-time').innerText = greeting;
+
+        // ========================================
+        // Navigation Rendering & Feature Menu
+        // ========================================
+
+        /**
+         * Render navigation buttons based on user preferences
+         */
+        function renderNavButtons() {
+            if (!window.NavPreferences) {
+                console.warn('NavPreferences not loaded yet');
+                return;
+            }
+
+            const container = document.getElementById('nav-buttons');
+            if (!container) return;
+
+            const enabledItems = NavPreferences.getEnabledItems();
+            const activeTab = localStorage.getItem('activeTab') || 'chat';
+
+            container.innerHTML = '';
+
+            enabledItems.forEach(item => {
+                // Hide admin-only tabs for non-admin users
+                if (item.adminOnly) {
+                    const user = window.AuthManager && AuthManager.currentUser;
+                    if (!user || user.role !== 'admin') return;
+                }
+
+                const button = document.createElement('button');
+                const isActive = item.id === activeTab;
+
+                // Use i18n key if available, otherwise fall back to label
+                let labelText = item.label; // Default fallback
+                if (item.i18nKey && window.I18n && window.I18n.isReady && window.I18n.isReady()) {
+                    const translated = window.I18n.t(item.i18nKey);
+                    // Only use translation if it's different from the key (translation succeeded)
+                    if (translated !== item.i18nKey) {
+                        labelText = translated;
+                    }
+                }
+
+                button.className = `nav-btn shrink-0 w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 transition-all duration-200 gap-0.5 nav-item-enter ${isActive ? 'text-primary bg-white/5' : 'text-textMuted hover:text-primary'}`;
+                button.title = labelText;
+                button.dataset.tab = item.id;
+
+                // All tabs including forum use SPA navigation (switchTab)
+                button.onclick = function () { switchTab(item.id); };
+
+                button.innerHTML = `
+                    <i data-lucide="${item.icon}" class="w-5 h-5 ${isActive ? 'text-primary' : 'text-textMuted'}"></i>
+                    <span class="text-[9px] font-medium opacity-80">${labelText}</span>
+                `;
+
+                container.appendChild(button);
+            });
+
+            // Re-initialize Lucide icons
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+        }
+
+        /**
+         * Feature Menu Manager
+         * Handles the navigation customization modal
+         */
+        const FeatureMenu = {
+            _tempPreferences: null,
+            _modal: null,
+
+            /**
+             * Open the feature menu modal
+             */
+            open() {
+                if (!window.NavPreferences) {
+                    console.error('NavPreferences not loaded');
+                    return;
+                }
+
+                // Inject feature menu component if not already in DOM
+                if (!document.getElementById('feature-menu-modal')) {
+                    if (window.Components && window.Components.featureMenu) {
+                        const container = document.createElement('div');
+                        container.innerHTML = window.Components.featureMenu;
+                        document.body.appendChild(container.firstElementChild);
+                    } else {
+                        console.error('Feature menu component not available');
+                        return;
+                    }
+                }
+
+                this._modal = document.getElementById('feature-menu-modal');
+                const itemsContainer = document.getElementById('feature-menu-items');
+                const warningBanner = document.getElementById('feature-menu-warning');
+
+                // Store current preferences for temp state
+                const currentEnabled = NavPreferences.loadPreferences().enabledItems;
+                this._tempPreferences = new Set(currentEnabled);
+
+                // Clear and render items
+                itemsContainer.innerHTML = '';
+
+                window.NAV_ITEMS.forEach(item => {
+                    // Skip locked items - they are always enabled and not configurable
+                    if (item.locked) return;
+
+                    const isEnabled = this._tempPreferences.has(item.id);
+                    const itemEl = document.createElement('div');
+                    itemEl.className = `feature-menu-item ${!isEnabled ? 'disabled' : ''}`;
+                    itemEl.dataset.itemId = item.id;
+
+                    // Use i18n key if available, otherwise fall back to label
+                    const labelText = item.i18nKey && window.I18n ? window.I18n.t(item.i18nKey) : item.label;
+
+                    itemEl.innerHTML = `
+                        <div class="feature-item-icon">
+                            <i data-lucide="${item.icon}"></i>
+                        </div>
+                        <span class="feature-item-label">${labelText}</span>
+                        <div class="feature-toggle ${isEnabled ? 'enabled' : ''}"></div>
+                    `;
+
+                    itemEl.addEventListener('click', () => this.toggleItem(item.id, itemEl));
+                    itemsContainer.appendChild(itemEl);
+                });
+
+                // Initialize Lucide icons
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+
+                // Show modal with animation
+                this._modal.classList.remove('hidden');
+                requestAnimationFrame(() => {
+                    this._modal.querySelector('.feature-menu-content').classList.add('modal-content-active');
+                });
+            },
+
+            /**
+             * Toggle a navigation item on/off
+             */
+            toggleItem(itemId, element) {
+                // Locked items cannot be toggled
+                const navItem = window.NAV_ITEMS.find(i => i.id === itemId);
+                if (navItem && navItem.locked) return;
+
+                const isCurrentlyEnabled = this._tempPreferences.has(itemId);
+
+                if (isCurrentlyEnabled) {
+                    // Check if we can disable (minimum 2 items)
+                    if (this._tempPreferences.size <= NavPreferences.MIN_ENABLED_ITEMS) {
+                        // Show warning and shake animation
+                        const warningBanner = document.getElementById('feature-menu-warning');
+                        warningBanner.classList.remove('hidden');
+                        element.classList.add('shake');
+                        setTimeout(() => element.classList.remove('shake'), 400);
+
+                        // Auto-hide warning after 3 seconds
+                        setTimeout(() => warningBanner.classList.add('hidden'), 3000);
+                        return;
+                    }
+                    this._tempPreferences.delete(itemId);
+                } else {
+                    this._tempPreferences.add(itemId);
+                }
+
+                // Update UI
+                const toggle = element.querySelector('.feature-toggle');
+                if (this._tempPreferences.has(itemId)) {
+                    toggle.classList.add('enabled');
+                    element.classList.remove('disabled');
+                } else {
+                    toggle.classList.remove('enabled');
+                    element.classList.add('disabled');
+                }
+
+                // Hide warning if we have enough items
+                const warningBanner = document.getElementById('feature-menu-warning');
+                if (this._tempPreferences.size >= NavPreferences.MIN_ENABLED_ITEMS) {
+                    warningBanner.classList.add('hidden');
+                }
+            },
+
+            /**
+             * Save changes and close modal
+             */
+            save() {
+                if (this._tempPreferences.size < NavPreferences.MIN_ENABLED_ITEMS) {
+                    alert(`At least ${NavPreferences.MIN_ENABLED_ITEMS} items must be enabled`);
+                    return;
+                }
+
+                // Save preferences
+                const preferences = {
+                    version: NavPreferences.PREFERENCES_VERSION,
+                    enabledItems: Array.from(this._tempPreferences)
+                };
+                NavPreferences.savePreferences(preferences);
+
+                // Re-render navigation
+                renderNavButtons();
+
+                // Close modal
+                this.close();
+
+                // Show success feedback
+                this.showToast('Navigation preferences saved');
+            },
+
+            /**
+             * Reset to defaults
+             */
+            resetToDefaults() {
+                if (confirm('Reset all navigation items to default?')) {
+                    NavPreferences.resetToDefaults();
+                    renderNavButtons();
+                    this.close();
+                    this.showToast('Navigation reset to defaults');
+                }
+            },
+
+            /**
+             * Close the modal without saving
+             */
+            close() {
+                if (this._modal) {
+                    const content = this._modal.querySelector('.feature-menu-content');
+                    content.classList.remove('modal-content-active');
+
+                    setTimeout(() => {
+                        this._modal.classList.add('hidden');
+                        this._tempPreferences = null;
+                    }, 200);
+                }
+            },
+
+            /**
+             * Show a toast notification (delegates to global showToast)
+             */
+            showToast(message) {
+                if (typeof window.showToast === 'function') {
+                    window.showToast(message, 'success');
+                }
+            }
+        };
+
+        // Expose FeatureMenu globally
+        window.FeatureMenu = FeatureMenu;
+
+        // Expose renderNavButtons globally so auth.js _updateUI() can call it after login
+        window.renderNavButtons = renderNavButtons;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('DOM fully loaded, starting controlled initialization...');
+
+            // 頁面淡入效果
+            document.body.style.opacity = '0';
+            document.body.style.transition = 'opacity 0.25s ease-in';
+            requestAnimationFrame(() => {
+                document.body.style.opacity = '1';
+            });
+
+            // 等待核心組件就緒的輔助函式
+            const waitForGlobal = (key, timeout = 3000) => {
+                return new Promise((resolve) => {
+                    if (window[key]) return resolve(window[key]);
+                    const start = Date.now();
+                    // ✅ 效能優化：polling 間隔從 100ms 降到 10ms，加快啟動速度
+                    const interval = setInterval(() => {
+                        if (window[key] || (Date.now() - start) > timeout) {
+                            clearInterval(interval);
+                            resolve(window[key]);
+                        }
+                    }, 10);
+                });
+            };
+
+            // 確保核心腳本都已載入
+            console.log('Waiting for core systems...');
+            await Promise.all([
+                waitForGlobal('Components').then(v => console.log('Components ready:', !!v)),
+                waitForGlobal('initializeAuth').then(v => console.log('Auth ready:', !!v)),
+                waitForGlobal('initializeUIStatus').then(v => console.log('UI ready:', !!v)),
+                waitForGlobal('NavPreferences').then(v => console.log('NavPreferences ready:', !!v))
+            ]);
+
+            console.log('Core systems ready status:', {
+                Components: !!window.Components,
+                Auth: !!window.initializeAuth,
+                UI: !!window.initializeUIStatus,
+                NavPreferences: !!window.NavPreferences
+            });
+
+            // 0. 初始化 i18n（必須在 renderNavButtons 之前完成）
+            if (window.I18n) {
+                try {
+                    await window.I18n.init();
+                    console.log('i18n ready');
+                } catch (e) { console.error('i18n Init Error:', e); }
+            }
+
+            // 1. 初始化認證系統（支援測試模式自動登入）
+            if (typeof initializeAuth === 'function') {
+                try {
+                    await initializeAuth();
+                } catch (e) { console.error('Auth Init Error:', e); }
+            }
+
+            // 1.5 載入已保存的 API Key 狀態（必須在 Auth 完成後）
+            if (typeof window.loadSavedApiKeys === 'function') {
+                try {
+                    await window.loadSavedApiKeys();
+                } catch (e) { console.error('Load API Keys Error:', e); }
+            }
+
+            // 2. Render navigation buttons based on user preferences
+            renderNavButtons();
+
+            // 2.5 初始化語系切換器
+            if (window.LanguageSwitcher) {
+                new LanguageSwitcher('.lang-switcher-container');
+            }
+
+            // 2.6 初始化通知組件（手機版 + 桌面版）
+            if (window.NotificationBell && window.NotificationService) {
+                const mobileBell = document.getElementById('notification-bell-mobile');
+                const desktopBell = document.getElementById('notification-bell-desktop');
+                if (mobileBell) {
+                    window.notificationBell = new NotificationBell(mobileBell);
+                }
+                if (desktopBell) {
+                    window.notificationBellDesktop = new NotificationBell(desktopBell);
+                }
+                console.log('NotificationBell initialized (global)');
+            }
+
+            // 監聽語言切換事件，重新渲染導覽列標籤
+            window.addEventListener('languageChanged', () => {
+                renderNavButtons();
+            });
+
+            // 3. 載入預設分頁（優先順序：sessionStorage returnToTab > URL hash > localStorage）
+            const validTabs = ['chat', 'crypto', 'twstock', 'usstock', 'wallet', 'assets', 'friends', 'forum', 'safety', 'settings', 'admin'];
+            const returnToTab = sessionStorage.getItem('returnToTab');
+            const hashTab = window.location.hash.replace('#', '');
+            const savedTab = localStorage.getItem('activeTab') || 'chat';
+
+            // 優先使用 returnToTab（從論壇返回），其次 hash，最後 localStorage
+            let initialTab;
+            if (returnToTab && validTabs.includes(returnToTab)) {
+                initialTab = returnToTab;
+                sessionStorage.removeItem('returnToTab'); // 使用後清除
+            } else if (validTabs.includes(hashTab)) {
+                initialTab = hashTab;
+            } else {
+                initialTab = savedTab;
+            }
+            console.log('Initial tab switching to:', initialTab, '(returnTo:', returnToTab, ', hash:', hashTab, ', saved:', savedTab, ')');
+
+            // 清除 hash 並設置正確的初始歷史狀態
+            history.replaceState({ tab: initialTab }, '', '#' + initialTab);
+
+            try {
+                await switchTab(initialTab, true); // fromPopState=true 避免重複 pushState
+            } catch (e) { console.error('Initial Tab Error:', e); }
+
+            // 3. 更新 UI 狀態
+            if (typeof initializeUIStatus === 'function') {
+                try {
+                    initializeUIStatus();
+                } catch (e) { console.error('UI Init Error:', e); }
+            }
+
+            // 4. 延遲啟動 Ticker WebSocket
+            setTimeout(() => {
+                const currentTab = localStorage.getItem('activeTab');
+                if (currentTab === 'market') {
+                    if (typeof connectTickerWebSocket === 'function') connectTickerWebSocket();
+                } else {
+                    setTimeout(() => {
+                        if (typeof connectTickerWebSocket === 'function') connectTickerWebSocket();
+                    }, 5000);
+                }
+            }, 1000);
+
+            // 5. 預加載 Market 和 Pulse 數據（背景執行）
+            setTimeout(async () => {
+                console.log('Preloading market data...');
+                // 預先注入並初始化 market 和 pulse
+                if (typeof initMarket === 'function') {
+                    await initMarket();
+                }
+                if (typeof initPulse === 'function') {
+                    await initPulse();
+                }
+                console.log('Market data preloaded');
+            }, 2000);
+        });
+
+        // WebSocket Status Debugging
+        window.checkWebSocketStatus = function () {
+            console.log('=== WebSocket Status ===');
+            console.log('Ticker WS Connected:', window.marketWsConnected || false);
+            console.log('K-line WS Connected:', window.wsConnected || false);
+            console.log('Ticker WS Object:', window.marketWebSocket ? 'Exists' : 'Not Found');
+            console.log('K-line WS Object:', window.klineWebSocket ? 'Exists' : 'Not Found');
+            console.log('Auto-refresh Enabled:', window.autoRefreshEnabled || false);
+            console.log('Current Chart Symbol:', window.currentChartSymbol || 'None');
+            console.log('Subscribed Ticker Symbols:', Array.from(window.subscribedTickerSymbols || []));
+            console.log('Pending Ticker Symbols:', Array.from(window.pendingTickerSymbols || []));
+        };
+
+        // ── Price Alert UI ──────────────────────────────────────────────────────
+        let _alertSymbol = '';
+        let _alertMarket = '';
+
+        function openAlertModal(symbol, market) {
+            _alertSymbol = symbol;
+            _alertMarket = market;
+            document.getElementById('alert-symbol-label').textContent = symbol + ' (' + market + ')';
+            document.getElementById('alert-target').value = '';
+            document.getElementById('alert-repeat').checked = false;
+            document.getElementById('alert-modal').classList.remove('hidden');
+            // Re-init Lucide icons (X button inside modal)
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            // Re-apply i18n translations
+            if (window.I18n && typeof window.I18n.updatePageContent === 'function') window.I18n.updatePageContent();
+        }
+
+        function closeAlertModal() {
+            document.getElementById('alert-modal').classList.add('hidden');
+        }
+
+        async function submitAlert() {
+            const condition = document.getElementById('alert-condition').value;
+            const target = parseFloat(document.getElementById('alert-target').value);
+            const repeat = document.getElementById('alert-repeat').checked;
+
+            const t = (key) => window.I18n ? window.I18n.t(key) : key;
+
+            if (!target || isNaN(target) || target <= 0) {
+                if (typeof window.showToast === 'function') window.showToast(t('modals.priceAlert.invalidTarget'), 'error');
+                return;
+            }
+
+            try {
+                const token = window.AuthManager && window.AuthManager.currentUser && window.AuthManager.currentUser.accessToken;
+                const resp = await fetch('/api/alerts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                    body: JSON.stringify({ symbol: _alertSymbol, market: _alertMarket, condition, target, repeat }),
+                });
+                if (resp.ok) {
+                    if (typeof window.showToast === 'function') window.showToast('✅ ' + t('modals.priceAlert.confirm'));
+                    closeAlertModal();
+                    loadUserAlerts();
+                } else {
+                    const err = await resp.json().catch(() => ({}));
+                    if (typeof window.showToast === 'function') window.showToast((err.detail || t('modals.priceAlert.setFailed')), 'error');
+                }
+            } catch (e) {
+                if (typeof window.showToast === 'function') window.showToast(t('modals.priceAlert.networkError'), 'error');
+            }
+        }
+
+        async function loadUserAlerts() {
+            try {
+                const token = window.AuthManager && window.AuthManager.currentUser && window.AuthManager.currentUser.accessToken;
+                if (!token) return;
+                const resp = await fetch('/api/alerts', { headers: { 'Authorization': 'Bearer ' + token } });
+                if (!resp.ok) return;
+                const data = await resp.json();
+                renderAlertList(data.alerts || []);
+            } catch (e) {
+                // silent fail — user may not be logged in
+            }
+        }
+
+        async function deleteUserAlert(alertId) {
+            try {
+                const token = window.AuthManager && window.AuthManager.currentUser && window.AuthManager.currentUser.accessToken;
+                const resp = await fetch('/api/alerts/' + alertId, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + token },
+                });
+                if (resp.ok) {
+                    loadUserAlerts();
+                } else {
+                    const t = (key) => window.I18n ? window.I18n.t(key) : key;
+                    if (typeof window.showToast === 'function') window.showToast(t('modals.priceAlert.deleteFailed'), 'error');
+                }
+            } catch (e) {
+                const t = (key) => window.I18n ? window.I18n.t(key) : key;
+                if (typeof window.showToast === 'function') window.showToast(t('modals.priceAlert.deleteFailed'), 'error');
+            }
+        }
+
+        function renderAlertList(alerts) {
+            const t = (key) => window.I18n ? window.I18n.t(key) : key;
+            // condition labels come from i18n
+            const condMap = {
+                above: t('modals.priceAlert.above'),
+                below: t('modals.priceAlert.below'),
+                change_pct_up: t('modals.priceAlert.changePctUp'),
+                change_pct_down: t('modals.priceAlert.changePctDown'),
+            };
+            const noAlertsHtml = '<p class="text-textMuted text-xs py-1">' + t('modals.priceAlert.noAlerts') + '</p>';
+            const deleteLabel = t('modals.priceAlert.deleteAlert');
+
+            const containerIds = ['alert-list-twstock', 'alert-list-usstock'];
+            containerIds.forEach(function(cid) {
+                const container = document.getElementById(cid);
+                if (!container) return;
+                if (alerts.length === 0) {
+                    container.innerHTML = noAlertsHtml;
+                    return;
+                }
+                container.innerHTML = alerts.map(function(a) {
+                    const label = condMap[a.condition] || a.condition;
+                    return '<div class="flex justify-between items-center py-1.5 border-b border-white/5 last:border-0">' +
+                        '<span class="text-secondary text-xs font-mono">' +
+                            a.symbol + ' <span class="text-primary">' + label + '</span> ' + a.target +
+                            (a.repeat ? ' <span class="text-textMuted">🔁</span>' : '') +
+                        '</span>' +
+                        '<button onclick="deleteUserAlert(\'' + a.id + '\')" ' +
+                            'class="text-danger hover:brightness-125 text-xs ml-2 transition">' +
+                            deleteLabel +
+                        '</button>' +
+                        '</div>';
+                }).join('');
+            });
+        }
+
+        // Expose alert functions globally so onclick handlers and tab init can call them
+        window.openAlertModal = openAlertModal;
+        window.closeAlertModal = closeAlertModal;
+        window.submitAlert = submitAlert;
+        window.loadUserAlerts = loadUserAlerts;
+        window.deleteUserAlert = deleteUserAlert;
+        window.renderAlertList = renderAlertList;
+        // ── End Price Alert UI ─────────────────────────────────────────────────
+    </script>
+    <!-- Legal Page Modal -->
+    <div id="legal-modal" class="fixed inset-0 z-[9999] bg-background hidden flex-col">
+        <nav class="sticky top-0 z-10 bg-surface/95 backdrop-blur-xl border-b border-white/5">
+            <div class="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <button onclick="closeLegalModal()"
+                        class="px-4 py-2 bg-surfaceHighlight hover:bg-white/10 text-textMuted hover:text-secondary rounded-xl transition flex items-center gap-2">
+                        <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                        <span id="legal-back-text">Back</span>
+                    </button>
+                    <h1 id="legal-title" class="text-xl font-serif text-secondary"></h1>
+                </div>
+            </div>
+        </nav>
+        <div id="legal-content" class="flex-1 overflow-y-auto">
+            <div class="max-w-4xl mx-auto px-6 py-12 pb-32"></div>
+        </div>
+    </div>
+
+    <script>
+        const LEGAL_PAGE_MAP = {
+            terms: 'terms-of-service.html',
+            privacy: 'privacy-policy.html',
+            guidelines: 'community-guidelines.html'
+        };
+
+        async function showLegalPage(type) {
+            const filename = LEGAL_PAGE_MAP[type];
+            if (!filename) return;
+
+            const modal = document.getElementById('legal-modal');
+            const contentArea = document.querySelector('#legal-content > div');
+            const titleEl = document.getElementById('legal-title');
+            const backEl = document.getElementById('legal-back-text');
+
+            // Show modal with loading
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            contentArea.innerHTML = '<div class="flex items-center justify-center py-20"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>';
+
+            const lang = window.I18n ? window.I18n.getLanguage() : 'en';
+            backEl.textContent = lang === 'zh-TW' ? '返回' : 'Back';
+
+            try {
+                const res = await fetch(`/static/legal/${filename}`);
+                const html = await res.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+
+                const zhDiv = doc.getElementById('content-zh');
+                const enDiv = doc.getElementById('content-en');
+
+                if (!zhDiv || !enDiv) {
+                    contentArea.innerHTML = '<p class="text-center text-textMuted py-20">Content not found.</p>';
+                    return;
+                }
+
+                // Store both versions
+                contentArea.innerHTML = '';
+                const zhClone = zhDiv.cloneNode(true);
+                const enClone = enDiv.cloneNode(true);
+                zhClone.id = 'legal-content-zh';
+                enClone.id = 'legal-content-en';
+                contentArea.appendChild(zhClone);
+                contentArea.appendChild(enClone);
+
+                // Show correct language
+                _updateLegalLanguage(lang);
+
+                // Set title from nav-title in the fetched doc
+                const navTitle = doc.getElementById('nav-title');
+                if (navTitle) {
+                    const zhTitle = navTitle.textContent;
+                    // Find EN title from the toggle logic
+                    const titles = {
+                        terms: { 'zh-TW': '服務條款', en: 'Terms of Service' },
+                        privacy: { 'zh-TW': '隱私權政策', en: 'Privacy Policy' },
+                        guidelines: { 'zh-TW': '社群守則', en: 'Community Guidelines' }
+                    };
+                    titleEl.textContent = (titles[type] && titles[type][lang]) || zhTitle;
+                    modal.dataset.type = type;
+                }
+            } catch (e) {
+                contentArea.innerHTML = `<p class="text-center text-danger py-20">Failed to load: ${SecurityUtils.escapeHTML(e.message || '')}</p>`;
+            }
+
+            if (window.lucide) lucide.createIcons();
+        }
+
+        function _updateLegalLanguage(lang) {
+            const zh = document.getElementById('legal-content-zh');
+            const en = document.getElementById('legal-content-en');
+            if (!zh || !en) return;
+
+            if (lang === 'zh-TW') {
+                zh.classList.remove('hidden');
+                en.classList.add('hidden');
+            } else {
+                zh.classList.add('hidden');
+                en.classList.remove('hidden');
+            }
+
+            const backEl = document.getElementById('legal-back-text');
+            if (backEl) backEl.textContent = lang === 'zh-TW' ? '返回' : 'Back';
+
+            const titleEl = document.getElementById('legal-title');
+            const modal = document.getElementById('legal-modal');
+            const type = modal?.dataset?.type;
+            if (titleEl && type) {
+                const titles = {
+                    terms: { 'zh-TW': '服務條款', en: 'Terms of Service' },
+                    privacy: { 'zh-TW': '隱私權政策', en: 'Privacy Policy' },
+                    guidelines: { 'zh-TW': '社群守則', en: 'Community Guidelines' }
+                };
+                titleEl.textContent = (titles[type] && titles[type][lang]) || '';
+            }
+        }
+
+        function closeLegalModal() {
+            const modal = document.getElementById('legal-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            const contentArea = document.querySelector('#legal-content > div');
+            if (contentArea) contentArea.innerHTML = '';
+            delete modal.dataset.type;
+        }
+
+        // Re-render legal content on language change
+        window.addEventListener('languageChanged', (e) => {
+            const modal = document.getElementById('legal-modal');
+            if (modal && !modal.classList.contains('hidden')) {
+                const lang = e.detail?.language || (window.I18n ? window.I18n.getLanguage() : 'en');
+                _updateLegalLanguage(lang);
+            }
+        });
+    </script>
+
+    <!-- HITL Question Modal (V4 Web HITL) -->
+    <div id="hitl-modal"
+        class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[80] hidden flex items-center justify-center p-6">
+        <div class="bg-surface w-full max-w-lg p-8 rounded-[2.5rem] border border-white/5 shadow-2xl">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <i data-lucide="help-circle" class="w-5 h-5 text-primary"></i>
+                </div>
+                <h3 class="font-serif text-lg text-secondary">需要您的確認</h3>
+            </div>
+            <p id="hitl-question-text" class="text-textMuted text-sm mb-6 leading-relaxed whitespace-pre-wrap"></p>
+            <div id="hitl-options-container" class="flex flex-col gap-2 mb-4"></div>
+            <div class="flex gap-2 mt-2">
+                <input id="hitl-custom-input" type="text" placeholder="或直接輸入您的回答..."
+                    class="flex-1 bg-background border border-white/5 rounded-2xl px-4 py-3 text-secondary text-sm outline-none focus:border-primary/50 transition"
+                    onkeydown="if(event.key==='Enter') window.submitHITLAnswer(this.value)">
+                <button onclick="window.submitHITLAnswer(document.getElementById('hitl-custom-input').value)"
+                    class="bg-primary hover:bg-primary/80 text-background font-bold px-5 py-3 rounded-2xl transition text-sm">
+                    送出
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script defer src="/static/js/i18n.js?v=7"></script>
+    <script defer src="/static/js/components/LanguageSwitcher.js?v=2"></script>
+</body>
+
+</html>

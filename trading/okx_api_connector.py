@@ -9,8 +9,8 @@ import os
 from dotenv import load_dotenv
 from api.utils import logger
 
-# Load environment variables with override to ensure .env file values take precedence
-load_dotenv(override=True)
+# Load local defaults from .env, but keep runtime/deployment env vars authoritative.
+load_dotenv()
 
 class OKXAPIConnector:
     """

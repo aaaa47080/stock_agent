@@ -738,6 +738,10 @@ async function openSettings() {
 
     // Load current config — fetch both endpoints in parallel
     try {
+        if (typeof window.initToolSettings === 'function') {
+            await window.initToolSettings();
+        }
+
         const [configRes, modelConfigRes] = await Promise.all([
             fetch('/api/config'),
             fetch('/api/model-config'),

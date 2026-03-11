@@ -478,4 +478,11 @@ if __name__ == "__main__":
     logger.info("VERIFICATION_TAG: Fix-500-Masking-v3-Robust") 
     logger.info("🏠 本地網址: http://localhost:8080")
     logger.info("📱 請在 Pi Browser 中使用 HTTPS 網址訪問 (如透過 ngrok)")
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    workers = int(os.getenv("WEB_CONCURRENCY", "1"))
+
+    # Uvicorn requires an import string when using multiple workers or reload.
+    if workers > 1:
+        logger.info(f"👷 Using WEB_CONCURRENCY={workers}, starting with import string mode")
+        uvicorn.run("api_server:app", host="0.0.0.0", port=8080, workers=workers)
+    else:
+        uvicorn.run(app, host="0.0.0.0", port=8080)

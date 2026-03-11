@@ -53,11 +53,19 @@ class UniversalSymbolResolver:
                 result["tw"] = tw
 
         # ── 3. US stock check ──
-        # Only if: matches 1-5 uppercase letter pattern,
-        #          not a known crypto,
-        #          not resolved as a TW digit-code (pure digits)
+        # Boundary conditions (all must hold):
+        #   a) not a pure digit string (avoids TW stock codes like "2330")
+        #   b) not already resolved as a known crypto
+        #   c) matches the 1-5 uppercase-only pattern
+        #   d) the user typed it in uppercase — i.e. s == upper.
+        #      If the user wrote lowercase (e.g. "price", "network", "coin"),
+        #      it is a plain English word, not an intentional ticker symbol.
+        #      This one condition eliminates all common-word false positives
+        #      without maintaining any exclusion list.
         is_digit = s.isdigit()
-        if (not is_digit and not result.get("crypto")
+        if (not is_digit
+                and not result.get("crypto")
+                and s == upper                    # user explicitly typed uppercase
                 and _US_PATTERN.match(upper)
                 and upper not in _KNOWN_CRYPTO):
             result["us"] = upper

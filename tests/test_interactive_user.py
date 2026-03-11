@@ -23,6 +23,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from utils.settings import Settings  # noqa: E402
+from utils.user_client_factory import validate_user_key  # noqa: E402
 
 RESULTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "test_results")
 
@@ -41,8 +42,12 @@ class InteractiveSession:
     async def send(self, message: str, is_resume: bool = False) -> dict:
         """發送訊息"""
         from langgraph.types import Command
+        from core.agents.manager import MANAGER_GRAPH_RECURSION_LIMIT
         
-        config = {"configurable": {"thread_id": self.session_id}}
+        config = {
+            "configurable": {"thread_id": self.session_id},
+            "recursion_limit": MANAGER_GRAPH_RECURSION_LIMIT,
+        }
         history_text = "\n".join(self.history[-12:]) if self.history else ""
         
         self.round_count += 1
@@ -169,6 +174,11 @@ async def interactive_test():
         api_key=api_key,
         model="gpt-4o-mini",
     )
+
+    ok, message = validate_user_key(provider, api_key)
+    if not ok:
+        print(f"❌ LLM 連線檢查失敗: {message}")
+        return
     
     print("🔧 初始化 ManagerAgent...")
     manager = bootstrap(llm, web_mode=False, language="zh-TW")

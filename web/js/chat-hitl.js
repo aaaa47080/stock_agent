@@ -125,7 +125,7 @@ function renderPreResearchCard(idata, targetDiv) {
             </div>`;
     }
 
-    if (window.lucide) createIconsIn(botMsgDiv);
+    if (window.lucide) createIconsIn(targetDiv);
 }
 
 window.submitPreResearch = function () {
@@ -218,7 +218,7 @@ function renderPlanCard(interruptData, targetDiv) {
                 </button>
             </div>
         </div>`;
-    if (lucide) createIconsIn(botMsgDiv);
+    if (window.lucide) createIconsIn(targetDiv);
 }
 
 window.togglePlanCustomize = function () {
@@ -427,8 +427,36 @@ window.submitHITLAnswer = async function (answer) {
 
     const token = AuthManager.currentUser.accessToken;
     let fullContent = '';
+    const HITL_REQUEST_TIMEOUT_MS = 180000;
+    const HITL_STREAM_IDLE_TIMEOUT_MS = 90000;
+    let requestTimeoutId = null;
+    let streamIdleTimeoutId = null;
+
+    const controller = new AbortController();
+
+    const clearHitlTimeouts = () => {
+        if (requestTimeoutId) {
+            clearTimeout(requestTimeoutId);
+            requestTimeoutId = null;
+        }
+        if (streamIdleTimeoutId) {
+            clearTimeout(streamIdleTimeoutId);
+            streamIdleTimeoutId = null;
+        }
+    };
+
+    const armHitlStreamIdleTimeout = () => {
+        if (streamIdleTimeoutId) clearTimeout(streamIdleTimeoutId);
+        streamIdleTimeoutId = setTimeout(() => {
+            controller.abort(new Error('HITL_STREAM_IDLE_TIMEOUT'));
+        }, HITL_STREAM_IDLE_TIMEOUT_MS);
+    };
 
     try {
+        requestTimeoutId = setTimeout(() => {
+            controller.abort(new Error('HITL_ANALYSIS_TIMEOUT'));
+        }, HITL_REQUEST_TIMEOUT_MS);
+
         const response = await fetch('/api/analyze', {
             method: 'POST',
             headers: {
@@ -455,6 +483,7 @@ window.submitHITLAnswer = async function (answer) {
                     return trimmed;
                 })(),
             }),
+            signal: controller.signal,
         });
 
         if (!response.ok) {
@@ -464,12 +493,21 @@ window.submitHITLAnswer = async function (answer) {
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
+        let pendingBuffer = '';
+
+        armHitlStreamIdleTimeout();
 
         while (true) {
             const { value, done } = await reader.read();
             if (done) break;
-            const chunk = decoder.decode(value);
-            for (const line of chunk.split('\n')) {
+
+            armHitlStreamIdleTimeout();
+            const chunk = decoder.decode(value, { stream: true });
+            const parsed = window.ChatStreamUI.consumeChunk(pendingBuffer, chunk);
+            const lines = parsed.lines;
+            pendingBuffer = parsed.pending;
+
+            for (const line of lines) {
                 if (!line.startsWith('data: ')) continue;
                 let data;
                 try {
@@ -506,6 +544,12 @@ window.submitHITLAnswer = async function (answer) {
                 }
                 if (data.waiting) return;
 
+                if (data.type === 'progress') {
+                    if (window.ChatStreamUI) {
+                        window.ChatStreamUI.applyProgress(ctx.botMsgDiv, data.data || {});
+                    }
+                }
+
                 if (data.content) {
                     fullContent += data.content;
                     if (ctx.botMsgDiv) {
@@ -513,6 +557,7 @@ window.submitHITLAnswer = async function (answer) {
                     }
                 }
                 if (data.done) {
+                    clearHitlTimeouts();
                     if (ctx.botMsgDiv) {
                         const totalTime = ((Date.now() - ctx.startTime) / 1000).toFixed(1);
                         ctx.botMsgDiv.innerHTML = renderStoredBotMessage(
@@ -530,6 +575,7 @@ window.submitHITLAnswer = async function (answer) {
                     loadSessions();
                 }
                 if (data.error) {
+                    clearHitlTimeouts();
                     if (ctx.botMsgDiv) {
                         ctx.botMsgDiv.innerHTML = `<span class="text-red-400">Error: ${escapeHtml(data.error)}</span>`;
                     }
@@ -542,15 +588,27 @@ window.submitHITLAnswer = async function (answer) {
         if (ctx.botMsgDiv) {
             // Fix [object Object] by properly stringifying error detail if it's an object
             // XSS Fix: 使用 escapeHtml 转义错误消息
-            const rawError =
+            let rawError =
                 typeof err.message === 'object'
                     ? JSON.stringify(err.message)
                     : err.message || String(err);
+            if (err.name === 'AbortError') {
+                const abortReason = controller.signal.reason;
+                if (abortReason instanceof Error && abortReason.message === 'HITL_ANALYSIS_TIMEOUT') {
+                    rawError = '恢復分析逾時，請縮小問題範圍後再試。';
+                } else if (
+                    abortReason instanceof Error &&
+                    abortReason.message === 'HITL_STREAM_IDLE_TIMEOUT'
+                ) {
+                    rawError = '恢復分析時串流中斷過久，請重試。';
+                }
+            }
             const errorMsg = escapeHtml(rawError);
             ctx.botMsgDiv.innerHTML = `<span class="text-red-400">恢復分析失敗：${errorMsg}</span>`;
         }
         isAnalyzing = false;
     } finally {
+        clearHitlTimeouts();
         const input = document.getElementById('user-input');
         const sendBtn = document.getElementById('send-btn');
         // 只有在 HITL 完全解決（_hitlContext=null）時才重新啟用輸入

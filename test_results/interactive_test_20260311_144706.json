@@ -1,0 +1,25 @@
+{
+  "scenario": "interactive_user_test",
+  "session_id": "interactive_1773209294",
+  "total_rounds": 2,
+  "conversation": [
+    {
+      "round": 1,
+      "user": "你好",
+      "assistant": "你好！有什麼我可以幫你分析或查詢的呢？",
+      "mode": "vending",
+      "hitl": null,
+      "duration": 2.06,
+      "is_resume": false
+    },
+    {
+      "round": 2,
+      "user": "請問pi network價格多少",
+      "assistant": "截至目前，Pi Network的價格尚未在任何主要交易所上市，因此無法提供具體的價格資訊。Pi Network仍處於測試階段，並未正式進入市場交易。\n\n如果您考慮投資於Pi Network或其他加密貨幣，建議您謹慎評估相關風險。加密貨幣市場波動性大，投資可能會導致資本損失。請確保您了解所投資的項目，並根據自身的風險承受能力做出決策。",
+      "mode": "vending",
+      "hitl": null,
+      "duration": 6.24,
+      "is_resume": false
+    }
+  ]
+}

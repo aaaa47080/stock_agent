@@ -171,16 +171,39 @@ async function sendMessage() {
         </div>
     `;
 
-    const timerSpan = botMsgDiv.querySelector('#loading-timer');
     timerInterval = setInterval(() => {
         const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-        const display = document.getElementById('loading-timer');
-        if (display) {
-            display.textContent = `${elapsed}s`;
-        }
+        window.ChatStreamUI.updateTimers(botMsgDiv, elapsed);
     }, 100);
 
+    const ANALYSIS_REQUEST_TIMEOUT_MS = 180000;
+    const ANALYSIS_STREAM_IDLE_TIMEOUT_MS = 90000;
+
     window.currentAnalysisController = new AbortController();
+    let requestTimeoutId = null;
+    let streamIdleTimeoutId = null;
+
+    const clearAnalysisTimeouts = () => {
+        if (requestTimeoutId) {
+            clearTimeout(requestTimeoutId);
+            requestTimeoutId = null;
+        }
+        if (streamIdleTimeoutId) {
+            clearTimeout(streamIdleTimeoutId);
+            streamIdleTimeoutId = null;
+        }
+    };
+
+    const armStreamIdleTimeout = () => {
+        if (streamIdleTimeoutId) clearTimeout(streamIdleTimeoutId);
+        streamIdleTimeoutId = setTimeout(() => {
+            if (window.currentAnalysisController) {
+                window.currentAnalysisController.abort(
+                    new Error('STREAM_IDLE_TIMEOUT')
+                );
+            }
+        }, ANALYSIS_STREAM_IDLE_TIMEOUT_MS);
+    };
 
     // Pre-build HITL resume context (used if server sends hitl_question)
     const _hitlResumeContext = {
@@ -197,6 +220,12 @@ async function sendMessage() {
 
     try {
         const token = AuthManager.currentUser.accessToken;
+        requestTimeoutId = setTimeout(() => {
+            if (window.currentAnalysisController) {
+                window.currentAnalysisController.abort(new Error('ANALYSIS_TIMEOUT'));
+            }
+        }, ANALYSIS_REQUEST_TIMEOUT_MS);
+
         const response = await fetch('/api/analyze', {
             method: 'POST',
             headers: {
@@ -236,13 +265,19 @@ async function sendMessage() {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let fullContent = '';
+        let pendingBuffer = '';
+
+        armStreamIdleTimeout();
 
         while (true) {
             const { value, done } = await reader.read();
             if (done || hitlPaused) break;
 
-            const chunk = decoder.decode(value);
-            const lines = chunk.split('\n');
+            armStreamIdleTimeout();
+            const chunk = decoder.decode(value, { stream: true });
+            const parsed = window.ChatStreamUI.consumeChunk(pendingBuffer, chunk);
+            const lines = parsed.lines;
+            pendingBuffer = parsed.pending;
             const currentElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
 
             for (const line of lines) {
@@ -257,6 +292,7 @@ async function sendMessage() {
                     // ── HITL: server needs user input ──────────────────────
                     if (data.type === 'hitl_question') {
                         clearInterval(timerInterval);
+                        clearAnalysisTimeouts();
                         _hitlContext = _hitlResumeContext;
                         const idata = data.data || {};
                         // Store HITL type for sendMessage routing
@@ -296,31 +332,7 @@ async function sendMessage() {
 
                     // ── Progress Update (Parallel Execution) ────────────────
                     if (data.type === 'progress') {
-                        const pData = data.data || {};
-                        const stepNum = pData.step;
-                        const stepEl = document.querySelector(`.plan-step[data-step="${stepNum}"]`);
-                        if (stepEl) {
-                            const check = stepEl.querySelector('.plan-check');
-                            if (pData.type === 'agent_start') {
-                                if (check)
-                                    check.innerHTML =
-                                        '<i data-lucide="loader-2" class="w-3 h-3 text-primary animate-spin"></i>';
-                                stepEl.classList.add('bg-primary/5', 'border-primary/20');
-                            } else if (pData.type === 'agent_finish') {
-                                if (check) {
-                                    if (pData.success) {
-                                        check.innerHTML =
-                                            '<i data-lucide="check" class="w-3 h-3 text-primary"></i>';
-                                    } else {
-                                        check.innerHTML =
-                                            '<i data-lucide="alert-circle" class="w-3 h-3 text-danger"></i>';
-                                        stepEl.classList.add('border-danger/20');
-                                    }
-                                }
-                                stepEl.classList.remove('bg-primary/5', 'animate-pulse');
-                            }
-                            if (lucide) createIconsIn(botMsgDiv);
-                        }
+                        window.ChatStreamUI.applyProgress(botMsgDiv, data.data || {});
                     }
 
                     if (data.content) {
@@ -335,6 +347,7 @@ async function sendMessage() {
 
                     if (data.done) {
                         clearInterval(timerInterval);
+                        clearAnalysisTimeouts();
                         isAnalyzing = false;
                         const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
 
@@ -363,7 +376,9 @@ async function sendMessage() {
 
                         timeBadge.innerHTML = `<span>分析完成，耗時 ${totalTime}s</span>${feedbackHtml}`;
                         botMsgDiv.appendChild(timeBadge);
-                        lucide.createIcons({ nodes: [botMsgDiv] });
+                        if (window.lucide) {
+                            lucide.createIcons({ nodes: [botMsgDiv] });
+                        }
 
                         // Refresh sessions list (to update title if it was new)
                         loadSessions();
@@ -371,6 +386,7 @@ async function sendMessage() {
 
                     if (data.error) {
                         clearInterval(timerInterval);
+                        clearAnalysisTimeouts();
                         botMsgDiv.innerHTML = `<span class="text-red-400">Error: ${escapeHtml(data.error)}</span>`;
                         isAnalyzing = false;
                     }
@@ -379,16 +395,30 @@ async function sendMessage() {
         }
     } catch (err) {
         if (err.name === 'AbortError') {
-            console.log('Analysis aborted by user');
-            botMsgDiv.innerHTML = '<span class="text-orange-400">已取消分析。</span>';
+            const abortReason = window.currentAnalysisController?.signal?.reason;
+            if (abortReason instanceof Error && abortReason.message === 'ANALYSIS_TIMEOUT') {
+                botMsgDiv.innerHTML =
+                    '<span class="text-red-400">分析逾時，請縮小問題範圍後再試。</span>';
+            } else if (
+                abortReason instanceof Error &&
+                abortReason.message === 'STREAM_IDLE_TIMEOUT'
+            ) {
+                botMsgDiv.innerHTML =
+                    '<span class="text-red-400">分析流程中斷過久，已自動停止，請重試。</span>';
+            } else {
+                console.log('Analysis aborted by user');
+                botMsgDiv.innerHTML = '<span class="text-orange-400">已取消分析。</span>';
+            }
         } else {
             console.error(err);
-            botMsgDiv.innerHTML = '<span class="text-red-400">連線失敗，請檢查後端伺服器。</span>';
+            botMsgDiv.innerHTML = `<span class="text-red-400">${escapeHtml(err.message || '連線失敗，請檢查後端伺服器。')}</span>`;
         }
         clearInterval(timerInterval);
+        clearAnalysisTimeouts();
         isAnalyzing = false;
     } finally {
         clearInterval(timerInterval);
+        clearAnalysisTimeouts();
 
         if (hitlPaused) {
             // HITL paused: Unlock input so user can type negotiation/answer
@@ -684,4 +714,3 @@ function toggleProcessState(summaryElement) {
         window.lastProcessOpenState = detailsElement.open;
     }, 0);
 }
-

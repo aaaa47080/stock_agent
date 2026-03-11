@@ -10,6 +10,9 @@ class ToolMetadata:
     handler: Union[Callable, Any]  # Callable or LangChain BaseTool
     allowed_agents: List[str] = field(default_factory=list)  # [] = all allowed
     domains: List[str] = field(default_factory=list)
+    role: str = "general"
+    priority: int = 0
+    required_tier: str = "free"
 
 
 @dataclass

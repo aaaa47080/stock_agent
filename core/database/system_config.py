@@ -27,6 +27,7 @@ import json
 import threading
 from typing import Any, Dict, Optional, List
 from .connection import get_connection
+from core.config import TEST_MODE
 
 # ============================================================================
 # Redis 支持（可選依賴）
@@ -705,7 +706,8 @@ def init_audit_table():
 # ============================================================================
 
 # 自動初始化審計表
-try:
-    init_audit_table()
-except Exception as e:
-    print(f"[Config] 模組初始化時審計表創建失敗（可能是首次運行）: {e}")
+if not TEST_MODE:
+    try:
+        init_audit_table()
+    except Exception as e:
+        print(f"[Config] 模組初始化時審計表創建失敗（可能是首次運行）: {e}")

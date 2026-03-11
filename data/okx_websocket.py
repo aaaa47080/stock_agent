@@ -400,8 +400,14 @@ class OKXTickerWebSocketManager:
             }]
         }
 
-        await self.ws.send(json.dumps(unsubscribe_msg))
-        logger.debug(f"取消訂閱 Ticker: {inst_id}")
+        try:
+            await self.ws.send(json.dumps(unsubscribe_msg))
+            logger.debug(f"取消訂閱 Ticker: {inst_id}")
+        except websockets.exceptions.ConnectionClosed as e:
+            logger.warning(f"Ticker WS 已關閉，跳過取消訂閱 {inst_id}: {e}")
+            self.ws = None
+        except Exception as e:
+            logger.warning(f"取消訂閱 Ticker 失敗 {inst_id}: {e}")
 
     async def _handle_message(self, message: str):
         """處理接收到的消息"""
@@ -508,7 +514,10 @@ class OKXTickerWebSocketManager:
         """取消所有訂閱"""
         symbols = list(self.subscriptions.keys())
         for symbol in symbols:
-            await self.unsubscribe(symbol)
+            try:
+                await self.unsubscribe(symbol)
+            except Exception as e:
+                logger.warning(f"批量取消訂閱失敗 {symbol}: {e}")
 
     async def start(self):
         """啟動 WebSocket 管理器"""

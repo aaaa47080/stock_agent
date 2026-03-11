@@ -11,8 +11,9 @@ if sys.platform == "win32":
     if hasattr(sys.stderr, 'reconfigure'):
         sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 
-# Load environment variables with override to ensure .env file values take precedence
-load_dotenv(override=True)
+# Load local defaults from .env, but never override values already provided
+# by the shell, process manager, or deployment platform.
+load_dotenv()
 
 # === 測試模式配置 ===
 # 設為 True 時，跳過登入驗證，自動以測試用戶身份登入

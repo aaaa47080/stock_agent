@@ -25,6 +25,7 @@ const _CATEGORY_ICONS = {
 };
 
 let _currentUserTier = 'free';
+let _toolSettingsLoaded = false;
 
 /**
  * 初始化工具設定頁面 — 從後端拉取工具清單並渲染
@@ -42,12 +43,13 @@ async function initToolSettings() {
 
     try {
         const token = window.AuthManager?.currentUser?.accessToken;
-        const res = await fetch('/api/tools', {
+        const res = await fetch('/api/user/tools', {
             headers: token ? { Authorization: 'Bearer ' + token } : {},
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         _currentUserTier = data.user_tier || 'free';
+        _toolSettingsLoaded = true;
         renderToolList(container, data.tools || []);
     } catch (err) {
         console.error('[toolSettings] fetch error:', err);
@@ -107,7 +109,7 @@ function renderToolList(container, tools) {
     // Show upgrade notice for free users
     const notice = document.getElementById('tool-settings-free-notice');
     if (notice) {
-        if (_currentUserTier !== 'premium') {
+        if (_currentUserTier === 'free') {
             notice.classList.remove('hidden');
         } else {
             notice.classList.add('hidden');
@@ -142,10 +144,10 @@ function _renderToolRow(tool) {
     }
 
     const checked = tool.is_enabled ? 'checked' : '';
-    const canToggle = _currentUserTier === 'premium';
+    const canToggle = _currentUserTier === 'plus' || _currentUserTier === 'premium';
     const disabledAttr = canToggle ? '' : 'disabled';
     const wrapperClass = canToggle ? 'cursor-pointer' : 'cursor-not-allowed opacity-60';
-    const toggleTitle = canToggle ? '' : 'title="升級 Premium 可自訂工具"';
+    const toggleTitle = canToggle ? '' : 'title="升級 Plus 或 Premium 可自訂工具"';
 
     return `
         <div class="flex items-center gap-3 p-3 rounded-xl bg-background/50 border border-white/5 hover:border-white/10 transition">
@@ -206,14 +208,14 @@ function toggleToolCategory(catId) {
 }
 
 /**
- * 呼叫 API 更新工具偏好（Premium 專屬）
+ * 呼叫 API 更新工具偏好（付費會員）
  */
 async function toggleToolPreference(toolId, isEnabled, checkboxEl) {
-    if (_currentUserTier !== 'premium') return;
+    if (_currentUserTier !== 'plus' && _currentUserTier !== 'premium') return;
 
     try {
         const token = window.AuthManager?.currentUser?.accessToken;
-        const res = await fetch(`/api/tools/${toolId}/preference`, {
+        const res = await fetch(`/api/user/tools/${toolId}/preference`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -234,3 +236,4 @@ async function toggleToolPreference(toolId, isEnabled, checkboxEl) {
 window.initToolSettings = initToolSettings;
 window.toggleToolPreference = toggleToolPreference;
 window.toggleToolCategory = toggleToolCategory;
+window.isToolSettingsLoaded = () => _toolSettingsLoaded;

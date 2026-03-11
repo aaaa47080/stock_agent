@@ -1,0 +1,16 @@
+{
+  "scenario": "interactive_user_test",
+  "session_id": "interactive_1772979514",
+  "total_rounds": 1,
+  "conversation": [
+    {
+      "round": 1,
+      "user": "SOL 的質押收益率多少",
+      "assistant": "請問您是想查詢 SOL 的目前質押收益率嗎？",
+      "mode": "unknown",
+      "hitl": null,
+      "duration": 2.42,
+      "is_resume": false
+    }
+  ]
+}

@@ -61,7 +61,12 @@ def run_query(manager, query: str, session_id: str, debug: bool = False) -> str:
     """
     from langgraph.types import Command
 
-    config  = {"configurable": {"thread_id": session_id}}
+    from core.agents.manager import MANAGER_GRAPH_RECURSION_LIMIT
+
+    config  = {
+        "configurable": {"thread_id": session_id},
+        "recursion_limit": MANAGER_GRAPH_RECURSION_LIMIT,
+    }
     initial = {
         "session_id":          session_id,
         "query":               query,

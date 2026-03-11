@@ -5,6 +5,7 @@
 """
 
 from typing import Any, Optional
+import socket
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage
 from core.model_config import OPENAI_DEFAULT_MODEL, GEMINI_DEFAULT_MODEL
@@ -55,6 +56,38 @@ def create_user_llm_client(provider: str, api_key: str, model: Optional[str] = N
     )
 
 
+def explain_llm_exception(exc: Exception) -> str:
+    """將底層 LLM 例外轉為可診斷的訊息。"""
+    chain = []
+    current = exc
+    seen = set()
+
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        chain.append(current)
+        current = getattr(current, "__cause__", None) or getattr(current, "__context__", None)
+
+    messages = " | ".join(str(item) for item in chain if str(item))
+
+    if any(isinstance(item, socket.gaierror) for item in chain) or (
+        "nodename nor servname provided" in messages
+        or "Name or service not known" in messages
+        or "Temporary failure in name resolution" in messages
+    ):
+        return "LLM 連線失敗：DNS 解析失敗，請檢查目前環境是否可連外網，以及 OpenAI/OpenRouter 網域是否可解析。"
+
+    if "401" in messages or "Unauthorized" in messages:
+        return "API Key 無效或已過期"
+
+    if "429" in messages:
+        return "API 配額不足"
+
+    if "Connection error" in messages or "ConnectError" in messages or "APIConnectionError" in messages:
+        return "LLM 連線失敗：無法連到模型提供商，請檢查外網連線、防火牆或代理設定。"
+
+    return f"驗證失敗: {exc}"
+
+
 def validate_user_key(provider: str, api_key: str) -> tuple[bool, str]:
     """
     驗證用戶提供的 API key 是否有效
@@ -75,10 +108,4 @@ def validate_user_key(provider: str, api_key: str) -> tuple[bool, str]:
 
         return True, "驗證成功"
     except Exception as e:
-        error_msg = str(e)
-        if "401" in error_msg or "Unauthorized" in error_msg:
-            return False, "API Key 無效或已過期"
-        elif "429" in error_msg:
-            return False, "API 配額不足"
-        else:
-            return False, f"驗證失敗: {error_msg}"
+        return False, explain_llm_exception(e)

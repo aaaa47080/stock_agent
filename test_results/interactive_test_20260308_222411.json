@@ -1,0 +1,16 @@
+{
+  "scenario": "interactive_user_test",
+  "session_id": "interactive_1772979840",
+  "total_rounds": 1,
+  "conversation": [
+    {
+      "round": 1,
+      "user": "BTC 鯨魚交易最近有大額轉帳嗎",
+      "assistant": "最近的 BTC 鯨魚交易並沒有發現大額轉帳，特別是500,000美元以上的轉帳似乎沒有發生。這可能暗示著近期市場活動較為平靜，或者大額持有者並未進行顯著的資金轉移。\n\n這樣的情況可能對市場的流動性和價格波動性產生影響。當大額交易減少時，市場可能會顯得更加穩定，但也可能意味著缺乏新的資金流入，從而影響價格的上漲潛力。\n\n如果你有其他問題或需要進一步的資訊，隨時告訴我！",
+      "mode": "unknown",
+      "hitl": null,
+      "duration": 10.59,
+      "is_resume": false
+    }
+  ]
+}

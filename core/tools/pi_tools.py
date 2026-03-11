@@ -21,14 +21,17 @@ PI_API_BASE = "https://api.minepi.com/v2"
 @tool
 def get_pi_price() -> str:
     """
-    獲取 Pi Network (PI) 幣的即時價格。
+    查詢 Pi Network (PI) 的即時價格。
 
-    Pi Network 是一個專為手機用戶設計的加密貨幣項目，
-    此工具從 CoinGecko 獲取 PI 的即時價格資訊。
+    ⚠️ 重要：PI (Pi Network) 不在 Binance 等主流交易所上市，
+    因此無法使用通用的 get_crypto_price 工具。
+    查詢 PI 價格時必須使用此專用工具。
+
+    此工具從 CoinGecko API 獲取 PI 的即時價格資訊。
 
     適用情境：
-    - 用戶詢問「PI 現在多少錢」
-    - 用戶想了解 Pi 幣的市場表現
+    - 用戶詢問「PI 現在多少錢」「Pi Network 價格」
+    - 用戶想了解 PI (Pi Network) 的市場表現
     """
     import httpx
     try:

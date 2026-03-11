@@ -83,7 +83,13 @@ def price_data(symbol: str = "BTC") -> list:
 
 @tool
 def get_crypto_price(symbol: str = "BTC") -> dict:
-    """獲取加密貨幣的即時價格（精確價格查詢）"""
+    """
+    查詢在主流交易所（Binance、OKX 等）上市的加密貨幣即時價格。
+
+    ⚠️ 此工具不支持 PI (Pi Network)。查詢 PI 價格請使用 get_pi_price 工具。
+
+    支持的幣種：BTC、ETH、SOL、USDT 等主流交易所上市的代幣。
+    """
     from core.tools.crypto_tools import get_crypto_price_tool
     result = get_crypto_price_tool.invoke({"symbol": symbol})
     return {"price_info": result}

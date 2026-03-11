@@ -22,6 +22,9 @@ const NotificationService = {
     // 是否已登录
     isLoggedIn: false,
 
+    // 避免重複初始化 / 重複 WebSocket
+    _initializedUserId: null,
+
     // 模拟数据（Phase 1 使用，作为后备）
     mockNotifications: [
         {
@@ -66,16 +69,32 @@ const NotificationService = {
      * 初始化通知服务
      */
     async init() {
+        const { userId } = this._getCredentials();
+
+        // Same logged-in user with an active socket does not need full re-init.
+        if (
+            this.isLoggedIn &&
+            userId &&
+            this._initializedUserId === userId &&
+            this.ws &&
+            (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)
+        ) {
+            return;
+        }
+
         // 检查是否登录
         this.isLoggedIn = window.AuthManager && window.AuthManager.isLoggedIn();
 
         if (this.isLoggedIn) {
+            this._initializedUserId = userId;
             // 已登录：从 API 获取真实数据
             await this.fetchNotifications();
 
             // 连接 WebSocket
             this.connectWebSocket();
         } else {
+            this._initializedUserId = null;
+            this.disconnectWebSocket();
             // 未登录：顯示空列表
             this.notifications = [];
             this.unreadCount = 0;
@@ -308,6 +327,15 @@ const NotificationService = {
             return;
         }
 
+        if (
+            this.ws &&
+            (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)
+        ) {
+            return;
+        }
+
+        this.disconnectWebSocket(false);
+
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}/ws/notifications`;
 
@@ -369,6 +397,35 @@ const NotificationService = {
         }, delay);
     },
 
+    disconnectWebSocket(resetReconnect = true) {
+        if (this.reconnectTimer) {
+            clearTimeout(this.reconnectTimer);
+            this.reconnectTimer = null;
+        }
+
+        if (this.ws) {
+            try {
+                this.ws.onopen = null;
+                this.ws.onmessage = null;
+                this.ws.onclose = null;
+                this.ws.onerror = null;
+                if (
+                    this.ws.readyState === WebSocket.OPEN ||
+                    this.ws.readyState === WebSocket.CONNECTING
+                ) {
+                    this.ws.close();
+                }
+            } catch (error) {
+                console.warn('[NotificationService] Failed to close WebSocket cleanly', error);
+            }
+            this.ws = null;
+        }
+
+        if (resetReconnect) {
+            this.reconnectAttempts = 0;
+        }
+    },
+
     /**
      * 格式化时间
      */
@@ -400,7 +457,7 @@ const NotificationService = {
 
 // 自动初始化
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => NotificationService.init());
+    document.addEventListener('DOMContentLoaded', () => NotificationService.init(), { once: true });
 } else {
     NotificationService.init();
 }

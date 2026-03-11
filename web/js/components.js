@@ -804,6 +804,30 @@ const Components = {
                     </div>
                 </div>
 
+                <!-- AI Tool Selection -->
+                <div class="bg-surface p-6 md:p-8 rounded-3xl border border-white/5">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                                <i data-lucide="sliders-horizontal" class="w-5 h-5 text-accent"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-serif text-accent">AI Tool Selection</h3>
+                                <p class="text-xs text-textMuted">Choose which analysis tools your agent can use</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="tool-settings-free-notice" class="hidden mb-4 bg-background/50 rounded-xl p-4 border border-white/5">
+                        <p class="text-sm text-textMuted leading-relaxed">
+                            <i data-lucide="lock" class="w-4 h-4 inline-block mr-1 opacity-70"></i>
+                            升級 Plus 或 Premium 後，可自訂 agent 可使用的工具組合。
+                        </p>
+                    </div>
+
+                    <div id="tool-settings-list" class="space-y-2"></div>
+                </div>
+
                 <!-- Premium Membership -->
                 <div class="bg-surface p-6 md:p-8 rounded-3xl border border-white/5">
                     <div class="flex items-center gap-3 mb-6">

@@ -1,0 +1,16 @@
+{
+  "scenario": "interactive_user_test",
+  "session_id": "interactive_1772979712",
+  "total_rounds": 1,
+  "conversation": [
+    {
+      "round": 1,
+      "user": "查詢 SOL 質押收益率",
+      "assistant": "您希望了解 SOL 的質押收益率是針對哪個平台或服務呢？",
+      "mode": "unknown",
+      "hitl": null,
+      "duration": 2.03,
+      "is_resume": false
+    }
+  ]
+}

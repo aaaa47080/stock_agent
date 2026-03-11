@@ -453,9 +453,21 @@ _AGENT_DEFAULT_TOOLS: Dict[str, List[str]] = {
 # 會員等級權限順序
 TIER_HIERARCHY = {"free": 0, "plus": 1, "premium": 2}
 
+_TIER_ALIASES = {
+    "free": "free",
+    "plus": "plus",
+    "premium": "premium",
+    "pro": "premium",
+}
+
+
+def normalize_membership_tier(tier: Optional[str]) -> str:
+    """Normalize legacy membership names to tool-system tiers."""
+    return _TIER_ALIASES.get((tier or "free").strip().lower(), "free")
+
 def _get_tier_level(tier: str) -> int:
     """取得會員等級數值"""
-    return TIER_HIERARCHY.get(tier, 0)
+    return TIER_HIERARCHY.get(normalize_membership_tier(tier), 0)
 
 
 def seed_tools_catalog():
@@ -471,13 +483,13 @@ def seed_tools_catalog():
             c.execute('''
                 INSERT INTO tools_catalog
                     (tool_id, display_name, description, category,
-                     tier_required, quota_type, daily_limit_free, daily_limit_prem, source_type)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'native')
+                     tier_required, quota_type, daily_limit_free, daily_limit_plus, daily_limit_prem, source_type)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'native')
                 ON CONFLICT (tool_id) DO NOTHING
             ''', (
                 t["tool_id"], t["display_name"], t["description"], t["category"],
                 t["tier_required"], t["quota_type"],
-                t["daily_limit_free"], t["daily_limit_prem"],
+                t["daily_limit_free"], t["daily_limit_plus"], t["daily_limit_prem"],
             ))
 
         # 2. Seed agent_tool_permissions
@@ -510,6 +522,7 @@ def get_allowed_tools(agent_id: str, user_tier: str = "free", user_id: Optional[
 
     若 DB 資料為空（首次啟動前尚未 seed），回傳 hardcode fallback。
     """
+    user_tier = normalize_membership_tier(user_tier)
     conn = get_connection()
     c = conn.cursor()
     try:
@@ -551,8 +564,20 @@ def get_allowed_tools(agent_id: str, user_tier: str = "free", user_id: Optional[
 
         rows = c.fetchall()
 
-        # Fallback：DB 還沒 seed 時用 hardcode 清單
         if not rows:
+            # 若 catalog / permissions 已存在，但因 tier 或 user preference 篩掉全部，
+            # 必須回傳空清單，而不是誤判成未 seed 後放回 fallback 工具。
+            c.execute('''
+                SELECT 1
+                FROM agent_tool_permissions atp
+                JOIN tools_catalog tc ON tc.tool_id = atp.tool_id
+                WHERE atp.agent_id = %s
+                LIMIT 1
+            ''', (agent_id,))
+            seeded = c.fetchone()
+            if seeded:
+                return []
+            # Fallback：DB 還沒 seed 時用 hardcode 清單
             return _get_fallback_tools(agent_id, user_tier)
 
         return [row[0] for row in rows]
@@ -566,6 +591,7 @@ def get_allowed_tools(agent_id: str, user_tier: str = "free", user_id: Optional[
 
 def _get_fallback_tools(agent_id: str, user_tier: str) -> List[str]:
     """DB 不可用時的 hardcode fallback（與原 bootstrap.py 一致）"""
+    user_tier = normalize_membership_tier(user_tier)
     all_tools = _AGENT_DEFAULT_TOOLS.get(agent_id, [])
     user_tier_level = _get_tier_level(user_tier)
 
@@ -586,6 +612,7 @@ def check_tool_quota(user_id: str, tool_id: str, user_tier: str) -> bool:
 
     支援三級會員：free / plus / premium
     """
+    user_tier = normalize_membership_tier(user_tier)
     conn = get_connection()
     c = conn.cursor()
     try:
@@ -658,6 +685,7 @@ def get_tools_for_frontend(user_tier: str, user_id: Optional[str] = None) -> Lis
     包含每個工具的 display_name、category、tier_required、
     以及用戶當前的 is_enabled 狀態（Plus/Premium 才有個人偏好）。
     """
+    user_tier = normalize_membership_tier(user_tier)
     conn = get_connection()
     c = conn.cursor()
     try:

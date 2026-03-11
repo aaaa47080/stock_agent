@@ -773,20 +773,21 @@ async def update_screener_task():
 
     logger.info("🚀 Starting Screener: initial analysis + WebSocket price feed...")
 
-    # 啟動 Ticker WebSocket（連線到 OKX public endpoint）
-    await okx_ticker_ws_manager.start()
-
-    # 初始完整分析
-    await run_screener_analysis()
-
-    # 訂閱分析結果幣種到 WebSocket，之後由 push 更新價格
-    await _subscribe_screener_symbols_to_ws()
-
     update_interval_sec = SCREENER_UPDATE_INTERVAL_MINUTES * 60
     logger.info(f"Screener heavy analysis interval: {SCREENER_UPDATE_INTERVAL_MINUTES} min. Price feed: OKX WebSocket (real-time).")
 
-    # 定期重新分析（更新排名 / 訂閱清單），價格由 WS 持續推送
     while True:
-        await asyncio.sleep(update_interval_sec)
-        await run_screener_analysis()
-        await _subscribe_screener_symbols_to_ws()
+        try:
+            # 啟動 Ticker WebSocket（連線到 OKX public endpoint）
+            await okx_ticker_ws_manager.start()
+
+            # 完整分析 + 重新同步訂閱清單
+            await run_screener_analysis()
+            await _subscribe_screener_symbols_to_ws()
+
+            await asyncio.sleep(update_interval_sec)
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            logger.error(f"[Screener WS] 背景更新失敗，30 秒後重試: {e}", exc_info=True)
+            await asyncio.sleep(30)

@@ -617,12 +617,14 @@ def create_tool_tables(c):
             tier_required    TEXT DEFAULT 'free',
             quota_type       TEXT DEFAULT 'unlimited',
             daily_limit_free INTEGER DEFAULT 0,
+            daily_limit_plus INTEGER,
             daily_limit_prem INTEGER,
             source_type      TEXT DEFAULT 'native',
             is_active        BOOLEAN DEFAULT TRUE,
             created_at       TIMESTAMP DEFAULT NOW()
         )
     ''')
+    c.execute("ALTER TABLE tools_catalog ADD COLUMN IF NOT EXISTS daily_limit_plus INTEGER")
 
     # Agent 可用工具設定（Admin 層控制）
     c.execute('''

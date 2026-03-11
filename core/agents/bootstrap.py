@@ -14,6 +14,7 @@ from .tool_registry import ToolRegistry, ToolMetadata
 from .prompt_registry import PromptRegistry
 from .manager import ManagerAgent
 from core.config import TEST_MODE
+from core.database.tools import normalize_membership_tier
 
 # Import @tool functions — crypto
 from .tools import (
@@ -104,6 +105,7 @@ class LanguageAwareLLM:
 def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
               user_tier: str = "free", user_id: Optional[str] = None,
               session_id: Optional[str] = None) -> ManagerAgent:
+    user_tier = normalize_membership_tier(user_tier)
     PromptRegistry.load()
     lang_llm = LanguageAwareLLM(llm_client, language)
 
@@ -118,6 +120,10 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         for agent in existing.agent_registry._agents.values():
             if hasattr(agent, 'llm'):
                 agent.llm = lang_llm
+            if hasattr(agent, 'user_tier'):
+                agent.user_tier = user_tier
+            if hasattr(agent, 'user_id'):
+                agent.user_id = user_id
         return existing
 
     agent_registry = AgentRegistry()
@@ -181,6 +187,7 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         input_schema={"symbol": "str"},
         handler=get_futures_data,
         allowed_agents=["crypto"],
+        required_tier="plus",
     ))
     tool_registry.register(ToolMetadata(
         name="get_current_time_taipei",
@@ -195,6 +202,7 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         input_schema={"protocol_name": "str"},
         handler=get_defillama_tvl,
         allowed_agents=["crypto", "manager"],
+        required_tier="plus",
     ))
     tool_registry.register(ToolMetadata(
         name="get_crypto_categories_and_gainers",
@@ -202,6 +210,7 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         input_schema={},
         handler=get_crypto_categories_and_gainers,
         allowed_agents=["crypto", "manager"],
+        required_tier="plus",
     ))
     tool_registry.register(ToolMetadata(
         name="get_token_unlocks",
@@ -209,6 +218,7 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         input_schema={"symbol": "str"},
         handler=get_token_unlocks,
         allowed_agents=["crypto", "manager"],
+        required_tier="premium",
     ))
     tool_registry.register(ToolMetadata(
         name="get_token_supply",
@@ -216,6 +226,7 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         input_schema={"symbol": "str"},
         handler=get_token_supply,
         allowed_agents=["crypto", "manager"],
+        required_tier="plus",
     ))
     tool_registry.register(ToolMetadata(
         name="web_search",
@@ -598,7 +609,7 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
     # ))
 
     # New unified agents
-    crypto = CryptoAgent(lang_llm, tool_registry)
+    crypto = CryptoAgent(lang_llm, tool_registry, user_tier=user_tier, user_id=user_id)
     agent_registry.register(crypto, AgentMetadata(
         name="crypto",
         display_name="Crypto Agent",
@@ -607,7 +618,7 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         priority=10,
     ))
 
-    tw = TWStockAgent(lang_llm, tool_registry)
+    tw = TWStockAgent(lang_llm, tool_registry, user_tier=user_tier, user_id=user_id)
     agent_registry.register(tw, AgentMetadata(
         name="tw_stock",
         display_name="TW Stock Agent",
@@ -616,7 +627,7 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         priority=10,
     ))
 
-    us = USStockAgent(lang_llm, tool_registry)
+    us = USStockAgent(lang_llm, tool_registry, user_tier=user_tier, user_id=user_id)
     agent_registry.register(us, AgentMetadata(
         name="us_stock",
         display_name="US Stock Agent",
@@ -633,7 +644,7 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
     ))
 
     # ── Commodity Agent ──
-    commodity = CommodityAgent(lang_llm, tool_registry)
+    commodity = CommodityAgent(lang_llm, tool_registry, user_tier=user_tier, user_id=user_id)
     agent_registry.register(commodity, AgentMetadata(
         name="commodity",
         display_name="Commodity Agent",
@@ -643,7 +654,7 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
     ))
 
     # ── Forex Agent ──
-    forex = ForexAgent(lang_llm, tool_registry)
+    forex = ForexAgent(lang_llm, tool_registry, user_tier=user_tier, user_id=user_id)
     agent_registry.register(forex, AgentMetadata(
         name="forex",
         display_name="Forex Agent",
@@ -653,7 +664,7 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
     ))
 
     # ── Economic Agent ──
-    economic = EconomicAgent(lang_llm, tool_registry)
+    economic = EconomicAgent(lang_llm, tool_registry, user_tier=user_tier, user_id=user_id)
     agent_registry.register(economic, AgentMetadata(
         name="economic",
         display_name="Economic Agent",
@@ -662,7 +673,7 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         priority=7,
     ))
 
-    chat = ChatAgent(lang_llm, tool_registry)
+    chat = ChatAgent(lang_llm, tool_registry, user_tier=user_tier, user_id=user_id)
     agent_registry.register(chat, AgentMetadata(
         name="chat",
         display_name="Chat Agent",
