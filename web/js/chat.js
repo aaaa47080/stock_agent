@@ -751,6 +751,7 @@ async function toggleStarSession(event, sessionId, newStatus) {
         await loadSessions();
     } catch (e) {
         console.error('Failed to toggle star:', e);
+        if (typeof showToast === 'function') showToast('收藏操作失敗，請稍後再試', 'error');
     }
 }
 
@@ -2248,6 +2249,7 @@ async function loadMoreHistory() {
     } catch (e) {
         loader.remove();
         console.error('[history] loadMoreHistory error:', e);
+        if (typeof showToast === 'function') showToast('載入更多歷史記錄失敗', 'error');
     } finally {
         _historyLoading = false;
     }
@@ -2478,5 +2480,6 @@ window.submitFeedback = async function (codebookId, score, btn) {
         console.error('Feedback failed:', e);
         // Re-enable on error
         buttons.forEach((b) => (b.disabled = false));
+        if (typeof showToast === 'function') showToast('反饋提交失敗，請稍後再試', 'error');
     }
 };

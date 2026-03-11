@@ -22,6 +22,9 @@ let marketRefreshInterval = null;
 
 /**
  * 轉義 HTML 特殊字符，防止 XSS 攻擊
+ * 注意：security-utils.js 另有 SecurityUtils.escapeHTML（使用 DOM textContent）。
+ * 此版本額外轉義單引號（&#039;），適合用在 HTML attribute 值中，兩者不衝突。
+ * 全域程式碼（chat.js、forum.js 等）均使用此簡短名稱 escapeHtml。
  * @param {string} str - 要轉義的字符串
  * @returns {string} 轉義後的字符串
  */
@@ -521,7 +524,14 @@ const Pi = window.Pi;
 // Note: The main switchTab() function is now defined inline in index.html
 // This function handles additional logic like intervals and API calls
 
+// 記錄上一個 tab，防止相同 tab 重複觸發 setInterval
+let _lastOnTabSwitchTab = null;
+
 function onTabSwitch(tab) {
+    // ✅ 防止相同 tab 重複創建 interval（快速點擊或初始化時的雙重呼叫）
+    if (tab === _lastOnTabSwitchTab) return;
+    _lastOnTabSwitchTab = tab;
+
     // Abort pending analysis if leaving chat tab
     if (tab !== 'chat' && window.currentAnalysisController) {
         window.currentAnalysisController.abort();
@@ -887,237 +897,21 @@ window.setKeyValidity = function (provider, isValid) {
 };
 
 // ========================================
-// Draggable Navigation Logic (Optimized)
+// Navigation Logic - 委託給 global-nav.js (GlobalNav)
+// 原有 234 行重複的拖拽/收縮邏輯已移除，統一由 GlobalNav 管理
 // ========================================
-let navCollapsed = false;
 
-function toggleNavCollapse() {
-    const navButtons = document.getElementById('nav-buttons');
-    const toggleIcon = document.getElementById('nav-toggle-icon');
-    const nav = document.getElementById('draggable-nav');
+// 向後相容：index.html 的按鈕仍呼叫此名稱
+window.toggleNavCollapse = function () {
+    if (window.GlobalNav) window.GlobalNav.toggleCollapse();
+};
 
-    if (!navButtons || !toggleIcon) return;
-
-    navCollapsed = !navCollapsed;
-
-    if (navCollapsed) {
-        // 收縮
-        navButtons.style.width = '0';
-        navButtons.style.opacity = '0';
-        navButtons.style.pointerEvents = 'none';
-        toggleIcon.style.transform = 'rotate(180deg)';
-        nav.style.borderRadius = '9999px';
-    } else {
-        // 展開
-        navButtons.style.width = '';
-        navButtons.style.opacity = '1';
-        navButtons.style.pointerEvents = 'auto';
-        toggleIcon.style.transform = 'rotate(0deg)';
-        nav.style.borderRadius = '9999px';
-    }
-
-    // 保存狀態
-    localStorage.setItem('navCollapsed', navCollapsed);
-}
-
-// 初始化收縮狀態
+// 初始化主應用的導航拖拽與狀態恢復
 document.addEventListener('DOMContentLoaded', () => {
-    const saved = localStorage.getItem('navCollapsed');
-    if (saved === 'true') {
-        navCollapsed = false; // 先設為 false，讓 toggle 變成 true
-        toggleNavCollapse();
+    if (window.GlobalNav) {
+        window.GlobalNav.initDraggable();
+        window.GlobalNav.restoreNavState();
     }
-});
-
-// Draggable Logic (Optimized with requestAnimationFrame)
-document.addEventListener('DOMContentLoaded', () => {
-    const container = document.getElementById('global-nav-container');
-    const nav = document.getElementById('draggable-nav');
-    if (!container || !nav) return;
-
-    // State Variables
-    let isDragging = false;
-    let currentX = 0,
-        currentY = 0; // Current Translation
-    let initialX, initialY; // Touch/Mouse Start Position
-    let xOffset = 0,
-        yOffset = 0; // Saved Offset
-    let animationFrameId = null;
-
-    // Load saved position (with bounds clamp to avoid loading an off-screen position)
-    const savedPos = localStorage.getItem('navPosition');
-    if (savedPos) {
-        try {
-            const { x, y } = JSON.parse(savedPos);
-            const viewW = window.innerWidth;
-            const viewH = window.innerHeight;
-            const navHeight = nav.getBoundingClientRect().height || 65;
-            // Clamp on load: allow upward drag only within bottom 55% of screen
-            const maxUp = -(viewH * 0.55 - navHeight);
-            const maxDown = 80;
-            xOffset = Math.max(-(viewW / 2) + 80, Math.min(viewW / 2 - 80, x));
-            yOffset = Math.max(maxUp, Math.min(maxDown, y));
-            setTranslate(xOffset, yOffset, container);
-        } catch (e) {
-            localStorage.removeItem('navPosition');
-        }
-    }
-
-    const dragHandle = nav.querySelector('.drag-handle');
-    if (!dragHandle) return;
-
-    // Mobile Optimization: Prevent default touch actions (scrolling) on handle
-    dragHandle.style.touchAction = 'none';
-
-    // Event Listeners
-    dragHandle.addEventListener('mousedown', dragStart);
-    dragHandle.addEventListener('touchstart', dragStart, { passive: false });
-
-    document.addEventListener('mouseup', dragEnd);
-    document.addEventListener('touchend', dragEnd);
-
-    document.addEventListener('mousemove', drag);
-    document.addEventListener('touchmove', drag, { passive: false });
-
-    function dragStart(e) {
-        if (e.target.closest('button:not(.drag-handle)')) return;
-
-        if (e.type === 'touchstart') {
-            initialX = e.touches[0].clientX - xOffset;
-            initialY = e.touches[0].clientY - yOffset;
-        } else {
-            initialX = e.clientX - xOffset;
-            initialY = e.clientY - yOffset;
-        }
-
-        isDragging = true;
-
-        // Performance: specific optimization classes
-        container.style.willChange = 'transform';
-        container.style.transition = 'none'; // Disable transition on container if any
-        nav.style.transition = 'none'; // Disable hover transitions etc on nav
-
-        dragHandle.style.cursor = 'grabbing';
-    }
-
-    function dragEnd(e) {
-        if (!isDragging) return;
-
-        initialX = currentX;
-        initialY = currentY;
-
-        isDragging = false;
-        cancelAnimationFrame(animationFrameId);
-
-        // Snap to bounds logic
-        const navRect = nav.getBoundingClientRect();
-        const navWidth = navRect.width;
-        const navHeight = navRect.height;
-        const viewW = window.innerWidth;
-        const viewH = window.innerHeight;
-        const padding = 10;
-
-        // Boundaries (Note: container is strictly centered horizontally by default via CSS)
-        // offsetX represents deviation from that center.
-        const minX = -(viewW / 2) + navWidth / 2 + padding;
-        const maxX = viewW / 2 - navWidth / 2 - padding;
-
-        // Vertical boundaries
-        // Initial bottom is 24px (approx 96px from bottom).
-        // initialTop = viewH - 96 - navHeight;
-        // Let's rely on computed rect for safer bounds
-        // Reset transition for smooth snap
-        container.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)';
-
-        // Clamp offsets
-        // Recalculate based on current state to ensure robustness
-        // Since we are moving with transform translate, currentX is the translation value.
-
-        let targetX = currentX;
-        let targetY = currentY;
-
-        // Clamp X
-        if (targetX < minX) targetX = minX;
-        if (targetX > maxX) targetX = maxX;
-
-        // Clamp Y (Simplify: just keep it on screen)
-        // Top boundary (negative Y moves up)
-        // Bottom is fixed at 24px.
-        // Transforming Y negative moves UP.
-        // Max UP = viewH - margin
-        // Max DOWN = margin (since it starts at bottom)
-
-        // Let's use simple logic: keep center on screen
-        const safeMarginY = viewH / 2 - navHeight; // Rough estimate
-        // Actually, just clamp to keep rect visible
-        // We know initial position (0,0) is bottom-center.
-
-        // Constrain Y to be reasonable (e.g., +/- screen height)
-        // Ideally we would calculate exact pixels but rough clamp works for "keep on screen"
-        const maxUp = -(viewH - 150);
-        const maxDown = 80;
-
-        if (targetY < maxUp) targetY = maxUp;
-        if (targetY > maxDown) targetY = maxDown;
-
-        // Commit final position
-        xOffset = targetX;
-        yOffset = targetY; // Actually we should use targetY but let's trust the clamp
-
-        setTranslate(targetX, targetY, container);
-
-        // Cleanup
-        setTimeout(() => {
-            container.style.willChange = 'auto';
-            container.style.transition = '';
-            nav.style.transition = 'all 0.3s ease'; // Restore nav transition
-        }, 300);
-
-        dragHandle.style.cursor = 'grab';
-
-        // Save
-        localStorage.setItem('navPosition', JSON.stringify({ x: targetX, y: targetY }));
-    }
-
-    function drag(e) {
-        if (!isDragging) return;
-
-        e.preventDefault(); // Important for touch
-
-        let clientX, clientY;
-        if (e.type === 'touchmove') {
-            clientX = e.touches[0].clientX;
-            clientY = e.touches[0].clientY;
-        } else {
-            clientX = e.clientX;
-            clientY = e.clientY;
-        }
-
-        currentX = clientX - initialX;
-        currentY = clientY - initialY;
-
-        // Debounce via rAF
-        if (!animationFrameId) {
-            animationFrameId = requestAnimationFrame(() => {
-                setTranslate(currentX, currentY, container);
-                animationFrameId = null;
-            });
-        }
-    }
-
-    function setTranslate(xPos, yPos, el) {
-        // Use stacked transforms for better compatibility than calc() inside translate3d
-        // translateX(-50%) centers it, then translate3d moves it by offset
-        el.style.transform = `translateX(-50%) translate3d(${xPos}px, ${yPos}px, 0)`;
-    }
-
-    // Fix resize reset
-    window.addEventListener('resize', () => {
-        if (!isDragging) {
-            // Reset to center x if window resizes drastically?
-            // Or just clamp. For now, keep simple.
-        }
-    });
 });
 
 async function saveSettings() {

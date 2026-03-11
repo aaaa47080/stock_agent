@@ -166,7 +166,7 @@
                 <nav id="draggable-nav" role="navigation" aria-label="主要導航"
                     class="bg-surface/95 backdrop-blur-xl border border-white/10 rounded-full p-1.5 flex items-center gap-1 shadow-2xl shadow-black/40 select-none transition-all duration-300">
                     <!-- Collapse/Expand Toggle -->
-                    <button id="nav-toggle" onclick="toggleNavCollapse()" aria-label="收縮/展開導航" aria-expanded="true"
+                    <button id="nav-toggle" onclick="GlobalNav.toggleCollapse()" aria-label="收縮/展開導航" aria-expanded="true"
                         class="w-10 h-10 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-textMuted hover:text-primary transition-all duration-200"
                         title="收縮/展開">
                         <i data-lucide="chevrons-left" class="w-4 h-4 transition-transform duration-300"
@@ -1203,7 +1203,12 @@
     <script defer src="/static/js/llmSettings.js?v=50"></script>
     <script defer src="/static/js/toolSettings.js?v=2"></script>
     <script defer src="/static/js/filter.js?v=48"></script>
-    <script defer src="/static/js/chat.js?v=1001"></script>
+    <script defer src="/static/js/chat-state.js?v=1"></script>
+    <script defer src="/static/js/chat-sessions.js?v=1"></script>
+    <script defer src="/static/js/chat-hitl.js?v=1"></script>
+    <script defer src="/static/js/chat-analysis.js?v=1"></script>
+    <script defer src="/static/js/chat-history.js?v=1"></script>
+    <script defer src="/static/js/chat-init.js?v=1"></script>
     <script defer src="/static/js/friends.js?v=5"></script>
     <script defer src="/static/js/messages.js?v=2"></script>
     <script defer src="/static/js/nav-config.js?v=7"></script>
@@ -1213,7 +1218,9 @@
     <script defer src="/static/js/assets.js?v=47"></script>
     <script defer src="/static/js/pulse.js?v=52"></script>
     <script defer src="/static/js/trade.js?v=48"></script>
-    <script defer src="/static/js/forum.js?v=50"></script>
+    <script defer src="/static/js/forum-config.js?v=1"></script>
+    <script defer src="/static/js/forum-api.js?v=1"></script>
+    <script defer src="/static/js/forum-app.js?v=1"></script>
     <script defer src="/static/js/wallet.js?v=47"></script>
     <script defer src="/static/scam-tracker/js/scam-tracker.js?v=48"></script>
     <script defer src="/static/js/safetyTab.js?v=52"></script>
