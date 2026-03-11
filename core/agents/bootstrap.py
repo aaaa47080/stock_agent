@@ -4,6 +4,8 @@ Agent V4 Bootstrap.
 Assembles all components: tools → agents → manager.
 Instantiates ToolRegistry and registers tools with permission checks.
 """
+import logging
+import asyncio
 from langchain_core.messages import SystemMessage
 from typing import Optional, Dict
 
@@ -11,6 +13,7 @@ from .agent_registry import AgentRegistry, AgentMetadata
 from .tool_registry import ToolRegistry, ToolMetadata
 from .prompt_registry import PromptRegistry
 from .manager import ManagerAgent
+from core.config import TEST_MODE
 
 # Import @tool functions — crypto
 from .tools import (
@@ -70,13 +73,21 @@ class LanguageAwareLLM:
         self._llm = llm
         self._lang_msg = self._INSTRUCTIONS.get(language, self._INSTRUCTIONS["zh-TW"])
 
-    def invoke(self, messages, **kwargs):
+    def _inject_language(self, messages):
         messages = list(messages)
         if messages and isinstance(messages[0], SystemMessage):
             messages[0] = SystemMessage(content=messages[0].content + f"\n\n{self._lang_msg}")
         else:
             messages.insert(0, SystemMessage(content=self._lang_msg))
-        return self._llm.invoke(messages, **kwargs)
+        return messages
+
+    def invoke(self, messages, **kwargs):
+        return self._llm.invoke(self._inject_language(messages), **kwargs)
+
+    async def ainvoke(self, messages, **kwargs):
+        if hasattr(self._llm, "ainvoke"):
+            return await self._llm.ainvoke(self._inject_language(messages), **kwargs)
+        return await asyncio.to_thread(self._llm.invoke, self._inject_language(messages), **kwargs)
 
     def bind_tools(self, tools, **kwargs):
         """Delegate bind_tools but preserve language injection in the returned wrapper."""
@@ -94,45 +105,23 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
               user_tier: str = "free", user_id: Optional[str] = None,
               session_id: Optional[str] = None) -> ManagerAgent:
     PromptRegistry.load()
+    lang_llm = LanguageAwareLLM(llm_client, language)
+
+    cache_key = _manager_cache_key(user_id, session_id)
+    existing = _manager_cache.get(cache_key)
+
+    if existing is not None:
+        existing.llm = lang_llm
+        if session_id:
+            existing.session_id = session_id
+            existing._memory_store = None
+        for agent in existing.agent_registry._agents.values():
+            if hasattr(agent, 'llm'):
+                agent.llm = lang_llm
+        return existing
+
     agent_registry = AgentRegistry()
     tool_registry  = ToolRegistry()
-
-    # ── 動態工具清單（從 DB 讀取，依 user_tier 過濾）──────────────────────
-    # 首次啟動時自動 seed 工具目錄（冪等操作）
-    try:
-        from core.database.tools import seed_tools_catalog, get_allowed_tools as _get_tools
-        seed_tools_catalog()
-        def _tools(agent_id: str) -> list:
-            return _get_tools(agent_id, user_tier=user_tier, user_id=user_id)
-    except Exception as _e:
-        # DB 不可用時 fallback 到 hardcode
-        import logging
-        logging.warning(f"[bootstrap] Tool DB unavailable, using fallback: {_e}")
-        _FALLBACK = {
-            "crypto":   ["get_current_time_taipei","technical_analysis","price_data","get_crypto_price",
-                         "google_news","aggregate_news","web_search","get_fear_and_greed_index",
-                         "get_trending_tokens","get_futures_data","get_defillama_tvl",
-                         "get_crypto_categories_and_gainers","get_token_unlocks","get_token_supply",
-                         "get_gas_fees", "get_whale_transactions", "get_exchange_flow",
-                         "get_staking_yield",
-                         "get_dex_pair_info", "get_trending_dex_pairs",
-                         "get_eth_balance", "get_erc20_token_balance", "get_address_transactions",
-                         "get_contract_info", "get_eth_price_etherscan"],
-            "tw_stock": ["get_current_time_taipei","tw_stock_price","tw_technical_analysis",
-                         "tw_fundamentals","tw_institutional","tw_news","tw_major_news",
-                         "tw_pe_ratio","tw_monthly_revenue","tw_dividend","tw_foreign_top20","web_search"],
-            "us_stock": ["us_stock_price","us_technical_analysis","us_fundamentals","us_earnings",
-                         "us_news","us_institutional_holders","us_insider_transactions","get_current_time_taipei"],
-            "chat":     ["get_current_time_taipei","get_crypto_price","web_search", "get_pi_price", "get_pi_network_info", "get_pi_ecosystem"],
-            "commodity": ["get_commodity_price","get_commodity_futures_price","get_all_commodities_prices",
-                         "get_gold_silver_ratio","get_oil_price_analysis","get_current_time_taipei","web_search"],
-            "forex":    ["get_forex_rate","get_all_forex_rates","get_usd_twd_rate","get_central_bank_rates",
-                         "get_current_time_taipei","web_search"],
-            "economic": ["get_market_indices","get_vix_index","get_sp500_performance","get_sector_performance",
-                         "get_economic_calendar","get_current_time_taipei","web_search"],
-        }
-        def _tools(agent_id: str) -> list:
-            return _FALLBACK.get(agent_id, [])
 
     # ── Register Crypto Tools ──
     tool_registry.register(ToolMetadata(
@@ -169,6 +158,8 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         input_schema={"symbol": "str"},
         handler=get_crypto_price,
         allowed_agents=["technical", "crypto", "chat", "full_analysis", "manager"],
+        role="market_lookup",
+        priority=100,
     ))
     tool_registry.register(ToolMetadata(
         name="get_fear_and_greed_index",
@@ -428,6 +419,8 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         input_schema={},
         handler=get_pi_price,
         allowed_agents=["crypto", "chat", "manager"],
+        role="market_lookup",
+        priority=120,
     ))
     tool_registry.register(ToolMetadata(
         name="get_pi_network_info",
@@ -458,6 +451,8 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         input_schema={"ticker": "str"},
         handler=tw_price,
         allowed_agents=["tw_stock", "chat"],
+        role="market_lookup",
+        priority=100,
     ))
     tool_registry.register(ToolMetadata(
         name="tw_technical_analysis",
@@ -531,6 +526,8 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         input_schema={"symbol": "str"},
         handler=us_stock_price,
         allowed_agents=["us_stock", "chat"],
+        role="market_lookup",
+        priority=100,
     ))
     tool_registry.register(ToolMetadata(
         name="us_technical_analysis",
@@ -575,9 +572,6 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         allowed_agents=["us_stock"],
     ))
 
-    # ── Wrap LLM with language awareness ──
-    lang_llm = LanguageAwareLLM(llm_client, language)
-
     # ── Create Agents ──
 
     # Legacy agents (hidden from LLM classify; kept for backward compatibility via direct name lookup)
@@ -610,7 +604,6 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         display_name="Crypto Agent",
         description="加密貨幣專業分析師 — 提供即時價格、時間、技術指標、合約資金費率、質押收益率(APY)、解鎖日程(Unlocks)、代幣發行流通量(Supply)、恐慌貪婪指數、全網熱門幣種、TVL鎖倉量、最強板塊、鯨魚交易與最新新聞。不直接提供交易決策。",
         capabilities=["RSI", "MACD", "MA", "technical analysis", "crypto news", "加密貨幣", "技術指標", "資金費率", "恐慌貪婪指數", "熱門幣種", "多空情緒", "TVL", "板塊", "時間", "解鎖", "unlock", "流通量", "發行量", "supply", "質押", "staking", "收益率", "APY", "鯨魚", "whale"],
-        allowed_tools=_tools("crypto"),
         priority=10,
     ))
 
@@ -620,7 +613,6 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         display_name="TW Stock Agent",
         description="台灣股市全方位分析 — 即時價格、時間、技術指標（RSI/MACD/KD/均線）、基本面（P/E/EPS）、三大法人籌碼、台股新聞。適合台積電、鴻海、聯發科等台股查詢，接受股票代號（2330）或公司名稱（台積電）。",
         capabilities=["台股", "台灣股市", "上市", "上櫃", "股票代號", "RSI", "MACD", "KD", "均線", "本益比", "EPS", "外資", "投信", "法人", "籌碼", "股價", "台股股價", "即時股價", "時間"],
-        allowed_tools=_tools("tw_stock"),
         priority=10,
     ))
 
@@ -637,7 +629,6 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
             "AAPL", "TSLA", "NVDA", "TSM", "MSFT", "AMZN", "GOOGL", "META",
             "標普500", "道瓊", "那斯達克", "S&P500", "Apple", "Tesla", "Nvidia",
         ],
-        allowed_tools=_tools("us_stock"),
         priority=8,
     ))
 
@@ -648,7 +639,6 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         display_name="Commodity Agent",
         description="大宗商品專業分析師 — 提供黃金、白銀、原油、天然氣、銅等商品的即時價格、期貨價格、金銀比分析。適合投資者了解商品市場動態、避險情緒。",
         capabilities=["黃金", "白銀", "原油", "石油", "天然氣", "銅", "commodity", "gold", "silver", "oil", "natural_gas", "copper", "金銀比", "期貨", "ETF", "WTI", "布蘭特"],
-        allowed_tools=_tools("commodity"),
         priority=9,
     ))
 
@@ -659,7 +649,6 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         display_name="Forex Agent",
         description="外匯專業分析師 — 提供主要貨幣對匯率（USD/TWD、EUR/USD、USD/JPY等）、央行利率資訊。適合投資者了解匯率走勢和外匯市場動態。",
         capabilities=["外匯", "匯率", "forex", "貨幣", "USD/TWD", "EUR/USD", "USD/JPY", "美元", "台幣", "日圓", "歐元", "央行利率", "Fed", "ECB"],
-        allowed_tools=_tools("forex"),
         priority=8,
     ))
 
@@ -670,7 +659,6 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         display_name="Economic Agent",
         description="經濟數據專業分析師 — 提供市場指數（S&P 500、道瓊、那斯達克）、VIX恐慌指數、板塊表現、經濟事件行事曆。適合投資者了解宏觀經濟和市場情緒。",
         capabilities=["經濟", "指數", "VIX", "恐慌指數", "S&P 500", "道瓊", "那斯達克", "板塊", "市場情緒", "經濟數據", "GDP", "CPI", "非農"],
-        allowed_tools=_tools("economic"),
         priority=7,
     ))
 
@@ -680,26 +668,8 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         display_name="Chat Agent",
         description="一般對話助手 — 處理閒聊、問候、自我介紹、平台使用說明、系統時間查詢、即時價格查詢、一般知識問答，以及主觀意見問題。不負責主動搜尋新聞或執行技術分析。",
         capabilities=["conversation", "greeting", "help", "general knowledge", "price lookup", "即時價格", "平台說明", "閒聊", "時間", "現在幾點"],
-        allowed_tools=_tools("chat"),
         priority=1,
     ))
-
-    # ✅ 關鍵修復：Manager 按 user_id 複用，保留 message_count/短期記憶/consolidation 狀態
-    # LLM key 改變時才重建（用 provider:model 作為 cache 的 key 一部分）
-    cache_key = f"{user_id}"
-    existing = _manager_cache.get(cache_key)
-
-    if existing is not None:
-        # 複用現有 Manager，但更新 LLM client（可能換了 key/model）和 session_id
-        existing.llm = lang_llm
-        if session_id:
-            existing.session_id = session_id
-            existing._memory_store = None  # 讓 MemoryStore 以新 session_id 重新初始化
-        # 同時更新所有 sub-agent 的 LLM
-        for agent in existing.agent_registry._agents.values():
-            if hasattr(agent, 'llm'):
-                agent.llm = lang_llm
-        return existing
 
     manager = ManagerAgent(
         llm_client=lang_llm,
@@ -717,11 +687,34 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
 _manager_cache: Dict[str, ManagerAgent] = {}
 
 
-def get_manager_instance(user_id: str, session_id: str = "default") -> ManagerAgent:
-    """獲取已緩存的 ManagerAgent 實例（供外部模組使用）"""
-    return _manager_cache.get(user_id)
+def _manager_cache_key(user_id: str, session_id: str = "default") -> str:
+    return f"{user_id}:{session_id or 'default'}"
 
 
-def invalidate_manager_cache(user_id: str) -> None:
-    """清除指定用戶的 Manager 緩存（用戶登出或重置時）"""
-    _manager_cache.pop(user_id, None)
+def get_manager_instances(user_id: str) -> list[ManagerAgent]:
+    """獲取指定用戶的所有 ManagerAgent 實例。"""
+    prefix = f"{user_id}:"
+    return [manager for key, manager in _manager_cache.items() if key.startswith(prefix)]
+
+
+def get_manager_instance(user_id: str, session_id: str = None) -> ManagerAgent:
+    """獲取已緩存的 ManagerAgent 實例。未指定 session 時回傳最近建立的那個。"""
+    if session_id is not None:
+        return _manager_cache.get(_manager_cache_key(user_id, session_id))
+
+    prefix = f"{user_id}:"
+    for key in reversed(list(_manager_cache.keys())):
+        if key.startswith(prefix):
+            return _manager_cache[key]
+    return None
+
+
+def invalidate_manager_cache(user_id: str, session_id: str = None) -> None:
+    """清除指定用戶的 Manager 緩存；可選擇只清單一 session。"""
+    if session_id is not None:
+        _manager_cache.pop(_manager_cache_key(user_id, session_id), None)
+        return
+
+    prefix = f"{user_id}:"
+    for key in [key for key in _manager_cache.keys() if key.startswith(prefix)]:
+        _manager_cache.pop(key, None)

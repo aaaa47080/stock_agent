@@ -14,6 +14,8 @@ from __future__ import annotations
 import json
 import time
 import asyncio
+import re
+import unicodedata
 from typing import Optional, List, Dict, Callable
 
 from langchain_core.messages import HumanMessage
@@ -21,6 +23,7 @@ from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 
 from api.utils import logger
+from core.config import TEST_MODE
 
 from .models import (
     ManagerState,
@@ -34,6 +37,8 @@ from .agent_registry import AgentRegistry
 from .tool_registry import ToolRegistry
 from .router import AgentRouter
 from .prompt_registry import PromptRegistry
+from core.tools.universal_resolver import UniversalSymbolResolver
+from utils.user_client_factory import explain_llm_exception
 
 # 模組級共用 checkpointer
 _checkpointer = MemorySaver()
@@ -41,6 +46,8 @@ _checkpointer = MemorySaver()
 # Memory consolidation trigger threshold
 MEMORY_CONSOLIDATION_THRESHOLD = 12  # 降到 12 則（約 6 輪對話）
 MEMORY_IDLE_TIMEOUT = 300  # 閒置 5 分鐘後整合
+MANAGER_GRAPH_RECURSION_LIMIT = 60
+MAX_GRAPH_TASKS = 8
 
 
 # ============================================================================
@@ -98,6 +105,7 @@ class ManagerAgent:
 
         # 建立 LangGraph
         self.graph = self._build_graph()
+        self._symbol_resolver = UniversalSymbolResolver()
 
     def _get_memory_store(self):
         """
@@ -105,6 +113,9 @@ class ManagerAgent:
         ✅ 跨 session 設計：記憶以 user_id 為主鍵，開新對話仍能讀到歷史記憶
         session_id 只用於 write_long_term 時標記來源，讀取時不過濾
         """
+        if TEST_MODE:
+            return False
+
         if self._memory_store is None:
             try:
                 from core.database.memory import MemoryStore
@@ -225,6 +236,7 @@ class ManagerAgent:
                         "user_intent": intent_data.get("user_intent", query),
                         "clarification_question": clarification,
                     },
+                    "execution_mode": "vending",
                     "final_response": clarification,
                     "_processed_query": query,
                 }
@@ -243,12 +255,13 @@ class ManagerAgent:
                         "status": "direct_response",
                         "user_intent": intent_data.get("user_intent", query),
                     },
+                    "execution_mode": "vending",
                     "final_response": text,
                     "_processed_query": query,
                 }
 
             # 直接從意圖理解獲取任務列表
-            tasks = intent_data.get("tasks", [])
+            tasks = self._normalize_tasks(intent_data.get("tasks", []), query)
             if not tasks:
                 tasks = [{
                     "id": "task_1",
@@ -271,6 +284,7 @@ class ManagerAgent:
                     "aggregation_strategy": intent_data.get("aggregation_strategy", "combine_all"),
                 },
                 "task_graph": self._task_graph_to_dict(task_graph),
+                "execution_mode": "restaurant" if len(tasks) > 1 else "vending",
                 "hitl_confirmed": False,
             }
 
@@ -291,6 +305,7 @@ class ManagerAgent:
                     "user_intent": query,
                 },
                 "task_graph": self._task_graph_to_dict(TaskGraph(root=fallback_task)),
+                "execution_mode": "vending",
             }
 
     async def _execute_task_node(self, state: ManagerState) -> Dict:
@@ -345,8 +360,28 @@ class ManagerAgent:
             if len(executable_tasks) == 1:
                 # 單一任務，直接執行
                 task = executable_tasks[0]
-                self._emit_progress("execute_task", f"正在執行: {task.name}")
+                self._emit_progress(
+                    "execute_task",
+                    f"正在執行: {task.name}",
+                    type="agent_start",
+                    step=level_idx + 1,
+                    task_id=task.id,
+                    task_name=task.name,
+                    agent=task.agent,
+                    parallel=False,
+                )
                 result = await self._execute_single_task(task, state, current_results)
+                self._emit_progress(
+                    "execute_task",
+                    f"{task.name} {'完成' if result.get('success') else '失敗'}",
+                    type="agent_finish",
+                    step=level_idx + 1,
+                    task_id=task.id,
+                    task_name=task.name,
+                    agent=task.agent,
+                    success=result.get("success", False),
+                    parallel=False,
+                )
                 new_results = {**current_results, task.id: result}
                 return {
                     "task_results": new_results,
@@ -355,7 +390,27 @@ class ManagerAgent:
             else:
                 # 多個任務，並行執行
                 task_names = ", ".join([t.name for t in executable_tasks])
-                self._emit_progress("execute_task", f"並行執行 {len(executable_tasks)} 個任務: {task_names}")
+                self._emit_progress(
+                    "execute_task",
+                    f"並行執行 {len(executable_tasks)} 個任務: {task_names}",
+                    type="parallel_group_start",
+                    step=level_idx + 1,
+                    task_ids=[task.id for task in executable_tasks],
+                    task_names=[task.name for task in executable_tasks],
+                    parallel=True,
+                )
+
+                for task in executable_tasks:
+                    self._emit_progress(
+                        "execute_task",
+                        f"開始執行: {task.name}",
+                        type="agent_start",
+                        step=level_idx + 1,
+                        task_id=task.id,
+                        task_name=task.name,
+                        agent=task.agent,
+                        parallel=True,
+                    )
 
                 # 創建並行任務
                 async def execute_with_context(task, results):
@@ -373,6 +428,27 @@ class ManagerAgent:
                 for task_id, result in results_list:
                     new_results[task_id] = result
                     executed_ids.append(task_id)
+                    task = next((item for item in executable_tasks if item.id == task_id), None)
+                    self._emit_progress(
+                        "execute_task",
+                        f"{task.name if task else task_id} {'完成' if result.get('success') else '失敗'}",
+                        type="agent_finish",
+                        step=level_idx + 1,
+                        task_id=task_id,
+                        task_name=task.name if task else task_id,
+                        agent=task.agent if task else None,
+                        success=result.get("success", False),
+                        parallel=True,
+                    )
+
+                self._emit_progress(
+                    "execute_task",
+                    f"並行任務已完成: {task_names}",
+                    type="parallel_group_finish",
+                    step=level_idx + 1,
+                    task_ids=executed_ids,
+                    parallel=True,
+                )
 
                 return {
                     "task_results": new_results,
@@ -474,16 +550,22 @@ class ManagerAgent:
             # 如果有清理後的結果，更新 task_results
             if cleaned_results:
                 updated_task_results = dict(task_results)
+                removed_task_ids = []
                 for task_id, cleaned in cleaned_results.items():
                     if task_id in updated_task_results:
                         if cleaned is None:
                             # 移除有問題的結果
                             del updated_task_results[task_id]
+                            removed_task_ids.append(task_id)
                             logger.info(f"[Reflection] 移除異常結果: {task_id}")
                         else:
                             # 更新為清理後的結果
                             updated_task_results[task_id]["message"] = cleaned
-                return {"task_results": updated_task_results}
+                state_update = {"task_results": updated_task_results}
+                if needs_retry and removed_task_ids:
+                    state_update["tool_failure_detected"] = True
+                    state_update["tool_failure_issues"] = issues
+                return state_update
 
             return {}
 
@@ -511,11 +593,22 @@ class ManagerAgent:
 
         # 如果是新查詢且有舊的 task_results，只保留當前任務相關的結果
         if is_new_query and task_results:
-            # 對於 vending 模式，保留 vending_task
+            # 對於 vending 模式，檢查 task_results 是否屬於當前任務圖
             # 對於 restaurant 模式，應該已經在 planning 階段清除了
-            if state.get("execution_mode") == "vending":
-                task_results = {}
+            task_graph = state.get("task_graph")
+            if task_graph:
+                # 獲取當前任務圖中的有效 task_ids
+                valid_task_ids = set()
+                for node in self._dict_to_task_graph(task_graph).all_nodes.values():
+                    valid_task_ids.add(node.id)
+                # 只保留屬於當前任務圖的結果
+                task_results = {
+                    k: v for k, v in task_results.items()
+                    if k in valid_task_ids
+                }
             else:
+                # 沒有 task_graph，清空結果（舊查詢的殘留）
+                task_results = {}
                 # Restaurant 模式：檢查 task_results 是否屬於當前任務圖
                 task_graph = state.get("task_graph")
                 if task_graph:
@@ -529,6 +622,22 @@ class ManagerAgent:
 
         # 檢查是否有有效的結果
         if not task_results:
+            if state.get("tool_failure_detected"):
+                issues = state.get("tool_failure_issues") or []
+                reason = issues[0].get("problem") if issues and isinstance(issues[0], dict) else None
+                fallback = "目前工具未能取得有效資料，請稍後再試。"
+                if reason:
+                    fallback = f"{fallback} 原因：{reason}"
+                await self._track_conversation(
+                    user_message=current_query,
+                    assistant_response=fallback,
+                    tools_used=[]
+                )
+                return {
+                    "final_response": fallback,
+                    "_processed_query": current_query,
+                }
+
             # 沒有執行結果，直接生成回應（注入長期記憶）
             lt_memory = self.get_long_term_memory_context()
             memory_section = f"\n\n## 用戶長期記憶\n{lt_memory}" if lt_memory else ""
@@ -693,19 +802,154 @@ class ManagerAgent:
     # 輔助方法
     # ========================================================================
 
-    def _emit_progress(self, stage: str, message: str):
+    def _emit_progress(self, stage: str, message: str, **extra):
         """發送進度事件"""
         if self.progress_callback:
-            self.progress_callback({
+            payload = {
                 "stage": stage,
                 "message": message,
+            }
+            payload.update(extra)
+            self.progress_callback(payload)
+
+    def _detect_boundary_route(self, query: str) -> Optional[Dict]:
+        """用結構化邊界條件處理明確的單市場查詢。"""
+        if not query or not query.strip():
+            return None
+
+        entity_info = self._extract_market_entities(query)
+        matched = {market: value for market, value in entity_info.items() if value}
+        if len(matched) != 1:
+            return None
+
+        market, symbol = next(iter(matched.items()))
+        agent_name = self._resolve_boundary_agent_name(market)
+        if not agent_name:
+            return None
+
+        display_symbol = symbol.replace(".TW", "") if market == "tw" else symbol
+        return {
+            "task": {
+                "id": "task_1",
+                "name": f"處理 {display_symbol} 相關查詢",
+                "agent": agent_name,
+                "description": query,
+                "dependencies": [],
+            },
+            "entities": entity_info,
+        }
+
+    def _extract_market_entities(self, query: str) -> Dict[str, Optional[str]]:
+        """從 query 擷取單市場實體，避免把 routing 綁死在 prompt。"""
+        normalized = self._normalize_query_text(query)
+        result = {"crypto": None, "tw": None, "us": None}
+
+        candidates = self._extract_symbol_candidates(normalized)
+        for candidate in candidates:
+            resolution = self._symbol_resolver.resolve(candidate)
+            for market, value in resolution.items():
+                if value and result.get(market) is None:
+                    result[market] = value
+
+        return result
+
+    def _extract_symbol_candidates(self, query: str) -> List[str]:
+        """抽取可能的市場符號候選，保持順序與去重。"""
+        raw_candidates = re.findall(r"[A-Za-z]{1,10}|\d{2,6}", query)
+        seen = set()
+        candidates: List[str] = []
+        for candidate in raw_candidates:
+            normalized = candidate.strip()
+            if not normalized:
+                continue
+            key = normalized.upper()
+            if key in seen:
+                continue
+            seen.add(key)
+            candidates.append(normalized)
+        return candidates
+
+    def _normalize_query_text(self, query: str) -> str:
+        """先做 Unicode 正規化，降低全形/半形混用造成的 routing 偏差。"""
+        return unicodedata.normalize("NFKC", query or "").strip()
+
+    def _resolve_boundary_agent_name(self, market: str) -> Optional[str]:
+        """根據 registry metadata 反查對應 agent，避免在 manager 維護名稱映射表。"""
+        matched_metadata = []
+        for metadata in self.agent_registry.list_all():
+            tokens = metadata.name.lower().split("_")
+            if market in tokens:
+                matched_metadata.append(metadata)
+
+        if not matched_metadata:
+            return None
+
+        matched_metadata.sort(key=lambda metadata: (-metadata.priority, metadata.name))
+        for metadata in matched_metadata:
+            if self.agent_registry.get(metadata.name) is not None:
+                return metadata.name
+        return None
+
+    def _normalize_tasks(self, tasks: List[dict], query: str) -> List[dict]:
+        """清理 LLM 產生的 task plan，避免 graph 因過長或壞資料失控。"""
+        if not isinstance(tasks, list):
+            return []
+
+        normalized: List[dict] = []
+        retained_ids = set()
+
+        for index, task in enumerate(tasks, start=1):
+            if not isinstance(task, dict):
+                continue
+
+            task_id = str(task.get("id") or f"task_{index}")
+            agent = task.get("agent") or "chat"
+            name = str(task.get("name") or task.get("description") or f"任務 {index}")
+            description = str(task.get("description") or name)
+            dependencies = task.get("dependencies") or []
+            if not isinstance(dependencies, list):
+                dependencies = []
+
+            normalized.append({
+                "id": task_id,
+                "name": name,
+                "agent": agent,
+                "description": description,
+                "dependencies": [dep for dep in dependencies if dep in retained_ids],
             })
+            retained_ids.add(task_id)
+
+        if len(normalized) > MAX_GRAPH_TASKS:
+            logger.warning(
+                f"[Manager] Task plan too large ({len(normalized)} tasks), truncating to {MAX_GRAPH_TASKS}"
+            )
+            normalized = normalized[:MAX_GRAPH_TASKS]
+            valid_ids = {task["id"] for task in normalized}
+            for task in normalized:
+                task["dependencies"] = [dep for dep in task["dependencies"] if dep in valid_ids]
+
+        if not normalized and query:
+            return [{
+                "id": "task_1",
+                "name": "處理請求",
+                "agent": "chat",
+                "description": query,
+                "dependencies": [],
+            }]
+
+        return normalized
 
     async def _llm_invoke(self, prompt: str) -> str:
         """調用 LLM"""
         messages = [HumanMessage(content=prompt)]
-        response = self.llm.invoke(messages)
-        return response.content
+        try:
+            if hasattr(self.llm, "ainvoke"):
+                response = await self.llm.ainvoke(messages)
+            else:
+                response = await asyncio.to_thread(self.llm.invoke, messages)
+            return response.content
+        except Exception as e:
+            raise RuntimeError(explain_llm_exception(e)) from e
 
     def _parse_json_response(self, response: str) -> dict:
         """解析 JSON 回應"""
@@ -729,6 +973,8 @@ class ManagerAgent:
         """獲取長期記憶上下文（用於 LLM prompt）"""
         try:
             memory_store = self._get_memory_store()
+            if not memory_store:
+                return ""
             return memory_store.get_memory_context(include_history=True, history_limit=10)
         except Exception as e:
             logger.warning(f"[Manager] Failed to get long-term memory: {e}")
@@ -786,6 +1032,8 @@ class ManagerAgent:
         """背景執行 nanoclaw 事實萃取，不阻塞對話回應"""
         try:
             memory_store = self._get_memory_store()
+            if not memory_store:
+                return
             await memory_store.extract_facts_from_turn(
                 user_message=user_message,
                 assistant_message=assistant_response,
@@ -876,6 +1124,8 @@ class ManagerAgent:
         try:
             memory = self._get_memory(self.session_id)
             memory_store = self._get_memory_store()
+            if not memory_store:
+                return False
 
             if not memory.conversation_history:
                 return True
@@ -977,27 +1227,38 @@ class ManagerAgent:
         """執行單個 agent"""
         from .models import SubTask
 
+        resolved_symbols = {
+            market: symbol
+            for market, symbol in (context.symbols or {}).items()
+            if symbol
+        }
+
         task = SubTask(
             step=0,
             description=context.task_description,
             agent="",
             context={
                 "original_query": context.original_query,
-                "symbols": context.symbols,
+                "symbols": resolved_symbols,
                 "dependency_results": context.dependency_results,
                 "history": context.history_summary,
                 "language": "zh-TW",
+                "tool_required": bool(resolved_symbols),
+                "metadata": context.metadata,
             },
         )
 
         if hasattr(agent, 'execute'):
-            result = agent.execute(task)
+            result = await asyncio.to_thread(agent.execute, task)
             if hasattr(result, 'message'):
                 return result.message
             return str(result)
         else:
             messages = [HumanMessage(content=context.task_description)]
-            response = self.llm.invoke(messages)
+            if hasattr(self.llm, "ainvoke"):
+                response = await self.llm.ainvoke(messages)
+            else:
+                response = await asyncio.to_thread(self.llm.invoke, messages)
             return response.content
 
     async def _execute_single_task(self, task: TaskNode, state: ManagerState, completed_results: Dict) -> Dict:

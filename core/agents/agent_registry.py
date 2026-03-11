@@ -13,7 +13,6 @@ class AgentMetadata:
     display_name: str
     description: str
     capabilities: List[str]
-    allowed_tools: List[str]
     priority: int = 0
     hidden: bool = False   # If True, excluded from LLM classify prompt
 
