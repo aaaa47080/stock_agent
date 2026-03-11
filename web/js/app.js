@@ -9,7 +9,9 @@ if (typeof lucide !== 'undefined') {
 
 // markdown-it 可能不存在於所有頁面
 // 安全修復: 關閉 HTML 功能以防止 XSS 攻擊
-const md = window.markdownit ? window.markdownit({ html: false, linkify: true, breaks: true }) : null;
+const md = window.markdownit
+    ? window.markdownit({ html: false, linkify: true, breaks: true })
+    : null;
 window.md = md;
 window.isAnalyzing = false;
 let marketRefreshInterval = null;
@@ -20,6 +22,9 @@ let marketRefreshInterval = null;
 
 /**
  * 轉義 HTML 特殊字符，防止 XSS 攻擊
+ * 注意：security-utils.js 另有 SecurityUtils.escapeHTML（使用 DOM textContent）。
+ * 此版本額外轉義單引號（&#039;），適合用在 HTML attribute 值中，兩者不衝突。
+ * 全域程式碼（chat.js、forum.js 等）均使用此簡短名稱 escapeHtml。
  * @param {string} str - 要轉義的字符串
  * @returns {string} 轉義後的字符串
  */
@@ -52,14 +57,14 @@ function showToast(message, type = 'info', duration = 3000) {
         success: 'check-circle',
         error: 'x-circle',
         warning: 'alert-triangle',
-        info: 'info'
+        info: 'info',
     };
 
     const colors = {
         success: 'bg-success/20 border-success/30 text-success',
         error: 'bg-danger/20 border-danger/30 text-danger',
         warning: 'bg-primary/20 border-primary/30 text-primary',
-        info: 'bg-accent/20 border-accent/30 text-accent'
+        info: 'bg-accent/20 border-accent/30 text-accent',
     };
 
     const toast = document.createElement('div');
@@ -138,15 +143,17 @@ function initPageTransition() {
     });
 
     // 為所有返回主應用的連結添加平滑過渡
-    document.querySelectorAll('a[href="/static/index.html"], a[href^="/static/index.html#"]').forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            smoothNavigate(link.href);
+    document
+        .querySelectorAll('a[href="/static/index.html"], a[href^="/static/index.html#"]')
+        .forEach((link) => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                smoothNavigate(link.href);
+            });
         });
-    });
 
     // 為所有論壇內部連結添加平滑過渡
-    document.querySelectorAll('a[href^="/static/forum/"]').forEach(link => {
+    document.querySelectorAll('a[href^="/static/forum/"]').forEach((link) => {
         // 排除當前頁面的連結
         if (link.href === window.location.href) return;
 
@@ -191,7 +198,7 @@ function showConfirm(options = {}) {
             message = '確定要執行此操作嗎？',
             type = 'warning',
             confirmText = '確認',
-            cancelText = '取消'
+            cancelText = '取消',
         } = options;
 
         // 設置圖標和顏色
@@ -199,7 +206,7 @@ function showConfirm(options = {}) {
             danger: { icon: 'alert-triangle', bg: 'bg-danger/20', color: 'text-danger' },
             warning: { icon: 'alert-circle', bg: 'bg-primary/20', color: 'text-primary' },
             info: { icon: 'info', bg: 'bg-accent/20', color: 'text-accent' },
-            success: { icon: 'check-circle', bg: 'bg-success/20', color: 'text-success' }
+            success: { icon: 'check-circle', bg: 'bg-success/20', color: 'text-success' },
         };
 
         const config = iconConfig[type] || iconConfig.warning;
@@ -217,9 +224,11 @@ function showConfirm(options = {}) {
         // 根據類型設置確認按鈕樣式
         if (confirmBtn) {
             if (type === 'danger') {
-                confirmBtn.className = 'flex-1 py-3 bg-danger hover:brightness-110 text-white font-bold rounded-2xl transition shadow-lg';
+                confirmBtn.className =
+                    'flex-1 py-3 bg-danger hover:brightness-110 text-white font-bold rounded-2xl transition shadow-lg';
             } else {
-                confirmBtn.className = 'flex-1 py-3 bg-primary hover:brightness-110 text-background font-bold rounded-2xl transition shadow-lg';
+                confirmBtn.className =
+                    'flex-1 py-3 bg-primary hover:brightness-110 text-background font-bold rounded-2xl transition shadow-lg';
             }
         }
 
@@ -271,19 +280,14 @@ function showAlert(options = {}) {
             return;
         }
 
-        const {
-            title = '提示',
-            message = '',
-            type = 'info',
-            confirmText = '確定'
-        } = options;
+        const { title = '提示', message = '', type = 'info', confirmText = '確定' } = options;
 
         // 設置圖標和顏色
         const iconConfig = {
             danger: { icon: 'x-circle', bg: 'bg-danger/20', color: 'text-danger' },
             warning: { icon: 'alert-triangle', bg: 'bg-primary/20', color: 'text-primary' },
             info: { icon: 'info', bg: 'bg-accent/20', color: 'text-accent' },
-            success: { icon: 'check-circle', bg: 'bg-success/20', color: 'text-success' }
+            success: { icon: 'check-circle', bg: 'bg-success/20', color: 'text-success' },
         };
 
         const config = iconConfig[type] || iconConfig.info;
@@ -335,9 +339,18 @@ async function checkApiKeyStatus() {
     const statusText = document.getElementById('api-status-text');
     const statusDot = indicator ? indicator.querySelector('span') : null;
 
-    // Check LLM Key (async)
-    const currentKey = await window.APIKeyManager?.getCurrentKey();
-    const hasLlmKey = !!currentKey;
+    // Check LLM Key (async) - 添加錯誤處理
+    let currentKey = null;
+    let hasLlmKey = false;
+    try {
+        if (window.APIKeyManager && typeof window.APIKeyManager.getCurrentKey === 'function') {
+            currentKey = await window.APIKeyManager.getCurrentKey();
+            hasLlmKey = !!currentKey;
+        }
+    } catch (e) {
+        console.warn('[App] Error checking API key:', e);
+        hasLlmKey = false;
+    }
     if (window.DEBUG_MODE) console.log('[App] hasLlmKey:', hasLlmKey);
 
     // Check OKX Key
@@ -346,25 +359,35 @@ async function checkApiKeyStatus() {
     // 1. Update Top Bar Indicator (LLM Status)
     if (indicator && statusText && statusDot) {
         if (hasLlmKey) {
-            const providerName = currentKey.provider === 'openai' ? 'OpenAI' :
-                currentKey.provider === 'google_gemini' ? 'Gemini' :
-                    currentKey.provider === 'openrouter' ? 'OpenRouter' : currentKey.provider;
+            const providerName =
+                currentKey.provider === 'openai'
+                    ? 'OpenAI'
+                    : currentKey.provider === 'google_gemini'
+                      ? 'Gemini'
+                      : currentKey.provider === 'openrouter'
+                        ? 'OpenRouter'
+                        : currentKey.provider;
 
-            statusDot.className = 'w-2 h-2 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse';
+            statusDot.className =
+                'w-2 h-2 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse';
             statusText.textContent = `AI Online: ${providerName}`;
             statusText.className = 'text-emerald-400 font-mono tracking-tight';
             statusText.onclick = null;
         } else {
             statusDot.className = 'w-2 h-2 bg-rose-500 rounded-full animate-pulse';
             statusText.textContent = 'SYSTEM OFFLINE (NO KEY)';
-            statusText.className = 'text-rose-400 font-mono tracking-tight cursor-pointer hover:underline';
-            statusText.onclick = () => { if (typeof openSettings === 'function') openSettings(); };
+            statusText.className =
+                'text-rose-400 font-mono tracking-tight cursor-pointer hover:underline';
+            statusText.onclick = () => {
+                if (typeof openSettings === 'function') openSettings();
+            };
         }
     }
 
     // 2. Control Chat Tab Overlay (LLM Key)
     const llmOverlay = document.getElementById('no-llm-key-warning');
-    if (window.DEBUG_MODE) console.log('[App] llmOverlay element:', !!llmOverlay, 'hasLlmKey:', hasLlmKey);
+    if (window.DEBUG_MODE)
+        console.log('[App] llmOverlay element:', !!llmOverlay, 'hasLlmKey:', hasLlmKey);
     if (llmOverlay) {
         if (hasLlmKey) {
             llmOverlay.classList.add('hidden');
@@ -422,9 +445,9 @@ async function updateChatUIState(hasApiKey) {
 
     if (userInput) {
         userInput.disabled = !hasApiKey;
-        userInput.placeholder = hasApiKey 
-            ? (window.I18n?.t('chat.placeholderReady') || 'Send a command to AI Agent...') 
-            : (window.I18n?.t('chat.systemLocked') || 'System Locked - Please Configure API Key');
+        userInput.placeholder = hasApiKey
+            ? window.I18n?.t('chat.placeholderReady') || 'Send a command to AI Agent...'
+            : window.I18n?.t('chat.systemLocked') || 'System Locked - Please Configure API Key';
         userInput.classList.toggle('opacity-50', !hasApiKey);
         userInput.classList.toggle('cursor-not-allowed', !hasApiKey);
     }
@@ -451,7 +474,6 @@ window.initializeUIStatus = function () {
 // 頁面加載時不再自動執行，由 index.html 統一調度
 // window.addEventListener('DOMContentLoaded', () => { ... });
 
-
 // --- Global Filter Logic Variables ---
 window.allMarketSymbols = [];
 window.globalSelectedSymbols = []; // Unified selection
@@ -462,7 +484,7 @@ window.currentFilterExchange = 'okx';
 let validKeys = {
     openai: false,
     google_gemini: false,
-    openrouter: false
+    openrouter: false,
 };
 
 function updateProviderOptions() {
@@ -470,7 +492,7 @@ function updateProviderOptions() {
     const select = document.getElementById('llm-provider-select');
     if (!select) return;
 
-    Array.from(select.options).forEach(opt => {
+    Array.from(select.options).forEach((opt) => {
         const provider = opt.value;
         if (validKeys[provider]) {
             if (!opt.text.includes('✅')) {
@@ -502,7 +524,14 @@ const Pi = window.Pi;
 // Note: The main switchTab() function is now defined inline in index.html
 // This function handles additional logic like intervals and API calls
 
+// 記錄上一個 tab，防止相同 tab 重複觸發 setInterval
+let _lastOnTabSwitchTab = null;
+
 function onTabSwitch(tab) {
+    // ✅ 防止相同 tab 重複創建 interval（快速點擊或初始化時的雙重呼叫）
+    if (tab === _lastOnTabSwitchTab) return;
+    _lastOnTabSwitchTab = tab;
+
     // Abort pending analysis if leaving chat tab
     if (tab !== 'chat' && window.currentAnalysisController) {
         window.currentAnalysisController.abort();
@@ -569,7 +598,6 @@ function onTabSwitch(tab) {
         // 移除自動輪詢 - Friends 更新應該透過 WebSocket 或用戶手動刷新
         // 不需要每 5 秒重新載入整個列表，這會造成閃爍和不必要的 API 請求
     }
-
 }
 
 // Make it globally accessible
@@ -578,7 +606,7 @@ window.onTabSwitch = onTabSwitch;
 // ========================================
 // Memory Leak Fix: Cleanup on page unload
 // ========================================
-window.cleanupIntervals = function() {
+window.cleanupIntervals = function () {
     // Clear market refresh interval
     if (marketRefreshInterval) {
         clearInterval(marketRefreshInterval);
@@ -604,7 +632,9 @@ window.addEventListener('beforeunload', () => {
 // ========================================
 // Utility Functions
 // ========================================
-function updateUserId(uid) { currentUserId = uid || 'guest'; }
+function updateUserId(uid) {
+    currentUserId = uid || 'guest';
+}
 
 /**
  * 顯示全局錯誤提示 (Unified Error Display)
@@ -618,7 +648,8 @@ window.showError = function (title, message, isQuotaError = false) {
     if (!modal) {
         modal = document.createElement('div');
         modal.id = 'global-error-modal';
-        modal.className = 'fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm hidden';
+        modal.className =
+            'fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm hidden';
         modal.innerHTML = `
             <div class="bg-surface border border-red-500/30 rounded-3xl w-[90%] max-w-md p-6 shadow-2xl transform transition-all scale-95 opacity-0" id="global-error-content">
                 <div class="flex items-center gap-3 mb-4 text-red-400">
@@ -655,7 +686,7 @@ window.showError = function (title, message, isQuotaError = false) {
     const quotaActions = document.getElementById('quota-error-actions');
 
     titleEl.innerText = title;
-    msgEl.innerText = message || "發生未知錯誤";
+    msgEl.innerText = message || '發生未知錯誤';
 
     if (isQuotaError) {
         quotaActions.classList.remove('hidden');
@@ -709,7 +740,7 @@ async function openSettings() {
     try {
         const [configRes, modelConfigRes] = await Promise.all([
             fetch('/api/config'),
-            fetch('/api/model-config')
+            fetch('/api/model-config'),
         ]);
         const data = await configRes.json();
         const modelConfigData = await modelConfigRes.json();
@@ -734,7 +765,8 @@ async function openSettings() {
                 providerSelect.value = settings.primary_model_provider;
                 // 觸發更新，傳入預載的 modelConfig 避免重複 fetch
                 if (typeof updateLLMKeyInput === 'function') updateLLMKeyInput();
-                if (typeof window.updateAvailableModels === 'function') await window.updateAvailableModels(preloadedModelConfig);
+                if (typeof window.updateAvailableModels === 'function')
+                    await window.updateAvailableModels(preloadedModelConfig);
             }
         }
         if (settings.primary_model_name) {
@@ -751,9 +783,8 @@ async function openSettings() {
         if (typeof loadPremiumStatus === 'function') {
             loadPremiumStatus();
         }
-
     } catch (e) {
-        console.error("Failed to load settings", e);
+        console.error('Failed to load settings', e);
     }
 }
 
@@ -776,7 +807,7 @@ function closeSettings() {
  * 更新可用模型列表
  * @param {Object|null} preloadedConfig - 預載的模型配置（可選）
  */
-window.updateAvailableModels = async function(preloadedConfig = null) {
+window.updateAvailableModels = async function (preloadedConfig = null) {
     const providerSelect = document.getElementById('llm-provider-select');
     const modelSelect = document.getElementById('llm-model-select');
     const modelInput = document.getElementById('llm-model-input');
@@ -837,7 +868,7 @@ window.updateAvailableModels = async function(preloadedConfig = null) {
         return;
     }
 
-    models.forEach(model => {
+    models.forEach((model) => {
         const option = document.createElement('option');
         option.value = model.value;
         option.textContent = model.display || model.value;
@@ -846,7 +877,7 @@ window.updateAvailableModels = async function(preloadedConfig = null) {
 
     // 設置當前選擇的模型（優先使用已保存的，其次使用 default_model，最後使用第一個）
     const savedModel = window.APIKeyManager?.getModelForProvider?.(provider);
-    if (savedModel && models.some(m => m.value === savedModel)) {
+    if (savedModel && models.some((m) => m.value === savedModel)) {
         modelSelect.value = savedModel;
     } else if (modelConfig?.[provider]?.default_model) {
         modelSelect.value = modelConfig[provider].default_model;
@@ -855,7 +886,7 @@ window.updateAvailableModels = async function(preloadedConfig = null) {
     }
 
     console.log('[updateAvailableModels] Loaded', models.length, 'models for', provider);
-}
+};
 
 // Allow external modules (like llmSettings.js) to update key validity
 window.setKeyValidity = function (provider, isValid) {
@@ -866,235 +897,21 @@ window.setKeyValidity = function (provider, isValid) {
 };
 
 // ========================================
-// Draggable Navigation Logic (Optimized)
+// Navigation Logic - 委託給 global-nav.js (GlobalNav)
+// 原有 234 行重複的拖拽/收縮邏輯已移除，統一由 GlobalNav 管理
 // ========================================
-let navCollapsed = false;
 
-function toggleNavCollapse() {
-    const navButtons = document.getElementById('nav-buttons');
-    const toggleIcon = document.getElementById('nav-toggle-icon');
-    const nav = document.getElementById('draggable-nav');
+// 向後相容：index.html 的按鈕仍呼叫此名稱
+window.toggleNavCollapse = function () {
+    if (window.GlobalNav) window.GlobalNav.toggleCollapse();
+};
 
-    if (!navButtons || !toggleIcon) return;
-
-    navCollapsed = !navCollapsed;
-
-    if (navCollapsed) {
-        // 收縮
-        navButtons.style.width = '0';
-        navButtons.style.opacity = '0';
-        navButtons.style.pointerEvents = 'none';
-        toggleIcon.style.transform = 'rotate(180deg)';
-        nav.style.borderRadius = '9999px';
-    } else {
-        // 展開
-        navButtons.style.width = '';
-        navButtons.style.opacity = '1';
-        navButtons.style.pointerEvents = 'auto';
-        toggleIcon.style.transform = 'rotate(0deg)';
-        nav.style.borderRadius = '9999px';
-    }
-
-    // 保存狀態
-    localStorage.setItem('navCollapsed', navCollapsed);
-}
-
-// 初始化收縮狀態
+// 初始化主應用的導航拖拽與狀態恢復
 document.addEventListener('DOMContentLoaded', () => {
-    const saved = localStorage.getItem('navCollapsed');
-    if (saved === 'true') {
-        navCollapsed = false; // 先設為 false，讓 toggle 變成 true
-        toggleNavCollapse();
+    if (window.GlobalNav) {
+        window.GlobalNav.initDraggable();
+        window.GlobalNav.restoreNavState();
     }
-});
-
-// Draggable Logic (Optimized with requestAnimationFrame)
-document.addEventListener('DOMContentLoaded', () => {
-    const container = document.getElementById('global-nav-container');
-    const nav = document.getElementById('draggable-nav');
-    if (!container || !nav) return;
-
-    // State Variables
-    let isDragging = false;
-    let currentX = 0, currentY = 0; // Current Translation
-    let initialX, initialY; // Touch/Mouse Start Position
-    let xOffset = 0, yOffset = 0; // Saved Offset
-    let animationFrameId = null;
-
-    // Load saved position (with bounds clamp to avoid loading an off-screen position)
-    const savedPos = localStorage.getItem('navPosition');
-    if (savedPos) {
-        try {
-            const { x, y } = JSON.parse(savedPos);
-            const viewW = window.innerWidth;
-            const viewH = window.innerHeight;
-            const navHeight = nav.getBoundingClientRect().height || 65;
-            // Clamp on load: allow upward drag only within bottom 55% of screen
-            const maxUp = -(viewH * 0.55 - navHeight);
-            const maxDown = 80;
-            xOffset = Math.max(-(viewW / 2) + 80, Math.min((viewW / 2) - 80, x));
-            yOffset = Math.max(maxUp, Math.min(maxDown, y));
-            setTranslate(xOffset, yOffset, container);
-        } catch (e) {
-            localStorage.removeItem('navPosition');
-        }
-    }
-
-    const dragHandle = nav.querySelector('.drag-handle');
-    if (!dragHandle) return;
-
-    // Mobile Optimization: Prevent default touch actions (scrolling) on handle
-    dragHandle.style.touchAction = 'none';
-
-    // Event Listeners
-    dragHandle.addEventListener('mousedown', dragStart);
-    dragHandle.addEventListener('touchstart', dragStart, { passive: false });
-
-    document.addEventListener('mouseup', dragEnd);
-    document.addEventListener('touchend', dragEnd);
-
-    document.addEventListener('mousemove', drag);
-    document.addEventListener('touchmove', drag, { passive: false });
-
-    function dragStart(e) {
-        if (e.target.closest('button:not(.drag-handle)')) return;
-
-        if (e.type === 'touchstart') {
-            initialX = e.touches[0].clientX - xOffset;
-            initialY = e.touches[0].clientY - yOffset;
-        } else {
-            initialX = e.clientX - xOffset;
-            initialY = e.clientY - yOffset;
-        }
-
-        isDragging = true;
-
-        // Performance: specific optimization classes
-        container.style.willChange = 'transform';
-        container.style.transition = 'none'; // Disable transition on container if any
-        nav.style.transition = 'none'; // Disable hover transitions etc on nav
-
-        dragHandle.style.cursor = 'grabbing';
-    }
-
-    function dragEnd(e) {
-        if (!isDragging) return;
-
-        initialX = currentX;
-        initialY = currentY;
-
-        isDragging = false;
-        cancelAnimationFrame(animationFrameId);
-
-        // Snap to bounds logic
-        const navRect = nav.getBoundingClientRect();
-        const navWidth = navRect.width;
-        const navHeight = navRect.height;
-        const viewW = window.innerWidth;
-        const viewH = window.innerHeight;
-        const padding = 10;
-
-        // Boundaries (Note: container is strictly centered horizontally by default via CSS)
-        // offsetX represents deviation from that center.
-        const minX = -(viewW / 2) + (navWidth / 2) + padding;
-        const maxX = (viewW / 2) - (navWidth / 2) - padding;
-
-        // Vertical boundaries
-        // Initial bottom is 24px (approx 96px from bottom).
-        // initialTop = viewH - 96 - navHeight;
-        // Let's rely on computed rect for safer bounds
-        // Reset transition for smooth snap
-        container.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)';
-
-        // Clamp offsets
-        // Recalculate based on current state to ensure robustness
-        // Since we are moving with transform translate, currentX is the translation value.
-
-        let targetX = currentX;
-        let targetY = currentY;
-
-        // Clamp X
-        if (targetX < minX) targetX = minX;
-        if (targetX > maxX) targetX = maxX;
-
-        // Clamp Y (Simplify: just keep it on screen)
-        // Top boundary (negative Y moves up)
-        // Bottom is fixed at 24px.
-        // Transforming Y negative moves UP.
-        // Max UP = viewH - margin
-        // Max DOWN = margin (since it starts at bottom)
-
-        // Let's use simple logic: keep center on screen
-        const safeMarginY = viewH / 2 - navHeight; // Rough estimate
-        // Actually, just clamp to keep rect visible
-        // We know initial position (0,0) is bottom-center.
-
-        // Constrain Y to be reasonable (e.g., +/- screen height)
-        // Ideally we would calculate exact pixels but rough clamp works for "keep on screen"
-        const maxUp = -(viewH - 150);
-        const maxDown = 80;
-
-        if (targetY < maxUp) targetY = maxUp;
-        if (targetY > maxDown) targetY = maxDown;
-
-        // Commit final position
-        xOffset = targetX;
-        yOffset = targetY; // Actually we should use targetY but let's trust the clamp
-
-        setTranslate(targetX, targetY, container);
-
-        // Cleanup
-        setTimeout(() => {
-            container.style.willChange = 'auto';
-            container.style.transition = '';
-            nav.style.transition = 'all 0.3s ease'; // Restore nav transition
-        }, 300);
-
-        dragHandle.style.cursor = 'grab';
-
-        // Save
-        localStorage.setItem('navPosition', JSON.stringify({ x: targetX, y: targetY }));
-    }
-
-    function drag(e) {
-        if (!isDragging) return;
-
-        e.preventDefault(); // Important for touch
-
-        let clientX, clientY;
-        if (e.type === 'touchmove') {
-            clientX = e.touches[0].clientX;
-            clientY = e.touches[0].clientY;
-        } else {
-            clientX = e.clientX;
-            clientY = e.clientY;
-        }
-
-        currentX = clientX - initialX;
-        currentY = clientY - initialY;
-
-        // Debounce via rAF
-        if (!animationFrameId) {
-            animationFrameId = requestAnimationFrame(() => {
-                setTranslate(currentX, currentY, container);
-                animationFrameId = null;
-            });
-        }
-    }
-
-    function setTranslate(xPos, yPos, el) {
-        // Use stacked transforms for better compatibility than calc() inside translate3d
-        // translateX(-50%) centers it, then translate3d moves it by offset
-        el.style.transform = `translateX(-50%) translate3d(${xPos}px, ${yPos}px, 0)`;
-    }
-
-    // Fix resize reset
-    window.addEventListener('resize', () => {
-        if (!isDragging) {
-            // Reset to center x if window resizes drastically? 
-            // Or just clamp. For now, keep simple.
-        }
-    });
 });
 
 async function saveSettings() {
@@ -1111,11 +928,15 @@ async function saveSettings() {
         google_api_key: null,
         openrouter_api_key: null,
 
-        primary_model_provider: document.getElementById('llm-provider-select') ? document.getElementById('llm-provider-select').value : '',
+        primary_model_provider: document.getElementById('llm-provider-select')
+            ? document.getElementById('llm-provider-select').value
+            : '',
         primary_model_name: (function () {
             const select = document.getElementById('llm-model-select');
             const input = document.getElementById('llm-model-input');
-            const provider = document.getElementById('llm-provider-select') ? document.getElementById('llm-provider-select').value : '';
+            const provider = document.getElementById('llm-provider-select')
+                ? document.getElementById('llm-provider-select').value
+                : '';
             if (provider === 'openrouter') return input ? input.value : '';
             return select ? select.value : '';
         })(),
@@ -1127,7 +948,7 @@ async function saveSettings() {
         const res = await fetch('/api/settings/update', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
         });
         const result = await res.json();
 
@@ -1148,7 +969,6 @@ async function saveSettings() {
                     btn.classList.remove('opacity-50', 'cursor-not-allowed');
                 }, 500);
             }, 500);
-
         } else {
             showToast('保存設定失敗: ' + (result.detail || '未知錯誤'), 'error');
         }

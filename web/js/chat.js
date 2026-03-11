@@ -3,17 +3,19 @@
 // ========================================
 
 let currentSessionId = null;
-let chatInitialized = false;  // 防止重複初始化
+let chatInitialized = false; // 防止重複初始化
 
 // ✅ 效能優化：預先快取 userKey，避免每次 sendMessage 都打後端 API
 let _cachedUserKey = null;
 async function getCachedUserKey(forceRefresh = false) {
     if (!forceRefresh && _cachedUserKey) return _cachedUserKey;
-    _cachedUserKey = await window.APIKeyManager?.getCurrentKey() || null;
+    _cachedUserKey = (await window.APIKeyManager?.getCurrentKey()) || null;
     return _cachedUserKey;
 }
 // 當 APIKeyManager 更新金鑰時，清除快取
-window.addEventListener('apiKeyUpdated', () => { _cachedUserKey = null; });
+window.addEventListener('apiKeyUpdated', () => {
+    _cachedUserKey = null;
+});
 
 // ✅ 效能優化：scoped lucide icon 初始化，避免全頁 DOM 掃描
 function createIconsIn(el) {
@@ -43,7 +45,7 @@ Object.defineProperty(window, '_hitlContext', {
         } else {
             _hitlContextMap.set(currentSessionId, value);
         }
-    }
+    },
 });
 
 // ========================================
@@ -73,13 +75,17 @@ const MessageComponents = {
                 <div class="text-3xl font-mono text-secondary font-bold">
                     ${typeof price === 'number' ? '$' + price.toLocaleString() : price}
                 </div>
-                ${data.high_24h || data.low_24h ? `
+                ${
+                    data.high_24h || data.low_24h
+                        ? `
                 <div class="flex gap-4 mt-2 text-xs text-textMuted">
                     ${data.high_24h ? `<span>H: $${data.high_24h}</span>` : ''}
-                    ${data.low_24h? `<span>L: $${data.low_24h}</span>` : ''}
+                    ${data.low_24h ? `<span>L: $${data.low_24h}</span>` : ''}
                     ${data.volume_24h ? `<span>Vol: ${data.volume_24h}</span>` : ''}
                 </div>
-                ` : ''}
+                `
+                        : ''
+                }
             </div>
         `;
     },
@@ -117,8 +123,12 @@ const MessageComponents = {
         const name = data.name || '指標';
         const value = data.value || 0;
         const status = data.status || '';
-        const statusClass = status.includes('貪婪') || status.includes('Greed') ? 'text-success' :
-                         status.includes('恐慌') || status.includes('Fear') ? 'text-danger' : 'text-textMain';
+        const statusClass =
+            status.includes('貪婪') || status.includes('Greed')
+                ? 'text-success'
+                : status.includes('恐慌') || status.includes('Fear')
+                  ? 'text-danger'
+                  : 'text-textMain';
 
         return `
             <div class="market-indicator-card bg-surface border border-white/10 rounded-xl p-4 my-3">
@@ -181,7 +191,10 @@ const MessageComponents = {
             `;
         }
 
-        let txList = transactions.slice(0, 5).map(tx => `
+        let txList = transactions
+            .slice(0, 5)
+            .map(
+                (tx) => `
             <div class="flex justify-between items-center py-2 border-b border-white/5 last:border-0">
                 <div class="flex items-center gap-2">
                     <span class="text-xs text-textMuted font-mono">${tx.hash || 'N/A'}</span>
@@ -191,7 +204,9 @@ const MessageComponents = {
                     <div class="text-xs text-textMuted">${tx.amount || ''} ${tx.symbol || ''}</div>
                 </div>
             </div>
-        `).join('');
+        `
+            )
+            .join('');
 
         return `
             <div class="whale-card bg-surface border border-blue-500/20 rounded-xl p-4 my-3">
@@ -253,44 +268,44 @@ const MessageComponents = {
      * 檢測內容中的結構化數據並渲染為卡片
      */
     renderStructuredContent(content, data) {
-                // 如果有結構化數據，嘗試渲染卡片
-                if (data && typeof data === 'object') {
-                        let cardsHtml = '';
+        // 如果有結構化數據，嘗試渲染卡片
+        if (data && typeof data === 'object') {
+            let cardsHtml = '';
 
-                        // 價格數據
-                        if (data.price_data || data.symbol) {
-                                cardsHtml += this.priceCard(data.symbol || 'BTC', data.price_data || data);
-                        }
+            // 價格數據
+            if (data.price_data || data.symbol) {
+                cardsHtml += this.priceCard(data.symbol || 'BTC', data.price_data || data);
+            }
 
-                        // Pi 相關數據
-                        if (data.pi_data || data.pi_network) {
-                                cardsHtml += this.piInfoCard(data.pi_data || data.pi_network);
-                        }
+            // Pi 相關數據
+            if (data.pi_data || data.pi_network) {
+                cardsHtml += this.piInfoCard(data.pi_data || data.pi_network);
+            }
 
-                        // Gas 費用數據
-                        if (data.gas_fees) {
-                                cardsHtml += this.gasFeeCard(data.gas_fees);
-                        }
+            // Gas 費用數據
+            if (data.gas_fees) {
+                cardsHtml += this.gasFeeCard(data.gas_fees);
+            }
 
-                        // 鯨魚交易數據
-                        if (data.whale_transactions) {
-                                cardsHtml += this.whaleTransactionCard(data.whale_transactions);
-                        }
+            // 鯨魚交易數據
+            if (data.whale_transactions) {
+                cardsHtml += this.whaleTransactionCard(data.whale_transactions);
+            }
 
-                        // 資金流向數據
-                        if (data.exchange_flow) {
-                                cardsHtml += this.exchangeFlowCard(data.exchange_flow);
-                        }
+            // 資金流向數據
+            if (data.exchange_flow) {
+                cardsHtml += this.exchangeFlowCard(data.exchange_flow);
+            }
 
-                        // 如果有卡片，則在內容前插入
-                        if (cardsHtml) {
-                                return cardsHtml + content;
-                        }
-                }
+            // 如果有卡片，則在內容前插入
+            if (cardsHtml) {
+                return cardsHtml + content;
+            }
+        }
 
-                // 沒有結構化數據，直接返回原始內容
-                return content;
-    }
+        // 沒有結構化數據，直接返回原始內容
+        return content;
+    },
 };
 
 // 全域暴露 MessageComponents
@@ -323,7 +338,7 @@ function appendMessage(role, content) {
             console.warn('[chat] markdown 庫未載入，使用純文本顯示');
         }
         // Wrap tables in overflow-x container for proper horizontal scroll + border styling
-        div.querySelectorAll('table').forEach(table => {
+        div.querySelectorAll('table').forEach((table) => {
             const wrapper = document.createElement('div');
             wrapper.className = 'table-wrapper';
             table.parentNode.insertBefore(wrapper, table);
@@ -342,13 +357,15 @@ function appendMessage(role, content) {
                 actionsDiv.className = 'flex gap-2 mt-4 pt-4 border-t border-white/5';
                 // 使用安全的 DOM 操作而非 innerHTML
                 const debateBtn = document.createElement('button');
-                debateBtn.className = 'text-xs bg-gradient-to-r from-success/20 to-danger/20 text-secondary px-3 py-1.5 rounded-full hover:from-success/30 hover:to-danger/30 border border-white/10 transition flex items-center gap-1.5';
+                debateBtn.className =
+                    'text-xs bg-gradient-to-r from-success/20 to-danger/20 text-secondary px-3 py-1.5 rounded-full hover:from-success/30 hover:to-danger/30 border border-white/10 transition flex items-center gap-1.5';
                 debateBtn.innerHTML = '<i data-lucide="swords" class="w-3 h-3"></i> AI War Room';
                 debateBtn.onclick = () => startDebateInChat(symbol);
                 actionsDiv.appendChild(debateBtn);
 
                 const chartBtn = document.createElement('button');
-                chartBtn.className = 'text-xs bg-primary/10 text-primary px-3 py-1.5 rounded-full hover:bg-primary/20 border border-primary/20 transition flex items-center gap-1.5';
+                chartBtn.className =
+                    'text-xs bg-primary/10 text-primary px-3 py-1.5 rounded-full hover:bg-primary/20 border border-primary/20 transition flex items-center gap-1.5';
                 chartBtn.innerHTML = '<i data-lucide="bar-chart" class="w-3 h-3"></i> Chart';
                 chartBtn.onclick = () => showChart(symbol);
                 actionsDiv.appendChild(chartBtn);
@@ -419,7 +436,8 @@ async function loadSessions() {
     if (!isLoggedIn) {
         const list = document.getElementById('chat-session-list');
         if (list) {
-            list.innerHTML = '<div class="text-center text-xs text-textMuted/40 py-4">Please login first</div>';
+            list.innerHTML =
+                '<div class="text-center text-xs text-textMuted/40 py-4">Please login first</div>';
         }
         return;
     }
@@ -434,8 +452,8 @@ async function loadSessions() {
 
         const res = await fetch(`/api/chat/sessions?user_id=${encodeURIComponent(userId)}`, {
             headers: {
-                'Authorization': `Bearer ${token}`
-            }
+                Authorization: `Bearer ${token}`,
+            },
         });
         const data = await res.json();
         const list = document.getElementById('chat-session-list');
@@ -443,8 +461,8 @@ async function loadSessions() {
 
         if (data.sessions && data.sessions.length > 0) {
             // 分離收藏和普通對話
-            const starredSessions = data.sessions.filter(s => s.is_pinned);
-            const regularSessions = data.sessions.filter(s => !s.is_pinned);
+            const starredSessions = data.sessions.filter((s) => s.is_pinned);
+            const regularSessions = data.sessions.filter((s) => !s.is_pinned);
             const allSessions = data.sessions;
 
             // 編輯模式工具栏
@@ -452,7 +470,8 @@ async function loadSessions() {
             toolbar.className = 'edit-toolbar flex items-center gap-2 px-3 py-2 mb-2';
 
             if (isEditMode) {
-                const allSelected = allSessions.length > 0 && selectedSessions.size === allSessions.length;
+                const allSelected =
+                    allSessions.length > 0 && selectedSessions.size === allSessions.length;
                 toolbar.innerHTML = `
                     <button onclick="toggleSelectAll()" class="flex items-center gap-1.5 text-xs ${allSelected ? 'text-primary' : 'text-textMuted hover:text-secondary'} transition">
                         <i data-lucide="${allSelected ? 'check-square' : 'square'}" class="w-3.5 h-3.5"></i>
@@ -495,7 +514,7 @@ async function loadSessions() {
                 list.appendChild(starredSection);
 
                 const starredList = starredSection.querySelector('.starred-list');
-                starredSessions.forEach(session => {
+                starredSessions.forEach((session) => {
                     starredList.appendChild(createSessionItem(session));
                 });
             }
@@ -505,7 +524,8 @@ async function loadSessions() {
                 // 如果有收藏區，加一個小標題
                 if (starredSessions.length > 0) {
                     const recentLabel = document.createElement('div');
-                    recentLabel.className = 'flex items-center gap-2 px-3 py-2 text-xs font-medium text-textMuted/60';
+                    recentLabel.className =
+                        'flex items-center gap-2 px-3 py-2 text-xs font-medium text-textMuted/60';
                     recentLabel.innerHTML = `
                         <i data-lucide="clock" class="w-3 h-3"></i>
                         <span>最近</span>
@@ -513,20 +533,22 @@ async function loadSessions() {
                     list.appendChild(recentLabel);
                 }
 
-                regularSessions.forEach(session => {
+                regularSessions.forEach((session) => {
                     list.appendChild(createSessionItem(session));
                 });
             }
 
             // 都沒有的話顯示空狀態
             if (starredSessions.length === 0 && regularSessions.length === 0) {
-                list.innerHTML = '<div class="text-center text-xs text-textMuted/40 py-4">No history</div>';
+                list.innerHTML =
+                    '<div class="text-center text-xs text-textMuted/40 py-4">No history</div>';
             }
 
             // 儲存所有 session ID 供全選使用
-            window._allSessionIds = allSessions.map(s => s.id);
+            window._allSessionIds = allSessions.map((s) => s.id);
         } else {
-            list.innerHTML = '<div class="text-center text-xs text-textMuted/40 py-4">No history</div>';
+            list.innerHTML =
+                '<div class="text-center text-xs text-textMuted/40 py-4">No history</div>';
             // 退出編輯模式（沒有對話了）
             if (isEditMode) exitEditMode();
         }
@@ -536,7 +558,7 @@ async function loadSessions() {
         updateStarredChevron();
         return data.sessions || [];
     } catch (e) {
-        console.error("Failed to load sessions:", e);
+        console.error('Failed to load sessions:', e);
         return [];
     }
 }
@@ -660,7 +682,7 @@ async function deleteSelectedSessions(btnElement) {
         message: `確定要刪除 ${count} 個對話嗎？此操作無法復原。`,
         confirmText: '刪除',
         cancelText: '取消',
-        type: 'danger'
+        type: 'danger',
     });
 
     if (!confirmed) return;
@@ -672,7 +694,7 @@ async function deleteSelectedSessions(btnElement) {
 
     // ── Optimistic UI: remove all selected items + toolbar immediately ───────
     const toDelete = Array.from(selectedSessions);
-    toDelete.forEach(sid => {
+    toDelete.forEach((sid) => {
         const div = document.querySelector(`[data-session-id="${sid}"]`);
         if (div) div.remove();
     });
@@ -696,16 +718,18 @@ async function deleteSelectedSessions(btnElement) {
 
     try {
         const token = AuthManager.currentUser.accessToken;
-        await Promise.all(toDelete.map(sessionId =>
-            fetch(`/api/chat/sessions/${sessionId}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            })
-        ));
+        await Promise.all(
+            toDelete.map((sessionId) =>
+                fetch(`/api/chat/sessions/${sessionId}`, {
+                    method: 'DELETE',
+                    headers: { Authorization: `Bearer ${token}` },
+                })
+            )
+        );
         // Rebuild sidebar (clears edit toolbar and syncs with server)
         await loadSessions();
     } catch (e) {
-        console.error("Failed to delete sessions:", e);
+        console.error('Failed to delete sessions:', e);
         if (btnElement) {
             btnElement.disabled = false;
             btnElement.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -722,11 +746,12 @@ async function toggleStarSession(event, sessionId, newStatus) {
         const token = AuthManager.currentUser.accessToken;
         await fetch(`/api/chat/sessions/${sessionId}/pin?is_pinned=${newStatus}`, {
             method: 'PUT',
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: { Authorization: `Bearer ${token}` },
         });
         await loadSessions();
     } catch (e) {
-        console.error("Failed to toggle star:", e);
+        console.error('Failed to toggle star:', e);
+        if (typeof showToast === 'function') showToast('收藏操作失敗，請稍後再試', 'error');
     }
 }
 
@@ -765,7 +790,7 @@ async function createNewChat() {
             sidebar.classList.add('-translate-x-full');
         }
     } catch (e) {
-        console.error("Failed to prepare new chat:", e);
+        console.error('Failed to prepare new chat:', e);
     }
 }
 
@@ -796,7 +821,7 @@ function showWelcomeScreen() {
 
 // 直接更新側邊欄的 active 高亮，不重新拉取 sessions
 function updateSessionActiveState(newSessionId) {
-    document.querySelectorAll('[data-session-id]').forEach(el => {
+    document.querySelectorAll('[data-session-id]').forEach((el) => {
         const isActive = el.dataset.sessionId === newSessionId;
         if (isActive) {
             el.classList.add('bg-surfaceHighlight', 'text-primary');
@@ -849,7 +874,7 @@ async function deleteSession(event, sessionId) {
         message: '確定要刪除這個對話嗎？此操作無法復原。',
         confirmText: '刪除',
         cancelText: '取消',
-        type: 'danger'
+        type: 'danger',
     });
 
     if (!confirmed) return;
@@ -889,12 +914,12 @@ async function deleteSession(event, sessionId) {
         await Promise.all([
             fetch(`/api/chat/sessions/${sessionId}`, {
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token}` },
             }),
-            (wasActive && nextSessionId) ? loadChatHistory(nextSessionId) : Promise.resolve()
+            wasActive && nextSessionId ? loadChatHistory(nextSessionId) : Promise.resolve(),
         ]);
     } catch (e) {
-        console.error("Failed to delete session:", e);
+        console.error('Failed to delete session:', e);
         if (btnElement) {
             btnElement.disabled = false;
             btnElement.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -920,10 +945,11 @@ function showHITLModal(interruptData) {
     customInput.value = '';
 
     const options = interruptData.options || [];
-    options.forEach(opt => {
+    options.forEach((opt) => {
         const btn = document.createElement('button');
         btn.textContent = opt;
-        btn.className = 'w-full text-left px-5 py-3 rounded-2xl bg-background border border-white/5 text-secondary text-sm hover:border-primary/50 hover:bg-primary/5 transition';
+        btn.className =
+            'w-full text-left px-5 py-3 rounded-2xl bg-background border border-white/5 text-secondary text-sm hover:border-primary/50 hover:bg-primary/5 transition';
         btn.onclick = () => window.submitHITLAnswer(opt);
         optionsEl.appendChild(btn);
     });
@@ -964,14 +990,19 @@ function renderPreResearchCard(idata, targetDiv) {
     }
 
     // XSS Fix: 使用 SecurityUtils 清理 HTML
-    const summaryRaw = summary && window.md
-        ? window.md.render(summary)
-        : (summary ? summary.replace(/\n/g, '<br>') : '');
-    const summaryHtml = window.SecurityUtils ? window.SecurityUtils.sanitizeHTML(summaryRaw) : summaryRaw;
-    const messageRaw = window.md
-        ? window.md.renderInline(message)
-        : message;
-    const messageHtml = window.SecurityUtils ? window.SecurityUtils.sanitizeHTML(messageRaw) : messageRaw;
+    const summaryRaw =
+        summary && window.md
+            ? window.md.render(summary)
+            : summary
+              ? summary.replace(/\n/g, '<br>')
+              : '';
+    const summaryHtml = window.SecurityUtils
+        ? window.SecurityUtils.sanitizeHTML(summaryRaw)
+        : summaryRaw;
+    const messageRaw = window.md ? window.md.renderInline(message) : message;
+    const messageHtml = window.SecurityUtils
+        ? window.SecurityUtils.sanitizeHTML(messageRaw)
+        : messageRaw;
 
     // Use a compact card if no summary is provided (e.g., follow-up Q&A)
     if (!summary) {
@@ -1046,7 +1077,9 @@ function renderPlanCard(interruptData, targetDiv) {
 
     const message = interruptData.message || '針對您的問題，我規劃了以下分析步驟：';
 
-    const stepsHtml = plan.map(t => `
+    const stepsHtml = plan
+        .map(
+            (t) => `
         <div class="plan-step flex items-center gap-3 py-2.5 px-3 rounded-xl hover:bg-white/5 transition"
              data-step="${t.step}" data-selected="true">
             <div class="plan-check w-5 h-5 rounded border border-primary/30 bg-primary/10
@@ -1055,7 +1088,9 @@ function renderPlanCard(interruptData, targetDiv) {
             </div>
             <span class="text-base leading-none">${t.icon || '🔧'}</span>
             <span class="text-sm text-secondary flex-1">${t.description || t.agent}</span>
-        </div>`).join('');
+        </div>`
+        )
+        .join('');
 
     // Negotiation Response as a clearer "Chat" element BEFORE the card
     const negotiationResponse = interruptData.negotiation_response
@@ -1126,7 +1161,7 @@ window.togglePlanCustomize = function () {
         if (negotiateContainer) negotiateContainer.classList.remove('hidden');
 
         // Enable clicking steps to toggle
-        card.querySelectorAll('.plan-step').forEach(step => {
+        card.querySelectorAll('.plan-step').forEach((step) => {
             step.style.cursor = 'pointer';
             step.onclick = () => window.togglePlanStep(step);
         });
@@ -1139,7 +1174,6 @@ window.togglePlanCustomize = function () {
 
         // Initial button state update
         window.updateCustomExecuteButton();
-
     } else {
         // Hide negotiation instruction
         if (negotiateContainer) {
@@ -1147,14 +1181,15 @@ window.togglePlanCustomize = function () {
         }
 
         // Reset all steps to selected
-        card.querySelectorAll('.plan-step').forEach(step => {
+        card.querySelectorAll('.plan-step').forEach((step) => {
             step.dataset.selected = 'true';
             step.style.cursor = '';
             step.onclick = null;
             step.classList.remove('opacity-40');
             const check = step.querySelector('.plan-check');
             if (check) {
-                check.className = 'plan-check w-5 h-5 rounded border border-primary/30 bg-primary/10 flex items-center justify-center flex-shrink-0';
+                check.className =
+                    'plan-check w-5 h-5 rounded border border-primary/30 bg-primary/10 flex items-center justify-center flex-shrink-0';
                 check.innerHTML = '<i data-lucide="check" class="w-3 h-3 text-primary"></i>';
             }
         });
@@ -1199,18 +1234,26 @@ window.togglePlanStep = function (step) {
     const check = step.querySelector('.plan-check');
     if (!check) return;
     if (nowSelected) {
-        check.className = 'plan-check w-5 h-5 rounded border border-primary/30 bg-primary/10 flex items-center justify-center flex-shrink-0';
+        check.className =
+            'plan-check w-5 h-5 rounded border border-primary/30 bg-primary/10 flex items-center justify-center flex-shrink-0';
         check.innerHTML = '<i data-lucide="check" class="w-3 h-3 text-primary"></i>';
         if (lucide) lucide.createIcons({ nodes: [check] });
     } else {
-        check.className = 'plan-check w-5 h-5 rounded border border-white/20 flex items-center justify-center flex-shrink-0';
+        check.className =
+            'plan-check w-5 h-5 rounded border border-white/20 flex items-center justify-center flex-shrink-0';
         check.innerHTML = '';
     }
 };
 
 window.executePlan = function (mode) {
-    if (mode === 'cancel') { window.submitHITLAnswer(JSON.stringify({action: 'cancel'})); return; }
-    if (mode === 'all') { window.submitHITLAnswer(JSON.stringify({action: 'execute'})); return; }
+    if (mode === 'cancel') {
+        window.submitHITLAnswer(JSON.stringify({ action: 'cancel' }));
+        return;
+    }
+    if (mode === 'all') {
+        window.submitHITLAnswer(JSON.stringify({ action: 'execute' }));
+        return;
+    }
 
     if (mode === 'custom') {
         // Check negotiation text first
@@ -1223,10 +1266,13 @@ window.executePlan = function (mode) {
         }
 
         const card = document.getElementById('active-plan-card');
-        if (!card) { window.submitHITLAnswer('執行'); return; }
+        if (!card) {
+            window.submitHITLAnswer('執行');
+            return;
+        }
 
         const selected = [];
-        card.querySelectorAll('.plan-step').forEach(step => {
+        card.querySelectorAll('.plan-step').forEach((step) => {
             if (step.dataset.selected === 'true') selected.push(parseInt(step.dataset.step, 10));
         });
 
@@ -1236,7 +1282,9 @@ window.executePlan = function (mode) {
             return;
         }
 
-        window.submitHITLAnswer(JSON.stringify({ action: 'execute_custom', selected_steps: selected }));
+        window.submitHITLAnswer(
+            JSON.stringify({ action: 'execute_custom', selected_steps: selected })
+        );
     }
 };
 
@@ -1258,7 +1306,7 @@ window.submitHITLAnswer = async function (answer) {
     // 1. Clean up specific context message if it exists
     if (ctx.botMsgDiv) {
         const oldBtns = ctx.botMsgDiv.querySelectorAll('button');
-        oldBtns.forEach(b => b.remove());
+        oldBtns.forEach((b) => b.remove());
         const btnContainer = ctx.botMsgDiv.querySelector('.flex.gap-2.border-t');
         if (btnContainer) btnContainer.remove();
 
@@ -1268,16 +1316,24 @@ window.submitHITLAnswer = async function (answer) {
 
     // 2. Force Clean: Remove ALL persistence buttons from previous HITL cards in the chat
     // This ensures even if context was lost, we don't leave active buttons.
-    document.querySelectorAll('.pre-research-card button, .plan-card button, .pre-research-card-compact button').forEach(btn => {
-        // If the button is not in the NEW botMsgDiv (which isn't created yet), remove it.
-        // Since we haven't created the new div yet, ALL existing buttons are "old".
-        const parent = btn.closest('.flex');
-        if (parent && parent.className.includes('gap-2') && parent.className.includes('border-t')) {
-            parent.remove();
-        } else {
-            btn.remove();
-        }
-    });
+    document
+        .querySelectorAll(
+            '.pre-research-card button, .plan-card button, .pre-research-card-compact button'
+        )
+        .forEach((btn) => {
+            // If the button is not in the NEW botMsgDiv (which isn't created yet), remove it.
+            // Since we haven't created the new div yet, ALL existing buttons are "old".
+            const parent = btn.closest('.flex');
+            if (
+                parent &&
+                parent.className.includes('gap-2') &&
+                parent.className.includes('border-t')
+            ) {
+                parent.remove();
+            } else {
+                btn.remove();
+            }
+        });
 
     // Create NEW bot message for the response logic
     const botMsgDiv = appendMessage('bot', '');
@@ -1301,7 +1357,7 @@ window.submitHITLAnswer = async function (answer) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({
                 message: ctx.originalMessage,
@@ -1314,11 +1370,15 @@ window.submitHITLAnswer = async function (answer) {
                 resume_answer: (() => {
                     const trimmed = answer.trim();
                     if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-                        try { return JSON.parse(trimmed); } catch (e) { return trimmed; }
+                        try {
+                            return JSON.parse(trimmed);
+                        } catch (e) {
+                            return trimmed;
+                        }
                     }
                     return trimmed;
-                })()
-            })
+                })(),
+            }),
         });
 
         if (!response.ok) {
@@ -1336,7 +1396,11 @@ window.submitHITLAnswer = async function (answer) {
             for (const line of chunk.split('\n')) {
                 if (!line.startsWith('data: ')) continue;
                 let data;
-                try { data = JSON.parse(line.substring(6)); } catch { continue; }
+                try {
+                    data = JSON.parse(line.substring(6));
+                } catch {
+                    continue;
+                }
 
                 if (data.type === 'hitl_question') {
                     // Nested HITL — reuse same context, dispatch by type
@@ -1375,7 +1439,11 @@ window.submitHITLAnswer = async function (answer) {
                 if (data.done) {
                     if (ctx.botMsgDiv) {
                         const totalTime = ((Date.now() - ctx.startTime) / 1000).toFixed(1);
-                        ctx.botMsgDiv.innerHTML = renderStoredBotMessage(fullContent, false, totalTime);
+                        ctx.botMsgDiv.innerHTML = renderStoredBotMessage(
+                            fullContent,
+                            false,
+                            totalTime
+                        );
                         const badge = document.createElement('div');
                         badge.className = 'mt-4 text-xs text-textMuted/60 font-mono';
                         badge.textContent = `分析完成，耗時 ${totalTime}s`;
@@ -1398,7 +1466,10 @@ window.submitHITLAnswer = async function (answer) {
         if (ctx.botMsgDiv) {
             // Fix [object Object] by properly stringifying error detail if it's an object
             // XSS Fix: 使用 escapeHtml 转义错误消息
-            const rawError = typeof err.message === 'object' ? JSON.stringify(err.message) : (err.message || String(err));
+            const rawError =
+                typeof err.message === 'object'
+                    ? JSON.stringify(err.message)
+                    : err.message || String(err);
             const errorMsg = escapeHtml(rawError);
             ctx.botMsgDiv.innerHTML = `<span class="text-red-400">恢復分析失敗：${errorMsg}</span>`;
         }
@@ -1410,8 +1481,15 @@ window.submitHITLAnswer = async function (answer) {
         // 若後端再次 interrupt（Q&A 循環），_hitlContext 已被恢復，保持禁用
         if (_hitlContext === null) {
             isAnalyzing = false;
-            if (input) { input.disabled = false; input.classList.remove('opacity-50'); input.focus(); }
-            if (sendBtn) { sendBtn.disabled = false; sendBtn.classList.remove('opacity-50', 'cursor-not-allowed'); }
+            if (input) {
+                input.disabled = false;
+                input.classList.remove('opacity-50');
+                input.focus();
+            }
+            if (sendBtn) {
+                sendBtn.disabled = false;
+                sendBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
         }
     }
 };
@@ -1422,7 +1500,7 @@ window.submitHITLAnswer = async function (answer) {
 function cleanupStaleButtons() {
     // Target ALL buttons within the chat container to ensure thorough cleanup
     const chatBtns = document.querySelectorAll('#chat-messages button');
-    chatBtns.forEach(btn => {
+    chatBtns.forEach((btn) => {
         // If the button is inside a bordered action bar (common in our cards), remove the bar.
         // Otherwise just remove the button.
         const parent = btn.closest('.flex');
@@ -1456,7 +1534,7 @@ async function sendMessage() {
         // If input is enabled (which it shouldn't be during streaming, but IS during HITL pause),
         // we need to check if we are actually in HITL mode.
 
-        // Wait, if isAnalyzing is true, input SHOULD be disabled. 
+        // Wait, if isAnalyzing is true, input SHOULD be disabled.
         // If isAnalyzing is false (HITL pause), we fall through to Start Analysis logic below.
 
         stopAnalysis();
@@ -1471,7 +1549,7 @@ async function sendMessage() {
         // Clear input immediately
         input.value = '';
 
-        // If it's a plan confirmation or pre_research, send the user's raw text 
+        // If it's a plan confirmation or pre_research, send the user's raw text
         // and let the backend's LLM determine if it's a question, modification, or confirmation.
         if (hitlType === 'confirm_plan' || hitlType === 'pre_research') {
             appendMessage('user', text);
@@ -1508,9 +1586,10 @@ async function sendMessage() {
         resetChatUI(); // Helper to reset UI state
         showAlert({
             title: '未設置 API Key',
-            message: '請先在系統設定中輸入您的 API Key 才能使用分析功能。\n\n您需要 OpenAI、Google Gemini 或 OpenRouter API Key。',
+            message:
+                '請先在系統設定中輸入您的 API Key 才能使用分析功能。\n\n您需要 OpenAI、Google Gemini 或 OpenRouter API Key。',
             type: 'warning',
-            confirmText: '前往設定'
+            confirmText: '前往設定',
         }).then(() => {
             if (typeof switchTab === 'function') switchTab('settings');
         });
@@ -1536,17 +1615,20 @@ async function sendMessage() {
             const token = AuthManager.currentUser.accessToken;
 
             // 這裡可以傳遞 title (e.g., text.substring(0, 20)) 但後端通常會預設為 New Chat 或由第一條訊息生成
-            const createRes = await fetch(`/api/chat/sessions?user_id=${encodeURIComponent(userId)}`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const createRes = await fetch(
+                `/api/chat/sessions?user_id=${encodeURIComponent(userId)}`,
+                {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${token}` },
+                }
+            );
             const createData = await createRes.json();
             currentSessionId = createData.session_id;
 
             // 刷新列表以顯示新對話
             // loadSessions();
         } catch (e) {
-            console.error("Failed to create lazy session:", e);
+            console.error('Failed to create lazy session:', e);
             appendMessage('bot', '❌ 無法建立對話 Session，請稍後再試。');
             return;
         }
@@ -1554,7 +1636,7 @@ async function sendMessage() {
 
     const userSelectedModel = window.APIKeyManager.getModelForProvider(userKey.provider);
     const checkboxes = document.querySelectorAll('.analysis-checkbox:checked');
-    const selection = Array.from(checkboxes).map(cb => cb.value);
+    const selection = Array.from(checkboxes).map((cb) => cb.value);
     const marketType = 'spot';
     const autoExecute = false;
 
@@ -1609,7 +1691,7 @@ async function sendMessage() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({
                 message: text,
@@ -1620,9 +1702,9 @@ async function sendMessage() {
                 user_provider: userKey.provider,
                 user_model: userSelectedModel,
                 session_id: currentSessionId,
-                language: window.I18n?.getLanguage() || 'zh-TW'
+                language: window.I18n?.getLanguage() || 'zh-TW',
             }),
-            signal: window.currentAnalysisController.signal
+            signal: window.currentAnalysisController.signal,
         });
 
         if (!response.ok) {
@@ -1656,7 +1738,11 @@ async function sendMessage() {
             for (const line of lines) {
                 if (line.startsWith('data: ')) {
                     let data;
-                    try { data = JSON.parse(line.substring(6)); } catch { continue; }
+                    try {
+                        data = JSON.parse(line.substring(6));
+                    } catch {
+                        continue;
+                    }
 
                     // ── HITL: server needs user input ──────────────────────
                     if (data.type === 'hitl_question') {
@@ -1706,14 +1792,18 @@ async function sendMessage() {
                         if (stepEl) {
                             const check = stepEl.querySelector('.plan-check');
                             if (pData.type === 'agent_start') {
-                                if (check) check.innerHTML = '<i data-lucide="loader-2" class="w-3 h-3 text-primary animate-spin"></i>';
+                                if (check)
+                                    check.innerHTML =
+                                        '<i data-lucide="loader-2" class="w-3 h-3 text-primary animate-spin"></i>';
                                 stepEl.classList.add('bg-primary/5', 'border-primary/20');
                             } else if (pData.type === 'agent_finish') {
                                 if (check) {
                                     if (pData.success) {
-                                        check.innerHTML = '<i data-lucide="check" class="w-3 h-3 text-primary"></i>';
+                                        check.innerHTML =
+                                            '<i data-lucide="check" class="w-3 h-3 text-primary"></i>';
                                     } else {
-                                        check.innerHTML = '<i data-lucide="alert-circle" class="w-3 h-3 text-danger"></i>';
+                                        check.innerHTML =
+                                            '<i data-lucide="alert-circle" class="w-3 h-3 text-danger"></i>';
                                         stepEl.classList.add('border-danger/20');
                                     }
                                 }
@@ -1726,7 +1816,11 @@ async function sendMessage() {
                     if (data.content) {
                         fullContent += data.content;
                         // 實時更新內容，傳入 isStreaming=true 和當前耗時
-                        botMsgDiv.innerHTML = renderStoredBotMessage(fullContent, true, currentElapsed);
+                        botMsgDiv.innerHTML = renderStoredBotMessage(
+                            fullContent,
+                            true,
+                            currentElapsed
+                        );
                     }
 
                     if (data.done) {
@@ -1738,7 +1832,8 @@ async function sendMessage() {
                         botMsgDiv.innerHTML = renderStoredBotMessage(fullContent, false, totalTime);
 
                         const timeBadge = document.createElement('div');
-                        timeBadge.className = 'mt-4 flex items-center justify-between text-xs text-textMuted/60 font-mono';
+                        timeBadge.className =
+                            'mt-4 flex items-center justify-between text-xs text-textMuted/60 font-mono';
 
                         let feedbackHtml = '';
                         const codebookId = botMsgDiv.dataset.codebookId;
@@ -1788,7 +1883,7 @@ async function sendMessage() {
         if (hitlPaused) {
             // HITL paused: Unlock input so user can type negotiation/answer
             // But keep "Stop" button hidden or converted back to Send?
-            // If we unlock input, user can type and hit Send. 
+            // If we unlock input, user can type and hit Send.
             // sendMessage needs to handle this state.
 
             isAnalyzing = false; // Logically not "analyzing" (streaming), but waiting.
@@ -1799,16 +1894,21 @@ async function sendMessage() {
                 input.disabled = false;
                 input.classList.remove('opacity-50');
                 input.focus();
-                input.placeholder = "輸入回應或是調整計畫...";
+                input.placeholder = '輸入回應或是調整計畫...';
             }
             if (sendBtn) {
                 sendBtn.disabled = false;
-                sendBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-red-500', 'hover:bg-red-600', 'text-white');
+                sendBtn.classList.remove(
+                    'opacity-50',
+                    'cursor-not-allowed',
+                    'bg-red-500',
+                    'hover:bg-red-600',
+                    'text-white'
+                );
                 sendBtn.classList.add('bg-primary', 'hover:brightness-110');
                 sendBtn.innerHTML = '<i data-lucide="arrow-up" class="w-5 h-5"></i>'; // use Send icon
                 if (window.lucide) lucide.createIcons({ nodes: [sendBtn] });
             }
-
         } else {
             // Normal finish or Abort
             resetChatUI();
@@ -1831,9 +1931,10 @@ function stopAnalysis() {
         const stopMsg = document.createElement('div');
         stopMsg.className = 'flex justify-center my-4 opacity-0 animate-fade-in-up';
         stopMsg.style.animationFillMode = 'forwards';
-        stopMsg.innerHTML = '<span class="px-3 py-1 rounded-full bg-red-500/10 text-red-500 text-xs font-mono border border-red-500/20">⛔ 分析已終止</span>';
+        stopMsg.innerHTML =
+            '<span class="px-3 py-1 rounded-full bg-red-500/10 text-red-500 text-xs font-mono border border-red-500/20">⛔ 分析已終止</span>';
         chatContainer.appendChild(stopMsg);
-        setTimeout(() => chatContainer.scrollTop = chatContainer.scrollHeight, 100);
+        setTimeout(() => (chatContainer.scrollTop = chatContainer.scrollHeight), 100);
     }
 
     resetChatUI();
@@ -1856,7 +1957,13 @@ function resetChatUI() {
     }
     if (sendBtn) {
         sendBtn.disabled = false;
-        sendBtn.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-red-500', 'hover:bg-red-600', 'text-white');
+        sendBtn.classList.remove(
+            'opacity-50',
+            'cursor-not-allowed',
+            'bg-red-500',
+            'hover:bg-red-600',
+            'text-white'
+        );
         sendBtn.classList.add('bg-primary', 'hover:brightness-110');
         sendBtn.innerHTML = '<i data-lucide="arrow-up" class="w-5 h-5"></i>';
     }
@@ -1873,19 +1980,38 @@ function renderStoredBotMessage(fullContent, isStreaming = false, elapsedTime = 
     let currentMode = 'normal';
 
     for (const cLine of contentLines) {
-        if (cLine.includes('[PROCESS_START]')) { currentMode = 'process'; hasProcessContent = true; continue; }
-        if (cLine.includes('[PROCESS_END]')) { currentMode = 'normal'; continue; }
-        if (cLine.includes('[RESULT]')) { currentMode = 'result'; continue; }
-        if (cLine.startsWith('[PROCESS]')) { processContent += cLine.substring(9) + '\n'; hasProcessContent = true; }
-        else if (currentMode === 'process') { processContent += cLine + '\n'; }
-        else if (currentMode === 'result') { resultContent += cLine + '\n'; }
-        else { resultContent += cLine + '\n'; }
+        if (cLine.includes('[PROCESS_START]')) {
+            currentMode = 'process';
+            hasProcessContent = true;
+            continue;
+        }
+        if (cLine.includes('[PROCESS_END]')) {
+            currentMode = 'normal';
+            continue;
+        }
+        if (cLine.includes('[RESULT]')) {
+            currentMode = 'result';
+            continue;
+        }
+        if (cLine.startsWith('[PROCESS]')) {
+            processContent += cLine.substring(9) + '\n';
+            hasProcessContent = true;
+        } else if (currentMode === 'process') {
+            processContent += cLine + '\n';
+        } else if (currentMode === 'result') {
+            resultContent += cLine + '\n';
+        } else {
+            resultContent += cLine + '\n';
+        }
     }
 
     let html = '';
     if (hasProcessContent && processContent.trim()) {
         const stepCount = (processContent.match(/✅|📊|⚔️|👨‍⚖️|⚖️|🛡️|💰|🚀|🔍|⏳/g) || []).length;
-        const processLines = processContent.trim().split('\n').filter(l => l.trim());
+        const processLines = processContent
+            .trim()
+            .split('\n')
+            .filter((l) => l.trim());
         let stepsHtml = '';
         let hasTimeInfo = false;
 
@@ -1897,7 +2023,11 @@ function renderStoredBotMessage(fullContent, isStreaming = false, elapsedTime = 
             let lineContent = '';
             if (trimmed.startsWith('---') || trimmed.startsWith('###')) {
                 lineContent = `<div class="mt-3 mb-2 text-accent font-semibold text-sm">${md.renderInline(trimmed.replace(/^---\s*/, '').replace(/^###\s*/, ''))}</div>`;
-            } else if (trimmed.startsWith('**🐂') || trimmed.startsWith('**🐻') || trimmed.startsWith('**⚖️')) {
+            } else if (
+                trimmed.startsWith('**🐂') ||
+                trimmed.startsWith('**🐻') ||
+                trimmed.startsWith('**⚖️')
+            ) {
                 lineContent = `<div class="mt-2 font-medium text-secondary">${md.renderInline(trimmed)}</div>`;
             } else if (trimmed.startsWith('>')) {
                 lineContent = `<div class="pl-3 border-l-2 border-white/10 text-textMuted text-xs my-1">${md.renderInline(trimmed.substring(1).trim())}</div>`;
@@ -1932,14 +2062,17 @@ function renderStoredBotMessage(fullContent, isStreaming = false, elapsedTime = 
         });
 
         // 使用全局變量來跟蹤展開狀態
-        const isCurrentlyOpen = window.lastProcessOpenState !== undefined ? window.lastProcessOpenState : true; // Default to open during analysis
+        const isCurrentlyOpen =
+            window.lastProcessOpenState !== undefined ? window.lastProcessOpenState : true; // Default to open during analysis
 
         // 如果在步驟中沒有找到時間信息，則檢查完整內容
         let timeInfo = '';
         let timerHeader = '';
 
         if (!hasTimeInfo) {
-            const timeMatch = fullContent.match(/\[PROCESS\]⏱️ \*\*分析完成\*\*: 總耗時 ([\d.]+) 秒/);
+            const timeMatch = fullContent.match(
+                /\[PROCESS\]⏱️ \*\*分析完成\*\*: 總耗時 ([\d.]+) 秒/
+            );
             if (timeMatch) {
                 timeInfo = `<div class="mt-2 p-3 rounded-xl bg-surface border border-white/10 flex items-center gap-2">
                               <span class="text-primary">⏱️</span>
@@ -1973,7 +2106,7 @@ function renderStoredBotMessage(fullContent, isStreaming = false, elapsedTime = 
         `;
     }
 
-    const renderMd = (text) => md ? md.render(text) : `<pre>${text.replace(/</g, '&lt;')}</pre>`;
+    const renderMd = (text) => (md ? md.render(text) : `<pre>${text.replace(/</g, '&lt;')}</pre>`);
 
     if (resultContent.trim()) {
         html += `<div class="result-container prose mt-4">${renderMd(resultContent)}</div>`;
@@ -1988,7 +2121,9 @@ function renderStoredBotMessage(fullContent, isStreaming = false, elapsedTime = 
         html = timerHtml + renderMd(fullContent);
     }
 
-    const proposalMatch = fullContent.match(/<!-- TRADE_PROPOSAL_START (.*?) TRADE_PROPOSAL_END -->/);
+    const proposalMatch = fullContent.match(
+        /<!-- TRADE_PROPOSAL_START (.*?) TRADE_PROPOSAL_END -->/
+    );
     if (proposalMatch) {
         try {
             const proposalJson = proposalMatch[1];
@@ -2006,14 +2141,16 @@ function renderStoredBotMessage(fullContent, isStreaming = false, elapsedTime = 
                 </div>
             `;
             html += btnHtml;
-        } catch (e) { console.error("Error parsing proposal", e); }
+        } catch (e) {
+            console.error('Error parsing proposal', e);
+        }
     }
 
     // Wrap <table> elements for proper overflow + border styling
     if (html.includes('<table')) {
         const temp = document.createElement('div');
         temp.innerHTML = html;
-        temp.querySelectorAll('table').forEach(table => {
+        temp.querySelectorAll('table').forEach((table) => {
             if (!table.parentElement.classList.contains('table-wrapper')) {
                 const wrapper = document.createElement('div');
                 wrapper.className = 'table-wrapper';
@@ -2039,10 +2176,10 @@ function toggleProcessState(summaryElement) {
 }
 
 // ── 對話歷史動態載入狀態 ──────────────────────────────────────────────────────
-let _historyOldestTimestamp = null;  // 目前可見訊息中最舊的時間戳
-let _historyHasMore = false;         // 是否還有更舊的訊息
-let _historyLoading = false;         // 防止重複載入
-let _historySessionId = null;        // 目前載入的 session
+let _historyOldestTimestamp = null; // 目前可見訊息中最舊的時間戳
+let _historyHasMore = false; // 是否還有更舊的訊息
+let _historyLoading = false; // 防止重複載入
+let _historySessionId = null; // 目前載入的 session
 
 /** 將單條歷史訊息渲染為 DOM 節點（不 append，只 create）。 */
 function _buildHistoryMsgEl(msg) {
@@ -2086,7 +2223,7 @@ async function loadMoreHistory() {
     try {
         const token = AuthManager.currentUser.accessToken;
         const url = `/api/chat/history?session_id=${encodeURIComponent(_historySessionId)}&before_timestamp=${encodeURIComponent(_historyOldestTimestamp)}`;
-        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
         const data = await res.json();
 
         loader.remove();
@@ -2096,7 +2233,7 @@ async function loadMoreHistory() {
             const oldScrollHeight = container.scrollHeight;
 
             const frag = document.createDocumentFragment();
-            data.history.forEach(msg => frag.appendChild(_buildHistoryMsgEl(msg)));
+            data.history.forEach((msg) => frag.appendChild(_buildHistoryMsgEl(msg)));
             container.prepend(frag);
             createIconsIn(container);
 
@@ -2112,6 +2249,7 @@ async function loadMoreHistory() {
     } catch (e) {
         loader.remove();
         console.error('[history] loadMoreHistory error:', e);
+        if (typeof showToast === 'function') showToast('載入更多歷史記錄失敗', 'error');
     } finally {
         _historyLoading = false;
     }
@@ -2134,7 +2272,7 @@ async function loadChatHistory(sessionId = 'default') {
     try {
         const token = AuthManager.currentUser.accessToken;
         const res = await fetch(`/api/chat/history?session_id=${encodeURIComponent(sessionId)}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
 
@@ -2142,7 +2280,7 @@ async function loadChatHistory(sessionId = 'default') {
         container.innerHTML = '';
 
         if (data.history && data.history.length > 0) {
-            data.history.forEach(msg => container.appendChild(_buildHistoryMsgEl(msg)));
+            data.history.forEach((msg) => container.appendChild(_buildHistoryMsgEl(msg)));
             createIconsIn(container);
 
             // 更新動態載入狀態
@@ -2150,7 +2288,9 @@ async function loadChatHistory(sessionId = 'default') {
             _historyHasMore = data.has_more;
 
             // 初始捲到底
-            setTimeout(() => { container.scrollTop = container.scrollHeight; }, 100);
+            setTimeout(() => {
+                container.scrollTop = container.scrollHeight;
+            }, 100);
 
             // 掛載捲動偵測（只掛一次）
             _attachHistoryScrollListener(container);
@@ -2176,7 +2316,7 @@ async function loadChatHistory(sessionId = 'default') {
             createIconsIn(container);
         }
     } catch (e) {
-        console.error("Failed to load history:", e);
+        console.error('Failed to load history:', e);
     }
 }
 
@@ -2185,11 +2325,15 @@ let _scrollListenerAttached = false;
 function _attachHistoryScrollListener(container) {
     if (_scrollListenerAttached) return;
     _scrollListenerAttached = true;
-    container.addEventListener('scroll', () => {
-        if (container.scrollTop < 80 && _historyHasMore && !_historyLoading) {
-            loadMoreHistory();
-        }
-    }, { passive: true });
+    container.addEventListener(
+        'scroll',
+        () => {
+            if (container.scrollTop < 80 && _historyHasMore && !_historyLoading) {
+                loadMoreHistory();
+            }
+        },
+        { passive: true }
+    );
 }
 
 async function initChat() {
@@ -2209,7 +2353,8 @@ async function initChat() {
         // 清空側邊欄
         const list = document.getElementById('chat-session-list');
         if (list) {
-            list.innerHTML = '<div class="text-center text-xs text-textMuted/40 py-4">Please login first</div>';
+            list.innerHTML =
+                '<div class="text-center text-xs text-textMuted/40 py-4">Please login first</div>';
         }
         return;
     }
@@ -2243,10 +2388,12 @@ async function initChat() {
                 newChatCount++;
                 // If we already found one "New Chat" (the newest one), delete this one
                 if (newChatCount > 1) {
-                    cleanupPromises.push(fetch(`/api/chat/sessions/${s.id}`, {
-                        method: 'DELETE',
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    }));
+                    cleanupPromises.push(
+                        fetch(`/api/chat/sessions/${s.id}`, {
+                            method: 'DELETE',
+                            headers: { Authorization: `Bearer ${token}` },
+                        })
+                    );
                 }
             }
         }
@@ -2302,7 +2449,7 @@ window.submitFeedback = async function (codebookId, score, btn) {
     // Disable buttons to prevent spam
     const parent = btn.parentElement;
     const buttons = parent.querySelectorAll('button');
-    buttons.forEach(b => b.disabled = true);
+    buttons.forEach((b) => (b.disabled = true));
 
     try {
         const token = AuthManager.currentUser.accessToken;
@@ -2310,27 +2457,29 @@ window.submitFeedback = async function (codebookId, score, btn) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({
                 codebook_entry_id: codebookId,
-                score: score
-            })
+                score: score,
+            }),
         });
 
         // UI Feedback
         if (score > 0) {
-            btn.innerHTML = '<i data-lucide="check-circle" class="w-3.5 h-3.5 text-success fill-success/20"></i>';
+            btn.innerHTML =
+                '<i data-lucide="check-circle" class="w-3.5 h-3.5 text-success fill-success/20"></i>';
             btn.classList.add('text-success');
         } else {
-            btn.innerHTML = '<i data-lucide="x-circle" class="w-3.5 h-3.5 text-danger fill-danger/20"></i>';
+            btn.innerHTML =
+                '<i data-lucide="x-circle" class="w-3.5 h-3.5 text-danger fill-danger/20"></i>';
             btn.classList.add('text-danger');
         }
         createIconsIn(btn);
-
     } catch (e) {
-        console.error("Feedback failed:", e);
+        console.error('Feedback failed:', e);
         // Re-enable on error
-        buttons.forEach(b => b.disabled = false);
+        buttons.forEach((b) => (b.disabled = false));
+        if (typeof showToast === 'function') showToast('反饋提交失敗，請稍後再試', 'error');
     }
 };

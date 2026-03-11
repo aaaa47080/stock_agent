@@ -38,14 +38,38 @@ window.SecurityUtils = {
         const config = {
             // 允許的標籤
             ALLOWED_TAGS: [
-                'p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-                'ul', 'ol', 'li', 'a', 'code', 'pre', 'blockquote', 'img', 'hr',
-                'table', 'thead', 'tbody', 'tr', 'th', 'td'
+                'p',
+                'br',
+                'strong',
+                'em',
+                'u',
+                'h1',
+                'h2',
+                'h3',
+                'h4',
+                'h5',
+                'h6',
+                'ul',
+                'ol',
+                'li',
+                'a',
+                'code',
+                'pre',
+                'blockquote',
+                'img',
+                'hr',
+                'table',
+                'thead',
+                'tbody',
+                'tr',
+                'th',
+                'td',
             ],
             // 允許的屬性
             ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class'],
             // 允許的 URI 協議
-            ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
+            ALLOWED_URI_REGEXP:
+                /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
             // 禁止危險屬性
             FORBID_ATTR: ['style', 'onerror', 'onload', 'onclick'],
             // 禁止危險標籤
@@ -53,7 +77,7 @@ window.SecurityUtils = {
             // 移除所有事件處理器
             ALLOW_DATA_ATTR: false,
             // 確保鏈接安全
-            SAFE_FOR_TEMPLATES: true
+            SAFE_FOR_TEMPLATES: true,
         };
 
         return DOMPurify.sanitize(html, config);
@@ -75,11 +99,11 @@ window.SecurityUtils = {
 
         // 渲染 Markdown
         const md = markdownit({
-            html: false,        // 不允許 HTML 標籤
-            xhtmlOut: true,     // 使用 XHTML 標準
-            breaks: true,       // 將換行符轉換為 <br>
-            linkify: true,      // 自動轉換 URL 為鏈接
-            typographer: true   // 啟用排版替換
+            html: false, // 不允許 HTML 標籤
+            xhtmlOut: true, // 使用 XHTML 標準
+            breaks: true, // 將換行符轉換為 <br>
+            linkify: true, // 自動轉換 URL 為鏈接
+            typographer: true, // 啟用排版替換
         });
 
         const rendered = md.render(markdown);
@@ -157,7 +181,7 @@ window.SecurityUtils = {
         const result = {
             valid: true,
             value: input,
-            error: null
+            error: null,
         };
 
         // 檢查必填
@@ -205,7 +229,7 @@ window.SecurityUtils = {
                 violatedDirective: e.violatedDirective,
                 originalPolicy: e.originalPolicy,
                 sourceFile: e.sourceFile,
-                lineNumber: e.lineNumber
+                lineNumber: e.lineNumber,
             });
 
             // 可以選擇發送到服務器
@@ -215,7 +239,7 @@ window.SecurityUtils = {
             //     body: JSON.stringify({...})
             // });
         });
-    }
+    },
 };
 
 // 自動初始化 CSP 報告

@@ -4,17 +4,74 @@
  */
 
 const NAV_ITEMS = [
-    { id: 'chat', icon: 'message-circle', label: 'Chat', i18nKey: 'nav.chat', defaultEnabled: true },
+    {
+        id: 'chat',
+        icon: 'message-circle',
+        label: 'Chat',
+        i18nKey: 'nav.chat',
+        defaultEnabled: true,
+    },
     { id: 'crypto', icon: 'zap', label: 'Crypto', i18nKey: 'nav.crypto', defaultEnabled: true },
-    { id: 'twstock', icon: 'bar-chart', label: 'TW Stock', i18nKey: 'nav.twstock', defaultEnabled: true },
-    { id: 'usstock', icon: 'trending-up', label: 'US Stock', i18nKey: 'nav.usstock', defaultEnabled: true },
-    { id: 'wallet', icon: 'credit-card', label: 'Wallet', i18nKey: 'nav.wallet', defaultEnabled: true },
+    {
+        id: 'twstock',
+        icon: 'bar-chart',
+        label: 'TW Stock',
+        i18nKey: 'nav.twstock',
+        defaultEnabled: true,
+    },
+    {
+        id: 'usstock',
+        icon: 'trending-up',
+        label: 'US Stock',
+        i18nKey: 'nav.usstock',
+        defaultEnabled: true,
+    },
+    {
+        id: 'wallet',
+        icon: 'credit-card',
+        label: 'Wallet',
+        i18nKey: 'nav.wallet',
+        defaultEnabled: true,
+    },
     { id: 'assets', icon: 'wallet', label: 'Assets', i18nKey: 'nav.assets', defaultEnabled: true },
-    { id: 'friends', icon: 'users', label: 'Friends', i18nKey: 'nav.friends', defaultEnabled: true },
-    { id: 'forum', icon: 'messages-square', label: 'Forum', i18nKey: 'nav.forum', defaultEnabled: true },
-    { id: 'safety', icon: 'shield-alert', label: 'Safety', i18nKey: 'nav.safety', defaultEnabled: true },
-    { id: 'admin', icon: 'shield', label: 'Admin', i18nKey: 'nav.admin', defaultEnabled: true, locked: true, adminOnly: true },
-    { id: 'settings', icon: 'settings-2', label: 'Settings', i18nKey: 'nav.settings', defaultEnabled: true, locked: true }
+    {
+        id: 'friends',
+        icon: 'users',
+        label: 'Friends',
+        i18nKey: 'nav.friends',
+        defaultEnabled: true,
+    },
+    {
+        id: 'forum',
+        icon: 'messages-square',
+        label: 'Forum',
+        i18nKey: 'nav.forum',
+        defaultEnabled: true,
+    },
+    {
+        id: 'safety',
+        icon: 'shield-alert',
+        label: 'Safety',
+        i18nKey: 'nav.safety',
+        defaultEnabled: true,
+    },
+    {
+        id: 'admin',
+        icon: 'shield',
+        label: 'Admin',
+        i18nKey: 'nav.admin',
+        defaultEnabled: true,
+        locked: true,
+        adminOnly: true,
+    },
+    {
+        id: 'settings',
+        icon: 'settings-2',
+        label: 'Settings',
+        i18nKey: 'nav.settings',
+        defaultEnabled: true,
+        locked: true,
+    },
 ];
 
 /**
@@ -33,7 +90,7 @@ const NavPreferences = {
      */
     getEnabledItems() {
         const preferences = this.loadPreferences();
-        return NAV_ITEMS.filter(item => preferences.enabledItems.includes(item.id));
+        return NAV_ITEMS.filter((item) => preferences.enabledItems.includes(item.id));
     },
 
     /**
@@ -54,7 +111,7 @@ const NavPreferences = {
      */
     setItemEnabled(itemId, enabled) {
         const preferences = this.loadPreferences();
-        const itemExists = NAV_ITEMS.some(item => item.id === itemId);
+        const itemExists = NAV_ITEMS.some((item) => item.id === itemId);
 
         if (!itemExists) {
             console.warn(`Navigation item '${itemId}' does not exist`);
@@ -67,10 +124,12 @@ const NavPreferences = {
             }
         } else {
             if (!this.canDisableItem(itemId)) {
-                console.warn(`Cannot disable '${itemId}': minimum ${this.MIN_ENABLED_ITEMS} items must be enabled`);
+                console.warn(
+                    `Cannot disable '${itemId}': minimum ${this.MIN_ENABLED_ITEMS} items must be enabled`
+                );
                 return false;
             }
-            preferences.enabledItems = preferences.enabledItems.filter(id => id !== itemId);
+            preferences.enabledItems = preferences.enabledItems.filter((id) => id !== itemId);
         }
 
         this.savePreferences(preferences);
@@ -84,11 +143,11 @@ const NavPreferences = {
      */
     canDisableItem(itemId) {
         // Locked items can never be disabled
-        const item = NAV_ITEMS.find(i => i.id === itemId);
+        const item = NAV_ITEMS.find((i) => i.id === itemId);
         if (item && item.locked) return false;
 
         const preferences = this.loadPreferences();
-        const currentlyEnabled = preferences.enabledItems.filter(id => id !== itemId);
+        const currentlyEnabled = preferences.enabledItems.filter((id) => id !== itemId);
         return currentlyEnabled.length >= this.MIN_ENABLED_ITEMS;
     },
 
@@ -98,7 +157,7 @@ const NavPreferences = {
     resetToDefaults() {
         const defaultPreferences = {
             version: this.PREFERENCES_VERSION,
-            enabledItems: NAV_ITEMS.filter(item => item.defaultEnabled).map(item => item.id)
+            enabledItems: NAV_ITEMS.filter((item) => item.defaultEnabled).map((item) => item.id),
         };
         this.savePreferences(defaultPreferences);
     },
@@ -122,8 +181,8 @@ const NavPreferences = {
                 errors.push(`At least ${this.MIN_ENABLED_ITEMS} items must be enabled`);
             }
 
-            const validIds = NAV_ITEMS.map(item => item.id);
-            const invalidIds = preferences.enabledItems.filter(id => !validIds.includes(id));
+            const validIds = NAV_ITEMS.map((item) => item.id);
+            const invalidIds = preferences.enabledItems.filter((id) => !validIds.includes(id));
             if (invalidIds.length > 0) {
                 errors.push(`Invalid item IDs: ${invalidIds.join(', ')}`);
             }
@@ -131,7 +190,7 @@ const NavPreferences = {
 
         return {
             valid: errors.length === 0,
-            errors
+            errors,
         };
     },
 
@@ -149,7 +208,10 @@ const NavPreferences = {
                 // Validate loaded preferences
                 const validation = this.validate(preferences);
                 if (!validation.valid) {
-                    console.warn('Invalid preferences loaded, resetting to defaults:', validation.errors);
+                    console.warn(
+                        'Invalid preferences loaded, resetting to defaults:',
+                        validation.errors
+                    );
                     return this._getDefaultPreferences();
                 }
 
@@ -157,7 +219,7 @@ const NavPreferences = {
 
                 // Version migration: add new default items when version bumps
                 if (!preferences.version || preferences.version < this.PREFERENCES_VERSION) {
-                    NAV_ITEMS.filter(i => i.defaultEnabled).forEach(item => {
+                    NAV_ITEMS.filter((i) => i.defaultEnabled).forEach((item) => {
                         if (!preferences.enabledItems.includes(item.id)) {
                             preferences.enabledItems.push(item.id);
                             changed = true;
@@ -168,7 +230,7 @@ const NavPreferences = {
                 }
 
                 // Ensure locked items are always included
-                NAV_ITEMS.filter(i => i.locked).forEach(item => {
+                NAV_ITEMS.filter((i) => i.locked).forEach((item) => {
                     if (!preferences.enabledItems.includes(item.id)) {
                         preferences.enabledItems.push(item.id);
                         changed = true;
@@ -205,7 +267,7 @@ const NavPreferences = {
 
         try {
             localStorage.setItem(this.STORAGE_KEY, JSON.stringify(preferences));
-            this._cache = preferences;  // 更新 cache，避免下次重新解析
+            this._cache = preferences; // 更新 cache，避免下次重新解析
             return true;
         } catch (error) {
             console.error('Error saving navigation preferences:', error);
@@ -253,9 +315,9 @@ const NavPreferences = {
     _getDefaultPreferences() {
         return {
             version: this.PREFERENCES_VERSION,
-            enabledItems: NAV_ITEMS.filter(item => item.defaultEnabled).map(item => item.id)
+            enabledItems: NAV_ITEMS.filter((item) => item.defaultEnabled).map((item) => item.id),
         };
-    }
+    },
 };
 
 // Make available on window for cross-script access

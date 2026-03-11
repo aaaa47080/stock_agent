@@ -9,14 +9,14 @@
         debug: console.debug,
         info: console.info,
         warn: console.warn,
-        error: console.error
+        error: console.error,
     };
 
     // 暴露原始 console 供緊急調試使用
     window._console = originalConsole;
 
     // 定義空函數
-    const noop = function () { };
+    const noop = function () {};
 
     function initLogger() {
         const debugMode = window.APP_CONFIG && window.APP_CONFIG.DEBUG_MODE;
@@ -28,7 +28,7 @@
             console.info = noop;
 
             // 保留警告和錯誤，但可以選擇性地過濾
-            // console.warn = noop; 
+            // console.warn = noop;
 
             // 可以在這裡添加日誌收集邏輯，例如發送到後端
         } else {
@@ -41,9 +41,9 @@
         // 始終保留一條系統消息
         if (!debugMode) {
             originalConsole.log(
-                "%c CryptoMind %c AI Agent Online ",
-                "background:#35495e ; padding: 1px; border-radius: 3px 0 0 3px;  color: #fff",
-                "background:#d4b693 ; padding: 1px; border-radius: 0 3px 3px 0;  color: #fff"
+                '%c CryptoMind %c AI Agent Online ',
+                'background:#35495e ; padding: 1px; border-radius: 3px 0 0 3px;  color: #fff',
+                'background:#d4b693 ; padding: 1px; border-radius: 0 3px 3px 0;  color: #fff'
             );
         }
     }

@@ -231,14 +231,24 @@ from .tools import (
 )
 
 # 記憶系統（延遲導入以避免循環依賴）
+# 使用更寬鬆的異常捕獲以處理各種部署場景
+import logging
+logger = logging.getLogger(__name__)
+
+MemoryStore = None
+get_memory_store = None
+
 try:
     from .memory import (
         MemoryStore,
         get_memory_store,
     )
+    logger.info("Memory module loaded successfully")
 except ImportError as e:
-    import logging
-    logging.warning(f"Failed to import memory module: {e}")
+    logger.warning(f"Memory module not available: {e}. Memory features will be disabled.")
+except Exception as e:
+    logger.error(f"Unexpected error loading memory module: {e}. Memory features will be disabled.")
+    # 確保變數被設置為 None
     MemoryStore = None
     get_memory_store = None
 

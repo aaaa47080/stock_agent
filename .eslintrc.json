@@ -1,0 +1,57 @@
+{
+  "env": {
+    "browser": true,
+    "es2021": true,
+    "node": true
+  },
+  "extends": "eslint:recommended",
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "sourceType": "module"
+  },
+  "rules": {
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+    "no-undef": "warn",
+    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "semi": ["error", "always"],
+    "quotes": ["error", "single", { "avoidEscape": true }]
+  },
+  "globals": {
+    "window": "readonly",
+    "document": "readonly",
+    "console": "readonly",
+    "localStorage": "readonly",
+    "sessionStorage": "readonly",
+    "fetch": "readonly",
+    "lucide": "readonly",
+    "history": "readonly",
+    "location": "readonly",
+    "navigator": "readonly",
+    "setTimeout": "readonly",
+    "setInterval": "readonly",
+    "clearTimeout": "readonly",
+    "clearInterval": "readonly",
+    "requestAnimationFrame": "readonly",
+    "cancelAnimationFrame": "readonly",
+    "Pi": "readonly",
+    "DOMParser": "readonly",
+    "Promise": "readonly",
+    "AuthManager": "writable",
+    "APIKeyManager": "writable",
+    "OKXKeyManager": "writable",
+    "NavPreferences": "writable",
+    "I18n": "writable",
+    "Components": "writable",
+    "showToast": "readonly",
+    "switchTab": "readonly",
+    "executeTabSwitch": "readonly",
+    "renderNavButtons": "readonly",
+    "FeatureMenu": "writable",
+    "checkApiKeyStatus": "readonly",
+    "initializeAuth": "readonly",
+    "initializeUIStatus": "readonly",
+    "loadSavedApiKeys": "readonly",
+    "checkWebSocketStatus": "readonly",
+    "submitHITLAnswer": "writable"
+  }
+}

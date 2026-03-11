@@ -76,7 +76,7 @@ const AdminStatsManager = {
     },
 
     _updateRangeButtons() {
-        document.querySelectorAll('.stats-range-btn').forEach(b => {
+        document.querySelectorAll('.stats-range-btn').forEach((b) => {
             b.classList.remove('bg-primary/20', 'text-primary');
             b.classList.add('text-textMuted', 'hover:bg-white/5');
         });
@@ -109,7 +109,7 @@ const AdminStatsManager = {
     async loadOverview() {
         try {
             const res = await fetch('/api/admin/stats/overview', {
-                headers: AdminPanel._getAuthHeaders()
+                headers: AdminPanel._getAuthHeaders(),
             });
             if (!res.ok) throw new Error('Failed');
             const data = await res.json();
@@ -118,15 +118,33 @@ const AdminStatsManager = {
             if (!cards) return;
 
             const values = [
-                { label: 'Total Users', value: `${data.total_users}`, sub: `+${data.new_users_today} today | ${data.pro_users} PRO` },
-                { label: 'Active Today', value: `${data.active_today}`, sub: `${data.pending_reports} pending reports` },
-                { label: 'Total Posts', value: `${data.total_posts}`, sub: `${data.total_comments} comments` },
-                { label: 'Total Tips (Pi)', value: `${data.total_tips_amount.toFixed(2)}`, sub: `${data.total_tips_count} transactions` }
+                {
+                    label: 'Total Users',
+                    value: `${data.total_users}`,
+                    sub: `+${data.new_users_today} today | ${data.pro_users} PRO`,
+                },
+                {
+                    label: 'Active Today',
+                    value: `${data.active_today}`,
+                    sub: `${data.pending_reports} pending reports`,
+                },
+                {
+                    label: 'Total Posts',
+                    value: `${data.total_posts}`,
+                    sub: `${data.total_comments} comments`,
+                },
+                {
+                    label: 'Total Tips (Pi)',
+                    value: `${data.total_tips_amount.toFixed(2)}`,
+                    sub: `${data.total_tips_count} transactions`,
+                },
             ];
 
             const icons = ['users', 'activity', 'message-square', 'coins'];
 
-            cards.innerHTML = values.map((v, i) => `
+            cards.innerHTML = values
+                .map(
+                    (v, i) => `
                 <div class="bg-surface rounded-2xl border border-white/5 p-4">
                     <div class="flex items-center gap-2 mb-1">
                         <i data-lucide="${icons[i]}" class="w-4 h-4 text-textMuted"></i>
@@ -135,7 +153,9 @@ const AdminStatsManager = {
                     <div class="text-xl font-bold text-secondary">${v.value}</div>
                     <div class="text-[10px] text-textMuted mt-0.5">${v.sub}</div>
                 </div>
-            `).join('');
+            `
+                )
+                .join('');
 
             if (window.lucide) lucide.createIcons();
         } catch (e) {
@@ -146,19 +166,22 @@ const AdminStatsManager = {
     async loadUserChart() {
         try {
             const res = await fetch(`/api/admin/stats/users?days=${this.currentRange}`, {
-                headers: AdminPanel._getAuthHeaders()
+                headers: AdminPanel._getAuthHeaders(),
             });
             if (!res.ok) throw new Error('Failed');
             const data = await res.json();
 
             const filled = this._fillMissingDates(data.data, this.currentRange);
-            const labels = filled.map(d => d.date.substring(5)); // MM-DD
-            const counts = filled.map(d => d.count);
+            const labels = filled.map((d) => d.date.substring(5)); // MM-DD
+            const counts = filled.map((d) => d.count);
 
             // Cumulative
             let cumulative = [];
             let sum = 0;
-            counts.forEach(c => { sum += c; cumulative.push(sum); });
+            counts.forEach((c) => {
+                sum += c;
+                cumulative.push(sum);
+            });
 
             this._createChart('chart-users', {
                 type: 'line',
@@ -172,7 +195,7 @@ const AdminStatsManager = {
                             backgroundColor: 'rgba(168, 130, 82, 0.1)',
                             fill: true,
                             tension: 0.3,
-                            yAxisID: 'y'
+                            yAxisID: 'y',
                         },
                         {
                             label: 'Cumulative',
@@ -181,14 +204,18 @@ const AdminStatsManager = {
                             borderDash: [5, 5],
                             tension: 0.3,
                             pointRadius: 0,
-                            yAxisID: 'y1'
-                        }
-                    ]
+                            yAxisID: 'y1',
+                        },
+                    ],
                 },
                 options: this._chartOptions({
                     y: { position: 'left', title: { display: true, text: 'New', color: '#888' } },
-                    y1: { position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Total', color: '#888' } }
-                })
+                    y1: {
+                        position: 'right',
+                        grid: { drawOnChartArea: false },
+                        title: { display: true, text: 'Total', color: '#888' },
+                    },
+                }),
             });
         } catch (e) {
             console.warn('Failed to load user chart:', e);
@@ -198,14 +225,14 @@ const AdminStatsManager = {
     async loadForumChart() {
         try {
             const res = await fetch(`/api/admin/stats/forum?days=${this.currentRange}`, {
-                headers: AdminPanel._getAuthHeaders()
+                headers: AdminPanel._getAuthHeaders(),
             });
             if (!res.ok) throw new Error('Failed');
             const data = await res.json();
 
             const postsFilled = this._fillMissingDates(data.posts, this.currentRange);
             const commentsFilled = this._fillMissingDates(data.comments, this.currentRange);
-            const labels = postsFilled.map(d => d.date.substring(5));
+            const labels = postsFilled.map((d) => d.date.substring(5));
 
             this._createChart('chart-forum', {
                 type: 'bar',
@@ -214,19 +241,19 @@ const AdminStatsManager = {
                     datasets: [
                         {
                             label: 'Posts',
-                            data: postsFilled.map(d => d.count),
+                            data: postsFilled.map((d) => d.count),
                             backgroundColor: 'rgba(168, 130, 82, 0.7)',
-                            borderRadius: 4
+                            borderRadius: 4,
                         },
                         {
                             label: 'Comments',
-                            data: commentsFilled.map(d => d.count),
+                            data: commentsFilled.map((d) => d.count),
                             backgroundColor: 'rgba(100, 180, 100, 0.5)',
-                            borderRadius: 4
-                        }
-                    ]
+                            borderRadius: 4,
+                        },
+                    ],
                 },
-                options: this._chartOptions()
+                options: this._chartOptions(),
             });
         } catch (e) {
             console.warn('Failed to load forum chart:', e);
@@ -236,14 +263,20 @@ const AdminStatsManager = {
     async loadRevenueChart() {
         try {
             const res = await fetch(`/api/admin/stats/revenue?days=${this.currentRange}`, {
-                headers: AdminPanel._getAuthHeaders()
+                headers: AdminPanel._getAuthHeaders(),
             });
             if (!res.ok) throw new Error('Failed');
             const data = await res.json();
 
-            const tipsFilled = this._fillMissingDates(data.tips.map(d => ({ date: d.date, count: d.amount })), this.currentRange);
-            const memFilled = this._fillMissingDates(data.memberships.map(d => ({ date: d.date, count: d.amount })), this.currentRange);
-            const labels = tipsFilled.map(d => d.date.substring(5));
+            const tipsFilled = this._fillMissingDates(
+                data.tips.map((d) => ({ date: d.date, count: d.amount })),
+                this.currentRange
+            );
+            const memFilled = this._fillMissingDates(
+                data.memberships.map((d) => ({ date: d.date, count: d.amount })),
+                this.currentRange
+            );
+            const labels = tipsFilled.map((d) => d.date.substring(5));
 
             this._createChart('chart-revenue', {
                 type: 'line',
@@ -252,23 +285,23 @@ const AdminStatsManager = {
                     datasets: [
                         {
                             label: 'Tips (Pi)',
-                            data: tipsFilled.map(d => d.count),
+                            data: tipsFilled.map((d) => d.count),
                             borderColor: 'rgba(168, 130, 82, 1)',
                             backgroundColor: 'rgba(168, 130, 82, 0.1)',
                             fill: true,
-                            tension: 0.3
+                            tension: 0.3,
                         },
                         {
                             label: 'Memberships (Pi)',
-                            data: memFilled.map(d => d.count),
+                            data: memFilled.map((d) => d.count),
                             borderColor: 'rgba(130, 100, 200, 0.8)',
                             backgroundColor: 'rgba(130, 100, 200, 0.1)',
                             fill: true,
-                            tension: 0.3
-                        }
-                    ]
+                            tension: 0.3,
+                        },
+                    ],
                 },
-                options: this._chartOptions()
+                options: this._chartOptions(),
             });
         } catch (e) {
             console.warn('Failed to load revenue chart:', e);
@@ -283,26 +316,26 @@ const AdminStatsManager = {
                 legend: {
                     display: true,
                     position: 'top',
-                    labels: { color: '#888', boxWidth: 12, font: { size: 10 } }
-                }
+                    labels: { color: '#888', boxWidth: 12, font: { size: 10 } },
+                },
             },
             scales: {
                 x: {
                     ticks: { color: '#666', font: { size: 9 }, maxRotation: 0 },
-                    grid: { color: 'rgba(255,255,255,0.03)' }
+                    grid: { color: 'rgba(255,255,255,0.03)' },
                 },
                 y: {
                     beginAtZero: true,
                     ticks: { color: '#666', font: { size: 10 } },
-                    grid: { color: 'rgba(255,255,255,0.05)' }
-                }
-            }
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                },
+            },
         };
 
         if (scalesOverride) {
             base.scales = { x: base.scales.x, ...scalesOverride };
             // Ensure common x axis style
-            Object.values(base.scales).forEach(s => {
+            Object.values(base.scales).forEach((s) => {
                 if (!s.ticks) s.ticks = {};
                 if (!s.ticks.color) s.ticks.color = '#666';
             });
@@ -325,7 +358,7 @@ const AdminStatsManager = {
     },
 
     destroyCharts() {
-        Object.keys(this.charts).forEach(key => {
+        Object.keys(this.charts).forEach((key) => {
             if (this.charts[key]) {
                 this.charts[key].destroy();
                 delete this.charts[key];
@@ -335,7 +368,9 @@ const AdminStatsManager = {
 
     _fillMissingDates(data, days) {
         const dateMap = {};
-        (data || []).forEach(d => { dateMap[d.date] = d.count || 0; });
+        (data || []).forEach((d) => {
+            dateMap[d.date] = d.count || 0;
+        });
 
         const result = [];
         const now = new Date();
@@ -346,7 +381,7 @@ const AdminStatsManager = {
             result.push({ date: key, count: dateMap[key] || 0 });
         }
         return result;
-    }
+    },
 };
 
 window.AdminStatsManager = AdminStatsManager;

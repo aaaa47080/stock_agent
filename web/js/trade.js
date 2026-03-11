@@ -20,30 +20,31 @@ function showProposalModal(data) {
     }
 
     const propMarket = document.getElementById('prop-market');
-    if (propMarket) propMarket.innerText = `${data.market_type === 'spot' ? '現貨' : '合約'} ${data.leverage > 1 ? '(' + data.leverage + 'x)' : ''}`;
+    if (propMarket)
+        propMarket.innerText = `${data.market_type === 'spot' ? '現貨' : '合約'} ${data.leverage > 1 ? '(' + data.leverage + 'x)' : ''}`;
 
     const amountInput = document.getElementById('prop-amount');
     if (!amountInput) return;
 
     // Reset styles
-    amountInput.classList.remove("border-yellow-500", "border-red-500", "border-white/10");
-    amountInput.classList.add("border-white/10");
+    amountInput.classList.remove('border-yellow-500', 'border-red-500', 'border-white/10');
+    amountInput.classList.add('border-white/10');
 
-    let warningMsg = "";
+    let warningMsg = '';
 
-    if (data.balance_status === "unknown") {
-        amountInput.value = "";
-        amountInput.placeholder = "請輸入金額";
-        amountInput.classList.replace("border-white/10", "border-primary/50");
-        warningMsg = "⚠️ 未連結錢包/未獲取餘額，請手動輸入";
-    } else if (data.balance_status === "zero") {
-        amountInput.value = "0";
-        amountInput.classList.replace("border-white/10", "border-danger/50");
-        warningMsg = "⚠️ 帳戶餘額為 0";
+    if (data.balance_status === 'unknown') {
+        amountInput.value = '';
+        amountInput.placeholder = '請輸入金額';
+        amountInput.classList.replace('border-white/10', 'border-primary/50');
+        warningMsg = '⚠️ 未連結錢包/未獲取餘額，請手動輸入';
+    } else if (data.balance_status === 'zero') {
+        amountInput.value = '0';
+        amountInput.classList.replace('border-white/10', 'border-danger/50');
+        warningMsg = '⚠️ 帳戶餘額為 0';
     } else {
         amountInput.value = data.amount;
         if (data.amount <= 0) {
-            warningMsg = "⚠️ 建議倉位過小";
+            warningMsg = '⚠️ 建議倉位過小';
         }
     }
 
@@ -59,7 +60,9 @@ function showProposalModal(data) {
     if (warnEl) {
         if (warningMsg) {
             warnEl.innerText = warningMsg;
-            warnEl.className = 'text-[10px] mt-1 font-bold ' + (data.balance_status === 'zero' ? 'text-danger' : 'text-primary');
+            warnEl.className =
+                'text-[10px] mt-1 font-bold ' +
+                (data.balance_status === 'zero' ? 'text-danger' : 'text-primary');
             warnEl.style.display = 'block';
             setTimeout(() => amountInput.focus(), 100);
         } else {
@@ -69,7 +72,7 @@ function showProposalModal(data) {
 
     const slInput = document.getElementById('prop-sl');
     if (slInput) slInput.value = data.stop_loss || '';
-    
+
     const tpInput = document.getElementById('prop-tp');
     if (tpInput) tpInput.value = data.take_profit || '';
 
@@ -111,15 +114,19 @@ async function confirmTradeExecution() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                ...authHeaders
+                ...authHeaders,
             },
-            body: JSON.stringify(currentProposal)
+            body: JSON.stringify(currentProposal),
         });
 
         const data = await res.json();
 
         if (data.status === 'success') {
-            showToast(`交易成功！訂單ID: ${data.details.data ? data.details.data[0].ordId : 'Unknown'}`, 'success', 5000);
+            showToast(
+                `交易成功！訂單ID: ${data.details.data ? data.details.data[0].ordId : 'Unknown'}`,
+                'success',
+                5000
+            );
             closeProposalModal();
             refreshAssets();
         } else {
@@ -154,7 +161,11 @@ async function runBacktest() {
             const token = AuthManager.currentUser.accessToken || AuthManager.currentUser.token;
             if (token) authHeaders['Authorization'] = `Bearer ${token}`;
         }
-        const res = await fetch('/api/backtest', { method: 'POST', headers: authHeaders, body: JSON.stringify({ symbol: symbol, signal_type: strategy, interval: '1h' }) });
+        const res = await fetch('/api/backtest', {
+            method: 'POST',
+            headers: authHeaders,
+            body: JSON.stringify({ symbol: symbol, signal_type: strategy, interval: '1h' }),
+        });
         const data = await res.json();
         if (data.error) throw new Error(data.error);
         const isProfitable = data.return_pct > 0;
@@ -187,20 +198,23 @@ async function showDebate(symbol) {
         const winnerBadge = document.getElementById('winner-badge');
         if (data.debate_judgment.winning_stance === 'Bull') {
             winnerBadge.textContent = '多頭勝出 🐂';
-            winnerBadge.className = 'px-3 py-1 bg-success/20 text-success rounded-lg text-sm border border-success/30';
-        }
-        else if (data.debate_judgment.winning_stance === 'Bear') {
+            winnerBadge.className =
+                'px-3 py-1 bg-success/20 text-success rounded-lg text-sm border border-success/30';
+        } else if (data.debate_judgment.winning_stance === 'Bear') {
             winnerBadge.textContent = '空頭勝出 🐻';
-            winnerBadge.className = 'px-3 py-1 bg-danger/20 text-danger rounded-lg text-sm border border-danger/30';
-        }
-        else {
+            winnerBadge.className =
+                'px-3 py-1 bg-danger/20 text-danger rounded-lg text-sm border border-danger/30';
+        } else {
             winnerBadge.textContent = '平局 ⚖️';
-            winnerBadge.className = 'px-3 py-1 bg-surfaceHighlight text-textMuted rounded-lg text-sm border border-white/10';
+            winnerBadge.className =
+                'px-3 py-1 bg-surfaceHighlight text-textMuted rounded-lg text-sm border border-white/10';
         }
         bullArg.innerHTML = md.render(data.bull_argument.argument);
         bearArg.innerHTML = md.render(data.bear_argument.argument);
         verdict.innerHTML = md.render(data.debate_judgment.judge_rationale);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+        console.error(e);
+    }
 }
 
 function closeDebate() {

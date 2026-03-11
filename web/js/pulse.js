@@ -17,11 +17,26 @@ let pulseInitialized = false;
 function formatPrice(price) {
     if (price === null || price === undefined || isNaN(price)) return '$0.00';
     const absPrice = Math.abs(price);
-    if (absPrice >= 1) return '$' + price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    if (absPrice >= 0.01) return '$' + price.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 });
-    if (absPrice >= 0.0001) return '$' + price.toLocaleString(undefined, { minimumFractionDigits: 6, maximumFractionDigits: 6 });
+    if (absPrice >= 1)
+        return (
+            '$' +
+            price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        );
+    if (absPrice >= 0.01)
+        return (
+            '$' +
+            price.toLocaleString(undefined, { minimumFractionDigits: 4, maximumFractionDigits: 4 })
+        );
+    if (absPrice >= 0.0001)
+        return (
+            '$' +
+            price.toLocaleString(undefined, { minimumFractionDigits: 6, maximumFractionDigits: 6 })
+        );
     if (absPrice === 0) return '$0.00';
-    return '$' + price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 });
+    return (
+        '$' +
+        price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })
+    );
 }
 
 /**
@@ -58,7 +73,7 @@ async function initPulse() {
         if (!grid) {
             // 等待最多 500ms
             for (let i = 0; i < 10; i++) {
-                await new Promise(r => setTimeout(r, 50));
+                await new Promise((r) => setTimeout(r, 50));
                 grid = document.getElementById('pulse-grid');
                 if (grid) break;
             }
@@ -103,24 +118,29 @@ async function loadPulseData(showLoading = false) {
             }
         }
 
-        const targets = (window.globalSelectedSymbols && window.globalSelectedSymbols.length > 0)
-            ? window.globalSelectedSymbols
-            : ['BTC', 'ETH', 'SOL', 'PI']; // Failsafe fallback
+        const targets =
+            window.globalSelectedSymbols && window.globalSelectedSymbols.length > 0
+                ? window.globalSelectedSymbols
+                : ['BTC', 'ETH', 'SOL', 'PI']; // Failsafe fallback
 
         // 創建 loading placeholder
         if (showLoading || grid.children.length === 0) {
-            grid.innerHTML = targets.map(symbol => `
+            grid.innerHTML = targets
+                .map(
+                    (symbol) => `
                 <div id="pulse-card-${symbol}" class="bg-surface rounded-3xl border border-white/5 p-5 h-[300px] flex flex-col items-center justify-center">
                     <div class="typing-indicator">
                         <div class="typing-dots flex gap-1"><span></span><span></span><span></span></div>
                         <span class="ml-2 text-textMuted text-sm">Analyzing ${symbol}...</span>
                     </div>
                 </div>
-            `).join('');
+            `
+                )
+                .join('');
         }
 
         // 並行加載所有數據
-        await Promise.all(targets.map(symbol => fetchPulseForSymbol(symbol, false)));
+        await Promise.all(targets.map((symbol) => fetchPulseForSymbol(symbol, false)));
 
         // 開始輪詢進度（如果有後台任務）
         pollAnalysisProgress();
@@ -157,32 +177,33 @@ async function refreshMarketPulse() {
             if (typeof window.initMarket === 'function') await window.initMarket();
         }
 
-        const targets = (window.globalSelectedSymbols && window.globalSelectedSymbols.length > 0)
-            ? window.globalSelectedSymbols
-            : ['BTC', 'ETH', 'SOL', 'PI'];
+        const targets =
+            window.globalSelectedSymbols && window.globalSelectedSymbols.length > 0
+                ? window.globalSelectedSymbols
+                : ['BTC', 'ETH', 'SOL', 'PI'];
         const userKey = await window.APIKeyManager?.getCurrentKey();
 
         if (userKey) {
-            if (window.DEBUG_MODE) console.log("[Pulse] Using User Key for Deep Refresh...");
+            if (window.DEBUG_MODE) console.log('[Pulse] Using User Key for Deep Refresh...');
             // Create loading placeholders first so triggerDeepAnalysis has cards to update
             await loadPulseData(true);
-            await Promise.allSettled(targets.map(symbol => triggerDeepAnalysis(symbol)));
+            await Promise.allSettled(targets.map((symbol) => triggerDeepAnalysis(symbol)));
         } else {
-            console.log("[Pulse] Triggering Background Public Refresh...");
+            console.log('[Pulse] Triggering Background Public Refresh...');
             const token = window.AuthManager?.currentUser?.accessToken;
             const res = await fetch('/api/market-pulse/refresh-all', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
                 },
-                body: JSON.stringify({ symbols: targets })
+                body: JSON.stringify({ symbols: targets }),
             });
-            if (!res.ok) throw new Error("Refresh failed");
+            if (!res.ok) throw new Error('Refresh failed');
             pollAnalysisProgress();
         }
     } catch (e) {
-        console.error("Market Pulse Refresh Error:", e);
+        console.error('Market Pulse Refresh Error:', e);
         if (typeof window.showToast === 'function') {
             window.showToast('刷新失敗，請稍後重試', 'error');
         }
@@ -206,7 +227,9 @@ async function fetchPulseForSymbol(symbol, forceRefresh = false, deepAnalysis = 
     }
 
     try {
-        const sourcesQuery = (window.selectedNewsSources || ['google', 'cryptocompare', 'cryptopanic', 'newsapi']).join(',');
+        const sourcesQuery = (
+            window.selectedNewsSources || ['google', 'cryptocompare', 'cryptopanic', 'newsapi']
+        ).join(',');
         const refreshParam = forceRefresh ? '&refresh=true' : '';
         const deepParam = deepAnalysis ? '&deep_analysis=true' : '';
 
@@ -219,7 +242,10 @@ async function fetchPulseForSymbol(symbol, forceRefresh = false, deepAnalysis = 
             }
         }
 
-        const res = await fetch(`/api/market-pulse/${symbol}?sources=${sourcesQuery}${refreshParam}${deepParam}`, { headers });
+        const res = await fetch(
+            `/api/market-pulse/${symbol}?sources=${sourcesQuery}${refreshParam}${deepParam}`,
+            { headers }
+        );
 
         if (!res.ok) {
             const errData = await res.json().catch(() => ({ detail: res.statusText }));
@@ -227,7 +253,12 @@ async function fetchPulseForSymbol(symbol, forceRefresh = false, deepAnalysis = 
         }
 
         const data = await res.json();
-        const report = data.report || { summary: data.explanation, key_points: [], highlights: [], risks: [] };
+        const report = data.report || {
+            summary: data.explanation,
+            key_points: [],
+            highlights: [],
+            risks: [],
+        };
 
         // 處理等待狀態
         if (data.status === 'pending' || data.source_mode === 'awaiting_update') {
@@ -250,7 +281,8 @@ async function fetchPulseForSymbol(symbol, forceRefresh = false, deepAnalysis = 
  * 渲染等待中的卡片
  */
 function renderPendingCard(card, data) {
-    card.className = "bg-surface rounded-3xl border border-dashed border-white/10 p-6 h-full flex flex-col items-center justify-center min-h-[200px]";
+    card.className =
+        'bg-surface rounded-3xl border border-dashed border-white/10 p-6 h-full flex flex-col items-center justify-center min-h-[200px]';
     card.innerHTML = `
         <div class="text-center">
             <div class="w-12 h-12 bg-background rounded-full flex items-center justify-center mx-auto mb-3">
@@ -260,7 +292,7 @@ function renderPendingCard(card, data) {
             <p class="text-textMuted text-sm mb-4">Awaiting scheduled update</p>
             <button onclick="triggerDeepAnalysis('${data.symbol}')" class="px-4 py-2.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-xl transition flex items-center gap-2 mx-auto border border-primary/20">
                 <i data-lucide="zap" class="w-4 h-4"></i>
-                ${(window.I18n ? window.I18n.t('pulse.deepAnalysis') : 'Deep Analysis')}
+                ${window.I18n ? window.I18n.t('pulse.deepAnalysis') : 'Deep Analysis'}
             </button>
         </div>
     `;
@@ -287,7 +319,7 @@ function _buildPulseSummary(report, t) {
  */
 function _buildPulseKeyPoints(report, t) {
     if (report.key_points_i18n && report.key_points_i18n.length > 0) {
-        return report.key_points_i18n.map(kp => {
+        return report.key_points_i18n.map((kp) => {
             const label = t('pulse.' + kp.key);
             if (kp.key === 'priceAction') {
                 return `<strong>${label}</strong>: 1H ${kp.values.h1}, 24H ${kp.values.h24}`;
@@ -295,7 +327,9 @@ function _buildPulseKeyPoints(report, t) {
                 const macdKey = 'pulse.macd' + kp.values.macd;
                 const volBase = (kp.values.volume || 'Normal').split(' ')[0];
                 const volKey = 'pulse.volume' + volBase;
-                const volExtra = kp.values.volume.includes('(') ? ' ' + kp.values.volume.match(/\(.*\)/)?.[0] : '';
+                const volExtra = kp.values.volume.includes('(')
+                    ? ' ' + kp.values.volume.match(/\(.*\)/)?.[0]
+                    : '';
                 return `<strong>${label}</strong>: MACD ${t(macdKey)}, ${t('pulse.volume')} ${t(volKey)}${volExtra}`;
             } else if (kp.key === 'newsActivity') {
                 return `<strong>${label}</strong>: ${kp.values.count} ${t('pulse.newsFound')}`;
@@ -313,9 +347,12 @@ function renderPulseCard(card, data, report) {
     const t = window.I18n ? window.I18n.t.bind(window.I18n) : (k) => k;
     const isPositive = data.change_24h > 0;
     const timeString = getTimeAgo(data.timestamp);
-    const uniqueSources = data.news_sources ? [...new Set(data.news_sources.map(n => n.source.split(' ')[0]))].join(', ') : '';
+    const uniqueSources = data.news_sources
+        ? [...new Set(data.news_sources.map((n) => n.source.split(' ')[0]))].join(', ')
+        : '';
 
-    card.className = "bg-surface rounded-3xl border border-white/5 p-0 h-full flex flex-col hover:border-primary/20 transition duration-300 overflow-hidden";
+    card.className =
+        'bg-surface rounded-3xl border border-white/5 p-0 h-full flex flex-col hover:border-primary/20 transition duration-300 overflow-hidden';
 
     let html = `
         <div class="p-5 border-b border-white/5 bg-background/30">
@@ -353,12 +390,16 @@ function renderPulseCard(card, data, report) {
                     <i data-lucide="sparkles" class="w-3 h-3"></i> ${t('pulse.keyPoints')}
                 </h4>
                 <ul class="space-y-2">
-                    ${kpItems.map((point, idx) => `
+                    ${kpItems
+                        .map(
+                            (point, idx) => `
                         <li class="flex gap-2 text-xs text-secondary/80">
                             <span class="text-primary/50 font-mono">${idx + 1}.</span>
                             <span>${point}</span>
                         </li>
-                    `).join('')}
+                    `
+                        )
+                        .join('')}
                 </ul>
             </div>
         `;
@@ -371,12 +412,16 @@ function renderPulseCard(card, data, report) {
                     <i data-lucide="zap" class="w-3 h-3"></i> ${t('pulse.highlights')}
                 </h4>
                 <div class="space-y-2">
-                    ${report.highlights.map(item => `
+                    ${report.highlights
+                        .map(
+                            (item) => `
                         <div class="bg-background/50 rounded-xl p-3 border border-white/5">
                             <div class="text-xs font-semibold text-secondary mb-1">${item.title_key ? t('pulse.' + item.title_key) : item.title}</div>
                             <div class="text-[11px] text-textMuted leading-normal">${escapeHtml(item.content)}</div>
                         </div>
-                    `).join('')}
+                    `
+                        )
+                        .join('')}
                 </div>
             </div>
         `;
@@ -389,12 +434,16 @@ function renderPulseCard(card, data, report) {
                     <i data-lucide="alert-triangle" class="w-3 h-3"></i> ${t('pulse.risks')}
                 </h4>
                 <ul class="space-y-1">
-                    ${(report.risks_i18n || report.risks).map(risk => `
+                    ${(report.risks_i18n || report.risks)
+                        .map(
+                            (risk) => `
                         <li class="flex gap-2 text-xs text-textMuted">
                             <i data-lucide="alert-circle" class="w-3 h-3 text-danger/50 mt-0.5 shrink-0"></i>
                             <span>${risk.startsWith('pulse.') ? t(risk) : risk}</span>
                         </li>
-                    `).join('')}
+                    `
+                        )
+                        .join('')}
                 </ul>
             </div>
         `;
@@ -403,9 +452,10 @@ function renderPulseCard(card, data, report) {
     html += `</div>`;
 
     const sourceMode = data.source_mode || 'public_cache';
-    const sourceBadge = sourceMode === 'deep_analysis'
-        ? `<span class="px-1.5 py-0.5 bg-primary/20 text-primary rounded-lg border border-primary/30 flex items-center gap-1"><i data-lucide="zap" class="w-2.5 h-2.5"></i>${t('pulse.deep')}</span>`
-        : `<span class="px-1.5 py-0.5 bg-background text-textMuted rounded-lg border border-white/5">${t('pulse.public')}</span>`;
+    const sourceBadge =
+        sourceMode === 'deep_analysis'
+            ? `<span class="px-1.5 py-0.5 bg-primary/20 text-primary rounded-lg border border-primary/30 flex items-center gap-1"><i data-lucide="zap" class="w-2.5 h-2.5"></i>${t('pulse.deep')}</span>`
+            : `<span class="px-1.5 py-0.5 bg-background text-textMuted rounded-lg border border-white/5">${t('pulse.public')}</span>`;
 
     html += `
         <div class="p-4 border-t border-white/5 bg-background/30 flex justify-between items-center text-[10px] text-textMuted">
@@ -462,7 +512,7 @@ async function triggerDeepAnalysis(symbol) {
                 title: t('pulse.noApiKeyTitle'),
                 message: t('pulse.noApiKeyMessage'),
                 type: 'warning',
-                confirmText: t('pulse.goToSettings')
+                confirmText: t('pulse.goToSettings'),
             }).then(() => {
                 if (typeof switchTab === 'function') switchTab('settings');
             });
@@ -510,12 +560,14 @@ function showNewsList(symbol) {
     if (sources.length === 0) {
         listContent.innerHTML = `<div class="text-slate-500 text-center py-4">${t('pulse.noNews')}</div>`;
     } else {
-        sources.forEach(news => {
+        sources.forEach((news) => {
             const item = document.createElement('div');
-            item.className = 'bg-slate-800/50 border border-slate-700 p-3 rounded-xl hover:bg-slate-800 transition group';
-            const linkHtml = news.url && news.url !== '#'
-                ? `<a href="${news.url}" target="_blank" class="text-[10px] text-blue-500 hover:underline">${t('pulse.viewOriginal')}</a>`
-                : `<span class="text-[10px] text-slate-500">${t('pulse.noLink')}</span>`;
+            item.className =
+                'bg-slate-800/50 border border-slate-700 p-3 rounded-xl hover:bg-slate-800 transition group';
+            const linkHtml =
+                news.url && news.url !== '#'
+                    ? `<a href="${news.url}" target="_blank" class="text-[10px] text-blue-500 hover:underline">${t('pulse.viewOriginal')}</a>`
+                    : `<span class="text-[10px] text-slate-500">${t('pulse.noLink')}</span>`;
             item.innerHTML = `
                 <div class="flex justify-between items-start mb-1">
                     <span class="text-[10px] px-1.5 py-0.5 bg-blue-900/30 text-blue-400 rounded border border-blue-500/20">${news.source || t('pulse.unknownSource')}</span>
@@ -558,13 +610,13 @@ async function pollAnalysisProgress() {
                 const pct = (status.completed / status.total) * 100;
                 bar.style.width = `${pct}%`;
                 text.innerText = `${status.completed}/${status.total} (${pct.toFixed(1)}%)`;
-                await new Promise(r => setTimeout(r, 2000));
+                await new Promise((r) => setTimeout(r, 2000));
             } else {
                 if (!container.classList.contains('hidden')) {
                     bar.style.width = '100%';
                     const t = window.I18n ? window.I18n.t.bind(window.I18n) : (k) => k;
                     text.innerText = t('pulse.done');
-                    await new Promise(r => setTimeout(r, 2000));
+                    await new Promise((r) => setTimeout(r, 2000));
                     container.classList.add('hidden');
                     loadPulseData(false);
                 }
@@ -572,7 +624,7 @@ async function pollAnalysisProgress() {
             }
         }
     } catch (e) {
-        console.error("Progress poll error:", e);
+        console.error('Progress poll error:', e);
     } finally {
         isPollingProgress = false;
     }
@@ -585,7 +637,12 @@ function reRenderPulseCards() {
     for (const [symbol, data] of Object.entries(currentPulseData)) {
         const card = document.getElementById(`pulse-card-${symbol}`);
         if (!card || !data) continue;
-        const report = data.report || { summary: data.explanation, key_points: [], highlights: [], risks: [] };
+        const report = data.report || {
+            summary: data.explanation,
+            key_points: [],
+            highlights: [],
+            risks: [],
+        };
         if (report.summary) {
             renderPulseCard(card, data, report);
         }

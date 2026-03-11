@@ -31,7 +31,7 @@ const NotificationService = {
             body: 'Alice 想加你為好友',
             data: { from_user_id: 'user_123', from_username: 'Alice' },
             is_read: false,
-            created_at: new Date(Date.now() - 5 * 60 * 1000).toISOString()
+            created_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
         },
         {
             id: 'notif_002',
@@ -40,7 +40,7 @@ const NotificationService = {
             body: '有新版本可用，建議更新以獲得最佳體驗',
             data: { version: '2.1.0' },
             is_read: false,
-            created_at: new Date(Date.now() - 30 * 60 * 1000).toISOString()
+            created_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
         },
         {
             id: 'notif_003',
@@ -49,7 +49,7 @@ const NotificationService = {
             body: 'Bob: 你好，最近怎麼樣？',
             data: { from_user_id: 'user_456', from_username: 'Bob', conversation_id: 'conv_001' },
             is_read: true,
-            created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+            created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
         },
         {
             id: 'notif_004',
@@ -58,8 +58,8 @@ const NotificationService = {
             body: 'Carol 贊了你的文章「市場分析」',
             data: { post_id: 'post_001', interaction_type: 'like', from_username: 'Carol' },
             is_read: true,
-            created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-        }
+            created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+        },
     ],
 
     /**
@@ -128,7 +128,10 @@ const NotificationService = {
             // 檢查 token 是否過期
             if (this._isTokenExpired()) {
                 console.warn('[NotificationService] Token expired, clearing...');
-                if (typeof AuthManager !== 'undefined' && typeof AuthManager.clearExpiredToken === 'function') {
+                if (
+                    typeof AuthManager !== 'undefined' &&
+                    typeof AuthManager.clearExpiredToken === 'function'
+                ) {
                     AuthManager.clearExpiredToken();
                 }
                 return;
@@ -137,7 +140,8 @@ const NotificationService = {
             const { userId, token } = this._getCredentials();
 
             if (!userId || !token) {
-                if (window.DEBUG_MODE) console.log('[NotificationService] No credentials, empty notifications');
+                if (window.DEBUG_MODE)
+                    console.log('[NotificationService] No credentials, empty notifications');
                 this.notifications = [];
                 this.unreadCount = 0;
                 this.notifyUpdate();
@@ -146,8 +150,8 @@ const NotificationService = {
 
             const response = await fetch(`/api/notifications?user_id=${userId}&limit=50`, {
                 headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                    Authorization: `Bearer ${token}`,
+                },
             });
 
             if (response.ok) {
@@ -155,7 +159,11 @@ const NotificationService = {
                 this.notifications = data.notifications || [];
                 this.unreadCount = data.unread_count || 0;
                 this.notifyUpdate();
-                console.log('[NotificationService] Loaded from API:', this.notifications.length, 'notifications');
+                console.log(
+                    '[NotificationService] Loaded from API:',
+                    this.notifications.length,
+                    'notifications'
+                );
             } else if (response.status === 401) {
                 // 401 錯誤 - token 可能無效或已過期
                 console.warn('[NotificationService] 401 Unauthorized, token may be expired');
@@ -164,7 +172,10 @@ const NotificationService = {
                 this.notifyUpdate();
 
                 // 清除過期 token
-                if (typeof AuthManager !== 'undefined' && typeof AuthManager.clearExpiredToken === 'function') {
+                if (
+                    typeof AuthManager !== 'undefined' &&
+                    typeof AuthManager.clearExpiredToken === 'function'
+                ) {
                     AuthManager.clearExpiredToken();
                 }
             } else {
@@ -199,14 +210,14 @@ const NotificationService = {
      * 更新未读计数
      */
     updateUnreadCount() {
-        this.unreadCount = this.notifications.filter(n => !n.is_read).length;
+        this.unreadCount = this.notifications.filter((n) => !n.is_read).length;
     },
 
     /**
      * 标记通知为已读
      */
     async markAsRead(notificationId) {
-        const notification = this.notifications.find(n => n.id === notificationId);
+        const notification = this.notifications.find((n) => n.id === notificationId);
         if (notification && !notification.is_read) {
             notification.is_read = true;
             this.updateUnreadCount();
@@ -220,8 +231,8 @@ const NotificationService = {
                         await fetch(`/api/notifications/${notificationId}/read?user_id=${userId}`, {
                             method: 'POST',
                             headers: {
-                                'Authorization': `Bearer ${token}`
-                            }
+                                Authorization: `Bearer ${token}`,
+                            },
                         });
                     }
                 } catch (error) {
@@ -235,7 +246,7 @@ const NotificationService = {
      * 标记所有通知为已读
      */
     async markAllAsRead() {
-        this.notifications.forEach(n => n.is_read = true);
+        this.notifications.forEach((n) => (n.is_read = true));
         this.updateUnreadCount();
         this.notifyUpdate();
 
@@ -247,8 +258,8 @@ const NotificationService = {
                     await fetch(`/api/notifications/read-all?user_id=${userId}`, {
                         method: 'POST',
                         headers: {
-                            'Authorization': `Bearer ${token}`
-                        }
+                            Authorization: `Bearer ${token}`,
+                        },
                     });
                 }
             } catch (error) {
@@ -275,12 +286,14 @@ const NotificationService = {
      * 通知 UI 更新
      */
     notifyUpdate() {
-        window.dispatchEvent(new CustomEvent('notificationsUpdated', {
-            detail: {
-                notifications: this.notifications,
-                unreadCount: this.unreadCount
-            }
-        }));
+        window.dispatchEvent(
+            new CustomEvent('notificationsUpdated', {
+                detail: {
+                    notifications: this.notifications,
+                    unreadCount: this.unreadCount,
+                },
+            })
+        );
     },
 
     /**
@@ -290,7 +303,8 @@ const NotificationService = {
         const { userId, token } = this._getCredentials();
 
         if (!userId || !token) {
-            if (window.DEBUG_MODE) console.log('[NotificationService] No credentials for WebSocket');
+            if (window.DEBUG_MODE)
+                console.log('[NotificationService] No credentials for WebSocket');
             return;
         }
 
@@ -346,7 +360,9 @@ const NotificationService = {
         const delay = Math.min(5000 * Math.pow(2, this.reconnectAttempts), 60000);
         this.reconnectAttempts++;
 
-        console.log(`[NotificationService] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.MAX_RECONNECT_ATTEMPTS})`);
+        console.log(
+            `[NotificationService] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.MAX_RECONNECT_ATTEMPTS})`
+        );
 
         this.reconnectTimer = setTimeout(() => {
             this.connectWebSocket();
@@ -360,9 +376,10 @@ const NotificationService = {
         if (!dateString) return '';
         // PostgreSQL returns "2026-02-28 18:02:54.123" (space) — Android/Pi Browser
         // requires ISO 8601 "2026-02-28T18:02:54" (T) for reliable parsing
-        const normalized = typeof dateString === 'string'
-            ? dateString.replace(' ', 'T').replace(/(\.\d+)$/, '') // strip microseconds
-            : dateString;
+        const normalized =
+            typeof dateString === 'string'
+                ? dateString.replace(' ', 'T').replace(/(\.\d+)$/, '') // strip microseconds
+                : dateString;
         const date = new Date(normalized);
         if (isNaN(date.getTime())) return '';
 
@@ -378,7 +395,7 @@ const NotificationService = {
         if (days < 7) return `${days} 天前`;
 
         return date.toLocaleDateString('zh-TW');
-    }
+    },
 };
 
 // 自动初始化

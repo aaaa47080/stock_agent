@@ -4,7 +4,7 @@
 
 /**
  * API Key 管理器 - 負責存儲和管理用戶的 LLM API Keys
- * 
+ *
  * 🔐 安全架構 (v3):
  * - API Keys 加密儲存在後端資料庫
  * - 前端只緩存遮蔽版本用於顯示
@@ -15,7 +15,7 @@ const APIKeyManager = {
     // Storage keys (用於離線模式和 UI 顯示)
     STORAGE_KEYS: {
         SELECTED_PROVIDER: 'user_selected_provider',
-        OFFLINE_MODE: 'api_key_offline_mode'
+        OFFLINE_MODE: 'api_key_offline_mode',
     },
 
     // 支援的 providers
@@ -26,8 +26,9 @@ const APIKeyManager = {
     _lastFetchTime: 0,
     CACHE_TTL: 30000, // 30 秒
 
-    // ⚡ 新增：完整 API Key 內存緩存（發送訊息時使用，    _fullKeyCache: {},  // { provider: key }
-    _fullKeyCacheTime: {},  // { provider: timestamp }
+    // ⚡ 新增：完整 API Key 內存緩存（發送訊息時使用）
+    _fullKeyCache: {}, // { provider: key }
+    _fullKeyCacheTime: {}, // { provider: timestamp }
 
     /**
      * 檢查是否應該使用後端儲存
@@ -52,10 +53,11 @@ const APIKeyManager = {
      */
     async _getAuthHeaders() {
         // 與其他模組一致的 token 獲取方式
-        const token = window.AuthManager?.currentUser?.accessToken || window.AuthManager?.currentUser?.token;
+        const token =
+            window.AuthManager?.currentUser?.accessToken || window.AuthManager?.currentUser?.token;
         return {
             'Content-Type': 'application/json',
-            'Authorization': token ? `Bearer ${token}` : ''
+            Authorization: token ? `Bearer ${token}` : '',
         };
     },
 
@@ -78,8 +80,8 @@ const APIKeyManager = {
                     body: JSON.stringify({
                         provider: provider,
                         api_key: key.trim(),
-                        model: model
-                    })
+                        model: model,
+                    }),
                 });
 
                 if (!response.ok) {
@@ -151,10 +153,13 @@ const APIKeyManager = {
                 }
 
                 // 從後端獲取完整 key（僅在需要時調用）
-                const response = await fetch(`${this._getApiBase()}/api/user/api-keys/${provider}/full`, {
-                    method: 'GET',
-                    headers: await this._getAuthHeaders()
-                });
+                const response = await fetch(
+                    `${this._getApiBase()}/api/user/api-keys/${provider}/full`,
+                    {
+                        method: 'GET',
+                        headers: await this._getAuthHeaders(),
+                    }
+                );
 
                 if (response.ok) {
                     const data = await response.json();
@@ -170,7 +175,10 @@ const APIKeyManager = {
                     throw new Error('Failed to fetch key');
                 }
             } catch (e) {
-                console.error('[APIKeyManager] Backend fetch failed, falling back to localStorage:', e);
+                console.error(
+                    '[APIKeyManager] Backend fetch failed, falling back to localStorage:',
+                    e
+                );
                 return await this._getKeyLocalStorage(provider);
             }
         } else {
@@ -196,7 +204,7 @@ const APIKeyManager = {
     async getAllKeysMasked() {
         // 使用緩存
         const now = Date.now();
-        if (this._maskedKeysCache && (now - this._lastFetchTime) < this.CACHE_TTL) {
+        if (this._maskedKeysCache && now - this._lastFetchTime < this.CACHE_TTL) {
             return this._maskedKeysCache;
         }
 
@@ -204,7 +212,7 @@ const APIKeyManager = {
             try {
                 const response = await fetch(`${this._getApiBase()}/api/user/api-keys`, {
                     method: 'GET',
-                    headers: await this._getAuthHeaders()
+                    headers: await this._getAuthHeaders(),
                 });
 
                 if (response.ok) {
@@ -226,7 +234,7 @@ const APIKeyManager = {
                 has_key: !!key,
                 masked_key: key ? this._maskKey(key) : null,
                 model: localStorage.getItem(`user_${provider}_selected_model`),
-                updated_at: null
+                updated_at: null,
             };
         }
         return result;
@@ -251,10 +259,13 @@ const APIKeyManager = {
     async removeKey(provider) {
         if (this._shouldUseBackend()) {
             try {
-                const response = await fetch(`${this._getApiBase()}/api/user/api-keys/${provider}`, {
-                    method: 'DELETE',
-                    headers: await this._getAuthHeaders()
-                });
+                const response = await fetch(
+                    `${this._getApiBase()}/api/user/api-keys/${provider}`,
+                    {
+                        method: 'DELETE',
+                        headers: await this._getAuthHeaders(),
+                    }
+                );
 
                 if (response.ok) {
                     this._maskedKeysCache = null;
@@ -281,7 +292,7 @@ const APIKeyManager = {
      */
     async hasAnyKey() {
         const keys = await this.getAllKeysMasked();
-        return Object.values(keys).some(k => k.has_key);
+        return Object.values(keys).some((k) => k.has_key);
     },
 
     /**
@@ -345,8 +356,8 @@ const APIKeyManager = {
                     headers: await this._getAuthHeaders(),
                     body: JSON.stringify({
                         provider: provider,
-                        model: model.trim()
-                    })
+                        model: model.trim(),
+                    }),
                 });
             } catch (e) {
                 console.error('[APIKeyManager] Failed to save model to backend:', e);
@@ -444,14 +455,24 @@ const APIKeyManager = {
 
             const encoder = new TextEncoder();
             const keyMaterial = await crypto.subtle.importKey(
-                'raw', encoder.encode(stableId), 'PBKDF2', false, ['deriveKey']
+                'raw',
+                encoder.encode(stableId),
+                'PBKDF2',
+                false,
+                ['deriveKey']
             );
 
             return await crypto.subtle.deriveKey(
-                { name: 'PBKDF2', salt: encoder.encode('llm-key-encryption-salt-v2'), iterations: 100000, hash: 'SHA-256' },
+                {
+                    name: 'PBKDF2',
+                    salt: encoder.encode('llm-key-encryption-salt-v2'),
+                    iterations: 100000,
+                    hash: 'SHA-256',
+                },
                 keyMaterial,
                 { name: 'AES-GCM', length: 256 },
-                false, ['encrypt', 'decrypt']
+                false,
+                ['encrypt', 'decrypt']
             );
         } catch (e) {
             return null;
@@ -465,7 +486,11 @@ const APIKeyManager = {
 
             const encoder = new TextEncoder();
             const iv = crypto.getRandomValues(new Uint8Array(12));
-            const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoder.encode(data));
+            const encrypted = await crypto.subtle.encrypt(
+                { name: 'AES-GCM', iv },
+                key,
+                encoder.encode(data)
+            );
 
             const combined = new Uint8Array(iv.length + encrypted.byteLength);
             combined.set(iv);
@@ -492,7 +517,7 @@ const APIKeyManager = {
             const key = version === 'v2' ? await this._getEncryptionKey() : null;
             if (!key) return null;
 
-            const combined = Uint8Array.from(atob(data), c => c.charCodeAt(0));
+            const combined = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
             const iv = combined.slice(0, 12);
             const encrypted = combined.slice(12);
 
@@ -501,7 +526,7 @@ const APIKeyManager = {
         } catch (e) {
             return null;
         }
-    }
+    },
 };
 
 // Export to global scope
@@ -516,7 +541,7 @@ async function updateLLMStatusUI() {
 
     try {
         const keys = await APIKeyManager.getAllKeysMasked();
-        const hasAny = Object.values(keys).some(k => k.has_key);
+        const hasAny = Object.values(keys).some((k) => k.has_key);
 
         if (hasAny) {
             // 找到有 key 的 provider
@@ -529,11 +554,11 @@ async function updateLLMStatusUI() {
             }
 
             const providerNames = {
-                'openai': 'OpenAI',
-                'google_gemini': 'Gemini',
-                'anthropic': 'Anthropic',
-                'groq': 'Groq',
-                'openrouter': 'OpenRouter'
+                openai: 'OpenAI',
+                google_gemini: 'Gemini',
+                anthropic: 'Anthropic',
+                groq: 'Groq',
+                openrouter: 'OpenRouter',
             };
             const providerName = providerNames[activeProvider] || activeProvider;
 
@@ -541,13 +566,15 @@ async function updateLLMStatusUI() {
                 <span class="w-2 h-2 rounded-full bg-success animate-pulse"></span>
                 <span class="text-success">${providerName}</span>
             `;
-            statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-success/10 border border-success/20';
+            statusBadge.className =
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-success/10 border border-success/20';
         } else {
             statusBadge.innerHTML = `
                 <span class="w-2 h-2 rounded-full bg-textMuted"></span>
                 <span class="text-textMuted">Not Connected</span>
             `;
-            statusBadge.className = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 border border-white/10';
+            statusBadge.className =
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 border border-white/10';
         }
     } catch (e) {
         console.error('[updateLLMStatusUI] Error:', e);

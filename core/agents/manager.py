@@ -106,9 +106,15 @@ class ManagerAgent:
         session_id 只用於 write_long_term 時標記來源，讀取時不過濾
         """
         if self._memory_store is None:
-            from core.database.memory import MemoryStore
-            # 傳入 session_id 供寫入標記用，但讀取行為已改為跨 session
-            self._memory_store = MemoryStore(self.user_id, self.session_id)
+            try:
+                from core.database.memory import MemoryStore
+                # 傳入 session_id 供寫入標記用，但讀取行為已改為跨 session
+                self._memory_store = MemoryStore(self.user_id, self.session_id)
+            except ImportError as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Memory module not available: {e}")
+                # 設置為 None 表示記憶功能不可用
+                self._memory_store = False
         return self._memory_store
 
     def _build_graph(self) -> StateGraph:

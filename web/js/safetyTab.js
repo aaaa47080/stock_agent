@@ -42,7 +42,7 @@ const SafetyTab = {
         const filterSelect = document.getElementById('safety-filter-type');
         if (filterSelect) {
             filterSelect.innerHTML = '<option value="">All Types</option>';
-            this.scamTypes.forEach(t => {
+            this.scamTypes.forEach((t) => {
                 const opt = document.createElement('option');
                 opt.value = t.id;
                 opt.textContent = `${t.icon} ${t.name}`;
@@ -54,7 +54,7 @@ const SafetyTab = {
         const submitSelect = document.getElementById('safety-scam-type');
         if (submitSelect) {
             submitSelect.innerHTML = '<option value="">Select type...</option>';
-            this.scamTypes.forEach(t => {
+            this.scamTypes.forEach((t) => {
                 const opt = document.createElement('option');
                 opt.value = t.id;
                 opt.textContent = `${t.icon} ${t.name}`;
@@ -71,7 +71,7 @@ const SafetyTab = {
             { id: 'trading_fraud', name: 'Trading Fraud', icon: '🔄' },
             { id: 'gambling', name: 'Gambling Scam', icon: '🎰' },
             { id: 'phishing', name: 'Phishing', icon: '🎣' },
-            { id: 'other', name: 'Other', icon: '⚠️' }
+            { id: 'other', name: 'Other', icon: '⚠️' },
         ];
     },
 
@@ -113,7 +113,8 @@ const SafetyTab = {
             console.error('SafetyTab: Load reports failed:', error);
             const container = document.getElementById('safety-report-list');
             if (container) {
-                container.innerHTML = '<div class="text-center text-danger py-8">Failed to load reports</div>';
+                container.innerHTML =
+                    '<div class="text-center text-danger py-8">Failed to load reports</div>';
             }
         }
     },
@@ -128,11 +129,14 @@ const SafetyTab = {
         if (!container) return;
 
         if (this.reports.length === 0) {
-            container.innerHTML = '<div class="text-center text-textMuted py-8">No reports found</div>';
+            container.innerHTML =
+                '<div class="text-center text-textMuted py-8">No reports found</div>';
             return;
         }
 
-        container.innerHTML = this.reports.map(report => `
+        container.innerHTML = this.reports
+            .map(
+                (report) => `
             <div class="bg-surface border border-white/5 rounded-2xl p-5 hover:border-primary/30 transition cursor-pointer"
                 onclick="SafetyTab.openDetailModal(${report.id})">
                 <div class="flex items-start justify-between mb-3">
@@ -155,7 +159,9 @@ const SafetyTab = {
                     <span class="text-[10px] text-textMuted hidden sm:block">${report.reporter_wallet_masked}</span>
                 </div>
             </div>
-        `).join('');
+        `
+            )
+            .join('');
 
         if (window.lucide) lucide.createIcons();
     },
@@ -203,7 +209,9 @@ const SafetyTab = {
         const desc = document.getElementById('safety-description');
         const count = document.getElementById('safety-char-count');
         if (desc && count) {
-            desc.oninput = () => { count.textContent = desc.value.length; };
+            desc.oninput = () => {
+                count.textContent = desc.value.length;
+            };
         }
 
         if (window.lucide) lucide.createIcons();
@@ -223,24 +231,41 @@ const SafetyTab = {
     },
 
     async submitReport() {
-        const wallet = (document.getElementById('safety-scam-wallet').value || '').trim().toUpperCase();
-        const reporter = (document.getElementById('safety-reporter-wallet').value || '').trim().toUpperCase();
+        const wallet = (document.getElementById('safety-scam-wallet').value || '')
+            .trim()
+            .toUpperCase();
+        const reporter = (document.getElementById('safety-reporter-wallet').value || '')
+            .trim()
+            .toUpperCase();
         const scamType = document.getElementById('safety-scam-type').value;
         const desc = (document.getElementById('safety-description').value || '').trim();
         const txHash = (document.getElementById('safety-tx-hash').value || '').trim().toLowerCase();
 
         if (!this._isValidPiAddress(wallet)) {
-            this._toast('Invalid scam wallet address (must be 56 chars, start with G, A-Z & 2-7 only)', 'error'); return;
+            this._toast(
+                'Invalid scam wallet address (must be 56 chars, start with G, A-Z & 2-7 only)',
+                'error'
+            );
+            return;
         }
         if (!this._isValidPiAddress(reporter)) {
-            this._toast('Invalid reporter wallet address (must be 56 chars, start with G, A-Z & 2-7 only)', 'error'); return;
+            this._toast(
+                'Invalid reporter wallet address (must be 56 chars, start with G, A-Z & 2-7 only)',
+                'error'
+            );
+            return;
         }
-        if (!scamType) { this._toast('Select a scam type', 'warning'); return; }
+        if (!scamType) {
+            this._toast('Select a scam type', 'warning');
+            return;
+        }
         if (desc.length < 20 || desc.length > 2000) {
-            this._toast('Description must be 20-2000 chars', 'error'); return;
+            this._toast('Description must be 20-2000 chars', 'error');
+            return;
         }
         if (txHash && !this._isValidTxHash(txHash)) {
-            this._toast('Invalid transaction hash (must be 64 hex chars)', 'error'); return;
+            this._toast('Invalid transaction hash (must be 64 hex chars)', 'error');
+            return;
         }
 
         const btn = document.getElementById('safety-btn-submit');
@@ -254,7 +279,7 @@ const SafetyTab = {
                 reporter_wallet_address: reporter,
                 scam_type: scamType,
                 description: desc,
-                transaction_hash: txHash || null
+                transaction_hash: txHash || null,
             });
 
             this._toast('Report submitted successfully!', 'success');
@@ -292,7 +317,8 @@ const SafetyTab = {
         if (!modal || !content) return;
 
         modal.classList.remove('hidden');
-        content.innerHTML = '<div class="text-center text-textMuted py-8"><i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto mb-2"></i> Loading...</div>';
+        content.innerHTML =
+            '<div class="text-center text-textMuted py-8"><i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto mb-2"></i> Loading...</div>';
         if (window.lucide) lucide.createIcons();
 
         try {
@@ -318,13 +344,17 @@ const SafetyTab = {
                         </button>
                     </div>
                 </div>
-                ${r.transaction_hash ? `
+                ${
+                    r.transaction_hash
+                        ? `
                 <div class="mb-4">
                     <label class="text-[10px] text-textMuted uppercase tracking-wider">Transaction Hash</label>
                     <div class="bg-background rounded-xl p-3 mt-1">
                         <code class="font-mono text-xs text-textMuted break-all">${r.transaction_hash}</code>
                     </div>
-                </div>` : ''}
+                </div>`
+                        : ''
+                }
                 <div class="mb-4">
                     <label class="text-[10px] text-textMuted uppercase tracking-wider">Description</label>
                     <div class="bg-background rounded-xl p-4 mt-1 text-textMuted text-sm leading-relaxed">
@@ -390,7 +420,7 @@ const SafetyTab = {
 
         try {
             const res = await fetch('/api/governance/report-quota', {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token}` },
             });
             if (!res.ok) {
                 if (text) text.textContent = 'Could not load quota';
@@ -419,7 +449,7 @@ const SafetyTab = {
 
     switchGovTab(tabId) {
         // Update tab buttons
-        document.querySelectorAll('.gov-tab-btn').forEach(btn => {
+        document.querySelectorAll('.gov-tab-btn').forEach((btn) => {
             btn.classList.remove('border-primary', 'text-primary');
             btn.classList.add('border-transparent', 'text-textMuted');
         });
@@ -430,7 +460,7 @@ const SafetyTab = {
         }
 
         // Update tab content
-        document.querySelectorAll('.gov-tab-content').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('.gov-tab-content').forEach((el) => el.classList.add('hidden'));
         const target = document.getElementById(tabId + '-tab');
         if (target) target.classList.remove('hidden');
 
@@ -444,7 +474,7 @@ const SafetyTab = {
 
     async loadMyGovReports(status, clickedBtn) {
         // Update filter button styles
-        document.querySelectorAll('.gov-filter-btn').forEach(btn => {
+        document.querySelectorAll('.gov-filter-btn').forEach((btn) => {
             btn.classList.remove('text-primary', 'border-primary/20');
             btn.classList.add('text-textMuted', 'border-white/5');
         });
@@ -455,26 +485,37 @@ const SafetyTab = {
 
         const list = document.getElementById('gov-my-reports-list');
         if (!list) return;
-        list.innerHTML = '<div class="text-center text-textMuted py-4 text-sm"><i data-lucide="loader-2" class="w-5 h-5 animate-spin mx-auto mb-2"></i> Loading...</div>';
+        list.innerHTML =
+            '<div class="text-center text-textMuted py-4 text-sm"><i data-lucide="loader-2" class="w-5 h-5 animate-spin mx-auto mb-2"></i> Loading...</div>';
         if (window.lucide) lucide.createIcons();
 
         const token = this._getToken();
-        if (!token) { list.innerHTML = '<div class="text-center text-textMuted py-4">Please login</div>'; return; }
+        if (!token) {
+            list.innerHTML = '<div class="text-center text-textMuted py-4">Please login</div>';
+            return;
+        }
 
         try {
-            const url = status === 'all' ? '/api/governance/reports' : `/api/governance/reports?status=${status}`;
-            const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+            const url =
+                status === 'all'
+                    ? '/api/governance/reports'
+                    : `/api/governance/reports?status=${status}`;
+            const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
             if (!res.ok) {
-                list.innerHTML = '<div class="text-center text-danger py-4 text-sm">Failed to load reports</div>';
+                list.innerHTML =
+                    '<div class="text-center text-danger py-4 text-sm">Failed to load reports</div>';
                 return;
             }
             const data = await res.json();
             const reports = data.reports || [];
             if (reports.length === 0) {
-                list.innerHTML = '<div class="text-center text-textMuted py-4 text-sm">No reports found</div>';
+                list.innerHTML =
+                    '<div class="text-center text-textMuted py-4 text-sm">No reports found</div>';
                 return;
             }
-            list.innerHTML = reports.map(r => `
+            list.innerHTML = reports
+                .map(
+                    (r) => `
                 <div class="bg-background rounded-xl p-4">
                     <div class="flex items-center justify-between mb-2">
                         <span class="text-xs text-textMuted">#${r.id}</span>
@@ -484,9 +525,12 @@ const SafetyTab = {
                     ${r.description ? `<p class="text-xs text-textMuted mt-1 line-clamp-2">${this._escapeHTML(r.description)}</p>` : ''}
                     <div class="text-[10px] text-textMuted mt-2">${this._formatDate(r.created_at)}</div>
                 </div>
-            `).join('');
+            `
+                )
+                .join('');
         } catch (error) {
-            list.innerHTML = '<div class="text-center text-danger py-4 text-sm">Failed to load</div>';
+            list.innerHTML =
+                '<div class="text-center text-danger py-4 text-sm">Failed to load</div>';
         }
     },
 
@@ -497,13 +541,15 @@ const SafetyTab = {
         const pendingList = document.getElementById('gov-pending-list');
 
         if (!token) {
-            if (pendingList) pendingList.innerHTML = '<div class="text-center text-textMuted py-4 text-sm">Please login to review</div>';
+            if (pendingList)
+                pendingList.innerHTML =
+                    '<div class="text-center text-textMuted py-4 text-sm">Please login to review</div>';
             return;
         }
 
         try {
             const res = await fetch('/api/governance/reports/pending', {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token}` },
             });
 
             if (res.ok) {
@@ -514,21 +560,32 @@ const SafetyTab = {
                 const reports = data.reports || [];
 
                 if (reports.length === 0) {
-                    pendingList.innerHTML = '<div class="text-center text-textMuted py-4 text-sm">No pending reports</div>';
+                    pendingList.innerHTML =
+                        '<div class="text-center text-textMuted py-4 text-sm">No pending reports</div>';
                     return;
                 }
 
-                pendingList.innerHTML = reports.map(r => {
-                    // Check if user has already voted
-                    if (r.viewer_vote) {
-                        const isApprove = r.viewer_vote === 'approve';
-                        const voteTextKey = isApprove ? 'safety.gov.votedViolation' : 'safety.gov.votedNotViolation';
-                        const voteClass = isApprove ? 'bg-success/20 text-success' : 'bg-danger/20 text-danger';
+                pendingList.innerHTML = reports
+                    .map((r) => {
+                        // Check if user has already voted
+                        if (r.viewer_vote) {
+                            const isApprove = r.viewer_vote === 'approve';
+                            const voteTextKey = isApprove
+                                ? 'safety.gov.votedViolation'
+                                : 'safety.gov.votedNotViolation';
+                            const voteClass = isApprove
+                                ? 'bg-success/20 text-success'
+                                : 'bg-danger/20 text-danger';
 
-                        // Use I18n.t if available, otherwise fallback
-                        const voteText = (window.I18n && window.I18n.t) ? window.I18n.t(voteTextKey) : (isApprove ? 'Voted: Violation' : 'Voted: Not Violation');
+                            // Use I18n.t if available, otherwise fallback
+                            const voteText =
+                                window.I18n && window.I18n.t
+                                    ? window.I18n.t(voteTextKey)
+                                    : isApprove
+                                      ? 'Voted: Violation'
+                                      : 'Voted: Not Violation';
 
-                        return `
+                            return `
                         <div class="bg-background rounded-xl p-4 space-y-3">
                             <div class="flex items-center justify-between">
                                 <span class="text-xs text-textMuted">#${r.id}</span>
@@ -540,10 +597,10 @@ const SafetyTab = {
                                 ${voteText}
                             </div>
                         </div>`;
-                    }
+                        }
 
-                    // Not voted: Show buttons
-                    return `
+                        // Not voted: Show buttons
+                        return `
                     <div class="bg-background rounded-xl p-4 space-y-3" id="gov-report-card-${r.id}">
                         <div class="flex items-center justify-between">
                             <span class="text-xs text-textMuted">#${r.id}</span>
@@ -588,13 +645,13 @@ const SafetyTab = {
                         </div>
                     </div>
                     `;
-                }).join('');
+                    })
+                    .join('');
 
                 // Update translations for injected content
                 if (window.I18n && window.I18n.updatePageContent) {
                     window.I18n.updatePageContent();
                 }
-
             } else {
                 const result = await res.json();
                 if (result.detail && result.detail.includes('PRO')) {
@@ -604,7 +661,8 @@ const SafetyTab = {
             }
         } catch (error) {
             console.error(error);
-            pendingList.innerHTML = '<div class="text-center text-danger py-4 text-sm">Failed to load</div>';
+            pendingList.innerHTML =
+                '<div class="text-center text-danger py-4 text-sm">Failed to load</div>';
         }
     },
 
@@ -642,9 +700,9 @@ const SafetyTab = {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
+                    Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify({ vote_type: voteType })
+                body: JSON.stringify({ vote_type: voteType }),
             });
             const result = await res.json();
             if (res.ok) {
@@ -661,18 +719,20 @@ const SafetyTab = {
     async loadGovLeaderboard() {
         const list = document.getElementById('gov-leaderboard-list');
         if (!list) return;
-        list.innerHTML = '<div class="text-center text-textMuted py-4"><i data-lucide="loader-2" class="w-5 h-5 animate-spin mx-auto mb-2"></i></div>';
+        list.innerHTML =
+            '<div class="text-center text-textMuted py-4"><i data-lucide="loader-2" class="w-5 h-5 animate-spin mx-auto mb-2"></i></div>';
         if (window.lucide) lucide.createIcons();
 
         const token = this._getToken();
         if (!token) {
-            list.innerHTML = '<div class="text-center text-textMuted py-4 text-sm">Please login to view leaderboard</div>';
+            list.innerHTML =
+                '<div class="text-center text-textMuted py-4 text-sm">Please login to view leaderboard</div>';
             return;
         }
 
         try {
             const res = await fetch('/api/governance/reviewers/leaderboard', {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token}` },
             });
             if (!res.ok) {
                 const errData = await res.json().catch(() => ({}));
@@ -682,13 +742,22 @@ const SafetyTab = {
             const data = await res.json();
             const reviewers = data.leaderboard || [];
             if (reviewers.length === 0) {
-                list.innerHTML = '<div class="text-center text-textMuted py-4 text-sm">No reviewers yet</div>';
+                list.innerHTML =
+                    '<div class="text-center text-textMuted py-4 text-sm">No reviewers yet</div>';
                 return;
             }
-            list.innerHTML = reviewers.map((r, i) => {
-                const rank = i + 1;
-                const rankColor = rank === 1 ? 'text-yellow-400' : rank === 2 ? 'text-gray-400' : rank === 3 ? 'text-amber-600' : 'text-textMuted';
-                return `
+            list.innerHTML = reviewers
+                .map((r, i) => {
+                    const rank = i + 1;
+                    const rankColor =
+                        rank === 1
+                            ? 'text-yellow-400'
+                            : rank === 2
+                              ? 'text-gray-400'
+                              : rank === 3
+                                ? 'text-amber-600'
+                                : 'text-textMuted';
+                    return `
                     <div class="flex items-center gap-3 bg-background rounded-xl p-3">
                         <span class="text-lg font-bold w-8 text-center ${rankColor}">${rank}</span>
                         <div class="w-10 h-10 rounded-full bg-accent/20 flex items-center justify-center text-accent font-bold">${(r.username || '?').charAt(0).toUpperCase()}</div>
@@ -702,9 +771,11 @@ const SafetyTab = {
                         </div>
                     </div>
                 `;
-            }).join('');
+                })
+                .join('');
         } catch (error) {
-            list.innerHTML = '<div class="text-center text-danger py-4 text-sm">Failed to load leaderboard</div>';
+            list.innerHTML =
+                '<div class="text-center text-danger py-4 text-sm">Failed to load leaderboard</div>';
         }
     },
 
@@ -714,15 +785,18 @@ const SafetyTab = {
 
     _statusBadge(status) {
         const badges = {
-            'verified': '<span class="bg-success/20 text-success px-2 py-0.5 rounded text-[10px] font-bold">Verified</span>',
-            'pending': '<span class="bg-warning/20 text-warning px-2 py-0.5 rounded text-[10px] font-bold">Pending</span>',
-            'disputed': '<span class="bg-danger/20 text-danger px-2 py-0.5 rounded text-[10px] font-bold">Disputed</span>'
+            verified:
+                '<span class="bg-success/20 text-success px-2 py-0.5 rounded text-[10px] font-bold">Verified</span>',
+            pending:
+                '<span class="bg-warning/20 text-warning px-2 py-0.5 rounded text-[10px] font-bold">Pending</span>',
+            disputed:
+                '<span class="bg-danger/20 text-danger px-2 py-0.5 rounded text-[10px] font-bold">Disputed</span>',
         };
         return badges[status] || badges.pending;
     },
 
     _typeBadge(type) {
-        const t = this.scamTypes.find(s => s.id === type);
+        const t = this.scamTypes.find((s) => s.id === type);
         const name = t ? `${t.icon} ${t.name}` : type;
         return `<span class="bg-primary/10 text-primary px-2 py-0.5 rounded text-[10px] font-bold">${name}</span>`;
     },
@@ -753,13 +827,21 @@ const SafetyTab = {
             showToast(message, type);
         } else {
             const toast = document.createElement('div');
-            const colors = { success: 'bg-success', error: 'bg-danger', warning: 'bg-yellow-500', info: 'bg-primary' };
+            const colors = {
+                success: 'bg-success',
+                error: 'bg-danger',
+                warning: 'bg-yellow-500',
+                info: 'bg-primary',
+            };
             toast.className = `fixed bottom-8 left-1/2 transform -translate-x-1/2 ${colors[type] || colors.info} text-white px-6 py-3 rounded-xl shadow-lg z-[110] animate-fade-in-up text-sm font-bold`;
             toast.textContent = message;
             document.body.appendChild(toast);
-            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 2000);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 2000);
         }
-    }
+    },
 };
 
 window.SafetyTab = SafetyTab;
