@@ -167,7 +167,11 @@ function renderAlertList(alerts) {
                     label +
                     '</span> ' +
                     a.target +
-                    (a.repeat ? ' <span class="text-textMuted">🔁</span>' : '') +
+                    (a.repeat
+                        ? ' <span class="text-textMuted">' +
+                          t('modals.priceAlert.repeatBadge') +
+                          '</span>'
+                        : '') +
                     '</span>' +
                     '<button onclick="deleteUserAlert(\'' +
                     a.id +

@@ -3,10 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>可疑錢包追蹤 - Pi Crypto Forum</title>
+    <title>Scam Wallet Tracker - Pi Crypto Forum</title>
     <link rel="icon" type="image/png" href="/static/img/title_icon.png">
-
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -23,95 +21,99 @@
                         textMuted: '#a1a1aa',
                         success: '#86efac',
                         danger: '#fda4af',
-                        warning: '#fde68a'
-                    }
-                }
-            }
-        }
+                        warning: '#fde68a',
+                    },
+                },
+            },
+        };
     </script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/i18next@23.7.6/i18next.min.js" crossorigin="anonymous"></script>
     <link href="https://fonts.googleapis.com/css2?family=Mulish:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/styles.css">
 </head>
-<body class="bg-background text-textMain min-h-screen">
-
-    <!-- Navbar -->
+<body class="bg-background text-textMain min-h-screen" data-page="scam-list">
     <nav class="sticky top-0 z-50 bg-surface/95 backdrop-blur-xl border-b border-white/5 px-4 py-3">
-        <div class="max-w-6xl mx-auto flex items-center justify-between">
+        <div class="max-w-6xl mx-auto flex items-center justify-between gap-3">
             <a href="/static/forum/index.html" class="flex items-center gap-2 text-secondary font-bold hover:text-primary transition">
                 <i data-lucide="arrow-left" class="w-5 h-5"></i>
-                <span>返回論壇</span>
+                <span data-i18n="safety.backToForum">Back to Forum</span>
             </a>
-            <div class="font-bold text-lg text-primary">🛡️ 可疑錢包追蹤</div>
-            <button id="btn-submit-report" class="bg-primary text-background px-4 py-2 rounded-lg font-bold hover:opacity-90 transition">
-                <i data-lucide="alert-triangle" class="w-4 h-4 inline-block mr-1"></i>
-                舉報錢包
-            </button>
+            <div class="font-bold text-lg text-primary text-center" data-i18n="safety.trackerTitle">Scam Wallet Tracker</div>
+            <div class="flex items-center gap-2">
+                <button onclick="toggleScamLanguage()" class="px-3 py-2 rounded-lg border border-white/10 text-sm text-textMuted hover:text-secondary hover:border-primary/40 transition">
+                    <span id="lang-toggle-label">中文</span>
+                </button>
+                <button id="btn-submit-report" class="bg-primary text-background px-4 py-2 rounded-lg font-bold hover:opacity-90 transition">
+                    <i data-lucide="alert-triangle" class="w-4 h-4 inline-block mr-1"></i>
+                    <span data-i18n="safety.submitButton">Submit Report</span>
+                </button>
+            </div>
         </div>
     </nav>
 
-    <!-- Main Content -->
     <main class="max-w-6xl mx-auto p-4">
-
-        <!-- Search Bar -->
         <div class="bg-surface border border-white/5 rounded-2xl p-4 mb-6">
             <div class="flex gap-2">
-                <input type="text" id="search-wallet" placeholder="輸入錢包地址搜尋..."
-                    class="flex-1 bg-background border border-white/10 rounded-xl px-4 py-2 text-textMain focus:border-primary outline-none">
+                <input
+                    type="text"
+                    id="search-wallet"
+                    data-i18n="safety.searchPlaceholder"
+                    data-i18n-attr="placeholder"
+                    placeholder="Search wallet address..."
+                    class="flex-1 bg-background border border-white/10 rounded-xl px-4 py-2 text-textMain focus:border-primary outline-none"
+                >
                 <button id="btn-search" class="bg-primary text-background px-6 py-2 rounded-xl font-bold hover:opacity-90 transition">
                     <i data-lucide="search" class="w-4 h-4"></i>
                 </button>
             </div>
         </div>
 
-        <!-- Filters -->
         <div class="bg-surface border border-white/5 rounded-2xl p-4 mb-6">
             <div class="flex flex-wrap gap-3">
                 <select id="filter-type" class="bg-background border border-white/10 rounded-lg px-3 py-2 text-textMain focus:border-primary outline-none">
-                    <option value="">所有類型</option>
+                    <option value="" data-i18n="safety.filters.allTypes">All Types</option>
                 </select>
                 <select id="filter-status" class="bg-background border border-white/10 rounded-lg px-3 py-2 text-textMain focus:border-primary outline-none">
-                    <option value="">所有狀態</option>
-                    <option value="verified">已驗證</option>
-                    <option value="pending">待驗證</option>
-                    <option value="disputed">有爭議</option>
+                    <option value="" data-i18n="safety.filters.allStatus">All Status</option>
+                    <option value="verified" data-i18n="safety.filters.verified">Verified</option>
+                    <option value="pending" data-i18n="safety.filters.pending">Pending</option>
+                    <option value="disputed" data-i18n="safety.filters.disputed">Disputed</option>
                 </select>
                 <select id="sort-by" class="bg-background border border-white/10 rounded-lg px-3 py-2 text-textMain focus:border-primary outline-none">
-                    <option value="latest">最新</option>
-                    <option value="most_voted">最多認同</option>
-                    <option value="most_viewed">最多查看</option>
+                    <option value="latest" data-i18n="safety.filters.latest">Latest</option>
+                    <option value="most_voted" data-i18n="safety.filters.mostVoted">Most Voted</option>
+                    <option value="most_viewed" data-i18n="safety.filters.mostViewed">Most Viewed</option>
                 </select>
             </div>
         </div>
 
-        <!-- Report List -->
         <div id="report-list" class="space-y-4">
-            <div class="text-center text-textMuted py-8">載入中...</div>
+            <div class="text-center text-textMuted py-8" data-i18n="safety.loadingReports">Loading reports...</div>
         </div>
 
-        <!-- Load More -->
         <div class="text-center mt-6">
-            <button id="btn-load-more" class="bg-surfaceHighlight text-secondary px-6 py-3 rounded-xl font-bold hover:bg-white/10 transition hidden">
-                載入更多
+            <button id="btn-load-more" class="bg-surfaceHighlight text-secondary px-6 py-3 rounded-xl font-bold hover:bg-white/10 transition hidden" data-i18n="safety.loadMore">
+                Load More
             </button>
         </div>
-
     </main>
 
-    <!-- Toast Container -->
     <div id="toast-container" class="fixed top-24 right-4 z-[100] flex flex-col gap-2"></div>
 
-    <!-- Scripts -->
     <script src="/static/config.js"></script>
     <script src="/static/js/logger.js"></script>
     <script src="/static/js/app.js"></script>
     <script src="/static/js/auth.js"></script>
     <script src="/static/js/apiKeyManager.js"></script>
+    <script src="/static/js/i18n.js"></script>
     <script src="/static/scam-tracker/js/scam-tracker.js"></script>
+    <script src="/static/scam-tracker/js/scam-tracker-i18n.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             if (typeof initializeAuth === 'function') initializeAuth();
-            if (typeof ScamTrackerApp !== 'undefined') ScamTrackerApp.initListPage();
+            if (window.I18n) await window.I18n.init();
+            if (typeof ScamTrackerApp !== 'undefined') await ScamTrackerApp.initListPage();
             lucide.createIcons();
         });
     </script>
