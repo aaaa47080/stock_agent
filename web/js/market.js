@@ -194,6 +194,7 @@ async function fetchFundingRates() {
         return data;
     } catch (err) {
         console.error('獲取資金費率失敗:', err);
+        if (typeof showToast === 'function') showToast('資金費率載入失敗，請稍後再試', 'error');
         return null;
     }
 }
@@ -432,6 +433,7 @@ async function refreshScreener(showLoading = false, forceRefresh = false) {
     } catch (e) {
         console.error('Critical Refresh Error:', e);
         isScreenerLoading = false;
+        if (typeof showToast === 'function') showToast('市場數據刷新失敗，請稍後再試', 'error');
     }
 
     // 2. Fetch Funding Rates (Completely Independent & Non-Blocking)
@@ -1283,9 +1285,12 @@ async function showChart(symbol, interval = null) {
         window.addEventListener('resize', resizeHandler);
         */
     } catch (err) {
-        console.error(err);
-        chartContainer.innerHTML =
-            '<div class="text-danger h-full flex items-center justify-center">連線錯誤</div>';
+        console.error('[Market] showChart failed:', err);
+        if (chartContainer) {
+            chartContainer.innerHTML =
+                '<div class="text-danger h-full flex items-center justify-center">連線錯誤</div>';
+        }
+        if (typeof showToast === 'function') showToast('圖表載入失敗，請稍後再試', 'error');
     }
 }
 
@@ -1393,6 +1398,9 @@ function connectWebSocket() {
         };
     } catch (e) {
         console.error('WebSocket 連接失敗:', e);
+        wsConnected = false;
+        updateWsStatus(false);
+        if (typeof showToast === 'function') showToast('即時連線失敗，將使用輪詢更新', 'warning');
     }
 }
 
@@ -1750,7 +1758,8 @@ async function refreshChartData() {
             }
         }
     } catch (err) {
-        console.error('Refresh failed:', err);
+        console.error('[Market] refreshChartData failed:', err);
+        if (typeof showToast === 'function') showToast('圖表數據更新失敗', 'error');
     }
 }
 
@@ -1831,6 +1840,9 @@ function connectTickerWebSocket() {
         };
     } catch (e) {
         console.error('Ticker WebSocket 連接失敗:', e);
+        marketWsConnected = false;
+        updateTickerWsStatus(false);
+        if (typeof showToast === 'function') showToast('行情即時連線失敗', 'warning');
     }
 }
 
