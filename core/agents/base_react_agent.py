@@ -151,26 +151,8 @@ class BaseReActAgent:
             return self._error_result(str(e), language)
 
     def _requires_tool_execution(self, task: SubTask) -> bool:
-        """結構化判定：已解析出市場實體時，至少先執行一次工具。
-
-        例外：如果用戶明確詢問新聞、資訊等，不強制執行價格查詢工具，
-        讓 ReAct 循環自然選擇適當的工具。
-        """
-        context = task.context or {}
-        if not isinstance(context, dict):
-            return False
-
-        # 檢查是否有 tool_required 標記
-        if not context.get("tool_required"):
-            return False
-
-        # 如果用戶明確詢問新聞/資訊，不強制執行預設工具
-        query_lower = task.description.lower()
-        news_keywords = ["新聞", "news", "消息", "資訊", "訊息", "資訊", "動態"]
-        if any(keyword in query_lower for keyword in news_keywords):
-            return False
-
-        return True
+        """不再使用強制工具執行，完全由 ReAct 循環決定。"""
+        return False
 
     def _execute_with_required_tool(self, task: SubTask, tool_metas: List[ToolMetadata], language: str) -> Optional[AgentResult]:
         """先強制執行一次最合適的 lookup 工具，再由 LLM 整理結果。"""
@@ -195,9 +177,17 @@ class BaseReActAgent:
         return self._summarize_required_tool_result(task, tool_meta, tool_result, language)
 
     def _select_required_tool(self, task: SubTask, tool_metas: List[ToolMetadata]) -> Optional[ToolMetadata]:
-        """依工具 metadata 選擇查詢工具，不從名稱或描述做關鍵字猜測。"""
+        """選擇最合適的查詢工具。
+
+        優先級順序：
+        1. role="market_lookup" 且優先級最高的工具（價格查詢）
+        2. 如果沒有 market_lookup 工具，返回 None 讓 ReAct 自然選擇
+
+        設計理念：不要在這裡做複雜的意圖判斷，讓 ReAct 循環處理複雜查詢。
+        """
         candidates = []
         for meta in tool_metas:
+            # 只選擇 market_lookup 角色的工具（價格、行情等快速查詢）
             if meta.role != "market_lookup":
                 continue
             if not self._build_required_tool_kwargs(meta, task):
@@ -205,6 +195,7 @@ class BaseReActAgent:
             candidates.append(meta)
 
         if not candidates:
+            # 沒有合適的 market_lookup 工具，讓 ReAct 自然選擇
             return None
 
         candidates.sort(key=lambda meta: (-meta.priority, meta.name))
