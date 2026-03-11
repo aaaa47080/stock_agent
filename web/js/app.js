@@ -742,6 +742,11 @@ async function openSettings() {
             await window.initToolSettings();
         }
 
+        // Initialize test mode tier switcher after settings injection
+        if (typeof window.initTestMode === 'function') {
+            await window.initTestMode();
+        }
+
         const [configRes, modelConfigRes] = await Promise.all([
             fetch('/api/config'),
             fetch('/api/model-config'),

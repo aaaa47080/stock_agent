@@ -176,8 +176,8 @@ async function sendMessage() {
         window.ChatStreamUI.updateTimers(botMsgDiv, elapsed);
     }, 100);
 
-    const ANALYSIS_REQUEST_TIMEOUT_MS = 180000;
-    const ANALYSIS_STREAM_IDLE_TIMEOUT_MS = 90000;
+    const ANALYSIS_REQUEST_TIMEOUT_MS = 300000;  // 5分鐘總超時
+    const ANALYSIS_STREAM_IDLE_TIMEOUT_MS = 180000;  // 3分鐘閒置超時（避免慢速API被中斷）
 
     window.currentAnalysisController = new AbortController();
     let requestTimeoutId = null;
@@ -669,18 +669,40 @@ function renderStoredBotMessage(fullContent, isStreaming = false, elapsedTime = 
             const proposalJson = proposalMatch[1];
             const pData = JSON.parse(proposalJson);
             html = html.replace(proposalMatch[0], '');
-            const btnHtml = `
-                <div class="mt-6 p-5 bg-surface rounded-2xl border border-primary/20 flex items-center justify-between">
-                    <div>
-                        <h4 class="text-sm font-bold text-primary">交易機會</h4>
-                        <p class="text-xs text-textMuted mt-1">AI 建議: <span class="text-secondary font-mono">${pData.side.toUpperCase()} ${pData.symbol}</span></p>
+            const infoHtml = `
+                <div class="mt-6 p-5 bg-surface rounded-2xl border border-white/10">
+                    <h4 class="text-sm font-bold text-primary flex items-center gap-2">
+                        <i data-lucide="lightbulb" class="w-4 h-4"></i>
+                        AI 交易建議
+                    </h4>
+                    <div class="mt-3 grid grid-cols-2 gap-3 text-xs">
+                        <div class="bg-surfaceHighlight rounded-lg p-3">
+                            <div class="text-textMuted">標的</div>
+                            <div class="text-secondary font-bold font-mono">${pData.symbol}</div>
+                        </div>
+                        <div class="bg-surfaceHighlight rounded-lg p-3">
+                            <div class="text-textMuted">方向</div>
+                            <div class="font-bold ${pData.side === 'buy' || pData.side === 'long' ? 'text-success' : 'text-danger'}">${pData.side.toUpperCase()}</div>
+                        </div>
+                        ${pData.stop_loss ? `
+                        <div class="bg-surfaceHighlight rounded-lg p-3">
+                            <div class="text-textMuted">建議止損</div>
+                            <div class="text-danger font-mono">${pData.stop_loss}</div>
+                        </div>
+                        ` : ''}
+                        ${pData.take_profit ? `
+                        <div class="bg-surfaceHighlight rounded-lg p-3">
+                            <div class="text-textMuted">建議止盈</div>
+                            <div class="text-success font-mono">${pData.take_profit}</div>
+                        </div>
+                        ` : ''}
                     </div>
-                    <button onclick='showProposalModal(${proposalJson})' class="px-4 py-2.5 bg-primary hover:brightness-110 text-background text-sm font-bold rounded-xl shadow-lg shadow-primary/20 transition flex items-center gap-2">
-                        <i data-lucide="zap" class="w-4 h-4"></i> 執行交易
-                    </button>
+                    <div class="mt-3 text-xs text-textMuted">
+                        ⚠️ 此僅為 AI 分析建議，不構成投資建議。實際交易請自行評估風險。
+                    </div>
                 </div>
             `;
-            html += btnHtml;
+            html += infoHtml;
         } catch (e) {
             console.error('Error parsing proposal', e);
         }

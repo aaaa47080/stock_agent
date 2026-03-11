@@ -1,0 +1,7 @@
+Total messages: 5 (Errors: 0, Warnings: 0)
+
+[LOG] [Pi SDK] Skipped on non-HTTPS or localhost environment @ http://localhost:8080/:100
+[LOG] %c CryptoMind %c AI Agent Online  background:#35495e ; padding: 1px; border-radius: 3px 0 0 3px;  color: #fff background:#d4b693 ; padding: 1px; border-radius: 0 3px 3px 0;  color: #fff @ http://localhost:8080/static/js/logger.js:42
+[VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "new-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:8080/#settings:0
+[VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "new-password"): (More info: https://goo.gl/9p2vKq) %o @ http://localhost:8080/#settings:0
+[VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o @ http://localhost:8080/#settings:0

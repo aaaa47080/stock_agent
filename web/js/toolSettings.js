@@ -2,6 +2,9 @@
 // toolSettings.js - AI 工具設定 UI 控制器
 // ========================================
 
+// 🔍 DIAGNOSTIC: 標記文件已載入
+console.log('[toolSettings] ✅ File loaded (v=10) - FINAL FIX - Tier now read from os.environ in TEST_MODE!');
+
 const _CATEGORY_LABELS = {
     crypto_basic: '加密貨幣基礎',
     technical: '技術分析',
@@ -27,6 +30,11 @@ const _CATEGORY_ICONS = {
 let _currentUserTier = 'free';
 let _toolSettingsLoaded = false;
 
+// 🔍 DIAGNOSTIC: 暴露到 window 便於調試
+window._currentUserTier_debug = function() {
+    return _currentUserTier;
+};
+
 /**
  * 初始化工具設定頁面 — 從後端拉取工具清單並渲染
  */
@@ -48,8 +56,21 @@ async function initToolSettings() {
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        _currentUserTier = data.user_tier || 'free';
+
+        // 🔍 DIAGNOSTIC: Log received tier information
+        const newUserTier = data.user_tier || 'free';
+        console.log('[toolSettings] Received data:', {
+            user_tier: data.user_tier,
+            tools_count: data.tools?.length
+        });
+        console.log('[toolSettings] Updating _currentUserTier from', _currentUserTier, 'to', newUserTier);
+
+        _currentUserTier = newUserTier;
         _toolSettingsLoaded = true;
+
+        // 🔍 DIAGNOSTIC: Verify update
+        console.log('[toolSettings] _currentUserTier after update:', _currentUserTier);
+
         renderToolList(container, data.tools || []);
     } catch (err) {
         console.error('[toolSettings] fetch error:', err);
@@ -144,10 +165,10 @@ function _renderToolRow(tool) {
     }
 
     const checked = tool.is_enabled ? 'checked' : '';
-    const canToggle = _currentUserTier === 'plus' || _currentUserTier === 'premium';
+    const canToggle = _currentUserTier === 'premium';
     const disabledAttr = canToggle ? '' : 'disabled';
     const wrapperClass = canToggle ? 'cursor-pointer' : 'cursor-not-allowed opacity-60';
-    const toggleTitle = canToggle ? '' : 'title="升級 Plus 或 Premium 可自訂工具"';
+    const toggleTitle = canToggle ? '' : 'title="升級 PRO 可自訂工具"';
 
     return `
         <div class="flex items-center gap-3 p-3 rounded-xl bg-background/50 border border-white/5 hover:border-white/10 transition">
@@ -211,7 +232,7 @@ function toggleToolCategory(catId) {
  * 呼叫 API 更新工具偏好（付費會員）
  */
 async function toggleToolPreference(toolId, isEnabled, checkboxEl) {
-    if (_currentUserTier !== 'plus' && _currentUserTier !== 'premium') return;
+    if (_currentUserTier !== 'premium') return;
 
     try {
         const token = window.AuthManager?.currentUser?.accessToken;

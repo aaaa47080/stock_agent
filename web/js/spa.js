@@ -142,6 +142,19 @@ async function executeTabSwitch(tabId, fromPopState = false) {
     ) {
         if (window.Components && typeof window.Components.inject === 'function') {
             await window.Components.inject(tabId);
+
+            // Special initialization for settings tab
+            if (tabId === 'settings') {
+                // 1. 先載入工具設定（包含用戶等級資訊）
+                if (typeof window.initToolSettings === 'function') {
+                    await window.initToolSettings();
+                }
+
+                // 2. 等工具設定載入完成後，再初始化測試模式切換器
+                if (typeof window.initTestMode === 'function') {
+                    await window.initTestMode();
+                }
+            }
         }
     }
 

@@ -84,10 +84,10 @@ def test_tools_router_exposes_user_tools_routes():
     assert "/api/user/tools/{tool_id}/preference" in routes
 
 
-def test_plus_member_can_update_tool_preference():
+def test_premium_member_can_update_tool_preference():
     current_user = {
         "user_id": "user-1",
-        "membership_tier": "plus",
+        "membership_tier": "premium",
     }
     request = ToolPreferenceRequest(is_enabled=False)
 

@@ -46,7 +46,7 @@ We are looking for technical partners, business collaborations, and development 
 
 | Dimension | Pi Crypto Insight | Traditional Analysis Tools | Generic Forums |
 |-----------|-------------------|---------------------------|----------------|
-| AI Analysis Depth | Multi-agent debate system | Single model | None |
+| AI Analysis Depth | Multi-agent Manager orchestration | Single model | None |
 | Payment Integration | Pi Network native | Traditional payment | Ads/Subscription |
 | Community Interaction | Posts + Tipping + Reputation | None | Basic features |
 | Real-time Data | OKX + Binance | Single exchange | None |
@@ -213,10 +213,10 @@ graph TB
 ### Technical Highlights
 
 **1. LangGraph Multi-Agent System**
-- Parallel analysis from multiple perspectives
-- Bull vs Bear debate mechanism
-- Judge agent for balanced conclusions
-- Risk manager for position sizing
+- Manager Agent for intelligent query classification
+- Human-in-the-loop plan negotiation and modification
+- Multi-step execution with specialized agents (Crypto/US Stock/TW Stock)
+- Synthesized final reports with comprehensive analysis
 
 **2. Real-time Data Architecture**
 - WebSocket for bidirectional communication (messaging, notifications)

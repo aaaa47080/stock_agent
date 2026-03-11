@@ -96,16 +96,20 @@ class BaseReActAgent:
         all_tools = self.tool_registry.list_for_agent(self.name)
         user_tier, user_id = self._resolve_user_scope(task)
 
+        # 🔍 DIAGNOSTIC: Log parameters for tool filtering
+        logger.info(f"[{self.name}] _get_tool_metas - user_tier={user_tier}, user_id={user_id}, self.user_tier={self.user_tier}, self.user_id={self.user_id}")
+
         try:
             allowed_tools = set(get_allowed_tools(self.name, user_tier=user_tier, user_id=user_id))
+            logger.info(f"[{self.name}] get_allowed_tools returned {len(allowed_tools)} tools: {list(allowed_tools)[:5]}...")
             return [meta for meta in all_tools if meta.name in allowed_tools]
         except Exception as e:
             logger.warning(f"[{self.name}] Failed to load DB tool permissions: {e}")
 
-        user_tier_level = {"free": 0, "plus": 1, "premium": 2}.get(user_tier, 0)
+        user_tier_level = {"free": 0, "premium": 1}.get(user_tier, 0)
         return [
             meta for meta in all_tools
-            if {"free": 0, "plus": 1, "premium": 2}.get(normalize_membership_tier(meta.required_tier), 0) <= user_tier_level
+            if {"free": 0, "premium": 1}.get(normalize_membership_tier(meta.required_tier), 0) <= user_tier_level
         ]
 
     def _get_tools(self) -> List:

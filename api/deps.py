@@ -178,12 +178,22 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     if TEST_MODE:
         if not user_id:
             user_id = TEST_USER.get("uid", "test-user-001")
-            
+
+        # 🔧 Test mode: Support membership tier switching for testing
+        # IMPORTANT: Use os.environ.get() instead of os.getenv() to get current value
+        # os.getenv() caches at process startup, but os.environ.get() reads current value
+        test_tier = os.environ.get("TEST_USER_TIER", "premium")  # Default to premium for testing
+
+        # 🔍 DIAGNOSTIC: Log test tier information
+        from api.utils import logger
+        logger.info(f"[deps] get_current_user (TEST_MODE) - test_tier={test_tier}, os.environ_TEST_USER_TIER={os.environ.get('TEST_USER_TIER')}")
+
         return {
             "user_id": user_id,
             "username": f"TestUser_{user_id[-3:]}",
             "pi_uid": user_id,
-            "is_premium": False,
+            "is_premium": test_tier == "premium",
+            "membership_tier": test_tier,  # ✅ Add membership_tier for testing
             "created_at": datetime.utcnow().isoformat(),
         }
     

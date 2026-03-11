@@ -18,7 +18,7 @@ from core.database.tools import normalize_membership_tier
 
 # Import @tool functions — crypto
 from .tools import (
-    technical_analysis, price_data, get_crypto_price,
+    technical_analysis, get_crypto_price,
     google_news, aggregate_news, web_search,
     get_fear_and_greed_index, get_trending_tokens, get_futures_data,
     get_current_time_taipei, get_defillama_tvl, get_crypto_categories_and_gainers,
@@ -138,13 +138,6 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         allowed_agents=["technical", "crypto", "full_analysis"],
     ))
     tool_registry.register(ToolMetadata(
-        name="price_data",
-        description="獲取加密貨幣即時和歷史價格數據",
-        input_schema={"symbol": "str"},
-        handler=price_data,
-        allowed_agents=["technical", "crypto", "full_analysis"],
-    ))
-    tool_registry.register(ToolMetadata(
         name="google_news",
         description="從 Google News RSS 獲取加密貨幣新聞",
         input_schema={"symbol": "str", "limit": "int"},
@@ -187,7 +180,7 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         input_schema={"symbol": "str"},
         handler=get_futures_data,
         allowed_agents=["crypto"],
-        required_tier="plus",
+        required_tier="premium",
     ))
     tool_registry.register(ToolMetadata(
         name="get_current_time_taipei",
@@ -202,7 +195,7 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         input_schema={"protocol_name": "str"},
         handler=get_defillama_tvl,
         allowed_agents=["crypto", "manager"],
-        required_tier="plus",
+        required_tier="premium",
     ))
     tool_registry.register(ToolMetadata(
         name="get_crypto_categories_and_gainers",
@@ -210,7 +203,7 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         input_schema={},
         handler=get_crypto_categories_and_gainers,
         allowed_agents=["crypto", "manager"],
-        required_tier="plus",
+        required_tier="premium",
     ))
     tool_registry.register(ToolMetadata(
         name="get_token_unlocks",
@@ -226,7 +219,7 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         input_schema={"symbol": "str"},
         handler=get_token_supply,
         allowed_agents=["crypto", "manager"],
-        required_tier="plus",
+        required_tier="premium",
     ))
     tool_registry.register(ToolMetadata(
         name="web_search",

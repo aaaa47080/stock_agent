@@ -668,6 +668,23 @@ const Components = {
                         </div>
                     </div>
 
+                    <!-- TEST MODE: Tier Switcher (僅測試模式顯示) -->
+                    <div id="test-tier-switcher" class="mt-4 pt-4 border-t border-white/5 hidden">
+                        <div class="flex items-center justify-between mb-3">
+                            <p class="text-[10px] text-primary uppercase tracking-wider font-bold">🧪 TEST MODE: 切換會員等級</p>
+                            <span id="current-test-tier" class="px-2 py-0.5 rounded-md bg-primary/20 text-primary text-[10px] font-mono font-bold">PRO</span>
+                        </div>
+                        <p class="text-[10px] text-textMuted mb-3">測試不同會員等級的工具權限（不會扣費）</p>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="handleSwitchTestTier('free')" class="test-tier-btn py-2 bg-white/5 hover:bg-textMuted/10 rounded-lg text-xs font-mono transition border border-white/5" data-tier="free">
+                                FREE
+                            </button>
+                            <button onclick="handleSwitchTestTier('premium')" class="test-tier-btn py-2 bg-white/5 hover:bg-primary/20 hover:text-primary rounded-lg text-xs font-mono transition border border-primary/20 text-primary" data-tier="premium">
+                                PRO
+                            </button>
+                        </div>
+                    </div>
+
                     <button onclick="handleLogout()" class="w-full py-3 bg-white/5 hover:bg-danger/10 text-textMuted hover:text-danger border border-white/5 hover:border-danger/20 font-bold rounded-xl transition flex items-center justify-center gap-2 mt-4">
                         <i data-lucide="log-out" class="w-4 h-4"></i>
                         <span data-i18n="settings.profile.logout">Logout</span>

@@ -74,14 +74,6 @@ def technical_analysis(symbol: str = "BTC", interval: str = "1d") -> dict:
 
 
 @tool
-def price_data(symbol: str = "BTC") -> list:
-    """獲取加密貨幣的即時價格和歷史K線數據"""
-    from core.tools.crypto_tools import get_crypto_price_tool
-    result = get_crypto_price_tool.invoke({"symbol": symbol})
-    return result.get("price_info", result) if result else []
-
-
-@tool
 def get_crypto_price(symbol: str = "BTC") -> dict:
     """
     查詢在主流交易所（Binance、OKX 等）上市的加密貨幣即時價格。
@@ -424,7 +416,6 @@ ALL_TOOLS = [
     google_news,
     aggregate_news,
     technical_analysis,
-    price_data,
     get_crypto_price,
     get_fear_and_greed_index,
     get_trending_tokens,

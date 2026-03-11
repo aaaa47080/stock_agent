@@ -384,7 +384,72 @@ async def read_index():
     """返回主頁面 index.html"""
     if os.path.exists("web/index.html"):
         return FileResponse(
-            "web/index.html", 
+            "web/index.html",
             headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
         )
     return {"message": "Welcome to Crypto API. Frontend not found."}
+
+
+# ============================================================================
+# Test Mode Endpoints (僅在 TEST_MODE 啟用時可用)
+# ============================================================================
+
+class TestTierRequest(BaseModel):
+    tier: str  # "free", "premium"
+
+@router.post("/api/test-mode/switch-tier")
+async def switch_test_tier(request: TestTierRequest, current_user: dict = Depends(get_current_user)):
+    """
+    切換測試帳號的會員等級（僅測試模式）
+
+    用於測試不同會員等級的功能：
+    - free: 免費會員功能
+    - premium: PRO 會員功能
+    """
+    from core.config import TEST_MODE
+
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="此功能僅在測試模式下可用"
+        )
+
+    valid_tiers = ["free", "premium"]
+    if request.tier not in valid_tiers:
+        raise HTTPException(
+            status_code=400,
+            detail=f"無效的等級，必須是: {', '.join(valid_tiers)}"
+        )
+
+    # 更新環境變量（當前進程有效）
+    os.environ["TEST_USER_TIER"] = request.tier
+
+    logger.info(f"[TEST_MODE] Tier switched to: {request.tier}")
+
+    return {
+        "success": True,
+        "tier": request.tier,
+        "message": f"測試帳號已切換為 {request.tier.upper()} 等級"
+    }
+
+@router.get("/api/test-mode/current-tier")
+async def get_current_test_tier(current_user: dict = Depends(get_current_user)):
+    """
+    獲取當前測試帳號的會員等級（僅測試模式）
+    """
+    from core.config import TEST_MODE
+
+    if not TEST_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="此功能僅在測試模式下可用"
+        )
+
+    # IMPORTANT: Use os.environ.get() instead of os.getenv() to get current value
+    current_tier = current_user.get("membership_tier", os.environ.get("TEST_USER_TIER", "premium"))
+
+    return {
+        "tier": current_tier,
+        "is_test_mode": True,
+        "user_id": current_user.get("user_id")
+    }

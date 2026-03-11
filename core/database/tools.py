@@ -2,10 +2,9 @@
 工具系統資料庫操作
 包含：工具目錄管理、Agent 工具權限、用戶工具偏好、使用量追蹤
 
-會員等級：free / plus / premium
+會員等級：free / premium
 - free: 免費用戶
-- plus: 輕量付費（3 Pi/月）
-- premium: 完整功能（5 Pi/月）
+- premium: PRO 會員（完整功能）
 """
 from typing import List, Dict, Optional, Any
 from .connection import get_connection
@@ -97,17 +96,6 @@ _TOOLS_SEED: List[Dict[str, Any]] = [
         "daily_limit_plus": None,
         "daily_limit_prem": None,
     },
-    {
-        "tool_id": "price_data",
-        "display_name": "加密貨幣歷史 K 線",
-        "description": "即時與歷史 OHLCV 價格數據",
-        "category": "technical",
-        "tier_required": "free",
-        "quota_type": "unlimited",
-        "daily_limit_free": None,
-        "daily_limit_plus": None,
-        "daily_limit_prem": None,
-    },
     # ── 新聞 (Free) ────────────────────────────────────────────────────────────────
     {
         "tool_id": "google_news",
@@ -148,7 +136,7 @@ _TOOLS_SEED: List[Dict[str, Any]] = [
         "display_name": "合約資金費率",
         "description": "查詢永續合約資金費率與多空情緒",
         "category": "derivatives",
-        "tier_required": "plus",
+        "tier_required": "premium",
         "quota_type": "unlimited",
         "daily_limit_free": 0,
         "daily_limit_plus": None,
@@ -160,7 +148,7 @@ _TOOLS_SEED: List[Dict[str, Any]] = [
         "display_name": "DeFi TVL 鎖倉量",
         "description": "從 DefiLlama 查詢協議/公鏈 TVL",
         "category": "onchain",
-        "tier_required": "plus",
+        "tier_required": "premium",
         "quota_type": "shared_limited",
         "daily_limit_free": 0,
         "daily_limit_plus": 30,
@@ -171,7 +159,7 @@ _TOOLS_SEED: List[Dict[str, Any]] = [
         "display_name": "加密板塊與漲幅排行",
         "description": "CoinGecko 最強板塊與熱點",
         "category": "onchain",
-        "tier_required": "plus",
+        "tier_required": "premium",
         "quota_type": "shared_limited",
         "daily_limit_free": 0,
         "daily_limit_plus": 20,
@@ -182,7 +170,7 @@ _TOOLS_SEED: List[Dict[str, Any]] = [
         "display_name": "代幣流通供應量",
         "description": "查詢代幣總發行量、最大供應量與流通量",
         "category": "onchain",
-        "tier_required": "plus",
+        "tier_required": "premium",
         "quota_type": "unlimited",
         "daily_limit_free": 0,
         "daily_limit_plus": None,
@@ -194,7 +182,7 @@ _TOOLS_SEED: List[Dict[str, Any]] = [
         "display_name": "DEX 交易量排行",
         "description": "查詢去中心化交易所交易量與熱門幣對",
         "category": "onchain",
-        "tier_required": "plus",
+        "tier_required": "premium",
         "quota_type": "shared_limited",
         "daily_limit_free": 0,
         "daily_limit_plus": 20,
@@ -275,7 +263,7 @@ _TOOLS_SEED: List[Dict[str, Any]] = [
         "display_name": "台股基本面",
         "description": "P/E、EPS、ROE 等基本面資料",
         "category": "tw_stock",
-        "tier_required": "plus",
+        "tier_required": "premium",
         "quota_type": "unlimited",
         "daily_limit_free": 0,
         "daily_limit_plus": None,
@@ -286,7 +274,7 @@ _TOOLS_SEED: List[Dict[str, Any]] = [
         "display_name": "台股法人籌碼",
         "description": "外資、投信、自營商三大法人買賣超",
         "category": "tw_stock",
-        "tier_required": "plus",
+        "tier_required": "premium",
         "quota_type": "unlimited",
         "daily_limit_free": 0,
         "daily_limit_plus": None,
@@ -297,7 +285,7 @@ _TOOLS_SEED: List[Dict[str, Any]] = [
         "display_name": "台股本益比",
         "description": "P/E 比、股息殖利率、P/B 比",
         "category": "tw_stock",
-        "tier_required": "plus",
+        "tier_required": "premium",
         "quota_type": "unlimited",
         "daily_limit_free": 0,
         "daily_limit_plus": None,
@@ -308,7 +296,7 @@ _TOOLS_SEED: List[Dict[str, Any]] = [
         "display_name": "台股月營收",
         "description": "月營收數據含 MoM、YoY 成長率",
         "category": "tw_stock",
-        "tier_required": "plus",
+        "tier_required": "premium",
         "quota_type": "unlimited",
         "daily_limit_free": 0,
         "daily_limit_plus": None,
@@ -319,7 +307,7 @@ _TOOLS_SEED: List[Dict[str, Any]] = [
         "display_name": "台股股利",
         "description": "現金股利、股票股利、除權息日期",
         "category": "tw_stock",
-        "tier_required": "plus",
+        "tier_required": "premium",
         "quota_type": "unlimited",
         "daily_limit_free": 0,
         "daily_limit_plus": None,
@@ -377,7 +365,7 @@ _TOOLS_SEED: List[Dict[str, Any]] = [
         "display_name": "美股基本面",
         "description": "P/E、EPS、ROE、市值、股息率",
         "category": "us_stock",
-        "tier_required": "plus",
+        "tier_required": "premium",
         "quota_type": "unlimited",
         "daily_limit_free": 0,
         "daily_limit_plus": None,
@@ -388,7 +376,7 @@ _TOOLS_SEED: List[Dict[str, Any]] = [
         "display_name": "美股財報",
         "description": "財報數據與財報日曆",
         "category": "us_stock",
-        "tier_required": "plus",
+        "tier_required": "premium",
         "quota_type": "unlimited",
         "daily_limit_free": 0,
         "daily_limit_plus": None,
@@ -422,7 +410,7 @@ _TOOLS_SEED: List[Dict[str, Any]] = [
 # Agent 預設工具清單（bootstrap.py 的 fallback）
 _AGENT_DEFAULT_TOOLS: Dict[str, List[str]] = {
     "crypto": [
-        "get_current_time_taipei", "technical_analysis", "price_data", "get_crypto_price",
+        "get_current_time_taipei", "technical_analysis", "get_crypto_price",
         "google_news", "aggregate_news", "web_search",
         "get_fear_and_greed_index", "get_trending_tokens", "get_crypto_market_cap",
         "get_economic_calendar", "get_futures_data",
@@ -451,11 +439,10 @@ _AGENT_DEFAULT_TOOLS: Dict[str, List[str]] = {
 # ============================================================================
 
 # 會員等級權限順序
-TIER_HIERARCHY = {"free": 0, "plus": 1, "premium": 2}
+TIER_HIERARCHY = {"free": 0, "premium": 1}
 
 _TIER_ALIASES = {
     "free": "free",
-    "plus": "plus",
     "premium": "premium",
     "pro": "premium",
 }
@@ -544,8 +531,8 @@ def get_allowed_tools(agent_id: str, user_tier: str = "free", user_id: Optional[
               AND {tier_condition}
         '''
 
-        # 排除用戶主動關閉的工具（Plus/Premium 功能）
-        if user_id and user_tier in ("plus", "premium"):
+        # 排除用戶主動關閉的工具（Premium 功能）
+        if user_id and user_tier == "premium":
             query = f'''
                 SELECT tc.tool_id
                 FROM tools_catalog tc
@@ -610,7 +597,7 @@ def check_tool_quota(user_id: str, tool_id: str, user_tier: str) -> bool:
     檢查用戶今日對某工具是否還有額度。
     回傳 True = 可以使用；False = 已達上限。
 
-    支援三級會員：free / plus / premium
+    支援二級會員：free / premium
     """
     user_tier = normalize_membership_tier(user_tier)
     conn = get_connection()
@@ -633,8 +620,6 @@ def check_tool_quota(user_id: str, tool_id: str, user_tier: str) -> bool:
         # 根據用戶等級選擇對應限制
         if user_tier == "premium":
             limit = limit_prem
-        elif user_tier == "plus":
-            limit = limit_plus if limit_plus is not None else limit_free
         else:
             limit = limit_free
 
@@ -683,13 +668,13 @@ def get_tools_for_frontend(user_tier: str, user_id: Optional[str] = None) -> Lis
     """
     回傳前端設定頁需要的工具清單。
     包含每個工具的 display_name、category、tier_required、
-    以及用戶當前的 is_enabled 狀態（Plus/Premium 才有個人偏好）。
+    以及用戶當前的 is_enabled 狀態（Premium 才有個人偏好）。
     """
     user_tier = normalize_membership_tier(user_tier)
     conn = get_connection()
     c = conn.cursor()
     try:
-        if user_id and user_tier in ("plus", "premium"):
+        if user_id and user_tier == "premium":
             c.execute('''
                 SELECT tc.tool_id, tc.display_name, tc.description, tc.category,
                        tc.tier_required, tc.quota_type,
@@ -733,7 +718,7 @@ def get_tools_for_frontend(user_tier: str, user_id: Optional[str] = None) -> Lis
 
 
 def update_user_tool_preference(user_id: str, tool_id: str, is_enabled: bool):
-    """更新用戶對某工具的個人偏好（僅 Plus/Premium 可用）"""
+    """更新用戶對某工具的個人偏好（僅 Premium 可用）"""
     conn = get_connection()
     c = conn.cursor()
     try:

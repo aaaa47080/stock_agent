@@ -21,4 +21,3 @@
 # rm "scripts\test_google_news.py"
 # rm "test_post_creation_simple.py"
 # rm "debug_forum_post_en.py"
-# rm "scripts\debug\debug_debate_with_backtest.py"

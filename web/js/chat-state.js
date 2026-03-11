@@ -356,14 +356,6 @@ function appendMessage(role, content) {
             if (symbol) {
                 const actionsDiv = document.createElement('div');
                 actionsDiv.className = 'flex gap-2 mt-4 pt-4 border-t border-white/5';
-                // 使用安全的 DOM 操作而非 innerHTML
-                const debateBtn = document.createElement('button');
-                debateBtn.className =
-                    'text-xs bg-gradient-to-r from-success/20 to-danger/20 text-secondary px-3 py-1.5 rounded-full hover:from-success/30 hover:to-danger/30 border border-white/10 transition flex items-center gap-1.5';
-                debateBtn.innerHTML = '<i data-lucide="swords" class="w-3 h-3"></i> AI War Room';
-                debateBtn.onclick = () => startDebateInChat(symbol);
-                actionsDiv.appendChild(debateBtn);
-
                 const chartBtn = document.createElement('button');
                 chartBtn.className =
                     'text-xs bg-primary/10 text-primary px-3 py-1.5 rounded-full hover:bg-primary/20 border border-primary/20 transition flex items-center gap-1.5';

@@ -27,10 +27,6 @@ async def get_pricing_plans():
     return {
         "success": True,
         "pricing": {
-            "plus": {
-                "monthly": PI_PAYMENT_PRICES.get("plus_monthly", 3.0),
-                "yearly": PI_PAYMENT_PRICES.get("plus_yearly", 25.0),
-            },
             "premium": {
                 "monthly": PI_PAYMENT_PRICES.get("premium_monthly", 5.0),
                 "yearly": PI_PAYMENT_PRICES.get("premium_yearly", 40.0),
@@ -38,8 +34,7 @@ async def get_pricing_plans():
         },
         "pi_price_usd": 0.17,  # 參考價格
         "savings": {
-            "plus_yearly_save": 11.0,      # Plus 年費省 11 Pi
-            "premium_yearly_save": 20.0,  # Premium 年費省 20 Pi
+            "premium_yearly_save": 20.0,  # PRO 年費省 20 Pi
         }
     }
 

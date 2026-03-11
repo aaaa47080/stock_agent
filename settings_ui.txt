@@ -1,0 +1,519 @@
+- generic [active] [ref=e1]:
+  - link "跳到主要內容" [ref=e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - main "主要內容" [ref=e22]:
+    - button "通知" [ref=e122] [cursor=pointer]:
+      - img [ref=e793]
+    - generic [ref=e23]:
+      - navigation "主要導航" [ref=e25]:
+        - button "收縮/展開導航" [expanded] [ref=e26] [cursor=pointer]:
+          - img [ref=e796]
+        - generic [ref=e30]:
+          - button "聊天" [ref=e129] [cursor=pointer]:
+            - img [ref=e799]
+            - generic [ref=e132]: 聊天
+          - button "加密貨幣" [ref=e133] [cursor=pointer]:
+            - img [ref=e801]
+            - generic [ref=e136]: 加密貨幣
+          - button "台股" [ref=e137] [cursor=pointer]:
+            - img [ref=e803]
+            - generic [ref=e139]: 台股
+          - button "美股" [ref=e140] [cursor=pointer]:
+            - img [ref=e804]
+            - generic [ref=e144]: 美股
+          - button "錢包" [ref=e145] [cursor=pointer]:
+            - img [ref=e807]
+            - generic [ref=e148]: 錢包
+          - button "資產" [ref=e149] [cursor=pointer]:
+            - img [ref=e809]
+            - generic [ref=e153]: 資產
+          - button "好友" [ref=e154] [cursor=pointer]:
+            - img [ref=e812]
+            - generic [ref=e160]: 好友
+          - button "論壇" [ref=e161] [cursor=pointer]:
+            - img [ref=e817]
+            - generic [ref=e165]: 論壇
+          - button "安全" [ref=e166] [cursor=pointer]:
+            - img [ref=e820]
+            - generic [ref=e169]: 安全
+          - button "設定" [ref=e170] [cursor=pointer]:
+            - img [ref=e822]
+            - generic [ref=e174]: 設定
+        - button "Language selector" [ref=e177] [cursor=pointer]:
+          - generic [ref=e178]: 🇹🇼
+        - separator "拖曳導航列" [ref=e77]:
+          - img [ref=e825]
+      - generic [ref=e187]:
+        - heading "設定" [level=2] [ref=e188]
+        - generic [ref=e189]:
+          - generic [ref=e190]:
+            - generic [ref=e191]:
+              - generic [ref=e192]:
+                - generic [ref=e193]: T
+                - generic [ref=e194]:
+                  - heading "TestUser" [level=3] [ref=e195]
+                  - paragraph [ref=e196]: "UID: test-user-001"
+                  - generic [ref=e198]: GUEST
+              - generic [ref=e199]:
+                - img [ref=e832]
+                - generic [ref=e203]: 免費會員
+            - generic [ref=e204]:
+              - generic [ref=e205]:
+                - paragraph [ref=e206]: "🧪 TEST MODE: 切換會員等級"
+                - generic [ref=e207]: PRO
+              - paragraph [ref=e208]: 測試不同會員等級的工具權限（不會扣費）
+              - generic [ref=e209]:
+                - button "FREE" [ref=e210] [cursor=pointer]
+                - button "PRO" [ref=e211] [cursor=pointer]
+            - button "登出" [ref=e212] [cursor=pointer]:
+              - img [ref=e835]
+              - generic [ref=e216]: 登出
+          - generic [ref=e217]:
+            - generic [ref=e218]:
+              - generic [ref=e219]:
+                - img [ref=e838]
+                - generic [ref=e224]:
+                  - heading "Pi 錢包" [level=3] [ref=e225]
+                  - paragraph [ref=e226]: 連接您的 Pi 錢包以進行交易
+              - generic [ref=e227]:
+                - img [ref=e841]
+                - text: 已連接
+            - generic [ref=e234]:
+              - img [ref=e844]
+              - generic [ref=e239]:
+                - paragraph [ref=e240]: Pi 錢包已連接
+                - paragraph [ref=e241]: "@TestUser"
+          - generic [ref=e242]:
+            - generic [ref=e243]:
+              - generic [ref=e244]:
+                - img [ref=e847]
+                - generic [ref=e256]:
+                  - heading "AI 智慧分析" [level=3] [ref=e257]
+                  - paragraph [ref=e258]: 設定您的 LLM 供應商
+              - generic [ref=e261]: OpenAI
+            - generic [ref=e262]:
+              - generic [ref=e263]:
+                - generic [ref=e264]: 供應商
+                - combobox [ref=e265]:
+                  - option "OpenAI" [selected]
+                  - option "Google Gemini"
+                  - option "OpenRouter"
+              - generic [ref=e266]:
+                - generic [ref=e267]: API 金鑰
+                - generic [ref=e268]:
+                  - textbox "sk-..." [ref=e269]
+                  - button "測試" [ref=e270] [cursor=pointer]
+              - generic [ref=e271]:
+                - generic [ref=e272]: 模型
+                - combobox [ref=e273]:
+                  - option "gpt-4o"
+                  - option "gpt-5-mini" [selected]
+                  - option "gpt-5.2-pro"
+              - button "儲存 AI 設定" [disabled] [ref=e274]
+          - generic [ref=e275]:
+            - generic [ref=e276]:
+              - generic [ref=e277]:
+                - img [ref=e857]
+                - generic [ref=e284]:
+                  - heading "導覽列自訂" [level=3] [ref=e285]
+                  - paragraph [ref=e286]: 自訂您的底部導覽列
+              - button "自訂" [ref=e287] [cursor=pointer]:
+                - img [ref=e862]
+                - generic [ref=e291]: 自訂
+            - paragraph [ref=e293]:
+              - img [ref=e865]
+              - text: 選擇要顯示在底部導覽列的功能。至少需啟用 2 個項目。
+          - generic [ref=e296]:
+            - generic [ref=e298]:
+              - img [ref=e867]
+              - generic [ref=e301]:
+                - heading "AI Tool Selection" [level=3] [ref=e302]
+                - paragraph [ref=e303]: Choose which analysis tools your agent can use
+            - paragraph [ref=e305]:
+              - img [ref=e868]
+              - text: 升級 Plus 或 Premium 後，可自訂 agent 可使用的工具組合。
+            - generic [ref=e309]:
+              - generic [ref=e310]:
+                - button "加密貨幣基礎 4/4" [expanded] [ref=e311] [cursor=pointer]:
+                  - generic [ref=e312]:
+                    - img [ref=e871]
+                    - generic [ref=e315]: 加密貨幣基礎
+                    - generic [ref=e316]: 4/4
+                  - img [ref=e873]
+                - generic [ref=e319]:
+                  - generic [ref=e320]:
+                    - generic [ref=e321]:
+                      - generic [ref=e322]:
+                        - generic [ref=e323]: 加密貨幣市值排行
+                        - generic [ref=e324]: 有額度
+                      - paragraph [ref=e325]: 查詢加密貨幣總市值排行 Top 100
+                    - generic "升級 PRO 可自訂工具" [ref=e326]:
+                      - checkbox [checked] [disabled] [ref=e327]
+                  - generic [ref=e329]:
+                    - generic [ref=e330]:
+                      - generic [ref=e332]: 即時加密貨幣價格
+                      - paragraph [ref=e333]: 查詢加密貨幣即時價格
+                    - generic "升級 PRO 可自訂工具" [ref=e334]:
+                      - checkbox [checked] [disabled] [ref=e335]
+                  - generic [ref=e337]:
+                    - generic [ref=e338]:
+                      - generic [ref=e340]: 恐慌與貪婪指數
+                      - paragraph [ref=e341]: 查詢全球加密貨幣市場恐慌貪婪指數
+                    - generic "升級 PRO 可自訂工具" [ref=e342]:
+                      - checkbox [checked] [disabled] [ref=e343]
+                  - generic [ref=e345]:
+                    - generic [ref=e346]:
+                      - generic [ref=e347]:
+                        - generic [ref=e348]: 熱門幣種排行
+                        - generic [ref=e349]: 有額度
+                      - paragraph [ref=e350]: 查詢全網最熱門搜尋的加密貨幣
+                    - generic "升級 PRO 可自訂工具" [ref=e351]:
+                      - checkbox [checked] [disabled] [ref=e352]
+              - generic [ref=e354]:
+                - button "衍生品市場 0/1" [ref=e355] [cursor=pointer]:
+                  - generic [ref=e356]:
+                    - img [ref=e875]
+                    - generic [ref=e359]: 衍生品市場
+                    - generic [ref=e360]: 0/1
+                  - img [ref=e877]
+                - generic [ref=e363]:
+                  - generic [ref=e364]:
+                    - generic [ref=e365]:
+                      - generic [ref=e366]: 合約資金費率
+                      - generic [ref=e367]: PRO
+                    - paragraph [ref=e368]: 查詢永續合約資金費率與多空情緒
+                  - img [ref=e879]
+              - generic [ref=e372]:
+                - button "通用工具 3/3" [ref=e373] [cursor=pointer]:
+                  - generic [ref=e374]:
+                    - img [ref=e882]
+                    - generic [ref=e377]: 通用工具
+                    - generic [ref=e378]: 3/3
+                  - img [ref=e884]
+                - generic:
+                  - generic [ref=e381]:
+                    - generic [ref=e382]:
+                      - generic [ref=e384]: 目前時間
+                      - paragraph [ref=e385]: 查詢台灣/UTC+8 目前時間
+                    - generic "升級 PRO 可自訂工具" [ref=e386]:
+                      - checkbox [checked] [disabled] [ref=e387]
+                  - generic [ref=e389]:
+                    - generic [ref=e390]:
+                      - generic [ref=e392]: 全球經濟日曆
+                      - paragraph [ref=e393]: 查詢重要經濟事件與數據發布時間
+                    - generic "升級 PRO 可自訂工具" [ref=e394]:
+                      - checkbox [checked] [disabled] [ref=e395]
+                  - generic [ref=e397]:
+                    - generic [ref=e398]:
+                      - generic [ref=e399]:
+                        - generic [ref=e400]: 網路搜尋
+                        - generic [ref=e401]: 有額度
+                      - paragraph [ref=e402]: DuckDuckGo 通用網路搜尋
+                    - generic "升級 PRO 可自訂工具" [ref=e403]:
+                      - checkbox [checked] [disabled] [ref=e404]
+              - generic [ref=e406]:
+                - button "新聞資訊 2/2" [ref=e407] [cursor=pointer]:
+                  - generic [ref=e408]:
+                    - img [ref=e886]
+                    - generic [ref=e412]: 新聞資訊
+                    - generic [ref=e413]: 2/2
+                  - img [ref=e889]
+                - generic:
+                  - generic [ref=e416]:
+                    - generic [ref=e417]:
+                      - generic [ref=e418]:
+                        - generic [ref=e419]: 多來源新聞聚合
+                        - generic [ref=e420]: 有額度
+                      - paragraph [ref=e421]: 從多個來源聚合加密貨幣新聞
+                    - generic "升級 PRO 可自訂工具" [ref=e422]:
+                      - checkbox [checked] [disabled] [ref=e423]
+                  - generic [ref=e425]:
+                    - generic [ref=e426]:
+                      - generic [ref=e427]:
+                        - generic [ref=e428]: Google 新聞
+                        - generic [ref=e429]: 有額度
+                      - paragraph [ref=e430]: 從 Google News 抓取相關新聞
+                    - generic "升級 PRO 可自訂工具" [ref=e431]:
+                      - checkbox [checked] [disabled] [ref=e432]
+              - generic [ref=e434]:
+                - button "鏈上數據 0/6" [ref=e435] [cursor=pointer]:
+                  - generic [ref=e436]:
+                    - img [ref=e891]
+                    - generic [ref=e441]: 鏈上數據
+                    - generic [ref=e442]: 0/6
+                  - img [ref=e895]
+                - generic:
+                  - generic [ref=e445]:
+                    - generic [ref=e446]:
+                      - generic [ref=e447]:
+                        - generic [ref=e448]: 加密板塊與漲幅排行
+                        - generic [ref=e449]: PRO
+                        - generic [ref=e450]: 有額度
+                      - paragraph [ref=e451]: CoinGecko 最強板塊與熱點
+                    - img [ref=e897]
+                  - generic [ref=e455]:
+                    - generic [ref=e456]:
+                      - generic [ref=e457]:
+                        - generic [ref=e458]: DeFi TVL 鎖倉量
+                        - generic [ref=e459]: PRO
+                        - generic [ref=e460]: 有額度
+                      - paragraph [ref=e461]: 從 DefiLlama 查詢協議/公鏈 TVL
+                    - img [ref=e900]
+                  - generic [ref=e465]:
+                    - generic [ref=e466]:
+                      - generic [ref=e467]:
+                        - generic [ref=e468]: DEX 交易量排行
+                        - generic [ref=e469]: PRO
+                        - generic [ref=e470]: 有額度
+                      - paragraph [ref=e471]: 查詢去中心化交易所交易量與熱門幣對
+                    - img [ref=e903]
+                  - generic [ref=e475]:
+                    - generic [ref=e476]:
+                      - generic [ref=e477]:
+                        - generic [ref=e478]: 代幣流通供應量
+                        - generic [ref=e479]: PRO
+                      - paragraph [ref=e480]: 查詢代幣總發行量、最大供應量與流通量
+                    - img [ref=e906]
+                  - generic [ref=e484]:
+                    - generic [ref=e485]:
+                      - generic [ref=e486]:
+                        - generic [ref=e487]: 代幣解鎖日程
+                        - generic [ref=e488]: PRO
+                        - generic [ref=e489]: 有額度
+                      - paragraph [ref=e490]: 查詢代幣未來解鎖時間與數量
+                    - img [ref=e909]
+                  - generic [ref=e494]:
+                    - generic [ref=e495]:
+                      - generic [ref=e496]:
+                        - generic [ref=e497]: 鯨魚追蹤警報
+                        - generic [ref=e498]: PRO
+                        - generic [ref=e499]: 有額度
+                      - paragraph [ref=e500]: 追蹤大額鏈上轉帳與鯨魚動向
+                    - img [ref=e912]
+              - generic [ref=e504]:
+                - button "技術分析 2/2" [ref=e505] [cursor=pointer]:
+                  - generic [ref=e506]:
+                    - img [ref=e915]
+                    - generic [ref=e508]: 技術分析
+                    - generic [ref=e509]: 2/2
+                  - img [ref=e916]
+                - generic:
+                  - generic [ref=e512]:
+                    - generic [ref=e513]:
+                      - generic [ref=e515]: 加密貨幣歷史 K 線
+                      - paragraph [ref=e516]: 即時與歷史 OHLCV 價格數據
+                    - generic "升級 PRO 可自訂工具" [ref=e517]:
+                      - checkbox [checked] [disabled] [ref=e518]
+                  - generic [ref=e520]:
+                    - generic [ref=e521]:
+                      - generic [ref=e523]: 加密貨幣技術指標
+                      - paragraph [ref=e524]: RSI、MACD、均線等技術指標分析
+                    - generic "升級 PRO 可自訂工具" [ref=e525]:
+                      - checkbox [checked] [disabled] [ref=e526]
+              - generic [ref=e528]:
+                - button "台灣股市 4/10" [ref=e529] [cursor=pointer]:
+                  - generic [ref=e530]:
+                    - img [ref=e918]
+                    - generic [ref=e534]: 台灣股市
+                    - generic [ref=e535]: 4/10
+                  - img [ref=e921]
+                - generic:
+                  - generic [ref=e538]:
+                    - generic [ref=e539]:
+                      - generic [ref=e540]:
+                        - generic [ref=e541]: 台股重大訊息
+                        - generic [ref=e542]: 有額度
+                      - paragraph [ref=e543]: TWSE 官方重大訊息公告
+                    - generic "升級 PRO 可自訂工具" [ref=e544]:
+                      - checkbox [checked] [disabled] [ref=e545]
+                  - generic [ref=e547]:
+                    - generic [ref=e548]:
+                      - generic [ref=e549]:
+                        - generic [ref=e550]: 台股新聞
+                        - generic [ref=e551]: 有額度
+                      - paragraph [ref=e552]: 查詢台股相關最新新聞
+                    - generic "升級 PRO 可自訂工具" [ref=e553]:
+                      - checkbox [checked] [disabled] [ref=e554]
+                  - generic [ref=e556]:
+                    - generic [ref=e557]:
+                      - generic [ref=e559]: 台股即時股價
+                      - paragraph [ref=e560]: 查詢台灣股票即時價格
+                    - generic "升級 PRO 可自訂工具" [ref=e561]:
+                      - checkbox [checked] [disabled] [ref=e562]
+                  - generic [ref=e564]:
+                    - generic [ref=e565]:
+                      - generic [ref=e567]: 台股技術指標
+                      - paragraph [ref=e568]: 台股 RSI / MACD / KD / 均線
+                    - generic "升級 PRO 可自訂工具" [ref=e569]:
+                      - checkbox [checked] [disabled] [ref=e570]
+                  - generic [ref=e572]:
+                    - generic [ref=e573]:
+                      - generic [ref=e574]:
+                        - generic [ref=e575]: 台股股利
+                        - generic [ref=e576]: PRO
+                      - paragraph [ref=e577]: 現金股利、股票股利、除權息日期
+                    - img [ref=e923]
+                  - generic [ref=e581]:
+                    - generic [ref=e582]:
+                      - generic [ref=e583]:
+                        - generic [ref=e584]: 外資持股 Top 20
+                        - generic [ref=e585]: PRO
+                        - generic [ref=e586]: 有額度
+                      - paragraph [ref=e587]: 外資與陸資持股前 20 名排行
+                    - img [ref=e926]
+                  - generic [ref=e591]:
+                    - generic [ref=e592]:
+                      - generic [ref=e593]:
+                        - generic [ref=e594]: 台股基本面
+                        - generic [ref=e595]: PRO
+                      - paragraph [ref=e596]: P/E、EPS、ROE 等基本面資料
+                    - img [ref=e929]
+                  - generic [ref=e600]:
+                    - generic [ref=e601]:
+                      - generic [ref=e602]:
+                        - generic [ref=e603]: 台股法人籌碼
+                        - generic [ref=e604]: PRO
+                      - paragraph [ref=e605]: 外資、投信、自營商三大法人買賣超
+                    - img [ref=e932]
+                  - generic [ref=e609]:
+                    - generic [ref=e610]:
+                      - generic [ref=e611]:
+                        - generic [ref=e612]: 台股月營收
+                        - generic [ref=e613]: PRO
+                      - paragraph [ref=e614]: 月營收數據含 MoM、YoY 成長率
+                    - img [ref=e935]
+                  - generic [ref=e618]:
+                    - generic [ref=e619]:
+                      - generic [ref=e620]:
+                        - generic [ref=e621]: 台股本益比
+                        - generic [ref=e622]: PRO
+                      - paragraph [ref=e623]: P/E 比、股息殖利率、P/B 比
+                    - img [ref=e938]
+              - generic [ref=e627]:
+                - button "美國股市 3/7" [ref=e628] [cursor=pointer]:
+                  - generic [ref=e629]:
+                    - img [ref=e941]
+                    - generic [ref=e632]: 美國股市
+                    - generic [ref=e633]: 3/7
+                  - img [ref=e943]
+                - generic:
+                  - generic [ref=e636]:
+                    - generic [ref=e637]:
+                      - generic [ref=e638]:
+                        - generic [ref=e639]: 美股新聞
+                        - generic [ref=e640]: 有額度
+                      - paragraph [ref=e641]: 美股相關最新新聞
+                    - generic "升級 PRO 可自訂工具" [ref=e642]:
+                      - checkbox [checked] [disabled] [ref=e643]
+                  - generic [ref=e645]:
+                    - generic [ref=e646]:
+                      - generic [ref=e648]: 美股即時股價
+                      - paragraph [ref=e649]: 美股即時價格（15 分鐘延遲，Yahoo Finance）
+                    - generic "升級 PRO 可自訂工具" [ref=e650]:
+                      - checkbox [checked] [disabled] [ref=e651]
+                  - generic [ref=e653]:
+                    - generic [ref=e654]:
+                      - generic [ref=e656]: 美股技術指標
+                      - paragraph [ref=e657]: 美股 RSI / MACD / 布林帶 / 均線
+                    - generic "升級 PRO 可自訂工具" [ref=e658]:
+                      - checkbox [checked] [disabled] [ref=e659]
+                  - generic [ref=e661]:
+                    - generic [ref=e662]:
+                      - generic [ref=e663]:
+                        - generic [ref=e664]: 美股財報
+                        - generic [ref=e665]: PRO
+                      - paragraph [ref=e666]: 財報數據與財報日曆
+                    - img [ref=e945]
+                  - generic [ref=e670]:
+                    - generic [ref=e671]:
+                      - generic [ref=e672]:
+                        - generic [ref=e673]: 美股基本面
+                        - generic [ref=e674]: PRO
+                      - paragraph [ref=e675]: P/E、EPS、ROE、市值、股息率
+                    - img [ref=e948]
+                  - generic [ref=e679]:
+                    - generic [ref=e680]:
+                      - generic [ref=e681]:
+                        - generic [ref=e682]: 美股內部人交易
+                        - generic [ref=e683]: PRO
+                      - paragraph [ref=e684]: 公司內部人買賣記錄
+                    - img [ref=e951]
+                  - generic [ref=e688]:
+                    - generic [ref=e689]:
+                      - generic [ref=e690]:
+                        - generic [ref=e691]: 美股機構持倉
+                        - generic [ref=e692]: PRO
+                      - paragraph [ref=e693]: 機構投資人持倉數據
+                    - img [ref=e954]
+          - generic [ref=e697]:
+            - generic [ref=e698]:
+              - img [ref=e957]
+              - generic [ref=e702]:
+                - heading "高級會員" [level=3] [ref=e703]
+                - paragraph [ref=e704]: 解鎖進階功能
+            - generic [ref=e705]:
+              - generic [ref=e706]:
+                - paragraph [ref=e707]:
+                  - img [ref=e959]
+                  - text: 高級會員享有：
+                - list [ref=e710]:
+                  - listitem [ref=e711]: 無限發文權限
+                  - listitem [ref=e712]: 無限回覆權限
+                  - listitem [ref=e713]: 優先訪問新功能
+                  - listitem [ref=e714]: 專屬高級會員標識
+              - button "升級到高級會員 - 1 Pi" [ref=e715] [cursor=pointer]:
+                - img [ref=e961]
+                - generic [ref=e718]: 升級到高級會員 - 1 Pi
+              - paragraph [ref=e719]: 一次性付費，立即生效
+          - generic [ref=e720]:
+            - generic [ref=e721]:
+              - generic [ref=e722]:
+                - img [ref=e963]
+                - generic [ref=e728]:
+                  - heading "交易所金鑰" [level=3] [ref=e729]
+                  - paragraph [ref=e730]: 連接您的 OKX 帳戶
+              - generic [ref=e733]: Not Connected
+            - generic [ref=e734]:
+              - generic [ref=e735]:
+                - img [ref=e967]
+                - paragraph [ref=e743]: 尚未連接交易所
+              - button "連接 OKX" [ref=e744] [cursor=pointer]:
+                - img [ref=e974]
+                - generic [ref=e747]: 連接 OKX
+          - button "儲存所有設定" [ref=e748] [cursor=pointer]
+          - generic [ref=e749]:
+            - generic [ref=e750]:
+              - img [ref=e976]
+              - generic [ref=e754]:
+                - heading "關於與法律" [level=3] [ref=e755]
+                - paragraph [ref=e756]: 服務條款、隱私權政策與社群規範
+            - generic [ref=e757]:
+              - link "服務條款 使用規則與政策" [ref=e758] [cursor=pointer]:
+                - /url: javascript:void(0)
+                - generic [ref=e759]:
+                  - generic [ref=e760]:
+                    - img [ref=e978]
+                    - generic [ref=e764]:
+                      - paragraph [ref=e765]: 服務條款
+                      - paragraph [ref=e766]: 使用規則與政策
+                  - img [ref=e981]
+              - link "隱私權政策 資料保護與隱私" [ref=e769] [cursor=pointer]:
+                - /url: javascript:void(0)
+                - generic [ref=e770]:
+                  - generic [ref=e771]:
+                    - img [ref=e983]
+                    - generic [ref=e774]:
+                      - paragraph [ref=e775]: 隱私權政策
+                      - paragraph [ref=e776]: 資料保護與隱私
+                  - img [ref=e985]
+              - link "社群規範 治理與審核規則" [ref=e779] [cursor=pointer]:
+                - /url: javascript:void(0)
+                - generic [ref=e780]:
+                  - generic [ref=e781]:
+                    - img [ref=e987]
+                    - generic [ref=e787]:
+                      - paragraph [ref=e788]: 社群規範
+                      - paragraph [ref=e789]: 治理與審核規則
+                  - img [ref=e992]
+          - generic [ref=e792]: PI CryptoMind v1.2.0-Pi-Integrated
+  - status
