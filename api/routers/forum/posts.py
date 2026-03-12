@@ -77,8 +77,8 @@ async def create_new_post(request: CreatePostRequest, user_id: str = Query(..., 
     發表新文章
 
     - 免費會員需提供 payment_tx_hash（支付費用從 /api/config/prices 獲取）
-    - PRO 會員免費發文
-    - 每日發文限制從 /api/config/limits 獲取，PRO 會員無限制
+    - Premium 會員免費發文
+    - 每日發文限制從 /api/config/limits 獲取，Premium 會員無限制
     """
     try:
         if current_user["user_id"] != user_id:
@@ -108,7 +108,7 @@ async def create_new_post(request: CreatePostRequest, user_id: str = Query(..., 
         if not limit_check["allowed"]:
             raise HTTPException(
                 status_code=429,
-                detail=f"已達每日發文上限 ({limit_check['limit']} 篇)，升級 PRO 會員可無限發文"
+                detail=f"已達每日發文上限 ({limit_check['limit']} 篇)，升級 Premium 會員可無限發文"
             )
 
         # 免費會員需要付費 (測試模式下跳過)
@@ -146,7 +146,7 @@ async def create_new_post(request: CreatePostRequest, user_id: str = Query(..., 
             if result.get("error") == "daily_post_limit_reached":
                 raise HTTPException(
                     status_code=429,
-                    detail=f"已達每日發文上限 ({result['limit']} 篇)，升級 PRO 會員可無限發文"
+                    detail=f"已達每日發文上限 ({result['limit']} 篇)，升級 Premium 會員可無限發文"
                 )
             raise HTTPException(status_code=500, detail=result.get("error", "發表文章失敗"))
 

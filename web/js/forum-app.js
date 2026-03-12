@@ -790,7 +790,7 @@ const ForumApp = {
                     const paySpan = submitButton?.querySelector('span');
                     if (paySpan) {
                         if (isPro) {
-                            paySpan.textContent = 'Post for Free (PRO)';
+                            paySpan.textContent = 'Post for Free (PREMIUM)';
                         } else {
                             const postAmount = getPrice('create_post');
                             if (postAmount !== null) {
@@ -804,7 +804,7 @@ const ForumApp = {
                         if (el.textContent.includes('Cost to post:')) {
                             if (isPro) {
                                 el.innerHTML =
-                                    'Cost to post: <span class="text-success font-bold">FREE</span> <br><span class="text-xs opacity-60">(For PRO members)</span>';
+                                    'Cost to post: <span class="text-success font-bold">FREE</span> <br><span class="text-xs opacity-60">(For Premium members)</span>';
                             } else {
                                 // Reset to default if needed or keep existing
                             }
@@ -978,12 +978,12 @@ const ForumApp = {
                                                 <h3 class="text-xl font-bold text-secondary mb-2">發文額度已滿</h3>
                                                 <div class="text-textMuted text-sm mb-6 leading-relaxed">
                                                     今日已發布 <span class="text-textMain font-bold text-base">${postLimit.count}</span> / <span class="text-textMain font-bold text-base">${postLimit.limit}</span> 篇文章<br>
-                                                    <span class="opacity-70">升級 PRO 會員即可無限發文！</span>
+                                                    <span class="opacity-70">升級 Premium 會員即可無限發文！</span>
                                                 </div>
                                                 <div class="flex flex-col gap-3">
                                                     <button onclick="smoothNavigate('/static/forum/premium.html')" class="w-full py-3.5 bg-gradient-to-r from-primary to-primary/80 hover:to-primary text-background font-bold rounded-2xl transition shadow-lg flex items-center justify-center gap-2 transform active:scale-95">
                                                         <i data-lucide="crown" class="w-4 h-4"></i>
-                                                        <span>升級 PRO 會員</span>
+                                                        <span>升級 Premium 會員</span>
                                                     </button>
                                                     <button onclick="this.closest('.fixed').remove()" class="w-full py-3.5 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-2xl transition border border-white/5 hover:text-white">
                                                         知道了
@@ -1483,7 +1483,7 @@ const ForumApp = {
                 results[1].status === 'fulfilled' ? results[1].value : { tips: [] };
 
             const payments = (paymentsData.payments || [])
-                // 保留 PRO 會員免費發文記錄但標記為免費
+                // 保留 Premium 會員免費發文記錄但標記為免費
                 .map((p) => {
                     const isFree = p.tx_hash === 'pro_member_free';
                     return {

@@ -1064,7 +1064,7 @@ function _applyPremiumBadgeUI(statusBadge, upgradeBtn, isPro, expiresAt) {
             : '';
         statusBadge.innerHTML = `
             <i data-lucide="star" class="w-3 h-3 text-yellow-400"></i>
-            <span class="font-bold text-yellow-400">高級會員${expiryText}</span>
+            <span class="font-bold text-yellow-400">Premium 會員${expiryText}</span>
         `;
         statusBadge.className =
             'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400 border border-yellow-500/30 shadow-sm shadow-yellow-500/10';
@@ -1072,7 +1072,7 @@ function _applyPremiumBadgeUI(statusBadge, upgradeBtn, isPro, expiresAt) {
         if (upgradeBtn) {
             upgradeBtn.disabled = true;
             upgradeBtn.innerHTML =
-                '<i data-lucide="check-circle" class="w-4 h-4"></i> 已是高級會員';
+                '<i data-lucide="check-circle" class="w-4 h-4"></i> 已是 Premium 會員';
             upgradeBtn.className =
                 'w-full py-3.5 bg-gradient-to-r from-green-500 to-emerald-500 text-background font-bold rounded-xl transition flex items-center justify-center gap-2 cursor-default';
         }
@@ -1088,7 +1088,7 @@ function _applyPremiumBadgeUI(statusBadge, upgradeBtn, isPro, expiresAt) {
     if (window.lucide) lucide.createIcons();
 }
 
-// 載入高級會員狀態（即時顯示快取值，後台更新精確到期日）
+// 載入 Premium 會員狀態（即時顯示快取值，後台更新精確到期日）
 async function loadPremiumStatus() {
     const statusBadge = document.getElementById('premium-status-badge');
     const upgradeBtn = document.querySelector('.upgrade-premium-btn');
@@ -1128,14 +1128,14 @@ async function loadPremiumStatus() {
     }
 }
 
-// 處理高級會員升級按鈕
+// 處理 Premium 會員升級按鈕
 async function handleUpgradeToPremium() {
     if (typeof upgradeToPremium === 'function') {
         await upgradeToPremium();
         // 升級後重新載入狀態
         setTimeout(loadPremiumStatus, 2000);
     } else {
-        showToast('高級會員功能尚未載入', 'error');
+        showToast('Premium 會員功能尚未載入', 'error');
     }
 }
 

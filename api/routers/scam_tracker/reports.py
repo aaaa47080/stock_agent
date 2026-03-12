@@ -152,7 +152,7 @@ async def create_new_scam_report(
     """
     提交新舉報
 
-    僅 PRO 會員可使用。
+    僅 Premium 會員可使用。
     """
     try:
         user_id = current_user.get("user_id")
@@ -191,7 +191,7 @@ async def create_new_scam_report(
 
             # 處理各種錯誤情況
             if error == "pro_membership_required":
-                raise HTTPException(status_code=403, detail="需要 PRO 會員權限")
+                raise HTTPException(status_code=403, detail="需要 Premium 會員權限")
             elif error == "daily_limit_reached":
                 limit = result.get("limit", 5)
                 used = result.get("used", 0)

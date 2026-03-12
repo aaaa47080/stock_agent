@@ -67,7 +67,7 @@ async def add_new_comment(
 
     限制：
     - 免費會員每日回覆上限從 /api/config/limits 獲取
-    - PRO 會員無限制
+    - Premium 會員無限制
     """
     # Verify user authorization
     if current_user["user_id"] != user_id:
@@ -104,7 +104,7 @@ async def add_new_comment(
             if result.get("error") == "daily_limit_reached":
                 raise HTTPException(
                     status_code=429,
-                    detail=f"已達每日回覆上限 ({result['limit']} 則)，升級 PRO 會員可無限回覆"
+                    detail=f"已達每日回覆上限 ({result['limit']} 則)，升級 Premium 會員可無限回覆"
                 )
             raise HTTPException(status_code=500, detail=result.get("error", "新增回覆失敗"))
 

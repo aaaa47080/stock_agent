@@ -68,7 +68,7 @@ async def submit_report(
 
     檢舉限制：
     - 免費用戶：每日 5 次
-    - PRO 會員：每日 10 次
+    - Premium 會員：每日 10 次
     - 不能檢舉自己的內容
     - 同一用戶對同一內容只能檢舉一次
     """
@@ -153,7 +153,7 @@ async def list_pending_reports(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    獲取待審核的檢舉列表（PRO 會員專用）
+    獲取待審核的檢舉列表（Premium 會員專用）
 
     - **limit**: 最多返回數量 (1-100)
     - **offset**: 分頁偏移
@@ -161,11 +161,11 @@ async def list_pending_reports(
     try:
         user_id = current_user["user_id"]
 
-        # Check PRO membership
+        # Check premium membership
         loop = asyncio.get_running_loop()
         membership = await loop.run_in_executor(None, get_user_membership, user_id)
         if not membership.get("is_pro"):
-            raise HTTPException(status_code=403, detail="此功能僅限 PRO 會員使用")
+            raise HTTPException(status_code=403, detail="此功能僅限 Premium 會員使用")
 
         reports = await loop.run_in_executor(
             None,
@@ -198,7 +198,7 @@ async def get_report_detail(
     try:
         user_id = current_user["user_id"]
 
-        # Check PRO membership for voting details
+        # Check premium membership for voting details
         loop = asyncio.get_running_loop()
         membership = await loop.run_in_executor(None, get_user_membership, user_id)
         is_pro = membership.get("is_pro")
@@ -208,7 +208,7 @@ async def get_report_detail(
         if not report:
             raise HTTPException(status_code=404, detail="找不到該檢舉")
 
-        # Get votes for PRO members
+        # Get votes for premium members
         votes = None
         if is_pro:
             votes = await loop.run_in_executor(None, partial(get_report_votes, None, report_id))
@@ -270,25 +270,25 @@ async def vote_on_pending_report(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    對檢舉進行投票（PRO 會員專用）
+    對檢舉進行投票（Premium 會員專用）
 
     - **vote_type**: 投票類型
       - 'approve': 認為內容違規，支持檢舉
       - 'reject': 認為內容不違規，拒絕檢舉
 
     投票規則：
-    - 每個 PRO 會員對同一檢舉只能投票一次
+    - 每個 Premium 會員對同一檢舉只能投票一次
     - 投票後不可修改
     - 當投票達到共識時（最少 3 票，70% 同意），自動處理
     """
     try:
         user_id = current_user["user_id"]
 
-        # Check PRO membership
+        # Check premium membership
         loop = asyncio.get_running_loop()
         membership = await loop.run_in_executor(None, get_user_membership, user_id)
         if not membership.get("is_pro"):
-            raise HTTPException(status_code=403, detail="投票功能僅限 PRO 會員使用")
+            raise HTTPException(status_code=403, detail="投票功能僅限 Premium 會員使用")
 
         result = await loop.run_in_executor(
             None,
@@ -306,7 +306,7 @@ async def vote_on_pending_report(
             if error == "invalid_vote_type":
                 raise HTTPException(status_code=400, detail="無效的投票類型")
             elif error == "pro_membership_required":
-                raise HTTPException(status_code=403, detail="投票功能僅限 PRO 會員使用")
+                raise HTTPException(status_code=403, detail="投票功能僅限 Premium 會員使用")
             elif error == "report_not_found":
                 raise HTTPException(status_code=404, detail="找不到該檢舉")
             elif error == "report_not_pending":
@@ -483,7 +483,7 @@ async def get_user_violations_public(
     返回公開的違規統計，不包含敏感信息
     """
     try:
-        # Only show own violations unless PRO member
+        # Only show own violations unless premium member
         requester_id = current_user["user_id"]
         loop = asyncio.get_running_loop()
         membership = await loop.run_in_executor(None, get_user_membership, requester_id)

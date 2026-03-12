@@ -1156,7 +1156,7 @@ const Components = {
             <!-- Governance Tabs -->
             <div class="flex border-b border-white/5 px-6 pt-2 gap-1 overflow-x-auto shrink-0">
                 <button onclick="SafetyTab.switchGovTab('gov-my-reports')" class="gov-tab-btn px-3 py-2 text-xs font-bold rounded-t-lg border-b-2 border-primary text-primary transition" data-gov-tab="gov-my-reports" data-i18n="safety.gov.myReportsTab">My Reports</button>
-                <button onclick="SafetyTab.switchGovTab('gov-review')" class="gov-tab-btn px-3 py-2 text-xs font-bold rounded-t-lg border-b-2 border-transparent text-textMuted hover:text-secondary transition" data-gov-tab="gov-review"><span data-i18n="safety.gov.reviewTab">Review</span> <span class="text-[9px] bg-accent/20 text-accent px-1.5 py-0.5 rounded ml-1">PRO</span></button>
+                <button onclick="SafetyTab.switchGovTab('gov-review')" class="gov-tab-btn px-3 py-2 text-xs font-bold rounded-t-lg border-b-2 border-transparent text-textMuted hover:text-secondary transition" data-gov-tab="gov-review"><span data-i18n="safety.gov.reviewTab">Review</span> <span class="text-[9px] bg-accent/20 text-accent px-1.5 py-0.5 rounded ml-1">PREMIUM</span></button>
                 <button onclick="SafetyTab.switchGovTab('gov-leaderboard')" class="gov-tab-btn px-3 py-2 text-xs font-bold rounded-t-lg border-b-2 border-transparent text-textMuted hover:text-secondary transition" data-gov-tab="gov-leaderboard" data-i18n="safety.gov.rankingTab">Ranking</button>
             </div>
 
@@ -1175,14 +1175,14 @@ const Components = {
                     </div>
                 </div>
 
-                <!-- Review Tab (PRO) -->
+                <!-- Review Tab (Premium) -->
                 <div id="gov-review-tab" class="gov-tab-content hidden p-6">
                     <div id="gov-pro-notice" class="text-center py-8">
                         <div class="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
                             <i data-lucide="lock" class="w-8 h-8 text-accent"></i>
                         </div>
-                        <h4 class="font-bold text-secondary mb-2" data-i18n="safety.gov.proOnly">PRO Members Only</h4>
-                        <p class="text-textMuted text-sm mb-4" data-i18n="safety.gov.proDesc">Upgrade to PRO to review reports and earn reputation.</p>
+                        <h4 class="font-bold text-secondary mb-2" data-i18n="safety.gov.proOnly">Premium Members Only</h4>
+                        <p class="text-textMuted text-sm mb-4" data-i18n="safety.gov.proDesc">Upgrade to Premium to review reports and earn reputation.</p>
                     </div>
                     <div id="gov-review-content" class="hidden space-y-3">
                         <div id="gov-quota-display" class="bg-background/50 rounded-xl p-4 space-y-3 mb-4">

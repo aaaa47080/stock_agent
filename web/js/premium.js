@@ -1,6 +1,6 @@
 /**
- * 高級會員功能模組
- * 處理升級到高級會員的支付和狀態管理
+ * Premium 會員功能模組
+ * 處理升級到 Premium 會員的支付和狀態管理
  */
 
 class PremiumManager {
@@ -166,9 +166,9 @@ class PremiumManager {
                 // 設置對話框內容
                 document.getElementById('confirm-modal-title').textContent = '確認升級';
                 document.getElementById('confirm-modal-message').innerHTML = `
-                    確認升級到高級會員？<br>
+                    確認升級到 Premium 會員？<br>
                     <strong>${this.premiumPrice} Pi</strong> 將從您的錢包扣除。<br>
-                    <small class="text-textMuted/60">高級會員享有無限發文、無限回覆等特權。</small>
+                    <small class="text-textMuted/60">Premium 會員享有無限發文、無限回覆等特權。</small>
                 `;
 
                 // 設置圖標
@@ -217,7 +217,7 @@ class PremiumManager {
             } else {
                 // 如果沒有預設對話框，使用瀏覽器確認
                 const result = confirm(
-                    `確認升級到高級會員？${this.premiumPrice} Pi 將從您的錢包扣除。`
+                    `確認升級到 Premium 會員？${this.premiumPrice} Pi 將從您的錢包扣除。`
                 );
                 resolve(result);
             }
@@ -260,7 +260,7 @@ class PremiumManager {
                     if (toastContainer) toastContainer.innerHTML = '';
                 }
 
-                showToast('🎉 恭喜！您已成為高級會員！', 'success', 5000);
+                showToast('🎉 恭喜！您已成為 Premium 會員！', 'success', 5000);
 
                 // 更新用戶界面
                 this.updateUserInterface();
@@ -362,7 +362,7 @@ class PremiumManager {
                 window.Pi.createPayment(
                     {
                         amount: this.premiumPrice,
-                        memo: `升級高級會員 (${this.premiumPrice} Pi)`,
+                        memo: `升級 Premium 會員 (${this.premiumPrice} Pi)`,
                         metadata: {
                             type: 'premium_upgrade',
                             user_id:
@@ -608,7 +608,7 @@ class PremiumManager {
         membershipBadges.forEach((badge) => {
             badge.innerHTML = `
                 <i data-lucide="star" class="w-3 h-3"></i>
-                高級會員
+                Premium 會員
             `;
             badge.className =
                 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-gradient-to-r from-yellow-500 to-orange-500 text-white';
@@ -664,4 +664,4 @@ window.PremiumManager = new PremiumManager();
 window.upgradeToPremium = () => window.PremiumManager.handleUpgradeClick();
 window.checkMembershipStatus = (userId) => window.PremiumManager.checkMembershipStatus(userId);
 
-console.log('[Premium] 高級會員模組已載入');
+console.log('[Premium] Premium 會員模組已載入');

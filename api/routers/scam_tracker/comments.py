@@ -56,7 +56,7 @@ async def add_comment_to_report(
     """
     添加評論
 
-    僅 PRO 會員可使用，用於分享受騙經歷或補充證據。
+    僅 Premium 會員可使用，用於分享受騙經歷或補充證據。
     """
     try:
         user_id = current_user.get("user_id")
@@ -92,7 +92,7 @@ async def add_comment_to_report(
             detail = result.get("detail", "")
 
             if error == "pro_membership_required":
-                raise HTTPException(status_code=403, detail="需要 PRO 會員權限")
+                raise HTTPException(status_code=403, detail="需要 Premium 會員權限")
             elif error == "report_not_found":
                 raise HTTPException(status_code=404, detail="舉報不存在")
             elif error == "invalid_tx_hash":

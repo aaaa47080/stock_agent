@@ -129,7 +129,7 @@ async def dev_login(request: DevLoginRequest = None):
             )
             print(f"[DEV LOGIN] Created missing mock user {test_username} ({test_user_id}) in DB.")
         
-        # Test User 004 is mocked as PRO in the frontend, so ensure it has PRO in the backend too
+        # Test User 004 is mocked as premium in the frontend, so ensure it matches in the backend too
         if test_user_id == "test-user-004":
             await loop.run_in_executor(None, upgrade_to_pro, test_user_id, 12, None)
 

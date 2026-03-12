@@ -112,7 +112,7 @@ message_manager = MessageConnectionManager()
 # ============================================================================
 
 def _check_user_is_pro(user_id: str) -> bool:
-    """檢查用戶是否為 Pro 會員"""
+    """檢查用戶是否為 Premium 會員。"""
     membership = get_user_membership(user_id)
     return membership.get("is_pro", False)
 
@@ -259,7 +259,7 @@ async def send_message_endpoint(
         if not limit_check["can_send"]:
             raise HTTPException(
                 status_code=429,
-                detail=f"已達每日訊息上限 ({limit_check['limit']} 條)，升級 Pro 會員可無限發送"
+                detail=f"已達每日訊息上限 ({limit_check['limit']} 條)，升級 Premium 會員可無限發送"
             )
 
         # 發送訊息（內部會處理 update_last_active）
@@ -271,7 +271,7 @@ async def send_message_endpoint(
         if not result["success"]:
             raise HTTPException(status_code=400, detail=result.get("error", "發送失敗"))
 
-        # 增加訊息計數（非 Pro 用戶）
+        # 增加訊息計數（非 Premium 用戶）
         if not is_pro:
             await loop.run_in_executor(None, increment_message_count, user_id)
 
@@ -336,7 +336,7 @@ async def mark_read_endpoint(
             # 確定對方用戶 ID
             other_user_id = conv["user2_id"] if conv["user1_id"] == user_id else conv["user1_id"]
 
-            # 檢查對方是否為 Pro 會員（只有 Pro 會員能看到已讀回執）
+            # 檢查對方是否為 Premium 會員（只有 Premium 會員能看到已讀回執）
             is_other_pro = _check_user_is_pro(other_user_id)
             if is_other_pro:
                 await message_manager.send_to_user(other_user_id, {
@@ -360,7 +360,7 @@ async def send_greeting_endpoint(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    發送打招呼訊息（Pro 會員專屬，可發給非好友）
+    發送打招呼訊息（Premium 會員專屬，可發給非好友）
     """
     if current_user["user_id"] != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
@@ -375,10 +375,10 @@ async def send_greeting_endpoint(
         if not receiver_exists:
             raise HTTPException(status_code=404, detail="接收者不存在")
 
-        # 檢查是否為 Pro 會員
+        # 檢查是否為 Premium 會員
         is_pro = _check_user_is_pro(user_id)
         if not is_pro:
-            raise HTTPException(status_code=403, detail="打招呼功能僅限 Pro 會員使用")
+            raise HTTPException(status_code=403, detail="打招呼功能僅限 Premium 會員使用")
 
         # 檢查是否被封鎖
         blocked = await loop.run_in_executor(None, partial(is_blocked, user_id, request.to_user_id))
@@ -444,15 +444,15 @@ async def search_messages_endpoint(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    搜尋訊息（Pro 會員專屬）
+    搜尋訊息（Premium 會員專屬）
     """
     if current_user["user_id"] != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
     try:
-        # 檢查是否為 Pro 會員
+        # 檢查是否為 Premium 會員
         is_pro = _check_user_is_pro(user_id)
         if not is_pro:
-            raise HTTPException(status_code=403, detail="訊息搜尋功能僅限 Pro 會員使用")
+            raise HTTPException(status_code=403, detail="訊息搜尋功能僅限 Premium 會員使用")
 
         loop = asyncio.get_running_loop()
         results = await loop.run_in_executor(None, partial(search_messages, user_id, q, limit=limit))

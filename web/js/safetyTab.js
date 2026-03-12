@@ -654,7 +654,7 @@ const SafetyTab = {
                 }
             } else {
                 const result = await res.json();
-                if (result.detail && result.detail.includes('PRO')) {
+                if (result.detail && (result.detail.includes('PRO') || result.detail.includes('Premium'))) {
                     if (proNotice) proNotice.classList.remove('hidden');
                     if (reviewContent) reviewContent.classList.add('hidden');
                 }

@@ -1,5 +1,5 @@
 """
-高級會員相關 API
+Premium 會員相關 API
 """
 import asyncio
 from functools import partial
@@ -34,7 +34,7 @@ async def get_pricing_plans():
         },
         "pi_price_usd": 0.17,  # 參考價格
         "savings": {
-            "premium_yearly_save": 20.0,  # PRO 年費省 20 Pi
+            "premium_yearly_save": 20.0,  # Premium 年費省 20 Pi
         }
     }
 
@@ -42,7 +42,7 @@ async def get_pricing_plans():
 @router.post("/upgrade")
 async def upgrade_to_premium(request: UpgradeRequest, current_user: dict = Depends(get_current_user)):
     """
-    升級到高級會員
+    升級到 Premium 會員
 
     Args:
         user_id: 用戶ID
@@ -62,7 +62,7 @@ async def upgrade_to_premium(request: UpgradeRequest, current_user: dict = Depen
         if not current_membership:
             raise HTTPException(status_code=404, detail="用戶不存在")
         
-        # 如果已是高級會員，檢查是否過期
+        # 如果已是 Premium 會員，檢查是否過期
         if current_membership["is_pro"]:
             # TODO: 可以選擇續訂或擴展時間
             pass
@@ -85,25 +85,25 @@ async def upgrade_to_premium(request: UpgradeRequest, current_user: dict = Depen
         # 返回新的會員狀態
         new_membership = await loop.run_in_executor(None, get_user_membership, request.user_id)
         
-        logger.info(f"用戶 {request.user_id} 成功升級到高級會員，{request.months} 個月")
+        logger.info(f"用戶 {request.user_id} 成功升級到 Premium 會員，{request.months} 個月")
         
         return {
             "success": True,
-            "message": f"成功升級到高級會員 {request.months} 個月！",
+            "message": f"成功升級到 Premium 會員 {request.months} 個月！",
             "membership": new_membership
         }
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"升級高級會員失敗: {e}")
+        logger.error(f"升級 Premium 會員失敗: {e}")
         raise HTTPException(status_code=500, detail="升級失敗，請稍後再試")
 
 
 @router.get("/status/{user_id}")
 async def get_premium_status(user_id: str, current_user: dict = Depends(get_current_user)):
     """
-    獲取用戶高級會員狀態
+    獲取用戶 Premium 會員狀態
     """
     # Verify user authorization
     if current_user["user_id"] != user_id:
@@ -124,5 +124,5 @@ async def get_premium_status(user_id: str, current_user: dict = Depends(get_curr
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"獲取高級會員狀態失敗: {e}")
+        logger.error(f"獲取 Premium 會員狀態失敗: {e}")
         raise HTTPException(status_code=500, detail="獲取狀態失敗，請稍後再試")

@@ -69,7 +69,7 @@
     <main class="flex-1 max-w-5xl mx-auto w-full p-4 py-8">
         <div class="text-center mb-12">
             <h1 class="text-4xl font-serif font-bold text-secondary mb-4">升級到 <span
-                    class="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">高級會員</span>
+                    class="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">Premium 會員</span>
             </h1>
             <p class="text-textMuted max-w-2xl mx-auto">解鎖全部功能，獲得無限的發文和回覆權限，享受更優質的社區體驗。</p>
         </div>
@@ -116,7 +116,7 @@
                     <span class="text-sm font-bold text-yellow-400">PREMIUM</span>
                 </div>
 
-                <h2 class="text-3xl font-serif font-bold text-secondary mb-2">高級會員</h2>
+                <h2 class="text-3xl font-serif font-bold text-secondary mb-2">Premium 會員</h2>
                 <div class="mb-6">
                     <span class="text-5xl font-bold text-primary" data-price="premium"><span
                             class="animate-pulse">...</span></span>
@@ -209,7 +209,7 @@
 
                         if (result.success) {
                             const membership = result.membership;
-                            document.getElementById('current-tier').textContent = membership.is_pro ? '高級會員' : '免費會員';
+                            document.getElementById('current-tier').textContent = membership.is_pro ? 'Premium 會員' : '免費會員';
 
                             const badge = document.getElementById('membership-badge');
                             badge.textContent = membership.is_pro ? 'PREMIUM' : 'FREE';
