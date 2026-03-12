@@ -6,6 +6,7 @@
  * 初始化 Pi 登入防重複點擊機制
  */
 window._piLoginInProgress = false;
+window.__forceGuestLandingTab = false;
 
 function isSafePiSdkContext() {
     const isLocalhost =
@@ -13,6 +14,19 @@ function isSafePiSdkContext() {
         window.location.hostname === '127.0.0.1' ||
         window.location.hostname === '::1';
     return window.location.protocol === 'https:' && !isLocalhost;
+}
+
+function showPiBrowserRequiredModal() {
+    const modal = document.getElementById('login-modal');
+    const loginBtn = document.getElementById('pi-login-btn');
+    const notPiBrowserMsg = document.getElementById('not-pi-browser-msg');
+    if (loginBtn) loginBtn.style.display = 'none';
+    if (notPiBrowserMsg) notPiBrowserMsg.style.display = 'block';
+    if (modal) modal.classList.remove('hidden');
+}
+
+function enableGuestLandingGate() {
+    window.__forceGuestLandingTab = true;
 }
 
 /**
@@ -70,9 +84,9 @@ window.safePiLogin = async function () {
     var saved = localStorage.getItem('pi_user');
     if (!saved) {
         // 完全沒有登入紀錄 → 直接顯示 modal
+        enableGuestLandingGate();
         document.addEventListener('DOMContentLoaded', function () {
-            var m = document.getElementById('login-modal');
-            if (m) m.classList.remove('hidden');
+            showPiBrowserRequiredModal();
         });
         return;
     }
@@ -83,15 +97,23 @@ window.safePiLogin = async function () {
         if (!expiry || Date.now() > expiry) {
             // Token 已過期，清除並顯示 modal
             localStorage.removeItem('pi_user');
+            enableGuestLandingGate();
             document.addEventListener('DOMContentLoaded', function () {
-                var m = document.getElementById('login-modal');
-                if (m) m.classList.remove('hidden');
+                showPiBrowserRequiredModal();
             });
             return;
         }
         // Token 有效 → 還需要檢測 Pi 環境
         // 如果不在 Pi Browser 中，仍需顯示提示（除非是測試模式）
         document.addEventListener('DOMContentLoaded', function () {
+            // 明確不在 Pi Browser 相容上下文時，立即顯示 gate，
+            // 避免頁面先還原到其他 tab 再被拉回登入提示。
+            if (!isSafePiSdkContext()) {
+                enableGuestLandingGate();
+                showPiBrowserRequiredModal();
+                return;
+            }
+
             // 先檢查是否為測試模式
             var testModeCheck = fetch('/api/config')
                 .then((r) => r.json())
@@ -124,8 +146,8 @@ window.safePiLogin = async function () {
                         }
                         // 非測試模式，顯示 login modal 提示用戶
                         console.warn('⚠️ Token valid but NOT in Pi Browser, showing login modal');
-                        var m = document.getElementById('login-modal');
-                        if (m) m.classList.remove('hidden');
+                        enableGuestLandingGate();
+                        showPiBrowserRequiredModal();
                     });
                 }
             };
@@ -133,9 +155,9 @@ window.safePiLogin = async function () {
         });
     } catch (e) {
         localStorage.removeItem('pi_user');
+        enableGuestLandingGate();
         document.addEventListener('DOMContentLoaded', function () {
-            var m = document.getElementById('login-modal');
-            if (m) m.classList.remove('hidden');
+            showPiBrowserRequiredModal();
         });
     }
 })();

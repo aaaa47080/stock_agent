@@ -16,6 +16,24 @@ window.currentActiveTab = 'chat'; // Default to chat, make it global so chat.js 
  * @returns {Promise<void>}
  */
 async function switchTab(tabId, fromPopState = false) {
+    const validTabs = [
+        'chat',
+        'crypto',
+        'twstock',
+        'usstock',
+        'wallet',
+        'assets',
+        'friends',
+        'forum',
+        'safety',
+        'settings',
+        'admin',
+    ];
+    if (!validTabs.includes(tabId)) {
+        console.warn(`Invalid tab '${tabId}', falling back to 'chat'`);
+        tabId = 'chat';
+    }
+
     // [Security] Strict Login Check
     if (window.AuthManager && !window.AuthManager.isLoggedIn()) {
         const modal = document.getElementById('login-modal');
@@ -659,6 +677,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const returnToTab = sessionStorage.getItem('returnToTab');
     const hashTab = window.location.hash.replace('#', '');
     const savedTab = localStorage.getItem('activeTab') || 'chat';
+    const normalizedSavedTab = validTabs.includes(savedTab) ? savedTab : 'chat';
 
     // 優先使用 returnToTab（從論壇返回），其次 hash，最後 localStorage
     let initialTab;
@@ -668,8 +687,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else if (validTabs.includes(hashTab)) {
         initialTab = hashTab;
     } else {
-        initialTab = savedTab;
+        initialTab = normalizedSavedTab;
     }
+
+    const loginModal = document.getElementById('login-modal');
+    const shouldLockGuestLanding =
+        window.__forceGuestLandingTab === true ||
+        (!!window.AuthManager &&
+            !window.AuthManager.isLoggedIn() &&
+            loginModal &&
+            !loginModal.classList.contains('hidden'));
+    if (shouldLockGuestLanding) {
+        initialTab = 'chat';
+    }
+
     console.log(
         'Initial tab switching to:',
         initialTab,
