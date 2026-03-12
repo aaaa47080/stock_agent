@@ -39,6 +39,10 @@ else:
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/user/login", auto_error=False)
 
+
+def _normalize_membership_tier(tier: Optional[str]) -> str:
+    return "premium" if (tier or "free").strip().lower() in {"premium", "plus", "pro"} else "free"
+
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """
     Create a new JWT access token.
@@ -182,11 +186,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
         # 🔧 Test mode: Support membership tier switching for testing
         # IMPORTANT: Use os.environ.get() instead of os.getenv() to get current value
         # os.getenv() caches at process startup, but os.environ.get() reads current value
-        test_tier = os.environ.get("TEST_USER_TIER", "premium")  # Default to premium for testing
-
-        # 🔍 DIAGNOSTIC: Log test tier information
-        from api.utils import logger
-        logger.info(f"[deps] get_current_user (TEST_MODE) - test_tier={test_tier}, os.environ_TEST_USER_TIER={os.environ.get('TEST_USER_TIER')}")
+        test_tier = _normalize_membership_tier(os.environ.get("TEST_USER_TIER", "premium"))
 
         return {
             "user_id": user_id,

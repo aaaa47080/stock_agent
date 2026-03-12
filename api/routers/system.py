@@ -404,7 +404,7 @@ async def switch_test_tier(request: TestTierRequest, current_user: dict = Depend
 
     用於測試不同會員等級的功能：
     - free: 免費會員功能
-    - premium: PRO 會員功能
+    - premium: Premium 會員功能
     """
     from core.config import TEST_MODE
 
@@ -445,8 +445,11 @@ async def get_current_test_tier(current_user: dict = Depends(get_current_user)):
             detail="此功能僅在測試模式下可用"
         )
 
-    # IMPORTANT: Use os.environ.get() instead of os.getenv() to get current value
-    current_tier = current_user.get("membership_tier", os.environ.get("TEST_USER_TIER", "premium"))
+    from core.database.tools import normalize_membership_tier
+
+    current_tier = normalize_membership_tier(
+        current_user.get("membership_tier", os.environ.get("TEST_USER_TIER", "premium"))
+    )
 
     return {
         "tier": current_tier,

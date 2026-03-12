@@ -133,7 +133,7 @@ function _renderToolRow(tool) {
             : '';
     const tierBadge =
         tool.tier_required === 'premium'
-            ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-yellow-400/10 text-yellow-400 font-bold ml-1">PRO</span>`
+            ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-yellow-400/10 text-yellow-400 font-bold ml-1">PREMIUM</span>`
             : '';
 
     if (isPremiumLocked) {
@@ -152,10 +152,10 @@ function _renderToolRow(tool) {
     }
 
     const checked = tool.is_enabled ? 'checked' : '';
-    const canToggle = _currentUserTier === 'plus' || _currentUserTier === 'premium';
+    const canToggle = _currentUserTier === 'premium';
     const disabledAttr = canToggle ? '' : 'disabled';
     const wrapperClass = canToggle ? 'cursor-pointer' : 'cursor-not-allowed opacity-60';
-    const toggleTitle = canToggle ? '' : 'title="升級 Plus 或 Premium 可自訂工具"';
+    const toggleTitle = canToggle ? '' : 'title="升級 Premium 可自訂工具"';
 
     return `
         <div class="flex items-center gap-3 p-3 rounded-xl bg-background/50 border border-white/5 hover:border-white/10 transition">
@@ -219,7 +219,7 @@ function toggleToolCategory(catId) {
  * 呼叫 API 更新工具偏好（付費會員）
  */
 async function toggleToolPreference(toolId, isEnabled, checkboxEl) {
-    if (_currentUserTier !== 'plus' && _currentUserTier !== 'premium') return;
+    if (_currentUserTier !== 'premium') return;
 
     try {
         const res = await fetch(`/api/user/tools/${toolId}/preference`, {

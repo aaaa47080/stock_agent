@@ -18,20 +18,8 @@ router = APIRouter()
 async def _list_tools_impl(current_user: dict) -> dict:
     """Return all tools with per-user enabled/locked status."""
     from core.database.tools import seed_tools_catalog
-    from core.config import TEST_MODE
-
-    # 🔍 FIX: In test mode, always read current tier from environment variable
-    # instead of using cached value from user object
-    if TEST_MODE:
-        import os
-        user_tier = normalize_membership_tier(os.environ.get("TEST_USER_TIER", "free"))
-    else:
-        user_tier = normalize_membership_tier(current_user.get("membership_tier", "free"))
-
-    user_id   = current_user.get("user_id")
-
-    # 🔍 DIAGNOSTIC: Log tier information
-    logger.info(f"[tools] /api/user/tools called - TEST_MODE={TEST_MODE}, user_tier={user_tier}, membership_tier={current_user.get('membership_tier')}, env_TEST_USER_TIER={os.environ.get('TEST_USER_TIER') if TEST_MODE else 'N/A'}, user_id={user_id}")
+    user_tier = normalize_membership_tier(current_user.get("membership_tier", "free"))
+    user_id = current_user.get("user_id")
 
     loop = asyncio.get_running_loop()
     tools = await loop.run_in_executor(
@@ -70,19 +58,11 @@ async def _set_tool_preference_impl(
     request: ToolPreferenceRequest,
     current_user: dict,
 ) -> dict:
-    """Toggle a tool on/off (PRO tier only)."""
-    from core.config import TEST_MODE
-
-    # 🔍 FIX: In test mode, always read current tier from environment variable
-    # instead of using cached value from user object
-    if TEST_MODE:
-        import os
-        user_tier = normalize_membership_tier(os.environ.get("TEST_USER_TIER", "free"))
-    else:
-        user_tier = normalize_membership_tier(current_user.get("membership_tier", "free"))
+    """Toggle a tool on/off (premium tier only)."""
+    user_tier = normalize_membership_tier(current_user.get("membership_tier", "free"))
 
     if user_tier != "premium":
-        raise HTTPException(status_code=403, detail="PRO 會員才能自訂工具偏好")
+        raise HTTPException(status_code=403, detail="Premium 會員才能自訂工具偏好")
 
     user_id = current_user.get("user_id")
     loop = asyncio.get_running_loop()
@@ -101,12 +81,9 @@ async def _set_tool_preference_impl(
         partial(update_user_tool_preference, user_id, tool_id, request.is_enabled),
     )
 
-    # 🔍 FIX: Invalidate manager cache so tools are reloaded on next request
-    # This is critical - the cached manager instances have stale tool lists
     try:
         from core.agents.bootstrap import invalidate_manager_cache
         invalidate_manager_cache(user_id)
-        logger.info(f"[tools] Invalidated manager cache for user {user_id} after tool preference change")
     except Exception as e:
         logger.warning(f"[tools] Failed to invalidate manager cache: {e}")
 

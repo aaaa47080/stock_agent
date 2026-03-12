@@ -735,8 +735,13 @@ const MessagesPage = {
             const conv = this.conversations.find(
                 (c) => c.other_user_id === this.currentOtherUserId
             );
-            if (conv && conv.other_membership_tier === 'pro') {
-                badge.innerHTML = MessagesUI.getMembershipBadge('pro');
+            if (
+                conv &&
+                ['premium', 'pro', 'plus'].includes(
+                    (conv.other_membership_tier || 'free').toLowerCase()
+                )
+            ) {
+                badge.innerHTML = MessagesUI.getMembershipBadge('premium');
             } else {
                 badge.innerHTML = '';
             }

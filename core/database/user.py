@@ -12,6 +12,10 @@ from datetime import datetime, timedelta
 from .connection import get_connection
 
 
+def _normalize_membership_tier(tier: Optional[str]) -> str:
+    return "premium" if (tier or "free").strip().lower() in {"premium", "plus", "pro"} else "free"
+
+
 # ============================================================================
 # 密碼處理
 # ============================================================================
@@ -97,7 +101,7 @@ def get_user_by_id(user_id: str) -> Optional[Dict]:
                 "auth_method": row[3],
                 "role": row[4] or "user",
                 "is_active": row[5] if row[5] is not None else True,
-                "membership_tier": row[6] or "free",
+                "membership_tier": _normalize_membership_tier(row[6]),
                 "membership_expires_at": row[7].isoformat() if row[7] else None,
                 "created_at": row[8].isoformat() if row[8] else None
             }
@@ -186,7 +190,7 @@ def create_or_get_pi_user(pi_uid: str, username: Optional[str] = None) -> Dict:
                 "username": row[1],
                 "auth_method": row[2],
                 "role": row[4] or "user",
-                "membership_tier": row[5] or "free",
+                "membership_tier": _normalize_membership_tier(row[5]),
                 "is_new": False
             }
 
@@ -348,9 +352,10 @@ def get_user_membership(user_id: str, auto_update_expired: bool = False) -> Dict
         row = c.fetchone()
 
         if row:
-            tier = row[0] or 'free'
+            raw_tier = row[0] or 'free'
+            tier = _normalize_membership_tier(raw_tier)
             expires_at = row[1]
-            is_pro = (tier == 'pro')
+            is_pro = (tier == 'premium')
             is_expired = False
 
             # 檢查是否過期（只檢查，不自動更新）
@@ -410,7 +415,7 @@ def expire_user_membership(user_id: str) -> bool:
         c.execute('''
             UPDATE users
             SET membership_tier = 'free', membership_expires_at = NULL
-            WHERE user_id = %s AND membership_tier = 'pro'
+            WHERE user_id = %s AND membership_tier IN ('pro', 'premium')
         ''', (user_id,))
         conn.commit()
         return c.rowcount > 0
@@ -423,7 +428,7 @@ def expire_user_membership(user_id: str) -> bool:
 
 
 def upgrade_to_pro(user_id: str, months: int = 1, tx_hash: Optional[str] = None) -> bool:
-    """升級用戶為 PRO 會員並記錄支付（支援續費順延）"""
+    """升級用戶為 Premium 會員並記錄支付（保留舊函式名相容，支援續費順延）"""
     conn = get_connection()
     c = conn.cursor()
     try:
@@ -444,7 +449,7 @@ def upgrade_to_pro(user_id: str, months: int = 1, tx_hash: Optional[str] = None)
 
         is_active_pro = False
         tier, expires_at = row
-        if tier == 'pro' and expires_at:
+        if _normalize_membership_tier(tier) == 'premium' and expires_at:
             try:
                 if isinstance(expires_at, str):
                     current_expires = datetime.strptime(expires_at, '%Y-%m-%d %H:%M:%S')
@@ -461,7 +466,7 @@ def upgrade_to_pro(user_id: str, months: int = 1, tx_hash: Optional[str] = None)
             # 續費：從原到期日往後順延
             c.execute('''
                 UPDATE users
-                SET membership_tier = 'pro',
+                SET membership_tier = 'premium',
                     membership_expires_at = membership_expires_at + INTERVAL %s
                 WHERE user_id = %s
             ''', (f"{months} months", user_id))
@@ -469,7 +474,7 @@ def upgrade_to_pro(user_id: str, months: int = 1, tx_hash: Optional[str] = None)
             # 新購或已過期：從現在開始計算
             c.execute('''
                 UPDATE users
-                SET membership_tier = 'pro',
+                SET membership_tier = 'premium',
                     membership_expires_at = NOW() + INTERVAL %s
                 WHERE user_id = %s
             ''', (f"{months} months", user_id))
@@ -490,7 +495,7 @@ def upgrade_to_pro(user_id: str, months: int = 1, tx_hash: Optional[str] = None)
         # 重複交易或用戶不存在等業務錯誤，不回滾（因為沒有執行任何寫入）
         raise
     except Exception as e:
-        print(f"Upgrade to pro error: {e}")
+        print(f"Upgrade to premium error: {e}")
         conn.rollback()
         return False
     finally:

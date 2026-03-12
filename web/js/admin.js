@@ -428,9 +428,10 @@ const AdminPanel = {
                 user.role === 'admin'
                     ? '<span class="text-[10px] px-1.5 py-0.5 bg-danger/20 text-danger rounded-full font-bold">ADMIN</span>'
                     : '';
-            const proBadge =
-                user.membership_tier === 'pro'
-                    ? '<span class="text-[10px] px-1.5 py-0.5 bg-accent/20 text-accent rounded-full font-bold">PRO</span>'
+            const normalizedTier = (user.membership_tier || 'free').toLowerCase();
+            const premiumBadge =
+                ['premium', 'pro', 'plus'].includes(normalizedTier)
+                    ? '<span class="text-[10px] px-1.5 py-0.5 bg-accent/20 text-accent rounded-full font-bold">PREMIUM</span>'
                     : '';
             const statusDot = user.is_active
                 ? '<div class="w-2 h-2 rounded-full bg-success shrink-0" title="Active"></div>'
@@ -447,7 +448,7 @@ const AdminPanel = {
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
                             <span class="text-sm font-medium text-secondary truncate">${this._escapeHtml(user.username)}</span>
-                            ${roleBadge}${proBadge}
+                            ${roleBadge}${premiumBadge}
                         </div>
                         <div class="text-[10px] text-textMuted truncate">${user.user_id}</div>
                     </div>
@@ -480,7 +481,9 @@ const AdminPanel = {
                 const u = data.user;
 
                 const isActive = u.is_active;
-                const isPro = u.membership_tier === 'pro';
+                const normalizedTier = (u.membership_tier || 'free').toLowerCase();
+                const isPro = ['premium', 'pro', 'plus'].includes(normalizedTier);
+                const displayTier = isPro ? 'premium' : 'free';
                 const isAdmin = u.role === 'admin';
 
                 content.innerHTML = `
@@ -508,7 +511,7 @@ const AdminPanel = {
                             </div>
                             <div class="bg-background/50 rounded-xl p-3">
                                 <div class="text-textMuted mb-0.5">Membership</div>
-                                <div class="text-secondary font-medium">${u.membership_tier || 'free'}${u.membership_expires_at ? ' (expires ' + new Date(u.membership_expires_at).toLocaleDateString() + ')' : ''}</div>
+                                <div class="text-secondary font-medium">${displayTier}${u.membership_expires_at ? ' (expires ' + new Date(u.membership_expires_at).toLocaleDateString() + ')' : ''}</div>
                             </div>
                             <div class="bg-background/50 rounded-xl p-3">
                                 <div class="text-textMuted mb-0.5">Status</div>

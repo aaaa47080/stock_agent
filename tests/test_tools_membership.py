@@ -48,6 +48,7 @@ class _DummyAgent(BaseReActAgent):
 def test_normalize_membership_tier_maps_legacy_pro_to_premium():
     assert normalize_membership_tier("pro") == "premium"
     assert normalize_membership_tier("premium") == "premium"
+    assert normalize_membership_tier("plus") == "premium"
     assert normalize_membership_tier(None) == "free"
 
 
@@ -97,3 +98,19 @@ def test_premium_member_can_update_tool_preference():
 
     assert response["success"] is True
     mock_update.assert_called_once()
+
+
+def test_free_member_cannot_update_tool_preference():
+    current_user = {
+        "user_id": "user-1",
+        "membership_tier": "free",
+    }
+    request = ToolPreferenceRequest(is_enabled=False)
+
+    try:
+        asyncio.run(_set_tool_preference_impl("get_crypto_price", request, current_user))
+    except Exception as exc:
+        assert getattr(exc, "status_code", None) == 403
+        assert "Premium" in getattr(exc, "detail", "")
+    else:
+        raise AssertionError("Expected HTTPException for free tier")

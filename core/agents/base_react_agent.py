@@ -18,6 +18,7 @@ from .tool_registry import ToolMetadata
 from core.database.tools import get_allowed_tools, normalize_membership_tier
 
 logger = logging.getLogger(__name__)
+_TIER_LEVELS = {"free": 0, "premium": 1}
 
 
 class BaseReActAgent:
@@ -96,20 +97,16 @@ class BaseReActAgent:
         all_tools = self.tool_registry.list_for_agent(self.name)
         user_tier, user_id = self._resolve_user_scope(task)
 
-        # 🔍 DIAGNOSTIC: Log parameters for tool filtering
-        logger.info(f"[{self.name}] _get_tool_metas - user_tier={user_tier}, user_id={user_id}, self.user_tier={self.user_tier}, self.user_id={self.user_id}")
-
         try:
             allowed_tools = set(get_allowed_tools(self.name, user_tier=user_tier, user_id=user_id))
-            logger.info(f"[{self.name}] get_allowed_tools returned {len(allowed_tools)} tools: {list(allowed_tools)[:5]}...")
             return [meta for meta in all_tools if meta.name in allowed_tools]
         except Exception as e:
             logger.warning(f"[{self.name}] Failed to load DB tool permissions: {e}")
 
-        user_tier_level = {"free": 0, "premium": 1}.get(user_tier, 0)
+        user_tier_level = _TIER_LEVELS.get(user_tier, 0)
         return [
             meta for meta in all_tools
-            if {"free": 0, "premium": 1}.get(normalize_membership_tier(meta.required_tier), 0) <= user_tier_level
+            if _TIER_LEVELS.get(normalize_membership_tier(meta.required_tier), 0) <= user_tier_level
         ]
 
     def _get_tools(self) -> List:

@@ -4,7 +4,7 @@
 
 會員等級：free / premium
 - free: 免費用戶
-- premium: PRO 會員（完整功能）
+- premium: 付費會員（完整功能）
 """
 from typing import List, Dict, Optional, Any
 from .connection import get_connection
@@ -130,7 +130,7 @@ _TOOLS_SEED: List[Dict[str, Any]] = [
         "daily_limit_plus": 30,
         "daily_limit_prem": None,
     },
-    # ── Crypto 衍生品 (Plus+) ────────────────────────────────────────────
+    # ── Crypto 衍生品 (Premium) ────────────────────────────────────────────
     {
         "tool_id": "get_futures_data",
         "display_name": "合約資金費率",
@@ -142,7 +142,7 @@ _TOOLS_SEED: List[Dict[str, Any]] = [
         "daily_limit_plus": None,
         "daily_limit_prem": None,
     },
-    # ── Crypto 鏈上數據 (Plus+) ──────────────────────────────────────────
+    # ── Crypto 鏈上數據 (Premium) ──────────────────────────────────────────
     {
         "tool_id": "get_defillama_tvl",
         "display_name": "DeFi TVL 鎖倉量",
@@ -176,7 +176,7 @@ _TOOLS_SEED: List[Dict[str, Any]] = [
         "daily_limit_plus": None,
         "daily_limit_prem": None,
     },
-    # ── 新增：DEX 交易量 (Plus+) ───────────────────────────────────────────────
+    # ── 新增：DEX 交易量 (Premium) ───────────────────────────────────────────────
     {
         "tool_id": "get_dex_volume",
         "display_name": "DEX 交易量排行",
@@ -257,7 +257,7 @@ _TOOLS_SEED: List[Dict[str, Any]] = [
         "daily_limit_plus": 30,
         "daily_limit_prem": None,
     },
-    # ── 台股 進階 (Plus+) ──────────────────────────────────────────────────
+    # ── 台股 進階 (Premium) ──────────────────────────────────────────────────
     {
         "tool_id": "tw_fundamentals",
         "display_name": "台股基本面",
@@ -359,7 +359,7 @@ _TOOLS_SEED: List[Dict[str, Any]] = [
         "daily_limit_plus": 30,
         "daily_limit_prem": None,
     },
-    # ── 美股 進階 (Plus+) ──────────────────────────────────────────────────
+    # ── 美股 進階 (Premium) ──────────────────────────────────────────────────
     {
         "tool_id": "us_fundamentals",
         "display_name": "美股基本面",
@@ -444,6 +444,7 @@ TIER_HIERARCHY = {"free": 0, "premium": 1}
 _TIER_ALIASES = {
     "free": "free",
     "premium": "premium",
+    "plus": "premium",
     "pro": "premium",
 }
 
@@ -500,11 +501,11 @@ def get_allowed_tools(agent_id: str, user_tier: str = "free", user_id: Optional[
     """
     取得某 agent 對特定用戶可用的工具清單。
 
-    過濾邏輯（三層）：
+    過濾邏輯：
     1. tools_catalog.is_active = TRUE
     2. agent_tool_permissions.is_enabled = TRUE
     3. tools_catalog.tier_required <= user_tier
-       (premium > plus > free)
+       (premium > free)
     4. （可選）用戶偏好：user_tool_preferences.is_enabled = FALSE 的排除
 
     若 DB 資料為空（首次啟動前尚未 seed），回傳 hardcode fallback。
@@ -513,7 +514,7 @@ def get_allowed_tools(agent_id: str, user_tier: str = "free", user_id: Optional[
     conn = get_connection()
     c = conn.cursor()
     try:
-        # 組合 tier 條件（三級會員）
+        # 組合 tier 條件（二級會員）
         user_tier_level = _get_tier_level(user_tier)
         tier_conditions = []
         for tier, level in TIER_HIERARCHY.items():
@@ -617,9 +618,9 @@ def check_tool_quota(user_id: str, tool_id: str, user_tier: str) -> bool:
         if quota_type == "unlimited":
             return True
 
-        # 根據用戶等級選擇對應限制
+        # Premium 沿用 premium 欄位；若舊資料只填了 plus 欄位，仍視為 premium 額度。
         if user_tier == "premium":
-            limit = limit_prem
+            limit = limit_prem if limit_prem is not None else limit_plus
         else:
             limit = limit_free
 
