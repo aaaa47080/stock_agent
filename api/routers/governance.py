@@ -139,6 +139,7 @@ async def get_report_quota(
             "used": used_today,
             "limit": daily_limit,
             "remaining": max(0, daily_limit - used_today),
+            "is_premium": is_pro,
             "is_pro": is_pro
         }
     except Exception as e:

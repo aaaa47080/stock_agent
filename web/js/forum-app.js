@@ -744,7 +744,7 @@ const ForumApp = {
                 console.log('[CreatePost] UI Update limits data:', limitsData);
 
                 if (limitsData.success) {
-                    const isPro = limitsData.membership?.is_pro || false;
+                    const isPro = limitsData.membership?.is_premium ?? limitsData.membership?.is_pro ?? false;
                     // 使用後端返回的限制，fallback 使用動態載入的配置
                     const defaultLimit = getLimit('daily_post_free');
                     const postLimit = limitsData.limits?.post || {
@@ -959,7 +959,7 @@ const ForumApp = {
 
                     if (limitsData.success) {
                         const postLimit = limitsData.limits.post;
-                        isProMember = limitsData.membership?.is_pro || false;
+                        isProMember = limitsData.membership?.is_premium ?? limitsData.membership?.is_pro ?? false;
 
                         // Check if limit reached
                         // limit === null means unlimited (Pro)

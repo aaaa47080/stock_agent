@@ -33,7 +33,9 @@ async def admin_stats_overview(
                 stats["active_today"] = c.fetchone()[0]
 
                 c.execute("SELECT COUNT(*) FROM users WHERE membership_tier = 'pro' AND (membership_expires_at IS NULL OR membership_expires_at > NOW())")
-                stats["pro_users"] = c.fetchone()[0]
+                premium_users = c.fetchone()[0]
+                stats["premium_users"] = premium_users
+                stats["pro_users"] = premium_users
 
                 c.execute("SELECT COUNT(*) FROM posts WHERE is_hidden = 0")
                 stats["total_posts"] = c.fetchone()[0]

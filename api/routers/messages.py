@@ -511,6 +511,7 @@ async def get_message_limits_endpoint(
         max_length = await loop.run_in_executor(None, partial(get_config, 'limit_message_max_length', 500))
         return {
             "success": True,
+            "is_premium": is_pro,
             "is_pro": is_pro,
             "message_limit": message_limit,
             "greeting_limit": greeting_limit,

@@ -338,6 +338,7 @@ def get_user_membership(user_id: str, auto_update_expired: bool = False) -> Dict
         {
             "tier": str,
             "expires_at": str | None,
+            "is_premium": bool,
             "is_pro": bool,
             "is_expired": bool  # 新增：標記是否已過期（但未更新）
         }
@@ -393,13 +394,15 @@ def get_user_membership(user_id: str, auto_update_expired: bool = False) -> Dict
             if expires_at and not isinstance(expires_at, str):
                 expires_at = expires_at.strftime('%Y-%m-%d %H:%M:%S')
 
+            is_premium = is_pro and not is_expired
             return {
                 "tier": tier,
                 "expires_at": expires_at,
-                "is_pro": is_pro and not is_expired,  # 已過期的不算 pro
+                "is_premium": is_premium,
+                "is_pro": is_premium,  # 保留舊欄位相容
                 "is_expired": is_expired
             }
-        return {"tier": "free", "expires_at": None, "is_pro": False, "is_expired": False}
+        return {"tier": "free", "expires_at": None, "is_premium": False, "is_pro": False, "is_expired": False}
     finally:
         conn.close()
 
