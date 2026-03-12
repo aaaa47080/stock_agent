@@ -41,7 +41,9 @@ def create_report(db, reporter_user_id: str, content_type: str, content_id: int,
         return {"success": False, "error": "cannot_report_own_content"}
 
     # Check daily report limit
-    limit = PRO_DAILY_REPORT_LIMIT if get_user_membership(reporter_user_id).get('is_pro') else DEFAULT_DAILY_REPORT_LIMIT
+    membership = get_user_membership(reporter_user_id)
+    is_premium = membership.get('is_premium', membership.get('is_pro'))
+    limit = PRO_DAILY_REPORT_LIMIT if is_premium else DEFAULT_DAILY_REPORT_LIMIT
     if not check_daily_report_limit(db, reporter_user_id, limit):
         return {"success": False, "error": "daily_limit_exceeded"}
 

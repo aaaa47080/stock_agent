@@ -21,7 +21,7 @@ from .helpers import get_content_author
 
 def vote_on_report(db, report_id: int, reviewer_user_id: str, vote_type: str) -> Dict:
     """
-    Cast a vote on a report (PRO members only)
+    Cast a vote on a report (Premium members only)
 
     Args:
         db: Database connection (optional)
@@ -35,9 +35,9 @@ def vote_on_report(db, report_id: int, reviewer_user_id: str, vote_type: str) ->
     if vote_type not in ['approve', 'reject']:
         return {"success": False, "error": "invalid_vote_type"}
 
-    # Check PRO membership
+    # Check premium membership
     membership = get_user_membership(reviewer_user_id)
-    if not membership.get('is_pro'):
+    if not membership.get('is_premium', membership.get('is_pro')):
         return {"success": False, "error": "pro_membership_required"}
 
     # Get reputation for vote weight

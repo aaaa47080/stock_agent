@@ -56,7 +56,7 @@ def check_daily_post_limit(user_id: str) -> Dict:
     c = conn.cursor()
     try:
         membership = get_user_membership(user_id)
-        is_premium = membership['is_pro']
+        is_premium = membership.get('is_premium', membership.get('is_pro'))
 
         # 獲取對應的限制（從數據庫動態讀取）
         limits = get_limits()
@@ -92,7 +92,7 @@ def create_post(board_id: int, user_id: str, category: str, title: str, content:
     創建新文章
     返回: {"success": bool, "post_id": int} 或 {"success": False, "error": str, ...}
 
-    skip_limit_check: 跳過限制檢查（用於 PRO 會員等特殊情況）
+    skip_limit_check: 跳過限制檢查（用於 Premium 會員等特殊情況）
     """
     # 內容長度限制
     MAX_TITLE_LENGTH = 200
@@ -500,7 +500,8 @@ def add_comment(post_id: int, user_id: str, comment_type: str, content: Optional
         if comment_type == 'comment':
             membership = get_user_membership(user_id)
             limits = get_limits()
-            limit = limits["daily_comment_premium"] if membership['is_pro'] else limits["daily_comment_free"]
+            is_premium = membership.get('is_premium', membership.get('is_pro'))
+            limit = limits["daily_comment_premium"] if is_premium else limits["daily_comment_free"]
 
             # 如果有限制，檢查是否超過
             if limit is not None:
@@ -636,7 +637,8 @@ def get_daily_comment_count(user_id: str) -> Dict:
 
     membership = get_user_membership(user_id)
     limits = get_limits()
-    limit = limits["daily_comment_premium"] if membership['is_pro'] else limits["daily_comment_free"]
+    is_premium = membership.get('is_premium', membership.get('is_pro'))
+    limit = limits["daily_comment_premium"] if is_premium else limits["daily_comment_free"]
 
     return {
         "count": count,
@@ -656,7 +658,8 @@ def get_daily_post_count(user_id: str) -> Dict:
 
     membership = get_user_membership(user_id)
     limits = get_limits()
-    limit = limits["daily_post_premium"] if membership['is_pro'] else limits["daily_post_free"]
+    is_premium = membership.get('is_premium', membership.get('is_pro'))
+    limit = limits["daily_post_premium"] if is_premium else limits["daily_post_free"]
 
     return {
         "count": count,

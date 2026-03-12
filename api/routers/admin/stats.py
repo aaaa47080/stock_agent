@@ -32,7 +32,7 @@ async def admin_stats_overview(
                 c.execute("SELECT COUNT(*) FROM users WHERE last_active_at > NOW() - INTERVAL '24 hours'")
                 stats["active_today"] = c.fetchone()[0]
 
-                c.execute("SELECT COUNT(*) FROM users WHERE membership_tier = 'pro' AND (membership_expires_at IS NULL OR membership_expires_at > NOW())")
+                c.execute("SELECT COUNT(*) FROM users WHERE membership_tier IN ('pro', 'premium') AND (membership_expires_at IS NULL OR membership_expires_at > NOW())")
                 premium_users = c.fetchone()[0]
                 stats["premium_users"] = premium_users
                 stats["pro_users"] = premium_users

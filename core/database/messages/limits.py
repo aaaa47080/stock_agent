@@ -8,15 +8,15 @@ from ..connection import get_connection
 from .config import _get_message_config
 
 
-def check_message_limit(user_id: str, is_pro: bool) -> Dict:
+def check_message_limit(user_id: str, is_premium: bool) -> Dict:
     """
     檢查用戶是否超過每日訊息限制
     返回: {"can_send": bool, "remaining": int, "limit": int}
     """
-    # Pro 會員：檢查是否有限制
-    if is_pro:
-        pro_limit = _get_message_config('limit_daily_message_premium', None)
-        if pro_limit is None:
+    # Premium 會員：檢查是否有限制
+    if is_premium:
+        premium_limit = _get_message_config('limit_daily_message_premium', None)
+        if premium_limit is None:
             return {"can_send": True, "remaining": -1, "limit": -1}  # -1 表示無限
 
     # 從資料庫讀取限制配置
@@ -64,13 +64,13 @@ def increment_message_count(user_id: str) -> None:
         conn.close()
 
 
-def check_greeting_limit(user_id: str, is_pro: bool) -> Dict:
+def check_greeting_limit(user_id: str, is_premium: bool) -> Dict:
     """
-    檢查 Pro 用戶的每月打招呼限制
+    檢查 Premium 用戶的每月打招呼限制
     返回: {"can_send": bool, "remaining": int, "limit": int}
     """
-    if not is_pro:
-        return {"can_send": False, "remaining": 0, "limit": 0, "error": "pro_only"}
+    if not is_premium:
+        return {"can_send": False, "remaining": 0, "limit": 0, "error": "premium_only"}
 
     # 從資料庫讀取限制配置
     monthly_limit = _get_message_config('limit_monthly_greeting', 5)

@@ -70,7 +70,7 @@ RATE_LIMITS = {
 
     # Community Governance endpoints
     "governance_report": "10/hour",  # Report submission (strict)
-    "governance_vote": "30/hour",    # Voting (PRO members only)
+    "governance_vote": "30/hour",    # Voting (Premium members only)
     "governance_read": "100/hour",   # Reading governance data
 
     # Sensitive API Key endpoints (very strict to prevent key theft)

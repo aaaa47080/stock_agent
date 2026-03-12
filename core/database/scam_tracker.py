@@ -63,9 +63,9 @@ def create_scam_report(
             if not valid:
                 return {"success": False, "error": "invalid_tx_hash", "detail": error}
 
-        # 3. 檢查 PRO 權限
+        # 3. 檢查 Premium 權限
         membership = get_user_membership(reporter_user_id)
-        if not membership['is_pro']:
+        if not membership.get('is_premium', membership.get('is_pro')):
             return {"success": False, "error": "pro_membership_required"}
 
         # 4. 檢查每日限額
@@ -579,7 +579,7 @@ def add_scam_comment(
     transaction_hash: Optional[str] = None
 ) -> Dict:
     """
-    添加評論（僅 PRO 用戶）
+    添加評論（僅 Premium 用戶）
 
     Args:
         report_id: 舉報 ID
@@ -594,11 +594,11 @@ def add_scam_comment(
     c = conn.cursor()
 
     try:
-        # 檢查 PRO 權限
+        # 檢查 Premium 權限
         require_pro = get_config('scam_comment_require_pro', True)
         if require_pro:
             membership = get_user_membership(user_id)
-            if not membership['is_pro']:
+            if not membership.get('is_premium', membership.get('is_pro')):
                 return {"success": False, "error": "pro_membership_required"}
 
         # 檢查舉報是否存在

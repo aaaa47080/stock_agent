@@ -759,20 +759,20 @@ def init_default_data(c):
         # 價格配置
         ('price_create_post', str(PI_PAYMENT_PRICES.get('create_post', 1.0)), 'float', 'pricing', '發文費用 (Pi)', 1),
         ('price_tip', str(PI_PAYMENT_PRICES.get('tip', 1.0)), 'float', 'pricing', '打賞費用 (Pi)', 1),
-        ('price_premium', str(PI_PAYMENT_PRICES.get('premium', 1.0)), 'float', 'pricing', '高級會員費用 (Pi)', 1),
+        ('price_premium', str(PI_PAYMENT_PRICES.get('premium', 1.0)), 'float', 'pricing', 'Premium 會員費用 (Pi)', 1),
         # 論壇限制配置
         ('limit_daily_post_free', str(FORUM_LIMITS.get('daily_post_free', 3)), 'int', 'limits', '一般會員每日發文上限', 1),
-        ('limit_daily_post_premium', 'null', 'int', 'limits', '高級會員每日發文上限 (null=無限)', 1),
+        ('limit_daily_post_premium', 'null', 'int', 'limits', 'Premium 會員每日發文上限 (null=無限)', 1),
         ('limit_daily_comment_free', str(FORUM_LIMITS.get('daily_comment_free', 20)), 'int', 'limits', '一般會員每日回覆上限', 1),
-        ('limit_daily_comment_premium', 'null', 'int', 'limits', '高級會員每日回覆上限 (null=無限)', 1),
+        ('limit_daily_comment_premium', 'null', 'int', 'limits', 'Premium 會員每日回覆上限 (null=無限)', 1),
         # 私訊限制配置
         ('limit_daily_message_free', '20', 'int', 'limits', '一般會員每日私訊上限', 1),
-        ('limit_daily_message_premium', 'null', 'int', 'limits', '高級會員每日私訊上限 (null=無限)', 1),
-        ('limit_monthly_greeting', '5', 'int', 'limits', '高級會員每月打招呼上限', 1),
+        ('limit_daily_message_premium', 'null', 'int', 'limits', 'Premium 會員每日私訊上限 (null=無限)', 1),
+        ('limit_monthly_greeting', '5', 'int', 'limits', 'Premium 會員每月打招呼上限', 1),
         ('limit_message_max_length', '500', 'int', 'limits', '單則訊息最大字數', 1),
         # 可疑錢包追蹤配置
-        ('scam_report_daily_limit_pro', '5', 'int', 'scam_tracker', 'PRO 用戶每日可舉報可疑錢包數量', 1),
-        ('scam_comment_require_pro', 'true', 'bool', 'scam_tracker', '評論是否僅限 PRO 用戶', 1),
+        ('scam_report_daily_limit_pro', '5', 'int', 'scam_tracker', 'Premium 用戶每日可舉報可疑錢包數量', 1),
+        ('scam_comment_require_pro', 'true', 'bool', 'scam_tracker', '評論是否僅限 Premium 用戶', 1),
         ('scam_verification_vote_threshold', '10', 'int', 'scam_tracker', '達到「已驗證」所需的最低總投票數', 1),
         ('scam_verification_approve_rate', '0.7', 'float', 'scam_tracker', '達到「已驗證」所需的贊同率（0-1）', 1),
         ('scam_wallet_mask_length', '4', 'int', 'scam_tracker', '錢包地址遮罩顯示長度（前後各保留字符數）', 1),

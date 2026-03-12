@@ -111,10 +111,10 @@ message_manager = MessageConnectionManager()
 # 輔助函數
 # ============================================================================
 
-def _check_user_is_pro(user_id: str) -> bool:
+def _check_user_is_premium(user_id: str) -> bool:
     """檢查用戶是否為 Premium 會員。"""
     membership = get_user_membership(user_id)
-    return membership.get("is_pro", False)
+    return membership.get("is_premium", membership.get("is_pro", False))
 
 
 # ============================================================================
@@ -253,8 +253,8 @@ async def send_message_endpoint(
                 raise HTTPException(status_code=400, detail="驗證失敗")
 
         # 檢查訊息限制
-        is_pro = _check_user_is_pro(user_id)
-        limit_check = await loop.run_in_executor(None, partial(check_message_limit, user_id, is_pro))
+        is_premium = _check_user_is_premium(user_id)
+        limit_check = await loop.run_in_executor(None, partial(check_message_limit, user_id, is_premium))
 
         if not limit_check["can_send"]:
             raise HTTPException(
@@ -272,7 +272,7 @@ async def send_message_endpoint(
             raise HTTPException(status_code=400, detail=result.get("error", "發送失敗"))
 
         # 增加訊息計數（非 Premium 用戶）
-        if not is_pro:
+        if not is_premium:
             await loop.run_in_executor(None, increment_message_count, user_id)
 
         # 透過 WebSocket 推送給接收者
@@ -337,8 +337,8 @@ async def mark_read_endpoint(
             other_user_id = conv["user2_id"] if conv["user1_id"] == user_id else conv["user1_id"]
 
             # 檢查對方是否為 Premium 會員（只有 Premium 會員能看到已讀回執）
-            is_other_pro = _check_user_is_pro(other_user_id)
-            if is_other_pro:
+            is_other_premium = _check_user_is_premium(other_user_id)
+            if is_other_premium:
                 await message_manager.send_to_user(other_user_id, {
                     "type": "read_receipt",
                     "conversation_id": request.conversation_id,
@@ -376,8 +376,8 @@ async def send_greeting_endpoint(
             raise HTTPException(status_code=404, detail="接收者不存在")
 
         # 檢查是否為 Premium 會員
-        is_pro = _check_user_is_pro(user_id)
-        if not is_pro:
+        is_premium = _check_user_is_premium(user_id)
+        if not is_premium:
             raise HTTPException(status_code=403, detail="打招呼功能僅限 Premium 會員使用")
 
         # 檢查是否被封鎖
@@ -386,7 +386,7 @@ async def send_greeting_endpoint(
             raise HTTPException(status_code=403, detail="無法發送訊息給此用戶")
 
         # 檢查打招呼限制
-        limit_check = await loop.run_in_executor(None, partial(check_greeting_limit, user_id, is_pro))
+        limit_check = await loop.run_in_executor(None, partial(check_greeting_limit, user_id, is_premium))
         if not limit_check["can_send"]:
             raise HTTPException(
                 status_code=429,
@@ -450,8 +450,8 @@ async def search_messages_endpoint(
         raise HTTPException(status_code=403, detail="Not authorized")
     try:
         # 檢查是否為 Premium 會員
-        is_pro = _check_user_is_pro(user_id)
-        if not is_pro:
+        is_premium = _check_user_is_premium(user_id)
+        if not is_premium:
             raise HTTPException(status_code=403, detail="訊息搜尋功能僅限 Premium 會員使用")
 
         loop = asyncio.get_running_loop()
@@ -503,16 +503,16 @@ async def get_message_limits_endpoint(
         raise HTTPException(status_code=403, detail="Not authorized")
     try:
         from core.database import get_config
-        is_pro = _check_user_is_pro(user_id)
+        is_premium = _check_user_is_premium(user_id)
 
         loop = asyncio.get_running_loop()
-        message_limit = await loop.run_in_executor(None, partial(check_message_limit, user_id, is_pro))
-        greeting_limit = await loop.run_in_executor(None, partial(check_greeting_limit, user_id, is_pro))
+        message_limit = await loop.run_in_executor(None, partial(check_message_limit, user_id, is_premium))
+        greeting_limit = await loop.run_in_executor(None, partial(check_greeting_limit, user_id, is_premium))
         max_length = await loop.run_in_executor(None, partial(get_config, 'limit_message_max_length', 500))
         return {
             "success": True,
-            "is_premium": is_pro,
-            "is_pro": is_pro,
+            "is_premium": is_premium,
+            "is_pro": is_premium,
             "message_limit": message_limit,
             "greeting_limit": greeting_limit,
             "max_length": max_length
