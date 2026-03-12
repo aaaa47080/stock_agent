@@ -29,6 +29,54 @@ const DebugLog = {
 
 window.DebugLog = DebugLog;
 
+const PiEnvironment = {
+    isLocalhost() {
+        return (
+            window.location.hostname === 'localhost' ||
+            window.location.hostname === '127.0.0.1' ||
+            window.location.hostname === '::1'
+        );
+    },
+
+    isSafeSdkContext() {
+        return window.location.protocol === 'https:' && !this.isLocalhost();
+    },
+
+    hasPiSdk() {
+        return (
+            typeof window.Pi !== 'undefined' &&
+            window.Pi !== null &&
+            typeof window.Pi.authenticate === 'function' &&
+            typeof window.Pi.init === 'function'
+        );
+    },
+
+    isPiBrowser() {
+        return this.isSafeSdkContext() && this.hasPiSdk();
+    },
+
+    getAccessToken() {
+        return window.AuthManager?.currentUser?.accessToken || null;
+    },
+
+    isAuthenticated() {
+        return !!this.getAccessToken();
+    },
+
+    getAuthHeaders(extraHeaders = {}) {
+        const token = this.getAccessToken();
+        return token
+            ? { ...extraHeaders, Authorization: 'Bearer ' + token }
+            : { ...extraHeaders };
+    },
+
+    shouldBlockProtectedRequests() {
+        return !this.isAuthenticated();
+    },
+};
+
+window.PiEnvironment = PiEnvironment;
+
 const AuthManager = {
     currentUser: null,
     piInitialized: false,
@@ -297,7 +345,7 @@ const AuthManager = {
      * @returns {Promise<boolean>}
      */
     async initPiSDKAsync() {
-        if (!isPiBrowser()) {
+        if (!PiEnvironment.isPiBrowser()) {
             DebugLog.info('initPiSDKAsync: skipping outside secure Pi context');
             return false;
         }
@@ -322,7 +370,7 @@ const AuthManager = {
     },
 
     initPiSDK() {
-        if (!isPiBrowser()) {
+        if (!PiEnvironment.isPiBrowser()) {
             DebugLog.info('initPiSDK: skipping outside secure Pi context');
             return false;
         }
@@ -347,31 +395,17 @@ const AuthManager = {
     },
 
     isPiBrowser() {
-        const isLocalhost =
-            window.location.hostname === 'localhost' ||
-            window.location.hostname === '127.0.0.1' ||
-            window.location.hostname === '::1';
-        const isSecurePiContext = window.location.protocol === 'https:' && !isLocalhost;
-
-        if (!isSecurePiContext) {
-            return false;
-        }
-
-        // 同步檢測：Pi SDK 必須存在且有必要方法
-        const hasPiSDK =
-            typeof window.Pi !== 'undefined' &&
-            window.Pi !== null &&
-            typeof window.Pi.authenticate === 'function' &&
-            typeof window.Pi.init === 'function';
+        const hasPiSDK = PiEnvironment.hasPiSdk();
+        const result = PiEnvironment.isPiBrowser();
 
         DebugLog.info('isPiBrowser 同步檢測', {
             userAgent: navigator.userAgent,
             hasPiSDK: hasPiSDK,
             hasAuthMethod: typeof window.Pi?.authenticate === 'function',
             hasInitMethod: typeof window.Pi?.init === 'function',
-            result: hasPiSDK,
+            result,
         });
-        return hasPiSDK;
+        return result;
     },
 
     // 異步快速檢測 Pi Browser 環境是否有效
@@ -755,23 +789,7 @@ const AuthManager = {
 
 // 工具函式
 function isPiBrowser() {
-    const isLocalhost =
-        window.location.hostname === 'localhost' ||
-        window.location.hostname === '127.0.0.1' ||
-        window.location.hostname === '::1';
-    const isSecurePiContext = window.location.protocol === 'https:' && !isLocalhost;
-
-    if (!isSecurePiContext) {
-        return false;
-    }
-
-    // 嚴格檢測：Pi SDK 必須存在且有必要方法
-    const hasPiSDK =
-        typeof window.Pi !== 'undefined' &&
-        window.Pi !== null &&
-        typeof window.Pi.authenticate === 'function' &&
-        typeof window.Pi.init === 'function';
-    return hasPiSDK;
+    return PiEnvironment.isPiBrowser();
 }
 
 function canMakePiPayment() {

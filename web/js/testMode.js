@@ -7,10 +7,18 @@
  */
 async function initTestMode() {
     const tierSwitcher = document.getElementById('test-tier-switcher');
+    if (window.PiEnvironment?.shouldBlockProtectedRequests()) {
+        if (tierSwitcher) {
+            tierSwitcher.classList.add('hidden');
+        }
+        return;
+    }
 
     // 檢查是否在測試模式
     try {
-        const res = await fetch('/api/test-mode/current-tier');
+        const res = await fetch('/api/test-mode/current-tier', {
+            headers: window.PiEnvironment?.getAuthHeaders() || {},
+        });
         if (!res.ok) {
             // 非 403 錯誤，可能是真正的 API 錯誤
             if (res.status !== 403) {
@@ -52,6 +60,7 @@ async function handleSwitchTestTier(tier) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                ...(window.PiEnvironment?.getAuthHeaders() || {}),
             },
             body: JSON.stringify({ tier: tier }),
         });
