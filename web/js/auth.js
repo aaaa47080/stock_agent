@@ -1121,7 +1121,7 @@ async function loadPremiumStatus() {
         const result = await response.json();
         const membership = result.membership;
         // Re-apply with accurate expiry date from API
-        _applyPremiumBadgeUI(statusBadge, upgradeBtn, membership.is_premium ?? membership.is_pro, membership.expires_at);
+        _applyPremiumBadgeUI(statusBadge, upgradeBtn, membership.is_premium, membership.expires_at);
     } catch (e) {
         // Cached display already shown — silently ignore API errors
         console.warn('loadPremiumStatus API error (cached display retained):', e);

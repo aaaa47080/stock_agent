@@ -339,7 +339,6 @@ def get_user_membership(user_id: str, auto_update_expired: bool = False) -> Dict
             "tier": str,
             "expires_at": str | None,
             "is_premium": bool,
-            "is_pro": bool,
             "is_expired": bool  # 新增：標記是否已過期（但未更新）
         }
     """
@@ -356,11 +355,11 @@ def get_user_membership(user_id: str, auto_update_expired: bool = False) -> Dict
             raw_tier = row[0] or 'free'
             tier = _normalize_membership_tier(raw_tier)
             expires_at = row[1]
-            is_pro = (tier == 'premium')
+            is_premium = (tier == 'premium')
             is_expired = False
 
             # 檢查是否過期（只檢查，不自動更新）
-            if is_pro and expires_at:
+            if is_premium and expires_at:
                 try:
                     # PostgreSQL 返回 datetime 對象
                     if isinstance(expires_at, str):
@@ -383,7 +382,7 @@ def get_user_membership(user_id: str, auto_update_expired: bool = False) -> Dict
                             # 更新返回值
                             tier = 'free'
                             expires_at = None
-                            is_pro = False
+                            is_premium = False
                             is_expired = False  # 已經更新了，不再是「過期未更新」狀態
                             print(f"[Membership] User {user_id} expired, downgraded to free.")
                 except (ValueError, TypeError):
@@ -394,15 +393,14 @@ def get_user_membership(user_id: str, auto_update_expired: bool = False) -> Dict
             if expires_at and not isinstance(expires_at, str):
                 expires_at = expires_at.strftime('%Y-%m-%d %H:%M:%S')
 
-            is_premium = is_pro and not is_expired
+            is_premium = is_premium and not is_expired
             return {
                 "tier": tier,
                 "expires_at": expires_at,
                 "is_premium": is_premium,
-                "is_pro": is_premium,  # 保留舊欄位相容
                 "is_expired": is_expired
             }
-        return {"tier": "free", "expires_at": None, "is_premium": False, "is_pro": False, "is_expired": False}
+        return {"tier": "free", "expires_at": None, "is_premium": False, "is_expired": False}
     finally:
         conn.close()
 

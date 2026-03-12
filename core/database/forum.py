@@ -56,7 +56,7 @@ def check_daily_post_limit(user_id: str) -> Dict:
     c = conn.cursor()
     try:
         membership = get_user_membership(user_id)
-        is_premium = membership.get('is_premium', membership.get('is_pro'))
+        is_premium = membership.get('is_premium', False)
 
         # 獲取對應的限制（從數據庫動態讀取）
         limits = get_limits()
@@ -500,7 +500,7 @@ def add_comment(post_id: int, user_id: str, comment_type: str, content: Optional
         if comment_type == 'comment':
             membership = get_user_membership(user_id)
             limits = get_limits()
-            is_premium = membership.get('is_premium', membership.get('is_pro'))
+            is_premium = membership.get('is_premium', False)
             limit = limits["daily_comment_premium"] if is_premium else limits["daily_comment_free"]
 
             # 如果有限制，檢查是否超過
@@ -637,7 +637,7 @@ def get_daily_comment_count(user_id: str) -> Dict:
 
     membership = get_user_membership(user_id)
     limits = get_limits()
-    is_premium = membership.get('is_premium', membership.get('is_pro'))
+    is_premium = membership.get('is_premium', False)
     limit = limits["daily_comment_premium"] if is_premium else limits["daily_comment_free"]
 
     return {
@@ -658,7 +658,7 @@ def get_daily_post_count(user_id: str) -> Dict:
 
     membership = get_user_membership(user_id)
     limits = get_limits()
-    is_premium = membership.get('is_premium', membership.get('is_pro'))
+    is_premium = membership.get('is_premium', False)
     limit = limits["daily_post_premium"] if is_premium else limits["daily_post_free"]
 
     return {

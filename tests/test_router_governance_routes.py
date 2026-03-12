@@ -32,8 +32,8 @@ class TestGovernanceRouter:
 class TestGovernanceConstants:
     """Tests for governance constants"""
 
-    def test_pro_daily_report_limit_defined(self):
-        """Test PRO daily report limit is defined"""
+    def test_premium_daily_report_limit_defined(self):
+        """Test premium daily report limit is defined"""
         assert PRO_DAILY_REPORT_LIMIT is not None
         assert isinstance(PRO_DAILY_REPORT_LIMIT, int)
 
@@ -55,8 +55,8 @@ class TestGovernanceConstants:
         """Test consensus reject threshold is defined"""
         assert CONSENSUS_REJECT_THRESHOLD is not None
 
-    def test_pro_limit_higher_than_default(self):
-        """Test PRO limit is higher than default"""
+    def test_premium_limit_higher_than_default(self):
+        """Test premium limit is higher than default"""
         assert PRO_DAILY_REPORT_LIMIT > DEFAULT_DAILY_REPORT_LIMIT
 
 

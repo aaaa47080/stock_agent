@@ -114,7 +114,7 @@ async def create_new_post(request: CreatePostRequest, user_id: str = Query(..., 
         # 免費會員需要付費 (測試模式下跳過)
         is_test_user = TEST_MODE and (user_id.startswith("test-user-") or user_id == TEST_USER.get("uid"))
         
-        if not membership["is_pro"] and not request.payment_tx_hash:
+        if not membership["is_premium"] and not request.payment_tx_hash:
             if is_test_user:
                 # TEST_MODE: Mock payment for test users
                 request.payment_tx_hash = f"test_post_{int(time.time() * 1000)}"

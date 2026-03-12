@@ -88,7 +88,7 @@ const MessagesPage = {
     async loadLimits() {
         const limits = await MessagesAPI.getLimits();
         if (limits) {
-            this.isPro = limits.is_premium ?? limits.is_pro;
+            this.isPro = limits.is_premium;
 
             // 更新訊息長度限制（從 API 取得）
             if (limits.max_length) {

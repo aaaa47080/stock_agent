@@ -65,8 +65,8 @@ def create_scam_report(
 
         # 3. 檢查 Premium 權限
         membership = get_user_membership(reporter_user_id)
-        if not membership.get('is_premium', membership.get('is_pro')):
-            return {"success": False, "error": "pro_membership_required"}
+        if not membership.get('is_premium', False):
+            return {"success": False, "error": "premium_membership_required"}
 
         # 4. 檢查每日限額
         daily_limit = get_config('scam_report_daily_limit_pro', 5)
@@ -598,8 +598,8 @@ def add_scam_comment(
         require_pro = get_config('scam_comment_require_pro', True)
         if require_pro:
             membership = get_user_membership(user_id)
-            if not membership.get('is_premium', membership.get('is_pro')):
-                return {"success": False, "error": "pro_membership_required"}
+            if not membership.get('is_premium', False):
+                return {"success": False, "error": "premium_membership_required"}
 
         # 檢查舉報是否存在
         c.execute('SELECT id FROM scam_reports WHERE id = %s', (report_id,))

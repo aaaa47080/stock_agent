@@ -107,7 +107,7 @@ class TestCheckDailyPostLimit:
             mock_cursor.fetchone.return_value = (3,)
 
             with patch('core.database.forum.get_user_membership') as mock_membership:
-                mock_membership.return_value = {"is_pro": False}
+                mock_membership.return_value = {"is_premium": False}
 
                 with patch('core.database.forum.get_limits') as mock_limits:
                     mock_limits.return_value = {"daily_post_free": 5}
@@ -124,7 +124,7 @@ class TestCheckDailyPostLimit:
             mock_cursor.fetchone.return_value = (5,)
 
             with patch('core.database.forum.get_user_membership') as mock_membership:
-                mock_membership.return_value = {"is_pro": False}
+                mock_membership.return_value = {"is_premium": False}
 
                 with patch('core.database.forum.get_limits') as mock_limits:
                     mock_limits.return_value = {"daily_post_free": 5}

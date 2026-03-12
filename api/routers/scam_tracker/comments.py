@@ -91,7 +91,7 @@ async def add_comment_to_report(
             error = result.get("error")
             detail = result.get("detail", "")
 
-            if error == "pro_membership_required":
+            if error == "premium_membership_required":
                 raise HTTPException(status_code=403, detail="需要 Premium 會員權限")
             elif error == "report_not_found":
                 raise HTTPException(status_code=404, detail="舉報不存在")

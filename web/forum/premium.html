@@ -209,7 +209,7 @@
 
                         if (result.success) {
                             const membership = result.membership;
-                            const isPremium = membership.is_premium ?? membership.is_pro;
+                            const isPremium = membership.is_premium;
                             document.getElementById('current-tier').textContent = isPremium ? 'Premium 會員' : '免費會員';
 
                             const badge = document.getElementById('membership-badge');

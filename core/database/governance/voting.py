@@ -37,8 +37,8 @@ def vote_on_report(db, report_id: int, reviewer_user_id: str, vote_type: str) ->
 
     # Check premium membership
     membership = get_user_membership(reviewer_user_id)
-    if not membership.get('is_premium', membership.get('is_pro')):
-        return {"success": False, "error": "pro_membership_required"}
+    if not membership.get('is_premium', False):
+        return {"success": False, "error": "premium_membership_required"}
 
     # Get reputation for vote weight
     reputation = get_audit_reputation(db, reviewer_user_id)

@@ -190,7 +190,7 @@ async def create_new_scam_report(
             detail = result.get("detail", "")
 
             # 處理各種錯誤情況
-            if error == "pro_membership_required":
+            if error == "premium_membership_required":
                 raise HTTPException(status_code=403, detail="需要 Premium 會員權限")
             elif error == "daily_limit_reached":
                 limit = result.get("limit", 5)

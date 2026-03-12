@@ -114,7 +114,7 @@ message_manager = MessageConnectionManager()
 def _check_user_is_premium(user_id: str) -> bool:
     """檢查用戶是否為 Premium 會員。"""
     membership = get_user_membership(user_id)
-    return membership.get("is_premium", membership.get("is_pro", False))
+    return membership.get("is_premium", False)
 
 
 # ============================================================================
@@ -512,7 +512,6 @@ async def get_message_limits_endpoint(
         return {
             "success": True,
             "is_premium": is_premium,
-            "is_pro": is_premium,
             "message_limit": message_limit,
             "greeting_limit": greeting_limit,
             "max_length": max_length

@@ -649,10 +649,10 @@ class PremiumManager {
                 return result.membership;
             }
 
-            return { tier: 'free', is_pro: false, expires_at: null };
+            return { tier: 'free', is_premium: false, expires_at: null };
         } catch (error) {
             console.error('[Premium] 獲取會員狀態失敗:', error);
-            return { tier: 'free', is_pro: false, expires_at: null };
+            return { tier: 'free', is_premium: false, expires_at: null };
         }
     }
 }

@@ -49,7 +49,7 @@ class TestReportManagement:
     @patch('core.database.governance.get_connection')
     def test_create_report_success(self, mock_get_conn, mock_membership, mock_check_limit, mock_get_author):
         """Test successful report creation"""
-        mock_membership.return_value = {'is_pro': False}  # Free user
+        mock_membership.return_value = {'is_premium': False}  # Free user
         mock_check_limit.return_value = True
         mock_get_author.return_value = 'content-author-id'
 
@@ -72,7 +72,7 @@ class TestReportManagement:
     @patch('core.database.governance.get_user_membership')
     def test_create_report_limit_exceeded(self, mock_membership, mock_check_limit, mock_get_author):
         """Test report creation when daily limit exceeded"""
-        mock_membership.return_value = {'is_pro': False}
+        mock_membership.return_value = {'is_premium': False}
         mock_check_limit.return_value = False
         mock_get_author.return_value = 'content-author-id'
 
@@ -86,7 +86,7 @@ class TestReportManagement:
     @patch('core.database.governance.get_user_membership')
     def test_create_report_own_content(self, mock_membership, mock_check_limit, mock_get_author):
         """Test report creation on own content (should fail)"""
-        mock_membership.return_value = {'is_pro': False}
+        mock_membership.return_value = {'is_premium': False}
         mock_check_limit.return_value = True
         mock_get_author.return_value = 'test-user-001'  # Same as reporter
 
@@ -101,7 +101,7 @@ class TestReportManagement:
     @patch('core.database.governance.get_connection')
     def test_create_report_duplicate(self, mock_get_conn, mock_membership, mock_check_limit, mock_get_author):
         """Test duplicate report creation (should fail)"""
-        mock_membership.return_value = {'is_pro': False}
+        mock_membership.return_value = {'is_premium': False}
         mock_check_limit.return_value = True
         mock_get_author.return_value = 'content-author-id'
 
@@ -221,7 +221,7 @@ class TestVoting:
     @patch('core.database.governance.get_connection')
     def test_vote_on_report_approve(self, mock_get_conn, mock_reputation, mock_membership):
         """Test successful approve vote"""
-        mock_membership.return_value = {'is_pro': True}
+        mock_membership.return_value = {'is_premium': True}
         mock_reputation.return_value = {'reputation_score': 50}
 
         mock_conn = Mock()
@@ -242,21 +242,21 @@ class TestVoting:
         mock_conn.commit.assert_called()
 
     @patch('core.database.governance.get_user_membership')
-    def test_vote_on_report_non_pro(self, mock_membership):
-        """Test voting by non-PRO user (should fail)"""
-        mock_membership.return_value = {'is_pro': False}
+    def test_vote_on_report_non_premium(self, mock_membership):
+        """Test voting by non-premium user (should fail)"""
+        mock_membership.return_value = {'is_premium': False}
 
         result = vote_on_report(None, 1, 'voter-user', 'approve')
 
         assert result["success"] is False
-        assert result["error"] == "pro_membership_required"
+        assert result["error"] == "premium_membership_required"
 
     @patch('core.database.governance.get_user_membership')
     @patch('core.database.governance.get_audit_reputation')
     @patch('core.database.governance.get_connection')
     def test_vote_on_report_already_voted(self, mock_get_conn, mock_reputation, mock_membership):
         """Test voting when already voted"""
-        mock_membership.return_value = {'is_pro': True}
+        mock_membership.return_value = {'is_premium': True}
         mock_reputation.return_value = {'reputation_score': 50}
 
         mock_conn = Mock()

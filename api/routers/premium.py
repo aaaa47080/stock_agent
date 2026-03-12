@@ -63,7 +63,7 @@ async def upgrade_to_premium(request: UpgradeRequest, current_user: dict = Depen
             raise HTTPException(status_code=404, detail="用戶不存在")
         
         # 如果已是 Premium 會員，檢查是否過期
-        if current_membership["is_pro"]:
+        if current_membership["is_premium"]:
             # TODO: 可以選擇續訂或擴展時間
             pass
         

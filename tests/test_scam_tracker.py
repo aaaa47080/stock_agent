@@ -50,8 +50,8 @@ class TestScamReportCreation:
     @patch('core.database.scam_tracker.get_user_membership')
     def test_create_report_success(self, mock_membership, mock_sys_config_conn, mock_get_connection):
         """Test successful report creation"""
-        # Mock user as PRO member
-        mock_membership.return_value = {'is_pro': True}
+        # Mock user as premium member
+        mock_membership.return_value = {'is_premium': True}
 
         # Mock system_config connection (for get_config)
         mock_sys_conn = Mock()
@@ -84,15 +84,15 @@ class TestScamReportCreation:
 
     @patch('core.database.user.get_connection')
     @patch('core.database.scam_tracker.get_user_membership')
-    def test_create_report_non_pro_user(self, mock_membership, mock_user_conn):
-        """Test report creation by non-PRO user (should fail)"""
-        # Mock user as non-PRO member - this should be checked before any DB call
-        mock_membership.return_value = {'is_pro': False}
+    def test_create_report_non_premium_user(self, mock_membership, mock_user_conn):
+        """Test report creation by non-premium user (should fail)"""
+        # Mock user as non-premium member - this should be checked before any DB call
+        mock_membership.return_value = {'is_premium': False}
 
         result = create_scam_report(**self.valid_report_data)
 
         assert result["success"] is False
-        assert result["error"] == "pro_membership_required"
+        assert result["error"] == "premium_membership_required"
 
     def test_create_report_invalid_wallet_address(self):
         """Test report creation with invalid wallet address"""
@@ -327,8 +327,8 @@ class TestComments:
     @patch('core.database.scam_tracker.get_user_membership')
     @patch('core.database.scam_tracker.validate_pi_tx_hash')
     def test_add_comment_pro_user(self, mock_validate, mock_membership, mock_get_connection, mock_sys_config_conn):
-        """Test adding comment as PRO user"""
-        mock_membership.return_value = {'is_pro': True}
+        """Test adding comment as premium user"""
+        mock_membership.return_value = {'is_premium': True}
         mock_validate.return_value = (True, "")
 
         # Mock system_config connection (for get_config)
@@ -356,8 +356,8 @@ class TestComments:
     @patch('core.database.system_config.get_connection')
     @patch('core.database.scam_tracker.get_connection')
     @patch('core.database.scam_tracker.get_user_membership')
-    def test_add_comment_non_pro_user(self, mock_membership, mock_get_connection, mock_sys_config_conn):
-        """Test adding comment as non-PRO user (should fail)"""
+    def test_add_comment_non_premium_user(self, mock_membership, mock_get_connection, mock_sys_config_conn):
+        """Test adding comment as non-premium user (should fail)"""
         # Mock system_config connection
         mock_sys_conn = Mock()
         mock_sys_cursor = Mock()
@@ -365,13 +365,13 @@ class TestComments:
         mock_sys_conn.cursor.return_value = mock_sys_cursor
         mock_sys_cursor.fetchall.return_value = []  # Empty config
 
-        # Mock user as non-PRO
-        mock_membership.return_value = {'is_pro': False}
+        # Mock user as non-premium
+        mock_membership.return_value = {'is_premium': False}
 
         result = add_scam_comment(1, 'user-001', 'This is a testimony about the scammer.')
 
         assert result["success"] is False
-        assert result["error"] == "pro_membership_required"
+        assert result["error"] == "premium_membership_required"
 
     @patch('core.database.scam_tracker.get_connection')
     def test_get_comments_empty(self, mock_get_connection):
