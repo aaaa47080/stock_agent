@@ -121,7 +121,7 @@ const AdminStatsManager = {
                 {
                     label: 'Total Users',
                     value: `${data.total_users}`,
-                    sub: `+${data.new_users_today} today | ${data.pro_users} PRO`,
+                    sub: `+${data.new_users_today} today | ${data.pro_users} premium`,
                 },
                 {
                     label: 'Active Today',

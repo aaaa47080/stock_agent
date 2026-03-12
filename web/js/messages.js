@@ -480,8 +480,8 @@ const MessagesUI = {
      * 取得會員徽章
      */
     getMembershipBadge(tier) {
-        if (tier === 'pro') {
-            return '<span class="px-1.5 py-0.5 text-xs font-bold bg-gradient-to-r from-yellow-500 to-orange-500 text-black rounded">PRO</span>';
+        if (['premium', 'pro', 'plus'].includes((tier || 'free').toLowerCase())) {
+            return '<span class="px-1.5 py-0.5 text-xs font-bold bg-gradient-to-r from-yellow-500 to-orange-500 text-black rounded">PREMIUM</span>';
         }
         return '';
     },

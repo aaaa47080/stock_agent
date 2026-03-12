@@ -660,10 +660,10 @@ const Components = {
                                 User 002
                             </button>
                             <button onclick="handleDevSwitchUser('test-user-003')" class="py-2 bg-white/5 hover:bg-success/20 hover:text-success rounded-lg text-xs font-mono transition border border-white/5">
-                                User 003 (PRO)
+                                User 003 (PREMIUM)
                             </button>
                             <button onclick="handleDevSwitchUser('test-user-004')" class="py-2 bg-white/5 hover:bg-warning/20 hover:text-warning rounded-lg text-xs font-mono transition border border-white/5">
-                                User 004 (PRO)
+                                User 004 (PREMIUM)
                             </button>
                         </div>
                     </div>
@@ -672,7 +672,7 @@ const Components = {
                     <div id="test-tier-switcher" class="mt-4 pt-4 border-t border-white/5 hidden">
                         <div class="flex items-center justify-between mb-3">
                             <p class="text-[10px] text-primary uppercase tracking-wider font-bold">🧪 TEST MODE: 切換會員等級</p>
-                            <span id="current-test-tier" class="px-2 py-0.5 rounded-md bg-primary/20 text-primary text-[10px] font-mono font-bold">PRO</span>
+                            <span id="current-test-tier" class="px-2 py-0.5 rounded-md bg-primary/20 text-primary text-[10px] font-mono font-bold">PREMIUM</span>
                         </div>
                         <p class="text-[10px] text-textMuted mb-3">測試不同會員等級的工具權限（不會扣費）</p>
                         <div class="grid grid-cols-2 gap-2">
@@ -680,7 +680,7 @@ const Components = {
                                 FREE
                             </button>
                             <button onclick="handleSwitchTestTier('premium')" class="test-tier-btn py-2 bg-white/5 hover:bg-primary/20 hover:text-primary rounded-lg text-xs font-mono transition border border-primary/20 text-primary" data-tier="premium">
-                                PRO
+                                PREMIUM
                             </button>
                         </div>
                     </div>

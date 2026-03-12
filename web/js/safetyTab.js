@@ -436,7 +436,7 @@ const SafetyTab = {
                 bar.className = `h-2 rounded-full ${barColor} transition-all`;
             }
             if (text) text.textContent = `${data.used} / ${data.limit} reports used today`;
-            if (tier) tier.textContent = data.is_pro ? 'PRO' : 'Free';
+            if (tier) tier.textContent = data.is_pro ? 'PREMIUM' : 'Free';
         } catch (error) {
             if (text) text.textContent = 'Could not load quota';
         }
