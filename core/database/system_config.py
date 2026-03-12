@@ -705,9 +705,7 @@ def init_audit_table():
 # 模組初始化
 # ============================================================================
 
-# 自動初始化審計表
-if not TEST_MODE:
-    try:
-        init_audit_table()
-    except Exception as e:
-        print(f"[Config] 模組初始化時審計表創建失敗（可能是首次運行）: {e}")
+# 注意：
+# 不要在 import 時自動觸發資料庫 I/O。這會讓 pytest collect、腳本工具與
+# 單純函式匯入都被迫連資料庫，造成收集卡住或啟動副作用。
+# 審計表初始化應由 API startup / DB bootstrap 明確呼叫。

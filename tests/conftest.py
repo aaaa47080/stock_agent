@@ -10,6 +10,8 @@ os.environ.setdefault('SECRET_KEY', 'test-secret-key-for-testing')
 os.environ.setdefault('JWT_SECRET_KEY', 'test-jwt-secret-key-for-testing-1234567890')
 os.environ.setdefault('PI_API_KEY', 'test-pi-api-key')
 os.environ.setdefault('PI_WALLET_PRIVATE_SEED', 'test-wallet-seed')
+os.environ.setdefault('TEST_MODE', 'true')
+os.environ.setdefault('TEST_MODE_CONFIRMATION', 'I_UNDERSTAND_THE_RISKS')
 
 
 def pytest_configure(config):
