@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/premium", tags=["Premium"])
 
 class UpgradeRequest(BaseModel):
     user_id: str
-    plan: str = "premium_monthly"  # plus_monthly, premium_monthly, premium_yearly
+    plan: str = "premium_monthly"  # premium_monthly, premium_yearly
     tx_hash: Optional[str] = None  # Pi 支付交易哈希
     months: int = 1  # 訂閱月數
 
@@ -46,7 +46,7 @@ async def upgrade_to_premium(request: UpgradeRequest, current_user: dict = Depen
 
     Args:
         user_id: 用戶ID
-        plan: 訂閱方案 (plus_monthly, plus_yearly, premium_monthly, premium_yearly)
+        plan: 訂閱方案 (premium_monthly, premium_yearly)
         tx_hash: Pi 支付交易哈希 (正式環境需要)
         months: 訂閱月數
     """

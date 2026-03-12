@@ -209,9 +209,6 @@ PI_VALIDATION_KEY = os.getenv("PI_VALIDATION_KEY", "")
 PI_PAYMENT_PRICES = {
     "create_post": 0.5,          # 發文費用 0.5 Pi
     "tip": 0.5,                  # 打賞 0.5 Pi
-    # Plus 會員（輕量付費）
-    "plus_monthly": 3.0,         # Plus 月費 3 Pi ≈ $0.51
-    "plus_yearly": 25.0,         # Plus 年費 25 Pi ≈ $4.25 (省 11 Pi)
     # Premium 會員（完整功能）
     "premium_monthly": 5.0,      # Premium 月費 5 Pi ≈ $0.85
     "premium_yearly": 40.0,      # Premium 年費 40 Pi ≈ $6.80 (省 20 Pi)
@@ -221,7 +218,7 @@ PI_PAYMENT_PRICES = {
 # None 表示無限制
 FORUM_LIMITS = {
     "daily_post_free": 3,        # 一般會員每日發文上限
-    "daily_post_premium": None,  # 高級會員每日發文上限 (None = 無限)
+    "daily_post_premium": None,  # Premium 會員每日發文上限 (None = 無限)
     "daily_comment_free": 20,    # 一般會員每日回覆上限
-    "daily_comment_premium": None,  # 高級會員每日回覆上限 (None = 無限)
+    "daily_comment_premium": None,  # Premium 會員每日回覆上限 (None = 無限)
 }
