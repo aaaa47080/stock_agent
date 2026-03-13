@@ -195,6 +195,62 @@ def test_finalize_mode_response_removes_inline_verified_sentence():
     assert finalized.count("### 驗證資訊") == 1
 
 
+def test_finalize_mode_response_replaces_lower_level_research_footer():
+    manager = build_manager()
+
+    finalized = manager._finalize_mode_response(
+        response=(
+            "### 重點結論\nAAPL 穩定。\n\n"
+            "#### 研究依據\n"
+            "- 資料來源：舊內容"
+        ),
+        analysis_mode="research",
+        evidence={
+            "used_tools": ["us_stock_price"],
+            "data_as_of": "2026-03-14T00:00:00Z",
+        },
+    )
+
+    assert "資料來源：舊內容" not in finalized
+    assert finalized.count("### 研究依據") == 1
+    assert "us_stock_price" in finalized
+
+
+def test_finalize_mode_response_removes_inline_research_sentence():
+    manager = build_manager()
+
+    finalized = manager._finalize_mode_response(
+        response="### 重點結論\nAAPL 穩定。\n\n研究依據：即時股價資料來源於 US Stock Price 查詢。",
+        analysis_mode="research",
+        evidence={
+            "used_tools": ["us_stock_price"],
+            "data_as_of": "2026-03-14T00:00:00Z",
+        },
+    )
+
+    assert "研究依據：即時股價資料來源於 US Stock Price 查詢。" not in finalized
+    assert finalized.count("### 研究依據") == 1
+    assert "us_stock_price" in finalized
+
+
+def test_build_response_format_guidance_uses_research_structure_for_single_asset():
+    manager = build_manager()
+
+    guidance = manager._build_response_format_guidance("research", "請分析 AAPL。")
+
+    assert "### 重點結論" in guidance
+    assert "### 標的比較" not in guidance
+
+
+def test_build_response_format_guidance_uses_compare_structure_for_compare_query():
+    manager = build_manager()
+
+    guidance = manager._build_response_format_guidance("research", "比較 TSM ADR 和 2330。")
+
+    assert "### 標的比較" in guidance
+    assert "| 項目 | 標的A | 標的B |" in guidance
+
+
 @pytest.mark.asyncio
 async def test_synthesize_response_does_not_fallback_to_llm_after_tool_failure():
     manager = build_manager()

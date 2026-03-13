@@ -705,6 +705,10 @@ class ManagerAgent:
             query=current_query,
             evidence=evidence,
         )
+        response_format_guidance = self._build_response_format_guidance(
+            analysis_mode=analysis_mode,
+            query=current_query,
+        )
 
         # 改進 prompt：讓 Manager 能夠綜合分析多個 sub-agent 的結果
         num_results = len(results_text)
@@ -752,17 +756,7 @@ class ManagerAgent:
 
 ## 回應格式
 
-請用自然、友善的語氣生成完整的回應。如果是比較問題，建議使用以下結構：
-
-### 標的比較
-| 項目 | 標的A | 標的B |
-|------|-------|-------|
-| 價格 | ... | ... |
-| 你的預算可購買 | ... | ... |
-| 風險等級 | ... | ... |
-
-### 分析結論
-（綜合分析與建議）
+{response_format_guidance}
 
 ---
 
@@ -1177,6 +1171,42 @@ class ManagerAgent:
             "3. 禁止輸出內部執行痕跡。"
         )
 
+    def _build_response_format_guidance(
+        self,
+        analysis_mode: str,
+        query: str,
+    ) -> str:
+        lowered_query = (query or "").lower()
+        is_compare = any(token in lowered_query for token in ("比較", "compare", "vs", "差異"))
+
+        if is_compare:
+            return (
+                "請用自然、友善的語氣生成完整的回應。這是一個比較題，建議使用以下結構：\n\n"
+                "### 標的比較\n"
+                "| 項目 | 標的A | 標的B |\n"
+                "|------|-------|-------|\n"
+                "| 價格 | ... | ... |\n"
+                "| 你的預算可購買 | ... | ... |\n"
+                "| 風險等級 | ... | ... |\n\n"
+                "### 分析結論\n"
+                "（綜合分析與建議）"
+            )
+
+        if analysis_mode == "research":
+            return (
+                "請用自然、友善的語氣生成完整的回應。這是一個單標的研究題，"
+                "請用以下結構回答：\n\n"
+                "### 重點結論\n"
+                "### 關鍵數據\n"
+                "### 分析觀點\n"
+                "### 風險與觀察"
+            )
+
+        if analysis_mode == "verified":
+            return "請用自然、友善的語氣生成完整的回應。先直接回答，再補上驗證資訊。"
+
+        return "請用自然、友善的語氣生成完整的回應，直接回答核心問題即可。"
+
     def _finalize_mode_response(
         self,
         response: str,
@@ -1186,14 +1216,15 @@ class ManagerAgent:
         cleaned = re.sub(r"^#\s*Sub-Agent 執行結果\s*", "", response, flags=re.MULTILINE).strip()
         cleaned = re.sub(r"^###\s*任務\s+\d+\s+\[[^\]]+\]\s*", "", cleaned, flags=re.MULTILINE).strip()
         cleaned = re.sub(r"\n*驗證資訊[:：].*", "", cleaned).strip()
+        cleaned = re.sub(r"\n*研究依據[:：].*", "", cleaned).strip()
         cleaned = re.sub(
-            r"\n+###\s*驗證資訊\s*[\s\S]*$",
+            r"\n+#{3,6}\s*驗證資訊\s*[\s\S]*$",
             "",
             cleaned,
             flags=re.MULTILINE,
         ).strip()
         cleaned = re.sub(
-            r"\n+###\s*研究依據\s*[\s\S]*$",
+            r"\n+#{3,6}\s*研究依據\s*[\s\S]*$",
             "",
             cleaned,
             flags=re.MULTILINE,
