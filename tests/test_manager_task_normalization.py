@@ -16,7 +16,6 @@ def build_manager():
         display_name="Crypto Agent",
         description="crypto",
         capabilities=["crypto"],
-        allowed_tools=[],
         priority=10,
     ))
     agent_registry.register(object(), AgentMetadata(
@@ -24,7 +23,6 @@ def build_manager():
         display_name="TW Stock Agent",
         description="tw",
         capabilities=["tw"],
-        allowed_tools=[],
         priority=10,
     ))
     agent_registry.register(object(), AgentMetadata(
@@ -32,7 +30,6 @@ def build_manager():
         display_name="US Stock Agent",
         description="us",
         capabilities=["us"],
-        allowed_tools=[],
         priority=8,
     ))
     return ManagerAgent(llm, agent_registry, ToolRegistry())
@@ -105,6 +102,80 @@ def test_detect_boundary_route_ignores_greeting():
     route = manager._detect_boundary_route("你好")
 
     assert route is None
+
+
+@pytest.mark.asyncio
+async def test_aggregate_results_node_keeps_intermediate_text_out_of_final_response():
+    manager = build_manager()
+
+    result = await manager._aggregate_results_node({
+        "task_results": {
+            "task_1": {
+                "success": True,
+                "agent_name": "us_stock",
+                "message": "AAPL 目前為 255 美元",
+            }
+        },
+        "intent_understanding": {"aggregation_strategy": "combine_all"},
+    })
+
+    assert "aggregated_response" in result
+    assert "final_response" not in result
+    assert "Sub-Agent 執行結果" in result["aggregated_response"]
+
+
+def test_finalize_mode_response_appends_verified_evidence():
+    manager = build_manager()
+
+    finalized = manager._finalize_mode_response(
+        response="AAPL 目前為 255 美元。",
+        analysis_mode="verified",
+        evidence={
+            "used_tools": ["us_stock_price"],
+            "data_as_of": "2026-03-13T10:00:00Z",
+            "verification_status": "verified",
+        },
+    )
+
+    assert "### 驗證資訊" in finalized
+    assert "us_stock_price" in finalized
+    assert "2026-03-13T10:00:00Z" in finalized
+
+
+def test_finalize_mode_response_strips_internal_sub_agent_headers():
+    manager = build_manager()
+
+    finalized = manager._finalize_mode_response(
+        response="# Sub-Agent 執行結果\n\n### 任務 1 [us_stock]\nAAPL 目前為 255 美元。",
+        analysis_mode="research",
+        evidence={},
+    )
+
+    assert "Sub-Agent 執行結果" not in finalized
+    assert "任務 1" not in finalized
+    assert "AAPL 目前為 255 美元。" in finalized
+
+
+def test_finalize_mode_response_replaces_model_generated_verified_footer():
+    manager = build_manager()
+
+    finalized = manager._finalize_mode_response(
+        response=(
+            "AAPL 目前為 255 美元。\n\n"
+            "### 驗證資訊\n"
+            "- Apple Inc. (AAPL) 股價資訊來自於最新市場數據。"
+        ),
+        analysis_mode="verified",
+        evidence={
+            "used_tools": ["us_stock_price"],
+            "data_as_of": "2026-03-13T10:00:00Z",
+            "verification_status": "verified",
+        },
+    )
+
+    assert "Apple Inc. (AAPL) 股價資訊來自於最新市場數據。" not in finalized
+    assert finalized.count("### 驗證資訊") == 1
+    assert "us_stock_price" in finalized
 
 
 @pytest.mark.asyncio

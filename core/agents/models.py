@@ -437,6 +437,7 @@ class ManagerState(TypedDict, total=False):
 
     # === 輸出 ===
     final_response: Optional[str]
+    aggregated_response: Optional[str]
 
     # === 內部狀態 ===
     _processed_query: Optional[str]  # 用於追蹤已處理的查詢，檢測新查詢

@@ -25,6 +25,21 @@ Use this layering instead:
 - Runtime layer: manager routing, agent hooks, response constraints
 - Tool layer: actual market/news/fundamental lookup tools
 
+Do not hardcode rules around specific symbols, equities, crypto assets, or regions.
+
+Use:
+
+- query type
+- market resolution confidence
+- tool role/capability
+- analysis mode contract
+
+Do not use:
+
+- `if symbol == "AAPL"`
+- `if symbol == "TSM"`
+- product-specific prompt branches
+
 ## Repo mapping
 
 Inspect these files first:
@@ -83,16 +98,46 @@ Responsibilities:
 - `quick`
   - default
   - standard ReAct flow
+  - shortest useful answer
+  - no internal execution traces in user-facing output
 
 - `verified`
   - force or strongly prefer tool usage for live questions
   - include date and source/tool mention
   - distinguish inference from observed data
+  - append a visible verification summary so the user can feel the difference from `quick`
 
 - `research`
   - later phase
   - multi-step research workflow
   - only when explicitly requested
+  - synthesize results into a product-style answer
+  - never expose raw `Sub-Agent`/task dump output directly
+
+## Output contracts
+
+Use mode-specific response contracts at synthesis time.
+
+- `quick`
+  - direct answer
+  - concise
+  - keep key numbers, remove internal traces
+
+- `verified`
+  - answer first
+  - only treat tool-backed facts as verified
+  - add a short `驗證資訊` section when tool/time evidence exists
+  - never make verification invisible to the user
+
+- `research`
+  - synthesize into a readable structure such as:
+    - `重點結論`
+    - `關鍵數據`
+    - `分析觀點`
+    - `風險與觀察`
+  - if the query is comparative, prefer a comparison table first
+  - add `研究依據` if evidence exists
+  - strip internal orchestration labels before returning
 
 ## Implementation workflow
 
@@ -109,6 +154,8 @@ Responsibilities:
 - Do not create a monolithic "skill tool"
 - Do not let verified mode silently answer freshness-sensitive finance questions without checking available tools first
 - Prefer using existing `ToolMetadata.required_tier` and `get_allowed_tools()` instead of duplicating access logic
+- Do not leak raw orchestration artifacts such as `Sub-Agent 執行結果`, task ids, or debug headings into final user answers
+- Do not let historical context override a newly resolved market when the current query is explicit enough
 
 ## Expected output when using this skill
 

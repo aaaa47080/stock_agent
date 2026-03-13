@@ -516,7 +516,7 @@ class ManagerAgent:
             else:
                 final_result = "執行完成，但無有效結果"
 
-        return {"final_response": final_result}
+        return {"aggregated_response": final_result}
 
     async def _reflect_on_results_node(self, state: ManagerState) -> Dict:
         """結果品質審查節點
@@ -605,6 +605,7 @@ class ManagerAgent:
         current_query = state.get("query", "")
         processed_query = state.get("_processed_query", "")
         final_response = state.get("final_response")
+        analysis_mode = state.get("analysis_mode", "quick")
 
         # 只有在相同查詢且已有回應時才復用
         if final_response and current_query == processed_query:
@@ -698,6 +699,13 @@ class ManagerAgent:
                 "_processed_query": current_query,
             }
 
+        evidence = self._collect_response_evidence(task_results)
+        response_contract = self._build_mode_response_contract(
+            analysis_mode=analysis_mode,
+            query=current_query,
+            evidence=evidence,
+        )
+
         # 改進 prompt：讓 Manager 能夠綜合分析多個 sub-agent 的結果
         num_results = len(results_text)
 
@@ -709,8 +717,14 @@ class ManagerAgent:
 ## 用戶問題
 {current_query}{memory_block}
 
+## 分析模式
+{analysis_mode}
+
 ## Sub-Agent 執行結果（共 {num_results} 個）
 {chr(10).join(results_text)}
+
+## 已知依據
+{self._format_response_evidence(evidence)}
 
 ---
 
@@ -732,6 +746,10 @@ class ManagerAgent:
    - 說明適合的投資者類型
    - 提供客觀建議，但不提供具體買賣信號
 
+## 回應契約
+
+{response_contract}
+
 ## 回應格式
 
 請用自然、友善的語氣生成完整的回應。如果是比較問題，建議使用以下結構：
@@ -752,6 +770,11 @@ class ManagerAgent:
 
         try:
             response = await self._llm_invoke(prompt)
+            response = self._finalize_mode_response(
+                response=response,
+                analysis_mode=analysis_mode,
+                evidence=evidence,
+            )
 
             # 追蹤對話歷史並觸發記憶整合
             await self._track_conversation(
@@ -1064,6 +1087,141 @@ class ManagerAgent:
             if self.agent_registry.get(metadata.name) is not None:
                 return metadata.name
         return None
+
+    def _collect_response_evidence(self, task_results: Dict[str, Dict[str, object]]) -> Dict[str, object]:
+        used_tools: List[str] = []
+        data_points: List[str] = []
+        verification_statuses: List[str] = []
+        markets: List[str] = []
+        query_types: List[str] = []
+        policy_paths: List[str] = []
+
+        for result in task_results.values():
+            if not isinstance(result, dict):
+                continue
+            data = result.get("data", {})
+            if not isinstance(data, dict):
+                continue
+            used_tools.extend(
+                tool for tool in data.get("used_tools", [])
+                if isinstance(tool, str) and tool
+            )
+            if isinstance(data.get("data_as_of"), str) and data["data_as_of"]:
+                data_points.append(data["data_as_of"])
+            if isinstance(data.get("verification_status"), str) and data["verification_status"]:
+                verification_statuses.append(data["verification_status"])
+            if isinstance(data.get("resolved_market"), str) and data["resolved_market"]:
+                markets.append(data["resolved_market"])
+            if isinstance(data.get("query_type"), str) and data["query_type"]:
+                query_types.append(data["query_type"])
+            if isinstance(data.get("policy_path"), str) and data["policy_path"]:
+                policy_paths.append(data["policy_path"])
+
+        return {
+            "used_tools": sorted(set(used_tools)),
+            "data_as_of": data_points[0] if data_points else None,
+            "verification_status": verification_statuses[0] if verification_statuses else None,
+            "resolved_markets": sorted(set(markets)),
+            "query_types": sorted(set(query_types)),
+            "policy_paths": sorted(set(policy_paths)),
+        }
+
+    def _format_response_evidence(self, evidence: Dict[str, object]) -> str:
+        parts = []
+        tools = evidence.get("used_tools", [])
+        if tools:
+            parts.append(f"- 工具：{', '.join(tools)}")
+        if evidence.get("data_as_of"):
+            parts.append(f"- 資料時間：{evidence['data_as_of']}")
+        if evidence.get("verification_status"):
+            parts.append(f"- 驗證狀態：{evidence['verification_status']}")
+        markets = evidence.get("resolved_markets", [])
+        if markets:
+            parts.append(f"- 解析市場：{', '.join(markets)}")
+        query_types = evidence.get("query_types", [])
+        if query_types:
+            parts.append(f"- 查詢類型：{', '.join(query_types)}")
+        policy_paths = evidence.get("policy_paths", [])
+        if policy_paths:
+            parts.append(f"- 路徑：{', '.join(policy_paths)}")
+        return "\n".join(parts) if parts else "- 無結構化依據"
+
+    def _build_mode_response_contract(
+        self,
+        analysis_mode: str,
+        query: str,
+        evidence: Dict[str, object],
+    ) -> str:
+        lowered_query = (query or "").lower()
+        is_compare = any(token in lowered_query for token in ("比較", "compare", "vs", "差異"))
+
+        if analysis_mode == "verified":
+            return (
+                "1. 先直接回答核心問題。\n"
+                "2. 僅把已知依據中的內容當作已驗證資料，其餘只能保守推論。\n"
+                "3. 若有工具或資料時間，答案末尾必須加上『驗證資訊』小節。\n"
+                "4. 禁止輸出 Sub-Agent、任務編號、內部欄位 dump。"
+            )
+        if analysis_mode == "research":
+            compare_rule = "3. 若是比較題，先給比較表，再下結論。\n" if is_compare else ""
+            return (
+                "1. 請把多個子任務結果整理成產品化回答，不要直接貼內部結果。\n"
+                "2. 預設使用『重點結論』『關鍵數據』『分析觀點』『風險與觀察』結構。\n"
+                f"{compare_rule}"
+                "4. 若有工具或資料時間，可在答案末尾加『研究依據』小節。\n"
+                "5. 禁止輸出 Sub-Agent、任務編號、debug 標題。"
+            )
+        return (
+            "1. 直接回答，用最短可用內容完成。\n"
+            "2. 保留關鍵數據，避免冗長。\n"
+            "3. 禁止輸出內部執行痕跡。"
+        )
+
+    def _finalize_mode_response(
+        self,
+        response: str,
+        analysis_mode: str,
+        evidence: Dict[str, object],
+    ) -> str:
+        cleaned = re.sub(r"^#\s*Sub-Agent 執行結果\s*", "", response, flags=re.MULTILINE).strip()
+        cleaned = re.sub(r"^###\s*任務\s+\d+\s+\[[^\]]+\]\s*", "", cleaned, flags=re.MULTILINE).strip()
+        cleaned = re.sub(
+            r"\n+###\s*驗證資訊\s*[\s\S]*$",
+            "",
+            cleaned,
+            flags=re.MULTILINE,
+        ).strip()
+        cleaned = re.sub(
+            r"\n+###\s*研究依據\s*[\s\S]*$",
+            "",
+            cleaned,
+            flags=re.MULTILINE,
+        ).strip()
+
+        if analysis_mode == "verified":
+            evidence_lines = []
+            if evidence.get("data_as_of"):
+                evidence_lines.append(f"- 資料時間：{evidence['data_as_of']}")
+            tools = evidence.get("used_tools", [])
+            if tools:
+                evidence_lines.append(f"- 驗證來源：{', '.join(tools)}")
+            if evidence.get("verification_status"):
+                evidence_lines.append(f"- 驗證狀態：{evidence['verification_status']}")
+            if not evidence_lines:
+                evidence_lines.append("- 驗證資訊目前有限，請結合畫面上的 metadata 與工具來源判讀。")
+            cleaned = f"{cleaned}\n\n### 驗證資訊\n" + "\n".join(evidence_lines)
+        elif analysis_mode == "research":
+            evidence_lines = []
+            tools = evidence.get("used_tools", [])
+            if tools:
+                evidence_lines.append(f"- 研究工具：{', '.join(tools)}")
+            if evidence.get("data_as_of"):
+                evidence_lines.append(f"- 資料時間：{evidence['data_as_of']}")
+            if not evidence_lines:
+                evidence_lines.append("- 本回答已依 research 模式整理，但目前沒有額外可展示的工具時間戳。")
+            cleaned = f"{cleaned}\n\n### 研究依據\n" + "\n".join(evidence_lines)
+
+        return cleaned.strip()
 
     def _normalize_tasks(self, tasks: List[dict], query: str) -> List[dict]:
         """清理 LLM 產生的 task plan，避免 graph 因過長或壞資料失控。"""

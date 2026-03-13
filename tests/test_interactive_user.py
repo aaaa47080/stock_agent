@@ -34,6 +34,7 @@ class InteractiveSession:
     def __init__(self, manager, session_id: str):
         self.manager = manager
         self.session_id = session_id
+        self.analysis_mode = "quick"
         self.history = []
         self.conversation_log = []
         self.pending_hitl = None
@@ -68,6 +69,7 @@ class InteractiveSession:
                 "query": message,
                 "history": history_text,
                 "language": "zh-TW",
+                "analysis_mode": self.analysis_mode,
             }
         
         result = await self.manager.graph.ainvoke(graph_input, config)
@@ -90,6 +92,7 @@ class InteractiveSession:
             "user": message,
             "assistant": response,
             "mode": result.get("execution_mode", "unknown"),
+            "analysis_mode": self.analysis_mode,
             "hitl": hitl_data,
             "duration": round(duration, 2),
             "is_resume": is_resume,
@@ -101,7 +104,10 @@ class InteractiveSession:
     def print_round(self, result: dict):
         """印出單輪結果"""
         print(f"\n{'─' * 60}")
-        print(f"[第 {result['round']} 輪] ⏱️ {result['duration']}s | 模式: {result['mode']}")
+        print(
+            f"[第 {result['round']} 輪] ⏱️ {result['duration']}s | "
+            f"執行模式: {result['mode']} | 分析模式: {result['analysis_mode']}"
+        )
         print(f"{'─' * 60}")
         
         if result['hitl']:
@@ -149,6 +155,8 @@ def print_banner():
     print("   • 輸入 'quit' 或 'exit' 結束測試")
     print("   • 輸入 'save' 儲存當前對話")
     print("   • 輸入 'clear' 開始新對話")
+    print("   • 輸入 '/mode quick|verified|research' 切換分析模式")
+    print("   • 輸入 '/mode' 查看目前分析模式")
     print()
 
 
@@ -216,6 +224,19 @@ async def interactive_test():
             
             if user_input.lower() == 'help':
                 print_banner()
+                continue
+
+            if user_input.lower() == '/mode':
+                print(f"\n🧭 目前分析模式: {session.analysis_mode}")
+                continue
+
+            if user_input.lower().startswith('/mode '):
+                requested_mode = user_input.split(None, 1)[1].strip().lower()
+                if requested_mode not in {"quick", "verified", "research"}:
+                    print("\n❌ 不支援的模式。請使用 quick、verified 或 research")
+                    continue
+                session.analysis_mode = requested_mode
+                print(f"\n🧭 已切換分析模式為: {session.analysis_mode}")
                 continue
             
             # 發送訊息
