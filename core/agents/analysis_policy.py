@@ -24,6 +24,12 @@ class PolicyDecision:
     fail_reason: Optional[str] = None
 
 
+@dataclass(frozen=True)
+class ModeAccessPolicy:
+    allowed_modes: tuple[str, ...]
+    default_mode: str
+
+
 class AnalysisPolicyResolver:
     def __init__(self, config_path: Optional[Path] = None):
         self.config_path = config_path or Path(__file__).resolve().parents[2] / "config" / "analysis_policy.json"
@@ -32,6 +38,40 @@ class AnalysisPolicyResolver:
     def _load_config(self) -> Dict[str, object]:
         with self.config_path.open("r", encoding="utf-8") as f:
             return json.load(f)
+
+    def get_mode_access_policy(self, user_tier: Optional[str]) -> ModeAccessPolicy:
+        normalized_tier = "premium" if str(user_tier or "free").strip().lower() in {"premium", "plus", "pro"} else "free"
+        tier_modes = self.config.get("tier_modes", {})
+        if not isinstance(tier_modes, dict):
+            return ModeAccessPolicy(allowed_modes=("quick",), default_mode="quick")
+
+        raw_policy = tier_modes.get(normalized_tier) or tier_modes.get("free") or {}
+        if not isinstance(raw_policy, dict):
+            return ModeAccessPolicy(allowed_modes=("quick",), default_mode="quick")
+
+        raw_allowed_modes = raw_policy.get("allowed_modes", ["quick"])
+        if not isinstance(raw_allowed_modes, list):
+            raw_allowed_modes = ["quick"]
+
+        allowed_modes = tuple(
+            mode for mode in raw_allowed_modes
+            if isinstance(mode, str) and mode in {"quick", "verified", "research"}
+        ) or ("quick",)
+
+        default_mode = raw_policy.get("default_mode")
+        if not isinstance(default_mode, str) or default_mode not in allowed_modes:
+            default_mode = allowed_modes[0]
+
+        return ModeAccessPolicy(
+            allowed_modes=allowed_modes,
+            default_mode=default_mode,
+        )
+
+    def ensure_allowed_mode(self, user_tier: Optional[str], requested_mode: Optional[str]) -> str:
+        policy = self.get_mode_access_policy(user_tier)
+        if requested_mode in policy.allowed_modes:
+            return str(requested_mode)
+        return policy.default_mode
 
     def build_query_profile(self, query: str, candidates: list[str]) -> Dict[str, object]:
         query_type = "general"

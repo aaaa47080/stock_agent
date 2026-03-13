@@ -13,6 +13,7 @@ from analysis.simple_backtester import run_simple_backtest
 import core.config as core_config
 from utils.user_client_factory import create_user_llm_client
 from api.middleware.rate_limit import limiter
+from core.agents.analysis_policy import AnalysisPolicyResolver
 
 # Import DB functions
 from core.database import (
@@ -32,6 +33,7 @@ from api.deps import get_current_user
 router = APIRouter()
 
 ANALYSIS_TIMEOUT_SECONDS = 180
+analysis_policy_resolver = AnalysisPolicyResolver()
 
 # --- Session Management Endpoints ---
 
@@ -110,6 +112,17 @@ async def get_history(
 
 # --- Analysis Endpoint ---
 
+@router.get("/api/analyze/modes")
+async def get_analysis_modes(current_user: dict = Depends(get_current_user)):
+    mode_policy = analysis_policy_resolver.get_mode_access_policy(
+        current_user.get("membership_tier", "free")
+    )
+    return {
+        "current_tier": current_user.get("membership_tier", "free"),
+        "allowed_modes": list(mode_policy.allowed_modes),
+        "default_mode": mode_policy.default_mode,
+    }
+
 @router.post("/api/analyze")
 @limiter.limit("10/minute")
 async def analyze_crypto(request: Request, body: QueryRequest, current_user: dict = Depends(get_current_user)):
@@ -142,6 +155,17 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
         raise HTTPException(status_code=400, detail="API Key 無效，請檢查您的設定")
 
     logger.info(f"收到分析請求 (Session: {body.session_id}): {body.message[:50]}...")
+
+    requested_mode = body.analysis_mode
+    effective_mode = analysis_policy_resolver.ensure_allowed_mode(
+        current_user.get("membership_tier", "free"),
+        requested_mode,
+    )
+    if effective_mode != requested_mode:
+        raise HTTPException(
+            status_code=403,
+            detail=f"analysis_mode '{requested_mode}' is not allowed for tier '{current_user.get('membership_tier', 'free')}'",
+        )
 
     try:
         from langgraph.types import Command
@@ -204,7 +228,7 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
                     "session_id": body.session_id,
                     "query": body.message,
                     "history": history_text,
-                    "analysis_mode": body.analysis_mode,
+                    "analysis_mode": effective_mode,
                     "task_results": {},
                     "language": body.language,
                     "execution_mode": "vending",  # default, will be updated by intent understanding
@@ -263,7 +287,7 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
 
                     # 正常回應
                     response = result.get("final_response") or "（無回應）"
-                    response_metadata = build_response_metadata(result, body.analysis_mode)
+                    response_metadata = build_response_metadata(result, effective_mode)
 
                     chunk_size = 50
                     for i in range(0, len(response), chunk_size):

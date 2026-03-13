@@ -1,4 +1,19 @@
 {
+  "tier_modes": {
+    "free": {
+      "allowed_modes": [
+        "quick"
+      ],
+      "default_mode": "quick"
+    },
+    "premium": {
+      "allowed_modes": [
+        "quick",
+        "verified"
+      ],
+      "default_mode": "verified"
+    }
+  },
   "query_types": {
     "price_lookup": {
       "patterns": [

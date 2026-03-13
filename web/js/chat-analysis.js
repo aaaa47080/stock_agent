@@ -27,6 +27,68 @@ function getSelectedAnalysisMode() {
     return select?.value || 'quick';
 }
 
+async function refreshAnalysisModeSelector() {
+    const select = document.getElementById('analysis-mode-select');
+    if (!select) {
+        return;
+    }
+
+    if (window.PiEnvironment?.shouldBlockProtectedRequests()) {
+        Array.from(select.options).forEach((option) => {
+            const allowed = option.value === 'quick';
+            option.disabled = !allowed;
+            option.dataset.locked = allowed ? 'false' : 'true';
+            if (option.value === 'verified') {
+                option.textContent = '已驗證（Premium）';
+            } else if (option.value === 'research') {
+                option.textContent = '深度研究（未開放）';
+            }
+        });
+        select.dataset.allowedModes = 'quick';
+        select.dataset.membershipTier = 'free';
+        select.value = 'quick';
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/analyze/modes', {
+            headers: window.PiEnvironment.getAuthHeaders(),
+        });
+
+        if (!response.ok) {
+            return;
+        }
+
+        const data = await response.json();
+        const allowedModes = Array.isArray(data.allowed_modes) ? data.allowed_modes : ['quick'];
+        const defaultMode = typeof data.default_mode === 'string' ? data.default_mode : allowedModes[0] || 'quick';
+        const tier = typeof data.current_tier === 'string' ? data.current_tier : 'free';
+
+        Array.from(select.options).forEach((option) => {
+            const allowed = allowedModes.includes(option.value);
+            option.disabled = !allowed;
+            option.dataset.locked = allowed ? 'false' : 'true';
+            if (option.value === 'verified') {
+                option.textContent = allowed ? '已驗證' : '已驗證（Premium）';
+            } else if (option.value === 'research') {
+                option.textContent = allowed ? '深度研究' : '深度研究（未開放）';
+            }
+        });
+
+        select.dataset.allowedModes = allowedModes.join(',');
+        select.dataset.membershipTier = tier;
+
+        if (!allowedModes.includes(select.value)) {
+            select.value = defaultMode;
+        }
+    } catch (error) {
+        console.warn('Failed to refresh analysis modes:', error);
+    }
+}
+
+window.getSelectedAnalysisMode = getSelectedAnalysisMode;
+window.refreshAnalysisModeSelector = refreshAnalysisModeSelector;
+
 function renderResponseMetadata(metadata = {}) {
     const mode = metadata.analysis_mode || 'quick';
     const verificationStatus = metadata.verification_status || mode;
@@ -207,7 +269,7 @@ async function sendMessage() {
     const ANALYSIS_REQUEST_TIMEOUT_MS = 300000;  // 5分鐘總超時
     const ANALYSIS_STREAM_IDLE_TIMEOUT_MS = 180000;  // 3分鐘閒置超時（避免慢速API被中斷）
 
-    window.currentAnalysisController = new AbortController();
+window.currentAnalysisController = new AbortController();
     let requestTimeoutId = null;
     let streamIdleTimeoutId = null;
 
@@ -492,6 +554,9 @@ async function sendMessage() {
         }
     }
 }
+
+window.getSelectedAnalysisMode = getSelectedAnalysisMode;
+window.refreshAnalysisModeSelector = refreshAnalysisModeSelector;
 
 function stopAnalysis() {
     if (window.currentAnalysisController) {
