@@ -6,7 +6,7 @@ Refactored to use DatabaseBase for unified CRUD operations.
 """
 import json
 from typing import List, Dict, Optional, Any
-from datetime import datetime
+from datetime import UTC, datetime
 
 from .base import DatabaseBase
 from .connection import get_connection
@@ -67,7 +67,7 @@ def check_daily_post_limit(user_id: str) -> Dict:
             return {"allowed": True, "count": 0, "limit": None, "remaining": None}
 
         # 查詢今日發文數
-        today = datetime.utcnow().strftime('%Y-%m-%d')
+        today = datetime.now(UTC).strftime('%Y-%m-%d')
         c.execute('''
             SELECT post_count FROM user_daily_posts
             WHERE user_id = %s AND date = %s
@@ -181,7 +181,7 @@ def create_post(board_id: int, user_id: str, category: str, title: str, content:
                 c.execute('INSERT INTO post_tags (post_id, tag_id) VALUES (%s, %s) ON CONFLICT DO NOTHING', (post_id, tag_id))
 
         # 4. 更新每日發文計數（關鍵：必須在同一事務中）
-        today = datetime.utcnow().strftime('%Y-%m-%d')
+        today = datetime.now(UTC).strftime('%Y-%m-%d')
         c.execute('''
             INSERT INTO user_daily_posts (user_id, date, post_count)
             VALUES (%s, %s, 1)
@@ -505,7 +505,7 @@ def add_comment(post_id: int, user_id: str, comment_type: str, content: Optional
 
             # 如果有限制，檢查是否超過
             if limit is not None:
-                today = datetime.utcnow().strftime('%Y-%m-%d')
+                today = datetime.now(UTC).strftime('%Y-%m-%d')
                 c.execute('''
                     SELECT comment_count FROM user_daily_comments
                     WHERE user_id = %s AND date = %s
@@ -569,7 +569,7 @@ def add_comment(post_id: int, user_id: str, comment_type: str, content: Optional
 
         # 更新每日回覆計數 (僅針對實際留言)
         if comment_type == 'comment':
-            today = datetime.utcnow().strftime('%Y-%m-%d')
+            today = datetime.now(UTC).strftime('%Y-%m-%d')
             c.execute('''
                 INSERT INTO user_daily_comments (user_id, date, comment_count)
                 VALUES (%s, %s, 1)
@@ -628,7 +628,7 @@ def get_comments(post_id: int, include_hidden: bool = False) -> List[Dict]:
 
 def get_daily_comment_count(user_id: str) -> Dict:
     """獲取用戶今日回覆數"""
-    today = datetime.utcnow().strftime('%Y-%m-%d')
+    today = datetime.now(UTC).strftime('%Y-%m-%d')
     row = DatabaseBase.query_one(
         'SELECT comment_count FROM user_daily_comments WHERE user_id = %s AND date = %s',
         (user_id, today)
@@ -649,7 +649,7 @@ def get_daily_comment_count(user_id: str) -> Dict:
 
 def get_daily_post_count(user_id: str) -> Dict:
     """獲取用戶今日發文數"""
-    today = datetime.utcnow().strftime('%Y-%m-%d')
+    today = datetime.now(UTC).strftime('%Y-%m-%d')
     row = DatabaseBase.query_one(
         'SELECT post_count FROM user_daily_posts WHERE user_id = %s AND date = %s',
         (user_id, today)

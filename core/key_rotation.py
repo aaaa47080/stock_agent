@@ -14,7 +14,7 @@ import time
 import hashlib
 import secrets
 import shutil
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Dict, Optional, List
 from pathlib import Path
 from api.utils import logger
@@ -74,10 +74,24 @@ class KeyRotationManager:
         keys = {
             "primary": primary_key["id"],
             "keys": [primary_key],
-            "last_rotation": datetime.utcnow().isoformat()
+            "last_rotation": datetime.now(UTC).isoformat()
         }
         self._save_keys_direct(keys)
         return keys
+
+    @staticmethod
+    def _parse_timestamp(value: str) -> datetime:
+        """
+        Parse ISO timestamps from current or legacy key files.
+
+        Legacy data may contain naive timestamps; treat those as UTC so the
+        rotation logic remains backward compatible after switching to
+        timezone-aware datetimes.
+        """
+        dt = datetime.fromisoformat(value)
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=UTC)
+        return dt
 
     def _generate_key(self) -> Dict:
         """
@@ -92,7 +106,7 @@ class KeyRotationManager:
         # Generate 256-bit key value (URL-safe base64)
         key_value = secrets.token_urlsafe(32)
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         return {
             "id": key_id,
@@ -168,9 +182,9 @@ class KeyRotationManager:
         for key in self.keys["keys"]:
             if key["id"] == old_primary_id:
                 key["status"] = "deprecated"
-                key["deprecated_at"] = datetime.utcnow().isoformat()
+                key["deprecated_at"] = datetime.now(UTC).isoformat()
 
-        self.keys["last_rotation"] = datetime.utcnow().isoformat()
+        self.keys["last_rotation"] = datetime.now(UTC).isoformat()
 
         # Save with backup
         self._save_keys()
@@ -259,13 +273,13 @@ class KeyRotationManager:
         Keys older than 90 days and in 'expired' status are removed
         to prevent unlimited file growth.
         """
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         keys_to_keep = []
         removed_count = 0
 
         for key in self.keys["keys"]:
             try:
-                expires_at = datetime.fromisoformat(key["expires_at"])
+                expires_at = self._parse_timestamp(key["expires_at"])
                 # Keep if not expired, or if still active/deprecated
                 if expires_at > now or key["status"] in ["active", "deprecated"]:
                     keys_to_keep.append(key)
@@ -315,9 +329,9 @@ class KeyRotationManager:
             True if rotation is due
         """
         try:
-            last_rotation = datetime.fromisoformat(self.keys["last_rotation"])
+            last_rotation = self._parse_timestamp(self.keys["last_rotation"])
             next_rotation = last_rotation + timedelta(days=rotation_interval_days)
-            return datetime.utcnow() >= next_rotation
+            return datetime.now(UTC) >= next_rotation
         except (KeyError, ValueError):
             # If we can't parse the date, rotation is due
             return True
