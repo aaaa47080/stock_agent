@@ -54,3 +54,75 @@ def test_execute_forces_tool_before_llm_when_tool_required():
     assert result.success is True
     assert "123.45" in result.message
     llm.invoke.assert_called_once()
+
+
+def test_verified_mode_fails_when_required_tool_is_unavailable():
+    llm = MagicMock()
+
+    class EmptyRegistry:
+        def list_for_agent(self, _agent_name):
+            return []
+
+    agent = DummyAgent(llm, EmptyRegistry())
+    task = SubTask(
+        step=1,
+        description="AAPL 現在多少？",
+        agent="crypto",
+        context={
+            "language": "zh-TW",
+            "analysis_mode": "verified",
+            "tool_required": True,
+            "symbols": {"us": "AAPL"},
+            "allowed_tools": [],
+            "metadata": {
+                "market_resolution": {
+                    "requires_discovery_lookup": False,
+                },
+                "query_profile": {
+                    "query_type": "price_lookup",
+                },
+            },
+        },
+    )
+
+    result = agent.execute(task)
+
+    assert result.success is False
+    assert result.quality == "fail"
+    assert result.quality_fail_reason == "verified_tool_unavailable"
+    llm.invoke.assert_not_called()
+
+
+def test_verified_mode_fails_with_discovery_reason_when_market_resolution_is_missing():
+    llm = MagicMock()
+
+    class EmptyRegistry:
+        def list_for_agent(self, _agent_name):
+            return []
+
+    agent = DummyAgent(llm, EmptyRegistry())
+    task = SubTask(
+        step=1,
+        description="tsm 現在多少？",
+        agent="crypto",
+        context={
+            "language": "zh-TW",
+            "analysis_mode": "verified",
+            "tool_required": False,
+            "allowed_tools": [],
+            "metadata": {
+                "market_resolution": {
+                    "requires_discovery_lookup": True,
+                },
+                "query_profile": {
+                    "query_type": "price_lookup",
+                },
+            },
+        },
+    )
+
+    result = agent.execute(task)
+
+    assert result.success is False
+    assert result.quality_fail_reason == "verified_discovery_tool_unavailable"
+    llm.invoke.assert_not_called()

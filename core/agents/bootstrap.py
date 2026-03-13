@@ -114,6 +114,10 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
 
     if existing is not None:
         existing.llm = lang_llm
+        existing.user_tier = user_tier
+        existing.user_id = user_id or "anonymous"
+        if hasattr(existing, "tool_access_resolver"):
+            existing.tool_access_resolver.update_scope(user_tier, existing.user_id)
         if session_id:
             existing.session_id = session_id
             existing._memory_store = None
@@ -227,6 +231,8 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         input_schema={"query": "str", "purpose": "str"},
         handler=web_search,
         allowed_agents=["chat", "news", "crypto", "manager"],
+        role="discovery_lookup",
+        priority=80,
     ))
 
     # ── Register New Free Market Data Tools ──
@@ -680,6 +686,7 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         agent_registry=agent_registry,
         tool_registry=tool_registry,
         web_mode=web_mode,
+        user_tier=user_tier,
         user_id=user_id,
         session_id=session_id or "default",
     )

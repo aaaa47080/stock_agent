@@ -13,12 +13,14 @@ from langgraph.prebuilt import create_react_agent
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from .models import SubTask, AgentResult
+from .analysis_policy import AnalysisPolicyResolver
 from .prompt_registry import PromptRegistry
 from .tool_registry import ToolMetadata
 from core.database.tools import get_allowed_tools, normalize_membership_tier
 
 logger = logging.getLogger(__name__)
 _TIER_LEVELS = {"free": 0, "premium": 1}
+_ANALYSIS_POLICY = AnalysisPolicyResolver()
 
 
 class BaseReActAgent:
@@ -71,6 +73,9 @@ class BaseReActAgent:
         tools = [meta.handler for meta in tool_metas if hasattr(meta.handler, "name")]
 
         if not tools:
+            verified_fallback = self._handle_verified_missing_tools(task, language)
+            if verified_fallback is not None:
+                return verified_fallback
             # 沒有 tools，直接用 LLM 回答
             return self._execute_without_tools(task, language)
 
@@ -95,6 +100,12 @@ class BaseReActAgent:
         子類可以 override 來過濾或添加 tools。
         """
         all_tools = self.tool_registry.list_for_agent(self.name)
+        context = task.context if task and isinstance(task.context, dict) else {}
+        context_allowed_tools = context.get("allowed_tools")
+        if isinstance(context_allowed_tools, list):
+            allowed_tool_names = {name for name in context_allowed_tools if isinstance(name, str)}
+            return [meta for meta in all_tools if meta.name in allowed_tool_names]
+
         user_tier, user_id = self._resolve_user_scope(task)
 
         try:
@@ -208,6 +219,17 @@ class BaseReActAgent:
 
         設計理念：不要在這裡做複雜的意圖判斷，讓 ReAct 循環處理複雜查詢。
         """
+        context = task.context if isinstance(task.context, dict) else {}
+        policy = _ANALYSIS_POLICY.resolve(context)
+        if policy.required_tool_role == "discovery_lookup":
+            discovery_candidates = [
+                meta for meta in tool_metas
+                if meta.role == "discovery_lookup" and self._build_required_tool_kwargs(meta, task)
+            ]
+            if discovery_candidates:
+                discovery_candidates.sort(key=lambda meta: (-meta.priority, meta.name))
+                return discovery_candidates[0]
+
         candidates = []
         for meta in tool_metas:
             # 只選擇 market_lookup 角色的工具（價格、行情等快速查詢）
@@ -227,12 +249,18 @@ class BaseReActAgent:
     def _build_required_tool_kwargs(self, tool_meta: ToolMetadata, task: SubTask) -> Optional[dict]:
         """依工具 schema 自動填入 symbol/ticker/code 類參數。"""
         context = task.context if isinstance(task.context, dict) else {}
+        args = tool_meta.input_schema or {}
+        if "query" in args:
+            return {
+                "query": task.description,
+                "purpose": "resolve_market_context",
+            }
+
         symbols = context.get("symbols") or {}
         resolved_symbol = next((value for value in symbols.values() if value), None)
         if not resolved_symbol:
             return None
 
-        args = tool_meta.input_schema or {}
         if "symbol" in args:
             return {"symbol": resolved_symbol.replace(".TW", "")}
         if "ticker" in args:
@@ -243,6 +271,21 @@ class BaseReActAgent:
 
     def _summarize_required_tool_result(self, task: SubTask, tool_meta: ToolMetadata, tool_result: Any, language: str) -> AgentResult:
         """將強制工具查詢結果整理成最終對用戶可讀的回答。"""
+        context = task.context if isinstance(task.context, dict) else {}
+        metadata = {
+            "analysis_mode": context.get("analysis_mode", "quick"),
+            "used_tools": [tool_meta.name],
+            "verification_status": (
+                "verified"
+                if context.get("analysis_mode") == "verified"
+                else "standard"
+            ),
+        }
+        if isinstance(tool_result, dict):
+            data_as_of = tool_result.get("timestamp") or tool_result.get("as_of") or tool_result.get("date")
+            if data_as_of:
+                metadata["data_as_of"] = data_as_of
+
         if isinstance(tool_result, str):
             reply = tool_result
         else:
@@ -267,6 +310,7 @@ class BaseReActAgent:
             success=True,
             message=reply,
             agent_name=self.name,
+            data=metadata,
         )
 
     def _execute_without_tools(self, task: SubTask, language: str) -> AgentResult:
@@ -287,6 +331,35 @@ class BaseReActAgent:
             success=True,
             message=reply,
             agent_name=self.name,
+        )
+
+    def _handle_verified_missing_tools(self, task: SubTask, language: str) -> Optional[AgentResult]:
+        context = task.context if isinstance(task.context, dict) else {}
+        policy = _ANALYSIS_POLICY.resolve(context)
+        if not policy.fail_reason:
+            return None
+
+        if language == "zh-TW":
+            if policy.fail_reason == "verified_discovery_tool_unavailable":
+                message = "目前無法先確認這個代號屬於哪個市場，因為此模式下沒有可用的探索工具。請啟用相關工具後再試。"
+            else:
+                message = "目前無法驗證這個即時查詢，因為此模式下沒有可用的資料工具。請啟用相關工具後再試。"
+        else:
+            message = (
+                "I cannot verify this time-sensitive request right now because no eligible "
+                "data tools are available in verified mode."
+            )
+
+        return AgentResult(
+            success=False,
+            message=message,
+            agent_name=self.name,
+            data={
+                "analysis_mode": context.get("analysis_mode", "quick"),
+                "verification_status": "unverified",
+            },
+            quality="fail",
+            quality_fail_reason=policy.fail_reason,
         )
 
     def _error_result(self, error: str, language: str) -> AgentResult:

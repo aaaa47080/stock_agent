@@ -8,6 +8,7 @@ from core.model_config import GEMINI_DEFAULT_MODEL
 # 定義請求模型
 class QueryRequest(BaseModel):
     message: str
+    analysis_mode: Literal["quick", "verified", "research"] = "quick"
     interval: str = DEFAULT_INTERVAL
     limit: int = DEFAULT_KLINES_LIMIT
     manual_selection: Optional[List[str]] = None

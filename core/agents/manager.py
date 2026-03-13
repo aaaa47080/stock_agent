@@ -35,6 +35,8 @@ from .models import (
 )
 from .agent_registry import AgentRegistry
 from .tool_registry import ToolRegistry
+from .tool_access_resolver import ToolAccessResolver
+from .analysis_policy import AnalysisPolicyResolver
 from .router import AgentRouter
 from .prompt_registry import PromptRegistry
 from core.tools.universal_resolver import UniversalSymbolResolver
@@ -72,6 +74,7 @@ class ManagerAgent:
         agent_registry: AgentRegistry,
         tool_registry: ToolRegistry,
         web_mode: bool = False,
+        user_tier: str = "free",
         user_id: Optional[str] = None,
         session_id: Optional[str] = None,
     ):
@@ -80,10 +83,13 @@ class ManagerAgent:
         self.tool_registry = tool_registry
         self.web_mode = web_mode
         self.router = AgentRouter(agent_registry)
+        self.user_tier = user_tier
 
         # 用戶和會話標識
         self.user_id = user_id or "anonymous"
         self.session_id = session_id or "default"
+        self.tool_access_resolver = ToolAccessResolver(user_tier=self.user_tier, user_id=self.user_id)
+        self.analysis_policy_resolver = AnalysisPolicyResolver()
 
         # 短期記憶（每個 session 獨立）
         self._memory_cache: Dict[str, ShortTermMemory] = {}
@@ -853,6 +859,45 @@ class ManagerAgent:
 
         return result
 
+    def _build_market_resolution_metadata(
+        self,
+        query: str,
+        entities: Optional[Dict[str, Optional[str]]] = None,
+    ) -> Dict[str, object]:
+        """建立市場解析狀態，供後續 policy 與 tool selection 使用。"""
+        normalized = self._normalize_query_text(query)
+        entities = entities or {"crypto": None, "tw": None, "us": None}
+        candidates = self._extract_symbol_candidates(normalized)
+        unresolved_candidates: List[str] = []
+        ambiguous_candidates: List[str] = []
+
+        for candidate in candidates:
+            resolution = self._symbol_resolver.resolve(candidate)
+            matched_markets = self._symbol_resolver.matched_markets(resolution)
+            if not matched_markets:
+                unresolved_candidates.append(candidate)
+            elif len(matched_markets) > 1:
+                ambiguous_candidates.append(candidate)
+
+        matched_entities = {market: value for market, value in entities.items() if value}
+        requires_discovery_lookup = bool(candidates) and (
+            not matched_entities or bool(ambiguous_candidates)
+        )
+
+        return {
+            "candidates": candidates,
+            "matched_entities": matched_entities,
+            "unresolved_candidates": unresolved_candidates,
+            "ambiguous_candidates": ambiguous_candidates,
+            "requires_discovery_lookup": requires_discovery_lookup,
+        }
+
+    def _build_query_policy_metadata(self, query: str, market_resolution: Dict[str, object]) -> Dict[str, object]:
+        candidates = market_resolution.get("candidates", []) if isinstance(market_resolution, dict) else []
+        if not isinstance(candidates, list):
+            candidates = []
+        return self.analysis_policy_resolver.build_query_profile(query, candidates)
+
     def _extract_symbol_candidates(self, query: str) -> List[str]:
         """抽取可能的市場符號候選，保持順序與去重。"""
         raw_candidates = re.findall(r"[A-Za-z]{1,10}|\d{2,6}", query)
@@ -1223,7 +1268,7 @@ class ManagerAgent:
         extract_from_node(root)
         return tasks
 
-    async def _execute_agent(self, agent, context: AgentContext) -> str:
+    async def _execute_agent(self, agent, context: AgentContext) -> Dict[str, object]:
         """執行單個 agent"""
         from .models import SubTask
 
@@ -1243,7 +1288,9 @@ class ManagerAgent:
                 "dependency_results": context.dependency_results,
                 "history": context.history_summary,
                 "language": "zh-TW",
+                "analysis_mode": context.analysis_mode,
                 "tool_required": bool(resolved_symbols),
+                "allowed_tools": context.allowed_tools,
                 "metadata": context.metadata,
             },
         )
@@ -1251,15 +1298,33 @@ class ManagerAgent:
         if hasattr(agent, 'execute'):
             result = await asyncio.to_thread(agent.execute, task)
             if hasattr(result, 'message'):
-                return result.message
-            return str(result)
+                return {
+                    "message": result.message,
+                    "success": getattr(result, "success", True),
+                    "data": getattr(result, "data", {}),
+                    "quality": getattr(result, "quality", "pass"),
+                    "quality_fail_reason": getattr(result, "quality_fail_reason", None),
+                }
+            return {
+                "message": str(result),
+                "success": True,
+                "data": {},
+                "quality": "pass",
+                "quality_fail_reason": None,
+            }
         else:
             messages = [HumanMessage(content=context.task_description)]
             if hasattr(self.llm, "ainvoke"):
                 response = await self.llm.ainvoke(messages)
             else:
                 response = await asyncio.to_thread(self.llm.invoke, messages)
-            return response.content
+            return {
+                "message": response.content,
+                "success": True,
+                "data": {},
+                "quality": "pass",
+                "quality_fail_reason": None,
+            }
 
     async def _execute_single_task(self, task: TaskNode, state: ManagerState, completed_results: Dict) -> Dict:
         """執行單個任務"""
@@ -1277,21 +1342,34 @@ class ManagerAgent:
             if dep_id in completed_results:
                 dep_results[dep_id] = completed_results[dep_id]
 
+        market_resolution = self._build_market_resolution_metadata(
+            state["query"],
+            state.get("intent_understanding", {}).get("entities", {}),
+        )
         context = AgentContext(
             history_summary=state.get("history"),
             original_query=state["query"],
             task_description=task.description or task.name,
             symbols=state.get("intent_understanding", {}).get("entities", {}),
+            analysis_mode=state.get("analysis_mode", "quick"),
             dependency_results=dep_results,
+            allowed_tools=self.tool_access_resolver.resolve_for_agent(task.agent),
+            metadata={
+                "market_resolution": market_resolution,
+                "query_profile": self._build_query_policy_metadata(state["query"], market_resolution),
+            },
         )
 
         try:
             result = await self._execute_agent(agent, context)
             return {
-                "success": True,
-                "message": result,
+                "success": result.get("success", True),
+                "message": result.get("message", ""),
                 "agent_name": task.agent,
                 "task_id": task.id,
+                "data": result.get("data", {}),
+                "quality": result.get("quality", "pass"),
+                "quality_fail_reason": result.get("quality_fail_reason"),
             }
         except Exception as e:
             logger.error(f"[Manager]Task {task.id} failed: {e}")

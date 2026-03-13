@@ -38,6 +38,7 @@ class TestQueryRequest:
     def test_default_values(self):
         """Test default values"""
         request = QueryRequest(message="Test", user_api_key="key", user_provider="google_gemini")
+        assert request.analysis_mode == "quick"
         assert request.interval == "1d"  # DEFAULT_INTERVAL
         assert request.auto_execute is False
         assert request.market_type == "spot"
@@ -47,6 +48,7 @@ class TestQueryRequest:
         """Test with custom values"""
         data = {
             "message": "Test",
+            "analysis_mode": "verified",
             "user_api_key": "key",
             "interval": "4h",
             "limit": 200,
@@ -58,6 +60,7 @@ class TestQueryRequest:
             "session_id": "custom-session"
         }
         request = QueryRequest(**data)
+        assert request.analysis_mode == "verified"
         assert request.interval == "4h"
         assert request.limit == 200
         assert request.auto_execute is True

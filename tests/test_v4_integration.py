@@ -37,7 +37,6 @@ class TestV4Classify:
             display_name="深度分析",
             description="完整市場分析",
             capabilities=["full_analysis", "完整分析", "值得投資"],
-            allowed_tools=[],
             priority=20,
         ))
         mock_chat = MagicMock()
@@ -47,7 +46,6 @@ class TestV4Classify:
             display_name="Chat",
             description="閒聊與簡單查詢",
             capabilities=["conversation", "price lookup"],
-            allowed_tools=[],
             priority=1,
         ))
 
@@ -175,6 +173,12 @@ class TestAnalysisReportDB:
 class TestAPIModels:
     """Test QueryRequest model changes."""
 
+    def test_query_request_has_analysis_mode(self):
+        from api.models import QueryRequest
+        fields = QueryRequest.model_fields
+        assert "analysis_mode" in fields
+        assert fields["analysis_mode"].default == "quick"
+
     def test_query_request_has_resume_answer(self):
         """QueryRequest 應有 resume_answer 欄位，預設為 None。"""
         from api.models import QueryRequest
@@ -195,11 +199,13 @@ class TestAPIModels:
         from api.models import QueryRequest
         req = QueryRequest(
             message="分析 BTC",
+            analysis_mode="verified",
             user_api_key="test-key",
             user_provider="openai",
             session_id="test-session",
             resume_answer="確認執行",
         )
+        assert req.analysis_mode == "verified"
         assert req.resume_answer == "確認執行"
 
 

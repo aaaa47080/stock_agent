@@ -465,6 +465,7 @@ window.submitHITLAnswer = async function (answer) {
             },
             body: JSON.stringify({
                 message: ctx.originalMessage,
+                analysis_mode: (typeof getSelectedAnalysisMode === 'function' ? getSelectedAnalysisMode() : 'quick'),
                 session_id: ctx.sessionId,
                 user_api_key: ctx.userKey.key,
                 user_provider: ctx.userKey.provider,

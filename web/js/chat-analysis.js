@@ -22,6 +22,33 @@ function cleanupStaleButtons() {
     });
 }
 
+function getSelectedAnalysisMode() {
+    const select = document.getElementById('analysis-mode-select');
+    return select?.value || 'quick';
+}
+
+function renderResponseMetadata(metadata = {}) {
+    const mode = metadata.analysis_mode || 'quick';
+    const verificationStatus = metadata.verification_status || mode;
+    const usedTools = Array.isArray(metadata.used_tools) ? metadata.used_tools : [];
+    const parts = [
+        `<span>模式: ${escapeHtml(mode)}</span>`,
+        `<span>驗證: ${escapeHtml(verificationStatus)}</span>`,
+    ];
+
+    if (metadata.data_as_of) {
+        parts.push(`<span>資料時間: ${escapeHtml(String(metadata.data_as_of))}</span>`);
+    }
+    if (usedTools.length) {
+        parts.push(`<span>工具: ${escapeHtml(usedTools.join(', '))}</span>`);
+    }
+    if (metadata.quality_fail_reason) {
+        parts.push(`<span class="text-danger">原因: ${escapeHtml(metadata.quality_fail_reason)}</span>`);
+    }
+
+    return `<div class="mt-3 flex flex-wrap gap-2 text-[11px] text-textMuted/70 font-mono">${parts.map((part) => `<span class="px-2 py-1 rounded-full bg-white/5 border border-white/10">${part}</span>`).join('')}</div>`;
+}
+
 async function sendMessage() {
     const input = document.getElementById('user-input');
     const sendBtn = document.getElementById('send-btn');
@@ -149,6 +176,7 @@ async function sendMessage() {
     const selection = Array.from(checkboxes).map((cb) => cb.value);
     const marketType = 'spot';
     const autoExecute = false;
+    const analysisMode = getSelectedAnalysisMode();
 
     input.value = '';
     appendMessage('user', text);
@@ -234,6 +262,7 @@ async function sendMessage() {
             },
             body: JSON.stringify({
                 message: text,
+                analysis_mode: analysisMode,
                 manual_selection: selection,
                 market_type: marketType,
                 auto_execute: autoExecute,
@@ -265,6 +294,7 @@ async function sendMessage() {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let fullContent = '';
+        let responseMetadata = null;
         let pendingBuffer = '';
 
         armStreamIdleTimeout();
@@ -335,6 +365,10 @@ async function sendMessage() {
                         window.ChatStreamUI.applyProgress(botMsgDiv, data.data || {});
                     }
 
+                    if (data.type === 'response_metadata') {
+                        responseMetadata = data.data || null;
+                    }
+
                     if (data.content) {
                         fullContent += data.content;
                         // 實時更新內容，傳入 isStreaming=true 和當前耗時
@@ -353,6 +387,9 @@ async function sendMessage() {
 
                         // Final render，傳入 isStreaming=false
                         botMsgDiv.innerHTML = renderStoredBotMessage(fullContent, false, totalTime);
+                        if (responseMetadata) {
+                            botMsgDiv.insertAdjacentHTML('beforeend', renderResponseMetadata(responseMetadata));
+                        }
 
                         const timeBadge = document.createElement('div');
                         timeBadge.className =

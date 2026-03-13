@@ -237,9 +237,11 @@ class AgentContext:
     original_query: str          # 原始用戶問題
     task_description: str        # 經理指派的具體任務
     symbols: Dict[str, str]      # 萃取的實體（如 BTC → bitcoin）
+    analysis_mode: str = "quick"
 
     # === 動態帶（有依賴時）===
     dependency_results: Dict[str, Any] = field(default_factory=dict)
+    allowed_tools: List[str] = field(default_factory=list)
 
     # === 摘要帶（有歷史時）===
     history_summary: Optional[str] = None  # 壓縮後的對話歷史
@@ -417,6 +419,7 @@ class ManagerState(TypedDict, total=False):
     # === 意圖理解 ===
     intent_understanding: Optional[Dict]  # IntentUnderstanding 的 dict 形式
     execution_mode: str  # "vending" or "restaurant"
+    analysis_mode: str  # "quick" | "verified" | "research"
 
     # === 記憶 ===
     history: str  # 壓縮後的歷史

@@ -340,6 +340,13 @@
                         <!-- Input Box -->
                         <div
                             class="bg-surface/90 border border-white/10 rounded-[2rem] p-2 flex items-center gap-2 shadow-xl focus-within:ring-1 focus-within:ring-primary/50">
+                            <label for="analysis-mode-select" class="sr-only">分析模式</label>
+                            <select id="analysis-mode-select"
+                                class="h-10 px-3 rounded-full bg-white/5 border border-white/10 text-xs text-textMuted focus:outline-none focus:ring-1 focus:ring-primary/40">
+                                <option value="quick">Quick</option>
+                                <option value="verified">Verified</option>
+                                <option value="research">Research</option>
+                            </select>
                             <button onclick="toggleOptions()" aria-label="顯示選項"
                                 class="w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center text-textMuted hover:text-primary transition">
                                 <i data-lucide="plus" class="w-5 h-5"></i>

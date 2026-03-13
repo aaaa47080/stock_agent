@@ -36,6 +36,16 @@ class _FakeRegistry:
                 allowed_agents=["crypto"],
                 required_tier="premium",
             ),
+            ToolMetadata(
+                name="web_search",
+                description="discovery tool",
+                input_schema={"query": "str", "purpose": "str"},
+                handler=_FakeTool(),
+                allowed_agents=["crypto"],
+                role="discovery_lookup",
+                priority=80,
+                required_tier="free",
+            ),
         ]
 
 
@@ -76,7 +86,48 @@ def test_base_react_agent_falls_back_to_required_tier_filter():
     with patch("core.agents.base_react_agent.get_allowed_tools", side_effect=RuntimeError("db down")):
         metas = agent._get_tool_metas(SubTask(step=1, description="test", agent="crypto"))
 
-    assert [m.name for m in metas] == ["free_tool", "premium_tool"]
+    assert [m.name for m in metas] == ["free_tool", "premium_tool", "web_search"]
+
+
+def test_base_react_agent_prefers_allowed_tools_from_task_context():
+    agent = _DummyAgent(llm_client=None, tool_registry=_FakeRegistry(), user_tier="premium", user_id="u1")
+
+    with patch("core.agents.base_react_agent.get_allowed_tools", side_effect=AssertionError("should not hit db")):
+        metas = agent._get_tool_metas(SubTask(
+            step=1,
+            description="test",
+            agent="crypto",
+            context={"allowed_tools": ["premium_tool"]},
+        ))
+
+    assert [m.name for m in metas] == ["premium_tool"]
+
+
+def test_base_react_agent_prefers_discovery_lookup_when_market_is_unresolved():
+    agent = _DummyAgent(llm_client=None, tool_registry=_FakeRegistry(), user_tier="premium", user_id="u1")
+    task = SubTask(
+        step=1,
+        description="tsm 現在多少？",
+        agent="crypto",
+        context={
+            "allowed_tools": ["web_search", "premium_tool"],
+            "analysis_mode": "verified",
+            "metadata": {
+                "market_resolution": {
+                    "requires_discovery_lookup": True,
+                },
+                "query_profile": {
+                    "query_type": "price_lookup",
+                },
+            },
+        },
+    )
+
+    metas = agent._get_tool_metas(task)
+    selected = agent._select_required_tool(task, metas)
+
+    assert selected is not None
+    assert selected.name == "web_search"
 
 
 def test_tools_router_exposes_user_tools_routes():

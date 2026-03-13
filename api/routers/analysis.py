@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
 from api.models import QueryRequest, BacktestRequest
+from api.response_metadata import build_response_metadata
 from api.utils import logger
 from analysis.simple_backtester import run_simple_backtest
 import core.config as core_config
@@ -203,6 +204,7 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
                     "session_id": body.session_id,
                     "query": body.message,
                     "history": history_text,
+                    "analysis_mode": body.analysis_mode,
                     "task_results": {},
                     "language": body.language,
                     "execution_mode": "vending",  # default, will be updated by intent understanding
@@ -261,6 +263,7 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
 
                     # 正常回應
                     response = result.get("final_response") or "（無回應）"
+                    response_metadata = build_response_metadata(result, body.analysis_mode)
 
                     chunk_size = 50
                     for i in range(0, len(response), chunk_size):
@@ -273,6 +276,7 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
                                       session_id=body.session_id, user_id=current_user.get("user_id"))
                     )
 
+                    yield f"data: {json.dumps({'type': 'response_metadata', 'data': response_metadata})}\n\n"
                     yield f"data: {json.dumps({'done': True})}\n\n"
 
                 except asyncio.CancelledError:
