@@ -665,9 +665,13 @@ class ManagerAgent:
             # 沒有執行結果，直接生成回應（注入長期記憶）
             lt_memory = self.get_long_term_memory_context()
             memory_section = f"\n\n## 用戶長期記憶\n{lt_memory}" if lt_memory else ""
-            prompt = f"""用戶問題：{current_query}{memory_section}
-
-請直接回答用戶的問題。如果是投資相關問題，請提供專業但中立的建議，並包含風險提示。"""
+            prompt = PromptRegistry.render(
+                "manager",
+                "synthesize_fallback",
+                include_time=False,
+                query=current_query,
+                memory_section=memory_section,
+            )
             try:
                 response = await self._llm_invoke(prompt)
                 await self._track_conversation(
@@ -710,57 +714,24 @@ class ManagerAgent:
             query=current_query,
         )
 
-        # 改進 prompt：讓 Manager 能夠綜合分析多個 sub-agent 的結果
         num_results = len(results_text)
 
         lt_memory = self.get_long_term_memory_context()
         memory_block = f"\n\n## 用戶長期記憶（偏好與歷史）\n{lt_memory}" if lt_memory else ""
 
-        prompt = f"""你是 Manager Agent，負責綜合分析多個專業 Agent 的執行結果，回答用戶的問題。
-
-## 用戶問題
-{current_query}{memory_block}
-
-## 分析模式
-{analysis_mode}
-
-## Sub-Agent 執行結果（共 {num_results} 個）
-{chr(10).join(results_text)}
-
-## 已知依據
-{self._format_response_evidence(evidence)}
-
----
-
-## 你的任務
-
-作為 Manager，你需要：
-1. **綜合分析**所有 sub-agent 返回的結果
-2. **直接回答**用戶的問題，不要說「無法」或「抱歉」
-3. **比較分析**（如果用戶問的是比較問題）：
-   - 列出各標的的關鍵數據對比
-   - 分析各自的優缺點
-   - 給出客觀的總結
-4. **預算計算**（如果用戶提到預算限制）：
-   - 計算該預算能購買多少數量
-   - 說明進入門檻（如股票整股 vs 零股）
-   - 分析小額投資的可行性
-5. **投資分析**（如果用戶問投資建議）：
-   - 分析各標的的風險與潛在報酬
-   - 說明適合的投資者類型
-   - 提供客觀建議，但不提供具體買賣信號
-
-## 回應契約
-
-{response_contract}
-
-## 回應格式
-
-{response_format_guidance}
-
----
-
-請生成回應："""
+        prompt = PromptRegistry.render(
+            "manager",
+            "synthesize_runtime",
+            include_time=False,
+            query=current_query,
+            memory_block=memory_block,
+            analysis_mode=analysis_mode,
+            num_results=num_results,
+            results=chr(10).join(results_text),
+            evidence=self._format_response_evidence(evidence),
+            response_contract=response_contract,
+            response_format_guidance=response_format_guidance,
+        )
 
         try:
             response = await self._llm_invoke(prompt)
@@ -1150,25 +1121,21 @@ class ManagerAgent:
         is_compare = any(token in lowered_query for token in ("比較", "compare", "vs", "差異"))
 
         if analysis_mode == "verified":
-            return (
-                "1. 先直接回答核心問題。\n"
-                "2. 僅把已知依據中的內容當作已驗證資料，其餘只能保守推論。\n"
-                "3. 若有工具或資料時間，答案末尾必須加上『驗證資訊』小節。\n"
-                "4. 禁止輸出 Sub-Agent、任務編號、內部欄位 dump。"
+            return PromptRegistry.render(
+                "manager",
+                "response_contract_verified",
+                include_time=False,
             )
         if analysis_mode == "research":
-            compare_rule = "3. 若是比較題，先給比較表，再下結論。\n" if is_compare else ""
-            return (
-                "1. 請把多個子任務結果整理成產品化回答，不要直接貼內部結果。\n"
-                "2. 預設使用『重點結論』『關鍵數據』『分析觀點』『風險與觀察』結構。\n"
-                f"{compare_rule}"
-                "4. 若有工具或資料時間，可在答案末尾加『研究依據』小節。\n"
-                "5. 禁止輸出 Sub-Agent、任務編號、debug 標題。"
+            return PromptRegistry.render(
+                "manager",
+                "response_contract_research_compare" if is_compare else "response_contract_research",
+                include_time=False,
             )
-        return (
-            "1. 直接回答，用最短可用內容完成。\n"
-            "2. 保留關鍵數據，避免冗長。\n"
-            "3. 禁止輸出內部執行痕跡。"
+        return PromptRegistry.render(
+            "manager",
+            "response_contract_quick",
+            include_time=False,
         )
 
     def _build_response_format_guidance(
@@ -1180,32 +1147,31 @@ class ManagerAgent:
         is_compare = any(token in lowered_query for token in ("比較", "compare", "vs", "差異"))
 
         if is_compare:
-            return (
-                "請用自然、友善的語氣生成完整的回應。這是一個比較題，建議使用以下結構：\n\n"
-                "### 標的比較\n"
-                "| 項目 | 標的A | 標的B |\n"
-                "|------|-------|-------|\n"
-                "| 價格 | ... | ... |\n"
-                "| 你的預算可購買 | ... | ... |\n"
-                "| 風險等級 | ... | ... |\n\n"
-                "### 分析結論\n"
-                "（綜合分析與建議）"
+            return PromptRegistry.render(
+                "manager",
+                "response_format_compare",
+                include_time=False,
             )
 
         if analysis_mode == "research":
-            return (
-                "請用自然、友善的語氣生成完整的回應。這是一個單標的研究題，"
-                "請用以下結構回答：\n\n"
-                "### 重點結論\n"
-                "### 關鍵數據\n"
-                "### 分析觀點\n"
-                "### 風險與觀察"
+            return PromptRegistry.render(
+                "manager",
+                "response_format_research",
+                include_time=False,
             )
 
         if analysis_mode == "verified":
-            return "請用自然、友善的語氣生成完整的回應。先直接回答，再補上驗證資訊。"
+            return PromptRegistry.render(
+                "manager",
+                "response_format_verified",
+                include_time=False,
+            )
 
-        return "請用自然、友善的語氣生成完整的回應，直接回答核心問題即可。"
+        return PromptRegistry.render(
+            "manager",
+            "response_format_quick",
+            include_time=False,
+        )
 
     def _finalize_mode_response(
         self,

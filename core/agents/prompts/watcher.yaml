@@ -13,7 +13,7 @@ critique:
 
     Rules:
     1. FAIL — result is an error, empty, or completely unrelated to the query
-    2. PASS — result contains useful information (even if tangentially related, e.g., BTC market context when asking about PI)
+    2. PASS — result contains useful information (even if tangentially related to the query context)
     3. When in doubt, lean toward PASS
 
     Output JSON only (feedback ≤ 30 words):

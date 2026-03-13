@@ -129,14 +129,14 @@ summarize:
 
 extract_symbol:
   zh-TW: |
-    從以下文字中提取加密貨幣的交易所 ticker 代號（例如 BTC、ETH、PI、SOL）。
+    從以下文字中提取加密貨幣的交易所 ticker 代號。
     若有代詞（它/他/這個幣），請從對話歷史推斷所指幣種。
     只回覆 ticker（純英文大寫），不要其他文字。若完全無法識別則回覆 None。
 
     文字：{description}{history_hint}
 
   en: |
-    Extract the crypto exchange ticker from the following text (e.g., BTC, ETH, PI, SOL).
+    Extract the crypto exchange ticker from the following text.
     If pronouns appear, infer from conversation history. Reply only with the ticker (uppercase), nothing else. If unrecognizable, reply None.
 
     Text: {description}{history_hint}

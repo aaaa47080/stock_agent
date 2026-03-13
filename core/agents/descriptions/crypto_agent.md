@@ -1,7 +1,7 @@
 ---
 name: crypto
 description: "加密貨幣市場專業分析助手。處理任何與加密貨幣/數位資產相關的查詢，包括價格查詢、技術分析、市場數據、鏈上數據、新聞資訊等。"
-routing_keywords: [btc, eth, bitcoin, ethereum, 加密, crypto, blockchain, 區塊鏈, satoshi, defi, nft, web3]
+routing_keywords: [加密, crypto, digital asset, token, blockchain, 區塊鏈, defi, nft, web3]
 priority: 10
 ---
 
@@ -29,7 +29,7 @@ priority: 10
 ## ⚠️ 與 Economic Agent 的邊界
 - **加密貨幣恐慌貪婪指數** → Crypto Agent（本 Agent）
 - **傳統金融 VIX 恐慌指數** → Economic Agent
-- 當用戶在討論加密貨幣（如 BTC、ETH）時提到「恐慌指數」，應理解為加密貨幣恐慌貪婪指數
+- 當用戶在討論加密貨幣時提到「恐慌指數」，應理解為加密貨幣恐慌貪婪指數
 
 ## ⚠️ 綜合分析任務規劃
 
@@ -50,8 +50,8 @@ priority: 10
 - 「發生了什麼」「有什麼消息」
 
 範例：
-- 用戶問「BTC 最新新聞」→ 任務描述應為「查詢 BTC 的最新新聞」
-- 用戶問「比特幣有什麼消息」→ 任務描述應為「獲取比特幣的市場消息與動態」
+- 用戶問「某幣種最新新聞」→ 任務描述應為「查詢 [標的] 的最新新聞」
+- 用戶問「某幣種有什麼消息」→ 任務描述應為「獲取 [標的] 的市場消息與動態」
 
 ## Market Indicators
 用戶提到任何數位資產、區塊鏈代幣、加密貨幣相關術語時，應路由至此 agent。

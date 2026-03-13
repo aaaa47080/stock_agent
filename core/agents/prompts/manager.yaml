@@ -103,9 +103,9 @@ classify:
     - 例如：「解釋什麼是智能合約審計」→ chat（不是 crypto）
 
     **【次優先】市場數據查詢**
-    1. 台股相關（含股票代號如 2330、公司名稱如台積電）且需要即時數據 → tw_stock
-    2. 加密貨幣相關（BTC/ETH/SOL 等）且需要**即時價格/技術指標/新聞** → crypto
-    3. 美股相關（NYSE/NASDAQ ticker）且需要即時數據 → us_stock
+    1. 台灣股票市場相關（含台股代碼或公司名稱）且需要即時數據 → tw_stock
+    2. 加密資產市場相關（代幣/幣種）且需要**即時價格/技術指標/新聞** → crypto
+    3. 美國股票市場相關（NYSE/NASDAQ 代碼或公司名稱）且需要即時數據 → us_stock
 
     **【默認】**
     4. 一般閒聊、平台功能說明、其他無關財經的問題 → chat
@@ -123,15 +123,10 @@ classify:
 
     1. crypto（加密貨幣）：
        - 識別幣種名稱或縮寫，轉成標準 ticker 大寫
-       - 範例："PI NETWORK" → "PI"、"比特幣" → "BTC"、"以太坊" → "ETH"
     2. tw（台股）：
        - 識別台灣上市/上櫃公司名稱或股票代號，轉成 Yahoo Finance 格式 代號.TW
-       - 範例："台積電" → "2330.TW"、"聯發科" → "2454.TW"、"鴻海" → "2317.TW"、"2330" → "2330.TW"
     3. us（美股）：
        - 識別美股公司名稱或 ticker，轉成大寫 ticker
-       - 範例："蘋果" → "AAPL"、"特斯拉" → "TSLA"、"台積電ADR" → "TSM"
-       - ⚠️「美超微」「美超微電腦」「超微電腦」= Super Micro Computer = "SMCI"（伺服器廠商）
-       - ⚠️「超微」「超微半導體」= Advanced Micro Devices = "AMD"（注意：SMCI ≠ AMD）
     4. 代詞處理：查詢中出現「它」「他」「這個幣」「這支股票」等代詞時，從對話歷史推斷所指標的
     5. 無標的 → 回傳 null（禁止猜測或亂填，寧可 null 也不要填錯）
 
@@ -176,7 +171,7 @@ pre_research_intent:
     1. 若表示同意、可以直接建立計畫（例如：好、可以、沒問題、ok、確認、開始規劃），回傳：confirm
     2. 若是針對當前標的提出問題、想要從目前的資料中得知答案（例如：分析得如何？有什麼風險？），回傳：question
     3. 若是給予當前標的新的分析方向、過濾條件或補充資訊（例如：幫我著重看基本面、只看技術指標），回傳：direction
-    4. 若是提出與當前標的完全無關的全新問題，或是要求分析另一個全新的標的（例如當前是PI，卻問BTC適合買嗎？），回傳：new_topic
+    4. 若是提出與當前標的完全無關的全新問題，或是要求分析另一個全新的標的，回傳：new_topic
     
     如果使用者輸入空白，請判定為 confirm。
     只回覆一個詞：confirm, question, direction, 或是 new_topic。
@@ -207,8 +202,8 @@ research_question_final:
 extract_symbol:
   description: "從對話歷史與查詢中提取分析目標代號"
   template: |
-    從以下文字中提取金融資產的交易代號（ticker），包含加密貨幣（如 BTC、ETH、SOL）
-    或股票（如 AAPL、INTC、TSLA、2330）。
+    從以下文字中提取金融資產的交易代號（ticker），包含加密貨幣代號
+    或股票代號。
     只回覆 ticker 本身（純英文大寫縮寫或數字代號），不要其他文字。
     若無法識別，直接回覆原文字。
 
@@ -266,7 +261,7 @@ plan:
     規則：
     - agent 必須從上方 Agent 列表中選擇，每個 step 只指派一個 agent
     - tool_hint 可為 null（讓 agent 自己決定）或指定具體工具名稱
-    - description **只寫一句話（10~30 字）**，格式：「查詢/分析 [標的] 的 [具體資料類型]」，例如「查詢 BTC 技術指標（RSI/MACD/均線）」、「取得 BTC 最新新聞與市場情緒」
+    - description **只寫一句話（10~30 字）**，格式：「查詢/分析 [標的] 的 [具體資料類型]」
     - 步驟數量 2～4 個（單一維度查詢可 1 步；跨市場才需要不同 agent）
     - chat agent 僅用於閒聊/問答，**不得**出現在多步驟計畫中
 
@@ -435,7 +430,7 @@ negotiate_plan:
       1. 用戶問事實（現價/新聞等）且 `tool_results` 為空 → 回傳 `tool_call`，`modified_plan` 不動
       2. 用戶問事實且 `tool_results` 有答案 → 在 `explanation` 列出結果（具體數字+連結），不呼叫工具，`modified_plan` 不動
       3. 用戶明確要求修改計畫（移除/新增/替換步驟）→ 修改 `modified_plan`，不呼叫工具
-    - **description 格式**：必須含英文 ticker（如「查詢 SMCI 的即時股價」），不能只寫中文名稱
+    - **description 格式**：必須含標準 ticker（例如「查詢 [ticker] 的即時股價」），不能只寫中文名稱
 
 retry_scope:
   description: "判斷重試範圍"
@@ -480,7 +475,7 @@ reflect_plan:
 
     **審核標準：**
     1. 標的正確性：計畫中使用的 agent 和 symbol 是否對應查詢中的資產？
-       （例如：用戶問 INTC 但計畫查 AMD → 不通過）
+       （若用戶問某標的但計畫查另一個不相關標的 → 不通過）
     2. 問題覆蓋性：步驟加總是否能回答用戶的核心問題？
        （例如：用戶問「值得買嗎」但計畫只查新聞，沒有技術面 → 不通過）
     3. 步驟合理性：步驟數量和描述是否清晰合理？（1-6 步為宜）
@@ -530,3 +525,125 @@ discuss:
         "answer": "繁體中文回答（Markdown 格式，若有連結保留 [標題](url)）",
         "tool_call": {{"name": "工具名稱", "args": {{...}}}} 或 null
     }}
+
+synthesize_fallback:
+  description: "無 task_results 時，直接回答當前問題"
+  template: |
+    用戶問題：{query}{memory_section}
+
+    請直接回答用戶的問題。如果是投資相關問題，請提供專業但中立的建議，並包含風險提示。
+
+synthesize_runtime:
+  description: "Manager runtime 綜合多個 sub-agent 結果"
+  template: |
+    你是 Manager Agent，負責綜合分析多個專業 Agent 的執行結果，回答用戶的問題。
+
+    ## 用戶問題
+    {query}{memory_block}
+
+    ## 分析模式
+    {analysis_mode}
+
+    ## Sub-Agent 執行結果（共 {num_results} 個）
+    {results}
+
+    ## 已知依據
+    {evidence}
+
+    ---
+
+    ## 你的任務
+
+    作為 Manager，你需要：
+    1. **綜合分析**所有 sub-agent 返回的結果
+    2. **直接回答**用戶的問題，不要說「無法」或「抱歉」
+    3. **比較分析**（如果用戶問的是比較問題）：
+       - 列出各標的的關鍵數據對比
+       - 分析各自的優缺點
+       - 給出客觀的總結
+    4. **預算計算**（如果用戶提到預算限制）：
+       - 計算該預算能購買多少數量
+       - 說明進入門檻（如股票整股 vs 零股）
+       - 分析小額投資的可行性
+    5. **投資分析**（如果用戶問投資建議）：
+       - 分析各標的的風險與潛在報酬
+       - 說明適合的投資者類型
+       - 提供客觀建議，但不提供具體買賣信號
+
+    ## 回應契約
+
+    {response_contract}
+
+    ## 回應格式
+
+    {response_format_guidance}
+
+    ---
+
+    請生成回應：
+
+response_contract_quick:
+  description: "quick 模式的回應契約"
+  template: |
+    1. 直接回答，用最短可用內容完成。
+    2. 保留關鍵數據，避免冗長。
+    3. 禁止輸出內部執行痕跡。
+
+response_contract_verified:
+  description: "verified 模式的回應契約"
+  template: |
+    1. 先直接回答核心問題。
+    2. 僅把已知依據中的內容當作已驗證資料，其餘只能保守推論。
+    3. 若有工具或資料時間，答案末尾必須加上「驗證資訊」小節。
+    4. 禁止輸出 Sub-Agent、任務編號、內部欄位 dump。
+
+response_contract_research:
+  description: "research 模式的回應契約（單標的）"
+  template: |
+    1. 請把多個子任務結果整理成產品化回答，不要直接貼內部結果。
+    2. 預設使用「重點結論」「關鍵數據」「分析觀點」「風險與觀察」結構。
+    3. 若有工具或資料時間，可在答案末尾加「研究依據」小節。
+    4. 禁止輸出 Sub-Agent、任務編號、debug 標題。
+
+response_contract_research_compare:
+  description: "research 模式的回應契約（比較題）"
+  template: |
+    1. 請把多個子任務結果整理成產品化回答，不要直接貼內部結果。
+    2. 若是比較題，先給比較表，再下結論。
+    3. 若有工具或資料時間，可在答案末尾加「研究依據」小節。
+    4. 禁止輸出 Sub-Agent、任務編號、debug 標題。
+
+response_format_quick:
+  description: "quick 模式格式建議"
+  template: |
+    請用自然、友善的語氣生成完整的回應，直接回答核心問題即可。
+
+response_format_verified:
+  description: "verified 模式格式建議"
+  template: |
+    請用自然、友善的語氣生成完整的回應。先直接回答，再補上驗證資訊。
+
+response_format_research:
+  description: "research 模式格式建議（單標的）"
+  template: |
+    請用自然、友善的語氣生成完整的回應。這是一個單標的研究題，請用以下結構回答：
+
+    ### 重點結論
+    ### 關鍵數據
+    ### 分析觀點
+    ### 風險與觀察
+
+response_format_compare:
+  description: "比較題格式建議"
+  template: |
+    請用自然、友善的語氣生成完整的回應。這是一個比較題，建議使用以下結構：
+
+    ### 標的比較
+    | 項目 | 標的A | 標的B |
+    |------|-------|-------|
+    | 價格 | ... | ... |
+    | 你的預算可購買 | ... | ... |
+    | 風險等級 | ... | ... |
+
+    ### 分析結論
+    （綜合分析與建議）

@@ -1,7 +1,7 @@
 ---
 name: tw_stock
 description: "台灣股票市場專業分析助手。處理任何與台灣證券市場相關的查詢，包括上市、上櫃股票。"
-routing_keywords: [台股, 台積電, 鴻海, 聯發科, taiwan stock, tw stock, 上市, 上櫃, 證交所, 台灣股票, 台灣股市]
+routing_keywords: [台股, taiwan stock, tw stock, 上市, 上櫃, 證交所, 台灣股票, 台灣股市]
 priority: 10
 ---
 
@@ -10,7 +10,7 @@ priority: 10
 ## When to Use
 當用戶查詢涉及：
 - 台灣公司的股票
-- 台股股票代號（數字格式如 2330、2317）
+- 台股股票代號（數字格式）
 - 台灣證券交易所相關資訊
 - 台灣上市/上櫃公司財務數據
 

@@ -50,7 +50,7 @@ analysis:
 extract_symbol:
   description: "萃取標的代碼"
   template: |
-    從以下文字中提取加密貨幣的交易所 ticker 代號（例如 BTC、ETH、PI、SOL）。
+    從以下文字中提取加密貨幣的交易所 ticker 代號。
     只回覆 ticker 本身（純英文大寫縮寫），不要其他文字。若無法識別則回覆 None。
 
     文字：{description}

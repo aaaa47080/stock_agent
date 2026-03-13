@@ -40,6 +40,14 @@ Do not use:
 - `if symbol == "TSM"`
 - product-specific prompt branches
 
+## Prompt governance
+
+- Runtime prompts must live in `core/agents/prompts/*.yaml` and be loaded via `PromptRegistry`.
+- Do not keep multiline runtime prompt templates inline in Python business logic.
+- Use Markdown (`.md`) for governance/spec documentation only, not runtime prompt rendering.
+- Prompt text should define boundary conditions by market/query/tool class, not by named assets.
+- If a prompt requires examples, use placeholders like `[標的]` / `[ticker]` rather than concrete symbols.
+
 ## Repo mapping
 
 Inspect these files first:
