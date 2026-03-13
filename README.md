@@ -218,6 +218,25 @@ graph TB
 - Multi-step execution with specialized agents (Crypto/US Stock/TW Stock)
 - Synthesized final reports with comprehensive analysis
 
+### Verified Mode Quality Gate
+
+The `verified` analysis mode is protected by a dedicated test chain:
+
+- membership-based mode gating (`free` vs `premium`)
+- policy-driven `discovery_lookup` / `market_lookup` routing
+- response trace metadata (`query_type`, `resolved_market`, `policy_path`)
+- Playwright E2E coverage for both premium and free users
+
+Run locally:
+
+```bash
+./scripts/run_verified_mode_checks.sh
+```
+
+Reference:
+
+- [docs/verified-mode-test-plan.md](/Users/a1031737/agent_stock/stock_agent/docs/verified-mode-test-plan.md)
+
 **2. Real-time Data Architecture**
 - WebSocket for bidirectional communication (messaging, notifications)
 - SSE for unidirectional push (market quotes)
