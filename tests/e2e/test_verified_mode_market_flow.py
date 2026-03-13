@@ -39,3 +39,14 @@ def test_free_mode_guardrail():
 
     with module.run_static_server():
         asyncio.run(module.run_free_mode_guardrail_test())
+
+
+@pytest.mark.e2e
+def test_research_mode_market_flow():
+    if importlib.util.find_spec("playwright") is None:
+        pytest.skip("playwright is not installed")
+
+    module = _load_script_module()
+
+    with module.run_static_server():
+        asyncio.run(module.run_research_mode_market_flow_test())

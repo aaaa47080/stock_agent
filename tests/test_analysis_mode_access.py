@@ -19,16 +19,18 @@ def test_analysis_policy_returns_tier_mode_access():
 
     assert free_policy.allowed_modes == ("quick",)
     assert free_policy.default_mode == "quick"
-    assert premium_policy.allowed_modes == ("quick", "verified")
+    assert premium_policy.allowed_modes == ("quick", "verified", "research")
     assert premium_policy.default_mode == "verified"
-    assert legacy_policy.allowed_modes == ("quick", "verified")
+    assert legacy_policy.allowed_modes == ("quick", "verified", "research")
 
 
 def test_analysis_policy_normalizes_disallowed_mode_to_default():
     resolver = AnalysisPolicyResolver()
 
     assert resolver.ensure_allowed_mode("free", "verified") == "quick"
+    assert resolver.ensure_allowed_mode("free", "research") == "quick"
     assert resolver.ensure_allowed_mode("premium", "verified") == "verified"
+    assert resolver.ensure_allowed_mode("premium", "research") == "research"
 
 
 def test_analyze_modes_endpoint_returns_allowed_modes():
@@ -45,7 +47,7 @@ def test_analyze_modes_endpoint_returns_allowed_modes():
     assert response.status_code == 200
     assert response.json() == {
         "current_tier": "premium",
-        "allowed_modes": ["quick", "verified"],
+        "allowed_modes": ["quick", "verified", "research"],
         "default_mode": "verified",
     }
 

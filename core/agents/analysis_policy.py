@@ -97,7 +97,7 @@ class AnalysisPolicyResolver:
 
     def resolve(self, context: Dict[str, object]) -> PolicyDecision:
         analysis_mode = context.get("analysis_mode", "quick")
-        if analysis_mode != "verified":
+        if analysis_mode not in {"verified", "research"}:
             return PolicyDecision()
 
         metadata = context.get("metadata", {})

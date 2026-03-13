@@ -41,7 +41,7 @@ async function refreshAnalysisModeSelector() {
             if (option.value === 'verified') {
                 option.textContent = '已驗證（Premium）';
             } else if (option.value === 'research') {
-                option.textContent = '深度研究（未開放）';
+                option.textContent = '深度研究（Premium）';
             }
         });
         select.dataset.allowedModes = 'quick';
@@ -71,7 +71,7 @@ async function refreshAnalysisModeSelector() {
             if (option.value === 'verified') {
                 option.textContent = allowed ? '已驗證' : '已驗證（Premium）';
             } else if (option.value === 'research') {
-                option.textContent = allowed ? '深度研究' : '深度研究（未開放）';
+                option.textContent = allowed ? '深度研究' : '深度研究（Premium）';
             }
         });
 

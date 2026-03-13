@@ -9,7 +9,8 @@
     "premium": {
       "allowed_modes": [
         "quick",
-        "verified"
+        "verified",
+        "research"
       ],
       "default_mode": "verified"
     }
@@ -36,6 +37,14 @@
         "resolved_fail_reason": "verified_tool_unavailable",
         "discovery_role": "discovery_lookup",
         "discovery_fail_reason": "verified_discovery_tool_unavailable"
+      }
+    },
+    "research": {
+      "price_lookup": {
+        "resolved_role": "market_lookup",
+        "resolved_fail_reason": "research_tool_unavailable",
+        "discovery_role": "discovery_lookup",
+        "discovery_fail_reason": "research_discovery_tool_unavailable"
       }
     }
   }
