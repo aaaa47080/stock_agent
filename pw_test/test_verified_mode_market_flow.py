@@ -5,8 +5,6 @@ import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from playwright.async_api import async_playwright
-
 
 ROOT = Path(__file__).resolve().parents[1]
 WEB_DIR = ROOT / "web"
@@ -40,7 +38,9 @@ def run_static_server():
         thread.join(timeout=2)
 
 
-async def main():
+async def run_verified_mode_market_flow_test():
+    from playwright.async_api import async_playwright
+
     analyze_requests: list[dict] = []
 
     async with async_playwright() as p:
@@ -212,4 +212,4 @@ async def main():
 
 if __name__ == "__main__":
     with run_static_server():
-        asyncio.run(main())
+        asyncio.run(run_verified_mode_market_flow_test())
