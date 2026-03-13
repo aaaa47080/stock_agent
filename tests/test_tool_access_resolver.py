@@ -101,6 +101,56 @@ async def test_manager_passes_analysis_mode_to_agent_context():
     assert passed_context.analysis_mode == "verified"
 
 
+@pytest.mark.asyncio
+async def test_manager_merges_trace_metadata_into_task_result():
+    llm = MagicMock()
+    agent_registry = MagicMock()
+    fake_agent = MagicMock()
+    agent_registry.get.return_value = fake_agent
+    tool_registry = MagicMock()
+
+    manager = ManagerAgent(
+        llm_client=llm,
+        agent_registry=agent_registry,
+        tool_registry=tool_registry,
+        user_tier="premium",
+        user_id="user-1",
+    )
+    manager._execute_agent = AsyncMock(return_value={
+        "message": "ok",
+        "success": True,
+        "data": {"policy_path": "market_lookup"},
+        "quality": "pass",
+        "quality_fail_reason": None,
+    })
+    manager.tool_access_resolver = MagicMock()
+    manager.tool_access_resolver.resolve_for_agent.return_value = ["tool_a"]
+    manager._build_market_resolution_metadata = MagicMock(return_value={
+        "candidates": ["AAPL"],
+        "matched_entities": {"us": "AAPL"},
+    })
+    manager._build_query_policy_metadata = MagicMock(return_value={"query_type": "price_lookup"})
+
+    task = MagicMock()
+    task.agent = "crypto"
+    task.id = "task_1"
+    task.name = "查價格"
+    task.description = "AAPL 股價是多少"
+    task.dependencies = []
+
+    state = {
+        "query": "AAPL 股價是多少",
+        "history": "",
+        "intent_understanding": {"entities": {"us": "AAPL"}},
+    }
+
+    result = await manager._execute_single_task(task, state, {})
+
+    assert result["data"]["query_type"] == "price_lookup"
+    assert result["data"]["resolved_market"] == "us"
+    assert result["data"]["policy_path"] == "market_lookup"
+
+
 def test_manager_builds_generic_market_resolution_metadata():
     llm = MagicMock()
     agent_registry = MagicMock()

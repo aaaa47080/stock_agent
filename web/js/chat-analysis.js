@@ -101,6 +101,15 @@ function renderResponseMetadata(metadata = {}) {
     if (metadata.data_as_of) {
         parts.push(`<span>資料時間: ${escapeHtml(String(metadata.data_as_of))}</span>`);
     }
+    if (metadata.query_type) {
+        parts.push(`<span>查詢類型: ${escapeHtml(String(metadata.query_type))}</span>`);
+    }
+    if (metadata.resolved_market) {
+        parts.push(`<span>市場: ${escapeHtml(String(metadata.resolved_market))}</span>`);
+    }
+    if (metadata.policy_path) {
+        parts.push(`<span>路徑: ${escapeHtml(String(metadata.policy_path))}</span>`);
+    }
     if (usedTools.length) {
         parts.push(`<span>工具: ${escapeHtml(usedTools.join(', '))}</span>`);
     }

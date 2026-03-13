@@ -138,6 +138,58 @@ class BaseReActAgent:
             else:
                 return "You are a professional assistant. Automatically decide whether to call tools based on their descriptions."
 
+    def _build_runtime_metadata(
+        self,
+        task: SubTask,
+        *,
+        verification_status: Optional[str] = None,
+        policy_path: Optional[str] = None,
+    ) -> dict:
+        context = task.context if isinstance(task.context, dict) else {}
+        metadata = context.get("metadata", {})
+        if not isinstance(metadata, dict):
+            metadata = {}
+
+        market_resolution = metadata.get("market_resolution", {})
+        if not isinstance(market_resolution, dict):
+            market_resolution = {}
+
+        query_profile = metadata.get("query_profile", {})
+        if not isinstance(query_profile, dict):
+            query_profile = {}
+
+        matched_entities = market_resolution.get("matched_entities", {})
+        if not isinstance(matched_entities, dict):
+            matched_entities = {}
+
+        if not matched_entities:
+            symbols = context.get("symbols", {})
+            if isinstance(symbols, dict):
+                matched_entities = {
+                    market: value for market, value in symbols.items()
+                    if value
+                }
+
+        resolved_markets = [market for market, value in matched_entities.items() if value]
+        resolved_market = None
+        if len(resolved_markets) == 1:
+            resolved_market = resolved_markets[0]
+        elif len(resolved_markets) > 1:
+            resolved_market = "ambiguous"
+
+        runtime_metadata = {
+            "analysis_mode": context.get("analysis_mode", "quick"),
+            "query_type": query_profile.get("query_type", "general"),
+            "resolved_market": resolved_market,
+        }
+
+        if verification_status:
+            runtime_metadata["verification_status"] = verification_status
+        if policy_path:
+            runtime_metadata["policy_path"] = policy_path
+
+        return runtime_metadata
+
     def _execute_with_agent(self, task: SubTask, tools: List, language: str) -> AgentResult:
         """使用 LangGraph create_react_agent 執行完整的 ReAct 循環。"""
         try:
@@ -273,13 +325,16 @@ class BaseReActAgent:
         """將強制工具查詢結果整理成最終對用戶可讀的回答。"""
         context = task.context if isinstance(task.context, dict) else {}
         metadata = {
-            "analysis_mode": context.get("analysis_mode", "quick"),
-            "used_tools": [tool_meta.name],
-            "verification_status": (
-                "verified"
-                if context.get("analysis_mode") == "verified"
-                else "standard"
+            **self._build_runtime_metadata(
+                task,
+                verification_status=(
+                    "verified"
+                    if context.get("analysis_mode") == "verified"
+                    else "standard"
+                ),
+                policy_path=tool_meta.role or "required_tool",
             ),
+            "used_tools": [tool_meta.name],
         }
         if isinstance(tool_result, dict):
             data_as_of = tool_result.get("timestamp") or tool_result.get("as_of") or tool_result.get("date")
@@ -354,10 +409,11 @@ class BaseReActAgent:
             success=False,
             message=message,
             agent_name=self.name,
-            data={
-                "analysis_mode": context.get("analysis_mode", "quick"),
-                "verification_status": "unverified",
-            },
+            data=self._build_runtime_metadata(
+                task,
+                verification_status="unverified",
+                policy_path=policy.required_tool_role or "verified_guardrail",
+            ),
             quality="fail",
             quality_fail_reason=policy.fail_reason,
         )

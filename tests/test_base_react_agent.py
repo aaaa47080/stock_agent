@@ -90,6 +90,9 @@ def test_verified_mode_fails_when_required_tool_is_unavailable():
     assert result.success is False
     assert result.quality == "fail"
     assert result.quality_fail_reason == "verified_tool_unavailable"
+    assert result.data["query_type"] == "price_lookup"
+    assert result.data["resolved_market"] == "us"
+    assert result.data["policy_path"] == "market_lookup"
     llm.invoke.assert_not_called()
 
 
@@ -125,4 +128,7 @@ def test_verified_mode_fails_with_discovery_reason_when_market_resolution_is_mis
 
     assert result.success is False
     assert result.quality_fail_reason == "verified_discovery_tool_unavailable"
+    assert result.data["query_type"] == "price_lookup"
+    assert result.data["resolved_market"] is None
+    assert result.data["policy_path"] == "discovery_lookup"
     llm.invoke.assert_not_called()

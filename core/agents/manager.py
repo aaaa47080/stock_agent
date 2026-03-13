@@ -898,6 +898,28 @@ class ManagerAgent:
             candidates = []
         return self.analysis_policy_resolver.build_query_profile(query, candidates)
 
+    def _build_response_trace_metadata(
+        self,
+        market_resolution: Dict[str, object],
+        query_profile: Dict[str, object],
+    ) -> Dict[str, object]:
+        matched_entities = market_resolution.get("matched_entities", {}) if isinstance(market_resolution, dict) else {}
+        if not isinstance(matched_entities, dict):
+            matched_entities = {}
+
+        resolved_markets = [market for market, value in matched_entities.items() if value]
+        resolved_market = None
+        if len(resolved_markets) == 1:
+            resolved_market = resolved_markets[0]
+        elif len(resolved_markets) > 1:
+            resolved_market = "ambiguous"
+
+        query_type = query_profile.get("query_type", "general") if isinstance(query_profile, dict) else "general"
+        return {
+            "query_type": query_type,
+            "resolved_market": resolved_market,
+        }
+
     def _extract_symbol_candidates(self, query: str) -> List[str]:
         """抽取可能的市場符號候選，保持順序與去重。"""
         raw_candidates = re.findall(r"[A-Za-z]{1,10}|\d{2,6}", query)
@@ -1346,6 +1368,7 @@ class ManagerAgent:
             state["query"],
             state.get("intent_understanding", {}).get("entities", {}),
         )
+        query_profile = self._build_query_policy_metadata(state["query"], market_resolution)
         context = AgentContext(
             history_summary=state.get("history"),
             original_query=state["query"],
@@ -1356,18 +1379,25 @@ class ManagerAgent:
             allowed_tools=self.tool_access_resolver.resolve_for_agent(task.agent),
             metadata={
                 "market_resolution": market_resolution,
-                "query_profile": self._build_query_policy_metadata(state["query"], market_resolution),
+                "query_profile": query_profile,
             },
         )
 
         try:
             result = await self._execute_agent(agent, context)
+            result_data = result.get("data", {})
+            if not isinstance(result_data, dict):
+                result_data = {}
+            result_data = {
+                **self._build_response_trace_metadata(market_resolution, query_profile),
+                **result_data,
+            }
             return {
                 "success": result.get("success", True),
                 "message": result.get("message", ""),
                 "agent_name": task.agent,
                 "task_id": task.id,
-                "data": result.get("data", {}),
+                "data": result_data,
                 "quality": result.get("quality", "pass"),
                 "quality_fail_reason": result.get("quality_fail_reason"),
             }

@@ -4,6 +4,9 @@ def build_response_metadata(result: dict, analysis_mode: str) -> dict:
     verification_status = "standard" if analysis_mode == "quick" else analysis_mode
     quality_fail_reason = None
     data_as_of = None
+    query_type = None
+    resolved_market = None
+    policy_path = None
 
     for task_result in task_results.values():
         if not isinstance(task_result, dict):
@@ -13,6 +16,9 @@ def build_response_metadata(result: dict, analysis_mode: str) -> dict:
             used_tools.extend(task_data.get("used_tools", []))
             data_as_of = data_as_of or task_data.get("data_as_of")
             verification_status = task_data.get("verification_status", verification_status)
+            query_type = query_type or task_data.get("query_type")
+            resolved_market = resolved_market or task_data.get("resolved_market")
+            policy_path = policy_path or task_data.get("policy_path")
         quality_fail_reason = quality_fail_reason or task_result.get("quality_fail_reason")
 
     if quality_fail_reason:
@@ -24,4 +30,7 @@ def build_response_metadata(result: dict, analysis_mode: str) -> dict:
         "quality_fail_reason": quality_fail_reason,
         "used_tools": sorted({tool for tool in used_tools if tool}),
         "data_as_of": data_as_of,
+        "query_type": query_type,
+        "resolved_market": resolved_market,
+        "policy_path": policy_path,
     }
