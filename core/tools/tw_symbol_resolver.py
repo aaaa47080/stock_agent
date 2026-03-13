@@ -28,21 +28,42 @@ class TWSymbolResolver:
     def resolve(self, input_str: str) -> Optional[str]:
         """Resolve input to Yahoo Finance TW ticker (e.g., '2330.TW').
         Returns None if no match found."""
+        result = self.resolve_with_metadata(input_str)
+        return result["ticker"] if result else None
+
+    def resolve_with_metadata(self, input_str: str) -> Optional[dict]:
+        """Resolve input and return ticker with match metadata."""
         s = input_str.strip()
 
         # Rule 1: already has suffix
         upper = s.upper()
         if upper.endswith(".TW") or upper.endswith(".TWO"):
-            return upper
+            return {
+                "ticker": upper,
+                "match_type": "suffix",
+                "input": s,
+            }
 
         # Rule 2: pure digit code (4–6 digits) → assume listed stock
         if s.isdigit() and 4 <= len(s) <= 6:
-            return f"{s}.TW"
+            return {
+                "ticker": f"{s}.TW",
+                "match_type": "code",
+                "input": s,
+            }
 
         # Rule 3: fuzzy match against full name list
         stock_list = self._get_stock_list()
         if stock_list:
-            return self._fuzzy_match(s, stock_list)
+            fuzzy_match = self._fuzzy_match(s, stock_list)
+            if fuzzy_match:
+                return {
+                    "ticker": fuzzy_match["ticker"],
+                    "match_type": "fuzzy",
+                    "matched_text": fuzzy_match["matched_text"],
+                    "score": fuzzy_match["score"],
+                    "input": s,
+                }
 
         return None
 
@@ -82,8 +103,8 @@ class TWSymbolResolver:
 
         return stocks or []
 
-    def _fuzzy_match(self, query: str, stock_list: list) -> Optional[str]:
-        """Return best-match ticker or None if score < threshold."""
+    def _fuzzy_match(self, query: str, stock_list: list) -> Optional[dict]:
+        """Return best-match metadata or None if score < threshold."""
         target_map: dict[str, dict] = {}
         for s in stock_list:
             target_map[s["name"]] = s
@@ -98,6 +119,10 @@ class TWSymbolResolver:
         )
         if result:
             match_str, _score, _idx = result
-            return target_map[match_str]["ticker"]
+            return {
+                "ticker": target_map[match_str]["ticker"],
+                "matched_text": match_str,
+                "score": _score,
+            }
 
         return None

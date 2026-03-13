@@ -277,6 +277,23 @@ class ManagerAgent:
                     "dependencies": [],
                 }]
 
+            reconciled_entities = self._reconcile_market_entities(
+                query,
+                history,
+                intent_data.get("entities", {}),
+            )
+            query_profile = self.analysis_policy_resolver.build_query_profile(
+                query,
+                self._extract_symbol_candidates(self._normalize_query_text(query)),
+            )
+            tasks = self._apply_structural_task_overrides(
+                tasks,
+                query=query,
+                history=history,
+                entities=reconciled_entities,
+                query_profile=query_profile,
+            )
+
             # 構建任務圖
             root_node = self._build_task_tree(tasks)
             task_graph = TaskGraph(root=root_node)
@@ -286,7 +303,7 @@ class ManagerAgent:
                 "intent_understanding": {
                     "status": "ready",
                     "user_intent": intent_data.get("user_intent", query),
-                    "entities": intent_data.get("entities", {}),
+                    "entities": reconciled_entities,
                     "aggregation_strategy": intent_data.get("aggregation_strategy", "combine_all"),
                 },
                 "task_graph": self._task_graph_to_dict(task_graph),
@@ -818,12 +835,12 @@ class ManagerAgent:
             payload.update(extra)
             self.progress_callback(payload)
 
-    def _detect_boundary_route(self, query: str) -> Optional[Dict]:
+    def _detect_boundary_route(self, query: str, history: str = "") -> Optional[Dict]:
         """用結構化邊界條件處理明確的單市場查詢。"""
         if not query or not query.strip():
             return None
 
-        entity_info = self._extract_market_entities(query)
+        entity_info = self._extract_market_entities(query, history=history)
         matched = {market: value for market, value in entity_info.items() if value}
         if len(matched) != 1:
             return None
@@ -845,19 +862,106 @@ class ManagerAgent:
             "entities": entity_info,
         }
 
-    def _extract_market_entities(self, query: str) -> Dict[str, Optional[str]]:
+    def _apply_structural_task_overrides(
+        self,
+        tasks: List[dict],
+        query: str,
+        history: str,
+        entities: Dict[str, Optional[str]],
+        query_profile: Dict[str, object],
+    ) -> List[dict]:
+        """Use structural market resolution to correct single-task routing.
+
+        This only applies to simple price lookups so that deep multi-step plans
+        remain controlled by the LLM planner.
+        """
+        if not tasks:
+            return tasks
+        if len(tasks) != 1:
+            return tasks
+        if not isinstance(query_profile, dict) or query_profile.get("query_type") != "price_lookup":
+            return tasks
+
+        boundary_route = self._detect_boundary_route(query, history=history)
+        if not boundary_route:
+            return tasks
+
+        matched_entities = boundary_route.get("entities", {})
+        if not isinstance(matched_entities, dict):
+            return tasks
+        matched_markets = [market for market, value in matched_entities.items() if value]
+        if len(matched_markets) != 1:
+            return tasks
+
+        task_override = boundary_route.get("task", {})
+        if not isinstance(task_override, dict):
+            return tasks
+
+        normalized_task = dict(tasks[0])
+        override_agent = task_override.get("agent")
+        if isinstance(override_agent, str) and override_agent:
+            normalized_task["agent"] = override_agent
+        normalized_task["description"] = query
+
+        override_name = task_override.get("name")
+        if isinstance(override_name, str) and override_name:
+            normalized_task["name"] = override_name
+
+        return [normalized_task]
+
+    def _extract_market_entities(self, query: str, history: str = "") -> Dict[str, Optional[str]]:
         """從 query 擷取單市場實體，避免把 routing 綁死在 prompt。"""
         normalized = self._normalize_query_text(query)
         result = {"crypto": None, "tw": None, "us": None}
-
         candidates = self._extract_symbol_candidates(normalized)
         for candidate in candidates:
-            resolution = self._symbol_resolver.resolve(candidate)
-            for market, value in resolution.items():
+            resolution = self._symbol_resolver.resolve_with_context(candidate, context_text=normalized)
+            flat_resolution = resolution.get("resolution", {})
+            if not isinstance(flat_resolution, dict):
+                flat_resolution = {}
+            primary_market = resolution.get("primary_market")
+            if primary_market in result:
+                primary_symbol = flat_resolution.get(primary_market)
+                if primary_symbol and result.get(primary_market) is None:
+                    result[primary_market] = primary_symbol
+                continue
+
+            for market, value in flat_resolution.items():
                 if value and result.get(market) is None:
                     result[market] = value
 
         return result
+
+    def _reconcile_market_entities(
+        self,
+        query: str,
+        history: str,
+        llm_entities: Optional[Dict[str, Optional[str]]] = None,
+    ) -> Dict[str, Optional[str]]:
+        normalized_llm_entities = {
+            "crypto": None,
+            "tw": None,
+            "us": None,
+        }
+        if isinstance(llm_entities, dict):
+            for market in normalized_llm_entities:
+                value = llm_entities.get(market)
+                if value:
+                    normalized_llm_entities[market] = value
+
+        resolver_entities = self._extract_market_entities(query, history=history)
+        llm_markets = [market for market, value in normalized_llm_entities.items() if value]
+        resolver_markets = [market for market, value in resolver_entities.items() if value]
+
+        if len(resolver_markets) == 1:
+            resolver_market = resolver_markets[0]
+            if len(llm_markets) != 1 or llm_markets[0] != resolver_market:
+                return resolver_entities
+
+        if len(llm_markets) == 1:
+            return normalized_llm_entities
+
+        return resolver_entities if resolver_markets else normalized_llm_entities
 
     def _build_market_resolution_metadata(
         self,
@@ -870,13 +974,16 @@ class ManagerAgent:
         candidates = self._extract_symbol_candidates(normalized)
         unresolved_candidates: List[str] = []
         ambiguous_candidates: List[str] = []
+        candidate_scores: Dict[str, Dict[str, object]] = {}
 
         for candidate in candidates:
-            resolution = self._symbol_resolver.resolve(candidate)
-            matched_markets = self._symbol_resolver.matched_markets(resolution)
+            resolution = self._symbol_resolver.resolve_with_context(candidate, context_text=query)
+            flat_resolution = resolution.get("resolution", {})
+            candidate_scores[candidate] = resolution.get("candidates", {})
+            matched_markets = self._symbol_resolver.matched_markets(flat_resolution)
             if not matched_markets:
                 unresolved_candidates.append(candidate)
-            elif len(matched_markets) > 1:
+            elif resolution.get("ambiguous") or len(matched_markets) > 1:
                 ambiguous_candidates.append(candidate)
 
         matched_entities = {market: value for market, value in entities.items() if value}
@@ -889,6 +996,7 @@ class ManagerAgent:
             "matched_entities": matched_entities,
             "unresolved_candidates": unresolved_candidates,
             "ambiguous_candidates": ambiguous_candidates,
+            "candidate_scores": candidate_scores,
             "requires_discovery_lookup": requires_discovery_lookup,
         }
 
