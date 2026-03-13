@@ -1185,6 +1185,7 @@ class ManagerAgent:
     ) -> str:
         cleaned = re.sub(r"^#\s*Sub-Agent 執行結果\s*", "", response, flags=re.MULTILINE).strip()
         cleaned = re.sub(r"^###\s*任務\s+\d+\s+\[[^\]]+\]\s*", "", cleaned, flags=re.MULTILINE).strip()
+        cleaned = re.sub(r"\n*驗證資訊[:：].*", "", cleaned).strip()
         cleaned = re.sub(
             r"\n+###\s*驗證資訊\s*[\s\S]*$",
             "",

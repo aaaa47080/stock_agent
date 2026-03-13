@@ -178,6 +178,23 @@ def test_finalize_mode_response_replaces_model_generated_verified_footer():
     assert "us_stock_price" in finalized
 
 
+def test_finalize_mode_response_removes_inline_verified_sentence():
+    manager = build_manager()
+
+    finalized = manager._finalize_mode_response(
+        response="AAPL 目前為 255 美元。\n\n驗證資訊：資料時間為 2026-03-13。",
+        analysis_mode="verified",
+        evidence={
+            "used_tools": ["us_stock_price"],
+            "data_as_of": "2026-03-13T10:00:00Z",
+            "verification_status": "verified",
+        },
+    )
+
+    assert "驗證資訊：資料時間為 2026-03-13。" not in finalized
+    assert finalized.count("### 驗證資訊") == 1
+
+
 @pytest.mark.asyncio
 async def test_synthesize_response_does_not_fallback_to_llm_after_tool_failure():
     manager = build_manager()

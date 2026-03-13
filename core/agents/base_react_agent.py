@@ -237,8 +237,13 @@ class BaseReActAgent:
             return self._error_result(str(e), language)
 
     def _requires_tool_execution(self, task: SubTask) -> bool:
-        """不再使用強制工具執行，完全由 ReAct 循環決定。"""
-        return False
+        """Decide whether this task must go through a required-tool path first."""
+        context = task.context if isinstance(task.context, dict) else {}
+        if context.get("tool_required"):
+            return True
+
+        policy = _ANALYSIS_POLICY.resolve(context)
+        return bool(policy.required_tool_role)
 
     def _execute_with_required_tool(self, task: SubTask, tool_metas: List[ToolMetadata], language: str) -> Optional[AgentResult]:
         """先強制執行一次最合適的 lookup 工具，再由 LLM 整理結果。"""
