@@ -78,7 +78,7 @@ async def broadcast_notification(
                 })
                 online_count += 1
             except Exception:
-                pass
+                logger.debug("Broadcast websocket push failed for user %s", uid, exc_info=True)
 
     # 4. 寫廣播紀錄
     def _save_broadcast_record():
@@ -111,7 +111,7 @@ async def broadcast_notification(
                       admin_user["user_id"]))
                 conn.commit()
         except Exception:
-            pass
+            logger.warning("Failed to write broadcast audit log", exc_info=True)
         finally:
             conn.close()
 

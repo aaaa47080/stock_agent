@@ -6,6 +6,7 @@ import asyncio
 import logging
 from functools import partial
 from fastapi import APIRouter, Depends, Query, HTTPException
+from psycopg2 import sql
 
 from api.deps import require_admin
 from core.database.connection import get_connection
@@ -45,26 +46,45 @@ async def admin_list_posts(
                 elif status == "pinned":
                     where_clauses.append("p.is_pinned = 1")
 
-                where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+                where_clause = (
+                    sql.SQL(" WHERE ") + sql.SQL(" AND ").join(sql.SQL(part) for part in where_clauses)
+                    if where_clauses
+                    else sql.SQL("")
+                )
 
-                c.execute(f"""
+                post_query = (
+                    sql.SQL(
+                        """
                     SELECT p.id, p.title, p.user_id, u.username, p.category,
                            p.is_hidden, p.is_pinned, p.comment_count, p.view_count,
                            p.push_count, p.boo_count, p.created_at
                     FROM posts p
                     LEFT JOIN users u ON p.user_id = u.user_id
-                    {where_sql}
+                    """
+                    )
+                    + where_clause
+                    + sql.SQL(
+                        """
                     ORDER BY p.created_at DESC
                     LIMIT %s OFFSET %s
-                """, params + [limit, offset])
+                    """
+                    )
+                )
+
+                c.execute(post_query, params + [limit, offset])
                 rows = c.fetchall()
 
-                c.execute(f"""
+                count_query = (
+                    sql.SQL(
+                        """
                     SELECT COUNT(*)
                     FROM posts p
                     LEFT JOIN users u ON p.user_id = u.user_id
-                    {where_sql}
-                """, params)
+                    """
+                    )
+                    + where_clause
+                )
+                c.execute(count_query, params)
                 total = c.fetchone()[0]
 
                 return {

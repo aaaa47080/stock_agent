@@ -2,6 +2,7 @@
 私訊訊息操作
 """
 from typing import Dict, Optional
+from psycopg2 import sql
 
 from ..connection import get_connection
 from .conversations import get_conversation_by_id
@@ -132,18 +133,17 @@ def send_message(from_user_id: str, to_user_id: str, content: str, message_type:
         message_id = c.fetchone()[0]
 
         # 4. 更新對話的最後訊息和未讀數
-        if conv_user1_id == to_user_id:
-            unread_field = "user1_unread_count"
-        else:
-            unread_field = "user2_unread_count"
-
-        c.execute(f'''
+        unread_field = "user1_unread_count" if conv_user1_id == to_user_id else "user2_unread_count"
+        update_query = sql.SQL(
+            """
             UPDATE dm_conversations
             SET last_message_id = %s,
                 last_message_at = NOW(),
-                {unread_field} = {unread_field} + 1
+                {field} = {field} + 1
             WHERE id = %s
-        ''', (message_id, conversation_id))
+            """
+        ).format(field=sql.Identifier(unread_field))
+        c.execute(update_query, (message_id, conversation_id))
 
         # 5. 取得完整的訊息資料（包含用戶名稱）
         c.execute('''

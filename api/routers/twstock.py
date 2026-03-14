@@ -69,7 +69,7 @@ async def _get_stock_info(symbol: str):
                 name = info.get('shortName') or info.get('longName') or symbol
                 return {"formatted_symbol": f"{symbol}.TW", "name": name, "exchange": "TWSE"}
         except Exception:
-            pass
+            logger.debug("TWSE symbol info fetch failed for %s.TW", symbol, exc_info=True)
             
         # 2. 嘗試 TPEx (.TWO)
         two_ticker = yf.Ticker(f"{symbol}.TWO")
@@ -79,7 +79,7 @@ async def _get_stock_info(symbol: str):
                 name = info.get('shortName') or info.get('longName') or symbol
                 return {"formatted_symbol": f"{symbol}.TWO", "name": name, "exchange": "TPEx"}
         except Exception:
-            pass
+            logger.debug("TPEx symbol info fetch failed for %s.TWO", symbol, exc_info=True)
             
         return {"formatted_symbol": f"{symbol}.TW", "name": symbol, "exchange": "TWSE"} # Fallback
 

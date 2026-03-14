@@ -584,13 +584,12 @@ def get_bulk_friendship_status(user_id: str, other_user_ids: list) -> dict:
     conn = get_connection()
     c = conn.cursor()
     try:
-        placeholders = ','.join(['%s'] * len(other_user_ids))
-        c.execute(f'''
+        c.execute('''
             SELECT id, user_id, friend_id, status, created_at, updated_at
             FROM friendships
-            WHERE (user_id = %s AND friend_id IN ({placeholders}))
-               OR (friend_id = %s AND user_id IN ({placeholders}))
-        ''', [user_id] + other_user_ids + [user_id] + other_user_ids)
+            WHERE (user_id = %s AND friend_id = ANY(%s))
+               OR (friend_id = %s AND user_id = ANY(%s))
+        ''', (user_id, other_user_ids, user_id, other_user_ids))
 
         rows = c.fetchall()
         result = {uid: None for uid in other_user_ids}

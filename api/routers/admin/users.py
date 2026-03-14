@@ -192,7 +192,7 @@ async def set_user_membership(
                     """, (f"user_membership:{user_id}", "free", f"pro:{request.months}mo", admin_user["user_id"]))
                     conn.commit()
             except Exception:
-                pass
+                logger.warning("Failed to write membership upgrade audit log for %s", user_id, exc_info=True)
             finally:
                 conn.close()
 
@@ -214,7 +214,7 @@ async def set_user_membership(
                     """, (f"user_membership:{user_id}", "pro", "free", admin_user["user_id"]))
                     conn.commit()
             except Exception:
-                pass
+                logger.warning("Failed to write membership downgrade audit log for %s", user_id, exc_info=True)
             finally:
                 conn.close()
 
@@ -272,7 +272,7 @@ async def set_user_status(
                 "reason": request.reason or "Account suspended by admin"
             })
         except Exception:
-            pass
+            logger.debug("Failed to send force_logout notification to %s", user_id, exc_info=True)
 
     return {"success": True, **result}
 

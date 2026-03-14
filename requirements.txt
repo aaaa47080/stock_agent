@@ -43,6 +43,7 @@ PyYAML==6.0.3
 httpx==0.28.1
 requests==2.32.5
 beautifulsoup4==4.14.3
+defusedxml==0.7.1
 
 # === Data / Finance ===
 pandas==2.3.3

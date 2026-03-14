@@ -7,6 +7,7 @@ Refactored to use DatabaseBase for unified CRUD operations.
 import json
 from typing import List, Dict, Optional, Any
 from datetime import UTC, datetime
+from psycopg2 import sql
 
 from .base import DatabaseBase
 from .connection import get_connection
@@ -359,20 +360,25 @@ def update_post(post_id: int, user_id: str, title: Optional[str] = None, content
         updates = []
         params: List[Any] = []
 
-        if title is not None:
-            updates.append('title = %s')
-            params.append(title)
-        if content is not None:
-            updates.append('content = %s')
-            params.append(content)
-        if category is not None:
-            updates.append('category = %s')
-            params.append(category)
+        candidate_updates = {
+            "title": title,
+            "content": content,
+            "category": category,
+        }
+        for column, value in candidate_updates.items():
+            if value is not None:
+                updates.append(sql.SQL("{} = %s").format(sql.Identifier(column)))
+                params.append(value)
 
         if updates:
-            updates.append('updated_at = NOW()')
+            updates.append(sql.SQL("updated_at = NOW()"))
             params.append(post_id)
-            c.execute(f'UPDATE posts SET {", ".join(updates)} WHERE id = %s', params)
+            query = (
+                sql.SQL("UPDATE posts SET ")
+                + sql.SQL(", ").join(updates)
+                + sql.SQL(" WHERE id = %s")
+            )
+            c.execute(query, params)
             conn.commit()
             return c.rowcount > 0
         return False
@@ -431,8 +437,8 @@ def delete_post(post_id: int, user_id: str) -> bool:
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             ''', (user_id, 'DELETE_POST', 'post', str(post_id), '/api/forum/posts/{id}', 'DELETE', False, str(e)))
             conn.commit()
-        except Exception:
-            pass
+        except Exception as audit_err:
+            print(f"⚠️ 失敗審計日誌記錄失敗: {audit_err}")
         raise
     finally:
         conn.close()

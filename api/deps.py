@@ -1,5 +1,6 @@
 from typing import Optional
 from datetime import datetime, timedelta
+import logging
 from jose import jwt, JWTError
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -7,6 +8,7 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
+logger = logging.getLogger(__name__)
 
 # Configuration
 # 🔒 Security: JWT_SECRET_KEY must be set via environment variable
@@ -176,7 +178,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
             raise
         except Exception:
             # DB fetch fails or user doesn't exist
-            pass
+            logger.warning("Failed to load current user from DB; falling back by mode", exc_info=True)
 
     # If we are in TEST_MODE, return mock test user when DB fetch fails or no token
     if TEST_MODE:

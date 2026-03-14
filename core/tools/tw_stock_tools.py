@@ -279,7 +279,7 @@ def tw_news(ticker: str, company_name: str = "", limit: int = 8) -> list:
     company_name: 公司中文名稱，可提升新聞相關性"""
     try:
         import httpx
-        import xml.etree.ElementTree as ET
+        from defusedxml import ElementTree as ET
         from urllib.parse import quote
 
         # Search term: prefer Chinese company name for better results
@@ -459,4 +459,3 @@ def tw_foreign_holding_top20() -> list:
         return results
     except Exception as e:
         return [{"error": str(e)}]
-

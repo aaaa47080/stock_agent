@@ -516,25 +516,23 @@ def get_allowed_tools(agent_id: str, user_tier: str = "free", user_id: Optional[
     try:
         # 組合 tier 條件（二級會員）
         user_tier_level = _get_tier_level(user_tier)
-        tier_conditions = []
-        for tier, level in TIER_HIERARCHY.items():
-            if level <= user_tier_level:
-                tier_conditions.append(f"'{tier}'")
-        tier_condition = f"tc.tier_required IN ({', '.join(tier_conditions)})"
+        allowed_tiers = [
+            tier for tier, level in TIER_HIERARCHY.items() if level <= user_tier_level
+        ]
 
-        query = f'''
+        query = '''
             SELECT tc.tool_id
             FROM tools_catalog tc
             JOIN agent_tool_permissions atp
                 ON tc.tool_id = atp.tool_id AND atp.agent_id = %s
             WHERE tc.is_active = TRUE
               AND atp.is_enabled = TRUE
-              AND {tier_condition}
+              AND tc.tier_required = ANY(%s)
         '''
 
         # 排除用戶主動關閉的工具（Premium 功能）
         if user_id and user_tier == "premium":
-            query = f'''
+            query = '''
                 SELECT tc.tool_id
                 FROM tools_catalog tc
                 JOIN agent_tool_permissions atp
@@ -543,12 +541,12 @@ def get_allowed_tools(agent_id: str, user_tier: str = "free", user_id: Optional[
                     ON tc.tool_id = utp.tool_id AND utp.user_id = %s
                 WHERE tc.is_active = TRUE
                   AND atp.is_enabled = TRUE
-                  AND {tier_condition}
+                  AND tc.tier_required = ANY(%s)
                   AND (utp.is_enabled IS NULL OR utp.is_enabled = TRUE)
             '''
-            c.execute(query, (agent_id, user_id))
+            c.execute(query, (agent_id, user_id, allowed_tiers))
         else:
-            c.execute(query, (agent_id,))
+            c.execute(query, (agent_id, allowed_tiers))
 
         rows = c.fetchall()
 
