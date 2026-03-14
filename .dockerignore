@@ -20,6 +20,13 @@ htmlcov/
 *.log
 logs/
 test_results/
+tmp/
+
+# Runtime data (should be created at runtime, not baked into image)
+core/database/*.db
+core/database/*.sqlite
+core/database/*.sqlite3
+data/*.jsonl
 
 # Local QA / docs not needed in runtime image
 tests/

@@ -4,7 +4,9 @@ from typing import Dict, Optional
 import httpx
 
 logger = logging.getLogger("API")
-logger.setLevel(logging.INFO)  # Ensure this logger also logs at INFO level
+# Default to WARNING in production to reduce noisy logs and ephemeral-storage pressure.
+# Override with APP_LOG_LEVEL=INFO/DEBUG when detailed tracing is needed.
+logger.setLevel(getattr(logging, os.getenv("APP_LOG_LEVEL", "WARNING").upper(), logging.WARNING))
 
 # ============================================
 # Shared HTTP Client with Connection Pool

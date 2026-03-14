@@ -40,13 +40,14 @@ preload_app = False
 # ========================================
 # Logging
 # ========================================
-# 訪問日志 - 輸出到 stdout（容器友好）
-accesslog = "-"
+# 訪問日志 - 預設關閉，避免高流量時大量佔用容器 ephemeral storage
+# 若需臨時開啟，可設定 GUNICORN_ACCESSLOG=-
+accesslog = os.getenv("GUNICORN_ACCESSLOG")
 access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)s'
 
 # 錯誤日志 - 輸出到 stderr（容器友好）
 errorlog = "-"
-loglevel = "info"
+loglevel = os.getenv("GUNICORN_LOG_LEVEL", "warning").lower()
 
 # ========================================
 # Process Naming

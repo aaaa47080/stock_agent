@@ -41,5 +41,6 @@ RUN find /app -type d -name "__pycache__" -prune -exec rm -rf {} + \
 
 EXPOSE 8080
 
-# Use an explicit, minimal startup command to avoid config-file boot ambiguity in PaaS.
-CMD ["gunicorn", "api.main:app", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8080", "--workers", "1", "--timeout", "120", "--graceful-timeout", "30", "--keep-alive", "5", "--access-logfile", "-", "--error-logfile", "-"]
+# Use explicit flags for PaaS startup while keeping log volume low by default.
+# Access logs can still be enabled with GUNICORN_CMD_ARGS if needed.
+CMD ["gunicorn", "api.main:app", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8080", "--workers", "1", "--timeout", "120", "--graceful-timeout", "30", "--keep-alive", "5", "--error-logfile", "-", "--log-level", "warning"]

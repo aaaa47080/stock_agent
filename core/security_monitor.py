@@ -16,6 +16,7 @@ Security Event Types:
 - TEST_MODE_ENABLED: Development mode enabled
 """
 import json
+import os
 from datetime import datetime, timedelta
 from enum import Enum
 from dataclasses import dataclass, asdict
@@ -94,6 +95,8 @@ class SecurityMonitor:
         """
         self.storage_path = Path(storage_path)
         self.storage_path.parent.mkdir(parents=True, exist_ok=True)
+        self.max_bytes = int(os.getenv("SECURITY_EVENTS_MAX_BYTES", str(10 * 1024 * 1024)))
+        self.backup_count = int(os.getenv("SECURITY_EVENTS_BACKUP_COUNT", "3"))
 
         # Load alert dispatcher
         try:
@@ -117,6 +120,7 @@ class SecurityMonitor:
 
         # Append to JSONL file
         try:
+            self._rotate_if_needed()
             with open(self.storage_path, "a") as f:
                 f.write(json.dumps(event_data) + "\n")
         except IOError as e:
@@ -140,6 +144,29 @@ class SecurityMonitor:
         )
 
         return event_data
+
+    def _rotate_if_needed(self):
+        """Rotate JSONL security log files to cap disk usage."""
+        try:
+            if not self.storage_path.exists():
+                return
+            if self.storage_path.stat().st_size < self.max_bytes:
+                return
+
+            # Rotate backups: .2 -> .3, .1 -> .2, current -> .1
+            for idx in range(self.backup_count, 0, -1):
+                src = self.storage_path.with_name(f"{self.storage_path.name}.{idx}")
+                dst = self.storage_path.with_name(f"{self.storage_path.name}.{idx + 1}")
+                if src.exists():
+                    if idx == self.backup_count:
+                        src.unlink(missing_ok=True)
+                    else:
+                        src.replace(dst)
+
+            first_backup = self.storage_path.with_name(f"{self.storage_path.name}.1")
+            self.storage_path.replace(first_backup)
+        except OSError as e:
+            logger.warning(f"Security log rotation skipped due to filesystem error: {e}")
 
     def _check_alerts(self, event: SecurityEvent):
         """

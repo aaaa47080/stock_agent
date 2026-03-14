@@ -3,6 +3,7 @@
 import os
 import sys
 import asyncio
+import logging
 from fastapi import FastAPI, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import PlainTextResponse
@@ -23,8 +24,6 @@ if sys.platform == "win32":
 project_root = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, project_root)
 
-import logging
-
 # Load environment variables
 load_dotenv()
 
@@ -33,12 +32,15 @@ log_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(messa
 
 # Cloud deployment: log to stdout only (Zeabur/K8s captures stdout)
 # File-based logging fills ephemeral storage and causes pod eviction
+app_log_level_name = os.getenv("APP_LOG_LEVEL", "WARNING").upper()
+app_log_level = getattr(logging, app_log_level_name, logging.WARNING)
+
 console_handler = logging.StreamHandler(sys.stdout)
-console_handler.setLevel(logging.INFO)
+console_handler.setLevel(app_log_level)
 console_handler.setFormatter(log_formatter)
 
 logging.basicConfig(
-    level=logging.WARNING,
+    level=app_log_level,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[console_handler]
 )
