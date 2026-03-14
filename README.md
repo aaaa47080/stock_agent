@@ -231,7 +231,7 @@ The `verified` analysis mode is protected by a dedicated test chain:
 - multi-page static asset load smoke checks (with uncaught frontend runtime error guard)
 - static `/static/*` asset reference integrity checks
 - static shared-asset cache-busting version consistency checks
-- dependency vulnerability audit (`pip-audit -r requirements.txt`)
+- dependency vulnerability audits for direct and locked transitive dependencies (`requirements.txt` + `requirements.lock.txt`)
 
 Run locally:
 
