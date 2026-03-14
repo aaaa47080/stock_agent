@@ -239,6 +239,18 @@ Run locally:
 ./scripts/run_verified_mode_checks.sh
 ```
 
+Post-deploy smoke:
+
+```bash
+API_URL=https://yourdomain.com bash scripts/post_deploy_smoke.sh
+```
+
+Weekly dependency hygiene:
+
+```bash
+bash scripts/refresh_lock_and_audit.sh
+```
+
 Reference:
 
 - [docs/verified-mode-test-plan.md](/Users/a1031737/agent_stock/stock_agent/docs/verified-mode-test-plan.md)

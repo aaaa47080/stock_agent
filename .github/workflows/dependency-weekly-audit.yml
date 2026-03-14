@@ -1,0 +1,41 @@
+name: Dependency Weekly Audit
+
+on:
+  schedule:
+    - cron: "0 2 * * 1"
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  lockfile-and-audit:
+    runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: "pip"
+
+      - name: Install tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pip-tools pip-audit
+
+      - name: Refresh lockfile and run audits
+        run: |
+          PYTHON_BIN=python bash scripts/refresh_lock_and_audit.sh
+
+      - name: Ensure lockfile is up to date
+        run: |
+          if ! git diff --quiet -- requirements.lock.txt; then
+            echo "requirements.lock.txt is outdated after refresh."
+            echo "Run: bash scripts/refresh_lock_and_audit.sh"
+            git --no-pager diff -- requirements.lock.txt
+            exit 1
+          fi
