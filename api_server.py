@@ -84,6 +84,14 @@ from fastapi.responses import JSONResponse
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    startup_t0 = time.perf_counter()
+
+    def _startup_mark(step: str, status: str = "ok"):
+        elapsed_ms = int((time.perf_counter() - startup_t0) * 1000)
+        logger.info(f"🚦 STARTUP[{status}] +{elapsed_ms}ms | {step}")
+
+    _startup_mark("lifespan_enter")
+
     async def _init_database_background():
         """Run DB initialization in background to avoid blocking readiness on startup."""
         skip_db_init = os.getenv('SKIP_DB_INIT', 'false').lower() == 'true'
@@ -112,6 +120,7 @@ async def lifespan(app: FastAPI):
 
     # 不阻塞 startup，避免被平台 readiness probe 提前判斷失敗
     asyncio.create_task(_init_database_background())
+    _startup_mark("db_init_background_scheduled")
 
     from core.config import TEST_MODE
     if TEST_MODE:
@@ -122,40 +131,50 @@ async def lifespan(app: FastAPI):
     try:
         globals.okx_connector = OKXAPIConnector()
         logger.info("✅ OKX Connector 初始化成功")
+        _startup_mark("okx_connector_ready")
     except Exception as e:
         logger.error(f"❌ OKX Connector 初始化失敗: {e}")
         globals.okx_connector = None
+        _startup_mark("okx_connector_failed", status="warn")
     
     # 預熱 V4 bootstrap（純載入 PromptRegistry + AgentRegistry，不建立 LLM）
     # 實際 LLM client 由各請求的 user_api_key 決定，所以 startup 僅驗證模組可 import
     try:
         from core.agents.bootstrap import bootstrap as _v4_bootstrap  # noqa: F401
         logger.info("✅ V4 ManagerAgent 模組載入成功（LLM 將在首次請求時初始化）")
+        _startup_mark("v4_manager_module_loaded")
     except Exception as e:
         logger.warning(f"⚠️ V4 ManagerAgent 模組載入失敗（將 fallback 至 V1 bot）: {e}")
+        _startup_mark("v4_manager_module_failed", status="warn")
     globals.v4_manager = None  # 實際 manager 按需在 analysis.py 中建立
     
     # Startup: 嘗試載入快取
     # [Optimization] Screener/Funding are now In-Memory Only, no DB load needed
     load_market_pulse_cache() # Market Pulse remains persistent (slow updates)
+    _startup_mark("market_pulse_cache_loaded")
 
     # Startup: 啟動背景篩選器更新任務
     asyncio.create_task(update_screener_task())
+    _startup_mark("screener_task_scheduled")
 
     # Market Pulse 任務：檢查是否由獨立 Worker 處理
     # 設置環境變數 MARKET_PULSE_WORKER=1 時，API 不啟動此任務（由獨立 Worker 處理）
     if not os.getenv("MARKET_PULSE_WORKER"):
         logger.info("📊 Starting Market Pulse task in API process...")
         asyncio.create_task(update_market_pulse_task())
+        _startup_mark("market_pulse_task_scheduled")
     else:
         logger.info("📊 Market Pulse handled by external worker (MARKET_PULSE_WORKER=1)")
+        _startup_mark("market_pulse_task_external")
 
     # Startup: 啟動 Funding Rate 定期更新任務
     asyncio.create_task(funding_rate_update_task())
+    _startup_mark("funding_rate_task_scheduled")
 
     # Startup: 啟動價格警報檢查任務
     asyncio.create_task(price_alert_check_task())
     logger.info("Price alert checker task started")
+    _startup_mark("price_alert_task_scheduled")
 
     # Startup: 啟動審計日誌清理任務 (Stage 2 Security)
     # 每天凌晨 3 點自動清理超過 90 天的舊日誌
@@ -163,8 +182,10 @@ async def lifespan(app: FastAPI):
         from core.audit import audit_log_cleanup_task
         asyncio.create_task(audit_log_cleanup_task())
         logger.info("✅ Audit log cleanup task scheduled (daily at 3 AM UTC)")
+        _startup_mark("audit_cleanup_task_scheduled")
     except ImportError:
         logger.warning("⚠️ Audit log cleanup task not available")
+        _startup_mark("audit_cleanup_task_unavailable", status="warn")
 
     # Startup: 啟動 JWT 密鑰輪換任務 (Stage 3 Security)
     # 每月 1 號凌晨 2 點自動輪換 JWT 密鑰
@@ -173,8 +194,12 @@ async def lifespan(app: FastAPI):
             from core.key_rotation import key_rotation_task
             asyncio.create_task(key_rotation_task())
             logger.info("✅ JWT key rotation task scheduled (monthly on 1st at 2 AM UTC)")
+            _startup_mark("jwt_rotation_task_scheduled")
         except ImportError:
             logger.warning("⚠️ Key rotation task not available")
+            _startup_mark("jwt_rotation_task_unavailable", status="warn")
+
+    _startup_mark("startup_ready")
     
     yield
     
