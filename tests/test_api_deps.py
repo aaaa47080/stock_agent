@@ -3,7 +3,7 @@ Tests for API dependencies in api/deps.py
 """
 import pytest
 from unittest.mock import patch
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import HTTPException
 import jwt
 
@@ -98,7 +98,7 @@ class TestVerifyToken:
         from api.deps import verify_token, SECRET_KEY, ALGORITHM
 
         # Create expired token
-        expired_time = datetime.utcnow() - timedelta(hours=1)
+        expired_time = datetime.now(timezone.utc) - timedelta(hours=1)
         data = {"sub": "user-123", "exp": expired_time}
         expired_token = jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)
 

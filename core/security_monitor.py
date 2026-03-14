@@ -17,12 +17,20 @@ Security Event Types:
 """
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from dataclasses import dataclass, asdict
 from typing import List, Dict, Optional, Any
 from pathlib import Path
 from api.utils import logger
+
+
+def _parse_iso_utc(timestamp_str: str) -> datetime:
+    """Parse ISO timestamp and normalize to UTC (supports legacy naive values)."""
+    dt = datetime.fromisoformat(timestamp_str)
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
 
 
 class SecurityEventType(Enum):
@@ -64,7 +72,9 @@ class SecurityEvent:
 
     def __post_init__(self):
         if self.timestamp is None:
-            self.timestamp = datetime.utcnow()
+            self.timestamp = datetime.now(timezone.utc)
+        elif self.timestamp.tzinfo is None:
+            self.timestamp = self.timestamp.replace(tzinfo=timezone.utc)
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization"""
@@ -201,7 +211,7 @@ class SecurityMonitor:
         Returns:
             List of event dictionaries, sorted by timestamp (newest first)
         """
-        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
         events = []
 
         if not self.storage_path.exists():
@@ -212,7 +222,7 @@ class SecurityMonitor:
                 for line in f:
                     try:
                         event = json.loads(line.strip())
-                        event_time = datetime.fromisoformat(event["timestamp"])
+                        event_time = _parse_iso_utc(event["timestamp"])
                         if event_time >= cutoff:
                             events.append(event)
                     except (json.JSONDecodeError, ValueError, KeyError):
@@ -232,7 +242,7 @@ class SecurityMonitor:
         Returns:
             Dictionary with statistics
         """
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
         events_by_type = {}
         events_by_severity = {}
         total_events = 0
@@ -252,7 +262,7 @@ class SecurityMonitor:
                 for line in f:
                     try:
                         event = json.loads(line.strip())
-                        event_time = datetime.fromisoformat(event["timestamp"])
+                        event_time = _parse_iso_utc(event["timestamp"])
 
                         if event_time < cutoff:
                             continue
@@ -297,7 +307,7 @@ class SecurityMonitor:
         if not self.storage_path.exists():
             return 0
 
-        cutoff = datetime.utcnow() - timedelta(days=days_to_keep)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days_to_keep)
         remaining_events = []
         removed_count = 0
 
@@ -306,7 +316,7 @@ class SecurityMonitor:
                 for line in f:
                     try:
                         event = json.loads(line.strip())
-                        event_time = datetime.fromisoformat(event["timestamp"])
+                        event_time = _parse_iso_utc(event["timestamp"])
 
                         if event_time >= cutoff:
                             remaining_events.append(line.strip())
