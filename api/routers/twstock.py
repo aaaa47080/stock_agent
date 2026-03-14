@@ -30,7 +30,7 @@ async def _fetch_twse(url: str, params: dict = None, cache_key: str = None) -> A
         if datetime.now() < expiry:
             return data
     try:
-        async with httpx.AsyncClient(timeout=15, verify=False) as client:
+        async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.get(url, params=params)
             resp.raise_for_status()
             data = resp.json()
