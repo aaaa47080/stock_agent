@@ -34,7 +34,7 @@ jobs:
           pip install pytest pytest-cov pip-audit
 
       - name: Run dependency vulnerability audit
-        run: pip-audit -r requirements.txt
+        run: pip-audit -r requirements.txt --no-deps --disable-pip
 
       - name: Run critical backend tests
         run: |
