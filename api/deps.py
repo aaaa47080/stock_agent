@@ -1,5 +1,5 @@
 from typing import Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 from jose import jwt, JWTError
 from fastapi import Depends, HTTPException, status
@@ -63,9 +63,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     """
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
     to_encode.update({"exp": expire})
 
@@ -208,7 +208,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
             "pi_uid": user_id,
             "is_premium": test_tier == "premium",
             "membership_tier": test_tier,  # ✅ Add membership_tier for testing
-            "created_at": datetime.utcnow().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
         }
     
     # If not in TEST_MODE and no valid user found
