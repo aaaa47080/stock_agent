@@ -13,6 +13,10 @@ from api.deps import get_current_user
 from api.utils import logger
 
 router = APIRouter(prefix="/api/premium", tags=["Premium"])
+PLAN_MONTHS = {
+    "premium_monthly": 1,
+    "premium_yearly": 12,
+}
 
 class UpgradeRequest(BaseModel):
     user_id: str
@@ -54,6 +58,13 @@ async def upgrade_to_premium(request: UpgradeRequest, current_user: dict = Depen
     if current_user["user_id"] != request.user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
+    plan = (request.plan or "premium_monthly").strip().lower()
+    if plan not in PLAN_MONTHS:
+        raise HTTPException(status_code=400, detail="Invalid plan")
+
+    # 會員期間以方案定義為準，避免前後端語意不一致
+    months = PLAN_MONTHS[plan]
+
     try:
         loop = asyncio.get_running_loop()
         # 檢查當前會員狀態
@@ -74,7 +85,7 @@ async def upgrade_to_premium(request: UpgradeRequest, current_user: dict = Depen
             partial(
                 upgrade_to_pro,
                 user_id=request.user_id,
-                months=request.months,
+                months=months,
                 tx_hash=request.tx_hash
             )
         )
@@ -85,11 +96,13 @@ async def upgrade_to_premium(request: UpgradeRequest, current_user: dict = Depen
         # 返回新的會員狀態
         new_membership = await loop.run_in_executor(None, get_user_membership, request.user_id)
         
-        logger.info(f"用戶 {request.user_id} 成功升級到 Premium 會員，{request.months} 個月")
-        
+        logger.info(f"用戶 {request.user_id} 成功升級到 Premium 會員，plan={plan}, months={months}")
+
         return {
             "success": True,
-            "message": f"成功升級到 Premium 會員 {request.months} 個月！",
+            "message": f"成功升級到 Premium 會員 {months} 個月！",
+            "plan": plan,
+            "months": months,
             "membership": new_membership
         }
         

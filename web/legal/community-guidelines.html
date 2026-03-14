@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Community Guidelines - PI CryptoMind</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Mulish:wght@300;400;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -13,15 +14,18 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 100%);
-            color: #e0e0e0;
+            font-family: 'Mulish', sans-serif;
+            background:
+                radial-gradient(circle at 10% 8%, rgba(212, 182, 147, 0.16) 0, rgba(212, 182, 147, 0) 36%),
+                radial-gradient(circle at 92% 88%, rgba(201, 169, 128, 0.12) 0, rgba(201, 169, 128, 0) 38%),
+                #1a1a1c;
+            color: #e4e4e7;
             min-height: 100vh;
             line-height: 1.6;
         }
 
         .navbar {
-            background: rgba(26, 26, 46, 0.95);
+            background: rgba(37, 37, 41, 0.9);
             padding: 1rem 1.5rem;
             display: flex;
             align-items: center;
@@ -40,9 +44,9 @@
         }
 
         .back-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: none;
-            color: white;
+            background: rgba(212, 182, 147, 0.14);
+            border: 1px solid rgba(212, 182, 147, 0.35);
+            color: #e4e4e7;
             padding: 0.5rem 1rem;
             border-radius: 8px;
             cursor: pointer;
@@ -51,18 +55,19 @@
         }
 
         .back-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(212, 182, 147, 0.24);
         }
 
         .navbar h1 {
             font-size: 1.2rem;
+            font-family: 'Lora', serif;
             font-weight: 600;
         }
 
         .lang-toggle {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #d4b693 0%, #c9a980 100%);
             border: none;
-            color: white;
+            color: #1a1a1c;
             padding: 0.5rem 1rem;
             border-radius: 8px;
             cursor: pointer;
@@ -84,10 +89,11 @@
         }
 
         .prose h2 {
-            color: #fff;
+            color: #f4f4f5;
             margin: 2rem 0 1rem;
             font-size: 1.5rem;
-            border-bottom: 2px solid #667eea;
+            font-family: 'Lora', serif;
+            border-bottom: 2px solid #d4b693;
             padding-bottom: 0.5rem;
         }
 
@@ -114,11 +120,21 @@
         }
 
         .prose strong {
-            color: #fff;
+            color: #f4f4f5;
+        }
+
+        .prose a {
+            color: #d4b693;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+
+        .prose a:hover {
+            color: #e4c49f;
         }
 
         .footer {
-            background: rgba(26, 26, 46, 0.95);
+            background: rgba(37, 37, 41, 0.9);
             padding: 2rem 1.5rem;
             border-top: 1px solid rgba(255, 255, 255, 0.1);
             text-align: center;
@@ -133,13 +149,13 @@
         }
 
         .footer-links a {
-            color: #667eea;
+            color: #d4b693;
             text-decoration: none;
             transition: color 0.3s;
         }
 
         .footer-links a:hover {
-            color: #764ba2;
+            color: #c9a980;
         }
 
         .copyright {
@@ -152,16 +168,16 @@
         }
 
         .effective-date {
-            background: rgba(102, 126, 234, 0.1);
+            background: rgba(212, 182, 147, 0.12);
             padding: 1rem;
-            border-left: 3px solid #667eea;
+            border-left: 3px solid #d4b693;
             margin: 1.5rem 0;
             border-radius: 4px;
         }
 
         .pi-notice {
-            background: rgba(102, 126, 234, 0.15);
-            border-left: 3px solid #667eea;
+            background: rgba(212, 182, 147, 0.15);
+            border-left: 3px solid #d4b693;
             padding: 1rem;
             margin: 1rem 0;
             border-radius: 4px;
@@ -171,7 +187,7 @@
             width: 100%;
             border-collapse: collapse;
             margin: 1.5rem 0;
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(37, 37, 41, 0.75);
             border-radius: 8px;
             overflow: hidden;
         }
@@ -184,8 +200,8 @@
         }
 
         .violation-table th {
-            background: rgba(102, 126, 234, 0.2);
-            color: #fff;
+            background: rgba(212, 182, 147, 0.2);
+            color: #f4f4f5;
             font-weight: 600;
         }
 
@@ -210,7 +226,7 @@
 <body>
     <nav class="navbar">
         <div class="navbar-left">
-            <button class="back-btn" onclick="window.location.href='../../index.html'">← 返回</button>
+            <button class="back-btn" onclick="window.location.href='/static/index.html'">← 返回</button>
             <h1 id="nav-title">社群守則</h1>
         </div>
         <button class="lang-toggle" onclick="toggleLanguage()">
@@ -228,7 +244,7 @@
 
             <div class="pi-notice">
                 <strong>🔗 Pi Network 生態系</strong><br>
-                PI CryptoMind 是 Pi Network 生態系的一部分。本社群守則與 <a href="https://minepi.com" target="_blank" style="color: #667eea;">Pi Network 社群準則</a> 保持一致。嚴重違規行為可能導致您在 Pi Network 生態系中受到限制。
+                PI CryptoMind 是 Pi Network 生態系的一部分。本社群守則與 <a href="https://minepi.com" target="_blank" style="color: #d4b693;">Pi Network 社群準則</a> 保持一致。嚴重違規行為可能導致您在 Pi Network 生態系中受到限制。
             </div>
 
             <p>PI CryptoMind 致力於打造安全、友善、高品質的加密貨幣社群。所有用戶都應遵守以下守則。</p>
@@ -427,9 +443,9 @@
             <div class="pi-notice" style="margin-top: 2rem;">
                 <strong>📎 相關連結</strong>
                 <ul style="margin-top: 0.5rem;">
-                    <li><a href="https://socialchain.app/tos" target="_blank" style="color: #667eea;">Pi Network 服務條款</a></li>
-                    <li><a href="terms-of-service.html" style="color: #667eea;">PI CryptoMind 服務條款</a></li>
-                    <li><a href="privacy-policy.html" style="color: #667eea;">PI CryptoMind 隱私政策</a></li>
+                    <li><a href="https://socialchain.app/tos" target="_blank" style="color: #d4b693;">Pi Network 服務條款</a></li>
+                    <li><a href="terms-of-service.html" style="color: #d4b693;">PI CryptoMind 服務條款</a></li>
+                    <li><a href="privacy-policy.html" style="color: #d4b693;">PI CryptoMind 隱私政策</a></li>
                 </ul>
             </div>
         </div>
@@ -443,7 +459,7 @@
 
             <div class="pi-notice">
                 <strong>🔗 Pi Network Ecosystem</strong><br>
-                PI CryptoMind is part of the Pi Network ecosystem. These Community Guidelines align with <a href="https://minepi.com" target="_blank" style="color: #667eea;">Pi Network Community Guidelines</a>. Serious violations may result in restrictions across the Pi Network ecosystem.
+                PI CryptoMind is part of the Pi Network ecosystem. These Community Guidelines align with <a href="https://minepi.com" target="_blank" style="color: #d4b693;">Pi Network Community Guidelines</a>. Serious violations may result in restrictions across the Pi Network ecosystem.
             </div>
 
             <p>PI CryptoMind is committed to building a safe, friendly, and high-quality cryptocurrency community. All users must comply with these guidelines.</p>
@@ -642,9 +658,9 @@
             <div class="pi-notice" style="margin-top: 2rem;">
                 <strong>📎 Related Links</strong>
                 <ul style="margin-top: 0.5rem;">
-                    <li><a href="https://socialchain.app/tos" target="_blank" style="color: #667eea;">Pi Network Terms of Service</a></li>
-                    <li><a href="terms-of-service.html" style="color: #667eea;">PI CryptoMind Terms of Service</a></li>
-                    <li><a href="privacy-policy.html" style="color: #667eea;">PI CryptoMind Privacy Policy</a></li>
+                    <li><a href="https://socialchain.app/tos" target="_blank" style="color: #d4b693;">Pi Network Terms of Service</a></li>
+                    <li><a href="terms-of-service.html" style="color: #d4b693;">PI CryptoMind Terms of Service</a></li>
+                    <li><a href="privacy-policy.html" style="color: #d4b693;">PI CryptoMind Privacy Policy</a></li>
                 </ul>
             </div>
         </div>
@@ -655,7 +671,7 @@
             <a href="terms-of-service.html">Terms of Service</a>
             <a href="privacy-policy.html">Privacy Policy</a>
             <a href="community-guidelines.html">Community Guidelines</a>
-            <a href="../../index.html">返回平台</a>
+            <a href="/static/index.html">返回平台</a>
         </div>
         <div class="copyright">
             © 2026 PI CryptoMind. All rights reserved.

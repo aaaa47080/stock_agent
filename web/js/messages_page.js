@@ -89,6 +89,7 @@ const MessagesPage = {
         const limits = await MessagesAPI.getLimits();
         if (limits) {
             this.isPro = limits.is_premium;
+            const messageLimit = limits.message_limit || {};
 
             // 更新訊息長度限制（從 API 取得）
             if (limits.max_length) {
@@ -115,9 +116,9 @@ const MessagesPage = {
                 const limitInfo = document.getElementById('message-limit-info');
                 if (limitInfo) limitInfo.classList.remove('hidden');
                 const limitUsed = document.getElementById('limit-used');
-                if (limitUsed) limitUsed.textContent = limits.message_limit.used || 0;
+                if (limitUsed) limitUsed.textContent = messageLimit.used || 0;
                 const limitTotal = document.getElementById('limit-total');
-                if (limitTotal) limitTotal.textContent = limits.message_limit.limit || 20;
+                if (limitTotal) limitTotal.textContent = messageLimit.limit || 20;
             }
         }
     },
@@ -490,8 +491,9 @@ const MessagesPage = {
                 if (!this.isPro) {
                     const limits = await MessagesAPI.getLimits();
                     if (limits) {
+                        const messageLimit = limits.message_limit || {};
                         const limitUsed = document.getElementById('limit-used');
-                        if (limitUsed) limitUsed.textContent = limits.message_limit.used || 0;
+                        if (limitUsed) limitUsed.textContent = messageLimit.used || 0;
                     }
                 }
             }

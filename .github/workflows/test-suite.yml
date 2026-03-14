@@ -43,6 +43,12 @@ jobs:
             tests/test_tool_access_resolver.py \
             -q
 
+      - name: Check static asset references
+        run: python scripts/check_static_refs.py
+
+      - name: Check static asset version consistency
+        run: python scripts/check_asset_versions.py
+
   e2e-tests:
     runs-on: ubuntu-latest
     env:
@@ -72,4 +78,9 @@ jobs:
         run: python -m playwright install chromium
 
       - name: Run E2E tests
-        run: pytest -o addopts='' tests/e2e/test_verified_mode_market_flow.py -q
+        run: |
+          pytest -o addopts='' \
+            tests/e2e/test_non_pi_browser_gate.py \
+            tests/e2e/test_static_asset_load_smoke.py \
+            tests/e2e/test_verified_mode_market_flow.py \
+            -q

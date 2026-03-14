@@ -838,7 +838,7 @@ const Components = {
                     <div id="tool-settings-free-notice" class="hidden mb-4 bg-background/50 rounded-xl p-4 border border-white/5">
                         <p class="text-sm text-textMuted leading-relaxed">
                             <i data-lucide="lock" class="w-4 h-4 inline-block mr-1 opacity-70"></i>
-                            升級 Plus 或 Premium 後，可自訂 agent 可使用的工具組合。
+                            升級 Premium 後，可自訂 agent 可使用的工具組合。
                         </p>
                     </div>
 
@@ -876,7 +876,7 @@ const Components = {
                             <span><span data-i18n="settings.premium.upgradeButton">Upgrade to Premium -</span> <span data-price="premium"><i data-lucide="loader" class="w-3 h-3 animate-spin"></i></span></span>
                         </button>
 
-                        <p class="text-[10px] text-textMuted/60 text-center" data-i18n="settings.premium.oneTimePayment">One-time payment, effective immediately</p>
+                        <p class="text-[10px] text-textMuted/60 text-center" data-i18n="settings.premium.oneTimePayment">Monthly subscription. Renew to keep Premium access.</p>
                     </div>
                 </div>
 

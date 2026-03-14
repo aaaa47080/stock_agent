@@ -585,7 +585,8 @@ class PremiumManager {
             },
             body: JSON.stringify({
                 user_id: userId,
-                months: 1, // 默認1個月，可以根據需要調整
+                plan: 'premium_monthly',
+                months: 1,
                 tx_hash: txHash,
             }),
         });
@@ -642,7 +643,11 @@ class PremiumManager {
      */
     async checkMembershipStatus(userId) {
         try {
-            const response = await fetch(`/api/premium/status/${userId}`);
+            const response = await fetch(`/api/premium/status/${userId}`, {
+                headers: window.AuthManager?.currentUser?.accessToken
+                    ? { Authorization: `Bearer ${window.AuthManager.currentUser.accessToken}` }
+                    : {},
+            });
             const result = await response.json();
 
             if (response.ok && result.success) {

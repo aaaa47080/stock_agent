@@ -378,10 +378,6 @@ async function saveLLMKey() {
             if (typeof checkApiKeyStatus === 'function') {
                 await checkApiKeyStatus();
             }
-            // ✅ 修復：存完金鑰後自動跳到 chat 頁面
-            if (typeof switchTab === 'function') {
-                setTimeout(() => switchTab('chat'), 500);
-            }
         } else {
             // 正確處理錯誤消息
             var errorMsg = '保存失敗';

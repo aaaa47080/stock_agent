@@ -4,6 +4,7 @@ import json
 import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import urlsplit
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -14,12 +15,13 @@ PORT = 8766
 
 class StaticAppHandler(SimpleHTTPRequestHandler):
     def translate_path(self, path: str) -> str:
-        if path.startswith("/static/"):
-            rel = path[len("/static/") :]
+        clean_path = urlsplit(path).path
+        if clean_path.startswith("/static/"):
+            rel = clean_path[len("/static/") :]
             return str((WEB_DIR / rel).resolve())
-        if path in ("/", "/index.html"):
+        if clean_path in ("/", "/index.html"):
             return str((WEB_DIR / "index.html").resolve())
-        return str((WEB_DIR / path.lstrip("/")).resolve())
+        return str((WEB_DIR / clean_path.lstrip("/")).resolve())
 
     def log_message(self, fmt: str, *args) -> None:
         return
@@ -53,6 +55,7 @@ async def run_verified_mode_market_flow_test():
                 uid: "premium-user-001",
                 user_id: "premium-user-001",
                 username: "PremiumUser",
+                authMethod: "password",
                 accessToken: "token-premium",
                 accessTokenExpiry: Date.now() + 3600 * 1000,
                 membership_tier: "premium"
@@ -225,6 +228,7 @@ async def run_research_mode_market_flow_test():
                 uid: "premium-user-002",
                 user_id: "premium-user-002",
                 username: "ResearchUser",
+                authMethod: "password",
                 accessToken: "token-premium",
                 accessTokenExpiry: Date.now() + 3600 * 1000,
                 membership_tier: "premium"
@@ -349,6 +353,7 @@ async def run_free_mode_guardrail_test():
                 uid: "free-user-001",
                 user_id: "free-user-001",
                 username: "FreeUser",
+                authMethod: "password",
                 accessToken: "token-free",
                 accessTokenExpiry: Date.now() + 3600 * 1000,
                 membership_tier: "free"

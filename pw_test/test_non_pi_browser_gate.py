@@ -4,6 +4,7 @@ import json
 import threading
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from playwright.async_api import async_playwright
 
@@ -16,12 +17,13 @@ PORT = 8765
 
 class StaticAppHandler(SimpleHTTPRequestHandler):
     def translate_path(self, path: str) -> str:
-        if path.startswith("/static/"):
-            rel = path[len("/static/") :]
+        clean_path = urlsplit(path).path
+        if clean_path.startswith("/static/"):
+            rel = clean_path[len("/static/") :]
             return str((WEB_DIR / rel).resolve())
-        if path in ("/", "/index.html"):
+        if clean_path in ("/", "/index.html"):
             return str((WEB_DIR / "index.html").resolve())
-        return str((WEB_DIR / path.lstrip("/")).resolve())
+        return str((WEB_DIR / clean_path.lstrip("/")).resolve())
 
     def log_message(self, fmt: str, *args) -> None:
         return

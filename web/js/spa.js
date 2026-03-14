@@ -160,19 +160,6 @@ async function executeTabSwitch(tabId, fromPopState = false) {
     ) {
         if (window.Components && typeof window.Components.inject === 'function') {
             await window.Components.inject(tabId);
-
-            // Special initialization for settings tab
-            if (tabId === 'settings') {
-                // 1. 先載入工具設定（包含用戶等級資訊）
-                if (typeof window.initToolSettings === 'function') {
-                    await window.initToolSettings();
-                }
-
-                // 2. 等工具設定載入完成後，再初始化測試模式切換器
-                if (typeof window.initTestMode === 'function') {
-                    await window.initTestMode();
-                }
-            }
         }
     }
 
@@ -266,14 +253,23 @@ async function executeTabSwitch(tabId, fromPopState = false) {
     if (tabId === 'settings') {
         // ✅ 效能優化：並行執行所有 settings 初始化，而非依序等待
         const settingsInits = [];
-        if (window.AuthManager && typeof window.AuthManager._updateUI === 'function') {
-            window.AuthManager._updateUI(window.AuthManager.isLoggedIn());
-        }
         if (typeof loadSettingsWalletStatus === 'function')
-            settingsInits.push(loadSettingsWalletStatus());
-        if (typeof loadPremiumStatus === 'function') settingsInits.push(loadPremiumStatus());
+            settingsInits.push(Promise.resolve(loadSettingsWalletStatus()));
+        if (typeof loadPremiumStatus === 'function')
+            settingsInits.push(Promise.resolve(loadPremiumStatus()));
         if (typeof updateLLMStatusUI === 'function')
             settingsInits.push(Promise.resolve(updateLLMStatusUI()));
+        if (!window.__settingsHeavyInitAt) window.__settingsHeavyInitAt = 0;
+        const now = Date.now();
+        if (now - window.__settingsHeavyInitAt > 15000) {
+            window.__settingsHeavyInitAt = now;
+            if (typeof window.initToolSettings === 'function') {
+                settingsInits.push(Promise.resolve(window.initToolSettings()));
+            }
+            if (typeof window.initTestMode === 'function') {
+                settingsInits.push(Promise.resolve(window.initTestMode()));
+            }
+        }
         if (typeof updateOKXStatusUI === 'function') updateOKXStatusUI();
         if (typeof updatePriceDisplays === 'function') updatePriceDisplays();
         if (
@@ -284,7 +280,9 @@ async function executeTabSwitch(tabId, fromPopState = false) {
         }
         if (typeof window.updateAvailableModels === 'function') window.updateAvailableModels();
         // 並行發出所有 API 請求
-        Promise.all(settingsInits).catch((e) => console.warn('Settings init error:', e));
+        Promise.allSettled(settingsInits).catch((e) =>
+            console.warn('Settings init error:', e)
+        );
     }
     if (tabId === 'chat') {
         // ✅ 效能優化：checkApiKeyStatus 加 TTL 快取，避免每次切換都打後端 API

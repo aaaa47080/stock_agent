@@ -725,76 +725,76 @@ function quickAsk(text) {
 
 // ... existing code ...
 
-async function openSettings() {
-    // Switch to settings tab
-    if (typeof switchTab === 'function') {
-        switchTab('settings');
-    }
+const SETTINGS_CONFIG_CACHE_TTL_MS = 60000;
 
-    // Ensure component is injected
-    if (window.Components && typeof window.Components.inject === 'function') {
-        await window.Components.inject('settings');
-    }
-
-    // Load current config — fetch both endpoints in parallel
-    try {
-        if (typeof window.initToolSettings === 'function') {
-            await window.initToolSettings();
-        }
-
-        // Initialize test mode tier switcher after settings injection
-        if (typeof window.initTestMode === 'function') {
-            await window.initTestMode();
-        }
-
-        const [configRes, modelConfigRes] = await Promise.all([
-            fetch('/api/config'),
-            fetch('/api/model-config'),
-        ]);
-        const data = await configRes.json();
-        const modelConfigData = await modelConfigRes.json();
-        const settings = data.current_settings || {};
-        const preloadedModelConfig = modelConfigData.model_config || null;
-
-        // Update Valid Keys state based on backend existence
-        const setStatus = (provider, hasKey) => {
-            validKeys[provider] = hasKey;
+async function hydrateSettingsFromBackend(force = false) {
+    if (!window.__settingsConfigCache) {
+        window.__settingsConfigCache = {
+            ts: 0,
+            payload: null,
         };
-
-        setStatus('openai', settings.has_openai_key);
-        setStatus('google_gemini', settings.has_google_key);
-        setStatus('openrouter', settings.has_openrouter_key);
-
-        // Update Provider Select Options based on validity
-        updateProviderOptions();
-
-        if (settings.primary_model_provider) {
-            const providerSelect = document.getElementById('llm-provider-select');
-            if (providerSelect) {
-                providerSelect.value = settings.primary_model_provider;
-                // 觸發更新，傳入預載的 modelConfig 避免重複 fetch
-                if (typeof updateLLMKeyInput === 'function') updateLLMKeyInput();
-                if (typeof window.updateAvailableModels === 'function')
-                    await window.updateAvailableModels(preloadedModelConfig);
-            }
-        }
-        if (settings.primary_model_name) {
-            const modelSelect = document.getElementById('llm-model-select');
-            const modelInput = document.getElementById('llm-model-input');
-            if (modelSelect && settings.primary_model_provider !== 'openrouter') {
-                modelSelect.value = settings.primary_model_name;
-            } else if (modelInput) {
-                modelInput.value = settings.primary_model_name;
-            }
-        }
-
-        // Load premium membership status (no artificial delay needed)
-        if (typeof loadPremiumStatus === 'function') {
-            loadPremiumStatus();
-        }
-    } catch (e) {
-        console.error('Failed to load settings', e);
     }
+
+    const cache = window.__settingsConfigCache;
+    const now = Date.now();
+    if (!force && cache.payload && now - cache.ts < SETTINGS_CONFIG_CACHE_TTL_MS) {
+        return cache.payload;
+    }
+
+    const [configRes, modelConfigRes] = await Promise.all([
+        fetch('/api/config'),
+        fetch('/api/model-config'),
+    ]);
+    const configData = await configRes.json();
+    const modelConfigData = await modelConfigRes.json();
+    const settings = configData.current_settings || {};
+    const preloadedModelConfig = modelConfigData.model_config || null;
+
+    validKeys.openai = !!settings.has_openai_key;
+    validKeys.google_gemini = !!settings.has_google_key;
+    validKeys.openrouter = !!settings.has_openrouter_key;
+    updateProviderOptions();
+
+    if (settings.primary_model_provider) {
+        const providerSelect = document.getElementById('llm-provider-select');
+        if (providerSelect) {
+            providerSelect.value = settings.primary_model_provider;
+            if (typeof updateLLMKeyInput === 'function') updateLLMKeyInput();
+            if (typeof window.updateAvailableModels === 'function') {
+                await window.updateAvailableModels(preloadedModelConfig);
+            }
+        }
+    }
+
+    if (settings.primary_model_name) {
+        const modelSelect = document.getElementById('llm-model-select');
+        const modelInput = document.getElementById('llm-model-input');
+        if (modelSelect && settings.primary_model_provider !== 'openrouter') {
+            modelSelect.value = settings.primary_model_name;
+        } else if (modelInput) {
+            modelInput.value = settings.primary_model_name;
+        }
+    }
+
+    cache.payload = { settings, preloadedModelConfig };
+    cache.ts = Date.now();
+    return cache.payload;
+}
+
+async function openSettings() {
+    if (typeof switchTab === 'function') {
+        await switchTab('settings');
+    }
+
+    if (typeof window.loadSavedApiKeys === 'function') {
+        Promise.resolve(window.loadSavedApiKeys()).catch((e) =>
+            console.warn('loadSavedApiKeys in settings failed:', e)
+        );
+    }
+
+    Promise.resolve(hydrateSettingsFromBackend()).catch((e) =>
+        console.error('Failed to hydrate settings', e)
+    );
 }
 
 function closeSettings() {
@@ -951,8 +951,6 @@ async function saveSettings() {
         })(),
     };
 
-    let success = false;
-
     try {
         const res = await fetch('/api/settings/update', {
             method: 'POST',
@@ -962,22 +960,17 @@ async function saveSettings() {
         const result = await res.json();
 
         if (result.success) {
-            success = true;
             if (payload.primary_model_provider) {
                 window.APIKeyManager.setSelectedProvider(payload.primary_model_provider);
             }
 
-            // 2. 儲存成功：維持灰色狀態半秒後直接關閉
-            setTimeout(() => {
-                closeSettings();
-                checkApiKeyStatus();
-
-                // 3. 在畫面切換後才恢復按鈕狀態
-                setTimeout(() => {
-                    btn.disabled = false;
-                    btn.classList.remove('opacity-50', 'cursor-not-allowed');
-                }, 500);
-            }, 500);
+            window.__settingsConfigCache = null;
+            if (typeof checkApiKeyStatus === 'function') {
+                await checkApiKeyStatus();
+            }
+            if (typeof showToast === 'function') {
+                showToast('設定已儲存', 'success');
+            }
         } else {
             showToast('保存設定失敗: ' + (result.detail || '未知錯誤'), 'error');
         }
@@ -985,9 +978,6 @@ async function saveSettings() {
         showToast('保存設定時發生錯誤: ' + e, 'error');
     }
 
-    // 只有在失敗時才立即恢復按鈕
-    if (!success) {
-        btn.disabled = false;
-        btn.classList.remove('opacity-50', 'cursor-not-allowed');
-    }
+    btn.disabled = false;
+    btn.classList.remove('opacity-50', 'cursor-not-allowed');
 }

@@ -7,11 +7,18 @@
  */
 window._piLoginInProgress = false;
 window.__forceGuestLandingTab = false;
+window.__piBrowserGateLocked = false;
+window.__piBrowserGateReason = '';
 
 function isSafePiSdkContext() {
     return window.PiEnvironment
         ? window.PiEnvironment.isSafeSdkContext()
         : window.location.protocol === 'https:';
+}
+
+function hasPiBrowserUserAgent() {
+    const ua = (navigator.userAgent || '').toLowerCase();
+    return ua.includes('pibrowser') || ua.includes('pi browser') || ua.includes('minepi');
 }
 
 function showPiBrowserRequiredModal() {
@@ -26,6 +33,32 @@ function showPiBrowserRequiredModal() {
 function enableGuestLandingGate() {
     window.__forceGuestLandingTab = true;
 }
+
+function lockPiBrowserGate(reason = 'unknown') {
+    window.__piBrowserGateLocked = true;
+    window.__piBrowserGateReason = reason;
+    enableGuestLandingGate();
+    showPiBrowserRequiredModal();
+}
+
+function unlockPiBrowserGate() {
+    window.__piBrowserGateLocked = false;
+    window.__piBrowserGateReason = '';
+    window.__forceGuestLandingTab = false;
+}
+
+function applyPiBrowserGateUI() {
+    if (window.__piBrowserGateLocked) {
+        showPiBrowserRequiredModal();
+    }
+}
+
+window.lockPiBrowserGate = lockPiBrowserGate;
+window.unlockPiBrowserGate = unlockPiBrowserGate;
+window.applyPiBrowserGateUI = applyPiBrowserGateUI;
+window.isPiBrowserGateLocked = function () {
+    return window.__piBrowserGateLocked === true;
+};
 
 /**
  * 安全的 Pi 登入函數（含防重複點擊機制）
@@ -107,8 +140,7 @@ window.safePiLogin = async function () {
             // 明確不在 Pi Browser 相容上下文時，立即顯示 gate，
             // 避免頁面先還原到其他 tab 再被拉回登入提示。
             if (!isSafePiSdkContext()) {
-                enableGuestLandingGate();
-                showPiBrowserRequiredModal();
+                lockPiBrowserGate('unsafe_context_with_saved_token');
                 return;
             }
 
@@ -144,8 +176,7 @@ window.safePiLogin = async function () {
                         }
                         // 非測試模式，顯示 login modal 提示用戶
                         console.warn('⚠️ Token valid but NOT in Pi Browser, showing login modal');
-                        enableGuestLandingGate();
-                        showPiBrowserRequiredModal();
+                        lockPiBrowserGate('saved_token_without_sdk');
                     });
                 }
             };
@@ -175,6 +206,7 @@ window.safePiLogin = async function () {
     (async function () {
         if (!isSafePiSdkContext()) {
             console.log('ℹ️ Skipping Pi SDK auto-init outside Pi Browser compatible context');
+            lockPiBrowserGate('unsafe_context_auto_init');
             return;
         }
 
@@ -201,17 +233,28 @@ window.safePiLogin = async function () {
 
         if (!hasPiSDK) {
             console.warn('⚠️ Pi SDK not detected after 3 seconds.');
+            lockPiBrowserGate('sdk_not_detected');
             return; // 保持預設「請使用 Pi Browser」提示
         }
 
+        if (window.__piBrowserGateLocked) {
+            console.warn(
+                '⚠️ Pi Browser gate already locked, skip exposing login button:',
+                window.__piBrowserGateReason
+            );
+            return;
+        }
+
         // 階段二：嘗試使用 nativeFeaturesList 做額外驗證（可選）
-        // 如果可用就使用，不可用也沒關係，因為 Pi SDK 已經存在
-        // 這與 auth.js 的 verifyPiBrowserEnvironment() 邏輯一致
+        // 若 UA 與 native bridge 都無法證明是 Pi Browser，維持 gate 鎖定
+        const hasPiUA = hasPiBrowserUserAgent();
+        let nativeVerified = false;
 
         try {
             await Pi.init({ version: '2.0', sandbox: false });
         } catch (initError) {
             console.warn('⚠️ Pi SDK init failed:', initError.message);
+            lockPiBrowserGate('pi_init_failed');
             return;
         }
 
@@ -224,21 +267,29 @@ window.safePiLogin = async function () {
                         setTimeout(() => reject(new Error('TIMEOUT')), 1500)
                     ),
                 ]);
+                nativeVerified = true;
                 console.log('✅ Pi Browser verified (nativeFeaturesList), features:', features);
             } catch (e) {
                 console.warn(
-                    '⚠️ nativeFeaturesList failed but Pi SDK exists, allowing login:',
+                    '⚠️ nativeFeaturesList failed:',
                     e.message
                 );
             }
         } else {
-            console.log(
-                'ℹ️ nativeFeaturesList unavailable, but Pi SDK exists - allowing login attempt'
+            console.log('ℹ️ nativeFeaturesList unavailable');
+        }
+
+        if (!hasPiUA && !nativeVerified) {
+            console.warn(
+                '⚠️ Pi SDK detected but UA/native verification failed. Keep Pi Browser gate locked.'
             );
+            lockPiBrowserGate('ua_native_verification_failed');
+            return;
         }
 
         // Pi SDK 存在，顯示登入按鈕讓用戶嘗試
         // 真正的認證會由 Pi.authenticate() 處理
+        unlockPiBrowserGate();
         console.log('✅ Pi SDK loaded - showing login button');
         const loginBtn = document.getElementById('pi-login-btn');
         const notPiBrowserMsg = document.getElementById('not-pi-browser-msg');

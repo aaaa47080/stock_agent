@@ -225,7 +225,12 @@ The `verified` analysis mode is protected by a dedicated test chain:
 - membership-based mode gating (`free` vs `premium`)
 - policy-driven `discovery_lookup` / `market_lookup` routing
 - response trace metadata (`query_type`, `resolved_market`, `policy_path`)
-- Playwright E2E coverage for both premium and free users
+- Playwright E2E coverage for:
+  - premium / free analysis-mode flows
+  - non-Pi-Browser gate behavior
+  - multi-page static asset load smoke checks (with uncaught frontend runtime error guard)
+- static `/static/*` asset reference integrity checks
+- static shared-asset cache-busting version consistency checks
 
 Run locally:
 

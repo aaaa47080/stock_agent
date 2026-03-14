@@ -2,6 +2,27 @@
  * 可疑錢包追蹤系統 - 前端模組
  */
 
+function resolveScamTrackerCurrentUser() {
+    if (typeof getCurrentUser === 'function') {
+        try {
+            return getCurrentUser();
+        } catch (_) {
+            // Fallback to AuthManager/localStorage for compatibility pages.
+        }
+    }
+
+    if (window.AuthManager && window.AuthManager.currentUser) {
+        return window.AuthManager.currentUser;
+    }
+
+    try {
+        const raw = localStorage.getItem('pi_user');
+        return raw ? JSON.parse(raw) : null;
+    } catch (_) {
+        return null;
+    }
+}
+
 const ScamTrackerAPI = {
     /**
      * 獲取舉報列表
@@ -242,7 +263,7 @@ const ScamTrackerApp = {
      * 檢查 PRO 狀態
      */
     checkPROStatus() {
-        const user = getCurrentUser();
+        const user = resolveScamTrackerCurrentUser();
         if (!user) {
             window.location.href = '/static/forum/index.html';
             return;
@@ -491,7 +512,7 @@ const ScamTrackerApp = {
             this.renderComments(comments);
 
             // 如果用戶是 PRO，顯示評論表單
-            const user = getCurrentUser();
+            const user = resolveScamTrackerCurrentUser();
             if (user && (user.is_premium || user.is_pro)) {
                 const commentForm = document.getElementById('comment-form');
                 if (commentForm) commentForm.classList.remove('hidden');

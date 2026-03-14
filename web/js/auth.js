@@ -88,6 +88,19 @@ const AuthManager = {
     // 在過期前多久開始刷新（1 天）
     REFRESH_BEFORE_EXPIRY_MS: 24 * 60 * 60 * 1000,
 
+    isPasswordSession(user) {
+        const method = user?.authMethod || user?.auth_method;
+        return method === 'password';
+    },
+
+    shouldForceGuestWhenPiGateLocked(user) {
+        if (!user) return false;
+        if (typeof window.isPiBrowserGateLocked !== 'function') return false;
+        if (!window.isPiBrowserGateLocked()) return false;
+        // Keep legacy/unknown sessions conservative to prevent bypassing the Pi gate.
+        return !this.isPasswordSession(user);
+    },
+
     /**
      * 檢查 token 是否過期
      * @returns {boolean} true = 已過期, false = 未過期
@@ -619,8 +632,17 @@ const AuthManager = {
                     this.clearExpiredToken();
                     return false;
                 }
-
-                this._updateUI(true);
+                if (this.shouldForceGuestWhenPiGateLocked(this.currentUser)) {
+                    DebugLog.warn('Pi Browser gate 鎖定中，暫不還原受保護登入狀態', {
+                        gateReason: window.__piBrowserGateReason || 'unknown',
+                        hasAuthMethod: !!(this.currentUser?.authMethod || this.currentUser?.auth_method),
+                        hasPiUid: !!this.currentUser?.pi_uid,
+                    });
+                    this.currentUser = null;
+                    this._updateUI(false);
+                } else {
+                    this._updateUI(true);
+                }
             } catch (e) {
                 localStorage.removeItem('pi_user');
             }
@@ -756,8 +778,17 @@ const AuthManager = {
         // 控制登入 Modal 顯示
         const modal = document.getElementById('login-modal');
         if (modal) {
-            if (isLoggedIn) modal.classList.add('hidden');
-            else modal.classList.remove('hidden');
+            if (isLoggedIn) {
+                modal.classList.add('hidden');
+                if (typeof window.unlockPiBrowserGate === 'function') {
+                    window.unlockPiBrowserGate();
+                }
+            } else {
+                modal.classList.remove('hidden');
+                if (typeof window.applyPiBrowserGateUI === 'function') {
+                    window.applyPiBrowserGateUI();
+                }
+            }
         }
 
         // 更新會員狀態顯示
@@ -1328,6 +1359,9 @@ window.handlePiLogin = async () => {
         } else {
             alert(msg);
         }
+        if (typeof window.lockPiBrowserGate === 'function') {
+            window.lockPiBrowserGate('login_attempt_not_pi_browser');
+        }
         return;
     }
 
@@ -1348,6 +1382,9 @@ window.handlePiLogin = async () => {
             showToast('請在 Pi Browser 中開啟此頁面才能登入', 'warning');
         } else {
             alert('請在 Pi Browser 中開啟此頁面才能登入');
+        }
+        if (typeof window.lockPiBrowserGate === 'function') {
+            window.lockPiBrowserGate('login_environment_verification_failed');
         }
         return;
     }
@@ -1370,27 +1407,26 @@ window.handlePiLogin = async () => {
             // 隱藏 login modal
             const modal = document.getElementById('login-modal');
             if (modal) modal.classList.add('hidden');
+            window.__forceGuestLandingTab = false;
+            if (typeof window.unlockPiBrowserGate === 'function') {
+                window.unlockPiBrowserGate();
+            }
 
             // 更新認證 UI 狀態
             if (typeof AuthManager._updateUI === 'function') {
                 AuthManager._updateUI(true);
             }
 
-            // 載入 API Keys 並更新狀態
-            if (typeof window.loadSavedApiKeys === 'function') {
-                await window.loadSavedApiKeys();
-            }
-            if (typeof checkApiKeyStatus === 'function') {
-                await checkApiKeyStatus();
-            }
-
-            // 跳到 chat tab（平滑切換）
-            if (typeof switchTab === 'function') {
-                await switchTab('chat');
-            }
-
             if (typeof showToast === 'function') {
                 showToast('✅ 登入成功！歡迎回來', 'success');
+            }
+
+            // 後台同步狀態（不阻塞 UI，也不覆蓋使用者當前分頁）
+            if (typeof window.loadSavedApiKeys === 'function') {
+                Promise.resolve(window.loadSavedApiKeys()).catch(() => {});
+            }
+            if (typeof checkApiKeyStatus === 'function') {
+                Promise.resolve(checkApiKeyStatus()).catch(() => {});
             }
         } else {
             if (typeof showToast === 'function') {

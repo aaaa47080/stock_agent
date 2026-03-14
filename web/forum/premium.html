@@ -39,7 +39,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Mulish:wght@300;400;600;800&family=JetBrains+Mono:wght@400;500&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="/static/styles.css?v=4">
     <script src="/static/config.js"></script>
     <script src="/static/js/logger.js"></script>
 </head>
@@ -122,7 +122,7 @@
                             class="animate-pulse">...</span></span>
                 </div>
 
-                <p class="text-textMuted text-sm mb-8">一次性付費，立即生效，享受完整功能</p>
+                <p class="text-textMuted text-sm mb-8">月費制，需每月續費以維持 Premium 權益</p>
 
                 <button id="upgrade-btn"
                     class="w-full py-4 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-400 hover:to-orange-400 text-background font-bold rounded-2xl transition shadow-lg shadow-yellow-500/20 flex items-center justify-center gap-2 upgrade-premium-btn">
@@ -154,7 +154,7 @@
 
                 <div class="bg-background/50 p-4 rounded-xl">
                     <div class="text-textMuted text-sm mb-1">到期時間</div>
-                    <div class="font-bold text-secondary" id="expiry-date">永久有效</div>
+                    <div class="font-bold text-secondary" id="expiry-date">尚未啟用</div>
                 </div>
             </div>
         </div>
@@ -184,27 +184,30 @@
     </div>
 
     <!-- Scripts -->
-    <script src="/static/js/app.js?v=38"></script>
-    <script src="/static/js/apiKeyManager.js?v=38"></script>
-    <script src="/static/js/auth.js?v=49"></script>
+    <script src="/static/js/app.js?v=54"></script>
+    <script src="/static/js/apiKeyManager.js?v=48"></script>
+    <script src="/static/js/auth.js?v=56"></script>
     <script src="/static/js/forum-config.js?v=1"></script>
     <script src="/static/js/forum-api.js?v=1"></script>
     <script src="/static/js/forum-app.js?v=1"></script>
-    <script src="/static/js/premium.js?v=38"></script>
+    <script src="/static/js/premium.js?v=40"></script>
     <script>
         // 初始化頁面
         document.addEventListener('DOMContentLoaded', async () => {
             // 初始化認證
             if (typeof initializeAuth === 'function') {
-                initializeAuth();
+                await initializeAuth();
             }
 
             // 加載用戶會員狀態
             if (window.AuthManager?.currentUser) {
                 const userId = window.AuthManager.currentUser.user_id || window.AuthManager.currentUser.uid;
+                const accessToken = window.AuthManager.currentUser.accessToken;
                 if (userId) {
                     try {
-                        const response = await fetch(`/api/premium/status/${userId}`);
+                        const response = await fetch(`/api/premium/status/${userId}`, {
+                            headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+                        });
                         const result = await response.json();
 
                         if (result.success) {
@@ -218,7 +221,7 @@
                                 ? 'px-2 py-0.5 rounded-md bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-[10px] text-yellow-400 border border-yellow-500/30 uppercase'
                                 : 'px-2 py-0.5 rounded-md bg-white/5 text-[10px] text-textMuted border border-white/5 uppercase';
 
-                            document.getElementById('expiry-date').textContent = membership.expires_at || '永久有效';
+                            document.getElementById('expiry-date').textContent = membership.expires_at || (isPremium ? '需每月續費' : '尚未啟用');
                         }
                     } catch (error) {
                         console.error('獲取會員狀態失敗:', error);
