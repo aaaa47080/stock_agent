@@ -1,7 +1,8 @@
 from typing import Optional
 from datetime import datetime, timedelta, timezone
 import logging
-from jose import jwt, JWTError
+import jwt
+from jwt import InvalidTokenError
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 import os
@@ -102,7 +103,7 @@ def verify_token(token: str) -> dict:
         try:
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
             return payload
-        except JWTError:
+        except InvalidTokenError:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Could not validate credentials",
@@ -137,7 +138,7 @@ async def get_current_user_id(token: str = Depends(oauth2_scheme)) -> str:
         if user_id is None:
             raise credentials_exception
         return user_id
-    except (JWTError, HTTPException):
+    except (InvalidTokenError, HTTPException):
         raise credentials_exception
 
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:

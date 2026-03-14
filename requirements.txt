@@ -32,7 +32,7 @@ psycopg2-binary==2.9.11
 alembic>=1.13.0
 
 # === Auth / Security ===
-python-jose[cryptography]==3.5.0
+PyJWT==2.12.0
 cryptography==46.0.5
 
 # === Configuration ===

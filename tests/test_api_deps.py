@@ -5,7 +5,7 @@ import pytest
 from unittest.mock import patch
 from datetime import datetime, timedelta
 from fastapi import HTTPException
-from jose import jwt
+import jwt
 
 # Need to patch environment before importing api.deps
 @pytest.fixture(autouse=True)

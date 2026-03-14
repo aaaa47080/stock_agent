@@ -290,7 +290,7 @@ class TestAuthentication:
 
             # Decode payload to check for key_id
             # Note: When key rotation is enabled, we need to get the key from KeyRotationManager
-            from jose import jwt
+            import jwt
             from core.key_rotation import KeyRotationManager
 
             # Get the current key for decoding

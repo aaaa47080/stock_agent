@@ -18,11 +18,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Dict, Optional, List
 from pathlib import Path
 from api.utils import logger
-
-try:
-    from jose import jwt  # type: ignore[import-untyped]
-except ImportError:
-    import jwt  # type: ignore[import-not-found]
+import jwt
 
 
 class KeyRotationManager:
