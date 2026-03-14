@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, AsyncMock
 import pytest
 
 from core.agents.agent_registry import AgentRegistry, AgentMetadata
-from core.agents.manager import ManagerAgent, MAX_GRAPH_TASKS
+from core.agents.manager import ManagerAgent, MAX_GRAPH_TASKS, CLEAR_SENTINEL
 from core.agents.tool_registry import ToolRegistry
 
 
@@ -102,6 +102,28 @@ def test_detect_boundary_route_ignores_greeting():
     route = manager._detect_boundary_route("你好")
 
     assert route is None
+
+
+def test_apply_structural_task_overrides_aligns_single_task_agent_to_resolved_market():
+    manager = build_manager()
+
+    overridden = manager._apply_structural_task_overrides(
+        tasks=[{
+            "id": "task_1",
+            "name": "原始任務",
+            "agent": "tw_stock",
+            "description": "它今天為什麼跌？",
+            "dependencies": [],
+        }],
+        query="它今天為什麼跌？",
+        history="使用者: AAPL 現在多少？",
+        entities={"crypto": None, "tw": None, "us": "AAPL"},
+        query_profile={"query_type": "market_event"},
+    )
+
+    assert len(overridden) == 1
+    assert overridden[0]["agent"] == "us_stock"
+    assert overridden[0]["description"] == "它今天為什麼跌？"
 
 
 @pytest.mark.asyncio
@@ -251,6 +273,101 @@ def test_build_response_format_guidance_uses_compare_structure_for_compare_query
     assert "| 項目 | 標的A | 標的B |" in guidance
 
 
+def test_apply_pronoun_entity_carryover_uses_previous_single_market_entity():
+    manager = build_manager()
+
+    carried = manager._apply_pronoun_entity_carryover(
+        query="它今天為什麼跌？",
+        current_entities={"crypto": None, "tw": None, "us": None},
+        prior_entities={"crypto": None, "tw": None, "us": "AAPL"},
+    )
+
+    assert carried["us"] == "AAPL"
+    assert carried["tw"] is None
+    assert carried["crypto"] is None
+
+
+def test_apply_pronoun_entity_carryover_does_not_override_explicit_symbol():
+    manager = build_manager()
+
+    carried = manager._apply_pronoun_entity_carryover(
+        query="改看 NVDA",
+        current_entities={"crypto": None, "tw": None, "us": "NVDA"},
+        prior_entities={"crypto": None, "tw": None, "us": "AAPL"},
+    )
+
+    assert carried["us"] == "NVDA"
+
+
+def test_apply_pronoun_entity_carryover_overrides_drifted_current_entity():
+    manager = build_manager()
+
+    carried = manager._apply_pronoun_entity_carryover(
+        query="它今天為什麼跌？",
+        current_entities={"crypto": None, "tw": "2330.TW", "us": None},
+        prior_entities={"crypto": None, "tw": None, "us": "AAPL"},
+    )
+
+    assert carried["us"] == "AAPL"
+    assert carried["tw"] is None
+
+
+def test_extract_market_entities_uses_latest_user_utterance_for_pronoun_query():
+    manager = build_manager()
+
+    entities = manager._extract_market_entities(
+        "它今天為什麼跌？",
+        history="使用者: AAPL 現在多少？\n助手: 回覆略",
+    )
+
+    assert entities["us"] == "AAPL"
+
+
+def test_reconcile_market_entities_prefers_resolver_when_symbol_conflicts():
+    manager = build_manager()
+
+    reconciled = manager._reconcile_market_entities(
+        query="它今天為什麼跌？",
+        history="使用者: AAPL 現在多少？\n助手: 回覆略",
+        llm_entities={"crypto": None, "tw": None, "us": "TSM"},
+    )
+
+    assert reconciled["us"] == "AAPL"
+
+
+def test_finalize_mode_response_strips_compare_block_for_non_compare_query():
+    manager = build_manager()
+
+    finalized = manager._finalize_mode_response(
+        response=(
+            "### 標的比較\n"
+            "| 項目 | 標的A | 標的B |\n"
+            "|------|-------|-------|\n"
+            "| 價格 | 1 | 2 |\n\n"
+            "### 分析結論\n重點結論"
+        ),
+        analysis_mode="quick",
+        evidence={},
+        query="請分析單一標的",
+    )
+
+    assert "### 標的比較" not in finalized
+    assert "### 分析結論" in finalized
+
+
+def test_finalize_mode_response_verified_causal_question_requires_evidence():
+    manager = build_manager()
+
+    finalized = manager._finalize_mode_response(
+        response="今天下跌是因為市場恐慌。",
+        analysis_mode="verified",
+        evidence={"verification_status": None},
+        query="它今天為什麼跌？",
+    )
+
+    assert "缺少可驗證的事件資料來源" in finalized
+
+
 @pytest.mark.asyncio
 async def test_synthesize_response_does_not_fallback_to_llm_after_tool_failure():
     manager = build_manager()
@@ -268,3 +385,27 @@ async def test_synthesize_response_does_not_fallback_to_llm_after_tool_failure()
     assert "目前工具未能取得有效資料" in result["final_response"]
     assert "價格數據異常：無法獲取" in result["final_response"]
     manager._llm_invoke.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_understand_intent_sets_processed_query_and_resets_previous_task_results():
+    manager = build_manager()
+    manager._llm_invoke = AsyncMock(return_value="""
+    {
+      "status": "ready",
+      "user_intent": "查詢價格",
+      "entities": {"crypto": null, "tw": null, "us": "AAPL"},
+      "tasks": [{"id":"task_1","name":"處理請求","agent":"us_stock","description":"AAPL現在多少？","dependencies":[]}],
+      "aggregation_strategy": "combine_all"
+    }
+    """)
+
+    result = await manager._understand_intent_node({
+        "query": "AAPL現在多少？",
+        "history": "",
+        "_processed_query": "上一輪問題",
+        "task_results": {"task_legacy": {"success": True}},
+    })
+
+    assert result["_processed_query"] == "AAPL現在多少？"
+    assert result["task_results"] == {CLEAR_SENTINEL: True}

@@ -1,0 +1,39 @@
+# VCS / local env
+.git
+.gitignore
+.venv
+.python-version
+.vscode
+.idea
+
+# Python cache/artifacts
+__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Runtime logs / outputs
+*.log
+logs/
+test_results/
+
+# Local QA / docs not needed in runtime image
+tests/
+pw_test/
+docs/
+scripts/
+instructions/
+ARCHITECTURE_AUDIT_REPORT.md
+README.md
+README_CN.md
+
+# Local tooling / meta folders
+.claude/
+.agent/
+
+# OS junk
+.DS_Store

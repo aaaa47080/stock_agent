@@ -40,6 +40,21 @@ Do not use:
 - `if symbol == "TSM"`
 - product-specific prompt branches
 
+## Market confirmation workflow
+
+For stock/crypto queries, enforce this flow before planning:
+
+1. Extract candidate symbols from current query and recent user utterance.
+2. Resolve market (`crypto` / `tw` / `us`) with confidence, not hardcoded symbol lists.
+3. If unresolved or ambiguous:
+- Prefer a short clarification question.
+- If platform policy allows discovery, use `web_search` to identify listing market and canonical ticker, then continue.
+4. Lock the resolved symbol/market in current turn:
+- Manager routing must only dispatch tools for that market.
+- Final synthesis must not introduce symbols absent from current task evidence.
+
+Do not hardcode issuer names or ticker examples in this workflow.
+
 ## Prompt governance
 
 - Runtime prompts must live in `core/agents/prompts/*.yaml` and be loaded via `PromptRegistry`.

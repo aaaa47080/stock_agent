@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 class TechnicalAnalysisInput(BaseModel):
     """技術分析工具的輸入參數"""
     symbol: str = Field(
-        description="加密貨幣交易對符號，如 'BTC', 'ETH', 'SOL', 'PI'。不需要加 'USDT' 後綴。"
+        description="加密貨幣交易對符號。不需要加交易對後綴。"
     )
     interval: str = Field(
         default="1d",
@@ -25,7 +25,7 @@ class TechnicalAnalysisInput(BaseModel):
 class NewsAnalysisInput(BaseModel):
     """新聞分析工具的輸入參數"""
     symbol: str = Field(
-        description="加密貨幣符號，如 'BTC', 'ETH', 'PI'。"
+        description="加密貨幣符號。"
     )
     include_sentiment: bool = Field(
         default=True,
@@ -36,7 +36,7 @@ class NewsAnalysisInput(BaseModel):
 class PriceInput(BaseModel):
     """價格查詢工具的輸入參數"""
     symbol: str = Field(
-        description="加密貨幣符號，如 'BTC', 'ETH', 'SOL', 'PI'。"
+        description="加密貨幣符號。"
     )
     exchange: Optional[str] = Field(
         default=None,
@@ -55,14 +55,14 @@ class CurrentTimeInput(BaseModel):
 class MarketPulseInput(BaseModel):
     """市場脈動分析工具的輸入參數"""
     symbol: str = Field(
-        description="加密貨幣符號，如 'BTC', 'ETH', 'SOL'。"
+        description="加密貨幣符號。"
     )
 
 
 class BacktestStrategyInput(BaseModel):
     """回測策略工具的輸入參數"""
     symbol: str = Field(
-        description="加密貨幣符號，如 'BTC', 'ETH'。"
+        description="加密貨幣符號。"
     )
     interval: str = Field(
         default="1d",
@@ -77,5 +77,5 @@ class BacktestStrategyInput(BaseModel):
 class ExtractCryptoSymbolsInput(BaseModel):
     """從用戶查詢中提取加密貨幣符號的工具輸入參數"""
     user_query: str = Field(
-        description="用戶的查詢文本，可能包含一種或多種加密貨幣符號，如 'BTC今天值得買嗎？' 或 '分析ETH和SOL的走勢'"
+        description="用戶的查詢文本，可能包含一種或多種加密貨幣符號。"
     )

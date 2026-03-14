@@ -26,7 +26,7 @@ def google_news(symbol: str = "BTC", limit: int = 5) -> list:
     - **錯誤格式**：只顯示標題而省略 URL
 
     Args:
-        symbol: 幣種代碼，如 BTC、ETH、SOL
+        symbol: 幣種代碼（例如主流交易所可查詢的代幣）
         limit: 返回新聞數量，預設 5
 
     Returns:
@@ -52,7 +52,7 @@ def aggregate_news(symbol: str = "BTC", limit: int = 5) -> list:
     - **錯誤格式**：只顯示標題而省略 URL
 
     Args:
-        symbol: 幣種代碼，如 BTC、ETH、SOL
+        symbol: 幣種代碼（例如主流交易所可查詢的代幣）
         limit: 返回新聞數量，預設 5
 
     Returns:
@@ -78,9 +78,9 @@ def get_crypto_price(symbol: str = "BTC") -> dict:
     """
     查詢在主流交易所（Binance、OKX 等）上市的加密貨幣即時價格。
 
-    ⚠️ 此工具不支持 PI (Pi Network)。查詢 PI 價格請使用 get_pi_price 工具。
+    ⚠️ 此工具不支持平台外未上市的標的。特殊標的請使用對應專用工具。
 
-    支持的幣種：BTC、ETH、SOL、USDT 等主流交易所上市的代幣。
+    支持主流交易所上市代幣。
     """
     from core.tools.crypto_tools import get_crypto_price_tool
     result = get_crypto_price_tool.invoke({"symbol": symbol})
@@ -215,7 +215,7 @@ def tw_major_news_tool(limit: int = 10) -> list:
 @tool
 def tw_pe_ratio_tool(code: str) -> dict:
     """獲取台股個股本益比(P/E)、殖利率(Dividend Yield)、股價淨值比(P/B)。
-    code: 股票代號，如 '2330'、'2317'"""
+    code: 股票代號"""
     from core.tools.tw_stock_tools import tw_pe_ratio
     return tw_pe_ratio.invoke({"code": code})
 
@@ -254,7 +254,7 @@ def get_dex_pair_info_tool(token_address: str) -> dict:
 
 @tool
 def get_trending_dex_pairs_tool(query: str) -> list:
-    """搜索熱門 DEX 交易對（如 PEPE、WIF、DOGE）"""
+    """搜索熱門 DEX 交易對"""
     from core.tools.crypto_tools import get_trending_dex_pairs
     return get_trending_dex_pairs.invoke({"query": query})
 
@@ -265,7 +265,7 @@ def get_trending_dex_pairs_tool(query: str) -> list:
 
 @tool
 def get_eth_balance_tool(address: str) -> dict:
-    """查詢以太坊地址的 ETH 餘額"""
+    """查詢以太坊地址餘額"""
     from core.tools.crypto_tools import get_eth_balance
     return get_eth_balance.invoke({"address": address})
 
@@ -293,7 +293,7 @@ def get_contract_info_tool(contract_address: str) -> dict:
 
 @tool
 def get_eth_price_etherscan_tool() -> dict:
-    """從 Etherscan 獲取 ETH 即時價格"""
+    """從 Etherscan 獲取即時價格"""
     from core.tools.crypto_tools import get_eth_price_from_etherscan
     return get_eth_price_from_etherscan.invoke({})
 

@@ -15,9 +15,9 @@ def _normalize_tw_ticker(ticker: str) -> str:
     將各種台股代碼格式標準化為 yfinance 格式。
     
     支援的輸入格式：
-    - 純數字：'2330' -> '2330.TW'
-    - 已有後綴：'2330.TW' -> '2330.TW'
-    - 上櫃股票：'6666.TWO' -> '6666.TWO'
+    - 純數字：'[代號]' -> '[代號].TW'
+    - 已有後綴：'[代號].TW' -> '[代號].TW'
+    - 上櫃股票：'[代號].TWO' -> '[代號].TWO'
     - 中文名稱：使用 TWSymbolResolver 解析
     
     這是一個通用的邊界處理，不是針對特定案例的 hardcode。
@@ -57,7 +57,7 @@ def _normalize_tw_ticker(ticker: str) -> str:
 @tool
 def tw_stock_price(ticker: str) -> dict:
     """獲取台股即時（15分鐘延遲）及近期 OHLCV 價格資料。
-    支援各種格式：2330、2330.TW、台積電 等"""
+    支援各種格式：純代號、含市場後綴代號、公司名稱"""
     try:
         import yfinance as yf
         ticker = _normalize_tw_ticker(ticker)
@@ -100,7 +100,7 @@ def tw_stock_price(ticker: str) -> dict:
 @tool
 def tw_technical_analysis(ticker: str, period: str = "3mo") -> dict:
     """計算台股技術指標：RSI(14)、MACD、KD(9,3,3)、MA5/20/60。
-    支援各種格式：2330、2330.TW、台積電 等"""
+    支援各種格式：純代號、含市場後綴代號、公司名稱"""
     try:
         import yfinance as yf
         ticker = _normalize_tw_ticker(ticker)
@@ -156,7 +156,7 @@ def tw_technical_analysis(ticker: str, period: str = "3mo") -> dict:
 @tool
 def tw_fundamentals(ticker: str) -> dict:
     """獲取台股基本面資料：本益比(P/E)、股價淨值比(P/B)、殖利率、EPS 等。
-    支援各種格式：2330、2330.TW、台積電 等"""
+    支援各種格式：純代號、含市場後綴代號、公司名稱"""
     try:
         import yfinance as yf
         ticker = _normalize_tw_ticker(ticker)
@@ -198,7 +198,7 @@ def tw_institutional(ticker: str) -> dict:
     import httpx
     from datetime import date, timedelta
 
-    # Extract code from ticker (e.g., "2330.TW" → "2330")
+    # Extract code from ticker (e.g., "[代號].TW" → "[代號]")
     code = ticker.split(".")[0]
 
     headers = {
@@ -276,7 +276,7 @@ def tw_institutional(ticker: str) -> dict:
 @tool
 def tw_news(ticker: str, company_name: str = "", limit: int = 8) -> list:
     """從 Google News RSS 獲取台股相關新聞。
-    company_name: 公司中文名稱（如「台積電」），提升新聞相關性"""
+    company_name: 公司中文名稱，可提升新聞相關性"""
     try:
         import httpx
         import xml.etree.ElementTree as ET
@@ -346,7 +346,7 @@ def tw_major_news(limit: int = 10) -> list:
 def tw_pe_ratio(code: str) -> dict:
     """獲取台股個股本益比(P/E)、殖利率、股價淨值比(PBR)。
     資料來源：TWSE OpenAPI BWIBBU_d（今日數據）。
-    code: 股票代號，如 '2330'（台積電）、'2317'（鴻海）"""
+    code: 股票代號"""
     try:
         import httpx
         resp = httpx.get(f"{TWSE_BASE}/exchangeReport/BWIBBU_d", timeout=15)
@@ -378,7 +378,7 @@ def tw_monthly_revenue(code: str = "") -> list:
     """獲取台股上市公司月營業收入資料。
     資料來源：TWSE OpenAPI t187ap05_L。
     包含當月營收、月增率、年增率、累計營收。
-    code: 股票代號（如 '2330'），若為空字串則返回全市場前30筆"""
+    code: 股票代號，若為空字串則返回全市場前 30 筆"""
     try:
         import httpx
         resp = httpx.get(f"{TWSE_BASE}/opendata/t187ap05_L", timeout=15)
@@ -410,7 +410,7 @@ def tw_dividend_info(code: str = "") -> list:
     """獲取台股上市公司股利分派情形。
     資料來源：TWSE OpenAPI t187ap45_L。
     包含現金股利、配股、股東會日期等。
-    code: 股票代號（如 '2330'），若為空字串則返回近期所有公司前30筆"""
+    code: 股票代號，若為空字串則返回近期所有公司前 30 筆"""
     try:
         import httpx
         resp = httpx.get(f"{TWSE_BASE}/opendata/t187ap45_L", timeout=15)
@@ -459,5 +459,4 @@ def tw_foreign_holding_top20() -> list:
         return results
     except Exception as e:
         return [{"error": str(e)}]
-
 

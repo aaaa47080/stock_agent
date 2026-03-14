@@ -2,7 +2,7 @@
 Taiwan Stock Symbol Resolver
 
 Resolves Chinese names, English tickers, or bare codes to Yahoo Finance format.
-Examples: "台積電" → "2330.TW", "TSMC" → "2330.TW", "2330" → "2330.TW"
+Examples: "[公司名稱]" → "[代號].TW", "[英文簡稱]" → "[代號].TW", "[代號]" → "[代號].TW"
 
 Data sources:
   - TWSE: openapi.twse.com.tw  (上市)
@@ -26,7 +26,7 @@ class TWSymbolResolver:
         self._cache_time: Optional[datetime] = None
 
     def resolve(self, input_str: str) -> Optional[str]:
-        """Resolve input to Yahoo Finance TW ticker (e.g., '2330.TW').
+        """Resolve input to Yahoo Finance TW ticker (e.g., '[代號].TW').
         Returns None if no match found."""
         result = self.resolve_with_metadata(input_str)
         return result["ticker"] if result else None

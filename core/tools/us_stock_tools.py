@@ -13,6 +13,8 @@ Available Tools:
 - us_institutional_holders: Institutional holdings
 - us_insider_transactions: Insider trading data
 """
+import os
+
 from langchain.tools import tool
 from typing import List, Dict
 
@@ -31,7 +33,7 @@ def us_stock_price(symbol: str) -> Dict:
     - 52 週高低點
     
     Args:
-        symbol: 美股股票代號（如 AAPL, TSLA, NVDA）
+        symbol: 美股股票代號
     
     Returns:
         價格數據字典
@@ -264,31 +266,32 @@ def register_us_stock_tools(tool_registry):
 # ============ 快速測試 ============
 
 if __name__ == "__main__":
+    sample_symbol = os.getenv("US_STOCK_SAMPLE_SYMBOL", "[SYMBOL]")
     
     print("測試美股工具...")
     print("=" * 70)
     
     # 測試價格
-    print("\n[1] 測試 us_stock_price (AAPL)")
-    result = us_stock_price.invoke({"symbol": "AAPL"})
+    print(f"\n[1] 測試 us_stock_price ({sample_symbol})")
+    result = us_stock_price.invoke({"symbol": sample_symbol})
     print(f"價格：${result.get('price', 'N/A')}")
     print(f"漲跌：{result.get('change', 0):+.2f} ({result.get('change_percent', 0):+.2f}%)")
     
     # 測試技術指標
-    print("\n[2] 測試 us_technical_analysis (AAPL)")
-    result = us_technical_analysis.invoke({"symbol": "AAPL"})
+    print(f"\n[2] 測試 us_technical_analysis ({sample_symbol})")
+    result = us_technical_analysis.invoke({"symbol": sample_symbol})
     print(f"RSI: {result.get('rsi', 'N/A')}")
     print(f"綜合訊號：{result.get('summary', 'N/A')}")
     
     # 測試基本面
-    print("\n[3] 測試 us_fundamentals (AAPL)")
-    result = us_fundamentals.invoke({"symbol": "AAPL"})
+    print(f"\n[3] 測試 us_fundamentals ({sample_symbol})")
+    result = us_fundamentals.invoke({"symbol": sample_symbol})
     print(f"P/E: {result.get('pe_ratio', 'N/A')}")
     print(f"ROE: {result.get('roe', 'N/A')}")
     
     # 測試新聞
-    print("\n[4] 測試 us_news (AAPL)")
-    result = us_news.invoke({"symbol": "AAPL", "limit": 3})
+    print(f"\n[4] 測試 us_news ({sample_symbol})")
+    result = us_news.invoke({"symbol": sample_symbol, "limit": 3})
     print(f"獲取 {len(result)} 則新聞")
     if result:
         print(f"最新：{result[0].get('title', 'N/A')}")

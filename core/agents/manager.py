@@ -282,6 +282,12 @@ class ManagerAgent:
                 history,
                 intent_data.get("entities", {}),
             )
+            prior_entities = state.get("intent_understanding", {}).get("entities", {})
+            reconciled_entities = self._apply_pronoun_entity_carryover(
+                query=query,
+                current_entities=reconciled_entities,
+                prior_entities=prior_entities if isinstance(prior_entities, dict) else {},
+            )
             query_profile = self.analysis_policy_resolver.build_query_profile(
                 query,
                 self._extract_symbol_candidates(self._normalize_query_text(query)),
@@ -309,6 +315,7 @@ class ManagerAgent:
                 "task_graph": self._task_graph_to_dict(task_graph),
                 "execution_mode": "restaurant" if len(tasks) > 1 else "vending",
                 "hitl_confirmed": False,
+                "_processed_query": query,
             }
 
         except Exception as e:
@@ -329,6 +336,7 @@ class ManagerAgent:
                 },
                 "task_graph": self._task_graph_to_dict(TaskGraph(root=fallback_task)),
                 "execution_mode": "vending",
+                "_processed_query": query,
             }
 
     async def _execute_task_node(self, state: ManagerState) -> Dict:
@@ -739,6 +747,7 @@ class ManagerAgent:
                 response=response,
                 analysis_mode=analysis_mode,
                 evidence=evidence,
+                query=current_query,
             )
 
             # 追蹤對話歷史並觸發記憶整合
@@ -858,15 +867,29 @@ class ManagerAgent:
         entities: Dict[str, Optional[str]],
         query_profile: Dict[str, object],
     ) -> List[dict]:
-        """Use structural market resolution to correct single-task routing.
-
-        This only applies to simple price lookups so that deep multi-step plans
-        remain controlled by the LLM planner.
-        """
+        """Use structural market resolution to correct single-task routing."""
         if not tasks:
             return tasks
         if len(tasks) != 1:
             return tasks
+
+        matched_entities = entities if isinstance(entities, dict) else {}
+        matched_markets = [market for market, value in matched_entities.items() if value]
+        if len(matched_markets) == 1:
+            market = matched_markets[0]
+            target_agent = self._resolve_boundary_agent_name(market)
+            if target_agent:
+                normalized_task = dict(tasks[0])
+                normalized_task["description"] = query
+                if normalized_task.get("agent") != target_agent:
+                    normalized_task["agent"] = target_agent
+                    symbol = matched_entities.get(market, "")
+                    display_symbol = symbol.replace(".TW", "") if market == "tw" and isinstance(symbol, str) else symbol
+                    if isinstance(display_symbol, str) and display_symbol:
+                        normalized_task["name"] = f"處理 {display_symbol} 相關查詢"
+                if not isinstance(query_profile, dict) or query_profile.get("query_type") != "price_lookup":
+                    return [normalized_task]
+
         if not isinstance(query_profile, dict) or query_profile.get("query_type") != "price_lookup":
             return tasks
 
@@ -874,10 +897,10 @@ class ManagerAgent:
         if not boundary_route:
             return tasks
 
-        matched_entities = boundary_route.get("entities", {})
-        if not isinstance(matched_entities, dict):
+        route_entities = boundary_route.get("entities", {})
+        if not isinstance(route_entities, dict):
             return tasks
-        matched_markets = [market for market, value in matched_entities.items() if value]
+        matched_markets = [market for market, value in route_entities.items() if value]
         if len(matched_markets) != 1:
             return tasks
 
@@ -902,6 +925,12 @@ class ManagerAgent:
         normalized = self._normalize_query_text(query)
         result = {"crypto": None, "tw": None, "us": None}
         candidates = self._extract_symbol_candidates(normalized)
+        if not candidates and self._contains_symbol_pronoun(normalized):
+            latest_user_utterance = self._extract_latest_user_utterance(history)
+            if latest_user_utterance:
+                candidates = self._extract_symbol_candidates(
+                    self._normalize_query_text(latest_user_utterance)
+                )
         for candidate in candidates:
             resolution = self._symbol_resolver.resolve_with_context(candidate, context_text=normalized)
             flat_resolution = resolution.get("resolution", {})
@@ -919,6 +948,18 @@ class ManagerAgent:
                     result[market] = value
 
         return result
+
+    @staticmethod
+    def _extract_latest_user_utterance(history: str) -> str:
+        if not history:
+            return ""
+        lines = [line.strip() for line in history.splitlines() if line.strip()]
+        for line in reversed(lines):
+            if line.startswith("使用者:"):
+                return line.split(":", 1)[1].strip()
+            if line.lower().startswith("user:"):
+                return line.split(":", 1)[1].strip()
+        return ""
 
     def _reconcile_market_entities(
         self,
@@ -944,6 +985,8 @@ class ManagerAgent:
         if len(resolver_markets) == 1:
             resolver_market = resolver_markets[0]
             if len(llm_markets) != 1 or llm_markets[0] != resolver_market:
+                return resolver_entities
+            if normalized_llm_entities.get(resolver_market) != resolver_entities.get(resolver_market):
                 return resolver_entities
 
         if len(llm_markets) == 1:
@@ -1138,6 +1181,41 @@ class ManagerAgent:
             include_time=False,
         )
 
+    def _apply_pronoun_entity_carryover(
+        self,
+        query: str,
+        current_entities: Dict[str, Optional[str]],
+        prior_entities: Dict[str, Optional[str]],
+    ) -> Dict[str, Optional[str]]:
+        """If a query only uses pronouns and no explicit symbol, keep last resolved entity."""
+        normalized = self._normalize_query_text(query)
+        if self._extract_symbol_candidates(normalized):
+            return current_entities
+        if not self._contains_symbol_pronoun(normalized):
+            return current_entities
+
+        prior = {"crypto": None, "tw": None, "us": None}
+        if isinstance(prior_entities, dict):
+            for market in prior:
+                value = prior_entities.get(market)
+                if value:
+                    prior[market] = value
+
+        prior_markets = [market for market, value in prior.items() if value]
+        if len(prior_markets) != 1:
+            return current_entities
+        return prior
+
+    @staticmethod
+    def _contains_symbol_pronoun(text: str) -> bool:
+        return bool(
+            re.search(
+                r"(它|他|她|這個幣|這支股票|那個|這檔|那檔|that one|it)",
+                text,
+                flags=re.IGNORECASE,
+            )
+        )
+
     def _build_response_format_guidance(
         self,
         analysis_mode: str,
@@ -1178,9 +1256,11 @@ class ManagerAgent:
         response: str,
         analysis_mode: str,
         evidence: Dict[str, object],
+        query: str = "",
     ) -> str:
         cleaned = re.sub(r"^#\s*Sub-Agent 執行結果\s*", "", response, flags=re.MULTILINE).strip()
         cleaned = re.sub(r"^###\s*任務\s+\d+\s+\[[^\]]+\]\s*", "", cleaned, flags=re.MULTILINE).strip()
+        cleaned = re.sub(r"^\s*-\s*(資料時間|驗證來源|驗證狀態)[:：].*$", "", cleaned, flags=re.MULTILINE).strip()
         cleaned = re.sub(r"\n*驗證資訊[:：].*", "", cleaned).strip()
         cleaned = re.sub(r"\n*研究依據[:：].*", "", cleaned).strip()
         cleaned = re.sub(
@@ -1196,7 +1276,21 @@ class ManagerAgent:
             flags=re.MULTILINE,
         ).strip()
 
+        lowered_query = (query or "").lower()
+        is_compare = any(token in lowered_query for token in ("比較", "compare", "vs", "差異"))
+        if not is_compare:
+            cleaned = re.sub(
+                r"\n*###\s*標的比較[\s\S]*?(?=\n###\s|\Z)",
+                "",
+                cleaned,
+                flags=re.MULTILINE,
+            ).strip()
+
         if analysis_mode == "verified":
+            lacks_verified_evidence = evidence.get("verification_status") != "verified"
+            is_causal_question = any(token in lowered_query for token in ("為什麼", "原因", "why", "怎麼跌", "怎麼漲"))
+            if lacks_verified_evidence and is_causal_question:
+                cleaned = "目前缺少可驗證的事件資料來源，無法確認漲跌原因。若你要，我可以先查新聞與公告後再回答。"
             evidence_lines = []
             if evidence.get("data_as_of"):
                 evidence_lines.append(f"- 資料時間：{evidence['data_as_of']}")

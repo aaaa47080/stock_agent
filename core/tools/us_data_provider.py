@@ -87,7 +87,7 @@ class YahooFinanceProvider(StockDataProvider):
         獲取價格數據（含快取）
         
         Args:
-            symbol: 股票代號（如 AAPL, TSLA）
+            symbol: 股票代號
         
         Returns:
             價格數據字典

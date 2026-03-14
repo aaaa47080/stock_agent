@@ -24,7 +24,7 @@ _TW_CODE_PATTERN = re.compile(r"^\d{4,6}(?:\.TW|\.TWO)?$", re.IGNORECASE)
 
 _MARKET_HINTS = {
     "crypto": ("加密", "幣", "代幣", "鏈上", "crypto", "token", "coin"),
-    "tw": ("台股", "上市", "上櫃", "台灣", "twse", "tpex", "台積電", ".tw", ".two"),
+    "tw": ("台股", "上市", "上櫃", "台灣", "twse", "tpex", ".tw", ".two"),
     "us": ("美股", "adr", "nasdaq", "nyse", "美國", "us stock"),
 }
 

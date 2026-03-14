@@ -503,7 +503,7 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
     tool_registry.register(ToolMetadata(
         name="tw_pe_ratio",
         description="獲取台股個股本益比(P/E)、殖利率(Dividend Yield)、股價淨值比(P/B)",
-        input_schema={"code": "str (股票代號，如 2330)"},
+        input_schema={"code": "str (股票代號)"},
         handler=tw_pe_ratio_tool,
         allowed_agents=["tw_stock"],
     ))
@@ -621,7 +621,7 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
     agent_registry.register(tw, AgentMetadata(
         name="tw_stock",
         display_name="TW Stock Agent",
-        description="台灣股市全方位分析 — 即時價格、時間、技術指標（RSI/MACD/KD/均線）、基本面（P/E/EPS）、三大法人籌碼、台股新聞。適合台積電、鴻海、聯發科等台股查詢，接受股票代號（2330）或公司名稱（台積電）。",
+        description="台灣股市全方位分析 — 即時價格、時間、技術指標（RSI/MACD/KD/均線）、基本面（P/E/EPS）、三大法人籌碼、台股新聞。適用於台股查詢，接受股票代號或公司名稱。",
         capabilities=["台股", "台灣股市", "上市", "上櫃", "股票代號", "RSI", "MACD", "KD", "均線", "本益比", "EPS", "外資", "投信", "法人", "籌碼", "股價", "台股股價", "即時股價", "時間"],
         priority=10,
     ))
@@ -632,12 +632,11 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         display_name="US Stock Agent",
         description="美股全方位分析 — 即時價格（15分鐘延遲）、技術指標（RSI/MACD/MA/布林帶）、"
                     "基本面（P/E、EPS、ROE、市值）、財報數據與日曆、機構持倉、"
-                    "內部人交易、最新新聞。適合 AAPL/TSLA/NVDA/TSM/MSFT/AMZN/GOOGL/META 等 "
-                    "NYSE/NASDAQ 股票查詢，接受股票代號或公司名稱（如 Apple、Tesla）。",
+                    "內部人交易、最新新聞。適用於 NYSE/NASDAQ 股票查詢，接受股票代號或公司名稱。",
         capabilities=[
             "美股", "US stock", "NYSE", "NASDAQ",
-            "AAPL", "TSLA", "NVDA", "TSM", "MSFT", "AMZN", "GOOGL", "META",
-            "標普500", "道瓊", "那斯達克", "S&P500", "Apple", "Tesla", "Nvidia",
+            "大型股", "成長股", "價值股", "科技股", "金融股", "醫療股",
+            "標普500", "道瓊", "那斯達克", "S&P500",
         ],
         priority=8,
     ))

@@ -12,14 +12,13 @@ from summarize_futunn_posts import (
 )
 
 MAIN_URL = "https://news.futunn.com/main?chain_id=FBB0EGgLsPxZBN.1klpic0&global_content=%7B%22promote_id%22%3A13766,%22sub_promote_id%22%3A1,%22f%22%3A%22nn%2F%22%7D&lang=zh-cn"
-TSM_URL = "https://www.futunn.com/hk/stock/TSM-US/news?global_content=%7B%22promote_id%22%3A13643,%22sub_promote_id%22%3A60%7D"
 STOCK_NEWS_TEMPLATE = "https://www.futunn.com/hk/stock/{ticker}-US/news?global_content=%7B%22promote_id%22%3A13643,%22sub_promote_id%22%3A60%7D"
 
 OUT_FILE = "futunn_main_posts.jsonl"
 SCROLL_ROUNDS = 0          # 想抓更多就加大
 LIMIT = 5               # 只抓一篇就設 1；抓全部就 None
 ONLY_POST = True           # True=只抓 /post/；False=也抓 /flash/
-PRESET_URLS = {"main": MAIN_URL, "tsm": TSM_URL}
+PRESET_URLS = {"main": MAIN_URL}
 
 
 def parse_args():
@@ -82,7 +81,7 @@ def build_stock_news_url(target: str) -> str:
 
 
 def select_target_url():
-    prompt = "請輸入想爬取的美股代號（例如 TSM）或完整 Futunn URL："
+    prompt = "請輸入想爬取的美股代號（例如 [美股代號]）或完整 Futunn URL："
     while True:
         entry = input(prompt).strip()
         if not entry:
