@@ -41,7 +41,5 @@ RUN find /app -type d -name "__pycache__" -prune -exec rm -rf {} + \
 
 EXPOSE 8080
 
-HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=5 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3)"
-
-CMD ["gunicorn", "--config", "gunicorn.conf.py", "api_server:app"]
+# Use an explicit, minimal startup command to avoid config-file boot ambiguity in PaaS.
+CMD ["gunicorn", "api.main:app", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8080", "--workers", "1", "--timeout", "120", "--graceful-timeout", "30", "--keep-alive", "5", "--access-logfile", "-", "--error-logfile", "-"]

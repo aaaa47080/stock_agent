@@ -9,7 +9,6 @@ import asyncio
 import os
 
 from core.database.notifications import (
-    create_notifications_table,
     get_notifications,
     get_unread_count,
     mark_notification_as_read,
@@ -23,13 +22,6 @@ from api.deps import get_current_user, verify_token
 from fastapi import Depends
 
 router = APIRouter()
-
-# 初始化表
-try:
-    create_notifications_table()
-    logger.info("Notifications table initialized")
-except Exception as e:
-    logger.warning(f"Could not initialize notifications table: {e}")
 
 
 # ============================================================================

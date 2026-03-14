@@ -13,10 +13,10 @@ backlog = 2048
 # ========================================
 # Worker Processes
 # ========================================
-# 默認 2 workers（適用於 Zeabur 等雲平台的免費/基礎方案）
-# AI 庫（LangChain、LangGraph）非常耗內存，過多 workers 會導致 OOM
+# 默認 1 worker（雲端小資源環境較穩定，避免啟動期被 OOM/探針誤殺）
+# 可再透過 WEB_CONCURRENCY 調整
 # 可通過環境變量 WEB_CONCURRENCY 覆蓋
-workers = int(os.getenv("WEB_CONCURRENCY", 2))
+workers = int(os.getenv("WEB_CONCURRENCY", 1))
 
 # Uvicorn worker 以支持異步
 worker_class = "uvicorn.workers.UvicornWorker"
@@ -33,8 +33,8 @@ timeout = 120
 graceful_timeout = 30
 keepalive = 5
 
-# 預加載應用代碼（節省內存）
-preload_app = True
+# 禁用 preload，降低啟動期共享狀態/連線池問題風險
+preload_app = False
 
 
 # ========================================

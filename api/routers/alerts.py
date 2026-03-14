@@ -10,18 +10,10 @@ from api.deps import get_current_user
 from api.models import CreateAlertRequest
 from core.database import (
     create_alert, get_user_alerts, delete_alert,
-    create_price_alerts_table,
 )
 from api.utils import logger
 
 router = APIRouter()
-
-# Initialize table on import
-try:
-    create_price_alerts_table()
-    logger.info("Price alerts table initialized")
-except Exception as e:
-    logger.warning(f"Could not initialize price_alerts table: {e}")
 
 
 @router.post("/api/alerts")

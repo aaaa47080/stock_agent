@@ -84,11 +84,14 @@ from fastapi.responses import JSONResponse
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Initialize database (with retry + graceful fallback)
-    skip_db_init = os.getenv('SKIP_DB_INIT', 'false').lower() == 'true'
+    async def _init_database_background():
+        """Run DB initialization in background to avoid blocking readiness on startup."""
+        skip_db_init = os.getenv('SKIP_DB_INIT', 'false').lower() == 'true'
+        if skip_db_init:
+            logger.info("⏭️ 跳過資料庫初始化 (SKIP_DB_INIT=true)")
+            return
 
-    if not skip_db_init:
-        logger.info("🔄 Initializing database...")
+        logger.info("🔄 Initializing database in background...")
         loop = asyncio.get_running_loop()
         try:
             # init_db 內部已有重試機制（10次，每次間隔3秒）
@@ -97,6 +100,7 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"⚠️ 資料庫初始化失敗: {e}")
             logger.warning("⏭️ 應用程式將繼續運行，部分功能可能無法使用")
+            return
 
         # Seed tools catalog (idempotent — skips existing rows)
         try:
@@ -105,8 +109,9 @@ async def lifespan(app: FastAPI):
             logger.info("✅ Tools catalog seeded")
         except Exception as e:
             logger.warning(f"⚠️ Tools catalog seeding failed: {e}")
-    else:
-        logger.info("⏭️ 跳過資料庫初始化 (SKIP_DB_INIT=true)")
+
+    # 不阻塞 startup，避免被平台 readiness probe 提前判斷失敗
+    asyncio.create_task(_init_database_background())
 
     from core.config import TEST_MODE
     if TEST_MODE:
