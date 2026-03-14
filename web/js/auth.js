@@ -698,9 +698,20 @@ const AuthManager = {
     },
 
     _updateUI(isLoggedIn) {
-        const username = this.currentUser?.username || 'Guest';
-        const uid = this.currentUser?.uid || this.currentUser?.user_id || '--';
-        const authMethod = this.currentUser?.authMethod || 'guest';
+        const username =
+            this.currentUser?.username ||
+            this.currentUser?.pi_username ||
+            this.currentUser?.displayName ||
+            'Guest';
+        const uid =
+            this.currentUser?.uid ||
+            this.currentUser?.user_id ||
+            this.currentUser?.pi_uid ||
+            '--';
+        const authMethod =
+            this.currentUser?.authMethod ||
+            this.currentUser?.auth_method ||
+            (this.currentUser?.pi_uid ? 'pi_network' : 'guest');
 
         // 控制 auth-only 和 guest-only 元素的顯示
         document.querySelectorAll('.auth-only').forEach((el) => {

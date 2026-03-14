@@ -251,6 +251,10 @@ async function executeTabSwitch(tabId, fromPopState = false) {
         if (window.AdminPanel) AdminPanel.init();
     }
     if (tabId === 'settings') {
+        // Settings 內容是動態注入，需在注入後重新同步已登入身份顯示（username / UID）
+        if (window.AuthManager && typeof window.AuthManager._updateUI === 'function') {
+            window.AuthManager._updateUI(window.AuthManager.isLoggedIn());
+        }
         // ✅ 效能優化：並行執行所有 settings 初始化，而非依序等待
         const settingsInits = [];
         if (typeof loadSettingsWalletStatus === 'function')
