@@ -4,16 +4,19 @@ Agent V4 — TW Stock Agent
 台股分析 Agent：使用 LangChain create_agent 實現 ReAct 循環。
 LLM 自動決定調用哪些工具、參數是什麼。
 """
-import logging
+import re
 
 from ..base_react_agent import BaseReActAgent
 from ..prompt_registry import PromptRegistry
-
-logger = logging.getLogger(__name__)
-
+from core.tools.tw_symbol_resolver import TWSymbolResolver
 
 class TWStockAgent(BaseReActAgent):
     """台股分析 Agent - 使用 ReAct 循環自動調用工具。"""
+
+    def __init__(self, llm_client, tool_registry, user_tier: str = "free", user_id=None):
+        super().__init__(llm_client, tool_registry, user_tier=user_tier, user_id=user_id)
+        # Keep resolver for backwards compatibility with tests/legacy helpers.
+        self.resolver = TWSymbolResolver()
 
     @property
     def name(self) -> str:
@@ -42,3 +45,28 @@ Based on the user's question and available tool descriptions, automatically deci
 3. What parameters to pass (e.g., ticker symbol)
 
 Can handle: price queries, technical analysis, fundamentals, institutional analysis, news, etc."""
+
+    def _extract_ticker(self, description: str) -> str:
+        """
+        Backward-compatible ticker extractor for unit tests and legacy callers.
+        Main runtime routing remains handled by manager + tools.
+        """
+        if not description:
+            return ""
+
+        # Fast path: pure numeric ticker in query.
+        match = re.search(r"\b(\d{4,6})\b", description)
+        if match:
+            resolved = self.resolver.resolve(match.group(1))
+            return resolved or ""
+
+        # Fallback: try short tokens and finally the full phrase.
+        words = re.split(r"[\s,，。！？、「」【】]+", description)
+        for word in words:
+            if 2 <= len(word) <= 12:
+                resolved = self.resolver.resolve(word)
+                if resolved:
+                    return resolved
+
+        resolved = self.resolver.resolve(description[:20])
+        return resolved or ""

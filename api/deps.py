@@ -17,27 +17,36 @@ SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 
-# Stage 3 Security: Enable JWT key rotation (opt-in via environment)
-USE_KEY_ROTATION = os.getenv("USE_KEY_ROTATION", "false").lower() == "true"
+# Security check: require fallback secret unless key rotation is explicitly enabled.
+if not SECRET_KEY and os.getenv("USE_KEY_ROTATION", "false").lower() != "true":
+    raise ValueError(
+        "🚨 SECURITY ERROR: JWT_SECRET_KEY environment variable is required.\n"
+        "Generate a strong key using: openssl rand -hex 32\n"
+        "Then set it in your .env file: JWT_SECRET_KEY=<your-key>\n"
+        "Alternatively, enable key rotation with: USE_KEY_ROTATION=true"
+    )
+if SECRET_KEY and len(SECRET_KEY) < 32:
+    raise ValueError(
+        "🚨 SECURITY ERROR: JWT_SECRET_KEY must be at least 32 characters long.\n"
+        f"Current length: {len(SECRET_KEY)} characters.\n"
+        "Generate a stronger key using: openssl rand -hex 32"
+    )
 
-if USE_KEY_ROTATION:
-    from core.key_rotation import get_key_manager
-    key_manager = get_key_manager()
-else:
-    # Security check: Ensure JWT_SECRET_KEY is set and strong when not using rotation
-    if not SECRET_KEY:
-        raise ValueError(
-            "🚨 SECURITY ERROR: JWT_SECRET_KEY environment variable is required.\n"
-            "Generate a strong key using: openssl rand -hex 32\n"
-            "Then set it in your .env file: JWT_SECRET_KEY=<your-key>\n"
-            "Alternatively, enable key rotation with: USE_KEY_ROTATION=true"
-        )
-    if len(SECRET_KEY) < 32:
-        raise ValueError(
-            "🚨 SECURITY ERROR: JWT_SECRET_KEY must be at least 32 characters long.\n"
-            f"Current length: {len(SECRET_KEY)} characters.\n"
-            "Generate a stronger key using: openssl rand -hex 32"
-        )
+_key_manager = None
+
+
+def _use_key_rotation() -> bool:
+    """Read rotation switch dynamically so tests/runtime toggles stay consistent."""
+    return os.getenv("USE_KEY_ROTATION", "false").lower() == "true"
+
+
+def _get_key_manager():
+    """Lazy-load key manager to avoid module import-time coupling."""
+    global _key_manager
+    if _key_manager is None:
+        from core.key_rotation import get_key_manager
+        _key_manager = get_key_manager()
+    return _key_manager
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/user/login", auto_error=False)
 
@@ -61,7 +70,8 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     to_encode.update({"exp": expire})
 
     # Stage 3: Use key rotation if enabled
-    if USE_KEY_ROTATION:
+    if _use_key_rotation():
+        key_manager = _get_key_manager()
         key = key_manager.get_current_key()
         # Include key ID in token for tracking
         to_encode["_kid"] = key_manager.get_primary_key_id()
@@ -79,7 +89,8 @@ def verify_token(token: str) -> dict:
     Stage 3 Security: Supports key rotation when enabled.
     Tries all active keys to validate tokens signed with old keys.
     """
-    if USE_KEY_ROTATION:
+    if _use_key_rotation():
+        key_manager = _get_key_manager()
         payload = key_manager.verify_token_with_any_key(token, algorithms=[ALGORITHM])
         if payload is None:
             raise HTTPException(
@@ -114,7 +125,8 @@ async def get_current_user_id(token: str = Depends(oauth2_scheme)) -> str:
         raise credentials_exception
 
     try:
-        if USE_KEY_ROTATION:
+        if _use_key_rotation():
+            key_manager = _get_key_manager()
             payload = key_manager.verify_token_with_any_key(token, algorithms=[ALGORITHM])
             if payload is None:
                 raise credentials_exception
