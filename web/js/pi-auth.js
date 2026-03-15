@@ -25,6 +25,15 @@ function showPiBrowserRequiredModal() {
     if (modal) modal.classList.remove('hidden');
 }
 
+function showPiLoginLoadingModal() {
+    const modal = document.getElementById('login-modal');
+    const loginBtn = document.getElementById('pi-login-btn');
+    const notPiBrowserMsg = document.getElementById('not-pi-browser-msg');
+    if (loginBtn) loginBtn.style.display = 'none';
+    if (notPiBrowserMsg) notPiBrowserMsg.style.display = 'none';
+    if (modal) modal.classList.remove('hidden');
+}
+
 function enableGuestLandingGate() {
     window.__forceGuestLandingTab = true;
 }
@@ -129,10 +138,15 @@ window.safePiLogin = async function () {
 (function () {
     var saved = localStorage.getItem('pi_user');
     if (!saved) {
-        // 完全沒有登入紀錄 → 直接顯示 modal
-        enableGuestLandingGate();
+        // 沒有登入紀錄時先顯示中性登入 modal，避免在 Pi Browser 中先誤顯示
+        // 「非 Pi Browser」提示。
         document.addEventListener('DOMContentLoaded', function () {
-            showPiBrowserRequiredModal();
+            if (!isSafePiSdkContext()) {
+                enableGuestLandingGate();
+                showPiBrowserRequiredModal();
+                return;
+            }
+            showPiLoginLoadingModal();
         });
         return;
     }
@@ -143,65 +157,31 @@ window.safePiLogin = async function () {
         if (!expiry || Date.now() > expiry) {
             // Token 已過期，清除並顯示 modal
             localStorage.removeItem('pi_user');
-            enableGuestLandingGate();
             document.addEventListener('DOMContentLoaded', function () {
-                showPiBrowserRequiredModal();
+                if (!isSafePiSdkContext()) {
+                    enableGuestLandingGate();
+                    showPiBrowserRequiredModal();
+                    return;
+                }
+                showPiLoginLoadingModal();
             });
             return;
         }
-        // Token 有效 → 還需要檢測 Pi 環境
-        // 如果不在 Pi Browser 中，仍需顯示提示（除非是測試模式）
+        // Token 有效：不要因為前端 SDK 載入延遲就把已登入會話判成 guest。
         document.addEventListener('DOMContentLoaded', function () {
-            // 明確不在 Pi Browser 相容上下文時，立即顯示 gate，
-            // 避免頁面先還原到其他 tab 再被拉回登入提示。
             if (!isSafePiSdkContext()) {
                 lockPiBrowserGate('unsafe_context_with_saved_token');
-                return;
             }
-
-            // 先檢查是否為測試模式
-            var testModeCheck = fetch('/api/config')
-                .then((r) => r.json())
-                .catch(function () {
-                    return { test_mode: false };
-                });
-
-            var attempts = 0;
-            var maxAttempts = 30; // 最多等 3 秒
-            var checkPiSDK = function () {
-                var hasPiSDK =
-                    typeof window.Pi !== 'undefined' &&
-                    window.Pi !== null &&
-                    typeof window.Pi.authenticate === 'function';
-                if (hasPiSDK) {
-                    // Pi SDK 存在，保持 modal hidden，讓 auth.js 正常處理
-                    console.log('✅ Token valid + Pi SDK detected, normal flow');
-                    return;
-                }
-                attempts++;
-                if (attempts < maxAttempts) {
-                    setTimeout(checkPiSDK, 100);
-                } else {
-                    // Pi SDK 不存在 → 非 Pi 環境
-                    // 檢查是否為測試模式，測試模式下不強制顯示 modal
-                    testModeCheck.then(function (cfg) {
-                        if (cfg && cfg.test_mode) {
-                            console.log('✅ Test mode: skipping Pi Browser check');
-                            return;
-                        }
-                        // 非測試模式，顯示 login modal 提示用戶
-                        console.warn('⚠️ Token valid but NOT in Pi Browser, showing login modal');
-                        lockPiBrowserGate('saved_token_without_sdk');
-                    });
-                }
-            };
-            checkPiSDK();
         });
     } catch (e) {
         localStorage.removeItem('pi_user');
-        enableGuestLandingGate();
         document.addEventListener('DOMContentLoaded', function () {
-            showPiBrowserRequiredModal();
+            if (!isSafePiSdkContext()) {
+                enableGuestLandingGate();
+                showPiBrowserRequiredModal();
+                return;
+            }
+            showPiLoginLoadingModal();
         });
     }
 })();
@@ -247,9 +227,9 @@ window.safePiLogin = async function () {
         });
 
         if (!hasPiSDK) {
-            console.warn('⚠️ Pi SDK not detected after 3 seconds.');
-            lockPiBrowserGate('sdk_not_detected');
-            return; // 保持預設「請使用 Pi Browser」提示
+            console.warn('⚠️ Pi SDK not detected yet; keep login modal in loading state.');
+            showPiLoginLoadingModal();
+            return;
         }
 
         if (window.__piBrowserGateLocked) {

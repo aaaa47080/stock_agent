@@ -97,8 +97,18 @@ const AuthManager = {
         if (!user) return false;
         if (typeof window.isPiBrowserGateLocked !== 'function') return false;
         if (!window.isPiBrowserGateLocked()) return false;
-        // Keep legacy/unknown sessions conservative to prevent bypassing the Pi gate.
-        return !this.isPasswordSession(user);
+
+        const reason = window.__piBrowserGateReason || '';
+        const hardBlockReasons = new Set([
+            'unsafe_context_with_saved_token',
+            'unsafe_context_auto_init',
+            'login_attempt_not_pi_browser',
+            'login_environment_verification_failed',
+            'pi_init_failed',
+        ]);
+
+        // Only hard-block sessions for explicit non-Pi/unsafe contexts.
+        return hardBlockReasons.has(reason) && !this.isPasswordSession(user);
     },
 
     /**
