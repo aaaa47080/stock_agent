@@ -322,7 +322,7 @@ def get_user_wallet_status(user_id: str) -> Dict:
             return {"has_wallet": False, "auth_method": None}
 
         return {
-            "has_wallet": row[3] is not None,  # 有實際 wallet_address 才算已連接
+            "has_wallet": row[1] is not None,  # pi_uid 存在即視為已連接
             "auth_method": row[0],
             "pi_uid": row[1],
             "pi_username": row[2],

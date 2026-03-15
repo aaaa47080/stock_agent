@@ -222,7 +222,7 @@ async def sync_pi_user(request: PiUserSyncRequest):
                 "auth_method": result["auth_method"],
                 "role": result.get("role", "user"),
                 "membership_tier": result.get("membership_tier", "free"),
-                "has_wallet": verified_wallet is not None,
+                "has_wallet": True,  # Pi login = wallet connected (pi_uid exists)
             },
             "is_new_user": result.get("is_new", False)
         }
