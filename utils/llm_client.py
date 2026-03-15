@@ -217,7 +217,7 @@ def create_llm_client_from_config(config: Dict[str, str], user_client: Any = Non
     provider_from_config = config.get("provider", "openai")
     effective_model = user_model if user_model else model_from_config
 
-    logger.warning(
+    logger.info(
         f"create_llm_client_from_config: Creating new client for {provider_from_config}/{effective_model} (System Keys)"
     )
 

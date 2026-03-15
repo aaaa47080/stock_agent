@@ -16,6 +16,72 @@ const DEFAULT_MARKET_SYMBOLS = [
     'LINK-USDT',
 ];
 
+const INVALID_MARKET_SYMBOLS = new Set(['PROGRESS', 'ALL', 'NONE', 'LOADING', 'AUTO']);
+
+function normalizeBaseSymbol(symbol) {
+    if (typeof symbol !== 'string') return '';
+    let token = symbol.toUpperCase().trim().replace(/\s+/g, '').replace(/_/g, '-');
+    if (!token) return '';
+    if (token.includes('/')) token = token.split('/')[0];
+    if (token.includes('-')) token = token.split('-')[0];
+    token = token.replace(/(USDT|BUSD|USD)$/g, '');
+    if (
+        token.length < 2 ||
+        token.length > 15 ||
+        !/^[A-Z0-9]+$/.test(token) ||
+        INVALID_MARKET_SYMBOLS.has(token)
+    ) {
+        return '';
+    }
+    return token;
+}
+
+function normalizePairSymbol(symbol) {
+    if (typeof symbol !== 'string') return '';
+    let token = symbol.toUpperCase().trim().replace(/\s+/g, '').replace(/_/g, '-');
+    if (!token || INVALID_MARKET_SYMBOLS.has(token)) return '';
+    token = token.replace(/\//g, '-');
+    const parts = token.split('-').filter(Boolean);
+    if (parts.length === 0) return '';
+    if (parts.length === 1) {
+        const base = normalizeBaseSymbol(parts[0]);
+        return base ? `${base}-USDT` : '';
+    }
+    const base = normalizeBaseSymbol(parts[0]);
+    const quote = parts[1];
+    if (!base || !/^[A-Z0-9]{2,10}$/.test(quote)) return '';
+    return `${base}-${quote}`;
+}
+
+function sanitizePairSymbols(symbols) {
+    const seen = new Set();
+    return (symbols || [])
+        .map((symbol) => normalizePairSymbol(symbol))
+        .filter((symbol) => {
+            if (!symbol || seen.has(symbol)) return false;
+            seen.add(symbol);
+            return true;
+        });
+}
+
+function sanitizeBaseSymbols(symbols) {
+    const seen = new Set();
+    return (symbols || [])
+        .map((symbol) => normalizeBaseSymbol(symbol))
+        .filter((symbol) => {
+            if (!symbol || seen.has(symbol)) return false;
+            seen.add(symbol);
+            return true;
+        });
+}
+
+window.SymbolSanitizer = {
+    normalizeBaseSymbol,
+    normalizePairSymbol,
+    sanitizePairSymbols,
+    sanitizeBaseSymbols,
+};
+
 // 從 localStorage 載入已保存的選擇
 function loadSavedSymbolSelection() {
     try {
@@ -23,9 +89,16 @@ function loadSavedSymbolSelection() {
         if (saved) {
             const parsed = JSON.parse(saved);
             if (Array.isArray(parsed) && parsed.length > 0) {
-                window.globalSelectedSymbols = parsed;
-                console.log('[Filter] 已載入保存的選擇:', parsed.length, '個幣種');
-                return true;
+                const sanitized = sanitizePairSymbols(parsed);
+                window.globalSelectedSymbols = sanitized;
+                if (sanitized.length !== parsed.length) {
+                    localStorage.setItem('marketWatchSymbols', JSON.stringify(sanitized));
+                    console.warn('[Filter] 已清理無效符號:', parsed.length - sanitized.length, '個');
+                }
+                console.log('[Filter] 已載入保存的選擇:', sanitized.length, '個幣種');
+                if (sanitized.length > 0) {
+                    return true;
+                }
             }
         }
     } catch (e) {
@@ -41,12 +114,15 @@ function loadSavedSymbolSelection() {
 // 保存選擇到 localStorage
 function saveSymbolSelection() {
     try {
-        if (window.globalSelectedSymbols && window.globalSelectedSymbols.length > 0) {
+        const sanitized = sanitizePairSymbols(window.globalSelectedSymbols || []);
+        window.globalSelectedSymbols = sanitized;
+
+        if (sanitized.length > 0) {
             localStorage.setItem(
                 'marketWatchSymbols',
-                JSON.stringify(window.globalSelectedSymbols)
+                JSON.stringify(sanitized)
             );
-            console.log('[Filter] 已保存選擇:', window.globalSelectedSymbols.length, '個幣種');
+            console.log('[Filter] 已保存選擇:', sanitized.length, '個幣種');
         } else {
             localStorage.removeItem('marketWatchSymbols');
             console.log('[Filter] 已清除保存的選擇');
@@ -154,6 +230,7 @@ async function fetchSymbols(exchange) {
 function renderSymbolList(symbols) {
     const container = document.getElementById('symbol-list-container');
     container.innerHTML = '';
+    window.globalSelectedSymbols = sanitizePairSymbols(window.globalSelectedSymbols || []);
 
     const searchVal = document.getElementById('symbol-search').value.toUpperCase().trim();
     const filtered = symbols.filter((s) => s.includes(searchVal));
@@ -229,8 +306,16 @@ function createSymbolItem(s, isChecked) {
 }
 
 function toggleSymbolSelection(s) {
-    if (window.globalSelectedSymbols && window.globalSelectedSymbols.includes(s)) {
-        window.globalSelectedSymbols = window.globalSelectedSymbols.filter((item) => item !== s);
+    const normalizedSymbol = normalizePairSymbol(s);
+    if (!normalizedSymbol) {
+        if (typeof showToast === 'function') showToast('無效幣種符號，已略過', 'warning');
+        return;
+    }
+
+    if (window.globalSelectedSymbols && window.globalSelectedSymbols.includes(normalizedSymbol)) {
+        window.globalSelectedSymbols = window.globalSelectedSymbols.filter(
+            (item) => item !== normalizedSymbol
+        );
     } else {
         if (!window.globalSelectedSymbols) window.globalSelectedSymbols = [];
 
@@ -244,8 +329,9 @@ function toggleSymbolSelection(s) {
             return;
         }
 
-        window.globalSelectedSymbols.push(s);
+        window.globalSelectedSymbols.push(normalizedSymbol);
     }
+    window.globalSelectedSymbols = sanitizePairSymbols(window.globalSelectedSymbols);
     renderSymbolList(window.allMarketSymbols || []);
 }
 
@@ -257,12 +343,18 @@ function selectAllMatches() {
     let addedCount = 0;
     filtered.forEach((s) => {
         if (!window.globalSelectedSymbols) window.globalSelectedSymbols = [];
-        if (!window.globalSelectedSymbols.includes(s)) {
-            window.globalSelectedSymbols.push(s);
+        if (window.globalSelectedSymbols.length >= 10) return;
+        const normalizedSymbol = normalizePairSymbol(s);
+        if (!normalizedSymbol) return;
+        if (!window.globalSelectedSymbols.includes(normalizedSymbol)) {
+            window.globalSelectedSymbols.push(normalizedSymbol);
             addedCount++;
         }
     });
-    if (addedCount > 0) renderSymbolList(window.allMarketSymbols || []);
+    if (addedCount > 0) {
+        window.globalSelectedSymbols = sanitizePairSymbols(window.globalSelectedSymbols);
+        renderSymbolList(window.allMarketSymbols || []);
+    }
 }
 
 function applyGlobalFilter() {
@@ -271,6 +363,7 @@ function applyGlobalFilter() {
     const headerBadge = document.getElementById('global-count-badge');
 
     // 保存選擇到 localStorage
+    window.globalSelectedSymbols = sanitizePairSymbols(window.globalSelectedSymbols || []);
     saveSymbolSelection();
 
     const count = (window.globalSelectedSymbols || []).length;

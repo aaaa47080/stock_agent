@@ -38,7 +38,10 @@ class MarketPulseAnalyzer:
                 self.client, self.model = create_llm_client_from_config(MARKET_PULSE_MODEL)
                 logger.info("MarketPulseAnalyzer initialized with system config")
             except Exception as e:
-                logger.warning(f"MarketPulseAnalyzer initialized WITHOUT LLM (Fallback Mode): {e}")
+                if "Missing OpenAI API Key" in str(e):
+                    logger.info("MarketPulseAnalyzer initialized in fallback mode (no system OpenAI API key).")
+                else:
+                    logger.warning(f"MarketPulseAnalyzer initialized WITHOUT LLM (Fallback Mode): {e}")
                 self.client = None
                 self.model = None
         else:

@@ -6,6 +6,11 @@ import numpy as np
 from datetime import datetime
 
 from api.utils import logger
+from api.symbols import (
+    normalize_base_symbol,
+    sanitize_base_symbols,
+    sanitize_pair_symbols,
+)
 from api.globals import (
     cached_screener_result,
     FUNDING_RATE_CACHE,
@@ -22,7 +27,7 @@ SYMBOL_CACHE = {
 
 def normalize_funding_symbol(symbol: str) -> str:
     """Normalize funding rate symbol by removing suffixes."""
-    return symbol.upper().replace("-USDT", "").replace("-SWAP", "").replace("USDT", "")
+    return normalize_base_symbol(symbol)
 
 
 def filter_funding_data_by_symbols(data: dict, symbol_list: list) -> dict:
@@ -37,7 +42,7 @@ def filter_funding_data_by_symbols(data: dict, symbol_list: list) -> dict:
 
 def parse_symbols_param(symbols: str) -> list:
     """Parse comma-separated symbols parameter."""
-    return [s.strip().upper() for s in symbols.split(',') if s.strip()]
+    return sanitize_base_symbols(symbols.split(','))
 
 
 def compute_top_bottom_rates(rates: list, limit: int) -> tuple:
@@ -86,7 +91,7 @@ def format_funding_rates_response(
 
 def normalize_market_symbol(symbol: str) -> str:
     """Normalize market pulse symbol by removing suffixes."""
-    return symbol.upper().replace("USDT", "").replace("BUSD", "").replace("-", "")
+    return normalize_base_symbol(symbol)
 
 
 def try_get_cached_pulse(symbol: str, deep_analysis: bool) -> dict:
@@ -198,18 +203,23 @@ def try_get_cached_screener(refresh: bool):
 
 async def run_custom_screener(request, market_pulse_cache, trigger_analysis_func):
     """Run custom screener for specific symbols."""
-    logger.info(f"Running custom screener: {request.exchange}, Symbols: {len(request.symbols)}")
+    sanitized_symbols = sanitize_pair_symbols(request.symbols or [])
+    if not sanitized_symbols:
+        logger.warning("Custom screener request contains no valid symbols; falling back to default screener.")
+        return await run_default_screener(request.exchange, market_pulse_cache)
+
+    logger.info(f"Running custom screener: {request.exchange}, Symbols: {len(sanitized_symbols)}")
     loop = asyncio.get_running_loop()
 
-    loop.create_task(trigger_analysis_func(request.symbols))
+    loop.create_task(trigger_analysis_func(sanitized_symbols))
 
     summary_df, top_performers, oversold, overbought = await loop.run_in_executor(
         None,
         lambda: screen_top_cryptos(
             exchange=request.exchange,
-            limit=len(request.symbols),
+            limit=len(sanitized_symbols),
             interval="1d",
-            target_symbols=request.symbols,
+            target_symbols=sanitized_symbols,
             market_pulse_data=market_pulse_cache
         )
     )

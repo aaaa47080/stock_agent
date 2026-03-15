@@ -221,6 +221,8 @@ async def get_single_funding_rate(symbol: str):
     """Get funding rate for a single symbol."""
     try:
         base_symbol = normalize_funding_symbol(symbol)
+        if not base_symbol:
+            raise HTTPException(status_code=422, detail=f"Invalid symbol: {symbol}")
 
         if FUNDING_RATE_CACHE.get("data") and base_symbol in FUNDING_RATE_CACHE["data"]:
             return FUNDING_RATE_CACHE["data"][base_symbol]
@@ -240,6 +242,8 @@ async def get_single_funding_rate(symbol: str):
                 "nextFundingTime": data.get("nextFundingTime")
             }
         return {"error": "Not found"}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error fetching single funding rate: {e}")
         return {"error": "Failed to get funding rate"}
@@ -250,6 +254,8 @@ async def get_funding_rate_history(symbol: str):
     """Get funding rate history for a symbol."""
     try:
         base = normalize_funding_symbol(symbol)
+        if not base:
+            raise HTTPException(status_code=422, detail=f"Invalid symbol: {symbol}")
         instId = f"{base}-USDT-SWAP"
 
         logger.info(f"[History] Fetching for symbol: {symbol} -> instId: {instId}")
@@ -270,6 +276,8 @@ async def get_funding_rate_history(symbol: str):
             return {"data": history[::-1], "symbol": base}
 
         return {"error": "Failed to fetch history", "details": result}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error fetching history: {e}")
         return {"error": "Failed to get history"}
@@ -287,6 +295,8 @@ async def get_market_pulse_api(
     """Get market pulse analysis with tiered access."""
     try:
         base_symbol = normalize_market_symbol(symbol)
+        if not base_symbol:
+            raise HTTPException(status_code=422, detail=f"Invalid symbol: {symbol}")
 
         # 1. Try public cache first
         cached = try_get_cached_pulse(base_symbol, deep_analysis)

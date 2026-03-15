@@ -21,6 +21,7 @@ from core.config import (
 from analysis.market_pulse import get_market_pulse
 from trading.okx_api_connector import OKXAPIConnector
 from data.data_fetcher import get_data_fetcher
+from api.symbols import normalize_base_symbol, sanitize_base_symbols
 
 from api.globals import (
     logger, 
@@ -180,8 +181,9 @@ def _add_screener_symbols(symbols_set: set) -> int:
     added_count = 0
     for category in ["top_volume", "top_gainers", "top_losers"]:
         for item in screener_data.get(category, []):
-            if item.get("Symbol"):
-                symbols_set.add(item["Symbol"].upper())
+            normalized = normalize_base_symbol(item.get("Symbol"))
+            if normalized:
+                symbols_set.add(normalized)
                 added_count += 1
 
     return added_count
@@ -192,14 +194,17 @@ def _build_market_pulse_targets(target_symbols: List[str] = None) -> set:
     final_symbols = set()
 
     # Priority 1: Always analyze config targets (BTC, ETH, etc.)
-    for s in MARKET_PULSE_TARGETS:
-        final_symbols.add(s.upper())
+    config_targets = sanitize_base_symbols(MARKET_PULSE_TARGETS)
+    final_symbols.update(config_targets)
 
     if target_symbols:
         # Priority 0: Explicit request (highest priority)
-        for s in target_symbols:
-            final_symbols.add(s.upper())
-        logger.info(f"🎯 Targeted analysis request for {len(target_symbols)} symbols: {target_symbols}")
+        cleaned_targets = sanitize_base_symbols(target_symbols)
+        dropped = len(target_symbols) - len(cleaned_targets)
+        if dropped > 0:
+            logger.warning(f"Skipped {dropped} invalid market pulse target symbol(s): {target_symbols}")
+        final_symbols.update(cleaned_targets)
+        logger.info(f"🎯 Targeted analysis request for {len(cleaned_targets)} symbols: {cleaned_targets}")
     else:
         # Priority 2: Add popular symbols from screener
         added_count = _add_screener_symbols(final_symbols)
@@ -233,8 +238,7 @@ def _filter_fresh_symbols(symbols: set, window_start: datetime) -> tuple:
     logger.info(f"📦 [Cache] Current cache has {len(MARKET_PULSE_CACHE)} symbols")
 
     for s in symbols:
-        # Normalize: only take first part and uppercase (e.g., BTC-USDT -> BTC)
-        norm = s.split("-")[0].split("/")[0].upper()
+        norm = normalize_base_symbol(s)
         if not norm:
             continue
 
@@ -336,14 +340,20 @@ async def trigger_on_demand_analysis(symbols: List[str]):
         return
     
     # 1. Check validity (skip if recently updated)
+    normalized_symbols = sanitize_base_symbols(symbols)
+    dropped = len(symbols) - len(normalized_symbols)
+    if dropped > 0:
+        logger.warning(f"On-demand analysis skipped {dropped} invalid symbol(s): {symbols}")
+    if not normalized_symbols:
+        return
+
     now = datetime.now()
     # Align to current 4-hour window
     window_hour = (now.hour // 4) * 4
     window_start = now.replace(hour=window_hour, minute=0, second=0, microsecond=0)
     
     to_update = []
-    for s in symbols:
-        norm = s.upper().split('-')[0]
+    for norm in normalized_symbols:
         # logic: if cache exists AND timestamp is >= window_start, it's fresh enough
         existing = MARKET_PULSE_CACHE.get(norm)
         is_fresh = False
@@ -353,7 +363,7 @@ async def trigger_on_demand_analysis(symbols: List[str]):
                 if ts >= window_start:
                     is_fresh = True
             except Exception as e:
-                logger.debug(f"Failed to parse timestamp for {s}: {e}")
+                logger.debug(f"Failed to parse timestamp for {norm}: {e}")
             
         if not is_fresh:
             to_update.append(norm)

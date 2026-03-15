@@ -11,6 +11,24 @@ let currentPulseData = window.currentPulseData;
 // 初始化狀態
 let pulseInitialized = false;
 
+function getPulseTargets() {
+    if (window.SymbolSanitizer) {
+        window.globalSelectedSymbols = window.SymbolSanitizer.sanitizePairSymbols(
+            window.globalSelectedSymbols || []
+        );
+        const baseTargets = window.SymbolSanitizer.sanitizeBaseSymbols(window.globalSelectedSymbols);
+        if (baseTargets.length > 0) {
+            return baseTargets;
+        }
+    }
+
+    if (window.globalSelectedSymbols && window.globalSelectedSymbols.length > 0) {
+        return window.globalSelectedSymbols;
+    }
+
+    return ['BTC', 'ETH', 'SOL', 'PI'];
+}
+
 /**
  * 智能價格格式化
  */
@@ -118,10 +136,7 @@ async function loadPulseData(showLoading = false) {
             }
         }
 
-        const targets =
-            window.globalSelectedSymbols && window.globalSelectedSymbols.length > 0
-                ? window.globalSelectedSymbols
-                : ['BTC', 'ETH', 'SOL', 'PI']; // Failsafe fallback
+        const targets = getPulseTargets();
 
         // 創建 loading placeholder
         if (showLoading || grid.children.length === 0) {
@@ -177,10 +192,7 @@ async function refreshMarketPulse() {
             if (typeof window.initMarket === 'function') await window.initMarket();
         }
 
-        const targets =
-            window.globalSelectedSymbols && window.globalSelectedSymbols.length > 0
-                ? window.globalSelectedSymbols
-                : ['BTC', 'ETH', 'SOL', 'PI'];
+        const targets = getPulseTargets();
         const userKey = await window.APIKeyManager?.getCurrentKey();
 
         if (userKey) {

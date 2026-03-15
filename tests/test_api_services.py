@@ -8,7 +8,8 @@ from api.services import (
     save_market_pulse_cache,
     load_market_pulse_cache,
     save_funding_rate_cache,
-    load_funding_rate_cache
+    load_funding_rate_cache,
+    _build_market_pulse_targets,
 )
 
 
@@ -132,6 +133,16 @@ class TestCacheDataFlow:
             with patch('api.services.MARKET_PULSE_CACHE', {}) as _:
                 load_market_pulse_cache()
                 # Cache should be updated
+
+
+class TestMarketPulseTargetSanitization:
+    """Tests for market pulse target symbol sanitization."""
+
+    def test_build_targets_skips_invalid_symbols(self):
+        with patch('api.services.MARKET_PULSE_TARGETS', ['BTC', 'PROGRESS']):
+            targets = _build_market_pulse_targets(['ETH-USDT', 'LOADING', 'eth'])
+
+        assert targets == {'BTC', 'ETH'}
 
 
 if __name__ == "__main__":

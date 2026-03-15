@@ -160,18 +160,13 @@ async function fetchFundingRates() {
         // 構建 URL，如果有選擇的幣種則傳遞給 API
         let url = '/api/funding-rates';
         if (window.globalSelectedSymbols && window.globalSelectedSymbols.length > 0) {
-            // 過濾掉無效的符號（如 "PROGRESS" 等非幣種符號）
-            const validSymbols = window.globalSelectedSymbols.filter((sym) => {
-                // 只接受看起來像幣種的符號（2-10個字母，不包含特殊詞彙）
-                const invalidKeywords = ['PROGRESS', 'ALL', 'NONE', 'LOADING'];
-                return (
-                    sym &&
-                    sym.length >= 2 &&
-                    sym.length <= 10 &&
-                    /^[A-Z0-9]+$/.test(sym) &&
-                    !invalidKeywords.includes(sym.toUpperCase())
-                );
-            });
+            const pairSymbols = window.SymbolSanitizer
+                ? window.SymbolSanitizer.sanitizePairSymbols(window.globalSelectedSymbols)
+                : window.globalSelectedSymbols;
+            window.globalSelectedSymbols = pairSymbols;
+            const validSymbols = window.SymbolSanitizer
+                ? window.SymbolSanitizer.sanitizeBaseSymbols(pairSymbols)
+                : pairSymbols;
 
             if (validSymbols.length > 0) {
                 // 將選擇的幣種轉換為逗號分隔的字符串
@@ -299,6 +294,12 @@ async function refreshScreener(showLoading = false, forceRefresh = false) {
     isScreenerLoading = true;
 
     try {
+        if (window.SymbolSanitizer) {
+            window.globalSelectedSymbols = window.SymbolSanitizer.sanitizePairSymbols(
+                window.globalSelectedSymbols || []
+            );
+        }
+
         const body = {
             exchange: window.currentFilterExchange || 'okx',
             refresh: forceRefresh,
@@ -333,9 +334,12 @@ async function refreshScreener(showLoading = false, forceRefresh = false) {
                         const sourceList = screenerData.top_volume || screenerData.top_gainers;
                         if (sourceList && sourceList.length > 0) {
                             var top5 = sourceList.slice(0, 5);
-                            window.globalSelectedSymbols = top5.map(function (item) {
+                            const autoSymbols = top5.map(function (item) {
                                 return item.Symbol;
                             });
+                            window.globalSelectedSymbols = window.SymbolSanitizer
+                                ? window.SymbolSanitizer.sanitizePairSymbols(autoSymbols)
+                                : autoSymbols;
 
                             var indicator = document.getElementById('active-filter-indicator');
                             var filterCount = document.getElementById('filter-count');
