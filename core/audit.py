@@ -347,5 +347,4 @@ async def audit_log_cleanup_task():
         await asyncio.sleep(seconds_until_cleanup)
 
         # Run cleanup
-        loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, cleanup_old_logs, 90)
+        await asyncio.get_running_loop().run_in_executor(None, cleanup_old_logs, 90)

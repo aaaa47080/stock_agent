@@ -7,7 +7,9 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 import os
 from dotenv import load_dotenv
+import asyncio
 from core.database.user import _normalize_membership_tier
+from api.utils import run_sync
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -146,8 +148,6 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     """
     from core.config import TEST_MODE, TEST_USER
     from core.database.user import get_user_by_id
-    import asyncio
-
     # 安全檢查：禁止在生產環境啟用 TEST_MODE
     if TEST_MODE:
         env = os.getenv("ENVIRONMENT", "development").lower()
@@ -175,8 +175,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     # Fetch from DB for BOTH normal mode and test mode (if user_id is set)
     if user_id:
         try:
-            loop = asyncio.get_running_loop()
-            user = await loop.run_in_executor(None, get_user_by_id, user_id)
+            user = await run_sync(get_user_by_id, user_id)
             
             if user:
                 if not user.get("is_active", True):

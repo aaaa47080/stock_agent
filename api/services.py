@@ -1,6 +1,7 @@
 # ruff: noqa: E402
 # ^ E402 ignored because module-level variables need to be set before imports
 import asyncio
+from api.utils import run_sync
 import concurrent.futures
 import numpy as np
 from datetime import datetime, timedelta
@@ -86,11 +87,10 @@ async def update_funding_rates():
     async with funding_rate_lock:
         try:
             logger.info("Updating funding rates...")
-            loop = asyncio.get_running_loop()
             okx = OKXAPIConnector()
 
             # 在執行緒池中執行（因為是同步 API 調用）
-            funding_rates = await loop.run_in_executor(None, okx.get_all_funding_rates)
+            funding_rates = await run_sync(okx.get_all_funding_rates)
 
             if "error" not in funding_rates:
                 FUNDING_RATE_CACHE["timestamp"] = datetime.now().isoformat()
@@ -295,8 +295,7 @@ async def refresh_all_market_pulse_data(target_symbols: List[str] = None):
     async def _safe_save_cache():
         """Helper to save cache securely using lock"""
         async with save_lock:
-            loop = asyncio.get_running_loop()
-            await loop.run_in_executor(None, set_cache, "MARKET_PULSE", MARKET_PULSE_CACHE)
+            await run_sync(set_cache, "MARKET_PULSE", MARKET_PULSE_CACHE)
             logger.info("💾 [Batch Save] Saved Market Pulse cache")
 
     async def _tracked_update(sym):
