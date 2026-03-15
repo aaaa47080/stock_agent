@@ -191,72 +191,52 @@ window.safePiLogin = async function () {
 // ========================================
 
 /**
- * 初始化 Pi SDK 並檢測 Pi Browser 環境
- * 在 login modal 內執行，確保 Pi SDK 正確載入
+ * 顯示登入按鈕（Pi Browser 確認後呼叫）
+ */
+function _showLoginButton() {
+    unlockPiBrowserGate();
+    const loginBtn = document.getElementById('pi-login-btn');
+    const notPiBrowserMsg = document.getElementById('not-pi-browser-msg');
+    if (loginBtn) loginBtn.style.display = 'flex';
+    if (notPiBrowserMsg) notPiBrowserMsg.style.display = 'none';
+}
+window._showLoginButton = _showLoginButton;
+
+/**
+ * 檢測 Pi Browser 並立即顯示按鈕，不等待 SDK 輪詢。
+ * Pi.init() 及 Pi.authenticate() 在用戶點擊時才執行（由 auth.js 處理）。
+ * 等待策略：Pi SDK 以 async=false 注入，最多輪詢 1 秒（10×100ms）。
+ * 若 SDK 仍未就緒則顯示「非 Pi Browser」提示。
  */
 (function () {
-    // 第一階段：確認 Pi SDK 已載入（最多等 3 秒）
-    // 第二階段：用 nativeFeaturesList 驗證是否真正在 Pi Browser（最多再等 1.5 秒）
-    // nativeFeaturesList 是 Pi Browser 專屬 native bridge，普通瀏覽器不具備
-    (async function () {
-        if (!isSafePiSdkContext()) {
-            console.log('ℹ️ Skipping Pi SDK auto-init outside Pi Browser compatible context');
-            lockPiBrowserGate('unsafe_context_auto_init');
+    if (!isSafePiSdkContext()) {
+        console.log('ℹ️ Non-Pi-Browser context — showing Pi Browser required message');
+        lockPiBrowserGate('unsafe_context_auto_init');
+        return;
+    }
+
+    // HTTPS 環境：Pi SDK script 已注入，等待最多 1 秒
+    let attempts = 0;
+    const maxAttempts = 10;
+    const check = () => {
+        const detected =
+            typeof window.Pi !== 'undefined' &&
+            window.Pi !== null &&
+            typeof window.Pi.authenticate === 'function';
+        if (detected) {
+            console.log('✅ Pi SDK ready — showing Connect Wallet button');
+            _showLoginButton();
             return;
         }
-
-        // 階段一：等待 Pi SDK script 載入
-        let attempts = 0;
-        const maxAttempts = 30;
-        const hasPiSDK = await new Promise((resolve) => {
-            const check = () => {
-                const detected =
-                    typeof window.Pi !== 'undefined' &&
-                    window.Pi !== null &&
-                    typeof window.Pi.authenticate === 'function' &&
-                    typeof window.Pi.init === 'function';
-                if (detected) {
-                    resolve(true);
-                    return;
-                }
-                attempts++;
-                if (attempts < maxAttempts) setTimeout(check, 100);
-                else resolve(false);
-            };
-            check();
-        });
-
-        if (!hasPiSDK) {
-            console.warn('⚠️ Pi SDK not detected yet; keep login modal in loading state.');
-            showPiLoginLoadingModal();
-            return;
+        attempts++;
+        if (attempts < maxAttempts) {
+            setTimeout(check, 100);
+        } else {
+            console.warn('⚠️ Pi SDK not detected after 1s — showing Pi Browser required message');
+            lockPiBrowserGate('pi_sdk_timeout');
         }
-
-        if (window.__piBrowserGateLocked) {
-            console.warn(
-                '⚠️ Pi Browser gate already locked, skip exposing login button:',
-                window.__piBrowserGateReason
-            );
-            return;
-        }
-
-        try {
-            await Pi.init({ version: '2.0', sandbox: false });
-        } catch (initError) {
-            console.warn('⚠️ Pi SDK init failed:', initError.message);
-            lockPiBrowserGate('pi_init_failed');
-            return;
-        }
-
-        // Pi SDK 存在，顯示登入按鈕讓用戶嘗試
-        // 真正的認證會由 Pi.authenticate() 處理
-        unlockPiBrowserGate();
-        console.log('✅ Pi SDK loaded - showing login button');
-        const loginBtn = document.getElementById('pi-login-btn');
-        const notPiBrowserMsg = document.getElementById('not-pi-browser-msg');
-        if (loginBtn) loginBtn.style.display = 'flex';
-        if (notPiBrowserMsg) notPiBrowserMsg.style.display = 'none';
-    })();
+    };
+    check();
 })();
 
 // ========================================

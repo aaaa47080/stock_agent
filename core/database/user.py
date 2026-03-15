@@ -164,7 +164,7 @@ def update_last_active(user_id: str) -> bool:
 # Pi Network 用戶
 # ============================================================================
 
-def create_or_get_pi_user(pi_uid: str, username: Optional[str] = None) -> Dict:
+def create_or_get_pi_user(pi_uid: str, username: Optional[str] = None, wallet_address: Optional[str] = None) -> Dict:
     """
     創建或獲取 Pi Network 用戶
     - 如果 pi_uid 已存在，返回現有用戶
@@ -181,9 +181,18 @@ def create_or_get_pi_user(pi_uid: str, username: Optional[str] = None) -> Dict:
         c.execute('SELECT user_id, username, auth_method, pi_username, role, membership_tier FROM users WHERE pi_uid = %s', (pi_uid,))
         row = c.fetchone()
         if row:
-            # 如果 pi_username 為空，更新它
-            if not row[3]:
-                c.execute('UPDATE users SET pi_username = %s WHERE pi_uid = %s', (username, pi_uid))
+            # 更新 pi_username 或 wallet_address（如有新值）
+            updates = []
+            params = []
+            if not row[3] and username:
+                updates.append('pi_username = %s')
+                params.append(username)
+            if wallet_address:
+                updates.append('pi_wallet_address = %s')
+                params.append(wallet_address)
+            if updates:
+                params.append(pi_uid)
+                c.execute(f'UPDATE users SET {", ".join(updates)} WHERE pi_uid = %s', params)
                 conn.commit()
             return {
                 "user_id": row[0],
@@ -213,9 +222,9 @@ def create_or_get_pi_user(pi_uid: str, username: Optional[str] = None) -> Dict:
         # 創建新 Pi 用戶
         user_id = pi_uid
         c.execute('''
-            INSERT INTO users (user_id, username, password_hash, auth_method, pi_uid, pi_username, created_at)
-            VALUES (%s, %s, NULL, 'pi_network', %s, %s, NOW())
-        ''', (user_id, username, pi_uid, username))
+            INSERT INTO users (user_id, username, password_hash, auth_method, pi_uid, pi_username, pi_wallet_address, created_at)
+            VALUES (%s, %s, NULL, 'pi_network', %s, %s, %s, NOW())
+        ''', (user_id, username, pi_uid, username, wallet_address))
         conn.commit()
 
         return {
@@ -305,7 +314,7 @@ def get_user_wallet_status(user_id: str) -> Dict:
     c = conn.cursor()
     try:
         c.execute('''
-            SELECT auth_method, pi_uid, pi_username
+            SELECT auth_method, pi_uid, pi_username, pi_wallet_address
             FROM users WHERE user_id = %s
         ''', (user_id,))
         row = c.fetchone()
@@ -313,10 +322,11 @@ def get_user_wallet_status(user_id: str) -> Dict:
             return {"has_wallet": False, "auth_method": None}
 
         return {
-            "has_wallet": row[1] is not None,
+            "has_wallet": row[3] is not None,  # 有實際 wallet_address 才算已連接
             "auth_method": row[0],
             "pi_uid": row[1],
-            "pi_username": row[2]
+            "pi_username": row[2],
+            "pi_wallet_address": row[3]
         }
     finally:
         conn.close()

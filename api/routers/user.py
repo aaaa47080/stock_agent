@@ -153,6 +153,7 @@ class PiUserSyncRequest(BaseModel):
     pi_uid: str
     username: Optional[str] = None
     access_token: Optional[str] = None
+    wallet_address: Optional[str] = None
 
 @router.post("/api/user/pi-sync")
 async def sync_pi_user(request: PiUserSyncRequest):
@@ -190,7 +191,7 @@ async def sync_pi_user(request: PiUserSyncRequest):
         loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(
             None,
-            partial(create_or_get_pi_user, pi_uid=request.pi_uid, username=request.username)
+            partial(create_or_get_pi_user, pi_uid=request.pi_uid, username=request.username, wallet_address=request.wallet_address)
         )
 
         # Generate JWT for Pi User
@@ -208,6 +209,7 @@ async def sync_pi_user(request: PiUserSyncRequest):
                 "auth_method": result["auth_method"],
                 "role": result.get("role", "user"),
                 "membership_tier": result.get("membership_tier", "free"),
+                "has_wallet": request.wallet_address is not None,
             },
             "is_new_user": result.get("is_new", False)
         }

@@ -89,9 +89,10 @@ def create_user_tables(c):
         )
     ''')
 
-    # Migration: add role and is_active columns if missing
+    # Migration: add role, is_active, pi_wallet_address columns if missing
     c.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'user'")
     c.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE")
+    c.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS pi_wallet_address TEXT")
 
     # 建立會員支付記錄表 (Membership Payments)
     c.execute('''

@@ -711,22 +711,19 @@ const Components = {
 
                     <div id="settings-wallet-content" class="space-y-4">
                         <div id="wallet-not-linked" class="hidden">
-                            <div class="bg-background/50 rounded-xl p-4 border border-white/5 mb-4">
-                                <p class="text-sm text-textMuted leading-relaxed">
-                                    <i data-lucide="info" class="w-4 h-4 inline-block mr-1 opacity-60"></i>
-                                    <span data-i18n="settings.wallet.benefits">After linking your Pi Wallet:</span>
-                                </p>
-                                <ul class="text-xs text-textMuted mt-2 space-y-1 ml-5">
-                                    <li><span data-i18n="settings.wallet.benefit1">Post on the forum (costs</span> <span data-price="create_post"><i data-lucide="loader" class="w-3 h-3 animate-spin inline-block"></i></span>)</li>
-                                    <li data-i18n="settings.wallet.benefit2">Tip quality content creators</li>
-                                    <li data-i18n="settings.wallet.benefit3">Receive tips from other users</li>
-                                </ul>
+                            <div class="bg-background/50 rounded-xl p-4 border border-white/5">
+                                <div class="flex items-start gap-3">
+                                    <i data-lucide="info" class="w-4 h-4 text-primary/60 mt-0.5 flex-shrink-0"></i>
+                                    <div>
+                                        <p class="text-sm text-textMuted leading-relaxed mb-1" data-i18n="settings.wallet.reloginHint">您的登入資訊已更新，請重新登入以完成錢包連結。</p>
+                                        <p class="text-xs text-textMuted/60" data-i18n="settings.wallet.reloginDesc">重新登入後即可使用付款、發文及收打賞等功能。</p>
+                                    </div>
+                                </div>
+                                <button onclick="AuthManager.logout()" class="w-full mt-4 py-3 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 font-bold rounded-xl transition flex items-center justify-center gap-2">
+                                    <i data-lucide="log-in" class="w-4 h-4"></i>
+                                    <span data-i18n="settings.wallet.reloginButton">重新登入以連結錢包</span>
+                                </button>
                             </div>
-                            <button onclick="handleSettingsLinkWallet()" class="w-full py-3.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 font-bold rounded-xl transition flex items-center justify-center gap-2">
-                                <i data-lucide="link" class="w-4 h-4"></i>
-                                <span data-i18n="settings.wallet.linkButton">Link Pi Wallet</span>
-                            </button>
-                            <p class="text-[10px] text-textMuted/60 text-center mt-2" data-i18n="settings.wallet.requirePiBrowser">Must be opened in Pi Browser</p>
                         </div>
 
                         <div id="wallet-linked" class="hidden">

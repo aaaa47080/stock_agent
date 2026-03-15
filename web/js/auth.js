@@ -537,8 +537,8 @@ const AuthManager = {
             const AUTH_TIMEOUT = 60000;
 
             const authPromise = Pi.authenticate(
-                // Login flow should request minimal scope only.
-                ['username'],
+                // Request all required scopes in one dialog for smooth UX.
+                ['username', 'payments', 'wallet_address'],
                 (payment) => {
                     DebugLog.warn('發現未完成的支付', payment);
                     fetch('/api/user/payment/complete', {
@@ -563,7 +563,7 @@ const AuthManager = {
 
             DebugLog.info('Pi 認證成功', { username: auth.user.username, uid: auth.user.uid });
 
-            // 同步到後端
+            // 同步到後端（含 wallet_address，一次完成所有綁定）
             const res = await fetch('/api/user/pi-sync', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -571,6 +571,7 @@ const AuthManager = {
                     pi_uid: auth.user.uid,
                     username: auth.user.username,
                     access_token: auth.accessToken,
+                    wallet_address: auth.user.wallet_address || null,
                 }),
             });
 
@@ -596,6 +597,8 @@ const AuthManager = {
                 membership_tier: syncResult.user.membership_tier || 'free',
                 pi_uid: auth.user.uid,
                 pi_username: auth.user.username,
+                pi_wallet_address: auth.user.wallet_address || null,
+                has_wallet: syncResult.user.has_wallet || false,
                 piAccessToken: auth.accessToken,
             };
 
@@ -1038,7 +1041,7 @@ async function loadSettingsWalletStatus() {
     try {
         const status = await getWalletStatus();
 
-        if (status.has_wallet || status.auth_method === 'pi_network') {
+        if (status.has_wallet) {
             // 已綁定或 Pi 登入
             statusBadge.innerHTML = `
                 <i data-lucide="check-circle" class="w-3 h-3"></i>
