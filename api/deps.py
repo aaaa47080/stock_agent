@@ -7,6 +7,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 import os
 from dotenv import load_dotenv
+from core.database.user import _normalize_membership_tier
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -51,9 +52,6 @@ def _get_key_manager():
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/user/login", auto_error=False)
 
-
-def _normalize_membership_tier(tier: Optional[str]) -> str:
-    return "premium" if (tier or "free").strip().lower() in {"premium", "plus", "pro"} else "free"
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """

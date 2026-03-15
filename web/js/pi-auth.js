@@ -94,25 +94,20 @@ window.safePiLogin = async function () {
             btn.classList.add('opacity-70', 'cursor-not-allowed');
         }
 
-        if (typeof handlePiLogin === 'function') {
-            const loginPromise = handlePiLogin();
+        const runLogin = () => {
             const watchdogPromise = new Promise((_, reject) => {
-                watchdogId = setTimeout(() => {
-                    reject(new Error('Pi 登入逾時，請重試'));
-                }, LOGIN_WATCHDOG_MS);
+                watchdogId = setTimeout(() => reject(new Error('Pi 登入逾時，請重試')), LOGIN_WATCHDOG_MS);
             });
-            return await Promise.race([loginPromise, watchdogPromise]);
+            return Promise.race([handlePiLogin(), watchdogPromise]);
+        };
+
+        if (typeof handlePiLogin === 'function') {
+            return await runLogin();
         }
         // 如果 JS 尚未載入完成，等待後重試
         await new Promise((r) => setTimeout(r, 500));
         if (typeof handlePiLogin === 'function') {
-            const loginPromise = handlePiLogin();
-            const watchdogPromise = new Promise((_, reject) => {
-                watchdogId = setTimeout(() => {
-                    reject(new Error('Pi 登入逾時，請重試'));
-                }, LOGIN_WATCHDOG_MS);
-            });
-            return await Promise.race([loginPromise, watchdogPromise]);
+            return await runLogin();
         }
     } catch (error) {
         console.error('[Pi Login] safePiLogin failed:', error);

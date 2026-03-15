@@ -326,6 +326,10 @@ async def security_headers_middleware(request: Request, call_next):
     """
     response = await call_next(request)
 
+    # Prevent static assets from being cached (avoids stale JS/CSS after deploys)
+    if request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+
     # Basic security headers (always on)
     response.headers["X-Content-Type-Options"] = "nosniff"
     # X-Frame-Options intentionally omitted — Pi Browser loads DApps in WebView;
@@ -457,49 +461,29 @@ async def receive_frontend_log(
 
     # 寫入檔案
     loop = asyncio.get_running_loop()
-    await loop.run_in_executor(None, lambda: _append_log("frontend_debug.log", log_line))
+    await asyncio.get_running_loop().run_in_executor(
+        None,
+        lambda: open("frontend_debug.log", "a", encoding="utf-8").write(log_line + "\n")
+    )
 
     logger.info(f"[Frontend] {log.message}")
     return {"status": "logged"}
-
-def _append_log(filepath, content):
-    with open(filepath, "a", encoding="utf-8") as f:
-        f.write(content + "\n")
 
 @app.get("/api/debug-log", response_class=PlainTextResponse)
 async def get_debug_logs(admin: dict = Depends(require_admin)):
     """查看 debug logs (需管理員權限)"""
     try:
-        loop = asyncio.get_running_loop()
-        content = await loop.run_in_executor(None, lambda: _read_log("frontend_debug.log"))
-        return content
+        return await asyncio.get_running_loop().run_in_executor(
+            None,
+            lambda: open("frontend_debug.log", "r", encoding="utf-8").read()
+        )
     except FileNotFoundError:
         return "No logs yet"
 
-def _read_log(filepath):
-    try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
-        raise
-
-# --- 靜態檔案與頁面 (帶緩存優化) ---
-class CachedStaticFiles(StaticFiles):
-    """
-    帶緩存優化的靜態文件服務
-    為靜態資源添加 Cache-Control 頭，提升二次訪問速度
-    """
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-    
-    def file_response(self, *args, **kwargs):
-        response = super().file_response(*args, **kwargs)
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-        return response
-
+# --- 靜態檔案與頁面 ---
 if os.path.exists("web"):
-    app.mount("/static", CachedStaticFiles(directory="web"), name="static")
-    logger.info("✅ Static files mounted (no-cache)")
+    app.mount("/static", StaticFiles(directory="web"), name="static")
+    logger.info("✅ Static files mounted (no-cache via security middleware)")
 
 if __name__ == "__main__":
     logger.info("🚀 Pi Crypto Insight API Server 啟動中...")

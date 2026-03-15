@@ -190,21 +190,12 @@ def get_user_wallet_status(user_id: str) -> Dict:
 # 會員等級
 # ============================================================================
 
-def get_user_membership(user_id: str, auto_update_expired: bool = False) -> Dict:
+def get_user_membership(user_id: str) -> Dict:
     """
-    獲取用戶會員狀態
-
-    Args:
-        user_id: 用戶 ID
-        auto_update_expired: 是否自動更新過期會員狀態（默認 False，避免讀取中執行寫入）
+    獲取用戶會員狀態（只讀）。若需要降級過期會員，請呼叫 expire_user_membership()。
 
     Returns:
-        {
-            "tier": str,
-            "expires_at": str | None,
-            "is_premium": bool,
-            "is_expired": bool  # 新增：標記是否已過期（但未更新）
-        }
+        {"tier": str, "expires_at": str | None, "is_premium": bool, "is_expired": bool}
     """
     conn = get_connection()
     c = conn.cursor()
@@ -233,22 +224,6 @@ def get_user_membership(user_id: str, auto_update_expired: bool = False) -> Dict
 
                     if expire_dt < datetime.utcnow():
                         is_expired = True
-
-                        # 只有明確要求才自動更新
-                        if auto_update_expired:
-                            c.execute('''
-                                UPDATE users
-                                SET membership_tier = 'free', membership_expires_at = NULL
-                                WHERE user_id = %s
-                            ''', (user_id,))
-                            conn.commit()
-
-                            # 更新返回值
-                            tier = 'free'
-                            expires_at = None
-                            is_premium = False
-                            is_expired = False  # 已經更新了，不再是「過期未更新」狀態
-                            print(f"[Membership] User {user_id} expired, downgraded to free.")
                 except (ValueError, TypeError):
                     # 日期格式錯誤，視為過期
                     is_expired = True

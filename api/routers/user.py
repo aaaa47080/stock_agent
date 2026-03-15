@@ -1,16 +1,13 @@
 import os
 import asyncio
 import httpx
-from functools import partial
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
 from api.deps import create_access_token, get_current_user
-from api.models import (
-    WatchlistRequest
-)
+from api.models import WatchlistRequest
 from api.utils import logger
 from core.config import TEST_MODE, TEST_USER
 from core.database import (
@@ -20,6 +17,7 @@ from core.database import (
 )
 from core.database.user import get_user_by_id, upgrade_to_pro
 from api.pi_verification import verify_pi_access_token
+from core.audit import audit_log
 
 # Pi Network API 配置
 PI_API_KEY = os.getenv("PI_API_KEY", "")
@@ -27,14 +25,19 @@ PI_API_BASE = "https://api.minepi.com/v2"
 
 router = APIRouter()
 
+
+async def run_sync(fn, *args):
+    """Run a synchronous DB function in the thread executor."""
+    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
+
+
 @router.get("/api/watchlist/{user_id}")
 async def get_user_watchlist(user_id: str, current_user: dict = Depends(get_current_user)):
     """獲取用戶的自選清單"""
     if current_user["user_id"] != user_id:
         raise HTTPException(status_code=403, detail="Not authorized to access this data")
     try:
-        loop = asyncio.get_running_loop()
-        symbols = await loop.run_in_executor(None, get_watchlist, user_id)
+        symbols = await run_sync(get_watchlist, user_id)
         return {"symbols": symbols}
     except Exception as e:
         logger.error(f"獲取自選清單失敗: {e}")
@@ -46,15 +49,12 @@ async def add_watchlist(request: WatchlistRequest, current_user: dict = Depends(
     if current_user["user_id"] != request.user_id:
         raise HTTPException(status_code=403, detail="Not authorized to modify this data")
     try:
-        loop = asyncio.get_running_loop()
-        
-        # [Optimization] Abuse Prevention: Enforce Watchlist Limit
-        # Limit to 10 symbols to prevent users from spamming "On-Demand" analysis for thousands of coins
-        current_list = await loop.run_in_executor(None, get_watchlist, request.user_id)
+        # Limit to 10 symbols to prevent spamming "On-Demand" analysis
+        current_list = await run_sync(get_watchlist, request.user_id)
         if len(current_list) >= 10:
-             raise HTTPException(status_code=400, detail="自選清單已滿 (上限 10 個)，請移除舊幣種後再試。")
+            raise HTTPException(status_code=400, detail="自選清單已滿 (上限 10 個)，請移除舊幣種後再試。")
 
-        await loop.run_in_executor(None, partial(add_to_watchlist, request.user_id, request.symbol.upper()))
+        await run_sync(add_to_watchlist, request.user_id, request.symbol.upper())
         return {"success": True, "message": f"{request.symbol} 已加入自選清單"}
     except HTTPException:
         raise
@@ -68,8 +68,7 @@ async def remove_watchlist(request: WatchlistRequest, current_user: dict = Depen
     if current_user["user_id"] != request.user_id:
         raise HTTPException(status_code=403, detail="Not authorized to modify this data")
     try:
-        loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, partial(remove_from_watchlist, request.user_id, request.symbol.upper()))
+        await run_sync(remove_from_watchlist, request.user_id, request.symbol.upper())
         return {"success": True, "message": f"{request.symbol} 已從自選清單移除"}
     except Exception as e:
         logger.error(f"移除自選清單失敗: {e}")
@@ -90,10 +89,8 @@ async def dev_login(request: DevLoginRequest = None):
     if not TEST_MODE:
         raise HTTPException(status_code=403, detail="Test mode is disabled")
 
-    # 如果有指定 user_id，使用它；否則使用默認值
     if request and request.user_id:
         test_user_id = request.user_id
-        # 根據 user_id 生成不同的 username
         suffix = test_user_id.split('-')[-1] if '-' in test_user_id else test_user_id[-3:]
         test_username = f"TestUser_{suffix}"
     else:
@@ -106,20 +103,13 @@ async def dev_login(request: DevLoginRequest = None):
 
     # Ensure test user exists in DB to prevent foreign key issues
     try:
-        loop = asyncio.get_running_loop()
-        existing_user = await loop.run_in_executor(None, get_user_by_id, test_user_id)
+        existing_user = await run_sync(get_user_by_id, test_user_id)
         if not existing_user:
-            await loop.run_in_executor(
-                None,
-                create_or_get_pi_user,
-                test_user_id,
-                test_username
-            )
+            await run_sync(create_or_get_pi_user, test_user_id, test_username)
             print(f"[DEV LOGIN] Created missing mock user {test_username} ({test_user_id}) in DB.")
-        
-        # Test User 004 is mocked as premium in the frontend, so ensure it matches in the backend too
+
         if test_user_id == "test-user-004":
-            await loop.run_in_executor(None, upgrade_to_pro, test_user_id, 12, None)
+            await run_sync(upgrade_to_pro, test_user_id, 12, None)
 
     except Exception as e:
         print(f"[DEV LOGIN] Error ensuring test user exists: {e}")
@@ -151,42 +141,32 @@ async def sync_pi_user(request: PiUserSyncRequest):
     - 之後登入時返回現有用戶資料
     - 驗證 Pi Access Token 確保身份真實性
     """
-    # Server-side verification of Pi Access Token
-    if request.access_token:
-        try:
-            # Verify token against Pi Network API
-            pi_user_data = await verify_pi_access_token(
-                request.access_token, 
-                request.pi_uid
-            )
-            
-            # Extract wallet_address — try known field names from Pi API
-            verified_wallet = (
-                pi_user_data.get('wallet_address')
-                or pi_user_data.get('walletAddress')
-                or (pi_user_data.get('credentials') or {}).get('wallet_address')
-                or request.wallet_address
-            )
-        except HTTPException as e:
-            # Token verification failed - reject the request
-            logger.warning(f"Pi token verification failed for uid {request.pi_uid}: {e.detail}")
-            raise e
-    else:
-        # No token provided - this should not happen in production
+    if not request.access_token:
         logger.error(f"Pi sync attempted without access token for uid: {request.pi_uid}")
-        raise HTTPException(
-            status_code=401, 
-            detail="Pi Access Token is required for authentication"
-        )
-    
+        raise HTTPException(status_code=401, detail="Pi Access Token is required for authentication")
+
     try:
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(
-            None,
-            partial(create_or_get_pi_user, pi_uid=request.pi_uid, username=request.username, wallet_address=verified_wallet)
+        pi_user_data = await verify_pi_access_token(request.access_token, request.pi_uid)
+        # Extract wallet_address — try known field names from Pi API
+        verified_wallet = (
+            pi_user_data.get('wallet_address')
+            or pi_user_data.get('walletAddress')
+            or (pi_user_data.get('credentials') or {}).get('wallet_address')
+            or request.wallet_address
+        )
+    except HTTPException as e:
+        logger.warning(f"Pi token verification failed for uid {request.pi_uid}: {e.detail}")
+        raise e
+
+    try:
+        result = await run_sync(
+            lambda: create_or_get_pi_user(
+                pi_uid=request.pi_uid,
+                username=request.username,
+                wallet_address=verified_wallet,
+            )
         )
 
-        # Generate JWT for Pi User
         access_token = create_access_token(
             data={"sub": result["user_id"], "username": result["username"]}
         )
@@ -206,12 +186,8 @@ async def sync_pi_user(request: PiUserSyncRequest):
             "is_new_user": result.get("is_new", False)
         }
     except ValueError as e:
-        # 用戶名衝突
         logger.warning(f"Pi 用戶同步失敗 - 用戶名衝突: {e}")
-        raise HTTPException(
-            status_code=409,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=409, detail=str(e))
     except Exception as e:
         logger.error(f"Pi 用戶同步失敗: {e}")
         raise HTTPException(status_code=500, detail="同步失敗")
@@ -230,8 +206,6 @@ async def get_current_user_profile(current_user: dict = Depends(get_current_user
     }
 
 
-
-
 # --- Pi Payment Handling Endpoints ---
 
 class ApprovePaymentRequest(BaseModel):
@@ -243,52 +217,35 @@ class CompletePaymentRequest(BaseModel):
 
 @router.post("/api/user/payment/approve")
 async def approve_payment(request: ApprovePaymentRequest, current_user: dict = Depends(get_current_user)):
-    """
-    接收前端通知，驗證金額後呼叫 Pi Server API 核准支付
-    """
+    """接收前端通知，驗證金額後呼叫 Pi Server API 核准支付"""
     logger.info(f"Pi Payment Approval Requested: {request.paymentId} by User {current_user['user_id']}")
 
     if not PI_API_KEY or PI_API_KEY == "your_pi_api_key_here":
-        # Security Fix: Fail strictly if key is not configured
-        msg = "Server configuration error: PI_API_KEY not set"
-        
-        # TEST_MODE: Allow bypass if key is missing but we represent a test user
         if TEST_MODE and current_user.get("user_id") == TEST_USER.get("uid"):
-             logger.info("TEST_MODE: Mocking payment approval")
-             return {"status": "ok", "message": "Payment approved (Test Mode)", "data": {"status": "approved"}}
-
+            logger.info("TEST_MODE: Mocking payment approval")
+            return {"status": "ok", "message": "Payment approved (Test Mode)", "data": {"status": "approved"}}
+        msg = "Server configuration error: PI_API_KEY not set"
         logger.error(msg)
         raise HTTPException(status_code=500, detail=msg)
 
     try:
         async with httpx.AsyncClient() as client:
-            # ============================================
-            # 步驟 1: 從 Pi API 獲取支付詳情
-            # ============================================
             get_response = await client.get(
                 f"{PI_API_BASE}/payments/{request.paymentId}",
                 headers={"Authorization": f"Key {PI_API_KEY}"}
             )
             get_response.raise_for_status()
             payment_info = get_response.json()
-
             logger.info(f"Pi Payment Info: {payment_info}")
 
-            # ============================================
-            # 步驟 2: 驗證金額
-            # ============================================
             actual_amount = payment_info.get("amount", 0)
-            metadata = payment_info.get("metadata", {})
-            payment_type = metadata.get("type", "unknown")
+            payment_type = payment_info.get("metadata", {}).get("type", "unknown")
 
-            # 查找預期價格（從數據庫動態獲取）
-            loop = asyncio.get_running_loop()
-            prices = await loop.run_in_executor(None, get_prices)
+            prices = await run_sync(get_prices)
             expected_amount = prices.get(payment_type)
 
             if expected_amount is not None:
-                # 有定義價格的類型，進行驗證
-                if abs(actual_amount - expected_amount) > 0.001:  # 允許微小浮點誤差
+                if abs(actual_amount - expected_amount) > 0.001:
                     logger.error(f"Payment amount mismatch! Expected: {expected_amount}, Actual: {actual_amount}, Type: {payment_type}")
                     raise HTTPException(
                         status_code=400,
@@ -296,12 +253,8 @@ async def approve_payment(request: ApprovePaymentRequest, current_user: dict = D
                     )
                 logger.info(f"Payment amount verified: {actual_amount} Pi for {payment_type}")
             else:
-                # 未定義的支付類型，記錄警告但允許通過（可根據需求改為拒絕）
                 logger.warning(f"Unknown payment type: {payment_type}, amount: {actual_amount}")
 
-            # ============================================
-            # 步驟 3: 驗證通過，批准支付
-            # ============================================
             approve_response = await client.post(
                 f"{PI_API_BASE}/payments/{request.paymentId}/approve",
                 headers={"Authorization": f"Key {PI_API_KEY}"}
@@ -315,7 +268,7 @@ async def approve_payment(request: ApprovePaymentRequest, current_user: dict = D
         logger.error(f"Pi API Approve Error: {e.response.status_code} - {e.response.text}")
         raise HTTPException(status_code=e.response.status_code, detail=f"Pi API Error: {e.response.text}")
     except HTTPException:
-        raise  # 重新拋出我們自己的 HTTPException
+        raise
     except Exception as e:
         logger.error(f"Pi Payment Approval Failed: {e}")
         raise HTTPException(status_code=500, detail="Payment approval failed, please try again later")
@@ -323,17 +276,13 @@ async def approve_payment(request: ApprovePaymentRequest, current_user: dict = D
 
 @router.post("/api/user/payment/complete")
 async def complete_payment(request: CompletePaymentRequest, current_user: dict = Depends(get_current_user)):
-    """
-    接收前端通知，呼叫 Pi Server API 完成支付
-    """
+    """接收前端通知，呼叫 Pi Server API 完成支付"""
     logger.info(f"Pi Payment Completion Requested: {request.paymentId} by User {current_user['user_id']}")
 
     if not PI_API_KEY or PI_API_KEY == "your_pi_api_key_here":
-        # TEST_MODE: Allow bypass
         if TEST_MODE and current_user.get("user_id") == TEST_USER.get("uid"):
-             logger.info("TEST_MODE: Mocking payment completion")
-             return {"status": "ok", "message": "Payment completed (Test Mode)", "data": {"status": "completed"}, "txid": request.txid}
-
+            logger.info("TEST_MODE: Mocking payment completion")
+            return {"status": "ok", "message": "Payment completed (Test Mode)", "data": {"status": "completed"}, "txid": request.txid}
         msg = "Server configuration error: PI_API_KEY not set"
         logger.error(msg)
         raise HTTPException(status_code=500, detail=msg)
@@ -358,11 +307,8 @@ async def complete_payment(request: CompletePaymentRequest, current_user: dict =
 
 @router.get("/api/user/wallet-status/{user_id}")
 async def get_wallet_status(user_id: str, current_user: dict = Depends(get_current_user)):
-    """
-    獲取用戶錢包綁定狀態
-    """
+    """獲取用戶錢包綁定狀態"""
     try:
-        # TEST_MODE: Mock wallet status for test user
         if TEST_MODE and (user_id == TEST_USER.get("uid") or user_id.startswith("test-user-")):
             return {
                 "success": True,
@@ -372,13 +318,13 @@ async def get_wallet_status(user_id: str, current_user: dict = Depends(get_curre
                 "pi_username": TEST_USER.get("username", "TestUser")
             }
 
-        loop = asyncio.get_running_loop()
-        # Security Check
         if current_user["user_id"] != user_id:
-             raise HTTPException(status_code=403, detail="Not authorized")
-             
-        status = await loop.run_in_executor(None, get_user_wallet_status, user_id)
+            raise HTTPException(status_code=403, detail="Not authorized")
+
+        status = await run_sync(get_user_wallet_status, user_id)
         return {"success": True, **status}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Get wallet status error: {e}")
         raise HTTPException(status_code=500, detail="獲取狀態失敗")
@@ -401,47 +347,17 @@ async def save_user_api_key_endpoint(
     request: SaveAPIKeyRequest,
     current_user: dict = Depends(get_current_user)
 ):
-    """
-    儲存用戶的 API Key（加密後存入資料庫）
-
-    支援的 provider:
-    - openai
-    - google_gemini
-    - anthropic
-    - groq
-    - openrouter
-    """
+    """儲存用戶的 API Key（加密後存入資料庫）"""
     from core.database.user_api_keys import save_user_api_key
 
     user_id = current_user["user_id"]
-
     try:
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(
-            None,
-            save_user_api_key,
-            user_id,
-            request.provider,
-            request.api_key,
-            request.model
-        )
-
+        result = await run_sync(save_user_api_key, user_id, request.provider, request.api_key, request.model)
         if not result["success"]:
             raise HTTPException(status_code=400, detail=result.get("error", "Failed to save API key"))
 
         logger.info(f"API key saved for user {user_id}, provider: {request.provider}")
-
-        # Audit log for sensitive operation
-        try:
-            from core.audit import audit_log
-            audit_log(
-                action="api_key_saved",
-                user_id=user_id,
-                metadata={"provider": request.provider}
-            )
-        except ImportError:
-            pass
-
+        audit_log(action="api_key_saved", user_id=user_id, metadata={"provider": request.provider})
         return {"success": True, "message": "API Key 已安全儲存"}
 
     except HTTPException:
@@ -453,87 +369,45 @@ async def save_user_api_key_endpoint(
 
 @router.get("/api/user/api-keys")
 async def get_user_api_keys_endpoint(current_user: dict = Depends(get_current_user)):
-    """
-    獲取用戶所有 API Key 的狀態（遮蔽版本，用於前端顯示）
-    """
+    """獲取用戶所有 API Key 的狀態（遮蔽版本，用於前端顯示）"""
     from core.database.user_api_keys import get_all_user_api_keys
-    
+
     user_id = current_user["user_id"]
-    
     try:
-        loop = asyncio.get_running_loop()
-        keys = await loop.run_in_executor(None, get_all_user_api_keys, user_id)
+        keys = await run_sync(get_all_user_api_keys, user_id)
         return {"success": True, "keys": keys}
-        
     except Exception as e:
         logger.error(f"Get API keys error: {e}")
         raise HTTPException(status_code=500, detail="獲取失敗")
 
 
 @router.get("/api/user/api-keys/{provider}")
-async def get_user_api_key_endpoint(
-    provider: str, 
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    獲取特定 provider 的 API Key 狀態（遮蔽版本）
-    """
+async def get_user_api_key_endpoint(provider: str, current_user: dict = Depends(get_current_user)):
+    """獲取特定 provider 的 API Key 狀態（遮蔽版本）"""
     from core.database.user_api_keys import get_user_api_key_masked
-    
+
     user_id = current_user["user_id"]
-    
     try:
-        loop = asyncio.get_running_loop()
-        key_info = await loop.run_in_executor(
-            None, 
-            get_user_api_key_masked, 
-            user_id, 
-            provider
-        )
+        key_info = await run_sync(get_user_api_key_masked, user_id, provider)
         return {"success": True, **key_info}
-        
     except Exception as e:
         logger.error(f"Get API key error: {e}")
         raise HTTPException(status_code=500, detail="獲取失敗")
 
 
 @router.delete("/api/user/api-keys/{provider}")
-async def delete_user_api_key_endpoint(
-    provider: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    刪除用戶的 API Key
-    """
+async def delete_user_api_key_endpoint(provider: str, current_user: dict = Depends(get_current_user)):
+    """刪除用戶的 API Key"""
     from core.database.user_api_keys import delete_user_api_key
 
     user_id = current_user["user_id"]
-
     try:
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(
-            None,
-            delete_user_api_key,
-            user_id,
-            provider
-        )
-
+        result = await run_sync(delete_user_api_key, user_id, provider)
         if not result["success"]:
             raise HTTPException(status_code=400, detail=result.get("error", "Failed to delete"))
 
         logger.info(f"API key deleted for user {user_id}, provider: {provider}")
-
-        # Audit log for sensitive operation
-        try:
-            from core.audit import audit_log
-            audit_log(
-                action="api_key_deleted",
-                user_id=user_id,
-                metadata={"provider": provider}
-            )
-        except ImportError:
-            pass
-
+        audit_log(action="api_key_deleted", user_id=user_id, metadata={"provider": provider})
         return {"success": True, "message": "API Key 已刪除"}
 
     except HTTPException:
@@ -544,32 +418,16 @@ async def delete_user_api_key_endpoint(
 
 
 @router.post("/api/user/api-keys/model")
-async def save_user_model_endpoint(
-    request: SaveModelRequest,
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    儲存用戶選擇的模型（不更改 API Key）
-    """
+async def save_user_model_endpoint(request: SaveModelRequest, current_user: dict = Depends(get_current_user)):
+    """儲存用戶選擇的模型（不更改 API Key）"""
     from core.database.user_api_keys import save_user_model_selection
-    
+
     user_id = current_user["user_id"]
-    
     try:
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(
-            None,
-            save_user_model_selection,
-            user_id,
-            request.provider,
-            request.model
-        )
-        
+        result = await run_sync(save_user_model_selection, user_id, request.provider, request.model)
         if not result["success"]:
             raise HTTPException(status_code=400, detail=result.get("error", "Failed to save model"))
-        
         return {"success": True, "message": "模型選擇已儲存"}
-        
     except HTTPException:
         raise
     except Exception as e:
@@ -578,42 +436,17 @@ async def save_user_model_endpoint(
 
 
 @router.get("/api/user/api-keys/{provider}/full")
-async def get_user_api_key_full_endpoint(
-    provider: str,
-    current_user: dict = Depends(get_current_user)
-):
-    """
-    獲取完整的 API Key（僅用於實際 API 調用）
-
-    注意：此端點返回完整的 API Key，僅在需要調用 LLM 時使用
-    """
+async def get_user_api_key_full_endpoint(provider: str, current_user: dict = Depends(get_current_user)):
+    """獲取完整的 API Key（僅用於實際 API 調用）"""
     from core.database.user_api_keys import get_user_api_key
 
     user_id = current_user["user_id"]
-
     try:
-        loop = asyncio.get_running_loop()
-        key = await loop.run_in_executor(
-            None,
-            get_user_api_key,
-            user_id,
-            provider
-        )
-
+        key = await run_sync(get_user_api_key, user_id, provider)
         if key is None:
             return {"success": False, "key": None}
 
-        # Audit log for sensitive operation (full key access)
-        try:
-            from core.audit import audit_log
-            audit_log(
-                action="api_key_full_access",
-                user_id=user_id,
-                metadata={"provider": provider}
-            )
-        except ImportError:
-            pass
-
+        audit_log(action="api_key_full_access", user_id=user_id, metadata={"provider": provider})
         return {"success": True, "key": key}
 
     except Exception as e:
@@ -627,40 +460,15 @@ async def get_user_api_key_full_endpoint(
 async def refresh_token(current_user: dict = Depends(get_current_user)):
     """
     刷新 JWT Token（備用方案，不需要 Pi SDK）
-
-    當無法使用 Pi SDK 靜默刷新時，可以使用此端點刷新 token。
-    需要有效的 JWT token 才能調用。
-
-    安全措施：
-    - 需要有效的 JWT token（已通過 get_current_user 驗證）
-    - 速率限制：5次/分鐘（在 rate_limit.py 中配置）
-    - 稽核日誌記錄所有刷新操作
+    當無法使用 Pi SDK 靜默刷新時使用。需要有效的 JWT token。
     """
     try:
-        # 生成新的 JWT token
         new_access_token = create_access_token(
             data={"sub": current_user["user_id"], "username": current_user.get("username", "user")}
         )
-
         logger.info(f"Token refreshed for user: {current_user['user_id']}")
-
-        # Audit log for security monitoring
-        try:
-            from core.audit import audit_log
-            audit_log(
-                action="token_refresh",
-                user_id=current_user["user_id"],
-                metadata={"method": "backend_refresh"}
-            )
-        except ImportError:
-            pass
-
-        return {
-            "success": True,
-            "access_token": new_access_token,
-            "token_type": "bearer"
-        }
-
+        audit_log(action="token_refresh", user_id=current_user["user_id"], metadata={"method": "backend_refresh"})
+        return {"success": True, "access_token": new_access_token, "token_type": "bearer"}
     except Exception as e:
         logger.error(f"Token refresh error: {e}")
         raise HTTPException(status_code=500, detail="Token 刷新失敗")
