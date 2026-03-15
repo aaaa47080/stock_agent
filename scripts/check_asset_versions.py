@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Enforce cache-busting version consistency for shared /static assets."""
+"""Enforce cache-busting version consistency for shared /static assets.
+
+Checks that each versioned static asset uses the same ?v= value across
+all HTML files. No hardcoded expected versions — the source of truth is
+whatever version index.html declares.
+"""
 
 from __future__ import annotations
 
@@ -10,60 +15,40 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 WEB_DIR = ROOT / "web"
 
-# Only enforce versions for high-impact shared assets that are reused across pages.
-EXPECTED_VERSIONS = {
-    "/static/styles.css": "4",
-    "/static/js/pi-auth.js": "8",
-    "/static/js/app.js": "54",
-    "/static/js/auth.js": "60",
-    "/static/js/spa.js": "6",
-    "/static/js/filter.js": "49",
-    "/static/js/market-screener.js": "2",
-    "/static/js/pulse.js": "53",
-    "/static/js/premium.js": "40",
-    "/static/js/i18n.js": "8",
-    "/static/js/apiKeyManager.js": "48",
-    "/static/js/nav-config.js": "7",
-    "/static/js/global-nav.js": "2",
-    "/static/js/components/LanguageSwitcher.js": "3",
-    "/static/js/friends.js": "5",
-    "/static/js/messages.js": "5",
-    "/static/scam-tracker/js/scam-tracker.js": "48",
-}
+# index.html is the canonical version source
+CANONICAL_HTML = WEB_DIR / "index.html"
 
-STATIC_REF_RE = re.compile(r"""(?:src|href)=["'](/static/[^"'#?]+)(?:\?([^"']*))?["']""")
+STATIC_REF_RE = re.compile(r"""(?:src|href)=["'](/static/[^"'#?]+)\?v=(\d+)["']""")
+
+
+def extract_versions(html: Path) -> dict[str, str]:
+    text = html.read_text(encoding="utf-8", errors="ignore")
+    return {asset: v for asset, v in STATIC_REF_RE.findall(text)}
 
 
 def iter_html_files(root: Path):
     for path in root.rglob("*.html"):
-        if path.name == "index.copy.html":
+        if path.name == "index.copy.html" or path == CANONICAL_HTML:
             continue
         yield path
 
 
-def extract_v_param(query: str | None) -> str | None:
-    if not query:
-        return None
-    for item in query.split("&"):
-        if item.startswith("v="):
-            return item[2:]
-    return None
-
-
 def main() -> int:
-    errors: list[tuple[Path, str, str, str | None]] = []
+    canonical = extract_versions(CANONICAL_HTML)
+    errors: list[str] = []
     checked = 0
 
     for html in iter_html_files(WEB_DIR):
-        text = html.read_text(encoding="utf-8", errors="ignore")
-        for asset_path, query in STATIC_REF_RE.findall(text):
-            expected_v = EXPECTED_VERSIONS.get(asset_path)
-            if expected_v is None:
+        versions = extract_versions(html)
+        for asset, v in versions.items():
+            if asset not in canonical:
                 continue
             checked += 1
-            actual_v = extract_v_param(query)
-            if actual_v != expected_v:
-                errors.append((html.relative_to(ROOT), asset_path, expected_v, actual_v))
+            expected = canonical[asset]
+            if v != expected:
+                errors.append(
+                    f"{html.relative_to(ROOT)}: {asset} expected v={expected}, got v={v}"
+                )
 
     print(f"checked_versioned_refs={checked}")
     if not errors:
@@ -71,9 +56,8 @@ def main() -> int:
         return 0
 
     print(f"version_mismatch={len(errors)}")
-    for html, asset_path, expected, actual in errors:
-        actual_label = actual if actual is not None else "<missing>"
-        print(f"{html}: {asset_path} expected v={expected}, got v={actual_label}")
+    for msg in errors:
+        print(msg)
     return 1
 
 
