@@ -11,9 +11,13 @@ window.__piBrowserGateLocked = false;
 window.__piBrowserGateReason = '';
 
 function isSafePiSdkContext() {
-    return window.PiEnvironment
-        ? window.PiEnvironment.isSafeSdkContext()
-        : window.location.protocol === 'https:';
+    if (window.PiEnvironment) return window.PiEnvironment.isSafeSdkContext();
+    // Fallback: match auth.js PiEnvironment.isSafeSdkContext() logic exactly
+    const isLocalhost =
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.hostname === '::1';
+    return window.location.protocol === 'https:' && !isLocalhost;
 }
 
 function showPiBrowserRequiredModal() {

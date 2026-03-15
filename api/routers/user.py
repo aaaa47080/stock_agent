@@ -19,7 +19,7 @@ from core.database import (
     link_pi_wallet, get_user_wallet_status,
     get_prices
 )
-from core.database.user import get_user_by_id, create_or_get_pi_user as create_or_get_pi_user_from_user, upgrade_to_pro
+from core.database.user import get_user_by_id, upgrade_to_pro
 from api.pi_verification import verify_pi_access_token
 
 # Pi Network API 配置
@@ -57,6 +57,8 @@ async def add_watchlist(request: WatchlistRequest, current_user: dict = Depends(
 
         await loop.run_in_executor(None, partial(add_to_watchlist, request.user_id, request.symbol.upper()))
         return {"success": True, "message": f"{request.symbol} 已加入自選清單"}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"新增自選清單失敗: {e}")
         raise HTTPException(status_code=500, detail="新增失敗")
@@ -123,7 +125,7 @@ async def dev_login(request: DevLoginRequest = None):
         if not existing_user:
             await loop.run_in_executor(
                 None,
-                create_or_get_pi_user_from_user,
+                create_or_get_pi_user,
                 test_user_id,
                 test_username
             )

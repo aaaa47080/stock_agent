@@ -238,7 +238,7 @@ const AuthManager = {
         }
 
         // 檢查是否在 Pi Browser 環境
-        if (!this.isPiBrowser()) {
+        if (!PiEnvironment.isPiBrowser()) {
             DebugLog.warn('非 Pi Browser 環境，嘗試使用後端刷新');
             // 嘗試使用後端刷新
             return await this.backendTokenRefresh();
@@ -253,8 +253,8 @@ const AuthManager = {
             // 重新調用 Pi SDK 認證
             // 注意：如果用戶已經授權過，這不會顯示權限對話框
             const auth = await Pi.authenticate(
-                // Follow official SDK guidance: request only the minimum scope needed.
-                ['username'],
+                // Must match login scopes to avoid re-prompting user for consent.
+                ['username', 'payments', 'wallet_address'],
                 (payment) => {
                     DebugLog.warn('刷新時發現未完成的支付', payment);
                 }
@@ -262,7 +262,7 @@ const AuthManager = {
 
             DebugLog.info('Pi SDK 重新認證成功', { username: auth.user.username });
 
-            // 同步到後端獲取新的 JWT
+            // 同步到後端獲取新的 JWT（含 wallet_address 保持資料最新）
             const res = await fetch('/api/user/pi-sync', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -270,6 +270,7 @@ const AuthManager = {
                     pi_uid: auth.user.uid,
                     username: auth.user.username,
                     access_token: auth.accessToken,
+                    wallet_address: auth.user.wallet_address || null,
                 }),
             });
 
@@ -418,25 +419,11 @@ const AuthManager = {
         return false;
     },
 
-    isPiBrowser() {
-        const hasPiSDK = PiEnvironment.hasPiSdk();
-        const result = PiEnvironment.isPiBrowser();
-
-        DebugLog.info('isPiBrowser 同步檢測', {
-            userAgent: navigator.userAgent,
-            hasPiSDK: hasPiSDK,
-            hasAuthMethod: typeof window.Pi?.authenticate === 'function',
-            hasInitMethod: typeof window.Pi?.init === 'function',
-            result,
-        });
-        return result;
-    },
-
     // 異步快速檢測 Pi Browser 環境是否有效
     // 注意：nativeFeaturesList 在某些 Pi Browser 版本中可能不可用，
     // 但只要 Pi SDK 存在（有 authenticate 和 init 方法），就應該允許用戶嘗試登入
     async verifyPiBrowserEnvironment() {
-        if (!this.isPiBrowser()) {
+        if (!PiEnvironment.isPiBrowser()) {
             return { valid: false, reason: 'Pi SDK 不存在' };
         }
 
@@ -900,133 +887,6 @@ async function getWalletStatus() {
     }
 }
 
-// 綁定 Pi 錢包（含快速環境檢測）
-async function linkPiWallet() {
-    const TIMEOUT_MS = 3000; // 3秒超時（快速反饋）
-
-    if (!AuthManager.currentUser) {
-        if (typeof showToast === 'function') showToast('請先登入', 'warning');
-        return { success: false, error: '請先登入' };
-    }
-
-    // 第一步：同步檢測 Pi SDK 是否存在
-    if (!isPiBrowser()) {
-        const msg = '請在 Pi Browser 中開啟此頁面以綁定錢包';
-        if (typeof showAlert === 'function') {
-            await showAlert({ title: '提示', message: msg, type: 'warning' });
-        } else {
-            alert(msg);
-        }
-        return { success: false, error: msg };
-    }
-
-    // 第二步：快速驗證 Pi Browser 環境是否有效
-    const envCheck = await AuthManager.verifyPiBrowserEnvironment();
-    if (!envCheck.valid) {
-        if (typeof showAlert === 'function') {
-            await showAlert({
-                title: 'Pi Browser 環境異常',
-                message: '無法連接到 Pi Network。\n\n請確認已登入 Pi 帳號且網路連線正常。',
-                type: 'warning',
-            });
-        } else if (typeof showToast === 'function') {
-            showToast('Pi Browser 環境異常', 'warning');
-        }
-        return { success: false, error: 'Pi Browser 環境異常' };
-    }
-
-    // 第三步：顯示詳細的提示，告訴用戶即將看到 Pi SDK 的權限請求對話框
-    if (typeof showToast === 'function') {
-        showToast(
-            '即將顯示 Pi Network 權限請求對話框...\n請點擊「允許」授予以下權限：\n• username (用戶名)\n• payments (支付)\n• wallet_address (錢包地址)',
-            'info',
-            0
-        );
-    }
-
-    try {
-        AuthManager.initPiSDK();
-
-        // 使用 Promise.race 實現超時
-        // Pi SDK 會顯示一個全屏的權限請求對話框
-        const authPromise = Pi.authenticate(
-            // Wallet binding/payment capability: request username + payments.
-            ['username', 'payments'],
-            (payment) => {
-                console.warn('Incomplete payment found during wallet link:', payment);
-            }
-        );
-
-        const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('TIMEOUT')), TIMEOUT_MS);
-        });
-
-        const auth = await Promise.race([authPromise, timeoutPromise]);
-
-        // 移除連接中提示（如果有持續的 toast）
-        const toastContainer = document.getElementById('toast-container');
-        if (toastContainer) toastContainer.innerHTML = '';
-
-        console.log('Pi Auth for wallet link:', auth.user.username);
-
-        // 呼叫後端 API 綁定錢包
-        const uid = AuthManager.currentUser.uid || AuthManager.currentUser.user_id;
-        const res = await fetch('/api/user/link-wallet', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                user_id: uid,
-                pi_uid: auth.user.uid,
-                pi_username: auth.user.username,
-                access_token: auth.accessToken,
-            }),
-        });
-
-        const result = await res.json();
-
-        if (!res.ok) {
-            throw new Error(result.detail || '綁定失敗');
-        }
-
-        // 更新本地用戶資料
-        AuthManager.currentUser.pi_uid = auth.user.uid;
-        AuthManager.currentUser.pi_username = auth.user.username;
-        localStorage.setItem('pi_user', JSON.stringify(AuthManager.currentUser));
-
-        if (typeof showToast === 'function') showToast('Pi 錢包綁定成功！', 'success');
-
-        return { success: true, pi_uid: auth.user.uid, pi_username: auth.user.username };
-    } catch (error) {
-        // 移除連接中提示
-        const toastContainer = document.getElementById('toast-container');
-        if (toastContainer) toastContainer.innerHTML = '';
-
-        if (error.message === 'TIMEOUT') {
-            // 超時：顯示重試對話框
-            const retry =
-                typeof showConfirm === 'function'
-                    ? await showConfirm({
-                          title: '連接超時',
-                          message:
-                              '無法連接到 Pi 錢包，請確認您正在使用 Pi Browser。\n\n是否重試？',
-                          type: 'warning',
-                          confirmText: '重試',
-                          cancelText: '取消',
-                      })
-                    : confirm('連接超時，是否重試？');
-
-            if (retry) {
-                return linkPiWallet(); // 遞迴重試
-            }
-            return { success: false, error: '連接超時' };
-        }
-
-        console.error('linkPiWallet error:', error);
-        if (typeof showToast === 'function') showToast('綁定失敗: ' + error.message, 'error');
-        return { success: false, error: error.message };
-    }
-}
-
 // 載入 Settings 頁面的錢包狀態
 async function loadSettingsWalletStatus() {
     const statusBadge = document.getElementById('settings-wallet-status-badge');
@@ -1094,24 +954,6 @@ async function loadSettingsWalletStatus() {
     }
 }
 
-// Settings 頁面的綁定錢包按鈕處理
-async function handleSettingsLinkWallet() {
-    const result = await linkPiWallet();
-    if (result.success) {
-        loadSettingsWalletStatus();
-    }
-}
-
-// 處理綁定錢包按鈕
-async function handleLinkWallet() {
-    const result = await linkPiWallet();
-    if (result.success) {
-        // 重新載入狀態
-        if (typeof loadSettingsWalletStatus === 'function') loadSettingsWalletStatus();
-        if (typeof ForumApp !== 'undefined' && ForumApp.loadWalletStatus)
-            ForumApp.loadWalletStatus();
-    }
-}
 
 // 套用 premium badge UI（抽出共用邏輯）
 function _applyPremiumBadgeUI(statusBadge, upgradeBtn, isPro, expiresAt) {
@@ -1197,172 +1039,8 @@ async function handleUpgradeToPremium() {
     }
 }
 
-// ========================================
-// 密碼登入與註冊 - REMOVED (Strict Pi Network Policy)
-// ========================================
-
-async function handleCredentialLogin() {
-    showToast('Login with Password is deprecated. Please use Pi Network.', 'warning');
-}
-
-async function handleRegister() {
-    showToast('Registration is disabled. Please use Pi Network.', 'warning');
-}
-
-// 註冊邏輯已移除
-
-// 切換登入/註冊表單
-function toggleAuthMode(mode) {
-    const loginForm = document.getElementById('form-login');
-    const registerForm = document.getElementById('form-register');
-    const tabLogin = document.getElementById('tab-login');
-    const tabRegister = document.getElementById('tab-register');
-
-    if (mode === 'login') {
-        loginForm?.classList.remove('hidden');
-        registerForm?.classList.add('hidden');
-        tabLogin?.classList.add('bg-surfaceHighlight', 'text-secondary', 'shadow-sm');
-        tabLogin?.classList.remove('text-textMuted');
-        tabRegister?.classList.remove('bg-surfaceHighlight', 'text-secondary', 'shadow-sm');
-        tabRegister?.classList.add('text-textMuted');
-    } else {
-        loginForm?.classList.add('hidden');
-        registerForm?.classList.remove('hidden');
-        tabRegister?.classList.add('bg-surfaceHighlight', 'text-secondary', 'shadow-sm');
-        tabRegister?.classList.remove('text-textMuted');
-        tabLogin?.classList.remove('bg-surfaceHighlight', 'text-secondary', 'shadow-sm');
-        tabLogin?.classList.add('text-textMuted');
-    }
-}
-
-// 檢查用戶名是否可用
-async function checkUsernameAvailability() {
-    const input = document.getElementById('reg-username');
-    const msg = document.getElementById('reg-username-msg');
-    const username = input?.value?.trim();
-
-    if (!username || username.length < 6) {
-        if (msg) {
-            msg.textContent = '至少需要 6 個字元';
-            msg.className = 'text-xs mt-1 text-textMuted/60';
-        }
-        return;
-    }
-
-    try {
-        const res = await fetch(`/api/user/check/${username}`);
-        const result = await res.json();
-
-        if (msg) {
-            if (result.available) {
-                msg.textContent = '✓ 用戶名可用';
-                msg.className = 'text-xs mt-1 text-success';
-            } else {
-                msg.textContent = '✗ 用戶名已被使用';
-                msg.className = 'text-xs mt-1 text-danger';
-            }
-        }
-    } catch (e) {
-        console.error('Check username error:', e);
-    }
-}
-
-// 檢查 Email 是否可用
-async function checkEmailAvailability() {
-    const input = document.getElementById('reg-email');
-    const msg = document.getElementById('reg-email-msg');
-    const email = input?.value?.trim();
-
-    if (!email || !email.includes('@')) {
-        if (msg) {
-            msg.textContent = '用於密碼重置';
-            msg.className = 'text-xs mt-1 text-textMuted/60';
-        }
-        return;
-    }
-
-    try {
-        const res = await fetch(`/api/user/check-email/${encodeURIComponent(email)}`);
-        const result = await res.json();
-
-        if (msg) {
-            if (result.available) {
-                msg.textContent = '✓ Email 可用';
-                msg.className = 'text-xs mt-1 text-success';
-            } else {
-                msg.textContent = '✗ Email 已被註冊';
-                msg.className = 'text-xs mt-1 text-danger';
-            }
-        }
-    } catch (e) {
-        console.error('Check email error:', e);
-    }
-}
-
-// 忘記密碼
-function showForgotPasswordModal() {
-    document.getElementById('forgot-password-modal')?.classList.remove('hidden');
-}
-
-function hideForgotPasswordModal() {
-    document.getElementById('forgot-password-modal')?.classList.add('hidden');
-}
-
-async function handleForgotPassword() {
-    const email = document.getElementById('forgot-email')?.value?.trim();
-    const btn = document.getElementById('forgot-submit-btn');
-
-    if (!email) {
-        showToast('請輸入 Email', 'warning');
-        return;
-    }
-
-    if (btn) {
-        btn.disabled = true;
-        btn.textContent = '發送中...';
-    }
-
-    try {
-        const res = await fetch('/api/user/forgot-password', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email }),
-        });
-
-        const result = await res.json();
-
-        if (res.ok) {
-            showToast('如果 Email 存在，重置連結已發送', 'success');
-            hideForgotPasswordModal();
-        } else {
-            showToast(result.detail || '發送失敗', 'error');
-        }
-    } catch (e) {
-        showToast('發送時發生錯誤', 'error');
-    } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.textContent = 'Send Reset Link';
-        }
-    }
-}
-
 // 暴露全域
 window.AuthManager = AuthManager;
-
-// ============================================================
-// EMAIL LOGIN DISABLED - Pi SDK Exclusive Authentication
-// 官方要求：只允許 Pi SDK 登入，不允許其他登入方式
-// 如需恢復，取消以下註解即可
-// ============================================================
-// window.handleCredentialLogin = handleCredentialLogin;
-// window.handleRegister = handleRegister;
-// window.toggleAuthMode = toggleAuthMode;
-// window.checkUsernameAvailability = checkUsernameAvailability;
-// window.checkEmailAvailability = checkEmailAvailability;
-// window.showForgotPasswordModal = showForgotPasswordModal;
-// window.hideForgotPasswordModal = hideForgotPasswordModal;
-// window.handleForgotPassword = handleForgotPassword;
 window.handlePiLogin = async () => {
     DebugLog.info('handlePiLogin 被呼叫');
 
@@ -1472,10 +1150,7 @@ window.initializeAuth = () => AuthManager.init();
 window.isPiBrowser = isPiBrowser;
 window.canMakePiPayment = canMakePiPayment;
 window.getWalletStatus = getWalletStatus;
-window.linkPiWallet = linkPiWallet;
 window.loadSettingsWalletStatus = loadSettingsWalletStatus;
-window.handleLinkWallet = handleLinkWallet;
-window.handleSettingsLinkWallet = handleSettingsLinkWallet;
 window.loadPremiumStatus = loadPremiumStatus;
 window.handleUpgradeToPremium = handleUpgradeToPremium;
 
