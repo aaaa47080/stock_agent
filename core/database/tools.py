@@ -6,8 +6,11 @@
 - free: 免費用戶
 - premium: 付費會員（完整功能）
 """
+import logging
 from typing import List, Dict, Optional, Any
 from .connection import get_connection
+
+logger = logging.getLogger(__name__)
 
 
 # ============================================================================
@@ -492,7 +495,7 @@ def seed_tools_catalog():
         conn.commit()
     except Exception as e:
         conn.rollback()
-        print(f"[tools] seed_tools_catalog error: {e}")
+        logger.error(f"[seed_tools_catalog] error: {e}")
     finally:
         conn.close()
 
@@ -569,7 +572,7 @@ def get_allowed_tools(agent_id: str, user_tier: str = "free", user_id: Optional[
         return [row[0] for row in rows]
 
     except Exception as e:
-        print(f"[tools] get_allowed_tools error: {e}")
+        logger.error(f"[get_allowed_tools] error: {e}")
         return _get_fallback_tools(agent_id, user_tier)
     finally:
         conn.close()
@@ -638,7 +641,7 @@ def check_tool_quota(user_id: str, tool_id: str, user_tier: str) -> bool:
         return used < limit
 
     except Exception as e:
-        print(f"[tools] check_tool_quota error: {e}")
+        logger.error(f"[check_tool_quota] error: {e}")
         return True  # 錯誤時放行，不影響用戶體驗
     finally:
         conn.close()
@@ -657,7 +660,7 @@ def increment_tool_usage(user_id: str, tool_id: str):
         ''', (user_id, tool_id))
         conn.commit()
     except Exception as e:
-        print(f"[tools] increment_tool_usage error: {e}")
+        logger.error(f"[increment_tool_usage] error: {e}")
         conn.rollback()
     finally:
         conn.close()
@@ -710,7 +713,7 @@ def get_tools_for_frontend(user_tier: str, user_id: Optional[str] = None) -> Lis
             for r in rows
         ]
     except Exception as e:
-        print(f"[tools] get_tools_for_frontend error: {e}")
+        logger.error(f"[get_tools_for_frontend] error: {e}")
         return []
     finally:
         conn.close()
@@ -729,7 +732,7 @@ def update_user_tool_preference(user_id: str, tool_id: str, is_enabled: bool):
         ''', (user_id, tool_id, is_enabled))
         conn.commit()
     except Exception as e:
-        print(f"[tools] update_user_tool_preference error: {e}")
+        logger.error(f"[update_user_tool_preference] error: {e}")
         conn.rollback()
     finally:
         conn.close()

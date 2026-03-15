@@ -107,10 +107,6 @@ message_manager = MessageConnectionManager()
 
 
 
-async def run_sync(fn, *args):
-    """Run a synchronous DB function in the thread executor."""
-    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
-
 
 
 # ============================================================================

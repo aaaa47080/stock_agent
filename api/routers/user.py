@@ -26,10 +26,6 @@ PI_API_BASE = "https://api.minepi.com/v2"
 router = APIRouter()
 
 
-async def run_sync(fn, *args):
-    """Run a synchronous DB function in the thread executor."""
-    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
-
 
 @router.get("/api/watchlist/{user_id}")
 async def get_user_watchlist(user_id: str, current_user: dict = Depends(get_current_user)):

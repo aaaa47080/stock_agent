@@ -38,10 +38,6 @@ from api.routers.notifications import push_notification_to_user
 router = APIRouter()
 
 
-async def run_sync(fn, *args):
-    """Run a synchronous DB function in the thread executor."""
-    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
-
 
 # ============================================================================
 # 請求模型
