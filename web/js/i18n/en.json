@@ -331,7 +331,10 @@
       "benefit3": "Receive tips from other users",
       "linkButton": "Link Pi Wallet",
       "requirePiBrowser": "Must be opened in Pi Browser",
-      "connected": "Pi Wallet Connected"
+      "connected": "Pi Wallet Connected",
+      "reloginHint": "Your account is not yet linked to a Pi wallet address. Please log in again to complete the link.",
+      "reloginDesc": "After re-logging in, you can make payments, post on the forum, and receive tips.",
+      "reloginButton": "Re-login to Link Wallet"
     },
     "ai": {
       "title": "AI Intelligence",

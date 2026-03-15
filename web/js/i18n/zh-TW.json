@@ -331,7 +331,10 @@
       "benefit3": "接收來自其他用戶的打賞",
       "linkButton": "綁定 Pi 錢包",
       "requirePiBrowser": "需要在 Pi Browser 中開啟",
-      "connected": "Pi 錢包已連接"
+      "connected": "Pi 錢包已連接",
+      "reloginHint": "您的帳號尚未綁定 Pi 錢包地址，請重新登入以完成連結。",
+      "reloginDesc": "重新登入後即可使用付款、發文及收打賞等功能。",
+      "reloginButton": "重新登入以連結錢包"
     },
     "ai": {
       "title": "AI 智慧分析",
