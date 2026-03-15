@@ -2,7 +2,7 @@
 可疑錢包追蹤系統 - 評論 API
 """
 from fastapi import APIRouter, HTTPException, Query, Depends
-import asyncio
+from api.utils import run_sync
 import logging
 
 from api.deps import get_current_user
@@ -16,10 +16,6 @@ from .models import CommentCreate
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/comments", tags=["Scam Tracker - Comments"])
-
-
-async def run_sync(fn, *args):
-    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
 
 
 @router.get("/{report_id}", response_model=dict)

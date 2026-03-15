@@ -4,9 +4,12 @@
 Refactored to use DatabaseBase for unified CRUD operations.
 """
 import json
+import logging
 from typing import Any, Optional
 
 from .base import DatabaseBase
+
+logger = logging.getLogger(__name__)
 
 
 def set_cache(key: str, data: Any):
@@ -31,7 +34,7 @@ def get_cache(key: str) -> Optional[Any]:
         try:
             return json.loads(result['value'])
         except (json.JSONDecodeError, TypeError) as e:
-            print(f"Cache read error: {e}")
+            logger.warning(f"Cache read error: {e}")
             return None
     return None
 

@@ -2,15 +2,11 @@
 看板相關 API
 """
 from fastapi import APIRouter, HTTPException
-import asyncio
+from api.utils import run_sync
 
 from core.database import get_boards, get_board_by_slug
 
 router = APIRouter(prefix="/api/forum/boards", tags=["Forum - Boards"])
-
-
-async def run_sync(fn, *args):
-    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
 
 
 @router.get("")

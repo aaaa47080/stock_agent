@@ -3,7 +3,7 @@
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional
-import asyncio
+from api.utils import run_sync
 import logging
 import time
 
@@ -25,10 +25,6 @@ from api.deps import get_current_user
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/forum/posts", tags=["Forum - Posts"])
-
-
-async def run_sync(fn, *args):
-    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
 
 
 # 文章分類列表

@@ -2,7 +2,7 @@
 Admin User Management
 User listing, role, membership, and status management endpoints
 """
-import asyncio
+from api.utils import run_sync
 import logging
 from fastapi import APIRouter, Depends, Query, HTTPException
 
@@ -13,10 +13,6 @@ from .schemas import SetRoleRequest, SetMembershipRequest, SetStatusRequest
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Admin - Users"])
-
-
-async def run_sync(fn, *args):
-    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
 
 
 @router.get("/users")

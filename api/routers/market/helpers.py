@@ -5,7 +5,7 @@ import asyncio
 import numpy as np
 from datetime import datetime
 
-from api.utils import logger
+from api.utils import logger, run_sync
 from api.symbols import (
     normalize_base_symbol,
     sanitize_base_symbols,
@@ -23,10 +23,6 @@ from analysis.market_pulse import get_market_pulse
 SYMBOL_CACHE = {
     "okx": {"data": None, "timestamp": 0}
 }
-
-
-async def run_sync(fn, *args):
-    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
 
 
 def normalize_funding_symbol(symbol: str) -> str:

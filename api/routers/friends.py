@@ -28,7 +28,7 @@ from core.database import (
     notify_friend_request,
     notify_friend_accepted,
 )
-from api.utils import logger
+from api.utils import logger, run_sync
 import asyncio
 
 from api.deps import get_current_user

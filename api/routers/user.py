@@ -8,7 +8,7 @@ from pydantic import BaseModel
 
 from api.deps import create_access_token, get_current_user
 from api.models import WatchlistRequest
-from api.utils import logger
+from api.utils import logger, run_sync
 from core.config import TEST_MODE, TEST_USER
 from core.database import (
     add_to_watchlist, remove_from_watchlist, get_watchlist,

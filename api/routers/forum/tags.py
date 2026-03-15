@@ -2,7 +2,7 @@
 標籤相關 API
 """
 from fastapi import APIRouter, HTTPException, Query
-import asyncio
+from api.utils import run_sync
 
 from core.database import (
     get_trending_tags,
@@ -11,10 +11,6 @@ from core.database import (
 )
 
 router = APIRouter(prefix="/api/forum/tags", tags=["Forum - Tags"])
-
-
-async def run_sync(fn, *args):
-    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
 
 
 @router.get("")

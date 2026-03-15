@@ -2,7 +2,7 @@
 Admin System Config Management
 Configuration and audit log endpoints
 """
-import asyncio
+from api.utils import run_sync
 from fastapi import APIRouter, Depends, Query, HTTPException
 
 from api.deps import require_admin
@@ -11,10 +11,6 @@ from core.database.system_config import list_all_configs_with_metadata, set_conf
 from .schemas import UpdateConfigRequest
 
 router = APIRouter(tags=["Admin - Config"])
-
-
-async def run_sync(fn, *args):
-    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
 
 
 @router.get("/config/all")

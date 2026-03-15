@@ -2,7 +2,7 @@
 可疑錢包追蹤系統 - 投票 API
 """
 from fastapi import APIRouter, HTTPException, Depends
-import asyncio
+from api.utils import run_sync
 import logging
 
 from api.deps import get_current_user
@@ -12,10 +12,6 @@ from .models import VoteRequest
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/votes", tags=["Scam Tracker - Votes"])
-
-
-async def run_sync(fn, *args):
-    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
 
 
 @router.post("/{report_id}", response_model=dict)

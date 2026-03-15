@@ -3,19 +3,14 @@ Tools API Router
 
 Endpoints for listing tools and managing user tool preferences.
 """
-import asyncio
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from api.deps import get_current_user
 from core.database import get_tools_for_frontend, update_user_tool_preference
 from core.database.tools import normalize_membership_tier
-from api.utils import logger
+from api.utils import logger, run_sync
 
 router = APIRouter()
-
-
-async def run_sync(fn, *args):
-    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
 
 
 async def _list_tools_impl(current_user: dict) -> dict:

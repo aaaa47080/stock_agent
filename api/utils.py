@@ -1,9 +1,15 @@
+import asyncio
 import os
 import logging
 from typing import Dict, Optional
 import httpx
 
 logger = logging.getLogger("API")
+
+
+async def run_sync(fn, *args):
+    """Run a synchronous DB/IO function in the thread executor (non-blocking)."""
+    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
 # Default to WARNING in production to reduce noisy logs and ephemeral-storage pressure.
 # Override with APP_LOG_LEVEL=INFO/DEBUG when detailed tracing is needed.
 logger.setLevel(getattr(logging, os.getenv("APP_LOG_LEVEL", "WARNING").upper(), logging.WARNING))

@@ -3,7 +3,7 @@
 """
 from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import Optional
-import asyncio
+from api.utils import run_sync
 import logging
 
 from api.deps import get_current_user
@@ -20,10 +20,6 @@ from .models import AddCommentRequest
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/forum/posts", tags=["Forum - Comments"])
-
-
-async def run_sync(fn, *args):
-    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
 
 
 # 有效的回覆類型

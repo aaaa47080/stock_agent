@@ -35,7 +35,7 @@ from core.database import (
 )
 from fastapi import Depends
 from api.deps import get_current_user, verify_token
-from api.utils import logger
+from api.utils import logger, run_sync
 from core.database.notifications import notify_new_message
 from api.routers.notifications import push_notification_to_user
 

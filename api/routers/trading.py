@@ -1,9 +1,8 @@
-import asyncio
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, Request
 
 from api.models import TradeExecutionRequest
-from api.utils import logger
+from api.utils import logger, run_sync
 from trading.trade_executor import TradeExecutor
 from utils.okx_auth import get_okx_connector_from_request, validate_okx_credentials
 from fastapi import Depends
@@ -11,10 +10,6 @@ from api.deps import get_current_user
 from api.middleware.rate_limit import limiter
 
 router = APIRouter()
-
-
-async def run_sync(fn, *args):
-    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
 
 
 @router.post("/api/okx/test-connection")

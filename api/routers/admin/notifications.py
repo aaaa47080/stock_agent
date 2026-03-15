@@ -2,7 +2,7 @@
 Admin Notification Management
 Broadcast and notification history endpoints
 """
-import asyncio
+from api.utils import run_sync
 import json
 import uuid
 import logging
@@ -16,10 +16,6 @@ from .schemas import BroadcastRequest
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Admin - Notifications"])
-
-
-async def run_sync(fn, *args):
-    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
 
 
 @router.post("/notifications/broadcast")

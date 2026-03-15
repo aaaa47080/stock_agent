@@ -2,7 +2,7 @@
 個人後台相關 API
 """
 from fastapi import APIRouter, HTTPException, Query, Depends
-import asyncio
+from api.utils import run_sync
 
 from api.deps import get_current_user
 from core.database import (
@@ -18,10 +18,6 @@ from core.database import (
 )
 
 router = APIRouter(prefix="/api/forum/me", tags=["Forum - Me"])
-
-
-async def run_sync(fn, *args):
-    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
 
 
 @router.get("/limits")

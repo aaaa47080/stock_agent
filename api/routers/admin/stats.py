@@ -2,17 +2,13 @@
 Admin Statistics Dashboard
 Overview and trend statistics endpoints
 """
-import asyncio
+from api.utils import run_sync
 from fastapi import APIRouter, Depends, Query
 
 from api.deps import require_admin
 from core.database.connection import get_connection
 
 router = APIRouter(tags=["Admin - Stats"])
-
-
-async def run_sync(fn, *args):
-    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
 
 
 @router.get("/stats/overview")

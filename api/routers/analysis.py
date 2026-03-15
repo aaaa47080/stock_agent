@@ -7,7 +7,7 @@ from fastapi.responses import StreamingResponse
 
 from api.models import QueryRequest, BacktestRequest
 from api.response_metadata import build_response_metadata
-from api.utils import logger
+from api.utils import logger, run_sync
 from analysis.simple_backtester import run_simple_backtest
 import core.config as core_config
 from utils.user_client_factory import create_user_llm_client
@@ -33,10 +33,6 @@ router = APIRouter()
 
 ANALYSIS_TIMEOUT_SECONDS = 180
 analysis_policy_resolver = AnalysisPolicyResolver()
-
-
-async def run_sync(fn, *args):
-    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
 
 
 # --- Session Management Endpoints ---

@@ -2,7 +2,7 @@
 Admin Forum Management
 Post, comment, and report management endpoints
 """
-import asyncio
+from api.utils import run_sync
 import logging
 from fastapi import APIRouter, Depends, Query, HTTPException
 from psycopg2 import sql
@@ -14,10 +14,6 @@ from .schemas import PostVisibilityRequest, PostPinRequest, ResolveReportRequest
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Admin - Forum"])
-
-
-async def run_sync(fn, *args):
-    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
 
 
 @router.get("/forum/posts")

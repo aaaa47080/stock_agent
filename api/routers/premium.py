@@ -1,7 +1,6 @@
 """
 Premium 會員相關 API
 """
-import asyncio
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Depends
@@ -9,17 +8,13 @@ from pydantic import BaseModel
 
 from core.database import get_user_membership, upgrade_to_pro
 from api.deps import get_current_user
-from api.utils import logger
+from api.utils import logger, run_sync
 
 router = APIRouter(prefix="/api/premium", tags=["Premium"])
 PLAN_MONTHS = {
     "premium_monthly": 1,
     "premium_yearly": 12,
 }
-
-
-async def run_sync(fn, *args):
-    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
 
 
 class UpgradeRequest(BaseModel):

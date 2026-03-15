@@ -3,20 +3,15 @@ Price Alerts API Router
 
 Endpoints for managing user price alerts.
 """
-import asyncio
 from fastapi import APIRouter, HTTPException, Depends
 from api.deps import get_current_user
 from api.models import CreateAlertRequest
 from core.database import (
     create_alert, get_user_alerts, delete_alert,
 )
-from api.utils import logger
+from api.utils import logger, run_sync
 
 router = APIRouter()
-
-
-async def run_sync(fn, *args):
-    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
 
 
 @router.post("/api/alerts")

@@ -3,9 +3,12 @@
 包含：對話會話管理、對話訊息
 """
 import json
+import logging
 from typing import List, Dict, Optional
 
 from .connection import get_connection
+
+logger = logging.getLogger(__name__)
 
 
 # ============================================================================
@@ -23,7 +26,7 @@ def create_session(session_id: str, title: str = "New Chat", user_id: str = "loc
         ''', (session_id, user_id, title))
         conn.commit()
     except Exception as e:
-        print(f"Session create error: {e}")
+        logger.error(f"Session create error: {e}")
         conn.rollback()
     finally:
         conn.close()
@@ -83,7 +86,7 @@ def get_sessions(user_id: str = "local_user", limit: int = 20) -> List[Dict]:
             })
         return sessions
     except Exception as e:
-        print(f"Session list error: {e}")
+        logger.warning(f"Session list error: {e}")
         return []
     finally:
         conn.close()
@@ -145,7 +148,7 @@ def save_chat_message(role: str, content: str, session_id: str = "default",
 
         conn.commit()
     except Exception as e:
-        print(f"Chat save error: {e}")
+        logger.error(f"Chat save error: {e}")
         conn.rollback()
     finally:
         conn.close()
@@ -196,7 +199,7 @@ def get_chat_history(
             })
         return history
     except Exception as e:
-        print(f"Chat history read error: {e}")
+        logger.warning(f"Chat history read error: {e}")
         return []
     finally:
         conn.close()

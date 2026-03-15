@@ -16,7 +16,7 @@ from core.database.notifications import (
     delete_notification,
 )
 from core.database.user import get_user_by_id
-from api.utils import logger
+from api.utils import logger, run_sync
 from api.deps import get_current_user, verify_token
 from fastapi import Depends
 

@@ -5,7 +5,6 @@
 """
 from fastapi import APIRouter, HTTPException, Query, Depends, Request
 from typing import Optional
-import asyncio
 
 from api.middleware.rate_limit import limiter
 
@@ -42,13 +41,9 @@ from api.models import (
     FinalizeReportRequest,
 )
 from api.deps import get_current_user, require_admin
-from api.utils import logger
+from api.utils import logger, run_sync
 
 router = APIRouter(prefix="/api/governance", tags=["Community Governance"])
-
-
-async def run_sync(fn, *args):
-    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
 
 
 # ============================================================================
