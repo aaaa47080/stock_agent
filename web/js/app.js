@@ -503,7 +503,7 @@ function updateProviderOptions() {
 }
 
 // Watchlist & Chart Variables
-let currentUserId = 'guest';
+let currentUserId = null;
 
 // Pulse Data Cache (使用 window 物件避免重複聲明)
 if (typeof window.currentPulseData === 'undefined') {
@@ -633,7 +633,7 @@ window.addEventListener('beforeunload', () => {
 // Utility Functions
 // ========================================
 function updateUserId(uid) {
-    currentUserId = uid || 'guest';
+    currentUserId = uid || null;
 }
 
 /**

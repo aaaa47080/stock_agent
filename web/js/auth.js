@@ -714,7 +714,7 @@ const AuthManager = {
             this.currentUser?.username ||
             this.currentUser?.pi_username ||
             this.currentUser?.displayName ||
-            'Guest';
+            'Login Required';
         const uid =
             this.currentUser?.uid ||
             this.currentUser?.user_id ||
@@ -734,11 +734,7 @@ const AuthManager = {
             }
         });
         document.querySelectorAll('.guest-only').forEach((el) => {
-            if (isLoggedIn) {
-                el.classList.add('hidden');
-            } else {
-                el.classList.remove('hidden');
-            }
+            el.classList.add('hidden');
         });
 
         // 更新所有可能存在的使用者名稱欄位
@@ -768,7 +764,7 @@ const AuthManager = {
                     ? 'PI WALLET'
                     : authMethod === 'password'
                       ? 'PASSWORD'
-                      : 'GUEST';
+                      : 'LOCKED';
             methodEl.textContent = methodText;
         }
 

@@ -40,9 +40,8 @@ async function switchTab(tabId, fromPopState = false) {
         if (modal && modal.classList.contains('hidden')) {
             console.warn('⚠️ Access denied: User not logged in. Showing login modal.');
             modal.classList.remove('hidden');
-            // Optional: prevent switching if we want to lock them on a specific tab,
-            // but showing the modal overlay is usually enough.
         }
+        tabId = 'chat';
     }
 
     const currentTab = document.querySelector('.tab-content:not(.hidden)');
