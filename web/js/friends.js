@@ -874,7 +874,7 @@ async function loadFriendsTabData() {
     updateBadge('blocked-count-badge', 0, true);
 
     if (!isLoggedIn) {
-        const loginMsg = `<div class="text-center py-6"><p class="text-textMuted mb-3">請先登入以使用好友功能</p><button onclick="handleLinkWallet()" class="px-4 py-2 bg-primary/10 text-primary rounded-lg text-sm font-bold">登入 / 綁定錢包</button></div>`;
+        const loginMsg = `<div class="text-center py-6"><p class="text-textMuted mb-3">請先登入以使用好友功能</p><button onclick="handlePiLogin()" class="px-4 py-2 bg-primary/10 text-primary rounded-lg text-sm font-bold">登入</button></div>`;
         if (pendingListEl) pendingListEl.innerHTML = loginMsg;
         if (friendsListEl) friendsListEl.innerHTML = loginMsg;
         if (blockedListEl) blockedListEl.innerHTML = renderEmptyState('請先登入');

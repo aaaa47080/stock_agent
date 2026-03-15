@@ -15,8 +15,7 @@ from api.utils import logger
 from core.config import TEST_MODE, TEST_USER
 from core.database import (
     add_to_watchlist, remove_from_watchlist, get_watchlist,
-    create_or_get_pi_user, get_user_by_pi_uid, is_username_available,
-    link_pi_wallet, get_user_wallet_status,
+    create_or_get_pi_user, get_user_wallet_status,
     get_prices
 )
 from core.database.user import get_user_by_id, upgrade_to_pro
@@ -75,19 +74,6 @@ async def remove_watchlist(request: WatchlistRequest, current_user: dict = Depen
     except Exception as e:
         logger.error(f"移除自選清單失敗: {e}")
         raise HTTPException(status_code=500, detail="移除失敗")
-
-@router.get("/api/user/check/{username}")
-async def check_username_availability(username: str):
-    """檢查用戶名是否可用（同時檢查 Pi 和 Email 用戶）"""
-    try:
-        loop = asyncio.get_running_loop()
-        available = await loop.run_in_executor(None, is_username_available, username)
-        if not available:
-            return {"available": False, "message": "此用戶名已被註冊"}
-        return {"available": True, "message": "用戶名可用"}
-    except Exception as e:
-        logger.error(f"檢查用戶名失敗: {e}")
-        raise HTTPException(status_code=500, detail="檢查失敗")
 
 # --- Dev/Test Login Endpoint ---
 
@@ -174,11 +160,6 @@ async def sync_pi_user(request: PiUserSyncRequest):
                 request.pi_uid
             )
             
-            # Token is valid and UID matches.
-            # Log full Pi API response keys to diagnose wallet_address field name.
-            logger.info(f"Pi /v2/me response keys: {list(pi_user_data.keys())}")
-            logger.info(f"Pi /v2/me full response: {pi_user_data}")
-
             # Extract wallet_address — try known field names from Pi API
             verified_wallet = (
                 pi_user_data.get('wallet_address')
@@ -186,8 +167,6 @@ async def sync_pi_user(request: PiUserSyncRequest):
                 or (pi_user_data.get('credentials') or {}).get('wallet_address')
                 or request.wallet_address
             )
-            logger.info(f"Pi token verified for user: {pi_user_data.get('username')}, wallet: {verified_wallet or 'NOT FOUND'}")
-
         except HTTPException as e:
             # Token verification failed - reject the request
             logger.warning(f"Pi token verification failed for uid {request.pi_uid}: {e.detail}")
@@ -249,33 +228,6 @@ async def get_current_user_profile(current_user: dict = Depends(get_current_user
             "auth_method": current_user.get("auth_method"),
         }
     }
-
-
-@router.get("/api/user/pi/{pi_uid}")
-async def get_pi_user(pi_uid: str, current_user: dict = Depends(get_current_user)):
-    """根據 Pi UID 獲取用戶資料"""
-    # 僅允許查詢自己的 Pi 資料，或管理員
-    # 這裡假設 current_user["user_id"] 可能不直接等於 pi_uid，需查表。
-    # 簡單起見，先確保已登入。若需嚴格權限，需查詢 pi_uid 對應的 user_id
-    # 安全起見，還是檢查一下是否為本人或有權限
-    try:
-        loop = asyncio.get_running_loop()
-        user = await loop.run_in_executor(None, get_user_by_pi_uid, pi_uid)
-        
-        if not user:
-            raise HTTPException(status_code=404, detail="用戶不存在")
-            
-        # Verify ownership
-        if user["user_id"] != current_user["user_id"]:
-             raise HTTPException(status_code=403, detail="Not authorized to view this Pi profile")
-
-        return {"success": True, "user": user}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"獲取 Pi 用戶失敗: {e}")
-        raise HTTPException(status_code=500, detail="獲取失敗")
-
 
 
 
@@ -404,36 +356,6 @@ async def complete_payment(request: CompletePaymentRequest, current_user: dict =
         logger.error(f"Pi Payment Completion Failed: {e}")
         raise HTTPException(status_code=500, detail="Payment completion failed, please try again later")
 
-# --- Pi Wallet Linking Endpoints ---
-
-class LinkWalletRequest(BaseModel):
-    user_id: str
-    pi_uid: str
-    pi_username: str
-    access_token: str = None
-
-
-@router.post("/api/user/link-wallet")
-async def link_wallet(request: LinkWalletRequest, current_user: dict = Depends(get_current_user)):
-    if current_user["user_id"] != request.user_id:
-        raise HTTPException(status_code=403, detail="Not authorized")
-    """
-    綁定 Pi 錢包到現有帳密用戶
-    """
-    try:
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(
-            None,
-            partial(link_pi_wallet, user_id=request.user_id, pi_uid=request.pi_uid, pi_username=request.pi_username)
-        )
-        return result
-    except ValueError as e:
-        raise HTTPException(status_code=409, detail=str(e))
-    except Exception as e:
-        logger.error(f"Link wallet error: {e}")
-        raise HTTPException(status_code=500, detail="綁定失敗")
-
-
 @router.get("/api/user/wallet-status/{user_id}")
 async def get_wallet_status(user_id: str, current_user: dict = Depends(get_current_user)):
     """
@@ -468,9 +390,6 @@ class SaveAPIKeyRequest(BaseModel):
     provider: str
     api_key: str
     model: Optional[str] = None
-
-class DeleteAPIKeyRequest(BaseModel):
-    provider: str
 
 class SaveModelRequest(BaseModel):
     provider: str

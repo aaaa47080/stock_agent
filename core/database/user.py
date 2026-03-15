@@ -1,9 +1,7 @@
 """
 用戶認證相關資料庫操作
-包含：用戶管理、密碼處理、Pi Network、密碼重置、登入嘗試
+包含：用戶管理、Pi Network、會員等級
 """
-import os
-import hashlib
 import uuid
 import psycopg2
 from typing import Dict, Optional
@@ -17,70 +15,8 @@ def _normalize_membership_tier(tier: Optional[str]) -> str:
 
 
 # ============================================================================
-# 密碼處理
-# ============================================================================
-
-def hash_password(password: str) -> str:
-    """使用 SHA-256 和隨機鹽值雜湊密碼"""
-    salt = os.urandom(32)
-    key = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, 100000)
-    return salt.hex() + ':' + key.hex()
-
-
-def verify_password(stored_password: str, provided_password: str) -> bool:
-    """驗證密碼"""
-    try:
-        salt_hex, key_hex = stored_password.split(':')
-        salt = bytes.fromhex(salt_hex)
-        new_key = hashlib.pbkdf2_hmac('sha256', provided_password.encode('utf-8'), salt, 100000)
-        return new_key.hex() == key_hex
-    except Exception:
-        return False
-
-
-# ============================================================================
 # 用戶 CRUD
 # ============================================================================
-
-def create_user(username: str, password: str) -> Dict:
-    """創建新用戶"""
-    conn = get_connection()
-    c = conn.cursor()
-    try:
-        user_id = str(uuid.uuid4())
-        password_hash = hash_password(password)
-
-        c.execute('''
-            INSERT INTO users (user_id, username, password_hash, created_at)
-            VALUES (%s, %s, %s, NOW())
-        ''', (user_id, username, password_hash))
-        conn.commit()
-        return {"user_id": user_id, "username": username}
-    except psycopg2.IntegrityError:
-        conn.rollback()
-        raise ValueError("Username already exists")
-    finally:
-        conn.close()
-
-
-def get_user_by_username(username: str) -> Optional[Dict]:
-    """根據用戶名獲取用戶信息（包含密碼雜湊）"""
-    conn = get_connection()
-    c = conn.cursor()
-    try:
-        c.execute('SELECT user_id, username, password_hash, email FROM users WHERE username = %s', (username,))
-        row = c.fetchone()
-        if row:
-            return {
-                "user_id": row[0],
-                "username": row[1],
-                "password_hash": row[2],
-                "email": row[3]
-            }
-        return None
-    finally:
-        conn.close()
-
 
 def get_user_by_id(user_id: str) -> Optional[Dict]:
     """根據 ID 獲取用戶信息"""
@@ -106,37 +42,6 @@ def get_user_by_id(user_id: str) -> Optional[Dict]:
                 "created_at": row[8].isoformat() if row[8] else None
             }
         return None
-    finally:
-        conn.close()
-
-
-
-
-
-def update_password(user_id: str, new_password: str) -> bool:
-    """更新用戶密碼"""
-    conn = get_connection()
-    c = conn.cursor()
-    try:
-        password_hash = hash_password(new_password)
-        c.execute('UPDATE users SET password_hash = %s WHERE user_id = %s', (password_hash, user_id))
-        conn.commit()
-        return c.rowcount > 0
-    except Exception as e:
-        print(f"Update password error: {e}")
-        conn.rollback()
-        return False
-    finally:
-        conn.close()
-
-
-def is_username_available(username: str) -> bool:
-    """檢查用戶名是否可用"""
-    conn = get_connection()
-    c = conn.cursor()
-    try:
-        c.execute('SELECT 1 FROM users WHERE username = %s', (username,))
-        return c.fetchone() is None
     finally:
         conn.close()
 
@@ -168,10 +73,9 @@ def create_or_get_pi_user(pi_uid: str, username: Optional[str] = None, wallet_ad
     """
     創建或獲取 Pi Network 用戶
     - 如果 pi_uid 已存在，返回現有用戶
-    - 如果 username 被其他用戶使用，拋出錯誤
+    - 如果 username 被其他用戶使用，自動加隨機後綴
     - 否則創建新用戶
     """
-    # Fallback: use pi_uid prefix if username is not provided
     if not username:
         username = f"pi_{pi_uid[:8]}"
     conn = get_connection()
@@ -207,16 +111,12 @@ def create_or_get_pi_user(pi_uid: str, username: Optional[str] = None, wallet_ad
         c.execute('SELECT user_id, auth_method FROM users WHERE username = %s', (username,))
         existing = c.fetchone()
         if existing:
-            # 如果用戶名衝突，自動加上隨機後綴（使用8位避免極端衝突）
             original_username = username
-            # 使用 UUID 的前8位作為後綴，降低衝突機率
             suffix = str(uuid.uuid4()).replace('-', '')[:8]
             username = f"{original_username}_{suffix}"
 
-            # 理論上8位 UUID 衝突機率極低，但仍然檢查
             c.execute('SELECT 1 FROM users WHERE username = %s', (username,))
             if c.fetchone():
-                # 極端情況：使用完整 UUID 確保唯一
                 username = f"{original_username}_{str(uuid.uuid4())}"
 
         # 創建新 Pi 用戶
@@ -263,58 +163,13 @@ def get_user_by_pi_uid(pi_uid: str) -> Optional[Dict]:
         conn.close()
 
 
-def link_pi_wallet(user_id: str, pi_uid: str, pi_username: str) -> Dict:
-    """
-    將 Pi 錢包綁定到現有帳密用戶
-    - 檢查該 pi_uid 是否已被其他用戶使用
-    - 檢查該用戶是否已綁定其他錢包
-    """
-    conn = get_connection()
-    c = conn.cursor()
-    try:
-        # 檢查 pi_uid 是否已被使用
-        c.execute('SELECT user_id, username FROM users WHERE pi_uid = %s', (pi_uid,))
-        existing = c.fetchone()
-        if existing:
-            if existing[0] == user_id:
-                return {"success": True, "message": "錢包已綁定此帳號", "already_linked": True}
-            raise ValueError(f"此 Pi 錢包已綁定到其他帳號 ({existing[1]})")
-
-        # 檢查該用戶是否已有綁定錢包
-        c.execute('SELECT pi_uid FROM users WHERE user_id = %s', (user_id,))
-        row = c.fetchone()
-        if row and row[0]:
-            raise ValueError("此帳號已綁定其他 Pi 錢包")
-
-        # 綁定錢包
-        c.execute('''
-            UPDATE users
-            SET pi_uid = %s, pi_username = %s
-            WHERE user_id = %s
-        ''', (pi_uid, pi_username, user_id))
-        conn.commit()
-
-        if c.rowcount == 0:
-            raise ValueError("用戶不存在")
-
-        return {"success": True, "message": "Pi 錢包綁定成功", "already_linked": False}
-    except ValueError:
-        raise
-    except Exception as e:
-        print(f"[ERROR] link_pi_wallet failed: {e}")
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
-
-
 def get_user_wallet_status(user_id: str) -> Dict:
     """獲取用戶錢包綁定狀態"""
     conn = get_connection()
     c = conn.cursor()
     try:
         c.execute('''
-            SELECT auth_method, pi_uid, pi_username, pi_wallet_address
+            SELECT auth_method, pi_uid, pi_username
             FROM users WHERE user_id = %s
         ''', (user_id,))
         row = c.fetchone()
@@ -326,7 +181,6 @@ def get_user_wallet_status(user_id: str) -> Dict:
             "auth_method": row[0],
             "pi_uid": row[1],
             "pi_username": row[2],
-            "pi_wallet_address": row[3]
         }
     finally:
         conn.close()
@@ -509,98 +363,5 @@ def upgrade_to_pro(user_id: str, months: int = 1, tx_hash: Optional[str] = None)
         print(f"Upgrade to premium error: {e}")
         conn.rollback()
         return False
-    finally:
-        conn.close()
-
-
-
-
-
-# ============================================================================
-# 登入嘗試（防暴力破解）
-# ============================================================================
-
-MAX_LOGIN_ATTEMPTS = 5
-LOCKOUT_HOURS = 24
-
-
-def record_login_attempt(username: str, success: bool, ip_address: Optional[str] = None):
-    """記錄登入嘗試"""
-    conn = get_connection()
-    c = conn.cursor()
-    try:
-        c.execute('''
-            INSERT INTO login_attempts (username, ip_address, attempt_time, success)
-            VALUES (%s, %s, NOW(), %s)
-        ''', (username, ip_address, 1 if success else 0))
-        conn.commit()
-
-        if success:
-            c.execute('''
-                DELETE FROM login_attempts
-                WHERE username = %s AND success = 0
-            ''', (username,))
-            conn.commit()
-    finally:
-        conn.close()
-
-
-def get_failed_attempts(username: str, hours: int = LOCKOUT_HOURS) -> int:
-    """獲取指定時間內的失敗登入次數"""
-    conn = get_connection()
-    c = conn.cursor()
-    try:
-        # SQL injection fix: Use parameterized query for INTERVAL
-        c.execute('''
-            SELECT COUNT(*) FROM login_attempts
-            WHERE username = %s
-              AND success = 0
-              AND attempt_time > NOW() - INTERVAL %s
-        ''', (username, f"{hours} hours"))
-        return c.fetchone()[0]
-    finally:
-        conn.close()
-
-
-def is_account_locked(username: str) -> tuple:
-    """
-    檢查帳號是否被鎖定
-    返回: (is_locked: bool, remaining_minutes: int)
-    """
-    conn = get_connection()
-    c = conn.cursor()
-    try:
-        failed_count = get_failed_attempts(username, LOCKOUT_HOURS)
-
-        if failed_count >= MAX_LOGIN_ATTEMPTS:
-            c.execute('''
-                SELECT attempt_time FROM login_attempts
-                WHERE username = %s AND success = 0
-                ORDER BY attempt_time DESC
-                LIMIT 1
-            ''', (username,))
-            row = c.fetchone()
-            if row:
-                latest_attempt = row[0]
-                if isinstance(latest_attempt, str):
-                    latest_attempt = datetime.strptime(latest_attempt, '%Y-%m-%d %H:%M:%S')
-                unlock_time = latest_attempt + timedelta(hours=LOCKOUT_HOURS)
-                now = datetime.utcnow()
-                if now < unlock_time:
-                    remaining = (unlock_time - now).total_seconds() / 60
-                    return (True, int(remaining))
-
-        return (False, 0)
-    finally:
-        conn.close()
-
-
-def clear_login_attempts(username: str):
-    """清除用戶的登入嘗試記錄"""
-    conn = get_connection()
-    c = conn.cursor()
-    try:
-        c.execute('DELETE FROM login_attempts WHERE username = %s', (username,))
-        conn.commit()
     finally:
         conn.close()

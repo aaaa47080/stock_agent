@@ -1362,9 +1362,9 @@ const ForumApp = {
                 statusText.classList.add('text-textMuted');
 
                 actionArea.innerHTML = `
-                    <button onclick="handleLinkWallet()" class="bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-xl flex items-center gap-2 transition text-sm font-bold border border-primary/20">
-                        <i data-lucide="link" class="w-4 h-4"></i>
-                        綁定 Pi 錢包
+                    <button onclick="handlePiLogin()" class="bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-xl flex items-center gap-2 transition text-sm font-bold border border-primary/20">
+                        <i data-lucide="log-in" class="w-4 h-4"></i>
+                        登入 Pi 帳號
                     </button>
                 `;
             }

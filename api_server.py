@@ -494,14 +494,12 @@ class CachedStaticFiles(StaticFiles):
     
     def file_response(self, *args, **kwargs):
         response = super().file_response(*args, **kwargs)
-        # 設置緩存 1 天 (86400 秒) -> 改為 0 (No Cache) 以便調試
-        # response.headers["Cache-Control"] = "public, max-age=86400"
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         return response
 
 if os.path.exists("web"):
     app.mount("/static", CachedStaticFiles(directory="web"), name="static")
-    logger.info("✅ Static files mounted with caching (1 day)")
+    logger.info("✅ Static files mounted (no-cache)")
 
 if __name__ == "__main__":
     logger.info("🚀 Pi Crypto Insight API Server 啟動中...")
