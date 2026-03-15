@@ -28,6 +28,7 @@ import threading
 from typing import Any, Dict, Optional, List
 from .connection import get_connection
 from core.config import TEST_MODE
+from core.redis_url import resolve_redis_url
 
 # ============================================================================
 # Redis 支持（可選依賴）
@@ -92,15 +93,15 @@ class ConfigCacheManager:
             print("[ConfigCache] Redis 模組未安裝，使用純記憶體快取")
             return
 
-        redis_url = os.getenv("REDIS_URL")
+        redis_url, source = resolve_redis_url()
         if not redis_url:
-            print("[ConfigCache] REDIS_URL 未設置，使用純記憶體快取")
+            print("[ConfigCache] REDIS_URL/REDIS_HOST 未設置，使用純記憶體快取")
             return
 
         try:
             self._redis_client = redis.from_url(redis_url, decode_responses=True)
             self._redis_client.ping()
-            print(f"[ConfigCache] Redis 連接成功: {redis_url}")
+            print(f"[ConfigCache] Redis 連接成功 ({source}): {redis_url}")
 
             # 啟動 Pub/Sub 監聽線程
             self._start_pubsub_listener()

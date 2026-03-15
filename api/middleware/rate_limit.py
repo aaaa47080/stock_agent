@@ -5,16 +5,19 @@ Implements per-IP and per-user rate limiting to prevent API abuse and DDoS attac
 
 Stage 2 Security: Added persistent rate limiting that survives server restarts.
 """
-import os
 import json
 import time
 from pathlib import Path
+import logging
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from typing import Optional
+from core.redis_url import resolve_redis_url
+
+logger = logging.getLogger(__name__)
 
 def get_user_identifier(request: Request) -> str:
     """
@@ -34,8 +37,14 @@ def get_user_identifier(request: Request) -> str:
 
 
 # Initialize rate limiter
-# Use environment variable REDIS_URL for distributed systems, fallback to in-memory storage
-REDIS_URL = os.getenv("REDIS_URL", "memory://")
+# Prefer managed Redis from REDIS_URL/REDIS_HOST; fallback to in-memory only when missing.
+_resolved_redis_url, _redis_source = resolve_redis_url()
+if _resolved_redis_url:
+    REDIS_URL = _resolved_redis_url
+    logger.info("Rate limiter storage configured via %s", _redis_source)
+else:
+    REDIS_URL = "memory://"
+    logger.warning("REDIS_URL/REDIS_HOST not set, rate limiter fallback to memory://")
 
 limiter = Limiter(
     key_func=get_user_identifier,
