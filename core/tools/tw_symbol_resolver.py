@@ -10,9 +10,12 @@ Data sources:
 Cache: in-memory, 24h TTL
 """
 import httpx
+import logging
 from datetime import datetime, timedelta
 from typing import Optional
 from rapidfuzz import process, fuzz
+
+logger = logging.getLogger(__name__)
 
 
 class TWSymbolResolver:
@@ -95,7 +98,7 @@ class TWSymbolResolver:
                                 "ticker": f"{code}{suffix}",
                             })
             except Exception as e:
-                print(f"[TWSymbolResolver] fetch error {url}: {e}")
+                logger.warning(f"[TWSymbolResolver] fetch error {url}: {e}")
 
         if stocks:
             self._cache = stocks
