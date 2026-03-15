@@ -275,14 +275,12 @@ fetch('/api/config')
             if (devArea) devArea.style.display = 'block';
 
             // 隱藏 Pi 錢包區域（測試模式不需要 Pi Browser）
-            const piArea = document.getElementById('pi-login-area');
-            if (piArea) piArea.style.display = 'none';
 
             // 更新副標題文字
             const subtitle = document.querySelector(
                 '#login-modal p[data-i18n="login.welcomeSubtitle"]'
             );
-            if (subtitle) subtitle.textContent = 'Test mode enabled - click below to login';
+            if (subtitle) subtitle.textContent = 'Connect your wallet to continue, or use Dev Login in test mode';
         }
     })
     .catch(() => {});
