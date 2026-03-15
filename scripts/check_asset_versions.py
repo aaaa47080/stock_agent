@@ -13,7 +13,7 @@ WEB_DIR = ROOT / "web"
 # Only enforce versions for high-impact shared assets that are reused across pages.
 EXPECTED_VERSIONS = {
     "/static/styles.css": "4",
-    "/static/js/pi-auth.js": "2",
+    "/static/js/pi-auth.js": "3",
     "/static/js/app.js": "54",
     "/static/js/auth.js": "57",
     "/static/js/spa.js": "6",

@@ -243,7 +243,8 @@ const AuthManager = {
             // 重新調用 Pi SDK 認證
             // 注意：如果用戶已經授權過，這不會顯示權限對話框
             const auth = await Pi.authenticate(
-                ['username', 'payments', 'wallet_address'],
+                // Follow official SDK guidance: request only the minimum scope needed.
+                ['username'],
                 (payment) => {
                     DebugLog.warn('刷新時發現未完成的支付', payment);
                 }
@@ -526,7 +527,8 @@ const AuthManager = {
             const AUTH_TIMEOUT = 60000;
 
             const authPromise = Pi.authenticate(
-                ['username', 'payments', 'wallet_address'],
+                // Login flow should request minimal scope only.
+                ['username'],
                 (payment) => {
                     DebugLog.warn('發現未完成的支付', payment);
                     fetch('/api/user/payment/complete', {
@@ -939,7 +941,8 @@ async function linkPiWallet() {
         // 使用 Promise.race 實現超時
         // Pi SDK 會顯示一個全屏的權限請求對話框
         const authPromise = Pi.authenticate(
-            ['username', 'payments', 'wallet_address'],
+            // Wallet binding/payment capability: request username + payments.
+            ['username', 'payments'],
             (payment) => {
                 console.warn('Incomplete payment found during wallet link:', payment);
             }

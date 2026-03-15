@@ -16,11 +16,6 @@ function isSafePiSdkContext() {
         : window.location.protocol === 'https:';
 }
 
-function hasPiBrowserUserAgent() {
-    const ua = (navigator.userAgent || '').toLowerCase();
-    return ua.includes('pibrowser') || ua.includes('pi browser') || ua.includes('minepi');
-}
-
 function showPiBrowserRequiredModal() {
     const modal = document.getElementById('login-modal');
     const loginBtn = document.getElementById('pi-login-btn');
@@ -72,6 +67,8 @@ window.safePiLogin = async function () {
 
     const btn = document.getElementById('pi-login-btn');
     const originalText = btn ? btn.innerHTML : '';
+    const LOGIN_WATCHDOG_MS = 70000;
+    let watchdogId = null;
 
     try {
         window._piLoginInProgress = true;
@@ -85,14 +82,32 @@ window.safePiLogin = async function () {
         }
 
         if (typeof handlePiLogin === 'function') {
-            return await handlePiLogin();
+            const loginPromise = handlePiLogin();
+            const watchdogPromise = new Promise((_, reject) => {
+                watchdogId = setTimeout(() => {
+                    reject(new Error('Pi 登入逾時，請重試'));
+                }, LOGIN_WATCHDOG_MS);
+            });
+            return await Promise.race([loginPromise, watchdogPromise]);
         }
         // 如果 JS 尚未載入完成，等待後重試
         await new Promise((r) => setTimeout(r, 500));
         if (typeof handlePiLogin === 'function') {
-            return await handlePiLogin();
+            const loginPromise = handlePiLogin();
+            const watchdogPromise = new Promise((_, reject) => {
+                watchdogId = setTimeout(() => {
+                    reject(new Error('Pi 登入逾時，請重試'));
+                }, LOGIN_WATCHDOG_MS);
+            });
+            return await Promise.race([loginPromise, watchdogPromise]);
+        }
+    } catch (error) {
+        console.error('[Pi Login] safePiLogin failed:', error);
+        if (typeof showToast === 'function') {
+            showToast(error?.message || 'Pi 登入失敗，請稍後重試', 'error');
         }
     } finally {
+        if (watchdogId) clearTimeout(watchdogId);
         window._piLoginInProgress = false;
         // 恢復按鈕狀態
         if (btn) {
@@ -245,45 +260,11 @@ window.safePiLogin = async function () {
             return;
         }
 
-        // 階段二：嘗試使用 nativeFeaturesList 做額外驗證（可選）
-        // 若 UA 與 native bridge 都無法證明是 Pi Browser，維持 gate 鎖定
-        const hasPiUA = hasPiBrowserUserAgent();
-        let nativeVerified = false;
-
         try {
             await Pi.init({ version: '2.0', sandbox: false });
         } catch (initError) {
             console.warn('⚠️ Pi SDK init failed:', initError.message);
             lockPiBrowserGate('pi_init_failed');
-            return;
-        }
-
-        if (typeof window.Pi.nativeFeaturesList === 'function') {
-            // 有 nativeFeaturesList，做額外驗證
-            try {
-                const features = await Promise.race([
-                    Pi.nativeFeaturesList(),
-                    new Promise((_, reject) =>
-                        setTimeout(() => reject(new Error('TIMEOUT')), 1500)
-                    ),
-                ]);
-                nativeVerified = true;
-                console.log('✅ Pi Browser verified (nativeFeaturesList), features:', features);
-            } catch (e) {
-                console.warn(
-                    '⚠️ nativeFeaturesList failed:',
-                    e.message
-                );
-            }
-        } else {
-            console.log('ℹ️ nativeFeaturesList unavailable');
-        }
-
-        if (!hasPiUA && !nativeVerified) {
-            console.warn(
-                '⚠️ Pi SDK detected but UA/native verification failed. Keep Pi Browser gate locked.'
-            );
-            lockPiBrowserGate('ua_native_verification_failed');
             return;
         }
 
