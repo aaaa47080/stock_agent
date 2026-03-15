@@ -95,7 +95,7 @@ def get_user_activity_logs(db, user_id: str, activity_type: str = None,
         result = []
         for r in rows:
             created_at = r[7]
-            if created_at and not isinstance(created_at, str):
+            if created_at:
                 created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
 
             result.append({

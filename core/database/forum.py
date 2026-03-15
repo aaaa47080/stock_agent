@@ -248,7 +248,7 @@ def get_posts(board_id: Optional[int] = None, category: Optional[str] = None, ta
         result = []
         for r in rows:
             created_at = r[12]
-            if created_at and not isinstance(created_at, str):
+            if created_at:
                 created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
             result.append({
                 "id": r[0],
@@ -299,9 +299,9 @@ def get_post_by_id(post_id: int, increment_view: bool = True, viewer_user_id: Op
             tags = json.loads(row[6]) if row[6] else []
             created_at = row[15]
             updated_at = row[16]
-            if created_at and not isinstance(created_at, str):
+            if created_at:
                 created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
-            if updated_at and not isinstance(updated_at, str):
+            if updated_at:
                 updated_at = updated_at.strftime('%Y-%m-%d %H:%M:%S')
 
             post_data = {
@@ -465,7 +465,7 @@ def get_user_posts(user_id: str, limit: int = 20, offset: int = 0) -> List[Dict]
         result = []
         for r in rows:
             created_at = r[11]
-            if created_at and not isinstance(created_at, str):
+            if created_at:
                 created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
             result.append({
                 "id": r[0],
@@ -614,7 +614,7 @@ def get_comments(post_id: int, include_hidden: bool = False) -> List[Dict]:
         result = []
         for r in rows:
             created_at = r[7]
-            if created_at and not isinstance(created_at, str):
+            if created_at:
                 created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
             result.append({
                 "id": r[0],
@@ -724,7 +724,7 @@ def get_tips_sent(user_id: str, limit: int = 50) -> List[Dict]:
         result = []
         for r in rows:
             created_at = r[5]
-            if created_at and not isinstance(created_at, str):
+            if created_at:
                 created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
             result.append({
                 "id": r[0],
@@ -761,7 +761,7 @@ def get_tips_received(user_id: str, limit: int = 50) -> List[Dict]:
         result = []
         for r in rows:
             created_at = r[5]
-            if created_at and not isinstance(created_at, str):
+            if created_at:
                 created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
             result.append({
                 "id": r[0],
@@ -806,7 +806,7 @@ def get_trending_tags(limit: int = 10) -> List[Dict]:
     # Format datetime fields
     for r in results:
         last_used_at = r.get("last_used_at")
-        if last_used_at and not isinstance(last_used_at, str):
+        if last_used_at:
             r["last_used_at"] = last_used_at.strftime('%Y-%m-%d %H:%M:%S')
     return results
 
@@ -897,7 +897,7 @@ def get_user_payment_history(user_id: str, limit: int = 50) -> List[Dict]:
     # Format datetime fields
     for r in results:
         created_at = r.get("created_at")
-        if created_at and not isinstance(created_at, str):
+        if created_at:
             r["created_at"] = created_at.strftime('%Y-%m-%d %H:%M:%S')
         # Rename 'id' to 'ref_id' for clarity
         r["ref_id"] = r.pop("id")

@@ -225,7 +225,7 @@ def get_scam_reports(
         results = []
         for r in rows:
             created_at = r[10]
-            if created_at and not isinstance(created_at, str):
+            if created_at:
                 created_at = created_at.isoformat()
 
             # 截斷描述

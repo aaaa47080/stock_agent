@@ -60,7 +60,7 @@ def get_analysis_reports(user_id: str, limit: int = 20) -> List[Dict]:
     result = []
     for row in rows:
         created_at = row.get("created_at")
-        if created_at and not isinstance(created_at, str):
+        if created_at:
             created_at = created_at.strftime("%Y-%m-%d %H:%M:%S")
         metadata = row.get("metadata")
         if isinstance(metadata, str):
@@ -89,7 +89,7 @@ def get_analysis_report_by_id(report_id: int) -> Optional[Dict]:
     if not row:
         return None
     created_at = row.get("created_at")
-    if created_at and not isinstance(created_at, str):
+    if created_at:
         created_at = created_at.strftime("%Y-%m-%d %H:%M:%S")
     metadata = row.get("metadata")
     if isinstance(metadata, str):

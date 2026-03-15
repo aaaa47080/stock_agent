@@ -122,7 +122,7 @@ def get_user_violation_points(db, user_id: str) -> Dict:
             }
 
         last_violation_at = row[3]
-        if last_violation_at and not isinstance(last_violation_at, str):
+        if last_violation_at:
             last_violation_at = last_violation_at.strftime('%Y-%m-%d %H:%M:%S')
 
         return {
@@ -166,9 +166,9 @@ def get_user_violations(db, user_id: str, limit: int = 20) -> List[Dict]:
         for r in rows:
             created_at = r[7]
             suspended_until = r[6]
-            if created_at and not isinstance(created_at, str):
+            if created_at:
                 created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
-            if suspended_until and not isinstance(suspended_until, str):
+            if suspended_until:
                 suspended_until = suspended_until.strftime('%Y-%m-%d %H:%M:%S')
 
             result.append({
@@ -280,7 +280,7 @@ def check_user_suspension(db, user_id: str) -> Dict:
             return {"is_suspended": False, "action": None, "suspended_until": None}
 
         suspended_until = row[1]
-        if suspended_until and not isinstance(suspended_until, str):
+        if suspended_until:
             suspended_until = suspended_until.strftime('%Y-%m-%d %H:%M:%S')
 
         return {

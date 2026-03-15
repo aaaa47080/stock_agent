@@ -130,9 +130,9 @@ def get_pending_reports(db, limit: int = 20, offset: int = 0,
         for r in rows:
             created_at = r[10]
             updated_at = r[11]
-            if created_at and not isinstance(created_at, str):
+            if created_at:
                 created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
-            if updated_at and not isinstance(updated_at, str):
+            if updated_at:
                 updated_at = updated_at.strftime('%Y-%m-%d %H:%M:%S')
 
             result.append({
@@ -188,9 +188,9 @@ def get_report_by_id(db, report_id: int) -> Optional[Dict]:
 
         created_at = row[10]
         updated_at = row[11]
-        if created_at and not isinstance(created_at, str):
+        if created_at:
             created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
-        if updated_at and not isinstance(updated_at, str):
+        if updated_at:
             updated_at = updated_at.strftime('%Y-%m-%d %H:%M:%S')
 
         return {
@@ -251,7 +251,7 @@ def get_user_reports(db, user_id: str, status: str = None, limit: int = 20) -> L
         result = []
         for r in rows:
             created_at = r[9]
-            if created_at and not isinstance(created_at, str):
+            if created_at:
                 created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
 
             result.append({

@@ -216,11 +216,7 @@ def get_user_membership(user_id: str) -> Dict:
             # 檢查是否過期（只檢查，不自動更新）
             if is_premium and expires_at:
                 try:
-                    # PostgreSQL 返回 datetime 對象
-                    if isinstance(expires_at, str):
-                        expire_dt = datetime.strptime(expires_at, '%Y-%m-%d %H:%M:%S')
-                    else:
-                        expire_dt = expires_at
+                    expire_dt = expires_at
 
                     if expire_dt < datetime.utcnow():
                         is_expired = True
@@ -229,7 +225,7 @@ def get_user_membership(user_id: str) -> Dict:
                     is_expired = True
 
             # 轉換 expires_at 為字符串
-            if expires_at and not isinstance(expires_at, str):
+            if expires_at:
                 expires_at = expires_at.strftime('%Y-%m-%d %H:%M:%S')
 
             is_premium = is_premium and not is_expired
@@ -291,11 +287,7 @@ def upgrade_to_pro(user_id: str, months: int = 1, tx_hash: Optional[str] = None)
         tier, expires_at = row
         if _normalize_membership_tier(tier) == 'premium' and expires_at:
             try:
-                if isinstance(expires_at, str):
-                    current_expires = datetime.strptime(expires_at, '%Y-%m-%d %H:%M:%S')
-                else:
-                    current_expires = expires_at
-                if current_expires > datetime.utcnow():
+                if expires_at > datetime.utcnow():
                     is_active_pro = True
             except (ValueError, TypeError):
                 pass

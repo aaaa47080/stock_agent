@@ -39,7 +39,7 @@ def search_users(query: str, limit: int = 20, exclude_user_id: Optional[str] = N
         result = []
         for r in rows:
             created_at = r[4]
-            if created_at and not isinstance(created_at, str):
+            if created_at:
                 created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
             result.append({
                 "user_id": r[0],
@@ -73,7 +73,7 @@ def get_public_user_profile(user_id: str, viewer_user_id: Optional[str] = None) 
             return None
 
         created_at = row[4]
-        if created_at and not isinstance(created_at, str):
+        if created_at:
             created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
 
         profile = {
@@ -353,7 +353,7 @@ def get_blocked_users(user_id: str) -> List[Dict]:
         result = []
         for r in rows:
             blocked_at = r[3]
-            if blocked_at and not isinstance(blocked_at, str):
+            if blocked_at:
                 blocked_at = blocked_at.strftime('%Y-%m-%d %H:%M:%S')
             result.append({
                 "user_id": r[0],
@@ -397,9 +397,9 @@ def get_friends_list(user_id: str, limit: int = 50, offset: int = 0) -> List[Dic
         for r in rows:
             friends_since = r[4]
             last_active = r[5]
-            if friends_since and not isinstance(friends_since, str):
+            if friends_since:
                 friends_since = friends_since.strftime('%Y-%m-%d %H:%M:%S')
-            if last_active and not isinstance(last_active, str):
+            if last_active:
                 last_active = last_active.strftime('%Y-%m-%d %H:%M:%S')
             result.append({
                 "user_id": r[0],
@@ -432,7 +432,7 @@ def get_pending_requests_received(user_id: str) -> List[Dict]:
         result = []
         for r in rows:
             requested_at = r[5]
-            if requested_at and not isinstance(requested_at, str):
+            if requested_at:
                 requested_at = requested_at.strftime('%Y-%m-%d %H:%M:%S')
             result.append({
                 "user_id": r[0],
@@ -465,7 +465,7 @@ def get_pending_requests_sent(user_id: str) -> List[Dict]:
         result = []
         for r in rows:
             sent_at = r[5]
-            if sent_at and not isinstance(sent_at, str):
+            if sent_at:
                 sent_at = sent_at.strftime('%Y-%m-%d %H:%M:%S')
             result.append({
                 "user_id": r[0],
@@ -495,9 +495,9 @@ def get_friendship_status(user_id: str, other_user_id: str) -> Optional[Dict]:
         if row:
             created_at = row[4]
             updated_at = row[5]
-            if created_at and not isinstance(created_at, str):
+            if created_at:
                 created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
-            if updated_at and not isinstance(updated_at, str):
+            if updated_at:
                 updated_at = updated_at.strftime('%Y-%m-%d %H:%M:%S')
             return {
                 "id": row[0],
@@ -599,9 +599,9 @@ def get_bulk_friendship_status(user_id: str, other_user_ids: list) -> dict:
             other = uid2 if uid1 == user_id else uid1
             created_at = row[4]
             updated_at = row[5]
-            if created_at and not isinstance(created_at, str):
+            if created_at:
                 created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
-            if updated_at and not isinstance(updated_at, str):
+            if updated_at:
                 updated_at = updated_at.strftime('%Y-%m-%d %H:%M:%S')
             result[other] = {
                 "id": row[0],

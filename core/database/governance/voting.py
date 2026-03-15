@@ -141,7 +141,7 @@ def get_report_votes(db, report_id: int) -> List[Dict]:
         result = []
         for r in rows:
             created_at = r[4]
-            if created_at and not isinstance(created_at, str):
+            if created_at:
                 created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
 
             result.append({

@@ -70,9 +70,9 @@ def get_sessions(user_id: str = "local_user", limit: int = 20) -> List[Dict]:
         for row in rows:
             created_at = row[2]
             updated_at = row[3]
-            if created_at and not isinstance(created_at, str):
+            if created_at:
                 created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
-            if updated_at and not isinstance(updated_at, str):
+            if updated_at:
                 updated_at = updated_at.strftime('%Y-%m-%d %H:%M:%S')
             sessions.append({
                 "id": row[0],
@@ -186,7 +186,7 @@ def get_chat_history(
         for row in rows:
             metadata = json.loads(row[2]) if row[2] else None
             timestamp = row[3]
-            if timestamp and not isinstance(timestamp, str):
+            if timestamp:
                 timestamp = timestamp.strftime('%Y-%m-%d %H:%M:%S')
             history.append({
                 "role": row[0],
