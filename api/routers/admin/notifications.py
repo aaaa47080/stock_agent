@@ -18,14 +18,16 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Admin - Notifications"])
 
 
+async def run_sync(fn, *args):
+    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
+
+
 @router.post("/notifications/broadcast")
 async def broadcast_notification(
     request: BroadcastRequest,
     admin_user: dict = Depends(require_admin)
 ):
     """發送廣播通知給所有活躍用戶"""
-    loop = asyncio.get_running_loop()
-
     # 1. 查所有活躍用戶
     def _get_active_user_ids():
         conn = get_connection()
@@ -36,7 +38,7 @@ async def broadcast_notification(
         finally:
             conn.close()
 
-    user_ids = await loop.run_in_executor(None, _get_active_user_ids)
+    user_ids = await run_sync(_get_active_user_ids)
 
     if not user_ids:
         return {"success": True, "sent_count": 0, "online_count": 0}
@@ -64,7 +66,7 @@ async def broadcast_notification(
         finally:
             conn.close()
 
-    await loop.run_in_executor(None, _create_notifications_batch)
+    await run_sync(_create_notifications_batch)
 
     # 3. WebSocket push 在線用戶
     online_count = 0
@@ -96,7 +98,7 @@ async def broadcast_notification(
         finally:
             conn.close()
 
-    await loop.run_in_executor(None, _save_broadcast_record)
+    await run_sync(_save_broadcast_record)
 
     # 5. 審計紀錄
     def _write_audit():
@@ -115,7 +117,7 @@ async def broadcast_notification(
         finally:
             conn.close()
 
-    await loop.run_in_executor(None, _write_audit)
+    await run_sync(_write_audit)
 
     return {
         "success": True,
@@ -131,7 +133,6 @@ async def get_broadcast_history(
     admin_user: dict = Depends(require_admin)
 ):
     """獲取廣播歷史紀錄"""
-    loop = asyncio.get_running_loop()
     offset = (page - 1) * limit
 
     def _query():
@@ -162,5 +163,5 @@ async def get_broadcast_history(
         finally:
             conn.close()
 
-    result = await loop.run_in_executor(None, _query)
+    result = await run_sync(_query)
     return {"success": True, **result}

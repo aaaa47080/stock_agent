@@ -2,7 +2,6 @@
 Premium 會員相關 API
 """
 import asyncio
-from functools import partial
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Depends
@@ -18,11 +17,17 @@ PLAN_MONTHS = {
     "premium_yearly": 12,
 }
 
+
+async def run_sync(fn, *args):
+    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
+
+
 class UpgradeRequest(BaseModel):
     user_id: str
     plan: str = "premium_monthly"  # premium_monthly, premium_yearly
     tx_hash: Optional[str] = None  # Pi 支付交易哈希
     months: int = 1  # 訂閱月數
+
 
 @router.get("/pricing")
 async def get_pricing_plans():
@@ -54,7 +59,6 @@ async def upgrade_to_premium(request: UpgradeRequest, current_user: dict = Depen
         tx_hash: Pi 支付交易哈希 (正式環境需要)
         months: 訂閱月數
     """
-    # 驗證用戶授權
     if current_user["user_id"] != request.user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
@@ -66,36 +70,26 @@ async def upgrade_to_premium(request: UpgradeRequest, current_user: dict = Depen
     months = PLAN_MONTHS[plan]
 
     try:
-        loop = asyncio.get_running_loop()
-        # 檢查當前會員狀態
-        current_membership = await loop.run_in_executor(None, get_user_membership, request.user_id)
-        
+        current_membership = await run_sync(get_user_membership, request.user_id)
+
         if not current_membership:
             raise HTTPException(status_code=404, detail="用戶不存在")
-        
-        # 如果已是 Premium 會員，檢查是否過期
-        if current_membership["is_premium"]:
-            # TODO: 可以選擇續訂或擴展時間
-            pass
-        
+
         # 在正式環境中，需要驗證 tx_hash
         # 這裡簡化處理，實際部署時需要驗證 Pi 支付
-        success = await loop.run_in_executor(
-            None,
-            partial(
-                upgrade_to_pro,
+        success = await run_sync(
+            lambda: upgrade_to_pro(
                 user_id=request.user_id,
                 months=months,
                 tx_hash=request.tx_hash
             )
         )
-        
+
         if not success:
             raise HTTPException(status_code=500, detail="升級失敗")
-        
-        # 返回新的會員狀態
-        new_membership = await loop.run_in_executor(None, get_user_membership, request.user_id)
-        
+
+        new_membership = await run_sync(get_user_membership, request.user_id)
+
         logger.info(f"用戶 {request.user_id} 成功升級到 Premium 會員，plan={plan}, months={months}")
 
         return {
@@ -105,7 +99,7 @@ async def upgrade_to_premium(request: UpgradeRequest, current_user: dict = Depen
             "months": months,
             "membership": new_membership
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -118,22 +112,20 @@ async def get_premium_status(user_id: str, current_user: dict = Depends(get_curr
     """
     獲取用戶 Premium 會員狀態
     """
-    # Verify user authorization
     if current_user["user_id"] != user_id:
         raise HTTPException(status_code=403, detail="Not authorized to view this membership status")
-    
+
     try:
-        loop = asyncio.get_running_loop()
-        membership = await loop.run_in_executor(None, get_user_membership, user_id)
-        
+        membership = await run_sync(get_user_membership, user_id)
+
         if not membership:
             raise HTTPException(status_code=404, detail="用戶不存在")
-        
+
         return {
             "success": True,
             "membership": membership
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:

@@ -4,7 +4,6 @@ Post, comment, and report management endpoints
 """
 import asyncio
 import logging
-from functools import partial
 from fastapi import APIRouter, Depends, Query, HTTPException
 from psycopg2 import sql
 
@@ -17,6 +16,10 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Admin - Forum"])
 
 
+async def run_sync(fn, *args):
+    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
+
+
 @router.get("/forum/posts")
 async def admin_list_posts(
     search: str = Query(None, max_length=200),
@@ -26,7 +29,6 @@ async def admin_list_posts(
     admin_user: dict = Depends(require_admin)
 ):
     """管理後台 - 列出論壇貼文（含隱藏貼文）"""
-    loop = asyncio.get_running_loop()
     offset = (page - 1) * limit
 
     def _query():
@@ -101,7 +103,7 @@ async def admin_list_posts(
         finally:
             conn.close()
 
-    result = await loop.run_in_executor(None, _query)
+    result = await run_sync(_query)
     return {"success": True, **result}
 
 
@@ -112,7 +114,6 @@ async def admin_toggle_post_visibility(
     admin_user: dict = Depends(require_admin)
 ):
     """隱藏/顯示貼文"""
-    loop = asyncio.get_running_loop()
     hidden_int = 1 if request.is_hidden else 0
 
     def _update():
@@ -141,7 +142,7 @@ async def admin_toggle_post_visibility(
         finally:
             conn.close()
 
-    result = await loop.run_in_executor(None, _update)
+    result = await run_sync(_update)
     if result is None:
         raise HTTPException(status_code=404, detail="Post not found")
     return {"success": True, **result}
@@ -154,7 +155,6 @@ async def admin_toggle_post_pin(
     admin_user: dict = Depends(require_admin)
 ):
     """置頂/取消置頂貼文"""
-    loop = asyncio.get_running_loop()
     pinned_int = 1 if request.is_pinned else 0
 
     def _update():
@@ -182,7 +182,7 @@ async def admin_toggle_post_pin(
         finally:
             conn.close()
 
-    result = await loop.run_in_executor(None, _update)
+    result = await run_sync(_update)
     if result is None:
         raise HTTPException(status_code=404, detail="Post not found")
     return {"success": True, **result}
@@ -195,7 +195,6 @@ async def admin_toggle_comment_visibility(
     admin_user: dict = Depends(require_admin)
 ):
     """隱藏/顯示留言"""
-    loop = asyncio.get_running_loop()
     hidden_int = 1 if request.is_hidden else 0
 
     def _update():
@@ -223,7 +222,7 @@ async def admin_toggle_comment_visibility(
         finally:
             conn.close()
 
-    result = await loop.run_in_executor(None, _update)
+    result = await run_sync(_update)
     if result is None:
         raise HTTPException(status_code=404, detail="Comment not found")
     return {"success": True, **result}
@@ -237,7 +236,6 @@ async def admin_list_reports(
     admin_user: dict = Depends(require_admin)
 ):
     """列出內容舉報"""
-    loop = asyncio.get_running_loop()
     offset = (page - 1) * limit
 
     def _query():
@@ -284,7 +282,7 @@ async def admin_list_reports(
         finally:
             conn.close()
 
-    result = await loop.run_in_executor(None, _query)
+    result = await run_sync(_query)
     return {"success": True, **result}
 
 
@@ -295,19 +293,17 @@ async def admin_resolve_report(
     admin_user: dict = Depends(require_admin)
 ):
     """處理舉報（批准=隱藏內容+違規記點，駁回=不處理）"""
-    loop = asyncio.get_running_loop()
-
     # 1. Get report details
-    report = await loop.run_in_executor(None, partial(get_report_by_id, None, report_id))
+    report = await run_sync(lambda: get_report_by_id(None, report_id))
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
     if report.get("review_status") != "pending":
         raise HTTPException(status_code=400, detail="Report already resolved")
 
     # 2. Finalize via governance system
-    _ = await loop.run_in_executor(
-        None, partial(finalize_report, None, report_id, request.decision,
-                      request.violation_level, admin_user["user_id"])
+    _ = await run_sync(
+        lambda: finalize_report(None, report_id, request.decision,
+                                request.violation_level, admin_user["user_id"])
     )
 
     # 3. If approved, auto-hide the reported content
@@ -336,7 +332,7 @@ async def admin_resolve_report(
             finally:
                 conn.close()
 
-        await loop.run_in_executor(None, _hide_content)
+        await run_sync(_hide_content)
 
     return {"success": True, "report_id": report_id, "decision": request.decision,
             "content_hidden": request.decision == "approved"}

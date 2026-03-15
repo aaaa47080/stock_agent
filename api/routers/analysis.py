@@ -2,7 +2,6 @@ import json
 import asyncio
 import uuid
 from typing import Optional
-from functools import partial
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
@@ -35,6 +34,11 @@ router = APIRouter()
 ANALYSIS_TIMEOUT_SECONDS = 180
 analysis_policy_resolver = AnalysisPolicyResolver()
 
+
+async def run_sync(fn, *args):
+    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
+
+
 # --- Session Management Endpoints ---
 
 @router.get("/api/chat/sessions")
@@ -46,12 +50,11 @@ async def get_user_sessions(user_id: Optional[str] = None, current_user: dict = 
 
     # Fix: Allow "local_user" in TEST_MODE even if it doesn't match current_user (test-user-001)
     is_test_mode_local = core_config.TEST_MODE and user_id == "local_user"
-    
+
     if current_user["user_id"] != user_id and not is_test_mode_local:
         raise HTTPException(status_code=403, detail="Not authorized")
-        
-    loop = asyncio.get_running_loop()
-    sessions = await loop.run_in_executor(None, partial(get_sessions, user_id=user_id))
+
+    sessions = await run_sync(lambda: get_sessions(user_id=user_id))
     return {"sessions": sessions}
 
 @router.post("/api/chat/sessions")
@@ -66,24 +69,21 @@ async def create_new_session(user_id: Optional[str] = None, current_user: dict =
 
     if current_user["user_id"] != user_id and not is_test_mode_local:
         raise HTTPException(status_code=403, detail="Not authorized")
-        
+
     new_id = str(uuid.uuid4())
-    loop = asyncio.get_running_loop()
-    await loop.run_in_executor(None, partial(create_session, new_id, title="New Chat", user_id=user_id))
+    await run_sync(lambda: create_session(new_id, title="New Chat", user_id=user_id))
     return {"session_id": new_id, "title": "New Chat"}
 
 @router.delete("/api/chat/sessions/{session_id}", dependencies=[Depends(get_current_user)])
 async def delete_user_session(session_id: str):
     """刪除特定對話"""
-    loop = asyncio.get_running_loop()
-    await loop.run_in_executor(None, delete_session, session_id)
+    await run_sync(delete_session, session_id)
     return {"status": "success", "message": f"Session {session_id} deleted"}
 
 @router.put("/api/chat/sessions/{session_id}/pin", dependencies=[Depends(get_current_user)])
 async def pin_user_session(session_id: str, is_pinned: bool = Query(..., description="Set to true to pin, false to unpin")):
     """切換對話置頂狀態"""
-    loop = asyncio.get_running_loop()
-    await loop.run_in_executor(None, partial(toggle_session_pin, session_id, is_pinned))
+    await run_sync(lambda: toggle_session_pin(session_id, is_pinned))
     return {"status": "success", "session_id": session_id, "is_pinned": is_pinned}
 
 @router.get("/api/chat/history")
@@ -99,11 +99,10 @@ async def get_history(
     - has_more=True 表示還有更舊的訊息可載入
     """
     LIMIT = 20
-    loop = asyncio.get_running_loop()
     # 多取一條用來偵測是否還有更多
-    history = await loop.run_in_executor(
-        None, partial(get_chat_history, session_id=session_id,
-                      limit=LIMIT + 1, before_timestamp=before_timestamp)
+    history = await run_sync(
+        lambda: get_chat_history(session_id=session_id,
+                                 limit=LIMIT + 1, before_timestamp=before_timestamp)
     )
     has_more = len(history) > LIMIT
     if has_more:
@@ -194,15 +193,10 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
             graph_input = Command(resume=body.resume_answer)
         else:
             # 新請求：儲存到 DB + 載入對話歷史（平行執行，節省一個 DB round trip）
-            loop = asyncio.get_running_loop()
             _, db_history_raw = await asyncio.gather(
-                loop.run_in_executor(
-                    None, partial(save_chat_message, "user", body.message,
-                                  session_id=body.session_id, user_id=current_user.get("user_id"))
-                ),
-                loop.run_in_executor(
-                    None, partial(get_chat_history, session_id=body.session_id, limit=20)
-                )
+                run_sync(lambda: save_chat_message("user", body.message,
+                                                   session_id=body.session_id, user_id=current_user.get("user_id"))),
+                run_sync(lambda: get_chat_history(session_id=body.session_id, limit=20))
             )
 
             # 載入 DB 歷史，格式化為純文字供 agent 使用
@@ -237,11 +231,10 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
 
         async def event_generator_v4():
             try:
-                loop = asyncio.get_running_loop()
                 progress_queue = asyncio.Queue()
 
                 def on_progress(event):
-                    loop.call_soon_threadsafe(progress_queue.put_nowait, event)
+                    asyncio.get_running_loop().call_soon_threadsafe(progress_queue.put_nowait, event)
 
                 manager.progress_callback = on_progress
 
@@ -294,11 +287,8 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
                         yield f"data: {json.dumps({'content': response[i:i+chunk_size]})}\n\n"
                         await asyncio.sleep(0.005)
 
-                    inner_loop = asyncio.get_running_loop()
-                    await inner_loop.run_in_executor(
-                        None, partial(save_chat_message, "assistant", response,
-                                      session_id=body.session_id, user_id=current_user.get("user_id"))
-                    )
+                    await run_sync(lambda: save_chat_message("assistant", response,
+                                                             session_id=body.session_id, user_id=current_user.get("user_id")))
 
                     yield f"data: {json.dumps({'type': 'response_metadata', 'data': response_metadata})}\n\n"
                     yield f"data: {json.dumps({'done': True})}\n\n"
@@ -326,7 +316,7 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
                     if not invoke_task.done():
                         logger.info(f"[V4] Generator exiting, ensuring task cancelled for session {body.session_id}")
                         invoke_task.cancel()
-                        # We don't await here to avoid delaying the generator exit, 
+                        # We don't await here to avoid delaying the generator exit,
                         # but the task will be cancelled in the background.
 
             except Exception as e:
@@ -344,8 +334,7 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
 @router.post("/api/chat/clear")
 async def clear_chat_history_endpoint(session_id: str = "default", current_user: dict = Depends(get_current_user)):
     """清除對話歷史"""
-    loop = asyncio.get_running_loop()
-    await loop.run_in_executor(None, db_clear_history, session_id)
+    await run_sync(db_clear_history, session_id)
 
     return {"status": "success", "message": "Chat history cleared"}
 
@@ -375,10 +364,7 @@ async def create_new_session(current_user: dict = Depends(get_current_user)):
 
     # 創建新會話
     new_session_id = str(uuid.uuid4())
-    loop = asyncio.get_running_loop()
-    await loop.run_in_executor(
-        None, partial(create_session, new_session_id, title="New Chat Session", user_id=user_id)
-    )
+    await run_sync(lambda: create_session(new_session_id, title="New Chat Session", user_id=user_id))
 
     return {
         "session_id": new_session_id,
@@ -428,17 +414,14 @@ async def run_backtest_api(request: BacktestRequest):
     驗證特定技術指標策略在過去的表現。
     """
     try:
-        loop = asyncio.get_running_loop()
-        
         # 簡單標準化 symbol (假設 OKX 或 Binance 格式)
         clean_symbol = request.symbol.upper().replace("USDT", "").replace("BUSD", "").replace("-", "")
         # 預設加上 -USDT 給 OKX data fetcher (如果它需要)
         target_symbol = f"{clean_symbol}-USDT"
-        
+
         logger.info(f"開始執行回測: {target_symbol} ({request.signal_type})")
-        
-        result = await loop.run_in_executor(
-            None, 
+
+        result = await run_sync(
             lambda: run_simple_backtest(
                 symbol=target_symbol,
                 signal_type=request.signal_type,
@@ -446,10 +429,10 @@ async def run_backtest_api(request: BacktestRequest):
                 limit=1000 # 固定回測過去 1000 根 K 線
             )
         )
-        
+
         if "error" in result:
              raise HTTPException(status_code=400, detail=result["error"])
-             
+
         return result
 
     except HTTPException:

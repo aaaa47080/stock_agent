@@ -6,7 +6,6 @@
 from fastapi import APIRouter, HTTPException, Query, Depends, Request
 from typing import Optional
 import asyncio
-from functools import partial
 
 from api.middleware.rate_limit import limiter
 
@@ -47,6 +46,11 @@ from api.utils import logger
 
 router = APIRouter(prefix="/api/governance", tags=["Community Governance"])
 
+
+async def run_sync(fn, *args):
+    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
+
+
 # ============================================================================
 # 檢舉管理 (Report Management)
 # ============================================================================
@@ -76,14 +80,11 @@ async def submit_report(
         user_id = current_user["user_id"]
 
         # Get user's daily limit
-        loop = asyncio.get_running_loop()
-        membership = await loop.run_in_executor(None, get_user_membership, user_id)
+        membership = await run_sync(get_user_membership, user_id)
         is_premium = membership.get("is_premium", False)
         daily_limit = PRO_DAILY_REPORT_LIMIT if is_premium else DEFAULT_DAILY_REPORT_LIMIT
-        result = await loop.run_in_executor(
-            None,
-            partial(
-                create_report,
+        result = await run_sync(
+            lambda: create_report(
                 None,
                 reporter_user_id=user_id,
                 content_type=report_data.content_type,
@@ -128,13 +129,10 @@ async def get_report_quota(
     """
     try:
         user_id = current_user["user_id"]
-        loop = asyncio.get_running_loop()
-        membership = await loop.run_in_executor(None, get_user_membership, user_id)
+        membership = await run_sync(get_user_membership, user_id)
         is_premium = membership.get("is_premium", False)
         daily_limit = PRO_DAILY_REPORT_LIMIT if is_premium else DEFAULT_DAILY_REPORT_LIMIT
-        used_today = await loop.run_in_executor(
-            None, partial(get_daily_report_usage, None, user_id)
-        )
+        used_today = await run_sync(lambda: get_daily_report_usage(None, user_id))
 
         return {
             "used": used_today,
@@ -163,14 +161,12 @@ async def list_pending_reports(
         user_id = current_user["user_id"]
 
         # Check premium membership
-        loop = asyncio.get_running_loop()
-        membership = await loop.run_in_executor(None, get_user_membership, user_id)
+        membership = await run_sync(get_user_membership, user_id)
         if not membership.get("is_premium", False):
             raise HTTPException(status_code=403, detail="此功能僅限 Premium 會員使用")
 
-        reports = await loop.run_in_executor(
-            None,
-            partial(get_pending_reports, None, limit=limit, offset=offset, exclude_user_id=user_id, viewer_user_id=user_id)
+        reports = await run_sync(
+            lambda: get_pending_reports(None, limit=limit, offset=offset, exclude_user_id=user_id, viewer_user_id=user_id)
         )
 
         return {
@@ -200,11 +196,10 @@ async def get_report_detail(
         user_id = current_user["user_id"]
 
         # Check premium membership for voting details
-        loop = asyncio.get_running_loop()
-        membership = await loop.run_in_executor(None, get_user_membership, user_id)
+        membership = await run_sync(get_user_membership, user_id)
         is_premium = membership.get("is_premium", False)
 
-        report = await loop.run_in_executor(None, partial(get_report_by_id, None, report_id))
+        report = await run_sync(lambda: get_report_by_id(None, report_id))
 
         if not report:
             raise HTTPException(status_code=404, detail="找不到該檢舉")
@@ -212,7 +207,7 @@ async def get_report_detail(
         # Get votes for premium members
         votes = None
         if is_premium:
-            votes = await loop.run_in_executor(None, partial(get_report_votes, None, report_id))
+            votes = await run_sync(lambda: get_report_votes(None, report_id))
 
         return {
             "success": True,
@@ -241,10 +236,8 @@ async def list_my_reports(
     try:
         user_id = current_user["user_id"]
 
-        loop = asyncio.get_running_loop()
-        reports = await loop.run_in_executor(
-            None,
-            partial(get_user_reports, None, user_id=user_id, status=status, limit=limit)
+        reports = await run_sync(
+            lambda: get_user_reports(None, user_id=user_id, status=status, limit=limit)
         )
 
         return {
@@ -286,15 +279,12 @@ async def vote_on_pending_report(
         user_id = current_user["user_id"]
 
         # Check premium membership
-        loop = asyncio.get_running_loop()
-        membership = await loop.run_in_executor(None, get_user_membership, user_id)
+        membership = await run_sync(get_user_membership, user_id)
         if not membership.get("is_premium", False):
             raise HTTPException(status_code=403, detail="投票功能僅限 Premium 會員使用")
 
-        result = await loop.run_in_executor(
-            None,
-            partial(
-                vote_on_report,
+        result = await run_sync(
+            lambda: vote_on_report(
                 None,
                 report_id=report_id,
                 reviewer_user_id=user_id,
@@ -318,7 +308,7 @@ async def vote_on_pending_report(
                 raise HTTPException(status_code=500, detail=f"投票失敗: {error}")
 
         # Check if consensus is reached after this vote
-        consensus = await loop.run_in_executor(None, partial(check_report_consensus, None, report_id))
+        consensus = await run_sync(lambda: check_report_consensus(None, report_id))
 
         response = {
             "success": True,
@@ -370,11 +360,8 @@ async def finalize_report_decision(
     try:
         user_id = current_user["user_id"]
 
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(
-            None,
-            partial(
-                finalize_report,
+        result = await run_sync(
+            lambda: finalize_report(
                 None,
                 report_id=report_id,
                 decision=request.decision,
@@ -441,9 +428,8 @@ async def get_my_violation_points(
     try:
         user_id = current_user["user_id"]
 
-        loop = asyncio.get_running_loop()
-        points_data = await loop.run_in_executor(None, partial(get_user_violation_points, None, user_id))
-        violations = await loop.run_in_executor(None, partial(get_user_violations, None, user_id, limit=10))
+        points_data = await run_sync(lambda: get_user_violation_points(None, user_id))
+        violations = await run_sync(lambda: get_user_violations(None, user_id, limit=10))
 
         # Calculate action threshold
         points = points_data.get("points", 0)
@@ -486,14 +472,13 @@ async def get_user_violations_public(
     try:
         # Only show own violations unless premium member
         requester_id = current_user["user_id"]
-        loop = asyncio.get_running_loop()
-        membership = await loop.run_in_executor(None, get_user_membership, requester_id)
+        membership = await run_sync(get_user_membership, requester_id)
         is_premium = membership.get("is_premium", False)
 
         if user_id != requester_id and not is_premium:
             raise HTTPException(status_code=403, detail="無權查看其他用戶的違規記錄")
-        points_data = await loop.run_in_executor(None, partial(get_user_violation_points, None, user_id))
-        violations = await loop.run_in_executor(None, partial(get_user_violations, None, user_id, limit=20))
+        points_data = await run_sync(lambda: get_user_violation_points(None, user_id))
+        violations = await run_sync(lambda: get_user_violations(None, user_id, limit=20))
 
         return {
             "success": True,
@@ -529,10 +514,8 @@ async def get_my_activity_logs(
     try:
         user_id = current_user["user_id"]
 
-        loop = asyncio.get_running_loop()
-        logs = await loop.run_in_executor(
-            None,
-            partial(get_user_activity_logs, None, user_id=user_id, activity_type=activity_type, limit=limit)
+        logs = await run_sync(
+            lambda: get_user_activity_logs(None, user_id=user_id, activity_type=activity_type, limit=limit)
         )
 
         return {
@@ -569,8 +552,7 @@ async def get_governance_statistics(
     - avg_approval_rate: 平均通過率
     """
     try:
-        loop = asyncio.get_running_loop()
-        stats = await loop.run_in_executor(None, partial(get_report_statistics, None, days))
+        stats = await run_sync(lambda: get_report_statistics(None, days))
 
         return {
             "success": True,
@@ -596,8 +578,7 @@ async def get_review_leaderboard(
     排行依據：聲望分數 > 準確率 > 審核數量
     """
     try:
-        loop = asyncio.get_running_loop()
-        reviewers = await loop.run_in_executor(None, partial(get_top_reviewers, None, limit))
+        reviewers = await run_sync(lambda: get_top_reviewers(None, limit))
 
         return {
             "success": True,
@@ -631,8 +612,7 @@ async def get_my_reputation(
     try:
         user_id = current_user["user_id"]
 
-        loop = asyncio.get_running_loop()
-        reputation = await loop.run_in_executor(None, partial(get_audit_reputation, None, user_id))
+        reputation = await run_sync(lambda: get_audit_reputation(None, user_id))
         vote_weight = calculate_vote_weight(reputation)
 
         return {

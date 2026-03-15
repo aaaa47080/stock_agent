@@ -4,7 +4,6 @@
 from fastapi import APIRouter, HTTPException, Query, Depends
 from typing import Optional
 import asyncio
-from functools import partial
 import logging
 
 from api.deps import get_current_user
@@ -23,6 +22,10 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/reports", tags=["Scam Tracker - Reports"])
 
 
+async def run_sync(fn, *args):
+    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
+
+
 @router.get("", response_model=dict)
 async def list_scam_reports(
     scam_type: Optional[str] = Query(None, description="詐騙類型篩選"),
@@ -37,11 +40,9 @@ async def list_scam_reports(
     公開端點，所有用戶可查看。
     """
     try:
-        loop = asyncio.get_running_loop()
-        reports = await loop.run_in_executor(
-            None,
-            partial(get_scam_reports, scam_type=scam_type, status=status,
-                   sort_by=sort_by, limit=limit, offset=offset)
+        reports = await run_sync(
+            lambda: get_scam_reports(scam_type=scam_type, status=status,
+                                     sort_by=sort_by, limit=limit, offset=offset)
         )
 
         return {
@@ -64,12 +65,7 @@ async def search_scam_wallet(
     公開端點，返回該錢包的舉報詳情（如果存在）。
     """
     try:
-        loop = asyncio.get_running_loop()
-        report = await loop.run_in_executor(
-            None,
-            search_wallet,
-            wallet_address
-        )
+        report = await run_sync(search_wallet, wallet_address)
 
         if report:
             return {
@@ -124,10 +120,8 @@ async def get_scam_report_detail(
     try:
         user_id = current_user.get("user_id") if current_user else None
 
-        loop = asyncio.get_running_loop()
-        report = await loop.run_in_executor(
-            None,
-            partial(get_scam_report_by_id, report_id, increment_view=True, viewer_user_id=user_id)
+        report = await run_sync(
+            lambda: get_scam_report_by_id(report_id, increment_view=True, viewer_user_id=user_id)
         )
 
         if not report:
@@ -158,18 +152,15 @@ async def create_new_scam_report(
         user_id = current_user.get("user_id")
 
         # 驗證用戶是否存在
-        loop = asyncio.get_running_loop()
-        user = await loop.run_in_executor(None, get_user_by_id, user_id)
+        user = await run_sync(get_user_by_id, user_id)
         if not user:
             raise HTTPException(
                 status_code=401,
                 detail="用戶不存在或憑證失效，請重新登入"
             )
 
-        result = await loop.run_in_executor(
-            None,
-            partial(
-                create_scam_report,
+        result = await run_sync(
+            lambda: create_scam_report(
                 scam_wallet_address=request.scam_wallet_address,
                 reporter_user_id=user_id,
                 reporter_wallet_address=request.reporter_wallet_address,

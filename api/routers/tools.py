@@ -4,7 +4,6 @@ Tools API Router
 Endpoints for listing tools and managing user tool preferences.
 """
 import asyncio
-from functools import partial
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from api.deps import get_current_user
@@ -15,25 +14,22 @@ from api.utils import logger
 router = APIRouter()
 
 
+async def run_sync(fn, *args):
+    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
+
+
 async def _list_tools_impl(current_user: dict) -> dict:
     """Return all tools with per-user enabled/locked status."""
     from core.database.tools import seed_tools_catalog
     user_tier = normalize_membership_tier(current_user.get("membership_tier", "free"))
     user_id = current_user.get("user_id")
 
-    loop = asyncio.get_running_loop()
-    tools = await loop.run_in_executor(
-        None,
-        partial(get_tools_for_frontend, user_tier, user_id),
-    )
+    tools = await run_sync(lambda: get_tools_for_frontend(user_tier, user_id))
     # Auto-seed if catalog is empty (first request after fresh DB)
     if not tools:
         try:
-            await loop.run_in_executor(None, seed_tools_catalog)
-            tools = await loop.run_in_executor(
-                None,
-                partial(get_tools_for_frontend, user_tier, user_id),
-            )
+            await run_sync(seed_tools_catalog)
+            tools = await run_sync(lambda: get_tools_for_frontend(user_tier, user_id))
         except Exception as e:
             logger.warning(f"[tools] auto-seed failed: {e}")
     return {"tools": tools, "user_tier": user_tier}
@@ -65,21 +61,14 @@ async def _set_tool_preference_impl(
         raise HTTPException(status_code=403, detail="Premium 會員才能自訂工具偏好")
 
     user_id = current_user.get("user_id")
-    loop = asyncio.get_running_loop()
-    tools = await loop.run_in_executor(
-        None,
-        partial(get_tools_for_frontend, user_tier, user_id),
-    )
+    tools = await run_sync(lambda: get_tools_for_frontend(user_tier, user_id))
     target_tool = next((tool for tool in tools if tool.get("tool_id") == tool_id), None)
     if target_tool is None:
         raise HTTPException(status_code=404, detail="Tool not found")
     if target_tool.get("locked"):
         raise HTTPException(status_code=403, detail="目前會員等級無法設定此工具")
 
-    await loop.run_in_executor(
-        None,
-        partial(update_user_tool_preference, user_id, tool_id, request.is_enabled),
-    )
+    await run_sync(lambda: update_user_tool_preference(user_id, tool_id, request.is_enabled))
 
     try:
         from core.agents.bootstrap import invalidate_manager_cache

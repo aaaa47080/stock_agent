@@ -3,6 +3,9 @@
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional
+import asyncio
+import logging
+import time
 
 from core.database import (
     get_board_by_slug,
@@ -16,18 +19,16 @@ from core.database import (
     get_prices,
 )
 from .models import CreatePostRequest, UpdatePostRequest
-import asyncio
-from functools import partial
-import logging
-import time
-
-# Import TEST_MODE for development/testing bypass
 from core.config import TEST_MODE, TEST_USER
 from api.deps import get_current_user
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/forum/posts", tags=["Forum - Posts"])
+
+
+async def run_sync(fn, *args):
+    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
 
 
 # 文章分類列表
@@ -51,19 +52,14 @@ async def list_posts(
     - tag: 標籤
     """
     try:
-        loop = asyncio.get_running_loop()
-        # 如果指定看板，先獲取看板 ID
         board_id = None
         if board:
-            board_info = await loop.run_in_executor(None, get_board_by_slug, board)
+            board_info = await run_sync(get_board_by_slug, board)
             if not board_info:
                 raise HTTPException(status_code=404, detail="看板不存在")
             board_id = board_info["id"]
 
-        posts = await loop.run_in_executor(
-            None,
-            partial(get_posts, board_id=board_id, category=category, tag=tag, limit=limit, offset=offset)
-        )
+        posts = await run_sync(lambda: get_posts(board_id=board_id, category=category, tag=tag, limit=limit, offset=offset))
         return {"success": True, "posts": posts, "count": len(posts)}
     except HTTPException:
         raise
@@ -84,8 +80,6 @@ async def create_new_post(request: CreatePostRequest, user_id: str = Query(..., 
         if current_user["user_id"] != user_id:
             raise HTTPException(status_code=403, detail="Not authorized to post as this user")
 
-        loop = asyncio.get_running_loop()
-
         # 驗證分類
         if request.category not in VALID_CATEGORIES:
             raise HTTPException(
@@ -94,17 +88,17 @@ async def create_new_post(request: CreatePostRequest, user_id: str = Query(..., 
             )
 
         # 驗證看板
-        board = await loop.run_in_executor(None, get_board_by_slug, request.board_slug)
+        board = await run_sync(get_board_by_slug, request.board_slug)
         if not board:
             raise HTTPException(status_code=404, detail="看板不存在")
         if not board["is_active"]:
             raise HTTPException(status_code=400, detail="此看板目前不開放發文")
 
         # 檢查會員狀態
-        membership = await loop.run_in_executor(None, get_user_membership, user_id)
+        membership = await run_sync(get_user_membership, user_id)
 
         # 檢查每日發文限制（在付款前先檢查，避免用戶付費後才發現無法發文）
-        limit_check = await loop.run_in_executor(None, check_daily_post_limit, user_id)
+        limit_check = await run_sync(check_daily_post_limit, user_id)
         if not limit_check["allowed"]:
             raise HTTPException(
                 status_code=429,
@@ -113,24 +107,22 @@ async def create_new_post(request: CreatePostRequest, user_id: str = Query(..., 
 
         # 免費會員需要付費 (測試模式下跳過)
         is_test_user = TEST_MODE and (user_id.startswith("test-user-") or user_id == TEST_USER.get("uid"))
-        
+
         if not membership["is_premium"] and not request.payment_tx_hash:
             if is_test_user:
                 # TEST_MODE: Mock payment for test users
                 request.payment_tx_hash = f"test_post_{int(time.time() * 1000)}"
                 logger.info(f"TEST_MODE: Bypassing payment requirement for user {user_id}")
             else:
-                prices = await loop.run_in_executor(None, get_prices)
+                prices = await run_sync(get_prices)
                 raise HTTPException(
                     status_code=402,
                     detail=f"免費會員發文需支付 {prices.get('create_post', 1)} Pi，請提供 payment_tx_hash"
                 )
 
         # 創建文章（跳過限制檢查，因為上面已經檢查過了）
-        result = await loop.run_in_executor(
-            None,
-            partial(
-                create_post,
+        result = await run_sync(
+            lambda: create_post(
                 board_id=board["id"],
                 user_id=user_id,
                 category=request.category,
@@ -169,11 +161,7 @@ async def get_post_detail(post_id: int, user_id: Optional[str] = Query(None, des
     會自動增加瀏覽數
     """
     try:
-        loop = asyncio.get_running_loop()
-        post = await loop.run_in_executor(
-            None, 
-            partial(get_post_by_id, post_id, increment_view=True, viewer_user_id=user_id)
-        )
+        post = await run_sync(lambda: get_post_by_id(post_id, increment_view=True, viewer_user_id=user_id))
         if not post:
             raise HTTPException(status_code=404, detail="文章不存在")
         if post["is_hidden"]:
@@ -207,11 +195,8 @@ async def update_post_content(
                 detail=f"無效的分類，可選: {', '.join(VALID_CATEGORIES)}"
             )
 
-        loop = asyncio.get_running_loop()
-        success = await loop.run_in_executor(
-            None,
-            partial(
-                update_post,
+        success = await run_sync(
+            lambda: update_post(
                 post_id=post_id,
                 user_id=user_id,
                 title=request.title,
@@ -242,9 +227,8 @@ async def delete_post_by_id(
     try:
         if current_user["user_id"] != user_id:
             raise HTTPException(status_code=403, detail="Not authorized")
-            
-        loop = asyncio.get_running_loop()
-        success = await loop.run_in_executor(None, partial(delete_post, post_id=post_id, user_id=user_id))
+
+        success = await run_sync(lambda: delete_post(post_id=post_id, user_id=user_id))
 
         if not success:
             raise HTTPException(status_code=403, detail="無權刪除此文章或文章不存在")

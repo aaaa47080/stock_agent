@@ -12,6 +12,11 @@ from api.middleware.rate_limit import limiter
 
 router = APIRouter()
 
+
+async def run_sync(fn, *args):
+    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
+
+
 @router.post("/api/okx/test-connection")
 async def test_okx_connection(request: Request, current_user: dict = Depends(get_current_user)):
     """
@@ -63,24 +68,23 @@ async def get_account_assets(request: Request, current_user: dict = Depends(get_
     try:
         # 獲取帳戶餘額 (預設 USDT，也可以不傳參數獲取所有)
         # 這裡我們不傳 ccy 以獲取所有非零餘額
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, lambda: okx_connector.get_account_balance(ccy=None))
-        
+        result = await run_sync(lambda: okx_connector.get_account_balance(ccy=None))
+
         if result.get("code") != "0":
              # 嘗試獲取更多錯誤細節
              msg = result.get("msg", "Unknown error")
              logger.error(f"獲取資產失敗: {msg}")
              raise HTTPException(status_code=500, detail=f"Exchange Error: {msg}")
-             
+
         # 整理數據格式給前端
         data = result.get("data", [])
         if not data:
             return {"total_equity": 0, "details": []}
-            
+
         account_data = data[0]
         total_equity = float(account_data.get("totalEq", 0))
         details = []
-        
+
         for bal in account_data.get("details", []):
             if float(bal.get("eq", 0)) > 0: # 只顯示有餘額的幣種
                 details.append({
@@ -90,16 +94,16 @@ async def get_account_assets(request: Request, current_user: dict = Depends(get_
                     "frozen": float(bal.get("frozenBal")),
                     "usd_value": float(bal.get("eqUsd", 0))
                 })
-        
+
         # 按美元價值排序
         details.sort(key=lambda x: x["usd_value"], reverse=True)
-        
+
         return {
             "total_equity": total_equity,
             "update_time": datetime.fromtimestamp(int(account_data.get("uTime", 0))/1000).isoformat(),
             "details": details
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -119,22 +123,21 @@ async def get_account_positions(request: Request, current_user: dict = Depends(g
     okx_connector = get_okx_connector_from_request(request)
 
     try:
-        loop = asyncio.get_running_loop()
         # 獲取所有持倉
-        result = await loop.run_in_executor(None, lambda: okx_connector.get_positions("ANY"))
-        
+        result = await run_sync(lambda: okx_connector.get_positions("ANY"))
+
         if result.get("code") != "0":
              msg = result.get("msg", "Unknown error")
              raise HTTPException(status_code=500, detail=f"Exchange Error: {msg}")
-             
+
         data = result.get("data", [])
         positions = []
-        
+
         for pos in data:
             # 區分持倉類型
             inst_type = pos.get("instType")
             side = pos.get("posSide") # long, short, net
-            
+
             # 處理基礎數據
             positions.append({
                 "symbol": pos.get("instId"),
@@ -149,7 +152,7 @@ async def get_account_positions(request: Request, current_user: dict = Depends(g
                 "margin": float(pos.get("margin") or 0),
                 "liq_price": float(pos.get("liqPx") or 0) # 強平價格
             })
-            
+
         return {"positions": positions}
 
     except HTTPException:
@@ -175,11 +178,8 @@ async def execute_trade_api(trade_request: TradeExecutionRequest, request: Reque
         # 使用臨時 connector 創建 executor
         executor = TradeExecutor(okx_connector=okx_connector)
 
-        loop = asyncio.get_running_loop()
-
         if trade_request.market_type == "spot":
-            result = await loop.run_in_executor(
-                None,
+            result = await run_sync(
                 lambda: executor.execute_spot(
                     symbol=trade_request.symbol,
                     side=trade_request.side,
@@ -187,8 +187,7 @@ async def execute_trade_api(trade_request: TradeExecutionRequest, request: Reque
                 )
             )
         elif trade_request.market_type == "futures":
-            result = await loop.run_in_executor(
-                None,
+            result = await run_sync(
                 lambda: executor.execute_futures(
                     symbol=trade_request.symbol,
                     side=trade_request.side,
@@ -200,10 +199,10 @@ async def execute_trade_api(trade_request: TradeExecutionRequest, request: Reque
             )
         else:
             raise HTTPException(status_code=400, detail="Invalid market type")
-            
+
         if result.get("status") == "failed":
             raise HTTPException(status_code=400, detail=result.get("error"))
-            
+
         return result
 
     except HTTPException:

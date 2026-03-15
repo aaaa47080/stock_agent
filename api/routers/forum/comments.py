@@ -2,8 +2,11 @@
 回覆相關 API（推/噓/一般回覆）
 """
 from fastapi import APIRouter, HTTPException, Query, Depends
-from api.deps import get_current_user
+from typing import Optional
+import asyncio
+import logging
 
+from api.deps import get_current_user
 from core.database import (
     get_post_by_id,
     add_comment,
@@ -13,13 +16,14 @@ from core.database import (
 from core.database.notifications import notify_post_interaction
 from api.routers.notifications import push_notification_to_user
 from .models import AddCommentRequest
-import asyncio
-import logging
-from functools import partial
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/forum/posts", tags=["Forum - Comments"])
+
+
+async def run_sync(fn, *args):
+    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
 
 
 # 有效的回覆類型
@@ -32,13 +36,11 @@ async def list_comments(post_id: int):
     獲取文章的回覆列表
     """
     try:
-        loop = asyncio.get_running_loop()
-        # 確認文章存在
-        post = await loop.run_in_executor(None, partial(get_post_by_id, post_id, increment_view=False))
+        post = await run_sync(lambda: get_post_by_id(post_id, increment_view=False))
         if not post or post["is_hidden"]:
             raise HTTPException(status_code=404, detail="文章不存在")
 
-        comments = await loop.run_in_executor(None, get_comments, post_id)
+        comments = await run_sync(get_comments, post_id)
         return {
             "success": True,
             "comments": comments,
@@ -69,29 +71,22 @@ async def add_new_comment(
     - 免費會員每日回覆上限從 /api/config/limits 獲取
     - Premium 會員無限制
     """
-    # Verify user authorization
     if current_user["user_id"] != user_id:
         raise HTTPException(status_code=403, detail="Not authorized to comment as this user")
-    
+
     try:
-        # 驗證回覆類型
         if request.type not in VALID_COMMENT_TYPES:
             raise HTTPException(
                 status_code=400,
                 detail=f"無效的回覆類型，可選: {', '.join(VALID_COMMENT_TYPES)}"
             )
 
-        # 確認文章存在
-        loop = asyncio.get_running_loop()
-        post = await loop.run_in_executor(None, partial(get_post_by_id, post_id, increment_view=False))
+        post = await run_sync(lambda: get_post_by_id(post_id, increment_view=False))
         if not post or post["is_hidden"]:
             raise HTTPException(status_code=404, detail="文章不存在")
 
-        # 新增回覆
-        result = await loop.run_in_executor(
-            None,
-            partial(
-                add_comment,
+        result = await run_sync(
+            lambda: add_comment(
                 post_id=post_id,
                 user_id=user_id,
                 comment_type=request.type,
@@ -112,8 +107,7 @@ async def add_new_comment(
         if post["user_id"] != user_id:
             try:
                 from_username = current_user.get("username", user_id)
-                notification = await loop.run_in_executor(
-                    None,
+                notification = await run_sync(
                     notify_post_interaction,
                     post["user_id"],
                     from_username,
@@ -141,13 +135,12 @@ async def _react_post(
     post_id: int, reaction: str, user_id: str, content: Optional[str], current_user: dict
 ):
     """推/噓文共用邏輯"""
-    loop = asyncio.get_running_loop()
-    post = await loop.run_in_executor(None, partial(get_post_by_id, post_id, increment_view=False))
+    post = await run_sync(lambda: get_post_by_id(post_id, increment_view=False))
     if not post or post["is_hidden"]:
         raise HTTPException(status_code=404, detail="文章不存在")
 
-    result = await loop.run_in_executor(
-        None, partial(add_comment, post_id=post_id, user_id=user_id, comment_type=reaction, content=content)
+    result = await run_sync(
+        lambda: add_comment(post_id=post_id, user_id=user_id, comment_type=reaction, content=content)
     )
 
     if not result["success"]:
@@ -157,8 +150,8 @@ async def _react_post(
 
     if post["user_id"] != user_id:
         try:
-            notification = await loop.run_in_executor(
-                None, notify_post_interaction,
+            notification = await run_sync(
+                notify_post_interaction,
                 post["user_id"], current_user.get("username", user_id), reaction, post_id, post["title"]
             )
             if notification:
@@ -215,13 +208,11 @@ async def get_comment_status(
     """
     獲取用戶在該文章的回覆狀態（今日剩餘回覆數等）
     """
-    # Verify user authorization
     if current_user["user_id"] != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
-    
+
     try:
-        loop = asyncio.get_running_loop()
-        daily_count = await loop.run_in_executor(None, get_daily_comment_count, user_id)
+        daily_count = await run_sync(get_daily_comment_count, user_id)
         return {
             "success": True,
             "today_count": daily_count["count"],

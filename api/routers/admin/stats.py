@@ -11,13 +11,15 @@ from core.database.connection import get_connection
 router = APIRouter(tags=["Admin - Stats"])
 
 
+async def run_sync(fn, *args):
+    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
+
+
 @router.get("/stats/overview")
 async def admin_stats_overview(
     admin_user: dict = Depends(require_admin)
 ):
     """概覽統計數據"""
-    loop = asyncio.get_running_loop()
-
     def _query():
         conn = get_connection()
         try:
@@ -54,7 +56,7 @@ async def admin_stats_overview(
         finally:
             conn.close()
 
-    result = await loop.run_in_executor(None, _query)
+    result = await run_sync(_query)
     return {"success": True, **result}
 
 
@@ -64,8 +66,6 @@ async def admin_stats_users(
     admin_user: dict = Depends(require_admin)
 ):
     """用戶增長趨勢"""
-    loop = asyncio.get_running_loop()
-
     def _query():
         conn = get_connection()
         try:
@@ -82,7 +82,7 @@ async def admin_stats_users(
         finally:
             conn.close()
 
-    data = await loop.run_in_executor(None, _query)
+    data = await run_sync(_query)
     return {"success": True, "data": data, "days": days}
 
 
@@ -92,8 +92,6 @@ async def admin_stats_forum(
     admin_user: dict = Depends(require_admin)
 ):
     """論壇活動趨勢"""
-    loop = asyncio.get_running_loop()
-
     def _query():
         conn = get_connection()
         try:
@@ -120,7 +118,7 @@ async def admin_stats_forum(
         finally:
             conn.close()
 
-    data = await loop.run_in_executor(None, _query)
+    data = await run_sync(_query)
     return {"success": True, **data, "days": days}
 
 
@@ -130,8 +128,6 @@ async def admin_stats_revenue(
     admin_user: dict = Depends(require_admin)
 ):
     """收入趨勢"""
-    loop = asyncio.get_running_loop()
-
     def _query():
         conn = get_connection()
         try:
@@ -152,5 +148,5 @@ async def admin_stats_revenue(
         finally:
             conn.close()
 
-    data = await loop.run_in_executor(None, _query)
+    data = await run_sync(_query)
     return {"success": True, "data": data, "days": days}

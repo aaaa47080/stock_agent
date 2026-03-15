@@ -38,6 +38,7 @@ from .helpers import (
     create_pending_pulse_response,
     normalize_market_symbol,
     normalize_funding_symbol,
+    run_sync,
 )
 
 router = APIRouter()
@@ -66,14 +67,13 @@ async def get_market_symbols(exchange: str = "okx"):
 
     logger.info(f"Requesting symbol list for exchange: {exchange}")
     try:
-        loop = asyncio.get_running_loop()
         from data.data_fetcher import get_data_fetcher
 
         def fetch_task():
             fetcher = get_data_fetcher(exchange)
             return fetcher.get_all_symbols()
 
-        symbols = await loop.run_in_executor(None, fetch_task)
+        symbols = await run_sync(fetch_task)
 
         SYMBOL_CACHE[exchange] = {"data": symbols, "timestamp": now}
 
@@ -130,9 +130,7 @@ async def run_screener(request: ScreenerRequest):
 async def get_klines_data(request: KlineRequest):
     """Get K-line data for chart display."""
     try:
-        loop = asyncio.get_running_loop()
-        df = await loop.run_in_executor(
-            None,
+        df = await run_sync(
             lambda: get_klines(
                 symbol=request.symbol,
                 exchange=request.exchange,
@@ -261,9 +259,7 @@ async def get_funding_rate_history(symbol: str):
         logger.info(f"[History] Fetching for symbol: {symbol} -> instId: {instId}")
 
         okx = OKXAPIConnector()
-        loop = asyncio.get_running_loop()
-
-        result = await loop.run_in_executor(None, okx.get_funding_rate_history, instId)
+        result = await run_sync(okx.get_funding_rate_history, instId)
 
         if result.get("code") == "0" and result.get("data"):
             history = []

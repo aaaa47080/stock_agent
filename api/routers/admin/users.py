@@ -4,7 +4,6 @@ User listing, role, membership, and status management endpoints
 """
 import asyncio
 import logging
-from functools import partial
 from fastapi import APIRouter, Depends, Query, HTTPException
 
 from api.deps import require_admin, get_current_user
@@ -16,6 +15,10 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Admin - Users"])
 
 
+async def run_sync(fn, *args):
+    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
+
+
 @router.get("/users")
 async def list_users(
     search: str = Query(None, max_length=100),
@@ -24,7 +27,6 @@ async def list_users(
     admin_user: dict = Depends(require_admin)
 ):
     """搜尋/列出用戶"""
-    loop = asyncio.get_running_loop()
     offset = (page - 1) * limit
 
     def _query():
@@ -78,7 +80,7 @@ async def list_users(
         finally:
             conn.close()
 
-    result = await loop.run_in_executor(None, _query)
+    result = await run_sync(_query)
     return {"success": True, **result}
 
 
@@ -88,8 +90,6 @@ async def get_user_detail(
     admin_user: dict = Depends(require_admin)
 ):
     """獲取單一用戶詳情"""
-    loop = asyncio.get_running_loop()
-
     def _query():
         conn = get_connection()
         try:
@@ -116,7 +116,7 @@ async def get_user_detail(
         finally:
             conn.close()
 
-    user = await loop.run_in_executor(None, _query)
+    user = await run_sync(_query)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return {"success": True, "user": user}
@@ -129,8 +129,6 @@ async def set_user_role(
     admin_user: dict = Depends(require_admin)
 ):
     """設定用戶角色"""
-    loop = asyncio.get_running_loop()
-
     def _update():
         conn = get_connection()
         try:
@@ -157,7 +155,7 @@ async def set_user_role(
         finally:
             conn.close()
 
-    result = await loop.run_in_executor(None, _update)
+    result = await run_sync(_update)
     if result is None:
         raise HTTPException(status_code=404, detail="User not found")
     return {"success": True, **result}
@@ -170,13 +168,11 @@ async def set_user_membership(
     admin_user: dict = Depends(require_admin)
 ):
     """設定用戶會員等級"""
-    loop = asyncio.get_running_loop()
-
     if request.tier == "pro":
         from core.database.user import upgrade_to_pro
         try:
-            await loop.run_in_executor(
-                None, partial(upgrade_to_pro, user_id, request.months, f"admin_grant_{admin_user['user_id']}")
+            await run_sync(
+                lambda: upgrade_to_pro(user_id, request.months, f"admin_grant_{admin_user['user_id']}")
             )
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
@@ -196,13 +192,13 @@ async def set_user_membership(
             finally:
                 conn.close()
 
-        await loop.run_in_executor(None, _audit)
+        await run_sync(_audit)
         return {"success": True, "tier": "pro", "months": request.months}
 
     else:
         # Downgrade to free
         from core.database.user import expire_user_membership
-        await loop.run_in_executor(None, expire_user_membership, user_id)
+        await run_sync(expire_user_membership, user_id)
 
         def _audit():
             conn = get_connection()
@@ -218,7 +214,7 @@ async def set_user_membership(
             finally:
                 conn.close()
 
-        await loop.run_in_executor(None, _audit)
+        await run_sync(_audit)
         return {"success": True, "tier": "free"}
 
 
@@ -229,8 +225,6 @@ async def set_user_status(
     admin_user: dict = Depends(require_admin)
 ):
     """封鎖/解封用戶"""
-    loop = asyncio.get_running_loop()
-
     def _update():
         conn = get_connection()
         try:
@@ -260,7 +254,7 @@ async def set_user_status(
         finally:
             conn.close()
 
-    result = await loop.run_in_executor(None, _update)
+    result = await run_sync(_update)
     if result is None:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -299,8 +293,6 @@ async def bootstrap_admin(
     if os.getenv("ALLOW_ADMIN_BOOTSTRAP", "true").lower() == "false":
         raise HTTPException(status_code=403, detail="Admin bootstrap is disabled")
 
-    loop = asyncio.get_running_loop()
-
     def _check_and_set():
         conn = get_connection()
         try:
@@ -337,7 +329,7 @@ async def bootstrap_admin(
             conn.close()
 
     try:
-        await loop.run_in_executor(None, _check_and_set)
+        await run_sync(_check_and_set)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
 

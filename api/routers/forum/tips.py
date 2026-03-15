@@ -2,8 +2,9 @@
 打賞相關 API
 """
 from fastapi import APIRouter, HTTPException, Query, Depends
-from api.deps import get_current_user
+import asyncio
 
+from api.deps import get_current_user
 from core.database import (
     get_post_by_id,
     create_tip,
@@ -12,10 +13,12 @@ from core.database import (
     get_tips_total_received,
 )
 from .models import CreateTipRequest
-import asyncio
-from functools import partial
 
 router = APIRouter(prefix="/api/forum", tags=["Forum - Tips"])
+
+
+async def run_sync(fn, *args):
+    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
 
 
 @router.post("/posts/{post_id}/tip")
@@ -32,26 +35,19 @@ async def tip_post(
     - Pi 從打賞者錢包直接轉到作者錢包（P2P）
     - 需提供交易哈希作為憑證
     """
-    # Verify user authorization
     if current_user["user_id"] != user_id:
         raise HTTPException(status_code=403, detail="Not authorized to tip as this user")
-    
+
     try:
-        loop = asyncio.get_running_loop()
-        # 確認文章存在
-        post = await loop.run_in_executor(None, partial(get_post_by_id, post_id, increment_view=False))
+        post = await run_sync(lambda: get_post_by_id(post_id, increment_view=False))
         if not post or post["is_hidden"]:
             raise HTTPException(status_code=404, detail="文章不存在")
 
-        # 不能打賞自己的文章
         if post["user_id"] == user_id:
             raise HTTPException(status_code=400, detail="不能打賞自己的文章")
 
-        # 創建打賞記錄
-        tip_id = await loop.run_in_executor(
-            None,
-            partial(
-                create_tip,
+        tip_id = await run_sync(
+            lambda: create_tip(
                 post_id=post_id,
                 from_user_id=user_id,
                 to_user_id=post["user_id"],
@@ -81,13 +77,11 @@ async def get_sent_tips(
     """
     獲取用戶送出的打賞記錄
     """
-    # Verify user authorization
     if current_user["user_id"] != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
-    
+
     try:
-        loop = asyncio.get_running_loop()
-        tips = await loop.run_in_executor(None, partial(get_tips_sent, user_id, limit=limit))
+        tips = await run_sync(lambda: get_tips_sent(user_id, limit=limit))
         return {
             "success": True,
             "tips": tips,
@@ -106,14 +100,12 @@ async def get_received_tips(
     """
     獲取用戶收到的打賞記錄
     """
-    # Verify user authorization
     if current_user["user_id"] != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
-    
+
     try:
-        loop = asyncio.get_running_loop()
-        tips = await loop.run_in_executor(None, partial(get_tips_received, user_id, limit=limit))
-        total = await loop.run_in_executor(None, get_tips_total_received, user_id)
+        tips = await run_sync(lambda: get_tips_received(user_id, limit=limit))
+        total = await run_sync(get_tips_total_received, user_id)
         return {
             "success": True,
             "tips": tips,

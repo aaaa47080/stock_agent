@@ -25,6 +25,10 @@ SYMBOL_CACHE = {
 }
 
 
+async def run_sync(fn, *args):
+    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
+
+
 def normalize_funding_symbol(symbol: str) -> str:
     """Normalize funding rate symbol by removing suffixes."""
     return normalize_base_symbol(symbol)
@@ -116,11 +120,9 @@ async def perform_deep_analysis(symbol: str, sources: str, llm_key: str, llm_pro
     })
 
     analyzer = MarketPulseAnalyzer(client=user_client)
-    loop = asyncio.get_running_loop()
     enabled_sources = sources.split(',') if sources else None
 
-    result = await loop.run_in_executor(
-        None,
+    result = await run_sync(
         lambda: analyzer.analyze_movement(symbol, enabled_sources=enabled_sources)
     )
 
@@ -128,7 +130,7 @@ async def perform_deep_analysis(symbol: str, sources: str, llm_key: str, llm_pro
         result["source_mode"] = "deep_analysis"
         result["analyzed_by"] = llm_provider
         MARKET_PULSE_CACHE[symbol] = result
-        await loop.run_in_executor(None, save_market_pulse_cache)
+        await run_sync(save_market_pulse_cache)
 
     return result
 
@@ -136,12 +138,10 @@ async def perform_deep_analysis(symbol: str, sources: str, llm_key: str, llm_pro
 async def perform_on_demand_analysis(symbol: str, sources: str, semaphore: asyncio.Semaphore) -> dict:
     """Perform on-demand market pulse analysis."""
     enabled_sources = sources.split(',') if sources else None
-    loop = asyncio.get_running_loop()
     from api.services import save_market_pulse_cache
 
     async with semaphore:
-        result = await loop.run_in_executor(
-            None,
+        result = await run_sync(
             lambda: get_market_pulse(symbol, enabled_sources=enabled_sources)
         )
 
@@ -209,12 +209,10 @@ async def run_custom_screener(request, market_pulse_cache, trigger_analysis_func
         return await run_default_screener(request.exchange, market_pulse_cache)
 
     logger.info(f"Running custom screener: {request.exchange}, Symbols: {len(sanitized_symbols)}")
-    loop = asyncio.get_running_loop()
 
-    loop.create_task(trigger_analysis_func(sanitized_symbols))
+    asyncio.get_running_loop().create_task(trigger_analysis_func(sanitized_symbols))
 
-    summary_df, top_performers, oversold, overbought = await loop.run_in_executor(
-        None,
+    summary_df, top_performers, oversold, overbought = await run_sync(
         lambda: screen_top_cryptos(
             exchange=request.exchange,
             limit=len(sanitized_symbols),
@@ -234,9 +232,7 @@ async def run_custom_screener(request, market_pulse_cache, trigger_analysis_func
 
 async def run_default_screener(exchange: str, market_pulse_cache):
     """Run default screener for top 10 cryptocurrencies."""
-    loop = asyncio.get_running_loop()
-    df_volume, df_gainers, df_losers, _ = await loop.run_in_executor(
-        None,
+    df_volume, df_gainers, df_losers, _ = await run_sync(
         lambda: screen_top_cryptos(
             exchange=exchange,
             limit=10,

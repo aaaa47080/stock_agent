@@ -3,7 +3,6 @@
 """
 from fastapi import APIRouter, HTTPException, Depends
 import asyncio
-from functools import partial
 import logging
 
 from api.deps import get_current_user
@@ -13,6 +12,10 @@ from .models import VoteRequest
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/votes", tags=["Scam Tracker - Votes"])
+
+
+async def run_sync(fn, *args):
+    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
 
 
 @router.post("/{report_id}", response_model=dict)
@@ -33,11 +36,8 @@ async def vote_on_report(
     try:
         user_id = current_user.get("user_id")
 
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(
-            None,
-            partial(
-                vote_scam_report,
+        result = await run_sync(
+            lambda: vote_scam_report(
                 report_id=report_id,
                 user_id=user_id,
                 vote_type=request.vote_type

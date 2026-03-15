@@ -2,12 +2,15 @@
 看板相關 API
 """
 from fastapi import APIRouter, HTTPException
+import asyncio
 
 from core.database import get_boards, get_board_by_slug
-import asyncio
-from functools import partial
 
 router = APIRouter(prefix="/api/forum/boards", tags=["Forum - Boards"])
+
+
+async def run_sync(fn, *args):
+    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
 
 
 @router.get("")
@@ -19,8 +22,7 @@ async def list_boards():
         - boards: 看板列表
     """
     try:
-        loop = asyncio.get_running_loop()
-        boards = await loop.run_in_executor(None, partial(get_boards, active_only=True))
+        boards = await run_sync(lambda: get_boards(active_only=True))
         return {"success": True, "boards": boards}
     except Exception:
         raise HTTPException(status_code=500, detail="獲取看板列表失敗，請稍後再試")
@@ -38,8 +40,7 @@ async def get_board(slug: str):
         - board: 看板詳情
     """
     try:
-        loop = asyncio.get_running_loop()
-        board = await loop.run_in_executor(None, get_board_by_slug, slug)
+        board = await run_sync(get_board_by_slug, slug)
         if not board:
             raise HTTPException(status_code=404, detail="看板不存在")
         return {"success": True, "board": board}

@@ -3,7 +3,6 @@ Admin System Config Management
 Configuration and audit log endpoints
 """
 import asyncio
-from functools import partial
 from fastapi import APIRouter, Depends, Query, HTTPException
 
 from api.deps import require_admin
@@ -14,14 +13,16 @@ from .schemas import UpdateConfigRequest
 router = APIRouter(tags=["Admin - Config"])
 
 
+async def run_sync(fn, *args):
+    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
+
+
 @router.get("/config/all")
 async def admin_get_all_configs(
     admin_user: dict = Depends(require_admin)
 ):
     """獲取所有系統設定（依類別分組）"""
-    loop = asyncio.get_running_loop()
-
-    configs = await loop.run_in_executor(None, list_all_configs_with_metadata)
+    configs = await run_sync(list_all_configs_with_metadata)
 
     # Group by category
     grouped = {}
@@ -41,10 +42,8 @@ async def admin_update_config(
     admin_user: dict = Depends(require_admin)
 ):
     """更新單一設定值"""
-    loop = asyncio.get_running_loop()
-
-    success = await loop.run_in_executor(
-        None, partial(set_config, key, request.value, changed_by=admin_user["user_id"])
+    success = await run_sync(
+        lambda: set_config(key, request.value, changed_by=admin_user["user_id"])
     )
 
     if not success:
@@ -59,8 +58,6 @@ async def admin_get_config_audit(
     admin_user: dict = Depends(require_admin)
 ):
     """獲取設定變更歷史"""
-    loop = asyncio.get_running_loop()
-
     def _query():
         conn = get_connection()
         try:
@@ -80,5 +77,5 @@ async def admin_get_config_audit(
         finally:
             conn.close()
 
-    logs = await loop.run_in_executor(None, _query)
+    logs = await run_sync(_query)
     return {"success": True, "logs": logs}

@@ -1,7 +1,6 @@
 import os
 import json
 import asyncio
-from functools import partial
 from typing import Any, Optional
 from datetime import datetime
 
@@ -41,6 +40,11 @@ class DebugLogRequest(BaseModel):
     level: str = "info"
     message: str
     data: Optional[Any] = None
+
+
+async def run_sync(fn, *args):
+    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
+
 
 @router.post("/api/debug/log", dependencies=[Depends(verify_admin_key)])
 async def write_debug_log(request: DebugLogRequest, x_admin_key: str = Header(None)):
@@ -118,13 +122,13 @@ async def validate_key(body: KeyValidationRequest, request: Request, current_use
 
     try:
         reply_text = ""
-        
+
         # 統一使用 LangChain init_chat_model 進行驗證
-        
+
         # 映射 provider
         lc_provider = "openai"
         base_url = None
-        
+
         if provider == "google_gemini":
             lc_provider = "google_genai"
         elif provider == "openrouter":
@@ -154,11 +158,10 @@ async def validate_key(body: KeyValidationRequest, request: Request, current_use
             api_key=key,
             base_url=base_url
         )
-        
+
         # 使用 run_in_executor 避免阻塞，並加上 15 秒 timeout
-        loop = asyncio.get_running_loop()
         response = await asyncio.wait_for(
-            loop.run_in_executor(None, lambda: llm.invoke([HumanMessage(content=test_prompt)])),
+            run_sync(lambda: llm.invoke([HumanMessage(content=test_prompt)])),
             timeout=15.0
         )
         reply_text = response.content
@@ -170,7 +173,7 @@ async def validate_key(body: KeyValidationRequest, request: Request, current_use
             "provider": provider,
             "model": model_to_test
         }
-        
+
     except asyncio.TimeoutError:
         logger.warning(f"Key validation timed out for {provider}")
         return {"valid": False, "message": "驗證失敗: 請求超時 (15秒)，請檢查網絡連接或稍後再試。"}
@@ -241,7 +244,7 @@ async def get_pi_prices():
     商用化設計：配置存儲在數據庫中，可通過管理 API 即時修改
     """
     return {
-        "prices": await asyncio.get_running_loop().run_in_executor(None, get_prices),
+        "prices": await run_sync(get_prices),
         "currency": "Pi"
     }
 
@@ -254,7 +257,7 @@ async def get_forum_limits():
     商用化設計：配置存儲在數據庫中，可通過管理 API 即時修改
     """
     return {
-        "limits": await asyncio.get_running_loop().run_in_executor(None, get_limits)
+        "limits": await run_sync(get_limits)
     }
 
 @router.post("/api/settings/update")
@@ -316,14 +319,13 @@ async def update_user_settings(settings: UserSettings, request: Request, current
         core_config.BEAR_RESEARCHER_MODEL = new_model_config
         core_config.TRADER_MODEL = new_model_config
         core_config.SYNTHESIS_MODEL = new_model_config
-        
+
         # 4. Save to .env file for persistence
         if env_updates:
-            loop = asyncio.get_running_loop()
-            await loop.run_in_executor(None, partial(update_env_file, env_updates, project_root))
+            await run_sync(lambda: update_env_file(env_updates, project_root))
 
         return {"success": True, "message": "系統設置已更新！(模式與模型已切換)"}
-        
+
     except Exception as e:
         logger.error(f"Failed to update settings: {e}")
         raise HTTPException(status_code=500, detail="更新設置失敗，請稍後再試")
@@ -346,35 +348,32 @@ async def update_api_keys(settings: APIKeySettings, request: Request, current_us
 
     try:
         # 1. Update .env file for persistence
-        loop = asyncio.get_running_loop()
-        await loop.run_in_executor(
-            None, 
-            partial(
-                update_env_file, 
+        await run_sync(
+            lambda: update_env_file(
                 {
                     "OKX_API_KEY": settings.api_key,
                     "OKX_API_SECRET": settings.secret_key,
                     "OKX_PASSPHRASE": settings.passphrase
-                }, 
+                },
                 project_root
             )
         )
-        
+
         # 2. Update environment variables for current process
         os.environ["OKX_API_KEY"] = settings.api_key
         os.environ["OKX_API_SECRET"] = settings.secret_key
         os.environ["OKX_PASSPHRASE"] = settings.passphrase
-        
+
         # 3. Re-initialize the connector
         globals.okx_connector = OKXAPIConnector()
-        
+
         # 4. Verify connection immediately
         if not globals.okx_connector.test_connection():
             return {"success": False, "message": "Keys saved, but connection failed. Please check your inputs."}
-            
+
         logger.info("API Keys updated and connector re-initialized successfully.")
         return {"success": True, "message": "API Keys 設定成功且連線正常！"}
-        
+
     except Exception as e:
         logger.error(f"Failed to update API keys: {e}")
         raise HTTPException(status_code=500, detail="更新 API 金鑰失敗，請稍後再試")

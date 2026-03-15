@@ -3,7 +3,6 @@
 """
 from fastapi import APIRouter, HTTPException, Query, Depends
 import asyncio
-from functools import partial
 import logging
 
 from api.deps import get_current_user
@@ -19,6 +18,10 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/comments", tags=["Scam Tracker - Comments"])
 
 
+async def run_sync(fn, *args):
+    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
+
+
 @router.get("/{report_id}", response_model=dict)
 async def list_scam_comments(
     report_id: int,
@@ -31,10 +34,8 @@ async def list_scam_comments(
     公開端點，所有用戶可查看。
     """
     try:
-        loop = asyncio.get_running_loop()
-        comments = await loop.run_in_executor(
-            None,
-            partial(get_scam_comments, report_id=report_id, limit=limit, offset=offset)
+        comments = await run_sync(
+            lambda: get_scam_comments(report_id=report_id, limit=limit, offset=offset)
         )
 
         return {
@@ -62,18 +63,15 @@ async def add_comment_to_report(
         user_id = current_user.get("user_id")
 
         # 驗證用戶是否存在
-        loop = asyncio.get_running_loop()
-        user = await loop.run_in_executor(None, get_user_by_id, user_id)
+        user = await run_sync(get_user_by_id, user_id)
         if not user:
             raise HTTPException(
                 status_code=401,
                 detail="用戶不存在或憑證失效，請重新登入"
             )
 
-        result = await loop.run_in_executor(
-            None,
-            partial(
-                add_scam_comment,
+        result = await run_sync(
+            lambda: add_scam_comment(
                 report_id=report_id,
                 user_id=user_id,
                 content=request.content,

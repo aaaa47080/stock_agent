@@ -131,12 +131,8 @@ async def get_conversations_endpoint(
     if current_user["user_id"] != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
     try:
-        loop = asyncio.get_running_loop()
-        conversations = await loop.run_in_executor(
-            None, 
-            partial(get_conversations, user_id, limit=limit, offset=offset)
-        )
-        total_unread = await loop.run_in_executor(None, get_unread_count, user_id)
+        conversations = await run_sync(lambda: get_conversations(user_id, limit=limit, offset=offset))
+        total_unread = await run_sync(get_unread_count, user_id)
 
         return {
             "success": True,
@@ -165,11 +161,7 @@ async def get_messages_endpoint(
     if current_user["user_id"] != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
     try:
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(
-            None,
-            partial(get_dm_messages, conversation_id, user_id, limit=limit, before_id=before_id)
-        )
+        result = await run_sync(lambda: get_dm_messages(conversation_id, user_id, limit=limit, before_id=before_id))
 
         if not result["success"]:
             raise HTTPException(status_code=404, detail="對話不存在或無權限")
@@ -195,13 +187,8 @@ async def get_conversation_with_user_endpoint(
     if current_user["user_id"] != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
     try:
-        loop = asyncio.get_running_loop()
-
         # 使用優化的合併函數（只需一個數據庫連接）
-        result = await loop.run_in_executor(
-            None,
-            partial(get_conversation_with_messages, user_id, other_user_id, limit)
-        )
+        result = await run_sync(get_conversation_with_messages, user_id, other_user_id, limit)
 
         if not result.get("success"):
             raise HTTPException(status_code=500, detail=result.get("error", "取得對話失敗"))
@@ -226,14 +213,9 @@ async def send_message_endpoint(
     if current_user["user_id"] != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
     try:
-        loop = asyncio.get_running_loop()
-        
         # 優化：使用單一查詢驗證所有條件（替代 4 個獨立查詢）
         from core.database import validate_message_send
-        validation = await loop.run_in_executor(
-            None, 
-            partial(validate_message_send, user_id, request.to_user_id)
-        )
+        validation = await run_sync(validate_message_send, user_id, request.to_user_id)
         
         if not validation["valid"]:
             error = validation["error"]
@@ -251,7 +233,7 @@ async def send_message_endpoint(
         # 檢查訊息限制
         membership = await run_sync(get_user_membership, user_id)
         is_premium = membership.get("is_premium", False)
-        limit_check = await loop.run_in_executor(None, partial(check_message_limit, user_id, is_premium))
+        limit_check = await run_sync(lambda: check_message_limit(user_id, is_premium))
 
         if not limit_check["can_send"]:
             raise HTTPException(
@@ -260,17 +242,14 @@ async def send_message_endpoint(
             )
 
         # 發送訊息（內部會處理 update_last_active）
-        result = await loop.run_in_executor(
-            None,
-            partial(send_dm_message, user_id, request.to_user_id, request.content)
-        )
+        result = await run_sync(send_dm_message, user_id, request.to_user_id, request.content)
 
         if not result["success"]:
             raise HTTPException(status_code=400, detail=result.get("error", "發送失敗"))
 
         # 增加訊息計數（非 Premium 用戶）
         if not is_premium:
-            await loop.run_in_executor(None, increment_message_count, user_id)
+            await run_sync(increment_message_count, user_id)
 
         # 透過 WebSocket 推送給接收者
         await message_manager.send_to_user(request.to_user_id, {
@@ -287,8 +266,7 @@ async def send_message_endpoint(
         # 發送通知到接收者的通知中心
         try:
             msg = result["message"]
-            notification = await loop.run_in_executor(
-                None,
+            notification = await run_sync(
                 notify_new_message,
                 request.to_user_id,
                 user_id,
@@ -321,14 +299,13 @@ async def mark_read_endpoint(
     if current_user["user_id"] != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
     try:
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, partial(mark_as_read, request.conversation_id, user_id))
+        result = await run_sync(mark_as_read, request.conversation_id, user_id)
 
         if not result["success"]:
             raise HTTPException(status_code=404, detail="對話不存在")
 
         # 取得對話資訊以通知對方（已讀回執）
-        conv = await loop.run_in_executor(None, partial(get_conversation_by_id, request.conversation_id, user_id))
+        conv = await run_sync(get_conversation_by_id, request.conversation_id, user_id)
         if conv:
             # 確定對方用戶 ID
             other_user_id = conv["user2_id"] if conv["user1_id"] == user_id else conv["user1_id"]
@@ -364,12 +341,11 @@ async def send_greeting_endpoint(
         raise HTTPException(status_code=403, detail="Not authorized")
     try:
         # 驗證用戶存在
-        loop = asyncio.get_running_loop()
-        sender_exists = await loop.run_in_executor(None, get_user_by_id, user_id)
+        sender_exists = await run_sync(get_user_by_id, user_id)
         if not sender_exists:
             raise HTTPException(status_code=401, detail="用戶不存在")
-            
-        receiver_exists = await loop.run_in_executor(None, get_user_by_id, request.to_user_id)
+
+        receiver_exists = await run_sync(get_user_by_id, request.to_user_id)
         if not receiver_exists:
             raise HTTPException(status_code=404, detail="接收者不存在")
 
@@ -379,12 +355,13 @@ async def send_greeting_endpoint(
             raise HTTPException(status_code=403, detail="打招呼功能僅限 Premium 會員使用")
 
         # 檢查是否被封鎖
-        blocked = await loop.run_in_executor(None, partial(is_blocked, user_id, request.to_user_id))
+        blocked = await run_sync(is_blocked, user_id, request.to_user_id)
         if blocked:
             raise HTTPException(status_code=403, detail="無法發送訊息給此用戶")
 
         # 檢查打招呼限制
-        limit_check = await loop.run_in_executor(None, partial(check_greeting_limit, user_id, is_premium))
+        is_premium = membership.get("is_premium", False)
+        limit_check = await run_sync(lambda: check_greeting_limit(user_id, is_premium))
         if not limit_check["can_send"]:
             raise HTTPException(
                 status_code=429,
@@ -392,16 +369,13 @@ async def send_greeting_endpoint(
             )
 
         # 發送打招呼
-        result = await loop.run_in_executor(
-            None, 
-            partial(send_greeting, user_id, request.to_user_id, request.content)
-        )
+        result = await run_sync(send_greeting, user_id, request.to_user_id, request.content)
 
         if not result["success"]:
             raise HTTPException(status_code=400, detail=result.get("error", "發送失敗"))
 
         # 增加打招呼計數
-        await loop.run_in_executor(None, increment_greeting_count, user_id)
+        await run_sync(increment_greeting_count, user_id)
 
         # 透過 WebSocket 推送
         await message_manager.send_to_user(request.to_user_id, {
@@ -412,8 +386,7 @@ async def send_greeting_endpoint(
         # 發送通知到接收者的通知中心
         try:
             msg = result["message"]
-            notification = await loop.run_in_executor(
-                None,
+            notification = await run_sync(
                 notify_new_message,
                 request.to_user_id,
                 user_id,
@@ -452,8 +425,7 @@ async def search_messages_endpoint(
         if not membership.get("is_premium", False):
             raise HTTPException(status_code=403, detail="訊息搜尋功能僅限 Premium 會員使用")
 
-        loop = asyncio.get_running_loop()
-        results = await loop.run_in_executor(None, partial(search_messages, user_id, q, limit=limit))
+        results = await run_sync(lambda: search_messages(user_id, q, limit=limit))
 
         return {
             "success": True,
@@ -478,8 +450,7 @@ async def get_unread_count_endpoint(
     if current_user["user_id"] != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
     try:
-        loop = asyncio.get_running_loop()
-        count = await loop.run_in_executor(None, get_unread_count, user_id)
+        count = await run_sync(get_unread_count, user_id)
         return {
             "success": True,
             "unread_count": count
@@ -504,10 +475,9 @@ async def get_message_limits_endpoint(
         membership = await run_sync(get_user_membership, user_id)
         is_premium = membership.get("is_premium", False)
 
-        loop = asyncio.get_running_loop()
-        message_limit = await loop.run_in_executor(None, partial(check_message_limit, user_id, is_premium))
-        greeting_limit = await loop.run_in_executor(None, partial(check_greeting_limit, user_id, is_premium))
-        max_length = await loop.run_in_executor(None, partial(get_config, 'limit_message_max_length', 500))
+        message_limit = await run_sync(lambda: check_message_limit(user_id, is_premium))
+        greeting_limit = await run_sync(lambda: check_greeting_limit(user_id, is_premium))
+        max_length = await run_sync(lambda: get_config('limit_message_max_length', 500))
         return {
             "success": True,
             "is_premium": is_premium,
@@ -532,8 +502,7 @@ async def delete_message_endpoint(
     if current_user["user_id"] != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
     try:
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, partial(delete_dm_message, message_id, user_id))
+        result = await run_sync(delete_dm_message, message_id, user_id)
 
         if not result["success"]:
             error = result.get("error", "")
@@ -565,8 +534,7 @@ async def hide_message_endpoint(
     if current_user["user_id"] != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
     try:
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, partial(hide_dm_message_for_user, message_id, user_id))
+        result = await run_sync(hide_dm_message_for_user, message_id, user_id)
 
         if not result["success"]:
             error = result.get("error", "")
@@ -598,8 +566,7 @@ async def delete_conversation_endpoint(
     if current_user["user_id"] != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
     try:
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, partial(hide_conversation_for_user, conversation_id, user_id))
+        result = await run_sync(hide_conversation_for_user, conversation_id, user_id)
 
         logger.info(f"刪除對話結果: {result}")
 
@@ -676,8 +643,7 @@ async def websocket_endpoint(websocket: WebSocket):
                  return   
 
             # 驗證用戶存在
-            loop = asyncio.get_running_loop()
-            user_exists = await loop.run_in_executor(None, get_user_by_id, user_id)
+            user_exists = await run_sync(get_user_by_id, user_id)
             if not user_exists:
                 await websocket.send_json({"type": "error", "message": "用戶不存在"})
                 await websocket.close()
@@ -697,10 +663,10 @@ async def websocket_endpoint(websocket: WebSocket):
         logger.info(f"用戶 {user_id} WebSocket 認證成功")
 
         # 更新用戶最後活動時間
-        await loop.run_in_executor(None, update_last_active, user_id)
+        await run_sync(update_last_active, user_id)
 
         # 發送認證成功和未讀數量
-        unread_count = await loop.run_in_executor(None, get_unread_count, user_id)
+        unread_count = await run_sync(get_unread_count, user_id)
         await websocket.send_json({
             "type": "authenticated",
             "user_id": user_id,
