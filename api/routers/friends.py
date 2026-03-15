@@ -30,13 +30,17 @@ from core.database import (
 )
 from api.utils import logger
 import asyncio
-from functools import partial
 
 from api.deps import get_current_user
 from fastapi import Depends
 from api.routers.notifications import push_notification_to_user
 
 router = APIRouter()
+
+
+async def run_sync(fn, *args):
+    """Run a synchronous DB function in the thread executor."""
+    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
 
 
 # ============================================================================
@@ -66,13 +70,12 @@ async def search_users_endpoint(
         if current_user["user_id"] != user_id:
              raise HTTPException(status_code=403, detail="Not authorized")
 
-        loop = asyncio.get_running_loop()
-        users = await loop.run_in_executor(None, partial(search_users, query=q, limit=limit, exclude_user_id=user_id))
+        users = await run_sync(lambda: search_users(query=q, limit=limit, exclude_user_id=user_id))
 
         # ✅ 效能修復：用批次查詢取代 N+1 個別查詢
         if users:
             other_ids = [u["user_id"] for u in users]
-            bulk_status = await loop.run_in_executor(None, get_bulk_friendship_status, user_id, other_ids)
+            bulk_status = await run_sync(get_bulk_friendship_status, user_id, other_ids)
             for u in users:
                 status = bulk_status.get(u["user_id"])
                 u["friend_status"] = status.get("status") if status else None
@@ -101,8 +104,7 @@ async def get_user_profile(
         raise HTTPException(status_code=403, detail="Not authorized")
 
     try:
-        loop = asyncio.get_running_loop()
-        profile = await loop.run_in_executor(None, partial(get_public_user_profile, target_user_id, viewer_user_id=user_id))
+        profile = await run_sync(lambda: get_public_user_profile(target_user_id, viewer_user_id=user_id))
         if not profile:
             raise HTTPException(status_code=404, detail="用戶不存在")
         return {"success": True, "profile": profile}
@@ -130,16 +132,14 @@ async def send_request(
         if current_user["user_id"] != user_id:
              raise HTTPException(status_code=403, detail="Not authorized")
 
-        loop = asyncio.get_running_loop()
-        # 驗證用戶存在
-        user_exists = await loop.run_in_executor(None, get_user_by_id, user_id)
+        user_exists = await run_sync(get_user_by_id, user_id)
         if not user_exists:
             raise HTTPException(status_code=401, detail="用戶不存在")
-        target_exists = await loop.run_in_executor(None, get_user_by_id, request.target_user_id)
+        target_exists = await run_sync(get_user_by_id, request.target_user_id)
         if not target_exists:
             raise HTTPException(status_code=404, detail="目標用戶不存在")
 
-        result = await loop.run_in_executor(None, send_friend_request, user_id, request.target_user_id)
+        result = await run_sync(send_friend_request, user_id, request.target_user_id)
 
         if not result["success"]:
             error_messages = {
@@ -157,8 +157,7 @@ async def send_request(
         # 發送好友請求通知給目標用戶（DB + WebSocket 推送）
         try:
             current_username = current_user.get("username", user_id)
-            notification = await loop.run_in_executor(
-                None,
+            notification = await run_sync(
                 notify_friend_request,
                 request.target_user_id,
                 user_id,
@@ -192,8 +191,7 @@ async def accept_request(
         if current_user["user_id"] != user_id:
              raise HTTPException(status_code=403, detail="Not authorized")
 
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, accept_friend_request, user_id, request.target_user_id)
+        result = await run_sync(accept_friend_request, user_id, request.target_user_id)
 
         if not result["success"]:
             raise HTTPException(status_code=400, detail="找不到此好友請求")
@@ -201,8 +199,7 @@ async def accept_request(
         # 發送好友接受通知給原請求者（DB + WebSocket 推送）
         try:
             current_username = current_user.get("username", user_id)
-            notification = await loop.run_in_executor(
-                None,
+            notification = await run_sync(
                 notify_friend_accepted,
                 request.target_user_id,
                 user_id,
@@ -235,8 +232,7 @@ async def reject_request(
     try:
         if current_user["user_id"] != user_id:
              raise HTTPException(status_code=403, detail="Not authorized")
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, reject_friend_request, user_id, request.target_user_id)
+        result = await run_sync(reject_friend_request, user_id, request.target_user_id)
 
         if not result["success"]:
             raise HTTPException(status_code=400, detail="找不到此好友請求")
@@ -261,8 +257,7 @@ async def cancel_request(
     try:
         if current_user["user_id"] != user_id:
              raise HTTPException(status_code=403, detail="Not authorized")
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, cancel_friend_request, user_id, request.target_user_id)
+        result = await run_sync(cancel_friend_request, user_id, request.target_user_id)
 
         if not result["success"]:
             raise HTTPException(status_code=400, detail="找不到此好友請求")
@@ -287,8 +282,7 @@ async def remove_friend_endpoint(
     try:
         if current_user["user_id"] != user_id:
              raise HTTPException(status_code=403, detail="Not authorized")
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, remove_friend, user_id, target_user_id)
+        result = await run_sync(remove_friend, user_id, target_user_id)
 
         if not result["success"]:
             raise HTTPException(status_code=400, detail="你們不是好友")
@@ -317,8 +311,7 @@ async def block_user_endpoint(
     try:
         if current_user["user_id"] != user_id:
              raise HTTPException(status_code=403, detail="Not authorized")
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, block_user, user_id, request.target_user_id)
+        result = await run_sync(block_user, user_id, request.target_user_id)
 
         if not result["success"]:
             error_messages = {
@@ -349,8 +342,7 @@ async def unblock_user_endpoint(
     try:
         if current_user["user_id"] != user_id:
              raise HTTPException(status_code=403, detail="Not authorized")
-        loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, unblock_user, user_id, request.target_user_id)
+        result = await run_sync(unblock_user, user_id, request.target_user_id)
 
         if not result["success"]:
             raise HTTPException(status_code=400, detail="此用戶未被封鎖")
@@ -374,8 +366,7 @@ async def get_blocked_list(
     try:
         if current_user["user_id"] != user_id:
              raise HTTPException(status_code=403, detail="Not authorized")
-        loop = asyncio.get_running_loop()
-        blocked = await loop.run_in_executor(None, get_blocked_users, user_id)
+        blocked = await run_sync(get_blocked_users, user_id)
         return {
             "success": True,
             "blocked_users": blocked,
@@ -384,9 +375,6 @@ async def get_blocked_list(
     except HTTPException:
         raise
     except Exception as e:
-        # Check if it's an HTTPException that wasn't caught (e.g. import mismatch)
-        if hasattr(e, "status_code") and hasattr(e, "detail"):
-            raise e
         logger.error(f"取得封鎖名單失敗: {e}")
         raise HTTPException(status_code=500, detail="取得封鎖名單失敗，請稍後再試")
 
@@ -408,9 +396,8 @@ async def get_friends(
     try:
         if current_user["user_id"] != user_id:
              raise HTTPException(status_code=403, detail="Not authorized")
-        loop = asyncio.get_running_loop()
-        friends = await loop.run_in_executor(None, partial(get_friends_list, user_id, limit=limit, offset=offset))
-        count = await loop.run_in_executor(None, get_friends_count, user_id)
+        friends = await run_sync(lambda: get_friends_list(user_id, limit=limit, offset=offset))
+        count = await run_sync(get_friends_count, user_id)
 
         return {
             "success": True,
@@ -421,9 +408,6 @@ async def get_friends(
     except HTTPException:
         raise
     except Exception as e:
-        # Check if it's an HTTPException that wasn't caught (e.g. import mismatch)
-        if hasattr(e, "status_code") and hasattr(e, "detail"):
-            raise e
         logger.error(f"取得好友列表失敗: {e}")
         raise HTTPException(status_code=500, detail="取得好友列表失敗，請稍後再試")
 
@@ -439,8 +423,7 @@ async def get_received_requests(
     try:
         if current_user["user_id"] != user_id:
              raise HTTPException(status_code=403, detail="Not authorized")
-        loop = asyncio.get_running_loop()
-        requests = await loop.run_in_executor(None, get_pending_requests_received, user_id)
+        requests = await run_sync(get_pending_requests_received, user_id)
         return {
             "success": True,
             "requests": requests,
@@ -464,8 +447,7 @@ async def get_sent_requests(
     try:
         if current_user["user_id"] != user_id:
              raise HTTPException(status_code=403, detail="Not authorized")
-        loop = asyncio.get_running_loop()
-        requests = await loop.run_in_executor(None, get_pending_requests_sent, user_id)
+        requests = await run_sync(get_pending_requests_sent, user_id)
         return {
             "success": True,
             "requests": requests,
@@ -491,8 +473,7 @@ async def get_status(
         if current_user["user_id"] != user_id:
             raise HTTPException(status_code=403, detail="Not authorized")
 
-        loop = asyncio.get_running_loop()
-        status = await loop.run_in_executor(None, get_friendship_status, user_id, target_user_id)
+        status = await run_sync(get_friendship_status, user_id, target_user_id)
         return {
             "success": True,
             "status": status.get("status") if status else None,
@@ -516,13 +497,10 @@ async def get_counts(
     取得好友相關數量（好友數、待處理請求數）
     """
     try:
-        print(f"[DEBUG_FRIENDS] Auth check: current={current_user.get('user_id')} target={user_id}")
         if current_user["user_id"] != user_id:
-             print(f"[DEBUG_FRIENDS] 403 Mismatch! Current: '{current_user.get('user_id')}' vs Target: '{user_id}'")
-             raise HTTPException(status_code=403, detail=f"Not authorized. user_id={user_id}, current={current_user.get('user_id')}")
-        loop = asyncio.get_running_loop()
-        friends_count = await loop.run_in_executor(None, get_friends_count, user_id)
-        pending_received = await loop.run_in_executor(None, get_pending_count, user_id)
+            raise HTTPException(status_code=403, detail="Not authorized")
+        friends_count = await run_sync(get_friends_count, user_id)
+        pending_received = await run_sync(get_pending_count, user_id)
         return {
             "success": True,
             "friends_count": friends_count,

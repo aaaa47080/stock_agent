@@ -341,16 +341,32 @@ def notify_system_update(user_id: str, version: str, message: Optional[str] = No
 
 
 def notify_announcement(user_ids: List[str], title: str, body: str) -> List[Dict[str, Any]]:
-    """創建系統公告（批量）"""
-    notifications = []
-    for user_id in user_ids:
-        notification = create_notification(
-            user_id=user_id,
-            notification_type="announcement",
-            title=title,
-            body=body,
-            data={}
-        )
-        if notification:
-            notifications.append(notification)
-    return notifications
+    """創建系統公告（批量，單次 DB 連接）"""
+    if not user_ids:
+        return []
+    conn = get_connection()
+    try:
+        rows = []
+        with conn.cursor() as cur:
+            for uid in user_ids:
+                notif_id = f"notif_{uuid.uuid4().hex[:12]}"
+                cur.execute("""
+                    INSERT INTO notifications (id, user_id, type, title, body, data, is_read, created_at)
+                    VALUES (%s, %s, 'announcement', %s, %s, NULL, FALSE, NOW())
+                    RETURNING id, user_id, type, title, body, data, is_read, created_at
+                """, (notif_id, uid, title, body))
+                row = cur.fetchone()
+                if row:
+                    rows.append({
+                        "id": row[0], "user_id": row[1], "type": row[2],
+                        "title": row[3], "body": row[4], "data": row[5],
+                        "is_read": row[6],
+                        "created_at": row[7].isoformat() if row[7] else None
+                    })
+            conn.commit()
+        return rows
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()

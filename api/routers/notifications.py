@@ -14,7 +14,6 @@ from core.database.notifications import (
     mark_notification_as_read,
     mark_all_as_read,
     delete_notification,
-    create_notification,
 )
 from core.database.user import get_user_by_id
 from api.utils import logger
@@ -22,6 +21,11 @@ from api.deps import get_current_user, verify_token
 from fastapi import Depends
 
 router = APIRouter()
+
+
+async def run_sync(fn, *args):
+    """Run a synchronous DB function in the thread executor."""
+    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
 
 
 # ============================================================================
@@ -37,7 +41,6 @@ class NotificationConnectionManager:
         self._lock = asyncio.Lock()
 
     async def connect(self, websocket: WebSocket, user_id: str):
-        # 注意：websocket.accept() 已在 endpoint 中調用，此處只需註冊連接
         async with self._lock:
             if user_id not in self.active_connections:
                 self.active_connections[user_id] = set()
@@ -97,20 +100,15 @@ async def get_notifications_endpoint(
     unread_only: bool = Query(False, description="只返回未讀通知"),
     current_user: dict = Depends(get_current_user)
 ):
-    """
-    獲取用戶的通知列表
-    """
+    """獲取用戶的通知列表"""
     try:
         if current_user["user_id"] != user_id:
             raise HTTPException(status_code=403, detail="Not authorized")
 
-        notifications = get_notifications(
-            user_id=user_id,
-            limit=limit,
-            offset=offset,
-            unread_only=unread_only
+        notifications = await run_sync(
+            lambda: get_notifications(user_id=user_id, limit=limit, offset=offset, unread_only=unread_only)
         )
-        unread_count = get_unread_count(user_id)
+        unread_count = await run_sync(get_unread_count, user_id)
 
         return {
             "success": True,
@@ -130,14 +128,12 @@ async def get_unread_count_endpoint(
     user_id: str = Query(..., description="用戶 ID"),
     current_user: dict = Depends(get_current_user)
 ):
-    """
-    獲取未讀通知數量
-    """
+    """獲取未讀通知數量"""
     try:
         if current_user["user_id"] != user_id:
             raise HTTPException(status_code=403, detail="Not authorized")
 
-        count = get_unread_count(user_id)
+        count = await run_sync(get_unread_count, user_id)
         return {"success": True, "count": count}
     except HTTPException:
         raise
@@ -152,14 +148,12 @@ async def mark_as_read_endpoint(
     user_id: str = Query(..., description="用戶 ID"),
     current_user: dict = Depends(get_current_user)
 ):
-    """
-    標記通知為已讀
-    """
+    """標記通知為已讀"""
     try:
         if current_user["user_id"] != user_id:
             raise HTTPException(status_code=403, detail="Not authorized")
 
-        success = mark_notification_as_read(notification_id, user_id)
+        success = await run_sync(mark_notification_as_read, notification_id, user_id)
         if not success:
             raise HTTPException(status_code=404, detail="通知不存在")
 
@@ -176,14 +170,12 @@ async def mark_all_as_read_endpoint(
     user_id: str = Query(..., description="用戶 ID"),
     current_user: dict = Depends(get_current_user)
 ):
-    """
-    標記所有通知為已讀
-    """
+    """標記所有通知為已讀"""
     try:
         if current_user["user_id"] != user_id:
             raise HTTPException(status_code=403, detail="Not authorized")
 
-        count = mark_all_as_read(user_id)
+        count = await run_sync(mark_all_as_read, user_id)
         return {"success": True, "message": f"已標記 {count} 則通知為已讀", "count": count}
     except HTTPException:
         raise
@@ -198,14 +190,12 @@ async def delete_notification_endpoint(
     user_id: str = Query(..., description="用戶 ID"),
     current_user: dict = Depends(get_current_user)
 ):
-    """
-    刪除通知
-    """
+    """刪除通知"""
     try:
         if current_user["user_id"] != user_id:
             raise HTTPException(status_code=403, detail="Not authorized")
 
-        success = delete_notification(notification_id, user_id)
+        success = await run_sync(delete_notification, notification_id, user_id)
         if not success:
             raise HTTPException(status_code=404, detail="通知不存在")
 
@@ -225,31 +215,14 @@ async def delete_notification_endpoint(
 async def notification_websocket(websocket: WebSocket):
     """
     通知 WebSocket 端點
-
-    🔒 Security Fix: 現在需要 JWT Token 驗證，不能僅依賴客戶端提供的 user_id
-
-    客戶端連接後需要發送認證消息:
-    {
-        "type": "auth",
-        "token": "JWT_TOKEN"  # 必須提供有效的 JWT Token
-    }
-
-    服務器會推送:
-    {
-        "type": "notification",
-        "data": { ...通知對象... }
-    }
+    客戶端連接後需發送認證消息: {"type": "auth", "token": "JWT_TOKEN"}
     """
     user_id = None
 
     try:
         await websocket.accept()
 
-        # 等待認證消息
-        auth_message = await asyncio.wait_for(
-            websocket.receive_text(),
-            timeout=30.0
-        )
+        auth_message = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
         auth_data = json.loads(auth_message)
 
         if auth_data.get("type") != "auth":
@@ -257,16 +230,13 @@ async def notification_websocket(websocket: WebSocket):
             await websocket.close(code=4001, reason="Authentication required")
             return
 
-        # 🔒 Security: 必須提供有效的 JWT Token
         token = auth_data.get("token") or auth_data.get("access_token")
         if not token:
             await websocket.send_json({"type": "error", "message": "JWT Token required"})
             await websocket.close(code=4002, reason="JWT Token required")
             return
 
-        # 驗證 JWT Token
         if os.getenv("TEST_MODE") == "True" and token.startswith("test-"):
-            # Development: Allow raw test tokens
             user_id = token
             logger.info(f"Notification WebSocket Dev Auth: {user_id}")
         else:
@@ -281,7 +251,6 @@ async def notification_websocket(websocket: WebSocket):
                 await websocket.close(code=4003, reason="Invalid Token")
                 return
 
-        # Security: 檢查 token 中的 user_id 與聲稱的 user_id 是否匹配（如果提供）
         claimed_user_id = auth_data.get("user_id")
         if claimed_user_id and claimed_user_id != user_id:
             logger.warning(f"Notification WebSocket auth mismatch: Token user {user_id} != Claimed {claimed_user_id}")
@@ -289,35 +258,27 @@ async def notification_websocket(websocket: WebSocket):
             await websocket.close(code=4004, reason="User ID mismatch")
             return
 
-        # 驗證用戶存在
-        loop = asyncio.get_running_loop()
-        user_exists = await loop.run_in_executor(None, get_user_by_id, user_id)
+        user_exists = await run_sync(get_user_by_id, user_id)
         if not user_exists:
             await websocket.send_json({"type": "error", "message": "User not found"})
             await websocket.close(code=4005, reason="User not found")
             return
 
-        # 註冊連接
         await notification_manager.connect(websocket, user_id)
-
         logger.info(f"User {user_id} authenticated successfully via notification WebSocket")
 
-        # 發送連接成功消息
         await websocket.send_json({
             "type": "connected",
             "message": "Connected to notification service",
             "user_id": user_id
         })
 
-        # 保持連接，處理客戶端消息（主要是心跳）
         while True:
             try:
                 data = await websocket.receive_text()
                 message = json.loads(data)
-
                 if message.get("type") == "ping":
                     await websocket.send_json({"type": "pong"})
-
             except WebSocketDisconnect:
                 break
             except json.JSONDecodeError:
@@ -339,49 +300,8 @@ async def notification_websocket(websocket: WebSocket):
 # ============================================================================
 
 async def push_notification_to_user(user_id: str, notification: dict):
-    """
-    推送通知給用戶
-
-    Args:
-        user_id: 用戶 ID
-        notification: 通知對象
-    """
+    """推送通知給用戶（WebSocket 即時推送）"""
     await notification_manager.send_to_user(user_id, {
         "type": "notification",
         "data": notification
     })
-
-
-def create_and_push_notification(
-    user_id: str,
-    notification_type: str,
-    title: str,
-    body: str,
-    data: Optional[dict] = None
-) -> dict:
-    """
-    創建通知並推送（同步版本，用於非異步上下文）
-
-    Args:
-        user_id: 用戶 ID
-        notification_type: 通知類型
-        title: 標題
-        body: 內容
-        data: 額外數據
-
-    Returns:
-        創建的通知對象
-    """
-    notification = create_notification(
-        user_id=user_id,
-        notification_type=notification_type,
-        title=title,
-        body=body,
-        data=data
-    )
-
-    if notification and notification_manager.is_user_online(user_id):
-        # 如果用戶在線，異步推送
-        asyncio.create_task(push_notification_to_user(user_id, notification))
-
-    return notification

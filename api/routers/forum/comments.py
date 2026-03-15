@@ -137,6 +137,39 @@ async def add_new_comment(
         raise HTTPException(status_code=500, detail="新增回覆失敗，請稍後再試")
 
 
+async def _react_post(
+    post_id: int, reaction: str, user_id: str, content: Optional[str], current_user: dict
+):
+    """推/噓文共用邏輯"""
+    loop = asyncio.get_running_loop()
+    post = await loop.run_in_executor(None, partial(get_post_by_id, post_id, increment_view=False))
+    if not post or post["is_hidden"]:
+        raise HTTPException(status_code=404, detail="文章不存在")
+
+    result = await loop.run_in_executor(
+        None, partial(add_comment, post_id=post_id, user_id=user_id, comment_type=reaction, content=content)
+    )
+
+    if not result["success"]:
+        if result.get("error") == "daily_limit_reached":
+            raise HTTPException(status_code=429, detail="已達每日回覆上限")
+        raise HTTPException(status_code=500, detail=result.get("error", f"{reaction}失敗"))
+
+    if post["user_id"] != user_id:
+        try:
+            notification = await loop.run_in_executor(
+                None, notify_post_interaction,
+                post["user_id"], current_user.get("username", user_id), reaction, post_id, post["title"]
+            )
+            if notification:
+                await push_notification_to_user(post["user_id"], notification)
+        except Exception as e:
+            logger.warning(f"Failed to send {reaction} notification: {e}")
+
+    labels = {"push": "推文", "boo": "噓文"}
+    return {"success": True, "message": f"{labels.get(reaction, reaction)}成功"}
+
+
 @router.post("/{post_id}/push")
 async def push_post(
     post_id: int,
@@ -144,54 +177,11 @@ async def push_post(
     content: str = Query(None, max_length=100, description="推文內容（選填）"),
     current_user: dict = Depends(get_current_user)
 ):
-    """
-    推文（快捷方式）
-    """
-    # Verify user authorization
+    """推文（快捷方式）"""
     if current_user["user_id"] != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
-    
     try:
-        loop = asyncio.get_running_loop()
-        post = await loop.run_in_executor(None, partial(get_post_by_id, post_id, increment_view=False))
-        if not post or post["is_hidden"]:
-            raise HTTPException(status_code=404, detail="文章不存在")
-
-        result = await loop.run_in_executor(
-            None,
-            partial(
-                add_comment,
-                post_id=post_id,
-                user_id=user_id,
-                comment_type="push",
-                content=content,
-            )
-        )
-
-        if not result["success"]:
-            if result.get("error") == "daily_limit_reached":
-                raise HTTPException(status_code=429, detail="已達每日回覆上限")
-            raise HTTPException(status_code=500, detail=result.get("error", "推文失敗"))
-
-        # 通知文章作者（不通知自己）
-        if post["user_id"] != user_id:
-            try:
-                from_username = current_user.get("username", user_id)
-                notification = await loop.run_in_executor(
-                    None,
-                    notify_post_interaction,
-                    post["user_id"],
-                    from_username,
-                    "push",
-                    post_id,
-                    post["title"]
-                )
-                if notification:
-                    await push_notification_to_user(post["user_id"], notification)
-            except Exception as notify_error:
-                logger.warning(f"Failed to send push notification: {notify_error}")
-
-        return {"success": True, "message": "推文成功"}
+        return await _react_post(post_id, "push", user_id, content, current_user)
     except HTTPException:
         raise
     except Exception:
@@ -205,54 +195,11 @@ async def boo_post(
     content: str = Query(None, max_length=100, description="噓文內容（選填）"),
     current_user: dict = Depends(get_current_user)
 ):
-    """
-    噓文（快捷方式）
-    """
-    # Verify user authorization
+    """噓文（快捷方式）"""
     if current_user["user_id"] != user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
-    
     try:
-        loop = asyncio.get_running_loop()
-        post = await loop.run_in_executor(None, partial(get_post_by_id, post_id, increment_view=False))
-        if not post or post["is_hidden"]:
-            raise HTTPException(status_code=404, detail="文章不存在")
-
-        result = await loop.run_in_executor(
-            None,
-            partial(
-                add_comment,
-                post_id=post_id,
-                user_id=user_id,
-                comment_type="boo",
-                content=content,
-            )
-        )
-
-        if not result["success"]:
-            if result.get("error") == "daily_limit_reached":
-                raise HTTPException(status_code=429, detail="已達每日回覆上限")
-            raise HTTPException(status_code=500, detail=result.get("error", "噓文失敗"))
-
-        # 通知文章作者（不通知自己）
-        if post["user_id"] != user_id:
-            try:
-                from_username = current_user.get("username", user_id)
-                notification = await loop.run_in_executor(
-                    None,
-                    notify_post_interaction,
-                    post["user_id"],
-                    from_username,
-                    "boo",
-                    post_id,
-                    post["title"]
-                )
-                if notification:
-                    await push_notification_to_user(post["user_id"], notification)
-            except Exception as notify_error:
-                logger.warning(f"Failed to send boo notification: {notify_error}")
-
-        return {"success": True, "message": "噓文成功"}
+        return await _react_post(post_id, "boo", user_id, content, current_user)
     except HTTPException:
         raise
     except Exception:

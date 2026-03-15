@@ -8,7 +8,6 @@ import json
 import os
 
 import asyncio
-from functools import partial
 
 from core.database import (
     get_conversations,
@@ -107,14 +106,11 @@ class MessageConnectionManager:
 message_manager = MessageConnectionManager()
 
 
-# ============================================================================
-# 輔助函數
-# ============================================================================
 
-def _check_user_is_premium(user_id: str) -> bool:
-    """檢查用戶是否為 Premium 會員。"""
-    membership = get_user_membership(user_id)
-    return membership.get("is_premium", False)
+async def run_sync(fn, *args):
+    """Run a synchronous DB function in the thread executor."""
+    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
+
 
 
 # ============================================================================
@@ -253,7 +249,8 @@ async def send_message_endpoint(
                 raise HTTPException(status_code=400, detail="驗證失敗")
 
         # 檢查訊息限制
-        is_premium = _check_user_is_premium(user_id)
+        membership = await run_sync(get_user_membership, user_id)
+        is_premium = membership.get("is_premium", False)
         limit_check = await loop.run_in_executor(None, partial(check_message_limit, user_id, is_premium))
 
         if not limit_check["can_send"]:
@@ -337,7 +334,8 @@ async def mark_read_endpoint(
             other_user_id = conv["user2_id"] if conv["user1_id"] == user_id else conv["user1_id"]
 
             # 檢查對方是否為 Premium 會員（只有 Premium 會員能看到已讀回執）
-            is_other_premium = _check_user_is_premium(other_user_id)
+            other_membership = await run_sync(get_user_membership, other_user_id)
+            is_other_premium = other_membership.get("is_premium", False)
             if is_other_premium:
                 await message_manager.send_to_user(other_user_id, {
                     "type": "read_receipt",
@@ -376,8 +374,8 @@ async def send_greeting_endpoint(
             raise HTTPException(status_code=404, detail="接收者不存在")
 
         # 檢查是否為 Premium 會員
-        is_premium = _check_user_is_premium(user_id)
-        if not is_premium:
+        membership = await run_sync(get_user_membership, user_id)
+        if not membership.get("is_premium", False):
             raise HTTPException(status_code=403, detail="打招呼功能僅限 Premium 會員使用")
 
         # 檢查是否被封鎖
@@ -450,8 +448,8 @@ async def search_messages_endpoint(
         raise HTTPException(status_code=403, detail="Not authorized")
     try:
         # 檢查是否為 Premium 會員
-        is_premium = _check_user_is_premium(user_id)
-        if not is_premium:
+        membership = await run_sync(get_user_membership, user_id)
+        if not membership.get("is_premium", False):
             raise HTTPException(status_code=403, detail="訊息搜尋功能僅限 Premium 會員使用")
 
         loop = asyncio.get_running_loop()
@@ -503,7 +501,8 @@ async def get_message_limits_endpoint(
         raise HTTPException(status_code=403, detail="Not authorized")
     try:
         from core.database import get_config
-        is_premium = _check_user_is_premium(user_id)
+        membership = await run_sync(get_user_membership, user_id)
+        is_premium = membership.get("is_premium", False)
 
         loop = asyncio.get_running_loop()
         message_limit = await loop.run_in_executor(None, partial(check_message_limit, user_id, is_premium))
