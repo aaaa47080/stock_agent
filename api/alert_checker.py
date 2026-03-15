@@ -55,24 +55,24 @@ async def _fetch_price(symbol: str, market: str) -> Optional[tuple]:
     Fetch (current_price, open_price) for a symbol.
     Returns None on failure.
     """
-    loop = asyncio.get_running_loop()
+    from api.utils import run_sync
     try:
         if market == "crypto":
             from core.tools.crypto_tools import get_crypto_price
-            result = await loop.run_in_executor(None, get_crypto_price, symbol)
+            result = await run_sync(get_crypto_price, symbol)
             price = result.get("price") or result.get("last")
             return (float(price), float(price)) if price else None
 
         if market == "tw_stock":
             from core.tools.tw_stock_tools import tw_stock_price
-            result = await loop.run_in_executor(None, tw_stock_price, symbol)
+            result = await run_sync(tw_stock_price, symbol)
             price = result.get("close") or result.get("price")
             open_p = result.get("open", price)
             return (float(price), float(open_p)) if price else None
 
         if market == "us_stock":
             from core.tools.us_stock_tools import us_stock_price
-            result = await loop.run_in_executor(None, us_stock_price, symbol)
+            result = await run_sync(us_stock_price, symbol)
             price = result.get("regularMarketPrice") or result.get("price")
             open_p = result.get("regularMarketOpen") or result.get("open", price)
             return (float(price), float(open_p)) if price else None
@@ -85,10 +85,11 @@ async def _fetch_price(symbol: str, market: str) -> Optional[tuple]:
 async def _check_all_alerts():
     """Run one check cycle across all active alerts."""
     from core.database import get_active_alerts, mark_alert_triggered
-    from api.routers.notifications import create_and_push_notification
+    from core.database.notifications import create_notification
+    from api.routers.notifications import push_notification_to_user
+    from api.utils import run_sync
 
-    loop = asyncio.get_running_loop()
-    alerts = await loop.run_in_executor(None, get_active_alerts)
+    alerts = await run_sync(get_active_alerts)
 
     if not alerts:
         return
@@ -108,11 +109,8 @@ async def _check_all_alerts():
         if triggered:
             body = build_alert_body(alert, current_price)
             try:
-                from functools import partial
-                await loop.run_in_executor(
-                    None,
-                    partial(
-                        create_and_push_notification,
+                notification = await run_sync(
+                    lambda: create_notification(
                         user_id=alert["user_id"],
                         notification_type="price_alert",
                         title=f"🔔 {alert['symbol']} 價格警報",
@@ -123,17 +121,17 @@ async def _check_all_alerts():
                             "current_price": current_price,
                             "alert_id": alert["id"],
                         },
-                    ),
+                    )
                 )
+                if notification:
+                    await push_notification_to_user(alert["user_id"], notification)
                 logger.info(f"Alert triggered: {alert['symbol']} ({alert['condition']} {alert['target']})")
             except Exception as e:
                 logger.error(f"Failed to send alert notification: {e}")
                 continue
 
             repeat = bool(alert.get("repeat"))
-            await loop.run_in_executor(
-                None, mark_alert_triggered, alert["id"], repeat
-            )
+            await run_sync(mark_alert_triggered, alert["id"], repeat)
 
 
 async def price_alert_check_task():

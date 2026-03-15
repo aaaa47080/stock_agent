@@ -193,7 +193,7 @@ def create_post(board_id: int, user_id: str, category: str, title: str, content:
         conn.commit()
         return {"success": True, "post_id": post_id}
     except Exception as e:
-        print(f"Create post error: {e}")
+        logger.error(f"Create post error: {e}")
         conn.rollback()  # 全部回滾，確保數據一致性
         return {"success": False, "error": str(e)}
     finally:
@@ -407,7 +407,7 @@ def delete_post(post_id: int, user_id: str) -> bool:
                         # 減少標籤的使用計數
                         c.execute('UPDATE tags SET post_count = GREATEST(0, post_count - 1) WHERE id = %s', (tag_id,))
             except Exception as e:
-                print(f"⚠️ 更新標籤統計失敗: {e}")
+                logger.warning(f"更新標籤統計失敗: {e}")
                 # 不影響刪除主流程
 
             # 2. 記錄審計日誌
@@ -421,7 +421,7 @@ def delete_post(post_id: int, user_id: str) -> bool:
                 ''', (user_id, 'DELETE_POST', 'post', str(post_id), '/api/forum/posts/{id}', 'DELETE', True))
             except Exception as e:
                 # 審計日誌失敗不應該影響主操作
-                print(f"⚠️ 審計日誌記錄失敗: {e}")
+                logger.warning(f"審計日誌記錄失敗: {e}")
 
         conn.commit()
         return success
@@ -438,7 +438,7 @@ def delete_post(post_id: int, user_id: str) -> bool:
             ''', (user_id, 'DELETE_POST', 'post', str(post_id), '/api/forum/posts/{id}', 'DELETE', False, str(e)))
             conn.commit()
         except Exception as audit_err:
-            print(f"⚠️ 失敗審計日誌記錄失敗: {audit_err}")
+            logger.warning(f"失敗審計日誌記錄失敗: {audit_err}")
         raise
     finally:
         conn.close()
@@ -585,7 +585,7 @@ def add_comment(post_id: int, user_id: str, comment_type: str, content: Optional
         conn.commit()
         return {"success": True, "comment_id": comment_id}
     except Exception as e:
-        print(f"Add comment error: {e}")
+        logger.error(f"Add comment error: {e}")
         conn.rollback()
         return {"success": False, "error": str(e)}
     finally:
@@ -697,7 +697,7 @@ def create_tip(post_id: int, from_user_id: str, to_user_id: str, amount: float, 
         conn.commit()
         return tip_id
     except Exception as e:
-        print(f"Create tip error: {e}")
+        logger.error(f"Create tip error: {e}")
         conn.rollback()
         raise
     finally:

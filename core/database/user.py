@@ -58,7 +58,7 @@ def update_last_active(user_id: str) -> bool:
         conn.commit()
         return c.rowcount > 0
     except Exception as e:
-        print(f"Update last active error: {e}")
+        logger.warning(f"Update last active error: {e}")
         conn.rollback()
         return False
     finally:
@@ -256,7 +256,7 @@ def expire_user_membership(user_id: str) -> bool:
         conn.commit()
         return c.rowcount > 0
     except Exception as e:
-        print(f"Expire membership error: {e}")
+        logger.error(f"Expire membership error: {e}")
         conn.rollback()
         return False
     finally:
@@ -273,7 +273,7 @@ def upgrade_to_pro(user_id: str, months: int = 1, tx_hash: Optional[str] = None)
             c.execute('SELECT user_id FROM membership_payments WHERE tx_hash = %s', (tx_hash,))
             existing = c.fetchone()
             if existing:
-                print(f"[Upgrade] Duplicate tx_hash detected: {tx_hash} already used by user {existing[0]}")
+                logger.warning(f"[Upgrade] Duplicate tx_hash detected: {tx_hash} already used by user {existing[0]}")
                 raise ValueError("此交易已被處理（transaction hash已存在）")
 
         # 1. 查詢當前狀態，決定是「新購」還是「續費」
@@ -327,7 +327,7 @@ def upgrade_to_pro(user_id: str, months: int = 1, tx_hash: Optional[str] = None)
         # 重複交易或用戶不存在等業務錯誤，不回滾（因為沒有執行任何寫入）
         raise
     except Exception as e:
-        print(f"Upgrade to premium error: {e}")
+        logger.error(f"Upgrade to premium error: {e}")
         conn.rollback()
         return False
     finally:

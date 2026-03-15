@@ -7,6 +7,7 @@ Audit Logging Middleware - Optimized Dual-Layer Architecture
 
 这样既保留完整的调试能力，又避免数据库写入压力。
 """
+import asyncio
 import time
 from fastapi import Request
 from core.audit import AuditLogger
@@ -96,12 +97,8 @@ async def audit_middleware(request: Request, call_next):
     if needs_db:
         # ✅ 效能修覆：AuditLogger.log 是同步 DB 寫入，直接呼叫會 block event loop
         # 改用 run_in_executor 背景執行，不阻塞請求回應
-        import asyncio
-        from functools import partial
         try:
-            loop = asyncio.get_event_loop()
-            loop.run_in_executor(None, partial(
-                AuditLogger.log,
+            asyncio.get_running_loop().run_in_executor(None, lambda: AuditLogger.log(
                 action=action,
                 user_id=user.get("user_id") if user else None,
                 username=user.get("username") if user else None,
