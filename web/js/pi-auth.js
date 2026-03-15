@@ -195,22 +195,37 @@ window.safePiLogin = async function () {
 // ========================================
 
 /**
- * 顯示登入按鈕（Pi Browser 確認後呼叫）
+ * 顯示登入按鈕並確保 modal 可見。
+ * 必須在 DOMContentLoaded 後才能操作 DOM — 使用 readyState 確保安全。
+ * 使用 setTimeout(0) 確保在同一輪 DOMContentLoaded 的其他 handler 完成後才執行，
+ * 避免被 showPiLoginLoadingModal() 覆蓋。
  */
 function _showLoginButton() {
-    unlockPiBrowserGate();
-    const loginBtn = document.getElementById('pi-login-btn');
-    const notPiBrowserMsg = document.getElementById('not-pi-browser-msg');
-    if (loginBtn) loginBtn.style.display = 'flex';
-    if (notPiBrowserMsg) notPiBrowserMsg.style.display = 'none';
+    const show = () => {
+        unlockPiBrowserGate();
+        const modal = document.getElementById('login-modal');
+        const loginBtn = document.getElementById('pi-login-btn');
+        const notPiBrowserMsg = document.getElementById('not-pi-browser-msg');
+        if (modal) modal.classList.remove('hidden');
+        if (loginBtn) loginBtn.style.display = 'flex';
+        if (notPiBrowserMsg) notPiBrowserMsg.style.display = 'none';
+        console.log('✅ Connect Wallet button shown');
+    };
+    if (document.readyState === 'loading') {
+        // DOM 尚未就緒：等 DOMContentLoaded 再用 setTimeout(0) 後執行，
+        // 確保晚於同輪其他 DOMContentLoaded handlers（如 showPiLoginLoadingModal）
+        document.addEventListener('DOMContentLoaded', () => setTimeout(show, 0), { once: true });
+    } else {
+        // DOM 已就緒（含 interactive/complete）：直接執行
+        show();
+    }
 }
 window._showLoginButton = _showLoginButton;
 
 /**
- * 檢測 Pi Browser 並立即顯示按鈕，不等待 SDK 輪詢。
+ * 偵測 Pi Browser 並顯示按鈕。
  * Pi.init() 及 Pi.authenticate() 在用戶點擊時才執行（由 auth.js 處理）。
- * 等待策略：Pi SDK 以 async=false 注入，最多輪詢 1 秒（10×100ms）。
- * 若 SDK 仍未就緒則顯示「非 Pi Browser」提示。
+ * 等待策略：最多輪詢 2 秒（20×100ms），超時則顯示「非 Pi Browser」提示。
  */
 (function () {
     if (!isSafePiSdkContext()) {
@@ -219,16 +234,15 @@ window._showLoginButton = _showLoginButton;
         return;
     }
 
-    // HTTPS 環境：Pi SDK script 已注入，等待最多 1 秒
+    // HTTPS 環境：Pi SDK script 已注入，等待最多 2 秒
     let attempts = 0;
-    const maxAttempts = 10;
+    const maxAttempts = 20;
     const check = () => {
         const detected =
             typeof window.Pi !== 'undefined' &&
             window.Pi !== null &&
             typeof window.Pi.authenticate === 'function';
         if (detected) {
-            console.log('✅ Pi SDK ready — showing Connect Wallet button');
             _showLoginButton();
             return;
         }
@@ -236,7 +250,7 @@ window._showLoginButton = _showLoginButton;
         if (attempts < maxAttempts) {
             setTimeout(check, 100);
         } else {
-            console.warn('⚠️ Pi SDK not detected after 1s — showing Pi Browser required message');
+            console.warn('⚠️ Pi SDK not detected after 2s — showing Pi Browser required message');
             lockPiBrowserGate('pi_sdk_timeout');
         }
     };
