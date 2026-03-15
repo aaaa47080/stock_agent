@@ -175,10 +175,18 @@ async def sync_pi_user(request: PiUserSyncRequest):
             )
             
             # Token is valid and UID matches.
-            # Extract wallet_address from Pi API response (more reliable than client-provided value).
-            # Pi /v2/me returns wallet_address when wallet_address scope was granted.
-            verified_wallet = pi_user_data.get('wallet_address') or request.wallet_address
-            logger.info(f"Pi token verified for user: {pi_user_data.get('username')}, wallet: {'yes' if verified_wallet else 'no'}")
+            # Log full Pi API response keys to diagnose wallet_address field name.
+            logger.info(f"Pi /v2/me response keys: {list(pi_user_data.keys())}")
+            logger.info(f"Pi /v2/me full response: {pi_user_data}")
+
+            # Extract wallet_address — try known field names from Pi API
+            verified_wallet = (
+                pi_user_data.get('wallet_address')
+                or pi_user_data.get('walletAddress')
+                or (pi_user_data.get('credentials') or {}).get('wallet_address')
+                or request.wallet_address
+            )
+            logger.info(f"Pi token verified for user: {pi_user_data.get('username')}, wallet: {verified_wallet or 'NOT FOUND'}")
 
         except HTTPException as e:
             # Token verification failed - reject the request
