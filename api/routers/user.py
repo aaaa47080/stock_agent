@@ -174,9 +174,12 @@ async def sync_pi_user(request: PiUserSyncRequest):
                 request.pi_uid
             )
             
-            # Token is valid and UID matches
-            logger.info(f"Pi token verified for user: {pi_user_data.get('username')}")
-            
+            # Token is valid and UID matches.
+            # Extract wallet_address from Pi API response (more reliable than client-provided value).
+            # Pi /v2/me returns wallet_address when wallet_address scope was granted.
+            verified_wallet = pi_user_data.get('wallet_address') or request.wallet_address
+            logger.info(f"Pi token verified for user: {pi_user_data.get('username')}, wallet: {'yes' if verified_wallet else 'no'}")
+
         except HTTPException as e:
             # Token verification failed - reject the request
             logger.warning(f"Pi token verification failed for uid {request.pi_uid}: {e.detail}")
@@ -193,7 +196,7 @@ async def sync_pi_user(request: PiUserSyncRequest):
         loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(
             None,
-            partial(create_or_get_pi_user, pi_uid=request.pi_uid, username=request.username, wallet_address=request.wallet_address)
+            partial(create_or_get_pi_user, pi_uid=request.pi_uid, username=request.username, wallet_address=verified_wallet)
         )
 
         # Generate JWT for Pi User
@@ -211,7 +214,7 @@ async def sync_pi_user(request: PiUserSyncRequest):
                 "auth_method": result["auth_method"],
                 "role": result.get("role", "user"),
                 "membership_tier": result.get("membership_tier", "free"),
-                "has_wallet": request.wallet_address is not None,
+                "has_wallet": verified_wallet is not None,
             },
             "is_new_user": result.get("is_new", False)
         }
