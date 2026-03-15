@@ -605,6 +605,29 @@ def create_analysis_tables(c):
     c.execute('CREATE INDEX IF NOT EXISTS idx_analysis_reports_user ON analysis_reports(user_id)')
 
 
+def create_price_alert_tables(c):
+    """Create price alert tables"""
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS price_alerts (
+            id          TEXT PRIMARY KEY,
+            user_id     TEXT NOT NULL,
+            symbol      TEXT NOT NULL,
+            market      TEXT NOT NULL,
+            condition   TEXT NOT NULL,
+            target      REAL NOT NULL,
+            repeat      INTEGER NOT NULL DEFAULT 0,
+            triggered   INTEGER NOT NULL DEFAULT 0,
+            created_at  TEXT NOT NULL,
+            CONSTRAINT fk_alert_user
+                FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+        )
+    ''')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_price_alerts_user ON price_alerts(user_id)')
+    c.execute(
+        'CREATE INDEX IF NOT EXISTS idx_price_alerts_active ON price_alerts(triggered) WHERE triggered = 0'
+    )
+
+
 def create_tool_tables(c):
     """Create tool system tables"""
     # 工具目錄：所有可用工具的 Metadata
@@ -875,6 +898,7 @@ def create_all_tables(c):
     create_audit_log_tables(c)
     create_governance_tables(c)
     create_analysis_tables(c)
+    create_price_alert_tables(c)
     create_tool_tables(c)
     create_memory_tables(c)
     create_user_facts_table(c)
