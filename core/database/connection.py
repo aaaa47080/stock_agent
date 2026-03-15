@@ -8,17 +8,83 @@ import os
 import threading
 import time
 import logging
+from urllib.parse import quote
 
 from .schema import create_all_tables
 
-# PostgreSQL 連接字符串
-DATABASE_URL = os.environ.get("DATABASE_URL")
-
-if not DATABASE_URL:
-    # 嘗試從 .env 讀取 (如果 load_dotenv 未在入口處執行)
+def _load_env_file_if_needed():
+    """在本地開發環境中按需讀取 .env，但不覆蓋平台已注入的變數。"""
     from dotenv import load_dotenv
-    load_dotenv()
-    DATABASE_URL = os.environ.get("DATABASE_URL")
+
+    load_dotenv(override=False)
+
+
+def _build_database_url_from_components(env: dict | os._Environ[str] | None = None) -> str | None:
+    """
+    從分離式 PostgreSQL 環境變數組裝連接字串。
+
+    Zeabur 會提供 POSTGRESQL_HOST / USER / PASSWORD / PORT / DB。
+    當密碼包含 @ 或 $ 等保留字元時，這種組裝方式比直接吃 DATABASE_URL 更安全。
+    """
+    env = env or os.environ
+
+    host = env.get("POSTGRESQL_HOST")
+    user = env.get("POSTGRESQL_USER")
+    password = env.get("POSTGRESQL_PASSWORD")
+    db_name = env.get("POSTGRESQL_DB") or env.get("POSTGRES_DB")
+    port = env.get("POSTGRESQL_PORT", "5432")
+
+    if not all([host, user, password, db_name]):
+        return None
+
+    encoded_user = quote(str(user), safe="")
+    encoded_password = quote(str(password), safe="")
+    encoded_db_name = quote(str(db_name), safe="")
+
+    return (
+        f"postgresql://{encoded_user}:{encoded_password}"
+        f"@{host}:{port}/{encoded_db_name}"
+    )
+
+
+def _resolve_database_url_from_environment() -> str | None:
+    """解析目前環境中的資料庫連線字串。"""
+    component_url = _build_database_url_from_components()
+    if component_url:
+        return component_url
+
+    database_url = os.environ.get("DATABASE_URL")
+    if database_url:
+        return database_url
+
+    _load_env_file_if_needed()
+
+    component_url = _build_database_url_from_components()
+    if component_url:
+        return component_url
+
+    return os.environ.get("DATABASE_URL")
+
+
+DATABASE_URL = _resolve_database_url_from_environment()
+_INITIAL_DATABASE_URL = DATABASE_URL
+
+
+def get_database_url() -> str | None:
+    """
+    取得目前應使用的資料庫連線字串。
+
+    預設每次依據當前環境重新解析，避免平台重新注入變數後仍沿用舊值。
+    測試若直接 patch 模組級 DATABASE_URL，這裡也會尊重該覆寫。
+    """
+    current_module_value = globals().get("DATABASE_URL")
+    resolved_from_env = _resolve_database_url_from_environment()
+
+    if current_module_value and current_module_value != _INITIAL_DATABASE_URL:
+        return current_module_value
+
+    globals()["DATABASE_URL"] = resolved_from_env
+    return resolved_from_env
 
 # 允許在測試環境中延遲初始化（不立即拋出錯誤）
 # 實際連接時才會驗證 DATABASE_URL 是否有效
@@ -158,10 +224,11 @@ def init_connection_pool():
     global _connection_pool
 
     # 驗證 DATABASE_URL 是否存在
-    if not DATABASE_URL:
+    database_url = get_database_url()
+    if not database_url:
         raise ValueError(
-            "DATABASE_URL environment variable is not set. "
-            "Please set it in your .env file or environment."
+            "Database connection is not configured. "
+            "Set DATABASE_URL or POSTGRESQL_HOST/USER/PASSWORD/DB in your environment."
         )
 
     # 連接池初始化重試配置
@@ -178,7 +245,7 @@ def init_connection_pool():
                         _connection_pool = psycopg2.pool.ThreadedConnectionPool(
                             MIN_POOL_SIZE,
                             MAX_POOL_SIZE,
-                            DATABASE_URL,
+                            database_url,
                             **CONNECTION_OPTIONS  # 添加連接超時和 keepalive 參數
                         )
                         print(f"✅ 線程安全數據庫連接池已初始化 (min={MIN_POOL_SIZE}, max={MAX_POOL_SIZE})")
@@ -210,6 +277,12 @@ def get_connection():
     重要: 使用完畢後調用 conn.close() 會自動將連接歸還到池中
     """
     global _db_initialized, _connection_pool
+    database_url = get_database_url()
+    if not database_url:
+        raise ValueError(
+            "Database connection is not configured. "
+            "Set DATABASE_URL or POSTGRESQL_HOST/USER/PASSWORD/DB in your environment."
+        )
 
     # 確保連接池已初始化
     if _connection_pool is None:
@@ -269,7 +342,7 @@ def get_connection():
                 if bad_conn_count >= 3:
                     print(f"⚠️ 連接池可能已失效（{bad_conn_count} 個壞連接），嘗試創建新連接...")
                     try:
-                        fresh_conn = psycopg2.connect(DATABASE_URL, **CONNECTION_OPTIONS)
+                        fresh_conn = psycopg2.connect(database_url, **CONNECTION_OPTIONS)
                         # 驗證新連接
                         test_cur = fresh_conn.cursor()
                         test_cur.execute("SELECT 1")
@@ -304,7 +377,7 @@ def get_connection():
                 if attempt >= 2:
                     print("⚠️ 連接池持續耗盡，嘗試創建新連接...")
                     try:
-                        fresh_conn = psycopg2.connect(DATABASE_URL, **CONNECTION_OPTIONS)
+                        fresh_conn = psycopg2.connect(database_url, **CONNECTION_OPTIONS)
                         print("✅ 成功創建新連接繞過連接池")
                         return _StandaloneConnection(fresh_conn)
                     except Exception as new_conn_error:
@@ -370,12 +443,18 @@ def init_db():
     # 重試配置
     INIT_MAX_RETRIES = 10
     INIT_RETRY_DELAY = 3  # 秒
+    database_url = get_database_url()
+    if not database_url:
+        raise ValueError(
+            "Database connection is not configured. "
+            "Set DATABASE_URL or POSTGRESQL_HOST/USER/PASSWORD/DB in your environment."
+        )
 
     # 直接創建連接而不是從池中獲取（避免初始化時的循環依賴）
     conn = None
     for attempt in range(INIT_MAX_RETRIES):
         try:
-            conn = psycopg2.connect(DATABASE_URL, **CONNECTION_OPTIONS)
+            conn = psycopg2.connect(database_url, **CONNECTION_OPTIONS)
             break
         except psycopg2.OperationalError as e:
             if attempt < INIT_MAX_RETRIES - 1:

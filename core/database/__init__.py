@@ -9,7 +9,11 @@
 from importlib import import_module
 from typing import Dict, Tuple
 
-from .connection import DATABASE_URL, get_connection, init_db, close_all_connections
+from . import connection as _connection
+
+get_connection = _connection.get_connection
+init_db = _connection.init_db
+close_all_connections = _connection.close_all_connections
 
 _EXPORTS: Dict[str, Tuple[str, str]] = {
     # user
@@ -179,7 +183,9 @@ __all__ = [
 
 
 def __getattr__(name: str):
-    if name in {"DATABASE_URL", "get_connection", "init_db", "close_all_connections"}:
+    if name == "DATABASE_URL":
+        return _connection.get_database_url()
+    if name in {"get_connection", "init_db", "close_all_connections"}:
         return globals()[name]
     target = _EXPORTS.get(name)
     if target is None:

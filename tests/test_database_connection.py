@@ -8,6 +8,8 @@ import threading
 from core.database.connection import (
     PooledConnection,
     _StandaloneConnection,
+    _build_database_url_from_components,
+    get_database_url,
     init_connection_pool,
     get_connection,
     close_all_connections,
@@ -170,12 +172,12 @@ class TestInitConnectionPool:
 
     def test_raises_without_database_url(self):
         """Test that ValueError is raised without DATABASE_URL"""
-        with patch('core.database.connection.DATABASE_URL', None):
+        with patch('core.database.connection.get_database_url', return_value=None):
             with patch('core.database.connection._connection_pool', None):
                 with pytest.raises(ValueError) as exc_info:
                     init_connection_pool()
 
-                assert "DATABASE_URL" in str(exc_info.value)
+                assert "Database connection" in str(exc_info.value)
 
     def test_retry_on_operational_error(self):
         """Test retry on OperationalError"""
@@ -359,6 +361,37 @@ class TestConnectionConstants:
     def test_retry_constants(self):
         """Test retry constants are reasonable"""
         assert MAX_RETRIES >= 1
+
+
+class TestDatabaseUrlResolution:
+    """Tests for database URL resolution helpers"""
+
+    def test_builds_database_url_from_components_with_encoding(self):
+        env = {
+            "POSTGRESQL_HOST": "service.internal",
+            "POSTGRESQL_USER": "root",
+            "POSTGRESQL_PASSWORD": "Zb9$mK2@pL7",
+            "POSTGRESQL_DB": "zeabur",
+            "POSTGRESQL_PORT": "5432",
+        }
+
+        result = _build_database_url_from_components(env)
+
+        assert result == (
+            "postgresql://root:Zb9%24mK2%40pL7@service.internal:5432/zeabur"
+        )
+
+    def test_component_url_takes_precedence_over_raw_database_url(self, monkeypatch):
+        monkeypatch.setenv("DATABASE_URL", "postgresql://broken:url")
+        monkeypatch.setenv("POSTGRESQL_HOST", "service.internal")
+        monkeypatch.setenv("POSTGRESQL_USER", "root")
+        monkeypatch.setenv("POSTGRESQL_PASSWORD", "pa@ss")
+        monkeypatch.setenv("POSTGRESQL_DB", "zeabur")
+        monkeypatch.setenv("POSTGRESQL_PORT", "5432")
+
+        result = get_database_url()
+
+        assert result == "postgresql://root:pa%40ss@service.internal:5432/zeabur"
 
 
 class TestThreadSafety:
