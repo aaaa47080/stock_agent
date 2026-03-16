@@ -487,72 +487,6 @@
 
 
 
-
-            <!-- Tab: Assets -->
-            <div id="assets-tab"
-                class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:pl-6 md:pr-16 py-6 pb-40 relative">
-                <div class="flex justify-between items-end mb-8 md:pr-14">
-                    <h2 class="font-serif text-3xl text-secondary" data-i18n="assets.portfolio">Portfolio</h2>
-                    <button onclick="refreshAssets()"
-                        class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition"><i
-                            data-lucide="refresh-cw" class="w-4 h-4"></i></button>
-                </div>
-
-                <!-- No OKX Key -->
-                <div id="no-okx-key-overlay" class="hidden text-center py-16">
-                    <div
-                        class="w-20 h-20 bg-gradient-to-br from-primary/20 to-accent/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <i data-lucide="wallet" class="w-10 h-10 text-primary"></i>
-                    </div>
-                    <h3 class="font-serif text-xl text-secondary mb-2" data-i18n="assets.connectExchange">Connect Your
-                        Exchange</h3>
-                    <p class="text-textMuted mb-8 text-sm" data-i18n="assets.linkDescription">Link your OKX account to
-                        view portfolio and positions.</p>
-                    <button onclick="switchTab('settings')"
-                        class="px-8 py-3.5 bg-gradient-to-r from-primary to-accent text-background font-bold rounded-2xl transition flex items-center gap-2 mx-auto shadow-lg shadow-primary/20 hover:scale-105">
-                        <i data-lucide="settings" class="w-4 h-4"></i>
-                        <span data-i18n="assets.goToSettings">Go to Settings</span>
-                    </button>
-                </div>
-
-                <!-- Assets Content (hidden when no OKX key) -->
-                <div id="assets-content">
-                    <div
-                        class="bg-gradient-to-br from-surface to-surfaceHighlight p-8 rounded-[2.5rem] mb-6 text-center border border-white/5 relative overflow-hidden">
-                        <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-10 -mt-10">
-                        </div>
-                        <span class="text-sm text-textMuted font-medium uppercase tracking-widest"
-                            data-i18n="assets.totalEquity">Total Equity</span>
-                        <h1 class="text-4xl md:text-5xl font-serif text-secondary mt-2 mb-2" id="total-equity">--</h1>
-                        <span class="text-xs text-textMuted/50 font-mono" id="asset-update-time"
-                            data-i18n="assets.updated">Updated: --:--</span>
-                    </div>
-
-                    <!-- Spot Assets Section -->
-                    <div class="bg-surface p-6 rounded-3xl border border-white/5 mb-6">
-                        <h3 class="font-bold text-sm text-textMuted mb-4" data-i18n="assets.spotAssets">Spot Assets</h3>
-                        <div id="spot-assets-list" class="space-y-4">
-                            <!-- Injected via JS -->
-                        </div>
-                    </div>
-
-                    <div class="bg-surface rounded-3xl border border-white/5 overflow-hidden">
-                        <div class="p-4 border-b border-white/5 flex justify-between items-center">
-                            <h3 class="font-bold text-sm text-textMuted pl-2" data-i18n="assets.activePositions">Active
-                                Positions</h3>
-                            <div id="positions-summary"></div>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-sm">
-                                <tbody id="positions-table-body" class="divide-y divide-white/5">
-                                    <!-- Rows injected via JS -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Tab: Friends (Global Social Hub) -->
             <div id="friends-tab" class="tab-content hidden h-full overflow-hidden relative">
                 <!-- Dynamic Content Injected via components.js -->
@@ -1239,7 +1173,6 @@
     <script defer src="/static/js/app.js?v=54" onerror="alert('app.js 載入失敗')"></script>
     <script defer src="/static/js/apiKeyManager.js?v=48" onerror="alert('apiKeyManager.js 載入失敗')"></script>
     <script defer src="/static/js/auth.js?v=60" onerror="alert('auth.js 載入失敗')"></script>
-    <script defer src="/static/js/okxKeyManager.js?v=47"></script>
     <script defer src="/static/js/components.js?v=79"></script>
     <script defer src="/static/js/notification-service.js?v=4"></script>
     <script defer src="/static/js/components/NotificationBell.js?v=2"></script>
@@ -1264,7 +1197,6 @@
     <script defer src="/static/js/market-screener.js?v=2"></script>
     <script defer src="/static/js/market-chart.js?v=1"></script>
     <script defer src="/static/js/market-ws.js?v=1"></script>
-    <script defer src="/static/js/assets.js?v=47"></script>
     <script defer src="/static/js/pulse.js?v=53"></script>
     <script defer src="/static/js/forum-config.js?v=1"></script>
     <script defer src="/static/js/forum-api.js?v=1"></script>
