@@ -62,7 +62,7 @@ from api.services import (
     update_market_pulse_task,
     funding_rate_update_task
 )
-from api.routers import system, analysis, market, trading, user, twstock, usstock
+from api.routers import system, analysis, market, user, twstock, usstock
 from api.routers.forum import router as forum_router
 from api.routers.premium import router as premium_router
 from api.routers.admin import router as admin_router
@@ -371,7 +371,6 @@ app.include_router(analysis.router)
 app.include_router(market.router)
 app.include_router(twstock.router)
 app.include_router(usstock.router)
-app.include_router(trading.router)
 app.include_router(user.router)
 app.include_router(forum_router)   # 論壇 API
 app.include_router(premium_router) # 高級會員 API

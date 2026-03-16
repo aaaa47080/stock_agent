@@ -11,10 +11,8 @@ from api.models import (
     UserRegisterRequest,
     UserLoginRequest,
     KlineRequest,
-    BacktestRequest,
     UserSettings,
     APIKeySettings,
-    TradeExecutionRequest,
     RefreshPulseRequest,
     KeyValidationRequest
 )
@@ -162,27 +160,6 @@ class TestKlineRequest:
         assert request.limit == 200
 
 
-class TestBacktestRequest:
-    """Tests for BacktestRequest model"""
-
-    def test_required_symbol(self):
-        """Test that symbol is required"""
-        request = BacktestRequest(symbol="BTC")
-        assert request.symbol == "BTC"
-
-    def test_default_values(self):
-        """Test default values"""
-        request = BacktestRequest(symbol="ETH")
-        assert request.signal_type == "RSI_OVERSOLD"
-        assert request.interval == "1h"
-
-    def test_custom_values(self):
-        """Test with custom signal type"""
-        request = BacktestRequest(symbol="BTC", signal_type="MACD_CROSS", interval="4h")
-        assert request.signal_type == "MACD_CROSS"
-        assert request.interval == "4h"
-
-
 class TestUserSettings:
     """Tests for UserSettings model"""
 
@@ -232,61 +209,6 @@ class TestAPIKeySettings:
         """Test that missing fields raise ValidationError"""
         with pytest.raises(ValidationError):
             APIKeySettings(api_key="key", secret_key="secret")  # Missing passphrase  # pragma: allowlist secret
-
-
-class TestTradeExecutionRequest:
-    """Tests for TradeExecutionRequest model"""
-
-    def test_required_fields(self):
-        """Test required fields"""
-        request = TradeExecutionRequest(
-            symbol="BTC",
-            market_type="spot",
-            side="buy",
-            amount=100.0
-        )
-        assert request.symbol == "BTC"
-        assert request.market_type == "spot"
-        assert request.side == "buy"
-        assert request.amount == 100.0
-
-    def test_default_values(self):
-        """Test default values"""
-        request = TradeExecutionRequest(
-            symbol="ETH",
-            market_type="futures",
-            side="long",
-            amount=50.0
-        )
-        assert request.leverage == 1
-        assert request.stop_loss is None
-        assert request.take_profit is None
-
-    def test_futures_with_all_fields(self):
-        """Test futures trade with all optional fields"""
-        request = TradeExecutionRequest(
-            symbol="BTC",
-            market_type="futures",
-            side="short",
-            amount=100.0,
-            leverage=10,
-            stop_loss=50000.0,
-            take_profit=45000.0
-        )
-        assert request.leverage == 10
-        assert request.stop_loss == 50000.0
-        assert request.take_profit == 45000.0
-
-    def test_various_sides(self):
-        """Test various side values"""
-        for side in ["buy", "sell", "long", "short"]:
-            request = TradeExecutionRequest(
-                symbol="BTC",
-                market_type="spot",
-                side=side,
-                amount=100.0
-            )
-            assert request.side == side
 
 
 class TestRefreshPulseRequest:
@@ -349,16 +271,6 @@ class TestModelValidation:
         """Test KlineRequest with zero limit"""
         request = KlineRequest(symbol="BTC", limit=0)
         assert request.limit == 0
-
-    def test_trade_request_with_zero_amount(self):
-        """Test TradeExecutionRequest with zero amount"""
-        request = TradeExecutionRequest(
-            symbol="BTC",
-            market_type="spot",
-            side="buy",
-            amount=0.0
-        )
-        assert request.amount == 0.0
 
     def test_user_settings_with_all_none(self):
         """Test UserSettings with all optional fields None"""

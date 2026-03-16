@@ -67,15 +67,6 @@ class APIKeySettings(BaseModel):
     secret_key: str
     passphrase: str
 
-class TradeExecutionRequest(BaseModel):
-    symbol: str
-    market_type: str # "spot" or "futures"
-    side: str # "buy", "sell", "long", "short"
-    amount: float # Investment/Margin amount in USDT
-    leverage: int = 1
-    stop_loss: Optional[float] = None
-    take_profit: Optional[float] = None
-
 class RefreshPulseRequest(BaseModel):
     symbols: Optional[List[str]] = None
 
