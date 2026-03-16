@@ -353,9 +353,6 @@ async function checkApiKeyStatus() {
     }
     if (window.DEBUG_MODE) console.log('[App] hasLlmKey:', hasLlmKey);
 
-    // Check OKX Key
-    const hasOkxKey = window.OKXKeyManager?.hasCredentials();
-
     // 1. Update Top Bar Indicator (LLM Status)
     if (indicator && statusText && statusDot) {
         if (hasLlmKey) {
@@ -398,17 +395,7 @@ async function checkApiKeyStatus() {
         }
     }
 
-    // 3. Control Assets Tab Overlay (OKX Key)
-    const okxOverlay = document.getElementById('no-okx-key-overlay');
-    if (okxOverlay) {
-        if (hasOkxKey) {
-            okxOverlay.classList.add('hidden');
-        } else {
-            okxOverlay.classList.remove('hidden');
-        }
-    }
-
-    // 4. Update Chat Input State
+    // 3. Update Chat Input State
     updateChatUIState(hasLlmKey);
 }
 
@@ -572,13 +559,6 @@ function onTabSwitch(tab) {
     if (tab === 'crypto' || tab === 'pulse') {
         window.pulseInterval = setInterval(() => {
             if (typeof checkMarketPulse === 'function') checkMarketPulse(false);
-        }, 30000);
-    }
-
-    if (tab === 'assets') {
-        // ✅ 效能優化：assets 刷新間隔從 10s 延長為 30s，減少不必要的 API 請求
-        window.assetsInterval = setInterval(() => {
-            if (typeof refreshAssets === 'function') refreshAssets();
         }, 30000);
     }
 

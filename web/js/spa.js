@@ -22,7 +22,6 @@ async function switchTab(tabId, fromPopState = false) {
         'twstock',
         'usstock',
         'wallet',
-        'assets',
         'friends',
         'forum',
         'safety',
@@ -72,7 +71,6 @@ window.addEventListener('popstate', (event) => {
         'twstock',
         'usstock',
         'wallet',
-        'assets',
         'friends',
         'forum',
         'safety',
@@ -233,7 +231,6 @@ async function executeTabSwitch(tabId, fromPopState = false) {
         }
         if (typeof window.loadUserAlerts === 'function') window.loadUserAlerts();
     }
-    if (tabId === 'assets' && typeof refreshAssets === 'function') refreshAssets();
     if (tabId === 'wallet') {
         if (window.WalletApp) window.WalletApp.init();
     }
@@ -668,7 +665,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         'twstock',
         'usstock',
         'wallet',
-        'assets',
         'friends',
         'forum',
         'safety',

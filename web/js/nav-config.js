@@ -33,7 +33,6 @@ const NAV_ITEMS = [
         i18nKey: 'nav.wallet',
         defaultEnabled: true,
     },
-    { id: 'assets', icon: 'wallet', label: 'Assets', i18nKey: 'nav.assets', defaultEnabled: true },
     {
         id: 'friends',
         icon: 'users',
