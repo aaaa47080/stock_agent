@@ -295,8 +295,10 @@ pydantic-core==2.41.1
     # via pydantic
 pyjwt==2.12.0
     # via -r requirements.txt
-pyopenssl==25.3.0
-    # via python-okx
+pyopenssl==26.0.0
+    # via
+    #   -r requirements.txt
+    #   python-okx
 pyparsing==3.3.2
     # via httplib2
 python-dateutil==2.9.0.post0
