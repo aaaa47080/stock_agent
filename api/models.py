@@ -57,16 +57,6 @@ class UserSettings(BaseModel):
     primary_model_provider: str = "google_gemini"  # openai, google_gemini, openrouter
     primary_model_name: str = GEMINI_DEFAULT_MODEL  # 默認為 Google Gemini
     
-    # OKX Keys (可選，若要在這裡統一管理)
-    okx_api_key: Optional[str] = None
-    okx_secret_key: Optional[str] = None
-    okx_passphrase: Optional[str] = None
-
-class APIKeySettings(BaseModel):
-    api_key: str
-    secret_key: str
-    passphrase: str
-
 class RefreshPulseRequest(BaseModel):
     symbols: Optional[List[str]] = None
 

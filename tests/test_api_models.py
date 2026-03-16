@@ -12,7 +12,6 @@ from api.models import (
     UserLoginRequest,
     KlineRequest,
     UserSettings,
-    APIKeySettings,
     RefreshPulseRequest,
     KeyValidationRequest
 )
@@ -180,37 +179,6 @@ class TestUserSettings:
         assert settings.openai_api_key == "sk-test"  # pragma: allowlist secret
         assert settings.primary_model_provider == "openai"
 
-    def test_okx_keys(self):
-        """Test OKX key settings"""
-        settings = UserSettings(
-            okx_api_key="okx-key",
-            okx_secret_key="okx-secret",  # pragma: allowlist secret
-            okx_passphrase="okx-pass"  # pragma: allowlist secret
-        )
-        assert settings.okx_api_key == "okx-key"
-        assert settings.okx_secret_key == "okx-secret"  # pragma: allowlist secret
-
-
-class TestAPIKeySettings:
-    """Tests for APIKeySettings model"""
-
-    def test_required_fields(self):
-        """Test required fields"""
-        settings = APIKeySettings(
-            api_key="test-key",
-            secret_key="test-secret",  # pragma: allowlist secret
-            passphrase="test-pass"  # pragma: allowlist secret
-        )
-        assert settings.api_key == "test-key"
-        assert settings.secret_key == "test-secret"  # pragma: allowlist secret
-        assert settings.passphrase == "test-pass"  # pragma: allowlist secret
-
-    def test_missing_fields(self):
-        """Test that missing fields raise ValidationError"""
-        with pytest.raises(ValidationError):
-            APIKeySettings(api_key="key", secret_key="secret")  # Missing passphrase  # pragma: allowlist secret
-
-
 class TestRefreshPulseRequest:
     """Tests for RefreshPulseRequest model"""
 
@@ -278,7 +246,6 @@ class TestModelValidation:
         assert settings.openai_api_key is None
         assert settings.google_api_key is None
         assert settings.openrouter_api_key is None
-        assert settings.okx_api_key is None
 
 
 if __name__ == "__main__":
