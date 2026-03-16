@@ -296,9 +296,6 @@ async def update_user_settings(settings: UserSettings, request: Request, current
             os.environ["OPENROUTER_API_KEY"] = settings.openrouter_api_key
             Settings.update(OPENROUTER_API_KEY=settings.openrouter_api_key)
 
-        # ⚠️ OKX Keys are NO LONGER stored in backend (BYOK Mode)
-        # They are managed client-side via OKXKeyManager
-
         # 2. Update Model Configuration
         new_model_config = {
             "provider": settings.primary_model_provider,
