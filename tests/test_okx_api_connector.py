@@ -4,7 +4,7 @@ Tests for OKX API connector in trading/okx_api_connector.py
 import pytest
 from unittest.mock import patch, MagicMock
 
-from trading.okx_api_connector import OKXAPIConnector
+from utils.okx_api_connector import OKXAPIConnector
 
 
 class TestOKXAPIConnectorInit:

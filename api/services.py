@@ -20,7 +20,7 @@ from core.config import (
     SCREENER_UPDATE_INTERVAL_MINUTES
 )
 from analysis.market_pulse import get_market_pulse
-from trading.okx_api_connector import OKXAPIConnector
+from utils.okx_api_connector import OKXAPIConnector
 from data.data_fetcher import get_data_fetcher
 from api.symbols import normalize_base_symbol, sanitize_base_symbols
 

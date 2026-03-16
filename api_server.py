@@ -78,7 +78,7 @@ from api.alert_checker import price_alert_check_task
 
 # Import database and core modules (but don't initialize at module level)
 from core.database import init_db
-from trading.okx_api_connector import OKXAPIConnector
+from utils.okx_api_connector import OKXAPIConnector
 
 from fastapi import Request
 from fastapi.responses import JSONResponse

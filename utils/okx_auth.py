@@ -4,7 +4,7 @@ OKX API 認證工具 - BYOK (Bring Your Own Keys) 模式
 """
 
 from fastapi import HTTPException, Request
-from trading.okx_api_connector import OKXAPIConnector
+from utils.okx_api_connector import OKXAPIConnector
 
 
 def get_okx_connector_from_request(request: Request) -> OKXAPIConnector:

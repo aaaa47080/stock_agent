@@ -7,7 +7,7 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException, Header, Depends
 
 from data.market_data import get_klines
-from trading.okx_api_connector import OKXAPIConnector
+from utils.okx_api_connector import OKXAPIConnector
 from api.models import KlineRequest, ScreenerRequest, RefreshPulseRequest
 from api.utils import logger
 from api.globals import (
