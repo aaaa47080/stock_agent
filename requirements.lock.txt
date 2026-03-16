@@ -25,8 +25,6 @@ automat==25.4.16
     # via twisted
 babel==2.18.0
     # via courlan
-backtrader==1.9.78.123
-    # via -r requirements.txt
 beautifulsoup4==4.14.3
     # via
     #   -r requirements.txt

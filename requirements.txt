@@ -53,9 +53,6 @@ yfinance==1.2.0
 python-okx==0.4.0
 rapidfuzz==3.14.3  # 台股符號模糊匹配
 
-# === Backtesting ===
-backtrader==1.9.78.123
-
 # === News / Search ===
 duckduckgo-search==8.1.1
 trafilatura==2.0.0
