@@ -43,11 +43,12 @@ class TestReportManagement:
             'description': 'This is spam content'
         }
 
-    @patch('core.database.governance.get_content_author')
-    @patch('core.database.governance.check_daily_report_limit')
-    @patch('core.database.governance.get_user_membership')
-    @patch('core.database.governance.get_connection')
-    def test_create_report_success(self, mock_get_conn, mock_membership, mock_check_limit, mock_get_author):
+    @patch('core.database.governance.activity.get_connection')
+    @patch('core.database.governance.reports.get_content_author')
+    @patch('core.database.governance.reports.check_daily_report_limit')
+    @patch('core.database.governance.reports.get_user_membership')
+    @patch('core.database.governance.reports.get_connection')
+    def test_create_report_success(self, mock_get_conn, mock_membership, mock_check_limit, mock_get_author, mock_activity_conn):
         """Test successful report creation"""
         mock_membership.return_value = {'is_premium': False}  # Free user
         mock_check_limit.return_value = True
@@ -67,9 +68,9 @@ class TestReportManagement:
         assert result["report_id"] == 1
         mock_conn.commit.assert_called()
 
-    @patch('core.database.governance.get_content_author')
-    @patch('core.database.governance.check_daily_report_limit')
-    @patch('core.database.governance.get_user_membership')
+    @patch('core.database.governance.reports.get_content_author')
+    @patch('core.database.governance.reports.check_daily_report_limit')
+    @patch('core.database.governance.reports.get_user_membership')
     def test_create_report_limit_exceeded(self, mock_membership, mock_check_limit, mock_get_author):
         """Test report creation when daily limit exceeded"""
         mock_membership.return_value = {'is_premium': False}
@@ -81,9 +82,9 @@ class TestReportManagement:
         assert result["success"] is False
         assert result["error"] == "daily_limit_exceeded"
 
-    @patch('core.database.governance.get_content_author')
-    @patch('core.database.governance.check_daily_report_limit')
-    @patch('core.database.governance.get_user_membership')
+    @patch('core.database.governance.reports.get_content_author')
+    @patch('core.database.governance.reports.check_daily_report_limit')
+    @patch('core.database.governance.reports.get_user_membership')
     def test_create_report_own_content(self, mock_membership, mock_check_limit, mock_get_author):
         """Test report creation on own content (should fail)"""
         mock_membership.return_value = {'is_premium': False}
@@ -95,10 +96,10 @@ class TestReportManagement:
         assert result["success"] is False
         assert result["error"] == "cannot_report_own_content"
 
-    @patch('core.database.governance.get_content_author')
-    @patch('core.database.governance.check_daily_report_limit')
-    @patch('core.database.governance.get_user_membership')
-    @patch('core.database.governance.get_connection')
+    @patch('core.database.governance.reports.get_content_author')
+    @patch('core.database.governance.reports.check_daily_report_limit')
+    @patch('core.database.governance.reports.get_user_membership')
+    @patch('core.database.governance.reports.get_connection')
     def test_create_report_duplicate(self, mock_get_conn, mock_membership, mock_check_limit, mock_get_author):
         """Test duplicate report creation (should fail)"""
         mock_membership.return_value = {'is_premium': False}
@@ -117,7 +118,7 @@ class TestReportManagement:
         assert result["success"] is False
         assert result["error"] == "duplicate_report"
 
-    @patch('core.database.governance.get_connection')
+    @patch('core.database.governance.reports.get_connection')
     def test_get_pending_reports_empty(self, mock_get_conn):
         """Test getting pending reports when none exist"""
         mock_conn = Mock()
@@ -130,7 +131,7 @@ class TestReportManagement:
 
         assert reports == []
 
-    @patch('core.database.governance.get_connection')
+    @patch('core.database.governance.reports.get_connection')
     def test_get_pending_reports_with_data(self, mock_get_conn):
         """Test getting pending reports with data"""
         mock_conn = Mock()
@@ -153,7 +154,7 @@ class TestReportManagement:
         assert reports[0]["id"] == 1
         assert reports[0]["report_type"] == "spam"
 
-    @patch('core.database.governance.get_connection')
+    @patch('core.database.governance.reports.get_connection')
     def test_get_report_by_id_not_found(self, mock_get_conn):
         """Test getting non-existent report"""
         mock_conn = Mock()
@@ -166,7 +167,7 @@ class TestReportManagement:
 
         assert result is None
 
-    @patch('core.database.governance.get_connection')
+    @patch('core.database.governance.reports.get_connection')
     def test_get_report_by_id_found(self, mock_get_conn):
         """Test getting existing report"""
         mock_conn = Mock()
@@ -186,7 +187,7 @@ class TestReportManagement:
         assert result["id"] == 1
         assert result["content_type"] == "post"
 
-    @patch('core.database.governance.get_connection')
+    @patch('core.database.governance.reports.get_connection')
     def test_check_daily_report_limit_allowed(self, mock_get_conn):
         """Test daily report limit check when allowed"""
         mock_conn = Mock()
@@ -199,7 +200,7 @@ class TestReportManagement:
 
         assert result is True
 
-    @patch('core.database.governance.get_connection')
+    @patch('core.database.governance.reports.get_connection')
     def test_check_daily_report_limit_exceeded(self, mock_get_conn):
         """Test daily report limit check when exceeded"""
         mock_conn = Mock()
@@ -216,10 +217,11 @@ class TestReportManagement:
 class TestVoting:
     """Tests for voting functions"""
 
-    @patch('core.database.governance.get_user_membership')
-    @patch('core.database.governance.get_audit_reputation')
-    @patch('core.database.governance.get_connection')
-    def test_vote_on_report_approve(self, mock_get_conn, mock_reputation, mock_membership):
+    @patch('core.database.governance.activity.get_connection')
+    @patch('core.database.governance.voting.get_user_membership')
+    @patch('core.database.governance.voting.get_audit_reputation')
+    @patch('core.database.governance.voting.get_connection')
+    def test_vote_on_report_approve(self, mock_get_conn, mock_reputation, mock_membership, mock_activity_conn):
         """Test successful approve vote"""
         mock_membership.return_value = {'is_premium': True}
         mock_reputation.return_value = {'reputation_score': 50}
@@ -241,7 +243,7 @@ class TestVoting:
         assert result["vote_id"] == 1
         mock_conn.commit.assert_called()
 
-    @patch('core.database.governance.get_user_membership')
+    @patch('core.database.governance.voting.get_user_membership')
     def test_vote_on_report_non_premium(self, mock_membership):
         """Test voting by non-premium user (should fail)"""
         mock_membership.return_value = {'is_premium': False}
@@ -251,9 +253,9 @@ class TestVoting:
         assert result["success"] is False
         assert result["error"] == "premium_membership_required"
 
-    @patch('core.database.governance.get_user_membership')
-    @patch('core.database.governance.get_audit_reputation')
-    @patch('core.database.governance.get_connection')
+    @patch('core.database.governance.voting.get_user_membership')
+    @patch('core.database.governance.voting.get_audit_reputation')
+    @patch('core.database.governance.voting.get_connection')
     def test_vote_on_report_already_voted(self, mock_get_conn, mock_reputation, mock_membership):
         """Test voting when already voted"""
         mock_membership.return_value = {'is_premium': True}
@@ -274,7 +276,7 @@ class TestVoting:
         assert result["success"] is False
         assert result["error"] == "already_voted"
 
-    @patch('core.database.governance.get_connection')
+    @patch('core.database.governance.voting.get_connection')
     def test_get_report_votes_empty(self, mock_get_conn):
         """Test getting votes when none exist"""
         mock_conn = Mock()
@@ -287,7 +289,7 @@ class TestVoting:
 
         assert votes == []
 
-    @patch('core.database.governance.get_connection')
+    @patch('core.database.governance.voting.get_connection')
     def test_check_report_consensus_approve(self, mock_get_conn):
         """Test consensus check for approve"""
         mock_conn = Mock()
@@ -304,7 +306,7 @@ class TestVoting:
         assert result["decision"] == "approved"
         assert result["approve_rate"] == 0.8
 
-    @patch('core.database.governance.get_connection')
+    @patch('core.database.governance.voting.get_connection')
     def test_check_report_consensus_reject(self, mock_get_conn):
         """Test consensus check for reject"""
         mock_conn = Mock()
@@ -320,7 +322,7 @@ class TestVoting:
         assert result["has_consensus"] is True
         assert result["decision"] == "rejected"
 
-    @patch('core.database.governance.get_connection')
+    @patch('core.database.governance.voting.get_connection')
     def test_check_report_consensus_no_consensus(self, mock_get_conn):
         """Test consensus check when no consensus"""
         mock_conn = Mock()
@@ -337,7 +339,7 @@ class TestVoting:
         # decision key should not be in result when no consensus
         assert "decision" not in result or result.get("decision") is None
 
-    @patch('core.database.governance.get_connection')
+    @patch('core.database.governance.voting.get_connection')
     def test_check_report_consensus_below_threshold(self, mock_get_conn):
         """Test consensus check when below minimum votes"""
         mock_conn = Mock()
@@ -353,14 +355,14 @@ class TestVoting:
         assert result["has_consensus"] is False
         assert "minimum_votes" in result
 
-    @patch('core.database.governance.get_connection')
-    @patch('core.database.governance.get_content_author')
-    @patch('core.database.governance.add_violation_points')
-    @patch('core.database.governance.apply_suspension')
-    @patch('core.database.governance.get_user_violation_points')
-    @patch('core.database.governance.determine_suspension_action')
-    @patch('core.database.governance.get_report_votes')
-    @patch('core.database.governance.update_audit_reputation')
+    @patch('core.database.governance.voting.get_connection')
+    @patch('core.database.governance.voting.get_content_author')
+    @patch('core.database.governance.voting.add_violation_points')
+    @patch('core.database.governance.voting.apply_suspension')
+    @patch('core.database.governance.voting.get_user_violation_points')
+    @patch('core.database.governance.voting.determine_suspension_action')
+    @patch('core.database.governance.voting.get_report_votes')
+    @patch('core.database.governance.voting.update_audit_reputation')
     def test_finalize_report_approved(self, mock_update_reputation, mock_get_votes, mock_determine_action,
                                        mock_get_violation_points, mock_apply_suspension, mock_add_violation,
                                        mock_get_author, mock_get_conn):
@@ -386,10 +388,10 @@ class TestVoting:
         assert result["decision"] == "approved"
         mock_conn.commit.assert_called()
 
-    @patch('core.database.governance.get_connection')
-    @patch('core.database.governance.get_content_author')
-    @patch('core.database.governance.get_report_votes')
-    @patch('core.database.governance.update_audit_reputation')
+    @patch('core.database.governance.voting.get_connection')
+    @patch('core.database.governance.voting.get_content_author')
+    @patch('core.database.governance.voting.get_report_votes')
+    @patch('core.database.governance.voting.update_audit_reputation')
     def test_finalize_report_rejected(self, mock_update_reputation, mock_get_votes, mock_get_author, mock_get_conn):
         """Test finalizing report with reject decision"""
         mock_get_author.return_value = 'content-author-user'
@@ -412,8 +414,9 @@ class TestVoting:
 class TestViolations:
     """Tests for violation functions"""
 
-    @patch('core.database.governance.get_connection')
-    def test_add_violation_points(self, mock_get_conn):
+    @patch('core.database.governance.activity.get_connection')
+    @patch('core.database.governance.violations.get_connection')
+    def test_add_violation_points(self, mock_get_conn, mock_activity_conn):
         """Test adding violation points"""
         mock_conn = Mock()
         mock_cursor = Mock()
@@ -431,7 +434,7 @@ class TestViolations:
         assert result["violation_id"] == 5
         mock_conn.commit.assert_called()
 
-    @patch('core.database.governance.get_connection')
+    @patch('core.database.governance.violations.get_connection')
     def test_get_user_violation_points(self, mock_get_conn):
         """Test getting user violation points"""
         mock_conn = Mock()
@@ -448,7 +451,7 @@ class TestViolations:
         assert result["total_violations"] == 5
         assert result["suspension_count"] == 2
 
-    @patch('core.database.governance.get_connection')
+    @patch('core.database.governance.violations.get_connection')
     def test_get_user_violation_points_no_record(self, mock_get_conn):
         """Test getting violation points for user with no record"""
         mock_conn = Mock()
@@ -463,7 +466,7 @@ class TestViolations:
         assert result["points"] == 0
         assert result["total_violations"] == 0
 
-    @patch('core.database.governance.get_connection')
+    @patch('core.database.governance.violations.get_connection')
     def test_get_user_violations(self, mock_get_conn):
         """Test getting user violation history"""
         mock_conn = Mock()
@@ -514,7 +517,7 @@ class TestViolations:
         result = determine_suspension_action(3)
         assert result is None
 
-    @patch('core.database.governance.get_connection')
+    @patch('core.database.governance.violations.get_connection')
     def test_apply_suspension_success(self, mock_get_conn):
         """Test applying suspension to user"""
         mock_conn = Mock()
@@ -528,7 +531,7 @@ class TestViolations:
         assert result is True
         mock_conn.commit.assert_called()
 
-    @patch('core.database.governance.get_connection')
+    @patch('core.database.governance.violations.get_connection')
     def test_check_user_suspension_active(self, mock_get_conn):
         """Test checking user suspension status when active"""
         mock_conn = Mock()
@@ -544,7 +547,7 @@ class TestViolations:
         assert result["is_suspended"] is True
         assert result["action"] == "suspend_7d"
 
-    @patch('core.database.governance.get_connection')
+    @patch('core.database.governance.violations.get_connection')
     def test_check_user_suspension_none(self, mock_get_conn):
         """Test checking user suspension when not suspended"""
         mock_conn = Mock()
@@ -562,7 +565,7 @@ class TestViolations:
 class TestAuditReputation:
     """Tests for audit reputation functions"""
 
-    @patch('core.database.governance.get_connection')
+    @patch('core.database.governance.reputation.get_connection')
     def test_get_audit_reputation_exists(self, mock_get_conn):
         """Test getting existing audit reputation"""
         mock_conn = Mock()
@@ -580,7 +583,7 @@ class TestAuditReputation:
         assert result["accuracy_rate"] == 0.85
         assert result["reputation_score"] == 50
 
-    @patch('core.database.governance.get_connection')
+    @patch('core.database.governance.reputation.get_connection')
     def test_get_audit_reputation_new_user(self, mock_get_conn):
         """Test getting reputation for new user"""
         mock_conn = Mock()
@@ -614,7 +617,7 @@ class TestAuditReputation:
         result = calculate_vote_weight(reputation)
         assert result == 2.0
 
-    @patch('core.database.governance.get_connection')
+    @patch('core.database.governance.reputation.get_connection')
     def test_update_audit_reputation_correct(self, mock_get_conn):
         """Test updating reputation after correct vote"""
         mock_conn = Mock()
@@ -629,7 +632,7 @@ class TestAuditReputation:
         assert result["success"] is True
         mock_conn.commit.assert_called()
 
-    @patch('core.database.governance.get_connection')
+    @patch('core.database.governance.reputation.get_connection')
     def test_update_audit_reputation_incorrect(self, mock_get_conn):
         """Test updating reputation after incorrect vote"""
         mock_conn = Mock()
@@ -647,7 +650,7 @@ class TestAuditReputation:
 class TestActivityLogging:
     """Tests for activity logging functions"""
 
-    @patch('core.database.governance.get_connection')
+    @patch('core.database.governance.activity.get_connection')
     def test_log_activity(self, mock_get_conn):
         """Test logging user activity"""
         mock_conn = Mock()
@@ -665,7 +668,7 @@ class TestActivityLogging:
         assert result["success"] is True
         assert result["log_id"] == 1
 
-    @patch('core.database.governance.get_connection')
+    @patch('core.database.governance.activity.get_connection')
     def test_get_user_activity_logs(self, mock_get_conn):
         """Test getting user activity logs"""
         mock_conn = Mock()
@@ -689,7 +692,7 @@ class TestActivityLogging:
 class TestHelpers:
     """Tests for helper functions"""
 
-    @patch('core.database.governance.get_connection')
+    @patch('core.database.governance.helpers.get_connection')
     def test_get_content_author_post(self, mock_get_conn):
         """Test getting author of a post"""
         mock_conn = Mock()
@@ -703,7 +706,7 @@ class TestHelpers:
 
         assert result == 'author-user-id'
 
-    @patch('core.database.governance.get_connection')
+    @patch('core.database.governance.helpers.get_connection')
     def test_get_content_author_comment(self, mock_get_conn):
         """Test getting author of a comment"""
         mock_conn = Mock()
@@ -717,7 +720,7 @@ class TestHelpers:
 
         assert result == 'comment-author-id'
 
-    @patch('core.database.governance.get_connection')
+    @patch('core.database.governance.helpers.get_connection')
     def test_get_content_author_not_found(self, mock_get_conn):
         """Test getting author when content not found"""
         mock_conn = Mock()
@@ -731,7 +734,7 @@ class TestHelpers:
 
         assert result is None
 
-    @patch('core.database.governance.get_connection')
+    @patch('core.database.governance.helpers.get_connection')
     def test_get_report_statistics(self, mock_get_conn):
         """Test getting report statistics"""
         mock_conn = Mock()
@@ -748,7 +751,7 @@ class TestHelpers:
         assert result["rejected_reports"] == 30
         assert result["pending_reports"] == 10
 
-    @patch('core.database.governance.get_connection')
+    @patch('core.database.governance.helpers.get_connection')
     def test_get_top_reviewers(self, mock_get_conn):
         """Test getting top reviewers"""
         mock_conn = Mock()

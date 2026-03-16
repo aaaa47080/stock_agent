@@ -29,7 +29,7 @@ class TestOKXAPIConnectorInit:
             'OKX_API_SECRET': '',
             'OKX_PASSPHRASE': ''
         }, clear=True):
-            with patch('trading.okx_api_connector.logger') as mock_logger:
+            with patch('utils.okx_api_connector.logger') as mock_logger:
                 OKXAPIConnector._has_warned_missing_creds = False
                 _ = OKXAPIConnector()
                 assert mock_logger.warning.called

@@ -105,6 +105,7 @@ class TestAnalysisReportDB:
     def test_get_analysis_reports_returns_list(self):
         """get_analysis_reports 應返回 list，並解析 metadata JSON。"""
         import json
+        from datetime import datetime
         mock_rows = [
             {
                 "id": 1,
@@ -113,7 +114,7 @@ class TestAnalysisReportDB:
                 "interval": "1d",
                 "report_text": "test",
                 "metadata": json.dumps({"source": "v4"}),
-                "created_at": "2025-01-01 00:00:00",
+                "created_at": datetime(2025, 1, 1, 0, 0, 0),
             }
         ]
         with patch("core.database.analysis.DatabaseBase.query_all", return_value=mock_rows):
@@ -126,6 +127,7 @@ class TestAnalysisReportDB:
 
     def test_get_analysis_report_by_id_returns_dict(self):
         """get_analysis_report_by_id 應返回完整報告 dict，含 user_id。"""
+        from datetime import datetime
         mock_row = {
             "id": 1,
             "session_id": "sess-001",
@@ -134,7 +136,7 @@ class TestAnalysisReportDB:
             "interval": "1h",
             "report_text": "test report",
             "metadata": "{}",
-            "created_at": "2025-01-01 00:00:00",
+            "created_at": datetime(2025, 1, 1, 0, 0, 0),
         }
         with patch("core.database.analysis.DatabaseBase.query_one", return_value=mock_row):
             from core.database.analysis import get_analysis_report_by_id
