@@ -5,10 +5,9 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
-from api.models import QueryRequest, BacktestRequest
+from api.models import QueryRequest
 from api.response_metadata import build_response_metadata
 from api.utils import logger, run_sync
-from analysis.simple_backtester import run_simple_backtest
 import core.config as core_config
 from utils.user_client_factory import create_user_llm_client
 from api.middleware.rate_limit import limiter
@@ -403,36 +402,3 @@ async def trigger_idle_consolidation(current_user: dict = Depends(get_current_us
         logger.error(f"閒置整合失敗: {e}")
         return {"status": "error", "message": str(e)}
 
-@router.post("/api/backtest", dependencies=[Depends(get_current_user)])
-async def run_backtest_api(request: BacktestRequest):
-    """
-    執行快速回測 (One-Click Backtest)。
-    驗證特定技術指標策略在過去的表現。
-    """
-    try:
-        # 簡單標準化 symbol (假設 OKX 或 Binance 格式)
-        clean_symbol = request.symbol.upper().replace("USDT", "").replace("BUSD", "").replace("-", "")
-        # 預設加上 -USDT 給 OKX data fetcher (如果它需要)
-        target_symbol = f"{clean_symbol}-USDT"
-
-        logger.info(f"開始執行回測: {target_symbol} ({request.signal_type})")
-
-        result = await run_sync(
-            lambda: run_simple_backtest(
-                symbol=target_symbol,
-                signal_type=request.signal_type,
-                interval=request.interval,
-                limit=1000 # 固定回測過去 1000 根 K 線
-            )
-        )
-
-        if "error" in result:
-             raise HTTPException(status_code=400, detail=result["error"])
-
-        return result
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"回測執行失敗: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="回測執行失敗，請稍後再試")

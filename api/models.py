@@ -47,11 +47,6 @@ class KlineRequest(BaseModel):
     interval: str = "1d"
     limit: int = 100
 
-class BacktestRequest(BaseModel):
-    symbol: str
-    signal_type: str = "RSI_OVERSOLD" # RSI_OVERSOLD, MACD_CROSS
-    interval: str = "1h"
-
 class UserSettings(BaseModel):
     """用戶動態設置"""
     openai_api_key: Optional[str] = None
