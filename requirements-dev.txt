@@ -1,0 +1,4 @@
+# Dev-only / offline scripts — NOT installed in the production Docker image
+# Install with: pip install -r requirements-dev.txt
+playwright==1.58.0
+trafilatura==2.0.0
