@@ -11,7 +11,6 @@ from .crypto_modules import (
     news_analysis_tool,
     get_crypto_price_tool,
     explain_market_movement_tool,
-    backtest_strategy_tool,
     # Sentiment
     get_fear_and_greed_index,
     get_trending_tokens,
@@ -47,7 +46,6 @@ __all__ = [
     "news_analysis_tool",
     "get_crypto_price_tool",
     "explain_market_movement_tool",
-    "backtest_strategy_tool",
     # Sentiment
     "get_fear_and_greed_index",
     "get_trending_tokens",

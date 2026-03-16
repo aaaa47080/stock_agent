@@ -10,7 +10,6 @@ from core.tools.schemas import (
     PriceInput,
     CurrentTimeInput,
     MarketPulseInput,
-    BacktestStrategyInput,
     ExtractCryptoSymbolsInput
 )
 
@@ -128,39 +127,6 @@ class TestMarketPulseInput:
         """Test that missing symbol raises ValidationError"""
         with pytest.raises(ValidationError):
             MarketPulseInput()
-
-
-class TestBacktestStrategyInput:
-    """Tests for BacktestStrategyInput schema"""
-
-    def test_required_symbol(self):
-        """Test that symbol is required"""
-        model = BacktestStrategyInput(symbol="BTC")
-        assert model.symbol == "BTC"
-
-    def test_defaults(self):
-        """Test default values"""
-        model = BacktestStrategyInput(symbol="ETH")
-        assert model.interval == "1d"
-        assert model.period == 90
-
-    def test_custom_values(self):
-        """Test custom values"""
-        model = BacktestStrategyInput(
-            symbol="SOL",
-            interval="4h",
-            period=30
-        )
-        assert model.symbol == "SOL"
-        assert model.interval == "4h"
-        assert model.period == 30
-
-    def test_various_intervals(self):
-        """Test various interval values"""
-        intervals = ["1m", "5m", "15m", "1h", "4h", "1d", "1w"]
-        for interval in intervals:
-            model = BacktestStrategyInput(symbol="BTC", interval=interval)
-            assert model.interval == interval
 
 
 class TestExtractCryptoSymbolsInput:

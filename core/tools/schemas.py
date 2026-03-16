@@ -59,21 +59,6 @@ class MarketPulseInput(BaseModel):
     )
 
 
-class BacktestStrategyInput(BaseModel):
-    """回測策略工具的輸入參數"""
-    symbol: str = Field(
-        description="加密貨幣符號。"
-    )
-    interval: str = Field(
-        default="1d",
-        description="時間週期，如 '1d', '4h', '1h'。"
-    )
-    period: int = Field(
-        default=90,
-        description="回測天數，預設 90 天。"
-    )
-
-
 class ExtractCryptoSymbolsInput(BaseModel):
     """從用戶查詢中提取加密貨幣符號的工具輸入參數"""
     user_query: str = Field(

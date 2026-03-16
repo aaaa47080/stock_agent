@@ -14,7 +14,6 @@ from .schemas import (
     PriceInput,
     CurrentTimeInput,
     MarketPulseInput,
-    BacktestStrategyInput,
     ExtractCryptoSymbolsInput
 )
 
@@ -32,7 +31,6 @@ from .crypto_tools import (
     news_analysis_tool,
     get_crypto_price_tool,
     explain_market_movement_tool,
-    backtest_strategy_tool,
     extract_crypto_symbols_tool
 )
 
@@ -53,7 +51,6 @@ def get_crypto_tools() -> List:
         technical_analysis_tool,
         news_analysis_tool,
         explain_market_movement_tool,
-        backtest_strategy_tool,
         extract_crypto_symbols_tool,
         introduction_tool
     ]
@@ -69,7 +66,6 @@ TOOL_MAP = {
     "technical_analysis_tool": technical_analysis_tool,
     "news_analysis_tool": news_analysis_tool,
     "explain_market_movement_tool": explain_market_movement_tool,
-    "backtest_strategy_tool": backtest_strategy_tool,
     "extract_crypto_symbols_tool": extract_crypto_symbols_tool,
     "introduction_tool": introduction_tool,
 }
@@ -125,7 +121,6 @@ __all__ = [
     'PriceInput',
     'CurrentTimeInput',
     'MarketPulseInput',
-    'BacktestStrategyInput',
     'ExtractCryptoSymbolsInput',
     # Helpers
     'normalize_symbol',
@@ -139,7 +134,6 @@ __all__ = [
     'technical_analysis_tool',
     'news_analysis_tool',
     'explain_market_movement_tool',
-    'backtest_strategy_tool',
     'extract_crypto_symbols_tool',
     'introduction_tool',
     # Tool management

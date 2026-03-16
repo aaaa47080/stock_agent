@@ -19,7 +19,6 @@ from ..schemas import (
     NewsAnalysisInput,
     PriceInput,
     MarketPulseInput,
-    BacktestStrategyInput,
 )
 from ..helpers import normalize_symbol, find_available_exchange, format_price
 
@@ -178,30 +177,3 @@ def explain_market_movement_tool(symbol: str) -> str:
     except Exception as e:
         return f"分析市場波動時發生錯誤: {str(e)}"
 
-
-@tool(args_schema=BacktestStrategyInput)
-def backtest_strategy_tool(symbol: str, interval: str = "1d", period: int = 90) -> str:
-    """執行加密貨幣的歷史策略回測"""
-    try:
-        from analysis.backtest_engine import BacktestEngine
-        exchange, normalized_symbol = find_available_exchange(symbol)
-        if exchange is None:
-            return f"錯誤：無法找到 {symbol} 交易對。"
-
-        limit = min(period * (24 if interval == "1h" else 6 if interval == "4h" else 1), 1000)
-        df, _ = fetch_and_process_klines(symbol=normalized_symbol, interval=interval, limit=limit, market_type="spot", exchange=exchange)
-
-        engine = BacktestEngine()
-        results = engine.run_all_strategies(df)
-        if not results or "error" in results[0]:
-            return f"回測失敗: {results[0].get('error', '未知錯誤')}"
-
-        summary = results[0]
-        strategies = results[1:]
-        output = f"## 📊 {symbol} 歷史策略回測\n\n**最佳策略**: {summary['best_strategy_name']} (勝率 {summary['best_win_rate']}%)\n\n"
-        output += "| 策略 | 勝率 | 總回報 |\n"
-        for res in strategies:
-            output += f"| {res['strategy']} | {res['win_rate']}% | {res['total_return']:+.2f}% |\n"
-        return output + "\n> 過往績效不代表未來表現。"
-    except Exception as e:
-        return f"回測時發生錯誤: {str(e)}"
