@@ -22,9 +22,8 @@ import core.config as core_config
 from utils.settings import Settings
 from api.deps import get_current_user
 from api.routers.admin import verify_admin_key
-from api.models import APIKeySettings, UserSettings, KeyValidationRequest
+from api.models import UserSettings, KeyValidationRequest
 from api.utils import update_env_file, logger, run_sync
-from utils.okx_api_connector import OKXAPIConnector
 import api.globals as globals
 from api.middleware.rate_limit import limiter
 
@@ -325,54 +324,6 @@ async def update_user_settings(settings: UserSettings, request: Request, current
     except Exception as e:
         logger.error(f"Failed to update settings: {e}")
         raise HTTPException(status_code=500, detail="更新設置失敗，請稍後再試")
-
-@router.post("/api/settings/keys")
-@limiter.limit("5/minute")  # 🔒 Security: 更严格的限制，因为涉及交易密钥
-async def update_api_keys(settings: APIKeySettings, request: Request, current_user: dict = Depends(get_current_user)):
-    """接收前端傳來的 API Keys，寫入 .env 並熱重載連接器"""
-
-    # Audit log for sensitive operation
-    try:
-        from core.audit import audit_log
-        audit_log(
-            action="okx_keys_update",
-            user_id=current_user.get("user_id"),
-            metadata={}
-        )
-    except ImportError:
-        pass
-
-    try:
-        # 1. Update .env file for persistence
-        await run_sync(
-            lambda: update_env_file(
-                {
-                    "OKX_API_KEY": settings.api_key,
-                    "OKX_API_SECRET": settings.secret_key,
-                    "OKX_PASSPHRASE": settings.passphrase
-                },
-                project_root
-            )
-        )
-
-        # 2. Update environment variables for current process
-        os.environ["OKX_API_KEY"] = settings.api_key
-        os.environ["OKX_API_SECRET"] = settings.secret_key
-        os.environ["OKX_PASSPHRASE"] = settings.passphrase
-
-        # 3. Re-initialize the connector
-        globals.okx_connector = OKXAPIConnector()
-
-        # 4. Verify connection immediately
-        if not globals.okx_connector.test_connection():
-            return {"success": False, "message": "Keys saved, but connection failed. Please check your inputs."}
-
-        logger.info("API Keys updated and connector re-initialized successfully.")
-        return {"success": True, "message": "API Keys 設定成功且連線正常！"}
-
-    except Exception as e:
-        logger.error(f"Failed to update API keys: {e}")
-        raise HTTPException(status_code=500, detail="更新 API 金鑰失敗，請稍後再試")
 
 @router.get("/")
 async def read_index():
