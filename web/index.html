@@ -487,6 +487,78 @@
 
 
 
+            <!-- Tab: Commodity (大宗商品市場) -->
+            <div id="commodity-tab"
+                class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:pl-6 md:pr-16 py-6 pb-40">
+                <div class="max-w-2xl mx-auto">
+                    <!-- Header -->
+                    <div id="commodity-market-section">
+                        <div class="flex justify-between items-end mb-6 md:pr-14">
+                            <h2 class="font-serif text-3xl text-secondary">大宗商品</h2>
+                            <div class="flex items-center gap-2">
+                                <span id="commodity-last-updated" class="text-xs text-textMuted"></span>
+                                <button onclick="CommodityTab.renderMarket()"
+                                    class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition">
+                                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="commodity-list" class="space-y-3">
+                            <!-- Injected by commodity.js -->
+                        </div>
+                    </div>
+                    <!-- Pulse Section (hidden by default) -->
+                    <div id="commodity-pulse-section" class="hidden">
+                        <div class="flex items-center gap-3 mb-6 md:pr-14">
+                            <button onclick="CommodityTab.backToMarket()"
+                                class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition">
+                                <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                            </button>
+                            <h2 class="font-serif text-2xl text-secondary">商品脈動</h2>
+                        </div>
+                        <div id="commodity-pulse-content">
+                            <!-- Injected by commodity.js -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Forex (外匯市場) -->
+            <div id="forex-tab"
+                class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:pl-6 md:pr-16 py-6 pb-40">
+                <div class="max-w-2xl mx-auto">
+                    <!-- Header -->
+                    <div id="forex-market-section">
+                        <div class="flex justify-between items-end mb-6 md:pr-14">
+                            <h2 class="font-serif text-3xl text-secondary">外匯市場</h2>
+                            <div class="flex items-center gap-2">
+                                <span id="forex-last-updated" class="text-xs text-textMuted"></span>
+                                <button onclick="ForexTab.renderMarket()"
+                                    class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition">
+                                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="forex-list" class="space-y-3">
+                            <!-- Injected by forex.js -->
+                        </div>
+                    </div>
+                    <!-- Pulse Section (hidden by default) -->
+                    <div id="forex-pulse-section" class="hidden">
+                        <div class="flex items-center gap-3 mb-6 md:pr-14">
+                            <button onclick="ForexTab.backToMarket()"
+                                class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition">
+                                <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                            </button>
+                            <h2 class="font-serif text-2xl text-secondary">外匯脈動</h2>
+                        </div>
+                        <div id="forex-pulse-content">
+                            <!-- Injected by forex.js -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Tab: Friends (Global Social Hub) -->
             <div id="friends-tab" class="tab-content hidden h-full overflow-hidden relative">
                 <!-- Dynamic Content Injected via components.js -->
@@ -1198,6 +1270,8 @@
     <script defer src="/static/js/market-chart.js?v=1"></script>
     <script defer src="/static/js/market-ws.js?v=1"></script>
     <script defer src="/static/js/pulse.js?v=53"></script>
+    <script defer src="/static/js/commodity.js?v=1"></script>
+    <script defer src="/static/js/forex.js?v=1"></script>
     <script defer src="/static/js/forum-config.js?v=1"></script>
     <script defer src="/static/js/forum-api.js?v=1"></script>
     <script defer src="/static/js/forum-app.js?v=1"></script>

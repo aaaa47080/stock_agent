@@ -33,6 +33,8 @@ const NAV_ITEMS = [
         i18nKey: 'nav.wallet',
         defaultEnabled: true,
     },
+    { id: 'commodity', icon: 'bar-chart-2', label: 'Commodity', i18nKey: 'nav.commodity', defaultEnabled: true },
+    { id: 'forex',     icon: 'arrow-left-right', label: 'Forex', i18nKey: 'nav.forex', defaultEnabled: true },
     {
         id: 'friends',
         icon: 'users',

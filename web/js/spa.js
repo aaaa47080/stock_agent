@@ -21,6 +21,8 @@ async function switchTab(tabId, fromPopState = false) {
         'crypto',
         'twstock',
         'usstock',
+        'commodity',
+        'forex',
         'wallet',
         'friends',
         'forum',
@@ -70,6 +72,8 @@ window.addEventListener('popstate', (event) => {
         'crypto',
         'twstock',
         'usstock',
+        'commodity',
+        'forex',
         'wallet',
         'friends',
         'forum',
@@ -231,6 +235,8 @@ async function executeTabSwitch(tabId, fromPopState = false) {
         }
         if (typeof window.loadUserAlerts === 'function') window.loadUserAlerts();
     }
+    if (tabId === 'commodity' && typeof CommodityTab !== 'undefined') CommodityTab.init();
+    if (tabId === 'forex' && typeof ForexTab !== 'undefined') ForexTab.init();
     if (tabId === 'wallet') {
         if (window.WalletApp) window.WalletApp.init();
     }
@@ -664,6 +670,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         'crypto',
         'twstock',
         'usstock',
+        'commodity',
+        'forex',
         'wallet',
         'friends',
         'forum',
