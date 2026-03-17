@@ -457,9 +457,16 @@ window.USStockTab = {
         container.classList.add('hidden');
 
         try {
-            const res = await fetch(
-                `/api/usstock/pulse/${encodeURIComponent(symbol.toUpperCase())}`
-            );
+            const userKey = await window.APIKeyManager?.getCurrentKey();
+            const headers = {};
+            let url = `/api/usstock/pulse/${encodeURIComponent(symbol.toUpperCase())}`;
+            if (userKey) {
+                url += '?deep_analysis=true';
+                headers['X-User-LLM-Key'] = userKey.key;
+                headers['X-User-LLM-Provider'] = userKey.provider;
+            }
+
+            const res = await fetch(url, { headers });
             if (!res.ok) {
                 let msg = `HTTP ${res.status}`;
                 try {
@@ -469,7 +476,7 @@ window.USStockTab = {
                 throw new Error(msg);
             }
             const data = await res.json();
-            this._renderAIPulse(container, data);
+            this._renderAIPulse(container, data, !!userKey);
             container.classList.remove('hidden');
         } catch (err) {
             console.error('[US Stock] Pulse error:', err);
@@ -480,7 +487,7 @@ window.USStockTab = {
         }
     },
 
-    _renderAIPulse: function (container, data) {
+    _renderAIPulse: function (container, data, hasKey) {
         const rep = data.report || {};
         const tech = data.technical_indicators || {};
         const fund = data.fundamentals || {};
@@ -646,7 +653,21 @@ window.USStockTab = {
                             </div>
                             Pulse AI Intelligence Summary
                         </h3>
-                        <p class="text-textMain text-sm leading-relaxed whitespace-pre-line ml-11">${rep.summary || ''}</p>
+                        ${hasKey
+                            ? `<p class="text-textMain text-sm leading-relaxed whitespace-pre-line ml-11">${rep.summary || ''}</p>`
+                            : `<div class="ml-11 flex flex-col items-center text-center gap-3 py-4">
+                                <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                    <i data-lucide="key" class="w-5 h-5 text-primary"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-bold text-secondary mb-1">請連接 AI 金鑰</p>
+                                    <p class="text-xs text-textMuted">連接 OpenAI 或 Gemini 金鑰以獲取 AI 深度分析</p>
+                                </div>
+                                <button onclick="switchTab('settings')" class="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary text-xs rounded-xl border border-primary/30 transition flex items-center gap-1.5">
+                                    <i data-lucide="settings" class="w-3.5 h-3.5"></i>前往設定
+                                </button>
+                               </div>`
+                        }
                     </div>
                 </div>
                 <div>

@@ -3,7 +3,7 @@ Commodity Market Router — 大宗商品市場
 Data source: yfinance (futures & ETF symbols)
 Follows the same pattern as api/routers/usstock.py
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Header
 from typing import Optional
 import asyncio
 import yfinance as yf
@@ -133,13 +133,19 @@ async def get_commodity_market(symbols: Optional[str] = None):
 
 
 @router.get("/pulse/{symbol}")
-async def get_commodity_pulse(symbol: str):
+async def get_commodity_pulse(
+    symbol: str,
+    deep_analysis: bool = False,
+    x_user_llm_key: Optional[str] = Header(None),
+    x_user_llm_provider: Optional[str] = Header(None),
+):
     """Market pulse analysis for a single commodity."""
     sym = symbol.upper()
     cache_key = f"pulse:{sym}"
-    cached = _get_cache(cache_key)
-    if cached:
-        return cached
+    if not deep_analysis:
+        cached = _get_cache(cache_key)
+        if cached:
+            return cached
 
     # Find display name
     meta = next((c for c in DEFAULT_COMMODITIES if c["symbol"] == sym), None)
@@ -181,16 +187,35 @@ async def get_commodity_pulse(symbol: str):
         f"24H Change: {chg_p:+.2f}%",
     ]
 
+    source_mode = "on_demand"
+    if deep_analysis and x_user_llm_key and x_user_llm_provider:
+        from api.routers.deep_analysis_helper import deep_analyze_generic
+        context = (
+            f"商品: {display_name} ({sym})\n"
+            f"現價: {price} {unit}\n"
+            f"24H 漲跌幅: {chg_p:+.2f}%\n"
+            f"RSI(14): {tech.get('rsi', 'N/A')}\n"
+            f"MACD Histogram: {tech.get('macd_histogram', 'N/A')}\n"
+            f"52W High: {tech.get('52w_high', 'N/A')} {unit}\n"
+            f"52W Low: {tech.get('52w_low', 'N/A')} {unit}"
+        )
+        ai_text = await deep_analyze_generic(sym, context, x_user_llm_key, x_user_llm_provider)
+        if ai_text:
+            summary = ai_text
+            source_mode = "deep_analysis"
+
     result = {
         "symbol": sym,
         "name": display_name,
         "current_price": price,
         "unit": unit,
         "change_24h": chg_p,
+        "source_mode": source_mode,
         "report": {"summary": summary, "key_points": key_points},
         "technical_indicators": tech,
     }
-    _set_cache(cache_key, result, ttl=300)
+    if not deep_analysis:
+        _set_cache(cache_key, result, ttl=300)
     return result
 
 

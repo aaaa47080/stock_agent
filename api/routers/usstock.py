@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Header
 from typing import Optional
 import asyncio
 import yfinance as yf
@@ -140,13 +140,19 @@ async def get_us_news(symbols: Optional[str] = None, limit: int = 15):
 
 
 @router.get("/pulse/{symbol}")
-async def get_us_pulse(symbol: str):
+async def get_us_pulse(
+    symbol: str,
+    deep_analysis: bool = False,
+    x_user_llm_key: Optional[str] = Header(None),
+    x_user_llm_provider: Optional[str] = Header(None),
+):
     """Deep AI pulse analysis for a single US stock."""
     sym = symbol.upper()
     cache_key = f"pulse:{sym}"
-    cached = _get_cache(cache_key)
-    if cached:
-        return cached
+    if not deep_analysis:
+        cached = _get_cache(cache_key)
+        if cached:
+            return cached
 
     provider = get_us_data_provider()
 
@@ -203,11 +209,31 @@ async def get_us_pulse(symbol: str):
         if n.get("title")
     ]
 
+    source_mode = "on_demand"
+    if deep_analysis and x_user_llm_key and x_user_llm_provider:
+        from api.routers.deep_analysis_helper import deep_analyze_generic
+        context = (
+            f"公司: {company} ({sym})\n"
+            f"現價: ${curr_price}\n"
+            f"24H 漲跌幅: {change_pct:+.2f}%\n"
+            f"RSI(14): {tech_data.get('rsi', 'N/A')}\n"
+            f"MACD: {tech_data.get('macd', {}).get('histogram', 'N/A') if isinstance(tech_data.get('macd'), dict) else tech_data.get('macd', 'N/A')}\n"
+            f"P/E Ratio: {fund_data.get('pe_ratio', 'N/A')}\n"
+            f"市值: {fund_data.get('market_cap', 'N/A')}\n"
+            f"52W High: {price_data.get('fifty_two_week_high', 'N/A')}\n"
+            f"52W Low: {price_data.get('fifty_two_week_low', 'N/A')}"
+        )
+        ai_text = await deep_analyze_generic(sym, context, x_user_llm_key, x_user_llm_provider)
+        if ai_text:
+            summary = ai_text
+            source_mode = "deep_analysis"
+
     result = {
         "symbol": sym,
         "company_name": company,
         "current_price": curr_price,
         "change_24h": change_pct,
+        "source_mode": source_mode,
         "report": {
             "summary": summary,
             "key_points": key_points,
@@ -216,7 +242,8 @@ async def get_us_pulse(symbol: str):
         "technical_indicators": tech_data,
         "fundamentals": fund_data,
     }
-    _set_cache(cache_key, result, ttl=300)
+    if not deep_analysis:
+        _set_cache(cache_key, result, ttl=300)
     return result
 
 

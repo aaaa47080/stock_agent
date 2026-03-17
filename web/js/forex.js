@@ -104,12 +104,45 @@ window.ForexTab = {
         if (window.lucide) lucide.createIcons();
 
         try {
-            const res = await fetch(`/api/forex/pulse/${encodeURIComponent(symbol)}`);
+            const userKey = await window.APIKeyManager?.getCurrentKey();
+            const headers = {};
+            let url = `/api/forex/pulse/${encodeURIComponent(symbol)}`;
+            if (userKey) {
+                url += '?deep_analysis=true';
+                headers['X-User-LLM-Key'] = userKey.key;
+                headers['X-User-LLM-Provider'] = userKey.provider;
+            }
+
+            const res = await fetch(url, { headers });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const d = await res.json();
 
             const isUp  = d.change_24h >= 0;
             const color = isUp ? 'text-success' : 'text-danger';
+            const isDeep = d.source_mode === 'deep_analysis';
+
+            const summarySection = userKey
+                ? `<div class="bg-surface border border-white/5 rounded-2xl p-5">
+                        <div class="flex items-center gap-2 mb-3">
+                            <h4 class="text-xs uppercase tracking-wider text-textMuted">市場脈動</h4>
+                            ${isDeep ? '<span class="text-[9px] px-1.5 py-0.5 bg-primary/20 text-primary rounded border border-primary/30 flex items-center gap-1"><i data-lucide="zap" class="w-2.5 h-2.5"></i>AI深度分析</span>' : ''}
+                        </div>
+                        <p class="text-sm text-secondary leading-relaxed">${d.report?.summary || ''}</p>
+                   </div>`
+                : `<div class="bg-surface border border-primary/20 rounded-2xl p-5">
+                        <div class="flex flex-col items-center text-center gap-3 py-2">
+                            <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                                <i data-lucide="key" class="w-5 h-5 text-primary"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-bold text-secondary mb-1">請連接 AI 金鑰</p>
+                                <p class="text-xs text-textMuted">連接 OpenAI 或 Gemini 金鑰以獲取 AI 深度分析</p>
+                            </div>
+                            <button onclick="switchTab('settings')" class="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary text-xs rounded-xl border border-primary/30 transition flex items-center gap-1.5">
+                                <i data-lucide="settings" class="w-3.5 h-3.5"></i>前往設定
+                            </button>
+                        </div>
+                   </div>`;
 
             pulseEl.innerHTML = `
                 <div class="space-y-4">
@@ -118,10 +151,7 @@ window.ForexTab = {
                         <div class="text-3xl font-serif text-secondary font-bold">${d.rate?.toLocaleString(undefined, {maximumFractionDigits: 6})}</div>
                         <div class="text-sm font-bold ${color} mt-1">${d.change_24h > 0 ? '+' : ''}${d.change_24h?.toFixed(3)}% 24H</div>
                     </div>
-                    <div class="bg-surface border border-white/5 rounded-2xl p-5">
-                        <h4 class="text-xs uppercase tracking-wider text-textMuted mb-3">市場脈動</h4>
-                        <p class="text-sm text-secondary leading-relaxed">${d.report?.summary || ''}</p>
-                    </div>
+                    ${summarySection}
                     <div class="bg-surface border border-white/5 rounded-2xl p-5">
                         <h4 class="text-xs uppercase tracking-wider text-textMuted mb-3">技術指標</h4>
                         <div class="grid grid-cols-2 gap-2">

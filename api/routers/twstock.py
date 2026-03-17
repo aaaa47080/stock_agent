@@ -5,7 +5,7 @@ from typing import Optional, Any
 from datetime import datetime, timedelta
 
 import yfinance as yf
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Header, Query
 
 from api.utils import logger
 from core.tools.tw_stock_tools import (
@@ -129,7 +129,12 @@ async def get_tw_market(symbols: Optional[str] = None):
         raise HTTPException(status_code=500, detail="獲取台股市場數據失敗，請稍後再試")
 
 @router.get("/pulse/{symbol}")
-async def get_tw_pulse(symbol: str):
+async def get_tw_pulse(
+    symbol: str,
+    deep_analysis: bool = False,
+    x_user_llm_key: Optional[str] = Header(None),
+    x_user_llm_provider: Optional[str] = Header(None),
+):
     """
     Get detailed pulse data (Technical, Fundamental, Institutional, News) for a single TW Stock.
     """
@@ -197,6 +202,24 @@ async def get_tw_pulse(symbol: str):
         if foreign_net and str(foreign_net) != "N/A":
             key_points.append(f"外資買賣超: {foreign_net} 股")
 
+        final_summary = dynamic_summary
+        source_mode = "on_demand"
+        if deep_analysis and x_user_llm_key and x_user_llm_provider:
+            from api.routers.deep_analysis_helper import deep_analyze_generic
+            context = (
+                f"公司: {company_name} ({symbol})\n"
+                f"現價: ${curr_price}\n"
+                f"24H 漲跌幅: {change}%\n"
+                f"RSI(14): {tech.get('rsi_14', 'N/A')}\n"
+                f"MACD Histogram: {tech.get('macd', {}).get('histogram', 'N/A') if isinstance(tech.get('macd'), dict) else 'N/A'}\n"
+                f"P/E Ratio: {funds.get('pe_ratio', 'N/A')}\n"
+                f"外資買賣超: {inst.get('foreign_net', 'N/A')} 股"
+            )
+            ai_text = await deep_analyze_generic(symbol, context, x_user_llm_key, x_user_llm_provider)
+            if ai_text:
+                final_summary = ai_text
+                source_mode = "deep_analysis"
+
         # Format structure to match Market Pulse
         return {
             "symbol": symbol,
@@ -204,9 +227,9 @@ async def get_tw_pulse(symbol: str):
             "current_price": curr_price,
             "change_24h": change,
             "status": "completed",
-            "source_mode": "on_demand",
+            "source_mode": source_mode,
             "report": {
-                "summary": dynamic_summary,
+                "summary": final_summary,
                 "key_points": key_points,
                 "highlights": valid_news,
                 "risks": []

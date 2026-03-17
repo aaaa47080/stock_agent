@@ -3,7 +3,7 @@ Forex Market Router — 外匯市場
 Data source: yfinance currency pair symbols
 Follows the same pattern as api/routers/usstock.py
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Header
 from typing import Optional
 import asyncio
 import yfinance as yf
@@ -133,13 +133,19 @@ async def get_forex_market(pairs: Optional[str] = None):
 
 
 @router.get("/pulse/{pair}")
-async def get_forex_pulse(pair: str):
+async def get_forex_pulse(
+    pair: str,
+    deep_analysis: bool = False,
+    x_user_llm_key: Optional[str] = Header(None),
+    x_user_llm_provider: Optional[str] = Header(None),
+):
     """Market pulse analysis for a single forex pair."""
     sym = _normalize_forex_symbol(pair)
     cache_key = f"pulse:{sym}"
-    cached = _get_cache(cache_key)
-    if cached:
-        return cached
+    if not deep_analysis:
+        cached = _get_cache(cache_key)
+        if cached:
+            return cached
 
     meta = next((d for d in DEFAULT_PAIRS if d["symbol"] == sym), None)
     display_name = meta["name"] if meta else sym
@@ -181,15 +187,33 @@ async def get_forex_pulse(pair: str):
         f"24H Change: {chg_p:+.3f}%",
     ]
 
+    source_mode = "on_demand"
+    if deep_analysis and x_user_llm_key and x_user_llm_provider:
+        from api.routers.deep_analysis_helper import deep_analyze_generic
+        context = (
+            f"貨幣對: {display_name} ({sym})\n"
+            f"現行匯率: {rate}\n"
+            f"24H 漲跌幅: {chg_p:+.3f}%\n"
+            f"RSI(14): {tech.get('rsi', 'N/A')}\n"
+            f"52W High: {tech.get('52w_high', 'N/A')}\n"
+            f"52W Low: {tech.get('52w_low', 'N/A')}"
+        )
+        ai_text = await deep_analyze_generic(sym, context, x_user_llm_key, x_user_llm_provider)
+        if ai_text:
+            summary = ai_text
+            source_mode = "deep_analysis"
+
     result = {
         "symbol": sym,
         "name": display_name,
         "rate": rate,
         "change_24h": chg_p,
+        "source_mode": source_mode,
         "report": {"summary": summary, "key_points": key_points},
         "technical_indicators": tech,
     }
-    _set_cache(cache_key, result, ttl=60)
+    if not deep_analysis:
+        _set_cache(cache_key, result, ttl=60)
     return result
 
 
