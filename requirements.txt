@@ -34,7 +34,7 @@ alembic==1.18.4
 # === Auth / Security ===
 PyJWT==2.12.0
 cryptography==46.0.5
-pyopenssl>=26.0.0  # CVE-2026-27448 fix; forced above python-okx transitive pin
+pyopenssl==26.0.0  # CVE-2026-27448 fix; forced above python-okx transitive pin
 
 # === Configuration ===
 python-dotenv==1.1.1
