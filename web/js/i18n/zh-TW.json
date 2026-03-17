@@ -38,7 +38,10 @@
     "collapse": "收縮/展開",
     "crypto": "加密貨幣",
     "twstock": "台股",
-    "usstock": "美股"
+    "usstock": "美股",
+    "commodity": "大宗商品",
+    "forex": "外匯",
+    "admin": "管理後台"
   },
   "sidebar": {
     "newChat": "新對話",

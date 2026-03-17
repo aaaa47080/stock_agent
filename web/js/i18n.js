@@ -70,10 +70,10 @@
     async function initI18n() {
         // 載入翻譯檔
         const [zhTW, en] = await Promise.all([
-            fetch('/static/js/i18n/zh-TW.json?v=5')
+            fetch('/static/js/i18n/zh-TW.json?v=6')
                 .then((r) => r.json())
                 .catch(() => ({})),
-            fetch('/static/js/i18n/en.json?v=5')
+            fetch('/static/js/i18n/en.json?v=6')
                 .then((r) => r.json())
                 .catch(() => ({})),
         ]);

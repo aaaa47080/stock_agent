@@ -38,7 +38,10 @@
     "collapse": "Collapse/Expand",
     "crypto": "Crypto",
     "twstock": "TW Stock",
-    "usstock": "US Stock"
+    "usstock": "US Stock",
+    "commodity": "Commodity",
+    "forex": "Forex",
+    "admin": "Admin"
   },
   "sidebar": {
     "newChat": "New Chat",
