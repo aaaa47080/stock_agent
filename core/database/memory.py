@@ -10,6 +10,7 @@ Reference: https://github.com/HKUDS/nanobot
 import json
 import logging
 import re
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -113,6 +114,26 @@ def _reset_for_testing() -> None:
     _mem_redis_client = None
     _mem_redis_init = False
     _MEM_L1.clear()
+
+
+# ── Compact session state helpers ─────────────────────────────────────────────
+_COMPACT_KEY_PREFIX = "session_compact:"
+_COMPACT_REDIS_TTL = 7_200  # 2 hours
+
+
+def _compact_redis_key(user_id: str, session_id: str) -> str:
+    return f"{_COMPACT_KEY_PREFIX}{user_id}:{session_id}"
+
+
+@dataclass
+class CompactedSessionState:
+    """Structured compact representation of a session's working state."""
+    goal: str
+    progress: str
+    open_questions: str
+    next_steps: str
+    turn_index: int
+    updated_at: str
 
 
 class MemoryStore:
@@ -301,6 +322,69 @@ class MemoryStore:
         _mem_l1_set(scope, result)
         _mem_redis_set(scope, result)
         return result
+
+    # ==================== Compact session state ====================
+
+    def read_compact_state(self) -> Optional["CompactedSessionState"]:
+        """Read compact session state: Redis → PostgreSQL → None."""
+        redis_client = _get_redis_sync()
+        key = _compact_redis_key(self.user_id, self.session_id)
+        if redis_client:
+            try:
+                raw = redis_client.get(key)
+                if raw:
+                    data = orjson.loads(raw)
+                    return CompactedSessionState(**data)
+            except Exception:
+                pass
+        # Fall back to PostgreSQL
+        row = DatabaseBase.query_one(
+            """SELECT content FROM user_memory
+               WHERE user_id = %s AND session_id = %s AND memory_type = 'session_compact'
+               ORDER BY updated_at DESC LIMIT 1""",
+            (self.user_id, self.session_id),
+        )
+        if row:
+            try:
+                data = json.loads(row["content"])
+                state = CompactedSessionState(**data)
+                # backfill Redis
+                if redis_client:
+                    try:
+                        redis_client.setex(key, _COMPACT_REDIS_TTL, orjson.dumps(data))
+                    except Exception:
+                        pass
+                return state
+            except Exception:
+                pass
+        return None
+
+    def write_compact_state(self, state: "CompactedSessionState") -> None:
+        """Persist compact session state to Redis + PostgreSQL."""
+        data = {
+            "goal": state.goal, "progress": state.progress,
+            "open_questions": state.open_questions, "next_steps": state.next_steps,
+            "turn_index": state.turn_index, "updated_at": state.updated_at,
+        }
+        # Write Redis first (fast path)
+        redis_client = _get_redis_sync()
+        if redis_client:
+            try:
+                redis_client.setex(
+                    _compact_redis_key(self.user_id, self.session_id),
+                    _COMPACT_REDIS_TTL,
+                    orjson.dumps(data),
+                )
+            except Exception as exc:
+                logger.debug("[MemoryStore] compact state Redis write failed: %s", exc)
+        # Write PostgreSQL (durable)
+        DatabaseBase.execute(
+            """INSERT INTO user_memory (user_id, session_id, memory_type, content, updated_at)
+               VALUES (%s, %s, 'session_compact', %s, NOW())
+               ON CONFLICT (user_id, session_id, memory_type)
+               DO UPDATE SET content = EXCLUDED.content, updated_at = NOW()""",
+            (self.user_id, self.session_id, json.dumps(data)),
+        )
 
     # ==================== 結構化事實（nanoclaw extract_memory） ====================
 
