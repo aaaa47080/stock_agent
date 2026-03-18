@@ -887,11 +887,32 @@ def create_user_facts_table(c):
     c.execute('CREATE INDEX IF NOT EXISTS idx_user_facts_user ON user_facts(user_id)')
 
 
+def create_notifications_table(c):
+    """Create notifications table"""
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS notifications (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            type TEXT NOT NULL,
+            title TEXT,
+            body TEXT,
+            data JSONB,
+            is_read BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT NOW(),
+
+            CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+        )
+    """)
+    c.execute('CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON notifications(user_id, created_at DESC)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id) WHERE is_read = FALSE')
+
+
 def create_all_tables(c):
     """Create all database tables"""
     create_basic_tables(c)
     create_conversation_tables(c)
     create_user_tables(c)
+    create_notifications_table(c)
     create_forum_tables(c)
     create_scam_tracker_tables(c)
     create_friendship_tables(c)

@@ -37,6 +37,7 @@ def get_shared_http_client() -> httpx.AsyncClient:
     global _shared_http_client
     if _shared_http_client is None or _shared_http_client.is_closed:
         _shared_http_client = httpx.AsyncClient(
+            verify=False,  # Bypass SSL missing Subject Key Identifier issue
             limits=httpx.Limits(
                 max_connections=100,        # 最大連接數
                 max_keepalive_connections=20,  # 保持活躍的連接數

@@ -177,6 +177,8 @@ class ConfigCacheManager:
                 return json.loads(data)
         except Exception as e:
             print(f"[ConfigCache] Redis 讀取失敗: {e}")
+            if "connecting to" in str(e) or "Name or service not known" in str(e):
+                self._redis_client = None
         return None
 
     def _set_to_redis(self, data: Dict[str, Any]):
@@ -192,6 +194,8 @@ class ConfigCacheManager:
             )
         except Exception as e:
             print(f"[ConfigCache] Redis 寫入失敗: {e}")
+            if "connecting to" in str(e) or "Name or service not known" in str(e):
+                self._redis_client = None
 
     def _load_from_db(self) -> Dict[str, Any]:
         """從數據庫載入所有配置"""
@@ -242,6 +246,8 @@ class ConfigCacheManager:
 
         except Exception as e:
             print(f"[ConfigCache] Redis 失效操作失敗: {e}")
+            if "connecting to" in str(e) or "Name or service not known" in str(e):
+                self._redis_client = None
 
 
 # 全局快取管理器實例
