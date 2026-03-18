@@ -907,12 +907,52 @@ def create_notifications_table(c):
     c.execute('CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id) WHERE is_read = FALSE')
 
 
+def create_experience_tables(c):
+    """Create task_experiences and tool_execution_stats tables for Phase 3 memory."""
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS task_experiences (
+            id              BIGSERIAL PRIMARY KEY,
+            user_id         TEXT NOT NULL,
+            session_id      TEXT NOT NULL,
+            task_family     TEXT NOT NULL,
+            query_text      TEXT NOT NULL,
+            query_tsv       TSVECTOR GENERATED ALWAYS AS (to_tsvector('simple', query_text)) STORED,
+            tools_used      TEXT[],
+            agent_used      TEXT,
+            outcome         TEXT NOT NULL,
+            quality_score   REAL,
+            failure_reason  TEXT,
+            response_chars  INT,
+            created_at      TIMESTAMPTZ DEFAULT NOW()
+        )
+    """)
+    c.execute("CREATE INDEX IF NOT EXISTS idx_te_user_family ON task_experiences(user_id, task_family)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_te_created ON task_experiences(created_at DESC)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_te_tsv ON task_experiences USING GIN(query_tsv)")
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS tool_execution_stats (
+            id           BIGSERIAL PRIMARY KEY,
+            user_id      TEXT,
+            tool_name    TEXT NOT NULL,
+            success      BOOLEAN NOT NULL,
+            latency_ms   INT,
+            output_chars INT,
+            error_type   TEXT,
+            created_at   TIMESTAMPTZ DEFAULT NOW()
+        )
+    """)
+    c.execute("CREATE INDEX IF NOT EXISTS idx_tes_tool_created ON tool_execution_stats(tool_name, created_at DESC)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_tes_user_tool ON tool_execution_stats(user_id, tool_name)")
+
+
 def create_all_tables(c):
     """Create all database tables"""
     create_basic_tables(c)
     create_conversation_tables(c)
     create_user_tables(c)
     create_notifications_table(c)
+    create_experience_tables(c)
     create_forum_tables(c)
     create_scam_tracker_tables(c)
     create_friendship_tables(c)
