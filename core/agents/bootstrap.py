@@ -582,6 +582,26 @@ def bootstrap(llm_client, web_mode: bool = False, language: str = "zh-TW",
         allowed_agents=["us_stock"],
     ))
 
+    # ── Register ToolResultCompactor retrieval tool ──
+    from langchain_core.tools import tool as lc_tool
+    from core.agents.tool_compactor import retrieve_tool_result as _retrieve_fn
+
+    _owner_id = user_id  # capture per-user scope in closure
+
+    @lc_tool
+    def tool_result_retrieve(uuid: str) -> str:
+        """Retrieve the full content of a previously compacted tool result by its UUID key."""
+        return _retrieve_fn(uuid, requester_id=_owner_id)
+
+    tool_registry.register(ToolMetadata(
+        name="tool_result_retrieve",
+        description="Retrieve the full content of a previously compacted tool result by its UUID key.",
+        input_schema={"uuid": "str"},
+        handler=tool_result_retrieve,
+        allowed_agents=[],   # [] = available to all agents
+        required_tier="free",
+    ))
+
     # ── Create Agents ──
 
     # Legacy agents (hidden from LLM classify; kept for backward compatibility via direct name lookup)

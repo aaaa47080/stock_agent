@@ -13,9 +13,106 @@ import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+import orjson
+from cachetools import TTLCache
+
 from .base import DatabaseBase
 
 logger = logging.getLogger(__name__)
+
+# ── Memory context cache (L1 in-process → L2 Redis → L3 PostgreSQL) ──────────
+_MEM_L1: TTLCache = TTLCache(maxsize=512, ttl=30)   # 30 s in-process
+_MEM_REDIS_TTL = 120                                  # 2 min Redis TTL
+_MEM_KEY_PREFIX = "mem:"
+
+_mem_redis_client = None
+_mem_redis_init = False
+
+
+def _get_redis_sync():
+    global _mem_redis_client, _mem_redis_init
+    if _mem_redis_init:
+        return _mem_redis_client
+    _mem_redis_init = True
+    try:
+        import redis as _r
+        from core.redis_url import resolve_redis_url
+        url, _ = resolve_redis_url()
+        if not url:
+            return None
+        client = _r.from_url(url, decode_responses=False,
+                              socket_connect_timeout=2, socket_timeout=2)
+        client.ping()
+        _mem_redis_client = client
+        logger.info("[MemoryCache] Redis connected")
+    except Exception as exc:
+        logger.warning("[MemoryCache] Redis unavailable: %s", exc)
+        _mem_redis_client = None
+    return _mem_redis_client
+
+
+def _mem_cache_key(user_id: str) -> str:
+    return _MEM_KEY_PREFIX + user_id
+
+
+def _mem_l1_get(user_id: str):
+    return _MEM_L1.get(_mem_cache_key(user_id))
+
+
+def _mem_l1_set(user_id: str, data) -> None:
+    _MEM_L1[_mem_cache_key(user_id)] = data
+
+
+def _mem_l1_delete(user_id: str) -> None:
+    try:
+        del _MEM_L1[_mem_cache_key(user_id)]
+    except KeyError:
+        pass
+
+
+def _mem_redis_get(user_id: str):
+    r = _get_redis_sync()
+    if not r:
+        return None
+    try:
+        raw = r.get(_mem_cache_key(user_id))
+        return orjson.loads(raw) if raw else None
+    except Exception:
+        return None
+
+
+def _mem_redis_set(user_id: str, data) -> None:
+    r = _get_redis_sync()
+    if not r:
+        return
+    try:
+        r.setex(_mem_cache_key(user_id), _MEM_REDIS_TTL, orjson.dumps(data))
+    except Exception:
+        pass
+
+
+def _mem_redis_delete(user_id: str) -> None:
+    r = _get_redis_sync()
+    if not r:
+        return
+    try:
+        r.delete(_mem_cache_key(user_id))
+    except Exception:
+        pass
+
+
+def _invalidate_memory_cache(user_id: str) -> None:
+    """Invalidate both L1 and L2 cache for a user."""
+    _mem_l1_delete(user_id)
+    _mem_redis_delete(user_id)
+
+
+def _reset_for_testing() -> None:
+    """Reset Redis lazy-init state. For use in tests only."""
+    global _mem_redis_client, _mem_redis_init
+    _mem_redis_client = None
+    _mem_redis_init = False
+    _MEM_L1.clear()
 
 
 class MemoryStore:
@@ -25,17 +122,31 @@ class MemoryStore:
     管理用戶的長期記憶和對話歷史，支持記憶整合功能。
     """
 
-    def __init__(self, user_id: str, session_id: Optional[str] = None):
+    def __init__(
+        self,
+        user_id: str,
+        session_id: Optional[str] = None,
+        workspace_id: Optional[str] = None,
+    ):
         """
         初始化記憶存儲
 
         Args:
             user_id: 用戶 ID
             session_id: 會話 ID（可選）
+            workspace_id: 工作區 ID（可選，用於多租戶隔離）
         """
         self.user_id = user_id
         self.session_id = session_id or "default"
+        self.workspace_id = workspace_id
         self._last_consolidated_index: Optional[int] = None
+
+    @property
+    def scope(self) -> str:
+        """Cache key namespace — user_id, optionally qualified by workspace_id."""
+        if self.workspace_id:
+            return f"{self.user_id}|workspace:{self.workspace_id}"
+        return self.user_id
 
     # ==================== 韜期記憶操作 ====================
 
@@ -75,6 +186,7 @@ class MemoryStore:
             ''',
             (self.user_id, content)
         )
+        _invalidate_memory_cache(self.scope)
 
     # ==================== 歷史日誌操作 ====================
 
@@ -95,6 +207,7 @@ class MemoryStore:
             ''',
             (self.user_id, self.session_id, entry.rstrip(), tools_used)
         )
+        _invalidate_memory_cache(self.scope)
 
     def get_history(self, limit: int = 50) -> List[Dict[str, Any]]:
         """
@@ -121,21 +234,12 @@ class MemoryStore:
 
     # ==================== 記憶上下文 ====================
 
-    def get_memory_context(
+    def _read_from_db(
         self,
         include_history: bool = True,
-        history_limit: int = 10
+        history_limit: int = 10,
     ) -> str:
-        """
-        獲取完整的記憶上下文（用於 LLM prompt）
-
-        Args:
-            include_history: 是否包含歷史記錄
-            history_limit: 歷史記錄數量限制
-
-        Returns:
-            格式化的記憶上下文字符串
-        """
+        """Actual PostgreSQL read — called only on cache miss."""
         parts = []
 
         # 1. 結構化事實（nanoclaw facts）
@@ -166,6 +270,37 @@ class MemoryStore:
                     context += f"\n\n## Recent History\n{history_text}"
 
         return context
+
+    def get_memory_context(
+        self,
+        include_history: bool = True,
+        history_limit: int = 10,
+    ) -> str:
+        """
+        獲取完整的記憶上下文（用於 LLM prompt），採用 L1 → L2 → L3 快取策略。
+
+        Args:
+            include_history: 是否包含歷史記錄
+            history_limit: 歷史記錄數量限制
+
+        Returns:
+            格式化的記憶上下文字符串
+        """
+        scope = self.scope
+        # L1: in-process TTLCache
+        cached = _mem_l1_get(scope)
+        if cached is not None:
+            return cached
+        # L2: Redis
+        redis_hit = _mem_redis_get(scope)
+        if redis_hit is not None:
+            _mem_l1_set(scope, redis_hit)
+            return redis_hit
+        # L3: PostgreSQL
+        result = self._read_from_db(include_history, history_limit)
+        _mem_l1_set(scope, result)
+        _mem_redis_set(scope, result)
+        return result
 
     # ==================== 結構化事實（nanoclaw extract_memory） ====================
 
@@ -227,6 +362,7 @@ class MemoryStore:
                     fact.get('source_turn'),
                 )
             )
+        _invalidate_memory_cache(self.scope)
 
     def facts_to_text(self) -> str:
         """將結構化事實格式化為 LLM 可讀的文字"""
@@ -500,18 +636,23 @@ Respond in this exact JSON format:
 _memory_stores: Dict[str, MemoryStore] = {}
 
 
-def get_memory_store(user_id: str, session_id: Optional[str] = None) -> MemoryStore:
+def get_memory_store(
+    user_id: str,
+    session_id: Optional[str] = None,
+    workspace_id: Optional[str] = None,
+) -> MemoryStore:
     """
     獲取或創建 MemoryStore 實例
 
     Args:
         user_id: 用戶 ID
         session_id: 會話 ID（可選）
+        workspace_id: 工作區 ID（可選）
 
     Returns:
         MemoryStore 實例
     """
-    cache_key = f"{user_id}:{session_id or 'default'}"
+    cache_key = f"{user_id}:{session_id or 'default'}:{workspace_id or ''}"
     if cache_key not in _memory_stores:
-        _memory_stores[cache_key] = MemoryStore(user_id, session_id)
+        _memory_stores[cache_key] = MemoryStore(user_id, session_id, workspace_id)
     return _memory_stores[cache_key]
