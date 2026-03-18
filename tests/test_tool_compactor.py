@@ -289,3 +289,36 @@ def test_required_tool_path_compacts_large_output():
                 agent._execute_with_required_tool(task, wrapped_metas, "zh-TW")
 
     assert "[COMPACTED:forced-uid]" in str(captured.get("tool_result", ""))
+
+
+# ── tool stat collection ──────────────────────────────────────────────────────
+
+def test_wrapper_records_pending_stat_on_success():
+    """After invoke(), wrapper exposes a pending stat tuple."""
+    from core.agents.tool_compactor import wrap_tool, _reset_for_testing
+    _reset_for_testing()
+    tool = _make_tool("small output")
+    wrapped = wrap_tool(tool, owner_id="u1")
+    wrapped.invoke({})
+    assert wrapped.last_stat is not None
+    stat = wrapped.last_stat
+    assert stat["tool_name"] == "mock_tool"
+    assert stat["success"] is True
+    assert stat["output_chars"] > 0
+
+
+def test_wrapper_records_pending_stat_on_failure():
+    """After a failing invoke(), last_stat has success=False and error_type set."""
+    from core.agents.tool_compactor import wrap_tool, _reset_for_testing
+    _reset_for_testing()
+    tool = MagicMock()
+    tool.name = "fail_tool"
+    tool.invoke = MagicMock(side_effect=RuntimeError("API down"))
+    wrapped = wrap_tool(tool, owner_id="u1")
+    try:
+        wrapped.invoke({})
+    except RuntimeError:
+        pass
+    assert wrapped.last_stat is not None
+    assert wrapped.last_stat["success"] is False
+    assert wrapped.last_stat["error_type"] == "RuntimeError"

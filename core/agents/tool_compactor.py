@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 import uuid
 from typing import Any, Optional
 
@@ -160,28 +161,48 @@ class _CompactingToolWrapper:
         self._owner_id = owner_id
         self._workspace_id = workspace_id
         self._session_id = session_id
+        self.last_stat: Optional[dict] = None
 
     def __getattr__(self, item: str) -> Any:
         return getattr(self._original, item)
 
     def invoke(self, input: Any, **kwargs: Any) -> Any:  # noqa: A002
-        raw = self._original.invoke(input, **kwargs)
-        text = _to_str(raw)
-        if len(text) <= THRESHOLD:
-            return raw
-
-        uid = _store_sync(
-            text,
-            owner_id=self._owner_id,
-            workspace_id=self._workspace_id,
-            session_id=self._session_id,
-        )
-        preview = text[:PREVIEW_LEN]
-        return (
-            f"[COMPACTED:{uid}]\n"
-            f"{preview}...\n"
-            f"[{len(text):,} chars total. Retrieve full data with key: {uid}]"
-        )
+        start = time.monotonic()
+        try:
+            raw = self._original.invoke(input, **kwargs)
+            text = _to_str(raw)
+            latency_ms = int((time.monotonic() - start) * 1000)
+            self.last_stat = {
+                "tool_name": getattr(self._original, "name", "unknown"),
+                "success": True,
+                "latency_ms": latency_ms,
+                "output_chars": len(text),
+                "error_type": None,
+            }
+            if len(text) <= THRESHOLD:
+                return raw
+            uid = _store_sync(
+                text,
+                owner_id=self._owner_id,
+                workspace_id=self._workspace_id,
+                session_id=self._session_id,
+            )
+            preview = text[:PREVIEW_LEN]
+            return (
+                f"[COMPACTED:{uid}]\n"
+                f"{preview}...\n"
+                f"[{len(text):,} chars total. Retrieve full data with key: {uid}]"
+            )
+        except Exception as exc:
+            latency_ms = int((time.monotonic() - start) * 1000)
+            self.last_stat = {
+                "tool_name": getattr(self._original, "name", "unknown"),
+                "success": False,
+                "latency_ms": latency_ms,
+                "output_chars": 0,
+                "error_type": type(exc).__name__,
+            }
+            raise
 
 
 def wrap_tool(
