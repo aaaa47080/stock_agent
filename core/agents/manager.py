@@ -30,6 +30,9 @@ from core.agents.context_budget import (
     history_exceeds_budget,
     format_compact_state,
 )
+from core.database.experiences import ExperienceStore
+
+_experience_store = ExperienceStore()
 
 from .models import (
     ManagerState,
@@ -272,12 +275,29 @@ class ManagerAgent:
         # 讀取長期記憶注入 prompt（nanoclaw 設計：記憶實際作用於意圖理解）
         long_term_memory = self.get_long_term_memory_context()
 
+        # Retrieve relevant past experiences for planner hint
+        experience_hint = ""
+        try:
+            experiences = _experience_store.retrieve_relevant(
+                user_id=self.user_id,
+                task_family="chat",  # default before intent parsed
+                query=query,
+                llm=self.llm,
+            )
+            experience_hint = _experience_store.format_for_prompt(experiences)
+        except Exception:
+            pass
+
+        long_term_memory_with_hints = long_term_memory or "（尚無長期記憶）"
+        if experience_hint:
+            long_term_memory_with_hints += f"\n\n{experience_hint}"
+
         prompt = PromptRegistry.render(
             "manager", "intent_understanding",
             agents_info=agents_info,
             query=query,
             history=history or "（無歷史記錄）",
-            long_term_memory=long_term_memory or "（尚無長期記憶）"
+            long_term_memory=long_term_memory_with_hints
         )
 
         try:
@@ -1487,6 +1507,9 @@ class ManagerAgent:
         # ✅ nanoclaw extract_memory：每輪對話立即萃取結構化事實（背景執行）
         # 輕量操作，不需等到 consolidation threshold
         asyncio.create_task(self._extract_facts_background(user_message, assistant_response, turn_index))
+        asyncio.create_task(self._record_experience_background(
+            user_message, assistant_response, tools_used
+        ))
 
         # 計算未整合的消息數量
         unconsolidated = self._message_count - self._last_consolidated_index
@@ -1521,6 +1544,53 @@ class ManagerAgent:
             )
         except Exception as e:
             logger.warning(f"[Manager] extract_facts_background failed: {e}")
+
+    async def _record_experience_background(
+        self,
+        user_message: str,
+        assistant_response: str,
+        tools_used: Optional[List[str]],
+        task_results: Optional[dict] = None,
+    ) -> None:
+        """Fire-and-forget: record task trajectory after each turn."""
+        try:
+            # Determine task_family from agent names used
+            task_family = "chat"
+            if task_results:
+                agents_used = [v.get("agent_name", "") for v in task_results.values() if isinstance(v, dict)]
+                for agent in agents_used:
+                    if agent in ("crypto", "tw_stock", "us_stock", "forex", "commodity", "economic"):
+                        task_family = agent
+                        break
+
+            # Determine outcome from task_results quality
+            outcome = "success"
+            quality = None
+            if task_results:
+                qualities = [v.get("quality") for v in task_results.values() if isinstance(v, dict)]
+                if "fail" in qualities:
+                    outcome = "failure"
+                    quality = "fail"
+                else:
+                    quality = "pass"
+
+            _experience_store.record_experience(
+                user_id=self.user_id or "anonymous",
+                session_id=self.session_id,
+                task_family=task_family,
+                query=user_message,
+                tools_used=tools_used or [],
+                agent_used=",".join(set(
+                    v.get("agent_name", "") for v in (task_results or {}).values()
+                    if isinstance(v, dict) and v.get("agent_name")
+                )),
+                outcome=outcome,
+                quality_score=quality,
+                failure_reason=None,
+                response_chars=len(assistant_response),
+            )
+        except Exception as exc:
+            logger.debug("[Manager] _record_experience_background failed: %s", exc)
 
     def check_idle_consolidation(self) -> bool:
         """
