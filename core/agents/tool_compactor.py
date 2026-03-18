@@ -1,0 +1,231 @@
+"""
+Tool result compaction helpers.
+
+Wrap large LangChain tool outputs to avoid flooding LangGraph message state.
+"""
+from __future__ import annotations
+
+import json
+import logging
+import uuid
+from typing import Any, Optional
+
+import orjson
+from core.memory_scope import build_scope, scope_namespace
+
+logger = logging.getLogger(__name__)
+
+THRESHOLD = 2_000
+PREVIEW_LEN = 500
+REDIS_TTL = 3_600
+_KEY_PREFIX = "tr:"
+
+_local_store: dict[str, str] = {}
+_redis_client: Optional[Any] = None
+_redis_init_attempted = False
+
+
+def _serialize_record(
+    data: str,
+    owner_id: Optional[str],
+    workspace_id: Optional[str] = None,
+    session_id: Optional[str] = None,
+) -> str:
+    owner_scope = None
+    if owner_id is not None:
+        owner_scope = scope_namespace(build_scope(owner_id, session_id=session_id, workspace_id=workspace_id))
+    return orjson.dumps({
+        "data": data,
+        "owner_id": owner_id,
+        "owner_scope": owner_scope,
+    }).decode()
+
+
+def _deserialize_record(raw: Any) -> tuple[Optional[str], Optional[str], Optional[str]]:
+    if raw is None:
+        return None, None, None
+
+    if isinstance(raw, bytes):
+        raw = raw.decode()
+
+    if not isinstance(raw, str):
+        return None, None, str(raw)
+
+    try:
+        decoded = orjson.loads(raw)
+    except Exception:
+        return None, None, raw
+
+    if isinstance(decoded, dict) and "data" in decoded:
+        owner_id = decoded.get("owner_id")
+        if owner_id is not None:
+            owner_id = str(owner_id)
+        owner_scope = decoded.get("owner_scope")
+        if owner_scope is not None:
+            owner_scope = str(owner_scope)
+        return owner_id, owner_scope, str(decoded["data"])
+
+    return None, None, raw
+
+
+def _get_redis_sync() -> Optional[Any]:
+    """Return a synchronous Redis client or None when unavailable."""
+    global _redis_client, _redis_init_attempted
+    if _redis_init_attempted:
+        return _redis_client
+
+    _redis_init_attempted = True
+    try:
+        import redis as _r
+        from core.redis_url import resolve_redis_url
+
+        url, _ = resolve_redis_url()
+        if not url:
+            return None
+
+        client = _r.from_url(
+            url,
+            decode_responses=True,
+            socket_connect_timeout=2,
+            socket_timeout=2,
+        )
+        client.ping()
+        _redis_client = client
+        logger.info("[ToolCompactor] Redis sync client connected")
+    except Exception as exc:
+        logger.warning("[ToolCompactor] Redis unavailable, using local fallback: %s", exc)
+        _redis_client = None
+    return _redis_client
+
+
+def _to_str(output: Any) -> str:
+    if isinstance(output, str):
+        return output
+    try:
+        return orjson.dumps(output).decode()
+    except Exception:
+        return json.dumps(output, ensure_ascii=False, default=str)
+
+
+def _store_sync(
+    data: str,
+    owner_id: Optional[str] = None,
+    workspace_id: Optional[str] = None,
+    session_id: Optional[str] = None,
+) -> str:
+    uid = str(uuid.uuid4())
+    record = _serialize_record(data, owner_id, workspace_id=workspace_id, session_id=session_id)
+    redis_client = _get_redis_sync()
+    if redis_client is not None:
+        try:
+            redis_client.setex(_KEY_PREFIX + uid, REDIS_TTL, record)
+            return uid
+        except Exception as exc:
+            logger.debug("[ToolCompactor] Redis store failed: %s", exc)
+    _local_store[uid] = record
+    return uid
+
+
+def _retrieve_sync(uid: str) -> Optional[tuple[Optional[str], Optional[str], str]]:
+    redis_client = _get_redis_sync()
+    if redis_client is not None:
+        try:
+            value = redis_client.get(_KEY_PREFIX + uid)
+            if value is not None:
+                owner_id, owner_scope, data = _deserialize_record(value)
+                if data is not None:
+                    return owner_id, owner_scope, data
+        except Exception as exc:
+            logger.debug("[ToolCompactor] Redis retrieve failed: %s", exc)
+    value = _local_store.get(uid)
+    if value is None:
+        return None
+    owner_id, owner_scope, data = _deserialize_record(value)
+    if data is None:
+        return None
+    return owner_id, owner_scope, data
+
+
+class _CompactingToolWrapper:
+    """Proxy that compacts large `invoke()` outputs without mutating the original tool."""
+
+    def __init__(
+        self,
+        original: Any,
+        owner_id: Optional[str] = None,
+        workspace_id: Optional[str] = None,
+        session_id: Optional[str] = None,
+    ) -> None:
+        self._original = original
+        self._owner_id = owner_id
+        self._workspace_id = workspace_id
+        self._session_id = session_id
+
+    def __getattr__(self, item: str) -> Any:
+        return getattr(self._original, item)
+
+    def invoke(self, input: Any, **kwargs: Any) -> Any:  # noqa: A002
+        raw = self._original.invoke(input, **kwargs)
+        text = _to_str(raw)
+        if len(text) <= THRESHOLD:
+            return raw
+
+        uid = _store_sync(
+            text,
+            owner_id=self._owner_id,
+            workspace_id=self._workspace_id,
+            session_id=self._session_id,
+        )
+        preview = text[:PREVIEW_LEN]
+        return (
+            f"[COMPACTED:{uid}]\n"
+            f"{preview}...\n"
+            f"[{len(text):,} chars total. Retrieve full data with key: {uid}]"
+        )
+
+
+def wrap_tool(
+    tool: Any,
+    owner_id: Optional[str] = None,
+    workspace_id: Optional[str] = None,
+    session_id: Optional[str] = None,
+) -> Any:
+    """Return a non-mutating wrapper for LangChain tools that expose `invoke()`."""
+    if not hasattr(tool, "invoke"):
+        return tool
+    return _CompactingToolWrapper(
+        tool,
+        owner_id=owner_id,
+        workspace_id=workspace_id,
+        session_id=session_id,
+    )
+
+
+def retrieve_tool_result(
+    uid: str,
+    requester_id: Optional[str] = None,
+    workspace_id: Optional[str] = None,
+    session_id: Optional[str] = None,
+) -> str:
+    record = _retrieve_sync(uid)
+    if record is None:
+        return f"[ERROR] Tool result '{uid}' not found or expired."
+    owner_id, owner_scope, data = record
+    requester_scope = None
+    if requester_id is not None:
+        requester_scope = scope_namespace(
+            build_scope(requester_id, session_id=session_id, workspace_id=workspace_id)
+        )
+    if requester_scope is not None and owner_scope is not None and requester_scope != owner_scope:
+        return f"[ERROR] Tool result '{uid}' is not available for this user."
+    if requester_scope is None and requester_id is not None and owner_id is not None and requester_id != owner_id:
+        return f"[ERROR] Tool result '{uid}' is not available for this user."
+    return data
+
+
+def _reset_for_testing() -> None:
+    """Reset module-level state used by tests."""
+    global _redis_client, _redis_init_attempted
+    _redis_client = None
+    _redis_init_attempted = False
+    _local_store.clear()
