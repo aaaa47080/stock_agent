@@ -654,7 +654,13 @@ Please analyze the conversation and provide:
 Respond in this exact JSON format:
 {{
     "history_entry": "[2026-01-01 10:00] Summary of what happened...",
-    "memory_update": "# Long-term Memory\\n\\n## User Preferences\\n- ..."
+    "memory_update": "# Long-term Memory\\n\\n## User Preferences\\n- ...",
+    "compact_state": {{
+        "goal": "What the user is trying to achieve this session",
+        "progress": "What has been resolved or answered",
+        "open_questions": "Unresolved questions or threads (empty string if none)",
+        "next_steps": "Suggested next actions (empty string if none)"
+    }}
 }}"""
 
         try:
@@ -699,6 +705,24 @@ Respond in this exact JSON format:
             # 更新整合索引
             new_index = 0 if archive_all else len(messages) - keep_count
             self.set_last_consolidated_index(new_index)
+
+            # Write compact session state
+            compact_data = result.get("compact_state")
+            if compact_data and isinstance(compact_data, dict):
+                try:
+                    state = CompactedSessionState(
+                        goal=str(compact_data.get("goal", "")),
+                        progress=str(compact_data.get("progress", "")),
+                        open_questions=str(compact_data.get("open_questions", "")),
+                        next_steps=str(compact_data.get("next_steps", "")),
+                        turn_index=new_index,
+                        updated_at=datetime.now().isoformat(),
+                    )
+                    self.write_compact_state(state)
+                except Exception as exc:
+                    logger.warning("[MemoryStore] compact_state write failed: %s", exc)
+            else:
+                logger.debug("[MemoryStore] compact_state absent from LLM consolidation response")
 
             logger.info(
                 f"[MemoryStore] Consolidation done: {len(messages)} messages, "

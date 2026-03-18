@@ -140,10 +140,11 @@ def test_consolidate_writes_compact_state():
     with patch.object(store, "write_compact_state", side_effect=fake_write_compact):
         with patch.object(store, "append_history"):
             with patch.object(store, "write_long_term"):
-                with patch.object(store, "set_last_consolidated_index"):
-                    with patch.object(store, "get_last_consolidated_index", return_value=0):
-                        messages = [{"role": "user", "content": "BTC?", "timestamp": "2026-03-18 10:00"}]
-                        result = asyncio.run(store.consolidate(messages, mock_llm))
+                with patch.object(store, "read_long_term", return_value=""):
+                    with patch.object(store, "set_last_consolidated_index"):
+                        with patch.object(store, "get_last_consolidated_index", return_value=0):
+                            messages = [{"role": "user", "content": "BTC?", "timestamp": "2026-03-18 10:00"}]
+                            result = asyncio.run(store.consolidate(messages, mock_llm, archive_all=True))
 
     assert result is True
     assert written_state.get("goal") == "了解BTC走勢"
