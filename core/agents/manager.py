@@ -24,6 +24,12 @@ from langgraph.checkpoint.memory import MemorySaver
 
 from api.utils import logger
 from core.config import TEST_MODE
+from core.agents.context_budget import (
+    CONTEXT_CHAR_BUDGET,
+    CompactPrompt,
+    history_exceeds_budget,
+    format_compact_state,
+)
 
 from .models import (
     ManagerState,
@@ -50,6 +56,49 @@ MEMORY_CONSOLIDATION_THRESHOLD = 12  # 降到 12 則（約 6 輪對話）
 MEMORY_IDLE_TIMEOUT = 300  # 閒置 5 分鐘後整合
 MANAGER_GRAPH_RECURSION_LIMIT = 60
 MAX_GRAPH_TASKS = 8
+
+
+# ============================================================================
+# Context budget helpers (module-level for easy patching in tests)
+# ============================================================================
+
+def _read_compact_for_manager(user_id: str, session_id: str) -> Optional[CompactPrompt]:
+    """Read compact session state, return as CompactPrompt or None."""
+    try:
+        from core.database.memory import get_memory_store
+        store = get_memory_store(user_id, session_id=session_id)
+        state = store.read_compact_state()
+        if state is None:
+            return None
+        return CompactPrompt(
+            goal=state.goal,
+            progress=state.progress,
+            open_questions=state.open_questions,
+            next_steps=state.next_steps,
+        )
+    except Exception:
+        return None
+
+
+def _get_history_for_prompt(
+    raw_history: str,
+    user_id: str,
+    session_id: str,
+) -> str:
+    """Return history string for LLM prompt, respecting CONTEXT_CHAR_BUDGET.
+
+    Priority:
+      1. raw_history within budget → return as-is
+      2. over budget + compact state available → return formatted compact block
+      3. over budget + no compact state → truncate raw history to budget
+    """
+    if not history_exceeds_budget(raw_history):
+        return raw_history
+    compact = _read_compact_for_manager(user_id, session_id)
+    if compact is not None:
+        return format_compact_state(compact)
+    # Fallback: truncate to budget (tail — keep most recent)
+    return raw_history[-CONTEXT_CHAR_BUDGET:]
 
 
 # ============================================================================
@@ -183,6 +232,11 @@ class ManagerAgent:
         """意圖理解節點 - 統一的規劃入口"""
         query = state["query"]
         history = state.get("history", "")
+        history = _get_history_for_prompt(
+            history,
+            user_id=self.user_id or "anonymous",
+            session_id=self.session_id,
+        )
 
         # ✅ 修復：每次請求開始時從 state 同步 session_id
         # bootstrap 複用 Manager 時 session_id 可能是上一個請求的
