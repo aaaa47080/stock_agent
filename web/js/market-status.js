@@ -48,9 +48,9 @@
             '2026-12-25': 'Constitution Day',
         },
         usstock: {
-            '2026-01-01': 'New Year\'s Day',
+            '2026-01-01': "New Year's Day",
             '2026-01-19': 'Martin Luther King Jr. Day',
-            '2026-02-16': 'Washington\'s Birthday',
+            '2026-02-16': "Washington's Birthday",
             '2026-04-03': 'Good Friday',
             '2026-05-25': 'Memorial Day',
             '2026-06-19': 'Juneteenth',
@@ -92,11 +92,13 @@
         });
         const parts = formatter.formatToParts(date);
         const map = {};
+
         for (const part of parts) {
             if (part.type !== 'literal') {
                 map[part.type] = part.value;
             }
         }
+
         return {
             year: Number(map.year),
             month: Number(map.month),
@@ -136,13 +138,290 @@
         return {
             ...config,
             isOpen: false,
-            summary: 'Market Closed',
-            detail: 'Auto refresh paused outside market hours',
-            refreshLabel: 'Auto refresh paused outside market hours',
+            summary: 'Closed',
+            detail: '休市中',
+            refreshLabel: '休市中，暫停自動更新',
+            nextEventLabel: '',
             statusTone: 'closed',
             sessionType: 'closed',
             ...overrides,
         };
+    }
+
+    function formatMinuteLabel(totalMinutes) {
+        const hour = Math.floor(totalMinutes / 60);
+        const minute = totalMinutes % 60;
+        return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+    }
+
+    function formatEventTime(date, timeZone) {
+        return new Intl.DateTimeFormat('zh-TW', {
+            timeZone,
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+        }).format(date);
+    }
+
+    function createDateFromZoneParts(parts, minutes, timeZone) {
+        const hour = Math.floor(minutes / 60);
+        const minute = minutes % 60;
+        const utcGuess = Date.UTC(parts.year, parts.month - 1, parts.day, hour, minute, 0);
+        const zonedGuess = getZonedParts(new Date(utcGuess), timeZone);
+        const desiredUtc = Date.UTC(parts.year, parts.month - 1, parts.day, hour, minute, 0);
+        const actualUtc = Date.UTC(
+            zonedGuess.year,
+            zonedGuess.month - 1,
+            zonedGuess.day,
+            zonedGuess.hour,
+            zonedGuess.minute,
+            0
+        );
+        return new Date(utcGuess + (desiredUtc - actualUtc));
+    }
+
+    function addDaysFromParts(parts, days, timeZone) {
+        const seed = new Date(Date.UTC(parts.year, parts.month - 1, parts.day, 12, 0, 0));
+        seed.setUTCDate(seed.getUTCDate() + days);
+        return getZonedParts(seed, timeZone);
+    }
+
+    function findNextTradingDay(marketType, parts, timeZone, startOffset) {
+        for (let offset = startOffset; offset <= 14; offset += 1) {
+            const candidate = addDaysFromParts(parts, offset, timeZone);
+            const dateKey = getDateKey(candidate);
+            if (isWeekday(candidate) && !getHolidayName(marketType, dateKey)) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    function getForexNextEvent(parts, isOpen) {
+        const minute = minutesSinceMidnight(parts);
+
+        if (isOpen) {
+            if (parts.weekday === 'Sun') {
+                return {
+                    kind: 'close',
+                    date: createDateFromZoneParts(
+                        addDaysFromParts(parts, 5, 'Asia/Taipei'),
+                        5 * 60,
+                        'Asia/Taipei'
+                    ),
+                };
+            }
+            if (parts.weekday === 'Mon') {
+                return {
+                    kind: 'close',
+                    date: createDateFromZoneParts(
+                        addDaysFromParts(parts, 4, 'Asia/Taipei'),
+                        5 * 60,
+                        'Asia/Taipei'
+                    ),
+                };
+            }
+            if (parts.weekday === 'Tue') {
+                return {
+                    kind: 'close',
+                    date: createDateFromZoneParts(
+                        addDaysFromParts(parts, 3, 'Asia/Taipei'),
+                        5 * 60,
+                        'Asia/Taipei'
+                    ),
+                };
+            }
+            if (parts.weekday === 'Wed') {
+                return {
+                    kind: 'close',
+                    date: createDateFromZoneParts(
+                        addDaysFromParts(parts, 2, 'Asia/Taipei'),
+                        5 * 60,
+                        'Asia/Taipei'
+                    ),
+                };
+            }
+            return {
+                kind: 'close',
+                date: createDateFromZoneParts(
+                    addDaysFromParts(parts, 1, 'Asia/Taipei'),
+                    5 * 60,
+                    'Asia/Taipei'
+                ),
+            };
+        }
+
+        let offset = 0;
+        if (parts.weekday === 'Fri' && minute >= 5 * 60) {
+            offset = 2;
+        } else if (parts.weekday === 'Sat') {
+            offset = 1;
+        }
+        return {
+            kind: 'open',
+            date: createDateFromZoneParts(
+                addDaysFromParts(parts, offset, 'Asia/Taipei'),
+                5 * 60,
+                'Asia/Taipei'
+            ),
+        };
+    }
+
+    function getCommodityNextEvent(parts, isOpen) {
+        const minute = minutesSinceMidnight(parts);
+
+        if (isOpen) {
+            if (parts.weekday === 'Fri') {
+                return {
+                    kind: 'close',
+                    date: createDateFromZoneParts(parts, 16 * 60, 'America/Chicago'),
+                };
+            }
+            return {
+                kind: 'close',
+                date: createDateFromZoneParts(parts, 16 * 60, 'America/Chicago'),
+            };
+        }
+
+        if (parts.weekday === 'Sun' && minute < 17 * 60) {
+            return {
+                kind: 'open',
+                date: createDateFromZoneParts(parts, 17 * 60, 'America/Chicago'),
+            };
+        }
+        if (parts.weekday === 'Sat') {
+            return {
+                kind: 'open',
+                date: createDateFromZoneParts(
+                    addDaysFromParts(parts, 1, 'America/Chicago'),
+                    17 * 60,
+                    'America/Chicago'
+                ),
+            };
+        }
+        if (parts.weekday === 'Fri' && minute >= 16 * 60) {
+            return {
+                kind: 'open',
+                date: createDateFromZoneParts(
+                    addDaysFromParts(parts, 2, 'America/Chicago'),
+                    17 * 60,
+                    'America/Chicago'
+                ),
+            };
+        }
+        if (minute >= 16 * 60 && minute < 17 * 60) {
+            return {
+                kind: 'open',
+                date: createDateFromZoneParts(parts, 17 * 60, 'America/Chicago'),
+            };
+        }
+        return {
+            kind: 'open',
+            date: createDateFromZoneParts(parts, 17 * 60, 'America/Chicago'),
+        };
+    }
+
+    function getTWStockNextEvent(parts, state) {
+        const minute = minutesSinceMidnight(parts);
+
+        if (state.sessionType === 'regular') {
+            return {
+                kind: 'close',
+                date: createDateFromZoneParts(parts, 13 * 60 + 30, 'Asia/Taipei'),
+            };
+        }
+
+        if (state.sessionType === 'preopen') {
+            return {
+                kind: 'open',
+                date: createDateFromZoneParts(parts, 9 * 60, 'Asia/Taipei'),
+            };
+        }
+
+        if (isWeekday(parts) && !getHolidayName('twstock', getDateKey(parts)) && minute < 8 * 60 + 30) {
+            return {
+                kind: 'open',
+                date: createDateFromZoneParts(parts, 8 * 60 + 30, 'Asia/Taipei'),
+            };
+        }
+
+        const nextTradingDay = findNextTradingDay(
+            'twstock',
+            parts,
+            'Asia/Taipei',
+            1
+        );
+        if (!nextTradingDay) {
+            return null;
+        }
+
+        return {
+            kind: 'open',
+            date: createDateFromZoneParts(nextTradingDay, 8 * 60 + 30, 'Asia/Taipei'),
+        };
+    }
+
+    function getUSStockNextEvent(parts, state, regularCloseMinutes, afterHoursCloseMinutes) {
+        const minute = minutesSinceMidnight(parts);
+        const todayIsTradingDay = isWeekday(parts) && !getHolidayName('usstock', getDateKey(parts));
+
+        if (state.sessionType === 'pre_market') {
+            return {
+                kind: 'open',
+                date: createDateFromZoneParts(parts, 9 * 60 + 30, 'America/New_York'),
+            };
+        }
+
+        if (state.sessionType === 'regular') {
+            return {
+                kind: 'close',
+                date: createDateFromZoneParts(parts, regularCloseMinutes, 'America/New_York'),
+            };
+        }
+
+        if (state.sessionType === 'after_hours') {
+            return {
+                kind: 'close',
+                date: createDateFromZoneParts(
+                    parts,
+                    afterHoursCloseMinutes,
+                    'America/New_York'
+                ),
+            };
+        }
+
+        if (todayIsTradingDay && minute < 4 * 60) {
+            return {
+                kind: 'open',
+                date: createDateFromZoneParts(parts, 4 * 60, 'America/New_York'),
+            };
+        }
+
+        const nextTradingDay = findNextTradingDay(
+            'usstock',
+            parts,
+            'America/New_York',
+            1
+        );
+        if (!nextTradingDay) {
+            return null;
+        }
+
+        return {
+            kind: 'open',
+            date: createDateFromZoneParts(nextTradingDay, 4 * 60, 'America/New_York'),
+        };
+    }
+
+    function buildNextEventLabel(config, nextEvent) {
+        if (!nextEvent || !nextEvent.date) {
+            return '';
+        }
+
+        const prefix = nextEvent.kind === 'close' ? '預計收盤' : '下一次開盤';
+        return `${prefix}：${formatEventTime(nextEvent.date, config.timezone)}`;
     }
 
     function getForexState(config, parts) {
@@ -156,15 +435,16 @@
             isOpen = false;
         }
 
+        const nextEvent = getForexNextEvent(parts, isOpen);
+
         return createState(config, {
             isOpen,
-            summary: isOpen ? 'FX Market Open' : 'Weekend Closed',
-            detail: isOpen
-                ? 'Auto refresh is active while the global FX market is trading'
-                : 'Auto refresh resumes when the market reopens on Monday',
+            summary: isOpen ? 'FX Open' : 'FX Closed',
+            detail: isOpen ? '盤中自動更新中' : '週末休市，暫停自動更新',
             refreshLabel: isOpen
-                ? `Auto refresh every ${config.refreshSeconds}s`
-                : 'Auto refresh paused for weekend close',
+                ? `盤中自動更新，每 ${config.refreshSeconds} 秒一次`
+                : '休市中，自動更新已暫停',
+            nextEventLabel: buildNextEventLabel(config, nextEvent),
             statusTone: isOpen ? 'open' : 'closed',
             sessionType: isOpen ? 'regular' : 'closed',
         });
@@ -182,17 +462,19 @@
             isOpen = false;
         }
 
-        let summary = 'Electronic Session Closed';
-        let detail = 'Auto refresh resumes when the next electronic session opens';
-        let refreshLabel = 'Auto refresh paused outside market hours';
+        const nextEvent = getCommodityNextEvent(parts, isOpen);
+
+        let summary = 'Commodity Closed';
+        let detail = '休市中，暫停自動更新';
+        let refreshLabel = '休市中，自動更新已暫停';
 
         if (isOpen) {
-            summary = 'Electronic Session Open';
-            detail = 'CME-style electronic session with daily maintenance break';
-            refreshLabel = `Auto refresh every ${config.refreshSeconds}s`;
+            summary = 'Electronic Session';
+            detail = '電子盤交易中';
+            refreshLabel = `盤中自動更新，每 ${config.refreshSeconds} 秒一次`;
         } else if (inDailyBreak && parts.weekday !== 'Sat') {
             summary = 'Session Break';
-            detail = 'Daily maintenance break 16:00-17:00 CT';
+            detail = '每日維護時段 16:00-17:00 CT';
         }
 
         return createState(config, {
@@ -200,6 +482,7 @@
             summary,
             detail,
             refreshLabel,
+            nextEventLabel: buildNextEventLabel(config, nextEvent),
             statusTone: isOpen ? 'open' : 'closed',
             sessionType: isOpen ? 'regular' : 'closed',
         });
@@ -209,45 +492,45 @@
         const dateKey = getDateKey(parts);
         const minute = minutesSinceMidnight(parts);
         const holidayName = getHolidayName('twstock', dateKey);
+        let state;
 
         if (holidayName) {
-            return createState(config, {
-                summary: 'TW Market Holiday',
-                detail: `${holidayName}. Auto refresh is paused today`,
+            state = createState(config, {
+                summary: 'TW Holiday',
+                detail: `${holidayName}，今日休市`,
                 sessionType: 'holiday',
             });
-        }
-
-        if (!isWeekday(parts)) {
-            return createState(config, {
-                summary: 'Weekend Closed',
-                detail: 'Taiwan stock market is closed on weekends',
+        } else if (!isWeekday(parts)) {
+            state = createState(config, {
+                summary: 'TW Closed',
+                detail: '週末休市',
             });
-        }
-
-        if (minute >= 9 * 60 && minute < 13 * 60 + 30) {
-            return createState(config, {
+        } else if (minute >= 9 * 60 && minute < 13 * 60 + 30) {
+            state = createState(config, {
                 isOpen: true,
-                summary: 'Regular Session Open',
-                detail: 'Regular trading hours 09:00-13:30 Taipei time',
-                refreshLabel: `Auto refresh every ${config.refreshSeconds}s`,
+                summary: 'TW Open',
+                detail: '台股盤中交易中',
+                refreshLabel: `盤中自動更新，每 ${config.refreshSeconds} 秒一次`,
                 statusTone: 'open',
                 sessionType: 'regular',
             });
-        }
-
-        if (minute >= 8 * 60 + 30 && minute < 9 * 60) {
-            return createState(config, {
-                summary: 'Pre-Open',
-                detail: 'Order collection period before the regular session',
+        } else if (minute >= 8 * 60 + 30 && minute < 9 * 60) {
+            state = createState(config, {
+                summary: 'TW Pre-Open',
+                detail: '撮合前委託時段',
                 sessionType: 'preopen',
+            });
+        } else {
+            state = createState(config, {
+                summary: 'TW Closed',
+                detail: '非台股一般交易時段',
             });
         }
 
-        return createState(config, {
-            summary: 'Market Closed',
-            detail: 'Outside Taiwan regular trading hours',
-        });
+        return {
+            ...state,
+            nextEventLabel: buildNextEventLabel(config, getTWStockNextEvent(parts, state)),
+        };
     }
 
     function getUSStockState(config, parts) {
@@ -257,78 +540,73 @@
         const specialSession = getSpecialSession('usstock', dateKey);
         const regularCloseMinutes = specialSession?.regularCloseMinutes ?? 16 * 60;
         const afterHoursCloseMinutes = specialSession?.afterHoursCloseMinutes ?? 20 * 60;
+        let state;
 
         if (holidayName) {
-            return createState(config, {
-                summary: 'US Market Holiday',
-                detail: `${holidayName}. Auto refresh is paused today`,
+            state = createState(config, {
+                summary: 'US Holiday',
+                detail: `${holidayName}，今日休市`,
                 sessionType: 'holiday',
             });
-        }
-
-        if (!isWeekday(parts)) {
-            return createState(config, {
-                summary: 'Weekend Closed',
-                detail: 'US stock market is closed on weekends',
+        } else if (!isWeekday(parts)) {
+            state = createState(config, {
+                summary: 'US Closed',
+                detail: '週末休市',
             });
-        }
-
-        // Use America/New_York local time so DST is handled by the platform.
-        if (minute >= 4 * 60 && minute < 9 * 60 + 30) {
-            return createState(config, {
+        } else if (minute >= 4 * 60 && minute < 9 * 60 + 30) {
+            state = createState(config, {
                 isOpen: true,
                 summary: 'Pre-Market',
-                detail: specialSession
-                    ? `${specialSession.label}: extended trading before the early close`
-                    : 'Extended trading session before the regular open',
-                refreshLabel: `Auto refresh every ${config.refreshSeconds}s`,
+                detail:
+                    specialSession
+                        ? `${specialSession.label} 盤前交易中`
+                        : '美股盤前交易中',
+                refreshLabel: `盤中自動更新，每 ${config.refreshSeconds} 秒一次`,
                 statusTone: 'extended',
                 sessionType: 'pre_market',
             });
-        }
-
-        if (minute >= 9 * 60 + 30 && minute < regularCloseMinutes) {
-            return createState(config, {
+        } else if (minute >= 9 * 60 + 30 && minute < regularCloseMinutes) {
+            state = createState(config, {
                 isOpen: true,
                 summary:
-                    regularCloseMinutes < 16 * 60 ? 'Early-Close Session' : 'Regular Session Open',
+                    regularCloseMinutes < 16 * 60 ? 'Early Close' : 'Regular Session',
                 detail:
                     regularCloseMinutes < 16 * 60
-                        ? `Regular trading until ${formatMinuteLabel(regularCloseMinutes)} ET`
-                        : 'Regular trading hours 09:30-16:00 ET',
-                refreshLabel: `Auto refresh every ${config.refreshSeconds}s`,
+                        ? `提早收盤日，正常盤至 ${formatMinuteLabel(regularCloseMinutes)} ET`
+                        : '美股正常盤交易中',
+                refreshLabel: `盤中自動更新，每 ${config.refreshSeconds} 秒一次`,
                 statusTone: 'open',
                 sessionType: 'regular',
             });
-        }
-
-        if (minute >= regularCloseMinutes && minute < afterHoursCloseMinutes) {
-            return createState(config, {
+        } else if (minute >= regularCloseMinutes && minute < afterHoursCloseMinutes) {
+            state = createState(config, {
                 isOpen: true,
                 summary: 'After-Hours',
                 detail:
                     regularCloseMinutes < 16 * 60
-                        ? `${specialSession.detail} with extended trading until ${formatMinuteLabel(afterHoursCloseMinutes)} ET`
-                        : 'Extended trading session after the regular close',
-                refreshLabel: `Auto refresh every ${config.refreshSeconds}s`,
+                        ? `${specialSession.detail}，盤後延長至 ${formatMinuteLabel(afterHoursCloseMinutes)} ET`
+                        : '美股盤後交易中',
+                refreshLabel: `盤中自動更新，每 ${config.refreshSeconds} 秒一次`,
                 statusTone: 'extended',
                 sessionType: 'after_hours',
             });
+        } else {
+            state = createState(config, {
+                summary: 'US Closed',
+                detail:
+                    regularCloseMinutes < 16 * 60
+                        ? `提早收盤日已結束，盤後至 ${formatMinuteLabel(afterHoursCloseMinutes)} ET`
+                        : '非美股交易時段',
+            });
         }
 
-        return createState(config, {
-            summary: 'Market Closed',
-            detail:
-                regularCloseMinutes < 16 * 60
-                    ? `Early-close schedule finished at ${formatMinuteLabel(afterHoursCloseMinutes)} ET`
-                    : 'Outside US trading hours',
-        });
-    }
-
-    function formatMinuteLabel(totalMinutes) {
-        const hour = Math.floor(totalMinutes / 60);
-        const minute = totalMinutes % 60;
-        return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+        return {
+            ...state,
+            nextEventLabel: buildNextEventLabel(
+                config,
+                getUSStockNextEvent(parts, state, regularCloseMinutes, afterHoursCloseMinutes)
+            ),
+        };
     }
 
     function getMarketState(marketType, now = new Date()) {
@@ -341,9 +619,9 @@
                     timezone: 'UTC',
                 },
                 {
-                    summary: 'Unknown market',
-                    detail: 'No schedule configured',
-                    refreshLabel: 'Manual refresh only',
+                    summary: 'Unknown',
+                    detail: '未設定市場時段',
+                    refreshLabel: '僅支援手動更新',
                     statusTone: 'muted',
                 }
             );
@@ -414,7 +692,10 @@
         }
 
         setText(`${marketType}-market-refresh-note`, state.refreshLabel);
-        setText(`${marketType}-market-session-note`, state.detail);
+        setText(
+            `${marketType}-market-session-note`,
+            state.nextEventLabel ? `${state.detail} | ${state.nextEventLabel}` : state.detail
+        );
 
         const lastUpdatedLabel = formatLastUpdatedLabel(lastUpdated);
         if (lastUpdatedLabel) {
