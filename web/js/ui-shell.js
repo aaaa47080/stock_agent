@@ -21,7 +21,13 @@
                 if (!element || element.offsetParent === null) {
                     return sum;
                 }
-                if (selector === '[data-shell-fixed-input]' && window.innerWidth >= 768) {
+                const computedStyle = window.getComputedStyle(element);
+
+                if (
+                    selector === '[data-shell-fixed-input]' &&
+                    window.innerWidth >= 768 &&
+                    computedStyle.position !== 'fixed'
+                ) {
                     return sum;
                 }
 
