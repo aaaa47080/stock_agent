@@ -6,6 +6,11 @@
     --primary-color: #d4b693;
     --secondary-color: #e4e4e7;
     --accent-color: #c084fc;
+    --mobile-safe-bottom: env(safe-area-inset-bottom, 0px);
+    --mobile-nav-bottom-gap: 1rem;
+    --mobile-nav-clearance: calc(5.5rem + var(--mobile-nav-bottom-gap) + var(--mobile-safe-bottom));
+    --mobile-input-clearance: calc(5.75rem + var(--mobile-safe-bottom));
+    --mobile-toast-clearance: calc(var(--mobile-nav-clearance) + 1rem);
 }
 
 body {
@@ -824,4 +829,30 @@ nav.sticky {
 #confirm-modal,
 #report-modal {
     z-index: 10000;
+}
+
+@media (max-width: 767px) {
+    #global-nav-container {
+        bottom: calc(var(--mobile-nav-bottom-gap) + var(--mobile-safe-bottom)) !important;
+    }
+
+    #toast-container {
+        bottom: var(--mobile-toast-clearance) !important;
+    }
+
+    main .tab-content.overflow-y-auto {
+        padding-bottom: calc(11rem + var(--mobile-safe-bottom)) !important;
+    }
+
+    #chat-messages {
+        padding-bottom: calc(13rem + var(--mobile-safe-bottom));
+    }
+
+    #no-llm-key-warning {
+        bottom: calc(9rem + var(--mobile-safe-bottom));
+    }
+
+    #chat-tab > .fixed.bottom-0 {
+        padding-bottom: calc(1rem + var(--mobile-safe-bottom));
+    }
 }
