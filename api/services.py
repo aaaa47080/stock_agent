@@ -8,16 +8,20 @@ from datetime import datetime, timedelta
 from typing import List
 
 # 專用背景任務 executor，避免佔用 user request 的 default thread pool
-_background_executor = concurrent.futures.ThreadPoolExecutor(max_workers=2, thread_name_prefix="bg-task")
+_background_executor = concurrent.futures.ThreadPoolExecutor(
+    max_workers=2, thread_name_prefix="bg-task"
+)
 
 # 防止 screener 快速更新重疊執行
 _price_update_running = False
 
 from core.database import get_cache, set_cache
 from core.config import (
-    SUPPORTED_EXCHANGES, MARKET_PULSE_TARGETS, 
-    MARKET_PULSE_UPDATE_INTERVAL, FUNDING_RATE_UPDATE_INTERVAL,
-    SCREENER_UPDATE_INTERVAL_MINUTES
+    SUPPORTED_EXCHANGES,
+    MARKET_PULSE_TARGETS,
+    MARKET_PULSE_UPDATE_INTERVAL,
+    FUNDING_RATE_UPDATE_INTERVAL,
+    SCREENER_UPDATE_INTERVAL_MINUTES,
 )
 from analysis.market_pulse import get_market_pulse
 from utils.okx_api_connector import OKXAPIConnector
@@ -25,14 +29,15 @@ from data.data_fetcher import get_data_fetcher
 from api.symbols import normalize_base_symbol, sanitize_base_symbols
 
 from api.globals import (
-    logger, 
-    cached_screener_result, 
-    MARKET_PULSE_CACHE, 
-    FUNDING_RATE_CACHE, 
-    screener_lock, 
+    logger,
+    cached_screener_result,
+    MARKET_PULSE_CACHE,
+    FUNDING_RATE_CACHE,
+    screener_lock,
     funding_rate_lock,
-    ANALYSIS_STATUS
+    ANALYSIS_STATUS,
 )
+
 
 # --- Market Pulse Cache Functions ---
 def save_market_pulse_cache(silent=True):
@@ -44,6 +49,7 @@ def save_market_pulse_cache(silent=True):
     except Exception as e:
         logger.error(f"Failed to save Market Pulse cache: {e}")
 
+
 def load_market_pulse_cache():
     """Load Market Pulse data from DB."""
     try:
@@ -52,9 +58,12 @@ def load_market_pulse_cache():
             # We modify the global dictionary in place
             MARKET_PULSE_CACHE.clear()
             MARKET_PULSE_CACHE.update(data)
-            logger.info(f"Loaded Market Pulse cache from DB ({len(MARKET_PULSE_CACHE)} symbols)")
+            logger.info(
+                f"Loaded Market Pulse cache from DB ({len(MARKET_PULSE_CACHE)} symbols)"
+            )
     except Exception as e:
         logger.error(f"Failed to load Market Pulse cache: {e}")
+
 
 # --- Funding Rate Cache Persistence ---
 def save_funding_rate_cache(silent=True):
@@ -66,13 +75,16 @@ def save_funding_rate_cache(silent=True):
     except Exception as e:
         logger.error(f"Failed to save Funding Rate cache: {e}")
 
+
 def load_funding_rate_cache():
     """Load Funding Rate data from DB (Persistence)."""
     try:
         data = get_cache("FUNDING_RATES")
         if data:
             FUNDING_RATE_CACHE["data"] = data
-            FUNDING_RATE_CACHE["timestamp"] = datetime.now().isoformat() # Mark as loaded now, even if old
+            FUNDING_RATE_CACHE["timestamp"] = (
+                datetime.now().isoformat()
+            )  # Mark as loaded now, even if old
             logger.info(f"Loaded Funding Rate cache from DB ({len(data)} symbols)")
             return True
         return False
@@ -80,7 +92,9 @@ def load_funding_rate_cache():
         logger.error(f"Failed to load Funding Rate cache: {e}")
         return False
 
+
 # --- Background Tasks ---
+
 
 async def update_funding_rates():
     """Update all funding rates from OKX."""
@@ -95,23 +109,28 @@ async def update_funding_rates():
             if "error" not in funding_rates:
                 FUNDING_RATE_CACHE["timestamp"] = datetime.now().isoformat()
                 FUNDING_RATE_CACHE["data"] = funding_rates
-                
+
                 # [Optimization] Persist to DB so it survives restart
                 save_funding_rate_cache()
-                
-                logger.info(f"Funding rates updated & saved: {len(funding_rates)} symbols")
+
+                logger.info(
+                    f"Funding rates updated & saved: {len(funding_rates)} symbols"
+                )
             else:
-                logger.error(f"Failed to update funding rates: {funding_rates.get('error')}")
+                logger.error(
+                    f"Failed to update funding rates: {funding_rates.get('error')}"
+                )
         except Exception as e:
             logger.error(f"Funding rate update error: {e}")
+
 
 async def funding_rate_update_task():
     """Background task to update funding rates periodically."""
     # [Optimization] Try to load from DB immediately on startup
     if load_funding_rate_cache():
-        initial_delay = 5 # If loaded, wait a bit before refreshing
+        initial_delay = 5  # If loaded, wait a bit before refreshing
     else:
-        initial_delay = 1 # If empty, start refresh almost immediately
+        initial_delay = 1  # If empty, start refresh almost immediately
 
     await asyncio.sleep(initial_delay)
 
@@ -123,10 +142,13 @@ async def funding_rate_update_task():
         await asyncio.sleep(FUNDING_RATE_UPDATE_INTERVAL)
         await update_funding_rates()
 
-async def update_single_market_pulse(symbol: str, fixed_sources: List[str], semaphore: asyncio.Semaphore = None):
+
+async def update_single_market_pulse(
+    symbol: str, fixed_sources: List[str], semaphore: asyncio.Semaphore = None
+):
     """Helper to update a single symbol for Market Pulse with Timeout protection."""
     loop = asyncio.get_running_loop()
-    
+
     async def _do_update():
         try:
             logger.info(f"[Background] Updating Market Pulse for {symbol}...")
@@ -135,18 +157,22 @@ async def update_single_market_pulse(symbol: str, fixed_sources: List[str], sema
             result = await asyncio.wait_for(
                 loop.run_in_executor(
                     _background_executor,
-                    lambda: get_market_pulse(symbol, enabled_sources=fixed_sources)
+                    lambda: get_market_pulse(symbol, enabled_sources=fixed_sources),
                 ),
-                timeout=180.0
+                timeout=180.0,
             )
-            
+
             if result and "error" not in result:
                 MARKET_PULSE_CACHE[symbol] = result
                 logger.info(f"[Background] Successfully updated {symbol}")
             else:
-                logger.warning(f"[Background] Failed to update {symbol}: {result.get('error', 'Unknown error')}")
+                logger.warning(
+                    f"[Background] Failed to update {symbol}: {result.get('error', 'Unknown error')}"
+                )
         except asyncio.TimeoutError:
-            logger.error(f"[Background] ⏱️ Timeout updating {symbol} - skipping after 180s")
+            logger.error(
+                f"[Background] ⏱️ Timeout updating {symbol} - skipping after 180s"
+            )
         except asyncio.CancelledError:
             logger.warning(f"[Background] 🛑 Task for {symbol} was cancelled.")
             raise  # Re-raise to let the gathered task know it was cancelled
@@ -163,6 +189,7 @@ async def update_single_market_pulse(symbol: str, fixed_sources: List[str], sema
 # ============================================================================
 # Market Pulse Helper Functions - Reduce complexity of refresh_all_market_pulse_data
 # ============================================================================
+
 
 def _calculate_market_pulse_window() -> tuple:
     """Calculate the current 4-hour update window."""
@@ -202,16 +229,24 @@ def _build_market_pulse_targets(target_symbols: List[str] = None) -> set:
         cleaned_targets = sanitize_base_symbols(target_symbols)
         dropped = len(target_symbols) - len(cleaned_targets)
         if dropped > 0:
-            logger.warning(f"Skipped {dropped} invalid market pulse target symbol(s): {target_symbols}")
+            logger.warning(
+                f"Skipped {dropped} invalid market pulse target symbol(s): {target_symbols}"
+            )
         final_symbols.update(cleaned_targets)
-        logger.info(f"🎯 Targeted analysis request for {len(cleaned_targets)} symbols: {cleaned_targets}")
+        logger.info(
+            f"🎯 Targeted analysis request for {len(cleaned_targets)} symbols: {cleaned_targets}"
+        )
     else:
         # Priority 2: Add popular symbols from screener
         added_count = _add_screener_symbols(final_symbols)
         if added_count > 0:
-            logger.info(f"🎯 Added {added_count} symbols from current Screener results.")
+            logger.info(
+                f"🎯 Added {added_count} symbols from current Screener results."
+            )
         else:
-            logger.info("⚠️ No screener data found. Analyzing minimal config targets only.")
+            logger.info(
+                "⚠️ No screener data found. Analyzing minimal config targets only."
+            )
 
     return final_symbols
 
@@ -267,11 +302,15 @@ async def refresh_all_market_pulse_data(target_symbols: List[str] = None):
     final_symbols = _build_market_pulse_targets(target_symbols)
 
     # Filter out fresh symbols
-    symbols_to_process, skipped_count = _filter_fresh_symbols(final_symbols, window_start)
+    symbols_to_process, skipped_count = _filter_fresh_symbols(
+        final_symbols, window_start
+    )
 
     window_hour = (now.hour // 4) * 4
     if skipped_count > 0:
-        logger.info(f"⏭️ [Resume] {skipped_count} symbols already fresh in window {window_hour}:00")
+        logger.info(
+            f"⏭️ [Resume] {skipped_count} symbols already fresh in window {window_hour}:00"
+        )
     else:
         logger.info(f"ℹ️ [New Run] Starting full analysis for window {window_hour}:00")
 
@@ -284,7 +323,7 @@ async def refresh_all_market_pulse_data(target_symbols: List[str] = None):
     ANALYSIS_STATUS["completed"] = skipped_count
     ANALYSIS_STATUS["start_time"] = now.isoformat()
 
-    FIXED_SOURCES = ['google', 'cryptopanic', 'newsapi', 'cryptocompare']
+    FIXED_SOURCES = ["google"]
     sem = asyncio.Semaphore(2)
 
     # Batch saving optimization
@@ -330,6 +369,7 @@ async def refresh_all_market_pulse_data(target_symbols: List[str] = None):
     save_market_pulse_cache(silent=False)
     return window_start_iso
 
+
 async def trigger_on_demand_analysis(symbols: List[str]):
     """
     Trigger immediate background analysis for specific symbols if they are stale.
@@ -337,12 +377,14 @@ async def trigger_on_demand_analysis(symbols: List[str]):
     """
     if not symbols:
         return
-    
+
     # 1. Check validity (skip if recently updated)
     normalized_symbols = sanitize_base_symbols(symbols)
     dropped = len(symbols) - len(normalized_symbols)
     if dropped > 0:
-        logger.warning(f"On-demand analysis skipped {dropped} invalid symbol(s): {symbols}")
+        logger.warning(
+            f"On-demand analysis skipped {dropped} invalid symbol(s): {symbols}"
+        )
     if not normalized_symbols:
         return
 
@@ -350,7 +392,7 @@ async def trigger_on_demand_analysis(symbols: List[str]):
     # Align to current 4-hour window
     window_hour = (now.hour // 4) * 4
     window_start = now.replace(hour=window_hour, minute=0, second=0, microsecond=0)
-    
+
     to_update = []
     for norm in normalized_symbols:
         # logic: if cache exists AND timestamp is >= window_start, it's fresh enough
@@ -363,26 +405,26 @@ async def trigger_on_demand_analysis(symbols: List[str]):
                     is_fresh = True
             except Exception as e:
                 logger.debug(f"Failed to parse timestamp for {norm}: {e}")
-            
+
         if not is_fresh:
             to_update.append(norm)
-            
+
     if not to_update:
         # logger.info("✨ Requested symbols are already fresh.")
         return
 
     logger.info(f"🚀 Triggering On-Demand Analysis for: {to_update}")
-    
+
     # 2. Launch background updates
     # We use a semaphore to prevent overwhelming the API, but separate from the main loop
-    sem = asyncio.Semaphore(4) 
-    FIXED_SOURCES = ['google', 'cryptopanic', 'newsapi', 'cryptocompare']
-    
+    sem = asyncio.Semaphore(4)
+    FIXED_SOURCES = ["google"]
+
     async def _runner(sym):
         try:
             # Re-use update_single_market_pulse
             await update_single_market_pulse(sym, FIXED_SOURCES, semaphore=sem)
-            
+
             # Simple in-memory update mark (save is handled by background loop occasionally, or next startup)
             # But for good UX, let's update cache timestamp
             if sym in MARKET_PULSE_CACHE:
@@ -398,6 +440,7 @@ async def trigger_on_demand_analysis(symbols: List[str]):
 # ============================================================================
 # Market Pulse Task Helper Functions
 # ============================================================================
+
 
 def _get_cache_timestamps(cache):
     """Extract valid timestamps from market pulse cache."""
@@ -417,7 +460,7 @@ def _analyze_cache_freshness(timestamps, now):
     action_type: 'skip', 'delayed', 'immediate', 'full'
     """
     if not timestamps:
-        return 'immediate', 0, {'reason': 'no_valid_timestamps'}
+        return "immediate", 0, {"reason": "no_valid_timestamps"}
 
     newest_ts = max(timestamps)
     oldest_ts = min(timestamps)
@@ -425,21 +468,29 @@ def _analyze_cache_freshness(timestamps, now):
     oldest_age = (now - oldest_ts).total_seconds()
 
     logger.info(
-        f"📊 Cache age: newest={newest_age/60:.1f}min, oldest={oldest_age/60:.1f}min "
-        f"(threshold={MARKET_PULSE_UPDATE_INTERVAL/60:.0f}min)"
+        f"📊 Cache age: newest={newest_age / 60:.1f}min, oldest={oldest_age / 60:.1f}min "
+        f"(threshold={MARKET_PULSE_UPDATE_INTERVAL / 60:.0f}min)"
     )
 
     # All cache is fresh
     if oldest_age < MARKET_PULSE_UPDATE_INTERVAL:
         remaining_time = MARKET_PULSE_UPDATE_INTERVAL - oldest_age
-        return 'skip', remaining_time, {'newest_age': newest_age, 'oldest_age': oldest_age}
+        return (
+            "skip",
+            remaining_time,
+            {"newest_age": newest_age, "oldest_age": oldest_age},
+        )
 
     # Cache is slightly stale but usable
     if oldest_age < MARKET_PULSE_UPDATE_INTERVAL * 3:
-        return 'delayed', 60, {'oldest_age_hours': oldest_age/3600}
+        return "delayed", 60, {"oldest_age_hours": oldest_age / 3600}
 
     # Cache is too old
-    return 'immediate', MARKET_PULSE_UPDATE_INTERVAL, {'oldest_age_hours': oldest_age/3600}
+    return (
+        "immediate",
+        MARKET_PULSE_UPDATE_INTERVAL,
+        {"oldest_age_hours": oldest_age / 3600},
+    )
 
 
 async def _handle_cache_state_at_startup():
@@ -458,11 +509,13 @@ async def _handle_cache_state_at_startup():
     timestamps = _get_cache_timestamps(MARKET_PULSE_CACHE)
     action, sleep_time, metadata = _analyze_cache_freshness(timestamps, now)
 
-    if action == 'skip':
-        logger.info(f"✅ All cache is fresh! Sleeping for {sleep_time/60:.1f} minutes.")
+    if action == "skip":
+        logger.info(
+            f"✅ All cache is fresh! Sleeping for {sleep_time / 60:.1f} minutes."
+        )
         return sleep_time
 
-    if action == 'delayed':
+    if action == "delayed":
         logger.info(
             f"⚠️ Cache is stale ({metadata['oldest_age_hours']:.1f}h) but usable. "
             f"Starting background update in {sleep_time} seconds."
@@ -470,7 +523,7 @@ async def _handle_cache_state_at_startup():
         return sleep_time
 
     # Immediate action
-    if 'oldest_age_hours' in metadata:
+    if "oldest_age_hours" in metadata:
         logger.info(
             f"⏰ Cache is too old ({metadata['oldest_age_hours']:.1f}h). "
             "Triggering immediate refresh..."
@@ -499,7 +552,9 @@ async def update_market_pulse_task():
         # Handle startup cache state
         initial_sleep_time = await _handle_cache_state_at_startup()
     except Exception as e:
-        logger.error(f"⚠️ Error during startup check: {e}. Falling back to immediate full update.")
+        logger.error(
+            f"⚠️ Error during startup check: {e}. Falling back to immediate full update."
+        )
         try:
             await refresh_all_market_pulse_data()
             initial_sleep_time = MARKET_PULSE_UPDATE_INTERVAL
@@ -514,40 +569,49 @@ async def update_market_pulse_task():
             await asyncio.sleep(initial_sleep_time)
 
         try:
-            logger.info("🔄 [Background] Starting scheduled Market Pulse update cycle...")
+            logger.info(
+                "🔄 [Background] Starting scheduled Market Pulse update cycle..."
+            )
             await refresh_all_market_pulse_data()
             logger.info("✅ [Background] Scheduled update cycle complete.")
         except Exception as e:
             logger.error(f"❌ [Background] Market Pulse update cycle error: {e}")
-        
+
         # [Optimization] Align next update to the next 4-hour wall clock mark
         # Instead of sleeping fixed 4 hours, we sleep until 00:00, 04:00, 08:00...
         now = datetime.now()
         current_block = now.hour // 4
         next_block_hour = (current_block + 1) * 4
-        
+
         # Handle day rollover (e.g. 24 -> 00 of next day)
         if next_block_hour >= 24:
-            next_target = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+            next_target = now.replace(
+                hour=0, minute=0, second=0, microsecond=0
+            ) + timedelta(days=1)
         else:
-            next_target = now.replace(hour=next_block_hour, minute=0, second=0, microsecond=0)
-            
+            next_target = now.replace(
+                hour=next_block_hour, minute=0, second=0, microsecond=0
+            )
+
         # Add a small buffer (e.g., 60 seconds) to ensure data providers have closed their candles
         next_target += timedelta(seconds=60)
-        
+
         seconds_until_next = (next_target - datetime.now()).total_seconds()
-        
+
         # Safety check: if calculation is weird, fallback to 5 minutes
         if seconds_until_next < 0:
-             seconds_until_next = 300
-             
+            seconds_until_next = 300
+
         initial_sleep_time = seconds_until_next
-        logger.info(f"📅 Next scheduled update aligned to: {next_target} (in {initial_sleep_time/60:.1f} minutes)")
+        logger.info(
+            f"📅 Next scheduled update aligned to: {next_target} (in {initial_sleep_time / 60:.1f} minutes)"
+        )
 
 
 # ============================================================================
 # Screener Helper Functions - Reduce complexity of update_screener_prices_fast
 # ============================================================================
+
 
 def _collect_screener_symbols() -> set:
     """Collect all symbols from cached screener data."""
@@ -574,10 +638,8 @@ async def _fetch_okx_tickers():
     tickers_result = await loop.run_in_executor(
         _background_executor,
         lambda: fetcher._make_request(
-            fetcher.market_base_url,
-            "/market/tickers",
-            params={"instType": "SPOT"}
-        )
+            fetcher.market_base_url, "/market/tickers", params={"instType": "SPOT"}
+        ),
     )
 
     if tickers_result and tickers_result.get("code") == "0":
@@ -589,14 +651,14 @@ def _build_price_map_from_tickers(tickers):
     """Build price lookup map from OKX ticker data."""
     price_map = {}
     for t in tickers:
-        inst_id = t['instId']  # e.g., BTC-USDT
+        inst_id = t["instId"]  # e.g., BTC-USDT
         symbol_key = inst_id.replace("-", "")  # BTCUSDT
-        open_24h = float(t['open24h'])
-        last = float(t['last'])
+        open_24h = float(t["open24h"])
+        last = float(t["last"])
 
         price_map[symbol_key] = {
-            'price': last,
-            'change': ((last - open_24h) / open_24h * 100) if open_24h != 0 else 0
+            "price": last,
+            "change": ((last - open_24h) / open_24h * 100) if open_24h != 0 else 0,
         }
 
     return price_map
@@ -614,15 +676,14 @@ def _update_screener_prices_from_map(price_map):
             for item in data[list_name]:
                 s = item["Symbol"].replace("/", "").replace("-", "")
                 if s in price_map:
-                    item["Close"] = price_map[s]['price']
-                    item["price_change_24h"] = price_map[s]['change']
+                    item["Close"] = price_map[s]["price"]
+                    item["price_change_24h"] = price_map[s]["change"]
                     updated = True
 
     if updated and data.get("top_performers"):
         # Re-sort by price change
         data["top_performers"].sort(
-            key=lambda x: float(x.get("price_change_24h", 0)),
-            reverse=True
+            key=lambda x: float(x.get("price_change_24h", 0)), reverse=True
         )
 
         # Update timestamp
@@ -663,13 +724,14 @@ async def update_screener_prices_fast():
     finally:
         _price_update_running = False
 
+
 async def run_screener_analysis():
     """執行實際的分析工作並更新快取 (重型任務)"""
     # 如果已經鎖定，表示正在運行，無需重複
     if screener_lock.locked():
         logger.info("Screener analysis already in progress, skipping...")
         return
-        
+
     async with screener_lock:
         logger.info("Starting heavy screener analysis...")
         try:
@@ -683,18 +745,23 @@ async def run_screener_analysis():
             df_volume, df_gainers, df_losers, _ = await loop.run_in_executor(
                 _background_executor,
                 lambda: screen_top_cryptos_light(
-                    exchange=exchange,
-                    limit=10,
-                    interval="1d",
-                    target_symbols=None
-                )
+                    exchange=exchange, limit=10, interval="1d", target_symbols=None
+                ),
             )
 
             # Handle potential None/NaN
-            top_volume = df_volume.replace({np.nan: None}) if not df_volume.empty else df_volume
-            top_gainers = df_gainers.replace({np.nan: None}) if not df_gainers.empty else df_gainers
-            top_losers = df_losers.replace({np.nan: None}) if not df_losers.empty else df_losers
-            
+            top_volume = (
+                df_volume.replace({np.nan: None}) if not df_volume.empty else df_volume
+            )
+            top_gainers = (
+                df_gainers.replace({np.nan: None})
+                if not df_gainers.empty
+                else df_gainers
+            )
+            top_losers = (
+                df_losers.replace({np.nan: None}) if not df_losers.empty else df_losers
+            )
+
             # 只有當有數據時才更新快取，避免因網路錯誤導致快取被清空
             if not top_volume.empty or not top_gainers.empty:
                 timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -703,18 +770,23 @@ async def run_screener_analysis():
                     "top_volume": top_volume.to_dict(orient="records"),
                     "top_gainers": top_gainers.to_dict(orient="records"),
                     "top_losers": top_losers.to_dict(orient="records"),
-                    "last_updated": timestamp_str
+                    "last_updated": timestamp_str,
                 }
-                
+
                 # [Optimization] RAM Only - No DB write
-                logger.info(f"Background screener analysis complete (RAM updated). (Volume: {len(top_volume)}, Gainers: {len(top_gainers)}, Losers: {len(top_losers)})")
+                logger.info(
+                    f"Background screener analysis complete (RAM updated). (Volume: {len(top_volume)}, Gainers: {len(top_gainers)}, Losers: {len(top_losers)})"
+                )
             else:
-                logger.warning("Background screener analysis returned empty results. Skipping cache update.")
-                
+                logger.warning(
+                    "Background screener analysis returned empty results. Skipping cache update."
+                )
+
             # 解除鎖定由 async with 處理
-            
+
         except Exception as e:
             logger.error(f"❌ [分析任務] 執行失敗: {e}")
+
 
 async def _screener_ticker_callback(symbol: str, parsed: dict):
     """
@@ -730,8 +802,14 @@ async def _screener_ticker_callback(symbol: str, parsed: dict):
     # 正規化：BTC-USDT / BTC / BTCUSDT 都統一比較
     symbol_key = symbol.upper().replace("/", "").replace("-", "")
 
-    all_list_names = ["top_volume", "top_gainers", "top_losers",
-                      "top_performers", "oversold", "overbought"]
+    all_list_names = [
+        "top_volume",
+        "top_gainers",
+        "top_losers",
+        "top_performers",
+        "oversold",
+        "overbought",
+    ]
     for list_name in all_list_names:
         for item in data.get(list_name) or []:
             item_key = item.get("Symbol", "").upper().replace("/", "").replace("-", "")
@@ -739,7 +817,9 @@ async def _screener_ticker_callback(symbol: str, parsed: dict):
                 item["Close"] = last
                 item["price_change_24h"] = change
 
-    cached_screener_result["data"]["last_updated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cached_screener_result["data"]["last_updated"] = datetime.now().strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
 
 
 async def _subscribe_screener_symbols_to_ws():
@@ -754,8 +834,14 @@ async def _subscribe_screener_symbols_to_ws():
         return
 
     symbols = set()
-    all_list_names = ["top_volume", "top_gainers", "top_losers",
-                      "top_performers", "oversold", "overbought"]
+    all_list_names = [
+        "top_volume",
+        "top_gainers",
+        "top_losers",
+        "top_performers",
+        "oversold",
+        "overbought",
+    ]
     for list_name in all_list_names:
         for item in data.get(list_name) or []:
             sym = item.get("Symbol", "")
@@ -783,7 +869,9 @@ async def update_screener_task():
     logger.info("🚀 Starting Screener: initial analysis + WebSocket price feed...")
 
     update_interval_sec = SCREENER_UPDATE_INTERVAL_MINUTES * 60
-    logger.info(f"Screener heavy analysis interval: {SCREENER_UPDATE_INTERVAL_MINUTES} min. Price feed: OKX WebSocket (real-time).")
+    logger.info(
+        f"Screener heavy analysis interval: {SCREENER_UPDATE_INTERVAL_MINUTES} min. Price feed: OKX WebSocket (real-time)."
+    )
 
     while True:
         try:
