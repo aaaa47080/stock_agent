@@ -1,6 +1,7 @@
 """
 Market REST API Endpoints
 """
+
 import asyncio
 from typing import Optional
 from datetime import datetime
@@ -15,12 +16,12 @@ from api.globals import (
     FUNDING_RATE_CACHE,
     MARKET_PULSE_CACHE,
     screener_lock,
-    ANALYSIS_STATUS
+    ANALYSIS_STATUS,
 )
 from api.services import (
     update_funding_rates,
     refresh_all_market_pulse_data,
-    trigger_on_demand_analysis
+    trigger_on_demand_analysis,
 )
 from api.deps import get_current_user
 from .helpers import (
@@ -95,7 +96,9 @@ async def run_screener(request: ScreenerRequest):
     # 1. Custom symbol request - execute directly
     if request.symbols and len(request.symbols) > 0:
         try:
-            return await run_custom_screener(request, MARKET_PULSE_CACHE, trigger_on_demand_analysis)
+            return await run_custom_screener(
+                request, MARKET_PULSE_CACHE, trigger_on_demand_analysis
+            )
         except Exception as e:
             logger.error(f"Custom screener failed: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Custom screener failed")
@@ -135,7 +138,7 @@ async def get_klines_data(request: KlineRequest):
                 symbol=request.symbol,
                 exchange=request.exchange,
                 interval=request.interval,
-                limit=request.limit
+                limit=request.limit,
             )
         )
 
@@ -145,21 +148,23 @@ async def get_klines_data(request: KlineRequest):
         klines = []
         for _, row in df.iterrows():
             kline_data = {
-                "time": int(row['timestamp'].timestamp()) if hasattr(row['timestamp'], 'timestamp') else int(row['timestamp'] / 1000),
-                "open": float(row['open']),
-                "high": float(row['high']),
-                "low": float(row['low']),
-                "close": float(row['close'])
+                "time": int(row["timestamp"].timestamp())
+                if hasattr(row["timestamp"], "timestamp")
+                else int(row["timestamp"] / 1000),
+                "open": float(row["open"]),
+                "high": float(row["high"]),
+                "low": float(row["low"]),
+                "close": float(row["close"]),
             }
-            if 'volume' in row.index and row['volume'] is not None:
-                kline_data["volume"] = float(row['volume'])
+            if "volume" in row.index and row["volume"] is not None:
+                kline_data["volume"] = float(row["volume"])
             klines.append(kline_data)
 
         return {
             "symbol": request.symbol,
             "interval": request.interval,
             "klines": klines,
-            "updated_at": datetime.now().isoformat()
+            "updated_at": datetime.now().isoformat(),
         }
     except HTTPException:
         raise
@@ -184,8 +189,12 @@ async def get_funding_rates(refresh: bool = False, symbols: str = None, limit: i
 
             if filtered_data:
                 sorted_rates = sort_funding_rates(filtered_data)
-                top_bullish = sorted_rates[:min(5, len(sorted_rates))]
-                top_bearish = sorted_rates[-min(5, len(sorted_rates)):][::-1] if len(sorted_rates) > 5 else []
+                top_bullish = sorted_rates[: min(5, len(sorted_rates))]
+                top_bearish = (
+                    sorted_rates[-min(5, len(sorted_rates)) :][::-1]
+                    if len(sorted_rates) > 5
+                    else []
+                )
             else:
                 top_bullish = []
                 top_bearish = []
@@ -196,7 +205,7 @@ async def get_funding_rates(refresh: bool = False, symbols: str = None, limit: i
                 top_bullish=top_bullish,
                 top_bearish=top_bearish,
                 filtered_data=filtered_data,
-                filtered_count=len(filtered_data)
+                filtered_count=len(filtered_data),
             )
 
         sorted_rates = sort_funding_rates(data)
@@ -206,7 +215,7 @@ async def get_funding_rates(refresh: bool = False, symbols: str = None, limit: i
             timestamp=timestamp,
             total_count=len(data),
             top_bullish=top_bullish,
-            top_bearish=top_bearish
+            top_bearish=top_bearish,
         )
 
     except Exception as e:
@@ -235,9 +244,11 @@ async def get_single_funding_rate(symbol: str):
                 "symbol": base_symbol,
                 "instId": instId,
                 "fundingRate": float(data.get("fundingRate", 0)) * 100,
-                "nextFundingRate": float(data.get("nextFundingRate", 0)) * 100 if data.get("nextFundingRate") else None,
+                "nextFundingRate": float(data.get("nextFundingRate", 0)) * 100
+                if data.get("nextFundingRate")
+                else None,
                 "fundingTime": data.get("fundingTime"),
-                "nextFundingTime": data.get("nextFundingTime")
+                "nextFundingTime": data.get("nextFundingTime"),
             }
         return {"error": "Not found"}
     except HTTPException:
@@ -264,11 +275,15 @@ async def get_funding_rate_history(symbol: str):
         if result.get("code") == "0" and result.get("data"):
             history = []
             for item in result["data"]:
-                history.append({
-                    "time": item["fundingTime"],
-                    "rate": float(item["fundingRate"]) * 100,
-                    "realRate": float(item["realizedRate"]) * 100 if "realizedRate" in item else float(item["fundingRate"]) * 100
-                })
+                history.append(
+                    {
+                        "time": item["fundingTime"],
+                        "rate": float(item["fundingRate"]) * 100,
+                        "realRate": float(item["realizedRate"]) * 100
+                        if "realizedRate" in item
+                        else float(item["fundingRate"]) * 100,
+                    }
+                )
             return {"data": history[::-1], "symbol": base}
 
         return {"error": "Failed to fetch history", "details": result}
@@ -279,6 +294,23 @@ async def get_funding_rate_history(symbol: str):
         return {"error": "Failed to get history"}
 
 
+@router.post("/api/market-pulse/refresh-all", dependencies=[Depends(get_current_user)])
+async def api_refresh_all_market_pulse(request: RefreshPulseRequest):
+    """Trigger a global refresh of specified Market Pulse targets."""
+    try:
+        timestamp = await refresh_all_market_pulse_data(request.symbols)
+        return {"status": "success", "timestamp": timestamp}
+    except Exception as e:
+        logger.error(f"Manual refresh failed: {e}")
+        raise HTTPException(status_code=500, detail="Refresh failed")
+
+
+@router.get("/api/market-pulse/progress")
+async def get_market_pulse_progress():
+    """Get the current status of background analysis task."""
+    return ANALYSIS_STATUS
+
+
 @router.get("/api/market-pulse/{symbol}")
 async def get_market_pulse_api(
     symbol: str,
@@ -286,7 +318,7 @@ async def get_market_pulse_api(
     refresh: bool = False,
     deep_analysis: bool = False,
     x_user_llm_key: Optional[str] = Header(None),
-    x_user_llm_provider: Optional[str] = Header(None)
+    x_user_llm_provider: Optional[str] = Header(None),
 ):
     """Get market pulse analysis with tiered access."""
     try:
@@ -336,20 +368,3 @@ async def get_market_pulse_api(
     except Exception as e:
         logger.error(f"Market pulse failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Market pulse failed")
-
-
-@router.post("/api/market-pulse/refresh-all", dependencies=[Depends(get_current_user)])
-async def api_refresh_all_market_pulse(request: RefreshPulseRequest):
-    """Trigger a global refresh of specified Market Pulse targets."""
-    try:
-        timestamp = await refresh_all_market_pulse_data(request.symbols)
-        return {"status": "success", "timestamp": timestamp}
-    except Exception as e:
-        logger.error(f"Manual refresh failed: {e}")
-        raise HTTPException(status_code=500, detail="Refresh failed")
-
-
-@router.get("/api/market-pulse/progress")
-async def get_market_pulse_progress():
-    """Get the current status of background analysis task."""
-    return ANALYSIS_STATUS
