@@ -9,6 +9,7 @@ window.ForexTab = {
     chartInstance: null,
     chartSeries: null,
     currentInterval: '1d',
+    lastUpdatedAt: null,
 
     DEFAULT_PAIRS: [
         { symbol: 'TWD=X',    name: 'USD/TWD', desc: '美元 / 台幣' },
@@ -22,7 +23,21 @@ window.ForexTab = {
     // ── Init ──────────────────────────────────────────────────
 
     init: function () {
+        if (window.MarketStatus) {
+            window.MarketStatus.startMarketAutoRefresh(
+                'forex',
+                () => this.refreshCurrent(),
+                () => this.lastUpdatedAt
+            );
+        }
         this.renderMarket();
+    },
+
+    refreshCurrent: function () {
+        if (this.activeSubTab === 'pulse' && this.activeSymbol) {
+            return this.renderPulse(this.activeSymbol);
+        }
+        return this.renderMarket();
     },
 
     // ── Sub-tab switching ─────────────────────────────────────
@@ -89,6 +104,10 @@ window.ForexTab = {
             const updEl = document.getElementById('forex-last-updated');
             if (updEl && data.last_updated) {
                 updEl.textContent = '更新: ' + new Date(data.last_updated).toLocaleTimeString('zh-TW');
+            }
+            this.lastUpdatedAt = data.last_updated || this.lastUpdatedAt;
+            if (window.MarketStatus) {
+                window.MarketStatus.updateMarketStatusBar('forex', this.lastUpdatedAt);
             }
         } catch (e) {
             listEl.innerHTML = `<div class="text-center text-danger py-10 text-sm">載入失敗：${e.message}</div>`;

@@ -5,6 +5,7 @@
 
 window.USStockTab = {
     activeSubTab: 'market',
+    lastUpdatedAt: null,
     defaultSymbols: [
         'AAPL',
         'MSFT',
@@ -21,6 +22,14 @@ window.USStockTab = {
     // ── Init ─────────────────────────────────────────────────────────────────
 
     init: function () {
+        if (window.MarketStatus && !this._autoRefreshBound) {
+            this._autoRefreshBound = true;
+            window.MarketStatus.startMarketAutoRefresh(
+                'usstock',
+                () => this.refreshCurrent(),
+                () => this.lastUpdatedAt
+            );
+        }
         this.loadWatchlist();
         this.renderWatchlistControls();
         this.bindEvents();
@@ -226,6 +235,10 @@ window.USStockTab = {
             const res = await fetch(url);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
+            this.lastUpdatedAt = data.last_updated || new Date().toISOString();
+            if (window.MarketStatus) {
+                window.MarketStatus.updateMarketStatusBar('usstock', this.lastUpdatedAt);
+            }
             this._renderWatchlist(listContainer, data.stocks || []);
         } catch (err) {
             console.error('[US Stock] Market error:', err);

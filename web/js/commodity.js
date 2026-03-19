@@ -9,6 +9,7 @@ window.CommodityTab = {
     chartInstance: null,
     chartSeries: null,
     currentInterval: '1d',
+    lastUpdatedAt: null,
 
     DEFAULT_SYMBOLS: [
         { symbol: 'GC=F',  name: '黃金',   unit: 'USD/oz'  },
@@ -22,7 +23,21 @@ window.CommodityTab = {
     // ── Init ──────────────────────────────────────────────────
 
     init: function () {
+        if (window.MarketStatus) {
+            window.MarketStatus.startMarketAutoRefresh(
+                'commodity',
+                () => this.refreshCurrent(),
+                () => this.lastUpdatedAt
+            );
+        }
         this.renderMarket();
+    },
+
+    refreshCurrent: function () {
+        if (this.activeSubTab === 'pulse' && this.activeSymbol) {
+            return this.renderPulse(this.activeSymbol);
+        }
+        return this.renderMarket();
     },
 
     // ── Sub-tab switching ─────────────────────────────────────
@@ -85,6 +100,10 @@ window.CommodityTab = {
             const updEl = document.getElementById('commodity-last-updated');
             if (updEl && data.last_updated) {
                 updEl.textContent = '更新: ' + new Date(data.last_updated).toLocaleTimeString('zh-TW');
+            }
+            this.lastUpdatedAt = data.last_updated || this.lastUpdatedAt;
+            if (window.MarketStatus) {
+                window.MarketStatus.updateMarketStatusBar('commodity', this.lastUpdatedAt);
             }
         } catch (e) {
             listEl.innerHTML = `<div class="text-center text-danger py-10 text-sm">載入失敗：${e.message}</div>`;

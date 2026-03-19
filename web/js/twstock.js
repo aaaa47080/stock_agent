@@ -7,6 +7,7 @@
 
 window.TWStockTab = {
     activeSubTab: 'market', // 'market' | 'pulse'
+    lastUpdatedAt: null,
     defaultSymbols: [
         '2330',
         '2317',
@@ -21,6 +22,14 @@ window.TWStockTab = {
     ],
 
     initTwStock: function () {
+        if (window.MarketStatus && !this._autoRefreshBound) {
+            this._autoRefreshBound = true;
+            window.MarketStatus.startMarketAutoRefresh(
+                'twstock',
+                () => this.refreshCurrent(),
+                () => this.lastUpdatedAt
+            );
+        }
         this.loadTwStockSelection();
         this.renderWatchlistControls();
         this.bindEvents();
@@ -250,6 +259,10 @@ window.TWStockTab = {
 
             const data = await response.json();
             const topPerformers = data.top_performers || [];
+            this.lastUpdatedAt = data.last_updated || new Date().toISOString();
+            if (window.MarketStatus) {
+                window.MarketStatus.updateMarketStatusBar('twstock', this.lastUpdatedAt);
+            }
 
             this.renderMarketList(listContainer, topPerformers);
         } catch (error) {

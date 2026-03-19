@@ -255,6 +255,12 @@ const Components = {
                     </button>
                 </div>
             </div>
+            <div class="mb-4 flex flex-wrap items-center gap-2 text-xs">
+                <span id="twstock-market-status-badge" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-white/5 text-textMuted border-white/10 font-bold">Checking schedule...</span>
+                <span id="twstock-market-refresh-note" class="text-textMuted/80">Auto refresh policy loading</span>
+                <span id="twstock-market-session-note" class="text-textMuted/60">Session info loading</span>
+                <span id="twstock-last-updated" class="text-textMuted/60 md:ml-auto">Waiting for first update</span>
+            </div>
 
             <!-- Sub-tab Navigation (2 tabs only) -->
             <div class="${TAB_SWITCHER_CLASS}">
@@ -428,6 +434,12 @@ const Components = {
                         <i data-lucide="refresh-cw" class="w-4 h-4"></i>
                     </button>
                 </div>
+            </div>
+            <div class="mb-4 flex flex-wrap items-center gap-2 text-xs">
+                <span id="usstock-market-status-badge" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-white/5 text-textMuted border-white/10 font-bold">Checking schedule...</span>
+                <span id="usstock-market-refresh-note" class="text-textMuted/80">Auto refresh policy loading</span>
+                <span id="usstock-market-session-note" class="text-textMuted/60">Session info loading</span>
+                <span id="usstock-last-updated" class="text-textMuted/60 md:ml-auto">Waiting for first update</span>
             </div>
 
             <!-- Sub-tab Navigation (2 tabs) -->
