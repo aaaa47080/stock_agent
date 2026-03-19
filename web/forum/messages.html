@@ -94,8 +94,9 @@
     </nav>
 
     <!-- Toast Container -->
-    <div id="toast-container"
-        class="fixed z-[200] flex flex-col gap-2 pointer-events-none bottom-28 left-4 right-4 md:bottom-auto md:top-6 md:right-6 md:left-auto md:w-80">
+    <div id="toast-container" role="status" aria-live="polite" aria-atomic="true"
+        class="fixed z-[200] flex flex-col gap-3 pointer-events-none bottom-4 left-4 right-4 items-center md:bottom-auto md:top-6 md:right-6 md:left-auto md:w-80 md:items-end"
+        style="bottom: var(--shell-toast-bottom, calc(1rem + env(safe-area-inset-bottom, 0px)));">
     </div>
 
     <!-- Main Content -->
@@ -129,11 +130,11 @@
         <!-- 聊天視窗 -->
         <section id="chat-section" class="hidden md:flex flex-1 flex-col bg-background overflow-hidden relative">
             <!-- 訊息列表 - 可滾動 -->
-            <div id="messages-container" class="flex-1 overflow-y-auto p-4 messages-scroll">
+            <div id="messages-container" data-shell-scroll data-shell-scroll-extra="1rem" class="flex-1 overflow-y-auto p-4 messages-scroll">
             </div>
 
             <!-- 訊息輸入框 - 固定在底部 -->
-            <div id="message-input-container" class="bg-background p-4 border-t border-white/5 hidden flex-shrink-0">
+            <div id="message-input-container" data-shell-fixed-input class="sticky bottom-0 bg-background/95 backdrop-blur-xl p-4 border-t border-white/5 hidden flex-shrink-0">
                 <form id="message-form" onsubmit="MessagesPage.sendMessage(event)" class="flex flex-col">
                     <div class="flex items-end gap-3">
                         <div
@@ -180,18 +181,11 @@
     </main>
 
     <!-- Scripts -->
+    <script src="/static/js/ui-shell.js?v=1"></script>
     <script src="/static/js/auth.js?v=60"></script>
     <script src="/static/js/messages.js?v=5"></script>
-    <script>
-        // 初始化
-        document.addEventListener('DOMContentLoaded', () => {
-            if (window.lucide) lucide.createIcons();
-            if (typeof setupBackButton === 'function') setupBackButton();
-            if (window.MessagesPage) MessagesPage.init();
-        });
-    </script>
     <script src="/static/js/security-utils.js"></script>
-    <script src="/static/js/messages_page.js?v=6"></script>
+    <script src="/static/js/messages_page.js?v=7"></script>
 
     <!-- Footer -->
     <footer class="bg-surface/95 border-t border-white/5 py-8">

@@ -71,7 +71,7 @@ function switchTab(tabName) {
 async function checkAuthStatus() {
     const token = localStorage.getItem('access_token');
     if (!token) {
-        showToast('請先登入', 'error');
+        window.showToast('請先登入', 'error');
         return;
     }
 
@@ -117,7 +117,7 @@ function setupReportForm() {
         e.preventDefault();
 
         if (!currentUser) {
-            showToast('請先登入', 'error');
+            window.showToast('請先登入', 'error');
             return;
         }
 
@@ -131,7 +131,7 @@ function setupReportForm() {
 
         // 驗證
         if (!data.content_type || !data.content_id || !data.report_type) {
-            showToast('請填寫所有必填欄位', 'error');
+            window.showToast('請填寫所有必填欄位', 'error');
             return;
         }
 
@@ -148,15 +148,15 @@ function setupReportForm() {
             const result = await response.json();
 
             if (response.ok) {
-                showToast('檢舉提交成功！', 'success');
+                window.showToast('檢舉提交成功！', 'success');
                 form.reset();
                 loadDailyLimit();
             } else {
-                showToast(result.detail || '提交失敗', 'error');
+                window.showToast(result.detail || '提交失敗', 'error');
             }
         } catch (error) {
             console.error('Submit report error:', error);
-            showToast('提交失敗，請稍後再試', 'error');
+            window.showToast('提交失敗，請稍後再試', 'error');
         }
     });
 }
@@ -258,7 +258,7 @@ async function loadPendingReports() {
     } catch (error) {
         console.error('Load pending reports error:', error);
         loadingElement.style.display = 'none';
-        showToast('載入失敗', 'error');
+        window.showToast('載入失敗', 'error');
     }
 }
 
@@ -332,21 +332,21 @@ async function voteOnReport(reportId, voteType) {
         const result = await response.json();
 
         if (response.ok) {
-            showToast(result.message || '投票成功', 'success');
+            window.showToast(result.message || '投票成功', 'success');
 
             // 如果達成共識，顯示提示
             if (result.consensus_reached) {
-                showToast(result.consensus_message || '已達成共識', 'info');
+                window.showToast(result.consensus_message || '已達成共識', 'info');
             }
 
             // 重新載入列表
             loadPendingReports();
         } else {
-            showToast(result.detail || '投票失敗', 'error');
+            window.showToast(result.detail || '投票失敗', 'error');
         }
     } catch (error) {
         console.error('Vote error:', error);
-        showToast('投票失敗', 'error');
+        window.showToast('投票失敗', 'error');
     }
 }
 
@@ -392,7 +392,7 @@ async function loadMyReports(status = 'all') {
     } catch (error) {
         console.error('Load my reports error:', error);
         loadingElement.style.display = 'none';
-        showToast('載入失敗', 'error');
+        window.showToast('載入失敗', 'error');
     }
 }
 
@@ -466,7 +466,7 @@ async function loadViolationPoints() {
     } catch (error) {
         console.error('Load violation points error:', error);
         loadingElement.style.display = 'none';
-        showToast('載入失敗', 'error');
+        window.showToast('載入失敗', 'error');
     }
 }
 
@@ -542,7 +542,7 @@ async function loadLeaderboard() {
     } catch (error) {
         console.error('Load leaderboard error:', error);
         loadingElement.style.display = 'none';
-        showToast('載入失敗', 'error');
+        window.showToast('載入失敗', 'error');
     }
 }
 
@@ -663,20 +663,6 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
-}
-
-// ============================================
-// 訊息提示
-// ============================================
-
-function showToast(message, type = 'info') {
-    const toast = document.getElementById('toast');
-    toast.textContent = message;
-    toast.className = `toast ${type} show`;
-
-    setTimeout(() => {
-        toast.classList.remove('show');
-    }, 3000);
 }
 
 // ============================================

@@ -2,47 +2,143 @@
 // components.js - 頁面組件模板與動態注入
 // ========================================
 
+const SHELL_SCROLL_ATTR = 'data-shell-scroll data-shell-scroll-extra="1rem"';
+const SHELL_SCROLLBAR_CLASS = 'overflow-y-auto custom-scrollbar';
+const SHELL_MODAL_SCROLL_ATTR = 'data-shell-scroll data-shell-scroll-extra="2rem"';
+const TAB_SHELL_CLASS = 'h-full flex flex-col px-4 md:px-6 pt-6 md:pt-8';
+const TAB_HEADER_CLASS = 'flex items-center justify-between mb-4 pr-12 md:pr-16';
+const TAB_SWITCHER_CLASS =
+    'flex gap-1 p-1 bg-background/50 border border-white/5 rounded-xl mb-6';
+const TAB_CONTENT_AREA_CLASS = 'flex-1 overflow-visible relative';
+const MODAL_OVERLAY_CLASS =
+    'fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4';
+const MODAL_PANEL_CLASS =
+    'bg-surface w-full max-w-lg max-h-[85vh] flex flex-col rounded-[2rem] border border-white/5 shadow-2xl';
+const MODAL_HEADER_CLASS = 'p-6 border-b border-white/5 flex justify-between items-center shrink-0';
+const FEATURE_MODAL_STAGE_CLASS =
+    'absolute inset-0 flex items-center justify-center p-4 pointer-events-none';
+const FEATURE_MODAL_PANEL_CLASS =
+    'feature-menu-content bg-surface rounded-3xl border border-white/5 shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col pointer-events-auto transform transition-all duration-300 scale-95 opacity-0';
+const SUB_TAB_BUTTON_BASE_CLASS =
+    'flex-1 py-2 px-4 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2';
+const SUB_TAB_BUTTON_ACTIVE_CLASS = 'bg-primary text-background shadow-md';
+const SUB_TAB_BUTTON_INACTIVE_CLASS = 'text-textMuted hover:text-textMain hover:bg-white/5';
+const MODAL_CLOSE_BUTTON_CLASS =
+    'w-8 h-8 rounded-full bg-background flex items-center justify-center text-textMuted hover:text-secondary transition';
+const GOV_TAB_BUTTON_BASE_CLASS =
+    'gov-tab-btn px-3 py-2 text-xs font-bold rounded-t-lg border-b-2 transition';
+const GOV_TAB_BUTTON_ACTIVE_CLASS = 'border-primary text-primary';
+const GOV_TAB_BUTTON_INACTIVE_CLASS = 'border-transparent text-textMuted hover:text-secondary';
+const ICON_ACTION_BUTTON_CLASS = 'p-2 hover:bg-white/5 rounded-full text-textMuted transition';
+const FILTER_TRIGGER_BUTTON_CLASS =
+    'flex items-center gap-2 px-3 py-1.5 bg-surface hover:bg-surfaceHighlight rounded-lg text-textMuted hover:text-primary transition border border-white/5';
+const SECTION_HEADER_ROW_CLASS = 'flex items-center gap-3 mb-4 px-1';
+const SECTION_TOGGLE_ROW_CLASS = 'flex items-center gap-2 mb-4 px-1';
+const SECTION_TITLE_CLASS =
+    'text-[10px] font-black uppercase tracking-[0.25em] whitespace-nowrap flex items-center gap-1.5';
+const PRIMARY_DIVIDER_LEFT_CLASS = 'h-px flex-1 bg-gradient-to-r from-primary/40 to-transparent';
+const PRIMARY_DIVIDER_RIGHT_CLASS = 'h-px flex-1 bg-gradient-to-l from-primary/40 to-transparent';
+const WARNING_DIVIDER_LEFT_CLASS = 'h-px flex-1 bg-gradient-to-r from-yellow-500/40 to-transparent';
+const WARNING_DIVIDER_RIGHT_CLASS = 'h-px flex-1 bg-gradient-to-l from-yellow-500/40 to-transparent';
+const SUCCESS_DIVIDER_LEFT_CLASS = 'h-px flex-1 bg-gradient-to-r from-success/40 to-transparent';
+const SUCCESS_DIVIDER_RIGHT_CLASS = 'h-px flex-1 bg-gradient-to-l from-success/40 to-transparent';
+const ACCENT_DIVIDER_LEFT_CLASS = 'h-px flex-1 bg-gradient-to-r from-accent/40 to-transparent';
+const ACCENT_DIVIDER_RIGHT_CLASS = 'h-px flex-1 bg-gradient-to-l from-accent/40 to-transparent';
+const SECTION_TOGGLE_BUTTON_CLASS = 'flex items-center gap-1.5 group';
+const SECTION_CHEVRON_BASE_CLASS = 'w-3.5 h-3.5 transition-transform duration-200';
+const PRIMARY_CHEVRON_CLASS =
+    `${SECTION_CHEVRON_BASE_CLASS} text-primary/60 group-hover:text-primary`;
+const WARNING_CHEVRON_CLASS =
+    `${SECTION_CHEVRON_BASE_CLASS} text-yellow-400/60 group-hover:text-yellow-400`;
+const SUCCESS_CHEVRON_CLASS =
+    `${SECTION_CHEVRON_BASE_CLASS} text-success/60 group-hover:text-success`;
+const ACCENT_CHEVRON_CLASS =
+    `${SECTION_CHEVRON_BASE_CLASS} text-accent/60 group-hover:text-accent`;
+const LOADER_BLOCK_CLASS = 'hidden py-6 flex items-center justify-center';
+const LARGE_LOADER_BLOCK_CLASS = 'hidden items-center justify-center py-10 flex';
+const LOADING_PLACEHOLDER_CLASS = 'text-center text-textMuted py-8';
+const LOADING_PLACEHOLDER_SMALL_CLASS = 'text-center text-textMuted py-8 text-sm';
+const PRIMARY_SPINNER_CLASS = 'animate-spin rounded-full h-5 w-5 border-b-2 border-primary';
+const WARNING_SPINNER_CLASS = 'animate-spin rounded-full h-5 w-5 border-b-2 border-yellow-400';
+const SUCCESS_SPINNER_CLASS = 'animate-spin rounded-full h-5 w-5 border-b-2 border-success';
+const ACCENT_SPINNER_CLASS = 'animate-spin rounded-full h-5 w-5 border-b-2 border-accent';
+const PRIMARY_LARGE_SPINNER_CLASS = 'animate-spin rounded-full h-8 w-8 border-b-2 border-primary';
+const PRIMARY_RING_SPINNER_CLASS =
+    'animate-spin w-5 h-5 border-2 border-primary border-t-transparent rounded-full';
+const WARNING_RING_SPINNER_CLASS =
+    'animate-spin w-5 h-5 border-2 border-yellow-400 border-t-transparent rounded-full';
+const LOADER_ICON_CLASS = 'w-6 h-6 animate-spin mx-auto mb-2';
+const MODAL_FOOTER_CLASS = 'p-6 border-t border-white/5 shrink-0';
+const MODAL_ACTION_ROW_CLASS = 'flex gap-3';
+const SUCCESS_ACTION_BUTTON_CLASS =
+    'flex-1 py-3 bg-success/10 hover:bg-success/20 text-success font-bold rounded-xl transition flex items-center justify-center gap-2';
+const DANGER_ACTION_BUTTON_CLASS =
+    'flex-1 py-3 bg-danger/10 hover:bg-danger/20 text-danger font-bold rounded-xl transition flex items-center justify-center gap-2';
+const GOV_FILTER_ROW_CLASS = 'flex gap-2 mb-4 overflow-x-auto pb-1';
+const GOV_FILTER_BUTTON_BASE_CLASS =
+    'gov-filter-btn px-3 py-1.5 text-xs font-bold rounded-lg bg-white/5';
+const GOV_FILTER_BUTTON_ACTIVE_CLASS = 'text-primary border border-primary/20';
+const GOV_FILTER_BUTTON_INACTIVE_CLASS = 'text-textMuted border border-white/5';
+const LOADING_PLACEHOLDER_TIGHT_CLASS = 'text-center text-textMuted py-4 text-sm';
+const SEARCH_SHELL_GLOW_CLASS =
+    'absolute inset-0 bg-gradient-to-r from-primary/10 via-accent/5 to-transparent rounded-3xl blur-2xl opacity-50';
+const SEARCH_SHELL_PANEL_CLASS =
+    'relative flex items-center gap-3 bg-surface/60 backdrop-blur-xl border border-white/10 p-2 rounded-2xl shadow-xl';
+const SEARCH_ICON_WRAP_CLASS = 'pl-4 flex-shrink-0';
+const SEARCH_INPUT_CLASS =
+    'flex-1 bg-transparent border-none outline-none text-textMain placeholder-textMuted/50 text-base font-mono tracking-wider focus:ring-0 w-full min-w-0';
+const SEARCH_ACTION_BUTTON_CLASS =
+    'bg-primary/20 hover:bg-primary text-primary hover:text-background border border-primary/30 hover:border-primary transition-all duration-300 px-6 py-3 rounded-xl font-bold tracking-[0.1em] text-sm flex items-center gap-2 flex-shrink-0';
+const HERO_TITLE_CLASS = 'font-serif text-2xl md:text-3xl text-secondary flex items-center gap-3';
+const HERO_ICON_BOX_CLASS = 'w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center';
+const CARD_HEADER_ROW_CLASS = 'flex items-center gap-3';
+const STATUS_BADGE_CLASS = 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium';
+const STATUS_BADGE_MUTED_CLASS = `${STATUS_BADGE_CLASS} bg-white/5 text-textMuted`;
+const INFO_PANEL_CLASS = 'bg-background/50 rounded-xl p-4 border border-white/5';
+const WARNING_BANNER_CLASS = 'hidden mx-6 mt-4 p-3 bg-warning/10 border border-warning/20 rounded-xl';
+const WARNING_BANNER_ROW_CLASS = 'flex items-start gap-2';
+
 const Components = {
     // 追蹤已注入的組件
     _injected: {},
 
     // Tab: Crypto (Combined Market & Pulse)
     crypto: `
-        <div class="h-full flex flex-col px-4 md:px-6 pt-6 md:pt-8">
+        <div class="${TAB_SHELL_CLASS}">
             <!-- Header with Sub-tab Switcher -->
-            <div class="flex items-center justify-between mb-4 pr-12 md:pr-16">
+            <div class="${TAB_HEADER_CLASS}">
                 <h2 class="font-serif text-3xl text-secondary" data-i18n="crypto.title">Crypto</h2>
                 <div class="flex items-center gap-2">
-                    <button onclick="window.CryptoTab.refreshCurrent()" class="p-2 hover:bg-white/5 rounded-full text-textMuted transition">
+                    <button onclick="window.CryptoTab.refreshCurrent()" class="${ICON_ACTION_BUTTON_CLASS}">
                         <i data-lucide="refresh-cw" class="w-4 h-4"></i>
                     </button>
                 </div>
             </div>
 
             <!-- Sub-tab Navigation -->
-            <div class="flex gap-1 p-1 bg-background/50 border border-white/5 rounded-xl mb-6">
+            <div class="${TAB_SWITCHER_CLASS}">
                 <button onclick="window.CryptoTab.switchSubTab('market')" id="crypto-tab-market"
-                    class="crypto-sub-tab flex-1 py-2 px-4 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 bg-primary text-background shadow-md">
+                    class="crypto-sub-tab ${SUB_TAB_BUTTON_BASE_CLASS} ${SUB_TAB_BUTTON_ACTIVE_CLASS}">
                     <i data-lucide="bar-chart-2" class="w-4 h-4"></i>
                     <span data-i18n="nav.market">Market Watch</span>
                 </button>
                 <button onclick="window.CryptoTab.switchSubTab('pulse')" id="crypto-tab-pulse"
-                    class="crypto-sub-tab flex-1 py-2 px-4 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 text-textMuted hover:text-textMain hover:bg-white/5">
+                    class="crypto-sub-tab ${SUB_TAB_BUTTON_BASE_CLASS} ${SUB_TAB_BUTTON_INACTIVE_CLASS}">
                     <i data-lucide="activity" class="w-4 h-4"></i>
                     <span data-i18n="nav.pulse">AI Pulse</span>
                 </button>
             </div>
 
             <!-- Content Area -->
-            <div class="flex-1 overflow-visible relative">
+            <div class="${TAB_CONTENT_AREA_CLASS}">
                 
                 <!-- Sub-tab: Market Watch -->
-                <div id="crypto-content-market" class="absolute inset-0 overflow-y-auto custom-scrollbar">
+                <div id="crypto-content-market" ${SHELL_SCROLL_ATTR} class="absolute inset-0 ${SHELL_SCROLLBAR_CLASS}">
                     <div class="mb-6 md:mb-8">
                         <!-- 篩選器行 -->
                         <div class="flex flex-wrap items-center justify-between gap-2 md:gap-3">
                             <div class="flex gap-2 items-center">
-                                <button onclick="openGlobalFilter()" class="flex items-center gap-2 px-3 py-1.5 bg-surface hover:bg-surfaceHighlight rounded-lg text-textMuted hover:text-primary transition border border-white/5">
+                                <button onclick="openGlobalFilter()" class="${FILTER_TRIGGER_BUTTON_CLASS}">
                                     <i data-lucide="filter" class="w-4 h-4"></i>
                                     <span class="text-xs font-bold" data-i18n="market.filter">Filter</span>
                                     <span id="global-count-badge" class="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded" data-i18n="market.autoBadge">Auto</span>
@@ -62,7 +158,7 @@ const Components = {
                         </div>
                     </div>
 
-                    <div class="space-y-12 pb-32">
+                    <div class="space-y-12">
                         <section>
                             <div class="flex items-center gap-3 mb-6 px-2">
                                 <div class="h-px flex-1 bg-gradient-to-r from-primary/30 to-transparent"></div>
@@ -114,10 +210,10 @@ const Components = {
                 </div>
 
                 <!-- Sub-tab: AI Pulse -->
-                <div id="crypto-content-pulse" class="absolute inset-0 overflow-y-auto custom-scrollbar hidden">
+                <div id="crypto-content-pulse" ${SHELL_SCROLL_ATTR} class="absolute inset-0 ${SHELL_SCROLLBAR_CLASS} hidden">
                     <!-- Filter UI (Synced with Market Watch) -->
                     <div class="flex flex-wrap items-center gap-2 md:gap-3 mb-8">
-                        <button onclick="openGlobalFilter()" class="flex items-center gap-2 px-3 py-1.5 bg-surface hover:bg-surfaceHighlight rounded-lg text-textMuted hover:text-primary transition border border-white/5">
+                        <button onclick="openGlobalFilter()" class="${FILTER_TRIGGER_BUTTON_CLASS}">
                             <i data-lucide="filter" class="w-4 h-4"></i>
                             <span class="text-xs font-bold" data-i18n="pulse.filter">Filter Signals</span>
                             <span id="pulse-count-badge" class="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded" data-i18n="pulse.autoBadge">Auto</span>
@@ -140,7 +236,7 @@ const Components = {
                         </div>
                     </div>
 
-                    <div id="pulse-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6 pb-32"></div>
+                    <div id="pulse-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
                 </div>
 
             </div>
@@ -149,72 +245,72 @@ const Components = {
 
     // Tab: Taiwan Stock
     twstock: `
-        <div class="h-full flex flex-col px-4 md:px-6 pt-6 md:pt-8">
+        <div class="${TAB_SHELL_CLASS}">
             <!-- Header with Sub-tab Switcher -->
-            <div class="flex items-center justify-between mb-4 pr-12 md:pr-16">
+            <div class="${TAB_HEADER_CLASS}">
                 <h2 class="font-serif text-3xl text-secondary" data-i18n="twstock.title">TW Stock</h2>
                 <div class="flex items-center gap-2">
-                    <button onclick="window.TWStockTab.refreshCurrent()" class="p-2 hover:bg-white/5 rounded-full text-textMuted transition">
+                    <button onclick="window.TWStockTab.refreshCurrent()" class="${ICON_ACTION_BUTTON_CLASS}">
                         <i data-lucide="refresh-cw" class="w-4 h-4"></i>
                     </button>
                 </div>
             </div>
 
             <!-- Sub-tab Navigation (2 tabs only) -->
-            <div class="flex gap-1 p-1 bg-background/50 border border-white/5 rounded-xl mb-6">
+            <div class="${TAB_SWITCHER_CLASS}">
                 <button id="twstock-btn-market" onclick="window.TWStockTab.switchSubTab('market')"
-                    class="twstock-sub-tab flex-1 py-2 px-4 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 bg-primary text-background shadow-md">
+                    class="twstock-sub-tab ${SUB_TAB_BUTTON_BASE_CLASS} ${SUB_TAB_BUTTON_ACTIVE_CLASS}">
                     <i data-lucide="bar-chart-2" class="w-4 h-4"></i>
                     <span data-i18n="nav.market">Market Watch</span>
                 </button>
                 <button id="twstock-btn-pulse" onclick="window.TWStockTab.switchSubTab('pulse')"
-                    class="twstock-sub-tab flex-1 py-2 px-4 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 text-textMuted hover:text-textMain hover:bg-white/5">
+                    class="twstock-sub-tab ${SUB_TAB_BUTTON_BASE_CLASS} ${SUB_TAB_BUTTON_INACTIVE_CLASS}">
                     <i data-lucide="activity" class="w-4 h-4"></i>
                     <span data-i18n="nav.pulse">AI Pulse</span>
                 </button>
             </div>
 
             <!-- Content Area -->
-            <div class="flex-1 overflow-visible relative">
+            <div class="${TAB_CONTENT_AREA_CLASS}">
 
                 <!-- Market Watch Container -->
-                <div id="twstock-market-content" class="absolute inset-0 overflow-y-auto custom-scrollbar pb-32">
+                <div id="twstock-market-content" ${SHELL_SCROLL_ATTR} class="absolute inset-0 ${SHELL_SCROLLBAR_CLASS}">
                     <div class="space-y-8">
 
                         <!-- ① Watchlist section -->
                         <section>
-                            <div class="flex items-center gap-3 mb-4 px-1">
-                                <div class="h-px flex-1 bg-gradient-to-r from-primary/40 to-transparent"></div>
-                                <h3 class="text-[10px] font-black text-primary uppercase tracking-[0.25em] whitespace-nowrap flex items-center gap-1.5">
+                            <div class="${SECTION_HEADER_ROW_CLASS}">
+                                <div class="${PRIMARY_DIVIDER_LEFT_CLASS}"></div>
+                                <h3 class="${SECTION_TITLE_CLASS} text-primary">
                                     <i data-lucide="star" class="w-3 h-3 text-yellow-400"></i>
                                     <span data-i18n="twstock.watchlist">自選清單</span>
                                 </h3>
-                                <div class="h-px flex-1 bg-gradient-to-l from-primary/40 to-transparent"></div>
+                                <div class="${PRIMARY_DIVIDER_RIGHT_CLASS}"></div>
                             </div>
                             <!-- Custom Watchlist Controls Area -->
                             <div id="twstock-screener-controls" class="px-1"></div>
-                            <div id="twstock-market-loader" class="hidden items-center justify-center py-10 flex">
-                                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                            <div id="twstock-market-loader" class="${LARGE_LOADER_BLOCK_CLASS}">
+                                <div class="${PRIMARY_LARGE_SPINNER_CLASS}"></div>
                             </div>
                             <div id="twstock-screener-list" class="space-y-2 px-1"></div>
                         </section>
 
                         <!-- ② PE / Valuation section -->
                         <section>
-                            <div class="flex items-center gap-2 mb-4 px-1">
-                                <div class="h-px flex-1 bg-gradient-to-r from-primary/40 to-transparent"></div>
-                                <button onclick="window.TWStockTab.toggleSection('pe')" class="flex items-center gap-1.5 group">
-                                    <h3 class="text-[10px] font-black text-primary uppercase tracking-[0.25em] whitespace-nowrap flex items-center gap-1.5">
+                            <div class="${SECTION_TOGGLE_ROW_CLASS}">
+                                <div class="${PRIMARY_DIVIDER_LEFT_CLASS}"></div>
+                                <button onclick="window.TWStockTab.toggleSection('pe')" class="${SECTION_TOGGLE_BUTTON_CLASS}">
+                                    <h3 class="${SECTION_TITLE_CLASS} text-primary">
                                         <i data-lucide="percent" class="w-3 h-3"></i>
                                         <span data-i18n="twstock.valuationMetrics">估值指標 (P/E · 殖利率 · P/B)</span>
                                     </h3>
-                                    <i id="twstock-chevron-pe" data-lucide="chevron-up" class="w-3.5 h-3.5 text-primary/60 group-hover:text-primary transition-transform duration-200"></i>
+                                    <i id="twstock-chevron-pe" data-lucide="chevron-up" class="${PRIMARY_CHEVRON_CLASS}"></i>
                                 </button>
-                                <div class="h-px flex-1 bg-gradient-to-l from-primary/40 to-transparent"></div>
+                                <div class="${PRIMARY_DIVIDER_RIGHT_CLASS}"></div>
                             </div>
                             <div id="twstock-section-body-pe">
-                                <div id="twstock-info-pe-loader" class="hidden py-6 flex items-center justify-center">
-                                    <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+                                <div id="twstock-info-pe-loader" class="${LOADER_BLOCK_CLASS}">
+                                    <div class="${PRIMARY_SPINNER_CLASS}"></div>
                                 </div>
                                 <div id="twstock-info-pe" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 px-1"></div>
                             </div>
@@ -222,20 +318,20 @@ const Components = {
 
                         <!-- ③ Major Announcements section -->
                         <section>
-                            <div class="flex items-center gap-2 mb-4 px-1">
-                                <div class="h-px flex-1 bg-gradient-to-r from-yellow-500/40 to-transparent"></div>
-                                <button onclick="window.TWStockTab.toggleSection('news')" class="flex items-center gap-1.5 group">
-                                    <h3 class="text-[10px] font-black text-yellow-400 uppercase tracking-[0.25em] whitespace-nowrap flex items-center gap-1.5">
+                            <div class="${SECTION_TOGGLE_ROW_CLASS}">
+                                <div class="${WARNING_DIVIDER_LEFT_CLASS}"></div>
+                                <button onclick="window.TWStockTab.toggleSection('news')" class="${SECTION_TOGGLE_BUTTON_CLASS}">
+                                    <h3 class="${SECTION_TITLE_CLASS} text-yellow-400">
                                         <i data-lucide="megaphone" class="w-3 h-3"></i>
                                         <span data-i18n="twstock.majorAnnouncements">今日重大訊息</span>
                                     </h3>
-                                    <i id="twstock-chevron-news" data-lucide="chevron-up" class="w-3.5 h-3.5 text-yellow-400/60 group-hover:text-yellow-400 transition-transform duration-200"></i>
+                                    <i id="twstock-chevron-news" data-lucide="chevron-up" class="${WARNING_CHEVRON_CLASS}"></i>
                                 </button>
-                                <div class="h-px flex-1 bg-gradient-to-l from-yellow-500/40 to-transparent"></div>
+                                <div class="${WARNING_DIVIDER_RIGHT_CLASS}"></div>
                             </div>
                             <div id="twstock-section-body-news">
-                                <div id="twstock-info-news-loader" class="hidden py-6 flex items-center justify-center">
-                                    <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-yellow-400"></div>
+                                <div id="twstock-info-news-loader" class="${LOADER_BLOCK_CLASS}">
+                                    <div class="${WARNING_SPINNER_CLASS}"></div>
                                 </div>
                                 <div id="twstock-info-news" class="space-y-2 px-1"></div>
                             </div>
@@ -243,20 +339,20 @@ const Components = {
 
                         <!-- ④ Dividend Calendar -->
                         <section>
-                            <div class="flex items-center gap-2 mb-4 px-1">
-                                <div class="h-px flex-1 bg-gradient-to-r from-success/40 to-transparent"></div>
-                                <button onclick="window.TWStockTab.toggleSection('dividend')" class="flex items-center gap-1.5 group">
-                                    <h3 class="text-[10px] font-black text-success uppercase tracking-[0.25em] whitespace-nowrap flex items-center gap-1.5">
+                            <div class="${SECTION_TOGGLE_ROW_CLASS}">
+                                <div class="${SUCCESS_DIVIDER_LEFT_CLASS}"></div>
+                                <button onclick="window.TWStockTab.toggleSection('dividend')" class="${SECTION_TOGGLE_BUTTON_CLASS}">
+                                    <h3 class="${SECTION_TITLE_CLASS} text-success">
                                         <i data-lucide="calendar-check" class="w-3 h-3"></i>
                                         <span data-i18n="twstock.dividendCalendar">股利分派行事曆</span>
                                     </h3>
-                                    <i id="twstock-chevron-dividend" data-lucide="chevron-up" class="w-3.5 h-3.5 text-success/60 group-hover:text-success transition-transform duration-200"></i>
+                                    <i id="twstock-chevron-dividend" data-lucide="chevron-up" class="${SUCCESS_CHEVRON_CLASS}"></i>
                                 </button>
-                                <div class="h-px flex-1 bg-gradient-to-l from-success/40 to-transparent"></div>
+                                <div class="${SUCCESS_DIVIDER_RIGHT_CLASS}"></div>
                             </div>
                             <div id="twstock-section-body-dividend">
-                                <div id="twstock-info-div-loader" class="hidden py-6 flex items-center justify-center">
-                                    <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-success"></div>
+                                <div id="twstock-info-div-loader" class="${LOADER_BLOCK_CLASS}">
+                                    <div class="${SUCCESS_SPINNER_CLASS}"></div>
                                 </div>
                                 <div id="twstock-info-dividend" class="grid grid-cols-1 sm:grid-cols-2 gap-2 px-1"></div>
                             </div>
@@ -264,20 +360,20 @@ const Components = {
 
                         <!-- ⑤ Foreign Holding Top 20 -->
                         <section>
-                            <div class="flex items-center gap-2 mb-4 px-1">
-                                <div class="h-px flex-1 bg-gradient-to-r from-accent/40 to-transparent"></div>
-                                <button onclick="window.TWStockTab.toggleSection('foreign')" class="flex items-center gap-1.5 group">
-                                    <h3 class="text-[10px] font-black text-accent uppercase tracking-[0.25em] whitespace-nowrap flex items-center gap-1.5">
+                            <div class="${SECTION_TOGGLE_ROW_CLASS}">
+                                <div class="${ACCENT_DIVIDER_LEFT_CLASS}"></div>
+                                <button onclick="window.TWStockTab.toggleSection('foreign')" class="${SECTION_TOGGLE_BUTTON_CLASS}">
+                                    <h3 class="${SECTION_TITLE_CLASS} text-accent">
                                         <i data-lucide="globe" class="w-3 h-3"></i>
                                         <span data-i18n="twstock.foreignHoldingTop20">外資持股前 20 名</span>
                                     </h3>
-                                    <i id="twstock-chevron-foreign" data-lucide="chevron-up" class="w-3.5 h-3.5 text-accent/60 group-hover:text-accent transition-transform duration-200"></i>
+                                    <i id="twstock-chevron-foreign" data-lucide="chevron-up" class="${ACCENT_CHEVRON_CLASS}"></i>
                                 </button>
-                                <div class="h-px flex-1 bg-gradient-to-l from-accent/40 to-transparent"></div>
+                                <div class="${ACCENT_DIVIDER_RIGHT_CLASS}"></div>
                             </div>
                             <div id="twstock-section-body-foreign">
-                                <div id="twstock-info-foreign-loader" class="hidden py-6 flex items-center justify-center">
-                                    <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-accent"></div>
+                                <div id="twstock-info-foreign-loader" class="${LOADER_BLOCK_CLASS}">
+                                    <div class="${ACCENT_SPINNER_CLASS}"></div>
                                 </div>
                                 <div id="twstock-info-foreign" class="overflow-x-auto rounded-2xl border border-white/5 px-1"></div>
                             </div>
@@ -287,18 +383,18 @@ const Components = {
                 </div>
 
                 <!-- AI Pulse Container -->
-                <div id="twstock-pulse-content" class="absolute inset-0 overflow-y-auto custom-scrollbar hidden pb-32">
+                <div id="twstock-pulse-content" ${SHELL_SCROLL_ATTR} class="absolute inset-0 ${SHELL_SCROLLBAR_CLASS} hidden">
                     <div class="max-w-5xl mx-auto pt-4 px-2">
                         <!-- Premium Search Input for Pulse -->
                         <div class="relative mb-8">
-                            <div class="absolute inset-0 bg-gradient-to-r from-primary/10 via-accent/5 to-transparent rounded-3xl blur-2xl opacity-50"></div>
-                            <div class="relative flex items-center gap-3 bg-surface/60 backdrop-blur-xl border border-white/10 p-2 rounded-2xl shadow-xl">
-                                <div class="pl-4 flex-shrink-0">
+                            <div class="${SEARCH_SHELL_GLOW_CLASS}"></div>
+                            <div class="${SEARCH_SHELL_PANEL_CLASS}">
+                                <div class="${SEARCH_ICON_WRAP_CLASS}">
                                     <i data-lucide="search" class="w-5 h-5 text-primary/70"></i>
                                 </div>
                                 <input type="text" id="twstockPulseSearchInput" placeholder="輸入台股代號 (如: 2330)" data-i18n="twstock.searchPlaceholder" data-i18n-attr="placeholder"
-                                    class="flex-1 bg-transparent border-none outline-none text-textMain placeholder-textMuted/50 text-base font-mono tracking-wider focus:ring-0 w-full min-w-0">
-                                <button id="twstockPulseSearchBtn" class="bg-primary/20 hover:bg-primary text-primary hover:text-background border border-primary/30 hover:border-primary transition-all duration-300 px-6 py-3 rounded-xl font-bold tracking-[0.1em] text-sm flex items-center gap-2 flex-shrink-0">
+                                    class="${SEARCH_INPUT_CLASS}">
+                                <button id="twstockPulseSearchBtn" class="${SEARCH_ACTION_BUTTON_CLASS}">
                                     <span class="hidden sm:inline" data-i18n="common.deepAnalysis">深度分析</span>
                                     <i data-lucide="zap" class="w-4 h-4"></i>
                                 </button>
@@ -323,43 +419,43 @@ const Components = {
 
     // Tab: US Stock
     usstock: `
-        <div class="h-full flex flex-col px-4 md:px-6 pt-6 md:pt-8">
+        <div class="${TAB_SHELL_CLASS}">
             <!-- Header with Sub-tab Switcher -->
-            <div class="flex items-center justify-between mb-4 pr-12 md:pr-16">
+            <div class="${TAB_HEADER_CLASS}">
                 <h2 class="font-serif text-3xl text-secondary" data-i18n="usstock.title">US Stock</h2>
                 <div class="flex items-center gap-2">
-                    <button onclick="window.USStockTab.refreshCurrent()" class="p-2 hover:bg-white/5 rounded-full text-textMuted transition">
+                    <button onclick="window.USStockTab.refreshCurrent()" class="${ICON_ACTION_BUTTON_CLASS}">
                         <i data-lucide="refresh-cw" class="w-4 h-4"></i>
                     </button>
                 </div>
             </div>
 
             <!-- Sub-tab Navigation (2 tabs) -->
-            <div class="flex gap-1 p-1 bg-background/50 border border-white/5 rounded-xl mb-6">
+            <div class="${TAB_SWITCHER_CLASS}">
                 <button id="usstock-btn-market" onclick="window.USStockTab.switchSubTab('market')"
-                    class="usstock-sub-tab flex-1 py-2 px-4 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 bg-primary text-background shadow-md">
+                    class="usstock-sub-tab ${SUB_TAB_BUTTON_BASE_CLASS} ${SUB_TAB_BUTTON_ACTIVE_CLASS}">
                     <i data-lucide="bar-chart-2" class="w-4 h-4"></i>
                     <span data-i18n="nav.market">Market Watch</span>
                 </button>
                 <button id="usstock-btn-pulse" onclick="window.USStockTab.switchSubTab('pulse')"
-                    class="usstock-sub-tab flex-1 py-2 px-4 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2 text-textMuted hover:text-textMain hover:bg-white/5">
+                    class="usstock-sub-tab ${SUB_TAB_BUTTON_BASE_CLASS} ${SUB_TAB_BUTTON_INACTIVE_CLASS}">
                     <i data-lucide="activity" class="w-4 h-4"></i>
                     <span data-i18n="nav.pulse">AI Pulse</span>
                 </button>
             </div>
 
             <!-- Content Area -->
-            <div class="flex-1 overflow-visible relative">
+            <div class="${TAB_CONTENT_AREA_CLASS}">
 
                 <!-- Market Watch Container -->
-                <div id="usstock-market-content" class="absolute inset-0 overflow-y-auto custom-scrollbar pb-32">
+                <div id="usstock-market-content" ${SHELL_SCROLL_ATTR} class="absolute inset-0 ${SHELL_SCROLLBAR_CLASS}">
                     <div class="space-y-6">
                         <!-- Watchlist Controls -->
                         <div id="usstock-screener-controls" class="px-1"></div>
 
                         <!-- Loading Indicator -->
-                        <div id="usstock-market-loader" class="hidden items-center justify-center py-10 flex">
-                            <div class="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full"></div>
+                        <div id="usstock-market-loader" class="${LARGE_LOADER_BLOCK_CLASS}">
+                            <div class="${PRIMARY_RING_SPINNER_CLASS}"></div>
                         </div>
 
                         <!-- Stock List -->
@@ -367,55 +463,55 @@ const Components = {
 
                         <!-- Indices Section -->
                         <section>
-                            <div class="flex items-center gap-3 mb-4 px-1">
-                                <div class="h-px flex-1 bg-gradient-to-r from-primary/40 to-transparent"></div>
-                                <h3 class="text-[10px] font-black text-primary uppercase tracking-[0.25em] whitespace-nowrap flex items-center gap-1.5">
+                            <div class="${SECTION_HEADER_ROW_CLASS}">
+                                <div class="${PRIMARY_DIVIDER_LEFT_CLASS}"></div>
+                                <h3 class="${SECTION_TITLE_CLASS} text-primary">
                                     <i data-lucide="trending-up" class="w-3 h-3"></i>
                                     <span data-i18n="usstock.marketIndices">大盤指數</span>
                                 </h3>
-                                <div class="h-px flex-1 bg-gradient-to-l from-primary/40 to-transparent"></div>
+                                <div class="${PRIMARY_DIVIDER_RIGHT_CLASS}"></div>
                             </div>
-                            <div id="usstock-info-indices-loader" class="hidden py-6 flex items-center justify-center">
-                                <div class="animate-spin w-5 h-5 border-2 border-primary border-t-transparent rounded-full"></div>
+                            <div id="usstock-info-indices-loader" class="${LOADER_BLOCK_CLASS}">
+                                <div class="${PRIMARY_RING_SPINNER_CLASS}"></div>
                             </div>
                             <div id="usstock-info-indices" class="grid grid-cols-1 sm:grid-cols-3 gap-3 px-1">
-                                <div class="text-center text-textMuted py-8" data-i18n="common.loading">載入中...</div>
+                                <div class="${LOADING_PLACEHOLDER_CLASS}" data-i18n="common.loading">載入中...</div>
                             </div>
                         </section>
 
                         <!-- News Section -->
                         <section>
-                            <div class="flex items-center gap-3 mb-4 px-1">
-                                <div class="h-px flex-1 bg-gradient-to-r from-yellow-500/40 to-transparent"></div>
-                                <h3 class="text-[10px] font-black text-yellow-400 uppercase tracking-[0.25em] whitespace-nowrap flex items-center gap-1.5">
+                            <div class="${SECTION_HEADER_ROW_CLASS}">
+                                <div class="${WARNING_DIVIDER_LEFT_CLASS}"></div>
+                                <h3 class="${SECTION_TITLE_CLASS} text-yellow-400">
                                     <i data-lucide="newspaper" class="w-3 h-3"></i>
                                     <span data-i18n="usstock.relatedNews">相關新聞</span>
                                 </h3>
-                                <div class="h-px flex-1 bg-gradient-to-l from-yellow-500/40 to-transparent"></div>
+                                <div class="${WARNING_DIVIDER_RIGHT_CLASS}"></div>
                             </div>
-                            <div id="usstock-info-news-loader" class="hidden py-6 flex items-center justify-center">
-                                <div class="animate-spin w-5 h-5 border-2 border-yellow-400 border-t-transparent rounded-full"></div>
+                            <div id="usstock-info-news-loader" class="${LOADER_BLOCK_CLASS}">
+                                <div class="${WARNING_RING_SPINNER_CLASS}"></div>
                             </div>
                             <div id="usstock-info-news" class="space-y-2 px-1">
-                                <div class="text-center text-textMuted py-8" data-i18n="common.loading">載入中...</div>
+                                <div class="${LOADING_PLACEHOLDER_CLASS}" data-i18n="common.loading">載入中...</div>
                             </div>
                         </section>
                     </div>
                 </div>
 
                 <!-- AI Pulse Container -->
-                <div id="usstock-pulse-content" class="absolute inset-0 overflow-y-auto custom-scrollbar hidden pb-32">
+                <div id="usstock-pulse-content" ${SHELL_SCROLL_ATTR} class="absolute inset-0 ${SHELL_SCROLLBAR_CLASS} hidden">
                     <div class="max-w-5xl mx-auto pt-4 px-2">
                         <!-- Premium Search Input for Pulse -->
                         <div class="relative mb-8">
-                            <div class="absolute inset-0 bg-gradient-to-r from-primary/10 via-accent/5 to-transparent rounded-3xl blur-2xl opacity-50"></div>
-                            <div class="relative flex items-center gap-3 bg-surface/60 backdrop-blur-xl border border-white/10 p-2 rounded-2xl shadow-xl">
-                                <div class="pl-4 flex-shrink-0">
+                            <div class="${SEARCH_SHELL_GLOW_CLASS}"></div>
+                            <div class="${SEARCH_SHELL_PANEL_CLASS}">
+                                <div class="${SEARCH_ICON_WRAP_CLASS}">
                                     <i data-lucide="search" class="w-5 h-5 text-primary/70"></i>
                                 </div>
                                 <input type="text" id="usstockPulseSearchInput" placeholder="輸入美股代號 (如: AAPL, TSLA)" data-i18n="usstock.searchPlaceholder" data-i18n-attr="placeholder"
-                                    class="flex-1 bg-transparent border-none outline-none text-textMain placeholder-textMuted/50 text-base font-mono tracking-wider focus:ring-0 w-full min-w-0">
-                                <button id="usstockPulseSearchBtn" class="bg-primary/20 hover:bg-primary text-primary hover:text-background border border-primary/30 hover:border-primary transition-all duration-300 px-6 py-3 rounded-xl font-bold tracking-[0.1em] text-sm flex items-center gap-2 flex-shrink-0">
+                                    class="${SEARCH_INPUT_CLASS}">
+                                <button id="usstockPulseSearchBtn" class="${SEARCH_ACTION_BUTTON_CLASS}">
                                     <span class="hidden sm:inline" data-i18n="common.deepAnalysis">深度分析</span>
                                     <i data-lucide="zap" class="w-4 h-4"></i>
                                 </button>
@@ -446,7 +542,7 @@ const Components = {
                 <h2 class="font-serif text-2xl text-secondary" data-i18n="friends.title"></h2>
                 <div class="flex items-center gap-2">
                     <span id="friends-badge-total" class="hidden px-2 py-0.5 text-xs bg-danger text-white rounded-full">0</span>
-                    <button onclick="SocialHub.refresh()" class="p-2 hover:bg-white/5 rounded-full text-textMuted transition">
+                    <button onclick="SocialHub.refresh()" class="${ICON_ACTION_BUTTON_CLASS}">
                         <i data-lucide="refresh-cw" class="w-4 h-4"></i>
                     </button>
                 </div>
@@ -694,8 +790,8 @@ const Components = {
                 <!-- Pi Wallet Section -->
                 <div id="settings-wallet-card" class="bg-surface p-6 md:p-8 rounded-3xl border border-white/5">
                     <div class="flex items-center justify-between mb-6">
-                        <div class="flex items-center gap-3">
-                            <div id="settings-wallet-icon" class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <div class="${CARD_HEADER_ROW_CLASS}">
+                            <div id="settings-wallet-icon" class="${HERO_ICON_BOX_CLASS}">
                                 <i data-lucide="wallet" class="w-5 h-5 text-primary"></i>
                             </div>
                             <div>
@@ -703,7 +799,7 @@ const Components = {
                                 <p class="text-xs text-textMuted" data-i18n="settings.wallet.description">Connect your Pi wallet for transactions</p>
                             </div>
                         </div>
-                        <div id="settings-wallet-status-badge" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-textMuted">
+                        <div id="settings-wallet-status-badge" class="${STATUS_BADGE_MUTED_CLASS}">
                             <i data-lucide="loader" class="w-3 h-3 animate-spin"></i>
                             <span data-i18n="settings.wallet.loading">Loading</span>
                         </div>
@@ -711,7 +807,7 @@ const Components = {
 
                     <div id="settings-wallet-content" class="space-y-4">
                         <div id="wallet-not-linked" class="hidden">
-                            <div class="bg-background/50 rounded-xl p-4 border border-white/5">
+                            <div class="${INFO_PANEL_CLASS}">
                                 <div class="flex items-start gap-3">
                                     <i data-lucide="info" class="w-4 h-4 text-primary/60 mt-0.5 flex-shrink-0"></i>
                                     <div>
@@ -745,8 +841,8 @@ const Components = {
                  <!-- LLM Configuration -->
                 <div class="bg-surface p-6 md:p-8 rounded-3xl border border-white/5">
                     <div class="flex items-center justify-between mb-6">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <div class="${CARD_HEADER_ROW_CLASS}">
+                            <div class="${HERO_ICON_BOX_CLASS}">
                                 <i data-lucide="brain" class="w-5 h-5 text-primary"></i>
                             </div>
                             <div>
@@ -754,7 +850,7 @@ const Components = {
                                 <p class="text-xs text-textMuted" data-i18n="settings.ai.description">Configure your LLM provider</p>
                             </div>
                         </div>
-                        <div id="llm-status-badge" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium">
+                        <div id="llm-status-badge" class="${STATUS_BADGE_CLASS}">
                         </div>
                     </div>
 
@@ -771,8 +867,8 @@ const Components = {
                         <div>
                             <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2" data-i18n="settings.ai.apiKey">API Key</label>
                             <div class="flex gap-3">
-                                <input type="password" id="llm-api-key-input" class="flex-1 bg-background border border-white/5 rounded-xl px-4 py-3.5 text-secondary outline-none focus:border-primary/50 font-mono text-sm" placeholder="sk-...">
-                                <button id="test-llm-key-btn" onclick="testLLMKey()" class="px-5 bg-surfaceHighlight hover:bg-white/10 text-secondary rounded-xl transition font-bold text-xs whitespace-nowrap" data-i18n="settings.ai.test">TEST</button>
+                                <input type="password" id="llm-api-key-input" class="flex-1 min-w-0 bg-background border border-white/5 rounded-xl px-4 py-3.5 text-secondary outline-none focus:border-primary/50 font-mono text-sm" placeholder="sk-...">
+                                <button id="test-llm-key-btn" onclick="testLLMKey()" class="shrink-0 min-w-[88px] px-5 bg-surfaceHighlight hover:bg-white/10 text-secondary rounded-xl transition font-bold text-xs whitespace-nowrap" data-i18n="settings.ai.test">TEST</button>
                             </div>
                         </div>
 
@@ -797,7 +893,7 @@ const Components = {
                 <div class="bg-surface p-6 md:p-8 rounded-3xl border border-white/5">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                            <div class="${HERO_ICON_BOX_CLASS}">
                                 <i data-lucide="layout-grid" class="w-5 h-5 text-primary"></i>
                             </div>
                             <div>
@@ -810,7 +906,7 @@ const Components = {
                             <span data-i18n="settings.navigation.customize">Customize</span>
                         </button>
                     </div>
-                    <div class="mt-4 bg-background/50 rounded-xl p-4 border border-white/5">
+                    <div class="mt-4 ${INFO_PANEL_CLASS}">
                         <p class="text-sm text-textMuted leading-relaxed">
                             <i data-lucide="info" class="w-4 h-4 inline-block mr-1 opacity-60"></i>
                             <span data-i18n="settings.navigation.info">Choose which features appear in your bottom navigation bar. At least 2 items must be enabled.</span>
@@ -855,7 +951,7 @@ const Components = {
                     </div>
 
                     <div class="space-y-4">
-                        <div class="bg-background/50 rounded-xl p-4 border border-white/5">
+                        <div class="${INFO_PANEL_CLASS}">
                             <p class="text-sm text-textMuted leading-relaxed">
                                 <i data-lucide="crown" class="w-4 h-4 inline-block mr-1 text-yellow-400"></i>
                                 <span data-i18n="settings.premium.benefits">Premium members enjoy:</span>
@@ -889,7 +985,7 @@ const Components = {
                                 <p class="text-xs text-textMuted" data-i18n="settings.exchange.description">Connect your OKX account</p>
                             </div>
                         </div>
-                        <div id="okx-status-badge" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium">
+                        <div id="okx-status-badge" class="${STATUS_BADGE_CLASS}">
                         </div>
                     </div>
 
@@ -932,8 +1028,8 @@ const Components = {
 
                 <!-- About & Legal -->
                 <div class="bg-surface p-6 md:p-8 rounded-3xl border border-white/5">
-                    <div class="flex items-center gap-3 mb-6">
-                        <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <div class="${CARD_HEADER_ROW_CLASS} mb-6">
+                        <div class="${HERO_ICON_BOX_CLASS}">
                             <i data-lucide="info" class="w-5 h-5 text-primary"></i>
                         </div>
                         <div>
@@ -996,7 +1092,7 @@ const Components = {
     <div class="max-w-4xl mx-auto space-y-6">
             <!--Header -->
             <div class="flex items-center justify-between">
-                <h2 class="font-serif text-2xl md:text-3xl text-secondary flex items-center gap-3">
+                <h2 class="${HERO_TITLE_CLASS}">
                     <div class="w-10 h-10 rounded-xl bg-danger/10 flex items-center justify-center">
                         <i data-lucide="shield-alert" class="w-5 h-5 text-danger"></i>
                     </div>
@@ -1049,8 +1145,8 @@ const Components = {
 
             <!--Report List-->
             <div id="safety-report-list" class="space-y-3">
-                <div class="text-center text-textMuted py-8">
-                    <i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto mb-2"></i>
+                <div class="${LOADING_PLACEHOLDER_CLASS}">
+                    <i data-lucide="loader-2" class="${LOADER_ICON_CLASS}"></i>
                     <span data-i18n="common.loading">Loading...</span>
                 </div>
             </div>
@@ -1064,13 +1160,13 @@ const Components = {
         </div>
 
         <!--Submit Scam Report Modal-->
-        <div id="safety-submit-modal" class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4">
-            <div class="bg-surface w-full max-w-lg max-h-[85vh] flex flex-col rounded-[2rem] border border-white/5 shadow-2xl">
-                <div class="p-6 border-b border-white/5 flex justify-between items-center shrink-0">
+        <div id="safety-submit-modal" class="${MODAL_OVERLAY_CLASS}">
+            <div class="${MODAL_PANEL_CLASS}">
+                <div class="${MODAL_HEADER_CLASS}">
                     <h3 class="font-serif text-xl text-secondary flex items-center gap-2">
                         <i data-lucide="alert-triangle" class="w-5 h-5 text-danger"></i> <span data-i18n="safety.submit.title">Report Scam Wallet</span>
                     </h3>
-                    <button onclick="SafetyTab.closeSubmitModal()" class="w-8 h-8 rounded-full bg-background flex items-center justify-center text-textMuted hover:text-secondary transition">
+                    <button onclick="SafetyTab.closeSubmitModal()" class="${MODAL_CLOSE_BUTTON_CLASS}">
                         <i data-lucide="x" class="w-4 h-4"></i>
                     </button>
                 </div>
@@ -1114,23 +1210,23 @@ const Components = {
         </div>
 
         <!--Scam Report Detail Modal-->
-        <div id="safety-detail-modal" class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4">
-            <div class="bg-surface w-full max-w-lg max-h-[85vh] flex flex-col rounded-[2rem] border border-white/5 shadow-2xl">
-                <div class="p-6 border-b border-white/5 flex justify-between items-center shrink-0">
+        <div id="safety-detail-modal" class="${MODAL_OVERLAY_CLASS}">
+            <div class="${MODAL_PANEL_CLASS}">
+                <div class="${MODAL_HEADER_CLASS}">
                     <h3 class="font-serif text-xl text-secondary" data-i18n="safety.detail.title">Report Detail</h3>
-                    <button onclick="SafetyTab.closeDetailModal()" class="w-8 h-8 rounded-full bg-background flex items-center justify-center text-textMuted hover:text-secondary transition">
+                    <button onclick="SafetyTab.closeDetailModal()" class="${MODAL_CLOSE_BUTTON_CLASS}">
                         <i data-lucide="x" class="w-4 h-4"></i>
                     </button>
                 </div>
-                <div id="safety-detail-content" class="flex-1 overflow-y-auto p-6 custom-scrollbar">
-                    <div class="text-center text-textMuted py-8" data-i18n="common.loading">Loading...</div>
+                <div id="safety-detail-content" ${SHELL_MODAL_SCROLL_ATTR} class="flex-1 p-6 ${SHELL_SCROLLBAR_CLASS}">
+                    <div class="${LOADING_PLACEHOLDER_CLASS}" data-i18n="common.loading">Loading...</div>
                 </div>
-                <div class="p-6 border-t border-white/5 shrink-0">
-                    <div class="flex gap-3">
-                        <button onclick="SafetyTab.voteOnDetail('approve')" class="flex-1 py-3 bg-success/10 hover:bg-success/20 text-success font-bold rounded-xl transition flex items-center justify-center gap-2">
+                <div class="${MODAL_FOOTER_CLASS}">
+                    <div class="${MODAL_ACTION_ROW_CLASS}">
+                        <button onclick="SafetyTab.voteOnDetail('approve')" class="${SUCCESS_ACTION_BUTTON_CLASS}">
                             <i data-lucide="thumbs-up" class="w-4 h-4"></i> <span data-i18n="safety.detail.confirm">Confirm</span> (<span id="safety-detail-approve">0</span>)
                         </button>
-                        <button onclick="SafetyTab.voteOnDetail('reject')" class="flex-1 py-3 bg-danger/10 hover:bg-danger/20 text-danger font-bold rounded-xl transition flex items-center justify-center gap-2">
+                        <button onclick="SafetyTab.voteOnDetail('reject')" class="${DANGER_ACTION_BUTTON_CLASS}">
                             <i data-lucide="thumbs-down" class="w-4 h-4"></i> <span data-i18n="safety.detail.dispute">Dispute</span> (<span id="safety-detail-reject">0</span>)
                         </button>
                     </div>
@@ -1139,36 +1235,36 @@ const Components = {
         </div>
 
         <!--Governance Report Modal-->
-    <div id="governance-modal" class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4">
-        <div class="bg-surface w-full max-w-lg max-h-[85vh] flex flex-col rounded-[2rem] border border-white/5 shadow-2xl">
-            <div class="p-6 border-b border-white/5 flex justify-between items-center shrink-0">
+    <div id="governance-modal" class="${MODAL_OVERLAY_CLASS}">
+        <div class="${MODAL_PANEL_CLASS}">
+            <div class="${MODAL_HEADER_CLASS}">
                 <h3 class="font-serif text-xl text-secondary flex items-center gap-2">
                     <i data-lucide="scale" class="w-5 h-5 text-accent"></i> <span data-i18n="safety.gov.title">Community Governance</span>
                 </h3>
-                <button onclick="SafetyTab.closeGovernanceModal()" class="w-8 h-8 rounded-full bg-background flex items-center justify-center text-textMuted hover:text-secondary transition">
+                <button onclick="SafetyTab.closeGovernanceModal()" class="${MODAL_CLOSE_BUTTON_CLASS}">
                     <i data-lucide="x" class="w-4 h-4"></i>
                 </button>
             </div>
 
             <!-- Governance Tabs -->
             <div class="flex border-b border-white/5 px-6 pt-2 gap-1 overflow-x-auto shrink-0">
-                <button onclick="SafetyTab.switchGovTab('gov-my-reports')" class="gov-tab-btn px-3 py-2 text-xs font-bold rounded-t-lg border-b-2 border-primary text-primary transition" data-gov-tab="gov-my-reports" data-i18n="safety.gov.myReportsTab">My Reports</button>
-                <button onclick="SafetyTab.switchGovTab('gov-review')" class="gov-tab-btn px-3 py-2 text-xs font-bold rounded-t-lg border-b-2 border-transparent text-textMuted hover:text-secondary transition" data-gov-tab="gov-review"><span data-i18n="safety.gov.reviewTab">Review</span> <span class="text-[9px] bg-accent/20 text-accent px-1.5 py-0.5 rounded ml-1">PREMIUM</span></button>
-                <button onclick="SafetyTab.switchGovTab('gov-leaderboard')" class="gov-tab-btn px-3 py-2 text-xs font-bold rounded-t-lg border-b-2 border-transparent text-textMuted hover:text-secondary transition" data-gov-tab="gov-leaderboard" data-i18n="safety.gov.rankingTab">Ranking</button>
+                <button onclick="SafetyTab.switchGovTab('gov-my-reports')" class="${GOV_TAB_BUTTON_BASE_CLASS} ${GOV_TAB_BUTTON_ACTIVE_CLASS}" data-gov-tab="gov-my-reports" data-i18n="safety.gov.myReportsTab">My Reports</button>
+                <button onclick="SafetyTab.switchGovTab('gov-review')" class="${GOV_TAB_BUTTON_BASE_CLASS} ${GOV_TAB_BUTTON_INACTIVE_CLASS}" data-gov-tab="gov-review"><span data-i18n="safety.gov.reviewTab">Review</span> <span class="text-[9px] bg-accent/20 text-accent px-1.5 py-0.5 rounded ml-1">PREMIUM</span></button>
+                <button onclick="SafetyTab.switchGovTab('gov-leaderboard')" class="${GOV_TAB_BUTTON_BASE_CLASS} ${GOV_TAB_BUTTON_INACTIVE_CLASS}" data-gov-tab="gov-leaderboard" data-i18n="safety.gov.rankingTab">Ranking</button>
             </div>
 
-            <div class="flex-1 overflow-y-auto custom-scrollbar">
+            <div ${SHELL_MODAL_SCROLL_ATTR} class="flex-1 ${SHELL_SCROLLBAR_CLASS}">
 
                 <!-- My Reports Tab (Active by Default) -->
                 <div id="gov-my-reports-tab" class="gov-tab-content p-6">
-                    <div class="flex gap-2 mb-4 overflow-x-auto pb-1">
-                        <button onclick="SafetyTab.loadMyGovReports('all', this)" class="gov-filter-btn px-3 py-1.5 text-xs font-bold rounded-lg bg-white/5 text-primary border border-primary/20" data-i18n="common.all">All</button>
-                        <button onclick="SafetyTab.loadMyGovReports('pending', this)" class="gov-filter-btn px-3 py-1.5 text-xs font-bold rounded-lg bg-white/5 text-textMuted border border-white/5" data-i18n="safety.filters.pending">Pending</button>
-                        <button onclick="SafetyTab.loadMyGovReports('approved', this)" class="gov-filter-btn px-3 py-1.5 text-xs font-bold rounded-lg bg-white/5 text-textMuted border border-white/5" data-i18n="safety.gov.approved">Approved</button>
-                        <button onclick="SafetyTab.loadMyGovReports('rejected', this)" class="gov-filter-btn px-3 py-1.5 text-xs font-bold rounded-lg bg-white/5 text-textMuted border border-white/5" data-i18n="safety.gov.rejected">Rejected</button>
+                    <div class="${GOV_FILTER_ROW_CLASS}">
+                        <button onclick="SafetyTab.loadMyGovReports('all', this)" class="${GOV_FILTER_BUTTON_BASE_CLASS} ${GOV_FILTER_BUTTON_ACTIVE_CLASS}" data-i18n="common.all">All</button>
+                        <button onclick="SafetyTab.loadMyGovReports('pending', this)" class="${GOV_FILTER_BUTTON_BASE_CLASS} ${GOV_FILTER_BUTTON_INACTIVE_CLASS}" data-i18n="safety.filters.pending">Pending</button>
+                        <button onclick="SafetyTab.loadMyGovReports('approved', this)" class="${GOV_FILTER_BUTTON_BASE_CLASS} ${GOV_FILTER_BUTTON_INACTIVE_CLASS}" data-i18n="safety.gov.approved">Approved</button>
+                        <button onclick="SafetyTab.loadMyGovReports('rejected', this)" class="${GOV_FILTER_BUTTON_BASE_CLASS} ${GOV_FILTER_BUTTON_INACTIVE_CLASS}" data-i18n="safety.gov.rejected">Rejected</button>
                     </div>
                     <div id="gov-my-reports-list" class="space-y-3">
-                        <div class="text-center text-textMuted py-8 text-sm" data-i18n="safety.gov.selectFilter">Select a filter to load reports</div>
+                        <div class="${LOADING_PLACEHOLDER_SMALL_CLASS}" data-i18n="safety.gov.selectFilter">Select a filter to load reports</div>
                     </div>
                 </div>
 
@@ -1196,7 +1292,7 @@ const Components = {
                             </div>
                         </div>
                         <div id="gov-pending-list" class="space-y-3">
-                            <div class="text-center text-textMuted py-4 text-sm" data-i18n="common.loading">Loading...</div>
+                            <div class="${LOADING_PLACEHOLDER_TIGHT_CLASS}" data-i18n="common.loading">Loading...</div>
                         </div>
                     </div>
                 </div>
@@ -1204,7 +1300,7 @@ const Components = {
                 <!-- Leaderboard Tab -->
                 <div id="gov-leaderboard-tab" class="gov-tab-content hidden p-6">
                     <div id="gov-leaderboard-list" class="space-y-2">
-                        <div class="text-center text-textMuted py-8 text-sm" data-i18n="common.loading">Loading...</div>
+                        <div class="${LOADING_PLACEHOLDER_SMALL_CLASS}" data-i18n="common.loading">Loading...</div>
                     </div>
                 </div>
             </div>
@@ -1219,14 +1315,14 @@ const Components = {
         <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="FeatureMenu.close()"></div>
 
         <!-- Modal Container -->
-        <div class="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
-            <div class="feature-menu-content bg-surface rounded-3xl border border-white/5 shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col pointer-events-auto transform transition-all duration-300 scale-95 opacity-0">
+        <div class="${FEATURE_MODAL_STAGE_CLASS}">
+            <div class="${FEATURE_MODAL_PANEL_CLASS}">
 
                 <!-- Header -->
                 <div class="p-6 border-b border-white/5">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                            <div class="${HERO_ICON_BOX_CLASS}">
                                 <i data-lucide="layout-grid" class="w-5 h-5 text-primary"></i>
                             </div>
                             <div>
@@ -1234,22 +1330,22 @@ const Components = {
                                 <p class="text-xs text-textMuted" data-i18n="featureMenu.description">Choose which features appear in your bottom navigation</p>
                             </div>
                         </div>
-                        <button onclick="FeatureMenu.close()" class="p-2 hover:bg-white/5 rounded-full text-textMuted transition">
+                        <button onclick="FeatureMenu.close()" class="${ICON_ACTION_BUTTON_CLASS}">
                             <i data-lucide="x" class="w-5 h-5"></i>
                         </button>
                     </div>
                 </div>
 
                 <!-- Warning Banner -->
-                <div id="feature-menu-warning" class="hidden mx-6 mt-4 p-3 bg-warning/10 border border-warning/20 rounded-xl">
-                    <div class="flex items-start gap-2">
+                <div id="feature-menu-warning" class="${WARNING_BANNER_CLASS}">
+                    <div class="${WARNING_BANNER_ROW_CLASS}">
                         <i data-lucide="alert-triangle" class="w-4 h-4 text-warning flex-shrink-0 mt-0.5"></i>
                         <p class="text-xs text-warning" data-i18n="featureMenu.minWarning">At least 2 items must be enabled in your navigation bar.</p>
                     </div>
                 </div>
 
                 <!-- Items Grid -->
-                <div class="flex-1 overflow-y-auto p-6">
+                <div ${SHELL_MODAL_SCROLL_ATTR} class="flex-1 overflow-y-auto p-6">
                     <div id="feature-menu-items" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <!-- Items will be dynamically inserted here -->
                     </div>
@@ -1281,8 +1377,8 @@ const Components = {
     <div class="h-full flex flex-col">
             <!--Header -->
             <div class="flex items-center justify-between mb-4 px-2">
-                <h2 class="font-serif text-2xl md:text-3xl text-secondary flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <h2 class="${HERO_TITLE_CLASS}">
+                    <div class="${HERO_ICON_BOX_CLASS}">
                         <i data-lucide="messages-square" class="w-5 h-5 text-primary"></i>
                     </div>
                     <span>Pi Forum</span>
@@ -1332,8 +1428,8 @@ const Components = {
         <!-- Post List -->
         <div class="md:col-span-3 overflow-y-auto custom-scrollbar">
             <div id="post-list" class="space-y-3 pr-2">
-                <div class="text-center text-textMuted py-8">
-                    <i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto mb-2"></i>
+                <div class="${LOADING_PLACEHOLDER_CLASS}">
+                    <i data-lucide="loader-2" class="${LOADER_ICON_CLASS}"></i>
                     <span>載入中...</span>
                 </div>
             </div>

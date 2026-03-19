@@ -1,6 +1,7 @@
 """
 Tests for database connection in core/database/connection.py
 """
+
 import pytest
 from unittest.mock import patch, MagicMock
 import threading
@@ -10,13 +11,14 @@ from core.database.connection import (
     _StandaloneConnection,
     _build_database_url_from_components,
     get_database_url,
+    init_db,
     init_connection_pool,
     get_connection,
     close_all_connections,
     reset_connection_pool,
     MIN_POOL_SIZE,
     MAX_POOL_SIZE,
-    MAX_RETRIES
+    MAX_RETRIES,
 )
 
 
@@ -158,13 +160,13 @@ class TestInitConnectionPool:
 
     def test_creates_threaded_pool(self):
         """Test that ThreadedConnectionPool is created"""
-        with patch('core.database.connection.DATABASE_URL', 'postgresql://test'):
-            with patch('core.database.connection._connection_pool', None):
-                with patch('psycopg2.pool.ThreadedConnectionPool') as mock_pool_class:
+        with patch("core.database.connection.DATABASE_URL", "postgresql://test"):
+            with patch("core.database.connection._connection_pool", None):
+                with patch("psycopg2.pool.ThreadedConnectionPool") as mock_pool_class:
                     mock_pool = MagicMock()
                     mock_pool_class.return_value = mock_pool
 
-                    with patch('builtins.print'):
+                    with patch("builtins.print"):
                         result = init_connection_pool()
 
                     mock_pool_class.assert_called_once()
@@ -172,8 +174,8 @@ class TestInitConnectionPool:
 
     def test_raises_without_database_url(self):
         """Test that ValueError is raised without DATABASE_URL"""
-        with patch('core.database.connection.get_database_url', return_value=None):
-            with patch('core.database.connection._connection_pool', None):
+        with patch("core.database.connection.get_database_url", return_value=None):
+            with patch("core.database.connection._connection_pool", None):
                 with pytest.raises(ValueError) as exc_info:
                     init_connection_pool()
 
@@ -181,19 +183,20 @@ class TestInitConnectionPool:
 
     def test_retry_on_operational_error(self):
         """Test retry on OperationalError"""
-        with patch('core.database.connection.DATABASE_URL', 'postgresql://test'):
-            with patch('core.database.connection._connection_pool', None):
-                with patch('psycopg2.pool.ThreadedConnectionPool') as mock_pool_class:
+        with patch("core.database.connection.DATABASE_URL", "postgresql://test"):
+            with patch("core.database.connection._connection_pool", None):
+                with patch("psycopg2.pool.ThreadedConnectionPool") as mock_pool_class:
                     # First call fails, second succeeds
                     from psycopg2 import OperationalError
+
                     mock_pool = MagicMock()
                     mock_pool_class.side_effect = [
                         OperationalError("Connection failed"),
-                        mock_pool
+                        mock_pool,
                     ]
 
-                    with patch('builtins.print'):
-                        with patch('time.sleep'):
+                    with patch("builtins.print"):
+                        with patch("time.sleep"):
                             result = init_connection_pool()
 
                     assert result == mock_pool
@@ -201,14 +204,15 @@ class TestInitConnectionPool:
 
     def test_raises_after_max_retries(self):
         """Test that error is raised after max retries"""
-        with patch('core.database.connection.DATABASE_URL', 'postgresql://test'):
-            with patch('core.database.connection._connection_pool', None):
-                with patch('psycopg2.pool.ThreadedConnectionPool') as mock_pool_class:
+        with patch("core.database.connection.DATABASE_URL", "postgresql://test"):
+            with patch("core.database.connection._connection_pool", None):
+                with patch("psycopg2.pool.ThreadedConnectionPool") as mock_pool_class:
                     from psycopg2 import OperationalError
+
                     mock_pool_class.side_effect = OperationalError("Connection failed")
 
-                    with patch('builtins.print'):
-                        with patch('time.sleep'):
+                    with patch("builtins.print"):
+                        with patch("time.sleep"):
                             with pytest.raises(OperationalError):
                                 init_connection_pool()
 
@@ -228,11 +232,51 @@ class TestGetConnection:
         mock_conn.cursor.return_value = mock_cursor
         mock_pool.getconn.return_value = mock_conn
 
-        with patch('core.database.connection._connection_pool', mock_pool):
-            with patch('core.database.connection._db_initialized', True):
+        with patch("core.database.connection._connection_pool", mock_pool):
+            with patch("core.database.connection._db_initialized", True):
                 result = get_connection()
 
                 assert isinstance(result, PooledConnection)
+
+
+class TestInitDb:
+    """Tests for init_db schema bootstrap and reconcile flow."""
+
+    def test_init_db_runs_create_and_reconcile_steps(self):
+        """init_db should create tables, run reconcile, then commit once."""
+        mock_conn = MagicMock()
+        mock_cursor = MagicMock()
+        mock_conn.cursor.return_value = mock_cursor
+
+        with patch(
+            "core.database.connection.get_database_url",
+            return_value="postgresql://test",
+        ):
+            with patch(
+                "core.database.connection.psycopg2.connect", return_value=mock_conn
+            ):
+                with patch(
+                    "core.database.connection.create_all_tables"
+                ) as mock_create_all_tables:
+                    with patch(
+                        "core.database.connection.reconcile_existing_tables",
+                        return_value={"audit_logs": ["endpoint"]},
+                    ) as mock_reconcile:
+                        with patch(
+                            "core.database.connection.format_reconcile_summary",
+                            return_value="audit_logs(1)",
+                        ) as mock_format:
+                            with patch(
+                                "core.database.connection.logger"
+                            ) as mock_logger:
+                                init_db()
+
+        mock_create_all_tables.assert_called_once_with(mock_cursor)
+        mock_reconcile.assert_called_once_with(mock_cursor)
+        mock_format.assert_called_once_with({"audit_logs": ["endpoint"]})
+        mock_conn.commit.assert_called_once()
+        mock_conn.close.assert_called_once()
+        mock_logger.info.assert_called_once()
 
     def test_replaces_closed_connection(self):
         """Test that closed connection is replaced"""
@@ -250,8 +294,8 @@ class TestGetConnection:
         # First returns closed, second returns good
         mock_pool.getconn.side_effect = [mock_closed_conn, mock_good_conn]
 
-        with patch('core.database.connection._connection_pool', mock_pool):
-            with patch('core.database.connection._db_initialized', True):
+        with patch("core.database.connection._connection_pool", mock_pool):
+            with patch("core.database.connection._db_initialized", True):
                 result = get_connection()
 
                 assert isinstance(result, PooledConnection)
@@ -263,9 +307,9 @@ class TestGetConnection:
         mock_pool = MagicMock()
         mock_pool.getconn.side_effect = pool.PoolError("Pool exhausted")
 
-        with patch('core.database.connection._connection_pool', mock_pool):
-            with patch('core.database.connection._db_initialized', True):
-                with patch('psycopg2.connect') as mock_connect:
+        with patch("core.database.connection._connection_pool", mock_pool):
+            with patch("core.database.connection._db_initialized", True):
+                with patch("psycopg2.connect") as mock_connect:
                     mock_conn = MagicMock()
                     mock_cursor = MagicMock()
                     mock_cursor.execute = MagicMock()
@@ -274,8 +318,8 @@ class TestGetConnection:
                     mock_conn.cursor.return_value = mock_cursor
                     mock_connect.return_value = mock_conn
 
-                    with patch('builtins.print'):
-                        with patch('time.sleep'):
+                    with patch("builtins.print"):
+                        with patch("time.sleep"):
                             result = get_connection()
 
                             assert isinstance(result, _StandaloneConnection)
@@ -288,15 +332,15 @@ class TestCloseAllConnections:
         """Test that closeall is called on pool"""
         mock_pool = MagicMock()
 
-        with patch('core.database.connection._connection_pool', mock_pool):
-            with patch('builtins.print'):
+        with patch("core.database.connection._connection_pool", mock_pool):
+            with patch("builtins.print"):
                 close_all_connections()
 
             mock_pool.closeall.assert_called_once()
 
     def test_handles_none_pool(self):
         """Test that None pool is handled"""
-        with patch('core.database.connection._connection_pool', None):
+        with patch("core.database.connection._connection_pool", None):
             # Should not raise
             close_all_connections()
 
@@ -305,9 +349,10 @@ class TestCloseAllConnections:
         mock_pool = MagicMock()
 
         import core.database.connection as conn_module
+
         conn_module._connection_pool = mock_pool
 
-        with patch('builtins.print'):
+        with patch("builtins.print"):
             close_all_connections()
 
         # Pool should be None after close
@@ -321,8 +366,8 @@ class TestResetConnectionPool:
         """Test that global pool is reset"""
         mock_pool = MagicMock()
 
-        with patch('core.database.connection._connection_pool', mock_pool):
-            with patch('core.database.connection._db_initialized', True):
+        with patch("core.database.connection._connection_pool", mock_pool):
+            with patch("core.database.connection._db_initialized", True):
                 reset_connection_pool()
 
                 mock_pool.closeall.assert_called()
@@ -331,9 +376,10 @@ class TestResetConnectionPool:
         """Test that _db_initialized flag is cleared"""
         mock_pool = MagicMock()
 
-        with patch('core.database.connection._connection_pool', mock_pool):
-            with patch('core.database.connection._db_initialized', True):
+        with patch("core.database.connection._connection_pool", mock_pool):
+            with patch("core.database.connection._db_initialized", True):
                 import core.database.connection as conn_module
+
                 reset_connection_pool()
 
                 # Flag should be cleared
@@ -344,8 +390,8 @@ class TestResetConnectionPool:
         mock_pool = MagicMock()
         mock_pool.closeall.side_effect = Exception("Close failed")
 
-        with patch('core.database.connection._connection_pool', mock_pool):
-            with patch('core.database.connection._db_initialized', True):
+        with patch("core.database.connection._connection_pool", mock_pool):
+            with patch("core.database.connection._db_initialized", True):
                 # Should not raise
                 reset_connection_pool()
 
@@ -400,6 +446,7 @@ class TestThreadSafety:
     def test_pool_lock_exists(self):
         """Test that pool lock exists"""
         from core.database.connection import _pool_lock
+
         assert isinstance(_pool_lock, type(threading.Lock()))
 
     def test_concurrent_pool_init(self):
@@ -408,8 +455,10 @@ class TestThreadSafety:
 
         def try_init():
             try:
-                with patch('core.database.connection.DATABASE_URL', 'postgresql://test'):
-                    with patch('psycopg2.pool.ThreadedConnectionPool'):
+                with patch(
+                    "core.database.connection.DATABASE_URL", "postgresql://test"
+                ):
+                    with patch("psycopg2.pool.ThreadedConnectionPool"):
                         results.append("init_attempted")
             except Exception as e:
                 results.append(f"error: {e}")

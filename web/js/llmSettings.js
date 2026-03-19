@@ -432,37 +432,12 @@ function llmGetAuthHeaders() {
 }
 
 function llmShowToast(message, type) {
-    // 優先使用全局 showToast 函數
     if (typeof window.showToast === 'function') {
         window.showToast(message, type);
         return;
     }
 
-    type = type || 'info';
-
-    // 移除舊的 toast
-    var oldToast = document.querySelector('.llm-toast');
-    if (oldToast) {
-        oldToast.remove();
-    }
-
-    var toast = document.createElement('div');
-    var bgColor =
-        {
-            success: 'bg-green-500',
-            error: 'bg-red-500',
-            info: 'bg-blue-500',
-        }[type] || 'bg-blue-500';
-
-    toast.className =
-        'llm-toast fixed bottom-20 right-4 px-4 py-2 rounded-lg text-white text-sm z-50 shadow-lg ' +
-        bgColor;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-
-    setTimeout(function () {
-        toast.remove();
-    }, 3000);
+    console.warn('showToast is unavailable:', message, type);
 }
 
 // ========================================

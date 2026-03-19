@@ -63,7 +63,9 @@
 
     <!-- Toast Container -->
     <div id="toast-container"
-        class="fixed z-[200] flex flex-col gap-2 pointer-events-none bottom-28 left-4 right-4 md:bottom-auto md:top-6 md:right-6 md:left-auto md:w-80">
+        role="status" aria-live="polite" aria-atomic="true"
+        class="fixed z-[110] flex flex-col gap-3 pointer-events-none bottom-4 left-4 right-4 items-center md:bottom-auto md:top-6 md:right-6 md:left-auto md:w-80 md:items-end"
+        style="bottom: var(--shell-toast-bottom, calc(1rem + env(safe-area-inset-bottom, 0px)));">
     </div>
 
     <!-- Confirm Modal -->
@@ -159,6 +161,7 @@
     </main>
 
     <!-- Scripts -->
+    <script src="/static/js/ui-shell.js?v=1"></script>
     <script src="/static/js/auth.js?v=60"></script>
     <script src="/static/js/friends.js?v=5"></script>
     <script>
@@ -168,44 +171,6 @@
 
         let profileData = null;
         let currentUserId = null;
-
-        // Toast notification
-        function showToast(message, type = 'info', duration = 3000) {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-
-            const colors = {
-                success: 'bg-success/20 border-success/30 text-success',
-                error: 'bg-danger/20 border-danger/30 text-danger',
-                warning: 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400',
-                info: 'bg-primary/20 border-primary/30 text-primary'
-            };
-
-            const icons = {
-                success: 'check-circle',
-                error: 'x-circle',
-                warning: 'alert-triangle',
-                info: 'info'
-            };
-
-            toast.className = `pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-2xl border backdrop-blur-xl shadow-xl animate-fade-in-up ${colors[type] || colors.info}`;
-            toast.innerHTML = `
-                <i data-lucide="${icons[type] || icons.info}" class="w-5 h-5 flex-shrink-0 mt-0.5"></i>
-                <p class="text-sm font-medium flex-1">${message}</p>
-                <button onclick="this.parentElement.remove()" class="text-current opacity-60 hover:opacity-100 transition">
-                    <i data-lucide="x" class="w-4 h-4"></i>
-                </button>
-            `;
-
-            container.appendChild(toast);
-            lucide.createIcons({ icons: lucide.icons, nameAttr: 'data-lucide' });
-
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                toast.style.transform = 'translateY(-10px)';
-                setTimeout(() => toast.remove(), 300);
-            }, duration);
-        }
 
         // Confirm modal
         function showConfirm(options) {
@@ -509,46 +474,46 @@
         async function handleAddFriend() {
             try {
                 await FriendsAPI.sendRequest(profileData.user_id);
-                showToast('Friend request sent', 'success');
+                window.showToast('Friend request sent', 'success');
                 profileData.friend_status = 'pending';
                 profileData.is_requester = true;
                 renderFriendButton();
             } catch (error) {
-                showToast(error.message, 'error');
+                window.showToast(error.message, 'error');
             }
         }
 
         async function handleAcceptRequest() {
             try {
                 await FriendsAPI.acceptRequest(profileData.user_id);
-                showToast('You are now friends', 'success');
+                window.showToast('You are now friends', 'success');
                 profileData.friend_status = 'accepted';
                 profileData.is_friend = true;
                 renderProfile();
             } catch (error) {
-                showToast(error.message, 'error');
+                window.showToast(error.message, 'error');
             }
         }
 
         async function handleRejectRequest() {
             try {
                 await FriendsAPI.rejectRequest(profileData.user_id);
-                showToast('Request rejected', 'info');
+                window.showToast('Request rejected', 'info');
                 profileData.friend_status = null;
                 renderFriendButton();
             } catch (error) {
-                showToast(error.message, 'error');
+                window.showToast(error.message, 'error');
             }
         }
 
         async function handleCancelRequest() {
             try {
                 await FriendsAPI.cancelRequest(profileData.user_id);
-                showToast('Request cancelled', 'info');
+                window.showToast('Request cancelled', 'info');
                 profileData.friend_status = null;
                 renderFriendButton();
             } catch (error) {
-                showToast(error.message, 'error');
+                window.showToast(error.message, 'error');
             }
         }
 
@@ -565,12 +530,12 @@
 
             try {
                 await FriendsAPI.removeFriend(profileData.user_id);
-                showToast('Friend removed', 'info');
+                window.showToast('Friend removed', 'info');
                 profileData.friend_status = null;
                 profileData.is_friend = false;
                 renderProfile();
             } catch (error) {
-                showToast(error.message, 'error');
+                window.showToast(error.message, 'error');
             }
         }
 
@@ -587,23 +552,23 @@
 
             try {
                 await FriendsAPI.blockUser(profileData.user_id);
-                showToast('User blocked', 'info');
+                window.showToast('User blocked', 'info');
                 profileData.friend_status = 'blocked';
                 profileData.is_friend = false;
                 renderProfile();
             } catch (error) {
-                showToast(error.message, 'error');
+                window.showToast(error.message, 'error');
             }
         }
 
         async function handleUnblock() {
             try {
                 await FriendsAPI.unblockUser(profileData.user_id);
-                showToast('User unblocked', 'success');
+                window.showToast('User unblocked', 'success');
                 profileData.friend_status = null;
                 renderProfile();
             } catch (error) {
-                showToast(error.message, 'error');
+                window.showToast(error.message, 'error');
             }
         }
 

@@ -181,7 +181,9 @@
     </main>
 
     <!-- Toast Container -->
-    <div id="toast-container" class="fixed top-24 right-4 z-[100] flex flex-col gap-2 pointer-events-none"></div>
+    <div id="toast-container" role="status" aria-live="polite" aria-atomic="true"
+        class="fixed z-[110] flex flex-col gap-3 pointer-events-none bottom-4 left-4 right-4 items-center md:bottom-auto md:top-24 md:left-auto md:right-4 md:items-end"
+        style="bottom: var(--shell-toast-bottom, calc(1rem + env(safe-area-inset-bottom, 0px)));"></div>
 
     <!-- Confirm Modal -->
     <div id="confirm-modal"
@@ -204,7 +206,8 @@
     </div>
 
     <!-- Scripts -->
-    <script src="/static/js/app.js?v=54"></script>
+    <script src="/static/js/ui-shell.js?v=1"></script>
+    <script src="/static/js/app.js?v=55"></script>
     <script src="/static/js/apiKeyManager.js?v=48"></script>
     <script src="/static/js/auth.js?v=60"></script>
     <script src="/static/js/forum-config.js?v=1"></script>

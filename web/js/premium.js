@@ -230,6 +230,20 @@ class PremiumManager {
     async startUpgradeProcess() {
         let loadingToastId = null;
 
+        const clearLoadingToast = () => {
+            if (!loadingToastId) {
+                return;
+            }
+
+            if (window.UIShell && typeof window.UIShell.dismissToast === 'function') {
+                window.UIShell.dismissToast(loadingToastId);
+            } else if (typeof loadingToastId.remove === 'function') {
+                loadingToastId.remove();
+            }
+
+            loadingToastId = null;
+        };
+
         try {
             // 顯示處理中提示
             loadingToastId = showToast('正在處理升級...', 'info', 0); // 持續顯示
@@ -241,11 +255,7 @@ class PremiumManager {
             const txHash = await this.executePiPayment();
 
             if (!txHash) {
-                // 清除加載提示
-                if (loadingToastId) {
-                    const toastContainer = document.getElementById('toast-container');
-                    if (toastContainer) toastContainer.innerHTML = '';
-                }
+                clearLoadingToast();
                 showToast('支付失敗或已取消', 'error');
                 return;
             }
@@ -254,11 +264,7 @@ class PremiumManager {
             const upgradeResult = await this.requestUpgrade(txHash);
 
             if (upgradeResult.success) {
-                // 清除之前的提示
-                if (loadingToastId) {
-                    const toastContainer = document.getElementById('toast-container');
-                    if (toastContainer) toastContainer.innerHTML = '';
-                }
+                clearLoadingToast();
 
                 showToast('🎉 恭喜！您已成為 Premium 會員！', 'success', 5000);
 
@@ -270,20 +276,12 @@ class PremiumManager {
                     window.location.reload();
                 }, 2000);
             } else {
-                // 清除加載提示
-                if (loadingToastId) {
-                    const toastContainer = document.getElementById('toast-container');
-                    if (toastContainer) toastContainer.innerHTML = '';
-                }
+                clearLoadingToast();
                 showToast('升級失敗: ' + upgradeResult.message, 'error');
             }
         } catch (error) {
             console.error('[Premium] 升級流程錯誤:', error);
-            // 清除加載提示
-            if (loadingToastId) {
-                const toastContainer = document.getElementById('toast-container');
-                if (toastContainer) toastContainer.innerHTML = '';
-            }
+            clearLoadingToast();
             showToast('升級失敗: ' + error.message, 'error');
         }
     }
@@ -453,11 +451,6 @@ class PremiumManager {
                                         paymentComplete = true;
                                         console.log('[Premium] 支付完成:', { paymentId, txid });
 
-                                        // 清除加載提示
-                                        const toastContainer =
-                                            document.getElementById('toast-container');
-                                        if (toastContainer) toastContainer.innerHTML = '';
-
                                         resolve(txid);
                                         return; // 成功退出
                                     } else {
@@ -489,10 +482,6 @@ class PremiumManager {
                             console.error('[Premium] 完成支付所有重試均失敗:', lastError);
                             console.error('[Premium] 交易已完成但後端確認失敗，txid:', txid);
 
-                            // 清除加載提示
-                            const toastContainer = document.getElementById('toast-container');
-                            if (toastContainer) toastContainer.innerHTML = '';
-
                             // 不拒絕 Promise，而是設置一個標記並繼續
                             txHash = txid;
                             paymentComplete = true; // 支付確實完成了
@@ -512,10 +501,6 @@ class PremiumManager {
                             console.log('[Premium] 支付已取消:', paymentId);
                             paymentError = 'CANCELLED';
 
-                            // 清除加載提示
-                            const toastContainer = document.getElementById('toast-container');
-                            if (toastContainer) toastContainer.innerHTML = '';
-
                             reject(new Error('用戶取消支付'));
                         },
 
@@ -523,10 +508,6 @@ class PremiumManager {
                         onError: (error, payment) => {
                             console.error('[Premium] 支付錯誤:', error, payment);
                             paymentError = error;
-
-                            // 清除加載提示
-                            const toastContainer = document.getElementById('toast-container');
-                            if (toastContainer) toastContainer.innerHTML = '';
 
                             reject(error);
                         },
@@ -545,19 +526,11 @@ class PremiumManager {
                         // 2分鐘超時
                         clearInterval(checkInterval);
 
-                        // 清除加載提示
-                        const toastContainer = document.getElementById('toast-container');
-                        if (toastContainer) toastContainer.innerHTML = '';
-
                         reject(new Error('支付超時'));
                     }
                 }, 500);
             } catch (error) {
                 console.error('[Premium] 創建支付時發生錯誤:', error);
-
-                // 清除加載提示
-                const toastContainer = document.getElementById('toast-container');
-                if (toastContainer) toastContainer.innerHTML = '';
 
                 reject(error);
             }

@@ -826,20 +826,7 @@ const SafetyTab = {
         if (typeof showToast === 'function') {
             showToast(message, type);
         } else {
-            const toast = document.createElement('div');
-            const colors = {
-                success: 'bg-success',
-                error: 'bg-danger',
-                warning: 'bg-yellow-500',
-                info: 'bg-primary',
-            };
-            toast.className = `fixed bottom-8 left-1/2 transform -translate-x-1/2 ${colors[type] || colors.info} text-white px-6 py-3 rounded-xl shadow-lg z-[110] animate-fade-in-up text-sm font-bold`;
-            toast.textContent = message;
-            document.body.appendChild(toast);
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 300);
-            }, 2000);
+            console.warn('showToast is unavailable:', message, type);
         }
     },
 };

@@ -4,6 +4,7 @@ Comprehensive Audit Logging System
 Logs all sensitive operations for security monitoring, compliance, and debugging.
 Supports both automatic middleware-based logging and manual action logging.
 """
+
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from fastapi import Request
@@ -15,21 +16,108 @@ from api.utils import logger
 class AuditLogger:
     """
     Centralized audit logging system
-    
+
     Provides methods to log security-sensitive operations to the database
     for compliance, monitoring, and incident investigation.
     """
-    
+
     # Actions that are considered sensitive and require extra attention
     SENSITIVE_ACTIONS = {
-        'login', 'logout', 'pi_sync', 'dev_login',
-        'payment_approve', 'payment_complete', 'tip_post',
-        'upgrade_premium', 'delete_post', 'delete_user',
-        'ban_user', 'block_user', 'admin_action',
-        'permission_change', 'config_change',
-        'create_post', 'update_post', 'send_friend_request'
+        "login",
+        "logout",
+        "pi_sync",
+        "dev_login",
+        "payment_approve",
+        "payment_complete",
+        "tip_post",
+        "upgrade_premium",
+        "delete_post",
+        "delete_user",
+        "ban_user",
+        "block_user",
+        "admin_action",
+        "permission_change",
+        "config_change",
+        "create_post",
+        "update_post",
+        "send_friend_request",
+        "create_scam_report",
     }
-    
+
+    @staticmethod
+    def _normalize_action(action: Optional[str]) -> str:
+        """Normalize action names so audit records use one convention."""
+        normalized = (
+            (action or "unknown_action")
+            .strip()
+            .lower()
+            .replace("-", "_")
+            .replace(" ", "_")
+        )
+        while "__" in normalized:
+            normalized = normalized.replace("__", "_")
+        return normalized or "unknown_action"
+
+    @staticmethod
+    def is_sensitive_action(action: Optional[str]) -> bool:
+        """Return whether an action should be persisted in the audit table."""
+        return AuditLogger._normalize_action(action) in AuditLogger.SENSITIVE_ACTIONS
+
+    @staticmethod
+    def _prepare_payload(
+        action: str,
+        user_id: Optional[str] = None,
+        username: Optional[str] = None,
+        resource_type: Optional[str] = None,
+        resource_id: Optional[str] = None,
+        endpoint: Optional[str] = None,
+        method: Optional[str] = None,
+        ip_address: Optional[str] = None,
+        user_agent: Optional[str] = None,
+        request_data: Optional[Dict] = None,
+        response_code: Optional[int] = None,
+        success: bool = True,
+        error_message: Optional[str] = None,
+        duration_ms: Optional[int] = None,
+        metadata: Optional[Dict] = None,
+    ) -> tuple:
+        sanitized_data = _sanitize_request_data(request_data) if request_data else None
+        normalized_action = AuditLogger._normalize_action(action)
+        normalized_endpoint = endpoint or "system://internal"
+        normalized_method = (method or "SYSTEM").upper()
+
+        return (
+            user_id,
+            username,
+            normalized_action,
+            resource_type,
+            resource_id,
+            normalized_endpoint,
+            normalized_method,
+            ip_address,
+            user_agent,
+            json.dumps(sanitized_data) if sanitized_data else None,
+            response_code,
+            success,
+            error_message,
+            duration_ms,
+            json.dumps(metadata) if metadata else None,
+        )
+
+    @staticmethod
+    def _write(cursor: Any, payload: tuple) -> None:
+        """Write an audit record through the shared insert path."""
+        cursor.execute(
+            """
+            INSERT INTO audit_logs (
+                user_id, username, action, resource_type, resource_id,
+                endpoint, method, ip_address, user_agent, request_data,
+                response_code, success, error_message, duration_ms, metadata
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """,
+            payload,
+        )
+
     @staticmethod
     def log(
         action: str,
@@ -46,11 +134,12 @@ class AuditLogger:
         success: bool = True,
         error_message: Optional[str] = None,
         duration_ms: Optional[int] = None,
-        metadata: Optional[Dict] = None
+        metadata: Optional[Dict] = None,
+        cursor: Optional[Any] = None,
     ):
         """
         Log an audit event to the database
-        
+
         Args:
             action: The action being performed (e.g., 'login', 'payment_approve')
             user_id: ID of the user performing the action
@@ -69,52 +158,56 @@ class AuditLogger:
             metadata: Additional context-specific data
         """
         try:
-            conn = get_connection()
-            cursor = conn.cursor()
-            
-            # Sanitize request data - remove sensitive fields
-            if request_data:
-                sanitized_data = _sanitize_request_data(request_data)
+            payload = AuditLogger._prepare_payload(
+                action=action,
+                user_id=user_id,
+                username=username,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                endpoint=endpoint,
+                method=method,
+                ip_address=ip_address,
+                user_agent=user_agent,
+                request_data=request_data,
+                response_code=response_code,
+                success=success,
+                error_message=error_message,
+                duration_ms=duration_ms,
+                metadata=metadata,
+            )
+
+            if cursor is not None:
+                AuditLogger._write(cursor, payload)
             else:
-                sanitized_data = None
-            
-            cursor.execute("""
-                INSERT INTO audit_logs (
-                    user_id, username, action, resource_type, resource_id,
-                    endpoint, method, ip_address, user_agent, request_data,
-                    response_code, success, error_message, duration_ms, metadata
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (
-                user_id, username, action, resource_type, resource_id,
-                endpoint, method, ip_address, user_agent,
-                json.dumps(sanitized_data) if sanitized_data else None,
-                response_code, success, error_message, duration_ms,
-                json.dumps(metadata) if metadata else None
-            ))
-            
-            conn.commit()
-            cursor.close()
-            conn.close()
-            
+                conn = get_connection()
+                db_cursor = conn.cursor()
+                try:
+                    AuditLogger._write(db_cursor, payload)
+                    conn.commit()
+                finally:
+                    db_cursor.close()
+                    conn.close()
+
             # Also log sensitive actions to application log
-            if action in AuditLogger.SENSITIVE_ACTIONS:
+            normalized_action = AuditLogger._normalize_action(action)
+            if normalized_action in AuditLogger.SENSITIVE_ACTIONS:
                 log_level = "WARNING" if not success else "INFO"
                 log_msg = (
-                    f"AUDIT [{action}]: user={username}({user_id}), "
+                    f"AUDIT [{normalized_action}]: user={username}({user_id}), "
                     f"resource={resource_type}/{resource_id}, success={success}"
                 )
                 if not success and error_message:
                     log_msg += f", error={error_message}"
-                
+
                 if log_level == "WARNING":
                     logger.warning(log_msg)
                 else:
                     logger.info(log_msg)
-                
+
         except Exception as e:
             # Never let audit logging break the application
             logger.error(f"Failed to write audit log for action '{action}': {e}")
-    
+
     @staticmethod
     async def log_from_request(
         request: Request,
@@ -123,13 +216,13 @@ class AuditLogger:
         resource_id: Optional[str] = None,
         success: bool = True,
         error_message: Optional[str] = None,
-        metadata: Optional[Dict] = None
+        metadata: Optional[Dict] = None,
     ):
         """
         Log audit event from FastAPI request object
-        
+
         Convenience method that extracts user and request info automatically.
-        
+
         Args:
             request: FastAPI Request object
             action: The action being performed
@@ -140,7 +233,7 @@ class AuditLogger:
             metadata: Additional metadata
         """
         user = getattr(request.state, "user", None)
-        
+
         AuditLogger.log(
             action=action,
             user_id=user.get("user_id") if user else None,
@@ -153,44 +246,49 @@ class AuditLogger:
             user_agent=request.headers.get("user-agent"),
             success=success,
             error_message=error_message,
-            metadata=metadata
+            metadata=metadata,
         )
 
 
 def _sanitize_request_data(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Remove sensitive fields from request data before logging
-    
+
     Args:
         data: Original request data
-        
+
     Returns:
         Sanitized copy with sensitive fields removed or masked
     """
     if not isinstance(data, dict):
         return data
-    
+
     # Fields to completely remove
     SENSITIVE_FIELDS_REMOVE = {
-        'password', 'secret', 'token', 'access_token',
-        'api_key', 'private_key', 'passphrase',
-        'credit_card', 'ssn', 'social_security'
+        "password",
+        "secret",
+        "token",
+        "access_token",
+        "api_key",
+        "private_key",
+        "passphrase",
+        "credit_card",
+        "ssn",
+        "social_security",
     }
-    
+
     # Fields to mask (show first/last few characters)
-    SENSITIVE_FIELDS_MASK = {
-        'email', 'phone', 'wallet_address'
-    }
-    
+    SENSITIVE_FIELDS_MASK = {"email", "phone", "wallet_address"}
+
     sanitized: Dict[str, Any] = {}
     for key, value in data.items():
         key_lower = key.lower()
-        
+
         # Remove sensitive fields
         if any(sensitive in key_lower for sensitive in SENSITIVE_FIELDS_REMOVE):
             sanitized[key] = "[REDACTED]"
             continue
-        
+
         # Mask fields
         if any(sensitive in key_lower for sensitive in SENSITIVE_FIELDS_MASK):
             if isinstance(value, str) and len(value) > 6:
@@ -198,7 +296,7 @@ def _sanitize_request_data(data: Dict[str, Any]) -> Dict[str, Any]:
             else:
                 sanitized[key] = "***"
             continue
-        
+
         # Recursively sanitize nested dicts
         if isinstance(value, dict):
             sanitized[key] = _sanitize_request_data(value)
@@ -209,7 +307,7 @@ def _sanitize_request_data(data: Dict[str, Any]) -> Dict[str, Any]:
             ]
         else:
             sanitized[key] = value
-    
+
     return sanitized
 
 
@@ -217,7 +315,7 @@ def _sanitize_request_data(data: Dict[str, Any]) -> Dict[str, Any]:
 def audit_log(action: str, **kwargs):
     """
     Shorthand for audit logging
-    
+
     Usage:
         audit_log("payment_approve", user_id="123", resource_id="pay_456", success=True)
     """
@@ -228,24 +326,28 @@ def audit_log(action: str, **kwargs):
 def audit(action: str, resource_type: Optional[str] = None):
     """
     Decorator to automatically audit log a function call
-    
+
     Usage:
         @audit(action="delete_post", resource_type="post")
         async def delete_post(post_id: int, user: dict):
             # ... function implementation
     """
+
     def decorator(func):
         async def wrapper(*args, **kwargs):
             import time
+
             start_time = time.time()
-            
+
             # Try to extract user from kwargs
-            user = kwargs.get('current_user') or kwargs.get('user')
-            resource_id = kwargs.get('post_id') or kwargs.get('user_id') or kwargs.get('id')
-            
+            user = kwargs.get("current_user") or kwargs.get("user")
+            resource_id = (
+                kwargs.get("post_id") or kwargs.get("user_id") or kwargs.get("id")
+            )
+
             try:
                 result = await func(*args, **kwargs)
-                
+
                 # Log success
                 audit_log(
                     action=action,
@@ -254,11 +356,11 @@ def audit(action: str, resource_type: Optional[str] = None):
                     resource_type=resource_type,
                     resource_id=str(resource_id) if resource_id else None,
                     success=True,
-                    duration_ms=int((time.time() - start_time) * 1000)
+                    duration_ms=int((time.time() - start_time) * 1000),
                 )
-                
+
                 return result
-                
+
             except Exception as e:
                 # Log failure
                 audit_log(
@@ -269,17 +371,19 @@ def audit(action: str, resource_type: Optional[str] = None):
                     resource_id=str(resource_id) if resource_id else None,
                     success=False,
                     error_message=str(e),
-                    duration_ms=int((time.time() - start_time) * 1000)
+                    duration_ms=int((time.time() - start_time) * 1000),
                 )
                 raise
-        
+
         return wrapper
+
     return decorator
 
 
 # ============================================================================
 # Audit Log Cleanup (Stage 2 Security)
 # ============================================================================
+
 
 def cleanup_old_logs(days_to_keep: int = 90) -> int:
     """
@@ -300,17 +404,22 @@ def cleanup_old_logs(days_to_keep: int = 90) -> int:
 
         cutoff_date = datetime.utcnow() - timedelta(days=days_to_keep)
 
-        cursor.execute("""
+        cursor.execute(
+            """
             DELETE FROM audit_logs
             WHERE created_at < %s
-        """, (cutoff_date,))
+        """,
+            (cutoff_date,),
+        )
 
         deleted = cursor.rowcount
         conn.commit()
         cursor.close()
         conn.close()
 
-        logger.info(f"🧹 Cleaned up {deleted} old audit logs (older than {days_to_keep} days)")
+        logger.info(
+            f"🧹 Cleaned up {deleted} old audit logs (older than {days_to_keep} days)"
+        )
         return deleted
 
     except Exception as e:
@@ -338,11 +447,14 @@ async def audit_log_cleanup_task():
         if now >= tomorrow:
             # Already past 3 AM today, schedule for tomorrow
             from datetime import timedelta
+
             tomorrow = tomorrow + timedelta(days=1)
 
         seconds_until_cleanup = (tomorrow - now).total_seconds()
 
-        logger.info(f"📅 Audit log cleanup scheduled for {tomorrow} (in {seconds_until_cleanup:.0f}s)")
+        logger.info(
+            f"📅 Audit log cleanup scheduled for {tomorrow} (in {seconds_until_cleanup:.0f}s)"
+        )
 
         await asyncio.sleep(seconds_until_cleanup)
 

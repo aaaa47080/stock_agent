@@ -1,6 +1,7 @@
 """
 Tests for audit middleware in api/middleware/audit.py
 """
+
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 from fastapi import Request
@@ -9,7 +10,7 @@ from api.middleware.audit import (
     _extract_user_from_request,
     _determine_action,
     _is_sensitive_action,
-    audit_middleware
+    audit_middleware,
 )
 
 
@@ -25,6 +26,7 @@ class TestExtractUserFromRequest:
         request.headers = {}
 
         user = await _extract_user_from_request(request)
+        assert user is not None
         assert user["user_id"] == "user-123"
 
     @pytest.mark.asyncio
@@ -46,8 +48,8 @@ class TestExtractUserFromRequest:
         request.state.user = None
         request.headers = {"Authorization": "Bearer test-user-001"}
 
-        with patch('core.config.TEST_MODE', True):
-            with patch('core.database.user.get_user_by_id', return_value=None):
+        with patch("core.config.TEST_MODE", True):
+            with patch("core.database.user.get_user_by_id", return_value=None):
                 user = await _extract_user_from_request(request)
                 assert user is not None
                 assert user["user_id"] == "test-user-001"
@@ -106,6 +108,16 @@ class TestDetermineAction:
         action = _determine_action(request)
         assert action == "delete_post"
 
+    def test_create_scam_report_action(self):
+        """Test scam report action detection uses normalized audit naming."""
+        request = MagicMock(spec=Request)
+        request.url = MagicMock()
+        request.url.path = "/api/scam-tracker/reports"
+        request.method = "POST"
+
+        action = _determine_action(request)
+        assert action == "create_scam_report"
+
     def test_generic_action(self):
         """Test generic action from path and method"""
         request = MagicMock(spec=Request)
@@ -148,6 +160,13 @@ class TestIsSensitiveAction:
     def test_forum_post_is_sensitive(self):
         """Test that forum posts are sensitive"""
         result = _is_sensitive_action("create_post", "/api/forum/posts", "POST")
+        assert result is True
+
+    def test_scam_report_action_is_sensitive_when_unnormalized(self):
+        """Test sensitivity checks normalize action names before matching."""
+        result = _is_sensitive_action(
+            "CREATE-SCAM-REPORT", "/api/scam-tracker/reports", "POST"
+        )
         assert result is True
 
     def test_get_request_not_sensitive(self):
@@ -193,11 +212,13 @@ class TestAuditMiddleware:
         response_mock = MagicMock(status_code=200)
         call_next = AsyncMock(return_value=response_mock)
 
-        with patch('api.middleware.audit.logger') as mock_logger:
+        with patch("api.middleware.audit.logger") as mock_logger:
             _ = await audit_middleware(request, call_next)
 
             # Should log to file
-            assert mock_logger.info.called or True  # May or may not log depending on sensitivity
+            assert (
+                mock_logger.info.called or True
+            )  # May or may not log depending on sensitivity
 
     @pytest.mark.asyncio
     async def test_logs_sensitive_to_database(self):
@@ -215,7 +236,7 @@ class TestAuditMiddleware:
         response_mock = MagicMock(status_code=200)
         call_next = AsyncMock(return_value=response_mock)
 
-        with patch('api.middleware.audit.AuditLogger') as mock_audit:
+        with patch("api.middleware.audit.AuditLogger") as mock_audit:
             mock_audit.log = MagicMock()
 
             _ = await audit_middleware(request, call_next)

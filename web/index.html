@@ -198,7 +198,7 @@
         <div class="flex-1 relative w-full h-full overflow-hidden">
 
             <!-- Global Floating Draggable Navigation -->
-            <div id="global-nav-container" class="fixed bottom-24 left-1/2 z-50" style="transform: translateX(-50%);">
+            <div id="global-nav-container" data-shell-fixed-nav class="fixed bottom-24 left-1/2 z-50" style="transform: translateX(-50%);">
                 <nav id="draggable-nav" role="navigation" aria-label="主要導航"
                     class="bg-surface/95 backdrop-blur-xl border border-white/10 rounded-full p-1.5 flex items-center gap-1 shadow-2xl shadow-black/40 select-none transition-all duration-300">
                     <!-- Collapse/Expand Toggle -->
@@ -252,8 +252,8 @@
                 </div>
 
                 <!-- Messages Area -->
-                <div id="chat-messages"
-                    class="flex-1 overflow-y-auto custom-scrollbar px-4 md:px-8 py-6 space-y-6 pb-32">
+                <div id="chat-messages" data-shell-scroll data-shell-scroll-extra="1rem"
+                    class="flex-1 overflow-y-auto custom-scrollbar px-4 md:px-8 py-6 space-y-6">
                     <!-- Welcome -->
                     <div class="bot-message opacity-0 animate-fade-in-up"
                         style="animation-delay: 0.1s; animation-fill-mode: forwards;">
@@ -317,7 +317,7 @@
                 </div>
 
                 <!-- Input Area -->
-                <div
+                <div data-shell-fixed-input
                     class="fixed bottom-0 left-0 md:left-72 right-0 z-40 bg-background/80 backdrop-blur-xl border-t border-white/5 px-4 md:px-8 py-4">
                     <div class="relative w-full max-w-4xl mx-auto">
                         <!-- Hidden Options -->
@@ -911,7 +911,8 @@
     <!-- Toast Container - 桌面右上角，移动端底部中央 -->
     <div id="toast-container" role="status" aria-live="polite" aria-atomic="true" class="fixed z-[110] flex flex-col gap-3 pointer-events-none
         bottom-28 left-4 right-4 items-center
-        md:bottom-auto md:top-24 md:left-auto md:right-4 md:items-end">
+        md:bottom-auto md:top-24 md:left-auto md:right-4 md:items-end"
+        style="bottom: var(--shell-toast-bottom, calc(7rem + env(safe-area-inset-bottom, 0px)));">
         <!-- Toasts will be injected here -->
     </div>
 
@@ -1242,14 +1243,15 @@
     </div>
 
     <!-- Scripts -->
-    <script defer src="/static/js/app.js?v=54" onerror="alert('app.js 載入失敗')"></script>
+    <script defer src="/static/js/ui-shell.js?v=1"></script>
+    <script defer src="/static/js/app.js?v=55" onerror="alert('app.js 載入失敗')"></script>
     <script defer src="/static/js/apiKeyManager.js?v=48" onerror="alert('apiKeyManager.js 載入失敗')"></script>
     <script defer src="/static/js/auth.js?v=60" onerror="alert('auth.js 載入失敗')"></script>
     <script defer src="/static/js/components.js?v=79"></script>
     <script defer src="/static/js/notification-service.js?v=4"></script>
     <script defer src="/static/js/components/NotificationBell.js?v=2"></script>
     <script defer src="/static/js/components/NotificationPanel.js?v=4"></script>
-    <script defer src="/static/js/llmSettings.js?v=51"></script>
+    <script defer src="/static/js/llmSettings.js?v=52"></script>
 <script defer src="/static/js/testMode.js?v=3"></script>
     <script defer src="/static/js/toolSettings.js?v=7"></script>
     <script defer src="/static/js/filter.js?v=49"></script>
@@ -1277,15 +1279,16 @@
     <script defer src="/static/js/forum-app.js?v=1"></script>
     <script defer src="/static/js/wallet.js?v=47"></script>
     <script defer src="/static/scam-tracker/js/scam-tracker.js?v=48"></script>
-    <script defer src="/static/js/safetyTab.js?v=52"></script>
+    <script defer src="/static/js/safetyTab.js?v=53"></script>
     <script defer src="/static/js/admin.js?v=2"></script>
     <script defer src="/static/js/admin-stats.js?v=1"></script>
     <!-- SPA Core & Modals (Refactored from inline scripts) -->
     <script defer src="/static/js/spa.js?v=6"></script>
-    <script defer src="/static/js/modals.js?v=2"></script>
+    <script defer src="/static/js/modals.js?v=3"></script>
+    <script defer src="/static/js/legal.js?v=1"></script>
     <!-- Legal Page Modal -->
     <div id="legal-modal" class="fixed inset-0 z-[9999] bg-background hidden flex-col">
-        <nav class="sticky top-0 z-10 bg-surface/95 backdrop-blur-xl border-b border-white/5">
+        <nav data-shell-fixed-nav class="sticky top-0 z-10 bg-surface/95 backdrop-blur-xl border-b border-white/5">
             <div class="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
                 <div class="flex items-center gap-4">
                     <button onclick="closeLegalModal()"
@@ -1297,8 +1300,8 @@
                 </div>
             </div>
         </nav>
-        <div id="legal-content" class="flex-1 overflow-y-auto">
-            <div class="max-w-4xl mx-auto px-6 py-12 pb-32"></div>
+        <div id="legal-content" data-shell-scroll data-shell-scroll-extra="3rem" class="flex-1 overflow-y-auto">
+            <div class="max-w-4xl mx-auto px-6 py-12"></div>
         </div>
     </div>
 

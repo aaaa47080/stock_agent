@@ -77,6 +77,9 @@ const MessagesPage = {
         // 響應式處理
         window.addEventListener('resize', () => {
             this.isMobile = window.innerWidth < 768;
+            if (window.UIShell && typeof window.UIShell.syncLayout === 'function') {
+                window.UIShell.syncLayout();
+            }
         });
 
         if (window.lucide) lucide.createIcons();
@@ -500,7 +503,7 @@ const MessagesPage = {
         } catch (e) {
             console.error('發送訊息失敗:', e);
             if (typeof showToast === 'function') {
-                showToast(e.message, 'error');
+                window.showToast(e.message, 'error');
             } else {
                 alert(e.message || '發送失敗');
             }
@@ -582,7 +585,7 @@ const MessagesPage = {
         } catch (e) {
             console.error('收回訊息失敗:', e);
             if (typeof showToast === 'function') {
-                showToast(e.message, 'error');
+                window.showToast(e.message, 'error');
             } else {
                 alert(e.message || '收回失敗');
             }
@@ -694,6 +697,10 @@ const MessagesPage = {
         if (chatHeader) chatHeader.classList.remove('hidden');
         if (inputContainer) inputContainer.classList.remove('hidden');
 
+        if (window.UIShell && typeof window.UIShell.syncLayout === 'function') {
+            window.UIShell.syncLayout();
+        }
+
         // 延遲確保 DOM 更新完成後滾動到輸入框
         setTimeout(() => {
             this.scrollToInputBox();
@@ -711,6 +718,10 @@ const MessagesPage = {
         if (chatSection) {
             chatSection.classList.add('hidden');
             chatSection.classList.remove('flex');
+        }
+
+        if (window.UIShell && typeof window.UIShell.syncLayout === 'function') {
+            window.UIShell.syncLayout();
         }
 
         this.currentConversationId = null;
@@ -799,7 +810,7 @@ const MessagesPage = {
                         ? message.content.substring(0, 30) + '...'
                         : message.content;
                 if (typeof showToast === 'function') {
-                    showToast(`${senderName}: ${preview}`, 'info');
+                    window.showToast(`${senderName}: ${preview}`, 'info');
                 }
             }
         });
@@ -898,50 +909,12 @@ const MessagesPage = {
 
         // Force layout update if needed
         window.dispatchEvent(new Event('resize'));
+
+        if (window.UIShell && typeof window.UIShell.syncLayout === 'function') {
+            window.UIShell.syncLayout();
+        }
     },
 };
-
-// Toast 函數
-function showToast(message, type = 'info', duration = 3000) {
-    const container = document.getElementById('toast-container');
-    if (!container) return;
-
-    const toast = document.createElement('div');
-
-    const colors = {
-        success: 'bg-success/20 border-success/30 text-success',
-        error: 'bg-danger/20 border-danger/30 text-danger',
-        warning: 'bg-yellow-500/20 border-yellow-500/30 text-yellow-400',
-        info: 'bg-primary/20 border-primary/30 text-primary',
-    };
-
-    const icons = {
-        success: 'check-circle',
-        error: 'x-circle',
-        warning: 'alert-triangle',
-        info: 'info',
-    };
-
-    toast.className = `pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-2xl border backdrop-blur-xl shadow-xl animate-fade-in-up ${colors[type] || colors.info}`;
-    toast.innerHTML = `
-        <i data-lucide="${icons[type] || icons.info}" class="w-5 h-5 flex-shrink-0 mt-0.5"></i>
-        <p class="text-sm font-medium flex-1">${message}</p>
-        <button onclick="this.parentElement.remove()" class="text-current opacity-60 hover:opacity-100 transition">
-            <i data-lucide="x" class="w-4 h-4"></i>
-        </button>
-    `;
-
-    container.appendChild(toast);
-    if (window.lucide) lucide.createIcons();
-
-    if (duration > 0) {
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateY(-10px)';
-            setTimeout(() => toast.remove(), 300);
-        }, duration);
-    }
-}
 
 // 智能返回邏輯
 function setupBackButton() {
@@ -1002,4 +975,3 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Export to window
 window.MessagesPage = MessagesPage;
-window.showToast = showToast;

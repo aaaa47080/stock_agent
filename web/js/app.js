@@ -44,54 +44,6 @@ window.escapeHtml = escapeHtml;
 // ========================================
 
 /**
- * 顯示 Toast 通知
- * @param {string} message - 訊息內容
- * @param {string} type - 類型: 'success', 'error', 'warning', 'info'
- * @param {number} duration - 顯示時間(ms)，默認 3000
- */
-function showToast(message, type = 'info', duration = 3000) {
-    const container = document.getElementById('toast-container');
-    if (!container) return;
-
-    const icons = {
-        success: 'check-circle',
-        error: 'x-circle',
-        warning: 'alert-triangle',
-        info: 'info',
-    };
-
-    const colors = {
-        success: 'bg-success/20 border-success/30 text-success',
-        error: 'bg-danger/20 border-danger/30 text-danger',
-        warning: 'bg-primary/20 border-primary/30 text-primary',
-        info: 'bg-accent/20 border-accent/30 text-accent',
-    };
-
-    const toast = document.createElement('div');
-    toast.className = `pointer-events-auto flex items-start gap-3 px-4 py-3 rounded-2xl border backdrop-blur-xl shadow-xl ${colors[type]} animate-fade-in-up max-w-sm`;
-    toast.innerHTML = `
-        <i data-lucide="${icons[type]}" class="w-5 h-5 flex-shrink-0 mt-0.5"></i>
-        <p class="text-sm leading-relaxed whitespace-pre-line">${message}</p>
-        <button onclick="this.parentElement.remove()" class="ml-auto flex-shrink-0 opacity-60 hover:opacity-100 transition">
-            <i data-lucide="x" class="w-4 h-4"></i>
-        </button>
-    `;
-
-    container.appendChild(toast);
-    lucide.createIcons();
-
-    // 自動移除
-    if (duration > 0) {
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateX(100%)';
-            toast.style.transition = 'all 0.3s ease';
-            setTimeout(() => toast.remove(), 300);
-        }, duration);
-    }
-}
-
-/**
  * 處理返回主程式的過渡效果
  * @param {Event} e - 事件對象
  * @param {string} targetTab - 可選的目標 tab（如 'friends', 'chat' 等）
@@ -325,7 +277,6 @@ function showAlert(options = {}) {
 }
 
 // 全局導出
-window.showToast = showToast;
 window.showConfirm = showConfirm;
 window.showAlert = showAlert;
 
@@ -949,13 +900,13 @@ async function saveSettings() {
                 await checkApiKeyStatus();
             }
             if (typeof showToast === 'function') {
-                showToast('設定已儲存', 'success');
+                window.showToast('設定已儲存', 'success');
             }
         } else {
-            showToast('保存設定失敗: ' + (result.detail || '未知錯誤'), 'error');
+            window.showToast('保存設定失敗: ' + (result.detail || '未知錯誤'), 'error');
         }
     } catch (e) {
-        showToast('保存設定時發生錯誤: ' + e, 'error');
+        window.showToast('保存設定時發生錯誤: ' + e, 'error');
     }
 
     btn.disabled = false;

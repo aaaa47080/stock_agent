@@ -226,9 +226,12 @@
     </div>
 
     <!-- 訊息提示 -->
-    <div id="toast" class="toast"></div>
+    <div id="toast-container" role="status" aria-live="polite" aria-atomic="true"
+        class="fixed z-[110] flex flex-col gap-3 pointer-events-none bottom-4 left-4 right-4 items-center md:bottom-auto md:top-6 md:left-auto md:right-6 md:items-end"
+        style="bottom: var(--shell-toast-bottom, calc(1rem + env(safe-area-inset-bottom, 0px)));"></div>
 
     <script src="/static/config.js"></script>
-    <script src="/static/governance/governance.js?v=2"></script>
+    <script src="/static/js/ui-shell.js?v=1"></script>
+    <script src="/static/governance/governance.js?v=3"></script>
 </body>
 </html>

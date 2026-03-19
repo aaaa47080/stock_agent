@@ -2,6 +2,7 @@
 資料庫連接管理和初始化 (PostgreSQL 版本)
 使用線程安全連接池優化記憶體消耗
 """
+
 import psycopg2
 from psycopg2 import pool
 import os
@@ -10,7 +11,15 @@ import time
 import logging
 from urllib.parse import quote
 
-from .schema import create_all_tables
+from .schema import (
+    create_all_tables,
+    format_reconcile_summary,
+    reconcile_existing_tables,
+)
+
+
+logger = logging.getLogger(__name__)
+
 
 def _load_env_file_if_needed():
     """在本地開發環境中按需讀取 .env，但不覆蓋平台已注入的變數。"""
@@ -19,7 +28,9 @@ def _load_env_file_if_needed():
     load_dotenv(override=False)
 
 
-def _build_database_url_from_components(env: dict | os._Environ[str] | None = None) -> str | None:
+def _build_database_url_from_components(
+    env: dict | os._Environ[str] | None = None,
+) -> str | None:
     """
     從分離式 PostgreSQL 環境變數組裝連接字串。
 
@@ -86,24 +97,25 @@ def get_database_url() -> str | None:
     globals()["DATABASE_URL"] = resolved_from_env
     return resolved_from_env
 
+
 # 允許在測試環境中延遲初始化（不立即拋出錯誤）
 # 實際連接時才會驗證 DATABASE_URL 是否有效
 
 # 連接池配置 - 針對 Zeabur 優化
-MIN_POOL_SIZE = 2   # 最小連接數
+MIN_POOL_SIZE = 2  # 最小連接數
 MAX_POOL_SIZE = 10  # 最大連接數（平衡並發需求和資源限制）
 
 # 連接獲取配置
-MAX_RETRIES = 5          # 重試次數
-RETRY_DELAY_BASE = 0.3   # 重試延遲
+MAX_RETRIES = 5  # 重試次數
+RETRY_DELAY_BASE = 0.3  # 重試延遲
 
 # 連接參數 - 防止連接超時和斷開
 CONNECTION_OPTIONS = {
-    'connect_timeout': 10,      # 連接超時 10 秒
-    'keepalives': 1,            # 啟用 TCP keepalive
-    'keepalives_idle': 30,      # 空閒 30 秒後發送 keepalive
-    'keepalives_interval': 10,  # keepalive 間隔 10 秒
-    'keepalives_count': 3,      # 3 次失敗後斷開
+    "connect_timeout": 10,  # 連接超時 10 秒
+    "keepalives": 1,  # 啟用 TCP keepalive
+    "keepalives_idle": 30,  # 空閒 30 秒後發送 keepalive
+    "keepalives_interval": 10,  # keepalive 間隔 10 秒
+    "keepalives_count": 3,  # 3 次失敗後斷開
 }
 
 # 全局連接池
@@ -246,16 +258,22 @@ def init_connection_pool():
                             MIN_POOL_SIZE,
                             MAX_POOL_SIZE,
                             database_url,
-                            **CONNECTION_OPTIONS  # 添加連接超時和 keepalive 參數
+                            **CONNECTION_OPTIONS,  # 添加連接超時和 keepalive 參數
                         )
-                        print(f"✅ 線程安全數據庫連接池已初始化 (min={MIN_POOL_SIZE}, max={MAX_POOL_SIZE})")
+                        print(
+                            f"✅ 線程安全數據庫連接池已初始化 (min={MIN_POOL_SIZE}, max={MAX_POOL_SIZE})"
+                        )
                         break
                     except psycopg2.OperationalError as e:
                         if attempt < POOL_INIT_MAX_RETRIES - 1:
-                            print(f"⚠️ 資料庫連接失敗（{e}），{POOL_INIT_RETRY_DELAY} 秒後重試... (嘗試 {attempt + 1}/{POOL_INIT_MAX_RETRIES})")
+                            print(
+                                f"⚠️ 資料庫連接失敗（{e}），{POOL_INIT_RETRY_DELAY} 秒後重試... (嘗試 {attempt + 1}/{POOL_INIT_MAX_RETRIES})"
+                            )
                             time.sleep(POOL_INIT_RETRY_DELAY)
                         else:
-                            print(f"❌ 連接池初始化失敗（已重試 {POOL_INIT_MAX_RETRIES} 次）: {e}")
+                            print(
+                                f"❌ 連接池初始化失敗（已重試 {POOL_INIT_MAX_RETRIES} 次）: {e}"
+                            )
                             raise
                     except Exception as e:
                         print(f"❌ 連接池初始化失敗: {e}")
@@ -318,8 +336,8 @@ def get_connection():
             conn_id = id(raw_conn)
             now = time.time()
             needs_health_check = (
-                conn_id not in _conn_last_verified or
-                (now - _conn_last_verified[conn_id]) > _HEALTH_CHECK_INTERVAL
+                conn_id not in _conn_last_verified
+                or (now - _conn_last_verified[conn_id]) > _HEALTH_CHECK_INTERVAL
             )
             try:
                 if needs_health_check:
@@ -330,7 +348,9 @@ def get_connection():
                     _conn_last_verified[conn_id] = now
             except Exception as health_error:
                 # 連接已斷開（SSL 錯誤等），關閉並丟棄
-                print(f"⚠️ 偵測到壞掉的連接（{type(health_error).__name__}），重新獲取...")
+                print(
+                    f"⚠️ 偵測到壞掉的連接（{type(health_error).__name__}），重新獲取..."
+                )
                 try:
                     _connection_pool.putconn(raw_conn, close=True)
                 except Exception:
@@ -340,9 +360,13 @@ def get_connection():
 
                 # 如果連續遇到多個壞連接，可能整個池都壞了，創建新連接繞過池
                 if bad_conn_count >= 3:
-                    print(f"⚠️ 連接池可能已失效（{bad_conn_count} 個壞連接），嘗試創建新連接...")
+                    print(
+                        f"⚠️ 連接池可能已失效（{bad_conn_count} 個壞連接），嘗試創建新連接..."
+                    )
                     try:
-                        fresh_conn = psycopg2.connect(database_url, **CONNECTION_OPTIONS)
+                        fresh_conn = psycopg2.connect(
+                            database_url, **CONNECTION_OPTIONS
+                        )
                         # 驗證新連接
                         test_cur = fresh_conn.cursor()
                         test_cur.execute("SELECT 1")
@@ -369,15 +393,19 @@ def get_connection():
                     pass
             if attempt < MAX_RETRIES - 1:
                 # 使用指數退避
-                delay = RETRY_DELAY_BASE * (2 ** attempt)
-                print(f"⚠️ 連接池暫時耗盡，等待 {delay:.1f}s 後重試 (嘗試 {attempt + 1}/{MAX_RETRIES})...")
+                delay = RETRY_DELAY_BASE * (2**attempt)
+                print(
+                    f"⚠️ 連接池暫時耗盡，等待 {delay:.1f}s 後重試 (嘗試 {attempt + 1}/{MAX_RETRIES})..."
+                )
                 time.sleep(delay)
 
                 # 連接池耗盡時，嘗試直接創建連接
                 if attempt >= 2:
                     print("⚠️ 連接池持續耗盡，嘗試創建新連接...")
                     try:
-                        fresh_conn = psycopg2.connect(database_url, **CONNECTION_OPTIONS)
+                        fresh_conn = psycopg2.connect(
+                            database_url, **CONNECTION_OPTIONS
+                        )
                         print("✅ 成功創建新連接繞過連接池")
                         return _StandaloneConnection(fresh_conn)
                     except Exception as new_conn_error:
@@ -458,7 +486,9 @@ def init_db():
             break
         except psycopg2.OperationalError as e:
             if attempt < INIT_MAX_RETRIES - 1:
-                print(f"⚠️ 資料庫連接失敗（{e}），{INIT_RETRY_DELAY} 秒後重試... (嘗試 {attempt + 1}/{INIT_MAX_RETRIES})")
+                print(
+                    f"⚠️ 資料庫連接失敗（{e}），{INIT_RETRY_DELAY} 秒後重試... (嘗試 {attempt + 1}/{INIT_MAX_RETRIES})"
+                )
                 time.sleep(INIT_RETRY_DELAY)
             else:
                 print(f"❌ 資料庫連接失敗（已重試 {INIT_MAX_RETRIES} 次）: {e}")
@@ -468,6 +498,10 @@ def init_db():
 
     # 使用 schema 模塊創建所有表
     create_all_tables(c)
+    reconcile_summary = reconcile_existing_tables(c)
+    logger.info(
+        "Schema reconcile completed: %s", format_reconcile_summary(reconcile_summary)
+    )
 
     conn.commit()
     conn.close()

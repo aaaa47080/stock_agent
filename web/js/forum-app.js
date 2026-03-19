@@ -650,8 +650,7 @@ const ForumApp = {
 
                 let paymentComplete = false;
                 let paymentError = null;
-
-                showToast('正在處理支付...', 'info', 0);
+                const loadingToast = showToast('正在處理支付...', 'info', 0);
 
                 await Pi.createPayment(
                     {
@@ -698,8 +697,11 @@ const ForumApp = {
                     await new Promise((r) => setTimeout(r, 300));
                 }
 
-                const toastContainer = document.getElementById('toast-container');
-                if (toastContainer) toastContainer.innerHTML = '';
+                if (window.UIShell && typeof window.UIShell.dismissToast === 'function') {
+                    window.UIShell.dismissToast(loadingToast);
+                } else if (loadingToast && typeof loadingToast.remove === 'function') {
+                    loadingToast.remove();
+                }
 
                 if (paymentError) {
                     showToast(paymentError === 'CANCELLED' ? '支付已取消' : '支付失敗', 'warning');
@@ -1153,8 +1155,9 @@ const ForumApp = {
                 const result = await ForumAPI.createPost(postData);
                 console.log('[Forum] Post created successfully:', result);
 
-                const container = document.getElementById('toast-container');
-                if (container) container.innerHTML = '';
+                if (window.UIShell && typeof window.UIShell.clearToasts === 'function') {
+                    window.UIShell.clearToasts();
+                }
 
                 // Success Modal
                 const successModal = document.createElement('div');
