@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
 
-from langchain_core.messages import SystemMessage, HumanMessage
+import pytest
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from core.agents.bootstrap import (
     LanguageAwareLLM,
@@ -21,9 +22,18 @@ def test_bootstrap_isolates_managers_by_session():
     user_id = "bootstrap-test-user"
     invalidate_manager_cache(user_id)
 
-    manager_a = bootstrap(make_mock_llm("a"), web_mode=False, user_id=user_id, session_id="session-a")
-    manager_a_reused = bootstrap(make_mock_llm("a2"), web_mode=False, user_id=user_id, session_id="session-a")
-    manager_b = bootstrap(make_mock_llm("b"), web_mode=False, user_id=user_id, session_id="session-b")
+    manager_a = bootstrap(
+        make_mock_llm("a"), web_mode=False,
+        user_id=user_id, session_id="session-a",
+    )
+    manager_a_reused = bootstrap(
+        make_mock_llm("a2"), web_mode=False,
+        user_id=user_id, session_id="session-a",
+    )
+    manager_b = bootstrap(
+        make_mock_llm("b"), web_mode=False,
+        user_id=user_id, session_id="session-b",
+    )
 
     assert manager_a_reused is manager_a
     assert manager_a is not manager_b
@@ -33,6 +43,7 @@ def test_bootstrap_isolates_managers_by_session():
     invalidate_manager_cache(user_id)
 
 
+@pytest.mark.asyncio
 async def test_language_aware_llm_ainvoke_injects_system_message():
     class DummyLLM:
         def __init__(self):

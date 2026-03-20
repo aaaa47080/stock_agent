@@ -2,23 +2,24 @@
 Tests for database connection in core/database/connection.py
 """
 
-import pytest
-from unittest.mock import patch, MagicMock
 import threading
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from core.database.connection import (
-    PooledConnection,
-    _StandaloneConnection,
-    _build_database_url_from_components,
-    get_database_url,
-    init_db,
-    init_connection_pool,
-    get_connection,
-    close_all_connections,
-    reset_connection_pool,
-    MIN_POOL_SIZE,
     MAX_POOL_SIZE,
     MAX_RETRIES,
+    MIN_POOL_SIZE,
+    PooledConnection,
+    _build_database_url_from_components,
+    _StandaloneConnection,
+    close_all_connections,
+    get_connection,
+    get_database_url,
+    init_connection_pool,
+    init_db,
+    reset_connection_pool,
 )
 
 
@@ -215,7 +216,7 @@ class TestInitConnectionPool:
                             with pytest.raises(OperationalError) as exc_info:
                                 init_connection_pool()
 
-                    assert "Database connection" in str(exc_info.value)
+                    assert "Connection failed" in str(exc_info.value)
 
 
 class TestGetConnection:
