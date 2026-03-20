@@ -163,9 +163,12 @@ function showConfirm(options = {}) {
 
         const config = iconConfig[type] || iconConfig.warning;
 
+        const ALLOWED_ICON_NAMES = new Set(['alert-triangle', 'alert-circle', 'info', 'check-circle', 'x-circle']);
+        const safeIcon = ALLOWED_ICON_NAMES.has(config.icon) ? config.icon : 'info';
+
         if (iconEl) {
             iconEl.className = `w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 ${config.bg}`;
-            iconEl.innerHTML = `<i data-lucide="${config.icon}" class="w-8 h-8 ${config.color}"></i>`;
+            iconEl.innerHTML = `<i data-lucide="${safeIcon}" class="w-8 h-8 ${config.color}"></i>`;
         }
 
         if (titleEl) titleEl.textContent = title;
@@ -244,16 +247,20 @@ function showAlert(options = {}) {
 
         const config = iconConfig[type] || iconConfig.info;
 
+        const ALLOWED_ICON_NAMES = new Set(['alert-triangle', 'alert-circle', 'info', 'check-circle', 'x-circle']);
+        const safeIcon = ALLOWED_ICON_NAMES.has(config.icon) ? config.icon : 'info';
+
         iconEl.className = `w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 ${config.bg}`;
-        iconEl.innerHTML = `<i data-lucide="${config.icon}" class="w-8 h-8 ${config.color}"></i>`;
+        iconEl.innerHTML = `<i data-lucide="${safeIcon}" class="w-8 h-8 ${config.color}"></i>`;
 
         titleEl.textContent = title;
         messageEl.textContent = message;
 
         // 只顯示一個按鈕
+        const safeConfirmText = String(confirmText || '確定');
         buttonsEl.innerHTML = `
             <button id="confirm-modal-ok" class="flex-1 py-3 bg-primary hover:brightness-110 text-background font-bold rounded-2xl transition shadow-lg">
-                ${confirmText}
+                ${escapeHtml(safeConfirmText)}
             </button>
         `;
 

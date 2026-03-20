@@ -47,23 +47,38 @@ async def get_user_sessions(
     return {"sessions": sessions}
 
 
-@router.delete(
-    "/api/chat/sessions/{session_id}", dependencies=[Depends(get_current_user)]
-)
-async def delete_user_session(session_id: str):
+@router.delete("/api/chat/sessions/{session_id}")
+async def delete_user_session(
+    session_id: str, current_user: dict = Depends(get_current_user)
+):
     """刪除特定對話"""
+    user_id = current_user["user_id"]
+    sessions = await run_sync(
+        lambda: get_sessions(user_id=user_id, limit=10000, offset=0)
+    )
+    if not any(s["id"] == session_id for s in sessions):
+        raise HTTPException(
+            status_code=403, detail="Forbidden: session does not belong to you"
+        )
     await run_sync(delete_session, session_id)
     return {"status": "success", "message": f"Session {session_id} deleted"}
 
 
-@router.put(
-    "/api/chat/sessions/{session_id}/pin", dependencies=[Depends(get_current_user)]
-)
+@router.put("/api/chat/sessions/{session_id}/pin")
 async def pin_user_session(
     session_id: str,
     is_pinned: bool = Query(..., description="Set to true to pin, false to unpin"),
+    current_user: dict = Depends(get_current_user),
 ):
     """切換對話置頂狀態"""
+    user_id = current_user["user_id"]
+    sessions = await run_sync(
+        lambda: get_sessions(user_id=user_id, limit=10000, offset=0)
+    )
+    if not any(s["id"] == session_id for s in sessions):
+        raise HTTPException(
+            status_code=403, detail="Forbidden: session does not belong to you"
+        )
     await run_sync(lambda: toggle_session_pin(session_id, is_pinned))
     return {"status": "success", "session_id": session_id, "is_pinned": is_pinned}
 

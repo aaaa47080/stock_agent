@@ -617,16 +617,81 @@ class FriendsRepository:
         viewer_user_id: Optional[str] = None,
         session: AsyncSession | None = None,
     ) -> Optional[dict]:
-        async with using_session(session) as s:
-            result = await s.execute(
+        friendship_subq = None
+        if viewer_user_id and viewer_user_id != target_user_id:
+            friendship_subq = (
                 select(
-                    User.user_id,
-                    User.username,
-                    User.pi_username,
-                    User.membership_tier,
-                    User.created_at,
-                ).where(User.user_id == target_user_id)
+                    Friendship.id,
+                    Friendship.user_id,
+                    Friendship.friend_id,
+                    Friendship.status,
+                    Friendship.created_at,
+                    Friendship.updated_at,
+                )
+                .where(
+                    or_(
+                        (Friendship.user_id == viewer_user_id)
+                        & (Friendship.friend_id == target_user_id),
+                        (Friendship.user_id == target_user_id)
+                        & (Friendship.friend_id == viewer_user_id),
+                    )
+                )
+                .limit(1)
+                .subquery()
             )
+
+        post_count_sq = (
+            select(func.count())
+            .select_from(Post)
+            .where(Post.user_id == target_user_id, Post.is_hidden == 0)
+            .correlate(None)
+            .scalar_subquery()
+        )
+
+        total_pushes_sq = (
+            select(func.coalesce(func.sum(Post.push_count), 0))
+            .where(Post.user_id == target_user_id)
+            .correlate(None)
+            .scalar_subquery()
+        )
+
+        friends_count_sq = (
+            select(func.count())
+            .select_from(Friendship)
+            .where(
+                or_(
+                    Friendship.user_id == target_user_id,
+                    Friendship.friend_id == target_user_id,
+                ),
+                Friendship.status == "accepted",
+            )
+            .correlate(None)
+            .scalar_subquery()
+        )
+
+        stmt = select(
+            User.user_id,
+            User.username,
+            User.pi_username,
+            User.membership_tier,
+            User.created_at,
+            post_count_sq.label("post_count"),
+            total_pushes_sq.label("total_pushes"),
+            friends_count_sq.label("friends_count"),
+        ).where(User.user_id == target_user_id)
+
+        if friendship_subq is not None:
+            stmt = stmt.add_columns(
+                friendship_subq.c.id.label("f_id"),
+                friendship_subq.c.user_id.label("f_user_id"),
+                friendship_subq.c.friend_id.label("f_friend_id"),
+                friendship_subq.c.status.label("f_status"),
+                friendship_subq.c.created_at.label("f_created_at"),
+                friendship_subq.c.updated_at.label("f_updated_at"),
+            )
+
+        async with using_session(session) as s:
+            result = await s.execute(stmt)
             row = result.fetchone()
             if row is None:
                 return None
@@ -637,41 +702,20 @@ class FriendsRepository:
                 "pi_username": row[2],
                 "membership_tier": row[3] or "free",
                 "member_since": _fmt(row[4]),
+                "post_count": row[5] or 0,
+                "total_pushes": row[6] or 0,
+                "friends_count": row[7] or 0,
                 "is_friend": False,
                 "friend_status": None,
                 "is_requester": False,
             }
 
-            if viewer_user_id and viewer_user_id != target_user_id:
-                friendship = await self.get_friendship_status(
-                    viewer_user_id, target_user_id, s
-                )
-                profile["friend_status"] = (
-                    friendship.get("status") if friendship else None
-                )
-                profile["is_friend"] = (
-                    friendship.get("status") == "accepted" if friendship else False
-                )
-                profile["is_requester"] = (
-                    friendship.get("is_requester") if friendship else False
-                )
-
-            post_count_result = await s.execute(
-                select(func.count())
-                .select_from(Post)
-                .where(Post.user_id == target_user_id, Post.is_hidden == 0)
-            )
-            profile["post_count"] = post_count_result.scalar_one() or 0
-
-            push_count_result = await s.execute(
-                select(func.coalesce(func.sum(Post.push_count), 0)).where(
-                    Post.user_id == target_user_id
-                )
-            )
-            profile["total_pushes"] = push_count_result.scalar_one() or 0
-
-            friends_count = await self.get_friends_count(target_user_id, s)
-            profile["friends_count"] = friends_count
+            if friendship_subq is not None:
+                f_status = row[11]
+                f_user_id = row[9]
+                profile["friend_status"] = f_status
+                profile["is_friend"] = f_status == "accepted" if f_status else False
+                profile["is_requester"] = f_user_id == viewer_user_id
 
             return profile
 

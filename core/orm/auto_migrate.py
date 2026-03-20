@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -111,7 +112,12 @@ async def _create_table_safe(conn, table):
     ddl = CreateTable(table.name, table.metadata, *(table.indexes or []))
     raw_ddl = ddl.compile(dialect=conn.dialect)
     raw_str = raw_ddl.string if hasattr(raw_ddl, "string") else str(raw_ddl)
-    raw_str = raw_str.replace("CREATE TABLE ", "CREATE TABLE IF NOT EXISTS ", 1)
+    raw_str = re.sub(
+        r"(?i)\bCREATE\s+TABLE\b",
+        "CREATE TABLE IF NOT EXISTS",
+        raw_str,
+        count=1,
+    )
     await conn.execute(text(raw_str))
 
 

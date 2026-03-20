@@ -13,11 +13,13 @@ from typing import Optional
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     ForeignKey,
     Index,
     Integer,
     Numeric,
     Text,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP
@@ -43,6 +45,7 @@ class User(Base):
     )
     role: Mapped[str] = mapped_column(Text, default="user")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now()
     )
@@ -148,6 +151,9 @@ class ForumComment(Base):
     user: Mapped["User"] = relationship()
 
     __table_args__ = (
+        CheckConstraint(
+            "type IN ('comment', 'push', 'boo')", name="ck_forum_comment_type"
+        ),
         Index("idx_forum_comments_post_id", "post_id"),
         Index("idx_forum_comments_user_id", "user_id"),
     )
@@ -205,6 +211,11 @@ class Friendship(Base):
     friend: Mapped["User"] = relationship(foreign_keys=[friend_id])
 
     __table_args__ = (
+        UniqueConstraint("user_id", "friend_id", name="uq_friendship_pair"),
+        CheckConstraint(
+            "status IN ('pending', 'accepted', 'rejected', 'blocked')",
+            name="ck_friendship_status",
+        ),
         Index("idx_friendships_user_id", "user_id"),
         Index("idx_friendships_friend_id", "friend_id"),
         Index("idx_friendships_status", "status"),
@@ -256,6 +267,7 @@ class DmConversation(Base):
     )
 
     __table_args__ = (
+        UniqueConstraint("user1_id", "user2_id", name="uq_dm_conversation_pair"),
         Index("idx_dm_conversations_user1", "user1_id"),
         Index("idx_dm_conversations_user2", "user2_id"),
     )
@@ -318,7 +330,9 @@ class PriceAlert(Base):
     target: Mapped[float] = mapped_column(Numeric(18, 4), nullable=False)
     repeat: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     triggered: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    created_at: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
 
     user: Mapped["User"] = relationship()
 

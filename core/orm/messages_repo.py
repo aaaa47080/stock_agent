@@ -452,7 +452,6 @@ class MessagesRepository:
                     "message": _msg_row_to_dict(msg_row),
                 }
             except Exception as e:
-                await s.rollback()
                 logger.error("send_message error: %s", e, exc_info=True)
                 return {"success": False, "error": str(e)}
 

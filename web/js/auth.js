@@ -4,6 +4,7 @@
 
 const DebugLog = {
     send(level, message, data = null) {
+        if (window.APP_CONFIG && window.APP_CONFIG.DEBUG_MODE !== true) { return; }
         console.log(`[${level.toUpperCase()}] ${message}`, data);
         // 在开发环境中记录日志，在生产环境中可选择禁用
         // 为了减少网络请求，仅在特定条件下发送到服务器
@@ -275,8 +276,8 @@ const AuthManager = {
             });
 
             if (!res.ok) {
-                const result = await res.json();
-                throw new Error(result.detail || 'Sync failed');
+                const errBody = await res.json();
+                throw new Error(errBody.detail || 'Sync failed');
             }
 
             const syncResult = await res.json();
@@ -324,8 +325,8 @@ const AuthManager = {
             });
 
             if (!res.ok) {
-                const result = await res.json();
-                throw new Error(result.detail || 'Refresh failed');
+                const errBody = await res.json();
+                throw new Error(errBody.detail || 'Refresh failed');
             }
 
             const result = await res.json();

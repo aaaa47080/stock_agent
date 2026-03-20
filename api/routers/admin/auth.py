@@ -3,6 +3,7 @@ Admin Authentication Module
 Provides authentication utilities for admin endpoints
 """
 
+import hmac
 import os
 from typing import Optional
 
@@ -21,6 +22,6 @@ def verify_admin_key(x_admin_key: Optional[str] = Header(None)):
             status_code=403, detail="Forbidden: Admin access not configured"
         )
 
-    if not x_admin_key or x_admin_key != key:
+    if not x_admin_key or not hmac.compare_digest(x_admin_key, key):
         raise HTTPException(status_code=403, detail="Invalid or missing admin API key")
     return True

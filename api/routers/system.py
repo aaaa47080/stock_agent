@@ -243,7 +243,10 @@ async def get_config():
 
     # 如果是測試模式，添加測試用戶資料
     if core_config.TEST_MODE:
-        response["test_user"] = core_config.TEST_USER
+        response["test_user"] = {
+            "user_id": core_config.TEST_USER.get("uid"),
+            "username": core_config.TEST_USER.get("username"),
+        }
 
     return response
 

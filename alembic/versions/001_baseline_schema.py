@@ -16,7 +16,7 @@ from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP
 
 
 revision: str = "b001_baseline"
-down_revision: Union[str, Sequence[str], None] = None
+down_revision: Union[str, Sequence[str], None] = "92a35ecee1cf"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
