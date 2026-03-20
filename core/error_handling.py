@@ -5,6 +5,7 @@ Provides centralized error logging and handling
 to replace silent 'except pass' patterns throughout the codebase.
 """
 
+import asyncio
 import logging
 from functools import wraps
 from typing import Any, Callable, Optional, Type
@@ -33,20 +34,32 @@ def log_and_suppress(
     """
 
     def decorator(func: Callable) -> Callable:
+        if asyncio.iscoroutinefunction(func):
+
+            @wraps(func)
+            async def async_wrapper(*args, **kwargs):
+                try:
+                    return await func(*args, **kwargs)
+                except Exception as e:
+                    if raise_on and isinstance(e, raise_on):
+                        raise
+                    log_func = getattr(logger, level, logger.warning)
+                    log_func(
+                        f"{error_message}: {type(e).__name__}: {e}", exc_info=False
+                    )
+                    return None
+
+            return async_wrapper
+
         @wraps(func)
         def wrapper(*args, **kwargs):
             try:
                 return func(*args, **kwargs)
             except Exception as e:
-                # Check if this exception type should still be raised
                 if raise_on and isinstance(e, raise_on):
                     raise
-
-                # Log the exception
                 log_func = getattr(logger, level, logger.warning)
                 log_func(f"{error_message}: {type(e).__name__}: {e}", exc_info=False)
-
-                # Return None or appropriate default
                 return None
 
         return wrapper
@@ -75,6 +88,22 @@ def safe_execute(
     """
 
     def decorator(func: Callable) -> Callable:
+        if asyncio.iscoroutinefunction(func):
+
+            @wraps(func)
+            async def async_wrapper(*args, **kwargs):
+                try:
+                    return await func(*args, **kwargs)
+                except Exception as e:
+                    if error_message:
+                        log_func = getattr(logger, log_level, logger.warning)
+                        log_func(
+                            f"{error_message}: {type(e).__name__}: {e}", exc_info=False
+                        )
+                    return fallback_value
+
+            return async_wrapper
+
         @wraps(func)
         def wrapper(*args, **kwargs):
             try:

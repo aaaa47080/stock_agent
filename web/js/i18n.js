@@ -20,8 +20,11 @@
     // 偵測瀏覽器語言
     function detectBrowserLanguage() {
         const lang = navigator.language || navigator.userLanguage || 'en';
-        // zh-TW 或 zh-HK 使用繁體中文，其他使用英文
-        return lang === 'zh-TW' || lang === 'zh-HK' ? 'zh-TW' : 'en';
+        const baseLang = lang.split('-')[0];
+        if (baseLang === 'zh') {
+            return 'zh-TW';
+        }
+        return 'en';
     }
 
     // 更新頁面所有帶 data-i18n 的元素
@@ -95,7 +98,7 @@
                     en: { translation: en },
                 },
                 interpolation: {
-                    escapeValue: false,
+                    escapeValue: false, // Frontend hardcoded translation resources, no user input
                 },
             });
 
@@ -120,7 +123,8 @@
                 new CustomEvent('languageChanged', { detail: { language: language } })
             );
 
-            console.log('i18n initialized with language:', language);
+            window.APP_CONFIG?.DEBUG_MODE &&
+                console.log('i18n initialized with language:', language);
         } catch (error) {
             console.error('Failed to initialize i18n:', error);
         }

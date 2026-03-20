@@ -4,7 +4,9 @@
 
 const DebugLog = {
     send(level, message, data = null) {
-        if (window.APP_CONFIG && window.APP_CONFIG.DEBUG_MODE !== true) { return; }
+        if (window.APP_CONFIG && window.APP_CONFIG.DEBUG_MODE !== true) {
+            return;
+        }
         console.log(`[${level.toUpperCase()}] ${message}`, data);
         // 在开发环境中记录日志，在生产环境中可选择禁用
         // 为了减少网络请求，仅在特定条件下发送到服务器
@@ -66,9 +68,7 @@ const PiEnvironment = {
 
     getAuthHeaders(extraHeaders = {}) {
         const token = this.getAccessToken();
-        return token
-            ? { ...extraHeaders, Authorization: 'Bearer ' + token }
-            : { ...extraHeaders };
+        return token ? { ...extraHeaders, Authorization: 'Bearer ' + token } : { ...extraHeaders };
     },
 
     shouldBlockProtectedRequests() {
@@ -168,7 +168,10 @@ const AuthManager = {
 
         // 顯示提示
         if (typeof showToast === 'function') {
-            showToast('登入已過期，請重新登入', 'warning');
+            showToast(
+                window.i18next?.t('auth.loginExpired') || '登入已過期，請重新登入',
+                'warning'
+            );
         }
 
         // 重整頁面以顯示登入 modal
@@ -467,7 +470,8 @@ const AuthManager = {
     },
 
     async loginAsMockUser() {
-        console.log('⚠️ [Dev Mode] Manually triggering Mock Login.');
+        window.APP_CONFIG?.DEBUG_MODE &&
+            console.log('⚠️ [Dev Mode] Manually triggering Mock Login.');
         showToast('開發模式：使用測試帳號登入...', 'info');
 
         await new Promise((r) => setTimeout(r, 500)); // 模擬延遲
@@ -638,7 +642,9 @@ const AuthManager = {
                 if (this.shouldForceGuestWhenPiGateLocked(this.currentUser)) {
                     DebugLog.warn('Pi Browser gate 鎖定中，暫不還原受保護登入狀態', {
                         gateReason: window.__piBrowserGateReason || 'unknown',
-                        hasAuthMethod: !!(this.currentUser?.authMethod || this.currentUser?.auth_method),
+                        hasAuthMethod: !!(
+                            this.currentUser?.authMethod || this.currentUser?.auth_method
+                        ),
                         hasPiUid: !!this.currentUser?.pi_uid,
                     });
                     this.currentUser = null;
@@ -669,7 +675,8 @@ const AuthManager = {
             }
 
             if (config.test_mode && !this.currentUser) {
-                console.log('🧪 [Test Mode] 自動登入測試用戶（透過 dev-login endpoint）');
+                window.APP_CONFIG?.DEBUG_MODE &&
+                    console.log('🧪 [Test Mode] 自動登入測試用戶（透過 dev-login endpoint）');
                 const result = await this.loginAsMockUser();
                 if (!result.success) {
                     console.warn('🧪 [Test Mode] 自動登入失敗:', result.error);
@@ -707,10 +714,7 @@ const AuthManager = {
             this.currentUser?.displayName ||
             'Login Required';
         const uid =
-            this.currentUser?.uid ||
-            this.currentUser?.user_id ||
-            this.currentUser?.pi_uid ||
-            '--';
+            this.currentUser?.uid || this.currentUser?.user_id || this.currentUser?.pi_uid || '--';
         const authMethod =
             this.currentUser?.authMethod ||
             this.currentUser?.auth_method ||
@@ -955,7 +959,6 @@ async function loadSettingsWalletStatus() {
     }
 }
 
-
 // 套用 premium badge UI（抽出共用邏輯）
 function _applyPremiumBadgeUI(statusBadge, upgradeBtn, isPro, expiresAt) {
     const sidebarBadge = document.getElementById('sidebar-premium-badge');
@@ -965,22 +968,21 @@ function _applyPremiumBadgeUI(statusBadge, upgradeBtn, isPro, expiresAt) {
             : '';
         statusBadge.innerHTML = `
             <i data-lucide="star" class="w-3 h-3 text-yellow-400"></i>
-            <span class="font-bold text-yellow-400">Premium 會員${expiryText}</span>
+            <span class="font-bold text-yellow-400">${window.i18next?.t('auth.premiumMember') || 'Premium 會員'}${expiryText}</span>
         `;
         statusBadge.className =
             'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-gradient-to-r from-yellow-500/20 to-orange-500/20 text-yellow-400 border border-yellow-500/30 shadow-sm shadow-yellow-500/10';
         if (sidebarBadge) sidebarBadge.classList.remove('hidden');
         if (upgradeBtn) {
             upgradeBtn.disabled = true;
-            upgradeBtn.innerHTML =
-                '<i data-lucide="check-circle" class="w-4 h-4"></i> 已是 Premium 會員';
+            upgradeBtn.innerHTML = `<i data-lucide="check-circle" class="w-4 h-4"></i> ${window.i18next?.t('auth.alreadyPremium') || '已是 Premium 會員'}`;
             upgradeBtn.className =
                 'w-full py-3.5 bg-gradient-to-r from-green-500 to-emerald-500 text-background font-bold rounded-xl transition flex items-center justify-center gap-2 cursor-default';
         }
     } else {
         statusBadge.innerHTML = `
             <i data-lucide="user" class="w-3 h-3"></i>
-            <span class="font-bold text-textMuted">免費會員</span>
+            <span class="font-bold text-textMuted">${window.i18next?.t('auth.freeMember') || '免費會員'}</span>
         `;
         statusBadge.className =
             'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-textMuted';
@@ -999,7 +1001,7 @@ async function loadPremiumStatus() {
     if (!AuthManager.currentUser) {
         const sidebarBadge = document.getElementById('sidebar-premium-badge');
         if (sidebarBadge) sidebarBadge.classList.add('hidden');
-        statusBadge.innerHTML = `<i data-lucide="x-circle" class="w-3 h-3"></i> 未登入`;
+        statusBadge.innerHTML = `<i data-lucide="x-circle" class="w-3 h-3"></i> ${window.i18next?.t('login.loginRequired') || '未登入'}`;
         statusBadge.className =
             'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-textMuted';
         if (upgradeBtn) upgradeBtn.disabled = true;
@@ -1159,7 +1161,7 @@ window.handleUpgradeToPremium = handleUpgradeToPremium;
 // Dev Mode: Switch User (Test Mode Only)
 // ========================================
 window.handleDevSwitchUser = async function (userId) {
-    console.log(`[Dev] Switching to user: ${userId}`);
+    window.APP_CONFIG?.DEBUG_MODE && console.log(`[Dev] Switching to user: ${userId}`);
 
     try {
         // 使用 dev-login endpoint 並指定用戶 ID

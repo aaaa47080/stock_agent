@@ -98,7 +98,7 @@
             const shouldLoadPiSdk = window.location.protocol === 'https:' && !isLocalhost;
 
             if (!shouldLoadPiSdk) {
-                console.log('[Pi SDK] Skipped on non-HTTPS or localhost environment');
+                window.APP_CONFIG?.DEBUG_MODE && console.log('[Pi SDK] Skipped on non-HTTPS or localhost environment');
                 return;
             }
 

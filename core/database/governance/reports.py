@@ -14,12 +14,13 @@ from .helpers import get_content_author
 
 
 def create_report(
-    db,
+    *,
     reporter_user_id: str,
     content_type: str,
     content_id: int,
     report_type: str,
     description: str = None,
+    db=None,
 ) -> Dict:
     """
     Create a new content report

@@ -854,7 +854,7 @@ function renderErrorState(message) {
  * 載入好友分頁的所有數據
  */
 async function loadFriendsTabData() {
-    console.log('loadFriendsTabData called');
+    window.APP_CONFIG?.DEBUG_MODE && console.log('loadFriendsTabData called');
 
     // Check if AuthManager exists
     if (typeof AuthManager === 'undefined') {
@@ -1024,7 +1024,7 @@ const SocialHub = {
      * 初始化 Friends Tab (SocialHub)
      */
     init: async function () {
-        console.log('SocialHub initializing...');
+        window.APP_CONFIG?.DEBUG_MODE && console.log('SocialHub initializing...');
         this.container = document.getElementById('friends-tab');
 
         await this.render();
@@ -1112,7 +1112,7 @@ const SocialHub = {
                 return;
             }
 
-            console.log(`[SocialHub] Loading conversations for user ${myId}...`);
+            window.APP_CONFIG?.DEBUG_MODE && console.log(`[SocialHub] Loading conversations for user ${myId}...`);
             const res = await fetch(`/api/messages/conversations?limit=20&user_id=${myId}`, {
                 headers: FriendsAPI._getAuthHeaders(),
             });

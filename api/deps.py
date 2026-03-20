@@ -1,7 +1,7 @@
 import logging
 import os
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Optional, TypedDict
 
 import jwt
 from dotenv import load_dotenv
@@ -14,6 +14,18 @@ from core.database.user import _normalize_membership_tier
 
 load_dotenv()
 logger = logging.getLogger(__name__)
+
+
+class CurrentUser(TypedDict, total=False):
+    user_id: str
+    username: str
+    pi_uid: str
+    is_premium: bool
+    membership_tier: str
+    created_at: str
+    is_active: bool
+    role: str
+
 
 # Configuration
 # 🔒 Security: JWT_SECRET_KEY must be set via environment variable
@@ -151,7 +163,7 @@ async def get_current_user_id(token: str = Depends(oauth2_scheme)) -> str:
         raise credentials_exception
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
+async def get_current_user(token: str = Depends(oauth2_scheme)) -> CurrentUser:
     """
     Validate token and return full user dict.
     In TEST_MODE, automatically return test user without requiring valid token.
@@ -171,9 +183,14 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
 
     # If using regular authentication (not skipped via TEST_MODE without token)
     if token:
-        # TEST_MODE: Allow raw "test-user-xxx" tokens or "local_user" to switch identities
-        if TEST_MODE and (token.startswith("test-user-") or token == "local_user"):
-            user_id = token
+        if TEST_MODE and token.startswith("test-user-"):
+            _allowed = {
+                u.strip()
+                for u in os.getenv("ALLOWED_TEST_USERS", "test-user-001").split(",")
+                if u.strip()
+            }
+            if token in _allowed:
+                user_id = token
             # Use mock user logic below
         else:
             try:

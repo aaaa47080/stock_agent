@@ -1,6 +1,10 @@
 // ========================================
-// Application Initialization
+// DEPRECATED: This file is no longer loaded by index.html.
+// Initialization logic has been moved to spa.js.
+// This file is kept for reference only. Do NOT import.
 // ========================================
+
+// Application Initialization (DEPRECATED - see spa.js)
 
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('DOM fully loaded, starting controlled initialization...');
@@ -14,7 +18,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 等待核心組件就緒的輔助函式
     const waitForGlobal = (key, timeout = 3000) => {
-        return new Promise(resolve => {
+        return new Promise((resolve) => {
             if (window[key]) return resolve(window[key]);
             const start = Date.now();
             // ✅ 效能優化：polling 間隔從 100ms 降到 10ms，加快啟動速度
@@ -30,10 +34,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 確保核心腳本都已載入
     console.log('Waiting for core systems...');
     await Promise.all([
-        waitForGlobal('Components').then(v => console.log('Components ready:', !!v)),
-        waitForGlobal('initializeAuth').then(v => console.log('Auth ready:', !!v)),
-        waitForGlobal('initializeUIStatus').then(v => console.log('UI ready:', !!v)),
-        waitForGlobal('NavPreferences').then(v => console.log('NavPreferences ready:', !!v)),
+        waitForGlobal('Components').then((v) => console.log('Components ready:', !!v)),
+        waitForGlobal('initializeAuth').then((v) => console.log('Auth ready:', !!v)),
+        waitForGlobal('initializeUIStatus').then((v) => console.log('UI ready:', !!v)),
+        waitForGlobal('NavPreferences').then((v) => console.log('NavPreferences ready:', !!v)),
     ]);
 
     console.log('Core systems ready status:', {

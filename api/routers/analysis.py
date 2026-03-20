@@ -44,7 +44,7 @@ async def get_user_sessions(
     sessions = await run_sync(
         lambda: get_sessions(user_id=user_id, limit=limit, offset=offset)
     )
-    return {"sessions": sessions}
+    return {"success": True, "sessions": sessions}
 
 
 @router.delete("/api/chat/sessions/{session_id}")
@@ -104,7 +104,7 @@ async def get_history(
     has_more = len(history) > LIMIT
     if has_more:
         history = history[1:]
-    return {"history": history, "has_more": has_more}
+    return {"success": True, "history": history, "has_more": has_more}
 
 
 # --- Analysis Endpoint ---
@@ -313,7 +313,7 @@ async def analyze_crypto(
                     yield f"data: {json.dumps({'error': f'分析超時（超過 {ANALYSIS_TIMEOUT_SECONDS} 秒），請縮小問題範圍後重試。', 'done': True})}\n\n"
                 except Exception as e:
                     logger.error(f"[V4] 分析過程發生錯誤: {e}", exc_info=True)
-                    yield f"data: {json.dumps({'error': str(e), 'done': True})}\n\n"
+                    yield f"data: {json.dumps({'error': 'Internal server error. Please try again.', 'done': True})}\n\n"
                 finally:
                     manager.progress_callback = None
                     if not invoke_task.done():
@@ -324,15 +324,13 @@ async def analyze_crypto(
 
             except Exception as e:
                 logger.error(f"[V4] Event generator error: {e}", exc_info=True)
-                yield f"data: {json.dumps({'error': str(e), 'done': True})}\n\n"
+                yield f"data: {json.dumps({'error': 'Internal server error. Please try again.', 'done': True})}\n\n"
 
         return StreamingResponse(event_generator_v4(), media_type="text/event-stream")
 
     except Exception as bootstrap_err:
         logger.error(f"[V4] Manager 啟動失敗: {bootstrap_err}", exc_info=True)
-        raise HTTPException(
-            status_code=503, detail=f"分析服務暫時無法使用: {str(bootstrap_err)}"
-        )
+        raise HTTPException(status_code=503, detail="分析服務暫時無法使用，請稍後再試")
 
 
 @router.post("/api/chat/clear")
@@ -425,4 +423,7 @@ async def trigger_idle_consolidation(current_user: dict = Depends(get_current_us
         }
     except Exception as e:
         logger.error(f"閒置整合失敗: {e}")
-        return {"status": "error", "message": str(e)}
+        return {
+            "status": "error",
+            "message": "Internal server error. Please try again.",
+        }

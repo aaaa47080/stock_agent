@@ -163,7 +163,13 @@ function showConfirm(options = {}) {
 
         const config = iconConfig[type] || iconConfig.warning;
 
-        const ALLOWED_ICON_NAMES = new Set(['alert-triangle', 'alert-circle', 'info', 'check-circle', 'x-circle']);
+        const ALLOWED_ICON_NAMES = new Set([
+            'alert-triangle',
+            'alert-circle',
+            'info',
+            'check-circle',
+            'x-circle',
+        ]);
         const safeIcon = ALLOWED_ICON_NAMES.has(config.icon) ? config.icon : 'info';
 
         if (iconEl) {
@@ -247,7 +253,13 @@ function showAlert(options = {}) {
 
         const config = iconConfig[type] || iconConfig.info;
 
-        const ALLOWED_ICON_NAMES = new Set(['alert-triangle', 'alert-circle', 'info', 'check-circle', 'x-circle']);
+        const ALLOWED_ICON_NAMES = new Set([
+            'alert-triangle',
+            'alert-circle',
+            'info',
+            'check-circle',
+            'x-circle',
+        ]);
         const safeIcon = ALLOWED_ICON_NAMES.has(config.icon) ? config.icon : 'info';
 
         iconEl.className = `w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 ${config.bg}`;
@@ -271,10 +283,10 @@ function showAlert(options = {}) {
             // 恢復兩個按鈕的結構
             buttonsEl.innerHTML = `
                 <button id="confirm-modal-cancel" class="flex-1 py-3 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-2xl transition border border-white/5">
-                    取消
+                    ${window.i18next?.t('common.cancel') || '取消'}
                 </button>
                 <button id="confirm-modal-confirm" class="flex-1 py-3 bg-danger hover:brightness-110 text-white font-bold rounded-2xl transition shadow-lg">
-                    確認
+                    ${window.i18next?.t('common.confirm') || '確認'}
                 </button>
             `;
             modal.classList.add('hidden');
@@ -597,20 +609,20 @@ window.showError = function (title, message, isQuotaError = false) {
                 <div class="text-secondary/90 text-sm leading-relaxed mb-6" id="global-error-message"></div>
                 
                 <div id="quota-error-actions" class="hidden mb-4 bg-red-500/10 p-3 rounded-xl border border-red-500/20">
-                    <p class="text-xs text-red-300 mb-2">💡 建議解決方案:</p>
+                    <p class="text-xs text-red-300 mb-2">${window.i18next?.t('error.suggestedFixes') || '💡 建議解決方案:'}</p>
                     <ul class="text-xs text-textMuted list-disc pl-4 space-y-1">
-                        <li>檢查 API Key 是否正確設定</li>
-                        <li>確認您的 Google/OpenAI 帳戶餘額是否充足</li>
-                        <li>嘗試切換其他 AI 提供商 (如 OpenRouter)</li>
+                        <li>${window.i18next?.t('error.checkApiKey') || '檢查 API Key 是否正確設定'}</li>
+                        <li>${window.i18next?.t('error.checkBalance') || '確認您的 Google/OpenAI 帳戶餘額是否充足'}</li>
+                        <li>${window.i18next?.t('error.tryOtherProvider') || '嘗試切換其他 AI 提供商 (如 OpenRouter)'}</li>
                     </ul>
                     <button onclick="openSettings(); closeErrorModal()" class="mt-3 w-full py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg text-sm font-medium transition border border-red-500/30">
-                        前往設定檢查金鑰
+                        ${window.i18next?.t('error.goToCheckKey') || '前往設定檢查金鑰'}
                     </button>
                 </div>
 
                 <div class="flex justify-end">
                     <button onclick="closeErrorModal()" class="px-5 py-2 bg-surfaceHighlight hover:bg-white/10 text-white rounded-xl transition border border-white/10">
-                        關閉
+                        ${window.i18next?.t('error.close') || '關閉'}
                     </button>
                 </div>
             </div>
@@ -624,7 +636,7 @@ window.showError = function (title, message, isQuotaError = false) {
     const quotaActions = document.getElementById('quota-error-actions');
 
     titleEl.innerText = title;
-    msgEl.innerText = message || '發生未知錯誤';
+    msgEl.innerText = message || window.i18next?.t('error.unknownError') || '發生未知錯誤';
 
     if (isQuotaError) {
         quotaActions.classList.remove('hidden');
@@ -765,7 +777,7 @@ window.updateAvailableModels = async function (preloadedConfig = null) {
     }
 
     const provider = providerSelect.value;
-    console.log('[updateAvailableModels] Provider:', provider);
+    window.APP_CONFIG?.DEBUG_MODE && console.log('[updateAvailableModels] Provider:', provider);
 
     // 獲取模型配置
     let modelConfig = preloadedConfig;
@@ -832,7 +844,8 @@ window.updateAvailableModels = async function (preloadedConfig = null) {
         modelSelect.value = models[0].value;
     }
 
-    console.log('[updateAvailableModels] Loaded', models.length, 'models for', provider);
+    window.APP_CONFIG?.DEBUG_MODE &&
+        console.log('[updateAvailableModels] Loaded', models.length, 'models for', provider);
 };
 
 // Allow external modules (like llmSettings.js) to update key validity

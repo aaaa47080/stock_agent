@@ -120,7 +120,8 @@ const APIKeyManager = {
             localStorage.setItem(`user_${provider}_selected_model`, model);
         }
         localStorage.setItem(this.STORAGE_KEYS.OFFLINE_MODE, 'true');
-        console.log(`🔐 ${provider} API Key saved to localStorage (offline mode)`);
+        window.APP_CONFIG?.DEBUG_MODE &&
+            console.log(`🔐 ${provider} API Key saved to localStorage (offline mode)`);
         return { success: true, offline: true };
     },
 
@@ -143,7 +144,8 @@ const APIKeyManager = {
                     // 有舊數據，先遷移到後端
                     const decrypted = await this._decrypt(localKey, `user_${provider}_api_key`);
                     if (decrypted) {
-                        console.log(`[APIKeyManager] 遷移 ${provider} key 到後端...`);
+                        window.APP_CONFIG?.DEBUG_MODE &&
+                            console.log(`[APIKeyManager] 遷移 ${provider} key 到後端...`);
                         await this.setKey(provider, decrypted);
                         localStorage.removeItem(`user_${provider}_api_key`);
                         // 保存到緩存
@@ -364,7 +366,8 @@ const APIKeyManager = {
             }
         }
 
-        console.log(`✅ ${provider} selected model saved: ${model}`);
+        window.APP_CONFIG?.DEBUG_MODE &&
+            console.log(`✅ ${provider} selected model saved: ${model}`);
     },
 
     /**

@@ -3,8 +3,6 @@
 // ============================================
 const ForumApp = {
     init() {
-        console.log('ForumApp: init starting...');
-
         // Ensure prices and limits are loaded
         if (!window.PiPrices.loaded) {
             loadPiPrices();
@@ -17,16 +15,17 @@ const ForumApp = {
             // 確保 AuthManager 已初始化（從 localStorage 載入用戶資訊）
             if (typeof AuthManager !== 'undefined' && typeof AuthManager.init === 'function') {
                 AuthManager.init();
-                console.log(
-                    'ForumApp: AuthManager initialized, currentUser:',
-                    AuthManager.currentUser
-                );
+                window.APP_CONFIG?.DEBUG_MODE &&
+                    console.log(
+                        'ForumApp: AuthManager initialized, currentUser:',
+                        AuthManager.currentUser
+                    );
             }
 
             this.bindEvents();
             // 頁面特定初始化
             const page = document.body.dataset.page;
-            console.log('ForumApp: page detected', page);
+            window.APP_CONFIG?.DEBUG_MODE && console.log('ForumApp: page detected', page);
 
             if (page === 'index') this.initIndexPage();
             else if (page === 'post') this.initPostPage();
@@ -34,7 +33,8 @@ const ForumApp = {
             else if (page === 'dashboard') this.initDashboardPage();
             else if (!page) {
                 // SPA 模式：沒有 data-page 屬性，預設載入首頁
-                console.log('ForumApp: SPA mode detected, loading index page');
+                window.APP_CONFIG?.DEBUG_MODE &&
+                    console.log('ForumApp: SPA mode detected, loading index page');
                 this.initIndexPage();
             }
 
@@ -415,7 +415,8 @@ const ForumApp = {
         } catch (e) {
             console.error('[Forum] loadComments failed:', e);
             if (container) {
-                container.innerHTML = '<div class="text-center py-4 text-danger">評論載入失敗，請稍後再試</div>';
+                container.innerHTML =
+                    '<div class="text-center py-4 text-danger">評論載入失敗，請稍後再試</div>';
             }
         }
     },
@@ -499,7 +500,8 @@ const ForumApp = {
     async submitReply(postId) {
         // 防連點保護：如果正在提交中，直接返回
         if (this.isSubmittingReply) {
-            console.log('[submitReply] 🚫 Already submitting, ignoring duplicate click');
+            window.APP_CONFIG?.DEBUG_MODE &&
+                console.log('[submitReply] 🚫 Already submitting, ignoring duplicate click');
             return;
         }
 
@@ -631,7 +633,7 @@ const ForumApp = {
 
             if (isPi && window.Pi) {
                 // === Pi 真實支付流程 ===
-                console.log('[Tip] 開始 Pi 支付流程');
+                window.APP_CONFIG?.DEBUG_MODE && console.log('[Tip] 開始 Pi 支付流程');
 
                 if (typeof AuthManager.verifyPiBrowserEnvironment === 'function') {
                     const envCheck = await AuthManager.verifyPiBrowserEnvironment();
@@ -729,7 +731,7 @@ const ForumApp = {
     // ===========================================
     initCreatePage() {
         const log = (msg, data = {}) => {
-            console.log('[CreatePost]', msg, data);
+            window.APP_CONFIG?.DEBUG_MODE && console.log('[CreatePost]', msg, data);
         };
 
         const updateUIForMembership = async () => {
@@ -743,7 +745,8 @@ const ForumApp = {
 
             try {
                 const limitsData = await ForumAPI.checkLimits();
-                console.log('[CreatePost] UI Update limits data:', limitsData);
+                window.APP_CONFIG?.DEBUG_MODE &&
+                    console.log('[CreatePost] UI Update limits data:', limitsData);
 
                 if (limitsData.success) {
                     const isPro = limitsData.membership?.is_premium ?? false;
@@ -892,7 +895,8 @@ const ForumApp = {
                 updateContentCount(); // 初始化
             }
 
-            console.log('[CharCounter] Character counters initialized');
+            window.APP_CONFIG?.DEBUG_MODE &&
+                console.log('[CharCounter] Character counters initialized');
         };
 
         // 執行初始化
@@ -900,8 +904,8 @@ const ForumApp = {
 
         document.getElementById('post-form')?.addEventListener('submit', async (e) => {
             e.preventDefault();
-            console.log('[CreatePost] V38 Handler Active');
-            console.log('[CreatePost] Form submitted');
+            window.APP_CONFIG?.DEBUG_MODE && console.log('[CreatePost] V38 Handler Active');
+            window.APP_CONFIG?.DEBUG_MODE && console.log('[CreatePost] Form submitted');
 
             // Disable button to prevent double submit
             const submitBtn = document.querySelector('button[type="submit"]');
@@ -918,7 +922,6 @@ const ForumApp = {
 
             // Function to reset button state
             const resetButton = () => {
-                console.log('[CreatePost] Resetting button state');
                 if (submitBtn) {
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = originalBtnContent;
@@ -956,7 +959,8 @@ const ForumApp = {
             if (userId) {
                 try {
                     // First, check limits and membership status
-                    console.log('[CreatePost] Checking limits and membership...');
+                    window.APP_CONFIG?.DEBUG_MODE &&
+                        console.log('[CreatePost] Checking limits and membership...');
                     const limitsData = await ForumAPI.checkLimits();
 
                     if (limitsData.success) {
@@ -1002,32 +1006,37 @@ const ForumApp = {
                     }
                 } catch (error) {
                     console.warn('[CreatePost] Failed to check limits:', error);
-                    if (typeof showToast === 'function') showToast('無法驗證發文限制，請稍後再試', 'warning');
+                    if (typeof showToast === 'function')
+                        showToast('無法驗證發文限制，請稍後再試', 'warning');
                     // Proceed anyway - allow the attempt and let the server enforce limits
                 }
             }
 
-            console.log(
-                `[CreatePost] User: ${userId}, IsPro: ${isProMember}, Amount: ${postAmount}`
-            );
+            window.APP_CONFIG?.DEBUG_MODE &&
+                console.log(
+                    `[CreatePost] User: ${userId}, IsPro: ${isProMember}, Amount: ${postAmount}`
+                );
 
             if (isProMember) {
                 txHash = 'pro_member_free';
-                console.log('[CreatePost] Pro member, skipping payment');
+                window.APP_CONFIG?.DEBUG_MODE &&
+                    console.log('[CreatePost] Pro member, skipping payment');
             } else {
                 // 關鍵修復：檢查真實的 Pi Browser UA，而非僅檢查 SDK 存在
                 const userAgent = navigator.userAgent || '';
                 const isRealPiBrowser = userAgent.includes('PiBrowser');
 
-                console.log('[CreatePost] 🔍 Environment:', {
-                    ua: userAgent.substring(0, 60),
-                    hasPiUA: isRealPiBrowser,
-                    hasSDK: typeof window.Pi !== 'undefined',
-                });
+                window.APP_CONFIG?.DEBUG_MODE &&
+                    console.log('[CreatePost] 🔍 Environment:', {
+                        ua: userAgent.substring(0, 60),
+                        hasPiUA: isRealPiBrowser,
+                        hasSDK: typeof window.Pi !== 'undefined',
+                    });
 
                 try {
                     if (isRealPiBrowser && window.Pi) {
-                        console.log('[CreatePost] 💳 Real Pi Browser - Starting payment...');
+                        window.APP_CONFIG?.DEBUG_MODE &&
+                            console.log('[CreatePost] 💳 Real Pi Browser - Starting payment...');
                         try {
                             await Pi.authenticate(['payments'], () => {});
                         } catch (authErr) {
@@ -1049,7 +1058,11 @@ const ForumApp = {
                             },
                             {
                                 onReadyForServerApproval: async (paymentId) => {
-                                    console.log('[CreatePost] onReadyForServerApproval', paymentId);
+                                    window.APP_CONFIG?.DEBUG_MODE &&
+                                        console.log(
+                                            '[CreatePost] onReadyForServerApproval',
+                                            paymentId
+                                        );
                                     try {
                                         await fetch('/api/user/payment/approve', {
                                             method: 'POST',
@@ -1062,11 +1075,12 @@ const ForumApp = {
                                     }
                                 },
                                 onReadyForServerCompletion: async (paymentId, txid) => {
-                                    console.log(
-                                        '[CreatePost] onReadyForServerCompletion',
-                                        paymentId,
-                                        txid
-                                    );
+                                    window.APP_CONFIG?.DEBUG_MODE &&
+                                        console.log(
+                                            '[CreatePost] onReadyForServerCompletion',
+                                            paymentId,
+                                            txid
+                                        );
                                     txHash = txid; // CRITICAL: Capture txid immediately
                                     serverCompletionCalled = true;
 
@@ -1077,23 +1091,26 @@ const ForumApp = {
                                         body: JSON.stringify({ paymentId, txid }),
                                     })
                                         .then((res) => {
-                                            console.log(
-                                                '[CreatePost] Server completion notified:',
-                                                res.status
-                                            );
+                                            window.APP_CONFIG?.DEBUG_MODE &&
+                                                console.log(
+                                                    '[CreatePost] Server completion notified:',
+                                                    res.status
+                                                );
                                         })
                                         .catch((err) => {
-                                            console.error(
-                                                '[CreatePost] Server completion notification failed (ignoring):',
-                                                err
-                                            );
+                                            window.APP_CONFIG?.DEBUG_MODE &&
+                                                console.error(
+                                                    '[CreatePost] Server completion notification failed (ignoring):',
+                                                    err
+                                                );
                                         })
                                         .finally(() => {
                                             paymentComplete = true; // Mark done regardless of backend success
                                         });
                                 },
                                 onCancel: (paymentId) => {
-                                    console.log('[CreatePost] Payment cancelled', paymentId);
+                                    window.APP_CONFIG?.DEBUG_MODE &&
+                                        console.log('[CreatePost] Payment cancelled', paymentId);
                                     paymentError = 'CANCELLED';
                                 },
                                 onError: (error) => {
@@ -1104,7 +1121,8 @@ const ForumApp = {
                         );
 
                         // Wait for txHash (preferred) or paymentComplete flag
-                        console.log('[CreatePost] Waiting for payment result...');
+                        window.APP_CONFIG?.DEBUG_MODE &&
+                            console.log('[CreatePost] Waiting for payment result...');
                         const startTime = Date.now();
 
                         while (!txHash && !paymentError && Date.now() - startTime < 120000) {
@@ -1128,9 +1146,11 @@ const ForumApp = {
                             return;
                         }
 
-                        console.log('[CreatePost] Payment successful, txHash:', txHash);
+                        window.APP_CONFIG?.DEBUG_MODE &&
+                            console.log('[CreatePost] Payment successful, txHash:', txHash);
                     } else {
-                        console.log('[CreatePost] Mock payment (Non-Pi Env)');
+                        window.APP_CONFIG?.DEBUG_MODE &&
+                            console.log('[CreatePost] Mock payment (Non-Pi Env)');
                         txHash = 'mock_' + Date.now();
                     }
                 } catch (paymentError) {
@@ -1151,9 +1171,11 @@ const ForumApp = {
                     payment_tx_hash: txHash,
                 };
 
-                console.log('[Forum] Sending post data:', postData);
+                window.APP_CONFIG?.DEBUG_MODE &&
+                    console.log('[Forum] Sending post data:', postData);
                 const result = await ForumAPI.createPost(postData);
-                console.log('[Forum] Post created successfully:', result);
+                window.APP_CONFIG?.DEBUG_MODE &&
+                    console.log('[Forum] Post created successfully:', result);
 
                 if (window.UIShell && typeof window.UIShell.clearToasts === 'function') {
                     window.UIShell.clearToasts();
@@ -1188,7 +1210,8 @@ const ForumApp = {
 
                 // Redirect Action (with smooth transition)
                 const doRedirect = () => {
-                    console.log('[Forum] Redirecting to:', targetUrl);
+                    window.APP_CONFIG?.DEBUG_MODE &&
+                        console.log('[Forum] Redirecting to:', targetUrl);
                     if (typeof smoothNavigate === 'function') {
                         smoothNavigate(targetUrl);
                     } else {
@@ -1279,8 +1302,6 @@ const ForumApp = {
     // Dashboard Logic
     // ===========================================
     async initDashboardPage() {
-        console.log('initDashboardPage: Starting initialization');
-
         if (!AuthManager.currentUser) {
             if (typeof smoothNavigate === 'function') {
                 smoothNavigate('/static/forum/index.html');

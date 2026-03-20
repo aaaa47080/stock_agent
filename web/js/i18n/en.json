@@ -850,7 +850,14 @@
     "forbidden": "You don't have permission to access this.",
     "notFound": "Content not found.",
     "rateLimit": "Too many requests. Please wait a moment.",
-    "unknown": "An unknown error occurred."
+    "unknown": "An unknown error occurred.",
+    "suggestedFixes": "💡 Suggested fixes:",
+    "checkApiKey": "Check if API Key is configured correctly",
+    "checkBalance": "Ensure your Google/OpenAI account has sufficient balance",
+    "tryOtherProvider": "Try switching to another AI provider (e.g., OpenRouter)",
+    "goToCheckKey": "Go to Settings to check API Key",
+    "close": "Close",
+    "unknownError": "An unknown error occurred"
   },
   "success": {
     "saved": "Saved successfully",
@@ -1012,5 +1019,11 @@
     "markAsReadFailed": "Failed to mark as read",
     "sendGreetingFailed": "Failed to send greeting",
     "searchMessagesFailed": "Failed to search messages"
+  },
+  "auth": {
+    "loginExpired": "Login expired, please log in again",
+    "premiumMember": "Premium Member",
+    "freeMember": "Free Member",
+    "alreadyPremium": "Already Premium Member"
   }
 }

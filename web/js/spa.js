@@ -115,7 +115,8 @@ function navigateToForum() {
 async function executeTabSwitch(tabId, fromPopState = false) {
     // Check if the target tab is enabled in user preferences
     if (window.NavPreferences && !NavPreferences.isItemEnabled(tabId)) {
-        console.log(`Tab '${tabId}' is disabled, redirecting to first enabled tab`);
+        window.APP_CONFIG?.DEBUG_MODE &&
+            console.log(`Tab '${tabId}' is disabled, redirecting to first enabled tab`);
         const enabledItems = NavPreferences.getEnabledItems();
         if (enabledItems.length > 0) {
             tabId = enabledItems[0].id;
@@ -286,9 +287,7 @@ async function executeTabSwitch(tabId, fromPopState = false) {
         }
         if (typeof window.updateAvailableModels === 'function') window.updateAvailableModels();
         // 並行發出所有 API 請求
-        Promise.allSettled(settingsInits).catch((e) =>
-            console.warn('Settings init error:', e)
-        );
+        Promise.allSettled(settingsInits).catch((e) => console.warn('Settings init error:', e));
     }
     if (tabId === 'chat') {
         // ✅ 效能優化：checkApiKeyStatus 加 TTL 快取，避免每次切換都打後端 API
@@ -498,7 +497,12 @@ const FeatureMenu = {
      */
     save() {
         if (this._tempPreferences.size < NavPreferences.MIN_ENABLED_ITEMS) {
-            alert(`At least ${NavPreferences.MIN_ENABLED_ITEMS} items must be enabled`);
+            if (typeof showToast === 'function') {
+                showToast(
+                    `At least ${NavPreferences.MIN_ENABLED_ITEMS} items must be enabled`,
+                    'warning'
+                );
+            }
             return;
         }
 
@@ -523,7 +527,21 @@ const FeatureMenu = {
      * Reset to defaults
      */
     resetToDefaults() {
-        if (confirm('Reset all navigation items to default?')) {
+        if (typeof showConfirm === 'function') {
+            showConfirm({
+                title: window.i18next?.t('settings.navigation.reset') || 'Reset to Default',
+                message: 'Reset all navigation items to default?',
+                confirmText: window.i18next?.t('common.confirm') || 'Confirm',
+                cancelText: window.i18next?.t('common.cancel') || 'Cancel',
+            }).then((confirmed) => {
+                if (confirmed) {
+                    NavPreferences.resetToDefaults();
+                    renderNavButtons();
+                    this.close();
+                    this.showToast('Navigation reset to defaults');
+                }
+            });
+        } else {
             NavPreferences.resetToDefaults();
             renderNavButtons();
             this.close();
@@ -572,7 +590,8 @@ if (greetingTimeEl) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('DOM fully loaded, starting controlled initialization...');
+    window.APP_CONFIG?.DEBUG_MODE &&
+        console.log('DOM fully loaded, starting controlled initialization...');
 
     // 頁面淡入效果
     document.body.style.opacity = '0';
@@ -597,24 +616,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // 確保核心腳本都已載入
-    console.log('Waiting for core systems...');
+    window.APP_CONFIG?.DEBUG_MODE && console.log('Waiting for core systems...');
     await Promise.all([
-        waitForGlobal('Components').then((v) => console.log('Components ready:', !!v)),
-        waitForGlobal('initializeAuth').then((v) => console.log('Auth ready:', !!v)),
-        waitForGlobal('initializeUIStatus').then((v) => console.log('UI ready:', !!v)),
+        waitForGlobal('Components').then(
+            (v) => window.APP_CONFIG?.DEBUG_MODE && console.log('Components ready:', !!v)
+        ),
+        waitForGlobal('initializeAuth').then(
+            (v) => window.APP_CONFIG?.DEBUG_MODE && console.log('Auth ready:', !!v)
+        ),
+        waitForGlobal('initializeUIStatus').then(
+            (v) => window.APP_CONFIG?.DEBUG_MODE && console.log('UI ready:', !!v)
+        ),
     ]);
 
-    console.log('Core systems ready status:', {
-        Components: !!window.Components,
-        Auth: !!window.initializeAuth,
-        UI: !!window.initializeUIStatus,
-    });
+    window.APP_CONFIG?.DEBUG_MODE &&
+        console.log('Core systems ready status:', {
+            Components: !!window.Components,
+            Auth: !!window.initializeAuth,
+            UI: !!window.initializeUIStatus,
+        });
 
     // 0. 初始化 i18n（必須在 renderNavButtons 之前完成）
     if (window.I18n) {
         try {
             await window.I18n.init();
-            console.log('i18n ready');
+            window.APP_CONFIG?.DEBUG_MODE && console.log('i18n ready');
         } catch (e) {
             console.error('i18n Init Error:', e);
         }
@@ -656,7 +682,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (desktopBell) {
             window.notificationBellDesktop = new NotificationBell(desktopBell);
         }
-        console.log('NotificationBell initialized (global)');
+        window.APP_CONFIG?.DEBUG_MODE && console.log('NotificationBell initialized (global)');
     }
 
     // 監聽語言切換事件，重新渲染導覽列標籤
@@ -706,17 +732,18 @@ document.addEventListener('DOMContentLoaded', async () => {
         initialTab = 'chat';
     }
 
-    console.log(
-        'Initial tab switching to:',
-        initialTab,
-        '(returnTo:',
-        returnToTab,
-        ', hash:',
-        hashTab,
-        ', saved:',
-        savedTab,
-        ')'
-    );
+    window.APP_CONFIG?.DEBUG_MODE &&
+        console.log(
+            'Initial tab switching to:',
+            initialTab,
+            '(returnTo:',
+            returnToTab,
+            ', hash:',
+            hashTab,
+            ', saved:',
+            savedTab,
+            ')'
+        );
 
     // 清除 hash 並設置正確的初始歷史狀態
     history.replaceState({ tab: initialTab }, '', '#' + initialTab);
@@ -750,7 +777,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 5. 預加載 Market 和 Pulse 數據（背景執行）
     setTimeout(async () => {
-        console.log('Preloading market data...');
+        window.APP_CONFIG?.DEBUG_MODE && console.log('Preloading market data...');
         // 預先注入並初始化 market 和 pulse
         if (typeof initMarket === 'function') {
             await initMarket();
@@ -758,7 +785,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (typeof initPulse === 'function') {
             await initPulse();
         }
-        console.log('Market data preloaded');
+        window.APP_CONFIG?.DEBUG_MODE && console.log('Market data preloaded');
     }, 2000);
 });
 
@@ -770,13 +797,21 @@ document.addEventListener('DOMContentLoaded', async () => {
  * Check and display WebSocket connection status
  */
 window.checkWebSocketStatus = function () {
-    console.log('=== WebSocket Status ===');
-    console.log('Ticker WS Connected:', window.marketWsConnected || false);
-    console.log('K-line WS Connected:', window.wsConnected || false);
-    console.log('Ticker WS Object:', window.marketWebSocket ? 'Exists' : 'Not Found');
-    console.log('K-line WS Object:', window.klineWebSocket ? 'Exists' : 'Not Found');
-    console.log('Auto-refresh Enabled:', window.autoRefreshEnabled || false);
-    console.log('Current Chart Symbol:', window.currentChartSymbol || 'None');
-    console.log('Subscribed Ticker Symbols:', Array.from(window.subscribedTickerSymbols || []));
-    console.log('Pending Ticker Symbols:', Array.from(window.pendingTickerSymbols || []));
+    window.APP_CONFIG?.DEBUG_MODE && console.log('=== WebSocket Status ===');
+    window.APP_CONFIG?.DEBUG_MODE &&
+        console.log('Ticker WS Connected:', window.marketWsConnected || false);
+    window.APP_CONFIG?.DEBUG_MODE &&
+        console.log('K-line WS Connected:', window.wsConnected || false);
+    window.APP_CONFIG?.DEBUG_MODE &&
+        console.log('Ticker WS Object:', window.marketWebSocket ? 'Exists' : 'Not Found');
+    window.APP_CONFIG?.DEBUG_MODE &&
+        console.log('K-line WS Object:', window.klineWebSocket ? 'Exists' : 'Not Found');
+    window.APP_CONFIG?.DEBUG_MODE &&
+        console.log('Auto-refresh Enabled:', window.autoRefreshEnabled || false);
+    window.APP_CONFIG?.DEBUG_MODE &&
+        console.log('Current Chart Symbol:', window.currentChartSymbol || 'None');
+    window.APP_CONFIG?.DEBUG_MODE &&
+        console.log('Subscribed Ticker Symbols:', Array.from(window.subscribedTickerSymbols || []));
+    window.APP_CONFIG?.DEBUG_MODE &&
+        console.log('Pending Ticker Symbols:', Array.from(window.pendingTickerSymbols || []));
 };

@@ -75,7 +75,7 @@ class TestReportManagement:
             (1,),
         ]  # First call for duplicate check, second for insert returning
 
-        result = create_report(None, **self.valid_report_data)
+        result = create_report(db=None, **self.valid_report_data)
 
         assert result["success"] is True
         assert result["report_id"] == 1
@@ -92,7 +92,7 @@ class TestReportManagement:
         mock_check_limit.return_value = False
         mock_get_author.return_value = "content-author-id"
 
-        result = create_report(None, **self.valid_report_data)
+        result = create_report(db=None, **self.valid_report_data)
 
         assert result["success"] is False
         assert result["error"] == "daily_limit_exceeded"
@@ -108,7 +108,7 @@ class TestReportManagement:
         mock_check_limit.return_value = True
         mock_get_author.return_value = "test-user-001"  # Same as reporter
 
-        result = create_report(None, **self.valid_report_data)
+        result = create_report(db=None, **self.valid_report_data)
 
         assert result["success"] is False
         assert result["error"] == "cannot_report_own_content"
@@ -132,7 +132,7 @@ class TestReportManagement:
 
         mock_cursor.fetchone.return_value = (1,)  # Duplicate exists
 
-        result = create_report(None, **self.valid_report_data)
+        result = create_report(db=None, **self.valid_report_data)
 
         assert result["success"] is False
         assert result["error"] == "duplicate_report"

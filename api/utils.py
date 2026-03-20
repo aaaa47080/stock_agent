@@ -1,15 +1,17 @@
 import asyncio
 import logging
 import os
-from typing import Dict, Optional
+import tempfile
+from typing import Any, Callable, Dict, Optional
 
 import httpx
 
 logger = logging.getLogger("API")
 
+_ssl_verify = os.getenv("SSL_VERIFY", "true").lower() in ("true", "1", "yes")
 
-async def run_sync(fn, *args):
-    """Run a synchronous DB/IO function in the thread executor (non-blocking)."""
+
+async def run_sync(fn: Callable[..., Any], *args: Any) -> Any:
     return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
 
 
@@ -43,7 +45,7 @@ def get_shared_http_client() -> httpx.AsyncClient:
     global _shared_http_client
     if _shared_http_client is None or _shared_http_client.is_closed:
         _shared_http_client = httpx.AsyncClient(
-            verify=False,  # Bypass SSL missing Subject Key Identifier issue
+            verify=_ssl_verify,
             limits=httpx.Limits(
                 max_connections=100,  # 最大連接數
                 max_keepalive_connections=20,  # 保持活躍的連接數
@@ -106,6 +108,12 @@ def update_env_file(keys: Dict[str, str], project_root: str):
         if k not in updated_keys:
             new_lines.append(f"{k}={v}\n")
 
-    # Write back
-    with open(env_path, "w", encoding="utf-8") as f:
-        f.writelines(new_lines)
+    # Write back atomically
+    fd, tmp_path = tempfile.mkstemp(dir=project_root, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.writelines(new_lines)
+        os.replace(tmp_path, env_path)
+    except BaseException:
+        os.unlink(tmp_path)
+        raise

@@ -850,7 +850,14 @@
     "forbidden": "您沒有權限訪問此內容。",
     "notFound": "找不到內容。",
     "rateLimit": "請求過於頻繁，請稍候再試。",
-    "unknown": "發生未知錯誤。"
+    "unknown": "發生未知錯誤。",
+    "suggestedFixes": "💡 建議解決方案:",
+    "checkApiKey": "檢查 API Key 是否正確設定",
+    "checkBalance": "確認您的 Google/OpenAI 帳戶餘額是否充足",
+    "tryOtherProvider": "嘗試切換其他 AI 提供商 (如 OpenRouter)",
+    "goToCheckKey": "前往設定檢查金鑰",
+    "close": "關閉",
+    "unknownError": "發生未知錯誤"
   },
   "success": {
     "saved": "已成功儲存",
@@ -1012,5 +1019,11 @@
     "markAsReadFailed": "標記已讀失敗",
     "sendGreetingFailed": "發送打招呼失敗",
     "searchMessagesFailed": "搜尋訊息失敗"
+  },
+  "auth": {
+    "loginExpired": "登入已過期，請重新登入",
+    "premiumMember": "Premium 會員",
+    "freeMember": "免費會員",
+    "alreadyPremium": "已是 Premium 會員"
   }
 }

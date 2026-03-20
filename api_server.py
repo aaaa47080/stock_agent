@@ -495,6 +495,11 @@ async def readiness_check():
 
     # 檢查數據庫
     try:
+        from core.database import get_connection
+
+        conn = get_connection()
+        conn.execute("SELECT 1")
+        conn.close()
         components["database"] = True
     except Exception:
         components["database"] = False

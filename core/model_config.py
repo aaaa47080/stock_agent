@@ -40,7 +40,7 @@ MODEL_CONFIG = {
 }
 
 
-def get_available_models(provider):
+def get_available_models(provider: str) -> list[dict[str, str]]:
     """
     獲取指定提供商的可用模型列表
 
@@ -53,7 +53,7 @@ def get_available_models(provider):
     return MODEL_CONFIG.get(provider, {}).get("available_models", [])
 
 
-def get_default_model(provider):
+def get_default_model(provider: str) -> str:
     """
     獲取指定提供商的默認模型
 

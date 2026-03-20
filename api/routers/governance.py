@@ -83,7 +83,6 @@ async def submit_report(
         )
         result = await run_sync(
             lambda: create_report(
-                None,
                 reporter_user_id=user_id,
                 content_type=report_data.content_type,
                 content_id=report_data.content_id,

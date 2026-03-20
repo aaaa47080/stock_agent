@@ -35,7 +35,8 @@ const MessagesAPI = {
      */
     async getConversations(limit = 50, offset = 0) {
         const userId = this._getUserId();
-        if (!userId) throw new Error(window.I18n ? window.I18n.t('messages.loginRequired') : '請先登入');
+        if (!userId)
+            throw new Error(window.I18n ? window.I18n.t('messages.loginRequired') : '請先登入');
 
         const token = this._getToken();
         const res = await fetch(
@@ -46,7 +47,12 @@ const MessagesAPI = {
         );
         if (!res.ok) {
             const err = await res.json();
-            throw new Error(err.detail || (window.I18n ? window.I18n.t('messages.getConversationsFailed') : '取得對話列表失敗'));
+            throw new Error(
+                err.detail ||
+                    (window.I18n
+                        ? window.I18n.t('messages.getConversationsFailed')
+                        : '取得對話列表失敗')
+            );
         }
         return await res.json();
     },
@@ -56,7 +62,8 @@ const MessagesAPI = {
      */
     async getMessages(conversationId, limit = 50, beforeId = null) {
         const userId = this._getUserId();
-        if (!userId) throw new Error(window.I18n ? window.I18n.t('messages.loginRequired') : '請先登入');
+        if (!userId)
+            throw new Error(window.I18n ? window.I18n.t('messages.loginRequired') : '請先登入');
 
         let url = `/api/messages/conversation/${conversationId}?user_id=${userId}&limit=${limit}`;
         if (beforeId) url += `&before_id=${beforeId}`;
@@ -67,7 +74,10 @@ const MessagesAPI = {
         });
         if (!res.ok) {
             const err = await res.json();
-            throw new Error(err.detail || (window.I18n ? window.I18n.t('messages.getMessagesFailed') : '取得訊息失敗'));
+            throw new Error(
+                err.detail ||
+                    (window.I18n ? window.I18n.t('messages.getMessagesFailed') : '取得訊息失敗')
+            );
         }
         return await res.json();
     },
@@ -77,7 +87,8 @@ const MessagesAPI = {
      */
     async getConversationWith(otherUserId, limit = 50) {
         const userId = this._getUserId();
-        if (!userId) throw new Error(window.I18n ? window.I18n.t('messages.loginRequired') : '請先登入');
+        if (!userId)
+            throw new Error(window.I18n ? window.I18n.t('messages.loginRequired') : '請先登入');
 
         const token = this._getToken();
         const res = await fetch(
@@ -88,7 +99,10 @@ const MessagesAPI = {
         );
         if (!res.ok) {
             const err = await res.json();
-            throw new Error(err.detail || (window.I18n ? window.I18n.t('messages.getConversationFailed') : '取得對話失敗'));
+            throw new Error(
+                err.detail ||
+                    (window.I18n ? window.I18n.t('messages.getConversationFailed') : '取得對話失敗')
+            );
         }
         return await res.json();
     },
@@ -98,7 +112,8 @@ const MessagesAPI = {
      */
     async sendMessage(toUserId, content) {
         const userId = this._getUserId();
-        if (!userId) throw new Error(window.I18n ? window.I18n.t('messages.loginRequired') : '請先登入');
+        if (!userId)
+            throw new Error(window.I18n ? window.I18n.t('messages.loginRequired') : '請先登入');
 
         const res = await fetch(`/api/messages/send?user_id=${userId}`, {
             method: 'POST',
@@ -111,7 +126,10 @@ const MessagesAPI = {
 
         if (!res.ok) {
             const err = await res.json();
-            throw new Error(err.detail || (window.I18n ? window.I18n.t('messages.messageFailed') : '發送訊息失敗'));
+            throw new Error(
+                err.detail ||
+                    (window.I18n ? window.I18n.t('messages.messageFailed') : '發送訊息失敗')
+            );
         }
         return await res.json();
     },
@@ -121,7 +139,8 @@ const MessagesAPI = {
      */
     async markAsRead(conversationId) {
         const userId = this._getUserId();
-        if (!userId) throw new Error(window.I18n ? window.I18n.t('messages.loginRequired') : '請先登入');
+        if (!userId)
+            throw new Error(window.I18n ? window.I18n.t('messages.loginRequired') : '請先登入');
 
         const res = await fetch(`/api/messages/read?user_id=${userId}`, {
             method: 'POST',
@@ -134,7 +153,10 @@ const MessagesAPI = {
 
         if (!res.ok) {
             const err = await res.json();
-            throw new Error(err.detail || (window.I18n ? window.I18n.t('messages.markAsReadFailed') : '標記已讀失敗'));
+            throw new Error(
+                err.detail ||
+                    (window.I18n ? window.I18n.t('messages.markAsReadFailed') : '標記已讀失敗')
+            );
         }
         return await res.json();
     },
@@ -144,7 +166,8 @@ const MessagesAPI = {
      */
     async sendGreeting(toUserId, content) {
         const userId = this._getUserId();
-        if (!userId) throw new Error(window.I18n ? window.I18n.t('messages.loginRequired') : '請先登入');
+        if (!userId)
+            throw new Error(window.I18n ? window.I18n.t('messages.loginRequired') : '請先登入');
 
         const res = await fetch(`/api/messages/greeting?user_id=${userId}`, {
             method: 'POST',
@@ -157,7 +180,10 @@ const MessagesAPI = {
 
         if (!res.ok) {
             const err = await res.json();
-            throw new Error(err.detail || (window.I18n ? window.I18n.t('messages.sendGreetingFailed') : '發送打招呼失敗'));
+            throw new Error(
+                err.detail ||
+                    (window.I18n ? window.I18n.t('messages.sendGreetingFailed') : '發送打招呼失敗')
+            );
         }
         return await res.json();
     },
@@ -167,7 +193,8 @@ const MessagesAPI = {
      */
     async searchMessages(query, limit = 50) {
         const userId = this._getUserId();
-        if (!userId) throw new Error(window.I18n ? window.I18n.t('messages.loginRequired') : '請先登入');
+        if (!userId)
+            throw new Error(window.I18n ? window.I18n.t('messages.loginRequired') : '請先登入');
 
         const token = this._getToken();
         const res = await fetch(
@@ -178,7 +205,10 @@ const MessagesAPI = {
         );
         if (!res.ok) {
             const err = await res.json();
-            throw new Error(err.detail || (window.I18n ? window.I18n.t('messages.searchMessagesFailed') : '搜尋訊息失敗'));
+            throw new Error(
+                err.detail ||
+                    (window.I18n ? window.I18n.t('messages.searchMessagesFailed') : '搜尋訊息失敗')
+            );
         }
         return await res.json();
     },
@@ -246,23 +276,24 @@ const MessagesWebSocket = {
     connect() {
         const userId = MessagesAPI._getUserId();
         if (!userId) {
-            console.log('MessagesWebSocket: 未登入，不連接');
+            window.APP_CONFIG?.DEBUG_MODE && console.log('MessagesWebSocket: 未登入，不連接');
             return;
         }
 
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            console.log('MessagesWebSocket: 已連接');
+            window.APP_CONFIG?.DEBUG_MODE && console.log('MessagesWebSocket: 已連接');
             return;
         }
 
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}/ws/messages`;
 
-        console.log('MessagesWebSocket: 連接中...', wsUrl);
+        window.APP_CONFIG?.DEBUG_MODE && console.log('MessagesWebSocket: 連接中...', wsUrl);
         this.ws = new WebSocket(wsUrl);
 
         this.ws.onopen = () => {
-            console.log('MessagesWebSocket: 連接成功，發送認證...');
+            window.APP_CONFIG?.DEBUG_MODE &&
+                console.log('MessagesWebSocket: 連接成功，發送認證...');
             // 發送認證
             this.ws.send(
                 JSON.stringify({
@@ -283,7 +314,7 @@ const MessagesWebSocket = {
         };
 
         this.ws.onclose = () => {
-            console.log('MessagesWebSocket: 連接關閉');
+            window.APP_CONFIG?.DEBUG_MODE && console.log('MessagesWebSocket: 連接關閉');
             this.connected = false;
             this._stopHeartbeat();
 
@@ -294,9 +325,10 @@ const MessagesWebSocket = {
             // 自動重連
             if (this.reconnectAttempts < this.maxReconnectAttempts) {
                 this.reconnectAttempts++;
-                console.log(
-                    `MessagesWebSocket: ${this.reconnectDelay}ms 後重連 (${this.reconnectAttempts}/${this.maxReconnectAttempts})`
-                );
+                window.APP_CONFIG?.DEBUG_MODE &&
+                    console.log(
+                        `MessagesWebSocket: ${this.reconnectDelay}ms 後重連 (${this.reconnectAttempts}/${this.maxReconnectAttempts})`
+                    );
                 setTimeout(() => this.connect(), this.reconnectDelay);
             }
         };
@@ -325,7 +357,7 @@ const MessagesWebSocket = {
     _handleMessage(data) {
         switch (data.type) {
             case 'authenticated':
-                console.log('MessagesWebSocket: 認證成功', data);
+                window.APP_CONFIG?.DEBUG_MODE && console.log('MessagesWebSocket: 認證成功', data);
                 this.connected = true;
                 this.reconnectAttempts = 0;
                 this._startHeartbeat();
@@ -337,14 +369,15 @@ const MessagesWebSocket = {
 
             case 'new_message':
             case 'message_sent':
-                console.log('MessagesWebSocket: 新訊息', data.message);
+                window.APP_CONFIG?.DEBUG_MODE &&
+                    console.log('MessagesWebSocket: 新訊息', data.message);
                 if (this.onMessageCallback) {
                     this.onMessageCallback(data.message, data.type === 'message_sent');
                 }
                 break;
 
             case 'read_receipt':
-                console.log('MessagesWebSocket: 已讀回執', data);
+                window.APP_CONFIG?.DEBUG_MODE && console.log('MessagesWebSocket: 已讀回執', data);
                 if (this.onReadReceiptCallback) {
                     this.onReadReceiptCallback(data.conversation_id, data.read_by);
                 }
@@ -359,7 +392,8 @@ const MessagesWebSocket = {
                 break;
 
             default:
-                console.log('MessagesWebSocket: 未知訊息類型', data);
+                window.APP_CONFIG?.DEBUG_MODE &&
+                    console.log('MessagesWebSocket: 未知訊息類型', data);
         }
     },
 
@@ -516,7 +550,9 @@ const MessagesUI = {
         const timeStr = this.formatTime(conv.last_message_at);
 
         // 截斷訊息預覽
-        let preview = conv.last_message || (window.I18n ? window.I18n.t('messages.startConversation') : '開始對話');
+        let preview =
+            conv.last_message ||
+            (window.I18n ? window.I18n.t('messages.startConversation') : '開始對話');
         if (preview.length > 30) {
             preview = preview.substring(0, 30) + '...';
         }
@@ -528,9 +564,10 @@ const MessagesUI = {
                 ? SecurityUtils.escapeHTML(conv.other_username)
                 : this._escapeHtml(conv.other_username);
 
-        const escapedPreview = typeof SecurityUtils !== 'undefined'
-            ? SecurityUtils.escapeHTML(preview)
-            : this._escapeHtml(preview);
+        const escapedPreview =
+            typeof SecurityUtils !== 'undefined'
+                ? SecurityUtils.escapeHTML(preview)
+                : this._escapeHtml(preview);
 
         return `
             <div class="conversation-item cursor-pointer p-3 border-b border-white/5 ${activeClass} ${unreadBgClass} transition relative"
@@ -579,8 +616,12 @@ const MessagesUI = {
         // 如果是已收回的訊息
         if (isRecalled) {
             const recalledText = isMine
-                ? (window.I18n ? window.I18n.t('messages.recalledByMe') : '你已收回訊息')
-                : (window.I18n ? window.I18n.t('messages.recalledByOther') : '對方已收回訊息');
+                ? window.I18n
+                    ? window.I18n.t('messages.recalledByMe')
+                    : '你已收回訊息'
+                : window.I18n
+                  ? window.I18n.t('messages.recalledByOther')
+                  : '對方已收回訊息';
             return `
                 <div id="msg-${msg.id}" class="flex ${isMine ? 'justify-end' : 'justify-start'} mb-4" data-message-id="${msg.id}">
                     <div class="flex flex-col ${isMine ? 'items-end' : 'items-start'}">
