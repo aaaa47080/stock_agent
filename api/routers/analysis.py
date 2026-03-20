@@ -8,7 +8,6 @@ from fastapi.responses import StreamingResponse
 from api.models import QueryRequest
 from api.response_metadata import build_response_metadata
 from api.utils import logger, run_sync
-import core.config as core_config
 from utils.user_client_factory import create_user_llm_client
 from api.middleware.rate_limit import limiter
 from core.agents.analysis_policy import AnalysisPolicyResolver
@@ -45,15 +44,6 @@ async def get_user_sessions(
 
     sessions = await run_sync(lambda: get_sessions(user_id=user_id, limit=limit, offset=offset))
     return {"sessions": sessions}
-
-@router.post("/api/chat/sessions")
-async def create_new_session(current_user: dict = Depends(get_current_user)):
-    """創建新對話"""
-    user_id = current_user["user_id"]
-
-    new_id = str(uuid.uuid4())
-    await run_sync(lambda: create_session(new_id, title="New Chat", user_id=user_id))
-    return {"session_id": new_id, "title": "New Chat"}
 
 @router.delete("/api/chat/sessions/{session_id}", dependencies=[Depends(get_current_user)])
 async def delete_user_session(session_id: str):

@@ -7,7 +7,6 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 import os
 from dotenv import load_dotenv
-import asyncio
 from core.database.user import _normalize_membership_tier
 from api.utils import run_sync
 
