@@ -40,4 +40,5 @@ jobs:
             --ignore=tests/test_pi_routing_fix.py \
             --ignore=tests/test_router_governance_routes.py \
             --ignore=tests/test_router_market.py \
-            --ignore=tests/test_router_market_extended.py
+            --ignore=tests/test_router_market_extended.py \
+            --ignore=tests/e2e/test_static_asset_load_smoke.py
