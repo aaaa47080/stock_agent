@@ -1,28 +1,30 @@
 """
 Market API Helper Functions
 """
+
 import asyncio
-import numpy as np
 from datetime import datetime
 
-from api.utils import logger, run_sync
+import numpy as np
+
+from analysis.crypto_screener_light import (
+    screen_top_cryptos_light as screen_top_cryptos,
+)
+from analysis.market_pulse import get_market_pulse
+from api.globals import (
+    FUNDING_RATE_CACHE,
+    MARKET_PULSE_CACHE,
+    cached_screener_result,
+)
 from api.symbols import (
     normalize_base_symbol,
     sanitize_base_symbols,
     sanitize_pair_symbols,
 )
-from api.globals import (
-    cached_screener_result,
-    FUNDING_RATE_CACHE,
-    MARKET_PULSE_CACHE,
-)
-from analysis.crypto_screener_light import screen_top_cryptos_light as screen_top_cryptos
-from analysis.market_pulse import get_market_pulse
+from api.utils import logger, run_sync
 
 # In-memory cache for static symbol lists
-SYMBOL_CACHE = {
-    "okx": {"data": None, "timestamp": 0}
-}
+SYMBOL_CACHE = {"okx": {"data": None, "timestamp": 0}}
 
 
 def normalize_funding_symbol(symbol: str) -> str:
@@ -42,7 +44,7 @@ def filter_funding_data_by_symbols(data: dict, symbol_list: list) -> dict:
 
 def parse_symbols_param(symbols: str) -> list:
     """Parse comma-separated symbols parameter."""
-    return sanitize_base_symbols(symbols.split(','))
+    return sanitize_base_symbols(symbols.split(","))
 
 
 def compute_top_bottom_rates(rates: list, limit: int) -> tuple:
@@ -57,7 +59,7 @@ def sort_funding_rates(data: dict) -> list:
     return sorted(
         [(sym, info.get("fundingRate", 0)) for sym, info in data.items()],
         key=lambda x: x[1],
-        reverse=True
+        reverse=True,
     )
 
 
@@ -67,14 +69,14 @@ def format_funding_rates_response(
     top_bullish: list,
     top_bearish: list,
     filtered_data: dict = None,
-    filtered_count: int = None
+    filtered_count: int = None,
 ) -> dict:
     """Format funding rates API response."""
     response = {
         "timestamp": timestamp,
         "total_count": total_count,
         "top_bullish": [{"symbol": s, "fundingRate": r} for s, r in top_bullish],
-        "top_bearish": [{"symbol": s, "fundingRate": r} for s, r in top_bearish]
+        "top_bearish": [{"symbol": s, "fundingRate": r} for s, r in top_bearish],
     }
 
     if filtered_data is not None:
@@ -103,20 +105,21 @@ def try_get_cached_pulse(symbol: str, deep_analysis: bool) -> dict:
     return None
 
 
-async def perform_deep_analysis(symbol: str, sources: str, llm_key: str, llm_provider: str) -> dict:
+async def perform_deep_analysis(
+    symbol: str, sources: str, llm_key: str, llm_provider: str
+) -> dict:
     """Perform deep analysis using user's LLM key."""
-    from utils.llm_client import create_llm_client_from_config
     from analysis.market_pulse import MarketPulseAnalyzer
     from api.services import save_market_pulse_cache
+    from utils.llm_client import create_llm_client_from_config
 
     logger.info(f"Deep Analysis Mode: Using User Key for {symbol}")
-    user_client, _ = create_llm_client_from_config({
-        "provider": llm_provider,
-        "api_key": llm_key
-    })
+    user_client, _ = create_llm_client_from_config(
+        {"provider": llm_provider, "api_key": llm_key}
+    )
 
     analyzer = MarketPulseAnalyzer(client=user_client)
-    enabled_sources = sources.split(',') if sources else None
+    enabled_sources = sources.split(",") if sources else None
 
     result = await run_sync(
         lambda: analyzer.analyze_movement(symbol, enabled_sources=enabled_sources)
@@ -131,9 +134,11 @@ async def perform_deep_analysis(symbol: str, sources: str, llm_key: str, llm_pro
     return result
 
 
-async def perform_on_demand_analysis(symbol: str, sources: str, semaphore: asyncio.Semaphore) -> dict:
+async def perform_on_demand_analysis(
+    symbol: str, sources: str, semaphore: asyncio.Semaphore
+) -> dict:
     """Perform on-demand market pulse analysis."""
-    enabled_sources = sources.split(',') if sources else None
+    enabled_sources = sources.split(",") if sources else None
     from api.services import save_market_pulse_cache
 
     async with semaphore:
@@ -164,8 +169,8 @@ def create_pending_pulse_response(symbol: str) -> dict:
             "summary": "System is generating initial report for this symbol.",
             "key_points": [],
             "highlights": [],
-            "risks": []
-        }
+            "risks": [],
+        },
     }
 
 
@@ -186,7 +191,7 @@ def format_screener_response(df_gainers, df_losers, df_volume) -> dict:
         "top_gainers": top_performers.to_dict(orient="records"),
         "top_losers": top_losers.to_dict(orient="records"),
         "top_volume": top_volume.to_dict(orient="records"),
-        "last_updated": datetime.now().isoformat()
+        "last_updated": datetime.now().isoformat(),
     }
 
 
@@ -201,10 +206,14 @@ async def run_custom_screener(request, market_pulse_cache, trigger_analysis_func
     """Run custom screener for specific symbols."""
     sanitized_symbols = sanitize_pair_symbols(request.symbols or [])
     if not sanitized_symbols:
-        logger.warning("Custom screener request contains no valid symbols; falling back to default screener.")
+        logger.warning(
+            "Custom screener request contains no valid symbols; falling back to default screener."
+        )
         return await run_default_screener(request.exchange, market_pulse_cache)
 
-    logger.info(f"Running custom screener: {request.exchange}, Symbols: {len(sanitized_symbols)}")
+    logger.info(
+        f"Running custom screener: {request.exchange}, Symbols: {len(sanitized_symbols)}"
+    )
 
     asyncio.get_running_loop().create_task(trigger_analysis_func(sanitized_symbols))
 
@@ -214,15 +223,17 @@ async def run_custom_screener(request, market_pulse_cache, trigger_analysis_func
             limit=len(sanitized_symbols),
             interval="1d",
             target_symbols=sanitized_symbols,
-            market_pulse_data=market_pulse_cache
+            market_pulse_data=market_pulse_cache,
         )
     )
 
     return {
-        "top_gainers": replace_nan_in_dataframe(top_performers).to_dict(orient="records"),
+        "top_gainers": replace_nan_in_dataframe(top_performers).to_dict(
+            orient="records"
+        ),
         "top_losers": replace_nan_in_dataframe(oversold).to_dict(orient="records"),
         "top_volume": replace_nan_in_dataframe(summary_df).to_dict(orient="records"),
-        "last_updated": datetime.now().isoformat()
+        "last_updated": datetime.now().isoformat(),
     }
 
 
@@ -234,7 +245,7 @@ async def run_default_screener(exchange: str, market_pulse_cache):
             limit=10,
             interval="1d",
             target_symbols=None,
-            market_pulse_data=market_pulse_cache
+            market_pulse_data=market_pulse_cache,
         )
     )
 

@@ -2,15 +2,17 @@
 Tests for database base class (TDD - Red phase)
 Tests the unified CRUD operations that will eliminate duplicate database code
 """
-import pytest
-from unittest.mock import Mock, patch
+
 from collections import namedtuple
+from unittest.mock import Mock, patch
+
+import pytest
 
 
 # Helper function for mocking cursor.description
 def mock_cursor_description(cursor, column_names):
     """Helper to mock cursor.description with proper column objects"""
-    Column = namedtuple('Column', ['name'])
+    Column = namedtuple("Column", ["name"])
     cursor.description = [Column(name) for name in column_names]
     return cursor
 
@@ -23,13 +25,13 @@ class TestDatabaseBaseClass:
         # This test will FAIL until we implement DatabaseBase
         from core.database.base import DatabaseBase
 
-        with patch('core.database.base.get_connection') as mock_get_conn:
+        with patch("core.database.base.get_connection") as mock_get_conn:
             mock_conn = Mock()
             mock_cursor = Mock()
             mock_get_conn.return_value = mock_conn
             mock_conn.cursor.return_value = mock_cursor
-            mock_cursor.fetchone.return_value = (1, 'test', 'value')
-            mock_cursor_description(mock_cursor, ['id', 'name', 'value'])
+            mock_cursor.fetchone.return_value = (1, "test", "value")
+            mock_cursor_description(mock_cursor, ["id", "name", "value"])
 
             result = DatabaseBase.query_one("SELECT * FROM test WHERE id = %s", (1,))
 
@@ -39,13 +41,13 @@ class TestDatabaseBaseClass:
         """Test query_one returns None when no rows found"""
         from core.database.base import DatabaseBase
 
-        with patch('core.database.base.get_connection') as mock_get_conn:
+        with patch("core.database.base.get_connection") as mock_get_conn:
             mock_conn = Mock()
             mock_cursor = Mock()
             mock_get_conn.return_value = mock_conn
             mock_conn.cursor.return_value = mock_cursor
             mock_cursor.fetchone.return_value = None
-            mock_cursor_description(mock_cursor, ['id', 'name', 'value'])
+            mock_cursor_description(mock_cursor, ["id", "name", "value"])
 
             result = DatabaseBase.query_one("SELECT * FROM test WHERE id = %s", (999,))
 
@@ -55,16 +57,16 @@ class TestDatabaseBaseClass:
         """Test query_all returns all rows as list of dictionaries"""
         from core.database.base import DatabaseBase
 
-        with patch('core.database.base.get_connection') as mock_get_conn:
+        with patch("core.database.base.get_connection") as mock_get_conn:
             mock_conn = Mock()
             mock_cursor = Mock()
             mock_get_conn.return_value = mock_conn
             mock_conn.cursor.return_value = mock_cursor
             mock_cursor.fetchall.return_value = [
-                (1, 'test1', 'value1'),
-                (2, 'test2', 'value2')
+                (1, "test1", "value1"),
+                (2, "test2", "value2"),
             ]
-            mock_cursor_description(mock_cursor, ['id', 'name', 'value'])
+            mock_cursor_description(mock_cursor, ["id", "name", "value"])
 
             results = DatabaseBase.query_all("SELECT * FROM test")
 
@@ -76,7 +78,7 @@ class TestDatabaseBaseClass:
         """Test execute performs INSERT and commits"""
         from core.database.base import DatabaseBase
 
-        with patch('core.database.base.get_connection') as mock_get_conn:
+        with patch("core.database.base.get_connection") as mock_get_conn:
             mock_conn = Mock()
             mock_cursor = Mock()
             mock_get_conn.return_value = mock_conn
@@ -84,8 +86,7 @@ class TestDatabaseBaseClass:
             mock_cursor.rowcount = 1
 
             result = DatabaseBase.execute(
-                "INSERT INTO test (name) VALUES (%s) RETURNING id",
-                ("test",)
+                "INSERT INTO test (name) VALUES (%s) RETURNING id", ("test",)
             )
 
             assert result == 1
@@ -95,7 +96,7 @@ class TestDatabaseBaseClass:
         """Test execute rolls back on error"""
         from core.database.base import DatabaseBase
 
-        with patch('core.database.base.get_connection') as mock_get_conn:
+        with patch("core.database.base.get_connection") as mock_get_conn:
             mock_conn = Mock()
             mock_cursor = Mock()
             mock_get_conn.return_value = mock_conn
@@ -111,7 +112,7 @@ class TestDatabaseBaseClass:
         """Test DatabaseBase context manager closes connection automatically"""
         from core.database.base import DatabaseBase
 
-        with patch('core.database.base.get_connection') as mock_get_conn:
+        with patch("core.database.base.get_connection") as mock_get_conn:
             mock_conn = Mock()
             mock_get_conn.return_value = mock_conn
 
@@ -126,10 +127,11 @@ class TestDatabaseBaseErrorHandling:
 
     def test_handles_integrity_error(self):
         """Test proper handling of duplicate key/integrity errors"""
-        from core.database.base import DatabaseBase, DuplicateRecordError
         import psycopg2
 
-        with patch('core.database.base.get_connection') as mock_get_conn:
+        from core.database.base import DatabaseBase, DuplicateRecordError
+
+        with patch("core.database.base.get_connection") as mock_get_conn:
             mock_conn = Mock()
             mock_cursor = Mock()
             mock_get_conn.return_value = mock_conn
@@ -141,10 +143,11 @@ class TestDatabaseBaseErrorHandling:
 
     def test_handles_not_found_error(self):
         """Test proper handling of foreign key not found errors"""
-        from core.database.base import DatabaseBase, RecordNotFoundError
         import psycopg2
 
-        with patch('core.database.base.get_connection') as mock_get_conn:
+        from core.database.base import DatabaseBase, RecordNotFoundError
+
+        with patch("core.database.base.get_connection") as mock_get_conn:
             mock_conn = Mock()
             mock_cursor = Mock()
             mock_get_conn.return_value = mock_conn
@@ -164,17 +167,17 @@ class TestDatabaseBaseNamedParameters:
         """Test query_one with named parameters"""
         from core.database.base import DatabaseBase
 
-        with patch('core.database.base.get_connection') as mock_get_conn:
+        with patch("core.database.base.get_connection") as mock_get_conn:
             mock_conn = Mock()
             mock_cursor = Mock()
             mock_get_conn.return_value = mock_conn
             mock_conn.cursor.return_value = mock_cursor
-            mock_cursor.fetchone.return_value = (1, 'test')
-            mock_cursor_description(mock_cursor, ['id', 'name'])
+            mock_cursor.fetchone.return_value = (1, "test")
+            mock_cursor_description(mock_cursor, ["id", "name"])
 
             result = DatabaseBase.query_one(
                 "SELECT * FROM test WHERE id = :id AND name = :name",
-                {"id": 1, "name": "test"}
+                {"id": 1, "name": "test"},
             )
 
             assert result is not None

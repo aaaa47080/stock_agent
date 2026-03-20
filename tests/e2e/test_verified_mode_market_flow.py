@@ -4,13 +4,14 @@ from pathlib import Path
 
 import pytest
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_PATH = ROOT / "pw_test" / "test_verified_mode_market_flow.py"
 
 
 def _load_script_module():
-    spec = importlib.util.spec_from_file_location("pw_verified_mode_market_flow", SCRIPT_PATH)
+    spec = importlib.util.spec_from_file_location(
+        "pw_verified_mode_market_flow", SCRIPT_PATH
+    )
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Unable to load E2E script: {SCRIPT_PATH}")
 

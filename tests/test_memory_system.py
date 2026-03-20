@@ -16,11 +16,12 @@
 9. 多會話隔離 - 測試不同會話的記憶隔離
 10. 長期記憶壓縮 - 測試大量資訊的壓縮能力
 """
+
+import asyncio
+import json
 import os
 import sys
-import asyncio
 import time
-import json
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -29,8 +30,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from utils.settings import Settings
 from core.database.memory import get_memory_store
+from utils.settings import Settings
 
 RESULTS_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "test_results"
@@ -113,9 +114,7 @@ class MemorySystemTester:
         測試: 基礎的長期記憶存取功能
         """
         test = MemoryTestCase(
-            "基礎記憶存取",
-            "測試長期記憶的基本存取功能",
-            difficulty=1
+            "基礎記憶存取", "測試長期記憶的基本存取功能", difficulty=1
         )
 
         try:
@@ -149,9 +148,7 @@ class MemorySystemTester:
         測試: 測試能否回憶之前提到的資訊
         """
         test = MemoryTestCase(
-            "資訊回憶",
-            "測試系統能否回憶之前對話中提到的資訊",
-            difficulty=2
+            "資訊回憶", "測試系統能否回憶之前對話中提到的資訊", difficulty=2
         )
 
         try:
@@ -173,7 +170,7 @@ class MemorySystemTester:
                 test.passed = True
                 test.details = {
                     "original_info": unique_info,
-                    "response": response[:200]
+                    "response": response[:200],
                 }
                 self.log(f"✓ 系統正確回憶了幸運數字: {lucky_number}")
             else:
@@ -192,11 +189,7 @@ class MemorySystemTester:
         難度: 3/10
         測試: 用戶偏好的持久化
         """
-        test = MemoryTestCase(
-            "偏好記憶",
-            "測試用戶偏好設定能否被記住",
-            difficulty=3
-        )
+        test = MemoryTestCase("偏好記憶", "測試用戶偏好設定能否被記住", difficulty=3)
 
         try:
             # 設置偏好
@@ -207,14 +200,14 @@ class MemorySystemTester:
             await asyncio.sleep(1)
 
             # 在另一個問題中測試偏好
-            result = await self.send_message(
-                "根據我的偏好，你會建議我如何分析 ETH？"
-            )
+            result = await self.send_message("根據我的偏好，你會建議我如何分析 ETH？")
 
             response = result["assistant"]
 
             # 檢查是否根據偏好回答
-            if "技術分析" in response and ("基本面" not in response or "不喜歡" in response or "不考慮" in response):
+            if "技術分析" in response and (
+                "基本面" not in response or "不喜歡" in response or "不考慮" in response
+            ):
                 test.passed = True
                 test.details = {"response": response[:300]}
                 self.log("✓ 系統記住了用戶的投資偏好")
@@ -240,9 +233,7 @@ class MemorySystemTester:
         測試: 多輪對話中資訊的累積
         """
         test = MemoryTestCase(
-            "多輪資訊累積",
-            "測試多輪對話中資訊能否正確累積",
-            difficulty=4
+            "多輪資訊累積", "測試多輪對話中資訊能否正確累積", difficulty=4
         )
 
         try:
@@ -250,11 +241,11 @@ class MemorySystemTester:
             info_pieces = [
                 "我持有 0.5 個比特幣",
                 "我持有 5 個以太幣",
-                "我還持有 1000 個 SOL"
+                "我還持有 1000 個 SOL",
             ]
 
             for i, info in enumerate(info_pieces):
-                self.log(f"第 {i+1} 輪: {info}")
+                self.log(f"第 {i + 1} 輪: {info}")
                 await self.send_message(f"告訴你，{info}")
                 await asyncio.sleep(1)
 
@@ -276,7 +267,7 @@ class MemorySystemTester:
                     "found_btc": found_btc,
                     "found_eth": found_eth,
                     "found_sol": found_sol,
-                    "response": response[:400]
+                    "response": response[:400],
                 }
                 self.log(f"✓ 系統記住了 {found_count}/3 個部位資訊")
             else:
@@ -295,9 +286,7 @@ class MemorySystemTester:
         測試: 不同話題間的資訊關聯
         """
         test = MemoryTestCase(
-            "跨話題關聯",
-            "測試系統能否將不同話題的資訊關聯起來",
-            difficulty=5
+            "跨話題關聯", "測試系統能否將不同話題的資訊關聯起來", difficulty=5
         )
 
         try:
@@ -320,7 +309,9 @@ class MemorySystemTester:
             response = result["assistant"]
 
             # 檢查是否嘗試計算或提及之前的價格
-            has_calculation = any(c in response for c in ["0.", "約", "大約", "可以買", "BTC"])
+            has_calculation = any(
+                c in response for c in ["0.", "約", "大約", "可以買", "BTC"]
+            )
             mentions_price = any(p in response for p in ["價格", "美元", "$", "USDT"])
 
             if has_calculation or mentions_price:
@@ -342,11 +333,7 @@ class MemorySystemTester:
         難度: 6/10
         測試: 舊資訊被新資訊更新
         """
-        test = MemoryTestCase(
-            "記憶更新",
-            "測試系統能否更新過時的資訊",
-            difficulty=6
-        )
+        test = MemoryTestCase("記憶更新", "測試系統能否更新過時的資訊", difficulty=6)
 
         try:
             # 先提供一個資訊
@@ -390,9 +377,7 @@ class MemorySystemTester:
         測試: 從歷史記錄中找回資訊
         """
         test = MemoryTestCase(
-            "歷史記錄查詢",
-            "測試系統能否從歷史記錄中找回資訊",
-            difficulty=7
+            "歷史記錄查詢", "測試系統能否從歷史記錄中找回資訊", difficulty=7
         )
 
         try:
@@ -404,7 +389,7 @@ class MemorySystemTester:
 
             # 再添加幾條
             for i in range(3):
-                entry = f"[{timestamp}] 測試記錄 #{i+1}"
+                entry = f"[{timestamp}] 測試記錄 #{i + 1}"
                 self.memory_store.append_history(entry)
 
             # 獲取歷史
@@ -434,20 +419,36 @@ class MemorySystemTester:
         難度: 8/10
         測試: consolidate 功能
         """
-        test = MemoryTestCase(
-            "記憶整合",
-            "測試記憶整合功能",
-            difficulty=8
-        )
+        test = MemoryTestCase("記憶整合", "測試記憶整合功能", difficulty=8)
 
         try:
             # 準備測試消息
             messages = [
-                {"role": "user", "content": "我喜歡用技術分析", "timestamp": "2026-01-01 10:00"},
-                {"role": "assistant", "content": "好的，我記住了", "timestamp": "2026-01-01 10:01"},
-                {"role": "user", "content": "我持有比特幣", "timestamp": "2026-01-01 10:02"},
-                {"role": "assistant", "content": "了解", "timestamp": "2026-01-01 10:03"},
-                {"role": "user", "content": "我偏好短期交易", "timestamp": "2026-01-01 10:04"},
+                {
+                    "role": "user",
+                    "content": "我喜歡用技術分析",
+                    "timestamp": "2026-01-01 10:00",
+                },
+                {
+                    "role": "assistant",
+                    "content": "好的，我記住了",
+                    "timestamp": "2026-01-01 10:01",
+                },
+                {
+                    "role": "user",
+                    "content": "我持有比特幣",
+                    "timestamp": "2026-01-01 10:02",
+                },
+                {
+                    "role": "assistant",
+                    "content": "了解",
+                    "timestamp": "2026-01-01 10:03",
+                },
+                {
+                    "role": "user",
+                    "content": "我偏好短期交易",
+                    "timestamp": "2026-01-01 10:04",
+                },
             ]
 
             # 獲取整合前的記憶
@@ -459,7 +460,7 @@ class MemorySystemTester:
                 messages=messages,
                 llm=self.manager.llm,
                 memory_window=10,
-                archive_all=True
+                archive_all=True,
             )
 
             if success:
@@ -470,8 +471,10 @@ class MemorySystemTester:
                 if memory_after and len(memory_after) > 10:
                     test.passed = True
                     test.details = {
-                        "memory_before": memory_before[:100] if memory_before else "(empty)",
-                        "memory_after": memory_after[:300]
+                        "memory_before": memory_before[:100]
+                        if memory_before
+                        else "(empty)",
+                        "memory_after": memory_after[:300],
                     }
                     self.log("✓ 記憶整合成功")
                 else:
@@ -482,6 +485,7 @@ class MemorySystemTester:
         except Exception as e:
             test.error = str(e)
             import traceback
+
             test.details = {"traceback": traceback.format_exc()}
 
         return test
@@ -494,9 +498,7 @@ class MemorySystemTester:
         測試: 不同會話的記憶隔離
         """
         test = MemoryTestCase(
-            "多會話隔離",
-            "測試不同會話的記憶是否正確隔離",
-            difficulty=9
+            "多會話隔離", "測試不同會話的記憶是否正確隔離", difficulty=9
         )
 
         try:
@@ -520,7 +522,7 @@ class MemorySystemTester:
                 test.passed = True
                 test.details = {
                     "session1_memory": mem1[:100],
-                    "session2_memory": mem2[:100]
+                    "session2_memory": mem2[:100],
                 }
                 self.log("✓ 會話記憶正確隔離")
             else:
@@ -539,9 +541,7 @@ class MemorySystemTester:
         測試: 大量資訊的壓縮能力
         """
         test = MemoryTestCase(
-            "長期記憶壓縮",
-            "測試系統能否將大量對話壓縮成簡潔的記憶",
-            difficulty=10
+            "長期記憶壓縮", "測試系統能否將大量對話壓縮成簡潔的記憶", difficulty=10
         )
 
         try:
@@ -549,17 +549,21 @@ class MemorySystemTester:
             messages = []
             topics = ["比特幣", "以太幣", "SOL", "XRP", "DOGE"]
             for i, topic in enumerate(topics):
-                timestamp = f"2026-01-0{i+1} 10:{i:02d}"
-                messages.append({
-                    "role": "user",
-                    "content": f"我想了解 {topic} 的投資價值",
-                    "timestamp": timestamp
-                })
-                messages.append({
-                    "role": "assistant",
-                    "content": f"{topic} 是一種加密貨幣...",
-                    "timestamp": timestamp
-                })
+                timestamp = f"2026-01-0{i + 1} 10:{i:02d}"
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": f"我想了解 {topic} 的投資價值",
+                        "timestamp": timestamp,
+                    }
+                )
+                messages.append(
+                    {
+                        "role": "assistant",
+                        "content": f"{topic} 是一種加密貨幣...",
+                        "timestamp": timestamp,
+                    }
+                )
 
             # 執行整合
             self.log(f"整合 {len(messages)} 條消息...")
@@ -567,7 +571,7 @@ class MemorySystemTester:
                 messages=messages,
                 llm=self.manager.llm,
                 memory_window=10,
-                archive_all=True
+                archive_all=True,
             )
 
             if success:
@@ -588,15 +592,19 @@ class MemorySystemTester:
                     test.details = {
                         "original_length": original_length,
                         "compressed_length": compressed_length,
-                        "compression_ratio": round(compressed_length / original_length * 100, 1),
-                        "memory": memory[:400]
+                        "compression_ratio": round(
+                            compressed_length / original_length * 100, 1
+                        ),
+                        "memory": memory[:400],
                     }
-                    self.log(f"✓ 記憶壓縮成功，壓縮率: {test.details['compression_ratio']}%")
+                    self.log(
+                        f"✓ 記憶壓縮成功，壓縮率: {test.details['compression_ratio']}%"
+                    )
                 elif has_multiple_topics:
                     test.passed = True
                     test.details = {
                         "note": "壓縮但保留關鍵資訊",
-                        "memory": memory[:400]
+                        "memory": memory[:400],
                     }
                     self.log("✓ 記憶整合成功，保留關鍵資訊")
                 else:
@@ -607,6 +615,7 @@ class MemorySystemTester:
         except Exception as e:
             test.error = str(e)
             import traceback
+
             test.details = {"traceback": traceback.format_exc()}
 
         return test
@@ -633,7 +642,9 @@ class MemorySystemTester:
         ]
 
         for i, test_method in enumerate(test_methods):
-            print(f"\n[測試 {i+1}/10] {test_method.__doc__.strip().split(chr(10))[0]}")
+            print(
+                f"\n[測試 {i + 1}/10] {test_method.__doc__.strip().split(chr(10))[0]}"
+            )
             print("-" * 40)
 
             try:
@@ -642,9 +653,7 @@ class MemorySystemTester:
                 print(f"結果: {test_case}")
             except Exception as e:
                 test_case = MemoryTestCase(
-                    test_method.__name__,
-                    "測試執行失敗",
-                    difficulty=i + 1
+                    test_method.__name__, "測試執行失敗", difficulty=i + 1
                 )
                 test_case.error = str(e)
                 self.test_cases.append(test_case)
@@ -671,7 +680,7 @@ class MemorySystemTester:
                 print(f"         錯誤: {test.error[:80]}")
 
         print("\n" + "-" * 60)
-        print(f"總計: {passed}/{total} 通過 ({round(passed/total*100, 1)}%)")
+        print(f"總計: {passed}/{total} 通過 ({round(passed / total * 100, 1)}%)")
         print("-" * 60)
 
     def save_results(self):
@@ -702,10 +711,10 @@ class MemorySystemTester:
                 "total": len(self.test_cases),
                 "passed": sum(1 for t in self.test_cases if t.passed),
                 "failed": sum(1 for t in self.test_cases if not t.passed),
-            }
+            },
         }
 
-        with open(filepath, 'w', encoding='utf-8') as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             json.dump(result, f, ensure_ascii=False, indent=2)
 
         print(f"\n💾 測試結果已儲存: {filepath}")

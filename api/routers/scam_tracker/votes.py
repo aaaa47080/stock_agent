@@ -1,12 +1,15 @@
 """
 可疑錢包追蹤系統 - 投票 API
 """
-from fastapi import APIRouter, HTTPException, Depends
-from api.utils import run_sync
+
 import logging
 
+from fastapi import APIRouter, Depends, HTTPException
+
 from api.deps import get_current_user
+from api.utils import run_sync
 from core.database.scam_tracker import vote_scam_report
+
 from .models import VoteRequest
 
 logger = logging.getLogger(__name__)
@@ -16,9 +19,7 @@ router = APIRouter(prefix="/votes", tags=["Scam Tracker - Votes"])
 
 @router.post("/{report_id}", response_model=dict)
 async def vote_on_report(
-    report_id: int,
-    request: VoteRequest,
-    current_user: dict = Depends(get_current_user)
+    report_id: int, request: VoteRequest, current_user: dict = Depends(get_current_user)
 ):
     """
     對舉報投票
@@ -34,9 +35,7 @@ async def vote_on_report(
 
         result = await run_sync(
             lambda: vote_scam_report(
-                report_id=report_id,
-                user_id=user_id,
-                vote_type=request.vote_type
+                report_id=report_id, user_id=user_id, vote_type=request.vote_type
             )
         )
 
@@ -45,13 +44,13 @@ async def vote_on_report(
             action_messages = {
                 "voted": f"{'贊同' if request.vote_type == 'approve' else '反對'}成功",
                 "cancelled": f"已取消{'贊同' if request.vote_type == 'approve' else '反對'}",
-                "switched": f"已切換為{'贊同' if request.vote_type == 'approve' else '反對'}"
+                "switched": f"已切換為{'贊同' if request.vote_type == 'approve' else '反對'}",
             }
 
             return {
                 "success": True,
                 "action": action,
-                "message": action_messages.get(action, "投票成功")
+                "message": action_messages.get(action, "投票成功"),
             }
         else:
             error = result.get("error")

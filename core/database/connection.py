@@ -3,20 +3,20 @@
 使用線程安全連接池優化記憶體消耗
 """
 
-import psycopg2
-from psycopg2 import pool
+import logging
 import os
 import threading
 import time
-import logging
 from urllib.parse import quote
+
+import psycopg2
+from psycopg2 import pool
 
 from .schema import (
     create_all_tables,
     format_reconcile_summary,
     reconcile_existing_tables,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +112,6 @@ RETRY_DELAY_BASE = 0.3  # 重試延遲
 # 連接參數 - 防止連接超時和斷開
 CONNECTION_OPTIONS = {
     "connect_timeout": int(os.getenv("DB_CONNECT_TIMEOUT", "10")),
-
     "keepalives": 1,
     "keepalives_idle": 30,
     "keepalives_interval": 10,
@@ -253,20 +252,25 @@ def init_connection_pool():
                         )
                         logger.info(
                             "Database connection pool initialized (min=%d, max=%d)",
-                            MIN_POOL_SIZE, MAX_POOL_SIZE,
+                            MIN_POOL_SIZE,
+                            MAX_POOL_SIZE,
                         )
                         break
                     except psycopg2.OperationalError as e:
                         if attempt < POOL_INIT_MAX_RETRIES - 1:
                             logger.warning(
                                 "Database connection failed (%s), retrying in %ds (attempt %d/%d)",
-                                e, POOL_INIT_RETRY_DELAY, attempt + 1, POOL_INIT_MAX_RETRIES,
+                                e,
+                                POOL_INIT_RETRY_DELAY,
+                                attempt + 1,
+                                POOL_INIT_MAX_RETRIES,
                             )
                             time.sleep(POOL_INIT_RETRY_DELAY)
                         else:
                             logger.error(
                                 "Connection pool init failed after %d retries: %s",
-                                POOL_INIT_MAX_RETRIES, e,
+                                POOL_INIT_MAX_RETRIES,
+                                e,
                             )
                             raise
                     except Exception as e:
@@ -322,7 +326,10 @@ def get_connection():
                     pass
                 raw_conn = None
                 bad_conn_count += 1
-                logger.debug("Closed connection detected, discarding (bad_conn_count=%d)", bad_conn_count)
+                logger.debug(
+                    "Closed connection detected, discarding (bad_conn_count=%d)",
+                    bad_conn_count,
+                )
                 continue
 
             conn_id = id(raw_conn)
@@ -345,7 +352,8 @@ def get_connection():
             except Exception as health_error:
                 logger.warning(
                     "Bad connection detected (%s), discarding (bad_conn_count=%d)",
-                    type(health_error).__name__, bad_conn_count,
+                    type(health_error).__name__,
+                    bad_conn_count,
                 )
                 try:
                     _connection_pool.putconn(raw_conn, close=True)
@@ -369,7 +377,9 @@ def get_connection():
                 delay = RETRY_DELAY_BASE * (2**attempt)
                 logger.warning(
                     "Connection pool exhausted, retrying in %.1fs (attempt %d/%d)",
-                    delay, attempt + 1, MAX_RETRIES,
+                    delay,
+                    attempt + 1,
+                    MAX_RETRIES,
                 )
                 time.sleep(delay)
             else:
@@ -457,13 +467,17 @@ def init_db():
             if attempt < INIT_MAX_RETRIES - 1:
                 logger.warning(
                     "Database connection failed (%s), retrying in %ds (attempt %d/%d)",
-                    e, INIT_RETRY_DELAY, attempt + 1, INIT_MAX_RETRIES,
+                    e,
+                    INIT_RETRY_DELAY,
+                    attempt + 1,
+                    INIT_MAX_RETRIES,
                 )
                 time.sleep(INIT_RETRY_DELAY)
             else:
                 logger.error(
                     "Database connection failed after %d retries: %s",
-                    INIT_MAX_RETRIES, e,
+                    INIT_MAX_RETRIES,
+                    e,
                 )
                 raise
 

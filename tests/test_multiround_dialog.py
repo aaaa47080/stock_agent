@@ -6,14 +6,16 @@
 使用方式:
     python tests/test_multiround_dialog.py
 """
+
+import asyncio
 import os
 import sys
-import asyncio
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 from utils.settings import Settings  # noqa: E402
@@ -42,7 +44,7 @@ class MultiRoundDialogTester:
                 "history": history_text,
                 "language": "zh-TW",
             },
-            config
+            config,
         )
         duration = time.time() - start_time
 
@@ -75,18 +77,20 @@ class MultiRoundDialogTester:
         print(f"🔧 模式: {result['execution_mode']}")
         print(f"⏱️ 耗時: {result['duration']:.2f}s")
 
-        if result['hitl']:
-            hitl = result['hitl']
+        if result["hitl"]:
+            hitl = result["hitl"]
             print(f"📋 HITL 類型: {hitl.get('type', 'unknown')}")
-            if hitl.get('plan'):
+            if hitl.get("plan"):
                 print("📋 計劃任務:")
-                for i, task in enumerate(hitl['plan'], 1):
-                    print(f"   {i}. {task.get('name', '未知')} ({task.get('agent', '未知')})")
+                for i, task in enumerate(hitl["plan"], 1):
+                    print(
+                        f"   {i}. {task.get('name', '未知')} ({task.get('agent', '未知')})"
+                    )
 
         print()
         print("🤖 助手回應:")
         print("─" * 60)
-        response = result['response']
+        response = result["response"]
         print(response[:1500] if len(response) > 1500 else response)
         print("─" * 60)
 
@@ -107,7 +111,7 @@ async def run_crypto_dialog(tester: MultiRoundDialogTester):
     tester.print_result("這個價格值得投資嗎？你有什麼建議？", result2)
 
     # 第 3 輪：根據回應調整
-    if result2.get('hitl'):
+    if result2.get("hitl"):
         result3 = await tester.chat("好，我同意這個計劃，請執行")
     else:
         result3 = await tester.chat("可以幫我也分析一下 ETH 和 SOL 寢？")
@@ -134,7 +138,7 @@ async def run_usstock_dialog(tester: MultiRoundDialogTester):
     tester.print_result("現在是買入的好時機嗎？幫我分析一下", result2)
 
     # 第 3 輪
-    if result2.get('hitl'):
+    if result2.get("hitl"):
         result3 = await tester.chat("不用做基本面分析，只需要技術分析和新聞")
     else:
         result3 = await tester.chat("可以幫我也看看 TSLA 嗎？")
@@ -161,7 +165,7 @@ async def run_twstock_dialog(tester: MultiRoundDialogTester):
     tester.print_result("這檔股票值得長期持有嗎？幫我分析一下優缺點", result2)
 
     # 第 3 輪
-    if result2.get('hitl'):
+    if result2.get("hitl"):
         result3 = await tester.chat("執行計劃")
     else:
         result3 = await tester.chat("可以幫我也看看聯發科嗎？")
@@ -184,6 +188,7 @@ async def main():
 
     # 初始化
     from core.agents.bootstrap_v2 import bootstrap_v2  # noqa: E402
+
     from utils.user_client_factory import create_user_llm_client  # noqa: E402
 
     api_key = os.getenv("OPENAI_API_KEY") or os.getenv("OPENROUTER_API_KEY")

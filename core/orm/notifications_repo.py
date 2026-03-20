@@ -10,6 +10,7 @@ Usage::
 
     notification = await notifications_repo.create_notification("user-1", "system", "Title", "Body")
 """
+
 from __future__ import annotations
 
 import logging
@@ -39,7 +40,6 @@ def _row_to_dict(row: Any) -> Dict[str, Any]:
 
 
 class NotificationsRepository:
-
     async def create_notification(
         self,
         user_id: str,

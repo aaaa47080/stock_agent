@@ -1,7 +1,7 @@
 def update_readme(filename, is_cn):
-    with open(filename, 'r', encoding='utf-8') as f:
+    with open(filename, "r", encoding="utf-8") as f:
         content = f.read()
-        
+
     status_cn = """
 ## 🚀 最新開發進度 (Current Development Status)
 
@@ -31,19 +31,20 @@ This project has evolved from a Proof of Concept (PoC) into a fully implemented 
 """
 
     insert_text = status_cn if is_cn else status_en
-    
+
     # We want to insert it right before "## 市場機會" or "## Market Opportunity"
     marker_cn = "## 市場機會"
     marker_en = "## Market Opportunity"
     marker = marker_cn if is_cn else marker_en
-    
+
     if marker in content:
         new_content = content.replace(marker, insert_text + "\n" + marker)
-        with open(filename, 'w', encoding='utf-8') as f:
+        with open(filename, "w", encoding="utf-8") as f:
             f.write(new_content)
         print(f"Successfully updated {filename}")
     else:
         print(f"Failed to find insertion point '{marker}' in {filename}")
 
-update_readme('README_CN.md', True)
-update_readme('README.md', False)
+
+update_readme("README_CN.md", True)
+update_readme("README.md", False)

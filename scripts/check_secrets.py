@@ -8,6 +8,7 @@ Checks:
 
 Usage: python scripts/check_secrets.py
 """
+
 import os
 import re
 import subprocess
@@ -18,7 +19,10 @@ SENSITIVE_PATTERNS = [
     (r"PI_API_KEY\s*=\s*[\"']([^\"']{8,})[\"']", "Pi API Key"),
     (r"PI_WALLET_PRIVATE_SEED\s*=\s*[\"']([^\"']{8,})[\"']", "Pi Wallet Seed"),
     (r"LANGFUSE_SECRET_KEY\s*=\s*[\"']([^\"']{8,})[\"']", "Langfuse Secret Key"),
-    (r"DATABASE_URL\s*=\s*[\"'][^\"']*:[^\"']*@[^\"']+[\"']", "Database URL with password"),
+    (
+        r"DATABASE_URL\s*=\s*[\"'][^\"']*:[^\"']*@[^\"']+[\"']",
+        "Database URL with password",
+    ),
     (r"POSTGRESQL_PASSWORD\s*=\s*[\"']([^\"']+)[\"']", "PostgreSQL Password"),
 ]
 

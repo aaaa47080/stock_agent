@@ -5,12 +5,14 @@ Logs all sensitive operations for security monitoring, compliance, and debugging
 Supports both automatic middleware-based logging and manual action logging.
 """
 
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
-from fastapi import Request
 import json
-from core.database import get_connection
+from datetime import datetime, timedelta
+from typing import Any, Dict, Optional
+
+from fastapi import Request
+
 from api.utils import logger
+from core.database import get_connection
 
 
 class AuditLogger:

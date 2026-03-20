@@ -1,7 +1,8 @@
 import asyncio
-import os
 import logging
+import os
 from typing import Dict, Optional
+
 import httpx
 
 logger = logging.getLogger("API")
@@ -10,9 +11,13 @@ logger = logging.getLogger("API")
 async def run_sync(fn, *args):
     """Run a synchronous DB/IO function in the thread executor (non-blocking)."""
     return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
+
+
 # Default to WARNING in production to reduce noisy logs and ephemeral-storage pressure.
 # Override with APP_LOG_LEVEL=INFO/DEBUG when detailed tracing is needed.
-logger.setLevel(getattr(logging, os.getenv("APP_LOG_LEVEL", "WARNING").upper(), logging.WARNING))
+logger.setLevel(
+    getattr(logging, os.getenv("APP_LOG_LEVEL", "WARNING").upper(), logging.WARNING)
+)
 
 # ============================================
 # Shared HTTP Client with Connection Pool
@@ -21,6 +26,7 @@ logger.setLevel(getattr(logging, os.getenv("APP_LOG_LEVEL", "WARNING").upper(), 
 # 全局共享的 HTTP 客戶端（連接池）
 # 使用 lazy initialization 確保在需要時才創建
 _shared_http_client: Optional[httpx.AsyncClient] = None
+
 
 def get_shared_http_client() -> httpx.AsyncClient:
     """
@@ -39,14 +45,14 @@ def get_shared_http_client() -> httpx.AsyncClient:
         _shared_http_client = httpx.AsyncClient(
             verify=False,  # Bypass SSL missing Subject Key Identifier issue
             limits=httpx.Limits(
-                max_connections=100,        # 最大連接數
+                max_connections=100,  # 最大連接數
                 max_keepalive_connections=20,  # 保持活躍的連接數
             ),
             timeout=httpx.Timeout(
-                connect=10.0,   # 連接超時 10 秒
-                read=30.0,      # 讀取超時 30 秒
-                write=10.0,     # 寫入超時 10 秒
-                pool=5.0,       # 從池中獲取連接超時 5 秒
+                connect=10.0,  # 連接超時 10 秒
+                read=30.0,  # 讀取超時 30 秒
+                write=10.0,  # 寫入超時 10 秒
+                pool=5.0,  # 從池中獲取連接超時 5 秒
             ),
             follow_redirects=True,
             max_redirects=5,
@@ -65,10 +71,11 @@ async def close_shared_http_client():
         _shared_http_client = None
         logger.info("Shared HTTP client closed")
 
+
 def update_env_file(keys: Dict[str, str], project_root: str):
     """Helper function to update or append keys to the .env file"""
     env_path = os.path.join(project_root, ".env")
-    
+
     # Read existing lines
     if os.path.exists(env_path):
         with open(env_path, "r", encoding="utf-8") as f:
@@ -79,7 +86,7 @@ def update_env_file(keys: Dict[str, str], project_root: str):
     # Prepare new content
     new_lines = []
     updated_keys = set()
-    
+
     for line in lines:
         key_match = False
         for k, v in keys.items():
@@ -90,11 +97,11 @@ def update_env_file(keys: Dict[str, str], project_root: str):
                 break
         if not key_match:
             new_lines.append(line)
-    
+
     # Append new keys that weren't in the file
-    if len(new_lines) > 0 and not new_lines[-1].endswith('\n'):
-        new_lines.append('\n')
-        
+    if len(new_lines) > 0 and not new_lines[-1].endswith("\n"):
+        new_lines.append("\n")
+
     for k, v in keys.items():
         if k not in updated_keys:
             new_lines.append(f"{k}={v}\n")

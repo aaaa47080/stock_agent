@@ -15,14 +15,15 @@ Usage::
     changes = await auto_migrate(engine)
     # changes = {"tables_created": [...], "columns_added": [...]}
 """
+
 from __future__ import annotations
 
 import logging
 import os
 
 from sqlalchemy import text
-from sqlalchemy.schema import CreateTable
 from sqlalchemy.ext.asyncio import AsyncEngine
+from sqlalchemy.schema import CreateTable
 
 from .models import Base
 
@@ -58,16 +59,20 @@ async def auto_migrate(engine: AsyncEngine) -> dict[str, list[str]]:
       - "columns_added": list of "table.column" strings that were added
     """
     if not _should_auto_migrate():
-        logger.info("ORM auto-migration disabled (ORM_AUTO_MIGRATE=%s)",
-                     os.getenv("ORM_AUTO_MIGRATE", "not set"))
+        logger.info(
+            "ORM auto-migration disabled (ORM_AUTO_MIGRATE=%s)",
+            os.getenv("ORM_AUTO_MIGRATE", "not set"),
+        )
         return {"tables_created": [], "columns_added": []}
 
     tables_created: list[str] = []
     columns_added: list[str] = []
 
     async with engine.connect() as conn:
+
         def _inspect_tables(connection):
             from sqlalchemy import inspect as sa_inspect
+
             insp = sa_inspect(connection)
             return _get_db_tables(insp)
 
@@ -81,16 +86,20 @@ async def auto_migrate(engine: AsyncEngine) -> dict[str, list[str]]:
             else:
                 added = await _add_missing_columns(conn, table.name, table)
                 if added:
-                    logger.info("ORM auto-migrate: added columns to '%s': %s",
-                                table.name, added)
+                    logger.info(
+                        "ORM auto-migrate: added columns to '%s': %s", table.name, added
+                    )
                 columns_added.extend(added)
 
         await conn.commit()
 
     total = len(tables_created) + len(columns_added)
     if total > 0:
-        logger.info("ORM auto-migration complete: %d tables created, %d columns added",
-                     len(tables_created), len(columns_added))
+        logger.info(
+            "ORM auto-migration complete: %d tables created, %d columns added",
+            len(tables_created),
+            len(columns_added),
+        )
     else:
         logger.info("ORM auto-migrate: schema is up to date")
 
@@ -112,11 +121,14 @@ async def _add_missing_columns(conn, table_name: str, table) -> list[str]:
 
     def _inspect_columns(connection):
         from sqlalchemy import inspect as sa_inspect
+
         insp = sa_inspect(connection)
         try:
             return _get_db_columns(insp, table_name)
         except Exception:
-            logger.warning("Cannot inspect table '%s', skipping column check", table_name)
+            logger.warning(
+                "Cannot inspect table '%s', skipping column check", table_name
+            )
             return None
 
     db_columns = await conn.run_sync(_inspect_columns)

@@ -1,19 +1,21 @@
 """
 Tests for governance Pydantic models
 """
+
 import pytest
+
 from api.models import (
+    ActivityLogResponse,
+    AuditReputationResponse,
+    ConsensusResponse,
+    FinalizeReportRequest,
     ReportCreateRequest,
-    ReportResponse,
-    VoteRequest,
     ReportDetailResponse,
+    ReportResponse,
+    ReviewStatisticsResponse,
     ViolationPointsResponse,
     ViolationRecordResponse,
-    ActivityLogResponse,
-    ReviewStatisticsResponse,
-    AuditReputationResponse,
-    FinalizeReportRequest,
-    ConsensusResponse,
+    VoteRequest,
 )
 
 
@@ -26,7 +28,7 @@ class TestReportModels:
             "content_type": "post",
             "content_id": 123,
             "report_type": "spam",
-            "description": "This is spam content"
+            "description": "This is spam content",
         }
         request = ReportCreateRequest(**data)
         assert request.content_type == "post"
@@ -39,7 +41,7 @@ class TestReportModels:
         data = {
             "content_type": "comment",
             "content_id": 456,
-            "report_type": "harassment"
+            "report_type": "harassment",
         }
         request = ReportCreateRequest(**data)
         assert request.description is None
@@ -65,7 +67,7 @@ class TestReportModels:
             "description": "Spam post",
             "review_status": "pending",
             "created_at": "2026-02-07T12:00:00",
-            "updated_at": "2026-02-07T12:00:00"
+            "updated_at": "2026-02-07T12:00:00",
         }
         response = ReportResponse(**data)
         assert response.id == 1
@@ -89,8 +91,8 @@ class TestReportModels:
             "updated_at": "2026-02-07T12:00:00",
             "votes": [
                 {"reviewer_user_id": "pro1", "vote_type": "approve"},
-                {"reviewer_user_id": "pro2", "vote_type": "reject"}
-            ]
+                {"reviewer_user_id": "pro2", "vote_type": "reject"},
+            ],
         }
         response = ReportDetailResponse(**data)
         assert response.approve_count == 5
@@ -109,7 +111,7 @@ class TestViolationModels:
             "total_violations": 5,
             "suspension_count": 2,
             "last_violation_at": "2026-02-01T12:00:00",
-            "action_threshold": "suspend_7d"
+            "action_threshold": "suspend_7d",
         }
         response = ViolationPointsResponse(**data)
         assert response.points == 15
@@ -125,7 +127,7 @@ class TestViolationModels:
             "points": 3,
             "action_taken": "warning",
             "suspended_until": None,
-            "created_at": "2026-02-07T12:00:00"
+            "created_at": "2026-02-07T12:00:00",
         }
         response = ViolationRecordResponse(**data)
         assert response.violation_level == "medium"
@@ -141,7 +143,7 @@ class TestViolationModels:
             "points": 5,
             "action_taken": "suspend_3d",
             "suspended_until": "2026-02-10T12:00:00",
-            "created_at": "2026-02-07T12:00:00"
+            "created_at": "2026-02-07T12:00:00",
         }
         response = ViolationRecordResponse(**data)
         assert response.suspended_until == "2026-02-10T12:00:00"
@@ -161,7 +163,7 @@ class TestActivityModels:
             "metadata": {"report_type": "spam"},
             "success": True,
             "error_message": None,
-            "created_at": "2026-02-07T12:00:00"
+            "created_at": "2026-02-07T12:00:00",
         }
         response = ActivityLogResponse(**data)
         assert response.activity_type == "report_submitted"
@@ -178,7 +180,7 @@ class TestActivityModels:
             "metadata": None,
             "success": False,
             "error_message": "Daily limit exceeded",
-            "created_at": "2026-02-07T12:00:00"
+            "created_at": "2026-02-07T12:00:00",
         }
         response = ActivityLogResponse(**data)
         assert response.success is False
@@ -196,7 +198,7 @@ class TestStatisticsModels:
             "approved_reports": 60,
             "rejected_reports": 30,
             "total_votes": 200,
-            "avg_approval_rate": 0.75
+            "avg_approval_rate": 0.75,
         }
         response = ReviewStatisticsResponse(**data)
         assert response.total_reports == 100
@@ -211,7 +213,7 @@ class TestStatisticsModels:
             "correct_votes": 42,
             "accuracy_rate": 0.84,
             "reputation_score": 370,
-            "vote_weight": 1.5
+            "vote_weight": 1.5,
         }
         response = AuditReputationResponse(**data)
         assert response.reputation_score == 370
@@ -223,20 +225,14 @@ class TestFinalizeModels:
 
     def test_finalize_report_request_approved(self):
         """Test finalize request with approval"""
-        data = {
-            "decision": "approved",
-            "violation_level": "medium"
-        }
+        data = {"decision": "approved", "violation_level": "medium"}
         request = FinalizeReportRequest(**data)
         assert request.decision == "approved"
         assert request.violation_level == "medium"
 
     def test_finalize_report_request_rejected(self):
         """Test finalize request with rejection"""
-        data = {
-            "decision": "rejected",
-            "violation_level": None
-        }
+        data = {"decision": "rejected", "violation_level": None}
         request = FinalizeReportRequest(**data)
         assert request.decision == "rejected"
         assert request.violation_level is None
@@ -250,7 +246,7 @@ class TestFinalizeModels:
             "approve_count": 8,
             "reject_count": 2,
             "approve_rate": 0.8,
-            "reason": None
+            "reason": None,
         }
         response = ConsensusResponse(**data)
         assert response.has_consensus is True
@@ -265,7 +261,7 @@ class TestFinalizeModels:
             "approve_count": 3,
             "reject_count": 2,
             "approve_rate": 0.6,
-            "reason": "insufficient_votes"
+            "reason": "insufficient_votes",
         }
         response = ConsensusResponse(**data)
         assert response.has_consensus is False

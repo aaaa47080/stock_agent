@@ -1,10 +1,12 @@
-import requests
-import pandas as pd
-import time
 import os
-from dotenv import load_dotenv
-from api.utils import logger
+import time
+
+import pandas as pd
+import requests
 from cachetools import TTLCache
+from dotenv import load_dotenv
+
+from api.utils import logger
 
 # Load environment variables from .env file
 load_dotenv()
@@ -12,15 +14,19 @@ load_dotenv()
 # Global cache for symbol lists (1 hour TTL)
 symbol_cache = TTLCache(maxsize=10, ttl=3600)
 
+
 class SymbolNotFoundError(Exception):
     """Custom exception for when a trading symbol is not found on the exchange."""
+
     pass
+
 
 class BinanceDataFetcher:
     """
     Fetches market data from Binance using public API endpoints.
     Does NOT require API keys. strictly for public market data.
     """
+
     def __init__(self):
         self.spot_base_url = "https://api.binance.com/api/v3"
         self.futures_base_url = "https://fapi.binance.com/fapi/v1"
@@ -28,10 +34,10 @@ class BinanceDataFetcher:
         self.last_request_time = time.time()
         # Binance API weight mapping - different endpoints have different weights
         self.endpoint_weights = {
-            "/exchangeInfo": 40,   # High weight endpoint - this is likely what's causing the ban
-            "/klines": 2,          # Standard weight for klines
-            "/ticker/24hr": 2,     # Standard weight for ticker
-            "/premiumIndex": 2,    # Standard weight for funding rate
+            "/exchangeInfo": 40,  # High weight endpoint - this is likely what's causing the ban
+            "/klines": 2,  # Standard weight for klines
+            "/ticker/24hr": 2,  # Standard weight for ticker
+            "/premiumIndex": 2,  # Standard weight for funding rate
         }
         # Conservative rate limits to avoid bans
         self.max_weight_per_minute = 600  # Reduced to be more conservative
@@ -76,7 +82,7 @@ class BinanceDataFetcher:
     def _make_request(self, base_url, endpoint, params=None):
         """Helper to make HTTP requests and handle common errors."""
         # Extract just the endpoint path (without query parameters) for rate limiting
-        endpoint_path = endpoint.split('?')[0] if '?' in endpoint else endpoint
+        endpoint_path = endpoint.split("?")[0] if "?" in endpoint else endpoint
         # Enforce rate limiting before making request
         self._enforce_rate_limit(endpoint_path)
 
@@ -87,18 +93,22 @@ class BinanceDataFetcher:
         while retry_count < max_retries:
             try:
                 response = requests.get(base_url + endpoint, params=params)
-                response.raise_for_status() # Raises HTTPError for bad responses (4xx or 5xx)
+                response.raise_for_status()  # Raises HTTPError for bad responses (4xx or 5xx)
                 return response.json()
             except requests.exceptions.HTTPError as http_err:
                 # Check for specific Binance error codes for symbol not found
                 if response.status_code == 400 and "Invalid symbol" in response.text:
-                    raise SymbolNotFoundError(f"Symbol not found or invalid: {params.get('symbol', 'N/A')} on {base_url}") from http_err
+                    raise SymbolNotFoundError(
+                        f"Symbol not found or invalid: {params.get('symbol', 'N/A')} on {base_url}"
+                    ) from http_err
                 # Handle specific rate limit error codes from Binance
                 elif response.status_code == 418 or ("-1003" in response.text):
                     logger.error(f"Binance API rate limit exceeded: {response.text}")
                     logger.error("Aborting request to prevent ban escalation.")
                     return None
-                logger.error(f"HTTP error occurred: {http_err} - Response: {response.text}")
+                logger.error(
+                    f"HTTP error occurred: {http_err} - Response: {response.text}"
+                )
                 return None
             except requests.exceptions.ConnectionError as conn_err:
                 logger.error(f"Connection error occurred: {conn_err}")
@@ -110,14 +120,16 @@ class BinanceDataFetcher:
                 logger.error(f"An unexpected request error occurred: {req_err}")
                 return None
 
-    def check_symbol_availability(self, symbol, market_type='spot'):
+    def check_symbol_availability(self, symbol, market_type="spot"):
         """
         Checks if a given symbol is available on Binance for the specified market type.
         Raises SymbolNotFoundError if the symbol is not found.
         """
-        base_url = self.spot_base_url if market_type == 'spot' else self.futures_base_url
+        base_url = (
+            self.spot_base_url if market_type == "spot" else self.futures_base_url
+        )
         endpoint = "/exchangeInfo"
-        
+
         try:
             exchange_info = self._make_request(base_url, endpoint)
             if exchange_info:
@@ -125,43 +137,55 @@ class BinanceDataFetcher:
                 for s in exchange_info.get("symbols", []):
                     if s["symbol"] == symbol and s["status"] == "TRADING":
                         return True
-                raise SymbolNotFoundError(f"Symbol '{symbol}' not found or not trading on Binance {market_type} market.")
+                raise SymbolNotFoundError(
+                    f"Symbol '{symbol}' not found or not trading on Binance {market_type} market."
+                )
             # If exchange_info is None, it means _make_request already handled an error
             # In this case, we can't definitively say the symbol is not found,
             # but rather that we couldn't even check exchange info.
-            raise requests.exceptions.RequestException(f"Could not retrieve exchange info for {market_type} market to check symbol '{symbol}'.")
+            raise requests.exceptions.RequestException(
+                f"Could not retrieve exchange info for {market_type} market to check symbol '{symbol}'."
+            )
         except SymbolNotFoundError:
-            raise # Re-raise the specific error
+            raise  # Re-raise the specific error
         except requests.exceptions.RequestException as req_err:
-            print(f"Error checking symbol availability for {symbol} on {market_type} market: {req_err}")
-            raise # Re-raise the request error to be handled upstream
+            print(
+                f"Error checking symbol availability for {symbol} on {market_type} market: {req_err}"
+            )
+            raise  # Re-raise the request error to be handled upstream
         except Exception as e:
-            print(f"An unexpected error occurred while checking symbol availability for {symbol} on {market_type} market: {e}")
-            raise requests.exceptions.RequestException(f"An unexpected error occurred: {e}")
+            print(
+                f"An unexpected error occurred while checking symbol availability for {symbol} on {market_type} market: {e}"
+            )
+            raise requests.exceptions.RequestException(
+                f"An unexpected error occurred: {e}"
+            )
 
-    def get_top_symbols(self, limit=30, quote_asset='USDT'):
+    def get_top_symbols(self, limit=30, quote_asset="USDT"):
         """
         Gets the top trading symbols by 24-hour quote volume from Binance Spot.
         """
         endpoint = "/ticker/24hr"
         print(f"Fetching top {limit} symbols from Binance, quoted in {quote_asset}...")
-        
+
         all_tickers = self._make_request(self.spot_base_url, endpoint)
-        
+
         if all_tickers:
             # Filter for symbols that are quoted in the desired asset (e.g., USDT)
-            usdt_tickers = [t for t in all_tickers if t['symbol'].endswith(quote_asset)]
-            
+            usdt_tickers = [t for t in all_tickers if t["symbol"].endswith(quote_asset)]
+
             # Sort by quote volume in descending order
             # The 'quoteVolume' is a string, so it needs to be converted to float
-            sorted_tickers = sorted(usdt_tickers, key=lambda x: float(x.get('quoteVolume', 0)), reverse=True)
-            
+            sorted_tickers = sorted(
+                usdt_tickers, key=lambda x: float(x.get("quoteVolume", 0)), reverse=True
+            )
+
             # Get the top 'limit' symbols
-            top_symbols = [t['symbol'] for t in sorted_tickers[:limit]]
-            
+            top_symbols = [t["symbol"] for t in sorted_tickers[:limit]]
+
             print(f"Found top {len(top_symbols)} symbols: {top_symbols}")
             return top_symbols
-            
+
         print("Could not retrieve tickers to determine top symbols.")
         return []
 
@@ -172,7 +196,7 @@ class BinanceDataFetcher:
         endpoint = "/ticker/24hr"
         return self._make_request(self.spot_base_url, endpoint)
 
-    def get_all_symbols(self, quote_asset='USDT'):
+    def get_all_symbols(self, quote_asset="USDT"):
         """Get all trading symbols quoted in the specified asset."""
         cache_key = f"binance_all_symbols_{quote_asset}"
         if cache_key in symbol_cache:
@@ -181,7 +205,11 @@ class BinanceDataFetcher:
         endpoint = "/exchangeInfo"
         info = self._make_request(self.spot_base_url, endpoint)
         if info:
-            symbols = [s['symbol'] for s in info['symbols'] if s['symbol'].endswith(quote_asset) and s['status'] == 'TRADING']
+            symbols = [
+                s["symbol"]
+                for s in info["symbols"]
+                if s["symbol"].endswith(quote_asset) and s["status"] == "TRADING"
+            ]
             symbol_cache[cache_key] = symbols
             return symbols
         return []
@@ -190,34 +218,52 @@ class BinanceDataFetcher:
         """
         Get historical K-line/candlestick data for a symbol from Binance Spot API.
         """
-        self.check_symbol_availability(symbol, market_type='spot') # Check symbol availability first
+        self.check_symbol_availability(
+            symbol, market_type="spot"
+        )  # Check symbol availability first
 
         endpoint = "/klines"
-        params = {
-            "symbol": symbol,
-            "interval": interval,
-            "limit": limit
-        }
+        params = {"symbol": symbol, "interval": interval, "limit": limit}
         if start_str:
-            params['startTime'] = int(pd.to_datetime(start_str).timestamp() * 1000)
-        
+            params["startTime"] = int(pd.to_datetime(start_str).timestamp() * 1000)
+
         data = self._make_request(self.spot_base_url, endpoint, params)
-        
+
         if data:
-            df = pd.DataFrame(data, columns=[
-                'Open_time', 'Open', 'High', 'Low', 'Close', 'Volume', 
-                'Close_time', 'Quote_asset_volume', 'Number_of_trades', 
-                'Taker_buy_base_asset_volume', 'Taker_buy_quote_asset_volume', 'Ignore'
-            ])
-            
-            df['Open_time'] = pd.to_datetime(df['Open_time'], unit='ms')
-            df['Close_time'] = pd.to_datetime(df['Close_time'], unit='ms')
-            
-            numeric_cols = ['Open', 'High', 'Low', 'Close', 'Volume', 'Quote_asset_volume', 
-                            'Taker_buy_base_asset_volume', 'Taker_buy_quote_asset_volume']
+            df = pd.DataFrame(
+                data,
+                columns=[
+                    "Open_time",
+                    "Open",
+                    "High",
+                    "Low",
+                    "Close",
+                    "Volume",
+                    "Close_time",
+                    "Quote_asset_volume",
+                    "Number_of_trades",
+                    "Taker_buy_base_asset_volume",
+                    "Taker_buy_quote_asset_volume",
+                    "Ignore",
+                ],
+            )
+
+            df["Open_time"] = pd.to_datetime(df["Open_time"], unit="ms")
+            df["Close_time"] = pd.to_datetime(df["Close_time"], unit="ms")
+
+            numeric_cols = [
+                "Open",
+                "High",
+                "Low",
+                "Close",
+                "Volume",
+                "Quote_asset_volume",
+                "Taker_buy_base_asset_volume",
+                "Taker_buy_quote_asset_volume",
+            ]
             for col in numeric_cols:
-                df[col] = pd.to_numeric(df[col], errors='coerce')
-                
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+
             return df
         return None
 
@@ -225,7 +271,9 @@ class BinanceDataFetcher:
         """
         Get historical K-line/candlestick data and funding rate for a symbol from Binance Futures API.
         """
-        self.check_symbol_availability(symbol, market_type='futures') # Check symbol availability first
+        self.check_symbol_availability(
+            symbol, market_type="futures"
+        )  # Check symbol availability first
 
         klines_df = None
         funding_rate_info = {}
@@ -233,35 +281,60 @@ class BinanceDataFetcher:
         # 1. Fetch K-lines from fapi/v1/klines
         klines_params = {"symbol": symbol, "interval": interval, "limit": limit}
         data = self._make_request(self.futures_base_url, "/klines", klines_params)
-        
+
         if data:
-            klines_df = pd.DataFrame(data, columns=[
-                'Open_time', 'Open', 'High', 'Low', 'Close', 'Volume', 
-                'Close_time', 'Quote_asset_volume', 'Number_of_trades', 
-                'Taker_buy_base_asset_volume', 'Taker_buy_quote_asset_volume', 'Ignore'
-            ])
-            
-            klines_df['Open_time'] = pd.to_datetime(klines_df['Open_time'], unit='ms')
-            klines_df['Close_time'] = pd.to_datetime(klines_df['Close_time'], unit='ms')
-            
-            numeric_cols = ['Open', 'High', 'Low', 'Close', 'Volume', 'Quote_asset_volume', 
-                            'Taker_buy_base_asset_volume', 'Taker_buy_quote_asset_volume']
+            klines_df = pd.DataFrame(
+                data,
+                columns=[
+                    "Open_time",
+                    "Open",
+                    "High",
+                    "Low",
+                    "Close",
+                    "Volume",
+                    "Close_time",
+                    "Quote_asset_volume",
+                    "Number_of_trades",
+                    "Taker_buy_base_asset_volume",
+                    "Taker_buy_quote_asset_volume",
+                    "Ignore",
+                ],
+            )
+
+            klines_df["Open_time"] = pd.to_datetime(klines_df["Open_time"], unit="ms")
+            klines_df["Close_time"] = pd.to_datetime(klines_df["Close_time"], unit="ms")
+
+            numeric_cols = [
+                "Open",
+                "High",
+                "Low",
+                "Close",
+                "Volume",
+                "Quote_asset_volume",
+                "Taker_buy_base_asset_volume",
+                "Taker_buy_quote_asset_volume",
+            ]
             for col in numeric_cols:
-                klines_df[col] = pd.to_numeric(klines_df[col], errors='coerce')
+                klines_df[col] = pd.to_numeric(klines_df[col], errors="coerce")
 
         # 2. Fetch funding rate from fapi/v1/premiumIndex
         funding_params = {"symbol": symbol}
-        data = self._make_request(self.futures_base_url, "/premiumIndex", funding_params)
+        data = self._make_request(
+            self.futures_base_url, "/premiumIndex", funding_params
+        )
 
         if data:
             funding_rate_info = {
                 "last_funding_rate": float(data.get("lastFundingRate", 0.0)),
-                "next_funding_time": pd.to_datetime(data.get("nextFundingTime", 0), unit='ms').isoformat(),
+                "next_funding_time": pd.to_datetime(
+                    data.get("nextFundingTime", 0), unit="ms"
+                ).isoformat(),
             }
         else:
             funding_rate_info = {"error": "Failed to fetch funding rate"}
 
         return klines_df, funding_rate_info
+
 
 class OkxDataFetcher:
     """
@@ -280,20 +353,20 @@ class OkxDataFetcher:
         OKX: 1m, 3m, 5m, 15m, 30m, 1H, 2H, 4H, 6H, 12H, 1D, 1W
         """
         interval_map = {
-            '1m': '1m',
-            '3m': '3m',
-            '5m': '5m',
-            '15m': '15m',
-            '30m': '30m',
-            '1h': '1H',
-            '2h': '2H',
-            '4h': '4H',
-            '6h': '6H',
-            '12h': '12H',
-            '1d': '1D',
-            '1w': '1W',
+            "1m": "1m",
+            "3m": "3m",
+            "5m": "5m",
+            "15m": "15m",
+            "30m": "30m",
+            "1h": "1H",
+            "2h": "2H",
+            "4h": "4H",
+            "6h": "6H",
+            "12h": "12H",
+            "1d": "1D",
+            "1w": "1W",
         }
-        return interval_map.get(interval.lower(), '1D')
+        return interval_map.get(interval.lower(), "1D")
 
     def _make_request(self, endpoint, params=None, timeout=20):
         """發送 HTTP 請求到 OKX API (With Retries)"""
@@ -314,23 +387,26 @@ class OkxDataFetcher:
 
         for attempt in range(max_retries):
             try:
-                response = requests.get(url, params=params, timeout=timeout, proxies=proxies)
+                response = requests.get(
+                    url, params=params, timeout=timeout, proxies=proxies
+                )
                 response.raise_for_status()
 
                 data = response.json()
 
                 # OKX API 返回格式: {"code":"0","msg":"","data":[...]}
-                if data.get('code') == '0':
-                    return data.get('data', [])
+                if data.get("code") == "0":
+                    return data.get("data", [])
                 else:
-                    error_msg = data.get('msg', 'Unknown error')
-                    error_code = data.get('code')
-                    
+                    error_msg = data.get("msg", "Unknown error")
+                    error_code = data.get("code")
+
                     # 51001: Instrument ID doesn't exist (Common when checking availability)
-                    if error_code == '51001': 
+                    if error_code == "51001":
                         # 僅在非測試模式下記錄警告，避免日誌噪音
                         try:
                             from core.config import TEST_MODE
+
                             if not TEST_MODE:
                                 logger.warning(f"OKX API Warning (51001): {error_msg}")
                         except Exception:
@@ -342,15 +418,23 @@ class OkxDataFetcher:
 
             except requests.exceptions.HTTPError as http_err:
                 if response.status_code == 400:
-                    raise SymbolNotFoundError(f"Symbol not found on OKX: {params.get('instId', 'N/A')}") from http_err
-                print(f"HTTP error occurred: {http_err} (Attempt {attempt+1}/{max_retries})")
+                    raise SymbolNotFoundError(
+                        f"Symbol not found on OKX: {params.get('instId', 'N/A')}"
+                    ) from http_err
+                print(
+                    f"HTTP error occurred: {http_err} (Attempt {attempt + 1}/{max_retries})"
+                )
             except requests.exceptions.ProxyError as proxy_err:
-                print(f"代理錯誤: 無法連接到代理伺服器 {https_proxy}。請檢查您的代理設定和網路。")
+                print(
+                    f"代理錯誤: 無法連接到代理伺服器 {https_proxy}。請檢查您的代理設定和網路。"
+                )
                 print(f"詳細錯誤: {proxy_err}")
-                return None # Proxy errors usually don't resolve with simple retries
+                return None  # Proxy errors usually don't resolve with simple retries
             except requests.exceptions.RequestException as req_err:
-                print(f"Request error occurred: {req_err} (Attempt {attempt+1}/{max_retries})")
-            
+                print(
+                    f"Request error occurred: {req_err} (Attempt {attempt + 1}/{max_retries})"
+                )
+
             # Wait before retrying (exponential backoff could be added here)
             if attempt < max_retries - 1:
                 time.sleep(retry_delay)
@@ -359,85 +443,100 @@ class OkxDataFetcher:
         print(f"❌ Failed to fetch data from OKX after {max_retries} attempts.")
         return None
 
-
-    def get_top_symbols(self, limit=30, quote_asset='USDT'):
+    def get_top_symbols(self, limit=30, quote_asset="USDT"):
         """
         Gets the top trading symbols by 24-hour volume from OKX Spot.
         OKX symbol format is 'BTC-USDT'.
         """
         endpoint = "/market/tickers"
-        params = {'instType': 'SPOT'}
+        params = {"instType": "SPOT"}
         print(f"Fetching top {limit} symbols from OKX, quoted in {quote_asset}...")
 
         all_tickers = self._make_request(endpoint, params)
-        
+
         if all_tickers:
             # Filter for symbols quoted in the desired asset (e.g., USDT)
-            usdt_tickers = [t for t in all_tickers if t['instId'].endswith(f'-{quote_asset}')]
-            
+            usdt_tickers = [
+                t for t in all_tickers if t["instId"].endswith(f"-{quote_asset}")
+            ]
+
             # Sort by 24h volume in quote currency (volCcy24h)
             # The value is a string, so it needs to be converted to float
-            sorted_tickers = sorted(usdt_tickers, key=lambda x: float(x.get('volCcy24h', 0)), reverse=True)
-            
+            sorted_tickers = sorted(
+                usdt_tickers, key=lambda x: float(x.get("volCcy24h", 0)), reverse=True
+            )
+
             # Get the top 'limit' symbols
-            top_symbols = [t['instId'] for t in sorted_tickers[:limit]]
-            
+            top_symbols = [t["instId"] for t in sorted_tickers[:limit]]
+
             print(f"Found top {len(top_symbols)} symbols: {top_symbols}")
             return top_symbols
-            
+
         print("Could not retrieve tickers from OKX to determine top symbols.")
         return []
 
-    def get_tickers(self, instType='SPOT'):
+    def get_tickers(self, instType="SPOT"):
         """
         Get all tickers (raw data) from OKX.
         """
         endpoint = "/market/tickers"
-        params = {'instType': instType}
+        params = {"instType": instType}
         return self._make_request(endpoint, params)
 
-    def get_all_symbols(self, quote_asset='USDT'):
+    def get_all_symbols(self, quote_asset="USDT"):
         """Get all trading symbols quoted in the specified asset."""
         cache_key = f"okx_all_symbols_{quote_asset}"
         if cache_key in symbol_cache:
             return symbol_cache[cache_key]
 
         endpoint = "/public/instruments"
-        params = {'instType': 'SPOT'}
+        params = {"instType": "SPOT"}
         print(f"Fetching all SPOT symbols from OKX, filtering by {quote_asset}...")
         data = self._make_request(endpoint, params)
         if data:
             # OKX usually has quoteCcy field, let's use it for better accuracy
-            symbols = [s['instId'] for s in data if (s.get('quoteCcy') == quote_asset or s['instId'].endswith(f'-{quote_asset}')) and s.get('state') == 'live']
+            symbols = [
+                s["instId"]
+                for s in data
+                if (
+                    s.get("quoteCcy") == quote_asset
+                    or s["instId"].endswith(f"-{quote_asset}")
+                )
+                and s.get("state") == "live"
+            ]
             print(f"OKX: Found {len(symbols)} symbols matching {quote_asset}")
             symbol_cache[cache_key] = symbols
             return symbols
         print("OKX: Failed to retrieve symbols from instruments endpoint.")
         return []
 
-    def check_symbol_availability(self, symbol, inst_type='SPOT'):
+    def check_symbol_availability(self, symbol, inst_type="SPOT"):
         """
         Checks if a given symbol is available on OKX.
         Raises SymbolNotFoundError if the symbol is not found.
         """
         endpoint = "/public/instruments"
-        params = {'instType': inst_type, 'instId': symbol}
-        
+        params = {"instType": inst_type, "instId": symbol}
+
         try:
             instrument_data = self._make_request(endpoint, params)
             # The API returns a list. If it's empty, the symbol doesn't exist.
             if instrument_data and len(instrument_data) > 0:
                 # Double-check the instrument ID and its state.
-                if instrument_data[0]['instId'] == symbol and instrument_data[0]['state'] == 'live':
+                if (
+                    instrument_data[0]["instId"] == symbol
+                    and instrument_data[0]["state"] == "live"
+                ):
                     return True
-            
+
             # If the list is empty or conditions are not met, raise the error.
-            raise SymbolNotFoundError(f"Symbol '{symbol}' not found or not live on OKX {inst_type} market.")
+            raise SymbolNotFoundError(
+                f"Symbol '{symbol}' not found or not live on OKX {inst_type} market."
+            )
 
         except requests.exceptions.RequestException as req_err:
             print(f"Error checking symbol availability for {symbol} on OKX: {req_err}")
-            raise # Re-raise to be handled upstream
-
+            raise  # Re-raise to be handled upstream
 
     def get_historical_klines(self, symbol, interval, limit=100):
         """
@@ -451,8 +550,10 @@ class OkxDataFetcher:
         Returns:
             DataFrame with columns: Open_time, Open, High, Low, Close, Volume, etc.
         """
-        self.check_symbol_availability(symbol, inst_type='SPOT') # Check symbol availability first
-        
+        self.check_symbol_availability(
+            symbol, inst_type="SPOT"
+        )  # Check symbol availability first
+
         endpoint = "/market/candles"
 
         # 轉換時間間隔
@@ -460,9 +561,9 @@ class OkxDataFetcher:
 
         # OKX API 參數
         params = {
-            'instId': symbol,
-            'bar': okx_interval,
-            'limit': min(limit, 300)  # OKX 最多返回 300 條
+            "instId": symbol,
+            "bar": okx_interval,
+            "limit": min(limit, 300),  # OKX 最多返回 300 條
         }
 
         data = self._make_request(endpoint, params)
@@ -472,36 +573,61 @@ class OkxDataFetcher:
 
         # OKX 返回格式: [ts, o, h, l, c, vol, volCcy, volCcyQuote, confirm]
         # 轉換為與 Binance 相同的格式
-        df = pd.DataFrame(data, columns=[
-            'Open_time', 'Open', 'High', 'Low', 'Close', 'Volume',
-            'Volume_currency', 'Volume_quote', 'Confirm'
-        ])
+        df = pd.DataFrame(
+            data,
+            columns=[
+                "Open_time",
+                "Open",
+                "High",
+                "Low",
+                "Close",
+                "Volume",
+                "Volume_currency",
+                "Volume_quote",
+                "Confirm",
+            ],
+        )
 
         # 轉換數據類型，處理空字符串
-        df['Open_time'] = pd.to_datetime(pd.to_numeric(df['Open_time']), unit='ms')
-        df['Open'] = pd.to_numeric(df['Open'], errors='coerce')
-        df['High'] = pd.to_numeric(df['High'], errors='coerce')
-        df['Low'] = pd.to_numeric(df['Low'], errors='coerce')
-        df['Close'] = pd.to_numeric(df['Close'], errors='coerce')
-        df['Volume'] = pd.to_numeric(df['Volume'], errors='coerce')
+        df["Open_time"] = pd.to_datetime(pd.to_numeric(df["Open_time"]), unit="ms")
+        df["Open"] = pd.to_numeric(df["Open"], errors="coerce")
+        df["High"] = pd.to_numeric(df["High"], errors="coerce")
+        df["Low"] = pd.to_numeric(df["Low"], errors="coerce")
+        df["Close"] = pd.to_numeric(df["Close"], errors="coerce")
+        df["Volume"] = pd.to_numeric(df["Volume"], errors="coerce")
 
         # 添加 Binance 格式的額外欄位（用於兼容性）
-        df['Close_time'] = df['Open_time'] + pd.to_timedelta(okx_interval.replace('H', 'h')) - pd.to_timedelta(1, 'ms')
-        df['Quote_asset_volume'] = df['Volume_quote']
-        df['Number_of_trades'] = 0  # OKX 不提供
-        df['Taker_buy_base_asset_volume'] = 0  # OKX 不提供
-        df['Taker_buy_quote_asset_volume'] = 0  # OKX 不提供
-        df['Ignore'] = 0
+        df["Close_time"] = (
+            df["Open_time"]
+            + pd.to_timedelta(okx_interval.replace("H", "h"))
+            - pd.to_timedelta(1, "ms")
+        )
+        df["Quote_asset_volume"] = df["Volume_quote"]
+        df["Number_of_trades"] = 0  # OKX 不提供
+        df["Taker_buy_base_asset_volume"] = 0  # OKX 不提供
+        df["Taker_buy_quote_asset_volume"] = 0  # OKX 不提供
+        df["Ignore"] = 0
 
         # 反轉順序（OKX 返回的是從新到舊）
         df = df.iloc[::-1].reset_index(drop=True)
 
         # 只保留需要的欄位
-        df = df[[
-            'Open_time', 'Open', 'High', 'Low', 'Close', 'Volume',
-            'Close_time', 'Quote_asset_volume', 'Number_of_trades',
-            'Taker_buy_base_asset_volume', 'Taker_buy_quote_asset_volume', 'Ignore'
-        ]]
+        df = df[
+            [
+                "Open_time",
+                "Open",
+                "High",
+                "Low",
+                "Close",
+                "Volume",
+                "Close_time",
+                "Quote_asset_volume",
+                "Number_of_trades",
+                "Taker_buy_base_asset_volume",
+                "Taker_buy_quote_asset_volume",
+                "Ignore",
+            ]
+        ]
 
         return df
 
@@ -518,21 +644,19 @@ class OkxDataFetcher:
             (DataFrame, funding_rate_dict)
         """
         # OKX 合約符號格式: BTC-USDT-SWAP
-        if not symbol.endswith('-SWAP'):
+        if not symbol.endswith("-SWAP"):
             # 如果是現貨格式 (BTC-USDT)，轉換為合約格式
-            symbol = symbol + '-SWAP'
+            symbol = symbol + "-SWAP"
 
-        self.check_symbol_availability(symbol, inst_type='SWAP') # Check symbol availability first
+        self.check_symbol_availability(
+            symbol, inst_type="SWAP"
+        )  # Check symbol availability first
 
         # 獲取 K 線數據
         endpoint = "/market/candles"
         okx_interval = self._convert_interval(interval)
 
-        params = {
-            'instId': symbol,
-            'bar': okx_interval,
-            'limit': min(limit, 300)
-        }
+        params = {"instId": symbol, "bar": okx_interval, "limit": min(limit, 300)}
 
         klines_data = self._make_request(endpoint, params)
 
@@ -540,32 +664,57 @@ class OkxDataFetcher:
             return None, {}
 
         # 轉換 K 線數據
-        df = pd.DataFrame(klines_data, columns=[
-            'Open_time', 'Open', 'High', 'Low', 'Close', 'Volume',
-            'Volume_currency', 'Volume_quote', 'Confirm'
-        ])
+        df = pd.DataFrame(
+            klines_data,
+            columns=[
+                "Open_time",
+                "Open",
+                "High",
+                "Low",
+                "Close",
+                "Volume",
+                "Volume_currency",
+                "Volume_quote",
+                "Confirm",
+            ],
+        )
 
-        df['Open_time'] = pd.to_datetime(pd.to_numeric(df['Open_time']), unit='ms')
-        df['Open'] = pd.to_numeric(df['Open'], errors='coerce')
-        df['High'] = pd.to_numeric(df['High'], errors='coerce')
-        df['Low'] = pd.to_numeric(df['Low'], errors='coerce')
-        df['Close'] = pd.to_numeric(df['Close'], errors='coerce')
-        df['Volume'] = pd.to_numeric(df['Volume'], errors='coerce')
+        df["Open_time"] = pd.to_datetime(pd.to_numeric(df["Open_time"]), unit="ms")
+        df["Open"] = pd.to_numeric(df["Open"], errors="coerce")
+        df["High"] = pd.to_numeric(df["High"], errors="coerce")
+        df["Low"] = pd.to_numeric(df["Low"], errors="coerce")
+        df["Close"] = pd.to_numeric(df["Close"], errors="coerce")
+        df["Volume"] = pd.to_numeric(df["Volume"], errors="coerce")
 
-        df['Close_time'] = df['Open_time'] + pd.to_timedelta(okx_interval.replace('H', 'h')) - pd.to_timedelta(1, 'ms')
-        df['Quote_asset_volume'] = df['Volume_quote']
-        df['Number_of_trades'] = 0
-        df['Taker_buy_base_asset_volume'] = 0
-        df['Taker_buy_quote_asset_volume'] = 0
-        df['Ignore'] = 0
+        df["Close_time"] = (
+            df["Open_time"]
+            + pd.to_timedelta(okx_interval.replace("H", "h"))
+            - pd.to_timedelta(1, "ms")
+        )
+        df["Quote_asset_volume"] = df["Volume_quote"]
+        df["Number_of_trades"] = 0
+        df["Taker_buy_base_asset_volume"] = 0
+        df["Taker_buy_quote_asset_volume"] = 0
+        df["Ignore"] = 0
 
         df = df.iloc[::-1].reset_index(drop=True)
 
-        df = df[[
-            'Open_time', 'Open', 'High', 'Low', 'Close', 'Volume',
-            'Close_time', 'Quote_asset_volume', 'Number_of_trades',
-            'Taker_buy_base_asset_volume', 'Taker_buy_quote_asset_volume', 'Ignore'
-        ]]
+        df = df[
+            [
+                "Open_time",
+                "Open",
+                "High",
+                "Low",
+                "Close",
+                "Volume",
+                "Close_time",
+                "Quote_asset_volume",
+                "Number_of_trades",
+                "Taker_buy_base_asset_volume",
+                "Taker_buy_quote_asset_volume",
+                "Ignore",
+            ]
+        ]
 
         # 獲取資金費率
         funding_rate_info = self._get_funding_rate(symbol)
@@ -584,9 +733,7 @@ class OkxDataFetcher:
         """
         endpoint = "/public/funding-rate"
 
-        params = {
-            'instId': symbol
-        }
+        params = {"instId": symbol}
 
         data = self._make_request(endpoint, params)
 
@@ -599,16 +746,17 @@ class OkxDataFetcher:
         # 安全轉換，處理空字符串
         def safe_float(value, default=0.0):
             try:
-                return float(value) if value and value != '' else default
+                return float(value) if value and value != "" else default
             except (ValueError, TypeError):
                 return default
 
         return {
-            'current_funding_rate': safe_float(rate_data.get('fundingRate')),
-            'next_funding_rate': safe_float(rate_data.get('nextFundingRate')),
-            'funding_time': rate_data.get('fundingTime', ''),
-            'next_funding_time': rate_data.get('nextFundingTime', '')
+            "current_funding_rate": safe_float(rate_data.get("fundingRate")),
+            "next_funding_rate": safe_float(rate_data.get("nextFundingRate")),
+            "funding_time": rate_data.get("fundingTime", ""),
+            "next_funding_time": rate_data.get("nextFundingTime", ""),
         }
+
 
 def get_data_fetcher(exchange: str):
     """
@@ -621,10 +769,11 @@ def get_data_fetcher(exchange: str):
     else:
         raise ValueError(f"Unsupported exchange: {exchange}")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     # 僅保留成功的冒煙測試，移除會混淆使用者的錯誤測試
     print("--- 啟動交易所數據獲取器測試 ---")
-    
+
     # 測試 OKX
     try:
         okx_fetcher = get_data_fetcher("okx")
@@ -633,7 +782,7 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"❌ OKX 測試失敗: {e}")
 
-    print("\n" + "="*30 + "\n")
+    print("\n" + "=" * 30 + "\n")
 
     # 測試 Binance
     try:
@@ -645,5 +794,3 @@ if __name__ == '__main__':
             print("ℹ️ Binance 目前處於頻率限制或封禁中，跳過測試。")
     except Exception as e:
         print(f"ℹ️ Binance 測試跳過 (預期限制): {e}")
-
-

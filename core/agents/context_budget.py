@@ -5,6 +5,7 @@ Prevents history slot in the LLM prompt from exceeding CONTEXT_CHAR_BUDGET chars
 When the raw history is too long, serve CompactPrompt (Goal/Progress/OpenQ/NextSteps)
 instead.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -18,6 +19,7 @@ CONTEXT_CHAR_BUDGET: int = 6_000
 @dataclass
 class CompactPrompt:
     """Structured compact representation of a long session."""
+
     goal: str
     progress: str
     open_questions: str = ""
@@ -31,7 +33,11 @@ def history_exceeds_budget(history: str) -> bool:
 
 def format_compact_state(cp: CompactPrompt) -> str:
     """Render CompactPrompt as a compact history block for LLM injection."""
-    lines = ["[Session Compact Summary]", f"Goal: {cp.goal}", f"Progress: {cp.progress}"]
+    lines = [
+        "[Session Compact Summary]",
+        f"Goal: {cp.goal}",
+        f"Progress: {cp.progress}",
+    ]
     if cp.open_questions:
         lines.append(f"Open Questions: {cp.open_questions}")
     if cp.next_steps:

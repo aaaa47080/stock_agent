@@ -43,4 +43,3 @@ def resolve_redis_url() -> Tuple[str, str]:
         auth = f"{quote(redis_username)}@"
 
     return f"redis://{auth}{redis_host}:{redis_port}/{redis_db}", "REDIS_HOST"
-

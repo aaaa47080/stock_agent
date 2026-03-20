@@ -1,21 +1,25 @@
-import requests
-import json
-import hmac
-import hashlib
 import base64
 import datetime
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import hashlib
+import hmac
+import json
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+import requests
 from dotenv import load_dotenv
+
 from api.utils import logger
 
 # Load local defaults from .env, but keep runtime/deployment env vars authoritative.
 load_dotenv()
 
+
 class OKXAPIConnector:
     """
     OKX API 連接器，支援現貨和期貨交易
     """
+
     _has_warned_missing_creds = False
 
     def __init__(self):
@@ -37,9 +41,9 @@ class OKXAPIConnector:
         self.base_url = os.getenv("OKX_BASE_URL", "https://www.okx.com")
         self.headers = {
             "Content-Type": "application/json",
-            "Accept": "application/json"
+            "Accept": "application/json",
         }
-        
+
         # 定義不需要簽名的公共端點
         self.public_endpoints = [
             "/public/instruments",
@@ -47,10 +51,12 @@ class OKXAPIConnector:
             "/market/tickers",
             "/market/candles",
             "/market/history-candles",
-            "/public/funding-rate"
+            "/public/funding-rate",
         ]
 
-    def _generate_signature(self, timestamp: str, method: str, request_path: str, body: str = "") -> str:
+    def _generate_signature(
+        self, timestamp: str, method: str, request_path: str, body: str = ""
+    ) -> str:
         """
         生成 OKX API 簽名
         """
@@ -59,14 +65,16 @@ class OKXAPIConnector:
 
         message = timestamp + method.upper() + request_path + body
         mac = hmac.new(
-            self.secret_key.encode('utf-8'),
-            message.encode('utf-8'),
+            self.secret_key.encode("utf-8"),
+            message.encode("utf-8"),
             hashlib.sha256,
         )
         signature = base64.b64encode(mac.digest()).decode()
         return signature
 
-    def _make_request(self, method: str, endpoint: str, params: dict = None, data: dict = None) -> dict:
+    def _make_request(
+        self, method: str, endpoint: str, params: dict = None, data: dict = None
+    ) -> dict:
         """
         發送 API 請求
         """
@@ -75,7 +83,11 @@ class OKXAPIConnector:
 
         # 如果不是公共端點，且缺少憑證，則報錯
         if not is_public and not all([self.api_key, self.secret_key, self.passphrase]):
-            return {"code": "50000", "msg": "❌ 未設置 OKX API Key。請在系統設定中輸入您的 OKX API 憑證。", "data": []}
+            return {
+                "code": "50000",
+                "msg": "❌ 未設置 OKX API Key。請在系統設定中輸入您的 OKX API 憑證。",
+                "data": [],
+            }
 
         # 構建實際請求的 URL
         # 如果 base_url 已包含版本信息 (/api/v5)，則直接附加 endpoint；否則添加版本前綴
@@ -86,25 +98,33 @@ class OKXAPIConnector:
 
         # 準備請求參數
         headers = self.headers.copy()
-        
+
         # 只有在有憑證且不是故意要忽略簽名的情況下才簽名
         # 但為了提高限頻，如果有的話即使是 public 我們通常也簽名
         # 但為了回應使用者需求：如果使用者想用 public 方式，這裡我們對於 public endpoint 可以選擇不簽名
         # 這裡策略：如果有 key 就簽名 (獲取更高限頻)，除非使用者指定要 public 模式 (這裡暫不實作複雜開關)
         # 或者：嚴格按照使用者建議，Public endpoint 就不簽名
-        
+
         # 修正邏輯：如果 Keys 存在，為了 Rate Limit 還是建議簽名。
         # 但如果 Keys 不存在 且 是 Public Endpoint -> 允許通過。
-        
-        if all([self.api_key, self.secret_key, self.passphrase]):
-             # 有 Key，執行簽名以獲得更高權限/限頻
-            timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
-            
-            # 構建請求路徑 (用於簽名)
-            signature_endpoint = '/api/v5' + endpoint 
 
-            if method.upper() == 'GET':
-                query_string = '&'.join([f"{k}={v}" for k, v in (params or {}).items()]) if params else ""
+        if all([self.api_key, self.secret_key, self.passphrase]):
+            # 有 Key，執行簽名以獲得更高權限/限頻
+            timestamp = (
+                datetime.datetime.now(datetime.timezone.utc)
+                .isoformat(timespec="milliseconds")
+                .replace("+00:00", "Z")
+            )
+
+            # 構建請求路徑 (用於簽名)
+            signature_endpoint = "/api/v5" + endpoint
+
+            if method.upper() == "GET":
+                query_string = (
+                    "&".join([f"{k}={v}" for k, v in (params or {}).items()])
+                    if params
+                    else ""
+                )
                 if query_string:
                     request_path = f"{signature_endpoint}?{query_string}"
                 else:
@@ -112,21 +132,27 @@ class OKXAPIConnector:
                 body = ""
             else:
                 request_path = signature_endpoint
-                body = json.dumps(data, separators=(',', ':')) if data else ""
+                body = json.dumps(data, separators=(",", ":")) if data else ""
 
             signature = self._generate_signature(timestamp, method, request_path, body)
 
-            headers.update({
-                "OK-ACCESS-KEY": self.api_key,
-                "OK-ACCESS-SIGN": signature,
-                "OK-ACCESS-TIMESTAMP": timestamp,
-                "OK-ACCESS-PASSPHRASE": self.passphrase
-            })
-            
+            headers.update(
+                {
+                    "OK-ACCESS-KEY": self.api_key,
+                    "OK-ACCESS-SIGN": signature,
+                    "OK-ACCESS-TIMESTAMP": timestamp,
+                    "OK-ACCESS-PASSPHRASE": self.passphrase,
+                }
+            )
+
             # 對於 POST/PUT 請求，確保 body 是 JSON 字符串
-            if method.upper() not in ['GET', 'DELETE'] and not isinstance(data, str) and data:
-                 data = body # 使用簽名時生成的 body 字符串
-                 
+            if (
+                method.upper() not in ["GET", "DELETE"]
+                and not isinstance(data, str)
+                and data
+            ):
+                data = body  # 使用簽名時生成的 body 字符串
+
         else:
             # 無 Key 且是 Public -> 不簽名，直接發送
             pass
@@ -135,22 +161,34 @@ class OKXAPIConnector:
         timeout = (10, 30)
 
         try:
-            if method.upper() == 'GET':
-                response = requests.get(url, headers=headers, params=params, timeout=timeout)
-            elif method.upper() == 'POST':
+            if method.upper() == "GET":
+                response = requests.get(
+                    url, headers=headers, params=params, timeout=timeout
+                )
+            elif method.upper() == "POST":
                 # 注意：如果上面有簽名，data 已經被轉成 json string (body)，如果是 requests.post(json=...) 會再次轉義
                 # 所以這裡要小心。如果 headers 有 Content-Type: application/json，直接傳 data=body
                 if isinstance(data, dict):
-                     response = requests.post(url, headers=headers, json=data, timeout=timeout)
+                    response = requests.post(
+                        url, headers=headers, json=data, timeout=timeout
+                    )
                 else:
-                     response = requests.post(url, headers=headers, data=data, timeout=timeout)
-            elif method.upper() == 'PUT':
+                    response = requests.post(
+                        url, headers=headers, data=data, timeout=timeout
+                    )
+            elif method.upper() == "PUT":
                 if isinstance(data, dict):
-                     response = requests.put(url, headers=headers, json=data, timeout=timeout)
+                    response = requests.put(
+                        url, headers=headers, json=data, timeout=timeout
+                    )
                 else:
-                     response = requests.put(url, headers=headers, data=data, timeout=timeout)
-            elif method.upper() == 'DELETE':
-                response = requests.delete(url, headers=headers, params=params, timeout=timeout)
+                    response = requests.put(
+                        url, headers=headers, data=data, timeout=timeout
+                    )
+            elif method.upper() == "DELETE":
+                response = requests.delete(
+                    url, headers=headers, params=params, timeout=timeout
+                )
             else:
                 return {"code": "000000", "msg": "不支援的 HTTP 方法", "data": []}
 
@@ -199,7 +237,9 @@ class OKXAPIConnector:
 
     # --- 現貨交易相關 ---
 
-    def place_spot_order(self, instId: str, side: str, ordType: str, sz: str, px: str = None) -> dict:
+    def place_spot_order(
+        self, instId: str, side: str, ordType: str, sz: str, px: str = None
+    ) -> dict:
         """
         下現貨訂單
 
@@ -216,7 +256,7 @@ class OKXAPIConnector:
             "tdMode": "cash",  # 現貨交易模式
             "side": side,
             "ordType": ordType,
-            "sz": str(sz)
+            "sz": str(sz),
         }
 
         if ordType == "limit" and px:
@@ -238,10 +278,20 @@ class OKXAPIConnector:
 
     # --- 期貨交易相關 ---
 
-    def place_futures_order(self, instId: str, side: str, ordType: str, sz: str,
-                           posSide: str, px: str = None, lever: str = "5",
-                           slTriggerPx: str = None, slOrdPx: str = None,
-                           tpTriggerPx: str = None, tpOrdPx: str = None) -> dict:
+    def place_futures_order(
+        self,
+        instId: str,
+        side: str,
+        ordType: str,
+        sz: str,
+        posSide: str,
+        px: str = None,
+        lever: str = "5",
+        slTriggerPx: str = None,
+        slOrdPx: str = None,
+        tpTriggerPx: str = None,
+        tpOrdPx: str = None,
+    ) -> dict:
         """
         下期貨訂單
 
@@ -266,7 +316,7 @@ class OKXAPIConnector:
             "ordType": ordType,
             "sz": str(sz),
             "posSide": posSide,
-            "lever": str(lever)
+            "lever": str(lever),
         }
 
         if ordType == "limit" and px:
@@ -280,7 +330,7 @@ class OKXAPIConnector:
             algo_ord["tpTriggerPx"] = str(tpTriggerPx)
             algo_ord["tpOrdPx"] = str(tpOrdPx) if tpOrdPx else "-1"
             algo_ord["tpTriggerPxType"] = "last"
-        
+
         if slTriggerPx:
             algo_ord["slTriggerPx"] = str(slTriggerPx)
             algo_ord["slOrdPx"] = str(slOrdPx) if slOrdPx else "-1"
@@ -305,7 +355,9 @@ class OKXAPIConnector:
             params["instId"] = instId
         return self._make_request("GET", endpoint, params=params)
 
-    def set_leverage(self, instId: str, lever: str, mgnMode: str = "cross", posSide: str = None) -> dict:
+    def set_leverage(
+        self, instId: str, lever: str, mgnMode: str = "cross", posSide: str = None
+    ) -> dict:
         """
         設置槓桿倍數
 
@@ -316,11 +368,7 @@ class OKXAPIConnector:
             posSide: 持倉方向 (long, short, net) - 在單向持倉模式下使用 'net'
         """
         endpoint = "/account/set-leverage"
-        data = {
-            "instId": instId,
-            "lever": str(lever),
-            "mgnMode": mgnMode
-        }
+        data = {"instId": instId, "lever": str(lever), "mgnMode": mgnMode}
 
         # Only add posSide if provided (required in some position modes)
         if posSide:
@@ -404,11 +452,15 @@ class OKXAPIConnector:
         funding_rates = {}
 
         # 篩選 USDT 本位永續合約
-        usdt_swaps = [inst for inst in instruments.get("data", [])
-                      if inst.get("instId", "").endswith("-USDT-SWAP")]
+        usdt_swaps = [
+            inst
+            for inst in instruments.get("data", [])
+            if inst.get("instId", "").endswith("-USDT-SWAP")
+        ]
 
         # Helper function for parallel fetching with rate limiting
         import time
+
         def fetch_single_rate(inst_id):
             try:
                 # [Optimization] 50ms sleep with 10 workers = ~20 req/s (Safe for OKX public limit)
@@ -423,14 +475,17 @@ class OKXAPIConnector:
         # 批量獲取資金費率 (並行處理)
         # 增加並發數到 10 以加速獲取 (OKX 限頻通常允許更高)
         with ThreadPoolExecutor(max_workers=10) as executor:
-            future_to_inst = {executor.submit(fetch_single_rate, inst.get("instId")): inst for inst in usdt_swaps}
-            
+            future_to_inst = {
+                executor.submit(fetch_single_rate, inst.get("instId")): inst
+                for inst in usdt_swaps
+            }
+
             for future in as_completed(future_to_inst):
                 instId, data = future.result()
                 if data:
                     try:
                         symbol = instId.replace("-SWAP", "")
-                        
+
                         # 安全轉換函數：處理空字串和 None
                         def safe_float(val, default=0.0):
                             """將值轉換為 float，處理空字串和 None"""
@@ -448,7 +503,11 @@ class OKXAPIConnector:
 
                         # 處理下次資金費率 (可能是空字串)
                         next_rate_val = data.get("nextFundingRate")
-                        next_rate = safe_float(next_rate_val) * 100 if next_rate_val and next_rate_val != "" else None
+                        next_rate = (
+                            safe_float(next_rate_val) * 100
+                            if next_rate_val and next_rate_val != ""
+                            else None
+                        )
 
                         funding_rates[symbol] = {
                             "instId": instId,
@@ -457,7 +516,7 @@ class OKXAPIConnector:
                             "fundingTime": data.get("fundingTime"),
                             "nextFundingTime": data.get("nextFundingTime"),
                             "maxFundingRate": max_rate,
-                            "minFundingRate": min_rate
+                            "minFundingRate": min_rate,
                         }
                     except Exception as e:
                         logger.error(f"Error processing funding rate for {instId}: {e}")
@@ -482,6 +541,7 @@ class OKXAPIConnector:
         # print(f"[DEBUG] 帳戶餘額API返回: {result}")
         return result.get("code") == "0"
 
+
 def test_okx_api():
     """
     測試 OKX API 功能
@@ -502,9 +562,9 @@ def test_okx_api():
         print("[ERROR] API 連接失敗")
         return
 
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     print("[ACCOUNT] 帳戶資訊測試")
-    print("="*50)
+    print("=" * 50)
 
     # 獲取帳戶餘額
     print("\n[INFO] 獲取帳戶餘額...")
@@ -521,9 +581,9 @@ def test_okx_api():
     positions = api.get_positions("ANY")
     print(f"持倉資訊結果: {positions}")
 
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     print("[TRADING] 交易功能測試")
-    print("="*50)
+    print("=" * 50)
 
     # 獲取市場行情（不需要認證）
     print("\n[INFO] 獲取市場行情 (BTC-USDT)...")
@@ -535,11 +595,12 @@ def test_okx_api():
     futures_positions = api.get_futures_positions()
     print(f"期貨持倉結果: {futures_positions}")
 
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     print("[SUCCESS] 測試完成！")
     print("[READY] OKX API 連接器已準備就緒")
     print("   您可以使用此連接器來執行自動交易")
-    print("="*50)
+    print("=" * 50)
+
 
 if __name__ == "__main__":
     test_okx_api()

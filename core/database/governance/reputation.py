@@ -2,6 +2,7 @@
 Audit Reputation Functions
 Track and calculate reviewer reputation
 """
+
 from typing import Dict
 
 from ..connection import get_connection
@@ -21,11 +22,14 @@ def get_audit_reputation(db, user_id: str) -> Dict:
     conn = db or get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute(
+            """
             SELECT total_reviews, correct_votes, accuracy_rate, reputation_score
             FROM audit_reputation
             WHERE user_id = %s
-        ''', (user_id,))
+        """,
+            (user_id,),
+        )
 
         row = c.fetchone()
         if not row:
@@ -33,14 +37,14 @@ def get_audit_reputation(db, user_id: str) -> Dict:
                 "total_reviews": 0,
                 "correct_votes": 0,
                 "accuracy_rate": 1.0,
-                "reputation_score": 0
+                "reputation_score": 0,
             }
 
         return {
             "total_reviews": row[0],
             "correct_votes": row[1],
             "accuracy_rate": row[2],
-            "reputation_score": row[3]
+            "reputation_score": row[3],
         }
     finally:
         if not db:
@@ -88,19 +92,30 @@ def update_audit_reputation(db, user_id: str, was_correct: bool) -> Dict:
     c = conn.cursor()
     try:
         # Get current stats
-        c.execute('''
+        c.execute(
+            """
             SELECT total_reviews, correct_votes FROM audit_reputation
             WHERE user_id = %s
-        ''', (user_id,))
+        """,
+            (user_id,),
+        )
 
         row = c.fetchone()
         if not row:
             # Create new record
-            c.execute('''
+            c.execute(
+                """
                 INSERT INTO audit_reputation
                 (user_id, total_reviews, correct_votes, accuracy_rate, reputation_score, updated_at)
                 VALUES (%s, 1, %s, %s, %s, NOW())
-            ''', (user_id, 1 if was_correct else 0, 1.0 if was_correct else 0.0, 1 if was_correct else 0))
+            """,
+                (
+                    user_id,
+                    1 if was_correct else 0,
+                    1.0 if was_correct else 0.0,
+                    1 if was_correct else 0,
+                ),
+            )
 
             new_total = 1
             new_correct = 1 if was_correct else 0
@@ -115,7 +130,8 @@ def update_audit_reputation(db, user_id: str, was_correct: bool) -> Dict:
             # Calculate reputation score (simple formula: correct * 10 - incorrect * 5)
             new_score = max(0, new_correct * 10 - (new_total - new_correct) * 5)
 
-            c.execute('''
+            c.execute(
+                """
                 UPDATE audit_reputation
                 SET total_reviews = %s,
                     correct_votes = %s,
@@ -123,7 +139,9 @@ def update_audit_reputation(db, user_id: str, was_correct: bool) -> Dict:
                     reputation_score = %s,
                     updated_at = NOW()
                 WHERE user_id = %s
-            ''', (new_total, new_correct, new_accuracy, new_score, user_id))
+            """,
+                (new_total, new_correct, new_accuracy, new_score, user_id),
+            )
 
         conn.commit()
 
@@ -132,7 +150,9 @@ def update_audit_reputation(db, user_id: str, was_correct: bool) -> Dict:
             "total_reviews": new_total,
             "correct_votes": new_correct,
             "accuracy_rate": new_correct / new_total,
-            "reputation_score": max(0, new_correct * 10 - (new_total - new_correct) * 5)
+            "reputation_score": max(
+                0, new_correct * 10 - (new_total - new_correct) * 5
+            ),
         }
     except Exception as e:
         conn.rollback()

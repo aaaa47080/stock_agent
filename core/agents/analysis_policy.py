@@ -32,7 +32,10 @@ class ModeAccessPolicy:
 
 class AnalysisPolicyResolver:
     def __init__(self, config_path: Optional[Path] = None):
-        self.config_path = config_path or Path(__file__).resolve().parents[2] / "config" / "analysis_policy.json"
+        self.config_path = (
+            config_path
+            or Path(__file__).resolve().parents[2] / "config" / "analysis_policy.json"
+        )
         self.config = self._load_config()
 
     def _load_config(self) -> Dict[str, object]:
@@ -40,7 +43,11 @@ class AnalysisPolicyResolver:
             return json.load(f)
 
     def get_mode_access_policy(self, user_tier: Optional[str]) -> ModeAccessPolicy:
-        normalized_tier = "premium" if str(user_tier or "free").strip().lower() in {"premium", "plus", "pro"} else "free"
+        normalized_tier = (
+            "premium"
+            if str(user_tier or "free").strip().lower() in {"premium", "plus", "pro"}
+            else "free"
+        )
         tier_modes = self.config.get("tier_modes", {})
         if not isinstance(tier_modes, dict):
             return ModeAccessPolicy(allowed_modes=("quick",), default_mode="quick")
@@ -54,7 +61,8 @@ class AnalysisPolicyResolver:
             raw_allowed_modes = ["quick"]
 
         allowed_modes = tuple(
-            mode for mode in raw_allowed_modes
+            mode
+            for mode in raw_allowed_modes
             if isinstance(mode, str) and mode in {"quick", "verified", "research"}
         ) or ("quick",)
 
@@ -67,13 +75,17 @@ class AnalysisPolicyResolver:
             default_mode=default_mode,
         )
 
-    def ensure_allowed_mode(self, user_tier: Optional[str], requested_mode: Optional[str]) -> str:
+    def ensure_allowed_mode(
+        self, user_tier: Optional[str], requested_mode: Optional[str]
+    ) -> str:
         policy = self.get_mode_access_policy(user_tier)
         if requested_mode in policy.allowed_modes:
             return str(requested_mode)
         return policy.default_mode
 
-    def build_query_profile(self, query: str, candidates: list[str]) -> Dict[str, object]:
+    def build_query_profile(
+        self, query: str, candidates: list[str]
+    ) -> Dict[str, object]:
         query_type = "general"
         query_type_rules = self.config.get("query_types", {})
         if isinstance(query_type_rules, dict):

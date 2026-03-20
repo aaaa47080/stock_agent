@@ -2,13 +2,15 @@
 DeFi 工具
 DefiLlama TVL, Categories & Gainers, Token Unlocks, Token Supply
 """
-from typing import Dict
-from langchain_core.tools import tool
-import httpx
 
-from .common import get_cached_data, set_cached_data
-from ..schemas import ExtractCryptoSymbolsInput
+from typing import Dict
+
+import httpx
+from langchain_core.tools import tool
+
 from ..helpers import extract_crypto_symbols
+from ..schemas import ExtractCryptoSymbolsInput
+from .common import get_cached_data, set_cached_data
 
 
 @tool
@@ -28,16 +30,27 @@ def get_defillama_tvl(protocol_name: str) -> str:
                 tvl = tvl_data[-1].get("totalLiquidityUSD", 0) if tvl_data else 0
 
             if tvl > 0:
-                tvl_str = f"${tvl / 1_000_000_000:.2f}B" if tvl > 1_000_000_000 else f"${tvl / 1_000_000:.2f}M"
+                tvl_str = (
+                    f"${tvl / 1_000_000_000:.2f}B"
+                    if tvl > 1_000_000_000
+                    else f"${tvl / 1_000_000:.2f}M"
+                )
                 return f"## 🏦 DefiLlama TVL\n\n- **協議**: {name}\n- **TVL**: {tvl_str}\n\n*(來源: DefiLlama)*"
 
         # Try as chain
         chains_resp = httpx.get("https://api.llama.fi/v2/chains", timeout=10)
         if chains_resp.status_code == 200:
             for chain in chains_resp.json():
-                if chain.get("name", "").lower() == slug or chain.get("tokenSymbol", "").lower() == slug:
+                if (
+                    chain.get("name", "").lower() == slug
+                    or chain.get("tokenSymbol", "").lower() == slug
+                ):
                     tvl = chain.get("tvl", 0)
-                    tvl_str = f"${tvl / 1_000_000_000:.2f}B" if tvl > 1_000_000_000 else f"${tvl / 1_000_000:.2f}M"
+                    tvl_str = (
+                        f"${tvl / 1_000_000_000:.2f}B"
+                        if tvl > 1_000_000_000
+                        else f"${tvl / 1_000_000:.2f}M"
+                    )
                     return f"## 🏦 {chain.get('name')} TVL\n\n- **TVL**: {tvl_str}\n\n*(來源: DefiLlama)*"
 
         return f"找不到 '{protocol_name}' 的資料。"
@@ -54,12 +67,15 @@ def get_crypto_categories_and_gainers() -> str:
         return cached
 
     try:
-        resp = httpx.get("https://api.coingecko.com/api/v3/coins/categories", timeout=10)
+        resp = httpx.get(
+            "https://api.coingecko.com/api/v3/coins/categories", timeout=10
+        )
         if resp.status_code == 200:
             categories = resp.json()
             sorted_cats = sorted(
-                [c for c in categories if c.get('market_cap_change_24h') is not None],
-                key=lambda x: x['market_cap_change_24h'], reverse=True
+                [c for c in categories if c.get("market_cap_change_24h") is not None],
+                key=lambda x: x["market_cap_change_24h"],
+                reverse=True,
             )
             output = "## 🚀 強勢板塊 (Top Sectors)\n\n"
             for i, cat in enumerate(sorted_cats[:5], 1):
@@ -81,7 +97,7 @@ def get_token_unlocks(symbol: str) -> str:
         "APT": {"date": "下週三", "amount": "11.31M APT", "percent": "2.48%"},
         "ARB": {"date": "下個月 16 日", "amount": "92.65M ARB", "percent": "2.87%"},
     }
-    if symbol in ['BTC', 'ETH']:
+    if symbol in ["BTC", "ETH"]:
         return f"✅ {symbol} 無定期大量解鎖機制。"
     if symbol in mock_data:
         u = mock_data[symbol]
@@ -99,7 +115,9 @@ def get_token_supply(symbol: str) -> str:
         return cached
 
     try:
-        search_resp = httpx.get(f"https://api.coingecko.com/api/v3/search?query={symbol}", timeout=10)
+        search_resp = httpx.get(
+            f"https://api.coingecko.com/api/v3/search?query={symbol}", timeout=10
+        )
         coins = search_resp.json().get("coins", [])
         if not coins:
             return f"找不到 {symbol}。"
@@ -112,14 +130,18 @@ def get_token_supply(symbol: str) -> str:
 
         detail_resp = httpx.get(
             f"https://api.coingecko.com/api/v3/coins/{coin_id}?localization=false&tickers=false&market_data=true",
-            timeout=10
+            timeout=10,
         )
         md = detail_resp.json().get("market_data", {})
 
         def fmt(v):
             if v is None:
                 return "未知"
-            return f"{v/1_000_000_000:.2f}B" if v > 1_000_000_000 else f"{v/1_000_000:.2f}M"
+            return (
+                f"{v / 1_000_000_000:.2f}B"
+                if v > 1_000_000_000
+                else f"{v / 1_000_000:.2f}M"
+            )
 
         result = f"## 🪙 {symbol} 供應量\n\n- 流通: {fmt(md.get('circulating_supply'))}\n- 總量: {fmt(md.get('total_supply'))}\n- 上限: {fmt(md.get('max_supply'))}\n\n*(來源: CoinGecko)*"
         set_cached_data(cache_key, result)
@@ -132,7 +154,11 @@ def get_token_supply(symbol: str) -> str:
 def extract_crypto_symbols_tool(user_query: str) -> Dict:
     """從查詢中提取加密貨幣符號"""
     symbols = extract_crypto_symbols(user_query)
-    return {"original_query": user_query, "extracted_symbols": symbols, "count": len(symbols)}
+    return {
+        "original_query": user_query,
+        "extracted_symbols": symbols,
+        "count": len(symbols),
+    }
 
 
 @tool
@@ -168,28 +194,35 @@ def get_staking_yield(symbol: str) -> str:
 
             # 檢查是否匹配目標代幣
             is_match = (
-                symbol == pool_symbol or
-                symbol in pool_name or
-                (underlying and any(symbol == t.upper() for t in underlying)) or
-                f"{symbol}2" in pool_symbol or  # stETH, stSOL 等
-                f"S{symbol}" in pool_symbol
+                symbol == pool_symbol
+                or symbol in pool_name
+                or (underlying and any(symbol == t.upper() for t in underlying))
+                or f"{symbol}2" in pool_symbol  # stETH, stSOL 等
+                or f"S{symbol}" in pool_symbol
             )
 
             if is_match:
                 apy = pool.get("apy", 0) or 0
                 tvl = pool.get("tvlUsd", 0) or 0
-                pool_type = pool.get("apyBaseBorrow", None) is not None and "借貸" or "質押"
-                if "stake" in pool.get("poolName", "").lower() or "staking" in pool.get("poolName", "").lower():
+                pool_type = (
+                    pool.get("apyBaseBorrow", None) is not None and "借貸" or "質押"
+                )
+                if (
+                    "stake" in pool.get("poolName", "").lower()
+                    or "staking" in pool.get("poolName", "").lower()
+                ):
                     pool_type = "原生質押"
 
-                relevant_pools.append({
-                    "pool": pool.get("poolName", "Unknown"),
-                    "project": pool.get("project", ""),
-                    "chain": chain,
-                    "apy": apy,
-                    "tvl": tvl,
-                    "type": pool_type,
-                })
+                relevant_pools.append(
+                    {
+                        "pool": pool.get("poolName", "Unknown"),
+                        "project": pool.get("project", ""),
+                        "chain": chain,
+                        "apy": apy,
+                        "tvl": tvl,
+                        "type": pool_type,
+                    }
+                )
 
         if not relevant_pools:
             # 嘗試通過 CoinGecko 獲取基本信息
@@ -206,7 +239,11 @@ def get_staking_yield(symbol: str) -> str:
         result += "|---|---|---|---|---|\n"
 
         for p in top_pools:
-            tvl_str = f"${p['tvl']/1_000_000:.1f}M" if p['tvl'] > 1_000_000 else f"${p['tvl']/1_000:.0f}K"
+            tvl_str = (
+                f"${p['tvl'] / 1_000_000:.1f}M"
+                if p["tvl"] > 1_000_000
+                else f"${p['tvl'] / 1_000:.0f}K"
+            )
             result += f"| {p['project']} | {p['chain']} | {p['type']} | {p['apy']:.2f}% | {tvl_str} |\n"
 
         result += "\n> ⚠️ 收益率會隨市場變化，過去收益不代表未來。\n"
@@ -223,7 +260,9 @@ def _get_staking_info_from_coingecko(symbol: str) -> str:
     """從 CoinGecko 獲取代幣質押信息（備用方案）"""
     try:
         # 搜索代幣
-        search_resp = httpx.get(f"https://api.coingecko.com/api/v3/search?query={symbol}", timeout=10)
+        search_resp = httpx.get(
+            f"https://api.coingecko.com/api/v3/search?query={symbol}", timeout=10
+        )
         coins = search_resp.json().get("coins", [])
 
         if not coins:
@@ -238,7 +277,7 @@ def _get_staking_info_from_coingecko(symbol: str) -> str:
         # 獲取代幣詳細信息
         detail_resp = httpx.get(
             f"https://api.coingecko.com/api/v3/coins/{coin_id}?localization=false&tickers=false&market_data=true",
-            timeout=10
+            timeout=10,
         )
 
         if detail_resp.status_code != 200:
@@ -252,15 +291,29 @@ def _get_staking_info_from_coingecko(symbol: str) -> str:
 
         # 檢查共識機制
         categories = data.get("categories", [])
-        is_pos = any("proof-of-stake" in c.lower() or "pos" in c.lower() for c in categories)
-        is_pow = any("proof-of-work" in c.lower() or "pow" in c.lower() for c in categories)
+        is_pos = any(
+            "proof-of-stake" in c.lower() or "pos" in c.lower() for c in categories
+        )
+        is_pow = any(
+            "proof-of-work" in c.lower() or "pow" in c.lower() for c in categories
+        )
 
         if is_pow or symbol.upper() in ["BTC", "DOGE", "LTC", "BCH"]:
             result += f"❌ {symbol} 使用工作量證明（PoW）機制，不支援原生質押。\n\n"
             result += "💡 **替代方案**:\n"
             result += "- 透過交易所理財產品（如 Binance Earn）獲取收益\n"
             result += "- 使用借貸協議（如 Aave、Compound）提供流動性\n"
-        elif is_pos or symbol.upper() in ["ETH", "SOL", "ADA", "ATOM", "DOT", "MATIC", "AVAX", "NEAR", "SUI"]:
+        elif is_pos or symbol.upper() in [
+            "ETH",
+            "SOL",
+            "ADA",
+            "ATOM",
+            "DOT",
+            "MATIC",
+            "AVAX",
+            "NEAR",
+            "SUI",
+        ]:
             result += f"✅ {symbol} 支援原生質押。\n\n"
             result += "📊 **建議**: 使用 DefiLlama 或官方錢包查看即時質押收益率。\n"
             result += f"- 鏈: {data.get('asset_platform_id', 'Unknown')}\n"

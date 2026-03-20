@@ -5,6 +5,7 @@ Agent V4 — Crypto Agent
 LLM 自動決定調用哪些工具、參數是什麼。
 Supports multi-language responses.
 """
+
 import logging
 
 from ..base_react_agent import BaseReActAgent

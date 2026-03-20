@@ -1,10 +1,13 @@
 """
 通知資料庫操作模組
 """
-from .connection import get_connection
-from typing import Optional, List, Dict, Any
-from psycopg2.extras import Json
+
 import uuid
+from typing import Any, Dict, List, Optional
+
+from psycopg2.extras import Json
+
+from .connection import get_connection
 
 
 def create_notifications_table():
@@ -45,7 +48,7 @@ def create_notification(
     notification_type: str,
     title: str,
     body: str,
-    data: Optional[Dict[str, Any]] = None
+    data: Optional[Dict[str, Any]] = None,
 ) -> Optional[Dict[str, Any]]:
     """
     創建新通知
@@ -65,11 +68,21 @@ def create_notification(
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 INSERT INTO notifications (id, user_id, type, title, body, data, is_read, created_at)
                 VALUES (%s, %s, %s, %s, %s, %s, FALSE, NOW())
                 RETURNING id, user_id, type, title, body, data, is_read, created_at
-            """, (notification_id, user_id, notification_type, title, body, Json(data) if data else None))
+            """,
+                (
+                    notification_id,
+                    user_id,
+                    notification_type,
+                    title,
+                    body,
+                    Json(data) if data else None,
+                ),
+            )
 
             row = cur.fetchone()
             conn.commit()
@@ -83,7 +96,7 @@ def create_notification(
                     "body": row[4],
                     "data": row[5],
                     "is_read": row[6],
-                    "created_at": row[7].isoformat() if row[7] else None
+                    "created_at": row[7].isoformat() if row[7] else None,
                 }
             return None
     except Exception as e:
@@ -94,10 +107,7 @@ def create_notification(
 
 
 def get_notifications(
-    user_id: str,
-    limit: int = 50,
-    offset: int = 0,
-    unread_only: bool = False
+    user_id: str, limit: int = 50, offset: int = 0, unread_only: bool = False
 ) -> List[Dict[str, Any]]:
     """
     獲取用戶的通知列表
@@ -115,21 +125,27 @@ def get_notifications(
     try:
         with conn.cursor() as cur:
             if unread_only:
-                cur.execute("""
+                cur.execute(
+                    """
                     SELECT id, user_id, type, title, body, data, is_read, created_at
                     FROM notifications
                     WHERE user_id = %s AND is_read = FALSE
                     ORDER BY created_at DESC
                     LIMIT %s OFFSET %s
-                """, (user_id, limit, offset))
+                """,
+                    (user_id, limit, offset),
+                )
             else:
-                cur.execute("""
+                cur.execute(
+                    """
                     SELECT id, user_id, type, title, body, data, is_read, created_at
                     FROM notifications
                     WHERE user_id = %s
                     ORDER BY created_at DESC
                     LIMIT %s OFFSET %s
-                """, (user_id, limit, offset))
+                """,
+                    (user_id, limit, offset),
+                )
 
             rows = cur.fetchall()
             return [
@@ -141,7 +157,7 @@ def get_notifications(
                     "body": row[4],
                     "data": row[5],
                     "is_read": row[6],
-                    "created_at": row[7].isoformat() if row[7] else None
+                    "created_at": row[7].isoformat() if row[7] else None,
                 }
                 for row in rows
             ]
@@ -162,11 +178,14 @@ def get_unread_count(user_id: str) -> int:
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT COUNT(*)
                 FROM notifications
                 WHERE user_id = %s AND is_read = FALSE
-            """, (user_id,))
+            """,
+                (user_id,),
+            )
 
             result = cur.fetchone()
             return result[0] if result else 0
@@ -188,11 +207,14 @@ def mark_notification_as_read(notification_id: str, user_id: str) -> bool:
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 UPDATE notifications
                 SET is_read = TRUE
                 WHERE id = %s AND user_id = %s
-            """, (notification_id, user_id))
+            """,
+                (notification_id, user_id),
+            )
 
             conn.commit()
             return cur.rowcount > 0
@@ -216,11 +238,14 @@ def mark_all_as_read(user_id: str) -> int:
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 UPDATE notifications
                 SET is_read = TRUE
                 WHERE user_id = %s AND is_read = FALSE
-            """, (user_id,))
+            """,
+                (user_id,),
+            )
 
             conn.commit()
             return cur.rowcount
@@ -245,10 +270,13 @@ def delete_notification(notification_id: str, user_id: str) -> bool:
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("""
+            cur.execute(
+                """
                 DELETE FROM notifications
                 WHERE id = %s AND user_id = %s
-            """, (notification_id, user_id))
+            """,
+                (notification_id, user_id),
+            )
 
             conn.commit()
             return cur.rowcount > 0
@@ -263,21 +291,23 @@ def delete_notification(notification_id: str, user_id: str) -> bool:
 # 輔助函數：創建特定類型的通知
 # ============================================================================
 
-def notify_friend_request(to_user_id: str, from_user_id: str, from_username: str) -> Optional[Dict[str, Any]]:
+
+def notify_friend_request(
+    to_user_id: str, from_user_id: str, from_username: str
+) -> Optional[Dict[str, Any]]:
     """創建好友請求通知"""
     return create_notification(
         user_id=to_user_id,
         notification_type="friend_request",
         title="好友請求",
         body=f"{from_username} 想加你為好友",
-        data={
-            "from_user_id": from_user_id,
-            "from_username": from_username
-        }
+        data={"from_user_id": from_user_id, "from_username": from_username},
     )
 
 
-def notify_friend_accepted(to_user_id: str, from_user_id: str, from_username: str) -> Optional[Dict[str, Any]]:
+def notify_friend_accepted(
+    to_user_id: str, from_user_id: str, from_username: str
+) -> Optional[Dict[str, Any]]:
     """創建好友接受通知"""
     return create_notification(
         user_id=to_user_id,
@@ -287,12 +317,18 @@ def notify_friend_accepted(to_user_id: str, from_user_id: str, from_username: st
         data={
             "from_user_id": from_user_id,
             "from_username": from_username,
-            "action": "accepted"
-        }
+            "action": "accepted",
+        },
     )
 
 
-def notify_new_message(to_user_id: str, from_user_id: str, from_username: str, message_preview: str, conversation_id: str) -> Optional[Dict[str, Any]]:
+def notify_new_message(
+    to_user_id: str,
+    from_user_id: str,
+    from_username: str,
+    message_preview: str,
+    conversation_id: str,
+) -> Optional[Dict[str, Any]]:
     """創建新消息通知"""
     return create_notification(
         user_id=to_user_id,
@@ -302,17 +338,22 @@ def notify_new_message(to_user_id: str, from_user_id: str, from_username: str, m
         data={
             "from_user_id": from_user_id,
             "from_username": from_username,
-            "conversation_id": conversation_id
-        }
+            "conversation_id": conversation_id,
+        },
     )
 
 
-def notify_post_interaction(to_user_id: str, from_username: str, interaction_type: str, post_id: int, post_title: str) -> Optional[Dict[str, Any]]:
+def notify_post_interaction(
+    to_user_id: str,
+    from_username: str,
+    interaction_type: str,
+    post_id: int,
+    post_title: str,
+) -> Optional[Dict[str, Any]]:
     """創建帖子互動通知"""
-    interaction_text = {
-        "like": "讚了",
-        "comment": "評論了"
-    }.get(interaction_type, "互動了")
+    interaction_text = {"like": "讚了", "comment": "評論了"}.get(
+        interaction_type, "互動了"
+    )
 
     return create_notification(
         user_id=to_user_id,
@@ -322,25 +363,27 @@ def notify_post_interaction(to_user_id: str, from_username: str, interaction_typ
         data={
             "post_id": post_id,
             "interaction_type": interaction_type,
-            "from_username": from_username
-        }
+            "from_username": from_username,
+        },
     )
 
 
-def notify_system_update(user_id: str, version: str, message: Optional[str] = None) -> Optional[Dict[str, Any]]:
+def notify_system_update(
+    user_id: str, version: str, message: Optional[str] = None
+) -> Optional[Dict[str, Any]]:
     """創建系統更新通知"""
     return create_notification(
         user_id=user_id,
         notification_type="system_update",
         title="系統更新",
         body=message or f"新版本 {version} 可用，建議更新以獲得最佳體驗",
-        data={
-            "version": version
-        }
+        data={"version": version},
     )
 
 
-def notify_announcement(user_ids: List[str], title: str, body: str) -> List[Dict[str, Any]]:
+def notify_announcement(
+    user_ids: List[str], title: str, body: str
+) -> List[Dict[str, Any]]:
     """創建系統公告（批量，單次 DB 連接）"""
     if not user_ids:
         return []
@@ -350,19 +393,28 @@ def notify_announcement(user_ids: List[str], title: str, body: str) -> List[Dict
         with conn.cursor() as cur:
             for uid in user_ids:
                 notif_id = f"notif_{uuid.uuid4().hex[:12]}"
-                cur.execute("""
+                cur.execute(
+                    """
                     INSERT INTO notifications (id, user_id, type, title, body, data, is_read, created_at)
                     VALUES (%s, %s, 'announcement', %s, %s, NULL, FALSE, NOW())
                     RETURNING id, user_id, type, title, body, data, is_read, created_at
-                """, (notif_id, uid, title, body))
+                """,
+                    (notif_id, uid, title, body),
+                )
                 row = cur.fetchone()
                 if row:
-                    rows.append({
-                        "id": row[0], "user_id": row[1], "type": row[2],
-                        "title": row[3], "body": row[4], "data": row[5],
-                        "is_read": row[6],
-                        "created_at": row[7].isoformat() if row[7] else None
-                    })
+                    rows.append(
+                        {
+                            "id": row[0],
+                            "user_id": row[1],
+                            "type": row[2],
+                            "title": row[3],
+                            "body": row[4],
+                            "data": row[5],
+                            "is_read": row[6],
+                            "created_at": row[7].isoformat() if row[7] else None,
+                        }
+                    )
             conn.commit()
         return rows
     except Exception as e:

@@ -1,15 +1,17 @@
 """
 Tests for validators module
 """
+
 import pytest
-from core.validators.pi_address import (
-    validate_pi_address,
-    validate_pi_tx_hash,
-    mask_wallet_address
-)
+
 from core.validators.content_filter import (
     filter_sensitive_content,
-    sanitize_description
+    sanitize_description,
+)
+from core.validators.pi_address import (
+    mask_wallet_address,
+    validate_pi_address,
+    validate_pi_tx_hash,
 )
 
 
@@ -19,7 +21,7 @@ class TestPiAddressValidator:
     def test_valid_address(self):
         """Test valid Pi Network address"""
         # Valid: G followed by 55 uppercase Base32 characters
-        valid_addr = 'G' + 'A' * 55
+        valid_addr = "G" + "A" * 55
         is_valid, error = validate_pi_address(valid_addr)
         assert is_valid is True
         assert error == ""
@@ -27,8 +29,10 @@ class TestPiAddressValidator:
     def test_valid_address_with_base32_chars(self):
         """Test valid address with mixed Base32 characters"""
         # Base32 charset: A-Z and 2-7 (no '1')
-        base32_charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
-        valid_addr = 'G' + ''.join(base32_charset[i % len(base32_charset)] for i in range(55))
+        base32_charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
+        valid_addr = "G" + "".join(
+            base32_charset[i % len(base32_charset)] for i in range(55)
+        )
         is_valid, error = validate_pi_address(valid_addr)
         assert is_valid is True
         assert error == ""
@@ -138,7 +142,9 @@ class TestContentFilter:
 
     def test_content_with_email(self):
         """Test content containing email address"""
-        result = filter_sensitive_content("這是詐騙請聯絡我 scam@example.com " + "x" * 50)
+        result = filter_sensitive_content(
+            "這是詐騙請聯絡我 scam@example.com " + "x" * 50
+        )
         assert result["valid"] is False
         assert any("郵件" in w for w in result["warnings"])
 

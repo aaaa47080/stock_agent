@@ -3,8 +3,9 @@
 
 直接讀取工具定義，不需要啟動 Manager
 """
-import sys
+
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -21,11 +22,8 @@ def check_pi_tool_description():
 
     # 提取 get_pi_price 的 docstring
     import re
-    match = re.search(
-        r'@tool\s*def get_pi_price\(\).*?"""(.*?)"""',
-        content,
-        re.DOTALL
-    )
+
+    match = re.search(r'@tool\s*def get_pi_price\(\).*?"""(.*?)"""', content, re.DOTALL)
 
     if match:
         docstring = match.group(1).strip()
@@ -38,7 +36,8 @@ def check_pi_tool_description():
         checks = {
             "⚠️ 重要": "⚠️ 重要" in docstring,
             "不在 Binance": "Binance" in docstring or "主流交易所" in docstring,
-            "必須使用此專用工具": "必須使用此專用工具" in docstring or "必須使用此工具" in docstring,
+            "必須使用此專用工具": "必須使用此專用工具" in docstring
+            or "必須使用此工具" in docstring,
             "CoinGecko": "CoinGecko" in docstring,
         }
 
@@ -68,10 +67,9 @@ def check_crypto_price_tool_description():
 
     # 提取 get_crypto_price_tool 的 docstring
     import re
+
     match = re.search(
-        r'@tool.*?def get_crypto_price_tool\(.*?\).*?"""(.*?)"""',
-        content,
-        re.DOTALL
+        r'@tool.*?def get_crypto_price_tool\(.*?\).*?"""(.*?)"""', content, re.DOTALL
     )
 
     if match:

@@ -9,6 +9,7 @@ Current contract:
 For current memory context caching we keep cross-session semantics, so cache keys
 default to user/workspace scope and exclude session unless explicitly requested.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

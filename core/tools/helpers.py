@@ -4,10 +4,10 @@
 """
 
 import re
-from typing import Tuple, Optional, List
+from typing import List, Optional, Tuple
 
-from data.data_fetcher import get_data_fetcher
 from core.config import SUPPORTED_EXCHANGES
+from data.data_fetcher import get_data_fetcher
 
 
 def normalize_symbol(symbol: str, exchange: str = "okx") -> str:
@@ -67,23 +67,132 @@ def find_available_exchange(symbol: str) -> Tuple[Optional[str], Optional[str]]:
 # 常用加密貨幣符號列表
 CRYPTO_SYMBOLS = [
     # Major coins
-    'BTC', 'ETH', 'SOL', 'XRP', 'ADA', 'DOGE', 'DOT', 'AVAX', 'LTC', 'LINK',
-    'UNI', 'BCH', 'SHIB', 'ETC', 'TRX', 'MATIC', 'XLM', 'ATOM', 'NEAR', 'APT',
-    'AR', 'PI', 'TON', 'BNB', 'SUI', 'STX', 'FLOW', 'HBAR', 'VET', 'ALGO',
-    'XTZ', 'EOS', 'XMR', 'ZEC', 'ZIL', 'ONT', 'THETA', 'AAVE', 'SAND', 'MANA',
-    'PEPE', 'FLOKI', 'MEME', 'WIF', 'BONK', 'RENDER', 'TAO', 'SEI', 'JUP',
-    'PYTH', 'STRK', 'WLD', 'ORDI', 'INJ', 'TIA', 'DYM', 'FIL', 'ICP', 'FTM',
-    'CRV', 'MKR', 'COMP', 'YFI', 'SNX', 'DYDX', 'GMX', 'SUSHI', 'NEO', 'DASH',
-    'ZEN', 'BAT', 'IOTA', 'QTUM'
+    "BTC",
+    "ETH",
+    "SOL",
+    "XRP",
+    "ADA",
+    "DOGE",
+    "DOT",
+    "AVAX",
+    "LTC",
+    "LINK",
+    "UNI",
+    "BCH",
+    "SHIB",
+    "ETC",
+    "TRX",
+    "MATIC",
+    "XLM",
+    "ATOM",
+    "NEAR",
+    "APT",
+    "AR",
+    "PI",
+    "TON",
+    "BNB",
+    "SUI",
+    "STX",
+    "FLOW",
+    "HBAR",
+    "VET",
+    "ALGO",
+    "XTZ",
+    "EOS",
+    "XMR",
+    "ZEC",
+    "ZIL",
+    "ONT",
+    "THETA",
+    "AAVE",
+    "SAND",
+    "MANA",
+    "PEPE",
+    "FLOKI",
+    "MEME",
+    "WIF",
+    "BONK",
+    "RENDER",
+    "TAO",
+    "SEI",
+    "JUP",
+    "PYTH",
+    "STRK",
+    "WLD",
+    "ORDI",
+    "INJ",
+    "TIA",
+    "DYM",
+    "FIL",
+    "ICP",
+    "FTM",
+    "CRV",
+    "MKR",
+    "COMP",
+    "YFI",
+    "SNX",
+    "DYDX",
+    "GMX",
+    "SUSHI",
+    "NEO",
+    "DASH",
+    "ZEN",
+    "BAT",
+    "IOTA",
+    "QTUM",
 ]
 
 # 常見非幣種詞（避免誤識別）
 COMMON_WORDS = {
-    'USDT', 'BUSD', 'USD', 'THE', 'AND', 'FOR', 'ARE', 'CAN', 'SEE', 'DID',
-    'HAS', 'WAS', 'NOT', 'BUT', 'ALL', 'ANY', 'NEW', 'NOW', 'ONE', 'TWO',
-    'BUY', 'SELL', 'PAY', 'GET', 'RUN', 'SET', 'TOP', 'LOW', 'KEY', 'USE',
-    'TRY', 'BIG', 'OLD', 'BAD', 'HOT', 'RED', 'BIT', 'EAT', 'FLY', 'MAN',
-    'BOY', 'ART', 'CAR', 'DAY', 'WAY', 'HEY', 'WHY', 'HOW', 'WHO'
+    "USDT",
+    "BUSD",
+    "USD",
+    "THE",
+    "AND",
+    "FOR",
+    "ARE",
+    "CAN",
+    "SEE",
+    "DID",
+    "HAS",
+    "WAS",
+    "NOT",
+    "BUT",
+    "ALL",
+    "ANY",
+    "NEW",
+    "NOW",
+    "ONE",
+    "TWO",
+    "BUY",
+    "SELL",
+    "PAY",
+    "GET",
+    "RUN",
+    "SET",
+    "TOP",
+    "LOW",
+    "KEY",
+    "USE",
+    "TRY",
+    "BIG",
+    "OLD",
+    "BAD",
+    "HOT",
+    "RED",
+    "BIT",
+    "EAT",
+    "FLY",
+    "MAN",
+    "BOY",
+    "ART",
+    "CAR",
+    "DAY",
+    "WAY",
+    "HEY",
+    "WHY",
+    "HOW",
+    "WHO",
 }
 
 
@@ -99,7 +208,7 @@ def extract_crypto_symbols(text: str) -> List[str]:
     """
     # 使用負向前瞻和負向後顧來匹配幣種符號前後不是字母數字
     escaped_symbols = [re.escape(symbol) for symbol in CRYPTO_SYMBOLS]
-    pattern = r'(?<![a-zA-Z0-9])(' + '|'.join(escaped_symbols) + r')(?![a-zA-Z0-9])'
+    pattern = r"(?<![a-zA-Z0-9])(" + "|".join(escaped_symbols) + r")(?![a-zA-Z0-9])"
     matches = re.findall(pattern, text.upper(), re.IGNORECASE)
 
     # 去重並過濾常見非幣種詞

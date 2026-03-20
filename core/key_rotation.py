@@ -8,17 +8,20 @@ Implements dual-key strategy for JWT token rotation:
 
 This allows seamless key rotation without invalidating existing tokens.
 """
-import os
-import json
-import time
+
 import hashlib
+import json
+import os
 import secrets
 import shutil
+import time
 from datetime import UTC, datetime, timedelta
-from typing import Dict, Optional, List
 from pathlib import Path
-from api.utils import logger
+from typing import Dict, List, Optional
+
 import jwt
+
+from api.utils import logger
 
 
 class KeyRotationManager:
@@ -58,7 +61,7 @@ class KeyRotationManager:
         """
         if self.keys_file.exists():
             try:
-                with open(self.keys_file, 'r') as f:
+                with open(self.keys_file, "r") as f:
                     return json.load(f)
             except (json.JSONDecodeError, IOError) as e:
                 logger.error(f"Failed to load keys file, creating new: {e}")
@@ -70,7 +73,7 @@ class KeyRotationManager:
         keys = {
             "primary": primary_key["id"],
             "keys": [primary_key],
-            "last_rotation": datetime.now(UTC).isoformat()
+            "last_rotation": datetime.now(UTC).isoformat(),
         }
         self._save_keys_direct(keys)
         return keys
@@ -109,7 +112,7 @@ class KeyRotationManager:
             "value": key_value,
             "created_at": now.isoformat(),
             "expires_at": (now + timedelta(days=90)).isoformat(),
-            "status": "active"
+            "status": "active",
         }
 
     def get_current_key(self) -> str:
@@ -188,14 +191,18 @@ class KeyRotationManager:
         result = {
             "old_key_id": old_primary_id,
             "new_key_id": new_key["id"],
-            "rotated_at": self.keys["last_rotation"]
+            "rotated_at": self.keys["last_rotation"],
         }
 
-        logger.info(f"🔑 Key rotation completed: {old_primary_id[:8]}... -> {new_key['id'][:8]}...")
+        logger.info(
+            f"🔑 Key rotation completed: {old_primary_id[:8]}... -> {new_key['id'][:8]}..."
+        )
 
         return result
 
-    def verify_token_with_any_key(self, token: str, algorithms: Optional[List[str]] = None) -> Optional[Dict]:
+    def verify_token_with_any_key(
+        self, token: str, algorithms: Optional[List[str]] = None
+    ) -> Optional[Dict]:
         """
         Verify token using any active key.
 
@@ -221,7 +228,7 @@ class KeyRotationManager:
                     token,
                     key_value,
                     algorithms=algorithms,
-                    options={"verify_exp": True}
+                    options={"verify_exp": True},
                 )
                 # Add key_id to payload for tracking
                 payload["_key_id"] = key_id
@@ -302,16 +309,22 @@ class KeyRotationManager:
             key_copy = key.copy()
             # Mask the actual key value for security
             if "value" in key_copy:
-                key_copy["value"] = f"{key_copy['value'][:8]}...{key_copy['value'][-4:]}"
+                key_copy["value"] = (
+                    f"{key_copy['value'][:8]}...{key_copy['value'][-4:]}"
+                )
             keys_info.append(key_copy)
 
         return {
             "primary_key_id": self.keys["primary"],
             "last_rotation": self.keys["last_rotation"],
             "total_keys": len(self.keys["keys"]),
-            "active_keys": len([k for k in self.keys["keys"] if k["status"] == "active"]),
-            "deprecated_keys": len([k for k in self.keys["keys"] if k["status"] == "deprecated"]),
-            "keys": keys_info
+            "active_keys": len(
+                [k for k in self.keys["keys"] if k["status"] == "active"]
+            ),
+            "deprecated_keys": len(
+                [k for k in self.keys["keys"] if k["status"] == "deprecated"]
+            ),
+            "keys": keys_info,
         }
 
     def should_rotate(self, rotation_interval_days: int = 30) -> bool:
@@ -354,6 +367,7 @@ def get_key_manager() -> KeyRotationManager:
 # Auto-Rotation Task
 # ============================================================================
 
+
 async def key_rotation_task():
     """
     Scheduled task to automatically rotate JWT keys and API key encryption.
@@ -388,9 +402,10 @@ async def key_rotation_task():
                 # Log audit event
                 try:
                     from core.audit import audit_log
+
                     audit_log(
                         action="key_rotation_automatic",
-                        metadata={"type": "jwt", **result}
+                        metadata={"type": "jwt", **result},
                     )
                 except ImportError:
                     pass
@@ -398,14 +413,18 @@ async def key_rotation_task():
             # API Key Encryption Rotation
             try:
                 from utils.encryption import (
+                    rotate_encryption_key,
                     should_rotate_api_key_encryption,
-                    rotate_encryption_key
                 )
 
-                api_key_interval = int(os.getenv("API_KEY_ROTATION_INTERVAL_DAYS", "90"))
+                api_key_interval = int(
+                    os.getenv("API_KEY_ROTATION_INTERVAL_DAYS", "90")
+                )
 
                 if should_rotate_api_key_encryption(api_key_interval):
-                    logger.info("🔐 API key encryption rotation is due, performing rotation...")
+                    logger.info(
+                        "🔐 API key encryption rotation is due, performing rotation..."
+                    )
                     result = rotate_encryption_key()
                     if result.get("success"):
                         logger.info(
@@ -415,14 +434,17 @@ async def key_rotation_task():
                         # Log audit event
                         try:
                             from core.audit import audit_log
+
                             audit_log(
                                 action="api_key_encryption_rotation_automatic",
-                                metadata=result
+                                metadata=result,
                             )
                         except ImportError:
                             pass
                     else:
-                        logger.error(f"❌ API key encryption rotation failed: {result.get('error')}")
+                        logger.error(
+                            f"❌ API key encryption rotation failed: {result.get('error')}"
+                        )
             except ImportError:
                 logger.debug("API key encryption module not available")
             except Exception as e:

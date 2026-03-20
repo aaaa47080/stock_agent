@@ -2,6 +2,7 @@
 加密貨幣工具共用模組
 Shared imports, constants, and cache functions
 """
+
 import time
 from typing import Dict, Optional
 

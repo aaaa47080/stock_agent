@@ -9,47 +9,49 @@ Manager Agent — 多 Agent 協調中心
 5. 短期記憶整合 - 對話上下文管理
 6. 長期記憶整合 - 持久化用戶偏好與歷史
 """
+
 from __future__ import annotations
 
-import json
-import time
 import asyncio
+import json
 import re
+import time
 import unicodedata
-from typing import Optional, List, Dict, Callable
+from typing import Callable, Dict, List, Optional
 
 from langchain_core.messages import HumanMessage
-from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
+from langgraph.graph import END, StateGraph
 
 from api.utils import logger
-from core.config import TEST_MODE
 from core.agents.context_budget import (
     CONTEXT_CHAR_BUDGET,
     CompactPrompt,
-    history_exceeds_budget,
     format_compact_state,
+    history_exceeds_budget,
 )
+from core.config import TEST_MODE
 from core.database.experiences import ExperienceStore
 
 _experience_store = ExperienceStore()
 
-from .models import (
-    ManagerState,
-    TaskNode,
-    TaskGraph,
-    AgentContext,
-    ShortTermMemory,
-    CLEAR_SENTINEL,
-)
-from .agent_registry import AgentRegistry
-from .tool_registry import ToolRegistry
-from .tool_access_resolver import ToolAccessResolver
-from .analysis_policy import AnalysisPolicyResolver
-from .router import AgentRouter
-from .prompt_registry import PromptRegistry
 from core.tools.universal_resolver import UniversalSymbolResolver
 from utils.user_client_factory import explain_llm_exception
+
+from .agent_registry import AgentRegistry
+from .analysis_policy import AnalysisPolicyResolver
+from .models import (
+    CLEAR_SENTINEL,
+    AgentContext,
+    ManagerState,
+    ShortTermMemory,
+    TaskGraph,
+    TaskNode,
+)
+from .prompt_registry import PromptRegistry
+from .router import AgentRouter
+from .tool_access_resolver import ToolAccessResolver
+from .tool_registry import ToolRegistry
 
 # 模組級共用 checkpointer
 _checkpointer = MemorySaver()
@@ -65,10 +67,12 @@ MAX_GRAPH_TASKS = 8
 # Context budget helpers (module-level for easy patching in tests)
 # ============================================================================
 
+
 def _read_compact_for_manager(user_id: str, session_id: str) -> Optional[CompactPrompt]:
     """Read compact session state, return as CompactPrompt or None."""
     try:
         from core.database.memory import get_memory_store
+
         store = get_memory_store(user_id, session_id=session_id)
         state = store.read_compact_state()
         if state is None:
@@ -108,6 +112,7 @@ def _get_history_for_prompt(
 # ManagerAgent
 # ============================================================================
 
+
 class ManagerAgent:
     """
     新版 ManagerAgent
@@ -140,7 +145,9 @@ class ManagerAgent:
         # 用戶和會話標識
         self.user_id = user_id or "anonymous"
         self.session_id = session_id or "default"
-        self.tool_access_resolver = ToolAccessResolver(user_tier=self.user_tier, user_id=self.user_id)
+        self.tool_access_resolver = ToolAccessResolver(
+            user_tier=self.user_tier, user_id=self.user_id
+        )
         self.analysis_policy_resolver = AnalysisPolicyResolver()
 
         # 短期記憶（每個 session 獨立）
@@ -177,10 +184,12 @@ class ManagerAgent:
         if self._memory_store is None:
             try:
                 from core.database.memory import MemoryStore
+
                 # 傳入 session_id 供寫入標記用，但讀取行為已改為跨 session
                 self._memory_store = MemoryStore(self.user_id, self.session_id)
             except ImportError as e:
                 import logging
+
                 logging.getLogger(__name__).warning(f"Memory module not available: {e}")
                 # 設置為 None 表示記憶功能不可用
                 self._memory_store = False
@@ -208,7 +217,7 @@ class ManagerAgent:
                 "clarify": END,  # 需要澄清，直接結束（返回 clarification_question）
                 "direct_response": END,  # 簡單打招呼/閒聊，直接結束
                 "execute": "execute_task",  # 可以執行
-            }
+            },
         )
 
         # 任務執行循環
@@ -218,7 +227,7 @@ class ManagerAgent:
             {
                 "next_task": "execute_task",
                 "aggregate": "aggregate_results",
-            }
+            },
         )
 
         builder.add_edge("aggregate_results", "reflect_on_results")
@@ -269,6 +278,7 @@ class ManagerAgent:
 
         # 使用 description_loader 獲取 agent 資訊
         from .description_loader import get_agent_descriptions
+
         agents_info = get_agent_descriptions().get_routing_guide()
 
         # 使用 PromptRegistry 獲取 prompt
@@ -293,11 +303,12 @@ class ManagerAgent:
             long_term_memory_with_hints += f"\n\n{experience_hint}"
 
         prompt = PromptRegistry.render(
-            "manager", "intent_understanding",
+            "manager",
+            "intent_understanding",
             agents_info=agents_info,
             query=query,
             history=history or "（無歷史記錄）",
-            long_term_memory=long_term_memory_with_hints
+            long_term_memory=long_term_memory_with_hints,
         )
 
         try:
@@ -308,7 +319,9 @@ class ManagerAgent:
 
             # 如果需要澄清
             if status == "clarify":
-                clarification = intent_data.get("clarification_question", "請問您想查詢什麼？")
+                clarification = intent_data.get(
+                    "clarification_question", "請問您想查詢什麼？"
+                )
                 return {
                     **state_reset,
                     "intent_understanding": {
@@ -320,15 +333,19 @@ class ManagerAgent:
                     "final_response": clarification,
                     "_processed_query": query,
                 }
-            
+
             # 如果可以直接回應（打招呼、道謝等閒聊）
             if status == "direct_response":
-                text = intent_data.get("direct_response_text", "你好！請問有什麼我可以幫忙的？")
+                text = intent_data.get(
+                    "direct_response_text", "你好！請問有什麼我可以幫忙的？"
+                )
                 # ✅ 修復：direct_response 也要追蹤對話，確保閒聊也能 extract_facts
-                asyncio.create_task(self._track_conversation(
-                    user_message=query,
-                    assistant_response=text,
-                ))
+                asyncio.create_task(
+                    self._track_conversation(
+                        user_message=query,
+                        assistant_response=text,
+                    )
+                )
                 return {
                     **state_reset,
                     "intent_understanding": {
@@ -343,13 +360,15 @@ class ManagerAgent:
             # 直接從意圖理解獲取任務列表
             tasks = self._normalize_tasks(intent_data.get("tasks", []), query)
             if not tasks:
-                tasks = [{
-                    "id": "task_1",
-                    "name": "處理請求",
-                    "agent": "chat",
-                    "description": query,
-                    "dependencies": [],
-                }]
+                tasks = [
+                    {
+                        "id": "task_1",
+                        "name": "處理請求",
+                        "agent": "chat",
+                        "description": query,
+                        "dependencies": [],
+                    }
+                ]
 
             reconciled_entities = self._reconcile_market_entities(
                 query,
@@ -360,7 +379,9 @@ class ManagerAgent:
             reconciled_entities = self._apply_pronoun_entity_carryover(
                 query=query,
                 current_entities=reconciled_entities,
-                prior_entities=prior_entities if isinstance(prior_entities, dict) else {},
+                prior_entities=prior_entities
+                if isinstance(prior_entities, dict)
+                else {},
             )
             query_profile = self.analysis_policy_resolver.build_query_profile(
                 query,
@@ -384,7 +405,9 @@ class ManagerAgent:
                     "status": "ready",
                     "user_intent": intent_data.get("user_intent", query),
                     "entities": reconciled_entities,
-                    "aggregation_strategy": intent_data.get("aggregation_strategy", "combine_all"),
+                    "aggregation_strategy": intent_data.get(
+                        "aggregation_strategy", "combine_all"
+                    ),
                 },
                 "task_graph": self._task_graph_to_dict(task_graph),
                 "execution_mode": "restaurant" if len(tasks) > 1 else "vending",
@@ -435,7 +458,9 @@ class ManagerAgent:
             current_results = {}
 
         # 檢查所有任務是否已完成
-        all_task_ids = {node.id for node in task_graph.all_nodes.values() if node.type == "task"}
+        all_task_ids = {
+            node.id for node in task_graph.all_nodes.values() if node.type == "task"
+        }
         completed_task_ids = set(current_results.keys())
 
         if all_task_ids.issubset(completed_task_ids):
@@ -452,8 +477,7 @@ class ManagerAgent:
                 if task.id in current_results:
                     continue
                 deps_completed = all(
-                    dep_id in current_results
-                    for dep_id in task.dependencies
+                    dep_id in current_results for dep_id in task.dependencies
                 )
                 if deps_completed:
                     executable_tasks.append(task)
@@ -519,13 +543,18 @@ class ManagerAgent:
 
                 # 創建並行任務
                 async def execute_with_context(task, results):
-                    return (task.id, await self._execute_single_task(task, state, results))
+                    return (
+                        task.id,
+                        await self._execute_single_task(task, state, results),
+                    )
 
                 # 使用 asyncio.gather 並行執行
-                results_list = await asyncio.gather(*[
-                    execute_with_context(task, current_results)
-                    for task in executable_tasks
-                ])
+                results_list = await asyncio.gather(
+                    *[
+                        execute_with_context(task, current_results)
+                        for task in executable_tasks
+                    ]
+                )
 
                 # 合併結果
                 new_results = {**current_results}
@@ -533,7 +562,9 @@ class ManagerAgent:
                 for task_id, result in results_list:
                     new_results[task_id] = result
                     executed_ids.append(task_id)
-                    task = next((item for item in executable_tasks if item.id == task_id), None)
+                    task = next(
+                        (item for item in executable_tasks if item.id == task_id), None
+                    )
                     self._emit_progress(
                         "execute_task",
                         f"{task.name if task else task_id} {'完成' if result.get('success') else '失敗'}",
@@ -582,7 +613,11 @@ class ManagerAgent:
             for task_id, result in task_results.items():
                 if result.get("success"):
                     last_result = result
-            final_result = last_result.get("message", "執行完成，但無有效結果") if last_result else "執行完成，但無有效結果"
+            final_result = (
+                last_result.get("message", "執行完成，但無有效結果")
+                if last_result
+                else "執行完成，但無有效結果"
+            )
         else:
             # combine_all: 收集所有結果，格式化供 manager 統整
             combined = []
@@ -591,7 +626,9 @@ class ManagerAgent:
                     agent_name = result.get("agent_name", "Agent")
                     message = result.get("message", "")
                     task_id_short = task_id.replace("task_", "")
-                    combined.append(f"### 任務 {task_id_short} [{agent_name}]\n{message}")
+                    combined.append(
+                        f"### 任務 {task_id_short} [{agent_name}]\n{message}"
+                    )
 
             if combined:
                 final_result = "# Sub-Agent 執行結果\n\n" + "\n\n---\n\n".join(combined)
@@ -624,16 +661,19 @@ class ManagerAgent:
             agent = result.get("agent_name", "unknown")
             msg = result.get("message", "")
             success = result.get("success", False)
-            results_text.append(f"[{task_id}] agent={agent}, success={success}\n{msg[:500]}...")  # 截斷避免過長
+            results_text.append(
+                f"[{task_id}] agent={agent}, success={success}\n{msg[:500]}..."
+            )  # 截斷避免過長
 
         if not results_text:
             return {}
 
         # 調用 LLM 進行審查
         prompt = PromptRegistry.render(
-            "manager", "reflect_on_results",
+            "manager",
+            "reflect_on_results",
             query=query,
-            results="\n\n".join(results_text)
+            results="\n\n".join(results_text),
         )
 
         try:
@@ -709,8 +749,7 @@ class ManagerAgent:
                     valid_task_ids.add(node.id)
                 # 只保留屬於當前任務圖的結果
                 task_results = {
-                    k: v for k, v in task_results.items()
-                    if k in valid_task_ids
+                    k: v for k, v in task_results.items() if k in valid_task_ids
                 }
             else:
                 # 沒有 task_graph，清空結果（舊查詢的殘留）
@@ -722,22 +761,25 @@ class ManagerAgent:
                     for node in self._dict_to_task_graph(task_graph).all_nodes.values():
                         valid_task_ids.add(node.id)
                     task_results = {
-                        k: v for k, v in task_results.items()
-                        if k in valid_task_ids
+                        k: v for k, v in task_results.items() if k in valid_task_ids
                     }
 
         # 檢查是否有有效的結果
         if not task_results:
             if state.get("tool_failure_detected"):
                 issues = state.get("tool_failure_issues") or []
-                reason = issues[0].get("problem") if issues and isinstance(issues[0], dict) else None
+                reason = (
+                    issues[0].get("problem")
+                    if issues and isinstance(issues[0], dict)
+                    else None
+                )
                 fallback = "目前工具未能取得有效資料，請稍後再試。"
                 if reason:
                     fallback = f"{fallback} 原因：{reason}"
                 await self._track_conversation(
                     user_message=current_query,
                     assistant_response=fallback,
-                    tools_used=[]
+                    tools_used=[],
                 )
                 return {
                     "final_response": fallback,
@@ -759,7 +801,7 @@ class ManagerAgent:
                 await self._track_conversation(
                     user_message=current_query,
                     assistant_response=response,
-                    tools_used=[]
+                    tools_used=[],
                 )
                 return {
                     "final_response": response,
@@ -799,7 +841,9 @@ class ManagerAgent:
         num_results = len(results_text)
 
         lt_memory = self.get_long_term_memory_context()
-        memory_block = f"\n\n## 用戶長期記憶（偏好與歷史）\n{lt_memory}" if lt_memory else ""
+        memory_block = (
+            f"\n\n## 用戶長期記憶（偏好與歷史）\n{lt_memory}" if lt_memory else ""
+        )
 
         prompt = PromptRegistry.render(
             "manager",
@@ -828,7 +872,7 @@ class ManagerAgent:
             await self._track_conversation(
                 user_message=current_query,
                 assistant_response=response,
-                tools_used=list(task_results.keys()) if task_results else []
+                tools_used=list(task_results.keys()) if task_results else [],
             )
 
             return {
@@ -842,7 +886,7 @@ class ManagerAgent:
             await self._track_conversation(
                 user_message=current_query,
                 assistant_response="\n".join(results_text),
-                tools_used=[]
+                tools_used=[],
             )
 
             return {
@@ -948,7 +992,9 @@ class ManagerAgent:
             return tasks
 
         matched_entities = entities if isinstance(entities, dict) else {}
-        matched_markets = [market for market, value in matched_entities.items() if value]
+        matched_markets = [
+            market for market, value in matched_entities.items() if value
+        ]
         if len(matched_markets) == 1:
             market = matched_markets[0]
             target_agent = self._resolve_boundary_agent_name(market)
@@ -958,13 +1004,23 @@ class ManagerAgent:
                 if normalized_task.get("agent") != target_agent:
                     normalized_task["agent"] = target_agent
                     symbol = matched_entities.get(market, "")
-                    display_symbol = symbol.replace(".TW", "") if market == "tw" and isinstance(symbol, str) else symbol
+                    display_symbol = (
+                        symbol.replace(".TW", "")
+                        if market == "tw" and isinstance(symbol, str)
+                        else symbol
+                    )
                     if isinstance(display_symbol, str) and display_symbol:
                         normalized_task["name"] = f"處理 {display_symbol} 相關查詢"
-                if not isinstance(query_profile, dict) or query_profile.get("query_type") != "price_lookup":
+                if (
+                    not isinstance(query_profile, dict)
+                    or query_profile.get("query_type") != "price_lookup"
+                ):
                     return [normalized_task]
 
-        if not isinstance(query_profile, dict) or query_profile.get("query_type") != "price_lookup":
+        if (
+            not isinstance(query_profile, dict)
+            or query_profile.get("query_type") != "price_lookup"
+        ):
             return tasks
 
         boundary_route = self._detect_boundary_route(query, history=history)
@@ -994,7 +1050,9 @@ class ManagerAgent:
 
         return [normalized_task]
 
-    def _extract_market_entities(self, query: str, history: str = "") -> Dict[str, Optional[str]]:
+    def _extract_market_entities(
+        self, query: str, history: str = ""
+    ) -> Dict[str, Optional[str]]:
         """從 query 擷取單市場實體，避免把 routing 綁死在 prompt。"""
         normalized = self._normalize_query_text(query)
         result = {"crypto": None, "tw": None, "us": None}
@@ -1006,7 +1064,9 @@ class ManagerAgent:
                     self._normalize_query_text(latest_user_utterance)
                 )
         for candidate in candidates:
-            resolution = self._symbol_resolver.resolve_with_context(candidate, context_text=normalized)
+            resolution = self._symbol_resolver.resolve_with_context(
+                candidate, context_text=normalized
+            )
             flat_resolution = resolution.get("resolution", {})
             if not isinstance(flat_resolution, dict):
                 flat_resolution = {}
@@ -1053,14 +1113,20 @@ class ManagerAgent:
                     normalized_llm_entities[market] = value
 
         resolver_entities = self._extract_market_entities(query, history=history)
-        llm_markets = [market for market, value in normalized_llm_entities.items() if value]
-        resolver_markets = [market for market, value in resolver_entities.items() if value]
+        llm_markets = [
+            market for market, value in normalized_llm_entities.items() if value
+        ]
+        resolver_markets = [
+            market for market, value in resolver_entities.items() if value
+        ]
 
         if len(resolver_markets) == 1:
             resolver_market = resolver_markets[0]
             if len(llm_markets) != 1 or llm_markets[0] != resolver_market:
                 return resolver_entities
-            if normalized_llm_entities.get(resolver_market) != resolver_entities.get(resolver_market):
+            if normalized_llm_entities.get(resolver_market) != resolver_entities.get(
+                resolver_market
+            ):
                 return resolver_entities
 
         if len(llm_markets) == 1:
@@ -1082,7 +1148,9 @@ class ManagerAgent:
         candidate_scores: Dict[str, Dict[str, object]] = {}
 
         for candidate in candidates:
-            resolution = self._symbol_resolver.resolve_with_context(candidate, context_text=query)
+            resolution = self._symbol_resolver.resolve_with_context(
+                candidate, context_text=query
+            )
             flat_resolution = resolution.get("resolution", {})
             candidate_scores[candidate] = resolution.get("candidates", {})
             matched_markets = self._symbol_resolver.matched_markets(flat_resolution)
@@ -1091,7 +1159,9 @@ class ManagerAgent:
             elif resolution.get("ambiguous") or len(matched_markets) > 1:
                 ambiguous_candidates.append(candidate)
 
-        matched_entities = {market: value for market, value in entities.items() if value}
+        matched_entities = {
+            market: value for market, value in entities.items() if value
+        }
         requires_discovery_lookup = bool(candidates) and (
             not matched_entities or bool(ambiguous_candidates)
         )
@@ -1105,8 +1175,14 @@ class ManagerAgent:
             "requires_discovery_lookup": requires_discovery_lookup,
         }
 
-    def _build_query_policy_metadata(self, query: str, market_resolution: Dict[str, object]) -> Dict[str, object]:
-        candidates = market_resolution.get("candidates", []) if isinstance(market_resolution, dict) else []
+    def _build_query_policy_metadata(
+        self, query: str, market_resolution: Dict[str, object]
+    ) -> Dict[str, object]:
+        candidates = (
+            market_resolution.get("candidates", [])
+            if isinstance(market_resolution, dict)
+            else []
+        )
         if not isinstance(candidates, list):
             candidates = []
         return self.analysis_policy_resolver.build_query_profile(query, candidates)
@@ -1116,18 +1192,28 @@ class ManagerAgent:
         market_resolution: Dict[str, object],
         query_profile: Dict[str, object],
     ) -> Dict[str, object]:
-        matched_entities = market_resolution.get("matched_entities", {}) if isinstance(market_resolution, dict) else {}
+        matched_entities = (
+            market_resolution.get("matched_entities", {})
+            if isinstance(market_resolution, dict)
+            else {}
+        )
         if not isinstance(matched_entities, dict):
             matched_entities = {}
 
-        resolved_markets = [market for market, value in matched_entities.items() if value]
+        resolved_markets = [
+            market for market, value in matched_entities.items() if value
+        ]
         resolved_market = None
         if len(resolved_markets) == 1:
             resolved_market = resolved_markets[0]
         elif len(resolved_markets) > 1:
             resolved_market = "ambiguous"
 
-        query_type = query_profile.get("query_type", "general") if isinstance(query_profile, dict) else "general"
+        query_type = (
+            query_profile.get("query_type", "general")
+            if isinstance(query_profile, dict)
+            else "general"
+        )
         return {
             "query_type": query_type,
             "resolved_market": resolved_market,
@@ -1170,7 +1256,9 @@ class ManagerAgent:
                 return metadata.name
         return None
 
-    def _collect_response_evidence(self, task_results: Dict[str, Dict[str, object]]) -> Dict[str, object]:
+    def _collect_response_evidence(
+        self, task_results: Dict[str, Dict[str, object]]
+    ) -> Dict[str, object]:
         used_tools: List[str] = []
         data_points: List[str] = []
         verification_statuses: List[str] = []
@@ -1185,12 +1273,16 @@ class ManagerAgent:
             if not isinstance(data, dict):
                 continue
             used_tools.extend(
-                tool for tool in data.get("used_tools", [])
+                tool
+                for tool in data.get("used_tools", [])
                 if isinstance(tool, str) and tool
             )
             if isinstance(data.get("data_as_of"), str) and data["data_as_of"]:
                 data_points.append(data["data_as_of"])
-            if isinstance(data.get("verification_status"), str) and data["verification_status"]:
+            if (
+                isinstance(data.get("verification_status"), str)
+                and data["verification_status"]
+            ):
                 verification_statuses.append(data["verification_status"])
             if isinstance(data.get("resolved_market"), str) and data["resolved_market"]:
                 markets.append(data["resolved_market"])
@@ -1202,7 +1294,9 @@ class ManagerAgent:
         return {
             "used_tools": sorted(set(used_tools)),
             "data_as_of": data_points[0] if data_points else None,
-            "verification_status": verification_statuses[0] if verification_statuses else None,
+            "verification_status": verification_statuses[0]
+            if verification_statuses
+            else None,
             "resolved_markets": sorted(set(markets)),
             "query_types": sorted(set(query_types)),
             "policy_paths": sorted(set(policy_paths)),
@@ -1235,7 +1329,9 @@ class ManagerAgent:
         evidence: Dict[str, object],
     ) -> str:
         lowered_query = (query or "").lower()
-        is_compare = any(token in lowered_query for token in ("比較", "compare", "vs", "差異"))
+        is_compare = any(
+            token in lowered_query for token in ("比較", "compare", "vs", "差異")
+        )
 
         if analysis_mode == "verified":
             return PromptRegistry.render(
@@ -1246,7 +1342,9 @@ class ManagerAgent:
         if analysis_mode == "research":
             return PromptRegistry.render(
                 "manager",
-                "response_contract_research_compare" if is_compare else "response_contract_research",
+                "response_contract_research_compare"
+                if is_compare
+                else "response_contract_research",
                 include_time=False,
             )
         return PromptRegistry.render(
@@ -1296,7 +1394,9 @@ class ManagerAgent:
         query: str,
     ) -> str:
         lowered_query = (query or "").lower()
-        is_compare = any(token in lowered_query for token in ("比較", "compare", "vs", "差異"))
+        is_compare = any(
+            token in lowered_query for token in ("比較", "compare", "vs", "差異")
+        )
 
         if is_compare:
             return PromptRegistry.render(
@@ -1332,9 +1432,18 @@ class ManagerAgent:
         evidence: Dict[str, object],
         query: str = "",
     ) -> str:
-        cleaned = re.sub(r"^#\s*Sub-Agent 執行結果\s*", "", response, flags=re.MULTILINE).strip()
-        cleaned = re.sub(r"^###\s*任務\s+\d+\s+\[[^\]]+\]\s*", "", cleaned, flags=re.MULTILINE).strip()
-        cleaned = re.sub(r"^\s*-\s*(資料時間|驗證來源|驗證狀態)[:：].*$", "", cleaned, flags=re.MULTILINE).strip()
+        cleaned = re.sub(
+            r"^#\s*Sub-Agent 執行結果\s*", "", response, flags=re.MULTILINE
+        ).strip()
+        cleaned = re.sub(
+            r"^###\s*任務\s+\d+\s+\[[^\]]+\]\s*", "", cleaned, flags=re.MULTILINE
+        ).strip()
+        cleaned = re.sub(
+            r"^\s*-\s*(資料時間|驗證來源|驗證狀態)[:：].*$",
+            "",
+            cleaned,
+            flags=re.MULTILINE,
+        ).strip()
         cleaned = re.sub(r"\n*驗證資訊[:：].*", "", cleaned).strip()
         cleaned = re.sub(r"\n*研究依據[:：].*", "", cleaned).strip()
         cleaned = re.sub(
@@ -1351,7 +1460,9 @@ class ManagerAgent:
         ).strip()
 
         lowered_query = (query or "").lower()
-        is_compare = any(token in lowered_query for token in ("比較", "compare", "vs", "差異"))
+        is_compare = any(
+            token in lowered_query for token in ("比較", "compare", "vs", "差異")
+        )
         if not is_compare:
             cleaned = re.sub(
                 r"\n*###\s*標的比較[\s\S]*?(?=\n###\s|\Z)",
@@ -1362,7 +1473,10 @@ class ManagerAgent:
 
         if analysis_mode == "verified":
             lacks_verified_evidence = evidence.get("verification_status") != "verified"
-            is_causal_question = any(token in lowered_query for token in ("為什麼", "原因", "why", "怎麼跌", "怎麼漲"))
+            is_causal_question = any(
+                token in lowered_query
+                for token in ("為什麼", "原因", "why", "怎麼跌", "怎麼漲")
+            )
             if lacks_verified_evidence and is_causal_question:
                 cleaned = "目前缺少可驗證的事件資料來源，無法確認漲跌原因。若你要，我可以先查新聞與公告後再回答。"
             evidence_lines = []
@@ -1374,7 +1488,9 @@ class ManagerAgent:
             if evidence.get("verification_status"):
                 evidence_lines.append(f"- 驗證狀態：{evidence['verification_status']}")
             if not evidence_lines:
-                evidence_lines.append("- 驗證資訊目前有限，請結合畫面上的 metadata 與工具來源判讀。")
+                evidence_lines.append(
+                    "- 驗證資訊目前有限，請結合畫面上的 metadata 與工具來源判讀。"
+                )
             cleaned = f"{cleaned}\n\n### 驗證資訊\n" + "\n".join(evidence_lines)
         elif analysis_mode == "research":
             evidence_lines = []
@@ -1384,7 +1500,9 @@ class ManagerAgent:
             if evidence.get("data_as_of"):
                 evidence_lines.append(f"- 資料時間：{evidence['data_as_of']}")
             if not evidence_lines:
-                evidence_lines.append("- 本回答已依 research 模式整理，但目前沒有額外可展示的工具時間戳。")
+                evidence_lines.append(
+                    "- 本回答已依 research 模式整理，但目前沒有額外可展示的工具時間戳。"
+                )
             cleaned = f"{cleaned}\n\n### 研究依據\n" + "\n".join(evidence_lines)
 
         return cleaned.strip()
@@ -1409,13 +1527,17 @@ class ManagerAgent:
             if not isinstance(dependencies, list):
                 dependencies = []
 
-            normalized.append({
-                "id": task_id,
-                "name": name,
-                "agent": agent,
-                "description": description,
-                "dependencies": [dep for dep in dependencies if dep in retained_ids],
-            })
+            normalized.append(
+                {
+                    "id": task_id,
+                    "name": name,
+                    "agent": agent,
+                    "description": description,
+                    "dependencies": [
+                        dep for dep in dependencies if dep in retained_ids
+                    ],
+                }
+            )
             retained_ids.add(task_id)
 
         if len(normalized) > MAX_GRAPH_TASKS:
@@ -1425,16 +1547,20 @@ class ManagerAgent:
             normalized = normalized[:MAX_GRAPH_TASKS]
             valid_ids = {task["id"] for task in normalized}
             for task in normalized:
-                task["dependencies"] = [dep for dep in task["dependencies"] if dep in valid_ids]
+                task["dependencies"] = [
+                    dep for dep in task["dependencies"] if dep in valid_ids
+                ]
 
         if not normalized and query:
-            return [{
-                "id": "task_1",
-                "name": "處理請求",
-                "agent": "chat",
-                "description": query,
-                "dependencies": [],
-            }]
+            return [
+                {
+                    "id": "task_1",
+                    "name": "處理請求",
+                    "agent": "chat",
+                    "description": query,
+                    "dependencies": [],
+                }
+            ]
 
         return normalized
 
@@ -1453,7 +1579,8 @@ class ManagerAgent:
     def _parse_json_response(self, response: str) -> dict:
         """解析 JSON 回應"""
         import re
-        json_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', response)
+
+        json_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", response)
         if json_match:
             response = json_match.group(1)
 
@@ -1474,7 +1601,9 @@ class ManagerAgent:
             memory_store = self._get_memory_store()
             if not memory_store:
                 return ""
-            return memory_store.get_memory_context(include_history=True, history_limit=10)
+            return memory_store.get_memory_context(
+                include_history=True, history_limit=10
+            )
         except Exception as e:
             logger.warning(f"[Manager] Failed to get long-term memory: {e}")
             return ""
@@ -1483,7 +1612,7 @@ class ManagerAgent:
         self,
         user_message: str,
         assistant_response: str,
-        tools_used: Optional[List[str]] = None
+        tools_used: Optional[List[str]] = None,
     ) -> None:
         """
         追蹤對話歷史並在達到閾值時自動觸發記憶整合（nanoclaw 風格雙層）
@@ -1506,10 +1635,14 @@ class ManagerAgent:
 
         # ✅ nanoclaw extract_memory：每輪對話立即萃取結構化事實（背景執行）
         # 輕量操作，不需等到 consolidation threshold
-        asyncio.create_task(self._extract_facts_background(user_message, assistant_response, turn_index))
-        asyncio.create_task(self._record_experience_background(
-            user_message, assistant_response, tools_used
-        ))
+        asyncio.create_task(
+            self._extract_facts_background(user_message, assistant_response, turn_index)
+        )
+        asyncio.create_task(
+            self._record_experience_background(
+                user_message, assistant_response, tools_used
+            )
+        )
 
         # 計算未整合的消息數量
         unconsolidated = self._message_count - self._last_consolidated_index
@@ -1526,10 +1659,7 @@ class ManagerAgent:
             )
 
     async def _extract_facts_background(
-        self,
-        user_message: str,
-        assistant_response: str,
-        turn_index: int
+        self, user_message: str, assistant_response: str, turn_index: int
     ) -> None:
         """背景執行 nanoclaw 事實萃取，不阻塞對話回應"""
         try:
@@ -1557,9 +1687,20 @@ class ManagerAgent:
             # Determine task_family from agent names used
             task_family = "chat"
             if task_results:
-                agents_used = [v.get("agent_name", "") for v in task_results.values() if isinstance(v, dict)]
+                agents_used = [
+                    v.get("agent_name", "")
+                    for v in task_results.values()
+                    if isinstance(v, dict)
+                ]
                 for agent in agents_used:
-                    if agent in ("crypto", "tw_stock", "us_stock", "forex", "commodity", "economic"):
+                    if agent in (
+                        "crypto",
+                        "tw_stock",
+                        "us_stock",
+                        "forex",
+                        "commodity",
+                        "economic",
+                    ):
                         task_family = agent
                         break
 
@@ -1567,7 +1708,11 @@ class ManagerAgent:
             outcome = "success"
             quality = None
             if task_results:
-                qualities = [v.get("quality") for v in task_results.values() if isinstance(v, dict)]
+                qualities = [
+                    v.get("quality")
+                    for v in task_results.values()
+                    if isinstance(v, dict)
+                ]
                 if "fail" in qualities:
                     outcome = "failure"
                     quality = "fail"
@@ -1580,10 +1725,13 @@ class ManagerAgent:
                 task_family=task_family,
                 query=user_message,
                 tools_used=tools_used or [],
-                agent_used=",".join(set(
-                    v.get("agent_name", "") for v in (task_results or {}).values()
-                    if isinstance(v, dict) and v.get("agent_name")
-                )),
+                agent_used=",".join(
+                    set(
+                        v.get("agent_name", "")
+                        for v in (task_results or {}).values()
+                        if isinstance(v, dict) and v.get("agent_name")
+                    )
+                ),
                 outcome=outcome,
                 quality_score=quality,
                 failure_reason=None,
@@ -1705,12 +1853,15 @@ class ManagerAgent:
             messages = []
             for i, msg in enumerate(messages_to_consolidate):
                 from datetime import datetime
-                messages.append({
-                    "role": msg.get("role", "unknown"),
-                    "content": msg.get("content", ""),
-                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
-                    "tools_used": [],
-                })
+
+                messages.append(
+                    {
+                        "role": msg.get("role", "unknown"),
+                        "content": msg.get("content", ""),
+                        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                        "tools_used": [],
+                    }
+                )
 
             # 執行整合
             success = await memory_store.consolidate(
@@ -1725,7 +1876,9 @@ class ManagerAgent:
                 if archive_all:
                     self._last_consolidated_index = len(memory.conversation_history)
                 else:
-                    self._last_consolidated_index = len(memory.conversation_history) - keep_count
+                    self._last_consolidated_index = (
+                        len(memory.conversation_history) - keep_count
+                    )
 
                 logger.info(
                     f"[Manager] Memory consolidation done: "
@@ -1760,12 +1913,14 @@ class ManagerAgent:
         def extract_from_node(node: dict):
             """遞迴提取任務"""
             if node.get("type") == "task":
-                tasks.append({
-                    "id": node.get("id"),
-                    "name": node.get("name"),
-                    "agent": node.get("agent"),
-                    "description": node.get("description"),
-                })
+                tasks.append(
+                    {
+                        "id": node.get("id"),
+                        "name": node.get("name"),
+                        "agent": node.get("agent"),
+                        "description": node.get("description"),
+                    }
+                )
             for child in node.get("children", []):
                 extract_from_node(child)
 
@@ -1799,9 +1954,9 @@ class ManagerAgent:
             },
         )
 
-        if hasattr(agent, 'execute'):
+        if hasattr(agent, "execute"):
             result = await asyncio.to_thread(agent.execute, task)
-            if hasattr(result, 'message'):
+            if hasattr(result, "message"):
                 return {
                     "message": result.message,
                     "success": getattr(result, "success", True),
@@ -1830,7 +1985,9 @@ class ManagerAgent:
                 "quality_fail_reason": None,
             }
 
-    async def _execute_single_task(self, task: TaskNode, state: ManagerState, completed_results: Dict) -> Dict:
+    async def _execute_single_task(
+        self, task: TaskNode, state: ManagerState, completed_results: Dict
+    ) -> Dict:
         """執行單個任務"""
         agent = self.agent_registry.get(task.agent)
         if not agent:
@@ -1850,7 +2007,9 @@ class ManagerAgent:
             state["query"],
             state.get("intent_understanding", {}).get("entities", {}),
         )
-        query_profile = self._build_query_policy_metadata(state["query"], market_resolution)
+        query_profile = self._build_query_policy_metadata(
+            state["query"], market_resolution
+        )
         context = AgentContext(
             history_summary=state.get("history"),
             original_query=state["query"],
@@ -1917,6 +2076,7 @@ class ManagerAgent:
 
     def _task_graph_to_dict(self, graph: TaskGraph) -> dict:
         """將 TaskGraph 轉換為 dict"""
+
         def node_to_dict(node: TaskNode) -> dict:
             return {
                 "id": node.id,
@@ -1928,10 +2088,12 @@ class ManagerAgent:
                 "parallel_group": node.parallel_group,
                 "children": [node_to_dict(c) for c in node.children],
             }
+
         return {"root": node_to_dict(graph.root)}
 
     def _dict_to_task_graph(self, data: dict) -> TaskGraph:
         """從 dict 重建 TaskGraph"""
+
         def dict_to_node(d: dict) -> TaskNode:
             return TaskNode(
                 id=d["id"],
@@ -1943,5 +2105,6 @@ class ManagerAgent:
                 parallel_group=d.get("parallel_group"),
                 children=[dict_to_node(c) for c in d.get("children", [])],
             )
+
         root = dict_to_node(data["root"])
         return TaskGraph(root=root)

@@ -1,16 +1,17 @@
 """
 Tests for Pydantic schema validation in core/tools/schemas.py
 """
+
 import pytest
 from pydantic import ValidationError
 
 from core.tools.schemas import (
-    TechnicalAnalysisInput,
+    CurrentTimeInput,
+    ExtractCryptoSymbolsInput,
+    MarketPulseInput,
     NewsAnalysisInput,
     PriceInput,
-    CurrentTimeInput,
-    MarketPulseInput,
-    ExtractCryptoSymbolsInput
+    TechnicalAnalysisInput,
 )
 
 
@@ -35,11 +36,7 @@ class TestTechnicalAnalysisInput:
 
     def test_custom_values(self):
         """Test with custom values"""
-        model = TechnicalAnalysisInput(
-            symbol="SOL",
-            interval="4h",
-            exchange="binance"
-        )
+        model = TechnicalAnalysisInput(symbol="SOL", interval="4h", exchange="binance")
         assert model.symbol == "SOL"
         assert model.interval == "4h"
         assert model.exchange == "binance"

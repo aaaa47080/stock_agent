@@ -1,18 +1,19 @@
 """
 Tests for admin panel router in api/routers/admin_panel.py
 """
+
 import pytest
 
 from api.routers.admin_panel import (
-    router,
     BroadcastRequest,
-    SetRoleRequest,
-    SetMembershipRequest,
-    SetStatusRequest,
-    PostVisibilityRequest,
     PostPinRequest,
+    PostVisibilityRequest,
     ResolveReportRequest,
-    UpdateConfigRequest
+    SetMembershipRequest,
+    SetRoleRequest,
+    SetStatusRequest,
+    UpdateConfigRequest,
+    router,
 )
 
 
@@ -24,7 +25,7 @@ class TestRequestModels:
         req = BroadcastRequest(
             title="System Update",
             body="We have updated our system.",
-            type="announcement"
+            type="announcement",
         )
         assert req.title == "System Update"
         assert req.type == "announcement"

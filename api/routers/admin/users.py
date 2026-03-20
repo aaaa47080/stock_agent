@@ -2,14 +2,17 @@
 Admin User Management
 User listing, role, membership, and status management endpoints
 """
-from api.utils import run_sync
-import logging
-from fastapi import APIRouter, Depends, Query, HTTPException
 
-from api.deps import require_admin, get_current_user
-from core.database.connection import get_connection
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+
+from api.deps import get_current_user, require_admin
 from api.routers.notifications import notification_manager
-from .schemas import SetRoleRequest, SetMembershipRequest, SetStatusRequest
+from api.utils import run_sync
+from core.database.connection import get_connection
+
+from .schemas import SetMembershipRequest, SetRoleRequest, SetStatusRequest
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Admin - Users"])
@@ -20,7 +23,7 @@ async def list_users(
     search: str = Query(None, max_length=100),
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
-    admin_user: dict = Depends(require_admin)
+    admin_user: dict = Depends(require_admin),
 ):
     """搜尋/列出用戶"""
     offset = (page - 1) * limit
@@ -31,28 +34,37 @@ async def list_users(
             with conn.cursor() as c:
                 if search:
                     like = f"%{search}%"
-                    c.execute("""
+                    c.execute(
+                        """
                         SELECT user_id, username, email, auth_method, role, is_active,
                                membership_tier, membership_expires_at, created_at, last_active_at
                         FROM users
                         WHERE username ILIKE %s OR user_id ILIKE %s
                         ORDER BY created_at DESC
                         LIMIT %s OFFSET %s
-                    """, (like, like, limit, offset))
+                    """,
+                        (like, like, limit, offset),
+                    )
                     rows = c.fetchall()
 
-                    c.execute("""
+                    c.execute(
+                        """
                         SELECT COUNT(*) FROM users
                         WHERE username ILIKE %s OR user_id ILIKE %s
-                    """, (like, like))
+                    """,
+                        (like, like),
+                    )
                 else:
-                    c.execute("""
+                    c.execute(
+                        """
                         SELECT user_id, username, email, auth_method, role, is_active,
                                membership_tier, membership_expires_at, created_at, last_active_at
                         FROM users
                         ORDER BY created_at DESC
                         LIMIT %s OFFSET %s
-                    """, (limit, offset))
+                    """,
+                        (limit, offset),
+                    )
                     rows = c.fetchall()
 
                     c.execute("SELECT COUNT(*) FROM users")
@@ -60,18 +72,24 @@ async def list_users(
                 total = c.fetchone()[0]
 
                 return {
-                    "users": [{
-                        "user_id": r[0], "username": r[1], "email": r[2],
-                        "auth_method": r[3], "role": r[4] or "user",
-                        "is_active": r[5] if r[5] is not None else True,
-                        "membership_tier": r[6] or "free",
-                        "membership_expires_at": r[7].isoformat() if r[7] else None,
-                        "created_at": r[8].isoformat() if r[8] else None,
-                        "last_active_at": r[9].isoformat() if r[9] else None
-                    } for r in rows],
+                    "users": [
+                        {
+                            "user_id": r[0],
+                            "username": r[1],
+                            "email": r[2],
+                            "auth_method": r[3],
+                            "role": r[4] or "user",
+                            "is_active": r[5] if r[5] is not None else True,
+                            "membership_tier": r[6] or "free",
+                            "membership_expires_at": r[7].isoformat() if r[7] else None,
+                            "created_at": r[8].isoformat() if r[8] else None,
+                            "last_active_at": r[9].isoformat() if r[9] else None,
+                        }
+                        for r in rows
+                    ],
                     "total": total,
                     "page": page,
-                    "limit": limit
+                    "limit": limit,
                 }
         finally:
             conn.close()
@@ -81,33 +99,38 @@ async def list_users(
 
 
 @router.get("/users/{user_id}")
-async def get_user_detail(
-    user_id: str,
-    admin_user: dict = Depends(require_admin)
-):
+async def get_user_detail(user_id: str, admin_user: dict = Depends(require_admin)):
     """獲取單一用戶詳情"""
+
     def _query():
         conn = get_connection()
         try:
             with conn.cursor() as c:
-                c.execute("""
+                c.execute(
+                    """
                     SELECT user_id, username, email, auth_method, role, is_active,
                            membership_tier, membership_expires_at, created_at, last_active_at,
                            pi_uid, pi_username
                     FROM users WHERE user_id = %s
-                """, (user_id,))
+                """,
+                    (user_id,),
+                )
                 r = c.fetchone()
                 if not r:
                     return None
                 return {
-                    "user_id": r[0], "username": r[1], "email": r[2],
-                    "auth_method": r[3], "role": r[4] or "user",
+                    "user_id": r[0],
+                    "username": r[1],
+                    "email": r[2],
+                    "auth_method": r[3],
+                    "role": r[4] or "user",
                     "is_active": r[5] if r[5] is not None else True,
                     "membership_tier": r[6] or "free",
                     "membership_expires_at": r[7].isoformat() if r[7] else None,
                     "created_at": r[8].isoformat() if r[8] else None,
                     "last_active_at": r[9].isoformat() if r[9] else None,
-                    "pi_uid": r[10], "pi_username": r[11]
+                    "pi_uid": r[10],
+                    "pi_username": r[11],
                 }
         finally:
             conn.close()
@@ -120,11 +143,10 @@ async def get_user_detail(
 
 @router.put("/users/{user_id}/role")
 async def set_user_role(
-    user_id: str,
-    request: SetRoleRequest,
-    admin_user: dict = Depends(require_admin)
+    user_id: str, request: SetRoleRequest, admin_user: dict = Depends(require_admin)
 ):
     """設定用戶角色"""
+
     def _update():
         conn = get_connection()
         try:
@@ -135,13 +157,24 @@ async def set_user_role(
                     return None
                 old_role = row[0] or "user"
 
-                c.execute("UPDATE users SET role = %s WHERE user_id = %s", (request.role, user_id))
+                c.execute(
+                    "UPDATE users SET role = %s WHERE user_id = %s",
+                    (request.role, user_id),
+                )
 
                 # Audit log
-                c.execute("""
+                c.execute(
+                    """
                     INSERT INTO config_audit_log (config_key, old_value, new_value, changed_by)
                     VALUES (%s, %s, %s, %s)
-                """, (f"user_role:{user_id}", old_role, request.role, admin_user["user_id"]))
+                """,
+                    (
+                        f"user_role:{user_id}",
+                        old_role,
+                        request.role,
+                        admin_user["user_id"],
+                    ),
+                )
 
                 conn.commit()
                 return {"old_role": old_role, "new_role": request.role}
@@ -161,14 +194,17 @@ async def set_user_role(
 async def set_user_membership(
     user_id: str,
     request: SetMembershipRequest,
-    admin_user: dict = Depends(require_admin)
+    admin_user: dict = Depends(require_admin),
 ):
     """設定用戶會員等級"""
     if request.tier == "pro":
         from core.database.user import upgrade_to_pro
+
         try:
             await run_sync(
-                lambda: upgrade_to_pro(user_id, request.months, f"admin_grant_{admin_user['user_id']}")
+                lambda: upgrade_to_pro(
+                    user_id, request.months, f"admin_grant_{admin_user['user_id']}"
+                )
             )
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
@@ -178,13 +214,25 @@ async def set_user_membership(
             conn = get_connection()
             try:
                 with conn.cursor() as c:
-                    c.execute("""
+                    c.execute(
+                        """
                         INSERT INTO config_audit_log (config_key, old_value, new_value, changed_by)
                         VALUES (%s, %s, %s, %s)
-                    """, (f"user_membership:{user_id}", "free", f"pro:{request.months}mo", admin_user["user_id"]))
+                    """,
+                        (
+                            f"user_membership:{user_id}",
+                            "free",
+                            f"pro:{request.months}mo",
+                            admin_user["user_id"],
+                        ),
+                    )
                     conn.commit()
             except Exception:
-                logger.warning("Failed to write membership upgrade audit log for %s", user_id, exc_info=True)
+                logger.warning(
+                    "Failed to write membership upgrade audit log for %s",
+                    user_id,
+                    exc_info=True,
+                )
             finally:
                 conn.close()
 
@@ -194,19 +242,32 @@ async def set_user_membership(
     else:
         # Downgrade to free
         from core.database.user import expire_user_membership
+
         await run_sync(expire_user_membership, user_id)
 
         def _audit():
             conn = get_connection()
             try:
                 with conn.cursor() as c:
-                    c.execute("""
+                    c.execute(
+                        """
                         INSERT INTO config_audit_log (config_key, old_value, new_value, changed_by)
                         VALUES (%s, %s, %s, %s)
-                    """, (f"user_membership:{user_id}", "pro", "free", admin_user["user_id"]))
+                    """,
+                        (
+                            f"user_membership:{user_id}",
+                            "pro",
+                            "free",
+                            admin_user["user_id"],
+                        ),
+                    )
                     conn.commit()
             except Exception:
-                logger.warning("Failed to write membership downgrade audit log for %s", user_id, exc_info=True)
+                logger.warning(
+                    "Failed to write membership downgrade audit log for %s",
+                    user_id,
+                    exc_info=True,
+                )
             finally:
                 conn.close()
 
@@ -216,11 +277,10 @@ async def set_user_membership(
 
 @router.put("/users/{user_id}/status")
 async def set_user_status(
-    user_id: str,
-    request: SetStatusRequest,
-    admin_user: dict = Depends(require_admin)
+    user_id: str, request: SetStatusRequest, admin_user: dict = Depends(require_admin)
 ):
     """封鎖/解封用戶"""
+
     def _update():
         conn = get_connection()
         try:
@@ -233,14 +293,25 @@ async def set_user_status(
                 old_status = "active" if row[0] else "suspended"
                 new_status = "active" if request.active else "suspended"
 
-                c.execute("UPDATE users SET is_active = %s WHERE user_id = %s", (request.active, user_id))
+                c.execute(
+                    "UPDATE users SET is_active = %s WHERE user_id = %s",
+                    (request.active, user_id),
+                )
 
                 # Audit log
                 reason_str = f" reason:{request.reason}" if request.reason else ""
-                c.execute("""
+                c.execute(
+                    """
                     INSERT INTO config_audit_log (config_key, old_value, new_value, changed_by)
                     VALUES (%s, %s, %s, %s)
-                """, (f"user_status:{user_id}", old_status, f"{new_status}{reason_str}", admin_user["user_id"]))
+                """,
+                    (
+                        f"user_status:{user_id}",
+                        old_status,
+                        f"{new_status}{reason_str}",
+                        admin_user["user_id"],
+                    ),
+                )
 
                 conn.commit()
                 return {"old_status": old_status, "new_status": new_status}
@@ -257,12 +328,17 @@ async def set_user_status(
     # If suspending, push force-logout via WebSocket
     if not request.active:
         try:
-            await notification_manager.send_to_user(user_id, {
-                "type": "force_logout",
-                "reason": request.reason or "Account suspended by admin"
-            })
+            await notification_manager.send_to_user(
+                user_id,
+                {
+                    "type": "force_logout",
+                    "reason": request.reason or "Account suspended by admin",
+                },
+            )
         except Exception:
-            logger.debug("Failed to send force_logout notification to %s", user_id, exc_info=True)
+            logger.debug(
+                "Failed to send force_logout notification to %s", user_id, exc_info=True
+            )
 
     return {"success": True, **result}
 
@@ -271,10 +347,11 @@ async def set_user_status(
 # Bootstrap (one-time admin setup)
 # ============================================================================
 
+
 @router.post("/bootstrap-admin")
 async def bootstrap_admin(
     user_id: str = Query(..., description="要設為 admin 的 user_id"),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     設定第一個管理員（需要已登入的有效帳號）。
@@ -302,16 +379,23 @@ async def bootstrap_admin(
                     if current_user.get("role") != "admin":
                         raise PermissionError("Only admins can create new admins")
                     # Current user is admin, allow setting new admin
-                    c.execute("UPDATE users SET role = 'admin' WHERE user_id = %s", (user_id,))
+                    c.execute(
+                        "UPDATE users SET role = 'admin' WHERE user_id = %s", (user_id,)
+                    )
                 else:
                     # No admin yet, allow self-promotion
-                    c.execute("UPDATE users SET role = 'admin' WHERE user_id = %s", (user_id,))
+                    c.execute(
+                        "UPDATE users SET role = 'admin' WHERE user_id = %s", (user_id,)
+                    )
 
                 # Audit log
-                c.execute("""
+                c.execute(
+                    """
                     INSERT INTO config_audit_log (config_key, old_value, new_value, changed_by)
                     VALUES (%s, %s, %s, %s)
-                """, ("bootstrap_admin", None, user_id, current_user["user_id"]))
+                """,
+                    ("bootstrap_admin", None, user_id, current_user["user_id"]),
+                )
 
                 conn.commit()
                 return True

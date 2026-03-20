@@ -6,6 +6,7 @@ Provides:
 - record_tool_stat(): write tool telemetry after each tool invocation
 - retrieve_relevant(): 3-layer retrieval (structured + FTS + optional LLM rerank)
 """
+
 from __future__ import annotations
 
 import logging
@@ -56,9 +57,16 @@ class ExperienceStore:
                     quality_score, failure_reason, response_chars)
                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
                 (
-                    user_id, session_id, task_family, query,
-                    tools_used, agent_used, outcome,
-                    _quality_to_float(quality_score), failure_reason, response_chars,
+                    user_id,
+                    session_id,
+                    task_family,
+                    query,
+                    tools_used,
+                    agent_used,
+                    outcome,
+                    _quality_to_float(quality_score),
+                    failure_reason,
+                    response_chars,
                 ),
             )
         except Exception as exc:
@@ -142,8 +150,9 @@ class ExperienceStore:
         """
         try:
             from langchain_core.messages import HumanMessage
+
             numbered = "\n".join(
-                f"{i+1}. [{c['outcome']}] {c['query_text']} "
+                f"{i + 1}. [{c['outcome']}] {c['query_text']} "
                 f"(工具: {', '.join(c.get('tools_used') or [])})"
                 for i, c in enumerate(candidates)
             )
@@ -155,11 +164,17 @@ class ExperienceStore:
             )
             response = llm.invoke([HumanMessage(content=prompt)])
             indices_str = response.content.strip()
-            indices = [int(x.strip()) - 1 for x in indices_str.split(",") if x.strip().isdigit()]
+            indices = [
+                int(x.strip()) - 1
+                for x in indices_str.split(",")
+                if x.strip().isdigit()
+            ]
             selected = [candidates[i] for i in indices if 0 <= i < len(candidates)]
             return selected if selected else candidates
         except Exception as exc:
-            logger.debug("[ExperienceStore] layer3 rerank failed, returning unranked: %s", exc)
+            logger.debug(
+                "[ExperienceStore] layer3 rerank failed, returning unranked: %s", exc
+            )
             return candidates
 
     def format_for_prompt(self, experiences: List[Dict]) -> str:
@@ -171,7 +186,9 @@ class ExperienceStore:
             tools = ", ".join(exp.get("tools_used") or []) or "無"
             date = str(exp.get("created_at", ""))[:10]
             outcome = exp.get("outcome", "unknown")
-            reason = f" 原因: {exp['failure_reason']}" if exp.get("failure_reason") else ""
+            reason = (
+                f" 原因: {exp['failure_reason']}" if exp.get("failure_reason") else ""
+            )
             lines.append(
                 f"- [{exp.get('task_family', '')}, {date}] "
                 f"{exp.get('query_text', '')} → 工具: {tools} → {outcome}{reason}"

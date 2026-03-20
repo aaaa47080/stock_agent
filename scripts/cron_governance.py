@@ -4,7 +4,9 @@
 
 功能：對30天內無新違規且上次遞減超過30天的用戶，每日自動遞減1點
 """
+
 from datetime import datetime
+
 from core.database.connection import get_connection
 
 
@@ -27,24 +29,20 @@ def decrement_violation_points_job():
 
     try:
         # 查詢符合條件的用戶
-        c.execute('''
+        c.execute("""
             SELECT user_id, points, last_violation_at, last_decrement_at
             FROM user_violation_points
             WHERE points > 0
               AND (last_decrement_at IS NULL OR last_decrement_at < NOW() - INTERVAL '30 days')
               AND (last_violation_at IS NULL OR last_violation_at < NOW() - INTERVAL '30 days')
             ORDER BY points DESC
-        ''')
+        """)
 
         users_to_decrement = c.fetchall()
 
         if not users_to_decrement:
             print("[Governance Cron] 沒有用戶需要遞減點數")
-            return {
-                "success": True,
-                "processed_count": 0,
-                "total_points_deducted": 0
-            }
+            return {"success": True, "processed_count": 0, "total_points_deducted": 0}
 
         # 執行遞減
         processed_count = 0
@@ -54,26 +52,33 @@ def decrement_violation_points_job():
             # 確保點數不會變成負數
             new_points = max(0, points - 1)
 
-            c.execute('''
+            c.execute(
+                """
                 UPDATE user_violation_points
                 SET points = %s,
                     last_decrement_at = NOW(),
                     updated_at = NOW()
                 WHERE user_id = %s
-            ''', (new_points, user_id))
+            """,
+                (new_points, user_id),
+            )
 
             # 記錄活動日誌
-            c.execute('''
+            c.execute(
+                """
                 INSERT INTO user_activity_logs
                 (user_id, activity_type, resource_type, metadata, success, created_at)
                 VALUES (%s, %s, %s, %s, %s, NOW())
-            ''', (
-                user_id,
-                'points_decremented',
-                'violation_points',
-                '{"previous_points": %s, "new_points": %s, "decremented_by": 1}' % (points, new_points),
-                True
-            ))
+            """,
+                (
+                    user_id,
+                    "points_decremented",
+                    "violation_points",
+                    '{"previous_points": %s, "new_points": %s, "decremented_by": 1}'
+                    % (points, new_points),
+                    True,
+                ),
+            )
 
             processed_count += 1
             total_points_deducted += 1
@@ -82,14 +87,16 @@ def decrement_violation_points_job():
 
         conn.commit()
 
-        current_time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        current_time = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
         print(f"[Governance Cron] 執行時間: {current_time}")
-        print(f"[Governance Cron] 處理 {processed_count} 個用戶，共遞減 {total_points_deducted} 點")
+        print(
+            f"[Governance Cron] 處理 {processed_count} 個用戶，共遞減 {total_points_deducted} 點"
+        )
 
         return {
             "success": True,
             "processed_count": processed_count,
-            "total_points_deducted": total_points_deducted
+            "total_points_deducted": total_points_deducted,
         }
 
     except Exception as e:
@@ -99,7 +106,7 @@ def decrement_violation_points_job():
             "success": False,
             "error": str(e),
             "processed_count": 0,
-            "total_points_deducted": 0
+            "total_points_deducted": 0,
         }
     finally:
         conn.close()
@@ -121,15 +128,20 @@ def cleanup_old_activity_logs(days_to_keep: int = 90):
     try:
         # 刪除超過保留期的日誌
         # SQL injection fix: Use parameterized query for INTERVAL
-        c.execute('''
+        c.execute(
+            """
             DELETE FROM user_activity_logs
             WHERE created_at < NOW() - INTERVAL %s
-        ''', (f"{days_to_keep} days",))
+        """,
+            (f"{days_to_keep} days",),
+        )
 
         deleted_count = c.rowcount
         conn.commit()
 
-        print(f"[Governance Cron] 清理了 {deleted_count} 條舊的活動日誌（超過 {days_to_keep} 天）")
+        print(
+            f"[Governance Cron] 清理了 {deleted_count} 條舊的活動日誌（超過 {days_to_keep} 天）"
+        )
 
         return deleted_count
 
@@ -155,7 +167,7 @@ def get_governance_statistics():
         stats = {}
 
         # 違規點數統計
-        c.execute('''
+        c.execute("""
             SELECT
                 COUNT(*) as total_users_with_points,
                 SUM(points) as total_points,
@@ -163,7 +175,7 @@ def get_governance_statistics():
                 MAX(points) as max_points
             FROM user_violation_points
             WHERE points > 0
-        ''')
+        """)
         result = c.fetchone()
         if result:
             stats["users_with_points"] = result[0] or 0
@@ -172,10 +184,10 @@ def get_governance_statistics():
             stats["max_points"] = result[3] or 0
 
         # 活動日誌統計
-        c.execute('''
+        c.execute("""
             SELECT COUNT(*) FROM user_activity_logs
             WHERE created_at > NOW() - INTERVAL '7 days'
-        ''')
+        """)
         stats["recent_activity_logs"] = c.fetchone()[0] or 0
 
         return stats
@@ -188,7 +200,6 @@ def get_governance_statistics():
 
 
 if __name__ == "__main__":
-
     print("=" * 50)
     print("社群治理系統 - 定時任務")
     print("=" * 50)

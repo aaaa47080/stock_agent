@@ -5,7 +5,7 @@
 import asyncio
 import json
 import logging
-from typing import Dict, Set, Callable, Optional
+from typing import Callable, Dict, Optional, Set
 
 try:
     import websockets
@@ -33,6 +33,7 @@ INTERVAL_MAP = {
     "1d": "1D",
     "1w": "1W",
 }
+
 
 class OKXWebSocketManager:
     """管理 OKX WebSocket 連接和訂閱"""
@@ -73,10 +74,7 @@ class OKXWebSocketManager:
                 logger.info(f"正在連接 OKX WebSocket: {OKX_WS_BUSINESS}")
 
                 async with websockets.connect(
-                    OKX_WS_BUSINESS,
-                    ping_interval=20,
-                    ping_timeout=10,
-                    close_timeout=5
+                    OKX_WS_BUSINESS, ping_interval=20, ping_timeout=10, close_timeout=5
                 ) as ws:
                     self.ws = ws
                     logger.info("OKX WebSocket 連接成功")
@@ -136,10 +134,7 @@ class OKXWebSocketManager:
 
         subscribe_msg = {
             "op": "subscribe",
-            "args": [{
-                "channel": channel,
-                "instId": inst_id
-            }]
+            "args": [{"channel": channel, "instId": inst_id}],
         }
 
         await self.ws.send(json.dumps(subscribe_msg))
@@ -156,10 +151,7 @@ class OKXWebSocketManager:
 
         unsubscribe_msg = {
             "op": "unsubscribe",
-            "args": [{
-                "channel": channel,
-                "instId": inst_id
-            }]
+            "args": [{"channel": channel, "instId": inst_id}],
         }
 
         await self.ws.send(json.dumps(unsubscribe_msg))
@@ -234,7 +226,7 @@ class OKXWebSocketManager:
             "low": float(candle[3]),
             "close": float(candle[4]),
             "volume": float(candle[5]),
-            "confirmed": candle[8] == "1" if len(candle) > 8 else False
+            "confirmed": candle[8] == "1" if len(candle) > 8 else False,
         }
 
     async def subscribe(self, symbol: str, interval: str, callback: Callable):
@@ -320,10 +312,7 @@ class OKXTickerWebSocketManager:
                 logger.info(f"正在連接 OKX Ticker WebSocket: {OKX_WS_PUBLIC}")
 
                 async with websockets.connect(
-                    OKX_WS_PUBLIC,
-                    ping_interval=20,
-                    ping_timeout=10,
-                    close_timeout=5
+                    OKX_WS_PUBLIC, ping_interval=20, ping_timeout=10, close_timeout=5
                 ) as ws:
                     self.ws = ws
                     logger.info("OKX Ticker WebSocket 連接成功")
@@ -377,10 +366,7 @@ class OKXTickerWebSocketManager:
         inst_id = self._get_okx_inst_id(symbol)
         subscribe_msg = {
             "op": "subscribe",
-            "args": [{
-                "channel": "tickers",
-                "instId": inst_id
-            }]
+            "args": [{"channel": "tickers", "instId": inst_id}],
         }
 
         await self.ws.send(json.dumps(subscribe_msg))
@@ -394,10 +380,7 @@ class OKXTickerWebSocketManager:
         inst_id = self._get_okx_inst_id(symbol)
         unsubscribe_msg = {
             "op": "unsubscribe",
-            "args": [{
-                "channel": "tickers",
-                "instId": inst_id
-            }]
+            "args": [{"channel": "tickers", "instId": inst_id}],
         }
 
         try:
@@ -468,7 +451,7 @@ class OKXTickerWebSocketManager:
             "vol24h": float(ticker.get("vol24h", 0)),
             "volCcy24h": float(ticker.get("volCcy24h", 0)),
             "change24h": self._calc_change(ticker.get("last"), ticker.get("open24h")),
-            "ts": int(ticker.get("ts", 0))
+            "ts": int(ticker.get("ts", 0)),
         }
 
     def _calc_change(self, last, open24h) -> float:

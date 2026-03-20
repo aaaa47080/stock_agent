@@ -12,10 +12,11 @@ Usage::
         result = await session.execute(select(User).where(User.user_id == "uid"))
         user = result.scalar_one_or_none()
 """
+
 from __future__ import annotations
 
-import os
 import logging
+import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 from urllib.parse import quote
@@ -117,7 +118,9 @@ async def close_async_engine():
 
 
 @asynccontextmanager
-async def using_session(session: AsyncSession | None = None) -> AsyncGenerator[AsyncSession, None]:
+async def using_session(
+    session: AsyncSession | None = None,
+) -> AsyncGenerator[AsyncSession, None]:
     """
     Yield a session for repo use.
 

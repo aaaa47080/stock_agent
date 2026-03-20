@@ -3,12 +3,13 @@
 For more information visit https://github.com/pi-apps/pi-python
 """
 
-import requests
 import json
+
+import requests
 import stellar_sdk as s_sdk
 
-class PiNetwork:
 
+class PiNetwork:
     api_key = ""
     client = ""
     account = ""
@@ -35,7 +36,11 @@ class PiNetwork:
 
     def get_balance(self):
         try:
-            balances = self.server.accounts().account_id(self.keypair.public_key).call()["balances"]
+            balances = (
+                self.server.accounts()
+                .account_id(self.keypair.public_key)
+                .call()["balances"]
+            )
             for i in balances:
                 if i["asset_type"] == "native":
                     return float(i["balance"])
@@ -50,21 +55,29 @@ class PiNetwork:
 
     def create_payment(self, payment_data):
         try:
-            balances = self.server.accounts().account_id(self.keypair.public_key).call()["balances"]
+            balances = (
+                self.server.accounts()
+                .account_id(self.keypair.public_key)
+                .call()["balances"]
+            )
             for i in balances:
                 if i["asset_type"] == "native":
-                    if (float(payment_data["amount"]) + (float(self.fee) / 10000000)) > float(i["balance"]):
+                    if (
+                        float(payment_data["amount"]) + (float(self.fee) / 10000000)
+                    ) > float(i["balance"]):
                         return ""
                     break
 
-            obj = json.dumps({'payment': payment_data})
+            obj = json.dumps({"payment": payment_data})
             url = self.base_url + "/v2/payments"
-            res = requests.post(url, data=obj, json=obj, headers=self.get_http_headers())
+            res = requests.post(
+                url, data=obj, json=obj, headers=self.get_http_headers()
+            )
             parsed_response = self.handle_http_response(res)
 
-            if 'error' in parsed_response:
-                identifier = parsed_response['payment']["identifier"]
-                identifier_data = parsed_response['payment']
+            if "error" in parsed_response:
+                identifier = parsed_response["payment"]["identifier"]
+                identifier_data = parsed_response["payment"]
             else:
                 identifier = parsed_response["identifier"]
                 identifier_data = parsed_response
@@ -80,10 +93,16 @@ class PiNetwork:
             return False
         payment = self.open_payments[payment_id]
 
-        balances = self.server.accounts().account_id(self.keypair.public_key).call()["balances"]
+        balances = (
+            self.server.accounts()
+            .account_id(self.keypair.public_key)
+            .call()["balances"]
+        )
         for i in balances:
             if i["asset_type"] == "native":
-                if (float(payment["amount"]) + (float(self.fee)/10000000)) > float(i["balance"]):
+                if (float(payment["amount"]) + (float(self.fee) / 10000000)) > float(
+                    i["balance"]
+                ):
                     return ""
                 break
 
@@ -115,7 +134,10 @@ class PiNetwork:
         return res["incomplete_server_payments"]
 
     def get_http_headers(self):
-        return {'Authorization': "Key " + self.api_key, "Content-Type": "application/json"}
+        return {
+            "Authorization": "Key " + self.api_key,
+            "Content-Type": "application/json",
+        }
 
     def handle_http_response(self, re):
         try:

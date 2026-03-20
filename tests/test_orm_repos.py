@@ -1,5 +1,7 @@
 """Tests for all ORM repositories — structure, signatures, and patterns."""
+
 import inspect
+
 import pytest
 
 
@@ -26,16 +28,19 @@ class TestFriendsRepoStructure:
     @pytest.mark.parametrize("method", REQUIRED_METHODS)
     def test_method_exists(self, method):
         from core.orm.friends_repo import friends_repo
+
         assert hasattr(friends_repo, method), f"Missing method: {method}"
 
     @pytest.mark.parametrize("method", REQUIRED_METHODS)
     def test_method_is_async(self, method):
         from core.orm.friends_repo import friends_repo
+
         func = getattr(friends_repo, method)
         assert inspect.iscoroutinefunction(func), f"{method} is not async"
 
     def test_friends_repo_singleton(self):
         from core.orm.friends_repo import friends_repo
+
         assert friends_repo is not None
 
 
@@ -54,11 +59,13 @@ class TestNotificationsRepoStructure:
     @pytest.mark.parametrize("method", REQUIRED_METHODS)
     def test_method_exists(self, method):
         from core.orm.notifications_repo import notifications_repo
+
         assert hasattr(notifications_repo, method), f"Missing method: {method}"
 
     @pytest.mark.parametrize("method", REQUIRED_METHODS)
     def test_method_is_async(self, method):
         from core.orm.notifications_repo import notifications_repo
+
         func = getattr(notifications_repo, method)
         assert inspect.iscoroutinefunction(func), f"{method} is not async"
 
@@ -84,11 +91,13 @@ class TestForumRepoStructure:
     @pytest.mark.parametrize("method", REQUIRED_METHODS)
     def test_method_exists(self, method):
         from core.orm.forum_repo import forum_repo
+
         assert hasattr(forum_repo, method), f"Missing method: {method}"
 
     @pytest.mark.parametrize("method", REQUIRED_METHODS)
     def test_method_is_async(self, method):
         from core.orm.forum_repo import forum_repo
+
         func = getattr(forum_repo, method)
         assert inspect.iscoroutinefunction(func), f"{method} is not async"
 
@@ -110,11 +119,13 @@ class TestMessagesRepoStructure:
     @pytest.mark.parametrize("method", REQUIRED_METHODS)
     def test_method_exists(self, method):
         from core.orm.messages_repo import messages_repo
+
         assert hasattr(messages_repo, method), f"Missing method: {method}"
 
     @pytest.mark.parametrize("method", REQUIRED_METHODS)
     def test_method_is_async(self, method):
         from core.orm.messages_repo import messages_repo
+
         func = getattr(messages_repo, method)
         assert inspect.iscoroutinefunction(func), f"{method} is not async"
 
@@ -124,36 +135,42 @@ class TestRepoMethodSignatures:
 
     def test_get_friends_list_has_pagination(self):
         from core.orm.friends_repo import friends_repo
+
         sig = inspect.signature(friends_repo.get_friends_list)
         assert "limit" in sig.parameters
         assert "offset" in sig.parameters
 
     def test_get_notifications_has_pagination(self):
         from core.orm.notifications_repo import notifications_repo
+
         sig = inspect.signature(notifications_repo.get_notifications)
         assert "limit" in sig.parameters
         assert "offset" in sig.parameters
 
     def test_get_posts_has_pagination(self):
         from core.orm.forum_repo import forum_repo
+
         sig = inspect.signature(forum_repo.get_posts)
         assert "limit" in sig.parameters
         assert "offset" in sig.parameters
 
     def test_get_comments_has_pagination(self):
         from core.orm.forum_repo import forum_repo
+
         sig = inspect.signature(forum_repo.get_comments)
         assert "limit" in sig.parameters
         assert "offset" in sig.parameters
 
     def test_get_conversations_has_pagination(self):
         from core.orm.messages_repo import messages_repo
+
         sig = inspect.signature(messages_repo.get_conversations)
         assert "limit" in sig.parameters
         assert "offset" in sig.parameters
 
     def test_create_notification_params(self):
         from core.orm.notifications_repo import notifications_repo
+
         sig = inspect.signature(notifications_repo.create_notification)
         params = list(sig.parameters.keys())
         assert "user_id" in params
@@ -163,6 +180,7 @@ class TestRepoMethodSignatures:
 
     def test_send_message_params(self):
         from core.orm.messages_repo import messages_repo
+
         sig = inspect.signature(messages_repo.send_message)
         params = list(sig.parameters.keys())
         assert "from_user_id" in params
@@ -171,6 +189,7 @@ class TestRepoMethodSignatures:
 
     def test_create_post_params(self):
         from core.orm.forum_repo import forum_repo
+
         sig = inspect.signature(forum_repo.create_post)
         params = list(sig.parameters.keys())
         assert "board_id" in params
@@ -181,6 +200,7 @@ class TestRepoMethodSignatures:
 
     def test_create_tip_params(self):
         from core.orm.forum_repo import forum_repo
+
         sig = inspect.signature(forum_repo.create_tip)
         params = list(sig.parameters.keys())
         assert "post_id" in params
@@ -191,16 +211,21 @@ class TestRepoMethodSignatures:
 
     def test_get_tips_total_received_exists(self):
         from core.orm.forum_repo import forum_repo
+
         assert hasattr(forum_repo, "get_tips_total_received")
 
     def test_get_tips_total_received_is_async(self):
-        from core.orm.forum_repo import forum_repo
         import inspect
+
+        from core.orm.forum_repo import forum_repo
+
         assert inspect.iscoroutinefunction(forum_repo.get_tips_total_received)
 
     def test_get_tips_total_returns_float(self):
-        from core.orm.forum_repo import forum_repo
         import inspect
+
+        from core.orm.forum_repo import forum_repo
+
         sig = inspect.signature(forum_repo.get_tips_total_received)
         params = list(sig.parameters.keys())
         assert "user_id" in params
@@ -212,17 +237,21 @@ class TestTipsRouterUsesOrm:
 
     def test_tips_imports_forum_repo(self):
         import api.routers.forum.tips as tips_mod
+
         assert hasattr(tips_mod, "forum_repo")
         from core.orm.forum_repo import forum_repo
+
         assert tips_mod.forum_repo is forum_repo
 
     def test_tips_no_run_sync_import(self):
         import api.routers.forum.tips as tips_mod
+
         source = inspect.getsource(tips_mod)
         assert "run_sync" not in source
 
     def test_tips_no_core_database_import(self):
         import api.routers.forum.tips as tips_mod
+
         source = inspect.getsource(tips_mod)
         assert "from core.database import" not in source
 
@@ -232,21 +261,25 @@ class TestReposUseSessionParameter:
 
     def test_friends_repo_accepts_session(self):
         from core.orm.friends_repo import friends_repo
+
         sig = inspect.signature(friends_repo.get_friends_list)
         assert "session" in sig.parameters
 
     def test_forum_repo_accepts_session(self):
         from core.orm.forum_repo import forum_repo
+
         sig = inspect.signature(forum_repo.get_posts)
         assert "session" in sig.parameters
 
     def test_messages_repo_accepts_session(self):
         from core.orm.messages_repo import messages_repo
+
         sig = inspect.signature(messages_repo.get_conversations)
         assert "session" in sig.parameters
 
     def test_notifications_repo_accepts_session(self):
         from core.orm.notifications_repo import notifications_repo
+
         sig = inspect.signature(notifications_repo.get_notifications)
         assert "session" in sig.parameters
 
@@ -256,22 +289,26 @@ class TestOrmPackageExports:
 
     def test_exports_models(self):
         from core.orm import Base
+
         assert Base is not None
 
     def test_exports_session(self):
         from core.orm import get_async_session, get_engine
+
         assert callable(get_async_session)
         assert callable(get_engine)
 
     def test_exports_repos(self):
         from core.orm import user_repo
+
         assert user_repo is not None
 
     def test_exports_repo_modules(self):
         from core.orm import friends_repo
-        from core.orm.notifications_repo import notifications_repo
         from core.orm.forum_repo import forum_repo
         from core.orm.messages_repo import messages_repo
+        from core.orm.notifications_repo import notifications_repo
+
         assert friends_repo is not None
         assert notifications_repo is not None
         assert forum_repo is not None

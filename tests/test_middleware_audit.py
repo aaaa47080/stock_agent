@@ -2,13 +2,14 @@
 Tests for audit middleware in api/middleware/audit.py
 """
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock, AsyncMock
 from fastapi import Request
 
 from api.middleware.audit import (
-    _extract_user_from_request,
     _determine_action,
+    _extract_user_from_request,
     _is_sensitive_action,
     audit_middleware,
 )

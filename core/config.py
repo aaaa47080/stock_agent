@@ -2,14 +2,15 @@
 # ^ E402 ignored because config validation code needs to run before imports
 import os
 import sys
+
 from dotenv import load_dotenv
 
 # Fix Windows console encoding (cp950 cannot handle emoji/unicode)
 if sys.platform == "win32":
-    if hasattr(sys.stdout, 'reconfigure'):
-        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-    if hasattr(sys.stderr, 'reconfigure'):
-        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 # Load local defaults from .env, but never override values already provided
 # by the shell, process manager, or deployment platform.
@@ -55,21 +56,22 @@ if TEST_MODE:
 
     # All checks passed - log warning but allow
     import logging
+
     logging.warning("⚠️⚠️⚠️ TEST_MODE IS ENABLED - SECURITY CHECKS ARE BYPASSED ⚠️⚠️⚠️")
 
 # 測試用戶資料（TEST_MODE=True 時使用）
 TEST_USER = {
     "uid": "test-user-001",
     "username": "TestUser",
-    "accessToken": "test-token-12345"
+    "accessToken": "test-token-12345",
 }
 
 # === AI 模型配置 ===
 # 所有模型名稱統一由 core/model_config.py 管理，在此不再硬寫字串。
 from core.model_config import OPENAI_DEFAULT_MODEL
 
-FAST_THINKING_MODEL = OPENAI_DEFAULT_MODEL   # 用於快速分析（分析師）
-DEEP_THINKING_MODEL = OPENAI_DEFAULT_MODEL   # 用於深度思考（交易員、風險管理）
+FAST_THINKING_MODEL = OPENAI_DEFAULT_MODEL  # 用於快速分析（分析師）
+DEEP_THINKING_MODEL = OPENAI_DEFAULT_MODEL  # 用於深度思考（交易員、風險管理）
 
 # ============================================================================
 # [User-Side] 需要用戶 API Key 的功能
@@ -95,13 +97,11 @@ QUERY_PARSER_MODEL_CONFIG = {
 }
 
 
-
 # ============================================================================
 
 # [Server-Side] 由平台提供的免費功能 (後台運行)
 
 # ============================================================================
-
 
 
 # 市場脈動分析器 (平台付費 - 用於生成公共報告)
@@ -110,7 +110,6 @@ MARKET_PULSE_MODEL = {
     "provider": "openai",  # 使用伺服器端的 .env KEY
     "model": OPENAI_DEFAULT_MODEL,
 }
-
 
 
 # 向後兼容：保留模型名稱字符串（供直接使用模型名稱的代碼使用）
@@ -133,7 +132,7 @@ DEFAULT_INTERVAL = "1d"
 DEFAULT_KLINES_LIMIT = 200  # 業界標準：200 天，確保統計有效性
 
 # 新聞抓取數量限制 (每個來源)
-NEWS_FETCH_LIMIT = 10 # 每個來源嘗試抓取 10 條新聞
+NEWS_FETCH_LIMIT = 10  # 每個來源嘗試抓取 10 條新聞
 
 # 加密貨幣篩選器的預設值
 SCREENER_DEFAULT_LIMIT = 30
@@ -145,7 +144,9 @@ SCREENER_DEFAULT_INTERVAL = "1d"
 SCREENER_TARGET_SYMBOLS = ["BTC", "ETH", "SOL"]
 
 # 自動更新間隔 (分鐘)
-SCREENER_UPDATE_INTERVAL_MINUTES = int(os.getenv("SCREENER_UPDATE_INTERVAL_MINUTES", "5"))
+SCREENER_UPDATE_INTERVAL_MINUTES = int(
+    os.getenv("SCREENER_UPDATE_INTERVAL_MINUTES", "5")
+)
 
 # 資金費率自動更新間隔 (秒)
 FUNDING_RATE_UPDATE_INTERVAL = int(os.getenv("FUNDING_RATE_UPDATE_INTERVAL", "300"))
@@ -169,8 +170,8 @@ EXCHANGE_MINIMUM_ORDER_USD = 1.0  # 交易所最低下單金額 (USDT)
 # === 交易類型選擇 ===
 # 控制是否執行現貨交易和合約交易
 # True: 啟用該類型的交易 / False: 停用該類型的交易
-ENABLE_SPOT_TRADING = False      # 是否執行現貨交易
-ENABLE_FUTURES_TRADING = True   # 是否執行合約交易
+ENABLE_SPOT_TRADING = False  # 是否執行現貨交易
+ENABLE_FUTURES_TRADING = True  # 是否執行合約交易
 
 # === 加密貨幣分析配置 ===
 # 預設要分析的加密貨幣列表。
@@ -207,18 +208,18 @@ PI_VALIDATION_KEY = os.getenv("PI_VALIDATION_KEY", "")
 # 定義各種操作的 Pi 幣價格（用於後端驗證防止金額篡改）
 # Pi 價格參考：約 $0.17 USD (2026-03)
 PI_PAYMENT_PRICES = {
-    "create_post": 0.5,          # 發文費用 0.5 Pi
-    "tip": 0.5,                  # 打賞 0.5 Pi
+    "create_post": 0.5,  # 發文費用 0.5 Pi
+    "tip": 0.5,  # 打賞 0.5 Pi
     # Premium 會員（完整功能）
-    "premium_monthly": 5.0,      # Premium 月費 5 Pi ≈ $0.85
-    "premium_yearly": 40.0,      # Premium 年費 40 Pi ≈ $6.80 (省 20 Pi)
+    "premium_monthly": 5.0,  # Premium 月費 5 Pi ≈ $0.85
+    "premium_yearly": 40.0,  # Premium 年費 40 Pi ≈ $6.80 (省 20 Pi)
 }
 
 # === 論壇會員限制配置 ===
 # None 表示無限制
 FORUM_LIMITS = {
-    "daily_post_free": 3,        # 一般會員每日發文上限
+    "daily_post_free": 3,  # 一般會員每日發文上限
     "daily_post_premium": None,  # Premium 會員每日發文上限 (None = 無限)
-    "daily_comment_free": 20,    # 一般會員每日回覆上限
+    "daily_comment_free": 20,  # 一般會員每日回覆上限
     "daily_comment_premium": None,  # Premium 會員每日回覆上限 (None = 無限)
 }

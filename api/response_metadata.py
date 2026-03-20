@@ -15,11 +15,15 @@ def build_response_metadata(result: dict, analysis_mode: str) -> dict:
         if isinstance(task_data, dict):
             used_tools.extend(task_data.get("used_tools", []))
             data_as_of = data_as_of or task_data.get("data_as_of")
-            verification_status = task_data.get("verification_status", verification_status)
+            verification_status = task_data.get(
+                "verification_status", verification_status
+            )
             query_type = query_type or task_data.get("query_type")
             resolved_market = resolved_market or task_data.get("resolved_market")
             policy_path = policy_path or task_data.get("policy_path")
-        quality_fail_reason = quality_fail_reason or task_result.get("quality_fail_reason")
+        quality_fail_reason = quality_fail_reason or task_result.get(
+            "quality_fail_reason"
+        )
 
     if quality_fail_reason:
         verification_status = "unverified"

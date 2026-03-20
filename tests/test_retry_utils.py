@@ -1,9 +1,11 @@
 """
 Tests for retry utilities
 """
-import pytest
-from unittest.mock import patch
+
 import time
+from unittest.mock import patch
+
+import pytest
 
 from utils.retry_utils import retry_on_failure
 
@@ -141,11 +143,12 @@ class TestRetryOnFailure:
         delays = []
 
         _ = time.sleep  # original_sleep not used
+
         def mock_sleep(duration):
             delays.append(duration)
             # Don't actually sleep
 
-        with patch('time.sleep', mock_sleep):
+        with patch("time.sleep", mock_sleep):
             call_count = 0
 
             @retry_on_failure(max_retries=3, delay=0.1, backoff=2.0)

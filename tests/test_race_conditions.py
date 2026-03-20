@@ -3,8 +3,10 @@
 Verifies that check-and-increment functions are atomic
 and prevent TOCTOU race conditions.
 """
-import pytest
+
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 
 class TestCheckAndIncrementMessage:
@@ -18,8 +20,12 @@ class TestCheckAndIncrementMessage:
         mock_cursor.fetchone.return_value = (5,)
         mock_conn.cursor.return_value = mock_cursor
 
-        with patch("core.database.messages.limits.get_connection", return_value=mock_conn):
-            with patch("core.database.messages.limits._get_message_config", return_value=20):
+        with patch(
+            "core.database.messages.limits.get_connection", return_value=mock_conn
+        ):
+            with patch(
+                "core.database.messages.limits._get_message_config", return_value=20
+            ):
                 result = check_and_increment_message("user1", False)
 
         assert result["can_send"] is True
@@ -36,8 +42,12 @@ class TestCheckAndIncrementMessage:
         mock_cursor.fetchone.return_value = (20,)
         mock_conn.cursor.return_value = mock_cursor
 
-        with patch("core.database.messages.limits.get_connection", return_value=mock_conn):
-            with patch("core.database.messages.limits._get_message_config", return_value=20):
+        with patch(
+            "core.database.messages.limits.get_connection", return_value=mock_conn
+        ):
+            with patch(
+                "core.database.messages.limits._get_message_config", return_value=20
+            ):
                 result = check_and_increment_message("user1", False)
 
         assert result["can_send"] is True
@@ -52,8 +62,12 @@ class TestCheckAndIncrementMessage:
         mock_cursor.fetchone.return_value = (21,)
         mock_conn.cursor.return_value = mock_cursor
 
-        with patch("core.database.messages.limits.get_connection", return_value=mock_conn):
-            with patch("core.database.messages.limits._get_message_config", return_value=20):
+        with patch(
+            "core.database.messages.limits.get_connection", return_value=mock_conn
+        ):
+            with patch(
+                "core.database.messages.limits._get_message_config", return_value=20
+            ):
                 result = check_and_increment_message("user1", False)
 
         assert result["can_send"] is False
@@ -63,7 +77,9 @@ class TestCheckAndIncrementMessage:
     def test_premium_unlimited_when_config_is_none(self):
         from core.database.messages.limits import check_and_increment_message
 
-        with patch("core.database.messages.limits._get_message_config", return_value=None):
+        with patch(
+            "core.database.messages.limits._get_message_config", return_value=None
+        ):
             result = check_and_increment_message("user1", True)
 
         assert result["can_send"] is True
@@ -77,8 +93,12 @@ class TestCheckAndIncrementMessage:
         mock_cursor.execute.side_effect = Exception("DB error")
         mock_conn.cursor.return_value = mock_cursor
 
-        with patch("core.database.messages.limits.get_connection", return_value=mock_conn):
-            with patch("core.database.messages.limits._get_message_config", return_value=20):
+        with patch(
+            "core.database.messages.limits.get_connection", return_value=mock_conn
+        ):
+            with patch(
+                "core.database.messages.limits._get_message_config", return_value=20
+            ):
                 with pytest.raises(Exception, match="DB error"):
                     check_and_increment_message("user1", False)
 
@@ -93,8 +113,12 @@ class TestCheckAndIncrementMessage:
         mock_cursor.fetchone.return_value = (1,)
         mock_conn.cursor.return_value = mock_cursor
 
-        with patch("core.database.messages.limits.get_connection", return_value=mock_conn):
-            with patch("core.database.messages.limits._get_message_config", return_value=20):
+        with patch(
+            "core.database.messages.limits.get_connection", return_value=mock_conn
+        ):
+            with patch(
+                "core.database.messages.limits._get_message_config", return_value=20
+            ):
                 check_and_increment_message("user1", False)
 
         sql_calls = [call[0][0] for call in mock_cursor.execute.call_args_list]
@@ -113,8 +137,12 @@ class TestCheckAndIncrementGreeting:
         mock_cursor.fetchone.return_value = (3,)
         mock_conn.cursor.return_value = mock_cursor
 
-        with patch("core.database.messages.limits.get_connection", return_value=mock_conn):
-            with patch("core.database.messages.limits._get_message_config", return_value=5):
+        with patch(
+            "core.database.messages.limits.get_connection", return_value=mock_conn
+        ):
+            with patch(
+                "core.database.messages.limits._get_message_config", return_value=5
+            ):
                 result = check_and_increment_greeting("user1", True)
 
         assert result["can_send"] is True
@@ -137,8 +165,12 @@ class TestCheckAndIncrementGreeting:
         mock_cursor.fetchone.return_value = (6,)
         mock_conn.cursor.return_value = mock_cursor
 
-        with patch("core.database.messages.limits.get_connection", return_value=mock_conn):
-            with patch("core.database.messages.limits._get_message_config", return_value=5):
+        with patch(
+            "core.database.messages.limits.get_connection", return_value=mock_conn
+        ):
+            with patch(
+                "core.database.messages.limits._get_message_config", return_value=5
+            ):
                 result = check_and_increment_greeting("user1", True)
 
         assert result["can_send"] is False
@@ -155,7 +187,7 @@ class TestCheckAndIncrementToolQuota:
         mock_cursor = MagicMock()
         mock_cursor.fetchone.side_effect = [
             ("daily", 10, None, 50),  # tools_catalog row
-            (5,),                      # usage after increment
+            (5,),  # usage after increment
         ]
         mock_conn.cursor.return_value = mock_cursor
 
@@ -172,7 +204,7 @@ class TestCheckAndIncrementToolQuota:
         mock_cursor = MagicMock()
         mock_cursor.fetchone.side_effect = [
             ("daily", 10, None, 10),  # tools_catalog: limit=10
-            (11,),                     # usage exceeds limit
+            (11,),  # usage exceeds limit
         ]
         mock_conn.cursor.return_value = mock_cursor
 
@@ -251,8 +283,12 @@ class TestLegacyFunctionsStillWork:
         mock_cursor.fetchone.return_value = (5,)
         mock_conn.cursor.return_value = mock_cursor
 
-        with patch("core.database.messages.limits.get_connection", return_value=mock_conn):
-            with patch("core.database.messages.limits._get_message_config", return_value=20):
+        with patch(
+            "core.database.messages.limits.get_connection", return_value=mock_conn
+        ):
+            with patch(
+                "core.database.messages.limits._get_message_config", return_value=20
+            ):
                 result = check_message_limit("user1", False)
 
         assert result["can_send"] is True
@@ -266,7 +302,9 @@ class TestLegacyFunctionsStillWork:
         mock_cursor = MagicMock()
         mock_conn.cursor.return_value = mock_cursor
 
-        with patch("core.database.messages.limits.get_connection", return_value=mock_conn):
+        with patch(
+            "core.database.messages.limits.get_connection", return_value=mock_conn
+        ):
             increment_message_count("user1")
 
         mock_conn.commit.assert_called_once()

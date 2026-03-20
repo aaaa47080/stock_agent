@@ -9,11 +9,13 @@ Data sources:
   - TPEX: openapi.tpex.org.tw  (上櫃)
 Cache: in-memory, 24h TTL
 """
-import httpx
+
 import logging
 from datetime import datetime, timedelta
 from typing import Optional
-from rapidfuzz import process, fuzz
+
+import httpx
+from rapidfuzz import fuzz, process
 
 logger = logging.getLogger(__name__)
 
@@ -73,8 +75,11 @@ class TWSymbolResolver:
     def _get_stock_list(self) -> list:
         """Return cached stock list, refreshing if stale."""
         now = datetime.now()
-        if (self._cache is not None and self._cache_time is not None
-                and now - self._cache_time < timedelta(hours=self.CACHE_TTL_HOURS)):
+        if (
+            self._cache is not None
+            and self._cache_time is not None
+            and now - self._cache_time < timedelta(hours=self.CACHE_TTL_HOURS)
+        ):
             return self._cache
 
         stocks = []
@@ -89,14 +94,16 @@ class TWSymbolResolver:
                     for item in resp.json():
                         code = item.get("公司代號", "").strip()
                         name = item.get("公司簡稱", "").strip()
-                        eng  = item.get("英文簡稱", "").strip()
+                        eng = item.get("英文簡稱", "").strip()
                         if code and name:
-                            stocks.append({
-                                "code": code,
-                                "name": name,
-                                "eng":  eng,
-                                "ticker": f"{code}{suffix}",
-                            })
+                            stocks.append(
+                                {
+                                    "code": code,
+                                    "name": name,
+                                    "eng": eng,
+                                    "ticker": f"{code}{suffix}",
+                                }
+                            )
             except Exception as e:
                 logger.warning(f"[TWSymbolResolver] fetch error {url}: {e}")
 

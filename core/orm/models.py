@@ -5,6 +5,7 @@ These models mirror the existing psycopg2 schema in core/database/schema.py.
 They are used for the async ORM migration and coexist with the raw SQL layer
 during the transition period.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -35,9 +36,7 @@ class User(Base):
     auth_method: Mapped[str] = mapped_column(Text, default="password")
     pi_uid: Mapped[Optional[str]] = mapped_column(Text, unique=True)
     pi_username: Mapped[Optional[str]] = mapped_column(Text)
-    last_active_at: Mapped[Optional[datetime]] = mapped_column(
-        TIMESTAMP(timezone=True)
-    )
+    last_active_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True))
     membership_tier: Mapped[str] = mapped_column(Text, default="free")
     membership_expires_at: Mapped[Optional[datetime]] = mapped_column(
         TIMESTAMP(timezone=True)
@@ -65,9 +64,7 @@ class MembershipPayment(Base):
 
     user: Mapped["User"] = relationship()
 
-    __table_args__ = (
-        Index("idx_membership_payments_user", "user_id"),
-    )
+    __table_args__ = (Index("idx_membership_payments_user", "user_id"),)
 
 
 class Post(Base):
@@ -249,7 +246,9 @@ class DmConversation(Base):
         Text, ForeignKey("users.user_id"), nullable=False
     )
     last_message_id: Mapped[Optional[int]] = mapped_column(Integer)
-    last_message_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True))
+    last_message_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True)
+    )
     user1_unread_count: Mapped[int] = mapped_column(Integer, default=0)
     user2_unread_count: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(

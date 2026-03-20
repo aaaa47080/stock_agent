@@ -11,10 +11,12 @@ Configuration via environment variables:
 - SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD: Email configuration
 - ADMIN_EMAIL: Email address to receive alerts
 """
+
 import os
 import smtplib
 from email.mime.text import MIMEText
 from typing import Optional
+
 from api.utils import logger
 
 
@@ -45,9 +47,9 @@ class AlertDispatcher:
         # Check what's configured
         self.has_telegram = bool(self.telegram_bot_token and self.telegram_chat_id)
         self.has_email = bool(
-            self.smtp_config["host"] and
-            self.smtp_config["username"] and
-            self.admin_email
+            self.smtp_config["host"]
+            and self.smtp_config["username"]
+            and self.admin_email
         )
 
         if self.has_telegram:
@@ -56,15 +58,11 @@ class AlertDispatcher:
             logger.info("✅ Email alerts configured")
 
         if not self.has_telegram and not self.has_email:
-            logger.warning("⚠️ No alert channels configured. Set TELEGRAM_BOT_TOKEN or SMTP_* variables.")
+            logger.warning(
+                "⚠️ No alert channels configured. Set TELEGRAM_BOT_TOKEN or SMTP_* variables."
+            )
 
-    def send(
-        self,
-        channel: str,
-        severity: str,
-        title: str,
-        message: str
-    ) -> bool:
+    def send(self, channel: str, severity: str, title: str, message: str) -> bool:
         """
         Send alert to specified channel.
 
@@ -101,12 +99,7 @@ class AlertDispatcher:
             return False
 
         # Map severity to emoji
-        emoji_map = {
-            "low": "🔵",
-            "medium": "🟡",
-            "high": "🟠",
-            "critical": "🔴"
-        }
+        emoji_map = {"low": "🔵", "medium": "🟡", "high": "🟠", "critical": "🔴"}
         emoji = emoji_map.get(severity, "⚪")
 
         # Format message with HTML
@@ -120,14 +113,15 @@ class AlertDispatcher:
 
         try:
             import httpx
+
             with httpx.Client(timeout=10.0, verify=False) as client:
                 response = client.post(
                     url,
                     json={
                         "chat_id": self.telegram_chat_id,
                         "text": formatted_message,
-                        "parse_mode": "HTML"
-                    }
+                        "parse_mode": "HTML",
+                    },
                 )
                 response.raise_for_status()
 
@@ -164,15 +158,10 @@ class AlertDispatcher:
 
         try:
             with smtplib.SMTP(
-                self.smtp_config["host"],
-                self.smtp_config["port"],
-                timeout=10
+                self.smtp_config["host"], self.smtp_config["port"], timeout=10
             ) as server:
                 server.starttls()
-                server.login(
-                    self.smtp_config["username"],
-                    self.smtp_config["password"]
-                )
+                server.login(self.smtp_config["username"], self.smtp_config["password"])
                 server.send_message(msg)
 
             logger.debug(f"Email alert sent: {title}")
@@ -222,10 +211,7 @@ def get_alert_dispatcher() -> AlertDispatcher:
 
 
 def send_security_alert(
-    severity: str,
-    title: str,
-    message: str,
-    channel: str = "telegram"
+    severity: str, title: str, message: str, channel: str = "telegram"
 ) -> bool:
     """
     Convenience function to send a security alert.

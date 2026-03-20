@@ -12,21 +12,41 @@ Commodity Tools - 大宗商品數據工具
 - 天然氣 (Natural Gas): UNG ETF
 - 銅 (Copper): CPER ETF
 """
-from langchain_core.tools import tool
 
+from langchain_core.tools import tool
 
 # ============================================
 # 商品 ETF 代碼對照表 (yfinance)
 # ============================================
 COMMODITY_ETFS = {
     "gold": {"symbol": "GLD", "name": "黃金 ETF", "description": "SPDR Gold Shares"},
-    "silver": {"symbol": "SLV", "name": "白銀 ETF", "description": "iShares Silver Trust"},
-    "oil": {"symbol": "USO", "name": "原油 ETF", "description": "United States Oil Fund"},
-    "natural_gas": {"symbol": "UNG", "name": "天然氣 ETF", "description": "United States Natural Gas Fund"},
+    "silver": {
+        "symbol": "SLV",
+        "name": "白銀 ETF",
+        "description": "iShares Silver Trust",
+    },
+    "oil": {
+        "symbol": "USO",
+        "name": "原油 ETF",
+        "description": "United States Oil Fund",
+    },
+    "natural_gas": {
+        "symbol": "UNG",
+        "name": "天然氣 ETF",
+        "description": "United States Natural Gas Fund",
+    },
     "copper": {"symbol": "CPER", "name": "銅 ETF", "description": "Copper Path ETN"},
-    "wheat": {"symbol": "WEAT", "name": "小麥 ETF", "description": "Teucrium Wheat Fund"},
+    "wheat": {
+        "symbol": "WEAT",
+        "name": "小麥 ETF",
+        "description": "Teucrium Wheat Fund",
+    },
     "corn": {"symbol": "CORN", "name": "玉米 ETF", "description": "Teucrium Corn Fund"},
-    "soybean": {"symbol": "SOYB", "name": "黃豆 ETF", "description": "Teucrium Soybean Fund"},
+    "soybean": {
+        "symbol": "SOYB",
+        "name": "黃豆 ETF",
+        "description": "Teucrium Soybean Fund",
+    },
 }
 
 # 期貨代碼
@@ -219,11 +239,7 @@ def get_all_commodities_prices() -> dict:
         except Exception:
             results[futures_names[symbol]] = {"error": "無法取得數據"}
 
-    return {
-        "commodities": results,
-        "source": "yfinance",
-        "note": "期貨價格可能有延遲"
-    }
+    return {"commodities": results, "source": "yfinance", "note": "期貨價格可能有延遲"}
 
 
 @tool
@@ -267,7 +283,7 @@ def get_gold_silver_ratio() -> dict:
             "sentiment": sentiment,
             "interpretation": interpretation,
             "historical_range": "通常在 60-80 之間波動",
-            "source": "yfinance"
+            "source": "yfinance",
         }
 
     except Exception as e:
@@ -308,17 +324,17 @@ def get_oil_price_analysis() -> dict:
                 "name": "WTI 原油（美國）",
                 "price": round(wti_price, 2) if wti_price else None,
                 "change_pct": wti_change,
-                "unit": "美元/桶"
+                "unit": "美元/桶",
             },
             "brent_crude": {
                 "name": "布蘭特原油（北海）",
                 "price": round(brent_price, 2) if brent_price else None,
                 "change_pct": brent_change,
-                "unit": "美元/桶"
+                "unit": "美元/桶",
             },
             "spread": spread,
             "spread_note": "布蘭特通常比 WTI 貴，反映運輸和品質差異",
-            "source": "yfinance"
+            "source": "yfinance",
         }
 
     except Exception as e:

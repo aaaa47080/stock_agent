@@ -4,6 +4,7 @@ Agent V4 — Router
 路由決策由 Manager 透過 LLM 做出，不使用關鍵詞硬編碼。
 此類別僅提供 agent 獲取功能。
 """
+
 from .agent_registry import AgentRegistry
 from .models import CollaborationRequest
 

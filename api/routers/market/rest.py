@@ -3,43 +3,45 @@ Market REST API Endpoints
 """
 
 import asyncio
-from typing import Optional
 from datetime import datetime
-from fastapi import APIRouter, HTTPException, Header, Depends
+from typing import Optional
 
-from data.market_data import get_klines
-from utils.okx_api_connector import OKXAPIConnector
-from api.models import KlineRequest, ScreenerRequest, RefreshPulseRequest
-from api.utils import logger
+from fastapi import APIRouter, Depends, Header, HTTPException
+
+from api.deps import get_current_user
 from api.globals import (
-    cached_screener_result,
+    ANALYSIS_STATUS,
     FUNDING_RATE_CACHE,
     MARKET_PULSE_CACHE,
+    cached_screener_result,
     screener_lock,
-    ANALYSIS_STATUS,
 )
+from api.models import KlineRequest, RefreshPulseRequest, ScreenerRequest
 from api.services import (
-    update_funding_rates,
     refresh_all_market_pulse_data,
     trigger_on_demand_analysis,
+    update_funding_rates,
 )
-from api.deps import get_current_user
+from api.utils import logger
+from data.market_data import get_klines
+from utils.okx_api_connector import OKXAPIConnector
+
 from .helpers import (
-    parse_symbols_param,
-    filter_funding_data_by_symbols,
-    sort_funding_rates,
     compute_top_bottom_rates,
+    create_pending_pulse_response,
+    filter_funding_data_by_symbols,
     format_funding_rates_response,
-    try_get_cached_screener,
-    run_custom_screener,
-    run_default_screener,
-    try_get_cached_pulse,
+    normalize_funding_symbol,
+    normalize_market_symbol,
+    parse_symbols_param,
     perform_deep_analysis,
     perform_on_demand_analysis,
-    create_pending_pulse_response,
-    normalize_market_symbol,
-    normalize_funding_symbol,
+    run_custom_screener,
+    run_default_screener,
     run_sync,
+    sort_funding_rates,
+    try_get_cached_pulse,
+    try_get_cached_screener,
 )
 
 router = APIRouter()

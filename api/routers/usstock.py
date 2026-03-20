@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException, Header
-from typing import Optional
 import asyncio
-import yfinance as yf
 from datetime import datetime, timedelta
+from typing import Optional
+
+import yfinance as yf
+from fastapi import APIRouter, Header, HTTPException
 
 from api.utils import logger
 from core.tools.us_data_provider import get_us_data_provider
@@ -12,6 +13,7 @@ router = APIRouter(prefix="/api/usstock", tags=["US Stock"])
 # ── Cache ──────────────────────────────────────────────────────────────────────
 _cache: dict = {}
 
+
 def _get_cache(key: str):
     if key in _cache:
         data, expiry = _cache[key]
@@ -19,16 +21,30 @@ def _get_cache(key: str):
             return data
     return None
 
+
 def _set_cache(key: str, data, ttl: int = 300):
     _cache[key] = (data, datetime.now() + timedelta(seconds=ttl))
 
+
 # ── Constants ──────────────────────────────────────────────────────────────────
-DEFAULT_US_SYMBOLS = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "META", "NVDA", "NFLX", "AMD", "INTC"]
+DEFAULT_US_SYMBOLS = [
+    "AAPL",
+    "MSFT",
+    "GOOGL",
+    "AMZN",
+    "TSLA",
+    "META",
+    "NVDA",
+    "NFLX",
+    "AMD",
+    "INTC",
+]
 INDEX_SYMBOLS = [
-    {"symbol": "^DJI",  "name": "道瓊工業指數"},
+    {"symbol": "^DJI", "name": "道瓊工業指數"},
     {"symbol": "^GSPC", "name": "S&P 500"},
     {"symbol": "^IXIC", "name": "那斯達克"},
 ]
+
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 def _fetch_quote_sync(symbol: str) -> dict | None:
@@ -37,8 +53,8 @@ def _fetch_quote_sync(symbol: str) -> dict | None:
         ticker = yf.Ticker(symbol)
         fi = ticker.fast_info
         price = round(float(fi.last_price), 2)
-        prev  = round(float(fi.previous_close), 2)
-        chg   = round(price - prev, 2)
+        prev = round(float(fi.previous_close), 2)
+        chg = round(price - prev, 2)
         chg_p = round((chg / prev) * 100, 2) if prev else 0.0
         try:
             name = ticker.info.get("shortName") or symbol
@@ -58,16 +74,23 @@ def _fetch_quote_sync(symbol: str) -> dict | None:
 
 # ── Endpoints ──────────────────────────────────────────────────────────────────
 
+
 @router.get("/market")
 async def get_us_market(symbols: Optional[str] = None):
     """Current price data for watchlist symbols."""
-    target = [s.strip().upper() for s in symbols.split(",")] if symbols else DEFAULT_US_SYMBOLS
+    target = (
+        [s.strip().upper() for s in symbols.split(",")]
+        if symbols
+        else DEFAULT_US_SYMBOLS
+    )
     cache_key = "market:" + ",".join(target)
     cached = _get_cache(cache_key)
     if cached:
         return cached
 
-    results = await asyncio.gather(*[asyncio.to_thread(_fetch_quote_sync, s) for s in target])
+    results = await asyncio.gather(
+        *[asyncio.to_thread(_fetch_quote_sync, s) for s in target]
+    )
     stocks = [r for r in results if r]
     # Validate: if no results, return error-friendly empty
     if not stocks and target:
@@ -100,7 +123,11 @@ async def get_us_indices():
 @router.get("/news")
 async def get_us_news(symbols: Optional[str] = None, limit: int = 15):
     """Recent news for given symbols (or top symbols if none specified)."""
-    target = [s.strip().upper() for s in symbols.split(",")] if symbols else DEFAULT_US_SYMBOLS[:5]
+    target = (
+        [s.strip().upper() for s in symbols.split(",")]
+        if symbols
+        else DEFAULT_US_SYMBOLS[:5]
+    )
     cache_key = "news:" + ",".join(target)
     cached = _get_cache(cache_key)
     if cached:
@@ -119,17 +146,21 @@ async def get_us_news(symbols: Optional[str] = None, limit: int = 15):
 
     results = await asyncio.gather(*[fetch_news_for(s) for s in target])
     for sym, items in results:
-        for item in (items or []):
+        for item in items or []:
             title = item.get("title", "")
             if title and title not in seen_titles:
                 seen_titles.add(title)
-                all_news.append({
-                    "symbol": sym,
-                    "title": title,
-                    "url": item.get("url") or item.get("link", "#"),
-                    "publisher": item.get("source") or item.get("publisher", ""),
-                    "published": item.get("published_at") or item.get("providerPublishTime") or item.get("published", ""),
-                })
+                all_news.append(
+                    {
+                        "symbol": sym,
+                        "title": title,
+                        "url": item.get("url") or item.get("link", "#"),
+                        "publisher": item.get("source") or item.get("publisher", ""),
+                        "published": item.get("published_at")
+                        or item.get("providerPublishTime")
+                        or item.get("published", ""),
+                    }
+                )
 
     # Sort by publish time descending (best-effort)
     all_news.sort(key=lambda x: x.get("published", 0), reverse=True)
@@ -165,14 +196,20 @@ async def get_us_pulse(
         )
     except Exception as e:
         logger.error(f"[usstock] pulse failed for {sym}: {e}")
-        raise HTTPException(status_code=404, detail=f"查無美股代號「{sym}」或目前無法獲取數據")
+        raise HTTPException(
+            status_code=404, detail=f"查無美股代號「{sym}」或目前無法獲取數據"
+        )
 
-    curr_price  = price_data.get("price", 0)
-    change_pct  = round(price_data.get("change_percent", 0), 2)
-    company     = price_data.get("name") or sym
+    curr_price = price_data.get("price", 0)
+    change_pct = round(price_data.get("change_percent", 0), 2)
+    company = price_data.get("name") or sym
 
     # Build AI summary
-    trend_str = "呈現上漲趨勢" if change_pct > 0 else ("呈現下跌態勢" if change_pct < 0 else "走勢平穩")
+    trend_str = (
+        "呈現上漲趨勢"
+        if change_pct > 0
+        else ("呈現下跌態勢" if change_pct < 0 else "走勢平穩")
+    )
     rsi = tech_data.get("rsi")
     rsi_str = ""
     if isinstance(rsi, (int, float)):
@@ -212,6 +249,7 @@ async def get_us_pulse(
     source_mode = "on_demand"
     if deep_analysis and x_user_llm_key and x_user_llm_provider:
         from api.routers.deep_analysis_helper import deep_analyze_generic
+
         context = (
             f"公司: {company} ({sym})\n"
             f"現價: ${curr_price}\n"
@@ -223,7 +261,9 @@ async def get_us_pulse(
             f"52W High: {price_data.get('fifty_two_week_high', 'N/A')}\n"
             f"52W Low: {price_data.get('fifty_two_week_low', 'N/A')}"
         )
-        ai_text = await deep_analyze_generic(sym, context, x_user_llm_key, x_user_llm_provider)
+        ai_text = await deep_analyze_generic(
+            sym, context, x_user_llm_key, x_user_llm_provider
+        )
         if ai_text:
             summary = ai_text
             source_mode = "deep_analysis"
@@ -267,14 +307,16 @@ async def get_us_klines(symbol: str, interval: str = "1d", limit: int = 200):
         klines = []
         for idx, row in hist.iterrows():
             try:
-                klines.append({
-                    "time": idx.strftime("%Y-%m-%d"),
-                    "open":   round(float(row["Open"]),   2),
-                    "high":   round(float(row["High"]),   2),
-                    "low":    round(float(row["Low"]),    2),
-                    "close":  round(float(row["Close"]),  2),
-                    "volume": int(row["Volume"]),
-                })
+                klines.append(
+                    {
+                        "time": idx.strftime("%Y-%m-%d"),
+                        "open": round(float(row["Open"]), 2),
+                        "high": round(float(row["High"]), 2),
+                        "low": round(float(row["Low"]), 2),
+                        "close": round(float(row["Close"]), 2),
+                        "volume": int(row["Volume"]),
+                    }
+                )
             except Exception:
                 continue
         return klines[-limit:]

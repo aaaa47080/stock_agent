@@ -116,7 +116,10 @@ _EXPORTS: Dict[str, Tuple[str, str]] = {
     "update_limit": (".system_config", "update_limit"),
     "bulk_update_configs": (".system_config", "bulk_update_configs"),
     "get_config_metadata": (".system_config", "get_config_metadata"),
-    "list_all_configs_with_metadata": (".system_config", "list_all_configs_with_metadata"),
+    "list_all_configs_with_metadata": (
+        ".system_config",
+        "list_all_configs_with_metadata",
+    ),
     "invalidate_config_cache": (".system_config", "invalidate_cache"),
     "get_config_history": (".system_config", "get_config_history"),
     "init_audit_table": (".system_config", "init_audit_table"),

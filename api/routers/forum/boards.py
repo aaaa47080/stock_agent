@@ -1,10 +1,11 @@
 """
 看板相關 API
 """
-from fastapi import APIRouter, HTTPException
-from api.utils import run_sync
 
-from core.database import get_boards, get_board_by_slug
+from fastapi import APIRouter, HTTPException
+
+from api.utils import run_sync
+from core.database import get_board_by_slug, get_boards
 
 router = APIRouter(prefix="/api/forum/boards", tags=["Forum - Boards"])
 

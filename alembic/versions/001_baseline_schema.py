@@ -7,6 +7,7 @@ Revises:
 Create Date: 2026-03-20 00:00:00.000000
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -512,7 +513,12 @@ def upgrade() -> None:
         "tool_usage_log",
         sa.Column("user_id", sa.Text(), nullable=False),
         sa.Column("tool_id", sa.Text(), nullable=False),
-        sa.Column("used_date", sa.Date(), nullable=False, server_default=sa.func.current_date()),
+        sa.Column(
+            "used_date",
+            sa.Date(),
+            nullable=False,
+            server_default=sa.func.current_date(),
+        ),
         sa.Column("call_count", sa.Integer(), server_default="1"),
         sa.PrimaryKeyConstraint("user_id", "tool_id", "used_date"),
     )
@@ -523,7 +529,9 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), autoincrement=True, primary_key=True),
         sa.Column("user_id", sa.String(255), nullable=False),
         sa.Column("session_id", sa.String(255)),
-        sa.Column("memory_type", sa.String(20), nullable=False, server_default="long_term"),
+        sa.Column(
+            "memory_type", sa.String(20), nullable=False, server_default="long_term"
+        ),
         sa.Column("content", sa.Text()),
         sa.Column("created_at", TIMESTAMP(timezone=True), server_default=sa.func.now()),
         sa.Column("updated_at", TIMESTAMP(timezone=True), server_default=sa.func.now()),
@@ -621,7 +629,9 @@ def upgrade() -> None:
     op.create_index("idx_tips_from_user", "tips", ["from_user_id"])
     op.create_index("idx_tips_to_user", "tips", ["to_user_id"])
     op.create_index("idx_tags_name", "tags", ["name"])
-    op.create_index("idx_user_daily_comments_user_date", "user_daily_comments", ["user_id", "date"])
+    op.create_index(
+        "idx_user_daily_comments_user_date", "user_daily_comments", ["user_id", "date"]
+    )
     # posts partial unique on payment_tx_hash
     op.execute(
         "CREATE UNIQUE INDEX idx_posts_payment_tx_hash "
@@ -635,16 +645,28 @@ def upgrade() -> None:
     op.create_index("idx_vote_report", "scam_report_votes", ["report_id"])
     op.create_index("idx_vote_user", "scam_report_votes", ["user_id"])
     op.create_index("idx_comment_report", "scam_report_comments", ["report_id"])
-    op.create_index("idx_comment_created", "scam_report_comments", [sa.text("created_at DESC")])
+    op.create_index(
+        "idx_comment_created", "scam_report_comments", [sa.text("created_at DESC")]
+    )
     # governance
     op.create_index("idx_content_reports_status", "content_reports", ["review_status"])
-    op.create_index("idx_content_reports_reporter", "content_reports", ["reporter_user_id"])
-    op.create_index("idx_content_reports_content", "content_reports", ["content_type", "content_id"])
-    op.create_index("idx_content_reports_created", "content_reports", [sa.text("created_at DESC")])
-    op.create_index("idx_report_review_votes_report", "report_review_votes", ["report_id"])
+    op.create_index(
+        "idx_content_reports_reporter", "content_reports", ["reporter_user_id"]
+    )
+    op.create_index(
+        "idx_content_reports_content", "content_reports", ["content_type", "content_id"]
+    )
+    op.create_index(
+        "idx_content_reports_created", "content_reports", [sa.text("created_at DESC")]
+    )
+    op.create_index(
+        "idx_report_review_votes_report", "report_review_votes", ["report_id"]
+    )
     op.create_index("idx_user_violations_user", "user_violations", ["user_id"])
     op.create_index("idx_user_activity_logs_user", "user_activity_logs", ["user_id"])
-    op.create_index("idx_user_activity_logs_type", "user_activity_logs", ["activity_type"])
+    op.create_index(
+        "idx_user_activity_logs_type", "user_activity_logs", ["activity_type"]
+    )
     # friendships
     op.create_index("idx_friendships_user_id", "friendships", ["user_id"])
     op.create_index("idx_friendships_friend_id", "friendships", ["friend_id"])
@@ -653,10 +675,14 @@ def upgrade() -> None:
     op.create_index("idx_dm_conversations_user1", "dm_conversations", ["user1_id"])
     op.create_index("idx_dm_conversations_user2", "dm_conversations", ["user2_id"])
     op.create_index(
-        "idx_dm_conversations_last_message", "dm_conversations", [sa.text("last_message_at DESC")]
+        "idx_dm_conversations_last_message",
+        "dm_conversations",
+        [sa.text("last_message_at DESC")],
     )
     op.create_index("idx_dm_messages_conversation", "dm_messages", ["conversation_id"])
-    op.create_index("idx_dm_messages_created", "dm_messages", [sa.text("created_at DESC")])
+    op.create_index(
+        "idx_dm_messages_created", "dm_messages", [sa.text("created_at DESC")]
+    )
     op.create_index("idx_dm_messages_from_user", "dm_messages", ["from_user_id"])
     op.create_index("idx_dm_messages_to_user", "dm_messages", ["to_user_id"])
     op.create_index(
@@ -664,10 +690,14 @@ def upgrade() -> None:
         "dm_messages",
         ["conversation_id", sa.text("created_at DESC")],
     )
-    op.create_index("idx_user_message_limits", "user_message_limits", ["user_id", "date"])
+    op.create_index(
+        "idx_user_message_limits", "user_message_limits", ["user_id", "date"]
+    )
     # audit logs
     op.create_index("idx_audit_logs_user_id", "audit_logs", ["user_id"])
-    op.create_index("idx_audit_logs_timestamp", "audit_logs", [sa.text("timestamp DESC")])
+    op.create_index(
+        "idx_audit_logs_timestamp", "audit_logs", [sa.text("timestamp DESC")]
+    )
     op.create_index("idx_audit_logs_action", "audit_logs", ["action"])
     op.create_index("idx_audit_logs_endpoint", "audit_logs", ["endpoint"])
     # analysis reports
@@ -683,14 +713,18 @@ def upgrade() -> None:
     op.create_index("idx_tools_catalog_tier", "tools_catalog", ["tier_required"])
     op.create_index("idx_agent_tool_agent", "agent_tool_permissions", ["agent_id"])
     op.create_index("idx_user_tool_prefs_user", "user_tool_preferences", ["user_id"])
-    op.create_index("idx_tool_usage_user_date", "tool_usage_log", ["user_id", "used_date"])
+    op.create_index(
+        "idx_tool_usage_user_date", "tool_usage_log", ["user_id", "used_date"]
+    )
     # memory system
     op.create_index("idx_user_memory_user", "user_memory", ["user_id"])
     op.create_index("idx_user_memory_session", "user_memory", ["session_id"])
     op.create_index("idx_user_memory_type", "user_memory", ["memory_type"])
     op.create_index("idx_user_history_user", "user_history_log", ["user_id"])
     op.create_index("idx_user_history_session", "user_history_log", ["session_id"])
-    op.create_index("idx_user_history_created", "user_history_log", [sa.text("created_at DESC")])
+    op.create_index(
+        "idx_user_history_created", "user_history_log", [sa.text("created_at DESC")]
+    )
     # user facts
     op.create_index("idx_user_facts_user", "user_facts", ["user_id"])
     # notifications
@@ -703,11 +737,11 @@ def upgrade() -> None:
         "CREATE INDEX idx_notifications_user_unread ON notifications(user_id) WHERE is_read = FALSE"
     )
     # task experiences
-    op.create_index("idx_te_user_family", "task_experiences", ["user_id", "task_family"])
-    op.create_index("idx_te_created", "task_experiences", [sa.text("created_at DESC")])
-    op.execute(
-        "CREATE INDEX idx_te_tsv ON task_experiences USING GIN(query_tsv)"
+    op.create_index(
+        "idx_te_user_family", "task_experiences", ["user_id", "task_family"]
     )
+    op.create_index("idx_te_created", "task_experiences", [sa.text("created_at DESC")])
+    op.execute("CREATE INDEX idx_te_tsv ON task_experiences USING GIN(query_tsv)")
 
 
 def downgrade() -> None:
@@ -783,7 +817,9 @@ def downgrade() -> None:
     op.drop_index("idx_users_last_active", table_name="users")
     op.drop_index("idx_sessions_updated_at", table_name="sessions")
     op.drop_index("idx_sessions_user_id", table_name="sessions")
-    op.drop_index("idx_conversation_history_session_timestamp", table_name="conversation_history")
+    op.drop_index(
+        "idx_conversation_history_session_timestamp", table_name="conversation_history"
+    )
 
     # ── tables (reverse dependency order) ─────────────────────────
     op.execute("DROP TABLE IF EXISTS task_experiences CASCADE")

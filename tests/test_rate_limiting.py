@@ -3,6 +3,7 @@
 Verifies that sensitive endpoints have @limiter.limit decorators
 with appropriate rate limits applied via SlowAPI's internal registry.
 """
+
 import pytest
 
 RATE_LIMITED_ENDPOINTS = {
@@ -31,14 +32,15 @@ RATE_LIMITED_ENDPOINTS = {
 @pytest.fixture(scope="module")
 def route_limits():
     # Import router modules for side effects (rate limit registration)
-    import api.routers.user  # noqa: F401
-    import api.routers.premium  # noqa: F401
-    import api.routers.forum.tips  # noqa: F401
-    import api.routers.forum.posts  # noqa: F401
     import api.routers.forum.comments  # noqa: F401
-    import api.routers.messages  # noqa: F401
+    import api.routers.forum.posts  # noqa: F401
+    import api.routers.forum.tips  # noqa: F401
     import api.routers.governance  # noqa: F401
+    import api.routers.messages  # noqa: F401
+    import api.routers.premium  # noqa: F401
+    import api.routers.user  # noqa: F401
     from api.middleware.rate_limit import limiter
+
     return limiter._route_limits
 
 

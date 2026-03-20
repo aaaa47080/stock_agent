@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Callable, Optional, Dict, Any, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 
 @dataclass
@@ -40,8 +40,11 @@ class ToolRegistry:
         return tool
 
     def list_for_agent(self, agent_name: str) -> List[ToolMetadata]:
-        return [t for t in self._tools.values()
-                if not t.allowed_agents or agent_name in t.allowed_agents]
+        return [
+            t
+            for t in self._tools.values()
+            if not t.allowed_agents or agent_name in t.allowed_agents
+        ]
 
     def list_all_tools(self) -> List[ToolMetadata]:
         """For planning prompts only — no permission check."""
@@ -49,9 +52,13 @@ class ToolRegistry:
 
     def execute(self, tool_name: str, caller_agent: str = "", **kwargs) -> ToolResult:
         import time
+
         tool = self.get(tool_name, caller_agent)
         if tool is None:
-            return ToolResult(success=False, error=f"Tool '{tool_name}' not found or not permitted for '{caller_agent}'")
+            return ToolResult(
+                success=False,
+                error=f"Tool '{tool_name}' not found or not permitted for '{caller_agent}'",
+            )
         start = time.time()
         try:
             # Check if handler is a LangChain tool (has .invoke) or a callable
@@ -59,14 +66,16 @@ class ToolRegistry:
                 data = tool.handler.invoke(kwargs)
             else:
                 data = tool.handler(**kwargs)
-            
+
             # Record usage (optional)
-            self._usage_log.append({
-                "tool": tool_name,
-                "agent": caller_agent,
-                "time": time.time() - start,
-                "success": True
-            })
+            self._usage_log.append(
+                {
+                    "tool": tool_name,
+                    "agent": caller_agent,
+                    "time": time.time() - start,
+                    "success": True,
+                }
+            )
             return ToolResult(success=True, data=data)
         except Exception as e:
             return ToolResult(success=False, error=str(e))

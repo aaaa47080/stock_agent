@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Optional, Any
+from typing import Any, Optional
 
 # 設定日誌
 logger = logging.getLogger("API")
@@ -16,24 +16,23 @@ ANALYSIS_STATUS = {
     "total": 0,
     "completed": 0,
     "current_batch": [],
-    "start_time": None
+    "start_time": None,
 }
 
 # Screener cache structure
-cached_screener_result = {
-    "timestamp": None,
-    "data": None
-}
+cached_screener_result = {"timestamp": None, "data": None}
 
 # Locks for concurrency control
 screener_lock = asyncio.Lock()
 funding_rate_lock = asyncio.Lock()
-symbol_locks = {} # {symbol: asyncio.Lock()}
+symbol_locks = {}  # {symbol: asyncio.Lock()}
+
 
 def get_symbol_lock(symbol: str) -> asyncio.Lock:
     if symbol not in symbol_locks:
         symbol_locks[symbol] = asyncio.Lock()
     return symbol_locks[symbol]
+
 
 # Global Instances
 okx_connector: Optional[Any] = None

@@ -2,21 +2,21 @@
 Admin System Config Management
 Configuration and audit log endpoints
 """
-from api.utils import run_sync
-from fastapi import APIRouter, Depends, Query, HTTPException
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from api.deps import require_admin
+from api.utils import run_sync
 from core.database.connection import get_connection
 from core.database.system_config import list_all_configs_with_metadata, set_config
+
 from .schemas import UpdateConfigRequest
 
 router = APIRouter(tags=["Admin - Config"])
 
 
 @router.get("/config/all")
-async def admin_get_all_configs(
-    admin_user: dict = Depends(require_admin)
-):
+async def admin_get_all_configs(admin_user: dict = Depends(require_admin)):
     """獲取所有系統設定（依類別分組）"""
     configs = await run_sync(list_all_configs_with_metadata)
 
@@ -33,9 +33,7 @@ async def admin_get_all_configs(
 
 @router.put("/config/{key}")
 async def admin_update_config(
-    key: str,
-    request: UpdateConfigRequest,
-    admin_user: dict = Depends(require_admin)
+    key: str, request: UpdateConfigRequest, admin_user: dict = Depends(require_admin)
 ):
     """更新單一設定值"""
     success = await run_sync(
@@ -50,26 +48,34 @@ async def admin_update_config(
 
 @router.get("/config/audit")
 async def admin_get_config_audit(
-    limit: int = Query(50, ge=1, le=200),
-    admin_user: dict = Depends(require_admin)
+    limit: int = Query(50, ge=1, le=200), admin_user: dict = Depends(require_admin)
 ):
     """獲取設定變更歷史"""
+
     def _query():
         conn = get_connection()
         try:
             with conn.cursor() as c:
-                c.execute("""
+                c.execute(
+                    """
                     SELECT config_key, old_value, new_value, changed_by, changed_at
                     FROM config_audit_log
                     ORDER BY changed_at DESC
                     LIMIT %s
-                """, (limit,))
+                """,
+                    (limit,),
+                )
                 rows = c.fetchall()
-                return [{
-                    "key": r[0], "old_value": r[1], "new_value": r[2],
-                    "changed_by": r[3],
-                    "changed_at": r[4].isoformat() if r[4] else None
-                } for r in rows]
+                return [
+                    {
+                        "key": r[0],
+                        "old_value": r[1],
+                        "new_value": r[2],
+                        "changed_by": r[3],
+                        "changed_at": r[4].isoformat() if r[4] else None,
+                    }
+                    for r in rows
+                ]
         finally:
             conn.close()
 

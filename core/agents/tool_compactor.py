@@ -3,6 +3,7 @@ Tool result compaction helpers.
 
 Wrap large LangChain tool outputs to avoid flooding LangGraph message state.
 """
+
 from __future__ import annotations
 
 import json
@@ -12,6 +13,7 @@ import uuid
 from typing import Any, Optional
 
 import orjson
+
 from core.memory_scope import build_scope, scope_namespace
 
 logger = logging.getLogger(__name__)
@@ -34,12 +36,16 @@ def _serialize_record(
 ) -> str:
     owner_scope = None
     if owner_id is not None:
-        owner_scope = scope_namespace(build_scope(owner_id, session_id=session_id, workspace_id=workspace_id))
-    return orjson.dumps({
-        "data": data,
-        "owner_id": owner_id,
-        "owner_scope": owner_scope,
-    }).decode()
+        owner_scope = scope_namespace(
+            build_scope(owner_id, session_id=session_id, workspace_id=workspace_id)
+        )
+    return orjson.dumps(
+        {
+            "data": data,
+            "owner_id": owner_id,
+            "owner_scope": owner_scope,
+        }
+    ).decode()
 
 
 def _deserialize_record(raw: Any) -> tuple[Optional[str], Optional[str], Optional[str]]:
@@ -78,6 +84,7 @@ def _get_redis_sync() -> Optional[Any]:
     _redis_init_attempted = True
     try:
         import redis as _r
+
         from core.redis_url import resolve_redis_url
 
         url, _ = resolve_redis_url()
@@ -94,7 +101,9 @@ def _get_redis_sync() -> Optional[Any]:
         _redis_client = client
         logger.info("[ToolCompactor] Redis sync client connected")
     except Exception as exc:
-        logger.warning("[ToolCompactor] Redis unavailable, using local fallback: %s", exc)
+        logger.warning(
+            "[ToolCompactor] Redis unavailable, using local fallback: %s", exc
+        )
         _redis_client = None
     return _redis_client
 
@@ -115,7 +124,9 @@ def _store_sync(
     session_id: Optional[str] = None,
 ) -> str:
     uid = str(uuid.uuid4())
-    record = _serialize_record(data, owner_id, workspace_id=workspace_id, session_id=session_id)
+    record = _serialize_record(
+        data, owner_id, workspace_id=workspace_id, session_id=session_id
+    )
     redis_client = _get_redis_sync()
     if redis_client is not None:
         try:
@@ -237,9 +248,18 @@ def retrieve_tool_result(
         requester_scope = scope_namespace(
             build_scope(requester_id, session_id=session_id, workspace_id=workspace_id)
         )
-    if requester_scope is not None and owner_scope is not None and requester_scope != owner_scope:
+    if (
+        requester_scope is not None
+        and owner_scope is not None
+        and requester_scope != owner_scope
+    ):
         return f"[ERROR] Tool result '{uid}' is not available for this user."
-    if requester_scope is None and requester_id is not None and owner_id is not None and requester_id != owner_id:
+    if (
+        requester_scope is None
+        and requester_id is not None
+        and owner_id is not None
+        and requester_id != owner_id
+    ):
         return f"[ERROR] Tool result '{uid}' is not available for this user."
     return data
 

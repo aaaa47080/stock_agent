@@ -2,21 +2,25 @@
 自動化 10 問測試 - 從簡單到複雜
 測試範圍：價格查詢 → 深度分析 → 跨主題對話
 """
+
+import asyncio
+import json
 import os
 import sys
-import asyncio
 import time
-import json
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 from utils.settings import Settings
 
-RESULTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "test_results")
+RESULTS_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "test_results"
+)
 
 # 10 個測試問題：從簡單到複雜
 TEST_QUESTIONS = [
@@ -33,7 +37,6 @@ TEST_QUESTIONS = [
         "question": "ETH 和 SOL 的價格是多少？",
         "expected": "返回 ETH 和 SOL 價格",
     },
-
     # Level 2: 基礎資訊 (2題)
     {
         "level": 2,
@@ -47,7 +50,6 @@ TEST_QUESTIONS = [
         "question": "最近有什麼加密貨幣新聞？",
         "expected": "返回加密貨幣相關新聞",
     },
-
     # Level 3: 多幣種比較 (2題)
     {
         "level": 3,
@@ -61,7 +63,6 @@ TEST_QUESTIONS = [
         "question": "哪個 Layer 2 代幣最近表現最好？分析 ARB 和 OP",
         "expected": "返回 Layer 2 比較分析",
     },
-
     # Level 4: 深度分析 (2題)
     {
         "level": 4,
@@ -75,7 +76,6 @@ TEST_QUESTIONS = [
         "question": "以太坊最近的鏈上活動如何？Gas 費用趨勢是什麼？",
         "expected": "返回鏈上數據分析",
     },
-
     # Level 5: 綜合分析 + 跨主題 (2題)
     {
         "level": 5,
@@ -115,7 +115,19 @@ class AutoTestSession:
         start_time = time.time()
 
         # 判斷是否為確認詞
-        confirm_keywords = ["好", "確認", "執行", "同意", "可以", "ok", "OK", "Yes", "yes", "開始", "請執行"]
+        confirm_keywords = [
+            "好",
+            "確認",
+            "執行",
+            "同意",
+            "可以",
+            "ok",
+            "OK",
+            "Yes",
+            "yes",
+            "開始",
+            "請執行",
+        ]
         is_confirm_message = any(kw in message for kw in confirm_keywords)
 
         if is_resume and self.pending_hitl and is_confirm_message:
@@ -160,11 +172,13 @@ class AutoTestSession:
         except Exception as e:
             duration = time.time() - start_time
             error_msg = str(e)
-            self.errors.append({
-                "round": self.round_count,
-                "question": message,
-                "error": error_msg,
-            })
+            self.errors.append(
+                {
+                    "round": self.round_count,
+                    "question": message,
+                    "error": error_msg,
+                }
+            )
             log_entry = {
                 "round": self.round_count,
                 "user": message,
@@ -195,7 +209,7 @@ class AutoTestSession:
             "conversation": self.conversation_log,
         }
 
-        with open(filepath, 'w', encoding='utf-8') as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             json.dump(result, f, ensure_ascii=False, indent=2)
 
         return filepath
@@ -242,20 +256,22 @@ async def run_auto_test():
         print(f"{'─' * 60}")
 
         # 發送問題
-        result = await session.send(test_case['question'])
+        result = await session.send(test_case["question"])
 
         # 如果有 HITL，自動確認
-        if result.get('hitl'):
+        if result.get("hitl"):
             print("📋 偵測到 HITL，自動確認...")
             await asyncio.sleep(0.5)
             result = await session.send("確認", is_resume=True)
 
         # 顯示結果
-        if result.get('error'):
+        if result.get("error"):
             print(f"❌ 錯誤: {result['error']}")
         else:
             print(f"✅ 完成 ({result['duration']}s) - 模式: {result['mode']}")
-            response_preview = result['assistant'][:200] if result['assistant'] else "無回應"
+            response_preview = (
+                result["assistant"][:200] if result["assistant"] else "無回應"
+            )
             print(f"📝 回應預覽: {response_preview}...")
 
         # 間隔一下避免太快

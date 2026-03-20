@@ -12,8 +12,9 @@
 - ETH 鯨魚交易 -> Whale Alert, Etherscan
 - Exchange Flow -> CryptoQuant, Glassnode
 """
-from langchain_core.tools import tool
+
 import httpx
+from langchain_core.tools import tool
 
 from .common import get_cached_data, set_cached_data
 
@@ -23,7 +24,9 @@ def get_gas_fees() -> str:
     """獲取 Ethereum 網路的即時 Gas 費用"""
     try:
         # 使用 Blocknative 免費 API（無需 Key）
-        resp = httpx.get("https://api.blocknative.com/gasprices/blockprices", timeout=10)
+        resp = httpx.get(
+            "https://api.blocknative.com/gasprices/blockprices", timeout=10
+        )
         if resp.status_code == 200:
             data = resp.json()
             block_prices = data.get("blockPrices", [])
@@ -105,8 +108,7 @@ def _get_token_chain_info(symbol: str) -> dict:
     try:
         # 搜索代幣
         search_resp = httpx.get(
-            f"https://api.coingecko.com/api/v3/search?query={symbol}",
-            timeout=10
+            f"https://api.coingecko.com/api/v3/search?query={symbol}", timeout=10
         )
         if search_resp.status_code != 200:
             return None
@@ -127,7 +129,7 @@ def _get_token_chain_info(symbol: str) -> dict:
         # 獲取詳細資訊
         detail_resp = httpx.get(
             f"https://api.coingecko.com/api/v3/coins/{coin_id}?localization=false&tickers=false&market_data=true",
-            timeout=10
+            timeout=10,
         )
         if detail_resp.status_code != 200:
             return None
@@ -165,7 +167,7 @@ def _get_current_price(symbol: str) -> float:
     try:
         resp = httpx.get(
             f"https://api.coingecko.com/api/v3/simple/price?ids={symbol.lower()}&vs_currencies=usd",
-            timeout=5
+            timeout=5,
         )
         if resp.status_code == 200:
             data = resp.json()
@@ -184,8 +186,7 @@ def _fetch_btc_whale_tx(min_value_usd: int) -> str:
     try:
         # 使用 blockchain.info API（正確的端點）
         resp = httpx.get(
-            "https://blockchain.info/unconfirmed-transactions?format=json",
-            timeout=15
+            "https://blockchain.info/unconfirmed-transactions?format=json", timeout=15
         )
         if resp.status_code != 200:
             return None
@@ -201,20 +202,22 @@ def _fetch_btc_whale_tx(min_value_usd: int) -> str:
                     value_btc = value_satoshi / 100_000_000
                     value_usd = value_btc * btc_price
                     if value_usd >= min_value_usd:
-                        whale_txs.append({
-                            "hash": tx.get("hash", "")[:16] + "...",
-                            "value_btc": value_btc,
-                            "value_usd": value_usd
-                        })
+                        whale_txs.append(
+                            {
+                                "hash": tx.get("hash", "")[:16] + "...",
+                                "value_btc": value_btc,
+                                "value_usd": value_usd,
+                            }
+                        )
 
         if not whale_txs:
-            return f"## 🐋 BTC 鯨魚交易\n\n近期未發現 >{min_value_usd/1_000_000:.1f}M USD 的轉帳。"
+            return f"## 🐋 BTC 鯨魚交易\n\n近期未發現 >{min_value_usd / 1_000_000:.1f}M USD 的轉帳。"
 
         whale_txs.sort(key=lambda x: x["value_usd"], reverse=True)
 
-        result = f"## 🐋 BTC 鯨魚交易 (>{min_value_usd/1_000_000:.1f}M USD)\n\n"
+        result = f"## 🐋 BTC 鯨魚交易 (>{min_value_usd / 1_000_000:.1f}M USD)\n\n"
         for i, tx in enumerate(whale_txs[:5], 1):
-            result += f"{i}. **{tx['value_btc']:.4f} BTC** (~${tx['value_usd']/1_000_000:.1f}M)\n"
+            result += f"{i}. **{tx['value_btc']:.4f} BTC** (~${tx['value_usd'] / 1_000_000:.1f}M)\n"
         result += f"\n*(來源: Blockchain.com | BTC: ${btc_price:,.0f})*"
         return result
 
@@ -232,7 +235,7 @@ def _fetch_eth_whale_tx(min_value_usd: int) -> str:
 
     return f"""## 🐋 ETH 鯨魚交易追蹤
 
-- **門檻參考**: >{min_value_usd/1_000_000:.1f}M USD (~{min_eth:.1f} ETH)
+- **門檻參考**: >{min_value_usd / 1_000_000:.1f}M USD (~{min_eth:.1f} ETH)
 - **當前價格**: ${eth_price:,.0f}
 
 > 💡 **專業鏈上追蹤工具**:
@@ -257,7 +260,7 @@ def _fetch_solana_whale_tx(symbol: str, min_value_usd: int, token_price: float) 
 
     return f"""## 🐋 {symbol} (Solana) 鯨魚交易追蹤
 
-- **門檻參考**: >{min_value_usd/1_000_000:.1f}M USD (~{min_tokens:,.0f} {symbol})
+- **門檻參考**: >{min_value_usd / 1_000_000:.1f}M USD (~{min_tokens:,.0f} {symbol})
 - **當前價格**: ${token_price:,.4f}
 
 > 💡 **專業鏈上追蹤工具**:
@@ -277,7 +280,7 @@ def _fetch_bsc_whale_tx(symbol: str, min_value_usd: int, token_price: float) -> 
 
     return f"""## 🐋 {symbol} (BSC) 鯨魚交易追蹤
 
-- **門檻參考**: >{min_value_usd/1_000_000:.1f}M USD (~{min_tokens:,.0f} {symbol})
+- **門檻參考**: >{min_value_usd / 1_000_000:.1f}M USD (~{min_tokens:,.0f} {symbol})
 - **當前價格**: ${token_price:,.6f}
 
 > 💡 **專業鏈上追蹤工具**:
@@ -291,7 +294,9 @@ def _fetch_bsc_whale_tx(symbol: str, min_value_usd: int, token_price: float) -> 
 *(價格來源: CoinGecko)*"""
 
 
-def _fetch_generic_whale_tx(symbol: str, chain: str, min_value_usd: int, token_info: dict) -> str:
+def _fetch_generic_whale_tx(
+    symbol: str, chain: str, min_value_usd: int, token_info: dict
+) -> str:
     """通用鯨魚交易查詢（提供區塊瀏覽器連結）"""
     token_price = token_info.get("price", 0)
     platforms = token_info.get("platforms", {})
@@ -316,7 +321,7 @@ def _fetch_generic_whale_tx(symbol: str, chain: str, min_value_usd: int, token_i
     result = f"""## 🐋 {symbol} 鯨魚交易
 
 - **所在鏈**: {chain}
-- **門檻**: >{min_value_usd/1_000_000:.1f}M USD (~{min_tokens:,.0f} {symbol})
+- **門檻**: >{min_value_usd / 1_000_000:.1f}M USD (~{min_tokens:,.0f} {symbol})
 - **當前價格**: ${token_price:,.6f}
 """
 
@@ -326,7 +331,7 @@ def _fetch_generic_whale_tx(symbol: str, chain: str, min_value_usd: int, token_i
     result += f"""
 > 💡 **查看大額轉帳**:
 > 1. 前往 [{chain.capitalize()} 區塊瀏覽器]({explorer_url})
-> 2. 搜索 {symbol} 代幣{' (`' + contract_address + '`)' if contract_address else ''}
+> 2. 搜索 {symbol} 代幣{" (`" + contract_address + "`)" if contract_address else ""}
 > 3. 查看「Transfers」標籤頁
 
 *(數據來源: CoinGecko 價格)*"""

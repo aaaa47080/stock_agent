@@ -43,4 +43,3 @@ def test_resolve_redis_url_builds_auth(monkeypatch):
 
     assert source == "REDIS_HOST"
     assert url == "redis://:pass%40word@service-auth:6379/1"
-

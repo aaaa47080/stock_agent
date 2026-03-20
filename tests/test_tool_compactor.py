@@ -126,7 +126,9 @@ def test_retrieve_tool_result_error_message():
 def test_retrieve_tool_result_returns_stored_data():
     from core.agents.tool_compactor import retrieve_tool_result
 
-    with patch("core.agents.tool_compactor._local_store", {"my-uid": "full content here"}):
+    with patch(
+        "core.agents.tool_compactor._local_store", {"my-uid": "full content here"}
+    ):
         with patch("core.agents.tool_compactor._get_redis_sync", return_value=None):
             assert retrieve_tool_result("my-uid") == "full content here"
 
@@ -134,7 +136,10 @@ def test_retrieve_tool_result_returns_stored_data():
 def test_retrieve_tool_result_rejects_other_user():
     from core.agents.tool_compactor import _serialize_record, retrieve_tool_result
 
-    with patch("core.agents.tool_compactor._local_store", {"owned-uid": _serialize_record("secret", "user-a")}):
+    with patch(
+        "core.agents.tool_compactor._local_store",
+        {"owned-uid": _serialize_record("secret", "user-a")},
+    ):
         with patch("core.agents.tool_compactor._get_redis_sync", return_value=None):
             result = retrieve_tool_result("owned-uid", requester_id="user-b")
 
@@ -149,7 +154,9 @@ def test_retrieve_tool_result_rejects_other_workspace():
         {"owned-uid": _serialize_record("secret", "user-a", workspace_id="ws-a")},
     ):
         with patch("core.agents.tool_compactor._get_redis_sync", return_value=None):
-            result = retrieve_tool_result("owned-uid", requester_id="user-a", workspace_id="ws-b")
+            result = retrieve_tool_result(
+                "owned-uid", requester_id="user-a", workspace_id="ws-b"
+            )
 
     assert "[ERROR]" in result
 
@@ -178,7 +185,9 @@ def test_base_react_agent_wraps_tools_non_mutating():
     registry.list_for_agent.return_value = [registry_meta]
     agent = DummyAgent(llm_client=MagicMock(), tool_registry=registry, user_id="user-1")
 
-    with patch("core.agents.base_react_agent.get_allowed_tools", return_value=["big_tool"]):
+    with patch(
+        "core.agents.base_react_agent.get_allowed_tools", return_value=["big_tool"]
+    ):
         metas = agent._get_tool_metas()
 
     assert isinstance(metas[0].handler, _CompactingToolWrapper)
@@ -283,8 +292,13 @@ def test_required_tool_path_compacts_large_output():
     )
 
     with patch("core.agents.tool_compactor._store_sync", return_value="forced-uid"):
-        with patch("core.agents.base_react_agent.get_allowed_tools", return_value=["forced_tool"]):
-            with patch.object(type(agent), "_summarize_required_tool_result", fake_summarize):
+        with patch(
+            "core.agents.base_react_agent.get_allowed_tools",
+            return_value=["forced_tool"],
+        ):
+            with patch.object(
+                type(agent), "_summarize_required_tool_result", fake_summarize
+            ):
                 wrapped_metas = agent._get_tool_metas(task)
                 agent._execute_with_required_tool(task, wrapped_metas, "zh-TW")
 
@@ -293,9 +307,11 @@ def test_required_tool_path_compacts_large_output():
 
 # ── tool stat collection ──────────────────────────────────────────────────────
 
+
 def test_wrapper_records_pending_stat_on_success():
     """After invoke(), wrapper exposes a pending stat tuple."""
-    from core.agents.tool_compactor import wrap_tool, _reset_for_testing
+    from core.agents.tool_compactor import _reset_for_testing, wrap_tool
+
     _reset_for_testing()
     tool = _make_tool("small output")
     wrapped = wrap_tool(tool, owner_id="u1")
@@ -309,7 +325,8 @@ def test_wrapper_records_pending_stat_on_success():
 
 def test_wrapper_records_pending_stat_on_failure():
     """After a failing invoke(), last_stat has success=False and error_type set."""
-    from core.agents.tool_compactor import wrap_tool, _reset_for_testing
+    from core.agents.tool_compactor import _reset_for_testing, wrap_tool
+
     _reset_for_testing()
     tool = MagicMock()
     tool.name = "fail_tool"

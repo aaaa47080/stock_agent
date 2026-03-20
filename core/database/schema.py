@@ -6,7 +6,6 @@ Contains all DDL statements for table creation
 import json
 import logging
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -856,7 +855,7 @@ def create_indexes(c):
 
 def init_default_data(c):
     """Initialize default data (boards, system config)"""
-    from core.config import PI_PAYMENT_PRICES, FORUM_LIMITS
+    from core.config import FORUM_LIMITS, PI_PAYMENT_PRICES
 
     # 初始化預設看板（如果不存在）
     c.execute("SELECT COUNT(*) FROM boards WHERE slug = 'crypto'")
@@ -1299,9 +1298,7 @@ def reconcile_payment_tables(c):
     except Exception as e:
         logger.warning("Failed to add UNIQUE on membership_payments.tx_hash: %s", e)
     try:
-        c.execute(
-            "CREATE UNIQUE INDEX IF NOT EXISTS idx_tips_tx_hash ON tips(tx_hash)"
-        )
+        c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_tips_tx_hash ON tips(tx_hash)")
         checked.append("tips.tx_hash_unique")
     except Exception as e:
         logger.warning("Failed to add UNIQUE on tips.tx_hash: %s", e)
@@ -1312,9 +1309,7 @@ def reconcile_payment_tables(c):
         )
         checked.append("posts.payment_tx_hash_unique_partial")
     except Exception as e:
-        logger.warning(
-            "Failed to add partial UNIQUE on posts.payment_tx_hash: %s", e
-        )
+        logger.warning("Failed to add partial UNIQUE on posts.payment_tx_hash: %s", e)
     if checked:
         logger.info("Payment schema reconcile checked: %s", ", ".join(checked))
     return checked
@@ -1324,15 +1319,51 @@ def reconcile_check_constraints(c):
     """Add CHECK constraints for data integrity."""
     checked = []
     constraints = [
-        ("membership_payments", "ck_amount_positive", "ALTER TABLE membership_payments ADD CONSTRAINT ck_amount_positive CHECK (amount > 0)"),
-        ("membership_payments", "ck_months_positive", "ALTER TABLE membership_payments ADD CONSTRAINT ck_months_positive CHECK (months > 0)"),
-        ("tips", "ck_amount_positive", "ALTER TABLE tips ADD CONSTRAINT ck_amount_positive CHECK (amount > 0)"),
-        ("price_alerts", "ck_target_positive", "ALTER TABLE price_alerts ADD CONSTRAINT ck_target_positive CHECK (target > 0)"),
-        ("friendships", "ck_status_valid", "ALTER TABLE friendships ADD CONSTRAINT ck_status_valid CHECK (status IN ('pending', 'accepted', 'blocked'))"),
-        ("forum_comments", "ck_type_valid", "ALTER TABLE forum_comments ADD CONSTRAINT ck_type_valid CHECK (type IN ('comment', 'reply'))"),
-        ("scam_reports", "ck_verification_status_valid", "ALTER TABLE scam_reports ADD CONSTRAINT ck_verification_status_valid CHECK (verification_status IN ('pending', 'verified', 'rejected', 'investigating'))"),
-        ("content_reports", "ck_review_status_valid", "ALTER TABLE content_reports ADD CONSTRAINT ck_review_status_valid CHECK (review_status IN ('pending', 'approved', 'rejected', 'escalated'))"),
-        ("report_review_votes", "ck_vote_type_valid", "ALTER TABLE report_review_votes ADD CONSTRAINT ck_vote_type_valid CHECK (vote_type IN ('approve', 'reject'))"),
+        (
+            "membership_payments",
+            "ck_amount_positive",
+            "ALTER TABLE membership_payments ADD CONSTRAINT ck_amount_positive CHECK (amount > 0)",
+        ),
+        (
+            "membership_payments",
+            "ck_months_positive",
+            "ALTER TABLE membership_payments ADD CONSTRAINT ck_months_positive CHECK (months > 0)",
+        ),
+        (
+            "tips",
+            "ck_amount_positive",
+            "ALTER TABLE tips ADD CONSTRAINT ck_amount_positive CHECK (amount > 0)",
+        ),
+        (
+            "price_alerts",
+            "ck_target_positive",
+            "ALTER TABLE price_alerts ADD CONSTRAINT ck_target_positive CHECK (target > 0)",
+        ),
+        (
+            "friendships",
+            "ck_status_valid",
+            "ALTER TABLE friendships ADD CONSTRAINT ck_status_valid CHECK (status IN ('pending', 'accepted', 'blocked'))",
+        ),
+        (
+            "forum_comments",
+            "ck_type_valid",
+            "ALTER TABLE forum_comments ADD CONSTRAINT ck_type_valid CHECK (type IN ('comment', 'reply'))",
+        ),
+        (
+            "scam_reports",
+            "ck_verification_status_valid",
+            "ALTER TABLE scam_reports ADD CONSTRAINT ck_verification_status_valid CHECK (verification_status IN ('pending', 'verified', 'rejected', 'investigating'))",
+        ),
+        (
+            "content_reports",
+            "ck_review_status_valid",
+            "ALTER TABLE content_reports ADD CONSTRAINT ck_review_status_valid CHECK (review_status IN ('pending', 'approved', 'rejected', 'escalated'))",
+        ),
+        (
+            "report_review_votes",
+            "ck_vote_type_valid",
+            "ALTER TABLE report_review_votes ADD CONSTRAINT ck_vote_type_valid CHECK (vote_type IN ('approve', 'reject'))",
+        ),
     ]
     for table, name, sql in constraints:
         try:
@@ -1349,21 +1380,55 @@ def reconcile_foreign_keys(c):
     """Add missing foreign key constraints for data integrity."""
     checked = []
     foreign_keys = [
-        ("admin_broadcasts", "fk_admin_broadcasts_user", "ALTER TABLE admin_broadcasts ADD CONSTRAINT fk_admin_broadcasts_user FOREIGN KEY (admin_user_id) REFERENCES users(user_id)"),
-        ("user_violations", "fk_user_violations_user", "ALTER TABLE user_violations ADD CONSTRAINT fk_user_violations_user FOREIGN KEY (user_id) REFERENCES users(user_id)"),
-        ("user_violation_points", "fk_user_violation_points_user", "ALTER TABLE user_violation_points ADD CONSTRAINT fk_user_violation_points_user FOREIGN KEY (user_id) REFERENCES users(user_id)"),
-        ("audit_reputation", "fk_audit_reputation_user", "ALTER TABLE audit_reputation ADD CONSTRAINT fk_audit_reputation_user FOREIGN KEY (user_id) REFERENCES users(user_id)"),
-        ("user_activity_logs", "fk_user_activity_logs_user", "ALTER TABLE user_activity_logs ADD CONSTRAINT fk_user_activity_logs_user FOREIGN KEY (user_id) REFERENCES users(user_id)"),
-        ("conversation_history", "fk_conversation_history_user", "ALTER TABLE conversation_history ADD CONSTRAINT fk_conversation_history_user FOREIGN KEY (user_id) REFERENCES users(user_id)"),
-        ("sessions", "fk_sessions_user", "ALTER TABLE sessions ADD CONSTRAINT fk_sessions_user FOREIGN KEY (user_id) REFERENCES users(user_id)"),
-        ("user_tool_preferences", "fk_user_tool_preferences_user", "ALTER TABLE user_tool_preferences ADD CONSTRAINT fk_user_tool_preferences_user FOREIGN KEY (user_id) REFERENCES users(user_id)"),
+        (
+            "admin_broadcasts",
+            "fk_admin_broadcasts_user",
+            "ALTER TABLE admin_broadcasts ADD CONSTRAINT fk_admin_broadcasts_user FOREIGN KEY (admin_user_id) REFERENCES users(user_id)",
+        ),
+        (
+            "user_violations",
+            "fk_user_violations_user",
+            "ALTER TABLE user_violations ADD CONSTRAINT fk_user_violations_user FOREIGN KEY (user_id) REFERENCES users(user_id)",
+        ),
+        (
+            "user_violation_points",
+            "fk_user_violation_points_user",
+            "ALTER TABLE user_violation_points ADD CONSTRAINT fk_user_violation_points_user FOREIGN KEY (user_id) REFERENCES users(user_id)",
+        ),
+        (
+            "audit_reputation",
+            "fk_audit_reputation_user",
+            "ALTER TABLE audit_reputation ADD CONSTRAINT fk_audit_reputation_user FOREIGN KEY (user_id) REFERENCES users(user_id)",
+        ),
+        (
+            "user_activity_logs",
+            "fk_user_activity_logs_user",
+            "ALTER TABLE user_activity_logs ADD CONSTRAINT fk_user_activity_logs_user FOREIGN KEY (user_id) REFERENCES users(user_id)",
+        ),
+        (
+            "conversation_history",
+            "fk_conversation_history_user",
+            "ALTER TABLE conversation_history ADD CONSTRAINT fk_conversation_history_user FOREIGN KEY (user_id) REFERENCES users(user_id)",
+        ),
+        (
+            "sessions",
+            "fk_sessions_user",
+            "ALTER TABLE sessions ADD CONSTRAINT fk_sessions_user FOREIGN KEY (user_id) REFERENCES users(user_id)",
+        ),
+        (
+            "user_tool_preferences",
+            "fk_user_tool_preferences_user",
+            "ALTER TABLE user_tool_preferences ADD CONSTRAINT fk_user_tool_preferences_user FOREIGN KEY (user_id) REFERENCES users(user_id)",
+        ),
     ]
     for table, name, sql in foreign_keys:
         try:
             c.execute(sql)
             checked.append(f"{table}.{name}")
         except Exception as e:
-            logger.debug("Foreign key %s.%s already exists or error: %s", table, name, e)
+            logger.debug(
+                "Foreign key %s.%s already exists or error: %s", table, name, e
+            )
     if checked:
         logger.info("Foreign keys added: %s", ", ".join(checked))
     return checked
@@ -1373,10 +1438,26 @@ def reconcile_numeric_columns(c):
     """Migrate financial REAL columns to NUMERIC(18,4) for precision."""
     checked = []
     migrations = [
-        ("membership_payments", "amount", "ALTER TABLE membership_payments ALTER COLUMN amount TYPE NUMERIC(18,4) USING amount::NUMERIC(18,4)"),
-        ("posts", "tips_total", "ALTER TABLE posts ALTER COLUMN tips_total TYPE NUMERIC(18,4) USING tips_total::NUMERIC(18,4)"),
-        ("tips", "amount", "ALTER TABLE tips ALTER COLUMN amount TYPE NUMERIC(18,4) USING amount::NUMERIC(18,4)"),
-        ("price_alerts", "target", "ALTER TABLE price_alerts ALTER COLUMN target TYPE NUMERIC(18,4) USING target::NUMERIC(18,4)"),
+        (
+            "membership_payments",
+            "amount",
+            "ALTER TABLE membership_payments ALTER COLUMN amount TYPE NUMERIC(18,4) USING amount::NUMERIC(18,4)",
+        ),
+        (
+            "posts",
+            "tips_total",
+            "ALTER TABLE posts ALTER COLUMN tips_total TYPE NUMERIC(18,4) USING tips_total::NUMERIC(18,4)",
+        ),
+        (
+            "tips",
+            "amount",
+            "ALTER TABLE tips ALTER COLUMN amount TYPE NUMERIC(18,4) USING amount::NUMERIC(18,4)",
+        ),
+        (
+            "price_alerts",
+            "target",
+            "ALTER TABLE price_alerts ALTER COLUMN target TYPE NUMERIC(18,4) USING target::NUMERIC(18,4)",
+        ),
     ]
     for table, col, sql in migrations:
         try:

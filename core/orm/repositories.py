@@ -11,6 +11,7 @@ Usage::
 
     user = await user_repo.get_by_id("user-123")
 """
+
 from __future__ import annotations
 
 import logging
@@ -48,9 +49,7 @@ def _user_to_dict(user: User) -> dict:
             if user.membership_expires_at
             else None
         ),
-        "created_at": (
-            user.created_at.isoformat() if user.created_at else None
-        ),
+        "created_at": (user.created_at.isoformat() if user.created_at else None),
         "is_premium": _normalize_membership_tier(user.membership_tier) == "premium",
         "pi_uid": user.pi_uid,
     }
@@ -59,21 +58,27 @@ def _user_to_dict(user: User) -> dict:
 class UserRepository:
     """Async repository for User entity."""
 
-    async def get_by_id(self, user_id: str, session: AsyncSession | None = None) -> Optional[dict]:
+    async def get_by_id(
+        self, user_id: str, session: AsyncSession | None = None
+    ) -> Optional[dict]:
         """Get user by ID, returning a dict in the legacy format."""
         async with session or get_async_session() as s:
             result = await s.execute(select(User).where(User.user_id == user_id))
             user = result.scalar_one_or_none()
             return _user_to_dict(user) if user else None
 
-    async def get_by_username(self, username: str, session: AsyncSession | None = None) -> Optional[dict]:
+    async def get_by_username(
+        self, username: str, session: AsyncSession | None = None
+    ) -> Optional[dict]:
         """Get user by username."""
         async with session or get_async_session() as s:
             result = await s.execute(select(User).where(User.username == username))
             user = result.scalar_one_or_none()
             return _user_to_dict(user) if user else None
 
-    async def update_last_active(self, user_id: str, session: AsyncSession | None = None) -> bool:
+    async def update_last_active(
+        self, user_id: str, session: AsyncSession | None = None
+    ) -> bool:
         """Update user's last active timestamp."""
         async with session or get_async_session() as s:
             result = await s.execute(
@@ -85,7 +90,9 @@ class UserRepository:
                 await session.commit()
             return result.rowcount > 0
 
-    async def get_membership(self, user_id: str, session: AsyncSession | None = None) -> dict:
+    async def get_membership(
+        self, user_id: str, session: AsyncSession | None = None
+    ) -> dict:
         """Get user membership info."""
         user = await self.get_by_id(user_id, session)
         if not user:

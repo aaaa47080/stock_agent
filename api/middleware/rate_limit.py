@@ -5,19 +5,23 @@ Implements per-IP and per-user rate limiting to prevent API abuse and DDoS attac
 
 Stage 2 Security: Added persistent rate limiting that survives server restarts.
 """
+
 import json
+import logging
 import time
 from pathlib import Path
-import logging
-from slowapi import Limiter
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
+from typing import Optional
+
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from typing import Optional
+from slowapi import Limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
+
 from core.redis_url import resolve_redis_url
 
 logger = logging.getLogger(__name__)
+
 
 def get_user_identifier(request: Request) -> str:
     """
@@ -28,9 +32,9 @@ def get_user_identifier(request: Request) -> str:
     # Try to get user from request state (set by auth middleware)
     user = getattr(request.state, "user", None)
     if user and isinstance(user, dict):
-        user_id = user.get('user_id', 'unknown')
+        user_id = user.get("user_id", "unknown")
         return f"user:{user_id}"
-    
+
     # Fallback to IP address for unauthenticated requests
     ip = get_remote_address(request)
     return f"ip:{ip}"
@@ -50,7 +54,7 @@ limiter = Limiter(
     key_func=get_user_identifier,
     default_limits=["1000/hour", "100/minute"],  # Global default limits
     storage_uri=REDIS_URL,
-    strategy="fixed-window"  # Fixed window strategy
+    strategy="fixed-window",  # Fixed window strategy
 )
 
 
@@ -58,36 +62,27 @@ limiter = Limiter(
 RATE_LIMITS = {
     # Authentication endpoints (very strict to prevent brute force)
     "auth": "5/minute",
-
     # Write operations (stricter)
     "write": "30/minute",
-
     # Payment operations (strict to prevent abuse)
     "payment": "10/minute",
-
     # Read operations (more lenient)
     "read": "100/minute",
-
     # Admin operations (moderate)
     "admin": "50/hour",
-
     # Public endpoints (lenient)
     "public": "200/minute",
-
     # AI Analysis endpoint (moderate - LLM calls are expensive)
     "analysis": "10/minute",
-
     # Community Governance endpoints
     "governance_report": "10/hour",  # Report submission (strict)
-    "governance_vote": "30/hour",    # Voting (Premium members only)
-    "governance_read": "100/hour",   # Reading governance data
-
+    "governance_vote": "30/hour",  # Voting (Premium members only)
+    "governance_read": "100/hour",  # Reading governance data
     # Sensitive API Key endpoints (very strict to prevent key theft)
-    "api_key_full": "10/minute",     # Getting full API key
-    "api_key_write": "20/minute",    # Saving/deleting API keys
-
+    "api_key_full": "10/minute",  # Getting full API key
+    "api_key_write": "20/minute",  # Saving/deleting API keys
     # Token refresh (moderate - prevent token abuse)
-    "token_refresh": "5/minute",     # Refresh token endpoint
+    "token_refresh": "5/minute",  # Refresh token endpoint
 }
 
 
@@ -103,55 +98,55 @@ def get_rate_limit_for_route(request: Request) -> str:
     path = request.url.path.lower()
 
     # Authentication endpoints
-    if any(x in path for x in ['/login', '/pi-sync', '/dev-login']):
+    if any(x in path for x in ["/login", "/pi-sync", "/dev-login"]):
         return RATE_LIMITS["auth"]
 
     # Token refresh endpoint (moderate security)
-    if '/refresh-token' in path:
+    if "/refresh-token" in path:
         return RATE_LIMITS["token_refresh"]
 
     # Sensitive API Key endpoints (very strict)
-    if '/api-keys' in path:
+    if "/api-keys" in path:
         # Full key retrieval is most sensitive
-        if '/full' in path:
+        if "/full" in path:
             return RATE_LIMITS["api_key_full"]
         # Write operations (save/delete)
-        if method in ['post', 'put', 'delete']:
+        if method in ["post", "put", "delete"]:
             return RATE_LIMITS["api_key_write"]
         # Read operations (masked keys)
         return RATE_LIMITS["read"]
 
     # Payment endpoints
-    if '/payment' in path or '/tip' in path:
+    if "/payment" in path or "/tip" in path:
         return RATE_LIMITS["payment"]
 
     # Admin endpoints
-    if '/admin' in path:
+    if "/admin" in path:
         return RATE_LIMITS["admin"]
 
     # Write operations
-    if method in ['post', 'put', 'patch', 'delete']:
+    if method in ["post", "put", "patch", "delete"]:
         return RATE_LIMITS["write"]
 
     # AI Analysis endpoint (expensive LLM calls)
-    if '/analyze' in path or '/backtest' in path:
+    if "/analyze" in path or "/backtest" in path:
         return RATE_LIMITS["analysis"]
 
     # Public read endpoints (forum, market data)
-    if any(x in path for x in ['/forum/posts', '/forum/boards', '/market', '/agents/']):
+    if any(x in path for x in ["/forum/posts", "/forum/boards", "/market", "/agents/"]):
         return RATE_LIMITS["public"]
 
     # Community Governance endpoints
-    if '/governance' in path:
-        if '/reports' in path and method == 'post':
+    if "/governance" in path:
+        if "/reports" in path and method == "post":
             return RATE_LIMITS["governance_report"]
-        elif '/vote' in path and method == 'post':
+        elif "/vote" in path and method == "post":
             return RATE_LIMITS["governance_vote"]
         else:
             return RATE_LIMITS["governance_read"]
 
     # Default read operations
-    if method == 'get':
+    if method == "get":
         return RATE_LIMITS["read"]
 
     # Default fallback
@@ -159,7 +154,9 @@ def get_rate_limit_for_route(request: Request) -> str:
 
 
 # Exception handler for rate limit exceeded
-async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+async def rate_limit_exceeded_handler(
+    request: Request, exc: RateLimitExceeded
+) -> JSONResponse:
     """
     Custom handler for rate limit exceeded errors
 
@@ -177,13 +174,14 @@ async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) 
             "Retry-After": str(exc.retry_after),
             "X-RateLimit-Limit": str(exc.limit),
             "X-RateLimit-Remaining": "0",
-        }
+        },
     )
 
 
 # ============================================================================
 # Stage 2 Security: Persistent Rate Limiting
 # ============================================================================
+
 
 class PersistentRateLimiter:
     """
@@ -219,7 +217,7 @@ class PersistentRateLimiter:
         """Load rate limit state from file."""
         try:
             if self.storage_path.exists():
-                with open(self.storage_path, 'r') as f:
+                with open(self.storage_path, "r") as f:
                     self.state = json.load(f)
         except (json.JSONDecodeError, IOError):
             # If file is corrupted, start fresh
@@ -228,18 +226,13 @@ class PersistentRateLimiter:
     def _save_state(self):
         """Save rate limit state to file."""
         try:
-            with open(self.storage_path, 'w') as f:
+            with open(self.storage_path, "w") as f:
                 json.dump(self.state, f)
         except IOError:
             # Fail silently - rate limiting is a protection, not a requirement
             pass
 
-    def check_limit(
-        self,
-        key: str,
-        limit: int,
-        window: int
-    ) -> bool:
+    def check_limit(self, key: str, limit: int, window: int) -> bool:
         """
         Check if a request should be rate limited.
 
@@ -331,6 +324,7 @@ class PersistentRateLimiter:
 
 # Global persistent rate limiter instance
 persistent_limiter: Optional[PersistentRateLimiter] = None
+
 
 def get_persistent_limiter() -> PersistentRateLimiter:
     """

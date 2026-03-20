@@ -88,7 +88,9 @@ def test_l2_redis_hit_skips_postgresql():
     store = _make_store("user-redis-hit")
     _mem_l1_delete("user-redis-hit")
     fake_redis = FakeRedis()
-    fake_redis._store[_mem_cache_key(store.scope)] = orjson.dumps("redis cached context")
+    fake_redis._store[_mem_cache_key(store.scope)] = orjson.dumps(
+        "redis cached context"
+    )
 
     with patch("core.database.memory._get_redis_sync", return_value=fake_redis):
         with patch.object(type(store), "_read_from_db") as mock_db:
@@ -135,7 +137,16 @@ def test_write_facts_invalidates_redis():
 
     with patch("core.database.memory._get_redis_sync", return_value=fake_redis):
         with patch("core.database.memory.DatabaseBase.execute"):
-            store.write_facts([{"key": "pref", "value": "crypto", "confidence": "high", "source_turn": 1}])
+            store.write_facts(
+                [
+                    {
+                        "key": "pref",
+                        "value": "crypto",
+                        "confidence": "high",
+                        "source_turn": 1,
+                    }
+                ]
+            )
 
     assert _mem_cache_key(store.scope) not in fake_redis._store
 

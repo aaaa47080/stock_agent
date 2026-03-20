@@ -1,6 +1,7 @@
 """
 Pi Network 地址驗證器
 """
+
 import re
 from typing import Tuple
 
@@ -31,11 +32,11 @@ def validate_pi_address(address: str) -> Tuple[bool, str]:
         return False, f"地址長度必須為 56 字符（當前: {len(address)}）"
 
     # 檢查開頭
-    if not address.startswith('G'):
+    if not address.startswith("G"):
         return False, "Pi Network 地址必須以 'G' 開頭"
 
     # 檢查字符集（Base32: A-Z, 2-7，注意不包含 '1'）
-    pattern = r'^G[A-Z234567]{55}$'
+    pattern = r"^G[A-Z234567]{55}$"
     if not re.match(pattern, address):
         return False, "地址包含無效字符（僅允許 A-Z 和 2-7）"
 
@@ -60,7 +61,7 @@ def validate_pi_tx_hash(tx_hash: str) -> Tuple[bool, str]:
     if len(tx_hash) != 64:
         return False, f"交易哈希必須為 64 字符（當前: {len(tx_hash)}）"
 
-    pattern = r'^[a-fA-F0-9]{64}$'
+    pattern = r"^[a-fA-F0-9]{64}$"
     if not re.match(pattern, tx_hash):
         return False, "交易哈希必須為十六進制字符"
 

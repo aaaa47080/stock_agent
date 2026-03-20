@@ -1,29 +1,27 @@
-import json
 import asyncio
+import json
 import uuid
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Query, Request
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 
+from api.deps import get_current_user
+from api.middleware.rate_limit import limiter
 from api.models import QueryRequest
 from api.response_metadata import build_response_metadata
 from api.utils import logger, run_sync
-from utils.user_client_factory import create_user_llm_client
-from api.middleware.rate_limit import limiter
 from core.agents.analysis_policy import AnalysisPolicyResolver
-
+from core.database import clear_chat_history as db_clear_history
 from core.database import (
-    save_chat_message,
-    get_chat_history,
-    clear_chat_history as db_clear_history,
-    get_sessions,
     create_session,
-    delete_session
+    delete_session,
+    get_chat_history,
+    get_sessions,
+    save_chat_message,
+    toggle_session_pin,
 )
-
-from core.database import toggle_session_pin
-from fastapi import Depends
-from api.deps import get_current_user
+from utils.user_client_factory import create_user_llm_client
 
 router = APIRouter()
 
@@ -32,6 +30,7 @@ analysis_policy_resolver = AnalysisPolicyResolver()
 
 
 # --- Session Management Endpoints ---
+
 
 @router.get("/api/chat/sessions")
 async def get_user_sessions(
@@ -42,20 +41,32 @@ async def get_user_sessions(
     """獲取用戶對話列表"""
     user_id = current_user["user_id"]
 
-    sessions = await run_sync(lambda: get_sessions(user_id=user_id, limit=limit, offset=offset))
+    sessions = await run_sync(
+        lambda: get_sessions(user_id=user_id, limit=limit, offset=offset)
+    )
     return {"sessions": sessions}
 
-@router.delete("/api/chat/sessions/{session_id}", dependencies=[Depends(get_current_user)])
+
+@router.delete(
+    "/api/chat/sessions/{session_id}", dependencies=[Depends(get_current_user)]
+)
 async def delete_user_session(session_id: str):
     """刪除特定對話"""
     await run_sync(delete_session, session_id)
     return {"status": "success", "message": f"Session {session_id} deleted"}
 
-@router.put("/api/chat/sessions/{session_id}/pin", dependencies=[Depends(get_current_user)])
-async def pin_user_session(session_id: str, is_pinned: bool = Query(..., description="Set to true to pin, false to unpin")):
+
+@router.put(
+    "/api/chat/sessions/{session_id}/pin", dependencies=[Depends(get_current_user)]
+)
+async def pin_user_session(
+    session_id: str,
+    is_pinned: bool = Query(..., description="Set to true to pin, false to unpin"),
+):
     """切換對話置頂狀態"""
     await run_sync(lambda: toggle_session_pin(session_id, is_pinned))
     return {"status": "success", "session_id": session_id, "is_pinned": is_pinned}
+
 
 @router.get("/api/chat/history")
 async def get_history(
@@ -71,15 +82,18 @@ async def get_history(
     """
     LIMIT = 20
     history = await run_sync(
-        lambda: get_chat_history(session_id=session_id,
-                                 limit=LIMIT + 1, before_timestamp=before_timestamp)
+        lambda: get_chat_history(
+            session_id=session_id, limit=LIMIT + 1, before_timestamp=before_timestamp
+        )
     )
     has_more = len(history) > LIMIT
     if has_more:
         history = history[1:]
     return {"history": history, "has_more": has_more}
 
+
 # --- Analysis Endpoint ---
+
 
 @router.get("/api/analyze/modes")
 async def get_analysis_modes(current_user: dict = Depends(get_current_user)):
@@ -92,9 +106,12 @@ async def get_analysis_modes(current_user: dict = Depends(get_current_user)):
         "default_mode": mode_policy.default_mode,
     }
 
+
 @router.post("/api/analyze")
 @limiter.limit("10/minute")
-async def analyze_crypto(request: Request, body: QueryRequest, current_user: dict = Depends(get_current_user)):
+async def analyze_crypto(
+    request: Request, body: QueryRequest, current_user: dict = Depends(get_current_user)
+):
     """
     處理分析請求，以串流 (SSE) 方式回傳結果。
 
@@ -107,8 +124,7 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
     """
     if not body.user_api_key or not body.user_provider:
         raise HTTPException(
-            status_code=400,
-            detail="缺少 API Key。請在系統設定中輸入您的 LLM API Key。"
+            status_code=400, detail="缺少 API Key。請在系統設定中輸入您的 LLM API Key。"
         )
 
     try:
@@ -139,6 +155,7 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
 
         from core.agents.bootstrap import bootstrap
         from core.agents.manager import MANAGER_GRAPH_RECURSION_LIMIT
+
         logger.info("✅ ManagerAgent initialized")
         manager = bootstrap(
             user_client,
@@ -148,7 +165,7 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
             user_id=current_user.get("user_id"),
             session_id=body.session_id,
         )
-        config  = {
+        config = {
             "configurable": {"thread_id": body.session_id},
             "recursion_limit": MANAGER_GRAPH_RECURSION_LIMIT,
         }
@@ -159,9 +176,17 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
             graph_input = Command(resume=body.resume_answer)
         else:
             _, db_history_raw = await asyncio.gather(
-                run_sync(lambda: save_chat_message("user", body.message,
-                                                   session_id=body.session_id, user_id=current_user.get("user_id"))),
-                run_sync(lambda: get_chat_history(session_id=body.session_id, limit=20))
+                run_sync(
+                    lambda: save_chat_message(
+                        "user",
+                        body.message,
+                        session_id=body.session_id,
+                        user_id=current_user.get("user_id"),
+                    )
+                ),
+                run_sync(
+                    lambda: get_chat_history(session_id=body.session_id, limit=20)
+                ),
             )
 
             history_text = ""
@@ -169,7 +194,7 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
                 db_history = db_history_raw
                 lines = []
                 for msg in db_history:
-                    role    = "助手" if msg.get("role") == "assistant" else "用戶"
+                    role = "助手" if msg.get("role") == "assistant" else "用戶"
                     content = (msg.get("content") or "").strip()
                     if content and content != body.message:
                         lines.append(f"{role}: {content}")
@@ -187,7 +212,7 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
                     "task_results": {},
                     "language": body.language,
                     "execution_mode": "vending",
-                }
+                },
             )
 
         async def event_generator_v4():
@@ -195,7 +220,9 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
                 progress_queue = asyncio.Queue()
 
                 def on_progress(event):
-                    asyncio.get_running_loop().call_soon_threadsafe(progress_queue.put_nowait, event)
+                    asyncio.get_running_loop().call_soon_threadsafe(
+                        progress_queue.put_nowait, event
+                    )
 
                 manager.progress_callback = on_progress
 
@@ -211,7 +238,7 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
                         queue_task = asyncio.create_task(progress_queue.get())
                         done, pending = await asyncio.wait(
                             [invoke_task, queue_task],
-                            return_when=asyncio.FIRST_COMPLETED
+                            return_when=asyncio.FIRST_COMPLETED,
                         )
 
                         if queue_task in done:
@@ -238,17 +265,25 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
 
                     chunk_size = 50
                     for i in range(0, len(response), chunk_size):
-                        yield f"data: {json.dumps({'content': response[i:i+chunk_size]})}\n\n"
+                        yield f"data: {json.dumps({'content': response[i : i + chunk_size]})}\n\n"
                         await asyncio.sleep(0.005)
 
-                    await run_sync(lambda: save_chat_message("assistant", response,
-                                                             session_id=body.session_id, user_id=current_user.get("user_id")))
+                    await run_sync(
+                        lambda: save_chat_message(
+                            "assistant",
+                            response,
+                            session_id=body.session_id,
+                            user_id=current_user.get("user_id"),
+                        )
+                    )
 
                     yield f"data: {json.dumps({'type': 'response_metadata', 'data': response_metadata})}\n\n"
                     yield f"data: {json.dumps({'done': True})}\n\n"
 
                 except asyncio.CancelledError:
-                    logger.warning(f"[V4] Client disconnected, cancelling task for session {body.session_id}")
+                    logger.warning(
+                        f"[V4] Client disconnected, cancelling task for session {body.session_id}"
+                    )
                     if not invoke_task.done():
                         invoke_task.cancel()
                         try:
@@ -267,7 +302,9 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
                 finally:
                     manager.progress_callback = None
                     if not invoke_task.done():
-                        logger.info(f"[V4] Generator exiting, ensuring task cancelled for session {body.session_id}")
+                        logger.info(
+                            f"[V4] Generator exiting, ensuring task cancelled for session {body.session_id}"
+                        )
                         invoke_task.cancel()
 
             except Exception as e:
@@ -278,10 +315,15 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
 
     except Exception as bootstrap_err:
         logger.error(f"[V4] Manager 啟動失敗: {bootstrap_err}", exc_info=True)
-        raise HTTPException(status_code=503, detail=f"分析服務暫時無法使用: {str(bootstrap_err)}")
+        raise HTTPException(
+            status_code=503, detail=f"分析服務暫時無法使用: {str(bootstrap_err)}"
+        )
+
 
 @router.post("/api/chat/clear")
-async def clear_chat_history_endpoint(session_id: str = "default", current_user: dict = Depends(get_current_user)):
+async def clear_chat_history_endpoint(
+    session_id: str = "default", current_user: dict = Depends(get_current_user)
+):
     """清除對話歷史"""
     await run_sync(db_clear_history, session_id)
 
@@ -299,23 +341,34 @@ async def create_new_session(current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=401, detail="未授權")
 
     from core.agents.bootstrap import get_manager_instances, invalidate_manager_cache
+
     old_managers = get_manager_instances(user_id)
 
     for old_manager in old_managers:
-        if old_manager and hasattr(old_manager, '_message_count') and old_manager._message_count > 0:
-            logger.info(f"[API] Consolidating old session for user {user_id}: {old_manager.session_id}")
-            if hasattr(old_manager, 'consolidate_session_memory'):
+        if (
+            old_manager
+            and hasattr(old_manager, "_message_count")
+            and old_manager._message_count > 0
+        ):
+            logger.info(
+                f"[API] Consolidating old session for user {user_id}: {old_manager.session_id}"
+            )
+            if hasattr(old_manager, "consolidate_session_memory"):
                 await old_manager.consolidate_session_memory()
 
     invalidate_manager_cache(user_id)
 
     new_session_id = str(uuid.uuid4())
-    await run_sync(lambda: create_session(new_session_id, title="New Chat Session", user_id=user_id))
+    await run_sync(
+        lambda: create_session(
+            new_session_id, title="New Chat Session", user_id=user_id
+        )
+    )
 
     return {
         "session_id": new_session_id,
         "title": "New Chat Session",
-        "message": "已整合舊會話記憶並創建新會話"
+        "message": "已整合舊會話記憶並創建新會話",
     }
 
 
@@ -336,19 +389,25 @@ async def trigger_idle_consolidation(current_user: dict = Depends(get_current_us
         raise HTTPException(status_code=401, detail="未授權")
 
     from core.agents.bootstrap import get_manager_instances
+
     managers = get_manager_instances(user_id)
 
     if not managers:
         return {"status": "skipped", "message": "無 Manager 實例"}
 
-    target_managers = [manager for manager in managers if manager.check_idle_consolidation()]
+    target_managers = [
+        manager for manager in managers if manager.check_idle_consolidation()
+    ]
     if not target_managers:
         return {"status": "skipped", "message": "無需整合"}
 
     try:
         for manager in target_managers:
             await manager._background_memory_consolidation()
-        return {"status": "success", "message": f"閒置整合完成（{len(target_managers)} 個 session）"}
+        return {
+            "status": "success",
+            "message": f"閒置整合完成（{len(target_managers)} 個 session）",
+        }
     except Exception as e:
         logger.error(f"閒置整合失敗: {e}")
         return {"status": "error", "message": str(e)}

@@ -1,9 +1,10 @@
-from typing import Optional, List, Dict, Any, Literal
+from typing import Any, Dict, List, Literal, Optional
+
 from pydantic import BaseModel
-from core.config import (
-    SUPPORTED_EXCHANGES, DEFAULT_INTERVAL, DEFAULT_KLINES_LIMIT
-)
+
+from core.config import DEFAULT_INTERVAL, DEFAULT_KLINES_LIMIT, SUPPORTED_EXCHANGES
 from core.model_config import GEMINI_DEFAULT_MODEL
+
 
 # 定義請求模型
 class QueryRequest(BaseModel):
@@ -22,22 +23,25 @@ class QueryRequest(BaseModel):
     resume_answer: Optional[Any] = None  # HITL 回答（Accepts str or dict）
     language: str = "zh-TW"  # 用戶語言偏好（"zh-TW" | "en"）
 
+
 class ScreenerRequest(BaseModel):
     exchange: str = SUPPORTED_EXCHANGES[0]
     symbols: Optional[List[str]] = None
     refresh: bool = False
 
+
 class WatchlistRequest(BaseModel):
     symbol: str
+
 
 class UserRegisterRequest(BaseModel):
     username: str
     password: str
 
+
 class UserLoginRequest(BaseModel):
     username: str
     password: str
-
 
 
 class KlineRequest(BaseModel):
@@ -46,21 +50,25 @@ class KlineRequest(BaseModel):
     interval: str = "1d"
     limit: int = 100
 
+
 class UserSettings(BaseModel):
     """用戶動態設置"""
+
     openai_api_key: Optional[str] = None
     google_api_key: Optional[str] = None
     openrouter_api_key: Optional[str] = None
-    
+
     # 模型選擇
     primary_model_provider: str = "google_gemini"  # openai, google_gemini, openrouter
     primary_model_name: str = GEMINI_DEFAULT_MODEL  # 默認為 Google Gemini
-    
+
+
 class RefreshPulseRequest(BaseModel):
     symbols: Optional[List[str]] = None
 
+
 class KeyValidationRequest(BaseModel):
-    provider: str # openai, google_gemini, openrouter
+    provider: str  # openai, google_gemini, openrouter
     api_key: str
     model: Optional[str] = None  # 用戶選擇的模型名稱
 
@@ -69,8 +77,10 @@ class KeyValidationRequest(BaseModel):
 # 社群治理系統 Models (Community Governance System)
 # ============================================================================
 
+
 class ReportCreateRequest(BaseModel):
     """創建檢舉請求"""
+
     content_type: str  # 'post' 或 'comment'
     content_id: int
     report_type: str  # spam, harassment, misinformation, scam, illegal, other
@@ -79,6 +89,7 @@ class ReportCreateRequest(BaseModel):
 
 class ReportResponse(BaseModel):
     """檢舉回應"""
+
     id: int
     content_type: str
     content_id: int
@@ -92,11 +103,13 @@ class ReportResponse(BaseModel):
 
 class VoteRequest(BaseModel):
     """投票請求"""
+
     vote_type: str  # 'approve' (認為違規) 或 'reject' (認為不違規)
 
 
 class ReportDetailResponse(BaseModel):
     """檢舉詳情回應"""
+
     id: int
     content_type: str
     content_id: int
@@ -115,6 +128,7 @@ class ReportDetailResponse(BaseModel):
 
 class ViolationPointsResponse(BaseModel):
     """違規點數回應"""
+
     user_id: str
     points: int
     total_violations: int
@@ -125,6 +139,7 @@ class ViolationPointsResponse(BaseModel):
 
 class ViolationRecordResponse(BaseModel):
     """違規記錄回應"""
+
     id: int
     user_id: str
     violation_level: str
@@ -137,6 +152,7 @@ class ViolationRecordResponse(BaseModel):
 
 class ActivityLogResponse(BaseModel):
     """活動日誌回應"""
+
     id: int
     user_id: str
     activity_type: str
@@ -150,6 +166,7 @@ class ActivityLogResponse(BaseModel):
 
 class ReviewStatisticsResponse(BaseModel):
     """審核統計回應"""
+
     total_reports: int
     pending_reports: int
     approved_reports: int
@@ -160,6 +177,7 @@ class ReviewStatisticsResponse(BaseModel):
 
 class AuditReputationResponse(BaseModel):
     """審核聲望回應"""
+
     user_id: str
     username: Optional[str]
     total_reviews: int
@@ -171,12 +189,14 @@ class AuditReputationResponse(BaseModel):
 
 class FinalizeReportRequest(BaseModel):
     """完成檢舉請求"""
+
     decision: str  # 'approved' 或 'rejected'
     violation_level: Optional[str] = None  # mild, medium, severe, critical
 
 
 class ConsensusResponse(BaseModel):
     """共識檢查回應"""
+
     has_consensus: bool
     decision: Optional[str] = None  # 'approved', 'rejected', or None
     total_votes: int

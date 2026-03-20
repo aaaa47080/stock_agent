@@ -1,8 +1,9 @@
 """
 私訊訊息限制
 """
-from typing import Dict
+
 from datetime import date
+from typing import Dict
 
 from ..connection import get_connection
 from .config import _get_message_config
@@ -16,22 +17,25 @@ def check_and_increment_message(user_id: str, is_premium: bool) -> Dict:
     Returns: {"can_send": bool, "remaining": int, "limit": int, "used": int}
     """
     if is_premium:
-        premium_limit = _get_message_config('limit_daily_message_premium', None)
+        premium_limit = _get_message_config("limit_daily_message_premium", None)
         if premium_limit is None:
             return {"can_send": True, "remaining": -1, "limit": -1, "used": -1}
 
-    daily_limit = _get_message_config('limit_daily_message_free', 20)
+    daily_limit = _get_message_config("limit_daily_message_free", 20)
     today = date.today().isoformat()
 
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute(
+            """
             INSERT INTO user_message_limits (user_id, date, message_count)
             VALUES (%s, %s, 1)
             ON CONFLICT(user_id, date) DO UPDATE SET message_count = user_message_limits.message_count + 1
             RETURNING message_count
-        ''', (user_id, today))
+        """,
+            (user_id, today),
+        )
         row = c.fetchone()
         conn.commit()
 
@@ -57,20 +61,23 @@ def check_message_limit(user_id: str, is_premium: bool) -> Dict:
     返回: {"can_send": bool, "remaining": int, "limit": int}
     """
     if is_premium:
-        premium_limit = _get_message_config('limit_daily_message_premium', None)
+        premium_limit = _get_message_config("limit_daily_message_premium", None)
         if premium_limit is None:
             return {"can_send": True, "remaining": -1, "limit": -1}
 
-    daily_limit = _get_message_config('limit_daily_message_free', 20)
+    daily_limit = _get_message_config("limit_daily_message_free", 20)
     today = date.today().isoformat()
 
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute(
+            """
             SELECT message_count FROM user_message_limits
             WHERE user_id = %s AND date = %s
-        ''', (user_id, today))
+        """,
+            (user_id, today),
+        )
         row = c.fetchone()
 
         current_count = row[0] if row else 0
@@ -80,7 +87,7 @@ def check_message_limit(user_id: str, is_premium: bool) -> Dict:
             "can_send": remaining > 0,
             "remaining": max(0, remaining),
             "limit": daily_limit,
-            "used": current_count
+            "used": current_count,
         }
     finally:
         conn.close()
@@ -95,11 +102,14 @@ def increment_message_count(user_id: str) -> None:
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute(
+            """
             INSERT INTO user_message_limits (user_id, date, message_count)
             VALUES (%s, %s, 1)
             ON CONFLICT(user_id, date) DO UPDATE SET message_count = user_message_limits.message_count + 1
-        ''', (user_id, today))
+        """,
+            (user_id, today),
+        )
         conn.commit()
     finally:
         conn.close()
@@ -113,16 +123,23 @@ def check_and_increment_greeting(user_id: str, is_premium: bool) -> Dict:
     Returns: {"can_send": bool, "remaining": int, "limit": int, "used": int}
     """
     if not is_premium:
-        return {"can_send": False, "remaining": 0, "limit": 0, "used": 0, "error": "premium_only"}
+        return {
+            "can_send": False,
+            "remaining": 0,
+            "limit": 0,
+            "used": 0,
+            "error": "premium_only",
+        }
 
-    monthly_limit = _get_message_config('limit_monthly_greeting', 5)
+    monthly_limit = _get_message_config("limit_monthly_greeting", 5)
     today = date.today().isoformat()
-    current_month = date.today().strftime('%Y-%m')
+    current_month = date.today().strftime("%Y-%m")
 
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute(
+            """
             INSERT INTO user_message_limits (user_id, date, greeting_count, greeting_month)
             VALUES (%s, %s, 1, %s)
             ON CONFLICT(user_id, date) DO UPDATE SET
@@ -132,7 +149,9 @@ def check_and_increment_greeting(user_id: str, is_premium: bool) -> Dict:
                 END,
                 greeting_month = %s
             RETURNING greeting_count
-        ''', (user_id, today, current_month, current_month, current_month))
+        """,
+            (user_id, today, current_month, current_month, current_month),
+        )
         row = c.fetchone()
         conn.commit()
 
@@ -161,16 +180,19 @@ def check_greeting_limit(user_id: str, is_premium: bool) -> Dict:
         return {"can_send": False, "remaining": 0, "limit": 0, "error": "premium_only"}
 
     # 從資料庫讀取限制配置
-    monthly_limit = _get_message_config('limit_monthly_greeting', 5)
-    current_month = date.today().strftime('%Y-%m')
+    monthly_limit = _get_message_config("limit_monthly_greeting", 5)
+    current_month = date.today().strftime("%Y-%m")
 
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute(
+            """
             SELECT greeting_count, greeting_month FROM user_message_limits
             WHERE user_id = %s AND date = %s
-        ''', (user_id, date.today().isoformat()))
+        """,
+            (user_id, date.today().isoformat()),
+        )
         row = c.fetchone()
 
         if row and row[1] == current_month:
@@ -184,7 +206,7 @@ def check_greeting_limit(user_id: str, is_premium: bool) -> Dict:
             "can_send": remaining > 0,
             "remaining": max(0, remaining),
             "limit": monthly_limit,
-            "used": current_count
+            "used": current_count,
         }
     finally:
         conn.close()
@@ -195,27 +217,34 @@ def increment_greeting_count(user_id: str) -> None:
     增加用戶的每月打招呼計數
     """
     today = date.today().isoformat()
-    current_month = date.today().strftime('%Y-%m')
+    current_month = date.today().strftime("%Y-%m")
 
     conn = get_connection()
     c = conn.cursor()
     try:
         # 檢查是否需要重置（新月份）
-        c.execute('''
+        c.execute(
+            """
             SELECT greeting_month FROM user_message_limits
             WHERE user_id = %s AND date = %s
-        ''', (user_id, today))
+        """,
+            (user_id, today),
+        )
         row = c.fetchone()
 
         if row and row[0] != current_month:
             # 新月份，重置計數
-            c.execute('''
+            c.execute(
+                """
                 UPDATE user_message_limits
                 SET greeting_count = 1, greeting_month = %s
                 WHERE user_id = %s AND date = %s
-            ''', (current_month, user_id, today))
+            """,
+                (current_month, user_id, today),
+            )
         else:
-            c.execute('''
+            c.execute(
+                """
                 INSERT INTO user_message_limits (user_id, date, greeting_count, greeting_month)
                 VALUES (%s, %s, 1, %s)
                 ON CONFLICT(user_id, date) DO UPDATE SET
@@ -224,7 +253,9 @@ def increment_greeting_count(user_id: str) -> None:
                         ELSE 1
                     END,
                     greeting_month = %s
-            ''', (user_id, today, current_month, current_month, current_month))
+            """,
+                (user_id, today, current_month, current_month, current_month),
+            )
 
         conn.commit()
     finally:

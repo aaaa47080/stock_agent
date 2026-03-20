@@ -1,21 +1,28 @@
 """
 通知 API 端點
 """
-from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconnect
-from typing import Optional
-from pydantic import BaseModel, Field
-import json
-import asyncio
-import os
 
+import asyncio
+import json
+import os
+from typing import Optional
+
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    WebSocket,
+    WebSocketDisconnect,
+)
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.deps import get_current_user, verify_token
+from api.utils import logger
 from core.orm.notifications_repo import notifications_repo
 from core.orm.repositories import user_repo
 from core.orm.session import get_async_session
-from api.utils import logger
-from api.deps import get_current_user, verify_token
-from fastapi import Depends
 
 router = APIRouter()
 
@@ -50,7 +57,10 @@ class NotificationConnectionManager:
                 logger.error("Failed to send notification to user %s: %s", user_id, e)
 
     def is_user_online(self, user_id: str) -> bool:
-        return user_id in self.active_connections and len(self.active_connections[user_id]) > 0
+        return (
+            user_id in self.active_connections
+            and len(self.active_connections[user_id]) > 0
+        )
 
 
 notification_manager = NotificationConnectionManager()
@@ -68,6 +78,7 @@ class CreateNotificationRequest(BaseModel):
 # API 端點
 # ============================================================================
 
+
 @router.get("/api/notifications")
 async def get_notifications_endpoint(
     limit: int = Query(50, ge=1, le=100),
@@ -79,11 +90,15 @@ async def get_notifications_endpoint(
     try:
         user_id = current_user["user_id"]
         notifications = await notifications_repo.get_notifications(
-            user_id=user_id, limit=limit, offset=offset,
-            unread_only=unread_only, session=session,
+            user_id=user_id,
+            limit=limit,
+            offset=offset,
+            unread_only=unread_only,
+            session=session,
         )
         unread_count = await notifications_repo.get_unread_count(
-            user_id, session=session,
+            user_id,
+            session=session,
         )
 
         return {
@@ -124,7 +139,9 @@ async def mark_as_read_endpoint(
     try:
         user_id = current_user["user_id"]
         success = await notifications_repo.mark_notification_as_read(
-            notification_id, user_id, session=session,
+            notification_id,
+            user_id,
+            session=session,
         )
         if not success:
             raise HTTPException(status_code=404, detail="通知不存在")
@@ -145,7 +162,11 @@ async def mark_all_as_read_endpoint(
     try:
         user_id = current_user["user_id"]
         count = await notifications_repo.mark_all_as_read(user_id, session=session)
-        return {"success": True, "message": f"已標記 {count} 則通知為已讀", "count": count}
+        return {
+            "success": True,
+            "message": f"已標記 {count} 則通知為已讀",
+            "count": count,
+        }
     except HTTPException:
         raise
     except Exception as e:
@@ -162,7 +183,9 @@ async def delete_notification_endpoint(
     try:
         user_id = current_user["user_id"]
         success = await notifications_repo.delete_notification(
-            notification_id, user_id, session=session,
+            notification_id,
+            user_id,
+            session=session,
         )
         if not success:
             raise HTTPException(status_code=404, detail="通知不存在")
@@ -179,6 +202,7 @@ async def delete_notification_endpoint(
 # WebSocket 端點
 # ============================================================================
 
+
 @router.websocket("/ws/notifications")
 async def notification_websocket(websocket: WebSocket):
     user_id = None
@@ -190,13 +214,17 @@ async def notification_websocket(websocket: WebSocket):
         auth_data = json.loads(auth_message)
 
         if auth_data.get("type") != "auth":
-            await websocket.send_json({"type": "error", "message": "Authentication required"})
+            await websocket.send_json(
+                {"type": "error", "message": "Authentication required"}
+            )
             await websocket.close(code=4001, reason="Authentication required")
             return
 
         token = auth_data.get("token") or auth_data.get("access_token")
         if not token:
-            await websocket.send_json({"type": "error", "message": "JWT Token required"})
+            await websocket.send_json(
+                {"type": "error", "message": "JWT Token required"}
+            )
             await websocket.close(code=4002, reason="JWT Token required")
             return
 
@@ -219,7 +247,8 @@ async def notification_websocket(websocket: WebSocket):
         if claimed_user_id and claimed_user_id != user_id:
             logger.warning(
                 "Notification WebSocket auth mismatch: Token user %s != Claimed %s",
-                user_id, claimed_user_id,
+                user_id,
+                claimed_user_id,
             )
             await websocket.send_json({"type": "error", "message": "User ID mismatch"})
             await websocket.close(code=4004, reason="User ID mismatch")
@@ -232,13 +261,17 @@ async def notification_websocket(websocket: WebSocket):
             return
 
         await notification_manager.connect(websocket, user_id)
-        logger.info("User %s authenticated successfully via notification WebSocket", user_id)
+        logger.info(
+            "User %s authenticated successfully via notification WebSocket", user_id
+        )
 
-        await websocket.send_json({
-            "type": "connected",
-            "message": "Connected to notification service",
-            "user_id": user_id,
-        })
+        await websocket.send_json(
+            {
+                "type": "connected",
+                "message": "Connected to notification service",
+                "user_id": user_id,
+            }
+        )
 
         while True:
             try:
@@ -263,7 +296,10 @@ async def notification_websocket(websocket: WebSocket):
 
 
 async def push_notification_to_user(user_id: str, notification: dict):
-    await notification_manager.send_to_user(user_id, {
-        "type": "notification",
-        "data": notification,
-    })
+    await notification_manager.send_to_user(
+        user_id,
+        {
+            "type": "notification",
+            "data": notification,
+        },
+    )

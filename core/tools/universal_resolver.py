@@ -6,6 +6,7 @@ Instead of only returning a flat market map, it also provides candidate
 scores so the caller can distinguish between resolved, ambiguous, and
 unresolved states without hardcoding specific symbols.
 """
+
 from __future__ import annotations
 
 import re
@@ -14,9 +15,29 @@ from typing import Dict, Optional
 from .tw_symbol_resolver import TWSymbolResolver
 
 _KNOWN_CRYPTO = {
-    "BTC", "ETH", "SOL", "BNB", "XRP", "DOGE", "ADA", "AVAX", "DOT",
-    "MATIC", "LINK", "UNI", "ATOM", "LTC", "ETC", "XLM", "ALGO", "VET",
-    "PI", "USDT", "USDC", "BUSD", "DAI",
+    "BTC",
+    "ETH",
+    "SOL",
+    "BNB",
+    "XRP",
+    "DOGE",
+    "ADA",
+    "AVAX",
+    "DOT",
+    "MATIC",
+    "LINK",
+    "UNI",
+    "ATOM",
+    "LTC",
+    "ETC",
+    "XLM",
+    "ALGO",
+    "VET",
+    "PI",
+    "USDT",
+    "USDC",
+    "BUSD",
+    "DAI",
 }
 
 _US_PATTERN = re.compile(r"^[A-Z]{1,5}$")
@@ -49,7 +70,9 @@ class UniversalSymbolResolver:
                 boosts[market] = 0.25
         return boosts
 
-    def _should_probe_tw_market(self, token: str, upper: str, boosts: Dict[str, float]) -> bool:
+    def _should_probe_tw_market(
+        self, token: str, upper: str, boosts: Dict[str, float]
+    ) -> bool:
         if _TW_CODE_PATTERN.match(token):
             return True
         if token.upper().endswith((".TW", ".TWO")):
@@ -60,7 +83,9 @@ class UniversalSymbolResolver:
             return True
         return False
 
-    def resolve_candidates(self, input_str: str, context_text: str = "") -> Dict[str, dict]:
+    def resolve_candidates(
+        self, input_str: str, context_text: str = ""
+    ) -> Dict[str, dict]:
         """Return scored candidates for each market."""
         s = input_str.strip()
         upper = s.upper()
@@ -93,7 +118,9 @@ class UniversalSymbolResolver:
                 if isinstance(fuzzy_score, (int, float)):
                     # Let stronger fuzzy matches win when context also points to TW,
                     # without hardcoding any specific symbol or market alias.
-                    base_score += max(0.0, min(0.15, (float(fuzzy_score) - 80.0) / 100.0))
+                    base_score += max(
+                        0.0, min(0.15, (float(fuzzy_score) - 80.0) / 100.0)
+                    )
 
             candidates["tw"] = {
                 "symbol": tw_match["ticker"],
@@ -120,7 +147,9 @@ class UniversalSymbolResolver:
 
         return candidates
 
-    def resolve_with_context(self, input_str: str, context_text: str = "") -> Dict[str, object]:
+    def resolve_with_context(
+        self, input_str: str, context_text: str = ""
+    ) -> Dict[str, object]:
         candidates = self.resolve_candidates(input_str, context_text=context_text)
         result = {"crypto": None, "tw": None, "us": None}
         for market, payload in candidates.items():

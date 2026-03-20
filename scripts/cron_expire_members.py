@@ -2,8 +2,11 @@
 定時任務：批量清理過期會員
 建議使用 cron 或 APScheduler 每天執行一次
 """
+
 from datetime import datetime
+
 from core.database.connection import get_connection
+
 
 def batch_expire_memberships():
     """
@@ -14,11 +17,11 @@ def batch_expire_memberships():
     c = conn.cursor()
     try:
         # 查詢過期會員數量
-        c.execute('''
+        c.execute("""
             SELECT COUNT(*) FROM users
             WHERE membership_tier = 'pro'
               AND membership_expires_at < NOW()
-        ''')
+        """)
         count_before = c.fetchone()[0]
 
         if count_before == 0:
@@ -26,13 +29,13 @@ def batch_expire_memberships():
             return
 
         # 批量更新過期會員
-        c.execute('''
+        c.execute("""
             UPDATE users
             SET membership_tier = 'free',
                 membership_expires_at = NULL
             WHERE membership_tier = 'pro'
               AND membership_expires_at < NOW()
-        ''')
+        """)
 
         affected = c.rowcount
         conn.commit()
@@ -40,7 +43,7 @@ def batch_expire_memberships():
         print(f"[Cron] 成功處理 {affected} 個過期會員 (預期: {count_before})")
 
         # 記錄日誌（可選：存入數據庫）
-        current_time = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        current_time = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
         print(f"[Cron] 執行時間: {current_time}")
 
         return affected

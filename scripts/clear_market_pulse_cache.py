@@ -6,6 +6,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.database.connection import get_connection
 
+
 def clear_market_pulse_cache():
     print("Connecting to PostgreSQL database...")
     try:
@@ -27,6 +28,7 @@ def clear_market_pulse_cache():
         conn.close()
     except Exception as e:
         print(f"❌ Error clearing cache: {e}")
+
 
 if __name__ == "__main__":
     clear_market_pulse_cache()

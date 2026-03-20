@@ -2,12 +2,12 @@
 市場情緒工具
 Fear & Greed Index, Trending Tokens, Futures Data, Current Time
 """
+
 import time
 from typing import Dict
-from langchain_core.tools import tool
+
 import httpx
-
-
+from langchain_core.tools import tool
 
 _COINGECKO_CACHE: Dict = {}
 
@@ -77,7 +77,9 @@ def get_trending_tokens() -> str:
 def get_futures_data(symbol: str) -> str:
     """獲取加密貨幣永續合約的資金費率 (Funding Rate)"""
     try:
-        base_symbol = symbol.upper().replace("USDT", "").replace("BUSD", "").replace("-", "")
+        base_symbol = (
+            symbol.upper().replace("USDT", "").replace("BUSD", "").replace("-", "")
+        )
         binance_symbol = f"{base_symbol}USDT"
 
         url = "https://fapi.binance.com/fapi/v1/premiumIndex"
@@ -108,13 +110,22 @@ def get_futures_data(symbol: str) -> str:
 def get_current_time_taipei() -> str:
     """獲取目前台灣/UTC+8的精準時間與日期"""
     from datetime import datetime
+
     import pytz
 
-    tz = pytz.timezone('Asia/Taipei')
+    tz = pytz.timezone("Asia/Taipei")
     now = datetime.now(tz)
 
     date_str = now.strftime("%Y年%m月%d日")
     time_str = now.strftime("%H:%M:%S")
-    weekday_str = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"][now.weekday()]
+    weekday_str = [
+        "星期一",
+        "星期二",
+        "星期三",
+        "星期四",
+        "星期五",
+        "星期六",
+        "星期日",
+    ][now.weekday()]
 
     return f"🕰️ 【當前系統時間 (UTC+8)】\n日期：{date_str} ({weekday_str})\n時間：{time_str}"

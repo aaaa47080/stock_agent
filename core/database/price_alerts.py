@@ -3,9 +3,10 @@ Price Alerts Database Module
 
 Manages user price alerts for Crypto, TW Stock, and US Stock markets.
 """
+
 import uuid
 from datetime import datetime, timezone
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 from .connection import get_connection
 
@@ -67,7 +68,9 @@ def create_alert(
     if market not in VALID_MARKETS:
         raise ValueError(f"Invalid market '{market}'. Must be one of {VALID_MARKETS}")
     if condition not in VALID_CONDITIONS:
-        raise ValueError(f"Invalid condition '{condition}'. Must be one of {VALID_CONDITIONS}")
+        raise ValueError(
+            f"Invalid condition '{condition}'. Must be one of {VALID_CONDITIONS}"
+        )
 
     alert_id = str(uuid.uuid4())
     created_at = datetime.now(timezone.utc).isoformat()
@@ -76,7 +79,9 @@ def create_alert(
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT COUNT(*) FROM price_alerts WHERE user_id = %s", (user_id,))
+            cur.execute(
+                "SELECT COUNT(*) FROM price_alerts WHERE user_id = %s", (user_id,)
+            )
             count = cur.fetchone()[0]
             if count >= max_alerts:
                 raise ValueError(
@@ -87,7 +92,16 @@ def create_alert(
                 INSERT INTO price_alerts (id, user_id, symbol, market, condition, target, repeat, triggered, created_at)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, 0, %s)
                 """,
-                (alert_id, user_id, symbol.upper(), market, condition, target, repeat_int, created_at),
+                (
+                    alert_id,
+                    user_id,
+                    symbol.upper(),
+                    market,
+                    condition,
+                    target,
+                    repeat_int,
+                    created_at,
+                ),
             )
             conn.commit()
     finally:
@@ -119,9 +133,15 @@ def get_user_alerts(user_id: str) -> List[Dict[str, Any]]:
             rows = cur.fetchall()
             return [
                 {
-                    "id": r[0], "user_id": r[1], "symbol": r[2],
-                    "market": r[3], "condition": r[4], "target": r[5],
-                    "repeat": r[6], "triggered": r[7], "created_at": r[8],
+                    "id": r[0],
+                    "user_id": r[1],
+                    "symbol": r[2],
+                    "market": r[3],
+                    "condition": r[4],
+                    "target": r[5],
+                    "repeat": r[6],
+                    "triggered": r[7],
+                    "created_at": r[8],
                 }
                 for r in rows
             ]
@@ -158,9 +178,15 @@ def get_active_alerts() -> List[Dict[str, Any]]:
             rows = cur.fetchall()
             return [
                 {
-                    "id": r[0], "user_id": r[1], "symbol": r[2],
-                    "market": r[3], "condition": r[4], "target": r[5],
-                    "repeat": r[6], "triggered": r[7], "created_at": r[8],
+                    "id": r[0],
+                    "user_id": r[1],
+                    "symbol": r[2],
+                    "market": r[3],
+                    "condition": r[4],
+                    "target": r[5],
+                    "repeat": r[6],
+                    "triggered": r[7],
+                    "created_at": r[8],
                 }
                 for r in rows
             ]
@@ -194,7 +220,9 @@ def count_user_alerts(user_id: str) -> int:
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT COUNT(*) FROM price_alerts WHERE user_id = %s", (user_id,))
+            cur.execute(
+                "SELECT COUNT(*) FROM price_alerts WHERE user_id = %s", (user_id,)
+            )
             return cur.fetchone()[0]
     finally:
         conn.close()

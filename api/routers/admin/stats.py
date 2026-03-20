@@ -2,20 +2,20 @@
 Admin Statistics Dashboard
 Overview and trend statistics endpoints
 """
-from api.utils import run_sync
+
 from fastapi import APIRouter, Depends, Query
 
 from api.deps import require_admin
+from api.utils import run_sync
 from core.database.connection import get_connection
 
 router = APIRouter(tags=["Admin - Stats"])
 
 
 @router.get("/stats/overview")
-async def admin_stats_overview(
-    admin_user: dict = Depends(require_admin)
-):
+async def admin_stats_overview(admin_user: dict = Depends(require_admin)):
     """概覽統計數據"""
+
     def _query():
         conn = get_connection()
         try:
@@ -24,20 +24,28 @@ async def admin_stats_overview(
                 c.execute("SELECT COUNT(*) FROM users")
                 stats["total_users"] = c.fetchone()[0]
 
-                c.execute("SELECT COUNT(*) FROM users WHERE DATE(created_at) = CURRENT_DATE")
+                c.execute(
+                    "SELECT COUNT(*) FROM users WHERE DATE(created_at) = CURRENT_DATE"
+                )
                 stats["new_users_today"] = c.fetchone()[0]
 
-                c.execute("SELECT COUNT(*) FROM users WHERE last_active_at > NOW() - INTERVAL '24 hours'")
+                c.execute(
+                    "SELECT COUNT(*) FROM users WHERE last_active_at > NOW() - INTERVAL '24 hours'"
+                )
                 stats["active_today"] = c.fetchone()[0]
 
-                c.execute("SELECT COUNT(*) FROM users WHERE membership_tier IN ('pro', 'premium') AND (membership_expires_at IS NULL OR membership_expires_at > NOW())")
+                c.execute(
+                    "SELECT COUNT(*) FROM users WHERE membership_tier IN ('pro', 'premium') AND (membership_expires_at IS NULL OR membership_expires_at > NOW())"
+                )
                 premium_users = c.fetchone()[0]
                 stats["premium_users"] = premium_users
 
                 c.execute("SELECT COUNT(*) FROM posts WHERE is_hidden = 0")
                 stats["total_posts"] = c.fetchone()[0]
 
-                c.execute("SELECT COUNT(*) FROM forum_comments WHERE is_hidden = 0 AND type = 'comment'")
+                c.execute(
+                    "SELECT COUNT(*) FROM forum_comments WHERE is_hidden = 0 AND type = 'comment'"
+                )
                 stats["total_comments"] = c.fetchone()[0]
 
                 c.execute("SELECT COALESCE(SUM(amount), 0), COUNT(*) FROM tips")
@@ -45,7 +53,9 @@ async def admin_stats_overview(
                 stats["total_tips_amount"] = float(row[0])
                 stats["total_tips_count"] = row[1]
 
-                c.execute("SELECT COUNT(*) FROM content_reports WHERE review_status = 'pending'")
+                c.execute(
+                    "SELECT COUNT(*) FROM content_reports WHERE review_status = 'pending'"
+                )
                 stats["pending_reports"] = c.fetchone()[0]
 
                 return stats
@@ -58,21 +68,24 @@ async def admin_stats_overview(
 
 @router.get("/stats/users")
 async def admin_stats_users(
-    days: int = Query(30, ge=7, le=90),
-    admin_user: dict = Depends(require_admin)
+    days: int = Query(30, ge=7, le=90), admin_user: dict = Depends(require_admin)
 ):
     """用戶增長趨勢"""
+
     def _query():
         conn = get_connection()
         try:
             with conn.cursor() as c:
-                c.execute("""
+                c.execute(
+                    """
                     SELECT DATE(created_at) as date, COUNT(*) as count
                     FROM users
                     WHERE created_at >= NOW() - INTERVAL %s
                     GROUP BY DATE(created_at)
                     ORDER BY date ASC
-                """, (f"{days} days",))
+                """,
+                    (f"{days} days",),
+                )
                 rows = c.fetchall()
                 return [{"date": r[0].isoformat(), "count": r[1]} for r in rows]
         finally:
@@ -84,31 +97,41 @@ async def admin_stats_users(
 
 @router.get("/stats/forum")
 async def admin_stats_forum(
-    days: int = Query(30, ge=7, le=90),
-    admin_user: dict = Depends(require_admin)
+    days: int = Query(30, ge=7, le=90), admin_user: dict = Depends(require_admin)
 ):
     """論壇活動趨勢"""
+
     def _query():
         conn = get_connection()
         try:
             with conn.cursor() as c:
-                c.execute("""
+                c.execute(
+                    """
                     SELECT DATE(created_at) as date, COUNT(*) as count
                     FROM posts
                     WHERE created_at >= NOW() - INTERVAL %s
                     GROUP BY DATE(created_at)
                     ORDER BY date ASC
-                """, (f"{days} days",))
-                posts = [{"date": r[0].isoformat(), "count": r[1]} for r in c.fetchall()]
+                """,
+                    (f"{days} days",),
+                )
+                posts = [
+                    {"date": r[0].isoformat(), "count": r[1]} for r in c.fetchall()
+                ]
 
-                c.execute("""
+                c.execute(
+                    """
                     SELECT DATE(created_at) as date, COUNT(*) as count
                     FROM forum_comments
                     WHERE created_at >= NOW() - INTERVAL %s AND type = 'comment'
                     GROUP BY DATE(created_at)
                     ORDER BY date ASC
-                """, (f"{days} days",))
-                comments = [{"date": r[0].isoformat(), "count": r[1]} for r in c.fetchall()]
+                """,
+                    (f"{days} days",),
+                )
+                comments = [
+                    {"date": r[0].isoformat(), "count": r[1]} for r in c.fetchall()
+                ]
 
                 return {"posts": posts, "comments": comments}
         finally:
@@ -120,27 +143,33 @@ async def admin_stats_forum(
 
 @router.get("/stats/revenue")
 async def admin_stats_revenue(
-    days: int = Query(30, ge=7, le=90),
-    admin_user: dict = Depends(require_admin)
+    days: int = Query(30, ge=7, le=90), admin_user: dict = Depends(require_admin)
 ):
     """收入趨勢"""
+
     def _query():
         conn = get_connection()
         try:
             with conn.cursor() as c:
-                c.execute("""
+                c.execute(
+                    """
                     SELECT DATE(created_at) as date, SUM(amount) as total, COUNT(*) as count
                     FROM membership_payments
                     WHERE created_at >= NOW() - INTERVAL %s
                     GROUP BY DATE(created_at)
                     ORDER BY date ASC
-                """, (f"{days} days",))
+                """,
+                    (f"{days} days",),
+                )
                 rows = c.fetchall()
-                return [{
-                    "date": r[0].isoformat(),
-                    "total_pi": float(r[1]),
-                    "payment_count": r[2]
-                } for r in rows]
+                return [
+                    {
+                        "date": r[0].isoformat(),
+                        "total_pi": float(r[1]),
+                        "payment_count": r[2],
+                    }
+                    for r in rows
+                ]
         finally:
             conn.close()
 

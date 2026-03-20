@@ -1,15 +1,17 @@
 """
 Tests for messages router in api/routers/messages.py
 """
+
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import MagicMock, AsyncMock
 from fastapi import WebSocket
 
 from api.routers.messages import (
-    router,
-    SendMessageRequest,
     MarkReadRequest,
-    MessageConnectionManager
+    MessageConnectionManager,
+    SendMessageRequest,
+    router,
 )
 
 

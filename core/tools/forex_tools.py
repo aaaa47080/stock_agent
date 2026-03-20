@@ -12,19 +12,19 @@ Forex Tools - 外匯數據工具
 - GBP/USD 英鎊/美元
 - USD/CNY 美元/人民幣
 """
-from langchain_core.tools import tool
 
+from langchain_core.tools import tool
 
 # 主要貨幣對代碼
 CURRENCY_PAIRS = {
-    "USD_TWD": "TWD=X",   # 美元/台幣
-    "USD_JPY": "JPY=X",   # 美元/日圓
-    "EUR_USD": "EURUSD=X", # 歐元/美元
-    "GBP_USD": "GBPUSD=X", # 英鎊/美元
-    "USD_CNY": "CNY=X",   # 美元/人民幣
-    "USD_KRW": "KRW=X",   # 美元/韓元
-    "AUD_USD": "AUDUSD=X", # 澳幣/美元
-    "USD_SGD": "SGD=X",   # 美元/新加坡幣
+    "USD_TWD": "TWD=X",  # 美元/台幣
+    "USD_JPY": "JPY=X",  # 美元/日圓
+    "EUR_USD": "EURUSD=X",  # 歐元/美元
+    "GBP_USD": "GBPUSD=X",  # 英鎊/美元
+    "USD_CNY": "CNY=X",  # 美元/人民幣
+    "USD_KRW": "KRW=X",  # 美元/韓元
+    "AUD_USD": "AUDUSD=X",  # 澳幣/美元
+    "USD_SGD": "SGD=X",  # 美元/新加坡幣
 }
 
 CURRENCY_NAMES = {
@@ -124,11 +124,7 @@ def get_all_forex_rates() -> dict:
         except Exception:
             results[pair_name] = {"error": "無法取得數據"}
 
-    return {
-        "forex_rates": results,
-        "source": "yfinance",
-        "note": "匯率可能有輕微延遲"
-    }
+    return {"forex_rates": results, "source": "yfinance", "note": "匯率可能有輕微延遲"}
 
 
 @tool
@@ -183,7 +179,7 @@ def get_central_bank_rates() -> dict:
         return {
             "error": "此功能需要 FRED_API_KEY。",
             "hint": "請在 .env 文件中設置 FRED_API_KEY=your_key",
-            "alternative": "您可以使用 web_search 工具搜索 'Federal Reserve interest rate' 獲取最新利率資訊"
+            "alternative": "您可以使用 web_search 工具搜索 'Federal Reserve interest rate' 獲取最新利率資訊",
         }
 
     try:
@@ -203,19 +199,16 @@ def get_central_bank_rates() -> dict:
                 results["美國 Fed"] = {
                     "rate": f"{float(latest.get('value', 0)):.2f}%",
                     "date": latest.get("date", ""),
-                    "note": "聯邦基金利率目標區間上限"
+                    "note": "聯邦基金利率目標區間上限",
                 }
 
         # 其他央行利率（這些需要其他 API 或數據源）
         results["說明"] = {
             "note": "ECB、BOJ、台灣央行利率需要其他數據源",
-            "suggestion": "請使用 web_search 工具查詢"
+            "suggestion": "請使用 web_search 工具查詢",
         }
 
-        return {
-            "central_bank_rates": results,
-            "source": "FRED API"
-        }
+        return {"central_bank_rates": results, "source": "FRED API"}
 
     except Exception as e:
         return {"error": f"獲取央行利率失敗: {str(e)}"}

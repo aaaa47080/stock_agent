@@ -1,15 +1,16 @@
 """
 Tests for governance router in api/routers/governance.py
 """
+
 import pytest
 
 from api.routers.governance import (
-    router,
-    PRO_DAILY_REPORT_LIMIT,
+    CONSENSUS_APPROVE_THRESHOLD,
+    CONSENSUS_REJECT_THRESHOLD,
     DEFAULT_DAILY_REPORT_LIMIT,
     MIN_VOTES_REQUIRED,
-    CONSENSUS_APPROVE_THRESHOLD,
-    CONSENSUS_REJECT_THRESHOLD
+    PRO_DAILY_REPORT_LIMIT,
+    router,
 )
 
 

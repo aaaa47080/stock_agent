@@ -4,41 +4,92 @@
 執行方式:
     python tests/test_automated_10questions.py
 """
+
+import asyncio
+import json
 import os
 import sys
-import asyncio
 import time
-import json
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 from utils.settings import Settings  # noqa: E402
 
-RESULTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "test_results")
+RESULTS_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "test_results"
+)
 
 # 10 個測試題目（由簡到難）
 TEST_QUESTIONS = [
     # 🟢 Level 1: 基礎價格查詢
-    {"id": "1.1", "level": "簡單", "query": "BTC 價格", "expected": "回傳 BTC 當前價格數值"},
-    {"id": "1.2", "level": "簡單", "query": "台積電股價", "expected": "識別「台積電」=「2330」並回傳價格"},
-    {"id": "1.3", "level": "簡單", "query": "TSLA 價格", "expected": "回傳 TSLA 當前價格"},
-
+    {
+        "id": "1.1",
+        "level": "簡單",
+        "query": "BTC 價格",
+        "expected": "回傳 BTC 當前價格數值",
+    },
+    {
+        "id": "1.2",
+        "level": "簡單",
+        "query": "台積電股價",
+        "expected": "識別「台積電」=「2330」並回傳價格",
+    },
+    {
+        "id": "1.3",
+        "level": "簡單",
+        "query": "TSLA 價格",
+        "expected": "回傳 TSLA 當前價格",
+    },
     # 🟡 Level 2: 單一市場分析
-    {"id": "2.1", "level": "中等", "query": "ETH 技術分析", "expected": "包含 RSI、MACD 等技術指標"},
-    {"id": "2.2", "level": "中等", "query": "鴻海的本益比和 EPS", "expected": "識別「鴻海」=「2317」並回傳數據"},
-    {"id": "2.3", "level": "中等", "query": "比特幣最新新聞", "expected": "回傳近期相關新聞"},
-
+    {
+        "id": "2.1",
+        "level": "中等",
+        "query": "ETH 技術分析",
+        "expected": "包含 RSI、MACD 等技術指標",
+    },
+    {
+        "id": "2.2",
+        "level": "中等",
+        "query": "鴻海的本益比和 EPS",
+        "expected": "識別「鴻海」=「2317」並回傳數據",
+    },
+    {
+        "id": "2.3",
+        "level": "中等",
+        "query": "比特幣最新新聞",
+        "expected": "回傳近期相關新聞",
+    },
     # 🟠 Level 3: 多市場與上下文
-    {"id": "3.1", "level": "困難", "query": "台積電 ADR 和台股的價差", "expected": "同時查詢 TSM 和 2330 並比較"},
-    {"id": "3.2", "level": "困難", "query": "黃金價格", "expected": "識別為大宗商品並回傳價格"},
-
+    {
+        "id": "3.1",
+        "level": "困難",
+        "query": "台積電 ADR 和台股的價差",
+        "expected": "同時查詢 TSM 和 2330 並比較",
+    },
+    {
+        "id": "3.2",
+        "level": "困難",
+        "query": "黃金價格",
+        "expected": "識別為大宗商品並回傳價格",
+    },
     # 🔴 Level 4: 複雜綜合分析
-    {"id": "4.1", "level": "專家", "query": "我想投資輝達，給我完整分析", "expected": "多維度分析（技術面、基本面、新聞）"},
-    {"id": "4.2", "level": "專家", "query": "現在加密貨幣市場整體情緒如何？", "expected": "包含恐慌貪婪指數和市場分析"},
+    {
+        "id": "4.1",
+        "level": "專家",
+        "query": "我想投資輝達，給我完整分析",
+        "expected": "多維度分析（技術面、基本面、新聞）",
+    },
+    {
+        "id": "4.2",
+        "level": "專家",
+        "query": "現在加密貨幣市場整體情緒如何？",
+        "expected": "包含恐慌貪婪指數和市場分析",
+    },
 ]
 
 
@@ -64,7 +115,19 @@ class AutomatedTestSession:
         start_time = time.time()
 
         # 判斷是否為確認詞
-        confirm_keywords = ["好", "確認", "執行", "同意", "可以", "ok", "OK", "Yes", "yes", "開始", "請執行"]
+        confirm_keywords = [
+            "好",
+            "確認",
+            "執行",
+            "同意",
+            "可以",
+            "ok",
+            "OK",
+            "Yes",
+            "yes",
+            "開始",
+            "請執行",
+        ]
         is_confirm_message = any(kw in message for kw in confirm_keywords)
 
         if is_resume and self.pending_hitl and is_confirm_message:
@@ -122,7 +185,7 @@ class AutomatedTestSession:
             "conversation": self.conversation_log,
         }
 
-        with open(filepath, 'w', encoding='utf-8') as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             json.dump(result, f, ensure_ascii=False, indent=2)
 
         print(f"\n💾 測試結果已儲存: {filepath}")
@@ -148,13 +211,14 @@ def evaluate_response(test_case: dict, response: str, mode: str) -> dict:
             "actual": response,
             "score": 0,
             "notes": "無回應",
-            "issues": ["no_response"]
+            "issues": ["no_response"],
         }
 
     # 檢查是否包含數值（針對價格類問題）
     if any(kw in query for kw in ["價格", "多少錢", "股價"]):
         import re
-        has_number = bool(re.search(r'\$?[\d,]+\.?\d*', response))
+
+        has_number = bool(re.search(r"\$?[\d,]+\.?\d*", response))
         if has_number:
             score += 3
             notes.append("✓ 包含價格數值")
@@ -164,7 +228,9 @@ def evaluate_response(test_case: dict, response: str, mode: str) -> dict:
     # 檢查技術指標（針對技術分析問題）
     if "技術" in query:
         tech_indicators = ["RSI", "MACD", "MA", "均線", "KD", "布林"]
-        found_indicators = [ind for ind in tech_indicators if ind in response.upper() or ind in response]
+        found_indicators = [
+            ind for ind in tech_indicators if ind in response.upper() or ind in response
+        ]
         if len(found_indicators) >= 2:
             score += 4
             notes.append(f"✓ 包含技術指標: {', '.join(found_indicators)}")
@@ -247,7 +313,7 @@ def evaluate_response(test_case: dict, response: str, mode: str) -> dict:
         "mode": mode,
         "score": score,
         "notes": " | ".join(notes) if notes else "基本通過",
-        "issues": issues if issues else []
+        "issues": issues if issues else [],
     }
 
 
@@ -277,46 +343,46 @@ async def run_automated_tests():
     print("🔧 初始化 ManagerAgent...")
     manager = bootstrap(llm, web_mode=False, language="zh-TW")
 
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("🎯 開始自動化測試 - 10 題（由簡到難）")
-    print("="*70)
+    print("=" * 70)
 
     session = AutomatedTestSession(manager, f"auto_test_{int(time.time())}")
     test_results = []
 
     for i, test_case in enumerate(TEST_QUESTIONS, 1):
-        print(f"\n{'─'*70}")
+        print(f"\n{'─' * 70}")
         print(f"[Test {test_case['id']}] {test_case['level']} - 第 {i}/10 題")
         print(f"問題: {test_case['query']}")
         print(f"預期: {test_case['expected']}")
-        print(f"{'─'*70}")
+        print(f"{'─' * 70}")
 
         try:
             # 發送問題
             is_resume = session.pending_hitl is not None
-            result = await session.send(test_case['query'], is_resume=is_resume)
+            result = await session.send(test_case["query"], is_resume=is_resume)
 
             # 如果有 HITL，自動確認
-            if result.get('hitl'):
+            if result.get("hitl"):
                 print("\n⏳ 系統規劃了任務，自動確認執行...")
                 confirm_result = await session.send("好", is_resume=True)
                 result = confirm_result
 
-            response = result['assistant']
-            mode = result['mode']
+            response = result["assistant"]
+            mode = result["mode"]
 
             # 評估結果
             evaluation = evaluate_response(test_case, response, mode)
             test_results.append(evaluation)
 
             # 顯示結果
-            score = evaluation['score']
+            score = evaluation["score"]
             score_emoji = "✅" if score >= 8 else "⚠️" if score >= 6 else "❌"
             print(f"\n{score_emoji} 得分: {score}/10")
             print(f"模式: {mode}")
             print(f"評語: {evaluation['notes']}")
 
-            if evaluation['issues']:
+            if evaluation["issues"]:
                 print(f"問題: {', '.join(evaluation['issues'])}")
 
             print("\n回應預覽:")
@@ -328,23 +394,26 @@ async def run_automated_tests():
         except Exception as e:
             print(f"\n❌ 測試失敗: {e}")
             import traceback
+
             traceback.print_exc()
-            test_results.append({
-                "test_id": test_case['id'],
-                "query": test_case['query'],
-                "expected": test_case['expected'],
-                "actual": f"ERROR: {str(e)}",
-                "score": 0,
-                "notes": "測試執行失敗",
-                "issues": ["execution_error"]
-            })
+            test_results.append(
+                {
+                    "test_id": test_case["id"],
+                    "query": test_case["query"],
+                    "expected": test_case["expected"],
+                    "actual": f"ERROR: {str(e)}",
+                    "score": 0,
+                    "notes": "測試執行失敗",
+                    "issues": ["execution_error"],
+                }
+            )
 
     # 計算總分
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("📊 測試結果總結")
-    print("="*70)
+    print("=" * 70)
 
-    total_score = sum(r['score'] for r in test_results)
+    total_score = sum(r["score"] for r in test_results)
     max_score = len(test_results) * 10
     percentage = (total_score / max_score) * 100
 
@@ -371,22 +440,22 @@ async def run_automated_tests():
     # 各等級統計
     level_stats = {}
     for result in test_results:
-        level = result.get('level', '未知')
+        level = result.get("level", "未知")
         if level not in level_stats:
-            level_stats[level] = {'total': 0, 'score': 0, 'passed': 0}
-        level_stats[level]['total'] += 1
-        level_stats[level]['score'] += result['score']
-        if result['score'] >= 6:
-            level_stats[level]['passed'] += 1
+            level_stats[level] = {"total": 0, "score": 0, "passed": 0}
+        level_stats[level]["total"] += 1
+        level_stats[level]["score"] += result["score"]
+        if result["score"] >= 6:
+            level_stats[level]["passed"] += 1
 
     print("\n各等級表現:")
     for level, stats in level_stats.items():
-        avg = stats['score'] / stats['total']
-        pass_rate = (stats['passed'] / stats['total']) * 100
+        avg = stats["score"] / stats["total"]
+        pass_rate = (stats["passed"] / stats["total"]) * 100
         print(f"  {level}: 平均 {avg:.1f}/10, 通過率 {pass_rate:.0f}%")
 
     # 失敗的測試
-    failed_tests = [r for r in test_results if r['score'] < 6]
+    failed_tests = [r for r in test_results if r["score"] < 6]
     if failed_tests:
         print(f"\n❌ 失敗的測試 ({len(failed_tests)} 題):")
         for test in failed_tests:

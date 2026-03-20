@@ -22,15 +22,17 @@ class DummyAgent(BaseReActAgent):
 
 class DummyToolRegistry:
     def list_for_agent(self, _agent_name):
-        return [ToolMetadata(
-            name="get_crypto_price",
-            description="獲取加密貨幣即時價格",
-            input_schema={"symbol": "str"},
-            handler=FakePriceTool(),
-            allowed_agents=["crypto"],
-            role="market_lookup",
-            priority=100,
-        )]
+        return [
+            ToolMetadata(
+                name="get_crypto_price",
+                description="獲取加密貨幣即時價格",
+                input_schema={"symbol": "str"},
+                handler=FakePriceTool(),
+                allowed_agents=["crypto"],
+                role="market_lookup",
+                priority=100,
+            )
+        ]
 
 
 def test_execute_forces_tool_before_llm_when_tool_required():

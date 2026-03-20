@@ -1,27 +1,30 @@
 """
 文章相關 API
 """
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from typing import Optional
-from api.utils import run_sync
+
 import logging
 import time
+from typing import Optional
 
-from core.database import (
-    get_board_by_slug,
-    create_post,
-    get_posts,
-    get_post_by_id,
-    update_post,
-    delete_post,
-    get_user_membership,
-    check_daily_post_limit,
-    get_prices,
-)
-from .models import CreatePostRequest, UpdatePostRequest
-from core.config import TEST_MODE, TEST_USER
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+
 from api.deps import get_current_user
 from api.middleware.rate_limit import limiter
+from api.utils import run_sync
+from core.config import TEST_MODE, TEST_USER
+from core.database import (
+    check_daily_post_limit,
+    create_post,
+    delete_post,
+    get_board_by_slug,
+    get_post_by_id,
+    get_posts,
+    get_prices,
+    get_user_membership,
+    update_post,
+)
+
+from .models import CreatePostRequest, UpdatePostRequest
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +59,15 @@ async def list_posts(
                 raise HTTPException(status_code=404, detail="看板不存在")
             board_id = board_info["id"]
 
-        posts = await run_sync(lambda: get_posts(board_id=board_id, category=category, tag=tag, limit=limit, offset=offset))
+        posts = await run_sync(
+            lambda: get_posts(
+                board_id=board_id,
+                category=category,
+                tag=tag,
+                limit=limit,
+                offset=offset,
+            )
+        )
         return {"success": True, "posts": posts, "count": len(posts)}
     except HTTPException:
         raise
@@ -66,7 +77,11 @@ async def list_posts(
 
 @router.post("")
 @limiter.limit("20/minute")
-async def create_new_post(request: Request, body: CreatePostRequest, current_user: dict = Depends(get_current_user)):
+async def create_new_post(
+    request: Request,
+    body: CreatePostRequest,
+    current_user: dict = Depends(get_current_user),
+):
     """
     發表新文章
 
@@ -81,7 +96,7 @@ async def create_new_post(request: Request, body: CreatePostRequest, current_use
         if body.category not in VALID_CATEGORIES:
             raise HTTPException(
                 status_code=400,
-                detail=f"無效的分類，可選: {', '.join(VALID_CATEGORIES)}"
+                detail=f"無效的分類，可選: {', '.join(VALID_CATEGORIES)}",
             )
 
         # 驗證看板
@@ -99,22 +114,26 @@ async def create_new_post(request: Request, body: CreatePostRequest, current_use
         if not limit_check["allowed"]:
             raise HTTPException(
                 status_code=429,
-                detail=f"已達每日發文上限 ({limit_check['limit']} 篇)，升級 Premium 會員可無限發文"
+                detail=f"已達每日發文上限 ({limit_check['limit']} 篇)，升級 Premium 會員可無限發文",
             )
 
         # 免費會員需要付費 (測試模式下跳過)
-        is_test_user = TEST_MODE and (user_id.startswith("test-user-") or user_id == TEST_USER.get("uid"))
+        is_test_user = TEST_MODE and (
+            user_id.startswith("test-user-") or user_id == TEST_USER.get("uid")
+        )
 
         if not membership["is_premium"] and not body.payment_tx_hash:
             if is_test_user:
                 # TEST_MODE: Mock payment for test users
                 body.payment_tx_hash = f"test_post_{int(time.time() * 1000)}"
-                logger.info(f"TEST_MODE: Bypassing payment requirement for user {user_id}")
+                logger.info(
+                    f"TEST_MODE: Bypassing payment requirement for user {user_id}"
+                )
             else:
                 prices = await run_sync(get_prices)
                 raise HTTPException(
                     status_code=402,
-                    detail=f"免費會員發文需支付 {prices.get('create_post', 1)} Pi，請提供 payment_tx_hash"
+                    detail=f"免費會員發文需支付 {prices.get('create_post', 1)} Pi，請提供 payment_tx_hash",
                 )
 
         # 創建文章（跳過限制檢查，因為上面已經檢查過了）
@@ -135,14 +154,16 @@ async def create_new_post(request: Request, body: CreatePostRequest, current_use
             if result.get("error") == "daily_post_limit_reached":
                 raise HTTPException(
                     status_code=429,
-                    detail=f"已達每日發文上限 ({result['limit']} 篇)，升級 Premium 會員可無限發文"
+                    detail=f"已達每日發文上限 ({result['limit']} 篇)，升級 Premium 會員可無限發文",
                 )
-            raise HTTPException(status_code=500, detail=result.get("error", "發表文章失敗"))
+            raise HTTPException(
+                status_code=500, detail=result.get("error", "發表文章失敗")
+            )
 
         return {
             "success": True,
             "message": "文章發表成功",
-            "post_id": result["post_id"]
+            "post_id": result["post_id"],
         }
     except HTTPException:
         raise
@@ -158,7 +179,9 @@ async def get_post_detail(post_id: int):
     會自動增加瀏覽數
     """
     try:
-        post = await run_sync(lambda: get_post_by_id(post_id, increment_view=True, viewer_user_id=None))
+        post = await run_sync(
+            lambda: get_post_by_id(post_id, increment_view=True, viewer_user_id=None)
+        )
         if not post:
             raise HTTPException(status_code=404, detail="文章不存在")
         if post["is_hidden"]:
@@ -175,7 +198,7 @@ async def get_post_detail(post_id: int):
 async def update_post_content(
     post_id: int,
     request: UpdatePostRequest,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     編輯文章（只有作者可以編輯）
@@ -187,7 +210,7 @@ async def update_post_content(
         if request.category and request.category not in VALID_CATEGORIES:
             raise HTTPException(
                 status_code=400,
-                detail=f"無效的分類，可選: {', '.join(VALID_CATEGORIES)}"
+                detail=f"無效的分類，可選: {', '.join(VALID_CATEGORIES)}",
             )
 
         success = await run_sync(
@@ -212,8 +235,7 @@ async def update_post_content(
 
 @router.delete("/{post_id}")
 async def delete_post_by_id(
-    post_id: int,
-    current_user: dict = Depends(get_current_user)
+    post_id: int, current_user: dict = Depends(get_current_user)
 ):
     """
     刪除文章（軟刪除，只有作者可以刪除）

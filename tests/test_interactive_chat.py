@@ -7,22 +7,26 @@
 使用方式:
     python tests/test_interactive_chat.py
 """
+
+import asyncio
+import json
 import os
 import sys
-import asyncio
 import time
-import json
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 from utils.settings import Settings  # noqa: E402
 
 # 測試結果目錄
-RESULTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "test_results")
+RESULTS_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "test_results"
+)
 
 
 class InteractiveChatSession:
@@ -81,14 +85,16 @@ class InteractiveChatSession:
             self.history.append(f"助手: {response[:300]}...")
 
         # 記錄對話
-        self.conversation_log.append({
-            "user": message,
-            "assistant": response,
-            "mode": result.get("execution_mode", "unknown"),
-            "hitl": hitl_data,
-            "duration": duration,
-            "is_resume": is_resume,
-        })
+        self.conversation_log.append(
+            {
+                "user": message,
+                "assistant": response,
+                "mode": result.get("execution_mode", "unknown"),
+                "hitl": hitl_data,
+                "duration": duration,
+                "is_resume": is_resume,
+            }
+        )
 
         return {
             "response": response,
@@ -103,10 +109,10 @@ class InteractiveChatSession:
         print("📋 對話記錄")
         print("=" * 60)
         for i, log in enumerate(self.conversation_log):
-            print(f"\n[第 {i+1} 輪]{'(resume)' if log.get('is_resume') else ''}")
+            print(f"\n[第 {i + 1} 輪]{'(resume)' if log.get('is_resume') else ''}")
             print(f"👤 使用者: {log['user']}")
             print(f"🔧 模式: {log['mode']}")
-            if log['hitl']:
+            if log["hitl"]:
                 print(f"📋 HITL: {log['hitl'].get('type', 'unknown')}")
             print(f"🤖 助手: {log['assistant'][:200]}...")
         print("=" * 60)
@@ -117,13 +123,18 @@ class InteractiveChatSession:
         filename = f"{scenario_name}_{timestamp}.json"
         filepath = os.path.join(RESULTS_DIR, filename)
 
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump({
-                "scenario": scenario_name,
-                "session_id": self.session_id,
-                "timestamp": timestamp,
-                "conversation": self.conversation_log,
-            }, f, ensure_ascii=False, indent=2)
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "scenario": scenario_name,
+                    "session_id": self.session_id,
+                    "timestamp": timestamp,
+                    "conversation": self.conversation_log,
+                },
+                f,
+                ensure_ascii=False,
+                indent=2,
+            )
 
         print(f"💾 結果已儲存: {filepath}")
         return filepath
@@ -147,8 +158,8 @@ async def simulate_crypto_investor(session: InteractiveChatSession):
     print(f"🤖 系統回應 ({result['mode']} 模式, {result['duration']:.1f}s):")
 
     # 檢查是否有 HITL 計劃確認
-    if result['hitl'] and result['hitl'].get('type') == 'confirm_plan':
-        plan = result['hitl'].get('plan', [])
+    if result["hitl"] and result["hitl"].get("type") == "confirm_plan":
+        plan = result["hitl"].get("plan", [])
         print(f"📋 系統提出計劃確認 ({len(plan)} 個任務):")
         for task in plan:
             print(f"   - {task.get('name', '未知')}")
@@ -179,7 +190,7 @@ async def simulate_us_stock_investor(session: InteractiveChatSession):
     print(f"   {result['response'][:400]}...")
 
     # 根據回應決定下一步
-    if "無法" in result['response'] or "抱歉" in result['response']:
+    if "無法" in result["response"] or "抱歉" in result["response"]:
         print("\n[第 2 輪] 好像無法取得數據，試試 TSLA...")
         result = await session.send("那 TSLA 特斯拉股價呢？")
     else:
@@ -190,8 +201,8 @@ async def simulate_us_stock_investor(session: InteractiveChatSession):
     print(f"   {result['response'][:400]}...")
 
     # 第 3 輪：處理 HITL
-    if result['hitl'] and result['hitl'].get('type') == 'confirm_plan':
-        plan = result['hitl'].get('plan', [])
+    if result["hitl"] and result["hitl"].get("type") == "confirm_plan":
+        plan = result["hitl"].get("plan", [])
         print(f"\n📋 系統提出計劃確認 ({len(plan)} 個任務)")
         print("\n[第 3 輪] 同意計劃...")
         result = await session.send("執行計劃", is_resume=True)
@@ -224,8 +235,8 @@ async def simulate_tw_stock_investor(session: InteractiveChatSession):
     print(f"🤖 系統回應 ({result['mode']} 模式, {result['duration']:.1f}s):")
 
     # 處理 HITL
-    if result['hitl'] and result['hitl'].get('type') == 'confirm_plan':
-        plan = result['hitl'].get('plan', [])
+    if result["hitl"] and result["hitl"].get("type") == "confirm_plan":
+        plan = result["hitl"].get("plan", [])
         print(f"📋 系統提出計劃確認 ({len(plan)} 個任務)")
 
         # 第 3 輪：根據計劃內容決定
@@ -259,8 +270,8 @@ async def simulate_investment_advisor(session: InteractiveChatSession):
     print(f"   {result['response'][:400]}...")
 
     # 檢查 HITL
-    if result['hitl'] and result['hitl'].get('type') == 'confirm_plan':
-        plan = result['hitl'].get('plan', [])
+    if result["hitl"] and result["hitl"].get("type") == "confirm_plan":
+        plan = result["hitl"].get("plan", [])
         print(f"\n📋 系統提出計劃確認 ({len(plan)} 個任務):")
         for task in plan:
             print(f"   - {task.get('name', '未知')} ({task.get('agent', '未知')})")
@@ -298,6 +309,7 @@ async def main():
 
     # 初始化
     from core.agents.bootstrap_v2 import bootstrap_v2  # noqa: E402
+
     from utils.user_client_factory import create_user_llm_client  # noqa: E402
 
     api_key = os.getenv("OPENAI_API_KEY") or os.getenv("OPENROUTER_API_KEY")

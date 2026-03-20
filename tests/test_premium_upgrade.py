@@ -1,16 +1,18 @@
 """Tests for premium membership upgrade endpoint."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from api.routers.premium import UpgradeRequest
+import pytest
 from slowapi.errors import RateLimitExceeded
+
 from api.middleware.rate_limit import limiter, rate_limit_exceeded_handler
+from api.routers.premium import UpgradeRequest
 
 
 def _create_test_app():
     """Create a FastAPI test app with limiter configured."""
     from fastapi import FastAPI
+
     app = FastAPI()
     app.state.limiter = limiter
     app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
@@ -31,9 +33,9 @@ def _make_app_with_deps(premium_router):
     app = FastAPI()
     app.include_router(premium_router)
 
-    app.dependency_overrides[
-        premium_router.dependencies[0].dependency
-    ] = lambda: {"user_id": "test-user-1"}
+    app.dependency_overrides[premium_router.dependencies[0].dependency] = lambda: {
+        "user_id": "test-user-1"
+    }
 
     return app, TestClient(app)
 
@@ -122,8 +124,9 @@ class TestUpgradeEndpoint:
     """Tests for the /upgrade endpoint logic (inspect-based, no TestClient)."""
 
     def test_upgrade_endpoint_checks_missing_payment_id_in_production(self):
-        import api.routers.premium as pm
         import inspect
+
+        import api.routers.premium as pm
 
         source = inspect.getsource(pm.upgrade_to_premium)
         assert "payment_id" in source
@@ -131,16 +134,18 @@ class TestUpgradeEndpoint:
         assert "not TEST_MODE" in source or "if not TEST_MODE" in source
 
     def test_upgrade_endpoint_validates_plan(self):
-        import api.routers.premium as pm
         import inspect
+
+        import api.routers.premium as pm
 
         source = inspect.getsource(pm.upgrade_to_premium)
         assert "Invalid plan" in source
         assert "PLAN_MONTHS" in source
 
     def test_upgrade_endpoint_validates_amount_mismatch(self):
-        import api.routers.premium as pm
         import inspect
+
+        import api.routers.premium as pm
 
         source = inspect.getsource(pm.upgrade_to_premium)
         assert "mismatch" in source.lower()
@@ -151,10 +156,10 @@ class TestPricingEndpoint:
     """Tests for the /pricing endpoint."""
 
     def test_returns_pricing_data(self):
-        import api.routers.premium as pm
-
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
+
+        import api.routers.premium as pm
 
         app = FastAPI()
         app.include_router(pm.router)

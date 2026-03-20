@@ -7,17 +7,17 @@ Refactored to use DatabaseBase for unified CRUD operations.
 
 import json
 import logging
-from typing import List, Dict, Optional, Any
 from datetime import UTC, datetime
+from typing import Any, Dict, List, Optional
+
 from psycopg2 import sql
 
 from core.audit import AuditLogger
 
 from .base import DatabaseBase
 from .connection import get_connection
-from .user import get_user_membership
 from .system_config import get_limits
-
+from .user import get_user_membership
 
 logger = logging.getLogger(__name__)
 
@@ -711,7 +711,9 @@ def add_comment(
         conn.close()
 
 
-def get_comments(post_id: int, include_hidden: bool = False, limit: int = 50, offset: int = 0) -> List[Dict]:
+def get_comments(
+    post_id: int, include_hidden: bool = False, limit: int = 50, offset: int = 0
+) -> List[Dict]:
     """獲取文章的回覆列表"""
     conn = get_connection()
     c = conn.cursor()
@@ -1022,7 +1024,9 @@ def get_user_forum_stats(user_id: str) -> Dict:
         }
 
 
-def get_user_payment_history(user_id: str, limit: int = 50, offset: int = 0) -> List[Dict]:
+def get_user_payment_history(
+    user_id: str, limit: int = 50, offset: int = 0
+) -> List[Dict]:
     """獲取用戶的所有付款記錄（包含發文費和會員費）"""
     # 使用 UNION（自動去重）合併發文紀錄和會員購買紀錄
     # 避免同一個 tx_hash 出現兩次

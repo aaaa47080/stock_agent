@@ -1,12 +1,13 @@
 """
 標籤相關 API
 """
-from fastapi import APIRouter, HTTPException, Query
-from api.utils import run_sync
 
+from fastapi import APIRouter, HTTPException, Query
+
+from api.utils import run_sync
 from core.database import (
-    get_trending_tags,
     get_posts_by_tag,
+    get_trending_tags,
     search_tags,
 )
 
@@ -65,7 +66,9 @@ async def get_posts_with_tag(
     獲取指定標籤的文章列表
     """
     try:
-        posts = await run_sync(lambda: get_posts_by_tag(tag_name, limit=limit, offset=offset))
+        posts = await run_sync(
+            lambda: get_posts_by_tag(tag_name, limit=limit, offset=offset)
+        )
         return {
             "success": True,
             "tag": tag_name.upper(),

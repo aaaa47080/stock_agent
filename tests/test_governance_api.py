@@ -2,12 +2,14 @@
 Tests for governance API endpoints
 Note: These are unit tests for the API layer using mocked database layer.
 """
-import pytest
-import sys
+
 import os
+import sys
+
+import pytest
 
 # Add the project root to the path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
 class TestReportEndpoints:
@@ -22,7 +24,7 @@ class TestReportEndpoints:
             "content_type": "post",
             "content_id": 123,
             "report_type": "spam",
-            "description": "This is spam content"
+            "description": "This is spam content",
         }
         request = ReportCreateRequest(**valid_data)
         assert request.content_type == "post"
@@ -30,7 +32,9 @@ class TestReportEndpoints:
         assert request.report_type == "spam"
 
         # Test with minimal data
-        minimal = ReportCreateRequest(content_type="comment", content_id=456, report_type="harassment")
+        minimal = ReportCreateRequest(
+            content_type="comment", content_id=456, report_type="harassment"
+        )
         assert minimal.description is None
 
     def test_report_response_serialization(self):
@@ -45,7 +49,7 @@ class TestReportEndpoints:
             report_type="spam",
             description="Test spam",
             review_status="pending",
-            created_at="2026-02-08T12:00:00"
+            created_at="2026-02-08T12:00:00",
         )
         assert report.id == 1
         assert report.review_status == "pending"
@@ -77,7 +81,7 @@ class TestVotingEndpoints:
             total_votes=5,
             approve_count=4,
             reject_count=1,
-            approve_rate=0.8
+            approve_rate=0.8,
         )
         assert consensus.has_consensus is True
         assert consensus.decision == "approved"
@@ -96,7 +100,7 @@ class TestViolationEndpoints:
             points=15,
             total_violations=5,
             suspension_count=2,
-            last_violation_at="2026-02-01T12:00:00"
+            last_violation_at="2026-02-01T12:00:00",
         )
         assert violation.points == 15
         assert violation.user_id == "test-user"
@@ -115,7 +119,7 @@ class TestStatisticsEndpoints:
             approved_reports=60,
             rejected_reports=30,
             total_votes=200,
-            avg_approval_rate=0.75
+            avg_approval_rate=0.75,
         )
         assert stats.total_reports == 100
         assert stats.approved_reports == 60
@@ -136,7 +140,7 @@ class TestReputationEndpoints:
             correct_votes=17,
             accuracy_rate=0.85,
             reputation_score=145,
-            vote_weight=1.5
+            vote_weight=1.5,
         )
         assert reputation.total_reviews == 20
         assert reputation.accuracy_rate == 0.85
@@ -160,7 +164,7 @@ class TestActivityLogEndpoints:
             metadata={"report_type": "spam"},
             success=True,
             error_message=None,
-            created_at="2026-02-07T12:00:00"
+            created_at="2026-02-07T12:00:00",
         )
         assert log.activity_type == "report_submitted"
         assert log.success is True
@@ -194,7 +198,7 @@ class TestFinalizeEndpoints:
             approve_count=2,
             reject_count=2,
             approve_rate=0.5,
-            reason="no_clear_consensus"
+            reason="no_clear_consensus",
         )
         assert consensus.has_consensus is False
         assert consensus.reason == "no_clear_consensus"
@@ -215,7 +219,7 @@ class TestViolationRecordEndpoints:
             points=3,
             action_taken="warning",
             suspended_until=None,
-            created_at="2026-02-01T12:00:00"
+            created_at="2026-02-01T12:00:00",
         )
         assert record.points == 3
         assert record.action_taken == "warning"
@@ -232,7 +236,7 @@ class TestViolationRecordEndpoints:
             points=30,
             action_taken="suspend_30d",
             suspended_until="2026-03-01T12:00:00",
-            created_at="2026-02-01T12:00:00"
+            created_at="2026-02-01T12:00:00",
         )
         assert record.suspended_until == "2026-03-01T12:00:00"
 
@@ -258,7 +262,7 @@ class TestReportDetailEndpoints:
             reject_count=0,
             created_at="2026-02-08T12:00:00",
             updated_at=None,
-            votes=[]
+            votes=[],
         )
         assert detail.id == 1
         assert detail.approve_count == 3

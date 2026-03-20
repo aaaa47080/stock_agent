@@ -117,4 +117,3 @@ def sanitize_pair_symbols(symbols: Iterable[str]) -> List[str]:
             seen.add(normalized)
             cleaned.append(normalized)
     return cleaned
-

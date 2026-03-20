@@ -1,17 +1,18 @@
 """
 Premium 會員相關 API
 """
+
 import os
 from typing import Optional
 
 import httpx
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
-from core.database import get_user_membership, upgrade_to_pro
 from api.deps import get_current_user
-from api.utils import logger, run_sync
 from api.middleware.rate_limit import limiter
+from api.utils import logger, run_sync
+from core.database import get_user_membership, upgrade_to_pro
 
 router = APIRouter(prefix="/api/premium", tags=["Premium"])
 PLAN_MONTHS = {
@@ -100,6 +101,7 @@ async def _verify_pi_payment(payment_id: str) -> dict:
 @router.get("/pricing")
 async def get_pricing_plans():
     from core.config import PI_PAYMENT_PRICES
+
     return {
         "success": True,
         "pricing": {
@@ -111,7 +113,7 @@ async def get_pricing_plans():
         "pi_price_usd": 0.17,
         "savings": {
             "premium_yearly_save": 20.0,
-        }
+        },
     }
 
 
@@ -218,7 +220,9 @@ async def upgrade_to_premium(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error("Premium upgrade failed for user %s: %s", user_id, e)
-        raise HTTPException(status_code=500, detail="Upgrade failed, please try again later")
+        raise HTTPException(
+            status_code=500, detail="Upgrade failed, please try again later"
+        )
 
 
 @router.get("/status")

@@ -5,10 +5,10 @@ Email 服務模組
 
 import logging
 import os
-import ssl
 import smtplib
-from email.mime.text import MIMEText
+import ssl
 from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 logger = logging.getLogger(__name__)
 

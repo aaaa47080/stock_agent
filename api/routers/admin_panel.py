@@ -13,20 +13,20 @@
 
 # Re-export everything from the admin submodule for backward compatibility
 from api.routers.admin import (
-    router,
-    notifications_router,
-    users_router,
-    forum_router,
-    config_router,
-    stats_router,
     BroadcastRequest,
-    SetRoleRequest,
-    SetMembershipRequest,
-    SetStatusRequest,
-    PostVisibilityRequest,
     PostPinRequest,
+    PostVisibilityRequest,
     ResolveReportRequest,
+    SetMembershipRequest,
+    SetRoleRequest,
+    SetStatusRequest,
     UpdateConfigRequest,
+    config_router,
+    forum_router,
+    notifications_router,
+    router,
+    stats_router,
+    users_router,
 )
 
 __all__ = [

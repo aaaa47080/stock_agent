@@ -4,6 +4,7 @@ Agent V4 — US Stock Agent
 美股分析 Agent：使用 LangChain create_agent 實現 ReAct 循環。
 LLM 自動決定調用哪些工具、參數是什麼。
 """
+
 import logging
 
 from ..base_react_agent import BaseReActAgent

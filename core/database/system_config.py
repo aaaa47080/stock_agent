@@ -21,15 +21,16 @@
                                         Pub/Sub 失效通知
 """
 
-import logging
-import time
 import json
+import logging
 import threading
-from typing import Any, Dict, Optional, List
+import time
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
-from .connection import get_connection
 from core.redis_url import resolve_redis_url
+
+from .connection import get_connection
 
 # ============================================================================
 # Redis 支持（可選依賴）
@@ -37,6 +38,7 @@ from core.redis_url import resolve_redis_url
 
 try:
     import redis
+
     REDIS_AVAILABLE = True
 except ImportError:
     REDIS_AVAILABLE = False
@@ -46,14 +48,15 @@ except ImportError:
 # 配置常量
 # ============================================================================
 
-MEMORY_CACHE_TTL = 10      # 進程內快取 10 秒
-REDIS_CACHE_TTL = 300      # Redis 快取 5 分鐘
+MEMORY_CACHE_TTL = 10  # 進程內快取 10 秒
+REDIS_CACHE_TTL = 300  # Redis 快取 5 分鐘
 CONFIG_CHANNEL = "config:updates"  # Redis Pub/Sub 頻道
 REDIS_KEY_PREFIX = "config:"
 
 # ============================================================================
 # 多層快取管理器
 # ============================================================================
+
 
 class ConfigCacheManager:
     """
@@ -108,7 +111,9 @@ class ConfigCacheManager:
             self._start_pubsub_listener()
 
         except Exception as e:
-            logger.warning("Redis connection failed, falling back to in-memory cache: %s", e)
+            logger.warning(
+                "Redis connection failed, falling back to in-memory cache: %s", e
+            )
             self._redis_client = None
 
     def _start_pubsub_listener(self):
@@ -122,11 +127,13 @@ class ConfigCacheManager:
                 pubsub.subscribe(CONFIG_CHANNEL)
 
                 for message in pubsub.listen():
-                    if message['type'] == 'message':
+                    if message["type"] == "message":
                         # 收到失效通知，清除本地快取
                         self._memory_cache = {}
                         self._memory_timestamp = 0
-                        logger.info("Cache invalidation notification received, local cache cleared")
+                        logger.info(
+                            "Cache invalidation notification received, local cache cleared"
+                        )
             except Exception as e:
                 logger.error("Pub/Sub listener error: %s", e)
 
@@ -160,7 +167,9 @@ class ConfigCacheManager:
 
     def _is_memory_cache_valid(self) -> bool:
         """檢查進程內快取是否有效"""
-        return (time.time() - self._memory_timestamp) < MEMORY_CACHE_TTL and bool(self._memory_cache)
+        return (time.time() - self._memory_timestamp) < MEMORY_CACHE_TTL and bool(
+            self._memory_cache
+        )
 
     def _set_memory_cache(self, data: Dict[str, Any]):
         """設置進程內快取"""
@@ -189,9 +198,7 @@ class ConfigCacheManager:
 
         try:
             self._redis_client.setex(
-                f"{REDIS_KEY_PREFIX}all",
-                REDIS_CACHE_TTL,
-                json.dumps(data)
+                f"{REDIS_KEY_PREFIX}all", REDIS_CACHE_TTL, json.dumps(data)
             )
         except Exception as e:
             logger.warning("Redis write failed: %s", e)
@@ -203,7 +210,7 @@ class ConfigCacheManager:
         conn = get_connection()
         c = conn.cursor()
         try:
-            c.execute('SELECT key, value, value_type FROM system_config')
+            c.execute("SELECT key, value, value_type FROM system_config")
             rows = c.fetchall()
 
             result = {}
@@ -238,11 +245,12 @@ class ConfigCacheManager:
             self._redis_client.delete(f"{REDIS_KEY_PREFIX}all")
 
             # 發布失效通知（讓其他進程也失效）
-            self._redis_client.publish(CONFIG_CHANNEL, json.dumps({
-                "action": "invalidate",
-                "key": key,
-                "timestamp": time.time()
-            }))
+            self._redis_client.publish(
+                CONFIG_CHANNEL,
+                json.dumps(
+                    {"action": "invalidate", "key": key, "timestamp": time.time()}
+                ),
+            )
             logger.debug("Cache invalidation notification published")
 
         except Exception as e:
@@ -267,18 +275,19 @@ def _get_cache_manager() -> ConfigCacheManager:
 # 值解析工具
 # ============================================================================
 
+
 def _parse_value(value: str, value_type: str) -> Any:
     """根據類型解析配置值"""
-    if value == 'null' or value is None:
+    if value == "null" or value is None:
         return None
 
-    if value_type == 'int':
+    if value_type == "int":
         return int(value)
-    elif value_type == 'float':
+    elif value_type == "float":
         return float(value)
-    elif value_type == 'bool':
-        return value.lower() in ('true', '1', 'yes')
-    elif value_type == 'json':
+    elif value_type == "bool":
+        return value.lower() in ("true", "1", "yes")
+    elif value_type == "json":
         return json.loads(value)
     else:
         return value
@@ -287,10 +296,10 @@ def _parse_value(value: str, value_type: str) -> Any:
 def _serialize_value(value: Any) -> str:
     """序列化配置值為字串"""
     if value is None:
-        return 'null'
+        return "null"
 
     if isinstance(value, bool):
-        return 'true' if value else 'false'
+        return "true" if value else "false"
     elif isinstance(value, (dict, list)):
         return json.dumps(value)
     else:
@@ -300,21 +309,22 @@ def _serialize_value(value: Any) -> str:
 def _detect_value_type(value: Any) -> str:
     """自動檢測值類型"""
     if value is None:
-        return 'string'
+        return "string"
     if isinstance(value, bool):
-        return 'bool'
+        return "bool"
     if isinstance(value, int):
-        return 'int'
+        return "int"
     if isinstance(value, float):
-        return 'float'
+        return "float"
     if isinstance(value, (dict, list)):
-        return 'json'
-    return 'string'
+        return "json"
+    return "string"
 
 
 # ============================================================================
 # 向後兼容的快取函數
 # ============================================================================
+
 
 def invalidate_cache():
     """清除快取，強制下次讀取時重新載入（向後兼容）"""
@@ -335,6 +345,7 @@ def _is_cache_valid() -> bool:
 # 配置讀取
 # ============================================================================
 
+
 def get_config(key: str, default: Any = None) -> Any:
     """
     獲取單個配置值
@@ -350,7 +361,9 @@ def get_config(key: str, default: Any = None) -> Any:
     return all_configs.get(key, default)
 
 
-def get_all_configs(category: Optional[str] = None, public_only: bool = True) -> Dict[str, Any]:
+def get_all_configs(
+    category: Optional[str] = None, public_only: bool = True
+) -> Dict[str, Any]:
     """
     獲取所有配置
 
@@ -365,15 +378,15 @@ def get_all_configs(category: Optional[str] = None, public_only: bool = True) ->
     c = conn.cursor()
 
     try:
-        query = 'SELECT key, value, value_type FROM system_config WHERE 1=1'
+        query = "SELECT key, value, value_type FROM system_config WHERE 1=1"
         params = []
 
         if category:
-            query += ' AND category = %s'
+            query += " AND category = %s"
             params.append(category)
 
         if public_only:
-            query += ' AND is_public = 1'
+            query += " AND is_public = 1"
 
         c.execute(query, params)
         rows = c.fetchall()
@@ -393,9 +406,9 @@ def get_prices() -> Dict[str, float]:
     all_configs = _get_cache_manager().get_all()
 
     return {
-        'create_post': all_configs.get('price_create_post', 1.0),
-        'tip': all_configs.get('price_tip', 1.0),
-        'premium': all_configs.get('price_premium', 1.0),
+        "create_post": all_configs.get("price_create_post", 1.0),
+        "tip": all_configs.get("price_tip", 1.0),
+        "premium": all_configs.get("price_premium", 1.0),
     }
 
 
@@ -409,10 +422,14 @@ def get_limits() -> Dict[str, Optional[int]]:
     all_configs = _get_cache_manager().get_all()
 
     return {
-        'daily_post_free': all_configs.get('limit_daily_post_free', 3),
-        'daily_post_premium': all_configs.get('limit_daily_post_premium'),  # None = 無限
-        'daily_comment_free': all_configs.get('limit_daily_comment_free', 20),
-        'daily_comment_premium': all_configs.get('limit_daily_comment_premium'),  # None = 無限
+        "daily_post_free": all_configs.get("limit_daily_post_free", 3),
+        "daily_post_premium": all_configs.get(
+            "limit_daily_post_premium"
+        ),  # None = 無限
+        "daily_comment_free": all_configs.get("limit_daily_comment_free", 20),
+        "daily_comment_premium": all_configs.get(
+            "limit_daily_comment_premium"
+        ),  # None = 無限
     }
 
 
@@ -420,9 +437,16 @@ def get_limits() -> Dict[str, Optional[int]]:
 # 配置更新（帶審計日誌）
 # ============================================================================
 
-def set_config(key: str, value: Any, value_type: str = 'string',
-               category: str = 'general', description: str = '',
-               is_public: bool = True, changed_by: str = 'system') -> bool:
+
+def set_config(
+    key: str,
+    value: Any,
+    value_type: str = "string",
+    category: str = "general",
+    description: str = "",
+    is_public: bool = True,
+    changed_by: str = "system",
+) -> bool:
     """
     設置配置值（創建或更新，帶審計日誌）
 
@@ -443,17 +467,18 @@ def set_config(key: str, value: Any, value_type: str = 'string',
 
     try:
         # 獲取舊值（用於審計日誌）
-        c.execute('SELECT value FROM system_config WHERE key = %s', (key,))
+        c.execute("SELECT value FROM system_config WHERE key = %s", (key,))
         old_row = c.fetchone()
         old_value = old_row[0] if old_row else None
 
         # 自動檢測類型
-        if value_type == 'string' and value is not None:
+        if value_type == "string" and value is not None:
             value_type = _detect_value_type(value)
 
         serialized_value = _serialize_value(value)
 
-        c.execute('''
+        c.execute(
+            """
             INSERT INTO system_config (key, value, value_type, category, description, is_public, updated_at)
             VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
             ON CONFLICT(key) DO UPDATE SET
@@ -463,7 +488,9 @@ def set_config(key: str, value: Any, value_type: str = 'string',
                 description = EXCLUDED.description,
                 is_public = EXCLUDED.is_public,
                 updated_at = CURRENT_TIMESTAMP
-        ''', (key, serialized_value, value_type, category, description, int(is_public)))
+        """,
+            (key, serialized_value, value_type, category, description, int(is_public)),
+        )
 
         # 寫入審計日誌
         _write_audit_log(c, key, old_value, serialized_value, changed_by)
@@ -487,16 +514,19 @@ def set_config(key: str, value: Any, value_type: str = 'string',
 def _write_audit_log(cursor, key: str, old_value: Any, new_value: Any, changed_by: str):
     """寫入配置變更審計日誌"""
     try:
-        cursor.execute('''
+        cursor.execute(
+            """
             INSERT INTO config_audit_log (config_key, old_value, new_value, changed_by, changed_at)
             VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP)
-        ''', (key, old_value, new_value, changed_by))
+        """,
+            (key, old_value, new_value, changed_by),
+        )
     except Exception as e:
         # 審計表可能不存在，僅記錄警告
         logger.warning("Audit log write failed (table may not exist): %s", e)
 
 
-def update_price(key: str, value: float, changed_by: str = 'admin') -> bool:
+def update_price(key: str, value: float, changed_by: str = "admin") -> bool:
     """
     更新價格配置的便捷方法
 
@@ -508,11 +538,11 @@ def update_price(key: str, value: float, changed_by: str = 'admin') -> bool:
     Returns:
         是否成功
     """
-    config_key = f'price_{key}'
-    return set_config(config_key, value, 'float', 'pricing', changed_by=changed_by)
+    config_key = f"price_{key}"
+    return set_config(config_key, value, "float", "pricing", changed_by=changed_by)
 
 
-def update_limit(key: str, value: Optional[int], changed_by: str = 'admin') -> bool:
+def update_limit(key: str, value: Optional[int], changed_by: str = "admin") -> bool:
     """
     更新限制配置的便捷方法
 
@@ -524,13 +554,14 @@ def update_limit(key: str, value: Optional[int], changed_by: str = 'admin') -> b
     Returns:
         是否成功
     """
-    config_key = f'limit_{key}'
-    return set_config(config_key, value, 'int', 'limits', changed_by=changed_by)
+    config_key = f"limit_{key}"
+    return set_config(config_key, value, "int", "limits", changed_by=changed_by)
 
 
 # ============================================================================
 # 審計日誌查詢
 # ============================================================================
+
 
 def get_config_history(key: str, limit: int = 20) -> List[Dict]:
     """
@@ -546,21 +577,27 @@ def get_config_history(key: str, limit: int = 20) -> List[Dict]:
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute(
+            """
             SELECT old_value, new_value, changed_by, changed_at
             FROM config_audit_log
             WHERE config_key = %s
             ORDER BY changed_at DESC
             LIMIT %s
-        ''', (key, limit))
+        """,
+            (key, limit),
+        )
         rows = c.fetchall()
 
-        return [{
-            'old_value': row[0],
-            'new_value': row[1],
-            'changed_by': row[2],
-            'changed_at': row[3].isoformat() if row[3] else None,
-        } for row in rows]
+        return [
+            {
+                "old_value": row[0],
+                "new_value": row[1],
+                "changed_by": row[2],
+                "changed_at": row[3].isoformat() if row[3] else None,
+            }
+            for row in rows
+        ]
     except Exception as e:
         logger.warning("Audit log query failed: %s", e)
         return []
@@ -572,7 +609,8 @@ def get_config_history(key: str, limit: int = 20) -> List[Dict]:
 # 批量操作
 # ============================================================================
 
-def bulk_update_configs(configs: Dict[str, Any], changed_by: str = 'admin') -> bool:
+
+def bulk_update_configs(configs: Dict[str, Any], changed_by: str = "admin") -> bool:
     """
     批量更新配置
 
@@ -589,16 +627,19 @@ def bulk_update_configs(configs: Dict[str, Any], changed_by: str = 'admin') -> b
     try:
         for key, value in configs.items():
             # 獲取舊值
-            c.execute('SELECT value FROM system_config WHERE key = %s', (key,))
+            c.execute("SELECT value FROM system_config WHERE key = %s", (key,))
             old_row = c.fetchone()
             old_value = old_row[0] if old_row else None
 
             serialized_value = _serialize_value(value)
-            c.execute('''
+            c.execute(
+                """
                 UPDATE system_config
                 SET value = %s, updated_at = CURRENT_TIMESTAMP
                 WHERE key = %s
-            ''', (serialized_value, key))
+            """,
+                (serialized_value, key),
+            )
 
             # 寫入審計日誌
             _write_audit_log(c, key, old_value, serialized_value, changed_by)
@@ -625,23 +666,26 @@ def get_config_metadata(key: str) -> Optional[Dict]:
     c = conn.cursor()
 
     try:
-        c.execute('''
+        c.execute(
+            """
             SELECT key, value, value_type, category, description, is_public, created_at, updated_at
             FROM system_config WHERE key = %s
-        ''', (key,))
+        """,
+            (key,),
+        )
         row = c.fetchone()
 
         if row:
             return {
-                'key': row[0],
-                'value': _parse_value(row[1], row[2]),
-                'raw_value': row[1],
-                'value_type': row[2],
-                'category': row[3],
-                'description': row[4],
-                'is_public': bool(row[5]),
-                'created_at': row[6].isoformat() if row[6] else None,
-                'updated_at': row[7].isoformat() if row[7] else None,
+                "key": row[0],
+                "value": _parse_value(row[1], row[2]),
+                "raw_value": row[1],
+                "value_type": row[2],
+                "category": row[3],
+                "description": row[4],
+                "is_public": bool(row[5]),
+                "created_at": row[6].isoformat() if row[6] else None,
+                "updated_at": row[7].isoformat() if row[7] else None,
             }
         return None
     finally:
@@ -659,23 +703,26 @@ def list_all_configs_with_metadata() -> List[Dict]:
     c = conn.cursor()
 
     try:
-        c.execute('''
+        c.execute("""
             SELECT key, value, value_type, category, description, is_public, created_at, updated_at
             FROM system_config ORDER BY category, key
-        ''')
+        """)
         rows = c.fetchall()
 
-        return [{
-            'key': row[0],
-            'value': _parse_value(row[1], row[2]),
-            'raw_value': row[1],
-            'value_type': row[2],
-            'category': row[3],
-            'description': row[4],
-            'is_public': bool(row[5]),
-            'created_at': row[6].isoformat() if row[6] else None,
-            'updated_at': row[7].isoformat() if row[7] else None,
-        } for row in rows]
+        return [
+            {
+                "key": row[0],
+                "value": _parse_value(row[1], row[2]),
+                "raw_value": row[1],
+                "value_type": row[2],
+                "category": row[3],
+                "description": row[4],
+                "is_public": bool(row[5]),
+                "created_at": row[6].isoformat() if row[6] else None,
+                "updated_at": row[7].isoformat() if row[7] else None,
+            }
+            for row in rows
+        ]
     finally:
         conn.close()
 
@@ -684,12 +731,13 @@ def list_all_configs_with_metadata() -> List[Dict]:
 # 初始化審計表
 # ============================================================================
 
+
 def init_audit_table():
     """初始化審計日誌表（如果不存在）"""
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute("""
             CREATE TABLE IF NOT EXISTS config_audit_log (
                 id SERIAL PRIMARY KEY,
                 config_key TEXT NOT NULL,
@@ -698,9 +746,13 @@ def init_audit_table():
                 changed_by TEXT NOT NULL DEFAULT 'system',
                 changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        ''')
-        c.execute('CREATE INDEX IF NOT EXISTS idx_audit_key ON config_audit_log(config_key)')
-        c.execute('CREATE INDEX IF NOT EXISTS idx_audit_time ON config_audit_log(changed_at)')
+        """)
+        c.execute(
+            "CREATE INDEX IF NOT EXISTS idx_audit_key ON config_audit_log(config_key)"
+        )
+        c.execute(
+            "CREATE INDEX IF NOT EXISTS idx_audit_time ON config_audit_log(changed_at)"
+        )
         conn.commit()
         logger.info("Audit log table initialized")
     except Exception as e:

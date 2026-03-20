@@ -2,8 +2,9 @@
 分析報告資料庫操作
 儲存 V4 Agent 產生的分析報告，供前端歷史查詢使用。
 """
+
 import json
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional
 
 from .base import DatabaseBase
 
@@ -23,11 +24,11 @@ def save_analysis_report(
         新建的 report id，失敗時返回 None。
     """
     row = DatabaseBase.query_one(
-        '''
+        """
         INSERT INTO analysis_reports (session_id, user_id, symbol, interval, report_text, metadata)
         VALUES (%s, %s, %s, %s, %s, %s)
         RETURNING id
-        ''',
+        """,
         (
             session_id,
             user_id,
@@ -48,13 +49,13 @@ def get_analysis_reports(user_id: str, limit: int = 20) -> List[Dict]:
         報告清單，每筆含 id, session_id, symbol, interval, report_text, metadata, created_at。
     """
     rows = DatabaseBase.query_all(
-        '''
+        """
         SELECT id, session_id, symbol, interval, report_text, metadata, created_at
         FROM analysis_reports
         WHERE user_id = %s
         ORDER BY created_at DESC
         LIMIT %s
-        ''',
+        """,
         (user_id, limit),
     )
     result = []
@@ -68,15 +69,17 @@ def get_analysis_reports(user_id: str, limit: int = 20) -> List[Dict]:
                 metadata = json.loads(metadata)
             except Exception:
                 metadata = {}
-        result.append({
-            "id": row["id"],
-            "session_id": row["session_id"],
-            "symbol": row["symbol"],
-            "interval": row["interval"],
-            "report_text": row["report_text"],
-            "metadata": metadata or {},
-            "created_at": created_at,
-        })
+        result.append(
+            {
+                "id": row["id"],
+                "session_id": row["session_id"],
+                "symbol": row["symbol"],
+                "interval": row["interval"],
+                "report_text": row["report_text"],
+                "metadata": metadata or {},
+                "created_at": created_at,
+            }
+        )
     return result
 
 

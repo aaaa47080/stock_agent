@@ -1,6 +1,6 @@
 """Tests for the secret leak detection scanner."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 
 class TestCheckGitignore:
@@ -15,7 +15,10 @@ class TestCheckGitignore:
     def test_env_tracked_is_flagged(self):
         import scripts.check_secrets as cs
 
-        with patch("subprocess.run") as mock_run, patch("os.path.exists", return_value=True):
+        with (
+            patch("subprocess.run") as mock_run,
+            patch("os.path.exists", return_value=True),
+        ):
             mock_run.return_value = MagicMock(returncode=0, stdout=".env", stderr="")
             issues = cs.check_gitignore()
             assert any(".env" in i for i in issues)
@@ -63,9 +66,7 @@ class TestCheckSourceCodeSecrets:
             "API_KEY = os.environ.get('API_KEY')\n"
         )
         with patch("os.walk") as mock_walk:
-            mock_walk.return_value = [
-                (str(tmp_path), [], ["clean.py"])
-            ]
+            mock_walk.return_value = [(str(tmp_path), [], ["clean.py"])]
             issues = cs.check_source_code_secrets()
             assert issues == []
 
@@ -73,13 +74,9 @@ class TestCheckSourceCodeSecrets:
         import scripts.check_secrets as cs
 
         test_file = tmp_path / "bad.py"
-        test_file.write_text(
-            'JWT_SECRET_KEY = "my-super-secret-key-12345"\n'
-        )
+        test_file.write_text('JWT_SECRET_KEY = "my-super-secret-key-12345"\n')
         with patch("os.walk") as mock_walk:
-            mock_walk.return_value = [
-                (str(tmp_path), [], ["bad.py"])
-            ]
+            mock_walk.return_value = [(str(tmp_path), [], ["bad.py"])]
             issues = cs.check_source_code_secrets()
             assert len(issues) >= 1
             assert any("JWT" in i for i in issues)
@@ -97,7 +94,9 @@ class TestMain:
     def test_main_returns_one_when_issues(self):
         import scripts.check_secrets as cs
 
-        with patch.object(cs, "check_gitignore", return_value=["CRITICAL: .env tracked"]):
+        with patch.object(
+            cs, "check_gitignore", return_value=["CRITICAL: .env tracked"]
+        ):
             with patch.object(cs, "check_git_history", return_value=[]):
                 with patch.object(cs, "check_source_code_secrets", return_value=[]):
                     assert cs.main() == 1

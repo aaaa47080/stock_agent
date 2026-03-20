@@ -1,5 +1,6 @@
-from core.tools.universal_resolver import UniversalSymbolResolver
 from unittest.mock import MagicMock
+
+from core.tools.universal_resolver import UniversalSymbolResolver
 
 
 def test_resolve_bitcoin():
@@ -28,29 +29,36 @@ def test_resolve_tsm_ambiguous():
 
 def test_resolve_with_context_prefers_us_for_tsm_without_tw_hints():
     r = UniversalSymbolResolver()
-    r.tw_resolver.resolve_with_metadata = MagicMock(return_value={
-        "ticker": "2330.TW",
-        "match_type": "fuzzy",
-        "matched_text": "TSMC",
-        "score": 83,
-        "input": "TSM",
-    })
+    r.tw_resolver.resolve_with_metadata = MagicMock(
+        return_value={
+            "ticker": "2330.TW",
+            "match_type": "fuzzy",
+            "matched_text": "TSMC",
+            "score": 83,
+            "input": "TSM",
+        }
+    )
     result = r.resolve_with_context("TSM", context_text="TSM現在多少？")
 
     assert result["resolution"]["us"] == "TSM"
     assert result["primary_market"] == "us"
-    assert result["candidates"]["us"]["score"] > result["candidates"].get("tw", {"score": 0})["score"]
+    assert (
+        result["candidates"]["us"]["score"]
+        > result["candidates"].get("tw", {"score": 0})["score"]
+    )
 
 
 def test_resolve_with_context_prefers_tw_when_tw_hints_are_present():
     r = UniversalSymbolResolver()
-    r.tw_resolver.resolve_with_metadata = MagicMock(return_value={
-        "ticker": "2330.TW",
-        "match_type": "fuzzy",
-        "matched_text": "TSMC",
-        "score": 89,
-        "input": "TSMC",
-    })
+    r.tw_resolver.resolve_with_metadata = MagicMock(
+        return_value={
+            "ticker": "2330.TW",
+            "match_type": "fuzzy",
+            "matched_text": "TSMC",
+            "score": 89,
+            "input": "TSMC",
+        }
+    )
     result = r.resolve_with_context("TSMC", context_text="台股 TSMC 現在多少？")
 
     assert result["resolution"]["tw"] is not None
@@ -59,13 +67,15 @@ def test_resolve_with_context_prefers_tw_when_tw_hints_are_present():
 
 def test_resolve_with_context_skips_tw_probe_for_plain_us_like_ticker_without_tw_hints():
     r = UniversalSymbolResolver()
-    r.tw_resolver.resolve_with_metadata = MagicMock(return_value={
-        "ticker": "2330.TW",
-        "match_type": "fuzzy",
-        "matched_text": "TSMC",
-        "score": 83,
-        "input": "TSM",
-    })
+    r.tw_resolver.resolve_with_metadata = MagicMock(
+        return_value={
+            "ticker": "2330.TW",
+            "match_type": "fuzzy",
+            "matched_text": "TSMC",
+            "score": 83,
+            "input": "TSM",
+        }
+    )
 
     result = r.resolve_with_context("TSM", context_text="TSM現在多少？")
 
@@ -75,13 +85,15 @@ def test_resolve_with_context_skips_tw_probe_for_plain_us_like_ticker_without_tw
 
 def test_resolve_with_context_still_probes_tw_with_explicit_tw_hints():
     r = UniversalSymbolResolver()
-    r.tw_resolver.resolve_with_metadata = MagicMock(return_value={
-        "ticker": "2330.TW",
-        "match_type": "fuzzy",
-        "matched_text": "TSMC",
-        "score": 89,
-        "input": "TSMC",
-    })
+    r.tw_resolver.resolve_with_metadata = MagicMock(
+        return_value={
+            "ticker": "2330.TW",
+            "match_type": "fuzzy",
+            "matched_text": "TSMC",
+            "score": 89,
+            "input": "TSMC",
+        }
+    )
 
     r.resolve_with_context("TSMC", context_text="台股 TSMC 現在多少？")
 

@@ -7,6 +7,7 @@
 
 Reference: https://github.com/HKUDS/nanobot
 """
+
 import json
 import logging
 import re
@@ -22,8 +23,8 @@ from .base import DatabaseBase
 logger = logging.getLogger(__name__)
 
 # ── Memory context cache (L1 in-process → L2 Redis → L3 PostgreSQL) ──────────
-_MEM_L1: TTLCache = TTLCache(maxsize=512, ttl=30)   # 30 s in-process
-_MEM_REDIS_TTL = 120                                  # 2 min Redis TTL
+_MEM_L1: TTLCache = TTLCache(maxsize=512, ttl=30)  # 30 s in-process
+_MEM_REDIS_TTL = 120  # 2 min Redis TTL
 _MEM_KEY_PREFIX = "mem:"
 
 _mem_redis_client = None
@@ -37,12 +38,15 @@ def _get_redis_sync():
     _mem_redis_init = True
     try:
         import redis as _r
+
         from core.redis_url import resolve_redis_url
+
         url, _ = resolve_redis_url()
         if not url:
             return None
-        client = _r.from_url(url, decode_responses=False,
-                              socket_connect_timeout=2, socket_timeout=2)
+        client = _r.from_url(
+            url, decode_responses=False, socket_connect_timeout=2, socket_timeout=2
+        )
         client.ping()
         _mem_redis_client = client
         logger.info("[MemoryCache] Redis connected")
@@ -128,6 +132,7 @@ def _compact_redis_key(user_id: str, session_id: str) -> str:
 @dataclass
 class CompactedSessionState:
     """Structured compact representation of a session's working state."""
+
     goal: str
     progress: str
     open_questions: str
@@ -180,15 +185,15 @@ class MemoryStore:
             長期記憶內容，如果不存在則返回空字符串
         """
         result = DatabaseBase.query_one(
-            '''
+            """
             SELECT content FROM user_memory
             WHERE user_id = %s AND memory_type = 'long_term'
             ORDER BY updated_at DESC
             LIMIT 1
-            ''',
-            (self.user_id,)
+            """,
+            (self.user_id,),
         )
-        return result['content'] if result else ""
+        return result["content"] if result else ""
 
     def write_long_term(self, content: str) -> None:
         """
@@ -199,13 +204,13 @@ class MemoryStore:
         if not content:
             return
         DatabaseBase.execute(
-            '''
+            """
             INSERT INTO user_memory (user_id, session_id, memory_type, content, updated_at)
             VALUES (%s, 'global', 'long_term', %s, NOW())
             ON CONFLICT (user_id, session_id, memory_type)
             DO UPDATE SET content = EXCLUDED.content, updated_at = NOW()
-            ''',
-            (self.user_id, content)
+            """,
+            (self.user_id, content),
         )
         _invalidate_memory_cache(self.scope)
 
@@ -222,11 +227,11 @@ class MemoryStore:
         if not entry or not entry.strip():
             return
         DatabaseBase.execute(
-            '''
+            """
             INSERT INTO user_history_log (user_id, session_id, entry, tools_used)
             VALUES (%s, %s, %s, %s)
-            ''',
-            (self.user_id, self.session_id, entry.rstrip(), tools_used)
+            """,
+            (self.user_id, self.session_id, entry.rstrip(), tools_used),
         )
         _invalidate_memory_cache(self.scope)
 
@@ -242,14 +247,14 @@ class MemoryStore:
             歷史記錄列表（按時間正序）
         """
         results = DatabaseBase.query_all(
-            '''
+            """
             SELECT entry, tools_used, created_at
             FROM user_history_log
             WHERE user_id = %s
             ORDER BY created_at DESC
             LIMIT %s
-            ''',
-            (self.user_id, limit)
+            """,
+            (self.user_id, limit),
         )
         return list(reversed(results)) if results else []
 
@@ -282,11 +287,9 @@ class MemoryStore:
         if include_history:
             history = self.get_history(limit=history_limit)
             if history:
-                history_text = "\n\n".join([
-                    h.get('entry', '')
-                    for h in history
-                    if h.get('entry')
-                ])
+                history_text = "\n\n".join(
+                    [h.get("entry", "") for h in history if h.get("entry")]
+                )
                 if history_text:
                     context += f"\n\n## Recent History\n{history_text}"
 
@@ -362,9 +365,12 @@ class MemoryStore:
     def write_compact_state(self, state: "CompactedSessionState") -> None:
         """Persist compact session state to Redis + PostgreSQL."""
         data = {
-            "goal": state.goal, "progress": state.progress,
-            "open_questions": state.open_questions, "next_steps": state.next_steps,
-            "turn_index": state.turn_index, "updated_at": state.updated_at,
+            "goal": state.goal,
+            "progress": state.progress,
+            "open_questions": state.open_questions,
+            "next_steps": state.next_steps,
+            "turn_index": state.turn_index,
+            "updated_at": state.updated_at,
         }
         # Write Redis first (fast path)
         redis_client = _get_redis_sync()
@@ -396,19 +402,19 @@ class MemoryStore:
             {key: {value, confidence, source_turn}} dict
         """
         results = DatabaseBase.query_all(
-            '''
+            """
             SELECT key, value, confidence, source_turn
             FROM user_facts
             WHERE user_id = %s
             ORDER BY updated_at DESC
-            ''',
-            (self.user_id,)
+            """,
+            (self.user_id,),
         )
         return {
-            r['key']: {
-                'value': r['value'],
-                'confidence': r['confidence'],
-                'source_turn': r['source_turn'],
+            r["key"]: {
+                "value": r["value"],
+                "confidence": r["confidence"],
+                "source_turn": r["source_turn"],
             }
             for r in (results or [])
         }
@@ -423,12 +429,12 @@ class MemoryStore:
         if not facts:
             return
         for fact in facts:
-            key = fact.get('key', '').strip()
-            value = str(fact.get('value', '')).strip()
+            key = fact.get("key", "").strip()
+            value = str(fact.get("value", "")).strip()
             if not key or not value:
                 continue
             DatabaseBase.execute(
-                '''
+                """
                 INSERT INTO user_facts (user_id, key, value, confidence, source_turn, updated_at)
                 VALUES (%s, %s, %s, %s, %s, NOW())
                 ON CONFLICT (user_id, key)
@@ -437,14 +443,14 @@ class MemoryStore:
                     confidence = EXCLUDED.confidence,
                     source_turn = EXCLUDED.source_turn,
                     updated_at = NOW()
-                ''',
+                """,
                 (
                     self.user_id,
                     key,
                     value,
-                    fact.get('confidence', 'high'),
-                    fact.get('source_turn'),
-                )
+                    fact.get("confidence", "high"),
+                    fact.get("source_turn"),
+                ),
             )
         _invalidate_memory_cache(self.scope)
 
@@ -455,16 +461,14 @@ class MemoryStore:
             return "（尚無已知事實）"
         lines = []
         for key, meta in facts.items():
-            conf_icon = {'high': '✅', 'medium': '🔶', 'low': '❓'}.get(meta['confidence'], '')
+            conf_icon = {"high": "✅", "medium": "🔶", "low": "❓"}.get(
+                meta["confidence"], ""
+            )
             lines.append(f"- {key}: {meta['value']} {conf_icon}")
         return "\n".join(lines)
 
     async def extract_facts_from_turn(
-        self,
-        user_message: str,
-        assistant_message: str,
-        turn_index: int,
-        llm: any
+        self, user_message: str, assistant_message: str, turn_index: int, llm: any
     ) -> bool:
         """
         nanoclaw extract_memory 核心實作：
@@ -478,6 +482,7 @@ class MemoryStore:
             llm: LangChain LLM 實例
         """
         from langchain_core.messages import HumanMessage
+
         existing_facts = self.facts_to_text()
 
         prompt = f"""從以下最新對話輪次中提取重要事實。只提取「明確說出的」事實，不推斷。
@@ -507,19 +512,21 @@ class MemoryStore:
             raw = response.content.strip()
 
             # 解析 JSON
-            json_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', raw)
+            json_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", raw)
             json_str = json_match.group(1).strip() if json_match else raw
-            j_start = json_str.find('{')
-            j_end = json_str.rfind('}')
+            j_start = json_str.find("{")
+            j_end = json_str.rfind("}")
             if j_start >= 0 and j_end > j_start:
-                json_str = json_str[j_start:j_end + 1]
+                json_str = json_str[j_start : j_end + 1]
 
             result = json.loads(json_str)
-            facts = result.get('facts', [])
+            facts = result.get("facts", [])
 
             if facts:
                 self.write_facts(facts)
-                logger.info(f"[MemoryStore] Extracted {len(facts)} facts at turn {turn_index}")
+                logger.info(
+                    f"[MemoryStore] Extracted {len(facts)} facts at turn {turn_index}"
+                )
 
             return True
 
@@ -543,13 +550,15 @@ class MemoryStore:
             return self._last_consolidated_index
 
         result = DatabaseBase.query_one(
-            '''
+            """
             SELECT last_consolidated_index FROM user_memory_cache
             WHERE user_id = %s
-            ''',
-            (self.user_id,)
+            """,
+            (self.user_id,),
         )
-        self._last_consolidated_index = result['last_consolidated_index'] if result else 0
+        self._last_consolidated_index = (
+            result["last_consolidated_index"] if result else 0
+        )
         return self._last_consolidated_index
 
     def set_last_consolidated_index(self, index: int) -> None:
@@ -561,7 +570,7 @@ class MemoryStore:
         """
         self._last_consolidated_index = index
         DatabaseBase.execute(
-            '''
+            """
             INSERT INTO user_memory_cache (user_id, session_id, last_consolidated_index, updated_at)
             VALUES (%s, %s, %s, NOW())
             ON CONFLICT (user_id)
@@ -569,8 +578,8 @@ class MemoryStore:
                 last_consolidated_index = EXCLUDED.last_consolidated_index,
                 session_id = EXCLUDED.session_id,
                 updated_at = NOW()
-            ''',
-            (self.user_id, self.session_id, index)
+            """,
+            (self.user_id, self.session_id, index),
         )
 
     # ==================== 記憶整合 ====================
@@ -580,7 +589,7 @@ class MemoryStore:
         messages: List[Dict[str, Any]],
         llm: Any,
         memory_window: int = 50,
-        archive_all: bool = False
+        archive_all: bool = False,
     ) -> bool:
         """
         整合對話歷史到長期記憶
@@ -631,7 +640,11 @@ class MemoryStore:
                 continue
             timestamp = m.get("timestamp", "?")[:16] if m.get("timestamp") else "?"
             role = m.get("role", "unknown").upper()
-            tools = f" [tools: {', '.join(m.get('tools_used', []))}]" if m.get("tools_used") else ""
+            tools = (
+                f" [tools: {', '.join(m.get('tools_used', []))}]"
+                if m.get("tools_used")
+                else ""
+            )
             lines.append(f"[{timestamp}] {role}{tools}: {content}")
 
         current_memory = self.read_long_term()
@@ -672,7 +685,7 @@ Respond in this exact JSON format:
 
             # 解析 JSON 響應
             # 嘗試從 markdown 代碼塊中提取 JSON
-            json_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', content)
+            json_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", content)
             if json_match:
                 json_str = json_match.group(1).strip()
             else:
@@ -680,10 +693,10 @@ Respond in this exact JSON format:
                 json_str = content
 
             # 找到 JSON 對象
-            json_start = json_str.find('{')
-            json_end = json_str.rfind('}')
+            json_start = json_str.find("{")
+            json_end = json_str.rfind("}")
             if json_start >= 0 and json_end > json_start:
-                json_str = json_str[json_start:json_end + 1]
+                json_str = json_str[json_start : json_end + 1]
 
             result = json.loads(json_str)
 
@@ -722,7 +735,9 @@ Respond in this exact JSON format:
                 except Exception as exc:
                     logger.warning("[MemoryStore] compact_state write failed: %s", exc)
             else:
-                logger.debug("[MemoryStore] compact_state absent from LLM consolidation response")
+                logger.debug(
+                    "[MemoryStore] compact_state absent from LLM consolidation response"
+                )
 
             logger.info(
                 f"[MemoryStore] Consolidation done: {len(messages)} messages, "

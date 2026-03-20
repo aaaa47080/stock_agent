@@ -1,8 +1,10 @@
 """
 Tests for utility tools in core/tools/utility_tools.py
 """
+
+from unittest.mock import mock_open, patch
+
 import pytest
-from unittest.mock import patch, mock_open
 
 from core.tools.utility_tools import get_current_time_tool, introduction_tool
 
@@ -50,7 +52,15 @@ class TestGetCurrentTimeTool:
         result = get_current_time_tool.invoke({"timezone": "Asia/Taipei"})
 
         # Check for Chinese weekday
-        weekdays = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
+        weekdays = [
+            "星期一",
+            "星期二",
+            "星期三",
+            "星期四",
+            "星期五",
+            "星期六",
+            "星期日",
+        ]
         has_weekday = any(day in result for day in weekdays)
         assert has_weekday
 
@@ -83,7 +93,10 @@ class TestIntroductionTool:
     def test_tool_has_description(self):
         """Test that tool has description"""
         assert introduction_tool.description
-        assert "開發者" in introduction_tool.description or "平台" in introduction_tool.description
+        assert (
+            "開發者" in introduction_tool.description
+            or "平台" in introduction_tool.description
+        )
 
     @patch("builtins.open", mock_open(read_data="Test Developer Info"))
     def test_reads_file_content(self):
@@ -119,7 +132,15 @@ class TestTimeFormatting:
         result = get_current_time_tool.invoke({"timezone": "Asia/Taipei"})
 
         # Check that one of the Chinese weekdays is in the result
-        weekdays = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
+        weekdays = [
+            "星期一",
+            "星期二",
+            "星期三",
+            "星期四",
+            "星期五",
+            "星期六",
+            "星期日",
+        ]
         found_weekday = any(day in result for day in weekdays)
         assert found_weekday
 

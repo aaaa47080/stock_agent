@@ -15,16 +15,27 @@ MAIN_URL = "https://news.futunn.com/main?chain_id=FBB0EGgLsPxZBN.1klpic0&global_
 STOCK_NEWS_TEMPLATE = "https://www.futunn.com/hk/stock/{ticker}-US/news?global_content=%7B%22promote_id%22%3A13643,%22sub_promote_id%22%3A60%7D"
 
 OUT_FILE = "futunn_main_posts.jsonl"
-SCROLL_ROUNDS = 0          # 想抓更多就加大
-LIMIT = 5               # 只抓一篇就設 1；抓全部就 None
-ONLY_POST = True           # True=只抓 /post/；False=也抓 /flash/
+SCROLL_ROUNDS = 0  # 想抓更多就加大
+LIMIT = 5  # 只抓一篇就設 1；抓全部就 None
+ONLY_POST = True  # True=只抓 /post/；False=也抓 /flash/
 PRESET_URLS = {"main": MAIN_URL}
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Crawl futunn news pages with playwright and trafilatura")
-    parser.add_argument("--url", default=None, help="Target page to scan for article links (overrides preset)")
-    parser.add_argument("--preset", choices=list(PRESET_URLS.keys()), default=None, help="Preset page to crawl when --url is not provided; omit for interactive prompt")
+    parser = argparse.ArgumentParser(
+        description="Crawl futunn news pages with playwright and trafilatura"
+    )
+    parser.add_argument(
+        "--url",
+        default=None,
+        help="Target page to scan for article links (overrides preset)",
+    )
+    parser.add_argument(
+        "--preset",
+        choices=list(PRESET_URLS.keys()),
+        default=None,
+        help="Preset page to crawl when --url is not provided; omit for interactive prompt",
+    )
     parser.add_argument("--output", default=OUT_FILE, help="JSONL output file path")
     parser.add_argument(
         "--scroll-rounds",
@@ -32,8 +43,15 @@ def parse_args():
         default=SCROLL_ROUNDS,
         help="Number of scroll events to trigger lazy loading",
     )
-    parser.add_argument("--limit", type=int, default=LIMIT, help="Maximum articles to fetch (<=0 means no limit)")
-    parser.add_argument("--include-flash", action="store_true", help="When set also keep /flash/ links")
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=LIMIT,
+        help="Maximum articles to fetch (<=0 means no limit)",
+    )
+    parser.add_argument(
+        "--include-flash", action="store_true", help="When set also keep /flash/ links"
+    )
 
     parser.add_argument(
         "--summary-output",
@@ -74,7 +92,9 @@ def parse_args():
 
 def build_stock_news_url(target: str) -> str:
     candidate = target.strip()
-    if candidate.lower().startswith("http://") or candidate.lower().startswith("https://"):
+    if candidate.lower().startswith("http://") or candidate.lower().startswith(
+        "https://"
+    ):
         return candidate
     ticker = candidate.upper()
     return STOCK_NEWS_TEMPLATE.format(ticker=ticker)
@@ -88,6 +108,7 @@ def select_target_url():
             print("請輸入有效的代號或 URL。")
             continue
         return build_stock_news_url(entry)
+
 
 def canonical_url(url: str) -> str:
     sp = urlsplit(url)
@@ -118,7 +139,9 @@ def resolve_effective_title(article_title: str, list_title: str) -> str:
     return article_title
 
 
-async def collect_main_links(page, main_url: str, scroll_rounds: int = 6, only_post: bool = True):
+async def collect_main_links(
+    page, main_url: str, scroll_rounds: int = 6, only_post: bool = True
+):
     await page.goto(main_url, wait_until="domcontentloaded", timeout=120000)
     await page.wait_for_timeout(1500)
 
@@ -182,7 +205,10 @@ async def fetch_article_via_playwright(context, url: str):
         html = await page.content()
 
         # 用 trafilatura 抽正文（不綁死 selector）
-        main = trafilatura.extract(html, include_comments=False, include_tables=False) or ""
+        main = (
+            trafilatura.extract(html, include_comments=False, include_tables=False)
+            or ""
+        )
         main = clean_text(main)
 
         # title：先用 document.title；不行再 fallback
@@ -201,7 +227,9 @@ def process_summary_batch(
 ) -> list[str]:
     if not pending_rows:
         return []
-    return summarize_articles(summary_chain, pending_rows, max_content_chars=summary_max_content_chars)
+    return summarize_articles(
+        summary_chain, pending_rows, max_content_chars=summary_max_content_chars
+    )
 
 
 async def main():
@@ -228,11 +256,15 @@ async def main():
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
-        context = await browser.new_context(locale="zh-CN", viewport={"width": 1280, "height": 720})
+        context = await browser.new_context(
+            locale="zh-CN", viewport={"width": 1280, "height": 720}
+        )
         page = await context.new_page()
 
         print(f"target -> {target_url}")
-        links = await collect_main_links(page, target_url, scroll_rounds=scroll_rounds, only_post=only_post)
+        links = await collect_main_links(
+            page, target_url, scroll_rounds=scroll_rounds, only_post=only_post
+        )
         print(f"links found = {len(links)}")
 
         if limit is not None:
@@ -240,7 +272,9 @@ async def main():
             print(f"limit -> {limit}")
 
         if not links:
-            print("No links found. Consider increasing SCROLL_ROUNDS or try --include-flash")
+            print(
+                "No links found. Consider increasing SCROLL_ROUNDS or try --include-flash"
+            )
             await browser.close()
             return
 
@@ -254,13 +288,23 @@ async def main():
                 for i, it in enumerate(links, 1):
                     url = it["url"]
                     art = await fetch_article_via_playwright(context, url)
-                    art["title"] = resolve_effective_title(art.get("title", ""), it.get("title", ""))
+                    art["title"] = resolve_effective_title(
+                        art.get("title", ""), it.get("title", "")
+                    )
                     art["_idx"] = i
 
-                    f.write(json.dumps({k: v for k, v in art.items() if not k.startswith("_")}, ensure_ascii=False) + "\n")
+                    f.write(
+                        json.dumps(
+                            {k: v for k, v in art.items() if not k.startswith("_")},
+                            ensure_ascii=False,
+                        )
+                        + "\n"
+                    )
                     pending_batch.append(art)
 
-                    should_flush = len(pending_batch) >= summary_batch_size or i == len(links)
+                    should_flush = len(pending_batch) >= summary_batch_size or i == len(
+                        links
+                    )
                     if not should_flush:
                         continue
 
@@ -277,7 +321,9 @@ async def main():
                     for item, summary in zip(pending_batch, summaries):
                         fetch_text = item.get("title", "").strip()[:60]
                         one_line_summary = " | ".join(
-                            part.strip() for part in summary.splitlines() if part.strip()
+                            part.strip()
+                            for part in summary.splitlines()
+                            if part.strip()
                         )
                         print(
                             f"[{item.get('_idx')}/{len(links)}] "

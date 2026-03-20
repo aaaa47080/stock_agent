@@ -2,14 +2,15 @@
 Tests for forum database operations in core/database/forum.py
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 from core.database.forum import (
-    get_boards,
-    get_board_by_slug,
     check_daily_post_limit,
     delete_post,
+    get_board_by_slug,
+    get_boards,
 )
 
 

@@ -12,16 +12,19 @@ Agent Description Loader
 - get_metadata(): 只讀取 frontmatter（name, description, routing_keywords, priority）
 - get_full_description(): 讀取完整內容（包括 when_to_use, capabilities 等）
 """
+
 import re
-import yaml
-from pathlib import Path
-from typing import Dict, Optional, List
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Dict, List, Optional
+
+import yaml
 
 
 @dataclass
 class AgentDescription:
     """Agent 描述資料結構"""
+
     # Frontmatter 元數據（輕量級，用於路由）
     name: str
     description: str
@@ -72,7 +75,10 @@ class AgentDescriptionLoader:
                     self._cache[desc.name] = desc
             except Exception as e:
                 import logging
-                logging.warning(f"[AgentDescriptionLoader] Failed to parse {md_file}: {e}")
+
+                logging.warning(
+                    f"[AgentDescriptionLoader] Failed to parse {md_file}: {e}"
+                )
 
         return self._cache
 
@@ -88,7 +94,9 @@ class AgentDescriptionLoader:
         return AgentDescription(
             name=frontmatter.get("name", ""),
             description=frontmatter.get("description", ""),
-            routing_keywords=[kw.strip().lower() for kw in frontmatter.get("routing_keywords", [])],
+            routing_keywords=[
+                kw.strip().lower() for kw in frontmatter.get("routing_keywords", [])
+            ],
             priority=frontmatter.get("priority", 10),
             raw_content=content,  # 保存原始內容，需要時解析
         )
@@ -113,11 +121,15 @@ class AgentDescriptionLoader:
         content = desc.raw_content
 
         # 跳過 frontmatter
-        content_after_fm = re.sub(r"^---\s*\n.*?\n---\s*\n", "", content, flags=re.DOTALL)
+        content_after_fm = re.sub(
+            r"^---\s*\n.*?\n---\s*\n", "", content, flags=re.DOTALL
+        )
 
         desc.when_to_use = self._extract_section(content_after_fm, "When to Use")
         desc.capabilities = self._extract_list_section(content_after_fm, "Capabilities")
-        desc.market_indicators = self._extract_section(content_after_fm, "Market Indicators")
+        desc.market_indicators = self._extract_section(
+            content_after_fm, "Market Indicators"
+        )
 
         return desc
 

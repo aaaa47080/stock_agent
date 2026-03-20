@@ -10,16 +10,16 @@ Economic Data Tools - 經濟數據工具
 - VIX 恐慌指數
 - 市場指數（S&P 500、道瓊、那斯達克）
 """
-from langchain_core.tools import tool
 
+from langchain_core.tools import tool
 
 # 市場指數代碼
 MARKET_INDICES = {
-    "SP500": "^GSPC",      # S&P 500
-    "DOW": "^DJI",         # 道瓊工業指數
-    "NASDAQ": "^IXIC",     # 那斯達克
-    "VIX": "^VIX",         # 恐慌指數
-    "RUSSELL2000": "^RUT", # 羅素2000小盤股
+    "SP500": "^GSPC",  # S&P 500
+    "DOW": "^DJI",  # 道瓊工業指數
+    "NASDAQ": "^IXIC",  # 那斯達克
+    "VIX": "^VIX",  # 恐慌指數
+    "RUSSELL2000": "^RUT",  # 羅素2000小盤股
     "PHLX_SEMICONDUCTOR": "^SOX",  # 費城半導體
 }
 
@@ -39,20 +39,21 @@ def get_market_indices() -> dict:
 
     包含：S&P 500、道瓊、那斯達克、VIX恐慌指數、費城半導體。
     """
-    import yfinance as yf
     from datetime import datetime
+
     import pytz
+    import yfinance as yf
 
     results = {}
     errors = []
 
     # 檢查是否為美股交易時間（美東時間 9:30-16:00）
     try:
-        et_tz = pytz.timezone('America/New_York')
+        et_tz = pytz.timezone("America/New_York")
         now_et = datetime.now(et_tz)
         is_trading_hours = (
-            now_et.weekday() < 5 and  # 週一到週五
-            9 <= now_et.hour < 16  # 9:00 - 16:00
+            now_et.weekday() < 5  # 週一到週五
+            and 9 <= now_et.hour < 16  # 9:00 - 16:00
         )
         market_status = "交易中" if is_trading_hours else "已收盤/非交易時間"
     except Exception:
@@ -161,7 +162,7 @@ def get_vix_index() -> dict:
             "low_30d": round(low_30d, 2) if low_30d else None,
             "sentiment": sentiment,
             "interpretation": interpretation,
-            "source": "yfinance"
+            "source": "yfinance",
         }
 
     except Exception as e:
@@ -215,7 +216,7 @@ def get_sp500_performance() -> dict:
             "symbol": "^GSPC",
             "current": round(current, 2) if current else None,
             "returns": returns,
-            "source": "yfinance"
+            "source": "yfinance",
         }
 
     except Exception as e:
@@ -268,18 +269,16 @@ def get_us_sector_performance() -> dict:
             if current and prev and prev != 0:
                 change_pct = round((current - prev) / prev * 100, 2)
 
-            results.append({
-                "symbol": symbol,
-                "name": name,
-                "price": round(current, 2) if current else None,
-                "change_pct": change_pct,
-            })
+            results.append(
+                {
+                    "symbol": symbol,
+                    "name": name,
+                    "price": round(current, 2) if current else None,
+                    "change_pct": change_pct,
+                }
+            )
         except Exception:
-            results.append({
-                "symbol": symbol,
-                "name": name,
-                "error": "無法取得數據"
-            })
+            results.append({"symbol": symbol, "name": name, "error": "無法取得數據"})
 
     # 按漲跌幅排序
     results = sorted(results, key=lambda x: x.get("change_pct") or -999, reverse=True)
@@ -287,7 +286,7 @@ def get_us_sector_performance() -> dict:
     return {
         "sector_performance": results,
         "source": "yfinance (SPDR Sector ETFs)",
-        "note": "板塊表現基於 ETF 價格"
+        "note": "板塊表現基於 ETF 價格",
     }
 
 
@@ -304,33 +303,33 @@ def get_economic_calendar() -> dict:
                 "event": "FOMC 利率決議",
                 "frequency": "每6週",
                 "importance": "極高",
-                "impact": "影響全球資產價格"
+                "impact": "影響全球資產價格",
             },
             {
                 "event": "非農就業數據 (NFP)",
                 "frequency": "每月第一個週五",
                 "importance": "高",
-                "impact": "影響美元和美股"
+                "impact": "影響美元和美股",
             },
             {
                 "event": "CPI 消費者物價指數",
                 "frequency": "每月中旬",
                 "importance": "高",
-                "impact": "影響通膨預期和利率"
+                "impact": "影響通膨預期和利率",
             },
             {
                 "event": "GDP 國內生產總值",
                 "frequency": "每季",
                 "importance": "高",
-                "impact": "反映經濟成長"
+                "impact": "反映經濟成長",
             },
             {
                 "event": "初領失業金人數",
                 "frequency": "每週四",
                 "importance": "中",
-                "impact": "勞動市場指標"
+                "impact": "勞動市場指標",
             },
         ],
         "資料來源": "靜態行事曆提醒",
-        "建議": "請查詢 TradingEconomics 或 Forex Factory 獲取準確日期"
+        "建議": "請查詢 TradingEconomics 或 Forex Factory 獲取準確日期",
     }

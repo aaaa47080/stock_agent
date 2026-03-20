@@ -3,12 +3,14 @@ Tools API Router
 
 Endpoints for listing tools and managing user tool preferences.
 """
-from fastapi import APIRouter, HTTPException, Depends
+
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+
 from api.deps import get_current_user
+from api.utils import logger, run_sync
 from core.database import get_tools_for_frontend, update_user_tool_preference
 from core.database.tools import normalize_membership_tier
-from api.utils import logger, run_sync
 
 router = APIRouter()
 
@@ -16,6 +18,7 @@ router = APIRouter()
 async def _list_tools_impl(current_user: dict) -> dict:
     """Return all tools with per-user enabled/locked status."""
     from core.database.tools import seed_tools_catalog
+
     user_tier = normalize_membership_tier(current_user.get("membership_tier", "free"))
     user_id = current_user.get("user_id")
 
@@ -63,10 +66,13 @@ async def _set_tool_preference_impl(
     if target_tool.get("locked"):
         raise HTTPException(status_code=403, detail="目前會員等級無法設定此工具")
 
-    await run_sync(lambda: update_user_tool_preference(user_id, tool_id, request.is_enabled))
+    await run_sync(
+        lambda: update_user_tool_preference(user_id, tool_id, request.is_enabled)
+    )
 
     try:
         from core.agents.bootstrap import invalidate_manager_cache
+
         invalidate_manager_cache(user_id)
     except Exception as e:
         logger.warning(f"[tools] Failed to invalidate manager cache: {e}")

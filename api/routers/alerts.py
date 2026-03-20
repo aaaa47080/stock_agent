@@ -3,13 +3,17 @@ Price Alerts API Router
 
 Endpoints for managing user price alerts.
 """
-from fastapi import APIRouter, HTTPException, Depends
+
+from fastapi import APIRouter, Depends, HTTPException
+
 from api.deps import get_current_user
 from api.models import CreateAlertRequest
-from core.database import (
-    create_alert, get_user_alerts, delete_alert,
-)
 from api.utils import logger, run_sync
+from core.database import (
+    create_alert,
+    delete_alert,
+    get_user_alerts,
+)
 
 router = APIRouter()
 

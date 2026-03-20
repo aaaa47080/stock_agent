@@ -1,15 +1,16 @@
 """
 Tests for governance validators in core/validators/governance.py
 """
+
 import pytest
 
 from core.validators.governance import (
-    validate_report_type,
+    sanitize_description,
     validate_content_type,
-    validate_vote_type,
-    validate_violation_level,
     validate_report_description,
-    sanitize_description
+    validate_report_type,
+    validate_violation_level,
+    validate_vote_type,
 )
 
 
@@ -18,7 +19,14 @@ class TestValidateReportType:
 
     def test_valid_report_types(self):
         """Test all valid report types"""
-        valid_types = ["spam", "harassment", "misinformation", "scam", "illegal", "other"]
+        valid_types = [
+            "spam",
+            "harassment",
+            "misinformation",
+            "scam",
+            "illegal",
+            "other",
+        ]
         for report_type in valid_types:
             result = validate_report_type(report_type)
             assert result["valid"] is True

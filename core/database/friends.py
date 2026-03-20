@@ -2,16 +2,19 @@
 好友功能資料庫操作
 包含：用戶搜尋、好友請求、好友管理、封鎖功能
 """
-from typing import List, Dict, Optional, Any
+
+from typing import Any, Dict, List, Optional
 
 from .connection import get_connection
-
 
 # ============================================================================
 # 用戶搜尋 / 發現
 # ============================================================================
 
-def search_users(query: str, limit: int = 20, exclude_user_id: Optional[str] = None) -> List[Dict]:
+
+def search_users(
+    query: str, limit: int = 20, exclude_user_id: Optional[str] = None
+) -> List[Dict]:
     """
     以用戶名搜尋用戶（部分匹配）
     用於尋找要加為好友的用戶
@@ -19,18 +22,18 @@ def search_users(query: str, limit: int = 20, exclude_user_id: Optional[str] = N
     conn = get_connection()
     c = conn.cursor()
     try:
-        sql = '''
+        sql = """
             SELECT user_id, username, pi_username, membership_tier, created_at
             FROM users
             WHERE username LIKE %s
-        '''
-        params: List[Any] = [f'%{query}%']
+        """
+        params: List[Any] = [f"%{query}%"]
 
         if exclude_user_id:
-            sql += ' AND user_id != %s'
+            sql += " AND user_id != %s"
             params.append(exclude_user_id)
 
-        sql += ' ORDER BY username ASC LIMIT %s'
+        sql += " ORDER BY username ASC LIMIT %s"
         params.append(limit)
 
         c.execute(sql, params)
@@ -40,20 +43,24 @@ def search_users(query: str, limit: int = 20, exclude_user_id: Optional[str] = N
         for r in rows:
             created_at = r[4]
             if created_at:
-                created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
-            result.append({
-                "user_id": r[0],
-                "username": r[1],
-                "pi_username": r[2],
-                "membership_tier": r[3] or 'free',
-                "member_since": created_at
-            })
+                created_at = created_at.strftime("%Y-%m-%d %H:%M:%S")
+            result.append(
+                {
+                    "user_id": r[0],
+                    "username": r[1],
+                    "pi_username": r[2],
+                    "membership_tier": r[3] or "free",
+                    "member_since": created_at,
+                }
+            )
         return result
     finally:
         conn.close()
 
 
-def get_public_user_profile(user_id: str, viewer_user_id: Optional[str] = None) -> Optional[Dict]:
+def get_public_user_profile(
+    user_id: str, viewer_user_id: Optional[str] = None
+) -> Optional[Dict]:
     """
     取得用戶的公開資料
     如果查看者是好友，會返回更多資訊
@@ -62,11 +69,14 @@ def get_public_user_profile(user_id: str, viewer_user_id: Optional[str] = None) 
     c = conn.cursor()
     try:
         # 取得基本用戶資訊
-        c.execute('''
+        c.execute(
+            """
             SELECT user_id, username, pi_username, membership_tier, created_at
             FROM users
             WHERE user_id = %s
-        ''', (user_id,))
+        """,
+            (user_id,),
+        )
         row = c.fetchone()
 
         if not row:
@@ -74,38 +84,51 @@ def get_public_user_profile(user_id: str, viewer_user_id: Optional[str] = None) 
 
         created_at = row[4]
         if created_at:
-            created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
+            created_at = created_at.strftime("%Y-%m-%d %H:%M:%S")
 
         profile = {
             "user_id": row[0],
             "username": row[1],
             "pi_username": row[2],
-            "membership_tier": row[3] or 'free',
+            "membership_tier": row[3] or "free",
             "member_since": created_at,
             "is_friend": False,
-            "friend_status": None
+            "friend_status": None,
         }
 
         # 如果有查看者，檢查好友狀態
         if viewer_user_id and viewer_user_id != user_id:
             friendship = get_friendship_status(viewer_user_id, user_id)
             profile["friend_status"] = friendship.get("status") if friendship else None
-            profile["is_friend"] = friendship.get("status") == "accepted" if friendship else False
+            profile["is_friend"] = (
+                friendship.get("status") == "accepted" if friendship else False
+            )
             # 重要：返回 is_requester 讓前端知道是誰發起的請求
-            profile["is_requester"] = friendship.get("is_requester") if friendship else False
+            profile["is_requester"] = (
+                friendship.get("is_requester") if friendship else False
+            )
 
         # 取得論壇統計（公開）
-        c.execute('SELECT COUNT(*) FROM posts WHERE user_id = %s AND is_hidden = 0', (user_id,))
+        c.execute(
+            "SELECT COUNT(*) FROM posts WHERE user_id = %s AND is_hidden = 0",
+            (user_id,),
+        )
         profile["post_count"] = c.fetchone()[0]
 
-        c.execute('SELECT COALESCE(SUM(push_count), 0) FROM posts WHERE user_id = %s', (user_id,))
+        c.execute(
+            "SELECT COALESCE(SUM(push_count), 0) FROM posts WHERE user_id = %s",
+            (user_id,),
+        )
         profile["total_pushes"] = c.fetchone()[0]
 
         # 取得好友數量（公開）
-        c.execute('''
+        c.execute(
+            """
             SELECT COUNT(*) FROM friendships
             WHERE (user_id = %s OR friend_id = %s) AND status = 'accepted'
-        ''', (user_id, user_id))
+        """,
+            (user_id, user_id),
+        )
         profile["friends_count"] = c.fetchone()[0]
 
         return profile
@@ -116,6 +139,7 @@ def get_public_user_profile(user_id: str, viewer_user_id: Optional[str] = None) 
 # ============================================================================
 # 好友請求
 # ============================================================================
+
 
 def send_friend_request(from_user_id: str, to_user_id: str) -> Dict:
     """
@@ -129,51 +153,71 @@ def send_friend_request(from_user_id: str, to_user_id: str) -> Dict:
     c = conn.cursor()
     try:
         # 檢查是否已存在任何關係
-        c.execute('''
+        c.execute(
+            """
             SELECT id, status, user_id FROM friendships
             WHERE (user_id = %s AND friend_id = %s) OR (user_id = %s AND friend_id = %s)
-        ''', (from_user_id, to_user_id, to_user_id, from_user_id))
+        """,
+            (from_user_id, to_user_id, to_user_id, from_user_id),
+        )
         existing = c.fetchone()
 
         if existing:
             status = existing[1]
             requester_id = existing[2]
 
-            if status == 'accepted':
+            if status == "accepted":
                 return {"success": False, "error": "already_friends"}
-            elif status == 'pending':
+            elif status == "pending":
                 # 檢查方向 - 如果對方已經發送請求給我們，自動接受
                 if requester_id == to_user_id:
                     # 對方發送請求給我們，自動接受
-                    c.execute('''
+                    c.execute(
+                        """
                         UPDATE friendships
                         SET status = 'accepted', updated_at = NOW()
                         WHERE user_id = %s AND friend_id = %s
-                    ''', (to_user_id, from_user_id))
+                    """,
+                        (to_user_id, from_user_id),
+                    )
                     conn.commit()
-                    return {"success": True, "message": "friend_added", "auto_accepted": True}
+                    return {
+                        "success": True,
+                        "message": "friend_added",
+                        "auto_accepted": True,
+                    }
                 return {"success": False, "error": "request_pending"}
-            elif status == 'blocked':
+            elif status == "blocked":
                 # 檢查是誰封鎖誰
                 if requester_id == to_user_id:
                     return {"success": False, "error": "user_blocked_you"}
                 return {"success": False, "error": "you_blocked_user"}
-            elif status == 'rejected':
+            elif status == "rejected":
                 # 允許在拒絕後重新發送（更新現有記錄）
-                c.execute('''
+                c.execute(
+                    """
                     UPDATE friendships
                     SET status = 'pending', updated_at = NOW()
                     WHERE user_id = %s AND friend_id = %s
-                ''', (from_user_id, to_user_id))
+                """,
+                    (from_user_id, to_user_id),
+                )
                 conn.commit()
-                return {"success": True, "message": "request_resent", "request_id": existing[0]}
+                return {
+                    "success": True,
+                    "message": "request_resent",
+                    "request_id": existing[0],
+                }
 
         # 建立新的好友請求
-        c.execute('''
+        c.execute(
+            """
             INSERT INTO friendships (user_id, friend_id, status, created_at, updated_at)
             VALUES (%s, %s, 'pending', NOW(), NOW())
             RETURNING id
-        ''', (from_user_id, to_user_id))
+        """,
+            (from_user_id, to_user_id),
+        )
         request_id = c.fetchone()[0]
         conn.commit()
 
@@ -194,11 +238,14 @@ def accept_friend_request(user_id: str, requester_id: str) -> Dict:
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute(
+            """
             UPDATE friendships
             SET status = 'accepted', updated_at = NOW()
             WHERE user_id = %s AND friend_id = %s AND status = 'pending'
-        ''', (requester_id, user_id))
+        """,
+            (requester_id, user_id),
+        )
 
         if c.rowcount == 0:
             return {"success": False, "error": "request_not_found"}
@@ -217,11 +264,14 @@ def reject_friend_request(user_id: str, requester_id: str) -> Dict:
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute(
+            """
             UPDATE friendships
             SET status = 'rejected', updated_at = NOW()
             WHERE user_id = %s AND friend_id = %s AND status = 'pending'
-        ''', (requester_id, user_id))
+        """,
+            (requester_id, user_id),
+        )
 
         if c.rowcount == 0:
             return {"success": False, "error": "request_not_found"}
@@ -240,10 +290,13 @@ def cancel_friend_request(user_id: str, target_user_id: str) -> Dict:
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute(
+            """
             DELETE FROM friendships
             WHERE user_id = %s AND friend_id = %s AND status = 'pending'
-        ''', (user_id, target_user_id))
+        """,
+            (user_id, target_user_id),
+        )
 
         if c.rowcount == 0:
             return {"success": False, "error": "request_not_found"}
@@ -263,11 +316,14 @@ def remove_friend(user_id: str, friend_id: str) -> Dict:
     c = conn.cursor()
     try:
         # 刪除雙向的好友記錄
-        c.execute('''
+        c.execute(
+            """
             DELETE FROM friendships
             WHERE ((user_id = %s AND friend_id = %s) OR (user_id = %s AND friend_id = %s))
             AND status = 'accepted'
-        ''', (user_id, friend_id, friend_id, user_id))
+        """,
+            (user_id, friend_id, friend_id, user_id),
+        )
 
         if c.rowcount == 0:
             return {"success": False, "error": "not_friends"}
@@ -285,6 +341,7 @@ def remove_friend(user_id: str, friend_id: str) -> Dict:
 # 封鎖功能
 # ============================================================================
 
+
 def block_user(user_id: str, blocked_user_id: str) -> Dict:
     """封鎖用戶（阻止好友請求和互動）"""
     if user_id == blocked_user_id:
@@ -294,16 +351,22 @@ def block_user(user_id: str, blocked_user_id: str) -> Dict:
     c = conn.cursor()
     try:
         # 移除任何現有的好友關係/請求
-        c.execute('''
+        c.execute(
+            """
             DELETE FROM friendships
             WHERE (user_id = %s AND friend_id = %s) OR (user_id = %s AND friend_id = %s)
-        ''', (user_id, blocked_user_id, blocked_user_id, user_id))
+        """,
+            (user_id, blocked_user_id, blocked_user_id, user_id),
+        )
 
         # 建立封鎖記錄
-        c.execute('''
+        c.execute(
+            """
             INSERT INTO friendships (user_id, friend_id, status, created_at, updated_at)
             VALUES (%s, %s, 'blocked', NOW(), NOW())
-        ''', (user_id, blocked_user_id))
+        """,
+            (user_id, blocked_user_id),
+        )
 
         conn.commit()
         return {"success": True, "message": "user_blocked"}
@@ -319,10 +382,13 @@ def unblock_user(user_id: str, blocked_user_id: str) -> Dict:
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute(
+            """
             DELETE FROM friendships
             WHERE user_id = %s AND friend_id = %s AND status = 'blocked'
-        ''', (user_id, blocked_user_id))
+        """,
+            (user_id, blocked_user_id),
+        )
 
         if c.rowcount == 0:
             return {"success": False, "error": "user_not_blocked"}
@@ -341,27 +407,32 @@ def get_blocked_users(user_id: str, limit: int = 100) -> List[Dict]:
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute(
+            """
             SELECT u.user_id, u.username, u.pi_username, f.created_at as blocked_at
             FROM friendships f
             JOIN users u ON f.friend_id = u.user_id
             WHERE f.user_id = %s AND f.status = 'blocked'
             ORDER BY f.created_at DESC
             LIMIT %s
-        ''', (user_id, limit))
+        """,
+            (user_id, limit),
+        )
 
         rows = c.fetchall()
         result = []
         for r in rows:
             blocked_at = r[3]
             if blocked_at:
-                blocked_at = blocked_at.strftime('%Y-%m-%d %H:%M:%S')
-            result.append({
-                "user_id": r[0],
-                "username": r[1],
-                "pi_username": r[2],
-                "blocked_at": blocked_at
-            })
+                blocked_at = blocked_at.strftime("%Y-%m-%d %H:%M:%S")
+            result.append(
+                {
+                    "user_id": r[0],
+                    "username": r[1],
+                    "pi_username": r[2],
+                    "blocked_at": blocked_at,
+                }
+            )
         return result
     finally:
         conn.close()
@@ -371,12 +442,14 @@ def get_blocked_users(user_id: str, limit: int = 100) -> List[Dict]:
 # 好友列表與查詢
 # ============================================================================
 
+
 def get_friends_list(user_id: str, limit: int = 50, offset: int = 0) -> List[Dict]:
     """取得已接受的好友列表"""
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute(
+            """
             SELECT u.user_id, u.username, u.pi_username, u.membership_tier,
                    f.updated_at as friends_since, u.last_active_at
             FROM friendships f
@@ -391,7 +464,9 @@ def get_friends_list(user_id: str, limit: int = 50, offset: int = 0) -> List[Dic
             AND u.user_id != %s
             ORDER BY f.updated_at DESC
             LIMIT %s OFFSET %s
-        ''', (user_id, user_id, user_id, user_id, limit, offset))
+        """,
+            (user_id, user_id, user_id, user_id, limit, offset),
+        )
 
         rows = c.fetchall()
         result = []
@@ -399,17 +474,19 @@ def get_friends_list(user_id: str, limit: int = 50, offset: int = 0) -> List[Dic
             friends_since = r[4]
             last_active = r[5]
             if friends_since:
-                friends_since = friends_since.strftime('%Y-%m-%d %H:%M:%S')
+                friends_since = friends_since.strftime("%Y-%m-%d %H:%M:%S")
             if last_active:
-                last_active = last_active.strftime('%Y-%m-%d %H:%M:%S')
-            result.append({
-                "user_id": r[0],
-                "username": r[1],
-                "pi_username": r[2],
-                "membership_tier": r[3] or 'free',
-                "friends_since": friends_since,
-                "last_active_at": last_active
-            })
+                last_active = last_active.strftime("%Y-%m-%d %H:%M:%S")
+            result.append(
+                {
+                    "user_id": r[0],
+                    "username": r[1],
+                    "pi_username": r[2],
+                    "membership_tier": r[3] or "free",
+                    "friends_since": friends_since,
+                    "last_active_at": last_active,
+                }
+            )
         return result
     finally:
         conn.close()
@@ -420,7 +497,8 @@ def get_pending_requests_received(user_id: str, limit: int = 100) -> List[Dict]:
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute(
+            """
             SELECT u.user_id, u.username, u.pi_username, u.membership_tier,
                    f.id as request_id, f.created_at
             FROM friendships f
@@ -428,22 +506,26 @@ def get_pending_requests_received(user_id: str, limit: int = 100) -> List[Dict]:
             WHERE f.friend_id = %s AND f.status = 'pending'
             ORDER BY f.created_at DESC
             LIMIT %s
-        ''', (user_id, limit))
+        """,
+            (user_id, limit),
+        )
 
         rows = c.fetchall()
         result = []
         for r in rows:
             requested_at = r[5]
             if requested_at:
-                requested_at = requested_at.strftime('%Y-%m-%d %H:%M:%S')
-            result.append({
-                "user_id": r[0],
-                "username": r[1],
-                "pi_username": r[2],
-                "membership_tier": r[3] or 'free',
-                "request_id": r[4],
-                "requested_at": requested_at
-            })
+                requested_at = requested_at.strftime("%Y-%m-%d %H:%M:%S")
+            result.append(
+                {
+                    "user_id": r[0],
+                    "username": r[1],
+                    "pi_username": r[2],
+                    "membership_tier": r[3] or "free",
+                    "request_id": r[4],
+                    "requested_at": requested_at,
+                }
+            )
         return result
     finally:
         conn.close()
@@ -454,7 +536,8 @@ def get_pending_requests_sent(user_id: str, limit: int = 100) -> List[Dict]:
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute(
+            """
             SELECT u.user_id, u.username, u.pi_username, u.membership_tier,
                    f.id as request_id, f.created_at
             FROM friendships f
@@ -462,22 +545,26 @@ def get_pending_requests_sent(user_id: str, limit: int = 100) -> List[Dict]:
             WHERE f.user_id = %s AND f.status = 'pending'
             ORDER BY f.created_at DESC
             LIMIT %s
-        ''', (user_id, limit))
+        """,
+            (user_id, limit),
+        )
 
         rows = c.fetchall()
         result = []
         for r in rows:
             sent_at = r[5]
             if sent_at:
-                sent_at = sent_at.strftime('%Y-%m-%d %H:%M:%S')
-            result.append({
-                "user_id": r[0],
-                "username": r[1],
-                "pi_username": r[2],
-                "membership_tier": r[3] or 'free',
-                "request_id": r[4],
-                "sent_at": sent_at
-            })
+                sent_at = sent_at.strftime("%Y-%m-%d %H:%M:%S")
+            result.append(
+                {
+                    "user_id": r[0],
+                    "username": r[1],
+                    "pi_username": r[2],
+                    "membership_tier": r[3] or "free",
+                    "request_id": r[4],
+                    "sent_at": sent_at,
+                }
+            )
         return result
     finally:
         conn.close()
@@ -488,20 +575,23 @@ def get_friendship_status(user_id: str, other_user_id: str) -> Optional[Dict]:
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute(
+            """
             SELECT id, user_id, friend_id, status, created_at, updated_at
             FROM friendships
             WHERE (user_id = %s AND friend_id = %s) OR (user_id = %s AND friend_id = %s)
-        ''', (user_id, other_user_id, other_user_id, user_id))
+        """,
+            (user_id, other_user_id, other_user_id, user_id),
+        )
 
         row = c.fetchone()
         if row:
             created_at = row[4]
             updated_at = row[5]
             if created_at:
-                created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
+                created_at = created_at.strftime("%Y-%m-%d %H:%M:%S")
             if updated_at:
-                updated_at = updated_at.strftime('%Y-%m-%d %H:%M:%S')
+                updated_at = updated_at.strftime("%Y-%m-%d %H:%M:%S")
             return {
                 "id": row[0],
                 "requester_id": row[1],
@@ -509,7 +599,7 @@ def get_friendship_status(user_id: str, other_user_id: str) -> Optional[Dict]:
                 "status": row[3],
                 "created_at": created_at,
                 "updated_at": updated_at,
-                "is_requester": row[1] == user_id
+                "is_requester": row[1] == user_id,
             }
         return None
     finally:
@@ -521,10 +611,13 @@ def get_friends_count(user_id: str) -> int:
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute(
+            """
             SELECT COUNT(*) FROM friendships
             WHERE (user_id = %s OR friend_id = %s) AND status = 'accepted'
-        ''', (user_id, user_id))
+        """,
+            (user_id, user_id),
+        )
         return c.fetchone()[0]
     finally:
         conn.close()
@@ -535,10 +628,13 @@ def get_pending_count(user_id: str) -> int:
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute(
+            """
             SELECT COUNT(*) FROM friendships
             WHERE friend_id = %s AND status = 'pending'
-        ''', (user_id,))
+        """,
+            (user_id,),
+        )
         return c.fetchone()[0]
     finally:
         conn.close()
@@ -549,11 +645,14 @@ def is_blocked(user_id: str, other_user_id: str) -> bool:
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute(
+            """
             SELECT 1 FROM friendships
             WHERE ((user_id = %s AND friend_id = %s) OR (user_id = %s AND friend_id = %s))
             AND status = 'blocked'
-        ''', (user_id, other_user_id, other_user_id, user_id))
+        """,
+            (user_id, other_user_id, other_user_id, user_id),
+        )
         return c.fetchone() is not None
     finally:
         conn.close()
@@ -564,11 +663,14 @@ def is_friend(user_id: str, other_user_id: str) -> bool:
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute(
+            """
             SELECT 1 FROM friendships
             WHERE ((user_id = %s AND friend_id = %s) OR (user_id = %s AND friend_id = %s))
             AND status = 'accepted'
-        ''', (user_id, other_user_id, other_user_id, user_id))
+        """,
+            (user_id, other_user_id, other_user_id, user_id),
+        )
         return c.fetchone() is not None
     finally:
         conn.close()
@@ -578,34 +680,37 @@ def get_bulk_friendship_status(user_id: str, other_user_ids: list) -> dict:
     """
     ✅ 效能優化：批次查詢多個用戶的好友狀態，解決 N+1 問題
     一次 DB 查詢取代 N 次個別查詢
-    
+
     Returns: {other_user_id: status_dict or None}
     """
     if not other_user_ids:
         return {}
-    
+
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute(
+            """
             SELECT id, user_id, friend_id, status, created_at, updated_at
             FROM friendships
             WHERE (user_id = %s AND friend_id = ANY(%s))
                OR (friend_id = %s AND user_id = ANY(%s))
-        ''', (user_id, other_user_ids, user_id, other_user_ids))
+        """,
+            (user_id, other_user_ids, user_id, other_user_ids),
+        )
 
         rows = c.fetchall()
         result = {uid: None for uid in other_user_ids}
-        
+
         for row in rows:
             uid1, uid2 = row[1], row[2]
             other = uid2 if uid1 == user_id else uid1
             created_at = row[4]
             updated_at = row[5]
             if created_at:
-                created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
+                created_at = created_at.strftime("%Y-%m-%d %H:%M:%S")
             if updated_at:
-                updated_at = updated_at.strftime('%Y-%m-%d %H:%M:%S')
+                updated_at = updated_at.strftime("%Y-%m-%d %H:%M:%S")
             result[other] = {
                 "id": row[0],
                 "requester_id": row[1],
@@ -613,7 +718,7 @@ def get_bulk_friendship_status(user_id: str, other_user_ids: list) -> dict:
                 "status": row[3],
                 "created_at": created_at,
                 "updated_at": updated_at,
-                "is_requester": row[1] == user_id
+                "is_requester": row[1] == user_id,
             }
         return result
     finally:

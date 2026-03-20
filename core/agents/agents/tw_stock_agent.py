@@ -4,17 +4,24 @@ Agent V4 — TW Stock Agent
 台股分析 Agent：使用 LangChain create_agent 實現 ReAct 循環。
 LLM 自動決定調用哪些工具、參數是什麼。
 """
+
 import re
+
+from core.tools.tw_symbol_resolver import TWSymbolResolver
 
 from ..base_react_agent import BaseReActAgent
 from ..prompt_registry import PromptRegistry
-from core.tools.tw_symbol_resolver import TWSymbolResolver
+
 
 class TWStockAgent(BaseReActAgent):
     """台股分析 Agent - 使用 ReAct 循環自動調用工具。"""
 
-    def __init__(self, llm_client, tool_registry, user_tier: str = "free", user_id=None):
-        super().__init__(llm_client, tool_registry, user_tier=user_tier, user_id=user_id)
+    def __init__(
+        self, llm_client, tool_registry, user_tier: str = "free", user_id=None
+    ):
+        super().__init__(
+            llm_client, tool_registry, user_tier=user_tier, user_id=user_id
+        )
         # Keep resolver for backwards compatibility with tests/legacy helpers.
         self.resolver = TWSymbolResolver()
 

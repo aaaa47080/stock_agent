@@ -5,9 +5,11 @@
 
 from datetime import datetime
 from zoneinfo import ZoneInfo
+
 from langchain_core.tools import tool
 
 from .schemas import CurrentTimeInput
+
 
 @tool
 def introduction_tool(_query: str = "") -> str:
@@ -20,8 +22,12 @@ def introduction_tool(_query: str = "") -> str:
     - 用戶詢問「本平台開發者」「作者是誰？」
     - 用戶想了解系統背景或開發團隊資訊
     """
-    with open("/home/danny/AI-agent/crypto_trading_system/data/data/introduction.txt", "r", encoding="utf-8") as f:
-        content = "平台開發者詳細資訊:"+ f.read()
+    with open(
+        "/home/danny/AI-agent/crypto_trading_system/data/data/introduction.txt",
+        "r",
+        encoding="utf-8",
+    ) as f:
+        content = "平台開發者詳細資訊:" + f.read()
         return content
 
 
@@ -53,7 +59,15 @@ def get_current_time_tool(timezone: str = "Asia/Taipei") -> str:
         # 格式化時間
         date_str = now.strftime("%Y年%m月%d日")
         time_str = now.strftime("%H:%M:%S")
-        weekday_map = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
+        weekday_map = [
+            "星期一",
+            "星期二",
+            "星期三",
+            "星期四",
+            "星期五",
+            "星期六",
+            "星期日",
+        ]
         weekday = weekday_map[now.weekday()]
 
         # 判斷是上午還是下午
@@ -70,7 +84,7 @@ def get_current_time_tool(timezone: str = "Asia/Taipei") -> str:
 | **日期** | {date_str} ({weekday}) |
 | **時間** | {time_str} ({time_12_str}) |
 | **時區** | {timezone} |
-| **UTC 時間** | {now.astimezone(ZoneInfo('UTC')).strftime('%Y-%m-%d %H:%M:%S')} |
+| **UTC 時間** | {now.astimezone(ZoneInfo("UTC")).strftime("%Y-%m-%d %H:%M:%S")} |
 """
 
     except Exception as e:

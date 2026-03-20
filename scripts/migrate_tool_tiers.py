@@ -2,14 +2,16 @@
 遷移腳本：將所有 tier_required='plus' 的工具更新為 'premium'
 執行方式: python scripts/migrate_tool_tiers.py
 """
-import sys
+
 import os
+import sys
 
 # 將專案根目錄加入 Python 路徑
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_root)
 
 from core.database.connection import get_connection
+
 
 def migrate_tool_tiers():
     """將所有 plus 等級工具更新為 premium"""
@@ -18,11 +20,11 @@ def migrate_tool_tiers():
 
     try:
         # 查詢目前有多少 plus 等級的工具
-        c.execute('''
+        c.execute("""
             SELECT tool_id, display_name, tier_required
             FROM tools_catalog
             WHERE tier_required = 'plus'
-        ''')
+        """)
         plus_tools = c.fetchall()
 
         if not plus_tools:
@@ -34,11 +36,11 @@ def migrate_tool_tiers():
             print(f"  - {tool_id}: {display_name}")
 
         # 更新所有 plus 為 premium
-        c.execute('''
+        c.execute("""
             UPDATE tools_catalog
             SET tier_required = 'premium'
             WHERE tier_required = 'plus'
-        ''')
+        """)
 
         conn.commit()
         print(f"\n✅ 成功更新 {len(plus_tools)} 個工具的等級為 'premium'")
@@ -49,6 +51,7 @@ def migrate_tool_tiers():
         raise
     finally:
         conn.close()
+
 
 if __name__ == "__main__":
     print("🔄 開始遷移工具等級...")

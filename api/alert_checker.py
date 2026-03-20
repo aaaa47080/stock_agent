@@ -4,6 +4,7 @@ Price Alert Background Checker
 Polls current prices every 60 seconds and fires notifications when
 alert conditions are met. Integrates with existing notification system.
 """
+
 import asyncio
 import logging
 from typing import Optional
@@ -56,15 +57,18 @@ async def _fetch_price(symbol: str, market: str) -> Optional[tuple]:
     Returns None on failure.
     """
     from api.utils import run_sync
+
     try:
         if market == "crypto":
             from core.tools.crypto_tools import get_crypto_price
+
             result = await run_sync(get_crypto_price, symbol)
             price = result.get("price") or result.get("last")
             return (float(price), float(price)) if price else None
 
         if market == "tw_stock":
             from core.tools.tw_stock_tools import tw_stock_price
+
             result = await run_sync(tw_stock_price, symbol)
             price = result.get("close") or result.get("price")
             open_p = result.get("open", price)
@@ -72,6 +76,7 @@ async def _fetch_price(symbol: str, market: str) -> Optional[tuple]:
 
         if market == "us_stock":
             from core.tools.us_stock_tools import us_stock_price
+
             result = await run_sync(us_stock_price, symbol)
             price = result.get("regularMarketPrice") or result.get("price")
             open_p = result.get("regularMarketOpen") or result.get("open", price)
@@ -84,10 +89,10 @@ async def _fetch_price(symbol: str, market: str) -> Optional[tuple]:
 
 async def _check_all_alerts():
     """Run one check cycle across all active alerts."""
-    from core.database import get_active_alerts, mark_alert_triggered
-    from core.database.notifications import create_notification
     from api.routers.notifications import push_notification_to_user
     from api.utils import run_sync
+    from core.database import get_active_alerts, mark_alert_triggered
+    from core.database.notifications import create_notification
 
     alerts = await run_sync(get_active_alerts)
 
@@ -125,7 +130,9 @@ async def _check_all_alerts():
                 )
                 if notification:
                     await push_notification_to_user(alert["user_id"], notification)
-                logger.info(f"Alert triggered: {alert['symbol']} ({alert['condition']} {alert['target']})")
+                logger.info(
+                    f"Alert triggered: {alert['symbol']} ({alert['condition']} {alert['target']})"
+                )
             except Exception as e:
                 logger.error(f"Failed to send alert notification: {e}")
                 continue

@@ -1,12 +1,18 @@
 """Tests for TWSymbolResolver — uses mocked HTTP to avoid network dependency."""
-import pytest
-from unittest.mock import patch, MagicMock
-from core.tools.tw_symbol_resolver import TWSymbolResolver
 
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from core.tools.tw_symbol_resolver import TWSymbolResolver
 
 # Minimal stock list for testing
 MOCK_TWSE = [
-    {"公司代號": "2330", "公司簡稱": "台積電", "公司全名": "台灣積體電路製造股份有限公司"},
+    {
+        "公司代號": "2330",
+        "公司簡稱": "台積電",
+        "公司全名": "台灣積體電路製造股份有限公司",
+    },
     {"公司代號": "2317", "公司簡稱": "鴻海", "公司全名": "鴻海精密工業股份有限公司"},
 ]
 MOCK_TPEX = [

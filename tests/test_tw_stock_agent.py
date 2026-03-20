@@ -1,7 +1,9 @@
 """Tests for TWStockAgent."""
+
 from unittest.mock import MagicMock, patch
+
 from core.agents.agents.tw_stock_agent import TWStockAgent
-from core.agents.models import SubTask, AgentResult
+from core.agents.models import AgentResult, SubTask
 
 
 def make_agent(mock_llm=None):
@@ -35,7 +37,7 @@ def test_extract_ticker_from_code():
 def test_extract_ticker_from_name():
     agent = make_agent()
     # With resolver mocked
-    with patch.object(agent.resolver, 'resolve', return_value="2330.TW"):
+    with patch.object(agent.resolver, "resolve", return_value="2330.TW"):
         ticker = agent._extract_ticker("台積電最近怎樣")
         assert ticker == "2330.TW"
 

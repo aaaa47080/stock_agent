@@ -5,8 +5,8 @@ os.environ["REDIS_URL"] = "memory://"
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from api.routers.analysis import router as analysis_router
 from api.deps import get_current_user
+from api.routers.analysis import router as analysis_router
 from core.agents.analysis_policy import AnalysisPolicyResolver
 
 

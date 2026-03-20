@@ -11,9 +11,11 @@ Audit Logging Middleware - Optimized Dual-Layer Architecture
 import asyncio
 import time
 from typing import Optional
+
 from fastapi import Request
-from core.audit import AuditLogger
+
 from api.utils import logger
+from core.audit import AuditLogger
 
 
 async def _extract_user_from_request(request: Request) -> Optional[dict]:

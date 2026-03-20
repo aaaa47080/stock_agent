@@ -1,6 +1,7 @@
 """
 Governance System Validators
 """
+
 from typing import Dict, Optional
 
 
@@ -126,7 +127,7 @@ def sanitize_description(description: str) -> str:
         return ""
 
     # 移除多餘空白
-    description = ' '.join(description.split())
+    description = " ".join(description.split())
 
     # 移除前後空白
     description = description.strip()

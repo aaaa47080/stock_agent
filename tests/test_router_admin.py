@@ -1,10 +1,11 @@
 """Tests for the current modular admin router package."""
 
-import pytest
 from unittest.mock import patch
+
+import pytest
 from fastapi import HTTPException
 
-from api.routers.admin import verify_admin_key, router, UpdateConfigRequest
+from api.routers.admin import UpdateConfigRequest, router, verify_admin_key
 
 
 class TestVerifyAdminKey:

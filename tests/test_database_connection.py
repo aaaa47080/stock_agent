@@ -336,10 +336,7 @@ class TestInitDb:
                     get_connection()
 
         mock_pool.getconn.assert_called()
-        standalone_created = any(
-            isinstance(call, _StandaloneConnection)
-            for call in []
-        )
+        standalone_created = any(isinstance(call, _StandaloneConnection) for call in [])
         assert not standalone_created
 
 

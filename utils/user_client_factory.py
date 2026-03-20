@@ -4,13 +4,18 @@
 ⭐ 重要：完全使用用戶提供的 key，不從 .env 讀取
 """
 
-from typing import Any, Optional
 import socket
+from typing import Any, Optional
+
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage
-from core.model_config import OPENAI_DEFAULT_MODEL, GEMINI_DEFAULT_MODEL
 
-def create_user_llm_client(provider: str, api_key: str, model: Optional[str] = None) -> Any:
+from core.model_config import GEMINI_DEFAULT_MODEL, OPENAI_DEFAULT_MODEL
+
+
+def create_user_llm_client(
+    provider: str, api_key: str, model: Optional[str] = None
+) -> Any:
     """
     根據用戶提供的 key 創建 LLM 客戶端 (LangChain BaseChatModel)
 
@@ -52,7 +57,7 @@ def create_user_llm_client(provider: str, api_key: str, model: Optional[str] = N
         model_provider=lc_provider,
         temperature=0.5,
         api_key=api_key,
-        base_url=base_url
+        base_url=base_url,
     )
 
 
@@ -65,7 +70,9 @@ def explain_llm_exception(exc: Exception) -> str:
     while current is not None and id(current) not in seen:
         seen.add(id(current))
         chain.append(current)
-        current = getattr(current, "__cause__", None) or getattr(current, "__context__", None)
+        current = getattr(current, "__cause__", None) or getattr(
+            current, "__context__", None
+        )
 
     messages = " | ".join(str(item) for item in chain if str(item))
 
@@ -82,7 +89,11 @@ def explain_llm_exception(exc: Exception) -> str:
     if "429" in messages:
         return "API 配額不足"
 
-    if "Connection error" in messages or "ConnectError" in messages or "APIConnectionError" in messages:
+    if (
+        "Connection error" in messages
+        or "ConnectError" in messages
+        or "APIConnectionError" in messages
+    ):
         return "LLM 連線失敗：無法連到模型提供商，請檢查外網連線、防火牆或代理設定。"
 
     return f"驗證失敗: {exc}"

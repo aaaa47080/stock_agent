@@ -2,9 +2,11 @@
 Market WebSocket Endpoints
 Real-time K-line and Ticker data streaming
 """
+
 import asyncio
 import json
 from typing import Set
+
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from api.utils import logger
@@ -16,6 +18,7 @@ router = APIRouter()
 # K-line WebSocket Manager
 # ============================================================================
 
+
 class KlineConnectionManager:
     """Manage K-line WebSocket connections."""
 
@@ -26,13 +29,17 @@ class KlineConnectionManager:
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.add(websocket)
-        logger.debug(f"K-line WebSocket connected, total: {len(self.active_connections)}")
+        logger.debug(
+            f"K-line WebSocket connected, total: {len(self.active_connections)}"
+        )
 
     def disconnect(self, websocket: WebSocket):
         self.active_connections.discard(websocket)
         if websocket in self.subscriptions:
             del self.subscriptions[websocket]
-        logger.debug(f"K-line WebSocket disconnected, total: {len(self.active_connections)}")
+        logger.debug(
+            f"K-line WebSocket disconnected, total: {len(self.active_connections)}"
+        )
 
     def subscribe(self, websocket: WebSocket, symbol: str, interval: str):
         self.subscriptions[websocket] = {"symbol": symbol, "interval": interval}
@@ -47,12 +54,14 @@ class KlineConnectionManager:
         for ws, sub in list(self.subscriptions.items()):
             if sub["symbol"].upper() == symbol.upper() and sub["interval"] == interval:
                 try:
-                    await ws.send_json({
-                        "type": "kline",
-                        "symbol": symbol,
-                        "interval": interval,
-                        "data": kline
-                    })
+                    await ws.send_json(
+                        {
+                            "type": "kline",
+                            "symbol": symbol,
+                            "interval": interval,
+                            "data": kline,
+                        }
+                    )
                 except Exception as e:
                     logger.error(f"Broadcast failed: {e}")
 
@@ -69,6 +78,7 @@ async def start_okx_websocket():
 
     try:
         from data.okx_websocket import okx_ws_manager
+
         okx_ws_started = True
         await okx_ws_manager.start()
     except ImportError as e:
@@ -98,12 +108,14 @@ async def websocket_klines(websocket: WebSocket):
         async def on_kline_update(symbol: str, interval: str, kline: dict):
             """Callback when OKX K-line updates."""
             try:
-                await websocket.send_json({
-                    "type": "kline",
-                    "symbol": symbol,
-                    "interval": interval,
-                    "data": kline
-                })
+                await websocket.send_json(
+                    {
+                        "type": "kline",
+                        "symbol": symbol,
+                        "interval": interval,
+                        "data": kline,
+                    }
+                )
             except Exception as e:
                 logger.debug(f"Failed to send kline update: {e}")
 
@@ -120,22 +132,24 @@ async def websocket_klines(websocket: WebSocket):
 
                     if current_subscription:
                         old_symbol, old_interval = current_subscription
-                        await okx_ws_manager.unsubscribe(old_symbol, old_interval, on_kline_update)
+                        await okx_ws_manager.unsubscribe(
+                            old_symbol, old_interval, on_kline_update
+                        )
 
                     kline_manager.subscribe(websocket, symbol, interval)
                     await okx_ws_manager.subscribe(symbol, interval, on_kline_update)
                     current_subscription = (symbol, interval)
 
-                    await websocket.send_json({
-                        "type": "subscribed",
-                        "symbol": symbol,
-                        "interval": interval
-                    })
+                    await websocket.send_json(
+                        {"type": "subscribed", "symbol": symbol, "interval": interval}
+                    )
 
                 elif action == "unsubscribe":
                     if current_subscription:
                         old_symbol, old_interval = current_subscription
-                        await okx_ws_manager.unsubscribe(old_symbol, old_interval, on_kline_update)
+                        await okx_ws_manager.unsubscribe(
+                            old_symbol, old_interval, on_kline_update
+                        )
                         current_subscription = None
 
                     kline_manager.unsubscribe(websocket)
@@ -155,6 +169,7 @@ async def websocket_klines(websocket: WebSocket):
         if current_subscription:
             try:
                 from data.okx_websocket import okx_ws_manager
+
                 old_symbol, old_interval = current_subscription
                 await okx_ws_manager.unsubscribe(old_symbol, old_interval)
             except Exception as e:
@@ -165,6 +180,7 @@ async def websocket_klines(websocket: WebSocket):
 # ============================================================================
 # Ticker WebSocket Manager
 # ============================================================================
+
 
 class TickerConnectionManager:
     """Manage Ticker WebSocket connections."""
@@ -177,13 +193,17 @@ class TickerConnectionManager:
         await websocket.accept()
         self.active_connections.add(websocket)
         self.subscribed_symbols[websocket] = set()
-        logger.debug(f"Ticker WebSocket connected, total: {len(self.active_connections)}")
+        logger.debug(
+            f"Ticker WebSocket connected, total: {len(self.active_connections)}"
+        )
 
     def disconnect(self, websocket: WebSocket):
         self.active_connections.discard(websocket)
         if websocket in self.subscribed_symbols:
             del self.subscribed_symbols[websocket]
-        logger.debug(f"Ticker WebSocket disconnected, total: {len(self.active_connections)}")
+        logger.debug(
+            f"Ticker WebSocket disconnected, total: {len(self.active_connections)}"
+        )
 
     def subscribe(self, websocket: WebSocket, symbols: list):
         if websocket not in self.subscribed_symbols:
@@ -211,6 +231,7 @@ async def start_okx_ticker_websocket():
 
     try:
         from data.okx_websocket import okx_ticker_ws_manager
+
         logger.info("Starting OKX Ticker WebSocket...")
         okx_ticker_ws_started = True
         await okx_ticker_ws_manager.start()
@@ -244,15 +265,15 @@ async def websocket_tickers(websocket: WebSocket):
 
         async def create_ticker_callback(symbol: str):
             """Create callback function for specific symbol."""
+
             async def on_ticker_update(sym: str, ticker: dict):
                 try:
-                    await websocket.send_json({
-                        "type": "ticker",
-                        "symbol": symbol,
-                        "data": ticker
-                    })
+                    await websocket.send_json(
+                        {"type": "ticker", "symbol": symbol, "data": ticker}
+                    )
                 except Exception as e:
                     logger.debug(f"Failed to send ticker update: {e}")
+
             return on_ticker_update
 
         while True:
@@ -278,10 +299,9 @@ async def websocket_tickers(websocket: WebSocket):
                             logger.debug(f"Subscribed to Ticker: {symbol}")
 
                     ticker_manager.subscribe(websocket, symbols)
-                    await websocket.send_json({
-                        "type": "subscribed",
-                        "symbols": symbols
-                    })
+                    await websocket.send_json(
+                        {"type": "subscribed", "symbols": symbols}
+                    )
 
                 elif action == "unsubscribe":
                     symbols = message.get("symbols", [])
@@ -291,14 +311,15 @@ async def websocket_tickers(websocket: WebSocket):
                     for symbol in symbols:
                         symbol = symbol.upper()
                         if symbol in current_callbacks:
-                            await okx_ticker_ws_manager.unsubscribe(symbol, current_callbacks[symbol])
+                            await okx_ticker_ws_manager.unsubscribe(
+                                symbol, current_callbacks[symbol]
+                            )
                             del current_callbacks[symbol]
 
                     ticker_manager.unsubscribe(websocket, symbols)
-                    await websocket.send_json({
-                        "type": "unsubscribed",
-                        "symbols": symbols
-                    })
+                    await websocket.send_json(
+                        {"type": "unsubscribed", "symbols": symbols}
+                    )
 
                 elif action == "unsubscribe_all":
                     for symbol, callback in list(current_callbacks.items()):
@@ -320,6 +341,7 @@ async def websocket_tickers(websocket: WebSocket):
     finally:
         try:
             from data.okx_websocket import okx_ticker_ws_manager
+
             for symbol, callback in current_callbacks.items():
                 await okx_ticker_ws_manager.unsubscribe(symbol, callback)
         except Exception as e:

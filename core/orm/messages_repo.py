@@ -10,6 +10,7 @@ Usage::
 
     conv = await messages_repo.get_or_create_conversation("user1", "user2")
 """
+
 from __future__ import annotations
 
 import logging
@@ -62,7 +63,6 @@ def _msg_row_to_dict(row) -> dict:
 
 
 class MessagesRepository:
-
     async def get_or_create_conversation(
         self,
         user1_id: str,
@@ -198,17 +198,23 @@ class MessagesRepository:
                     if user_id == user1_id_val
                     else cols[DmConversation.user2_unread_count]
                 )
-                conversations.append({
-                    "id": cols[DmConversation.id],
-                    "other_user_id": cols["other_user_id"],
-                    "other_username": cols["other_username"] or cols["other_user_id"],
-                    "other_membership_tier": cols["other_membership_tier"] or "free",
-                    "last_message": cols["last_message"],
-                    "last_message_from": cols["last_message_from"],
-                    "last_message_at": _dt_iso(cols[DmConversation.last_message_at]),
-                    "unread_count": unread_count,
-                    "created_at": _dt_iso(cols[DmConversation.created_at]),
-                })
+                conversations.append(
+                    {
+                        "id": cols[DmConversation.id],
+                        "other_user_id": cols["other_user_id"],
+                        "other_username": cols["other_username"]
+                        or cols["other_user_id"],
+                        "other_membership_tier": cols["other_membership_tier"]
+                        or "free",
+                        "last_message": cols["last_message"],
+                        "last_message_from": cols["last_message_from"],
+                        "last_message_at": _dt_iso(
+                            cols[DmConversation.last_message_at]
+                        ),
+                        "unread_count": unread_count,
+                        "created_at": _dt_iso(cols[DmConversation.created_at]),
+                    }
+                )
             return conversations
 
     async def get_conversation_by_id(
@@ -244,45 +250,57 @@ class MessagesRepository:
         to_user_id: str,
         session: AsyncSession | None = None,
     ) -> dict:
-        sender_exists_sq = exists(
-            select(User.user_id).where(User.user_id == from_user_id)
-        ).correlate(None).label("sender_exists")
+        sender_exists_sq = (
+            exists(select(User.user_id).where(User.user_id == from_user_id))
+            .correlate(None)
+            .label("sender_exists")
+        )
 
-        receiver_exists_sq = exists(
-            select(User.user_id).where(User.user_id == to_user_id)
-        ).correlate(None).label("receiver_exists")
+        receiver_exists_sq = (
+            exists(select(User.user_id).where(User.user_id == to_user_id))
+            .correlate(None)
+            .label("receiver_exists")
+        )
 
-        are_friends_sq = exists(
-            select(Friendship.id).where(
-                or_(
-                    and_(
-                        Friendship.user_id == from_user_id,
-                        Friendship.friend_id == to_user_id,
+        are_friends_sq = (
+            exists(
+                select(Friendship.id).where(
+                    or_(
+                        and_(
+                            Friendship.user_id == from_user_id,
+                            Friendship.friend_id == to_user_id,
+                        ),
+                        and_(
+                            Friendship.user_id == to_user_id,
+                            Friendship.friend_id == from_user_id,
+                        ),
                     ),
-                    and_(
-                        Friendship.user_id == to_user_id,
-                        Friendship.friend_id == from_user_id,
-                    ),
-                ),
-                Friendship.status == "accepted",
+                    Friendship.status == "accepted",
+                )
             )
-        ).correlate(None).label("are_friends")
+            .correlate(None)
+            .label("are_friends")
+        )
 
-        is_blocked_sq = exists(
-            select(Friendship.id).where(
-                or_(
-                    and_(
-                        Friendship.user_id == from_user_id,
-                        Friendship.friend_id == to_user_id,
+        is_blocked_sq = (
+            exists(
+                select(Friendship.id).where(
+                    or_(
+                        and_(
+                            Friendship.user_id == from_user_id,
+                            Friendship.friend_id == to_user_id,
+                        ),
+                        and_(
+                            Friendship.user_id == to_user_id,
+                            Friendship.friend_id == from_user_id,
+                        ),
                     ),
-                    and_(
-                        Friendship.user_id == to_user_id,
-                        Friendship.friend_id == from_user_id,
-                    ),
-                ),
-                Friendship.status == "blocked",
+                    Friendship.status == "blocked",
+                )
             )
-        ).correlate(None).label("is_blocked")
+            .correlate(None)
+            .label("is_blocked")
+        )
 
         stmt = select(
             sender_exists_sq,
@@ -330,7 +348,11 @@ class MessagesRepository:
             "limit_message_max_length", _DEFAULT_MAX_LENGTH, session
         )
         if len(content) > max_length:
-            return {"success": False, "error": "message_too_long", "max_length": max_length}
+            return {
+                "success": False,
+                "error": "message_too_long",
+                "max_length": max_length,
+            }
 
         async with session or get_async_session() as s:
             try:
@@ -403,21 +425,24 @@ class MessagesRepository:
 
                 from_u = User.__table__.alias("from_u")
                 to_u = User.__table__.alias("to_u")
-                stmt = select(
-                    DmMessage.id,
-                    DmMessage.conversation_id,
-                    DmMessage.from_user_id,
-                    DmMessage.to_user_id,
-                    DmMessage.content,
-                    DmMessage.message_type,
-                    DmMessage.is_read,
-                    DmMessage.read_at,
-                    DmMessage.created_at,
-                    from_u.c.username.label("_from_username"),
-                    to_u.c.username.label("_to_username"),
-                ).outerjoin(from_u, from_u.c.user_id == DmMessage.from_user_id).outerjoin(
-                    to_u, to_u.c.user_id == DmMessage.to_user_id
-                ).where(DmMessage.id == msg.id)
+                stmt = (
+                    select(
+                        DmMessage.id,
+                        DmMessage.conversation_id,
+                        DmMessage.from_user_id,
+                        DmMessage.to_user_id,
+                        DmMessage.content,
+                        DmMessage.message_type,
+                        DmMessage.is_read,
+                        DmMessage.read_at,
+                        DmMessage.created_at,
+                        from_u.c.username.label("_from_username"),
+                        to_u.c.username.label("_to_username"),
+                    )
+                    .outerjoin(from_u, from_u.c.user_id == DmMessage.from_user_id)
+                    .outerjoin(to_u, to_u.c.user_id == DmMessage.to_user_id)
+                    .where(DmMessage.id == msg.id)
+                )
 
                 result = await s.execute(stmt)
                 msg_row = result.one()
@@ -450,29 +475,31 @@ class MessagesRepository:
             ),
         )
 
-        msg_stmt = select(
-            DmMessage.id,
-            DmMessage.conversation_id,
-            DmMessage.from_user_id,
-            DmMessage.to_user_id,
-            DmMessage.content,
-            DmMessage.message_type,
-            DmMessage.is_read,
-            DmMessage.read_at,
-            DmMessage.created_at,
-            from_u.c.username.label("_from_username"),
-            to_u.c.username.label("_to_username"),
-        ).outerjoin(from_u, from_u.c.user_id == DmMessage.from_user_id).outerjoin(
-            to_u, to_u.c.user_id == DmMessage.to_user_id
-        ).where(DmMessage.conversation_id == conversation_id)
+        msg_stmt = (
+            select(
+                DmMessage.id,
+                DmMessage.conversation_id,
+                DmMessage.from_user_id,
+                DmMessage.to_user_id,
+                DmMessage.content,
+                DmMessage.message_type,
+                DmMessage.is_read,
+                DmMessage.read_at,
+                DmMessage.created_at,
+                from_u.c.username.label("_from_username"),
+                to_u.c.username.label("_to_username"),
+            )
+            .outerjoin(from_u, from_u.c.user_id == DmMessage.from_user_id)
+            .outerjoin(to_u, to_u.c.user_id == DmMessage.to_user_id)
+            .where(DmMessage.conversation_id == conversation_id)
+        )
 
         if before_id is not None:
             msg_stmt = msg_stmt.where(DmMessage.id < before_id)
 
-        msg_stmt = (
-            msg_stmt.order_by(DmMessage.created_at.desc(), DmMessage.id.desc())
-            .limit(limit)
-        )
+        msg_stmt = msg_stmt.order_by(
+            DmMessage.created_at.desc(), DmMessage.id.desc()
+        ).limit(limit)
 
         async with session or get_async_session() as s:
             verify_result = await s.execute(verify_stmt)

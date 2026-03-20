@@ -1,15 +1,17 @@
 """
 Tip-related API endpoints
 """
+
 import os
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
-from api.utils import logger
 from api.deps import get_current_user
 from api.middleware.rate_limit import limiter
+from api.utils import logger
 from core.orm.forum_repo import forum_repo
+
 from .models import CreateTipRequest
 
 router = APIRouter(prefix="/api/forum", tags=["Forum - Tips"])
@@ -35,7 +37,9 @@ async def _verify_tip_payment(payment_id: str) -> dict:
             )
 
             if response.status_code == 404:
-                raise HTTPException(status_code=400, detail="Payment not found on Pi Network")
+                raise HTTPException(
+                    status_code=400, detail="Payment not found on Pi Network"
+                )
 
             response.raise_for_status()
             payment_data = response.json()
@@ -53,8 +57,14 @@ async def _verify_tip_payment(payment_id: str) -> dict:
         logger.error("Pi API timeout during tip payment verification")
         raise HTTPException(status_code=504, detail="Pi verification service timeout")
     except httpx.HTTPStatusError as e:
-        logger.error("Pi API error during tip verification: %s - %s", e.response.status_code, e.response.text)
-        raise HTTPException(status_code=e.response.status_code, detail="Pi API verification failed")
+        logger.error(
+            "Pi API error during tip verification: %s - %s",
+            e.response.status_code,
+            e.response.text,
+        )
+        raise HTTPException(
+            status_code=e.response.status_code, detail="Pi API verification failed"
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -77,7 +87,9 @@ async def tip_post(
 
         if not TEST_MODE:
             if not body.payment_id:
-                raise HTTPException(status_code=400, detail="payment_id is required for tips")
+                raise HTTPException(
+                    status_code=400, detail="payment_id is required for tips"
+                )
 
             payment_data = await _verify_tip_payment(body.payment_id)
 
@@ -85,7 +97,10 @@ async def tip_post(
             if blockchain_txid:
                 tx_hash = blockchain_txid
             elif not tx_hash:
-                raise HTTPException(status_code=400, detail="No blockchain transaction found for this payment")
+                raise HTTPException(
+                    status_code=400,
+                    detail="No blockchain transaction found for this payment",
+                )
 
             actual_amount = payment_data.get("amount", 0)
             if abs(float(actual_amount) - float(body.amount)) > 0.001:
@@ -96,6 +111,7 @@ async def tip_post(
         else:
             if not tx_hash:
                 import uuid
+
                 tx_hash = f"test_tip_{uuid.uuid4().hex[:16]}"
 
         post = await forum_repo.get_post_by_id(post_id, increment_view=False)
@@ -115,7 +131,10 @@ async def tip_post(
 
         logger.info(
             "Tip created: post=%d, from=%s, to=%s, amount=%.2f, tx=%s",
-            post_id, user_id, post["user_id"], body.amount,
+            post_id,
+            user_id,
+            post["user_id"],
+            body.amount,
             tx_hash[:16] if tx_hash else "none",
         )
 
@@ -130,7 +149,9 @@ async def tip_post(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception:
-        raise HTTPException(status_code=500, detail="Tip failed, please try again later")
+        raise HTTPException(
+            status_code=500, detail="Tip failed, please try again later"
+        )
 
 
 @router.get("/tips/sent")
@@ -159,6 +180,11 @@ async def get_received_tips(
 
         tips = await forum_repo.get_tips_received(user_id, limit=limit, offset=offset)
         total = await forum_repo.get_tips_total_received(user_id)
-        return {"success": True, "tips": tips, "count": len(tips), "total_received": total}
+        return {
+            "success": True,
+            "tips": tips,
+            "count": len(tips),
+            "total_received": total,
+        }
     except Exception:
         raise HTTPException(status_code=500, detail="Failed to get tip records")

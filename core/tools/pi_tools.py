@@ -9,10 +9,11 @@ Pi Network 工具模組
 
 所有工具均使用免費的 Pi Network API，無需付費。
 """
+
 import os
+
 import httpx
 from langchain_core.tools import tool
-
 
 PI_API_KEY = os.getenv("PI_API_KEY", "")
 PI_API_BASE = "https://api.minepi.com/v2"
@@ -34,11 +35,12 @@ def get_pi_price() -> str:
     - 用戶想了解 PI (Pi Network) 的市場表現
     """
     import httpx
+
     try:
         # CoinGecko PI 價格查詢
         resp = httpx.get(
             "https://api.coingecko.com/api/v3/simple/price?ids=pi-network&vs_currencies=usd,twd&include_24hr_change=true&include_market_cap=true",
-            timeout=10
+            timeout=10,
         )
 
         if resp.status_code == 200:
@@ -51,7 +53,13 @@ def get_pi_price() -> str:
                 change_24h = pi_data.get("usd_24h_change", 0)
                 market_cap = pi_data.get("usd_market_cap", 0)
 
-                trend = "📈" if change_24h and change_24h > 0 else "📉" if change_24h and change_24h < 0 else "➡️"
+                trend = (
+                    "📈"
+                    if change_24h and change_24h > 0
+                    else "📉"
+                    if change_24h and change_24h < 0
+                    else "➡️"
+                )
 
                 # 格式化市值
                 if market_cap > 1_000_000_000:
@@ -99,7 +107,7 @@ def get_pi_network_info() -> str:
         # 獲取價格和市值數據
         resp = httpx.get(
             "https://api.coingecko.com/api/v3/coins/pi-network?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false",
-            timeout=10
+            timeout=10,
         )
 
         if resp.status_code == 200:

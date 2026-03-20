@@ -5,6 +5,7 @@ Agent V4 — Chat Agent
 使用 LangChain create_agent 實現完整的 ReAct 循環。
 Supports multi-language responses.
 """
+
 import logging
 
 from ..base_react_agent import BaseReActAgent

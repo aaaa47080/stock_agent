@@ -1,30 +1,28 @@
-import os
-import json
 import asyncio
-from typing import Any, Optional
+import json
+import os
 from datetime import datetime
+from typing import Any, Optional
 
-from fastapi import APIRouter, HTTPException, Header, Depends, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
 
 # LangChain Imports
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage
+from pydantic import BaseModel
 
-from utils.llm_client import LLMClientFactory
-from core.model_config import OPENAI_DEFAULT_MODEL, GEMINI_DEFAULT_MODEL, MODEL_CONFIG
-from core.config import (
-    SUPPORTED_EXCHANGES, DEFAULT_INTERVAL, DEFAULT_KLINES_LIMIT
-)
-from core.database import get_prices, get_limits
 import core.config as core_config
-from utils.settings import Settings
 from api.deps import get_current_user
-from api.routers.admin import verify_admin_key
-from api.models import UserSettings, KeyValidationRequest
-from api.utils import update_env_file, logger, run_sync
 from api.middleware.rate_limit import limiter
+from api.models import KeyValidationRequest, UserSettings
+from api.routers.admin import verify_admin_key
+from api.utils import logger, run_sync, update_env_file
+from core.config import DEFAULT_INTERVAL, DEFAULT_KLINES_LIMIT, SUPPORTED_EXCHANGES
+from core.database import get_limits, get_prices
+from core.model_config import GEMINI_DEFAULT_MODEL, MODEL_CONFIG, OPENAI_DEFAULT_MODEL
+from utils.llm_client import LLMClientFactory
+from utils.settings import Settings
 
 router = APIRouter()
 
@@ -33,6 +31,7 @@ project_root = os.getcwd()
 FRONTEND_DEBUG_LOG = os.path.join(project_root, "frontend_debug.log")
 
 # Pydantic model for debug log
+
 
 class DebugLogRequest(BaseModel):
     level: str = "info"
@@ -47,7 +46,9 @@ async def write_debug_log(request: DebugLogRequest, x_admin_key: str = Header(No
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
         log_line = f"[{timestamp}] [{request.level.upper()}] {request.message}"
         if request.data:
-            log_line += f" | {json.dumps(request.data, ensure_ascii=False, default=str)}"
+            log_line += (
+                f" | {json.dumps(request.data, ensure_ascii=False, default=str)}"
+            )
         log_line += "\n"
 
         with open(FRONTEND_DEBUG_LOG, "a", encoding="utf-8") as f:
@@ -57,6 +58,7 @@ async def write_debug_log(request: DebugLogRequest, x_admin_key: str = Header(No
     except Exception as e:
         logger.error(f"Failed to write debug log: {e}")
         return {"success": False, "error": "寫入日誌失敗"}
+
 
 @router.get("/api/debug/log", dependencies=[Depends(verify_admin_key)])
 async def read_debug_log(lines: int = 50, x_admin_key: str = Header(None)):
@@ -74,6 +76,7 @@ async def read_debug_log(lines: int = 50, x_admin_key: str = Header(None)):
         logger.error(f"Failed to read debug log: {e}")
         return {"lines": [], "error": "讀取日誌失敗"}
 
+
 @router.delete("/api/debug/log", dependencies=[Depends(verify_admin_key)])
 async def clear_debug_log():
     """清空 frontend_debug.log (Admin only)"""
@@ -85,14 +88,20 @@ async def clear_debug_log():
         logger.error(f"Failed to clear debug log: {e}")
         return {"success": False, "error": "清空日誌失敗"}
 
+
 @router.get("/health")
 async def health_check():
     """健康檢查端點"""
     return {"status": "ok", "service": "Crypto Trading API"}
 
+
 @router.post("/api/settings/validate-key")
 @limiter.limit("10/minute")  # 🔒 Security: 防止滥用 LLM 验证
-async def validate_key(body: KeyValidationRequest, request: Request, current_user: dict = Depends(get_current_user)):
+async def validate_key(
+    body: KeyValidationRequest,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+):
     """測試 API Key 是否有效，並嘗試進行對話"""
     provider = body.provider
     key = body.api_key
@@ -101,10 +110,11 @@ async def validate_key(body: KeyValidationRequest, request: Request, current_use
     # Audit log for sensitive operation
     try:
         from core.audit import audit_log
+
         audit_log(
             action="api_key_validation",
             user_id=current_user.get("user_id"),
-            metadata={"provider": provider}
+            metadata={"provider": provider},
         )
     except ImportError:
         pass
@@ -150,13 +160,13 @@ async def validate_key(body: KeyValidationRequest, request: Request, current_use
             model_provider=lc_provider,
             temperature=0.5,
             api_key=key,
-            base_url=base_url
+            base_url=base_url,
         )
 
         # 使用 run_in_executor 避免阻塞，並加上 15 秒 timeout
         response = await asyncio.wait_for(
             run_sync(lambda: llm.invoke([HumanMessage(content=test_prompt)])),
-            timeout=15.0
+            timeout=15.0,
         )
         reply_text = response.content
 
@@ -165,21 +175,33 @@ async def validate_key(body: KeyValidationRequest, request: Request, current_use
             "message": f"驗證成功！連接正常。使用模型: {model_to_test}",
             "reply": reply_text,
             "provider": provider,
-            "model": model_to_test
+            "model": model_to_test,
         }
 
     except asyncio.TimeoutError:
         logger.warning(f"Key validation timed out for {provider}")
-        return {"valid": False, "message": "驗證失敗: 請求超時 (15秒)，請檢查網絡連接或稍後再試。"}
+        return {
+            "valid": False,
+            "message": "驗證失敗: 請求超時 (15秒)，請檢查網絡連接或稍後再試。",
+        }
     except Exception as e:
         logger.warning(f"Key validation failed for {provider}: {e}")
         error_msg = str(e)
-        if "401" in error_msg or "auth" in error_msg.lower() or "unauthorized" in error_msg.lower():
+        if (
+            "401" in error_msg
+            or "auth" in error_msg.lower()
+            or "unauthorized" in error_msg.lower()
+        ):
             error_msg = "認證失敗 (401)，請檢查 Key 是否正確。"
-        elif "429" in error_msg or "quota" in error_msg.lower() or "rate" in error_msg.lower() or "exceeded your current quota" in error_msg.lower():
+        elif (
+            "429" in error_msg
+            or "quota" in error_msg.lower()
+            or "rate" in error_msg.lower()
+            or "exceeded your current quota" in error_msg.lower()
+        ):
             error_msg = "額度不足或請求過多 (429)，請檢查您的計費詳情和用量限制。"
         elif "404" in error_msg or "not found" in error_msg.lower():
-             error_msg = "模型目前不可用 (404)。可能原因：① 模型名稱錯誤 ② Free tier 暫時無負載（稍後重試）③ 模型已下架。"
+            error_msg = "模型目前不可用 (404)。可能原因：① 模型名稱錯誤 ② Free tier 暫時無負載（稍後重試）③ 模型已下架。"
         elif "400" in error_msg:
             if "API_KEY_INVALID" in error_msg or "API key not valid" in error_msg:
                 error_msg = "API Key 無效，請檢查 Key 是否正確。"
@@ -188,9 +210,10 @@ async def validate_key(body: KeyValidationRequest, request: Request, current_use
             else:
                 error_msg = "請求參數錯誤 (400)。請檢查模型名稱是否正確。"
         elif "connection" in error_msg.lower() or "timeout" in error_msg.lower():
-             error_msg = "連接超時或網絡問題。請檢查網絡連接。"
+            error_msg = "連接超時或網絡問題。請檢查網絡連接。"
 
         return {"valid": False, "message": f"驗證失敗: {error_msg}"}
+
 
 @router.get("/api/config")
 async def get_config():
@@ -224,10 +247,12 @@ async def get_config():
 
     return response
 
+
 @router.get("/api/model-config")
 async def get_model_config():
     """獲取模型配置資訊"""
     return {"model_config": MODEL_CONFIG}
+
 
 @router.get("/api/config/prices")
 async def get_pi_prices():
@@ -237,10 +262,8 @@ async def get_pi_prices():
 
     商用化設計：配置存儲在數據庫中，可通過管理 API 即時修改
     """
-    return {
-        "prices": await run_sync(get_prices),
-        "currency": "Pi"
-    }
+    return {"prices": await run_sync(get_prices), "currency": "Pi"}
+
 
 @router.get("/api/config/limits")
 async def get_forum_limits():
@@ -250,13 +273,16 @@ async def get_forum_limits():
 
     商用化設計：配置存儲在數據庫中，可通過管理 API 即時修改
     """
-    return {
-        "limits": await run_sync(get_limits)
-    }
+    return {"limits": await run_sync(get_limits)}
+
 
 @router.post("/api/settings/update")
 @limiter.limit("10/minute")  # 🔒 Security: 防止设置滥用
-async def update_user_settings(settings: UserSettings, request: Request, current_user: dict = Depends(get_current_user)):
+async def update_user_settings(
+    settings: UserSettings,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+):
     """
     更新用戶設置 (LLM API Keys, 模型選擇, 委員會模式)
 
@@ -268,10 +294,11 @@ async def update_user_settings(settings: UserSettings, request: Request, current
     # Audit log for sensitive operation
     try:
         from core.audit import audit_log
+
         audit_log(
             action="settings_update",
             user_id=current_user.get("user_id"),
-            metadata={"provider": settings.primary_model_provider}
+            metadata={"provider": settings.primary_model_provider},
         )
     except ImportError:
         pass
@@ -298,7 +325,7 @@ async def update_user_settings(settings: UserSettings, request: Request, current
         # 2. Update Model Configuration
         new_model_config = {
             "provider": settings.primary_model_provider,
-            "model": settings.primary_model_name
+            "model": settings.primary_model_name,
         }
 
         logger.info(f"Updating model config to: {new_model_config}")
@@ -321,13 +348,14 @@ async def update_user_settings(settings: UserSettings, request: Request, current
         logger.error(f"Failed to update settings: {e}")
         raise HTTPException(status_code=500, detail="更新設置失敗，請稍後再試")
 
+
 @router.get("/")
 async def read_index():
     """返回主頁面 index.html"""
     if os.path.exists("web/index.html"):
         return FileResponse(
             "web/index.html",
-            headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
         )
     return {"message": "Welcome to Crypto API. Frontend not found."}
 
@@ -336,11 +364,15 @@ async def read_index():
 # Test Mode Endpoints (僅在 TEST_MODE 啟用時可用)
 # ============================================================================
 
+
 class TestTierRequest(BaseModel):
     tier: str  # "free", "premium"
 
+
 @router.post("/api/test-mode/switch-tier")
-async def switch_test_tier(request: TestTierRequest, current_user: dict = Depends(get_current_user)):
+async def switch_test_tier(
+    request: TestTierRequest, current_user: dict = Depends(get_current_user)
+):
     """
     切換測試帳號的會員等級（僅測試模式）
 
@@ -351,16 +383,12 @@ async def switch_test_tier(request: TestTierRequest, current_user: dict = Depend
     from core.config import TEST_MODE
 
     if not TEST_MODE:
-        raise HTTPException(
-            status_code=403,
-            detail="此功能僅在測試模式下可用"
-        )
+        raise HTTPException(status_code=403, detail="此功能僅在測試模式下可用")
 
     valid_tiers = ["free", "premium"]
     if request.tier not in valid_tiers:
         raise HTTPException(
-            status_code=400,
-            detail=f"無效的等級，必須是: {', '.join(valid_tiers)}"
+            status_code=400, detail=f"無效的等級，必須是: {', '.join(valid_tiers)}"
         )
 
     # 更新環境變量（當前進程有效）
@@ -371,8 +399,9 @@ async def switch_test_tier(request: TestTierRequest, current_user: dict = Depend
     return {
         "success": True,
         "tier": request.tier,
-        "message": f"測試帳號已切換為 {request.tier.upper()} 等級"
+        "message": f"測試帳號已切換為 {request.tier.upper()} 等級",
     }
+
 
 @router.get("/api/test-mode/current-tier")
 async def get_current_test_tier(current_user: dict = Depends(get_current_user)):
@@ -382,10 +411,7 @@ async def get_current_test_tier(current_user: dict = Depends(get_current_user)):
     from core.config import TEST_MODE
 
     if not TEST_MODE:
-        raise HTTPException(
-            status_code=403,
-            detail="此功能僅在測試模式下可用"
-        )
+        raise HTTPException(status_code=403, detail="此功能僅在測試模式下可用")
 
     from core.database.tools import normalize_membership_tier
 
@@ -396,5 +422,5 @@ async def get_current_test_tier(current_user: dict = Depends(get_current_user)):
     return {
         "tier": current_tier,
         "is_test_mode": True,
-        "user_id": current_user.get("user_id")
+        "user_id": current_user.get("user_id"),
     }

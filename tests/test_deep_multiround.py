@@ -11,21 +11,25 @@
 使用方式:
     python tests/test_deep_multiround.py
 """
+
+import asyncio
+import json
 import os
 import sys
-import asyncio
 import time
-import json
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 from utils.settings import Settings  # noqa: E402
 
-RESULTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "test_results")
+RESULTS_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "test_results"
+)
 
 
 class DeepChatSession:
@@ -60,7 +64,20 @@ class DeepChatSession:
         start_time = time.time()
 
         # 判斷是否為確認詞（使用包含匹配，而非精确匹配）
-        confirm_keywords = ["好", "確認", "執行", "同意", "可以", "ok", "OK", "Yes", "yes", "開始分析", "開始", "計劃"]
+        confirm_keywords = [
+            "好",
+            "確認",
+            "執行",
+            "同意",
+            "可以",
+            "ok",
+            "OK",
+            "Yes",
+            "yes",
+            "開始分析",
+            "開始",
+            "計劃",
+        ]
         is_confirm_message = any(kw in message for kw in confirm_keywords)
 
         if is_resume and self.pending_hitl and is_confirm_message:
@@ -114,15 +131,15 @@ class DeepChatSession:
         print(f"👤 使用者: {log['user']}")
         print(f"🔧 模式: {log['mode']} | ⏱️ {log['duration']}s")
 
-        if log['hitl']:
-            hitl = log['hitl']
+        if log["hitl"]:
+            hitl = log["hitl"]
             print(f"📋 HITL: {hitl.get('type', 'unknown')}")
-            if hitl.get('plan'):
-                for task in hitl['plan']:
+            if hitl.get("plan"):
+                for task in hitl["plan"]:
                     print(f"   → {task.get('name', '?')} ({task.get('agent', '?')})")
 
         print("\n🤖 助手回應:")
-        resp = log['assistant']
+        resp = log["assistant"]
         if resp is None:
             print("(等待 HITL 確認)")
         elif len(resp) > 600:
@@ -136,13 +153,18 @@ class DeepChatSession:
         filename = f"{self.scenario_name}_{timestamp}.json"
         filepath = os.path.join(RESULTS_DIR, filename)
 
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump({
-                "scenario": self.scenario_name,
-                "session_id": self.session_id,
-                "total_rounds": self.round_count,
-                "conversation": self.conversation_log,
-            }, f, ensure_ascii=False, indent=2)
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "scenario": self.scenario_name,
+                    "session_id": self.session_id,
+                    "total_rounds": self.round_count,
+                    "conversation": self.conversation_log,
+                },
+                f,
+                ensure_ascii=False,
+                indent=2,
+            )
 
         print(f"\n💾 已儲存: {filepath}")
 
@@ -162,7 +184,7 @@ async def scenario_crypto_deep_dive(session: DeepChatSession):
     session.print_round(result)
 
     # 第 3 輪：如果有 HITL，確認計劃
-    if result['hitl'] and result['hitl'].get('type') == 'confirm_plan':
+    if result["hitl"] and result["hitl"].get("type") == "confirm_plan":
         # 使用確認詞來執行計劃
         result = await session.send("好，執行計劃", is_resume=True)
         session.print_round(result)
@@ -172,7 +194,11 @@ async def scenario_crypto_deep_dive(session: DeepChatSession):
         session.print_round(result)
 
     # 第 4 輪：根據結果追問
-    if "RSI" in result['assistant'] or "MACD" in result['assistant'] or "技術" in result['assistant']:
+    if (
+        "RSI" in result["assistant"]
+        or "MACD" in result["assistant"]
+        or "技術" in result["assistant"]
+    ):
         result = await session.send("那現在是超買還是超賣？適合進場嗎？")
     else:
         result = await session.send("根據這些分析，你會建議我現在買入嗎？")
@@ -205,7 +231,7 @@ async def scenario_tw_stock_analysis(session: DeepChatSession):
     session.print_round(result)
 
     # 第 3 輪：處理 HITL
-    if result['hitl'] and result['hitl'].get('type') == 'confirm_plan':
+    if result["hitl"] and result["hitl"].get("type") == "confirm_plan":
         result = await session.send("好，開始分析", is_resume=True)
         session.print_round(result)
 
@@ -243,8 +269,8 @@ async def scenario_investment_consultation(session: DeepChatSession):
     session.print_round(result)
 
     # 第 2 輪：處理 HITL
-    if result['hitl'] and result['hitl'].get('type') == 'confirm_plan':
-        plan = result['hitl'].get('plan', [])
+    if result["hitl"] and result["hitl"].get("type") == "confirm_plan":
+        plan = result["hitl"].get("plan", [])
         print(f"\n📋 計劃有 {len(plan)} 個任務")
 
         # 第 2 輪：確認執行計劃
@@ -290,7 +316,7 @@ async def scenario_cross_market_comparison(session: DeepChatSession):
     session.print_round(result)
 
     # 第 2 輪：處理 HITL
-    if result['hitl']:
+    if result["hitl"]:
         result = await session.send("好，執行分析", is_resume=True)
         session.print_round(result)
 
@@ -299,7 +325,9 @@ async def scenario_cross_market_comparison(session: DeepChatSession):
     session.print_round(result)
 
     # 第 4 輪：問投資選擇
-    result = await session.send("如果我想投資台積電，應該買 ADR 還是台股？哪個比較划算？")
+    result = await session.send(
+        "如果我想投資台積電，應該買 ADR 還是台股？哪個比較划算？"
+    )
     session.print_round(result)
 
     # 第 5 輪：問風險差異
@@ -330,6 +358,7 @@ async def main():
         return
 
     from core.agents.bootstrap_v2 import bootstrap_v2  # noqa: E402
+
     from utils.user_client_factory import create_user_llm_client  # noqa: E402
 
     api_key = os.getenv("OPENAI_API_KEY") or os.getenv("OPENROUTER_API_KEY")
@@ -370,7 +399,12 @@ async def main():
     print("📊 測試總結")
     print("═" * 60)
 
-    total_rounds = session1.round_count + session2.round_count + session3.round_count + session4.round_count
+    total_rounds = (
+        session1.round_count
+        + session2.round_count
+        + session3.round_count
+        + session4.round_count
+    )
     print(f"\n✅ 總共執行 {total_rounds} 輪對話")
     print(f"   - 加密貨幣分析: {session1.round_count} 輪")
     print(f"   - 台股分析: {session2.round_count} 輪")

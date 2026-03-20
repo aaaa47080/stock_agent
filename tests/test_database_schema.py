@@ -53,18 +53,11 @@ class TestSchemaReconcile:
             "idx_membership_payments_tx_hash" in sql and "UNIQUE" in sql
             for sql in sql_calls
         )
+        assert any("idx_tips_tx_hash" in sql and "UNIQUE" in sql for sql in sql_calls)
         assert any(
-            "idx_tips_tx_hash" in sql and "UNIQUE" in sql
-            for sql in sql_calls
+            "idx_posts_payment_tx_hash" in sql and "UNIQUE" in sql for sql in sql_calls
         )
-        assert any(
-            "idx_posts_payment_tx_hash" in sql and "UNIQUE" in sql
-            for sql in sql_calls
-        )
-        assert any(
-            "payment_tx_hash IS NOT NULL" in sql
-            for sql in sql_calls
-        )
+        assert any("payment_tx_hash IS NOT NULL" in sql for sql in sql_calls)
 
     def test_reconcile_payment_tables_success(self):
         """reconcile_payment_tables returns checked items on success."""
@@ -102,7 +95,10 @@ class TestSchemaReconcile:
             "payment_tables": ["membership_payments.tx_hash_unique"],
         }
 
-        assert format_reconcile_summary(summary) == "users(2), audit_logs(1), payment_tables(1)"
+        assert (
+            format_reconcile_summary(summary)
+            == "users(2), audit_logs(1), payment_tables(1)"
+        )
 
 
 class TestSchemaDDL:
@@ -116,7 +112,9 @@ class TestSchemaDDL:
         create_user_tables(mock_cursor)
 
         sql_calls = [call.args[0] for call in mock_cursor.execute.call_args_list]
-        ddl = [s for s in sql_calls if "membership_payments" in s and "CREATE TABLE" in s]
+        ddl = [
+            s for s in sql_calls if "membership_payments" in s and "CREATE TABLE" in s
+        ]
         assert len(ddl) == 1
         assert "tx_hash" in ddl[0]
         assert "UNIQUE" in ddl[0]

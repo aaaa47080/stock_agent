@@ -2,8 +2,10 @@
 Admin Panel Request Schemas
 Pydantic models for admin API requests
 """
-from pydantic import BaseModel, Field
+
 from typing import Optional
+
+from pydantic import BaseModel, Field
 
 
 class BroadcastRequest(BaseModel):
@@ -36,7 +38,9 @@ class PostPinRequest(BaseModel):
 
 class ResolveReportRequest(BaseModel):
     decision: str = Field(..., pattern="^(approved|rejected)$")
-    violation_level: Optional[str] = Field(None, pattern="^(mild|medium|severe|critical)$")
+    violation_level: Optional[str] = Field(
+        None, pattern="^(mild|medium|severe|critical)$"
+    )
 
 
 class UpdateConfigRequest(BaseModel):

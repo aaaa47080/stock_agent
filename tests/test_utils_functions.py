@@ -1,14 +1,12 @@
 """
 Tests for utility functions in utils/utils.py
 """
-import pytest
-import pandas as pd
-import numpy as np
 
-from utils.utils import (
-    safe_float,
-    DataFrameEncoder
-)
+import numpy as np
+import pandas as pd
+import pytest
+
+from utils.utils import DataFrameEncoder, safe_float
 
 
 class TestSafeFloat:
@@ -132,11 +130,9 @@ class TestDataFrameEncoder:
 
     def test_encode_dataframe_with_values(self):
         """Test encoding DataFrame with various values"""
-        df = pd.DataFrame({
-            "int_col": [1, 2],
-            "float_col": [3.14, 2.71],
-            "str_col": ["a", "b"]
-        })
+        df = pd.DataFrame(
+            {"int_col": [1, 2], "float_col": [3.14, 2.71], "str_col": ["a", "b"]}
+        )
         encoder = DataFrameEncoder()
         result = encoder.default(df)
         assert isinstance(result, list)

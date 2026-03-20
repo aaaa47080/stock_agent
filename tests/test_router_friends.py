@@ -1,12 +1,10 @@
 """
 Tests for friends router in api/routers/friends.py
 """
+
 import pytest
 
-from api.routers.friends import (
-    router,
-    FriendActionRequest
-)
+from api.routers.friends import FriendActionRequest, router
 
 
 class TestFriendActionRequest:

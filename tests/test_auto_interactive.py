@@ -2,60 +2,154 @@
 自動化交互測試 - 使用原本的 InteractiveSession 邏輯
 測試 15+ 輪複雜/推理/深入問題
 """
+
+import asyncio
+import json
 import os
 import sys
-import asyncio
 import time
-import json
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 from utils.settings import Settings
 
-RESULTS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "test_results")
+RESULTS_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "test_results"
+)
 
 # 測試問題 - 15+ 輪，包含複雜、推理、深入問題
 TEST_QUESTIONS = [
     # 第 1 輪 - 複雜問題
-    {"round": 1, "category": "複雜", "question": "請分析 BTC 目前價格和過去 7 天的價格走勢", "expected": "價格分析"},
+    {
+        "round": 1,
+        "category": "複雜",
+        "question": "請分析 BTC 目前價格和過去 7 天的價格走勢",
+        "expected": "價格分析",
+    },
     # 第 2 輪 - 追問
-    {"round": 2, "category": "推理", "question": "根據剛才的分析，你認為現在是買入的好時機嗎？為什麼？", "expected": "投資建議推理"},
+    {
+        "round": 2,
+        "category": "推理",
+        "question": "根據剛才的分析，你認為現在是買入的好時機嗎？為什麼？",
+        "expected": "投資建議推理",
+    },
     # 第 3 輪 - 深入
-    {"round": 3, "category": "深入", "question": "那如果我現在投入 5000 美元，根據歷史數據，預期收益和風險分別是多少？", "expected": "風險收益分析"},
+    {
+        "round": 3,
+        "category": "深入",
+        "question": "那如果我現在投入 5000 美元，根據歷史數據，預期收益和風險分別是多少？",
+        "expected": "風險收益分析",
+    },
     # 第 4 輪 - 複雜
-    {"round": 4, "category": "複雜", "question": "請比較 ETH 和 SOL 的技術優勢和缺點", "expected": "技術比較"},
+    {
+        "round": 4,
+        "category": "複雜",
+        "question": "請比較 ETH 和 SOL 的技術優勢和缺點",
+        "expected": "技術比較",
+    },
     # 第 5 輪 - 推理
-    {"round": 5, "category": "推理", "question": "考慮到以太坊的 Gas 費問題，你認為 Layer 2 解決方案會完全取代以太坊主網嗎？", "expected": "技術趨勢推理"},
+    {
+        "round": 5,
+        "category": "推理",
+        "question": "考慮到以太坊的 Gas 費問題，你認為 Layer 2 解決方案會完全取代以太坊主網嗎？",
+        "expected": "技術趨勢推理",
+    },
     # 第 6 輪 - 深入
-    {"round": 6, "category": "深入", "question": "解釋一下什麼是 DeFi 樂高（Composability），並舉個實際例子", "expected": "DeFi 概念解釋"},
+    {
+        "round": 6,
+        "category": "深入",
+        "question": "解釋一下什麼是 DeFi 樂高（Composability），並舉個實際例子",
+        "expected": "DeFi 概念解釋",
+    },
     # 第 7 輪 - 複雜
-    {"round": 7, "category": "複雜", "question": "目前 TVL 最高的 DeFi 協議是哪些？它們各有什麼風險？", "expected": "DeFi TVL 分析"},
+    {
+        "round": 7,
+        "category": "複雜",
+        "question": "目前 TVL 最高的 DeFi 協議是哪些？它們各有什麼風險？",
+        "expected": "DeFi TVL 分析",
+    },
     # 第 8 輪 - 推理
-    {"round": 8, "category": "推理", "question": "如果 USDT 發生脫鉤事件，會對整個加密貨幣市場造成什麼影響？", "expected": "系統性風險推理"},
+    {
+        "round": 8,
+        "category": "推理",
+        "question": "如果 USDT 發生脫鉤事件，會對整個加密貨幣市場造成什麼影響？",
+        "expected": "系統性風險推理",
+    },
     # 第 9 輪 - 深入
-    {"round": 9, "category": "深入", "question": "分析加密貨幣交易所的中心化風險，FTX 事件給我們什麼教訓？", "expected": "交易所風險分析"},
+    {
+        "round": 9,
+        "category": "深入",
+        "question": "分析加密貨幣交易所的中心化風險，FTX 事件給我們什麼教訓？",
+        "expected": "交易所風險分析",
+    },
     # 第 10 輪 - 複雜
-    {"round": 10, "category": "複雜", "question": "請查詢最近的加密貨幣市場新聞，有哪些重大事件？", "expected": "新聞查詢"},
+    {
+        "round": 10,
+        "category": "複雜",
+        "question": "請查詢最近的加密貨幣市場新聞，有哪些重大事件？",
+        "expected": "新聞查詢",
+    },
     # 第 11 輪 - 推理
-    {"round": 11, "category": "推理", "question": "這些新聞事件對市場情緒有什麼影響？恐懼貪婪指數現在是多少？", "expected": "市場情緒分析"},
+    {
+        "round": 11,
+        "category": "推理",
+        "question": "這些新聞事件對市場情緒有什麼影響？恐懼貪婪指數現在是多少？",
+        "expected": "市場情緒分析",
+    },
     # 第 12 輪 - 深入
-    {"round": 12, "category": "深入", "question": "從技術角度解釋比特幣的工作量證明（PoW）機制，它為什麼耗能這麼大？", "expected": "技術原理解釋"},
+    {
+        "round": 12,
+        "category": "深入",
+        "question": "從技術角度解釋比特幣的工作量證明（PoW）機制，它為什麼耗能這麼大？",
+        "expected": "技術原理解釋",
+    },
     # 第 13 輪 - 複雜
-    {"round": 13, "category": "複雜", "question": "比特幣的能源消耗問題有哪些解決方案？這些方案可行嗎？", "expected": "能源問題分析"},
+    {
+        "round": 13,
+        "category": "複雜",
+        "question": "比特幣的能源消耗問題有哪些解決方案？這些方案可行嗎？",
+        "expected": "能源問題分析",
+    },
     # 第 14 輪 - 推理
-    {"round": 14, "category": "推理", "question": "如果我要長期持有加密貨幣，應該選擇哪些幣種？請給出投資組合建議", "expected": "長期投資建議"},
+    {
+        "round": 14,
+        "category": "推理",
+        "question": "如果我要長期持有加密貨幣，應該選擇哪些幣種？請給出投資組合建議",
+        "expected": "長期投資建議",
+    },
     # 第 15 輪 - 深入
-    {"round": 15, "category": "深入", "question": "解釋什麼是智能合約的安全審計，為什麼它這麼重要？", "expected": "安全審計解釋"},
+    {
+        "round": 15,
+        "category": "深入",
+        "question": "解釋什麼是智能合約的安全審計，為什麼它這麼重要？",
+        "expected": "安全審計解釋",
+    },
     # 第 16 輪 - 複雜
-    {"round": 16, "category": "複雜", "question": "列出最近發生智能合約漏洞的事件，損失了多少資金？", "expected": "安全事件查詢"},
+    {
+        "round": 16,
+        "category": "複雜",
+        "question": "列出最近發生智能合約漏洞的事件，損失了多少資金？",
+        "expected": "安全事件查詢",
+    },
     # 第 17 輪 - 推理
-    {"round": 17, "category": "推理", "question": "根據我們之前的討論，總結一下投資加密貨幣的主要風險和應對策略", "expected": "風險總結"},
+    {
+        "round": 17,
+        "category": "推理",
+        "question": "根據我們之前的討論，總結一下投資加密貨幣的主要風險和應對策略",
+        "expected": "風險總結",
+    },
     # 第 18 輪 - 深入
-    {"round": 18, "category": "深入", "question": "什麼是零知識證明？它在區塊鏈中有什麼應用？", "expected": "ZK 技術解釋"},
+    {
+        "round": 18,
+        "category": "深入",
+        "question": "什麼是零知識證明？它在區塊鏈中有什麼應用？",
+        "expected": "ZK 技術解釋",
+    },
 ]
 
 
@@ -80,7 +174,19 @@ class InteractiveSession:
         self.round_count += 1
         start_time = time.time()
 
-        confirm_keywords = ["好", "確認", "執行", "同意", "可以", "ok", "OK", "Yes", "yes", "開始", "請執行"]
+        confirm_keywords = [
+            "好",
+            "確認",
+            "執行",
+            "同意",
+            "可以",
+            "ok",
+            "OK",
+            "Yes",
+            "yes",
+            "開始",
+            "請執行",
+        ]
         is_confirm_message = any(kw in message for kw in confirm_keywords)
 
         if is_resume and self.pending_hitl and is_confirm_message:
@@ -139,8 +245,12 @@ class InteractiveSession:
                 category_scores[cat] = []
             category_scores[cat].append(s["score"])
 
-        avg_by_category = {cat: round(sum(s)/len(s), 2) for cat, s in category_scores.items()}
-        total_avg = round(sum(s["score"] for s in scores) / len(scores), 2) if scores else 0
+        avg_by_category = {
+            cat: round(sum(s) / len(s), 2) for cat, s in category_scores.items()
+        }
+        total_avg = (
+            round(sum(s["score"] for s in scores) / len(scores), 2) if scores else 0
+        )
 
         result = {
             "scenario": "auto_interactive_test",
@@ -152,7 +262,7 @@ class InteractiveSession:
             "conversation": self.conversation_log,
         }
 
-        with open(filepath, 'w', encoding='utf-8') as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             json.dump(result, f, ensure_ascii=False, indent=2)
 
         print(f"\n💾 測試結果已儲存: {filepath}")
@@ -202,15 +312,15 @@ async def run_auto_test():
 
         try:
             # 發送問題
-            result = await session.send(q['question'])
+            result = await session.send(q["question"])
 
             # 如果有 HITL 確認，自動確認
-            while result.get('hitl'):
+            while result.get("hitl"):
                 print("📋 偵測到 HITL，自動確認執行...")
                 result = await session.send("好", is_resume=True)
 
             # 顯示回應
-            response = result.get('assistant', '無回應')
+            response = result.get("assistant", "無回應")
             print(f"\n🤖 AI 回應 ({result['duration']}s | 模式: {result['mode']}):")
             print("-" * 60)
 
@@ -253,18 +363,20 @@ async def run_auto_test():
                 auto_score = 1
                 auto_comment = "無回應"
 
-            scores.append({
-                "round": q['round'],
-                "category": q['category'],
-                "question": q['question'],
-                "expected": q['expected'],
-                "response_preview": response[:500] if response else "",
-                "response_length": len(response) if response else 0,
-                "duration": result['duration'],
-                "mode": result['mode'],
-                "score": auto_score,
-                "comment": auto_comment,
-            })
+            scores.append(
+                {
+                    "round": q["round"],
+                    "category": q["category"],
+                    "question": q["question"],
+                    "expected": q["expected"],
+                    "response_preview": response[:500] if response else "",
+                    "response_length": len(response) if response else 0,
+                    "duration": result["duration"],
+                    "mode": result["mode"],
+                    "score": auto_score,
+                    "comment": auto_comment,
+                }
+            )
 
             print(f"\n📊 自動評分: {auto_score}/10 - {auto_comment}")
 
@@ -274,19 +386,22 @@ async def run_auto_test():
         except Exception as e:
             print(f"\n❌ 第 {q['round']} 輪發生錯誤: {e}")
             import traceback
+
             traceback.print_exc()
-            scores.append({
-                "round": q['round'],
-                "category": q['category'],
-                "question": q['question'],
-                "expected": q['expected'],
-                "response_preview": f"ERROR: {str(e)}",
-                "response_length": 0,
-                "duration": 0,
-                "mode": "error",
-                "score": 0,
-                "comment": f"執行錯誤: {str(e)}",
-            })
+            scores.append(
+                {
+                    "round": q["round"],
+                    "category": q["category"],
+                    "question": q["question"],
+                    "expected": q["expected"],
+                    "response_preview": f"ERROR: {str(e)}",
+                    "response_length": 0,
+                    "duration": 0,
+                    "mode": "error",
+                    "score": 0,
+                    "comment": f"執行錯誤: {str(e)}",
+                }
+            )
 
     # 儲存結果
     print("\n" + "=" * 70)
@@ -313,7 +428,9 @@ async def run_auto_test():
     # 列出每題得分
     print("\n📋 各題得分明細:")
     for s in scores:
-        print(f"  第 {s['round']:2d} 輪 [{s['category']:2s}]: {s['score']}/10 - {s['comment']}")
+        print(
+            f"  第 {s['round']:2d} 輪 [{s['category']:2s}]: {s['score']}/10 - {s['comment']}"
+        )
 
 
 if __name__ == "__main__":

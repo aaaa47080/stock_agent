@@ -2,8 +2,11 @@
 數據處理模組
 將數據準備邏輯從 graph.py 中分離出來，提高可維護性
 """
-import pandas as pd
+
 from typing import Dict, List, Tuple
+
+import pandas as pd
+
 from data.data_fetcher import get_data_fetcher
 from data.indicator_calculator import add_technical_indicators
 from utils.utils import get_crypto_news, safe_float
@@ -25,14 +28,16 @@ def prepare_recent_history(df: pd.DataFrame, days: int = 5) -> List[Dict]:
 
     for i in range(-recent_days, 0):
         day_data = df.iloc[i]
-        recent_history.append({
-            "日期": i,
-            "開盤": safe_float(day_data['Open']),
-            "最高": safe_float(day_data['High']),
-            "最低": safe_float(day_data['Low']),
-            "收盤": safe_float(day_data['Close']),
-            "交易量": safe_float(day_data['Volume'])
-        })
+        recent_history.append(
+            {
+                "日期": i,
+                "開盤": safe_float(day_data["Open"]),
+                "最高": safe_float(day_data["High"]),
+                "最低": safe_float(day_data["Low"]),
+                "收盤": safe_float(day_data["Close"]),
+                "交易量": safe_float(day_data["Volume"]),
+            }
+        )
 
     return recent_history
 
@@ -49,17 +54,17 @@ def calculate_key_levels(df: pd.DataFrame, period: int = 30) -> Dict[str, float]
         關鍵價位字典
     """
     recent = df.tail(period) if len(df) >= period else df
-    
+
     # 海龜突破：計算過去 20 天（不含今天）的最高價
     # 使用 shift(1) 避免包含當前正在進行的 K 線
-    high_20d = df['High'].shift(1).tail(20).max()
-    low_20d = df['Low'].shift(1).tail(20).min()
+    high_20d = df["High"].shift(1).tail(20).max()
+    low_20d = df["Low"].shift(1).tail(20).min()
 
     return {
-        f"{period}天最高價": safe_float(recent['High'].max()),
-        f"{period}天最低價": safe_float(recent['Low'].min()),
-        "支撐位": safe_float(recent['Low'].quantile(0.25)),
-        "壓力位": safe_float(recent['High'].quantile(0.75)),
+        f"{period}天最高價": safe_float(recent["High"].max()),
+        f"{period}天最低價": safe_float(recent["Low"].min()),
+        "支撐位": safe_float(recent["Low"].quantile(0.25)),
+        "壓力位": safe_float(recent["High"].quantile(0.75)),
         "20日最高價": safe_float(high_20d),
         "20日最低價": safe_float(low_20d),
     }
@@ -75,17 +80,21 @@ def analyze_market_structure(df: pd.DataFrame) -> Dict:
     Returns:
         市場結構分析結果
     """
-    price_changes = df['Close'].pct_change()
-    
+    price_changes = df["Close"].pct_change()
+
     # 爆量偵測：當前成交量是否大於過去 20 天平均成交量的 2 倍
-    current_vol = df.iloc[-1]['Volume']
-    avg_vol_20 = df['Volume'].tail(21).iloc[:-1].mean() # 過去 20 根 K 線的平均（不含當前）
+    current_vol = df.iloc[-1]["Volume"]
+    avg_vol_20 = (
+        df["Volume"].tail(21).iloc[:-1].mean()
+    )  # 過去 20 根 K 線的平均（不含當前）
     volume_spike = current_vol > (avg_vol_20 * 2) if avg_vol_20 > 0 else False
 
     return {
         "趨勢": "上漲" if price_changes.tail(7).mean() > 0 else "下跌",
-        "波動率": safe_float(price_changes.tail(30).std() * 100) if len(price_changes) >= 30 else 0,
-        "平均交易量": safe_float(df['Volume'].tail(7).mean()),
+        "波動率": safe_float(price_changes.tail(30).std() * 100)
+        if len(price_changes) >= 30
+        else 0,
+        "平均交易量": safe_float(df["Volume"].tail(7).mean()),
         "爆量": volume_spike,
     }
 
@@ -101,12 +110,12 @@ def extract_technical_indicators(latest_data: pd.Series) -> Dict[str, float]:
         技術指標字典
     """
     return {
-        "RSI_14": safe_float(latest_data.get('RSI_14', 50)),
-        "MACD_線": safe_float(latest_data.get('MACD_12_26_9', 0)),
-        "布林帶上軌": safe_float(latest_data.get('BBU_20_2.0_2.0', 0)),
-        "布林帶下軌": safe_float(latest_data.get('BBL_20_2.0_2.0', 0)),
-        "MA_7": safe_float(latest_data.get('SMA_7', 0)),
-        "MA_25": safe_float(latest_data.get('SMA_25', 0)),
+        "RSI_14": safe_float(latest_data.get("RSI_14", 50)),
+        "MACD_線": safe_float(latest_data.get("MACD_12_26_9", 0)),
+        "布林帶上軌": safe_float(latest_data.get("BBU_20_2.0_2.0", 0)),
+        "布林帶下軌": safe_float(latest_data.get("BBL_20_2.0_2.0", 0)),
+        "MA_7": safe_float(latest_data.get("SMA_7", 0)),
+        "MA_25": safe_float(latest_data.get("SMA_25", 0)),
     }
 
 
@@ -121,21 +130,21 @@ def calculate_price_info(df: pd.DataFrame) -> Dict:
         價格資訊字典
     """
     latest = df.iloc[-1]
-    current_price = safe_float(latest['Close'])
+    current_price = safe_float(latest["Close"])
 
     # 計算7天價格變化
     price_change_7d = 0
     if len(df) >= 7:
-        price_7d_ago = df.iloc[-7]['Close']
-        price_change_7d = safe_float(((latest['Close'] / price_7d_ago) - 1) * 100)
+        price_7d_ago = df.iloc[-7]["Close"]
+        price_change_7d = safe_float(((latest["Close"] / price_7d_ago) - 1) * 100)
 
     # 計算24小時價格變化
     price_change_24h = 0
     if len(df) >= 2:
         # 假設 K 線是 1d，則前一根就是 24h 前
         # 如果是其他週期，則需要更多邏輯，但這裡簡化處理
-        price_prev = df.iloc[-2]['Close']
-        price_change_24h = safe_float(((latest['Close'] / price_prev) - 1) * 100)
+        price_prev = df.iloc[-2]["Close"]
+        price_change_24h = safe_float(((latest["Close"] / price_prev) - 1) * 100)
 
     return {
         "當前價格": current_price,
@@ -151,7 +160,7 @@ def fetch_multi_timeframe_data(
     short_term_interval: str = "1h",
     medium_term_interval: str = "4h",
     long_term_interval: str = "1d",
-    limit: int = 100
+    limit: int = 100,
 ) -> Dict[str, Dict]:
     """
     獲取多週期數據
@@ -175,7 +184,7 @@ def fetch_multi_timeframe_data(
     intervals = {
         "short_term": short_term_interval,
         "medium_term": medium_term_interval,
-        "long_term": long_term_interval
+        "long_term": long_term_interval,
     }
 
     # 獲取每個時間週期的數據
@@ -184,8 +193,10 @@ def fetch_multi_timeframe_data(
             print(f"[CHART] 獲取 {symbol} {timeframe}({interval}) K線數據...")
 
             # 根據市場類型獲取數據
-            if market_type == 'futures':
-                klines_df, funding_rate_info = data_fetcher.get_futures_data(symbol, interval, limit)
+            if market_type == "futures":
+                klines_df, funding_rate_info = data_fetcher.get_futures_data(
+                    symbol, interval, limit
+                )
             else:
                 klines_df = data_fetcher.get_historical_klines(symbol, interval, limit)
 
@@ -204,7 +215,9 @@ def fetch_multi_timeframe_data(
                 "timeframe": interval,
                 "market_type": market_type,
                 "exchange": exchange,
-                "funding_rate_info": funding_rate_info if market_type == 'futures' else {},
+                "funding_rate_info": funding_rate_info
+                if market_type == "futures"
+                else {},
                 "價格資訊": calculate_price_info(df_with_indicators),
                 "技術指標": extract_technical_indicators(latest),
                 "最近5天歷史": prepare_recent_history(df_with_indicators, days=5),
@@ -240,7 +253,7 @@ def analyze_multi_timeframe_trend(multi_timeframe_data: Dict[str, Dict]) -> Dict
         "trend_consistency": "不一致",  # 一致/部分一致/不一致
         "overall_bias": "中性",  # 偏多頭/偏空頭/中性
         "confidence_score": 0.0,  # 0-100 的信心分數
-        "key_levels": {}  # 重要價位水平
+        "key_levels": {},  # 重要價位水平
     }
 
     # 分析每個週期的趨勢
@@ -266,7 +279,9 @@ def analyze_multi_timeframe_trend(multi_timeframe_data: Dict[str, Dict]) -> Dict
         elif len(unique_trends) == 2:
             trend_analysis["trend_consistency"] = "部分一致"
             # 看哪種趨勢佔多數
-            if valid_trends.count(valid_trends[0]) > valid_trends.count(valid_trends[1]):
+            if valid_trends.count(valid_trends[0]) > valid_trends.count(
+                valid_trends[1]
+            ):
                 trend_analysis["overall_bias"] = valid_trends[0]
                 trend_analysis["confidence_score"] = 65.0
             else:
@@ -281,11 +296,7 @@ def analyze_multi_timeframe_trend(multi_timeframe_data: Dict[str, Dict]) -> Dict
 
 
 def fetch_and_process_klines(
-    symbol: str,
-    interval: str,
-    limit: int,
-    market_type: str,
-    exchange: str
+    symbol: str, interval: str, limit: int, market_type: str, exchange: str
 ) -> Tuple[pd.DataFrame, Dict]:
     """
     獲取並處理 K線數據 (保持向後兼容性)
@@ -304,8 +315,10 @@ def fetch_and_process_klines(
     funding_rate_info = {}
 
     # 根據市場類型獲取數據
-    if market_type == 'futures':
-        klines_df, funding_rate_info = data_fetcher.get_futures_data(symbol, interval, limit)
+    if market_type == "futures":
+        klines_df, funding_rate_info = data_fetcher.get_futures_data(
+            symbol, interval, limit
+        )
     else:
         klines_df = data_fetcher.get_historical_klines(symbol, interval, limit)
 
@@ -328,7 +341,7 @@ def build_market_data_package(
     include_multi_timeframe: bool = False,
     short_term_interval: str = "1h",
     medium_term_interval: str = "4h",
-    long_term_interval: str = "1d"
+    long_term_interval: str = "1d",
 ) -> Dict:
     """
     構建完整的市場數據包
@@ -351,7 +364,12 @@ def build_market_data_package(
     latest = df.iloc[-1]
 
     # 提取基礎貨幣名稱（用於新聞搜尋）
-    base_currency = symbol.replace("USDT", "").replace("BUSD", "").replace("-", "").replace("SWAP", "")
+    base_currency = (
+        symbol.replace("USDT", "")
+        .replace("BUSD", "")
+        .replace("-", "")
+        .replace("SWAP", "")
+    )
     print(f"[NEWS] 正在從 CryptoPanic 撈取 {base_currency} 的真實新聞...")
     news_data = get_crypto_news(symbol=base_currency, limit=5)
 
@@ -371,10 +389,16 @@ def build_market_data_package(
 
     # 如果需要多週期分析，獲取並添加多週期數據
     if include_multi_timeframe:
-        print(f"[REFRESH] 準備獲取多週期數據 ({short_term_interval}/{medium_term_interval}/{long_term_interval})...")
+        print(
+            f"[REFRESH] 準備獲取多週期數據 ({short_term_interval}/{medium_term_interval}/{long_term_interval})..."
+        )
         multi_timeframe_data = fetch_multi_timeframe_data(
-            symbol, exchange, market_type,
-            short_term_interval, medium_term_interval, long_term_interval
+            symbol,
+            exchange,
+            market_type,
+            short_term_interval,
+            medium_term_interval,
+            long_term_interval,
         )
 
         # 分析多週期趨勢一致性

@@ -6,8 +6,10 @@
 - free: 免費用戶
 - premium: 付費會員（完整功能）
 """
+
 import logging
-from typing import List, Dict, Optional, Any
+from typing import Any, Dict, List, Optional
+
 from .connection import get_connection
 
 logger = logging.getLogger(__name__)
@@ -413,26 +415,52 @@ _TOOLS_SEED: List[Dict[str, Any]] = [
 # Agent 預設工具清單（bootstrap.py 的 fallback）
 _AGENT_DEFAULT_TOOLS: Dict[str, List[str]] = {
     "crypto": [
-        "get_current_time_taipei", "technical_analysis", "get_crypto_price",
-        "google_news", "aggregate_news", "web_search",
-        "get_fear_and_greed_index", "get_trending_tokens", "get_crypto_market_cap",
-        "get_economic_calendar", "get_futures_data",
-        "get_defillama_tvl", "get_crypto_categories_and_gainers", "get_token_unlocks",
-        "get_token_supply", "get_dex_volume", "get_whale_alerts",
+        "get_current_time_taipei",
+        "technical_analysis",
+        "get_crypto_price",
+        "google_news",
+        "aggregate_news",
+        "web_search",
+        "get_fear_and_greed_index",
+        "get_trending_tokens",
+        "get_crypto_market_cap",
+        "get_economic_calendar",
+        "get_futures_data",
+        "get_defillama_tvl",
+        "get_crypto_categories_and_gainers",
+        "get_token_unlocks",
+        "get_token_supply",
+        "get_dex_volume",
+        "get_whale_alerts",
     ],
     "tw_stock": [
-        "get_current_time_taipei", "tw_stock_price", "tw_technical_analysis",
-        "tw_fundamentals", "tw_institutional", "tw_news", "tw_major_news",
-        "tw_pe_ratio", "tw_monthly_revenue", "tw_dividend", "tw_foreign_top20",
+        "get_current_time_taipei",
+        "tw_stock_price",
+        "tw_technical_analysis",
+        "tw_fundamentals",
+        "tw_institutional",
+        "tw_news",
+        "tw_major_news",
+        "tw_pe_ratio",
+        "tw_monthly_revenue",
+        "tw_dividend",
+        "tw_foreign_top20",
         "web_search",
     ],
     "us_stock": [
-        "us_stock_price", "us_technical_analysis", "us_fundamentals",
-        "us_earnings", "us_news", "us_institutional_holders",
-        "us_insider_transactions", "get_current_time_taipei",
+        "us_stock_price",
+        "us_technical_analysis",
+        "us_fundamentals",
+        "us_earnings",
+        "us_news",
+        "us_institutional_holders",
+        "us_insider_transactions",
+        "get_current_time_taipei",
     ],
     "chat": [
-        "get_current_time_taipei", "get_crypto_price", "web_search",
+        "get_current_time_taipei",
+        "get_crypto_price",
+        "web_search",
     ],
 }
 
@@ -456,6 +484,7 @@ def normalize_membership_tier(tier: Optional[str]) -> str:
     """Normalize legacy membership names to tool-system tiers."""
     return _TIER_ALIASES.get((tier or "free").strip().lower(), "free")
 
+
 def _get_tier_level(tier: str) -> int:
     """取得會員等級數值"""
     return TIER_HIERARCHY.get(normalize_membership_tier(tier), 0)
@@ -471,26 +500,38 @@ def seed_tools_catalog():
     try:
         # 1. Seed tools_catalog
         for t in _TOOLS_SEED:
-            c.execute('''
+            c.execute(
+                """
                 INSERT INTO tools_catalog
                     (tool_id, display_name, description, category,
                      tier_required, quota_type, daily_limit_free, daily_limit_plus, daily_limit_prem, source_type)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'native')
                 ON CONFLICT (tool_id) DO NOTHING
-            ''', (
-                t["tool_id"], t["display_name"], t["description"], t["category"],
-                t["tier_required"], t["quota_type"],
-                t["daily_limit_free"], t["daily_limit_plus"], t["daily_limit_prem"],
-            ))
+            """,
+                (
+                    t["tool_id"],
+                    t["display_name"],
+                    t["description"],
+                    t["category"],
+                    t["tier_required"],
+                    t["quota_type"],
+                    t["daily_limit_free"],
+                    t["daily_limit_plus"],
+                    t["daily_limit_prem"],
+                ),
+            )
 
         # 2. Seed agent_tool_permissions
         for agent_id, tools in _AGENT_DEFAULT_TOOLS.items():
             for tool_id in tools:
-                c.execute('''
+                c.execute(
+                    """
                     INSERT INTO agent_tool_permissions (agent_id, tool_id, is_enabled)
                     VALUES (%s, %s, TRUE)
                     ON CONFLICT (agent_id, tool_id) DO NOTHING
-                ''', (agent_id, tool_id))
+                """,
+                    (agent_id, tool_id),
+                )
 
         conn.commit()
     except Exception as e:
@@ -500,7 +541,9 @@ def seed_tools_catalog():
         conn.close()
 
 
-def get_allowed_tools(agent_id: str, user_tier: str = "free", user_id: Optional[str] = None) -> List[str]:
+def get_allowed_tools(
+    agent_id: str, user_tier: str = "free", user_id: Optional[str] = None
+) -> List[str]:
     """
     取得某 agent 對特定用戶可用的工具清單。
 
@@ -523,7 +566,7 @@ def get_allowed_tools(agent_id: str, user_tier: str = "free", user_id: Optional[
             tier for tier, level in TIER_HIERARCHY.items() if level <= user_tier_level
         ]
 
-        query = '''
+        query = """
             SELECT tc.tool_id
             FROM tools_catalog tc
             JOIN agent_tool_permissions atp
@@ -531,11 +574,11 @@ def get_allowed_tools(agent_id: str, user_tier: str = "free", user_id: Optional[
             WHERE tc.is_active = TRUE
               AND atp.is_enabled = TRUE
               AND tc.tier_required = ANY(%s)
-        '''
+        """
 
         # 排除用戶主動關閉的工具（Premium 功能）
         if user_id and user_tier == "premium":
-            query = '''
+            query = """
                 SELECT tc.tool_id
                 FROM tools_catalog tc
                 JOIN agent_tool_permissions atp
@@ -546,7 +589,7 @@ def get_allowed_tools(agent_id: str, user_tier: str = "free", user_id: Optional[
                   AND atp.is_enabled = TRUE
                   AND tc.tier_required = ANY(%s)
                   AND (utp.is_enabled IS NULL OR utp.is_enabled = TRUE)
-            '''
+            """
             c.execute(query, (agent_id, user_id, allowed_tiers))
         else:
             c.execute(query, (agent_id, allowed_tiers))
@@ -556,13 +599,16 @@ def get_allowed_tools(agent_id: str, user_tier: str = "free", user_id: Optional[
         if not rows:
             # 若 catalog / permissions 已存在，但因 tier 或 user preference 篩掉全部，
             # 必須回傳空清單，而不是誤判成未 seed 後放回 fallback 工具。
-            c.execute('''
+            c.execute(
+                """
                 SELECT 1
                 FROM agent_tool_permissions atp
                 JOIN tools_catalog tc ON tc.tool_id = atp.tool_id
                 WHERE atp.agent_id = %s
                 LIMIT 1
-            ''', (agent_id,))
+            """,
+                (agent_id,),
+            )
             seeded = c.fetchone()
             if seeded:
                 return []
@@ -605,10 +651,13 @@ def check_and_increment_tool_quota(user_id: str, tool_id: str, user_tier: str) -
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute(
+            """
             SELECT quota_type, daily_limit_free, daily_limit_plus, daily_limit_prem
             FROM tools_catalog WHERE tool_id = %s AND is_active = TRUE
-        ''', (tool_id,))
+        """,
+            (tool_id,),
+        )
         row = c.fetchone()
 
         if not row:
@@ -629,13 +678,16 @@ def check_and_increment_tool_quota(user_id: str, tool_id: str, user_tier: str) -
         if limit == 0:
             return False
 
-        c.execute('''
+        c.execute(
+            """
             INSERT INTO tool_usage_log (user_id, tool_id, used_date, call_count)
             VALUES (%s, %s, CURRENT_DATE, 1)
             ON CONFLICT (user_id, tool_id, used_date)
             DO UPDATE SET call_count = tool_usage_log.call_count + 1
             RETURNING call_count
-        ''', (user_id, tool_id))
+        """,
+            (user_id, tool_id),
+        )
         usage_row = c.fetchone()
         conn.commit()
 
@@ -661,10 +713,13 @@ def check_tool_quota(user_id: str, tool_id: str, user_tier: str) -> bool:
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute(
+            """
             SELECT quota_type, daily_limit_free, daily_limit_plus, daily_limit_prem
             FROM tools_catalog WHERE tool_id = %s AND is_active = TRUE
-        ''', (tool_id,))
+        """,
+            (tool_id,),
+        )
         row = c.fetchone()
 
         if not row:
@@ -682,15 +737,18 @@ def check_tool_quota(user_id: str, tool_id: str, user_tier: str) -> bool:
             limit = limit_free
 
         if limit is None:
-            return True   # NULL = 無限
+            return True  # NULL = 無限
         if limit == 0:
             return False  # 0 = 完全不開放
 
         # 查今日使用量
-        c.execute('''
+        c.execute(
+            """
             SELECT call_count FROM tool_usage_log
             WHERE user_id = %s AND tool_id = %s AND used_date = CURRENT_DATE
-        ''', (user_id, tool_id))
+        """,
+            (user_id, tool_id),
+        )
         usage_row = c.fetchone()
         used = usage_row[0] if usage_row else 0
 
@@ -708,12 +766,15 @@ def increment_tool_usage(user_id: str, tool_id: str):
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute(
+            """
             INSERT INTO tool_usage_log (user_id, tool_id, used_date, call_count)
             VALUES (%s, %s, CURRENT_DATE, 1)
             ON CONFLICT (user_id, tool_id, used_date)
             DO UPDATE SET call_count = tool_usage_log.call_count + 1
-        ''', (user_id, tool_id))
+        """,
+            (user_id, tool_id),
+        )
         conn.commit()
     except Exception as e:
         logger.error(f"[increment_tool_usage] error: {e}")
@@ -733,7 +794,8 @@ def get_tools_for_frontend(user_tier: str, user_id: Optional[str] = None) -> Lis
     c = conn.cursor()
     try:
         if user_id and user_tier == "premium":
-            c.execute('''
+            c.execute(
+                """
                 SELECT tc.tool_id, tc.display_name, tc.description, tc.category,
                        tc.tier_required, tc.quota_type,
                        COALESCE(utp.is_enabled, TRUE) AS is_enabled
@@ -742,15 +804,17 @@ def get_tools_for_frontend(user_tier: str, user_id: Optional[str] = None) -> Lis
                     ON tc.tool_id = utp.tool_id AND utp.user_id = %s
                 WHERE tc.is_active = TRUE
                 ORDER BY tc.category, tc.tier_required, tc.tool_id
-            ''', (user_id,))
+            """,
+                (user_id,),
+            )
         else:
-            c.execute('''
+            c.execute("""
                 SELECT tool_id, display_name, description, category,
                        tier_required, quota_type, TRUE AS is_enabled
                 FROM tools_catalog
                 WHERE is_active = TRUE
                 ORDER BY category, tier_required, tool_id
-            ''')
+            """)
 
         rows = c.fetchall()
         user_tier_level = _get_tier_level(user_tier)
@@ -780,12 +844,15 @@ def update_user_tool_preference(user_id: str, tool_id: str, is_enabled: bool):
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute(
+            """
             INSERT INTO user_tool_preferences (user_id, tool_id, is_enabled, updated_at)
             VALUES (%s, %s, %s, NOW())
             ON CONFLICT (user_id, tool_id)
             DO UPDATE SET is_enabled = EXCLUDED.is_enabled, updated_at = NOW()
-        ''', (user_id, tool_id, is_enabled))
+        """,
+            (user_id, tool_id, is_enabled),
+        )
         conn.commit()
     except Exception as e:
         logger.error(f"[update_user_tool_preference] error: {e}")

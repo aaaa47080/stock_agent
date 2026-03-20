@@ -1,7 +1,8 @@
 """Tests for forum tip payment verification."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from api.routers.forum.models import CreateTipRequest
 
@@ -44,7 +45,9 @@ class TestVerifyTipPayment:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("api.routers.forum.tips.httpx.AsyncClient", return_value=mock_client):
+        with patch(
+            "api.routers.forum.tips.httpx.AsyncClient", return_value=mock_client
+        ):
             result = await tips_mod._verify_tip_payment("pay_tip_1")
 
         assert result["status"] == "completed"
@@ -64,7 +67,9 @@ class TestVerifyTipPayment:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("api.routers.forum.tips.httpx.AsyncClient", return_value=mock_client):
+        with patch(
+            "api.routers.forum.tips.httpx.AsyncClient", return_value=mock_client
+        ):
             with pytest.raises(Exception) as exc_info:
                 await tips_mod._verify_tip_payment("pay_tip_1")
 
@@ -83,7 +88,9 @@ class TestVerifyTipPayment:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("api.routers.forum.tips.httpx.AsyncClient", return_value=mock_client):
+        with patch(
+            "api.routers.forum.tips.httpx.AsyncClient", return_value=mock_client
+        ):
             with pytest.raises(Exception) as exc_info:
                 await tips_mod._verify_tip_payment("pay_nonexistent")
 
@@ -117,7 +124,9 @@ class TestVerifyTipPayment:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("api.routers.forum.tips.httpx.AsyncClient", return_value=mock_client):
+        with patch(
+            "api.routers.forum.tips.httpx.AsyncClient", return_value=mock_client
+        ):
             payment_data = await tips_mod._verify_tip_payment("pay_1")
 
         actual = float(payment_data["amount"])

@@ -1,9 +1,12 @@
 """
 Tests for error handling utilities
 """
-import pytest
+
 from unittest.mock import patch
-from core.error_handling import log_and_suppress, safe_execute, ErrorContext
+
+import pytest
+
+from core.error_handling import ErrorContext, log_and_suppress, safe_execute
 
 
 class TestLogAndSuppress:
@@ -11,7 +14,8 @@ class TestLogAndSuppress:
 
     def test_logs_exception_and_returns_none(self):
         """Test that exception is logged and None is returned"""
-        with patch('core.error_handling.logger') as mock_logger:
+        with patch("core.error_handling.logger") as mock_logger:
+
             @log_and_suppress("Operation failed")
             def failing_function():
                 raise ValueError("Test error")
@@ -24,6 +28,7 @@ class TestLogAndSuppress:
 
     def test_does_not_raise_on_specific_exception(self):
         """Test that specific exception types are still raised"""
+
         @log_and_suppress("Operation failed", raise_on=(ValueError,))
         def function_with_value_error():
             raise ValueError("Test error")
@@ -33,7 +38,8 @@ class TestLogAndSuppress:
 
     def test_other_exceptions_suppressed(self):
         """Test that other exceptions are suppressed"""
-        with patch('core.error_handling.logger') as mock_logger:
+        with patch("core.error_handling.logger") as mock_logger:
+
             @log_and_suppress("Operation failed", raise_on=(KeyError,))
             def function_with_value_error():
                 raise ValueError("Test error")
@@ -45,6 +51,7 @@ class TestLogAndSuppress:
 
     def test_returns_value_on_success(self):
         """Test that successful function returns its value"""
+
         @log_and_suppress("Operation failed")
         def successful_function():
             return "success"
@@ -54,6 +61,7 @@ class TestLogAndSuppress:
 
     def test_passes_arguments(self):
         """Test that arguments are passed to decorated function"""
+
         @log_and_suppress("Operation failed")
         def function_with_args(a, b, c=None):
             return f"{a}-{b}-{c}"
@@ -63,6 +71,7 @@ class TestLogAndSuppress:
 
     def test_passes_kwargs(self):
         """Test that kwargs are passed to decorated function"""
+
         @log_and_suppress("Operation failed")
         def function_with_kwargs(**kwargs):
             return kwargs
@@ -72,7 +81,8 @@ class TestLogAndSuppress:
 
     def test_default_log_level_is_warning(self):
         """Test that default log level is warning"""
-        with patch('core.error_handling.logger') as mock_logger:
+        with patch("core.error_handling.logger") as mock_logger:
+
             @log_and_suppress("Test message")
             def failing_func():
                 raise RuntimeError("Error")
@@ -82,7 +92,8 @@ class TestLogAndSuppress:
 
     def test_custom_log_level_error(self):
         """Test custom log level 'error'"""
-        with patch('core.error_handling.logger') as mock_logger:
+        with patch("core.error_handling.logger") as mock_logger:
+
             @log_and_suppress("Test message", level="error")
             def failing_func():
                 raise RuntimeError("Error")
@@ -92,7 +103,8 @@ class TestLogAndSuppress:
 
     def test_custom_log_level_info(self):
         """Test custom log level 'info'"""
-        with patch('core.error_handling.logger') as mock_logger:
+        with patch("core.error_handling.logger") as mock_logger:
+
             @log_and_suppress("Test message", level="info")
             def failing_func():
                 raise RuntimeError("Error")
@@ -102,7 +114,8 @@ class TestLogAndSuppress:
 
     def test_custom_log_level_debug(self):
         """Test custom log level 'debug'"""
-        with patch('core.error_handling.logger') as mock_logger:
+        with patch("core.error_handling.logger") as mock_logger:
+
             @log_and_suppress("Test message", level="debug")
             def failing_func():
                 raise RuntimeError("Error")
@@ -112,6 +125,7 @@ class TestLogAndSuppress:
 
     def test_preserves_function_metadata(self):
         """Test that decorator preserves function name and docstring"""
+
         @log_and_suppress("Test")
         def my_function():
             """This is my function"""
@@ -122,6 +136,7 @@ class TestLogAndSuppress:
 
     def test_multiple_exception_types_in_raise_on(self):
         """Test multiple exception types in raise_on tuple"""
+
         @log_and_suppress("Test", raise_on=(ValueError, KeyError))
         def raise_key_error():
             raise KeyError("Key not found")
@@ -135,7 +150,8 @@ class TestSafeExecute:
 
     def test_returns_fallback_on_error(self):
         """Test that fallback value is returned on exception"""
-        with patch('core.error_handling.logger') as mock_logger:
+        with patch("core.error_handling.logger") as mock_logger:
+
             @safe_execute(fallback_value=0, error_message="Count failed")
             def get_count():
                 raise ValueError("Test error")
@@ -147,6 +163,7 @@ class TestSafeExecute:
 
     def test_returns_result_on_success(self):
         """Test that actual result is returned on success"""
+
         @safe_execute(fallback_value=0)
         def get_count():
             return 42
@@ -157,7 +174,8 @@ class TestSafeExecute:
 
     def test_no_error_message_no_logging(self):
         """Test that no logging happens when error_message is None"""
-        with patch('core.error_handling.logger') as mock_logger:
+        with patch("core.error_handling.logger") as mock_logger:
+
             @safe_execute(fallback_value="default")
             def failing_func():
                 raise ValueError("Error")
@@ -179,6 +197,7 @@ class TestSafeExecute:
             (False, False),
         ]
         for fallback, expected in test_cases:
+
             @safe_execute(fallback_value=fallback)
             def failing_func():
                 raise ValueError("Error")
@@ -187,7 +206,8 @@ class TestSafeExecute:
 
     def test_custom_log_level(self):
         """Test custom log level"""
-        with patch('core.error_handling.logger') as mock_logger:
+        with patch("core.error_handling.logger") as mock_logger:
+
             @safe_execute(fallback_value=0, error_message="Test", log_level="error")
             def failing_func():
                 raise ValueError("Error")
@@ -197,6 +217,7 @@ class TestSafeExecute:
 
     def test_preserves_function_metadata(self):
         """Test that decorator preserves function name"""
+
         @safe_execute(fallback_value=0)
         def my_function():
             """My docstring"""
@@ -206,6 +227,7 @@ class TestSafeExecute:
 
     def test_passes_arguments(self):
         """Test that arguments are passed correctly"""
+
         @safe_execute(fallback_value=0)
         def add(a, b):
             return a + b
@@ -243,7 +265,7 @@ class TestErrorContext:
 
     def test_custom_exception_types_logs_error(self):
         """Test that non-matching exception types are logged as error"""
-        with patch('core.error_handling.logger') as mock_logger:
+        with patch("core.error_handling.logger") as mock_logger:
             # KeyError is not in exception_types, so it should log as error
             with ErrorContext("Test", exception_types=(ValueError,)):
                 raise KeyError("Different exception")
@@ -259,7 +281,7 @@ class TestErrorContext:
 
     def test_context_with_reraise_false_logs_warning(self):
         """Test that suppressed exception logs warning"""
-        with patch('core.error_handling.logger') as mock_logger:
+        with patch("core.error_handling.logger") as mock_logger:
             with ErrorContext("Test message"):
                 raise ValueError("Test error")
 
@@ -272,11 +294,13 @@ class TestLogAndSuppressIntegration:
 
     def test_nested_decorators(self):
         """Test nested decorated functions"""
+
         @log_and_suppress("Outer failed")
         def outer():
             @log_and_suppress("Inner failed")
             def inner():
                 raise ValueError("Inner error")
+
             return inner()
 
         result = outer()
@@ -284,7 +308,8 @@ class TestLogAndSuppressIntegration:
 
     def test_exception_chaining(self):
         """Test that original exception info is preserved in log"""
-        with patch('core.error_handling.logger') as mock_logger:
+        with patch("core.error_handling.logger") as mock_logger:
+
             @log_and_suppress("Failed")
             def func():
                 raise ValueError("Original error")

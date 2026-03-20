@@ -7,6 +7,7 @@ Revises: b001_baseline
 Create Date: 2026-03-20 00:00:00.000000
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op

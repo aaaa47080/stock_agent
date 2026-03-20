@@ -49,9 +49,18 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Summarize each content field in futunn_main_posts.jsonl with Azure OpenAI."
     )
-    parser.add_argument("--input", type=Path, default=DEFAULT_INPUT, help="Input JSONL file path.")
-    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT, help="Output JSONL file path.")
-    parser.add_argument("--max-items", type=int, default=None, help="Maximum number of rows to summarize.")
+    parser.add_argument(
+        "--input", type=Path, default=DEFAULT_INPUT, help="Input JSONL file path."
+    )
+    parser.add_argument(
+        "--output", type=Path, default=DEFAULT_OUTPUT, help="Output JSONL file path."
+    )
+    parser.add_argument(
+        "--max-items",
+        type=int,
+        default=None,
+        help="Maximum number of rows to summarize.",
+    )
     parser.add_argument(
         "--max-content-chars",
         type=int,
@@ -60,7 +69,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--temperature", type=float, default=0.2)
     parser.add_argument("--system-prompt", default=DEFAULT_SYSTEM_PROMPT)
-    parser.add_argument("--llm-endpoint", default=os.getenv("AZURE_OPENAI_LLM_ENDPOINT"))
+    parser.add_argument(
+        "--llm-endpoint", default=os.getenv("AZURE_OPENAI_LLM_ENDPOINT")
+    )
     parser.add_argument("--llm-api-key", default=os.getenv("AZURE_OPENAI_LLM_API_KEY"))
     parser.add_argument("--deployment-name", default=os.getenv("AZURE_LLM_DEPLOYMENT"))
     parser.add_argument("--model-name", default=os.getenv("AZURE_LLM_MODEL", ""))
@@ -138,14 +149,18 @@ def truncate_content(content: str, max_chars: int) -> str:
     return content[:max_chars]
 
 
-def summarize_articles(chain, rows: list[dict], max_content_chars: int = 6000) -> list[str]:
+def summarize_articles(
+    chain, rows: list[dict], max_content_chars: int = 6000
+) -> list[str]:
     summaries: list[str] = []
     for row in rows:
         url = (row.get("url") or "").strip()
         title = (row.get("title") or "").strip()
         content = (row.get("content") or "").strip()
         if not content:
-            summary = "1) 核心重點：內容不足\n2) 市場影響：內容不足\n3) 風險提醒：內容不足"
+            summary = (
+                "1) 核心重點：內容不足\n2) 市場影響：內容不足\n3) 風險提醒：內容不足"
+            )
         else:
             summary = chain.invoke(
                 {
@@ -181,7 +196,9 @@ def summarize_rows(args: argparse.Namespace) -> None:
     rows = list(read_jsonl(args.input))
     if args.max_items and args.max_items > 0:
         rows = rows[: args.max_items]
-    summaries = summarize_articles(chain, rows, max_content_chars=args.max_content_chars)
+    summaries = summarize_articles(
+        chain, rows, max_content_chars=args.max_content_chars
+    )
 
     with args.output.open("w", encoding="utf-8-sig") as out_fp:
         total = len(rows)

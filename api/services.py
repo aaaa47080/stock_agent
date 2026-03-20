@@ -1,11 +1,13 @@
 # ruff: noqa: E402
 # ^ E402 ignored because module-level variables need to be set before imports
 import asyncio
-from api.utils import run_sync
 import concurrent.futures
-import numpy as np
 from datetime import datetime, timedelta
 from typing import List
+
+import numpy as np
+
+from api.utils import run_sync
 
 # 專用背景任務 executor，避免佔用 user request 的 default thread pool
 _background_executor = concurrent.futures.ThreadPoolExecutor(
@@ -15,28 +17,27 @@ _background_executor = concurrent.futures.ThreadPoolExecutor(
 # 防止 screener 快速更新重疊執行
 _price_update_running = False
 
-from core.database import get_cache, set_cache
+from analysis.market_pulse import get_market_pulse
+from api.globals import (
+    ANALYSIS_STATUS,
+    FUNDING_RATE_CACHE,
+    MARKET_PULSE_CACHE,
+    cached_screener_result,
+    funding_rate_lock,
+    logger,
+    screener_lock,
+)
+from api.symbols import normalize_base_symbol, sanitize_base_symbols
 from core.config import (
-    SUPPORTED_EXCHANGES,
+    FUNDING_RATE_UPDATE_INTERVAL,
     MARKET_PULSE_TARGETS,
     MARKET_PULSE_UPDATE_INTERVAL,
-    FUNDING_RATE_UPDATE_INTERVAL,
     SCREENER_UPDATE_INTERVAL_MINUTES,
+    SUPPORTED_EXCHANGES,
 )
-from analysis.market_pulse import get_market_pulse
-from utils.okx_api_connector import OKXAPIConnector
+from core.database import get_cache, set_cache
 from data.data_fetcher import get_data_fetcher
-from api.symbols import normalize_base_symbol, sanitize_base_symbols
-
-from api.globals import (
-    logger,
-    cached_screener_result,
-    MARKET_PULSE_CACHE,
-    FUNDING_RATE_CACHE,
-    screener_lock,
-    funding_rate_lock,
-    ANALYSIS_STATUS,
-)
+from utils.okx_api_connector import OKXAPIConnector
 
 
 # --- Market Pulse Cache Functions ---

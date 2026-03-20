@@ -11,40 +11,47 @@ Key features:
 - Automatic row-to-dict conversion
 - Transaction management (commit/rollback)
 """
-import psycopg2
-from typing import Dict, List, Optional
+
 from contextlib import contextmanager
+from typing import Dict, List, Optional
+
+import psycopg2
 
 from .connection import get_connection
-
 
 # ============================================================================
 # Custom Exceptions
 # ============================================================================
 
+
 class DatabaseError(Exception):
     """Base exception for database errors"""
+
     pass
 
 
 class DuplicateRecordError(DatabaseError):
     """Raised when trying to insert a duplicate record"""
+
     pass
 
 
 class RecordNotFoundError(DatabaseError):
     """Raised when a referenced record doesn't exist"""
+
     pass
 
 
 class ValidationError(DatabaseError):
     """Raised when data validation fails"""
+
     pass
 
 
 # ============================================================================
 # Database Base Class
 # ============================================================================
+
 
 class DatabaseBase:
     """
@@ -231,6 +238,7 @@ class DatabaseBase:
 # ============================================================================
 # Transaction Helper
 # ============================================================================
+
 
 @contextmanager
 def transaction(connection=None):

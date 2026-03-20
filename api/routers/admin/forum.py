@@ -2,15 +2,18 @@
 Admin Forum Management
 Post, comment, and report management endpoints
 """
-from api.utils import run_sync
+
 import logging
-from fastapi import APIRouter, Depends, Query, HTTPException
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 from psycopg2 import sql
 
 from api.deps import require_admin
+from api.utils import run_sync
 from core.database.connection import get_connection
 from core.database.governance import finalize_report, get_report_by_id
-from .schemas import PostVisibilityRequest, PostPinRequest, ResolveReportRequest
+
+from .schemas import PostPinRequest, PostVisibilityRequest, ResolveReportRequest
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Admin - Forum"])
@@ -22,7 +25,7 @@ async def admin_list_posts(
     status: str = Query("all", pattern="^(all|hidden|pinned)$"),
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
-    admin_user: dict = Depends(require_admin)
+    admin_user: dict = Depends(require_admin),
 ):
     """管理後台 - 列出論壇貼文（含隱藏貼文）"""
     offset = (page - 1) * limit
@@ -45,7 +48,8 @@ async def admin_list_posts(
                     where_clauses.append("p.is_pinned = 1")
 
                 where_clause = (
-                    sql.SQL(" WHERE ") + sql.SQL(" AND ").join(sql.SQL(part) for part in where_clauses)
+                    sql.SQL(" WHERE ")
+                    + sql.SQL(" AND ").join(sql.SQL(part) for part in where_clauses)
                     if where_clauses
                     else sql.SQL("")
                 )
@@ -86,15 +90,26 @@ async def admin_list_posts(
                 total = c.fetchone()[0]
 
                 return {
-                    "posts": [{
-                        "id": r[0], "title": r[1], "user_id": r[2],
-                        "username": r[3] or "Unknown", "category": r[4],
-                        "is_hidden": bool(r[5]), "is_pinned": bool(r[6]),
-                        "comment_count": r[7] or 0, "view_count": r[8] or 0,
-                        "push_count": r[9] or 0, "boo_count": r[10] or 0,
-                        "created_at": r[11].isoformat() if r[11] else None
-                    } for r in rows],
-                    "total": total, "page": page, "limit": limit
+                    "posts": [
+                        {
+                            "id": r[0],
+                            "title": r[1],
+                            "user_id": r[2],
+                            "username": r[3] or "Unknown",
+                            "category": r[4],
+                            "is_hidden": bool(r[5]),
+                            "is_pinned": bool(r[6]),
+                            "comment_count": r[7] or 0,
+                            "view_count": r[8] or 0,
+                            "push_count": r[9] or 0,
+                            "boo_count": r[10] or 0,
+                            "created_at": r[11].isoformat() if r[11] else None,
+                        }
+                        for r in rows
+                    ],
+                    "total": total,
+                    "page": page,
+                    "limit": limit,
                 }
         finally:
             conn.close()
@@ -107,7 +122,7 @@ async def admin_list_posts(
 async def admin_toggle_post_visibility(
     post_id: int,
     request: PostVisibilityRequest,
-    admin_user: dict = Depends(require_admin)
+    admin_user: dict = Depends(require_admin),
 ):
     """隱藏/顯示貼文"""
     hidden_int = 1 if request.is_hidden else 0
@@ -116,22 +131,36 @@ async def admin_toggle_post_visibility(
         conn = get_connection()
         try:
             with conn.cursor() as c:
-                c.execute("SELECT is_hidden, title FROM posts WHERE id = %s", (post_id,))
+                c.execute(
+                    "SELECT is_hidden, title FROM posts WHERE id = %s", (post_id,)
+                )
                 row = c.fetchone()
                 if not row:
                     return None
                 old_hidden = bool(row[0])
 
-                c.execute("UPDATE posts SET is_hidden = %s WHERE id = %s", (hidden_int, post_id))
-                c.execute("""
+                c.execute(
+                    "UPDATE posts SET is_hidden = %s WHERE id = %s",
+                    (hidden_int, post_id),
+                )
+                c.execute(
+                    """
                     INSERT INTO config_audit_log (config_key, old_value, new_value, changed_by)
                     VALUES (%s, %s, %s, %s)
-                """, (f"admin_forum:post_visibility:{post_id}",
-                      "hidden" if old_hidden else "visible",
-                      "hidden" if request.is_hidden else "visible",
-                      admin_user["user_id"]))
+                """,
+                    (
+                        f"admin_forum:post_visibility:{post_id}",
+                        "hidden" if old_hidden else "visible",
+                        "hidden" if request.is_hidden else "visible",
+                        admin_user["user_id"],
+                    ),
+                )
                 conn.commit()
-                return {"old_hidden": old_hidden, "new_hidden": request.is_hidden, "title": row[1]}
+                return {
+                    "old_hidden": old_hidden,
+                    "new_hidden": request.is_hidden,
+                    "title": row[1],
+                }
         except Exception as e:
             conn.rollback()
             raise e
@@ -146,9 +175,7 @@ async def admin_toggle_post_visibility(
 
 @router.patch("/forum/posts/{post_id}/pin")
 async def admin_toggle_post_pin(
-    post_id: int,
-    request: PostPinRequest,
-    admin_user: dict = Depends(require_admin)
+    post_id: int, request: PostPinRequest, admin_user: dict = Depends(require_admin)
 ):
     """置頂/取消置頂貼文"""
     pinned_int = 1 if request.is_pinned else 0
@@ -157,21 +184,35 @@ async def admin_toggle_post_pin(
         conn = get_connection()
         try:
             with conn.cursor() as c:
-                c.execute("SELECT is_pinned, title FROM posts WHERE id = %s", (post_id,))
+                c.execute(
+                    "SELECT is_pinned, title FROM posts WHERE id = %s", (post_id,)
+                )
                 row = c.fetchone()
                 if not row:
                     return None
 
-                c.execute("UPDATE posts SET is_pinned = %s WHERE id = %s", (pinned_int, post_id))
-                c.execute("""
+                c.execute(
+                    "UPDATE posts SET is_pinned = %s WHERE id = %s",
+                    (pinned_int, post_id),
+                )
+                c.execute(
+                    """
                     INSERT INTO config_audit_log (config_key, old_value, new_value, changed_by)
                     VALUES (%s, %s, %s, %s)
-                """, (f"admin_forum:post_pin:{post_id}",
-                      "pinned" if row[0] else "unpinned",
-                      "pinned" if request.is_pinned else "unpinned",
-                      admin_user["user_id"]))
+                """,
+                    (
+                        f"admin_forum:post_pin:{post_id}",
+                        "pinned" if row[0] else "unpinned",
+                        "pinned" if request.is_pinned else "unpinned",
+                        admin_user["user_id"],
+                    ),
+                )
                 conn.commit()
-                return {"old_pinned": bool(row[0]), "new_pinned": request.is_pinned, "title": row[1]}
+                return {
+                    "old_pinned": bool(row[0]),
+                    "new_pinned": request.is_pinned,
+                    "title": row[1],
+                }
         except Exception as e:
             conn.rollback()
             raise e
@@ -188,7 +229,7 @@ async def admin_toggle_post_pin(
 async def admin_toggle_comment_visibility(
     comment_id: int,
     request: PostVisibilityRequest,
-    admin_user: dict = Depends(require_admin)
+    admin_user: dict = Depends(require_admin),
 ):
     """隱藏/顯示留言"""
     hidden_int = 1 if request.is_hidden else 0
@@ -197,21 +238,36 @@ async def admin_toggle_comment_visibility(
         conn = get_connection()
         try:
             with conn.cursor() as c:
-                c.execute("SELECT is_hidden, post_id FROM forum_comments WHERE id = %s", (comment_id,))
+                c.execute(
+                    "SELECT is_hidden, post_id FROM forum_comments WHERE id = %s",
+                    (comment_id,),
+                )
                 row = c.fetchone()
                 if not row:
                     return None
 
-                c.execute("UPDATE forum_comments SET is_hidden = %s WHERE id = %s", (hidden_int, comment_id))
-                c.execute("""
+                c.execute(
+                    "UPDATE forum_comments SET is_hidden = %s WHERE id = %s",
+                    (hidden_int, comment_id),
+                )
+                c.execute(
+                    """
                     INSERT INTO config_audit_log (config_key, old_value, new_value, changed_by)
                     VALUES (%s, %s, %s, %s)
-                """, (f"admin_forum:comment_visibility:{comment_id}",
-                      "hidden" if row[0] else "visible",
-                      "hidden" if request.is_hidden else "visible",
-                      admin_user["user_id"]))
+                """,
+                    (
+                        f"admin_forum:comment_visibility:{comment_id}",
+                        "hidden" if row[0] else "visible",
+                        "hidden" if request.is_hidden else "visible",
+                        admin_user["user_id"],
+                    ),
+                )
                 conn.commit()
-                return {"old_hidden": bool(row[0]), "new_hidden": request.is_hidden, "post_id": row[1]}
+                return {
+                    "old_hidden": bool(row[0]),
+                    "new_hidden": request.is_hidden,
+                    "post_id": row[1],
+                }
         except Exception as e:
             conn.rollback()
             raise e
@@ -229,7 +285,7 @@ async def admin_list_reports(
     status: str = Query("pending", pattern="^(pending|approved|rejected)$"),
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
-    admin_user: dict = Depends(require_admin)
+    admin_user: dict = Depends(require_admin),
 ):
     """列出內容舉報"""
     offset = (page - 1) * limit
@@ -238,7 +294,8 @@ async def admin_list_reports(
         conn = get_connection()
         try:
             with conn.cursor() as c:
-                c.execute("""
+                c.execute(
+                    """
                     SELECT cr.id, cr.content_type, cr.content_id, cr.reporter_user_id,
                            u.username as reporter_username, cr.report_type, cr.description,
                            cr.review_status, cr.approve_count, cr.reject_count, cr.created_at
@@ -247,34 +304,51 @@ async def admin_list_reports(
                     WHERE cr.review_status = %s
                     ORDER BY cr.created_at DESC
                     LIMIT %s OFFSET %s
-                """, (status, limit, offset))
+                """,
+                    (status, limit, offset),
+                )
                 rows = c.fetchall()
 
-                c.execute("SELECT COUNT(*) FROM content_reports WHERE review_status = %s", (status,))
+                c.execute(
+                    "SELECT COUNT(*) FROM content_reports WHERE review_status = %s",
+                    (status,),
+                )
                 total = c.fetchone()[0]
 
                 reports = []
                 for r in rows:
                     report = {
-                        "id": r[0], "content_type": r[1], "content_id": r[2],
-                        "reporter_user_id": r[3], "reporter_username": r[4] or "Unknown",
-                        "report_type": r[5], "description": r[6],
-                        "review_status": r[7], "approve_count": r[8] or 0,
+                        "id": r[0],
+                        "content_type": r[1],
+                        "content_id": r[2],
+                        "reporter_user_id": r[3],
+                        "reporter_username": r[4] or "Unknown",
+                        "report_type": r[5],
+                        "description": r[6],
+                        "review_status": r[7],
+                        "approve_count": r[8] or 0,
                         "reject_count": r[9] or 0,
                         "created_at": r[10].isoformat() if r[10] else None,
-                        "content_preview": None
+                        "content_preview": None,
                     }
                     # Fetch content preview
                     if r[1] == "post":
                         c.execute("SELECT title FROM posts WHERE id = %s", (r[2],))
                     elif r[1] == "comment":
-                        c.execute("SELECT content FROM forum_comments WHERE id = %s", (r[2],))
+                        c.execute(
+                            "SELECT content FROM forum_comments WHERE id = %s", (r[2],)
+                        )
                     preview_row = c.fetchone()
                     if preview_row:
                         report["content_preview"] = (preview_row[0] or "")[:100]
                     reports.append(report)
 
-                return {"reports": reports, "total": total, "page": page, "limit": limit}
+                return {
+                    "reports": reports,
+                    "total": total,
+                    "page": page,
+                    "limit": limit,
+                }
         finally:
             conn.close()
 
@@ -286,7 +360,7 @@ async def admin_list_reports(
 async def admin_resolve_report(
     report_id: int,
     request: ResolveReportRequest,
-    admin_user: dict = Depends(require_admin)
+    admin_user: dict = Depends(require_admin),
 ):
     """處理舉報（批准=隱藏內容+違規記點，駁回=不處理）"""
     # 1. Get report details
@@ -298,8 +372,13 @@ async def admin_resolve_report(
 
     # 2. Finalize via governance system
     _ = await run_sync(
-        lambda: finalize_report(None, report_id, request.decision,
-                                request.violation_level, admin_user["user_id"])
+        lambda: finalize_report(
+            None,
+            report_id,
+            request.decision,
+            request.violation_level,
+            admin_user["user_id"],
+        )
     )
 
     # 3. If approved, auto-hide the reported content
@@ -312,15 +391,27 @@ async def admin_resolve_report(
             try:
                 with conn.cursor() as c:
                     if content_type == "post":
-                        c.execute("UPDATE posts SET is_hidden = 1 WHERE id = %s", (content_id,))
+                        c.execute(
+                            "UPDATE posts SET is_hidden = 1 WHERE id = %s",
+                            (content_id,),
+                        )
                     elif content_type == "comment":
-                        c.execute("UPDATE forum_comments SET is_hidden = 1 WHERE id = %s", (content_id,))
-                    c.execute("""
+                        c.execute(
+                            "UPDATE forum_comments SET is_hidden = 1 WHERE id = %s",
+                            (content_id,),
+                        )
+                    c.execute(
+                        """
                         INSERT INTO config_audit_log (config_key, old_value, new_value, changed_by)
                         VALUES (%s, %s, %s, %s)
-                    """, (f"admin_forum:report_resolve:{report_id}",
-                          "pending", f"{request.decision}:hide_{content_type}:{content_id}",
-                          admin_user["user_id"]))
+                    """,
+                        (
+                            f"admin_forum:report_resolve:{report_id}",
+                            "pending",
+                            f"{request.decision}:hide_{content_type}:{content_id}",
+                            admin_user["user_id"],
+                        ),
+                    )
                     conn.commit()
             except Exception as e:
                 conn.rollback()
@@ -330,5 +421,9 @@ async def admin_resolve_report(
 
         await run_sync(_hide_content)
 
-    return {"success": True, "report_id": report_id, "decision": request.decision,
-            "content_hidden": request.decision == "approved"}
+    return {
+        "success": True,
+        "report_id": report_id,
+        "decision": request.decision,
+        "content_hidden": request.decision == "approved",
+    }

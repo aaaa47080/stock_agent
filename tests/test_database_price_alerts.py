@@ -1,10 +1,13 @@
 """Tests for price_alerts database functions."""
-import pytest
+
 from unittest.mock import MagicMock, patch
+
+import pytest
+
 from core.database.price_alerts import (
     create_alert,
-    get_user_alerts,
     delete_alert,
+    get_user_alerts,
     mark_alert_triggered,
 )
 

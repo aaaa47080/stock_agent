@@ -1,12 +1,13 @@
 """
 Tests for LLM client utilities
 """
+
 import pytest
 
 from utils.llm_client import (
+    LLMClientFactory,
     extract_json_from_response,
     supports_json_mode,
-    LLMClientFactory
 )
 
 
@@ -21,23 +22,23 @@ class TestExtractJsonFromResponse:
 
     def test_valid_json_array(self):
         """Test extracting valid JSON array"""
-        response = '[1, 2, 3]'
+        response = "[1, 2, 3]"
         result = extract_json_from_response(response)
         assert result == [1, 2, 3]
 
     def test_json_in_code_block(self):
         """Test extracting JSON from markdown code block"""
-        response = '''```json
+        response = """```json
 {"status": "ok"}
-```'''
+```"""
         result = extract_json_from_response(response)
         assert result == {"status": "ok"}
 
     def test_json_in_plain_code_block(self):
         """Test extracting JSON from plain code block"""
-        response = '''```
+        response = """```
 {"data": "value"}
-```'''
+```"""
         result = extract_json_from_response(response)
         assert result == {"data": "value"}
 
@@ -55,13 +56,13 @@ class TestExtractJsonFromResponse:
 
     def test_complex_json(self):
         """Test extracting complex JSON with arrays and nested objects"""
-        response = '''{
+        response = """{
             "items": [
                 {"id": 1, "name": "first"},
                 {"id": 2, "name": "second"}
             ],
             "count": 2
-        }'''
+        }"""
         result = extract_json_from_response(response)
         assert result["count"] == 2
         assert len(result["items"]) == 2

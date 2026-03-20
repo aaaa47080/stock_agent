@@ -23,16 +23,22 @@ def test_bootstrap_isolates_managers_by_session():
     invalidate_manager_cache(user_id)
 
     manager_a = bootstrap(
-        make_mock_llm("a"), web_mode=False,
-        user_id=user_id, session_id="session-a",
+        make_mock_llm("a"),
+        web_mode=False,
+        user_id=user_id,
+        session_id="session-a",
     )
     manager_a_reused = bootstrap(
-        make_mock_llm("a2"), web_mode=False,
-        user_id=user_id, session_id="session-a",
+        make_mock_llm("a2"),
+        web_mode=False,
+        user_id=user_id,
+        session_id="session-a",
     )
     manager_b = bootstrap(
-        make_mock_llm("b"), web_mode=False,
-        user_id=user_id, session_id="session-b",
+        make_mock_llm("b"),
+        web_mode=False,
+        user_id=user_id,
+        session_id="session-b",
     )
 
     assert manager_a_reused is manager_a

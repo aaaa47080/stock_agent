@@ -1,15 +1,16 @@
 """
 Tests for market router in api/routers/market.py
 """
+
 import pytest
 
 from api.routers.market import (
-    _normalize_funding_symbol,
-    _filter_funding_data_by_symbols,
-    _parse_symbols_param,
     _compute_top_bottom_rates,
+    _filter_funding_data_by_symbols,
+    _normalize_funding_symbol,
+    _parse_symbols_param,
     _sort_funding_rates,
-    router
+    router,
 )
 
 
@@ -55,7 +56,7 @@ class TestFilterFundingDataBySymbols:
         data = {
             "BTC": {"fundingRate": 0.01},
             "ETH": {"fundingRate": 0.02},
-            "SOL": {"fundingRate": 0.03}
+            "SOL": {"fundingRate": 0.03},
         }
         symbol_list = ["BTC", "ETH"]
 
@@ -165,7 +166,7 @@ class TestSortFundingRates:
         data = {
             "BTC": {"fundingRate": 0.01},
             "ETH": {"fundingRate": 0.05},
-            "SOL": {"fundingRate": 0.03}
+            "SOL": {"fundingRate": 0.03},
         }
 
         result = _sort_funding_rates(data)

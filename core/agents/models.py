@@ -5,26 +5,30 @@ Agent Models — Shared data structures
 - 基礎類別（TaskComplexity, CollaborationRequest, AgentResult, SubTask）
 - 核心類別（ExecutionMode, TaskNode, TaskGraph, ManagerState 等）
 """
-from __future__ import annotations
-from dataclasses import dataclass, field
-from typing import List, Optional, Literal, Dict, Any, TypedDict, Annotated
-from enum import Enum
 
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Annotated, Any, Dict, List, Literal, Optional, TypedDict
 
 # ============================================================================
 # 基礎類別
 # ============================================================================
 
+
 class TaskComplexity(Enum):
     """任務複雜度"""
-    SIMPLE    = "simple"
-    COMPLEX   = "complex"
+
+    SIMPLE = "simple"
+    COMPLEX = "complex"
     AMBIGUOUS = "ambiguous"
 
 
 @dataclass
 class CollaborationRequest:
     """協作請求（基礎）"""
+
     requesting_agent: str
     needed_agent: str
     context: str
@@ -34,6 +38,7 @@ class CollaborationRequest:
 @dataclass
 class AgentResult:
     """Agent 執行結果（基礎）"""
+
     success: bool
     message: str
     agent_name: str
@@ -46,6 +51,7 @@ class AgentResult:
 @dataclass
 class SubTask:
     """子任務（基礎）"""
+
     step: int
     description: str
     agent: str
@@ -87,9 +93,11 @@ def task_results_reducer(left: Dict | None, right: Dict | None) -> Dict:
 # 執行模式
 # ============================================================================
 
+
 class ExecutionMode(Enum):
     """任務執行模式"""
-    VENDING = "vending"      # 簡單任務：直接路由，無需複雜規劃
+
+    VENDING = "vending"  # 簡單任務：直接路由，無需複雜規劃
     RESTAURANT = "restaurant"  # 複雜任務：需要規劃、拆解、DAG 執行
 
 
@@ -101,12 +109,14 @@ class HITLType(Enum):
     - 只保留 CONFIRM_PLAN（計劃確認）
     - 其他互動透過自然對話處理
     """
+
     CONFIRM_PLAN = "confirm_plan"  # 確認計劃：展示計劃請用戶確認
 
 
 # ============================================================================
 # 任務節點（DAG 核心）
 # ============================================================================
+
 
 @dataclass
 class TaskNode:
@@ -117,14 +127,15 @@ class TaskNode:
     - task: 單一任務（指派給某個 agent）
     - group: 任務組（包含多個 children）
     """
-    id: str                              # 唯一標識
-    name: str                            # 任務名稱
-    type: Literal["task", "group"]       # 節點類型
+
+    id: str  # 唯一標識
+    name: str  # 任務名稱
+    type: Literal["task", "group"]  # 節點類型
 
     # task 專屬
-    agent: Optional[str] = None          # 指派的 agent
-    tool_hint: Optional[str] = None      # 工具提示（非強制）
-    description: Optional[str] = None    # 任務描述
+    agent: Optional[str] = None  # 指派的 agent
+    tool_hint: Optional[str] = None  # 工具提示（非強制）
+    description: Optional[str] = None  # 任務描述
 
     # group 專屬
     children: List[TaskNode] = field(default_factory=list)
@@ -157,6 +168,7 @@ class TaskGraph:
     - 拓撲排序
     - 偵測並行組
     """
+
     root: TaskNode
     all_nodes: Dict[str, TaskNode] = field(default_factory=dict)
 
@@ -222,6 +234,7 @@ class TaskGraph:
 # Agent 上下文（選擇性傳輸）
 # ============================================================================
 
+
 @dataclass
 class AgentContext:
     """
@@ -233,10 +246,11 @@ class AgentContext:
     - 摘要帶：歷史壓縮
     - 不帶：完整歷史
     """
+
     # === 必帶 ===
-    original_query: str          # 原始用戶問題
-    task_description: str        # 經理指派的具體任務
-    symbols: Dict[str, str]      # 萃取的實體（如 BTC → bitcoin）
+    original_query: str  # 原始用戶問題
+    task_description: str  # 經理指派的具體任務
+    symbols: Dict[str, str]  # 萃取的實體（如 BTC → bitcoin）
     analysis_mode: str = "quick"
 
     # === 動態帶（有依賴時）===
@@ -254,12 +268,14 @@ class AgentContext:
 # 短期記憶
 # ============================================================================
 
+
 @dataclass
 class MemoryFact:
     """從對話中萃取的事實"""
-    key: str              # snake_case，如 preferred_coin
-    value: str            # 如 BTC
-    source_turn: int      # 來源對話輪次
+
+    key: str  # snake_case，如 preferred_coin
+    value: str  # 如 BTC
+    source_turn: int  # 來源對話輪次
     confidence: Literal["high", "medium", "low"] = "high"
 
 
@@ -273,6 +289,7 @@ class ShortTermMemory:
     - context_state: 上下文狀態（用戶偏好、萃取事實）
     - symbol_cache: 符號快取（避免重複解析）
     """
+
     conversation_history: List[Dict[str, str]] = field(default_factory=list)
     context_state: Dict[str, Any] = field(default_factory=dict)
     symbol_cache: Dict[str, str] = field(default_factory=dict)
@@ -288,7 +305,7 @@ class ShortTermMemory:
             return ""
 
         # 取最近 N 輪
-        recent = self.conversation_history[-(max_turns * 2):]
+        recent = self.conversation_history[-(max_turns * 2) :]
 
         # 格式化
         lines = []
@@ -329,6 +346,7 @@ class ShortTermMemory:
 # 意圖理解結果（開放式）
 # ============================================================================
 
+
 @dataclass
 class IntentUnderstanding:
     """
@@ -340,8 +358,9 @@ class IntentUnderstanding:
 
     注意：移除了 needs_clarification，因為澄清直接在回應中處理
     """
+
     # 用戶意圖描述
-    user_intent: str                    # 如 "想了解 BTC 的價格和技術分析"
+    user_intent: str  # 如 "想了解 BTC 的價格和技術分析"
 
     # 萃取的實體
     entities: Dict[str, str] = field(default_factory=dict)  # 如 {"symbol": "BTC"}
@@ -360,13 +379,15 @@ class IntentUnderstanding:
 # 執行結果
 # ============================================================================
 
+
 @dataclass
 class TaskResult:
     """任務執行結果"""
+
     success: bool
     message: str
     agent_name: str
-    task_id: str                        # 對應的 TaskNode ID
+    task_id: str  # 對應的 TaskNode ID
     data: Dict[str, Any] = field(default_factory=dict)
 
     # 品質評估
@@ -383,6 +404,7 @@ class ExecutionResult:
     - 單一結果（vending 模式）
     - 彙總結果（restaurant 模式）
     """
+
     success: bool
     final_response: str
     mode: ExecutionMode
@@ -398,6 +420,7 @@ class ExecutionResult:
 # Manager 狀態（LangGraph 用）
 # ============================================================================
 
+
 class ManagerState(TypedDict, total=False):
     """
     LangGraph 狀態包
@@ -412,6 +435,7 @@ class ManagerState(TypedDict, total=False):
     - hitl_*: Human-in-the-Loop 相關
     - final_response: 最終輸出
     """
+
     # === 必填 ===
     session_id: str
     query: str
@@ -430,7 +454,9 @@ class ManagerState(TypedDict, total=False):
     current_task_id: Optional[str]  # 當前執行的任務
 
     # === 執行 ===
-    task_results: Annotated[Dict, task_results_reducer]  # {task_id: TaskResult} - 使用自定義 reducer
+    task_results: Annotated[
+        Dict, task_results_reducer
+    ]  # {task_id: TaskResult} - 使用自定義 reducer
     hitl_type: Optional[str]
     hitl_question: Optional[str]
     hitl_confirmed: Optional[bool]  # HITL 是否已被確認（用於 resume 後跳過 interrupt）

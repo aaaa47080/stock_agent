@@ -1,26 +1,27 @@
 import asyncio
 import time
-import httpx
-from typing import Optional, Any
 from datetime import datetime, timedelta
+from typing import Any, Optional
 
+import httpx
 import yfinance as yf
-from fastapi import APIRouter, HTTPException, Header, Query
+from fastapi import APIRouter, Header, HTTPException, Query
 
 from api.utils import logger
 from core.tools.tw_stock_tools import (
-    tw_stock_price,
-    tw_technical_analysis,
+    tw_dividend_info,
     tw_fundamentals,
     tw_institutional,
-    tw_news,
     tw_monthly_revenue,
-    tw_dividend_info,
+    tw_news,
+    tw_stock_price,
+    tw_technical_analysis,
 )
 
 # ── Simple in-memory cache (key → (data, expiry_time)) ──────────────────────
 _twse_cache: dict = {}
 _CACHE_TTL_SECONDS = 300  # 5 minutes
+
 
 async def _fetch_twse(url: str, params: dict = None, cache_key: str = None) -> Any:
     """Fetch from TWSE OpenAPI with optional caching."""
@@ -34,18 +35,34 @@ async def _fetch_twse(url: str, params: dict = None, cache_key: str = None) -> A
             resp = await client.get(url, params=params)
             resp.raise_for_status()
             data = resp.json()
-            _twse_cache[ck] = (data, datetime.now() + timedelta(seconds=_CACHE_TTL_SECONDS))
+            _twse_cache[ck] = (
+                data,
+                datetime.now() + timedelta(seconds=_CACHE_TTL_SECONDS),
+            )
             return data
     except Exception as e:
         logger.error(f"[TWSE fetch] {url} failed: {e}")
         raise
 
+
 router = APIRouter(prefix="/api/twstock", tags=["TW Stock"])
 
 # Default preset symbols for Taiwan Stocks (e.g., TSMC, Foxconn, MediaTek)
-DEFAULT_TW_SYMBOLS = ["2330", "2317", "2454", "2308", "2881", "2412", "2882", "2891", "1301", "2002"]
+DEFAULT_TW_SYMBOLS = [
+    "2330",
+    "2317",
+    "2454",
+    "2308",
+    "2881",
+    "2412",
+    "2882",
+    "2891",
+    "1301",
+    "2002",
+]
 
 _STOCK_INFO_CACHE = {}  # {symbol: (result, expires_at)}
+
 
 async def _get_stock_info(symbol: str):
     """
@@ -53,41 +70,58 @@ async def _get_stock_info(symbol: str):
     This function caches the result to avoid slow repeated yfinance info calls.
     Successful lookups cached for 1 hour; fallback cached for 5 minutes.
     """
-    symbol = symbol.replace('.TW', '').replace('.TWO', '')
+    symbol = symbol.replace(".TW", "").replace(".TWO", "")
     now = time.time()
     if symbol in _STOCK_INFO_CACHE:
         cached_result, expires_at = _STOCK_INFO_CACHE[symbol]
         if now < expires_at:
             return cached_result
-    
+
     def fetch():
         # 1. 嘗試 TWSE (.TW)
         tw_ticker = yf.Ticker(f"{symbol}.TW")
         try:
             info = tw_ticker.info
-            if 'shortName' in info or 'longName' in info:
-                name = info.get('shortName') or info.get('longName') or symbol
-                return {"formatted_symbol": f"{symbol}.TW", "name": name, "exchange": "TWSE"}
+            if "shortName" in info or "longName" in info:
+                name = info.get("shortName") or info.get("longName") or symbol
+                return {
+                    "formatted_symbol": f"{symbol}.TW",
+                    "name": name,
+                    "exchange": "TWSE",
+                }
         except Exception:
-            logger.debug("TWSE symbol info fetch failed for %s.TW", symbol, exc_info=True)
-            
+            logger.debug(
+                "TWSE symbol info fetch failed for %s.TW", symbol, exc_info=True
+            )
+
         # 2. 嘗試 TPEx (.TWO)
         two_ticker = yf.Ticker(f"{symbol}.TWO")
         try:
             info = two_ticker.info
-            if 'shortName' in info or 'longName' in info:
-                name = info.get('shortName') or info.get('longName') or symbol
-                return {"formatted_symbol": f"{symbol}.TWO", "name": name, "exchange": "TPEx"}
+            if "shortName" in info or "longName" in info:
+                name = info.get("shortName") or info.get("longName") or symbol
+                return {
+                    "formatted_symbol": f"{symbol}.TWO",
+                    "name": name,
+                    "exchange": "TPEx",
+                }
         except Exception:
-            logger.debug("TPEx symbol info fetch failed for %s.TWO", symbol, exc_info=True)
-            
-        return {"formatted_symbol": f"{symbol}.TW", "name": symbol, "exchange": "TWSE"} # Fallback
+            logger.debug(
+                "TPEx symbol info fetch failed for %s.TWO", symbol, exc_info=True
+            )
+
+        return {
+            "formatted_symbol": f"{symbol}.TW",
+            "name": symbol,
+            "exchange": "TWSE",
+        }  # Fallback
 
     result = await asyncio.to_thread(fetch)
     is_fallback = result["name"] == symbol  # fallback returns symbol as name
     ttl = 300 if is_fallback else 3600
     _STOCK_INFO_CACHE[symbol] = (result, now + ttl)
     return result
+
 
 @router.get("/market")
 async def get_tw_market(symbols: Optional[str] = None):
@@ -96,7 +130,9 @@ async def get_tw_market(symbols: Optional[str] = None):
     If no symbols are provided, returns data for the top preset symbols.
     """
     try:
-        target_symbols = [s.strip() for s in symbols.split(',')] if symbols else DEFAULT_TW_SYMBOLS
+        target_symbols = (
+            [s.strip() for s in symbols.split(",")] if symbols else DEFAULT_TW_SYMBOLS
+        )
         results = []
 
         # Fetch all stock infos concurrently
@@ -104,29 +140,35 @@ async def get_tw_market(symbols: Optional[str] = None):
 
         async def fetch_price(symbol, info):
             fmt = info["formatted_symbol"]
-            price_data = await asyncio.to_thread(lambda sym=fmt: tw_stock_price.invoke({"ticker": sym}))
+            price_data = await asyncio.to_thread(
+                lambda sym=fmt: tw_stock_price.invoke({"ticker": sym})
+            )
             if "error" not in price_data:
                 return {
                     "Symbol": symbol,
                     "Name": info["name"],
                     "Exchange": info["exchange"],
-                    "Close": price_data.get("current_price") if price_data.get("current_price") is not None else price_data.get("prev_close"),
+                    "Close": price_data.get("current_price")
+                    if price_data.get("current_price") is not None
+                    else price_data.get("prev_close"),
                     "price_change_24h": price_data.get("change_pct", 0),
-                    "Volume": price_data.get("recent_ohlcv", [-1])[0].get("volume", 0) if price_data.get("recent_ohlcv") else 0,
+                    "Volume": price_data.get("recent_ohlcv", [-1])[0].get("volume", 0)
+                    if price_data.get("recent_ohlcv")
+                    else 0,
                 }
             return None
 
-        price_results = await asyncio.gather(*[fetch_price(sym, inf) for sym, inf in zip(target_symbols, infos)])
+        price_results = await asyncio.gather(
+            *[fetch_price(sym, inf) for sym, inf in zip(target_symbols, infos)]
+        )
         results = [r for r in price_results if r is not None]
 
-        return {
-            "top_performers": results,
-            "last_updated": datetime.now().isoformat()
-        }
+        return {"top_performers": results, "last_updated": datetime.now().isoformat()}
 
     except Exception as e:
         logger.error(f"Failed to fetch TW market data: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="獲取台股市場數據失敗，請稍後再試")
+
 
 @router.get("/pulse/{symbol}")
 async def get_tw_pulse(
@@ -142,19 +184,34 @@ async def get_tw_pulse(
         info = await _get_stock_info(symbol)
         formatted_symbol = info["formatted_symbol"]
         company_name = info["name"]
-        
-        price = await asyncio.to_thread(lambda: tw_stock_price.invoke({"ticker": formatted_symbol}))
-        
+
+        price = await asyncio.to_thread(
+            lambda: tw_stock_price.invoke({"ticker": formatted_symbol})
+        )
+
         # Check for invalid symbols gracefully
         if "error" in price or price.get("current_price") is None:
-            raise HTTPException(status_code=404, detail=f"查無台股代號「{symbol}」或目前無法獲取其即時數據。")
-            
+            raise HTTPException(
+                status_code=404,
+                detail=f"查無台股代號「{symbol}」或目前無法獲取其即時數據。",
+            )
+
         code = symbol.split(".")[0]
         tech, funds, inst, news, rev_list, div_list = await asyncio.gather(
-            asyncio.to_thread(lambda: tw_technical_analysis.invoke({"ticker": formatted_symbol})),
-            asyncio.to_thread(lambda: tw_fundamentals.invoke({"ticker": formatted_symbol})),
-            asyncio.to_thread(lambda: tw_institutional.invoke({"ticker": formatted_symbol})),
-            asyncio.to_thread(lambda: tw_news.invoke({"ticker": formatted_symbol, "company_name": company_name})),
+            asyncio.to_thread(
+                lambda: tw_technical_analysis.invoke({"ticker": formatted_symbol})
+            ),
+            asyncio.to_thread(
+                lambda: tw_fundamentals.invoke({"ticker": formatted_symbol})
+            ),
+            asyncio.to_thread(
+                lambda: tw_institutional.invoke({"ticker": formatted_symbol})
+            ),
+            asyncio.to_thread(
+                lambda: tw_news.invoke(
+                    {"ticker": formatted_symbol, "company_name": company_name}
+                )
+            ),
             asyncio.to_thread(lambda: tw_monthly_revenue.invoke({"code": code})),
             asyncio.to_thread(lambda: tw_dividend_info.invoke({"code": code})),
         )
@@ -164,8 +221,12 @@ async def get_tw_pulse(
         change = price.get("change_pct", 0)
         rsi = tech.get("rsi_14")
         foreign = inst.get("foreign_net")
-        
-        trend_str = "呈現上漲趨勢" if change > 0 else ("呈現下跌態勢" if change < 0 else "走勢平穩")
+
+        trend_str = (
+            "呈現上漲趨勢"
+            if change > 0
+            else ("呈現下跌態勢" if change < 0 else "走勢平穩")
+        )
         rsi_str = ""
         if isinstance(rsi, (int, float)):
             if rsi > 70:
@@ -174,7 +235,7 @@ async def get_tw_pulse(
                 rsi_str = "，RSI 指標顯示目前可能處於超賣區間，或有反彈契機"
             else:
                 rsi_str = "，RSI 指標落在中性區間"
-                
+
         foreign_str = ""
         if foreign and str(foreign) not in ["", "N/A"]:
             try:
@@ -189,16 +250,20 @@ async def get_tw_pulse(
         dynamic_summary = f"根據最新市場數據，{company_name} ({symbol}) 目前股價為 ${curr_price}，24小時{trend_str} ({change}%){rsi_str}{foreign_str}。此為由 CryptoMind AI 根據即時技術與籌碼指標自動合成之脈動報告。"
 
         # Only pass valid news items with links
-        valid_news = [{"title": n.get("title", ""), "url": n.get("url", "")} for n in news[:3]] if isinstance(news, list) and len(news) > 0 and "error" not in news[0] else []
+        valid_news = (
+            [{"title": n.get("title", ""), "url": n.get("url", "")} for n in news[:3]]
+            if isinstance(news, list) and len(news) > 0 and "error" not in news[0]
+            else []
+        )
 
         # Filter out N/A foreign_net from key_points
         key_points = [
             f"RSI(14): {tech.get('rsi_14', 'N/A')}",
             f"MACD: {tech.get('macd', {}).get('histogram', 'N/A')}",
-            f"本益比 (P/E): {funds.get('pe_ratio', 'N/A')}"
+            f"本益比 (P/E): {funds.get('pe_ratio', 'N/A')}",
         ]
-        
-        foreign_net = inst.get('foreign_net', 'N/A')
+
+        foreign_net = inst.get("foreign_net", "N/A")
         if foreign_net and str(foreign_net) != "N/A":
             key_points.append(f"外資買賣超: {foreign_net} 股")
 
@@ -206,6 +271,7 @@ async def get_tw_pulse(
         source_mode = "on_demand"
         if deep_analysis and x_user_llm_key and x_user_llm_provider:
             from api.routers.deep_analysis_helper import deep_analyze_generic
+
             context = (
                 f"公司: {company_name} ({symbol})\n"
                 f"現價: ${curr_price}\n"
@@ -215,7 +281,9 @@ async def get_tw_pulse(
                 f"P/E Ratio: {funds.get('pe_ratio', 'N/A')}\n"
                 f"外資買賣超: {inst.get('foreign_net', 'N/A')} 股"
             )
-            ai_text = await deep_analyze_generic(symbol, context, x_user_llm_key, x_user_llm_provider)
+            ai_text = await deep_analyze_generic(
+                symbol, context, x_user_llm_key, x_user_llm_provider
+            )
             if ai_text:
                 final_summary = ai_text
                 source_mode = "deep_analysis"
@@ -232,19 +300,24 @@ async def get_tw_pulse(
                 "summary": final_summary,
                 "key_points": key_points,
                 "highlights": valid_news,
-                "risks": []
+                "risks": [],
             },
             "technical_indicators": tech,
             "fundamentals": funds,
             "institutional": inst,
             "news": news,
-            "monthly_revenue": rev_list[0] if isinstance(rev_list, list) and rev_list and "error" not in rev_list[0] else None,
-            "dividend_info": div_list[0] if isinstance(div_list, list) and div_list and "error" not in div_list[0] else None,
+            "monthly_revenue": rev_list[0]
+            if isinstance(rev_list, list) and rev_list and "error" not in rev_list[0]
+            else None,
+            "dividend_info": div_list[0]
+            if isinstance(div_list, list) and div_list and "error" not in div_list[0]
+            else None,
         }
 
     except Exception as e:
         logger.error(f"Failed to fetch TW pulse data for {symbol}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="獲取台股脈動數據失敗，請稍後再試")
+
 
 @router.get("/klines/{symbol}")
 async def get_tw_klines(symbol: str, interval: str = "1d", limit: int = 100):
@@ -263,12 +336,12 @@ async def get_tw_klines(symbol: str, interval: str = "1d", limit: int = 100):
             period = "2y"
         elif interval == "1mo":
             period = "5y"
-            
+
         ticker = yf.Ticker(formatted_symbol)
         hist = ticker.history(period=period, interval=interval)
-        
+
         if hist.empty:
-             raise HTTPException(status_code=404, detail="無交易資料或該股票已下市")
+            raise HTTPException(status_code=404, detail="無交易資料或該股票已下市")
 
         # Format for Lightweight Charts: { time, open, high, low, close, volume }
         klines = []
@@ -277,26 +350,24 @@ async def get_tw_klines(symbol: str, interval: str = "1d", limit: int = 100):
             # Lightweight Charts expects 'time' as a string 'YYYY-MM-DD' for daily chart
             # Or unix timestamp
             try:
-                time_val = index.strftime('%Y-%m-%d')
-                klines.append({
-                    "time": time_val,
-                    "open": round(float(row["Open"]), 2),
-                    "high": round(float(row["High"]), 2),
-                    "low": round(float(row["Low"]), 2),
-                    "close": round(float(row["Close"]), 2),
-                    "volume": int(row["Volume"])
-                })
+                time_val = index.strftime("%Y-%m-%d")
+                klines.append(
+                    {
+                        "time": time_val,
+                        "open": round(float(row["Open"]), 2),
+                        "high": round(float(row["High"]), 2),
+                        "low": round(float(row["Low"]), 2),
+                        "close": round(float(row["Close"]), 2),
+                        "volume": int(row["Volume"]),
+                    }
+                )
             except Exception:
                 continue
-                
+
         # Keep only the requested limit
         klines = klines[-limit:]
 
-        return {
-            "symbol": symbol,
-            "interval": interval,
-            "data": klines
-        }
+        return {"symbol": symbol, "interval": interval, "data": klines}
 
     except HTTPException:
         raise
@@ -309,34 +380,51 @@ async def get_tw_klines(symbol: str, interval: str = "1d", limit: int = 100):
 
 TWSE_BASE = "https://openapi.twse.com.tw/v1"
 
+
 @router.get("/opendata/news")
-async def get_tw_major_news(limit: int = 15, symbols: str = Query(None, description="Comma-separated stock codes to filter (e.g., '2330,2317')")):
+async def get_tw_major_news(
+    limit: int = 15,
+    symbols: str = Query(
+        None, description="Comma-separated stock codes to filter (e.g., '2330,2317')"
+    ),
+):
     """
     取得上市公司每日重大訊息（來源：TWSE t187ap04_L）。
     """
     try:
-        data = await _fetch_twse(f"{TWSE_BASE}/opendata/t187ap04_L", cache_key="twse_news")
-        
+        data = await _fetch_twse(
+            f"{TWSE_BASE}/opendata/t187ap04_L", cache_key="twse_news"
+        )
+
         if symbols:
             target_symbols = [s.strip() for s in symbols.split(",")]
             data = [d for d in (data or []) if d.get("公司代號") in target_symbols]
-            
+
         results = []
         for item in (data or [])[:limit]:
-            results.append({
-                "date":        item.get("發言日期", ""),
-                "time":        item.get("發言時間", ""),
-                "code":        item.get("公司代號", ""),
-                "name":        item.get("公司名稱", ""),
-                "subject":     item.get("主旨 ", "").strip() or item.get("主旨", "").strip(),
-                "rule":        item.get("符合條款", ""),
-                "fact_date":   item.get("事實發生日", ""),
-                "description": item.get("說明", ""),
-            })
-        return {"data": results, "total": len(results), "last_updated": datetime.now().isoformat()}
+            results.append(
+                {
+                    "date": item.get("發言日期", ""),
+                    "time": item.get("發言時間", ""),
+                    "code": item.get("公司代號", ""),
+                    "name": item.get("公司名稱", ""),
+                    "subject": item.get("主旨 ", "").strip()
+                    or item.get("主旨", "").strip(),
+                    "rule": item.get("符合條款", ""),
+                    "fact_date": item.get("事實發生日", ""),
+                    "description": item.get("說明", ""),
+                }
+            )
+        return {
+            "data": results,
+            "total": len(results),
+            "last_updated": datetime.now().isoformat(),
+        }
     except Exception as e:
         logger.error(f"[TW News] {e}", exc_info=True)
-        raise HTTPException(status_code=502, detail="TWSE 重大訊息 API 呼叫失敗，請稍後再試")
+        raise HTTPException(
+            status_code=502, detail="TWSE 重大訊息 API 呼叫失敗，請稍後再試"
+        )
 
 
 @router.get("/opendata/pe_ratio/{symbol}")
@@ -346,30 +434,38 @@ async def get_tw_pe_ratio(symbol: str):
     symbol: 股票代號，如 2330
     """
     try:
-        data = await _fetch_twse(f"{TWSE_BASE}/exchangeReport/BWIBBU_d", cache_key="twse_pe_all")
+        data = await _fetch_twse(
+            f"{TWSE_BASE}/exchangeReport/BWIBBU_d", cache_key="twse_pe_all"
+        )
         matching = [d for d in (data or []) if d.get("Code", "") == symbol]
         if not matching:
             # Try BWIBBU_ALL as fallback
-            data2 = await _fetch_twse(f"{TWSE_BASE}/exchangeReport/BWIBBU_ALL", cache_key="twse_pe_all2")
+            data2 = await _fetch_twse(
+                f"{TWSE_BASE}/exchangeReport/BWIBBU_ALL", cache_key="twse_pe_all2"
+            )
             matching = [d for d in (data2 or []) if d.get("Code", "") == symbol]
         if not matching:
-            raise HTTPException(status_code=404, detail=f"查無股票代號 {symbol} 的本益比資料")
+            raise HTTPException(
+                status_code=404, detail=f"查無股票代號 {symbol} 的本益比資料"
+            )
         d = matching[0]
         return {
-            "code":           d.get("Code", symbol),
-            "name":           d.get("Name", ""),
-            "date":           d.get("Date", ""),
-            "pe_ratio":       d.get("PEratio", "N/A"),
+            "code": d.get("Code", symbol),
+            "name": d.get("Name", ""),
+            "date": d.get("Date", ""),
+            "pe_ratio": d.get("PEratio", "N/A"),
             "dividend_yield": d.get("DividendYield", "N/A"),
-            "pb_ratio":       d.get("PBratio", "N/A"),
-            "dividend_year":  d.get("DividendYear", ""),
+            "pb_ratio": d.get("PBratio", "N/A"),
+            "dividend_year": d.get("DividendYear", ""),
             "fiscal_quarter": d.get("FiscalYearQuarter", ""),
         }
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"[TW PE Ratio] {e}", exc_info=True)
-        raise HTTPException(status_code=502, detail="TWSE 本益比 API 呼叫失敗，請稍後再試")
+        raise HTTPException(
+            status_code=502, detail="TWSE 本益比 API 呼叫失敗，請稍後再試"
+        )
 
 
 @router.get("/opendata/monthly_revenue")
@@ -378,55 +474,78 @@ async def get_tw_monthly_revenue(limit: int = 50):
     取得上市公司每月營業收入彙總（來源：TWSE t187ap05_L）。
     """
     try:
-        data = await _fetch_twse(f"{TWSE_BASE}/opendata/t187ap05_L", cache_key="twse_monthly_rev")
+        data = await _fetch_twse(
+            f"{TWSE_BASE}/opendata/t187ap05_L", cache_key="twse_monthly_rev"
+        )
         results = []
         for item in (data or [])[:limit]:
-            results.append({
-                "code":             item.get("公司代號", ""),
-                "name":             item.get("公司名稱", ""),
-                "industry":         item.get("產業別", ""),
-                "ym":               item.get("資料年月", ""),
-                "current_revenue":  item.get("營業收入-當月營收", ""),
-                "mom_change_pct":   item.get("營業收入-上月比較增減(%)", ""),
-                "yoy_change_pct":   item.get("營業收入-去年當月增減(%)", ""),
-                "ytd_revenue":      item.get("累計營業收入-當月累計營收", ""),
-                "ytd_yoy_pct":      item.get("累計營業收入-前期比較增減(%)", ""),
-            })
-        return {"data": results, "total": len(results), "last_updated": datetime.now().isoformat()}
+            results.append(
+                {
+                    "code": item.get("公司代號", ""),
+                    "name": item.get("公司名稱", ""),
+                    "industry": item.get("產業別", ""),
+                    "ym": item.get("資料年月", ""),
+                    "current_revenue": item.get("營業收入-當月營收", ""),
+                    "mom_change_pct": item.get("營業收入-上月比較增減(%)", ""),
+                    "yoy_change_pct": item.get("營業收入-去年當月增減(%)", ""),
+                    "ytd_revenue": item.get("累計營業收入-當月累計營收", ""),
+                    "ytd_yoy_pct": item.get("累計營業收入-前期比較增減(%)", ""),
+                }
+            )
+        return {
+            "data": results,
+            "total": len(results),
+            "last_updated": datetime.now().isoformat(),
+        }
     except Exception as e:
         logger.error(f"[TW Monthly Revenue] {e}", exc_info=True)
-        raise HTTPException(status_code=502, detail="TWSE 月營收 API 呼叫失敗，請稍後再試")
+        raise HTTPException(
+            status_code=502, detail="TWSE 月營收 API 呼叫失敗，請稍後再試"
+        )
 
 
 @router.get("/opendata/dividend")
-async def get_tw_dividend(limit: int = 50, symbols: str = Query(None, description="Comma-separated stock codes to filter")):
+async def get_tw_dividend(
+    limit: int = 50,
+    symbols: str = Query(None, description="Comma-separated stock codes to filter"),
+):
     """
     取得上市公司股利分派情形（來源：TWSE t187ap45_L）。
     """
     try:
-        data = await _fetch_twse(f"{TWSE_BASE}/opendata/t187ap45_L", cache_key="twse_dividend")
-        
+        data = await _fetch_twse(
+            f"{TWSE_BASE}/opendata/t187ap45_L", cache_key="twse_dividend"
+        )
+
         if symbols:
             target_symbols = [s.strip() for s in symbols.split(",")]
             data = [d for d in (data or []) if d.get("公司代號") in target_symbols]
-            
+
         results = []
         for item in (data or [])[:limit]:
-            results.append({
-                "code":            item.get("公司代號", ""),
-                "name":            item.get("公司名稱", ""),
-                "year":            item.get("股利年度", ""),
-                "progress":        item.get("決議（擬議）進度", ""),
-                "board_date":      item.get("董事會（擬議）股利分派日", ""),
-                "shareholder_meeting": item.get("股東會日期", ""),
-                "cash_dividend":   item.get("股東配發-盈餘分配之現金股利(元/股)", ""),
-                "stock_dividend":  item.get("股東配發-盈餘轉增資配股(元/股)", ""),
-                "net_profit":      item.get("本期淨利(淨損)(元)", ""),
-            })
-        return {"data": results, "total": len(results), "last_updated": datetime.now().isoformat()}
+            results.append(
+                {
+                    "code": item.get("公司代號", ""),
+                    "name": item.get("公司名稱", ""),
+                    "year": item.get("股利年度", ""),
+                    "progress": item.get("決議（擬議）進度", ""),
+                    "board_date": item.get("董事會（擬議）股利分派日", ""),
+                    "shareholder_meeting": item.get("股東會日期", ""),
+                    "cash_dividend": item.get("股東配發-盈餘分配之現金股利(元/股)", ""),
+                    "stock_dividend": item.get("股東配發-盈餘轉增資配股(元/股)", ""),
+                    "net_profit": item.get("本期淨利(淨損)(元)", ""),
+                }
+            )
+        return {
+            "data": results,
+            "total": len(results),
+            "last_updated": datetime.now().isoformat(),
+        }
     except Exception as e:
         logger.error(f"[TW Dividend] {e}", exc_info=True)
-        raise HTTPException(status_code=502, detail="TWSE 股利 API 呼叫失敗，請稍後再試")
+        raise HTTPException(
+            status_code=502, detail="TWSE 股利 API 呼叫失敗，請稍後再試"
+        )
 
 
 @router.get("/opendata/foreign_holding")
@@ -435,21 +554,31 @@ async def get_tw_foreign_holding():
     取得集中市場外資及陸資持股前 20 名（來源：TWSE MI_QFIIS_sort_20）。
     """
     try:
-        data = await _fetch_twse(f"{TWSE_BASE}/fund/MI_QFIIS_sort_20", cache_key="twse_foreign_top20")
+        data = await _fetch_twse(
+            f"{TWSE_BASE}/fund/MI_QFIIS_sort_20", cache_key="twse_foreign_top20"
+        )
         results = []
-        for item in (data or []):
-            results.append({
-                "rank":              item.get("Rank", ""),
-                "code":              item.get("Code", ""),
-                "name":              item.get("Name", ""),
-                "total_shares":      item.get("ShareNumber", ""),
-                "available_shares":  item.get("AvailableShare", ""),
-                "held_shares":       item.get("SharesHeld", ""),
-                "available_pct":     item.get("AvailableInvestPer", ""),
-                "held_pct":          item.get("SharesHeldPer", ""),
-                "upper_limit_pct":   item.get("Upperlimit", ""),
-            })
-        return {"data": results, "total": len(results), "last_updated": datetime.now().isoformat()}
+        for item in data or []:
+            results.append(
+                {
+                    "rank": item.get("Rank", ""),
+                    "code": item.get("Code", ""),
+                    "name": item.get("Name", ""),
+                    "total_shares": item.get("ShareNumber", ""),
+                    "available_shares": item.get("AvailableShare", ""),
+                    "held_shares": item.get("SharesHeld", ""),
+                    "available_pct": item.get("AvailableInvestPer", ""),
+                    "held_pct": item.get("SharesHeldPer", ""),
+                    "upper_limit_pct": item.get("Upperlimit", ""),
+                }
+            )
+        return {
+            "data": results,
+            "total": len(results),
+            "last_updated": datetime.now().isoformat(),
+        }
     except Exception as e:
         logger.error(f"[TW Foreign Holding] {e}", exc_info=True)
-        raise HTTPException(status_code=502, detail="TWSE 外資持股 API 呼叫失敗，請稍後再試")
+        raise HTTPException(
+            status_code=502, detail="TWSE 外資持股 API 呼叫失敗，請稍後再試"
+        )

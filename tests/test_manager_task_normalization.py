@@ -1,9 +1,9 @@
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from core.agents.agent_registry import AgentRegistry, AgentMetadata
-from core.agents.manager import ManagerAgent, MAX_GRAPH_TASKS, CLEAR_SENTINEL
+from core.agents.agent_registry import AgentMetadata, AgentRegistry
+from core.agents.manager import CLEAR_SENTINEL, MAX_GRAPH_TASKS, ManagerAgent
 from core.agents.tool_registry import ToolRegistry
 
 
@@ -11,27 +11,36 @@ def build_manager():
     llm = MagicMock()
     llm.invoke.return_value = MagicMock(content="{}")
     agent_registry = AgentRegistry()
-    agent_registry.register(object(), AgentMetadata(
-        name="crypto",
-        display_name="Crypto Agent",
-        description="crypto",
-        capabilities=["crypto"],
-        priority=10,
-    ))
-    agent_registry.register(object(), AgentMetadata(
-        name="tw_stock",
-        display_name="TW Stock Agent",
-        description="tw",
-        capabilities=["tw"],
-        priority=10,
-    ))
-    agent_registry.register(object(), AgentMetadata(
-        name="us_stock",
-        display_name="US Stock Agent",
-        description="us",
-        capabilities=["us"],
-        priority=8,
-    ))
+    agent_registry.register(
+        object(),
+        AgentMetadata(
+            name="crypto",
+            display_name="Crypto Agent",
+            description="crypto",
+            capabilities=["crypto"],
+            priority=10,
+        ),
+    )
+    agent_registry.register(
+        object(),
+        AgentMetadata(
+            name="tw_stock",
+            display_name="TW Stock Agent",
+            description="tw",
+            capabilities=["tw"],
+            priority=10,
+        ),
+    )
+    agent_registry.register(
+        object(),
+        AgentMetadata(
+            name="us_stock",
+            display_name="US Stock Agent",
+            description="us",
+            capabilities=["us"],
+            priority=8,
+        ),
+    )
     return ManagerAgent(llm, agent_registry, ToolRegistry())
 
 
@@ -67,13 +76,15 @@ def test_normalize_tasks_falls_back_to_single_chat_task_for_invalid_input():
 
     assert normalized == []
     fallback = manager._normalize_tasks([], "Pi 幣值得投資嗎")
-    assert fallback == [{
-        "id": "task_1",
-        "name": "處理請求",
-        "agent": "chat",
-        "description": "Pi 幣值得投資嗎",
-        "dependencies": [],
-    }]
+    assert fallback == [
+        {
+            "id": "task_1",
+            "name": "處理請求",
+            "agent": "chat",
+            "description": "Pi 幣值得投資嗎",
+            "dependencies": [],
+        }
+    ]
 
 
 def test_detect_boundary_route_for_crypto_price_query():
@@ -108,13 +119,15 @@ def test_apply_structural_task_overrides_aligns_single_task_agent_to_resolved_ma
     manager = build_manager()
 
     overridden = manager._apply_structural_task_overrides(
-        tasks=[{
-            "id": "task_1",
-            "name": "原始任務",
-            "agent": "tw_stock",
-            "description": "它今天為什麼跌？",
-            "dependencies": [],
-        }],
+        tasks=[
+            {
+                "id": "task_1",
+                "name": "原始任務",
+                "agent": "tw_stock",
+                "description": "它今天為什麼跌？",
+                "dependencies": [],
+            }
+        ],
         query="它今天為什麼跌？",
         history="使用者: AAPL 現在多少？",
         entities={"crypto": None, "tw": None, "us": "AAPL"},
@@ -130,16 +143,18 @@ def test_apply_structural_task_overrides_aligns_single_task_agent_to_resolved_ma
 async def test_aggregate_results_node_keeps_intermediate_text_out_of_final_response():
     manager = build_manager()
 
-    result = await manager._aggregate_results_node({
-        "task_results": {
-            "task_1": {
-                "success": True,
-                "agent_name": "us_stock",
-                "message": "AAPL 目前為 255 美元",
-            }
-        },
-        "intent_understanding": {"aggregation_strategy": "combine_all"},
-    })
+    result = await manager._aggregate_results_node(
+        {
+            "task_results": {
+                "task_1": {
+                    "success": True,
+                    "agent_name": "us_stock",
+                    "message": "AAPL 目前為 255 美元",
+                }
+            },
+            "intent_understanding": {"aggregation_strategy": "combine_all"},
+        }
+    )
 
     assert "aggregated_response" in result
     assert "final_response" not in result
@@ -221,11 +236,7 @@ def test_finalize_mode_response_replaces_lower_level_research_footer():
     manager = build_manager()
 
     finalized = manager._finalize_mode_response(
-        response=(
-            "### 重點結論\nAAPL 穩定。\n\n"
-            "#### 研究依據\n"
-            "- 資料來源：舊內容"
-        ),
+        response=("### 重點結論\nAAPL 穩定。\n\n#### 研究依據\n- 資料來源：舊內容"),
         analysis_mode="research",
         evidence={
             "used_tools": ["us_stock_price"],
@@ -267,7 +278,9 @@ def test_build_response_format_guidance_uses_research_structure_for_single_asset
 def test_build_response_format_guidance_uses_compare_structure_for_compare_query():
     manager = build_manager()
 
-    guidance = manager._build_response_format_guidance("research", "比較 TSM ADR 和 2330。")
+    guidance = manager._build_response_format_guidance(
+        "research", "比較 TSM ADR 和 2330。"
+    )
 
     assert "### 標的比較" in guidance
     assert "| 項目 | 標的A | 標的B |" in guidance
@@ -374,13 +387,15 @@ async def test_synthesize_response_does_not_fallback_to_llm_after_tool_failure()
     manager._track_conversation = AsyncMock()
     manager._llm_invoke = AsyncMock(return_value="不應該被呼叫")
 
-    result = await manager._synthesize_response_node({
-        "query": "pi network目前價格多少",
-        "_processed_query": "",
-        "task_results": {},
-        "tool_failure_detected": True,
-        "tool_failure_issues": [{"problem": "價格數據異常：無法獲取"}],
-    })
+    result = await manager._synthesize_response_node(
+        {
+            "query": "pi network目前價格多少",
+            "_processed_query": "",
+            "task_results": {},
+            "tool_failure_detected": True,
+            "tool_failure_issues": [{"problem": "價格數據異常：無法獲取"}],
+        }
+    )
 
     assert "目前工具未能取得有效資料" in result["final_response"]
     assert "價格數據異常：無法獲取" in result["final_response"]
@@ -390,7 +405,8 @@ async def test_synthesize_response_does_not_fallback_to_llm_after_tool_failure()
 @pytest.mark.asyncio
 async def test_understand_intent_sets_processed_query_and_resets_previous_task_results():
     manager = build_manager()
-    manager._llm_invoke = AsyncMock(return_value="""
+    manager._llm_invoke = AsyncMock(
+        return_value="""
     {
       "status": "ready",
       "user_intent": "查詢價格",
@@ -398,14 +414,17 @@ async def test_understand_intent_sets_processed_query_and_resets_previous_task_r
       "tasks": [{"id":"task_1","name":"處理請求","agent":"us_stock","description":"AAPL現在多少？","dependencies":[]}],
       "aggregation_strategy": "combine_all"
     }
-    """)
+    """
+    )
 
-    result = await manager._understand_intent_node({
-        "query": "AAPL現在多少？",
-        "history": "",
-        "_processed_query": "上一輪問題",
-        "task_results": {"task_legacy": {"success": True}},
-    })
+    result = await manager._understand_intent_node(
+        {
+            "query": "AAPL現在多少？",
+            "history": "",
+            "_processed_query": "上一輪問題",
+            "task_results": {"task_legacy": {"success": True}},
+        }
+    )
 
     assert result["_processed_query"] == "AAPL現在多少？"
     assert result["task_results"] == {CLEAR_SENTINEL: True}

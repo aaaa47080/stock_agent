@@ -7,6 +7,7 @@ ETH Balance, ERC20 Balance, Address Transactions, Contract Info, ETH Price
 - ⚠️ 公開平台不適合共享 API Key（會快速用完配額）
 - ✅ 改為引導用戶到 Etherscan 網站自行查詢
 """
+
 from langchain_core.tools import tool
 
 
@@ -124,7 +125,7 @@ def get_eth_price_from_etherscan() -> str:
         # 使用 CoinGecko 免費 API（無需 Key）
         resp = httpx.get(
             "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd,btc&include_24hr_change=true",
-            timeout=10
+            timeout=10,
         )
 
         if resp.status_code == 200:

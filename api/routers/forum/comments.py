@@ -1,21 +1,24 @@
 """
 回覆相關 API（推/噓/一般回覆）
 """
-from fastapi import APIRouter, HTTPException, Query, Depends, Request
-from typing import Optional
-from api.utils import run_sync
+
 import logging
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from api.deps import get_current_user
 from api.middleware.rate_limit import limiter
+from api.routers.notifications import push_notification_to_user
+from api.utils import run_sync
 from core.database import (
-    get_post_by_id,
     add_comment,
     get_comments,
     get_daily_comment_count,
+    get_post_by_id,
 )
 from core.database.notifications import notify_post_interaction
-from api.routers.notifications import push_notification_to_user
+
 from .models import AddCommentRequest
 
 logger = logging.getLogger(__name__)
@@ -42,11 +45,7 @@ async def list_comments(
             raise HTTPException(status_code=404, detail="文章不存在")
 
         comments = await run_sync(get_comments, post_id, limit=limit, offset=offset)
-        return {
-            "success": True,
-            "comments": comments,
-            "count": len(comments)
-        }
+        return {"success": True, "comments": comments, "count": len(comments)}
     except HTTPException:
         raise
     except Exception:
@@ -59,7 +58,7 @@ async def add_new_comment(
     request: Request,
     post_id: int,
     body: AddCommentRequest,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     新增回覆
@@ -79,7 +78,7 @@ async def add_new_comment(
         if body.type not in VALID_COMMENT_TYPES:
             raise HTTPException(
                 status_code=400,
-                detail=f"無效的回覆類型，可選: {', '.join(VALID_COMMENT_TYPES)}"
+                detail=f"無效的回覆類型，可選: {', '.join(VALID_COMMENT_TYPES)}",
             )
 
         post = await run_sync(lambda: get_post_by_id(post_id, increment_view=False))
@@ -100,9 +99,11 @@ async def add_new_comment(
             if result.get("error") == "daily_limit_reached":
                 raise HTTPException(
                     status_code=429,
-                    detail=f"已達每日回覆上限 ({result['limit']} 則)，升級 Premium 會員可無限回覆"
+                    detail=f"已達每日回覆上限 ({result['limit']} 則)，升級 Premium 會員可無限回覆",
                 )
-            raise HTTPException(status_code=500, detail=result.get("error", "新增回覆失敗"))
+            raise HTTPException(
+                status_code=500, detail=result.get("error", "新增回覆失敗")
+            )
 
         if post["user_id"] != user_id:
             try:
@@ -113,7 +114,7 @@ async def add_new_comment(
                     from_username,
                     body.type,
                     post_id,
-                    post["title"]
+                    post["title"],
                 )
                 if notification:
                     await push_notification_to_user(post["user_id"], notification)
@@ -123,7 +124,7 @@ async def add_new_comment(
         return {
             "success": True,
             "message": "回覆成功",
-            "comment_id": result["comment_id"]
+            "comment_id": result["comment_id"],
         }
     except HTTPException:
         raise
@@ -132,7 +133,11 @@ async def add_new_comment(
 
 
 async def _react_post(
-    post_id: int, reaction: str, user_id: str, content: Optional[str], current_user: dict
+    post_id: int,
+    reaction: str,
+    user_id: str,
+    content: Optional[str],
+    current_user: dict,
 ):
     """推/噓文共用邏輯"""
     post = await run_sync(lambda: get_post_by_id(post_id, increment_view=False))
@@ -140,19 +145,27 @@ async def _react_post(
         raise HTTPException(status_code=404, detail="文章不存在")
 
     result = await run_sync(
-        lambda: add_comment(post_id=post_id, user_id=user_id, comment_type=reaction, content=content)
+        lambda: add_comment(
+            post_id=post_id, user_id=user_id, comment_type=reaction, content=content
+        )
     )
 
     if not result["success"]:
         if result.get("error") == "daily_limit_reached":
             raise HTTPException(status_code=429, detail="已達每日回覆上限")
-        raise HTTPException(status_code=500, detail=result.get("error", f"{reaction}失敗"))
+        raise HTTPException(
+            status_code=500, detail=result.get("error", f"{reaction}失敗")
+        )
 
     if post["user_id"] != user_id:
         try:
             notification = await run_sync(
                 notify_post_interaction,
-                post["user_id"], current_user.get("username", user_id), reaction, post_id, post["title"]
+                post["user_id"],
+                current_user.get("username", user_id),
+                reaction,
+                post_id,
+                post["title"],
             )
             if notification:
                 await push_notification_to_user(post["user_id"], notification)
@@ -169,7 +182,7 @@ async def push_post(
     request: Request,
     post_id: int,
     content: str = Query(None, max_length=100, description="推文內容（選填）"),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """推文（快捷方式）"""
     try:
@@ -187,7 +200,7 @@ async def boo_post(
     request: Request,
     post_id: int,
     content: str = Query(None, max_length=100, description="噓文內容（選填）"),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """噓文（快捷方式）"""
     try:
@@ -201,8 +214,7 @@ async def boo_post(
 
 @router.get("/{post_id}/comment-status")
 async def get_comment_status(
-    post_id: int,
-    current_user: dict = Depends(get_current_user)
+    post_id: int, current_user: dict = Depends(get_current_user)
 ):
     """
     獲取用戶在該文章的回覆狀態（今日剩餘回覆數等）

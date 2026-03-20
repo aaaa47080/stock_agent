@@ -1,12 +1,10 @@
 """
 Tests for user router in api/routers/user.py
 """
+
 import pytest
 
-from api.routers.user import (
-    router,
-    PI_API_BASE
-)
+from api.routers.user import PI_API_BASE, router
 
 
 class TestUserRouter:

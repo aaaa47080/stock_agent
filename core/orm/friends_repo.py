@@ -10,6 +10,7 @@ Usage::
 
     result = await friends_repo.send_friend_request("user-1", "user-2")
 """
+
 from __future__ import annotations
 
 import logging
@@ -32,7 +33,6 @@ def _fmt(dt: datetime | None) -> str | None:
 
 
 class FriendsRepository:
-
     async def search_users(
         self,
         query: str,
@@ -190,7 +190,11 @@ class FriendsRepository:
                                 updated_at=datetime.now(timezone.utc),
                             )
                         )
-                        return {"success": True, "message": "friend_added", "auto_accepted": True}
+                        return {
+                            "success": True,
+                            "message": "friend_added",
+                            "auto_accepted": True,
+                        }
                     return {"success": False, "error": "request_pending"}
                 if existing.status == "blocked":
                     if existing.user_id == to_user_id:
@@ -208,7 +212,11 @@ class FriendsRepository:
                             updated_at=datetime.now(timezone.utc),
                         )
                     )
-                    return {"success": True, "message": "request_resent", "request_id": existing.id}
+                    return {
+                        "success": True,
+                        "message": "request_resent",
+                        "request_id": existing.id,
+                    }
 
             now = datetime.now(timezone.utc)
             new_friendship = Friendship(
@@ -220,7 +228,11 @@ class FriendsRepository:
             )
             s.add(new_friendship)
             await s.flush()
-            return {"success": True, "message": "request_sent", "request_id": new_friendship.id}
+            return {
+                "success": True,
+                "message": "request_sent",
+                "request_id": new_friendship.id,
+            }
 
     async def accept_friend_request(
         self,
@@ -274,10 +286,8 @@ class FriendsRepository:
     ) -> dict:
         stmt = delete(Friendship).where(
             or_(
-                (Friendship.user_id == user_id)
-                & (Friendship.friend_id == friend_id),
-                (Friendship.user_id == friend_id)
-                & (Friendship.friend_id == user_id),
+                (Friendship.user_id == user_id) & (Friendship.friend_id == friend_id),
+                (Friendship.user_id == friend_id) & (Friendship.friend_id == user_id),
             ),
             Friendship.status == "accepted",
         )
@@ -654,8 +664,9 @@ class FriendsRepository:
             profile["post_count"] = post_count_result.scalar_one() or 0
 
             push_count_result = await s.execute(
-                select(func.coalesce(func.sum(Post.push_count), 0))
-                .where(Post.user_id == target_user_id)
+                select(func.coalesce(func.sum(Post.push_count), 0)).where(
+                    Post.user_id == target_user_id
+                )
             )
             profile["total_pushes"] = push_count_result.scalar_one() or 0
 

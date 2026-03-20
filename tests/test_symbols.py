@@ -28,7 +28,10 @@ def test_normalize_pair_symbol_rejects_invalid_tokens():
 
 
 def test_sanitize_base_symbols_deduplicates_and_drops_invalid():
-    assert sanitize_base_symbols(["btc", "BTC-USDT", "PROGRESS", "eth"]) == ["BTC", "ETH"]
+    assert sanitize_base_symbols(["btc", "BTC-USDT", "PROGRESS", "eth"]) == [
+        "BTC",
+        "ETH",
+    ]
 
 
 def test_sanitize_pair_symbols_deduplicates_and_drops_invalid():
@@ -36,4 +39,3 @@ def test_sanitize_pair_symbols_deduplicates_and_drops_invalid():
         "BTC-USDT",
         "ETH-USDT",
     ]
-

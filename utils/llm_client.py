@@ -2,24 +2,33 @@
 LLM Client Factory - Unified LangChain Implementation
 """
 
-import os
-import logging
 import json
+import logging
+import os
 import re
-from typing import Dict, Any
+from typing import Any, Dict
+
 from dotenv import load_dotenv
-from core.model_config import OPENAI_DEFAULT_MODEL, OPENAI_LEGACY_MODEL, GEMINI_DEFAULT_MODEL
+
+from core.model_config import (
+    GEMINI_DEFAULT_MODEL,
+    OPENAI_DEFAULT_MODEL,
+    OPENAI_LEGACY_MODEL,
+)
 
 # LangChain Imports
 try:
     from langchain.chat_models import init_chat_model
     from langchain_core.language_models import BaseChatModel
     from langchain_core.messages import HumanMessage
+
     LANGCHAIN_AVAILABLE = True
 except ImportError:
     LANGCHAIN_AVAILABLE = False
     BaseChatModel = None  # Define dummy if not available
-    print("Warning: langchain not installed. Please install langchain langchain-openai langchain-google-genai")
+    print(
+        "Warning: langchain not installed. Please install langchain langchain-openai langchain-google-genai"
+    )
 
 # Import settings
 from utils.settings import Settings
@@ -32,11 +41,14 @@ except ImportError:
     logger.setLevel(logging.INFO)
     if not logger.handlers:
         handler = logging.StreamHandler()
-        formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+        formatter = logging.Formatter(
+            "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+        )
         handler.setFormatter(formatter)
         logger.addHandler(handler)
 
 load_dotenv()
+
 
 class LLMClientFactory:
     """
@@ -50,11 +62,21 @@ class LLMClientFactory:
         if provider == "openai":
             return Settings.OPENAI_API_KEY or os.getenv("OPENAI_API_KEY", "")
         elif provider == "openai_server":
-            return Settings.SERVER_OPENAI_API_KEY or os.getenv("SERVER_OPENAI_API_KEY", "") or os.getenv("OPENAI_API_KEY", "")
+            return (
+                Settings.SERVER_OPENAI_API_KEY
+                or os.getenv("SERVER_OPENAI_API_KEY", "")
+                or os.getenv("OPENAI_API_KEY", "")
+            )
         elif provider == "google_gemini":
-            return os.getenv("GOOGLE_API_KEY") or getattr(Settings, "GOOGLE_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
+            return (
+                os.getenv("GOOGLE_API_KEY")
+                or getattr(Settings, "GOOGLE_API_KEY", "")
+                or os.getenv("GEMINI_API_KEY", "")
+            )
         elif provider == "openrouter":
-            return os.getenv("OPENROUTER_API_KEY") or getattr(Settings, "OPENROUTER_API_KEY", "")
+            return os.getenv("OPENROUTER_API_KEY") or getattr(
+                Settings, "OPENROUTER_API_KEY", ""
+            )
         return ""
 
     @staticmethod
@@ -73,9 +95,9 @@ class LLMClientFactory:
             raise ImportError("LangChain is required. Please install it.")
 
         api_key = LLMClientFactory._get_api_key(provider)
-        
+
         # Map internal provider names to LangChain init_chat_model providers
-        lc_provider = "openai" # Default to openai (works for openrouter/local too)
+        lc_provider = "openai"  # Default to openai (works for openrouter/local too)
         kwargs = {}
 
         if provider == "openai" or provider == "openai_server":
@@ -85,23 +107,26 @@ class LLMClientFactory:
             kwargs["api_key"] = api_key
 
         elif provider == "google_gemini":
-            lc_provider = "google_genai" # uses langchain-google-genai
+            lc_provider = "google_genai"  # uses langchain-google-genai
             if not api_key:
                 raise ValueError("Missing Google API Key.")
             kwargs["api_key"] = api_key
             # Gemini specific settings for safety or others can be added here
-            
+
         elif provider == "openrouter":
-            lc_provider = "openai" # OpenRouter is OpenAI compatible
+            lc_provider = "openai"  # OpenRouter is OpenAI compatible
             if not api_key:
                 raise ValueError("Missing OpenRouter API Key.")
             kwargs["api_key"] = api_key
             kwargs["base_url"] = "https://openrouter.ai/api/v1"
-            
+
         elif provider == "local":
-            lc_provider = "openai" # Local models usually provide OpenAI compatible API
+            lc_provider = "openai"  # Local models usually provide OpenAI compatible API
             from core.config import LOCAL_LLM_CONFIG
-            kwargs["base_url"] = LOCAL_LLM_CONFIG.get("base_url", "http://localhost:8000/v1")
+
+            kwargs["base_url"] = LOCAL_LLM_CONFIG.get(
+                "base_url", "http://localhost:8000/v1"
+            )
             kwargs["api_key"] = LOCAL_LLM_CONFIG.get("api_key", "not-needed")
             kwargs["temperature"] = LOCAL_LLM_CONFIG.get("temperature", 0.1)
 
@@ -115,12 +140,12 @@ class LLMClientFactory:
                     model = OPENAI_LEGACY_MODEL
 
             logger.info(f"Initializing LLM: Provider={lc_provider}, Model={model}")
-            
+
             llm = init_chat_model(
                 model=model,
                 model_provider=lc_provider,
-                temperature=0.5, # Default temperature, can be overridden in invoke/bind
-                **kwargs
+                temperature=0.5,  # Default temperature, can be overridden in invoke/bind
+                **kwargs,
             )
             return llm
 
@@ -163,8 +188,8 @@ def extract_json_from_response(response_text: str) -> dict:
 
     # Try code blocks
     code_block_patterns = [
-        r'```json\s*\n(.*?)\n```',
-        r'```\s*\n(.*?)\n```',
+        r"```json\s*\n(.*?)\n```",
+        r"```\s*\n(.*?)\n```",
     ]
     for pattern in code_block_patterns:
         matches = re.findall(pattern, response_text, re.DOTALL)
@@ -175,17 +200,18 @@ def extract_json_from_response(response_text: str) -> dict:
                 continue
 
     # Try finding { }
-    first_brace = response_text.find('{')
-    last_brace = response_text.rfind('}')
+    first_brace = response_text.find("{")
+    last_brace = response_text.rfind("}")
     if first_brace != -1 and last_brace != -1:
         try:
-            return json.loads(response_text[first_brace:last_brace + 1])
+            return json.loads(response_text[first_brace : last_brace + 1])
         except Exception:
             pass
-            
+
     # Try dirtyjson if available
     try:
         import dirtyjson
+
         return dirtyjson.loads(response_text)
     except ImportError:
         pass
@@ -195,19 +221,24 @@ def extract_json_from_response(response_text: str) -> dict:
     raise ValueError(f"Could not extract JSON from response: {response_text[:100]}...")
 
 
-def create_llm_client_from_config(config: Dict[str, str], user_client: Any = None, user_provider: str = None, user_model: str = None) -> tuple:
+def create_llm_client_from_config(
+    config: Dict[str, str],
+    user_client: Any = None,
+    user_provider: str = None,
+    user_model: str = None,
+) -> tuple:
     """
     Create LLM client from config or use provided user_client.
-    
+
     Args:
         config: {"provider": "...", "model": "..."}
         user_client: Existing LangChain model instance (optional)
-        
+
     Returns:
         (client, model_name)
     """
     model_from_config = config.get("model", OPENAI_DEFAULT_MODEL)
-    
+
     # 1. Use user_client if provided
     if user_client:
         effective_model = user_model if user_model else model_from_config
@@ -223,6 +254,7 @@ def create_llm_client_from_config(config: Dict[str, str], user_client: Any = Non
 
     client = LLMClientFactory.create_client(provider_from_config, effective_model)
     return client, effective_model
+
 
 if __name__ == "__main__":
     # Simple Test

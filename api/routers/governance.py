@@ -3,45 +3,45 @@
 
 提供檢舉管理、審核投票、違規記錄、活動日誌等接口
 """
-from fastapi import APIRouter, HTTPException, Query, Depends, Request
+
 from typing import Optional
 
-from api.middleware.rate_limit import limiter
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
+from api.deps import get_current_user, require_admin
+from api.middleware.rate_limit import limiter
+from api.models import (
+    FinalizeReportRequest,
+    ReportCreateRequest,
+    VoteRequest,
+)
+from api.utils import logger, run_sync
 from core.database.governance import (
+    DEFAULT_DAILY_REPORT_LIMIT,
+    # Constants
+    PRO_DAILY_REPORT_LIMIT,
+    calculate_vote_weight,
+    check_report_consensus,
     # Report Management
     create_report,
+    finalize_report,
+    get_audit_reputation,
+    get_daily_report_usage,
     get_pending_reports,
     get_report_by_id,
-    get_user_reports,
-    get_daily_report_usage,
-    # Voting
-    vote_on_report,
+    # Helpers
+    get_report_statistics,
     get_report_votes,
-    check_report_consensus,
-    finalize_report,
+    get_top_reviewers,
+    get_user_activity_logs,
+    get_user_reports,
     # Violations
     get_user_violation_points,
     get_user_violations,
-    get_audit_reputation,
-    calculate_vote_weight,
-    get_user_activity_logs,
-    # Helpers
-    get_report_statistics,
-    get_top_reviewers,
-    # Constants
-    PRO_DAILY_REPORT_LIMIT,
-    DEFAULT_DAILY_REPORT_LIMIT,
+    # Voting
+    vote_on_report,
 )
-
 from core.database.user import get_user_membership
-from api.models import (
-    ReportCreateRequest,
-    VoteRequest,
-    FinalizeReportRequest,
-)
-from api.deps import get_current_user, require_admin
-from api.utils import logger, run_sync
 
 router = APIRouter(prefix="/api/governance", tags=["Community Governance"])
 
@@ -50,12 +50,13 @@ router = APIRouter(prefix="/api/governance", tags=["Community Governance"])
 # 檢舉管理 (Report Management)
 # ============================================================================
 
+
 @router.post("/reports")
 @limiter.limit("10/hour")  # 每小時最多 10 次檢舉
 async def submit_report(
     request: Request,
     report_data: ReportCreateRequest,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     提交內容檢舉
@@ -77,7 +78,9 @@ async def submit_report(
         # Get user's daily limit
         membership = await run_sync(get_user_membership, user_id)
         is_premium = membership.get("is_premium", False)
-        daily_limit = PRO_DAILY_REPORT_LIMIT if is_premium else DEFAULT_DAILY_REPORT_LIMIT
+        daily_limit = (
+            PRO_DAILY_REPORT_LIMIT if is_premium else DEFAULT_DAILY_REPORT_LIMIT
+        )
         result = await run_sync(
             lambda: create_report(
                 None,
@@ -85,7 +88,7 @@ async def submit_report(
                 content_type=report_data.content_type,
                 content_id=report_data.content_id,
                 report_type=report_data.report_type,
-                description=report_data.description
+                description=report_data.description,
             )
         )
 
@@ -96,7 +99,9 @@ async def submit_report(
             elif error == "cannot_report_own_content":
                 raise HTTPException(status_code=400, detail="不能檢舉自己的內容")
             elif error == "daily_limit_exceeded":
-                raise HTTPException(status_code=429, detail=f"已達每日檢舉上限 ({daily_limit} 次)")
+                raise HTTPException(
+                    status_code=429, detail=f"已達每日檢舉上限 ({daily_limit} 次)"
+                )
             elif error == "duplicate_report":
                 raise HTTPException(status_code=409, detail="您已經檢舉過此內容")
             elif error == "content_not_found":
@@ -104,7 +109,11 @@ async def submit_report(
             else:
                 raise HTTPException(status_code=500, detail=f"檢舉提交失敗: {error}")
 
-        return {"success": True, "report_id": result["report_id"], "message": "檢舉已提交，等待審核"}
+        return {
+            "success": True,
+            "report_id": result["report_id"],
+            "message": "檢舉已提交，等待審核",
+        }
 
     except HTTPException:
         raise
@@ -114,9 +123,7 @@ async def submit_report(
 
 
 @router.get("/report-quota")
-async def get_report_quota(
-    current_user: dict = Depends(get_current_user)
-):
+async def get_report_quota(current_user: dict = Depends(get_current_user)):
     """
     獲取用戶今日檢舉配額
 
@@ -126,14 +133,16 @@ async def get_report_quota(
         user_id = current_user["user_id"]
         membership = await run_sync(get_user_membership, user_id)
         is_premium = membership.get("is_premium", False)
-        daily_limit = PRO_DAILY_REPORT_LIMIT if is_premium else DEFAULT_DAILY_REPORT_LIMIT
+        daily_limit = (
+            PRO_DAILY_REPORT_LIMIT if is_premium else DEFAULT_DAILY_REPORT_LIMIT
+        )
         used_today = await run_sync(lambda: get_daily_report_usage(None, user_id))
 
         return {
             "used": used_today,
             "limit": daily_limit,
             "remaining": max(0, daily_limit - used_today),
-            "is_premium": is_premium
+            "is_premium": is_premium,
         }
     except Exception as e:
         logger.error(f"Get report quota error: {e}")
@@ -144,7 +153,7 @@ async def get_report_quota(
 async def list_pending_reports(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     獲取待審核的檢舉列表（Premium 會員專用）
@@ -161,14 +170,16 @@ async def list_pending_reports(
             raise HTTPException(status_code=403, detail="此功能僅限 Premium 會員使用")
 
         reports = await run_sync(
-            lambda: get_pending_reports(None, limit=limit, offset=offset, exclude_user_id=user_id, viewer_user_id=user_id)
+            lambda: get_pending_reports(
+                None,
+                limit=limit,
+                offset=offset,
+                exclude_user_id=user_id,
+                viewer_user_id=user_id,
+            )
         )
 
-        return {
-            "success": True,
-            "reports": reports,
-            "count": len(reports)
-        }
+        return {"success": True, "reports": reports, "count": len(reports)}
 
     except HTTPException:
         raise
@@ -179,8 +190,7 @@ async def list_pending_reports(
 
 @router.get("/reports/{report_id}")
 async def get_report_detail(
-    report_id: int,
-    current_user: dict = Depends(get_current_user)
+    report_id: int, current_user: dict = Depends(get_current_user)
 ):
     """
     獲取檢舉詳情
@@ -204,10 +214,7 @@ async def get_report_detail(
         if is_premium:
             votes = await run_sync(lambda: get_report_votes(None, report_id))
 
-        return {
-            "success": True,
-            "report": {**report, "votes": votes}
-        }
+        return {"success": True, "report": {**report, "votes": votes}}
 
     except HTTPException:
         raise
@@ -218,10 +225,12 @@ async def get_report_detail(
 
 @router.get("/reports")
 async def list_my_reports(
-    status: Optional[str] = Query(None, description="篩選狀態: pending, approved, rejected"),
+    status: Optional[str] = Query(
+        None, description="篩選狀態: pending, approved, rejected"
+    ),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     獲取我提交的檢舉記錄
@@ -234,14 +243,12 @@ async def list_my_reports(
         user_id = current_user["user_id"]
 
         reports = await run_sync(
-            lambda: get_user_reports(None, user_id=user_id, status=status, limit=limit, offset=offset)
+            lambda: get_user_reports(
+                None, user_id=user_id, status=status, limit=limit, offset=offset
+            )
         )
 
-        return {
-            "success": True,
-            "reports": reports,
-            "count": len(reports)
-        }
+        return {"success": True, "reports": reports, "count": len(reports)}
 
     except Exception as e:
         logger.error(f"List my reports error: {e}")
@@ -252,13 +259,14 @@ async def list_my_reports(
 # 審核投票 (Voting)
 # ============================================================================
 
+
 @router.post("/reports/{report_id}/vote")
 @limiter.limit("30/hour")  # 每小時最多 30 次投票
 async def vote_on_pending_report(
     report_id: int,
     request: Request,
     vote_data: VoteRequest,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     對檢舉進行投票（Premium 會員專用）
@@ -285,7 +293,7 @@ async def vote_on_pending_report(
                 None,
                 report_id=report_id,
                 reviewer_user_id=user_id,
-                vote_type=vote_data.vote_type
+                vote_type=vote_data.vote_type,
             )
         )
 
@@ -294,7 +302,9 @@ async def vote_on_pending_report(
             if error == "invalid_vote_type":
                 raise HTTPException(status_code=400, detail="無效的投票類型")
             elif error == "premium_membership_required":
-                raise HTTPException(status_code=403, detail="投票功能僅限 Premium 會員使用")
+                raise HTTPException(
+                    status_code=403, detail="投票功能僅限 Premium 會員使用"
+                )
             elif error == "report_not_found":
                 raise HTTPException(status_code=404, detail="找不到該檢舉")
             elif error == "report_not_pending":
@@ -310,21 +320,23 @@ async def vote_on_pending_report(
         response = {
             "success": True,
             "vote_id": result["vote_id"],
-            "message": "投票成功"
+            "message": "投票成功",
         }
 
         # Include consensus info
         if consensus.get("has_consensus"):
             response["consensus_reached"] = True
             response["decision"] = consensus["decision"]
-            response["consensus_message"] = f"已達成共識：{'通過' if consensus['decision'] == 'approved' else '拒絕'}"
+            response["consensus_message"] = (
+                f"已達成共識：{'通過' if consensus['decision'] == 'approved' else '拒絕'}"
+            )
         else:
             response["consensus_reached"] = False
             response["current_status"] = {
                 "total_votes": consensus.get("total_votes", 0),
                 "approve_count": consensus.get("approve_count", 0),
                 "reject_count": consensus.get("reject_count", 0),
-                "approve_rate": consensus.get("approve_rate", 0)
+                "approve_rate": consensus.get("approve_rate", 0),
             }
 
         return response
@@ -340,7 +352,7 @@ async def vote_on_pending_report(
 async def finalize_report_decision(
     report_id: int,
     request: FinalizeReportRequest,
-    current_user: dict = Depends(require_admin)
+    current_user: dict = Depends(require_admin),
 ):
     """
     完成檢舉處理（管理員功能）
@@ -363,7 +375,7 @@ async def finalize_report_decision(
                 report_id=report_id,
                 decision=request.decision,
                 violation_level=request.violation_level,
-                processed_by=user_id
+                processed_by=user_id,
             )
         )
 
@@ -384,9 +396,11 @@ async def finalize_report_decision(
                 "suspend_3d": "暫停3天",
                 "suspend_7d": "暫停7天",
                 "suspend_30d": "暫停30天",
-                "permanent_ban": "永久停權"
+                "permanent_ban": "永久停權",
             }
-            action_message = f"，已執行處罰：{action_map.get(action_taken, action_taken)}"
+            action_message = (
+                f"，已執行處罰：{action_map.get(action_taken, action_taken)}"
+            )
 
         return {
             "success": True,
@@ -394,7 +408,7 @@ async def finalize_report_decision(
             "decision": result["decision"],
             "violation_level": result.get("violation_level"),
             "points_assigned": result.get("points_assigned", 0),
-            "action_taken": action_taken
+            "action_taken": action_taken,
         }
 
     except HTTPException:
@@ -408,10 +422,9 @@ async def finalize_report_decision(
 # 違規記錄 (Violation Records)
 # ============================================================================
 
+
 @router.get("/violations")
-async def get_my_violation_points(
-    current_user: dict = Depends(get_current_user)
-):
+async def get_my_violation_points(current_user: dict = Depends(get_current_user)):
     """
     獲取我的違規點數和記錄
 
@@ -426,7 +439,9 @@ async def get_my_violation_points(
         user_id = current_user["user_id"]
 
         points_data = await run_sync(lambda: get_user_violation_points(None, user_id))
-        violations = await run_sync(lambda: get_user_violations(None, user_id, limit=10))
+        violations = await run_sync(
+            lambda: get_user_violations(None, user_id, limit=10)
+        )
 
         # Calculate action threshold
         points = points_data.get("points", 0)
@@ -448,7 +463,7 @@ async def get_my_violation_points(
             "success": True,
             "points": points_data,
             "action_threshold": action_threshold,
-            "recent_violations": violations
+            "recent_violations": violations,
         }
 
     except Exception as e:
@@ -458,8 +473,7 @@ async def get_my_violation_points(
 
 @router.get("/violations/{user_id}")
 async def get_user_violations_public(
-    user_id: str,
-    current_user: dict = Depends(get_current_user)
+    user_id: str, current_user: dict = Depends(get_current_user)
 ):
     """
     獲取指定用戶的違規記錄（公開信息）
@@ -475,14 +489,16 @@ async def get_user_violations_public(
         if user_id != requester_id and not is_premium:
             raise HTTPException(status_code=403, detail="無權查看其他用戶的違規記錄")
         points_data = await run_sync(lambda: get_user_violation_points(None, user_id))
-        violations = await run_sync(lambda: get_user_violations(None, user_id, limit=20))
+        violations = await run_sync(
+            lambda: get_user_violations(None, user_id, limit=20)
+        )
 
         return {
             "success": True,
             "points": points_data.get("points", 0),
             "total_violations": points_data.get("total_violations", 0),
             "suspension_count": points_data.get("suspension_count", 0),
-            "violations": violations
+            "violations": violations,
         }
 
     except HTTPException:
@@ -496,12 +512,13 @@ async def get_user_violations_public(
 # 活動日誌 (Activity Logs)
 # ============================================================================
 
+
 @router.get("/activity-logs")
 async def get_my_activity_logs(
     activity_type: Optional[str] = Query(None, description="活動類型篩選"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     獲取我的活動日誌
@@ -514,14 +531,16 @@ async def get_my_activity_logs(
         user_id = current_user["user_id"]
 
         logs = await run_sync(
-            lambda: get_user_activity_logs(None, user_id=user_id, activity_type=activity_type, limit=limit, offset=offset)
+            lambda: get_user_activity_logs(
+                None,
+                user_id=user_id,
+                activity_type=activity_type,
+                limit=limit,
+                offset=offset,
+            )
         )
 
-        return {
-            "success": True,
-            "logs": logs,
-            "count": len(logs)
-        }
+        return {"success": True, "logs": logs, "count": len(logs)}
 
     except Exception as e:
         logger.error(f"Get activity logs error: {e}")
@@ -532,10 +551,11 @@ async def get_my_activity_logs(
 # 統計與排行 (Statistics & Leaderboard)
 # ============================================================================
 
+
 @router.get("/statistics")
 async def get_governance_statistics(
     days: int = Query(30, ge=1, le=365, description="統計天數"),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     獲取治理系統統計數據
@@ -553,11 +573,7 @@ async def get_governance_statistics(
     try:
         stats = await run_sync(lambda: get_report_statistics(None, days))
 
-        return {
-            "success": True,
-            "statistics": stats,
-            "period_days": days
-        }
+        return {"success": True, "statistics": stats, "period_days": days}
 
     except Exception as e:
         logger.error(f"Get statistics error: {e}")
@@ -566,8 +582,7 @@ async def get_governance_statistics(
 
 @router.get("/reviewers/leaderboard")
 async def get_review_leaderboard(
-    limit: int = Query(10, ge=1, le=50),
-    current_user: dict = Depends(get_current_user)
+    limit: int = Query(10, ge=1, le=50), current_user: dict = Depends(get_current_user)
 ):
     """
     獲取審核員排行榜
@@ -579,11 +594,7 @@ async def get_review_leaderboard(
     try:
         reviewers = await run_sync(lambda: get_top_reviewers(None, limit))
 
-        return {
-            "success": True,
-            "leaderboard": reviewers,
-            "count": len(reviewers)
-        }
+        return {"success": True, "leaderboard": reviewers, "count": len(reviewers)}
 
     except Exception as e:
         logger.error(f"Get leaderboard error: {e}")
@@ -594,10 +605,9 @@ async def get_review_leaderboard(
 # 審核聲望 (Audit Reputation)
 # ============================================================================
 
+
 @router.get("/reputation")
-async def get_my_reputation(
-    current_user: dict = Depends(get_current_user)
-):
+async def get_my_reputation(current_user: dict = Depends(get_current_user)):
     """
     獲取我的審核聲望
 
@@ -616,10 +626,7 @@ async def get_my_reputation(
 
         return {
             "success": True,
-            "reputation": {
-                **reputation,
-                "vote_weight": vote_weight
-            }
+            "reputation": {**reputation, "vote_weight": vote_weight},
         }
 
     except Exception as e:

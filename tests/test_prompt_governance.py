@@ -1,6 +1,5 @@
-from pathlib import Path
 import re
-
+from pathlib import Path
 
 PROMPT_SOURCE_PATHS = [
     *Path("core/agents/prompts").glob("*.yaml"),
@@ -74,8 +73,13 @@ def test_bootstrap_agent_metadata_does_not_hardcode_specific_equities():
         r"鴻海",
         r"聯發科",
     ]
-    violations = [pattern for pattern in banned_equity_examples if re.search(pattern, bootstrap)]
-    assert not violations, "Found hardcoded equity examples in bootstrap metadata: " + ", ".join(violations)
+    violations = [
+        pattern for pattern in banned_equity_examples if re.search(pattern, bootstrap)
+    ]
+    assert not violations, (
+        "Found hardcoded equity examples in bootstrap metadata: "
+        + ", ".join(violations)
+    )
 
 
 def test_model_facing_runtime_sources_do_not_hardcode_specific_equity_examples():
@@ -104,4 +108,7 @@ def test_model_facing_runtime_sources_do_not_hardcode_specific_equity_examples()
             if re.search(pattern, content):
                 violations.append(f"{path}: {pattern}")
 
-    assert not violations, "Found hardcoded equity examples in model-facing runtime sources:\n" + "\n".join(violations)
+    assert not violations, (
+        "Found hardcoded equity examples in model-facing runtime sources:\n"
+        + "\n".join(violations)
+    )

@@ -1,21 +1,27 @@
 """
 Tests for API dependencies in api/deps.py
 """
-import pytest
-from unittest.mock import patch
+
 from datetime import datetime, timedelta, timezone
-from fastapi import HTTPException
+from unittest.mock import patch
+
 import jwt
+import pytest
+from fastapi import HTTPException
+
 
 # Need to patch environment before importing api.deps
 @pytest.fixture(autouse=True)
 def mock_env_vars():
-    with patch.dict('os.environ', {
-        'JWT_SECRET_KEY': 'test-secret-key-at-least-32-chars-long!',
-        'USE_KEY_ROTATION': 'false',
-        'TEST_MODE': 'false',
-        'ENVIRONMENT': 'development'
-    }):
+    with patch.dict(
+        "os.environ",
+        {
+            "JWT_SECRET_KEY": "test-secret-key-at-least-32-chars-long!",
+            "USE_KEY_ROTATION": "false",
+            "TEST_MODE": "false",
+            "ENVIRONMENT": "development",
+        },
+    ):
         yield
 
 
@@ -24,7 +30,7 @@ class TestCreateAccessToken:
 
     def test_create_token_with_default_expiry(self):
         """Test creating token with default expiry"""
-        from api.deps import create_access_token, SECRET_KEY, ALGORITHM
+        from api.deps import ALGORITHM, SECRET_KEY, create_access_token
 
         data = {"sub": "user-123"}
         token = create_access_token(data)
@@ -36,7 +42,7 @@ class TestCreateAccessToken:
 
     def test_create_token_with_custom_expiry(self):
         """Test creating token with custom expiry"""
-        from api.deps import create_access_token, SECRET_KEY, ALGORITHM
+        from api.deps import ALGORITHM, SECRET_KEY, create_access_token
 
         data = {"sub": "user-123"}
         custom_delta = timedelta(hours=1)
@@ -47,7 +53,7 @@ class TestCreateAccessToken:
 
     def test_create_token_includes_multiple_claims(self):
         """Test token includes all provided claims"""
-        from api.deps import create_access_token, SECRET_KEY, ALGORITHM
+        from api.deps import ALGORITHM, SECRET_KEY, create_access_token
 
         data = {"sub": "user-123", "role": "admin", "email": "test@example.com"}
         token = create_access_token(data)
@@ -59,7 +65,7 @@ class TestCreateAccessToken:
 
     def test_create_token_with_key_rotation_enabled(self):
         """Test token creation with key rotation (unit test of logic)"""
-        from api.deps import create_access_token, SECRET_KEY, ALGORITHM
+        from api.deps import ALGORITHM, SECRET_KEY, create_access_token
 
         # Test that key rotation would be used if enabled
         # Since we can't easily toggle the module-level variable, we test the basic functionality
@@ -95,7 +101,7 @@ class TestVerifyToken:
 
     def test_verify_expired_token_raises_401(self):
         """Test that expired token raises 401"""
-        from api.deps import verify_token, SECRET_KEY, ALGORITHM
+        from api.deps import ALGORITHM, SECRET_KEY, verify_token
 
         # Create expired token
         expired_time = datetime.now(timezone.utc) - timedelta(hours=1)
@@ -160,7 +166,7 @@ class TestGetCurrentUserId:
     @pytest.mark.asyncio
     async def test_token_without_sub_raises_401(self):
         """Test that token without sub raises 401"""
-        from api.deps import get_current_user_id, SECRET_KEY, ALGORITHM
+        from api.deps import ALGORITHM, SECRET_KEY, get_current_user_id
 
         # Create token without sub claim
         data = {"role": "admin"}
@@ -184,9 +190,9 @@ class TestGetCurrentUser:
         token = create_access_token(data)
 
         # In test mode, the function should work
-        with patch.dict('os.environ', {'ENVIRONMENT': 'development'}):
-            with patch('core.config.TEST_MODE', True):
-                with patch('core.config.TEST_USER', {"uid": "test-user-001"}):
+        with patch.dict("os.environ", {"ENVIRONMENT": "development"}):
+            with patch("core.config.TEST_MODE", True):
+                with patch("core.config.TEST_USER", {"uid": "test-user-001"}):
                     user = await get_current_user(token)
                     assert "user_id" in user
 
@@ -195,9 +201,9 @@ class TestGetCurrentUser:
         """Test TEST_MODE returns mock user without valid token"""
         from api.deps import get_current_user
 
-        with patch('core.config.TEST_MODE', True):
-            with patch('core.config.TEST_USER', {"uid": "test-user-001"}):
-                with patch.dict('os.environ', {'ENVIRONMENT': 'development'}):
+        with patch("core.config.TEST_MODE", True):
+            with patch("core.config.TEST_USER", {"uid": "test-user-001"}):
+                with patch.dict("os.environ", {"ENVIRONMENT": "development"}):
                     user = await get_current_user(None)
                     assert "user_id" in user
 
@@ -206,8 +212,8 @@ class TestGetCurrentUser:
         """Test TEST_MODE in production raises security error"""
         from api.deps import get_current_user
 
-        with patch('core.config.TEST_MODE', True):
-            with patch.dict('os.environ', {'ENVIRONMENT': 'production'}):
+        with patch("core.config.TEST_MODE", True):
+            with patch.dict("os.environ", {"ENVIRONMENT": "production"}):
                 with pytest.raises(ValueError) as exc_info:
                     await get_current_user(None)
 
@@ -271,10 +277,11 @@ class TestSecurityConfiguration:
 
     def test_secret_key_minimum_length_check(self):
         """Test that short secret key raises error"""
-        with patch.dict('os.environ', {
-            'JWT_SECRET_KEY': 'short-key',
-            'USE_KEY_ROTATION': 'false'
-        }, clear=False):
+        with patch.dict(
+            "os.environ",
+            {"JWT_SECRET_KEY": "short-key", "USE_KEY_ROTATION": "false"},
+            clear=False,
+        ):
             # This would normally raise on import
             # We're testing the logic path
             short_key = "short-key"
@@ -282,10 +289,11 @@ class TestSecurityConfiguration:
 
     def test_missing_secret_key_raises_error(self):
         """Test that missing secret key raises error"""
-        with patch.dict('os.environ', {
-            'JWT_SECRET_KEY': '',
-            'USE_KEY_ROTATION': 'false'
-        }, clear=False):
+        with patch.dict(
+            "os.environ",
+            {"JWT_SECRET_KEY": "", "USE_KEY_ROTATION": "false"},
+            clear=False,
+        ):
             # Empty key should fail validation
             empty_key = ""
             assert not empty_key

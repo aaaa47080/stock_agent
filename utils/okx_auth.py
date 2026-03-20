@@ -4,6 +4,7 @@ OKX API 認證工具 - BYOK (Bring Your Own Keys) 模式
 """
 
 from fastapi import HTTPException, Request
+
 from utils.okx_api_connector import OKXAPIConnector
 
 
@@ -26,17 +27,17 @@ def get_okx_connector_from_request(request: Request) -> OKXAPIConnector:
         HTTPException: 如果缺少必要的憑證
     """
     # 從請求頭中提取憑證
-    api_key = request.headers.get('X-OKX-API-KEY')
-    secret_key = request.headers.get('X-OKX-SECRET-KEY')
-    passphrase = request.headers.get('X-OKX-PASSPHRASE')
+    api_key = request.headers.get("X-OKX-API-KEY")
+    secret_key = request.headers.get("X-OKX-SECRET-KEY")
+    passphrase = request.headers.get("X-OKX-PASSPHRASE")
 
     if not all([api_key, secret_key, passphrase]):
         raise HTTPException(
             status_code=401,
             detail={
                 "error": "missing_okx_credentials",
-                "message": "請先設置 OKX API 金鑰。無痕視窗不會保存您的金鑰，請重新輸入。"
-            }
+                "message": "請先設置 OKX API 金鑰。無痕視窗不會保存您的金鑰，請重新輸入。",
+            },
         )
 
     # 創建臨時的 connector 實例，不使用環境變量
@@ -66,10 +67,7 @@ def get_legacy_okx_connector() -> OKXAPIConnector:
     import api.globals as globals
 
     if not globals.okx_connector:
-        raise HTTPException(
-            status_code=503,
-            detail="OKX 連接器尚未初始化"
-        )
+        raise HTTPException(status_code=503, detail="OKX 連接器尚未初始化")
 
     return globals.okx_connector
 
@@ -100,9 +98,7 @@ def validate_okx_credentials(api_key: str, secret_key: str, passphrase: str) -> 
             return {
                 "valid": True,
                 "message": "OKX API 金鑰驗證成功",
-                "details": {
-                    "connection": "ok"
-                }
+                "details": {"connection": "ok"},
             }
         else:
             error_msg = result.get("msg", "未知錯誤")
@@ -111,15 +107,13 @@ def validate_okx_credentials(api_key: str, secret_key: str, passphrase: str) -> 
                 "message": f"OKX API 驗證失敗: {error_msg}",
                 "details": {
                     "error_code": result.get("code"),
-                    "error_message": error_msg
-                }
+                    "error_message": error_msg,
+                },
             }
 
     except Exception as e:
         return {
             "valid": False,
             "message": f"驗證過程發生錯誤: {str(e)}",
-            "details": {
-                "exception": str(e)
-            }
+            "details": {"exception": str(e)},
         }

@@ -1,16 +1,19 @@
 """
 可疑錢包追蹤系統 - 評論 API
 """
-from fastapi import APIRouter, HTTPException, Query, Depends
-from api.utils import run_sync
+
 import logging
 
+from fastapi import APIRouter, Depends, HTTPException, Query
+
 from api.deps import get_current_user
+from api.utils import run_sync
 from core.database.scam_tracker import (
     add_scam_comment,
     get_scam_comments,
 )
 from core.database.user import get_user_by_id
+
 from .models import CommentCreate
 
 logger = logging.getLogger(__name__)
@@ -34,11 +37,7 @@ async def list_scam_comments(
             lambda: get_scam_comments(report_id=report_id, limit=limit, offset=offset)
         )
 
-        return {
-            "success": True,
-            "comments": comments,
-            "count": len(comments)
-        }
+        return {"success": True, "comments": comments, "count": len(comments)}
     except Exception as e:
         logger.error(f"List scam comments failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="獲取評論列表失敗，請稍後再試")
@@ -48,7 +47,7 @@ async def list_scam_comments(
 async def add_comment_to_report(
     report_id: int,
     request: CommentCreate,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     添加評論
@@ -62,8 +61,7 @@ async def add_comment_to_report(
         user = await run_sync(get_user_by_id, user_id)
         if not user:
             raise HTTPException(
-                status_code=401,
-                detail="用戶不存在或憑證失效，請重新登入"
+                status_code=401, detail="用戶不存在或憑證失效，請重新登入"
             )
 
         result = await run_sync(
@@ -71,7 +69,7 @@ async def add_comment_to_report(
                 report_id=report_id,
                 user_id=user_id,
                 content=request.content,
-                transaction_hash=request.transaction_hash
+                transaction_hash=request.transaction_hash,
             )
         )
 
@@ -79,7 +77,7 @@ async def add_comment_to_report(
             return {
                 "success": True,
                 "comment_id": result["comment_id"],
-                "message": "評論添加成功"
+                "message": "評論添加成功",
             }
         else:
             error = result.get("error")
@@ -95,7 +93,7 @@ async def add_comment_to_report(
                 warnings = result.get("warnings", [])
                 raise HTTPException(
                     status_code=400,
-                    detail={"error": "內容審核未通過", "warnings": warnings}
+                    detail={"error": "內容審核未通過", "warnings": warnings},
                 )
             else:
                 raise HTTPException(status_code=500, detail=f"添加評論失敗: {error}")

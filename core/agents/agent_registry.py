@@ -3,8 +3,9 @@ Agent V4 — Agent Registry
 
 Manages agent registration and capability-based discovery.
 """
+
 from dataclasses import dataclass
-from typing import List, Dict
+from typing import Dict, List
 
 
 @dataclass
@@ -14,7 +15,7 @@ class AgentMetadata:
     description: str
     capabilities: List[str]
     priority: int = 0
-    hidden: bool = False   # If True, excluded from LLM classify prompt
+    hidden: bool = False  # If True, excluded from LLM classify prompt
 
 
 class AgentRegistry:
@@ -30,8 +31,11 @@ class AgentRegistry:
         return self._agents.get(name)
 
     def find_by_capability(self, capability: str) -> List[AgentMetadata]:
-        return [m for m in self._metadata.values()
-                if any(capability.lower() in cap.lower() for cap in m.capabilities)]
+        return [
+            m
+            for m in self._metadata.values()
+            if any(capability.lower() in cap.lower() for cap in m.capabilities)
+        ]
 
     def list_all(self) -> List[AgentMetadata]:
         return sorted(self._metadata.values(), key=lambda m: -m.priority)

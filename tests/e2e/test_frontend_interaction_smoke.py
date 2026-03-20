@@ -4,7 +4,6 @@ from pathlib import Path
 
 import pytest
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_PATH = ROOT / "pw_test" / "test_frontend_interaction_smoke.py"
 

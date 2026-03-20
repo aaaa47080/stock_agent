@@ -1,7 +1,8 @@
 """
 私訊搜尋功能
 """
-from typing import List, Dict
+
+from typing import Dict, List
 
 from ..connection import get_connection
 
@@ -13,7 +14,8 @@ def search_messages(user_id: str, query: str, limit: int = 50) -> List[Dict]:
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute(
+            """
             SELECT
                 m.id, m.conversation_id, m.from_user_id, m.to_user_id,
                 m.content, m.message_type, m.created_at,
@@ -27,7 +29,9 @@ def search_messages(user_id: str, query: str, limit: int = 50) -> List[Dict]:
             AND m.content LIKE %s
             ORDER BY m.created_at DESC
             LIMIT %s
-        ''', (user_id, user_id, user_id, user_id, f'%{query}%', limit))
+        """,
+            (user_id, user_id, user_id, user_id, f"%{query}%", limit),
+        )
 
         rows = c.fetchall()
 
@@ -41,7 +45,7 @@ def search_messages(user_id: str, query: str, limit: int = 50) -> List[Dict]:
                 "message_type": row[5],
                 "created_at": row[6].isoformat() if row[6] else None,
                 "other_username": row[7],
-                "other_user_id": row[8]
+                "other_user_id": row[8],
             }
             for row in rows
         ]

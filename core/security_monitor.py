@@ -15,13 +15,15 @@ Security Event Types:
 - KEY_ROTATION: JWT key rotation events
 - TEST_MODE_ENABLED: Development mode enabled
 """
+
 import json
 import os
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from dataclasses import dataclass, asdict
-from typing import List, Dict, Optional, Any
 from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 from api.utils import logger
 
 
@@ -35,6 +37,7 @@ def _parse_iso_utc(timestamp_str: str) -> datetime:
 
 class SecurityEventType(Enum):
     """Types of security events"""
+
     BRUTE_FORCE_ATTEMPT = "brute_force"
     RATE_LIMIT_EXCEEDED = "rate_limit"
     SUSPICIOUS_LOGIN = "suspicious_login"
@@ -51,6 +54,7 @@ class SecurityEventType(Enum):
 
 class SeverityLevel(Enum):
     """Severity levels for security events"""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -60,6 +64,7 @@ class SeverityLevel(Enum):
 @dataclass
 class SecurityEvent:
     """Security event data structure"""
+
     event_type: SecurityEventType
     severity: SeverityLevel
     title: str
@@ -105,12 +110,15 @@ class SecurityMonitor:
         """
         self.storage_path = Path(storage_path)
         self.storage_path.parent.mkdir(parents=True, exist_ok=True)
-        self.max_bytes = int(os.getenv("SECURITY_EVENTS_MAX_BYTES", str(10 * 1024 * 1024)))
+        self.max_bytes = int(
+            os.getenv("SECURITY_EVENTS_MAX_BYTES", str(10 * 1024 * 1024))
+        )
         self.backup_count = int(os.getenv("SECURITY_EVENTS_BACKUP_COUNT", "3"))
 
         # Load alert dispatcher
         try:
             from core.alert_dispatcher import AlertDispatcher
+
             self.alert_dispatcher = AlertDispatcher()
         except ImportError:
             logger.warning("⚠️ Alert dispatcher not available")
@@ -144,7 +152,7 @@ class SecurityMonitor:
             SeverityLevel.LOW: "info",
             SeverityLevel.MEDIUM: "warning",
             SeverityLevel.HIGH: "warning",
-            SeverityLevel.CRITICAL: "error"
+            SeverityLevel.CRITICAL: "error",
         }
         log_level = level_map.get(event.severity, "info")
         log_func = getattr(logger, log_level, logger.info)
@@ -176,7 +184,9 @@ class SecurityMonitor:
             first_backup = self.storage_path.with_name(f"{self.storage_path.name}.1")
             self.storage_path.replace(first_backup)
         except OSError as e:
-            logger.warning(f"Security log rotation skipped due to filesystem error: {e}")
+            logger.warning(
+                f"Security log rotation skipped due to filesystem error: {e}"
+            )
 
     def _check_alerts(self, event: SecurityEvent):
         """
@@ -194,9 +204,9 @@ class SecurityMonitor:
                     severity=event.severity.value,
                     title=event.title,
                     message=f"{event.description}\n\n"
-                           f"User: {event.user_id or 'N/A'}\n"
-                           f"IP: {event.ip_address or 'N/A'}\n"
-                           f"Time: {event.timestamp.isoformat()}"
+                    f"User: {event.user_id or 'N/A'}\n"
+                    f"IP: {event.ip_address or 'N/A'}\n"
+                    f"Time: {event.timestamp.isoformat()}",
                 )
             except Exception as e:
                 logger.error(f"Failed to send alert: {e}")
@@ -254,7 +264,7 @@ class SecurityMonitor:
                 "unresolved_events": 0,
                 "by_type": {},
                 "by_severity": {},
-                "period_days": days
+                "period_days": days,
             }
 
         try:
@@ -271,11 +281,15 @@ class SecurityMonitor:
 
                         # Count by type
                         event_type = event.get("event_type", "unknown")
-                        events_by_type[event_type] = events_by_type.get(event_type, 0) + 1
+                        events_by_type[event_type] = (
+                            events_by_type.get(event_type, 0) + 1
+                        )
 
                         # Count by severity
                         severity = event.get("severity", "unknown")
-                        events_by_severity[severity] = events_by_severity.get(severity, 0) + 1
+                        events_by_severity[severity] = (
+                            events_by_severity.get(severity, 0) + 1
+                        )
 
                         # Count unresolved
                         if not event.get("resolved", True):
@@ -291,7 +305,7 @@ class SecurityMonitor:
             "unresolved_events": unresolved_events,
             "by_type": events_by_type,
             "by_severity": events_by_severity,
-            "period_days": days
+            "period_days": days,
         }
 
     def cleanup_old_events(self, days_to_keep: int = 90):
@@ -332,7 +346,9 @@ class SecurityMonitor:
                     f.write(event_line + "\n")
 
             if removed_count > 0:
-                logger.info(f"🧹 Cleaned up {removed_count} old security events (older than {days_to_keep} days)")
+                logger.info(
+                    f"🧹 Cleaned up {removed_count} old security events (older than {days_to_keep} days)"
+                )
 
         except IOError as e:
             logger.error(f"Failed to cleanup security events: {e}")
@@ -363,7 +379,7 @@ def log_security_event(
     description: str,
     user_id: Optional[str] = None,
     ip_address: Optional[str] = None,
-    metadata: Optional[Dict] = None
+    metadata: Optional[Dict] = None,
 ) -> Dict[str, Any]:
     """
     Convenience function to log a security event.
@@ -388,6 +404,6 @@ def log_security_event(
         description=description,
         user_id=user_id,
         ip_address=ip_address,
-        metadata=metadata
+        metadata=metadata,
     )
     return monitor.log_event(event)

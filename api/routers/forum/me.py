@@ -1,20 +1,21 @@
 """
 個人後台相關 API
 """
-from fastapi import APIRouter, HTTPException, Query, Depends
-from api.utils import run_sync
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from api.deps import get_current_user
+from api.utils import run_sync
 from core.database import (
-    get_user_posts,
-    get_user_forum_stats,
-    get_user_payment_history,
-    get_tips_sent,
-    get_tips_received,
-    get_tips_total_received,
-    get_user_membership,
     get_daily_comment_count,
     get_daily_post_count,
+    get_tips_received,
+    get_tips_sent,
+    get_tips_total_received,
+    get_user_forum_stats,
+    get_user_membership,
+    get_user_payment_history,
+    get_user_posts,
 )
 
 router = APIRouter(prefix="/api/forum/me", tags=["Forum - Me"])
@@ -34,11 +35,8 @@ async def get_my_limits(current_user: dict = Depends(get_current_user)):
 
         return {
             "success": True,
-            "limits": {
-                "post": post_limits,
-                "comment": comment_limits
-            },
-            "membership": membership
+            "limits": {"post": post_limits, "comment": comment_limits},
+            "membership": membership,
         }
     except Exception:
         raise HTTPException(status_code=500, detail="獲取限制狀態失敗，請稍後再試")
@@ -70,7 +68,7 @@ async def get_my_stats(current_user: dict = Depends(get_current_user)):
                 **stats,
                 "membership": membership,
                 "daily_comments": daily_comments,
-            }
+            },
         }
     except Exception:
         raise HTTPException(status_code=500, detail="獲取統計資料失敗，請稍後再試")
@@ -80,7 +78,7 @@ async def get_my_stats(current_user: dict = Depends(get_current_user)):
 async def get_my_posts(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     獲取我的文章列表
@@ -88,7 +86,9 @@ async def get_my_posts(
     try:
         user_id = current_user["user_id"]
 
-        posts = await run_sync(lambda: get_user_posts(user_id, limit=limit, offset=offset))
+        posts = await run_sync(
+            lambda: get_user_posts(user_id, limit=limit, offset=offset)
+        )
         return {
             "success": True,
             "posts": posts,
@@ -102,7 +102,7 @@ async def get_my_posts(
 async def get_my_sent_tips(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     獲取我送出的打賞記錄
@@ -110,7 +110,9 @@ async def get_my_sent_tips(
     try:
         user_id = current_user["user_id"]
 
-        tips = await run_sync(lambda: get_tips_sent(user_id, limit=limit, offset=offset))
+        tips = await run_sync(
+            lambda: get_tips_sent(user_id, limit=limit, offset=offset)
+        )
         return {
             "success": True,
             "tips": tips,
@@ -124,7 +126,7 @@ async def get_my_sent_tips(
 async def get_my_received_tips(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     獲取我收到的打賞記錄
@@ -132,7 +134,9 @@ async def get_my_received_tips(
     try:
         user_id = current_user["user_id"]
 
-        tips = await run_sync(lambda: get_tips_received(user_id, limit=limit, offset=offset))
+        tips = await run_sync(
+            lambda: get_tips_received(user_id, limit=limit, offset=offset)
+        )
         total = await run_sync(get_tips_total_received, user_id)
         return {
             "success": True,
@@ -148,7 +152,7 @@ async def get_my_received_tips(
 async def get_my_payments(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     獲取我的發文付款記錄
@@ -156,7 +160,9 @@ async def get_my_payments(
     try:
         user_id = current_user["user_id"]
 
-        payments = await run_sync(lambda: get_user_payment_history(user_id, limit=limit, offset=offset))
+        payments = await run_sync(
+            lambda: get_user_payment_history(user_id, limit=limit, offset=offset)
+        )
         return {
             "success": True,
             "payments": payments,

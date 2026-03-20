@@ -2,24 +2,25 @@
 Admin Panel Router Module
 Combines notifications, users, forum, config, and stats endpoints
 """
+
 from fastapi import APIRouter
 
-from .notifications import router as notifications_router
-from .users import router as users_router
-from .forum import router as forum_router
+from .auth import verify_admin_key
 from .config import router as config_router
-from .stats import router as stats_router
+from .forum import router as forum_router
+from .notifications import router as notifications_router
 from .schemas import (
     BroadcastRequest,
-    SetRoleRequest,
-    SetMembershipRequest,
-    SetStatusRequest,
-    PostVisibilityRequest,
     PostPinRequest,
+    PostVisibilityRequest,
     ResolveReportRequest,
+    SetMembershipRequest,
+    SetRoleRequest,
+    SetStatusRequest,
     UpdateConfigRequest,
 )
-from .auth import verify_admin_key
+from .stats import router as stats_router
+from .users import router as users_router
 
 router = APIRouter(prefix="/api/admin", tags=["Admin Panel"])
 router.include_router(notifications_router)

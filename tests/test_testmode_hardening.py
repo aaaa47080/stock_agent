@@ -1,4 +1,5 @@
 """Tests for TEST_MODE hardening and fd leak fixes."""
+
 import os
 
 import pytest
@@ -17,6 +18,7 @@ class TestDevLoginConfirmation:
 
     def test_dev_login_requires_confirmation_string(self):
         from api.routers.user import DevLoginRequest
+
         req = DevLoginRequest(confirmation="I_UNDERSTAND_THE_RISKS")
         assert req.confirmation == "I_UNDERSTAND_THE_RISKS"
 
@@ -30,11 +32,13 @@ class TestDevLoginConfirmation:
 
     def test_dev_login_default_confirmation(self):
         from api.routers.user import DevLoginRequest
+
         req = DevLoginRequest()
         assert req.confirmation == "I_UNDERSTAND_THE_RISKS"
 
     def test_dev_login_model_has_confirmation_field(self):
         from api.routers.user import DevLoginRequest
+
         fields = DevLoginRequest.model_fields
         assert "confirmation" in fields
 
@@ -55,7 +59,7 @@ class TestFdLeakFix:
     def test_debug_log_read_uses_context_manager(self):
         content = _read_source("api_server.py")
         assert "_read_log" in content, "Missing _read_log helper function"
-        assert "lambda: open(\"frontend_debug.log\", \"r\"" not in content, (
+        assert 'lambda: open("frontend_debug.log", "r"' not in content, (
             "fd leak: bare open() in lambda without context manager"
         )
 
@@ -67,7 +71,8 @@ class TestNoPrintInUserPy:
         content = _read_source(os.path.join("api", "routers", "user.py"))
         lines = content.split("\n")
         print_lines = [
-            i + 1 for i, line in enumerate(lines)
+            i + 1
+            for i, line in enumerate(lines)
             if "print(" in line
             and not line.strip().startswith("#")
             and "repr(" not in line
@@ -82,6 +87,7 @@ class TestTestModeProductionGuard:
         import inspect
 
         from api.deps import get_current_user
+
         source = inspect.getsource(get_current_user)
         assert "production" in source.lower()
         assert "ENVIRONMENT" in source

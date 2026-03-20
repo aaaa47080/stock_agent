@@ -1,8 +1,9 @@
 """
 私訊對話管理
 """
-from typing import List, Dict, Optional
+
 from datetime import datetime
+from typing import Dict, List, Optional
 
 from ..connection import get_connection
 
@@ -20,11 +21,14 @@ def get_or_create_conversation(user1_id: str, user2_id: str) -> Dict:
     c = conn.cursor()
     try:
         # 檢查是否已存在
-        c.execute('''
+        c.execute(
+            """
             SELECT id, user1_id, user2_id, last_message_at, user1_unread_count, user2_unread_count, created_at
             FROM dm_conversations
             WHERE user1_id = %s AND user2_id = %s
-        ''', (user1_id, user2_id))
+        """,
+            (user1_id, user2_id),
+        )
         row = c.fetchone()
 
         if row:
@@ -36,15 +40,18 @@ def get_or_create_conversation(user1_id: str, user2_id: str) -> Dict:
                 "user1_unread_count": row[4],
                 "user2_unread_count": row[5],
                 "created_at": row[6].isoformat() if row[6] else None,
-                "is_new": False
+                "is_new": False,
             }
 
         # 建立新對話
-        c.execute('''
+        c.execute(
+            """
             INSERT INTO dm_conversations (user1_id, user2_id, created_at)
             VALUES (%s, %s, NOW())
             RETURNING id
-        ''', (user1_id, user2_id))
+        """,
+            (user1_id, user2_id),
+        )
         conv_id = c.fetchone()[0]
         conn.commit()
 
@@ -56,7 +63,7 @@ def get_or_create_conversation(user1_id: str, user2_id: str) -> Dict:
             "user1_unread_count": 0,
             "user2_unread_count": 0,
             "created_at": datetime.now().isoformat(),
-            "is_new": True
+            "is_new": True,
         }
     finally:
         conn.close()
@@ -71,7 +78,8 @@ def get_conversations(user_id: str, limit: int = 50, offset: int = 0) -> List[Di
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute(
+            """
             SELECT
                 c.id,
                 c.user1_id,
@@ -105,34 +113,67 @@ def get_conversations(user_id: str, limit: int = 50, offset: int = 0) -> List[Di
             )
             ORDER BY c.last_message_at DESC NULLS LAST, c.created_at DESC
             LIMIT %s OFFSET %s
-        ''', (user_id, user_id, user_id, user_id, user_id, user_id, user_id, user_id, limit, offset))
+        """,
+            (
+                user_id,
+                user_id,
+                user_id,
+                user_id,
+                user_id,
+                user_id,
+                user_id,
+                user_id,
+                limit,
+                offset,
+            ),
+        )
 
         rows = c.fetchall()
         conversations = []
 
         for row in rows:
-            conv_id, user1_id, user2_id, last_message_at, user1_unread, user2_unread, created_at, last_message, last_message_from, other_username, other_user_id, other_membership_tier = row
+            (
+                conv_id,
+                user1_id,
+                user2_id,
+                last_message_at,
+                user1_unread,
+                user2_unread,
+                created_at,
+                last_message,
+                last_message_from,
+                other_username,
+                other_user_id,
+                other_membership_tier,
+            ) = row
 
             # 根據當前用戶決定未讀數
             unread_count = user1_unread if user_id == user1_id else user2_unread
 
-            conversations.append({
-                "id": conv_id,
-                "other_user_id": other_user_id,
-                "other_username": other_username or other_user_id,
-                "other_membership_tier": other_membership_tier or 'free',
-                "last_message": last_message,
-                "last_message_from": last_message_from,
-                "last_message_at": last_message_at.isoformat() if last_message_at else None,
-                "unread_count": unread_count,
-                "created_at": created_at.isoformat() if created_at else None
-            })
+            conversations.append(
+                {
+                    "id": conv_id,
+                    "other_user_id": other_user_id,
+                    "other_username": other_username or other_user_id,
+                    "other_membership_tier": other_membership_tier or "free",
+                    "last_message": last_message,
+                    "last_message_from": last_message_from,
+                    "last_message_at": last_message_at.isoformat()
+                    if last_message_at
+                    else None,
+                    "unread_count": unread_count,
+                    "created_at": created_at.isoformat() if created_at else None,
+                }
+            )
 
         return conversations
     except Exception as e:
         import logging
+
         logger = logging.getLogger(__name__)
-        logger.error(f"get_conversations error for user {user_id}: {str(e)}", exc_info=True)
+        logger.error(
+            f"get_conversations error for user {user_id}: {str(e)}", exc_info=True
+        )
         raise
     finally:
         conn.close()
@@ -145,11 +186,14 @@ def get_conversation_by_id(conversation_id: int, user_id: str) -> Optional[Dict]
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute(
+            """
             SELECT id, user1_id, user2_id, last_message_at, user1_unread_count, user2_unread_count
             FROM dm_conversations
             WHERE id = %s AND (user1_id = %s OR user2_id = %s)
-        ''', (conversation_id, user_id, user_id))
+        """,
+            (conversation_id, user_id, user_id),
+        )
         row = c.fetchone()
 
         if not row:
@@ -161,7 +205,7 @@ def get_conversation_by_id(conversation_id: int, user_id: str) -> Optional[Dict]
             "user2_id": row[2],
             "last_message_at": row[3].isoformat() if row[3] else None,
             "user1_unread_count": row[4],
-            "user2_unread_count": row[5]
+            "user2_unread_count": row[5],
         }
     finally:
         conn.close()
@@ -172,16 +216,23 @@ def get_conversation_with_user(user_id: str, other_user_id: str) -> Optional[Dic
     取得與特定用戶的對話
     """
     # 排序以匹配資料庫中的儲存方式
-    u1, u2 = (user_id, other_user_id) if user_id < other_user_id else (other_user_id, user_id)
+    u1, u2 = (
+        (user_id, other_user_id)
+        if user_id < other_user_id
+        else (other_user_id, user_id)
+    )
 
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute(
+            """
             SELECT id, user1_id, user2_id, last_message_at
             FROM dm_conversations
             WHERE user1_id = %s AND user2_id = %s
-        ''', (u1, u2))
+        """,
+            (u1, u2),
+        )
         row = c.fetchone()
 
         if not row:
@@ -191,7 +242,7 @@ def get_conversation_with_user(user_id: str, other_user_id: str) -> Optional[Dic
             "id": row[0],
             "user1_id": row[1],
             "user2_id": row[2],
-            "last_message_at": row[3].isoformat() if row[3] else None
+            "last_message_at": row[3].isoformat() if row[3] else None,
         }
     finally:
         conn.close()

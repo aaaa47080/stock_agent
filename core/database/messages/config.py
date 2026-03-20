@@ -1,7 +1,9 @@
 """
 私訊功能配置讀取
 """
+
 from typing import Any
+
 from ..connection import get_connection
 
 
@@ -10,21 +12,21 @@ def _get_message_config(key: str, default: Any = None):
     conn = get_connection()
     c = conn.cursor()
     try:
-        c.execute('SELECT value, value_type FROM system_config WHERE key = %s', (key,))
+        c.execute("SELECT value, value_type FROM system_config WHERE key = %s", (key,))
         row = c.fetchone()
         if not row:
             return default
 
         value, value_type = row
-        if value == 'null' or value is None:
+        if value == "null" or value is None:
             return None
 
-        if value_type == 'int':
+        if value_type == "int":
             return int(value)
-        elif value_type == 'float':
+        elif value_type == "float":
             return float(value)
-        elif value_type == 'bool':
-            return value.lower() in ('true', '1', 'yes')
+        elif value_type == "bool":
+            return value.lower() in ("true", "1", "yes")
         return value
     except Exception:
         return default

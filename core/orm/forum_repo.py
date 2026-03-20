@@ -11,6 +11,7 @@ Usage::
     boards = await forum_repo.get_boards()
     post = await forum_repo.get_post_by_id(42)
 """
+
 from __future__ import annotations
 
 import json
@@ -41,7 +42,6 @@ def _decimal_to_float(val) -> float:
 
 
 class ForumRepository:
-
     async def get_boards(
         self,
         active_only: bool = True,

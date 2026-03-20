@@ -2,6 +2,7 @@
 Gunicorn 生產環境配置文件
 用於多進程部署 Pi Crypto Insight API Server
 """
+
 import os
 
 # ========================================
@@ -70,6 +71,7 @@ pidfile = "/tmp/gunicorn.pid"
 # 臨時目錄
 tmp_upload_dir = None
 
+
 # ========================================
 # Server Hooks
 # ========================================
@@ -79,17 +81,21 @@ def on_starting(server):
     print(f"📊 Workers: {workers}")
     print(f"🔗 Bind: {bind}")
 
+
 def on_reload(server):
     """重新加載配置時"""
     print("🔄 重新加載配置...")
+
 
 def when_ready(server):
     """服務器準備就緒時"""
     print("✅ 服務器已就緒，等待請求...")
 
+
 def pre_fork(server, worker):
     """Fork worker 前"""
     pass
+
 
 def post_fork(server, worker):
     """Fork worker 後 - 重置數據庫連接池避免連接衝突"""
@@ -99,13 +105,16 @@ def post_fork(server, worker):
     # 這是解決 preload_app=True 導致連接共享問題的關鍵
     try:
         from core.database.connection import reset_connection_pool
+
         reset_connection_pool()
     except Exception as e:
         print(f"⚠️ Worker {worker.pid} 連接池重置失敗: {e}")
 
+
 def worker_exit(server, worker):
     """Worker 退出時"""
     print(f"👋 Worker {worker.pid} 已退出")
+
 
 def on_exit(server):
     """服務器關閉時"""

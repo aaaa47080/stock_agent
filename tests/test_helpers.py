@@ -1,13 +1,14 @@
 """
 Tests for helper functions in core/tools/helpers.py
 """
+
 import pytest
 
 from core.tools.helpers import (
-    normalize_symbol,
-    extract_crypto_symbols,
+    COMMON_WORDS,
     CRYPTO_SYMBOLS,
-    COMMON_WORDS
+    extract_crypto_symbols,
+    normalize_symbol,
 )
 
 

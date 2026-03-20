@@ -5,9 +5,11 @@ Tests to verify security improvements are working correctly.
 
 Run with: pytest tests/security/test_security_hardening.py -v
 """
-import pytest
+
 import os
 import tempfile
+
+import pytest
 
 # Set test environment before any imports
 os.environ["DATABASE_URL"] = "postgresql://test:test@localhost:5432/test"
@@ -19,10 +21,7 @@ class TestSecurityMonitoring:
 
     def test_security_monitor_imports(self):
         """Verify security monitoring modules can be imported"""
-        from core.security_monitor import (
-            SecurityEventType,
-            SeverityLevel
-        )
+        from core.security_monitor import SecurityEventType, SeverityLevel
 
         # Verify enums work
         assert SecurityEventType.BRUTE_FORCE_ATTEMPT.value == "brute_force"
@@ -30,7 +29,11 @@ class TestSecurityMonitoring:
 
     def test_security_event_creation(self):
         """Test creating and logging security events"""
-        from core.security_monitor import SecurityEvent, SecurityEventType, SeverityLevel
+        from core.security_monitor import (
+            SecurityEvent,
+            SecurityEventType,
+            SeverityLevel,
+        )
 
         event = SecurityEvent(
             event_type=SecurityEventType.BRUTE_FORCE_ATTEMPT,
@@ -38,7 +41,7 @@ class TestSecurityMonitoring:
             title="Test Event",
             description="This is a test security event",
             user_id="test_user",
-            ip_address="192.168.1.1"
+            ip_address="192.168.1.1",
         )
 
         # Verify event was created correctly
@@ -51,13 +54,17 @@ class TestSecurityMonitoring:
 
     def test_security_event_to_dict(self):
         """Test converting security event to dictionary"""
-        from core.security_monitor import SecurityEvent, SecurityEventType, SeverityLevel
+        from core.security_monitor import (
+            SecurityEvent,
+            SecurityEventType,
+            SeverityLevel,
+        )
 
         event = SecurityEvent(
             event_type=SecurityEventType.SUSPICIOUS_LOGIN,
             severity=SeverityLevel.MEDIUM,
             title="Test",
-            description="Test description"
+            description="Test description",
         )
 
         event_dict = event.to_dict()
@@ -173,29 +180,29 @@ class TestProductionSafety:
         # If TEST_MODE is enabled, verify environment is not production
         if TEST_MODE:
             env = os.getenv("ENVIRONMENT", "development").lower()
-            assert env not in ["production", "prod"], \
+            assert env not in ["production", "prod"], (
                 "TEST_MODE should never be enabled in production"
+            )
 
     def test_database_url_set(self):
         """Verify DATABASE_URL is set"""
         # This test verifies the environment is properly configured
         database_url = os.getenv("DATABASE_URL")
-        assert database_url is not None, \
-            "DATABASE_URL must be set"
+        assert database_url is not None, "DATABASE_URL must be set"
 
     def test_jwt_secret_key_length(self):
         """Verify JWT_SECRET_KEY meets minimum requirements"""
         jwt_key = os.getenv("JWT_SECRET_KEY")
         if jwt_key and os.getenv("USE_KEY_ROTATION", "false").lower() != "true":
-            assert len(jwt_key) >= 32, \
-                "JWT_SECRET_KEY must be at least 32 characters"
+            assert len(jwt_key) >= 32, "JWT_SECRET_KEY must be at least 32 characters"
 
     def test_cors_origins_no_wildcard(self):
         """Verify CORS origins don't include wildcard"""
         cors_origins = os.getenv("CORS_ORIGINS", "")
         # Check for common wildcard patterns
-        assert "*" not in cors_origins.split(","), \
+        assert "*" not in cors_origins.split(","), (
             "CORS_ORIGINS should not contain wildcard (*) in production"
+        )
 
 
 class TestSecurityValidators:
@@ -206,13 +213,13 @@ class TestSecurityValidators:
         from core.validators.pi_address import validate_pi_address
 
         # Valid addresses
-        valid_addr = 'G' + 'A' * 55
+        valid_addr = "G" + "A" * 55
         is_valid, error = validate_pi_address(valid_addr)
         assert is_valid is True
         assert error == ""
 
         # Invalid addresses
-        invalid_addr = 'INVALID'
+        invalid_addr = "INVALID"
         is_valid, error = validate_pi_address(invalid_addr)
         assert is_valid is False
 
@@ -236,13 +243,13 @@ class TestAuthentication:
 
     def test_token_creation(self):
         """Test token creation works correctly"""
-        from api.deps import create_access_token
         from datetime import timedelta
+
+        from api.deps import create_access_token
 
         # Create a token
         token = create_access_token(
-            {"sub": "test_user"},
-            expires_delta=timedelta(minutes=30)
+            {"sub": "test_user"}, expires_delta=timedelta(minutes=30)
         )
 
         # Token should be a non-empty string
@@ -255,8 +262,9 @@ class TestAuthentication:
 
     def test_token_creation_with_key_rotation(self):
         """Test token creation when key rotation is enabled"""
-        from api.deps import create_access_token
         from datetime import timedelta
+
+        from api.deps import create_access_token
 
         # Save original values
         original_rotation = os.environ.get("USE_KEY_ROTATION")
@@ -268,7 +276,9 @@ class TestAuthentication:
 
             # Need to reimport to pick up new environment variable
             import importlib
+
             import api.deps
+
             importlib.reload(api.deps)
 
             # Re-import after reload
@@ -276,8 +286,7 @@ class TestAuthentication:
 
             # Create a token
             token = create_access_token(
-                {"sub": "test_user"},
-                expires_delta=timedelta(minutes=30)
+                {"sub": "test_user"}, expires_delta=timedelta(minutes=30)
             )
 
             # Token should be a non-empty string
@@ -291,6 +300,7 @@ class TestAuthentication:
             # Decode payload to check for key_id
             # Note: When key rotation is enabled, we need to get the key from KeyRotationManager
             import jwt
+
             from core.key_rotation import KeyRotationManager
 
             # Get the current key for decoding
@@ -303,15 +313,12 @@ class TestAuthentication:
                     token,
                     current_key,
                     algorithms=["HS256"],
-                    options={"verify_exp": True}
+                    options={"verify_exp": True},
                 )
             except Exception:
                 # If verification fails (e.g., key mismatch during test), decode without verification
                 # to check token structure
-                payload = jwt.decode(
-                    token,
-                    options={"verify_signature": False}
-                )
+                payload = jwt.decode(token, options={"verify_signature": False})
 
             # Verify token structure
             assert "sub" in payload

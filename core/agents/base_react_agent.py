@@ -4,21 +4,23 @@ BaseReActAgent - 統一的 LangGraph Agent 基類
 所有 sub-agent 繼承此類，使用 LangGraph create_react_agent 實現 ReAct 循環。
 LLM 自動決定：是否調用工具、調用哪個工具、傳入什麼參數。
 """
+
 import dataclasses
-import logging
 import json
+import logging
 from abc import abstractmethod
-from typing import List, Optional, Any, Tuple
+from typing import Any, List, Optional, Tuple
 
-from langgraph.prebuilt import create_react_agent
 from langchain_core.messages import HumanMessage, SystemMessage
+from langgraph.prebuilt import create_react_agent
 
-from .models import SubTask, AgentResult
+from core.agents.tool_compactor import wrap_tool
+from core.database.tools import get_allowed_tools, normalize_membership_tier
+
 from .analysis_policy import AnalysisPolicyResolver
+from .models import AgentResult, SubTask
 from .prompt_registry import PromptRegistry
 from .tool_registry import ToolMetadata
-from core.database.tools import get_allowed_tools, normalize_membership_tier
-from core.agents.tool_compactor import wrap_tool
 
 logger = logging.getLogger(__name__)
 _TIER_LEVELS = {"free": 0, "premium": 1}
@@ -42,7 +44,13 @@ class BaseReActAgent:
     - 執行直到得出最終答案
     """
 
-    def __init__(self, llm_client, tool_registry, user_tier: str = "free", user_id: Optional[str] = None):
+    def __init__(
+        self,
+        llm_client,
+        tool_registry,
+        user_tier: str = "free",
+        user_id: Optional[str] = None,
+    ):
         self.llm = llm_client
         self.tool_registry = tool_registry
         self.user_tier = normalize_membership_tier(user_tier)
@@ -89,7 +97,9 @@ class BaseReActAgent:
         # 使用 create_agent 執行 ReAct 循環
         return self._execute_with_agent(task, tools, language)
 
-    def _resolve_user_scope(self, task: Optional[SubTask] = None) -> Tuple[str, Optional[str]]:
+    def _resolve_user_scope(
+        self, task: Optional[SubTask] = None
+    ) -> Tuple[str, Optional[str]]:
         context = task.context if task and isinstance(task.context, dict) else {}
         user_tier = normalize_membership_tier(context.get("user_tier", self.user_tier))
         user_id = context.get("user_id", self.user_id)
@@ -101,21 +111,27 @@ class BaseReActAgent:
         context = task.context if task and isinstance(task.context, dict) else {}
         context_allowed_tools = context.get("allowed_tools")
         if isinstance(context_allowed_tools, list):
-            allowed_tool_names = {name for name in context_allowed_tools if isinstance(name, str)}
+            allowed_tool_names = {
+                name for name in context_allowed_tools if isinstance(name, str)
+            }
             return [meta for meta in all_tools if meta.name in allowed_tool_names]
 
         user_tier, user_id = self._resolve_user_scope(task)
 
         try:
-            allowed_tools = set(get_allowed_tools(self.name, user_tier=user_tier, user_id=user_id))
+            allowed_tools = set(
+                get_allowed_tools(self.name, user_tier=user_tier, user_id=user_id)
+            )
             return [meta for meta in all_tools if meta.name in allowed_tools]
         except Exception as e:
             logger.warning(f"[{self.name}] Failed to load DB tool permissions: {e}")
 
         user_tier_level = _TIER_LEVELS.get(user_tier, 0)
         return [
-            meta for meta in all_tools
-            if _TIER_LEVELS.get(normalize_membership_tier(meta.required_tier), 0) <= user_tier_level
+            meta
+            for meta in all_tools
+            if _TIER_LEVELS.get(normalize_membership_tier(meta.required_tier), 0)
+            <= user_tier_level
         ]
 
     def _get_tool_metas(self, task: Optional[SubTask] = None) -> List[ToolMetadata]:
@@ -137,14 +153,22 @@ class BaseReActAgent:
         return [
             dataclasses.replace(
                 meta,
-                handler=wrap_tool(meta.handler, owner_id=user_id,
-                                  workspace_id=workspace_id, session_id=session_id),
+                handler=wrap_tool(
+                    meta.handler,
+                    owner_id=user_id,
+                    workspace_id=workspace_id,
+                    session_id=session_id,
+                ),
             )
             for meta in filtered_metas
         ]
 
     def _get_tools(self) -> List:
-        return [meta.handler for meta in self._get_tool_metas() if hasattr(meta.handler, "name")]
+        return [
+            meta.handler
+            for meta in self._get_tool_metas()
+            if hasattr(meta.handler, "name")
+        ]
 
     def _get_system_prompt(self, language: str) -> str:
         """
@@ -153,7 +177,9 @@ class BaseReActAgent:
         子類應該 override 來提供特定的提示詞。
         """
         try:
-            return PromptRegistry.render(f"{self.name}_agent", "system", language=language, include_time=True)
+            return PromptRegistry.render(
+                f"{self.name}_agent", "system", language=language, include_time=True
+            )
         except Exception:
             # 默認提示詞
             if language == "zh-TW":
@@ -189,11 +215,12 @@ class BaseReActAgent:
             symbols = context.get("symbols", {})
             if isinstance(symbols, dict):
                 matched_entities = {
-                    market: value for market, value in symbols.items()
-                    if value
+                    market: value for market, value in symbols.items() if value
                 }
 
-        resolved_markets = [market for market, value in matched_entities.items() if value]
+        resolved_markets = [
+            market for market, value in matched_entities.items() if value
+        ]
         resolved_market = None
         if len(resolved_markets) == 1:
             resolved_market = resolved_markets[0]
@@ -213,14 +240,16 @@ class BaseReActAgent:
 
         return runtime_metadata
 
-    def _execute_with_agent(self, task: SubTask, tools: List, language: str) -> AgentResult:
+    def _execute_with_agent(
+        self, task: SubTask, tools: List, language: str
+    ) -> AgentResult:
         """使用 LangGraph create_react_agent 執行完整的 ReAct 循環。"""
         try:
             # 創建 agent - 使用 LangGraph 的 create_react_agent
             system_prompt = self._get_system_prompt(language)
 
             # 獲取底層 LLM（如果是 LanguageAwareLLM 包裝器）
-            llm = getattr(self.llm, '_llm', self.llm)
+            llm = getattr(self.llm, "_llm", self.llm)
 
             agent = create_react_agent(
                 model=llm,
@@ -229,9 +258,9 @@ class BaseReActAgent:
             )
 
             # 執行 agent
-            result = agent.invoke({
-                "messages": [HumanMessage(content=task.description)]
-            })
+            result = agent.invoke(
+                {"messages": [HumanMessage(content=task.description)]}
+            )
 
             # 提取最終消息 - 防禦性編程：確保 result 是 dict
             if isinstance(result, str):
@@ -245,7 +274,11 @@ class BaseReActAgent:
             messages = result.get("messages", [])
             if messages:
                 final_message = messages[-1]
-                reply = final_message.content if hasattr(final_message, 'content') else str(final_message)
+                reply = (
+                    final_message.content
+                    if hasattr(final_message, "content")
+                    else str(final_message)
+                )
             else:
                 reply = "No response generated."
 
@@ -268,7 +301,9 @@ class BaseReActAgent:
         policy = _ANALYSIS_POLICY.resolve(context)
         return bool(policy.required_tool_role)
 
-    def _execute_with_required_tool(self, task: SubTask, tool_metas: List[ToolMetadata], language: str) -> Optional[AgentResult]:
+    def _execute_with_required_tool(
+        self, task: SubTask, tool_metas: List[ToolMetadata], language: str
+    ) -> Optional[AgentResult]:
         """先強制執行一次最合適的 lookup 工具，再由 LLM 整理結果。"""
         tool_meta = self._select_required_tool(task, tool_metas)
         if tool_meta is None:
@@ -288,9 +323,13 @@ class BaseReActAgent:
             logger.warning(f"[{self.name}] Required tool execution failed: {e}")
             return None
 
-        return self._summarize_required_tool_result(task, tool_meta, tool_result, language)
+        return self._summarize_required_tool_result(
+            task, tool_meta, tool_result, language
+        )
 
-    def _select_required_tool(self, task: SubTask, tool_metas: List[ToolMetadata]) -> Optional[ToolMetadata]:
+    def _select_required_tool(
+        self, task: SubTask, tool_metas: List[ToolMetadata]
+    ) -> Optional[ToolMetadata]:
         """選擇最合適的查詢工具。
 
         優先級順序：
@@ -303,8 +342,10 @@ class BaseReActAgent:
         policy = _ANALYSIS_POLICY.resolve(context)
         if policy.required_tool_role == "discovery_lookup":
             discovery_candidates = [
-                meta for meta in tool_metas
-                if meta.role == "discovery_lookup" and self._build_required_tool_kwargs(meta, task)
+                meta
+                for meta in tool_metas
+                if meta.role == "discovery_lookup"
+                and self._build_required_tool_kwargs(meta, task)
             ]
             if discovery_candidates:
                 discovery_candidates.sort(key=lambda meta: (-meta.priority, meta.name))
@@ -326,7 +367,9 @@ class BaseReActAgent:
         candidates.sort(key=lambda meta: (-meta.priority, meta.name))
         return candidates[0]
 
-    def _build_required_tool_kwargs(self, tool_meta: ToolMetadata, task: SubTask) -> Optional[dict]:
+    def _build_required_tool_kwargs(
+        self, tool_meta: ToolMetadata, task: SubTask
+    ) -> Optional[dict]:
         """依工具 schema 自動填入 symbol/ticker/code 類參數。"""
         context = task.context if isinstance(task.context, dict) else {}
         args = tool_meta.input_schema or {}
@@ -349,7 +392,9 @@ class BaseReActAgent:
             return {"code": resolved_symbol.replace(".TW", "")}
         return None
 
-    def _summarize_required_tool_result(self, task: SubTask, tool_meta: ToolMetadata, tool_result: Any, language: str) -> AgentResult:
+    def _summarize_required_tool_result(
+        self, task: SubTask, tool_meta: ToolMetadata, tool_result: Any, language: str
+    ) -> AgentResult:
         """將強制工具查詢結果整理成最終對用戶可讀的回答。"""
         context = task.context if isinstance(task.context, dict) else {}
         metadata = {
@@ -365,7 +410,11 @@ class BaseReActAgent:
             "used_tools": [tool_meta.name],
         }
         if isinstance(tool_result, dict):
-            data_as_of = tool_result.get("timestamp") or tool_result.get("as_of") or tool_result.get("date")
+            data_as_of = (
+                tool_result.get("timestamp")
+                or tool_result.get("as_of")
+                or tool_result.get("date")
+            )
             if data_as_of:
                 metadata["data_as_of"] = data_as_of
 
@@ -416,7 +465,9 @@ class BaseReActAgent:
             agent_name=self.name,
         )
 
-    def _handle_verified_missing_tools(self, task: SubTask, language: str) -> Optional[AgentResult]:
+    def _handle_verified_missing_tools(
+        self, task: SubTask, language: str
+    ) -> Optional[AgentResult]:
         context = task.context if isinstance(task.context, dict) else {}
         policy = _ANALYSIS_POLICY.resolve(context)
         if not policy.fail_reason:

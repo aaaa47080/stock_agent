@@ -1,19 +1,20 @@
 """
 Tests for API request/response models in api/models.py
 """
+
 import pytest
 from pydantic import ValidationError
 
 from api.models import (
-    QueryRequest,
-    ScreenerRequest,
-    WatchlistRequest,
-    UserRegisterRequest,
-    UserLoginRequest,
+    KeyValidationRequest,
     KlineRequest,
-    UserSettings,
+    QueryRequest,
     RefreshPulseRequest,
-    KeyValidationRequest
+    ScreenerRequest,
+    UserLoginRequest,
+    UserRegisterRequest,
+    UserSettings,
+    WatchlistRequest,
 )
 
 
@@ -25,7 +26,7 @@ class TestQueryRequest:
         data = {
             "message": "Test message",
             "user_api_key": "test-key",
-            "user_provider": "openai"
+            "user_provider": "openai",
         }
         request = QueryRequest(**data)
         assert request.message == "Test message"
@@ -34,7 +35,9 @@ class TestQueryRequest:
 
     def test_default_values(self):
         """Test default values"""
-        request = QueryRequest(message="Test", user_api_key="key", user_provider="google_gemini")
+        request = QueryRequest(
+            message="Test", user_api_key="key", user_provider="google_gemini"
+        )
         assert request.analysis_mode == "quick"
         assert request.interval == "1d"  # DEFAULT_INTERVAL
         assert request.auto_execute is False
@@ -54,7 +57,7 @@ class TestQueryRequest:
             "market_type": "futures",
             "user_provider": "openai",
             "user_model": "gpt-4",
-            "session_id": "custom-session"
+            "session_id": "custom-session",
         }
         request = QueryRequest(**data)
         assert request.analysis_mode == "verified"
@@ -82,9 +85,7 @@ class TestScreenerRequest:
     def test_custom_values(self):
         """Test with custom values"""
         request = ScreenerRequest(
-            exchange="binance",
-            symbols=["BTC", "ETH"],
-            refresh=True
+            exchange="binance", symbols=["BTC", "ETH"], refresh=True
         )
         assert request.exchange == "binance"
         assert request.symbols == ["BTC", "ETH"]
@@ -110,7 +111,9 @@ class TestUserRegisterRequest:
 
     def test_required_fields(self):
         """Test required fields"""
-        request = UserRegisterRequest(username="testuser", password="testpass")  # pragma: allowlist secret
+        request = UserRegisterRequest(
+            username="testuser", password="testpass"
+        )  # pragma: allowlist secret
         assert request.username == "testuser"
         assert request.password == "testpass"  # pragma: allowlist secret
 
@@ -125,7 +128,9 @@ class TestUserLoginRequest:
 
     def test_required_fields(self):
         """Test required fields"""
-        request = UserLoginRequest(username="testuser", password="testpass")  # pragma: allowlist secret
+        request = UserLoginRequest(
+            username="testuser", password="testpass"
+        )  # pragma: allowlist secret
         assert request.username == "testuser"
         assert request.password == "testpass"  # pragma: allowlist secret
 
@@ -148,10 +153,7 @@ class TestKlineRequest:
     def test_custom_values(self):
         """Test with custom values"""
         request = KlineRequest(
-            symbol="SOL",
-            exchange="binance",
-            interval="4h",
-            limit=200
+            symbol="SOL", exchange="binance", interval="4h", limit=200
         )
         assert request.exchange == "binance"
         assert request.interval == "4h"
@@ -177,6 +179,7 @@ class TestUserSettings:
         )
         assert settings.openai_api_key == "sk-test"  # pragma: allowlist secret
         assert settings.primary_model_provider == "openai"
+
 
 class TestRefreshPulseRequest:
     """Tests for RefreshPulseRequest model"""
@@ -204,7 +207,7 @@ class TestKeyValidationRequest:
         """Test required fields"""
         request = KeyValidationRequest(
             provider="openai",
-            api_key="sk-test-key"  # pragma: allowlist secret
+            api_key="sk-test-key",  # pragma: allowlist secret
         )
         assert request.provider == "openai"
         assert request.api_key == "sk-test-key"  # pragma: allowlist secret
@@ -213,9 +216,7 @@ class TestKeyValidationRequest:
     def test_with_model(self):
         """Test with model specified"""
         request = KeyValidationRequest(
-            provider="google_gemini",
-            api_key="gemini-key",
-            model="gemini-pro"
+            provider="google_gemini", api_key="gemini-key", model="gemini-pro"
         )
         assert request.model == "gemini-pro"
 

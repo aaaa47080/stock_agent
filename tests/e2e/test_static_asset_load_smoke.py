@@ -9,7 +9,6 @@ from urllib.parse import urlsplit
 
 import pytest
 
-
 ROOT = Path(__file__).resolve().parents[2]
 WEB_DIR = ROOT / "web"
 HOST = "127.0.0.1"
@@ -256,20 +255,14 @@ async def run_static_asset_load_smoke():
 
         await browser.close()
 
-    assert not static_failures, (
-        "static assets failed to load:\n"
-        + "\n".join(f"{path} -> {status} {url}" for path, status, url in static_failures)
+    assert not static_failures, "static assets failed to load:\n" + "\n".join(
+        f"{path} -> {status} {url}" for path, status, url in static_failures
     )
-    assert not page_errors, (
-        "uncaught frontend errors detected:\n"
-        + "\n".join(f"{path} -> {message}" for path, message in page_errors)
+    assert not page_errors, "uncaught frontend errors detected:\n" + "\n".join(
+        f"{path} -> {message}" for path, message in page_errors
     )
-    assert not console_errors, (
-        "frontend console errors detected:\n"
-        + "\n".join(
-            f"{path} -> {url} :: {message}"
-            for path, url, message in console_errors
-        )
+    assert not console_errors, "frontend console errors detected:\n" + "\n".join(
+        f"{path} -> {url} :: {message}" for path, url, message in console_errors
     )
 
 

@@ -7,52 +7,54 @@ Data sources (free-first):
   - Google News RSS: TW-specific news
   - FinMind: richer fundamentals (free tier, rate-limited)
 """
+
 from langchain_core.tools import tool
 
 
 def _normalize_tw_ticker(ticker: str) -> str:
     """
     將各種台股代碼格式標準化為 yfinance 格式。
-    
+
     支援的輸入格式：
     - 純數字：'[代號]' -> '[代號].TW'
     - 已有後綴：'[代號].TW' -> '[代號].TW'
     - 上櫃股票：'[代號].TWO' -> '[代號].TWO'
     - 中文名稱：使用 TWSymbolResolver 解析
-    
+
     這是一個通用的邊界處理，不是針對特定案例的 hardcode。
     """
     if not ticker:
         return ticker
-    
+
     s = ticker.strip()
     upper = s.upper()
-    
+
     # Rule 1: 已經是正確格式
-    if upper.endswith('.TW') or upper.endswith('.TWO'):
+    if upper.endswith(".TW") or upper.endswith(".TWO"):
         return upper
-    
+
     # Rule 2: 純數字代碼（4-6位）-> 自動添加 .TW 後綴
     if s.isdigit() and 4 <= len(s) <= 6:
         return f"{s}.TW"
-    
+
     # Rule 3: 非數字，嘗試使用 resolver 解析中文名稱
     if not s.isdigit():
         try:
             from .tw_symbol_resolver import TWSymbolResolver
+
             resolver = TWSymbolResolver()
             resolved = resolver.resolve(s)
             if resolved:
                 return resolved
         except Exception:
             pass
-    
+
     # Rule 4: 無法解析，返回原值（讓 yfinance 報錯）
     return s
 
 
-
 # ── Price ──────────────────────────────────────────────────────────────────
+
 
 @tool
 def tw_stock_price(ticker: str) -> dict:
@@ -60,36 +62,39 @@ def tw_stock_price(ticker: str) -> dict:
     支援各種格式：純代號、含市場後綴代號、公司名稱"""
     try:
         import yfinance as yf
+
         ticker = _normalize_tw_ticker(ticker)
         t = yf.Ticker(ticker)
         info = t.fast_info
         hist = t.history(period="5d")
 
         current_price = getattr(info, "last_price", None)
-        prev_close    = getattr(info, "previous_close", None)
-        change_pct    = None
+        prev_close = getattr(info, "previous_close", None)
+        change_pct = None
         if current_price and prev_close and prev_close != 0:
             change_pct = round((current_price - prev_close) / prev_close * 100, 2)
 
         recent_ohlcv = []
         if not hist.empty:
             for idx, row in hist.tail(5).iterrows():
-                recent_ohlcv.append({
-                    "date":   str(idx.date()),
-                    "open":   round(float(row["Open"]),  2),
-                    "high":   round(float(row["High"]),  2),
-                    "low":    round(float(row["Low"]),   2),
-                    "close":  round(float(row["Close"]), 2),
-                    "volume": int(row["Volume"]),
-                })
+                recent_ohlcv.append(
+                    {
+                        "date": str(idx.date()),
+                        "open": round(float(row["Open"]), 2),
+                        "high": round(float(row["High"]), 2),
+                        "low": round(float(row["Low"]), 2),
+                        "close": round(float(row["Close"]), 2),
+                        "volume": int(row["Volume"]),
+                    }
+                )
 
         return {
-            "ticker":        ticker,
+            "ticker": ticker,
             "current_price": round(current_price, 2) if current_price else None,
-            "prev_close":    round(prev_close, 2)    if prev_close    else None,
-            "change_pct":    change_pct,
-            "recent_ohlcv":  recent_ohlcv,
-            "note":          "價格為即時（約15分鐘延遲）",
+            "prev_close": round(prev_close, 2) if prev_close else None,
+            "change_pct": change_pct,
+            "recent_ohlcv": recent_ohlcv,
+            "note": "價格為即時（約15分鐘延遲）",
         }
     except Exception as e:
         return {"ticker": ticker, "error": str(e)}
@@ -97,12 +102,14 @@ def tw_stock_price(ticker: str) -> dict:
 
 # ── Technical Analysis ──────────────────────────────────────────────────────
 
+
 @tool
 def tw_technical_analysis(ticker: str, period: str = "3mo") -> dict:
     """計算台股技術指標：RSI(14)、MACD、KD(9,3,3)、MA5/20/60。
     支援各種格式：純代號、含市場後綴代號、公司名稱"""
     try:
         import yfinance as yf
+
         ticker = _normalize_tw_ticker(ticker)
         import pandas_ta as ta
 
@@ -114,14 +121,16 @@ def tw_technical_analysis(ticker: str, period: str = "3mo") -> dict:
 
         # RSI(14)
         rsi = ta.rsi(df["Close"], length=14)
-        rsi_val = round(float(rsi.iloc[-1]), 2) if rsi is not None and not rsi.empty else None
+        rsi_val = (
+            round(float(rsi.iloc[-1]), 2) if rsi is not None and not rsi.empty else None
+        )
 
         # MACD(12,26,9)
         macd_df = ta.macd(df["Close"])
         macd_val = macd_sig = macd_hist_val = None
         if macd_df is not None and not macd_df.empty:
-            macd_val      = round(float(macd_df.iloc[-1, 0]), 4)
-            macd_sig      = round(float(macd_df.iloc[-1, 1]), 4)
+            macd_val = round(float(macd_df.iloc[-1, 0]), 4)
+            macd_sig = round(float(macd_df.iloc[-1, 1]), 4)
             macd_hist_val = round(float(macd_df.iloc[-1, 2]), 4)
 
         # KD (Stochastic 9,3,3)
@@ -134,18 +143,22 @@ def tw_technical_analysis(ticker: str, period: str = "3mo") -> dict:
         # Moving Averages
         def ma(n):
             s = df["Close"].rolling(n).mean()
-            return round(float(s.iloc[-1]), 2) if not s.empty and not s.isna().iloc[-1] else None
+            return (
+                round(float(s.iloc[-1]), 2)
+                if not s.empty and not s.isna().iloc[-1]
+                else None
+            )
 
         close_now = round(float(df["Close"].iloc[-1]), 2)
 
         return {
-            "ticker":    ticker,
-            "period":    period,
-            "close":     close_now,
-            "rsi_14":    rsi_val,
-            "macd":      {"macd": macd_val, "signal": macd_sig, "histogram": macd_hist_val},
-            "kd":        {"k": k_val, "d": d_val},
-            "ma":        {"ma5": ma(5), "ma20": ma(20), "ma60": ma(60)},
+            "ticker": ticker,
+            "period": period,
+            "close": close_now,
+            "rsi_14": rsi_val,
+            "macd": {"macd": macd_val, "signal": macd_sig, "histogram": macd_hist_val},
+            "kd": {"k": k_val, "d": d_val},
+            "ma": {"ma5": ma(5), "ma20": ma(20), "ma60": ma(60)},
         }
     except Exception as e:
         return {"ticker": ticker, "error": str(e)}
@@ -153,33 +166,38 @@ def tw_technical_analysis(ticker: str, period: str = "3mo") -> dict:
 
 # ── Fundamentals ────────────────────────────────────────────────────────────
 
+
 @tool
 def tw_fundamentals(ticker: str) -> dict:
     """獲取台股基本面資料：本益比(P/E)、股價淨值比(P/B)、殖利率、EPS 等。
     支援各種格式：純代號、含市場後綴代號、公司名稱"""
     try:
         import yfinance as yf
+
         ticker = _normalize_tw_ticker(ticker)
         info = yf.Ticker(ticker).info
         return {
-            "ticker":              ticker,
-            "company_name":        info.get("longName") or info.get("shortName"),
-            "pe_ratio":            info.get("trailingPE"),
-            "pb_ratio":            info.get("priceToBook"),
-            "dividend_yield_pct":  round(info.get("dividendYield", 0), 2) if info.get("dividendYield") else None,
-            "eps_ttm":             info.get("trailingEps"),
-            "revenue_growth":      info.get("revenueGrowth"),
-            "profit_margins":      info.get("profitMargins"),
-            "market_cap":          info.get("marketCap"),
-            "52w_high":            info.get("fiftyTwoWeekHigh"),
-            "52w_low":             info.get("fiftyTwoWeekLow"),
-            "note":                "基本面資料來自 yfinance，可能有延遲",
+            "ticker": ticker,
+            "company_name": info.get("longName") or info.get("shortName"),
+            "pe_ratio": info.get("trailingPE"),
+            "pb_ratio": info.get("priceToBook"),
+            "dividend_yield_pct": round(info.get("dividendYield", 0), 2)
+            if info.get("dividendYield")
+            else None,
+            "eps_ttm": info.get("trailingEps"),
+            "revenue_growth": info.get("revenueGrowth"),
+            "profit_margins": info.get("profitMargins"),
+            "market_cap": info.get("marketCap"),
+            "52w_high": info.get("fiftyTwoWeekHigh"),
+            "52w_low": info.get("fiftyTwoWeekLow"),
+            "note": "基本面資料來自 yfinance，可能有延遲",
         }
     except Exception as e:
         return {"ticker": ticker, "error": str(e)}
 
 
 # ── Institutional (三大法人) ────────────────────────────────────────────────
+
 
 def _parse_inst_number(s: str) -> int | None:
     """Parse institutional buy/sell number string (may have commas or be empty)."""
@@ -195,8 +213,9 @@ def _parse_inst_number(s: str) -> int | None:
 def tw_institutional(ticker: str) -> dict:
     """獲取台股三大法人籌碼資料（外資、投信、自營商買賣超）。
     資料來源：TWSE T86（非 openapi，穩定性較高）"""
-    import httpx
     from datetime import date, timedelta
+
+    import httpx
 
     # Extract code from ticker (e.g., "[代號].TW" → "[代號]")
     code = ticker.split(".")[0]
@@ -246,18 +265,18 @@ def tw_institutional(ticker: str) -> dict:
 
             r = matching[0]
             foreign_net = _parse_inst_number(r[4])
-            trust_net   = _parse_inst_number(r[10])
-            dealer_net  = _parse_inst_number(r[11])
-            total_net   = _parse_inst_number(r[18])
+            trust_net = _parse_inst_number(r[10])
+            dealer_net = _parse_inst_number(r[11])
+            total_net = _parse_inst_number(r[18])
 
             return {
-                "ticker":           ticker,
-                "date":             payload.get("date", date_str),
-                "foreign_net":      foreign_net,
+                "ticker": ticker,
+                "date": payload.get("date", date_str),
+                "foreign_net": foreign_net,
                 "investment_trust": trust_net,
-                "dealer_net":       dealer_net,
+                "dealer_net": dealer_net,
                 "total_3party_net": total_net,
-                "source":           "TWSE T86",
+                "source": "TWSE T86",
             }
 
         except Exception:
@@ -266,21 +285,23 @@ def tw_institutional(ticker: str) -> dict:
     # All attempts failed
     return {
         "ticker": ticker,
-        "note":   "TWSE 法人 API 目前無法取得資料，可能為非交易日或資料尚未更新。",
+        "note": "TWSE 法人 API 目前無法取得資料，可能為非交易日或資料尚未更新。",
         "source": "TWSE T86 (失敗)",
     }
 
 
 # ── News ────────────────────────────────────────────────────────────────────
 
+
 @tool
 def tw_news(ticker: str, company_name: str = "", limit: int = 8) -> list:
     """從 Google News RSS 獲取台股相關新聞。
     company_name: 公司中文名稱，可提升新聞相關性"""
     try:
+        from urllib.parse import quote
+
         import httpx
         from defusedxml import ElementTree as ET
-        from urllib.parse import quote
 
         # Search term: prefer Chinese company name for better results
         search_term = company_name if company_name else ticker
@@ -296,16 +317,18 @@ def tw_news(ticker: str, company_name: str = "", limit: int = 8) -> list:
         items = []
 
         for item in root.findall(".//item")[:limit]:
-            title   = item.findtext("title", "")
-            link    = item.findtext("link", "")
+            title = item.findtext("title", "")
+            link = item.findtext("link", "")
             pub_date = item.findtext("pubDate", "")
-            source  = item.findtext("source", "")
-            items.append({
-                "title":      title,
-                "url":        link,
-                "published":  pub_date,
-                "source":     source,
-            })
+            source = item.findtext("source", "")
+            items.append(
+                {
+                    "title": title,
+                    "url": link,
+                    "published": pub_date,
+                    "source": source,
+                }
+            )
 
         return items
     except Exception as e:
@@ -316,6 +339,7 @@ def tw_news(ticker: str, company_name: str = "", limit: int = 8) -> list:
 
 TWSE_BASE = "https://openapi.twse.com.tw/v1"
 
+
 @tool
 def tw_major_news(limit: int = 10) -> list:
     """獲取上市公司今日重大訊息（公告）清單。
@@ -324,19 +348,22 @@ def tw_major_news(limit: int = 10) -> list:
     limit: 回傳筆數上限（預設10）"""
     try:
         import httpx
+
         resp = httpx.get(f"{TWSE_BASE}/opendata/t187ap04_L", timeout=15)
         data = resp.json() if resp.status_code == 200 else []
         results = []
         for item in (data or [])[:limit]:
             subject = item.get("主旨 ", "").strip() or item.get("主旨", "").strip()
-            results.append({
-                "date":    item.get("發言日期", ""),
-                "time":    item.get("發言時間", ""),
-                "code":    item.get("公司代號", ""),
-                "name":    item.get("公司名稱", ""),
-                "subject": subject,
-                "rule":    item.get("符合條款", ""),
-            })
+            results.append(
+                {
+                    "date": item.get("發言日期", ""),
+                    "time": item.get("發言時間", ""),
+                    "code": item.get("公司代號", ""),
+                    "name": item.get("公司名稱", ""),
+                    "subject": subject,
+                    "rule": item.get("符合條款", ""),
+                }
+            )
         return results
     except Exception as e:
         return [{"error": str(e)}]
@@ -349,6 +376,7 @@ def tw_pe_ratio(code: str) -> dict:
     code: 股票代號"""
     try:
         import httpx
+
         resp = httpx.get(f"{TWSE_BASE}/exchangeReport/BWIBBU_d", timeout=15)
         data = resp.json() if resp.status_code == 200 else []
         matching = [d for d in (data or []) if d.get("Code", "") == code]
@@ -357,17 +385,20 @@ def tw_pe_ratio(code: str) -> dict:
             data2 = resp2.json() if resp2.status_code == 200 else []
             matching = [d for d in (data2 or []) if d.get("Code", "") == code]
         if not matching:
-            return {"code": code, "error": f"查無 {code} 的本益比資料（可能非上市股票）"}
+            return {
+                "code": code,
+                "error": f"查無 {code} 的本益比資料（可能非上市股票）",
+            }
         d = matching[0]
         return {
-            "code":           d.get("Code", code),
-            "name":           d.get("Name", ""),
-            "date":           d.get("Date", ""),
-            "pe_ratio":       d.get("PEratio", "N/A"),
+            "code": d.get("Code", code),
+            "name": d.get("Name", ""),
+            "date": d.get("Date", ""),
+            "pe_ratio": d.get("PEratio", "N/A"),
             "dividend_yield": d.get("DividendYield", "N/A"),
-            "pb_ratio":       d.get("PBratio", "N/A"),
-            "dividend_year":  d.get("DividendYear", ""),
-            "source":         "TWSE OpenAPI",
+            "pb_ratio": d.get("PBratio", "N/A"),
+            "dividend_year": d.get("DividendYear", ""),
+            "source": "TWSE OpenAPI",
         }
     except Exception as e:
         return {"code": code, "error": str(e)}
@@ -381,6 +412,7 @@ def tw_monthly_revenue(code: str = "") -> list:
     code: 股票代號，若為空字串則返回全市場前 30 筆"""
     try:
         import httpx
+
         resp = httpx.get(f"{TWSE_BASE}/opendata/t187ap05_L", timeout=15)
         data = resp.json() if resp.status_code == 200 else []
         if code:
@@ -389,17 +421,19 @@ def tw_monthly_revenue(code: str = "") -> list:
             data = (data or [])[:30]
         results = []
         for item in data:
-            results.append({
-                "code":            item.get("公司代號", ""),
-                "name":            item.get("公司名稱", ""),
-                "industry":        item.get("產業別", ""),
-                "ym":              item.get("資料年月", ""),
-                "current_revenue": item.get("營業收入-當月營收", ""),
-                "mom_pct":         item.get("營業收入-上月比較增減(%)", ""),
-                "yoy_pct":         item.get("營業收入-去年當月增減(%)", ""),
-                "ytd_revenue":     item.get("累計營業收入-當月累計營收", ""),
-                "ytd_yoy_pct":     item.get("累計營業收入-前期比較增減(%)", ""),
-            })
+            results.append(
+                {
+                    "code": item.get("公司代號", ""),
+                    "name": item.get("公司名稱", ""),
+                    "industry": item.get("產業別", ""),
+                    "ym": item.get("資料年月", ""),
+                    "current_revenue": item.get("營業收入-當月營收", ""),
+                    "mom_pct": item.get("營業收入-上月比較增減(%)", ""),
+                    "yoy_pct": item.get("營業收入-去年當月增減(%)", ""),
+                    "ytd_revenue": item.get("累計營業收入-當月累計營收", ""),
+                    "ytd_yoy_pct": item.get("累計營業收入-前期比較增減(%)", ""),
+                }
+            )
         return results
     except Exception as e:
         return [{"error": str(e)}]
@@ -413,6 +447,7 @@ def tw_dividend_info(code: str = "") -> list:
     code: 股票代號，若為空字串則返回近期所有公司前 30 筆"""
     try:
         import httpx
+
         resp = httpx.get(f"{TWSE_BASE}/opendata/t187ap45_L", timeout=15)
         data = resp.json() if resp.status_code == 200 else []
         if code:
@@ -421,16 +456,18 @@ def tw_dividend_info(code: str = "") -> list:
             data = (data or [])[:30]
         results = []
         for item in data:
-            results.append({
-                "code":            item.get("公司代號", ""),
-                "name":            item.get("公司名稱", ""),
-                "year":            item.get("股利年度", ""),
-                "progress":        item.get("決議（擬議）進度", ""),
-                "board_date":      item.get("董事會（擬議）股利分派日", ""),
-                "shareholder_mtg": item.get("股東會日期", ""),
-                "cash_dividend":   item.get("股東配發-盈餘分配之現金股利(元/股)", ""),
-                "stock_dividend":  item.get("股東配發-盈餘轉增資配股(元/股)", ""),
-            })
+            results.append(
+                {
+                    "code": item.get("公司代號", ""),
+                    "name": item.get("公司名稱", ""),
+                    "year": item.get("股利年度", ""),
+                    "progress": item.get("決議（擬議）進度", ""),
+                    "board_date": item.get("董事會（擬議）股利分派日", ""),
+                    "shareholder_mtg": item.get("股東會日期", ""),
+                    "cash_dividend": item.get("股東配發-盈餘分配之現金股利(元/股)", ""),
+                    "stock_dividend": item.get("股東配發-盈餘轉增資配股(元/股)", ""),
+                }
+            )
         return results
     except Exception as e:
         return [{"error": str(e)}]
@@ -444,18 +481,21 @@ def tw_foreign_holding_top20() -> list:
     適合用來了解外資最集中持股的台股標的。"""
     try:
         import httpx
+
         resp = httpx.get(f"{TWSE_BASE}/fund/MI_QFIIS_sort_20", timeout=15)
         data = resp.json() if resp.status_code == 200 else []
         results = []
-        for item in (data or []):
-            results.append({
-                "rank":          item.get("Rank", ""),
-                "code":          item.get("Code", ""),
-                "name":          item.get("Name", ""),
-                "held_pct":      item.get("SharesHeldPer", ""),
-                "available_pct": item.get("AvailableInvestPer", ""),
-                "upper_limit":   item.get("Upperlimit", ""),
-            })
+        for item in data or []:
+            results.append(
+                {
+                    "rank": item.get("Rank", ""),
+                    "code": item.get("Code", ""),
+                    "name": item.get("Name", ""),
+                    "held_pct": item.get("SharesHeldPer", ""),
+                    "available_pct": item.get("AvailableInvestPer", ""),
+                    "upper_limit": item.get("Upperlimit", ""),
+                }
+            )
         return results
     except Exception as e:
         return [{"error": str(e)}]

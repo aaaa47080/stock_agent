@@ -1,19 +1,18 @@
 """
 好友功能 API 端點
 """
-from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel, Field
 
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.deps import get_current_user
+from api.routers.notifications import push_notification_to_user
+from api.utils import logger
 from core.orm.friends_repo import friends_repo
 from core.orm.notifications_repo import notifications_repo
 from core.orm.repositories import user_repo
 from core.orm.session import get_async_session
-from api.utils import logger
-from api.deps import get_current_user
-from fastapi import Depends
-from api.routers.notifications import push_notification_to_user
 
 router = APIRouter()
 
@@ -26,6 +25,7 @@ class FriendActionRequest(BaseModel):
 # 用戶搜尋 / 發現
 # ============================================================================
 
+
 @router.get("/api/friends/search")
 async def search_users_endpoint(
     q: str = Query(..., min_length=1, max_length=50, description="搜尋關鍵字"),
@@ -36,13 +36,18 @@ async def search_users_endpoint(
     try:
         user_id = current_user["user_id"]
         users = await friends_repo.search_users(
-            query=q, limit=limit, exclude_user_id=user_id, session=session,
+            query=q,
+            limit=limit,
+            exclude_user_id=user_id,
+            session=session,
         )
 
         if users:
             other_ids = [u["user_id"] for u in users]
             bulk_status = await friends_repo.get_bulk_friendship_status(
-                user_id, other_ids, session=session,
+                user_id,
+                other_ids,
+                session=session,
             )
             for u in users:
                 status = bulk_status.get(u["user_id"])
@@ -67,7 +72,9 @@ async def get_user_profile(
     try:
         user_id = current_user["user_id"]
         profile = await friends_repo.get_public_user_profile(
-            target_user_id, viewer_user_id=user_id, session=session,
+            target_user_id,
+            viewer_user_id=user_id,
+            session=session,
         )
         if not profile:
             raise HTTPException(status_code=404, detail="用戶不存在")
@@ -83,6 +90,7 @@ async def get_user_profile(
 # 好友請求
 # ============================================================================
 
+
 @router.post("/api/friends/request")
 async def send_request(
     request: FriendActionRequest,
@@ -94,12 +102,16 @@ async def send_request(
         user_exists = await user_repo.get_by_id(user_id, session=session)
         if not user_exists:
             raise HTTPException(status_code=401, detail="用戶不存在")
-        target_exists = await user_repo.get_by_id(request.target_user_id, session=session)
+        target_exists = await user_repo.get_by_id(
+            request.target_user_id, session=session
+        )
         if not target_exists:
             raise HTTPException(status_code=404, detail="目標用戶不存在")
 
         result = await friends_repo.send_friend_request(
-            user_id, request.target_user_id, session=session,
+            user_id,
+            request.target_user_id,
+            session=session,
         )
 
         if not result["success"]:
@@ -130,9 +142,13 @@ async def send_request(
             )
             if notification:
                 await push_notification_to_user(request.target_user_id, notification)
-            logger.info("Friend request notification sent to %s", request.target_user_id)
+            logger.info(
+                "Friend request notification sent to %s", request.target_user_id
+            )
         except Exception as notify_error:
-            logger.warning("Failed to send friend request notification: %s", notify_error)
+            logger.warning(
+                "Failed to send friend request notification: %s", notify_error
+            )
 
         return result
     except HTTPException:
@@ -151,7 +167,9 @@ async def accept_request(
     try:
         user_id = current_user["user_id"]
         result = await friends_repo.accept_friend_request(
-            user_id, request.target_user_id, session=session,
+            user_id,
+            request.target_user_id,
+            session=session,
         )
 
         if not result["success"]:
@@ -173,9 +191,13 @@ async def accept_request(
             )
             if notification:
                 await push_notification_to_user(request.target_user_id, notification)
-            logger.info("Friend accepted notification sent to %s", request.target_user_id)
+            logger.info(
+                "Friend accepted notification sent to %s", request.target_user_id
+            )
         except Exception as notify_error:
-            logger.warning("Failed to send friend accepted notification: %s", notify_error)
+            logger.warning(
+                "Failed to send friend accepted notification: %s", notify_error
+            )
 
         return result
     except HTTPException:
@@ -194,7 +216,9 @@ async def reject_request(
     try:
         user_id = current_user["user_id"]
         result = await friends_repo.reject_friend_request(
-            user_id, request.target_user_id, session=session,
+            user_id,
+            request.target_user_id,
+            session=session,
         )
 
         if not result["success"]:
@@ -217,7 +241,9 @@ async def cancel_request(
     try:
         user_id = current_user["user_id"]
         result = await friends_repo.cancel_friend_request(
-            user_id, request.target_user_id, session=session,
+            user_id,
+            request.target_user_id,
+            session=session,
         )
 
         if not result["success"]:
@@ -240,7 +266,9 @@ async def remove_friend_endpoint(
     try:
         user_id = current_user["user_id"]
         result = await friends_repo.remove_friend(
-            user_id, target_user_id, session=session,
+            user_id,
+            target_user_id,
+            session=session,
         )
 
         if not result["success"]:
@@ -258,6 +286,7 @@ async def remove_friend_endpoint(
 # 封鎖功能
 # ============================================================================
 
+
 @router.post("/api/friends/block")
 async def block_user_endpoint(
     request: FriendActionRequest,
@@ -267,7 +296,9 @@ async def block_user_endpoint(
     try:
         user_id = current_user["user_id"]
         result = await friends_repo.block_user(
-            user_id, request.target_user_id, session=session,
+            user_id,
+            request.target_user_id,
+            session=session,
         )
 
         if not result["success"]:
@@ -296,7 +327,9 @@ async def unblock_user_endpoint(
     try:
         user_id = current_user["user_id"]
         result = await friends_repo.unblock_user(
-            user_id, request.target_user_id, session=session,
+            user_id,
+            request.target_user_id,
+            session=session,
         )
 
         if not result["success"]:
@@ -318,7 +351,9 @@ async def get_blocked_list(
 ):
     try:
         user_id = current_user["user_id"]
-        blocked = await friends_repo.get_blocked_users(user_id, limit=limit, session=session)
+        blocked = await friends_repo.get_blocked_users(
+            user_id, limit=limit, session=session
+        )
         return {
             "success": True,
             "blocked_users": blocked,
@@ -335,6 +370,7 @@ async def get_blocked_list(
 # 好友列表
 # ============================================================================
 
+
 @router.get("/api/friends/list")
 async def get_friends(
     limit: int = Query(50, ge=1, le=100),
@@ -345,7 +381,10 @@ async def get_friends(
     try:
         user_id = current_user["user_id"]
         friends = await friends_repo.get_friends_list(
-            user_id, limit=limit, offset=offset, session=session,
+            user_id,
+            limit=limit,
+            offset=offset,
+            session=session,
         )
         count = await friends_repo.get_friends_count(user_id, session=session)
 
@@ -371,7 +410,9 @@ async def get_received_requests(
     try:
         user_id = current_user["user_id"]
         requests = await friends_repo.get_pending_requests_received(
-            user_id, limit=limit, session=session,
+            user_id,
+            limit=limit,
+            session=session,
         )
         return {
             "success": True,
@@ -394,7 +435,9 @@ async def get_sent_requests(
     try:
         user_id = current_user["user_id"]
         requests = await friends_repo.get_pending_requests_sent(
-            user_id, limit=limit, session=session,
+            user_id,
+            limit=limit,
+            session=session,
         )
         return {
             "success": True,
@@ -417,7 +460,9 @@ async def get_status(
     try:
         user_id = current_user["user_id"]
         status = await friends_repo.get_friendship_status(
-            user_id, target_user_id, session=session,
+            user_id,
+            target_user_id,
+            session=session,
         )
         return {
             "success": True,
@@ -441,7 +486,9 @@ async def get_counts(
     try:
         user_id = current_user["user_id"]
         friends_count = await friends_repo.get_friends_count(user_id, session=session)
-        pending_received = await friends_repo.get_pending_count(user_id, session=session)
+        pending_received = await friends_repo.get_pending_count(
+            user_id, session=session
+        )
         return {
             "success": True,
             "friends_count": friends_count,

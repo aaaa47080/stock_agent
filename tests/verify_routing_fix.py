@@ -1,17 +1,20 @@
 """
 驗證統一規劃流程的測試
 """
+
 import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
-from utils.user_client_factory import create_user_llm_client  # noqa: E402
 from core.agents.bootstrap_v2 import bootstrap_v2  # noqa: E402
+
 from core.agents.description_loader import get_agent_descriptions  # noqa: E402
+from utils.user_client_factory import create_user_llm_client  # noqa: E402
 
 print("🔍 驗證統一規劃流程...")
 print("=" * 60)
@@ -66,7 +69,9 @@ print("測試 Manager Graph 結構:")
 print("-" * 60)
 
 print(f"Graph nodes: {list(manager.graph.nodes.keys())}")
-print("預期節點: understand_intent, execute_task, aggregate_results, synthesize_response")
+print(
+    "預期節點: understand_intent, execute_task, aggregate_results, synthesize_response"
+)
 print()
 
 # 測試模糊查詢檢測

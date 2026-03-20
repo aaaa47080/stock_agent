@@ -63,48 +63,83 @@ def test_normalize_membership_tier_maps_legacy_pro_to_premium():
 
 
 def test_base_react_agent_filters_tools_by_allowed_tool_ids():
-    agent = _DummyAgent(llm_client=None, tool_registry=_FakeRegistry(), user_tier="free", user_id="u1")
+    agent = _DummyAgent(
+        llm_client=None, tool_registry=_FakeRegistry(), user_tier="free", user_id="u1"
+    )
 
-    with patch("core.agents.base_react_agent.get_allowed_tools", return_value=["free_tool"]):
-        metas = agent._get_tool_metas(SubTask(step=1, description="test", agent="crypto"))
+    with patch(
+        "core.agents.base_react_agent.get_allowed_tools", return_value=["free_tool"]
+    ):
+        metas = agent._get_tool_metas(
+            SubTask(step=1, description="test", agent="crypto")
+        )
 
     assert [m.name for m in metas] == ["free_tool"]
 
 
 def test_base_react_agent_respects_empty_allowed_tool_list():
-    agent = _DummyAgent(llm_client=None, tool_registry=_FakeRegistry(), user_tier="premium", user_id="u1")
+    agent = _DummyAgent(
+        llm_client=None,
+        tool_registry=_FakeRegistry(),
+        user_tier="premium",
+        user_id="u1",
+    )
 
     with patch("core.agents.base_react_agent.get_allowed_tools", return_value=[]):
-        metas = agent._get_tool_metas(SubTask(step=1, description="test", agent="crypto"))
+        metas = agent._get_tool_metas(
+            SubTask(step=1, description="test", agent="crypto")
+        )
 
     assert metas == []
 
 
 def test_base_react_agent_falls_back_to_required_tier_filter():
-    agent = _DummyAgent(llm_client=None, tool_registry=_FakeRegistry(), user_tier="pro", user_id="u1")
+    agent = _DummyAgent(
+        llm_client=None, tool_registry=_FakeRegistry(), user_tier="pro", user_id="u1"
+    )
 
-    with patch("core.agents.base_react_agent.get_allowed_tools", side_effect=RuntimeError("db down")):
-        metas = agent._get_tool_metas(SubTask(step=1, description="test", agent="crypto"))
+    with patch(
+        "core.agents.base_react_agent.get_allowed_tools",
+        side_effect=RuntimeError("db down"),
+    ):
+        metas = agent._get_tool_metas(
+            SubTask(step=1, description="test", agent="crypto")
+        )
 
     assert [m.name for m in metas] == ["free_tool", "premium_tool", "web_search"]
 
 
 def test_base_react_agent_prefers_allowed_tools_from_task_context():
-    agent = _DummyAgent(llm_client=None, tool_registry=_FakeRegistry(), user_tier="premium", user_id="u1")
+    agent = _DummyAgent(
+        llm_client=None,
+        tool_registry=_FakeRegistry(),
+        user_tier="premium",
+        user_id="u1",
+    )
 
-    with patch("core.agents.base_react_agent.get_allowed_tools", side_effect=AssertionError("should not hit db")):
-        metas = agent._get_tool_metas(SubTask(
-            step=1,
-            description="test",
-            agent="crypto",
-            context={"allowed_tools": ["premium_tool"]},
-        ))
+    with patch(
+        "core.agents.base_react_agent.get_allowed_tools",
+        side_effect=AssertionError("should not hit db"),
+    ):
+        metas = agent._get_tool_metas(
+            SubTask(
+                step=1,
+                description="test",
+                agent="crypto",
+                context={"allowed_tools": ["premium_tool"]},
+            )
+        )
 
     assert [m.name for m in metas] == ["premium_tool"]
 
 
 def test_base_react_agent_prefers_discovery_lookup_when_market_is_unresolved():
-    agent = _DummyAgent(llm_client=None, tool_registry=_FakeRegistry(), user_tier="premium", user_id="u1")
+    agent = _DummyAgent(
+        llm_client=None,
+        tool_registry=_FakeRegistry(),
+        user_tier="premium",
+        user_id="u1",
+    )
     task = SubTask(
         step=1,
         description="tsm 現在多少？",
@@ -143,9 +178,16 @@ def test_premium_member_can_update_tool_preference():
     }
     request = ToolPreferenceRequest(is_enabled=False)
 
-    with patch("api.routers.tools.get_tools_for_frontend", return_value=[{"tool_id": "get_crypto_price", "locked": False}]), \
-         patch("api.routers.tools.update_user_tool_preference") as mock_update:
-        response = asyncio.run(_set_tool_preference_impl("get_crypto_price", request, current_user))
+    with (
+        patch(
+            "api.routers.tools.get_tools_for_frontend",
+            return_value=[{"tool_id": "get_crypto_price", "locked": False}],
+        ),
+        patch("api.routers.tools.update_user_tool_preference") as mock_update,
+    ):
+        response = asyncio.run(
+            _set_tool_preference_impl("get_crypto_price", request, current_user)
+        )
 
     assert response["success"] is True
     mock_update.assert_called_once()
@@ -159,7 +201,9 @@ def test_free_member_cannot_update_tool_preference():
     request = ToolPreferenceRequest(is_enabled=False)
 
     try:
-        asyncio.run(_set_tool_preference_impl("get_crypto_price", request, current_user))
+        asyncio.run(
+            _set_tool_preference_impl("get_crypto_price", request, current_user)
+        )
     except Exception as exc:
         assert getattr(exc, "status_code", None) == 403
         assert "Premium" in getattr(exc, "detail", "")

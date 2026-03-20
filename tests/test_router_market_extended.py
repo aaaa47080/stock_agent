@@ -1,18 +1,20 @@
 """
 Extended tests for market router in api/routers/market.py
 """
-import pytest
+
 from unittest.mock import patch
-import pandas as pd
+
 import numpy as np
+import pandas as pd
+import pytest
 
 from api.routers.market import (
-    _replace_nan_in_dataframe,
-    _format_screener_response,
-    _try_get_cached_screener,
-    _sort_funding_rates,
+    SYMBOL_CACHE,
     _compute_top_bottom_rates,
-    SYMBOL_CACHE
+    _format_screener_response,
+    _replace_nan_in_dataframe,
+    _sort_funding_rates,
+    _try_get_cached_screener,
 )
 
 
@@ -27,26 +29,21 @@ class TestReplaceNaNInDataFrame:
 
     def test_dataframe_with_nan(self):
         """Test replacing NaN values"""
-        df = pd.DataFrame({
-            'value': [1.0, np.nan, 3.0],
-            'name': ['A', 'B', 'C']
-        })
+        df = pd.DataFrame({"value": [1.0, np.nan, 3.0], "name": ["A", "B", "C"]})
 
         result = _replace_nan_in_dataframe(df)
 
         # NaN should be replaced with None
-        assert pd.isna(df['value'].iloc[1])
-        assert result['value'].iloc[1] is None
+        assert pd.isna(df["value"].iloc[1])
+        assert result["value"].iloc[1] is None
 
     def test_dataframe_without_nan(self):
         """Test with no NaN values"""
-        df = pd.DataFrame({
-            'value': [1.0, 2.0, 3.0]
-        })
+        df = pd.DataFrame({"value": [1.0, 2.0, 3.0]})
 
         result = _replace_nan_in_dataframe(df)
 
-        assert result['value'].tolist() == [1.0, 2.0, 3.0]
+        assert result["value"].tolist() == [1.0, 2.0, 3.0]
 
 
 class TestFormatScreenerResponse:
@@ -54,28 +51,26 @@ class TestFormatScreenerResponse:
 
     def test_formats_response(self):
         """Test formatting screener response"""
-        df_gainers = pd.DataFrame({'symbol': ['BTC'], 'change': [5.0]})
-        df_losers = pd.DataFrame({'symbol': ['ETH'], 'change': [-3.0]})
-        df_volume = pd.DataFrame({'symbol': ['SOL'], 'volume': [1000000]})
+        df_gainers = pd.DataFrame({"symbol": ["BTC"], "change": [5.0]})
+        df_losers = pd.DataFrame({"symbol": ["ETH"], "change": [-3.0]})
+        df_volume = pd.DataFrame({"symbol": ["SOL"], "volume": [1000000]})
 
         result = _format_screener_response(df_gainers, df_losers, df_volume)
 
-        assert 'top_gainers' in result
-        assert 'top_losers' in result
-        assert 'top_volume' in result
-        assert 'last_updated' in result
-        assert len(result['top_gainers']) == 1
+        assert "top_gainers" in result
+        assert "top_losers" in result
+        assert "top_volume" in result
+        assert "last_updated" in result
+        assert len(result["top_gainers"]) == 1
 
     def test_empty_dataframes(self):
         """Test with empty dataframes"""
         result = _format_screener_response(
-            pd.DataFrame(),
-            pd.DataFrame(),
-            pd.DataFrame()
+            pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
         )
 
-        assert result['top_gainers'] == []
-        assert result['top_losers'] == []
+        assert result["top_gainers"] == []
+        assert result["top_losers"] == []
 
 
 class TestTryGetCachedScreener:
@@ -83,19 +78,23 @@ class TestTryGetCachedScreener:
 
     def test_returns_cached_data(self):
         """Test returning cached data"""
-        with patch('api.routers.market.cached_screener_result', {'data': {'test': 'data'}}):
+        with patch(
+            "api.routers.market.cached_screener_result", {"data": {"test": "data"}}
+        ):
             result = _try_get_cached_screener(refresh=False)
-            assert result == {'test': 'data'}
+            assert result == {"test": "data"}
 
     def test_returns_none_when_refresh_true(self):
         """Test returns None when refresh is True"""
-        with patch('api.routers.market.cached_screener_result', {'data': {'test': 'data'}}):
+        with patch(
+            "api.routers.market.cached_screener_result", {"data": {"test": "data"}}
+        ):
             result = _try_get_cached_screener(refresh=True)
             assert result is None
 
     def test_returns_none_when_no_cache(self):
         """Test returns None when cache is empty"""
-        with patch('api.routers.market.cached_screener_result', {'data': None}):
+        with patch("api.routers.market.cached_screener_result", {"data": None}):
             result = _try_get_cached_screener(refresh=False)
             assert result is None
 
@@ -108,7 +107,7 @@ class TestSortFundingRatesExtended:
         data = {
             "BTC": {"fundingRate": 0.01},
             "ETH": {"fundingRate": -0.02},
-            "SOL": {"fundingRate": 0.03}
+            "SOL": {"fundingRate": 0.03},
         }
 
         result = _sort_funding_rates(data)
@@ -119,10 +118,7 @@ class TestSortFundingRatesExtended:
 
     def test_sorts_with_zero_rates(self):
         """Test sorting with zero rates"""
-        data = {
-            "BTC": {"fundingRate": 0},
-            "ETH": {"fundingRate": 0.01}
-        }
+        data = {"BTC": {"fundingRate": 0}, "ETH": {"fundingRate": 0.01}}
 
         result = _sort_funding_rates(data)
 
@@ -161,7 +157,9 @@ class TestSymbolCache:
 
     def test_cache_initial_state(self):
         """Test cache initial state"""
-        assert SYMBOL_CACHE["okx"]["data"] is None or isinstance(SYMBOL_CACHE["okx"]["data"], (list, type(None)))
+        assert SYMBOL_CACHE["okx"]["data"] is None or isinstance(
+            SYMBOL_CACHE["okx"]["data"], (list, type(None))
+        )
 
 
 class TestFundingRateFormatting:

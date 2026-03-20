@@ -7,11 +7,13 @@
 - 金鑰與程式碼分離
 - 支援金鑰輪換
 """
-import os
-import json
+
 import base64
-from pathlib import Path
+import json
+import os
 from datetime import datetime
+from pathlib import Path
+
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -29,30 +31,34 @@ def _ensure_keys_dir():
 def _load_or_create_encryption_key() -> bytes:
     """
     載入或建立加密金鑰
-    
+
     優先順序：
     1. 從金鑰檔案載入（推薦）
     2. 從環境變數載入（向後兼容）
     3. 建立新金鑰並儲存
     """
     _ensure_keys_dir()
-    
+
     # 嘗試從檔案載入
     if KEYS_FILE.exists():
         try:
-            with open(KEYS_FILE, 'r') as f:
+            with open(KEYS_FILE, "r") as f:
                 data = json.load(f)
                 if data.get("key"):
                     # 從 base64 解碼
                     return base64.urlsafe_b64decode(data["key"])
         except Exception as e:
             import logging
-            logging.getLogger(__name__).error(f"Failed to load encryption key file: {e}")
-    
+
+            logging.getLogger(__name__).error(
+                f"Failed to load encryption key file: {e}"
+            )
+
     # 嘗試從環境變數載入（向後兼容）
     env_secret = os.getenv("API_KEY_ENCRYPTION_SECRET")
     if env_secret:
         import logging
+
         logging.getLogger(__name__).warning(
             "⚠️ Using API_KEY_ENCRYPTION_SECRET from environment. "
             "Consider migrating to file-based key management."
@@ -61,19 +67,20 @@ def _load_or_create_encryption_key() -> bytes:
         kdf = PBKDF2HMAC(
             algorithm=hashes.SHA256(),
             length=32,
-            salt=b'PiCryptoMiner_API_Key_Derivation',
+            salt=b"PiCryptoMiner_API_Key_Derivation",
             iterations=480000,
         )
         return base64.urlsafe_b64encode(kdf.derive(env_secret.encode()))
-    
+
     # 建立新的隨機金鑰
     import logging
+
     logging.getLogger(__name__).warning("🔑 Generating new API key encryption key")
     new_key = Fernet.generate_key()
-    
+
     # 儲存到檔案
     _save_encryption_key(new_key)
-    
+
     return new_key
 
 
@@ -85,7 +92,7 @@ def _save_encryption_key(key: bytes, update_rotation_time: bool = True):
     existing_data = {}
     if KEYS_FILE.exists():
         try:
-            with open(KEYS_FILE, 'r') as f:
+            with open(KEYS_FILE, "r") as f:
                 existing_data = json.load(f)
         except Exception:
             pass
@@ -100,15 +107,15 @@ def _save_encryption_key(key: bytes, update_rotation_time: bool = True):
         data["last_rotation"] = datetime.utcnow().isoformat()
     elif existing_data.get("last_rotation"):
         data["last_rotation"] = existing_data["last_rotation"]
-    
+
     # 使用原子寫入避免損壞
-    temp_file = KEYS_FILE.with_suffix('.tmp')
-    with open(temp_file, 'w') as f:
+    temp_file = KEYS_FILE.with_suffix(".tmp")
+    with open(temp_file, "w") as f:
         json.dump(data, f, indent=2)
-    
+
     # 原子重命名
     temp_file.rename(KEYS_FILE)
-    
+
     # 設定權限（僅擁有者可讀寫）
     os.chmod(KEYS_FILE, 0o600)
 
@@ -120,26 +127,26 @@ _encryption_key_cache = None
 def _get_fernet() -> Fernet:
     """取得 Fernet 實例"""
     global _encryption_key_cache
-    
+
     if _encryption_key_cache is None:
         _encryption_key_cache = _load_or_create_encryption_key()
-    
+
     return Fernet(_encryption_key_cache)
 
 
 def encrypt_api_key(plaintext: str) -> str:
     """
     加密 API Key
-    
+
     Args:
         plaintext: 原始 API Key
-        
+
     Returns:
         加密後的字串（base64 編碼）
     """
     if not plaintext:
         return ""
-    
+
     fernet = _get_fernet()
     encrypted = fernet.encrypt(plaintext.encode())
     return base64.urlsafe_b64encode(encrypted).decode()
@@ -148,16 +155,16 @@ def encrypt_api_key(plaintext: str) -> str:
 def decrypt_api_key(encrypted: str) -> str:
     """
     解密 API Key
-    
+
     Args:
         encrypted: 加密後的字串
-        
+
     Returns:
         原始 API Key
     """
     if not encrypted:
         return ""
-    
+
     try:
         fernet = _get_fernet()
         decoded = base64.urlsafe_b64decode(encrypted.encode())
@@ -166,6 +173,7 @@ def decrypt_api_key(encrypted: str) -> str:
     except Exception as e:
         # 解密失敗，返回空字串
         import logging
+
         logging.getLogger(__name__).error(f"Failed to decrypt API key: {e}")
         return ""
 
@@ -173,23 +181,23 @@ def decrypt_api_key(encrypted: str) -> str:
 def mask_api_key(api_key: str) -> str:
     """
     遮蔽 API Key 用於顯示
-    
+
     Args:
         api_key: 原始 API Key
-        
+
     Returns:
         遮蔽後的字串，如 "sk-****...****abc123"
     """
     if not api_key or len(api_key) < 8:
         return "****"
-    
+
     # 保留前綴和後綴
     prefix_len = min(4, len(api_key) // 4)
     suffix_len = min(4, len(api_key) // 4)
-    
+
     prefix = api_key[:prefix_len]
     suffix = api_key[-suffix_len:]
-    
+
     return f"{prefix}****...****{suffix}"
 
 
@@ -220,7 +228,7 @@ def rotate_encryption_key() -> dict:
     re_encrypted_count = 0
 
     try:
-        c.execute('SELECT id, encrypted_key FROM user_api_keys')
+        c.execute("SELECT id, encrypted_key FROM user_api_keys")
         rows = c.fetchall()
 
         for row in rows:
@@ -238,13 +246,14 @@ def rotate_encryption_key() -> dict:
 
                 # 更新資料庫
                 c.execute(
-                    'UPDATE user_api_keys SET encrypted_key = %s WHERE id = %s',
-                    (new_encoded, key_id)
+                    "UPDATE user_api_keys SET encrypted_key = %s WHERE id = %s",
+                    (new_encoded, key_id),
                 )
                 re_encrypted_count += 1
 
             except Exception as e:
                 import logging
+
                 logging.getLogger(__name__).error(
                     f"Failed to re-encrypt key {key_id}: {e}"
                 )
@@ -257,6 +266,7 @@ def rotate_encryption_key() -> dict:
         _save_encryption_key(new_key, update_rotation_time=True)
 
         import logging
+
         logging.getLogger(__name__).info(
             f"🔑 API key encryption rotated, re-encrypted {re_encrypted_count} keys"
         )
@@ -266,6 +276,7 @@ def rotate_encryption_key() -> dict:
     except Exception as e:
         conn.rollback()
         import logging
+
         logging.getLogger(__name__).error(f"Key rotation failed: {e}")
         return {"success": False, "error": str(e)}
     finally:
@@ -282,30 +293,23 @@ def get_key_rotation_status() -> dict:
     _ensure_keys_dir()
 
     if not KEYS_FILE.exists():
-        return {
-            "exists": False,
-            "last_rotation": None,
-            "should_rotate": True
-        }
+        return {"exists": False, "last_rotation": None, "should_rotate": True}
 
     try:
-        with open(KEYS_FILE, 'r') as f:
+        with open(KEYS_FILE, "r") as f:
             data = json.load(f)
 
         return {
             "exists": True,
             "created_at": data.get("created_at"),
             "last_rotation": data.get("last_rotation"),
-            "version": data.get("version", 1)
+            "version": data.get("version", 1),
         }
     except Exception as e:
         import logging
+
         logging.getLogger(__name__).error(f"Failed to read key status: {e}")
-        return {
-            "exists": True,
-            "error": str(e),
-            "should_rotate": True
-        }
+        return {"exists": True, "error": str(e), "should_rotate": True}
 
 
 def should_rotate_api_key_encryption(interval_days: int = 90) -> bool:

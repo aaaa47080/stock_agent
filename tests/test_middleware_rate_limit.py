@@ -1,17 +1,19 @@
 """
 Tests for rate limit middleware in api/middleware/rate_limit.py
 """
-import pytest
-from unittest.mock import patch, MagicMock
-from fastapi import Request
+
 import json
 import time
+from unittest.mock import MagicMock, patch
+
+import pytest
+from fastapi import Request
 
 from api.middleware.rate_limit import (
-    get_user_identifier,
-    get_rate_limit_for_route,
+    RATE_LIMITS,
     PersistentRateLimiter,
-    RATE_LIMITS
+    get_rate_limit_for_route,
+    get_user_identifier,
 )
 
 
@@ -33,7 +35,9 @@ class TestGetUserIdentifier:
         request.state = MagicMock()
         request.state.user = None
 
-        with patch('api.middleware.rate_limit.get_remote_address', return_value='192.168.1.1'):
+        with patch(
+            "api.middleware.rate_limit.get_remote_address", return_value="192.168.1.1"
+        ):
             result = get_user_identifier(request)
             assert result == "ip:192.168.1.1"
 
@@ -43,7 +47,9 @@ class TestGetUserIdentifier:
         request.state = MagicMock()
         request.state.user = None
 
-        with patch('api.middleware.rate_limit.get_remote_address', return_value='10.0.0.1'):
+        with patch(
+            "api.middleware.rate_limit.get_remote_address", return_value="10.0.0.1"
+        ):
             result = get_user_identifier(request)
             assert result.startswith("ip:")
 
@@ -240,7 +246,7 @@ class TestPersistentRateLimiter:
         assert storage_file.exists()
 
         # Load and verify
-        with open(storage_file, 'r') as f:
+        with open(storage_file, "r") as f:
             state = json.load(f)
         assert "user:123" in state
 
@@ -249,7 +255,7 @@ class TestPersistentRateLimiter:
         storage_file = tmp_path / "rate_limits.json"
 
         # Write corrupted JSON
-        with open(storage_file, 'w') as f:
+        with open(storage_file, "w") as f:
             f.write("not valid json {{{")
 
         # Should not crash
@@ -303,9 +309,15 @@ class TestRateLimitsConstants:
     def test_all_limits_defined(self):
         """Test all expected limits are defined"""
         expected_keys = [
-            "auth", "write", "payment", "read",
-            "admin", "public", "governance_report",
-            "governance_vote", "governance_read"
+            "auth",
+            "write",
+            "payment",
+            "read",
+            "admin",
+            "public",
+            "governance_report",
+            "governance_vote",
+            "governance_read",
         ]
         for key in expected_keys:
             assert key in RATE_LIMITS

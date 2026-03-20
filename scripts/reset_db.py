@@ -17,6 +17,7 @@ from dotenv import load_dotenv
 
 load_dotenv(os.path.join(ROOT, ".env"))
 
+
 def get_conn():
     url = os.environ.get("DATABASE_URL")
     if not url:
@@ -24,7 +25,8 @@ def get_conn():
         sys.exit(1)
 
     # 移除不支援的參數
-    from urllib.parse import urlparse, urlencode, parse_qs, urlunparse
+    from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
+
     parsed = urlparse(url)
     params = parse_qs(parsed.query, keep_blank_values=True)
     params.pop("channel_binding", None)
@@ -33,8 +35,10 @@ def get_conn():
 
     return psycopg2.connect(clean_url, connect_timeout=30)
 
+
 def main():
     import argparse
+
     parser = argparse.ArgumentParser(description="重建資料庫表結構")
     parser.add_argument("--dry-run", action="store_true", help="乾跑模式")
     args = parser.parse_args()
@@ -90,6 +94,7 @@ def main():
 
     # 重置連接池並重建
     import core.database.connection as conn_module
+
     conn_module._connection_pool = None
     conn_module._db_initialized = False
 
@@ -106,6 +111,7 @@ def main():
     count = c.fetchone()[0]
     print(f"\n  完成！共建立 {count} 張表")
     conn.close()
+
 
 if __name__ == "__main__":
     main()

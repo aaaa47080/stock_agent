@@ -2,21 +2,30 @@
 Voting Functions
 Cast votes, check consensus, and finalize reports
 """
+
 from typing import Dict, List
 
 from ..connection import get_connection
 from ..user import get_user_membership
-from .constants import (
-    MIN_VOTES_REQUIRED, CONSENSUS_APPROVE_THRESHOLD, CONSENSUS_REJECT_THRESHOLD,
-    VIOLATION_LEVELS
-)
 from .activity import log_activity
-from .reputation import get_audit_reputation, calculate_vote_weight, update_audit_reputation
-from .violations import (
-    add_violation_points, get_user_violation_points,
-    determine_suspension_action, apply_suspension
+from .constants import (
+    CONSENSUS_APPROVE_THRESHOLD,
+    CONSENSUS_REJECT_THRESHOLD,
+    MIN_VOTES_REQUIRED,
+    VIOLATION_LEVELS,
 )
 from .helpers import get_content_author
+from .reputation import (
+    calculate_vote_weight,
+    get_audit_reputation,
+    update_audit_reputation,
+)
+from .violations import (
+    add_violation_points,
+    apply_suspension,
+    determine_suspension_action,
+    get_user_violation_points,
+)
 
 
 def vote_on_report(db, report_id: int, reviewer_user_id: str, vote_type: str) -> Dict:
@@ -32,12 +41,12 @@ def vote_on_report(db, report_id: int, reviewer_user_id: str, vote_type: str) ->
     Returns:
         Dict with success status
     """
-    if vote_type not in ['approve', 'reject']:
+    if vote_type not in ["approve", "reject"]:
         return {"success": False, "error": "invalid_vote_type"}
 
     # Check premium membership
     membership = get_user_membership(reviewer_user_id)
-    if not membership.get('is_premium', False):
+    if not membership.get("is_premium", False):
         return {"success": False, "error": "premium_membership_required"}
 
     # Get reputation for vote weight
@@ -48,14 +57,17 @@ def vote_on_report(db, report_id: int, reviewer_user_id: str, vote_type: str) ->
     c = conn.cursor()
     try:
         # Check report status
-        c.execute('SELECT review_status, reporter_user_id FROM content_reports WHERE id = %s', (report_id,))
+        c.execute(
+            "SELECT review_status, reporter_user_id FROM content_reports WHERE id = %s",
+            (report_id,),
+        )
         row = c.fetchone()
         if not row:
             return {"success": False, "error": "report_not_found"}
 
         review_status, reporter_user_id = row
 
-        if review_status != 'pending':
+        if review_status != "pending":
             return {"success": False, "error": "report_not_pending"}
 
         # Prevent reporter from voting on their own report
@@ -63,45 +75,65 @@ def vote_on_report(db, report_id: int, reviewer_user_id: str, vote_type: str) ->
             return {"success": False, "error": "cannot_vote_on_own_report"}
 
         # Check for existing vote
-        c.execute('''
+        c.execute(
+            """
             SELECT id, vote_type FROM report_review_votes
             WHERE report_id = %s AND reviewer_user_id = %s
-        ''', (report_id, reviewer_user_id))
+        """,
+            (report_id, reviewer_user_id),
+        )
 
         existing = c.fetchone()
         if existing:
-            return {"success": False, "error": "already_voted", "existing_vote": existing[1]}
+            return {
+                "success": False,
+                "error": "already_voted",
+                "existing_vote": existing[1],
+            }
 
         # Record the vote
-        c.execute('''
+        c.execute(
+            """
             INSERT INTO report_review_votes
             (report_id, reviewer_user_id, vote_type, vote_weight, created_at)
             VALUES (%s, %s, %s, %s, NOW())
             RETURNING id
-        ''', (report_id, reviewer_user_id, vote_type, vote_weight))
+        """,
+            (report_id, reviewer_user_id, vote_type, vote_weight),
+        )
 
         vote_id = c.fetchone()[0]
 
         # Update report vote counts
-        if vote_type == 'approve':
-            c.execute('''
+        if vote_type == "approve":
+            c.execute(
+                """
                 UPDATE content_reports
                 SET approve_count = approve_count + 1, updated_at = NOW()
                 WHERE id = %s
-            ''', (report_id,))
+            """,
+                (report_id,),
+            )
         else:
-            c.execute('''
+            c.execute(
+                """
                 UPDATE content_reports
                 SET reject_count = reject_count + 1, updated_at = NOW()
                 WHERE id = %s
-            ''', (report_id,))
+            """,
+                (report_id,),
+            )
 
         conn.commit()
 
         # Log the activity
         log_activity(
-            db, reviewer_user_id, 'review_vote', 'report', report_id,
-            {"vote_type": vote_type, "vote_weight": vote_weight}
+            db,
+            reviewer_user_id,
+            "review_vote",
+            "report",
+            report_id,
+            {"vote_type": vote_type, "vote_weight": vote_weight},
         )
 
         return {"success": True, "vote_id": vote_id}
@@ -127,14 +159,17 @@ def get_report_votes(db, report_id: int) -> List[Dict]:
     conn = db or get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute(
+            """
             SELECT rrv.id, rrv.reviewer_user_id, rrv.vote_type,
                    rrv.vote_weight, rrv.created_at, u.username
             FROM report_review_votes rrv
             LEFT JOIN users u ON rrv.reviewer_user_id = u.user_id
             WHERE rrv.report_id = %s
             ORDER BY rrv.created_at ASC
-        ''', (report_id,))
+        """,
+            (report_id,),
+        )
 
         rows = c.fetchall()
 
@@ -142,16 +177,18 @@ def get_report_votes(db, report_id: int) -> List[Dict]:
         for r in rows:
             created_at = r[4]
             if created_at:
-                created_at = created_at.strftime('%Y-%m-%d %H:%M:%S')
+                created_at = created_at.strftime("%Y-%m-%d %H:%M:%S")
 
-            result.append({
-                "id": r[0],
-                "reviewer_user_id": r[1],
-                "vote_type": r[2],
-                "vote_weight": r[3],
-                "created_at": created_at,
-                "reviewer_username": r[5]
-            })
+            result.append(
+                {
+                    "id": r[0],
+                    "reviewer_user_id": r[1],
+                    "vote_type": r[2],
+                    "vote_weight": r[3],
+                    "created_at": created_at,
+                    "reviewer_username": r[5],
+                }
+            )
 
         return result
     finally:
@@ -173,14 +210,17 @@ def check_report_consensus(db, report_id: int) -> Dict:
     conn = db or get_connection()
     c = conn.cursor()
     try:
-        c.execute('''
+        c.execute(
+            """
             SELECT
                 (approve_count + reject_count) as total_votes,
                 approve_count,
                 reject_count
             FROM content_reports
             WHERE id = %s
-        ''', (report_id,))
+        """,
+            (report_id,),
+        )
 
         row = c.fetchone()
         if not row:
@@ -194,7 +234,7 @@ def check_report_consensus(db, report_id: int) -> Dict:
                 "has_consensus": False,
                 "total_votes": total_votes,
                 "minimum_votes": MIN_VOTES_REQUIRED,
-                "reason": "insufficient_votes"
+                "reason": "insufficient_votes",
             }
 
         # Calculate approve rate
@@ -208,7 +248,7 @@ def check_report_consensus(db, report_id: int) -> Dict:
                 "total_votes": total_votes,
                 "approve_count": approve_count,
                 "reject_count": reject_count,
-                "approve_rate": approve_rate
+                "approve_rate": approve_rate,
             }
         elif approve_rate <= CONSENSUS_REJECT_THRESHOLD:
             return {
@@ -217,7 +257,7 @@ def check_report_consensus(db, report_id: int) -> Dict:
                 "total_votes": total_votes,
                 "approve_count": approve_count,
                 "reject_count": reject_count,
-                "approve_rate": approve_rate
+                "approve_rate": approve_rate,
             }
         else:
             return {
@@ -226,15 +266,20 @@ def check_report_consensus(db, report_id: int) -> Dict:
                 "approve_count": approve_count,
                 "reject_count": reject_count,
                 "approve_rate": approve_rate,
-                "reason": "no_clear_consensus"
+                "reason": "no_clear_consensus",
             }
     finally:
         if not db:
             conn.close()
 
 
-def finalize_report(db, report_id: int, decision: str, violation_level: str = None,
-                    processed_by: str = None) -> Dict:
+def finalize_report(
+    db,
+    report_id: int,
+    decision: str,
+    violation_level: str = None,
+    processed_by: str = None,
+) -> Dict:
     """
     Finalize a report with a decision
 
@@ -248,17 +293,20 @@ def finalize_report(db, report_id: int, decision: str, violation_level: str = No
     Returns:
         Dict with success status
     """
-    if decision not in ['approved', 'rejected']:
+    if decision not in ["approved", "rejected"]:
         return {"success": False, "error": "invalid_decision"}
 
     conn = db or get_connection()
     c = conn.cursor()
     try:
         # Get report details
-        c.execute('''
+        c.execute(
+            """
             SELECT reporter_user_id, content_type, content_id
             FROM content_reports WHERE id = %s
-        ''', (report_id,))
+        """,
+            (report_id,),
+        )
 
         row = c.fetchone()
         if not row:
@@ -272,24 +320,30 @@ def finalize_report(db, report_id: int, decision: str, violation_level: str = No
         points = 0
         action_taken = None
 
-        if decision == 'approved' and violation_level:
+        if decision == "approved" and violation_level:
             points = VIOLATION_LEVELS.get(violation_level, 0)
             action_taken = determine_suspension_action(
-                get_user_violation_points(conn, author_id).get('points', 0) + points
+                get_user_violation_points(conn, author_id).get("points", 0) + points
             )
 
             # Add violation points
             add_violation_points(
-                conn, author_id, points, violation_level,
-                'report', report_id, processed_by
+                conn,
+                author_id,
+                points,
+                violation_level,
+                "report",
+                report_id,
+                processed_by,
             )
 
             # Apply suspension if needed
-            if action_taken and action_taken != 'warning':
+            if action_taken and action_taken != "warning":
                 apply_suspension(conn, author_id, action_taken)
 
         # Update report status
-        c.execute('''
+        c.execute(
+            """
             UPDATE content_reports
             SET review_status = %s,
                 violation_level = %s,
@@ -298,22 +352,28 @@ def finalize_report(db, report_id: int, decision: str, violation_level: str = No
                 processed_by = %s,
                 updated_at = NOW()
             WHERE id = %s
-        ''', (decision, violation_level, points, action_taken, processed_by, report_id))
+        """,
+            (decision, violation_level, points, action_taken, processed_by, report_id),
+        )
 
         conn.commit()
 
         # Update reviewer reputations
         votes = get_report_votes(conn, report_id)
         for vote in votes:
-            was_correct = (vote['vote_type'] == 'approve') if decision == 'approved' else (vote['vote_type'] == 'reject')
-            update_audit_reputation(conn, vote['reviewer_user_id'], was_correct)
+            was_correct = (
+                (vote["vote_type"] == "approve")
+                if decision == "approved"
+                else (vote["vote_type"] == "reject")
+            )
+            update_audit_reputation(conn, vote["reviewer_user_id"], was_correct)
 
         return {
             "success": True,
             "decision": decision,
             "violation_level": violation_level,
             "points_assigned": points,
-            "action_taken": action_taken
+            "action_taken": action_taken,
         }
     except Exception as e:
         conn.rollback()

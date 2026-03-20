@@ -1,14 +1,16 @@
-from typing import Optional
-from datetime import datetime, timedelta, timezone
 import logging
+import os
+from datetime import datetime, timedelta, timezone
+from typing import Optional
+
 import jwt
-from jwt import InvalidTokenError
+from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-import os
-from dotenv import load_dotenv
-from core.database.user import _normalize_membership_tier
+from jwt import InvalidTokenError
+
 from api.utils import run_sync
+from core.database.user import _normalize_membership_tier
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -48,8 +50,10 @@ def _get_key_manager():
     global _key_manager
     if _key_manager is None:
         from core.key_rotation import get_key_manager
+
         _key_manager = get_key_manager()
     return _key_manager
+
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/user/login", auto_error=False)
 
@@ -65,7 +69,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(
+            minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+        )
 
     to_encode.update({"exp": expire})
 
@@ -80,6 +86,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
         encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
     return encoded_jwt
+
 
 def verify_token(token: str) -> dict:
     """
@@ -108,6 +115,7 @@ def verify_token(token: str) -> dict:
                 detail="Could not validate credentials",
             )
 
+
 async def get_current_user_id(token: str = Depends(oauth2_scheme)) -> str:
     """
     Validate the token and return the user_id.
@@ -127,7 +135,9 @@ async def get_current_user_id(token: str = Depends(oauth2_scheme)) -> str:
     try:
         if _use_key_rotation():
             key_manager = _get_key_manager()
-            payload = key_manager.verify_token_with_any_key(token, algorithms=[ALGORITHM])
+            payload = key_manager.verify_token_with_any_key(
+                token, algorithms=[ALGORITHM]
+            )
             if payload is None:
                 raise credentials_exception
         else:
@@ -140,6 +150,7 @@ async def get_current_user_id(token: str = Depends(oauth2_scheme)) -> str:
     except (InvalidTokenError, HTTPException):
         raise credentials_exception
 
+
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     """
     Validate token and return full user dict.
@@ -147,11 +158,14 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     """
     from core.config import TEST_MODE, TEST_USER
     from core.database.user import get_user_by_id
+
     # 安全檢查：禁止在生產環境啟用 TEST_MODE
     if TEST_MODE:
         env = os.getenv("ENVIRONMENT", "development").lower()
         if env in ["production", "prod"]:
-            raise ValueError("🚨 SECURITY ALERT: TEST_MODE must not be enabled in production environment")
+            raise ValueError(
+                "🚨 SECURITY ALERT: TEST_MODE must not be enabled in production environment"
+            )
 
     user_id = None
 
@@ -175,19 +189,22 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     if user_id:
         try:
             user = await run_sync(get_user_by_id, user_id)
-            
+
             if user:
                 if not user.get("is_active", True):
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
-                        detail="Account has been suspended"
+                        detail="Account has been suspended",
                     )
                 return user
         except HTTPException:
             raise
         except Exception:
             # DB fetch fails or user doesn't exist
-            logger.warning("Failed to load current user from DB; falling back by mode", exc_info=True)
+            logger.warning(
+                "Failed to load current user from DB; falling back by mode",
+                exc_info=True,
+            )
 
     # If we are in TEST_MODE, return mock test user when DB fetch fails or no token
     if TEST_MODE:
@@ -197,7 +214,9 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
         # 🔧 Test mode: Support membership tier switching for testing
         # IMPORTANT: Use os.environ.get() instead of os.getenv() to get current value
         # os.getenv() caches at process startup, but os.environ.get() reads current value
-        test_tier = _normalize_membership_tier(os.environ.get("TEST_USER_TIER", "premium"))
+        test_tier = _normalize_membership_tier(
+            os.environ.get("TEST_USER_TIER", "premium")
+        )
 
         return {
             "user_id": user_id,
@@ -207,7 +226,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
             "membership_tier": test_tier,  # ✅ Add membership_tier for testing
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
-    
+
     # If not in TEST_MODE and no valid user found
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -222,12 +241,10 @@ async def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
     """
     if current_user.get("role") != "admin":
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
         )
     if not current_user.get("is_active", True):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Account is disabled"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Account is disabled"
         )
     return current_user
