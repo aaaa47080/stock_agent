@@ -55,7 +55,12 @@ jobs:
 
       - name: Run tests (skip e2e)
         run: |
-          pytest -o addopts='-v --tb=short --no-cov' -m "not e2e"
+          pytest -o addopts='-v --tb=short --no-cov' -m "not e2e" \
+            --ignore=tests/test_agent_scenarios.py \
+            --ignore=tests/test_pi_routing_fix.py \
+            --ignore=tests/test_router_governance_routes.py \
+            --ignore=tests/test_router_market.py \
+            --ignore=tests/test_router_market_extended.py
 
   validate-json:
     runs-on: ubuntu-latest

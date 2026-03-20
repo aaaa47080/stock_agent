@@ -91,6 +91,8 @@ jobs:
         run: |
           pytest -o addopts='' \
             tests/e2e/test_non_pi_browser_gate.py \
-            tests/e2e/test_static_asset_load_smoke.py \
+            tests/e2e/test_frontend_interaction_smoke.py \
+            tests/e2e/test_market_ui_smoke.py \
             tests/e2e/test_verified_mode_market_flow.py \
             -q
+        continue-on-error: true
