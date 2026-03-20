@@ -21,7 +21,6 @@ from core.database import (
     check_greeting_limit,
     check_and_increment_greeting,
     increment_message_count,
-    increment_greeting_count,
     send_greeting,
     search_messages,
     get_user_membership,
@@ -32,7 +31,6 @@ from core.database import (
     is_blocked,
     update_last_active,
 )
-from fastapi import Depends
 from api.deps import get_current_user, verify_token
 from api.utils import logger, run_sync
 from api.middleware.rate_limit import limiter

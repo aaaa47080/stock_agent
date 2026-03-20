@@ -30,15 +30,14 @@ RATE_LIMITED_ENDPOINTS = {
 
 @pytest.fixture(scope="module")
 def route_limits():
-    import api.routers.user
-    import api.routers.premium
-    import api.routers.forum.tips
-    import api.routers.forum.posts
-    import api.routers.forum.comments
-    import api.routers.messages
-    import api.routers.governance
-    import api.routers.analysis
-    import api.routers.system
+    # Import router modules for side effects (rate limit registration)
+    import api.routers.user  # noqa: F401
+    import api.routers.premium  # noqa: F401
+    import api.routers.forum.tips  # noqa: F401
+    import api.routers.forum.posts  # noqa: F401
+    import api.routers.forum.comments  # noqa: F401
+    import api.routers.messages  # noqa: F401
+    import api.routers.governance  # noqa: F401
     from api.middleware.rate_limit import limiter
     return limiter._route_limits
 
@@ -47,99 +46,99 @@ class TestAuthRateLimits:
     def test_dev_login_5_per_minute(self, route_limits):
         limits = route_limits.get("api.routers.user.dev_login", [])
         assert len(limits) >= 1
-        assert "5 per 1 minute" in [str(l.limit) for l in limits]
+        assert "5 per 1 minute" in [str(r.limit) for r in limits]
 
     def test_pi_sync_5_per_minute(self, route_limits):
         limits = route_limits.get("api.routers.user.sync_pi_user", [])
         assert len(limits) >= 1
-        assert "5 per 1 minute" in [str(l.limit) for l in limits]
+        assert "5 per 1 minute" in [str(r.limit) for r in limits]
 
     def test_refresh_token_5_per_minute(self, route_limits):
         limits = route_limits.get("api.routers.user.refresh_token", [])
         assert len(limits) >= 1
-        assert "5 per 1 minute" in [str(l.limit) for l in limits]
+        assert "5 per 1 minute" in [str(r.limit) for r in limits]
 
 
 class TestPaymentRateLimits:
     def test_premium_upgrade_10_per_minute(self, route_limits):
         limits = route_limits.get("api.routers.premium.upgrade_to_premium", [])
         assert len(limits) >= 1
-        assert "10 per 1 minute" in [str(l.limit) for l in limits]
+        assert "10 per 1 minute" in [str(r.limit) for r in limits]
 
     def test_payment_approve_10_per_minute(self, route_limits):
         limits = route_limits.get("api.routers.user.approve_payment", [])
         assert len(limits) >= 1
-        assert "10 per 1 minute" in [str(l.limit) for l in limits]
+        assert "10 per 1 minute" in [str(r.limit) for r in limits]
 
     def test_payment_complete_10_per_minute(self, route_limits):
         limits = route_limits.get("api.routers.user.complete_payment", [])
         assert len(limits) >= 1
-        assert "10 per 1 minute" in [str(l.limit) for l in limits]
+        assert "10 per 1 minute" in [str(r.limit) for r in limits]
 
     def test_tip_post_10_per_minute(self, route_limits):
         limits = route_limits.get("api.routers.forum.tips.tip_post", [])
         assert len(limits) >= 1
-        assert "10 per 1 minute" in [str(l.limit) for l in limits]
+        assert "10 per 1 minute" in [str(r.limit) for r in limits]
 
 
 class TestApiKeyRateLimits:
     def test_api_key_full_10_per_minute(self, route_limits):
         limits = route_limits.get("api.routers.user.get_user_api_key_full_endpoint", [])
         assert len(limits) >= 1
-        assert "10 per 1 minute" in [str(l.limit) for l in limits]
+        assert "10 per 1 minute" in [str(r.limit) for r in limits]
 
 
 class TestMessageRateLimits:
     def test_send_message_30_per_minute(self, route_limits):
         limits = route_limits.get("api.routers.messages.send_message_endpoint", [])
         assert len(limits) >= 1
-        assert "30 per 1 minute" in [str(l.limit) for l in limits]
+        assert "30 per 1 minute" in [str(r.limit) for r in limits]
 
     def test_greeting_5_per_minute(self, route_limits):
         limits = route_limits.get("api.routers.messages.send_greeting_endpoint", [])
         assert len(limits) >= 1
-        assert "5 per 1 minute" in [str(l.limit) for l in limits]
+        assert "5 per 1 minute" in [str(r.limit) for r in limits]
 
 
 class TestForumRateLimits:
     def test_create_post_20_per_minute(self, route_limits):
         limits = route_limits.get("api.routers.forum.posts.create_new_post", [])
         assert len(limits) >= 1
-        assert "20 per 1 minute" in [str(l.limit) for l in limits]
+        assert "20 per 1 minute" in [str(r.limit) for r in limits]
 
     def test_add_comment_30_per_minute(self, route_limits):
         limits = route_limits.get("api.routers.forum.comments.add_new_comment", [])
         assert len(limits) >= 1
-        assert "30 per 1 minute" in [str(l.limit) for l in limits]
+        assert "30 per 1 minute" in [str(r.limit) for r in limits]
 
     def test_push_post_30_per_minute(self, route_limits):
         limits = route_limits.get("api.routers.forum.comments.push_post", [])
         assert len(limits) >= 1
-        assert "30 per 1 minute" in [str(l.limit) for l in limits]
+        assert "30 per 1 minute" in [str(r.limit) for r in limits]
 
     def test_boo_post_30_per_minute(self, route_limits):
         limits = route_limits.get("api.routers.forum.comments.boo_post", [])
         assert len(limits) >= 1
-        assert "30 per 1 minute" in [str(l.limit) for l in limits]
+        assert "30 per 1 minute" in [str(r.limit) for r in limits]
 
 
 class TestGovernanceRateLimits:
     def test_report_10_per_hour(self, route_limits):
         limits = route_limits.get("api.routers.governance.submit_report", [])
         assert len(limits) >= 1
-        assert "10 per 1 hour" in [str(l.limit) for l in limits]
+        assert "10 per 1 hour" in [str(r.limit) for r in limits]
 
     def test_vote_30_per_hour(self, route_limits):
         limits = route_limits.get("api.routers.governance.vote_on_pending_report", [])
         assert len(limits) >= 1
-        assert "30 per 1 hour" in [str(l.limit) for l in limits]
+        assert "30 per 1 hour" in [str(r.limit) for r in limits]
 
 
 class TestAnalysisRateLimit:
     def test_analyze_10_per_minute(self, route_limits):
         limits = route_limits.get("api.routers.analysis.analyze_crypto", [])
         assert len(limits) >= 1
-        assert "10 per 1 minute" in [str(l.limit) for l in limits]
+        assert "10 per 1 minute" in [str(r.limit) for r in limits]
 
 
 class TestTotalRateLimitedEndpoints:

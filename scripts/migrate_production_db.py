@@ -186,7 +186,7 @@ def migrate_schema(conn, dry_run=True):
         print(f"   SQL: {op['sql']}")
 
         if dry_run:
-            print(f"   ⏭️  [DRY RUN] 跳過執行")
+            print("   ⏭️  [DRY RUN] 跳過執行")
         else:
             try:
                 cur.execute(op['sql'])

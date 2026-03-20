@@ -1,6 +1,4 @@
 """Tests for context_budget module."""
-from dataclasses import dataclass
-from typing import Optional
 
 
 # ── fixtures ─────────────────────────────────────────────────────────────────
@@ -53,8 +51,8 @@ def test_format_compact_state_omits_empty_sections():
 
 def test_manager_uses_compact_state_when_over_budget():
     """When history > budget and compact state exists, manager returns formatted compact."""
-    from unittest.mock import MagicMock, patch
-    from core.agents.context_budget import CONTEXT_CHAR_BUDGET, CompactPrompt, format_compact_state
+    from unittest.mock import patch
+    from core.agents.context_budget import CONTEXT_CHAR_BUDGET, CompactPrompt
 
     long_history = "用戶: " + "x" * CONTEXT_CHAR_BUDGET
 
@@ -73,7 +71,6 @@ def test_manager_uses_compact_state_when_over_budget():
 
 def test_manager_uses_raw_history_when_under_budget():
     from unittest.mock import patch
-    from core.agents.context_budget import CONTEXT_CHAR_BUDGET
 
     short_history = "用戶: hi\n助手: hello"
 

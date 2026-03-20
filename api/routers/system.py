@@ -24,7 +24,6 @@ from api.deps import get_current_user
 from api.routers.admin import verify_admin_key
 from api.models import UserSettings, KeyValidationRequest
 from api.utils import update_env_file, logger, run_sync
-import api.globals as globals
 from api.middleware.rate_limit import limiter
 
 router = APIRouter()

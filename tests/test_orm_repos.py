@@ -255,15 +255,11 @@ class TestOrmPackageExports:
     """Verify the ORM package exports all key items."""
 
     def test_exports_models(self):
-        from core.orm import (
-            Base, User, Board, Post, ForumComment, Tip,
-            Friendship, Notification, DmConversation, DmMessage,
-            SystemConfig, PriceAlert, MembershipPayment,
-        )
+        from core.orm import Base
         assert Base is not None
 
     def test_exports_session(self):
-        from core.orm import get_async_session, get_engine, close_async_engine
+        from core.orm import get_async_session, get_engine
         assert callable(get_async_session)
         assert callable(get_engine)
 

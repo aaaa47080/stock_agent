@@ -30,7 +30,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from utils.settings import Settings
-from core.database.memory import MemoryStore, get_memory_store
+from core.database.memory import get_memory_store
 
 RESULTS_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "test_results"
@@ -72,8 +72,6 @@ class MemorySystemTester:
 
     async def send_message(self, message: str) -> dict:
         """發送訊息給 Manager"""
-        from langgraph.types import Command
-
         config = {"configurable": {"thread_id": self.session_id}}
         history_text = ""
 
@@ -161,7 +159,7 @@ class MemorySystemTester:
             unique_info = f"我的幸運數字是 {int(time.time()) % 1000}"
             self.log(f"告訴系統: {unique_info}")
 
-            result1 = await self.send_message(unique_info)
+            await self.send_message(unique_info)
             await asyncio.sleep(1)  # 等待處理
 
             # 然後問系統這個資訊
@@ -443,8 +441,6 @@ class MemorySystemTester:
         )
 
         try:
-            from langchain_core.messages import HumanMessage
-
             # 準備測試消息
             messages = [
                 {"role": "user", "content": "我喜歡用技術分析", "timestamp": "2026-01-01 10:00"},
@@ -549,8 +545,6 @@ class MemorySystemTester:
         )
 
         try:
-            from langchain_core.messages import HumanMessage
-
             # 準備大量消息
             messages = []
             topics = ["比特幣", "以太幣", "SOL", "XRP", "DOGE"]

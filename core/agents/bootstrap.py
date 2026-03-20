@@ -4,7 +4,6 @@ Agent V4 Bootstrap.
 Assembles all components: tools → agents → manager.
 Instantiates ToolRegistry and registers tools with permission checks.
 """
-import logging
 import asyncio
 from langchain_core.messages import SystemMessage
 from typing import Optional, Dict
@@ -13,7 +12,6 @@ from .agent_registry import AgentRegistry, AgentMetadata
 from .tool_registry import ToolRegistry, ToolMetadata
 from .prompt_registry import PromptRegistry
 from .manager import ManagerAgent
-from core.config import TEST_MODE
 from core.database.tools import normalize_membership_tier
 
 # Import @tool functions — crypto

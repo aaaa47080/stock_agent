@@ -1,5 +1,3 @@
-import os
-
 from core.redis_url import resolve_redis_url
 
 

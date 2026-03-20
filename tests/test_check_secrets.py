@@ -1,10 +1,6 @@
 """Tests for the secret leak detection scanner."""
 
-import subprocess
-import sys
 from unittest.mock import patch, MagicMock
-
-import pytest
 
 
 class TestCheckGitignore:

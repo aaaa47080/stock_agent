@@ -62,7 +62,6 @@ def _fetch_commodity_sync(symbol: str, name: str, unit: str) -> dict | None:
 def _fetch_technicals_sync(symbol: str) -> dict:
     """Compute RSI(14) and MACD from daily history."""
     try:
-        import pandas as pd
         ticker = yf.Ticker(symbol)
         hist = ticker.history(period="3mo", interval="1d")
         if hist.empty or len(hist) < 15:

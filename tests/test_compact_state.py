@@ -1,5 +1,5 @@
 """Tests for CompactedSessionState read/write in MemoryStore."""
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import orjson
 import pytest
 
@@ -102,8 +102,8 @@ def test_read_compact_state_returns_none_when_missing():
 
 def test_compact_state_isolated_by_session():
     from core.database.memory import MemoryStore, _compact_redis_key
-    store_a = MemoryStore("user-cs-5", session_id="sess-a")
-    store_b = MemoryStore("user-cs-5", session_id="sess-b")
+    _store_a = MemoryStore("user-cs-5", session_id="sess-a")
+    _store_b = MemoryStore("user-cs-5", session_id="sess-b")
     assert _compact_redis_key("user-cs-5", "sess-a") != _compact_redis_key("user-cs-5", "sess-b")
 
 
@@ -112,7 +112,7 @@ def test_compact_state_isolated_by_session():
 def test_consolidate_writes_compact_state():
     """When LLM returns compact_state in consolidation response, it is stored."""
     import asyncio
-    from unittest.mock import MagicMock, patch
+    from unittest.mock import MagicMock
     from langchain_core.messages import AIMessage
 
     llm_response = AIMessage(content="""{

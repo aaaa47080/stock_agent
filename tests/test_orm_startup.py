@@ -1,6 +1,5 @@
 """Tests for ORM auto-migration and startup integration."""
 import inspect
-import pytest
 from unittest.mock import patch
 
 
@@ -68,7 +67,7 @@ class TestAutoMigrateSafety:
         assert "ADD COLUMN" in src
         # Should NOT have ALTER TABLE ... TYPE (modifying existing columns)
         lines = src.split("\n")
-        alter_lines = [l for l in lines if "ALTER TABLE" in l and "ADD COLUMN" not in l]
+        alter_lines = [line for line in lines if "ALTER TABLE" in line and "ADD COLUMN" not in line]
         assert not alter_lines, f"Found unsafe ALTER TABLE lines: {alter_lines}"
 
     def test_uses_if_not_exists(self):

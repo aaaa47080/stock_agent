@@ -1,13 +1,11 @@
 """Tests for manager experience recording + hint injection."""
 import asyncio
-from unittest.mock import MagicMock, patch, AsyncMock
-import pytest
 
 
 def test_record_experience_background_called_after_track():
     """_track_conversation fires _record_experience_background as a background task."""
-    from core.agents.manager import ManagerAgent
     from unittest.mock import MagicMock, patch
+    from core.agents.manager import ManagerAgent
 
     manager = MagicMock(spec=ManagerAgent)
     manager.user_id = "u1"

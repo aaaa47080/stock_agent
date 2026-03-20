@@ -8,7 +8,6 @@ instead.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 # Total chars allocated to the history slot in the manager intent-understanding prompt.
 # Derived from: typical model context ~128k tokens ≈ 500k chars; history slot ≤ 1.2% of that.

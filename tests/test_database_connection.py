@@ -212,45 +212,10 @@ class TestInitConnectionPool:
 
                     with patch("core.database.connection.logger"):
                         with patch("time.sleep"):
-                            with pytest.raises(OperationalError):
+                            with pytest.raises(OperationalError) as exc_info:
                                 init_connection_pool()
 
-                assert "Database connection" in str(exc_info.value)
-
-    def test_retry_on_operational_error(self):
-        """Test retry on OperationalError"""
-        with patch("core.database.connection.DATABASE_URL", "postgresql://test"):
-            with patch("core.database.connection._connection_pool", None):
-                with patch("psycopg2.pool.ThreadedConnectionPool") as mock_pool_class:
-                    # First call fails, second succeeds
-                    from psycopg2 import OperationalError
-
-                    mock_pool = MagicMock()
-                    mock_pool_class.side_effect = [
-                        OperationalError("Connection failed"),
-                        mock_pool,
-                    ]
-
-                    with patch("builtins.print"):
-                        with patch("time.sleep"):
-                            result = init_connection_pool()
-
-                    assert result == mock_pool
-                    assert mock_pool_class.call_count == 2
-
-    def test_raises_after_max_retries(self):
-        """Test that error is raised after max retries"""
-        with patch("core.database.connection.DATABASE_URL", "postgresql://test"):
-            with patch("core.database.connection._connection_pool", None):
-                with patch("psycopg2.pool.ThreadedConnectionPool") as mock_pool_class:
-                    from psycopg2 import OperationalError
-
-                    mock_pool_class.side_effect = OperationalError("Connection failed")
-
-                    with patch("builtins.print"):
-                        with patch("time.sleep"):
-                            with pytest.raises(OperationalError):
-                                init_connection_pool()
+                    assert "Database connection" in str(exc_info.value)
 
 
 class TestGetConnection:

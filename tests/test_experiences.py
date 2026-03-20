@@ -1,6 +1,5 @@
 """Tests for ExperienceStore — task_experiences + tool_execution_stats."""
 from unittest.mock import patch, MagicMock
-import pytest
 
 
 # ── record_experience ─────────────────────────────────────────────────────────
@@ -21,7 +20,7 @@ def test_record_experience_calls_db_execute():
 
 
 def test_record_experience_maps_quality_string_to_float():
-    from core.database.experiences import ExperienceStore, _quality_to_float
+    from core.database.experiences import _quality_to_float
     assert _quality_to_float("pass") == 1.0
     assert _quality_to_float("fail") == 0.0
     assert _quality_to_float(None) is None

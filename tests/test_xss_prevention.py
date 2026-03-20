@@ -132,7 +132,7 @@ class TestAIContentEscaping:
         summary_patterns = re.findall(rf'\$\{{[^}}]*{field}[^}}]*\}}', content)
         for pattern in summary_patterns:
             # Check if this specific pattern uses escapeHtml
-            escaped = f"escapeHtml(" in content
+            escaped = "escapeHtml(" in content
             assert escaped, f"{filepath}: {field} is rendered without escapeHtml"
 
 

@@ -1,8 +1,5 @@
 """Tests for friends router security: user_id derived from token, not client."""
 
-from unittest.mock import MagicMock, patch, AsyncMock
-import pytest
-
 
 class TestFriendsRouterNoClientUserId:
     """Verify no endpoint accepts user_id from the client."""

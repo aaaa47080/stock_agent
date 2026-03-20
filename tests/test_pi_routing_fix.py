@@ -274,7 +274,7 @@ print(f"{'='*60}")
 
 if failed:
     print("\n失敗項目：")
-    for s, l, d in results:
+    for s, _line, d in results:
         if s == FAIL:
-            print(f"  {s} {l}  {d}")
+            print(f"  {s} {_line}  {d}")
     sys.exit(1)

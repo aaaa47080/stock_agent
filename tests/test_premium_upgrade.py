@@ -1,6 +1,5 @@
 """Tests for premium membership upgrade endpoint."""
 
-import os
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 

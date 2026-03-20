@@ -77,7 +77,7 @@ class TestDeadColumnsRemoved:
         from core.database import schema
         src = inspect.getsource(schema.create_scam_tracker_tables)
         lines = src.split("\n")
-        create_lines = [l for l in lines if "reporter_wallet_address" in l]
+        create_lines = [line for line in lines if "reporter_wallet_address" in line]
         assert not create_lines, "reporter_wallet_address should not be in CREATE TABLE"
 
     def test_reconcile_drops_dead_columns(self):

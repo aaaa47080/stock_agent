@@ -2,7 +2,6 @@
 Tip-related API endpoints
 """
 import os
-from typing import Optional
 
 import httpx
 from fastapi import APIRouter, HTTPException, Query, Depends, Request

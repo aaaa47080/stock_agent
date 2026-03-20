@@ -1,7 +1,5 @@
 """Tests for TEST_MODE hardening and fd leak fixes."""
-import os
 import pytest
-from unittest.mock import MagicMock, patch, mock_open
 
 
 class TestDevLoginConfirmation:

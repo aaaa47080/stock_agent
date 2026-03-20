@@ -1,6 +1,6 @@
 """Tests for schema create/reconcile helpers."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from core.database.schema import (
     format_reconcile_summary,

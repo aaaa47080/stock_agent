@@ -22,7 +22,6 @@
 """
 
 import logging
-import os
 import time
 import json
 import threading
@@ -30,7 +29,6 @@ from typing import Any, Dict, Optional, List
 
 logger = logging.getLogger(__name__)
 from .connection import get_connection
-from core.config import TEST_MODE
 from core.redis_url import resolve_redis_url
 
 # ============================================================================
