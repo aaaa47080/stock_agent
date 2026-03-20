@@ -232,7 +232,9 @@ class TestModelValidation:
 
     def test_query_request_with_empty_message(self):
         """Test QueryRequest with empty message"""
-        request = QueryRequest(message="", user_api_key="key-1234567", user_provider="openai")
+        request = QueryRequest(
+            message="", user_api_key="key-1234567", user_provider="openai"
+        )
         assert request.message == ""
 
     def test_kline_request_with_zero_limit(self):
