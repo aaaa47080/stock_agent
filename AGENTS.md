@@ -2,9 +2,37 @@
 
 This file provides guidelines for AI agents working in this codebase.
 
+## Project Owner
+
+**DANNY** - 專案負責人/老闆，所有最終決策由 DANNY 確認。
+
 ## Project Overview
 
 **Pi Crypto Insight** - AI-Powered Crypto Analysis × Community Ecosystem built with FastAPI, LangGraph, and PostgreSQL.
+
+## Team Roles
+
+團隊成員定義在 `.opencode/agents/` 目錄下，用 Task tool 派發時可指定角色 context。
+
+| Agent | 檔案 | 職責 | 觸發時機 |
+|-------|------|------|---------|
+| Backend Engineer | `agents/backend.md` | API/DB/業務邏輯/系統架構 | 後端功能設計、API 討論、DB schema |
+| Frontend Engineer | `agents/frontend.md` | UI/JS/CSS/i18n/E2E | 前端實作、互動設計、樣式問題 |
+| QA Engineer | `agents/qa.md` | 測試策略/Fixture/覆蓋率 | 測試設計、品質討論、CI 失敗分析 |
+| AI Engineer | `agents/ai-engineer.md` | LangGraph/Prompt/LLM 整合 | Agent 設計、Prompt 最佳化、成本控制 |
+| Product Manager | `agents/pm.md` | 需求分析/優先排序/規格 | 功能規劃、User Story、優先級討論 |
+| DBA | `agents/dba.md` | PostgreSQL 效能/Schema/Migration | 查詢最佳化、索引設計、migration |
+| DevOps Engineer | `agents/devops.md` | CI/CD/Docker/部署/監控 | 部署流程、Docker 設定、GitHub Actions |
+| Code Reviewer | `agents/review.md` | 程式碼審查/安全/品質 | PR review、品質把關 |
+
+### 協作流程
+
+1. **需求階段**: PM 定義 User Story + AC
+2. **設計階段**: Backend + Frontend + AI Engineer 討論架構
+3. **實作階段**: 各工程師負責各自領域，QA 定義測試策略
+4. **Review 階段**: Code Reviewer 審查所有變更
+5. **部署階段**: DevOps 負責 CI/CD 和部署
+6. **決策**: 所有重要決策由 DANNY 最終確認
 
 ---
 
