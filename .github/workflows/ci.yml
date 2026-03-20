@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
+
+      - name: Ruff check
+        run: ruff check .
+
+      - name: Ruff format check
+        run: ruff format --check .
+
+  test:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/test
+      REDIS_URL: memory://
+      SECRET_KEY: test-secret-key-for-testing
+      JWT_SECRET_KEY: test-jwt-secret-key-for-testing-1234567890
+      PI_API_KEY: test-pi-api-key
+      PI_WALLET_PRIVATE_SEED: test-wallet-seed
+      TEST_MODE: "true"
+      TEST_MODE_CONFIRMATION: I_UNDERSTAND_THE_RISKS
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio
+
+      - name: Run tests (skip e2e)
+        run: |
+          pytest -o addopts='-v --tb=short --no-cov' -m "not e2e"
+
+  validate-json:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Validate i18n JSON files
+        run: |
+          python -c "
+          import json, pathlib, sys
+          files = pathlib.Path('web/js/i18n').glob('*.json')
+          errors = []
+          for f in files:
+              try:
+                  json.load(open(f, encoding='utf-8'))
+                  print(f'OK: {f}')
+              except json.JSONDecodeError as e:
+                  errors.append(f'{f}: {e}')
+                  print(f'FAIL: {f} - {e}')
+          if errors:
+              sys.exit(1)
+          print(f'All {len(list(files))} i18n JSON files are valid.')
+          "

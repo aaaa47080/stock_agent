@@ -19,7 +19,7 @@ from .models import (
     PriceAlert,
     MembershipPayment,
 )
-from .session import get_async_session, get_engine, close_async_engine
+from .session import get_async_session, get_engine, close_async_engine, using_session
 from .repositories import user_repo
 
 __all__ = [
@@ -39,5 +39,6 @@ __all__ = [
     "get_async_session",
     "get_engine",
     "close_async_engine",
+    "using_session",
     "user_repo",
 ]

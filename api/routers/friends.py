@@ -2,34 +2,15 @@
 好友功能 API 端點
 """
 from fastapi import APIRouter, HTTPException, Query
-from typing import Optional
 from pydantic import BaseModel, Field
 
-from core.database import (
-    search_users,
-    get_public_user_profile,
-    send_friend_request,
-    accept_friend_request,
-    reject_friend_request,
-    cancel_friend_request,
-    remove_friend,
-    block_user,
-    unblock_user,
-    get_blocked_users,
-    get_friends_list,
-    get_pending_requests_received,
-    get_pending_requests_sent,
-    get_friendship_status,
-    get_friends_count,
-    get_bulk_friendship_status,
-    get_pending_count,
-    get_user_by_id,
-    notify_friend_request,
-    notify_friend_accepted,
-)
-from api.utils import logger, run_sync
-import asyncio
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.orm.friends_repo import friends_repo
+from core.orm.notifications_repo import notifications_repo
+from core.orm.repositories import user_repo
+from core.orm.session import get_async_session
+from api.utils import logger
 from api.deps import get_current_user
 from fastapi import Depends
 from api.routers.notifications import push_notification_to_user
@@ -50,14 +31,19 @@ async def search_users_endpoint(
     q: str = Query(..., min_length=1, max_length=50, description="搜尋關鍵字"),
     limit: int = Query(20, ge=1, le=50),
     current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
 ):
     try:
         user_id = current_user["user_id"]
-        users = await run_sync(lambda: search_users(query=q, limit=limit, exclude_user_id=user_id))
+        users = await friends_repo.search_users(
+            query=q, limit=limit, exclude_user_id=user_id, session=session,
+        )
 
         if users:
             other_ids = [u["user_id"] for u in users]
-            bulk_status = await run_sync(get_bulk_friendship_status, user_id, other_ids)
+            bulk_status = await friends_repo.get_bulk_friendship_status(
+                user_id, other_ids, session=session,
+            )
             for u in users:
                 status = bulk_status.get(u["user_id"])
                 u["friend_status"] = status.get("status") if status else None
@@ -76,10 +62,13 @@ async def search_users_endpoint(
 async def get_user_profile(
     target_user_id: str,
     current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
 ):
     try:
         user_id = current_user["user_id"]
-        profile = await run_sync(lambda: get_public_user_profile(target_user_id, viewer_user_id=user_id))
+        profile = await friends_repo.get_public_user_profile(
+            target_user_id, viewer_user_id=user_id, session=session,
+        )
         if not profile:
             raise HTTPException(status_code=404, detail="用戶不存在")
         return {"success": True, "profile": profile}
@@ -98,17 +87,20 @@ async def get_user_profile(
 async def send_request(
     request: FriendActionRequest,
     current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
 ):
     try:
         user_id = current_user["user_id"]
-        user_exists = await run_sync(get_user_by_id, user_id)
+        user_exists = await user_repo.get_by_id(user_id, session=session)
         if not user_exists:
             raise HTTPException(status_code=401, detail="用戶不存在")
-        target_exists = await run_sync(get_user_by_id, request.target_user_id)
+        target_exists = await user_repo.get_by_id(request.target_user_id, session=session)
         if not target_exists:
             raise HTTPException(status_code=404, detail="目標用戶不存在")
 
-        result = await run_sync(send_friend_request, user_id, request.target_user_id)
+        result = await friends_repo.send_friend_request(
+            user_id, request.target_user_id, session=session,
+        )
 
         if not result["success"]:
             error_messages = {
@@ -125,11 +117,16 @@ async def send_request(
 
         try:
             current_username = current_user.get("username", user_id)
-            notification = await run_sync(
-                notify_friend_request,
-                request.target_user_id,
-                user_id,
-                current_username,
+            notification = await notifications_repo.create_notification(
+                user_id=request.target_user_id,
+                notification_type="friend_request",
+                title="好友請求",
+                body=f"{current_username} 想加你為好友",
+                data={
+                    "from_user_id": user_id,
+                    "from_username": current_username,
+                },
+                session=session,
             )
             if notification:
                 await push_notification_to_user(request.target_user_id, notification)
@@ -149,21 +146,30 @@ async def send_request(
 async def accept_request(
     request: FriendActionRequest,
     current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
 ):
     try:
         user_id = current_user["user_id"]
-        result = await run_sync(accept_friend_request, user_id, request.target_user_id)
+        result = await friends_repo.accept_friend_request(
+            user_id, request.target_user_id, session=session,
+        )
 
         if not result["success"]:
             raise HTTPException(status_code=400, detail="找不到此好友請求")
 
         try:
             current_username = current_user.get("username", user_id)
-            notification = await run_sync(
-                notify_friend_accepted,
-                request.target_user_id,
-                user_id,
-                current_username,
+            notification = await notifications_repo.create_notification(
+                user_id=request.target_user_id,
+                notification_type="friend_request",
+                title="好友已接受",
+                body=f"{current_username} 已接受你的好友請求",
+                data={
+                    "from_user_id": user_id,
+                    "from_username": current_username,
+                    "action": "accepted",
+                },
+                session=session,
             )
             if notification:
                 await push_notification_to_user(request.target_user_id, notification)
@@ -183,10 +189,13 @@ async def accept_request(
 async def reject_request(
     request: FriendActionRequest,
     current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
 ):
     try:
         user_id = current_user["user_id"]
-        result = await run_sync(reject_friend_request, user_id, request.target_user_id)
+        result = await friends_repo.reject_friend_request(
+            user_id, request.target_user_id, session=session,
+        )
 
         if not result["success"]:
             raise HTTPException(status_code=400, detail="找不到此好友請求")
@@ -203,10 +212,13 @@ async def reject_request(
 async def cancel_request(
     request: FriendActionRequest,
     current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
 ):
     try:
         user_id = current_user["user_id"]
-        result = await run_sync(cancel_friend_request, user_id, request.target_user_id)
+        result = await friends_repo.cancel_friend_request(
+            user_id, request.target_user_id, session=session,
+        )
 
         if not result["success"]:
             raise HTTPException(status_code=400, detail="找不到此好友請求")
@@ -223,10 +235,13 @@ async def cancel_request(
 async def remove_friend_endpoint(
     target_user_id: str = Query(..., description="好友的用戶 ID"),
     current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
 ):
     try:
         user_id = current_user["user_id"]
-        result = await run_sync(remove_friend, user_id, target_user_id)
+        result = await friends_repo.remove_friend(
+            user_id, target_user_id, session=session,
+        )
 
         if not result["success"]:
             raise HTTPException(status_code=400, detail="你們不是好友")
@@ -247,10 +262,13 @@ async def remove_friend_endpoint(
 async def block_user_endpoint(
     request: FriendActionRequest,
     current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
 ):
     try:
         user_id = current_user["user_id"]
-        result = await run_sync(block_user, user_id, request.target_user_id)
+        result = await friends_repo.block_user(
+            user_id, request.target_user_id, session=session,
+        )
 
         if not result["success"]:
             error_messages = {
@@ -273,10 +291,13 @@ async def block_user_endpoint(
 async def unblock_user_endpoint(
     request: FriendActionRequest,
     current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
 ):
     try:
         user_id = current_user["user_id"]
-        result = await run_sync(unblock_user, user_id, request.target_user_id)
+        result = await friends_repo.unblock_user(
+            user_id, request.target_user_id, session=session,
+        )
 
         if not result["success"]:
             raise HTTPException(status_code=400, detail="此用戶未被封鎖")
@@ -293,10 +314,11 @@ async def unblock_user_endpoint(
 async def get_blocked_list(
     limit: int = Query(default=100, le=500),
     current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
 ):
     try:
         user_id = current_user["user_id"]
-        blocked = await run_sync(get_blocked_users, user_id, limit=limit)
+        blocked = await friends_repo.get_blocked_users(user_id, limit=limit, session=session)
         return {
             "success": True,
             "blocked_users": blocked,
@@ -318,11 +340,14 @@ async def get_friends(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
 ):
     try:
         user_id = current_user["user_id"]
-        friends = await run_sync(lambda: get_friends_list(user_id, limit=limit, offset=offset))
-        count = await run_sync(get_friends_count, user_id)
+        friends = await friends_repo.get_friends_list(
+            user_id, limit=limit, offset=offset, session=session,
+        )
+        count = await friends_repo.get_friends_count(user_id, session=session)
 
         return {
             "success": True,
@@ -341,10 +366,13 @@ async def get_friends(
 async def get_received_requests(
     limit: int = Query(default=100, le=500),
     current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
 ):
     try:
         user_id = current_user["user_id"]
-        requests = await run_sync(get_pending_requests_received, user_id, limit=limit)
+        requests = await friends_repo.get_pending_requests_received(
+            user_id, limit=limit, session=session,
+        )
         return {
             "success": True,
             "requests": requests,
@@ -361,10 +389,13 @@ async def get_received_requests(
 async def get_sent_requests(
     limit: int = Query(default=100, le=500),
     current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
 ):
     try:
         user_id = current_user["user_id"]
-        requests = await run_sync(get_pending_requests_sent, user_id, limit=limit)
+        requests = await friends_repo.get_pending_requests_sent(
+            user_id, limit=limit, session=session,
+        )
         return {
             "success": True,
             "requests": requests,
@@ -381,10 +412,13 @@ async def get_sent_requests(
 async def get_status(
     target_user_id: str,
     current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
 ):
     try:
         user_id = current_user["user_id"]
-        status = await run_sync(get_friendship_status, user_id, target_user_id)
+        status = await friends_repo.get_friendship_status(
+            user_id, target_user_id, session=session,
+        )
         return {
             "success": True,
             "status": status.get("status") if status else None,
@@ -402,11 +436,12 @@ async def get_status(
 @router.get("/api/friends/counts")
 async def get_counts(
     current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
 ):
     try:
         user_id = current_user["user_id"]
-        friends_count = await run_sync(get_friends_count, user_id)
-        pending_received = await run_sync(get_pending_count, user_id)
+        friends_count = await friends_repo.get_friends_count(user_id, session=session)
+        pending_received = await friends_repo.get_pending_count(user_id, session=session)
         return {
             "success": True,
             "friends_count": friends_count,

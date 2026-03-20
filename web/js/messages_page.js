@@ -138,7 +138,7 @@ const MessagesPage = {
             this.conversations = result.conversations || [];
 
             if (this.conversations.length === 0) {
-                listEl.innerHTML = MessagesUI.renderEmptyState('尚無對話', 'message-square');
+                listEl.innerHTML = MessagesUI.renderEmptyState(window.I18n ? window.I18n.t('messages.noConversations') : '尚無對話', 'message-square');
                 if (window.lucide) lucide.createIcons();
                 return;
             }
@@ -264,7 +264,7 @@ const MessagesPage = {
             // 在頂部顯示載入提示
             const loadingIndicator = document.createElement('div');
             loadingIndicator.className = 'text-center py-2 text-textMuted text-sm';
-            loadingIndicator.textContent = '載入中...';
+            loadingIndicator.textContent = window.I18n ? window.I18n.t('messages.loadingMessages') : '載入中...';
             container.insertBefore(loadingIndicator, container.firstChild);
 
             const result = await MessagesAPI.getMessages(
@@ -330,7 +330,7 @@ const MessagesPage = {
         if (!container) return;
 
         if (messages.length === 0) {
-            container.innerHTML = MessagesUI.renderEmptyState('開始對話吧', 'message-circle');
+            container.innerHTML = MessagesUI.renderEmptyState(window.I18n ? window.I18n.t('messages.startConversationHint') : '開始對話吧', 'message-circle');
             if (window.lucide) lucide.createIcons();
             return;
         }
@@ -505,7 +505,7 @@ const MessagesPage = {
             if (typeof showToast === 'function') {
                 window.showToast(e.message, 'error');
             } else {
-                alert(e.message || '發送失敗');
+                alert(e.message || (window.I18n ? window.I18n.t('messages.sendFailed') : '發送失敗'));
             }
         } finally {
             // Restore button state - ensure button is re-enabled
@@ -542,7 +542,7 @@ const MessagesPage = {
      * 收回訊息
      */
     async recallMessage(messageId, btnElement) {
-        if (!confirm('確定要收回這條訊息嗎？對方會看到「對方已收回訊息」')) return;
+        if (!confirm(window.I18n ? window.I18n.t('messages.recallConfirm') : '確定要收回這條訊息嗎？對方會看到「對方已收回訊息」')) return;
 
         if (btnElement) btnElement.disabled = true;
 
@@ -572,7 +572,7 @@ const MessagesPage = {
                         <div id="msg-${messageId}" class="flex justify-end mb-4">
                             <div class="flex flex-col items-end">
                                 <div class="px-4 py-2 rounded-2xl bg-white/5 border border-white/10">
-                                    <span class="text-textMuted/60 text-sm italic">你已收回訊息</span>
+                                    <span class="text-textMuted/60 text-sm italic">${window.I18n ? window.I18n.t('messages.recalledByMe') : '你已收回訊息'}</span>
                                 </div>
                                 <div class="text-xs text-textMuted/50 mt-1 px-1">${timeStr}</div>
                             </div>
@@ -580,14 +580,14 @@ const MessagesPage = {
                     `;
                 }
             } else {
-                throw new Error(data.error || data.detail || '收回失敗');
+                throw new Error(data.error || data.detail || (window.I18n ? window.I18n.t('messages.recallFailed') : '收回失敗'));
             }
         } catch (e) {
             console.error('收回訊息失敗:', e);
             if (typeof showToast === 'function') {
                 window.showToast(e.message, 'error');
             } else {
-                alert(e.message || '收回失敗');
+                alert(e.message || (window.I18n ? window.I18n.t('messages.recallFailed') : '收回失敗'));
             }
             if (btnElement) btnElement.disabled = false;
         }
@@ -657,7 +657,7 @@ const MessagesPage = {
             if (currentLength >= maxLength) {
                 charCount.classList.remove('text-textMuted/50');
                 charCount.classList.add('text-danger');
-                warning.textContent = '已達字數上限';
+                warning.textContent = window.I18n ? window.I18n.t('messages.charLimitReached') : '已達字數上限';
                 warning.classList.remove('hidden');
             } else if (currentLength >= maxLength * 0.9) {
                 charCount.classList.remove('text-textMuted/50');
@@ -822,8 +822,8 @@ const MessagesPage = {
                 const bubbles = document.querySelectorAll('.message-bubble');
                 bubbles.forEach((bubble) => {
                     const status = bubble.querySelector('.text-textMuted:last-child');
-                    if (status && status.textContent.includes('已送達')) {
-                        status.innerHTML = '<span class="text-xs text-success">已讀</span>';
+                    if (status && status.textContent.includes(window.I18n ? window.I18n.t('messages.deliveredStatus') : '已送達')) {
+                        status.innerHTML = '<span class="text-xs text-success">' + (window.I18n ? window.I18n.t('messages.readStatus') : '已讀') + '</span>';
                     }
                 });
             }
@@ -856,7 +856,7 @@ const MessagesPage = {
 
         if (!query || query.length < 2) {
             resultsEl.innerHTML =
-                '<div class="text-center text-textMuted py-8">輸入至少 2 個字元</div>';
+                `<div class="text-center text-textMuted py-8">${window.I18n ? window.I18n.t('messages.searchMinChars') : '輸入至少 2 個字元'}</div>`;
             return;
         }
 
@@ -867,7 +867,7 @@ const MessagesPage = {
 
             if (!result.results || result.results.length === 0) {
                 resultsEl.innerHTML =
-                    '<div class="text-center text-textMuted py-8">找不到符合的訊息</div>';
+                    `<div class="text-center text-textMuted py-8">${window.I18n ? window.I18n.t('messages.noSearchResults') : '找不到符合的訊息'}</div>`;
                 return;
             }
 

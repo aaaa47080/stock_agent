@@ -35,7 +35,7 @@ const MessagesAPI = {
      */
     async getConversations(limit = 50, offset = 0) {
         const userId = this._getUserId();
-        if (!userId) throw new Error('請先登入');
+        if (!userId) throw new Error(window.I18n ? window.I18n.t('messages.loginRequired') : '請先登入');
 
         const token = this._getToken();
         const res = await fetch(
@@ -46,7 +46,7 @@ const MessagesAPI = {
         );
         if (!res.ok) {
             const err = await res.json();
-            throw new Error(err.detail || '取得對話列表失敗');
+            throw new Error(err.detail || (window.I18n ? window.I18n.t('messages.getConversationsFailed') : '取得對話列表失敗'));
         }
         return await res.json();
     },
@@ -56,7 +56,7 @@ const MessagesAPI = {
      */
     async getMessages(conversationId, limit = 50, beforeId = null) {
         const userId = this._getUserId();
-        if (!userId) throw new Error('請先登入');
+        if (!userId) throw new Error(window.I18n ? window.I18n.t('messages.loginRequired') : '請先登入');
 
         let url = `/api/messages/conversation/${conversationId}?user_id=${userId}&limit=${limit}`;
         if (beforeId) url += `&before_id=${beforeId}`;
@@ -67,7 +67,7 @@ const MessagesAPI = {
         });
         if (!res.ok) {
             const err = await res.json();
-            throw new Error(err.detail || '取得訊息失敗');
+            throw new Error(err.detail || (window.I18n ? window.I18n.t('messages.getMessagesFailed') : '取得訊息失敗'));
         }
         return await res.json();
     },
@@ -77,7 +77,7 @@ const MessagesAPI = {
      */
     async getConversationWith(otherUserId, limit = 50) {
         const userId = this._getUserId();
-        if (!userId) throw new Error('請先登入');
+        if (!userId) throw new Error(window.I18n ? window.I18n.t('messages.loginRequired') : '請先登入');
 
         const token = this._getToken();
         const res = await fetch(
@@ -88,7 +88,7 @@ const MessagesAPI = {
         );
         if (!res.ok) {
             const err = await res.json();
-            throw new Error(err.detail || '取得對話失敗');
+            throw new Error(err.detail || (window.I18n ? window.I18n.t('messages.getConversationFailed') : '取得對話失敗'));
         }
         return await res.json();
     },
@@ -98,7 +98,7 @@ const MessagesAPI = {
      */
     async sendMessage(toUserId, content) {
         const userId = this._getUserId();
-        if (!userId) throw new Error('請先登入');
+        if (!userId) throw new Error(window.I18n ? window.I18n.t('messages.loginRequired') : '請先登入');
 
         const res = await fetch(`/api/messages/send?user_id=${userId}`, {
             method: 'POST',
@@ -111,7 +111,7 @@ const MessagesAPI = {
 
         if (!res.ok) {
             const err = await res.json();
-            throw new Error(err.detail || '發送訊息失敗');
+            throw new Error(err.detail || (window.I18n ? window.I18n.t('messages.messageFailed') : '發送訊息失敗'));
         }
         return await res.json();
     },
@@ -121,7 +121,7 @@ const MessagesAPI = {
      */
     async markAsRead(conversationId) {
         const userId = this._getUserId();
-        if (!userId) throw new Error('請先登入');
+        if (!userId) throw new Error(window.I18n ? window.I18n.t('messages.loginRequired') : '請先登入');
 
         const res = await fetch(`/api/messages/read?user_id=${userId}`, {
             method: 'POST',
@@ -134,7 +134,7 @@ const MessagesAPI = {
 
         if (!res.ok) {
             const err = await res.json();
-            throw new Error(err.detail || '標記已讀失敗');
+            throw new Error(err.detail || (window.I18n ? window.I18n.t('messages.markAsReadFailed') : '標記已讀失敗'));
         }
         return await res.json();
     },
@@ -144,7 +144,7 @@ const MessagesAPI = {
      */
     async sendGreeting(toUserId, content) {
         const userId = this._getUserId();
-        if (!userId) throw new Error('請先登入');
+        if (!userId) throw new Error(window.I18n ? window.I18n.t('messages.loginRequired') : '請先登入');
 
         const res = await fetch(`/api/messages/greeting?user_id=${userId}`, {
             method: 'POST',
@@ -157,7 +157,7 @@ const MessagesAPI = {
 
         if (!res.ok) {
             const err = await res.json();
-            throw new Error(err.detail || '發送打招呼失敗');
+            throw new Error(err.detail || (window.I18n ? window.I18n.t('messages.sendGreetingFailed') : '發送打招呼失敗'));
         }
         return await res.json();
     },
@@ -167,7 +167,7 @@ const MessagesAPI = {
      */
     async searchMessages(query, limit = 50) {
         const userId = this._getUserId();
-        if (!userId) throw new Error('請先登入');
+        if (!userId) throw new Error(window.I18n ? window.I18n.t('messages.loginRequired') : '請先登入');
 
         const token = this._getToken();
         const res = await fetch(
@@ -178,7 +178,7 @@ const MessagesAPI = {
         );
         if (!res.ok) {
             const err = await res.json();
-            throw new Error(err.detail || '搜尋訊息失敗');
+            throw new Error(err.detail || (window.I18n ? window.I18n.t('messages.searchMessagesFailed') : '搜尋訊息失敗'));
         }
         return await res.json();
     },
@@ -516,7 +516,7 @@ const MessagesUI = {
         const timeStr = this.formatTime(conv.last_message_at);
 
         // 截斷訊息預覽
-        let preview = conv.last_message || '開始對話';
+        let preview = conv.last_message || (window.I18n ? window.I18n.t('messages.startConversation') : '開始對話');
         if (preview.length > 30) {
             preview = preview.substring(0, 30) + '...';
         }
@@ -578,7 +578,9 @@ const MessagesUI = {
 
         // 如果是已收回的訊息
         if (isRecalled) {
-            const recalledText = isMine ? '你已收回訊息' : '對方已收回訊息';
+            const recalledText = isMine
+                ? (window.I18n ? window.I18n.t('messages.recalledByMe') : '你已收回訊息')
+                : (window.I18n ? window.I18n.t('messages.recalledByOther') : '對方已收回訊息');
             return `
                 <div id="msg-${msg.id}" class="flex ${isMine ? 'justify-end' : 'justify-start'} mb-4" data-message-id="${msg.id}">
                     <div class="flex flex-col ${isMine ? 'items-end' : 'items-start'}">
@@ -595,8 +597,8 @@ const MessagesUI = {
         let readStatus = '';
         if (isMine && isPro) {
             readStatus = msg.is_read
-                ? `<span class="text-xs text-success">已讀</span>`
-                : `<span class="text-xs text-textMuted">已送達</span>`;
+                ? `<span class="text-xs text-success">${window.I18n ? window.I18n.t('messages.readStatus') : '已讀'}</span>`
+                : `<span class="text-xs text-textMuted">${window.I18n ? window.I18n.t('messages.deliveredStatus') : '已送達'}</span>`;
         }
 
         // 打招呼訊息的標記
@@ -610,7 +612,7 @@ const MessagesUI = {
             ? `
             <button onclick="event.stopPropagation(); MessagesPage.recallMessage(${msg.id}, this)"
                     class="p-1 text-textMuted/30 hover:text-warning opacity-0 group-hover:opacity-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="收回訊息">
+                    title="${window.I18n ? window.I18n.t('messages.recallTitle') : '收回訊息'}">
                 <i data-lucide="undo-2" class="w-3.5 h-3.5"></i>
             </button>
         `
@@ -681,7 +683,7 @@ const MessagesUI = {
                 <div class="flex-1 h-px bg-primary/30"></div>
                 <span class="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-1">
                     <i data-lucide="arrow-down" class="w-3 h-3"></i>
-                    新訊息
+                    ${window.I18n ? window.I18n.t('messages.newMessages') : '新訊息'}
                 </span>
                 <div class="flex-1 h-px bg-primary/30"></div>
             </div>

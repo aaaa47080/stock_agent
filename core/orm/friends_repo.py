@@ -19,8 +19,8 @@ from typing import List, Optional
 from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .models import Friendship, User
-from .session import get_async_session
+from .models import Friendship, Post, User
+from .session import using_session
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,7 @@ class FriendsRepository:
         if exclude_user_id:
             stmt = stmt.where(User.user_id != exclude_user_id)
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(stmt)
             rows = result.fetchall()
             return [
@@ -108,7 +108,7 @@ class FriendsRepository:
             .offset(offset)
         )
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(stmt)
             rows = result.fetchall()
             return [
@@ -138,7 +138,7 @@ class FriendsRepository:
             )
         )
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(stmt)
             row = result.scalar_one_or_none()
             if row is None:
@@ -162,7 +162,7 @@ class FriendsRepository:
         if from_user_id == to_user_id:
             return {"success": False, "error": "cannot_add_self"}
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             stmt = select(Friendship).where(
                 or_(
                     (Friendship.user_id == from_user_id)
@@ -238,7 +238,7 @@ class FriendsRepository:
             .values(status="accepted", updated_at=datetime.now(timezone.utc))
         )
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(stmt)
             if result.rowcount == 0:
                 return {"success": False, "error": "request_not_found"}
@@ -260,7 +260,7 @@ class FriendsRepository:
             .values(status="rejected", updated_at=datetime.now(timezone.utc))
         )
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(stmt)
             if result.rowcount == 0:
                 return {"success": False, "error": "request_not_found"}
@@ -282,7 +282,7 @@ class FriendsRepository:
             Friendship.status == "accepted",
         )
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(stmt)
             if result.rowcount == 0:
                 return {"success": False, "error": "not_friends"}
@@ -297,7 +297,7 @@ class FriendsRepository:
         if user_id == blocked_user_id:
             return {"success": False, "error": "cannot_block_self"}
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             await s.execute(
                 delete(Friendship).where(
                     or_(
@@ -332,7 +332,7 @@ class FriendsRepository:
             Friendship.status == "blocked",
         )
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(stmt)
             if result.rowcount == 0:
                 return {"success": False, "error": "user_not_blocked"}
@@ -360,7 +360,7 @@ class FriendsRepository:
             .limit(limit)
         )
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(stmt)
             rows = result.fetchall()
             return [
@@ -393,7 +393,7 @@ class FriendsRepository:
             .limit(1)
         )
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(stmt)
             return result.scalar_one_or_none() is not None
 
@@ -417,7 +417,7 @@ class FriendsRepository:
             .limit(1)
         )
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(stmt)
             return result.scalar_one_or_none() is not None
 
@@ -438,7 +438,7 @@ class FriendsRepository:
             )
         )
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(stmt)
             return result.scalar_one() or 0
 
@@ -456,9 +456,213 @@ class FriendsRepository:
             )
         )
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(stmt)
             return result.scalar_one() or 0
+
+    async def cancel_friend_request(
+        self,
+        user_id: str,
+        target_user_id: str,
+        session: AsyncSession | None = None,
+    ) -> dict:
+        stmt = delete(Friendship).where(
+            Friendship.user_id == user_id,
+            Friendship.friend_id == target_user_id,
+            Friendship.status == "pending",
+        )
+
+        async with using_session(session) as s:
+            result = await s.execute(stmt)
+            if result.rowcount == 0:
+                return {"success": False, "error": "request_not_found"}
+            return {"success": True, "message": "request_cancelled"}
+
+    async def get_pending_requests_received(
+        self,
+        user_id: str,
+        limit: int = 100,
+        session: AsyncSession | None = None,
+    ) -> List[dict]:
+        stmt = (
+            select(
+                User.user_id,
+                User.username,
+                User.pi_username,
+                User.membership_tier,
+                Friendship.id,
+                Friendship.created_at,
+            )
+            .join(User, Friendship.user_id == User.user_id)
+            .where(
+                Friendship.friend_id == user_id,
+                Friendship.status == "pending",
+            )
+            .order_by(Friendship.created_at.desc())
+            .limit(limit)
+        )
+
+        async with using_session(session) as s:
+            result = await s.execute(stmt)
+            rows = result.fetchall()
+            return [
+                {
+                    "user_id": r[0],
+                    "username": r[1],
+                    "pi_username": r[2],
+                    "membership_tier": r[3] or "free",
+                    "request_id": r[4],
+                    "requested_at": _fmt(r[5]),
+                }
+                for r in rows
+            ]
+
+    async def get_pending_requests_sent(
+        self,
+        user_id: str,
+        limit: int = 100,
+        session: AsyncSession | None = None,
+    ) -> List[dict]:
+        stmt = (
+            select(
+                User.user_id,
+                User.username,
+                User.pi_username,
+                User.membership_tier,
+                Friendship.id,
+                Friendship.created_at,
+            )
+            .join(User, Friendship.friend_id == User.user_id)
+            .where(
+                Friendship.user_id == user_id,
+                Friendship.status == "pending",
+            )
+            .order_by(Friendship.created_at.desc())
+            .limit(limit)
+        )
+
+        async with using_session(session) as s:
+            result = await s.execute(stmt)
+            rows = result.fetchall()
+            return [
+                {
+                    "user_id": r[0],
+                    "username": r[1],
+                    "pi_username": r[2],
+                    "membership_tier": r[3] or "free",
+                    "request_id": r[4],
+                    "sent_at": _fmt(r[5]),
+                }
+                for r in rows
+            ]
+
+    async def get_bulk_friendship_status(
+        self,
+        user_id: str,
+        other_user_ids: List[str],
+        session: AsyncSession | None = None,
+    ) -> dict:
+        if not other_user_ids:
+            return {}
+
+        stmt = select(
+            Friendship.id,
+            Friendship.user_id,
+            Friendship.friend_id,
+            Friendship.status,
+            Friendship.created_at,
+            Friendship.updated_at,
+        ).where(
+            or_(
+                (Friendship.user_id == user_id)
+                & (Friendship.friend_id.in_(other_user_ids)),
+                (Friendship.friend_id == user_id)
+                & (Friendship.user_id.in_(other_user_ids)),
+            )
+        )
+
+        async with using_session(session) as s:
+            result = await s.execute(stmt)
+            rows = result.fetchall()
+            result_map = {uid: None for uid in other_user_ids}
+
+            for row in rows:
+                uid1, uid2 = row[1], row[2]
+                other = uid2 if uid1 == user_id else uid1
+                result_map[other] = {
+                    "id": row[0],
+                    "requester_id": row[1],
+                    "target_id": row[2],
+                    "status": row[3],
+                    "created_at": _fmt(row[4]),
+                    "updated_at": _fmt(row[5]),
+                    "is_requester": row[1] == user_id,
+                }
+
+            return result_map
+
+    async def get_public_user_profile(
+        self,
+        target_user_id: str,
+        viewer_user_id: Optional[str] = None,
+        session: AsyncSession | None = None,
+    ) -> Optional[dict]:
+        async with using_session(session) as s:
+            result = await s.execute(
+                select(
+                    User.user_id,
+                    User.username,
+                    User.pi_username,
+                    User.membership_tier,
+                    User.created_at,
+                ).where(User.user_id == target_user_id)
+            )
+            row = result.fetchone()
+            if row is None:
+                return None
+
+            profile = {
+                "user_id": row[0],
+                "username": row[1],
+                "pi_username": row[2],
+                "membership_tier": row[3] or "free",
+                "member_since": _fmt(row[4]),
+                "is_friend": False,
+                "friend_status": None,
+                "is_requester": False,
+            }
+
+            if viewer_user_id and viewer_user_id != target_user_id:
+                friendship = await self.get_friendship_status(
+                    viewer_user_id, target_user_id, s
+                )
+                profile["friend_status"] = (
+                    friendship.get("status") if friendship else None
+                )
+                profile["is_friend"] = (
+                    friendship.get("status") == "accepted" if friendship else False
+                )
+                profile["is_requester"] = (
+                    friendship.get("is_requester") if friendship else False
+                )
+
+            post_count_result = await s.execute(
+                select(func.count())
+                .select_from(Post)
+                .where(Post.user_id == target_user_id, Post.is_hidden == 0)
+            )
+            profile["post_count"] = post_count_result.scalar_one() or 0
+
+            push_count_result = await s.execute(
+                select(func.coalesce(func.sum(Post.push_count), 0))
+                .where(Post.user_id == target_user_id)
+            )
+            profile["total_pushes"] = push_count_result.scalar_one() or 0
+
+            friends_count = await self.get_friends_count(target_user_id, s)
+            profile["friends_count"] = friends_count
+
+            return profile
 
 
 friends_repo = FriendsRepository()

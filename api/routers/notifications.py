@@ -8,15 +8,12 @@ import json
 import asyncio
 import os
 
-from core.database.notifications import (
-    get_notifications,
-    get_unread_count,
-    mark_notification_as_read,
-    mark_all_as_read,
-    delete_notification,
-)
-from core.database.user import get_user_by_id
-from api.utils import logger, run_sync
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from core.orm.notifications_repo import notifications_repo
+from core.orm.repositories import user_repo
+from core.orm.session import get_async_session
+from api.utils import logger
 from api.deps import get_current_user, verify_token
 from fastapi import Depends
 
@@ -77,13 +74,17 @@ async def get_notifications_endpoint(
     offset: int = Query(0, ge=0),
     unread_only: bool = Query(False, description="只返回未讀通知"),
     current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
 ):
     try:
         user_id = current_user["user_id"]
-        notifications = await run_sync(
-            lambda: get_notifications(user_id=user_id, limit=limit, offset=offset, unread_only=unread_only)
+        notifications = await notifications_repo.get_notifications(
+            user_id=user_id, limit=limit, offset=offset,
+            unread_only=unread_only, session=session,
         )
-        unread_count = await run_sync(get_unread_count, user_id)
+        unread_count = await notifications_repo.get_unread_count(
+            user_id, session=session,
+        )
 
         return {
             "success": True,
@@ -101,10 +102,11 @@ async def get_notifications_endpoint(
 @router.get("/api/notifications/unread-count")
 async def get_unread_count_endpoint(
     current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
 ):
     try:
         user_id = current_user["user_id"]
-        count = await run_sync(get_unread_count, user_id)
+        count = await notifications_repo.get_unread_count(user_id, session=session)
         return {"success": True, "count": count}
     except HTTPException:
         raise
@@ -117,10 +119,13 @@ async def get_unread_count_endpoint(
 async def mark_as_read_endpoint(
     notification_id: str,
     current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
 ):
     try:
         user_id = current_user["user_id"]
-        success = await run_sync(mark_notification_as_read, notification_id, user_id)
+        success = await notifications_repo.mark_notification_as_read(
+            notification_id, user_id, session=session,
+        )
         if not success:
             raise HTTPException(status_code=404, detail="通知不存在")
 
@@ -135,10 +140,11 @@ async def mark_as_read_endpoint(
 @router.post("/api/notifications/read-all")
 async def mark_all_as_read_endpoint(
     current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
 ):
     try:
         user_id = current_user["user_id"]
-        count = await run_sync(mark_all_as_read, user_id)
+        count = await notifications_repo.mark_all_as_read(user_id, session=session)
         return {"success": True, "message": f"已標記 {count} 則通知為已讀", "count": count}
     except HTTPException:
         raise
@@ -151,10 +157,13 @@ async def mark_all_as_read_endpoint(
 async def delete_notification_endpoint(
     notification_id: str,
     current_user: dict = Depends(get_current_user),
+    session: AsyncSession = Depends(get_async_session),
 ):
     try:
         user_id = current_user["user_id"]
-        success = await run_sync(delete_notification, notification_id, user_id)
+        success = await notifications_repo.delete_notification(
+            notification_id, user_id, session=session,
+        )
         if not success:
             raise HTTPException(status_code=404, detail="通知不存在")
 
@@ -216,7 +225,7 @@ async def notification_websocket(websocket: WebSocket):
             await websocket.close(code=4004, reason="User ID mismatch")
             return
 
-        user_exists = await run_sync(get_user_by_id, user_id)
+        user_exists = await user_repo.get_by_id(user_id)
         if not user_exists:
             await websocket.send_json({"type": "error", "message": "User not found"})
             await websocket.close(code=4005, reason="User not found")

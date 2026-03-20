@@ -779,10 +779,10 @@ const Components = {
                     <!-- TEST MODE: Tier Switcher (僅測試模式顯示) -->
                     <div id="test-tier-switcher" class="mt-4 pt-4 border-t border-white/5 hidden">
                         <div class="flex items-center justify-between mb-3">
-                            <p class="text-[10px] text-primary uppercase tracking-wider font-bold">🧪 TEST MODE: 切換會員等級</p>
+                            <p class="text-[10px] text-primary uppercase tracking-wider font-bold" data-i18n="settings.testModeSwitchTier">TEST MODE: Switch Membership Tier</p>
                             <span id="current-test-tier" class="px-2 py-0.5 rounded-md bg-primary/20 text-primary text-[10px] font-mono font-bold">PREMIUM</span>
                         </div>
-                        <p class="text-[10px] text-textMuted mb-3">測試不同會員等級的工具權限（不會扣費）</p>
+                        <p class="text-[10px] text-textMuted mb-3" data-i18n="settings.testModeTierDesc">Test different membership tier permissions (no charges)</p>
                         <div class="grid grid-cols-2 gap-2">
                             <button onclick="handleSwitchTestTier('free')" class="test-tier-btn py-2 bg-white/5 hover:bg-textMuted/10 rounded-lg text-xs font-mono transition border border-white/5" data-tier="free">
                                 FREE
@@ -943,7 +943,7 @@ const Components = {
                     <div id="tool-settings-free-notice" class="hidden mb-4 bg-background/50 rounded-xl p-4 border border-white/5">
                         <p class="text-sm text-textMuted leading-relaxed">
                             <i data-lucide="lock" class="w-4 h-4 inline-block mr-1 opacity-70"></i>
-                            升級 Premium 後，可自訂 agent 可使用的工具組合。
+                            <span data-i18n="settings.upgradeForTools">Upgrade to Premium to customize your agent's tool set.</span>
                         </p>
                     </div>
 
@@ -1400,7 +1400,7 @@ const Components = {
                     <a href="/static/forum/create.html"
                         class="bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 transition">
                         <i data-lucide="plus" class="w-4 h-4"></i>
-                        <span class="hidden sm:inline">發文</span>
+                        <span class="hidden sm:inline" data-i18n="forum.createPost">New Post</span>
                     </a>
                 </div>
             </div>
@@ -1411,25 +1411,25 @@ const Components = {
         <aside class="md:col-span-1 space-y-4 overflow-y-auto custom-scrollbar">
             <div class="bg-surface border border-white/5 rounded-2xl p-4">
                 <h3 class="font-bold text-secondary mb-3 flex items-center gap-2">
-                    <i data-lucide="filter" class="w-4 h-4"></i> Filter
+                    <i data-lucide="filter" class="w-4 h-4"></i> <span data-i18n="forum.filter">Filter</span>
                 </h3>
                 <div class="space-y-1">
                     <select id="category-filter"
                         class="appearance-none w-full bg-background border border-white/10 rounded-lg p-2 text-sm text-textMain focus:border-primary outline-none">
-                        <option value="">All Categories</option>
-                        <option value="analysis">Analysis [分析]</option>
-                        <option value="question">Question [請益]</option>
-                        <option value="tutorial">Tutorial [教學]</option>
-                        <option value="news">News [新聞]</option>
-                        <option value="chat">Chat [閒聊]</option>
-                        <option value="insight">Insight [心得]</option>
+                        <option value="" data-i18n="forum.allCategories">All Categories</option>
+                        <option value="analysis" data-i18n="forum.categoryAnalysis">Analysis</option>
+                        <option value="question" data-i18n="forum.categoryQuestion">Question</option>
+                        <option value="tutorial" data-i18n="forum.categoryTutorial">Tutorial</option>
+                        <option value="news" data-i18n="forum.categoryNews">News</option>
+                        <option value="chat" data-i18n="forum.categoryChat">Chat</option>
+                        <option value="insight" data-i18n="forum.categoryInsight">Insight</option>
                     </select>
                 </div>
             </div>
 
             <div class="bg-surface border border-white/5 rounded-2xl p-4">
                 <h3 class="font-bold text-secondary mb-3 flex items-center gap-2">
-                    <i data-lucide="trending-up" class="w-4 h-4"></i> Trending Tags
+                    <i data-lucide="trending-up" class="w-4 h-4"></i> <span data-i18n="forum.trendingTags">Trending Tags</span>
                 </h3>
                 <div id="trending-tags" class="space-y-1">
                     <div class="text-xs text-textMuted">Loading...</div>
@@ -1442,7 +1442,7 @@ const Components = {
             <div id="post-list" class="space-y-3 pr-2">
                 <div class="${LOADING_PLACEHOLDER_CLASS}">
                     <i data-lucide="loader-2" class="${LOADER_ICON_CLASS}"></i>
-                    <span>載入中...</span>
+                    <span data-i18n="common.loading">Loading...</span>
                 </div>
             </div>
         </div>

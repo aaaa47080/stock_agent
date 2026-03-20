@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import os
 import logging
+from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 from urllib.parse import quote
 
@@ -113,3 +114,25 @@ async def close_async_engine():
         _async_engine = None
         _async_session_factory = None
         logger.info("Async SQLAlchemy engine disposed")
+
+
+@asynccontextmanager
+async def using_session(session: AsyncSession | None = None) -> AsyncGenerator[AsyncSession, None]:
+    """
+    Yield a session for repo use.
+
+    If *session* is provided (e.g. from a FastAPI dependency), use it
+    directly without committing or closing — the caller manages the
+    lifecycle.  Otherwise create, commit, and close a new session.
+    """
+    if session is not None:
+        yield session
+    else:
+        factory = get_session_factory()
+        async with factory() as s:
+            try:
+                yield s
+                await s.commit()
+            except Exception:
+                await s.rollback()
+                raise

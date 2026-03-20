@@ -20,7 +20,7 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import Notification
-from .session import get_async_session
+from .session import using_session
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +60,7 @@ class NotificationsRepository:
             is_read=False,
         )
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             s.add(notification)
             await s.flush()
             await s.refresh(notification)
@@ -84,7 +84,7 @@ class NotificationsRepository:
         if unread_only:
             stmt = stmt.where(Notification.is_read.is_(False))
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(stmt)
             rows = result.scalars().all()
             return [_row_to_dict(r) for r in rows]
@@ -103,7 +103,7 @@ class NotificationsRepository:
             )
         )
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(stmt)
             return result.scalar_one() or 0
 
@@ -122,7 +122,7 @@ class NotificationsRepository:
             .values(is_read=True)
         )
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(stmt)
             return result.rowcount > 0
 
@@ -140,7 +140,7 @@ class NotificationsRepository:
             .values(is_read=True)
         )
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(stmt)
             return result.rowcount
 
@@ -155,7 +155,7 @@ class NotificationsRepository:
             Notification.user_id == user_id,
         )
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(stmt)
             return result.rowcount > 0
 
