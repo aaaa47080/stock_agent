@@ -25,18 +25,18 @@ class TestQueryRequest:
         """Test that required fields are enforced"""
         data = {
             "message": "Test message",
-            "user_api_key": "test-key",
+            "user_api_key": "test-key-12345",
             "user_provider": "openai",
         }
         request = QueryRequest(**data)
         assert request.message == "Test message"
-        assert request.user_api_key == "test-key"
+        assert request.user_api_key == "test-key-12345"
         assert request.user_provider == "openai"
 
     def test_default_values(self):
         """Test default values"""
         request = QueryRequest(
-            message="Test", user_api_key="key", user_provider="google_gemini"
+            message="Test", user_api_key="key-1234567", user_provider="google_gemini"
         )
         assert request.analysis_mode == "quick"
         assert request.interval == "1d"  # DEFAULT_INTERVAL
@@ -49,7 +49,7 @@ class TestQueryRequest:
         data = {
             "message": "Test",
             "analysis_mode": "verified",
-            "user_api_key": "key",
+            "user_api_key": "key-1234567",
             "interval": "4h",
             "limit": 200,
             "manual_selection": ["analyst1", "analyst2"],
@@ -232,7 +232,7 @@ class TestModelValidation:
 
     def test_query_request_with_empty_message(self):
         """Test QueryRequest with empty message"""
-        request = QueryRequest(message="", user_api_key="key", user_provider="openai")
+        request = QueryRequest(message="", user_api_key="key-1234567", user_provider="openai")
         assert request.message == ""
 
     def test_kline_request_with_zero_limit(self):
