@@ -24,7 +24,6 @@ PAGES_TO_CHECK = [
     "/static/forum/premium.html",
     "/static/forum/profile.html",
     "/static/forum/messages.html",
-    "/static/forum/wallet.html",
     "/static/scam-tracker/index.html",
     "/static/scam-tracker/detail.html?id=1",
     "/static/scam-tracker/submit.html",

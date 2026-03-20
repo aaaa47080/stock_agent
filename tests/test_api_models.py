@@ -96,14 +96,13 @@ class TestWatchlistRequest:
 
     def test_required_fields(self):
         """Test required fields"""
-        request = WatchlistRequest(user_id="user123", symbol="BTC")
-        assert request.user_id == "user123"
+        request = WatchlistRequest(symbol="BTC")
         assert request.symbol == "BTC"
 
     def test_missing_required_fields(self):
         """Test that missing fields raise ValidationError"""
         with pytest.raises(ValidationError):
-            WatchlistRequest(user_id="user123")  # Missing symbol
+            WatchlistRequest()  # Missing symbol
 
 
 class TestUserRegisterRequest:
