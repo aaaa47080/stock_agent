@@ -135,18 +135,16 @@ def create_scam_report(
         c.execute(
             """
             INSERT INTO scam_reports (
-                scam_wallet_address, blockchain_type,
-                reporter_user_id, reporter_wallet_address, reporter_wallet_masked,
+                scam_wallet_address,
+                reporter_user_id, reporter_wallet_masked,
                 scam_type, description, transaction_hash,
                 verification_status, created_at, updated_at
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
             RETURNING id
         """,
             (
                 scam_wallet_upper,
-                "pi_network",
                 reporter_user_id,
-                reporter_wallet_address.upper(),
                 reporter_wallet_masked,
                 scam_type,
                 description_clean,

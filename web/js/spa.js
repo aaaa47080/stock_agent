@@ -167,7 +167,7 @@ async function executeTabSwitch(tabId, fromPopState = false) {
     // [Sidebar Visibility Logic]
     // Show chat sidebar only in analysis/research tabs where users might want to chat
     // Utility/admin tabs (wallet, assets, friends, forum, safety, settings, admin) don't need it
-    const tabsWithSidebar = ['chat', 'crypto', 'twstock', 'usstock'];
+    const tabsWithSidebar = ['chat'];
     const globalSidebar = document.getElementById('chat-sidebar');
     const sidebarBackdrop = document.getElementById('sidebar-backdrop');
     if (globalSidebar) {

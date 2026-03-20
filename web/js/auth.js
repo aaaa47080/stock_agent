@@ -859,7 +859,7 @@ async function getWalletStatus() {
         const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
         const token = AuthManager.currentUser?.accessToken;
-        const res = await fetch(`/api/user/wallet-status/${uid}`, {
+        const res = await fetch(`/api/user/wallet-status`, {
             signal: controller.signal,
             headers: token ? { Authorization: 'Bearer ' + token } : {},
         });
@@ -1013,7 +1013,7 @@ async function loadPremiumStatus() {
     // ── 後台更新：呼叫 API 取得精確到期日 ──
     try {
         const userId = AuthManager.currentUser.uid || AuthManager.currentUser.user_id;
-        const response = await fetch(`/api/premium/status/${userId}`, {
+        const response = await fetch(`/api/premium/status`, {
             headers: { Authorization: `Bearer ${AuthManager.currentUser.accessToken}` },
         });
         if (!response.ok) return; // 保留快取顯示，不覆蓋

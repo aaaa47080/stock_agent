@@ -711,7 +711,7 @@ def add_comment(
         conn.close()
 
 
-def get_comments(post_id: int, include_hidden: bool = False) -> List[Dict]:
+def get_comments(post_id: int, include_hidden: bool = False, limit: int = 50, offset: int = 0) -> List[Dict]:
     """獲取文章的回覆列表"""
     conn = get_connection()
     c = conn.cursor()
@@ -723,11 +723,13 @@ def get_comments(post_id: int, include_hidden: bool = False) -> List[Dict]:
             LEFT JOIN users u ON c.user_id = u.user_id
             WHERE c.post_id = %s
         """
+        params: List[Any] = [post_id]
         if not include_hidden:
             query += " AND c.is_hidden = 0"
-        query += " ORDER BY c.created_at ASC"
+        query += " ORDER BY c.created_at ASC LIMIT %s OFFSET %s"
+        params.extend([limit, offset])
 
-        c.execute(query, (post_id,))
+        c.execute(query, params)
         rows = c.fetchall()
 
         result = []
@@ -836,7 +838,7 @@ def create_tip(
         conn.close()
 
 
-def get_tips_sent(user_id: str, limit: int = 50) -> List[Dict]:
+def get_tips_sent(user_id: str, limit: int = 50, offset: int = 0) -> List[Dict]:
     """獲取用戶送出的打賞記錄"""
     conn = get_connection()
     c = conn.cursor()
@@ -850,9 +852,9 @@ def get_tips_sent(user_id: str, limit: int = 50) -> List[Dict]:
             LEFT JOIN users u ON t.to_user_id = u.user_id
             WHERE t.from_user_id = %s
             ORDER BY t.created_at DESC
-            LIMIT %s
+            LIMIT %s OFFSET %s
         """,
-            (user_id, limit),
+            (user_id, limit, offset),
         )
         rows = c.fetchall()
 
@@ -878,7 +880,7 @@ def get_tips_sent(user_id: str, limit: int = 50) -> List[Dict]:
         conn.close()
 
 
-def get_tips_received(user_id: str, limit: int = 50) -> List[Dict]:
+def get_tips_received(user_id: str, limit: int = 50, offset: int = 0) -> List[Dict]:
     """獲取用戶收到的打賞記錄"""
     conn = get_connection()
     c = conn.cursor()
@@ -892,9 +894,9 @@ def get_tips_received(user_id: str, limit: int = 50) -> List[Dict]:
             LEFT JOIN users u ON t.from_user_id = u.user_id
             WHERE t.to_user_id = %s
             ORDER BY t.created_at DESC
-            LIMIT %s
+            LIMIT %s OFFSET %s
         """,
-            (user_id, limit),
+            (user_id, limit, offset),
         )
         rows = c.fetchall()
 
@@ -1020,7 +1022,7 @@ def get_user_forum_stats(user_id: str) -> Dict:
         }
 
 
-def get_user_payment_history(user_id: str, limit: int = 50) -> List[Dict]:
+def get_user_payment_history(user_id: str, limit: int = 50, offset: int = 0) -> List[Dict]:
     """獲取用戶的所有付款記錄（包含發文費和會員費）"""
     # 使用 UNION（自動去重）合併發文紀錄和會員購買紀錄
     # 避免同一個 tx_hash 出現兩次
@@ -1051,10 +1053,10 @@ def get_user_payment_history(user_id: str, limit: int = 50) -> List[Dict]:
             WHERE user_id = %s
         ) AS combined
         ORDER BY created_at DESC
-        LIMIT %s
+        LIMIT %s OFFSET %s
     """
 
-    results = DatabaseBase.query_all(query, (user_id, user_id, limit))
+    results = DatabaseBase.query_all(query, (user_id, user_id, limit, offset))
 
     # Format datetime fields
     for r in results:

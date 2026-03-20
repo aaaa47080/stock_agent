@@ -111,6 +111,22 @@ async def lifespan(app: FastAPI):
             logger.warning("⏭️ 應用程式將繼續運行，部分功能可能無法使用")
             return
 
+        # ORM auto-migrate: safely add missing tables/columns
+        try:
+            from core.orm.auto_migrate import auto_migrate
+            from core.orm.session import get_engine
+            orm_engine = get_engine()
+            migration_result = await auto_migrate(orm_engine)
+            created = migration_result["tables_created"]
+            added = migration_result["columns_added"]
+            if created or added:
+                logger.info(
+                    "ORM auto-migrate: %d tables created, %d columns added",
+                    len(created), len(added),
+                )
+        except Exception as e:
+            logger.warning("ORM auto-migrate skipped: %s", e)
+
         # Seed tools catalog (idempotent — skips existing rows)
         try:
             from core.database.tools import seed_tools_catalog
@@ -221,6 +237,14 @@ async def lifespan(app: FastAPI):
         close_all_connections()
     except Exception as e:
         logger.error(f"❌ 關閉連接池時出錯: {e}")
+
+    # ORM: Close async engine
+    try:
+        from core.orm.session import close_async_engine
+        await close_async_engine()
+        logger.info("✅ ORM async engine closed")
+    except Exception as e:
+        logger.error(f"❌ 關閉 ORM async engine 時出錯: {e}")
 
 app = FastAPI(title="Crypto Trading System API", version="1.2.0", lifespan=lifespan)
 
@@ -460,12 +484,12 @@ async def receive_frontend_log(
     if log.data:
         log_line += f" | Data: {log.data}"
 
-    # 寫入檔案
+    def _write_log():
+        with open("frontend_debug.log", "a", encoding="utf-8") as f:
+            f.write(log_line + "\n")
+
     loop = asyncio.get_running_loop()
-    await asyncio.get_running_loop().run_in_executor(
-        None,
-        lambda: open("frontend_debug.log", "a", encoding="utf-8").write(log_line + "\n")
-    )
+    await loop.run_in_executor(None, _write_log)
 
     logger.info(f"[Frontend] {log.message}")
     return {"status": "logged"}
@@ -474,10 +498,11 @@ async def receive_frontend_log(
 async def get_debug_logs(admin: dict = Depends(require_admin)):
     """查看 debug logs (需管理員權限)"""
     try:
-        return await asyncio.get_running_loop().run_in_executor(
-            None,
-            lambda: open("frontend_debug.log", "r", encoding="utf-8").read()
-        )
+        def _read_log():
+            with open("frontend_debug.log", "r", encoding="utf-8") as f:
+                return f.read()
+
+        return await asyncio.get_running_loop().run_in_executor(None, _read_log)
     except FileNotFoundError:
         return "No logs yet"
 

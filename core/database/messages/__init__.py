@@ -22,8 +22,10 @@ from .messaging import (
 # 訊息限制
 from .limits import (
     check_message_limit,
+    check_and_increment_message,
     increment_message_count,
     check_greeting_limit,
+    check_and_increment_greeting,
     increment_greeting_count,
 )
 
@@ -53,8 +55,10 @@ __all__ = [
     "get_unread_count",
     # 訊息限制
     "check_message_limit",
+    "check_and_increment_message",
     "increment_message_count",
     "check_greeting_limit",
+    "check_and_increment_greeting",
     "increment_greeting_count",
     # 搜尋
     "search_messages",

@@ -23,16 +23,8 @@ from fastapi import Depends
 router = APIRouter()
 
 
-
-# ============================================================================
-# WebSocket 連接管理器
-# ============================================================================
-
 class NotificationConnectionManager:
-    """管理通知 WebSocket 連接"""
-
     def __init__(self):
-        # user_id -> Set[WebSocket]
         self.active_connections: dict = {}
         self._lock = asyncio.Lock()
 
@@ -41,7 +33,7 @@ class NotificationConnectionManager:
             if user_id not in self.active_connections:
                 self.active_connections[user_id] = set()
             self.active_connections[user_id].add(websocket)
-        logger.info(f"User {user_id} connected to notification WebSocket")
+        logger.info("User %s connected to notification WebSocket", user_id)
 
     async def disconnect(self, websocket: WebSocket, user_id: str):
         async with self._lock:
@@ -49,34 +41,25 @@ class NotificationConnectionManager:
                 self.active_connections[user_id].discard(websocket)
                 if not self.active_connections[user_id]:
                     del self.active_connections[user_id]
-        logger.info(f"User {user_id} disconnected from notification WebSocket")
+        logger.info("User %s disconnected from notification WebSocket", user_id)
 
     async def send_to_user(self, user_id: str, data: dict):
-        """發送通知給特定用戶的所有連接"""
         async with self._lock:
             connections = self.active_connections.get(user_id, set()).copy()
-
         for connection in connections:
             try:
                 await connection.send_json(data)
             except Exception as e:
-                logger.error(f"Failed to send notification to user {user_id}: {e}")
+                logger.error("Failed to send notification to user %s: %s", user_id, e)
 
     def is_user_online(self, user_id: str) -> bool:
-        """檢查用戶是否在線"""
         return user_id in self.active_connections and len(self.active_connections[user_id]) > 0
 
 
-# 全局連接管理器
 notification_manager = NotificationConnectionManager()
 
 
-# ============================================================================
-# 請求模型
-# ============================================================================
-
 class CreateNotificationRequest(BaseModel):
-    """創建通知請求"""
     user_id: str = Field(..., description="接收通知的用戶 ID")
     type: str = Field(..., description="通知類型")
     title: str = Field(..., description="通知標題")
@@ -90,17 +73,13 @@ class CreateNotificationRequest(BaseModel):
 
 @router.get("/api/notifications")
 async def get_notifications_endpoint(
-    user_id: str = Query(..., description="用戶 ID"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     unread_only: bool = Query(False, description="只返回未讀通知"),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
-    """獲取用戶的通知列表"""
     try:
-        if current_user["user_id"] != user_id:
-            raise HTTPException(status_code=403, detail="Not authorized")
-
+        user_id = current_user["user_id"]
         notifications = await run_sync(
             lambda: get_notifications(user_id=user_id, limit=limit, offset=offset, unread_only=unread_only)
         )
@@ -110,45 +89,37 @@ async def get_notifications_endpoint(
             "success": True,
             "notifications": notifications,
             "unread_count": unread_count,
-            "count": len(notifications)
+            "count": len(notifications),
         }
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"獲取通知失敗: {e}")
+        logger.error("Get notifications failed: %s", e)
         raise HTTPException(status_code=500, detail="獲取通知失敗，請稍後再試")
 
 
 @router.get("/api/notifications/unread-count")
 async def get_unread_count_endpoint(
-    user_id: str = Query(..., description="用戶 ID"),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
-    """獲取未讀通知數量"""
     try:
-        if current_user["user_id"] != user_id:
-            raise HTTPException(status_code=403, detail="Not authorized")
-
+        user_id = current_user["user_id"]
         count = await run_sync(get_unread_count, user_id)
         return {"success": True, "count": count}
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"獲取未讀數量失敗: {e}")
+        logger.error("Get unread count failed: %s", e)
         raise HTTPException(status_code=500, detail="獲取未讀數量失敗，請稍後再試")
 
 
 @router.post("/api/notifications/{notification_id}/read")
 async def mark_as_read_endpoint(
     notification_id: str,
-    user_id: str = Query(..., description="用戶 ID"),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
-    """標記通知為已讀"""
     try:
-        if current_user["user_id"] != user_id:
-            raise HTTPException(status_code=403, detail="Not authorized")
-
+        user_id = current_user["user_id"]
         success = await run_sync(mark_notification_as_read, notification_id, user_id)
         if not success:
             raise HTTPException(status_code=404, detail="通知不存在")
@@ -157,40 +128,32 @@ async def mark_as_read_endpoint(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"標記已讀失敗: {e}")
+        logger.error("Mark as read failed: %s", e)
         raise HTTPException(status_code=500, detail="標記已讀失敗，請稍後再試")
 
 
 @router.post("/api/notifications/read-all")
 async def mark_all_as_read_endpoint(
-    user_id: str = Query(..., description="用戶 ID"),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
-    """標記所有通知為已讀"""
     try:
-        if current_user["user_id"] != user_id:
-            raise HTTPException(status_code=403, detail="Not authorized")
-
+        user_id = current_user["user_id"]
         count = await run_sync(mark_all_as_read, user_id)
         return {"success": True, "message": f"已標記 {count} 則通知為已讀", "count": count}
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"標記全部已讀失敗: {e}")
+        logger.error("Mark all as read failed: %s", e)
         raise HTTPException(status_code=500, detail="標記全部已讀失敗，請稍後再試")
 
 
 @router.delete("/api/notifications/{notification_id}")
 async def delete_notification_endpoint(
     notification_id: str,
-    user_id: str = Query(..., description="用戶 ID"),
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
-    """刪除通知"""
     try:
-        if current_user["user_id"] != user_id:
-            raise HTTPException(status_code=403, detail="Not authorized")
-
+        user_id = current_user["user_id"]
         success = await run_sync(delete_notification, notification_id, user_id)
         if not success:
             raise HTTPException(status_code=404, detail="通知不存在")
@@ -199,7 +162,7 @@ async def delete_notification_endpoint(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"刪除通知失敗: {e}")
+        logger.error("Delete notification failed: %s", e)
         raise HTTPException(status_code=500, detail="刪除通知失敗，請稍後再試")
 
 
@@ -209,10 +172,6 @@ async def delete_notification_endpoint(
 
 @router.websocket("/ws/notifications")
 async def notification_websocket(websocket: WebSocket):
-    """
-    通知 WebSocket 端點
-    客戶端連接後需發送認證消息: {"type": "auth", "token": "JWT_TOKEN"}
-    """
     user_id = None
 
     try:
@@ -234,7 +193,7 @@ async def notification_websocket(websocket: WebSocket):
 
         if os.getenv("TEST_MODE") == "True" and token.startswith("test-"):
             user_id = token
-            logger.info(f"Notification WebSocket Dev Auth: {user_id}")
+            logger.info("Notification WebSocket Dev Auth: %s", user_id)
         else:
             try:
                 payload = verify_token(token)
@@ -242,14 +201,17 @@ async def notification_websocket(websocket: WebSocket):
                 if not user_id:
                     raise HTTPException(status_code=401, detail="Invalid token payload")
             except Exception as e:
-                logger.warning(f"Notification WebSocket auth failed: {e}")
+                logger.warning("Notification WebSocket auth failed: %s", e)
                 await websocket.send_json({"type": "error", "message": "Invalid Token"})
                 await websocket.close(code=4003, reason="Invalid Token")
                 return
 
         claimed_user_id = auth_data.get("user_id")
         if claimed_user_id and claimed_user_id != user_id:
-            logger.warning(f"Notification WebSocket auth mismatch: Token user {user_id} != Claimed {claimed_user_id}")
+            logger.warning(
+                "Notification WebSocket auth mismatch: Token user %s != Claimed %s",
+                user_id, claimed_user_id,
+            )
             await websocket.send_json({"type": "error", "message": "User ID mismatch"})
             await websocket.close(code=4004, reason="User ID mismatch")
             return
@@ -261,12 +223,12 @@ async def notification_websocket(websocket: WebSocket):
             return
 
         await notification_manager.connect(websocket, user_id)
-        logger.info(f"User {user_id} authenticated successfully via notification WebSocket")
+        logger.info("User %s authenticated successfully via notification WebSocket", user_id)
 
         await websocket.send_json({
             "type": "connected",
             "message": "Connected to notification service",
-            "user_id": user_id
+            "user_id": user_id,
         })
 
         while True:
@@ -285,19 +247,14 @@ async def notification_websocket(websocket: WebSocket):
     except WebSocketDisconnect:
         pass
     except Exception as e:
-        logger.error(f"Notification WebSocket error: {e}")
+        logger.error("Notification WebSocket error: %s", e)
     finally:
         if user_id:
             await notification_manager.disconnect(websocket, user_id)
 
 
-# ============================================================================
-# 輔助函數（供其他模組調用）
-# ============================================================================
-
 async def push_notification_to_user(user_id: str, notification: dict):
-    """推送通知給用戶（WebSocket 即時推送）"""
     await notification_manager.send_to_user(user_id, {
         "type": "notification",
-        "data": notification
+        "data": notification,
     })

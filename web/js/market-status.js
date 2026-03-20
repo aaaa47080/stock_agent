@@ -3,6 +3,10 @@
 // ========================================
 
 (function () {
+    function t(key, opts) {
+        return window.I18n ? window.I18n.t(key, opts) : key;
+    }
+
     const MARKET_CONFIG = {
         forex: {
             label: 'Forex',
@@ -420,7 +424,7 @@
             return '';
         }
 
-        const prefix = nextEvent.kind === 'close' ? '預計收盤' : '下一次開盤';
+        const prefix = nextEvent.kind === 'close' ? t('status.expectedClose') : t('status.nextOpen');
         return `${prefix}：${formatEventTime(nextEvent.date, config.timezone)}`;
     }
 
@@ -439,11 +443,11 @@
 
         return createState(config, {
             isOpen,
-            summary: isOpen ? 'FX Open' : 'FX Closed',
-            detail: isOpen ? '盤中自動更新中' : '週末休市，暫停自動更新',
+            summary: isOpen ? t('status.fxOpen') : t('status.fxClosed'),
+            detail: isOpen ? t('status.liveUpdate') : t('status.weekendPaused'),
             refreshLabel: isOpen
-                ? `盤中自動更新，每 ${config.refreshSeconds} 秒一次`
-                : '休市中，自動更新已暫停',
+                ? t('status.autoUpdate', { seconds: config.refreshSeconds })
+                : t('status.paused'),
             nextEventLabel: buildNextEventLabel(config, nextEvent),
             statusTone: isOpen ? 'open' : 'closed',
             sessionType: isOpen ? 'regular' : 'closed',
@@ -464,17 +468,17 @@
 
         const nextEvent = getCommodityNextEvent(parts, isOpen);
 
-        let summary = 'Commodity Closed';
-        let detail = '休市中，暫停自動更新';
-        let refreshLabel = '休市中，自動更新已暫停';
+        let summary = t('status.marketClosed');
+        let detail = t('status.paused');
+        let refreshLabel = t('status.paused');
 
         if (isOpen) {
-            summary = 'Electronic Session';
-            detail = '電子盤交易中';
-            refreshLabel = `盤中自動更新，每 ${config.refreshSeconds} 秒一次`;
+            summary = t('status.electronicSession');
+            detail = t('status.liveUpdate');
+            refreshLabel = t('status.autoUpdate', { seconds: config.refreshSeconds });
         } else if (inDailyBreak && parts.weekday !== 'Sat') {
-            summary = 'Session Break';
-            detail = '每日維護時段 16:00-17:00 CT';
+            summary = t('status.sessionBreak');
+            detail = t('status.dailyBreak');
         }
 
         return createState(config, {
@@ -496,34 +500,34 @@
 
         if (holidayName) {
             state = createState(config, {
-                summary: 'TW Holiday',
-                detail: `${holidayName}，今日休市`,
+                summary: t('status.twHoliday'),
+                detail: `${holidayName}，${t('status.marketClosed')}`,
                 sessionType: 'holiday',
             });
         } else if (!isWeekday(parts)) {
             state = createState(config, {
-                summary: 'TW Closed',
-                detail: '週末休市',
+                summary: t('status.marketClosed'),
+                detail: t('status.weekendPaused'),
             });
         } else if (minute >= 9 * 60 && minute < 13 * 60 + 30) {
             state = createState(config, {
                 isOpen: true,
-                summary: 'TW Open',
-                detail: '台股盤中交易中',
-                refreshLabel: `盤中自動更新，每 ${config.refreshSeconds} 秒一次`,
+                summary: t('nav.twstock') + ' Open',
+                detail: t('status.liveUpdate'),
+                refreshLabel: t('status.autoUpdate', { seconds: config.refreshSeconds }),
                 statusTone: 'open',
                 sessionType: 'regular',
             });
         } else if (minute >= 8 * 60 + 30 && minute < 9 * 60) {
             state = createState(config, {
-                summary: 'TW Pre-Open',
-                detail: '撮合前委託時段',
+                summary: t('status.preMarket'),
+                detail: t('status.preMarket'),
                 sessionType: 'preopen',
             });
         } else {
             state = createState(config, {
-                summary: 'TW Closed',
-                detail: '非台股一般交易時段',
+                summary: t('status.marketClosed'),
+                detail: t('status.paused'),
             });
         }
 
@@ -544,59 +548,54 @@
 
         if (holidayName) {
             state = createState(config, {
-                summary: 'US Holiday',
-                detail: `${holidayName}，今日休市`,
+                summary: t('status.marketClosed'),
+                detail: `${holidayName}，${t('status.marketClosed')}`,
                 sessionType: 'holiday',
             });
         } else if (!isWeekday(parts)) {
             state = createState(config, {
-                summary: 'US Closed',
-                detail: '週末休市',
+                summary: t('status.marketClosed'),
+                detail: t('status.weekendPaused'),
             });
         } else if (minute >= 4 * 60 && minute < 9 * 60 + 30) {
             state = createState(config, {
                 isOpen: true,
-                summary: 'Pre-Market',
-                detail:
-                    specialSession
-                        ? `${specialSession.label} 盤前交易中`
-                        : '美股盤前交易中',
-                refreshLabel: `盤中自動更新，每 ${config.refreshSeconds} 秒一次`,
+                summary: t('status.preMarket'),
+                detail: specialSession
+                    ? `${specialSession.label} ${t('status.preMarket')}`
+                    : t('status.preMarket'),
+                refreshLabel: t('status.autoUpdate', { seconds: config.refreshSeconds }),
                 statusTone: 'extended',
                 sessionType: 'pre_market',
             });
         } else if (minute >= 9 * 60 + 30 && minute < regularCloseMinutes) {
             state = createState(config, {
                 isOpen: true,
-                summary:
-                    regularCloseMinutes < 16 * 60 ? 'Early Close' : 'Regular Session',
-                detail:
-                    regularCloseMinutes < 16 * 60
-                        ? `提早收盤日，正常盤至 ${formatMinuteLabel(regularCloseMinutes)} ET`
-                        : '美股正常盤交易中',
-                refreshLabel: `盤中自動更新，每 ${config.refreshSeconds} 秒一次`,
+                summary: regularCloseMinutes < 16 * 60 ? t('status.earlyClose') : t('status.regular'),
+                detail: regularCloseMinutes < 16 * 60
+                    ? `${t('status.earlyClose')} ${formatMinuteLabel(regularCloseMinutes)} ET`
+                    : t('status.regular'),
+                refreshLabel: t('status.autoUpdate', { seconds: config.refreshSeconds }),
                 statusTone: 'open',
                 sessionType: 'regular',
             });
         } else if (minute >= regularCloseMinutes && minute < afterHoursCloseMinutes) {
             state = createState(config, {
                 isOpen: true,
-                summary: 'After-Hours',
-                detail:
-                    regularCloseMinutes < 16 * 60
-                        ? `${specialSession.detail}，盤後延長至 ${formatMinuteLabel(afterHoursCloseMinutes)} ET`
-                        : '美股盤後交易中',
-                refreshLabel: `盤中自動更新，每 ${config.refreshSeconds} 秒一次`,
+                summary: t('status.afterHours'),
+                detail: regularCloseMinutes < 16 * 60
+                    ? `${specialSession.detail}，${t('status.afterHours')} ${formatMinuteLabel(afterHoursCloseMinutes)} ET`
+                    : t('status.afterHours'),
+                refreshLabel: t('status.autoUpdate', { seconds: config.refreshSeconds }),
                 statusTone: 'extended',
                 sessionType: 'after_hours',
             });
         } else {
             state = createState(config, {
-                summary: 'US Closed',
-                detail:
-                    regularCloseMinutes < 16 * 60
-                        ? `提早收盤日已結束，盤後至 ${formatMinuteLabel(afterHoursCloseMinutes)} ET`
-                        : '非美股交易時段',
+                summary: t('status.marketClosed'),
+                detail: regularCloseMinutes < 16 * 60
+                    ? `${t('status.earlyClose')} - ${formatMinuteLabel(afterHoursCloseMinutes)} ET`
+                    : t('status.paused'),
             });
         }
 
@@ -699,11 +698,11 @@
 
         const lastUpdatedLabel = formatLastUpdatedLabel(lastUpdated);
         if (lastUpdatedLabel) {
-            setText(`${marketType}-last-updated`, `上次更新：${lastUpdatedLabel}`);
+            setText(`${marketType}-last-updated`, `${t('status.lastUpdated')}：${lastUpdatedLabel}`);
         } else if (!state.isOpen) {
-            setText(`${marketType}-last-updated`, '上次更新：休市中');
+            setText(`${marketType}-last-updated`, `${t('status.lastUpdated')}：${t('status.marketClosed')}`);
         } else {
-            setText(`${marketType}-last-updated`, '上次更新：等待首次同步');
+            setText(`${marketType}-last-updated`, `${t('status.lastUpdated')}：${t('status.awaitingSync')}`);
         }
 
         return state;
@@ -711,16 +710,58 @@
 
     const statusTimers = {};
     const refreshControllers = {};
+    const _syncedMarkets = {};
+    let _clockTimer = null;
+
+    function markSynced(marketType) {
+        _syncedMarkets[marketType] = true;
+    }
+
+    function _startGlobalClock() {
+        if (_clockTimer) return;
+        _clockTimer = setInterval(() => {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('zh-TW', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+            });
+
+            for (const [mt, synced] of Object.entries(_syncedMarkets)) {
+                if (!synced) continue;
+                const el = document.getElementById(`${mt}-last-updated`);
+                if (el) el.textContent = `${t('status.lastUpdated')}：${timeStr}`;
+            }
+
+            const screenerEl = document.getElementById('screener-last-updated');
+            if (screenerEl && _syncedMarkets['screener']) {
+                screenerEl.textContent = `LIVE (更新於: ${timeStr})`;
+            }
+        }, 1000);
+    }
 
     function bindStatusAutoRefresh(marketType, getLastUpdated) {
         if (statusTimers[marketType]) {
             clearInterval(statusTimers[marketType]);
         }
 
+        _startGlobalClock();
+
         const refresh = () => {
             const lastUpdated =
                 typeof getLastUpdated === 'function' ? getLastUpdated() : undefined;
-            updateMarketStatusBar(marketType, lastUpdated);
+            if (lastUpdated) markSynced(marketType);
+            const state = getMarketState(marketType);
+            const badge = document.getElementById(`${marketType}-market-status-badge`);
+            if (badge) {
+                badge.className = `inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold ${getToneClasses(state.statusTone)}`;
+                badge.textContent = state.summary;
+            }
+            setText(`${marketType}-market-refresh-note`, state.refreshLabel);
+            setText(
+                `${marketType}-market-session-note`,
+                state.nextEventLabel ? `${state.detail} | ${state.nextEventLabel}` : state.detail
+            );
         };
 
         refresh();
@@ -763,5 +804,6 @@
         updateMarketStatusBar,
         bindStatusAutoRefresh,
         startMarketAutoRefresh,
+        markSynced,
     };
 })();

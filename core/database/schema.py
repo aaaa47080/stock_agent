@@ -95,8 +95,6 @@ def create_user_tables(c):
         CREATE TABLE IF NOT EXISTS users (
             user_id TEXT PRIMARY KEY,
             username TEXT UNIQUE NOT NULL,
-            password_hash TEXT,
-            email TEXT UNIQUE,
             auth_method TEXT DEFAULT 'password',
             pi_uid TEXT UNIQUE,
             pi_username TEXT,
@@ -114,9 +112,9 @@ def create_user_tables(c):
         CREATE TABLE IF NOT EXISTS membership_payments (
             id SERIAL PRIMARY KEY,
             user_id TEXT NOT NULL,
-            amount REAL NOT NULL,
+            amount NUMERIC(18,4) NOT NULL,
             months INTEGER NOT NULL,
-            tx_hash TEXT NOT NULL,
+            tx_hash TEXT NOT NULL UNIQUE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(user_id)
         )
@@ -135,18 +133,7 @@ def create_user_tables(c):
         )
     """)
 
-    # 建立登入嘗試記錄表 (防暴力破解)
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS login_attempts (
-            id SERIAL PRIMARY KEY,
-            username TEXT NOT NULL,
-            ip_address TEXT,
-            attempt_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            success INTEGER DEFAULT 0
-        )
-    """)
-
-    # 建立用戶 API Keys 表 (BYOK - Bring Your Own Key)
+    # 用戶 API Keys 表 (BYOK - Bring Your Own Key)
     c.execute("""
         CREATE TABLE IF NOT EXISTS user_api_keys (
             id SERIAL PRIMARY KEY,
@@ -193,7 +180,7 @@ def create_forum_tables(c):
             push_count      INTEGER DEFAULT 0,
             boo_count       INTEGER DEFAULT 0,
             comment_count   INTEGER DEFAULT 0,
-            tips_total      REAL DEFAULT 0,
+            tips_total      NUMERIC(18,4) DEFAULT 0,
             view_count      INTEGER DEFAULT 0,
 
             payment_tx_hash TEXT,
@@ -236,8 +223,8 @@ def create_forum_tables(c):
             post_id         INTEGER NOT NULL,
             from_user_id    TEXT NOT NULL,
             to_user_id      TEXT NOT NULL,
-            amount          REAL NOT NULL DEFAULT 1,
-            tx_hash         TEXT NOT NULL,
+            amount          NUMERIC(18,4) NOT NULL DEFAULT 1,
+            tx_hash         TEXT NOT NULL UNIQUE,
 
             created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
@@ -307,11 +294,9 @@ def create_scam_tracker_tables(c):
 
             -- 錢包資訊
             scam_wallet_address TEXT NOT NULL UNIQUE,
-            blockchain_type TEXT DEFAULT 'pi_network',
 
             -- 舉報者資訊
             reporter_user_id TEXT NOT NULL,
-            reporter_wallet_address TEXT NOT NULL,
             reporter_wallet_masked TEXT NOT NULL,
 
             -- 詐騙資訊
@@ -517,6 +502,9 @@ def create_governance_tables(c):
             violation_level VARCHAR(20),
             approve_count INTEGER DEFAULT 0,
             reject_count INTEGER DEFAULT 0,
+            points_assigned INTEGER DEFAULT 0,
+            action_taken VARCHAR(50),
+            processed_by VARCHAR(255),
             created_at TIMESTAMP DEFAULT NOW(),
             updated_at TIMESTAMP DEFAULT NOW()
         )
@@ -625,7 +613,7 @@ def create_price_alert_tables(c):
             symbol      TEXT NOT NULL,
             market      TEXT NOT NULL,
             condition   TEXT NOT NULL,
-            target      REAL NOT NULL,
+            target      NUMERIC(18,4) NOT NULL,
             repeat      INTEGER NOT NULL DEFAULT 0,
             triggered   INTEGER NOT NULL DEFAULT 0,
             created_at  TEXT NOT NULL,
@@ -715,13 +703,6 @@ def create_indexes(c):
     c.execute(
         "CREATE INDEX IF NOT EXISTS idx_membership_payments_user ON membership_payments(user_id)"
     )
-    # ✅ 效能修復：login_attempts 補 username + attempt_time index（表結構沒有 user_id 和 created_at）
-    c.execute(
-        "CREATE INDEX IF NOT EXISTS idx_login_attempts_username ON login_attempts(username)"
-    )
-    c.execute(
-        "CREATE INDEX IF NOT EXISTS idx_login_attempts_time ON login_attempts(attempt_time DESC)"
-    )
     # ✅ user_api_keys 索引
     c.execute(
         "CREATE INDEX IF NOT EXISTS idx_user_api_keys_user ON user_api_keys(user_id)"
@@ -741,6 +722,9 @@ def create_indexes(c):
     c.execute("CREATE INDEX IF NOT EXISTS idx_tips_post_id ON tips(post_id)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_tips_from_user ON tips(from_user_id)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_tips_to_user ON tips(to_user_id)")
+    c.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_payment_tx_hash ON posts(payment_tx_hash) WHERE payment_tx_hash IS NOT NULL"
+    )
     c.execute("CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(name)")
     c.execute(
         "CREATE INDEX IF NOT EXISTS idx_user_daily_comments_user_date ON user_daily_comments(user_id, date)"
@@ -1076,7 +1060,6 @@ def create_memory_tables(c):
         CREATE TABLE IF NOT EXISTS user_memory_cache (
             user_id VARCHAR(255) PRIMARY KEY,
             session_id VARCHAR(255),
-            long_term_memory TEXT,
             last_consolidated_index INTEGER DEFAULT 0,
             updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         )
@@ -1154,25 +1137,6 @@ def create_experience_tables(c):
         "CREATE INDEX IF NOT EXISTS idx_te_tsv ON task_experiences USING GIN(query_tsv)"
     )
 
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS tool_execution_stats (
-            id           BIGSERIAL PRIMARY KEY,
-            user_id      TEXT,
-            tool_name    TEXT NOT NULL,
-            success      BOOLEAN NOT NULL,
-            latency_ms   INT,
-            output_chars INT,
-            error_type   TEXT,
-            created_at   TIMESTAMPTZ DEFAULT NOW()
-        )
-    """)
-    c.execute(
-        "CREATE INDEX IF NOT EXISTS idx_tes_tool_created ON tool_execution_stats(tool_name, created_at DESC)"
-    )
-    c.execute(
-        "CREATE INDEX IF NOT EXISTS idx_tes_user_tool ON tool_execution_stats(user_id, tool_name)"
-    )
-
 
 def reconcile_user_tables(c):
     """Safely reconcile legacy users schema without enforcing destructive changes."""
@@ -1187,10 +1151,6 @@ def reconcile_user_tables(c):
             (
                 "is_active",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE",
-            ),
-            (
-                "pi_wallet_address",
-                "ALTER TABLE users ADD COLUMN IF NOT EXISTS pi_wallet_address TEXT",
             ),
         ],
     )
@@ -1327,13 +1287,248 @@ def reconcile_tool_tables(c):
     )
 
 
+def reconcile_payment_tables(c):
+    """Safely add UNIQUE constraints on tx_hash columns for payment integrity."""
+    checked = []
+    try:
+        c.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_membership_payments_tx_hash "
+            "ON membership_payments(tx_hash)"
+        )
+        checked.append("membership_payments.tx_hash_unique")
+    except Exception as e:
+        logger.warning("Failed to add UNIQUE on membership_payments.tx_hash: %s", e)
+    try:
+        c.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_tips_tx_hash ON tips(tx_hash)"
+        )
+        checked.append("tips.tx_hash_unique")
+    except Exception as e:
+        logger.warning("Failed to add UNIQUE on tips.tx_hash: %s", e)
+    try:
+        c.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_posts_payment_tx_hash "
+            "ON posts(payment_tx_hash) WHERE payment_tx_hash IS NOT NULL"
+        )
+        checked.append("posts.payment_tx_hash_unique_partial")
+    except Exception as e:
+        logger.warning(
+            "Failed to add partial UNIQUE on posts.payment_tx_hash: %s", e
+        )
+    if checked:
+        logger.info("Payment schema reconcile checked: %s", ", ".join(checked))
+    return checked
+
+
+def reconcile_check_constraints(c):
+    """Add CHECK constraints for data integrity."""
+    checked = []
+    constraints = [
+        ("membership_payments", "ck_amount_positive", "ALTER TABLE membership_payments ADD CONSTRAINT ck_amount_positive CHECK (amount > 0)"),
+        ("membership_payments", "ck_months_positive", "ALTER TABLE membership_payments ADD CONSTRAINT ck_months_positive CHECK (months > 0)"),
+        ("tips", "ck_amount_positive", "ALTER TABLE tips ADD CONSTRAINT ck_amount_positive CHECK (amount > 0)"),
+        ("price_alerts", "ck_target_positive", "ALTER TABLE price_alerts ADD CONSTRAINT ck_target_positive CHECK (target > 0)"),
+        ("friendships", "ck_status_valid", "ALTER TABLE friendships ADD CONSTRAINT ck_status_valid CHECK (status IN ('pending', 'accepted', 'blocked'))"),
+        ("forum_comments", "ck_type_valid", "ALTER TABLE forum_comments ADD CONSTRAINT ck_type_valid CHECK (type IN ('comment', 'reply'))"),
+        ("scam_reports", "ck_verification_status_valid", "ALTER TABLE scam_reports ADD CONSTRAINT ck_verification_status_valid CHECK (verification_status IN ('pending', 'verified', 'rejected', 'investigating'))"),
+        ("content_reports", "ck_review_status_valid", "ALTER TABLE content_reports ADD CONSTRAINT ck_review_status_valid CHECK (review_status IN ('pending', 'approved', 'rejected', 'escalated'))"),
+        ("report_review_votes", "ck_vote_type_valid", "ALTER TABLE report_review_votes ADD CONSTRAINT ck_vote_type_valid CHECK (vote_type IN ('approve', 'reject'))"),
+    ]
+    for table, name, sql in constraints:
+        try:
+            c.execute(sql)
+            checked.append(f"{table}.{name}")
+        except Exception as e:
+            logger.debug("Constraint %s.%s already exists or error: %s", table, name, e)
+    if checked:
+        logger.info("Check constraints added: %s", ", ".join(checked))
+    return checked
+
+
+def reconcile_foreign_keys(c):
+    """Add missing foreign key constraints for data integrity."""
+    checked = []
+    foreign_keys = [
+        ("admin_broadcasts", "fk_admin_broadcasts_user", "ALTER TABLE admin_broadcasts ADD CONSTRAINT fk_admin_broadcasts_user FOREIGN KEY (admin_user_id) REFERENCES users(user_id)"),
+        ("user_violations", "fk_user_violations_user", "ALTER TABLE user_violations ADD CONSTRAINT fk_user_violations_user FOREIGN KEY (user_id) REFERENCES users(user_id)"),
+        ("user_violation_points", "fk_user_violation_points_user", "ALTER TABLE user_violation_points ADD CONSTRAINT fk_user_violation_points_user FOREIGN KEY (user_id) REFERENCES users(user_id)"),
+        ("audit_reputation", "fk_audit_reputation_user", "ALTER TABLE audit_reputation ADD CONSTRAINT fk_audit_reputation_user FOREIGN KEY (user_id) REFERENCES users(user_id)"),
+        ("user_activity_logs", "fk_user_activity_logs_user", "ALTER TABLE user_activity_logs ADD CONSTRAINT fk_user_activity_logs_user FOREIGN KEY (user_id) REFERENCES users(user_id)"),
+        ("conversation_history", "fk_conversation_history_user", "ALTER TABLE conversation_history ADD CONSTRAINT fk_conversation_history_user FOREIGN KEY (user_id) REFERENCES users(user_id)"),
+        ("sessions", "fk_sessions_user", "ALTER TABLE sessions ADD CONSTRAINT fk_sessions_user FOREIGN KEY (user_id) REFERENCES users(user_id)"),
+        ("user_tool_preferences", "fk_user_tool_preferences_user", "ALTER TABLE user_tool_preferences ADD CONSTRAINT fk_user_tool_preferences_user FOREIGN KEY (user_id) REFERENCES users(user_id)"),
+    ]
+    for table, name, sql in foreign_keys:
+        try:
+            c.execute(sql)
+            checked.append(f"{table}.{name}")
+        except Exception as e:
+            logger.debug("Foreign key %s.%s already exists or error: %s", table, name, e)
+    if checked:
+        logger.info("Foreign keys added: %s", ", ".join(checked))
+    return checked
+
+
+def reconcile_numeric_columns(c):
+    """Migrate financial REAL columns to NUMERIC(18,4) for precision."""
+    checked = []
+    migrations = [
+        ("membership_payments", "amount", "ALTER TABLE membership_payments ALTER COLUMN amount TYPE NUMERIC(18,4) USING amount::NUMERIC(18,4)"),
+        ("posts", "tips_total", "ALTER TABLE posts ALTER COLUMN tips_total TYPE NUMERIC(18,4) USING tips_total::NUMERIC(18,4)"),
+        ("tips", "amount", "ALTER TABLE tips ALTER COLUMN amount TYPE NUMERIC(18,4) USING amount::NUMERIC(18,4)"),
+        ("price_alerts", "target", "ALTER TABLE price_alerts ALTER COLUMN target TYPE NUMERIC(18,4) USING target::NUMERIC(18,4)"),
+    ]
+    for table, col, sql in migrations:
+        try:
+            c.execute(sql)
+            checked.append(f"{table}.{col}")
+        except Exception as e:
+            logger.debug("Column %s.%s migration skipped: %s", table, col, e)
+    return checked
+
+
+def reconcile_timestamptz(c):
+    """Normalize all TIMESTAMP columns to TIMESTAMPTZ for timezone safety."""
+    checked = []
+    migrations = [
+        ("system_cache", "updated_at"),
+        ("system_config", "created_at"),
+        ("system_config", "updated_at"),
+        ("conversation_history", "timestamp"),
+        ("sessions", "created_at"),
+        ("sessions", "updated_at"),
+        ("users", "last_active_at"),
+        ("users", "membership_expires_at"),
+        ("users", "created_at"),
+        ("membership_payments", "created_at"),
+        ("admin_broadcasts", "created_at"),
+        ("user_api_keys", "created_at"),
+        ("user_api_keys", "updated_at"),
+        ("user_api_keys", "last_used_at"),
+        ("boards", "created_at"),
+        ("boards", "updated_at"),
+        ("posts", "created_at"),
+        ("posts", "updated_at"),
+        ("forum_comments", "created_at"),
+        ("tips", "created_at"),
+        ("tags", "last_used_at"),
+        ("tags", "created_at"),
+        ("scam_reports", "created_at"),
+        ("scam_reports", "updated_at"),
+        ("scam_report_votes", "created_at"),
+        ("scam_report_comments", "created_at"),
+        ("friendships", "created_at"),
+        ("friendships", "updated_at"),
+        ("dm_conversations", "last_message_at"),
+        ("dm_conversations", "created_at"),
+        ("dm_messages", "read_at"),
+        ("dm_messages", "created_at"),
+        ("dm_message_deletions", "deleted_at"),
+        ("content_reports", "created_at"),
+        ("content_reports", "updated_at"),
+        ("report_review_votes", "created_at"),
+        ("user_violations", "suspended_until"),
+        ("user_violations", "created_at"),
+        ("user_violation_points", "last_violation_at"),
+        ("user_violation_points", "updated_at"),
+        ("audit_reputation", "updated_at"),
+        ("user_activity_logs", "created_at"),
+        ("tools_catalog", "created_at"),
+        ("user_tool_preferences", "updated_at"),
+        ("notifications", "created_at"),
+    ]
+    for table, col in migrations:
+        try:
+            c.execute(
+                f"ALTER TABLE {table} ALTER COLUMN {col} TYPE TIMESTAMPTZ "
+                f"USING {col}::TIMESTAMPTZ"
+            )
+            checked.append(f"{table}.{col}")
+        except Exception as e:
+            logger.debug("TIMESTAMPTZ migration %s.%s skipped: %s", table, col, e)
+    return checked
+
+
+def reconcile_content_reports(c):
+    """Add missing columns to content_reports for finalize_report."""
+    return _run_reconcile_steps(
+        c,
+        "content_reports",
+        [
+            (
+                "points_assigned",
+                "ALTER TABLE content_reports ADD COLUMN IF NOT EXISTS points_assigned INTEGER DEFAULT 0",
+            ),
+            (
+                "action_taken",
+                "ALTER TABLE content_reports ADD COLUMN IF NOT EXISTS action_taken VARCHAR(50)",
+            ),
+            (
+                "processed_by",
+                "ALTER TABLE content_reports ADD COLUMN IF NOT EXISTS processed_by VARCHAR(255)",
+            ),
+        ],
+    )
+
+
+def reconcile_drop_dead_columns(c):
+    """Drop unused columns from existing databases."""
+    drops = [
+        ("users", "password_hash"),
+        ("users", "email"),
+        ("users", "pi_wallet_address"),
+        ("user_memory_cache", "long_term_memory"),
+        ("scam_reports", "blockchain_type"),
+        ("scam_reports", "reporter_wallet_address"),
+    ]
+    checked = []
+    for table, col in drops:
+        try:
+            c.execute(f"ALTER TABLE {table} DROP COLUMN IF EXISTS {col}")
+            checked.append(f"{table}.{col}")
+        except Exception as e:
+            logger.debug("DROP COLUMN %s.%s skipped: %s", table, col, e)
+    if checked:
+        logger.info("Dropped dead columns: %s", ", ".join(checked))
+    return checked
+
+
+def reconcile_drop_dead_tables(c):
+    """Drop unused tables from existing databases."""
+    drops = [
+        "login_attempts",
+        "tool_execution_stats",
+        "password_reset_tokens",
+        "predictions",
+    ]
+    checked = []
+    for table in drops:
+        try:
+            c.execute(f"DROP TABLE IF EXISTS {table} CASCADE")
+            checked.append(table)
+        except Exception as e:
+            logger.debug("DROP TABLE %s skipped: %s", table, e)
+    if checked:
+        logger.info("Dropped dead tables: %s", ", ".join(checked))
+    return checked
+
+
 def reconcile_existing_tables(c):
     """Run safe schema reconciliation steps for existing databases."""
+    payment_result = reconcile_payment_tables(c)
     return {
         "users": reconcile_user_tables(c),
         "audit_logs": reconcile_audit_log_tables(c),
         "scam_report_comments": reconcile_scam_tracker_tables(c),
         "tools_catalog": reconcile_tool_tables(c),
+        "content_reports": reconcile_content_reports(c),
+        "payment_tables": payment_result,
+        "check_constraints": reconcile_check_constraints(c),
+        "foreign_keys": reconcile_foreign_keys(c),
+        "numeric_columns": reconcile_numeric_columns(c),
+        "timestamptz": reconcile_timestamptz(c),
+        "drop_dead_columns": reconcile_drop_dead_columns(c),
+        "drop_dead_tables": reconcile_drop_dead_tables(c),
     }
 
 

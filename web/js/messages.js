@@ -528,6 +528,10 @@ const MessagesUI = {
                 ? SecurityUtils.escapeHTML(conv.other_username)
                 : this._escapeHtml(conv.other_username);
 
+        const escapedPreview = typeof SecurityUtils !== 'undefined'
+            ? SecurityUtils.escapeHTML(preview)
+            : this._escapeHtml(preview);
+
         return `
             <div class="conversation-item cursor-pointer p-3 border-b border-white/5 ${activeClass} ${unreadBgClass} transition relative"
                  data-conversation-id="${conv.id}"
@@ -541,13 +545,13 @@ const MessagesUI = {
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center justify-between gap-2">
                             <div class="flex items-center gap-2 min-w-0">
-                                <span class="${hasUnread ? 'font-extrabold' : 'font-bold'} text-textMain truncate">${conv.other_username}</span>
+                                <span class="${hasUnread ? 'font-extrabold' : 'font-bold'} text-textMain truncate">${escapedUsername}</span>
                                 ${badge}
                             </div>
                             <span class="text-xs ${hasUnread ? 'text-primary font-bold' : 'text-textMuted'} flex-shrink-0">${timeStr}</span>
                         </div>
                         <div class="flex items-center justify-between gap-2 mt-0.5">
-                            <p class="text-sm ${unreadTextClass} truncate">${preview}</p>
+                            <p class="text-sm ${unreadTextClass} truncate">${escapedPreview}</p>
                             ${
                                 hasUnread
                                     ? `

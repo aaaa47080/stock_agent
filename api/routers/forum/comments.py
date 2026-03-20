@@ -1,12 +1,13 @@
 """
 回覆相關 API（推/噓/一般回覆）
 """
-from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi import APIRouter, HTTPException, Query, Depends, Request
 from typing import Optional
 from api.utils import run_sync
 import logging
 
 from api.deps import get_current_user
+from api.middleware.rate_limit import limiter
 from core.database import (
     get_post_by_id,
     add_comment,
@@ -27,7 +28,11 @@ VALID_COMMENT_TYPES = ["push", "boo", "comment"]
 
 
 @router.get("/{post_id}/comments")
-async def list_comments(post_id: int):
+async def list_comments(
+    post_id: int,
+    limit: int = Query(default=50, le=100),
+    offset: int = Query(default=0, ge=0),
+):
     """
     獲取文章的回覆列表
     """
@@ -36,7 +41,7 @@ async def list_comments(post_id: int):
         if not post or post["is_hidden"]:
             raise HTTPException(status_code=404, detail="文章不存在")
 
-        comments = await run_sync(get_comments, post_id)
+        comments = await run_sync(get_comments, post_id, limit=limit, offset=offset)
         return {
             "success": True,
             "comments": comments,
@@ -49,10 +54,11 @@ async def list_comments(post_id: int):
 
 
 @router.post("/{post_id}/comments")
+@limiter.limit("30/minute")
 async def add_new_comment(
+    request: Request,
     post_id: int,
-    request: AddCommentRequest,
-    user_id: str = Query(..., description="用戶 ID"),
+    body: AddCommentRequest,
     current_user: dict = Depends(get_current_user)
 ):
     """
@@ -67,11 +73,10 @@ async def add_new_comment(
     - 免費會員每日回覆上限從 /api/config/limits 獲取
     - Premium 會員無限制
     """
-    if current_user["user_id"] != user_id:
-        raise HTTPException(status_code=403, detail="Not authorized to comment as this user")
-
     try:
-        if request.type not in VALID_COMMENT_TYPES:
+        user_id = current_user["user_id"]
+
+        if body.type not in VALID_COMMENT_TYPES:
             raise HTTPException(
                 status_code=400,
                 detail=f"無效的回覆類型，可選: {', '.join(VALID_COMMENT_TYPES)}"
@@ -85,9 +90,9 @@ async def add_new_comment(
             lambda: add_comment(
                 post_id=post_id,
                 user_id=user_id,
-                comment_type=request.type,
-                content=request.content,
-                parent_id=request.parent_id,
+                comment_type=body.type,
+                content=body.content,
+                parent_id=body.parent_id,
             )
         )
 
@@ -99,7 +104,6 @@ async def add_new_comment(
                 )
             raise HTTPException(status_code=500, detail=result.get("error", "新增回覆失敗"))
 
-        # 通知文章作者（不通知自己）
         if post["user_id"] != user_id:
             try:
                 from_username = current_user.get("username", user_id)
@@ -107,7 +111,7 @@ async def add_new_comment(
                     notify_post_interaction,
                     post["user_id"],
                     from_username,
-                    request.type,
+                    body.type,
                     post_id,
                     post["title"]
                 )
@@ -160,16 +164,16 @@ async def _react_post(
 
 
 @router.post("/{post_id}/push")
+@limiter.limit("30/minute")
 async def push_post(
+    request: Request,
     post_id: int,
-    user_id: str = Query(..., description="用戶 ID"),
     content: str = Query(None, max_length=100, description="推文內容（選填）"),
     current_user: dict = Depends(get_current_user)
 ):
     """推文（快捷方式）"""
-    if current_user["user_id"] != user_id:
-        raise HTTPException(status_code=403, detail="Not authorized")
     try:
+        user_id = current_user["user_id"]
         return await _react_post(post_id, "push", user_id, content, current_user)
     except HTTPException:
         raise
@@ -178,16 +182,16 @@ async def push_post(
 
 
 @router.post("/{post_id}/boo")
+@limiter.limit("30/minute")
 async def boo_post(
+    request: Request,
     post_id: int,
-    user_id: str = Query(..., description="用戶 ID"),
     content: str = Query(None, max_length=100, description="噓文內容（選填）"),
     current_user: dict = Depends(get_current_user)
 ):
     """噓文（快捷方式）"""
-    if current_user["user_id"] != user_id:
-        raise HTTPException(status_code=403, detail="Not authorized")
     try:
+        user_id = current_user["user_id"]
         return await _react_post(post_id, "boo", user_id, content, current_user)
     except HTTPException:
         raise
@@ -198,16 +202,14 @@ async def boo_post(
 @router.get("/{post_id}/comment-status")
 async def get_comment_status(
     post_id: int,
-    user_id: str = Query(..., description="用戶 ID"),
     current_user: dict = Depends(get_current_user)
 ):
     """
     獲取用戶在該文章的回覆狀態（今日剩餘回覆數等）
     """
-    if current_user["user_id"] != user_id:
-        raise HTTPException(status_code=403, detail="Not authorized")
-
     try:
+        user_id = current_user["user_id"]
+
         daily_count = await run_sync(get_daily_comment_count, user_id)
         return {
             "success": True,

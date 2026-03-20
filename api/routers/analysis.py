@@ -13,7 +13,6 @@ from utils.user_client_factory import create_user_llm_client
 from api.middleware.rate_limit import limiter
 from core.agents.analysis_policy import AnalysisPolicyResolver
 
-# Import DB functions
 from core.database import (
     save_chat_message,
     get_chat_history,
@@ -23,7 +22,6 @@ from core.database import (
     delete_session
 )
 
-# New function import for pin
 from core.database import toggle_session_pin
 from fastapi import Depends
 from api.deps import get_current_user
@@ -37,33 +35,21 @@ analysis_policy_resolver = AnalysisPolicyResolver()
 # --- Session Management Endpoints ---
 
 @router.get("/api/chat/sessions")
-async def get_user_sessions(user_id: Optional[str] = None, current_user: dict = Depends(get_current_user)):
-    """獲取用戶對話列表（根據 user_id 過濾）"""
-    # Fix: Default to current user if not provided
-    if user_id is None:
-        user_id = current_user["user_id"]
+async def get_user_sessions(
+    limit: int = Query(default=20, le=100),
+    offset: int = Query(default=0, ge=0),
+    current_user: dict = Depends(get_current_user),
+):
+    """獲取用戶對話列表"""
+    user_id = current_user["user_id"]
 
-    # Fix: Allow "local_user" in TEST_MODE even if it doesn't match current_user (test-user-001)
-    is_test_mode_local = core_config.TEST_MODE and user_id == "local_user"
-
-    if current_user["user_id"] != user_id and not is_test_mode_local:
-        raise HTTPException(status_code=403, detail="Not authorized")
-
-    sessions = await run_sync(lambda: get_sessions(user_id=user_id))
+    sessions = await run_sync(lambda: get_sessions(user_id=user_id, limit=limit, offset=offset))
     return {"sessions": sessions}
 
 @router.post("/api/chat/sessions")
-async def create_new_session(user_id: Optional[str] = None, current_user: dict = Depends(get_current_user)):
-    """創建新對話（綁定 user_id）"""
-    # Fix: Default to current user if not provided
-    if user_id is None:
-        user_id = current_user["user_id"]
-
-    # Fix: Allow "local_user" in TEST_MODE
-    is_test_mode_local = core_config.TEST_MODE and user_id == "local_user"
-
-    if current_user["user_id"] != user_id and not is_test_mode_local:
-        raise HTTPException(status_code=403, detail="Not authorized")
+async def create_new_session(current_user: dict = Depends(get_current_user)):
+    """創建新對話"""
+    user_id = current_user["user_id"]
 
     new_id = str(uuid.uuid4())
     await run_sync(lambda: create_session(new_id, title="New Chat", user_id=user_id))
@@ -94,14 +80,13 @@ async def get_history(
     - has_more=True 表示還有更舊的訊息可載入
     """
     LIMIT = 20
-    # 多取一條用來偵測是否還有更多
     history = await run_sync(
         lambda: get_chat_history(session_id=session_id,
                                  limit=LIMIT + 1, before_timestamp=before_timestamp)
     )
     has_more = len(history) > LIMIT
     if has_more:
-        history = history[1:]  # 移除最舊那條（作為 has_more 探針）
+        history = history[1:]
     return {"history": history, "has_more": has_more}
 
 # --- Analysis Endpoint ---
@@ -130,14 +115,12 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
         前端帶 resume_answer 重送 → Command(resume=...) 繼續 graph
     若 V4 啟動失敗則回傳 503。
     """
-    # ⭐ 驗證用戶是否提供了 API key
     if not body.user_api_key or not body.user_provider:
         raise HTTPException(
             status_code=400,
             detail="缺少 API Key。請在系統設定中輸入您的 LLM API Key。"
         )
 
-    # ⭐ 使用用戶提供的 key 創建 LLM 客戶端
     try:
         user_client = create_user_llm_client(
             provider=body.user_provider,
@@ -164,7 +147,6 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
     try:
         from langgraph.types import Command
 
-        # 使用 ManagerAgent
         from core.agents.bootstrap import bootstrap
         from core.agents.manager import MANAGER_GRAPH_RECURSION_LIMIT
         logger.info("✅ ManagerAgent initialized")
@@ -181,20 +163,17 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
             "recursion_limit": MANAGER_GRAPH_RECURSION_LIMIT,
         }
 
-        # resume_answer → 繼續被 interrupt 暫停的 graph
-        graph_input: Command  # Type annotation for mypy
+        graph_input: Command
         if body.resume_answer is not None:
             logger.info(f"[V4] HITL resume: session={body.session_id}")
             graph_input = Command(resume=body.resume_answer)
         else:
-            # 新請求：儲存到 DB + 載入對話歷史（平行執行，節省一個 DB round trip）
             _, db_history_raw = await asyncio.gather(
                 run_sync(lambda: save_chat_message("user", body.message,
                                                    session_id=body.session_id, user_id=current_user.get("user_id"))),
                 run_sync(lambda: get_chat_history(session_id=body.session_id, limit=20))
             )
 
-            # 載入 DB 歷史，格式化為純文字供 agent 使用
             history_text = ""
             try:
                 db_history = db_history_raw
@@ -202,15 +181,12 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
                 for msg in db_history:
                     role    = "助手" if msg.get("role") == "assistant" else "用戶"
                     content = (msg.get("content") or "").strip()
-                    # 排除剛存入的當前訊息（最後一條 user 訊息）
                     if content and content != body.message:
                         lines.append(f"{role}: {content}")
-                history_text = "\n".join(lines[-18:])  # 最近 18 條
+                history_text = "\n".join(lines[-18:])
             except Exception as e:
                 logger.warning(f"[V4] 載入對話歷史失敗: {e}")
 
-            # Force graph to restart from appropriate node with new input
-            # This ensures we don't get stuck in a previous interrupted state
             graph_input = Command(
                 goto="understand_intent",
                 update={
@@ -220,7 +196,7 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
                     "analysis_mode": effective_mode,
                     "task_results": {},
                     "language": body.language,
-                    "execution_mode": "vending",  # default, will be updated by intent understanding
+                    "execution_mode": "vending",
                 }
             )
 
@@ -233,7 +209,6 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
 
                 manager.progress_callback = on_progress
 
-                # Put a hard cap on analysis runtime so the frontend never waits forever.
                 invoke_task = asyncio.create_task(
                     asyncio.wait_for(
                         manager.graph.ainvoke(graph_input, config),
@@ -243,7 +218,6 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
 
                 try:
                     while not invoke_task.done():
-                        # Wait for either new progress event or task completion
                         queue_task = asyncio.create_task(progress_queue.get())
                         done, pending = await asyncio.wait(
                             [invoke_task, queue_task],
@@ -252,20 +226,16 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
 
                         if queue_task in done:
                             event = queue_task.result()
-                            # Send progress event
                             yield f"data: {json.dumps({'type': 'progress', 'data': event})}\n\n"
                         else:
                             queue_task.cancel()
 
-                    # Flush remaining events
                     while not progress_queue.empty():
                         event = progress_queue.get_nowait()
                         yield f"data: {json.dumps({'type': 'progress', 'data': event})}\n\n"
 
-                    # Get result (awaiting the task captures any exception raised during ainvoke)
                     result = await invoke_task
 
-                    # 偵測 interrupt（HITL 問題）→ 回傳給前端
                     interrupt_events = result.get("__interrupt__", [])
                     if interrupt_events:
                         iv = interrupt_events[0].value
@@ -273,7 +243,6 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
                         yield f"data: {json.dumps({'done': True, 'waiting': True})}\n\n"
                         return
 
-                    # 正常回應
                     response = result.get("final_response") or "（無回應）"
                     response_metadata = build_response_metadata(result, effective_mode)
 
@@ -304,20 +273,15 @@ async def analyze_crypto(request: Request, body: QueryRequest, current_user: dic
                     yield f"data: {json.dumps({'error': f'分析超時（超過 {ANALYSIS_TIMEOUT_SECONDS} 秒），請縮小問題範圍後重試。', 'done': True})}\n\n"
                 except Exception as e:
                     logger.error(f"[V4] 分析過程發生錯誤: {e}", exc_info=True)
-                    # SSE 錯誤處理：確保客戶端收到錯誤並結束流
                     yield f"data: {json.dumps({'error': str(e), 'done': True})}\n\n"
                 finally:
                     manager.progress_callback = None
                     if not invoke_task.done():
                         logger.info(f"[V4] Generator exiting, ensuring task cancelled for session {body.session_id}")
                         invoke_task.cancel()
-                        # We don't await here to avoid delaying the generator exit,
-                        # but the task will be cancelled in the background.
 
             except Exception as e:
-                # Catch-all for the outer try block logic (e.g. queue setup errors)
                 logger.error(f"[V4] Event generator error: {e}", exc_info=True)
-                # SSE 錯誤處理：確保客戶端收到錯誤並結束流
                 yield f"data: {json.dumps({'error': str(e), 'done': True})}\n\n"
 
         return StreamingResponse(event_generator_v4(), media_type="text/event-stream")
@@ -347,17 +311,14 @@ async def create_new_session(current_user: dict = Depends(get_current_user)):
     from core.agents.bootstrap import get_manager_instances, invalidate_manager_cache
     old_managers = get_manager_instances(user_id)
 
-    # 整合舊會話記憶（在刪除 cache 前）
     for old_manager in old_managers:
         if old_manager and hasattr(old_manager, '_message_count') and old_manager._message_count > 0:
             logger.info(f"[API] Consolidating old session for user {user_id}: {old_manager.session_id}")
             if hasattr(old_manager, 'consolidate_session_memory'):
                 await old_manager.consolidate_session_memory()
 
-    # ✅ 清除 Manager 緩存，下次請求重建（新 session 需要乾淨的 message_count）
     invalidate_manager_cache(user_id)
 
-    # 創建新會話
     new_session_id = str(uuid.uuid4())
     await run_sync(lambda: create_session(new_session_id, title="New Chat Session", user_id=user_id))
 
@@ -401,4 +362,3 @@ async def trigger_idle_consolidation(current_user: dict = Depends(get_current_us
     except Exception as e:
         logger.error(f"閒置整合失敗: {e}")
         return {"status": "error", "message": str(e)}
-

@@ -1,7 +1,7 @@
 """
 文章相關 API
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from typing import Optional
 from api.utils import run_sync
 import logging
@@ -21,6 +21,7 @@ from core.database import (
 from .models import CreatePostRequest, UpdatePostRequest
 from core.config import TEST_MODE, TEST_USER
 from api.deps import get_current_user
+from api.middleware.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +65,8 @@ async def list_posts(
 
 
 @router.post("")
-async def create_new_post(request: CreatePostRequest, user_id: str = Query(..., description="用戶 ID"), current_user: dict = Depends(get_current_user)):
+@limiter.limit("20/minute")
+async def create_new_post(request: Request, body: CreatePostRequest, current_user: dict = Depends(get_current_user)):
     """
     發表新文章
 
@@ -73,18 +75,17 @@ async def create_new_post(request: CreatePostRequest, user_id: str = Query(..., 
     - 每日發文限制從 /api/config/limits 獲取，Premium 會員無限制
     """
     try:
-        if current_user["user_id"] != user_id:
-            raise HTTPException(status_code=403, detail="Not authorized to post as this user")
+        user_id = current_user["user_id"]
 
         # 驗證分類
-        if request.category not in VALID_CATEGORIES:
+        if body.category not in VALID_CATEGORIES:
             raise HTTPException(
                 status_code=400,
                 detail=f"無效的分類，可選: {', '.join(VALID_CATEGORIES)}"
             )
 
         # 驗證看板
-        board = await run_sync(get_board_by_slug, request.board_slug)
+        board = await run_sync(get_board_by_slug, body.board_slug)
         if not board:
             raise HTTPException(status_code=404, detail="看板不存在")
         if not board["is_active"]:
@@ -104,10 +105,10 @@ async def create_new_post(request: CreatePostRequest, user_id: str = Query(..., 
         # 免費會員需要付費 (測試模式下跳過)
         is_test_user = TEST_MODE and (user_id.startswith("test-user-") or user_id == TEST_USER.get("uid"))
 
-        if not membership["is_premium"] and not request.payment_tx_hash:
+        if not membership["is_premium"] and not body.payment_tx_hash:
             if is_test_user:
                 # TEST_MODE: Mock payment for test users
-                request.payment_tx_hash = f"test_post_{int(time.time() * 1000)}"
+                body.payment_tx_hash = f"test_post_{int(time.time() * 1000)}"
                 logger.info(f"TEST_MODE: Bypassing payment requirement for user {user_id}")
             else:
                 prices = await run_sync(get_prices)
@@ -121,11 +122,11 @@ async def create_new_post(request: CreatePostRequest, user_id: str = Query(..., 
             lambda: create_post(
                 board_id=board["id"],
                 user_id=user_id,
-                category=request.category,
-                title=request.title,
-                content=request.content,
-                tags=request.tags,
-                payment_tx_hash=request.payment_tx_hash,
+                category=body.category,
+                title=body.title,
+                content=body.content,
+                tags=body.tags,
+                payment_tx_hash=body.payment_tx_hash,
                 skip_limit_check=True,
             )
         )
@@ -150,14 +151,14 @@ async def create_new_post(request: CreatePostRequest, user_id: str = Query(..., 
 
 
 @router.get("/{post_id}")
-async def get_post_detail(post_id: int, user_id: Optional[str] = Query(None, description="查看者的用戶 ID")):
+async def get_post_detail(post_id: int):
     """
     獲取文章詳情
 
     會自動增加瀏覽數
     """
     try:
-        post = await run_sync(lambda: get_post_by_id(post_id, increment_view=True, viewer_user_id=user_id))
+        post = await run_sync(lambda: get_post_by_id(post_id, increment_view=True, viewer_user_id=None))
         if not post:
             raise HTTPException(status_code=404, detail="文章不存在")
         if post["is_hidden"]:
@@ -174,15 +175,13 @@ async def get_post_detail(post_id: int, user_id: Optional[str] = Query(None, des
 async def update_post_content(
     post_id: int,
     request: UpdatePostRequest,
-    user_id: str = Query(..., description="用戶 ID"),
     current_user: dict = Depends(get_current_user)
 ):
     """
     編輯文章（只有作者可以編輯）
     """
     try:
-        if current_user["user_id"] != user_id:
-            raise HTTPException(status_code=403, detail="Not authorized")
+        user_id = current_user["user_id"]
 
         # 驗證分類
         if request.category and request.category not in VALID_CATEGORIES:
@@ -214,15 +213,13 @@ async def update_post_content(
 @router.delete("/{post_id}")
 async def delete_post_by_id(
     post_id: int,
-    user_id: str = Query(..., description="用戶 ID"),
     current_user: dict = Depends(get_current_user)
 ):
     """
     刪除文章（軟刪除，只有作者可以刪除）
     """
     try:
-        if current_user["user_id"] != user_id:
-            raise HTTPException(status_code=403, detail="Not authorized")
+        user_id = current_user["user_id"]
 
         success = await run_sync(lambda: delete_post(post_id=post_id, user_id=user_id))
 

@@ -1,7 +1,14 @@
 // ============================================================
-// Forex Market Tab — 外匯市場
+// Forex Market Tab
 // Follows the same pattern as commodity.js / usstock.js
 // ============================================================
+
+function sanitizeUrl(url) {
+    if (!url) return '#';
+    const trimmed = String(url).trim();
+    if (trimmed.startsWith('javascript:') || trimmed.startsWith('data:') || trimmed.startsWith('vbscript:')) return '#';
+    return trimmed;
+}
 
 window.ForexTab = {
     activeSubTab: 'market',
@@ -12,12 +19,12 @@ window.ForexTab = {
     lastUpdatedAt: null,
 
     DEFAULT_PAIRS: [
-        { symbol: 'TWD=X',    name: 'USD/TWD', desc: '美元 / 台幣' },
-        { symbol: 'EURUSD=X', name: 'EUR/USD', desc: '歐元 / 美元' },
-        { symbol: 'GBPUSD=X', name: 'GBP/USD', desc: '英鎊 / 美元' },
-        { symbol: 'JPY=X',    name: 'USD/JPY', desc: '美元 / 日圓' },
-        { symbol: 'AUDUSD=X', name: 'AUD/USD', desc: '澳幣 / 美元' },
-        { symbol: 'CNY=X',    name: 'USD/CNY', desc: '美元 / 人民幣'},
+        { symbol: 'TWD=X',    name: 'USD/TWD', desc: window.I18n ? window.I18n.t('forex.usdTwd') : '美元 / 台幣' },
+        { symbol: 'EURUSD=X', name: 'EUR/USD', desc: window.I18n ? window.I18n.t('forex.eurUsd') : '歐元 / 美元' },
+        { symbol: 'GBPUSD=X', name: 'GBP/USD', desc: window.I18n ? window.I18n.t('forex.gbpUsd') : '英鎊 / 美元' },
+        { symbol: 'JPY=X',    name: 'USD/JPY', desc: window.I18n ? window.I18n.t('forex.usdJpy') : '美元 / 日圓' },
+        { symbol: 'AUDUSD=X', name: 'AUD/USD', desc: window.I18n ? window.I18n.t('forex.audUsd') : '澳幣 / 美元' },
+        { symbol: 'CNY=X',    name: 'USD/CNY', desc: window.I18n ? window.I18n.t('forex.usdCny') : '美元 / 人民幣'},
     ],
 
     // ── Init ──────────────────────────────────────────────────
@@ -69,7 +76,8 @@ window.ForexTab = {
     renderMarket: async function () {
         const listEl = document.getElementById('forex-list');
         if (!listEl) return;
-        listEl.innerHTML = '<div class="text-center text-textMuted py-10 opacity-50"><i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto mb-2"></i><p class="text-sm">載入中...</p></div>';
+        if (window.MarketStatus) window.MarketStatus.markSynced('forex');
+        listEl.innerHTML = '<div class="text-center text-textMuted py-10 opacity-50"><i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto mb-2"></i><p class="text-sm">' + (window.I18n ? window.I18n.t('common.loading') : '載入中...') + '</p></div>';
         if (window.lucide) lucide.createIcons();
 
         try {
@@ -91,8 +99,8 @@ window.ForexTab = {
                 card.onclick = () => this.switchSubTab('pulse', item.symbol);
                 card.innerHTML = `
                     <div>
-                        <div class="font-bold text-secondary text-sm">${item.name}</div>
-                        <div class="text-xs text-textMuted">${desc}</div>
+                        <div class="font-bold text-secondary text-sm">${escapeHtml(item.name)}</div>
+                        <div class="text-xs text-textMuted">${escapeHtml(desc)}</div>
                     </div>
                     <div class="text-right">
                         <div class="font-mono font-bold text-secondary">${item.rate.toLocaleString(undefined, {maximumFractionDigits: 6})}</div>
@@ -101,16 +109,13 @@ window.ForexTab = {
                 listEl.appendChild(card);
             });
 
-            const updEl = document.getElementById('forex-last-updated');
-            if (updEl && data.last_updated) {
-                updEl.textContent = '更新: ' + new Date(data.last_updated).toLocaleTimeString('zh-TW');
-            }
-            this.lastUpdatedAt = data.last_updated || this.lastUpdatedAt;
+            this.lastUpdatedAt = data.last_updated || new Date().toISOString();
             if (window.MarketStatus) {
+                window.MarketStatus.markSynced('forex');
                 window.MarketStatus.updateMarketStatusBar('forex', this.lastUpdatedAt);
             }
         } catch (e) {
-            listEl.innerHTML = `<div class="text-center text-danger py-10 text-sm">載入失敗：${e.message}</div>`;
+            listEl.innerHTML = `<div class="text-center text-danger py-10 text-sm">${window.I18n ? window.I18n.t('marketPage.loadFailedDetail') : '載入失敗：'}${escapeHtml(e.message)}</div>`;
         }
     },
 
@@ -143,10 +148,10 @@ window.ForexTab = {
             const summarySection = userKey
                 ? `<div class="bg-surface border border-white/5 rounded-2xl p-5">
                         <div class="flex items-center gap-2 mb-3">
-                            <h4 class="text-xs uppercase tracking-wider text-textMuted">市場脈動</h4>
-                            ${isDeep ? '<span class="text-[9px] px-1.5 py-0.5 bg-primary/20 text-primary rounded border border-primary/30 flex items-center gap-1"><i data-lucide="zap" class="w-2.5 h-2.5"></i>AI深度分析</span>' : ''}
+                            <h4 class="text-xs uppercase tracking-wider text-textMuted">${window.I18n ? window.I18n.t('pulse.title') : '市場脈動'}</h4>
+                            ${isDeep ? '<span class="text-[9px] px-1.5 py-0.5 bg-primary/20 text-primary rounded border border-primary/30 flex items-center gap-1"><i data-lucide="zap" class="w-2.5 h-2.5"></i>' + (window.I18n ? window.I18n.t('marketPage.aiDeepAnalysis') : 'AI深度分析') + '</span>' : ''}
                         </div>
-                        <p class="text-sm text-secondary leading-relaxed">${d.report?.summary || ''}</p>
+                        <p class="text-sm text-secondary leading-relaxed">${escapeHtml(d.report?.summary || '')}</p>
                    </div>`
                 : `<div class="bg-surface border border-primary/20 rounded-2xl p-5">
                         <div class="flex flex-col items-center text-center gap-3 py-2">
@@ -154,11 +159,11 @@ window.ForexTab = {
                                 <i data-lucide="key" class="w-5 h-5 text-primary"></i>
                             </div>
                             <div>
-                                <p class="text-sm font-bold text-secondary mb-1">請連接 AI 金鑰</p>
-                                <p class="text-xs text-textMuted">連接 OpenAI 或 Gemini 金鑰以獲取 AI 深度分析</p>
+                                <p class="text-sm font-bold text-secondary mb-1">${window.I18n ? window.I18n.t('marketPage.connectApiKey') : '請連接 AI 金鑰'}</p>
+                                <p class="text-xs text-textMuted">${window.I18n ? window.I18n.t('marketPage.connectApiKeyDesc') : '連接 OpenAI 或 Gemini 金鑰以獲取 AI 深度分析'}</p>
                             </div>
                             <button onclick="switchTab('settings')" class="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary text-xs rounded-xl border border-primary/30 transition flex items-center gap-1.5">
-                                <i data-lucide="settings" class="w-3.5 h-3.5"></i>前往設定
+                                <i data-lucide="settings" class="w-3.5 h-3.5"></i>${window.I18n ? window.I18n.t('pulse.goToSettings') : '前往設定'}
                             </button>
                         </div>
                    </div>`;
@@ -166,26 +171,26 @@ window.ForexTab = {
             pulseEl.innerHTML = `
                 <div class="space-y-4">
                     <div class="bg-surface border border-white/5 rounded-2xl p-5">
-                        <div class="text-textMuted text-xs uppercase tracking-wider mb-1">${d.name}</div>
+                        <div class="text-textMuted text-xs uppercase tracking-wider mb-1">${escapeHtml(d.name)}</div>
                         <div class="text-3xl font-serif text-secondary font-bold">${d.rate?.toLocaleString(undefined, {maximumFractionDigits: 6})}</div>
                         <div class="text-sm font-bold ${color} mt-1">${d.change_24h > 0 ? '+' : ''}${d.change_24h?.toFixed(3)}% 24H</div>
                     </div>
                     ${summarySection}
                     <div class="bg-surface border border-white/5 rounded-2xl p-5">
-                        <h4 class="text-xs uppercase tracking-wider text-textMuted mb-3">技術指標</h4>
+                        <h4 class="text-xs uppercase tracking-wider text-textMuted mb-3">${window.I18n ? window.I18n.t('marketPage.technicalIndicators') : '技術指標'}</h4>
                         <div class="grid grid-cols-2 gap-2">
                             ${(d.report?.key_points || []).map(pt => `
                                 <div class="bg-background rounded-xl px-3 py-2 text-xs">
-                                    <span class="text-textMuted">${pt.split(':')[0]}:</span>
-                                    <span class="text-secondary font-mono ml-1">${pt.split(':').slice(1).join(':').trim()}</span>
+                                    <span class="text-textMuted">${escapeHtml(pt.split(':')[0])}:</span>
+                                    <span class="text-secondary font-mono ml-1">${escapeHtml(pt.split(':').slice(1).join(':').trim())}</span>
                                 </div>`).join('')}
                         </div>
                     </div>
                     <div id="forex-chart-container" class="bg-surface border border-white/5 rounded-2xl p-4">
                         <div class="flex items-center justify-between mb-3">
-                            <span class="text-xs uppercase tracking-wider text-textMuted">走勢圖</span>
+                            <span class="text-xs uppercase tracking-wider text-textMuted">${window.I18n ? window.I18n.t('marketPage.trendChart') : '走勢圖'}</span>
                             <div class="flex gap-1">
-                                ${['1d','1wk','1mo'].map(iv => `<button onclick="ForexTab.changeInterval('${iv}')" id="forex-interval-${iv}" class="text-xs px-2 py-1 rounded-lg ${iv === '1d' ? 'bg-primary text-background' : 'bg-surface text-textMuted hover:bg-surfaceHighlight'} transition">${iv === '1d' ? '日' : iv === '1wk' ? '週' : '月'}</button>`).join('')}
+                                ${['1d','1wk','1mo'].map(iv => `<button onclick="ForexTab.changeInterval('${iv}')" id="forex-interval-${iv}" class="text-xs px-2 py-1 rounded-lg ${iv === '1d' ? 'bg-primary text-background' : 'bg-surface text-textMuted hover:bg-surfaceHighlight'} transition">${iv === '1d' ? (window.I18n ? window.I18n.t('marketPage.intervalDay') : '日') : iv === '1wk' ? (window.I18n ? window.I18n.t('marketPage.intervalWeek') : '週') : (window.I18n ? window.I18n.t('marketPage.intervalMonth') : '月')}</button>`).join('')}
                             </div>
                         </div>
                         <div id="forex-chart" style="height: 200px;"></div>
@@ -194,7 +199,7 @@ window.ForexTab = {
             if (window.lucide) lucide.createIcons();
             this.loadChart(symbol, this.currentInterval);
         } catch (e) {
-            pulseEl.innerHTML = `<div class="text-center text-danger py-10 text-sm">載入失敗：${e.message}</div>`;
+            pulseEl.innerHTML = `<div class="text-center text-danger py-10 text-sm">${window.I18n ? window.I18n.t('marketPage.loadFailedDetail') : '載入失敗：'}${escapeHtml(e.message)}</div>`;
         }
     },
 

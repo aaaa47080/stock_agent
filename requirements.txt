@@ -29,6 +29,7 @@ google-generativeai==0.8.5
 
 # === Database ===
 psycopg2-binary==2.9.11
+asyncpg==0.31.0
 alembic==1.18.4
 
 # === Auth / Security ===

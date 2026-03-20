@@ -5,6 +5,17 @@
  * Includes sub-tab switching between "Market Watch" and "AI Pulse".
  */
 
+function sanitizeUrl(url) {
+    if (!url) return '#';
+    const trimmed = String(url).trim();
+    if (trimmed.startsWith('javascript:') || trimmed.startsWith('data:') || trimmed.startsWith('vbscript:')) return '#';
+    return trimmed;
+}
+
+function _t(key) {
+    return window.I18n ? window.I18n.t(key) : key;
+}
+
 window.TWStockTab = {
     activeSubTab: 'market', // 'market' | 'pulse'
     lastUpdatedAt: null,
@@ -70,7 +81,7 @@ window.TWStockTab = {
         const input = document.getElementById('twStockAddInput');
         if (window.twStockSelectedSymbols.includes(sym)) {
             if (input) input.value = '';
-            if (window.showToast) window.showToast(`自選清單已存在「${sym}」`, 'info');
+            if (window.showToast) window.showToast(_t('twstock.alreadyInWatchlist').replace('{sym}', sym), 'info');
             return;
         }
 
@@ -101,21 +112,21 @@ window.TWStockTab = {
                 this.saveTwStockSelection();
                 this.refreshMarketWatch();
                 this.refreshMarketInfo(); // Update News, Dividend, PE
-                if (window.showToast) window.showToast(`已成功加入「${sym}」`, 'success');
+                if (window.showToast) window.showToast(_t('twstock.addedToWatchlist').replace('{sym}', sym), 'success');
             } else {
                 // Invalid symbol or no data returned
                 if (window.showToast) {
                     window.showToast(
-                        `找不到台股代號「${sym}」的交易資料，或該股票已下市。`,
+                        _t('twstock.symbolNotFound').replace('{sym}', sym),
                         'error'
                     );
                 } else {
-                    alert(`找不到台股代號「${sym}」。`);
+                    alert(_t('twstock.symbolNotFoundShort').replace('{sym}', sym));
                 }
             }
         } catch (e) {
             console.error('[TW Stock] Validation error:', e);
-            if (window.showToast) window.showToast(`新增失敗：無法連線驗證代號`, 'error');
+            if (window.showToast) window.showToast(_t('twstock.addFailed'), 'error');
         } finally {
             // Restore UI state
             if (btn) {
@@ -147,7 +158,7 @@ window.TWStockTab = {
                 </h3>
                 <div class="flex-1 min-w-0">
                     <div class="relative">
-                        <input type="text" id="twStockAddInput" placeholder="輸入台股代號 (如 2330)" maxlength="6"
+                        <input type="text" id="twStockAddInput" placeholder="${_t('twstock.searchPlaceholder')}" maxlength="6"
                             oninput="this.value = this.value.replace(/[^0-9A-Za-z]/g, '').toUpperCase()"
                             class="w-full bg-background/50 border border-white/10 rounded-lg pl-3 pr-10 py-1.5 text-sm focus:outline-none focus:border-primary transition-colors text-white placeholder-textMuted/50">
                         <button onclick="window.TWStockTab.addTwStock(document.getElementById('twStockAddInput').value)" class="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-textMuted hover:text-primary transition-colors hover:bg-white/5 rounded">
@@ -224,7 +235,7 @@ window.TWStockTab = {
                 // Ignore empty symbol and show a prompt
                 const pulseContainer = document.getElementById('twstock-pulse-result');
                 if (pulseContainer) {
-                    pulseContainer.innerHTML = `<div class="py-20 text-center text-textMuted uppercase tracking-widest text-sm italic opacity-50 flex flex-col items-center"><i data-lucide="search" class="w-8 h-8 mb-3 opacity-50"></i>請輸入台股代號或從市場首頁點選「深度分析」</div>`;
+                    pulseContainer.innerHTML = `<div class="py-20 text-center text-textMuted uppercase tracking-widest text-sm italic opacity-50 flex flex-col items-center"><i data-lucide="search" class="w-8 h-8 mb-3 opacity-50"></i>${_t('marketPage.analysisPlaceholder')}</div>`;
                     pulseContainer.classList.remove('hidden');
                     if (window.lucide) window.lucide.createIcons();
                 }
@@ -238,6 +249,7 @@ window.TWStockTab = {
 
         if (!listContainer || !loader) return;
 
+        if (window.MarketStatus) window.MarketStatus.markSynced('twstock');
         loader.classList.remove('hidden');
         listContainer.innerHTML = '';
 
@@ -261,13 +273,14 @@ window.TWStockTab = {
             const topPerformers = data.top_performers || [];
             this.lastUpdatedAt = data.last_updated || new Date().toISOString();
             if (window.MarketStatus) {
+                window.MarketStatus.markSynced('twstock');
                 window.MarketStatus.updateMarketStatusBar('twstock', this.lastUpdatedAt);
             }
 
             this.renderMarketList(listContainer, topPerformers);
         } catch (error) {
             console.error('[TW Stock] Market API Error:', error);
-            listContainer.innerHTML = `<div class="p-4 text-center text-danger bg-danger/10 rounded-xl text-sm">無法載入台股市場數據：${SecurityUtils.escapeHTML(error.message || '')}</div>`;
+            listContainer.innerHTML = `<div class="p-4 text-center text-danger bg-danger/10 rounded-xl text-sm">${_t('twstock.marketDataLoadFailed')}${SecurityUtils.escapeHTML(error.message || '')}</div>`;
         } finally {
             loader.classList.add('hidden');
         }
@@ -276,7 +289,7 @@ window.TWStockTab = {
     renderMarketList: function (container, items) {
         if (!items || items.length === 0) {
             container.innerHTML =
-                '<p class="text-textMuted text-[10px] italic py-6 text-center opacity-50 uppercase tracking-widest">暫無市場數據</p>';
+                `<p class="text-textMuted text-[10px] italic py-6 text-center opacity-50 uppercase tracking-widest">${_t('marketPage.noData')}</p>`;
             return;
         }
 
@@ -295,7 +308,7 @@ window.TWStockTab = {
         items.forEach((item) => {
             const sym = escapeHtml(item.Symbol || 'N/A');
             const name = escapeHtml(item.Name || sym);
-            const exchange = escapeHtml(item.Exchange || '台股');
+            const exchange = escapeHtml(item.Exchange || _t('twstock.twExchange'));
             const price = item.Close
                 ? parseFloat(item.Close).toLocaleString(undefined, {
                       minimumFractionDigits: 2,
@@ -332,7 +345,7 @@ window.TWStockTab = {
                                 <button onclick="window.TWStockTab.showTwChart('${sym}', event)" class="w-7 h-7 rounded-lg flex items-center justify-center text-textMuted hover:text-primary hover:bg-primary/10 transition-colors border border-white/5" title="View Chart">
                                     <i data-lucide="bar-chart-2" class="w-3.5 h-3.5"></i>
                                 </button>
-                                <button onclick="openAlertModal('${sym}', 'tw_stock'); event.stopPropagation();" class="w-7 h-7 rounded-lg flex items-center justify-center text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10 transition-colors border border-white/5" title="設定價格警報"><span class="text-xs leading-none">🔔</span></button>
+                                <button onclick="openAlertModal('${sym}', 'tw_stock'); event.stopPropagation();" class="w-7 h-7 rounded-lg flex items-center justify-center text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10 transition-colors border border-white/5" title="${_t('twstock.setPriceAlert')}"><span class="text-xs leading-none">🔔</span></button>
                                 <button onclick="window.TWStockTab.removeTwStock('${sym}', event)" class="w-7 h-7 rounded-lg flex items-center justify-center text-textMuted hover:text-danger hover:bg-danger/10 transition-colors border border-white/5" title="Remove from Watchlist">
                                     <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                                 </button>
@@ -390,7 +403,7 @@ window.TWStockTab = {
                 titleEl.textContent = `Taiwan Stock AI Pulse: ${data.company_name || symbol}`;
         } catch (error) {
             console.error('[TW Stock] Pulse API Error:', error);
-            pulseContainer.innerHTML = `<div class="p-4 text-center text-danger bg-danger/10 rounded-xl text-sm">無法載入「${SecurityUtils.escapeHTML(symbol || '')}」的脈動分析：${SecurityUtils.escapeHTML(error.message || '')}</div>`;
+            pulseContainer.innerHTML = `<div class="p-4 text-center text-danger bg-danger/10 rounded-xl text-sm">${_t('twstock.pulseLoadFailed').replace('{sym}', SecurityUtils.escapeHTML(symbol || ''))}${SecurityUtils.escapeHTML(error.message || '')}</div>`;
             pulseContainer.classList.remove('hidden');
         } finally {
             loader.classList.add('hidden');
@@ -416,8 +429,8 @@ window.TWStockTab = {
             v != null && !isNaN(Number(v)) ? Number(v).toFixed(d) + '%' : 'N/A';
         const fmtMktCap = (v) => {
             if (!v || isNaN(v)) return 'N/A';
-            if (v >= 1e12) return (v / 1e12).toFixed(2) + ' 兆';
-            if (v >= 1e8) return (v / 1e8).toFixed(1) + ' 億';
+            if (v >= 1e12) return (v / 1e12).toFixed(2) + _t('twstock.unitTrillion');
+            if (v >= 1e8) return (v / 1e8).toFixed(1) + _t('twstock.unitHundredMillion');
             return Number(v).toLocaleString();
         };
         const parseInst = (v) => {
@@ -431,7 +444,7 @@ window.TWStockTab = {
                 return `<div class="flex items-center justify-between py-2 border-b border-white/5 last:border-0"><span class="text-xs text-textMuted">${label}</span><span class="text-xs text-textMuted font-mono">N/A</span></div>`;
             const c = n > 0 ? 'text-success' : 'text-danger';
             const ic = n > 0 ? 'arrow-up' : 'arrow-down';
-            return `<div class="flex items-center justify-between py-2 border-b border-white/5 last:border-0"><span class="text-xs text-textMuted">${label}</span><span class="text-xs font-bold font-mono ${c} flex items-center gap-1"><i data-lucide="${ic}" class="w-3 h-3"></i>${n > 0 ? '+' : ''}${n.toLocaleString()} 股</span></div>`;
+            return `<div class="flex items-center justify-between py-2 border-b border-white/5 last:border-0"><span class="text-xs text-textMuted">${label}</span><span class="text-xs font-bold font-mono ${c} flex items-center gap-1"><i data-lucide="${ic}" class="w-3 h-3"></i>${n > 0 ? '+' : ''}${n.toLocaleString()}${_t('twstock.unitShares')}</span></div>`;
         };
         const pctRow = (label, raw, isAlready100 = false) => {
             if (raw == null || isNaN(Number(raw)))
@@ -452,7 +465,7 @@ window.TWStockTab = {
                     ? 'text-danger'
                     : 'text-secondary';
         const rsiLabelText =
-            rsiVal == null ? '' : rsiVal < 30 ? '超賣' : rsiVal > 70 ? '超買' : '中性';
+            rsiVal == null ? '' : rsiVal < 30 ? _t('pulse.oversold') : rsiVal > 70 ? _t('pulse.overbought') : _t('pulse.neutral');
         const rsiLabelStyle =
             rsiVal == null
                 ? ''
@@ -473,8 +486,8 @@ window.TWStockTab = {
         const maPosBadge = (maVal) => {
             if (!maVal || !close) return '';
             return close >= maVal
-                ? '<span class="text-[9px] ml-1 px-1 rounded bg-success/20 text-success">上方</span>'
-                : '<span class="text-[9px] ml-1 px-1 rounded bg-danger/20 text-danger">下方</span>';
+                ? `<span class="text-[9px] ml-1 px-1 rounded bg-success/20 text-success">${_t('twstock.aboveMA')}</span>`
+                : `<span class="text-[9px] ml-1 px-1 rounded bg-danger/20 text-danger">${_t('twstock.belowMA')}</span>`;
         };
 
         // 52W progress bar
@@ -485,7 +498,7 @@ window.TWStockTab = {
             const pct = Math.min(100, Math.max(0, ((close - low52) / (high52 - low52)) * 100));
             w52Html = `
                 <div class="flex justify-between text-[9px] text-textMuted mb-1">
-                    <span>低 ${fv(low52)}</span><span>現價 ${pct.toFixed(0)}%</span><span>高 ${fv(high52)}</span>
+                    <span>${_t('twstock.week52Low')} ${fv(low52)}</span><span>${_t('twstock.currentPriceLabel')} ${pct.toFixed(0)}%</span><span>${_t('twstock.week52High')} ${fv(high52)}</span>
                 </div>
                 <div class="h-1.5 rounded-full bg-white/10 overflow-hidden">
                     <div class="h-full rounded-full bg-gradient-to-r from-danger via-yellow-500 to-success" style="width:${pct}%"></div>
@@ -507,8 +520,8 @@ window.TWStockTab = {
                         </div>
                         <div>
                             <div class="flex items-center gap-2 mb-1">
-                                <h2 class="text-xl md:text-2xl font-serif text-secondary font-bold">${data.company_name}</h2>
-                                <span class="px-2 py-0.5 rounded text-xs font-bold tracking-wider uppercase bg-white/10 text-white border border-white/10">${data.symbol}</span>
+                                <h2 class="text-xl md:text-2xl font-serif text-secondary font-bold">${escapeHtml(data.company_name)}</h2>
+                                <span class="px-2 py-0.5 rounded text-xs font-bold tracking-wider uppercase bg-white/10 text-white border border-white/10">${escapeHtml(data.symbol)}</span>
                             </div>
                             <div class="text-xs text-textMuted flex items-center gap-2">
                                 <i data-lucide="map-pin" class="w-3 h-3"></i> Taiwan Stock Exchange (TWSE)
@@ -540,17 +553,17 @@ window.TWStockTab = {
                             Pulse AI Intelligence Summary
                         </h3>
                         ${hasKey
-                            ? `<p class="text-textMain text-sm leading-relaxed whitespace-pre-line ml-11">${rep.summary || ''}</p>`
+                            ? `<p class="text-textMain text-sm leading-relaxed whitespace-pre-line ml-11">${escapeHtml(rep.summary || '')}</p>`
                             : `<div class="ml-11 flex flex-col items-center text-center gap-3 py-4">
                                 <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                                     <i data-lucide="key" class="w-5 h-5 text-primary"></i>
                                 </div>
                                 <div>
-                                    <p class="text-sm font-bold text-secondary mb-1">請連接 AI 金鑰</p>
-                                    <p class="text-xs text-textMuted">連接 OpenAI 或 Gemini 金鑰以獲取 AI 深度分析</p>
+                                    <p class="text-sm font-bold text-secondary mb-1">${_t('twstock.connectAIKey')}</p>
+                                    <p class="text-xs text-textMuted">${_t('twstock.connectAIKeyDesc')}</p>
                                 </div>
                                 <button onclick="switchTab('settings')" class="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary text-xs rounded-xl border border-primary/30 transition flex items-center gap-1.5">
-                                    <i data-lucide="settings" class="w-3.5 h-3.5"></i>前往設定
+                                    <i data-lucide="settings" class="w-3.5 h-3.5"></i>${_t('twstock.goToSettings')}
                                 </button>
                                </div>`
                         }
@@ -568,9 +581,9 @@ window.TWStockTab = {
                                 ${rep.highlights
                                     .map(
                                         (h) => `
-                                    <a href="${h.url || '#'}" target="_blank" rel="noopener noreferrer"
+                                    <a href="${sanitizeUrl(h.url)}" target="_blank" rel="noopener noreferrer"
                                        class="block bg-surfaceHighlight p-3 rounded-lg border border-white/5 hover:border-white/20 transition-colors">
-                                        <p class="text-xs text-textMain leading-relaxed line-clamp-3 hover:text-primary transition-colors">${h.title || ''}</p>
+                                        <p class="text-xs text-textMain leading-relaxed line-clamp-3 hover:text-primary transition-colors">${escapeHtml(h.title || '')}</p>
                                     </a>
                                 `
                                     )
@@ -609,15 +622,15 @@ window.TWStockTab = {
                     </div>
                     <!-- KD -->
                     <div class="bg-background/80 rounded-xl p-4 border border-white/5 hover:border-white/10 transition-colors">
-                        <div class="text-[10px] text-textMuted uppercase tracking-wider mb-2">KD 隨機指標</div>
+                        <div class="text-[10px] text-textMuted uppercase tracking-wider mb-2">${_t('twstock.kdIndicator')}</div>
                         <div class="space-y-1.5">
-                            <div class="flex justify-between text-xs"><span class="text-textMuted">K 值</span><span class="font-bold font-mono text-secondary">${fv((tech.kd || {}).k)}</span></div>
-                            <div class="flex justify-between text-xs"><span class="text-textMuted">D 值</span><span class="font-bold font-mono text-secondary">${fv((tech.kd || {}).d)}</span></div>
+                            <div class="flex justify-between text-xs"><span class="text-textMuted">${_t('twstock.kValue')}</span><span class="font-bold font-mono text-secondary">${fv((tech.kd || {}).k)}</span></div>
+                            <div class="flex justify-between text-xs"><span class="text-textMuted">${_t('twstock.dValue')}</span><span class="font-bold font-mono text-secondary">${fv((tech.kd || {}).d)}</span></div>
                         </div>
                     </div>
                     <!-- MA -->
                     <div class="bg-background/80 rounded-xl p-4 border border-white/5 hover:border-white/10 transition-colors">
-                        <div class="text-[10px] text-textMuted uppercase tracking-wider mb-2">移動平均線</div>
+                        <div class="text-[10px] text-textMuted uppercase tracking-wider mb-2">${_t('twstock.movingAverage')}</div>
                         <div class="space-y-1.5">
                             ${[
                                 ['MA5', maArr.ma5],
@@ -643,11 +656,11 @@ window.TWStockTab = {
                     </h3>
                     <div class="grid grid-cols-2 gap-3 mb-4">
                         <div class="bg-background/60 rounded-lg p-3 border border-white/5">
-                            <div class="text-[9px] text-textMuted uppercase mb-1">本益比 P/E</div>
+                            <div class="text-[9px] text-textMuted uppercase mb-1">${_t('marketPage.peRatio')}</div>
                             <div class="font-bold font-mono text-secondary">${fv(fund.pe_ratio)}</div>
                         </div>
                         <div class="bg-background/60 rounded-lg p-3 border border-white/5">
-                            <div class="text-[9px] text-textMuted uppercase mb-1">股價淨值比 P/B</div>
+                            <div class="text-[9px] text-textMuted uppercase mb-1">${_t('marketPage.pbRatio')}</div>
                             <div class="font-bold font-mono text-secondary">${fv(fund.pb_ratio)}</div>
                         </div>
                         <div class="bg-background/60 rounded-lg p-3 border border-white/5">
@@ -655,20 +668,20 @@ window.TWStockTab = {
                             <div class="font-bold font-mono text-secondary">${fv(fund.eps_ttm)}</div>
                         </div>
                         <div class="bg-background/60 rounded-lg p-3 border border-white/5">
-                            <div class="text-[9px] text-textMuted uppercase mb-1">殖利率</div>
+                            <div class="text-[9px] text-textMuted uppercase mb-1">${_t('marketPage.yield')}</div>
                             <div class="font-bold font-mono ${fund.dividend_yield_pct > 4 ? 'text-success' : 'text-secondary'}">${fund.dividend_yield_pct != null ? fv(fund.dividend_yield_pct) + '%' : 'N/A'}</div>
                         </div>
                         <div class="bg-background/60 rounded-lg p-3 border border-white/5">
-                            <div class="text-[9px] text-textMuted uppercase mb-1">毛利率</div>
+                            <div class="text-[9px] text-textMuted uppercase mb-1">${_t('twstock.grossMargin')}</div>
                             <div class="font-bold font-mono text-secondary">${fund.profit_margins != null ? fvPct(fund.profit_margins * 100) : 'N/A'}</div>
                         </div>
                         <div class="bg-background/60 rounded-lg p-3 border border-white/5">
-                            <div class="text-[9px] text-textMuted uppercase mb-1">市值</div>
+                            <div class="text-[9px] text-textMuted uppercase mb-1">${_t('twstock.marketCap')}</div>
                             <div class="font-bold font-mono text-secondary text-xs">${fmtMktCap(fund.market_cap)}</div>
                         </div>
                     </div>
                     <div class="bg-background/60 rounded-lg p-3 border border-white/5">
-                        <div class="text-[9px] text-textMuted uppercase mb-2">52 週高低點</div>
+                        <div class="text-[9px] text-textMuted uppercase mb-2">${_t('twstock.week52Range')}</div>
                         ${w52Html}
                     </div>
                 </div>
@@ -676,17 +689,17 @@ window.TWStockTab = {
                 <!-- Section C: Institutional -->
                 <div class="bg-surface/40 backdrop-blur-sm border border-white/5 rounded-2xl p-6">
                     <h3 class="font-bold text-secondary mb-5 flex items-center gap-2 text-sm uppercase tracking-wider">
-                        <i data-lucide="users" class="w-4 h-4 text-yellow-500"></i> 三大法人籌碼
+                        <i data-lucide="users" class="w-4 h-4 text-yellow-500"></i> ${_t('twstock.institutionalChip')}
                     </h3>
                     <div class="space-y-0">
-                        ${instRow('外資買賣超', inst.foreign_net)}
-                        ${instRow('投信買賣超', inst.investment_trust)}
-                        ${instRow('自營商買賣超', inst.dealer_net)}
+                        ${instRow(_t('twstock.foreignNetBuySell'), inst.foreign_net)}
+                        ${instRow(_t('twstock.investTrustNet'), inst.investment_trust)}
+                        ${instRow(_t('twstock.dealerNet'), inst.dealer_net)}
                     </div>
                     <div class="mt-3 pt-3 border-t border-white/10">
-                        ${instRow('三大法人合計', inst.total_3party_net)}
+                        ${instRow(_t('twstock.totalInstitutional'), inst.total_3party_net)}
                     </div>
-                    ${inst.date ? `<div class="mt-3 text-[10px] text-textMuted flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i> 資料日期：${inst.date}</div>` : ''}
+                    ${inst.date ? `<div class="mt-3 text-[10px] text-textMuted flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i> ${_t('twstock.dataDate')}${inst.date}</div>` : ''}
                     ${inst.note ? `<div class="mt-2 text-[10px] text-textMuted/70 leading-relaxed border-t border-white/5 pt-2">${inst.note}</div>` : ''}
                 </div>
             </div>
@@ -701,28 +714,28 @@ window.TWStockTab = {
                         ? `
                 <div class="bg-surface/40 backdrop-blur-sm border border-white/5 rounded-2xl p-6">
                     <h3 class="font-bold text-secondary mb-5 flex items-center gap-2 text-sm uppercase tracking-wider">
-                        <i data-lucide="trending-up" class="w-4 h-4 text-success"></i> 月營收
+                        <i data-lucide="trending-up" class="w-4 h-4 text-success"></i> ${_t('twstock.monthlyRevenue')}
                         ${data.monthly_revenue.ym ? `<span class="text-[10px] text-textMuted font-normal ml-1">${data.monthly_revenue.ym}</span>` : ''}
                     </h3>
                     <div class="grid grid-cols-2 gap-3">
                         <div class="col-span-2 bg-background/60 rounded-lg p-3 border border-white/5">
-                            <div class="text-[9px] text-textMuted uppercase mb-1">當月營收</div>
-                            <div class="font-bold font-mono text-secondary text-lg">${data.monthly_revenue.current_revenue ? Number(String(data.monthly_revenue.current_revenue).replace(/,/g, '')).toLocaleString() + ' 千元' : 'N/A'}</div>
+                            <div class="text-[9px] text-textMuted uppercase mb-1">${_t('twstock.currentMonthRevenue')}</div>
+                            <div class="font-bold font-mono text-secondary text-lg">${data.monthly_revenue.current_revenue ? Number(String(data.monthly_revenue.current_revenue).replace(/,/g, '')).toLocaleString() + _t('twstock.unitThousandNT') : 'N/A'}</div>
                         </div>
                         <div class="bg-background/60 rounded-lg p-3 border border-white/5">
-                            <div class="text-[9px] text-textMuted uppercase mb-1">月增率 MoM</div>
+                            <div class="text-[9px] text-textMuted uppercase mb-1">${_t('twstock.mom')}</div>
                             <div class="font-bold font-mono ${Number(data.monthly_revenue.mom_pct) > 0 ? 'text-success' : Number(data.monthly_revenue.mom_pct) < 0 ? 'text-danger' : 'text-secondary'}">${data.monthly_revenue.mom_pct != null ? (Number(data.monthly_revenue.mom_pct) > 0 ? '+' : '') + Number(data.monthly_revenue.mom_pct).toFixed(1) + '%' : 'N/A'}</div>
                         </div>
                         <div class="bg-background/60 rounded-lg p-3 border border-white/5">
-                            <div class="text-[9px] text-textMuted uppercase mb-1">年增率 YoY</div>
+                            <div class="text-[9px] text-textMuted uppercase mb-1">${_t('twstock.yoy')}</div>
                             <div class="font-bold font-mono ${Number(data.monthly_revenue.yoy_pct) > 0 ? 'text-success' : Number(data.monthly_revenue.yoy_pct) < 0 ? 'text-danger' : 'text-secondary'}">${data.monthly_revenue.yoy_pct != null ? (Number(data.monthly_revenue.yoy_pct) > 0 ? '+' : '') + Number(data.monthly_revenue.yoy_pct).toFixed(1) + '%' : 'N/A'}</div>
                         </div>
                         <div class="bg-background/60 rounded-lg p-3 border border-white/5">
-                            <div class="text-[9px] text-textMuted uppercase mb-1">累計營收</div>
-                            <div class="font-bold font-mono text-secondary text-xs">${data.monthly_revenue.ytd_revenue ? Number(String(data.monthly_revenue.ytd_revenue).replace(/,/g, '')).toLocaleString() + ' 千元' : 'N/A'}</div>
+                            <div class="text-[9px] text-textMuted uppercase mb-1">${_t('twstock.cumulativeRevenue')}</div>
+                            <div class="font-bold font-mono text-secondary text-xs">${data.monthly_revenue.ytd_revenue ? Number(String(data.monthly_revenue.ytd_revenue).replace(/,/g, '')).toLocaleString() + _t('twstock.unitThousandNT') : 'N/A'}</div>
                         </div>
                         <div class="bg-background/60 rounded-lg p-3 border border-white/5">
-                            <div class="text-[9px] text-textMuted uppercase mb-1">累計年增率</div>
+                            <div class="text-[9px] text-textMuted uppercase mb-1">${_t('twstock.cumulativeYoY')}</div>
                             <div class="font-bold font-mono ${Number(data.monthly_revenue.ytd_yoy_pct) > 0 ? 'text-success' : Number(data.monthly_revenue.ytd_yoy_pct) < 0 ? 'text-danger' : 'text-secondary'}">${data.monthly_revenue.ytd_yoy_pct != null ? (Number(data.monthly_revenue.ytd_yoy_pct) > 0 ? '+' : '') + Number(data.monthly_revenue.ytd_yoy_pct).toFixed(1) + '%' : 'N/A'}</div>
                         </div>
                     </div>
@@ -736,23 +749,23 @@ window.TWStockTab = {
                         ? `
                 <div class="bg-surface/40 backdrop-blur-sm border border-white/5 rounded-2xl p-6">
                     <h3 class="font-bold text-secondary mb-5 flex items-center gap-2 text-sm uppercase tracking-wider">
-                        <i data-lucide="gift" class="w-4 h-4 text-yellow-500"></i> 股利資訊
-                        ${data.dividend_info.year ? `<span class="text-[10px] text-textMuted font-normal ml-1">${data.dividend_info.year} 年度</span>` : ''}
+                        <i data-lucide="gift" class="w-4 h-4 text-yellow-500"></i> ${_t('twstock.dividendInfo')}
+                        ${data.dividend_info.year ? `<span class="text-[10px] text-textMuted font-normal ml-1">${data.dividend_info.year}${_t('twstock.yearSuffix')}</span>` : ''}
                     </h3>
                     <div class="grid grid-cols-2 gap-3 mb-4">
                         <div class="bg-background/60 rounded-lg p-3 border border-white/5">
-                            <div class="text-[9px] text-textMuted uppercase mb-1">現金股利</div>
-                            <div class="font-bold font-mono ${Number(data.dividend_info.cash_dividend) > 0 ? 'text-success' : 'text-secondary'}">${data.dividend_info.cash_dividend || 'N/A'} 元</div>
+                            <div class="text-[9px] text-textMuted uppercase mb-1">${_t('twstock.cashDividend')}</div>
+                            <div class="font-bold font-mono ${Number(data.dividend_info.cash_dividend) > 0 ? 'text-success' : 'text-secondary'}">${data.dividend_info.cash_dividend || 'N/A'}${_t('twstock.unitNTD')}</div>
                         </div>
                         <div class="bg-background/60 rounded-lg p-3 border border-white/5">
-                            <div class="text-[9px] text-textMuted uppercase mb-1">股票股利</div>
-                            <div class="font-bold font-mono text-secondary">${data.dividend_info.stock_dividend || 'N/A'} 元</div>
+                            <div class="text-[9px] text-textMuted uppercase mb-1">${_t('twstock.stockDividend')}</div>
+                            <div class="font-bold font-mono text-secondary">${data.dividend_info.stock_dividend || 'N/A'}${_t('twstock.unitNTD')}</div>
                         </div>
                     </div>
                     <div class="space-y-0">
-                        ${data.dividend_info.board_date ? `<div class="flex justify-between py-2 border-b border-white/5"><span class="text-xs text-textMuted">董事會日期</span><span class="text-xs font-mono text-secondary">${data.dividend_info.board_date}</span></div>` : ''}
-                        ${data.dividend_info.shareholder_mtg ? `<div class="flex justify-between py-2 border-b border-white/5"><span class="text-xs text-textMuted">股東會日期</span><span class="text-xs font-mono text-secondary">${data.dividend_info.shareholder_mtg}</span></div>` : ''}
-                        ${data.dividend_info.progress ? `<div class="flex justify-between py-2"><span class="text-xs text-textMuted">決議進度</span><span class="text-xs text-secondary text-right max-w-[60%]">${data.dividend_info.progress}</span></div>` : ''}
+                        ${data.dividend_info.board_date ? `<div class="flex justify-between py-2 border-b border-white/5"><span class="text-xs text-textMuted">${_t('twstock.boardDate')}</span><span class="text-xs font-mono text-secondary">${data.dividend_info.board_date}</span></div>` : ''}
+                        ${data.dividend_info.shareholder_mtg ? `<div class="flex justify-between py-2 border-b border-white/5"><span class="text-xs text-textMuted">${_t('twstock.shareholderMeetingDate')}</span><span class="text-xs font-mono text-secondary">${data.dividend_info.shareholder_mtg}</span></div>` : ''}
+                        ${data.dividend_info.progress ? `<div class="flex justify-between py-2"><span class="text-xs text-textMuted">${_t('twstock.resolutionProgress')}</span><span class="text-xs text-secondary text-right max-w-[60%]">${data.dividend_info.progress}</span></div>` : ''}
                     </div>
                 </div>
                 `
@@ -818,7 +831,7 @@ window.TWStockTab = {
         });
 
         chartContainer.innerHTML =
-            '<div class="animate-pulse text-textMuted h-full flex items-center justify-center">載入歷史數據中...</div>';
+            '<div class="animate-pulse text-textMuted h-full flex items-center justify-center">' + _t('twstock.loadingHistoricalData') + '</div>';
         if (volumeContainer) volumeContainer.innerHTML = '';
 
         try {
@@ -845,7 +858,7 @@ window.TWStockTab = {
 
             if (data.length === 0) {
                 chartContainer.innerHTML =
-                    '<div class="text-danger h-full flex items-center justify-center">無法載入數據或無歷史交易紀錄</div>';
+                    '<div class="text-danger h-full flex items-center justify-center">' + _t('twstock.noHistoricalData') + '</div>';
                 return;
             }
 
@@ -853,7 +866,7 @@ window.TWStockTab = {
             const updatedEl = document.getElementById('twstock-chart-updated');
             if (updatedEl) {
                 const now = new Date();
-                updatedEl.textContent = `載入時間: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })} `;
+                updatedEl.textContent = _t('twstock.loadedAt') + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' ';
             }
 
             chartContainer.innerHTML = '';
@@ -1075,7 +1088,7 @@ window.TWStockTab = {
             console.error('[TW Stock] Chart Data Error:', error);
             chartContainer.innerHTML = `<div class="text-danger h-full flex flex-col items-center justify-center text-sm p-4 text-center">
             <i data-lucide="alert-triangle" class="w-8 h-8 mb-2"></i>
-        讀取失敗：${SecurityUtils.escapeHTML(error.message || '')}
+        ${_t('twstock.readFailed')}${SecurityUtils.escapeHTML(error.message || '')}
             </div>`;
             if (window.lucide) window.lucide.createIcons();
         }
@@ -1213,7 +1226,7 @@ window.TWStockTab = {
             const items = json.data || [];
             if (!items.length) {
                 container.innerHTML =
-                    '<p class="text-textMuted text-xs italic text-center py-6 opacity-50">目前無重大訊息</p>';
+                    '<p class="text-textMuted text-xs italic text-center py-6 opacity-50">' + _t('twstock.noAnnouncements') + '</p>';
                 return;
             }
             container.innerHTML = items
@@ -1222,14 +1235,14 @@ window.TWStockTab = {
             <div class="bg-surface/40 border border-yellow-500/10 hover:border-yellow-500/30 rounded-xl p-3 transition-colors cursor-default">
                 <div class="flex items-start gap-3">
                     <div class="flex-shrink-0 w-12 text-center">
-                        <div class="text-xs font-black text-yellow-400 font-mono">${item.code || '—'}</div>
-                        <div class="text-[10px] text-textMuted opacity-60 truncate">${item.name || ''}</div>
+                        <div class="text-xs font-black text-yellow-400 font-mono">${escapeHtml(item.code || '—')}</div>
+                        <div class="text-[10px] text-textMuted opacity-60 truncate">${escapeHtml(item.name || '')}</div>
                     </div>
                     <div class="flex-1 min-w-0">
-                        <p class="text-xs text-textMain leading-relaxed line-clamp-2">${item.subject || '（無主旨）'}</p>
+                        <p class="text-xs text-textMain leading-relaxed line-clamp-2">${escapeHtml(item.subject || _t('twstock.noSubject'))}</p>
                         <div class="flex items-center gap-2 mt-1">
-                            <span class="text-[10px] text-textMuted opacity-50">${item.date || ''} ${item.time || ''}</span>
-                            ${item.rule ? `<span class="text-[9px] bg-yellow-500/10 text-yellow-400 px-1.5 py-0.5 rounded font-mono">${item.rule}</span>` : ''}
+                            <span class="text-[10px] text-textMuted opacity-50">${escapeHtml(item.date || '')} ${escapeHtml(item.time || '')}</span>
+                            ${item.rule ? `<span class="text-[9px] bg-yellow-500/10 text-yellow-400 px-1.5 py-0.5 rounded font-mono">${escapeHtml(item.rule)}</span>` : ''}
                         </div>
                     </div>
                 </div>
@@ -1239,7 +1252,7 @@ window.TWStockTab = {
                 .join('');
         } catch (err) {
             console.error('[TW Info] News error:', err);
-            container.innerHTML = `<p class="text-danger text-xs text-center py-4">載入重大訊息失敗：${SecurityUtils.escapeHTML(err.message || '')}</p>`;
+            container.innerHTML = `<p class="text-danger text-xs text-center py-4">${_t('twstock.newsLoadFailed')}${SecurityUtils.escapeHTML(err.message || '')}</p>`;
         } finally {
             this._showLoader('twstock-info-news-loader', false);
         }
@@ -1262,7 +1275,7 @@ window.TWStockTab = {
             const valid = results.filter(Boolean).filter((r) => !r.error);
             if (!valid.length) {
                 container.innerHTML =
-                    '<p class="text-textMuted text-xs italic text-center py-6 opacity-50 col-span-full">無法取得估值資料（交易所休市中或無自選股）</p>';
+                    '<p class="text-textMuted text-xs italic text-center py-6 opacity-50 col-span-full">' + _t('twstock.noValuationData') + '</p>';
                 return;
             }
             container.innerHTML = valid
@@ -1301,7 +1314,7 @@ window.TWStockTab = {
                                     <div class="font-black text-sm ${peColor} font-mono">${pe > 0 ? pe.toFixed(1) : '—'}</div>
                                 </div>
                                 <div class="bg-background/60 rounded-xl p-2 text-center">
-                                    <div class="text-[9px] text-textMuted uppercase tracking-wider mb-1 font-bold">殖利率</div>
+                                    <div class="text-[9px] text-textMuted uppercase tracking-wider mb-1 font-bold">${_t('marketPage.yield')}</div>
                                     <div class="font-black text-sm ${dyColor} font-mono">${dy > 0 ? dy.toFixed(2) + '%' : '—'}</div>
                                 </div>
                                 <div class="bg-background/60 rounded-xl p-2 text-center">
@@ -1316,7 +1329,7 @@ window.TWStockTab = {
                 .join('');
         } catch (err) {
             console.error('[TW Info] PE error:', err);
-            container.innerHTML = `<p class="text-danger text-xs text-center py-4 col-span-full">載入本益比失敗：${SecurityUtils.escapeHTML(err.message || '')}</p>`;
+            container.innerHTML = `<p class="text-danger text-xs text-center py-4 col-span-full">${_t('twstock.peLoadFailed')}${SecurityUtils.escapeHTML(err.message || '')}</p>`;
         } finally {
             this._showLoader('twstock-info-pe-loader', false);
         }
@@ -1341,7 +1354,7 @@ window.TWStockTab = {
             );
             if (!items.length) {
                 container.innerHTML =
-                    '<p class="text-textMuted text-xs italic text-center py-6 opacity-50">目前無股利分派資料</p>';
+                    '<p class="text-textMuted text-xs italic text-center py-6 opacity-50">' + _t('twstock.noDividendData') + '</p>';
                 return;
             }
             container.innerHTML = items
@@ -1356,15 +1369,15 @@ window.TWStockTab = {
                         </div>
                         <div>
                             <div class="font-bold text-sm text-secondary">${d.name || d.code}</div>
-                            <div class="text-[10px] text-textMuted opacity-60">${d.year || ''} 年度・${d.progress || ''}</div>
+                            <div class="text-[10px] text-textMuted opacity-60">${d.year || ''}${_t('twstock.yearDotSeparator')}${d.progress || ''}</div>
                         </div>
                     </div>
                     <div class="text-right">
                         <div class="font-black text-success text-base">$${d.cash_dividend || '—'}</div>
-                        <div class="text-[10px] text-textMuted opacity-60">現金股利/股</div>
+                        <div class="text-[10px] text-textMuted opacity-60">${_t('twstock.cashDividendPerShare')}</div>
                     </div>
                 </div>
-                    ${d.shareholder_meeting ? `<div class="mt-2 pt-2 border-t border-white/5 text-[10px] text-textMuted flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i> 股東會：${d.shareholder_meeting}</div>` : ''}
+                    ${d.shareholder_meeting ? `<div class="mt-2 pt-2 border-t border-white/5 text-[10px] text-textMuted flex items-center gap-1"><i data-lucide="calendar" class="w-3 h-3"></i> ${_t('twstock.shareholderMeetingLabel')}${d.shareholder_meeting}</div>` : ''}
                 </div>
             `
                 )
@@ -1372,7 +1385,7 @@ window.TWStockTab = {
             if (window.lucide) window.lucide.createIcons();
         } catch (err) {
             console.error('[TW Info] Dividend error:', err);
-            container.innerHTML = `<p class="text-danger text-xs text-center py-4">載入股利資料失敗：${SecurityUtils.escapeHTML(err.message || '')}</p>`;
+            container.innerHTML = `<p class="text-danger text-xs text-center py-4">${_t('twstock.dividendLoadFailed')}${SecurityUtils.escapeHTML(err.message || '')}</p>`;
         } finally {
             this._showLoader('twstock-info-div-loader', false);
         }
@@ -1391,19 +1404,19 @@ window.TWStockTab = {
             const items = json.data || [];
             if (!items.length) {
                 container.innerHTML =
-                    '<p class="text-textMuted text-xs italic text-center py-6 opacity-50">無外資持股資料</p>';
+                    '<p class="text-textMuted text-xs italic text-center py-6 opacity-50">' + _t('twstock.noForeignData') + '</p>';
                 return;
             }
             container.innerHTML = `
             <table class="w-full text-xs">
                     <thead>
                         <tr class="text-textMuted uppercase tracking-wider border-b border-white/10">
-                            <th class="text-left py-2 px-2 font-bold opacity-60">排名</th>
-                            <th class="text-left py-2 px-2 font-bold opacity-60">代號</th>
-                            <th class="text-left py-2 px-2 font-bold opacity-60">名稱</th>
-                            <th class="text-right py-2 px-2 font-bold opacity-60">持股%</th>
-                            <th class="text-right py-2 px-2 font-bold opacity-60 hidden sm:table-cell">可投%</th>
-                            <th class="text-right py-2 px-2 font-bold opacity-60 hidden sm:table-cell">上限%</th>
+                            <th class="text-left py-2 px-2 font-bold opacity-60">${_t('twstock.rankCol')}</th>
+                            <th class="text-left py-2 px-2 font-bold opacity-60">${_t('twstock.symbolCol')}</th>
+                            <th class="text-left py-2 px-2 font-bold opacity-60">${_t('twstock.nameCol')}</th>
+                            <th class="text-right py-2 px-2 font-bold opacity-60">${_t('twstock.heldPct')}</th>
+                            <th class="text-right py-2 px-2 font-bold opacity-60 hidden sm:table-cell">${_t('twstock.availablePct')}</th>
+                            <th class="text-right py-2 px-2 font-bold opacity-60 hidden sm:table-cell">${_t('twstock.upperLimitPct')}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-white/5">
@@ -1435,7 +1448,7 @@ window.TWStockTab = {
             `;
         } catch (err) {
             console.error('[TW Info] Foreign holding error:', err);
-            container.innerHTML = `<p class="text-danger text-xs text-center py-4">載入外資持股失敗：${SecurityUtils.escapeHTML(err.message || '')}</p>`;
+            container.innerHTML = `<p class="text-danger text-xs text-center py-4">${_t('twstock.foreignLoadFailed')}${SecurityUtils.escapeHTML(err.message || '')}</p>`;
         } finally {
             this._showLoader('twstock-info-foreign-loader', false);
         }

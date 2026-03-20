@@ -93,13 +93,11 @@ RATE_LIMITS = {
 
 def get_rate_limit_for_route(request: Request) -> str:
     """
-    Determine appropriate rate limit based on route and method
+    [DEPRECATED] Determine appropriate rate limit based on route and method.
 
-    Args:
-        request: FastAPI request object
-
-    Returns:
-        Rate limit string (e.g., "30/minute")
+    This function is no longer used in production. All routes now use
+    @limiter.limit() decorators directly. Kept for backward compatibility
+    with existing tests only.
     """
     method = request.method.lower()
     path = request.url.path.lower()

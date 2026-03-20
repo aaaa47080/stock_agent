@@ -21,14 +21,13 @@ router = APIRouter(prefix="/api/forum/me", tags=["Forum - Me"])
 
 
 @router.get("/limits")
-async def get_my_limits(user_id: str = Query(..., description="用戶 ID"), current_user: dict = Depends(get_current_user)):
+async def get_my_limits(current_user: dict = Depends(get_current_user)):
     """
     獲取我的每日限制狀態 (發文與回覆)
     """
-    if current_user["user_id"] != user_id:
-        raise HTTPException(status_code=403, detail="Not authorized")
-
     try:
+        user_id = current_user["user_id"]
+
         post_limits = await run_sync(get_daily_post_count, user_id)
         comment_limits = await run_sync(get_daily_comment_count, user_id)
         membership = await run_sync(get_user_membership, user_id)
@@ -46,7 +45,7 @@ async def get_my_limits(user_id: str = Query(..., description="用戶 ID"), curr
 
 
 @router.get("/stats")
-async def get_my_stats(user_id: str = Query(..., description="用戶 ID"), current_user: dict = Depends(get_current_user)):
+async def get_my_stats(current_user: dict = Depends(get_current_user)):
     """
     獲取我的論壇統計資料
 
@@ -58,10 +57,9 @@ async def get_my_stats(user_id: str = Query(..., description="用戶 ID"), curre
     - 會員狀態
     - 今日回覆狀況
     """
-    if current_user["user_id"] != user_id:
-        raise HTTPException(status_code=403, detail="Not authorized")
-
     try:
+        user_id = current_user["user_id"]
+
         stats = await run_sync(get_user_forum_stats, user_id)
         membership = await run_sync(get_user_membership, user_id)
         daily_comments = await run_sync(get_daily_comment_count, user_id)
@@ -80,7 +78,6 @@ async def get_my_stats(user_id: str = Query(..., description="用戶 ID"), curre
 
 @router.get("/posts")
 async def get_my_posts(
-    user_id: str = Query(..., description="用戶 ID"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     current_user: dict = Depends(get_current_user)
@@ -88,10 +85,9 @@ async def get_my_posts(
     """
     獲取我的文章列表
     """
-    if current_user["user_id"] != user_id:
-        raise HTTPException(status_code=403, detail="Not authorized")
-
     try:
+        user_id = current_user["user_id"]
+
         posts = await run_sync(lambda: get_user_posts(user_id, limit=limit, offset=offset))
         return {
             "success": True,
@@ -104,18 +100,17 @@ async def get_my_posts(
 
 @router.get("/tips/sent")
 async def get_my_sent_tips(
-    user_id: str = Query(..., description="用戶 ID"),
     limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     current_user: dict = Depends(get_current_user)
 ):
     """
     獲取我送出的打賞記錄
     """
-    if current_user["user_id"] != user_id:
-        raise HTTPException(status_code=403, detail="Not authorized")
-
     try:
-        tips = await run_sync(lambda: get_tips_sent(user_id, limit=limit))
+        user_id = current_user["user_id"]
+
+        tips = await run_sync(lambda: get_tips_sent(user_id, limit=limit, offset=offset))
         return {
             "success": True,
             "tips": tips,
@@ -127,18 +122,17 @@ async def get_my_sent_tips(
 
 @router.get("/tips/received")
 async def get_my_received_tips(
-    user_id: str = Query(..., description="用戶 ID"),
     limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     current_user: dict = Depends(get_current_user)
 ):
     """
     獲取我收到的打賞記錄
     """
-    if current_user["user_id"] != user_id:
-        raise HTTPException(status_code=403, detail="Not authorized")
-
     try:
-        tips = await run_sync(lambda: get_tips_received(user_id, limit=limit))
+        user_id = current_user["user_id"]
+
+        tips = await run_sync(lambda: get_tips_received(user_id, limit=limit, offset=offset))
         total = await run_sync(get_tips_total_received, user_id)
         return {
             "success": True,
@@ -152,18 +146,17 @@ async def get_my_received_tips(
 
 @router.get("/payments")
 async def get_my_payments(
-    user_id: str = Query(..., description="用戶 ID"),
     limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     current_user: dict = Depends(get_current_user)
 ):
     """
     獲取我的發文付款記錄
     """
-    if current_user["user_id"] != user_id:
-        raise HTTPException(status_code=403, detail="Not authorized")
-
     try:
-        payments = await run_sync(lambda: get_user_payment_history(user_id, limit=limit))
+        user_id = current_user["user_id"]
+
+        payments = await run_sync(lambda: get_user_payment_history(user_id, limit=limit, offset=offset))
         return {
             "success": True,
             "payments": payments,
@@ -174,14 +167,13 @@ async def get_my_payments(
 
 
 @router.get("/membership")
-async def get_my_membership(user_id: str = Query(..., description="用戶 ID"), current_user: dict = Depends(get_current_user)):
+async def get_my_membership(current_user: dict = Depends(get_current_user)):
     """
     獲取我的會員狀態
     """
-    if current_user["user_id"] != user_id:
-        raise HTTPException(status_code=403, detail="Not authorized")
-
     try:
+        user_id = current_user["user_id"]
+
         membership = await run_sync(get_user_membership, user_id)
         return {
             "success": True,

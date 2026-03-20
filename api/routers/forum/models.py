@@ -42,9 +42,9 @@ class AddCommentRequest(BaseModel):
 # ============================================================================
 
 class CreateTipRequest(BaseModel):
-    """打賞請求"""
-    tx_hash: str = Field(..., description="Pi 支付交易哈希")
-    amount: float = Field(..., description="打賞金額（從 /api/config/prices 獲取 tip 價格）")
+    tx_hash: Optional[str] = Field(None, description="Pi blockchain tx hash")
+    payment_id: Optional[str] = Field(None, description="Pi payment ID for server-side verification")
+    amount: float = Field(..., description="Tip amount (from /api/config/prices)")
 
 
 # ============================================================================

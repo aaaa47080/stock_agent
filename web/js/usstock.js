@@ -3,6 +3,17 @@
  * Architecture mirrors twstock.js
  */
 
+function sanitizeUrl(url) {
+    if (!url) return '#';
+    const trimmed = String(url).trim();
+    if (trimmed.startsWith('javascript:') || trimmed.startsWith('data:') || trimmed.startsWith('vbscript:')) return '#';
+    return trimmed;
+}
+
+function _t(key) {
+    return window.I18n ? window.I18n.t(key) : key;
+}
+
 window.USStockTab = {
     activeSubTab: 'market',
     lastUpdatedAt: null,
@@ -77,7 +88,7 @@ window.USStockTab = {
         const input = document.getElementById('usStockAddInput');
         if (window.usStockSelectedSymbols.includes(sym)) {
             if (input) input.value = '';
-            if (window.showToast) window.showToast(`自選清單已存在「${sym}」`, 'info');
+            if (window.showToast) window.showToast(_t('usstock.alreadyInWatchlist').replace('{sym}', sym), 'info');
             return;
         }
 
@@ -93,7 +104,7 @@ window.USStockTab = {
         try {
             const res = await fetch(`/api/usstock/market?symbols=${encodeURIComponent(sym)}`);
             if (!res.ok) {
-                let msg = `找不到美股代號「${sym}」的交易資料`;
+                let msg = _t('usstock.notFoundSymbol').replace('{sym}', sym);
                 try {
                     const d = await res.json();
                     if (d.detail) msg = d.detail;
@@ -107,15 +118,15 @@ window.USStockTab = {
                 this.saveWatchlist();
                 this.refreshMarketWatch();
                 this.refreshMarketInfo();
-                if (window.showToast) window.showToast(`已成功加入「${sym}」`, 'success');
+                if (window.showToast) window.showToast(_t('usstock.addSuccess').replace('{sym}', sym), 'success');
             } else {
                 if (window.showToast) {
-                    window.showToast(`找不到美股代號「${sym}」的交易資料`, 'error');
+                    window.showToast(_t('usstock.notFoundSymbol').replace('{sym}', sym), 'error');
                 }
             }
         } catch (e) {
             console.error('[US Stock] Validation error:', e);
-            if (window.showToast) window.showToast(`新增失敗：${e.message}`, 'error');
+            if (window.showToast) window.showToast(_t('marketPage.addFailed') + '：' + e.message, 'error');
         } finally {
             if (btn) {
                 btn.innerHTML = originalIcon;
@@ -146,7 +157,7 @@ window.USStockTab = {
                 </h3>
                 <div class="flex-1 min-w-0">
                     <div class="relative">
-                        <input type="text" id="usStockAddInput" placeholder="輸入美股代號 (如 AAPL)" maxlength="10"
+                        <input type="text" id="usStockAddInput" placeholder="${_t('marketPage.usStockAddPlaceholder')}" maxlength="10"
                             oninput="this.value = this.value.replace(/[^A-Za-z.^]/g, '').toUpperCase()"
                             class="w-full bg-background/50 border border-white/10 rounded-lg pl-3 pr-10 py-1.5 text-sm focus:outline-none focus:border-primary transition-colors text-white placeholder-textMuted/50">
                         <button onclick="window.USStockTab.addStock(document.getElementById('usStockAddInput').value)"
@@ -211,7 +222,7 @@ window.USStockTab = {
             } else {
                 const container = document.getElementById('usstock-pulse-result');
                 if (container) {
-                    container.innerHTML = `<div class="py-20 text-center text-textMuted uppercase tracking-widest text-sm italic opacity-50 flex flex-col items-center"><i data-lucide="search" class="w-8 h-8 mb-3 opacity-50"></i>請輸入美股代號或從市場首頁點選「深度分析」</div>`;
+                    container.innerHTML = `<div class="py-20 text-center text-textMuted uppercase tracking-widest text-sm italic opacity-50 flex flex-col items-center"><i data-lucide="search" class="w-8 h-8 mb-3 opacity-50"></i>${_t('usstock.enterSymbolOrDeepAnalysis')}</div>`;
                     container.classList.remove('hidden');
                     if (window.lucide) window.lucide.createIcons();
                 }
@@ -226,6 +237,7 @@ window.USStockTab = {
         const loader = document.getElementById('usstock-market-loader');
         if (!listContainer || !loader) return;
 
+        if (window.MarketStatus) window.MarketStatus.markSynced('usstock');
         loader.classList.remove('hidden');
         listContainer.innerHTML = '';
 
@@ -237,12 +249,13 @@ window.USStockTab = {
             const data = await res.json();
             this.lastUpdatedAt = data.last_updated || new Date().toISOString();
             if (window.MarketStatus) {
+                window.MarketStatus.markSynced('usstock');
                 window.MarketStatus.updateMarketStatusBar('usstock', this.lastUpdatedAt);
             }
             this._renderWatchlist(listContainer, data.stocks || []);
         } catch (err) {
             console.error('[US Stock] Market error:', err);
-            listContainer.innerHTML = `<div class="p-4 text-center text-danger bg-danger/10 rounded-xl text-sm">無法載入美股數據：${SecurityUtils.escapeHTML(err.message || '')}</div>`;
+            listContainer.innerHTML = `<div class="p-4 text-center text-danger bg-danger/10 rounded-xl text-sm">${_t('usstock.loadMarketFailed')}${SecurityUtils.escapeHTML(err.message || '')}</div>`;
         } finally {
             loader.classList.add('hidden');
         }
@@ -251,7 +264,7 @@ window.USStockTab = {
     _renderWatchlist: function (container, items) {
         if (!items || items.length === 0) {
             container.innerHTML =
-                '<p class="text-textMuted text-[10px] italic py-6 text-center opacity-50 uppercase tracking-widest">暫無市場數據</p>';
+                '<p class="text-textMuted text-[10px] italic py-6 text-center opacity-50 uppercase tracking-widest">' + _t('marketPage.noData') + '</p>';
             return;
         }
 
@@ -298,7 +311,7 @@ window.USStockTab = {
                                 <button onclick="window.USStockTab.showChart('${sym}', event)" class="w-7 h-7 rounded-lg flex items-center justify-center text-textMuted hover:text-primary hover:bg-primary/10 transition-colors border border-white/5" title="View Chart">
                                     <i data-lucide="bar-chart-2" class="w-3.5 h-3.5"></i>
                                 </button>
-                                <button onclick="openAlertModal('${sym}', 'us_stock'); event.stopPropagation();" class="w-7 h-7 rounded-lg flex items-center justify-center text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10 transition-colors border border-white/5" title="設定價格警報"><span class="text-xs leading-none">🔔</span></button>
+                                <button onclick="openAlertModal('${sym}', 'us_stock'); event.stopPropagation();" class="w-7 h-7 rounded-lg flex items-center justify-center text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10 transition-colors border border-white/5" title="${_t('usstock.setPriceAlert')}"><span class="text-xs leading-none">🔔</span></button>
                                 <button onclick="window.USStockTab.removeStock('${sym}', event)" class="w-7 h-7 rounded-lg flex items-center justify-center text-textMuted hover:text-danger hover:bg-danger/10 transition-colors border border-white/5" title="Remove">
                                     <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                                 </button>
@@ -350,7 +363,7 @@ window.USStockTab = {
             const indices = data.indices || [];
             if (!indices.length) {
                 container.innerHTML =
-                    '<p class="text-textMuted text-xs italic text-center py-6 opacity-50 col-span-3">暫無指數資料</p>';
+                    '<p class="text-textMuted text-xs italic text-center py-6 opacity-50 col-span-3">' + _t('usstock.noIndexData') + '</p>';
                 return;
             }
             container.innerHTML = indices
@@ -363,7 +376,7 @@ window.USStockTab = {
                 <div class="relative overflow-hidden rounded-2xl border border-white/8 bg-gradient-to-br from-surface to-background hover:border-primary/30 transition-all duration-200 group cursor-default">
                     <div class="absolute top-0 right-0 w-16 h-16 bg-primary/5 rounded-full blur-2xl group-hover:bg-primary/10 transition-all"></div>
                     <div class="relative p-4">
-                        <div class="text-[10px] text-textMuted mb-2 font-bold uppercase tracking-wider">${idx.name}</div>
+                        <div class="text-[10px] text-textMuted mb-2 font-bold uppercase tracking-wider">${escapeHtml(idx.name)}</div>
                         <div class="font-black text-secondary text-lg font-mono">$${idx.price != null ? idx.price.toFixed(2) : '—'}</div>
                         <div class="text-xs ${color} font-bold mt-1">${arrow} ${Math.abs(chg).toFixed(2)} (${chgP.toFixed(2)}%)</div>
                     </div>
@@ -372,7 +385,7 @@ window.USStockTab = {
                 .join('');
         } catch (err) {
             console.error('[US Stock] Indices error:', err);
-            container.innerHTML = `<p class="text-danger text-xs text-center py-4 col-span-3">載入指數失敗：${SecurityUtils.escapeHTML(err.message || '')}</p>`;
+            container.innerHTML = `<p class="text-danger text-xs text-center py-4 col-span-3">${_t('usstock.loadIndexFailed')}${SecurityUtils.escapeHTML(err.message || '')}</p>`;
         } finally {
             this._showLoader('usstock-info-indices-loader', false);
         }
@@ -391,23 +404,23 @@ window.USStockTab = {
             const items = json.data || [];
             if (!items.length) {
                 container.innerHTML =
-                    '<p class="text-textMuted text-xs italic text-center py-6 opacity-50">目前無新聞</p>';
+                    '<p class="text-textMuted text-xs italic text-center py-6 opacity-50">' + _t('usstock.noNews') + '</p>';
                 return;
             }
             container.innerHTML = items
                 .map((item) => {
                     const pub = item.publisher
-                        ? `<span class="text-[9px] bg-yellow-500/10 text-yellow-400 px-1.5 py-0.5 rounded font-mono">${item.publisher}</span>`
+                        ? `<span class="text-[9px] bg-yellow-500/10 text-yellow-400 px-1.5 py-0.5 rounded font-mono">${escapeHtml(item.publisher)}</span>`
                         : '';
                     return `
                 <div class="bg-surface/40 border border-yellow-500/10 hover:border-yellow-500/30 rounded-xl p-3 transition-colors">
                     <div class="flex items-start gap-3">
                         <div class="flex-shrink-0 w-12 text-center">
-                            <div class="text-xs font-black text-yellow-400 font-mono">${item.symbol || '—'}</div>
+                            <div class="text-xs font-black text-yellow-400 font-mono">${escapeHtml(item.symbol || '—')}</div>
                         </div>
                         <div class="flex-1 min-w-0">
-                            <a href="${item.url || '#'}" target="_blank" rel="noopener noreferrer"
-                               class="text-xs text-textMain leading-relaxed line-clamp-2 hover:text-primary transition-colors block">${item.title || '（無標題）'}</a>
+                            <a href="${sanitizeUrl(item.url)}" target="_blank" rel="noopener noreferrer"
+                               class="text-xs text-textMain leading-relaxed line-clamp-2 hover:text-primary transition-colors block">${escapeHtml(item.title || _t('usstock.noTitle'))}</a>
                             <div class="flex items-center gap-2 mt-1">${pub}</div>
                         </div>
                     </div>
@@ -416,7 +429,7 @@ window.USStockTab = {
                 .join('');
         } catch (err) {
             console.error('[US Stock] News error:', err);
-            container.innerHTML = `<p class="text-danger text-xs text-center py-4">載入新聞失敗：${SecurityUtils.escapeHTML(err.message || '')}</p>`;
+            container.innerHTML = `<p class="text-danger text-xs text-center py-4">${_t('usstock.loadNewsFailed')}${SecurityUtils.escapeHTML(err.message || '')}</p>`;
         } finally {
             this._showLoader('usstock-info-news-loader', false);
         }
@@ -493,7 +506,7 @@ window.USStockTab = {
             container.classList.remove('hidden');
         } catch (err) {
             console.error('[US Stock] Pulse error:', err);
-            container.innerHTML = `<div class="p-4 text-center text-danger bg-danger/10 rounded-xl text-sm">無法載入「${SecurityUtils.escapeHTML(symbol || '')}」的脈動分析：${SecurityUtils.escapeHTML(err.message || '')}</div>`;
+            container.innerHTML = `<div class="p-4 text-center text-danger bg-danger/10 rounded-xl text-sm">${_t('usstock.loadPulseFailed').replace('{sym}', SecurityUtils.escapeHTML(symbol || ''))}${SecurityUtils.escapeHTML(err.message || '')}</div>`;
             container.classList.remove('hidden');
         } finally {
             loader.classList.add('hidden');
@@ -536,9 +549,9 @@ window.USStockTab = {
                   ? 'text-danger'
                   : 'text-secondary';
         const rsiLabelMap = {
-            oversold: ['超賣', 'bg-success/20 text-success'],
-            overbought: ['超買', 'bg-danger/20 text-danger'],
-            neutral: ['中性', 'bg-white/10 text-textMuted'],
+            oversold: [_t('pulse.oversold'), 'bg-success/20 text-success'],
+            overbought: [_t('pulse.overbought'), 'bg-danger/20 text-danger'],
+            neutral: [_t('pulse.neutral'), 'bg-white/10 text-textMuted'],
         };
         const [rsiLabelTxt, rsiLabelStyle] = rsiLabelMap[rsiSig] || ['', ''];
 
@@ -556,25 +569,25 @@ window.USStockTab = {
         const maPosBadge = (v) => {
             if (!v || !close) return '';
             return close >= v
-                ? '<span class="text-[9px] ml-1 px-1 rounded bg-success/20 text-success">上方</span>'
-                : '<span class="text-[9px] ml-1 px-1 rounded bg-danger/20 text-danger">下方</span>';
+                ? '<span class="text-[9px] ml-1 px-1 rounded bg-success/20 text-success">' + _t('usstock.maAbove') + '</span>'
+                : '<span class="text-[9px] ml-1 px-1 rounded bg-danger/20 text-danger">' + _t('usstock.maBelow') + '</span>';
         };
 
         // Bollinger Bands signal
         const bbSig = tech.bb_signal || '';
         const bbSigMap = {
-            overbought: ['突破上軌', 'text-danger'],
-            oversold: ['跌破下軌', 'text-success'],
-            neutral: ['帶內', 'text-textMuted'],
+            overbought: [_t('usstock.bbOverbought'), 'text-danger'],
+            oversold: [_t('usstock.bbOversold'), 'text-success'],
+            neutral: [_t('usstock.bbNeutral'), 'text-textMuted'],
         };
         const [bbLbl, bbLblColor] = bbSigMap[bbSig] || ['N/A', 'text-textMuted'];
 
         // Volume signal
         const volSig = tech.vol_signal || '';
         const volSigMap = {
-            high: ['放量', 'text-success'],
-            low: ['縮量', 'text-danger'],
-            normal: ['正常', 'text-textMuted'],
+            high: [_t('pulse.volumeHigh'), 'text-success'],
+            low: [_t('pulse.volumeLow'), 'text-danger'],
+            normal: [_t('pulse.volumeNormal'), 'text-textMuted'],
         };
         const [volLbl, volLblColor] = volSigMap[volSig] || ['N/A', 'text-textMuted'];
 
@@ -593,11 +606,11 @@ window.USStockTab = {
         // Analyst recommendation
         const recRaw = (fund.analyst_recommendation || '').toLowerCase();
         const recMap = {
-            buy: ['買入', 'bg-success/20 text-success'],
-            'strong buy': ['強力買入', 'bg-success/30 text-success'],
-            hold: ['持有', 'bg-yellow-500/20 text-yellow-400'],
-            sell: ['賣出', 'bg-danger/20 text-danger'],
-            'strong sell': ['強力賣出', 'bg-danger/30 text-danger'],
+            buy: [_t('usstock.recBuy'), 'bg-success/20 text-success'],
+            'strong buy': [_t('usstock.recStrongBuy'), 'bg-success/30 text-success'],
+            hold: [_t('usstock.recHold'), 'bg-yellow-500/20 text-yellow-400'],
+            sell: [_t('usstock.recSell'), 'bg-danger/20 text-danger'],
+            'strong sell': [_t('usstock.recStrongSell'), 'bg-danger/30 text-danger'],
         };
         const [recLbl, recStyle] =
             recMap[recRaw] ||
@@ -613,7 +626,7 @@ window.USStockTab = {
             const pct = Math.min(100, Math.max(0, ((close - low52) / (high52 - low52)) * 100));
             w52Html = `
                 <div class="flex justify-between text-[9px] text-textMuted mb-1">
-                    <span>低 $${fv(low52)}</span><span>現價 ${pct.toFixed(0)}%</span><span>高 $${fv(high52)}</span>
+                    <span>${_t('usstock.w52Low')} $${fv(low52)}</span><span>${_t('usstock.w52Current')} ${pct.toFixed(0)}%</span><span>${_t('usstock.w52High')} $${fv(high52)}</span>
                 </div>
                 <div class="h-1.5 rounded-full bg-white/10 overflow-hidden">
                     <div class="h-full rounded-full bg-gradient-to-r from-danger via-yellow-500 to-success" style="width:${pct}%"></div>
@@ -633,12 +646,12 @@ window.USStockTab = {
                         </div>
                         <div>
                             <div class="flex items-center gap-2 mb-1">
-                                <h2 class="text-xl md:text-2xl font-serif text-secondary font-bold">${data.company_name}</h2>
-                                <span class="px-2 py-0.5 rounded text-xs font-bold tracking-wider uppercase bg-white/10 text-white border border-white/10">${data.symbol}</span>
+                                <h2 class="text-xl md:text-2xl font-serif text-secondary font-bold">${escapeHtml(data.company_name)}</h2>
+                                <span class="px-2 py-0.5 rounded text-xs font-bold tracking-wider uppercase bg-white/10 text-white border border-white/10">${escapeHtml(data.symbol)}</span>
                             </div>
                             <div class="text-xs text-textMuted flex items-center gap-2">
                                 <i data-lucide="map-pin" class="w-3 h-3"></i> US Stock Exchange
-                                ${fund.sector ? `<span class="text-textMuted/60">· ${fund.sector}</span>` : ''}
+                                ${fund.sector ? `<span class="text-textMuted/60">· ${escapeHtml(fund.sector)}</span>` : ''}
                             </div>
                         </div>
                     </div>
@@ -667,17 +680,17 @@ window.USStockTab = {
                             Pulse AI Intelligence Summary
                         </h3>
                         ${hasKey
-                            ? `<p class="text-textMain text-sm leading-relaxed whitespace-pre-line ml-11">${rep.summary || ''}</p>`
+                            ? `<p class="text-textMain text-sm leading-relaxed whitespace-pre-line ml-11">${escapeHtml(rep.summary || '')}</p>`
                             : `<div class="ml-11 flex flex-col items-center text-center gap-3 py-4">
                                 <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                                     <i data-lucide="key" class="w-5 h-5 text-primary"></i>
                                 </div>
                                 <div>
-                                    <p class="text-sm font-bold text-secondary mb-1">請連接 AI 金鑰</p>
-                                    <p class="text-xs text-textMuted">連接 OpenAI 或 Gemini 金鑰以獲取 AI 深度分析</p>
+                                    <p class="text-sm font-bold text-secondary mb-1">${_t('usstock.connectAiKey')}</p>
+                                    <p class="text-xs text-textMuted">${_t('usstock.connectAiKeyDesc')}</p>
                                 </div>
                                 <button onclick="switchTab('settings')" class="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary text-xs rounded-xl border border-primary/30 transition flex items-center gap-1.5">
-                                    <i data-lucide="settings" class="w-3.5 h-3.5"></i>前往設定
+                                    <i data-lucide="settings" class="w-3.5 h-3.5"></i>${_t('usstock.goToSettings')}
                                 </button>
                                </div>`
                         }
@@ -695,9 +708,9 @@ window.USStockTab = {
                                 ${rep.highlights
                                     .map(
                                         (h) => `
-                                    <a href="${h.url || '#'}" target="_blank" rel="noopener noreferrer"
+                                    <a href="${sanitizeUrl(h.url)}" target="_blank" rel="noopener noreferrer"
                                        class="block bg-surfaceHighlight p-3 rounded-lg border border-white/5 hover:border-white/20 transition-colors">
-                                        <p class="text-xs text-textMain leading-relaxed line-clamp-3 hover:text-primary transition-colors">${h.title || ''}</p>
+                                        <p class="text-xs text-textMain leading-relaxed line-clamp-3 hover:text-primary transition-colors">${escapeHtml(h.title || '')}</p>
                                     </a>
                                 `
                                     )
@@ -739,7 +752,7 @@ window.USStockTab = {
                     </div>
                     <!-- Moving Averages -->
                     <div class="bg-background/80 rounded-xl p-4 border border-white/5 hover:border-white/10 transition-colors">
-                        <div class="text-[10px] text-textMuted uppercase tracking-wider mb-2">移動平均線</div>
+                        <div class="text-[10px] text-textMuted uppercase tracking-wider mb-2">${_t('usstock.movingAverages')}</div>
                         <div class="space-y-1.5">
                             ${[
                                 ['MA20', tech.ma_20],
@@ -755,20 +768,20 @@ window.USStockTab = {
                     </div>
                     <!-- Bollinger Bands -->
                     <div class="bg-background/80 rounded-xl p-4 border border-white/5 hover:border-white/10 transition-colors">
-                        <div class="text-[10px] text-textMuted uppercase tracking-wider mb-2">布林帶 (BB20)</div>
+                        <div class="text-[10px] text-textMuted uppercase tracking-wider mb-2">${_t('usstock.bollingerBands')}</div>
                         <div class="space-y-1.5">
-                            <div class="flex justify-between text-xs"><span class="text-textMuted">上軌</span><span class="font-mono text-secondary">$${fv(tech.bb_upper)}</span></div>
-                            <div class="flex justify-between text-xs"><span class="text-textMuted">中軌</span><span class="font-mono text-secondary">$${fv(tech.bb_middle)}</span></div>
-                            <div class="flex justify-between text-xs"><span class="text-textMuted">下軌</span><span class="font-mono text-secondary">$${fv(tech.bb_lower)}</span></div>
+                            <div class="flex justify-between text-xs"><span class="text-textMuted">${_t('usstock.bbUpper')}</span><span class="font-mono text-secondary">$${fv(tech.bb_upper)}</span></div>
+                            <div class="flex justify-between text-xs"><span class="text-textMuted">${_t('usstock.bbMiddle')}</span><span class="font-mono text-secondary">$${fv(tech.bb_middle)}</span></div>
+                            <div class="flex justify-between text-xs"><span class="text-textMuted">${_t('usstock.bbLower')}</span><span class="font-mono text-secondary">$${fv(tech.bb_lower)}</span></div>
                         </div>
                         <div class="mt-2 text-[10px] font-bold ${bbLblColor}">${bbLbl}</div>
                     </div>
                     <!-- Volume -->
                     <div class="bg-background/80 rounded-xl p-4 border border-white/5 hover:border-white/10 transition-colors">
-                        <div class="text-[10px] text-textMuted uppercase tracking-wider mb-2">成交量</div>
+                        <div class="text-[10px] text-textMuted uppercase tracking-wider mb-2">${_t('usstock.volume')}</div>
                         <div class="space-y-1.5">
-                            <div class="flex justify-between text-xs"><span class="text-textMuted">今日量</span><span class="font-mono text-secondary">${tech.volume ? Number(tech.volume).toLocaleString() : 'N/A'}</span></div>
-                            <div class="flex justify-between text-xs"><span class="text-textMuted">20日均量</span><span class="font-mono text-secondary">${tech.vol_ma20 ? Number(tech.vol_ma20).toLocaleString() : 'N/A'}</span></div>
+                            <div class="flex justify-between text-xs"><span class="text-textMuted">${_t('usstock.todayVolume')}</span><span class="font-mono text-secondary">${tech.volume ? Number(tech.volume).toLocaleString() : 'N/A'}</span></div>
+                            <div class="flex justify-between text-xs"><span class="text-textMuted">${_t('usstock.avg20dVolume')}</span><span class="font-mono text-secondary">${tech.vol_ma20 ? Number(tech.vol_ma20).toLocaleString() : 'N/A'}</span></div>
                         </div>
                         <div class="mt-2 text-[10px] font-bold ${volLblColor}">${volLbl}</div>
                     </div>
@@ -787,13 +800,13 @@ window.USStockTab = {
                         <div class="bg-background/60 rounded-lg p-3 border border-white/5"><div class="text-[9px] text-textMuted uppercase mb-1">Forward P/E</div><div class="font-bold font-mono text-secondary">${fv(fund.forward_pe)}</div></div>
                         <div class="bg-background/60 rounded-lg p-3 border border-white/5"><div class="text-[9px] text-textMuted uppercase mb-1">P/B</div><div class="font-bold font-mono text-secondary">${fv(fund.price_to_book)}</div></div>
                         <div class="bg-background/60 rounded-lg p-3 border border-white/5"><div class="text-[9px] text-textMuted uppercase mb-1">EPS (TTM)</div><div class="font-bold font-mono text-secondary">$${fv(fund.eps)}</div></div>
-                        <div class="bg-background/60 rounded-lg p-3 border border-white/5"><div class="text-[9px] text-textMuted uppercase mb-1">殖利率</div><div class="font-bold font-mono ${fund.dividend_yield > 0.02 ? 'text-success' : 'text-secondary'}">${fmtPct(fund.dividend_yield)}</div></div>
+                        <div class="bg-background/60 rounded-lg p-3 border border-white/5"><div class="text-[9px] text-textMuted uppercase mb-1">${_t('usstock.dividendYield')}</div><div class="font-bold font-mono ${fund.dividend_yield > 0.02 ? 'text-success' : 'text-secondary'}">${fmtPct(fund.dividend_yield)}</div></div>
                         <div class="bg-background/60 rounded-lg p-3 border border-white/5"><div class="text-[9px] text-textMuted uppercase mb-1">Beta</div><div class="font-bold font-mono text-secondary">${fv(fund.beta)}</div></div>
                         <div class="bg-background/60 rounded-lg p-3 border border-white/5"><div class="text-[9px] text-textMuted uppercase mb-1">ROE</div><div class="font-bold font-mono text-secondary">${fmtPct(fund.roe)}</div></div>
-                        <div class="bg-background/60 rounded-lg p-3 border border-white/5"><div class="text-[9px] text-textMuted uppercase mb-1">利潤率</div><div class="font-bold font-mono text-secondary">${fmtPct(fund.profit_margin)}</div></div>
+                        <div class="bg-background/60 rounded-lg p-3 border border-white/5"><div class="text-[9px] text-textMuted uppercase mb-1">${_t('usstock.profitMargin')}</div><div class="font-bold font-mono text-secondary">${fmtPct(fund.profit_margin)}</div></div>
                     </div>
                     <div class="bg-background/60 rounded-lg p-3 border border-white/5">
-                        <div class="text-[9px] text-textMuted uppercase mb-2">52 週高低點</div>
+                        <div class="text-[9px] text-textMuted uppercase mb-2">${_t('usstock.week52Range')}</div>
                         ${w52Html}
                     </div>
                 </div>
@@ -806,18 +819,18 @@ window.USStockTab = {
                     <div class="flex items-center gap-3 mb-5 p-4 bg-background/60 rounded-xl border border-white/5">
                         <span class="text-sm font-bold px-3 py-1 rounded-lg ${recStyle}">${recLbl}</span>
                         <div>
-                            <div class="text-[10px] text-textMuted">目標價</div>
+                            <div class="text-[10px] text-textMuted">${_t('usstock.targetPrice')}</div>
                             <div class="font-bold font-mono text-secondary">${fund.analyst_target_price != null ? '$' + fv(fund.analyst_target_price) : 'N/A'}</div>
                         </div>
                     </div>
                     <div class="space-y-0">
-                        <div class="flex justify-between py-2 border-b border-white/5"><span class="text-xs text-textMuted">評估機構數</span><span class="text-xs font-mono text-secondary">${fund.analyst_num_ratings || 'N/A'}</span></div>
-                        <div class="flex justify-between py-2 border-b border-white/5"><span class="text-xs text-textMuted">營收成長</span><span class="text-xs font-bold font-mono ${fund.revenue_growth > 0 ? 'text-success' : fund.revenue_growth < 0 ? 'text-danger' : 'text-textMuted'}">${fmtPct(fund.revenue_growth)}</span></div>
-                        <div class="flex justify-between py-2 border-b border-white/5"><span class="text-xs text-textMuted">獲利成長</span><span class="text-xs font-bold font-mono ${fund.earnings_growth > 0 ? 'text-success' : fund.earnings_growth < 0 ? 'text-danger' : 'text-textMuted'}">${fmtPct(fund.earnings_growth)}</span></div>
-                        <div class="flex justify-between py-2 border-b border-white/5"><span class="text-xs text-textMuted">負債/股東權益</span><span class="text-xs font-mono text-secondary">${fv(fund.debt_to_equity)}</span></div>
-                        <div class="flex justify-between py-2"><span class="text-xs text-textMuted">市值</span><span class="text-xs font-mono text-secondary">${fmtLarge(fund.enterprise_value || fund.market_cap)}</span></div>
+                        <div class="flex justify-between py-2 border-b border-white/5"><span class="text-xs text-textMuted">${_t('usstock.analystCount')}</span><span class="text-xs font-mono text-secondary">${fund.analyst_num_ratings || 'N/A'}</span></div>
+                        <div class="flex justify-between py-2 border-b border-white/5"><span class="text-xs text-textMuted">${_t('usstock.revenueGrowth')}</span><span class="text-xs font-bold font-mono ${fund.revenue_growth > 0 ? 'text-success' : fund.revenue_growth < 0 ? 'text-danger' : 'text-textMuted'}">${fmtPct(fund.revenue_growth)}</span></div>
+                        <div class="flex justify-between py-2 border-b border-white/5"><span class="text-xs text-textMuted">${_t('usstock.earningsGrowth')}</span><span class="text-xs font-bold font-mono ${fund.earnings_growth > 0 ? 'text-success' : fund.earnings_growth < 0 ? 'text-danger' : 'text-textMuted'}">${fmtPct(fund.earnings_growth)}</span></div>
+                        <div class="flex justify-between py-2 border-b border-white/5"><span class="text-xs text-textMuted">${_t('usstock.debtToEquity')}</span><span class="text-xs font-mono text-secondary">${fv(fund.debt_to_equity)}</span></div>
+                        <div class="flex justify-between py-2"><span class="text-xs text-textMuted">${_t('usstock.marketCap')}</span><span class="text-xs font-mono text-secondary">${fmtLarge(fund.enterprise_value || fund.market_cap)}</span></div>
                     </div>
-                    ${fund.industry ? `<div class="mt-4 pt-3 border-t border-white/10 text-[10px] text-textMuted flex items-center gap-1"><i data-lucide="building" class="w-3 h-3"></i> ${fund.industry}</div>` : ''}
+                    ${fund.industry ? `<div class="mt-4 pt-3 border-t border-white/10 text-[10px] text-textMuted flex items-center gap-1"><i data-lucide="building" class="w-3 h-3"></i> ${escapeHtml(fund.industry)}</div>` : ''}
                 </div>
             </div>
         `;
@@ -860,7 +873,7 @@ window.USStockTab = {
         });
 
         chartEl.innerHTML =
-            '<div class="animate-pulse text-textMuted h-full flex items-center justify-center">載入歷史數據中...</div>';
+            '<div class="animate-pulse text-textMuted h-full flex items-center justify-center">' + _t('usstock.loadingHistory') + '</div>';
         if (volumeEl) {
             volumeEl.innerHTML = '';
             volumeEl.style.display = '';
@@ -879,13 +892,13 @@ window.USStockTab = {
 
             if (!klineData.length) {
                 chartEl.innerHTML =
-                    '<div class="text-danger h-full flex items-center justify-center">無法載入數據</div>';
+                    '<div class="text-danger h-full flex items-center justify-center">' + _t('usstock.failedToLoadData') + '</div>';
                 return;
             }
 
             const updatedEl = document.getElementById('usstock-chart-updated');
             if (updatedEl)
-                updatedEl.textContent = `載入時間: ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`;
+                updatedEl.textContent = _t('usstock.loadedAt') + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
             chartEl.innerHTML = '';
             if (this._chart) {
@@ -1055,7 +1068,7 @@ window.USStockTab = {
             setTimeout(onResize, 50);
         } catch (err) {
             console.error('[US Stock] Chart error:', err);
-            chartEl.innerHTML = `<div class="text-danger h-full flex flex-col items-center justify-center text-sm p-4 text-center"><i data-lucide="alert-triangle" class="w-8 h-8 mb-2"></i>讀取失敗：${SecurityUtils.escapeHTML(err.message || '')}</div>`;
+            chartEl.innerHTML = `<div class="text-danger h-full flex flex-col items-center justify-center text-sm p-4 text-center"><i data-lucide="alert-triangle" class="w-8 h-8 mb-2"></i>${_t('usstock.readFailed')}${SecurityUtils.escapeHTML(err.message || '')}</div>`;
             if (window.lucide) window.lucide.createIcons();
         }
     },

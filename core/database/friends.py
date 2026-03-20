@@ -336,7 +336,7 @@ def unblock_user(user_id: str, blocked_user_id: str) -> Dict:
         conn.close()
 
 
-def get_blocked_users(user_id: str) -> List[Dict]:
+def get_blocked_users(user_id: str, limit: int = 100) -> List[Dict]:
     """取得封鎖名單"""
     conn = get_connection()
     c = conn.cursor()
@@ -347,7 +347,8 @@ def get_blocked_users(user_id: str) -> List[Dict]:
             JOIN users u ON f.friend_id = u.user_id
             WHERE f.user_id = %s AND f.status = 'blocked'
             ORDER BY f.created_at DESC
-        ''', (user_id,))
+            LIMIT %s
+        ''', (user_id, limit))
 
         rows = c.fetchall()
         result = []
@@ -414,7 +415,7 @@ def get_friends_list(user_id: str, limit: int = 50, offset: int = 0) -> List[Dic
         conn.close()
 
 
-def get_pending_requests_received(user_id: str) -> List[Dict]:
+def get_pending_requests_received(user_id: str, limit: int = 100) -> List[Dict]:
     """取得收到的待處理好友請求"""
     conn = get_connection()
     c = conn.cursor()
@@ -426,7 +427,8 @@ def get_pending_requests_received(user_id: str) -> List[Dict]:
             JOIN users u ON f.user_id = u.user_id
             WHERE f.friend_id = %s AND f.status = 'pending'
             ORDER BY f.created_at DESC
-        ''', (user_id,))
+            LIMIT %s
+        ''', (user_id, limit))
 
         rows = c.fetchall()
         result = []
@@ -447,7 +449,7 @@ def get_pending_requests_received(user_id: str) -> List[Dict]:
         conn.close()
 
 
-def get_pending_requests_sent(user_id: str) -> List[Dict]:
+def get_pending_requests_sent(user_id: str, limit: int = 100) -> List[Dict]:
     """取得已發送的待處理好友請求"""
     conn = get_connection()
     c = conn.cursor()
@@ -459,7 +461,8 @@ def get_pending_requests_sent(user_id: str) -> List[Dict]:
             JOIN users u ON f.friend_id = u.user_id
             WHERE f.user_id = %s AND f.status = 'pending'
             ORDER BY f.created_at DESC
-        ''', (user_id,))
+            LIMIT %s
+        ''', (user_id, limit))
 
         rows = c.fetchall()
         result = []

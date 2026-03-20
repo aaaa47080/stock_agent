@@ -55,7 +55,7 @@ def toggle_session_pin(session_id: str, is_pinned: bool):
         conn.close()
 
 
-def get_sessions(user_id: str = "local_user", limit: int = 20) -> List[Dict]:
+def get_sessions(user_id: str = "local_user", limit: int = 20, offset: int = 0) -> List[Dict]:
     """獲取用戶的對話列表（置頂優先）"""
     conn = get_connection()
     c = conn.cursor()
@@ -65,8 +65,8 @@ def get_sessions(user_id: str = "local_user", limit: int = 20) -> List[Dict]:
             FROM sessions
             WHERE user_id = %s
             ORDER BY is_pinned DESC, updated_at DESC
-            LIMIT %s
-        ''', (user_id, limit))
+            LIMIT %s OFFSET %s
+        ''', (user_id, limit, offset))
         rows = c.fetchall()
 
         sessions = []

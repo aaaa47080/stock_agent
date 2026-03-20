@@ -616,7 +616,7 @@ class PremiumManager {
      */
     async checkMembershipStatus(userId) {
         try {
-            const response = await fetch(`/api/premium/status/${userId}`, {
+            const response = await fetch(`/api/premium/status`, {
                 headers: window.AuthManager?.currentUser?.accessToken
                     ? { Authorization: `Bearer ${window.AuthManager.currentUser.accessToken}` }
                     : {},

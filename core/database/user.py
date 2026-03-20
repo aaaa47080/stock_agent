@@ -3,11 +3,13 @@
 包含：用戶管理、Pi Network、會員等級
 """
 import uuid
-import psycopg2
+import logging
 from typing import Dict, Optional
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from .connection import get_connection
+
+logger = logging.getLogger(__name__)
 
 
 def _normalize_membership_tier(tier: Optional[str]) -> str:
@@ -24,7 +26,7 @@ def get_user_by_id(user_id: str) -> Optional[Dict]:
     c = conn.cursor()
     try:
         c.execute('''
-            SELECT user_id, username, email, auth_method,
+            SELECT user_id, username, auth_method,
                    role, is_active, membership_tier, membership_expires_at, created_at
             FROM users WHERE user_id = %s
         ''', (user_id,))
@@ -33,13 +35,12 @@ def get_user_by_id(user_id: str) -> Optional[Dict]:
             return {
                 "user_id": row[0],
                 "username": row[1],
-                "email": row[2],
-                "auth_method": row[3],
-                "role": row[4] or "user",
-                "is_active": row[5] if row[5] is not None else True,
-                "membership_tier": _normalize_membership_tier(row[6]),
-                "membership_expires_at": row[7].isoformat() if row[7] else None,
-                "created_at": row[8].isoformat() if row[8] else None
+                "auth_method": row[2],
+                "role": row[3] or "user",
+                "is_active": row[4] if row[4] is not None else True,
+                "membership_tier": _normalize_membership_tier(row[5]),
+                "membership_expires_at": row[6].isoformat() if row[6] else None,
+                "created_at": row[7].isoformat() if row[7] else None
             }
         return None
     finally:
@@ -91,9 +92,6 @@ def create_or_get_pi_user(pi_uid: str, username: Optional[str] = None, wallet_ad
             if not row[3] and username:
                 updates.append('pi_username = %s')
                 params.append(username)
-            if wallet_address:
-                updates.append('pi_wallet_address = %s')
-                params.append(wallet_address)
             if updates:
                 params.append(pi_uid)
                 c.execute(f'UPDATE users SET {", ".join(updates)} WHERE pi_uid = %s', params)
@@ -122,9 +120,9 @@ def create_or_get_pi_user(pi_uid: str, username: Optional[str] = None, wallet_ad
         # 創建新 Pi 用戶
         user_id = pi_uid
         c.execute('''
-            INSERT INTO users (user_id, username, password_hash, auth_method, pi_uid, pi_username, pi_wallet_address, created_at)
-            VALUES (%s, %s, NULL, 'pi_network', %s, %s, %s, NOW())
-        ''', (user_id, username, pi_uid, username, wallet_address))
+            INSERT INTO users (user_id, username, auth_method, pi_uid, pi_username, created_at)
+            VALUES (%s, %s, 'pi_network', %s, %s, NOW())
+        ''', (user_id, username, pi_uid, username))
         conn.commit()
 
         return {

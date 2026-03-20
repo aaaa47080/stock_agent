@@ -3,11 +3,14 @@ Email 服務模組
 使用 Gmail SMTP 發送密碼重置郵件
 """
 
+import logging
 import os
 import ssl
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+
+logger = logging.getLogger(__name__)
 
 # 從環境變數讀取配置
 SMTP_EMAIL = os.getenv("SMTP_EMAIL", "")
@@ -37,7 +40,7 @@ def send_reset_email(to_email: str, reset_token: str, username: str = "User") ->
         bool: 發送成功返回 True
     """
     if not is_email_configured():
-        print("Email service not configured. Please set SMTP_EMAIL and SMTP_PASSWORD.")
+        logger.warning("Email service not configured")
         return False
 
     reset_link = f"{RESET_URL_BASE}?reset_token={reset_token}"
@@ -111,12 +114,12 @@ CryptoMind Team
         with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT, context=context) as server:
             server.login(SMTP_EMAIL, SMTP_PASSWORD)
             server.sendmail(SMTP_EMAIL, to_email, msg.as_string())
-        print(f"Reset email sent to {to_email}")
+        logger.info("Reset email sent to %s", to_email)
         return True
     except smtplib.SMTPAuthenticationError as e:
-        print(f"SMTP Authentication failed: {e}")
-        print("Please check your Gmail App Password settings.")
+        logger.error("SMTP auth failed: %s", e)
+        logger.error("Check Gmail App Password settings")
         return False
     except Exception as e:
-        print(f"Failed to send email: {e}")
+        logger.error("Failed to send email: %s", e)
         return False

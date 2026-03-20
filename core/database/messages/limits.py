@@ -8,18 +8,59 @@ from ..connection import get_connection
 from .config import _get_message_config
 
 
-def check_message_limit(user_id: str, is_premium: bool) -> Dict:
+def check_and_increment_message(user_id: str, is_premium: bool) -> Dict:
     """
-    檢查用戶是否超過每日訊息限制
-    返回: {"can_send": bool, "remaining": int, "limit": int}
+    Atomically check and increment the daily message count.
+    Uses a single transaction with row locking to prevent race conditions.
+
+    Returns: {"can_send": bool, "remaining": int, "limit": int, "used": int}
     """
-    # Premium 會員：檢查是否有限制
     if is_premium:
         premium_limit = _get_message_config('limit_daily_message_premium', None)
         if premium_limit is None:
-            return {"can_send": True, "remaining": -1, "limit": -1}  # -1 表示無限
+            return {"can_send": True, "remaining": -1, "limit": -1, "used": -1}
 
-    # 從資料庫讀取限制配置
+    daily_limit = _get_message_config('limit_daily_message_free', 20)
+    today = date.today().isoformat()
+
+    conn = get_connection()
+    c = conn.cursor()
+    try:
+        c.execute('''
+            INSERT INTO user_message_limits (user_id, date, message_count)
+            VALUES (%s, %s, 1)
+            ON CONFLICT(user_id, date) DO UPDATE SET message_count = user_message_limits.message_count + 1
+            RETURNING message_count
+        ''', (user_id, today))
+        row = c.fetchone()
+        conn.commit()
+
+        new_count = row[0] if row else 1
+        remaining = daily_limit - new_count
+
+        return {
+            "can_send": remaining >= 0,
+            "remaining": max(0, remaining),
+            "limit": daily_limit,
+            "used": new_count,
+        }
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def check_message_limit(user_id: str, is_premium: bool) -> Dict:
+    """
+    檢查用戶是否超過每日訊息限制 (read-only, no side effects).
+    返回: {"can_send": bool, "remaining": int, "limit": int}
+    """
+    if is_premium:
+        premium_limit = _get_message_config('limit_daily_message_premium', None)
+        if premium_limit is None:
+            return {"can_send": True, "remaining": -1, "limit": -1}
+
     daily_limit = _get_message_config('limit_daily_message_free', 20)
     today = date.today().isoformat()
 
@@ -47,7 +88,7 @@ def check_message_limit(user_id: str, is_premium: bool) -> Dict:
 
 def increment_message_count(user_id: str) -> None:
     """
-    增加用戶的每日訊息計數
+    增加用戶的每日訊息計數 (legacy, kept for backward compatibility).
     """
     today = date.today().isoformat()
 
@@ -60,6 +101,53 @@ def increment_message_count(user_id: str) -> None:
             ON CONFLICT(user_id, date) DO UPDATE SET message_count = user_message_limits.message_count + 1
         ''', (user_id, today))
         conn.commit()
+    finally:
+        conn.close()
+
+
+def check_and_increment_greeting(user_id: str, is_premium: bool) -> Dict:
+    """
+    Atomically check and increment the monthly greeting count.
+    Uses a single transaction to prevent race conditions.
+
+    Returns: {"can_send": bool, "remaining": int, "limit": int, "used": int}
+    """
+    if not is_premium:
+        return {"can_send": False, "remaining": 0, "limit": 0, "used": 0, "error": "premium_only"}
+
+    monthly_limit = _get_message_config('limit_monthly_greeting', 5)
+    today = date.today().isoformat()
+    current_month = date.today().strftime('%Y-%m')
+
+    conn = get_connection()
+    c = conn.cursor()
+    try:
+        c.execute('''
+            INSERT INTO user_message_limits (user_id, date, greeting_count, greeting_month)
+            VALUES (%s, %s, 1, %s)
+            ON CONFLICT(user_id, date) DO UPDATE SET
+                greeting_count = CASE
+                    WHEN user_message_limits.greeting_month = %s THEN user_message_limits.greeting_count + 1
+                    ELSE 1
+                END,
+                greeting_month = %s
+            RETURNING greeting_count
+        ''', (user_id, today, current_month, current_month, current_month))
+        row = c.fetchone()
+        conn.commit()
+
+        new_count = row[0] if row else 1
+        remaining = monthly_limit - new_count
+
+        return {
+            "can_send": remaining >= 0,
+            "remaining": max(0, remaining),
+            "limit": monthly_limit,
+            "used": new_count,
+        }
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         conn.close()
 

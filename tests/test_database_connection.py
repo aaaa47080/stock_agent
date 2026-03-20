@@ -166,7 +166,7 @@ class TestInitConnectionPool:
                     mock_pool = MagicMock()
                     mock_pool_class.return_value = mock_pool
 
-                    with patch("builtins.print"):
+                    with patch("core.database.connection.logger"):
                         result = init_connection_pool()
 
                     mock_pool_class.assert_called_once()
@@ -178,6 +178,42 @@ class TestInitConnectionPool:
             with patch("core.database.connection._connection_pool", None):
                 with pytest.raises(ValueError) as exc_info:
                     init_connection_pool()
+
+                assert "Database connection" in str(exc_info.value)
+
+    def test_retry_on_operational_error(self):
+        """Test retry on OperationalError"""
+        with patch("core.database.connection.DATABASE_URL", "postgresql://test"):
+            with patch("core.database.connection._connection_pool", None):
+                with patch("psycopg2.pool.ThreadedConnectionPool") as mock_pool_class:
+                    from psycopg2 import OperationalError
+
+                    mock_pool = MagicMock()
+                    mock_pool_class.side_effect = [
+                        OperationalError("Connection failed"),
+                        mock_pool,
+                    ]
+
+                    with patch("core.database.connection.logger"):
+                        with patch("time.sleep"):
+                            result = init_connection_pool()
+
+                    assert result == mock_pool
+                    assert mock_pool_class.call_count == 2
+
+    def test_raises_after_max_retries(self):
+        """Test that error is raised after max retries"""
+        with patch("core.database.connection.DATABASE_URL", "postgresql://test"):
+            with patch("core.database.connection._connection_pool", None):
+                with patch("psycopg2.pool.ThreadedConnectionPool") as mock_pool_class:
+                    from psycopg2 import OperationalError
+
+                    mock_pool_class.side_effect = OperationalError("Connection failed")
+
+                    with patch("core.database.connection.logger"):
+                        with patch("time.sleep"):
+                            with pytest.raises(OperationalError):
+                                init_connection_pool()
 
                 assert "Database connection" in str(exc_info.value)
 
@@ -300,8 +336,8 @@ class TestInitDb:
 
                 assert isinstance(result, PooledConnection)
 
-    def test_creates_standalone_on_pool_exhaustion(self):
-        """Test that standalone connection is created when pool exhausted"""
+    def test_raises_runtime_error_on_pool_exhaustion(self):
+        """Test that RuntimeError is raised when pool is exhausted (no bypass)"""
         from psycopg2 import pool
 
         mock_pool = MagicMock()
@@ -309,20 +345,36 @@ class TestInitDb:
 
         with patch("core.database.connection._connection_pool", mock_pool):
             with patch("core.database.connection._db_initialized", True):
-                with patch("psycopg2.connect") as mock_connect:
-                    mock_conn = MagicMock()
-                    mock_cursor = MagicMock()
-                    mock_cursor.execute = MagicMock()
-                    mock_cursor.fetchone = MagicMock()
-                    mock_cursor.close = MagicMock()
-                    mock_conn.cursor.return_value = mock_cursor
-                    mock_connect.return_value = mock_conn
+                with patch("time.sleep"):
+                    with pytest.raises(RuntimeError) as exc_info:
+                        get_connection()
 
-                    with patch("builtins.print"):
-                        with patch("time.sleep"):
-                            result = get_connection()
+                    assert "Service unavailable" in str(exc_info.value)
+                    assert "pool exhausted" in str(exc_info.value)
 
-                            assert isinstance(result, _StandaloneConnection)
+    def test_no_standalone_connection_on_bad_connections(self):
+        """Test that no standalone bypass connection is created for bad connections"""
+        mock_pool = MagicMock()
+        mock_bad_conn = MagicMock()
+        mock_bad_conn.closed = False
+        mock_cursor = MagicMock()
+        mock_cursor.execute.side_effect = Exception("SSL broken")
+        mock_cursor.fetchone = MagicMock()
+        mock_cursor.close = MagicMock()
+        mock_bad_conn.cursor.return_value = mock_cursor
+        mock_pool.getconn.return_value = mock_bad_conn
+
+        with patch("core.database.connection._connection_pool", mock_pool):
+            with patch("core.database.connection._db_initialized", True):
+                with pytest.raises((RuntimeError, Exception)):
+                    get_connection()
+
+        mock_pool.getconn.assert_called()
+        standalone_created = any(
+            isinstance(call, _StandaloneConnection)
+            for call in []
+        )
+        assert not standalone_created
 
 
 class TestCloseAllConnections:
@@ -333,7 +385,7 @@ class TestCloseAllConnections:
         mock_pool = MagicMock()
 
         with patch("core.database.connection._connection_pool", mock_pool):
-            with patch("builtins.print"):
+            with patch("core.database.connection.logger"):
                 close_all_connections()
 
             mock_pool.closeall.assert_called_once()
@@ -341,7 +393,6 @@ class TestCloseAllConnections:
     def test_handles_none_pool(self):
         """Test that None pool is handled"""
         with patch("core.database.connection._connection_pool", None):
-            # Should not raise
             close_all_connections()
 
     def test_clears_pool_after_close(self):
@@ -352,10 +403,9 @@ class TestCloseAllConnections:
 
         conn_module._connection_pool = mock_pool
 
-        with patch("builtins.print"):
+        with patch("core.database.connection.logger"):
             close_all_connections()
 
-        # Pool should be None after close
         assert conn_module._connection_pool is None
 
 

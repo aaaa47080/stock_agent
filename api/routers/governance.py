@@ -220,6 +220,7 @@ async def get_report_detail(
 async def list_my_reports(
     status: Optional[str] = Query(None, description="篩選狀態: pending, approved, rejected"),
     limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     current_user: dict = Depends(get_current_user)
 ):
     """
@@ -227,12 +228,13 @@ async def list_my_reports(
 
     - **status**: 篩選狀態（選填）
     - **limit**: 最多返回數量
+    - **offset**: 分頁偏移
     """
     try:
         user_id = current_user["user_id"]
 
         reports = await run_sync(
-            lambda: get_user_reports(None, user_id=user_id, status=status, limit=limit)
+            lambda: get_user_reports(None, user_id=user_id, status=status, limit=limit, offset=offset)
         )
 
         return {
@@ -498,6 +500,7 @@ async def get_user_violations_public(
 async def get_my_activity_logs(
     activity_type: Optional[str] = Query(None, description="活動類型篩選"),
     limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     current_user: dict = Depends(get_current_user)
 ):
     """
@@ -505,12 +508,13 @@ async def get_my_activity_logs(
 
     - **activity_type**: 篩選活動類型（選填）
     - **limit**: 最多返回數量
+    - **offset**: 分頁偏移
     """
     try:
         user_id = current_user["user_id"]
 
         logs = await run_sync(
-            lambda: get_user_activity_logs(None, user_id=user_id, activity_type=activity_type, limit=limit)
+            lambda: get_user_activity_logs(None, user_id=user_id, activity_type=activity_type, limit=limit, offset=offset)
         )
 
         return {

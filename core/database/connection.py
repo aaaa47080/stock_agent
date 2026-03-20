@@ -102,8 +102,8 @@ def get_database_url() -> str | None:
 # 實際連接時才會驗證 DATABASE_URL 是否有效
 
 # 連接池配置 - 針對 Zeabur 優化
-MIN_POOL_SIZE = 2  # 最小連接數
-MAX_POOL_SIZE = 10  # 最大連接數（平衡並發需求和資源限制）
+MIN_POOL_SIZE = int(os.getenv("DB_MIN_POOL_SIZE", "2"))
+MAX_POOL_SIZE = int(os.getenv("DB_MAX_POOL_SIZE", "10"))
 
 # 連接獲取配置
 MAX_RETRIES = 5  # 重試次數
@@ -111,11 +111,12 @@ RETRY_DELAY_BASE = 0.3  # 重試延遲
 
 # 連接參數 - 防止連接超時和斷開
 CONNECTION_OPTIONS = {
-    "connect_timeout": 10,  # 連接超時 10 秒
-    "keepalives": 1,  # 啟用 TCP keepalive
-    "keepalives_idle": 30,  # 空閒 30 秒後發送 keepalive
-    "keepalives_interval": 10,  # keepalive 間隔 10 秒
-    "keepalives_count": 3,  # 3 次失敗後斷開
+    "connect_timeout": int(os.getenv("DB_CONNECT_TIMEOUT", "10")),
+
+    "keepalives": 1,
+    "keepalives_idle": 30,
+    "keepalives_interval": 10,
+    "keepalives_count": 3,
 }
 
 # 全局連接池
@@ -142,21 +143,17 @@ class _StandaloneConnection:
         self._closed = False
 
     def close(self):
-        """真正關閉連接"""
         if not self._closed and self._conn:
             try:
                 self._conn.rollback()
             except Exception:
-                # Rollback failed, connection may be corrupted
-                # Try close anyway
                 pass
             try:
                 self._conn.close()
                 self._closed = True
             except Exception as e:
-                # Log instead of just printing
-                logging.warning(f"Failed to close standalone connection: {e}")
-                self._closed = True  # Mark as closed even if close failed
+                logger.warning("Failed to close standalone connection: %s", e)
+                self._closed = True
 
     def __enter__(self):
         return self
@@ -166,11 +163,9 @@ class _StandaloneConnection:
         return False
 
     def __getattr__(self, name):
-        """代理所有其他屬性到原始連接"""
         return getattr(self._conn, name)
 
     def __del__(self):
-        """析構時確保連接被關閉"""
         if not self._closed:
             self.close()
 
@@ -191,24 +186,20 @@ class PooledConnection:
         self._returned = False
 
     def close(self):
-        """關閉連接（實際上是歸還到池中）"""
         if not self._returned and self._pool and self._conn:
             try:
-                # 先 rollback 任何未提交的事務，避免連接狀態不一致
                 try:
                     self._conn.rollback()
                 except Exception:
                     pass
-                # 歸還連接到池中，而不是真正關閉
                 self._pool.putconn(self._conn)
                 self._returned = True
             except Exception as e:
-                # 如果歸還失敗，嘗試真正關閉
                 try:
                     self._conn.close()
                 except Exception:
                     pass
-                print(f"⚠️ 連接歸還失敗: {e}")
+                logger.warning("Connection return to pool failed: %s", e)
 
     def __enter__(self):
         return self
@@ -258,25 +249,28 @@ def init_connection_pool():
                             MIN_POOL_SIZE,
                             MAX_POOL_SIZE,
                             database_url,
-                            **CONNECTION_OPTIONS,  # 添加連接超時和 keepalive 參數
+                            **CONNECTION_OPTIONS,
                         )
-                        print(
-                            f"✅ 線程安全數據庫連接池已初始化 (min={MIN_POOL_SIZE}, max={MAX_POOL_SIZE})"
+                        logger.info(
+                            "Database connection pool initialized (min=%d, max=%d)",
+                            MIN_POOL_SIZE, MAX_POOL_SIZE,
                         )
                         break
                     except psycopg2.OperationalError as e:
                         if attempt < POOL_INIT_MAX_RETRIES - 1:
-                            print(
-                                f"⚠️ 資料庫連接失敗（{e}），{POOL_INIT_RETRY_DELAY} 秒後重試... (嘗試 {attempt + 1}/{POOL_INIT_MAX_RETRIES})"
+                            logger.warning(
+                                "Database connection failed (%s), retrying in %ds (attempt %d/%d)",
+                                e, POOL_INIT_RETRY_DELAY, attempt + 1, POOL_INIT_MAX_RETRIES,
                             )
                             time.sleep(POOL_INIT_RETRY_DELAY)
                         else:
-                            print(
-                                f"❌ 連接池初始化失敗（已重試 {POOL_INIT_MAX_RETRIES} 次）: {e}"
+                            logger.error(
+                                "Connection pool init failed after %d retries: %s",
+                                POOL_INIT_MAX_RETRIES, e,
                             )
                             raise
                     except Exception as e:
-                        print(f"❌ 連接池初始化失敗: {e}")
+                        logger.error("Connection pool init failed: %s", e)
                         raise
 
     return _connection_pool
@@ -284,15 +278,16 @@ def init_connection_pool():
 
 def get_connection():
     """
-    從連接池獲取連接，確保資料庫和表存在
+    Get a connection from the pool, ensuring database and tables exist.
 
-    特性：
-    - 線程安全
-    - 自動重試機制（指數退避）
-    - 連接健康檢查（防止 SSL 斷開錯誤）
-    - 自動歸還連接（通過 PooledConnection 包裝）
+    Features:
+    - Thread-safe
+    - Automatic retry with exponential backoff
+    - Connection health checks
+    - Hard cap on pool size (no unlimited bypass connections)
+    - Raises RuntimeError when pool is exhausted
 
-    重要: 使用完畢後調用 conn.close() 會自動將連接歸還到池中
+    Important: call conn.close() to return connection to pool
     """
     global _db_initialized, _connection_pool
     database_url = get_database_url()
@@ -313,15 +308,13 @@ def get_connection():
 
     # 從池中獲取連接（帶重試機制和健康檢查）
     last_error = None
-    bad_conn_count = 0  # 追蹤壞連接數量
+    bad_conn_count = 0
 
     for attempt in range(MAX_RETRIES):
         raw_conn = None
         try:
             raw_conn = _connection_pool.getconn()
 
-            # === 連接健康檢查 ===
-            # 檢查 1: 連接是否已關閉
             if raw_conn.closed:
                 try:
                     _connection_pool.putconn(raw_conn, close=True)
@@ -329,10 +322,9 @@ def get_connection():
                     pass
                 raw_conn = None
                 bad_conn_count += 1
+                logger.debug("Closed connection detected, discarding (bad_conn_count=%d)", bad_conn_count)
                 continue
 
-            # 檢查 2: 執行簡單查詢驗證連接是否真的可用（防止 SSL 斷開）
-            # ✅ 效能優化：加頻率限制，30 秒內用過的連接不重複健康檢查
             conn_id = id(raw_conn)
             now = time.time()
             needs_health_check = (
@@ -344,12 +336,16 @@ def get_connection():
                     test_cursor = raw_conn.cursor()
                     test_cursor.execute("SELECT 1")
                     test_cursor.fetchone()
+                    test_cursor.execute(
+                        "SET statement_timeout = %s",
+                        (int(os.getenv("DB_STATEMENT_TIMEOUT", "30000")),),
+                    )
                     test_cursor.close()
                     _conn_last_verified[conn_id] = now
             except Exception as health_error:
-                # 連接已斷開（SSL 錯誤等），關閉並丟棄
-                print(
-                    f"⚠️ 偵測到壞掉的連接（{type(health_error).__name__}），重新獲取..."
+                logger.warning(
+                    "Bad connection detected (%s), discarding (bad_conn_count=%d)",
+                    type(health_error).__name__, bad_conn_count,
                 )
                 try:
                     _connection_pool.putconn(raw_conn, close=True)
@@ -357,31 +353,9 @@ def get_connection():
                     pass
                 raw_conn = None
                 bad_conn_count += 1
-
-                # 如果連續遇到多個壞連接，可能整個池都壞了，創建新連接繞過池
-                if bad_conn_count >= 3:
-                    print(
-                        f"⚠️ 連接池可能已失效（{bad_conn_count} 個壞連接），嘗試創建新連接..."
-                    )
-                    try:
-                        fresh_conn = psycopg2.connect(
-                            database_url, **CONNECTION_OPTIONS
-                        )
-                        # 驗證新連接
-                        test_cur = fresh_conn.cursor()
-                        test_cur.execute("SELECT 1")
-                        test_cur.fetchone()
-                        test_cur.close()
-                        print("✅ 成功創建新連接繞過連接池")
-                        # 返回一個不依賴連接池的包裝（close 時真正關閉）
-                        return _StandaloneConnection(fresh_conn)
-                    except Exception as new_conn_error:
-                        print(f"❌ 創建新連接也失敗: {new_conn_error}")
-                        last_error = new_conn_error
+                last_error = health_error
                 continue
 
-            # 連接健康，包裝後返回
-            # PooledConnection 確保 close() 時自動調用 putconn()
             return PooledConnection(raw_conn, _connection_pool)
 
         except pool.PoolError as e:
@@ -392,27 +366,20 @@ def get_connection():
                 except Exception:
                     pass
             if attempt < MAX_RETRIES - 1:
-                # 使用指數退避
                 delay = RETRY_DELAY_BASE * (2**attempt)
-                print(
-                    f"⚠️ 連接池暫時耗盡，等待 {delay:.1f}s 後重試 (嘗試 {attempt + 1}/{MAX_RETRIES})..."
+                logger.warning(
+                    "Connection pool exhausted, retrying in %.1fs (attempt %d/%d)",
+                    delay, attempt + 1, MAX_RETRIES,
                 )
                 time.sleep(delay)
-
-                # 連接池耗盡時，嘗試直接創建連接
-                if attempt >= 2:
-                    print("⚠️ 連接池持續耗盡，嘗試創建新連接...")
-                    try:
-                        fresh_conn = psycopg2.connect(
-                            database_url, **CONNECTION_OPTIONS
-                        )
-                        print("✅ 成功創建新連接繞過連接池")
-                        return _StandaloneConnection(fresh_conn)
-                    except Exception as new_conn_error:
-                        print(f"❌ 創建新連接也失敗: {new_conn_error}")
             else:
-                print(f"❌ 無法從連接池獲取連接（已重試 {MAX_RETRIES} 次）: {e}")
-                raise
+                logger.error(
+                    "Connection pool exhausted after %d retries: %s", MAX_RETRIES, e
+                )
+                raise RuntimeError(
+                    f"Service unavailable: database connection pool exhausted "
+                    f"(max={MAX_POOL_SIZE}, retries={MAX_RETRIES})"
+                ) from e
         except Exception as e:
             last_error = e
             if raw_conn:
@@ -420,11 +387,13 @@ def get_connection():
                     _connection_pool.putconn(raw_conn, close=True)
                 except Exception:
                     pass
-            print(f"❌ 無法從連接池獲取連接: {e}")
+            logger.error("Failed to get connection from pool: %s", e)
             raise
 
-    # 如果所有重試都失敗
-    raise Exception(f"連接池耗盡，無法獲取連接: {last_error}")
+    raise RuntimeError(
+        f"Service unavailable: database connection pool exhausted "
+        f"(max={MAX_POOL_SIZE}, retries={MAX_RETRIES}): {last_error}"
+    )
 
 
 def close_all_connections():
@@ -434,11 +403,11 @@ def close_all_connections():
     if _connection_pool:
         try:
             _connection_pool.closeall()
-            print("✅ 所有數據庫連接已關閉")
+            logger.info("All database connections closed")
         except Exception as e:
-            logging.error(f"Failed to close connection pool: {e}")
+            logger.error("Failed to close connection pool: %s", e)
         finally:
-            _connection_pool = None  # Ensure pool is cleared even on error
+            _connection_pool = None
 
 
 def reset_connection_pool():
@@ -459,7 +428,7 @@ def reset_connection_pool():
         _connection_pool = None
         _db_initialized = False
 
-    print(f"🔄 連接池已重置 (PID: {os.getpid()})")
+    logger.info("Connection pool reset (PID: %d)", os.getpid())
 
 
 def init_db():
@@ -486,12 +455,16 @@ def init_db():
             break
         except psycopg2.OperationalError as e:
             if attempt < INIT_MAX_RETRIES - 1:
-                print(
-                    f"⚠️ 資料庫連接失敗（{e}），{INIT_RETRY_DELAY} 秒後重試... (嘗試 {attempt + 1}/{INIT_MAX_RETRIES})"
+                logger.warning(
+                    "Database connection failed (%s), retrying in %ds (attempt %d/%d)",
+                    e, INIT_RETRY_DELAY, attempt + 1, INIT_MAX_RETRIES,
                 )
                 time.sleep(INIT_RETRY_DELAY)
             else:
-                print(f"❌ 資料庫連接失敗（已重試 {INIT_MAX_RETRIES} 次）: {e}")
+                logger.error(
+                    "Database connection failed after %d retries: %s",
+                    INIT_MAX_RETRIES, e,
+                )
                 raise
 
     c = conn.cursor()

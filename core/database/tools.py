@@ -594,6 +594,62 @@ def _get_fallback_tools(agent_id: str, user_tier: str) -> List[str]:
     return allowed_tools
 
 
+def check_and_increment_tool_quota(user_id: str, tool_id: str, user_tier: str) -> bool:
+    """
+    Atomically check tool quota and increment usage in a single transaction.
+    Prevents race conditions between check and increment.
+
+    Returns True if the tool can be used (quota available), False if limit reached.
+    """
+    user_tier = normalize_membership_tier(user_tier)
+    conn = get_connection()
+    c = conn.cursor()
+    try:
+        c.execute('''
+            SELECT quota_type, daily_limit_free, daily_limit_plus, daily_limit_prem
+            FROM tools_catalog WHERE tool_id = %s AND is_active = TRUE
+        ''', (tool_id,))
+        row = c.fetchone()
+
+        if not row:
+            return True
+
+        quota_type, limit_free, limit_plus, limit_prem = row
+
+        if quota_type == "unlimited":
+            return True
+
+        if user_tier == "premium":
+            limit = limit_prem if limit_prem is not None else limit_plus
+        else:
+            limit = limit_free
+
+        if limit is None:
+            return True
+        if limit == 0:
+            return False
+
+        c.execute('''
+            INSERT INTO tool_usage_log (user_id, tool_id, used_date, call_count)
+            VALUES (%s, %s, CURRENT_DATE, 1)
+            ON CONFLICT (user_id, tool_id, used_date)
+            DO UPDATE SET call_count = tool_usage_log.call_count + 1
+            RETURNING call_count
+        ''', (user_id, tool_id))
+        usage_row = c.fetchone()
+        conn.commit()
+
+        used = usage_row[0] if usage_row else 1
+        return used <= limit
+
+    except Exception as e:
+        logger.error(f"[check_and_increment_tool_quota] error: {e}")
+        conn.rollback()
+        return True
+    finally:
+        conn.close()
+
+
 def check_tool_quota(user_id: str, tool_id: str, user_tier: str) -> bool:
     """
     檢查用戶今日對某工具是否還有額度。

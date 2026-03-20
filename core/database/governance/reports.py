@@ -213,7 +213,7 @@ def get_report_by_id(db, report_id: int) -> Optional[Dict]:
             conn.close()
 
 
-def get_user_reports(db, user_id: str, status: str = None, limit: int = 20) -> List[Dict]:
+def get_user_reports(db, user_id: str, status: str = None, limit: int = 20, offset: int = 0) -> List[Dict]:
     """
     Get reports submitted by a user
 
@@ -222,6 +222,7 @@ def get_user_reports(db, user_id: str, status: str = None, limit: int = 20) -> L
         user_id: User ID
         status: Filter by status (pending, approved, rejected)
         limit: Maximum number of reports
+        offset: Pagination offset
 
     Returns:
         List of report dictionaries
@@ -242,8 +243,8 @@ def get_user_reports(db, user_id: str, status: str = None, limit: int = 20) -> L
             query += ' AND cr.review_status = %s'
             params.append(status)
 
-        query += ' ORDER BY cr.created_at DESC LIMIT %s'
-        params.append(limit)
+        query += ' ORDER BY cr.created_at DESC LIMIT %s OFFSET %s'
+        params.extend([limit, offset])
 
         c.execute(query, params)
         rows = c.fetchall()

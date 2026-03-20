@@ -28,7 +28,6 @@ class ScreenerRequest(BaseModel):
     refresh: bool = False
 
 class WatchlistRequest(BaseModel):
-    user_id: str
     symbol: str
 
 class UserRegisterRequest(BaseModel):

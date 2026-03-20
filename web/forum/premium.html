@@ -208,7 +208,7 @@
                 const accessToken = window.AuthManager.currentUser.accessToken;
                 if (userId) {
                     try {
-                        const response = await fetch(`/api/premium/status/${userId}`, {
+                        const response = await fetch(`/api/premium/status`, {
                             headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
                         });
                         const result = await response.json();

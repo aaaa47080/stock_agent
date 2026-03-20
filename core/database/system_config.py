@@ -21,11 +21,14 @@
                                         Pub/Sub 失效通知
 """
 
+import logging
 import os
 import time
 import json
 import threading
 from typing import Any, Dict, Optional, List
+
+logger = logging.getLogger(__name__)
 from .connection import get_connection
 from core.config import TEST_MODE
 from core.redis_url import resolve_redis_url
@@ -90,24 +93,24 @@ class ConfigCacheManager:
     def _init_redis(self):
         """初始化 Redis 連接"""
         if not REDIS_AVAILABLE:
-            print("[ConfigCache] Redis 模組未安裝，使用純記憶體快取")
+            logger.warning("Redis module not installed, using in-memory cache")
             return
 
         redis_url, source = resolve_redis_url()
         if not redis_url:
-            print("[ConfigCache] REDIS_URL/REDIS_HOST 未設置，使用純記憶體快取")
+            logger.warning("REDIS_URL not set, using in-memory cache")
             return
 
         try:
             self._redis_client = redis.from_url(redis_url, decode_responses=True)
             self._redis_client.ping()
-            print(f"[ConfigCache] Redis 連接成功 ({source}): {redis_url}")
+            logger.info("Redis connected (%s): %s", source, redis_url)
 
             # 啟動 Pub/Sub 監聽線程
             self._start_pubsub_listener()
 
         except Exception as e:
-            print(f"[ConfigCache] Redis 連接失敗，降級為純記憶體快取: {e}")
+            logger.warning("Redis connection failed, falling back to in-memory cache: %s", e)
             self._redis_client = None
 
     def _start_pubsub_listener(self):
@@ -125,13 +128,13 @@ class ConfigCacheManager:
                         # 收到失效通知，清除本地快取
                         self._memory_cache = {}
                         self._memory_timestamp = 0
-                        print("[ConfigCache] 收到快取失效通知，已清除本地快取")
+                        logger.info("Cache invalidation notification received, local cache cleared")
             except Exception as e:
-                print(f"[ConfigCache] Pub/Sub 監聽器錯誤: {e}")
+                logger.error("Pub/Sub listener error: %s", e)
 
         self._pubsub_thread = threading.Thread(target=listener, daemon=True)
         self._pubsub_thread.start()
-        print("[ConfigCache] Pub/Sub 監聽器已啟動")
+        logger.info("Pub/Sub listener started")
 
     # ========================================================================
     # 快取讀取
@@ -176,7 +179,7 @@ class ConfigCacheManager:
             if data:
                 return json.loads(data)
         except Exception as e:
-            print(f"[ConfigCache] Redis 讀取失敗: {e}")
+            logger.warning("Redis read failed: %s", e)
             if "connecting to" in str(e) or "Name or service not known" in str(e):
                 self._redis_client = None
         return None
@@ -193,7 +196,7 @@ class ConfigCacheManager:
                 json.dumps(data)
             )
         except Exception as e:
-            print(f"[ConfigCache] Redis 寫入失敗: {e}")
+            logger.warning("Redis write failed: %s", e)
             if "connecting to" in str(e) or "Name or service not known" in str(e):
                 self._redis_client = None
 
@@ -242,10 +245,10 @@ class ConfigCacheManager:
                 "key": key,
                 "timestamp": time.time()
             }))
-            print("[ConfigCache] 已發布快取失效通知")
+            logger.debug("Cache invalidation notification published")
 
         except Exception as e:
-            print(f"[ConfigCache] Redis 失效操作失敗: {e}")
+            logger.warning("Redis invalidation failed: %s", e)
             if "connecting to" in str(e) or "Name or service not known" in str(e):
                 self._redis_client = None
 
@@ -472,11 +475,11 @@ def set_config(key: str, value: Any, value_type: str = 'string',
         # 清除快取
         _get_cache_manager().invalidate()
 
-        print(f"[Config] 配置已更新: {key} = {value} (by {changed_by})")
+        logger.info("Config updated: %s = %s (by %s)", key, value, changed_by)
         return True
 
     except Exception as e:
-        print(f"[Config] 設置配置失敗: {e}")
+        logger.error("Failed to set config: %s", e)
         conn.rollback()
         return False
     finally:
@@ -492,7 +495,7 @@ def _write_audit_log(cursor, key: str, old_value: Any, new_value: Any, changed_b
         ''', (key, old_value, new_value, changed_by))
     except Exception as e:
         # 審計表可能不存在，僅記錄警告
-        print(f"[Config] 審計日誌寫入失敗（表可能不存在）: {e}")
+        logger.warning("Audit log write failed (table may not exist): %s", e)
 
 
 def update_price(key: str, value: float, changed_by: str = 'admin') -> bool:
@@ -561,7 +564,7 @@ def get_config_history(key: str, limit: int = 20) -> List[Dict]:
             'changed_at': row[3].isoformat() if row[3] else None,
         } for row in rows]
     except Exception as e:
-        print(f"[Config] 查詢審計日誌失敗: {e}")
+        logger.warning("Audit log query failed: %s", e)
         return []
     finally:
         conn.close()
@@ -606,7 +609,7 @@ def bulk_update_configs(configs: Dict[str, Any], changed_by: str = 'admin') -> b
         _get_cache_manager().invalidate()
         return True
     except Exception as e:
-        print(f"[Config] 批量更新失敗: {e}")
+        logger.error("Batch update failed: %s", e)
         conn.rollback()
         return False
     finally:
@@ -701,9 +704,9 @@ def init_audit_table():
         c.execute('CREATE INDEX IF NOT EXISTS idx_audit_key ON config_audit_log(config_key)')
         c.execute('CREATE INDEX IF NOT EXISTS idx_audit_time ON config_audit_log(changed_at)')
         conn.commit()
-        print("[Config] 審計日誌表初始化完成")
+        logger.info("Audit log table initialized")
     except Exception as e:
-        print(f"[Config] 審計表初始化失敗: {e}")
+        logger.error("Audit table init failed: %s", e)
     finally:
         conn.close()
 

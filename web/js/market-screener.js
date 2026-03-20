@@ -189,7 +189,7 @@ async function fetchFundingRates() {
         return data;
     } catch (err) {
         console.error('獲取資金費率失敗:', err);
-        if (typeof showToast === 'function') showToast('資金費率載入失敗，請稍後再試', 'error');
+        if (typeof showToast === 'function') showToast(window.I18n ? window.I18n.t('crypto.fundingRateLoadFailed') : '資金費率載入失敗，請稍後再試', 'error');
         return null;
     }
 }
@@ -211,7 +211,7 @@ function getFundingRateStyle(rate) {
             color: 'text-red-500 font-bold',
             bg: 'bg-red-500/20',
             border: 'border-red-500/50',
-            label: '極度過熱',
+            label: window.I18n ? window.I18n.t('crypto.extremeOverheated') : '極度過熱',
         };
 
     // 📈 偏高費率 (0.03% - 0.1%): 明顯看多
@@ -220,7 +220,7 @@ function getFundingRateStyle(rate) {
             color: 'text-orange-400',
             bg: 'bg-orange-500/10',
             border: 'border-orange-500/30',
-            label: '多頭擁擠',
+            label: window.I18n ? window.I18n.t('crypto.crowdedLongs') : '多頭擁擠',
         };
 
     // 🐂 正常偏多 (> 0.01%): 溫和看多
@@ -229,7 +229,7 @@ function getFundingRateStyle(rate) {
             color: 'text-emerald-400',
             bg: 'bg-emerald-500/10',
             border: 'border-emerald-500/20',
-            label: '看多',
+            label: window.I18n ? window.I18n.t('crypto.bullish') : '看多',
         };
 
     // 😐 基準費率 (0% - 0.01%): 市場平靜
@@ -238,7 +238,7 @@ function getFundingRateStyle(rate) {
             color: 'text-gray-400',
             bg: 'bg-gray-500/10',
             border: 'border-gray-500/20',
-            label: '中性',
+            label: window.I18n ? window.I18n.t('crypto.neutral') : '中性',
         };
 
     // 📉 負費率 (< 0%): 空頭擁擠 / 軋空機會 (Cyan/Blue)
@@ -246,7 +246,7 @@ function getFundingRateStyle(rate) {
         color: 'text-cyan-400 font-medium',
         bg: 'bg-cyan-500/10',
         border: 'border-cyan-500/30',
-        label: '看空/軋空',
+        label: window.I18n ? window.I18n.t('crypto.bearishShortSqueeze') : '看空/軋空',
     };
 }
 
@@ -367,14 +367,7 @@ async function refreshScreener(showLoading = false, forceRefresh = false) {
                     // ... (省略部分 UI 更新代碼以保持簡潔，主要邏輯不變) ...
 
                     if (screenerData.last_updated) {
-                        const date = new Date(screenerData.last_updated);
-                        const timeStr = date.toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            second: '2-digit',
-                        });
-                        const lastUpdatedEl = document.getElementById('screener-last-updated');
-                        if (lastUpdatedEl) lastUpdatedEl.textContent = `(更新於: ${timeStr})`;
+                        if (window.MarketStatus) window.MarketStatus.markSynced('screener');
                     }
 
                     const topCount = screenerData.top_volume ? screenerData.top_volume.length : 0;
@@ -418,9 +411,9 @@ async function refreshScreener(showLoading = false, forceRefresh = false) {
                             containers[key].innerHTML = `
                             <div class="flex flex-col items-center justify-center py-8 text-center text-red-400">
                                 <i data-lucide="wifi-off" class="w-8 h-8 mb-2 opacity-50"></i>
-                                <span class="text-sm font-medium">載入失敗</span>
+                                <span class="text-sm font-medium">${window.I18n ? window.I18n.t('crypto.loadFailed') : '載入失敗'}</span>
                                 <div class="text-xs opacity-50 mt-1 mb-2">${SecurityUtils.escapeHTML(err.message || '')}</div>
-                                <button onclick="window.refreshScreener(true, true)" class="text-xs bg-red-500/10 hover:bg-red-500/20 px-3 py-1 rounded-full transition">重試</button>
+                                <button onclick="window.refreshScreener(true, true)" class="text-xs bg-red-500/10 hover:bg-red-500/20 px-3 py-1 rounded-full transition">${window.I18n ? window.I18n.t('crypto.retry') : '重試'}</button>
                             </div>`;
                         }
                     });
@@ -437,7 +430,7 @@ async function refreshScreener(showLoading = false, forceRefresh = false) {
     } catch (e) {
         console.error('Critical Refresh Error:', e);
         isScreenerLoading = false;
-        if (typeof showToast === 'function') showToast('市場數據刷新失敗，請稍後再試', 'error');
+        if (typeof showToast === 'function') showToast(window.I18n ? window.I18n.t('crypto.marketRefreshFailed') : '市場數據刷新失敗，請稍後再試', 'error');
     }
 
     // 2. Fetch Funding Rates (Completely Independent & Non-Blocking)
@@ -467,7 +460,7 @@ async function refreshScreener(showLoading = false, forceRefresh = false) {
                 ['highFunding', 'lowFunding'].forEach((key) => {
                     if (containers[key]) {
                         containers[key].innerHTML =
-                            `<div class="text-center py-4 text-xs text-textMuted opacity-50">暫無數據</div>`;
+                            `<div class="text-center py-4 text-xs text-textMuted opacity-50">${window.I18n ? window.I18n.t('crypto.noData') : '暫無數據'}</div>`;
                     }
                 });
             }
@@ -477,7 +470,7 @@ async function refreshScreener(showLoading = false, forceRefresh = false) {
             ['highFunding', 'lowFunding'].forEach((key) => {
                 if (containers[key]) {
                     containers[key].innerHTML =
-                        `<div class="text-center py-4 text-xs text-red-400 opacity-50">載入失敗</div>`;
+                        `<div class="text-center py-4 text-xs text-red-400 opacity-50">${window.I18n ? window.I18n.t('crypto.loadFailed') : '載入失敗'}</div>`;
                 }
             });
         });
@@ -653,7 +646,7 @@ async function showFundingHistory(symbol) {
                     </div>
                 </div>
                 <div class="mt-4 text-center text-xs text-textMuted">
-                    最近 14 天的資金費率記錄 (每 8 小時結算一次)
+                    ${window.I18n ? window.I18n.t('crypto.fundingHistoryNote') : '最近 14 天的資金費率記錄 (每 8 小時結算一次)'}
                 </div>
             </div>
         `;
@@ -690,7 +683,7 @@ async function showFundingHistory(symbol) {
         if (overlay && overlayContent) {
             overlay.classList.remove('hidden');
             overlayContent.innerHTML =
-                '<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div><div class="text-xs text-textMuted">載入數據中...</div>';
+                '<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div><div class="text-xs text-textMuted">' + (window.I18n ? window.I18n.t('crypto.loadingData') : '載入數據中...') + '</div>';
         }
 
         const res = await fetch(url);
@@ -707,18 +700,18 @@ async function showFundingHistory(symbol) {
         } else if (data.error) {
             console.error('API returned error:', data.error);
             if (overlay && overlayContent) {
-                overlayContent.innerHTML = `<div class="text-red-400 text-sm">載入失敗<br><span class="text-xs opacity-70">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(data.error) : data.error}</span></div>`;
+                overlayContent.innerHTML = `<div class="text-red-400 text-sm">${window.I18n ? window.I18n.t('crypto.loadFailed') : '載入失敗'}<br><span class="text-xs opacity-70">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(data.error) : data.error}</span></div>`;
             }
         } else {
             console.error('History data missing:', data);
             if (overlay && overlayContent) {
-                overlayContent.innerHTML = '<div class="text-red-400 text-sm">無歷史數據可用</div>';
+                overlayContent.innerHTML = '<div class="text-red-400 text-sm">' + (window.I18n ? window.I18n.t('crypto.noHistoryData') : '無歷史數據可用') + '</div>';
             }
         }
     } catch (e) {
         console.error('Fetch failed:', e);
         if (overlay && overlayContent) {
-            overlayContent.innerHTML = `<div class="text-red-400 text-sm">載入失敗<br><span class="text-xs opacity-70">${SecurityUtils.escapeHTML(e.message || '')}</span></div>`;
+            overlayContent.innerHTML = `<div class="text-red-400 text-sm">${window.I18n ? window.I18n.t('crypto.loadFailed') : '載入失敗'}<br><span class="text-xs opacity-70">${SecurityUtils.escapeHTML(e.message || '')}</span></div>`;
         }
     }
 }

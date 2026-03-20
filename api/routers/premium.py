@@ -1,14 +1,17 @@
 """
 Premium 會員相關 API
 """
+import os
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Depends
+import httpx
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
 
 from core.database import get_user_membership, upgrade_to_pro
 from api.deps import get_current_user
 from api.utils import logger, run_sync
+from api.middleware.rate_limit import limiter
 
 router = APIRouter(prefix="/api/premium", tags=["Premium"])
 PLAN_MONTHS = {
@@ -16,17 +19,86 @@ PLAN_MONTHS = {
     "premium_yearly": 12,
 }
 
+PI_API_KEY = os.getenv("PI_API_KEY", "")
+PI_API_BASE = "https://api.minepi.com/v2"
+TEST_MODE = os.getenv("TEST_MODE", "").lower() in ("true", "1", "yes")
+
 
 class UpgradeRequest(BaseModel):
-    user_id: str
-    plan: str = "premium_monthly"  # premium_monthly, premium_yearly
-    tx_hash: Optional[str] = None  # Pi 支付交易哈希
-    months: int = 1  # 訂閱月數
+    plan: str = "premium_monthly"
+    tx_hash: Optional[str] = None
+    payment_id: Optional[str] = None
+    months: int = 1
+
+
+async def _verify_pi_payment(payment_id: str) -> dict:
+    """
+    Verify a Pi payment by calling the Pi Server API.
+
+    Returns the payment data from Pi API if valid.
+
+    Raises HTTPException if verification fails.
+    """
+    if not PI_API_KEY or PI_API_KEY == "your_pi_api_key_here":
+        raise HTTPException(
+            status_code=500,
+            detail="Server configuration error: Pi API not configured",
+        )
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{PI_API_BASE}/payments/{payment_id}",
+                headers={"Authorization": f"Key {PI_API_KEY}"},
+                timeout=10.0,
+            )
+
+            if response.status_code == 404:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Payment not found on Pi Network",
+                )
+
+            response.raise_for_status()
+            payment_data = response.json()
+
+            status = payment_data.get("status", "")
+            if status not in ("approved", "completed"):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Payment has not been approved yet (status: {status})",
+                )
+
+            return payment_data
+
+    except httpx.TimeoutException:
+        logger.error("Pi API request timed out during payment verification")
+        raise HTTPException(
+            status_code=504,
+            detail="Pi verification service timeout",
+        )
+    except httpx.HTTPStatusError as e:
+        logger.error(
+            "Pi API error during payment verification: %s - %s",
+            e.response.status_code,
+            e.response.text,
+        )
+        raise HTTPException(
+            status_code=e.response.status_code,
+            detail="Pi API verification failed",
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Payment verification error: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail="Payment verification failed",
+        )
 
 
 @router.get("/pricing")
 async def get_pricing_plans():
-    """獲取會員定價方案"""
     from core.config import PI_PAYMENT_PRICES
     return {
         "success": True,
@@ -36,93 +108,137 @@ async def get_pricing_plans():
                 "yearly": PI_PAYMENT_PRICES.get("premium_yearly", 40.0),
             }
         },
-        "pi_price_usd": 0.17,  # 參考價格
+        "pi_price_usd": 0.17,
         "savings": {
-            "premium_yearly_save": 20.0,  # Premium 年費省 20 Pi
+            "premium_yearly_save": 20.0,
         }
     }
 
 
 @router.post("/upgrade")
-async def upgrade_to_premium(request: UpgradeRequest, current_user: dict = Depends(get_current_user)):
+@limiter.limit("10/minute")
+async def upgrade_to_premium(
+    request: Request,
+    body: UpgradeRequest,
+    current_user: dict = Depends(get_current_user),
+):
     """
-    升級到 Premium 會員
+    Upgrade to Premium membership.
 
-    Args:
-        user_id: 用戶ID
-        plan: 訂閱方案 (premium_monthly, premium_yearly)
-        tx_hash: Pi 支付交易哈希 (正式環境需要)
-        months: 訂閱月數
+    In production: requires a valid payment_id that is verified against Pi Server API.
+    In TEST_MODE: tx_hash is optional and verification is skipped.
     """
-    if current_user["user_id"] != request.user_id:
-        raise HTTPException(status_code=403, detail="Not authorized")
+    user_id = current_user["user_id"]
 
-    plan = (request.plan or "premium_monthly").strip().lower()
+    plan = (body.plan or "premium_monthly").strip().lower()
     if plan not in PLAN_MONTHS:
         raise HTTPException(status_code=400, detail="Invalid plan")
 
-    # 會員期間以方案定義為準，避免前後端語意不一致
     months = PLAN_MONTHS[plan]
 
+    tx_hash = body.tx_hash
+
+    if not TEST_MODE:
+        if not body.payment_id:
+            raise HTTPException(
+                status_code=400,
+                detail="payment_id is required for premium upgrade",
+            )
+
+        payment_data = await _verify_pi_payment(body.payment_id)
+
+        blockchain_txid = payment_data.get("transaction", {}).get("_id")
+        if blockchain_txid:
+            tx_hash = blockchain_txid
+        elif not tx_hash:
+            raise HTTPException(
+                status_code=400,
+                detail="No blockchain transaction found for this payment",
+            )
+
+        actual_amount = payment_data.get("amount", 0)
+        from core.config import PI_PAYMENT_PRICES
+
+        expected_amount = PI_PAYMENT_PRICES.get(plan, 5.0)
+        if abs(float(actual_amount) - float(expected_amount)) > 0.001:
+            logger.warning(
+                "Premium upgrade amount mismatch: expected=%s, actual=%s, user=%s",
+                expected_amount,
+                actual_amount,
+                user_id,
+            )
+            raise HTTPException(
+                status_code=400,
+                detail=f"Payment amount mismatch: expected {expected_amount} Pi, got {actual_amount} Pi",
+            )
+    else:
+        if not tx_hash:
+            import uuid
+
+            tx_hash = f"test_{uuid.uuid4().hex[:16]}"
+
     try:
-        current_membership = await run_sync(get_user_membership, request.user_id)
+        current_membership = await run_sync(get_user_membership, user_id)
 
         if not current_membership:
-            raise HTTPException(status_code=404, detail="用戶不存在")
+            raise HTTPException(status_code=404, detail="User not found")
 
-        # 在正式環境中，需要驗證 tx_hash
-        # 這裡簡化處理，實際部署時需要驗證 Pi 支付
         success = await run_sync(
             lambda: upgrade_to_pro(
-                user_id=request.user_id,
+                user_id=user_id,
                 months=months,
-                tx_hash=request.tx_hash
+                tx_hash=tx_hash,
             )
         )
 
         if not success:
-            raise HTTPException(status_code=500, detail="升級失敗")
+            raise HTTPException(status_code=500, detail="Upgrade failed")
 
-        new_membership = await run_sync(get_user_membership, request.user_id)
+        new_membership = await run_sync(get_user_membership, user_id)
 
-        logger.info(f"用戶 {request.user_id} 成功升級到 Premium 會員，plan={plan}, months={months}")
+        logger.info(
+            "User %s upgraded to Premium, plan=%s, months=%d, tx_hash=%s",
+            user_id,
+            plan,
+            months,
+            tx_hash[:16] if tx_hash else "none",
+        )
 
         return {
             "success": True,
-            "message": f"成功升級到 Premium 會員 {months} 個月！",
+            "message": f"Successfully upgraded to Premium for {months} month(s)!",
             "plan": plan,
             "months": months,
-            "membership": new_membership
+            "membership": new_membership,
         }
 
     except HTTPException:
         raise
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"升級 Premium 會員失敗: {e}")
-        raise HTTPException(status_code=500, detail="升級失敗，請稍後再試")
+        logger.error("Premium upgrade failed for user %s: %s", user_id, e)
+        raise HTTPException(status_code=500, detail="Upgrade failed, please try again later")
 
 
-@router.get("/status/{user_id}")
-async def get_premium_status(user_id: str, current_user: dict = Depends(get_current_user)):
-    """
-    獲取用戶 Premium 會員狀態
-    """
-    if current_user["user_id"] != user_id:
-        raise HTTPException(status_code=403, detail="Not authorized to view this membership status")
-
+@router.get("/status")
+async def get_premium_status(
+    current_user: dict = Depends(get_current_user),
+):
     try:
+        user_id = current_user["user_id"]
         membership = await run_sync(get_user_membership, user_id)
 
         if not membership:
-            raise HTTPException(status_code=404, detail="用戶不存在")
+            raise HTTPException(status_code=404, detail="User not found")
 
         return {
             "success": True,
-            "membership": membership
+            "membership": membership,
         }
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"獲取 Premium 會員狀態失敗: {e}")
-        raise HTTPException(status_code=500, detail="獲取狀態失敗，請稍後再試")
+        logger.error("Failed to get premium status for user %s: %s", user_id, e)
+        raise HTTPException(status_code=500, detail="Failed to get status")

@@ -147,7 +147,7 @@ const SafetyTab = {
                     <span class="text-xs text-textMuted">${this._formatDate(report.created_at)}</span>
                 </div>
                 <div class="font-mono text-primary text-sm mb-2 break-all">
-                    ${report.scam_wallet_address}
+                    ${window.escapeHtml(report.scam_wallet_address)}
                 </div>
                 <p class="text-textMuted text-sm mb-3 line-clamp-2">${this._escapeHTML(report.description)}</p>
                 <div class="flex items-center justify-between text-sm">
@@ -156,7 +156,7 @@ const SafetyTab = {
                         <span class="text-danger flex items-center gap-1"><i data-lucide="thumbs-down" class="w-3.5 h-3.5"></i> ${report.reject_count}</span>
                         <span class="text-textMuted flex items-center gap-1"><i data-lucide="message-circle" class="w-3.5 h-3.5"></i> ${report.comment_count}</span>
                     </div>
-                    <span class="text-[10px] text-textMuted hidden sm:block">${report.reporter_wallet_masked}</span>
+                    <span class="text-[10px] text-textMuted hidden sm:block">${window.escapeHtml(report.reporter_wallet_masked)}</span>
                 </div>
             </div>
         `
@@ -337,8 +337,8 @@ const SafetyTab = {
                 <div class="mb-4">
                     <label class="text-[10px] text-textMuted uppercase tracking-wider">Scam Wallet</label>
                     <div class="flex items-center gap-2 bg-background rounded-xl p-3 mt-1">
-                        <code class="flex-1 font-mono text-primary text-sm break-all">${r.scam_wallet_address}</code>
-                        <button onclick="navigator.clipboard.writeText('${r.scam_wallet_address}'); SafetyTab._toast('Copied!', 'success')"
+                        <code class="flex-1 font-mono text-primary text-sm break-all">${window.escapeHtml(r.scam_wallet_address)}</code>
+                        <button data-clipboard="${encodeURIComponent(r.scam_wallet_address)}" onclick="navigator.clipboard.writeText(this.dataset.clipboard ? decodeURIComponent(this.dataset.clipboard) : ''); SafetyTab._toast('Copied!', 'success')"
                             class="text-textMuted hover:text-primary transition shrink-0">
                             <i data-lucide="copy" class="w-4 h-4"></i>
                         </button>
@@ -350,7 +350,7 @@ const SafetyTab = {
                 <div class="mb-4">
                     <label class="text-[10px] text-textMuted uppercase tracking-wider">Transaction Hash</label>
                     <div class="bg-background rounded-xl p-3 mt-1">
-                        <code class="font-mono text-xs text-textMuted break-all">${r.transaction_hash}</code>
+                        <code class="font-mono text-xs text-textMuted break-all">${window.escapeHtml(r.transaction_hash)}</code>
                     </div>
                 </div>`
                         : ''
@@ -362,7 +362,7 @@ const SafetyTab = {
                     </div>
                 </div>
                 <div class="flex items-center justify-between text-[10px] text-textMuted border-t border-white/5 pt-3">
-                    <span>Reporter: ${r.reporter_wallet_masked}</span>
+                    <span>Reporter: ${window.escapeHtml(r.reporter_wallet_masked)}</span>
                     <span>Views: ${r.view_count}</span>
                 </div>
             `;
