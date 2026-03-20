@@ -189,6 +189,43 @@ class TestRepoMethodSignatures:
         assert "amount" in params
         assert "tx_hash" in params
 
+    def test_get_tips_total_received_exists(self):
+        from core.orm.forum_repo import forum_repo
+        assert hasattr(forum_repo, "get_tips_total_received")
+
+    def test_get_tips_total_received_is_async(self):
+        from core.orm.forum_repo import forum_repo
+        import inspect
+        assert inspect.iscoroutinefunction(forum_repo.get_tips_total_received)
+
+    def test_get_tips_total_returns_float(self):
+        from core.orm.forum_repo import forum_repo
+        import inspect
+        sig = inspect.signature(forum_repo.get_tips_total_received)
+        params = list(sig.parameters.keys())
+        assert "user_id" in params
+        assert "session" in params
+
+
+class TestTipsRouterUsesOrm:
+    """Verify tips.py router uses ORM repo instead of raw SQL."""
+
+    def test_tips_imports_forum_repo(self):
+        import api.routers.forum.tips as tips_mod
+        assert hasattr(tips_mod, "forum_repo")
+        from core.orm.forum_repo import forum_repo
+        assert tips_mod.forum_repo is forum_repo
+
+    def test_tips_no_run_sync_import(self):
+        import api.routers.forum.tips as tips_mod
+        source = inspect.getsource(tips_mod)
+        assert "run_sync" not in source
+
+    def test_tips_no_core_database_import(self):
+        import api.routers.forum.tips as tips_mod
+        source = inspect.getsource(tips_mod)
+        assert "from core.database import" not in source
+
 
 class TestReposUseSessionParameter:
     """Verify all repo methods accept optional session parameter."""

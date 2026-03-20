@@ -515,6 +515,22 @@ class ForumRepository:
                 for r in rows
             ]
 
+    async def get_tips_total_received(
+        self,
+        user_id: str,
+        session: AsyncSession | None = None,
+    ) -> float:
+        from sqlalchemy import func as sa_func
+
+        stmt = select(sa_func.coalesce(sa_func.sum(Tip.amount), 0)).where(
+            Tip.to_user_id == user_id
+        )
+
+        async with session or get_async_session() as s:
+            result = await s.execute(stmt)
+            val = result.scalar()
+            return _decimal_to_float(val) if val else 0.0
+
     async def get_tips_received(
         self,
         user_id: str,

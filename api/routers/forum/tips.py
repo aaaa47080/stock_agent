@@ -7,16 +7,10 @@ from typing import Optional
 import httpx
 from fastapi import APIRouter, HTTPException, Query, Depends, Request
 
-from api.utils import logger, run_sync
+from api.utils import logger
 from api.deps import get_current_user
 from api.middleware.rate_limit import limiter
-from core.database import (
-    get_post_by_id,
-    create_tip,
-    get_tips_sent,
-    get_tips_received,
-    get_tips_total_received,
-)
+from core.orm.forum_repo import forum_repo
 from .models import CreateTipRequest
 
 router = APIRouter(prefix="/api/forum", tags=["Forum - Tips"])
@@ -105,21 +99,19 @@ async def tip_post(
                 import uuid
                 tx_hash = f"test_tip_{uuid.uuid4().hex[:16]}"
 
-        post = await run_sync(lambda: get_post_by_id(post_id, increment_view=False))
+        post = await forum_repo.get_post_by_id(post_id, increment_view=False)
         if not post or post["is_hidden"]:
             raise HTTPException(status_code=404, detail="Post not found")
 
         if post["user_id"] == user_id:
             raise HTTPException(status_code=400, detail="Cannot tip your own post")
 
-        tip_id = await run_sync(
-            lambda: create_tip(
-                post_id=post_id,
-                from_user_id=user_id,
-                to_user_id=post["user_id"],
-                amount=request.amount,
-                tx_hash=tx_hash,
-            )
+        tip_id = await forum_repo.create_tip(
+            post_id=post_id,
+            from_user_id=user_id,
+            to_user_id=post["user_id"],
+            amount=body.amount,
+            tx_hash=tx_hash,
         )
 
         logger.info(
@@ -151,7 +143,7 @@ async def get_sent_tips(
     try:
         user_id = current_user["user_id"]
 
-        tips = await run_sync(lambda: get_tips_sent(user_id, limit=limit, offset=offset))
+        tips = await forum_repo.get_tips_sent(user_id, limit=limit, offset=offset)
         return {"success": True, "tips": tips, "count": len(tips)}
     except Exception:
         raise HTTPException(status_code=500, detail="Failed to get tip records")
@@ -166,8 +158,8 @@ async def get_received_tips(
     try:
         user_id = current_user["user_id"]
 
-        tips = await run_sync(lambda: get_tips_received(user_id, limit=limit, offset=offset))
-        total = await run_sync(get_tips_total_received, user_id)
+        tips = await forum_repo.get_tips_received(user_id, limit=limit, offset=offset)
+        total = await forum_repo.get_tips_total_received(user_id)
         return {"success": True, "tips": tips, "count": len(tips), "total_received": total}
     except Exception:
         raise HTTPException(status_code=500, detail="Failed to get tip records")
