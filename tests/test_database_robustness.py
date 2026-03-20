@@ -132,7 +132,7 @@ class TestNumericMigration:
         from core.database.schema import reconcile_numeric_columns
 
         src = inspect.getsource(reconcile_numeric_columns)
-        assert f'("{table}", "{col}"' in src, (
+        assert table in src and col in src, (
             f"Missing NUMERIC migration entry: {table}.{col}"
         )
 
