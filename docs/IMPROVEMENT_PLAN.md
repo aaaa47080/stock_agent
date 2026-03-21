@@ -4,12 +4,14 @@
 > 
 > **原則**: 每個 Phase 可獨立完成、commit + push。已修復項目不列入。
 
+> **狀態: 全部完成** — 所有 7 個 Phase 均已完成，CI 驗證通過 (green)。最後確認日期: 2026-03-21。
+
 ---
 
-## Phase 1: 安全漏洞修復 (Critical Security Fixes)
-> 預估時間: 6–8 小時 | 優先級: P0 | **任何其他工作之前必須先完成此 Phase**
+## Phase 1: 安全漏洞修復 (Critical Security Fixes) ✅ 完成
+> 預估時間: 6–8 小時 | 優先級: P0 | **已完成 — 所有任務驗證通過**
 
-### Task 1.1: 修復 IDOR 漏洞 — 任何登入用戶可刪除/置頂他人對話
+### [x] Task1.1: 修復 IDOR 漏洞 — 任何登入用戶可刪除/置頂他人對話
 - **檔案**: `api/routers/analysis.py:48,54`
 - **問題**: `delete_user_session` 和 `pin_user_session` 用 `dependencies=[Depends(get_current_user)]` 僅驗證登入身份，但 endpoint 內未驗證 session 是否屬於當前用戶。任何已登入用戶可傳入任意 `session_id` 刪除/置頂他人對話。
 - **修改內容**:
@@ -27,7 +29,7 @@
   - 寫一個測試：用戶 A 嘗試刪除用戶 B 的 session → 預期 403
   - 用戶 A 刪除自己的 session → 預期 200
 
-### Task 1.2: Admin API Key 時序攻擊修復
+### [x] Task1.2: Admin API Key 時序攻擊修復
 - **檔案**: `api/routers/admin/auth.py:20`
 - **問題**: `x_admin_key != key` 使用 Python 字串直接比對，會因為字串長度不同產生時序差異，攻擊者可透過時間推測正確 key。
 - **修改內容**:
@@ -39,7 +41,7 @@
   ```
 - **驗證**: 手動測試 admin endpoint 確認功能正常；ruff check 通過
 
-### Task 1.3: TEST_MODE 洩漏完整用戶資料
+### [x] Task1.3: TEST_MODE 洩漏完整用戶資料
 - **檔案**: `api/routers/system.py:222-223`
 - **問題**: `response["test_user"] = core_config.TEST_USER` 將完整測試用戶資料（可能包含 uid、pi_uid 等）暴露到 API 回應中。
 - **修改內容**:
@@ -53,7 +55,7 @@
   僅回傳最小必要資訊，隱藏敏感欄位（如 pi_uid、token 等）。
 - **驗證**: `curl /api/system/config` 確認 test_user 欄位只包含 user_id 和 username
 
-### Task 1.4: 前端 Double `.json()` 解析 Bug
+### [x] Task1.4: 前端 Double `.json()` 解析 Bug
 - **檔案**: `web/js/auth.js:565,326`
 - **問題**: 非 Pi Browser 登入路徑中，對 response 呼叫了兩次 `.json()`，導致 `TypeError: Already read body` 崩潰。
 - **修改內容**:
@@ -70,7 +72,7 @@
      ```
 - **驗證**: 在非 Pi Browser 環境測試登入流程，確認不崩潰
 
-### Task 1.5: DebugLog 在生產環境直接 console.log
+### [x] Task1.5: DebugLog 在生產環境直接 console.log
 - **檔案**: `web/js/auth.js:5-28`
 - **問題**: `DebugLog.send()` 無條件執行 `console.log()`，即使不在 DEBUG_MODE。生產環境用戶開啟 DevTools 可看到敏感資訊。
 - **修改內容**:
@@ -88,7 +90,7 @@
   ```
 - **驗證**: 設定 `APP_CONFIG.DEBUG_MODE = false`，確認 console 中無 DebugLog 輸出
 
-### Task 1.6: CSP `unsafe-inline` 改善
+### [x] Task1.6: CSP `unsafe-inline` 改善
 - **檔案**: `web/index.html:7`
 - **問題**: `script-src 'unsafe-inline'` 允許任意 inline script 執行，大幅削弱 XSS 防護。完全移除需要重大架構變更（所有 inline event handler 需改為 addEventListener），先做降級處理。
 - **修改內容**:
@@ -101,7 +103,7 @@
   3. **長期**（記錄為後續 Task）: 將所有 inline script 移至外部 `.js` 檔案，完全移除 `unsafe-inline`。
 - **驗證**: CSP violation 不影響正常功能；無 nonce 的 inline script 被阻擋
 
-### Task 1.7: innerHTML XSS 修復
+### [x] Task1.7: innerHTML XSS 修復
 - **檔案**: `web/js/app.js:168,254`
 - **問題**: `innerHTML` 插入未經轉義的值（如 `config.icon`、`confirmText`），若這些值來自用戶輸入或 API 回應，可導致 XSS。
 - **修改內容**:
@@ -125,10 +127,10 @@
 
 ---
 
-## Phase 2: 後端品質改善 (Backend Quality)
-> 預估時間: 5–7 小時 | 優先級: P1
+## Phase 2: 後端品質改善 (Backend Quality) ✅ 完成
+> 預估時間: 5–7 小時 | 優先級: P1 | **已完成 — 所有任務驗證通過**
 
-### Task 2.1: SSL 驗證恢复 + 環境變數控制
+### [x] Task2.1: SSL 驗證恢复 + 環境變數控制
 - **檔案**: `api/utils.py:40`
 - **問題**: `verify=False` 全域關閉 SSL 驗證，存在中間人攻擊風險。
 - **修改內容**:
@@ -142,7 +144,7 @@
   ```
 - **驗證**: 預設啟動後 `verify=True`；設定 `SSL_VERIFY=false` 後可關閉
 
-### Task 2.2: error_handling 裝飾器支援 async 函數
+### [x] Task2.2: error_handling 裝飾器支援 async 函數
 - **檔案**: `core/error_handling.py:14-50`
 - **問題**: `log_and_suppress` 和 `safe_execute` 裝飾器的 wrapper 是同步函數，呼叫 async 函數時會回傳 coroutine 而非 await 結果。
 - **修改內容**:
@@ -180,7 +182,7 @@
   對 `safe_execute` 做同樣修改。
 - **驗證**: 寫一個 async 測試用例使用 `@log_and_suppress` 裝飾器，確認能正確捕獲異常
 
-### Task 2.3: API Response 格式統一化
+### [x] Task2.3: API Response 格式統一化
 - **檔案**: 多個 router 檔案
 - **問題**: 部分 endpoint 回傳 `{"sessions": [...]}` 無 `success` 欄位，部分回傳 `APIResponse(success=True, data=...)`。
 - **修改內容**:
@@ -196,7 +198,7 @@
   3. 不需要一次改完所有 router，本 Task 先修 `analysis.py` 和 `system.py` 作為示範。
 - **驗證**: `ruff check` 通過；手動呼叫修復的 endpoints 確認回應格式
 
-### Task 2.4: `get_current_user` 回傳型別改善 + TEST_MODE 安全加固
+### [x] Task2.4: `get_current_user` 回傳型別改善 + TEST_MODE 安全加固
 - **檔案**: `api/deps.py:143-216`
 - **問題**:
   1. `get_current_user` 回傳 `dict` 無明確型別，呼叫端無法知道有哪些欄位。
@@ -225,7 +227,7 @@
      ```
 - **驗證**: 傳入不在白名單的 raw token → 預期 401
 
-### Task 2.5: `run_sync` 加入 type annotations
+### [x] Task2.5: `run_sync` 加入 type annotations
 - **檔案**: `api/utils.py:10`
 - **修改內容**:
   ```python
@@ -239,7 +241,7 @@
   ```
 - **驗證**: `ruff check` 通過
 
-### Task 2.6: `QueryRequest.user_api_key` 格式驗證
+### [x] Task2.6: `QueryRequest.user_api_key` 格式驗證
 - **檔案**: `api/models.py:18`
 - **問題**: `user_api_key: str` 無格式驗證，任何字串都能通過。
 - **修改內容**:
@@ -261,7 +263,7 @@
   ```
 - **驗證**: 傳入短字串或含特殊字元的 API key → 預期 422 驗證錯誤
 
-### Task 2.7: `model_config.py` 加入 type hints
+### [x] Task2.7: `model_config.py` 加入 type hints
 - **檔案**: `core/model_config.py:42-52`
 - **修改內容**:
   ```python
@@ -275,7 +277,7 @@
   ```
 - **驗證**: `ruff check` 通過
 
-### Task 2.8: `/api/settings/update` 不再直接寫入 `.env` 檔案
+### [x] Task2.8: `/api/settings/update` 不再直接寫入 `.env` 檔案
 - **檔案**: `api/routers/system.py:280-297`、`api/utils.py:68-104`
 - **問題**: API key 直接寫入 `.env` 檔案，若 process crash 可能寫入不完整內容導致配置損壞。且寫入 `.env` 在多實例部署時不安全。
 - **修改內容**:
@@ -294,7 +296,7 @@
   2. 長期（記錄為 TODO）：API key 應存入資料庫加密儲存，而非 `.env` 檔案。
 - **驗證**: 呼叫 `/api/settings/update` 後 `.env` 檔案格式完整
 
-### Task 2.9: Readiness check 加入真實資料庫檢查
+### [x] Task2.9: Readiness check 加入真實資料庫檢查
 - **檔案**: `api_server.py:438-443`
 - **問題**: `components["database"] = True` 是硬編碼，永遠回傳 True。
 - **修改內容**:
@@ -312,7 +314,7 @@
   ```
 - **驗證**: 停止 PostgreSQL 後，`/ready` 回傳 503
 
-### Task 2.10: 錯誤訊息洩漏內部細節
+### [x] Task2.10: 錯誤訊息洩漏內部細節
 - **檔案**: `api/routers/analysis.py:276` (附近區域)
 - **問題**: 異常時直接將 `str(e)` 回傳給客戶端，可能包含 SQL 語句、檔案路徑等內部資訊。
 - **修改內容**:
@@ -326,17 +328,17 @@
   ```
 - **驗證**: 觸發一個內部錯誤，確認回應不包含 stack trace 或 SQL 語句
 
-### Task 2.11: `governance.py` 無意義的 `create_report(None, ...)` 第一參數
+### [x] Task2.11: `governance.py` 無意義的 `create_report(None, ...)` 第一參數
 - **檔案**: `api/routers/governance.py:83`
 - **修改內容**: 檢查 `create_report` 函數簽名，如果第一個參數確實無用，移除該參數或改為 keyword-only argument。更新所有呼叫處。
 - **驗證**: `ruff check` 通過；手動測試举报功能
 
 ---
 
-## Phase 3: 前端品質改善 (Frontend Quality)
-> 預估時間: 5–7 小時 | 優先級: P1
+## Phase 3: 前端品質改善 (Frontend Quality) ✅ 完成
+> 預估時間: 5–7 小時 | 優先級: P1 | **已完成 — 所有任務驗證通過**
 
-### Task 3.1: 清除所有不受控的 console.log
+### [x] Task3.1: 清除所有不受控的 console.log
 - **檔案**:
   - `web/js/apiKeyManager.js:367,123`
   - `web/js/forum-app.js` (30+ 處)
@@ -359,7 +361,7 @@
   3. `console.error` 和 `console.warn` 保留（這些是合理的前端錯誤報告）。
 - **驗證**: `npx eslint web/js/` 確認無 `no-console` 警告（除 error/warn 外）
 
-### Task 3.2: 硬編碼中文走 i18n — Error Modal
+### [x] Task3.2: 硬編碼中文走 i18n — Error Modal
 - **檔案**: `web/js/app.js:584-610`
 - **問題**: Error modal 中的「建議解決方案」、「檢查 API Key 是否正確設定」等字串硬編碼中文。
 - **修改內容**:
@@ -375,7 +377,7 @@
   2. 將 `app.js` 中的硬編碼字串替換為 `i18next.t('error.xxx')`。
 - **驗證**: 切換語言為英文，確認 error modal 文字跟隨切換
 
-### Task 3.3: 硬編碼中文走 i18n — Auth Toast + 其他
+### [x] Task3.3: 硬編碼中文走 i18n — Auth Toast + 其他
 - **檔案**:
   - `web/js/auth.js:170` (Toast 字串)
   - `web/js/auth.js:707,965` (其他硬編碼中文)
@@ -386,7 +388,7 @@
   3. 特別注意 `app.js:267,270` 的「取消」「確認」按鈕字串。
 - **驗證**: 切換語言確認所有 UI 文字跟隨切換
 
-### Task 3.4: 原生 alert/confirm 替換為自訂 modal
+### [x] Task3.4: 原生 alert/confirm 替換為自訂 modal
 - **檔案**: `web/js/spa.js:501,526`
 - **問題**: 使用原生 `alert()` 和 `confirm()`，與整體 UI 風格不一致，且無法 i18n。
 - **修改內容**:
@@ -395,7 +397,7 @@
   3. 搜尋所有 JS 檔案中的 `alert(` 和 `confirm(` 呼叫，確保無遺漏。
 - **驗證**: 全域搜索 `alert(` 和 `confirm(`，確認無殘留（排除 `showToast` 等自訂方法）
 
-### Task 3.5: i18n `zh-CN` 語言代碼支援
+### [x] Task3.5: i18n `zh-CN` 語言代碼支援
 - **檔案**: `web/js/i18n.js:23-24`
 - **問題**: 未處理 `zh-CN` 語言代碼，大陸用戶可能看到英文而非中文。
 - **修改內容**:
@@ -411,7 +413,7 @@
   ```
 - **驗證`: 設定 `navigator.language = 'zh-CN'`，確認顯示中文
 
-### Task 3.6: i18n `escapeValue: false` 風險評估
+### [x] Task3.6: i18n `escapeValue: false` 風險評估
 - **檔案**: `web/js/i18n.js:98`
 - **問題**: `escapeValue: false` 禁用 i18next 的 HTML 轉義，若翻譯字串來自不可信來源，有 XSS 風險。
 - **修改內容**:
@@ -424,7 +426,7 @@
      ```
 - **驗證**: 確認所有 i18n 字串在頁面上正確顯示
 
-### Task 3.7: CSS `@import` 阻塞渲染優化
+### [x] Task3.7: CSS `@import` 阻塞渲染優化
 - **檔案**: `web/styles.css:1`
 - **問題**: `@import` 在 CSS 頂部會阻塞渲染，且可能重複載入字體。
 - **修改內容**:
@@ -437,12 +439,12 @@
   3. 確認字體只載入一次。
 - **驗證**: Chrome DevTools Network 面板確認無重複字體請求；Lighthouse Performance 分數提升
 
-### Task 3.8: CSS `@keyframes fadeIn` 重複定義清理
+### [x] Task3.8: CSS `@keyframes fadeIn` 重複定義清理
 - **檔案**: `web/styles.css:165,256`
 - **修改內容**: 刪除重複的 `@keyframes fadeIn` 定義，保留一個。
 - **驗證`: 頁面動畫正常運作
 
-### Task 3.9: `init.js` vs `spa.js` 初始化邏輯重複
+### [x] Task3.9: `init.js` vs `spa.js` 初始化邏輯重複
 - **檔案**: `web/js/init.js`、`web/js/spa.js`
 - **問題**: 兩個檔案有重複的初始化邏輯，可能導致事件監聽器重複綁定。
 - **修改內容**:
@@ -451,7 +453,7 @@
   3. `spa.js` 只負責 SPA 路由相關的初始化。
 - **驗證`: 頁面載入無 console 錯誤；功能正常
 
-### Task 3.10: `auth.js` 拆分（1204 行過大）
+### [x] Task3.10: `auth.js` 拆分（1204 行過大）
 - **檔案**: `web/js/auth.js`
 - **問題**: 1204 行單檔，涵蓋登入、註冊、Pi Auth、Token 管理、Profile 等功能，難以維護。
 - **修改內容**:
@@ -466,10 +468,10 @@
 
 ---
 
-## Phase 4: 資料庫改善 (Database)
-> 預估時間: 5–7 小時 | 優先級: P1
+## Phase 4: 資料庫改善 (Database) ✅ 完成
+> 預估時間: 5–7 小時 | 優先級: P1 | **已完成 — 所有任務驗證通過**
 
-### Task 4.1: Alembic `target_metadata` 修復
+### [x] Task4.1: Alembic `target_metadata` 修復
 - **檔案**: `alembic/env.py:38`
 - **問題**: `target_metadata = None` 導致 `alembic revision --autogenerate` 無法偵測模型變更，migration 自動生成完全失效。
 - **修改內容**:
@@ -481,7 +483,7 @@
   ```
 - **驗證**: 執行 `alembic revision --autogenerate -m "test"` 確認能偵測到模型（執行後可丟棄該 migration）
 
-### Task 4.2: Migration 鏈衝突修復
+### [x] Task4.2: Migration 鏈衝突修復
 - **檔案**: `alembic/versions/`
 - **問題**: 存在兩條獨立的 migration 鏈：
   - 鏈 1: `001_baseline_schema.py` → `002_content_reports_columns.py`
@@ -495,7 +497,7 @@
   4. 在資料庫中確認 `alembic_version` 指向正確的 head。
 - **驗證**: `alembic heads` 只回傳一個版本；`alembic current` 顯示正確版本
 
-### Task 4.3: User model 加入 `deleted_at` 軟刪除
+### [x] Task4.3: User model 加入 `deleted_at` 軟刪除
 - **檔案**: `core/orm/models.py:30-49`
 - **問題**: User model 缺 `deleted_at` 欄位，無法實現軟刪除。
 - **修改內容**:
@@ -513,7 +515,7 @@
   3. 在 `auto_migrate.py` 中也加入此欄位的自動偵測。
 - **驗證`: Migration 成功執行；`deleted_at` 欄位存在
 
-### Task 4.4: Friendship table 加入 UniqueConstraint
+### [x] Task4.4: Friendship table 加入 UniqueConstraint
 - **檔案**: `core/orm/models.py:189-214`
 - **問題**: 缺少 `(user_id, friend_id)` 的 UniqueConstraint，可能產生重複的好友關係。
 - **修改內容**:
@@ -532,7 +534,7 @@
   ```
 - **驗證`: 嘗試插入重複的 (user_id, friend_id) → 預期 IntegrityError
 
-### Task 4.5: DmConversation 加入 UniqueConstraint
+### [x] Task4.5: DmConversation 加入 UniqueConstraint
 - **檔案**: `core/orm/models.py:241-262`
 - **問題**: 缺少 `(user1_id, user2_id)` 的 UniqueConstraint，可能產生重複的對話。
 - **修改內容**:
@@ -548,7 +550,7 @@
   ```
 - **驗證`: 嘗試建立重複的 DM conversation → 預期 IntegrityError
 
-### Task 4.6: ForumComment.type CHECK constraint 修正
+### [x] Task4.6: ForumComment.type CHECK constraint 修正
 - **檔案**: `core/orm/models.py:143`
 - **問題**: ORM model 缺 CHECK constraint，但資料庫可能有 `CHECK (type IN ('comment', 'push', 'boo'))`，ORM 端無驗證。
 - **修改內容**:
@@ -568,7 +570,7 @@
   ```
 - **驗證`: 嘗試插入 type='invalid' → 預期 IntegrityError
 
-### Task 4.7: Friendship.status CHECK 加入 `rejected`
+### [x] Task4.7: Friendship.status CHECK 加入 `rejected`
 - **檔案**: `core/orm/models.py:199`
 - **問題**: `status` 欄位預設 `pending`，但無 CHECK constraint，且 `rejected` 狀態未被 ORM 保護。
 - **修改內容**:
@@ -586,7 +588,7 @@
   ```
 - **驗證`: 確認 constraint 建立成功
 
-### Task 4.8: PriceAlert.created_at 改為 TIMESTAMP
+### [x] Task4.8: PriceAlert.created_at 改為 TIMESTAMP
 - **檔案**: `core/orm/models.py:322`
 - **問題**: `created_at: Mapped[str] = mapped_column(Text)` 使用 Text 而非 TIMESTAMP，無法進行時間排序和比較。
 - **修改內容**:
@@ -598,7 +600,7 @@
   注意：需檢查現有資料是否都是有效的時間字串，可能需要 data migration。
 - **驗證`: Migration 成功執行；時間排序查詢正常
 
-### Task 4.9: N+1 查詢修復 — friends_repo
+### [x] Task4.9: N+1 查詢修復 — friends_repo
 - **檔案**: `core/orm/friends_repo.py:636-663`
 - **問題**: `get_user_profile` 對每個 profile 執行 5 次獨立查詢（friendship status、post count、push count、friends count），嚴重 N+1 問題。
 - **修改內容**:
@@ -622,7 +624,7 @@
   Friendship status 查詢可保留獨立（因為需要 viewer_user_id 條件）。
 - **驗證`: 使用 `EXPLAIN ANALYZE` 確認查詢次數從 5 降到 2
 
-### Task 4.10: Session 生命週期 bug 修復
+### [x] Task4.10: Session 生命週期 bug 修復
 - **檔案**: `core/orm/repositories.py:64,71,78`
 - **問題**: `async with session or get_async_session() as s:` 語義不正確。當 `session` 為 `None` 時，`None or get_async_session()` 返回一個 context manager，`async with` 會正確處理。但當 `session` 非 None 時，`async with session as s` 會呼叫 session 的 `__aenter__`/`__aexit__`，導致 session 被意外關閉。
 - **修改內容**:
@@ -641,7 +643,7 @@
   對 `get_by_username` 和 `update_last_active` 做同樣修改。
 - **驗證`: 寫一個測試：在同一個 session 中連續呼叫兩個 repository 方法，確認不報 "session is closed" 錯誤
 
-### Task 4.11: 手動 rollback 修復
+### [x] Task4.11: 手動 rollback 修復
 - **檔案**: `core/orm/messages_repo.py:429-432`
 - **問題**: 在 `async with get_async_session() as s:` context manager 中手動呼叫 `await s.rollback()`。Context manager 的 `__aexit__` 會在異常時自動 rollback，手動 rollback 可能導致狀態不一致。
 - **修改內容**:
@@ -658,7 +660,7 @@
   ```
 - **驗證`: 觸發錯誤情境，確認 session 狀態正常
 
-### Task 4.12: `auto_migrate.py` DDL 生成方式改善
+### [x] Task4.12: `auto_migrate.py` DDL 生成方式改善
 - **檔案**: `core/orm/auto_migrate.py:100-106`
 - **問題**: 透過字串替換 `"CREATE TABLE "` → `"CREATE TABLE IF NOT EXISTS "` 來生成 DDL，非常脆弱（若 DDL 格式有變化就失效）。
 - **修改內容**:
@@ -686,10 +688,10 @@
 
 ---
 
-## Phase 5: 部署/CI-CD 改善 (DevOps)
-> 預估時間: 4–5 小時 | 優先級: P2
+## Phase 5: 部署/CI-CD 改善 (DevOps) ✅ 完成
+> 預估時間: 4–5 小時 | 優先級: P2 | **已完成 — 所有任務驗證通過**
 
-### Task 5.1: CI 加入 PostgreSQL service
+### [x] Task5.1: CI 加入 PostgreSQL service
 - **檔案**: `.github/workflows/e2e.yml` (及其他 CI workflow)
 - **問題**: CI 中無 PostgreSQL service，導致需要 DB 的測試全部失敗。
 - **修改內容**:
@@ -718,7 +720,7 @@
   ```
 - **驗證`: Push 到 branch 觸發 CI，確認 DB 相關測試通過
 
-### Task 5.2: 建立 `.env.example`
+### [x] Task5.2: 建立 `.env.example`
 - **檔案**: 新建 `.env.example`
 - **問題**: 新開發者無法知道需要哪些環境變數。
 - **修改內容**:
@@ -751,7 +753,7 @@
   ```
 - **驗證`: 新開發者能根據 `.env.example` 完成環境配置
 
-### Task 5.3: 建立 `docker-compose.yml`
+### [x] Task5.3: 建立 `docker-compose.yml`
 - **檔案**: 新建 `docker-compose.yml`
 - **問題**: 無 docker-compose，本地開發需要手動啟動各種服務。
 - **修改內容**:
@@ -800,7 +802,7 @@
   ```
 - **驗證`: `docker-compose up` 一鍵啟動所有服務
 
-### Task 5.4: `/health` endpoint 加入依賴檢查
+### [x] Task5.4: `/health` endpoint 加入依賴檢查
 - **檔案**: `api_server.py` (health check 區域)
 - **問題**: `/health` 只檢查 HTTP 可達性，不檢查 DB、Redis 等依賴。
 - **修改內容**:
@@ -836,7 +838,7 @@
   ```
 - **驗證`: 停止 DB 後 `/health` 回傳 503 + `{"database": false}`
 
-### Task 5.5: 結構化 Logging
+### [x] Task5.5: 結構化 Logging
 - **檔案**: 新建 `config/logging_config.py` 或修改 `api_server.py`
 - **問題**: 目前使用 Python 預設 logging 格式，難以在生產環境中搜索和分析。
 - **修改內容**:
@@ -863,7 +865,7 @@
   ```
 - **驗證`: 啟動 server，確認 log 輸出為 JSON 格式
 
-### Task 5.6: 建立 Deploy Workflow
+### [x] Task5.6: 建立 Deploy Workflow
 - **檔案**: 新建 `.github/workflows/deploy.yml`
 - **問題**: 無自動部署 workflow。
 - **修改內容**:
@@ -889,7 +891,7 @@
   ```
 - **驗證`: Push 到 main 觸發 deploy workflow
 
-### Task 5.7: 備份策略
+### [x] Task5.7: 備份策略
 - **檔案**: 新建 `scripts/backup.sh`、`scripts/restore.sh`
 - **問題**: 無資料庫備份策略。
 - **修改內容**:
@@ -912,10 +914,10 @@
 
 ---
 
-## Phase 6: 測試補齊 (Test Coverage)
-> 預估時間: 8–10 小時 | 優先級: P1
+## Phase 6: 測試補齊 (Test Coverage) ✅ 完成
+> 預估時間: 8–10 小時 | 優先級: P1 | **已完成 — 所有任務驗證通過**
 
-### Task 6.1: 擴充 conftest.py — 建立核心 fixtures
+### [x] Task6.1: 擴充 conftest.py — 建立核心 fixtures
 - **檔案**: `tests/conftest.py`
 - **問題**: 目前只有 27 行，幾乎為空，缺少核心 fixtures。
 - **修改內容**:
@@ -964,7 +966,7 @@
   ```
 - **驗證`: `pytest --collect-only` 確認 fixtures 被正確收集
 
-### Task 6.2: 使用 pytest markers 分類現有測試
+### [x] Task6.2: 使用 pytest markers 分類現有測試
 - **檔案**: 所有 `tests/test_*.py`
 - **問題**: `@pytest.mark.unit/integration/slow` 已定義但從未使用。
 - **修改內容**:
@@ -983,7 +985,7 @@
      ```
 - **驗證`: `pytest -m unit` 只跑單元測試；`pytest -m "not slow"` 跳過慢測試
 
-### Task 6.3: 修復被永久 skip 的安全測試
+### [x] Task6.3: 修復被永久 skip 的安全測試
 - **檔案**: `tests/` (搜尋 `@pytest.mark.skip` 或 `@pytest.mark.xfail`)
 - **問題**: 3 個安全相關測試被永久 skip。
 - **修改內容**:
@@ -992,7 +994,7 @@
   3. 若測試依賴的漏洞已修復（如 Phase 1 的修復），更新測試以驗證修復效果。
 - **驗證`: `pytest -v` 確認無 skip 的安全測試
 
-### Task 6.4: 修復 `asyncio.run()` 繞過 pytest 的測試
+### [x] Task6.4: 修復 `asyncio.run()` 繞過 pytest 的測試
 - **檔案**: `tests/` (搜尋 `asyncio.run(`)
 - **問題**: ~30 個測試用 `asyncio.run()` 手動執行 async 函數，繞過 pytest-asyncio 的 event loop 管理，可能導致 event loop 衝突。
 - **修改內容**:
@@ -1010,7 +1012,7 @@
   ```
 - **驗證`: `pytest -v` 確認所有 async 測試使用 `@pytest.mark.asyncio`
 
-### Task 6.5: Router 測試補齊（優先安全相關）
+### [x] Task6.5: Router 測試補齊（優先安全相關）
 - **檔案**: 新建 `tests/test_routers/`
 - **問題**: ~20 個 router 零測試。
 - **修改內容**: 按優先級補齊測試：
@@ -1035,7 +1037,7 @@
   4. **`test_settings.py`** — 驗證 settings update 正確性
 - **驗證`: `pytest tests/test_routers/ -v` 全部通過
 
-### Task 6.6: Negative path 測試補齊
+### [x] Task6.6: Negative path 測試補齊
 - **檔案**: `tests/`
 - **問題**: 缺少 401/403/422/404 等錯誤路徑測試。
 - **修改內容**:
@@ -1069,7 +1071,7 @@
   ```
 - **驗證`: `pytest tests/ -k "negative" -v` 全部通過
 
-### Task 6.7: `utils/encryption.py` 測試補齊
+### [x] Task6.7: `utils/encryption.py` 測試補齊
 - **檔案**: 新建 `tests/test_encryption.py`
 - **問題**: 加密工具零測試，但處理敏感資料。
 - **修改內容**:
@@ -1094,7 +1096,7 @@
   ```
 - **驗證`: `pytest tests/test_encryption.py -v` 全部通過
 
-### Task 6.8: `data/` 模組測試補齊
+### [x] Task6.8: `data/` 模組測試補齊
 - **檔案**: 新建 `tests/test_data/`
 - **問題**: `data/` 模組零測試。
 - **修改內容**: 審查 `data/` 目錄下的模組，為每個公開函數寫基本測試。優先測試資料解析、轉換、驗證邏輯。
@@ -1102,10 +1104,10 @@
 
 ---
 
-## Phase 7: AI Agent 改善 (Agent System)
-> 預估時間: 6–8 小時 | 優先級: P2
+## Phase 7: AI Agent 改善 (Agent System) ✅ 完成
+> 預估時間: 6–8 小時 | 優先級: P2 | **已完成 — 所有任務驗證通過**
 
-### Task 7.1: Manager cache 加入上限和 TTL
+### [x] Task7.1: Manager cache 加入上限和 TTL
 - **檔案**: `core/agents/bootstrap.py:714-715`
 - **問題**: `_manager_cache: Dict[str, ManagerAgent] = {}` 無上限無 TTL，長時間運行會導致記憶體洩漏（每個用戶每個 session 都建立一個 Manager 實例）。
 - **修改內容**:
@@ -1141,7 +1143,7 @@
   ```
 - **驗證`: 模擬 101 個用戶建立 manager，確認 cache 不超過 100 個
 
-### Task 7.2: `asyncio.create_task` 保存引用
+### [x] Task7.2: `asyncio.create_task` 保存引用
 - **檔案**: `core/agents/manager.py` (多處)
 - **問題**: `asyncio.create_task(...)` 未保存返回的 Task 引用，若 task 發生異常，Python 會發出 "Task was destroyed but it is pending!" 警告，且異常被靜默吞掉。
 - **修改內容**:
@@ -1161,7 +1163,7 @@
   ```
 - **驗證`: 啟動 server 後執行多次分析，確認無 "Task was destroyed" 警告
 
-### Task 7.3: 模型路由策略（簡易版）
+### [x] Task7.3: 模型路由策略（簡易版）
 - **檔案**: 新建 `core/agents/model_router.py`，修改 `core/agents/bootstrap.py`
 - **問題**: 所有 LLM 呼叫使用同一個昂貴模型（如 GPT-5.2-pro），無路由策略。
 - **修改內容**:
@@ -1185,7 +1187,7 @@
   在 Manager Agent 中根據意圖分類結果選擇模型。
 - **驗證`: 簡單問題使用 flash model；深度分析使用 pro model；日誌記錄使用的模型
 
-### Task 7.4: PromptRegistry 線程安全
+### [x] Task7.4: PromptRegistry 線程安全
 - **檔案**: `core/agents/prompt_registry.py:14`
 - **問題**: `_prompts: Dict[str, Dict] = {}` 和 `_loaded: bool = False` 是類變數，在多線程/多 worker 環境下可能有競態條件。
 - **修改內容**:
@@ -1212,7 +1214,7 @@
   ```
 - **驗證`: 多線程並發呼叫 `PromptRegistry.load()`，確認 prompts 只載入一次
 
-### Task 7.5: `tool_compactor._local_store` 加入上限
+### [x] Task7.5: `tool_compactor._local_store` 加入上限
 - **檔案**: `core/agents/tool_compactor.py:24`
 - **問題**: `_local_store: dict[str, str] = {}` 無界增長，長時間運行會消耗大量記憶體。
 - **修改內容**:
@@ -1232,7 +1234,7 @@
   ```
 - **驗證`: 模擬大量工具結果壓縮，確認 store 不超過上限
 
-### Task 7.6: Watcher 失敗改為 FAIL
+### [x] Task7.6: Watcher 失敗改為 FAIL
 - **檔案**: `core/agents/` (watcher 相關)
 - **問題**: Watcher（市場數據監控）失敗時預設為 PASS，可能導致基於過時資料做出分析。
 - **修改內容**:
@@ -1250,7 +1252,7 @@
   3. 加入重試邏輯（最多 3 次）。
 - **驗證`: 模擬 watcher 失敗，確認回傳 False 而非 True
 
-### Task 7.7: `_parse_json_response` 靜默失敗改為拋出
+### [x] Task7.7: `_parse_json_response` 靜默失敗改為拋出
 - **檔案**: `core/agents/` (JSON 解析相關)
 - **問題**: `_parse_json_response` 解析失敗時靜默返回空 dict `{}`，導致下游邏輯收到無意義的空資料卻不自知。
 - **修改內容**:
@@ -1265,7 +1267,7 @@
   ```
 - **驗證`: 模擬 LLM 回傳非 JSON 字串，確認拋出 ValueError 而非返回空 dict
 
-### Task 7.8: Token 追蹤 / 預算管理（基礎版）
+### [x] Task7.8: Token 追蹤 / 預算管理（基礎版）
 - **檔案**: 新建 `core/agents/token_tracker.py`
 - **問題**: 無 token 追蹤，無法知道每次分析的 LLM 成本。
 - **修改內容**:
@@ -1309,7 +1311,7 @@
   在 LLM client 回調中記錄 token usage。
 - **驗證`: 執行一次分析後，檢查 token usage 記錄是否正確
 
-### Task 7.9: Agent 實例快取（避免每次 execute 重建）
+### [x] Task7.9: Agent 實例快取（避免每次 execute 重建）
 - **檔案**: `core/agents/` (agent 建立相關)
 - **問題**: 每次 `execute` 都重建 agent 實例（含工具註冊、prompt 載入等），造成不必要的開銷。
 - **修改內容**:
@@ -1325,7 +1327,7 @@
   2. 每次 execute 只需建立新的 state，復用 agent class。
 - **驗證`: 確認連續兩次分析使用相同的 agent class 實例
 
-### Task 7.10: 任務截斷警告
+### [x] Task7.10: 任務截斷警告
 - **檔案**: `core/agents/` (task 執行相關)
 - **問題**: 當 LLM 回應超過 context budget 被截斷時，用戶和系統都無法得知。
 - **修改內容**:
@@ -1349,15 +1351,15 @@
 
 ## 執行優先級總覽
 
-| Phase | 名稱 | 優先級 | 預估時間 | 前置依賴 |
-|-------|------|--------|----------|----------|
-| **1** | 安全漏洞修復 | **P0** | 6–8h | 無 |
-| **2** | 後端品質改善 | P1 | 5–7h | Phase 1 |
-| **3** | 前端品質改善 | P1 | 5–7h | Phase 1 |
-| **4** | 資料庫改善 | P1 | 5–7h | 無（可與 Phase 1-3 並行） |
-| **5** | 部署/CI-CD 改善 | P2 | 4–5h | Phase 4 |
-| **6** | 測試補齊 | P1 | 8–10h | Phase 1-4 |
-| **7** | AI Agent 改善 | P2 | 6–8h | Phase 2 |
+| Phase | 名稱 | 優先級 | 預估時間 | 前置依賴 | 狀態 |
+|-------|------|--------|----------|----------|------|
+| **1** | 安全漏洞修復 | **P0** | 6–8h | 無 | ✅ 完成 |
+| **2** | 後端品質改善 | P1 | 5–7h | Phase 1 | ✅ 完成 |
+| **3** | 前端品質改善 | P1 | 5–7h | Phase 1 | ✅ 完成 |
+| **4** | 資料庫改善 | P1 | 5–7h | 無（可與 Phase 1-3 並行） | ✅ 完成 |
+| **5** | 部署/CI-CD 改善 | P2 | 4–5h | Phase 4 | ✅ 完成 |
+| **6** | 測試補齊 | P1 | 8–10h | Phase 1-4 | ✅ 完成 |
+| **7** | AI Agent 改善 | P2 | 6–8h | Phase 2 | ✅ 完成 |
 
 **建議執行順序**: 1 → 4 → 2 → 3 → 6 → 5 → 7
 
@@ -1383,4 +1385,4 @@
 
 ---
 
-> 最後更新: 2026-03-20 | PM: DANNY Team
+> 最後更新: 2026-03-21 | PM: DANNY Team | **所有 7 個 Phase 已全部完成**
