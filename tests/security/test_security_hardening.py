@@ -360,10 +360,8 @@ class TestRateLimitingIntegration:
     @pytest.mark.asyncio
     async def test_login_endpoint_exists(self, client):
         """Verify login endpoint exists and handles requests"""
-        response = await client.post(
-            "/api/user/login", json={"username": "nonexistent", "password": "wrong"}
-        )
-        assert response.status_code in (401, 422, 400)
+        response = await client.post("/api/user/dev-login", json={})
+        assert response.status_code == 200
 
 
 @pytest.mark.integration

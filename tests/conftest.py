@@ -5,8 +5,14 @@ Pytest configuration and fixtures
 import os
 from unittest.mock import AsyncMock
 
-os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost:5432/test")
-os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
+os.environ["DATABASE_URL"] = "postgresql://test:test@localhost:5432/test"
+for _key in list(os.environ):
+    if _key.startswith("POSTGRESQL_") or _key == "POSTGRES_DB":
+        os.environ.pop(_key)
+os.environ["REDIS_URL"] = "memory://"
+for _key in list(os.environ):
+    if _key.startswith("REDIS_") and _key != "REDIS_URL":
+        os.environ.pop(_key)
 os.environ.setdefault("SECRET_KEY", "test-secret-key-for-testing")
 os.environ.setdefault("JWT_SECRET_KEY", "test-jwt-secret-key-for-testing-1234567890")
 os.environ.setdefault("PI_API_KEY", "test-pi-api-key")
