@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "Frontend build scripts for Pi Crypto Insight",
   "scripts": {
-    "build:css": "npx tailwindcss -i ./web/static/css/main.css -o ./web/static/css/main.css --minify",
-    "watch:css": "npx tailwindcss -i ./web/static/css/main.css -o ./web/static/css/main.css --watch",
+    "build:css": "npx tailwindcss -i ./web/css/main.css -o ./web/css/main.css --minify",
+    "watch:css": "npx tailwindcss -i ./web/css/main.css -o ./web/css/main.css --watch",
     "build": "npm run build:css"
   },
   "devDependencies": {
