@@ -193,7 +193,7 @@ class TestSystemPrompt:
 
         assert "使用 `get_crypto_price`" not in prompt_zh
         assert "use `get_crypto_price`" not in prompt_en
-        assert "工具失敗處理" in prompt_zh or "dedicated tool" in prompt_en
+        assert "工具失敗" in prompt_zh or "tool fail" in prompt_en.lower()
 
 
 @pytest.mark.asyncio

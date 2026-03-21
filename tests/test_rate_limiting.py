@@ -10,6 +10,7 @@ RATE_LIMITED_ENDPOINTS = {
     "api.routers.user.dev_login": "5 per 1 minute",
     "api.routers.user.sync_pi_user": "5 per 1 minute",
     "api.routers.user.refresh_token": "5 per 1 minute",
+    "api.routers.user.refresh_access_token": "10 per 1 minute",
     "api.routers.user.approve_payment": "10 per 1 minute",
     "api.routers.user.complete_payment": "10 per 1 minute",
     "api.routers.user.get_user_api_key_full_endpoint": "10 per 1 minute",

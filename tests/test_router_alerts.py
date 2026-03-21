@@ -14,7 +14,7 @@ def client():
     from api.routers import alerts
 
     app = FastAPI()
-    app.include_router(alerts.router, prefix="/api")
+    app.include_router(alerts.router)
 
     @app.get("/")
     async def root():

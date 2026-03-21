@@ -17,10 +17,19 @@ class TWStockAgent(BaseReActAgent):
     """台股分析 Agent - 使用 ReAct 循環自動調用工具。"""
 
     def __init__(
-        self, llm_client, tool_registry, user_tier: str = "free", user_id=None
+        self,
+        llm_client,
+        tool_registry,
+        user_tier: str = "free",
+        user_id=None,
+        token_tracker=None,
     ):
         super().__init__(
-            llm_client, tool_registry, user_tier=user_tier, user_id=user_id
+            llm_client,
+            tool_registry,
+            user_tier=user_tier,
+            user_id=user_id,
+            token_tracker=token_tracker,
         )
         # Keep resolver for backwards compatibility with tests/legacy helpers.
         self.resolver = TWSymbolResolver()
