@@ -37,11 +37,45 @@ _experience_store = ExperienceStore()
 
 _background_tasks: set = set()
 
+# ---------------------------------------------------------------------------
+# Prompt Injection 防護
+# ---------------------------------------------------------------------------
+_INJECTION_PATTERNS = [
+    re.compile(r"忽略.*(?:規則|指令|instruction|rule)", re.IGNORECASE),
+    re.compile(r"ignore.*(?:previous|all|above).*instruction", re.IGNORECASE),
+    re.compile(r"系統提示|system\s*prompt", re.IGNORECASE),
+    re.compile(r"你(?:現在)?是(?:一個|一名)?(?:無限制|不受限|openai|gpt)", re.IGNORECASE),
+    re.compile(r"```json\s*\n\s*\"status\":\s*\"direct_response\"", re.IGNORECASE),
+    re.compile(r"respond\s+as\s+if", re.IGNORECASE),
+    re.compile(r"pretend\s+(?:you|to)", re.IGNORECASE),
+]
+
+
+def _sanitize_user_input(query: str) -> str:
+    """清洗用戶輸入，防止 prompt injection。"""
+    sanitized = query
+    for pattern in _INJECTION_PATTERNS:
+        sanitized = pattern.sub("[FILTERED]", sanitized)
+    return sanitized
+
 
 def _run_background(coro):
     task = asyncio.create_task(coro)
     _background_tasks.add(task)
-    task.add_done_callback(_background_tasks.discard)
+
+    def _on_done(t):
+        _background_tasks.discard(t)
+        if t.cancelled():
+            return
+        exc = t.exception()
+        if exc:
+            import logging
+
+            logging.getLogger(__name__).error(
+                "[Background task] failed: %s", exc, exc_info=exc
+            )
+
+    task.add_done_callback(_on_done)
     return task
 
 
@@ -71,6 +105,7 @@ MEMORY_CONSOLIDATION_THRESHOLD = 12  # 降到 12 則（約 6 輪對話）
 MEMORY_IDLE_TIMEOUT = 300  # 閒置 5 分鐘後整合
 MANAGER_GRAPH_RECURSION_LIMIT = 60
 MAX_GRAPH_TASKS = 8
+AGENT_EXECUTION_TIMEOUT = 60  # seconds
 
 
 # ============================================================================
@@ -178,6 +213,13 @@ class ManagerAgent:
         self._message_count = 0  # 當前會話消息計數
         self._last_activity_time = time.time()  # 最後活動時間（用於閒置整合）
 
+        # Token 追蹤與模型路由
+        from .model_router import ModelRouter
+        from .token_tracker import TokenTracker
+
+        self._model_router = ModelRouter()
+        self._token_tracker = TokenTracker()
+
         # 建立 LangGraph
         self.graph = self._build_graph()
         self._symbol_resolver = UniversalSymbolResolver()
@@ -253,6 +295,7 @@ class ManagerAgent:
     async def _understand_intent_node(self, state: ManagerState) -> Dict:
         """意圖理解節點 - 統一的規劃入口"""
         query = state["query"]
+        query = _sanitize_user_input(query)  # prompt injection 防護（不修改 state 原始 query）
         history = state.get("history", "")
         history = _get_history_for_prompt(
             history,
@@ -647,6 +690,18 @@ class ManagerAgent:
 
         return {"aggregated_response": final_result}
 
+    _ANOMALY_PATTERNS = [
+        "XXX", "N/A", "null", "undefined", "獲取失敗", "timeout", "error", "Error", "ERR",
+    ]
+
+    def _quick_anomaly_check(self, results: dict) -> bool:
+        """快速檢查是否有明顯異常（無需 LLM）"""
+        for task_id, result in results.items():
+            msg = str(result.get("message", ""))
+            if any(p in msg for p in self._ANOMALY_PATTERNS):
+                return True
+        return False
+
     async def _reflect_on_results_node(self, state: ManagerState) -> Dict:
         """結果品質審查節點
 
@@ -660,6 +715,10 @@ class ManagerAgent:
 
         # 如果沒有任務結果，直接返回
         if not task_results:
+            return {}
+
+        # 快速異常檢查：如果沒有明顯異常就跳過 LLM 審查（節省成本）
+        if not self._quick_anomaly_check(task_results):
             return {}
 
         # 格式化結果供 LLM 審查
@@ -1587,6 +1646,25 @@ class ManagerAgent:
                 logger.warning(
                     f"[Manager] Response near context budget: {len(content)} chars (budget: {CONTEXT_CHAR_BUDGET})"
                 )
+
+            # 記錄 token usage
+            if hasattr(response, "usage_metadata") and response.usage_metadata:
+                from .token_tracker import TokenUsage
+
+                usage = response.usage_metadata
+                self._token_tracker.record(
+                    TokenUsage(
+                        model=getattr(self.llm, "model_name", "unknown") or "unknown",
+                        prompt_tokens=usage.get("input_tokens", 0),
+                        completion_tokens=usage.get("output_tokens", 0),
+                        total_tokens=usage.get("total_tokens", 0),
+                    )
+                )
+            if self._token_tracker.is_over_budget():
+                logger.warning(
+                    f"[Manager] Token budget exceeded: ${self._token_tracker.total_cost():.4f}"
+                )
+
             return content
         except Exception as e:
             raise RuntimeError(explain_llm_exception(e)) from e
@@ -2041,7 +2119,10 @@ class ManagerAgent:
         )
 
         try:
-            result = await self._execute_agent(agent, context)
+            result = await asyncio.wait_for(
+                self._execute_agent(agent, context),
+                timeout=AGENT_EXECUTION_TIMEOUT,
+            )
             result_data = result.get("data", {})
             if not isinstance(result_data, dict):
                 result_data = {}
@@ -2057,6 +2138,16 @@ class ManagerAgent:
                 "data": result_data,
                 "quality": result.get("quality", "pass"),
                 "quality_fail_reason": result.get("quality_fail_reason"),
+            }
+        except asyncio.TimeoutError:
+            logger.error(
+                f"[Manager]Task {task.id} timed out after {AGENT_EXECUTION_TIMEOUT}s"
+            )
+            return {
+                "success": False,
+                "message": f"執行逾時: 任務超過 {AGENT_EXECUTION_TIMEOUT} 秒未完成",
+                "agent_name": task.agent,
+                "task_id": task.id,
             }
         except Exception as e:
             logger.error(f"[Manager]Task {task.id} failed: {e}")

@@ -5,12 +5,14 @@ Tests for governance router in api/routers/governance.py
 import pytest
 
 from api.routers.governance import (
-    CONSENSUS_APPROVE_THRESHOLD,
-    CONSENSUS_REJECT_THRESHOLD,
     DEFAULT_DAILY_REPORT_LIMIT,
-    MIN_VOTES_REQUIRED,
     PRO_DAILY_REPORT_LIMIT,
     router,
+)
+from core.database.governance import (
+    CONSENSUS_APPROVE_THRESHOLD,
+    CONSENSUS_REJECT_THRESHOLD,
+    MIN_VOTES_REQUIRED,
 )
 
 

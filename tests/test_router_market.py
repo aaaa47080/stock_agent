@@ -1,55 +1,55 @@
 """
-Tests for market router in api/routers/market.py
+Tests for market router in api/routers/market/
 """
 
 import pytest
 
-from api.routers.market import (
-    _compute_top_bottom_rates,
-    _filter_funding_data_by_symbols,
-    _normalize_funding_symbol,
-    _parse_symbols_param,
-    _sort_funding_rates,
-    router,
+from api.routers.market import router
+from api.routers.market.helpers import (
+    compute_top_bottom_rates,
+    filter_funding_data_by_symbols,
+    normalize_funding_symbol,
+    parse_symbols_param,
+    sort_funding_rates,
 )
 
 
 class TestNormalizeFundingSymbol:
-    """Tests for _normalize_funding_symbol function"""
+    """Tests for normalize_funding_symbol function"""
 
     def test_removes_usdt_suffix(self):
         """Test removing -USDT suffix"""
-        result = _normalize_funding_symbol("BTC-USDT")
+        result = normalize_funding_symbol("BTC-USDT")
         assert result == "BTC"
 
     def test_removes_swap_suffix(self):
         """Test removing -SWAP suffix"""
-        result = _normalize_funding_symbol("ETH-USDT-SWAP")
+        result = normalize_funding_symbol("ETH-USDT-SWAP")
         assert result == "ETH"
 
     def test_removes_plain_usdt(self):
         """Test removing plain USDT"""
-        result = _normalize_funding_symbol("BTCUSDT")
+        result = normalize_funding_symbol("BTCUSDT")
         assert result == "BTC"
 
     def test_uppercase_conversion(self):
         """Test uppercase conversion"""
-        result = _normalize_funding_symbol("btc-usdt")
+        result = normalize_funding_symbol("btc-usdt")
         assert result == "BTC"
 
     def test_combined_normalization(self):
         """Test combined normalization"""
-        result = _normalize_funding_symbol("btc-usdt-swap")
+        result = normalize_funding_symbol("btc-usdt-swap")
         assert result == "BTC"
 
     def test_already_normalized(self):
         """Test already normalized symbol"""
-        result = _normalize_funding_symbol("BTC")
+        result = normalize_funding_symbol("BTC")
         assert result == "BTC"
 
 
 class TestFilterFundingDataBySymbols:
-    """Tests for _filter_funding_data_by_symbols function"""
+    """Tests for filter_funding_data_by_symbols function"""
 
     def test_filters_by_symbols(self):
         """Test filtering data by symbol list"""
@@ -60,7 +60,7 @@ class TestFilterFundingDataBySymbols:
         }
         symbol_list = ["BTC", "ETH"]
 
-        result = _filter_funding_data_by_symbols(data, symbol_list)
+        result = filter_funding_data_by_symbols(data, symbol_list)
 
         assert "BTC" in result
         assert "ETH" in result
@@ -70,7 +70,7 @@ class TestFilterFundingDataBySymbols:
         """Test with empty symbol list"""
         data = {"BTC": {"fundingRate": 0.01}}
 
-        result = _filter_funding_data_by_symbols(data, [])
+        result = filter_funding_data_by_symbols(data, [])
 
         assert result == {}
 
@@ -79,7 +79,7 @@ class TestFilterFundingDataBySymbols:
         data = {"BTC": {"fundingRate": 0.01}}
         symbol_list = ["BTC-USDT"]
 
-        result = _filter_funding_data_by_symbols(data, symbol_list)
+        result = filter_funding_data_by_symbols(data, symbol_list)
 
         assert "BTC" in result
 
@@ -88,53 +88,53 @@ class TestFilterFundingDataBySymbols:
         data = {"BTC": {"fundingRate": 0.01}}
         symbol_list = ["ETH"]
 
-        result = _filter_funding_data_by_symbols(data, symbol_list)
+        result = filter_funding_data_by_symbols(data, symbol_list)
 
         assert result == {}
 
 
 class TestParseSymbolsParam:
-    """Tests for _parse_symbols_param function"""
+    """Tests for parse_symbols_param function"""
 
     def test_single_symbol(self):
         """Test parsing single symbol"""
-        result = _parse_symbols_param("BTC")
+        result = parse_symbols_param("BTC")
         assert result == ["BTC"]
 
     def test_multiple_symbols(self):
         """Test parsing multiple symbols"""
-        result = _parse_symbols_param("BTC,ETH,SOL")
+        result = parse_symbols_param("BTC,ETH,SOL")
         assert result == ["BTC", "ETH", "SOL"]
 
     def test_handles_spaces(self):
         """Test handling spaces"""
-        result = _parse_symbols_param("BTC, ETH, SOL")
+        result = parse_symbols_param("BTC, ETH, SOL")
         assert result == ["BTC", "ETH", "SOL"]
 
     def test_uppercase_conversion(self):
         """Test uppercase conversion"""
-        result = _parse_symbols_param("btc,eth")
+        result = parse_symbols_param("btc,eth")
         assert result == ["BTC", "ETH"]
 
     def test_empty_string(self):
         """Test empty string"""
-        result = _parse_symbols_param("")
+        result = parse_symbols_param("")
         assert result == []
 
     def test_trailing_comma(self):
         """Test trailing comma"""
-        result = _parse_symbols_param("BTC,ETH,")
+        result = parse_symbols_param("BTC,ETH,")
         assert result == ["BTC", "ETH"]
 
 
 class TestComputeTopBottomRates:
-    """Tests for _compute_top_bottom_rates function"""
+    """Tests for compute_top_bottom_rates function"""
 
     def test_computes_top_and_bottom(self):
         """Test computing top and bottom rates"""
         rates = [("BTC", 0.05), ("ETH", 0.03), ("SOL", 0.02), ("DOGE", -0.01)]
 
-        top_bullish, top_bearish = _compute_top_bottom_rates(rates, 2)
+        top_bullish, top_bearish = compute_top_bottom_rates(rates, 2)
 
         assert len(top_bullish) == 2
         assert top_bullish[0] == ("BTC", 0.05)
@@ -143,7 +143,7 @@ class TestComputeTopBottomRates:
 
     def test_empty_rates(self):
         """Test with empty rates"""
-        top_bullish, top_bearish = _compute_top_bottom_rates([], 5)
+        top_bullish, top_bearish = compute_top_bottom_rates([], 5)
 
         assert top_bullish == []
         assert top_bearish == []
@@ -152,14 +152,14 @@ class TestComputeTopBottomRates:
         """Test with fewer rates than limit"""
         rates = [("BTC", 0.05)]
 
-        top_bullish, top_bearish = _compute_top_bottom_rates(rates, 5)
+        top_bullish, top_bearish = compute_top_bottom_rates(rates, 5)
 
         assert len(top_bullish) == 1
         assert len(top_bearish) == 1
 
 
 class TestSortFundingRates:
-    """Tests for _sort_funding_rates function"""
+    """Tests for sort_funding_rates function"""
 
     def test_sorts_descending(self):
         """Test sorting in descending order"""
@@ -169,7 +169,7 @@ class TestSortFundingRates:
             "SOL": {"fundingRate": 0.03},
         }
 
-        result = _sort_funding_rates(data)
+        result = sort_funding_rates(data)
 
         assert result[0][0] == "ETH"  # Highest rate
         assert result[2][0] == "BTC"  # Lowest rate
@@ -178,13 +178,13 @@ class TestSortFundingRates:
         """Test handling missing funding rate"""
         data = {"BTC": {}}  # No fundingRate
 
-        result = _sort_funding_rates(data)
+        result = sort_funding_rates(data)
 
         assert result[0][1] == 0  # Default value
 
     def test_empty_data(self):
         """Test with empty data"""
-        result = _sort_funding_rates({})
+        result = sort_funding_rates({})
         assert result == []
 
 

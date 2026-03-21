@@ -442,8 +442,6 @@ logger.info("✅ Security headers enabled")
 
 import time
 
-from fastapi import Response
-
 # 服務啟動時間
 SERVICE_START_TIME = time.time()
 
@@ -524,16 +522,15 @@ async def readiness_check():
 
     status_code = 200 if ready else 503
 
-    return Response(
-        content=str(
-            {
-                "status": "ready" if ready else "not_ready",
-                "components": components,
-                "uptime_seconds": int(time.time() - SERVICE_START_TIME),
-            }
-        ),
+    from fastapi.responses import JSONResponse
+
+    return JSONResponse(
+        content={
+            "status": "ready" if ready else "not_ready",
+            "components": components,
+            "uptime_seconds": int(time.time() - SERVICE_START_TIME),
+        },
         status_code=status_code,
-        media_type="application/json",
     )
 
 

@@ -10,6 +10,7 @@
     "sourceType": "module"
   },
   "rules": {
+    "no-var": "error",
     "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
     "no-undef": "warn",
     "no-console": ["warn", { "allow": ["warn", "error"] }],

@@ -32,7 +32,7 @@ class CurrentUser(TypedDict, total=False):
 # Generate a secure key: openssl rand -hex 32
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 
 # Security check: require fallback secret unless key rotation is explicitly enabled.
 if not SECRET_KEY and os.getenv("USE_KEY_ROTATION", "false").lower() != "true":
