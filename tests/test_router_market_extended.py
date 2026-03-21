@@ -79,7 +79,8 @@ class TestTryGetCachedScreener:
     def test_returns_cached_data(self):
         """Test returning cached data"""
         with patch(
-            "api.routers.market.helpers.cached_screener_result", {"data": {"test": "data"}}
+            "api.routers.market.helpers.cached_screener_result",
+            {"data": {"test": "data"}},
         ):
             result = try_get_cached_screener(refresh=False)
             assert result == {"test": "data"}
@@ -87,7 +88,8 @@ class TestTryGetCachedScreener:
     def test_returns_none_when_refresh_true(self):
         """Test returns None when refresh is True"""
         with patch(
-            "api.routers.market.helpers.cached_screener_result", {"data": {"test": "data"}}
+            "api.routers.market.helpers.cached_screener_result",
+            {"data": {"test": "data"}},
         ):
             result = try_get_cached_screener(refresh=True)
             assert result is None

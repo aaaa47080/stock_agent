@@ -44,7 +44,9 @@ _INJECTION_PATTERNS = [
     re.compile(r"忽略.*(?:規則|指令|instruction|rule)", re.IGNORECASE),
     re.compile(r"ignore.*(?:previous|all|above).*instruction", re.IGNORECASE),
     re.compile(r"系統提示|system\s*prompt", re.IGNORECASE),
-    re.compile(r"你(?:現在)?是(?:一個|一名)?(?:無限制|不受限|openai|gpt)", re.IGNORECASE),
+    re.compile(
+        r"你(?:現在)?是(?:一個|一名)?(?:無限制|不受限|openai|gpt)", re.IGNORECASE
+    ),
     re.compile(r"```json\s*\n\s*\"status\":\s*\"direct_response\"", re.IGNORECASE),
     re.compile(r"respond\s+as\s+if", re.IGNORECASE),
     re.compile(r"pretend\s+(?:you|to)", re.IGNORECASE),
@@ -295,7 +297,9 @@ class ManagerAgent:
     async def _understand_intent_node(self, state: ManagerState) -> Dict:
         """意圖理解節點 - 統一的規劃入口"""
         query = state["query"]
-        query = _sanitize_user_input(query)  # prompt injection 防護（不修改 state 原始 query）
+        query = _sanitize_user_input(
+            query
+        )  # prompt injection 防護（不修改 state 原始 query）
         history = state.get("history", "")
         history = _get_history_for_prompt(
             history,
@@ -691,7 +695,15 @@ class ManagerAgent:
         return {"aggregated_response": final_result}
 
     _ANOMALY_PATTERNS = [
-        "XXX", "N/A", "null", "undefined", "獲取失敗", "timeout", "error", "Error", "ERR",
+        "XXX",
+        "N/A",
+        "null",
+        "undefined",
+        "獲取失敗",
+        "timeout",
+        "error",
+        "Error",
+        "ERR",
     ]
 
     def _quick_anomaly_check(self, results: dict) -> bool:
