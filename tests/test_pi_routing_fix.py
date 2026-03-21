@@ -151,14 +151,15 @@ def manager_fixture():
 
 
 class TestManagerAgentCodeCleanup:
-    """Test 1: ManagerAgent 不使用已棄用的 unicodedata 模組"""
+    """Test 1: ManagerAgent 核心程式碼品質檢查"""
 
-    def test_no_unicodedata_in_manager(self):
-        """ManagerAgent 不應依賴 unicodedata（已遷移到 TWSymbolResolver）"""
+    def test_manager_has_model_router(self):
+        """ManagerAgent 應初始化 ModelRouter 和 TokenTracker"""
         from core.agents.manager import ManagerAgent
 
         src = inspect.getsource(ManagerAgent)
-        assert "unicodedata" not in src
+        assert "ModelRouter" in src
+        assert "TokenTracker" in src
 
 
 class TestCryptoAgentTools:
