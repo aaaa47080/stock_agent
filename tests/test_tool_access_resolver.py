@@ -1,10 +1,12 @@
-import asyncio
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from core.agents.manager import ManagerAgent
 
 
-def test_manager_passes_pre_resolved_allowed_tools_to_agent_context():
+@pytest.mark.asyncio
+async def test_manager_passes_pre_resolved_allowed_tools_to_agent_context():
     llm = MagicMock()
     agent_registry = MagicMock()
     fake_agent = MagicMock()
@@ -49,7 +51,7 @@ def test_manager_passes_pre_resolved_allowed_tools_to_agent_context():
         "intent_understanding": {"entities": {"us": "AAPL"}},
     }
 
-    result = asyncio.run(manager._execute_single_task(task, state, {}))
+    result = await manager._execute_single_task(task, state, {})
 
     assert result["success"] is True
     manager.tool_access_resolver.resolve_for_agent.assert_called_once_with("crypto")
@@ -58,7 +60,8 @@ def test_manager_passes_pre_resolved_allowed_tools_to_agent_context():
     assert passed_context.allowed_tools == ["tool_a", "tool_b"]
 
 
-def test_manager_passes_analysis_mode_to_agent_context():
+@pytest.mark.asyncio
+async def test_manager_passes_analysis_mode_to_agent_context():
     llm = MagicMock()
     agent_registry = MagicMock()
     fake_agent = MagicMock()
@@ -104,13 +107,14 @@ def test_manager_passes_analysis_mode_to_agent_context():
         "intent_understanding": {"entities": {"us": "AAPL"}},
     }
 
-    asyncio.run(manager._execute_single_task(task, state, {}))
+    await manager._execute_single_task(task, state, {})
 
     passed_context = manager._execute_agent.await_args.args[1]
     assert passed_context.analysis_mode == "verified"
 
 
-def test_manager_merges_trace_metadata_into_task_result():
+@pytest.mark.asyncio
+async def test_manager_merges_trace_metadata_into_task_result():
     llm = MagicMock()
     agent_registry = MagicMock()
     fake_agent = MagicMock()
@@ -158,7 +162,7 @@ def test_manager_merges_trace_metadata_into_task_result():
         "intent_understanding": {"entities": {"us": "AAPL"}},
     }
 
-    result = asyncio.run(manager._execute_single_task(task, state, {}))
+    result = await manager._execute_single_task(task, state, {})
 
     assert result["data"]["query_type"] == "price_lookup"
     assert result["data"]["resolved_market"] == "us"

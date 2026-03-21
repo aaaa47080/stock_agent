@@ -1,5 +1,6 @@
-import asyncio
 from unittest.mock import patch
+
+import pytest
 
 from api.routers.tools import ToolPreferenceRequest, _set_tool_preference_impl, router
 from core.agents.base_react_agent import BaseReActAgent
@@ -171,7 +172,8 @@ def test_tools_router_exposes_user_tools_routes():
     assert "/api/user/tools/{tool_id}/preference" in routes
 
 
-def test_premium_member_can_update_tool_preference():
+@pytest.mark.asyncio
+async def test_premium_member_can_update_tool_preference():
     current_user = {
         "user_id": "user-1",
         "membership_tier": "premium",
@@ -185,27 +187,24 @@ def test_premium_member_can_update_tool_preference():
         ),
         patch("api.routers.tools.update_user_tool_preference") as mock_update,
     ):
-        response = asyncio.run(
-            _set_tool_preference_impl("get_crypto_price", request, current_user)
+        response = await _set_tool_preference_impl(
+            "get_crypto_price", request, current_user
         )
 
     assert response["success"] is True
     mock_update.assert_called_once()
 
 
-def test_free_member_cannot_update_tool_preference():
+@pytest.mark.asyncio
+async def test_free_member_cannot_update_tool_preference():
     current_user = {
         "user_id": "user-1",
         "membership_tier": "free",
     }
     request = ToolPreferenceRequest(is_enabled=False)
 
-    try:
-        asyncio.run(
-            _set_tool_preference_impl("get_crypto_price", request, current_user)
-        )
-    except Exception as exc:
-        assert getattr(exc, "status_code", None) == 403
-        assert "Premium" in getattr(exc, "detail", "")
-    else:
-        raise AssertionError("Expected HTTPException for free tier")
+    with pytest.raises(Exception) as exc_info:
+        await _set_tool_preference_impl("get_crypto_price", request, current_user)
+
+    assert getattr(exc_info.value, "status_code", None) == 403
+    assert "Premium" in getattr(exc_info.value, "detail", "")

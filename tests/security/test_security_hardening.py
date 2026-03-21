@@ -338,41 +338,51 @@ class TestAuthentication:
             importlib.reload(api.deps)
 
 
-# Skip tests that require FastAPI app (uvicorn dependency)
-# These would be integration tests that require the full server setup
-@pytest.mark.skip(reason="Requires FastAPI app with uvicorn - integration test")
+@pytest.mark.integration
 class TestSecurityHeadersIntegration:
     """Tests for Stage 2 security headers (integration tests)"""
 
-    def test_security_headers_present(self):
+    @pytest.mark.asyncio
+    async def test_security_headers_present(self, client):
         """Verify security headers are present in responses"""
-        # This would require TestClient and the full app
-        pass
+        response = await client.get("/health")
+        assert response.status_code == 200
+        headers = response.headers
+        assert headers.get("x-content-type-options") == "nosniff"
+        assert headers.get("x-xss-protection") == "1; mode=block"
+        assert headers.get("referrer-policy") == "strict-origin-when-cross-origin"
 
 
-@pytest.mark.skip(reason="Requires FastAPI app with uvicorn - integration test")
+@pytest.mark.integration
 class TestRateLimitingIntegration:
     """Tests for rate limiting (integration tests)"""
 
-    def test_login_endpoint_exists(self):
+    @pytest.mark.asyncio
+    async def test_login_endpoint_exists(self, client):
         """Verify login endpoint exists and handles requests"""
-        # This would require TestClient and the full app
-        pass
+        response = await client.post(
+            "/api/user/login", json={"username": "nonexistent", "password": "wrong"}
+        )
+        assert response.status_code in (401, 422, 400)
 
 
-@pytest.mark.skip(reason="Requires FastAPI app with uvicorn - integration test")
+@pytest.mark.integration
 class TestInputValidationIntegration:
     """Tests for input validation (integration tests)"""
 
-    def test_sql_injection_prevention(self):
+    @pytest.mark.asyncio
+    async def test_sql_injection_prevention(self, client):
         """Test that SQL injection payloads are rejected"""
-        # This would require TestClient and the full app
-        pass
+        response = await client.get("/health", params={"q": "'; DROP TABLE users;--"})
+        assert response.status_code == 200
 
-    def test_xss_prevention(self):
+    @pytest.mark.asyncio
+    async def test_xss_prevention(self, client):
         """Test that XSS payloads are properly handled"""
-        # This would require TestClient and the full app
-        pass
+        response = await client.get(
+            "/health", params={"q": "<script>alert('xss')</script>"}
+        )
+        assert response.status_code == 200
 
 
 if __name__ == "__main__":

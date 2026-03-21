@@ -1,14 +1,15 @@
 """Tests for manager experience recording + hint injection."""
 
 import asyncio
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from core.agents.manager import ManagerAgent
 
 
 def test_record_experience_background_called_after_track():
     """_track_conversation fires _record_experience_background as a background task."""
-    from unittest.mock import MagicMock, patch
-
-    from core.agents.manager import ManagerAgent
-
     manager = MagicMock(spec=ManagerAgent)
     manager.user_id = "u1"
     manager.session_id = "s1"
@@ -17,20 +18,20 @@ def test_record_experience_background_called_after_track():
     manager._consolidating = False
     manager._last_activity_time = 0.0
 
-    tasks_created = []
+    calls = []
 
-    with patch(
-        "core.agents.manager.asyncio.create_task", side_effect=tasks_created.append
-    ):
-        # call the real method on the mock instance
+    def fake_run_background(coro):
+        calls.append(coro)
+        return None
+
+    with patch("core.agents.manager._run_background", side_effect=fake_run_background):
         asyncio.run(
             ManagerAgent._track_conversation(
                 manager, "BTC price?", "BTC is 42000", tools_used=["get_crypto_price"]
             )
         )
 
-    # At minimum _extract_facts_background is created; _record_experience also created
-    assert len(tasks_created) >= 1
+    assert len(calls) >= 1
 
 
 def test_experience_hint_injected_in_prompt_when_available():

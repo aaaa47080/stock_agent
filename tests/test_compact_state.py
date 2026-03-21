@@ -152,9 +152,9 @@ def test_compact_state_isolated_by_session():
 # ── consolidate writes compact state ─────────────────────────────────────────
 
 
-def test_consolidate_writes_compact_state():
+@pytest.mark.asyncio
+async def test_consolidate_writes_compact_state():
     """When LLM returns compact_state in consolidation response, it is stored."""
-    import asyncio
     from unittest.mock import MagicMock
 
     from langchain_core.messages import AIMessage
@@ -199,8 +199,8 @@ def test_consolidate_writes_compact_state():
                                     "timestamp": "2026-03-18 10:00",
                                 }
                             ]
-                            result = asyncio.run(
-                                store.consolidate(messages, mock_llm, archive_all=True)
+                            result = await store.consolidate(
+                                messages, mock_llm, archive_all=True
                             )
 
     assert result is True
