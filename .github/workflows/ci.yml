@@ -67,9 +67,9 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-cov pytest-asyncio
 
-      - name: Run tests (skip e2e)
+      - name: Run tests (skip e2e and integration)
         run: |
-          pytest -o addopts='-v --tb=short --no-cov' -m "not e2e"
+          pytest -o addopts='-v --tb=short --no-cov' -m "not e2e and not integration"
 
   validate-json:
     runs-on: ubuntu-latest

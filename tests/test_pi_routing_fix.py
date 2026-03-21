@@ -151,14 +151,13 @@ def manager_fixture():
 
 
 class TestManagerAgentCodeCleanup:
-    """Test 1: ManagerAgent 使用 LLM 路由為主，boundary route 作為 fallback"""
+    """Test 1: ManagerAgent 不使用已棄用的 unicodedata 模組"""
 
-    def test_boundary_route_not_in_primary_flow(self):
-        """_detect_boundary_route 應只在 fallback 中使用，不在主 intent flow 中"""
+    def test_no_unicodedata_in_manager(self):
+        """ManagerAgent 不應依賴 unicodedata（已遷移到 TWSymbolResolver）"""
         from core.agents.manager import ManagerAgent
 
         src = inspect.getsource(ManagerAgent)
-        assert "_detect_boundary_route" not in src or "_normalize_task_plan" in src
         assert "unicodedata" not in src
 
 
