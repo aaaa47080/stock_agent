@@ -35,6 +35,16 @@ from core.database.experiences import ExperienceStore
 
 _experience_store = ExperienceStore()
 
+_background_tasks: set = set()
+
+
+def _run_background(coro):
+    task = asyncio.create_task(coro)
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
+    return task
+
+
 from core.tools.universal_resolver import UniversalSymbolResolver
 from utils.user_client_factory import explain_llm_exception
 
@@ -261,7 +271,7 @@ class ManagerAgent:
         # 閒置整合檢查（在新對話開始時自動檢查）
         if self.check_idle_consolidation():
             logger.info("[Manager] Auto-triggering idle consolidation")
-            asyncio.create_task(self._background_memory_consolidation())
+            _run_background(self._background_memory_consolidation())
 
         self._emit_progress("understand_intent", "正在分析您的請求...")
 
@@ -340,7 +350,7 @@ class ManagerAgent:
                     "direct_response_text", "你好！請問有什麼我可以幫忙的？"
                 )
                 # ✅ 修復：direct_response 也要追蹤對話，確保閒聊也能 extract_facts
-                asyncio.create_task(
+                _run_background(
                     self._track_conversation(
                         user_message=query,
                         assistant_response=text,
@@ -1572,7 +1582,12 @@ class ManagerAgent:
                 response = await self.llm.ainvoke(messages)
             else:
                 response = await asyncio.to_thread(self.llm.invoke, messages)
-            return response.content
+            content = response.content
+            if len(content) >= CONTEXT_CHAR_BUDGET * 0.95:
+                logger.warning(
+                    f"[Manager] Response near context budget: {len(content)} chars (budget: {CONTEXT_CHAR_BUDGET})"
+                )
+            return content
         except Exception as e:
             raise RuntimeError(explain_llm_exception(e)) from e
 
@@ -1586,8 +1601,9 @@ class ManagerAgent:
 
         try:
             return json.loads(response)
-        except json.JSONDecodeError:
-            return {}
+        except json.JSONDecodeError as e:
+            logger.error(f"[Manager] Failed to parse JSON response: {e}")
+            raise ValueError(f"LLM returned invalid JSON: {e}") from e
 
     def _get_memory(self, session_id: str) -> ShortTermMemory:
         """獲取或創建短期記憶"""
@@ -1635,10 +1651,10 @@ class ManagerAgent:
 
         # ✅ nanoclaw extract_memory：每輪對話立即萃取結構化事實（背景執行）
         # 輕量操作，不需等到 consolidation threshold
-        asyncio.create_task(
+        _run_background(
             self._extract_facts_background(user_message, assistant_response, turn_index)
         )
-        asyncio.create_task(
+        _run_background(
             self._record_experience_background(
                 user_message, assistant_response, tools_used
             )
@@ -1654,7 +1670,7 @@ class ManagerAgent:
                 f"{unconsolidated} unconsolidated messages"
             )
             # 創建背景任務進行整合
-            self._consolidation_task = asyncio.create_task(
+            self._consolidation_task = _run_background(
                 self._background_memory_consolidation()
             )
 

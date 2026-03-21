@@ -53,4 +53,4 @@ class WatcherAgent:
 
         except Exception as e:
             logger.error(f"[Watcher] Critique failed: {e}")
-            return {"status": "PASS", "feedback": "Watcher failed, defaulting to PASS."}
+            return {"status": "FAIL", "feedback": f"Watcher failed: {e}"}

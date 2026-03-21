@@ -7,6 +7,7 @@ Supports multi-language prompts.
 
 from datetime import datetime
 from pathlib import Path
+from threading import Lock
 from typing import Dict, Optional
 
 import yaml
@@ -15,16 +16,20 @@ import yaml
 class PromptRegistry:
     _prompts: Dict[str, Dict] = {}
     _loaded: bool = False
+    _lock = Lock()
 
     @classmethod
     def load(cls, prompts_dir=None):
-        if prompts_dir is None:
-            prompts_dir = Path(__file__).parent / "prompts"
-        for yaml_file in Path(prompts_dir).glob("*.yaml"):
-            scope = yaml_file.stem
-            with open(yaml_file, "r", encoding="utf-8") as f:
-                cls._prompts[scope] = yaml.safe_load(f) or {}
-        cls._loaded = True
+        with cls._lock:
+            if cls._loaded:
+                return
+            if prompts_dir is None:
+                prompts_dir = Path(__file__).parent / "prompts"
+            for yaml_file in Path(prompts_dir).glob("*.yaml"):
+                scope = yaml_file.stem
+                with open(yaml_file, "r", encoding="utf-8") as f:
+                    cls._prompts[scope] = yaml.safe_load(f) or {}
+            cls._loaded = True
 
     @classmethod
     def get(cls, scope: str, key: str, language: Optional[str] = None) -> str:

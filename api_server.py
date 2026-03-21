@@ -28,23 +28,27 @@ sys.path.insert(0, project_root)
 # Load environment variables
 load_dotenv()
 
-# Configure Logging
-log_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+from config.logging_config import setup_json_logging
 
-# Cloud deployment: log to stdout only (Zeabur/K8s captures stdout)
-# File-based logging fills ephemeral storage and causes pod eviction
 app_log_level_name = os.getenv("APP_LOG_LEVEL", "WARNING").upper()
 app_log_level = getattr(logging, app_log_level_name, logging.WARNING)
 
-console_handler = logging.StreamHandler(sys.stdout)
-console_handler.setLevel(app_log_level)
-console_handler.setFormatter(log_formatter)
+use_json_logging = os.getenv("LOG_FORMAT", "text").lower() == "json"
 
-logging.basicConfig(
-    level=app_log_level,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[console_handler],
-)
+if use_json_logging:
+    setup_json_logging(app_log_level)
+else:
+    log_formatter = logging.Formatter(
+        "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    )
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(app_log_level)
+    console_handler.setFormatter(log_formatter)
+    logging.basicConfig(
+        level=app_log_level,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=[console_handler],
+    )
 
 
 # 靜音 Windows asyncio WinError 10054（客戶端斷線時的無害噪音）
@@ -470,15 +474,28 @@ app.include_router(tools_router)  # 工具偏好 API
 # --- 健康檢查端點（用於負載均衡和監控）---
 @app.get("/health")
 async def health_check():
-    """
-    健康檢查端點 - 用於負載均衡器確認服務存活
-    返回 200 表示服務正常運行
-    """
-    return {
-        "status": "healthy",
-        "service": "pi_crypto_insight",
-        "uptime_seconds": int(time.time() - SERVICE_START_TIME),
-    }
+    checks = {"app": True}
+
+    try:
+        from core.database import get_connection
+
+        conn = get_connection()
+        conn.execute("SELECT 1")
+        conn.close()
+        checks["database"] = True
+    except Exception:
+        checks["database"] = False
+
+    all_ok = all(checks.values())
+    return JSONResponse(
+        status_code=200 if all_ok else 503,
+        content={
+            "status": "healthy" if all_ok else "degraded",
+            "service": "pi_crypto_insight",
+            "uptime_seconds": int(time.time() - SERVICE_START_TIME),
+            "checks": checks,
+        },
+    )
 
 
 @app.get("/ready")

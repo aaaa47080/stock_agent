@@ -6,6 +6,8 @@ Instantiates ToolRegistry and registers tools with permission checks.
 """
 
 import asyncio
+import time
+from collections import OrderedDict
 from typing import Dict, Optional
 
 from langchain_core.messages import SystemMessage
@@ -166,9 +168,18 @@ def bootstrap(
     lang_llm = LanguageAwareLLM(llm_client, language)
 
     cache_key = _manager_cache_key(user_id, session_id)
-    existing = _manager_cache.get(cache_key)
+    existing_entry = _manager_cache.get(cache_key)
 
-    if existing is not None:
+    if existing_entry is not None:
+        existing, created_at = existing_entry
+        if time.time() - created_at >= CACHE_TTL_SECONDS:
+            del _manager_cache[cache_key]
+            existing_entry = None
+        else:
+            _manager_cache.move_to_end(cache_key)
+
+    if existing_entry is not None:
+        existing, _ = existing_entry
         existing.llm = lang_llm
         existing.user_tier = user_tier
         existing.user_id = user_id or "anonymous"
@@ -1028,12 +1039,19 @@ def bootstrap(
         user_id=user_id,
         session_id=session_id or "default",
     )
-    _manager_cache[cache_key] = manager
+    while len(_manager_cache) >= MAX_CACHE_SIZE:
+        _manager_cache.popitem(last=False)
+    _manager_cache[cache_key] = (manager, time.time())
     return manager
 
 
-# ── Manager Instance Cache ─────────────────────────────────────────────────────
-_manager_cache: Dict[str, ManagerAgent] = {}
+# ── Manager Instance Cache (LRU + TTL) ──────────────────────────────────────────
+_agent_class_cache: Dict[str, type] = {}
+
+MAX_CACHE_SIZE = 100
+CACHE_TTL_SECONDS = 3600
+
+_manager_cache: OrderedDict[str, tuple[ManagerAgent, float]] = OrderedDict()
 
 
 def _manager_cache_key(user_id: str, session_id: str = "default") -> str:
@@ -1041,31 +1059,55 @@ def _manager_cache_key(user_id: str, session_id: str = "default") -> str:
 
 
 def get_manager_instances(user_id: str) -> list[ManagerAgent]:
-    """獲取指定用戶的所有 ManagerAgent 實例。"""
     prefix = f"{user_id}:"
-    return [
-        manager for key, manager in _manager_cache.items() if key.startswith(prefix)
-    ]
-
-
-def get_manager_instance(user_id: str, session_id: str = None) -> ManagerAgent:
-    """獲取已緩存的 ManagerAgent 實例。未指定 session 時回傳最近建立的那個。"""
-    if session_id is not None:
-        return _manager_cache.get(_manager_cache_key(user_id, session_id))
-
-    prefix = f"{user_id}:"
-    for key in reversed(list(_manager_cache.keys())):
+    now = time.time()
+    result = []
+    expired_keys = []
+    for key, (manager, created_at) in _manager_cache.items():
+        if now - created_at >= CACHE_TTL_SECONDS:
+            expired_keys.append(key)
+            continue
         if key.startswith(prefix):
-            return _manager_cache[key]
+            result.append(manager)
+    for key in expired_keys:
+        del _manager_cache[key]
+    return result
+
+
+def get_manager_instance(
+    user_id: str, session_id: Optional[str] = None
+) -> Optional[ManagerAgent]:
+    if session_id is not None:
+        key = _manager_cache_key(user_id, session_id)
+        entry = _manager_cache.get(key)
+        if entry is None:
+            return None
+        manager, created_at = entry
+        if time.time() - created_at >= CACHE_TTL_SECONDS:
+            del _manager_cache[key]
+            return None
+        _manager_cache.move_to_end(key)
+        return manager
+
+    prefix = f"{user_id}:"
+    now = time.time()
+    for key in reversed(list(_manager_cache.keys())):
+        if not key.startswith(prefix):
+            continue
+        manager, created_at = _manager_cache[key]
+        if now - created_at >= CACHE_TTL_SECONDS:
+            del _manager_cache[key]
+            continue
+        _manager_cache.move_to_end(key)
+        return manager
     return None
 
 
-def invalidate_manager_cache(user_id: str, session_id: str = None) -> None:
-    """清除指定用戶的 Manager 緩存；可選擇只清單一 session。"""
+def invalidate_manager_cache(user_id: str, session_id: Optional[str] = None) -> None:
     if session_id is not None:
         _manager_cache.pop(_manager_cache_key(user_id, session_id), None)
         return
 
     prefix = f"{user_id}:"
-    for key in [key for key in _manager_cache.keys() if key.startswith(prefix)]:
+    for key in [k for k in _manager_cache.keys() if k.startswith(prefix)]:
         _manager_cache.pop(key, None)

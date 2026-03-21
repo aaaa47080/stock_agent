@@ -22,6 +22,7 @@ THRESHOLD = 2_000
 PREVIEW_LEN = 500
 REDIS_TTL = 3_600
 _KEY_PREFIX = "tr:"
+MAX_LOCAL_STORE_SIZE = 1000
 
 _local_store: dict[str, str] = {}
 _redis_client: Optional[Any] = None
@@ -134,6 +135,10 @@ def _store_sync(
             return uid
         except Exception as exc:
             logger.debug("[ToolCompactor] Redis store failed: %s", exc)
+    if len(_local_store) >= MAX_LOCAL_STORE_SIZE:
+        keys_to_remove = list(_local_store.keys())[: MAX_LOCAL_STORE_SIZE // 5]
+        for k in keys_to_remove:
+            del _local_store[k]
     _local_store[uid] = record
     return uid
 
