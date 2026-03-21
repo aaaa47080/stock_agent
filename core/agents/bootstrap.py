@@ -55,6 +55,7 @@ from .agents import (
 )
 from .manager import ManagerAgent
 from .prompt_registry import PromptRegistry
+from .token_tracker import TokenTracker
 from .tool_registry import ToolMetadata, ToolRegistry
 
 # Import @tool functions — crypto
@@ -166,6 +167,10 @@ def bootstrap(
     user_tier = normalize_membership_tier(user_tier)
     PromptRegistry.load()
     lang_llm = LanguageAwareLLM(llm_client, language)
+
+    # Shared TokenTracker — all agents report to the same tracker so the
+    # Manager can inspect total cost across the entire request lifecycle.
+    token_tracker = TokenTracker()
 
     cache_key = _manager_cache_key(user_id, session_id)
     existing_entry = _manager_cache.get(cache_key)
@@ -818,7 +823,13 @@ def bootstrap(
     # ))
 
     # New unified agents
-    crypto = CryptoAgent(lang_llm, tool_registry, user_tier=user_tier, user_id=user_id)
+    crypto = CryptoAgent(
+        lang_llm,
+        tool_registry,
+        user_tier=user_tier,
+        user_id=user_id,
+        token_tracker=token_tracker,
+    )
     agent_registry.register(
         crypto,
         AgentMetadata(
@@ -856,7 +867,13 @@ def bootstrap(
         ),
     )
 
-    tw = TWStockAgent(lang_llm, tool_registry, user_tier=user_tier, user_id=user_id)
+    tw = TWStockAgent(
+        lang_llm,
+        tool_registry,
+        user_tier=user_tier,
+        user_id=user_id,
+        token_tracker=token_tracker,
+    )
     agent_registry.register(
         tw,
         AgentMetadata(
@@ -888,7 +905,13 @@ def bootstrap(
         ),
     )
 
-    us = USStockAgent(lang_llm, tool_registry, user_tier=user_tier, user_id=user_id)
+    us = USStockAgent(
+        lang_llm,
+        tool_registry,
+        user_tier=user_tier,
+        user_id=user_id,
+        token_tracker=token_tracker,
+    )
     agent_registry.register(
         us,
         AgentMetadata(
@@ -919,7 +942,11 @@ def bootstrap(
 
     # ── Commodity Agent ──
     commodity = CommodityAgent(
-        lang_llm, tool_registry, user_tier=user_tier, user_id=user_id
+        lang_llm,
+        tool_registry,
+        user_tier=user_tier,
+        user_id=user_id,
+        token_tracker=token_tracker,
     )
     agent_registry.register(
         commodity,
@@ -951,7 +978,13 @@ def bootstrap(
     )
 
     # ── Forex Agent ──
-    forex = ForexAgent(lang_llm, tool_registry, user_tier=user_tier, user_id=user_id)
+    forex = ForexAgent(
+        lang_llm,
+        tool_registry,
+        user_tier=user_tier,
+        user_id=user_id,
+        token_tracker=token_tracker,
+    )
     agent_registry.register(
         forex,
         AgentMetadata(
@@ -980,7 +1013,11 @@ def bootstrap(
 
     # ── Economic Agent ──
     economic = EconomicAgent(
-        lang_llm, tool_registry, user_tier=user_tier, user_id=user_id
+        lang_llm,
+        tool_registry,
+        user_tier=user_tier,
+        user_id=user_id,
+        token_tracker=token_tracker,
     )
     agent_registry.register(
         economic,
@@ -1007,7 +1044,13 @@ def bootstrap(
         ),
     )
 
-    chat = ChatAgent(lang_llm, tool_registry, user_tier=user_tier, user_id=user_id)
+    chat = ChatAgent(
+        lang_llm,
+        tool_registry,
+        user_tier=user_tier,
+        user_id=user_id,
+        token_tracker=token_tracker,
+    )
     agent_registry.register(
         chat,
         AgentMetadata(
@@ -1039,6 +1082,8 @@ def bootstrap(
         user_id=user_id,
         session_id=session_id or "default",
     )
+    # Share the same TokenTracker so manager sees combined cost
+    manager._token_tracker = token_tracker
     while len(_manager_cache) >= MAX_CACHE_SIZE:
         _manager_cache.popitem(last=False)
     _manager_cache[cache_key] = (manager, time.time())

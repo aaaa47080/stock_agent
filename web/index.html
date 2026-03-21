@@ -4,7 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <!-- CSP: frame-ancestors is set via HTTP header in api_server.py -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://sdk.minepi.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https: wss:; base-uri 'self'; form-action 'self';">
+    <!-- Production: Use compiled CSS with local Tailwind build (see build scripts) -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://sdk.minepi.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https: wss:; base-uri 'self'; form-action 'self';">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <!-- SEO Meta Tags -->
@@ -33,92 +34,8 @@
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="/static/img/title_icon.png">
 
-    <!-- Core Libraries -->
-    <script>
-        (function () {
-            const originalWarn = console.warn;
-            window.__restoreTailwindWarn = function () {
-                console.warn = originalWarn;
-            };
-            console.warn = function (...args) {
-                const firstArg = args[0];
-                if (
-                    typeof firstArg === 'string' &&
-                    firstArg.includes('cdn.tailwindcss.com should not be used in production')
-                ) {
-                    return;
-                }
-                return originalWarn.apply(this, args);
-            };
-        })();
-    </script>
-    <script src="https://cdn.tailwindcss.com" onload="window.__restoreTailwindWarn && window.__restoreTailwindWarn()" onerror="window.__restoreTailwindWarn && window.__restoreTailwindWarn()"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        // Pi.ai Inspired Warm Dark Palette
-                        background: '#1a1a1c',     // Deep Warm Charcoal
-                        surface: '#252529',        // Lighter Warm Charcoal
-                        surfaceHighlight: '#323236',
-                        primary: '#d4b693',        // Muted Gold / Sand
-                        secondary: '#e4e4e7',      // Soft White
-                        accent: '#c084fc',         // Soft Purple
-                        success: '#86efac',        // Pastel Green
-                        danger: '#fda4af',         // Pastel Red
-                        textMain: '#f4f4f5',
-                        textMuted: '#b8b8bc',    // Improved contrast (4.6:1) for WCAG AA
-                    },
-                    fontFamily: {
-                        serif: ['Lora', 'serif'],
-                        sans: ['Mulish', 'sans-serif'],
-                        mono: ['JetBrains Mono', 'monospace'],
-                    },
-                    borderRadius: {
-                        '4xl': '2rem',
-                    },
-                    animation: {
-                        'spin-slow': 'spin 20s linear infinite',
-                    }
-                }
-            }
-        }
-    </script>
-    <script src="https://unpkg.com/lucide@0.452.0/dist/umd/lucide.min.js" integrity="sha384-LSySZmn0vvhTQgRk/a4hpHC8UqzwD4/KwvbBryuft3BxzKIjaCd099VvkzXYA9dC" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/i18next@23.7.6/i18next.min.js" crossorigin="anonymous"></script>
-    <script>
-        (function () {
-            const isLocalhost =
-                window.location.hostname === 'localhost' ||
-                window.location.hostname === '127.0.0.1' ||
-                window.location.hostname === '::1';
-            const shouldLoadPiSdk = window.location.protocol === 'https:' && !isLocalhost;
-
-            if (!shouldLoadPiSdk) {
-                window.APP_CONFIG?.DEBUG_MODE && console.log('[Pi SDK] Skipped on non-HTTPS or localhost environment');
-                return;
-            }
-
-            const script = document.createElement('script');
-            script.src = 'https://sdk.minepi.com/pi-sdk.js';
-            script.async = false;
-            document.head.appendChild(script);
-        })();
-    </script>
-    <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js" integrity="sha384-rcCMiCptH4kTlEbg0euOTUKWe72TESbrjElatnG+9BfbmUIV268UK/Pro5biJdGm" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" integrity="sha384-9nhczxUqK87bcKHh20fSQcTGD4qq5GhayNYSYWqwBkINBhOfQLg/P5HG5lF1urn4" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js" integrity="sha384-zPzbVRXfR492Sd5D+HydTYCxxgHAfgVO8KERbLlpeH5unsmbAEXrscGUUqLZG9BM" crossorigin="anonymous"></script>
-    <script src="/static/config.js"></script>
-    <script src="/static/js/logger.js"></script>
-    <script src="/static/js/premium.js?v=40"></script>
-    <script src="/static/js/security-utils.js"></script>
-    <!-- Fonts -->
-    <link
-        href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Mulish:wght@300;400;600;800&family=JetBrains+Mono:wght@400;500&display=swap"
-        rel="stylesheet">
+    <!-- Tailwind CSS (compiled from source) -->
+    <link rel="stylesheet" href="/static/css/main.css?v=1">
 
     <!-- Custom Styles -->
     <link rel="stylesheet" href="/static/styles.css?v=4">

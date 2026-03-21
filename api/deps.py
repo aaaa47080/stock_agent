@@ -33,6 +33,7 @@ class CurrentUser(TypedDict, total=False):
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
+REFRESH_TOKEN_EXPIRE_DAYS = 30  # 30 days for refresh tokens
 
 # Security check: require fallback secret unless key rotation is explicitly enabled.
 if not SECRET_KEY and os.getenv("USE_KEY_ROTATION", "false").lower() != "true":
@@ -78,6 +79,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     New tokens are signed with the current primary key.
     """
     to_encode = data.copy()
+    to_encode["type"] = "access"
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
@@ -92,6 +94,27 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
         key_manager = _get_key_manager()
         key = key_manager.get_current_key()
         # Include key ID in token for tracking
+        to_encode["_kid"] = key_manager.get_primary_key_id()
+        encoded_jwt = jwt.encode(to_encode, key, algorithm=ALGORITHM)
+    else:
+        encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+    return encoded_jwt
+
+
+def create_refresh_token(data: dict) -> str:
+    """
+    Create a new JWT refresh token with longer expiration.
+    Refresh tokens are used to obtain new access tokens without re-authentication.
+    """
+    to_encode = data.copy()
+    to_encode["type"] = "refresh"
+    expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    to_encode.update({"exp": expire})
+
+    if _use_key_rotation():
+        key_manager = _get_key_manager()
+        key = key_manager.get_current_key()
         to_encode["_kid"] = key_manager.get_primary_key_id()
         encoded_jwt = jwt.encode(to_encode, key, algorithm=ALGORITHM)
     else:

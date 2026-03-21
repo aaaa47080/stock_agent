@@ -2,10 +2,10 @@ import os
 from typing import Optional
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
-from api.deps import create_access_token, get_current_user
+from api.deps import create_access_token, create_refresh_token, get_current_user
 from api.middleware.rate_limit import limiter
 from api.models import WatchlistRequest
 from api.pi_verification import verify_pi_access_token
@@ -115,6 +115,9 @@ async def dev_login(request: Request, body: DevLoginRequest = None):
     access_token = create_access_token(
         data={"sub": test_user_id, "username": test_username}
     )
+    refresh_token = create_refresh_token(
+        data={"sub": test_user_id, "username": test_username}
+    )
 
     try:
         existing_user = await run_sync(get_user_by_id, test_user_id)
@@ -133,7 +136,9 @@ async def dev_login(request: Request, body: DevLoginRequest = None):
     return {
         "success": True,
         "access_token": access_token,
+        "refresh_token": refresh_token,
         "token_type": "bearer",
+        "expires_in": 86400,  # 24 hours in seconds
         "user": {
             "uid": test_user_id,
             "username": test_username,
@@ -193,11 +198,16 @@ async def sync_pi_user(request: Request, body: PiUserSyncRequest):
         access_token = create_access_token(
             data={"sub": result["user_id"], "username": result["username"]}
         )
+        refresh_token = create_refresh_token(
+            data={"sub": result["user_id"], "username": result["username"]}
+        )
 
         return {
             "success": True,
             "access_token": access_token,
+            "refresh_token": refresh_token,
             "token_type": "bearer",
+            "expires_in": 86400,  # 24 hours in seconds
             "user": {
                 "user_id": result["user_id"],
                 "username": result["username"],
@@ -228,6 +238,59 @@ async def get_current_user_profile(current_user: dict = Depends(get_current_user
             "auth_method": current_user.get("auth_method"),
         },
     }
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+
+@router.post("/api/user/refresh")
+@limiter.limit("10/minute")
+async def refresh_access_token(request: Request, body: RefreshTokenRequest):
+    """
+    使用 refresh token 獲取新的 access token
+    """
+    from api.deps import verify_token
+
+    try:
+        payload = verify_token(body.refresh_token)
+        if payload.get("type") != "refresh":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token",
+            )
+
+        user_id = payload.get("sub")
+        username = payload.get("username")
+
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token payload",
+            )
+
+        new_access_token = create_access_token(
+            data={"sub": user_id, "username": username}
+        )
+        new_refresh_token = create_refresh_token(
+            data={"sub": user_id, "username": username}
+        )
+
+        return {
+            "success": True,
+            "access_token": new_access_token,
+            "refresh_token": new_refresh_token,
+            "token_type": "bearer",
+            "expires_in": 86400,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Token refresh failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token refresh failed",
+        )
 
 
 # --- Pi Payment Handling Endpoints ---

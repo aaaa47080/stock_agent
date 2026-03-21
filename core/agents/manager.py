@@ -13,11 +13,10 @@ Manager Agent — 多 Agent 協調中心
 from __future__ import annotations
 
 import asyncio
-import json
 import re
 import time
 import unicodedata
-from typing import Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
@@ -30,35 +29,16 @@ from core.agents.context_budget import (
     format_compact_state,
     history_exceeds_budget,
 )
+from core.agents.prompt_guard import (
+    parse_and_validate_json_response,
+    sanitize_user_input,
+)
 from core.config import TEST_MODE
 from core.database.experiences import ExperienceStore
 
 _experience_store = ExperienceStore()
 
 _background_tasks: set = set()
-
-# ---------------------------------------------------------------------------
-# Prompt Injection 防護
-# ---------------------------------------------------------------------------
-_INJECTION_PATTERNS = [
-    re.compile(r"忽略.*(?:規則|指令|instruction|rule)", re.IGNORECASE),
-    re.compile(r"ignore.*(?:previous|all|above).*instruction", re.IGNORECASE),
-    re.compile(r"系統提示|system\s*prompt", re.IGNORECASE),
-    re.compile(
-        r"你(?:現在)?是(?:一個|一名)?(?:無限制|不受限|openai|gpt)", re.IGNORECASE
-    ),
-    re.compile(r"```json\s*\n\s*\"status\":\s*\"direct_response\"", re.IGNORECASE),
-    re.compile(r"respond\s+as\s+if", re.IGNORECASE),
-    re.compile(r"pretend\s+(?:you|to)", re.IGNORECASE),
-]
-
-
-def _sanitize_user_input(query: str) -> str:
-    """清洗用戶輸入，防止 prompt injection。"""
-    sanitized = query
-    for pattern in _INJECTION_PATTERNS:
-        sanitized = pattern.sub("[FILTERED]", sanitized)
-    return sanitized
 
 
 def _run_background(coro):
@@ -98,6 +78,15 @@ from .prompt_registry import PromptRegistry
 from .router import AgentRouter
 from .tool_access_resolver import ToolAccessResolver
 from .tool_registry import ToolRegistry
+
+
+def _extract_model_name_for_manager(llm: Any) -> str:
+    """Extract model name from a (possibly LanguageAwareLLM-wrapped) LLM."""
+    inner = getattr(llm, "_llm", llm)
+    return (
+        getattr(inner, "model_name", None) or getattr(inner, "model", None) or "unknown"
+    )
+
 
 # 模組級共用 checkpointer
 _checkpointer = MemorySaver()
@@ -297,7 +286,7 @@ class ManagerAgent:
     async def _understand_intent_node(self, state: ManagerState) -> Dict:
         """意圖理解節點 - 統一的規劃入口"""
         query = state["query"]
-        query = _sanitize_user_input(
+        query = sanitize_user_input(
             query
         )  # prompt injection 防護（不修改 state 原始 query）
         history = state.get("history", "")
@@ -369,8 +358,10 @@ class ManagerAgent:
         )
 
         try:
-            response = await self._llm_invoke(prompt)
-            intent_data = self._parse_json_response(response)
+            response = await self._llm_invoke(prompt, task_type="simple_qa")
+            intent_data = self._parse_json_response(
+                response, context="intent", fallback_query=query
+            )
 
             status = intent_data.get("status", "ready")
 
@@ -758,8 +749,8 @@ class ManagerAgent:
         )
 
         try:
-            response = await self._llm_invoke(prompt)
-            reflection_data = self._parse_json_response(response)
+            response = await self._llm_invoke(prompt, task_type="simple_qa")
+            reflection_data = self._parse_json_response(response, context="reflection")
 
             if not reflection_data:
                 return {}
@@ -878,7 +869,7 @@ class ManagerAgent:
                 memory_section=memory_section,
             )
             try:
-                response = await self._llm_invoke(prompt)
+                response = await self._llm_invoke(prompt, task_type="deep_analysis")
                 await self._track_conversation(
                     user_message=current_query,
                     assistant_response=response,
@@ -941,7 +932,7 @@ class ManagerAgent:
         )
 
         try:
-            response = await self._llm_invoke(prompt)
+            response = await self._llm_invoke(prompt, task_type="deep_analysis")
             response = self._finalize_mode_response(
                 response=response,
                 analysis_mode=analysis_mode,
@@ -1645,14 +1636,24 @@ class ManagerAgent:
 
         return normalized
 
-    async def _llm_invoke(self, prompt: str) -> str:
-        """調用 LLM"""
+    async def _llm_invoke(self, prompt: str, task_type: Optional[str] = None) -> str:
+        """調用 LLM，支援根據 task_type 路由到不同模型。
+
+        Args:
+            prompt: The prompt to send to the LLM.
+            task_type: Optional task type for model routing (e.g. "simple_qa",
+                "deep_analysis"). When provided, ModelRouter selects the
+                appropriate model. Falls back to self.llm when routing fails.
+        """
+        # Resolve the LLM to use based on task_type
+        llm = self._get_routed_llm(task_type) if task_type else self.llm
+
         messages = [HumanMessage(content=prompt)]
         try:
-            if hasattr(self.llm, "ainvoke"):
-                response = await self.llm.ainvoke(messages)
+            if hasattr(llm, "ainvoke"):
+                response = await llm.ainvoke(messages)
             else:
-                response = await asyncio.to_thread(self.llm.invoke, messages)
+                response = await asyncio.to_thread(llm.invoke, messages)
             content = response.content
             if len(content) >= CONTEXT_CHAR_BUDGET * 0.95:
                 logger.warning(
@@ -1664,9 +1665,10 @@ class ManagerAgent:
                 from .token_tracker import TokenUsage
 
                 usage = response.usage_metadata
+                model_name = _extract_model_name_for_manager(llm)
                 self._token_tracker.record(
                     TokenUsage(
-                        model=getattr(self.llm, "model_name", "unknown") or "unknown",
+                        model=model_name,
                         prompt_tokens=usage.get("input_tokens", 0),
                         completion_tokens=usage.get("output_tokens", 0),
                         total_tokens=usage.get("total_tokens", 0),
@@ -1681,19 +1683,105 @@ class ManagerAgent:
         except Exception as e:
             raise RuntimeError(explain_llm_exception(e)) from e
 
-    def _parse_json_response(self, response: str) -> dict:
-        """解析 JSON 回應"""
-        import re
+    def _get_routed_llm(self, task_type: str):
+        """Return an LLM instance appropriate for the given task type.
 
-        json_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", response)
-        if json_match:
-            response = json_match.group(1)
+        Uses ModelRouter to select the model name. If the selected model
+        differs from the current underlying model, creates a new LLM instance
+        with the same provider configuration. Results are cached per model name
+        to avoid repeated instantiation.
+        """
+        from .model_router import ModelRouter
+
+        target_model = ModelRouter.get_model(task_type)
+
+        # Resolve the current underlying model name
+        inner_llm = getattr(self.llm, "_llm", self.llm)
+        current_model = (
+            getattr(inner_llm, "model_name", None)
+            or getattr(inner_llm, "model", None)
+            or ""
+        )
+
+        if target_model == current_model:
+            return self.llm
+
+        # Need a different model — create or retrieve cached instance
+        if not hasattr(self, "_routed_llm_cache"):
+            self._routed_llm_cache: Dict[str, Any] = {}
+
+        cached = self._routed_llm_cache.get(target_model)
+        if cached is not None:
+            return cached
 
         try:
-            return json.loads(response)
-        except json.JSONDecodeError as e:
-            logger.error(f"[Manager] Failed to parse JSON response: {e}")
-            raise ValueError(f"LLM returned invalid JSON: {e}") from e
+            routed = self._create_model_instance(target_model, inner_llm)
+            # Wrap with the same LanguageAwareLLM to preserve language injection
+            lang_msg = getattr(self.llm, "_lang_msg", None)
+            if lang_msg:
+                from .bootstrap import LanguageAwareLLM
+
+                routed = LanguageAwareLLM(routed)
+                routed._lang_msg = lang_msg
+
+            self._routed_llm_cache[target_model] = routed
+            logger.info(
+                f"[Manager] Model routed: task_type={task_type} → {target_model}"
+            )
+            return routed
+        except Exception as e:
+            logger.warning(
+                f"[Manager] Model routing failed for {target_model}: {e}, "
+                f"falling back to default model"
+            )
+            return self.llm
+
+    @staticmethod
+    def _create_model_instance(model_name: str, reference_llm: Any) -> Any:
+        """Create a new LLM instance with *model_name* using config from *reference_llm*.
+
+        This infers the provider and credentials from the existing LLM so the
+        caller does not need to know about provider-specific setup.
+        """
+        from langchain.chat_models import init_chat_model
+
+        kwargs: dict = {"model": model_name, "temperature": 0.5}
+
+        # Infer provider — prefer model_provider attribute
+        provider = getattr(reference_llm, "model_provider", None)
+        if provider:
+            kwargs["model_provider"] = provider
+        else:
+            # Fallback: infer from class name
+            cls_name = type(reference_llm).__name__.lower()
+            if "gemini" in cls_name or "google" in cls_name:
+                kwargs["model_provider"] = "google_genai"
+            else:
+                kwargs["model_provider"] = "openai"
+
+        # Copy credentials
+        for attr in ("openai_api_key", "api_key", "google_api_key"):
+            key = getattr(reference_llm, attr, None)
+            if key:
+                kwargs[attr] = key
+
+        return init_chat_model(**kwargs)
+
+    def _parse_json_response(
+        self,
+        response: str,
+        context: str = "intent",
+        fallback_query: str = "",
+    ) -> dict:
+        """
+        解析 JSON 回應並進行 schema 驗證。
+
+        委派給 prompt_guard.parse_and_validate_json_response，
+        確保返回的 dict 包含必要欄位，失敗時回傳安全預設值。
+        """
+        return parse_and_validate_json_response(
+            response, context=context, fallback_query=fallback_query
+        )
 
     def _get_memory(self, session_id: str) -> ShortTermMemory:
         """獲取或創建短期記憶"""

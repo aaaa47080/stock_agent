@@ -27,6 +27,15 @@ _TIER_LEVELS = {"free": 0, "premium": 1}
 _ANALYSIS_POLICY = AnalysisPolicyResolver()
 
 
+def _extract_model_name(llm: Any) -> str:
+    """Extract model name from a LangChain LLM instance for token tracking."""
+    # LanguageAwareLLM wraps the real LLM in _llm
+    inner = getattr(llm, "_llm", llm)
+    return (
+        getattr(inner, "model_name", None) or getattr(inner, "model", None) or "unknown"
+    )
+
+
 class BaseReActAgent:
     """
     統一的 ReAct Agent 基類。
@@ -50,17 +59,37 @@ class BaseReActAgent:
         tool_registry,
         user_tier: str = "free",
         user_id: Optional[str] = None,
+        token_tracker=None,
     ):
         self.llm = llm_client
         self.tool_registry = tool_registry
         self.user_tier = normalize_membership_tier(user_tier)
         self.user_id = user_id
+        self._token_tracker = token_tracker
 
     @property
     @abstractmethod
     def name(self) -> str:
         """Agent 名稱，用於 tool_registry 和 logging。"""
         pass
+
+    def _track_llm_usage(self, response: Any) -> None:
+        """Record token usage from an LLM response if tracker is available."""
+        if self._token_tracker is None:
+            return
+        if not hasattr(response, "usage_metadata") or not response.usage_metadata:
+            return
+        from .token_tracker import TokenUsage
+
+        usage = response.usage_metadata
+        self._token_tracker.record(
+            TokenUsage(
+                model=_extract_model_name(self.llm),
+                prompt_tokens=usage.get("input_tokens", 0),
+                completion_tokens=usage.get("output_tokens", 0),
+                total_tokens=usage.get("total_tokens", 0),
+            )
+        )
 
     def execute(self, task: SubTask) -> AgentResult:
         """
@@ -436,6 +465,7 @@ class BaseReActAgent:
                 ),
             ]
             response = self.llm.invoke(messages)
+            self._track_llm_usage(response)
             reply = response.content
 
         return AgentResult(
@@ -454,6 +484,7 @@ class BaseReActAgent:
                 HumanMessage(content=task.description),
             ]
             response = self.llm.invoke(messages)
+            self._track_llm_usage(response)
             reply = response.content
         except Exception as e:
             logger.error(f"[{self.name}] LLM invocation failed: {e}")

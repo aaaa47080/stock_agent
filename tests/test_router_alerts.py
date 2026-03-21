@@ -3,20 +3,30 @@
 from unittest.mock import patch
 
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 
 @pytest.fixture
 def client():
     """Create test client with mocked auth."""
-    from api_server import app
+    from api.deps import get_current_user
+    from api.routers import alerts
 
-    with patch(
-        "api.deps.get_current_user",
-        return_value={"user_id": "test-user-001", "username": "TestUser"},
-    ):
-        with TestClient(app) as c:
-            yield c
+    app = FastAPI()
+    app.include_router(alerts.router, prefix="/api")
+
+    @app.get("/")
+    async def root():
+        return {"status": "ok"}
+
+    app.dependency_overrides[get_current_user] = lambda: {
+        "user_id": "test-user-001",
+        "username": "TestUser",
+    }
+
+    with TestClient(app) as c:
+        yield c
 
 
 class TestCreateAlert:

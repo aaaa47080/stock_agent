@@ -60,3 +60,9 @@ config/api_key_encryption.json
 
 # JWT Keys (敏感)
 config/keys/
+
+# Windows artifacts
+nul
+
+# OpenCode temp
+okxstock_agenttemp_context_plugin/
