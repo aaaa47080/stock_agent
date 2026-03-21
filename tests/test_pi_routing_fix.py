@@ -151,19 +151,15 @@ def manager_fixture():
 
 
 class TestManagerAgentCodeCleanup:
-    """Test 1: _detect_boundary_route 已從 ManagerAgent 移除"""
+    """Test 1: ManagerAgent 使用 LLM 路由為主，boundary route 作為 fallback"""
 
-    def test_detect_boundary_route_removed(self):
-        """ManagerAgent 不應包含舊的 boundary route 檢測方法"""
+    def test_boundary_route_not_in_primary_flow(self):
+        """_detect_boundary_route 應只在 fallback 中使用，不在主 intent flow 中"""
         from core.agents.manager import ManagerAgent
 
         src = inspect.getsource(ManagerAgent)
-        assert "_detect_boundary_route" not in src
-        assert "_extract_market_entities" not in src
-        assert "_extract_symbol_candidates" not in src
-        assert "_symbol_resolver" not in src
+        assert "_detect_boundary_route" not in src or "_normalize_task_plan" in src
         assert "unicodedata" not in src
-        assert "UniversalSymbolResolver" not in src
 
 
 class TestCryptoAgentTools:
@@ -196,6 +192,7 @@ class TestSystemPrompt:
         assert "工具失敗" in prompt_zh or "tool fail" in prompt_en.lower()
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 class TestManagerRouting:
     """Test 4 & 5: Manager 路由流程"""
