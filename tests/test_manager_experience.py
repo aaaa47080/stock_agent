@@ -3,8 +3,6 @@
 import asyncio
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from core.agents.manager import ManagerAgent
 
 

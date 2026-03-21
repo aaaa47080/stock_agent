@@ -68,8 +68,8 @@ class TestCalculateKeyLevels:
             }
         )
         result = calculate_key_levels(df, period=10)
-        assert "30天最高價" in result
-        assert "30天最低價" in result
+        assert "10天最高價" in result
+        assert "10天最低價" in result
         assert "支撐位" in result
         assert "壓力位" in result
         assert "20日最高價" in result
@@ -174,9 +174,9 @@ class TestCalculatePriceInfo:
 
         df = pd.DataFrame(
             {
-                "Open": [100] * 10,
-                "High": [110] * 10,
-                "Low": [90] * 10,
+                "Open": [100] * 8,
+                "High": [110] * 8,
+                "Low": [90] * 8,
                 "Close": [100, 100, 100, 100, 100, 100, 100, 105],
                 "Volume": [1000] * 8,
             }
