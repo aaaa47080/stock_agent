@@ -22,14 +22,18 @@ class TestSanitizeUrlPresence:
 
     def test_has_sanitize_url_function(self):
         content = _read_js_file(self.SANITIZE_URL_FILE)
-        assert "sanitizeUrl" in content, f"{self.SANITIZE_URL_FILE} missing sanitizeUrl helper"
+        assert "sanitizeUrl" in content, (
+            f"{self.SANITIZE_URL_FILE} missing sanitizeUrl helper"
+        )
 
     def test_sanitize_url_blocks_javascript_protocol(self):
         content = _read_js_file(self.SANITIZE_URL_FILE)
         match = re.search(
             r"function sanitizeUrl\s*\((\w+)\)\s*\{([^}]+)\}", content, re.DOTALL
         )
-        assert match is not None, f"{self.SANITIZE_URL_FILE}: sanitizeUrl function not found"
+        assert match is not None, (
+            f"{self.SANITIZE_URL_FILE}: sanitizeUrl function not found"
+        )
         body = match.group(2)
         assert "javascript:" in body.lower(), (
             f"{self.SANITIZE_URL_FILE}: sanitizeUrl does not check for javascript: protocol"
@@ -40,7 +44,9 @@ class TestSanitizeUrlPresence:
         match = re.search(
             r"function sanitizeUrl\s*\((\w+)\)\s*\{([^}]+)\}", content, re.DOTALL
         )
-        assert match is not None, f"{self.SANITIZE_URL_FILE}: sanitizeUrl function not found"
+        assert match is not None, (
+            f"{self.SANITIZE_URL_FILE}: sanitizeUrl function not found"
+        )
         body = match.group(2)
         assert "data:" in body.lower(), (
             f"{self.SANITIZE_URL_FILE}: sanitizeUrl does not check for data: protocol"
