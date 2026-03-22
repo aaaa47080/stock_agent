@@ -57,8 +57,17 @@ jobs:
 
       - name: Smoke test - run container and verify endpoints
         run: |
-          docker run --rm -d --name smoke -p 8080:8080 cryptomind:${{ github.sha }}
-          sleep 15
+          docker run --rm -d --name smoke -p 8080:8080 \
+            -e DATABASE_URL=postgresql://test:test@localhost:5432/test \
+            -e REDIS_URL=memory:// \
+            -e SECRET_KEY=test-secret \
+            -e JWT_SECRET_KEY=test-jwt-secret-1234567890 \
+            -e PI_API_KEY=test \
+            -e PI_WALLET_PRIVATE_SEED=test \
+            -e TEST_MODE=true \
+            -e TEST_MODE_CONFIRMATION=I_UNDERSTAND_THE_RISKS \
+            cryptomind:${{ github.sha }}
+          sleep 20
           echo "1. Health check..."
           curl -sf http://localhost:8080/health || { echo "FAIL: health"; docker stop smoke; exit 1; }
           
