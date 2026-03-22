@@ -60,7 +60,7 @@ jobs:
           print('OK: Lucide CDN pinned at v0.577.0')
           "
 
-      - name: Smoke test — run container and verify endpoints
+      - name: Smoke test - run container and verify endpoints
         run: |
           docker run --rm -d --name smoke -p 8080:8080 cryptomind:${{ github.sha }}
           sleep 15
