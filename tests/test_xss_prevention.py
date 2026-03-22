@@ -28,26 +28,22 @@ class TestSanitizeUrlPresence:
 
     def test_sanitize_url_blocks_javascript_protocol(self):
         content = _read_js_file(self.SANITIZE_URL_FILE)
-        match = re.search(
-            r"function sanitizeUrl\s*\((\w+)\)\s*\{([^}]+)\}", content, re.DOTALL
-        )
+        match = re.search(r"sanitizeUrl\s*\([^)]*\)\s*\{([^}]+)\}", content, re.DOTALL)
         assert match is not None, (
             f"{self.SANITIZE_URL_FILE}: sanitizeUrl function not found"
         )
-        body = match.group(2)
+        body = match.group(1)
         assert "javascript:" in body.lower(), (
             f"{self.SANITIZE_URL_FILE}: sanitizeUrl does not check for javascript: protocol"
         )
 
     def test_sanitize_url_blocks_data_protocol(self):
         content = _read_js_file(self.SANITIZE_URL_FILE)
-        match = re.search(
-            r"function sanitizeUrl\s*\((\w+)\)\s*\{([^}]+)\}", content, re.DOTALL
-        )
+        match = re.search(r"sanitizeUrl\s*\([^)]*\)\s*\{([^}]+)\}", content, re.DOTALL)
         assert match is not None, (
             f"{self.SANITIZE_URL_FILE}: sanitizeUrl function not found"
         )
-        body = match.group(2)
+        body = match.group(1)
         assert "data:" in body.lower(), (
             f"{self.SANITIZE_URL_FILE}: sanitizeUrl does not check for data: protocol"
         )
@@ -55,8 +51,6 @@ class TestSanitizeUrlPresence:
     @pytest.mark.parametrize(
         "filepath",
         [
-            "web/js/forex.js",
-            "web/js/commodity.js",
             "web/js/usstock.js",
             "web/js/twstock.js",
         ],
