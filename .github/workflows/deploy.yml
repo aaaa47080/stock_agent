@@ -8,6 +8,7 @@ on:
 permissions:
   contents: write
   actions: write
+  workflows: write
 
 concurrency:
   group: deploy
@@ -59,65 +60,55 @@ jobs:
           print('OK: Lucide CDN pinned at v0.577.0')
           "
 
-      - name: Tag as latest
-        run: docker tag cryptomind:${{ github.sha }} cryptomind:latest
-
-  smoke-test:
-    runs-on: ubuntu-latest
-    needs: [build]
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Run smoke test script
-        env:
-          API_URL: https://cryptomind.app
+      - name: Smoke test — run container and verify endpoints
         run: |
-          echo "=== Smoke Test ==="
-          
+          docker run --rm -d --name smoke -p 8080:8080 cryptomind:${{ github.sha }}
+          sleep 15
           echo "1. Health check..."
-          curl -sf "$API_URL/health" | head -1 || { echo "FAIL: health"; exit 1; }
+          curl -sf http://localhost:8080/health || { echo "FAIL: health"; docker stop smoke; exit 1; }
           
-          echo "2. Raw JS should be gone..."
-          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$API_URL/static/js/main.js")
-          if [ "$STATUS" != "200" ] && [ "$STATUS" != "404" ]; then
-            echo "FAIL: static assets ($STATUS)"
-            exit 1
-          fi
-          
-          echo "3. CSS loaded..."
-          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$API_URL/static/css/tailwind-built.css")
+          echo "2. Index page loads..."
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:8080/)
           if [ "$STATUS" != "200" ]; then
-            echo "FAIL: tailwind CSS ($STATUS)"
+            echo "FAIL: index ($STATUS)"
+            docker stop smoke
             exit 1
           fi
           
-          echo "4. Vite bundle accessible..."
-          INDEX_HTML=$(curl -sf "$API_URL/")
+          echo "3. Vite bundle served..."
+          INDEX_HTML=$(curl -sf http://localhost:8080/)
           BUNDLE=$(echo "$INDEX_HTML" | sed -n 's|.*\/static\/assets\/index-[a-zA-Z0-9]*\.js.*|\0|p' | head -1 | sed 's|^/static||')
           if [ -z "$BUNDLE" ]; then
-            echo "FAIL: no Vite bundle found in index.html"
+            echo "FAIL: no Vite bundle in index.html"
+            docker stop smoke
             exit 1
           fi
-          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$API_URL/static$BUNDLE")
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "http://localhost:8080/static$BUNDLE")
           if [ "$STATUS" != "200" ]; then
-            echo "FAIL: Vite bundle $BUNDLE returned $STATUS"
+            echo "FAIL: bundle $BUNDLE → $STATUS"
+            docker stop smoke
             exit 1
           fi
           echo "  OK: $BUNDLE ($STATUS)"
           
-          echo "5. Index page loads..."
-          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$API_URL/")
+          echo "4. CSS loaded..."
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:8080/static/css/tailwind-built.css)
           if [ "$STATUS" != "200" ]; then
-            echo "FAIL: index page ($STATUS)"
+            echo "FAIL: CSS ($STATUS)"
+            docker stop smoke
             exit 1
           fi
           
+          docker stop smoke
           echo "=== All smoke tests passed ==="
-        timeout-minutes: 5
+        timeout-minutes: 2
+
+      - name: Tag as latest
+        run: docker tag cryptomind:${{ github.sha }} cryptomind:latest
 
   auto-rollback:
     runs-on: ubuntu-latest
-    needs: [build, smoke-test]
+    needs: [build]
     if: failure()
     steps:
       - uses: actions/checkout@v5
