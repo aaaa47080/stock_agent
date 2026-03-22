@@ -16,39 +16,34 @@ def _read_js_file(filepath: str) -> str:
 
 
 class TestSanitizeUrlPresence:
-    """Verify sanitizeUrl() helper exists in files that use href interpolation."""
+    """Verify sanitizeUrl() helper exists and blocks dangerous protocols."""
 
-    @pytest.mark.parametrize(
-        "filepath",
-        [
-            "web/js/forex.js",
-            "web/js/commodity.js",
-            "web/js/usstock.js",
-            "web/js/twstock.js",
-        ],
-    )
-    def test_has_sanitize_url_function(self, filepath):
-        content = _read_js_file(filepath)
-        assert "sanitizeUrl" in content, f"{filepath} missing sanitizeUrl helper"
+    SANITIZE_URL_FILE = "web/js/utils.js"
 
-    @pytest.mark.parametrize(
-        "filepath",
-        [
-            "web/js/forex.js",
-            "web/js/commodity.js",
-            "web/js/usstock.js",
-            "web/js/twstock.js",
-        ],
-    )
-    def test_sanitize_url_blocks_javascript_protocol(self, filepath):
-        content = _read_js_file(filepath)
+    def test_has_sanitize_url_function(self):
+        content = _read_js_file(self.SANITIZE_URL_FILE)
+        assert "sanitizeUrl" in content, f"{self.SANITIZE_URL_FILE} missing sanitizeUrl helper"
+
+    def test_sanitize_url_blocks_javascript_protocol(self):
+        content = _read_js_file(self.SANITIZE_URL_FILE)
         match = re.search(
             r"function sanitizeUrl\s*\((\w+)\)\s*\{([^}]+)\}", content, re.DOTALL
         )
-        assert match is not None, f"{filepath}: sanitizeUrl function not found"
+        assert match is not None, f"{self.SANITIZE_URL_FILE}: sanitizeUrl function not found"
         body = match.group(2)
         assert "javascript:" in body.lower(), (
-            f"{filepath}: sanitizeUrl does not check for javascript: protocol"
+            f"{self.SANITIZE_URL_FILE}: sanitizeUrl does not check for javascript: protocol"
+        )
+
+    def test_sanitize_url_blocks_data_protocol(self):
+        content = _read_js_file(self.SANITIZE_URL_FILE)
+        match = re.search(
+            r"function sanitizeUrl\s*\((\w+)\)\s*\{([^}]+)\}", content, re.DOTALL
+        )
+        assert match is not None, f"{self.SANITIZE_URL_FILE}: sanitizeUrl function not found"
+        body = match.group(2)
+        assert "data:" in body.lower(), (
+            f"{self.SANITIZE_URL_FILE}: sanitizeUrl does not check for data: protocol"
         )
 
     @pytest.mark.parametrize(
@@ -60,16 +55,9 @@ class TestSanitizeUrlPresence:
             "web/js/twstock.js",
         ],
     )
-    def test_sanitize_url_blocks_data_protocol(self, filepath):
+    def test_files_import_sanitize_url(self, filepath):
         content = _read_js_file(filepath)
-        match = re.search(
-            r"function sanitizeUrl\s*\((\w+)\)\s*\{([^}]+)\}", content, re.DOTALL
-        )
-        assert match is not None
-        body = match.group(2)
-        assert "data:" in body.lower(), (
-            f"{filepath}: sanitizeUrl does not check for data: protocol"
-        )
+        assert "sanitizeUrl" in content, f"{filepath} missing sanitizeUrl reference"
 
 
 class TestEscapeHtmlPresence:
