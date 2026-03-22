@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: deploy
@@ -71,48 +72,48 @@ jobs:
         env:
           API_URL: https://cryptomind.app
         run: |
-          echo "=== Smoke Test (5 min timeout) ==="
-          timeout 300 bash -c '
-            echo "1. Health check..."
-            curl -sf "$API_URL/health" | head -1 || { echo "FAIL: health"; exit 1; }
-            
-            echo "2. Static assets..."
-            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$API_URL/static/js/main.js")
-            if [ "$STATUS" != "200" ] && [ "$STATUS" != "404" ]; then
-              echo "FAIL: static assets ($STATUS)"
-              exit 1
-            fi
-            
-            echo "3. CSS loaded..."
-            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$API_URL/static/css/tailwind-built.css")
-            if [ "$STATUS" != "200" ]; then
-              echo "FAIL: tailwind CSS ($STATUS)"
-              exit 1
-            fi
-            
-            echo "4. Vite bundle accessible..."
-            INDEX_HTML=$(curl -sf "$API_URL/")
-            BUNDLE=$(echo "$INDEX_HTML" | sed -n 's/.*\/static\/assets\/index-[^"]*\.js.*/\0/p' | head -1 | sed 's|^/static||')
-            if [ -z "$BUNDLE" ]; then
-              echo "FAIL: no Vite bundle found in index.html"
-              exit 1
-            fi
-            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$API_URL/static$BUNDLE")
-            if [ "$STATUS" != "200" ]; then
-              echo "FAIL: Vite bundle $BUNDLE returned $STATUS"
-              exit 1
-            fi
-            echo "  OK: $BUNDLE ($STATUS)"
-            
-            echo "5. Index page loads..."
-            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$API_URL/")
-            if [ "$STATUS" != "200" ]; then
-              echo "FAIL: index page ($STATUS)"
-              exit 1
-            fi
-            
-            echo "=== All smoke tests passed ==="
-          '
+          echo "=== Smoke Test ==="
+          
+          echo "1. Health check..."
+          curl -sf "$API_URL/health" | head -1 || { echo "FAIL: health"; exit 1; }
+          
+          echo "2. Raw JS should be gone..."
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$API_URL/static/js/main.js")
+          if [ "$STATUS" != "200" ] && [ "$STATUS" != "404" ]; then
+            echo "FAIL: static assets ($STATUS)"
+            exit 1
+          fi
+          
+          echo "3. CSS loaded..."
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$API_URL/static/css/tailwind-built.css")
+          if [ "$STATUS" != "200" ]; then
+            echo "FAIL: tailwind CSS ($STATUS)"
+            exit 1
+          fi
+          
+          echo "4. Vite bundle accessible..."
+          INDEX_HTML=$(curl -sf "$API_URL/")
+          BUNDLE=$(echo "$INDEX_HTML" | sed -n 's|.*\/static\/assets\/index-[a-zA-Z0-9]*\.js.*|\0|p' | head -1 | sed 's|^/static||')
+          if [ -z "$BUNDLE" ]; then
+            echo "FAIL: no Vite bundle found in index.html"
+            exit 1
+          fi
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$API_URL/static$BUNDLE")
+          if [ "$STATUS" != "200" ]; then
+            echo "FAIL: Vite bundle $BUNDLE returned $STATUS"
+            exit 1
+          fi
+          echo "  OK: $BUNDLE ($STATUS)"
+          
+          echo "5. Index page loads..."
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$API_URL/")
+          if [ "$STATUS" != "200" ]; then
+            echo "FAIL: index page ($STATUS)"
+            exit 1
+          fi
+          
+          echo "=== All smoke tests passed ==="
+        timeout-minutes: 5
 
   auto-rollback:
     runs-on: ubuntu-latest
