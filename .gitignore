@@ -64,8 +64,16 @@ config/keys/
 # Windows artifacts
 nul
 
+# Backup/temp files
+*.bak
+*.copy.*
+*.local_backup
+*_original_*
+diff*.txt
+
 # OpenCode temp
 okxstock_agenttemp_context_plugin/
 
 # Node.js
 node_modules/
+dist/

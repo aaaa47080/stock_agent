@@ -5,10 +5,14 @@
   "scripts": {
     "build:css": "npx tailwindcss -i ./web/css/main.css -o ./web/css/main.css --minify",
     "watch:css": "npx tailwindcss -i ./web/css/main.css -o ./web/css/main.css --watch",
-    "build": "npm run build:css"
+    "dev": "vite",
+    "build": "npm run build:css && vite build",
+    "preview": "vite preview"
   },
   "devDependencies": {
-    "tailwindcss": "^3.4.19"
+    "@playwright/test": "^1.58.2",
+    "tailwindcss": "^3.4.19",
+    "vite": "^8.0.1"
   },
   "main": "tailwind.config.js",
   "directories": {

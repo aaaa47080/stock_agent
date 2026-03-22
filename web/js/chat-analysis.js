@@ -21,6 +21,7 @@ function cleanupStaleButtons() {
         }
     });
 }
+window.cleanupStaleButtons = cleanupStaleButtons;
 
 function getSelectedAnalysisMode() {
     const select = document.getElementById('analysis-mode-select');
@@ -51,15 +52,7 @@ async function refreshAnalysisModeSelector() {
     }
 
     try {
-        const response = await fetch('/api/analyze/modes', {
-            headers: window.PiEnvironment.getAuthHeaders(),
-        });
-
-        if (!response.ok) {
-            return;
-        }
-
-        const data = await response.json();
+        const data = await AppAPI.get('/api/analyze/modes');
         const allowedModes = Array.isArray(data.allowed_modes) ? data.allowed_modes : ['quick'];
         const defaultMode = typeof data.default_mode === 'string' ? data.default_mode : allowedModes[0] || 'quick';
         const tier = typeof data.current_tier === 'string' ? data.current_tier : 'free';
@@ -119,6 +112,7 @@ function renderResponseMetadata(metadata = {}) {
 
     return `<div class="mt-3 flex flex-wrap gap-2 text-[11px] text-textMuted/70 font-mono">${parts.map((part) => `<span class="px-2 py-1 rounded-full bg-white/5 border border-white/10">${part}</span>`).join('')}</div>`;
 }
+window.renderResponseMetadata = renderResponseMetadata;
 
 async function sendMessage() {
     const input = document.getElementById('user-input');
@@ -220,17 +214,11 @@ async function sendMessage() {
     if (!currentSessionId) {
         try {
             const userId = AuthManager.currentUser.user_id;
-            const token = AuthManager.currentUser.accessToken;
 
             // 這裡可以傳遞 title (e.g., text.substring(0, 20)) 但後端通常會預設為 New Chat 或由第一條訊息生成
-            const createRes = await fetch(
+            const createData = await AppAPI.post(
                 `/api/chat/sessions?user_id=${encodeURIComponent(userId)}`,
-                {
-                    method: 'POST',
-                    headers: { Authorization: `Bearer ${token}` },
-                }
             );
-            const createData = await createRes.json();
             currentSessionId = createData.session_id;
 
             // 刷新列表以顯示新對話
@@ -257,6 +245,7 @@ async function sendMessage() {
     let timerInterval;
 
     // 重置分析過程面板的展開狀態
+    AppStore.set('lastProcessOpenState', false);
     window.lastProcessOpenState = false;
 
     // Initial "Proto-Process" UI to match the final analysis UI for seamless transition
@@ -278,7 +267,8 @@ async function sendMessage() {
     const ANALYSIS_REQUEST_TIMEOUT_MS = 300000;  // 5分鐘總超時
     const ANALYSIS_STREAM_IDLE_TIMEOUT_MS = 180000;  // 3分鐘閒置超時（避免慢速API被中斷）
 
-window.currentAnalysisController = new AbortController();
+AppStore.set('currentAnalysisController', new AbortController());
+window.currentAnalysisController = AppStore.get('currentAnalysisController');
     let requestTimeoutId = null;
     let streamIdleTimeoutId = null;
 
@@ -293,11 +283,11 @@ window.currentAnalysisController = new AbortController();
         }
     };
 
-    const armStreamIdleTimeout = () => {
+        const armStreamIdleTimeout = () => {
         if (streamIdleTimeoutId) clearTimeout(streamIdleTimeoutId);
         streamIdleTimeoutId = setTimeout(() => {
-            if (window.currentAnalysisController) {
-                window.currentAnalysisController.abort(
+            if (AppStore.get('currentAnalysisController')) {
+                AppStore.get('currentAnalysisController').abort(
                     new Error('STREAM_IDLE_TIMEOUT')
                 );
             }
@@ -320,8 +310,8 @@ window.currentAnalysisController = new AbortController();
     try {
         const token = AuthManager.currentUser.accessToken;
         requestTimeoutId = setTimeout(() => {
-            if (window.currentAnalysisController) {
-                window.currentAnalysisController.abort(new Error('ANALYSIS_TIMEOUT'));
+            if (AppStore.get('currentAnalysisController')) {
+                AppStore.get('currentAnalysisController').abort(new Error('ANALYSIS_TIMEOUT'));
             }
         }, ANALYSIS_REQUEST_TIMEOUT_MS);
 
@@ -343,7 +333,7 @@ window.currentAnalysisController = new AbortController();
                 session_id: currentSessionId,
                 language: window.I18n?.getLanguage() || 'zh-TW',
             }),
-            signal: window.currentAnalysisController.signal,
+            signal: AppStore.get('currentAnalysisController').signal,
         });
 
         if (!response.ok) {
@@ -503,7 +493,7 @@ window.currentAnalysisController = new AbortController();
         }
     } catch (err) {
         if (err.name === 'AbortError') {
-            const abortReason = window.currentAnalysisController?.signal?.reason;
+            const abortReason = AppStore.get('currentAnalysisController')?.signal?.reason;
             if (abortReason instanceof Error && abortReason.message === 'ANALYSIS_TIMEOUT') {
                 botMsgDiv.innerHTML =
                     '<span class="text-red-400">分析逾時，請縮小問題範圍後再試。</span>';
@@ -563,13 +553,12 @@ window.currentAnalysisController = new AbortController();
         }
     }
 }
-
-window.getSelectedAnalysisMode = getSelectedAnalysisMode;
-window.refreshAnalysisModeSelector = refreshAnalysisModeSelector;
+window.sendMessage = sendMessage;
 
 function stopAnalysis() {
-    if (window.currentAnalysisController) {
-        window.currentAnalysisController.abort();
+    if (AppStore.get('currentAnalysisController')) {
+        AppStore.get('currentAnalysisController').abort();
+        AppStore.set('currentAnalysisController', null);
         window.currentAnalysisController = null;
     }
 
@@ -590,13 +579,14 @@ function stopAnalysis() {
 
     resetChatUI();
 }
+window.stopAnalysis = stopAnalysis;
 
 function resetChatUI() {
     isAnalyzing = false;
     const input = document.getElementById('user-input');
     const sendBtn = document.getElementById('send-btn');
 
-    if (window.currentAnalysisController) {
+    if (AppStore.get('currentAnalysisController')) {
         // If called directly (not via stopAnalysis), ensure we nullify
         // But usually stopAnalysis does the aborting.
     }
@@ -620,6 +610,7 @@ function resetChatUI() {
     }
     if (window.lucide) createIconsIn(sendBtn);
 }
+window.resetChatUI = resetChatUI;
 
 // Reuse the renderStoredBotMessage function from previous step
 function renderStoredBotMessage(fullContent, isStreaming = false, elapsedTime = null) {
@@ -714,7 +705,7 @@ function renderStoredBotMessage(fullContent, isStreaming = false, elapsedTime = 
 
         // 使用全局變量來跟蹤展開狀態
         const isCurrentlyOpen =
-            window.lastProcessOpenState !== undefined ? window.lastProcessOpenState : true; // Default to open during analysis
+            AppStore.get('lastProcessOpenState') !== undefined ? AppStore.get('lastProcessOpenState') : true; // Default to open during analysis
 
         // 如果在步驟中沒有找到時間信息，則檢查完整內容
         let timeInfo = '';
@@ -836,6 +827,7 @@ function renderStoredBotMessage(fullContent, isStreaming = false, elapsedTime = 
 
     return html;
 }
+window.renderStoredBotMessage = renderStoredBotMessage;
 
 // 保存展開狀態的函數
 function toggleProcessState(summaryElement) {
@@ -844,6 +836,20 @@ function toggleProcessState(summaryElement) {
     // 延遲執行以確保狀態已更新
     setTimeout(() => {
         // 更新狀態標記
-        window.lastProcessOpenState = detailsElement.open;
+        AppStore.set('lastProcessOpenState', detailsElement.open);
+        window.lastProcessOpenState = AppStore.get('lastProcessOpenState');
     }, 0);
 }
+window.toggleProcessState = toggleProcessState;
+
+export {
+    cleanupStaleButtons,
+    getSelectedAnalysisMode,
+    refreshAnalysisModeSelector,
+    renderResponseMetadata,
+    sendMessage,
+    stopAnalysis,
+    resetChatUI,
+    renderStoredBotMessage,
+    toggleProcessState,
+};

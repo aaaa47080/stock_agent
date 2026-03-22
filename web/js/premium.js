@@ -211,9 +211,7 @@ class PremiumManager {
                 existingModal.classList.remove('hidden');
 
                 // 更新 Lucide 圖標
-                if (window.lucide) {
-                    lucide.createIcons();
-                }
+                AppUtils.refreshIcons();
             } else {
                 // 如果沒有預設對話框，使用瀏覽器確認
                 const result = confirm(
@@ -326,23 +324,12 @@ class PremiumManager {
     async handleIncompletePayment(payment) {
         console.warn('[Premium] 處理未完成支付:', payment);
         try {
-            // 呼叫後端 API 完成或取消此支付
-            await fetch('/api/user/payment/complete', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(window.AuthManager?.currentUser?.accessToken
-                        ? { Authorization: `Bearer ${window.AuthManager.currentUser.accessToken}` }
-                        : {}),
-                },
-                body: JSON.stringify({
-                    paymentId: payment.identifier,
-                    txid: payment.transaction?.txid || null,
-                }),
+            await AppAPI.post('/api/user/payment/complete', {
+                paymentId: payment.identifier,
+                txid: payment.transaction?.txid || null,
+            }).catch((e) => {
+                console.error('[Premium] 處理未完成支付失敗:', e);
             });
-        } catch (e) {
-            console.error('[Premium] 處理未完成支付失敗:', e);
-        }
     }
 
     /**
@@ -374,18 +361,7 @@ class PremiumManager {
                         onReadyForServerApproval: async (paymentId) => {
                             console.log('[Premium] 支付待批准:', paymentId);
                             try {
-                                const response = await fetch('/api/user/payment/approve', {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        ...(window.AuthManager?.currentUser?.accessToken
-                                            ? {
-                                                  Authorization: `Bearer ${window.AuthManager.currentUser.accessToken}`,
-                                              }
-                                            : {}),
-                                    },
-                                    body: JSON.stringify({ paymentId }),
-                                });
+                                const response = await AppAPI.post('/api/user/payment/approve', { paymentId });
 
                                 if (!response.ok) {
                                     const errorData = await response.json();
@@ -428,18 +404,7 @@ class PremiumManager {
                                         `[Premium] 嘗試完成請求 (${retryCount + 1}/${maxRetries})...`
                                     );
 
-                                    const response = await fetch('/api/user/payment/complete', {
-                                        method: 'POST',
-                                        headers: {
-                                            'Content-Type': 'application/json',
-                                            ...(window.AuthManager?.currentUser?.accessToken
-                                                ? {
-                                                      Authorization: `Bearer ${window.AuthManager.currentUser.accessToken}`,
-                                                  }
-                                                : {}),
-                                        },
-                                        body: JSON.stringify({ paymentId, txid }),
-                                    });
+                                    const response = await AppAPI.post('/api/user/payment/complete', { paymentId, txid });
 
                                     if (response.ok) {
                                         // 成功！清除 localStorage
@@ -548,29 +513,12 @@ class PremiumManager {
             throw new Error('無法獲取用戶ID');
         }
 
-        const response = await fetch('/api/premium/upgrade', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(window.AuthManager?.currentUser?.accessToken
-                    ? { Authorization: `Bearer ${window.AuthManager.currentUser.accessToken}` }
-                    : {}),
-            },
-            body: JSON.stringify({
-                user_id: userId,
-                plan: 'premium_monthly',
-                months: 1,
-                tx_hash: txHash,
-            }),
+        return AppAPI.post('/api/premium/upgrade', {
+            user_id: userId,
+            plan: 'premium_monthly',
+            months: 1,
+            tx_hash: txHash,
         });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-            throw new Error(result.detail || '升級請求失敗');
-        }
-
-        return result;
     }
 
     /**
@@ -606,9 +554,7 @@ class PremiumManager {
         });
 
         // 更新 Lucide 圖標
-        if (window.lucide) {
-            lucide.createIcons();
-        }
+        AppUtils.refreshIcons();
     }
 
     /**
@@ -616,14 +562,9 @@ class PremiumManager {
      */
     async checkMembershipStatus(userId) {
         try {
-            const response = await fetch(`/api/premium/status`, {
-                headers: window.AuthManager?.currentUser?.accessToken
-                    ? { Authorization: `Bearer ${window.AuthManager.currentUser.accessToken}` }
-                    : {},
-            });
-            const result = await response.json();
+            const result = await AppAPI.get('/api/premium/status');
 
-            if (response.ok && result.success) {
+            if (result.success) {
                 return result.membership;
             }
 
@@ -636,10 +577,15 @@ class PremiumManager {
 }
 
 // 初始化 PremiumManager
-window.PremiumManager = new PremiumManager();
+const premiumManager = new PremiumManager();
+window.PremiumManager = premiumManager;
 
 // 暴露全局函數
-window.upgradeToPremium = () => window.PremiumManager.handleUpgradeClick();
-window.checkMembershipStatus = (userId) => window.PremiumManager.checkMembershipStatus(userId);
+const upgradeToPremium = () => premiumManager.handleUpgradeClick();
+const checkMembershipStatus = (userId) => premiumManager.checkMembershipStatus(userId);
+window.upgradeToPremium = upgradeToPremium;
+window.checkMembershipStatus = checkMembershipStatus;
+
+export { PremiumManager, upgradeToPremium, checkMembershipStatus };
 
 console.log('[Premium] Premium 會員模組已載入');

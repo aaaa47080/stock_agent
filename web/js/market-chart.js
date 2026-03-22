@@ -195,7 +195,7 @@ async function showChart(symbol, interval = null) {
     }
 
     chartSection.classList.remove('hidden');
-    lucide.createIcons();
+    AppUtils.refreshIcons();
 
     const titleEl = document.getElementById('chart-title');
     if (titleEl)
@@ -220,16 +220,11 @@ async function showChart(symbol, interval = null) {
     }
 
     try {
-        const res = await fetch('/api/klines', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+        const data = await AppAPI.post('/api/klines', {
                 symbol: currentChartSymbol,
                 interval: currentChartInterval,
                 limit: 200,
-            }),
-        });
-        const data = await res.json();
+            });
 
         if (!data.klines || data.klines.length === 0) {
             chartContainer.innerHTML =
@@ -597,3 +592,4 @@ function changeChartInterval(interval) {
 window.showChart = showChart;
 window.closeChart = closeChart;
 window.changeChartInterval = changeChartInterval;
+export { showChart, closeChart, changeChartInterval, renderHistoryChart, getPriceDecimals, formatChartPrice, formatVolume, updateOHLCVDisplay };

@@ -18,13 +18,15 @@ var llmState = {
     savedKeys: {}, // 已保存的 API Key 狀態 { provider: { hasKey: true, maskedKey: "sk-...abc", model: "gpt-4o" } }
     initialized: false, // 是否已初始化
 };
+AppStore.set('llmState', llmState);
+window.llmState = llmState;
 
 // ========================================
 // 載入已保存的 API Key 狀態（全局函數，由 index.html 在 Auth 完成後調用）
 // ========================================
 
-window.loadSavedApiKeys = async function () {
-    // 檢查是否已登入
+async function loadSavedApiKeys() {
+    // AppAPI auto-handles auth; skip if no token
     var token = null;
     if (typeof AuthManager !== 'undefined' && AuthManager.currentUser) {
         token = AuthManager.currentUser.accessToken || AuthManager.currentUser.token;
@@ -39,26 +41,15 @@ window.loadSavedApiKeys = async function () {
     }
 
     try {
-        var response = await fetch('/api/user/api-keys', {
-            method: 'GET',
-            headers: {
-                'Content-Type': 'application/json',
-                ...llmGetAuthHeaders(),
-            },
-        });
-
-        if (response.ok) {
-            var data = await response.json();
-            llmState.savedKeys = data.keys || {};
-            console.log('[loadSavedApiKeys] Loaded saved keys:', llmState.savedKeys);
-            updateBindingStatus();
-        } else {
-            console.warn('[loadSavedApiKeys] Failed to load saved keys:', response.status);
-        }
+        var data = await AppAPI.get('/api/user/api-keys');
+        llmState.savedKeys = data.keys || {};
+        console.log('[loadSavedApiKeys] Loaded saved keys:', llmState.savedKeys);
+        updateBindingStatus();
     } catch (error) {
         console.error('[loadSavedApiKeys] Error:', error);
     }
-};
+}
+window.loadSavedApiKeys = loadSavedApiKeys;
 
 // ========================================
 // 更新綁定狀態顯示
@@ -146,6 +137,7 @@ function updateLLMKeyInput() {
     // 更新綁定狀態顯示
     updateBindingStatus();
 }
+window.updateLLMKeyInput = updateLLMKeyInput;
 
 // ========================================
 // 啟用/禁用保存按鈕
@@ -158,6 +150,7 @@ function enableSaveButton() {
         saveBtn.classList.remove('opacity-50', 'cursor-not-allowed');
     }
 }
+window.enableSaveButton = enableSaveButton;
 
 function disableSaveButton() {
     var saveBtn = document.getElementById('save-llm-key-btn');
@@ -166,6 +159,7 @@ function disableSaveButton() {
         saveBtn.classList.add('opacity-50', 'cursor-not-allowed');
     }
 }
+window.disableSaveButton = disableSaveButton;
 
 function setSaveButtonLoading(loading) {
     var saveBtn = document.getElementById('save-llm-key-btn');
@@ -235,22 +229,13 @@ async function testLLMKey() {
     llmShowToast('正在測試連接...', 'info');
 
     try {
-        var response = await fetch('/api/settings/validate-key', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...llmGetAuthHeaders(),
-            },
-            body: JSON.stringify({
-                provider: provider,
-                model: model,
-                api_key: apiKey,
-            }),
+        var data = await AppAPI.post('/api/settings/validate-key', {
+            provider: provider,
+            model: model,
+            api_key: apiKey,
         });
 
-        var data = await response.json();
-
-        if (response.ok && data.valid) {
+        if (data.valid) {
             llmShowToast('✅ ' + (data.message || 'API Key 測試成功！'), 'success');
             // 測試通過，啟用保存按鈕
             llmState.testPassed = true;
@@ -287,6 +272,7 @@ async function testLLMKey() {
         }
     }
 }
+window.testLLMKey = testLLMKey;
 
 // ========================================
 // 保存 LLM Key
@@ -321,22 +307,13 @@ async function saveLLMKey() {
     setSaveButtonLoading(true);
 
     try {
-        var response = await fetch('/api/user/api-keys', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...llmGetAuthHeaders(),
-            },
-            body: JSON.stringify({
-                provider: provider,
-                model: model,
-                api_key: apiKey,
-            }),
+        var data = await AppAPI.post('/api/user/api-keys', {
+            provider: provider,
+            model: model,
+            api_key: apiKey,
         });
 
-        var data = await response.json();
-
-        if (response.ok) {
+        if (data.success || data.ok) {
             llmShowToast('✅ 設置已保存', 'success');
             // 清空 API Key 輸入框（安全考量）
             if (apiKeyInput) {
@@ -406,30 +383,11 @@ async function saveLLMKey() {
         setSaveButtonLoading(false);
     }
 }
+window.saveLLMKey = saveLLMKey;
 
 // ========================================
 // 輔助函數
 // ========================================
-
-function llmGetAuthHeaders() {
-    var headers = {};
-    var token = null;
-
-    // 優先使用 AuthManager（與 forum.js 一致）
-    if (typeof AuthManager !== 'undefined' && AuthManager.currentUser) {
-        token = AuthManager.currentUser.accessToken || AuthManager.currentUser.token;
-    }
-
-    // 備用：檢查 localStorage
-    if (!token) {
-        token = localStorage.getItem('access_token') || localStorage.getItem('auth_token');
-    }
-
-    if (token) {
-        headers['Authorization'] = 'Bearer ' + token;
-    }
-    return headers;
-}
 
 function llmShowToast(message, type) {
     if (typeof window.showToast === 'function') {
@@ -498,3 +456,16 @@ document.addEventListener('DOMContentLoaded', function () {
     llmState.initialized = true;
     console.log('LLM Settings 初始化完成（等待 Auth 完成後載入綁定狀態）');
 });
+
+export {
+    llmState,
+    loadSavedApiKeys,
+    updateBindingStatus,
+    updateLLMKeyInput,
+    enableSaveButton,
+    disableSaveButton,
+    setSaveButtonLoading,
+    testLLMKey,
+    saveLLMKey,
+    llmShowToast,
+};

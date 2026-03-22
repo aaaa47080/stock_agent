@@ -5,7 +5,11 @@
 // ========================================
 
 let currentSessionId = null;
+AppStore.set('currentSessionId', currentSessionId);
+window.currentSessionId = currentSessionId;
 let chatInitialized = false; // 防止重複初始化
+AppStore.set('chatInitialized', chatInitialized);
+window.chatInitialized = chatInitialized;
 
 // ✅ 效能優化：預先快取 userKey，避免每次 sendMessage 都打後端 API
 let _cachedUserKey = null;
@@ -14,6 +18,7 @@ async function getCachedUserKey(forceRefresh = false) {
     _cachedUserKey = (await window.APIKeyManager?.getCurrentKey()) || null;
     return _cachedUserKey;
 }
+window.getCachedUserKey = getCachedUserKey;
 // 當 APIKeyManager 更新金鑰時，清除快取
 window.addEventListener('apiKeyUpdated', () => {
     _cachedUserKey = null;
@@ -24,13 +29,18 @@ function createIconsIn(el) {
     if (!window.lucide || !el) return;
     window.lucide.createIcons({ nodes: Array.isArray(el) ? el : [el] });
 }
+window.createIconsIn = createIconsIn;
 
 // 用於跟踪分析過程面板的展開狀態
+AppStore.set('lastProcessOpenState', false);
 window.lastProcessOpenState = false;
 
 // 編輯模式（批量刪除）
+// Must be on window so chat-sessions.js (separate ES module) can access them
 let isEditMode = false;
+window.isEditMode = isEditMode;
 let selectedSessions = new Set();
+window.selectedSessions = selectedSessions;
 
 // HITL (Human-in-the-Loop) 上下文 - 使用 Map 以避免多會話並發時的競態條件
 // Key: sessionId, Value: HITL context object
@@ -375,12 +385,14 @@ function appendMessage(role, content) {
     container.scrollTop = container.scrollHeight;
     return div;
 }
+window.appendMessage = appendMessage;
 
 function toggleOptions() {
     const panel = document.getElementById('analysis-options-panel');
     panel.classList.toggle('hidden');
     createIconsIn(panel);
 }
+window.toggleOptions = toggleOptions;
 
 function toggleSidebar() {
     const sidebar = document.getElementById('chat-sidebar');
@@ -408,10 +420,22 @@ function toggleSidebar() {
             setTimeout(() => {
                 // 檢查當前是否在活動標籤頁上，如果不是則切換回去
                 const currentVisibleTab = document.querySelector('.tab-content:not(.hidden)');
-                if (currentVisibleTab && !currentVisibleTab.id.includes(currentActiveTab)) {
-                    switchTab(currentActiveTab);
+                if (currentVisibleTab && !currentVisibleTab.id.includes(AppStore.get('activeTab'))) {
+                    switchTab(AppStore.get('activeTab'));
                 }
             }, 150);
         }
     }
 }
+window.toggleSidebar = toggleSidebar;
+
+export {
+    currentSessionId,
+    chatInitialized,
+    getCachedUserKey,
+    createIconsIn,
+    MessageComponents,
+    appendMessage,
+    toggleOptions,
+    toggleSidebar,
+};

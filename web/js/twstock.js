@@ -5,17 +5,6 @@
  * Includes sub-tab switching between "Market Watch" and "AI Pulse".
  */
 
-function sanitizeUrl(url) {
-    if (!url) return '#';
-    const trimmed = String(url).trim();
-    if (trimmed.startsWith('javascript:') || trimmed.startsWith('data:') || trimmed.startsWith('vbscript:')) return '#';
-    return trimmed;
-}
-
-function _t(key) {
-    return window.I18n ? window.I18n.t(key) : key;
-}
-
 window.TWStockTab = {
     activeSubTab: 'market', // 'market' | 'pulse'
     lastUpdatedAt: null,
@@ -51,23 +40,27 @@ window.TWStockTab = {
         try {
             const saved = localStorage.getItem('twStockWatchlist');
             if (saved) {
-                window.twStockSelectedSymbols = JSON.parse(saved);
+                AppStore.set('twStockSelectedSymbols', JSON.parse(saved));
+                window.twStockSelectedSymbols = AppStore.get('twStockSelectedSymbols');
             } else {
-                window.twStockSelectedSymbols = [...this.defaultSymbols];
+                AppStore.set('twStockSelectedSymbols', [...this.defaultSymbols]);
+                window.twStockSelectedSymbols = AppStore.get('twStockSelectedSymbols');
                 this.saveTwStockSelection();
             }
         } catch (e) {
             console.warn('[TW Stock] Error loading watchlist from localStorage', e);
-            window.twStockSelectedSymbols = [...this.defaultSymbols];
+            AppStore.set('twStockSelectedSymbols', [...this.defaultSymbols]);
+            window.twStockSelectedSymbols = AppStore.get('twStockSelectedSymbols');
         }
     },
 
     saveTwStockSelection: function () {
         try {
-            if (!window.twStockSelectedSymbols || window.twStockSelectedSymbols.length === 0) {
-                window.twStockSelectedSymbols = [...this.defaultSymbols];
+            if (!AppStore.get('twStockSelectedSymbols') || AppStore.get('twStockSelectedSymbols').length === 0) {
+                AppStore.set('twStockSelectedSymbols', [...this.defaultSymbols]);
+                window.twStockSelectedSymbols = AppStore.get('twStockSelectedSymbols');
             }
-            localStorage.setItem('twStockWatchlist', JSON.stringify(window.twStockSelectedSymbols));
+            localStorage.setItem('twStockWatchlist', JSON.stringify(AppStore.get('twStockSelectedSymbols')));
         } catch (e) {
             console.error('[TW Stock] Failed to save watchlist', e);
         }
@@ -79,7 +72,7 @@ window.TWStockTab = {
         if (sym.length < 2) return;
 
         const input = document.getElementById('twStockAddInput');
-        if (window.twStockSelectedSymbols.includes(sym)) {
+        if (AppStore.get('twStockSelectedSymbols').includes(sym)) {
             if (input) input.value = '';
             if (window.showToast) window.showToast(_t('twstock.alreadyInWatchlist').replace('{sym}', sym), 'info');
             return;
@@ -97,18 +90,11 @@ window.TWStockTab = {
 
         try {
             // Validate symbol with backend
-            const authHeaders =
-                typeof _getAuthHeaders === 'function' ? await _getAuthHeaders() : {};
-            const res = await fetch(`/api/twstock/market?symbols=${encodeURIComponent(sym)}`, {
-                headers: authHeaders,
-            });
-
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-            const data = await res.json();
+            const data = await AppAPI.get(`/api/twstock/market?symbols=${encodeURIComponent(sym)}`);
             if (data.top_performers && data.top_performers.length > 0) {
                 // Symbol valid! Add to watchlist
-                window.twStockSelectedSymbols.unshift(sym);
+                AppStore.get('twStockSelectedSymbols').unshift(sym);
+                window.twStockSelectedSymbols = AppStore.get('twStockSelectedSymbols');
                 this.saveTwStockSelection();
                 this.refreshMarketWatch();
                 this.refreshMarketInfo(); // Update News, Dividend, PE
@@ -141,7 +127,8 @@ window.TWStockTab = {
         if (event) {
             event.stopPropagation(); // prevent jumping to pulse
         }
-        window.twStockSelectedSymbols = window.twStockSelectedSymbols.filter((s) => s !== symbol);
+        AppStore.set('twStockSelectedSymbols', AppStore.get('twStockSelectedSymbols').filter((s) => s !== symbol));
+        window.twStockSelectedSymbols = AppStore.get('twStockSelectedSymbols');
         this.saveTwStockSelection();
         this.refreshMarketWatch();
         this.refreshMarketInfo(); // Update News, Dividend, PE
@@ -168,7 +155,7 @@ window.TWStockTab = {
                 </div>
             </div>
         `;
-        if (window.lucide) window.lucide.createIcons();
+        AppUtils.refreshIcons();
 
         // Add enter key support
         const input = document.getElementById('twStockAddInput');
@@ -237,7 +224,7 @@ window.TWStockTab = {
                 if (pulseContainer) {
                     pulseContainer.innerHTML = `<div class="py-20 text-center text-textMuted uppercase tracking-widest text-sm italic opacity-50 flex flex-col items-center"><i data-lucide="search" class="w-8 h-8 mb-3 opacity-50"></i>${_t('marketPage.analysisPlaceholder')}</div>`;
                     pulseContainer.classList.remove('hidden');
-                    if (window.lucide) window.lucide.createIcons();
+                    AppUtils.refreshIcons();
                 }
             }
         }
@@ -254,8 +241,6 @@ window.TWStockTab = {
         listContainer.innerHTML = '';
 
         try {
-            const authHeaders =
-                typeof _getAuthHeaders === 'function' ? await _getAuthHeaders() : {};
             let url = '/api/twstock/market';
 
             // Append symbols if we have a watchlist
@@ -263,13 +248,7 @@ window.TWStockTab = {
                 url += `?symbols=${encodeURIComponent(window.twStockSelectedSymbols.join(','))}`;
             }
 
-            const response = await fetch(url, {
-                headers: authHeaders,
-            });
-
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-
-            const data = await response.json();
+            const data = await AppAPI.get(url);
             const topPerformers = data.top_performers || [];
             this.lastUpdatedAt = data.last_updated || new Date().toISOString();
             if (window.MarketStatus) {
@@ -359,7 +338,7 @@ window.TWStockTab = {
 
         container.innerHTML = '';
         container.appendChild(fragment);
-        if (window.lucide) window.lucide.createIcons();
+        AppUtils.refreshIcons();
     },
 
     refreshAIPulse: async function (symbol) {
@@ -373,28 +352,15 @@ window.TWStockTab = {
 
         try {
             const userKey = await window.APIKeyManager?.getCurrentKey();
-            const authHeaders =
-                typeof _getAuthHeaders === 'function' ? await _getAuthHeaders() : {};
-            const headers = { ...authHeaders };
             let url = `/api/twstock/pulse/${encodeURIComponent(symbol)}`;
+            const customHeaders = {};
             if (userKey) {
                 url += '?deep_analysis=true';
-                headers['X-User-LLM-Key'] = userKey.key;
-                headers['X-User-LLM-Provider'] = userKey.provider;
+                customHeaders['X-User-LLM-Key'] = userKey.key;
+                customHeaders['X-User-LLM-Provider'] = userKey.provider;
             }
 
-            const response = await fetch(url, { headers });
-
-            if (!response.ok) {
-                let errorMsg = `HTTP error! status: ${response.status}`;
-                try {
-                    const errData = await response.json();
-                    if (errData.detail) errorMsg = errData.detail;
-                } catch (e) {}
-                throw new Error(errorMsg);
-            }
-
-            const data = await response.json();
+            const data = await AppAPI.get(url, { headers: customHeaders });
             this.renderAIPulse(pulseContainer, data, !!userKey);
             pulseContainer.classList.remove('hidden');
 
@@ -778,7 +744,7 @@ window.TWStockTab = {
         `;
 
         container.innerHTML = html;
-        if (window.lucide) window.lucide.createIcons();
+        AppUtils.refreshIcons();
     },
 
     jumpToPulse: function (symbol) {
@@ -815,7 +781,7 @@ window.TWStockTab = {
 
         this.twCurrentChartSymbol = symbol;
         chartSection.classList.remove('hidden');
-        if (window.lucide) window.lucide.createIcons();
+        AppUtils.refreshIcons();
         if (titleEl)
             titleEl.textContent = `${symbol} (${this.twCurrentChartInterval.toUpperCase()})`;
 
@@ -835,25 +801,10 @@ window.TWStockTab = {
         if (volumeContainer) volumeContainer.innerHTML = '';
 
         try {
-            const authHeaders =
-                typeof _getAuthHeaders === 'function' ? await _getAuthHeaders() : {};
-            const res = await fetch(
-                `/api/twstock/klines/${encodeURIComponent(symbol)}?interval=${this.twCurrentChartInterval}&limit=200`,
-                {
-                    headers: authHeaders,
-                }
+            const responseData = await AppAPI.get(
+                `/api/twstock/klines/${encodeURIComponent(symbol)}?interval=${this.twCurrentChartInterval}&limit=200`
             );
 
-            if (!res.ok) {
-                let msg = `HTTP ${res.status} `;
-                try {
-                    const d = await res.json();
-                    msg = d.detail || msg;
-                } catch (e) {}
-                throw new Error(msg);
-            }
-
-            const responseData = await res.json();
             const data = responseData.data || [];
 
             if (data.length === 0) {
@@ -1090,7 +1041,7 @@ window.TWStockTab = {
             <i data-lucide="alert-triangle" class="w-8 h-8 mb-2"></i>
         ${_t('twstock.readFailed')}${SecurityUtils.escapeHTML(error.message || '')}
             </div>`;
-            if (window.lucide) window.lucide.createIcons();
+            AppUtils.refreshIcons();
         }
     },
 
@@ -1191,14 +1142,13 @@ window.TWStockTab = {
 
     refreshMarketInfo: async function () {
         this.initSectionToggles();
-        const authHeaders = typeof _getAuthHeaders === 'function' ? await _getAuthHeaders() : {};
 
         // Load all 4 sections in parallel
         await Promise.all([
-            this._loadNewsSection(authHeaders),
-            this._loadPESection(authHeaders),
-            this._loadDividendSection(authHeaders),
-            this._loadForeignSection(authHeaders),
+            this._loadNewsSection(),
+            this._loadPESection(),
+            this._loadDividendSection(),
+            this._loadForeignSection(),
         ]);
     },
 
@@ -1209,20 +1159,18 @@ window.TWStockTab = {
         el.classList.toggle('flex', show);
     },
 
-    _loadNewsSection: async function (authHeaders) {
+    _loadNewsSection: async function () {
         const container = document.getElementById('twstock-info-news');
         if (!container) return;
         this._showLoader('twstock-info-news-loader', true);
         try {
-            const symbols = window.twStockSelectedSymbols || [];
+            const symbols = AppStore.get('twStockSelectedSymbols') || [];
             let url = '/api/twstock/opendata/news?limit=15';
             if (symbols.length > 0) {
                 url += `&symbols=${encodeURIComponent(symbols.join(','))}`;
             }
 
-            const res = await fetch(url, { headers: authHeaders });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const json = await res.json();
+            const json = await AppAPI.get(url);
             const items = json.data || [];
             if (!items.length) {
                 container.innerHTML =
@@ -1258,17 +1206,17 @@ window.TWStockTab = {
         }
     },
 
-    _loadPESection: async function (authHeaders) {
+    _loadPESection: async function () {
         const container = document.getElementById('twstock-info-pe');
         if (!container) return;
-        const symbols = window.twStockSelectedSymbols || ['2330', '2317', '2454', '2881', '2882'];
+        const symbols = AppStore.get('twStockSelectedSymbols') || ['2330', '2317', '2454', '2881', '2882'];
         this._showLoader('twstock-info-pe-loader', true);
         try {
             const targets = symbols.slice(0, 20); // Render up to 20 PE cards
             const results = await Promise.all(
                 targets.map((code) =>
-                    fetch(`/api/twstock/opendata/pe_ratio/${code}`, { headers: authHeaders })
-                        .then((r) => (r.ok ? r.json() : null))
+                    AppAPI.get(`/api/twstock/opendata/pe_ratio/${code}`)
+                        .then((r) => (!r.error ? r : null))
                         .catch(() => null)
                 )
             );
@@ -1335,20 +1283,18 @@ window.TWStockTab = {
         }
     },
 
-    _loadDividendSection: async function (authHeaders) {
+    _loadDividendSection: async function () {
         const container = document.getElementById('twstock-info-dividend');
         if (!container) return;
         this._showLoader('twstock-info-div-loader', true);
         try {
-            const symbols = window.twStockSelectedSymbols || [];
+            const symbols = AppStore.get('twStockSelectedSymbols') || [];
             let url = '/api/twstock/opendata/dividend?limit=20';
             if (symbols.length > 0) {
                 url += `&symbols=${encodeURIComponent(symbols.join(','))}`;
             }
 
-            const res = await fetch(url, { headers: authHeaders });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const json = await res.json();
+            const json = await AppAPI.get(url);
             const items = (json.data || []).filter(
                 (d) => d.cash_dividend && d.cash_dividend !== '' && d.cash_dividend !== '0'
             );
@@ -1382,7 +1328,7 @@ window.TWStockTab = {
             `
                 )
                 .join('');
-            if (window.lucide) window.lucide.createIcons();
+            AppUtils.refreshIcons();
         } catch (err) {
             console.error('[TW Info] Dividend error:', err);
             container.innerHTML = `<p class="text-danger text-xs text-center py-4">${_t('twstock.dividendLoadFailed')}${SecurityUtils.escapeHTML(err.message || '')}</p>`;
@@ -1391,16 +1337,12 @@ window.TWStockTab = {
         }
     },
 
-    _loadForeignSection: async function (authHeaders) {
+    _loadForeignSection: async function () {
         const container = document.getElementById('twstock-info-foreign');
         if (!container) return;
         this._showLoader('twstock-info-foreign-loader', true);
         try {
-            const res = await fetch('/api/twstock/opendata/foreign_holding', {
-                headers: authHeaders,
-            });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const json = await res.json();
+            const json = await AppAPI.get('/api/twstock/opendata/foreign_holding');
             const items = json.data || [];
             if (!items.length) {
                 container.innerHTML =

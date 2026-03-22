@@ -61,7 +61,7 @@ const AdminStatsManager = {
             </div>
         `;
 
-        if (window.lucide) lucide.createIcons();
+        AppUtils.refreshIcons();
         this._updateRangeButtons();
         this.loadAll();
     },
@@ -108,11 +108,7 @@ const AdminStatsManager = {
 
     async loadOverview() {
         try {
-            const res = await fetch('/api/admin/stats/overview', {
-                headers: AdminPanel._getAuthHeaders(),
-            });
-            if (!res.ok) throw new Error('Failed');
-            const data = await res.json();
+            const data = await AppAPI.get('/api/admin/stats/overview');
 
             const cards = document.getElementById('stats-overview-cards');
             if (!cards) return;
@@ -157,7 +153,7 @@ const AdminStatsManager = {
                 )
                 .join('');
 
-            if (window.lucide) lucide.createIcons();
+            AppUtils.refreshIcons();
         } catch (e) {
             console.warn('Failed to load overview stats:', e);
         }
@@ -165,11 +161,7 @@ const AdminStatsManager = {
 
     async loadUserChart() {
         try {
-            const res = await fetch(`/api/admin/stats/users?days=${this.currentRange}`, {
-                headers: AdminPanel._getAuthHeaders(),
-            });
-            if (!res.ok) throw new Error('Failed');
-            const data = await res.json();
+            const data = await AppAPI.get(`/api/admin/stats/users?days=${this.currentRange}`);
 
             const filled = this._fillMissingDates(data.data, this.currentRange);
             const labels = filled.map((d) => d.date.substring(5)); // MM-DD
@@ -224,11 +216,7 @@ const AdminStatsManager = {
 
     async loadForumChart() {
         try {
-            const res = await fetch(`/api/admin/stats/forum?days=${this.currentRange}`, {
-                headers: AdminPanel._getAuthHeaders(),
-            });
-            if (!res.ok) throw new Error('Failed');
-            const data = await res.json();
+            const data = await AppAPI.get(`/api/admin/stats/forum?days=${this.currentRange}`);
 
             const postsFilled = this._fillMissingDates(data.posts, this.currentRange);
             const commentsFilled = this._fillMissingDates(data.comments, this.currentRange);
@@ -262,11 +250,7 @@ const AdminStatsManager = {
 
     async loadRevenueChart() {
         try {
-            const res = await fetch(`/api/admin/stats/revenue?days=${this.currentRange}`, {
-                headers: AdminPanel._getAuthHeaders(),
-            });
-            if (!res.ok) throw new Error('Failed');
-            const data = await res.json();
+            const data = await AppAPI.get(`/api/admin/stats/revenue?days=${this.currentRange}`);
 
             const tipsFilled = this._fillMissingDates(
                 data.tips.map((d) => ({ date: d.date, count: d.amount })),

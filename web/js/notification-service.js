@@ -82,7 +82,7 @@ const NotificationService = {
             return;
         }
 
-        // 检查是否登录
+        // 檢查是否登录
         this.isLoggedIn = window.AuthManager && window.AuthManager.isLoggedIn();
 
         if (this.isLoggedIn) {
@@ -167,30 +167,19 @@ const NotificationService = {
                 return;
             }
 
-            const response = await fetch(`/api/notifications?user_id=${userId}&limit=50`, {
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                this.notifications = data.notifications || [];
-                this.unreadCount = data.unread_count || 0;
-                this.notifyUpdate();
-                console.log(
-                    '[NotificationService] Loaded from API:',
-                    this.notifications.length,
-                    'notifications'
-                );
-            } else if (response.status === 401) {
-                // 401 錯誤 - token 可能無效或已過期
+            const data = await AppAPI.get(`/api/notifications?user_id=${userId}&limit=50`);
+            this.notifications = data.notifications || [];
+            this.unreadCount = data.unread_count || 0;
+            this.notifyUpdate();
+            console.log(
+                '[NotificationService] Loaded from API:',
+                this.notifications.length,
+                'notifications'
+            );
+        } catch (error) {
+            // 401: token may be expired — clear it
+            if (error.status === 401) {
                 console.warn('[NotificationService] 401 Unauthorized, token may be expired');
-                this.notifications = [];
-                this.unreadCount = 0;
-                this.notifyUpdate();
-
-                // 清除過期 token
                 if (
                     typeof AuthManager !== 'undefined' &&
                     typeof AuthManager.clearExpiredToken === 'function'
@@ -198,13 +187,8 @@ const NotificationService = {
                     AuthManager.clearExpiredToken();
                 }
             } else {
-                console.warn('[NotificationService] API failed, status:', response.status);
-                this.notifications = [];
-                this.unreadCount = 0;
-                this.notifyUpdate();
+                console.error('[NotificationService] Fetch error:', error);
             }
-        } catch (error) {
-            console.error('[NotificationService] Fetch error:', error);
             this.notifications = [];
             this.unreadCount = 0;
             this.notifyUpdate();
@@ -245,14 +229,11 @@ const NotificationService = {
             // 同步到服务器
             if (this.isLoggedIn) {
                 try {
-                    const { userId, token } = this._getCredentials();
-                    if (userId && token) {
-                        await fetch(`/api/notifications/${notificationId}/read?user_id=${userId}`, {
-                            method: 'POST',
-                            headers: {
-                                Authorization: `Bearer ${token}`,
-                            },
-                        });
+                    const { userId } = this._getCredentials();
+                    if (userId) {
+                        await AppAPI.post(
+                            `/api/notifications/${notificationId}/read?user_id=${userId}`,
+                        );
                     }
                 } catch (error) {
                     console.error('[NotificationService] Mark as read error:', error);
@@ -272,14 +253,9 @@ const NotificationService = {
         // 同步到服务器
         if (this.isLoggedIn) {
             try {
-                const { userId, token } = this._getCredentials();
-                if (userId && token) {
-                    await fetch(`/api/notifications/read-all?user_id=${userId}`, {
-                        method: 'POST',
-                        headers: {
-                            Authorization: `Bearer ${token}`,
-                        },
-                    });
+                const { userId } = this._getCredentials();
+                if (userId) {
+                    await AppAPI.post(`/api/notifications/read-all?user_id=${userId}`);
                 }
             } catch (error) {
                 console.error('[NotificationService] Mark all read error:', error);
@@ -311,12 +287,13 @@ const NotificationService = {
                     notifications: this.notifications,
                     unreadCount: this.unreadCount,
                 },
-            })
+            }),
         );
     },
 
     /**
      * 连接 WebSocket (Phase 2)
+     * NOTE: WebSocket connections are NOT converted to AppAPI (different protocol)
      */
     connectWebSocket() {
         const { userId, token } = this._getCredentials();
@@ -346,8 +323,8 @@ const NotificationService = {
                 console.log('[NotificationService] WebSocket connected');
                 // 重置重连计数器
                 this.reconnectAttempts = 0;
-                // 发送认证信息
-                this.ws.send(JSON.stringify({ type: 'auth', user_id: userId }));
+                // 发送认证信息 (backend requires token for auth)
+                this.ws.send(JSON.stringify({ type: 'auth', user_id: userId, token }));
             };
 
             this.ws.onmessage = (event) => {
@@ -389,7 +366,7 @@ const NotificationService = {
         this.reconnectAttempts++;
 
         console.log(
-            `[NotificationService] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.MAX_RECONNECT_ATTEMPTS})`
+            `[NotificationService] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.MAX_RECONNECT_ATTEMPTS})`,
         );
 
         this.reconnectTimer = setTimeout(() => {
@@ -463,3 +440,5 @@ if (document.readyState === 'loading') {
 }
 
 window.NotificationService = NotificationService;
+export { NotificationService };
+

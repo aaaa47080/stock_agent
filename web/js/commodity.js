@@ -3,14 +3,7 @@
 // Follows the same pattern as usstock.js / twstock.js
 // ============================================================
 
-function sanitizeUrl(url) {
-    if (!url) return '#';
-    const trimmed = String(url).trim();
-    if (trimmed.startsWith('javascript:') || trimmed.startsWith('data:') || trimmed.startsWith('vbscript:')) return '#';
-    return trimmed;
-}
-
-window.CommodityTab = {
+const CommodityTab = {
     activeSubTab: 'market',
     activeSymbol: null,
     chartInstance: null,
@@ -19,12 +12,12 @@ window.CommodityTab = {
     lastUpdatedAt: null,
 
     DEFAULT_SYMBOLS: [
-        { symbol: 'GC=F',  name: window.I18n ? window.I18n.t('commodity.gold') : '黃金',   unit: 'USD/oz'  },
-        { symbol: 'CL=F',  name: window.I18n ? window.I18n.t('commodity.wtiCrude') : 'WTI原油', unit: 'USD/bbl' },
-        { symbol: 'SI=F',  name: window.I18n ? window.I18n.t('commodity.silver') : '白銀',   unit: 'USD/oz'  },
-        { symbol: 'NG=F',  name: window.I18n ? window.I18n.t('commodity.naturalGas') : '天然氣', unit: 'USD/MMBtu'},
-        { symbol: 'HG=F',  name: window.I18n ? window.I18n.t('commodity.copper') : '銅',     unit: 'USD/lb'  },
-        { symbol: 'BZ=F',  name: window.I18n ? window.I18n.t('commodity.brentCrude') : '布蘭特原油', unit: 'USD/bbl'},
+        { symbol: 'GC=F',  name: t('commodity.gold'),   unit: 'USD/oz'  },
+        { symbol: 'CL=F',  name: t('commodity.wtiCrude'), unit: 'USD/bbl' },
+        { symbol: 'SI=F',  name: t('commodity.silver'),   unit: 'USD/oz'  },
+        { symbol: 'NG=F',  name: t('commodity.naturalGas'), unit: 'USD/MMBtu'},
+        { symbol: 'HG=F',  name: t('commodity.copper'),   unit: 'USD/lb'  },
+        { symbol: 'BZ=F',  name: t('commodity.brentCrude'), unit: 'USD/bbl'},
     ],
 
     // ── Init ──────────────────────────────────────────────────
@@ -77,13 +70,11 @@ window.CommodityTab = {
         const listEl = document.getElementById('commodity-list');
         if (!listEl) return;
         if (window.MarketStatus) window.MarketStatus.markSynced('commodity');
-        listEl.innerHTML = '<div class="text-center text-textMuted py-10 opacity-50"><i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto mb-2"></i><p class="text-sm">' + (window.I18n ? window.I18n.t('common.loading') : '載入中...') + '</p></div>';
-        if (window.lucide) lucide.createIcons();
+        listEl.innerHTML = '<div class="text-center text-textMuted py-10 opacity-50"><i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto mb-2"></i><p class="text-sm">' + t('common.loading') + '</p></div>';
+        AppUtils.refreshIcons();
 
         try {
-            const res = await fetch('/api/commodity/market');
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
+            const data = await AppAPI.get('/api/commodity/market');
 
             listEl.innerHTML = '';
             (data.commodities || []).forEach(item => {
@@ -111,7 +102,7 @@ window.CommodityTab = {
                 window.MarketStatus.updateMarketStatusBar('commodity', this.lastUpdatedAt);
             }
         } catch (e) {
-            listEl.innerHTML = `<div class="text-center text-danger py-10 text-sm">${window.I18n ? window.I18n.t('marketPage.loadFailedDetail') : '載入失敗：'}${escapeHtml(e.message)}</div>`;
+            listEl.innerHTML = `<div class="text-center text-danger py-10 text-sm">${t('marketPage.loadFailedDetail')}${escapeHtml(e.message)}</div>`;
         }
     },
 
@@ -121,21 +112,19 @@ window.CommodityTab = {
         const pulseEl = document.getElementById('commodity-pulse-content');
         if (!pulseEl) return;
         pulseEl.innerHTML = '<div class="text-center text-textMuted py-10"><i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto mb-2"></i></div>';
-        if (window.lucide) lucide.createIcons();
+        AppUtils.refreshIcons();
 
         try {
             const userKey = await window.APIKeyManager?.getCurrentKey();
-            const headers = {};
             let url = `/api/commodity/pulse/${encodeURIComponent(symbol)}`;
+            const customHeaders = {};
             if (userKey) {
                 url += '?deep_analysis=true';
-                headers['X-User-LLM-Key'] = userKey.key;
-                headers['X-User-LLM-Provider'] = userKey.provider;
+                customHeaders['X-User-LLM-Key'] = userKey.key;
+                customHeaders['X-User-LLM-Provider'] = userKey.provider;
             }
 
-            const res = await fetch(url, { headers });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const d = await res.json();
+            const d = await AppAPI.get(url, { headers: customHeaders });
 
             const isUp  = d.change_24h >= 0;
             const color = isUp ? 'text-success' : 'text-danger';
@@ -144,8 +133,8 @@ window.CommodityTab = {
             const summarySection = userKey
                 ? `<div class="bg-surface border border-white/5 rounded-2xl p-5">
                         <div class="flex items-center gap-2 mb-3">
-                            <h4 class="text-xs uppercase tracking-wider text-textMuted">${window.I18n ? window.I18n.t('pulse.title') : '市場脈動'}</h4>
-                            ${isDeep ? '<span class="text-[9px] px-1.5 py-0.5 bg-primary/20 text-primary rounded border border-primary/30 flex items-center gap-1"><i data-lucide="zap" class="w-2.5 h-2.5"></i>' + (window.I18n ? window.I18n.t('marketPage.aiDeepAnalysis') : 'AI深度分析') + '</span>' : ''}
+                            <h4 class="text-xs uppercase tracking-wider text-textMuted">${t('pulse.title')}</h4>
+                            ${isDeep ? '<span class="text-[9px] px-1.5 py-0.5 bg-primary/20 text-primary rounded border border-primary/30 flex items-center gap-1"><i data-lucide="zap" class="w-2.5 h-2.5"></i>' + t('marketPage.aiDeepAnalysis') + '</span>' : ''}
                         </div>
                         <p class="text-sm text-secondary leading-relaxed">${escapeHtml(d.report?.summary || '')}</p>
                    </div>`
@@ -155,11 +144,11 @@ window.CommodityTab = {
                                 <i data-lucide="key" class="w-5 h-5 text-primary"></i>
                             </div>
                             <div>
-                                <p class="text-sm font-bold text-secondary mb-1">${window.I18n ? window.I18n.t('marketPage.connectApiKey') : '請連接 AI 金鑰'}</p>
-                                <p class="text-xs text-textMuted">${window.I18n ? window.I18n.t('marketPage.connectApiKeyDesc') : '連接 OpenAI 或 Gemini 金鑰以獲取 AI 深度分析'}</p>
+                                <p class="text-sm font-bold text-secondary mb-1">${t('marketPage.connectApiKey')}</p>
+                                <p class="text-xs text-textMuted">${t('marketPage.connectApiKeyDesc')}</p>
                             </div>
                             <button onclick="switchTab('settings')" class="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary text-xs rounded-xl border border-primary/30 transition flex items-center gap-1.5">
-                                <i data-lucide="settings" class="w-3.5 h-3.5"></i>${window.I18n ? window.I18n.t('pulse.goToSettings') : '前往設定'}
+                                <i data-lucide="settings" class="w-3.5 h-3.5"></i>${t('pulse.goToSettings')}
                             </button>
                         </div>
                    </div>`;
@@ -173,7 +162,7 @@ window.CommodityTab = {
                     </div>
                     ${summarySection}
                     <div class="bg-surface border border-white/5 rounded-2xl p-5">
-                        <h4 class="text-xs uppercase tracking-wider text-textMuted mb-3">${window.I18n ? window.I18n.t('marketPage.technicalIndicators') : '技術指標'}</h4>
+                        <h4 class="text-xs uppercase tracking-wider text-textMuted mb-3">${t('marketPage.technicalIndicators')}</h4>
                         <div class="grid grid-cols-2 gap-2">
                             ${(d.report?.key_points || []).map(pt => `
                                 <div class="bg-background rounded-xl px-3 py-2 text-xs">
@@ -184,18 +173,18 @@ window.CommodityTab = {
                     </div>
                     <div id="commodity-chart-container" class="bg-surface border border-white/5 rounded-2xl p-4">
                         <div class="flex items-center justify-between mb-3">
-                            <span class="text-xs uppercase tracking-wider text-textMuted">${window.I18n ? window.I18n.t('marketPage.trendChart') : '走勢圖'}</span>
+                            <span class="text-xs uppercase tracking-wider text-textMuted">${t('marketPage.trendChart')}</span>
                             <div class="flex gap-1">
-                                ${['1d','1wk','1mo'].map(iv => `<button onclick="CommodityTab.changeInterval('${iv}')" id="commodity-interval-${iv}" class="text-xs px-2 py-1 rounded-lg ${iv === '1d' ? 'bg-primary text-background' : 'bg-surface text-textMuted hover:bg-surfaceHighlight'} transition">${iv === '1d' ? (window.I18n ? window.I18n.t('marketPage.intervalDay') : '日') : iv === '1wk' ? (window.I18n ? window.I18n.t('marketPage.intervalWeek') : '週') : (window.I18n ? window.I18n.t('marketPage.intervalMonth') : '月')}</button>`).join('')}
+                                ${['1d','1wk','1mo'].map(iv => `<button onclick="CommodityTab.changeInterval('${iv}')" id="commodity-interval-${iv}" class="text-xs px-2 py-1 rounded-lg ${iv === '1d' ? 'bg-primary text-background' : 'bg-surface text-textMuted hover:bg-surfaceHighlight'} transition">${iv === '1d' ? t('marketPage.intervalDay') : iv === '1wk' ? t('marketPage.intervalWeek') : t('marketPage.intervalMonth')}</button>`).join('')}
                             </div>
                         </div>
                         <div id="commodity-chart" style="height: 200px;"></div>
                     </div>
                 </div>`;
-            if (window.lucide) lucide.createIcons();
+            AppUtils.refreshIcons();
             this.loadChart(symbol, this.currentInterval);
         } catch (e) {
-            pulseEl.innerHTML = `<div class="text-center text-danger py-10 text-sm">${window.I18n ? window.I18n.t('marketPage.loadFailedDetail') : '載入失敗：'}${escapeHtml(e.message)}</div>`;
+            pulseEl.innerHTML = `<div class="text-center text-danger py-10 text-sm">${t('marketPage.loadFailedDetail')}${escapeHtml(e.message)}</div>`;
         }
     },
 
@@ -207,10 +196,8 @@ window.CommodityTab = {
         this.destroyChart();
 
         try {
-            const res = await fetch(`/api/commodity/klines/${encodeURIComponent(symbol)}?interval=${interval}&limit=200`);
-            if (!res.ok) return;
-            const data = await res.json();
-            const klines = data.data || [];
+            const res = await AppAPI.get(`/api/commodity/klines/${encodeURIComponent(symbol)}?interval=${interval}&limit=200`);
+            const klines = res.data || [];
             if (!klines.length) return;
 
             if (typeof LightweightCharts === 'undefined') return;
@@ -257,3 +244,7 @@ window.CommodityTab = {
         }
     },
 };
+
+window.CommodityTab = CommodityTab;
+export { CommodityTab };
+

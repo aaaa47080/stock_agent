@@ -9,14 +9,7 @@ const SafetyTab = {
     scamTypes: [],
     currentDetailId: null,
 
-    _getToken() {
-        if (typeof AuthManager !== 'undefined' && AuthManager.currentUser) {
-            const user = AuthManager.currentUser;
-            const userId = user.user_id || user.uid;
-            return user.accessToken || user.piAccessToken || userId;
-        }
-        return localStorage.getItem('auth_token') || null;
-    },
+
 
     // ========================================
     // Initialization
@@ -163,7 +156,7 @@ const SafetyTab = {
             )
             .join('');
 
-        if (window.lucide) lucide.createIcons();
+        AppUtils.refreshIcons();
     },
 
     // ========================================
@@ -214,7 +207,7 @@ const SafetyTab = {
             };
         }
 
-        if (window.lucide) lucide.createIcons();
+        AppUtils.refreshIcons();
     },
 
     closeSubmitModal() {
@@ -271,7 +264,7 @@ const SafetyTab = {
         const btn = document.getElementById('safety-btn-submit');
         btn.disabled = true;
         btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Submitting...';
-        if (window.lucide) lucide.createIcons();
+        AppUtils.refreshIcons();
 
         try {
             await ScamTrackerAPI.submitReport({
@@ -302,7 +295,7 @@ const SafetyTab = {
         } finally {
             btn.disabled = false;
             btn.innerHTML = '<i data-lucide="send" class="w-4 h-4"></i> Submit Report';
-            if (window.lucide) lucide.createIcons();
+            AppUtils.refreshIcons();
         }
     },
 
@@ -319,7 +312,7 @@ const SafetyTab = {
         modal.classList.remove('hidden');
         content.innerHTML =
             '<div class="text-center text-textMuted py-8"><i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto mb-2"></i> Loading...</div>';
-        if (window.lucide) lucide.createIcons();
+        AppUtils.refreshIcons();
 
         try {
             const data = await ScamTrackerAPI.getReportDetail(reportId);
@@ -366,7 +359,7 @@ const SafetyTab = {
                     <span>Views: ${r.view_count}</span>
                 </div>
             `;
-            if (window.lucide) lucide.createIcons();
+            AppUtils.refreshIcons();
         } catch (error) {
             content.innerHTML = `<div class="text-center text-danger py-8">${SecurityUtils.escapeHTML(error.message || 'Failed to load')}</div>`;
         }
@@ -400,13 +393,13 @@ const SafetyTab = {
     openGovernanceModal() {
         const modal = document.getElementById('governance-modal');
         if (modal) modal.classList.remove('hidden');
-        if (window.lucide) lucide.createIcons();
+        AppUtils.refreshIcons();
         this.loadGovQuota();
         this.loadMyGovReports('all');
     },
 
     async loadGovQuota() {
-        const token = this._getToken();
+        const token = AppAPI.getToken();
         const badge = document.getElementById('gov-quota-badge');
         const bar = document.getElementById('gov-quota-bar');
         const text = document.getElementById('gov-quota-text');
@@ -419,14 +412,7 @@ const SafetyTab = {
         }
 
         try {
-            const res = await fetch('/api/governance/report-quota', {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!res.ok) {
-                if (text) text.textContent = 'Could not load quota';
-                return;
-            }
-            const data = await res.json();
+            const data = await AppAPI.get('/api/governance/report-quota');
             const pct = data.limit > 0 ? Math.round((data.used / data.limit) * 100) : 0;
             const barColor = pct >= 80 ? 'bg-danger' : pct >= 50 ? 'bg-warning' : 'bg-accent';
 
@@ -487,9 +473,9 @@ const SafetyTab = {
         if (!list) return;
         list.innerHTML =
             '<div class="text-center text-textMuted py-4 text-sm"><i data-lucide="loader-2" class="w-5 h-5 animate-spin mx-auto mb-2"></i> Loading...</div>';
-        if (window.lucide) lucide.createIcons();
+        AppUtils.refreshIcons();
 
-        const token = this._getToken();
+        const token = AppAPI.getToken();
         if (!token) {
             list.innerHTML = '<div class="text-center text-textMuted py-4">Please login</div>';
             return;
@@ -500,13 +486,7 @@ const SafetyTab = {
                 status === 'all'
                     ? '/api/governance/reports'
                     : `/api/governance/reports?status=${status}`;
-            const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-            if (!res.ok) {
-                list.innerHTML =
-                    '<div class="text-center text-danger py-4 text-sm">Failed to load reports</div>';
-                return;
-            }
-            const data = await res.json();
+            const data = await AppAPI.get(url);
             const reports = data.reports || [];
             if (reports.length === 0) {
                 list.innerHTML =
@@ -535,7 +515,7 @@ const SafetyTab = {
     },
 
     async loadGovReview() {
-        const token = this._getToken();
+        const token = AppAPI.getToken();
         const proNotice = document.getElementById('gov-pro-notice');
         const reviewContent = document.getElementById('gov-review-content');
         const pendingList = document.getElementById('gov-pending-list');
@@ -548,16 +528,12 @@ const SafetyTab = {
         }
 
         try {
-            const res = await fetch('/api/governance/reports/pending', {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            const data = await AppAPI.get('/api/governance/reports/pending');
 
-            if (res.ok) {
-                if (proNotice) proNotice.classList.add('hidden');
-                if (reviewContent) reviewContent.classList.remove('hidden');
+            if (proNotice) proNotice.classList.add('hidden');
+            if (reviewContent) reviewContent.classList.remove('hidden');
 
-                const data = await res.json();
-                const reports = data.reports || [];
+            const reports = data.reports || [];
 
                 if (reports.length === 0) {
                     pendingList.innerHTML =
@@ -578,12 +554,7 @@ const SafetyTab = {
                                 : 'bg-danger/20 text-danger';
 
                             // Use I18n.t if available, otherwise fallback
-                            const voteText =
-                                window.I18n && window.I18n.t
-                                    ? window.I18n.t(voteTextKey)
-                                    : isApprove
-                                      ? 'Voted: Violation'
-                                      : 'Voted: Not Violation';
+                            const voteText = t(voteTextKey);
 
                             return `
                         <div class="bg-background rounded-xl p-4 space-y-3">
@@ -652,13 +623,6 @@ const SafetyTab = {
                 if (window.I18n && window.I18n.updatePageContent) {
                     window.I18n.updatePageContent();
                 }
-            } else {
-                const result = await res.json();
-                if (result.detail && (result.detail.includes('PRO') || result.detail.includes('Premium'))) {
-                    if (proNotice) proNotice.classList.remove('hidden');
-                    if (reviewContent) reviewContent.classList.add('hidden');
-                }
-            }
         } catch (error) {
             console.error(error);
             pendingList.innerHTML =
@@ -692,25 +656,17 @@ const SafetyTab = {
     },
 
     async govVote(reportId, voteType) {
-        const token = this._getToken();
+        const token = AppAPI.getToken();
         if (!token) return;
 
         try {
-            const res = await fetch(`/api/governance/reports/${reportId}/vote`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({ vote_type: voteType }),
-            });
-            const result = await res.json();
-            if (res.ok) {
-                this._toast(result.message || 'Vote submitted', 'success');
-                this.loadGovReview();
+            const result = await AppAPI.post(`/api/governance/reports/${reportId}/vote`, { vote_type: voteType });
+            if (result.message) {
+                this._toast(result.message, 'success');
             } else {
-                this._toast(result.detail || 'Vote failed', 'error');
+                this._toast('Vote submitted', 'success');
             }
+            this.loadGovReview();
         } catch (error) {
             this._toast('Vote failed', 'error');
         }
@@ -721,9 +677,9 @@ const SafetyTab = {
         if (!list) return;
         list.innerHTML =
             '<div class="text-center text-textMuted py-4"><i data-lucide="loader-2" class="w-5 h-5 animate-spin mx-auto mb-2"></i></div>';
-        if (window.lucide) lucide.createIcons();
+        AppUtils.refreshIcons();
 
-        const token = this._getToken();
+        const token = AppAPI.getToken();
         if (!token) {
             list.innerHTML =
                 '<div class="text-center text-textMuted py-4 text-sm">Please login to view leaderboard</div>';
@@ -731,15 +687,7 @@ const SafetyTab = {
         }
 
         try {
-            const res = await fetch('/api/governance/reviewers/leaderboard', {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!res.ok) {
-                const errData = await res.json().catch(() => ({}));
-                list.innerHTML = `<div class="text-center text-danger py-4 text-sm">${errData.detail || 'Failed to load leaderboard'}</div>`;
-                return;
-            }
-            const data = await res.json();
+            const data = await AppAPI.get('/api/governance/reviewers/leaderboard');
             const reviewers = data.leaderboard || [];
             if (reviewers.length === 0) {
                 list.innerHTML =
@@ -832,3 +780,5 @@ const SafetyTab = {
 };
 
 window.SafetyTab = SafetyTab;
+export { SafetyTab };
+

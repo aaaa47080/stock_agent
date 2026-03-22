@@ -23,7 +23,7 @@ function openAlertModal(symbol, market) {
     document.getElementById('alert-repeat').checked = false;
     document.getElementById('alert-modal').classList.remove('hidden');
     // Re-init Lucide icons (X button inside modal)
-    if (typeof lucide !== 'undefined') lucide.createIcons();
+    AppUtils.refreshIcons();
     // Re-apply i18n translations
     if (window.I18n && typeof window.I18n.updatePageContent === 'function')
         window.I18n.updatePageContent();
@@ -53,34 +53,20 @@ async function submitAlert() {
     }
 
     try {
-        const token =
-            window.AuthManager &&
-            window.AuthManager.currentUser &&
-            window.AuthManager.currentUser.accessToken;
-        const resp = await fetch('/api/alerts', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-            body: JSON.stringify({
-                symbol: _alertSymbol,
-                market: _alertMarket,
-                condition,
-                target,
-                repeat,
-            }),
+        await AppAPI.post('/api/alerts', {
+            symbol: _alertSymbol,
+            market: _alertMarket,
+            condition,
+            target,
+            repeat,
         });
-        if (resp.ok) {
-            if (typeof window.showToast === 'function')
-                window.showToast('✅ ' + t('modals.priceAlert.confirm'));
-            closeAlertModal();
-            loadUserAlerts();
-        } else {
-            const err = await resp.json().catch(() => ({}));
-            if (typeof window.showToast === 'function')
-                window.showToast(err.detail || t('modals.priceAlert.setFailed'), 'error');
-        }
+        if (typeof window.showToast === 'function')
+            window.showToast('✅ ' + t('modals.priceAlert.confirm'));
+        closeAlertModal();
+        loadUserAlerts();
     } catch (e) {
         if (typeof window.showToast === 'function')
-            window.showToast(t('modals.priceAlert.networkError'), 'error');
+            window.showToast(e.message || t('modals.priceAlert.setFailed'), 'error');
     }
 }
 
@@ -89,14 +75,8 @@ async function submitAlert() {
  */
 async function loadUserAlerts() {
     try {
-        const token =
-            window.AuthManager &&
-            window.AuthManager.currentUser &&
-            window.AuthManager.currentUser.accessToken;
-        if (!token) return;
-        const resp = await fetch('/api/alerts', { headers: { Authorization: 'Bearer ' + token } });
-        if (!resp.ok) return;
-        const data = await resp.json();
+        if (!AppAPI.getToken()) return;
+        const data = await AppAPI.get('/api/alerts');
         renderAlertList(data.alerts || []);
     } catch (e) {
         // silent fail — user may not be logged in
@@ -108,24 +88,11 @@ async function loadUserAlerts() {
  * @param {string} alertId - The alert ID to delete
  */
 async function deleteUserAlert(alertId) {
+    const t = (key) => (window.I18n ? window.I18n.t(key) : key);
     try {
-        const token =
-            window.AuthManager &&
-            window.AuthManager.currentUser &&
-            window.AuthManager.currentUser.accessToken;
-        const resp = await fetch('/api/alerts/' + alertId, {
-            method: 'DELETE',
-            headers: { Authorization: 'Bearer ' + token },
-        });
-        if (resp.ok) {
-            loadUserAlerts();
-        } else {
-            const t = (key) => (window.I18n ? window.I18n.t(key) : key);
-            if (typeof window.showToast === 'function')
-                window.showToast(t('modals.priceAlert.deleteFailed'), 'error');
-        }
+        await AppAPI.delete('/api/alerts/' + alertId);
+        loadUserAlerts();
     } catch (e) {
-        const t = (key) => (window.I18n ? window.I18n.t(key) : key);
         if (typeof window.showToast === 'function')
             window.showToast(t('modals.priceAlert.deleteFailed'), 'error');
     }
@@ -193,5 +160,6 @@ window.submitAlert = submitAlert;
 window.loadUserAlerts = loadUserAlerts;
 window.deleteUserAlert = deleteUserAlert;
 window.renderAlertList = renderAlertList;
+export { openAlertModal, closeAlertModal, submitAlert, loadUserAlerts, deleteUserAlert, renderAlertList };
 
 // ── End Price Alert UI ─────────────────────────────────────────────────

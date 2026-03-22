@@ -17,9 +17,11 @@ function _buildHistoryMsgEl(msg) {
     div.className = `message-bubble ${role === 'user' ? 'user-message' : 'bot-bubble prose'}`;
 
     if (role === 'bot') {
-        const savedState = window.lastProcessOpenState;
+        const savedState = AppStore.get('lastProcessOpenState');
+        AppStore.set('lastProcessOpenState', false);
         window.lastProcessOpenState = false;
         div.innerHTML = renderStoredBotMessage(msg.content);
+        AppStore.set('lastProcessOpenState', savedState);
         window.lastProcessOpenState = savedState;
     } else {
         div.textContent = msg.content;
@@ -50,10 +52,8 @@ async function loadMoreHistory() {
     container.prepend(loader);
 
     try {
-        const token = AuthManager.currentUser.accessToken;
         const url = `/api/chat/history?session_id=${encodeURIComponent(_historySessionId)}&before_timestamp=${encodeURIComponent(_historyOldestTimestamp)}`;
-        const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-        const data = await res.json();
+        const data = await AppAPI.get(url);
 
         loader.remove();
 
@@ -99,11 +99,7 @@ async function loadChatHistory(sessionId = 'default') {
     _historySessionId = sessionId;
 
     try {
-        const token = AuthManager.currentUser.accessToken;
-        const res = await fetch(`/api/chat/history?session_id=${encodeURIComponent(sessionId)}`, {
-            headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
+        const data = await AppAPI.get(`/api/chat/history?session_id=${encodeURIComponent(sessionId)}`);
 
         const container = document.getElementById('chat-messages');
         container.innerHTML = '';
@@ -149,6 +145,10 @@ async function loadChatHistory(sessionId = 'default') {
     }
 }
 
+// 暴露到全域供其他模組使用
+window.loadChatHistory = loadChatHistory;
+window.loadMoreHistory = loadMoreHistory;
+
 /** 捲動偵測：接近頂部 80px 時觸發 loadMoreHistory。只掛一個 listener。 */
 let _scrollListenerAttached = false;
 function _attachHistoryScrollListener(container) {
@@ -164,4 +164,6 @@ function _attachHistoryScrollListener(container) {
         { passive: true }
     );
 }
+
+export { loadChatHistory, loadMoreHistory };
 

@@ -57,10 +57,7 @@ async function initChat() {
                 // If we already found one "New Chat" (the newest one), delete this one
                 if (newChatCount > 1) {
                     cleanupPromises.push(
-                        fetch(`/api/chat/sessions/${s.id}`, {
-                            method: 'DELETE',
-                            headers: { Authorization: `Bearer ${token}` },
-                        })
+                        AppAPI.delete(`/api/chat/sessions/${s.id}`)
                     );
                 }
             }
@@ -97,6 +94,10 @@ function resetChatInit() {
     chatInitialized = false;
     currentSessionId = null;
 }
+window.resetChatInit = resetChatInit;
+
+// 暴露到全域供其他模組使用
+window.initChat = initChat;
 
 // 不再自動執行 initChat，由 auth.js 在登入成功後調用
 // document.addEventListener('DOMContentLoaded', initChat);
@@ -111,7 +112,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 100);
 });
 
-window.submitFeedback = async function (codebookId, score, btn) {
+// 反饋提交
+async function submitFeedback(codebookId, score, btn) {
     if (!codebookId) return;
 
     // Disable buttons to prevent spam
@@ -120,17 +122,9 @@ window.submitFeedback = async function (codebookId, score, btn) {
     buttons.forEach((b) => (b.disabled = true));
 
     try {
-        const token = AuthManager.currentUser.accessToken;
-        await fetch('/api/chat/feedback', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-                codebook_entry_id: codebookId,
-                score: score,
-            }),
+        await AppAPI.post('/api/chat/feedback', {
+            codebook_entry_id: codebookId,
+            score: score,
         });
 
         // UI Feedback
@@ -150,4 +144,11 @@ window.submitFeedback = async function (codebookId, score, btn) {
         buttons.forEach((b) => (b.disabled = false));
         if (typeof showToast === 'function') showToast('反饋提交失敗，請稍後再試', 'error');
     }
+};
+window.submitFeedback = submitFeedback;
+
+export {
+    initChat,
+    resetChatInit,
+    submitFeedback,
 };

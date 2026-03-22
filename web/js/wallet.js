@@ -43,7 +43,7 @@ const WalletApp = {
         // Loading State
         container.innerHTML =
             '<div class="text-center text-textMuted py-10 opacity-50"><i data-lucide="loader-2" class="w-6 h-6 animate-spin mx-auto mb-2"></i>Loading history...</div>';
-        if (window.lucide) lucide.createIcons();
+        if (window.AppUtils) window.AppUtils.refreshIcons();
 
         try {
             // Check ForumAPI
@@ -274,7 +274,7 @@ const WalletApp = {
             container.appendChild(el);
         });
 
-        if (window.lucide) lucide.createIcons();
+        if (window.AppUtils) window.AppUtils.refreshIcons();
     },
 
     renderEmptyState(msg = 'No transactions yet') {
@@ -288,7 +288,7 @@ const WalletApp = {
                     <p>${msg}</p>
                 </div>
             `;
-            if (window.lucide) lucide.createIcons();
+            if (window.AppUtils) window.AppUtils.refreshIcons();
         }
     },
 
@@ -348,3 +348,5 @@ document.addEventListener('DOMContentLoaded', () => {
 // CRITICAL: Export to window for global access
 // ========================================
 window.WalletApp = WalletApp;
+
+export { WalletApp };

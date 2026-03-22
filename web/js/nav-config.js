@@ -325,7 +325,4 @@ const NavPreferences = {
 window.NAV_ITEMS = NAV_ITEMS;
 window.NavPreferences = NavPreferences;
 
-// Export for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { NAV_ITEMS, NavPreferences };
-}
+export { NAV_ITEMS, NavPreferences };

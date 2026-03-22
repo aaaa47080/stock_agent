@@ -14,7 +14,8 @@ var isFirstLoad = true;
  * Crypto 專區控制器
  * 管理 Market Watch 與 AI Pulse 的子標籤切換
  */
-window.CryptoTab = {
+const CryptoTab = {
+
     activeSubTab: 'market', // 'market' | 'pulse'
 
     switchSubTab: function (tabId) {
@@ -64,6 +65,8 @@ window.CryptoTab = {
     },
 };
 
+window.CryptoTab = CryptoTab;
+
 /**
  * 主要初始化函數 - 確保組件已注入並加載數據
  * 這是進入 Crypto 頁面時唯一需要調用的函數
@@ -104,12 +107,13 @@ async function initCrypto() {
     }
 
     // Double check: 允許空列表，這會觸發後端的 "Auto" 模式 (返回市值前排行)
-    if (!window.globalSelectedSymbols) {
+    if (!AppStore.get('globalSelectedSymbols')) {
+        AppStore.set('globalSelectedSymbols', []);
         window.globalSelectedSymbols = [];
     }
 
     // 初期化時總是先載入當前 active 的 sub-tab
-    window.CryptoTab.refreshCurrent();
+    CryptoTab.refreshCurrent();
 }
 
 window.initCrypto = initCrypto; // Export initCrypto for global usage
@@ -122,47 +126,69 @@ window.refreshScreener = refreshScreener; // 確保 filter.js 與 HTML onclick �
 // window.showChart は market-chart.js で export
 window.showFundingHistory = showFundingHistory;
 var chart = null;
+window.chart = chart;
 var candleSeries = null;
+window.candleSeries = candleSeries;
 var volumeSeries = null;
+window.volumeSeries = volumeSeries;
 
 // Chart state variables
 // Chart state variables
 var currentChartSymbol = null;
+window.currentChartSymbol = currentChartSymbol;
 var currentChartInterval = '1h';
+window.currentChartInterval = currentChartInterval;
 var autoRefreshEnabled = true; // 預設開啟即時更新
+window.autoRefreshEnabled = autoRefreshEnabled;
 var autoRefreshTimer = null;
 var reconnectAttempts = 0;
+window.reconnectAttempts = reconnectAttempts;
 const MAX_RECONNECT_ATTEMPTS = 5;
+window.MAX_RECONNECT_ATTEMPTS = MAX_RECONNECT_ATTEMPTS;
 var chartKlinesData = []; // 儲存當前 K 線數據供更新用
+window.chartKlinesData = chartKlinesData;
 var isChartHovered = false; // 追蹤圖表是否被懸停
+window.isChartHovered = isChartHovered;
 
 // WebSocket 連接
 // WebSocket 連接
 // WebSocket 連接
 var klineWebSocket = null;
+window.klineWebSocket = klineWebSocket;
 var wsReconnectTimer = null;
+window.wsReconnectTimer = wsReconnectTimer;
 var wsConnectionCheckTimer = null;
+window.wsConnectionCheckTimer = wsConnectionCheckTimer;
 var wsConnected = false;
+window.wsConnected = wsConnected;
 
 // Market Watch WebSocket
 // Market Watch WebSocket
 var marketWsConnected = false;
+window.marketWsConnected = marketWsConnected;
 var marketWebSocket = null;
+window.marketWebSocket = marketWebSocket;
 var tickerReconnectTimer = null;
+window.tickerReconnectTimer = tickerReconnectTimer;
 var tickerReconnectAttempts = 0;
+window.tickerReconnectAttempts = tickerReconnectAttempts;
 const MAX_TICKET_RECONNECT_ATTEMPTS = 5;
+window.MAX_TICKET_RECONNECT_ATTEMPTS = MAX_TICKET_RECONNECT_ATTEMPTS;
 var subscribedTickerSymbols = new Set();
+window.subscribedTickerSymbols = subscribedTickerSymbols;
 var pendingTickerSymbols = new Set(); // 等待連接後訂閱的 symbols
+window.pendingTickerSymbols = pendingTickerSymbols;
 
 // 獲取資金費率數據
 async function fetchFundingRates() {
     try {
         // 構建 URL，如果有選擇的幣種則傳遞給 API
         let url = '/api/funding-rates';
-        if (window.globalSelectedSymbols && window.globalSelectedSymbols.length > 0) {
+        if (AppStore.get('globalSelectedSymbols') && AppStore.get('globalSelectedSymbols').length > 0) {
             const pairSymbols = window.SymbolSanitizer
-                ? window.SymbolSanitizer.sanitizePairSymbols(window.globalSelectedSymbols)
-                : window.globalSelectedSymbols;
+                ? window.SymbolSanitizer.sanitizePairSymbols(AppStore.get('globalSelectedSymbols'))
+                : AppStore.get('globalSelectedSymbols');
+            AppStore.set('globalSelectedSymbols', pairSymbols);
             window.globalSelectedSymbols = pairSymbols;
             const validSymbols = window.SymbolSanitizer
                 ? window.SymbolSanitizer.sanitizeBaseSymbols(pairSymbols)
@@ -180,16 +206,14 @@ async function fetchFundingRates() {
             console.log('[Funding] No symbols selected, fetching Top 10 extremes');
         }
 
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(res.statusText);
-        const data = await res.json();
+        const data = await AppAPI.get(url);
         if (data.data) {
             fundingRateData = data.data;
         }
         return data;
     } catch (err) {
         console.error('獲取資金費率失敗:', err);
-        if (typeof showToast === 'function') showToast(window.I18n ? window.I18n.t('crypto.fundingRateLoadFailed') : '資金費率載入失敗，請稍後再試', 'error');
+        if (typeof showToast === 'function') showToast(t('crypto.fundingRateLoadFailed'), 'error');
         return null;
     }
 }
@@ -211,7 +235,7 @@ function getFundingRateStyle(rate) {
             color: 'text-red-500 font-bold',
             bg: 'bg-red-500/20',
             border: 'border-red-500/50',
-            label: window.I18n ? window.I18n.t('crypto.extremeOverheated') : '極度過熱',
+            label: t('crypto.extremeOverheated'),
         };
 
     // 📈 偏高費率 (0.03% - 0.1%): 明顯看多
@@ -220,7 +244,7 @@ function getFundingRateStyle(rate) {
             color: 'text-orange-400',
             bg: 'bg-orange-500/10',
             border: 'border-orange-500/30',
-            label: window.I18n ? window.I18n.t('crypto.crowdedLongs') : '多頭擁擠',
+            label: t('crypto.crowdedLongs'),
         };
 
     // 🐂 正常偏多 (> 0.01%): 溫和看多
@@ -229,7 +253,7 @@ function getFundingRateStyle(rate) {
             color: 'text-emerald-400',
             bg: 'bg-emerald-500/10',
             border: 'border-emerald-500/20',
-            label: window.I18n ? window.I18n.t('crypto.bullish') : '看多',
+            label: t('crypto.bullish'),
         };
 
     // 😐 基準費率 (0% - 0.01%): 市場平靜
@@ -238,7 +262,7 @@ function getFundingRateStyle(rate) {
             color: 'text-gray-400',
             bg: 'bg-gray-500/10',
             border: 'border-gray-500/20',
-            label: window.I18n ? window.I18n.t('crypto.neutral') : '中性',
+            label: t('crypto.neutral'),
         };
 
     // 📉 負費率 (< 0%): 空頭擁擠 / 軋空機會 (Cyan/Blue)
@@ -246,7 +270,7 @@ function getFundingRateStyle(rate) {
         color: 'text-cyan-400 font-medium',
         bg: 'bg-cyan-500/10',
         border: 'border-cyan-500/30',
-        label: window.I18n ? window.I18n.t('crypto.bearishShortSqueeze') : '看空/軋空',
+        label: t('crypto.bearishShortSqueeze'),
     };
 }
 
@@ -295,41 +319,31 @@ async function refreshScreener(showLoading = false, forceRefresh = false) {
 
     try {
         if (window.SymbolSanitizer) {
-            window.globalSelectedSymbols = window.SymbolSanitizer.sanitizePairSymbols(
-                window.globalSelectedSymbols || []
-            );
+            AppStore.set('globalSelectedSymbols', window.SymbolSanitizer.sanitizePairSymbols(
+                AppStore.get('globalSelectedSymbols') || []
+            ));
+            window.globalSelectedSymbols = AppStore.get('globalSelectedSymbols');
         }
 
         const body = {
-            exchange: window.currentFilterExchange || 'okx',
+            exchange: AppStore.get('currentFilterExchange') || 'okx',
             refresh: forceRefresh,
         };
-        if (window.globalSelectedSymbols && window.globalSelectedSymbols.length > 0) {
-            body.symbols = window.globalSelectedSymbols;
+        if (AppStore.get('globalSelectedSymbols') && AppStore.get('globalSelectedSymbols').length > 0) {
+            body.symbols = AppStore.get('globalSelectedSymbols');
         }
         // 獨立處理兩個請求，互不影響
         // 1. Fetch Screener Data
         // 獨立處理兩個請求，互不影響，並且不使用 Promise.all 阻塞
         // 1. Fetch Screener Data (Fast)
-        fetch('/api/screener', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-        })
-            .then(async (res) => {
-                if (!res.ok) {
-                    const errData = await res.json().catch(() => ({ detail: res.statusText }));
-                    throw new Error(errData.detail || `Server Error: ${res.status}`);
-                }
-                return res.json();
-            })
+        AppAPI.post('/api/screener', body)
             .then((screenerData) => {
                 // --- 處理篩選器結果 (Screener) ---
                 if (screenerData && !screenerData.error) {
                     // [Optimization] Auto-populate filter from VOLUME leaders (Hot)
                     if (
-                        !window.globalSelectedSymbols ||
-                        window.globalSelectedSymbols.length === 0
+                        !AppStore.get('globalSelectedSymbols') ||
+                        AppStore.get('globalSelectedSymbols').length === 0
                     ) {
                         const sourceList = screenerData.top_volume || screenerData.top_gainers;
                         if (sourceList && sourceList.length > 0) {
@@ -337,9 +351,10 @@ async function refreshScreener(showLoading = false, forceRefresh = false) {
                             const autoSymbols = top5.map(function (item) {
                                 return item.Symbol;
                             });
-                            window.globalSelectedSymbols = window.SymbolSanitizer
+                            AppStore.set('globalSelectedSymbols', window.SymbolSanitizer
                                 ? window.SymbolSanitizer.sanitizePairSymbols(autoSymbols)
-                                : autoSymbols;
+                                : autoSymbols);
+                            window.globalSelectedSymbols = AppStore.get('globalSelectedSymbols');
 
                             var indicator = document.getElementById('active-filter-indicator');
                             var filterCount = document.getElementById('filter-count');
@@ -352,18 +367,18 @@ async function refreshScreener(showLoading = false, forceRefresh = false) {
                             var pulseBadge = document.getElementById('pulse-count-badge');
 
                             if (filterCount)
-                                filterCount.innerText = window.globalSelectedSymbols.length;
+                                filterCount.innerText = AppStore.get('globalSelectedSymbols').length;
                             if (globalCount)
-                                globalCount.innerText = window.globalSelectedSymbols.length;
+                                globalCount.innerText = AppStore.get('globalSelectedSymbols').length;
                             if (pulseFilterCount)
-                                pulseFilterCount.innerText = window.globalSelectedSymbols.length;
+                                pulseFilterCount.innerText = AppStore.get('globalSelectedSymbols').length;
                             if (pulseBadge)
-                                pulseBadge.innerText = window.globalSelectedSymbols.length;
+                                pulseBadge.innerText = AppStore.get('globalSelectedSymbols').length;
                         }
                     }
 
                     // Update UI indicators
-                    var count = (window.globalSelectedSymbols || []).length;
+                    var count = (AppStore.get('globalSelectedSymbols') || []).length;
                     // ... (省略部分 UI 更新代碼以保持簡潔，主要邏輯不變) ...
 
                     if (screenerData.last_updated) {
@@ -393,7 +408,7 @@ async function refreshScreener(showLoading = false, forceRefresh = false) {
                     if (topCount === 0) {
                         console.warn(
                             '[Market] Filter returned 0 items. Selected symbols:',
-                            window.globalSelectedSymbols
+                            AppStore.get('globalSelectedSymbols')
                         );
                     }
                 } else {
@@ -411,13 +426,13 @@ async function refreshScreener(showLoading = false, forceRefresh = false) {
                             containers[key].innerHTML = `
                             <div class="flex flex-col items-center justify-center py-8 text-center text-red-400">
                                 <i data-lucide="wifi-off" class="w-8 h-8 mb-2 opacity-50"></i>
-                                <span class="text-sm font-medium">${window.I18n ? window.I18n.t('crypto.loadFailed') : '載入失敗'}</span>
+                                <span class="text-sm font-medium">${t('crypto.loadFailed')}</span>
                                 <div class="text-xs opacity-50 mt-1 mb-2">${SecurityUtils.escapeHTML(err.message || '')}</div>
-                                <button onclick="window.refreshScreener(true, true)" class="text-xs bg-red-500/10 hover:bg-red-500/20 px-3 py-1 rounded-full transition">${window.I18n ? window.I18n.t('crypto.retry') : '重試'}</button>
+                                <button onclick="window.refreshScreener(true, true)" class="text-xs bg-red-500/10 hover:bg-red-500/20 px-3 py-1 rounded-full transition">${t('crypto.retry')}</button>
                             </div>`;
                         }
                     });
-                    if (window.lucide) window.lucide.createIcons();
+                    AppUtils.refreshIcons();
                 } else {
                     // Background refresh failed - just log it, don't destroy existing data
                     console.warn('[Market] Background refresh failed, keeping existing data.');
@@ -430,7 +445,7 @@ async function refreshScreener(showLoading = false, forceRefresh = false) {
     } catch (e) {
         console.error('Critical Refresh Error:', e);
         isScreenerLoading = false;
-        if (typeof showToast === 'function') showToast(window.I18n ? window.I18n.t('crypto.marketRefreshFailed') : '市場數據刷新失敗，請稍後再試', 'error');
+        if (typeof showToast === 'function') showToast(t('crypto.marketRefreshFailed'), 'error');
     }
 
     // 2. Fetch Funding Rates (Completely Independent & Non-Blocking)
@@ -460,7 +475,7 @@ async function refreshScreener(showLoading = false, forceRefresh = false) {
                 ['highFunding', 'lowFunding'].forEach((key) => {
                     if (containers[key]) {
                         containers[key].innerHTML =
-                            `<div class="text-center py-4 text-xs text-textMuted opacity-50">${window.I18n ? window.I18n.t('crypto.noData') : '暫無數據'}</div>`;
+                            `<div class="text-center py-4 text-xs text-textMuted opacity-50">${t('crypto.noData')}</div>`;
                     }
                 });
             }
@@ -470,7 +485,7 @@ async function refreshScreener(showLoading = false, forceRefresh = false) {
             ['highFunding', 'lowFunding'].forEach((key) => {
                 if (containers[key]) {
                     containers[key].innerHTML =
-                        `<div class="text-center py-4 text-xs text-red-400 opacity-50">${window.I18n ? window.I18n.t('crypto.loadFailed') : '載入失敗'}</div>`;
+                        `<div class="text-center py-4 text-xs text-red-400 opacity-50">${t('crypto.loadFailed')}</div>`;
                 }
             });
         });
@@ -646,7 +661,7 @@ async function showFundingHistory(symbol) {
                     </div>
                 </div>
                 <div class="mt-4 text-center text-xs text-textMuted">
-                    ${window.I18n ? window.I18n.t('crypto.fundingHistoryNote') : '最近 14 天的資金費率記錄 (每 8 小時結算一次)'}
+                    ${t('crypto.fundingHistoryNote')}
                 </div>
             </div>
         `;
@@ -683,15 +698,10 @@ async function showFundingHistory(symbol) {
         if (overlay && overlayContent) {
             overlay.classList.remove('hidden');
             overlayContent.innerHTML =
-                '<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div><div class="text-xs text-textMuted">' + (window.I18n ? window.I18n.t('crypto.loadingData') : '載入數據中...') + '</div>';
+                '<div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div><div class="text-xs text-textMuted">' + t('crypto.loadingData') + '</div>';
         }
 
-        const res = await fetch(url);
-        if (!res.ok) {
-            throw new Error(`HTTP error! status: ${res.status}`);
-        }
-
-        const data = await res.json();
+        const data = await AppAPI.get(url);
 
         if (data.data && data.data.length > 0) {
             // Hide overlay on success
@@ -700,18 +710,18 @@ async function showFundingHistory(symbol) {
         } else if (data.error) {
             console.error('API returned error:', data.error);
             if (overlay && overlayContent) {
-                overlayContent.innerHTML = `<div class="text-red-400 text-sm">${window.I18n ? window.I18n.t('crypto.loadFailed') : '載入失敗'}<br><span class="text-xs opacity-70">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(data.error) : data.error}</span></div>`;
+                overlayContent.innerHTML = `<div class="text-red-400 text-sm">${t('crypto.loadFailed')}<br><span class="text-xs opacity-70">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(data.error) : data.error}</span></div>`;
             }
         } else {
             console.error('History data missing:', data);
             if (overlay && overlayContent) {
-                overlayContent.innerHTML = '<div class="text-red-400 text-sm">' + (window.I18n ? window.I18n.t('crypto.noHistoryData') : '無歷史數據可用') + '</div>';
+                overlayContent.innerHTML = '<div class="text-red-400 text-sm">' + t('crypto.noHistoryData') + '</div>';
             }
         }
     } catch (e) {
         console.error('Fetch failed:', e);
         if (overlay && overlayContent) {
-            overlayContent.innerHTML = `<div class="text-red-400 text-sm">${window.I18n ? window.I18n.t('crypto.loadFailed') : '載入失敗'}<br><span class="text-xs opacity-70">${SecurityUtils.escapeHTML(e.message || '')}</span></div>`;
+            overlayContent.innerHTML = `<div class="text-red-400 text-sm">${t('crypto.loadFailed')}<br><span class="text-xs opacity-70">${SecurityUtils.escapeHTML(e.message || '')}</span></div>`;
         }
     }
 }
@@ -727,3 +737,5 @@ function closeFundingHistory() {
         }, 300);
     }
 }
+
+export { CryptoTab, initCrypto, refreshScreener, showFundingHistory, closeFundingHistory };

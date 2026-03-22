@@ -46,12 +46,15 @@
     <!-- Custom Styles -->
     <link rel="stylesheet" href="/static/styles.css?v=4">
 
+    <!-- CDN Libraries (must load before ES modules) -->
+    <script src="https://unpkg.com/lucide@0.577.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/i18next@23.7.6/i18next.min.js" crossorigin="anonymous"></script>
+
 </head>
 
 <body class="h-screen w-screen overflow-hidden flex bg-background text-textMain selection:bg-primary/30">
     <!-- Skip to main content link for keyboard users -->
     <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[9999] focus:px-4 focus:py-2 focus:bg-primary focus:text-background focus:rounded-lg focus:font-bold">跳到主要內容</a>
-    <script src="/static/js/pi-auth.js?v=8"></script>
     <!-- Sidebar (Chat History) -->
     <aside id="chat-sidebar" role="complementary" aria-label="聊天歷史側邊欄"
         class="fixed inset-y-0 left-0 z-50 w-64 bg-surface/95 backdrop-blur-xl border-r border-white/5 transform -translate-x-full transition-transform duration-300 md:translate-x-0 md:static md:w-72 md:flex-shrink-0 flex flex-col">
@@ -932,143 +935,8 @@
                 <p class="text-[10px] text-amber-500/50 text-center mt-2">僅測試環境可用 · Dev only</p>
             </div>
 
-            <!-- ============================================================
-                 EMAIL LOGIN DISABLED - Pi SDK Exclusive Authentication
-                 官方要求：只允許 Pi SDK 登入，不允許其他登入方式
-                 如需恢復，取消以下註解即可
-            ============================================================ -->
-            <!--
-            <div class="flex items-center gap-4 my-6">
-                <div class="flex-1 h-px bg-white/10"></div>
-                <span class="text-xs text-textMuted uppercase tracking-wider">or continue with email</span>
-                <div class="flex-1 h-px bg-white/10"></div>
-            </div>
-
-            <div class="flex p-1 bg-background/50 rounded-xl mb-6">
-                <button onclick="toggleAuthMode('login')" id="tab-login" class="flex-1 py-2 rounded-lg text-sm font-bold transition bg-surfaceHighlight text-secondary shadow-sm">Login</button>
-                <button onclick="toggleAuthMode('register')" id="tab-register" class="flex-1 py-2 rounded-lg text-sm font-bold text-textMuted transition hover:text-secondary">Register</button>
-            </div>
-
-            <div id="form-login" class="space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Username</label>
-                    <input type="text" id="login-username" placeholder="Enter username"
-                        class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Password</label>
-                    <input type="password" id="login-password" placeholder="Enter password"
-                        class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition"
-                        onkeypress="if(event.key === 'Enter') handleCredentialLogin()">
-                </div>
-                <button onclick="handleCredentialLogin()" class="w-full py-3 bg-surfaceHighlight hover:bg-white/10 text-secondary font-bold rounded-xl transition border border-white/5">
-                    Login
-                </button>
-                <div class="text-center">
-                    <button onclick="showForgotPasswordModal()" class="text-sm text-primary hover:text-accent transition">
-                        Forgot Password?
-                    </button>
-                </div>
-            </div>
-
-            <div id="form-register" class="space-y-4 hidden">
-                <div>
-                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Username</label>
-                    <input type="text" id="reg-username" placeholder="At least 6 characters"
-                           class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition"
-                           minlength="6"
-                           onkeypress="if(event.key === 'Enter') checkUsernameAvailability()"
-                           onblur="checkUsernameAvailability()">
-                    <p id="reg-username-msg" class="text-xs mt-1 min-h-[1.25rem] transition-colors duration-300 text-textMuted/60">At least 6 characters</p>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Email <span class="text-danger">*</span></label>
-                    <input type="email" id="reg-email" placeholder="name@example.com"
-                           class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition"
-                           onblur="checkEmailAvailability()" required>
-                    <p id="reg-email-msg" class="text-xs text-textMuted/60 mt-1">Required for password recovery</p>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Password</label>
-                    <input type="password" id="reg-password" placeholder="8-15 characters" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition" minlength="8" maxlength="15">
-                    <p class="text-xs text-textMuted/60 mt-1">8-15 characters required</p>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Confirm Password</label>
-                    <input type="password" id="reg-confirm-password" placeholder="Confirm password" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition" minlength="8" maxlength="15">
-                </div>
-                <button onclick="handleRegister()" class="w-full py-3 bg-primary text-background font-bold rounded-xl transition hover:brightness-110 shadow-lg shadow-primary/20">
-                    Create Account
-                </button>
-            </div>
-            -->
-
         </div>
     </div>
-
-    <!-- ============================================================
-         FORGOT/RESET PASSWORD DISABLED - Pi SDK Exclusive Authentication
-    ============================================================ -->
-    <!--
-    <div id="forgot-password-modal" class="fixed inset-0 bg-background/95 backdrop-blur-xl z-[95] hidden flex items-center justify-center p-6">
-        <div class="bg-surface w-full max-w-md p-8 rounded-[2.5rem] border border-white/10 shadow-2xl">
-            <div class="text-center mb-6">
-                <div class="w-16 h-16 mx-auto mb-4 bg-primary/10 rounded-full flex items-center justify-center">
-                    <i data-lucide="key" class="w-8 h-8 text-primary"></i>
-                </div>
-                <h2 class="font-serif text-2xl text-secondary mb-2">Forgot Password</h2>
-                <p class="text-textMuted text-sm">Enter your email to receive a reset link</p>
-            </div>
-
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Email Address</label>
-                    <input type="email" id="forgot-email" placeholder="name@example.com"
-                        class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition"
-                        onkeypress="if(event.key === 'Enter') handleForgotPassword()">
-                </div>
-                <button onclick="handleForgotPassword()" id="forgot-submit-btn" class="w-full py-3 bg-primary text-background font-bold rounded-xl transition hover:brightness-110 shadow-lg shadow-primary/20">
-                    Send Reset Link
-                </button>
-                <button onclick="hideForgotPasswordModal()" class="w-full py-3 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-xl transition border border-white/5">
-                    Back to Login
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <div id="reset-password-modal" class="fixed inset-0 bg-background/95 backdrop-blur-xl z-[95] hidden flex items-center justify-center p-6">
-        <div class="bg-surface w-full max-w-md p-8 rounded-[2.5rem] border border-white/10 shadow-2xl">
-            <div class="text-center mb-6">
-                <div class="w-16 h-16 mx-auto mb-4 bg-success/10 rounded-full flex items-center justify-center">
-                    <i data-lucide="lock" class="w-8 h-8 text-success"></i>
-                </div>
-                <h2 class="font-serif text-2xl text-secondary mb-2">Reset Password</h2>
-                <p class="text-textMuted text-sm">Enter your new password</p>
-            </div>
-
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">New Password</label>
-                    <input type="password" id="reset-new-password" placeholder="Enter new password"
-                        class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2">Confirm Password</label>
-                    <input type="password" id="reset-confirm-password" placeholder="Confirm new password"
-                        class="w-full bg-background border border-white/5 rounded-xl px-4 py-3 text-secondary outline-none focus:border-primary/50 transition"
-                        onkeypress="if(event.key === 'Enter') handleResetPassword()">
-                </div>
-                <button onclick="handleResetPassword()" id="reset-submit-btn" class="w-full py-3 bg-success text-background font-bold rounded-xl transition hover:brightness-110 shadow-lg shadow-success/20">
-                    Reset Password
-                </button>
-                <button onclick="hideResetPasswordModal()" class="w-full py-3 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-xl transition border border-white/5">
-                    Cancel
-                </button>
-            </div>
-        </div>
-    </div>
-    -->
 
     <!-- Report Modal -->
     <div id="report-modal"
@@ -1175,51 +1043,8 @@
         </div>
     </div>
 
-    <!-- Scripts -->
-    <script defer src="/static/js/ui-shell.js?v=1"></script>
-    <script defer src="/static/js/app.js?v=55" onerror="alert('app.js 載入失敗')"></script>
-    <script defer src="/static/js/apiKeyManager.js?v=48" onerror="alert('apiKeyManager.js 載入失敗')"></script>
-    <script defer src="/static/js/auth.js?v=60" onerror="alert('auth.js 載入失敗')"></script>
-    <script defer src="/static/js/components.js?v=80"></script>
-    <script defer src="/static/js/notification-service.js?v=4"></script>
-    <script defer src="/static/js/components/NotificationBell.js?v=2"></script>
-    <script defer src="/static/js/components/NotificationPanel.js?v=4"></script>
-    <script defer src="/static/js/llmSettings.js?v=52"></script>
-<script defer src="/static/js/testMode.js?v=3"></script>
-    <script defer src="/static/js/toolSettings.js?v=7"></script>
-    <script defer src="/static/js/filter.js?v=49"></script>
-    <script defer src="/static/js/chat-state.js?v=1"></script>
-    <script defer src="/static/js/chat-sessions.js?v=1"></script>
-    <script defer src="/static/js/chat-stream-ui.js?v=1"></script>
-    <script defer src="/static/js/chat-hitl.js?v=1"></script>
-    <script defer src="/static/js/chat-analysis.js?v=2"></script>
-    <script defer src="/static/js/chat-history.js?v=1"></script>
-    <script defer src="/static/js/chat-init.js?v=1"></script>
-    <script defer src="/static/js/friends.js?v=5"></script>
-    <script defer src="/static/js/messages.js?v=5"></script>
-    <script defer src="/static/js/nav-config.js?v=7"></script>
-    <script defer src="/static/js/global-nav.js?v=2"></script>
-    <script defer src="/static/js/market-status.js?v=3"></script>
-    <script defer src="/static/js/twstock.js?v=10"></script>
-    <script defer src="/static/js/usstock.js?v=10"></script>
-    <script defer src="/static/js/market-screener.js?v=2"></script>
-    <script defer src="/static/js/market-chart.js?v=1"></script>
-    <script defer src="/static/js/market-ws.js?v=1"></script>
-    <script defer src="/static/js/pulse.js?v=53"></script>
-    <script defer src="/static/js/commodity.js?v=2"></script>
-    <script defer src="/static/js/forex.js?v=2"></script>
-    <script defer src="/static/js/forum-config.js?v=1"></script>
-    <script defer src="/static/js/forum-api.js?v=1"></script>
-    <script defer src="/static/js/forum-app.js?v=1"></script>
-    <script defer src="/static/js/wallet.js?v=47"></script>
-    <script defer src="/static/scam-tracker/js/scam-tracker.js?v=48"></script>
-    <script defer src="/static/js/safetyTab.js?v=53"></script>
-    <script defer src="/static/js/admin.js?v=2"></script>
-    <script defer src="/static/js/admin-stats.js?v=1"></script>
-    <!-- SPA Core & Modals (Refactored from inline scripts) -->
-    <script defer src="/static/js/spa.js?v=6"></script>
-    <script defer src="/static/js/modals.js?v=3"></script>
-    <script defer src="/static/js/legal.js?v=1"></script>
+    <!-- Scripts — ES Modules via Vite -->
+    <script type="module" src="/js/main.js"></script>
     <!-- Legal Page Modal -->
     <div id="legal-modal" class="fixed inset-0 z-[9999] bg-background hidden flex-col">
         <nav data-shell-fixed-nav class="sticky top-0 z-10 bg-surface/95 backdrop-blur-xl border-b border-white/5">
@@ -1263,9 +1088,6 @@
             </div>
         </div>
     </div>
-
-    <script defer src="/static/js/i18n.js?v=9"></script>
-    <script defer src="/static/js/components/LanguageSwitcher.js?v=3"></script>
 </body>
 
 </html>

@@ -7,7 +7,7 @@
  *    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
  */
 
-window.SecurityUtils = {
+const SecurityUtils = {
     /**
      * HTML 轉義函數 - 防止 XSS 攻擊
      * @param {string} str - 需要轉義的字符串
@@ -242,6 +242,8 @@ window.SecurityUtils = {
     },
 };
 
+window.SecurityUtils = SecurityUtils;
+
 // 自動初始化 CSP 報告
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
@@ -251,5 +253,4 @@ if (document.readyState === 'loading') {
     SecurityUtils.initCSPReporting();
 }
 
-// 導出到全局
-window.SecurityUtils = SecurityUtils;
+export { SecurityUtils };

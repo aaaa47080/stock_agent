@@ -67,10 +67,10 @@ async function showLegalPage(type) {
             modal.dataset.type = type;
         }
     } catch (e) {
-        contentArea.innerHTML = `<p class="text-center text-danger py-20">Failed to load: ${SecurityUtils.escapeHTML(e.message || '')}</p>`;
+        contentArea.innerHTML = `<p class="text-center text-danger py-20">Failed to load: ${window.SecurityUtils ? window.SecurityUtils.escapeHTML(e.message || '') : (e.message || '')}</p>`;
     }
 
-    if (window.lucide) lucide.createIcons();
+    if (window.AppUtils) window.AppUtils.refreshIcons();
 }
 
 function _updateLegalLanguage(lang) {
@@ -122,3 +122,5 @@ window.addEventListener('languageChanged', e => {
 
 window.showLegalPage = showLegalPage;
 window.closeLegalModal = closeLegalModal;
+
+export { LEGAL_PAGE_MAP, showLegalPage, closeLegalModal };

@@ -18,17 +18,7 @@ const MessagesAPI = {
         return null;
     },
 
-    /**
-     * 取得 Access Token
-     */
-    _getToken() {
-        if (typeof AuthManager !== 'undefined' && AuthManager.currentUser) {
-            const user = AuthManager.currentUser;
-            const userId = user.user_id || user.uid;
-            return user.accessToken || user.piAccessToken || userId;
-        }
-        return null;
-    },
+
 
     /**
      * 取得對話列表
@@ -38,23 +28,9 @@ const MessagesAPI = {
         if (!userId)
             throw new Error(window.I18n ? window.I18n.t('messages.loginRequired') : '請先登入');
 
-        const token = this._getToken();
-        const res = await fetch(
+        return await AppAPI.get(
             `/api/messages/conversations?user_id=${userId}&limit=${limit}&offset=${offset}`,
-            {
-                headers: { Authorization: `Bearer ${token}` },
-            }
         );
-        if (!res.ok) {
-            const err = await res.json();
-            throw new Error(
-                err.detail ||
-                    (window.I18n
-                        ? window.I18n.t('messages.getConversationsFailed')
-                        : '取得對話列表失敗')
-            );
-        }
-        return await res.json();
     },
 
     /**
@@ -68,18 +44,7 @@ const MessagesAPI = {
         let url = `/api/messages/conversation/${conversationId}?user_id=${userId}&limit=${limit}`;
         if (beforeId) url += `&before_id=${beforeId}`;
 
-        const token = this._getToken();
-        const res = await fetch(url, {
-            headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) {
-            const err = await res.json();
-            throw new Error(
-                err.detail ||
-                    (window.I18n ? window.I18n.t('messages.getMessagesFailed') : '取得訊息失敗')
-            );
-        }
-        return await res.json();
+        return await AppAPI.get(url);
     },
 
     /**
@@ -90,21 +55,9 @@ const MessagesAPI = {
         if (!userId)
             throw new Error(window.I18n ? window.I18n.t('messages.loginRequired') : '請先登入');
 
-        const token = this._getToken();
-        const res = await fetch(
+        return await AppAPI.get(
             `/api/messages/with/${otherUserId}?user_id=${userId}&limit=${limit}`,
-            {
-                headers: { Authorization: `Bearer ${token}` },
-            }
         );
-        if (!res.ok) {
-            const err = await res.json();
-            throw new Error(
-                err.detail ||
-                    (window.I18n ? window.I18n.t('messages.getConversationFailed') : '取得對話失敗')
-            );
-        }
-        return await res.json();
     },
 
     /**
@@ -115,23 +68,7 @@ const MessagesAPI = {
         if (!userId)
             throw new Error(window.I18n ? window.I18n.t('messages.loginRequired') : '請先登入');
 
-        const res = await fetch(`/api/messages/send?user_id=${userId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${this._getToken()}`,
-            },
-            body: JSON.stringify({ to_user_id: toUserId, content }),
-        });
-
-        if (!res.ok) {
-            const err = await res.json();
-            throw new Error(
-                err.detail ||
-                    (window.I18n ? window.I18n.t('messages.messageFailed') : '發送訊息失敗')
-            );
-        }
-        return await res.json();
+        return await AppAPI.post(`/api/messages/send?user_id=${userId}`, { to_user_id: toUserId, content });
     },
 
     /**
@@ -142,23 +79,7 @@ const MessagesAPI = {
         if (!userId)
             throw new Error(window.I18n ? window.I18n.t('messages.loginRequired') : '請先登入');
 
-        const res = await fetch(`/api/messages/read?user_id=${userId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${this._getToken()}`,
-            },
-            body: JSON.stringify({ conversation_id: conversationId }),
-        });
-
-        if (!res.ok) {
-            const err = await res.json();
-            throw new Error(
-                err.detail ||
-                    (window.I18n ? window.I18n.t('messages.markAsReadFailed') : '標記已讀失敗')
-            );
-        }
-        return await res.json();
+        return await AppAPI.post(`/api/messages/read?user_id=${userId}`, { conversation_id: conversationId });
     },
 
     /**
@@ -169,23 +90,7 @@ const MessagesAPI = {
         if (!userId)
             throw new Error(window.I18n ? window.I18n.t('messages.loginRequired') : '請先登入');
 
-        const res = await fetch(`/api/messages/greeting?user_id=${userId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${this._getToken()}`,
-            },
-            body: JSON.stringify({ to_user_id: toUserId, content }),
-        });
-
-        if (!res.ok) {
-            const err = await res.json();
-            throw new Error(
-                err.detail ||
-                    (window.I18n ? window.I18n.t('messages.sendGreetingFailed') : '發送打招呼失敗')
-            );
-        }
-        return await res.json();
+        return await AppAPI.post(`/api/messages/greeting?user_id=${userId}`, { to_user_id: toUserId, content });
     },
 
     /**
@@ -196,21 +101,9 @@ const MessagesAPI = {
         if (!userId)
             throw new Error(window.I18n ? window.I18n.t('messages.loginRequired') : '請先登入');
 
-        const token = this._getToken();
-        const res = await fetch(
+        return await AppAPI.get(
             `/api/messages/search?user_id=${userId}&q=${encodeURIComponent(query)}&limit=${limit}`,
-            {
-                headers: { Authorization: `Bearer ${token}` },
-            }
         );
-        if (!res.ok) {
-            const err = await res.json();
-            throw new Error(
-                err.detail ||
-                    (window.I18n ? window.I18n.t('messages.searchMessagesFailed') : '搜尋訊息失敗')
-            );
-        }
-        return await res.json();
     },
 
     /**
@@ -221,12 +114,7 @@ const MessagesAPI = {
         if (!userId) return { unread_count: 0 };
 
         try {
-            const token = this._getToken();
-            const res = await fetch(`/api/messages/unread-count?user_id=${userId}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!res.ok) return { unread_count: 0 };
-            return await res.json();
+            return await AppAPI.get(`/api/messages/unread-count?user_id=${userId}`);
         } catch {
             return { unread_count: 0 };
         }
@@ -240,12 +128,7 @@ const MessagesAPI = {
         if (!userId) return null;
 
         try {
-            const token = this._getToken();
-            const res = await fetch(`/api/messages/limits?user_id=${userId}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!res.ok) return null;
-            return await res.json();
+            return await AppAPI.get(`/api/messages/limits?user_id=${userId}`);
         } catch {
             return null;
         }
@@ -776,6 +659,8 @@ async function updateUnreadBadge() {
 }
 
 window.updateUnreadBadge = updateUnreadBadge;
+
+export { MessagesAPI, MessagesWebSocket, MessagesUI, updateUnreadBadge };
 
 // 移除定期輪詢 - 未讀數量應該透過 WebSocket 即時更新
 // WebSocket 收到 new_message 時會觸發 updateUnreadBadge()

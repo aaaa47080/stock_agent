@@ -195,3 +195,4 @@ class LanguageSwitcher {
 
 // Expose globally
 window.LanguageSwitcher = LanguageSwitcher;
+export { LanguageSwitcher };

@@ -3,7 +3,9 @@
 // ========================================
 
 // Track current active tab to return to when closing sidebar
-window.currentActiveTab = 'chat'; // Default to chat, make it global so chat.js can access it
+// AppStore is the source of truth; window.currentActiveTab kept for backward compat
+AppStore.set('activeTab', 'chat');
+window.currentActiveTab = 'chat'; // backward compat
 
 // ========================================
 // Navigation Logic (Updated with Smooth Transitions)
@@ -64,6 +66,7 @@ async function switchTab(tabId, fromPopState = false) {
         return await executeTabSwitch(tabId, fromPopState);
     }
 }
+window.switchTab = switchTab;
 
 // 監聽瀏覽器返回/前進按鈕
 window.addEventListener('popstate', (event) => {
@@ -105,6 +108,7 @@ function navigateToForum() {
     sessionStorage.setItem('returnToTab', currentTab);
     smoothNavigate('/static/forum/index.html');
 }
+window.navigateToForum = navigateToForum;
 
 /**
  * Execute the actual tab switching logic
@@ -124,7 +128,8 @@ async function executeTabSwitch(tabId, fromPopState = false) {
     }
 
     localStorage.setItem('activeTab', tabId);
-    currentActiveTab = tabId; // Update current active tab
+    AppStore.set('activeTab', tabId); // source of truth
+    window.currentActiveTab = tabId; // backward compat
 
     // 更新瀏覽器歷史記錄（只有非 popstate 觸發時才 push）
     if (!fromPopState && window.location.hash !== '#' + tabId) {
@@ -266,10 +271,12 @@ async function executeTabSwitch(tabId, fromPopState = false) {
             settingsInits.push(Promise.resolve(loadPremiumStatus()));
         if (typeof updateLLMStatusUI === 'function')
             settingsInits.push(Promise.resolve(updateLLMStatusUI()));
-        if (!window.__settingsHeavyInitAt) window.__settingsHeavyInitAt = 0;
-        const now = Date.now();
-        if (now - window.__settingsHeavyInitAt > 15000) {
-            window.__settingsHeavyInitAt = now;
+                if (!AppStore.get('settingsHeavyInitAt')) AppStore.set('settingsHeavyInitAt', 0);
+                window.__settingsHeavyInitAt = AppStore.get('settingsHeavyInitAt');
+                const now = Date.now();
+                if (now - AppStore.get('settingsHeavyInitAt') > 15000) {
+                    AppStore.set('settingsHeavyInitAt', now);
+                    window.__settingsHeavyInitAt = now;
             if (typeof window.initToolSettings === 'function') {
                 settingsInits.push(Promise.resolve(window.initToolSettings()));
             }
@@ -292,7 +299,8 @@ async function executeTabSwitch(tabId, fromPopState = false) {
     if (tabId === 'chat') {
         // ✅ 效能優化：checkApiKeyStatus 加 TTL 快取，避免每次切換都打後端 API
         const now = Date.now();
-        if (!window._lastApiKeyCheck || now - window._lastApiKeyCheck > 30000) {
+        if (!AppStore.get('lastApiKeyCheck') || now - AppStore.get('lastApiKeyCheck') > 30000) {
+            AppStore.set('lastApiKeyCheck', now);
             window._lastApiKeyCheck = now;
             // 確保 APIKeyManager 已初始化
             if (typeof checkApiKeyStatus === 'function' && window.APIKeyManager) {
@@ -303,6 +311,7 @@ async function executeTabSwitch(tabId, fromPopState = false) {
 
     if (typeof onTabSwitch === 'function') onTabSwitch(tabId);
 }
+window.executeTabSwitch = executeTabSwitch;
 
 // ========================================
 // Navigation Rendering & Feature Menu
@@ -312,61 +321,12 @@ async function executeTabSwitch(tabId, fromPopState = false) {
  * Render navigation buttons based on user preferences
  */
 function renderNavButtons() {
-    if (!window.NavPreferences) {
-        console.warn('NavPreferences not loaded yet');
+    if (window.GlobalNav && typeof GlobalNav.renderNavButtons === 'function') {
+        GlobalNav.renderNavButtons();
         return;
     }
-
-    const container = document.getElementById('nav-buttons');
-    if (!container) return;
-
-    const enabledItems = NavPreferences.getEnabledItems();
-    const activeTab = localStorage.getItem('activeTab') || 'chat';
-
-    container.innerHTML = '';
-
-    enabledItems.forEach((item) => {
-        // Hide admin-only tabs for non-admin users
-        if (item.adminOnly) {
-            const user = window.AuthManager && AuthManager.currentUser;
-            if (!user || user.role !== 'admin') return;
-        }
-
-        const button = document.createElement('button');
-        const isActive = item.id === activeTab;
-
-        // Use i18n key if available, otherwise fall back to label
-        let labelText = item.label; // Default fallback
-        if (item.i18nKey && window.I18n && window.I18n.isReady && window.I18n.isReady()) {
-            const translated = window.I18n.t(item.i18nKey);
-            // Only use translation if it's different from the key (translation succeeded)
-            if (translated !== item.i18nKey) {
-                labelText = translated;
-            }
-        }
-
-        button.className = `nav-btn shrink-0 w-12 h-12 flex flex-col items-center justify-center rounded-full hover:bg-white/10 transition-all duration-200 gap-0.5 nav-item-enter ${isActive ? 'text-primary bg-white/5' : 'text-textMuted hover:text-primary'}`;
-        button.title = labelText;
-        button.dataset.tab = item.id;
-
-        // All tabs including forum use SPA navigation (switchTab)
-        button.onclick = function () {
-            switchTab(item.id);
-        };
-
-        button.innerHTML = `
-            <i data-lucide="${item.icon}" class="w-5 h-5 ${isActive ? 'text-primary' : 'text-textMuted'}"></i>
-            <span class="text-[9px] font-medium opacity-80">${labelText}</span>
-        `;
-
-        container.appendChild(button);
-    });
-
-    // Re-initialize Lucide icons
-    if (window.lucide) {
-        window.lucide.createIcons();
-    }
 }
+window.renderNavButtons = renderNavButtons;
 
 /**
  * Feature Menu Manager
@@ -434,9 +394,7 @@ const FeatureMenu = {
         });
 
         // Initialize Lucide icons
-        if (window.lucide) {
-            window.lucide.createIcons();
-        }
+        AppUtils.refreshIcons();
 
         // Show modal with animation
         this._modal.classList.remove('hidden');
@@ -723,7 +681,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const loginModal = document.getElementById('login-modal');
     const shouldLockGuestLanding =
-        window.__forceGuestLandingTab === true ||
+        AppStore.get('forceGuestLandingTab') === true ||
         (!!window.AuthManager &&
             !window.AuthManager.isLoggedIn() &&
             loginModal &&
@@ -796,7 +754,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 /**
  * Check and display WebSocket connection status
  */
-window.checkWebSocketStatus = function () {
+function checkWebSocketStatus() {
     window.APP_CONFIG?.DEBUG_MODE && console.log('=== WebSocket Status ===');
     window.APP_CONFIG?.DEBUG_MODE &&
         console.log('Ticker WS Connected:', window.marketWsConnected || false);
@@ -814,4 +772,14 @@ window.checkWebSocketStatus = function () {
         console.log('Subscribed Ticker Symbols:', Array.from(window.subscribedTickerSymbols || []));
     window.APP_CONFIG?.DEBUG_MODE &&
         console.log('Pending Ticker Symbols:', Array.from(window.pendingTickerSymbols || []));
+}
+window.checkWebSocketStatus = checkWebSocketStatus;
+
+export {
+    switchTab,
+    executeTabSwitch,
+    navigateToForum,
+    renderNavButtons,
+    FeatureMenu,
+    checkWebSocketStatus,
 };

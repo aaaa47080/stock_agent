@@ -807,3 +807,7 @@
         markSynced,
     };
 })();
+
+// ES module re-export
+export { }; // MarketStatus is already on window; importers should use window.MarketStatus
+

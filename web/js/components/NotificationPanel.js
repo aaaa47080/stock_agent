@@ -48,9 +48,7 @@ class NotificationPanel {
         `;
 
         // 初始化图标
-        if (window.lucide) {
-            window.lucide.createIcons();
-        }
+        AppUtils.refreshIcons();
     }
 
     attachEvents() {
@@ -125,9 +123,7 @@ class NotificationPanel {
         });
 
         // 重新初始化图标
-        if (window.lucide) {
-            window.lucide.createIcons();
-        }
+        AppUtils.refreshIcons();
     }
 
     renderNotificationItem(notification) {
@@ -304,3 +300,4 @@ class NotificationPanel {
 
 // 暴露全局
 window.NotificationPanel = NotificationPanel;
+export { NotificationPanel };

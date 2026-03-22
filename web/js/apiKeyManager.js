@@ -42,24 +42,14 @@ const APIKeyManager = {
     /**
      * 獲取 API 基礎 URL
      * @returns {string}
+     * @deprecated Use AppAPI directly without prepending base URL.
+     *             AppAPI handles routing; other modules use bare paths like '/api/user/api-keys'.
      */
     _getApiBase() {
-        return window.API_BASE || '';
+        return '';
     },
 
-    /**
-     * 獲取認證 headers
-     * @returns {Object}
-     */
-    async _getAuthHeaders() {
-        // 與其他模組一致的 token 獲取方式
-        const token =
-            window.AuthManager?.currentUser?.accessToken || window.AuthManager?.currentUser?.token;
-        return {
-            'Content-Type': 'application/json',
-            Authorization: token ? `Bearer ${token}` : '',
-        };
-    },
+
 
     /**
      * 設置 API Key（儲存到後端）
@@ -74,20 +64,12 @@ const APIKeyManager = {
 
         if (this._shouldUseBackend()) {
             try {
-                const response = await fetch(`${this._getApiBase()}/api/user/api-keys`, {
-                    method: 'POST',
-                    headers: await this._getAuthHeaders(),
-                    body: JSON.stringify({
-                        provider: provider,
-                        api_key: key.trim(),
-                        model: model,
-                    }),
+                // AppAPI.post() returns parsed JSON on success, throws on error
+                await AppAPI.post('/api/user/api-keys', {
+                    provider: provider,
+                    api_key: key.trim(),
+                    model: model,
                 });
-
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.detail || 'Failed to save API key');
-                }
 
                 // 清除緩存，強制下次重新獲取
                 this._maskedKeysCache = null;
@@ -100,8 +82,9 @@ const APIKeyManager = {
 
                 return { success: true };
             } catch (e) {
-                console.error('[APIKeyManager] Backend save failed:', e);
-                // 降級到 localStorage
+                // Silently fall back — don't spam console on expected failures
+                window.APP_CONFIG?.DEBUG_MODE &&
+                    console.warn('[APIKeyManager] Backend save failed, using localStorage:', e.message);
                 return await this._setKeyLocalStorage(provider, key, model);
             }
         } else {
@@ -155,32 +138,20 @@ const APIKeyManager = {
                 }
 
                 // 從後端獲取完整 key（僅在需要時調用）
-                const response = await fetch(
-                    `${this._getApiBase()}/api/user/api-keys/${provider}/full`,
-                    {
-                        method: 'GET',
-                        headers: await this._getAuthHeaders(),
-                    }
-                );
+                // AppAPI.get() returns parsed JSON directly on success, throws on error
+                const data = await AppAPI.get(`/api/user/api-keys/${provider}/full`);
+                const key = data.key || null;
 
-                if (response.ok) {
-                    const data = await response.json();
-                    const key = data.key || null;
-                    // ⚡ 保存到緩存
-                    if (key) {
-                        this._fullKeyCache[provider] = key;
-                    }
-                    return key;
-                } else if (response.status === 404) {
-                    return null;
-                } else {
-                    throw new Error('Failed to fetch key');
+                // ⚡ 保存到緩存
+                if (key) {
+                    this._fullKeyCache[provider] = key;
                 }
+                return key;
             } catch (e) {
-                console.error(
-                    '[APIKeyManager] Backend fetch failed, falling back to localStorage:',
-                    e
-                );
+                // 404 = no key set (not an error), others = backend unavailable → silent fallback
+                if (e.status === 404) return null;
+                window.APP_CONFIG?.DEBUG_MODE &&
+                    console.warn('[APIKeyManager] Backend fetch failed, using localStorage:', e.message);
                 return await this._getKeyLocalStorage(provider);
             }
         } else {
@@ -212,19 +183,14 @@ const APIKeyManager = {
 
         if (this._shouldUseBackend()) {
             try {
-                const response = await fetch(`${this._getApiBase()}/api/user/api-keys`, {
-                    method: 'GET',
-                    headers: await this._getAuthHeaders(),
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    this._maskedKeysCache = data.keys;
-                    this._lastFetchTime = now;
-                    return data.keys;
-                }
+                // AppAPI.get() returns parsed JSON directly on success, throws on error
+                const data = await AppAPI.get('/api/user/api-keys');
+                this._maskedKeysCache = data.keys;
+                this._lastFetchTime = now;
+                return data.keys;
             } catch (e) {
-                console.error('[APIKeyManager] Failed to fetch masked keys:', e);
+                window.APP_CONFIG?.DEBUG_MODE &&
+                    console.warn('[APIKeyManager] Failed to fetch masked keys:', e.message);
             }
         }
 
@@ -261,23 +227,17 @@ const APIKeyManager = {
     async removeKey(provider) {
         if (this._shouldUseBackend()) {
             try {
-                const response = await fetch(
-                    `${this._getApiBase()}/api/user/api-keys/${provider}`,
-                    {
-                        method: 'DELETE',
-                        headers: await this._getAuthHeaders(),
-                    }
-                );
+                // AppAPI.delete() returns parsed JSON on success, throws on error
+                await AppAPI.delete(`/api/user/api-keys/${provider}`);
 
-                if (response.ok) {
-                    this._maskedKeysCache = null;
-                    if (window.DEBUG_MODE) {
-                        console.log(`🗑️ ${provider} API Key removed from backend`);
-                    }
-                    return { success: true };
+                this._maskedKeysCache = null;
+                if (window.DEBUG_MODE) {
+                    console.log(`🗑️ ${provider} API Key removed from backend`);
                 }
+                return { success: true };
             } catch (e) {
-                console.error('[APIKeyManager] Backend delete failed:', e);
+                window.APP_CONFIG?.DEBUG_MODE &&
+                    console.warn('[APIKeyManager] Backend delete failed:', e.message);
             }
         }
 
@@ -353,16 +313,13 @@ const APIKeyManager = {
         // 然後同步到後端
         if (this._shouldUseBackend()) {
             try {
-                await fetch(`${this._getApiBase()}/api/user/api-keys/model`, {
-                    method: 'POST',
-                    headers: await this._getAuthHeaders(),
-                    body: JSON.stringify({
-                        provider: provider,
-                        model: model.trim(),
-                    }),
+                await AppAPI.post('/api/user/api-keys/model', {
+                    provider: provider,
+                    model: model.trim(),
                 });
             } catch (e) {
-                console.error('[APIKeyManager] Failed to save model to backend:', e);
+                window.APP_CONFIG?.DEBUG_MODE &&
+                    console.warn('[APIKeyManager] Failed to save model to backend:', e.message);
             }
         }
 
@@ -584,7 +541,15 @@ async function updateLLMStatusUI() {
     }
 }
 
+// 暴露到全域供其他模組使用
+window.updateLLMStatusUI = updateLLMStatusUI;
+
 // 頁面載入時更新狀態
 document.addEventListener('DOMContentLoaded', () => {
     setTimeout(updateLLMStatusUI, 100);
 });
+
+export {
+    APIKeyManager,
+    updateLLMStatusUI,
+};

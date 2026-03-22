@@ -82,7 +82,7 @@ const MessagesPage = {
             }
         });
 
-        if (window.lucide) lucide.createIcons();
+        AppUtils.refreshIcons();
     },
 
     /**
@@ -139,7 +139,7 @@ const MessagesPage = {
 
             if (this.conversations.length === 0) {
                 listEl.innerHTML = MessagesUI.renderEmptyState(window.I18n ? window.I18n.t('messages.noConversations') : '尚無對話', 'message-square');
-                if (window.lucide) lucide.createIcons();
+                AppUtils.refreshIcons();
                 return;
             }
 
@@ -149,7 +149,7 @@ const MessagesPage = {
                 )
                 .join('');
 
-            if (window.lucide) lucide.createIcons();
+            AppUtils.refreshIcons();
 
             // Loop: Auto-select first conversation on desktop if none selected
             if (!this.isMobile && this.conversations.length > 0 && !this.currentConversationId) {
@@ -331,7 +331,7 @@ const MessagesPage = {
 
         if (messages.length === 0) {
             container.innerHTML = MessagesUI.renderEmptyState(window.I18n ? window.I18n.t('messages.startConversationHint') : '開始對話吧', 'message-circle');
-            if (window.lucide) lucide.createIcons();
+            AppUtils.refreshIcons();
             return;
         }
 
@@ -365,7 +365,7 @@ const MessagesPage = {
         container.innerHTML = html;
 
         // 渲染圖示
-        if (window.lucide) lucide.createIcons();
+        AppUtils.refreshIcons();
 
         // 確保 DOM 完全更新後再滾動
         // 如果有未讀訊息，滾動到分隔線位置；否則滾動到底部
@@ -534,7 +534,7 @@ const MessagesPage = {
         }
 
         container.insertAdjacentHTML('beforeend', MessagesUI.renderMessageBubble(msg, this.isPro));
-        if (window.lucide) lucide.createIcons();
+        AppUtils.refreshIcons();
         this.scrollToBottom(container);
     },
 
@@ -553,12 +553,7 @@ const MessagesPage = {
                 return;
             }
 
-            const res = await fetch(`/api/messages/${messageId}?user_id=${userId}`, {
-                method: 'DELETE',
-                headers: {
-                    Authorization: `Bearer ${MessagesAPI._getToken()}`,
-                },
-            });
+            const res = await AppAPI.delete(`/api/messages/${messageId}?user_id=${userId}`);
 
             const data = await res.json();
 
@@ -968,10 +963,12 @@ function setupBackButton() {
 
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
-    if (window.lucide) lucide.createIcons();
+    AppUtils.refreshIcons();
     setupBackButton();
     if (window.MessagesPage) MessagesPage.init();
 });
 
 // Export to window
 window.MessagesPage = MessagesPage;
+export { MessagesPage };
+

@@ -1,6 +1,8 @@
 // ============================================
 // Forum App Logic
 // ============================================
+import { loadPiPrices, loadForumLimits, getPrice, getLimit, formatTWDate } from './forum-config.js';
+
 const ForumApp = {
     init() {
         // Ensure prices and limits are loaded
@@ -99,7 +101,7 @@ const ForumApp = {
             <i class="animate-spin" data-lucide="loader-2"></i>
             <span>Loading...</span>
         </div>`;
-        if (window.lucide) lucide.createIcons();
+        AppUtils.refreshIcons();
 
         try {
             const response = await ForumAPI.getPosts(filters);
@@ -169,7 +171,7 @@ const ForumApp = {
                 `;
                 container.appendChild(el);
             });
-            if (window.lucide) lucide.createIcons();
+            AppUtils.refreshIcons();
         } catch (e) {
             console.error(e);
             container.innerHTML = '<div class="text-center py-10 text-danger">載入失敗</div>';
@@ -308,7 +310,7 @@ const ForumApp = {
             this.updatePostStats(post);
 
             // Re-render icons
-            if (window.lucide) window.lucide.createIcons();
+            AppUtils.refreshIcons();
         } catch (e) {
             showToast('文章載入失敗', 'error');
             console.error(e);
@@ -411,7 +413,7 @@ const ForumApp = {
                 `;
                 container.appendChild(el);
             });
-            if (window.lucide) lucide.createIcons();
+            AppUtils.refreshIcons();
         } catch (e) {
             console.error('[Forum] loadComments failed:', e);
             if (container) {
@@ -663,11 +665,7 @@ const ForumApp = {
                     {
                         onReadyForServerApproval: async (paymentId) => {
                             try {
-                                await fetch('/api/user/payment/approve', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ paymentId }),
-                                });
+                                await AppAPI.post('/api/user/payment/approve', { paymentId });
                             } catch (e) {
                                 console.error(e);
                             }
@@ -676,11 +674,7 @@ const ForumApp = {
                             txHash = txid;
                             paymentComplete = true;
                             try {
-                                await fetch('/api/user/payment/complete', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ paymentId, txid }),
-                                });
+                                await AppAPI.post('/api/user/payment/complete', { paymentId, txid });
                             } catch (e) {
                                 console.error(e);
                             }
@@ -787,7 +781,7 @@ const ForumApp = {
                                 </div>
                             `;
                         }
-                        if (window.lucide) lucide.createIcons();
+                        AppUtils.refreshIcons();
                     }
 
                     // Update Submit Button and Cost Info
@@ -917,7 +911,7 @@ const ForumApp = {
                 originalBtnContent = submitBtn.innerHTML;
                 submitBtn.innerHTML =
                     '<i class="animate-spin" data-lucide="loader-2"></i> Processing...';
-                if (window.lucide) lucide.createIcons();
+                AppUtils.refreshIcons();
             }
 
             // Function to reset button state
@@ -925,7 +919,7 @@ const ForumApp = {
                 if (submitBtn) {
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = originalBtnContent;
-                    if (window.lucide) lucide.createIcons();
+                    AppUtils.refreshIcons();
                 }
             };
 
@@ -998,7 +992,7 @@ const ForumApp = {
                                             </div>
                                         `;
                             document.body.appendChild(modal);
-                            if (window.lucide) lucide.createIcons();
+                            AppUtils.refreshIcons();
 
                             resetButton();
                             return; // STOP HERE - Do not proceed to payment
@@ -1064,11 +1058,7 @@ const ForumApp = {
                                             paymentId
                                         );
                                     try {
-                                        await fetch('/api/user/payment/approve', {
-                                            method: 'POST',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ paymentId }),
-                                        });
+                                        await AppAPI.post('/api/user/payment/approve', { paymentId });
                                     } catch (e) {
                                         console.error('[CreatePost] Approve failed:', e);
                                         // Don't throw here, let Pi SDK handle timeout if needed
@@ -1085,10 +1075,8 @@ const ForumApp = {
                                     serverCompletionCalled = true;
 
                                     // Non-blocking call to server completion
-                                    fetch('/api/user/payment/complete', {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ paymentId, txid }),
+                                    AppAPI.post('/api/user/payment/complete', { paymentId, txid })
+                                        .then(() => {
                                     })
                                         .then((res) => {
                                             window.APP_CONFIG?.DEBUG_MODE &&
@@ -1201,7 +1189,7 @@ const ForumApp = {
                                 </div>
                             `;
                 document.body.appendChild(successModal);
-                if (window.lucide) lucide.createIcons();
+                AppUtils.refreshIcons();
 
                 // Determine redirect URL
                 const targetUrl = result.post_id
@@ -1234,7 +1222,7 @@ const ForumApp = {
                     submitBtn.disabled = true;
                     submitBtn.innerHTML =
                         '<i class="w-4 h-4 animate-spin" data-lucide="loader-2"></i> Redirecting...';
-                    if (window.lucide) lucide.createIcons();
+                    AppUtils.refreshIcons();
                 }
             } catch (err) {
                 console.error('[Forum] CreatePost API failed:', err);
@@ -1270,7 +1258,7 @@ const ForumApp = {
                         </div>
                     `;
                     document.body.appendChild(errorModal);
-                    if (window.lucide) lucide.createIcons();
+                    AppUtils.refreshIcons();
 
                     // 複製功能
                     document.getElementById('copy-txhash-btn').onclick = () => {
@@ -1393,7 +1381,7 @@ const ForumApp = {
                 `;
             }
 
-            if (window.lucide) lucide.createIcons();
+            AppUtils.refreshIcons();
         } catch (e) {
             statusText.textContent = '載入失敗';
             statusText.classList.add('text-danger');
@@ -1474,7 +1462,7 @@ const ForumApp = {
                 `;
                 container.appendChild(el);
             });
-            if (window.lucide) lucide.createIcons();
+            AppUtils.refreshIcons();
         } catch (e) {
             console.error('loadMyPosts error', e);
             container.innerHTML = '<div class="text-center text-danger py-4">Failed to load</div>';
@@ -1586,7 +1574,7 @@ const ForumApp = {
                 container.appendChild(el);
             });
 
-            if (window.lucide) lucide.createIcons();
+            AppUtils.refreshIcons();
         } catch (e) {
             console.error('loadTransactions error', e);
             container.innerHTML = '<div class="text-center text-danger py-4">Failed to load</div>';
@@ -1654,7 +1642,7 @@ const ForumApp = {
         `;
 
         document.body.appendChild(modal);
-        if (window.lucide) lucide.createIcons();
+        AppUtils.refreshIcons();
     },
 
     // ===========================================
@@ -1676,7 +1664,7 @@ const ForumApp = {
         if (errorDiv) errorDiv.classList.add('hidden');
 
         modal.classList.remove('hidden');
-        if (window.lucide) lucide.createIcons();
+        AppUtils.refreshIcons();
     },
 
     closeReportModal() {
@@ -1712,42 +1700,34 @@ const ForumApp = {
         const originalText = btn.innerHTML;
         btn.disabled = true;
         btn.innerHTML = '<i class="animate-spin" data-lucide="loader-2"></i> Submitting...';
-        if (window.lucide) lucide.createIcons();
+        AppUtils.refreshIcons();
 
         // Clear previous error
         if (errorDiv) errorDiv.classList.add('hidden');
 
         try {
-            const res = await fetch('/api/governance/reports', {
-                method: 'POST',
-                headers: ForumAPI._getAuthHeaders(),
-                body: JSON.stringify({
-                    content_type: contentType,
-                    content_id: parseInt(contentId),
-                    report_type: reportType,
-                    description: description,
-                }),
+            const res = await AppAPI.post('/api/governance/reports', {
+                content_type: contentType,
+                content_id: parseInt(contentId),
+                report_type: reportType,
+                description: description,
             });
 
-            if (res.ok) {
-                showToast('舉報提交成功，我們會盡快審核', 'success');
-                this.closeReportModal();
-            } else {
-                const err = await res.json();
-                showError(err.detail || '提交失敗');
-            }
+            showToast('舉報提交成功，我們會盡快審核', 'success');
         } catch (e) {
             showError('提交失敗: ' + e.message);
         } finally {
             btn.disabled = false;
             btn.innerHTML = originalText;
-            if (window.lucide) lucide.createIcons();
+            AppUtils.refreshIcons();
         }
     },
 };
 
 // 暴露到全局
 window.ForumApp = ForumApp;
+export { ForumApp };
+
 
 // 確保在 DOM 載入後執行
 document.addEventListener('DOMContentLoaded', () => {

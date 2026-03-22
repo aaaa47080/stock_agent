@@ -89,6 +89,23 @@
         // 初始化 i18next
         i18n = window.i18next;
 
+        if (!i18n) {
+            console.warn(
+                'i18next library not found on window. ' +
+                'Ensure the i18next CDN script is loaded before this module.'
+            );
+            // Fallback: expose a no-op t() function so callers don't crash
+            window.I18n = {
+                init: initI18n,
+                t: function (key, options) { return key; },
+                isReady: function () { return false; },
+                changeLanguage: async function () {},
+                getLanguage: function () { return 'en'; },
+                updatePageContent: updatePageContent,
+            };
+            return;
+        }
+
         try {
             await i18n.init({
                 lng: language,
@@ -161,3 +178,6 @@
         updatePageContent: updatePageContent,
     };
 })();
+
+// Side-effect module — I18n is on window for backward compatibility.
+export {};

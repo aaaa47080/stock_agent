@@ -75,12 +75,14 @@ function sanitizeBaseSymbols(symbols) {
         });
 }
 
-window.SymbolSanitizer = {
+const SymbolSanitizer = {
     normalizeBaseSymbol,
     normalizePairSymbol,
     sanitizePairSymbols,
     sanitizeBaseSymbols,
 };
+
+window.SymbolSanitizer = SymbolSanitizer;
 
 // 從 localStorage 載入已保存的選擇
 function loadSavedSymbolSelection() {
@@ -90,6 +92,7 @@ function loadSavedSymbolSelection() {
             const parsed = JSON.parse(saved);
             if (Array.isArray(parsed) && parsed.length > 0) {
                 const sanitized = sanitizePairSymbols(parsed);
+                AppStore.set('globalSelectedSymbols', sanitized);
                 window.globalSelectedSymbols = sanitized;
                 if (sanitized.length !== parsed.length) {
                     localStorage.setItem('marketWatchSymbols', JSON.stringify(sanitized));
@@ -106,6 +109,7 @@ function loadSavedSymbolSelection() {
     }
 
     // 如果沒有保存的選擇，保持為空，讓 market.js 加載後端預設數據 (Auto Mode)
+    AppStore.set('globalSelectedSymbols', []);
     window.globalSelectedSymbols = [];
     console.log('[Filter] 無保存紀錄，初始化為空 (Auto Mode)');
     return true;
@@ -114,7 +118,8 @@ function loadSavedSymbolSelection() {
 // 保存選擇到 localStorage
 function saveSymbolSelection() {
     try {
-        const sanitized = sanitizePairSymbols(window.globalSelectedSymbols || []);
+        const sanitized = sanitizePairSymbols(AppStore.get('globalSelectedSymbols') || []);
+        AppStore.set('globalSelectedSymbols', sanitized);
         window.globalSelectedSymbols = sanitized;
 
         if (sanitized.length > 0) {
@@ -142,19 +147,19 @@ async function openGlobalFilter() {
     modal.classList.remove('hidden');
 
     const select = document.getElementById('filter-exchange-select');
-    if (select) select.value = window.currentFilterExchange || 'okx';
+    if (select) select.value = AppStore.get('currentFilterExchange') || 'okx';
 
-    if (!window.allMarketSymbols || window.allMarketSymbols.length === 0) {
-        await fetchSymbols(window.currentFilterExchange || 'okx');
+    if (!AppStore.get('allMarketSymbols') || AppStore.get('allMarketSymbols').length === 0) {
+        await fetchSymbols(AppStore.get('currentFilterExchange') || 'okx');
     } else {
-        renderSymbolList(window.allMarketSymbols);
+        renderSymbolList(AppStore.get('allMarketSymbols'));
     }
 }
 
 async function switchFilterExchange(exchange) {
-    if (exchange === window.currentFilterExchange) return;
+    if (exchange === AppStore.get('currentFilterExchange')) return;
 
-    if (window.globalSelectedSymbols && window.globalSelectedSymbols.length > 0) {
+    if (AppStore.get('globalSelectedSymbols') && AppStore.get('globalSelectedSymbols').length > 0) {
         const confirmed = await showConfirm({
             title: '切換交易所',
             message: '切換交易所將清除目前的選擇，是否繼續？',
@@ -165,13 +170,16 @@ async function switchFilterExchange(exchange) {
 
         if (!confirmed) {
             const select = document.getElementById('filter-exchange-select');
-            if (select) select.value = window.currentFilterExchange || 'okx';
+            if (select) select.value = AppStore.get('currentFilterExchange') || 'okx';
             return;
         }
     }
 
+    AppStore.set('currentFilterExchange', exchange);
     window.currentFilterExchange = exchange;
+    AppStore.set('globalSelectedSymbols', []);
     window.globalSelectedSymbols = [];
+    AppStore.set('allMarketSymbols', []);
     window.allMarketSymbols = [];
     await fetchSymbols(exchange);
 }
@@ -182,16 +190,11 @@ async function fetchSymbols(exchange) {
         '<div class="text-center py-8 text-slate-500 animate-pulse">正在從交易所獲取幣種列表...</div>';
 
     try {
-        const res = await fetch(`/api/market/symbols?exchange=${exchange}`);
-
-        if (!res.ok) {
-            throw new Error(`HTTP Error ${res.status}`);
-        }
-
-        const data = await res.json();
+        const data = await AppAPI.get(`/api/market/symbols?exchange=${exchange}`);
         if (data.symbols) {
-            window.allMarketSymbols = data.symbols.sort();
-            renderSymbolList(window.allMarketSymbols);
+            AppStore.set('allMarketSymbols', data.symbols.sort());
+            window.allMarketSymbols = AppStore.get('allMarketSymbols');
+            renderSymbolList(AppStore.get('allMarketSymbols'));
         } else {
             container.innerHTML =
                 '<div class="text-center py-8 text-red-400">無法獲取幣種列表 (格式錯誤)</div>';
@@ -223,14 +226,15 @@ async function fetchSymbols(exchange) {
                     重試
                 </button>
             </div>`;
-        lucide.createIcons();
+        if (window.AppUtils) window.AppUtils.refreshIcons();
     }
 }
 
 function renderSymbolList(symbols) {
     const container = document.getElementById('symbol-list-container');
     container.innerHTML = '';
-    window.globalSelectedSymbols = sanitizePairSymbols(window.globalSelectedSymbols || []);
+    AppStore.set('globalSelectedSymbols', sanitizePairSymbols(AppStore.get('globalSelectedSymbols') || []));
+    window.globalSelectedSymbols = AppStore.get('globalSelectedSymbols');
 
     const searchVal = document.getElementById('symbol-search').value.toUpperCase().trim();
     const filtered = symbols.filter((s) => s.includes(searchVal));
@@ -240,7 +244,7 @@ function renderSymbolList(symbols) {
 
     // [Optimization] Split into two lists for better UX
     filtered.sort().forEach((s) => {
-        if (window.globalSelectedSymbols && window.globalSelectedSymbols.includes(s)) {
+        if (AppStore.get('globalSelectedSymbols') && AppStore.get('globalSelectedSymbols').includes(s)) {
             selected.push(s);
         } else {
             unselected.push(s);
@@ -286,9 +290,9 @@ function renderSymbolList(symbols) {
     }
 
     document.getElementById('selected-count-modal').innerText = (
-        window.globalSelectedSymbols || []
+        AppStore.get('globalSelectedSymbols') || []
     ).length;
-    lucide.createIcons();
+    if (window.AppUtils) window.AppUtils.refreshIcons();
 }
 
 // Helper to create list item
@@ -312,15 +316,19 @@ function toggleSymbolSelection(s) {
         return;
     }
 
-    if (window.globalSelectedSymbols && window.globalSelectedSymbols.includes(normalizedSymbol)) {
-        window.globalSelectedSymbols = window.globalSelectedSymbols.filter(
+    if (AppStore.get('globalSelectedSymbols') && AppStore.get('globalSelectedSymbols').includes(normalizedSymbol)) {
+        AppStore.set('globalSelectedSymbols', AppStore.get('globalSelectedSymbols').filter(
             (item) => item !== normalizedSymbol
-        );
+        ));
+        window.globalSelectedSymbols = AppStore.get('globalSelectedSymbols');
     } else {
-        if (!window.globalSelectedSymbols) window.globalSelectedSymbols = [];
+        if (!AppStore.get('globalSelectedSymbols')) {
+            AppStore.set('globalSelectedSymbols', []);
+            window.globalSelectedSymbols = [];
+        }
 
         // [Restriction] Max 10 items limit as requested by user
-        if (window.globalSelectedSymbols.length >= 10) {
+        if (AppStore.get('globalSelectedSymbols').length >= 10) {
             if (typeof showToast === 'function') {
                 showToast('最多只能選擇 10 個幣種', 'warning');
             } else {
@@ -329,31 +337,36 @@ function toggleSymbolSelection(s) {
             return;
         }
 
-        window.globalSelectedSymbols.push(normalizedSymbol);
+        AppStore.get('globalSelectedSymbols').push(normalizedSymbol);
     }
-    window.globalSelectedSymbols = sanitizePairSymbols(window.globalSelectedSymbols);
-    renderSymbolList(window.allMarketSymbols || []);
+    AppStore.set('globalSelectedSymbols', sanitizePairSymbols(AppStore.get('globalSelectedSymbols')));
+    window.globalSelectedSymbols = AppStore.get('globalSelectedSymbols');
+    renderSymbolList(AppStore.get('allMarketSymbols') || []);
 }
 
 function selectAllMatches() {
     const searchVal = document.getElementById('symbol-search').value.toUpperCase().trim();
     if (!searchVal) return;
 
-    const filtered = (window.allMarketSymbols || []).filter((s) => s.includes(searchVal));
+    const filtered = (AppStore.get('allMarketSymbols') || []).filter((s) => s.includes(searchVal));
     let addedCount = 0;
     filtered.forEach((s) => {
-        if (!window.globalSelectedSymbols) window.globalSelectedSymbols = [];
-        if (window.globalSelectedSymbols.length >= 10) return;
+        if (!AppStore.get('globalSelectedSymbols')) {
+            AppStore.set('globalSelectedSymbols', []);
+            window.globalSelectedSymbols = [];
+        }
+        if (AppStore.get('globalSelectedSymbols').length >= 10) return;
         const normalizedSymbol = normalizePairSymbol(s);
         if (!normalizedSymbol) return;
-        if (!window.globalSelectedSymbols.includes(normalizedSymbol)) {
-            window.globalSelectedSymbols.push(normalizedSymbol);
+        if (!AppStore.get('globalSelectedSymbols').includes(normalizedSymbol)) {
+            AppStore.get('globalSelectedSymbols').push(normalizedSymbol);
             addedCount++;
         }
     });
     if (addedCount > 0) {
-        window.globalSelectedSymbols = sanitizePairSymbols(window.globalSelectedSymbols);
-        renderSymbolList(window.allMarketSymbols || []);
+        AppStore.set('globalSelectedSymbols', sanitizePairSymbols(AppStore.get('globalSelectedSymbols')));
+        window.globalSelectedSymbols = AppStore.get('globalSelectedSymbols');
+        renderSymbolList(AppStore.get('allMarketSymbols') || []);
     }
 }
 
@@ -363,10 +376,11 @@ function applyGlobalFilter() {
     const headerBadge = document.getElementById('global-count-badge');
 
     // 保存選擇到 localStorage
-    window.globalSelectedSymbols = sanitizePairSymbols(window.globalSelectedSymbols || []);
+    AppStore.set('globalSelectedSymbols', sanitizePairSymbols(AppStore.get('globalSelectedSymbols') || []));
+    window.globalSelectedSymbols = AppStore.get('globalSelectedSymbols');
     saveSymbolSelection();
 
-    const count = (window.globalSelectedSymbols || []).length;
+    const count = (AppStore.get('globalSelectedSymbols') || []).length;
     if (headerBadge) {
         headerBadge.innerText = count > 0 ? count : 'Auto';
     }
@@ -388,3 +402,16 @@ function applyGlobalFilter() {
         checkMarketPulse(true);
     }
 }
+
+// Expose functions globally for inline onclick handlers
+window.openGlobalFilter = openGlobalFilter;
+window.switchFilterExchange = switchFilterExchange;
+window.fetchSymbols = fetchSymbols;
+window.renderSymbolList = renderSymbolList;
+window.toggleSymbolSelection = toggleSymbolSelection;
+window.selectAllMatches = selectAllMatches;
+window.applyGlobalFilter = applyGlobalFilter;
+window.loadSavedSymbolSelection = loadSavedSymbolSelection;
+window.saveSymbolSelection = saveSymbolSelection;
+
+export { DEFAULT_MARKET_SYMBOLS, SymbolSanitizer, normalizeBaseSymbol, normalizePairSymbol, sanitizePairSymbols, sanitizeBaseSymbols };

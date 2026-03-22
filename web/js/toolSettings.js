@@ -48,14 +48,10 @@ async function initToolSettings() {
             <i data-lucide="loader" class="w-5 h-5 animate-spin mr-2"></i>
             <span class="text-sm">載入中...</span>
         </div>`;
-    lucide.createIcons();
+    AppUtils.refreshIcons();
 
     try {
-        const res = await fetch('/api/user/tools', {
-            headers: window.PiEnvironment?.getAuthHeaders() || {},
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
+        const data = await AppAPI.get('/api/user/tools');
         _currentUserTier = data.user_tier || 'free';
         _toolSettingsLoaded = true;
         renderToolList(container, data.tools || []);
@@ -112,7 +108,7 @@ function renderToolList(container, tools) {
         .join('');
 
     container.innerHTML = html;
-    lucide.createIcons();
+    AppUtils.refreshIcons();
 
     // Show upgrade notice for free users
     const notice = document.getElementById('tool-settings-free-notice');
@@ -222,15 +218,7 @@ async function toggleToolPreference(toolId, isEnabled, checkboxEl) {
     if (_currentUserTier !== 'premium') return;
 
     try {
-        const res = await fetch(`/api/user/tools/${toolId}/preference`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(window.PiEnvironment?.getAuthHeaders() || {}),
-            },
-            body: JSON.stringify({ is_enabled: isEnabled }),
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const res = await AppAPI.put(`/api/user/tools/${toolId}/preference`, { is_enabled: isEnabled });
         // Success — checkbox already reflects new state
     } catch (err) {
         console.error('[toolSettings] toggle error:', err);
@@ -244,3 +232,9 @@ window.initToolSettings = initToolSettings;
 window.toggleToolPreference = toggleToolPreference;
 window.toggleToolCategory = toggleToolCategory;
 window.isToolSettingsLoaded = () => _toolSettingsLoaded;
+
+export {
+    initToolSettings,
+    toggleToolPreference,
+    toggleToolCategory,
+};

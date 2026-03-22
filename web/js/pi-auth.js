@@ -5,9 +5,13 @@
 /**
  * 初始化 Pi 登入防重複點擊機制
  */
+AppStore.set('piLoginInProgress', false);
 window._piLoginInProgress = false;
+AppStore.set('forceGuestLandingTab', false);
 window.__forceGuestLandingTab = false;
+AppStore.set('piBrowserGateLocked', false);
 window.__piBrowserGateLocked = false;
+AppStore.set('piBrowserGateReason', '');
 window.__piBrowserGateReason = '';
 
 function isSafePiSdkContext() {
@@ -39,24 +43,30 @@ function showPiLoginLoadingModal() {
 }
 
 function enableGuestLandingGate() {
+    AppStore.set('forceGuestLandingTab', true);
     window.__forceGuestLandingTab = true;
 }
 
 function lockPiBrowserGate(reason = 'unknown') {
+    AppStore.set('piBrowserGateLocked', true);
     window.__piBrowserGateLocked = true;
+    AppStore.set('piBrowserGateReason', reason);
     window.__piBrowserGateReason = reason;
     enableGuestLandingGate();
     showPiBrowserRequiredModal();
 }
 
 function unlockPiBrowserGate() {
+    AppStore.set('piBrowserGateLocked', false);
     window.__piBrowserGateLocked = false;
+    AppStore.set('piBrowserGateReason', '');
     window.__piBrowserGateReason = '';
+    AppStore.set('forceGuestLandingTab', false);
     window.__forceGuestLandingTab = false;
 }
 
 function applyPiBrowserGateUI() {
-    if (window.__piBrowserGateLocked) {
+    if (AppStore.get('piBrowserGateLocked')) {
         showPiBrowserRequiredModal();
     }
 }
@@ -65,7 +75,7 @@ window.lockPiBrowserGate = lockPiBrowserGate;
 window.unlockPiBrowserGate = unlockPiBrowserGate;
 window.applyPiBrowserGateUI = applyPiBrowserGateUI;
 window.isPiBrowserGateLocked = function () {
-    return window.__piBrowserGateLocked === true;
+    return AppStore.get('piBrowserGateLocked') === true;
 };
 
 /**
@@ -73,7 +83,7 @@ window.isPiBrowserGateLocked = function () {
  */
 window.safePiLogin = async function () {
     // 防止重複點擊
-    if (window._piLoginInProgress) {
+    if (AppStore.get('piLoginInProgress')) {
         console.log('登入已在進行中，忽略重複點擊');
         return;
     }
@@ -84,6 +94,7 @@ window.safePiLogin = async function () {
     let watchdogId = null;
 
     try {
+        AppStore.set('piLoginInProgress', true);
         window._piLoginInProgress = true;
 
         // 更新按鈕狀態為 Loading
@@ -116,6 +127,7 @@ window.safePiLogin = async function () {
         }
     } finally {
         if (watchdogId) clearTimeout(watchdogId);
+        AppStore.set('piLoginInProgress', false);
         window._piLoginInProgress = false;
         // 恢復按鈕狀態
         if (btn) {
@@ -276,4 +288,6 @@ fetch('/api/config')
             if (subtitle) subtitle.textContent = 'Connect your wallet to continue, or use Dev Login in test mode';
         }
     })
-    .catch(() => {});
+// Side-effect module — no named exports needed.
+// All functions are assigned to window for backward compatibility.
+export {};

@@ -6,15 +6,6 @@ const AdminPanel = {
     currentSubPage: 'broadcast',
     initialized: false,
 
-    _getAuthHeaders() {
-        const headers = { 'Content-Type': 'application/json' };
-        if (typeof AuthManager !== 'undefined' && AuthManager.currentUser) {
-            const token = AuthManager.currentUser.accessToken || AuthManager.currentUser.token;
-            if (token) headers['Authorization'] = `Bearer ${token}`;
-        }
-        return headers;
-    },
-
     init() {
         const container = document.getElementById('admin-content');
         if (!container) return;
@@ -53,7 +44,7 @@ const AdminPanel = {
             <div id="admin-subpage-content"></div>
         `;
 
-        if (window.lucide) lucide.createIcons();
+        AppUtils.refreshIcons();
         this.switchSubPage(this.currentSubPage);
         this.initialized = true;
     },
@@ -154,7 +145,7 @@ const AdminPanel = {
                 </div>
             `;
 
-            if (window.lucide) lucide.createIcons();
+            AppUtils.refreshIcons();
             this._attachPreviewListeners();
             this.loadHistory();
         },
@@ -199,18 +190,7 @@ const AdminPanel = {
                 '<div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> Sending...';
 
             try {
-                const res = await fetch('/api/admin/notifications/broadcast', {
-                    method: 'POST',
-                    headers: AdminPanel._getAuthHeaders(),
-                    body: JSON.stringify({ title, body, type }),
-                });
-
-                if (!res.ok) {
-                    const err = await res.json();
-                    throw new Error(err.detail || 'Failed to send');
-                }
-
-                const data = await res.json();
+                const data = await AppAPI.post('/api/admin/notifications/broadcast', { title, body, type });
                 if (typeof showToast === 'function') {
                     showToast(
                         `Sent to ${data.sent_count} users (${data.online_count} online)`,
@@ -230,7 +210,7 @@ const AdminPanel = {
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i data-lucide="send" class="w-4 h-4"></i> Send to All Users';
-                if (window.lucide) lucide.createIcons();
+                AppUtils.refreshIcons();
             }
         },
 
@@ -239,12 +219,7 @@ const AdminPanel = {
             if (!container) return;
 
             try {
-                const res = await fetch('/api/admin/notifications/history?limit=20', {
-                    headers: AdminPanel._getAuthHeaders(),
-                });
-                if (!res.ok) throw new Error('Failed to load');
-
-                const data = await res.json();
+                const data = await AppAPI.get('/api/admin/notifications/history?limit=20');
                 if (!data.broadcasts || data.broadcasts.length === 0) {
                     container.innerHTML =
                         '<div class="text-center text-textMuted text-sm py-8">No broadcasts yet</div>';
@@ -340,7 +315,7 @@ const AdminPanel = {
                 </div>
             `;
 
-            if (window.lucide) lucide.createIcons();
+            AppUtils.refreshIcons();
 
             // Enter key search
             const searchInput = document.getElementById('admin-user-search');
@@ -382,10 +357,7 @@ const AdminPanel = {
                 let url = `/api/admin/users?page=${this.currentPage}&limit=20`;
                 if (this.searchQuery) url += `&search=${encodeURIComponent(this.searchQuery)}`;
 
-                const res = await fetch(url, { headers: AdminPanel._getAuthHeaders() });
-                if (!res.ok) throw new Error('Failed to load users');
-
-                const data = await res.json();
+                const data = await AppAPI.get(url);
                 const users = data.users || [];
                 const total = data.total || 0;
                 const totalPages = Math.ceil(total / 20);
@@ -417,7 +389,7 @@ const AdminPanel = {
                     pagEl.classList.add('hidden');
                 }
 
-                if (window.lucide) lucide.createIcons();
+                AppUtils.refreshIcons();
             } catch (e) {
                 listEl.innerHTML = `<div class="text-center text-danger text-sm py-4">Failed to load users: ${SecurityUtils.escapeHTML(e.message || '')}</div>`;
             }
@@ -473,11 +445,7 @@ const AdminPanel = {
             };
 
             try {
-                const res = await fetch(`/api/admin/users/${userId}`, {
-                    headers: AdminPanel._getAuthHeaders(),
-                });
-                if (!res.ok) throw new Error('Failed to load user');
-                const data = await res.json();
+                const data = await AppAPI.get(`/api/admin/users/${userId}`);
                 const u = data.user;
 
                 const isActive = u.is_active;
@@ -560,7 +528,7 @@ const AdminPanel = {
                     </div>
                 `;
 
-                if (window.lucide) lucide.createIcons();
+                AppUtils.refreshIcons();
             } catch (e) {
                 content.innerHTML = `<div class="p-8 text-center text-danger text-sm">Failed to load user: ${SecurityUtils.escapeHTML(e.message || '')}</div>`;
             }
@@ -568,15 +536,7 @@ const AdminPanel = {
 
         async setRole(userId, newRole) {
             try {
-                const res = await fetch(`/api/admin/users/${userId}/role`, {
-                    method: 'PUT',
-                    headers: AdminPanel._getAuthHeaders(),
-                    body: JSON.stringify({ role: newRole }),
-                });
-                if (!res.ok) {
-                    const err = await res.json();
-                    throw new Error(err.detail || 'Failed');
-                }
+                await AppAPI.put(`/api/admin/users/${userId}/role`, { role: newRole });
                 if (typeof showToast === 'function')
                     showToast(`Role updated to ${newRole}`, 'success');
                 this.openUserModal(userId); // Refresh modal
@@ -591,15 +551,7 @@ const AdminPanel = {
                 const body = { tier };
                 if (tier === 'pro') body.months = 1;
 
-                const res = await fetch(`/api/admin/users/${userId}/membership`, {
-                    method: 'PUT',
-                    headers: AdminPanel._getAuthHeaders(),
-                    body: JSON.stringify(body),
-                });
-                if (!res.ok) {
-                    const err = await res.json();
-                    throw new Error(err.detail || 'Failed');
-                }
+                await AppAPI.put(`/api/admin/users/${userId}/membership`, body);
                 if (typeof showToast === 'function')
                     showToast(`Membership set to ${tier}`, 'success');
                 this.openUserModal(userId);
@@ -612,15 +564,7 @@ const AdminPanel = {
         async toggleStatus(userId, active) {
             const reason = active ? null : prompt('Suspension reason (optional):');
             try {
-                const res = await fetch(`/api/admin/users/${userId}/status`, {
-                    method: 'PUT',
-                    headers: AdminPanel._getAuthHeaders(),
-                    body: JSON.stringify({ active, reason }),
-                });
-                if (!res.ok) {
-                    const err = await res.json();
-                    throw new Error(err.detail || 'Failed');
-                }
+                await AppAPI.put(`/api/admin/users/${userId}/status`, { active, reason });
                 if (typeof showToast === 'function')
                     showToast(active ? 'Account reactivated' : 'Account suspended', 'success');
                 this.openUserModal(userId);
@@ -718,9 +662,7 @@ const AdminPanel = {
                 let url = `/api/admin/forum/posts?page=${this.currentPage}&limit=20&status=${this.statusFilter}`;
                 if (this.searchQuery) url += `&search=${encodeURIComponent(this.searchQuery)}`;
 
-                const res = await fetch(url, { headers: AdminPanel._getAuthHeaders() });
-                if (!res.ok) throw new Error('Failed to load posts');
-                const data = await res.json();
+                const data = await AppAPI.get(url);
                 const posts = data.posts || [];
 
                 const listEl = document.getElementById('forum-posts-list');
@@ -734,7 +676,7 @@ const AdminPanel = {
                     <div class="text-xs text-textMuted mb-2">${data.total} posts</div>
                     <div class="space-y-2">${posts.map((p) => this._renderPostRow(p)).join('')}</div>
                 `;
-                if (window.lucide) lucide.createIcons();
+                AppUtils.refreshIcons();
             } catch (e) {
                 document.getElementById('forum-posts-list').innerHTML =
                     `<div class="text-danger text-sm py-4 text-center">${SecurityUtils.escapeHTML(e.message || '')}</div>`;
@@ -789,15 +731,7 @@ const AdminPanel = {
 
         async toggleVisibility(postId, currentlyHidden) {
             try {
-                const res = await fetch(`/api/admin/forum/posts/${postId}/visibility`, {
-                    method: 'PATCH',
-                    headers: AdminPanel._getAuthHeaders(),
-                    body: JSON.stringify({ is_hidden: !currentlyHidden }),
-                });
-                if (!res.ok) {
-                    const err = await res.json();
-                    throw new Error(err.detail || 'Failed');
-                }
+                await AppAPI.patch(`/api/admin/forum/posts/${postId}/visibility`, { is_hidden: !currentlyHidden });
                 if (typeof showToast === 'function')
                     showToast(currentlyHidden ? 'Post shown' : 'Post hidden', 'success');
                 this.loadPosts();
@@ -808,15 +742,7 @@ const AdminPanel = {
 
         async togglePin(postId, currentlyPinned) {
             try {
-                const res = await fetch(`/api/admin/forum/posts/${postId}/pin`, {
-                    method: 'PATCH',
-                    headers: AdminPanel._getAuthHeaders(),
-                    body: JSON.stringify({ is_pinned: !currentlyPinned }),
-                });
-                if (!res.ok) {
-                    const err = await res.json();
-                    throw new Error(err.detail || 'Failed');
-                }
+                await AppAPI.patch(`/api/admin/forum/posts/${postId}/pin`, { is_pinned: !currentlyPinned });
                 if (typeof showToast === 'function')
                     showToast(currentlyPinned ? 'Post unpinned' : 'Post pinned', 'success');
                 this.loadPosts();
@@ -833,11 +759,7 @@ const AdminPanel = {
                 '<div class="text-center text-textMuted text-sm py-8">Loading reports...</div>';
 
             try {
-                const res = await fetch('/api/admin/forum/reports?status=pending&limit=50', {
-                    headers: AdminPanel._getAuthHeaders(),
-                });
-                if (!res.ok) throw new Error('Failed to load reports');
-                const data = await res.json();
+                const data = await AppAPI.get('/api/admin/forum/reports?status=pending&limit=50');
                 const reports = data.reports || [];
 
                 // Update badge
@@ -857,7 +779,7 @@ const AdminPanel = {
                     <div class="text-xs text-textMuted mb-2">${data.total} pending reports</div>
                     <div class="space-y-3">${reports.map((r) => this._renderReportRow(r)).join('')}</div>
                 `;
-                if (window.lucide) lucide.createIcons();
+                AppUtils.refreshIcons();
             } catch (e) {
                 el.innerHTML = `<div class="text-danger text-sm py-4 text-center">${SecurityUtils.escapeHTML(e.message || '')}</div>`;
             }
@@ -905,15 +827,7 @@ const AdminPanel = {
                 const body = { decision };
                 if (decision === 'approved') body.violation_level = 'mild';
 
-                const res = await fetch(`/api/admin/forum/reports/${reportId}/resolve`, {
-                    method: 'POST',
-                    headers: AdminPanel._getAuthHeaders(),
-                    body: JSON.stringify(body),
-                });
-                if (!res.ok) {
-                    const err = await res.json();
-                    throw new Error(err.detail || 'Failed');
-                }
+                await AppAPI.post(`/api/admin/forum/reports/${reportId}/resolve`, body);
                 if (typeof showToast === 'function') showToast(`Report ${decision}`, 'success');
                 this.loadReports();
             } catch (e) {
@@ -959,7 +873,7 @@ const AdminPanel = {
                     </div>
                 </div>
             `;
-            if (window.lucide) lucide.createIcons();
+            AppUtils.refreshIcons();
             this.loadConfigs();
             this.loadAuditLog();
         },
@@ -969,11 +883,7 @@ const AdminPanel = {
             if (!el) return;
 
             try {
-                const res = await fetch('/api/admin/config/all', {
-                    headers: AdminPanel._getAuthHeaders(),
-                });
-                if (!res.ok) throw new Error('Failed to load configs');
-                const data = await res.json();
+                const data = await AppAPI.get('/api/admin/config/all');
                 this.configs = data.configs_by_category || {};
 
                 const categoryLabels = {
@@ -1007,7 +917,7 @@ const AdminPanel = {
                     })
                     .join('');
 
-                if (window.lucide) lucide.createIcons();
+                AppUtils.refreshIcons();
             } catch (e) {
                 el.innerHTML = `<div class="text-danger text-sm py-4 text-center">${SecurityUtils.escapeHTML(e.message || '')}</div>`;
             }
@@ -1072,15 +982,7 @@ const AdminPanel = {
             if (!input) return;
 
             try {
-                const res = await fetch(`/api/admin/config/${encodeURIComponent(key)}`, {
-                    method: 'PUT',
-                    headers: AdminPanel._getAuthHeaders(),
-                    body: JSON.stringify({ value: input.value }),
-                });
-                if (!res.ok) {
-                    const err = await res.json();
-                    throw new Error(err.detail || 'Failed');
-                }
+                await AppAPI.put(`/api/admin/config/${encodeURIComponent(key)}`, { value: input.value });
                 if (typeof showToast === 'function')
                     showToast(`Config "${key}" updated`, 'success');
                 this.editingKey = null;
@@ -1096,11 +998,7 @@ const AdminPanel = {
             if (!el) return;
 
             try {
-                const res = await fetch('/api/admin/config/audit?limit=30', {
-                    headers: AdminPanel._getAuthHeaders(),
-                });
-                if (!res.ok) throw new Error('Failed');
-                const data = await res.json();
+                const data = await AppAPI.get('/api/admin/config/audit?limit=30');
                 const logs = data.logs || [];
 
                 if (logs.length === 0) {
@@ -1145,3 +1043,5 @@ const AdminPanel = {
 };
 
 window.AdminPanel = AdminPanel;
+
+export { AdminPanel };

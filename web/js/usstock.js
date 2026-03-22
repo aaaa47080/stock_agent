@@ -3,17 +3,6 @@
  * Architecture mirrors twstock.js
  */
 
-function sanitizeUrl(url) {
-    if (!url) return '#';
-    const trimmed = String(url).trim();
-    if (trimmed.startsWith('javascript:') || trimmed.startsWith('data:') || trimmed.startsWith('vbscript:')) return '#';
-    return trimmed;
-}
-
-function _t(key) {
-    return window.I18n ? window.I18n.t(key) : key;
-}
-
 window.USStockTab = {
     activeSubTab: 'market',
     lastUpdatedAt: null,
@@ -53,23 +42,27 @@ window.USStockTab = {
         try {
             const saved = localStorage.getItem('usStockWatchlist');
             if (saved) {
-                window.usStockSelectedSymbols = JSON.parse(saved);
+                AppStore.set('usStockSelectedSymbols', JSON.parse(saved));
+                window.usStockSelectedSymbols = AppStore.get('usStockSelectedSymbols');
             } else {
-                window.usStockSelectedSymbols = [...this.defaultSymbols];
+                AppStore.set('usStockSelectedSymbols', [...this.defaultSymbols]);
+                window.usStockSelectedSymbols = AppStore.get('usStockSelectedSymbols');
                 this.saveWatchlist();
             }
         } catch (e) {
             console.warn('[US Stock] Error loading watchlist', e);
-            window.usStockSelectedSymbols = [...this.defaultSymbols];
+            AppStore.set('usStockSelectedSymbols', [...this.defaultSymbols]);
+            window.usStockSelectedSymbols = AppStore.get('usStockSelectedSymbols');
         }
     },
 
     saveWatchlist: function () {
         try {
-            if (!window.usStockSelectedSymbols || window.usStockSelectedSymbols.length === 0) {
-                window.usStockSelectedSymbols = [...this.defaultSymbols];
+            if (!AppStore.get('usStockSelectedSymbols') || AppStore.get('usStockSelectedSymbols').length === 0) {
+                AppStore.set('usStockSelectedSymbols', [...this.defaultSymbols]);
+                window.usStockSelectedSymbols = AppStore.get('usStockSelectedSymbols');
             }
-            localStorage.setItem('usStockWatchlist', JSON.stringify(window.usStockSelectedSymbols));
+            localStorage.setItem('usStockWatchlist', JSON.stringify(AppStore.get('usStockSelectedSymbols')));
         } catch (e) {
             console.error('[US Stock] Failed to save watchlist', e);
         }
@@ -86,7 +79,7 @@ window.USStockTab = {
         if (sym.length < 1) return;
 
         const input = document.getElementById('usStockAddInput');
-        if (window.usStockSelectedSymbols.includes(sym)) {
+        if (AppStore.get('usStockSelectedSymbols').includes(sym)) {
             if (input) input.value = '';
             if (window.showToast) window.showToast(_t('usstock.alreadyInWatchlist').replace('{sym}', sym), 'info');
             return;
@@ -102,19 +95,11 @@ window.USStockTab = {
         }
 
         try {
-            const res = await fetch(`/api/usstock/market?symbols=${encodeURIComponent(sym)}`);
-            if (!res.ok) {
-                let msg = _t('usstock.notFoundSymbol').replace('{sym}', sym);
-                try {
-                    const d = await res.json();
-                    if (d.detail) msg = d.detail;
-                } catch (e) {}
-                throw new Error(msg);
-            }
-            const data = await res.json();
+            const data = await AppAPI.get(`/api/usstock/market?symbols=${encodeURIComponent(sym)}`);
 
             if (data.stocks && data.stocks.length > 0) {
-                window.usStockSelectedSymbols.unshift(sym);
+                AppStore.get('usStockSelectedSymbols').unshift(sym);
+                window.usStockSelectedSymbols = AppStore.get('usStockSelectedSymbols');
                 this.saveWatchlist();
                 this.refreshMarketWatch();
                 this.refreshMarketInfo();
@@ -138,7 +123,8 @@ window.USStockTab = {
 
     removeStock: function (symbol, event) {
         if (event) event.stopPropagation();
-        window.usStockSelectedSymbols = window.usStockSelectedSymbols.filter((s) => s !== symbol);
+        AppStore.set('usStockSelectedSymbols', AppStore.get('usStockSelectedSymbols').filter((s) => s !== symbol));
+        window.usStockSelectedSymbols = AppStore.get('usStockSelectedSymbols');
         this.saveWatchlist();
         this.refreshMarketWatch();
         this.refreshMarketInfo();
@@ -168,7 +154,7 @@ window.USStockTab = {
                 </div>
             </div>
         `;
-        if (window.lucide) window.lucide.createIcons();
+        AppUtils.refreshIcons();
 
         const input = document.getElementById('usStockAddInput');
         if (input) {
@@ -224,7 +210,7 @@ window.USStockTab = {
                 if (container) {
                     container.innerHTML = `<div class="py-20 text-center text-textMuted uppercase tracking-widest text-sm italic opacity-50 flex flex-col items-center"><i data-lucide="search" class="w-8 h-8 mb-3 opacity-50"></i>${_t('usstock.enterSymbolOrDeepAnalysis')}</div>`;
                     container.classList.remove('hidden');
-                    if (window.lucide) window.lucide.createIcons();
+                    AppUtils.refreshIcons();
                 }
             }
         }
@@ -242,11 +228,9 @@ window.USStockTab = {
         listContainer.innerHTML = '';
 
         try {
-            const syms = window.usStockSelectedSymbols || this.defaultSymbols;
+            const syms = AppStore.get('usStockSelectedSymbols') || this.defaultSymbols;
             const url = `/api/usstock/market?symbols=${encodeURIComponent(syms.join(','))}`;
-            const res = await fetch(url);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
+            const data = await AppAPI.get(url);
             this.lastUpdatedAt = data.last_updated || new Date().toISOString();
             if (window.MarketStatus) {
                 window.MarketStatus.markSynced('usstock');
@@ -325,7 +309,7 @@ window.USStockTab = {
 
         container.innerHTML = '';
         container.appendChild(frag);
-        if (window.lucide) window.lucide.createIcons();
+        AppUtils.refreshIcons();
     },
 
     jumpToPulse: function (symbol) {
@@ -357,9 +341,7 @@ window.USStockTab = {
         if (!container) return;
         this._showLoader('usstock-info-indices-loader', true);
         try {
-            const res = await fetch('/api/usstock/indices');
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
+            const data = await AppAPI.get('/api/usstock/indices');
             const indices = data.indices || [];
             if (!indices.length) {
                 container.innerHTML =
@@ -396,11 +378,9 @@ window.USStockTab = {
         if (!container) return;
         this._showLoader('usstock-info-news-loader', true);
         try {
-            const syms = (window.usStockSelectedSymbols || this.defaultSymbols).slice(0, 5);
+            const syms = (AppStore.get('usStockSelectedSymbols') || this.defaultSymbols).slice(0, 5);
             const url = `/api/usstock/news?symbols=${encodeURIComponent(syms.join(','))}&limit=15`;
-            const res = await fetch(url);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const json = await res.json();
+            const json = await AppAPI.get(url);
             const items = json.data || [];
             if (!items.length) {
                 container.innerHTML =
@@ -484,24 +464,15 @@ window.USStockTab = {
 
         try {
             const userKey = await window.APIKeyManager?.getCurrentKey();
-            const headers = {};
             let url = `/api/usstock/pulse/${encodeURIComponent(symbol.toUpperCase())}`;
+            const customHeaders = {};
             if (userKey) {
                 url += '?deep_analysis=true';
-                headers['X-User-LLM-Key'] = userKey.key;
-                headers['X-User-LLM-Provider'] = userKey.provider;
+                customHeaders['X-User-LLM-Key'] = userKey.key;
+                customHeaders['X-User-LLM-Provider'] = userKey.provider;
             }
 
-            const res = await fetch(url, { headers });
-            if (!res.ok) {
-                let msg = `HTTP ${res.status}`;
-                try {
-                    const d = await res.json();
-                    if (d.detail) msg = d.detail;
-                } catch (e) {}
-                throw new Error(msg);
-            }
-            const data = await res.json();
+            const data = await AppAPI.get(url, { headers: customHeaders });
             this._renderAIPulse(container, data, !!userKey);
             container.classList.remove('hidden');
         } catch (err) {
@@ -836,7 +807,7 @@ window.USStockTab = {
         `;
 
         container.innerHTML = html;
-        if (window.lucide) window.lucide.createIcons();
+        AppUtils.refreshIcons();
     },
 
     // ── Chart ─────────────────────────────────────────────────────────────────
@@ -863,7 +834,7 @@ window.USStockTab = {
         this._chartSymbol = symbol;
         section.classList.remove('hidden');
         if (titleEl) titleEl.textContent = `${symbol} (${this._chartInterval.toUpperCase()})`;
-        if (window.lucide) window.lucide.createIcons();
+        AppUtils.refreshIcons();
 
         document.querySelectorAll('.us-chart-interval-btn').forEach((btn) => {
             const active = btn.dataset.interval === this._chartInterval;
@@ -880,14 +851,9 @@ window.USStockTab = {
         }
 
         try {
-            const res = await fetch(
+            const responseData = await AppAPI.get(
                 `/api/usstock/klines/${encodeURIComponent(symbol)}?interval=${this._chartInterval}&limit=200`
             );
-            if (!res.ok) {
-                const d = await res.json().catch(() => {});
-                throw new Error(d?.detail || `HTTP ${res.status}`);
-            }
-            const responseData = await res.json();
             const klineData = responseData.data || [];
 
             if (!klineData.length) {
@@ -1069,7 +1035,7 @@ window.USStockTab = {
         } catch (err) {
             console.error('[US Stock] Chart error:', err);
             chartEl.innerHTML = `<div class="text-danger h-full flex flex-col items-center justify-center text-sm p-4 text-center"><i data-lucide="alert-triangle" class="w-8 h-8 mb-2"></i>${_t('usstock.readFailed')}${SecurityUtils.escapeHTML(err.message || '')}</div>`;
-            if (window.lucide) window.lucide.createIcons();
+            AppUtils.refreshIcons();
         }
     },
 

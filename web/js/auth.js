@@ -11,12 +11,7 @@ const DebugLog = {
         // 在开发环境中记录日志，在生产环境中可选择禁用
         // 为了减少网络请求，仅在特定条件下发送到服务器
         if (window.APP_CONFIG && window.APP_CONFIG.DEBUG_MODE === true) {
-            fetch('/api/debug-log', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ level, message, data }),
-                keepalive: true,
-            }).catch(() => {});
+            AppAPI.post('/api/debug-log', { level, message, data }, { keepalive: true }).catch(() => {});
         }
     },
     info(msg, data) {
@@ -99,7 +94,7 @@ const AuthManager = {
         if (typeof window.isPiBrowserGateLocked !== 'function') return false;
         if (!window.isPiBrowserGateLocked()) return false;
 
-        const reason = window.__piBrowserGateReason || '';
+        const reason = AppStore.get('piBrowserGateReason') || '';
         const hardBlockReasons = new Set([
             'unsafe_context_with_saved_token',
             'unsafe_context_auto_init',
@@ -223,8 +218,10 @@ const AuthManager = {
                 if (this.isTokenExpired() || this.needsRefresh()) {
                     await this.silentRefresh();
                 }
-            }
-        };
+    }
+}
+window.handleDevSwitchUser = handleDevSwitchUser;
+
         document.addEventListener('visibilitychange', this._visibilityHandler);
 
         DebugLog.info('Token refresh timer started (30 min interval + visibility check)');
@@ -267,23 +264,12 @@ const AuthManager = {
             DebugLog.info('Pi SDK 重新認證成功', { username: auth.user.username });
 
             // 同步到後端獲取新的 JWT（含 wallet_address 保持資料最新）
-            const res = await fetch('/api/user/pi-sync', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    pi_uid: auth.user.uid,
-                    username: auth.user.username,
-                    access_token: auth.accessToken,
-                    wallet_address: auth.user.wallet_address || null,
-                }),
+            const syncResult = await AppAPI.post('/api/user/pi-sync', {
+                pi_uid: auth.user.uid,
+                username: auth.user.username,
+                access_token: auth.accessToken,
+                wallet_address: auth.user.wallet_address || null,
             });
-
-            if (!res.ok) {
-                const errBody = await res.json();
-                throw new Error(errBody.detail || 'Sync failed');
-            }
-
-            const syncResult = await res.json();
 
             // 更新本地用戶資料
             this.currentUser = {
@@ -319,20 +305,7 @@ const AuthManager = {
         try {
             DebugLog.info('嘗試後端 token 刷新...');
 
-            const res = await fetch('/api/user/refresh-token', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${this.currentUser.accessToken}`,
-                },
-            });
-
-            if (!res.ok) {
-                const errBody = await res.json();
-                throw new Error(errBody.detail || 'Refresh failed');
-            }
-
-            const result = await res.json();
+            const result = await AppAPI.post('/api/user/refresh-token');
 
             // 更新本地用戶資料
             this.currentUser = {
@@ -478,17 +451,7 @@ const AuthManager = {
 
         try {
             // 使用新的 Dev Login Endpoint
-            const res = await fetch('/api/user/dev-login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-            });
-
-            const result = await res.json();
-
-            if (!res.ok) {
-                showToast(result.detail || 'Test Mode disabled', 'error');
-                return { success: false, error: result.detail };
-            }
+            const result = await AppAPI.post('/api/user/dev-login');
 
             this.currentUser = {
                 uid: result.user.uid,
@@ -533,14 +496,10 @@ const AuthManager = {
                 ['username', 'payments', 'wallet_address'],
                 (payment) => {
                     DebugLog.warn('發現未完成的支付', payment);
-                    fetch('/api/user/payment/complete', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            paymentId: payment.identifier,
-                            txid: payment.transaction.txid,
-                        }),
-                    });
+                    AppAPI.post('/api/user/payment/complete', {
+                        paymentId: payment.identifier,
+                        txid: payment.transaction.txid,
+                    }).catch(() => {});
                 }
             );
 
@@ -556,27 +515,12 @@ const AuthManager = {
             DebugLog.info('Pi 認證成功', { username: auth.user.username, uid: auth.user.uid });
 
             // 同步到後端（含 wallet_address，一次完成所有綁定）
-            const res = await fetch('/api/user/pi-sync', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
+            const syncResult = await AppAPI.post('/api/user/pi-sync', {
                     pi_uid: auth.user.uid,
                     username: auth.user.username,
                     access_token: auth.accessToken,
                     wallet_address: auth.user.wallet_address || null,
-                }),
-            });
-
-            const syncResult = await res.json();
-            if (!res.ok) {
-                const detail = syncResult.detail;
-                const msg = Array.isArray(detail)
-                    ? detail.map((d) => d.msg || JSON.stringify(d)).join('; ')
-                    : typeof detail === 'string'
-                      ? detail
-                      : 'Sync failed';
-                throw new Error(msg);
-            }
+                });
 
             this.currentUser = {
                 uid: syncResult.user.user_id,
@@ -641,7 +585,7 @@ const AuthManager = {
                 }
                 if (this.shouldForceGuestWhenPiGateLocked(this.currentUser)) {
                     DebugLog.warn('Pi Browser gate 鎖定中，暫不還原受保護登入狀態', {
-                        gateReason: window.__piBrowserGateReason || 'unknown',
+                        gateReason: AppStore.get('piBrowserGateReason') || 'unknown',
                         hasAuthMethod: !!(
                             this.currentUser?.authMethod || this.currentUser?.auth_method
                         ),
@@ -661,8 +605,7 @@ const AuthManager = {
 
         // 檢查測試模式（async，但不影響已登入用戶）
         try {
-            const configRes = await fetch('/api/config');
-            const config = await configRes.json();
+            const config = await AppAPI.get('/api/config');
 
             // Show/hide dev-user-switcher based on test_mode
             const switcher = document.getElementById('dev-user-switcher');
@@ -824,7 +767,7 @@ const AuthManager = {
         if (window.GlobalNav && typeof GlobalNav.renderNavButtons === 'function')
             GlobalNav.renderNavButtons();
 
-        if (window.lucide) lucide.createIcons();
+        AppUtils.refreshIcons();
     },
 
     logout() {
@@ -857,25 +800,8 @@ async function getWalletStatus() {
         return { has_wallet: false, auth_method: 'guest' };
     }
 
-    const TIMEOUT_MS = 10000; // 10 秒超時
-
     try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
-
-        const token = AuthManager.currentUser?.accessToken;
-        const res = await fetch(`/api/user/wallet-status`, {
-            signal: controller.signal,
-            headers: token ? { Authorization: 'Bearer ' + token } : {},
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!res.ok) {
-            console.error('Wallet status API error:', res.status);
-            return { has_wallet: false, auth_method: 'unknown' };
-        }
-        const data = await res.json();
+        const data = await AppAPI.get('/api/user/wallet-status');
         return {
             has_wallet: data.has_wallet || false,
             pi_uid: data.pi_uid || null,
@@ -883,11 +809,7 @@ async function getWalletStatus() {
             auth_method: data.auth_method || 'password',
         };
     } catch (e) {
-        if (e.name === 'AbortError') {
-            console.error('getWalletStatus timeout after', TIMEOUT_MS, 'ms');
-        } else {
-            console.error('getWalletStatus error:', e);
-        }
+        console.error('getWalletStatus error:', e);
         return { has_wallet: false, auth_method: 'unknown' };
     }
 }
@@ -945,7 +867,7 @@ async function loadSettingsWalletStatus() {
             if (linkedSection) linkedSection.classList.add('hidden');
         }
 
-        if (window.lucide) lucide.createIcons();
+        AppUtils.refreshIcons();
     } catch (e) {
         console.error('loadSettingsWalletStatus error:', e);
         if (statusBadge) {
@@ -988,7 +910,7 @@ function _applyPremiumBadgeUI(statusBadge, upgradeBtn, isPro, expiresAt) {
             'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-textMuted';
         if (sidebarBadge) sidebarBadge.classList.add('hidden');
     }
-    if (window.lucide) lucide.createIcons();
+    AppUtils.refreshIcons();
 }
 
 // 載入 Premium 會員狀態（即時顯示快取值，後台更新精確到期日）
@@ -1005,7 +927,7 @@ async function loadPremiumStatus() {
         statusBadge.className =
             'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-textMuted';
         if (upgradeBtn) upgradeBtn.disabled = true;
-        if (window.lucide) lucide.createIcons();
+        AppUtils.refreshIcons();
         return;
     }
 
@@ -1015,13 +937,7 @@ async function loadPremiumStatus() {
 
     // ── 後台更新：呼叫 API 取得精確到期日 ──
     try {
-        const userId = AuthManager.currentUser.uid || AuthManager.currentUser.user_id;
-        const response = await fetch(`/api/premium/status`, {
-            headers: { Authorization: `Bearer ${AuthManager.currentUser.accessToken}` },
-        });
-        if (!response.ok) return; // 保留快取顯示，不覆蓋
-
-        const result = await response.json();
+        const result = await AppAPI.get('/api/premium/status');
         const membership = result.membership;
         // Re-apply with accurate expiry date from API
         _applyPremiumBadgeUI(statusBadge, upgradeBtn, membership.is_premium, membership.expires_at);
@@ -1044,7 +960,8 @@ async function handleUpgradeToPremium() {
 
 // 暴露全域
 window.AuthManager = AuthManager;
-window.handlePiLogin = async () => {
+
+async function handlePiLogin() {
     DebugLog.info('handlePiLogin 被呼叫');
 
     // 第一步：同步檢測 Pi SDK 是否存在
@@ -1111,6 +1028,7 @@ window.handlePiLogin = async () => {
             // 隱藏 login modal
             const modal = document.getElementById('login-modal');
             if (modal) modal.classList.add('hidden');
+            AppStore.set('forceGuestLandingTab', false);
             window.__forceGuestLandingTab = false;
             if (typeof window.unlockPiBrowserGate === 'function') {
                 window.unlockPiBrowserGate();
@@ -1148,8 +1066,17 @@ window.handlePiLogin = async () => {
         }
     }
 };
-window.handleLogout = () => AuthManager.logout();
-window.initializeAuth = () => AuthManager.init();
+window.handlePiLogin = handlePiLogin;
+
+function handleLogout() {
+    AuthManager.logout();
+}
+window.handleLogout = handleLogout;
+
+function initializeAuth() {
+    AuthManager.init();
+}
+window.initializeAuth = initializeAuth;
 window.isPiBrowser = isPiBrowser;
 window.canMakePiPayment = canMakePiPayment;
 window.getWalletStatus = getWalletStatus;
@@ -1160,25 +1087,12 @@ window.handleUpgradeToPremium = handleUpgradeToPremium;
 // ========================================
 // Dev Mode: Switch User (Test Mode Only)
 // ========================================
-window.handleDevSwitchUser = async function (userId) {
+async function handleDevSwitchUser(userId) {
     window.APP_CONFIG?.DEBUG_MODE && console.log(`[Dev] Switching to user: ${userId}`);
 
     try {
         // 使用 dev-login endpoint 並指定用戶 ID
-        const res = await fetch('/api/user/dev-login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: userId }),
-        });
-
-        const result = await res.json();
-
-        if (!res.ok) {
-            if (typeof showToast === 'function') {
-                showToast(result.detail || 'Switch failed', 'error');
-            }
-            return;
-        }
+        const result = await AppAPI.post('/api/user/dev-login', { user_id: userId });
 
         // 更新 AuthManager
         AuthManager.currentUser = {
@@ -1204,4 +1118,21 @@ window.handleDevSwitchUser = async function (userId) {
             showToast('切換用戶失敗', 'error');
         }
     }
+};
+
+export {
+    DebugLog,
+    PiEnvironment,
+    AuthManager,
+    handlePiLogin,
+    handleLogout,
+    initializeAuth,
+    isPiBrowser,
+    canMakePiPayment,
+    getWalletStatus,
+    loadSettingsWalletStatus,
+    loadPremiumStatus,
+    handleUpgradeToPremium,
+    handleDevSwitchUser,
+    _applyPremiumBadgeUI,
 };

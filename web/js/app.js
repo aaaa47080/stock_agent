@@ -13,7 +13,8 @@ const md = window.markdownit
     ? window.markdownit({ html: false, linkify: true, breaks: true })
     : null;
 window.md = md;
-window.isAnalyzing = false;
+AppStore.set('isAnalyzing', false);
+window.isAnalyzing = false; // backward compat
 let marketRefreshInterval = null;
 
 // ========================================
@@ -368,6 +369,7 @@ async function checkApiKeyStatus() {
     // 3. Update Chat Input State
     updateChatUIState(hasLlmKey);
 }
+window.checkApiKeyStatus = checkApiKeyStatus;
 
 // ========================================
 // 更新聊天 UI 狀態（根據 API key 是否存在）
@@ -415,9 +417,10 @@ async function updateChatUIState(hasApiKey) {
         sendBtn.classList.toggle('cursor-not-allowed', !hasApiKey);
     }
 }
+window.updateChatUIState = updateChatUIState;
 
 // 暴露到全局供 index.html 控制初始化順序
-window.initializeUIStatus = function () {
+function initializeUIStatus() {
     if (window.DEBUG_MODE) console.log('[App] initializeUIStatus called');
     if (window.DEBUG_MODE) console.log('[App] APIKeyManager exists:', !!window.APIKeyManager);
     // Note: getCurrentKey() is async, so we can't check it synchronously in debug log
@@ -426,15 +429,20 @@ window.initializeUIStatus = function () {
     checkApiKeyStatus();
     // 移除定期輪詢 - API Key 設定後狀態就確定了
     // 狀態變更時應該主動調用 checkApiKeyStatus() 而非輪詢
-};
+}
+window.initializeUIStatus = initializeUIStatus;
 
 // 頁面加載時不再自動執行，由 index.html 統一調度
 // window.addEventListener('DOMContentLoaded', () => { ... });
 
 // --- Global Filter Logic Variables ---
+AppStore.set('allMarketSymbols', []);
 window.allMarketSymbols = [];
+AppStore.set('globalSelectedSymbols', []);
 window.globalSelectedSymbols = []; // Unified selection
+AppStore.set('selectedNewsSources', ['google', 'cryptocompare', 'cryptopanic', 'newsapi']);
 window.selectedNewsSources = ['google', 'cryptocompare', 'cryptopanic', 'newsapi']; // ✅ 固定使用所有新聞來源
+AppStore.set('currentFilterExchange', 'okx');
 window.currentFilterExchange = 'okx';
 
 // API Key Validity Cache
@@ -458,18 +466,21 @@ function updateProviderOptions() {
         }
     });
 }
+window.updateProviderOptions = updateProviderOptions;
 
 // Watchlist & Chart Variables
 let currentUserId = null;
 
 // Pulse Data Cache (使用 window 物件避免重複聲明)
 if (typeof window.currentPulseData === 'undefined') {
+    AppStore.set('currentPulseData', {});
     window.currentPulseData = {};
 }
 
 // Trade Proposal
 
 // Analysis Abort Controller
+AppStore.set('currentAnalysisController', null);
 window.currentAnalysisController = null;
 
 // Pi Network Initialization
@@ -490,8 +501,9 @@ function onTabSwitch(tab) {
     _lastOnTabSwitchTab = tab;
 
     // Abort pending analysis if leaving chat tab
-    if (tab !== 'chat' && window.currentAnalysisController) {
-        window.currentAnalysisController.abort();
+    if (tab !== 'chat' && AppStore.get('currentAnalysisController')) {
+        AppStore.get('currentAnalysisController').abort();
+        AppStore.set('currentAnalysisController', null);
         window.currentAnalysisController = null;
         isAnalyzing = false;
 
@@ -510,12 +522,14 @@ function onTabSwitch(tab) {
         clearInterval(marketRefreshInterval);
         marketRefreshInterval = null;
     }
-    if (window.pulseInterval) {
-        clearInterval(window.pulseInterval);
+    if (AppStore.get('pulseInterval')) {
+        clearInterval(AppStore.get('pulseInterval'));
+        AppStore.set('pulseInterval', null);
         window.pulseInterval = null;
     }
-    if (window.assetsInterval) {
-        clearInterval(window.assetsInterval);
+    if (AppStore.get('assetsInterval')) {
+        clearInterval(AppStore.get('assetsInterval'));
+        AppStore.set('assetsInterval', null);
         window.assetsInterval = null;
     }
 
@@ -527,9 +541,10 @@ function onTabSwitch(tab) {
     }
 
     if (tab === 'crypto' || tab === 'pulse') {
-        window.pulseInterval = setInterval(() => {
+        AppStore.set('pulseInterval', setInterval(() => {
             if (typeof checkMarketPulse === 'function') checkMarketPulse(false);
-        }, 30000);
+        }, 30000));
+        window.pulseInterval = AppStore.get('pulseInterval');
     }
 
     // Friends Tab
@@ -556,23 +571,24 @@ window.onTabSwitch = onTabSwitch;
 // ========================================
 // Memory Leak Fix: Cleanup on page unload
 // ========================================
-window.cleanupIntervals = function () {
+function cleanupIntervals() {
     // Clear market refresh interval
     if (marketRefreshInterval) {
         clearInterval(marketRefreshInterval);
         marketRefreshInterval = null;
     }
     // Clear pulse interval
-    if (window.pulseInterval) {
-        clearInterval(window.pulseInterval);
-        window.pulseInterval = null;
+    if (AppStore.get('pulseInterval')) {
+        clearInterval(AppStore.get('pulseInterval'));
+        AppStore.set('pulseInterval', null);
     }
     // Clear assets interval
-    if (window.assetsInterval) {
-        clearInterval(window.assetsInterval);
-        window.assetsInterval = null;
+    if (AppStore.get('assetsInterval')) {
+        clearInterval(AppStore.get('assetsInterval'));
+        AppStore.set('assetsInterval', null);
     }
-};
+}
+window.cleanupIntervals = cleanupIntervals;
 
 // Cleanup on page unload
 window.addEventListener('beforeunload', () => {
@@ -592,7 +608,7 @@ function updateUserId(uid) {
  * @param {string} message - 錯誤詳情
  * @param {boolean} isQuotaError - 是否為配額/額度不足錯誤
  */
-window.showError = function (title, message, isQuotaError = false) {
+function showError(title, message, isQuotaError = false) {
     // Check if modal exists, if not create it
     let modal = document.getElementById('global-error-modal');
     if (!modal) {
@@ -651,9 +667,10 @@ window.showError = function (title, message, isQuotaError = false) {
         content.classList.remove('scale-95', 'opacity-0');
         content.classList.add('scale-100', 'opacity-100');
     }, 10);
-};
+}
+window.showError = showError;
 
-window.closeErrorModal = function () {
+function closeErrorModal() {
     const modal = document.getElementById('global-error-modal');
     const content = document.getElementById('global-error-content');
     if (modal && content) {
@@ -672,31 +689,27 @@ function quickAsk(text) {
         sendMessage();
     }
 }
-
-// ... existing code ...
+window.quickAsk = quickAsk;
 
 const SETTINGS_CONFIG_CACHE_TTL_MS = 60000;
 
 async function hydrateSettingsFromBackend(force = false) {
-    if (!window.__settingsConfigCache) {
-        window.__settingsConfigCache = {
-            ts: 0,
-            payload: null,
-        };
+    if (!AppStore.has('settingsConfigCache')) {
+        const cache = { ts: 0, payload: null };
+        AppStore.set('settingsConfigCache', cache);
+        window.__settingsConfigCache = cache;
     }
 
-    const cache = window.__settingsConfigCache;
+    const cache = AppStore.get('settingsConfigCache');
     const now = Date.now();
     if (!force && cache.payload && now - cache.ts < SETTINGS_CONFIG_CACHE_TTL_MS) {
         return cache.payload;
     }
 
-    const [configRes, modelConfigRes] = await Promise.all([
-        fetch('/api/config'),
-        fetch('/api/model-config'),
+    const [configData, modelConfigData] = await Promise.all([
+        AppAPI.get('/api/config'),
+        AppAPI.get('/api/model-config'),
     ]);
-    const configData = await configRes.json();
-    const modelConfigData = await modelConfigRes.json();
     const settings = configData.current_settings || {};
     const preloadedModelConfig = modelConfigData.model_config || null;
 
@@ -730,6 +743,7 @@ async function hydrateSettingsFromBackend(force = false) {
     cache.ts = Date.now();
     return cache.payload;
 }
+window.hydrateSettingsFromBackend = hydrateSettingsFromBackend;
 
 async function openSettings() {
     if (typeof switchTab === 'function') {
@@ -757,6 +771,7 @@ function closeSettings() {
         checkApiKeyStatus();
     }
 }
+window.closeSettings = closeSettings;
 
 // ========================================
 // LLM Model Selection
@@ -766,7 +781,7 @@ function closeSettings() {
  * 更新可用模型列表
  * @param {Object|null} preloadedConfig - 預載的模型配置（可選）
  */
-window.updateAvailableModels = async function (preloadedConfig = null) {
+async function updateAvailableModels(preloadedConfig = null) {
     const providerSelect = document.getElementById('llm-provider-select');
     const modelSelect = document.getElementById('llm-model-select');
     const modelInput = document.getElementById('llm-model-input');
@@ -784,11 +799,7 @@ window.updateAvailableModels = async function (preloadedConfig = null) {
 
     if (!modelConfig) {
         try {
-            const response = await fetch('/api/model-config');
-            if (response.ok) {
-                const data = await response.json();
-                modelConfig = data.model_config;
-            }
+            const data = await AppAPI.get('/api/model-config');
         } catch (e) {
             console.error('[updateAvailableModels] Failed to fetch model config:', e);
         }
@@ -846,15 +857,17 @@ window.updateAvailableModels = async function (preloadedConfig = null) {
 
     window.APP_CONFIG?.DEBUG_MODE &&
         console.log('[updateAvailableModels] Loaded', models.length, 'models for', provider);
-};
+}
+window.updateAvailableModels = updateAvailableModels;
 
 // Allow external modules (like llmSettings.js) to update key validity
-window.setKeyValidity = function (provider, isValid) {
+function setKeyValidity(provider, isValid) {
     if (validKeys.hasOwnProperty(provider)) {
         validKeys[provider] = isValid;
         updateProviderOptions();
     }
-};
+}
+window.setKeyValidity = setKeyValidity;
 
 // ========================================
 // Navigation Logic - 委託給 global-nav.js (GlobalNav)
@@ -862,9 +875,10 @@ window.setKeyValidity = function (provider, isValid) {
 // ========================================
 
 // 向後相容：index.html 的按鈕仍呼叫此名稱
-window.toggleNavCollapse = function () {
+function toggleNavCollapse() {
     if (window.GlobalNav) window.GlobalNav.toggleCollapse();
-};
+}
+window.toggleNavCollapse = toggleNavCollapse;
 
 // 初始化主應用的導航拖拽與狀態恢復
 document.addEventListener('DOMContentLoaded', () => {
@@ -903,18 +917,14 @@ async function saveSettings() {
     };
 
     try {
-        const res = await fetch('/api/settings/update', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-        });
-        const result = await res.json();
+        const result = await AppAPI.post('/api/settings/update', payload);
 
         if (result.success) {
             if (payload.primary_model_provider) {
                 window.APIKeyManager.setSelectedProvider(payload.primary_model_provider);
             }
 
+            AppStore.set('settingsConfigCache', null);
             window.__settingsConfigCache = null;
             if (typeof checkApiKeyStatus === 'function') {
                 await checkApiKeyStatus();
@@ -932,3 +942,30 @@ async function saveSettings() {
     btn.disabled = false;
     btn.classList.remove('opacity-50', 'cursor-not-allowed');
 }
+window.saveSettings = saveSettings;
+
+export {
+    md,
+    escapeHtml,
+    handleBackToApp,
+    smoothNavigate,
+    initPageTransition,
+    showConfirm,
+    showAlert,
+    checkApiKeyStatus,
+    updateChatUIState,
+    initializeUIStatus,
+    updateProviderOptions,
+    onTabSwitch,
+    cleanupIntervals,
+    showError,
+    closeErrorModal,
+    quickAsk,
+    hydrateSettingsFromBackend,
+    openSettings,
+    closeSettings,
+    updateAvailableModels,
+    setKeyValidity,
+    toggleNavCollapse,
+    saveSettings,
+};

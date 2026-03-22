@@ -12,7 +12,7 @@ function getWebSocketUrl() {
 }
 
 function connectWebSocket() {
-    if (klineWebSocket && klineWebSocket.readyState === WebSocket.OPEN) {
+    if (window.klineWebSocket && window.klineWebSocket.readyState === WebSocket.OPEN) {
         return;
     }
 
@@ -20,27 +20,27 @@ function connectWebSocket() {
     console.log('連接 WebSocket:', wsUrl);
 
     try {
-        klineWebSocket = new WebSocket(wsUrl);
+        window.klineWebSocket = new WebSocket(wsUrl);
 
-        klineWebSocket.onopen = () => {
+        window.klineWebSocket.onopen = () => {
             console.log('WebSocket 連接成功');
-            wsConnected = true;
+            window.wsConnected = true;
             updateWsStatus(true);
             // Reset reconnect attempts on successful connection
-            reconnectAttempts = 0;
+            window.reconnectAttempts = 0;
 
             // 如果已經有訂閱，重新訂閱
-            if (currentChartSymbol && autoRefreshEnabled) {
-                subscribeKline(currentChartSymbol, currentChartInterval);
+            if (window.currentChartSymbol && window.autoRefreshEnabled) {
+                subscribeKline(window.currentChartSymbol, window.currentChartInterval);
             }
 
             // Start live time updates when WebSocket is connected and auto-refresh is enabled
-            if (autoRefreshEnabled) {
+            if (window.autoRefreshEnabled) {
                 startLiveTimeUpdates();
             }
         };
 
-        klineWebSocket.onmessage = (event) => {
+        window.klineWebSocket.onmessage = (event) => {
             try {
                 const message = JSON.parse(event.data);
                 handleWebSocketMessage(message);
@@ -49,61 +49,61 @@ function connectWebSocket() {
             }
         };
 
-        klineWebSocket.onclose = (event) => {
+        window.klineWebSocket.onclose = (event) => {
             console.log('WebSocket 連接關閉:', event.code, event.reason);
-            wsConnected = false;
+            window.wsConnected = false;
             updateWsStatus(false);
             stopLiveTimeUpdates(); // Stop live time updates when disconnected
 
             // 自動重連 - 限制最大重連次數
-            if (autoRefreshEnabled && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-                reconnectAttempts++;
+            if (window.autoRefreshEnabled && window.reconnectAttempts < window.MAX_RECONNECT_ATTEMPTS) {
+                window.reconnectAttempts++;
                 console.log(
-                    `嘗試重新連接 WebSocket... (${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`
+                    `嘗試重新連接 WebSocket... (${window.reconnectAttempts}/${window.MAX_RECONNECT_ATTEMPTS})`
                 );
-                wsReconnectTimer = setTimeout(() => {
+                window.wsReconnectTimer = setTimeout(() => {
                     connectWebSocket();
                 }, 3000);
-            } else if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+            } else if (window.reconnectAttempts >= window.MAX_RECONNECT_ATTEMPTS) {
                 console.error('WebSocket 重連次數達到上限，停止重連');
-                autoRefreshEnabled = false;
+                window.autoRefreshEnabled = false;
                 updateAutoRefreshButton();
             }
         };
 
-        klineWebSocket.onerror = (error) => {
+        window.klineWebSocket.onerror = (error) => {
             console.error('WebSocket 錯誤:', error);
-            wsConnected = false;
+            window.wsConnected = false;
             updateWsStatus(false);
         };
     } catch (e) {
         console.error('WebSocket 連接失敗:', e);
-        wsConnected = false;
+        window.wsConnected = false;
         updateWsStatus(false);
         if (typeof showToast === 'function') showToast('即時連線失敗，將使用輪詢更新', 'warning');
     }
 }
 
 function disconnectWebSocket() {
-    if (wsReconnectTimer) {
-        clearTimeout(wsReconnectTimer);
-        wsReconnectTimer = null;
+    if (window.wsReconnectTimer) {
+        clearTimeout(window.wsReconnectTimer);
+        window.wsReconnectTimer = null;
     }
 
-    if (klineWebSocket) {
-        klineWebSocket.close();
-        klineWebSocket = null;
+    if (window.klineWebSocket) {
+        window.klineWebSocket.close();
+        window.klineWebSocket = null;
     }
-    wsConnected = false;
+    window.wsConnected = false;
 }
 
 function subscribeKline(symbol, interval) {
-    if (!klineWebSocket || klineWebSocket.readyState !== WebSocket.OPEN) {
+    if (!window.klineWebSocket || window.klineWebSocket.readyState !== WebSocket.OPEN) {
         console.warn('WebSocket 未連接，無法訂閱');
         return;
     }
 
-    klineWebSocket.send(
+    window.klineWebSocket.send(
         JSON.stringify({
             action: 'subscribe',
             symbol: symbol,
@@ -114,11 +114,11 @@ function subscribeKline(symbol, interval) {
 }
 
 function unsubscribeKline() {
-    if (!klineWebSocket || klineWebSocket.readyState !== WebSocket.OPEN) {
+    if (!window.klineWebSocket || window.klineWebSocket.readyState !== WebSocket.OPEN) {
         return;
     }
 
-    klineWebSocket.send(JSON.stringify({ action: 'unsubscribe' }));
+    window.klineWebSocket.send(JSON.stringify({ action: 'unsubscribe' }));
 }
 
 function handleWebSocketMessage(message) {
@@ -142,7 +142,7 @@ function handleWebSocketMessage(message) {
 }
 
 function updateChartWithKline(kline) {
-    if (!chart || !candleSeries) return;
+    if (!window.chart || !window.candleSeries) return;
 
     // 更新或添加 K 線
     const klineData = {
@@ -154,11 +154,11 @@ function updateChartWithKline(kline) {
     };
 
     // 使用 update 方法更新最新 K 線
-    candleSeries.update(klineData);
+    window.candleSeries.update(klineData);
 
     // 更新成交量
-    if (volumeSeries && kline.volume !== undefined) {
-        volumeSeries.update({
+    if (window.volumeSeries && kline.volume !== undefined) {
+        window.volumeSeries.update({
             time: kline.time,
             value: kline.volume,
             color: kline.close >= kline.open ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)',
@@ -188,7 +188,7 @@ function updateChartWithKline(kline) {
     }
 
     // 更新 OHLCV 顯示 (僅在圖表未被懸停時)
-    if (!isChartHovered) {
+    if (!window.isChartHovered) {
         const priceDecimals = getPriceDecimals(kline.close);
         updateOHLCVDisplay(
             kline,
@@ -222,13 +222,13 @@ function updateWsStatus(connected) {
     const btn = document.getElementById('auto-refresh-btn');
     const status = document.getElementById('auto-refresh-status');
 
-    if (connected && autoRefreshEnabled) {
+    if (connected && window.autoRefreshEnabled) {
         if (btn) {
             btn.classList.add('text-success', 'bg-success/10');
             btn.classList.remove('text-primary', 'bg-primary/10', 'text-textMuted');
         }
         if (status) status.textContent = 'LIVE';
-    } else if (autoRefreshEnabled) {
+    } else if (window.autoRefreshEnabled) {
         if (btn) {
             btn.classList.add('text-warning', 'bg-warning/10');
             btn.classList.remove('text-success', 'bg-success/10', 'text-textMuted');
@@ -241,7 +241,7 @@ function updateAutoRefreshButton() {
     const btn = document.getElementById('auto-refresh-btn');
     const status = document.getElementById('auto-refresh-status');
 
-    if (!autoRefreshEnabled) {
+    if (!window.autoRefreshEnabled) {
         if (btn) {
             btn.classList.remove(
                 'text-success',
@@ -254,7 +254,7 @@ function updateAutoRefreshButton() {
             btn.classList.add('text-textMuted');
         }
         if (status) status.textContent = 'OFF';
-    } else if (wsConnected) {
+    } else if (window.wsConnected) {
         updateWsStatus(true);
     } else {
         updateWsStatus(false);
@@ -271,7 +271,7 @@ function startLiveTimeUpdates() {
 
     liveTimeUpdateTimer = setInterval(() => {
         const updatedEl = document.getElementById('chart-updated');
-        if (updatedEl && wsConnected && autoRefreshEnabled) {
+        if (updatedEl && window.wsConnected && window.autoRefreshEnabled) {
             const now = new Date();
             const timeStr = now.toLocaleTimeString([], {
                 hour: '2-digit',
@@ -292,11 +292,11 @@ function stopLiveTimeUpdates() {
 
 // 自動更新功能（使用 WebSocket）
 function toggleAutoRefresh() {
-    autoRefreshEnabled = !autoRefreshEnabled;
+    window.autoRefreshEnabled = !window.autoRefreshEnabled;
     const btn = document.getElementById('auto-refresh-btn');
     const status = document.getElementById('auto-refresh-status');
 
-    if (autoRefreshEnabled) {
+    if (window.autoRefreshEnabled) {
         btn.classList.add('text-primary', 'bg-primary/10');
         btn.classList.remove('text-textMuted');
         status.textContent = '連接中...';
@@ -321,19 +321,19 @@ function startAutoRefresh() {
     connectWebSocket();
 
     // 訂閱當前幣種
-    if (currentChartSymbol) {
+    if (window.currentChartSymbol) {
         // Clear any existing connection check timer
-        if (wsConnectionCheckTimer) {
-            clearInterval(wsConnectionCheckTimer);
-            wsConnectionCheckTimer = null;
+        if (window.wsConnectionCheckTimer) {
+            clearInterval(window.wsConnectionCheckTimer);
+            window.wsConnectionCheckTimer = null;
         }
 
         // 等待連接建立後訂閱
-        wsConnectionCheckTimer = setInterval(() => {
-            if (wsConnected) {
-                subscribeKline(currentChartSymbol, currentChartInterval);
-                clearInterval(wsConnectionCheckTimer);
-                wsConnectionCheckTimer = null;
+        window.wsConnectionCheckTimer = setInterval(() => {
+            if (window.wsConnected) {
+                subscribeKline(window.currentChartSymbol, window.currentChartInterval);
+                clearInterval(window.wsConnectionCheckTimer);
+                window.wsConnectionCheckTimer = null;
                 // Start live time updates when connection is established
                 startLiveTimeUpdates();
             }
@@ -341,9 +341,9 @@ function startAutoRefresh() {
 
         // 5秒後停止檢查
         setTimeout(() => {
-            if (wsConnectionCheckTimer) {
-                clearInterval(wsConnectionCheckTimer);
-                wsConnectionCheckTimer = null;
+            if (window.wsConnectionCheckTimer) {
+                clearInterval(window.wsConnectionCheckTimer);
+                window.wsConnectionCheckTimer = null;
             }
         }, 5000);
     }
@@ -354,7 +354,7 @@ function stopAutoRefresh() {
     disconnectWebSocket();
     stopLiveTimeUpdates(); // Stop live time updates when auto-refresh stops
 
-    autoRefreshEnabled = false;
+    window.autoRefreshEnabled = false;
     const btn = document.getElementById('auto-refresh-btn');
     const status = document.getElementById('auto-refresh-status');
     if (btn) {
@@ -373,32 +373,25 @@ function stopAutoRefresh() {
 
 // 保留輪詢作為備用方案
 async function refreshChartData() {
-    if (!currentChartSymbol || !chart || !candleSeries) return;
+    if (!window.currentChartSymbol || !window.chart || !window.candleSeries) return;
 
     try {
-        const res = await fetch('/api/klines', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                symbol: currentChartSymbol,
-                interval: currentChartInterval,
+        const data = await AppAPI.post('/api/klines', {
+                symbol: window.currentChartSymbol,
+                interval: window.currentChartInterval,
                 limit: 200,
-            }),
-        });
-        const data = await res.json();
+            });
 
-        if (!data.klines || data.klines.length === 0) return;
+        window.candleSeries.setData(data.klines);
+        window.chartKlinesData = data.klines;
 
-        candleSeries.setData(data.klines);
-        chartKlinesData = data.klines;
-
-        if (volumeSeries) {
+        if (window.volumeSeries) {
             const volumeData = data.klines.map((k) => ({
                 time: k.time,
                 value: k.volume || 0,
                 color: k.close >= k.open ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)',
             }));
-            volumeSeries.setData(volumeData);
+            window.volumeSeries.setData(volumeData);
         }
 
         const updatedEl = document.getElementById('chart-updated');
@@ -416,7 +409,7 @@ async function refreshChartData() {
         if (lastKline) {
             const priceDecimals = getPriceDecimals(lastKline.close);
             // 更新 OHLCV 顯示 (僅在圖表未被懸停時)
-            if (!isChartHovered) {
+            if (!window.isChartHovered) {
                 updateOHLCVDisplay(
                     lastKline,
                     document.getElementById('info-open'),
@@ -453,7 +446,7 @@ function getTickerWebSocketUrl() {
 }
 
 function connectTickerWebSocket() {
-    if (marketWebSocket && marketWebSocket.readyState === WebSocket.OPEN) {
+    if (window.marketWebSocket && window.marketWebSocket.readyState === WebSocket.OPEN) {
         return;
     }
 
@@ -461,31 +454,31 @@ function connectTickerWebSocket() {
     console.log('連接 Ticker WebSocket:', wsUrl);
 
     try {
-        marketWebSocket = new WebSocket(wsUrl);
+        window.marketWebSocket = new WebSocket(wsUrl);
 
-        marketWebSocket.onopen = () => {
+        window.marketWebSocket.onopen = () => {
             console.log('Ticker WebSocket 連接成功');
-            marketWsConnected = true;
+            window.marketWsConnected = true;
             updateTickerWsStatus(true);
             // Reset reconnect attempts on successful connection
-            tickerReconnectAttempts = 0;
+            window.tickerReconnectAttempts = 0;
 
             // 訂閱等待中的 symbols
-            if (pendingTickerSymbols.size > 0) {
-                const symbols = Array.from(pendingTickerSymbols);
-                pendingTickerSymbols.clear();
+            if (window.pendingTickerSymbols.size > 0) {
+                const symbols = Array.from(window.pendingTickerSymbols);
+                window.pendingTickerSymbols.clear();
                 subscribeTickerSymbols(symbols);
             }
 
             // 重新訂閱之前的 symbols
-            if (subscribedTickerSymbols.size > 0) {
-                const symbols = Array.from(subscribedTickerSymbols);
-                subscribedTickerSymbols.clear(); // 清空以便重新添加
+            if (window.subscribedTickerSymbols.size > 0) {
+                const symbols = Array.from(window.subscribedTickerSymbols);
+                window.subscribedTickerSymbols.clear(); // 清空以便重新添加
                 subscribeTickerSymbols(symbols);
             }
         };
 
-        marketWebSocket.onmessage = (event) => {
+        window.marketWebSocket.onmessage = (event) => {
             try {
                 const message = JSON.parse(event.data);
                 handleTickerMessage(message);
@@ -494,18 +487,18 @@ function connectTickerWebSocket() {
             }
         };
 
-        marketWebSocket.onclose = (event) => {
+        window.marketWebSocket.onclose = (event) => {
             console.log('Ticker WebSocket 連接關閉:', event.code);
-            marketWsConnected = false;
+            window.marketWsConnected = false;
             updateTickerWsStatus(false);
 
             // 自動重連 - 限制最大重連次數
-            if (tickerReconnectAttempts < MAX_TICKET_RECONNECT_ATTEMPTS) {
-                tickerReconnectAttempts++;
+            if (window.tickerReconnectAttempts < window.MAX_TICKET_RECONNECT_ATTEMPTS) {
+                window.tickerReconnectAttempts++;
                 console.log(
-                    `嘗試重新連接 Ticker WebSocket... (${tickerReconnectAttempts}/${MAX_TICKET_RECONNECT_ATTEMPTS})`
+                    `嘗試重新連接 Ticker WebSocket... (${window.tickerReconnectAttempts}/${window.MAX_TICKET_RECONNECT_ATTEMPTS})`
                 );
-                tickerReconnectTimer = setTimeout(() => {
+                window.tickerReconnectTimer = setTimeout(() => {
                     connectTickerWebSocket();
                 }, 3000);
             } else {
@@ -513,69 +506,69 @@ function connectTickerWebSocket() {
             }
         };
 
-        marketWebSocket.onerror = (error) => {
+        window.marketWebSocket.onerror = (error) => {
             console.error('Ticker WebSocket 錯誤:', error);
-            marketWsConnected = false;
+            window.marketWsConnected = false;
             updateTickerWsStatus(false);
         };
     } catch (e) {
         console.error('Ticker WebSocket 連接失敗:', e);
-        marketWsConnected = false;
+        window.marketWsConnected = false;
         updateTickerWsStatus(false);
         if (typeof showToast === 'function') showToast('行情即時連線失敗', 'warning');
     }
 }
 
 function disconnectTickerWebSocket() {
-    if (tickerReconnectTimer) {
-        clearTimeout(tickerReconnectTimer);
-        tickerReconnectTimer = null;
+    if (window.tickerReconnectTimer) {
+        clearTimeout(window.tickerReconnectTimer);
+        window.tickerReconnectTimer = null;
     }
 
-    if (marketWebSocket) {
-        marketWebSocket.close();
-        marketWebSocket = null;
+    if (window.marketWebSocket) {
+        window.marketWebSocket.close();
+        window.marketWebSocket = null;
     }
-    marketWsConnected = false;
-    subscribedTickerSymbols.clear();
+    window.marketWsConnected = false;
+    window.subscribedTickerSymbols.clear();
 }
 
 function subscribeTickerSymbols(symbols) {
     // 過濾已訂閱的
-    const newSymbols = symbols.filter((s) => !subscribedTickerSymbols.has(s.toUpperCase()));
+    const newSymbols = symbols.filter((s) => !window.subscribedTickerSymbols.has(s.toUpperCase()));
     if (newSymbols.length === 0) return;
 
-    if (!marketWebSocket || marketWebSocket.readyState !== WebSocket.OPEN) {
+    if (!window.marketWebSocket || window.marketWebSocket.readyState !== WebSocket.OPEN) {
         // WebSocket 未連接，加入等待列表
-        newSymbols.forEach((s) => pendingTickerSymbols.add(s.toUpperCase()));
+        newSymbols.forEach((s) => window.pendingTickerSymbols.add(s.toUpperCase()));
         console.log(`Ticker WebSocket 未連接，已排隊等待: ${newSymbols.join(', ')}`);
         return;
     }
 
-    marketWebSocket.send(
+    window.marketWebSocket.send(
         JSON.stringify({
             action: 'subscribe',
             symbols: newSymbols,
         })
     );
 
-    newSymbols.forEach((s) => subscribedTickerSymbols.add(s.toUpperCase()));
+    newSymbols.forEach((s) => window.subscribedTickerSymbols.add(s.toUpperCase()));
     console.log(`訂閱 Ticker: ${newSymbols.join(', ')}`);
 }
 
 function unsubscribeTickerSymbols(symbols) {
-    if (!marketWebSocket || marketWebSocket.readyState !== WebSocket.OPEN) {
+    if (!window.marketWebSocket || window.marketWebSocket.readyState !== WebSocket.OPEN) {
         return;
     }
 
-    marketWebSocket.send(
+    window.marketWebSocket.send(
         JSON.stringify({
             action: 'unsubscribe',
             symbols: symbols,
         })
     );
 
-    symbols.forEach((s) => subscribedTickerSymbols.delete(s.toUpperCase()));
+    symbols.forEach((s) => window.subscribedTickerSymbols.delete(s.toUpperCase()));
 }
 
 function handleTickerMessage(message) {
@@ -710,10 +703,6 @@ document.addEventListener('visibilitychange', () => {
     }
 });
 
-window.refreshScreener = refreshScreener; // CRITICAL: Export for index.html to call
-window.showFundingHistory = showFundingHistory;
-window.closeFundingHistory = closeFundingHistory;
-
 // ========================================
 // Cleanup function for memory leak prevention
 // ========================================
@@ -727,19 +716,19 @@ function cleanupMarketResources() {
     }
 
     // Clear WebSocket reconnect timers
-    if (wsReconnectTimer) {
-        clearTimeout(wsReconnectTimer);
-        wsReconnectTimer = null;
+    if (window.wsReconnectTimer) {
+        clearTimeout(window.wsReconnectTimer);
+        window.wsReconnectTimer = null;
     }
 
-    if (wsConnectionCheckTimer) {
-        clearInterval(wsConnectionCheckTimer);
-        wsConnectionCheckTimer = null;
+    if (window.wsConnectionCheckTimer) {
+        clearInterval(window.wsConnectionCheckTimer);
+        window.wsConnectionCheckTimer = null;
     }
 
-    if (tickerReconnectTimer) {
-        clearTimeout(tickerReconnectTimer);
-        tickerReconnectTimer = null;
+    if (window.tickerReconnectTimer) {
+        clearTimeout(window.tickerReconnectTimer);
+        window.tickerReconnectTimer = null;
     }
 
     // Remove resize event listener
@@ -749,19 +738,19 @@ function cleanupMarketResources() {
     }
 
     // Close WebSocket connections
-    if (klineWebSocket) {
-        klineWebSocket.close();
-        klineWebSocket = null;
+    if (window.klineWebSocket) {
+        window.klineWebSocket.close();
+        window.klineWebSocket = null;
     }
 
-    if (marketWebSocket) {
-        marketWebSocket.close();
-        marketWebSocket = null;
+    if (window.marketWebSocket) {
+        window.marketWebSocket.close();
+        window.marketWebSocket = null;
     }
 
     // Reset reconnect attempts
-    reconnectAttempts = 0;
-    tickerReconnectAttempts = 0;
+    window.reconnectAttempts = 0;
+    window.tickerReconnectAttempts = 0;
 
     console.log('[Market] Resources cleaned up');
 }
@@ -776,3 +765,5 @@ document.addEventListener('visibilitychange', () => {
         // cleanupMarketResources();
     }
 });
+
+export { toggleAutoRefresh, connectTickerWebSocket, disconnectTickerWebSocket, subscribeTickerSymbols, cleanupMarketResources };

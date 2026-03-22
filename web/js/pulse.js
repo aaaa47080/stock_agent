@@ -4,26 +4,28 @@
 
 // Ensure currentPulseData exists
 if (typeof window.currentPulseData === 'undefined') {
+    AppStore.set('currentPulseData', {});
     window.currentPulseData = {};
 }
-let currentPulseData = window.currentPulseData;
+let currentPulseData = AppStore.get('currentPulseData');
 
 // 初始化狀態
 let pulseInitialized = false;
 
 function getPulseTargets() {
     if (window.SymbolSanitizer) {
-        window.globalSelectedSymbols = window.SymbolSanitizer.sanitizePairSymbols(
-            window.globalSelectedSymbols || []
-        );
-        const baseTargets = window.SymbolSanitizer.sanitizeBaseSymbols(window.globalSelectedSymbols);
+        AppStore.set('globalSelectedSymbols', window.SymbolSanitizer.sanitizePairSymbols(
+            AppStore.get('globalSelectedSymbols') || []
+        ));
+        window.globalSelectedSymbols = AppStore.get('globalSelectedSymbols');
+        const baseTargets = window.SymbolSanitizer.sanitizeBaseSymbols(AppStore.get('globalSelectedSymbols'));
         if (baseTargets.length > 0) {
             return baseTargets;
         }
     }
 
-    if (window.globalSelectedSymbols && window.globalSelectedSymbols.length > 0) {
-        return window.globalSelectedSymbols;
+    if (AppStore.get('globalSelectedSymbols') && AppStore.get('globalSelectedSymbols').length > 0) {
+        return AppStore.get('globalSelectedSymbols');
     }
 
     return ['BTC', 'ETH', 'SOL', 'PI'];
@@ -61,7 +63,6 @@ function formatPrice(price) {
  * 將時間戳轉換為「多久以前」
  */
 function getTimeAgo(timestamp) {
-    const t = window.I18n ? window.I18n.t.bind(window.I18n) : (k) => k;
     if (!timestamp) return t('pulse.unknownTime');
     const seconds = Math.floor((new Date() - new Date(timestamp)) / 1000);
     if (seconds / 31536000 > 1) return Math.floor(seconds / 31536000) + t('pulse.yearsAgo');
@@ -129,7 +130,7 @@ async function loadPulseData(showLoading = false) {
     try {
         // [Sync] Ensure we use the shared "Top 5" selection from Market module
         // If no selection exists, trigger Market initialization to populate Top 5
-        if (!window.globalSelectedSymbols || window.globalSelectedSymbols.length === 0) {
+        if (!AppStore.get('globalSelectedSymbols') || AppStore.get('globalSelectedSymbols').length === 0) {
             if (typeof window.initMarket === 'function') {
                 console.log('[Pulse] No selection found, initializing Market to get Top 5...');
                 await window.initMarket();
@@ -188,7 +189,7 @@ async function refreshMarketPulse() {
     if (icon) icon.classList.add('animate-spin');
 
     try {
-        if (!window.globalSelectedSymbols || window.globalSelectedSymbols.length === 0) {
+        if (!AppStore.get('globalSelectedSymbols') || AppStore.get('globalSelectedSymbols').length === 0) {
             if (typeof window.initMarket === 'function') await window.initMarket();
         }
 
@@ -203,15 +204,11 @@ async function refreshMarketPulse() {
         } else {
             console.log('[Pulse] Triggering Background Public Refresh...');
             const token = window.AuthManager?.currentUser?.accessToken;
-            const res = await fetch('/api/market-pulse/refresh-all', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                },
-                body: JSON.stringify({ symbols: targets }),
-            });
-            if (!res.ok) throw new Error('Refresh failed');
+            if (token) {
+                await AppAPI.post('/api/market-pulse/refresh-all', { symbols: targets }, { headers: { Authorization: `Bearer ${token}` } });
+            } else {
+                await AppAPI.post('/api/market-pulse/refresh-all', { symbols: targets });
+            }
             pollAnalysisProgress();
         }
     } catch (e) {
@@ -223,7 +220,7 @@ async function refreshMarketPulse() {
         setTimeout(() => {
             if (btn) btn.disabled = false;
             if (icon) icon.classList.remove('animate-spin');
-            if (window.lucide) lucide.createIcons();
+            AppUtils.refreshIcons();
         }, 1000);
     }
 }
@@ -240,7 +237,7 @@ async function fetchPulseForSymbol(symbol, forceRefresh = false, deepAnalysis = 
 
     try {
         const sourcesQuery = (
-            window.selectedNewsSources || ['google', 'cryptocompare', 'cryptopanic', 'newsapi']
+            AppStore.get('selectedNewsSources') || ['google', 'cryptocompare', 'cryptopanic', 'newsapi']
         ).join(',');
         const refreshParam = forceRefresh ? '&refresh=true' : '';
         const deepParam = deepAnalysis ? '&deep_analysis=true' : '';
@@ -254,17 +251,12 @@ async function fetchPulseForSymbol(symbol, forceRefresh = false, deepAnalysis = 
             }
         }
 
-        const res = await fetch(
+        const res = await AppAPI.get(
             `/api/market-pulse/${symbol}?sources=${sourcesQuery}${refreshParam}${deepParam}`,
             { headers }
         );
 
-        if (!res.ok) {
-            const errData = await res.json().catch(() => ({ detail: res.statusText }));
-            throw new Error(errData.detail || `Server Error: ${res.status}`);
-        }
-
-        const data = await res.json();
+        const data = res;
         const report = data.report || {
             summary: data.explanation,
             key_points: [],
@@ -304,11 +296,11 @@ function renderPendingCard(card, data) {
             <p class="text-textMuted text-sm mb-4">Awaiting scheduled update</p>
             <button onclick="triggerDeepAnalysis('${data.symbol}')" class="px-4 py-2.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-xl transition flex items-center gap-2 mx-auto border border-primary/20">
                 <i data-lucide="zap" class="w-4 h-4"></i>
-                ${window.I18n ? window.I18n.t('pulse.deepAnalysis') : 'Deep Analysis'}
+                ${t('pulse.deepAnalysis')}
             </button>
         </div>
     `;
-    if (window.lucide) lucide.createIcons();
+    AppUtils.refreshIcons();
 }
 
 /**
@@ -356,7 +348,6 @@ function _buildPulseKeyPoints(report, t) {
  * Render Pulse Card
  */
 function renderPulseCard(card, data, report) {
-    const t = window.I18n ? window.I18n.t.bind(window.I18n) : (k) => k;
     const isPositive = data.change_24h > 0;
     const timeString = getTimeAgo(data.timestamp);
     const uniqueSources = data.news_sources
@@ -490,14 +481,13 @@ function renderPulseCard(card, data, report) {
     `;
 
     card.innerHTML = html;
-    if (window.lucide) lucide.createIcons();
+    AppUtils.refreshIcons();
 }
 
 /**
  * 渲染錯誤卡片
  */
 function renderErrorCard(card, symbol, errorMsg) {
-    const t = window.I18n ? window.I18n.t.bind(window.I18n) : (k) => k;
     card.innerHTML = `
         <div class="p-6 h-full flex flex-col items-center justify-center min-h-[200px] text-center text-red-400">
             <i data-lucide="alert-octagon" class="w-8 h-8 mb-2 opacity-80"></i>
@@ -508,7 +498,7 @@ function renderErrorCard(card, symbol, errorMsg) {
             </button>
         </div>
     `;
-    if (window.lucide) lucide.createIcons();
+    AppUtils.refreshIcons();
 }
 
 /**
@@ -518,7 +508,6 @@ async function triggerDeepAnalysis(symbol) {
     const userKey = await window.APIKeyManager?.getCurrentKey();
 
     if (!userKey) {
-        const t = window.I18n ? window.I18n.t.bind(window.I18n) : (k) => k;
         if (typeof showAlert === 'function') {
             showAlert({
                 title: t('pulse.noApiKeyTitle'),
@@ -533,7 +522,6 @@ async function triggerDeepAnalysis(symbol) {
     }
 
     const card = document.getElementById(`pulse-card-${symbol}`);
-    const t = window.I18n ? window.I18n.t.bind(window.I18n) : (k) => k;
     if (card) {
         card.innerHTML = `
             <div class="p-6 h-full flex flex-col items-center justify-center min-h-[200px]">
@@ -566,7 +554,6 @@ function showNewsList(symbol) {
     if (symbolTitle) symbolTitle.innerText = symbol;
     if (listContent) listContent.innerHTML = '';
 
-    const t = window.I18n ? window.I18n.t.bind(window.I18n) : (k) => k;
     const sources = data.news_sources || [];
 
     if (sources.length === 0) {
@@ -591,7 +578,7 @@ function showNewsList(symbol) {
         });
     }
     modal.classList.remove('hidden');
-    if (window.lucide) lucide.createIcons();
+    AppUtils.refreshIcons();
 }
 
 // --- Analysis Progress Polling ---
@@ -612,10 +599,7 @@ async function pollAnalysisProgress() {
 
     try {
         while (true) {
-            const res = await fetch('/api/market-pulse/progress');
-            if (!res.ok) break;
-
-            const status = await res.json();
+            const status = await AppAPI.get('/api/market-pulse/progress');
 
             if (status.is_running && status.total > 0) {
                 container.classList.remove('hidden');
@@ -626,7 +610,6 @@ async function pollAnalysisProgress() {
             } else {
                 if (!container.classList.contains('hidden')) {
                     bar.style.width = '100%';
-                    const t = window.I18n ? window.I18n.t.bind(window.I18n) : (k) => k;
                     text.innerText = t('pulse.done');
                     await new Promise((r) => setTimeout(r, 2000));
                     container.classList.add('hidden');
@@ -679,5 +662,7 @@ window.triggerDeepAnalysis = triggerDeepAnalysis;
 window.showNewsList = showNewsList;
 window.formatPrice = formatPrice;
 window.getTimeAgo = getTimeAgo;
+
+export { initPulse, checkMarketPulse, refreshMarketPulse, loadPulseData, fetchPulseForSymbol, triggerDeepAnalysis, showNewsList, formatPrice, getTimeAgo };
 
 console.log('[Pulse] Module loaded');

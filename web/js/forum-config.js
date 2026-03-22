@@ -5,51 +5,59 @@
 // ============================================
 // Pi 支付價格配置（從後端動態獲取）
 // ============================================
-window.PiPrices = {
+const _defaultPiPrices = {
     create_post: null, // 完全依賴後端配置
     tip: null,
     premium: null,
     loaded: false,
 };
+AppStore.set('PiPrices', _defaultPiPrices);
+window.PiPrices = _defaultPiPrices;
 
 // ============================================
 // 論壇限制配置（從後端動態獲取）
 // ============================================
-window.ForumLimits = {
+const _defaultForumLimits = {
     daily_post_free: null,
     daily_post_premium: null,
     daily_comment_free: null,
     daily_comment_premium: null,
     loaded: false,
 };
+AppStore.set('ForumLimits', _defaultForumLimits);
+window.ForumLimits = _defaultForumLimits;
 
 // 從後端載入價格配置
 async function loadPiPrices() {
-    if (window.PiPrices.loading) return; // Prevent concurrent requests
-    window.PiPrices.loading = true;
+    if (AppStore.get('PiPrices').loading) return; // Prevent concurrent requests
+    const prices = AppStore.get('PiPrices');
+    prices.loading = true;
+    AppStore.set('PiPrices', prices);
+    window.PiPrices = prices;
 
     try {
-        const res = await fetch('/api/config/prices');
-        if (res.ok) {
-            const data = await res.json();
-            window.PiPrices = { ...data.prices, loaded: true, loading: false };
-            console.log('[Forum] Pi 價格配置已載入:', window.PiPrices);
-            // 更新頁面上的價格顯示
-            updatePriceDisplays();
-            // 通知其他模組價格已更新
-            document.dispatchEvent(new Event('pi-prices-updated'));
-        } else {
-            window.PiPrices.loading = false;
-        }
+        const data = await AppAPI.get('/api/config/prices');
+        const updated = { ...data.prices, loaded: true, loading: false };
+        AppStore.set('PiPrices', updated);
+        window.PiPrices = updated;
+        console.log('[Forum] Pi 價格配置已載入:', updated);
+        // 更新頁面上的價格顯示
+        updatePriceDisplays();
+        // 通知其他模組價格已更新
+        document.dispatchEvent(new Event('pi-prices-updated'));
     } catch (e) {
         console.error('[Forum] 載入價格配置失敗:', e);
-        window.PiPrices.loading = false;
+        const reset = AppStore.get('PiPrices');
+        reset.loading = false;
+        AppStore.set('PiPrices', reset);
+        window.PiPrices = reset;
     }
 }
 
 function updatePriceDisplays() {
     // 更新所有帶有 data-price 屬性的元素
-    if (!window.PiPrices || !window.PiPrices.loaded) {
+    const prices = AppStore.get('PiPrices');
+    if (!prices || !prices.loaded) {
         console.log('[Forum] 價格尚未載入，跳過更新');
         return;
     }
@@ -57,42 +65,46 @@ function updatePriceDisplays() {
     const priceElements = document.querySelectorAll('[data-price]');
     priceElements.forEach((el) => {
         const priceKey = el.getAttribute('data-price');
-        const price = window.PiPrices[priceKey];
+        const price = prices[priceKey];
 
         if (price !== undefined && price !== null) {
             el.textContent = `${price} Pi`;
         }
     });
 
-    console.log('[Forum] 價格顯示已更新:', window.PiPrices);
+    console.log('[Forum] 價格顯示已更新:', prices);
 }
 
 // 從後端載入論壇限制配置
 async function loadForumLimits() {
-    if (window.ForumLimits.loading) return;
-    window.ForumLimits.loading = true;
+    const limits = AppStore.get('ForumLimits');
+    if (limits.loading) return;
+    limits.loading = true;
+    AppStore.set('ForumLimits', limits);
+    window.ForumLimits = limits;
 
     try {
-        const res = await fetch('/api/config/limits');
-        if (res.ok) {
-            const data = await res.json();
-            window.ForumLimits = { ...data.limits, loaded: true, loading: false };
-            console.log('[Forum] 論壇限制配置已載入:', window.ForumLimits);
-            // 通知其他模組限制已更新
-            document.dispatchEvent(new Event('forum-limits-updated'));
-        } else {
-            window.ForumLimits.loading = false;
-        }
+        const data = await AppAPI.get('/api/config/limits');
+        const updated = { ...data.limits, loaded: true, loading: false };
+        AppStore.set('ForumLimits', updated);
+        window.ForumLimits = updated;
+        console.log('[Forum] 論壇限制配置已載入:', updated);
+        // 通知其他模組限制已更新
+        document.dispatchEvent(new Event('forum-limits-updated'));
     } catch (e) {
         console.error('[Forum] 載入論壇限制配置失敗:', e);
-        window.ForumLimits.loading = false;
+        const reset = AppStore.get('ForumLimits');
+        reset.loading = false;
+        AppStore.set('ForumLimits', reset);
+        window.ForumLimits = reset;
     }
 }
 
 // 取得價格的輔助函數（確保有值）
 function getPrice(key) {
-    if (window.PiPrices?.loaded && window.PiPrices[key] !== null) {
-        return window.PiPrices[key];
+    const prices = AppStore.get('PiPrices');
+    if (prices?.loaded && prices[key] !== null) {
+        return prices[key];
     }
     console.warn(`[Forum] 價格 ${key} 尚未載入，請確認 API 連線`);
     return null;
@@ -100,8 +112,9 @@ function getPrice(key) {
 
 // 取得限制的輔助函數（確保有值）
 function getLimit(key) {
-    if (window.ForumLimits?.loaded && window.ForumLimits[key] !== undefined) {
-        return window.ForumLimits[key];
+    const limits = AppStore.get('ForumLimits');
+    if (limits?.loaded && limits[key] !== undefined) {
+        return limits[key];
     }
     console.warn(`[Forum] 限制 ${key} 尚未載入，請確認 API 連線`);
     return null;
@@ -144,4 +157,6 @@ function formatTWDate(dateStr, full = false) {
         return dateStr;
     }
 }
+
+export { loadPiPrices, loadForumLimits, getPrice, getLimit, formatTWDate };
 

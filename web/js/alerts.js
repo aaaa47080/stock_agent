@@ -13,7 +13,7 @@ function openAlertModal(symbol, market) {
     document.getElementById('alert-repeat').checked = false;
     document.getElementById('alert-modal').classList.remove('hidden');
     // Re-init Lucide icons (X button inside modal)
-    if (typeof lucide !== 'undefined') lucide.createIcons();
+    if (window.AppUtils) window.AppUtils.refreshIcons();
     // Re-apply i18n translations
     if (window.I18n && typeof window.I18n.updatePageContent === 'function')
         window.I18n.updatePageContent();
@@ -28,7 +28,7 @@ async function submitAlert() {
     const target = parseFloat(document.getElementById('alert-target').value);
     const repeat = document.getElementById('alert-repeat').checked;
 
-    const t = key => (window.I18n ? window.I18n.t(key) : key);
+    const t = (key) => (window.I18n ? window.I18n.t(key) : key);
 
     if (!target || isNaN(target) || target <= 0) {
         if (typeof window.showToast === 'function')
@@ -37,47 +37,27 @@ async function submitAlert() {
     }
 
     try {
-        const token =
-            window.AuthManager &&
-            window.AuthManager.currentUser &&
-            window.AuthManager.currentUser.accessToken;
-        const resp = await fetch('/api/alerts', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-            body: JSON.stringify({
-                symbol: _alertSymbol,
-                market: _alertMarket,
-                condition,
-                target,
-                repeat,
-            }),
+        await window.AppAPI.post('/api/alerts', {
+            symbol: _alertSymbol,
+            market: _alertMarket,
+            condition,
+            target,
+            repeat,
         });
-        if (resp.ok) {
-            if (typeof window.showToast === 'function')
-                window.showToast('✅ ' + t('modals.priceAlert.confirm'));
-            closeAlertModal();
-            loadUserAlerts();
-        } else {
-            const err = await resp.json().catch(() => ({}));
-            if (typeof window.showToast === 'function')
-                window.showToast(err.detail || t('modals.priceAlert.setFailed'), 'error');
-        }
+        if (typeof window.showToast === 'function')
+            window.showToast('✅ ' + t('modals.priceAlert.confirm'));
+        closeAlertModal();
+        loadUserAlerts();
     } catch (e) {
         if (typeof window.showToast === 'function')
-            window.showToast(t('modals.priceAlert.networkError'), 'error');
+            window.showToast(e.message || t('modals.priceAlert.setFailed'), 'error');
     }
 }
 
 async function loadUserAlerts() {
     try {
-        const token =
-            window.AuthManager &&
-            window.AuthManager.currentUser &&
-            window.AuthManager.currentUser.accessToken;
-        if (!token) return;
-        const resp = await fetch('/api/alerts', { headers: { Authorization: 'Bearer ' + token } });
-        if (!resp.ok) return;
-        const data = await resp.json();
+        if (!window.AppAPI || !window.AppAPI.getToken()) return;
+        const data = await window.AppAPI.get('/api/alerts');
         renderAlertList(data.alerts || []);
     } catch (e) {
         // silent fail — user may not be logged in
@@ -85,31 +65,18 @@ async function loadUserAlerts() {
 }
 
 async function deleteUserAlert(alertId) {
+    const t = (key) => (window.I18n ? window.I18n.t(key) : key);
     try {
-        const token =
-            window.AuthManager &&
-            window.AuthManager.currentUser &&
-            window.AuthManager.currentUser.accessToken;
-        const resp = await fetch('/api/alerts/' + alertId, {
-            method: 'DELETE',
-            headers: { Authorization: 'Bearer ' + token },
-        });
-        if (resp.ok) {
-            loadUserAlerts();
-        } else {
-            const t = key => (window.I18n ? window.I18n.t(key) : key);
-            if (typeof window.showToast === 'function')
-                window.showToast(t('modals.priceAlert.deleteFailed'), 'error');
-        }
+        await window.AppAPI.delete('/api/alerts/' + alertId);
+        loadUserAlerts();
     } catch (e) {
-        const t = key => (window.I18n ? window.I18n.t(key) : key);
         if (typeof window.showToast === 'function')
             window.showToast(t('modals.priceAlert.deleteFailed'), 'error');
     }
 }
 
 function renderAlertList(alerts) {
-    const t = key => (window.I18n ? window.I18n.t(key) : key);
+    const t = (key) => (window.I18n ? window.I18n.t(key) : key);
     // condition labels come from i18n
     const condMap = {
         above: t('modals.priceAlert.above'),
@@ -166,3 +133,5 @@ window.submitAlert = submitAlert;
 window.loadUserAlerts = loadUserAlerts;
 window.deleteUserAlert = deleteUserAlert;
 window.renderAlertList = renderAlertList;
+
+export { openAlertModal, closeAlertModal, submitAlert, loadUserAlerts, deleteUserAlert, renderAlertList };

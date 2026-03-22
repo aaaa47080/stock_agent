@@ -42,9 +42,7 @@ class NotificationBell {
         `;
 
         // 初始化图标
-        if (window.lucide) {
-            window.lucide.createIcons();
-        }
+        AppUtils.refreshIcons();
     }
 
     attachEvents() {
@@ -115,3 +113,4 @@ class NotificationBell {
 
 // 暴露全局
 window.NotificationBell = NotificationBell;
+export { NotificationBell };

@@ -43,9 +43,7 @@ const GlobalNav = {
         this.restoreNavState();
 
         // Initialize Lucide icons
-        if (window.lucide) {
-            window.lucide.createIcons();
-        }
+        AppUtils.refreshIcons();
 
         // Wait for I18n to be ready before rendering buttons
         // Check if I18n is fully initialized (not just function exists), otherwise wait for it
@@ -189,9 +187,7 @@ const GlobalNav = {
         });
 
         // Re-initialize Lucide icons
-        if (window.lucide) {
-            window.lucide.createIcons();
-        }
+        AppUtils.refreshIcons();
     },
 
     /**
@@ -474,3 +470,4 @@ if (document.readyState === 'loading') {
 
 // Export for use in other modules
 window.GlobalNav = GlobalNav;
+export { GlobalNav };

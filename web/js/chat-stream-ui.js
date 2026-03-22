@@ -3,7 +3,7 @@
 // 職責：共用 timer/progress/SSE buffer 邏輯
 // ========================================
 
-window.ChatStreamUI = window.ChatStreamUI || {
+const ChatStreamUI = window.ChatStreamUI || {
     updateTimers(targetDiv, elapsedSeconds) {
         if (!targetDiv) return;
         targetDiv.querySelectorAll('#loading-timer').forEach((display) => {
@@ -63,3 +63,6 @@ window.ChatStreamUI = window.ChatStreamUI || {
         };
     },
 };
+window.ChatStreamUI = ChatStreamUI;
+
+export { ChatStreamUI };

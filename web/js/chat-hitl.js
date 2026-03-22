@@ -33,11 +33,13 @@ function showHITLModal(interruptData) {
     modal.classList.remove('hidden');
     if (lucide) createIconsIn(modal);
 }
+window.showHITLModal = showHITLModal;
 
 function closeHITLModal() {
     const modal = document.getElementById('hitl-modal');
     if (modal) modal.classList.add('hidden');
 }
+window.closeHITLModal = closeHITLModal;
 
 // ── Pre-Research Card (pre_research HITL) ────────────────────────────────────
 
@@ -127,12 +129,14 @@ function renderPreResearchCard(idata, targetDiv) {
 
     if (window.lucide) createIconsIn(targetDiv);
 }
+window.renderPreResearchCard = renderPreResearchCard;
 
-window.submitPreResearch = function () {
+function submitPreResearch() {
     // No specific input from card anymore, just confirm.
     // If user wants to specify, they type in main chat.
     window.submitHITLAnswer('confirm');
-};
+}
+window.submitPreResearch = submitPreResearch;
 
 // ── Removed client-side _isDiscussionQuestion check to rely on backend ──
 
@@ -220,8 +224,9 @@ function renderPlanCard(interruptData, targetDiv) {
         </div>`;
     if (window.lucide) createIconsIn(targetDiv);
 }
+window.renderPlanCard = renderPlanCard;
 
-window.togglePlanCustomize = function () {
+function togglePlanCustomize() {
     const card = document.getElementById('active-plan-card');
     if (!card) return;
 
@@ -283,9 +288,10 @@ window.togglePlanCustomize = function () {
         }
     }
     if (lucide) createIconsIn(document.getElementById('chat-messages'));
-};
+}
+window.togglePlanCustomize = togglePlanCustomize;
 
-window.updateCustomExecuteButton = function () {
+function updateCustomExecuteButton() {
     const executeBtn = document.getElementById('plan-execute-btn');
     if (!executeBtn) return;
 
@@ -300,9 +306,10 @@ window.updateCustomExecuteButton = function () {
     executeBtn.innerHTML = '<i data-lucide="play" class="w-4 h-4"></i>執行已選步驟';
 
     createIconsIn(executeBtn);
-};
+}
+window.updateCustomExecuteButton = updateCustomExecuteButton;
 
-window.togglePlanStep = function (step) {
+function togglePlanStep(step) {
     const wasSelected = step.dataset.selected === 'true';
     const nowSelected = !wasSelected;
     step.dataset.selected = String(nowSelected);
@@ -319,9 +326,10 @@ window.togglePlanStep = function (step) {
             'plan-check w-5 h-5 rounded border border-white/20 flex items-center justify-center flex-shrink-0';
         check.innerHTML = '';
     }
-};
+}
+window.togglePlanStep = togglePlanStep;
 
-window.executePlan = function (mode) {
+function executePlan(mode) {
     if (mode === 'cancel') {
         window.submitHITLAnswer(JSON.stringify({ action: 'cancel' }));
         return;
@@ -362,9 +370,10 @@ window.executePlan = function (mode) {
             JSON.stringify({ action: 'execute_custom', selected_steps: selected })
         );
     }
-};
+}
+window.executePlan = executePlan;
 
-window.submitHITLAnswer = async function (answer) {
+async function submitHITLAnswer(answer) {
     if (!answer || !answer.trim()) return;
     if (!_hitlContext) return;
 
@@ -627,5 +636,19 @@ window.submitHITLAnswer = async function (answer) {
             }
         }
     }
-};
+}
+window.submitHITLAnswer = submitHITLAnswer;
 // ── End HITL ─────────────────────────────────────────────────────────────────
+
+export {
+    showHITLModal,
+    closeHITLModal,
+    renderPreResearchCard,
+    submitPreResearch,
+    renderPlanCard,
+    togglePlanCustomize,
+    updateCustomExecuteButton,
+    togglePlanStep,
+    executePlan,
+    submitHITLAnswer,
+};

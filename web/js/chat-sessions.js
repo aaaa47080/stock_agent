@@ -30,14 +30,8 @@ async function loadSessions() {
         if (!isLoggedIn) return; // Should be handled by top check, but safe to keep
 
         const userId = AuthManager.currentUser.user_id;
-        const token = AuthManager.currentUser.accessToken;
 
-        const res = await fetch(`/api/chat/sessions?user_id=${encodeURIComponent(userId)}`, {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        });
-        const data = await res.json();
+        const data = await AppAPI.get(`/api/chat/sessions?user_id=${encodeURIComponent(userId)}`);
         const list = document.getElementById('chat-session-list');
         list.innerHTML = '';
 
@@ -51,17 +45,17 @@ async function loadSessions() {
             const toolbar = document.createElement('div');
             toolbar.className = 'edit-toolbar flex items-center gap-2 px-3 py-2 mb-2';
 
-            if (isEditMode) {
+            if (window.isEditMode) {
                 const allSelected =
-                    allSessions.length > 0 && selectedSessions.size === allSessions.length;
+                    allSessions.length > 0 && window.selectedSessions.size === allSessions.length;
                 toolbar.innerHTML = `
                     <button onclick="toggleSelectAll()" class="flex items-center gap-1.5 text-xs ${allSelected ? 'text-primary' : 'text-textMuted hover:text-secondary'} transition">
                         <i data-lucide="${allSelected ? 'check-square' : 'square'}" class="w-3.5 h-3.5"></i>
                         <span>${allSelected ? '取消全選' : '全選'}</span>
                     </button>
                     <div class="flex-1"></div>
-                    <span class="text-[10px] text-textMuted/50">${selectedSessions.size} 已選</span>
-                    <button onclick="deleteSelectedSessions(this)" class="p-1.5 ${selectedSessions.size > 0 ? 'text-danger hover:bg-danger/10' : 'text-textMuted/30 cursor-not-allowed'} rounded-lg transition" ${selectedSessions.size === 0 ? 'disabled' : ''} title="刪除已選">
+                    <span class="text-[10px] text-textMuted/50">${window.selectedSessions.size} 已選</span>
+                    <button onclick="deleteSelectedSessions(this)" class="p-1.5 ${window.selectedSessions.size > 0 ? 'text-danger hover:bg-danger/10' : 'text-textMuted/30 cursor-not-allowed'} rounded-lg transition" ${window.selectedSessions.size === 0 ? 'disabled' : ''} title="刪除已選">
                         <i data-lucide="trash-2" class="w-4 h-4"></i>
                     </button>
                     <button onclick="exitEditMode()" class="p-1.5 text-textMuted hover:text-secondary hover:bg-white/5 rounded-lg transition" title="完成">
@@ -127,12 +121,13 @@ async function loadSessions() {
             }
 
             // 儲存所有 session ID 供全選使用
-            window._allSessionIds = allSessions.map((s) => s.id);
+            AppStore.set('allSessionIds', allSessions.map((s) => s.id));
+            window._allSessionIds = AppStore.get('allSessionIds');
         } else {
             list.innerHTML =
                 '<div class="text-center text-xs text-textMuted/40 py-4">No history</div>';
             // 退出編輯模式（沒有對話了）
-            if (isEditMode) exitEditMode();
+            if (window.isEditMode) exitEditMode();
         }
         createIconsIn(document.getElementById('chat-session-list'));
 
@@ -144,16 +139,17 @@ async function loadSessions() {
         return [];
     }
 }
+window.loadSessions = loadSessions;
 
 // 創建單個 session 項目
 function createSessionItem(session) {
     const isActive = session.id === currentSessionId;
-    const isSelected = selectedSessions.has(session.id);
+    const isSelected = window.selectedSessions.has(session.id);
     const div = document.createElement('div');
     div.dataset.sessionId = session.id;
     div.className = `group flex items-center gap-2 p-3 rounded-xl cursor-pointer transition text-sm mb-1 ${isActive ? 'bg-surfaceHighlight text-primary' : 'hover:bg-white/5 text-textMuted hover:text-secondary'} ${isSelected ? 'bg-primary/10 border border-primary/20' : ''}`;
 
-    if (isEditMode) {
+    if (window.isEditMode) {
         // 編輯模式：點擊切換選中狀態
         div.onclick = () => toggleSessionSelection(session.id);
         div.innerHTML = `
@@ -188,7 +184,7 @@ function createSessionItem(session) {
     }
 
     // 如果是當前 session，滾動到可見區域
-    if (isActive && !isEditMode) {
+    if (isActive && !window.isEditMode) {
         setTimeout(() => {
             div.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }, 100);
@@ -196,6 +192,7 @@ function createSessionItem(session) {
 
     return div;
 }
+window.createSessionItem = createSessionItem;
 
 // 切換收藏區展開/收合狀態
 function toggleStarredSection(summaryElement) {
@@ -205,6 +202,7 @@ function toggleStarredSection(summaryElement) {
         updateStarredChevron();
     }, 0);
 }
+window.toggleStarredSection = toggleStarredSection;
 
 // 更新收藏區 chevron 的旋轉狀態
 function updateStarredChevron() {
@@ -217,48 +215,53 @@ function updateStarredChevron() {
         }
     }
 }
+window.updateStarredChevron = updateStarredChevron;
 
 // ========================================
 // 編輯模式（批量刪除）
 // ========================================
 
 function enterEditMode() {
-    isEditMode = true;
-    selectedSessions.clear();
+    window.isEditMode = true;
+    window.selectedSessions.clear();
     loadSessions();
 }
+window.enterEditMode = enterEditMode;
 
 function exitEditMode() {
-    isEditMode = false;
-    selectedSessions.clear();
+    window.isEditMode = false;
+    window.selectedSessions.clear();
     loadSessions();
 }
+window.exitEditMode = exitEditMode;
 
 function toggleSessionSelection(sessionId) {
-    if (selectedSessions.has(sessionId)) {
-        selectedSessions.delete(sessionId);
+    if (window.selectedSessions.has(sessionId)) {
+        window.selectedSessions.delete(sessionId);
     } else {
-        selectedSessions.add(sessionId);
+        window.selectedSessions.add(sessionId);
     }
     loadSessions();
 }
+window.toggleSessionSelection = toggleSessionSelection;
 
 function toggleSelectAll() {
-    const allIds = window._allSessionIds || [];
-    if (selectedSessions.size === allIds.length) {
+    const allIds = AppStore.get('allSessionIds') || [];
+    if (window.selectedSessions.size === allIds.length) {
         // 已全選，取消全選
-        selectedSessions.clear();
+        window.selectedSessions.clear();
     } else {
         // 全選
-        selectedSessions = new Set(allIds);
+        window.selectedSessions = new Set(allIds);
     }
     loadSessions();
 }
+window.toggleSelectAll = toggleSelectAll;
 
 async function deleteSelectedSessions(btnElement) {
-    if (selectedSessions.size === 0) return;
+    if (window.selectedSessions.size === 0) return;
 
-    const count = selectedSessions.size;
+    const count = window.selectedSessions.size;
     const confirmed = await showConfirm({
         title: '批量刪除',
         message: `確定要刪除 ${count} 個對話嗎？此操作無法復原。`,
@@ -275,7 +278,7 @@ async function deleteSelectedSessions(btnElement) {
     }
 
     // ── Optimistic UI: remove all selected items + toolbar immediately ───────
-    const toDelete = Array.from(selectedSessions);
+    const toDelete = Array.from(window.selectedSessions);
     toDelete.forEach((sid) => {
         const div = document.querySelector(`[data-session-id="${sid}"]`);
         if (div) div.remove();
@@ -284,28 +287,24 @@ async function deleteSelectedSessions(btnElement) {
     document.querySelector('#chat-session-list .edit-toolbar')?.remove();
 
     // 如果當前 session 被刪除了，清空聊天區域
-    if (selectedSessions.has(currentSessionId)) {
+    if (window.selectedSessions.has(currentSessionId)) {
         currentSessionId = null;
         showWelcomeScreen();
     }
 
     // Clear any HITL context for deleted sessions
-    if (_hitlContext?.sessionId && selectedSessions.has(_hitlContext.sessionId)) {
+    if (_hitlContext?.sessionId && window.selectedSessions.has(_hitlContext.sessionId)) {
         _hitlContext = null;
     }
 
     // 清空選中並退出編輯模式
-    selectedSessions.clear();
-    isEditMode = false;
+    window.selectedSessions.clear();
+    window.isEditMode = false;
 
     try {
-        const token = AuthManager.currentUser.accessToken;
         await Promise.all(
             toDelete.map((sessionId) =>
-                fetch(`/api/chat/sessions/${sessionId}`, {
-                    method: 'DELETE',
-                    headers: { Authorization: `Bearer ${token}` },
-                })
+                AppAPI.delete(`/api/chat/sessions/${sessionId}`)
             )
         );
         // Rebuild sidebar (clears edit toolbar and syncs with server)
@@ -316,26 +315,23 @@ async function deleteSelectedSessions(btnElement) {
             btnElement.disabled = false;
             btnElement.classList.remove('opacity-50', 'cursor-not-allowed');
         }
-        await loadSessions();
     }
 }
+window.deleteSelectedSessions = deleteSelectedSessions;
 
 async function toggleStarSession(event, sessionId, newStatus) {
     event.stopPropagation();
     // Decode sessionId that was encoded for XSS protection
     sessionId = decodeURIComponent(sessionId);
     try {
-        const token = AuthManager.currentUser.accessToken;
-        await fetch(`/api/chat/sessions/${sessionId}/pin?is_pinned=${newStatus}`, {
-            method: 'PUT',
-            headers: { Authorization: `Bearer ${token}` },
-        });
+        await AppAPI.put(`/api/chat/sessions/${sessionId}/pin?is_pinned=${newStatus}`);
         await loadSessions();
     } catch (e) {
         console.error('Failed to toggle star:', e);
         if (typeof showToast === 'function') showToast('收藏操作失敗，請稍後再試', 'error');
     }
 }
+window.toggleStarSession = toggleStarSession;
 
 async function createNewChat() {
     try {
@@ -351,14 +347,17 @@ async function createNewChat() {
         }
 
         // ⚠️ 取消正在進行的分析請求，避免 isAnalyzing 阻擋新聊天室的訊息發送
-        if (window.currentAnalysisController) {
-            window.currentAnalysisController.abort();
+        if (AppStore.get('currentAnalysisController')) {
+            AppStore.get('currentAnalysisController').abort();
+            AppStore.set('currentAnalysisController', null);
             window.currentAnalysisController = null;
         }
         isAnalyzing = false;
 
         // 切換到"新對話"狀態，不立即建立 session
         currentSessionId = null;
+        AppStore.set('currentSessionId', null);
+        window.currentSessionId = null;
 
         // 顯示歡迎畫面
         showWelcomeScreen();
@@ -375,6 +374,7 @@ async function createNewChat() {
         console.error('Failed to prepare new chat:', e);
     }
 }
+window.createNewChat = createNewChat;
 
 function showWelcomeScreen() {
     const container = document.getElementById('chat-messages');
@@ -400,6 +400,7 @@ function showWelcomeScreen() {
     </div>`;
     createIconsIn(document.getElementById('chat-session-list'));
 }
+window.showWelcomeScreen = showWelcomeScreen;
 
 // 直接更新側邊欄的 active 高亮，不重新拉取 sessions
 function updateSessionActiveState(newSessionId) {
@@ -414,18 +415,22 @@ function updateSessionActiveState(newSessionId) {
         }
     });
 }
+window.updateSessionActiveState = updateSessionActiveState;
 
 async function switchSession(sessionId) {
     if (sessionId === currentSessionId) return;
 
     // ⚠️ 取消正在進行的分析請求，避免 isAnalyzing 阻擋新 session 的訊息發送
-    if (window.currentAnalysisController) {
-        window.currentAnalysisController.abort();
+    if (AppStore.get('currentAnalysisController')) {
+        AppStore.get('currentAnalysisController').abort();
+        AppStore.set('currentAnalysisController', null);
         window.currentAnalysisController = null;
     }
     isAnalyzing = false;
 
     currentSessionId = sessionId;
+    AppStore.set('currentSessionId', sessionId);
+    window.currentSessionId = sessionId;
 
     // 自動切換到 Chat 標籤頁（確保等待完成再載入歷史）
     if (typeof switchTab === 'function') {
@@ -444,6 +449,7 @@ async function switchSession(sessionId) {
         sidebar.classList.add('-translate-x-full');
     }
 }
+window.switchSession = switchSession;
 
 async function deleteSession(event, sessionId) {
     event.stopPropagation();
@@ -483,6 +489,8 @@ async function deleteSession(event, sessionId) {
         const container = document.getElementById('chat-messages');
         if (container) container.innerHTML = '';
         currentSessionId = nextSessionId || null;
+        AppStore.set('currentSessionId', currentSessionId);
+        window.currentSessionId = currentSessionId;
         if (!nextSessionId) showWelcomeScreen();
     }
 
@@ -492,12 +500,8 @@ async function deleteSession(event, sessionId) {
     // ── Step 2: Fire DELETE + load next session history in parallel ───────────
     // No need to call loadSessions() — optimistic UI already removed the item
     try {
-        const token = AuthManager.currentUser.accessToken;
         await Promise.all([
-            fetch(`/api/chat/sessions/${sessionId}`, {
-                method: 'DELETE',
-                headers: { Authorization: `Bearer ${token}` },
-            }),
+            AppAPI.delete(`/api/chat/sessions/${sessionId}`),
             wasActive && nextSessionId ? loadChatHistory(nextSessionId) : Promise.resolve(),
         ]);
     } catch (e) {
@@ -510,3 +514,22 @@ async function deleteSession(event, sessionId) {
         await loadSessions();
     }
 }
+window.deleteSession = deleteSession;
+
+export {
+    loadSessions,
+    createSessionItem,
+    toggleStarredSection,
+    updateStarredChevron,
+    enterEditMode,
+    exitEditMode,
+    toggleSessionSelection,
+    toggleSelectAll,
+    deleteSelectedSessions,
+    toggleStarSession,
+    createNewChat,
+    showWelcomeScreen,
+    updateSessionActiveState,
+    switchSession,
+    deleteSession,
+};

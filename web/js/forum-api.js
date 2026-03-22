@@ -9,162 +9,55 @@ const ForumAPI = {
         return null;
     },
 
-    _getAuthHeaders() {
-        const headers = { 'Content-Type': 'application/json' };
-        if (typeof AuthManager !== 'undefined' && AuthManager.currentUser) {
-            // 修正：使用 accessToken 而不是 token
-            const token =
-                AuthManager.currentUser.accessToken ||
-                AuthManager.currentUser.token ||
-                localStorage.getItem('auth_token');
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-            }
-        }
-        return headers;
-    },
-
     // Boards
     async getBoards() {
-        const res = await fetch('/api/forum/boards');
-        return await res.json();
+        return AppAPI.get('/api/forum/boards');
     },
 
     // Posts
     async getPosts(filters = {}) {
         const query = new URLSearchParams(filters).toString();
-        const res = await fetch(`/api/forum/posts?${query}`);
-        return await res.json();
+        return AppAPI.get(`/api/forum/posts?${query}`);
     },
     async getPost(id) {
         const userId = this._getUserId();
         const query = userId ? `?user_id=${encodeURIComponent(userId)}` : '';
-        const res = await fetch(`/api/forum/posts/${id}${query}`);
-        return await res.json();
+        return AppAPI.get(`/api/forum/posts/${id}${query}`);
     },
     async createPost(data) {
         const userId = this._getUserId();
         if (!userId) throw new Error('Please login first');
 
-        const res = await fetch(`/api/forum/posts?user_id=${encodeURIComponent(userId)}`, {
-            method: 'POST',
-            headers: this._getAuthHeaders(),
-            body: JSON.stringify(data),
-        });
-        if (!res.ok) {
-            let errorMsg = 'Failed to create post';
-            try {
-                const err = await res.json();
-                if (typeof err.detail === 'string') {
-                    errorMsg = err.detail;
-                } else if (Array.isArray(err.detail)) {
-                    // Pydantic validation error
-                    errorMsg = err.detail.map((e) => `${e.loc.join('.')}: ${e.msg}`).join('\n');
-                } else if (err.message) {
-                    errorMsg = err.message;
-                } else {
-                    errorMsg = JSON.stringify(err);
-                }
-            } catch (e) {
-                errorMsg = `Status ${res.status}: ${res.statusText}`;
-            }
-            throw new Error(errorMsg);
-        }
-        return await res.json();
+        return AppAPI.post(`/api/forum/posts?user_id=${encodeURIComponent(userId)}`, data);
     },
 
     // Comments & Reactions
     async getComments(postId) {
-        const res = await fetch(`/api/forum/posts/${postId}/comments`);
-        return await res.json();
+        return AppAPI.get(`/api/forum/posts/${postId}/comments`);
     },
     async createComment(postId, data) {
         const userId = this._getUserId();
         if (!userId) throw new Error('Please login first');
 
         const query = new URLSearchParams({ user_id: userId }).toString();
-        const res = await fetch(`/api/forum/posts/${postId}/comments?${query}`, {
-            method: 'POST',
-            headers: this._getAuthHeaders(),
-            body: JSON.stringify(data),
-        });
-        if (!res.ok) {
-            let errorMsg = 'Failed to create comment';
-            try {
-                const err = await res.json();
-                if (typeof err.detail === 'string') {
-                    errorMsg = err.detail;
-                } else if (Array.isArray(err.detail)) {
-                    errorMsg = err.detail.map((e) => `${e.loc.join('.')}: ${e.msg}`).join('\n');
-                } else if (err.message) {
-                    errorMsg = err.message;
-                } else {
-                    errorMsg = JSON.stringify(err);
-                }
-            } catch (e) {
-                errorMsg = `Status ${res.status}: ${res.statusText}`;
-            }
-            throw new Error(errorMsg);
-        }
-        return await res.json();
+        return AppAPI.post(`/api/forum/posts/${postId}/comments?${query}`, data);
     },
     async pushPost(postId) {
         const userId = this._getUserId();
         if (!userId) throw new Error('Please login first');
 
-        const res = await fetch(`/api/forum/posts/${postId}/push?user_id=${userId}`, {
-            method: 'POST',
-            headers: this._getAuthHeaders(),
-        });
-        if (!res.ok) {
-            let errorMsg = 'Failed to push';
-            try {
-                const err = await res.json();
-                if (typeof err.detail === 'string') {
-                    errorMsg = err.detail;
-                } else if (Array.isArray(err.detail)) {
-                    errorMsg = err.detail.map((e) => `${e.loc.join('.')}: ${e.msg}`).join('\n');
-                } else if (err.message) {
-                    errorMsg = err.message;
-                }
-            } catch (e) {
-                errorMsg = `Status ${res.status}: ${res.statusText}`;
-            }
-            throw new Error(errorMsg);
-        }
-        return await res.json();
+        return AppAPI.post(`/api/forum/posts/${postId}/push?user_id=${userId}`);
     },
     async booPost(postId) {
         const userId = this._getUserId();
         if (!userId) throw new Error('Please login first');
 
-        const res = await fetch(`/api/forum/posts/${postId}/boo?user_id=${userId}`, {
-            method: 'POST',
-            headers: this._getAuthHeaders(),
-        });
-        if (!res.ok) {
-            let errorMsg = 'Failed to boo';
-            try {
-                const err = await res.json();
-                if (typeof err.detail === 'string') {
-                    errorMsg = err.detail;
-                } else if (Array.isArray(err.detail)) {
-                    errorMsg = err.detail.map((e) => `${e.loc.join('.')}: ${e.msg}`).join('\n');
-                } else if (err.message) {
-                    errorMsg = err.message;
-                }
-            } catch (e) {
-                errorMsg = `Status ${res.status}: ${res.statusText}`;
-            }
-            throw new Error(errorMsg);
-        }
-        return await res.json();
+        return AppAPI.post(`/api/forum/posts/${postId}/boo?user_id=${userId}`);
     },
 
     // Tags
     async getTrendingTags() {
-        const res = await fetch('/api/forum/tags/trending');
-        return await res.json();
+        return AppAPI.get('/api/forum/tags/trending');
     },
 
     // Tips
@@ -172,28 +65,10 @@ const ForumAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error('Please login first');
 
-        const res = await fetch(`/api/forum/posts/${postId}/tip?user_id=${userId}`, {
-            method: 'POST',
-            headers: this._getAuthHeaders(),
-            body: JSON.stringify({ amount, tx_hash: txHash }),
+        return AppAPI.post(`/api/forum/posts/${postId}/tip?user_id=${userId}`, {
+            amount,
+            tx_hash: txHash,
         });
-        if (!res.ok) {
-            let errorMsg = 'Failed to tip';
-            try {
-                const err = await res.json();
-                if (typeof err.detail === 'string') {
-                    errorMsg = err.detail;
-                } else if (Array.isArray(err.detail)) {
-                    errorMsg = err.detail.map((e) => `${e.loc.join('.')}: ${e.msg}`).join('\n');
-                } else if (err.message) {
-                    errorMsg = err.message;
-                }
-            } catch (e) {
-                errorMsg = `Status ${res.status}: ${res.statusText}`;
-            }
-            throw new Error(errorMsg);
-        }
-        return await res.json();
     },
 
     // Delete Post
@@ -201,30 +76,7 @@ const ForumAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error('Please login first');
 
-        const res = await fetch(
-            `/api/forum/posts/${postId}?user_id=${encodeURIComponent(userId)}`,
-            {
-                method: 'DELETE',
-                headers: this._getAuthHeaders(),
-            }
-        );
-        if (!res.ok) {
-            let errorMsg = 'Failed to delete post';
-            try {
-                const err = await res.json();
-                if (typeof err.detail === 'string') {
-                    errorMsg = err.detail;
-                } else if (Array.isArray(err.detail)) {
-                    errorMsg = err.detail.map((e) => `${e.loc.join('.')}: ${e.msg}`).join('\n');
-                } else if (err.message) {
-                    errorMsg = err.message;
-                }
-            } catch (e) {
-                errorMsg = `Status ${res.status}: ${res.statusText}`;
-            }
-            throw new Error(errorMsg);
-        }
-        return await res.json();
+        return AppAPI.delete(`/api/forum/posts/${postId}?user_id=${encodeURIComponent(userId)}`);
     },
 
     // Update Post
@@ -232,94 +84,44 @@ const ForumAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error('Please login first');
 
-        const res = await fetch(
-            `/api/forum/posts/${postId}?user_id=${encodeURIComponent(userId)}`,
-            {
-                method: 'PUT',
-                headers: this._getAuthHeaders(),
-                body: JSON.stringify(data),
-            }
-        );
-        if (!res.ok) {
-            let errorMsg = 'Failed to update post';
-            try {
-                const err = await res.json();
-                if (typeof err.detail === 'string') {
-                    errorMsg = err.detail;
-                } else if (Array.isArray(err.detail)) {
-                    errorMsg = err.detail.map((e) => `${e.loc.join('.')}: ${e.msg}`).join('\n');
-                } else if (err.message) {
-                    errorMsg = err.message;
-                }
-            } catch (e) {
-                errorMsg = `Status ${res.status}: ${res.statusText}`;
-            }
-            throw new Error(errorMsg);
-        }
-        return await res.json();
+        return AppAPI.put(`/api/forum/posts/${postId}?user_id=${encodeURIComponent(userId)}`, data);
     },
 
     // My Stats (Me)
     async getMyStats() {
         const userId = this._getUserId();
         if (!userId) throw new Error('User not logged in');
-        const res = await fetch(`/api/forum/me/stats?user_id=${userId}`, {
-            headers: this._getAuthHeaders(),
-        });
-        return await res.json();
+        return AppAPI.get(`/api/forum/me/stats?user_id=${userId}`);
     },
     async getMyPosts() {
         const userId = this._getUserId();
         if (!userId) throw new Error('User not logged in');
-        const res = await fetch(`/api/forum/me/posts?user_id=${userId}`, {
-            headers: this._getAuthHeaders(),
-        });
-        return await res.json();
+        return AppAPI.get(`/api/forum/me/posts?user_id=${userId}`);
     },
     async getMyTipsSent() {
         const userId = this._getUserId();
         if (!userId) throw new Error('User not logged in');
-        const res = await fetch(`/api/forum/me/tips/sent?user_id=${userId}`, {
-            headers: this._getAuthHeaders(),
-        });
-        return await res.json();
+        return AppAPI.get(`/api/forum/me/tips/sent?user_id=${userId}`);
     },
     async getMyTipsReceived() {
         const userId = this._getUserId();
         if (!userId) throw new Error('User not logged in');
-        const res = await fetch(`/api/forum/me/tips/received?user_id=${userId}`, {
-            headers: this._getAuthHeaders(),
-        });
-        return await res.json();
+        return AppAPI.get(`/api/forum/me/tips/received?user_id=${userId}`);
     },
     async getMyPayments() {
         const userId = this._getUserId();
         if (!userId) throw new Error('User not logged in');
-        const res = await fetch(`/api/forum/me/payments?user_id=${userId}`, {
-            headers: this._getAuthHeaders(),
-        });
-        return await res.json();
+        return AppAPI.get(`/api/forum/me/payments?user_id=${userId}`);
     },
     async checkLimits() {
         const userId = this._getUserId();
         if (!userId) throw new Error('User not logged in');
 
-        const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), 5000); // 5s timeout
-
-        try {
-            const res = await fetch(`/api/forum/me/limits?user_id=${userId}`, {
-                headers: this._getAuthHeaders(),
-                signal: controller.signal,
-            });
-            clearTimeout(id);
-            return await res.json();
-        } catch (e) {
-            clearTimeout(id);
-            throw e;
-        }
+        return AppAPI.get(`/api/forum/me/limits?user_id=${userId}`, { timeout: 5000 });
     },
 };
 
 // Expose globally
 window.ForumAPI = ForumAPI;
+export { ForumAPI };
+

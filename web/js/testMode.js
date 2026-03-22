@@ -16,18 +16,7 @@ async function initTestMode() {
 
     // 檢查是否在測試模式
     try {
-        const res = await fetch('/api/test-mode/current-tier', {
-            headers: window.PiEnvironment?.getAuthHeaders() || {},
-        });
-        if (!res.ok) {
-            // 非 403 錯誤，可能是真正的 API 錯誤
-            if (res.status !== 403) {
-                console.warn('[testMode] Failed to check test mode status');
-            }
-            return;
-        }
-
-        const data = await res.json();
+        const data = await AppAPI.get('/api/test-mode/current-tier');
         if (data.is_test_mode) {
             // 顯示等級切換器
             if (tierSwitcher) {
@@ -56,20 +45,7 @@ async function handleSwitchTestTier(tier) {
     btn.disabled = true;
 
     try {
-        const res = await fetch('/api/test-mode/switch-tier', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(window.PiEnvironment?.getAuthHeaders() || {}),
-            },
-            body: JSON.stringify({ tier: tier }),
-        });
-
-        if (!res.ok) {
-            throw new Error(`HTTP ${res.status}`);
-        }
-
-        const data = await res.json();
+        const data = await AppAPI.post('/api/test-mode/switch-tier', { tier: tier });
 
         if (data.success) {
             // 更新當前等級顯示
@@ -102,9 +78,7 @@ async function handleSwitchTestTier(tier) {
         btn.disabled = false;
 
         // 重新創建圖標
-        if (window.lucide) {
-            lucide.createIcons();
-        }
+        if (window.AppUtils) window.AppUtils.refreshIcons();
     }
 }
 
@@ -130,3 +104,5 @@ function updateTierButtons(currentTier) {
 // 導出函數供全局使用
 window.handleSwitchTestTier = handleSwitchTestTier;
 window.initTestMode = initTestMode;
+
+export { initTestMode, handleSwitchTestTier, updateTierButtons };
