@@ -98,7 +98,6 @@ import './wallet.js';
 import './alerts.js';
 
 // ─── Phase 15: Safety & admin ─────────────────────────────────────────────
-import '../scam-tracker/js/scam-tracker.js';
 import './safetyTab.js';
 import './admin.js';
 import './admin-stats.js';
