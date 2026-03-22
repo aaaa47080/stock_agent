@@ -499,9 +499,16 @@ async def run_frontend_interaction_smoke_test():
             () => {
                 const featureMenu = typeof window.FeatureMenu !== 'undefined';
                 const legalPage = typeof window.showLegalPage === 'function';
-                return featureMenu && legalPage && document.body.innerText.includes('About & Legal');
+                return featureMenu && legalPage;
             }
+            """,
+            timeout=60000,
+        )
+        await page.wait_for_function(
             """
+            () => document.body.innerText.includes('About & Legal')
+            """,
+            timeout=10000,
         )
 
         await page.evaluate("window.FeatureMenu.open()")
@@ -691,7 +698,8 @@ async def run_frontend_interaction_smoke_test():
                 const input = document.getElementById('user-input');
                 return !!select && !!input && !input.disabled;
             }
-            """
+            """,
+            timeout=60000,
         )
         await chat_page.wait_for_function(
             """

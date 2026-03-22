@@ -96,7 +96,13 @@ async def main():
 
         await page.route("**/*", handle_route)
         await page.goto(f"http://{HOST}:{PORT}/static/index.html#settings", wait_until="domcontentloaded")
-        await page.wait_for_timeout(2500)
+        await page.wait_for_function(
+            """
+            () => document.getElementById('login-modal') !== null
+            """,
+            timeout=30000,
+        )
+        await page.wait_for_timeout(1000)
 
         modal = page.locator("#login-modal")
         not_pi = page.locator("#not-pi-browser-msg")
