@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 concurrency:
   group: deploy
   cancel-in-progress: true
@@ -89,7 +92,7 @@ jobs:
             
             echo "4. Vite bundle accessible..."
             INDEX_HTML=$(curl -sf "$API_URL/")
-            BUNDLE=$(echo "$INDEX_HTML" | grep -oP '/static/assets/index-[^"]+\.js' | head -1 | sed 's|^/static||')
+            BUNDLE=$(echo "$INDEX_HTML" | sed -n 's/.*\/static\/assets\/index-[^"]*\.js.*/\0/p' | head -1 | sed 's|^/static||')
             if [ -z "$BUNDLE" ]; then
               echo "FAIL: no Vite bundle found in index.html"
               exit 1
