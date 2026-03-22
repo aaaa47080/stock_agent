@@ -80,19 +80,22 @@ jobs:
           
           echo "3. Vite bundle served..."
           INDEX_HTML=$(curl -sf http://localhost:8080/)
-          BUNDLE=$(echo "$INDEX_HTML" | sed -n 's|.*\/static\/assets\/index-[a-zA-Z0-9]*\.js.*|\0|p' | head -1 | sed 's|^/static||')
+          BUNDLE=$(echo "$INDEX_HTML" | grep -o '/static/assets/index-[a-zA-Z0-9_-]*\.js' | head -1)
           if [ -z "$BUNDLE" ]; then
             echo "FAIL: no Vite bundle in index.html"
+            echo "HTML snippet:"
+            echo "$INDEX_HTML" | grep -i 'assets\|index-' | head -5
             docker rm -f smoke 2>/dev/null || true
             exit 1
           fi
-          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "http://localhost:8080/static$BUNDLE")
+          BUNDLE_REL=$(echo "$BUNDLE" | sed 's|^/static||')
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "http://localhost:8080/static$BUNDLE_REL")
           if [ "$STATUS" != "200" ]; then
-            echo "FAIL: bundle $BUNDLE → $STATUS"
+            echo "FAIL: bundle $BUNDLE_REL → $STATUS"
             docker rm -f smoke 2>/dev/null || true
             exit 1
           fi
-          echo "  OK: $BUNDLE ($STATUS)"
+          echo "  OK: $BUNDLE_REL ($STATUS)"
           
           echo "4. CSS loaded..."
           STATUS=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:8080/static/css/tailwind-built.css)
