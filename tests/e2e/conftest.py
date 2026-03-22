@@ -10,7 +10,18 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 import pytest
-from playwright.async_api import BrowserContext, async_playwright
+
+try:
+    from playwright.async_api import BrowserContext, async_playwright
+
+    HAS_PLAYWRIGHT = True
+except ImportError:
+    HAS_PLAYWRIGHT = False
+    BrowserContext = None
+    async_playwright = None
+
+if not HAS_PLAYWRIGHT:
+    pytest.skip("playwright not installed", allow_module_level=True)
 
 # ---------------------------------------------------------------------------
 # Paths / constants
