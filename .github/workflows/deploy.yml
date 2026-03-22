@@ -47,7 +47,6 @@ jobs:
       - name: Verify Lucide CDN pinned version
         run: |
           docker run --rm cryptomind:${{ github.sha }} python -c "
-          import re
           index_path = '/app/web/index.html'
           with open(index_path) as f:
               html = f.read()
@@ -61,17 +60,13 @@ jobs:
             -e DATABASE_URL=postgresql://test:test@localhost:5432/test \
             -e REDIS_URL=memory:// \
             -e SECRET_KEY=test-secret \
-            -e JWT_SECRET_KEY=test-jwt-secret-1234567890 \
+            -e JWT_SECRET_KEY=test-jwt-secret-key-for-testing-1234567890 \
             -e PI_API_KEY=test \
             -e PI_WALLET_PRIVATE_SEED=test \
             -e TEST_MODE=true \
             -e TEST_MODE_CONFIRMATION=I_UNDERSTAND_THE_RISKS \
             cryptomind:${{ github.sha }}
           sleep 5
-          echo "--- Container status ---"
-          docker ps -a --filter name=smoke --format "{{.Status}}"
-          echo "--- Container logs ---"
-          docker logs smoke 2>&1 | tail -30 || true
           echo "1. Health check..."
           curl -sf http://localhost:8080/health || { echo "FAIL: health"; docker rm -f smoke 2>/dev/null || true; exit 1; }
           
