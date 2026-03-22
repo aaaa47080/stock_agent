@@ -3,9 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <!-- CSP: frame-ancestors is set via HTTP header in api_server.py -->
-    <!-- Production: Use compiled CSS with local Tailwind build (see build scripts) -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://sdk.minepi.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https: wss:; base-uri 'self'; form-action 'self';">
+    <!-- CSP is enforced via HTTP header in api/middleware_setup.py (security_headers_middleware) -->
+    <!-- No <meta> CSP tag here to avoid conflicts with the stricter HTTP header -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <!-- SEO Meta Tags -->
@@ -34,8 +33,15 @@
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="/static/img/title_icon.png">
 
-    <!-- Tailwind CSS (compiled from source) -->
-    <link rel="stylesheet" href="/static/css/main.css?v=1">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Mulish:wght@300;400;600;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+
+    <!-- Tailwind CSS (pre-built, includes custom theme) -->
+    <link rel="stylesheet" href="/static/css/tailwind-built.css?v=1">
 
     <!-- Custom Styles -->
     <link rel="stylesheet" href="/static/styles.css?v=4">

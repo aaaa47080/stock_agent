@@ -78,6 +78,7 @@ from .prompt_registry import PromptRegistry
 from .router import AgentRouter
 from .tool_access_resolver import ToolAccessResolver
 from .tool_registry import ToolRegistry
+from .tracing import TraceCollector
 
 
 def _extract_model_name_for_manager(llm: Any) -> str:
@@ -142,6 +143,50 @@ def _get_history_for_prompt(
         return format_compact_state(compact)
     # Fallback: truncate to budget (tail — keep most recent)
     return raw_history[-CONTEXT_CHAR_BUDGET:]
+
+
+# ============================================================================
+# TracedGraph — 在 graph.ainvoke 完成後自動記錄 trace summary
+# ============================================================================
+
+
+class _TracedGraph:
+    """輕量 proxy，在 ainvoke / invoke 完成後觸發 trace summary logging。
+
+    不修改 graph 本身行為，只附加事後 hook。
+    """
+
+    def __init__(self, graph: Any, on_complete: Callable[[], None]):
+        self._graph = graph
+        self._on_complete = on_complete
+
+    async def ainvoke(
+        self, input: Any, config: Optional[Any] = None, **kwargs: Any
+    ) -> Any:
+        """代理 graph.ainvoke，完成後記錄 trace summary。"""
+        try:
+            result = await self._graph.ainvoke(input, config, **kwargs)
+            return result
+        finally:
+            try:
+                self._on_complete()
+            except Exception:
+                pass
+
+    def invoke(self, input: Any, config: Optional[Any] = None, **kwargs: Any) -> Any:
+        """代理 graph.invoke，完成後記錄 trace summary。"""
+        try:
+            result = self._graph.invoke(input, config, **kwargs)
+            return result
+        finally:
+            try:
+                self._on_complete()
+            except Exception:
+                pass
+
+    def __getattr__(self, name: str) -> Any:
+        """透明代理其他屬性（如 get_graph, stream 等）。"""
+        return getattr(self._graph, name)
 
 
 # ============================================================================
@@ -211,8 +256,14 @@ class ManagerAgent:
         self._model_router = ModelRouter()
         self._token_tracker = TokenTracker()
 
+        # 結構化追蹤
+        self._trace_collector = TraceCollector(
+            session_id=self.session_id,
+        )
+
         # 建立 LangGraph
-        self.graph = self._build_graph()
+        raw_graph = self._build_graph()
+        self.graph = _TracedGraph(raw_graph, self._log_trace_summary)
         self._symbol_resolver = UniversalSymbolResolver()
 
     def _get_memory_store(self):
@@ -242,12 +293,20 @@ class ManagerAgent:
         """建立 LangGraph 狀態圖 - 簡化版統一規劃流程"""
         builder = StateGraph(ManagerState)
 
-        # 添加節點
-        builder.add_node("understand_intent", self._understand_intent_node)
-        builder.add_node("execute_task", self._execute_task_node)
-        builder.add_node("aggregate_results", self._aggregate_results_node)
-        builder.add_node("reflect_on_results", self._reflect_on_results_node)
-        builder.add_node("synthesize_response", self._synthesize_response_node)
+        # 添加節點（用 tracing wrapper 包裹，trace 失敗不影響主流程）
+        builder.add_node(
+            "understand_intent", self._wrap_with_trace(self._understand_intent_node)
+        )
+        builder.add_node("execute_task", self._wrap_with_trace(self._execute_task_node))
+        builder.add_node(
+            "aggregate_results", self._wrap_with_trace(self._aggregate_results_node)
+        )
+        builder.add_node(
+            "reflect_on_results", self._wrap_with_trace(self._reflect_on_results_node)
+        )
+        builder.add_node(
+            "synthesize_response", self._wrap_with_trace(self._synthesize_response_node)
+        )
 
         # 設定入口
         builder.set_entry_point("understand_intent")
@@ -278,6 +337,68 @@ class ManagerAgent:
         builder.add_edge("synthesize_response", END)
 
         return builder.compile(checkpointer=_checkpointer)
+
+    def _wrap_with_trace(self, node_fn):
+        """將 node function 包上 tracing wrapper。
+
+        trace 記錄完全在 try/except 中，失敗不影響主流程。
+        wrapper 透過 TraceCollector.start_trace / finish_trace 記錄
+        節點的開始時間、結束時間和輸出摘要。
+        """
+
+        async def traced_node(state: ManagerState) -> Dict:
+            node_name = node_fn.__name__
+            trace = None
+            try:
+                trace = self._trace_collector.start_trace(
+                    node_name,
+                    input_summary=state.get("query", ""),
+                )
+            except Exception:
+                pass
+
+            try:
+                result = await node_fn(state)
+            except Exception as exc:
+                # trace 記錄錯誤，但仍然 re-raise 讓 LangGraph 處理
+                try:
+                    if trace:
+                        self._trace_collector.finish_trace(trace, error=str(exc)[:200])
+                except Exception:
+                    pass
+                raise
+
+            # 正常完成，記錄 trace
+            try:
+                if trace:
+                    output_summary = (
+                        result.get("final_response")
+                        or result.get("aggregated_response")
+                        or None
+                    )
+                    self._trace_collector.finish_trace(
+                        trace, output_summary=output_summary
+                    )
+            except Exception:
+                pass
+
+            return result
+
+        # 保留原始函數名稱，方便 debug
+        traced_node.__name__ = node_fn.__name__
+        traced_node.__wrapped__ = node_fn  # type: ignore[attr-defined]
+        return traced_node
+
+    def _log_trace_summary(self) -> None:
+        """記錄完整 trace summary 到 logger。在 graph 執行完成後呼叫。"""
+        try:
+            log_text = self._trace_collector.format_trace_log()
+            logger.info("[Trace Summary]\n%s", log_text)
+            # 重置 collector 供下次請求使用
+            self._trace_collector.reset()
+            self._trace_collector.session_id = self.session_id
+        except Exception:
+            pass
 
     # ========================================================================
     # 節點實現
