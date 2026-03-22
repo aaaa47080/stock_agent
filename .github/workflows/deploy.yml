@@ -57,7 +57,7 @@ jobs:
 
       - name: Smoke test - run container and verify endpoints
         run: |
-          docker run --rm -d --name smoke -p 8080:8080 \
+          docker run -d --name smoke -p 8080:8080 \
             -e DATABASE_URL=postgresql://test:test@localhost:5432/test \
             -e REDIS_URL=memory:// \
             -e SECRET_KEY=test-secret \
@@ -68,15 +68,18 @@ jobs:
             -e TEST_MODE_CONFIRMATION=I_UNDERSTAND_THE_RISKS \
             cryptomind:${{ github.sha }}
           sleep 5
-          docker logs smoke 2>&1 | tail -20 || true
+          echo "--- Container status ---"
+          docker ps -a --filter name=smoke --format "{{.Status}}"
+          echo "--- Container logs ---"
+          docker logs smoke 2>&1 | tail -30 || true
           echo "1. Health check..."
-          curl -sf http://localhost:8080/health || { echo "FAIL: health"; docker stop smoke; exit 1; }
+          curl -sf http://localhost:8080/health || { echo "FAIL: health"; docker rm -f smoke 2>/dev/null || true; exit 1; }
           
           echo "2. Index page loads..."
           STATUS=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:8080/)
           if [ "$STATUS" != "200" ]; then
             echo "FAIL: index ($STATUS)"
-            docker stop smoke
+            docker rm -f smoke 2>/dev/null || true
             exit 1
           fi
           
@@ -85,13 +88,13 @@ jobs:
           BUNDLE=$(echo "$INDEX_HTML" | sed -n 's|.*\/static\/assets\/index-[a-zA-Z0-9]*\.js.*|\0|p' | head -1 | sed 's|^/static||')
           if [ -z "$BUNDLE" ]; then
             echo "FAIL: no Vite bundle in index.html"
-            docker stop smoke
+            docker rm -f smoke 2>/dev/null || true
             exit 1
           fi
           STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "http://localhost:8080/static$BUNDLE")
           if [ "$STATUS" != "200" ]; then
             echo "FAIL: bundle $BUNDLE → $STATUS"
-            docker stop smoke
+            docker rm -f smoke 2>/dev/null || true
             exit 1
           fi
           echo "  OK: $BUNDLE ($STATUS)"
@@ -100,11 +103,11 @@ jobs:
           STATUS=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:8080/static/css/tailwind-built.css)
           if [ "$STATUS" != "200" ]; then
             echo "FAIL: CSS ($STATUS)"
-            docker stop smoke
+            docker rm -f smoke 2>/dev/null || true
             exit 1
           fi
           
-          docker stop smoke
+          docker rm -f smoke 2>/dev/null || true
           echo "=== All smoke tests passed ==="
         timeout-minutes: 2
 
