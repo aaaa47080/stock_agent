@@ -67,7 +67,8 @@ jobs:
             -e TEST_MODE=true \
             -e TEST_MODE_CONFIRMATION=I_UNDERSTAND_THE_RISKS \
             cryptomind:${{ github.sha }}
-          sleep 20
+          sleep 5
+          docker logs smoke 2>&1 | tail -20 || true
           echo "1. Health check..."
           curl -sf http://localhost:8080/health || { echo "FAIL: health"; docker stop smoke; exit 1; }
           
