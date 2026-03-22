@@ -3,6 +3,11 @@ name: Deploy
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -13,18 +18,121 @@ jobs:
       - name: Build Docker image
         run: docker build -t cryptomind:${{ github.sha }} .
 
+      - name: Verify Vite build output exists
+        run: |
+          docker run --rm cryptomind:${{ github.sha }} python -c "
+          import os
+          assets_dir = '/app/web/assets'
+          assert os.path.isdir(assets_dir), f'assets/ directory not found'
+          bundle_js = [f for f in os.listdir(assets_dir) if f.startswith('index-') and f.endswith('.js')]
+          assert len(bundle_js) == 1, f'Expected 1 bundle JS in assets/, got: {bundle_js}'
+          size = os.path.getsize(os.path.join(assets_dir, bundle_js[0]))
+          assert size > 50000, f'Bundle too small ({size} bytes), Vite build may have failed'
+          print(f'OK: bundle = assets/{bundle_js[0]} ({size} bytes)')
+          "
+
+      - name: Verify no raw JS files in production
+        run: |
+          docker run --rm cryptomind:${{ github.sha }} python -c "
+          import os
+          js_dir = '/app/web/js'
+          if os.path.exists(js_dir):
+              raw_js = [f for f in os.listdir(js_dir) if f.endswith('.js')]
+              assert len(raw_js) == 0, f'Raw JS files found in production: {raw_js}'
+              print('OK: no raw JS files in web/js/')
+          else:
+              print('OK: web/js/ not present')
+          "
+
+      - name: Verify Lucide CDN pinned version
+        run: |
+          docker run --rm cryptomind:${{ github.sha }} python -c "
+          import re
+          index_path = '/app/web/index.html'
+          with open(index_path) as f:
+              html = f.read()
+          assert 'unpkg.com/lucide@0.577.0' in html, 'ERROR: Pinned Lucide CDN version not found!'
+          print('OK: Lucide CDN pinned at v0.577.0')
+          "
+
       - name: Tag as latest
         run: docker tag cryptomind:${{ github.sha }} cryptomind:latest
 
-  deploy:
+  smoke-test:
     runs-on: ubuntu-latest
     needs: [build]
-    if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v5
 
-      - name: Deploy to production
+      - name: Run smoke test script
+        env:
+          API_URL: https://cryptomind.app
         run: |
-          echo "TODO: Implement deployment step"
-          echo "Options: SSH to server, kubectl apply, docker-compose pull && up"
-          echo "Image tag: ${{ github.sha }}"
+          echo "=== Smoke Test (5 min timeout) ==="
+          timeout 300 bash -c '
+            echo "1. Health check..."
+            curl -sf "$API_URL/health" | head -1 || { echo "FAIL: health"; exit 1; }
+            
+            echo "2. Static assets..."
+            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$API_URL/static/js/main.js")
+            if [ "$STATUS" != "200" ] && [ "$STATUS" != "404" ]; then
+              echo "FAIL: static assets ($STATUS)"
+              exit 1
+            fi
+            
+            echo "3. CSS loaded..."
+            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$API_URL/static/css/tailwind-built.css")
+            if [ "$STATUS" != "200" ]; then
+              echo "FAIL: tailwind CSS ($STATUS)"
+              exit 1
+            fi
+            
+            echo "4. Vite bundle accessible..."
+            INDEX_HTML=$(curl -sf "$API_URL/")
+            BUNDLE=$(echo "$INDEX_HTML" | grep -oP '/static/assets/index-[^"]+\.js' | head -1 | sed 's|^/static||')
+            if [ -z "$BUNDLE" ]; then
+              echo "FAIL: no Vite bundle found in index.html"
+              exit 1
+            fi
+            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$API_URL/static$BUNDLE")
+            if [ "$STATUS" != "200" ]; then
+              echo "FAIL: Vite bundle $BUNDLE returned $STATUS"
+              exit 1
+            fi
+            echo "  OK: $BUNDLE ($STATUS)"
+            
+            echo "5. Index page loads..."
+            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$API_URL/")
+            if [ "$STATUS" != "200" ]; then
+              echo "FAIL: index page ($STATUS)"
+              exit 1
+            fi
+            
+            echo "=== All smoke tests passed ==="
+          '
+
+  auto-rollback:
+    runs-on: ubuntu-latest
+    needs: [build, smoke-test]
+    if: failure()
+    steps:
+      - uses: actions/checkout@v5
+      with:
+        fetch-depth: 5
+
+      - name: Determine broken commit
+        run: |
+          BROKEN=$(git rev-parse HEAD)
+          echo "Deployment failed at: $BROKEN"
+          echo "broken_commit=$BROKEN" >> $GITHUB_ENV
+
+      - name: Revert to last known good
+        run: |
+          LAST_GOOD=$(git log --oneline -1 --skip=1 --format="%H")
+          echo "Rolling back to: $LAST_GOOD"
+          git reset --hard "$LAST_GOOD"
+          git push --force origin main
+
+      - name: Notify rollback
+        run: |
+          echo "::warning::Deployment failed! Automatically rolled back to $LAST_GOOD"
