@@ -7,6 +7,7 @@ ENV PIP_NO_CACHE_DIR=1 \
 
 WORKDIR /build
 
+# --- Python dependencies ---
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     gcc \
@@ -14,15 +15,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
-
 RUN pip install --upgrade pip setuptools wheel \
     && pip wheel --wheel-dir /wheels -r requirements.txt
 
+# --- Frontend dependencies (Node.js + Vite) ---
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    nodejs npm \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
+
+COPY web/ web/
+COPY vite.config.js .
+RUN npm run build \
+    && cp -r dist/static/* web/ \
+    && rm -rf dist vite.config.js
 
 FROM python:3.13-slim
 
 ENV PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_DISABLE_PIP_CHECK=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     XDG_CACHE_HOME=/tmp \
@@ -31,12 +44,13 @@ ENV PIP_NO_CACHE_DIR=1 \
 
 WORKDIR /app
 
-COPY requirements.txt .
+# --- Python dependencies ---
 COPY --from=builder /wheels /wheels
-
+COPY requirements.txt .
 RUN pip install --no-index --find-links=/wheels -r requirements.txt \
     && rm -rf /wheels
 
+# --- Application code (web/ now contains Vite-built assets) ---
 COPY . .
 
 RUN find /app -type d -name "__pycache__" -prune -exec rm -rf {} + \
@@ -49,10 +63,8 @@ RUN find /app -type d -name "__pycache__" -prune -exec rm -rf {} + \
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=2)" || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=2)" || exit 1
 
 USER appuser
 
-# Use explicit flags for PaaS startup while keeping log volume low by default.
-# Access logs can still be enabled with GUNICORN_CMD_ARGS if needed.
 CMD ["gunicorn", "api.main:app", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8080", "--workers", "1", "--timeout", "120", "--graceful-timeout", "30", "--keep-alive", "5", "--error-logfile", "-", "--log-level", "warning"]
