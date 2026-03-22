@@ -117,8 +117,8 @@ jobs:
     if: failure()
     steps:
       - uses: actions/checkout@v5
-      with:
-        fetch-depth: 5
+        with:
+          fetch-depth: 5
 
       - name: Determine broken commit
         run: |
