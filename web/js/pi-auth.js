@@ -64,12 +64,12 @@ window.safePiLogin = async function () {
 
 function _showLoginButton() {
     const show = () => {
-        const modal = document.getElementById('login-modal');
         const loginBtn = document.getElementById('pi-login-btn');
         const notPiBrowserMsg = document.getElementById('not-pi-browser-msg');
-        if (modal) modal.classList.remove('hidden');
         if (loginBtn) loginBtn.style.display = 'flex';
         if (notPiBrowserMsg) notPiBrowserMsg.style.display = 'none';
+        const modal = document.getElementById('login-modal');
+        if (modal) modal.classList.remove('hidden');
     };
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => setTimeout(show, 0), { once: true });
