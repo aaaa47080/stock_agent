@@ -9,8 +9,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jwt import InvalidTokenError
 
-from api.utils import run_sync
-from core.database.user import _normalize_membership_tier
+from core.orm.repositories import _normalize_membership_tier, user_repo
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -192,7 +191,6 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> CurrentUser:
     In TEST_MODE, automatically return test user without requiring valid token.
     """
     from core.config import TEST_MODE, TEST_USER
-    from core.database.user import get_user_by_id
 
     # 安全檢查：禁止在生產環境啟用 TEST_MODE
     if TEST_MODE:
@@ -228,7 +226,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> CurrentUser:
     # Fetch from DB for BOTH normal mode and test mode (if user_id is set)
     if user_id:
         try:
-            user = await run_sync(get_user_by_id, user_id)
+            user = await user_repo.get_by_id(user_id)
 
             if user:
                 if not user.get("is_active", True):

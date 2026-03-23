@@ -15,33 +15,13 @@ from api.models import (
     ReportCreateRequest,
     VoteRequest,
 )
-from api.utils import logger, run_sync
-from core.database.governance import (
+from api.utils import logger
+from core.orm.governance_repo import (
     DEFAULT_DAILY_REPORT_LIMIT,
-    # Constants
     PRO_DAILY_REPORT_LIMIT,
-    calculate_vote_weight,
-    check_report_consensus,
-    # Report Management
-    create_report,
-    finalize_report,
-    get_audit_reputation,
-    get_daily_report_usage,
-    get_pending_reports,
-    get_report_by_id,
-    # Helpers
-    get_report_statistics,
-    get_report_votes,
-    get_top_reviewers,
-    get_user_activity_logs,
-    get_user_reports,
-    # Violations
-    get_user_violation_points,
-    get_user_violations,
-    # Voting
-    vote_on_report,
+    governance_repo,
 )
-from core.database.user import get_user_membership
+from core.orm.repositories import user_repo
 
 router = APIRouter(prefix="/api/governance", tags=["Community Governance"])
 
@@ -76,19 +56,17 @@ async def submit_report(
         user_id = current_user["user_id"]
 
         # Get user's daily limit
-        membership = await run_sync(get_user_membership, user_id)
+        membership = await user_repo.get_membership(user_id)
         is_premium = membership.get("is_premium", False)
         daily_limit = (
             PRO_DAILY_REPORT_LIMIT if is_premium else DEFAULT_DAILY_REPORT_LIMIT
         )
-        result = await run_sync(
-            lambda: create_report(
-                reporter_user_id=user_id,
-                content_type=report_data.content_type,
-                content_id=report_data.content_id,
-                report_type=report_data.report_type,
-                description=report_data.description,
-            )
+        result = await governance_repo.create_report(
+            reporter_user_id=user_id,
+            content_type=report_data.content_type,
+            content_id=report_data.content_id,
+            report_type=report_data.report_type,
+            description=report_data.description,
         )
 
         if not result.get("success"):
@@ -130,12 +108,12 @@ async def get_report_quota(current_user: dict = Depends(get_current_user)):
     """
     try:
         user_id = current_user["user_id"]
-        membership = await run_sync(get_user_membership, user_id)
+        membership = await user_repo.get_membership(user_id)
         is_premium = membership.get("is_premium", False)
         daily_limit = (
             PRO_DAILY_REPORT_LIMIT if is_premium else DEFAULT_DAILY_REPORT_LIMIT
         )
-        used_today = await run_sync(lambda: get_daily_report_usage(None, user_id))
+        used_today = await governance_repo.get_daily_report_usage(user_id)
 
         return {
             "used": used_today,
@@ -163,19 +141,15 @@ async def list_pending_reports(
     try:
         user_id = current_user["user_id"]
 
-        # Check premium membership
-        membership = await run_sync(get_user_membership, user_id)
+        membership = await user_repo.get_membership(user_id)
         if not membership.get("is_premium", False):
             raise HTTPException(status_code=403, detail="此功能僅限 Premium 會員使用")
 
-        reports = await run_sync(
-            lambda: get_pending_reports(
-                None,
-                limit=limit,
-                offset=offset,
-                exclude_user_id=user_id,
-                viewer_user_id=user_id,
-            )
+        reports = await governance_repo.get_pending_reports(
+            limit=limit,
+            offset=offset,
+            exclude_user_id=user_id,
+            viewer_user_id=user_id,
         )
 
         return {"success": True, "reports": reports, "count": len(reports)}
@@ -199,11 +173,10 @@ async def get_report_detail(
     try:
         user_id = current_user["user_id"]
 
-        # Check premium membership for voting details
-        membership = await run_sync(get_user_membership, user_id)
+        membership = await user_repo.get_membership(user_id)
         is_premium = membership.get("is_premium", False)
 
-        report = await run_sync(lambda: get_report_by_id(None, report_id))
+        report = await governance_repo.get_report_by_id(report_id)
 
         if not report:
             raise HTTPException(status_code=404, detail="找不到該檢舉")
@@ -211,7 +184,7 @@ async def get_report_detail(
         # Get votes for premium members
         votes = None
         if is_premium:
-            votes = await run_sync(lambda: get_report_votes(None, report_id))
+            votes = await governance_repo.get_report_votes(report_id)
 
         return {"success": True, "report": {**report, "votes": votes}}
 
@@ -241,10 +214,8 @@ async def list_my_reports(
     try:
         user_id = current_user["user_id"]
 
-        reports = await run_sync(
-            lambda: get_user_reports(
-                None, user_id=user_id, status=status, limit=limit, offset=offset
-            )
+        reports = await governance_repo.get_user_reports(
+            user_id=user_id, status=status, limit=limit, offset=offset
         )
 
         return {"success": True, "reports": reports, "count": len(reports)}
@@ -282,18 +253,15 @@ async def vote_on_pending_report(
     try:
         user_id = current_user["user_id"]
 
-        # Check premium membership
-        membership = await run_sync(get_user_membership, user_id)
+        membership = await user_repo.get_membership(user_id)
         if not membership.get("is_premium", False):
             raise HTTPException(status_code=403, detail="投票功能僅限 Premium 會員使用")
 
-        result = await run_sync(
-            lambda: vote_on_report(
-                None,
-                report_id=report_id,
-                reviewer_user_id=user_id,
-                vote_type=vote_data.vote_type,
-            )
+        result = await governance_repo.vote_on_report(
+            report_id=report_id,
+            reviewer_user_id=user_id,
+            vote_type=vote_data.vote_type,
+            is_premium=True,
         )
 
         if not result.get("success"):
@@ -314,7 +282,7 @@ async def vote_on_pending_report(
                 raise HTTPException(status_code=500, detail=f"投票失敗: {error}")
 
         # Check if consensus is reached after this vote
-        consensus = await run_sync(lambda: check_report_consensus(None, report_id))
+        consensus = await governance_repo.check_report_consensus(report_id)
 
         response = {
             "success": True,
@@ -368,14 +336,11 @@ async def finalize_report_decision(
     try:
         user_id = current_user["user_id"]
 
-        result = await run_sync(
-            lambda: finalize_report(
-                None,
-                report_id=report_id,
-                decision=request.decision,
-                violation_level=request.violation_level,
-                processed_by=user_id,
-            )
+        result = await governance_repo.finalize_report(
+            report_id=report_id,
+            decision=request.decision,
+            violation_level=request.violation_level,
+            processed_by=user_id,
         )
 
         if not result.get("success"):
@@ -437,10 +402,8 @@ async def get_my_violation_points(current_user: dict = Depends(get_current_user)
     try:
         user_id = current_user["user_id"]
 
-        points_data = await run_sync(lambda: get_user_violation_points(None, user_id))
-        violations = await run_sync(
-            lambda: get_user_violations(None, user_id, limit=10)
-        )
+        points_data = await governance_repo.get_user_violation_points(user_id)
+        violations = await governance_repo.get_user_violations(user_id, limit=10)
 
         # Calculate action threshold
         points = points_data.get("points", 0)
@@ -482,15 +445,13 @@ async def get_user_violations_public(
     try:
         # Only show own violations unless premium member
         requester_id = current_user["user_id"]
-        membership = await run_sync(get_user_membership, requester_id)
+        membership = await user_repo.get_membership(requester_id)
         is_premium = membership.get("is_premium", False)
 
         if user_id != requester_id and not is_premium:
             raise HTTPException(status_code=403, detail="無權查看其他用戶的違規記錄")
-        points_data = await run_sync(lambda: get_user_violation_points(None, user_id))
-        violations = await run_sync(
-            lambda: get_user_violations(None, user_id, limit=20)
-        )
+        points_data = await governance_repo.get_user_violation_points(user_id)
+        violations = await governance_repo.get_user_violations(user_id, limit=20)
 
         return {
             "success": True,
@@ -529,14 +490,11 @@ async def get_my_activity_logs(
     try:
         user_id = current_user["user_id"]
 
-        logs = await run_sync(
-            lambda: get_user_activity_logs(
-                None,
-                user_id=user_id,
-                activity_type=activity_type,
-                limit=limit,
-                offset=offset,
-            )
+        logs = await governance_repo.get_user_activity_logs(
+            user_id=user_id,
+            activity_type=activity_type,
+            limit=limit,
+            offset=offset,
         )
 
         return {"success": True, "logs": logs, "count": len(logs)}
@@ -570,7 +528,7 @@ async def get_governance_statistics(
     - avg_approval_rate: 平均通過率
     """
     try:
-        stats = await run_sync(lambda: get_report_statistics(None, days))
+        stats = await governance_repo.get_report_statistics(days)
 
         return {"success": True, "statistics": stats, "period_days": days}
 
@@ -591,7 +549,7 @@ async def get_review_leaderboard(
     排行依據：聲望分數 > 準確率 > 審核數量
     """
     try:
-        reviewers = await run_sync(lambda: get_top_reviewers(None, limit))
+        reviewers = await governance_repo.get_top_reviewers(limit)
 
         return {"success": True, "leaderboard": reviewers, "count": len(reviewers)}
 
@@ -620,8 +578,8 @@ async def get_my_reputation(current_user: dict = Depends(get_current_user)):
     try:
         user_id = current_user["user_id"]
 
-        reputation = await run_sync(lambda: get_audit_reputation(None, user_id))
-        vote_weight = calculate_vote_weight(reputation)
+        reputation = await governance_repo.get_audit_reputation(user_id)
+        vote_weight = governance_repo.calculate_vote_weight(reputation)
 
         return {
             "success": True,

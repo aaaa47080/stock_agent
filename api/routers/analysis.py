@@ -95,6 +95,14 @@ async def get_history(
     - 向上捲動載入：傳入 before_timestamp（最舊可見訊息的時間），回傳更早的 20 條
     - has_more=True 表示還有更舊的訊息可載入
     """
+    user_id = current_user["user_id"]
+    sessions = await run_sync(
+        lambda: get_sessions(user_id=user_id, limit=10000, offset=0)
+    )
+    if not any(s["id"] == session_id for s in sessions):
+        raise HTTPException(
+            status_code=403, detail="Forbidden: session does not belong to you"
+        )
     LIMIT = 20
     history = await run_sync(
         lambda: get_chat_history(

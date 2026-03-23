@@ -45,9 +45,9 @@ async def _extract_user_from_request(request: Request) -> Optional[dict]:
 
             if TEST_MODE and token.startswith("test-user-"):
                 # Import get_user_by_id to fetch user from DB
-                from core.database.user import get_user_by_id
+                from core.orm.repositories import user_repo
 
-                user_data = get_user_by_id(token)
+                user_data = await user_repo.get_by_id(token)
                 if user_data:
                     return user_data
                 # Return mock user if not in DB
@@ -108,12 +108,10 @@ async def audit_middleware(request: Request, call_next):
     needs_db = _is_sensitive_action(action, path, request.method)
 
     if needs_db:
-        # ✅ 效能修覆：AuditLogger.log 是同步 DB 寫入，直接呼叫會 block event loop
-        # 改用 run_in_executor 背景執行，不阻塞請求回應
         try:
-            asyncio.get_running_loop().run_in_executor(
-                None,
-                lambda: AuditLogger.log(
+
+            async def _log_async():
+                AuditLogger.log(
                     action=action,
                     user_id=user.get("user_id") if user else None,
                     username=user.get("username") if user else None,
@@ -128,8 +126,9 @@ async def audit_middleware(request: Request, call_next):
                         "source": "audit_middleware",
                         "path": str(request.url.path),
                     },
-                ),
-            )
+                )
+
+            asyncio.get_running_loop().create_task(_log_async())
         except Exception as e:
             logger.error(f"Database audit logging failed: {e}")
     else:

@@ -1,45 +1,134 @@
 """
 Core ORM package — SQLAlchemy 2.0 async layer.
-
-This package coexists with the raw psycopg2 layer during the migration period.
-New code should prefer the async ORM repositories.
 """
 
+from .alerts_repo import alerts_repo
+from .cache_repo import cache_repo
+from .chat_repo import chat_repo
+from .config_repo import config_repo
+from .experiences_repo import experiences_repo
+from .forum_repo import forum_repo
+from .friends_repo import friends_repo
+from .governance_repo import governance_repo
+from .memory_repo import memory_repo
+from .messages_repo import messages_repo
 from .models import (
+    AdminBroadcast,
+    AgentToolPermission,
+    AnalysisReport,
+    AuditLog,
+    AuditReputation,
     Base,
     Board,
+    ContentReport,
+    ConversationHistory,
     DmConversation,
     DmMessage,
+    DmMessageDeletion,
     ForumComment,
     Friendship,
     MembershipPayment,
     Notification,
     Post,
+    PostTag,
     PriceAlert,
+    ReportReviewVote,
+    ScamReport,
+    ScamReportComment,
+    ScamReportVote,
+    Session,
+    SystemCache,
     SystemConfig,
+    Tag,
+    TaskExperience,
     Tip,
+    ToolUsageLog,
     User,
+    UserActivityLog,
+    UserApiKey,
+    UserDailyComment,
+    UserDailyPost,
+    UserFact,
+    UserHistoryLog,
+    UserMemory,
+    UserMemoryCache,
+    UserMessageLimit,
+    UserToolPreference,
+    UserViolation,
+    UserViolationPoints,
+    Watchlist,
 )
+from .notifications_repo import notifications_repo
 from .repositories import user_repo
+from .scam_tracker_repo import scam_tracker_repo
 from .session import close_async_engine, get_async_session, get_engine, using_session
+from .tools_repo import tools_repo
+from .trading_repo import trading_repo
+from .user_api_keys_repo import user_api_keys_repo
 
 __all__ = [
     "Base",
-    "User",
+    "AdminBroadcast",
+    "AgentToolPermission",
+    "AnalysisReport",
+    "AuditLog",
+    "AuditReputation",
     "Board",
-    "Post",
-    "ForumComment",
-    "Tip",
-    "Friendship",
-    "Notification",
+    "ContentReport",
+    "ConversationHistory",
     "DmConversation",
     "DmMessage",
-    "SystemConfig",
-    "PriceAlert",
+    "DmMessageDeletion",
+    "ForumComment",
+    "Friendship",
     "MembershipPayment",
+    "Notification",
+    "Post",
+    "PostTag",
+    "PriceAlert",
+    "ReportReviewVote",
+    "ScamReport",
+    "ScamReportComment",
+    "ScamReportVote",
+    "Session",
+    "SystemCache",
+    "SystemConfig",
+    "Tag",
+    "TaskExperience",
+    "Tip",
+    "ToolUsageLog",
+    "User",
+    "UserActivityLog",
+    "UserApiKey",
+    "UserDailyComment",
+    "UserDailyPost",
+    "UserFact",
+    "UserHistoryLog",
+    "UserMemory",
+    "UserMemoryCache",
+    "UserMessageLimit",
+    "UserToolPreference",
+    "UserViolation",
+    "UserViolationPoints",
+    "Watchlist",
     "get_async_session",
     "get_engine",
     "close_async_engine",
     "using_session",
     "user_repo",
+    "friends_repo",
+    "forum_repo",
+    "messages_repo",
+    "notifications_repo",
+    "chat_repo",
+    "trading_repo",
+    "alerts_repo",
+    "tools_repo",
+    "memory_repo",
+    "experiences_repo",
+    "user_api_keys_repo",
+    "governance_repo",
+    "scam_tracker_repo",
+    "config_repo",
+    "cache_repo",
 ]

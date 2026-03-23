@@ -28,24 +28,19 @@ from core.database import (
     check_greeting_limit,
     check_message_limit,
     delete_dm_message,
-    get_conversation_by_id,
     get_conversation_with_messages,
-    get_conversations,
-    get_dm_messages,
-    get_unread_count,
     get_user_by_id,
     get_user_membership,
     hide_conversation_for_user,
     hide_dm_message_for_user,
     increment_message_count,
     is_blocked,
-    mark_as_read,
     search_messages,
-    send_dm_message,
     send_greeting,
     update_last_active,
 )
-from core.database.notifications import notify_new_message
+from core.orm.messages_repo import messages_repo
+from core.orm.notifications_repo import notifications_repo
 
 router = APIRouter()
 
@@ -132,10 +127,10 @@ async def get_conversations_endpoint(
     """
     try:
         user_id = current_user["user_id"]
-        conversations = await run_sync(
-            lambda: get_conversations(user_id, limit=limit, offset=offset)
+        conversations = await messages_repo.get_conversations(
+            user_id, limit=limit, offset=offset
         )
-        total_unread = await run_sync(get_unread_count, user_id)
+        total_unread = await messages_repo.get_unread_count(user_id)
 
         return {
             "success": True,
@@ -162,10 +157,8 @@ async def get_messages_endpoint(
     """
     try:
         user_id = current_user["user_id"]
-        result = await run_sync(
-            lambda: get_dm_messages(
-                conversation_id, user_id, limit=limit, before_id=before_id
-            )
+        result = await messages_repo.get_messages(
+            conversation_id, user_id, limit=limit, before_id=before_id
         )
 
         if not result["success"]:
@@ -219,9 +212,8 @@ async def send_message_endpoint(
     """
     try:
         user_id = current_user["user_id"]
-        from core.database import validate_message_send
 
-        validation = await run_sync(validate_message_send, user_id, body.to_user_id)
+        validation = await messages_repo.validate_message_send(user_id, body.to_user_id)
 
         if not validation["valid"]:
             error = validation["error"]
@@ -249,7 +241,7 @@ async def send_message_endpoint(
                 detail=f"已達每日訊息上限 ({limit_check['limit']} 條)，升級 Premium 會員可無限發送",
             )
 
-        result = await run_sync(send_dm_message, user_id, body.to_user_id, body.content)
+        result = await messages_repo.send_message(user_id, body.to_user_id, body.content)
 
         if not result["success"]:
             await run_sync(increment_message_count, user_id)
@@ -268,8 +260,7 @@ async def send_message_endpoint(
 
         try:
             msg = result["message"]
-            notification = await run_sync(
-                notify_new_message,
+            notification = await notifications_repo.notify_new_message(
                 body.to_user_id,
                 user_id,
                 msg.get("from_username", user_id),
@@ -298,12 +289,12 @@ async def mark_read_endpoint(
     """
     try:
         user_id = current_user["user_id"]
-        result = await run_sync(mark_as_read, request.conversation_id, user_id)
+        result = await messages_repo.mark_as_read(request.conversation_id, user_id)
 
         if not result["success"]:
             raise HTTPException(status_code=404, detail="對話不存在")
 
-        conv = await run_sync(get_conversation_by_id, request.conversation_id, user_id)
+        conv = await messages_repo.get_conversation_by_id(request.conversation_id, user_id)
         if conv:
             other_user_id = (
                 conv["user2_id"] if conv["user1_id"] == user_id else conv["user1_id"]
@@ -382,8 +373,7 @@ async def send_greeting_endpoint(
 
         try:
             msg = result["message"]
-            notification = await run_sync(
-                notify_new_message,
+            notification = await notifications_repo.notify_new_message(
                 body.to_user_id,
                 user_id,
                 msg.get("from_username", user_id),
@@ -437,7 +427,7 @@ async def get_unread_count_endpoint(current_user: dict = Depends(get_current_use
     """
     try:
         user_id = current_user["user_id"]
-        count = await run_sync(get_unread_count, user_id)
+        count = await messages_repo.get_unread_count(user_id)
         return {"success": True, "unread_count": count}
     except Exception as e:
         logger.error(f"取得未讀數量失敗: {e}")
@@ -451,7 +441,7 @@ async def get_message_limits_endpoint(current_user: dict = Depends(get_current_u
     """
     try:
         user_id = current_user["user_id"]
-        from core.database import get_config
+        from core.orm.config_repo import config_repo
 
         membership = await run_sync(get_user_membership, user_id)
         is_premium = membership.get("is_premium", False)
@@ -460,7 +450,7 @@ async def get_message_limits_endpoint(current_user: dict = Depends(get_current_u
         greeting_limit = await run_sync(
             lambda: check_greeting_limit(user_id, is_premium)
         )
-        max_length = await run_sync(lambda: get_config("limit_message_max_length", 500))
+        max_length = await config_repo.get_config("limit_message_max_length", 500)
         return {
             "success": True,
             "is_premium": is_premium,
@@ -641,7 +631,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
         await run_sync(update_last_active, user_id)
 
-        unread_count = await run_sync(get_unread_count, user_id)
+        unread_count = await messages_repo.get_unread_count(user_id)
         await websocket.send_json(
             {"type": "authenticated", "user_id": user_id, "unread_count": unread_count}
         )

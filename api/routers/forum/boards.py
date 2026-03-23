@@ -4,8 +4,7 @@
 
 from fastapi import APIRouter, HTTPException
 
-from api.utils import run_sync
-from core.database import get_board_by_slug, get_boards
+from core.orm.forum_repo import forum_repo
 
 router = APIRouter(prefix="/api/forum/boards", tags=["Forum - Boards"])
 
@@ -19,7 +18,7 @@ async def list_boards():
         - boards: 看板列表
     """
     try:
-        boards = await run_sync(lambda: get_boards(active_only=True))
+        boards = await forum_repo.get_boards(active_only=True)
         return {"success": True, "boards": boards}
     except Exception:
         raise HTTPException(status_code=500, detail="獲取看板列表失敗，請稍後再試")
@@ -37,7 +36,7 @@ async def get_board(slug: str):
         - board: 看板詳情
     """
     try:
-        board = await run_sync(get_board_by_slug, slug)
+        board = await forum_repo.get_board_by_slug(slug)
         if not board:
             raise HTTPException(status_code=404, detail="看板不存在")
         return {"success": True, "board": board}

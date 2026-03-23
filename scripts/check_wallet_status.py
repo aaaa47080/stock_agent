@@ -115,9 +115,8 @@ def check_wallet_status(user_id: str = None):
             print(f"\n{'=' * 60}")
             print("🔧 建議的修復 SQL:")
             print(f"{'=' * 60}\n")
-            print(
-                f"UPDATE users SET auth_method = 'pi_network' WHERE user_id = '{user_id}';"
-            )
+            print("UPDATE users SET auth_method = 'pi_network' WHERE user_id = %s;")
+            print(f"  -- Parameter: '{user_id}'")
             print("\n⚠️  執行前請確認這是正確的修復方案！")
 
     finally:

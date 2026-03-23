@@ -14,15 +14,10 @@ from api.utils import run_sync
 from core.config import TEST_MODE, TEST_USER
 from core.database import (
     check_daily_post_limit,
-    create_post,
-    delete_post,
-    get_board_by_slug,
-    get_post_by_id,
-    get_posts,
-    get_prices,
     get_user_membership,
-    update_post,
 )
+from core.orm.config_repo import config_repo
+from core.orm.forum_repo import forum_repo
 
 from .models import CreatePostRequest, UpdatePostRequest
 
@@ -54,19 +49,16 @@ async def list_posts(
     try:
         board_id = None
         if board:
-            board_info = await run_sync(get_board_by_slug, board)
+            board_info = await forum_repo.get_board_by_slug(board)
             if not board_info:
                 raise HTTPException(status_code=404, detail="看板不存在")
             board_id = board_info["id"]
 
-        posts = await run_sync(
-            lambda: get_posts(
-                board_id=board_id,
-                category=category,
-                tag=tag,
-                limit=limit,
-                offset=offset,
-            )
+        posts = await forum_repo.get_posts(
+            board_id=board_id,
+            category=category,
+            limit=limit,
+            offset=offset,
         )
         return {"success": True, "posts": posts, "count": len(posts)}
     except HTTPException:
@@ -100,16 +92,14 @@ async def create_new_post(
             )
 
         # 驗證看板
-        board = await run_sync(get_board_by_slug, body.board_slug)
+        board = await forum_repo.get_board_by_slug(body.board_slug)
         if not board:
             raise HTTPException(status_code=404, detail="看板不存在")
         if not board["is_active"]:
             raise HTTPException(status_code=400, detail="此看板目前不開放發文")
 
-        # 檢查會員狀態
         membership = await run_sync(get_user_membership, user_id)
 
-        # 檢查每日發文限制（在付款前先檢查，避免用戶付費後才發現無法發文）
         limit_check = await run_sync(check_daily_post_limit, user_id)
         if not limit_check["allowed"]:
             raise HTTPException(
@@ -117,37 +107,31 @@ async def create_new_post(
                 detail=f"已達每日發文上限 ({limit_check['limit']} 篇)，升級 Premium 會員可無限發文",
             )
 
-        # 免費會員需要付費 (測試模式下跳過)
         is_test_user = TEST_MODE and (
             user_id.startswith("test-user-") or user_id == TEST_USER.get("uid")
         )
 
         if not membership["is_premium"] and not body.payment_tx_hash:
             if is_test_user:
-                # TEST_MODE: Mock payment for test users
                 body.payment_tx_hash = f"test_post_{int(time.time() * 1000)}"
                 logger.info(
                     f"TEST_MODE: Bypassing payment requirement for user {user_id}"
                 )
             else:
-                prices = await run_sync(get_prices)
+                prices = await config_repo.get_prices()
                 raise HTTPException(
                     status_code=402,
                     detail=f"免費會員發文需支付 {prices.get('create_post', 1)} Pi，請提供 payment_tx_hash",
                 )
 
-        # 創建文章（跳過限制檢查，因為上面已經檢查過了）
-        result = await run_sync(
-            lambda: create_post(
-                board_id=board["id"],
-                user_id=user_id,
-                category=body.category,
-                title=body.title,
-                content=body.content,
-                tags=body.tags,
-                payment_tx_hash=body.payment_tx_hash,
-                skip_limit_check=True,
-            )
+        result = await forum_repo.create_post(
+            board_id=board["id"],
+            user_id=user_id,
+            category=body.category,
+            title=body.title,
+            content=body.content,
+            tags=body.tags,
+            payment_tx_hash=body.payment_tx_hash,
         )
 
         if not result["success"]:
@@ -179,8 +163,8 @@ async def get_post_detail(post_id: int):
     會自動增加瀏覽數
     """
     try:
-        post = await run_sync(
-            lambda: get_post_by_id(post_id, increment_view=True, viewer_user_id=None)
+        post = await forum_repo.get_post_by_id(
+            post_id, increment_view=True
         )
         if not post:
             raise HTTPException(status_code=404, detail="文章不存在")
@@ -213,14 +197,12 @@ async def update_post_content(
                 detail=f"無效的分類，可選: {', '.join(VALID_CATEGORIES)}",
             )
 
-        success = await run_sync(
-            lambda: update_post(
-                post_id=post_id,
-                user_id=user_id,
-                title=request.title,
-                content=request.content,
-                category=request.category,
-            )
+        success = await forum_repo.update_post(
+            post_id=post_id,
+            user_id=user_id,
+            title=request.title,
+            content=request.content,
+            category=request.category,
         )
 
         if not success:
@@ -243,7 +225,7 @@ async def delete_post_by_id(
     try:
         user_id = current_user["user_id"]
 
-        success = await run_sync(lambda: delete_post(post_id=post_id, user_id=user_id))
+        success = await forum_repo.delete_post(post_id=post_id, user_id=user_id)
 
         if not success:
             raise HTTPException(status_code=403, detail="無權刪除此文章或文章不存在")

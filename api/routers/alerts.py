@@ -8,12 +8,8 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from api.deps import get_current_user
 from api.models import CreateAlertRequest
-from api.utils import logger, run_sync
-from core.database import (
-    create_alert,
-    delete_alert,
-    get_user_alerts,
-)
+from api.utils import logger
+from core.orm.alerts_repo import alerts_repo
 
 router = APIRouter()
 
@@ -27,15 +23,13 @@ async def create_alert_endpoint(
     user_id = current_user["user_id"]
 
     try:
-        alert = await run_sync(
-            lambda: create_alert(
-                user_id=user_id,
-                symbol=request.symbol,
-                market=request.market,
-                condition=request.condition,
-                target=request.target,
-                repeat=request.repeat,
-            )
+        alert = await alerts_repo.create_alert(
+            user_id=user_id,
+            symbol=request.symbol,
+            market=request.market,
+            condition=request.condition,
+            target=request.target,
+            repeat=request.repeat,
         )
         return {"success": True, "alert": alert}
     except ValueError as e:
@@ -50,7 +44,7 @@ async def get_alerts_endpoint(current_user: dict = Depends(get_current_user)):
     """Get all alerts for the current user."""
     user_id = current_user["user_id"]
     try:
-        alerts = await run_sync(get_user_alerts, user_id)
+        alerts = await alerts_repo.get_user_alerts(user_id)
         return {"success": True, "alerts": alerts}
     except Exception as e:
         logger.error(f"獲取警報失敗: {e}")
@@ -65,7 +59,7 @@ async def delete_alert_endpoint(
     """Delete a specific alert (ownership enforced)."""
     user_id = current_user["user_id"]
     try:
-        deleted = await run_sync(lambda: delete_alert(alert_id, user_id))
+        deleted = await alerts_repo.delete_alert(alert_id, user_id)
         if not deleted:
             raise HTTPException(status_code=404, detail="警報不存在或無權限刪除")
         return {"success": True, "message": "警報已刪除"}

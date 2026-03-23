@@ -12,7 +12,8 @@ from pydantic import BaseModel
 from api.deps import get_current_user
 from api.middleware.rate_limit import limiter
 from api.utils import logger, run_sync
-from core.database import get_user_membership, upgrade_to_pro
+from core.database.user import upgrade_to_pro
+from core.orm.repositories import user_repo
 
 router = APIRouter(prefix="/api/premium", tags=["Premium"])
 PLAN_MONTHS = {
@@ -180,7 +181,7 @@ async def upgrade_to_premium(
             tx_hash = f"test_{uuid.uuid4().hex[:16]}"
 
     try:
-        current_membership = await run_sync(get_user_membership, user_id)
+        current_membership = await user_repo.get_membership(user_id)
 
         if not current_membership:
             raise HTTPException(status_code=404, detail="User not found")
@@ -196,7 +197,7 @@ async def upgrade_to_premium(
         if not success:
             raise HTTPException(status_code=500, detail="Upgrade failed")
 
-        new_membership = await run_sync(get_user_membership, user_id)
+        new_membership = await user_repo.get_membership(user_id)
 
         logger.info(
             "User %s upgraded to Premium, plan=%s, months=%d, tx_hash=%s",
@@ -231,7 +232,7 @@ async def get_premium_status(
 ):
     try:
         user_id = current_user["user_id"]
-        membership = await run_sync(get_user_membership, user_id)
+        membership = await user_repo.get_membership(user_id)
 
         if not membership:
             raise HTTPException(status_code=404, detail="User not found")

@@ -213,74 +213,68 @@ def rotate_encryption_key() -> dict:
     Returns:
         {"success": bool, "re_encrypted_count": int}
     """
-    from core.database.connection import get_connection
+    import asyncio
+    import logging
 
-    # 載入舊金鑰
+    from core.orm.models import UserApiKey
+    from core.orm.session import get_session_factory
+
+    logger_enc = logging.getLogger(__name__)
+
     old_fernet = _get_fernet()
 
-    # 生成新金鑰
     new_key = Fernet.generate_key()
     new_fernet = Fernet(new_key)
 
-    # 重新加密所有 API Keys
-    conn = get_connection()
-    c = conn.cursor()
-    re_encrypted_count = 0
+    async def _do_rotation():
+        global _encryption_key_cache
+        factory = get_session_factory()
+        async with factory() as session:
+            from sqlalchemy import select
+
+            result = await session.execute(select(UserApiKey.id, UserApiKey.encrypted_key))
+            rows = result.fetchall()
+
+            re_encrypted_count = 0
+            for row in rows:
+                key_id = row[0]
+                old_encrypted = row[1]
+
+                try:
+                    decoded = base64.urlsafe_b64decode(old_encrypted.encode())
+                    plaintext = old_fernet.decrypt(decoded).decode()
+
+                    new_encrypted = new_fernet.encrypt(plaintext.encode())
+                    new_encoded = base64.urlsafe_b64encode(new_encrypted).decode()
+
+                    from sqlalchemy import update
+
+                    await session.execute(
+                        update(UserApiKey)
+                        .where(UserApiKey.id == key_id)
+                        .values(encrypted_key=new_encoded)
+                    )
+                    re_encrypted_count += 1
+
+                except Exception as e:
+                    logger_enc.error(f"Failed to re-encrypt key {key_id}: {e}")
+
+            await session.commit()
+
+            _encryption_key_cache = new_key
+            _save_encryption_key(new_key, update_rotation_time=True)
+
+            logger_enc.info(
+                f"🔑 API key encryption rotated, re-encrypted {re_encrypted_count} keys"
+            )
+
+            return {"success": True, "re_encrypted_count": re_encrypted_count}
 
     try:
-        c.execute("SELECT id, encrypted_key FROM user_api_keys")
-        rows = c.fetchall()
-
-        for row in rows:
-            key_id = row[0]
-            old_encrypted = row[1]
-
-            try:
-                # 用舊金鑰解密
-                decoded = base64.urlsafe_b64decode(old_encrypted.encode())
-                plaintext = old_fernet.decrypt(decoded).decode()
-
-                # 用新金鑰加密
-                new_encrypted = new_fernet.encrypt(plaintext.encode())
-                new_encoded = base64.urlsafe_b64encode(new_encrypted).decode()
-
-                # 更新資料庫
-                c.execute(
-                    "UPDATE user_api_keys SET encrypted_key = %s WHERE id = %s",
-                    (new_encoded, key_id),
-                )
-                re_encrypted_count += 1
-
-            except Exception as e:
-                import logging
-
-                logging.getLogger(__name__).error(
-                    f"Failed to re-encrypt key {key_id}: {e}"
-                )
-
-        conn.commit()
-
-        # 儲存新金鑰（更新 last_rotation 時間戳）
-        global _encryption_key_cache
-        _encryption_key_cache = new_key
-        _save_encryption_key(new_key, update_rotation_time=True)
-
-        import logging
-
-        logging.getLogger(__name__).info(
-            f"🔑 API key encryption rotated, re-encrypted {re_encrypted_count} keys"
-        )
-
-        return {"success": True, "re_encrypted_count": re_encrypted_count}
-
-    except Exception as e:
-        conn.rollback()
-        import logging
-
-        logging.getLogger(__name__).error(f"Key rotation failed: {e}")
-        return {"success": False, "error": str(e)}
-    finally:
-        conn.close()
+        loop = asyncio.get_running_loop()
+        return loop.run_until_complete(_do_rotation())
+    except RuntimeError:
+        return asyncio.run(_do_rotation())
 
 
 def get_key_rotation_status() -> dict:

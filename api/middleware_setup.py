@@ -108,8 +108,6 @@ def setup_middleware(app: FastAPI) -> None:
             "Content-Type",
             "X-API-Key",
             "X-OKX-API-KEY",
-            "X-OKX-SECRET-KEY",
-            "X-OKX-PASSPHRASE",
         ],
     )
 

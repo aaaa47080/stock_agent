@@ -12,7 +12,8 @@ from typing import Any, Dict, Optional
 from fastapi import Request
 
 from api.utils import logger
-from core.database import get_connection
+from core.orm import AuditLog
+from core.orm.session import get_session_factory
 
 
 class AuditLogger:
@@ -107,20 +108,6 @@ class AuditLogger:
         )
 
     @staticmethod
-    def _write(cursor: Any, payload: tuple) -> None:
-        """Write an audit record through the shared insert path."""
-        cursor.execute(
-            """
-            INSERT INTO audit_logs (
-                user_id, username, action, resource_type, resource_id,
-                endpoint, method, ip_address, user_agent, request_data,
-                response_code, success, error_message, duration_ms, metadata
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """,
-            payload,
-        )
-
-    @staticmethod
     def log(
         action: str,
         user_id: Optional[str] = None,
@@ -137,7 +124,6 @@ class AuditLogger:
         error_message: Optional[str] = None,
         duration_ms: Optional[int] = None,
         metadata: Optional[Dict] = None,
-        cursor: Optional[Any] = None,
     ):
         """
         Log an audit event to the database
@@ -159,6 +145,8 @@ class AuditLogger:
             duration_ms: Request processing time in milliseconds
             metadata: Additional context-specific data
         """
+        import asyncio
+
         try:
             payload = AuditLogger._prepare_payload(
                 action=action,
@@ -178,19 +166,36 @@ class AuditLogger:
                 metadata=metadata,
             )
 
-            if cursor is not None:
-                AuditLogger._write(cursor, payload)
-            else:
-                conn = get_connection()
-                db_cursor = conn.cursor()
-                try:
-                    AuditLogger._write(db_cursor, payload)
-                    conn.commit()
-                finally:
-                    db_cursor.close()
-                    conn.close()
+            async def _write_async():
+                factory = get_session_factory()
+                async with factory() as session:
+                    session.add(
+                        AuditLog(
+                            user_id=payload[0],
+                            username=payload[1],
+                            action=payload[2],
+                            resource_type=payload[3],
+                            resource_id=payload[4],
+                            endpoint=payload[5],
+                            method=payload[6],
+                            ip_address=payload[7],
+                            user_agent=payload[8],
+                            request_data=json.loads(payload[9]) if payload[9] else None,
+                            response_code=payload[10],
+                            success=payload[11],
+                            error_message=payload[12],
+                            duration_ms=payload[13],
+                            metadata_=json.loads(payload[14]) if payload[14] else None,
+                        )
+                    )
+                    await session.commit()
 
-            # Also log sensitive actions to application log
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(_write_async())
+            except RuntimeError:
+                asyncio.run(_write_async())
+
             normalized_action = AuditLogger._normalize_action(action)
             if normalized_action in AuditLogger.SENSITIVE_ACTIONS:
                 log_level = "WARNING" if not success else "INFO"
@@ -207,7 +212,6 @@ class AuditLogger:
                     logger.info(log_msg)
 
         except Exception as e:
-            # Never let audit logging break the application
             logger.error(f"Failed to write audit log for action '{action}': {e}")
 
     @staticmethod
@@ -387,7 +391,7 @@ def audit(action: str, resource_type: Optional[str] = None):
 # ============================================================================
 
 
-def cleanup_old_logs(days_to_keep: int = 90) -> int:
+async def cleanup_old_logs(days_to_keep: int = 90) -> int:
     """
     Delete audit logs older than specified days.
 
@@ -401,28 +405,22 @@ def cleanup_old_logs(days_to_keep: int = 90) -> int:
         Number of logs deleted
     """
     try:
-        conn = get_connection()
-        cursor = conn.cursor()
+        from sqlalchemy import delete
 
-        cutoff_date = datetime.utcnow() - timedelta(days=days_to_keep)
+        factory = get_session_factory()
+        async with factory() as session:
+            cutoff_date = datetime.utcnow() - timedelta(days=days_to_keep)
 
-        cursor.execute(
-            """
-            DELETE FROM audit_logs
-            WHERE created_at < %s
-        """,
-            (cutoff_date,),
-        )
+            stmt = delete(AuditLog).where(AuditLog.created_at < cutoff_date)
+            result = await session.execute(stmt)
+            await session.commit()
 
-        deleted = cursor.rowcount
-        conn.commit()
-        cursor.close()
-        conn.close()
+            deleted = result.rowcount
 
-        logger.info(
-            f"🧹 Cleaned up {deleted} old audit logs (older than {days_to_keep} days)"
-        )
-        return deleted
+            logger.info(
+                f"🧹 Cleaned up {deleted} old audit logs (older than {days_to_keep} days)"
+            )
+            return deleted
 
     except Exception as e:
         logger.error(f"Failed to cleanup old audit logs: {e}")
@@ -460,5 +458,4 @@ async def audit_log_cleanup_task():
 
         await asyncio.sleep(seconds_until_cleanup)
 
-        # Run cleanup
-        await asyncio.get_running_loop().run_in_executor(None, cleanup_old_logs, 90)
+        await cleanup_old_logs(90)

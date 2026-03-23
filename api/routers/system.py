@@ -19,8 +19,8 @@ from api.models import KeyValidationRequest, UserSettings
 from api.routers.admin import verify_admin_key
 from api.utils import logger, run_sync, update_env_file
 from core.config import DEFAULT_INTERVAL, DEFAULT_KLINES_LIMIT, SUPPORTED_EXCHANGES
-from core.database import get_limits, get_prices
 from core.model_config import GEMINI_DEFAULT_MODEL, MODEL_CONFIG, OPENAI_DEFAULT_MODEL
+from core.orm.config_repo import config_repo
 from utils.llm_client import LLMClientFactory
 from utils.settings import Settings
 
@@ -265,7 +265,7 @@ async def get_pi_prices():
 
     商用化設計：配置存儲在數據庫中，可通過管理 API 即時修改
     """
-    return {"prices": await run_sync(get_prices), "currency": "Pi"}
+    return {"prices": await config_repo.get_prices(), "currency": "Pi"}
 
 
 @router.get("/api/config/limits")
@@ -276,7 +276,7 @@ async def get_forum_limits():
 
     商用化設計：配置存儲在數據庫中，可通過管理 API 即時修改
     """
-    return {"limits": await run_sync(get_limits)}
+    return {"limits": await config_repo.get_limits()}
 
 
 @router.post("/api/settings/update")
@@ -416,7 +416,7 @@ async def get_current_test_tier(current_user: dict = Depends(get_current_user)):
     if not TEST_MODE:
         raise HTTPException(status_code=403, detail="此功能僅在測試模式下可用")
 
-    from core.database.tools import normalize_membership_tier
+    from core.orm.tools_repo import _normalize_tier as normalize_membership_tier
 
     current_tier = normalize_membership_tier(
         current_user.get("membership_tier", os.environ.get("TEST_USER_TIER", "premium"))

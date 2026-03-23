@@ -15,11 +15,14 @@ logger = logging.getLogger(__name__)
 # 從環境變數讀取配置
 SMTP_EMAIL = os.getenv("SMTP_EMAIL", "")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
-RESET_URL_BASE = os.getenv("RESET_URL_BASE", "http://localhost:8080")
+RESET_URL_BASE = os.getenv("RESET_URL_BASE", "")
 
 # Gmail SMTP 設定 (SSL 模式)
-SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 465  # SSL port
+SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
+
+if not RESET_URL_BASE:
+    logger.warning("RESET_URL_BASE not set — password reset emails will have broken links")
 
 
 def is_email_configured() -> bool:

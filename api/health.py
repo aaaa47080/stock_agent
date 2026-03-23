@@ -6,11 +6,18 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
 import api.globals as globals
+from api.utils import run_sync
 
 router = APIRouter(tags=["health"])
 
 # Service start time for uptime calculation
 SERVICE_START_TIME = time.time()
+
+
+def _check_db(get_connection_fn):
+    conn = get_connection_fn()
+    conn.execute("SELECT 1")
+    conn.close()
 
 
 @router.get("/health")
@@ -21,9 +28,7 @@ async def health_check():
     try:
         from core.database import get_connection
 
-        conn = get_connection()
-        conn.execute("SELECT 1")
-        conn.close()
+        await run_sync(lambda: _check_db(get_connection))
         checks["database"] = True
     except Exception:
         checks["database"] = False
@@ -56,9 +61,7 @@ async def readiness_check():
     try:
         from core.database import get_connection
 
-        conn = get_connection()
-        conn.execute("SELECT 1")
-        conn.close()
+        await run_sync(lambda: _check_db(get_connection))
         components["database"] = True
     except Exception:
         components["database"] = False

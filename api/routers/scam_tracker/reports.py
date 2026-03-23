@@ -8,15 +8,9 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from api.deps import get_current_user
-from api.utils import run_sync
-from core.database.scam_tracker import (
-    create_scam_report,
-    get_scam_report_by_id,
-    get_scam_reports,
-    search_wallet,
-)
-from core.database.system_config import get_config
-from core.database.user import get_user_by_id
+from core.orm.config_repo import config_repo
+from core.orm.repositories import user_repo
+from core.orm.scam_tracker_repo import scam_tracker_repo
 
 from .models import ScamReportCreate
 
@@ -43,14 +37,12 @@ async def list_scam_reports(
     公開端點，所有用戶可查看。
     """
     try:
-        reports = await run_sync(
-            lambda: get_scam_reports(
-                scam_type=scam_type,
-                status=status,
-                sort_by=sort_by,
-                limit=limit,
-                offset=offset,
-            )
+        reports = await scam_tracker_repo.get_reports(
+            scam_type=scam_type,
+            status=status,
+            sort_by=sort_by,
+            limit=limit,
+            offset=offset,
         )
 
         return {"success": True, "reports": reports, "count": len(reports)}
@@ -69,7 +61,7 @@ async def search_scam_wallet(
     公開端點，返回該錢包的舉報詳情（如果存在）。
     """
     try:
-        report = await run_sync(search_wallet, wallet_address)
+        report = await scam_tracker_repo.search_wallet(wallet_address)
 
         if report:
             return {"success": True, "found": True, "report": report}
@@ -90,15 +82,15 @@ async def get_scam_tracker_config():
     返回詐騙類型列表和相關配置。
     """
     try:
-        scam_types = get_config("scam_types", [])
+        scam_types = await config_repo.get_config("scam_types", [])
 
         return {
             "success": True,
             "scam_types": scam_types,
-            "verification_threshold": get_config(
+            "verification_threshold": await config_repo.get_config(
                 "scam_verification_vote_threshold", 10
             ),
-            "verification_approve_rate": get_config(
+            "verification_approve_rate": await config_repo.get_config(
                 "scam_verification_approve_rate", 0.7
             ),
         }
@@ -119,10 +111,8 @@ async def get_scam_report_detail(
     try:
         user_id = current_user.get("user_id") if current_user else None
 
-        report = await run_sync(
-            lambda: get_scam_report_by_id(
-                report_id, increment_view=True, viewer_user_id=user_id
-            )
+        report = await scam_tracker_repo.get_report_by_id(
+            report_id, increment_view=True, viewer_user_id=user_id
         )
 
         if not report:
@@ -149,21 +139,19 @@ async def create_new_scam_report(
         user_id = current_user.get("user_id")
 
         # 驗證用戶是否存在
-        user = await run_sync(get_user_by_id, user_id)
+        user = await user_repo.get_by_id(user_id)
         if not user:
             raise HTTPException(
                 status_code=401, detail="用戶不存在或憑證失效，請重新登入"
             )
 
-        result = await run_sync(
-            lambda: create_scam_report(
-                scam_wallet_address=request.scam_wallet_address,
-                reporter_user_id=user_id,
-                reporter_wallet_address=request.reporter_wallet_address,
-                scam_type=request.scam_type,
-                description=request.description,
-                transaction_hash=request.transaction_hash,
-            )
+        result = await scam_tracker_repo.create_report(
+            scam_wallet_address=request.scam_wallet_address,
+            reporter_user_id=user_id,
+            reporter_wallet_masked=request.reporter_wallet_address,
+            scam_type=request.scam_type,
+            description=request.description,
+            transaction_hash=request.transaction_hash,
         )
 
         if result.get("success"):

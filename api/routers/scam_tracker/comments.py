@@ -7,12 +7,8 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from api.deps import get_current_user
-from api.utils import run_sync
-from core.database.scam_tracker import (
-    add_scam_comment,
-    get_scam_comments,
-)
-from core.database.user import get_user_by_id
+from core.orm.repositories import user_repo
+from core.orm.scam_tracker_repo import scam_tracker_repo
 
 from .models import CommentCreate
 
@@ -33,8 +29,8 @@ async def list_scam_comments(
     公開端點，所有用戶可查看。
     """
     try:
-        comments = await run_sync(
-            lambda: get_scam_comments(report_id=report_id, limit=limit, offset=offset)
+        comments = await scam_tracker_repo.get_comments(
+            report_id=report_id, limit=limit, offset=offset
         )
 
         return {"success": True, "comments": comments, "count": len(comments)}
@@ -58,19 +54,17 @@ async def add_comment_to_report(
         user_id = current_user.get("user_id")
 
         # 驗證用戶是否存在
-        user = await run_sync(get_user_by_id, user_id)
+        user = await user_repo.get_by_id(user_id)
         if not user:
             raise HTTPException(
                 status_code=401, detail="用戶不存在或憑證失效，請重新登入"
             )
 
-        result = await run_sync(
-            lambda: add_scam_comment(
-                report_id=report_id,
-                user_id=user_id,
-                content=request.content,
-                transaction_hash=request.transaction_hash,
-            )
+        result = await scam_tracker_repo.add_comment(
+            report_id=report_id,
+            user_id=user_id,
+            content=request.content,
+            transaction_hash=request.transaction_hash,
         )
 
         if result.get("success"):

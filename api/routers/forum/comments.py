@@ -11,13 +11,9 @@ from api.deps import get_current_user
 from api.middleware.rate_limit import limiter
 from api.routers.notifications import push_notification_to_user
 from api.utils import run_sync
-from core.database import (
-    add_comment,
-    get_comments,
-    get_daily_comment_count,
-    get_post_by_id,
-)
-from core.database.notifications import notify_post_interaction
+from core.database import get_daily_comment_count
+from core.orm.forum_repo import forum_repo
+from core.orm.notifications_repo import notifications_repo
 
 from .models import AddCommentRequest
 
@@ -40,11 +36,11 @@ async def list_comments(
     獲取文章的回覆列表
     """
     try:
-        post = await run_sync(lambda: get_post_by_id(post_id, increment_view=False))
+        post = await forum_repo.get_post_by_id(post_id, increment_view=False)
         if not post or post["is_hidden"]:
             raise HTTPException(status_code=404, detail="文章不存在")
 
-        comments = await run_sync(get_comments, post_id, limit=limit, offset=offset)
+        comments = await forum_repo.get_comments(post_id, limit=limit, offset=offset)
         return {"success": True, "comments": comments, "count": len(comments)}
     except HTTPException:
         raise
@@ -81,26 +77,19 @@ async def add_new_comment(
                 detail=f"無效的回覆類型，可選: {', '.join(VALID_COMMENT_TYPES)}",
             )
 
-        post = await run_sync(lambda: get_post_by_id(post_id, increment_view=False))
+        post = await forum_repo.get_post_by_id(post_id, increment_view=False)
         if not post or post["is_hidden"]:
             raise HTTPException(status_code=404, detail="文章不存在")
 
-        result = await run_sync(
-            lambda: add_comment(
-                post_id=post_id,
-                user_id=user_id,
-                comment_type=body.type,
-                content=body.content,
-                parent_id=body.parent_id,
-            )
+        result = await forum_repo.add_comment(
+            post_id=post_id,
+            user_id=user_id,
+            comment_type=body.type,
+            content=body.content,
+            parent_id=body.parent_id,
         )
 
         if not result["success"]:
-            if result.get("error") == "daily_limit_reached":
-                raise HTTPException(
-                    status_code=429,
-                    detail=f"已達每日回覆上限 ({result['limit']} 則)，升級 Premium 會員可無限回覆",
-                )
             raise HTTPException(
                 status_code=500, detail=result.get("error", "新增回覆失敗")
             )
@@ -108,8 +97,7 @@ async def add_new_comment(
         if post["user_id"] != user_id:
             try:
                 from_username = current_user.get("username", user_id)
-                notification = await run_sync(
-                    notify_post_interaction,
+                notification = await notifications_repo.notify_post_interaction(
                     post["user_id"],
                     from_username,
                     body.type,
@@ -140,27 +128,22 @@ async def _react_post(
     current_user: dict,
 ):
     """推/噓文共用邏輯"""
-    post = await run_sync(lambda: get_post_by_id(post_id, increment_view=False))
+    post = await forum_repo.get_post_by_id(post_id, increment_view=False)
     if not post or post["is_hidden"]:
         raise HTTPException(status_code=404, detail="文章不存在")
 
-    result = await run_sync(
-        lambda: add_comment(
-            post_id=post_id, user_id=user_id, comment_type=reaction, content=content
-        )
+    result = await forum_repo.add_comment(
+        post_id=post_id, user_id=user_id, comment_type=reaction, content=content
     )
 
     if not result["success"]:
-        if result.get("error") == "daily_limit_reached":
-            raise HTTPException(status_code=429, detail="已達每日回覆上限")
         raise HTTPException(
             status_code=500, detail=result.get("error", f"{reaction}失敗")
         )
 
     if post["user_id"] != user_id:
         try:
-            notification = await run_sync(
-                notify_post_interaction,
+            notification = await notifications_repo.notify_post_interaction(
                 post["user_id"],
                 current_user.get("username", user_id),
                 reaction,

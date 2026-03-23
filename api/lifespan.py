@@ -49,23 +49,17 @@ async def lifespan(app: FastAPI):
             logger.warning("⏭️ 應用程式將繼續運行，部分功能可能無法使用")
             return
 
-        # ORM auto-migrate: safely add missing tables/columns
+        # ORM migration: run Alembic upgrade to head
         try:
-            from core.orm.auto_migrate import auto_migrate
-            from core.orm.session import get_engine
+            from alembic.config import Config
 
-            orm_engine = get_engine()
-            migration_result = await auto_migrate(orm_engine)
-            created = migration_result["tables_created"]
-            added = migration_result["columns_added"]
-            if created or added:
-                logger.info(
-                    "ORM auto-migrate: %d tables created, %d columns added",
-                    len(created),
-                    len(added),
-                )
+            from alembic import command
+
+            alembic_cfg = Config("alembic.ini")
+            command.upgrade(alembic_cfg, "head")
+            logger.info("ORM Alembic migration complete (head)")
         except Exception as e:
-            logger.warning("ORM auto-migrate skipped: %s", e)
+            logger.warning("ORM Alembic migration skipped: %s", e)
 
         # Seed tools catalog (idempotent — skips existing rows)
         try:
