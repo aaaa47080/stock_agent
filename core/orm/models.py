@@ -129,7 +129,9 @@ class AdminBroadcast(Base):
     __tablename__ = "admin_broadcasts"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    admin_user_id: Mapped[str] = mapped_column(Text, nullable=False)
+    admin_user_id: Mapped[str] = mapped_column(
+        Text, ForeignKey("users.user_id"), nullable=False
+    )
     title: Mapped[str] = mapped_column(Text, nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
     type: Mapped[str] = mapped_column(Text, default="announcement")

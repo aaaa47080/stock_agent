@@ -32,7 +32,7 @@ def client():
 class TestCreateAlert:
     def test_create_alert_success(self, client):
         with patch(
-            "api.routers.alerts.create_alert",
+            "core.orm.alerts_repo.AlertsRepository.create_alert",
             return_value={
                 "id": "alert-1",
                 "symbol": "AAPL",
@@ -60,7 +60,7 @@ class TestCreateAlert:
 
     def test_create_alert_limit_exceeded(self, client):
         with patch(
-            "api.routers.alerts.create_alert", side_effect=ValueError("已達警報上限")
+            "core.orm.alerts_repo.AlertsRepository.create_alert", side_effect=ValueError("已達警報上限")
         ):
             resp = client.post(
                 "/api/alerts",
@@ -90,7 +90,7 @@ class TestCreateAlert:
 
 class TestGetAlerts:
     def test_get_alerts_returns_list(self, client):
-        with patch("api.routers.alerts.get_user_alerts", return_value=[]):
+        with patch("core.orm.alerts_repo.AlertsRepository.get_user_alerts", return_value=[]):
             resp = client.get("/api/alerts", headers={"Authorization": "Bearer test"})
         assert resp.status_code == 200
         assert "alerts" in resp.json()
@@ -98,14 +98,14 @@ class TestGetAlerts:
 
 class TestDeleteAlert:
     def test_delete_alert_success(self, client):
-        with patch("api.routers.alerts.delete_alert", return_value=True):
+        with patch("core.orm.alerts_repo.AlertsRepository.delete_alert", return_value=True):
             resp = client.delete(
                 "/api/alerts/alert-1", headers={"Authorization": "Bearer test"}
             )
         assert resp.status_code == 200
 
     def test_delete_alert_not_found(self, client):
-        with patch("api.routers.alerts.delete_alert", return_value=False):
+        with patch("core.orm.alerts_repo.AlertsRepository.delete_alert", return_value=False):
             resp = client.delete(
                 "/api/alerts/nonexistent", headers={"Authorization": "Bearer test"}
             )
