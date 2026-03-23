@@ -747,6 +747,9 @@ window.handleDevSwitchUser = handleDevSwitchUser;
                 if (typeof window.applyPiBrowserGateUI === 'function') {
                     window.applyPiBrowserGateUI();
                 }
+                if (typeof window._showLoginButton === 'function') {
+                    window._showLoginButton();
+                }
             }
         }
 

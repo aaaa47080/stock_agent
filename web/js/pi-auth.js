@@ -16,12 +16,14 @@ window.__piBrowserGateReason = '';
 
 function isSafePiSdkContext() {
     if (window.PiEnvironment) return window.PiEnvironment.isSafeSdkContext();
-    // Fallback: match auth.js PiEnvironment.isSafeSdkContext() logic exactly
     const isLocalhost =
         window.location.hostname === 'localhost' ||
         window.location.hostname === '127.0.0.1' ||
         window.location.hostname === '::1';
-    return window.location.protocol === 'https:' && !isLocalhost;
+    if (window.location.protocol === 'https:' && !isLocalhost) return true;
+    const ua = navigator.userAgent || '';
+    if (ua.includes('PiBrowser')) return true;
+    return false;
 }
 
 function showPiBrowserRequiredModal() {
@@ -67,6 +69,12 @@ function unlockPiBrowserGate() {
 
 function applyPiBrowserGateUI() {
     if (AppStore.get('piBrowserGateLocked')) {
+        const ua = navigator.userAgent || '';
+        if (ua.includes('PiBrowser')) {
+            unlockPiBrowserGate();
+            _showLoginButton();
+            return;
+        }
         showPiBrowserRequiredModal();
     }
 }
