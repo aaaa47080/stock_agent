@@ -236,14 +236,22 @@ window._showLoginButton = _showLoginButton;
  */
 (function () {
     if (!isSafePiSdkContext()) {
+        const ua = navigator.userAgent || '';
+        if (ua.includes('PiBrowser')) {
+            _showLoginButton();
+            return;
+        }
         console.log('ℹ️ Non-Pi-Browser context — showing Pi Browser required message');
         lockPiBrowserGate('unsafe_context_auto_init');
         return;
     }
 
-    // HTTPS 環境：Pi SDK script 已注入，等待最多 2 秒
+    const ua = navigator.userAgent || '';
+    const isRealPiBrowser = ua.includes('PiBrowser');
+
+    // HTTPS 環境：Pi SDK script 已注入，等待最多 5 秒
     let attempts = 0;
-    const maxAttempts = 20;
+    const maxAttempts = 50;
     const check = () => {
         const detected =
             typeof window.Pi !== 'undefined' &&
@@ -256,8 +264,11 @@ window._showLoginButton = _showLoginButton;
         attempts++;
         if (attempts < maxAttempts) {
             setTimeout(check, 100);
+        } else if (isRealPiBrowser) {
+            console.warn('⚠️ Pi SDK timeout but UA confirms Pi Browser — showing login button');
+            _showLoginButton();
         } else {
-            console.warn('⚠️ Pi SDK not detected after 2s — showing Pi Browser required message');
+            console.warn('⚠️ Pi SDK not detected after 5s — showing Pi Browser required message');
             lockPiBrowserGate('pi_sdk_timeout');
         }
     };
