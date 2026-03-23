@@ -91,30 +91,6 @@ const AuthManager = {
         return method === 'password';
     },
 
-    shouldForceGuestWhenPiGateLocked(user) {
-        if (!user) return false;
-        const ua = navigator.userAgent || '';
-        if (ua.includes('PiBrowser')) return false;
-        if (typeof window.isPiBrowserGateLocked !== 'function') return false;
-        if (!window.isPiBrowserGateLocked()) return false;
-
-        const reason = AppStore.get('piBrowserGateReason') || '';
-        const hardBlockReasons = new Set([
-            'unsafe_context_with_saved_token',
-            'unsafe_context_auto_init',
-            'login_attempt_not_pi_browser',
-            'login_environment_verification_failed',
-            'pi_init_failed',
-        ]);
-
-        // Only hard-block sessions for explicit non-Pi/unsafe contexts.
-        return hardBlockReasons.has(reason) && !this.isPasswordSession(user);
-    },
-
-    /**
-     * 檢查 token 是否過期
-     * @returns {boolean} true = 已過期, false = 未過期
-     */
     isTokenExpired() {
         if (!this.currentUser) return true;
 
@@ -403,40 +379,6 @@ window.handleDevSwitchUser = handleDevSwitchUser;
     // 異步快速檢測 Pi Browser 環境是否有效
     // 注意：nativeFeaturesList 在某些 Pi Browser 版本中可能不可用，
     // 但只要 Pi SDK 存在（有 authenticate 和 init 方法），就應該允許用戶嘗試登入
-    async verifyPiBrowserEnvironment() {
-        if (PiEnvironment.isPiBrowser()) {
-            // SDK 存在，嘗試初始化
-            try {
-                this.initPiSDK();
-            } catch (e) {
-                DebugLog.warn('Pi SDK 初始化失敗', { error: e.message });
-            }
-            if (typeof window.Pi.nativeFeaturesList === 'function') {
-                try {
-                    const QUICK_TIMEOUT = 1500;
-                    const timeoutPromise = new Promise((_, reject) => {
-                        setTimeout(() => reject(new Error('TIMEOUT')), QUICK_TIMEOUT);
-                    });
-                    const features = await Promise.race([Pi.nativeFeaturesList(), timeoutPromise]);
-                    DebugLog.info('Pi Browser 環境驗證成功 (nativeFeaturesList)', { features });
-                    return { valid: true, features };
-                } catch (error) {
-                    DebugLog.warn('nativeFeaturesList 驗證失敗，但 Pi SDK 存在，允許繼續', {
-                        error: error.message,
-                    });
-                }
-            } else {
-                DebugLog.info('nativeFeaturesList 不可用，但 Pi SDK 存在，允許繼續');
-            }
-            return { valid: true, reason: 'Pi SDK 已載入' };
-        }
-        const ua = navigator.userAgent || '';
-        if (ua.includes('PiBrowser')) {
-            return { valid: true, reason: 'UA 確認 Pi Browser，SDK 尚未載入' };
-        }
-        return { valid: false, reason: 'Pi SDK 不存在' };
-    },
-
     isLoggedIn() {
         return !!this.currentUser;
     },
@@ -582,19 +524,7 @@ window.handleDevSwitchUser = handleDevSwitchUser;
                     this.clearExpiredToken();
                     return false;
                 }
-                if (this.shouldForceGuestWhenPiGateLocked(this.currentUser)) {
-                    DebugLog.warn('Pi Browser gate 鎖定中，暫不還原受保護登入狀態', {
-                        gateReason: AppStore.get('piBrowserGateReason') || 'unknown',
-                        hasAuthMethod: !!(
-                            this.currentUser?.authMethod || this.currentUser?.auth_method
-                        ),
-                        hasPiUid: !!this.currentUser?.pi_uid,
-                    });
-                    this.currentUser = null;
-                    this._updateUI(false);
-                } else {
-                    this._updateUI(true);
-                }
+                this._updateUI(true);
             } catch (e) {
                 localStorage.removeItem('pi_user');
             }
@@ -736,17 +666,9 @@ window.handleDevSwitchUser = handleDevSwitchUser;
         if (modal) {
             if (isLoggedIn) {
                 modal.classList.add('hidden');
-                if (typeof window.unlockPiBrowserGate === 'function') {
-                    window.unlockPiBrowserGate();
-                }
             } else {
                 modal.classList.remove('hidden');
-                const ua = navigator.userAgent || '';
-                if (!ua.includes('PiBrowser')) {
-                    if (typeof window.applyPiBrowserGateUI === 'function') {
-                        window.applyPiBrowserGateUI();
-                    }
-                } else if (typeof window._showLoginButton === 'function') {
+                if (typeof window._showLoginButton === 'function') {
                     window._showLoginButton();
                 }
             }
@@ -984,37 +906,16 @@ async function handlePiLogin() {
         } else {
             alert(msg);
         }
-        if (typeof window.lockPiBrowserGate === 'function') {
-            window.lockPiBrowserGate('login_attempt_not_pi_browser');
-        }
         return;
     }
 
-    // 第二步：快速驗證是否真的在 Pi Browser 環境（最多 1.5 秒）
-    // 避免非 Pi Browser 環境等待 60 秒後才顯示失敗
-    DebugLog.info('驗證 Pi Browser 環境...');
-    const envCheck = await AuthManager.verifyPiBrowserEnvironment();
-    if (!envCheck.valid) {
-        DebugLog.warn('Pi Browser 環境驗證失敗', { reason: envCheck.reason });
-        if (typeof showAlert === 'function') {
-            await showAlert({
-                title: '需要 Pi Browser',
-                message:
-                    '此應用需要使用 Pi Browser 才能登入。\n\n請複製此網址到 Pi Browser 中開啟。',
-                type: 'warning',
-            });
-        } else if (typeof showToast === 'function') {
-            showToast('請在 Pi Browser 中開啟此頁面才能登入', 'warning');
-        } else {
-            alert('請在 Pi Browser 中開啟此頁面才能登入');
-        }
-        if (typeof window.lockPiBrowserGate === 'function') {
-            window.lockPiBrowserGate('login_environment_verification_failed');
-        }
-        return;
+    // 第二步：環境有效，直接進行認證
+    try {
+        AuthManager.initPiSDK();
+    } catch (e) {
+        DebugLog.warn('Pi SDK 初始化失敗', { error: e.message });
     }
 
-    // 第三步：環境有效，進行認證
     DebugLog.info('Pi Browser 環境驗證通過，開始認證...');
     try {
         const res = await AuthManager.authenticateWithPi();
@@ -1034,10 +935,6 @@ async function handlePiLogin() {
             if (modal) modal.classList.add('hidden');
             AppStore.set('forceGuestLandingTab', false);
             window.__forceGuestLandingTab = false;
-            if (typeof window.unlockPiBrowserGate === 'function') {
-                window.unlockPiBrowserGate();
-            }
-
             // 更新認證 UI 狀態
             if (typeof AuthManager._updateUI === 'function') {
                 AuthManager._updateUI(true);
