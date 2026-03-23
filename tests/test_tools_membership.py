@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -182,10 +182,14 @@ async def test_premium_member_can_update_tool_preference():
 
     with (
         patch(
-            "api.routers.tools.get_tools_for_frontend",
+            "core.orm.tools_repo.tools_repo.get_tools_for_frontend",
+            new_callable=AsyncMock,
             return_value=[{"tool_id": "get_crypto_price", "locked": False}],
         ),
-        patch("api.routers.tools.update_user_tool_preference") as mock_update,
+        patch(
+            "core.orm.tools_repo.tools_repo.update_user_tool_preference",
+            new_callable=AsyncMock,
+        ) as mock_update,
     ):
         response = await _set_tool_preference_impl(
             "get_crypto_price", request, current_user

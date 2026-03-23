@@ -39,6 +39,7 @@ def route_limits():
     import api.routers.governance  # noqa: F401
     import api.routers.messages  # noqa: F401
     import api.routers.premium  # noqa: F401
+    import api.routers.system  # noqa: F401
     import api.routers.user  # noqa: F401
     from api.middleware.rate_limit import limiter
 

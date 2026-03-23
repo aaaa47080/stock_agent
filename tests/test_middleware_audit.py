@@ -50,7 +50,11 @@ class TestExtractUserFromRequest:
         request.headers = {"Authorization": "Bearer test-user-001"}
 
         with patch("core.config.TEST_MODE", True):
-            with patch("core.database.user.get_user_by_id", return_value=None):
+            with patch(
+                "core.orm.repositories.user_repo.get_by_id",
+                new_callable=AsyncMock,
+                return_value=None,
+            ):
                 user = await _extract_user_from_request(request)
                 assert user is not None
                 assert user["user_id"] == "test-user-001"
