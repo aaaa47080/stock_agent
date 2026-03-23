@@ -50,7 +50,9 @@ const PiEnvironment = {
     },
 
     isPiBrowser() {
-        return this.isSafeSdkContext() && this.hasPiSdk();
+        if (this.isSafeSdkContext() && this.hasPiSdk()) return true;
+        const ua = navigator.userAgent || '';
+        return ua.includes('PiBrowser');
     },
 
     getAccessToken() {
