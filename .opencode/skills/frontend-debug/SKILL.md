@@ -70,3 +70,63 @@ description: Debug frontend vanilla JS issues - console errors, rendering bugs, 
 | `web/js/friends.js` | Friends page |
 | `web/js/messages.js` | Messages page |
 | `web/js/safetyTab.js` | Safety/reporting |
+
+---
+
+## ⚠️ Pi SDK 載入檢查清單 (MANDATORY)
+
+**所有需要用戶認證的頁面都必須載入 Pi SDK！**
+
+### 必須在 `<head>` 中加入：
+
+```html
+<!-- Pi Network SDK (REQUIRED for Pi Browser authentication) -->
+<script src="https://sdk.minepi.com/pi-sdk.js"></script>
+```
+
+### 需要載入 Pi SDK 的頁面類型：
+
+| 頁面類型 | 需要載入 | 原因 |
+|---------|---------|------|
+| 主應用入口 (`index.html`) | ✅ 是 | 登入/認證 |
+| 論壇頁面 (`forum/*.html`) | ✅ 是 | 發文/評論/支付 |
+| 治理頁面 (`governance/*.html`) | ✅ 是 | PRO 會員功能 |
+| 詐騙追蹤 (`scam-tracker/*.html`) | ✅ 是 | 提交報告 |
+| 法律頁面 (`legal/*.html`) | ❌ 否 | 靜態內容，無需認證 |
+
+### Pi Browser 檢測邏輯
+
+```javascript
+// auth.js Line 39-54
+const PiEnvironment = {
+    isSafeSdkContext() {
+        // 必須是 HTTPS 且非 localhost
+        return window.location.protocol === 'https:' && !this.isLocalhost();
+    },
+    hasPiSdk() {
+        // Pi SDK 必須已載入
+        return typeof window.Pi !== 'undefined' &&
+               typeof window.Pi.authenticate === 'function' &&
+               typeof window.Pi.init === 'function';
+    },
+    isPiBrowser() {
+        return this.isSafeSdkContext() && this.hasPiSdk();
+    }
+};
+```
+
+### 常見錯誤排除
+
+| 問題 | 原因 | 解決方案 |
+|-----|------|---------|
+| 「請使用 Pi Browser」但已在 Pi Browser 中 | Pi SDK 未載入 | 確認 HTML 有 `<script src="https://sdk.minepi.com/pi-sdk.js"></script>` |
+| `window.Pi is undefined` | SDK script 未執行 | 檢查 CSP 是否允許 `sdk.minepi.com` |
+| 認證後無反應 | SDK 載入但 `Pi.init()` 未呼叫 | 確認 `auth.js` 正確初始化 |
+
+### 新增頁面檢查清單
+
+建立新 HTML 頁面時，確認：
+
+- [ ] 頁面需要用戶認證？ → **必須加入 Pi SDK**
+- [ ] Pi SDK script tag 在 `</head>` 之前
+- [ ] 測試：在 Pi Browser 中開啟頁面，確認 `window.Pi` 存在
