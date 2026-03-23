@@ -93,6 +93,8 @@ const AuthManager = {
 
     shouldForceGuestWhenPiGateLocked(user) {
         if (!user) return false;
+        const ua = navigator.userAgent || '';
+        if (ua.includes('PiBrowser')) return false;
         if (typeof window.isPiBrowserGateLocked !== 'function') return false;
         if (!window.isPiBrowserGateLocked()) return false;
 
@@ -402,42 +404,37 @@ window.handleDevSwitchUser = handleDevSwitchUser;
     // 注意：nativeFeaturesList 在某些 Pi Browser 版本中可能不可用，
     // 但只要 Pi SDK 存在（有 authenticate 和 init 方法），就應該允許用戶嘗試登入
     async verifyPiBrowserEnvironment() {
-        if (!PiEnvironment.isPiBrowser()) {
-            return { valid: false, reason: 'Pi SDK 不存在' };
-        }
-
-        // Pi SDK 存在，嘗試初始化
-        try {
-            this.initPiSDK();
-        } catch (e) {
-            DebugLog.warn('Pi SDK 初始化失敗', { error: e.message });
-        }
-
-        // 嘗試使用 nativeFeaturesList 做額外驗證（可選）
-        // 如果可用就使用，不可用也沒關係，因為 Pi SDK 已經存在
-        if (typeof window.Pi.nativeFeaturesList === 'function') {
+        if (PiEnvironment.isPiBrowser()) {
+            // SDK 存在，嘗試初始化
             try {
-                const QUICK_TIMEOUT = 1500;
-                const timeoutPromise = new Promise((_, reject) => {
-                    setTimeout(() => reject(new Error('TIMEOUT')), QUICK_TIMEOUT);
-                });
-
-                const features = await Promise.race([Pi.nativeFeaturesList(), timeoutPromise]);
-                DebugLog.info('Pi Browser 環境驗證成功 (nativeFeaturesList)', { features });
-                return { valid: true, features };
-            } catch (error) {
-                // nativeFeaturesList 失敗不應阻止登入，因為 Pi SDK 已存在
-                DebugLog.warn('nativeFeaturesList 驗證失敗，但 Pi SDK 存在，允許繼續', {
-                    error: error.message,
-                });
+                this.initPiSDK();
+            } catch (e) {
+                DebugLog.warn('Pi SDK 初始化失敗', { error: e.message });
             }
-        } else {
-            DebugLog.info('nativeFeaturesList 不可用，但 Pi SDK 存在，允許繼續');
+            if (typeof window.Pi.nativeFeaturesList === 'function') {
+                try {
+                    const QUICK_TIMEOUT = 1500;
+                    const timeoutPromise = new Promise((_, reject) => {
+                        setTimeout(() => reject(new Error('TIMEOUT')), QUICK_TIMEOUT);
+                    });
+                    const features = await Promise.race([Pi.nativeFeaturesList(), timeoutPromise]);
+                    DebugLog.info('Pi Browser 環境驗證成功 (nativeFeaturesList)', { features });
+                    return { valid: true, features };
+                } catch (error) {
+                    DebugLog.warn('nativeFeaturesList 驗證失敗，但 Pi SDK 存在，允許繼續', {
+                        error: error.message,
+                    });
+                }
+            } else {
+                DebugLog.info('nativeFeaturesList 不可用，但 Pi SDK 存在，允許繼續');
+            }
+            return { valid: true, reason: 'Pi SDK 已載入' };
         }
-
-        // Pi SDK 存在，允許用戶嘗試登入
-        // 真正的認證會由 Pi.authenticate() 處理
-        return { valid: true, reason: 'Pi SDK 已載入' };
+        const ua = navigator.userAgent || '';
+        if (ua.includes('PiBrowser')) {
+            return { valid: true, reason: 'UA 確認 Pi Browser，SDK 尚未載入' };
+        }
+        return { valid: false, reason: 'Pi SDK 不存在' };
     },
 
     isLoggedIn() {
@@ -744,10 +741,12 @@ window.handleDevSwitchUser = handleDevSwitchUser;
                 }
             } else {
                 modal.classList.remove('hidden');
-                if (typeof window.applyPiBrowserGateUI === 'function') {
-                    window.applyPiBrowserGateUI();
-                }
-                if (typeof window._showLoginButton === 'function') {
+                const ua = navigator.userAgent || '';
+                if (!ua.includes('PiBrowser')) {
+                    if (typeof window.applyPiBrowserGateUI === 'function') {
+                        window.applyPiBrowserGateUI();
+                    }
+                } else if (typeof window._showLoginButton === 'function') {
                     window._showLoginButton();
                 }
             }
