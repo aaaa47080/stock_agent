@@ -105,8 +105,10 @@ def post_fork(server, worker):
     # 這是解決 preload_app=True 導致連接共享問題的關鍵
     try:
         from core.database.connection import reset_connection_pool
+        from core.orm.session import close_async_engine
 
         reset_connection_pool()
+        close_async_engine()
     except Exception as e:
         print(f"⚠️ Worker {worker.pid} 連接池重置失敗: {e}")
 
