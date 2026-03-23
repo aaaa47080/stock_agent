@@ -181,9 +181,7 @@ class AlertsRepository:
             stmt = delete(PriceAlert).where(PriceAlert.id == alert_id)
         else:
             stmt = (
-                update(PriceAlert)
-                .where(PriceAlert.id == alert_id)
-                .values(triggered=1)
+                update(PriceAlert).where(PriceAlert.id == alert_id).values(triggered=1)
             )
 
         async with using_session(session) as s:

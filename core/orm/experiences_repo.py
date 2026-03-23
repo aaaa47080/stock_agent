@@ -113,9 +113,7 @@ class ExperiencesRepository:
                 user_id, task_family, query, limit, session
             )
         except Exception as exc:
-            logger.warning(
-                "[ExperiencesRepo] retrieve_relevant failed: %s", exc
-            )
+            logger.warning("[ExperiencesRepo] retrieve_relevant failed: %s", exc)
             return []
 
     async def _layer1_2_query(

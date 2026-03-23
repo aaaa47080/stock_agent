@@ -208,7 +208,10 @@ class ToolsRepository:
                 check_stmt = (
                     select(func.count())
                     .select_from(AgentToolPermission)
-                    .join(ToolsCatalog, ToolsCatalog.tool_id == AgentToolPermission.tool_id)
+                    .join(
+                        ToolsCatalog,
+                        ToolsCatalog.tool_id == AgentToolPermission.tool_id,
+                    )
                     .where(AgentToolPermission.agent_id == agent_id)
                     .limit(1)
                 )
@@ -323,13 +326,10 @@ class ToolsRepository:
                 return False
 
             today = date.today()
-            usage_stmt = (
-                select(ToolUsageLog.call_count)
-                .where(
-                    ToolUsageLog.user_id == user_id,
-                    ToolUsageLog.tool_id == tool_id,
-                    ToolUsageLog.used_date == today,
-                )
+            usage_stmt = select(ToolUsageLog.call_count).where(
+                ToolUsageLog.user_id == user_id,
+                ToolUsageLog.tool_id == tool_id,
+                ToolUsageLog.used_date == today,
             )
             usage_result = await s.execute(usage_stmt)
             used = usage_result.scalar_one_or_none() or 0

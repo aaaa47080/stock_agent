@@ -22,7 +22,9 @@ SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
 
 if not RESET_URL_BASE:
-    logger.warning("RESET_URL_BASE not set — password reset emails will have broken links")
+    logger.warning(
+        "RESET_URL_BASE not set — password reset emails will have broken links"
+    )
 
 
 def is_email_configured() -> bool:

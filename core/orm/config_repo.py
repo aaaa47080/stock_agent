@@ -156,9 +156,7 @@ class ConfigRepository:
         async with using_session(session) as s:
             result = await s.execute(stmt)
             rows = result.fetchall()
-            return {
-                key: _parse_value(value, vtype) for key, value, vtype in rows
-            }
+            return {key: _parse_value(value, vtype) for key, value, vtype in rows}
 
     async def get_prices(
         self,
@@ -254,7 +252,11 @@ class ConfigRepository:
         """Convenience method to update a pricing config."""
         config_key = f"price_{key}"
         return await self.set_config(
-            config_key, value, "float", "pricing", changed_by=changed_by,
+            config_key,
+            value,
+            "float",
+            "pricing",
+            changed_by=changed_by,
             session=session,
         )
 
@@ -268,7 +270,11 @@ class ConfigRepository:
         """Convenience method to update a limit config."""
         config_key = f"limit_{key}"
         return await self.set_config(
-            config_key, value, "int", "limits", changed_by=changed_by,
+            config_key,
+            value,
+            "int",
+            "limits",
+            changed_by=changed_by,
             session=session,
         )
 

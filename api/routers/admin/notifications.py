@@ -31,7 +31,9 @@ async def broadcast_notification(
     factory = get_session_factory()
     async with factory() as session:
         result = await session.execute(
-            text("SELECT user_id FROM users WHERE is_active = TRUE OR is_active IS NULL")
+            text(
+                "SELECT user_id FROM users WHERE is_active = TRUE OR is_active IS NULL"
+            )
         )
         user_ids = [row[0] for row in result.fetchall()]
 

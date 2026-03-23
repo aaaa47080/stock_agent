@@ -82,9 +82,7 @@ class User(Base):
     auth_method: Mapped[str] = mapped_column(Text, default="password")
     pi_uid: Mapped[Optional[str]] = mapped_column(Text, unique=True)
     pi_username: Mapped[Optional[str]] = mapped_column(Text)
-    last_active_at: Mapped[Optional[datetime]] = mapped_column(
-        TIMESTAMP(timezone=True)
-    )
+    last_active_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True))
     membership_tier: Mapped[str] = mapped_column(Text, default="free")
     membership_expires_at: Mapped[Optional[datetime]] = mapped_column(
         TIMESTAMP(timezone=True)
@@ -159,9 +157,7 @@ class UserApiKey(Base):
     updated_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now()
     )
-    last_used_at: Mapped[Optional[datetime]] = mapped_column(
-        TIMESTAMP(timezone=True)
-    )
+    last_used_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True))
 
     user: Mapped["User"] = relationship()
 
@@ -322,9 +318,7 @@ class Tip(Base):
     to_user_id: Mapped[str] = mapped_column(
         Text, ForeignKey("users.user_id"), nullable=False
     )
-    amount: Mapped[float] = mapped_column(
-        Numeric(18, 4), nullable=False, default=1
-    )
+    amount: Mapped[float] = mapped_column(Numeric(18, 4), nullable=False, default=1)
     tx_hash: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now()
@@ -348,9 +342,7 @@ class Tag(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
     post_count: Mapped[int] = mapped_column(Integer, default=0)
-    last_used_at: Mapped[Optional[datetime]] = mapped_column(
-        TIMESTAMP(timezone=True)
-    )
+    last_used_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now()
     )
@@ -409,9 +401,7 @@ class ScamReport(Base):
     __tablename__ = "scam_reports"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    scam_wallet_address: Mapped[str] = mapped_column(
-        Text, unique=True, nullable=False
-    )
+    scam_wallet_address: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
     reporter_user_id: Mapped[str] = mapped_column(
         Text, ForeignKey("users.user_id"), nullable=False
     )
@@ -758,9 +748,7 @@ class ReportReviewVote(Base):
     report: Mapped["ContentReport"] = relationship()
 
     __table_args__ = (
-        UniqueConstraint(
-            "report_id", "reviewer_user_id", name="uq_report_review_vote"
-        ),
+        UniqueConstraint("report_id", "reviewer_user_id", name="uq_report_review_vote"),
         CheckConstraint(
             "vote_type IN ('approve', 'reject')", name="ck_vote_type_valid"
         ),
@@ -975,9 +963,7 @@ class UserMemory(Base):
     )
 
     __table_args__ = (
-        UniqueConstraint(
-            "user_id", "session_id", "memory_type", name="uq_user_memory"
-        ),
+        UniqueConstraint("user_id", "session_id", "memory_type", name="uq_user_memory"),
         Index("idx_user_memory_user", "user_id"),
         Index("idx_user_memory_session", "session_id"),
         Index("idx_user_memory_type", "memory_type"),
@@ -1039,9 +1025,7 @@ class UserFact(Base):
 class TaskExperience(Base):
     __tablename__ = "task_experiences"
 
-    id: Mapped[int] = mapped_column(
-        BigInteger, primary_key=True, autoincrement=True
-    )
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     user_id: Mapped[str] = mapped_column(Text, nullable=False)
     session_id: Mapped[str] = mapped_column(Text, nullable=False)
     task_family: Mapped[str] = mapped_column(Text, nullable=False)

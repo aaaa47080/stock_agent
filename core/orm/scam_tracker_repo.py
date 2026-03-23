@@ -150,9 +150,7 @@ class ScamTrackerRepository:
             s.add(report)
             await s.flush()
             await s.refresh(report)
-            logger.info(
-                "Scam report created: %s by %s", report.id, reporter_user_id
-            )
+            logger.info("Scam report created: %s by %s", report.id, reporter_user_id)
             return {"success": True, "report_id": report.id}
 
     async def get_reports(
@@ -318,9 +316,9 @@ class ScamTrackerRepository:
         """
         async with using_session(session) as s:
             # Check report exists and get reporter_user_id
-            report_stmt = select(
-                ScamReport.id, ScamReport.reporter_user_id
-            ).where(ScamReport.id == report_id)
+            report_stmt = select(ScamReport.id, ScamReport.reporter_user_id).where(
+                ScamReport.id == report_id
+            )
             report_result = await s.execute(report_stmt)
             report_row = report_result.fetchone()
 
@@ -336,7 +334,8 @@ class ScamTrackerRepository:
                 .select_from(ScamReportVote)
                 .where(
                     ScamReportVote.user_id == user_id,
-                    ScamReportVote.created_at > datetime.now(UTC).replace(second=0, microsecond=0),
+                    ScamReportVote.created_at
+                    > datetime.now(UTC).replace(second=0, microsecond=0),
                 )
             )
             flood_result = await s.execute(flood_stmt)

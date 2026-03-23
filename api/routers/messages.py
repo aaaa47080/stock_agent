@@ -241,7 +241,9 @@ async def send_message_endpoint(
                 detail=f"已達每日訊息上限 ({limit_check['limit']} 條)，升級 Premium 會員可無限發送",
             )
 
-        result = await messages_repo.send_message(user_id, body.to_user_id, body.content)
+        result = await messages_repo.send_message(
+            user_id, body.to_user_id, body.content
+        )
 
         if not result["success"]:
             await run_sync(increment_message_count, user_id)
@@ -294,7 +296,9 @@ async def mark_read_endpoint(
         if not result["success"]:
             raise HTTPException(status_code=404, detail="對話不存在")
 
-        conv = await messages_repo.get_conversation_by_id(request.conversation_id, user_id)
+        conv = await messages_repo.get_conversation_by_id(
+            request.conversation_id, user_id
+        )
         if conv:
             other_user_id = (
                 conv["user2_id"] if conv["user1_id"] == user_id else conv["user1_id"]

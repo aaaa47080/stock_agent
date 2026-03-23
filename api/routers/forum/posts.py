@@ -163,9 +163,7 @@ async def get_post_detail(post_id: int):
     會自動增加瀏覽數
     """
     try:
-        post = await forum_repo.get_post_by_id(
-            post_id, increment_view=True
-        )
+        post = await forum_repo.get_post_by_id(post_id, increment_view=True)
         if not post:
             raise HTTPException(status_code=404, detail="文章不存在")
         if post["is_hidden"]:

@@ -64,11 +64,10 @@ class ChatRepository:
         session: AsyncSession | None = None,
     ) -> None:
         """Update the title of an existing session."""
-        stmt = (
-            text("UPDATE sessions SET title = :title, updated_at = NOW() "
-                 "WHERE session_id = :session_id")
-            .bindparams(title=title, session_id=session_id)
-        )
+        stmt = text(
+            "UPDATE sessions SET title = :title, updated_at = NOW() "
+            "WHERE session_id = :session_id"
+        ).bindparams(title=title, session_id=session_id)
 
         async with using_session(session) as s:
             await s.execute(stmt)
@@ -81,11 +80,9 @@ class ChatRepository:
     ) -> None:
         """Toggle the pinned state of a session."""
         pin_val = 1 if is_pinned else 0
-        stmt = (
-            text("UPDATE sessions SET is_pinned = :pin_val "
-                 "WHERE session_id = :session_id")
-            .bindparams(pin_val=pin_val, session_id=session_id)
-        )
+        stmt = text(
+            "UPDATE sessions SET is_pinned = :pin_val WHERE session_id = :session_id"
+        ).bindparams(pin_val=pin_val, session_id=session_id)
 
         async with using_session(session) as s:
             await s.execute(stmt)
@@ -98,16 +95,13 @@ class ChatRepository:
         session: AsyncSession | None = None,
     ) -> List[dict]:
         """Get sessions for a user (pinned first, then by updated_at desc)."""
-        stmt = (
-            text(
-                "SELECT session_id, title, created_at, updated_at, is_pinned "
-                "FROM sessions "
-                "WHERE user_id = :user_id "
-                "ORDER BY is_pinned DESC, updated_at DESC "
-                "LIMIT :limit OFFSET :offset"
-            )
-            .bindparams(user_id=user_id, limit=limit, offset=offset)
-        )
+        stmt = text(
+            "SELECT session_id, title, created_at, updated_at, is_pinned "
+            "FROM sessions "
+            "WHERE user_id = :user_id "
+            "ORDER BY is_pinned DESC, updated_at DESC "
+            "LIMIT :limit OFFSET :offset"
+        ).bindparams(user_id=user_id, limit=limit, offset=offset)
 
         async with using_session(session) as s:
             result = await s.execute(stmt)
@@ -135,9 +129,7 @@ class ChatRepository:
                     ConversationHistory.session_id == session_id
                 )
             )
-            await s.execute(
-                delete(Session).where(Session.session_id == session_id)
-            )
+            await s.execute(delete(Session).where(Session.session_id == session_id))
 
     # ── Chat messages ──────────────────────────────────────────────────────
 
@@ -193,9 +185,7 @@ class ChatRepository:
             else:
                 current_title = row[0]
                 if current_title == "New Chat" and role == "user":
-                    new_title = (
-                        content[:30] + "..." if len(content) > 30 else content
-                    )
+                    new_title = content[:30] + "..." if len(content) > 30 else content
                     await s.execute(
                         text(
                             "UPDATE sessions SET title = :title, updated_at = NOW() "

@@ -221,9 +221,7 @@ class GovernanceRepository:
         if content_type == "post":
             stmt = select(Post.user_id).where(Post.id == content_id)
         elif content_type == "comment":
-            stmt = select(ForumComment.user_id).where(
-                ForumComment.id == content_id
-            )
+            stmt = select(ForumComment.user_id).where(ForumComment.id == content_id)
         else:
             return None
 
@@ -272,16 +270,13 @@ class GovernanceRepository:
             func.sum(ContentReport.approve_count + ContentReport.reject_count), 0
         ).label("total_votes")
 
-        stmt = (
-            select(
-                total_reports,
-                approved_reports,
-                rejected_reports,
-                pending_reports,
-                total_votes,
-            )
-            .where(ContentReport.created_at >= since_date)
-        )
+        stmt = select(
+            total_reports,
+            approved_reports,
+            rejected_reports,
+            pending_reports,
+            total_votes,
+        ).where(ContentReport.created_at >= since_date)
 
         async with using_session(session) as s:
             result = await s.execute(stmt)
@@ -450,15 +445,9 @@ class GovernanceRepository:
         )
 
         if exclude_user_id is not None:
-            stmt = stmt.where(
-                ContentReport.reporter_user_id != exclude_user_id
-            )
+            stmt = stmt.where(ContentReport.reporter_user_id != exclude_user_id)
 
-        stmt = (
-            stmt.order_by(ContentReport.created_at.asc())
-            .limit(limit)
-            .offset(offset)
-        )
+        stmt = stmt.order_by(ContentReport.created_at.asc()).limit(limit).offset(offset)
 
         async with using_session(session) as s:
             result = await s.execute(stmt)
@@ -599,13 +588,10 @@ class GovernanceRepository:
     ) -> int:
         """Return the number of reports submitted by the user today."""
         today_start = _utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-        stmt = (
-            select(func.count(ContentReport.id))
-            .where(
-                and_(
-                    ContentReport.reporter_user_id == user_id,
-                    ContentReport.created_at >= today_start,
-                )
+        stmt = select(func.count(ContentReport.id)).where(
+            and_(
+                ContentReport.reporter_user_id == user_id,
+                ContentReport.created_at >= today_start,
             )
         )
 
@@ -852,9 +838,7 @@ class GovernanceRepository:
             reporter_user_id, content_type, content_id = row
 
             # Get content author
-            author_id = await self._get_content_author_tx(
-                s, content_type, content_id
-            )
+            author_id = await self._get_content_author_tx(s, content_type, content_id)
 
             points = 0
             action_taken = None
@@ -1165,9 +1149,7 @@ class GovernanceRepository:
         Returns ``{"success": True, "total_reviews": ..., "correct_votes": ..., ...}``.
         """
         async with using_session(session) as s:
-            return await self._update_audit_reputation_tx(
-                s, user_id, was_correct
-            )
+            return await self._update_audit_reputation_tx(s, user_id, was_correct)
 
     # ===================================================================
     # Internal transaction helpers  (_tx suffix = use existing session)
@@ -1182,9 +1164,7 @@ class GovernanceRepository:
         if content_type == "post":
             stmt = select(Post.user_id).where(Post.id == content_id)
         elif content_type == "comment":
-            stmt = select(ForumComment.user_id).where(
-                ForumComment.id == content_id
-            )
+            stmt = select(ForumComment.user_id).where(ForumComment.id == content_id)
         else:
             return None
         result = await s.execute(stmt)
@@ -1338,9 +1318,7 @@ class GovernanceRepository:
         s.add(violation)
         await s.flush()
 
-        is_real_suspension = (
-            action_taken is not None and action_taken != "warning"
-        )
+        is_real_suspension = action_taken is not None and action_taken != "warning"
         inc_susp = 1 if is_real_suspension else 0
 
         # Upsert violation points via PostgreSQL ON CONFLICT
@@ -1360,8 +1338,7 @@ class GovernanceRepository:
                     "points": UserViolationPoints.points + points,
                     "total_violations": UserViolationPoints.total_violations + 1,
                     "last_violation_at": _utcnow(),
-                    "suspension_count": UserViolationPoints.suspension_count
-                    + inc_susp,
+                    "suspension_count": UserViolationPoints.suspension_count + inc_susp,
                     "updated_at": _utcnow(),
                 },
             )

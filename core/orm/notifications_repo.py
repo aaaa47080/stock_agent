@@ -161,7 +161,6 @@ class NotificationsRepository:
             result = await s.execute(stmt)
             return result.rowcount > 0
 
-
     # ── Helper: specific notification types ──────────────────────────────────
 
     async def notify_friend_request(

@@ -46,7 +46,9 @@ async def admin_list_posts(
         elif status == "pinned":
             where_clauses.append("p.is_pinned = 1")
 
-        where_clause = (" WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+        where_clause = (
+            (" WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+        )
 
         post_query = text(
             """
@@ -63,7 +65,9 @@ async def admin_list_posts(
         """
         )
 
-        result = await session.execute(post_query, {**params, "limit": limit, "offset": offset})
+        result = await session.execute(
+            post_query, {**params, "limit": limit, "offset": offset}
+        )
         rows = result.fetchall()
 
         count_query = text(
@@ -120,7 +124,9 @@ async def admin_toggle_post_visibility(
         old_hidden = bool(row[0])
 
         await session.execute(
-            update(Post).where(Post.id == post_id).values(is_hidden=1 if request.is_hidden else 0)
+            update(Post)
+            .where(Post.id == post_id)
+            .values(is_hidden=1 if request.is_hidden else 0)
         )
         await _write_audit_log(
             session,
@@ -154,7 +160,9 @@ async def admin_toggle_post_pin(
             raise HTTPException(status_code=404, detail="Post not found")
 
         await session.execute(
-            update(Post).where(Post.id == post_id).values(is_pinned=1 if request.is_pinned else 0)
+            update(Post)
+            .where(Post.id == post_id)
+            .values(is_pinned=1 if request.is_pinned else 0)
         )
         await _write_audit_log(
             session,
@@ -236,7 +244,9 @@ async def admin_list_reports(
             LIMIT :limit OFFSET :offset
         """
         )
-        result = await session.execute(query, {"status": status, "limit": limit, "offset": offset})
+        result = await session.execute(
+            query, {"status": status, "limit": limit, "offset": offset}
+        )
         rows = result.fetchall()
 
         count_result = await session.execute(
@@ -267,7 +277,8 @@ async def admin_list_reports(
                 )
             elif r[1] == "comment":
                 preview_result = await session.execute(
-                    text("SELECT content FROM forum_comments WHERE id = :id"), {"id": r[2]}
+                    text("SELECT content FROM forum_comments WHERE id = :id"),
+                    {"id": r[2]},
                 )
             else:
                 preview_result = None

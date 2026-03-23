@@ -232,7 +232,9 @@ def rotate_encryption_key() -> dict:
         async with factory() as session:
             from sqlalchemy import select
 
-            result = await session.execute(select(UserApiKey.id, UserApiKey.encrypted_key))
+            result = await session.execute(
+                select(UserApiKey.id, UserApiKey.encrypted_key)
+            )
             rows = result.fetchall()
 
             re_encrypted_count = 0
