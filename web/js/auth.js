@@ -967,6 +967,15 @@ async function handlePiLogin() {
         }
     }
 };
+window.safePiLogin = async function () {
+    if (window._piLoginInProgress) return;
+    window._piLoginInProgress = true;
+    try {
+        await handlePiLogin();
+    } finally {
+        window._piLoginInProgress = false;
+    }
+};
 window.handlePiLogin = handlePiLogin;
 
 function handleLogout() {
