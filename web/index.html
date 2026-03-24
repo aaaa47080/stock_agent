@@ -143,20 +143,7 @@
                     <div id="nav-buttons"
                         class="flex items-center gap-1 overflow-x-auto max-w-[160px] md:max-w-none transition-all duration-300 px-1 pb-1"
                         style="scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.2) transparent;">
-                        <style>
-                            #nav-buttons::-webkit-scrollbar {
-                                height: 3px;
-                            }
 
-                            #nav-buttons::-webkit-scrollbar-track {
-                                background: transparent;
-                            }
-
-                            #nav-buttons::-webkit-scrollbar-thumb {
-                                background-color: rgba(255, 255, 255, 0.2);
-                                border-radius: 9999px;
-                            }
-                        </style>
                         <!-- Navigation buttons will be dynamically rendered here -->
                     </div>
 
@@ -183,7 +170,8 @@
 
                 <!-- Messages Area -->
                 <div id="chat-messages" data-shell-scroll data-shell-scroll-extra="1rem"
-                    class="flex-1 overflow-y-auto custom-scrollbar px-4 md:px-8 py-6 space-y-6">
+                    class="flex-1 overflow-y-auto custom-scrollbar px-4 md:px-8 py-6 space-y-6"
+                    aria-live="polite" aria-atomic="false">
                     <!-- Welcome -->
                     <div class="bot-message opacity-0 animate-fade-in-up"
                         style="animation-delay: 0.1s; animation-fill-mode: forwards;">

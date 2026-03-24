@@ -3,7 +3,7 @@ Report Management Functions
 Create, retrieve, and manage content reports
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 from ..connection import get_connection
@@ -58,7 +58,6 @@ def create_report(
     conn = db or get_connection()
     c = conn.cursor()
     try:
-        # Check for duplicate report
         c.execute(
             """
             SELECT id FROM content_reports
@@ -328,7 +327,7 @@ def check_daily_report_limit(db, user_id: str, daily_limit: int) -> bool:
     conn = db or get_connection()
     c = conn.cursor()
     try:
-        today = datetime.utcnow().strftime("%Y-%m-%d")
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         c.execute(
             """
             SELECT COUNT(*) FROM content_reports
@@ -359,7 +358,7 @@ def get_daily_report_usage(db, user_id: str) -> int:
     conn = db or get_connection()
     c = conn.cursor()
     try:
-        today = datetime.utcnow().strftime("%Y-%m-%d")
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         c.execute(
             """
             SELECT COUNT(*) FROM content_reports

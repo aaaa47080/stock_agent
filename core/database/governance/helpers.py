@@ -3,7 +3,7 @@ Helper Functions
 Utility functions for governance operations
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 
 from ..connection import get_connection
@@ -52,7 +52,7 @@ def get_report_statistics(db, days: int = 30) -> Dict:
     conn = db or get_connection()
     c = conn.cursor()
     try:
-        since_date = datetime.utcnow() - timedelta(days=days)
+        since_date = datetime.now(timezone.utc) - timedelta(days=days)
 
         c.execute(
             """

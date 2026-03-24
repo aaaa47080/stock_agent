@@ -1,16 +1,14 @@
 """
-Manager Agent — 多 Agent 協調中心
+Manager Agent - Multi-Agent Coordination Center (Facade)
 
-核心功能：
-1. 開放式意圖理解 - 不使用硬編碼類別/關鍵字
-2. Vending vs Restaurant 模式 - 簡單任務快速路由
-3. DAG 執行引擎 - 支援垂直/水平任務
-4. 選擇性上下文傳輸 - Sub-Agent 只接收必要資訊
-5. 短期記憶整合 - 對話上下文管理
-6. 長期記憶整合 - 持久化用戶偏好與歷史
+This package contains the ManagerAgent class and its supporting modules,
+refactored from the original monolithic manager.py for maintainability.
 
-This module is a facade that re-exports from the manager package.
-All implementation lives in core/agents/manager/ submodules.
+All external imports should continue to use:
+    from core.agents.manager import ManagerAgent
+    from core.agents.manager import MANAGER_GRAPH_RECURSION_LIMIT
+    from core.agents.manager import MAX_GRAPH_TASKS
+    from core.agents.manager import _get_history_for_prompt
 """
 
 from core.agents.context_budget import (  # noqa: F401
@@ -18,7 +16,7 @@ from core.agents.context_budget import (  # noqa: F401
     format_compact_state,
     history_exceeds_budget,
 )
-from core.agents.manager._main import (  # noqa: F401
+from core.agents.manager._main import (
     AGENT_EXECUTION_TIMEOUT,
     MANAGER_GRAPH_RECURSION_LIMIT,
     MAX_GRAPH_TASKS,

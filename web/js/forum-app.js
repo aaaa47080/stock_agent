@@ -793,7 +793,7 @@ const ForumApp = {
                         } else {
                             const postAmount = getPrice('create_post');
                             if (postAmount !== null) {
-                                paySpan.innerHTML = `Pay <span class="font-bold text-white">${postAmount}</span> Pi & Post`;
+                                paySpan.innerHTML = `Pay <span class="font-bold text-white">${Number(postAmount)}</span> Pi & Post`;
                             }
                         }
                     }

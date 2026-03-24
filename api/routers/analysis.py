@@ -12,14 +12,17 @@ from api.models import QueryRequest
 from api.response_metadata import build_response_metadata
 from api.utils import logger, run_sync
 from core.agents.analysis_policy import AnalysisPolicyResolver
-from core.database import clear_chat_history as db_clear_history
 from core.database import (
+    check_session_ownership,
     create_session,
     delete_session,
     get_chat_history,
     get_sessions,
     save_chat_message,
     toggle_session_pin,
+)
+from core.database import (
+    clear_chat_history as db_clear_history,
 )
 from utils.user_client_factory import create_user_llm_client
 
@@ -53,10 +56,8 @@ async def delete_user_session(
 ):
     """刪除特定對話"""
     user_id = current_user["user_id"]
-    sessions = await run_sync(
-        lambda: get_sessions(user_id=user_id, limit=10000, offset=0)
-    )
-    if not any(s["id"] == session_id for s in sessions):
+    owns = await run_sync(check_session_ownership, session_id, user_id)
+    if not owns:
         raise HTTPException(
             status_code=403, detail="Forbidden: session does not belong to you"
         )
@@ -72,10 +73,8 @@ async def pin_user_session(
 ):
     """切換對話置頂狀態"""
     user_id = current_user["user_id"]
-    sessions = await run_sync(
-        lambda: get_sessions(user_id=user_id, limit=10000, offset=0)
-    )
-    if not any(s["id"] == session_id for s in sessions):
+    owns = await run_sync(check_session_ownership, session_id, user_id)
+    if not owns:
         raise HTTPException(
             status_code=403, detail="Forbidden: session does not belong to you"
         )
@@ -96,10 +95,8 @@ async def get_history(
     - has_more=True 表示還有更舊的訊息可載入
     """
     user_id = current_user["user_id"]
-    sessions = await run_sync(
-        lambda: get_sessions(user_id=user_id, limit=10000, offset=0)
-    )
-    if not any(s["id"] == session_id for s in sessions):
+    owns = await run_sync(check_session_ownership, session_id, user_id)
+    if not owns:
         raise HTTPException(
             status_code=403, detail="Forbidden: session does not belong to you"
         )

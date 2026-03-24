@@ -3,9 +3,8 @@
 // ========================================
 
 // Ensure currentPulseData exists
-if (typeof window.currentPulseData === 'undefined') {
+if (!AppStore.has('currentPulseData')) {
     AppStore.set('currentPulseData', {});
-    window.currentPulseData = {};
 }
 let currentPulseData = AppStore.get('currentPulseData');
 

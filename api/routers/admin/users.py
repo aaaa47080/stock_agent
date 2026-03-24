@@ -363,7 +363,7 @@ async def bootstrap_admin(
     import os
 
     # 1. 環境開關
-    if os.getenv("ALLOW_ADMIN_BOOTSTRAP", "true").lower() == "false":
+    if os.getenv("ALLOW_ADMIN_BOOTSTRAP", "false").lower() == "false":
         raise HTTPException(status_code=403, detail="Admin bootstrap is disabled")
 
     def _check_and_set():

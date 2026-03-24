@@ -114,7 +114,7 @@ class AlertDispatcher:
         try:
             import httpx
 
-            with httpx.Client(timeout=10.0, verify=False) as client:
+            with httpx.Client(timeout=10.0) as client:
                 response = client.post(
                     url,
                     json={

@@ -686,6 +686,9 @@ def create_indexes(c):
     c.execute(
         "CREATE INDEX IF NOT EXISTS idx_conversation_history_session_timestamp ON conversation_history(session_id, timestamp)"
     )
+    c.execute(
+        "CREATE INDEX IF NOT EXISTS idx_conversation_history_user_timestamp ON conversation_history(user_id, timestamp DESC)"
+    )
     # ✅ 效能修復：sessions 表缺少 user_id index，導致 get_sessions() 全表掃描
     c.execute("CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id)")
     c.execute(

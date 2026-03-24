@@ -2,10 +2,8 @@
 // spa.js - Single Page Application Core
 // ========================================
 
-// Track current active tab to return to when closing sidebar
-// AppStore is the source of truth; window.currentActiveTab kept for backward compat
+// AppStore is the single source of truth for active tab
 AppStore.set('activeTab', 'chat');
-window.currentActiveTab = 'chat'; // backward compat
 
 // ========================================
 // Navigation Logic (Updated with Smooth Transitions)
@@ -129,7 +127,6 @@ async function executeTabSwitch(tabId, fromPopState = false) {
 
     localStorage.setItem('activeTab', tabId);
     AppStore.set('activeTab', tabId); // source of truth
-    window.currentActiveTab = tabId; // backward compat
 
     // 更新瀏覽器歷史記錄（只有非 popstate 觸發時才 push）
     if (!fromPopState && window.location.hash !== '#' + tabId) {
@@ -272,11 +269,9 @@ async function executeTabSwitch(tabId, fromPopState = false) {
         if (typeof updateLLMStatusUI === 'function')
             settingsInits.push(Promise.resolve(updateLLMStatusUI()));
                 if (!AppStore.get('settingsHeavyInitAt')) AppStore.set('settingsHeavyInitAt', 0);
-                window.__settingsHeavyInitAt = AppStore.get('settingsHeavyInitAt');
                 const now = Date.now();
                 if (now - AppStore.get('settingsHeavyInitAt') > 15000) {
                     AppStore.set('settingsHeavyInitAt', now);
-                    window.__settingsHeavyInitAt = now;
             if (typeof window.initToolSettings === 'function') {
                 settingsInits.push(Promise.resolve(window.initToolSettings()));
             }
@@ -301,7 +296,6 @@ async function executeTabSwitch(tabId, fromPopState = false) {
         const now = Date.now();
         if (!AppStore.get('lastApiKeyCheck') || now - AppStore.get('lastApiKeyCheck') > 30000) {
             AppStore.set('lastApiKeyCheck', now);
-            window._lastApiKeyCheck = now;
             // 確保 APIKeyManager 已初始化
             if (typeof checkApiKeyStatus === 'function' && window.APIKeyManager) {
                 checkApiKeyStatus();

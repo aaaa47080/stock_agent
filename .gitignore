@@ -77,3 +77,4 @@ okxstock_agenttemp_context_plugin/
 # Node.js
 node_modules/
 dist/
+.gstack/

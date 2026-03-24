@@ -1029,8 +1029,8 @@ window.USStockTab = {
                 }
             };
             window.removeEventListener('resize', this._onChartResize);
-            this._onChartResize = onResize;
-            window.addEventListener('resize', onResize);
+            this._onChartResize = window.Utils ? window.Utils.debounce(onResize, 150) : onResize;
+            window.addEventListener('resize', this._onChartResize);
             setTimeout(onResize, 50);
         } catch (err) {
             console.error('[US Stock] Chart error:', err);

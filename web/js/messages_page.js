@@ -311,12 +311,17 @@ const MessagesPage = {
         container.removeEventListener('scroll', this.scrollHandler);
 
         // 創建新的監聽器
-        this.scrollHandler = () => {
-            // 當滾動到頂部 100px 內時，載入更多
-            if (container.scrollTop < 100 && this.hasMoreMessages && !this.isLoadingMore) {
-                this.loadMoreMessages();
-            }
-        };
+        this.scrollHandler = window.Utils
+            ? window.Utils.throttle(function() {
+                if (container.scrollTop < 100 && this.hasMoreMessages && !this.isLoadingMore) {
+                    this.loadMoreMessages();
+                }
+            }.bind(this), 100)
+            : function() {
+                if (container.scrollTop < 100 && this.hasMoreMessages && !this.isLoadingMore) {
+                    this.loadMoreMessages();
+                }
+            };
 
         container.addEventListener('scroll', this.scrollHandler);
     },

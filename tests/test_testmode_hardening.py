@@ -44,23 +44,19 @@ class TestDevLoginConfirmation:
 
 
 class TestFdLeakFix:
-    """Verify the debug-log endpoint uses proper file context managers."""
+    """Verify the debug-log endpoint uses safe file handling."""
 
-    def test_debug_log_write_uses_context_manager(self):
+    def test_debug_log_uses_rotating_handler(self):
         content = _read_source("api_server.py")
-        # The POST debug-log should use a with statement, not bare open().write()
-        # Look for the _write_log helper function
-        assert "_write_log" in content, "Missing _write_log helper function"
-        # Should NOT have bare open().write in the executor lambda
-        assert 'lambda: open("frontend_debug.log"' not in content, (
-            "fd leak: bare open() in lambda without context manager"
+        assert "RotatingFileHandler" in content, (
+            "debug-log should use RotatingFileHandler to prevent unbounded file growth"
         )
+        assert "maxBytes" in content, "RotatingFileHandler should have maxBytes limit"
 
-    def test_debug_log_read_uses_context_manager(self):
+    def test_debug_log_read_has_size_limit(self):
         content = _read_source("api_server.py")
-        assert "_read_log" in content, "Missing _read_log helper function"
-        assert 'lambda: open("frontend_debug.log", "r"' not in content, (
-            "fd leak: bare open() in lambda without context manager"
+        assert "100 * 1024" in content, (
+            "debug-log GET endpoint should limit read size to 100KB"
         )
 
 

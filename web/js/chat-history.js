@@ -19,10 +19,8 @@ function _buildHistoryMsgEl(msg) {
     if (role === 'bot') {
         const savedState = AppStore.get('lastProcessOpenState');
         AppStore.set('lastProcessOpenState', false);
-        window.lastProcessOpenState = false;
         div.innerHTML = renderStoredBotMessage(msg.content);
         AppStore.set('lastProcessOpenState', savedState);
-        window.lastProcessOpenState = savedState;
     } else {
         div.textContent = msg.content;
     }

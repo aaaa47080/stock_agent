@@ -126,6 +126,20 @@ def delete_session(session_id: str):
         conn.close()
 
 
+def check_session_ownership(session_id: str, user_id: str) -> bool:
+    """Check if a session belongs to a user (single query instead of fetching all sessions)."""
+    conn = get_connection()
+    c = conn.cursor()
+    try:
+        c.execute(
+            "SELECT 1 FROM sessions WHERE session_id = %s AND user_id = %s",
+            (session_id, user_id),
+        )
+        return c.fetchone() is not None
+    finally:
+        conn.close()
+
+
 # ============================================================================
 # 對話訊息 (Chat Messages)
 # ============================================================================
@@ -142,7 +156,6 @@ def save_chat_message(
     conn = get_connection()
     c = conn.cursor()
     try:
-        # 1. 保存訊息
         metadata_json = json.dumps(metadata, ensure_ascii=False) if metadata else None
         c.execute(
             """
@@ -152,38 +165,23 @@ def save_chat_message(
             (session_id, user_id, role, content, metadata_json),
         )
 
-        # 2. 檢查 Session 是否存在
-        c.execute("SELECT title FROM sessions WHERE session_id = %s", (session_id,))
-        row = c.fetchone()
+        title = content[:30] + "..." if len(content) > 30 else content
+        if role == "assistant":
+            title = "AI Analysis"
 
-        if not row:
-            # Session 不存在，創建新的
-            title = content[:30] + "..." if len(content) > 30 else content
-            if role == "assistant":
-                title = "AI Analysis"
-
-            c.execute(
-                """
-                INSERT INTO sessions (session_id, user_id, title, created_at, updated_at)
-                VALUES (%s, %s, %s, NOW(), NOW())
+        c.execute(
+            """
+            INSERT INTO sessions (session_id, user_id, title, created_at, updated_at)
+            VALUES (%s, %s, %s, NOW(), NOW())
+            ON CONFLICT (session_id) DO UPDATE SET
+                updated_at = NOW(),
+                title = CASE
+                    WHEN sessions.title = 'New Chat' AND %s = 'user' THEN EXCLUDED.title
+                    ELSE sessions.title
+                END
             """,
-                (session_id, user_id, title),
-            )
-        else:
-            # Session 存在，檢查是否需要更新標題
-            current_title = row[0]
-
-            if current_title == "New Chat" and role == "user":
-                new_title = content[:30] + "..." if len(content) > 30 else content
-                c.execute(
-                    "UPDATE sessions SET title = %s, updated_at = NOW() WHERE session_id = %s",
-                    (new_title, session_id),
-                )
-            else:
-                c.execute(
-                    "UPDATE sessions SET updated_at = NOW() WHERE session_id = %s",
-                    (session_id,),
-                )
+            (session_id, user_id, title, role),
+        )
 
         conn.commit()
     except Exception as e:

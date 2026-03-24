@@ -1,10 +1,12 @@
 """Middleware registration — CORS, GZip, rate limiting, security headers, etc."""
 
 import os
+import uuid
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 
 from api.utils import logger
@@ -41,10 +43,14 @@ def setup_middleware(app: FastAPI) -> None:
             logger.error(traceback.format_exc())
 
         # Response varies by environment - hide details in production
+        # Uses structured APIErrorResponse format for consistency
         response_content = {
-            "detail": "Internal Server Error",
-            "error": error_msg if not is_production else "An error occurred",
-            "path": request.url.path,
+            "success": False,
+            "error": {
+                "code": "INTERNAL_ERROR",
+                "message": "An error occurred" if is_production else error_msg,
+                "path": request.url.path,
+            },
         }
 
         return JSONResponse(status_code=500, content=response_content)
@@ -151,7 +157,9 @@ def setup_middleware(app: FastAPI) -> None:
             )
             response.headers["Content-Security-Policy"] = (
                 "default-src 'self'; "
-                # Pi SDK + CDN libraries (no cdn.tailwindcss.com — migrated to local build)
+                # TODO: Migrate inline scripts to nonce-based CSP when moving to
+                #       template engine or build pipeline. Currently needed for:
+                #       - Pi SDK init, i18next CDN, inline onclick handlers
                 "script-src 'self' 'unsafe-inline' https://sdk.minepi.com "
                 "https://cdn.minepi.com https://cdn.jsdelivr.net https://unpkg.com "
                 "https://cdnjs.cloudflare.com; "
@@ -170,3 +178,27 @@ def setup_middleware(app: FastAPI) -> None:
         return response
 
     logger.info("✅ Security headers enabled")
+
+    # --- 6. TrustedHostMiddleware (production) ---
+    if is_production:
+        _allowed_hosts_raw = os.getenv("ALLOWED_HOSTS", "")
+        _allowed_hosts = [h.strip() for h in _allowed_hosts_raw.split(",") if h.strip()]
+        if _allowed_hosts:
+            app.add_middleware(TrustedHostMiddleware, allowed_hosts=_allowed_hosts)
+            logger.info(f"✅ TrustedHostMiddleware enabled: {_allowed_hosts}")
+        else:
+            logger.warning(
+                "⚠️ ALLOWED_HOSTS not set in production — TrustedHostMiddleware skipped. "
+                "Set ALLOWED_HOSTS=yourdomain.com,*.yourdomain.com to enable."
+            )
+
+    # --- 7. Request ID Middleware ---
+    @app.middleware("http")
+    async def request_id_middleware(request: Request, call_next):
+        request_id = request.headers.get("X-Request-ID", uuid.uuid4().hex[:12])
+        request.state.request_id = request_id
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = request_id
+        return response
+
+    logger.info("✅ Request ID middleware enabled")

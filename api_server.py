@@ -130,15 +130,30 @@ async def pi_validation():
 
 
 # --- 前端 Debug Log API ---
-import datetime
+import logging
+from logging.handlers import RotatingFileHandler
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+_frontend_logger = logging.getLogger("frontend_debug")
+_frontend_logger.setLevel(logging.INFO)
+if not _frontend_logger.handlers:
+    _rotating_handler = RotatingFileHandler(
+        "frontend_debug.log",
+        maxBytes=10 * 1024 * 1024,
+        backupCount=3,
+        encoding="utf-8",
+    )
+    _rotating_handler.setFormatter(
+        logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+    )
+    _frontend_logger.addHandler(_rotating_handler)
 
 
 class FrontendLog(BaseModel):
     level: str = "info"
-    message: str
+    message: str = Field(max_length=2000)
     data: Optional[dict] = None
 
 
@@ -147,29 +162,27 @@ async def receive_frontend_log(
     log: FrontendLog, current_user: dict = Depends(get_current_user)
 ):
     """接收前端 debug log 並寫入檔案 (需登入)"""
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log_line = f"[{timestamp}] [{log.level.upper()}] {log.message}"
+    log_func = getattr(_frontend_logger, log.level.lower(), _frontend_logger.info)
+    log_line = log.message
     if log.data:
         log_line += f" | Data: {log.data}"
-
-    def _write_log():
-        with open("frontend_debug.log", "a", encoding="utf-8") as f:
-            f.write(log_line + "\n")
-
-    loop = asyncio.get_running_loop()
-    await loop.run_in_executor(None, _write_log)
-
-    logger.info(f"[Frontend] {log.message}")
+    log_func(log_line)
     return {"status": "logged"}
 
 
 @app.get("/api/debug-log", response_class=PlainTextResponse)
 async def get_debug_logs(admin: dict = Depends(require_admin)):
-    """查看 debug logs (需管理員權限)"""
+    """查看 debug logs (需管理員權限) — 僅讀取最後 100KB"""
     try:
 
         def _read_log():
+            import os
+
+            size = os.path.getsize("frontend_debug.log")
             with open("frontend_debug.log", "r", encoding="utf-8") as f:
+                if size > 100 * 1024:
+                    f.seek(max(0, size - 100 * 1024))
+                    return "... (truncated) ...\n" + f.read()
                 return f.read()
 
         return await asyncio.get_running_loop().run_in_executor(None, _read_log)

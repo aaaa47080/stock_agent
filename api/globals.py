@@ -1,14 +1,15 @@
 import asyncio
 import logging
+from collections import OrderedDict
 from typing import Any, Optional
 
-# 設定日誌
-logger = logging.getLogger("API")
-logger.setLevel(logging.INFO)  # Ensure this logger also logs at INFO level
+from cachetools import TTLCache
 
-# Global caches
-MARKET_PULSE_CACHE = {}
-FUNDING_RATE_CACHE = {}
+logger = logging.getLogger("API")
+logger.setLevel(logging.INFO)
+
+MARKET_PULSE_CACHE: TTLCache = TTLCache(maxsize=500, ttl=300)
+FUNDING_RATE_CACHE: TTLCache = TTLCache(maxsize=100, ttl=60)
 
 # Analysis Status Tracker
 ANALYSIS_STATUS = {
@@ -25,12 +26,17 @@ cached_screener_result = {"timestamp": None, "data": None}
 # Locks for concurrency control
 screener_lock = asyncio.Lock()
 funding_rate_lock = asyncio.Lock()
-symbol_locks = {}  # {symbol: asyncio.Lock()}
+symbol_locks: OrderedDict[str, asyncio.Lock] = OrderedDict()
+_MAX_SYMBOL_LOCKS = 1000
 
 
 def get_symbol_lock(symbol: str) -> asyncio.Lock:
     if symbol not in symbol_locks:
+        if len(symbol_locks) >= _MAX_SYMBOL_LOCKS:
+            symbol_locks.popitem(last=False)
         symbol_locks[symbol] = asyncio.Lock()
+    else:
+        symbol_locks.move_to_end(symbol)
     return symbol_locks[symbol]
 
 

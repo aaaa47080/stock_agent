@@ -14,6 +14,22 @@ from api.utils import logger
 router = APIRouter()
 
 
+async def _ws_authenticate(websocket: WebSocket) -> bool:
+    """Verify JWT token from WebSocket query params."""
+    token = websocket.query_params.get("token")
+    if not token:
+        return False
+    try:
+        import jwt
+
+        from core.config import JWT_SECRET_KEY
+
+        jwt.decode(token, JWT_SECRET_KEY, algorithms=["HS256"])
+        return True
+    except Exception:
+        return False
+
+
 # ============================================================================
 # K-line WebSocket Manager
 # ============================================================================
@@ -95,7 +111,13 @@ async def websocket_klines(websocket: WebSocket):
     Client subscription format:
     {"action": "subscribe", "symbol": "BTC", "interval": "1m"}
     {"action": "unsubscribe"}
+
+    Authentication: pass ?token=<jwt> in query string.
     """
+    if not await _ws_authenticate(websocket):
+        await websocket.close(code=4001, reason="Unauthorized")
+        return
+
     await kline_manager.connect(websocket)
 
     try:
@@ -253,7 +275,13 @@ async def websocket_tickers(websocket: WebSocket):
     {"action": "subscribe", "symbols": ["BTC", "ETH", "SOL"]}
     {"action": "unsubscribe", "symbols": ["BTC"]}
     {"action": "unsubscribe_all"}
+
+    Authentication: pass ?token=<jwt> in query string.
     """
+    if not await _ws_authenticate(websocket):
+        await websocket.close(code=4001, reason="Unauthorized")
+        return
+
     await ticker_manager.connect(websocket)
 
     try:

@@ -6,10 +6,8 @@
 
 let currentSessionId = null;
 AppStore.set('currentSessionId', currentSessionId);
-window.currentSessionId = currentSessionId;
 let chatInitialized = false; // 防止重複初始化
 AppStore.set('chatInitialized', chatInitialized);
-window.chatInitialized = chatInitialized;
 
 // ✅ 效能優化：預先快取 userKey，避免每次 sendMessage 都打後端 API
 let _cachedUserKey = null;
@@ -33,7 +31,6 @@ window.createIconsIn = createIconsIn;
 
 // 用於跟踪分析過程面板的展開狀態
 AppStore.set('lastProcessOpenState', false);
-window.lastProcessOpenState = false;
 
 // 編輯模式（批量刪除）
 // Must be on window so chat-sessions.js (separate ES module) can access them

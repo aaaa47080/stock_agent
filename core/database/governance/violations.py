@@ -3,7 +3,7 @@ Violation Functions
 Add points, track violations, and apply suspensions
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 from ..connection import get_connection
@@ -46,7 +46,7 @@ def add_violation_points(
     if action_taken and action_taken in SUSPENSION_DURATIONS:
         duration = SUSPENSION_DURATIONS[action_taken]
         if duration.total_seconds() > 0:
-            suspended_until = datetime.utcnow() + duration
+            suspended_until = datetime.now(timezone.utc) + duration
 
     conn = db or get_connection()
     c = conn.cursor()
@@ -280,7 +280,7 @@ def apply_suspension(db, user_id: str, action: str) -> bool:
             # Warning only, no actual suspension
             return True
 
-        suspended_until = datetime.utcnow() + duration
+        suspended_until = datetime.now(timezone.utc) + duration
 
         c.execute(
             """

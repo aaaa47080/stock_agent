@@ -349,6 +349,13 @@ def get_connection():
                     )
                     test_cursor.close()
                     _conn_last_verified[conn_id] = now
+                    if len(_conn_last_verified) > 200:
+                        cutoff = now - 2 * _HEALTH_CHECK_INTERVAL
+                        expired = [
+                            k for k, v in _conn_last_verified.items() if v < cutoff
+                        ]
+                        for k in expired[:50]:
+                            del _conn_last_verified[k]
             except Exception as health_error:
                 logger.warning(
                     "Bad connection detected (%s), discarding (bad_conn_count=%d)",

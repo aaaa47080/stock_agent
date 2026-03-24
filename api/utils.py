@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable, Dict, Optional
 
 import httpx
@@ -10,9 +11,11 @@ logger = logging.getLogger("API")
 
 _ssl_verify = os.getenv("SSL_VERIFY", "true").lower() in ("true", "1", "yes")
 
+_db_executor = ThreadPoolExecutor(max_workers=20, thread_name_prefix="db_sync")
+
 
 async def run_sync(fn: Callable[..., Any], *args: Any) -> Any:
-    return await asyncio.get_running_loop().run_in_executor(None, fn, *args)
+    return await asyncio.get_running_loop().run_in_executor(_db_executor, fn, *args)
 
 
 # Default to WARNING in production to reduce noisy logs and ephemeral-storage pressure.
@@ -76,6 +79,11 @@ async def close_shared_http_client():
 
 def update_env_file(keys: Dict[str, str], project_root: str):
     """Helper function to update or append keys to the .env file"""
+    env_path = os.path.join(project_root, ".env")
+
+    for k, v in keys.items():
+        sanitized = v.replace("\n", "").replace("\r", "").replace("\x00", "")
+        keys[k] = sanitized
     env_path = os.path.join(project_root, ".env")
 
     # Read existing lines

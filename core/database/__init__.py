@@ -30,6 +30,7 @@ _EXPORTS: Dict[str, Tuple[str, str]] = {
     "toggle_session_pin": (".chat", "toggle_session_pin"),
     "get_sessions": (".chat", "get_sessions"),
     "delete_session": (".chat", "delete_session"),
+    "check_session_ownership": (".chat", "check_session_ownership"),
     "save_chat_message": (".chat", "save_chat_message"),
     "get_chat_history": (".chat", "get_chat_history"),
     "clear_chat_history": (".chat", "clear_chat_history"),

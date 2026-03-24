@@ -1,10 +1,9 @@
 import asyncio
-import json
+import logging
 import os
-from datetime import datetime
-from typing import Any, Optional
+from logging.handlers import RotatingFileHandler
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse
 
 # LangChain Imports
@@ -28,61 +27,40 @@ router = APIRouter()
 
 # Get project root from sys.path or os.getcwd
 project_root = os.getcwd()
-FRONTEND_DEBUG_LOG = os.path.join(project_root, "frontend_debug.log")
 
-# Pydantic model for debug log
+# Reuse the same RotatingFileHandler logger from api_server.py
+_frontend_debug_logger = logging.getLogger("frontend_debug")
 
-
-class DebugLogRequest(BaseModel):
-    level: str = "info"
-    message: str
-    data: Optional[Any] = None
-
-
-@router.post("/api/debug/log", dependencies=[Depends(verify_admin_key)])
-async def write_debug_log(request: DebugLogRequest, x_admin_key: str = Header(None)):
-    """接收前端日誌並寫入 frontend_debug.log"""
-    try:
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
-        log_line = f"[{timestamp}] [{request.level.upper()}] {request.message}"
-        if request.data:
-            log_line += (
-                f" | {json.dumps(request.data, ensure_ascii=False, default=str)}"
-            )
-        log_line += "\n"
-
-        with open(FRONTEND_DEBUG_LOG, "a", encoding="utf-8") as f:
-            f.write(log_line)
-
-        return {"success": True}
-    except Exception as e:
-        logger.error(f"Failed to write debug log: {e}")
-        return {"success": False, "error": "寫入日誌失敗"}
-
-
-@router.get("/api/debug/log", dependencies=[Depends(verify_admin_key)])
-async def read_debug_log(lines: int = 50, x_admin_key: str = Header(None)):
-    """讀取最後 N 行 frontend_debug.log"""
-    try:
-        if not os.path.exists(FRONTEND_DEBUG_LOG):
-            return {"lines": [], "message": "Log file not found"}
-
-        with open(FRONTEND_DEBUG_LOG, "r", encoding="utf-8") as f:
-            all_lines = f.readlines()
-            last_lines = all_lines[-lines:] if len(all_lines) > lines else all_lines
-
-        return {"lines": last_lines, "total": len(all_lines)}
-    except Exception as e:
-        logger.error(f"Failed to read debug log: {e}")
-        return {"lines": [], "error": "讀取日誌失敗"}
+# NOTE: POST and GET /api/debug/log are removed — api_server.py already
+# provides safer versions at /api/debug-log (RotatingFileHandler, max length).
 
 
 @router.delete("/api/debug/log", dependencies=[Depends(verify_admin_key)])
 async def clear_debug_log():
-    """清空 frontend_debug.log (Admin only)"""
+    """清空 frontend_debug.log (Admin only) — resets the rotating handler."""
     try:
-        with open(FRONTEND_DEBUG_LOG, "w", encoding="utf-8") as f:
-            f.write("")
+        # Remove all handlers from the logger and close them
+        for handler in list(_frontend_debug_logger.handlers):
+            handler.close()
+            _frontend_debug_logger.removeHandler(handler)
+
+        # Truncate the log file
+        log_path = os.path.join(project_root, "frontend_debug.log")
+        if os.path.exists(log_path):
+            os.truncate(log_path, 0)
+
+        # Re-create the RotatingFileHandler
+        rotating_handler = RotatingFileHandler(
+            log_path,
+            maxBytes=10 * 1024 * 1024,
+            backupCount=3,
+            encoding="utf-8",
+        )
+        rotating_handler.setFormatter(
+            logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+        )
+        _frontend_debug_logger.addHandler(rotating_handler)
+
         return {"success": True, "message": "Log cleared"}
     except Exception as e:
         logger.error(f"Failed to clear debug log: {e}")

@@ -246,7 +246,6 @@ async function sendMessage() {
 
     // 重置分析過程面板的展開狀態
     AppStore.set('lastProcessOpenState', false);
-    window.lastProcessOpenState = false;
 
     // Initial "Proto-Process" UI to match the final analysis UI for seamless transition
     botMsgDiv.innerHTML = `
@@ -837,7 +836,6 @@ function toggleProcessState(summaryElement) {
     setTimeout(() => {
         // 更新狀態標記
         AppStore.set('lastProcessOpenState', detailsElement.open);
-        window.lastProcessOpenState = AppStore.get('lastProcessOpenState');
     }, 0);
 }
 window.toggleProcessState = toggleProcessState;

@@ -2,6 +2,31 @@
 // app.js - 核心應用邏輯與全局變量
 // ========================================
 
+window.Utils = window.Utils || {};
+
+window.Utils.debounce = function(fn, delay) {
+    let timer;
+    return function() {
+        const args = arguments;
+        const ctx = this;
+        clearTimeout(timer);
+        timer = setTimeout(function() { fn.apply(ctx, args); }, delay);
+    };
+};
+
+window.Utils.throttle = function(fn, limit) {
+    let inThrottle = false;
+    return function() {
+        const args = arguments;
+        const ctx = this;
+        if (!inThrottle) {
+            fn.apply(ctx, args);
+            inThrottle = true;
+            setTimeout(function() { inThrottle = false; }, limit);
+        }
+    };
+};
+
 // Initialize Lucide icons
 if (typeof lucide !== 'undefined') {
     lucide.createIcons();
@@ -14,7 +39,6 @@ const md = window.markdownit
     : null;
 window.md = md;
 AppStore.set('isAnalyzing', false);
-window.isAnalyzing = false; // backward compat
 let marketRefreshInterval = null;
 
 // ========================================
@@ -437,13 +461,9 @@ window.initializeUIStatus = initializeUIStatus;
 
 // --- Global Filter Logic Variables ---
 AppStore.set('allMarketSymbols', []);
-window.allMarketSymbols = [];
 AppStore.set('globalSelectedSymbols', []);
-window.globalSelectedSymbols = []; // Unified selection
 AppStore.set('selectedNewsSources', ['google', 'cryptocompare', 'cryptopanic', 'newsapi']);
-window.selectedNewsSources = ['google', 'cryptocompare', 'cryptopanic', 'newsapi']; // ✅ 固定使用所有新聞來源
 AppStore.set('currentFilterExchange', 'okx');
-window.currentFilterExchange = 'okx';
 
 // API Key Validity Cache
 let validKeys = {
@@ -471,17 +491,15 @@ window.updateProviderOptions = updateProviderOptions;
 // Watchlist & Chart Variables
 let currentUserId = null;
 
-// Pulse Data Cache (使用 window 物件避免重複聲明)
-if (typeof window.currentPulseData === 'undefined') {
+// Pulse Data Cache
+if (!AppStore.has('currentPulseData')) {
     AppStore.set('currentPulseData', {});
-    window.currentPulseData = {};
 }
 
 // Trade Proposal
 
 // Analysis Abort Controller
 AppStore.set('currentAnalysisController', null);
-window.currentAnalysisController = null;
 
 // Pi Network Initialization
 const Pi = window.Pi;
@@ -504,7 +522,6 @@ function onTabSwitch(tab) {
     if (tab !== 'chat' && AppStore.get('currentAnalysisController')) {
         AppStore.get('currentAnalysisController').abort();
         AppStore.set('currentAnalysisController', null);
-        window.currentAnalysisController = null;
         isAnalyzing = false;
 
         const input = document.getElementById('user-input');
@@ -525,12 +542,10 @@ function onTabSwitch(tab) {
     if (AppStore.get('pulseInterval')) {
         clearInterval(AppStore.get('pulseInterval'));
         AppStore.set('pulseInterval', null);
-        window.pulseInterval = null;
     }
     if (AppStore.get('assetsInterval')) {
         clearInterval(AppStore.get('assetsInterval'));
         AppStore.set('assetsInterval', null);
-        window.assetsInterval = null;
     }
 
     // Set up new intervals based on tab
@@ -544,7 +559,6 @@ function onTabSwitch(tab) {
         AppStore.set('pulseInterval', setInterval(() => {
             if (typeof checkMarketPulse === 'function') checkMarketPulse(false);
         }, 30000));
-        window.pulseInterval = AppStore.get('pulseInterval');
     }
 
     // Friends Tab
@@ -603,84 +617,21 @@ function updateUserId(uid) {
 }
 
 /**
- * 顯示全局錯誤提示 (Unified Error Display)
- * @param {string} title - 錯誤標題
+ * 顯示全局錯誤提示 — 委託給 showToast (Unified Error Display)
  * @param {string} message - 錯誤詳情
- * @param {boolean} isQuotaError - 是否為配額/額度不足錯誤
+ * @param {string} [title] - 錯誤標題（預設 'Error'）
  */
-function showError(title, message, isQuotaError = false) {
-    // Check if modal exists, if not create it
-    let modal = document.getElementById('global-error-modal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'global-error-modal';
-        modal.className =
-            'fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm hidden';
-        modal.innerHTML = `
-            <div class="bg-surface border border-red-500/30 rounded-3xl w-[90%] max-w-md p-6 shadow-2xl transform transition-all scale-95 opacity-0" id="global-error-content">
-                <div class="flex items-center gap-3 mb-4 text-red-400">
-                    <i data-lucide="alert-triangle" class="w-8 h-8"></i>
-                    <h3 class="text-xl font-bold font-serif" id="global-error-title">Error</h3>
-                </div>
-                <div class="text-secondary/90 text-sm leading-relaxed mb-6" id="global-error-message"></div>
-                
-                <div id="quota-error-actions" class="hidden mb-4 bg-red-500/10 p-3 rounded-xl border border-red-500/20">
-                    <p class="text-xs text-red-300 mb-2">${window.i18next?.t('error.suggestedFixes') || '💡 建議解決方案:'}</p>
-                    <ul class="text-xs text-textMuted list-disc pl-4 space-y-1">
-                        <li>${window.i18next?.t('error.checkApiKey') || '檢查 API Key 是否正確設定'}</li>
-                        <li>${window.i18next?.t('error.checkBalance') || '確認您的 Google/OpenAI 帳戶餘額是否充足'}</li>
-                        <li>${window.i18next?.t('error.tryOtherProvider') || '嘗試切換其他 AI 提供商 (如 OpenRouter)'}</li>
-                    </ul>
-                    <button onclick="openSettings(); closeErrorModal()" class="mt-3 w-full py-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg text-sm font-medium transition border border-red-500/30">
-                        ${window.i18next?.t('error.goToCheckKey') || '前往設定檢查金鑰'}
-                    </button>
-                </div>
-
-                <div class="flex justify-end">
-                    <button onclick="closeErrorModal()" class="px-5 py-2 bg-surfaceHighlight hover:bg-white/10 text-white rounded-xl transition border border-white/10">
-                        ${window.i18next?.t('error.close') || '關閉'}
-                    </button>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(modal);
-        lucide.createIcons();
+function showError(message, title) {
+    if (typeof showToast === 'function') {
+        showToast(title || 'Error', 'error', 5000);
     }
-
-    const titleEl = document.getElementById('global-error-title');
-    const msgEl = document.getElementById('global-error-message');
-    const quotaActions = document.getElementById('quota-error-actions');
-
-    titleEl.innerText = title;
-    msgEl.innerText = message || window.i18next?.t('error.unknownError') || '發生未知錯誤';
-
-    if (isQuotaError) {
-        quotaActions.classList.remove('hidden');
-    } else {
-        quotaActions.classList.add('hidden');
-    }
-
-    modal.classList.remove('hidden');
-    // Animation
-    setTimeout(() => {
-        const content = document.getElementById('global-error-content');
-        content.classList.remove('scale-95', 'opacity-0');
-        content.classList.add('scale-100', 'opacity-100');
-    }, 10);
+    console.error('[Error] ' + message);
 }
 window.showError = showError;
 
 function closeErrorModal() {
-    const modal = document.getElementById('global-error-modal');
-    const content = document.getElementById('global-error-content');
-    if (modal && content) {
-        content.classList.remove('scale-100', 'opacity-100');
-        content.classList.add('scale-95', 'opacity-0');
-        setTimeout(() => {
-            modal.classList.add('hidden');
-        }, 300);
-    }
-};
+    // Legacy no-op: error display now uses showToast.
+}
 
 function quickAsk(text) {
     const input = document.getElementById('user-input');
@@ -697,7 +648,6 @@ async function hydrateSettingsFromBackend(force = false) {
     if (!AppStore.has('settingsConfigCache')) {
         const cache = { ts: 0, payload: null };
         AppStore.set('settingsConfigCache', cache);
-        window.__settingsConfigCache = cache;
     }
 
     const cache = AppStore.get('settingsConfigCache');
@@ -925,7 +875,6 @@ async function saveSettings() {
             }
 
             AppStore.set('settingsConfigCache', null);
-            window.__settingsConfigCache = null;
             if (typeof checkApiKeyStatus === 'function') {
                 await checkApiKeyStatus();
             }
@@ -943,6 +892,22 @@ async function saveSettings() {
     btn.classList.remove('opacity-50', 'cursor-not-allowed');
 }
 window.saveSettings = saveSettings;
+
+// ========================================
+// Keyboard: Escape closes top modal
+// ========================================
+document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Escape') return;
+    const modals = document.querySelectorAll('.modal-overlay:not(.hidden)');
+    if (modals.length === 0) return;
+    const topModal = modals[modals.length - 1];
+    const closeBtn = topModal.querySelector('[data-close-modal]');
+    if (closeBtn) {
+        closeBtn.click();
+    } else {
+        topModal.classList.add('hidden');
+    }
+});
 
 export {
     md,

@@ -1030,8 +1030,8 @@ window.TWStockTab = {
                     }
                 }
             };
-            this._twChartResizeHandler = onResize;
-            window.addEventListener('resize', onResize);
+            this._twChartResizeHandler = window.Utils ? window.Utils.debounce(onResize, 150) : onResize;
+            window.addEventListener('resize', this._twChartResizeHandler);
 
             // Trigger initial resize to fit vertically
             setTimeout(onResize, 50);

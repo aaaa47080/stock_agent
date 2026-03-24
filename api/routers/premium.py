@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from api.deps import get_current_user
 from api.middleware.rate_limit import limiter
 from api.utils import logger, run_sync
+from core.config import TEST_MODE
 from core.database.user import upgrade_to_pro
 from core.orm.repositories import user_repo
 
@@ -23,7 +24,6 @@ PLAN_MONTHS = {
 
 PI_API_KEY = os.getenv("PI_API_KEY", "")
 PI_API_BASE = "https://api.minepi.com/v2"
-TEST_MODE = os.getenv("TEST_MODE", "").lower() in ("true", "1", "yes")
 
 
 class UpgradeRequest(BaseModel):

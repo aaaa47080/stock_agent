@@ -222,3 +222,11 @@ class CreateAlertRequest(BaseModel):
     condition: Literal["above", "below", "change_pct_up", "change_pct_down"]
     target: float
     repeat: bool = False
+
+
+class APIErrorResponse(BaseModel):
+    """統一 API 錯誤回應格式"""
+
+    code: str = "INTERNAL_ERROR"
+    message: str = "An unexpected error occurred"
+    details: Optional[Dict] = None

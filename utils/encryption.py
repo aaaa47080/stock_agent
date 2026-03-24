@@ -11,7 +11,7 @@
 import base64
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from cryptography.fernet import Fernet
@@ -99,12 +99,14 @@ def _save_encryption_key(key: bytes, update_rotation_time: bool = True):
 
     data = {
         "key": base64.urlsafe_b64encode(key).decode(),
-        "created_at": existing_data.get("created_at", datetime.utcnow().isoformat()),
+        "created_at": existing_data.get(
+            "created_at", datetime.now(timezone.utc).isoformat()
+        ),
         "version": existing_data.get("version", 1),
     }
 
     if update_rotation_time:
-        data["last_rotation"] = datetime.utcnow().isoformat()
+        data["last_rotation"] = datetime.now(timezone.utc).isoformat()
     elif existing_data.get("last_rotation"):
         data["last_rotation"] = existing_data["last_rotation"]
 

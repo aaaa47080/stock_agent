@@ -222,6 +222,13 @@
             return date.toLocaleDateString('zh-TW');
         }
 
+        function escapeHTML(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
         // Load profile
         async function loadProfile() {
             const params = new URLSearchParams(window.location.search);
@@ -279,7 +286,7 @@
             `;
 
             // Username
-            document.getElementById('profile-username').innerHTML = p.username || p.user_id;
+            document.getElementById('profile-username').textContent = p.username || p.user_id;
 
             // Badges
             let badges = '';
@@ -294,7 +301,7 @@
             // Meta
             document.getElementById('profile-meta').innerHTML = `
                 Member since ${formatDate(p.member_since)}
-                ${p.pi_username ? ` &middot; Pi: @${p.pi_username}` : ''}
+                ${p.pi_username ? ' &middot; Pi: @' + escapeHTML(p.pi_username) : ''}
             `;
 
             // Stats
@@ -331,7 +338,7 @@
             if (p.friend_status === 'accepted') {
                 buttonHtml = `
                     <div class="flex gap-2">
-                        <a href="/static/forum/messages.html?with=${p.user_id}"
+                        <a href="/static/forum/messages.html?with=${encodeURIComponent(p.user_id)}"
                            class="bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition border border-primary/20">
                             <i data-lucide="message-circle" class="w-4 h-4"></i>
                             <span>Message</span>
@@ -415,11 +422,11 @@
                 }
 
                 container.innerHTML = data.posts.map(post => `
-                    <a href="/static/forum/post.html?id=${post.id}" class="block px-6 py-4 hover:bg-white/5 transition">
+                    <a href="/static/forum/post.html?id=${encodeURIComponent(post.id)}" class="block px-6 py-4 hover:bg-white/5 transition">
                         <div class="flex items-start justify-between gap-4">
                             <div class="min-w-0 flex-1">
-                                <div class="text-xs text-primary font-bold uppercase tracking-wider mb-1">${post.category}</div>
-                                <h3 class="font-bold text-textMain truncate">${post.title}</h3>
+                                <div class="text-xs text-primary font-bold uppercase tracking-wider mb-1">${escapeHTML(post.category)}</div>
+                                <h3 class="font-bold text-textMain truncate">${escapeHTML(post.title)}</h3>
                                 <div class="text-xs text-textMuted mt-1">${formatTimeAgo(post.created_at)}</div>
                             </div>
                             <div class="flex items-center gap-3 text-xs text-textMuted flex-shrink-0">
