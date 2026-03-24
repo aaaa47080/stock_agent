@@ -11,11 +11,17 @@ class TestOrmSessionModule:
     """Verify ORM session module is properly structured."""
 
     def test_session_module_exists(self):
-        from core.orm.session import close_async_engine, get_async_session, get_engine
+        from core.orm.session import (
+            close_async_engine,
+            close_async_engine_sync,
+            get_async_session,
+            get_engine,
+        )
 
         assert callable(get_async_session)
         assert callable(get_engine)
         assert callable(close_async_engine)
+        assert callable(close_async_engine_sync)
 
     def test_get_async_session_is_async_generator(self):
         from core.orm.session import get_async_session
@@ -26,6 +32,11 @@ class TestOrmSessionModule:
         from core.orm.session import close_async_engine
 
         assert inspect.iscoroutinefunction(close_async_engine)
+
+    def test_close_async_engine_sync_is_sync(self):
+        from core.orm.session import close_async_engine_sync
+
+        assert not inspect.iscoroutinefunction(close_async_engine_sync)
 
     def test_resolve_async_url_handles_env_vars(self):
         import os

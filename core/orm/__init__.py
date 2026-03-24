@@ -61,7 +61,13 @@ from .models import (
 from .notifications_repo import notifications_repo
 from .repositories import user_repo
 from .scam_tracker_repo import scam_tracker_repo
-from .session import close_async_engine, get_async_session, get_engine, using_session
+from .session import (
+    close_async_engine,
+    close_async_engine_sync,
+    get_async_session,
+    get_engine,
+    using_session,
+)
 from .tools_repo import tools_repo
 from .trading_repo import trading_repo
 from .user_api_keys_repo import user_api_keys_repo
@@ -114,6 +120,7 @@ __all__ = [
     "get_async_session",
     "get_engine",
     "close_async_engine",
+    "close_async_engine_sync",
     "using_session",
     "user_repo",
     "friends_repo",

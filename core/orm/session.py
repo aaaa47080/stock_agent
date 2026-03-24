@@ -15,6 +15,7 @@ Usage::
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -115,6 +116,14 @@ async def close_async_engine():
         _async_engine = None
         _async_session_factory = None
         logger.info("Async SQLAlchemy engine disposed")
+
+
+def close_async_engine_sync() -> None:
+    """Dispose the async engine from sync contexts like Gunicorn hooks."""
+    if _async_engine is None:
+        return
+
+    asyncio.run(close_async_engine())
 
 
 @asynccontextmanager
