@@ -1,6 +1,7 @@
 """Tests for Phase 5 ORM infrastructure and models."""
 
 import inspect
+import warnings
 from datetime import datetime, timezone
 from unittest.mock import patch
 
@@ -37,6 +38,38 @@ class TestOrmSessionModule:
         from core.orm.session import close_async_engine_sync
 
         assert not inspect.iscoroutinefunction(close_async_engine_sync)
+
+    def test_close_async_engine_sync_emits_no_runtime_warning(self):
+        import core.orm.session as session_module
+
+        class FakeEngine:
+            def __init__(self):
+                self.disposed = False
+
+            async def dispose(self):
+                self.disposed = True
+
+        original_engine = session_module._async_engine
+        original_factory = session_module._async_session_factory
+        fake_engine = FakeEngine()
+
+        try:
+            session_module._async_engine = fake_engine
+            session_module._async_session_factory = object()
+
+            with warnings.catch_warnings(record=True) as caught:
+                warnings.simplefilter("always")
+                session_module.close_async_engine_sync()
+
+            assert fake_engine.disposed is True
+            assert session_module._async_engine is None
+            assert session_module._async_session_factory is None
+            assert not any(
+                issubclass(warning.category, RuntimeWarning) for warning in caught
+            )
+        finally:
+            session_module._async_engine = original_engine
+            session_module._async_session_factory = original_factory
 
     def test_resolve_async_url_handles_env_vars(self):
         import os
