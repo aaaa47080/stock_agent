@@ -20,11 +20,9 @@ async def _ws_authenticate(websocket: WebSocket) -> bool:
     if not token:
         return False
     try:
-        import jwt
+        from api.deps import verify_token
 
-        from core.config import JWT_SECRET_KEY
-
-        jwt.decode(token, JWT_SECRET_KEY, algorithms=["HS256"])
+        verify_token(token)
         return True
     except Exception:
         return False

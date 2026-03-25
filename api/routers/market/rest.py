@@ -6,9 +6,10 @@ import asyncio
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
 from api.deps import get_current_user
+from api.middleware.rate_limit import limiter
 from api.globals import (
     ANALYSIS_STATUS,
     FUNDING_RATE_CACHE,
@@ -92,14 +93,15 @@ async def get_market_symbols(exchange: str = "okx"):
 
 
 @router.post("/api/screener")
-async def run_screener(request: ScreenerRequest):
+@limiter.limit("10/minute")
+async def run_screener(request: Request, screener_request: ScreenerRequest, current_user: dict = Depends(get_current_user)):
     """Return market screener data (uses cache first, supports background task wait)."""
 
     # 1. Custom symbol request - execute directly
-    if request.symbols and len(request.symbols) > 0:
+    if screener_request.symbols and len(screener_request.symbols) > 0:
         try:
             return await run_custom_screener(
-                request, MARKET_PULSE_CACHE, trigger_on_demand_analysis
+                screener_request, MARKET_PULSE_CACHE, trigger_on_demand_analysis
             )
         except Exception as e:
             logger.error(f"Custom screener failed: {e}", exc_info=True)
@@ -119,13 +121,13 @@ async def run_screener(request: ScreenerRequest):
 
     # 4. Double-check locking pattern - execute if still no data
     async with screener_lock:
-        cached = try_get_cached_screener(request.refresh)
+        cached = try_get_cached_screener(screener_request.refresh)
         if cached:
             return cached
 
-        logger.info(f"No cache, running screener: {request.exchange}")
+        logger.info(f"No cache, running screener: {screener_request.exchange}")
         try:
-            return await run_default_screener(request.exchange, MARKET_PULSE_CACHE)
+            return await run_default_screener(screener_request.exchange, MARKET_PULSE_CACHE)
         except Exception as e:
             logger.error(f"Screener error: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Screener failed")

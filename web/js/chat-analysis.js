@@ -307,7 +307,11 @@ window.currentAnalysisController = AppStore.get('currentAnalysisController');
     let hitlPaused = false;
 
     try {
-        const token = AuthManager.currentUser.accessToken;
+        const token = AuthManager.currentUser?.accessToken;
+        if (!token) {
+            if (typeof showToast === 'function') showToast('請先登入', 'warning');
+            return;
+        }
         requestTimeoutId = setTimeout(() => {
             if (AppStore.get('currentAnalysisController')) {
                 AppStore.get('currentAnalysisController').abort(new Error('ANALYSIS_TIMEOUT'));

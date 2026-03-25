@@ -41,8 +41,9 @@ async def get_user_watchlist(current_user: dict = Depends(get_current_user)):
 
 
 @router.post("/api/watchlist/add")
+@limiter.limit("20/minute")
 async def add_watchlist(
-    request: WatchlistRequest, current_user: dict = Depends(get_current_user)
+    request: Request, req: WatchlistRequest, current_user: dict = Depends(get_current_user)
 ):
     """新增幣種到自選清單"""
     try:
@@ -54,8 +55,8 @@ async def add_watchlist(
                 detail="自選清單已滿 (上限 10 個)，請移除舊幣種後再試。",
             )
 
-        await run_sync(add_to_watchlist, user_id, request.symbol.upper())
-        return {"success": True, "message": f"{request.symbol} 已加入自選清單"}
+        await run_sync(add_to_watchlist, user_id, req.symbol.upper())
+        return {"success": True, "message": f"{req.symbol} 已加入自選清單"}
     except HTTPException:
         raise
     except Exception as e:
@@ -64,14 +65,15 @@ async def add_watchlist(
 
 
 @router.post("/api/watchlist/remove")
+@limiter.limit("20/minute")
 async def remove_watchlist(
-    request: WatchlistRequest, current_user: dict = Depends(get_current_user)
+    request: Request, req: WatchlistRequest, current_user: dict = Depends(get_current_user)
 ):
     """從自選清單移除幣種"""
     try:
         user_id = current_user["user_id"]
-        await run_sync(remove_from_watchlist, user_id, request.symbol.upper())
-        return {"success": True, "message": f"{request.symbol} 已從自選清單移除"}
+        await run_sync(remove_from_watchlist, user_id, req.symbol.upper())
+        return {"success": True, "message": f"{req.symbol} 已從自選清單移除"}
     except Exception as e:
         logger.error(f"移除自選清單失敗: {e}")
         raise HTTPException(status_code=500, detail="移除失敗")

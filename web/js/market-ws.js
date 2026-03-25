@@ -755,8 +755,9 @@ function cleanupMarketResources() {
     console.log('[Market] Resources cleaned up');
 }
 
-// Register cleanup on page unload
-window.addEventListener('beforeunload', cleanupMarketResources);
+// Register cleanup on page hide (not beforeunload — pagehide works better
+// with BFCache: fires when the page is actually discarded, not just navigated)
+window.addEventListener('pagehide', cleanupMarketResources);
 
 // Also cleanup on visibility change when leaving the page
 document.addEventListener('visibilitychange', () => {

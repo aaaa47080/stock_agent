@@ -2,11 +2,11 @@
 // pi-auth.js - Pi Network SDK 初始化與認證
 // ========================================
 
-AppStore.set('piLoginInProgress', false);
 window._piLoginInProgress = false;
 
 window.safePiLogin = async function () {
-    if (AppStore.get('piLoginInProgress')) {
+    if ((typeof AppStore !== 'undefined' && AppStore.get('piLoginInProgress')) ||
+        window._piLoginInProgress) {
         console.log('登入已在進行中，忽略重複點擊');
         return;
     }
@@ -17,7 +17,7 @@ window.safePiLogin = async function () {
     let watchdogId = null;
 
     try {
-        AppStore.set('piLoginInProgress', true);
+        if (typeof AppStore !== 'undefined') AppStore.set('piLoginInProgress', true);
         window._piLoginInProgress = true;
 
         if (btn) {
@@ -48,7 +48,7 @@ window.safePiLogin = async function () {
         }
     } finally {
         if (watchdogId) clearTimeout(watchdogId);
-        AppStore.set('piLoginInProgress', false);
+        if (typeof AppStore !== 'undefined') AppStore.set('piLoginInProgress', false);
         window._piLoginInProgress = false;
         if (btn) {
             btn.disabled = false;

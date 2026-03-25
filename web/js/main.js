@@ -18,6 +18,20 @@
 
 // ─── Phase 1: Core utilities (MUST load first) ───────────────────────────
 import './store.js';           // AppStore (pub/sub state)
+
+AppStore.restore();
+
+window.addEventListener('unhandledrejection', (event) => {
+    console.error('[Unhandled Rejection]', event.reason);
+    if (typeof showToast === 'function') {
+        showToast('發生未預期的錯誤', 'error');
+    }
+});
+
+window.addEventListener('error', (event) => {
+    console.error('[Global Error]', event.error);
+});
+
 import './utils.js';           // AppUtils (shared helpers)
 import './api-client.js';      // AppAPI (HTTP client)
 

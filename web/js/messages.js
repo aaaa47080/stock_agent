@@ -18,6 +18,13 @@ const MessagesAPI = {
         return null;
     },
 
+    _getToken() {
+        if (typeof AuthManager !== 'undefined' && AuthManager.currentUser) {
+            return AuthManager.currentUser.accessToken || null;
+        }
+        return null;
+    },
+
 
 
     /**

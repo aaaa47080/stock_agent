@@ -4,9 +4,10 @@ Price Alerts API Router
 Endpoints for managing user price alerts.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from api.deps import get_current_user
+from api.middleware.rate_limit import limiter
 from api.models import CreateAlertRequest
 from api.utils import logger
 from core.orm.alerts_repo import alerts_repo
@@ -15,8 +16,10 @@ router = APIRouter()
 
 
 @router.post("/api/alerts")
+@limiter.limit("10/minute")
 async def create_alert_endpoint(
-    request: CreateAlertRequest,
+    request: Request,
+    req: CreateAlertRequest,
     current_user: dict = Depends(get_current_user),
 ):
     """Create a new price alert."""
@@ -25,11 +28,11 @@ async def create_alert_endpoint(
     try:
         alert = await alerts_repo.create_alert(
             user_id=user_id,
-            symbol=request.symbol,
-            market=request.market,
-            condition=request.condition,
-            target=request.target,
-            repeat=request.repeat,
+            symbol=req.symbol,
+            market=req.market,
+            condition=req.condition,
+            target=req.target,
+            repeat=req.repeat,
         )
         return {"success": True, "alert": alert}
     except ValueError as e:

@@ -741,7 +741,7 @@ async function loadFriendsTabData() {
     updateBadge('blocked-count-badge', 0, true);
 
     if (!isLoggedIn) {
-        const loginMsg = `<div class="text-center py-6"><p class="text-textMuted mb-3">${t('friends.loginToUseFriends')}</p><button onclick="handlePiLogin()" class="px-4 py-2 bg-primary/10 text-primary rounded-lg text-sm font-bold">${t('friends.loginBtn')}</button></div>`;
+        const loginMsg = `<div class="text-center py-6"><p class="text-textMuted mb-3">${t('friends.loginToUseFriends')}</p><button onclick="safePiLogin()" class="px-4 py-2 bg-primary/10 text-primary rounded-lg text-sm font-bold">${t('friends.loginBtn')}</button></div>`;
         if (pendingListEl) pendingListEl.innerHTML = loginMsg;
         if (friendsListEl) friendsListEl.innerHTML = loginMsg;
         if (blockedListEl) blockedListEl.innerHTML = renderEmptyState(t('friends.loginRequired'));

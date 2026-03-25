@@ -215,16 +215,7 @@ async def get_config():
             "has_openrouter_key": has_key("openrouter"),
             "has_current_provider_key": has_key(current_provider),
         },
-        # 測試模式配置
-        "test_mode": core_config.TEST_MODE,
     }
-
-    # 如果是測試模式，添加測試用戶資料
-    if core_config.TEST_MODE:
-        response["test_user"] = {
-            "user_id": core_config.TEST_USER.get("uid"),
-            "username": core_config.TEST_USER.get("username"),
-        }
 
     return response
 

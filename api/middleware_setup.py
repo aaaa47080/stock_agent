@@ -138,10 +138,15 @@ def setup_middleware(app: FastAPI) -> None:
         """
         response = await call_next(request)
 
-        # Prevent static assets from being cached
-        # (avoids stale JS/CSS after deploys)
+        # Cache-Control for static assets
+        # HTML files: no-cache allows BFCache (Back-Forward Cache) in WebViews
+        #   so Pi Browser can restore full JS state when user switches back.
+        # JS/CSS/images: no-store prevents stale assets (deployed with ?v= hash).
         if request.url.path.startswith("/static/"):
-            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            if request.url.path.endswith((".html", ".htm")):
+                response.headers["Cache-Control"] = "no-cache"
+            else:
+                response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
 
         # Basic security headers (always on)
         response.headers["X-Content-Type-Options"] = "nosniff"

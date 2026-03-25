@@ -112,12 +112,6 @@ window.smoothNavigate = smoothNavigate;
  * 初始化頁面淡入效果
  */
 function initPageTransition() {
-    // 頁面載入時的淡入效果
-    document.body.style.opacity = '0';
-    document.body.style.transition = 'opacity 0.2s ease-in';
-    requestAnimationFrame(() => {
-        document.body.style.opacity = '1';
-    });
 
     // 為所有返回主應用的連結添加平滑過渡
     document
@@ -583,6 +577,21 @@ function onTabSwitch(tab) {
 window.onTabSwitch = onTabSwitch;
 
 // ========================================
+// BFCache Restoration — skip redundant init
+// ========================================
+window.addEventListener('pageshow', function (event) {
+    if (!event.persisted) return;
+    if (typeof DebugLog !== 'undefined') {
+        DebugLog.info('頁面從 BFCache 恢復，跳過完整初始化');
+    }
+    if (typeof AppStore !== 'undefined' && typeof AuthManager !== 'undefined') {
+        if (AuthManager.currentUser) {
+            AuthManager.startTokenRefreshTimer();
+        }
+    }
+});
+
+// ========================================
 // Memory Leak Fix: Cleanup on page unload
 // ========================================
 function cleanupIntervals() {
@@ -750,6 +759,7 @@ async function updateAvailableModels(preloadedConfig = null) {
     if (!modelConfig) {
         try {
             const data = await AppAPI.get('/api/model-config');
+            modelConfig = data;
         } catch (e) {
             console.error('[updateAvailableModels] Failed to fetch model config:', e);
         }

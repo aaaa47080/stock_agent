@@ -434,7 +434,11 @@ async function submitHITLAnswer(answer) {
         </div>`;
     if (window.lucide) createIconsIn(botMsgDiv);
 
-    const token = AuthManager.currentUser.accessToken;
+    const token = AuthManager.currentUser?.accessToken;
+    if (!token) {
+        if (typeof showToast === 'function') showToast('請先登入', 'warning');
+        return;
+    }
     let fullContent = '';
     const HITL_REQUEST_TIMEOUT_MS = 180000;
     const HITL_STREAM_IDLE_TIMEOUT_MS = 90000;

@@ -5,6 +5,11 @@
 // AppStore is the single source of truth for active tab
 AppStore.set('activeTab', 'chat');
 
+var VALID_TABS = [
+    'chat', 'crypto', 'twstock', 'usstock', 'commodity', 'forex',
+    'wallet', 'friends', 'forum', 'safety', 'settings', 'admin',
+];
+
 // ========================================
 // Navigation Logic (Updated with Smooth Transitions)
 // ========================================
@@ -16,21 +21,7 @@ AppStore.set('activeTab', 'chat');
  * @returns {Promise<void>}
  */
 async function switchTab(tabId, fromPopState = false) {
-    const validTabs = [
-        'chat',
-        'crypto',
-        'twstock',
-        'usstock',
-        'commodity',
-        'forex',
-        'wallet',
-        'friends',
-        'forum',
-        'safety',
-        'settings',
-        'admin',
-    ];
-    if (!validTabs.includes(tabId)) {
+    if (!VALID_TABS.includes(tabId)) {
         console.warn(`Invalid tab '${tabId}', falling back to 'chat'`);
         tabId = 'chat';
     }
@@ -68,27 +59,13 @@ window.switchTab = switchTab;
 
 // 監聽瀏覽器返回/前進按鈕
 window.addEventListener('popstate', (event) => {
-    const validTabs = [
-        'chat',
-        'crypto',
-        'twstock',
-        'usstock',
-        'commodity',
-        'forex',
-        'wallet',
-        'friends',
-        'forum',
-        'safety',
-        'settings',
-        'admin',
-    ];
     let targetTab = 'chat';
 
     if (event.state && event.state.tab) {
         targetTab = event.state.tab;
     } else if (window.location.hash) {
         const hashTab = window.location.hash.replace('#', '');
-        if (validTabs.includes(hashTab)) {
+        if (VALID_TABS.includes(hashTab)) {
             targetTab = hashTab;
         }
     }
@@ -643,31 +620,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // 3. 載入預設分頁（優先順序：sessionStorage returnToTab > URL hash > localStorage）
-    const validTabs = [
-        'chat',
-        'crypto',
-        'twstock',
-        'usstock',
-        'commodity',
-        'forex',
-        'wallet',
-        'friends',
-        'forum',
-        'safety',
-        'settings',
-        'admin',
-    ];
     const returnToTab = sessionStorage.getItem('returnToTab');
     const hashTab = window.location.hash.replace('#', '');
     const savedTab = localStorage.getItem('activeTab') || 'chat';
-    const normalizedSavedTab = validTabs.includes(savedTab) ? savedTab : 'chat';
+    const normalizedSavedTab = VALID_TABS.includes(savedTab) ? savedTab : 'chat';
 
     // 優先使用 returnToTab（從論壇返回），其次 hash，最後 localStorage
     let initialTab;
-    if (returnToTab && validTabs.includes(returnToTab)) {
+    if (returnToTab && VALID_TABS.includes(returnToTab)) {
         initialTab = returnToTab;
         sessionStorage.removeItem('returnToTab'); // 使用後清除
-    } else if (validTabs.includes(hashTab)) {
+    } else if (VALID_TABS.includes(hashTab)) {
         initialTab = hashTab;
     } else {
         initialTab = normalizedSavedTab;

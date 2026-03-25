@@ -70,6 +70,44 @@ function snapshot() {
     return JSON.parse(JSON.stringify(_state));
 }
 
+var _PERSIST_KEY = '__appstore_state__';
+
+var _RESTORABLE = new Set([
+    'activeTab', 'isAnalyzing', 'currentSessionId', 'chatInitialized',
+    'currentPulseData', 'forceGuestLandingTab',
+    'settingsConfigCache', 'lastApiKeyCheck', 'lastProcessOpenState',
+]);
+
+function persist() {
+    try {
+        var data = {};
+        _RESTORABLE.forEach(function (k) {
+            if (k in _state) data[k] = _state[k];
+        });
+        sessionStorage.setItem(_PERSIST_KEY, JSON.stringify(data));
+    } catch (e) { /* quota exceeded — ignore */ }
+}
+
+function restore() {
+    try {
+        var raw = sessionStorage.getItem(_PERSIST_KEY);
+        if (!raw) return false;
+        var data = JSON.parse(raw);
+        if (typeof data !== 'object' || data === null) return false;
+        Object.keys(data).forEach(function (k) {
+            if (_RESTORABLE.has(k)) set(k, data[k]);
+        });
+        sessionStorage.removeItem(_PERSIST_KEY);
+        return true;
+    } catch (e) { return false; }
+}
+
+document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') persist();
+});
+
+window.addEventListener('pagehide', persist);
+
 const AppStore = {
     get: get,
     set: set,
@@ -79,6 +117,8 @@ const AppStore = {
     has: has,
     keys: keys,
     snapshot: snapshot,
+    persist: persist,
+    restore: restore,
 };
 
 window.AppStore = AppStore;

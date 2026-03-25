@@ -29,6 +29,9 @@ window.DebugLog = DebugLog;
 
 const PI_LOGIN_RECOVERY_GRACE_MS = 15000;
 
+var _piLoginPromise = null;
+var _piRefreshPromise = null;
+
 const PiEnvironment = {
     isLocalhost() {
         return (
@@ -223,13 +226,16 @@ const AuthManager = {
         // 監聽頁面可見性變化（用戶回到頁面時檢查）
         this._visibilityHandler = async () => {
             if (document.visibilityState === 'visible' && this.currentUser) {
+                if (this.shouldDeferExpiredSessionCleanup()) {
+                    DebugLog.info('頁面可見但登入交接中，跳過 token 檢查');
+                    return;
+                }
                 DebugLog.info('頁面重新可見，檢查 token 狀態');
                 if (this.isTokenExpired() || this.needsRefresh()) {
                     await this.silentRefresh();
                 }
-    }
-}
-window.handleDevSwitchUser = handleDevSwitchUser;
+            }
+        };
 
         document.addEventListener('visibilitychange', this._visibilityHandler);
 
@@ -241,29 +247,32 @@ window.handleDevSwitchUser = handleDevSwitchUser;
      * @returns {Promise<{success: boolean, error?: string}>}
      */
     async silentRefresh() {
-        // 只有 Pi 用戶才能靜默刷新
         if (!this.currentUser?.pi_uid) {
             DebugLog.warn('非 Pi 用戶，無法靜默刷新');
             return { success: false, error: 'Not a Pi user' };
         }
 
-        // 檢查是否在 Pi Browser 環境
+        if (_piRefreshPromise) {
+            DebugLog.info('silentRefresh: 刷新已在進行中，跳過');
+            return _piRefreshPromise;
+        }
+
         if (!PiEnvironment.isPiBrowser()) {
             DebugLog.warn('非 Pi Browser 環境，嘗試使用後端刷新');
-            // 嘗試使用後端刷新
             return await this.backendTokenRefresh();
         }
 
+        _piRefreshPromise = this._doSilentRefresh().finally(() => { _piRefreshPromise = null; });
+        return _piRefreshPromise;
+    },
+
+    async _doSilentRefresh() {
         try {
             DebugLog.info('開始靜默刷新 token...');
 
-            // 確保 Pi SDK 已初始化（異步等待）
             await this.initPiSDKAsync();
 
-            // 重新調用 Pi SDK 認證
-            // 注意：如果用戶已經授權過，這不會顯示權限對話框
             const auth = await Pi.authenticate(
-                // Must match login scopes to avoid re-prompting user for consent.
                 ['username', 'payments', 'wallet_address'],
                 (payment) => {
                     DebugLog.warn('刷新時發現未完成的支付', payment);
@@ -272,7 +281,6 @@ window.handleDevSwitchUser = handleDevSwitchUser;
 
             DebugLog.info('Pi SDK 重新認證成功', { username: auth.user.username });
 
-            // 同步到後端獲取新的 JWT（含 wallet_address 保持資料最新）
             const syncResult = await AppAPI.post('/api/user/pi-sync', {
                 pi_uid: auth.user.uid,
                 username: auth.user.username,
@@ -280,7 +288,6 @@ window.handleDevSwitchUser = handleDevSwitchUser;
                 wallet_address: auth.user.wallet_address || null,
             });
 
-            // 更新本地用戶資料
             this.currentUser = {
                 ...this.currentUser,
                 accessToken: syncResult.access_token,
@@ -297,7 +304,6 @@ window.handleDevSwitchUser = handleDevSwitchUser;
             return { success: true };
         } catch (error) {
             DebugLog.error('靜默刷新失敗，嘗試後端刷新', { error: error.message });
-            // 嘗試使用後端刷新作為備用方案
             return await this.backendTokenRefresh();
         }
     },
@@ -446,6 +452,16 @@ window.handleDevSwitchUser = handleDevSwitchUser;
     },
 
     async authenticateWithPi() {
+        if (_piLoginPromise) {
+            DebugLog.info('Pi login 已在進行中，等待結果');
+            return _piLoginPromise;
+        }
+
+        _piLoginPromise = this._doPiAuth().finally(() => { _piLoginPromise = null; });
+        return _piLoginPromise;
+    },
+
+    async _doPiAuth() {
         DebugLog.info('authenticateWithPi 開始', {
             piInitialized: this.piInitialized,
             hasPiSDK: !!window.Pi,
@@ -607,6 +623,10 @@ window.handleDevSwitchUser = handleDevSwitchUser;
             }
         }
 
+        if (this.currentUser) {
+            window.dispatchEvent(new Event('auth:ready'));
+        }
+
         return !!this.currentUser;
     },
 
@@ -717,6 +737,7 @@ window.handleDevSwitchUser = handleDevSwitchUser;
         // 登入後重新初始化通知服務（取得真實通知 + 連接 WebSocket）
         if (isLoggedIn && window.NotificationService) {
             window.NotificationService.init();
+            window.dispatchEvent(new Event('auth:ready'));
         }
 
         // 重新渲染導覽列（根據 role 顯示/隱藏 admin tab）
@@ -996,15 +1017,6 @@ async function handlePiLogin() {
         } else {
             alert('登入異常: ' + e.message);
         }
-    }
-};
-window.safePiLogin = async function () {
-    if (window._piLoginInProgress) return;
-    window._piLoginInProgress = true;
-    try {
-        await handlePiLogin();
-    } finally {
-        window._piLoginInProgress = false;
     }
 };
 window.handlePiLogin = handlePiLogin;

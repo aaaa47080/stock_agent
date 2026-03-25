@@ -440,11 +440,18 @@ const NotificationService = {
     },
 };
 
-// 自动初始化
+function _deferredInit() {
+    if (typeof AuthManager !== 'undefined' && AuthManager.currentUser) {
+        NotificationService.init();
+    } else {
+        window.addEventListener('auth:ready', () => NotificationService.init(), { once: true });
+    }
+}
+
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => NotificationService.init(), { once: true });
+    document.addEventListener('DOMContentLoaded', _deferredInit, { once: true });
 } else {
-    NotificationService.init();
+    _deferredInit();
 }
 
 window.NotificationService = NotificationService;

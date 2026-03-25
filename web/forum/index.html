@@ -24,7 +24,7 @@
         <script src="/static/js/logger.js"></script>
     </head>
 
-    <body class="bg-background text-textMain min-h-screen flex flex-col" data-page="index">
+    <body class="bg-background text-textMain min-h-screen flex flex-col" data-page="index" style="background:#0b0b12">
         <!-- Navbar -->
         <nav
             class="sticky top-0 z-50 bg-surface/95 backdrop-blur-xl border-b border-white/5 px-4 py-3"
@@ -71,7 +71,7 @@
                     <!-- 未登入狀態 -->
                     <div class="guest-only">
                         <button
-                            onclick="handlePiLogin()"
+                            onclick="safePiLogin()"
                             class="bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-sm font-bold transition"
                         >
                             登入

@@ -343,6 +343,10 @@ async def clear_chat_history_endpoint(
     session_id: str = "default", current_user: dict = Depends(get_current_user)
 ):
     """清除對話歷史"""
+    user_id = current_user.get("user_id")
+    owns = await run_sync(check_session_ownership, session_id, user_id)
+    if not owns:
+        raise HTTPException(status_code=403, detail="無權限清除此對話")
     await run_sync(db_clear_history, session_id)
 
     return {"status": "success", "message": "Chat history cleared"}
