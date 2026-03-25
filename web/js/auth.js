@@ -27,6 +27,8 @@ const DebugLog = {
 
 window.DebugLog = DebugLog;
 
+const PI_LOGIN_RECOVERY_GRACE_MS = 15000;
+
 const PiEnvironment = {
     isLocalhost() {
         return (
@@ -136,6 +138,10 @@ const AuthManager = {
      * 清除過期的 token 並導向登入
      */
     clearExpiredToken() {
+        if (this.shouldDeferExpiredSessionCleanup()) {
+            DebugLog.warn('Skip expired token cleanup during Pi login transition');
+            return false;
+        }
         DebugLog.warn('Token 已過期，清除並導向登入');
         this.currentUser = null;
         localStorage.removeItem('pi_user');
@@ -151,6 +157,29 @@ const AuthManager = {
 
         // 重整頁面以顯示登入 modal
         window.location.reload();
+        return true;
+    },
+
+    getRecentLoginSuccessAt() {
+        const raw = sessionStorage.getItem('pi_login_success_at');
+        const value = raw ? Number(raw) : 0;
+        return Number.isFinite(value) ? value : 0;
+    },
+
+    markRecentLoginSuccess() {
+        sessionStorage.setItem('pi_login_success_at', String(Date.now()));
+    },
+
+    shouldDeferExpiredSessionCleanup() {
+        const loginInProgress =
+            (typeof AppStore !== 'undefined' && AppStore.get('piLoginInProgress')) ||
+            window._piLoginInProgress === true;
+        if (loginInProgress) {
+            return true;
+        }
+
+        const lastSuccessAt = this.getRecentLoginSuccessAt();
+        return lastSuccessAt > 0 && Date.now() - lastSuccessAt < PI_LOGIN_RECOVERY_GRACE_MS;
     },
 
     /**
@@ -295,6 +324,7 @@ window.handleDevSwitchUser = handleDevSwitchUser;
             };
 
             localStorage.setItem('pi_user', JSON.stringify(this.currentUser));
+            this.markRecentLoginSuccess();
 
             DebugLog.info('後端 token 刷新成功', {
                 newExpiry: new Date(this.currentUser.accessTokenExpiry).toISOString(),
@@ -482,6 +512,7 @@ window.handleDevSwitchUser = handleDevSwitchUser;
             localStorage.setItem('pi_user', JSON.stringify(this.currentUser));
 
             // 啟動 token 自動刷新定時器
+            this.markRecentLoginSuccess();
             this.startTokenRefreshTimer();
             // Note: _updateUI is NOT called here because handlePiLogin() will
             // call window.location.reload() immediately after. The reload will

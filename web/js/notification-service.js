@@ -119,6 +119,10 @@ const NotificationService = {
     /**
      * 檢查 token 是否過期，     */
     _isTokenExpired() {
+        if (typeof AuthManager !== 'undefined' && AuthManager.shouldDeferExpiredSessionCleanup?.()) {
+            return false;
+        }
+
         const { userId, token } = this._getCredentials();
 
         if (!userId || !token) {
@@ -144,6 +148,10 @@ const NotificationService = {
      */
     async fetchNotifications() {
         try {
+            if (typeof AuthManager !== 'undefined' && AuthManager.shouldDeferExpiredSessionCleanup?.()) {
+                return;
+            }
+
             // 檢查 token 是否過期
             if (this._isTokenExpired()) {
                 console.warn('[NotificationService] Token expired, clearing...');
@@ -441,4 +449,3 @@ if (document.readyState === 'loading') {
 
 window.NotificationService = NotificationService;
 export { NotificationService };
-
