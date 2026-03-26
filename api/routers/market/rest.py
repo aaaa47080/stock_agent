@@ -134,20 +134,22 @@ async def run_screener(request: Request, screener_request: ScreenerRequest, curr
 
 
 @router.post("/api/klines")
-async def get_klines_data(request: KlineRequest):
-    """Get K-line data for chart display."""
+@limiter.limit("60/minute")
+async def get_klines_data(
+    request: Request, kline_request: KlineRequest, current_user: dict = Depends(get_current_user)
+):
     try:
         df = await run_sync(
             lambda: get_klines(
-                symbol=request.symbol,
-                exchange=request.exchange,
-                interval=request.interval,
-                limit=request.limit,
+                symbol=kline_request.symbol,
+                exchange=kline_request.exchange,
+                interval=kline_request.interval,
+                limit=kline_request.limit,
             )
         )
 
         if df is None or df.empty:
-            raise HTTPException(status_code=404, detail=f"No data for {request.symbol}")
+            raise HTTPException(status_code=404, detail=f"No data for {kline_request.symbol}")
 
         klines = []
         for _, row in df.iterrows():
@@ -165,8 +167,8 @@ async def get_klines_data(request: KlineRequest):
             klines.append(kline_data)
 
         return {
-            "symbol": request.symbol,
-            "interval": request.interval,
+            "symbol": kline_request.symbol,
+            "interval": kline_request.interval,
             "klines": klines,
             "updated_at": datetime.now().isoformat(),
         }

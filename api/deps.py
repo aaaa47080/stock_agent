@@ -5,7 +5,7 @@ from typing import Optional, TypedDict
 
 import jwt
 from dotenv import load_dotenv
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordBearer
 from jwt import InvalidTokenError
 
@@ -13,6 +13,9 @@ from core.orm.repositories import _normalize_membership_tier, user_repo
 
 load_dotenv()
 logger = logging.getLogger(__name__)
+
+ACCESS_TOKEN_COOKIE = "access_token"
+REFRESH_TOKEN_COOKIE = "refresh_token"
 
 
 class CurrentUser(TypedDict, total=False):
@@ -33,6 +36,9 @@ SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 REFRESH_TOKEN_EXPIRE_DAYS = 30  # 30 days for refresh tokens
+_COOKIE_SECURE = os.getenv("ENVIRONMENT", "development").lower() in ("production", "prod")
+_COOKIE_DOMAIN = os.getenv("COOKIE_DOMAIN", "")
+_COOKIE_SAME_SITE = "Lax"
 
 # Security check: require fallback secret unless key rotation is explicitly enabled.
 if not SECRET_KEY and os.getenv("USE_KEY_ROTATION", "false").lower() != "true":
@@ -68,6 +74,55 @@ def _get_key_manager():
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/user/login", auto_error=False)
+
+
+def set_token_cookies(
+    response: Response,
+    access_token: str,
+    refresh_token: str,
+) -> None:
+    """Set httpOnly cookies for JWT tokens."""
+    kwargs: dict = {
+        "secure": _COOKIE_SECURE,
+        "httponly": True,
+        "samesite": _COOKIE_SAME_SITE,
+        "path": "/",
+    }
+    if _COOKIE_DOMAIN:
+        kwargs["domain"] = _COOKIE_DOMAIN
+
+    response.set_cookie(
+        ACCESS_TOKEN_COOKIE,
+        access_token,
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        **kwargs,
+    )
+    response.set_cookie(
+        REFRESH_TOKEN_COOKIE,
+        refresh_token,
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+        **kwargs,
+    )
+
+
+def clear_token_cookies(response: Response) -> None:
+    """Clear JWT cookies on logout."""
+    kwargs: dict = {"path": "/"}
+    if _COOKIE_DOMAIN:
+        kwargs["domain"] = _COOKIE_DOMAIN
+    response.delete_cookie(ACCESS_TOKEN_COOKIE, **kwargs)
+    response.delete_cookie(REFRESH_TOKEN_COOKIE, **kwargs)
+
+
+def get_token_from_cookie(request: Request) -> Optional[str]:
+    """Extract access token from httpOnly cookie, falling back to Bearer header."""
+    cookie_token = request.cookies.get(ACCESS_TOKEN_COOKIE)
+    if cookie_token:
+        return cookie_token
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        return auth_header[7:]
+    return None
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -150,32 +205,34 @@ def verify_token(token: str) -> dict:
             )
 
 
-async def get_current_user_id(token: str = Depends(oauth2_scheme)) -> str:
+async def get_current_user_id(request: Request, token: str = Depends(oauth2_scheme)) -> str:
     """
     Validate the token and return the user_id.
-    This dependency can be used to protect endpoints.
+    Reads from httpOnly cookie first, falls back to Authorization header.
 
     Stage 3 Security: Supports key rotation when enabled.
     """
+    resolved_token = token or get_token_from_cookie(request) or ""
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    if not token:
+    if not resolved_token:
         raise credentials_exception
 
     try:
         if _use_key_rotation():
             key_manager = _get_key_manager()
             payload = key_manager.verify_token_with_any_key(
-                token, algorithms=[ALGORITHM]
+                resolved_token, algorithms=[ALGORITHM]
             )
             if payload is None:
                 raise credentials_exception
         else:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            payload = jwt.decode(resolved_token, SECRET_KEY, algorithms=[ALGORITHM])
 
         user_id: str = payload.get("sub")
         if user_id is None:
@@ -185,9 +242,10 @@ async def get_current_user_id(token: str = Depends(oauth2_scheme)) -> str:
         raise credentials_exception
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme)) -> CurrentUser:
+async def get_current_user(request: Request, token: str = Depends(oauth2_scheme)) -> CurrentUser:
     """
     Validate token and return full user dict.
+    Reads from httpOnly cookie first, falls back to Authorization header.
     In TEST_MODE, automatically return test user without requiring valid token.
     """
     from core.config import TEST_MODE, TEST_USER
@@ -200,24 +258,44 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> CurrentUser:
                 "🚨 SECURITY ALERT: TEST_MODE must not be enabled in production environment"
             )
 
+    resolved_token = token or get_token_from_cookie(request) or ""
     user_id = None
 
     # If using regular authentication (not skipped via TEST_MODE without token)
-    if token:
-        if TEST_MODE and token.startswith("test-user-"):
+    if resolved_token:
+        if TEST_MODE and resolved_token.startswith("test-user-"):
             _allowed = {
                 u.strip()
                 for u in os.getenv("ALLOWED_TEST_USERS", "test-user-001").split(",")
                 if u.strip()
             }
-            if token in _allowed:
-                user_id = token
+            if resolved_token in _allowed:
+                user_id = resolved_token
             # Use mock user logic below
         else:
             try:
                 # Normal mode: Validate JWT token
-                user_id = await get_current_user_id(token)
-            except HTTPException:
+                payload: dict
+                if _use_key_rotation():
+                    key_manager = _get_key_manager()
+                    payload = key_manager.verify_token_with_any_key(
+                        resolved_token, algorithms=[ALGORITHM]
+                    )
+                    if payload is None:
+                        raise HTTPException(
+                            status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Could not validate credentials",
+                        )
+                else:
+                    payload = jwt.decode(resolved_token, SECRET_KEY, algorithms=[ALGORITHM])
+                user_id = payload.get("sub")
+                if not user_id:
+                    if not TEST_MODE:
+                        raise HTTPException(
+                            status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail="Could not validate credentials",
+                        )
+            except (InvalidTokenError, HTTPException):
                 if not TEST_MODE:
                     raise
                 # Fallback to default test user if validation fails in TEST_MODE

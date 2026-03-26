@@ -235,7 +235,6 @@ async def send_message_endpoint(
         )
 
         if not limit_check["can_send"]:
-            await run_sync(increment_message_count, user_id)
             raise HTTPException(
                 status_code=429,
                 detail=f"已達每日訊息上限 ({limit_check['limit']} 條)，升級 Premium 會員可無限發送",
@@ -248,9 +247,6 @@ async def send_message_endpoint(
         if not result["success"]:
             await run_sync(increment_message_count, user_id)
             raise HTTPException(status_code=400, detail=result.get("error", "發送失敗"))
-
-        if not is_premium:
-            pass  # Already incremented atomically above
 
         await message_manager.send_to_user(
             body.to_user_id, {"type": "new_message", "message": result["message"]}

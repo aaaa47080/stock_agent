@@ -25,6 +25,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TIMESTAMP, TSVECTOR
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -270,6 +271,12 @@ class Post(Base):
         Index("idx_posts_user_id", "user_id"),
         Index("idx_posts_created_at", "created_at"),
         Index("idx_posts_category", "category"),
+        Index(
+            "idx_posts_payment_tx_hash",
+            "payment_tx_hash",
+            unique=True,
+            postgresql_where=text("payment_tx_hash IS NOT NULL"),
+        ),
     )
 
 
@@ -1048,4 +1055,5 @@ class TaskExperience(Base):
     __table_args__ = (
         Index("idx_te_user_family", "user_id", "task_family"),
         Index("idx_te_created", "created_at"),
+        Index("idx_te_tsv", "query_tsv", postgresql_using="gin"),
     )

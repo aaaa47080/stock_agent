@@ -18,13 +18,9 @@ function getToken() {
         typeof AuthManager !== 'undefined' &&
         AuthManager.currentUser
     ) {
-        return (
-            AuthManager.currentUser.accessToken ||
-            AuthManager.currentUser.token ||
-            localStorage.getItem('auth_token')
-        );
+        return AuthManager.currentUser.accessToken || AuthManager.currentUser.token || null;
     }
-    return localStorage.getItem('auth_token') || null;
+    return null;
 }
 
 function buildHeaders(customHeaders) {
@@ -77,6 +73,8 @@ async function request(method, url, options) {
     options = options || {};
     var timeout = options.timeout || DEFAULT_TIMEOUT;
     var retries = options.retries !== undefined ? options.retries : MAX_RETRIES;
+    var isIdempotent = method === 'GET' || method === 'HEAD' || method === 'OPTIONS';
+    if (!isIdempotent) retries = 0;
     var body = options.body;
     var customHeaders = options.headers;
     var noContentType = options.noContentType || false;
@@ -100,6 +98,7 @@ async function request(method, url, options) {
                 method: method,
                 headers: headers,
                 signal: controller.signal,
+                credentials: 'include',
             };
             if (body !== undefined && body !== null) {
                 fetchOptions.body = typeof body === 'string' ? body : JSON.stringify(body);

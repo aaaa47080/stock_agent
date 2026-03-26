@@ -2,10 +2,16 @@ import os
 from typing import Optional
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
 
-from api.deps import create_access_token, create_refresh_token, get_current_user
+from api.deps import (
+    clear_token_cookies,
+    create_access_token,
+    create_refresh_token,
+    get_current_user,
+    set_token_cookies,
+)
 from api.middleware.rate_limit import limiter
 from api.models import WatchlistRequest
 from api.pi_verification import verify_pi_access_token
@@ -95,7 +101,7 @@ class DevLoginRequest(BaseModel):
 
 @router.post("/api/user/dev-login")
 @limiter.limit("5/minute")
-async def dev_login(request: Request, body: DevLoginRequest = None):
+async def dev_login(request: Request, response: Response, body: DevLoginRequest = None):
     """
     僅在 TEST_MODE=True 時可用的開發測試登入
     返回測試用戶的 JWT Token
@@ -135,6 +141,8 @@ async def dev_login(request: Request, body: DevLoginRequest = None):
     except Exception as e:
         logger.error(f"[DEV LOGIN] Error ensuring test user exists: {e}")
 
+    set_token_cookies(response, access_token, refresh_token)
+
     return {
         "success": True,
         "access_token": access_token,
@@ -161,7 +169,7 @@ class PiUserSyncRequest(BaseModel):
 
 @router.post("/api/user/pi-sync")
 @limiter.limit("5/minute")
-async def sync_pi_user(request: Request, body: PiUserSyncRequest):
+async def sync_pi_user(request: Request, response: Response, body: PiUserSyncRequest):
     """
     同步 Pi Network 用戶到資料庫
     - 首次登入時自動創建用戶
@@ -203,6 +211,8 @@ async def sync_pi_user(request: Request, body: PiUserSyncRequest):
         refresh_token = create_refresh_token(
             data={"sub": result["user_id"], "username": result["username"]}
         )
+
+        set_token_cookies(response, access_token, refresh_token)
 
         return {
             "success": True,
@@ -248,14 +258,25 @@ class RefreshTokenRequest(BaseModel):
 
 @router.post("/api/user/refresh")
 @limiter.limit("10/minute")
-async def refresh_access_token(request: Request, body: RefreshTokenRequest):
+async def refresh_access_token(request: Request, response: Response, body: RefreshTokenRequest = None):
     """
-    使用 refresh token 獲取新的 access token
+    使用 refresh token 獲取新的 access token。
+    Reads refresh_token from cookie first, falls back to request body.
     """
-    from api.deps import verify_token
+    from api.deps import REFRESH_TOKEN_COOKIE, verify_token
+
+    refresh_token_value = body.refresh_token if body and body.refresh_token else None
+    if not refresh_token_value:
+        refresh_token_value = request.cookies.get(REFRESH_TOKEN_COOKIE)
+
+    if not refresh_token_value:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token is required",
+        )
 
     try:
-        payload = verify_token(body.refresh_token)
+        payload = verify_token(refresh_token_value)
         if payload.get("type") != "refresh":
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -278,6 +299,8 @@ async def refresh_access_token(request: Request, body: RefreshTokenRequest):
             data={"sub": user_id, "username": username}
         )
 
+        set_token_cookies(response, new_access_token, new_refresh_token)
+
         return {
             "success": True,
             "access_token": new_access_token,
@@ -293,6 +316,13 @@ async def refresh_access_token(request: Request, body: RefreshTokenRequest):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token refresh failed",
         )
+
+
+@router.post("/api/user/logout")
+async def logout(response: Response):
+    """Clear JWT cookies on logout."""
+    clear_token_cookies(response)
+    return {"success": True}
 
 
 # --- Pi Payment Handling Endpoints ---
@@ -631,7 +661,7 @@ async def get_user_api_key_full_endpoint(
 @router.post("/api/user/refresh-token")
 @limiter.limit("5/minute")
 async def refresh_token(
-    request: Request, current_user: dict = Depends(get_current_user)
+    request: Request, response: Response, current_user: dict = Depends(get_current_user)
 ):
     """
     刷新 JWT Token（備用方案，不需要 Pi SDK）
@@ -644,12 +674,19 @@ async def refresh_token(
                 "username": current_user.get("username", "user"),
             }
         )
+        new_refresh_token = create_refresh_token(
+            data={
+                "sub": current_user["user_id"],
+                "username": current_user.get("username", "user"),
+            }
+        )
         logger.info(f"Token refreshed for user: {current_user['user_id']}")
         audit_log(
             action="token_refresh",
             user_id=current_user["user_id"],
             metadata={"method": "backend_refresh"},
         )
+        set_token_cookies(response, new_access_token, new_refresh_token)
         return {
             "success": True,
             "access_token": new_access_token,

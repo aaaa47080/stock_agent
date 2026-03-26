@@ -276,11 +276,7 @@ const ForumApp = {
                 // 使用 SecurityUtils 安全渲染
                 contentContainer.innerHTML = SecurityUtils.renderMarkdownSafely(post.content);
             } else {
-                // Fallback: 基本的 markdown 渲染
-                const md = window.markdownit
-                    ? window.markdownit({ html: false })
-                    : { render: (t) => t };
-                contentContainer.innerHTML = md.render(post.content);
+                contentContainer.textContent = post.content;
             }
 
             // Tags

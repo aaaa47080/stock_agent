@@ -137,6 +137,14 @@ const AuthManager = {
         return timeUntilExpiry > 0 && timeUntilExpiry < this.REFRESH_BEFORE_EXPIRY_MS;
     },
 
+    _saveUserSession() {
+        if (!this.currentUser) return;
+        const safe = { ...this.currentUser };
+        delete safe.accessToken;
+        delete safe.piAccessToken;
+        localStorage.setItem('pi_user', JSON.stringify(safe));
+    },
+
     restoreSessionFromStorage() {
         if (this.currentUser) {
             return true;
@@ -177,6 +185,8 @@ const AuthManager = {
         this.currentUser = null;
         localStorage.removeItem('pi_user');
         this._updateUI(false);
+
+        AppAPI.post('/api/user/logout').catch(() => {});
 
         // 顯示提示
         if (typeof showToast === 'function') {
@@ -309,7 +319,7 @@ const AuthManager = {
             await this.initPiSDKAsync();
 
             const auth = await Pi.authenticate(
-                ['username', 'payments', 'wallet_address', 'roles', 'in_app_notifications'],
+                ['username', 'payments', 'wallet_address'],
                 (payment) => {
                     DebugLog.warn('刷新時發現未完成的支付', payment);
                 }
@@ -331,7 +341,7 @@ const AuthManager = {
                 piAccessToken: auth.accessToken,
             };
 
-            localStorage.setItem('pi_user', JSON.stringify(this.currentUser));
+            this._saveUserSession();
 
             DebugLog.info('Token 靜默刷新成功', {
                 newExpiry: new Date(this.currentUser.accessTokenExpiry).toISOString(),
@@ -365,7 +375,7 @@ const AuthManager = {
                 accessTokenExpiry: Date.now() + this.TOKEN_EXPIRY_MS,
             };
 
-            localStorage.setItem('pi_user', JSON.stringify(this.currentUser));
+            this._saveUserSession();
             this.markRecentLoginSuccess();
 
             DebugLog.info('後端 token 刷新成功', {
@@ -480,7 +490,7 @@ const AuthManager = {
                 authMethod: result.user.authMethod,
             };
 
-            localStorage.setItem('pi_user', JSON.stringify(this.currentUser));
+            this._saveUserSession();
             this._updateUI(true);
 
             if (typeof initChat === 'function') initChat();
@@ -532,10 +542,11 @@ const AuthManager = {
             );
 
             const timeoutPromise = new Promise((_, reject) => {
-                setTimeout(() => {
+                const timeoutId = setTimeout(() => {
                     DebugLog.error('Pi.authenticate 超時', { timeout: AUTH_TIMEOUT });
                     reject(new Error('Pi 認證超時，請確認 Pi Browser 是否有彈出授權視窗'));
                 }, AUTH_TIMEOUT);
+                authPromise.finally(() => clearTimeout(timeoutId));
             });
 
             const auth = await Promise.race([authPromise, timeoutPromise]);
@@ -566,7 +577,7 @@ const AuthManager = {
                 piAccessToken: auth.accessToken,
             };
 
-            localStorage.setItem('pi_user', JSON.stringify(this.currentUser));
+            this._saveUserSession();
 
             // 啟動 token 自動刷新定時器
             this.markRecentLoginSuccess();
@@ -770,9 +781,8 @@ const AuthManager = {
             window.refreshAnalysisModeSelector();
         }
 
-        // 登入後重新初始化通知服務（取得真實通知 + 連接 WebSocket）
-        if (isLoggedIn && window.NotificationService) {
-            window.NotificationService.init();
+        // 登入後觸發 auth:ready 事件，由 NotificationService 監聽並初始化
+        if (isLoggedIn) {
             window.dispatchEvent(new Event('auth:ready'));
         }
 
@@ -788,8 +798,10 @@ const AuthManager = {
         this.stopTokenRefreshTimer();
         this.currentUser = null;
         localStorage.removeItem('pi_user');
-        this._updateUI(false);
-        window.location.reload();
+        AppAPI.post('/api/user/logout').finally(() => {
+            this._updateUI(false);
+            window.location.reload();
+        });
     },
 };
 
@@ -1113,7 +1125,7 @@ async function handleDevSwitchUser(userId) {
             authMethod: result.user.authMethod,
         };
 
-        localStorage.setItem('pi_user', JSON.stringify(AuthManager.currentUser));
+        AuthManager._saveUserSession();
 
         if (typeof showToast === 'function') {
             showToast(`切換到 ${result.user.username}`, 'success');

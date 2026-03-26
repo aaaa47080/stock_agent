@@ -332,9 +332,9 @@ const ScamTrackerApp = {
             return;
         }
 
-        container.innerHTML = this.reports.map(report => `
+        container.innerHTML = this.reports.map((report, i) => `
             <div class="bg-surface border border-white/5 rounded-2xl p-5 hover:border-primary/30 transition cursor-pointer"
-                onclick="window.location.href='/static/scam-tracker/detail.html?id=' + encodeURIComponent('${report.id}')">
+                 data-report-idx="${i}">
                 <div class="flex items-start justify-between mb-3">
                     <div class="flex items-center gap-2 flex-wrap">
                         ${this.getStatusBadge(report.verification_status)}
@@ -376,6 +376,13 @@ const ScamTrackerApp = {
                 </div>
             </div>
         `).join('');
+
+        container.querySelectorAll('[data-report-idx]').forEach((el, i) => {
+            el.addEventListener('click', () => {
+                window.location.href = '/static/scam-tracker/detail.html?id=' +
+                    encodeURIComponent(this.reports[i].id);
+            }.bind(this));
+        });
 
         lucide.createIcons();
     },

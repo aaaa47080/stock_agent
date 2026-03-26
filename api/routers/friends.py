@@ -102,9 +102,6 @@ async def send_request(
 ):
     try:
         user_id = current_user["user_id"]
-        user_exists = await user_repo.get_by_id(user_id, session=session)
-        if not user_exists:
-            raise HTTPException(status_code=401, detail="用戶不存在")
         target_exists = await user_repo.get_by_id(
             req.target_user_id, session=session
         )

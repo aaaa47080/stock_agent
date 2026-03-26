@@ -1345,12 +1345,12 @@ def reconcile_check_constraints(c):
         (
             "friendships",
             "ck_status_valid",
-            "ALTER TABLE friendships ADD CONSTRAINT ck_status_valid CHECK (status IN ('pending', 'accepted', 'blocked'))",
+            "ALTER TABLE friendships ADD CONSTRAINT ck_status_valid CHECK (status IN ('pending', 'accepted', 'rejected', 'blocked'))",
         ),
         (
             "forum_comments",
             "ck_type_valid",
-            "ALTER TABLE forum_comments ADD CONSTRAINT ck_type_valid CHECK (type IN ('comment', 'reply'))",
+            "ALTER TABLE forum_comments ADD CONSTRAINT ck_type_valid CHECK (type IN ('comment', 'push', 'boo'))",
         ),
         (
             "scam_reports",
@@ -1520,6 +1520,7 @@ def reconcile_timestamptz(c):
         ("tools_catalog", "created_at"),
         ("user_tool_preferences", "updated_at"),
         ("notifications", "created_at"),
+        ("price_alerts", "created_at"),
     ]
     for table, col in migrations:
         try:
