@@ -3,11 +3,33 @@
 // ========================================
 
 window._piLoginInProgress = false;
+const AUTH_DIAGNOSTICS_KEY = 'auth_diagnostics_v1';
+
+function pushPiAuthDiagnostic(event, data) {
+    try {
+        const raw = sessionStorage.getItem(AUTH_DIAGNOSTICS_KEY);
+        const entries = raw ? JSON.parse(raw) : [];
+        const safeEntries = Array.isArray(entries) ? entries : [];
+        safeEntries.push({
+            at: new Date().toISOString(),
+            event,
+            data: data || {},
+        });
+        sessionStorage.setItem(
+            AUTH_DIAGNOSTICS_KEY,
+            JSON.stringify(safeEntries.slice(-120))
+        );
+    } catch (_) {}
+}
 
 window.safePiLogin = async function () {
+    pushPiAuthDiagnostic('safePiLogin:start', {
+        visibility: document.visibilityState,
+    });
     if ((typeof AppStore !== 'undefined' && AppStore.get('piLoginInProgress')) ||
         window._piLoginInProgress) {
         console.log('登入已在進行中，忽略重複點擊');
+        pushPiAuthDiagnostic('safePiLogin:duplicateClick');
         return;
     }
 
@@ -39,21 +61,27 @@ window.safePiLogin = async function () {
         }
 
         console.warn('[Pi Login] handlePiLogin not yet loaded, waiting 500ms...');
+        pushPiAuthDiagnostic('safePiLogin:waitingForHandlePiLogin');
         await new Promise((r) => setTimeout(r, 500));
         if (typeof handlePiLogin === 'function') {
             return await runLogin();
         }
 
         console.error('[Pi Login] handlePiLogin is still not a function after wait. JS load order issue.');
+        pushPiAuthDiagnostic('safePiLogin:missingHandlePiLogin');
         if (typeof showToast === 'function') {
             showToast('系統載入中，請稍後再試', 'warning');
         }
     } catch (error) {
         console.error('[Pi Login] safePiLogin failed:', error);
+        pushPiAuthDiagnostic('safePiLogin:failed', {
+            error: error?.message || 'unknown',
+        });
         if (typeof showToast === 'function') {
             showToast(error?.message || 'Pi 登入失敗，請稍後重試', 'error');
         }
     } finally {
+        pushPiAuthDiagnostic('safePiLogin:finally');
         if (watchdogId) clearTimeout(watchdogId);
         if (typeof AppStore !== 'undefined') AppStore.set('piLoginInProgress', false);
         window._piLoginInProgress = false;
@@ -113,6 +141,7 @@ window.isPiBrowserGateLocked = function () { return false; };
             window.Pi !== null &&
             typeof window.Pi.authenticate === 'function';
         if (detected) {
+            pushPiAuthDiagnostic('piSdk:detected');
             _showLoginButton();
             return;
         }
@@ -120,6 +149,7 @@ window.isPiBrowserGateLocked = function () { return false; };
         if (attempts < maxAttempts) {
             setTimeout(check, 100);
         } else {
+            pushPiAuthDiagnostic('piSdk:notDetectedAfterPolling');
             _showLoginButton();
         }
     };

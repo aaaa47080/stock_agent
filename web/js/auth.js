@@ -2,8 +2,70 @@
 // auth.js - 用戶身份認證模塊 (簡潔穩定版)
 // ========================================
 
+const AUTH_DIAGNOSTICS_KEY = 'auth_diagnostics_v1';
+const MAX_AUTH_DIAGNOSTICS = 120;
+
+function readAuthDiagnostics() {
+    try {
+        const raw = sessionStorage.getItem(AUTH_DIAGNOSTICS_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (_) {
+        return [];
+    }
+}
+
+function writeAuthDiagnostics(entries) {
+    try {
+        sessionStorage.setItem(
+            AUTH_DIAGNOSTICS_KEY,
+            JSON.stringify(entries.slice(-MAX_AUTH_DIAGNOSTICS))
+        );
+    } catch (_) {}
+}
+
+function pushAuthDiagnostic(event, data) {
+    const entries = readAuthDiagnostics();
+    entries.push({
+        at: new Date().toISOString(),
+        event,
+        data: data || {},
+    });
+    writeAuthDiagnostics(entries);
+}
+
+window.getAuthDiagnostics = function () {
+    return readAuthDiagnostics();
+};
+
+window.clearAuthDiagnostics = function () {
+    sessionStorage.removeItem(AUTH_DIAGNOSTICS_KEY);
+};
+
+window.copyAuthDiagnostics = async function () {
+    const serialized = JSON.stringify(readAuthDiagnostics(), null, 2);
+    if (!navigator.clipboard?.writeText) {
+        return serialized;
+    }
+
+    await navigator.clipboard.writeText(serialized);
+    if (typeof showToast === 'function') {
+        showToast('已複製登入診斷資訊', 'success');
+    }
+    return serialized;
+};
+
 const DebugLog = {
     send(level, message, data = null) {
+        if (
+            message.includes('Pi') ||
+            message.includes('Token') ||
+            message.includes('session') ||
+            message.includes('登入') ||
+            message.includes('refresh')
+        ) {
+            pushAuthDiagnostic(message, { level, ...(data || {}) });
+        }
         if (window.APP_CONFIG && window.APP_CONFIG.DEBUG_MODE !== true) {
             return;
         }
@@ -85,11 +147,11 @@ const AuthManager = {
     piInitialized: false,
     _refreshTimer: null,
 
-    // Token 過期時間（7 天，與後端 ACCESS_TOKEN_EXPIRE_MINUTES 一致）
-    TOKEN_EXPIRY_MS: 7 * 24 * 60 * 60 * 1000,
+    // Token 過期時間（24 小時，與後端 ACCESS_TOKEN_EXPIRE_MINUTES 一致）
+    TOKEN_EXPIRY_MS: 24 * 60 * 60 * 1000,
 
-    // 在過期前多久開始刷新（1 天）
-    REFRESH_BEFORE_EXPIRY_MS: 24 * 60 * 60 * 1000,
+    // 在過期前多久開始刷新（6 小時）
+    REFRESH_BEFORE_EXPIRY_MS: 6 * 60 * 60 * 1000,
 
     isPasswordSession(user) {
         const method = user?.authMethod || user?.auth_method;
@@ -145,6 +207,38 @@ const AuthManager = {
         localStorage.setItem('pi_user', JSON.stringify(safe));
     },
 
+    _mergeCurrentUser(patch) {
+        this.currentUser = {
+            ...(this.currentUser || {}),
+            ...(patch || {}),
+        };
+        this._saveUserSession();
+        return this.currentUser;
+    },
+
+    _applyBackendSessionUser(backendUser) {
+        this._mergeCurrentUser({
+            user_id: backendUser.user_id || this.currentUser?.user_id,
+            uid:
+                backendUser.user_id ||
+                this.currentUser?.uid ||
+                this.currentUser?.user_id ||
+                null,
+            username: backendUser.username || this.currentUser?.username,
+            authMethod: backendUser.auth_method || this.currentUser?.authMethod,
+            auth_method: backendUser.auth_method || this.currentUser?.auth_method,
+            role: backendUser.role || this.currentUser?.role || 'user',
+            membership_tier:
+                backendUser.membership_tier || this.currentUser?.membership_tier || 'free',
+            pi_uid: backendUser.pi_uid || this.currentUser?.pi_uid || null,
+            pi_username: backendUser.pi_username || this.currentUser?.pi_username || null,
+            has_wallet:
+                typeof backendUser.has_wallet === 'boolean'
+                    ? backendUser.has_wallet
+                    : this.currentUser?.has_wallet,
+        });
+    },
+
     restoreSessionFromStorage() {
         if (this.currentUser) {
             return true;
@@ -163,10 +257,15 @@ const AuthManager = {
             }
 
             this.currentUser = parsedUser;
-            this._updateUI(true);
+            pushAuthDiagnostic('restoreSessionFromStorage:success', {
+                user_id: parsedUser.user_id || parsedUser.uid || null,
+            });
             DebugLog.info('已從 localStorage 恢復登入狀態');
             return true;
         } catch (error) {
+            pushAuthDiagnostic('restoreSessionFromStorage:invalid', {
+                error: error.message,
+            });
             DebugLog.warn('恢復登入狀態失敗，清除損壞快取', { error: error.message });
             localStorage.removeItem('pi_user');
             return false;
@@ -182,6 +281,9 @@ const AuthManager = {
             return false;
         }
         DebugLog.warn('Token 已過期，清除並導向登入');
+        pushAuthDiagnostic('clearExpiredToken', {
+            hadUser: !!this.currentUser,
+        });
         this.currentUser = null;
         localStorage.removeItem('pi_user');
         this._updateUI(false);
@@ -225,7 +327,7 @@ const AuthManager = {
 
     /**
      * 啟動 token 自動刷新定時器
-     * 每 10 分鐘檢查一次，如果 token 快過期則自動刷新
+     * 每 30 分鐘檢查一次，如果 token 快過期則自動刷新
      */
     startTokenRefreshTimer() {
         // 清除舊的定時器
@@ -248,14 +350,9 @@ const AuthManager = {
                         : 'unknown',
                 });
 
-                if (this.isTokenExpired()) {
-                    // Token 已過期，嘗試自動刷新
-                    DebugLog.info('Token 已過期，嘗試自動刷新');
-                    await this.silentRefresh();
-                } else if (this.needsRefresh()) {
-                    // Token 快過期，提前刷新
-                    DebugLog.info('Token 快過期，提前刷新');
-                    await this.silentRefresh();
+                if (this.isTokenExpired() || this.needsRefresh()) {
+                    DebugLog.info('Token 需要刷新，改走後端 refresh cookie');
+                    await this.backendTokenRefresh();
                 }
             },
             30 * 60 * 1000
@@ -270,7 +367,6 @@ const AuthManager = {
                 }
                 DebugLog.info('頁面重新可見，檢查 token 狀態');
                 if (this.isTokenExpired() || this.needsRefresh()) {
-                    // On app resume, prefer backend refresh and avoid Pi SDK prompts/blank pages.
                     await this.backendTokenRefresh();
                 }
             }
@@ -280,7 +376,29 @@ const AuthManager = {
 
         this._pageShowHandler = () => {
             if (!this.currentUser) {
-                this.restoreSessionFromStorage();
+                if (!this.restoreSessionFromStorage()) {
+                    return;
+                }
+
+                Promise.resolve(this.restoreSessionFromBackend())
+                    .then((result) => {
+                        if (result.success) {
+                            pushAuthDiagnostic('pageshow:restoreSessionFromBackend:success');
+                            this._updateUI(true);
+                            return;
+                        }
+                        pushAuthDiagnostic('pageshow:restoreSessionFromBackend:failed', {
+                            error: result.error,
+                        });
+                        this.clearExpiredToken();
+                    })
+                    .catch((error) => {
+                        pushAuthDiagnostic('pageshow:restoreSessionFromBackend:error', {
+                            error: error.message,
+                        });
+                        DebugLog.warn('pageshow 恢復 session 失敗', { error: error.message });
+                        this.clearExpiredToken();
+                    });
             }
         };
         window.addEventListener('pageshow', this._pageShowHandler);
@@ -289,103 +407,107 @@ const AuthManager = {
     },
 
     /**
-     * 靜默刷新 token（使用 Pi SDK 重新認證）
-     * @returns {Promise<{success: boolean, error?: string}>}
-     */
-    async silentRefresh() {
-        if (!this.currentUser?.pi_uid) {
-            DebugLog.warn('非 Pi 用戶，無法靜默刷新');
-            return { success: false, error: 'Not a Pi user' };
-        }
-
-        if (_piRefreshPromise) {
-            DebugLog.info('silentRefresh: 刷新已在進行中，跳過');
-            return _piRefreshPromise;
-        }
-
-        if (!PiEnvironment.isPiBrowser()) {
-            DebugLog.warn('非 Pi Browser 環境，嘗試使用後端刷新');
-            return await this.backendTokenRefresh();
-        }
-
-        _piRefreshPromise = this._doSilentRefresh().finally(() => { _piRefreshPromise = null; });
-        return _piRefreshPromise;
-    },
-
-    async _doSilentRefresh() {
-        try {
-            DebugLog.info('開始靜默刷新 token...');
-
-            await this.initPiSDKAsync();
-
-            const auth = await Pi.authenticate(
-                ['username', 'payments', 'wallet_address'],
-                (payment) => {
-                    DebugLog.warn('刷新時發現未完成的支付', payment);
-                }
-            );
-
-            DebugLog.info('Pi SDK 重新認證成功', { username: auth.user.username });
-
-            const syncResult = await AppAPI.post('/api/user/pi-sync', {
-                pi_uid: auth.user.uid,
-                username: auth.user.username,
-                access_token: auth.accessToken,
-                wallet_address: auth.user.wallet_address || null,
-            });
-
-            this.currentUser = {
-                ...this.currentUser,
-                accessToken: syncResult.access_token,
-                accessTokenExpiry: Date.now() + this.TOKEN_EXPIRY_MS,
-                piAccessToken: auth.accessToken,
-            };
-
-            this._saveUserSession();
-
-            DebugLog.info('Token 靜默刷新成功', {
-                newExpiry: new Date(this.currentUser.accessTokenExpiry).toISOString(),
-            });
-
-            return { success: true };
-        } catch (error) {
-            DebugLog.error('靜默刷新失敗，嘗試後端刷新', { error: error.message });
-            return await this.backendTokenRefresh();
-        }
-    },
-
-    /**
-     * 使用後端刷新 token（備用方案，不需要 Pi SDK）
+     * 使用 refresh cookie 刷新 token
      * @returns {Promise<{success: boolean, error?: string}>}
      */
     async backendTokenRefresh() {
-        if (!this.currentUser?.accessToken) {
-            return { success: false, error: 'No token to refresh' };
+        if (_piRefreshPromise) {
+            DebugLog.info('backendTokenRefresh: 刷新已在進行中，等待既有請求');
+            return _piRefreshPromise;
+        }
+
+        _piRefreshPromise = (async () => {
+            try {
+                DebugLog.info('嘗試後端 token 刷新...');
+                pushAuthDiagnostic('backendTokenRefresh:start');
+
+                const result = await AppAPI.post(
+                    '/api/user/refresh',
+                    {},
+                    { headers: { Authorization: '' } }
+                );
+
+                this._mergeCurrentUser({
+                    accessToken: result.access_token,
+                    accessTokenExpiry: Date.now() + this.TOKEN_EXPIRY_MS,
+                });
+                this.markRecentLoginSuccess();
+
+                DebugLog.info('後端 token 刷新成功', {
+                    newExpiry: new Date(this.currentUser.accessTokenExpiry).toISOString(),
+                });
+                pushAuthDiagnostic('backendTokenRefresh:success', {
+                    expiry: this.currentUser.accessTokenExpiry,
+                });
+
+                return { success: true };
+            } catch (error) {
+                pushAuthDiagnostic('backendTokenRefresh:failed', {
+                    error: error.message,
+                });
+                DebugLog.error('後端刷新也失敗', { error: error.message });
+                return { success: false, error: error.message };
+            }
+        })().finally(() => { _piRefreshPromise = null; });
+
+        return _piRefreshPromise;
+    },
+
+    async restoreSessionFromBackend() {
+        if (!this.currentUser) {
+            return { success: false, error: 'No cached user' };
         }
 
         try {
-            DebugLog.info('嘗試後端 token 刷新...');
-
-            const result = await AppAPI.post('/api/user/refresh-token');
-
-            // 更新本地用戶資料
-            this.currentUser = {
-                ...this.currentUser,
-                accessToken: result.access_token,
-                accessTokenExpiry: Date.now() + this.TOKEN_EXPIRY_MS,
-            };
-
-            this._saveUserSession();
-            this.markRecentLoginSuccess();
-
-            DebugLog.info('後端 token 刷新成功', {
-                newExpiry: new Date(this.currentUser.accessTokenExpiry).toISOString(),
+            pushAuthDiagnostic('restoreSessionFromBackend:start');
+            const result = await AppAPI.get('/api/user/me', {
+                headers: { Authorization: '' },
             });
-
+            this._applyBackendSessionUser(result?.user || {});
+            pushAuthDiagnostic('restoreSessionFromBackend:success', {
+                user_id: result?.user?.user_id || null,
+            });
             return { success: true };
         } catch (error) {
-            DebugLog.error('後端刷新也失敗', { error: error.message });
-            return { success: false, error: error.message };
+            if (error?.status !== 401) {
+                pushAuthDiagnostic('restoreSessionFromBackend:non401', {
+                    status: error?.status || 0,
+                    error: error.message,
+                });
+                DebugLog.warn('後端 session 檢查失敗', {
+                    status: error?.status || 0,
+                    error: error.message,
+                });
+                return { success: false, error: error.message };
+            }
+
+            DebugLog.info('access token 無效，嘗試用 refresh cookie 恢復 session');
+            pushAuthDiagnostic('restoreSessionFromBackend:accessExpired');
+            const refreshResult = await this.backendTokenRefresh();
+            if (!refreshResult.success) {
+                return refreshResult;
+            }
+
+            try {
+                const result = await AppAPI.get('/api/user/me', {
+                    headers: { Authorization: '' },
+                });
+                this._applyBackendSessionUser(result?.user || {});
+                pushAuthDiagnostic('restoreSessionFromBackend:successAfterRefresh', {
+                    user_id: result?.user?.user_id || null,
+                });
+                return { success: true };
+            } catch (retryError) {
+                pushAuthDiagnostic('restoreSessionFromBackend:failedAfterRefresh', {
+                    status: retryError?.status || 0,
+                    error: retryError.message,
+                });
+                DebugLog.error('refresh 後仍無法恢復 session', {
+                    status: retryError?.status || 0,
+                    error: retryError.message,
+                });
+                return { success: false, error: retryError.message };
+            }
         }
     },
 
@@ -414,10 +536,12 @@ const AuthManager = {
      */
     async initPiSDKAsync() {
         if (!PiEnvironment.isPiBrowser()) {
+            pushAuthDiagnostic('initPiSDKAsync:skip:notPiBrowser');
             DebugLog.info('initPiSDKAsync: skipping outside secure Pi context');
             return false;
         }
         if (this.piInitialized) {
+            pushAuthDiagnostic('initPiSDKAsync:alreadyInitialized');
             DebugLog.info('initPiSDKAsync: 已初始化，跳過');
             return true;
         }
@@ -427,39 +551,17 @@ const AuthManager = {
                 const sandbox = window.__APP_PI_SANDBOX === true;
                 await Pi.init({ version: '2.0', sandbox: sandbox });
                 this.piInitialized = true;
+                pushAuthDiagnostic('initPiSDKAsync:success', { sandbox });
                 DebugLog.info('Pi SDK async init success', { sandbox });
                 return true;
             } catch (e) {
+                pushAuthDiagnostic('initPiSDKAsync:failed', { error: e.message });
                 DebugLog.error('Pi SDK 異步初始化失敗', { error: e.message, stack: e.stack });
                 return false;
             }
         }
+        pushAuthDiagnostic('initPiSDKAsync:missingWindowPi');
         DebugLog.warn('initPiSDKAsync: window.Pi 不存在');
-        return false;
-    },
-
-    initPiSDK() {
-        if (!PiEnvironment.isPiBrowser()) {
-            DebugLog.info('initPiSDK: skipping outside secure Pi context');
-            return false;
-        }
-        if (this.piInitialized) {
-            DebugLog.info('initPiSDK: already initialized, skipping');
-            return true;
-        }
-        if (window.Pi) {
-            try {
-                const sandbox = window.__APP_PI_SANDBOX === true;
-                Pi.init({ version: '2.0', sandbox: sandbox });
-                this.piInitialized = true;
-                DebugLog.info('Pi SDK initialized', { sandbox });
-                return true;
-            } catch (e) {
-                DebugLog.error('Pi SDK init failed', { error: e.message, stack: e.stack });
-                return false;
-            }
-        }
-        DebugLog.warn('initPiSDK: window.Pi is not available');
         return false;
     },
 
@@ -521,10 +623,14 @@ const AuthManager = {
         try {
             if (!this.piInitialized) {
                 DebugLog.info('初始化 Pi SDK...');
-                this.initPiSDK();
+                const initialized = await this.initPiSDKAsync();
+                if (!initialized) {
+                    throw new Error('Pi SDK 初始化失敗，請稍後重試');
+                }
             }
 
             DebugLog.info('呼叫 Pi.authenticate...');
+            pushAuthDiagnostic('authenticateWithPi:start');
 
             // Pi SDK auth - request scopes matching official Pi demo app
             // Ref: https://github.com/pi-apps/demo/blob/main/FLOWS.md
@@ -550,16 +656,20 @@ const AuthManager = {
             });
 
             const auth = await Promise.race([authPromise, timeoutPromise]);
+            pushAuthDiagnostic('authenticateWithPi:success', {
+                uid: auth.user.uid,
+                username: auth.user.username,
+            });
 
             DebugLog.info('Pi 認證成功', { username: auth.user.username, uid: auth.user.uid });
 
             // 同步到後端；若 Pi API 可提供 wallet_address，後端會優先採用驗證結果。
             const syncResult = await AppAPI.post('/api/user/pi-sync', {
-                    pi_uid: auth.user.uid,
-                    username: auth.user.username,
-                    access_token: auth.accessToken,
-                    wallet_address: auth.user.wallet_address || null,
-                });
+                pi_uid: auth.user.uid,
+                username: auth.user.username,
+                access_token: auth.accessToken,
+                wallet_address: auth.user.wallet_address || null,
+            });
 
             this.currentUser = {
                 uid: syncResult.user.user_id,
@@ -582,15 +692,16 @@ const AuthManager = {
             // 啟動 token 自動刷新定時器
             this.markRecentLoginSuccess();
             this.startTokenRefreshTimer();
-            // Note: _updateUI is NOT called here because handlePiLogin() will
-            // call window.location.reload() immediately after. The reload will
-            // trigger init() which calls _updateUI(true) naturally.
-            // Calling _updateUI(true) here would flash the app behind the
-            // login modal before the reload, causing the "two screens" effect.
 
             DebugLog.info('Pi 登入流程完成', { user: this.currentUser });
+            pushAuthDiagnostic('authenticateWithPi:syncSuccess', {
+                user_id: this.currentUser.user_id,
+            });
             return { success: true, user: this.currentUser };
         } catch (error) {
+            pushAuthDiagnostic('authenticateWithPi:failed', {
+                error: error.message,
+            });
             DebugLog.error('authenticateWithPi 失敗', {
                 error: error.message,
                 stack: error.stack,
@@ -613,12 +724,15 @@ const AuthManager = {
 
         // 優先從 localStorage 載入用戶（同步，確保立即可用）
         if (this.restoreSessionFromStorage()) {
-            // 檢查 token 是否過期
-            if (this.isTokenExpired()) {
-                DebugLog.warn('Token 已過期，清除並導向登入');
+            const restoreResult = await this.restoreSessionFromBackend();
+            if (!restoreResult.success) {
+                DebugLog.warn('無法恢復後端 session，清除本地登入狀態', {
+                    error: restoreResult.error,
+                });
                 this.clearExpiredToken();
                 return false;
             }
+            this._updateUI(true);
         } else {
             this._updateUI(false);
         }
@@ -654,7 +768,9 @@ const AuthManager = {
 
         // Only initialize Pi SDK in a secure Pi-compatible context.
         if (isPiBrowser()) {
-            this.initPiSDK();
+            this.initPiSDKAsync().catch((e) => {
+                DebugLog.warn('啟動時初始化 Pi SDK 失敗', { error: e.message });
+            });
         }
 
         // 啟動 token 自動刷新定時器（僅對已登入的 Pi 用戶）
@@ -664,7 +780,7 @@ const AuthManager = {
             // 如果 token 快過期，立即嘗試刷新
             if (this.needsRefresh()) {
                 DebugLog.info('Token 快過期，啟動時立即刷新');
-                this.silentRefresh().catch((e) => {
+                this.backendTokenRefresh().catch((e) => {
                     DebugLog.warn('啟動時刷新失敗，將在定時器中重試', { error: e.message });
                 });
             }
@@ -988,6 +1104,10 @@ window.AuthManager = AuthManager;
 
 async function handlePiLogin() {
     DebugLog.info('handlePiLogin 被呼叫');
+    pushAuthDiagnostic('handlePiLogin:start', {
+        href: window.location.href,
+        visibility: document.visibilityState,
+    });
 
     // 第一步：同步檢測 Pi SDK 是否存在
     if (!isPiBrowser()) {
@@ -1009,14 +1129,13 @@ async function handlePiLogin() {
     }
 
     // 第二步：環境有效，直接進行認證
-    try {
-        AuthManager.initPiSDK();
-    } catch (e) {
-        DebugLog.warn('Pi SDK 初始化失敗', { error: e.message });
-    }
-
     DebugLog.info('Pi Browser 環境驗證通過，開始認證...');
     try {
+        const initialized = await AuthManager.initPiSDKAsync();
+        if (!initialized) {
+            throw new Error('Pi SDK 尚未準備完成，請稍後再試');
+        }
+
         const res = await AuthManager.authenticateWithPi();
         DebugLog.info('Pi 登入結果', res);
         if (res.success) {
@@ -1060,6 +1179,9 @@ async function handlePiLogin() {
                     'success'
                 );
             }
+            pushAuthDiagnostic('handlePiLogin:success', {
+                user_id: AuthManager.currentUser?.user_id || null,
+            });
 
             // 後台同步狀態（不阻塞 UI，也不覆蓋使用者當前分頁）
             if (typeof window.loadSavedApiKeys === 'function') {
@@ -1077,10 +1199,17 @@ async function handlePiLogin() {
         }
     } catch (e) {
         DebugLog.error('handlePiLogin 異常', { error: e.message, stack: e.stack });
+        pushAuthDiagnostic('handlePiLogin:failed', {
+            error: e.message,
+        });
+        const message =
+            e?.message && /cancel|closed|dismiss|aborted/i.test(e.message)
+                ? '登入已取消，若要繼續請再次點擊連接錢包'
+                : '登入異常: ' + e.message;
         if (typeof showToast === 'function') {
-            showToast('登入異常: ' + e.message, 'error');
+            showToast(message, 'error');
         } else {
-            alert('登入異常: ' + e.message);
+            alert(message);
         }
     }
 };

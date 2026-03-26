@@ -248,6 +248,10 @@ async def get_current_user_profile(current_user: dict = Depends(get_current_user
             "username": current_user.get("username"),
             "role": current_user.get("role", "user"),
             "auth_method": current_user.get("auth_method"),
+            "membership_tier": current_user.get("membership_tier", "free"),
+            "pi_uid": current_user.get("pi_uid"),
+            "pi_username": current_user.get("pi_username"),
+            "has_wallet": bool(current_user.get("pi_uid")),
         },
     }
 
@@ -667,45 +671,3 @@ async def get_user_api_key_full_endpoint(
     except Exception as e:
         logger.error(f"Get full API key error: {e}")
         raise HTTPException(status_code=500, detail="獲取失敗")
-
-
-# --- Token Refresh Endpoint ---
-
-
-@router.post("/api/user/refresh-token")
-@limiter.limit("5/minute")
-async def refresh_token(
-    request: Request, response: Response, current_user: dict = Depends(get_current_user)
-):
-    """
-    刷新 JWT Token（備用方案，不需要 Pi SDK）
-    當無法使用 Pi SDK 靜默刷新時使用。需要有效的 JWT token。
-    """
-    try:
-        new_access_token = create_access_token(
-            data={
-                "sub": current_user["user_id"],
-                "username": current_user.get("username", "user"),
-            }
-        )
-        new_refresh_token = create_refresh_token(
-            data={
-                "sub": current_user["user_id"],
-                "username": current_user.get("username", "user"),
-            }
-        )
-        logger.info(f"Token refreshed for user: {current_user['user_id']}")
-        audit_log(
-            action="token_refresh",
-            user_id=current_user["user_id"],
-            metadata={"method": "backend_refresh"},
-        )
-        set_token_cookies(response, new_access_token, new_refresh_token)
-        return {
-            "success": True,
-            "access_token": new_access_token,
-            "token_type": "bearer",
-        }
-    except Exception as e:
-        logger.error(f"Token refresh error: {e}")
-        raise HTTPException(status_code=500, detail="Token 刷新失敗")

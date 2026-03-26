@@ -101,10 +101,6 @@ def get_rate_limit_for_route(request: Request) -> str:
     if any(x in path for x in ["/login", "/pi-sync", "/dev-login"]):
         return RATE_LIMITS["auth"]
 
-    # Token refresh endpoint (moderate security)
-    if "/refresh-token" in path:
-        return RATE_LIMITS["token_refresh"]
-
     # Sensitive API Key endpoints (very strict)
     if "/api-keys" in path:
         # Full key retrieval is most sensitive
