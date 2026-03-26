@@ -309,7 +309,7 @@ const AuthManager = {
             await this.initPiSDKAsync();
 
             const auth = await Pi.authenticate(
-                ['username', 'payments', 'wallet_address'],
+                ['username', 'payments', 'wallet_address', 'roles', 'in_app_notifications'],
                 (payment) => {
                     DebugLog.warn('刷新時發現未完成的支付', payment);
                 }
@@ -521,7 +521,7 @@ const AuthManager = {
             const AUTH_TIMEOUT = 60000;
 
             const authPromise = Pi.authenticate(
-                ['username', 'payments', 'roles', 'in_app_notifications'],
+                ['username', 'payments', 'wallet_address', 'roles', 'in_app_notifications'],
                 (payment) => {
                     DebugLog.warn('發現未完成的支付', payment);
                     AppAPI.post('/api/user/payment/complete', {

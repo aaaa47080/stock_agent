@@ -1725,8 +1725,10 @@ window.ForumApp = ForumApp;
 export { ForumApp };
 
 
-// 確保在 DOM 載入後執行
+// 確保在 DOM 載入後執行（僅限獨立 forum 頁面，SPA 主頁由 switchTab 觸發）
 document.addEventListener('DOMContentLoaded', () => {
+    const page = document.body.dataset.page;
+    if (!page) return; // SPA mode: skip, forum content loaded via switchTab()
     if (window.ForumApp) {
         ForumApp.init();
     } else {
