@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List
 
 # Add project root to path
@@ -251,7 +251,7 @@ class MarketPulseAnalyzer:
             "change_1h": change_1h,
             "change_24h": change_24h,
             "is_volatile": is_volatile,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "explanation": report.get("summary", ""),
             "report": report,
             "news_sources": news_data,

@@ -3,7 +3,7 @@ Market API Helper Functions
 """
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 
 import numpy as np
 
@@ -191,7 +191,7 @@ def format_screener_response(df_gainers, df_losers, df_volume) -> dict:
         "top_gainers": top_performers.to_dict(orient="records"),
         "top_losers": top_losers.to_dict(orient="records"),
         "top_volume": top_volume.to_dict(orient="records"),
-        "last_updated": datetime.now().isoformat(),
+        "last_updated": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -233,7 +233,7 @@ async def run_custom_screener(request, market_pulse_cache, trigger_analysis_func
         ),
         "top_losers": replace_nan_in_dataframe(oversold).to_dict(orient="records"),
         "top_volume": replace_nan_in_dataframe(summary_df).to_dict(orient="records"),
-        "last_updated": datetime.now().isoformat(),
+        "last_updated": datetime.now(timezone.utc).isoformat(),
     }
 
 
@@ -251,7 +251,7 @@ async def run_default_screener(exchange: str, market_pulse_cache):
 
     result_data = format_screener_response(df_gainers, df_losers, df_volume)
 
-    timestamp_str = datetime.now().isoformat()
+    timestamp_str = datetime.now(timezone.utc).isoformat()
     cached_screener_result["timestamp"] = timestamp_str
     cached_screener_result["data"] = result_data
 

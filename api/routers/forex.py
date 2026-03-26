@@ -5,7 +5,7 @@ Follows the same pattern as api/routers/usstock.py
 """
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import yfinance as yf
@@ -22,14 +22,14 @@ _cache: dict = {}
 def _get_cache(key: str):
     if key in _cache:
         data, expiry = _cache[key]
-        if datetime.now() < expiry:
+        if datetime.now(timezone.utc) < expiry:
             return data
     return None
 
 
 def _set_cache(key: str, data, ttl: int = 60):
     """Default TTL 60s for forex (higher frequency updates)."""
-    _cache[key] = (data, datetime.now() + timedelta(seconds=ttl))
+    _cache[key] = (data, datetime.now(timezone.utc) + timedelta(seconds=ttl))
 
 
 # ── Default pairs ───────────────────────────────────────────────────────────────
@@ -146,7 +146,7 @@ async def get_forex_market(pairs: Optional[str] = None):
     if not fx_pairs:
         raise HTTPException(status_code=404, detail="無法獲取外匯數據，請稍後再試")
 
-    data = {"pairs": fx_pairs, "last_updated": datetime.now().isoformat()}
+    data = {"pairs": fx_pairs, "last_updated": datetime.now(timezone.utc).isoformat()}
     _set_cache(cache_key, data)
     return data
 

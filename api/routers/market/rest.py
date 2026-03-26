@@ -3,13 +3,12 @@ Market REST API Endpoints
 """
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
 from api.deps import get_current_user
-from api.middleware.rate_limit import limiter
 from api.globals import (
     ANALYSIS_STATUS,
     FUNDING_RATE_CACHE,
@@ -17,6 +16,7 @@ from api.globals import (
     cached_screener_result,
     screener_lock,
 )
+from api.middleware.rate_limit import limiter
 from api.models import KlineRequest, RefreshPulseRequest, ScreenerRequest
 from api.services import (
     refresh_all_market_pulse_data,
@@ -63,7 +63,7 @@ async def get_market_symbols(exchange: str = "okx"):
     """Get all available symbols for a given exchange (Cached for 60 minutes)."""
     from api.routers.market.helpers import SYMBOL_CACHE
 
-    now = datetime.now().timestamp()
+    now = datetime.now(timezone.utc).timestamp()
     if exchange in SYMBOL_CACHE:
         cache = SYMBOL_CACHE[exchange]
         if cache["data"] and (now - cache["timestamp"]) < 3600:
@@ -170,7 +170,7 @@ async def get_klines_data(
             "symbol": kline_request.symbol,
             "interval": kline_request.interval,
             "klines": klines,
-            "updated_at": datetime.now().isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
         }
     except HTTPException:
         raise

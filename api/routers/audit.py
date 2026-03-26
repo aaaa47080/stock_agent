@@ -4,7 +4,7 @@ Audit Log Query and Analysis API (Admin Only)
 Provides endpoints for administrators to query, analyze, and monitor audit logs
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -138,7 +138,7 @@ async def get_suspicious_activity(
         try:
             cursor = conn.cursor()
 
-            since = datetime.now() - timedelta(days=days)
+            since = datetime.now(timezone.utc) - timedelta(days=days)
 
             # Failed login attempts
             cursor.execute(
@@ -206,7 +206,7 @@ async def get_user_activity(
         try:
             cursor = conn.cursor()
 
-            since = datetime.now() - timedelta(days=days)
+            since = datetime.now(timezone.utc) - timedelta(days=days)
 
             cursor.execute(
                 """
@@ -273,7 +273,7 @@ async def get_audit_stats(
         conn = get_connection()
         cursor = conn.cursor()
 
-        since = datetime.now() - timedelta(days=days)
+        since = datetime.now(timezone.utc) - timedelta(days=days)
 
         # Overall statistics
         cursor.execute(

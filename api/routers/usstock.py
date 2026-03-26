@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import yfinance as yf
@@ -17,13 +17,13 @@ _cache: dict = {}
 def _get_cache(key: str):
     if key in _cache:
         data, expiry = _cache[key]
-        if datetime.now() < expiry:
+        if datetime.now(timezone.utc) < expiry:
             return data
     return None
 
 
 def _set_cache(key: str, data, ttl: int = 300):
-    _cache[key] = (data, datetime.now() + timedelta(seconds=ttl))
+    _cache[key] = (data, datetime.now(timezone.utc) + timedelta(seconds=ttl))
 
 
 # ── Constants ──────────────────────────────────────────────────────────────────
@@ -95,7 +95,7 @@ async def get_us_market(symbols: Optional[str] = None):
     # Validate: if no results, return error-friendly empty
     if not stocks and target:
         raise HTTPException(status_code=404, detail="找不到股票代號或目前無法獲取數據")
-    data = {"stocks": stocks, "last_updated": datetime.now().isoformat()}
+    data = {"stocks": stocks, "last_updated": datetime.now(timezone.utc).isoformat()}
     _set_cache(cache_key, data)
     return data
 
@@ -115,7 +115,7 @@ async def get_us_indices():
 
     results = await asyncio.gather(*[fetch_index(i) for i in INDEX_SYMBOLS])
     indices = [r for r in results if r]
-    data = {"indices": indices, "last_updated": datetime.now().isoformat()}
+    data = {"indices": indices, "last_updated": datetime.now(timezone.utc).isoformat()}
     _set_cache("indices", data, ttl=60)
     return data
 
@@ -165,7 +165,7 @@ async def get_us_news(symbols: Optional[str] = None, limit: int = 15):
     # Sort by publish time descending (best-effort)
     all_news.sort(key=lambda x: x.get("published", 0), reverse=True)
     all_news = all_news[:limit]
-    data = {"data": all_news, "last_updated": datetime.now().isoformat()}
+    data = {"data": all_news, "last_updated": datetime.now(timezone.utc).isoformat()}
     _set_cache(cache_key, data, ttl=300)
     return data
 

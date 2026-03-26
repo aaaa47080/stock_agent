@@ -11,7 +11,7 @@ Cache: in-memory, 24h TTL
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import httpx
@@ -74,7 +74,7 @@ class TWSymbolResolver:
 
     def _get_stock_list(self) -> list:
         """Return cached stock list, refreshing if stale."""
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         if (
             self._cache is not None
             and self._cache_time is not None

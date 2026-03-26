@@ -2,7 +2,7 @@ import concurrent.futures
 import json
 import os
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List
 
 import numpy as np
@@ -184,7 +184,7 @@ def get_crypto_news_newsapi(symbol: str = "BTC", limit: int = 5) -> List[Dict]:
         "language": "en",
         "sortBy": "publishedAt",
         "pageSize": limit,
-        "from": (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S"),
+        "from": (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S"),
     }
 
     try:

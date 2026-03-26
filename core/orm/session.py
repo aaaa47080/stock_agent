@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import threading
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 from urllib.parse import quote
@@ -32,6 +33,8 @@ logger = logging.getLogger(__name__)
 
 _async_engine = None
 _async_session_factory = None
+_engine_lock = threading.Lock()
+_factory_lock = threading.Lock()
 
 
 def _resolve_async_url() -> str | None:
@@ -65,21 +68,23 @@ def get_engine():
     """Return the global async engine, creating it if needed."""
     global _async_engine
     if _async_engine is None:
-        url = _resolve_async_url()
-        if not url:
-            raise RuntimeError(
-                "Cannot create async engine: no DATABASE_URL or "
-                "POSTGRESQL_* variables set"
-            )
-        pool_size = int(os.getenv("DB_MAX_POOL_SIZE", "10"))
-        _async_engine = create_async_engine(
-            url,
-            pool_size=pool_size,
-            max_overflow=pool_size,
-            pool_pre_ping=True,
-            pool_recycle=300,
-        )
-        logger.info("Async SQLAlchemy engine created (pool_size=%d)", pool_size)
+        with _engine_lock:
+            if _async_engine is None:
+                url = _resolve_async_url()
+                if not url:
+                    raise RuntimeError(
+                        "Cannot create async engine: no DATABASE_URL or "
+                        "POSTGRESQL_* variables set"
+                    )
+                pool_size = int(os.getenv("DB_MAX_POOL_SIZE", "10"))
+                _async_engine = create_async_engine(
+                    url,
+                    pool_size=pool_size,
+                    max_overflow=pool_size,
+                    pool_pre_ping=True,
+                    pool_recycle=300,
+                )
+                logger.info("Async SQLAlchemy engine created (pool_size=%d)", pool_size)
     return _async_engine
 
 
@@ -87,12 +92,14 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
     """Return the global async session factory."""
     global _async_session_factory
     if _async_session_factory is None:
-        engine = get_engine()
-        _async_session_factory = async_sessionmaker(
-            engine,
-            class_=AsyncSession,
-            expire_on_commit=False,
-        )
+        with _factory_lock:
+            if _async_session_factory is None:
+                engine = get_engine()
+                _async_session_factory = async_sessionmaker(
+                    engine,
+                    class_=AsyncSession,
+                    expire_on_commit=False,
+                )
     return _async_session_factory
 
 

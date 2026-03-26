@@ -1,6 +1,6 @@
 import asyncio
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 import httpx
@@ -28,7 +28,7 @@ async def _fetch_twse(url: str, params: dict = None, cache_key: str = None) -> A
     ck = cache_key or url
     if ck in _twse_cache:
         data, expiry = _twse_cache[ck]
-        if datetime.now() < expiry:
+        if datetime.now(timezone.utc) < expiry:
             return data
     try:
         async with httpx.AsyncClient(timeout=15) as client:
@@ -37,7 +37,7 @@ async def _fetch_twse(url: str, params: dict = None, cache_key: str = None) -> A
             data = resp.json()
             _twse_cache[ck] = (
                 data,
-                datetime.now() + timedelta(seconds=_CACHE_TTL_SECONDS),
+                datetime.now(timezone.utc) + timedelta(seconds=_CACHE_TTL_SECONDS),
             )
             return data
     except Exception as e:
@@ -163,7 +163,7 @@ async def get_tw_market(symbols: Optional[str] = None):
         )
         results = [r for r in price_results if r is not None]
 
-        return {"top_performers": results, "last_updated": datetime.now().isoformat()}
+        return {"top_performers": results, "last_updated": datetime.now(timezone.utc).isoformat()}
 
     except Exception as e:
         logger.error(f"Failed to fetch TW market data: {e}", exc_info=True)
@@ -418,7 +418,7 @@ async def get_tw_major_news(
         return {
             "data": results,
             "total": len(results),
-            "last_updated": datetime.now().isoformat(),
+            "last_updated": datetime.now(timezone.utc).isoformat(),
         }
     except Exception as e:
         logger.error(f"[TW News] {e}", exc_info=True)
@@ -495,7 +495,7 @@ async def get_tw_monthly_revenue(limit: int = 50):
         return {
             "data": results,
             "total": len(results),
-            "last_updated": datetime.now().isoformat(),
+            "last_updated": datetime.now(timezone.utc).isoformat(),
         }
     except Exception as e:
         logger.error(f"[TW Monthly Revenue] {e}", exc_info=True)
@@ -539,7 +539,7 @@ async def get_tw_dividend(
         return {
             "data": results,
             "total": len(results),
-            "last_updated": datetime.now().isoformat(),
+            "last_updated": datetime.now(timezone.utc).isoformat(),
         }
     except Exception as e:
         logger.error(f"[TW Dividend] {e}", exc_info=True)
@@ -575,7 +575,7 @@ async def get_tw_foreign_holding():
         return {
             "data": results,
             "total": len(results),
-            "last_updated": datetime.now().isoformat(),
+            "last_updated": datetime.now(timezone.utc).isoformat(),
         }
     except Exception as e:
         logger.error(f"[TW Foreign Holding] {e}", exc_info=True)

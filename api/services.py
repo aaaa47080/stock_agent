@@ -2,7 +2,7 @@
 # ^ E402 ignored because module-level variables need to be set before imports
 import asyncio
 import concurrent.futures
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List
 
 import numpy as np
@@ -84,7 +84,7 @@ def load_funding_rate_cache():
         if data:
             FUNDING_RATE_CACHE["data"] = data
             FUNDING_RATE_CACHE["timestamp"] = (
-                datetime.now().isoformat()
+                datetime.now(timezone.utc).isoformat()
             )  # Mark as loaded now, even if old
             logger.info(f"Loaded Funding Rate cache from DB ({len(data)} symbols)")
             return True
@@ -108,7 +108,7 @@ async def update_funding_rates():
             funding_rates = await run_sync(okx.get_all_funding_rates)
 
             if "error" not in funding_rates:
-                FUNDING_RATE_CACHE["timestamp"] = datetime.now().isoformat()
+                FUNDING_RATE_CACHE["timestamp"] = datetime.now(timezone.utc).isoformat()
                 FUNDING_RATE_CACHE["data"] = funding_rates
 
                 # [Optimization] Persist to DB so it survives restart
@@ -194,7 +194,7 @@ async def update_single_market_pulse(
 
 def _calculate_market_pulse_window() -> tuple:
     """Calculate the current 4-hour update window."""
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     window_hour = (now.hour // 4) * 4
     window_start = now.replace(hour=window_hour, minute=0, second=0, microsecond=0)
     return window_start, window_start.isoformat()
@@ -295,7 +295,7 @@ async def refresh_all_market_pulse_data(target_symbols: List[str] = None):
     - Resume: Skips symbols already analyzed in the current window.
     - Consistency: All data in a window shares the same timestamp.
     """
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     window_start, window_start_iso = _calculate_market_pulse_window()
     logger.info(f"🎯 Current Update Window: {window_start_iso}")
 
@@ -389,7 +389,7 @@ async def trigger_on_demand_analysis(symbols: List[str]):
     if not normalized_symbols:
         return
 
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     # Align to current 4-hour window
     window_hour = (now.hour // 4) * 4
     window_start = now.replace(hour=window_hour, minute=0, second=0, microsecond=0)
@@ -496,7 +496,7 @@ def _analyze_cache_freshness(timestamps, now):
 
 async def _handle_cache_state_at_startup():
     """Handle market pulse cache state at startup and return initial sleep time."""
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     cache_count = len(MARKET_PULSE_CACHE)
     logger.info(f"📦 Current cache has {cache_count} symbols")
 
@@ -580,7 +580,7 @@ async def update_market_pulse_task():
 
         # [Optimization] Align next update to the next 4-hour wall clock mark
         # Instead of sleeping fixed 4 hours, we sleep until 00:00, 04:00, 08:00...
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         current_block = now.hour // 4
         next_block_hour = (current_block + 1) * 4
 
@@ -597,7 +597,7 @@ async def update_market_pulse_task():
         # Add a small buffer (e.g., 60 seconds) to ensure data providers have closed their candles
         next_target += timedelta(seconds=60)
 
-        seconds_until_next = (next_target - datetime.now()).total_seconds()
+        seconds_until_next = (next_target - datetime.now(timezone.utc)).total_seconds()
 
         # Safety check: if calculation is weird, fallback to 5 minutes
         if seconds_until_next < 0:
@@ -688,7 +688,7 @@ def _update_screener_prices_from_map(price_map):
         )
 
         # Update timestamp
-        timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        timestamp_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         cached_screener_result["data"]["last_updated"] = timestamp_str
         cached_screener_result["timestamp"] = timestamp_str
 
@@ -765,7 +765,7 @@ async def run_screener_analysis():
 
             # 只有當有數據時才更新快取，避免因網路錯誤導致快取被清空
             if not top_volume.empty or not top_gainers.empty:
-                timestamp_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                timestamp_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
                 cached_screener_result["timestamp"] = timestamp_str
                 cached_screener_result["data"] = {
                     "top_volume": top_volume.to_dict(orient="records"),
@@ -818,7 +818,7 @@ async def _screener_ticker_callback(symbol: str, parsed: dict):
                 item["Close"] = last
                 item["price_change_24h"] = change
 
-    cached_screener_result["data"]["last_updated"] = datetime.now().strftime(
+    cached_screener_result["data"]["last_updated"] = datetime.now(timezone.utc).strftime(
         "%Y-%m-%d %H:%M:%S"
     )
 

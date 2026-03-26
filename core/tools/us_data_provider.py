@@ -19,7 +19,7 @@ Features:
 """
 
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import numpy as np
@@ -132,7 +132,7 @@ class YahooFinanceProvider(StockDataProvider):
                 "currency": info.get("currency", "USD"),
                 "exchange": info.get("exchange", "US"),
                 "quote_type": info.get("quoteType", "EQUITY"),
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "delayed": True,  # Yahoo 延遲 15 分鐘
                 "market_state": "REGULAR",
             }
@@ -780,7 +780,7 @@ class YahooFinanceProvider(StockDataProvider):
             return False
 
         cache_entry = self.cache[cache_key]
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         age = (now - cache_entry["timestamp"]).total_seconds()
 
         return age < cache_entry["duration"]
@@ -789,7 +789,7 @@ class YahooFinanceProvider(StockDataProvider):
         """設置快取"""
         self.cache[cache_key] = {
             "data": data,
-            "timestamp": datetime.now(),
+            "timestamp": datetime.now(timezone.utc),
             "duration": self.cache_duration.get(data_type, 300),
         }
 

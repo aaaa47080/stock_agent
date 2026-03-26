@@ -39,29 +39,34 @@ class KlineConnectionManager:
     def __init__(self):
         self.active_connections: Set[WebSocket] = set()
         self.subscriptions: dict = {}
+        self._lock = asyncio.Lock()
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
-        self.active_connections.add(websocket)
+        async with self._lock:
+            self.active_connections.add(websocket)
         logger.debug(
             f"K-line WebSocket connected, total: {len(self.active_connections)}"
         )
 
-    def disconnect(self, websocket: WebSocket):
-        self.active_connections.discard(websocket)
-        if websocket in self.subscriptions:
-            del self.subscriptions[websocket]
+    async def disconnect(self, websocket: WebSocket):
+        async with self._lock:
+            self.active_connections.discard(websocket)
+            if websocket in self.subscriptions:
+                del self.subscriptions[websocket]
         logger.debug(
             f"K-line WebSocket disconnected, total: {len(self.active_connections)}"
         )
 
-    def subscribe(self, websocket: WebSocket, symbol: str, interval: str):
-        self.subscriptions[websocket] = {"symbol": symbol, "interval": interval}
+    async def subscribe(self, websocket: WebSocket, symbol: str, interval: str):
+        async with self._lock:
+            self.subscriptions[websocket] = {"symbol": symbol, "interval": interval}
         logger.debug(f"Client subscribed: {symbol} {interval}")
 
-    def unsubscribe(self, websocket: WebSocket):
-        if websocket in self.subscriptions:
-            del self.subscriptions[websocket]
+    async def unsubscribe(self, websocket: WebSocket):
+        async with self._lock:
+            if websocket in self.subscriptions:
+                del self.subscriptions[websocket]
 
     async def broadcast_kline(self, symbol: str, interval: str, kline: dict):
         """Broadcast K-line data to subscribed clients."""

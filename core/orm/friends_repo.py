@@ -170,7 +170,7 @@ class FriendsRepository:
                     (Friendship.user_id == to_user_id)
                     & (Friendship.friend_id == from_user_id),
                 )
-            )
+            ).with_for_update()
             result = await s.execute(stmt)
             existing = result.scalar_one_or_none()
 

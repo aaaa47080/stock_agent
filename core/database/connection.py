@@ -7,6 +7,7 @@ import logging
 import os
 import threading
 import time
+import weakref
 from urllib.parse import quote
 
 import psycopg2
@@ -125,7 +126,7 @@ _db_initialized = False
 
 # ✅ 效能優化：連接健康檢查頻率限制，避免每次取連線都 SELECT 1
 # 只有連接超過 30 秒沒使用才重新驗證
-_conn_last_verified: dict = {}  # {conn_id: timestamp}
+_conn_last_verified: weakref.WeakKeyDictionary = weakref.WeakKeyDictionary()
 _HEALTH_CHECK_INTERVAL = 30  # 秒
 
 
@@ -332,11 +333,10 @@ def get_connection():
                 )
                 continue
 
-            conn_id = id(raw_conn)
             now = time.time()
             needs_health_check = (
-                conn_id not in _conn_last_verified
-                or (now - _conn_last_verified[conn_id]) > _HEALTH_CHECK_INTERVAL
+                raw_conn not in _conn_last_verified
+                or (now - _conn_last_verified[raw_conn]) > _HEALTH_CHECK_INTERVAL
             )
             try:
                 if needs_health_check:
@@ -348,14 +348,7 @@ def get_connection():
                         (int(os.getenv("DB_STATEMENT_TIMEOUT", "30000")),),
                     )
                     test_cursor.close()
-                    _conn_last_verified[conn_id] = now
-                    if len(_conn_last_verified) > 200:
-                        cutoff = now - 2 * _HEALTH_CHECK_INTERVAL
-                        expired = [
-                            k for k, v in _conn_last_verified.items() if v < cutoff
-                        ]
-                        for k in expired[:50]:
-                            del _conn_last_verified[k]
+                    _conn_last_verified[raw_conn] = now
             except Exception as health_error:
                 logger.warning(
                     "Bad connection detected (%s), discarding (bad_conn_count=%d)",

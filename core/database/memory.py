@@ -12,7 +12,7 @@ import json
 import logging
 import re
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import orjson
@@ -729,7 +729,7 @@ Respond in this exact JSON format:
                         open_questions=str(compact_data.get("open_questions", "")),
                         next_steps=str(compact_data.get("next_steps", "")),
                         turn_index=new_index,
-                        updated_at=datetime.now().isoformat(),
+                        updated_at=datetime.now(timezone.utc).isoformat(),
                     )
                     self.write_compact_state(state)
                 except Exception as exc:

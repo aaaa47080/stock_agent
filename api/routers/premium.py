@@ -3,11 +3,11 @@ Premium 會員相關 API
 """
 
 import os
-from typing import Optional
+from typing import Literal, Optional
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from api.deps import get_current_user
 from api.middleware.rate_limit import limiter
@@ -18,7 +18,6 @@ from core.orm.repositories import user_repo
 
 router = APIRouter(prefix="/api/premium", tags=["Premium"])
 
-_used_payment_ids: set = set()
 PLAN_MONTHS = {
     "premium_monthly": 1,
     "premium_yearly": 12,
@@ -28,11 +27,28 @@ PI_API_KEY = os.getenv("PI_API_KEY", "")
 PI_API_BASE = "https://api.minepi.com/v2"
 
 
+def _record_used_payment(payment_id: str, user_id: str) -> None:
+    from core.database.connection import get_connection
+
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO used_payments (payment_id, user_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
+            (payment_id, user_id),
+        )
+        conn.commit()
+        if cursor.rowcount == 0:
+            raise ValueError("payment already used")
+    finally:
+        conn.close()
+
+
 class UpgradeRequest(BaseModel):
-    plan: str = "premium_monthly"
+    plan: Literal["premium_monthly", "premium_yearly"] = "premium_monthly"
     tx_hash: Optional[str] = None
     payment_id: Optional[str] = None
-    months: int = 1
+    months: int = Field(default=1, ge=1, le=24)
 
 
 async def _verify_pi_payment(payment_id: str) -> dict:
@@ -150,13 +166,14 @@ async def upgrade_to_premium(
                 detail="payment_id is required for premium upgrade",
             )
 
-        if body.payment_id in _used_payment_ids:
-            raise HTTPException(
-                status_code=409,
-                detail="This payment has already been used",
-            )
-
         payment_data = await _verify_pi_payment(body.payment_id)
+
+        try:
+            await run_sync(
+                lambda: _record_used_payment(body.payment_id, user_id)
+            )
+        except Exception:
+            logger.warning("Payment already used or failed to record: %s", body.payment_id)
 
         blockchain_txid = payment_data.get("transaction", {}).get("_id")
         if blockchain_txid:
@@ -206,9 +223,6 @@ async def upgrade_to_premium(
             raise HTTPException(status_code=500, detail="Upgrade failed")
 
         new_membership = await user_repo.get_membership(user_id)
-
-        if body.payment_id:
-            _used_payment_ids.add(body.payment_id)
 
         logger.info(
             "User %s upgraded to Premium, plan=%s, months=%d, tx_hash=%s",

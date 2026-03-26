@@ -330,13 +330,13 @@ class MemoryMixin(ManagerAgentMixin):
             # 準備訊息格式
             messages = []
             for i, msg in enumerate(messages_to_consolidate):
-                from datetime import datetime
+                from datetime import datetime, timezone
 
                 messages.append(
                     {
                         "role": msg.get("role", "unknown"),
                         "content": msg.get("content", ""),
-                        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M"),
                         "tools_used": [],
                     }
                 )

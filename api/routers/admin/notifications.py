@@ -3,6 +3,7 @@ Admin Notification Management
 Broadcast and notification history endpoints
 """
 
+import asyncio
 import json
 import logging
 import uuid
@@ -44,10 +45,9 @@ async def broadcast_notification(
 
     factory = get_session_factory()
     async with factory() as session:
-        for uid in user_ids:
-            nid = f"notif_{uuid.uuid4().hex[:12]}"
-            notification = Notification(
-                id=nid,
+        notifications = [
+            Notification(
+                id=f"notif_{uuid.uuid4().hex[:12]}",
                 user_id=uid,
                 type=request.type,
                 title=request.title,
@@ -55,12 +55,13 @@ async def broadcast_notification(
                 data={"admin_user_id": admin_user["user_id"]},
                 is_read=False,
             )
-            session.add(notification)
-            sent_count += 1
+            for uid in user_ids
+        ]
+        session.add_all(notifications)
         await session.flush()
+        sent_count = len(notifications)
 
-    online_count = 0
-    for uid in user_ids:
+    async def _push(uid):
         if uid in notification_manager.active_connections:
             try:
                 await push_notification_to_user(
@@ -71,11 +72,15 @@ async def broadcast_notification(
                         "body": request.body,
                     },
                 )
-                online_count += 1
+                return True
             except Exception:
                 logger.debug(
                     "Broadcast websocket push failed for user %s", uid, exc_info=True
                 )
+        return False
+
+    results = await asyncio.gather(*[_push(uid) for uid in user_ids])
+    online_count = sum(1 for r in results if r)
 
     factory = get_session_factory()
     async with factory() as session:

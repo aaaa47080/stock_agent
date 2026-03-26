@@ -2,7 +2,7 @@
 私訊對話管理
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 from ..connection import get_connection
@@ -62,7 +62,7 @@ def get_or_create_conversation(user1_id: str, user2_id: str) -> Dict:
             "last_message_at": None,
             "user1_unread_count": 0,
             "user2_unread_count": 0,
-            "created_at": datetime.now().isoformat(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
             "is_new": True,
         }
     finally:

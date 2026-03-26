@@ -19,7 +19,7 @@ router = APIRouter()
 
 
 class FriendActionRequest(BaseModel):
-    target_user_id: str = Field(..., description="目標用戶 ID")
+    target_user_id: str = Field(..., min_length=1, max_length=100, description="目標用戶 ID")
 
 
 # ============================================================================

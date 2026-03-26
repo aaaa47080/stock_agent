@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from core.config import DEFAULT_INTERVAL, DEFAULT_KLINES_LIMIT, SUPPORTED_EXCHANGES
 from core.model_config import GEMINI_DEFAULT_MODEL
@@ -44,13 +44,13 @@ class WatchlistRequest(BaseModel):
 
 
 class UserRegisterRequest(BaseModel):
-    username: str
-    password: str
+    username: str = Field(..., min_length=3, max_length=50, description="用戶名")
+    password: str = Field(..., min_length=8, max_length=128, description="密碼")
 
 
 class UserLoginRequest(BaseModel):
-    username: str
-    password: str
+    username: str = Field(..., min_length=1, max_length=50, description="用戶名")
+    password: str = Field(..., min_length=1, max_length=128, description="密碼")
 
 
 class KlineRequest(BaseModel):
@@ -90,10 +90,10 @@ class KeyValidationRequest(BaseModel):
 class ReportCreateRequest(BaseModel):
     """創建檢舉請求"""
 
-    content_type: str  # 'post' 或 'comment'
+    content_type: Literal["post", "comment"]
     content_id: int
-    report_type: str  # spam, harassment, misinformation, scam, illegal, other
-    description: Optional[str] = None
+    report_type: Literal["spam", "harassment", "misinformation", "scam", "illegal", "other"]
+    description: Optional[str] = Field(None, max_length=1000)
 
 
 class ReportResponse(BaseModel):

@@ -5,7 +5,7 @@ Centralized prompt management. All prompts are loaded from YAML files.
 Supports multi-language prompts.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
 from typing import Dict, Optional
@@ -91,7 +91,7 @@ class PromptRegistry:
 
         # 自動注入當前時間（如果模板需要）
         if include_time:
-            now = datetime.now()
+            now = datetime.now(timezone.utc)
             time_info = {
                 # 繁體中文
                 "current_time_tw": now.strftime("%Y 年 %m 月 %d 日 %H:%M"),
