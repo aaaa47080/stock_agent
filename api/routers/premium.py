@@ -2,7 +2,6 @@
 Premium 會員相關 API
 """
 
-import os
 from typing import Literal, Optional
 
 import httpx
@@ -11,6 +10,7 @@ from pydantic import BaseModel, Field
 
 from api.deps import get_current_user
 from api.middleware.rate_limit import limiter
+from api.pi_verification import PI_API_BASE, PI_API_KEY
 from api.utils import logger, run_sync
 from core.config import TEST_MODE
 from core.database.user import upgrade_to_pro
@@ -22,9 +22,6 @@ PLAN_MONTHS = {
     "premium_monthly": 1,
     "premium_yearly": 12,
 }
-
-PI_API_KEY = os.getenv("PI_API_KEY", "")
-PI_API_BASE = "https://api.minepi.com/v2"
 
 
 def _record_used_payment(payment_id: str, user_id: str) -> None:

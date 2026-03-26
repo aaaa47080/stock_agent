@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from api.deps import get_current_user
 from api.middleware.rate_limit import limiter
+from api.pi_verification import PI_API_BASE, PI_API_KEY
 from api.utils import logger
 from core.orm.forum_repo import forum_repo
 
@@ -16,8 +17,6 @@ from .models import CreateTipRequest
 
 router = APIRouter(prefix="/api/forum", tags=["Forum - Tips"])
 
-PI_API_KEY = os.getenv("PI_API_KEY", "")
-PI_API_BASE = "https://api.minepi.com/v2"
 TEST_MODE = os.getenv("TEST_MODE", "").lower() in ("true", "1", "yes")
 
 

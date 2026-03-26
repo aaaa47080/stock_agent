@@ -12,8 +12,11 @@ from fastapi import HTTPException
 
 from api.utils import logger
 
-PI_API_KEY = os.getenv("PI_API_KEY", "")
-PI_API_BASE = "https://api.minepi.com/v2"
+PI_SANDBOX = os.getenv("PI_SANDBOX", "false").lower() == "true"
+PI_API_KEY = os.getenv("PI_SANDBOX_API_KEY" if PI_SANDBOX else "PI_API_KEY", "")
+PI_API_BASE = (
+    "https://api.sandbox.minepi.com/v2" if PI_SANDBOX else "https://api.minepi.com/v2"
+)
 
 
 async def verify_pi_access_token(

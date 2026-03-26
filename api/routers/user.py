@@ -1,4 +1,3 @@
-import os
 from typing import Optional
 
 import httpx
@@ -14,7 +13,7 @@ from api.deps import (
 )
 from api.middleware.rate_limit import limiter
 from api.models import WatchlistRequest
-from api.pi_verification import verify_pi_access_token
+from api.pi_verification import PI_API_BASE, PI_API_KEY, verify_pi_access_token
 from api.utils import logger, run_sync
 from core.audit import audit_log
 from core.config import TEST_MODE, TEST_USER
@@ -27,9 +26,6 @@ from core.database import (
     remove_from_watchlist,
 )
 from core.database.user import get_user_by_id, upgrade_to_pro
-
-PI_API_KEY = os.getenv("PI_API_KEY", "")
-PI_API_BASE = "https://api.minepi.com/v2"
 
 router = APIRouter()
 

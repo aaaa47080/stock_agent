@@ -593,7 +593,9 @@ async def websocket_endpoint(websocket: WebSocket):
                 await websocket.close()
                 return
 
-            if os.getenv("TEST_MODE") == "True" and token.startswith("test-"):
+            if os.getenv("TEST_MODE", "").lower() == "true" and token.startswith(
+                "test-"
+            ):
                 user_id = token
                 logger.info(f"WebSocket Dev Auth: {user_id}")
             else:
