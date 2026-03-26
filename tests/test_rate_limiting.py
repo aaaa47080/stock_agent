@@ -83,6 +83,7 @@ RATE_LIMITED_ENDPOINTS = {
 @pytest.fixture(scope="module")
 def route_limits():
     # Import router modules for side effects (rate limit registration)
+    import api.routers.alerts  # noqa: F401
     import api.routers.analysis  # noqa: F401
     import api.routers.forum.comments  # noqa: F401
     import api.routers.forum.posts  # noqa: F401
@@ -93,13 +94,12 @@ def route_limits():
     import api.routers.messages  # noqa: F401
     import api.routers.notifications  # noqa: F401
     import api.routers.premium  # noqa: F401
+    import api.routers.scam_tracker.comments  # noqa: F401
+    import api.routers.scam_tracker.reports  # noqa: F401
+    import api.routers.scam_tracker.votes  # noqa: F401
     import api.routers.system  # noqa: F401
     import api.routers.tools  # noqa: F401
     import api.routers.user  # noqa: F401
-    import api.routers.scam_tracker.votes  # noqa: F401
-    import api.routers.scam_tracker.reports  # noqa: F401
-    import api.routers.scam_tracker.comments  # noqa: F401
-    import api.routers.alerts  # noqa: F401
     from api.middleware.rate_limit import limiter
 
     return limiter._route_limits
