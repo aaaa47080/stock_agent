@@ -378,10 +378,10 @@ const ScamTrackerApp = {
         `).join('');
 
         container.querySelectorAll('[data-report-idx]').forEach((el, i) => {
-            el.addEventListener('click', () => {
+            el.addEventListener('click', (() => {
                 window.location.href = '/static/scam-tracker/detail.html?id=' +
                     encodeURIComponent(this.reports[i].id);
-            }.bind(this));
+            }).bind(this));
         });
 
         lucide.createIcons();

@@ -19,8 +19,8 @@ from fastapi import (
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.deps import get_current_user
-from api.middleware.rate_limit import limiter, verify_token
+from api.deps import get_current_user, verify_token
+from api.middleware.rate_limit import limiter
 from api.utils import logger
 from core.orm.notifications_repo import notifications_repo
 from core.orm.repositories import user_repo

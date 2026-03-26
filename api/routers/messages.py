@@ -467,7 +467,7 @@ async def get_message_limits_endpoint(current_user: dict = Depends(get_current_u
 @router.delete("/api/messages/{message_id}")
 @limiter.limit("20/minute")
 async def delete_message_endpoint(
-    message_id: int, current_user: dict = Depends(get_current_user)
+    request: Request, message_id: int, current_user: dict = Depends(get_current_user)
 ):
     """
     刪除訊息
@@ -496,7 +496,7 @@ async def delete_message_endpoint(
 @router.post("/api/messages/{message_id}/hide")
 @limiter.limit("20/minute")
 async def hide_message_endpoint(
-    message_id: int, current_user: dict = Depends(get_current_user)
+    request: Request, message_id: int, current_user: dict = Depends(get_current_user)
 ):
     """
     隱藏訊息（只對自己隱藏，不影響對方）
@@ -524,7 +524,7 @@ async def hide_message_endpoint(
 @router.delete("/api/conversations/{conversation_id}")
 @limiter.limit("10/minute")
 async def delete_conversation_endpoint(
-    conversation_id: int, current_user: dict = Depends(get_current_user)
+    request: Request, conversation_id: int, current_user: dict = Depends(get_current_user)
 ):
     """
     刪除對話（隱藏整段對話，只對自己隱藏）
