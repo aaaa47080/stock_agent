@@ -10,7 +10,6 @@ RATE_LIMITED_ENDPOINTS = {
     # Auth / user
     "api.routers.user.dev_login": "5 per 1 minute",
     "api.routers.user.sync_pi_user": "5 per 1 minute",
-    "api.routers.user.refresh_token": "5 per 1 minute",
     "api.routers.user.refresh_access_token": "10 per 1 minute",
     "api.routers.user.approve_payment": "10 per 1 minute",
     "api.routers.user.complete_payment": "10 per 1 minute",
@@ -116,10 +115,10 @@ class TestAuthRateLimits:
         assert len(limits) >= 1
         assert "5 per 1 minute" in [str(r.limit) for r in limits]
 
-    def test_refresh_token_5_per_minute(self, route_limits):
-        limits = route_limits.get("api.routers.user.refresh_token", [])
+    def test_refresh_access_token_10_per_minute(self, route_limits):
+        limits = route_limits.get("api.routers.user.refresh_access_token", [])
         assert len(limits) >= 1
-        assert "5 per 1 minute" in [str(r.limit) for r in limits]
+        assert "10 per 1 minute" in [str(r.limit) for r in limits]
 
 
 class TestPaymentRateLimits:

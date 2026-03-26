@@ -17,6 +17,21 @@ def test_forex_router_registered(client):
     assert response.status_code != 404
 
 
+def test_forex_market_gracefully_degrades_when_quotes_unavailable(client, monkeypatch):
+    """Verify market endpoint returns an empty payload instead of 404 when source fails."""
+    from api.routers import forex
+
+    forex._cache.clear()
+    monkeypatch.setattr(forex, "_fetch_forex_sync", lambda *args, **kwargs: None)
+
+    response = client.get("/api/forex/market?pairs=EURUSD")
+
+    assert response.status_code == 200
+    assert response.json()["pairs"] == []
+    assert response.json()["partial_failure"] is True
+    assert "warning" in response.json()
+
+
 def test_forex_router_prefix():
     """Verify router prefix and tags."""
     from api.routers.forex import router

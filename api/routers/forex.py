@@ -15,6 +15,8 @@ from api.utils import logger
 
 router = APIRouter(prefix="/api/forex", tags=["Forex"])
 
+MARKET_DATA_UNAVAILABLE_MESSAGE = "目前無法取得外匯行情，已回傳空資料供前端安全降級"
+
 # ── Cache ──────────────────────────────────────────────────────────────────────
 _cache: dict = {}
 
@@ -143,10 +145,11 @@ async def get_forex_market(pairs: Optional[str] = None):
         ]
     )
     fx_pairs = [r for r in results if r]
-    if not fx_pairs:
-        raise HTTPException(status_code=404, detail="無法獲取外匯數據，請稍後再試")
-
     data = {"pairs": fx_pairs, "last_updated": datetime.now(timezone.utc).isoformat()}
+    if len(fx_pairs) != len(targets):
+        data["partial_failure"] = True
+        data["warning"] = MARKET_DATA_UNAVAILABLE_MESSAGE
+
     _set_cache(cache_key, data)
     return data
 
