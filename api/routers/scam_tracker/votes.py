@@ -4,9 +4,10 @@
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from api.deps import get_current_user
+from api.middleware.rate_limit import limiter
 from api.utils import run_sync
 from core.database.scam_tracker import vote_scam_report
 
@@ -18,8 +19,9 @@ router = APIRouter(prefix="/votes", tags=["Scam Tracker - Votes"])
 
 
 @router.post("/{report_id}", response_model=dict)
+@limiter.limit("20/minute")
 async def vote_on_report(
-    report_id: int, request: VoteRequest, current_user: dict = Depends(get_current_user)
+    report_id: int, request: Request, req: VoteRequest, current_user: dict = Depends(get_current_user)
 ):
     """
     對舉報投票
@@ -35,16 +37,16 @@ async def vote_on_report(
 
         result = await run_sync(
             lambda: vote_scam_report(
-                report_id=report_id, user_id=user_id, vote_type=request.vote_type
+                report_id=report_id, user_id=user_id, vote_type=req.vote_type
             )
         )
 
         if result.get("success"):
             action = result.get("action")
             action_messages = {
-                "voted": f"{'贊同' if request.vote_type == 'approve' else '反對'}成功",
-                "cancelled": f"已取消{'贊同' if request.vote_type == 'approve' else '反對'}",
-                "switched": f"已切換為{'贊同' if request.vote_type == 'approve' else '反對'}",
+                "voted": f"{'贊同' if req.vote_type == 'approve' else '反對'}成功",
+                "cancelled": f"已取消{'贊同' if req.vote_type == 'approve' else '反對'}",
+                "switched": f"已切換為{'贊同' if req.vote_type == 'approve' else '反對'}",
             }
 
             return {

@@ -59,8 +59,8 @@ function renderPreResearchCard(idata, targetDiv) {
             // XSS Fix: 使用 SecurityUtils 清理 HTML
             const qRaw = window.md ? window.md.renderInline(idata.qa_question) : idata.qa_question;
             const aRaw = window.md ? window.md.render(idata.qa_answer) : idata.qa_answer;
-            const qHtml = window.SecurityUtils ? window.SecurityUtils.sanitizeHTML(qRaw) : qRaw;
-            const aHtml = window.SecurityUtils ? window.SecurityUtils.sanitizeHTML(aRaw) : aRaw;
+            const qHtml = window.SecurityUtils ? window.SecurityUtils.sanitizeHTML(qRaw) : qRaw.replace(/</g, '&lt;');
+            const aHtml = window.SecurityUtils ? window.SecurityUtils.sanitizeHTML(aRaw) : aRaw.replace(/</g, '&lt;');
             qaDiv.innerHTML = `<p class="text-xs text-textMuted/60 mb-1">💬 ${qHtml}</p>${aHtml}`;
             container.appendChild(qaDiv);
             container.scrollTop = container.scrollHeight;
@@ -76,11 +76,11 @@ function renderPreResearchCard(idata, targetDiv) {
               : '';
     const summaryHtml = window.SecurityUtils
         ? window.SecurityUtils.sanitizeHTML(summaryRaw)
-        : summaryRaw;
+        : summaryRaw.replace(/</g, '&lt;');
     const messageRaw = window.md ? window.md.renderInline(message) : message;
     const messageHtml = window.SecurityUtils
         ? window.SecurityUtils.sanitizeHTML(messageRaw)
-        : messageRaw;
+        : messageRaw.replace(/</g, '&lt;');
 
     // Use a compact card if no summary is provided (e.g., follow-up Q&A)
     if (!summary) {

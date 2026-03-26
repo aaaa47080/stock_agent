@@ -121,7 +121,9 @@ async def websocket_klines(websocket: WebSocket):
     try:
         from data.okx_websocket import okx_ws_manager
 
-        asyncio.create_task(start_okx_websocket())
+        asyncio.create_task(start_okx_websocket()).add_done_callback(
+            lambda t: t.exception() and logger.warning("OKX WS task failed: %s", t.exception())
+        )
 
         current_subscription = None
 
@@ -285,7 +287,9 @@ async def websocket_tickers(websocket: WebSocket):
     try:
         from data.okx_websocket import okx_ticker_ws_manager
 
-        asyncio.create_task(start_okx_ticker_websocket())
+        asyncio.create_task(start_okx_ticker_websocket()).add_done_callback(
+            lambda t: t.exception() and logger.warning("OKX Ticker WS task failed: %s", t.exception())
+        )
 
         current_callbacks = {}
 

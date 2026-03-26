@@ -12,13 +12,15 @@ from fastapi import (
     Depends,
     HTTPException,
     Query,
+    Request,
     WebSocket,
     WebSocketDisconnect,
 )
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.deps import get_current_user, verify_token
+from api.deps import get_current_user
+from api.middleware.rate_limit import limiter, verify_token
 from api.utils import logger
 from core.orm.notifications_repo import notifications_repo
 from core.orm.repositories import user_repo
@@ -131,8 +133,9 @@ async def get_unread_count_endpoint(
 
 
 @router.post("/api/notifications/{notification_id}/read")
+@limiter.limit("30/minute")
 async def mark_as_read_endpoint(
-    notification_id: str,
+    request: Request, notification_id: str,
     current_user: dict = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -155,7 +158,9 @@ async def mark_as_read_endpoint(
 
 
 @router.post("/api/notifications/read-all")
+@limiter.limit("10/minute")
 async def mark_all_as_read_endpoint(
+    request: Request,
     current_user: dict = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -175,8 +180,9 @@ async def mark_all_as_read_endpoint(
 
 
 @router.delete("/api/notifications/{notification_id}")
+@limiter.limit("20/minute")
 async def delete_notification_endpoint(
-    notification_id: str,
+    request: Request, notification_id: str,
     current_user: dict = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):

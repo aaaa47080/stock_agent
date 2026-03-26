@@ -4,10 +4,11 @@ Tools API Router
 Endpoints for listing tools and managing user tool preferences.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from api.deps import get_current_user
+from api.middleware.rate_limit import limiter
 from api.utils import logger, run_sync
 from core.database.tools import seed_tools_catalog
 from core.orm.tools_repo import _normalize_tier as normalize_membership_tier
@@ -77,18 +78,22 @@ async def _set_tool_preference_impl(
 
 
 @router.put("/api/tools/{tool_id}/preference")
+@limiter.limit("20/minute")
 async def set_tool_preference(
+    request: Request,
     tool_id: str,
-    request: ToolPreferenceRequest,
+    req: ToolPreferenceRequest,
     current_user: dict = Depends(get_current_user),
 ):
-    return await _set_tool_preference_impl(tool_id, request, current_user)
+    return await _set_tool_preference_impl(tool_id, req, current_user)
 
 
 @router.put("/api/user/tools/{tool_id}/preference")
+@limiter.limit("20/minute")
 async def set_user_tool_preference(
+    request: Request,
     tool_id: str,
-    request: ToolPreferenceRequest,
+    req: ToolPreferenceRequest,
     current_user: dict = Depends(get_current_user),
 ):
-    return await _set_tool_preference_impl(tool_id, request, current_user)
+    return await _set_tool_preference_impl(tool_id, req, current_user)

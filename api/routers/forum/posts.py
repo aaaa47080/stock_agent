@@ -177,9 +177,11 @@ async def get_post_detail(post_id: int):
 
 
 @router.put("/{post_id}")
+@limiter.limit("10/minute")
 async def update_post_content(
     post_id: int,
-    request: UpdatePostRequest,
+    request: Request,
+    req: UpdatePostRequest,
     current_user: dict = Depends(get_current_user),
 ):
     """
@@ -189,7 +191,7 @@ async def update_post_content(
         user_id = current_user["user_id"]
 
         # 驗證分類
-        if request.category and request.category not in VALID_CATEGORIES:
+        if req.category and req.category not in VALID_CATEGORIES:
             raise HTTPException(
                 status_code=400,
                 detail=f"無效的分類，可選: {', '.join(VALID_CATEGORIES)}",
@@ -198,9 +200,9 @@ async def update_post_content(
         success = await forum_repo.update_post(
             post_id=post_id,
             user_id=user_id,
-            title=request.title,
-            content=request.content,
-            category=request.category,
+            title=req.title,
+            content=req.content,
+            category=req.category,
         )
 
         if not success:
@@ -214,8 +216,9 @@ async def update_post_content(
 
 
 @router.delete("/{post_id}")
+@limiter.limit("10/minute")
 async def delete_post_by_id(
-    post_id: int, current_user: dict = Depends(get_current_user)
+    request: Request, post_id: int, current_user: dict = Depends(get_current_user)
 ):
     """
     刪除文章（軟刪除，只有作者可以刪除）

@@ -17,6 +17,8 @@ from core.database.user import upgrade_to_pro
 from core.orm.repositories import user_repo
 
 router = APIRouter(prefix="/api/premium", tags=["Premium"])
+
+_used_payment_ids: set = set()
 PLAN_MONTHS = {
     "premium_monthly": 1,
     "premium_yearly": 12,
@@ -148,6 +150,12 @@ async def upgrade_to_premium(
                 detail="payment_id is required for premium upgrade",
             )
 
+        if body.payment_id in _used_payment_ids:
+            raise HTTPException(
+                status_code=409,
+                detail="This payment has already been used",
+            )
+
         payment_data = await _verify_pi_payment(body.payment_id)
 
         blockchain_txid = payment_data.get("transaction", {}).get("_id")
@@ -198,6 +206,9 @@ async def upgrade_to_premium(
             raise HTTPException(status_code=500, detail="Upgrade failed")
 
         new_membership = await user_repo.get_membership(user_id)
+
+        if body.payment_id:
+            _used_payment_ids.add(body.payment_id)
 
         logger.info(
             "User %s upgraded to Premium, plan=%s, months=%d, tx_hash=%s",

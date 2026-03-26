@@ -5,9 +5,10 @@
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from api.deps import get_current_user
+from api.middleware.rate_limit import limiter
 from core.orm.config_repo import config_repo
 from core.orm.repositories import user_repo
 from core.orm.scam_tracker_repo import scam_tracker_repo
@@ -127,8 +128,9 @@ async def get_scam_report_detail(
 
 
 @router.post("", response_model=dict)
+@limiter.limit("5/minute")
 async def create_new_scam_report(
-    request: ScamReportCreate, current_user: dict = Depends(get_current_user)
+    request: Request, req: ScamReportCreate, current_user: dict = Depends(get_current_user)
 ):
     """
     提交新舉報
@@ -146,12 +148,12 @@ async def create_new_scam_report(
             )
 
         result = await scam_tracker_repo.create_report(
-            scam_wallet_address=request.scam_wallet_address,
+            scam_wallet_address=req.scam_wallet_address,
             reporter_user_id=user_id,
-            reporter_wallet_masked=request.reporter_wallet_address,
-            scam_type=request.scam_type,
-            description=request.description,
-            transaction_hash=request.transaction_hash,
+            reporter_wallet_masked=req.reporter_wallet_address,
+            scam_type=req.scam_type,
+            description=req.description,
+            transaction_hash=req.transaction_hash,
         )
 
         if result.get("success"):

@@ -12,7 +12,7 @@ from langchain_core.messages import HumanMessage
 from pydantic import BaseModel
 
 import core.config as core_config
-from api.deps import get_current_user
+from api.deps import get_current_user, require_admin
 from api.middleware.rate_limit import limiter
 from api.models import KeyValidationRequest, UserSettings
 from api.routers.admin import verify_admin_key
@@ -194,9 +194,13 @@ async def validate_key(
 
 
 @router.get("/api/config")
-async def get_config():
+async def get_config(request: Request):
     """回傳前端需要的配置資訊"""
+    from api.deps import get_token_from_cookie
+
     current_provider = core_config.PRIMARY_MODEL.get("provider", "openai")
+    token = get_token_from_cookie(request)
+    is_authenticated = bool(token)
 
     # Helper to check key existence using Factory logic
     def has_key(provider):
@@ -209,15 +213,12 @@ async def get_config():
         "current_settings": {
             "primary_model_provider": current_provider,
             "primary_model_name": core_config.PRIMARY_MODEL.get("model"),
-            # Mask keys for security
             "has_openai_key": has_key("openai"),
             "has_google_key": has_key("google_gemini"),
             "has_openrouter_key": has_key("openrouter"),
             "has_current_provider_key": has_key(current_provider),
         },
-        # 測試模式配置
-        "test_mode": core_config.TEST_MODE,
-        # Pi SDK sandbox 配置
+        "test_mode": core_config.TEST_MODE if is_authenticated else False,
         "pi_sandbox": core_config.PI_SANDBOX,
     }
 
@@ -253,11 +254,11 @@ async def get_forum_limits():
 
 
 @router.post("/api/settings/update")
-@limiter.limit("10/minute")  # 🔒 Security: 防止设置滥用
+@limiter.limit("10/minute")
 async def update_user_settings(
     settings: UserSettings,
     request: Request,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_admin),
 ):
     """
     更新用戶設置 (LLM API Keys, 模型選擇, 委員會模式)
@@ -346,8 +347,9 @@ class TestTierRequest(BaseModel):
 
 
 @router.post("/api/test-mode/switch-tier")
+@limiter.limit("5/minute")
 async def switch_test_tier(
-    request: TestTierRequest, current_user: dict = Depends(get_current_user)
+    request: Request, body: TestTierRequest, current_user: dict = Depends(get_current_user)
 ):
     """
     切換測試帳號的會員等級（僅測試模式）
@@ -362,20 +364,19 @@ async def switch_test_tier(
         raise HTTPException(status_code=403, detail="此功能僅在測試模式下可用")
 
     valid_tiers = ["free", "premium"]
-    if request.tier not in valid_tiers:
+    if body.tier not in valid_tiers:
         raise HTTPException(
             status_code=400, detail=f"無效的等級，必須是: {', '.join(valid_tiers)}"
         )
 
-    # 更新環境變量（當前進程有效）
-    os.environ["TEST_USER_TIER"] = request.tier
+    os.environ["TEST_USER_TIER"] = body.tier
 
-    logger.info(f"[TEST_MODE] Tier switched to: {request.tier}")
+    logger.info(f"[TEST_MODE] Tier switched to: {body.tier}")
 
     return {
         "success": True,
-        "tier": request.tier,
-        "message": f"測試帳號已切換為 {request.tier.upper()} 等級",
+        "tier": body.tier,
+        "message": f"測試帳號已切換為 {body.tier.upper()} 等級",
     }
 
 

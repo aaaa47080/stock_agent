@@ -131,7 +131,7 @@ const ForumApp = {
                         tagsHtml = tags
                             .map(
                                 (tag) =>
-                                    `<span class="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full mr-1">#${tag}</span>`
+                                    `<span class="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full mr-1">#${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(tag) : tag.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>`
                             )
                             .join('');
                     }
@@ -396,7 +396,7 @@ const ForumApp = {
                         <a href="/static/forum/profile.html?id=${comment.user_id}" class="font-bold text-sm text-secondary hover:text-primary transition">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(comment.username || comment.user_id) : comment.username || comment.user_id}</a>
                         <div class="flex items-center gap-2">
                             <span class="text-xs text-textMuted">${formatTWDate(comment.created_at, true)}</span>
-                            <button onclick="ForumApp.openReportModal('comment', ${comment.id})" class="text-textMuted hover:text-danger p-1 rounded transition" title="Report">
+                            <button data-report-type="comment" data-report-id="${comment.id}" class="text-textMuted hover:text-danger p-1 rounded transition report-trigger" title="Report">
                                 <i data-lucide="flag" class="w-3 h-3"></i>
                             </button>
                         </div>
@@ -1539,6 +1539,8 @@ const ForumApp = {
                     title = tx.title || 'Tip Sent';
                 }
 
+                const safeTitle = typeof escapeHtml === 'function' ? escapeHtml(title) : title.replace(/</g, '&lt;');
+
                 const amountClass = tx.isFree
                     ? 'text-success'
                     : tx.amount < 0
@@ -1554,7 +1556,7 @@ const ForumApp = {
                             <i data-lucide="${icon}" class="w-5 h-5 text-textMuted"></i>
                          </div>
                          <div class="overflow-hidden">
-                             <div class="font-bold text-textMain truncate">${title}</div>
+                              <div class="font-bold text-textMain truncate">${safeTitle}</div>
                              <div class="text-xs text-textMuted mt-0.5">${formatTWDate(tx.created_at)}</div>
                          </div>
                     </div>
@@ -1723,6 +1725,16 @@ export { ForumApp };
 
 // 確保在 DOM 載入後執行（僅限獨立 forum 頁面，SPA 主頁由 switchTab 觸發）
 document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('click', (e) => {
+        const trigger = e.target.closest('.report-trigger');
+        if (trigger) {
+            const type = trigger.dataset.reportType;
+            const id = trigger.dataset.reportId;
+            if (type && id && window.ForumApp && ForumApp.openReportModal) {
+                ForumApp.openReportModal(type, id);
+            }
+        }
+    });
     const page = document.body.dataset.page;
     if (!page) return; // SPA mode: skip, forum content loaded via switchTab()
     if (window.ForumApp) {

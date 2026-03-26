@@ -4,9 +4,10 @@
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from api.deps import get_current_user
+from api.middleware.rate_limit import limiter
 from core.orm.repositories import user_repo
 from core.orm.scam_tracker_repo import scam_tracker_repo
 
@@ -40,9 +41,11 @@ async def list_scam_comments(
 
 
 @router.post("/{report_id}", response_model=dict)
+@limiter.limit("10/minute")
 async def add_comment_to_report(
     report_id: int,
-    request: CommentCreate,
+    request: Request,
+    req: CommentCreate,
     current_user: dict = Depends(get_current_user),
 ):
     """
@@ -63,8 +66,8 @@ async def add_comment_to_report(
         result = await scam_tracker_repo.add_comment(
             report_id=report_id,
             user_id=user_id,
-            content=request.content,
-            transaction_hash=request.transaction_hash,
+            content=req.content,
+            transaction_hash=req.transaction_hash,
         )
 
         if result.get("success"):

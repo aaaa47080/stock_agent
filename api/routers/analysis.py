@@ -51,8 +51,9 @@ async def get_user_sessions(
 
 
 @router.delete("/api/chat/sessions/{session_id}")
+@limiter.limit("20/minute")
 async def delete_user_session(
-    session_id: str, current_user: dict = Depends(get_current_user)
+    request: Request, session_id: str, current_user: dict = Depends(get_current_user)
 ):
     """刪除特定對話"""
     user_id = current_user["user_id"]
@@ -66,7 +67,9 @@ async def delete_user_session(
 
 
 @router.put("/api/chat/sessions/{session_id}/pin")
+@limiter.limit("30/minute")
 async def pin_user_session(
+    request: Request,
     session_id: str,
     is_pinned: bool = Query(..., description="Set to true to pin, false to unpin"),
     current_user: dict = Depends(get_current_user),
@@ -339,8 +342,9 @@ async def analyze_crypto(
 
 
 @router.post("/api/chat/clear")
+@limiter.limit("5/minute")
 async def clear_chat_history_endpoint(
-    session_id: str = "default", current_user: dict = Depends(get_current_user)
+    request: Request, session_id: str = "default", current_user: dict = Depends(get_current_user)
 ):
     """清除對話歷史"""
     user_id = current_user.get("user_id")
@@ -356,7 +360,8 @@ async def clear_chat_history_endpoint(
 
 
 @router.post("/api/chat/new-session")
-async def create_new_session(current_user: dict = Depends(get_current_user)):
+@limiter.limit("10/minute")
+async def create_new_session(request: Request, current_user: dict = Depends(get_current_user)):
     """創建新對話會話並整合舊會話記憶"""
     user_id = current_user.get("user_id")
     if not user_id:
@@ -398,7 +403,8 @@ async def create_new_session(current_user: dict = Depends(get_current_user)):
 
 
 @router.post("/api/chat/idle-consolidate")
-async def trigger_idle_consolidation(current_user: dict = Depends(get_current_user)):
+@limiter.limit("5/minute")
+async def trigger_idle_consolidation(request: Request, current_user: dict = Depends(get_current_user)):
     """
     手動觸發閒置整合（當用戶閒置一段時間後調用）
 

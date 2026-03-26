@@ -316,9 +316,11 @@ async def vote_on_pending_report(
 
 
 @router.post("/reports/{report_id}/finalize")
+@limiter.limit("10/minute")
 async def finalize_report_decision(
+    request: Request,
     report_id: int,
-    request: FinalizeReportRequest,
+    req: FinalizeReportRequest,
     current_user: dict = Depends(require_admin),
 ):
     """
@@ -338,8 +340,8 @@ async def finalize_report_decision(
 
         result = await governance_repo.finalize_report(
             report_id=report_id,
-            decision=request.decision,
-            violation_level=request.violation_level,
+            decision=req.decision,
+            violation_level=req.violation_level,
             processed_by=user_id,
         )
 

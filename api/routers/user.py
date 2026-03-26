@@ -319,7 +319,8 @@ async def refresh_access_token(request: Request, response: Response, body: Refre
 
 
 @router.post("/api/user/logout")
-async def logout(response: Response):
+@limiter.limit("30/minute")
+async def logout(request: Request, response: Response):
     """Clear JWT cookies on logout."""
     clear_token_cookies(response)
     return {"success": True}
@@ -516,8 +517,9 @@ class SaveModelRequest(BaseModel):
 
 
 @router.post("/api/user/api-keys")
+@limiter.limit("10/minute")
 async def save_user_api_key_endpoint(
-    request: SaveAPIKeyRequest, current_user: dict = Depends(get_current_user)
+    request: Request, req: SaveAPIKeyRequest, current_user: dict = Depends(get_current_user)
 ):
     """儲存用戶的 API Key（加密後存入資料庫）"""
     from core.database.user_api_keys import save_user_api_key
@@ -525,18 +527,18 @@ async def save_user_api_key_endpoint(
     user_id = current_user["user_id"]
     try:
         result = await run_sync(
-            save_user_api_key, user_id, request.provider, request.api_key, request.model
+            save_user_api_key, user_id, req.provider, req.api_key, req.model
         )
         if not result["success"]:
             raise HTTPException(
                 status_code=400, detail=result.get("error", "Failed to save API key")
             )
 
-        logger.info(f"API key saved for user {user_id}, provider: {request.provider}")
+        logger.info(f"API key saved for user {user_id}, provider: {req.provider}")
         audit_log(
             action="api_key_saved",
             user_id=user_id,
-            metadata={"provider": request.provider},
+            metadata={"provider": req.provider},
         )
         return {"success": True, "message": "API Key 已安全儲存"}
 
@@ -578,10 +580,15 @@ async def get_user_api_key_endpoint(
 
 
 @router.delete("/api/user/api-keys/{provider}")
+@limiter.limit("10/minute")
 async def delete_user_api_key_endpoint(
-    provider: str, current_user: dict = Depends(get_current_user)
+    request: Request, provider: str, current_user: dict = Depends(get_current_user)
 ):
     """刪除用戶的 API Key"""
+    import re
+
+    if not re.match(r'^[a-zA-Z0-9_-]+$', provider):
+        raise HTTPException(status_code=400, detail="Invalid provider name")
     from core.database.user_api_keys import delete_user_api_key
 
     user_id = current_user["user_id"]
@@ -606,8 +613,9 @@ async def delete_user_api_key_endpoint(
 
 
 @router.post("/api/user/api-keys/model")
+@limiter.limit("10/minute")
 async def save_user_model_endpoint(
-    request: SaveModelRequest, current_user: dict = Depends(get_current_user)
+    request: Request, req: SaveModelRequest, current_user: dict = Depends(get_current_user)
 ):
     """儲存用戶選擇的模型（不更改 API Key）"""
     from core.database.user_api_keys import save_user_model_selection
@@ -615,7 +623,7 @@ async def save_user_model_endpoint(
     user_id = current_user["user_id"]
     try:
         result = await run_sync(
-            save_user_model_selection, user_id, request.provider, request.model
+            save_user_model_selection, user_id, req.provider, req.model
         )
         if not result["success"]:
             raise HTTPException(

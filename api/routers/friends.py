@@ -264,7 +264,9 @@ async def cancel_request(
 
 
 @router.delete("/api/friends/remove")
+@limiter.limit("10/minute")
 async def remove_friend_endpoint(
+    request: Request,
     target_user_id: str = Query(..., description="好友的用戶 ID"),
     current_user: dict = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),

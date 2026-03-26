@@ -279,21 +279,22 @@ async def send_message_endpoint(
 
 
 @router.post("/api/messages/read")
+@limiter.limit("30/minute")
 async def mark_read_endpoint(
-    request: MarkReadRequest, current_user: dict = Depends(get_current_user)
+    request: Request, req: MarkReadRequest, current_user: dict = Depends(get_current_user)
 ):
     """
     標記對話為已讀
     """
     try:
         user_id = current_user["user_id"]
-        result = await messages_repo.mark_as_read(request.conversation_id, user_id)
+        result = await messages_repo.mark_as_read(req.conversation_id, user_id)
 
         if not result["success"]:
             raise HTTPException(status_code=404, detail="對話不存在")
 
         conv = await messages_repo.get_conversation_by_id(
-            request.conversation_id, user_id
+            req.conversation_id, user_id
         )
         if conv:
             other_user_id = (
@@ -464,6 +465,7 @@ async def get_message_limits_endpoint(current_user: dict = Depends(get_current_u
 
 
 @router.delete("/api/messages/{message_id}")
+@limiter.limit("20/minute")
 async def delete_message_endpoint(
     message_id: int, current_user: dict = Depends(get_current_user)
 ):
@@ -492,6 +494,7 @@ async def delete_message_endpoint(
 
 
 @router.post("/api/messages/{message_id}/hide")
+@limiter.limit("20/minute")
 async def hide_message_endpoint(
     message_id: int, current_user: dict = Depends(get_current_user)
 ):
@@ -519,6 +522,7 @@ async def hide_message_endpoint(
 
 
 @router.delete("/api/conversations/{conversation_id}")
+@limiter.limit("10/minute")
 async def delete_conversation_endpoint(
     conversation_id: int, current_user: dict = Depends(get_current_user)
 ):
