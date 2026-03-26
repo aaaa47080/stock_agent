@@ -51,7 +51,7 @@ class TestCheckConstraints:
         src = _get_schema_source()
         assert "forum_comments" in src
         assert "'comment'" in src
-        assert "'reply'" in src
+        assert "'push'" in src  # schema uses 'comment', 'push', 'boo' — not 'reply'
 
     def test_verification_status_check(self):
         src = _get_schema_source()

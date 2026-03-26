@@ -120,7 +120,7 @@ app.include_router(tools_router)  # 工具偏好 API
 
 
 # --- Pi Network 域名驗證 ---
-from core.config import PI_VALIDATION_KEY, PI_SANDBOX, PI_SANDBOX_VALIDATION_KEY
+from core.config import PI_SANDBOX, PI_SANDBOX_VALIDATION_KEY, PI_VALIDATION_KEY
 
 
 @app.get("/validation-key.txt", response_class=PlainTextResponse)

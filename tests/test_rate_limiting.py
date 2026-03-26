@@ -7,6 +7,7 @@ with appropriate rate limits applied via SlowAPI's internal registry.
 import pytest
 
 RATE_LIMITED_ENDPOINTS = {
+    # Auth / user
     "api.routers.user.dev_login": "5 per 1 minute",
     "api.routers.user.sync_pi_user": "5 per 1 minute",
     "api.routers.user.refresh_token": "5 per 1 minute",
@@ -14,19 +15,62 @@ RATE_LIMITED_ENDPOINTS = {
     "api.routers.user.approve_payment": "10 per 1 minute",
     "api.routers.user.complete_payment": "10 per 1 minute",
     "api.routers.user.get_user_api_key_full_endpoint": "10 per 1 minute",
+    "api.routers.user.save_user_api_key_endpoint": "10 per 1 minute",
+    "api.routers.user.delete_user_api_key_endpoint": "10 per 1 minute",
+    "api.routers.user.save_user_model_endpoint": "10 per 1 minute",
+    "api.routers.user.add_watchlist": "20 per 1 minute",
+    "api.routers.user.remove_watchlist": "20 per 1 minute",
+    "api.routers.user.logout": "30 per 1 minute",
+    # Premium
     "api.routers.premium.upgrade_to_premium": "10 per 1 minute",
+    # Forum
     "api.routers.forum.posts.create_new_post": "20 per 1 minute",
+    "api.routers.forum.posts.update_post_content": "10 per 1 minute",
+    "api.routers.forum.posts.delete_post_by_id": "10 per 1 minute",
     "api.routers.forum.comments.add_new_comment": "30 per 1 minute",
     "api.routers.forum.comments.push_post": "30 per 1 minute",
     "api.routers.forum.comments.boo_post": "30 per 1 minute",
     "api.routers.forum.tips.tip_post": "10 per 1 minute",
+    # Messages
     "api.routers.messages.send_message_endpoint": "30 per 1 minute",
     "api.routers.messages.send_greeting_endpoint": "5 per 1 minute",
+    "api.routers.messages.mark_read_endpoint": "30 per 1 minute",
+    "api.routers.messages.delete_message_endpoint": "20 per 1 minute",
+    "api.routers.messages.hide_message_endpoint": "20 per 1 minute",
+    "api.routers.messages.delete_conversation_endpoint": "10 per 1 minute",
+    # Friends
+    "api.routers.friends.send_request": "10 per 1 minute",
+    "api.routers.friends.accept_request": "10 per 1 minute",
+    "api.routers.friends.reject_request": "10 per 1 minute",
+    "api.routers.friends.cancel_request": "10 per 1 minute",
+    "api.routers.friends.remove_friend_endpoint": "10 per 1 minute",
+    "api.routers.friends.block_user_endpoint": "10 per 1 minute",
+    "api.routers.friends.unblock_user_endpoint": "10 per 1 minute",
+    # Notifications
+    "api.routers.notifications.mark_as_read_endpoint": "30 per 1 minute",
+    "api.routers.notifications.mark_all_as_read_endpoint": "10 per 1 minute",
+    "api.routers.notifications.delete_notification_endpoint": "20 per 1 minute",
+    # Governance
     "api.routers.governance.submit_report": "10 per 1 hour",
     "api.routers.governance.vote_on_pending_report": "30 per 1 hour",
+    "api.routers.governance.finalize_report_decision": "10 per 1 minute",
+    # Analysis
     "api.routers.analysis.analyze_crypto": "10 per 1 minute",
+    "api.routers.analysis.clear_chat_history_endpoint": "5 per 1 minute",
+    "api.routers.analysis.create_new_session": "10 per 1 minute",
+    "api.routers.analysis.delete_user_session": "20 per 1 minute",
+    "api.routers.analysis.pin_user_session": "30 per 1 minute",
+    "api.routers.analysis.trigger_idle_consolidation": "5 per 1 minute",
+    # Market
+    "api.routers.market.rest.run_screener": "10 per 1 minute",
+    "api.routers.market.rest.get_klines_data": "60 per 1 minute",
+    # System
     "api.routers.system.update_user_settings": "10 per 1 minute",
     "api.routers.system.validate_key": "10 per 1 minute",
+    "api.routers.system.switch_test_tier": "5 per 1 minute",
+    # Tools
+    "api.routers.tools.set_tool_preference": "20 per 1 minute",
+    "api.routers.tools.set_user_tool_preference": "20 per 1 minute",
 }
 
 
@@ -37,10 +81,14 @@ def route_limits():
     import api.routers.forum.comments  # noqa: F401
     import api.routers.forum.posts  # noqa: F401
     import api.routers.forum.tips  # noqa: F401
+    import api.routers.friends  # noqa: F401
     import api.routers.governance  # noqa: F401
+    import api.routers.market.rest  # noqa: F401
     import api.routers.messages  # noqa: F401
+    import api.routers.notifications  # noqa: F401
     import api.routers.premium  # noqa: F401
     import api.routers.system  # noqa: F401
+    import api.routers.tools  # noqa: F401
     import api.routers.user  # noqa: F401
     from api.middleware.rate_limit import limiter
 

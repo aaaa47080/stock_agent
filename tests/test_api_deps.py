@@ -3,11 +3,18 @@ Tests for API dependencies in api/deps.py
 """
 
 from datetime import datetime, timedelta, timezone
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import jwt
 import pytest
 from fastapi import HTTPException
+
+
+def _mock_request(cookies: dict | None = None):
+    """Return a minimal mock Request with empty cookies."""
+    req = MagicMock()
+    req.cookies = cookies or {}
+    return req
 
 
 # Need to patch environment before importing api.deps
@@ -140,7 +147,7 @@ class TestGetCurrentUserId:
         data = {"sub": "user-123"}
         token = create_access_token(data)
 
-        user_id = await get_current_user_id(token)
+        user_id = await get_current_user_id(_mock_request(), token)
         assert user_id == "user-123"
 
     @pytest.mark.asyncio
@@ -149,7 +156,7 @@ class TestGetCurrentUserId:
         from api.deps import get_current_user_id
 
         with pytest.raises(HTTPException) as exc_info:
-            await get_current_user_id(None)
+            await get_current_user_id(_mock_request(), None)
 
         assert exc_info.value.status_code == 401
 
@@ -159,7 +166,7 @@ class TestGetCurrentUserId:
         from api.deps import get_current_user_id
 
         with pytest.raises(HTTPException) as exc_info:
-            await get_current_user_id("")
+            await get_current_user_id(_mock_request(), "")
 
         assert exc_info.value.status_code == 401
 
@@ -173,7 +180,7 @@ class TestGetCurrentUserId:
         token = jwt.encode(data, SECRET_KEY, algorithm=ALGORITHM)
 
         with pytest.raises(HTTPException) as exc_info:
-            await get_current_user_id(token)
+            await get_current_user_id(_mock_request(), token)
 
         assert exc_info.value.status_code == 401
 
@@ -193,7 +200,7 @@ class TestGetCurrentUser:
         with patch.dict("os.environ", {"ENVIRONMENT": "development"}):
             with patch("core.config.TEST_MODE", True):
                 with patch("core.config.TEST_USER", {"uid": "test-user-001"}):
-                    user = await get_current_user(token)
+                    user = await get_current_user(_mock_request(), token)
                     assert "user_id" in user
 
     @pytest.mark.asyncio
@@ -204,7 +211,7 @@ class TestGetCurrentUser:
         with patch("core.config.TEST_MODE", True):
             with patch("core.config.TEST_USER", {"uid": "test-user-001"}):
                 with patch.dict("os.environ", {"ENVIRONMENT": "development"}):
-                    user = await get_current_user(None)
+                    user = await get_current_user(_mock_request(), None)
                     assert "user_id" in user
 
     @pytest.mark.asyncio
@@ -215,7 +222,7 @@ class TestGetCurrentUser:
         with patch("core.config.TEST_MODE", True):
             with patch.dict("os.environ", {"ENVIRONMENT": "production"}):
                 with pytest.raises(ValueError) as exc_info:
-                    await get_current_user(None)
+                    await get_current_user(_mock_request(), None)
 
                 assert "SECURITY ALERT" in str(exc_info.value)
 
