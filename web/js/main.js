@@ -22,7 +22,12 @@ import './store.js';           // AppStore (pub/sub state)
 AppStore.restore();
 
 window.addEventListener('unhandledrejection', (event) => {
-    console.error('[Unhandled Rejection]', event.reason);
+    const reason = event.reason;
+    // Suppress non-actionable errors that don't need user notification
+    if (reason instanceof DOMException && reason.name === 'AbortError') return; // cancelled fetch
+    if (reason?.name === 'AbortError') return;
+    if (reason?.message?.includes('postMessage') && reason?.message?.includes('minepi.com')) return;
+    console.error('[Unhandled Rejection]', reason);
     if (typeof showToast === 'function') {
         showToast('發生未預期的錯誤', 'error');
     }

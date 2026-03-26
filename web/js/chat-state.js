@@ -4,10 +4,10 @@
 // 載入順序：必須是所有 chat-*.js 中第一個載入
 // ========================================
 
-let currentSessionId = null;
-AppStore.set('currentSessionId', currentSessionId);
-let chatInitialized = false; // 防止重複初始化
-AppStore.set('chatInitialized', chatInitialized);
+window.currentSessionId = null;
+AppStore.set('currentSessionId', null);
+window.chatInitialized = false; // 防止重複初始化
+AppStore.set('chatInitialized', false);
 
 // ✅ 效能優化：預先快取 userKey，避免每次 sendMessage 都打後端 API
 let _cachedUserKey = null;
@@ -46,13 +46,13 @@ const _hitlContextMap = new Map();
 // Backward compatibility: expose a getter that returns context for current session
 Object.defineProperty(window, '_hitlContext', {
     get() {
-        return _hitlContextMap.get(currentSessionId);
+        return _hitlContextMap.get(window.currentSessionId);
     },
     set(value) {
         if (value === null) {
-            _hitlContextMap.delete(currentSessionId);
+            _hitlContextMap.delete(window.currentSessionId);
         } else {
-            _hitlContextMap.set(currentSessionId, value);
+            _hitlContextMap.set(window.currentSessionId, value);
         }
     },
 });
@@ -427,8 +427,6 @@ function toggleSidebar() {
 window.toggleSidebar = toggleSidebar;
 
 export {
-    currentSessionId,
-    chatInitialized,
     getCachedUserKey,
     createIconsIn,
     MessageComponents,

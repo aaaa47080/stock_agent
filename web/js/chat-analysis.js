@@ -145,7 +145,7 @@ async function sendMessage() {
 
     // ── HITL Input Routing ───────────────────────────────────────────────
     // If we have a pending HITL context, this input is an answer/negotiation
-    if (_hitlContext && _hitlContext.sessionId === currentSessionId) {
+    if (_hitlContext && _hitlContext.sessionId === window.currentSessionId) {
         const hitlType = _hitlContext.hitlType;
 
         // Clear input immediately
@@ -211,7 +211,7 @@ async function sendMessage() {
     // Remove the redundant error check block that was here.
 
     // Lazy Creation: 如果沒有 currentSessionId，先建立新的 Session
-    if (!currentSessionId) {
+    if (!window.currentSessionId) {
         try {
             const userId = AuthManager.currentUser.user_id;
 
@@ -219,7 +219,8 @@ async function sendMessage() {
             const createData = await AppAPI.post(
                 `/api/chat/sessions?user_id=${encodeURIComponent(userId)}`,
             );
-            currentSessionId = createData.session_id;
+            window.currentSessionId = createData.session_id;
+            AppStore.set('currentSessionId', window.currentSessionId);
 
             // 刷新列表以顯示新對話
             // loadSessions();
@@ -296,7 +297,7 @@ window.currentAnalysisController = AppStore.get('currentAnalysisController');
     // Pre-build HITL resume context (used if server sends hitl_question)
     const _hitlResumeContext = {
         originalMessage: text,
-        sessionId: currentSessionId,
+        sessionId: window.currentSessionId,
         userKey,
         userSelectedModel,
         botMsgDiv,
@@ -333,7 +334,7 @@ window.currentAnalysisController = AppStore.get('currentAnalysisController');
                 user_api_key: userKey.key,
                 user_provider: userKey.provider,
                 user_model: userSelectedModel,
-                session_id: currentSessionId,
+                session_id: window.currentSessionId,
                 language: window.I18n?.getLanguage() || 'zh-TW',
             }),
             signal: AppStore.get('currentAnalysisController').signal,

@@ -840,6 +840,35 @@ async function getWalletStatus() {
     }
 }
 
+// 内部：根據 has_wallet 更新錢包 UI 元素
+function _applyWalletStatusUI(statusBadge, notLinkedSection, linkedSection, usernameEl, walletIcon, status) {
+    if (status.has_wallet) {
+        statusBadge.innerHTML = `<i data-lucide="check-circle" class="w-3 h-3"></i> 已連接`;
+        statusBadge.className =
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-success/10 text-success';
+        if (walletIcon) {
+            walletIcon.innerHTML = '<i data-lucide="wallet" class="w-5 h-5 text-success"></i>';
+            walletIcon.className = 'w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center';
+        }
+        if (notLinkedSection) notLinkedSection.classList.add('hidden');
+        if (linkedSection) linkedSection.classList.remove('hidden');
+        if (usernameEl && status.pi_username) {
+            usernameEl.textContent = `@${status.pi_username}`;
+        }
+    } else {
+        statusBadge.innerHTML = `<i data-lucide="link-2-off" class="w-3 h-3"></i> 未綁定`;
+        statusBadge.className =
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-textMuted';
+        if (walletIcon) {
+            walletIcon.innerHTML = '<i data-lucide="wallet" class="w-5 h-5 text-primary"></i>';
+            walletIcon.className = 'w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center';
+        }
+        if (notLinkedSection) notLinkedSection.classList.remove('hidden');
+        if (linkedSection) linkedSection.classList.add('hidden');
+    }
+    AppUtils.refreshIcons();
+}
+
 // 載入 Settings 頁面的錢包狀態
 async function loadSettingsWalletStatus() {
     const statusBadge = document.getElementById('settings-wallet-status-badge');
@@ -851,49 +880,19 @@ async function loadSettingsWalletStatus() {
     // 如果元素不存在（Settings 頁面未載入），直接返回
     if (!statusBadge) return;
 
+    // ── 即時顯示：從 currentUser 快取讀取 has_wallet（pi-sync 已同步）──
+    if (AuthManager.currentUser) {
+        _applyWalletStatusUI(statusBadge, notLinkedSection, linkedSection, usernameEl, walletIcon, {
+            has_wallet: AuthManager.currentUser.has_wallet || !!AuthManager.currentUser.pi_uid,
+            pi_username: AuthManager.currentUser.pi_username || AuthManager.currentUser.username || null,
+        });
+    }
+
+    // ── 後台更新：呼叫 API 取得最新狀態（含 pi_username 等精確欄位）──
     try {
         const status = await getWalletStatus();
 
-        if (status.has_wallet) {
-            // 已綁定或 Pi 登入
-            statusBadge.innerHTML = `
-                <i data-lucide="check-circle" class="w-3 h-3"></i>
-                已連接
-            `;
-            statusBadge.className =
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-success/10 text-success';
-
-            if (walletIcon) {
-                walletIcon.innerHTML = '<i data-lucide="wallet" class="w-5 h-5 text-success"></i>';
-                walletIcon.className =
-                    'w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center';
-            }
-
-            if (notLinkedSection) notLinkedSection.classList.add('hidden');
-            if (linkedSection) linkedSection.classList.remove('hidden');
-            if (usernameEl && status.pi_username) {
-                usernameEl.textContent = `@${status.pi_username}`;
-            }
-        } else {
-            // 未綁定
-            statusBadge.innerHTML = `
-                <i data-lucide="link-2-off" class="w-3 h-3"></i>
-                未綁定
-            `;
-            statusBadge.className =
-                'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-white/5 text-textMuted';
-
-            if (walletIcon) {
-                walletIcon.innerHTML = '<i data-lucide="wallet" class="w-5 h-5 text-primary"></i>';
-                walletIcon.className =
-                    'w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center';
-            }
-
-            if (notLinkedSection) notLinkedSection.classList.remove('hidden');
-            if (linkedSection) linkedSection.classList.add('hidden');
-        }
-
-        AppUtils.refreshIcons();
+        _applyWalletStatusUI(statusBadge, notLinkedSection, linkedSection, usernameEl, walletIcon, status);
     } catch (e) {
         console.error('loadSettingsWalletStatus error:', e);
         if (statusBadge) {

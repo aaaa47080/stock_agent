@@ -848,5 +848,3 @@ const ScamTrackerApp = {
 
 // Expose to global scope for cross-module access (e.g. safetyTab.js, scam-tracker-i18n.js)
 window.ScamTrackerAPI = ScamTrackerAPI;
-
-export { ScamTrackerAPI };

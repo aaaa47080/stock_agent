@@ -143,7 +143,7 @@ window.loadSessions = loadSessions;
 
 // 創建單個 session 項目
 function createSessionItem(session) {
-    const isActive = session.id === currentSessionId;
+    const isActive = session.id === window.currentSessionId;
     const isSelected = window.selectedSessions.has(session.id);
     const div = document.createElement('div');
     div.dataset.sessionId = session.id;
@@ -287,8 +287,9 @@ async function deleteSelectedSessions(btnElement) {
     document.querySelector('#chat-session-list .edit-toolbar')?.remove();
 
     // 如果當前 session 被刪除了，清空聊天區域
-    if (window.selectedSessions.has(currentSessionId)) {
-        currentSessionId = null;
+    if (window.selectedSessions.has(window.currentSessionId)) {
+        window.currentSessionId = null;
+        AppStore.set('currentSessionId', null);
         showWelcomeScreen();
     }
 
@@ -341,7 +342,7 @@ async function createNewChat() {
         }
 
         // 如果當前已經是新對話狀態 (currentSessionId 為 null)，直接返回
-        if (currentSessionId === null) {
+        if (window.currentSessionId === null) {
             showWelcomeScreen();
             return;
         }
@@ -355,9 +356,8 @@ async function createNewChat() {
         isAnalyzing = false;
 
         // 切換到"新對話"狀態，不立即建立 session
-        currentSessionId = null;
-        AppStore.set('currentSessionId', null);
         window.currentSessionId = null;
+        AppStore.set('currentSessionId', null);
 
         // 顯示歡迎畫面
         showWelcomeScreen();
@@ -418,7 +418,7 @@ function updateSessionActiveState(newSessionId) {
 window.updateSessionActiveState = updateSessionActiveState;
 
 async function switchSession(sessionId) {
-    if (sessionId === currentSessionId) return;
+    if (sessionId === window.currentSessionId) return;
 
     // ⚠️ 取消正在進行的分析請求，避免 isAnalyzing 阻擋新 session 的訊息發送
     if (AppStore.get('currentAnalysisController')) {
@@ -428,9 +428,8 @@ async function switchSession(sessionId) {
     }
     isAnalyzing = false;
 
-    currentSessionId = sessionId;
-    AppStore.set('currentSessionId', sessionId);
     window.currentSessionId = sessionId;
+    AppStore.set('currentSessionId', sessionId);
 
     // 自動切換到 Chat 標籤頁（確保等待完成再載入歷史）
     if (typeof switchTab === 'function') {
@@ -484,13 +483,12 @@ async function deleteSession(event, sessionId) {
         sessionDiv.remove();
     }
 
-    const wasActive = currentSessionId === sessionId;
+    const wasActive = window.currentSessionId === sessionId;
     if (wasActive) {
         const container = document.getElementById('chat-messages');
         if (container) container.innerHTML = '';
-        currentSessionId = nextSessionId || null;
-        AppStore.set('currentSessionId', currentSessionId);
-        window.currentSessionId = currentSessionId;
+        window.currentSessionId = nextSessionId || null;
+        AppStore.set('currentSessionId', window.currentSessionId);
         if (!nextSessionId) showWelcomeScreen();
     }
 

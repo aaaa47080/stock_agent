@@ -6,7 +6,7 @@
 
 async function initChat() {
     // 防止重複初始化
-    if (chatInitialized) {
+    if (window.chatInitialized) {
         console.log('initChat: already initialized, skipping');
         return;
     }
@@ -27,7 +27,8 @@ async function initChat() {
         return;
     }
 
-    chatInitialized = true;
+    window.chatInitialized = true;
+    AppStore.set('chatInitialized', true);
     console.log('initChat: initializing chat...');
 
     // 2. 檢查是否有現有的 session，如果沒有才創建新的
@@ -73,13 +74,13 @@ async function initChat() {
 
     if (sessions && sessions.length > 0) {
         // 有現有 sessions，但顯示歡迎畫面而不是自動載入最近的對話
-        currentSessionId = null; // Don't auto-load the previous session
+        window.currentSessionId = null; // Don't auto-load the previous session
         console.log('initChat: showing clean chat room, not auto-loading previous session');
         // 顯示歡迎畫面，讓用戶選擇是否要載入之前的對話
         showWelcomeScreen();
     } else {
         // 沒有 session，設定為 null (Lazy Creation)
-        currentSessionId = null;
+        window.currentSessionId = null;
         console.log('initChat: no existing sessions, showing welcome screen');
         // 不需要創建新的 session，只顯示歡迎畫面
         showWelcomeScreen();
@@ -91,8 +92,10 @@ async function initChat() {
 
 // 重置初始化狀態（登出時調用）
 function resetChatInit() {
-    chatInitialized = false;
-    currentSessionId = null;
+    window.chatInitialized = false;
+    AppStore.set('chatInitialized', false);
+    window.currentSessionId = null;
+    AppStore.set('currentSessionId', null);
 }
 window.resetChatInit = resetChatInit;
 
@@ -135,8 +138,4 @@ async function submitFeedback(codebookId, score, btn) {
 };
 window.submitFeedback = submitFeedback;
 
-export {
-    initChat,
-    resetChatInit,
-    submitFeedback,
-};
+export { initChat, resetChatInit, submitFeedback };
