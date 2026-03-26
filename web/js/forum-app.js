@@ -33,12 +33,8 @@ const ForumApp = {
             else if (page === 'post') this.initPostPage();
             else if (page === 'create') this.initCreatePage();
             else if (page === 'dashboard') this.initDashboardPage();
-            else if (!page) {
-                // SPA 模式：沒有 data-page 屬性，預設載入首頁
-                window.APP_CONFIG?.DEBUG_MODE &&
-                    console.log('ForumApp: SPA mode detected, loading index page');
-                this.initIndexPage();
-            }
+            // SPA mode: no data-page attribute, do NOT auto-load forum content here.
+            // Forum content is loaded when user switches to the forum tab via switchTab().
 
             this.updateAuthUI();
         } catch (err) {
