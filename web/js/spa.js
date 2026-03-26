@@ -269,6 +269,7 @@ async function executeTabSwitch(tabId, fromPopState = false) {
         Promise.allSettled(settingsInits).catch((e) => console.warn('Settings init error:', e));
     }
     if (tabId === 'chat') {
+        if (typeof initChat === 'function') initChat();
         // ✅ 效能優化：checkApiKeyStatus 加 TTL 快取，避免每次切換都打後端 API
         const now = Date.now();
         if (!AppStore.get('lastApiKeyCheck') || now - AppStore.get('lastApiKeyCheck') > 30000) {
@@ -718,22 +719,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // 4. 延遲啟動 Ticker WebSocket
+    // 4. 延遲啟動 Ticker WebSocket（僅在 market/commodity/forex tab 時立即啟動）
     setTimeout(() => {
-        const currentTab = localStorage.getItem('activeTab');
-        if (currentTab === 'market') {
+        const currentTab = localStorage.getItem('activeTab') || 'chat';
+        const marketTabs = ['market', 'crypto', 'twstock', 'usstock', 'commodity', 'forex'];
+        if (marketTabs.includes(currentTab)) {
             if (typeof connectTickerWebSocket === 'function') connectTickerWebSocket();
-        } else {
-            setTimeout(() => {
-                if (typeof connectTickerWebSocket === 'function') connectTickerWebSocket();
-            }, 5000);
         }
     }, 1000);
 
-    // 5. 預加載 Market 和 Pulse 數據（背景執行）
+    // 5. 預加載 Market 和 Pulse 數據（僅在 market 相關 tab 時執行）
     setTimeout(async () => {
+        const currentTab = localStorage.getItem('activeTab') || 'chat';
+        const marketTabs = ['market', 'crypto', 'twstock', 'usstock', 'commodity', 'forex'];
+        if (!marketTabs.includes(currentTab)) return;
+
         window.APP_CONFIG?.DEBUG_MODE && console.log('Preloading market data...');
-        // 預先注入並初始化 market 和 pulse
         if (typeof initMarket === 'function') {
             await initMarket();
         }

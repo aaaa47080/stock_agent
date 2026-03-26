@@ -448,11 +448,14 @@ function _deferredInit() {
     }
 }
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', _deferredInit, { once: true });
-} else {
-    _deferredInit();
-}
-
 window.NotificationService = NotificationService;
+window._initNotificationService = _deferredInit;
+
+// Only init notifications after user is authenticated (deferred via auth:ready)
+window.addEventListener('auth:ready', () => {
+    if (!NotificationService._initialized) {
+        NotificationService.init();
+    }
+}, { once: true });
+
 export { NotificationService };

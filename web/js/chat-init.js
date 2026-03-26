@@ -99,19 +99,7 @@ window.resetChatInit = resetChatInit;
 // 暴露到全域供其他模組使用
 window.initChat = initChat;
 
-// 不再自動執行 initChat，由 auth.js 在登入成功後調用
-// document.addEventListener('DOMContentLoaded', initChat);
-
-// 等待 AuthManager 初始化後，如果已登入則執行 initChat
-document.addEventListener('DOMContentLoaded', () => {
-    // 延遲一點時間確保 AuthManager 已初始化
-    setTimeout(() => {
-        if (window.AuthManager && window.AuthManager.isLoggedIn()) {
-            initChat();
-        }
-    }, 100);
-});
-
+// 不再自動執行 initChat，由 switchTab('chat') 觸發
 // 反饋提交
 async function submitFeedback(codebookId, score, btn) {
     if (!codebookId) return;
