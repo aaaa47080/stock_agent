@@ -137,6 +137,34 @@ const AuthManager = {
         return timeUntilExpiry > 0 && timeUntilExpiry < this.REFRESH_BEFORE_EXPIRY_MS;
     },
 
+    restoreSessionFromStorage() {
+        if (this.currentUser) {
+            return true;
+        }
+
+        const savedUser = localStorage.getItem('pi_user');
+        if (!savedUser) {
+            return false;
+        }
+
+        try {
+            const parsedUser = JSON.parse(savedUser);
+            if (!parsedUser || (!parsedUser.user_id && !parsedUser.uid)) {
+                localStorage.removeItem('pi_user');
+                return false;
+            }
+
+            this.currentUser = parsedUser;
+            this._updateUI(true);
+            DebugLog.info('已從 localStorage 恢復登入狀態');
+            return true;
+        } catch (error) {
+            DebugLog.warn('恢復登入狀態失敗，清除損壞快取', { error: error.message });
+            localStorage.removeItem('pi_user');
+            return false;
+        }
+    },
+
     /**
      * 清除過期的 token 並導向登入
      */
@@ -232,12 +260,20 @@ const AuthManager = {
                 }
                 DebugLog.info('頁面重新可見，檢查 token 狀態');
                 if (this.isTokenExpired() || this.needsRefresh()) {
-                    await this.silentRefresh();
+                    // On app resume, prefer backend refresh and avoid Pi SDK prompts/blank pages.
+                    await this.backendTokenRefresh();
                 }
             }
         };
 
         document.addEventListener('visibilitychange', this._visibilityHandler);
+
+        this._pageShowHandler = () => {
+            if (!this.currentUser) {
+                this.restoreSessionFromStorage();
+            }
+        };
+        window.addEventListener('pageshow', this._pageShowHandler);
 
         DebugLog.info('Token refresh timer started (30 min interval + visibility check)');
     },
@@ -356,6 +392,10 @@ const AuthManager = {
             document.removeEventListener('visibilitychange', this._visibilityHandler);
             this._visibilityHandler = null;
         }
+        if (this._pageShowHandler) {
+            window.removeEventListener('pageshow', this._pageShowHandler);
+            this._pageShowHandler = null;
+        }
     },
 
     /**
@@ -374,9 +414,10 @@ const AuthManager = {
         if (window.Pi) {
             try {
                 // Official Guide: Initialize SDK early
-                await Pi.init({ version: '2.0', sandbox: false });
+                const sandbox = window.__APP_PI_SANDBOX === true;
+                await Pi.init({ version: '2.0', sandbox: sandbox });
                 this.piInitialized = true;
-                DebugLog.info('Pi SDK 異步初始化成功');
+                DebugLog.info('Pi SDK async init success', { sandbox });
                 return true;
             } catch (e) {
                 DebugLog.error('Pi SDK 異步初始化失敗', { error: e.message, stack: e.stack });
@@ -393,22 +434,22 @@ const AuthManager = {
             return false;
         }
         if (this.piInitialized) {
-            DebugLog.info('initPiSDK: 已初始化，跳過');
+            DebugLog.info('initPiSDK: already initialized, skipping');
             return true;
         }
         if (window.Pi) {
             try {
-                // Official Guide: Initialize SDK early. Use sandbox: true for development.
-                Pi.init({ version: '2.0', sandbox: false });
+                const sandbox = window.__APP_PI_SANDBOX === true;
+                Pi.init({ version: '2.0', sandbox: sandbox });
                 this.piInitialized = true;
-                DebugLog.info('Pi SDK 初始化成功 (Sandbox Mode)');
+                DebugLog.info('Pi SDK initialized', { sandbox });
                 return true;
             } catch (e) {
-                DebugLog.error('Pi SDK 初始化失敗', { error: e.message, stack: e.stack });
+                DebugLog.error('Pi SDK init failed', { error: e.message, stack: e.stack });
                 return false;
             }
         }
-        DebugLog.warn('initPiSDK: window.Pi 不存在');
+        DebugLog.warn('initPiSDK: window.Pi is not available');
         return false;
     },
 
@@ -475,12 +516,12 @@ const AuthManager = {
 
             DebugLog.info('呼叫 Pi.authenticate...');
 
-            // 呼叫 Pi SDK 認證 (包含 payments 權限) - 60 秒超時（用戶需要時間確認授權視窗）
+            // Pi SDK auth - request scopes matching official Pi demo app
+            // Ref: https://github.com/pi-apps/demo/blob/main/FLOWS.md
             const AUTH_TIMEOUT = 60000;
 
             const authPromise = Pi.authenticate(
-                // Request all required scopes in one dialog for smooth UX.
-                ['username', 'payments', 'wallet_address'],
+                ['username', 'payments', 'roles', 'in_app_notifications'],
                 (payment) => {
                     DebugLog.warn('發現未完成的支付', payment);
                     AppAPI.post('/api/user/payment/complete', {
@@ -501,7 +542,7 @@ const AuthManager = {
 
             DebugLog.info('Pi 認證成功', { username: auth.user.username, uid: auth.user.uid });
 
-            // 同步到後端（含 wallet_address，一次完成所有綁定）
+            // 同步到後端；若 Pi API 可提供 wallet_address，後端會優先採用驗證結果。
             const syncResult = await AppAPI.post('/api/user/pi-sync', {
                     pi_uid: auth.user.uid,
                     username: auth.user.username,
@@ -560,20 +601,12 @@ const AuthManager = {
         }
 
         // 優先從 localStorage 載入用戶（同步，確保立即可用）
-        const savedUser = localStorage.getItem('pi_user');
-        if (savedUser) {
-            try {
-                this.currentUser = JSON.parse(savedUser);
-
-                // 檢查 token 是否過期
-                if (this.isTokenExpired()) {
-                    DebugLog.warn('Token 已過期，清除並導向登入');
-                    this.clearExpiredToken();
-                    return false;
-                }
-                this._updateUI(true);
-            } catch (e) {
-                localStorage.removeItem('pi_user');
+        if (this.restoreSessionFromStorage()) {
+            // 檢查 token 是否過期
+            if (this.isTokenExpired()) {
+                DebugLog.warn('Token 已過期，清除並導向登入');
+                this.clearExpiredToken();
+                return false;
             }
         } else {
             this._updateUI(false);
@@ -582,6 +615,9 @@ const AuthManager = {
         // 檢查測試模式（async，但不影響已登入用戶）
         try {
             const config = await AppAPI.get('/api/config');
+
+            window.__APP_TEST_MODE = !!config.test_mode;
+            window.__APP_PI_SANDBOX = !!config.pi_sandbox;
 
             // Show/hide dev-user-switcher based on test_mode
             const switcher = document.getElementById('dev-user-switcher');
@@ -992,8 +1028,26 @@ async function handlePiLogin() {
                 AuthManager._updateUI(true);
             }
 
+            let hasAnyApiKey = false;
+            try {
+                if (window.APIKeyManager?.hasAnyKey) {
+                    hasAnyApiKey = await window.APIKeyManager.hasAnyKey();
+                }
+            } catch (apiKeyError) {
+                DebugLog.warn('登入後檢查 API Key 狀態失敗', { error: apiKeyError.message });
+            }
+
+            if (!hasAnyApiKey && typeof switchTab === 'function') {
+                await switchTab('settings');
+            }
+
             if (typeof showToast === 'function') {
-                showToast('✅ 登入成功！歡迎回來', 'success');
+                showToast(
+                    hasAnyApiKey
+                        ? '✅ 登入成功！歡迎回來'
+                        : '✅ 登入成功！請先設定 API 金鑰以使用 AI 分析',
+                    'success'
+                );
             }
 
             // 後台同步狀態（不阻塞 UI，也不覆蓋使用者當前分頁）
@@ -1020,6 +1074,8 @@ async function handlePiLogin() {
     }
 };
 window.handlePiLogin = handlePiLogin;
+// Note: window.safePiLogin is defined in pi-auth.js (loaded before this file)
+// with watchdog, loading UI, and SDK readiness polling.
 
 function handleLogout() {
     AuthManager.logout();

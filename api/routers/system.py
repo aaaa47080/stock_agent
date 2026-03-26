@@ -215,6 +215,10 @@ async def get_config():
             "has_openrouter_key": has_key("openrouter"),
             "has_current_provider_key": has_key(current_provider),
         },
+        # 測試模式配置
+        "test_mode": core_config.TEST_MODE,
+        # Pi SDK sandbox 配置
+        "pi_sandbox": core_config.PI_SANDBOX,
     }
 
     return response

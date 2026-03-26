@@ -36,9 +36,10 @@ import './utils.js';           // AppUtils (shared helpers)
 import './api-client.js';      // AppAPI (HTTP client)
 
 // ─── Phase 2: Side-effect-only modules ────────────────────────────────────
-// Note: pi-auth.js is loaded in <head> via a regular <script> tag
-//        and cannot be re-imported as a module. It runs before everything.
-//        logger.js must run early to capture console output.
+// pi-auth.js sets up window.safePiLogin with watchdog, loading UI, and
+// Pi SDK readiness polling. Must load before auth.js so its safePiLogin
+// overrides the simple fallback in auth.js.
+import './pi-auth.js';
 
 // ─── Phase 3: UI shell & layout ───────────────────────────────────────────
 import './ui-shell.js';        // UIShell, showToast

@@ -200,9 +200,12 @@ WHALE_ALERT_API_KEY = os.getenv("WHALE_ALERT_API_KEY", "")
 # True: 使用模擬盤 / False: 使用真實帳戶
 PAPER_TRADING = False
 
-# === Pi Network 域名驗證 ===
-# 從 Pi Developer Portal 取得，測試與正式環境不同
+# === Pi Network 配置 ===
+PI_SANDBOX = os.getenv("PI_SANDBOX", "false").lower() == "true"
+PI_API_KEY = os.getenv("PI_API_KEY", "")
+PI_SANDBOX_API_KEY = os.getenv("PI_SANDBOX_API_KEY", "")
 PI_VALIDATION_KEY = os.getenv("PI_VALIDATION_KEY", "")
+PI_SANDBOX_VALIDATION_KEY = os.getenv("PI_SANDBOX_VALIDATION_KEY", "")
 
 # === Pi Network 支付價格配置 ===
 # 定義各種操作的 Pi 幣價格（用於後端驗證防止金額篡改）

@@ -37,9 +37,16 @@ window.safePiLogin = async function () {
         if (typeof handlePiLogin === 'function') {
             return await runLogin();
         }
+
+        console.warn('[Pi Login] handlePiLogin not yet loaded, waiting 500ms...');
         await new Promise((r) => setTimeout(r, 500));
         if (typeof handlePiLogin === 'function') {
             return await runLogin();
+        }
+
+        console.error('[Pi Login] handlePiLogin is still not a function after wait. JS load order issue.');
+        if (typeof showToast === 'function') {
+            showToast('系統載入中，請稍後再試', 'warning');
         }
     } catch (error) {
         console.error('[Pi Login] safePiLogin failed:', error);

@@ -284,6 +284,46 @@ async function executeTabSwitch(tabId, fromPopState = false) {
 }
 window.executeTabSwitch = executeTabSwitch;
 
+function restoreUiStateAfterResume() {
+    const savedTab = localStorage.getItem('activeTab') || 'chat';
+    const validTabs = new Set([
+        'chat',
+        'crypto',
+        'twstock',
+        'usstock',
+        'commodity',
+        'forex',
+        'wallet',
+        'friends',
+        'forum',
+        'safety',
+        'settings',
+        'admin',
+    ]);
+
+    if (!validTabs.has(savedTab)) {
+        return;
+    }
+
+    const hasVisibleTab = Array.from(document.querySelectorAll('.tab-content')).some(
+        (element) => !element.classList.contains('hidden')
+    );
+
+    if (!hasVisibleTab || AppStore.get('activeTab') !== savedTab) {
+        switchTab(savedTab, true).catch((error) => {
+            console.warn('Resume UI restore failed:', error);
+        });
+    }
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        restoreUiStateAfterResume();
+    }
+});
+
+window.addEventListener('pageshow', restoreUiStateAfterResume);
+
 // ========================================
 // Navigation Rendering & Feature Menu
 // ========================================

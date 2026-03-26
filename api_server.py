@@ -120,13 +120,13 @@ app.include_router(tools_router)  # 工具偏好 API
 
 
 # --- Pi Network 域名驗證 ---
-from core.config import PI_VALIDATION_KEY
+from core.config import PI_VALIDATION_KEY, PI_SANDBOX, PI_SANDBOX_VALIDATION_KEY
 
 
 @app.get("/validation-key.txt", response_class=PlainTextResponse)
 async def pi_validation():
     """Pi Network 域名所有權驗證"""
-    return PI_VALIDATION_KEY
+    return PI_SANDBOX_VALIDATION_KEY if PI_SANDBOX else PI_VALIDATION_KEY
 
 
 # --- 前端 Debug Log API ---
