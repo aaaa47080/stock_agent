@@ -36,7 +36,10 @@ SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 REFRESH_TOKEN_EXPIRE_DAYS = 30  # 30 days for refresh tokens
-_COOKIE_SECURE = os.getenv("ENVIRONMENT", "development").lower() in ("production", "prod")
+_COOKIE_SECURE = os.getenv("ENVIRONMENT", "development").lower() in (
+    "production",
+    "prod",
+)
 _COOKIE_DOMAIN = os.getenv("COOKIE_DOMAIN", "")
 _COOKIE_SAME_SITE = "Lax"
 
@@ -205,7 +208,9 @@ def verify_token(token: str) -> dict:
             )
 
 
-async def get_current_user_id(request: Request, token: str = Depends(oauth2_scheme)) -> str:
+async def get_current_user_id(
+    request: Request, token: str = Depends(oauth2_scheme)
+) -> str:
     """
     Validate the token and return the user_id.
     Reads from httpOnly cookie first, falls back to Authorization header.
@@ -242,7 +247,9 @@ async def get_current_user_id(request: Request, token: str = Depends(oauth2_sche
         raise credentials_exception
 
 
-async def get_current_user(request: Request, token: str = Depends(oauth2_scheme)) -> CurrentUser:
+async def get_current_user(
+    request: Request, token: str = Depends(oauth2_scheme)
+) -> CurrentUser:
     """
     Validate token and return full user dict.
     Reads from httpOnly cookie first, falls back to Authorization header.
@@ -287,7 +294,9 @@ async def get_current_user(request: Request, token: str = Depends(oauth2_scheme)
                             detail="Could not validate credentials",
                         )
                 else:
-                    payload = jwt.decode(resolved_token, SECRET_KEY, algorithms=[ALGORITHM])
+                    payload = jwt.decode(
+                        resolved_token, SECRET_KEY, algorithms=[ALGORITHM]
+                    )
                 user_id = payload.get("sub")
                 if not user_id:
                     if not TEST_MODE:

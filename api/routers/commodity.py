@@ -137,7 +137,10 @@ async def get_commodity_market(symbols: Optional[str] = None):
     if not commodities:
         raise HTTPException(status_code=404, detail="無法獲取商品數據，請稍後再試")
 
-    data = {"commodities": commodities, "last_updated": datetime.now(timezone.utc).isoformat()}
+    data = {
+        "commodities": commodities,
+        "last_updated": datetime.now(timezone.utc).isoformat(),
+    }
     _set_cache(cache_key, data)
     return data
 

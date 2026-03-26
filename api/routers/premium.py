@@ -169,11 +169,11 @@ async def upgrade_to_premium(
         payment_data = await _verify_pi_payment(body.payment_id)
 
         try:
-            await run_sync(
-                lambda: _record_used_payment(body.payment_id, user_id)
-            )
+            await run_sync(lambda: _record_used_payment(body.payment_id, user_id))
         except Exception:
-            logger.warning("Payment already used or failed to record: %s", body.payment_id)
+            logger.warning(
+                "Payment already used or failed to record: %s", body.payment_id
+            )
 
         blockchain_txid = payment_data.get("transaction", {}).get("_id")
         if blockchain_txid:

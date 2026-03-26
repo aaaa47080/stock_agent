@@ -83,9 +83,9 @@ def load_funding_rate_cache():
         data = get_cache("FUNDING_RATES")
         if data:
             FUNDING_RATE_CACHE["data"] = data
-            FUNDING_RATE_CACHE["timestamp"] = (
-                datetime.now(timezone.utc).isoformat()
-            )  # Mark as loaded now, even if old
+            FUNDING_RATE_CACHE["timestamp"] = datetime.now(
+                timezone.utc
+            ).isoformat()  # Mark as loaded now, even if old
             logger.info(f"Loaded Funding Rate cache from DB ({len(data)} symbols)")
             return True
         return False
@@ -818,9 +818,9 @@ async def _screener_ticker_callback(symbol: str, parsed: dict):
                 item["Close"] = last
                 item["price_change_24h"] = change
 
-    cached_screener_result["data"]["last_updated"] = datetime.now(timezone.utc).strftime(
-        "%Y-%m-%d %H:%M:%S"
-    )
+    cached_screener_result["data"]["last_updated"] = datetime.now(
+        timezone.utc
+    ).strftime("%Y-%m-%d %H:%M:%S")
 
 
 async def _subscribe_screener_symbols_to_ws():

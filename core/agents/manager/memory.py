@@ -336,7 +336,9 @@ class MemoryMixin(ManagerAgentMixin):
                     {
                         "role": msg.get("role", "unknown"),
                         "content": msg.get("content", ""),
-                        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M"),
+                        "timestamp": datetime.now(timezone.utc).strftime(
+                            "%Y-%m-%d %H:%M"
+                        ),
                         "tools_used": [],
                     }
                 )

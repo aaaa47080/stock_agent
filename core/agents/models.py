@@ -301,7 +301,9 @@ class ShortTermMemory:
     def add_message(self, role: str, content: str):
         self.conversation_history.append({"role": role, "content": content})
         if len(self.conversation_history) > self.MAX_CONVERSATION_LENGTH:
-            self.conversation_history = self.conversation_history[-self.MAX_CONVERSATION_LENGTH:]
+            self.conversation_history = self.conversation_history[
+                -self.MAX_CONVERSATION_LENGTH :
+            ]
 
     def get_compressed_history(self, max_turns: int = 10) -> str:
         """取得壓縮後的歷史摘要"""
@@ -338,7 +340,7 @@ class ShortTermMemory:
                 return
         self.facts.append(MemoryFact(key, value, turn, confidence))
         if len(self.facts) > self.MAX_FACTS:
-            self.facts = self.facts[-self.MAX_FACTS:]
+            self.facts = self.facts[-self.MAX_FACTS :]
 
     def get_fact(self, key: str) -> Optional[str]:
         """取得事實值"""

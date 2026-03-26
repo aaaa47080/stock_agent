@@ -344,7 +344,9 @@ async def analyze_crypto(
 @router.post("/api/chat/clear")
 @limiter.limit("5/minute")
 async def clear_chat_history_endpoint(
-    request: Request, session_id: str = "default", current_user: dict = Depends(get_current_user)
+    request: Request,
+    session_id: str = "default",
+    current_user: dict = Depends(get_current_user),
 ):
     """清除對話歷史"""
     user_id = current_user.get("user_id")
@@ -361,7 +363,9 @@ async def clear_chat_history_endpoint(
 
 @router.post("/api/chat/new-session")
 @limiter.limit("10/minute")
-async def create_new_session(request: Request, current_user: dict = Depends(get_current_user)):
+async def create_new_session(
+    request: Request, current_user: dict = Depends(get_current_user)
+):
     """創建新對話會話並整合舊會話記憶"""
     user_id = current_user.get("user_id")
     if not user_id:
@@ -404,7 +408,9 @@ async def create_new_session(request: Request, current_user: dict = Depends(get_
 
 @router.post("/api/chat/idle-consolidate")
 @limiter.limit("5/minute")
-async def trigger_idle_consolidation(request: Request, current_user: dict = Depends(get_current_user)):
+async def trigger_idle_consolidation(
+    request: Request, current_user: dict = Depends(get_current_user)
+):
     """
     手動觸發閒置整合（當用戶閒置一段時間後調用）
 

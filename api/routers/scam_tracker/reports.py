@@ -130,7 +130,9 @@ async def get_scam_report_detail(
 @router.post("", response_model=dict)
 @limiter.limit("5/minute")
 async def create_new_scam_report(
-    request: Request, req: ScamReportCreate, current_user: dict = Depends(get_current_user)
+    request: Request,
+    req: ScamReportCreate,
+    current_user: dict = Depends(get_current_user),
 ):
     """
     提交新舉報

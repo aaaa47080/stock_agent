@@ -314,15 +314,17 @@ class NotificationsRepository:
             await s.flush()
             results = []
             for n in notifications:
-                results.append({
-                    "id": n.id,
-                    "user_id": n.user_id,
-                    "type": n.type,
-                    "title": n.title,
-                    "body": n.body,
-                    "data": n.data,
-                    "is_read": False,
-                })
+                results.append(
+                    {
+                        "id": n.id,
+                        "user_id": n.user_id,
+                        "type": n.type,
+                        "title": n.title,
+                        "body": n.body,
+                        "data": n.data,
+                        "is_read": False,
+                    }
+                )
             return results
 
 

@@ -756,10 +756,14 @@ def create_indexes(c):
             created_at TIMESTAMPTZ DEFAULT NOW()
         )
     """)
-    c.execute("CREATE INDEX IF NOT EXISTS idx_used_payments_user ON used_payments(user_id)")
+    c.execute(
+        "CREATE INDEX IF NOT EXISTS idx_used_payments_user ON used_payments(user_id)"
+    )
 
     # Friend request deduplication (ordered pair)
-    c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_friendships_ordered_pair ON friendships(LEAST(user_id, friend_id), GREATEST(user_id, friend_id))")
+    c.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_friendships_ordered_pair ON friendships(LEAST(user_id, friend_id), GREATEST(user_id, friend_id))"
+    )
     c.execute(
         "CREATE INDEX IF NOT EXISTS idx_comment_report ON scam_report_comments(report_id)"
     )
@@ -867,10 +871,18 @@ def create_indexes(c):
     c.execute(
         "CREATE INDEX IF NOT EXISTS idx_user_history_created ON user_history_log(created_at DESC)"
     )
-    c.execute("CREATE INDEX IF NOT EXISTS idx_audit_logs_success_timestamp ON audit_logs(success, timestamp DESC)")
-    c.execute("CREATE INDEX IF NOT EXISTS idx_users_premium ON users(membership_tier) WHERE membership_tier IN ('pro', 'premium')")
-    c.execute("CREATE INDEX IF NOT EXISTS idx_friendships_user_friend_status ON friendships(user_id, friend_id, status)")
-    c.execute("CREATE INDEX IF NOT EXISTS idx_friendships_friend_user_status ON friendships(friend_id, user_id, status)")
+    c.execute(
+        "CREATE INDEX IF NOT EXISTS idx_audit_logs_success_timestamp ON audit_logs(success, timestamp DESC)"
+    )
+    c.execute(
+        "CREATE INDEX IF NOT EXISTS idx_users_premium ON users(membership_tier) WHERE membership_tier IN ('pro', 'premium')"
+    )
+    c.execute(
+        "CREATE INDEX IF NOT EXISTS idx_friendships_user_friend_status ON friendships(user_id, friend_id, status)"
+    )
+    c.execute(
+        "CREATE INDEX IF NOT EXISTS idx_friendships_friend_user_status ON friendships(friend_id, user_id, status)"
+    )
 
 
 def init_default_data(c):

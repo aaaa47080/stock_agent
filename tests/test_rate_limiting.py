@@ -71,6 +71,12 @@ RATE_LIMITED_ENDPOINTS = {
     # Tools
     "api.routers.tools.set_tool_preference": "20 per 1 minute",
     "api.routers.tools.set_user_tool_preference": "20 per 1 minute",
+    # Scam Tracker
+    "api.routers.scam_tracker.votes.vote_on_report": "20 per 1 minute",
+    "api.routers.scam_tracker.reports.create_new_scam_report": "5 per 1 minute",
+    "api.routers.scam_tracker.comments.add_comment_to_report": "10 per 1 minute",
+    # Alerts
+    "api.routers.alerts.create_alert_endpoint": "10 per 1 minute",
 }
 
 
@@ -90,6 +96,10 @@ def route_limits():
     import api.routers.system  # noqa: F401
     import api.routers.tools  # noqa: F401
     import api.routers.user  # noqa: F401
+    import api.routers.scam_tracker.votes  # noqa: F401
+    import api.routers.scam_tracker.reports  # noqa: F401
+    import api.routers.scam_tracker.comments  # noqa: F401
+    import api.routers.alerts  # noqa: F401
     from api.middleware.rate_limit import limiter
 
     return limiter._route_limits

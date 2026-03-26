@@ -94,7 +94,11 @@ async def get_market_symbols(exchange: str = "okx"):
 
 @router.post("/api/screener")
 @limiter.limit("10/minute")
-async def run_screener(request: Request, screener_request: ScreenerRequest, current_user: dict = Depends(get_current_user)):
+async def run_screener(
+    request: Request,
+    screener_request: ScreenerRequest,
+    current_user: dict = Depends(get_current_user),
+):
     """Return market screener data (uses cache first, supports background task wait)."""
 
     # 1. Custom symbol request - execute directly
@@ -127,7 +131,9 @@ async def run_screener(request: Request, screener_request: ScreenerRequest, curr
 
         logger.info(f"No cache, running screener: {screener_request.exchange}")
         try:
-            return await run_default_screener(screener_request.exchange, MARKET_PULSE_CACHE)
+            return await run_default_screener(
+                screener_request.exchange, MARKET_PULSE_CACHE
+            )
         except Exception as e:
             logger.error(f"Screener error: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Screener failed")
@@ -136,7 +142,9 @@ async def run_screener(request: Request, screener_request: ScreenerRequest, curr
 @router.post("/api/klines")
 @limiter.limit("60/minute")
 async def get_klines_data(
-    request: Request, kline_request: KlineRequest, current_user: dict = Depends(get_current_user)
+    request: Request,
+    kline_request: KlineRequest,
+    current_user: dict = Depends(get_current_user),
 ):
     try:
         df = await run_sync(
@@ -149,7 +157,9 @@ async def get_klines_data(
         )
 
         if df is None or df.empty:
-            raise HTTPException(status_code=404, detail=f"No data for {kline_request.symbol}")
+            raise HTTPException(
+                status_code=404, detail=f"No data for {kline_request.symbol}"
+            )
 
         klines = []
         for _, row in df.iterrows():

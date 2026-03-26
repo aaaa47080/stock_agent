@@ -12,7 +12,9 @@ logger = logging.getLogger("API")
 _ssl_verify = os.getenv("SSL_VERIFY", "true").lower() in ("true", "1", "yes")
 
 _db_pool_size = int(os.getenv("DB_MAX_POOL_SIZE", "10"))
-_db_executor = ThreadPoolExecutor(max_workers=_db_pool_size, thread_name_prefix="db_sync")
+_db_executor = ThreadPoolExecutor(
+    max_workers=_db_pool_size, thread_name_prefix="db_sync"
+)
 
 
 async def run_sync(fn: Callable[..., Any], *args: Any) -> Any:

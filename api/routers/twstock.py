@@ -163,7 +163,10 @@ async def get_tw_market(symbols: Optional[str] = None):
         )
         results = [r for r in price_results if r is not None]
 
-        return {"top_performers": results, "last_updated": datetime.now(timezone.utc).isoformat()}
+        return {
+            "top_performers": results,
+            "last_updated": datetime.now(timezone.utc).isoformat(),
+        }
 
     except Exception as e:
         logger.error(f"Failed to fetch TW market data: {e}", exc_info=True)

@@ -146,7 +146,9 @@ def setup_middleware(app: FastAPI) -> None:
             if request.url.path.endswith((".html", ".htm")):
                 response.headers["Cache-Control"] = "no-cache"
             else:
-                response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+                response.headers["Cache-Control"] = (
+                    "no-cache, no-store, must-revalidate"
+                )
 
         # Basic security headers (always on)
         response.headers["X-Content-Type-Options"] = "nosniff"

@@ -135,7 +135,8 @@ async def get_unread_count_endpoint(
 @router.post("/api/notifications/{notification_id}/read")
 @limiter.limit("30/minute")
 async def mark_as_read_endpoint(
-    request: Request, notification_id: str,
+    request: Request,
+    notification_id: str,
     current_user: dict = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -182,7 +183,8 @@ async def mark_all_as_read_endpoint(
 @router.delete("/api/notifications/{notification_id}")
 @limiter.limit("20/minute")
 async def delete_notification_endpoint(
-    request: Request, notification_id: str,
+    request: Request,
+    notification_id: str,
     current_user: dict = Depends(get_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):

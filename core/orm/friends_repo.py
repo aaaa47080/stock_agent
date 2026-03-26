@@ -48,7 +48,11 @@ class FriendsRepository:
                 User.membership_tier,
                 User.created_at,
             )
-            .where(User.username.ilike(f"%{query.replace('%', r'\%').replace('_', r'\_')}%", escape='\\'))
+            .where(
+                User.username.ilike(
+                    f"%{query.replace('%', r'\%').replace('_', r'\_')}%", escape="\\"
+                )
+            )
             .order_by(User.username.asc())
             .limit(limit)
         )
@@ -163,14 +167,18 @@ class FriendsRepository:
             return {"success": False, "error": "cannot_add_self"}
 
         async with using_session(session) as s:
-            stmt = select(Friendship).where(
-                or_(
-                    (Friendship.user_id == from_user_id)
-                    & (Friendship.friend_id == to_user_id),
-                    (Friendship.user_id == to_user_id)
-                    & (Friendship.friend_id == from_user_id),
+            stmt = (
+                select(Friendship)
+                .where(
+                    or_(
+                        (Friendship.user_id == from_user_id)
+                        & (Friendship.friend_id == to_user_id),
+                        (Friendship.user_id == to_user_id)
+                        & (Friendship.friend_id == from_user_id),
+                    )
                 )
-            ).with_for_update()
+                .with_for_update()
+            )
             result = await s.execute(stmt)
             existing = result.scalar_one_or_none()
 

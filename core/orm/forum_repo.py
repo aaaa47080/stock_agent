@@ -350,11 +350,7 @@ class ForumRepository:
             if not post_row or post_row.is_hidden:
                 return False
 
-            await s.execute(
-                update(Post)
-                .where(Post.id == post_id)
-                .values(is_hidden=1)
-            )
+            await s.execute(update(Post).where(Post.id == post_id).values(is_hidden=1))
             await s.execute(
                 update(Board)
                 .where(Board.id == post_row.board_id)

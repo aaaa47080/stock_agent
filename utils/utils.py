@@ -184,7 +184,9 @@ def get_crypto_news_newsapi(symbol: str = "BTC", limit: int = 5) -> List[Dict]:
         "language": "en",
         "sortBy": "publishedAt",
         "pageSize": limit,
-        "from": (datetime.now(timezone.utc) - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S"),
+        "from": (datetime.now(timezone.utc) - timedelta(days=7)).strftime(
+            "%Y-%m-%dT%H:%M:%S"
+        ),
     }
 
     try:

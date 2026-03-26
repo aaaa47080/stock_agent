@@ -349,7 +349,9 @@ class TestTierRequest(BaseModel):
 @router.post("/api/test-mode/switch-tier")
 @limiter.limit("5/minute")
 async def switch_test_tier(
-    request: Request, body: TestTierRequest, current_user: dict = Depends(get_current_user)
+    request: Request,
+    body: TestTierRequest,
+    current_user: dict = Depends(get_current_user),
 ):
     """
     切換測試帳號的會員等級（僅測試模式）

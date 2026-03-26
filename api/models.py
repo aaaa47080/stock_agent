@@ -92,7 +92,9 @@ class ReportCreateRequest(BaseModel):
 
     content_type: Literal["post", "comment"]
     content_id: int
-    report_type: Literal["spam", "harassment", "misinformation", "scam", "illegal", "other"]
+    report_type: Literal[
+        "spam", "harassment", "misinformation", "scam", "illegal", "other"
+    ]
     description: Optional[str] = Field(None, max_length=1000)
 
 

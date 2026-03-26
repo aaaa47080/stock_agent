@@ -21,7 +21,10 @@ router = APIRouter(prefix="/votes", tags=["Scam Tracker - Votes"])
 @router.post("/{report_id}", response_model=dict)
 @limiter.limit("20/minute")
 async def vote_on_report(
-    report_id: int, request: Request, req: VoteRequest, current_user: dict = Depends(get_current_user)
+    report_id: int,
+    request: Request,
+    req: VoteRequest,
+    current_user: dict = Depends(get_current_user),
 ):
     """
     對舉報投票

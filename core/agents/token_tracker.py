@@ -34,7 +34,7 @@ class TokenTracker:
     def record(self, usage: TokenUsage) -> None:
         self._usage_history.append(usage)
         if len(self._usage_history) > self.MAX_HISTORY:
-            self._usage_history = self._usage_history[-self.MAX_HISTORY:]
+            self._usage_history = self._usage_history[-self.MAX_HISTORY :]
 
     def total_cost(self) -> float:
         return sum(u.estimated_cost_usd for u in self._usage_history)

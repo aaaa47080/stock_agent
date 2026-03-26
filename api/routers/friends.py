@@ -19,7 +19,9 @@ router = APIRouter()
 
 
 class FriendActionRequest(BaseModel):
-    target_user_id: str = Field(..., min_length=1, max_length=100, description="目標用戶 ID")
+    target_user_id: str = Field(
+        ..., min_length=1, max_length=100, description="目標用戶 ID"
+    )
 
 
 # ============================================================================
@@ -102,9 +104,7 @@ async def send_request(
 ):
     try:
         user_id = current_user["user_id"]
-        target_exists = await user_repo.get_by_id(
-            req.target_user_id, session=session
-        )
+        target_exists = await user_repo.get_by_id(req.target_user_id, session=session)
         if not target_exists:
             raise HTTPException(status_code=404, detail="目標用戶不存在")
 
@@ -142,9 +142,7 @@ async def send_request(
             )
             if notification:
                 await push_notification_to_user(req.target_user_id, notification)
-            logger.info(
-                "Friend request notification sent to %s", req.target_user_id
-            )
+            logger.info("Friend request notification sent to %s", req.target_user_id)
         except Exception as notify_error:
             logger.warning(
                 "Failed to send friend request notification: %s", notify_error
@@ -193,9 +191,7 @@ async def accept_request(
             )
             if notification:
                 await push_notification_to_user(req.target_user_id, notification)
-            logger.info(
-                "Friend accepted notification sent to %s", req.target_user_id
-            )
+            logger.info("Friend accepted notification sent to %s", req.target_user_id)
         except Exception as notify_error:
             logger.warning(
                 "Failed to send friend accepted notification: %s", notify_error

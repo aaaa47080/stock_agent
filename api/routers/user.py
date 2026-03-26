@@ -49,7 +49,9 @@ async def get_user_watchlist(current_user: dict = Depends(get_current_user)):
 @router.post("/api/watchlist/add")
 @limiter.limit("20/minute")
 async def add_watchlist(
-    request: Request, req: WatchlistRequest, current_user: dict = Depends(get_current_user)
+    request: Request,
+    req: WatchlistRequest,
+    current_user: dict = Depends(get_current_user),
 ):
     """新增幣種到自選清單"""
     try:
@@ -73,7 +75,9 @@ async def add_watchlist(
 @router.post("/api/watchlist/remove")
 @limiter.limit("20/minute")
 async def remove_watchlist(
-    request: Request, req: WatchlistRequest, current_user: dict = Depends(get_current_user)
+    request: Request,
+    req: WatchlistRequest,
+    current_user: dict = Depends(get_current_user),
 ):
     """從自選清單移除幣種"""
     try:
@@ -258,7 +262,9 @@ class RefreshTokenRequest(BaseModel):
 
 @router.post("/api/user/refresh")
 @limiter.limit("10/minute")
-async def refresh_access_token(request: Request, response: Response, body: RefreshTokenRequest = None):
+async def refresh_access_token(
+    request: Request, response: Response, body: RefreshTokenRequest = None
+):
     """
     使用 refresh token 獲取新的 access token。
     Reads refresh_token from cookie first, falls back to request body.
@@ -519,7 +525,9 @@ class SaveModelRequest(BaseModel):
 @router.post("/api/user/api-keys")
 @limiter.limit("10/minute")
 async def save_user_api_key_endpoint(
-    request: Request, req: SaveAPIKeyRequest, current_user: dict = Depends(get_current_user)
+    request: Request,
+    req: SaveAPIKeyRequest,
+    current_user: dict = Depends(get_current_user),
 ):
     """儲存用戶的 API Key（加密後存入資料庫）"""
     from core.database.user_api_keys import save_user_api_key
@@ -587,7 +595,7 @@ async def delete_user_api_key_endpoint(
     """刪除用戶的 API Key"""
     import re
 
-    if not re.match(r'^[a-zA-Z0-9_-]+$', provider):
+    if not re.match(r"^[a-zA-Z0-9_-]+$", provider):
         raise HTTPException(status_code=400, detail="Invalid provider name")
     from core.database.user_api_keys import delete_user_api_key
 
@@ -615,7 +623,9 @@ async def delete_user_api_key_endpoint(
 @router.post("/api/user/api-keys/model")
 @limiter.limit("10/minute")
 async def save_user_model_endpoint(
-    request: Request, req: SaveModelRequest, current_user: dict = Depends(get_current_user)
+    request: Request,
+    req: SaveModelRequest,
+    current_user: dict = Depends(get_current_user),
 ):
     """儲存用戶選擇的模型（不更改 API Key）"""
     from core.database.user_api_keys import save_user_model_selection

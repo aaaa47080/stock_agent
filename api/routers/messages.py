@@ -281,7 +281,9 @@ async def send_message_endpoint(
 @router.post("/api/messages/read")
 @limiter.limit("30/minute")
 async def mark_read_endpoint(
-    request: Request, req: MarkReadRequest, current_user: dict = Depends(get_current_user)
+    request: Request,
+    req: MarkReadRequest,
+    current_user: dict = Depends(get_current_user),
 ):
     """
     標記對話為已讀
@@ -293,9 +295,7 @@ async def mark_read_endpoint(
         if not result["success"]:
             raise HTTPException(status_code=404, detail="對話不存在")
 
-        conv = await messages_repo.get_conversation_by_id(
-            req.conversation_id, user_id
-        )
+        conv = await messages_repo.get_conversation_by_id(req.conversation_id, user_id)
         if conv:
             other_user_id = (
                 conv["user2_id"] if conv["user1_id"] == user_id else conv["user1_id"]
@@ -524,7 +524,9 @@ async def hide_message_endpoint(
 @router.delete("/api/conversations/{conversation_id}")
 @limiter.limit("10/minute")
 async def delete_conversation_endpoint(
-    request: Request, conversation_id: int, current_user: dict = Depends(get_current_user)
+    request: Request,
+    conversation_id: int,
+    current_user: dict = Depends(get_current_user),
 ):
     """
     刪除對話（隱藏整段對話，只對自己隱藏）
@@ -578,6 +580,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
             if not token:
                 from api.deps import ACCESS_TOKEN_COOKIE
+
                 token = websocket.cookies.get(ACCESS_TOKEN_COOKIE)
 
             if not token:
