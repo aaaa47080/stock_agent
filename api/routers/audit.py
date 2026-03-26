@@ -55,67 +55,67 @@ async def get_audit_logs(
     """
     try:
         conn = get_connection()
-        cursor = conn.cursor()
+        try:
+            cursor = conn.cursor()
 
-        # Build query with filters
-        query = """
-            SELECT id, timestamp, user_id, username, action, resource_type, resource_id,
-                   endpoint, method, ip_address, response_code, success, error_message, duration_ms
-            FROM audit_logs 
-            WHERE 1=1
-        """
-        params = []
+            # Build query with filters
+            query = """
+                SELECT id, timestamp, user_id, username, action, resource_type, resource_id,
+                       endpoint, method, ip_address, response_code, success, error_message, duration_ms
+                FROM audit_logs 
+                WHERE 1=1
+            """
+            params = []
 
-        if user_id:
-            query += " AND user_id = %s"
-            params.append(user_id)
-        if action:
-            action = AuditLogger._normalize_action(action)
-            query += " AND action = %s"
-            params.append(action)
-        if start_date:
-            query += " AND timestamp >= %s"
-            params.append(start_date)
-        if end_date:
-            query += " AND timestamp <= %s"
-            params.append(end_date)
-        if success is not None:
-            query += " AND success = %s"
-            params.append(success)
+            if user_id:
+                query += " AND user_id = %s"
+                params.append(user_id)
+            if action:
+                action = AuditLogger._normalize_action(action)
+                query += " AND action = %s"
+                params.append(action)
+            if start_date:
+                query += " AND timestamp >= %s"
+                params.append(start_date)
+            if end_date:
+                query += " AND timestamp <= %s"
+                params.append(end_date)
+            if success is not None:
+                query += " AND success = %s"
+                params.append(success)
 
-        query += " ORDER BY timestamp DESC LIMIT %s OFFSET %s"
-        params.extend([limit, offset])
+            query += " ORDER BY timestamp DESC LIMIT %s OFFSET %s"
+            params.extend([limit, offset])
 
-        cursor.execute(query, params)
-        columns = [desc[0] for desc in cursor.description]
-        logs = [dict(zip(columns, row)) for row in cursor.fetchall()]
+            cursor.execute(query, params)
+            columns = [desc[0] for desc in cursor.description]
+            logs = [dict(zip(columns, row)) for row in cursor.fetchall()]
 
-        # Get total count
-        count_query = "SELECT COUNT(*) FROM audit_logs WHERE 1=1"
-        if user_id:
-            count_query += " AND user_id = %s"
-        if action:
-            count_query += " AND action = %s"
-        if start_date:
-            count_query += " AND timestamp >= %s"
-        if end_date:
-            count_query += " AND timestamp <= %s"
-        if success is not None:
-            count_query += " AND success = %s"
+            # Get total count
+            count_query = "SELECT COUNT(*) FROM audit_logs WHERE 1=1"
+            if user_id:
+                count_query += " AND user_id = %s"
+            if action:
+                count_query += " AND action = %s"
+            if start_date:
+                count_query += " AND timestamp >= %s"
+            if end_date:
+                count_query += " AND timestamp <= %s"
+            if success is not None:
+                count_query += " AND success = %s"
 
-        cursor.execute(count_query, params[:-2])  # Exclude limit and offset
-        total_count = cursor.fetchone()[0]
+            cursor.execute(count_query, params[:-2])  # Exclude limit and offset
+            total_count = cursor.fetchone()[0]
 
-        cursor.close()
-        conn.close()
-
-        return {
-            "logs": logs,
-            "count": len(logs),
-            "total": total_count,
-            "limit": limit,
-            "offset": offset,
-        }
+            return {
+                "logs": logs,
+                "count": len(logs),
+                "total": total_count,
+                "limit": limit,
+                "offset": offset,
+            }
+        finally:
+            conn.close()
 
     except Exception:
         raise HTTPException(status_code=500, detail="查詢審計日誌失敗")
@@ -135,56 +135,56 @@ async def get_suspicious_activity(
     """
     try:
         conn = get_connection()
-        cursor = conn.cursor()
+        try:
+            cursor = conn.cursor()
 
-        since = datetime.now() - timedelta(days=days)
+            since = datetime.now() - timedelta(days=days)
 
-        # Failed login attempts
-        cursor.execute(
-            """
-            SELECT user_id, username, ip_address, COUNT(*) as failure_count
-            FROM audit_logs
-            WHERE success = FALSE
-            AND timestamp >= %s
-            AND action IN ('login', 'pi_sync', 'dev_login')
-            GROUP BY user_id, username, ip_address
-            HAVING COUNT(*) >= 3
-            ORDER BY failure_count DESC
-        """,
-            (since,),
-        )
+            # Failed login attempts
+            cursor.execute(
+                """
+                SELECT user_id, username, ip_address, COUNT(*) as failure_count
+                FROM audit_logs
+                WHERE success = FALSE
+                AND timestamp >= %s
+                AND action IN ('login', 'pi_sync', 'dev_login')
+                GROUP BY user_id, username, ip_address
+                HAVING COUNT(*) >= 3
+                ORDER BY failure_count DESC
+            """,
+                (since,),
+            )
 
-        columns = [desc[0] for desc in cursor.description]
-        failed_logins = [dict(zip(columns, row)) for row in cursor.fetchall()]
+            columns = [desc[0] for desc in cursor.description]
+            failed_logins = [dict(zip(columns, row)) for row in cursor.fetchall()]
 
-        # Failed payment attempts
-        cursor.execute(
-            """
-            SELECT user_id, username, COUNT(*) as failure_count,
-                   array_agg(DISTINCT error_message) as errors
-            FROM audit_logs
-            WHERE success = FALSE
-            AND timestamp >= %s
-            AND action IN ('payment_approve', 'payment_complete')
-            GROUP BY user_id, username
-            HAVING COUNT(*) >= 3
-            ORDER BY failure_count DESC
-        """,
-            (since,),
-        )
+            # Failed payment attempts
+            cursor.execute(
+                """
+                SELECT user_id, username, COUNT(*) as failure_count,
+                       array_agg(DISTINCT error_message) as errors
+                FROM audit_logs
+                WHERE success = FALSE
+                AND timestamp >= %s
+                AND action IN ('payment_approve', 'payment_complete')
+                GROUP BY user_id, username
+                HAVING COUNT(*) >= 3
+                ORDER BY failure_count DESC
+            """,
+                (since,),
+            )
 
-        columns = [desc[0] for desc in cursor.description]
-        failed_payments = [dict(zip(columns, row)) for row in cursor.fetchall()]
+            columns = [desc[0] for desc in cursor.description]
+            failed_payments = [dict(zip(columns, row)) for row in cursor.fetchall()]
 
-        cursor.close()
-        conn.close()
-
-        return {
-            "time_range_days": days,
-            "failed_logins": failed_logins,
-            "failed_payments": failed_payments,
-            "alert_count": len(failed_logins) + len(failed_payments),
-        }
+            return {
+                "time_range_days": days,
+                "failed_logins": failed_logins,
+                "failed_payments": failed_payments,
+                "alert_count": len(failed_logins) + len(failed_payments),
+            }
+        finally:
+            conn.close()
 
     except Exception:
         raise HTTPException(status_code=500, detail="分析可疑活動失敗")
@@ -203,58 +203,58 @@ async def get_user_activity(
     """
     try:
         conn = get_connection()
-        cursor = conn.cursor()
+        try:
+            cursor = conn.cursor()
 
-        since = datetime.now() - timedelta(days=days)
+            since = datetime.now() - timedelta(days=days)
 
-        cursor.execute(
-            """
-            SELECT id, timestamp, action, resource_type, resource_id, endpoint, 
-                   method, response_code, success, error_message, duration_ms
-            FROM audit_logs
-            WHERE user_id = %s AND timestamp >= %s
-            ORDER BY timestamp DESC
-            LIMIT %s
-        """,
-            (user_id, since, limit),
-        )
+            cursor.execute(
+                """
+                SELECT id, timestamp, action, resource_type, resource_id, endpoint, 
+                       method, response_code, success, error_message, duration_ms
+                FROM audit_logs
+                WHERE user_id = %s AND timestamp >= %s
+                ORDER BY timestamp DESC
+                LIMIT %s
+            """,
+                (user_id, since, limit),
+            )
 
-        columns = [desc[0] for desc in cursor.description]
-        logs = [dict(zip(columns, row)) for row in cursor.fetchall()]
+            columns = [desc[0] for desc in cursor.description]
+            logs = [dict(zip(columns, row)) for row in cursor.fetchall()]
 
-        # Get summary statistics
-        cursor.execute(
-            """
-            SELECT 
-                COUNT(*) as total_actions,
-                SUM(CASE WHEN success = TRUE THEN 1 ELSE 0 END) as successful_actions,
-                SUM(CASE WHEN success = FALSE THEN 1 ELSE 0 END) as failed_actions,
-                AVG(duration_ms) as avg_duration_ms,
-                COUNT(DISTINCT DATE(timestamp)) as active_days
-            FROM audit_logs
-            WHERE user_id = %s AND timestamp >= %s
-        """,
-            (user_id, since),
-        )
+            # Get summary statistics
+            cursor.execute(
+                """
+                SELECT 
+                    COUNT(*) as total_actions,
+                    SUM(CASE WHEN success = TRUE THEN 1 ELSE 0 END) as successful_actions,
+                    SUM(CASE WHEN success = FALSE THEN 1 ELSE 0 END) as failed_actions,
+                    AVG(duration_ms) as avg_duration_ms,
+                    COUNT(DISTINCT DATE(timestamp)) as active_days
+                FROM audit_logs
+                WHERE user_id = %s AND timestamp >= %s
+            """,
+                (user_id, since),
+            )
 
-        stats_row = cursor.fetchone()
-        stats = {
-            "total_actions": stats_row[0] or 0,
-            "successful_actions": stats_row[1] or 0,
-            "failed_actions": stats_row[2] or 0,
-            "avg_duration_ms": round(stats_row[3], 2) if stats_row[3] else 0,
-            "active_days": stats_row[4] or 0,
-        }
+            stats_row = cursor.fetchone()
+            stats = {
+                "total_actions": stats_row[0] or 0,
+                "successful_actions": stats_row[1] or 0,
+                "failed_actions": stats_row[2] or 0,
+                "avg_duration_ms": round(stats_row[3], 2) if stats_row[3] else 0,
+                "active_days": stats_row[4] or 0,
+            }
 
-        cursor.close()
-        conn.close()
-
-        return {
-            "user_id": user_id,
-            "time_range_days": days,
-            "logs": logs,
-            "statistics": stats,
-        }
+            return {
+                "user_id": user_id,
+                "time_range_days": days,
+                "logs": logs,
+                "statistics": stats,
+            }
+        finally:
+            conn.close()
 
     except Exception:
         raise HTTPException(status_code=500, detail="獲取用戶活動失敗")

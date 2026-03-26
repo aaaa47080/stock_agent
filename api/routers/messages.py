@@ -52,7 +52,7 @@ router = APIRouter()
 
 class SendMessageRequest(BaseModel):
     to_user_id: str = Field(..., description="接收者用戶 ID")
-    content: str = Field(..., min_length=1, description="訊息內容")
+    content: str = Field(..., min_length=1, max_length=2000, description="訊息內容")
 
 
 class MarkReadRequest(BaseModel):
@@ -308,7 +308,7 @@ async def mark_read_endpoint(
                     other_user_id,
                     {
                         "type": "read_receipt",
-                        "conversation_id": request.conversation_id,
+                        "conversation_id": req.conversation_id,
                         "read_by": user_id,
                     },
                 )
@@ -575,6 +575,10 @@ async def websocket_endpoint(websocket: WebSocket):
             auth_message = json.loads(auth_data)
 
             token = auth_message.get("token") or auth_message.get("access_token")
+
+            if not token:
+                from api.deps import ACCESS_TOKEN_COOKIE
+                token = websocket.cookies.get(ACCESS_TOKEN_COOKIE)
 
             if not token:
                 await websocket.send_json(

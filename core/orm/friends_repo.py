@@ -48,7 +48,7 @@ class FriendsRepository:
                 User.membership_tier,
                 User.created_at,
             )
-            .where(User.username.ilike(f"%{query}%"))
+            .where(User.username.ilike(f"%{query.replace('%', r'\%').replace('_', r'\_')}%", escape='\\'))
             .order_by(User.username.asc())
             .limit(limit)
         )

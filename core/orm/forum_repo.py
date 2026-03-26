@@ -342,15 +342,25 @@ class ForumRepository:
         user_id: str,
         session: AsyncSession | None = None,
     ) -> bool:
-        stmt = (
-            update(Post)
-            .where(Post.id == post_id, Post.user_id == user_id)
-            .values(is_hidden=1)
-        )
-
         async with session or get_async_session() as s:
-            result = await s.execute(stmt)
-            return result.rowcount > 0
+            post = await s.execute(
+                select(Post).where(Post.id == post_id, Post.user_id == user_id)
+            )
+            post_row = post.scalar_one_or_none()
+            if not post_row or post_row.is_hidden:
+                return False
+
+            await s.execute(
+                update(Post)
+                .where(Post.id == post_id)
+                .values(is_hidden=1)
+            )
+            await s.execute(
+                update(Board)
+                .where(Board.id == post_row.board_id)
+                .values(post_count=Board.post_count - 1)
+            )
+            return True
 
     async def add_comment(
         self,

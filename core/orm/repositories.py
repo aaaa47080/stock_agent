@@ -96,7 +96,6 @@ class UserRepository:
                 .where(User.user_id == user_id)
                 .values(last_active_at=datetime.now(timezone.utc))
             )
-            await session.commit()
             return result.rowcount > 0
         async with get_async_session() as s:
             result = await s.execute(
