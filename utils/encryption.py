@@ -124,7 +124,6 @@ def _save_encryption_key(key: bytes, update_rotation_time: bool = True):
 
 # 全域金鑰快取
 _encryption_key_cache = None
-_missing_key_warning_emitted = False
 _decrypt_warning_cache: set[str] = set()
 
 
@@ -212,17 +211,8 @@ def decrypt_api_key(encrypted: str) -> str:
         return ""
 
     try:
-        global _missing_key_warning_emitted
-
         fernet = _get_fernet(create_if_missing=False)
         if fernet is None:
-            if not _missing_key_warning_emitted:
-                import logging
-
-                logging.getLogger(__name__).warning(
-                    "API key decryption skipped: no encryption key is configured"
-                )
-                _missing_key_warning_emitted = True
             return ""
 
         decoded = base64.urlsafe_b64decode(encrypted.encode())

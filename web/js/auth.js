@@ -469,9 +469,7 @@ const AuthManager = {
 
         try {
             pushAuthDiagnostic('restoreSessionFromBackend:start');
-            const result = await AppAPI.get('/api/user/me', {
-                headers: { Authorization: '' },
-            });
+            const result = await AppAPI.get('/api/user/me');
             this._applyBackendSessionUser(result?.user || {});
             pushAuthDiagnostic('restoreSessionFromBackend:success', {
                 user_id: result?.user?.user_id || null,
@@ -498,9 +496,7 @@ const AuthManager = {
             }
 
             try {
-                const result = await AppAPI.get('/api/user/me', {
-                    headers: { Authorization: '' },
-                });
+                const result = await AppAPI.get('/api/user/me');
                 this._applyBackendSessionUser(result?.user || {});
                 pushAuthDiagnostic('restoreSessionFromBackend:successAfterRefresh', {
                     user_id: result?.user?.user_id || null,

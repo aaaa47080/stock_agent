@@ -405,7 +405,7 @@
         // Load user posts
         async function loadUserPosts(userId) {
             try {
-                const res = await fetch(`/api/forum/me/posts?user_id=${userId}&limit=10`);
+                const res = await fetch(`/api/forum/me/user-posts/${encodeURIComponent(userId)}?limit=10`);
                 const data = await res.json();
 
                 const container = document.getElementById('user-posts');

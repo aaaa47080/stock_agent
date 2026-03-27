@@ -2,9 +2,11 @@
 個人後台相關 API
 """
 
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from api.deps import get_current_user
+from api.deps import get_current_user, get_optional_current_user
 from api.utils import run_sync
 from core.database import (
     get_daily_comment_count,
@@ -88,6 +90,33 @@ async def get_my_posts(
 
         posts = await run_sync(
             lambda: get_user_posts(user_id, limit=limit, offset=offset)
+        )
+        return {
+            "success": True,
+            "posts": posts,
+            "count": len(posts),
+        }
+    except Exception:
+        raise HTTPException(status_code=500, detail="獲取文章列表失敗，請稍後再試")
+
+
+@router.get("/user-posts/{target_user_id}")
+async def get_public_user_posts(
+    target_user_id: str,
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    current_user: Optional[dict] = Depends(get_optional_current_user),
+):
+    """
+    獲取指定用戶的公開文章列表。
+
+    current_user 保留為 optional，讓已登入頁面可平順沿用同一套 auth 初始化，
+    但這個 endpoint 本身不要求登入。
+    """
+    try:
+        _ = current_user  # reserved for future access rules
+        posts = await run_sync(
+            lambda: get_user_posts(target_user_id, limit=limit, offset=offset)
         )
         return {
             "success": True,
