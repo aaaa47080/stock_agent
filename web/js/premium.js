@@ -3,6 +3,9 @@
  * 處理升級到 Premium 會員的支付和狀態管理
  */
 
+// Import loadPiPrices from forum-config.js (must come before any usage)
+import { loadPiPrices } from './forum-config.js';
+
 class PremiumManager {
     constructor() {
         this.premiumPrice = null; // 初始為 null，完全依賴後端
@@ -117,11 +120,6 @@ class PremiumManager {
                             showToast('價格載入失敗，請重新整理頁面', 'error');
                             return;
                         }
-                    } else {
-                        // 如果沒有 loadPiPrices 函數，顯示錯誤
-                        showToast('系統錯誤：價格載入模組未初始化', 'error');
-                        console.error('[Premium] loadPiPrices 函數不存在');
-                        return;
                     }
 
                     // 更新顯示
