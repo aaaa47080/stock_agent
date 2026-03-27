@@ -127,7 +127,15 @@ const PiEnvironment = {
     },
 
     isAuthenticated() {
-        return !!this.getAccessToken();
+        const currentUser = window.AuthManager?.currentUser || null;
+        if (!currentUser) return false;
+
+        return !!(
+            this.getAccessToken() ||
+            currentUser.user_id ||
+            currentUser.uid ||
+            currentUser.pi_uid
+        );
     },
 
     getAuthHeaders(extraHeaders = {}) {
