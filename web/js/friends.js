@@ -3,6 +3,9 @@
  * v1.0
  */
 
+// Safe i18n wrapper - i18n.js loads at Phase 17, friends.js at Phase 10
+const t = (key) => window.i18next?.t(key) || key;
+
 const FriendsAPI = {
     /**
      * 取得當前用戶 ID

@@ -21,7 +21,9 @@ function writeAuthDiagnostics(entries) {
             AUTH_DIAGNOSTICS_KEY,
             JSON.stringify(entries.slice(-MAX_AUTH_DIAGNOSTICS))
         );
-    } catch (_) {}
+    } catch (_) {
+        console.debug('writeAuthDiagnostics: sessionStorage full or unavailable');
+    }
 }
 
 function pushAuthDiagnostic(event, data) {
@@ -73,7 +75,9 @@ const DebugLog = {
         // 在开发环境中记录日志，在生产环境中可选择禁用
         // 为了减少网络请求，仅在特定条件下发送到服务器
         if (window.APP_CONFIG && window.APP_CONFIG.DEBUG_MODE === true) {
-            AppAPI.post('/api/debug-log', { level, message, data }, { keepalive: true }).catch(() => {});
+            AppAPI.post('/api/debug-log', { level, message, data }, { keepalive: true }).catch(() => {
+                console.debug('DebugLog: server logging unavailable');
+            });
         }
     },
     info(msg, data) {
@@ -210,7 +214,10 @@ const AuthManager = {
 
     _saveUserSession() {
         if (!this.currentUser) return;
-        const safe = { ...this.currentUser };
+        const safe = {
+            ...this.currentUser,
+            accessTokenExpiry: this.currentUser.accessTokenExpiry,
+        };
         delete safe.accessToken;
         delete safe.piAccessToken;
         localStorage.setItem('pi_user', JSON.stringify(safe));
@@ -297,7 +304,9 @@ const AuthManager = {
         localStorage.removeItem('pi_user');
         this._updateUI(false);
 
-        AppAPI.post('/api/user/logout').catch(() => {});
+        AppAPI.post('/api/user/logout').catch(() => {
+            console.debug('clearExpiredToken: logout API failed (network or server error)');
+        });
 
         // 顯示提示
         if (typeof showToast === 'function') {
@@ -582,7 +591,7 @@ const AuthManager = {
             console.log('⚠️ [Dev Mode] Manually triggering Mock Login.');
         showToast('開發模式：使用測試帳號登入...', 'info');
 
-        await new Promise((r) => setTimeout(r, 500)); // 模擬延遲
+        await new Promise((resolve) => setTimeout(resolve, 500)); // 模擬延遲
 
         try {
             // 使用新的 Dev Login Endpoint
@@ -648,7 +657,9 @@ const AuthManager = {
                     AppAPI.post('/api/user/payment/complete', {
                         paymentId: payment.identifier,
                         txid: payment.transaction.txid,
-                    }).catch(() => {});
+                    }).catch(() => {
+                        console.debug('Pi authenticate: payment complete callback failed');
+                    });
                 }
             );
 
@@ -1214,13 +1225,19 @@ async function handlePiLogin() {
             if (!hasAnyApiKey && typeof switchTab === 'function') {
                 await switchTab('settings');
                 if (typeof window.loadSettingsWalletStatus === 'function') {
-                    Promise.resolve(window.loadSettingsWalletStatus()).catch(() => {});
+                    Promise.resolve(window.loadSettingsWalletStatus()).catch(() => {
+                        console.debug('handlePiLogin: loadSettingsWalletStatus failed');
+                    });
                 }
                 if (typeof window.initToolSettings === 'function') {
-                    Promise.resolve(window.initToolSettings()).catch(() => {});
+                    Promise.resolve(window.initToolSettings()).catch(() => {
+                        console.debug('handlePiLogin: initToolSettings failed');
+                    });
                 }
                 if (typeof window.loadSavedApiKeys === 'function') {
-                    Promise.resolve(window.loadSavedApiKeys()).catch(() => {});
+                    Promise.resolve(window.loadSavedApiKeys()).catch(() => {
+                        console.debug('handlePiLogin: loadSavedApiKeys failed');
+                    });
                 }
             }
 
@@ -1238,10 +1255,14 @@ async function handlePiLogin() {
 
             // 後台同步狀態（不阻塞 UI，也不覆蓋使用者當前分頁）
             if (typeof window.loadSavedApiKeys === 'function') {
-                Promise.resolve(window.loadSavedApiKeys()).catch(() => {});
+                Promise.resolve(window.loadSavedApiKeys()).catch(() => {
+                    console.debug('handlePiLogin: background loadSavedApiKeys failed');
+                });
             }
             if (typeof checkApiKeyStatus === 'function') {
-                Promise.resolve(checkApiKeyStatus()).catch(() => {});
+                Promise.resolve(checkApiKeyStatus()).catch(() => {
+                    console.debug('handlePiLogin: checkApiKeyStatus failed');
+                });
             }
         } else {
             if (typeof showToast === 'function') {
