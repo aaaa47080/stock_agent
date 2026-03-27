@@ -19,7 +19,7 @@ function pushPiAuthDiagnostic(event, data) {
             AUTH_DIAGNOSTICS_KEY,
             JSON.stringify(safeEntries.slice(-120))
         );
-    } catch (_) {}
+    } catch (e) { console.debug('[pi-auth] Failed to save diagnostics:', e); }
 }
 
 window.safePiLogin = async function () {
