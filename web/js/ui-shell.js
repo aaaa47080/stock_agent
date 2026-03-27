@@ -161,8 +161,8 @@ function initialize() {
         });
     }
 
-    window.addEventListener('resize', syncLayout);
-    window.addEventListener('orientationchange', syncLayout);
+    window.addEventListener('resize', window.Utils ? window.Utils.debounce(syncLayout, 100) : syncLayout);
+    window.addEventListener('orientationchange', window.Utils ? window.Utils.debounce(syncLayout, 100) : syncLayout);
 }
 
 const UIShell = {

@@ -2,6 +2,9 @@
 // market-ws.js - WebSocket + Auto-Refresh + Cleanup
 // ========================================
 
+// Import chart functions from market-chart.js (market-chart.js handles window.showChart, etc.)
+import { showChart, closeChart, changeChartInterval, getPriceDecimals, updateOHLCVDisplay } from './market-chart.js';
+
 // ========================================
 // WebSocket 即時更新功能
 // ========================================
@@ -674,9 +677,6 @@ function initTickerWebSocket() {
 }
 
 // Make globally accessible
-window.showChart = showChart;
-window.changeChartInterval = changeChartInterval;
-window.closeChart = closeChart;
 window.toggleAutoRefresh = toggleAutoRefresh;
 window.connectTickerWebSocket = connectTickerWebSocket;
 window.disconnectTickerWebSocket = disconnectTickerWebSocket;

@@ -153,13 +153,4 @@ function renderAlertList(alerts) {
     });
 }
 
-// Expose alert functions globally so onclick handlers and tab init can call them
-window.openAlertModal = openAlertModal;
-window.closeAlertModal = closeAlertModal;
-window.submitAlert = submitAlert;
-window.loadUserAlerts = loadUserAlerts;
-window.deleteUserAlert = deleteUserAlert;
-window.renderAlertList = renderAlertList;
-export { openAlertModal, closeAlertModal, submitAlert, loadUserAlerts, deleteUserAlert, renderAlertList };
-
 // ── End Price Alert UI ─────────────────────────────────────────────────

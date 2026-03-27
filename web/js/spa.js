@@ -5,6 +5,11 @@
 // AppStore is the single source of truth for active tab
 AppStore.set('activeTab', 'chat');
 
+// Helper to get activeTab from AppStore (source of truth) with localStorage fallback
+function getActiveTab() {
+    return AppStore.get('activeTab') || localStorage.getItem('activeTab') || 'chat';
+}
+
 var VALID_TABS = [
     'chat', 'crypto', 'twstock', 'usstock', 'commodity', 'forex',
     'wallet', 'friends', 'forum', 'safety', 'settings', 'admin',
@@ -79,7 +84,7 @@ window.addEventListener('popstate', (event) => {
  */
 function navigateToForum() {
     // 保存當前 tab 到 sessionStorage
-    const currentTab = localStorage.getItem('activeTab') || 'chat';
+    const currentTab = getActiveTab();
     sessionStorage.setItem('returnToTab', currentTab);
     smoothNavigate('/static/forum/index.html');
 }
@@ -285,7 +290,7 @@ async function executeTabSwitch(tabId, fromPopState = false) {
 window.executeTabSwitch = executeTabSwitch;
 
 function restoreUiStateAfterResume() {
-    const savedTab = localStorage.getItem('activeTab') || 'chat';
+    const savedTab = getActiveTab();
     const validTabs = new Set([
         'chat',
         'crypto',
@@ -332,8 +337,8 @@ window.addEventListener('pageshow', restoreUiStateAfterResume);
  * Render navigation buttons based on user preferences
  */
 function renderNavButtons() {
-    if (window.GlobalNav && typeof GlobalNav.renderNavButtons === 'function') {
-        GlobalNav.renderNavButtons();
+    if (window.GlobalNav && typeof window.GlobalNav.renderNavButtons === 'function') {
+        window.GlobalNav.renderNavButtons();
         return;
     }
 }
@@ -662,7 +667,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 3. 載入預設分頁（優先順序：sessionStorage returnToTab > URL hash > localStorage）
     const returnToTab = sessionStorage.getItem('returnToTab');
     const hashTab = window.location.hash.replace('#', '');
-    const savedTab = localStorage.getItem('activeTab') || 'chat';
+    const savedTab = getActiveTab();
     const normalizedSavedTab = VALID_TABS.includes(savedTab) ? savedTab : 'chat';
 
     // 優先使用 returnToTab（從論壇返回），其次 hash，最後 localStorage
@@ -720,7 +725,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 4. 延遲啟動 Ticker WebSocket（僅在 market/commodity/forex tab 時立即啟動）
     setTimeout(() => {
-        const currentTab = localStorage.getItem('activeTab') || 'chat';
+        const currentTab = getActiveTab();
         const marketTabs = ['market', 'crypto', 'twstock', 'usstock', 'commodity', 'forex'];
         if (marketTabs.includes(currentTab)) {
             if (typeof connectTickerWebSocket === 'function') connectTickerWebSocket();
@@ -729,7 +734,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 5. 預加載 Market 和 Pulse 數據（僅在 market 相關 tab 時執行）
     setTimeout(async () => {
-        const currentTab = localStorage.getItem('activeTab') || 'chat';
+        const currentTab = getActiveTab();
         const marketTabs = ['market', 'crypto', 'twstock', 'usstock', 'commodity', 'forex'];
         if (!marketTabs.includes(currentTab)) return;
 
