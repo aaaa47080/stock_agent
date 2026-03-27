@@ -27,6 +27,7 @@ const _CATEGORY_ICONS = {
 let _currentUserTier = 'free';
 let _toolSettingsLoaded = false;
 let _toolSettingsRetryScheduled = false;
+let _toolSettingsLoadPromise = null;
 
 function _showLoginRequired(container) {
     _toolSettingsLoaded = false;
@@ -43,46 +44,56 @@ async function initToolSettings() {
     const container = document.getElementById('tool-settings-list');
     if (!container) return;
 
-    container.innerHTML = `
-        <div class="flex items-center justify-center py-8 text-textMuted">
-            <i data-lucide="loader" class="w-5 h-5 animate-spin mr-2"></i>
-            <span class="text-sm">載入中...</span>
-        </div>`;
-    AppUtils.refreshIcons();
+    if (_toolSettingsLoadPromise) {
+        return _toolSettingsLoadPromise;
+    }
 
-    try {
-        const data = await AppAPI.get('/api/user/tools');
-        _currentUserTier = data.user_tier || 'free';
-        _toolSettingsLoaded = true;
-        _toolSettingsRetryScheduled = false;
-        renderToolList(container, data.tools || []);
-    } catch (err) {
-        console.error('[toolSettings] fetch error:', err);
-        if (err?.status === 401 || err?.status === 403) {
-            const hasKnownUser =
-                !!window.AuthManager?.currentUser?.user_id ||
-                !!window.AuthManager?.currentUser?.uid ||
-                !!window.AuthManager?.currentUser?.pi_uid;
-            const loginInProgress =
-                window._piLoginInProgress ||
-                (typeof AppStore !== 'undefined' && AppStore.get('piLoginInProgress'));
+    _toolSettingsLoadPromise = (async () => {
+        container.innerHTML = `
+            <div class="flex items-center justify-center py-8 text-textMuted">
+                <i data-lucide="loader" class="w-5 h-5 animate-spin mr-2"></i>
+                <span class="text-sm">載入中...</span>
+            </div>`;
+        AppUtils.refreshIcons();
 
-            if ((hasKnownUser || loginInProgress) && !_toolSettingsRetryScheduled) {
-                _toolSettingsRetryScheduled = true;
-                setTimeout(() => {
-                    _toolSettingsRetryScheduled = false;
-                    initToolSettings().catch((retryErr) =>
-                        console.error('[toolSettings] delayed retry failed:', retryErr)
-                    );
-                }, 600);
+        try {
+            const data = await AppAPI.get('/api/user/tools');
+            _currentUserTier = data.user_tier || 'free';
+            _toolSettingsLoaded = true;
+            _toolSettingsRetryScheduled = false;
+            renderToolList(container, data.tools || []);
+        } catch (err) {
+            console.error('[toolSettings] fetch error:', err);
+            if (err?.status === 401 || err?.status === 403) {
+                const hasKnownUser =
+                    !!window.AuthManager?.currentUser?.user_id ||
+                    !!window.AuthManager?.currentUser?.uid ||
+                    !!window.AuthManager?.currentUser?.pi_uid;
+                const loginInProgress =
+                    window._piLoginInProgress ||
+                    (typeof AppStore !== 'undefined' && AppStore.get('piLoginInProgress'));
+
+                if ((hasKnownUser || loginInProgress) && !_toolSettingsRetryScheduled) {
+                    _toolSettingsRetryScheduled = true;
+                    setTimeout(() => {
+                        _toolSettingsRetryScheduled = false;
+                        initToolSettings().catch((retryErr) =>
+                            console.error('[toolSettings] delayed retry failed:', retryErr)
+                        );
+                    }, 600);
+                    return;
+                }
+
+                _showLoginRequired(container);
                 return;
             }
-
-            _showLoginRequired(container);
-            return;
+            container.innerHTML = `<p class="text-sm text-red-400 text-center py-4">載入失敗，請稍後再試。</p>`;
+        } finally {
+            _toolSettingsLoadPromise = null;
         }
-        container.innerHTML = `<p class="text-sm text-red-400 text-center py-4">載入失敗，請稍後再試。</p>`;
-    }
+    })();
+
+    return _toolSettingsLoadPromise;
 }
 
 /**

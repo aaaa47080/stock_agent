@@ -1217,6 +1217,15 @@ async function handlePiLogin() {
 
             if (!hasAnyApiKey && typeof switchTab === 'function') {
                 await switchTab('settings');
+                if (typeof window.loadSettingsWalletStatus === 'function') {
+                    Promise.resolve(window.loadSettingsWalletStatus()).catch(() => {});
+                }
+                if (typeof window.initToolSettings === 'function') {
+                    Promise.resolve(window.initToolSettings()).catch(() => {});
+                }
+                if (typeof window.loadSavedApiKeys === 'function') {
+                    Promise.resolve(window.loadSavedApiKeys()).catch(() => {});
+                }
             }
 
             if (typeof showToast === 'function') {
