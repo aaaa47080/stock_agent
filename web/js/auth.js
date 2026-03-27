@@ -1256,7 +1256,7 @@ function handleLogout() {
 window.handleLogout = handleLogout;
 
 function initializeAuth() {
-    AuthManager.init();
+    return AuthManager.init();
 }
 window.initializeAuth = initializeAuth;
 window.isPiBrowser = isPiBrowser;
