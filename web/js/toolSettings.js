@@ -265,6 +265,16 @@ window.addEventListener('auth:ready', () => {
     );
 });
 
+window.addEventListener('auth:initialized', (event) => {
+    const container = document.getElementById('tool-settings-list');
+    if (!container) return;
+    if (event?.detail?.isLoggedIn) {
+        initToolSettings().catch((err) =>
+            console.error('[toolSettings] auth:initialized reload failed:', err)
+        );
+    }
+});
+
 export {
     initToolSettings,
     toggleToolPreference,

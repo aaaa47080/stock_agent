@@ -26,16 +26,9 @@ window.llmState = llmState;
 // ========================================
 
 async function loadSavedApiKeys() {
-    // AppAPI auto-handles auth; skip if no token
-    var token = null;
-    if (typeof AuthManager !== 'undefined' && AuthManager.currentUser) {
-        token = AuthManager.currentUser.accessToken || AuthManager.currentUser.token;
-    }
-    if (!token) {
-        token = localStorage.getItem('access_token') || localStorage.getItem('auth_token');
-    }
-
-    if (!token) {
+    const user = typeof AuthManager !== 'undefined' ? AuthManager.currentUser : null;
+    const hasKnownSession = !!(user && (user.user_id || user.uid || user.pi_uid));
+    if (!hasKnownSession) {
         console.log('[loadSavedApiKeys] No token, skipping');
         return;
     }

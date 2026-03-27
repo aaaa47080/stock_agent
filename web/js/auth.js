@@ -154,6 +154,7 @@ const AuthManager = {
     currentUser: null,
     piInitialized: false,
     _refreshTimer: null,
+    _initPromise: null,
 
     // Token 過期時間（24 小時，與後端 ACCESS_TOKEN_EXPIRE_MINUTES 一致）
     TOKEN_EXPIRY_MS: 24 * 60 * 60 * 1000,
@@ -720,85 +721,99 @@ const AuthManager = {
     },
 
     async init() {
-        // 檢查 URL 參數是否要求強制登出
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('logout') === '1' || urlParams.get('force_logout') === '1') {
-            DebugLog.info('URL 參數觸發強制登出');
-            localStorage.removeItem('pi_user');
-            window.history.replaceState({}, '', window.location.pathname);
-            window.location.reload();
-            return false;
+        if (this._initPromise) {
+            return this._initPromise;
         }
 
-        // 優先從 localStorage 載入用戶（同步，確保立即可用）
-        if (this.restoreSessionFromStorage()) {
-            const restoreResult = await this.restoreSessionFromBackend();
-            if (!restoreResult.success) {
-                DebugLog.warn('無法恢復後端 session，清除本地登入狀態', {
-                    error: restoreResult.error,
-                });
-                this.clearExpiredToken();
+        this._initPromise = (async () => {
+            // 檢查 URL 參數是否要求強制登出
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('logout') === '1' || urlParams.get('force_logout') === '1') {
+                DebugLog.info('URL 參數觸發強制登出');
+                localStorage.removeItem('pi_user');
+                window.history.replaceState({}, '', window.location.pathname);
+                window.location.reload();
                 return false;
             }
-            this._updateUI(true);
-        } else {
-            this._updateUI(false);
-        }
 
-        // 檢查測試模式（async，但不影響已登入用戶）
-        try {
-            const config = await AppAPI.get('/api/config');
-
-            window.__APP_TEST_MODE = !!config.test_mode;
-            window.__APP_PI_SANDBOX = !!config.pi_sandbox;
-
-            // Show/hide dev-user-switcher based on test_mode
-            const switcher = document.getElementById('dev-user-switcher');
-            if (switcher) {
-                if (config.test_mode) {
-                    switcher.classList.remove('hidden');
-                } else {
-                    switcher.classList.add('hidden');
+            // 優先從 localStorage 載入用戶（同步，確保立即可用）
+            if (this.restoreSessionFromStorage()) {
+                const restoreResult = await this.restoreSessionFromBackend();
+                if (!restoreResult.success) {
+                    DebugLog.warn('無法恢復後端 session，清除本地登入狀態', {
+                        error: restoreResult.error,
+                    });
+                    this.clearExpiredToken();
+                    return false;
                 }
+                this._updateUI(true);
+            } else {
+                this._updateUI(false);
             }
 
-            if (config.test_mode && !this.currentUser) {
-                window.APP_CONFIG?.DEBUG_MODE &&
-                    console.log('🧪 [Test Mode] 自動登入測試用戶（透過 dev-login endpoint）');
-                const result = await this.loginAsMockUser();
-                if (!result.success) {
-                    console.warn('🧪 [Test Mode] 自動登入失敗:', result.error);
+            // 檢查測試模式（async，但不影響已登入用戶）
+            try {
+                const config = await AppAPI.get('/api/config');
+
+                window.__APP_TEST_MODE = !!config.test_mode;
+                window.__APP_PI_SANDBOX = !!config.pi_sandbox;
+
+                const switcher = document.getElementById('dev-user-switcher');
+                if (switcher) {
+                    if (config.test_mode) {
+                        switcher.classList.remove('hidden');
+                    } else {
+                        switcher.classList.add('hidden');
+                    }
                 }
+
+                if (config.test_mode && !this.currentUser) {
+                    window.APP_CONFIG?.DEBUG_MODE &&
+                        console.log('🧪 [Test Mode] 自動登入測試用戶（透過 dev-login endpoint）');
+                    const result = await this.loginAsMockUser();
+                    if (!result.success) {
+                        console.warn('🧪 [Test Mode] 自動登入失敗:', result.error);
+                    }
+                }
+            } catch (e) {
+                console.warn('Failed to check test mode:', e);
             }
-        } catch (e) {
-            console.warn('Failed to check test mode:', e);
-        }
 
-        // Only initialize Pi SDK in a secure Pi-compatible context.
-        if (isPiBrowser()) {
-            this.initPiSDKAsync().catch((e) => {
-                DebugLog.warn('啟動時初始化 Pi SDK 失敗', { error: e.message });
-            });
-        }
-
-        // 啟動 token 自動刷新定時器（僅對已登入的 Pi 用戶）
-        if (this.currentUser?.pi_uid) {
-            this.startTokenRefreshTimer();
-
-            // 如果 token 快過期，立即嘗試刷新
-            if (this.needsRefresh()) {
-                DebugLog.info('Token 快過期，啟動時立即刷新');
-                this.backendTokenRefresh().catch((e) => {
-                    DebugLog.warn('啟動時刷新失敗，將在定時器中重試', { error: e.message });
+            if (isPiBrowser()) {
+                this.initPiSDKAsync().catch((e) => {
+                    DebugLog.warn('啟動時初始化 Pi SDK 失敗', { error: e.message });
                 });
             }
-        }
 
-        if (this.currentUser) {
-            window.dispatchEvent(new Event('auth:ready'));
-        }
+            if (this.currentUser?.pi_uid) {
+                this.startTokenRefreshTimer();
 
-        return !!this.currentUser;
+                if (this.needsRefresh()) {
+                    DebugLog.info('Token 快過期，啟動時立即刷新');
+                    this.backendTokenRefresh().catch((e) => {
+                        DebugLog.warn('啟動時刷新失敗，將在定時器中重試', { error: e.message });
+                    });
+                }
+            }
+
+            if (this.currentUser) {
+                window.dispatchEvent(new Event('auth:ready'));
+            }
+
+            return !!this.currentUser;
+        })();
+
+        try {
+            const result = await this._initPromise;
+            window.dispatchEvent(
+                new CustomEvent('auth:initialized', {
+                    detail: { isLoggedIn: !!this.currentUser },
+                })
+            );
+            return result;
+        } finally {
+            this._initPromise = null;
+        }
     },
 
     _updateUI(isLoggedIn) {
