@@ -78,3 +78,24 @@ class TestStartupIntegration:
         src = _read_file("api/lifespan.py")
         # Shutdown error handling should use logger.error, not bare except
         assert "logger.error" in src
+
+    def test_lifespan_tracks_db_ready_state(self):
+        src = _read_file("api/lifespan.py")
+        assert "reset_db_ready_state" in src
+        assert "mark_db_ready" in src
+        assert "mark_db_failed" in src
+
+    def test_forum_app_does_not_reinitialize_auth(self):
+        src = _read_file("web/js/forum-app.js")
+        assert "AuthManager.init();" not in src
+
+    def test_forum_pages_load_api_client_before_auth(self):
+        for path in (
+            "web/forum/index.html",
+            "web/forum/dashboard.html",
+            "web/forum/post.html",
+            "web/forum/create.html",
+            "web/forum/profile.html",
+        ):
+            src = _read_file(path)
+            assert "/static/js/api-client.js" in src

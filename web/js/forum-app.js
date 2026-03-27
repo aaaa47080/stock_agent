@@ -14,16 +14,6 @@ const ForumApp = {
         }
 
         try {
-            // 確保 AuthManager 已初始化（從 localStorage 載入用戶資訊）
-            if (typeof AuthManager !== 'undefined' && typeof AuthManager.init === 'function') {
-                AuthManager.init();
-                window.APP_CONFIG?.DEBUG_MODE &&
-                    console.log(
-                        'ForumApp: AuthManager initialized, currentUser:',
-                        AuthManager.currentUser
-                    );
-            }
-
             this.bindEvents();
             // 頁面特定初始化
             const page = document.body.dataset.page;

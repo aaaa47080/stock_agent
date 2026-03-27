@@ -23,11 +23,14 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 from urllib.parse import quote
 
+from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
     create_async_engine,
 )
+
+from core.db_ready import wait_for_db_ready
 
 logger = logging.getLogger(__name__)
 
@@ -105,6 +108,14 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
 
 async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
     """FastAPI dependency that yields an async database session."""
+    try:
+        await wait_for_db_ready()
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database is still initializing. Please retry shortly.",
+        ) from exc
+
     factory = get_session_factory()
     async with factory() as session:
         try:

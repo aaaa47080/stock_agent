@@ -3,6 +3,7 @@
 import inspect
 import warnings
 from datetime import datetime, timezone
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -38,6 +39,11 @@ class TestOrmSessionModule:
         from core.orm.session import close_async_engine_sync
 
         assert not inspect.iscoroutinefunction(close_async_engine_sync)
+
+    def test_get_async_session_waits_for_db_ready(self):
+        src = Path("core/orm/session.py").read_text(encoding="utf-8")
+        assert "wait_for_db_ready" in src
+        assert "503" in src or "SERVICE_UNAVAILABLE" in src
 
     def test_close_async_engine_sync_emits_no_runtime_warning(self):
         import core.orm.session as session_module

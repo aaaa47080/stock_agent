@@ -16,6 +16,7 @@ from api.services import (
     update_screener_task,
 )
 from api.utils import logger
+from core.db_ready import mark_db_failed, mark_db_ready, reset_db_ready_state
 from core.database import init_db
 from utils.okx_api_connector import OKXAPIConnector
 
@@ -30,12 +31,14 @@ async def lifespan(app: FastAPI):
         logger.info(f"🚦 STARTUP[{status}] +{elapsed_ms}ms | {step}")
 
     _startup_mark("lifespan_enter")
+    reset_db_ready_state()
 
     async def _init_database_background():
         """Run DB initialization in background to avoid blocking readiness on startup."""
         skip_db_init = os.getenv("SKIP_DB_INIT", "false").lower() == "true"
         if skip_db_init:
             logger.info("⏭️ 跳過資料庫初始化 (SKIP_DB_INIT=true)")
+            mark_db_ready()
             return
 
         logger.info("🔄 Initializing database in background...")
@@ -47,6 +50,7 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"⚠️ 資料庫初始化失敗: {e}")
             logger.warning("⏭️ 應用程式將繼續運行，部分功能可能無法使用")
+            mark_db_failed(e)
             return
 
         # ORM migration: run Alembic upgrade to head
@@ -69,6 +73,8 @@ async def lifespan(app: FastAPI):
             logger.info("✅ Tools catalog seeded")
         except Exception as e:
             logger.warning(f"⚠️ Tools catalog seeding failed: {e}")
+
+        mark_db_ready()
 
     # 不阻塞 startup，避免被平台 readiness probe 提前判斷失敗
     asyncio.create_task(_init_database_background())
