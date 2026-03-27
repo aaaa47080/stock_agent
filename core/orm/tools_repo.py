@@ -18,7 +18,7 @@ import logging
 from datetime import date, datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, func, literal, or_, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -408,7 +408,7 @@ class ToolsRepository:
                         ToolsCatalog.category,
                         ToolsCatalog.tier_required,
                         ToolsCatalog.quota_type,
-                        func.lit(True).label("is_enabled"),
+                        literal(True).label("is_enabled"),
                     )
                     .where(ToolsCatalog.is_active.is_(True))
                     .order_by(

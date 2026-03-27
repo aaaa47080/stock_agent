@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from api.deps import get_current_user
 from api.middleware.rate_limit import limiter
 from api.utils import logger, run_sync
-from core.database.tools import seed_tools_catalog
+from core.database.tools import get_tools_catalog_fallback, seed_tools_catalog
 from core.orm.tools_repo import _normalize_tier as normalize_membership_tier
 from core.orm.tools_repo import tools_repo
 
@@ -21,14 +21,19 @@ async def _list_tools_impl(current_user: dict) -> dict:
     """Return all tools with per-user enabled/locked status."""
     user_tier = normalize_membership_tier(current_user.get("membership_tier", "free"))
     user_id = current_user.get("user_id")
+    try:
+        tools = await tools_repo.get_tools_for_frontend(user_tier, user_id)
+    except Exception as e:
+        logger.warning(f"[tools] primary load failed, falling back: {e}")
+        tools = []
 
-    tools = await tools_repo.get_tools_for_frontend(user_tier, user_id)
     if not tools:
         try:
             await run_sync(seed_tools_catalog)
             tools = await tools_repo.get_tools_for_frontend(user_tier, user_id)
         except Exception as e:
-            logger.warning(f"[tools] auto-seed failed: {e}")
+            logger.warning(f"[tools] auto-seed failed, using static fallback: {e}")
+            tools = get_tools_catalog_fallback(user_tier)
     return {"tools": tools, "user_tier": user_tier}
 
 

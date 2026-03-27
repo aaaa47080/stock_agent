@@ -2,7 +2,12 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from api.routers.tools import ToolPreferenceRequest, _set_tool_preference_impl, router
+from api.routers.tools import (
+    ToolPreferenceRequest,
+    _list_tools_impl,
+    _set_tool_preference_impl,
+    router,
+)
 from core.agents.base_react_agent import BaseReActAgent
 from core.agents.models import SubTask
 from core.agents.tool_registry import ToolMetadata
@@ -170,6 +175,28 @@ def test_tools_router_exposes_user_tools_routes():
     routes = {route.path for route in router.routes}
     assert "/api/user/tools" in routes
     assert "/api/user/tools/{tool_id}/preference" in routes
+
+
+@pytest.mark.asyncio
+async def test_list_tools_impl_falls_back_when_repo_unavailable():
+    current_user = {
+        "user_id": "user-1",
+        "membership_tier": "free",
+    }
+
+    with (
+        patch(
+            "core.orm.tools_repo.tools_repo.get_tools_for_frontend",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("db down"),
+        ),
+        patch("api.routers.tools.seed_tools_catalog", side_effect=RuntimeError("seed down")),
+    ):
+        response = await _list_tools_impl(current_user)
+
+    assert response["user_tier"] == "free"
+    assert len(response["tools"]) >= 1
+    assert any(tool["tool_id"] == "get_crypto_price" for tool in response["tools"])
 
 
 @pytest.mark.asyncio

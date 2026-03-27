@@ -57,6 +57,12 @@ async function initToolSettings() {
         renderToolList(container, data.tools || []);
     } catch (err) {
         console.error('[toolSettings] fetch error:', err);
+        if (err?.status === 401 || err?.status === 403) {
+            _toolSettingsLoaded = false;
+            _currentUserTier = 'free';
+            container.innerHTML = `<p class="text-sm text-textMuted text-center py-4">登入後可查看工具設定</p>`;
+            return;
+        }
         container.innerHTML = `<p class="text-sm text-red-400 text-center py-4">載入失敗，請稍後再試。</p>`;
     }
 }

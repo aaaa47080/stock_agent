@@ -541,6 +541,26 @@ def seed_tools_catalog():
         conn.close()
 
 
+def get_tools_catalog_fallback(user_tier: str = "free") -> List[Dict[str, Any]]:
+    """Return a static frontend-safe tool list when DB-backed catalog is unavailable."""
+    normalized_tier = normalize_membership_tier(user_tier)
+    user_tier_level = _get_tier_level(normalized_tier)
+
+    return [
+        {
+            "tool_id": tool["tool_id"],
+            "display_name": tool["display_name"],
+            "description": tool["description"],
+            "category": tool["category"],
+            "tier_required": tool["tier_required"],
+            "quota_type": tool["quota_type"],
+            "is_enabled": True,
+            "locked": _get_tier_level(tool["tier_required"]) > user_tier_level,
+        }
+        for tool in _TOOLS_SEED
+    ]
+
+
 def get_allowed_tools(
     agent_id: str, user_tier: str = "free", user_id: Optional[str] = None
 ) -> List[str]:
