@@ -327,9 +327,10 @@ class PremiumManager {
             await AppAPI.post('/api/user/payment/complete', {
                 paymentId: payment.identifier,
                 txid: payment.transaction?.txid || null,
-            }).catch((e) => {
-                console.error('[Premium] 處理未完成支付失敗:', e);
             });
+        } catch (e) {
+            console.error('[Premium] 處理未完成支付失敗:', e);
+        }
     }
 
     /**

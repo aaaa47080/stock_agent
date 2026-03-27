@@ -112,6 +112,7 @@ import './forex.js';
 import './forum-config.js';
 import './forum-api.js';
 import './forum-app.js';
+import './premium.js';         // Premium membership management (after forum-config for loadPiPrices)
 
 // ─── Phase 14: Wallet & alerts ────────────────────────────────────────────
 import './wallet.js';
