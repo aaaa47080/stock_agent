@@ -96,7 +96,6 @@ async def _stub_all_api_routes(route):
                 }
             }
         },
-        "/api/user/api-keys/openai/full": {"key": "sk-test-e2e"},
         "/api/user/tools": {"tools": []},
         "/api/test-mode/current-tier": {"tier": "premium"},
         "/api/messages/limits": {

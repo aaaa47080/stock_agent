@@ -463,17 +463,16 @@ window.USStockTab = {
         container.classList.add('hidden');
 
         try {
-            const userKey = await window.APIKeyManager?.getCurrentKey();
+            const userProvider = await window.APIKeyManager?.getCurrentProvider();
             let url = `/api/usstock/pulse/${encodeURIComponent(symbol.toUpperCase())}`;
             const customHeaders = {};
-            if (userKey) {
+            if (userProvider) {
                 url += '?deep_analysis=true';
-                customHeaders['X-User-LLM-Key'] = userKey.key;
-                customHeaders['X-User-LLM-Provider'] = userKey.provider;
+                customHeaders['X-User-LLM-Provider'] = userProvider;
             }
 
             const data = await AppAPI.get(url, { headers: customHeaders });
-            this._renderAIPulse(container, data, !!userKey);
+            this._renderAIPulse(container, data, !!userProvider);
             container.classList.remove('hidden');
         } catch (err) {
             console.error('[US Stock] Pulse error:', err);

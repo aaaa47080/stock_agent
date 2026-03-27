@@ -13,7 +13,6 @@ RATE_LIMITED_ENDPOINTS = {
     "api.routers.user.refresh_access_token": "10 per 1 minute",
     "api.routers.user.approve_payment": "10 per 1 minute",
     "api.routers.user.complete_payment": "10 per 1 minute",
-    "api.routers.user.get_user_api_key_full_endpoint": "10 per 1 minute",
     "api.routers.user.save_user_api_key_endpoint": "10 per 1 minute",
     "api.routers.user.delete_user_api_key_endpoint": "10 per 1 minute",
     "api.routers.user.save_user_model_endpoint": "10 per 1 minute",
@@ -139,13 +138,6 @@ class TestPaymentRateLimits:
 
     def test_tip_post_10_per_minute(self, route_limits):
         limits = route_limits.get("api.routers.forum.tips.tip_post", [])
-        assert len(limits) >= 1
-        assert "10 per 1 minute" in [str(r.limit) for r in limits]
-
-
-class TestApiKeyRateLimits:
-    def test_api_key_full_10_per_minute(self, route_limits):
-        limits = route_limits.get("api.routers.user.get_user_api_key_full_endpoint", [])
         assert len(limits) >= 1
         assert "10 per 1 minute" in [str(r.limit) for r in limits]
 

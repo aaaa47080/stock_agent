@@ -3,8 +3,10 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import yfinance as yf
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 
+from api.deps import get_optional_current_user
+from api.user_llm import resolve_user_llm_credentials
 from api.utils import logger
 from core.tools.us_data_provider import get_us_data_provider
 
@@ -174,8 +176,8 @@ async def get_us_news(symbols: Optional[str] = None, limit: int = 15):
 async def get_us_pulse(
     symbol: str,
     deep_analysis: bool = False,
-    x_user_llm_key: Optional[str] = Header(None),
     x_user_llm_provider: Optional[str] = Header(None),
+    current_user: Optional[dict] = Depends(get_optional_current_user),
 ):
     """Deep AI pulse analysis for a single US stock."""
     sym = symbol.upper()
@@ -247,7 +249,12 @@ async def get_us_pulse(
     ]
 
     source_mode = "on_demand"
-    if deep_analysis and x_user_llm_key and x_user_llm_provider:
+    credentials = None
+    if deep_analysis:
+        credentials = await resolve_user_llm_credentials(
+            current_user, x_user_llm_provider
+        )
+    if credentials:
         from api.routers.deep_analysis_helper import deep_analyze_generic
 
         context = (
@@ -262,7 +269,7 @@ async def get_us_pulse(
             f"52W Low: {price_data.get('fifty_two_week_low', 'N/A')}"
         )
         ai_text = await deep_analyze_generic(
-            sym, context, x_user_llm_key, x_user_llm_provider
+            sym, context, credentials["api_key"], credentials["provider"]
         )
         if ai_text:
             summary = ai_text

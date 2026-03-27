@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 from core.config import DEFAULT_INTERVAL, DEFAULT_KLINES_LIMIT, SUPPORTED_EXCHANGES
 from core.model_config import GEMINI_DEFAULT_MODEL
@@ -15,22 +15,11 @@ class QueryRequest(BaseModel):
     manual_selection: Optional[List[str]] = None
     auto_execute: bool = False
     market_type: str = "spot"
-    # 用戶提供的 API key（必填）
-    user_api_key: str
-    user_provider: str  # "openai", "google_gemini", "openrouter"
+    user_provider: Optional[str] = None  # preferred provider, if any
     user_model: Optional[str] = None  # 用戶選擇的模型名稱
     session_id: str = "default"  # 會話 ID
     resume_answer: Optional[Any] = None  # HITL 回答（Accepts str or dict）
     language: str = "zh-TW"  # 用戶語言偏好（"zh-TW" | "en"）
-
-    @field_validator("user_api_key")
-    @classmethod
-    def validate_api_key(cls, v: str) -> str:
-        if len(v) < 10:
-            raise ValueError("user_api_key must be at least 10 characters")
-        if not v.isprintable():
-            raise ValueError("user_api_key contains non-printable characters")
-        return v
 
 
 class ScreenerRequest(BaseModel):

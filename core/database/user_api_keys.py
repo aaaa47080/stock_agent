@@ -175,10 +175,11 @@ def get_user_api_key_masked(user_id: str, provider: str) -> Optional[Dict]:
         masked = mask_api_key(decrypted) if decrypted else None
 
         return {
-            "has_key": True,
+            "has_key": bool(decrypted),
             "masked_key": masked,
             "model": row[1],
             "updated_at": row[2].isoformat() if row[2] else None,
+            "corrupted": not bool(decrypted),
         }
     finally:
         conn.close()
@@ -214,10 +215,11 @@ def get_all_user_api_keys(user_id: str) -> Dict[str, Dict]:
             masked = mask_api_key(decrypted) if decrypted else None
 
             result[provider] = {
-                "has_key": True,
+                "has_key": bool(decrypted),
                 "masked_key": masked,
                 "model": row[2],
                 "updated_at": row[3].isoformat() if row[3] else None,
+                "corrupted": not bool(decrypted),
             }
 
         # 確保所有支援的 provider 都有記錄

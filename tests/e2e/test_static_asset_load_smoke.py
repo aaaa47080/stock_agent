@@ -85,8 +85,6 @@ def build_api_stub(path: str, method: str):
                 }
             }
         }
-    if path == "/api/user/api-keys/openai/full":
-        return {"key": "sk-test-openai"}
     if path == "/api/user/tools":
         return {"tools": []}
     if path == "/api/test-mode/current-tier":

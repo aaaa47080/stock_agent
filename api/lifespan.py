@@ -93,7 +93,7 @@ async def lifespan(app: FastAPI):
         _startup_mark("okx_connector_failed", status="warn")
 
     # 預熱 V4 bootstrap（純載入 PromptRegistry + AgentRegistry，不建立 LLM）
-    # 實際 LLM client 由各請求的 user_api_key 決定，所以 startup 僅驗證模組可 import
+    # 實際 LLM client 由各請求的使用者設定決定，所以 startup 僅驗證模組可 import
     try:
         from core.agents.bootstrap import bootstrap as _v4_bootstrap  # noqa: F401
 

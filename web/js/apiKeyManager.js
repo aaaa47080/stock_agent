@@ -7,8 +7,8 @@
  *
  * 🔐 安全架構 (v3):
  * - API Keys 加密儲存在後端資料庫
- * - 前端只緩存遮蔽版本用於顯示
- * - 使用時從後端獲取解密後的 Key
+ * - 前端只保留 provider / 遮蔽資訊，不再取回完整後端金鑰
+ * - 由後端在需要時代表使用者讀取解密後的 Key
  * - 支援離線模式降級到 localStorage
  */
 const APIKeyManager = {
@@ -25,10 +25,6 @@ const APIKeyManager = {
     _maskedKeysCache: null,
     _lastFetchTime: 0,
     CACHE_TTL: 30000, // 30 秒
-
-    // ⚡ 新增：完整 API Key 內存緩存（發送訊息時使用）
-    _fullKeyCache: {}, // { provider: key }
-    _fullKeyCacheTime: {}, // { provider: timestamp }
 
     /**
      * 檢查是否應該使用後端儲存
@@ -71,10 +67,7 @@ const APIKeyManager = {
                     model: model,
                 });
 
-                // 清除緩存，強制下次重新獲取
                 this._maskedKeysCache = null;
-                // ⚡ 更新內存緩存（避免下次請求）
-                this._fullKeyCache[provider] = key.trim();
 
                 if (window.DEBUG_MODE) {
                     console.log(`🔐 ${provider} API Key saved to backend (encrypted)`);
@@ -108,66 +101,25 @@ const APIKeyManager = {
         return { success: true, offline: true };
     },
 
-    /**
-     * 獲取 API Key（從後端獲取解密後的 Key）
-     * @param {string} provider - 'openai', 'google_gemini', etc.
-     * @returns {Promise<string|null>}
-     */
-    async getKey(provider) {
-        // ⚡ 優先檢查內存緩存（快速路徑）
-        if (this._fullKeyCache[provider]) {
-            return this._fullKeyCache[provider];
-        }
-
-        if (this._shouldUseBackend()) {
-            try {
-                // 嘗試從 localStorage 讀取（可能是舊數據需要遷移）
-                const localKey = localStorage.getItem(`user_${provider}_api_key`);
-                if (localKey && localKey.startsWith('enc:')) {
-                    // 有舊數據，先遷移到後端
-                    const decrypted = await this._decrypt(localKey, `user_${provider}_api_key`);
-                    if (decrypted) {
-                        window.APP_CONFIG?.DEBUG_MODE &&
-                            console.log(`[APIKeyManager] 遷移 ${provider} key 到後端...`);
-                        await this.setKey(provider, decrypted);
-                        localStorage.removeItem(`user_${provider}_api_key`);
-                        // 保存到緩存
-                        this._fullKeyCache[provider] = decrypted;
-                        return decrypted;
-                    }
-                }
-
-                // 從後端獲取完整 key（僅在需要時調用）
-                // AppAPI.get() returns parsed JSON directly on success, throws on error
-                const data = await AppAPI.get(`/api/user/api-keys/${provider}/full`);
-                const key = data.key || null;
-
-                // ⚡ 保存到緩存
-                if (key) {
-                    this._fullKeyCache[provider] = key;
-                }
-                return key;
-            } catch (e) {
-                // 404 = no key set (not an error), others = backend unavailable → silent fallback
-                if (e.status === 404) return null;
-                window.APP_CONFIG?.DEBUG_MODE &&
-                    console.warn('[APIKeyManager] Backend fetch failed, using localStorage:', e.message);
-                return await this._getKeyLocalStorage(provider);
-            }
-        } else {
-            return await this._getKeyLocalStorage(provider);
-        }
-    },
-
-    /**
-     * localStorage 降級獲取
-     */
     async _getKeyLocalStorage(provider) {
         const stored = localStorage.getItem(`user_${provider}_api_key`);
         if (!stored || stored.trim() === '') return null;
 
         const decrypted = await this._decrypt(stored, `user_${provider}_api_key`);
         return decrypted && decrypted.trim() !== '' ? decrypted.trim() : null;
+    },
+
+    async _migrateLegacyLocalKeyIfNeeded(provider) {
+        const localKey = localStorage.getItem(`user_${provider}_api_key`);
+        if (!localKey || !localKey.startsWith('enc:')) return;
+
+        const decrypted = await this._decrypt(localKey, `user_${provider}_api_key`);
+        if (!decrypted) return;
+
+        window.APP_CONFIG?.DEBUG_MODE &&
+            console.log(`[APIKeyManager] 遷移 ${provider} key 到後端...`);
+        await this.setKey(provider, decrypted);
+        localStorage.removeItem(`user_${provider}_api_key`);
     },
 
     /**
@@ -183,6 +135,9 @@ const APIKeyManager = {
 
         if (this._shouldUseBackend()) {
             try {
+                for (const provider of this.PROVIDERS) {
+                    await this._migrateLegacyLocalKeyIfNeeded(provider);
+                }
                 // AppAPI.get() returns parsed JSON directly on success, throws on error
                 const data = await AppAPI.get('/api/user/api-keys');
                 this._maskedKeysCache = data.keys;
@@ -204,18 +159,6 @@ const APIKeyManager = {
                 model: localStorage.getItem(`user_${provider}_selected_model`),
                 updated_at: null,
             };
-        }
-        return result;
-    },
-
-    /**
-     * 獲取所有已設置的 keys（完整版本，僅在需要時調用）
-     * @returns {Promise<Object>}
-     */
-    async getAllKeys() {
-        const result = {};
-        for (const provider of this.PROVIDERS) {
-            result[provider] = await this.getKey(provider);
         }
         return result;
     },
@@ -274,25 +217,36 @@ const APIKeyManager = {
     },
 
     /**
-     * 獲取當前有效的 API Key
-     * @returns {Promise<{provider: string, key: string}|null>}
+     * 獲取當前有效的 provider。
+     * 已登入時只回傳 provider，不再把完整後端 key 帶回前端。
      */
-    async getCurrentKey() {
+    async getCurrentProvider() {
         let provider = this.getSelectedProvider();
 
-        if (provider) {
-            const key = await this.getKey(provider);
-            if (key) {
-                return { provider, key };
+        if (this._shouldUseBackend()) {
+            const keys = await this.getAllKeysMasked();
+            if (provider && keys[provider]?.has_key) {
+                return provider;
             }
+            for (const p of this.PROVIDERS) {
+                if (keys[p]?.has_key) {
+                    this.setSelectedProvider(p);
+                    return p;
+                }
+            }
+            return null;
         }
 
-        // 嘗試其他 providers
+        if (provider) {
+            const key = await this._getKeyLocalStorage(provider);
+            if (key) return provider;
+        }
+
         for (const p of this.PROVIDERS) {
-            const key = await this.getKey(p);
+            const key = await this._getKeyLocalStorage(p);
             if (key) {
                 this.setSelectedProvider(p);
-                return { provider: p, key };
+                return p;
             }
         }
 

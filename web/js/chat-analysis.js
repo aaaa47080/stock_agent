@@ -182,9 +182,9 @@ async function sendMessage() {
     // sendBtn.disabled = true; // Don't disable, we need it for Stop
 
     // 檢查用戶是否有設置 API key（使用快取，避免每次發送都打後端）
-    const userKey = await getCachedUserKey();
+    const userProvider = await getCachedUserProvider();
 
-    if (!userKey) {
+    if (!userProvider) {
         resetChatUI(); // Helper to reset UI state
         showAlert({
             title: '未設置 API Key',
@@ -231,7 +231,7 @@ async function sendMessage() {
         }
     }
 
-    const userSelectedModel = window.APIKeyManager.getModelForProvider(userKey.provider);
+    const userSelectedModel = window.APIKeyManager.getModelForProvider(userProvider);
     const checkboxes = document.querySelectorAll('.analysis-checkbox:checked');
     const selection = Array.from(checkboxes).map((cb) => cb.value);
     const marketType = 'spot';
@@ -298,7 +298,7 @@ window.currentAnalysisController = AppStore.get('currentAnalysisController');
     const _hitlResumeContext = {
         originalMessage: text,
         sessionId: window.currentSessionId,
-        userKey,
+        userProvider,
         userSelectedModel,
         botMsgDiv,
         startTime,
@@ -334,8 +334,7 @@ window.currentAnalysisController = AppStore.get('currentAnalysisController');
                 manual_selection: selection,
                 market_type: marketType,
                 auto_execute: autoExecute,
-                user_api_key: userKey.key,
-                user_provider: userKey.provider,
+                user_provider: userProvider,
                 user_model: userSelectedModel,
                 session_id: window.currentSessionId,
                 language: window.I18n?.getLanguage() || 'zh-TW',

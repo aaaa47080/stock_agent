@@ -193,9 +193,9 @@ async function refreshMarketPulse() {
         }
 
         const targets = getPulseTargets();
-        const userKey = await window.APIKeyManager?.getCurrentKey();
+        const userProvider = await window.APIKeyManager?.getCurrentProvider();
 
-        if (userKey) {
+        if (userProvider) {
             if (window.DEBUG_MODE) console.log('[Pulse] Using User Key for Deep Refresh...');
             // Create loading placeholders first so triggerDeepAnalysis has cards to update
             await loadPulseData(true);
@@ -238,10 +238,9 @@ async function fetchPulseForSymbol(symbol, forceRefresh = false, deepAnalysis = 
 
         const headers = {};
         if (deepAnalysis) {
-            const userKey = await window.APIKeyManager?.getCurrentKey();
-            if (userKey) {
-                headers['X-User-LLM-Key'] = userKey.key;
-                headers['X-User-LLM-Provider'] = userKey.provider;
+            const userProvider = await window.APIKeyManager?.getCurrentProvider();
+            if (userProvider) {
+                headers['X-User-LLM-Provider'] = userProvider;
             }
         }
 
@@ -499,9 +498,9 @@ function renderErrorCard(card, symbol, errorMsg) {
  * 深度分析
  */
 async function triggerDeepAnalysis(symbol) {
-    const userKey = await window.APIKeyManager?.getCurrentKey();
+    const userProvider = await window.APIKeyManager?.getCurrentProvider();
 
-    if (!userKey) {
+    if (!userProvider) {
         if (typeof showAlert === 'function') {
             showAlert({
                 title: t('pulse.noApiKeyTitle'),
@@ -521,7 +520,7 @@ async function triggerDeepAnalysis(symbol) {
             <div class="p-6 h-full flex flex-col items-center justify-center min-h-[200px]">
                 <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-400 mb-3"></div>
                 <div class="text-amber-400 text-sm font-medium">${t('pulse.deepAnalyzing')}</div>
-                <div class="text-slate-500 text-xs mt-1">${t('pulse.usingProvider', { provider: userKey.provider.toUpperCase() })}</div>
+                <div class="text-slate-500 text-xs mt-1">${t('pulse.usingProvider', { provider: userProvider.toUpperCase() })}</div>
             </div>
         `;
     }

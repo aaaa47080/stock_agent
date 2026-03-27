@@ -14,7 +14,7 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
@@ -124,14 +124,58 @@ def _save_encryption_key(key: bytes, update_rotation_time: bool = True):
 
 # 全域金鑰快取
 _encryption_key_cache = None
+_missing_key_warning_emitted = False
+_decrypt_warning_cache: set[str] = set()
 
 
-def _get_fernet() -> Fernet:
-    """取得 Fernet 實例"""
+def _load_existing_encryption_key() -> bytes | None:
+    """Load an existing encryption key without creating a new one."""
+    _ensure_keys_dir()
+
+    if KEYS_FILE.exists():
+        try:
+            with open(KEYS_FILE, "r") as f:
+                data = json.load(f)
+                if data.get("key"):
+                    return base64.urlsafe_b64decode(data["key"])
+        except Exception as e:
+            import logging
+
+            logging.getLogger(__name__).error(
+                f"Failed to load encryption key file: {e}"
+            )
+
+    env_secret = os.getenv("API_KEY_ENCRYPTION_SECRET")
+    if env_secret:
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "⚠️ Using API_KEY_ENCRYPTION_SECRET from environment. "
+            "Consider migrating to file-based key management."
+        )
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=b"PiCryptoMiner_API_Key_Derivation",
+            iterations=480000,
+        )
+        return base64.urlsafe_b64encode(kdf.derive(env_secret.encode()))
+
+    return None
+
+
+def _get_fernet(create_if_missing: bool = False) -> Fernet | None:
+    """取得 Fernet 實例；只有寫入路徑允許建立新金鑰。"""
     global _encryption_key_cache
 
     if _encryption_key_cache is None:
-        _encryption_key_cache = _load_or_create_encryption_key()
+        key = _load_existing_encryption_key()
+        if key is None and create_if_missing:
+            key = _load_or_create_encryption_key()
+        _encryption_key_cache = key
+
+    if _encryption_key_cache is None:
+        return None
 
     return Fernet(_encryption_key_cache)
 
@@ -149,7 +193,7 @@ def encrypt_api_key(plaintext: str) -> str:
     if not plaintext:
         return ""
 
-    fernet = _get_fernet()
+    fernet = _get_fernet(create_if_missing=True)
     encrypted = fernet.encrypt(plaintext.encode())
     return base64.urlsafe_b64encode(encrypted).decode()
 
@@ -168,15 +212,36 @@ def decrypt_api_key(encrypted: str) -> str:
         return ""
 
     try:
-        fernet = _get_fernet()
+        global _missing_key_warning_emitted
+
+        fernet = _get_fernet(create_if_missing=False)
+        if fernet is None:
+            if not _missing_key_warning_emitted:
+                import logging
+
+                logging.getLogger(__name__).warning(
+                    "API key decryption skipped: no encryption key is configured"
+                )
+                _missing_key_warning_emitted = True
+            return ""
+
         decoded = base64.urlsafe_b64decode(encrypted.encode())
         decrypted = fernet.decrypt(decoded)
         return decrypted.decode()
-    except Exception as e:
-        # 解密失敗，返回空字串
+    except (ValueError, TypeError, InvalidToken):
         import logging
 
-        logging.getLogger(__name__).error(f"Failed to decrypt API key: {e}")
+        cache_key = encrypted[:16]
+        if cache_key not in _decrypt_warning_cache:
+            logging.getLogger(__name__).warning(
+                "Stored API key could not be decrypted; treating it as unavailable"
+            )
+            _decrypt_warning_cache.add(cache_key)
+        return ""
+    except Exception as e:
+        import logging
+
+        logging.getLogger(__name__).error(f"Unexpected API key decrypt failure: {e}")
         return ""
 
 

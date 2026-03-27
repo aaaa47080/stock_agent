@@ -119,13 +119,12 @@ const ForexTab = {
         AppUtils.refreshIcons();
 
         try {
-            const userKey = await window.APIKeyManager?.getCurrentKey();
+            const userProvider = await window.APIKeyManager?.getCurrentProvider();
             let url = `/api/forex/pulse/${encodeURIComponent(symbol)}`;
             const customHeaders = {};
-            if (userKey) {
+            if (userProvider) {
                 url += '?deep_analysis=true';
-                customHeaders['X-User-LLM-Key'] = userKey.key;
-                customHeaders['X-User-LLM-Provider'] = userKey.provider;
+                customHeaders['X-User-LLM-Provider'] = userProvider;
             }
 
             const d = await AppAPI.get(url, { headers: customHeaders });
@@ -134,7 +133,7 @@ const ForexTab = {
             const color = isUp ? 'text-success' : 'text-danger';
             const isDeep = d.source_mode === 'deep_analysis';
 
-            const summarySection = userKey
+            const summarySection = userProvider
                 ? `<div class="bg-surface border border-white/5 rounded-2xl p-5">
                         <div class="flex items-center gap-2 mb-3">
                             <h4 class="text-xs uppercase tracking-wider text-textMuted">${t('pulse.title')}</h4>
@@ -246,4 +245,3 @@ const ForexTab = {
 
 window.ForexTab = ForexTab;
 export { ForexTab };
-

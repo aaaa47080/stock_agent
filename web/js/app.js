@@ -329,12 +329,12 @@ async function checkApiKeyStatus() {
     const statusDot = indicator ? indicator.querySelector('span') : null;
 
     // Check LLM Key (async) - 添加錯誤處理
-    let currentKey = null;
+    let currentProvider = null;
     let hasLlmKey = false;
     try {
-        if (window.APIKeyManager && typeof window.APIKeyManager.getCurrentKey === 'function') {
-            currentKey = await window.APIKeyManager.getCurrentKey();
-            hasLlmKey = !!currentKey;
+        if (window.APIKeyManager && typeof window.APIKeyManager.getCurrentProvider === 'function') {
+            currentProvider = await window.APIKeyManager.getCurrentProvider();
+            hasLlmKey = !!currentProvider;
         }
     } catch (e) {
         console.warn('[App] Error checking API key:', e);
@@ -346,13 +346,13 @@ async function checkApiKeyStatus() {
     if (indicator && statusText && statusDot) {
         if (hasLlmKey) {
             const providerName =
-                currentKey.provider === 'openai'
+                currentProvider === 'openai'
                     ? 'OpenAI'
-                    : currentKey.provider === 'google_gemini'
+                    : currentProvider === 'google_gemini'
                       ? 'Gemini'
-                      : currentKey.provider === 'openrouter'
+                      : currentProvider === 'openrouter'
                         ? 'OpenRouter'
-                        : currentKey.provider;
+                        : currentProvider;
 
             statusDot.className =
                 'w-2 h-2 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse';
@@ -394,7 +394,7 @@ window.checkApiKeyStatus = checkApiKeyStatus;
 // ========================================
 async function updateChatUIState(hasApiKey) {
     if (hasApiKey === undefined) {
-        hasApiKey = !!(await window.APIKeyManager?.getCurrentKey());
+        hasApiKey = !!(await window.APIKeyManager?.getCurrentProvider());
     }
 
     // 1. 建議按鈕區域
@@ -441,7 +441,7 @@ window.updateChatUIState = updateChatUIState;
 function initializeUIStatus() {
     if (window.DEBUG_MODE) console.log('[App] initializeUIStatus called');
     if (window.DEBUG_MODE) console.log('[App] APIKeyManager exists:', !!window.APIKeyManager);
-    // Note: getCurrentKey() is async, so we can't check it synchronously in debug log
+    // Note: key/provider status is async, so we can't check it synchronously in debug log
 
     // 只在初始化時檢查一次
     checkApiKeyStatus();

@@ -480,8 +480,7 @@ async function submitHITLAnswer(answer) {
                 message: ctx.originalMessage,
                 analysis_mode: (typeof getSelectedAnalysisMode === 'function' ? getSelectedAnalysisMode() : 'quick'),
                 session_id: ctx.sessionId,
-                user_api_key: ctx.userKey.key,
-                user_provider: ctx.userKey.provider,
+                user_provider: ctx.userProvider,
                 user_model: ctx.userSelectedModel,
                 language: window.I18n?.getLanguage() || 'zh-TW',
                 // Ensure resume_answer is an object if it's a JSON string

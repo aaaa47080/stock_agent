@@ -44,6 +44,13 @@ class TestEncryptDifferentEachTime:
 
 @pytest.mark.unit
 class TestDecryptInvalidInput:
+    def test_decrypt_without_configured_key_does_not_create_one(self):
+        from utils.encryption import KEYS_FILE, decrypt_api_key
+
+        result = decrypt_api_key("not-valid-base64!!!")
+        assert result == ""
+        assert not KEYS_FILE.exists()
+
     def test_decrypt_invalid_base64_returns_empty(self):
         from utils.encryption import decrypt_api_key
 

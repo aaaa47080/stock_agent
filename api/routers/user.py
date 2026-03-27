@@ -650,28 +650,3 @@ async def save_user_model_endpoint(
         logger.error(f"Save model error: {e}")
         raise HTTPException(status_code=500, detail="儲存失敗")
 
-
-@router.get("/api/user/api-keys/{provider}/full")
-@limiter.limit("10/minute")
-async def get_user_api_key_full_endpoint(
-    request: Request, provider: str, current_user: dict = Depends(get_current_user)
-):
-    """獲取完整的 API Key（僅用於實際 API 調用）"""
-    from core.database.user_api_keys import get_user_api_key
-
-    user_id = current_user["user_id"]
-    try:
-        key = await run_sync(get_user_api_key, user_id, provider)
-        if key is None:
-            return {"success": False, "key": None}
-
-        audit_log(
-            action="api_key_full_access",
-            user_id=user_id,
-            metadata={"provider": provider},
-        )
-        return {"success": True, "key": key}
-
-    except Exception as e:
-        logger.error(f"Get full API key error: {e}")
-        raise HTTPException(status_code=500, detail="獲取失敗")

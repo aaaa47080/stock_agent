@@ -351,17 +351,16 @@ window.TWStockTab = {
         pulseContainer.classList.add('hidden');
 
         try {
-            const userKey = await window.APIKeyManager?.getCurrentKey();
+            const userProvider = await window.APIKeyManager?.getCurrentProvider();
             let url = `/api/twstock/pulse/${encodeURIComponent(symbol)}`;
             const customHeaders = {};
-            if (userKey) {
+            if (userProvider) {
                 url += '?deep_analysis=true';
-                customHeaders['X-User-LLM-Key'] = userKey.key;
-                customHeaders['X-User-LLM-Provider'] = userKey.provider;
+                customHeaders['X-User-LLM-Provider'] = userProvider;
             }
 
             const data = await AppAPI.get(url, { headers: customHeaders });
-            this.renderAIPulse(pulseContainer, data, !!userKey);
+            this.renderAIPulse(pulseContainer, data, !!userProvider);
             pulseContainer.classList.remove('hidden');
 
             const titleEl = document.getElementById('twstock-pulse-title');

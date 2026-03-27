@@ -338,9 +338,7 @@ async function saveLLMKey() {
             if (model && typeof window.APIKeyManager?.setModelForProvider === 'function') {
                 window.APIKeyManager.setModelForProvider(provider, model);
             }
-            // ✅ 修復：立即更新 _fullKeyCache，避免 checkApiKeyStatus 拿到舊快取
             if (window.APIKeyManager) {
-                window.APIKeyManager._fullKeyCache[provider] = apiKey;
                 window.APIKeyManager._maskedKeysCache = null;
             }
             // ✅ 通知 chat.js 清除 userKey 快取

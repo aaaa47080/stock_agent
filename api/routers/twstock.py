@@ -5,8 +5,10 @@ from typing import Any, Optional
 
 import httpx
 import yfinance as yf
-from fastapi import APIRouter, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 
+from api.deps import get_optional_current_user
+from api.user_llm import resolve_user_llm_credentials
 from api.utils import logger
 from core.tools.tw_stock_tools import (
     tw_dividend_info,
@@ -177,8 +179,8 @@ async def get_tw_market(symbols: Optional[str] = None):
 async def get_tw_pulse(
     symbol: str,
     deep_analysis: bool = False,
-    x_user_llm_key: Optional[str] = Header(None),
     x_user_llm_provider: Optional[str] = Header(None),
+    current_user: Optional[dict] = Depends(get_optional_current_user),
 ):
     """
     Get detailed pulse data (Technical, Fundamental, Institutional, News) for a single TW Stock.
@@ -272,7 +274,12 @@ async def get_tw_pulse(
 
         final_summary = dynamic_summary
         source_mode = "on_demand"
-        if deep_analysis and x_user_llm_key and x_user_llm_provider:
+        credentials = None
+        if deep_analysis:
+            credentials = await resolve_user_llm_credentials(
+                current_user, x_user_llm_provider
+            )
+        if credentials:
             from api.routers.deep_analysis_helper import deep_analyze_generic
 
             context = (
@@ -285,7 +292,10 @@ async def get_tw_pulse(
                 f"外資買賣超: {inst.get('foreign_net', 'N/A')} 股"
             )
             ai_text = await deep_analyze_generic(
-                symbol, context, x_user_llm_key, x_user_llm_provider
+                symbol,
+                context,
+                credentials["api_key"],
+                credentials["provider"],
             )
             if ai_text:
                 final_summary = ai_text

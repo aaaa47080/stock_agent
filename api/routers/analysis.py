@@ -10,6 +10,7 @@ from api.deps import get_current_user
 from api.middleware.rate_limit import limiter
 from api.models import QueryRequest
 from api.response_metadata import build_response_metadata
+from api.user_llm import resolve_user_llm_credentials
 from api.utils import logger, run_sync
 from core.agents.analysis_policy import AnalysisPolicyResolver
 from core.database import (
@@ -145,15 +146,17 @@ async def analyze_crypto(
         前端帶 resume_answer 重送 → Command(resume=...) 繼續 graph
     若 V4 啟動失敗則回傳 503。
     """
-    if not body.user_api_key or not body.user_provider:
+    credentials = await resolve_user_llm_credentials(current_user, body.user_provider)
+    if not credentials:
         raise HTTPException(
-            status_code=400, detail="缺少 API Key。請在系統設定中輸入您的 LLM API Key。"
+            status_code=400,
+            detail="缺少可用的 LLM API Key。請在系統設定中輸入您的 API Key。",
         )
 
     try:
         user_client = create_user_llm_client(
-            provider=body.user_provider,
-            api_key=body.user_api_key,
+            provider=credentials["provider"],
+            api_key=credentials["api_key"],
             model=body.user_model,
         )
     except Exception as e:

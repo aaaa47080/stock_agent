@@ -233,7 +233,6 @@ class TestAPIModels:
         req = QueryRequest(
             message="分析 BTC",
             analysis_mode="verified",
-            user_api_key="test-key-12345",
             user_provider="openai",
             session_id="test-session",
             resume_answer="確認執行",

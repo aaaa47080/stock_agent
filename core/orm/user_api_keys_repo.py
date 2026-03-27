@@ -99,7 +99,8 @@ class UserApiKeysRepository:
             row = result.scalar_one_or_none()
             if not row:
                 return None
-            return decrypt_api_key(row)
+            decrypted = decrypt_api_key(row)
+            return decrypted or None
 
     async def get_user_api_key_masked(
         self,
@@ -132,10 +133,11 @@ class UserApiKeysRepository:
             masked = mask_api_key(decrypted) if decrypted else None
 
             return {
-                "has_key": True,
+                "has_key": bool(decrypted),
                 "masked_key": masked,
                 "model": row[1],
                 "updated_at": row[2].isoformat() if row[2] else None,
+                "corrupted": not bool(decrypted),
             }
 
     async def get_all_user_api_keys(
@@ -162,10 +164,11 @@ class UserApiKeysRepository:
                 masked = mask_api_key(decrypted) if decrypted else None
 
                 result_map[provider] = {
-                    "has_key": True,
+                    "has_key": bool(decrypted),
                     "masked_key": masked,
                     "model": row[2],
                     "updated_at": row[3].isoformat() if row[3] else None,
+                    "corrupted": not bool(decrypted),
                 }
 
             # Ensure all supported providers have an entry

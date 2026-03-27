@@ -8,7 +8,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
-from api.deps import get_current_user
+from api.deps import get_current_user, get_optional_current_user
 from api.globals import (
     ANALYSIS_STATUS,
     FUNDING_RATE_CACHE,
@@ -18,6 +18,7 @@ from api.globals import (
 )
 from api.middleware.rate_limit import limiter
 from api.models import KlineRequest, RefreshPulseRequest, ScreenerRequest
+from api.user_llm import resolve_user_llm_credentials
 from api.services import (
     refresh_all_market_pulse_data,
     trigger_on_demand_analysis,
@@ -333,8 +334,8 @@ async def get_market_pulse_api(
     sources: Optional[str] = None,
     refresh: bool = False,
     deep_analysis: bool = False,
-    x_user_llm_key: Optional[str] = Header(None),
     x_user_llm_provider: Optional[str] = Header(None),
+    current_user: Optional[dict] = Depends(get_optional_current_user),
 ):
     """Get market pulse analysis with tiered access."""
     try:
@@ -348,10 +349,18 @@ async def get_market_pulse_api(
             return cached
 
         # 2. Deep analysis mode with user's LLM key
-        if deep_analysis and x_user_llm_key and x_user_llm_provider:
+        credentials = None
+        if deep_analysis:
+            credentials = await resolve_user_llm_credentials(
+                current_user, x_user_llm_provider
+            )
+        if credentials:
             try:
                 result = await perform_deep_analysis(
-                    base_symbol, sources, x_user_llm_key, x_user_llm_provider
+                    base_symbol,
+                    sources,
+                    credentials["api_key"],
+                    credentials["provider"],
                 )
                 if result:
                     return result

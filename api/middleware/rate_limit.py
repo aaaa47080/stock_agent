@@ -78,8 +78,7 @@ RATE_LIMITS = {
     "governance_report": "10/hour",  # Report submission (strict)
     "governance_vote": "30/hour",  # Voting (Premium members only)
     "governance_read": "100/hour",  # Reading governance data
-    # Sensitive API Key endpoints (very strict to prevent key theft)
-    "api_key_full": "10/minute",  # Getting full API key
+    # Sensitive API Key endpoints
     "api_key_write": "20/minute",  # Saving/deleting API keys
     # Token refresh (moderate - prevent token abuse)
     "token_refresh": "5/minute",  # Refresh token endpoint
@@ -103,9 +102,6 @@ def get_rate_limit_for_route(request: Request) -> str:
 
     # Sensitive API Key endpoints (very strict)
     if "/api-keys" in path:
-        # Full key retrieval is most sensitive
-        if "/full" in path:
-            return RATE_LIMITS["api_key_full"]
         # Write operations (save/delete)
         if method in ["post", "put", "delete"]:
             return RATE_LIMITS["api_key_write"]

@@ -10,16 +10,16 @@ window.chatInitialized = false; // 防止重複初始化
 AppStore.set('chatInitialized', false);
 
 // ✅ 效能優化：預先快取 userKey，避免每次 sendMessage 都打後端 API
-let _cachedUserKey = null;
-async function getCachedUserKey(forceRefresh = false) {
-    if (!forceRefresh && _cachedUserKey) return _cachedUserKey;
-    _cachedUserKey = (await window.APIKeyManager?.getCurrentKey()) || null;
-    return _cachedUserKey;
+let _cachedUserProvider = null;
+async function getCachedUserProvider(forceRefresh = false) {
+    if (!forceRefresh && _cachedUserProvider) return _cachedUserProvider;
+    _cachedUserProvider = (await window.APIKeyManager?.getCurrentProvider()) || null;
+    return _cachedUserProvider;
 }
-window.getCachedUserKey = getCachedUserKey;
+window.getCachedUserProvider = getCachedUserProvider;
 // 當 APIKeyManager 更新金鑰時，清除快取
 window.addEventListener('apiKeyUpdated', () => {
-    _cachedUserKey = null;
+    _cachedUserProvider = null;
 });
 
 // ✅ 效能優化：scoped lucide icon 初始化，避免全頁 DOM 掃描
@@ -427,7 +427,7 @@ function toggleSidebar() {
 window.toggleSidebar = toggleSidebar;
 
 export {
-    getCachedUserKey,
+    getCachedUserProvider,
     createIconsIn,
     MessageComponents,
     appendMessage,
