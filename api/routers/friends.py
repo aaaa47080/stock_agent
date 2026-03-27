@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.deps import get_current_user
+from api.deps import get_current_user, get_optional_current_user
 from api.middleware.rate_limit import limiter
 from api.routers.notifications import push_notification_to_user
 from api.utils import logger
@@ -69,11 +69,11 @@ async def search_users_endpoint(
 @router.get("/api/friends/profile/{target_user_id}")
 async def get_user_profile(
     target_user_id: str,
-    current_user: dict = Depends(get_current_user),
+    current_user: dict | None = Depends(get_optional_current_user),
     session: AsyncSession = Depends(get_async_session),
 ):
     try:
-        user_id = current_user["user_id"]
+        user_id = current_user["user_id"] if current_user else None
         profile = await friends_repo.get_public_user_profile(
             target_user_id,
             viewer_user_id=user_id,

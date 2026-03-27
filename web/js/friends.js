@@ -26,7 +26,7 @@ const FriendsAPI = {
         if (!userId) throw new Error(t('friends.loginRequired'));
 
         return await AppAPI.get(
-            `/api/friends/search?q=${encodeURIComponent(query)}&user_id=${userId}&limit=${limit}`,
+            `/api/friends/search?q=${encodeURIComponent(query)}&limit=${limit}`,
         );
     },
 
@@ -35,9 +35,7 @@ const FriendsAPI = {
      * @param {string} targetUserId - 目標用戶 ID
      */
     async getProfile(targetUserId) {
-        const userId = this._getUserId();
-        const query = userId ? `?user_id=${userId}` : '';
-        return await AppAPI.get(`/api/friends/profile/${targetUserId}${query}`);
+        return await AppAPI.get(`/api/friends/profile/${targetUserId}`);
     },
 
     /**
@@ -48,7 +46,7 @@ const FriendsAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error(t('friends.loginRequired'));
 
-        return await AppAPI.post(`/api/friends/request?user_id=${userId}`, { target_user_id: targetUserId });
+        return await AppAPI.post('/api/friends/request', { target_user_id: targetUserId });
     },
 
     /**
@@ -59,7 +57,7 @@ const FriendsAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error(t('friends.loginRequired'));
 
-        return await AppAPI.post(`/api/friends/accept?user_id=${userId}`, { target_user_id: requesterId });
+        return await AppAPI.post('/api/friends/accept', { target_user_id: requesterId });
     },
 
     /**
@@ -70,7 +68,7 @@ const FriendsAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error(t('friends.loginRequired'));
 
-        return await AppAPI.post(`/api/friends/reject?user_id=${userId}`, { target_user_id: requesterId });
+        return await AppAPI.post('/api/friends/reject', { target_user_id: requesterId });
     },
 
     /**
@@ -81,7 +79,7 @@ const FriendsAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error(t('friends.loginRequired'));
 
-        return await AppAPI.post(`/api/friends/cancel?user_id=${userId}`, { target_user_id: targetUserId });
+        return await AppAPI.post('/api/friends/cancel', { target_user_id: targetUserId });
     },
 
     /**
@@ -92,9 +90,7 @@ const FriendsAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error(t('friends.loginRequired'));
 
-        return await AppAPI.delete(
-            `/api/friends/remove?user_id=${userId}&target_user_id=${friendId}`,
-        );
+        return await AppAPI.delete(`/api/friends/remove?target_user_id=${friendId}`);
     },
 
     /**
@@ -106,9 +102,7 @@ const FriendsAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error(t('friends.loginRequired'));
 
-        return await AppAPI.get(
-            `/api/friends/list?user_id=${userId}&limit=${limit}&offset=${offset}`,
-        );
+        return await AppAPI.get(`/api/friends/list?limit=${limit}&offset=${offset}`);
     },
 
     /**
@@ -118,7 +112,7 @@ const FriendsAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error(t('friends.loginRequired'));
 
-        return await AppAPI.get(`/api/friends/requests/received?user_id=${userId}`);
+        return await AppAPI.get('/api/friends/requests/received');
     },
 
     /**
@@ -128,7 +122,7 @@ const FriendsAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error(t('friends.loginRequired'));
 
-        return await AppAPI.get(`/api/friends/requests/sent?user_id=${userId}`);
+        return await AppAPI.get('/api/friends/requests/sent');
     },
 
     /**
@@ -139,7 +133,7 @@ const FriendsAPI = {
         const userId = this._getUserId();
         if (!userId) return { status: null, is_friend: false };
 
-        return await AppAPI.get(`/api/friends/status/${targetUserId}?user_id=${userId}`);
+        return await AppAPI.get(`/api/friends/status/${targetUserId}`);
     },
 
     /**
@@ -149,7 +143,7 @@ const FriendsAPI = {
         const userId = this._getUserId();
         if (!userId) return { friends_count: 0, pending_received: 0 };
 
-        return await AppAPI.get(`/api/friends/counts?user_id=${userId}`);
+        return await AppAPI.get('/api/friends/counts');
     },
 
     /**
@@ -160,7 +154,7 @@ const FriendsAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error(t('friends.loginRequired'));
 
-        return await AppAPI.post(`/api/friends/block?user_id=${userId}`, { target_user_id: targetUserId });
+        return await AppAPI.post('/api/friends/block', { target_user_id: targetUserId });
     },
 
     /**
@@ -171,7 +165,7 @@ const FriendsAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error(t('friends.loginRequired'));
 
-        return await AppAPI.post(`/api/friends/unblock?user_id=${userId}`, { target_user_id: targetUserId });
+        return await AppAPI.post('/api/friends/unblock', { target_user_id: targetUserId });
     },
 
     /**
@@ -181,7 +175,7 @@ const FriendsAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error(t('friends.loginRequired'));
 
-        return await AppAPI.get(`/api/friends/blocked?user_id=${userId}`);
+        return await AppAPI.get('/api/friends/blocked');
     },
 };
 

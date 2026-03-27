@@ -374,6 +374,26 @@ async def get_current_user(
     )
 
 
+async def get_optional_current_user(
+    request: Request, token: str = Depends(oauth2_scheme)
+) -> Optional[CurrentUser]:
+    """
+    Best-effort user resolution for endpoints that may be viewed anonymously.
+
+    Returns the authenticated user when credentials are valid, otherwise None.
+    """
+    resolved_token = token or get_token_from_cookie(request)
+    if not isinstance(resolved_token, str) or not resolved_token:
+        return None
+
+    try:
+        return await get_current_user(request, resolved_token)
+    except HTTPException as exc:
+        if exc.status_code == status.HTTP_401_UNAUTHORIZED:
+            return None
+        raise
+
+
 async def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
     """
     Require admin role. Use as dependency on admin-only endpoints.

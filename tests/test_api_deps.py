@@ -227,6 +227,18 @@ class TestGetCurrentUser:
                 assert "SECURITY ALERT" in str(exc_info.value)
 
 
+class TestGetOptionalCurrentUser:
+    """Tests for get_optional_current_user function."""
+
+    @pytest.mark.asyncio
+    async def test_missing_token_returns_none(self):
+        """Anonymous requests should resolve to None instead of 401."""
+        from api.deps import get_optional_current_user
+
+        user = await get_optional_current_user(_mock_request(), None)
+        assert user is None
+
+
 class TestRequireAdmin:
     """Tests for require_admin function"""
 
