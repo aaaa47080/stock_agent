@@ -21,7 +21,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import get_current_user, verify_token
 from api.middleware.rate_limit import limiter
-from api.utils import logger
+from api.utils import logger, run_sync
+from core.database.notifications import (
+    get_notifications as legacy_get_notifications,
+)
+from core.database.notifications import (
+    get_unread_count as legacy_get_unread_count,
+)
 from core.orm.notifications_repo import notifications_repo
 from core.orm.repositories import user_repo
 from core.orm.session import get_async_session
@@ -76,6 +82,14 @@ class CreateNotificationRequest(BaseModel):
     data: Optional[dict] = Field(None, description="額外數據")
 
 
+def _should_fallback_to_legacy_db(exc: Exception) -> bool:
+    if isinstance(exc, ModuleNotFoundError):
+        return True
+
+    message = str(exc)
+    return "async_generator" in message and "context manager" in message
+
+
 # ============================================================================
 # API 端點
 # ============================================================================
@@ -87,21 +101,28 @@ async def get_notifications_endpoint(
     offset: int = Query(0, ge=0),
     unread_only: bool = Query(False, description="只返回未讀通知"),
     current_user: dict = Depends(get_current_user),
-    session: AsyncSession = Depends(get_async_session),
 ):
     try:
         user_id = current_user["user_id"]
-        notifications = await notifications_repo.get_notifications(
-            user_id=user_id,
-            limit=limit,
-            offset=offset,
-            unread_only=unread_only,
-            session=session,
-        )
-        unread_count = await notifications_repo.get_unread_count(
-            user_id,
-            session=session,
-        )
+        try:
+            notifications = await notifications_repo.get_notifications(
+                user_id=user_id,
+                limit=limit,
+                offset=offset,
+                unread_only=unread_only,
+            )
+            unread_count = await notifications_repo.get_unread_count(user_id)
+        except Exception as exc:
+            if not _should_fallback_to_legacy_db(exc):
+                raise
+            logger.warning(
+                "Async notification store unavailable, falling back to legacy DB layer: %s",
+                exc,
+            )
+            notifications = await run_sync(
+                legacy_get_notifications, user_id, limit, offset, unread_only
+            )
+            unread_count = await run_sync(legacy_get_unread_count, user_id)
 
         return {
             "success": True,
@@ -119,11 +140,19 @@ async def get_notifications_endpoint(
 @router.get("/api/notifications/unread-count")
 async def get_unread_count_endpoint(
     current_user: dict = Depends(get_current_user),
-    session: AsyncSession = Depends(get_async_session),
 ):
     try:
         user_id = current_user["user_id"]
-        count = await notifications_repo.get_unread_count(user_id, session=session)
+        try:
+            count = await notifications_repo.get_unread_count(user_id)
+        except Exception as exc:
+            if not _should_fallback_to_legacy_db(exc):
+                raise
+            logger.warning(
+                "Async notification unread-count unavailable, falling back: %s",
+                exc,
+            )
+            count = await run_sync(legacy_get_unread_count, user_id)
         return {"success": True, "count": count}
     except HTTPException:
         raise

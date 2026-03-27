@@ -256,7 +256,6 @@ async function executeTabSwitch(tabId, fromPopState = false) {
                 settingsInits.push(Promise.resolve(window.initTestMode()));
             }
         }
-        if (typeof updateOKXStatusUI === 'function') updateOKXStatusUI();
         if (typeof updatePriceDisplays === 'function') updatePriceDisplays();
         if (
             window.PremiumManager &&

@@ -255,55 +255,6 @@ window.Components.settings = `
                     </div>
                 </div>
 
-                <!-- Exchange Keys -->
-                <div class="bg-surface p-6 md:p-8 rounded-3xl border border-white/5">
-                    <div class="flex items-center justify-between mb-6">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-xl bg-secondary/10 flex items-center justify-center">
-                                <i data-lucide="key" class="w-5 h-5 text-secondary"></i>
-                            </div>
-                            <div>
-                                <h3 class="text-lg font-serif text-secondary" data-i18n="settings.exchange.title">Exchange Keys</h3>
-                                <p class="text-xs text-textMuted" data-i18n="settings.exchange.description">Connect your OKX account</p>
-                            </div>
-                        </div>
-                        <div id="okx-status-badge" class="${STATUS_BADGE_CLASS}">
-                        </div>
-                    </div>
-
-                    <div id="okx-not-connected" class="hidden">
-                        <div class="text-center py-4 mb-4 bg-background/50 rounded-xl">
-                            <i data-lucide="unplug" class="w-8 h-8 text-textMuted mx-auto mb-2"></i>
-                            <p class="text-sm text-textMuted" data-i18n="settings.exchange.notConnected">No exchange connected</p>
-                        </div>
-                        <button onclick="document.getElementById('apikey-modal').classList.remove('hidden')" class="w-full py-3.5 bg-gradient-to-r from-primary to-accent text-background font-bold rounded-2xl transition flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:scale-[1.02]">
-                            <i data-lucide="plug" class="w-4 h-4"></i> <span data-i18n="settings.exchange.connectButton">Connect OKX</span>
-                        </button>
-                    </div>
-
-                    <div id="okx-connected" class="hidden">
-                        <div class="flex items-center justify-between p-4 bg-success/5 border border-success/20 rounded-xl mb-4">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-full bg-success/20 flex items-center justify-center">
-                                    <i data-lucide="check" class="w-5 h-5 text-success"></i>
-                                </div>
-                                <div>
-                                    <p class="text-sm font-medium text-secondary" data-i18n="settings.exchange.connected">OKX Connected</p>
-                                    <p class="text-xs text-textMuted" data-i18n="settings.exchange.storedLocally">API key stored locally</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-3">
-                            <button onclick="document.getElementById('apikey-modal').classList.remove('hidden')" class="py-3 bg-surfaceHighlight hover:bg-white/10 border border-white/5 text-secondary rounded-xl transition flex items-center justify-center gap-2 text-sm font-medium">
-                                <i data-lucide="edit-3" class="w-4 h-4"></i> <span data-i18n="settings.exchange.update">Update</span>
-                            </button>
-                            <button onclick="disconnectOKX()" class="py-3 bg-danger/10 hover:bg-danger/20 border border-danger/20 text-danger rounded-xl transition flex items-center justify-center gap-2 text-sm font-medium">
-                                <i data-lucide="unplug" class="w-4 h-4"></i> <span data-i18n="settings.exchange.disconnect">Disconnect</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
                 <button onclick="saveSettings()" id="btn-save-settings" class="w-full py-4 bg-secondary text-background font-bold rounded-2xl shadow-xl hover:scale-[1.02] transition" data-i18n="settings.saveAll">
                     Save All Settings
                 </button>

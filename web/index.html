@@ -698,43 +698,6 @@
     </div>
 
     <!-- Modals -->
-    <!-- API Key Modal -->
-    <div id="apikey-modal" role="dialog" aria-modal="true" aria-labelledby="apikey-modal-title"
-        class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-6">
-        <div class="bg-surface w-full max-w-md p-8 rounded-[2.5rem] border border-white/5 shadow-2xl">
-            <div class="flex justify-between items-center mb-6">
-                <h3 id="apikey-modal-title" class="font-serif text-xl text-secondary" data-i18n="modals.apiKey.title">Connect OKX</h3>
-                <button onclick="closeApiKeyModal()" aria-label="關閉"
-                    class="w-8 h-8 rounded-full bg-background flex items-center justify-center text-textMuted hover:text-secondary transition"><i
-                        data-lucide="x" class="w-4 h-4"></i></button>
-            </div>
-            <form id="apikey-form" onsubmit="saveApiKeys(event)" class="space-y-4">
-                <div>
-                    <label for="input-api-key" class="sr-only">API Key</label>
-                    <input type="text" id="input-api-key" placeholder="API Key" data-i18n="modals.apiKey.apiKeyPlaceholder"
-                        data-i18n-attr="placeholder"
-                        class="w-full bg-background border border-white/5 rounded-2xl p-4 text-secondary outline-none focus:border-primary/50 transition">
-                </div>
-                <div>
-                    <label for="input-secret-key" class="sr-only">Secret Key</label>
-                    <input type="password" id="input-secret-key" placeholder="Secret Key"
-                        data-i18n="modals.apiKey.secretKeyPlaceholder" data-i18n-attr="placeholder"
-                        class="w-full bg-background border border-white/5 rounded-2xl p-4 text-secondary outline-none focus:border-primary/50 transition">
-                </div>
-                <div>
-                    <label for="input-passphrase" class="sr-only">Passphrase</label>
-                    <input type="password" id="input-passphrase" placeholder="Passphrase"
-                        data-i18n="modals.apiKey.passphrasePlaceholder" data-i18n-attr="placeholder"
-                        class="w-full bg-background border border-white/5 rounded-2xl p-4 text-secondary outline-none focus:border-primary/50 transition">
-                </div>
-                <button type="submit"
-                    class="w-full bg-secondary hover:bg-white text-background font-bold py-4 rounded-2xl transition"
-                    data-i18n="modals.apiKey.secureConnect">Secure
-                    Connect</button>
-            </form>
-        </div>
-    </div>
-
     <!-- Global Filter Modal (Re-styled) -->
     <div id="global-filter-modal" role="dialog" aria-modal="true" aria-labelledby="global-filter-modal-title"
         class="fixed inset-0 bg-background/90 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4">

@@ -24,7 +24,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import Board, ForumComment, Post, Tip, User
-from .session import get_async_session
+from .session import using_session
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ class ForumRepository:
         if active_only:
             stmt = stmt.where(Board.is_active == 1)
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(stmt)
             rows = result.fetchall()
             return [
@@ -87,7 +87,7 @@ class ForumRepository:
             Board.is_active,
         ).where(Board.slug == slug)
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(stmt)
             row = result.fetchone()
             if row is None:
@@ -107,7 +107,7 @@ class ForumRepository:
         increment_view: bool = True,
         session: AsyncSession | None = None,
     ) -> Optional[dict]:
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             if increment_view:
                 await s.execute(
                     update(Post)
@@ -212,7 +212,7 @@ class ForumRepository:
         if category is not None:
             stmt = stmt.where(Post.category == category)
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(stmt)
             rows = result.fetchall()
             return [
@@ -293,7 +293,7 @@ class ForumRepository:
             updated_at=now,
         )
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             s.add(new_post)
             await s.flush()
             post_id = new_post.id
@@ -332,7 +332,7 @@ class ForumRepository:
             .values(**values)
         )
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(stmt)
             return result.rowcount > 0
 
@@ -342,7 +342,7 @@ class ForumRepository:
         user_id: str,
         session: AsyncSession | None = None,
     ) -> bool:
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             post = await s.execute(
                 select(Post).where(Post.id == post_id, Post.user_id == user_id)
             )
@@ -377,7 +377,7 @@ class ForumRepository:
             created_at=now,
         )
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             s.add(new_comment)
             await s.flush()
 
@@ -428,7 +428,7 @@ class ForumRepository:
             .offset(offset)
         )
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(stmt)
             rows = result.fetchall()
             return [
@@ -465,7 +465,7 @@ class ForumRepository:
             created_at=now,
         )
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             s.add(new_tip)
             await s.flush()
 
@@ -504,7 +504,7 @@ class ForumRepository:
             .offset(offset)
         )
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(stmt)
             rows = result.fetchall()
             return [
@@ -532,7 +532,7 @@ class ForumRepository:
             Tip.to_user_id == user_id
         )
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(stmt)
             val = result.scalar()
             return _decimal_to_float(val) if val else 0.0
@@ -564,7 +564,7 @@ class ForumRepository:
             .offset(offset)
         )
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(stmt)
             rows = result.fetchall()
             return [

@@ -2,6 +2,7 @@
 Extended tests for market router in api/routers/market/
 """
 
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import numpy as np
@@ -16,6 +17,8 @@ from api.routers.market.helpers import (
     sort_funding_rates,
     try_get_cached_screener,
 )
+from api.routers.market.rest import run_screener
+from api.models import ScreenerRequest
 
 
 class TestReplaceNaNInDataFrame:
@@ -99,6 +102,26 @@ class TestTryGetCachedScreener:
         with patch("api.routers.market.helpers.cached_screener_result", {"data": None}):
             result = try_get_cached_screener(refresh=False)
             assert result is None
+
+
+@pytest.mark.asyncio
+async def test_run_screener_uses_payload_refresh_flag_for_cache_lookup():
+    """Regression test: screener should read refresh from ScreenerRequest, not Request."""
+    request = SimpleNamespace()
+    screener_request = ScreenerRequest(exchange="okx", refresh=True)
+    current_user = {"user_id": "u1"}
+
+    with patch(
+        "api.routers.market.rest.try_get_cached_screener",
+        side_effect=[None, None],
+    ) as mock_cache, patch(
+        "api.routers.market.rest.run_default_screener",
+        return_value={"top_volume": [], "top_gainers": [], "top_losers": []},
+    ):
+        await run_screener.__wrapped__(request, screener_request, current_user)
+
+    assert mock_cache.call_args_list[0].args == (True,)
+    assert mock_cache.call_args_list[1].args == (True,)
 
 
 class TestSortFundingRatesExtended:

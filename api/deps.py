@@ -79,6 +79,14 @@ def _get_key_manager():
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/user/login", auto_error=False)
 
 
+def _is_expected_user_db_fallback_error(exc: Exception) -> bool:
+    if isinstance(exc, ModuleNotFoundError):
+        return True
+
+    message = str(exc)
+    return "async_generator" in message and "context manager" in message
+
+
 def set_token_cookies(
     response: Response,
     access_token: str,
@@ -324,12 +332,18 @@ async def get_current_user(
                 return user
         except HTTPException:
             raise
-        except Exception:
+        except Exception as exc:
             # DB fetch fails or user doesn't exist
-            logger.warning(
-                "Failed to load current user from DB; falling back by mode",
-                exc_info=True,
-            )
+            if _is_expected_user_db_fallback_error(exc):
+                logger.warning(
+                    "Failed to load current user from DB; falling back by mode: %s",
+                    exc,
+                )
+            else:
+                logger.warning(
+                    "Failed to load current user from DB; falling back by mode",
+                    exc_info=True,
+                )
 
     # If we are in TEST_MODE, return mock test user when DB fetch fails or no token
     if TEST_MODE:

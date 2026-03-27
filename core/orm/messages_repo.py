@@ -21,7 +21,7 @@ from sqlalchemy import and_, case, exists, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import DmConversation, DmMessage, Friendship, User
-from .session import get_async_session
+from .session import using_session
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +72,7 @@ class MessagesRepository:
         if user1_id > user2_id:
             user1_id, user2_id = user2_id, user1_id
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(
                 select(DmConversation).where(
                     DmConversation.user1_id == user1_id,
@@ -186,7 +186,7 @@ class MessagesRepository:
             .offset(offset)
         )
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(stmt)
             rows = result.all()
             conversations = []
@@ -230,7 +230,7 @@ class MessagesRepository:
                 DmConversation.user2_id == user_id,
             ),
         )
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(stmt)
             conv = result.scalar_one_or_none()
             if not conv:
@@ -309,7 +309,7 @@ class MessagesRepository:
             is_blocked_sq,
         )
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(stmt)
             row = result.one()
             sender_exists, receiver_exists, are_friends, is_blocked = row
@@ -354,7 +354,7 @@ class MessagesRepository:
                 "max_length": max_length,
             }
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             try:
                 await s.execute(
                     update(User)
@@ -500,7 +500,7 @@ class MessagesRepository:
             DmMessage.created_at.desc(), DmMessage.id.desc()
         ).limit(limit)
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             verify_result = await s.execute(verify_stmt)
             if not verify_result.scalar_one_or_none():
                 return {"success": False, "error": "conversation_not_found"}
@@ -526,7 +526,7 @@ class MessagesRepository:
         if not conv:
             return {"success": False, "error": "conversation_not_found"}
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(
                 update(DmMessage)
                 .where(
@@ -573,7 +573,7 @@ class MessagesRepository:
             )
         )
 
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(stmt)
             return result.scalar() or 0
 
@@ -588,7 +588,7 @@ class MessagesRepository:
         stmt = select(SystemConfig.value, SystemConfig.value_type).where(
             SystemConfig.key == key
         )
-        async with session or get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(stmt)
             row = result.one_or_none()
             if not row:

@@ -13,7 +13,7 @@ from api.middleware.rate_limit import limiter
 from api.pi_verification import PI_API_BASE, PI_API_KEY
 from api.utils import logger, run_sync
 from core.config import TEST_MODE
-from core.database.user import upgrade_to_pro
+from core.database.user import get_user_membership, upgrade_to_pro
 from core.orm.repositories import user_repo
 
 router = APIRouter(prefix="/api/premium", tags=["Premium"])
@@ -22,6 +22,22 @@ PLAN_MONTHS = {
     "premium_monthly": 1,
     "premium_yearly": 12,
 }
+
+
+def _normalize_legacy_membership(legacy_membership: dict) -> dict:
+    return {
+        "is_premium": bool(legacy_membership.get("is_premium")),
+        "membership_tier": legacy_membership.get("tier") or "free",
+        "days_remaining": 0,
+    }
+
+
+def _should_fallback_to_legacy_membership(exc: Exception) -> bool:
+    if isinstance(exc, ModuleNotFoundError):
+        return True
+
+    message = str(exc)
+    return "async_generator" in message and "context manager" in message
 
 
 def _record_used_payment(payment_id: str, user_id: str) -> None:
@@ -254,7 +270,18 @@ async def get_premium_status(
 ):
     try:
         user_id = current_user["user_id"]
-        membership = await user_repo.get_membership(user_id)
+        try:
+            membership = await user_repo.get_membership(user_id)
+        except Exception as exc:
+            if not _should_fallback_to_legacy_membership(exc):
+                raise
+            logger.warning(
+                "Async membership store unavailable, falling back to legacy DB layer: %s",
+                exc,
+            )
+            membership = _normalize_legacy_membership(
+                await run_sync(get_user_membership, user_id)
+            )
 
         if not membership:
             raise HTTPException(status_code=404, detail="User not found")

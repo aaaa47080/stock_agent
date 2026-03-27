@@ -112,7 +112,7 @@ async def run_screener(
             raise HTTPException(status_code=500, detail="Custom screener failed")
 
     # 2. Try to return cached result
-    cached = try_get_cached_screener(request.refresh)
+    cached = try_get_cached_screener(screener_request.refresh)
     if cached:
         return cached
 

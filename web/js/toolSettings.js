@@ -28,6 +28,42 @@ let _currentUserTier = 'free';
 let _toolSettingsLoaded = false;
 let _toolSettingsRetryScheduled = false;
 let _toolSettingsLoadPromise = null;
+let _toolSettingsWatchdogId = null;
+
+const TOOL_SETTINGS_DIAGNOSTICS_KEY = 'tool_settings_diagnostics_v1';
+
+function readToolSettingsDiagnostics() {
+    try {
+        const raw = sessionStorage.getItem(TOOL_SETTINGS_DIAGNOSTICS_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (_) {
+        return [];
+    }
+}
+
+function writeToolSettingsDiagnostics(entries) {
+    try {
+        sessionStorage.setItem(
+            TOOL_SETTINGS_DIAGNOSTICS_KEY,
+            JSON.stringify(entries.slice(-80))
+        );
+    } catch (_) {}
+}
+
+function pushToolSettingsDiagnostic(event, data) {
+    const entries = readToolSettingsDiagnostics();
+    entries.push({
+        at: new Date().toISOString(),
+        event,
+        data: data || {},
+    });
+    writeToolSettingsDiagnostics(entries);
+}
+
+window.getToolSettingsDiagnostics = function () {
+    return readToolSettingsDiagnostics();
+};
 
 function _showLoginRequired(container) {
     _toolSettingsLoaded = false;
@@ -45,24 +81,52 @@ async function initToolSettings() {
     if (!container) return;
 
     if (_toolSettingsLoadPromise) {
+        pushToolSettingsDiagnostic('init:reuseInflight');
         return _toolSettingsLoadPromise;
     }
 
     _toolSettingsLoadPromise = (async () => {
+        const currentUser = window.AuthManager?.currentUser || null;
+        pushToolSettingsDiagnostic('init:start', {
+            user_id: currentUser?.user_id || currentUser?.uid || null,
+            pi_uid: currentUser?.pi_uid || null,
+            active_tab: typeof AppStore !== 'undefined' ? AppStore.get('activeTab') : null,
+        });
         container.innerHTML = `
             <div class="flex items-center justify-center py-8 text-textMuted">
                 <i data-lucide="loader" class="w-5 h-5 animate-spin mr-2"></i>
                 <span class="text-sm">載入中...</span>
             </div>`;
         AppUtils.refreshIcons();
+        clearTimeout(_toolSettingsWatchdogId);
+        _toolSettingsWatchdogId = setTimeout(() => {
+            if (_toolSettingsLoadPromise) {
+                pushToolSettingsDiagnostic('init:watchdogTimeout');
+                container.innerHTML = `
+                    <div class="text-center py-4 space-y-2">
+                        <p class="text-sm text-yellow-400">工具設定載入逾時，請重試</p>
+                        <button onclick="initToolSettings()" class="px-4 py-2 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary text-sm font-bold transition">
+                            重新載入
+                        </button>
+                    </div>`;
+            }
+        }, 12000);
 
         try {
-            const data = await AppAPI.get('/api/user/tools');
+            const data = await AppAPI.get('/api/user/tools', { timeout: 10000 });
             _currentUserTier = data.user_tier || 'free';
             _toolSettingsLoaded = true;
             _toolSettingsRetryScheduled = false;
+            pushToolSettingsDiagnostic('init:success', {
+                user_tier: _currentUserTier,
+                tool_count: Array.isArray(data.tools) ? data.tools.length : 0,
+            });
             renderToolList(container, data.tools || []);
         } catch (err) {
+            pushToolSettingsDiagnostic('init:error', {
+                status: err?.status || 0,
+                message: err?.message || 'unknown',
+            });
             console.error('[toolSettings] fetch error:', err);
             if (err?.status === 401 || err?.status === 403) {
                 const hasKnownUser =
@@ -87,8 +151,15 @@ async function initToolSettings() {
                 _showLoginRequired(container);
                 return;
             }
-            container.innerHTML = `<p class="text-sm text-red-400 text-center py-4">載入失敗，請稍後再試。</p>`;
+            container.innerHTML = `
+                <div class="text-center py-4 space-y-2">
+                    <p class="text-sm text-red-400">載入失敗，請稍後再試。</p>
+                    <button onclick="initToolSettings()" class="px-4 py-2 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary text-sm font-bold transition">
+                        重新載入
+                    </button>
+                </div>`;
         } finally {
+            clearTimeout(_toolSettingsWatchdogId);
             _toolSettingsLoadPromise = null;
         }
     })();

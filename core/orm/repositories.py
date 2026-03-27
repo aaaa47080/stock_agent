@@ -22,7 +22,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import User
-from .session import get_async_session
+from .session import using_session
 
 logger = logging.getLogger(__name__)
 
@@ -65,11 +65,7 @@ class UserRepository:
         self, user_id: str, session: AsyncSession | None = None
     ) -> Optional[dict]:
         """Get user by ID, returning a dict in the legacy format."""
-        if session is not None:
-            result = await session.execute(select(User).where(User.user_id == user_id))
-            user = result.scalar_one_or_none()
-            return _user_to_dict(user) if user else None
-        async with get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(select(User).where(User.user_id == user_id))
             user = result.scalar_one_or_none()
             return _user_to_dict(user) if user else None
@@ -78,13 +74,7 @@ class UserRepository:
         self, username: str, session: AsyncSession | None = None
     ) -> Optional[dict]:
         """Get user by username."""
-        if session is not None:
-            result = await session.execute(
-                select(User).where(User.username == username)
-            )
-            user = result.scalar_one_or_none()
-            return _user_to_dict(user) if user else None
-        async with get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(select(User).where(User.username == username))
             user = result.scalar_one_or_none()
             return _user_to_dict(user) if user else None
@@ -93,14 +83,7 @@ class UserRepository:
         self, user_id: str, session: AsyncSession | None = None
     ) -> bool:
         """Update user's last active timestamp."""
-        if session is not None:
-            result = await session.execute(
-                update(User)
-                .where(User.user_id == user_id)
-                .values(last_active_at=datetime.now(timezone.utc))
-            )
-            return result.rowcount > 0
-        async with get_async_session() as s:
+        async with using_session(session) as s:
             result = await s.execute(
                 update(User)
                 .where(User.user_id == user_id)
