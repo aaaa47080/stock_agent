@@ -55,8 +55,8 @@ def main():
             creds, host = rest.split("@", 1)
             user = creds.split(":")[0]
             display_url = f"{scheme}://{user}:****@{host}"
-        except:
-            pass
+        except Exception:
+            pass  # URL parse error - display_url remains unchanged
 
     print("=" * 60)
     print("  正式環境資料庫同步")

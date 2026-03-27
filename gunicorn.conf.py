@@ -92,11 +92,6 @@ def when_ready(server):
     print("✅ 服務器已就緒，等待請求...")
 
 
-def pre_fork(server, worker):
-    """Fork worker 前"""
-    pass
-
-
 def post_fork(server, worker):
     """Fork worker 後 - 重置數據庫連接池避免連接衝突"""
     print(f"👷 Worker {worker.pid} 已啟動")

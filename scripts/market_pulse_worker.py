@@ -111,4 +111,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(run_worker())
     except KeyboardInterrupt:
-        pass
+        print("Market pulse worker shutting down...")

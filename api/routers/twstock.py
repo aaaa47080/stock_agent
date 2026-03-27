@@ -250,7 +250,7 @@ async def get_tw_pulse(
                 elif f_val < 0:
                     foreign_str = f"；籌碼方面，外資近期呈現賣超 ({f_val:,} 股)"
             except ValueError:
-                pass
+                logger.debug(f"Failed to parse foreign value: {foreign}")
 
         dynamic_summary = f"根據最新市場數據，{company_name} ({symbol}) 目前股價為 ${curr_price}，24小時{trend_str} ({change}%){rsi_str}{foreign_str}。此為由 CryptoMind AI 根據即時技術與籌碼指標自動合成之脈動報告。"
 

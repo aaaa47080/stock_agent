@@ -7,7 +7,7 @@ from typing import List
 
 import numpy as np
 
-from api.utils import run_sync
+from api.utils import logger, run_sync
 
 # 專用背景任務 executor，避免佔用 user request 的 default thread pool
 _background_executor = concurrent.futures.ThreadPoolExecutor(
@@ -25,6 +25,7 @@ from api.globals import (
     cached_screener_result,
     funding_rate_lock,
     logger,
+    market_pulse_lock,
     screener_lock,
 )
 from api.symbols import normalize_base_symbol, sanitize_base_symbols
@@ -56,9 +57,9 @@ def load_market_pulse_cache():
     try:
         data = get_cache("MARKET_PULSE")
         if data:
-            # We modify the global dictionary in place
-            MARKET_PULSE_CACHE.clear()
-            MARKET_PULSE_CACHE.update(data)
+            with market_pulse_lock:
+                MARKET_PULSE_CACHE.clear()
+                MARKET_PULSE_CACHE.update(data)
             logger.info(
                 f"Loaded Market Pulse cache from DB ({len(MARKET_PULSE_CACHE)} symbols)"
             )
@@ -456,7 +457,7 @@ def _get_cache_timestamps(cache):
                     ts = ts.astimezone(timezone.utc)
                 timestamps.append(ts)
             except ValueError:
-                pass
+                logger.debug(f"Failed to parse timestamp for {sym}: {data.get('timestamp')}")
     return timestamps
 
 

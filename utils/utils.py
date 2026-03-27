@@ -460,7 +460,7 @@ def get_crypto_news(
     try:
         unique_news.sort(key=lambda x: x.get("published_at", ""), reverse=True)
     except Exception:
-        pass
+        logger.debug("Failed to sort news by published_at")
 
     # 🚀 調用 LLM 審查員進行最後篩選
 

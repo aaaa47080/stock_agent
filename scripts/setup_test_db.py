@@ -353,7 +353,7 @@ def main():
             user = creds.split(":")[0]
             display_url = f"{scheme}://{user}:****@{host}"
         except Exception:
-            pass
+            pass  # URL parse error - display_url remains unchanged
 
     print("=" * 60)
     print("  測試 DB 初始化腳本")

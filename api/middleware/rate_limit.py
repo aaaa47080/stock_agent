@@ -221,8 +221,8 @@ class PersistentRateLimiter:
             with open(self.storage_path, "w") as f:
                 json.dump(self.state, f)
         except IOError:
-            # Fail silently - rate limiting is a protection, not a requirement
-            pass
+            # Rate limiting is a protection, not a requirement; log for debugging
+            logger.debug("Failed to persist rate limit state to %s", self.storage_path)
 
     def check_limit(self, key: str, limit: int, window: int) -> bool:
         """

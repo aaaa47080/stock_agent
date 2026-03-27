@@ -317,7 +317,7 @@ async def analyze_crypto(
                         try:
                             await invoke_task
                         except asyncio.CancelledError:
-                            pass
+                            logger.debug("Task cancelled for session=%s", body.session_id)
                     raise
                 except asyncio.TimeoutError:
                     logger.error(

@@ -120,7 +120,7 @@ def check_source_code_secrets():
                                 )
                                 break
             except (OSError, UnicodeDecodeError):
-                pass
+                pass  # Skip files that can't be read
     return issues
 
 

@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import threading
 from collections import OrderedDict
 from typing import Any, Optional
 
@@ -26,6 +27,7 @@ cached_screener_result = {"timestamp": None, "data": None}
 # Locks for concurrency control
 screener_lock = asyncio.Lock()
 funding_rate_lock = asyncio.Lock()
+market_pulse_lock = threading.Lock()  # Sync context usage
 symbol_locks: OrderedDict[str, asyncio.Lock] = OrderedDict()
 _MAX_SYMBOL_LOCKS = 1000
 

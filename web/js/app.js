@@ -450,9 +450,6 @@ function initializeUIStatus() {
 }
 window.initializeUIStatus = initializeUIStatus;
 
-// 頁面加載時不再自動執行，由 index.html 統一調度
-// window.addEventListener('DOMContentLoaded', () => { ... });
-
 // --- Global Filter Logic Variables ---
 AppStore.set('allMarketSymbols', []);
 AppStore.set('globalSelectedSymbols', []);
@@ -637,10 +634,6 @@ function showError(message, title) {
     console.error('[Error] ' + message);
 }
 window.showError = showError;
-
-function closeErrorModal() {
-    // Legacy no-op: error display now uses showToast.
-}
 
 function quickAsk(text) {
     const input = document.getElementById('user-input');

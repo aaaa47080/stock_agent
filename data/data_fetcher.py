@@ -18,7 +18,14 @@ symbol_cache = TTLCache(maxsize=10, ttl=3600)
 class SymbolNotFoundError(Exception):
     """Custom exception for when a trading symbol is not found on the exchange."""
 
-    pass
+    def __init__(self, symbol_or_message, message=None):
+        # Support both old-style (message string) and new-style (symbol, message)
+        if message is not None:
+            self.symbol = symbol_or_message
+            super().__init__(message)
+        else:
+            self.symbol = None
+            super().__init__(symbol_or_message)
 
 
 class BinanceDataFetcher:
