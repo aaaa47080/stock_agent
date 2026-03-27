@@ -37,6 +37,7 @@ def _normalize_membership_tier(tier: Optional[str]) -> str:
 
 def _user_to_dict(user: User) -> dict:
     """Convert a User ORM object to a dict matching the legacy format."""
+    has_wallet = bool(user.pi_uid) or (user.auth_method == "pi_network")
     return {
         "user_id": user.user_id,
         "username": user.username,
@@ -52,6 +53,8 @@ def _user_to_dict(user: User) -> dict:
         "created_at": (user.created_at.isoformat() if user.created_at else None),
         "is_premium": _normalize_membership_tier(user.membership_tier) == "premium",
         "pi_uid": user.pi_uid,
+        "pi_username": user.pi_username,
+        "has_wallet": has_wallet,
     }
 
 

@@ -107,7 +107,7 @@ def create_or_get_pi_user(
             # 更新 pi_username 或 wallet_address（如有新值）
             updates = []
             params = []
-            if not row[3] and username:
+            if username and row[3] != username:
                 updates.append("pi_username = %s")
                 params.append(username)
             if updates:
@@ -206,7 +206,7 @@ def get_user_wallet_status(user_id: str) -> Dict:
             return {"has_wallet": False, "auth_method": None}
 
         return {
-            "has_wallet": row[1] is not None,  # pi_uid 存在即視為已連接
+            "has_wallet": (row[1] is not None) or (row[0] == "pi_network"),
             "auth_method": row[0],
             "pi_uid": row[1],
             "pi_username": row[2],

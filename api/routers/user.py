@@ -241,6 +241,10 @@ async def sync_pi_user(request: Request, response: Response, body: PiUserSyncReq
 @router.get("/api/user/me")
 async def get_current_user_profile(current_user: dict = Depends(get_current_user)):
     """獲取當前登入用戶的資料"""
+    has_wallet = bool(current_user.get("pi_uid")) or bool(current_user.get("has_wallet"))
+    if not has_wallet and current_user.get("auth_method") == "pi_network":
+        has_wallet = True
+
     return {
         "success": True,
         "user": {
@@ -251,7 +255,7 @@ async def get_current_user_profile(current_user: dict = Depends(get_current_user
             "membership_tier": current_user.get("membership_tier", "free"),
             "pi_uid": current_user.get("pi_uid"),
             "pi_username": current_user.get("pi_username"),
-            "has_wallet": bool(current_user.get("pi_uid")),
+            "has_wallet": has_wallet,
         },
     }
 

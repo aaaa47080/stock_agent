@@ -958,7 +958,10 @@ async function getWalletStatus() {
 
 // 内部：根據 has_wallet 更新錢包 UI 元素
 function _applyWalletStatusUI(statusBadge, notLinkedSection, linkedSection, usernameEl, walletIcon, status) {
-    if (status.has_wallet) {
+    const isWalletLinked =
+        !!status.has_wallet || !!status.pi_uid || status.auth_method === 'pi_network';
+
+    if (isWalletLinked) {
         statusBadge.innerHTML = `<i data-lucide="check-circle" class="w-3 h-3"></i> 已連接`;
         statusBadge.className =
             'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-success/10 text-success';
@@ -999,8 +1002,14 @@ async function loadSettingsWalletStatus() {
     // ── 即時顯示：從 currentUser 快取讀取 has_wallet（pi-sync 已同步）──
     if (AuthManager.currentUser) {
         _applyWalletStatusUI(statusBadge, notLinkedSection, linkedSection, usernameEl, walletIcon, {
-            has_wallet: AuthManager.currentUser.has_wallet || !!AuthManager.currentUser.pi_uid,
+            has_wallet:
+                AuthManager.currentUser.has_wallet ||
+                !!AuthManager.currentUser.pi_uid ||
+                AuthManager.currentUser.authMethod === 'pi_network' ||
+                AuthManager.currentUser.auth_method === 'pi_network',
             pi_username: AuthManager.currentUser.pi_username || AuthManager.currentUser.username || null,
+            auth_method: AuthManager.currentUser.authMethod || AuthManager.currentUser.auth_method || null,
+            pi_uid: AuthManager.currentUser.pi_uid || null,
         });
     }
 
