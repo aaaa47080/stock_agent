@@ -59,6 +59,7 @@ RATE_LIMITED_ENDPOINTS = {
     "api.routers.analysis.delete_user_session": "20 per 1 minute",
     "api.routers.analysis.pin_user_session": "30 per 1 minute",
     "api.routers.analysis.trigger_idle_consolidation": "5 per 1 minute",
+    "api.routers.analysis.submit_feedback": "20 per 1 minute",
     # Market
     "api.routers.market.rest.run_screener": "10 per 1 minute",
     "api.routers.market.rest.get_klines_data": "60 per 1 minute",

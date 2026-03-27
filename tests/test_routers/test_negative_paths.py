@@ -9,12 +9,13 @@ class TestNegativePaths:
         assert response.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_invalid_bearer_token_in_test_mode_returns_200(self, client):
+    async def test_invalid_bearer_token_rejected_even_in_test_mode(self, client):
+        # Invalid tokens are rejected even in TEST_MODE for security
         response = await client.get(
             "/api/analyze/modes",
             headers={"Authorization": "Bearer invalid-token-here"},
         )
-        assert response.status_code == 200
+        assert response.status_code == 401
 
     @pytest.mark.asyncio
     async def test_missing_required_fields_returns_422(self, client, auth_headers):
