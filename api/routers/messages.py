@@ -366,8 +366,6 @@ async def send_greeting_endpoint(
         if not result["success"]:
             raise HTTPException(status_code=400, detail=result.get("error", "發送失敗"))
 
-        pass  # Already incremented atomically above
-
         await message_manager.send_to_user(
             body.to_user_id, {"type": "new_message", "message": result["message"]}
         )

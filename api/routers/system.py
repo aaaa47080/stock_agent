@@ -95,7 +95,7 @@ async def validate_key(
             metadata={"provider": provider},
         )
     except ImportError:
-        pass
+        logger.warning("core.audit module not available, audit logging disabled")
 
     if not key or len(key) < 5:
         return {"valid": False, "message": "Key 為空或過短"}
@@ -278,7 +278,7 @@ async def update_user_settings(
             metadata={"provider": settings.primary_model_provider},
         )
     except ImportError:
-        pass
+        logger.warning("core.audit module not available, audit logging disabled")
 
     try:
         env_updates = {}

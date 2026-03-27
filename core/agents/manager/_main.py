@@ -11,6 +11,7 @@ ManagerAgent class.
 from __future__ import annotations
 
 import asyncio
+import threading
 import time
 from typing import Any, Callable, Dict, Optional
 
@@ -82,16 +83,20 @@ def _extract_model_name_for_manager(llm: Any) -> str:
 
 _per_user_checkpointer: Dict[str, MemorySaver] = {}
 _CHECKPOINTER_MAX = 512
+_checkpointer_lock = threading.Lock()
 
 
 def _get_checkpointer(user_id: str, session_id: str) -> MemorySaver:
     """Return a per-session checkpointer to prevent cross-user state leakage."""
     key = f"{user_id}:{session_id}"
-    if key not in _per_user_checkpointer:
-        if len(_per_user_checkpointer) >= _CHECKPOINTER_MAX:
-            _per_user_checkpointer.pop(next(iter(_per_user_checkpointer)))
-        _per_user_checkpointer[key] = MemorySaver()
-    return _per_user_checkpointer[key]
+    with _checkpointer_lock:
+        if key not in _per_user_checkpointer:
+            _per_user_checkpointer[key] = MemorySaver()
+            if len(_per_user_checkpointer) > _CHECKPOINTER_MAX:
+                # Remove oldest entry (FIFO, not true LRU but better than arbitrary)
+                oldest_key = next(iter(_per_user_checkpointer))
+                _per_user_checkpointer.pop(oldest_key, None)
+        return _per_user_checkpointer[key]
 
 
 # Memory consolidation trigger threshold

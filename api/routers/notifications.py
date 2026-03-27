@@ -265,7 +265,7 @@ async def notification_websocket(websocket: WebSocket):
             await websocket.close(code=4002, reason="JWT Token required")
             return
 
-        if os.getenv("TEST_MODE") == "True" and token.startswith("test-"):
+        if os.getenv("TEST_MODE", "").lower() == "true" and token.startswith("test-"):
             user_id = token
             logger.info("Notification WebSocket Dev Auth: %s", user_id)
         else:
@@ -324,7 +324,7 @@ async def notification_websocket(websocket: WebSocket):
     except asyncio.TimeoutError:
         await websocket.close(code=4003, reason="Authentication timeout")
     except WebSocketDisconnect:
-        pass
+        logger.debug("WebSocket disconnected for user %s", user_id)
     except Exception as e:
         logger.error("Notification WebSocket error: %s", e)
     finally:
