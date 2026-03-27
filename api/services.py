@@ -449,7 +449,12 @@ def _get_cache_timestamps(cache):
     for sym, data in cache.items():
         if data and "timestamp" in data:
             try:
-                timestamps.append(datetime.fromisoformat(data["timestamp"]))
+                ts = datetime.fromisoformat(data["timestamp"])
+                if ts.tzinfo is None:
+                    ts = ts.replace(tzinfo=timezone.utc)
+                else:
+                    ts = ts.astimezone(timezone.utc)
+                timestamps.append(ts)
             except ValueError:
                 pass
     return timestamps

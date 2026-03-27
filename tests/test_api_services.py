@@ -7,6 +7,7 @@ from unittest.mock import patch
 import pytest
 
 from api.services import (
+    _get_cache_timestamps,
     _build_market_pulse_targets,
     load_funding_rate_cache,
     load_market_pulse_cache,
@@ -145,6 +146,21 @@ class TestMarketPulseTargetSanitization:
             targets = _build_market_pulse_targets(["ETH-USDT", "LOADING", "eth"])
 
         assert targets == {"BTC", "ETH"}
+
+
+class TestMarketPulseTimestampParsing:
+    """Tests for timezone-safe market pulse cache timestamp parsing."""
+
+    def test_get_cache_timestamps_normalizes_naive_timestamps_to_utc(self):
+        timestamps = _get_cache_timestamps(
+            {
+                "BTC": {"timestamp": "2026-03-27T02:38:23"},
+                "ETH": {"timestamp": "2026-03-27T02:38:23+00:00"},
+            }
+        )
+
+        assert len(timestamps) == 2
+        assert all(ts.tzinfo is not None for ts in timestamps)
 
 
 if __name__ == "__main__":
