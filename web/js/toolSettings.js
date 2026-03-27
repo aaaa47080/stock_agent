@@ -26,6 +26,15 @@ const _CATEGORY_ICONS = {
 
 let _currentUserTier = 'free';
 let _toolSettingsLoaded = false;
+let _toolSettingsRetryScheduled = false;
+
+function _showLoginRequired(container) {
+    _toolSettingsLoaded = false;
+    _currentUserTier = 'free';
+    container.innerHTML = `<p class="text-sm text-textMuted text-center py-4">登入後可查看工具設定</p>`;
+    const notice = document.getElementById('tool-settings-free-notice');
+    if (notice) notice.classList.remove('hidden');
+}
 
 /**
  * 初始化工具設定頁面 — 從後端拉取工具清單並渲染
@@ -33,15 +42,6 @@ let _toolSettingsLoaded = false;
 async function initToolSettings() {
     const container = document.getElementById('tool-settings-list');
     if (!container) return;
-
-    if (window.PiEnvironment?.shouldBlockProtectedRequests()) {
-        _toolSettingsLoaded = false;
-        _currentUserTier = 'free';
-        container.innerHTML = `<p class="text-sm text-textMuted text-center py-4">登入後可查看工具設定</p>`;
-        const notice = document.getElementById('tool-settings-free-notice');
-        if (notice) notice.classList.remove('hidden');
-        return;
-    }
 
     container.innerHTML = `
         <div class="flex items-center justify-center py-8 text-textMuted">
@@ -54,13 +54,31 @@ async function initToolSettings() {
         const data = await AppAPI.get('/api/user/tools');
         _currentUserTier = data.user_tier || 'free';
         _toolSettingsLoaded = true;
+        _toolSettingsRetryScheduled = false;
         renderToolList(container, data.tools || []);
     } catch (err) {
         console.error('[toolSettings] fetch error:', err);
         if (err?.status === 401 || err?.status === 403) {
-            _toolSettingsLoaded = false;
-            _currentUserTier = 'free';
-            container.innerHTML = `<p class="text-sm text-textMuted text-center py-4">登入後可查看工具設定</p>`;
+            const hasKnownUser =
+                !!window.AuthManager?.currentUser?.user_id ||
+                !!window.AuthManager?.currentUser?.uid ||
+                !!window.AuthManager?.currentUser?.pi_uid;
+            const loginInProgress =
+                window._piLoginInProgress ||
+                (typeof AppStore !== 'undefined' && AppStore.get('piLoginInProgress'));
+
+            if ((hasKnownUser || loginInProgress) && !_toolSettingsRetryScheduled) {
+                _toolSettingsRetryScheduled = true;
+                setTimeout(() => {
+                    _toolSettingsRetryScheduled = false;
+                    initToolSettings().catch((retryErr) =>
+                        console.error('[toolSettings] delayed retry failed:', retryErr)
+                    );
+                }, 600);
+                return;
+            }
+
+            _showLoginRequired(container);
             return;
         }
         container.innerHTML = `<p class="text-sm text-red-400 text-center py-4">載入失敗，請稍後再試。</p>`;
@@ -238,6 +256,14 @@ window.initToolSettings = initToolSettings;
 window.toggleToolPreference = toggleToolPreference;
 window.toggleToolCategory = toggleToolCategory;
 window.isToolSettingsLoaded = () => _toolSettingsLoaded;
+
+window.addEventListener('auth:ready', () => {
+    const container = document.getElementById('tool-settings-list');
+    if (!container) return;
+    initToolSettings().catch((err) =>
+        console.error('[toolSettings] auth:ready reload failed:', err)
+    );
+});
 
 export {
     initToolSettings,
