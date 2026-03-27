@@ -23,8 +23,8 @@ const ForumApp = {
             else if (page === 'post') this.initPostPage();
             else if (page === 'create') this.initCreatePage();
             else if (page === 'dashboard') this.initDashboardPage();
-            // SPA mode: no data-page attribute, do NOT auto-load forum content here.
-            // Forum content is loaded when user switches to the forum tab via switchTab().
+            // SPA mode (no data-page attribute): load forum content when switching tabs
+            else this.initIndexPage();
 
             this.updateAuthUI();
         } catch (err) {

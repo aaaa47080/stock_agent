@@ -750,10 +750,20 @@ async function loadFriendsTabData() {
             FriendsAPI.getBlockedUsers().catch((e) => ({ error: e })),
         ]);
 
+        // Debug: Log API errors
+        if (requestsRes.error || friendsRes.error || blockedRes.error) {
+            console.error('[Friends] API errors:', {
+                requests: requestsRes.error?.message || requestsRes.error,
+                friends: friendsRes.error?.message || friendsRes.error,
+                blocked: blockedRes.error?.message || blockedRes.error,
+            });
+        }
+
         // Render Requests
         if (pendingListEl) {
             if (requestsRes.error) {
-                pendingListEl.innerHTML = renderErrorState(requestsRes.error.message);
+                const errMsg = requestsRes.error.message || String(requestsRes.error);
+                pendingListEl.innerHTML = renderErrorState(errMsg);
             } else if (!requestsRes.requests || requestsRes.requests.length === 0) {
                 pendingListEl.innerHTML = renderEmptyState(t('friends.noPendingRequests'));
             } else {
@@ -780,7 +790,8 @@ async function loadFriendsTabData() {
         // Render Friends
         if (friendsListEl) {
             if (friendsRes.error) {
-                friendsListEl.innerHTML = renderErrorState(friendsRes.error.message);
+                const errMsg = friendsRes.error.message || String(friendsRes.error);
+                friendsListEl.innerHTML = renderErrorState(errMsg);
             } else if (!friendsRes.friends || friendsRes.friends.length === 0) {
                 friendsListEl.innerHTML = renderEmptyState(t('friends.noFriendsYet'));
             } else {
@@ -800,7 +811,8 @@ async function loadFriendsTabData() {
         // Render Blocked
         if (blockedListEl) {
             if (blockedRes.error) {
-                blockedListEl.innerHTML = renderErrorState(blockedRes.error.message);
+                const errMsg = blockedRes.error.message || String(blockedRes.error);
+                blockedListEl.innerHTML = renderErrorState(errMsg);
             } else if (!blockedRes.blocked_users || blockedRes.blocked_users.length === 0) {
                 blockedListEl.innerHTML = renderEmptyState(t('friends.blocklistEmpty'));
             } else {
