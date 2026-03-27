@@ -903,6 +903,11 @@ const SocialHub = {
         window.APP_CONFIG?.DEBUG_MODE && console.log('SocialHub initializing...');
         this.container = document.getElementById('friends-tab');
 
+        // Check MessagesAPI availability
+        if (typeof MessagesAPI === 'undefined') {
+            console.debug('SocialHub: MessagesAPI not available, using AppAPI directly');
+        }
+
         await this.render();
         this.setupEventListeners();
         this.startPolling();
@@ -979,6 +984,11 @@ const SocialHub = {
     loadConversations: async function () {
         const listEl = document.getElementById('social-conv-list');
         if (!listEl) return;
+
+        // Check MessagesAPI availability
+        if (typeof MessagesAPI === 'undefined') {
+            console.debug('SocialHub.loadConversations: MessagesAPI not available');
+        }
 
         try {
             const myId = FriendsAPI._getUserId();
@@ -1120,6 +1130,11 @@ const SocialHub = {
         const container = document.getElementById('social-messages-container');
         if (!container) return;
 
+        // Check MessagesAPI availability
+        if (typeof MessagesAPI === 'undefined') {
+            console.debug('SocialHub.loadMessages: MessagesAPI not available');
+        }
+
         container.innerHTML = `<div class="flex justify-center py-8"><i data-lucide="loader-2" class="w-6 h-6 animate-spin text-primary"></i></div>`;
         AppUtils.refreshIcons();
 
@@ -1152,7 +1167,9 @@ const SocialHub = {
 
             // 標記已讀（後台執行）
             if (data.conversation?.id) {
-                AppAPI.post(`/api/messages/read?user_id=${myId}`, { conversation_id: data.conversation.id }).catch(() => {});
+                AppAPI.post(`/api/messages/read?user_id=${myId}`, { conversation_id: data.conversation.id }).catch(() => {
+                    console.debug('SocialHub.loadMessages: mark as read failed');
+                });
             }
         } catch (e) {
             console.error('載入訊息失敗:', e);
@@ -1544,10 +1561,7 @@ const SocialHub = {
     },
 
     setupEventListeners: function () {
-        // 視窗大小變化時檢查
-        window.addEventListener('resize', () => {
-            // 如果切換到移動端且有打開的對話，可以考慮跳轉
-        });
+        // Window resize is handled globally by ui-shell.js with debounce
     },
 
     refresh: function () {

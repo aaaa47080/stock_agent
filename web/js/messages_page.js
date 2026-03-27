@@ -74,13 +74,8 @@ const MessagesPage = {
             await this.openConversationWith(withUserId);
         }
 
-        // 響應式處理
-        window.addEventListener('resize', () => {
-            this.isMobile = window.innerWidth < 768;
-            if (window.UIShell && typeof window.UIShell.syncLayout === 'function') {
-                window.UIShell.syncLayout();
-            }
-        });
+        // 響應式處理 - syncLayout is debounced globally in ui-shell.js
+        this.isMobile = window.innerWidth < 768;
 
         AppUtils.refreshIcons();
     },
