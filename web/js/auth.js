@@ -937,22 +937,38 @@ function canMakePiPayment() {
 
 // 獲取錢包狀態（從後端 API）- 含超時機制
 async function getWalletStatus() {
-    const uid = AuthManager.currentUser?.uid || AuthManager.currentUser?.user_id;
+    const currentUser = AuthManager.currentUser || {};
+    const cachedWalletLinked =
+        !!currentUser.has_wallet ||
+        !!currentUser.pi_uid ||
+        currentUser.authMethod === 'pi_network' ||
+        currentUser.auth_method === 'pi_network';
+    const cachedStatus = {
+        has_wallet: cachedWalletLinked,
+        pi_uid: currentUser.pi_uid || null,
+        pi_username: currentUser.pi_username || currentUser.username || null,
+        auth_method: currentUser.authMethod || currentUser.auth_method || 'guest',
+    };
+    const uid = currentUser.uid || currentUser.user_id;
     if (!uid) {
-        return { has_wallet: false, auth_method: 'guest' };
+        return cachedStatus;
     }
 
     try {
         const data = await AppAPI.get('/api/user/wallet-status');
         return {
-            has_wallet: data.has_wallet || false,
-            pi_uid: data.pi_uid || null,
-            pi_username: data.pi_username || null,
-            auth_method: data.auth_method || 'password',
+            has_wallet:
+                !!data.has_wallet || !!data.pi_uid || data.auth_method === 'pi_network' || cachedWalletLinked,
+            pi_uid: data.pi_uid || cachedStatus.pi_uid,
+            pi_username: data.pi_username || cachedStatus.pi_username,
+            auth_method: data.auth_method || cachedStatus.auth_method || 'password',
         };
     } catch (e) {
         console.error('getWalletStatus error:', e);
-        return { has_wallet: false, auth_method: 'unknown' };
+        return {
+            ...cachedStatus,
+            auth_method: cachedStatus.auth_method || 'unknown',
+        };
     }
 }
 
