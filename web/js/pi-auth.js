@@ -172,5 +172,7 @@ fetch('/api/config')
             if (subtitle) subtitle.textContent = 'Connect your wallet to continue, or use Dev Login in test mode';
         }
     })
-    .catch(() => {});
+    .catch(() => {
+        console.debug('pi-auth: failed to load config (test mode check skipped)');
+    });
 export {};
