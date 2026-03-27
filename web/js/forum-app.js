@@ -597,7 +597,7 @@ const ForumApp = {
         const isPi = typeof isPiBrowser === 'function' ? isPiBrowser() : false;
 
         // 獲取打賞價格
-        const tipAmount = window.PiPrices?.tip || null;
+        const tipAmount = getPrice('tip');
 
         // 確認打賞
         const confirmed = await showConfirm({

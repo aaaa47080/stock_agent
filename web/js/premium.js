@@ -27,7 +27,19 @@ class PremiumManager {
 
             // 如果價格仍未載入，嘗試手動載入
             if (this.premiumPrice === null && typeof loadPiPrices === 'function') {
-                loadPiPrices();
+                // 如果正在載入中，等待 pi-prices-updated 事伯
+                if (window.PiPrices?.loading) {
+                    const waitForPrice = () => {
+                        if (window.PiPrices?.premium) {
+                            this.premiumPrice = window.PiPrices.premium;
+                            this.updatePriceDisplay();
+                        }
+                        this.initUpgradeButtons();
+                    };
+                    document.addEventListener('pi-prices-updated', waitForPrice, { once: true });
+                } else {
+                    loadPiPrices();
+                }
             }
         });
 
