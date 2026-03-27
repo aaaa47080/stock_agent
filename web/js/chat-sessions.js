@@ -29,7 +29,13 @@ async function loadSessions() {
         const isLoggedIn = window.AuthManager?.isLoggedIn();
         if (!isLoggedIn) return; // Should be handled by top check, but safe to keep
 
-        const userId = AuthManager.currentUser.user_id;
+        const userId = AuthManager.currentUser.user_id || AuthManager.currentUser.uid;
+
+        if (!userId) {
+            list.innerHTML =
+                '<div class="text-center text-xs text-textMuted/40 py-4">Please login first</div>';
+            return [];
+        }
 
         const data = await AppAPI.get(`/api/chat/sessions?user_id=${encodeURIComponent(userId)}`);
         const list = document.getElementById('chat-session-list');

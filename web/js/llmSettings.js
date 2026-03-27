@@ -29,7 +29,7 @@ async function loadSavedApiKeys() {
     const user = typeof AuthManager !== 'undefined' ? AuthManager.currentUser : null;
     const hasKnownSession = !!(user && (user.user_id || user.uid || user.pi_uid));
     if (!hasKnownSession) {
-        console.log('[loadSavedApiKeys] No token, skipping');
+        console.log('[loadSavedApiKeys] No authenticated session, skipping');
         return;
     }
 
@@ -448,6 +448,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
     llmState.initialized = true;
     console.log('LLM Settings 初始化完成（等待 Auth 完成後載入綁定狀態）');
+});
+
+window.addEventListener('auth:ready', () => {
+    loadSavedApiKeys().catch((error) =>
+        console.error('[loadSavedApiKeys] auth:ready reload failed:', error)
+    );
+});
+
+window.addEventListener('auth:initialized', (event) => {
+    if (!event?.detail?.isLoggedIn) {
+        return;
+    }
+
+    loadSavedApiKeys().catch((error) =>
+        console.error('[loadSavedApiKeys] auth:initialized reload failed:', error)
+    );
 });
 
 export {

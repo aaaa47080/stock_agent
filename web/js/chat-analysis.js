@@ -308,8 +308,13 @@ window.currentAnalysisController = AppStore.get('currentAnalysisController');
     let hitlPaused = false;
 
     try {
-        const token = AuthManager.currentUser?.accessToken;
-        if (!token) {
+        const currentUser = AuthManager.currentUser;
+        const hasKnownSession = !!(
+            currentUser?.user_id ||
+            currentUser?.uid ||
+            currentUser?.pi_uid
+        );
+        if (!hasKnownSession) {
             if (typeof showToast === 'function') showToast('請先登入', 'warning');
             return;
         }
@@ -321,10 +326,8 @@ window.currentAnalysisController = AppStore.get('currentAnalysisController');
 
         const response = await fetch('/api/analyze', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-            },
+            headers: AppAPI.buildHeaders(),
+            credentials: 'include',
             body: JSON.stringify({
                 message: text,
                 analysis_mode: analysisMode,

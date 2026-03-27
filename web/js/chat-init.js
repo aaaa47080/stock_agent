@@ -32,12 +32,17 @@ async function initChat() {
     console.log('initChat: initializing chat...');
 
     // 2. 檢查是否有現有的 session，如果沒有才創建新的
-    const userId = window.currentUserId || AuthManager.currentUser?.user_id || 'local_user';
-    const token = AuthManager.currentUser?.accessToken;
+    const userId =
+        window.currentUserId ||
+        AuthManager.currentUser?.user_id ||
+        AuthManager.currentUser?.uid ||
+        null;
 
-    // Safety check
-    if (!token) {
-        console.error('initChat: No token found');
+    // Cookie-backed session 可能沒有前端 access token，但只要已有已驗證 user 就允許繼續載入。
+    if (!userId) {
+        console.error('initChat: No authenticated user found');
+        window.chatInitialized = false;
+        AppStore.set('chatInitialized', false);
         return;
     }
 

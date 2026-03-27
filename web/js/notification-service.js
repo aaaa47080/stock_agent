@@ -23,6 +23,7 @@ const NotificationService = {
     isLoggedIn: false,
 
     // 避免重複初始化 / 重複 WebSocket
+    _initialized: false,
     _initializedUserId: null,
 
     // 模拟数据（Phase 1 使用，作为后备）
@@ -70,6 +71,7 @@ const NotificationService = {
      */
     async init() {
         const { userId } = this._getCredentials();
+        this._initialized = true;
 
         // Same logged-in user with an active socket does not need full re-init.
         if (
@@ -110,10 +112,15 @@ const NotificationService = {
         if (typeof AuthManager !== 'undefined' && AuthManager.currentUser) {
             const userId = AuthManager.currentUser.user_id || AuthManager.currentUser.uid;
             const token = AuthManager.currentUser.accessToken || AuthManager.currentUser.token;
+            const hasSessionUser = !!(
+                AuthManager.currentUser.user_id ||
+                AuthManager.currentUser.uid ||
+                AuthManager.currentUser.pi_uid
+            );
 
-            return { userId, token };
+            return { userId, token, hasSessionUser };
         }
-        return { userId: null, token: null };
+        return { userId: null, token: null, hasSessionUser: false };
     },
 
     /**
@@ -123,10 +130,15 @@ const NotificationService = {
             return false;
         }
 
-        const { userId, token } = this._getCredentials();
+        const { userId, token, hasSessionUser } = this._getCredentials();
 
-        if (!userId || !token) {
+        if (!userId || !hasSessionUser) {
             return true;
+        }
+
+        // Cookie-backed session can be valid without a frontend access token.
+        if (!token) {
+            return false;
         }
 
         // 檢查 AuthManager 是否有過期檢查方法
@@ -164,9 +176,9 @@ const NotificationService = {
                 return;
             }
 
-            const { userId, token } = this._getCredentials();
+            const { userId, hasSessionUser } = this._getCredentials();
 
-            if (!userId || !token) {
+            if (!userId || !hasSessionUser) {
                 if (window.DEBUG_MODE)
                     console.log('[NotificationService] No credentials, empty notifications');
                 this.notifications = [];
@@ -187,10 +199,11 @@ const NotificationService = {
         } catch (error) {
             // 401: token may be expired — clear it
             if (error.status === 401) {
-                console.warn('[NotificationService] 401 Unauthorized, token may be expired');
+                console.warn('[NotificationService] 401 Unauthorized while loading notifications');
                 if (
                     typeof AuthManager !== 'undefined' &&
-                    typeof AuthManager.clearExpiredToken === 'function'
+                    typeof AuthManager.clearExpiredToken === 'function' &&
+                    AppAPI.getToken()
                 ) {
                     AuthManager.clearExpiredToken();
                 }
@@ -457,5 +470,11 @@ window.addEventListener('auth:ready', () => {
         NotificationService.init();
     }
 }, { once: true });
+
+window.addEventListener('auth:initialized', () => {
+    NotificationService.init().catch((error) =>
+        console.error('[NotificationService] auth:initialized sync failed:', error)
+    );
+});
 
 export { NotificationService };

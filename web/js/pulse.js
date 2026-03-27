@@ -202,12 +202,7 @@ async function refreshMarketPulse() {
             await Promise.allSettled(targets.map((symbol) => triggerDeepAnalysis(symbol)));
         } else {
             console.log('[Pulse] Triggering Background Public Refresh...');
-            const token = window.AuthManager?.currentUser?.accessToken;
-            if (token) {
-                await AppAPI.post('/api/market-pulse/refresh-all', { symbols: targets }, { headers: { Authorization: `Bearer ${token}` } });
-            } else {
-                await AppAPI.post('/api/market-pulse/refresh-all', { symbols: targets });
-            }
+            await AppAPI.post('/api/market-pulse/refresh-all', { symbols: targets });
             pollAnalysisProgress();
         }
     } catch (e) {
