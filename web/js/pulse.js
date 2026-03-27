@@ -644,18 +644,8 @@ window.addEventListener('languageChanged', () => {
 });
 
 // ========================================
-// Export all functions to window
+// ES Module exports
 // ========================================
-window.initPulse = initPulse;
-window.checkMarketPulse = checkMarketPulse;
-window.refreshMarketPulse = refreshMarketPulse;
-window.loadPulseData = loadPulseData;
-window.fetchPulseForSymbol = fetchPulseForSymbol;
-window.triggerDeepAnalysis = triggerDeepAnalysis;
-window.showNewsList = showNewsList;
-window.formatPrice = formatPrice;
-window.getTimeAgo = getTimeAgo;
-
 export { initPulse, checkMarketPulse, refreshMarketPulse, loadPulseData, fetchPulseForSymbol, triggerDeepAnalysis, showNewsList, formatPrice, getTimeAgo };
 
 console.log('[Pulse] Module loaded');
