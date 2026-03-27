@@ -197,6 +197,10 @@ async def test_list_tools_impl_falls_back_when_repo_unavailable():
     assert response["user_tier"] == "free"
     assert len(response["tools"]) >= 1
     assert any(tool["tool_id"] == "get_crypto_price" for tool in response["tools"])
+    premium_tool = next(
+        tool for tool in response["tools"] if tool["tool_id"] == "get_futures_data"
+    )
+    assert premium_tool["locked"] is True
 
 
 @pytest.mark.asyncio
