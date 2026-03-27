@@ -25,13 +25,22 @@ def _run_reconcile_steps(c, table_name, steps):
 
 
 def create_basic_tables(c):
-    """Create basic tables (watchlist, system_cache, system_config)"""
+    """Create basic tables (watchlist, system_cache, system_config, revoked_tokens)"""
     # 建立自選清單資料表
     c.execute("""
         CREATE TABLE IF NOT EXISTS watchlist (
             user_id TEXT,
             symbol TEXT,
             PRIMARY KEY (user_id, symbol)
+        )
+    """)
+    # 建立已撤銷 Token 黑名單表
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS revoked_tokens (
+            token_hash TEXT PRIMARY KEY,
+            revoked_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            expires_at TIMESTAMP WITH TIME ZONE,
+            INDEX idx_revoked_tokens_expires (expires_at)
         )
     """)
 
@@ -592,6 +601,16 @@ def create_analysis_tables(c):
             interval VARCHAR(10) DEFAULT '1d',
             report_text TEXT,
             metadata JSONB DEFAULT '{}',
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        )
+    """)
+    # Codebook feedback table for analysis quality scoring
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS codebook_feedback (
+            id SERIAL PRIMARY KEY,
+            codebook_entry_id TEXT NOT NULL,
+            user_id VARCHAR(255),
+            score INTEGER NOT NULL CHECK (score IN (0, 1)),
             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         )
     """)

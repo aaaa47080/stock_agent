@@ -261,3 +261,23 @@ def clear_chat_history(session_id: str = "default"):
         conn.commit()
     finally:
         conn.close()
+
+
+def save_codebook_feedback(codebook_entry_id: str, user_id: str, score: int):
+    """儲存 codebook 分析品質回饋"""
+    conn = get_connection()
+    c = conn.cursor()
+    try:
+        c.execute(
+            """
+            INSERT INTO codebook_feedback (codebook_entry_id, user_id, score)
+            VALUES (%s, %s, %s)
+            """,
+            (codebook_entry_id, user_id, score),
+        )
+        conn.commit()
+    except Exception as e:
+        logger.error(f"Codebook feedback save error: {e}")
+        conn.rollback()
+    finally:
+        conn.close()

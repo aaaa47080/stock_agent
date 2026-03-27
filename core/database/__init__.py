@@ -34,6 +34,7 @@ _EXPORTS: Dict[str, Tuple[str, str]] = {
     "save_chat_message": (".chat", "save_chat_message"),
     "get_chat_history": (".chat", "get_chat_history"),
     "clear_chat_history": (".chat", "clear_chat_history"),
+    "save_codebook_feedback": (".chat", "save_codebook_feedback"),
     # forum
     "get_boards": (".forum", "get_boards"),
     "get_board_by_slug": (".forum", "get_board_by_slug"),

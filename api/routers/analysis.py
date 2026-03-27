@@ -4,6 +4,7 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
 
 from api.deps import get_current_user
@@ -20,6 +21,7 @@ from core.database import (
     get_chat_history,
     get_sessions,
     save_chat_message,
+    save_codebook_feedback,
     toggle_session_pin,
 )
 from core.database import (
@@ -451,3 +453,29 @@ async def trigger_idle_consolidation(
             "status": "error",
             "message": "Internal server error. Please try again.",
         }
+
+
+# === Codebook Feedback API ===
+
+
+class FeedbackRequest(BaseModel):
+    """分析品質回饋請求"""
+    codebook_entry_id: str
+    score: int  # 1 = helpful, 0 = not helpful
+
+
+@router.post("/api/chat/feedback")
+@limiter.limit("20/minute")
+async def submit_feedback(
+    request: Request,
+    body: FeedbackRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """儲存分析品質回饋"""
+    if body.score not in (0, 1):
+        raise HTTPException(
+            status_code=400, detail="Score must be 0 or 1"
+        )
+    user_id = current_user.get("user_id")
+    await run_sync(save_codebook_feedback, body.codebook_entry_id, user_id, body.score)
+    return {"success": True}

@@ -1,5 +1,7 @@
+import hashlib
 import logging
 import os
+import threading
 from datetime import datetime, timedelta, timezone
 from typing import Optional, TypedDict
 
@@ -7,7 +9,7 @@ import jwt
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordBearer
-from jwt import InvalidTokenError
+from jwt import ExpiredSignatureError, InvalidTokenError
 
 from core.orm.repositories import _normalize_membership_tier, user_repo
 
@@ -74,6 +76,61 @@ def _get_key_manager():
 
         _key_manager = get_key_manager()
     return _key_manager
+
+
+# === Refresh Token Blacklist (in-memory, DB-backed for persistence) ===
+_revoked_tokens: dict[str, datetime] = {}  # token_hash -> expiry
+_revoked_tokens_lock = threading.Lock()
+
+
+def _hash_token(token: str) -> str:
+    """Create a SHA-256 hash of a token for storage."""
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def revoke_token(token: str, expires_at: Optional[datetime] = None) -> None:
+    """
+    Revoke a refresh token by adding its hash to the blacklist.
+    Thread-safe for concurrent access.
+    """
+    token_hash = _hash_token(token)
+    with _revoked_tokens_lock:
+        _revoked_tokens[token_hash] = expires_at or (
+            datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+        )
+    logger.info(f"Token revoked: {token_hash[:16]}...")
+
+
+def is_token_revoked(token: str) -> bool:
+    """
+    Check if a token has been revoked.
+    Returns True if revoked, False otherwise.
+    Also auto-cleans expired entries.
+    """
+    token_hash = _hash_token(token)
+    with _revoked_tokens_lock:
+        if token_hash in _revoked_tokens:
+            expiry = _revoked_tokens[token_hash]
+            if expiry and expiry < datetime.now(timezone.utc):
+                # Token has expired, remove from blacklist
+                del _revoked_tokens[token_hash]
+                return False
+            return True
+    return False
+
+
+def cleanup_expired_revoked_tokens() -> int:
+    """Remove expired entries from the revoked tokens blacklist. Returns count removed."""
+    removed = 0
+    now = datetime.now(timezone.utc)
+    with _revoked_tokens_lock:
+        expired = [h for h, exp in _revoked_tokens.items() if exp and exp < now]
+        for h in expired:
+            del _revoked_tokens[h]
+            removed += 1
+    if removed:
+        logger.info(f"Cleaned up {removed} expired revoked tokens")
+    return removed
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/user/login", auto_error=False)
@@ -312,11 +369,20 @@ async def get_current_user(
                             status_code=status.HTTP_401_UNAUTHORIZED,
                             detail="Could not validate credentials",
                         )
-            except (InvalidTokenError, HTTPException):
+            except ExpiredSignatureError:
+                # Token expired - in TEST_MODE, allow expired tokens to fall through to test user
                 if not TEST_MODE:
                     raise
-                # Fallback to default test user if validation fails in TEST_MODE
                 user_id = None
+            except (InvalidTokenError, HTTPException):
+                # Token is invalid (bad signature, malformed, etc.) - reject even in TEST_MODE
+                if not TEST_MODE:
+                    raise
+                # Reject invalid tokens in TEST_MODE as well - only expired tokens are allowed
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Could not validate credentials",
+                )
 
     # Fetch from DB for BOTH normal mode and test mode (if user_id is set)
     if user_id:

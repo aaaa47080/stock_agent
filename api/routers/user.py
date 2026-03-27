@@ -285,6 +285,15 @@ async def refresh_access_token(
             detail="Refresh token is required",
         )
 
+    # Check if the refresh token has been revoked (e.g., from logout)
+    from api.deps import is_token_revoked
+
+    if is_token_revoked(refresh_token_value):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token has been revoked",
+        )
+
     try:
         payload = verify_token(refresh_token_value)
         if payload.get("type") != "refresh":
@@ -331,7 +340,14 @@ async def refresh_access_token(
 @router.post("/api/user/logout")
 @limiter.limit("30/minute")
 async def logout(request: Request, response: Response):
-    """Clear JWT cookies on logout."""
+    """Clear JWT cookies on logout and revoke refresh token."""
+    from api.deps import REFRESH_TOKEN_COOKIE, revoke_token
+
+    # Revoke the refresh token to prevent token reuse after logout
+    refresh_token_value = request.cookies.get(REFRESH_TOKEN_COOKIE)
+    if refresh_token_value:
+        revoke_token(refresh_token_value)
+
     clear_token_cookies(response)
     return {"success": True}
 
