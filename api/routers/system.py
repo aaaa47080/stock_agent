@@ -218,7 +218,7 @@ async def get_config(request: Request):
             "has_openrouter_key": has_key("openrouter"),
             "has_current_provider_key": has_key(current_provider),
         },
-        "test_mode": core_config.TEST_MODE if is_authenticated else False,
+        "test_mode": core_config.TEST_MODE,
         "pi_sandbox": core_config.PI_SANDBOX,
     }
 

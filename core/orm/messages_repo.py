@@ -135,19 +135,29 @@ class MessagesRepository:
             else_=u1.c.membership_tier,
         )
 
+        # Build two separate blocked subqueries (one for each role) to avoid
+        # SQLAlchemy auto-correlation issues when using CASE in EXISTS
+        blocked_by_user_as_u1 = exists(
+            select(Friendship.id).where(
+                Friendship.user_id == user_id,
+                Friendship.friend_id == DmConversation.user1_id,
+                Friendship.status == "blocked",
+            )
+        ).correlate(DmConversation)
+
+        blocked_by_user_as_u2 = exists(
+            select(Friendship.id).where(
+                Friendship.user_id == user_id,
+                Friendship.friend_id == DmConversation.user2_id,
+                Friendship.status == "blocked",
+            )
+        ).correlate(DmConversation)
+
         has_visible_msg = exists(
             select(DmMessage.id).where(
                 DmMessage.conversation_id == DmConversation.id,
             )
-        )
-
-        blocked_by_user = exists(
-            select(Friendship.id).where(
-                Friendship.user_id == user_id,
-                Friendship.friend_id == other_user_id_expr,
-                Friendship.status == "blocked",
-            )
-        )
+        ).correlate(DmConversation)
 
         stmt = (
             select(
@@ -176,7 +186,8 @@ class MessagesRepository:
                     DmConversation.user2_id == user_id,
                 ),
                 has_visible_msg,
-                ~blocked_by_user,
+                ~blocked_by_user_as_u1,
+                ~blocked_by_user_as_u2,
             )
             .order_by(
                 DmConversation.last_message_at.desc().nullslast(),
