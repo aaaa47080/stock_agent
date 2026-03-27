@@ -90,7 +90,6 @@ class User(Base):
     )
     role: Mapped[str] = mapped_column(Text, default="user")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now()
     )
