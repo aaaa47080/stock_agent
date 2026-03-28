@@ -1001,9 +1001,38 @@ const ForumApp = {
                     }
                 } catch (error) {
                     console.warn('[CreatePost] Failed to check limits:', error);
-                    if (typeof showToast === 'function')
-                        showToast('無法驗證發文限制，請稍後再試', 'warning');
-                    // Proceed anyway - allow the attempt and let the server enforce limits
+                    if (error?.status === 401) {
+                        // 認證失敗：先嘗試刷新 token
+                        let authRecovered = false;
+                        try {
+                            const refreshResult = await AuthManager.backendTokenRefresh();
+                            if (refreshResult.success) {
+                                authRecovered = true;
+                            }
+                        } catch (_) {}
+
+                        // 若刷新失敗，嘗試 Pi 重新認證（Pi Browser 環境）
+                        if (!authRecovered && typeof AuthManager.authenticateWithPi === 'function') {
+                            try {
+                                const piResult = await AuthManager.authenticateWithPi();
+                                if (piResult?.success) {
+                                    authRecovered = true;
+                                }
+                            } catch (_) {}
+                        }
+
+                        if (!authRecovered) {
+                            if (typeof showToast === 'function')
+                                showToast('登入已過期，請重新整理頁面後登入', 'error');
+                            resetButton();
+                            return;
+                        }
+                        // 認證恢復，繼續發文流程
+                    } else {
+                        if (typeof showToast === 'function')
+                            showToast('無法驗證發文限制，請稍後再試', 'warning');
+                        // 非認證錯誤（如超時），允許繼續由伺服器端執行限制
+                    }
                 }
             }
 
