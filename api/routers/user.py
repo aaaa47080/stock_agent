@@ -675,57 +675,68 @@ async def delete_user_api_key_endpoint(
 
 @router.get("/api/user/auth-debug")
 async def auth_debug(request: Request):
-    """Temporary diagnostic endpoint — no auth required. Shows token state in production."""
+    """Temporary diagnostic endpoint — no auth required. Returns HTML for mobile debugging."""
+    from fastapi.responses import HTMLResponse
     import os
     import jwt as pyjwt
     from api.deps import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE
-    from core.orm.repositories import user_repo
 
-    result = {
-        "env_jwt_secret_set": bool(SECRET_KEY),
-        "env_jwt_secret_len": len(SECRET_KEY) if SECRET_KEY else 0,
-        "cookie_names": list(request.cookies.keys()),
-        "access_token_cookie_present": ACCESS_TOKEN_COOKIE in request.cookies,
-        "refresh_token_cookie_present": REFRESH_TOKEN_COOKIE in request.cookies,
-        "authorization_header": bool(request.headers.get("Authorization")),
-    }
+    pi_api_key = os.getenv("PI_API_KEY", "")
+    pi_sandbox_key = os.getenv("PI_SANDBOX_API_KEY", "")
+    pi_sandbox = os.getenv("PI_SANDBOX", "false")
 
-    # Try to decode the access token
+    rows = [
+        ("JWT_SECRET_KEY set", "YES ✓" if SECRET_KEY else "NO ✗", bool(SECRET_KEY)),
+        ("JWT_SECRET_KEY length", str(len(SECRET_KEY)) if SECRET_KEY else "0", bool(SECRET_KEY and len(SECRET_KEY) >= 32)),
+        ("PI_API_KEY set", "YES ✓" if pi_api_key else "NO ✗", bool(pi_api_key)),
+        ("PI_SANDBOX_API_KEY set", "YES ✓" if pi_sandbox_key else "NO ✗", bool(pi_sandbox_key)),
+        ("PI_SANDBOX mode", pi_sandbox, pi_sandbox == "false"),
+        ("access_token cookie", "present ✓" if ACCESS_TOKEN_COOKIE in request.cookies else "missing ✗", ACCESS_TOKEN_COOKIE in request.cookies),
+        ("refresh_token cookie", "present ✓" if REFRESH_TOKEN_COOKIE in request.cookies else "missing ✗", REFRESH_TOKEN_COOKIE in request.cookies),
+        ("Authorization header", "present ✓" if request.headers.get("Authorization") else "missing", False),
+    ]
+
     token = request.cookies.get(ACCESS_TOKEN_COOKIE)
     if not token:
         auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Bearer "):
             token = auth_header[7:]
 
-    result["token_found"] = bool(token)
-    result["token_prefix"] = token[:20] + "..." if token else None
-
+    jwt_status = "no token"
+    jwt_ok = False
     if token and SECRET_KEY:
         try:
-            payload = pyjwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-            result["jwt_decode"] = "success"
-            result["jwt_sub"] = payload.get("sub")
-            result["jwt_type"] = payload.get("type")
-            result["jwt_exp"] = str(payload.get("exp"))
-
-            user_id = payload.get("sub")
-            if user_id:
-                try:
-                    user = await user_repo.get_by_id(user_id)
-                    result["user_found"] = bool(user)
-                    result["user_id"] = user_id
-                    if user:
-                        result["username"] = user.get("username")
-                except Exception as e:
-                    result["user_lookup_error"] = str(e)
+            pyjwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            jwt_status = "decode OK ✓"
+            jwt_ok = True
         except pyjwt.ExpiredSignatureError:
-            result["jwt_decode"] = "expired"
+            jwt_status = "EXPIRED ✗"
         except pyjwt.InvalidTokenError as e:
-            result["jwt_decode"] = f"invalid: {e}"
+            jwt_status = f"INVALID: {e} ✗"
     elif token and not SECRET_KEY:
-        result["jwt_decode"] = "no_secret_key"
+        jwt_status = "no secret key"
 
-    return result
+    rows.append(("JWT decode result", jwt_status, jwt_ok))
+
+    def row_html(label, value, ok):
+        color = "#4ade80" if ok else "#f87171"
+        return f'<tr><td style="padding:8px;border-bottom:1px solid #333">{label}</td><td style="padding:8px;border-bottom:1px solid #333;color:{color};font-weight:bold">{value}</td></tr>'
+
+    table = "".join(row_html(l, v, ok) for l, v, ok in rows)
+    html = f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Auth Debug</title>
+<style>body{{background:#111;color:#eee;font-family:monospace;padding:16px}}
+table{{width:100%;border-collapse:collapse}}h2{{color:#f5c842}}</style>
+</head><body>
+<h2>Auth Debug</h2>
+<table>{table}</table>
+<p style="color:#888;font-size:12px;margin-top:16px">
+PI_API_KEY is required for Pi login to work.<br>
+If missing, add it in Zeabur environment variables.
+</p>
+</body></html>"""
+    return HTMLResponse(content=html)
 
 
 @router.post("/api/user/api-keys/model")
