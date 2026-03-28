@@ -51,7 +51,12 @@ def _resolve_async_url() -> str | None:
     if not all([host, user, password, db_name]):
         database_url = os.getenv("DATABASE_URL")
         if database_url:
-            url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+            # Normalise both "postgres://" and "postgresql://" → asyncpg driver
+            url = database_url
+            if url.startswith("postgres://"):
+                url = "postgresql+asyncpg://" + url[len("postgres://"):]
+            elif url.startswith("postgresql://"):
+                url = "postgresql+asyncpg://" + url[len("postgresql://"):]
             url = url.replace("sslmode=require", "ssl=require", 1)
             url = url.replace("&channel_binding=require", "", 1)
             return url
