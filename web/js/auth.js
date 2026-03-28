@@ -97,6 +97,7 @@ const PI_LOGIN_RECOVERY_GRACE_MS = 15000;
 
 var _piLoginPromise = null;
 var _piRefreshPromise = null;
+var _testSessionRecoveryPromise = null;
 
 const PiEnvironment = {
     isLocalhost() {
@@ -169,6 +170,12 @@ const AuthManager = {
     isPasswordSession(user) {
         const method = user?.authMethod || user?.auth_method;
         return method === 'password';
+    },
+
+    isMockSession(user = this.currentUser) {
+        const userId = user?.user_id || user?.uid || user?.pi_uid || '';
+        const method = user?.authMethod || user?.auth_method || '';
+        return !!window.__APP_TEST_MODE && (userId.startsWith('test-user-') || method === 'dev_test');
     },
 
     isTokenExpired() {
@@ -464,11 +471,75 @@ const AuthManager = {
                     error: error.message,
                 });
                 DebugLog.error('後端刷新也失敗', { error: error.message });
+                if (this.isMockSession()) {
+                    DebugLog.warn('Refresh failed for test-mode session, attempting dev-login recovery', {
+                        error: error.message,
+                    });
+                    return await this.recoverTestModeSession();
+                }
                 return { success: false, error: error.message };
             }
         })().finally(() => { _piRefreshPromise = null; });
 
         return _piRefreshPromise;
+    },
+
+    async recoverTestModeSession() {
+        if (!this.isMockSession()) {
+            return { success: false, error: 'Not a test-mode session' };
+        }
+
+        if (_testSessionRecoveryPromise) {
+            return _testSessionRecoveryPromise;
+        }
+
+        _testSessionRecoveryPromise = (async () => {
+            try {
+                const targetUserId =
+                    this.currentUser?.user_id || this.currentUser?.uid || this.currentUser?.pi_uid;
+                pushAuthDiagnostic('recoverTestModeSession:start', {
+                    user_id: targetUserId || null,
+                });
+
+                const result = await AppAPI.post(
+                    '/api/user/dev-login',
+                    targetUserId ? { user_id: targetUserId } : undefined,
+                    { headers: { Authorization: '' }, _authRetried: true }
+                );
+
+                this.currentUser = {
+                    ...(this.currentUser || {}),
+                    uid: result.user.uid,
+                    user_id: result.user.uid,
+                    username: result.user.username,
+                    accessToken: result.access_token,
+                    accessTokenExpiry: Date.now() + this.TOKEN_EXPIRY_MS,
+                    authMethod: result.user.authMethod,
+                    auth_method: result.user.authMethod,
+                };
+                this._saveUserSession();
+                this._updateUI(true);
+                this.markRecentLoginSuccess();
+
+                pushAuthDiagnostic('recoverTestModeSession:success', {
+                    user_id: result.user.uid,
+                });
+                DebugLog.info('Recovered test-mode session via dev-login', {
+                    user_id: result.user.uid,
+                });
+                return { success: true };
+            } catch (error) {
+                pushAuthDiagnostic('recoverTestModeSession:failed', {
+                    error: error.message,
+                });
+                DebugLog.error('Failed to recover test-mode session', {
+                    error: error.message,
+                });
+                return { success: false, error: error.message };
+            }
+        })().finally(() => { _testSessionRecoveryPromise = null; });
+
+        return _testSessionRecoveryPromise;
     },
 
     async restoreSessionFromBackend() {

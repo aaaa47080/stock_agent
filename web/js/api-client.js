@@ -18,7 +18,20 @@ function getToken() {
         typeof AuthManager !== 'undefined' &&
         AuthManager.currentUser
     ) {
-        return AuthManager.currentUser.accessToken || AuthManager.currentUser.token || null;
+        var user = AuthManager.currentUser;
+        var token = user.accessToken || user.token || null;
+        var expiry = user.accessTokenExpiry || 0;
+        var userId = user.user_id || user.uid || user.pi_uid || '';
+        var method = user.authMethod || user.auth_method || '';
+        var isMockSession =
+            !!window.__APP_TEST_MODE &&
+            (userId.indexOf('test-user-') === 0 || method === 'dev_test');
+
+        if (token && expiry && Date.now() >= expiry && isMockSession) {
+            return null;
+        }
+
+        return token;
     }
     return null;
 }
@@ -122,6 +135,22 @@ async function request(method, url, options) {
                                 return await request(method, url, retryOptions);
                             }
                         } catch (_refreshErr) {}
+                    }
+                    if (
+                        !options._testModeRecovered &&
+                        typeof AuthManager !== 'undefined' &&
+                        typeof AuthManager.recoverTestModeSession === 'function'
+                    ) {
+                        try {
+                            var recoveryResult = await AuthManager.recoverTestModeSession();
+                            if (recoveryResult && recoveryResult.success) {
+                                var recoveredRetryOptions = Object.assign({}, options, {
+                                    _authRetried: true,
+                                    _testModeRecovered: true,
+                                });
+                                return await request(method, url, recoveredRetryOptions);
+                            }
+                        } catch (_recoveryErr) {}
                     }
                     // Refresh failed — make error friendlier
                     lastError = new Error('登入已過期，請重新整理頁面');
