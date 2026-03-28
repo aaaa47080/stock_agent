@@ -350,7 +350,7 @@ class PremiumManager {
             // 認證 payments scope
             console.log('[Premium] 開始 Pi.authenticate');
             this.serverLog('info', '開始 Pi.authenticate');
-            const authResult = await window.Pi.authenticate(['payments'], (incompletePayment) => {
+            const authResult = await window.Pi.authenticate(['username', 'payments', 'wallet_address'], (incompletePayment) => {
                 console.warn('[Premium] 發現未完成的支付 (callback):', incompletePayment);
                 this.serverLog('warning', '發現未完成的支付', incompletePayment);
                 this.handleIncompletePayment(incompletePayment);
