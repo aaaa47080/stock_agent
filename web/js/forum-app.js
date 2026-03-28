@@ -636,6 +636,7 @@ const ForumApp = {
 
                 let paymentComplete = false;
                 let paymentError = null;
+                let tipPaymentId = null;
                 const loadingToast = showToast('正在處理支付...', 'info', 0);
 
                 await Pi.createPayment(
@@ -654,6 +655,7 @@ const ForumApp = {
                         },
                         onReadyForServerCompletion: async (paymentId, txid) => {
                             txHash = txid;
+                            tipPaymentId = paymentId;
                             paymentComplete = true;
                             try {
                                 await AppAPI.post('/api/user/payment/complete', { paymentId, txid });
@@ -694,7 +696,7 @@ const ForumApp = {
                 txHash = 'mock_tip_' + Date.now();
             }
 
-            await ForumAPI.tipPost(postId, tipAmount, txHash);
+            await ForumAPI.tipPost(postId, tipAmount, txHash, tipPaymentId);
             showToast('打賞成功！感謝您的支持', 'success');
             this.loadPostDetail(postId);
         } catch (e) {

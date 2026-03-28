@@ -61,13 +61,14 @@ const ForumAPI = {
     },
 
     // Tips
-    async tipPost(postId, amount, txHash) {
+    async tipPost(postId, amount, txHash, paymentId) {
         const userId = this._getUserId();
         if (!userId) throw new Error('Please login first');
 
         return AppAPI.post(`/api/forum/posts/${postId}/tip?user_id=${userId}`, {
             amount,
             tx_hash: txHash,
+            payment_id: paymentId,
         });
     },
 
