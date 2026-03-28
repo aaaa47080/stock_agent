@@ -264,6 +264,12 @@ def verify_token(token: str) -> dict:
     if _use_key_rotation():
         key_manager = _get_key_manager()
         payload = key_manager.verify_token_with_any_key(token, algorithms=[ALGORITHM])
+        # Fallback: accept tokens signed with JWT_SECRET_KEY (pre-rotation migration)
+        if payload is None and SECRET_KEY:
+            try:
+                payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            except Exception:
+                payload = None
         if payload is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -307,6 +313,14 @@ async def get_current_user_id(
             payload = key_manager.verify_token_with_any_key(
                 resolved_token, algorithms=[ALGORITHM]
             )
+            # Fallback: accept tokens signed with JWT_SECRET_KEY (pre-rotation migration)
+            if payload is None and SECRET_KEY:
+                try:
+                    payload = jwt.decode(
+                        resolved_token, SECRET_KEY, algorithms=[ALGORITHM]
+                    )
+                except Exception:
+                    payload = None
             if payload is None:
                 raise credentials_exception
         else:
