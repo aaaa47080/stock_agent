@@ -945,7 +945,7 @@ const ForumApp = {
                 resetButton();
                 return;
             }
-            const isPi = AuthManager.isPiBrowser();
+            const isPi = typeof isPiBrowser === 'function' ? isPiBrowser() : false;
             let txHash = '';
 
             const userId = AuthManager.currentUser?.user_id || AuthManager.currentUser?.uid;
