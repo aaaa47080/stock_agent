@@ -1,228 +1,123 @@
 """
-JWT Key Rotation System (Stage 3 Security)
+JWT Key Rotation System — DB-backed storage with in-memory cache.
 
-Implements dual-key strategy for JWT token rotation:
-- Primary Key: Used to sign NEW tokens
-- Deprecated Key: Still validates OLD tokens (until expiry)
-- Expired Key: Removed from active validation
+Keys are stored encrypted in PostgreSQL (jwt_keys table).
+Encryption uses JWT_MASTER_KEY env var (Fernet/PBKDF2).
 
-This allows seamless key rotation without invalidating existing tokens.
+Design:
+- Primary Key: Signs new tokens
+- Deprecated Key: Validates old tokens until they expire (24h max)
+- Auto-rotation: every KEY_ROTATION_INTERVAL_DAYS (default: 30)
+- Bootstrap: first startup auto-generates key and saves to DB
+
+Required env vars when USE_KEY_ROTATION=true:
+  JWT_MASTER_KEY  — master encryption key for key values in DB
+                    generate with: openssl rand -hex 32
 """
 
+import base64
 import hashlib
-import json
 import os
 import secrets
-import shutil
-import time
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 from typing import Dict, List, Optional
 
 import jwt
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 from api.utils import logger
+
+# ── Encryption helpers ─────────────────────────────────────────────────────────
+
+_fernet_cache: Optional[Fernet] = None
+
+
+def _get_master_fernet() -> Fernet:
+    """Derive Fernet instance from JWT_MASTER_KEY env var (cached)."""
+    global _fernet_cache
+    if _fernet_cache is not None:
+        return _fernet_cache
+
+    master = os.getenv("JWT_MASTER_KEY")
+    if not master:
+        raise RuntimeError(
+            "JWT_MASTER_KEY environment variable is required when USE_KEY_ROTATION=true. "
+            "Generate with: openssl rand -hex 32"
+        )
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=b"PiCryptoMind_JWT_Key_DB_v1",
+        iterations=480000,
+    )
+    key = base64.urlsafe_b64encode(kdf.derive(master.encode()))
+    _fernet_cache = Fernet(key)
+    return _fernet_cache
+
+
+def _encrypt_key_value(value: str) -> str:
+    return _get_master_fernet().encrypt(value.encode()).decode()
+
+
+def _decrypt_key_value(encrypted: str) -> str:
+    return _get_master_fernet().decrypt(encrypted.encode()).decode()
+
+
+# ── KeyRotationManager ─────────────────────────────────────────────────────────
 
 
 class KeyRotationManager:
     """
-    Manages JWT key rotation with dual-key strategy.
+    DB-backed JWT key rotation manager with in-memory cache.
 
-    The key rotation process:
-    1. New tokens are signed with the primary key
-    2. Old tokens validated with deprecated key until they expire
-    3. Keys are automatically rotated every 30 days
-    4. Manual rotation available via admin API
+    Lifecycle:
+        manager = get_key_manager()       # sync, no DB access
+        await manager.initialize()        # async, loads keys from DB
+        key = manager.get_current_key()   # sync, reads from cache
 
-    Storage: config/keys/jwt_keys.json (chmod 600)
+    The background task (key_rotation_task) owns initialization and
+    periodic rotation. Routes read from the cache without awaiting.
     """
 
-    def __init__(self, config_dir: str = "config/keys"):
-        """
-        Initialize the key rotation manager.
+    def __init__(self) -> None:
+        # key_id -> {"value": str, "status": str, "is_primary": bool, "expires_at": datetime}
+        self._cache: Dict[str, dict] = {}
+        self._primary_key_id: Optional[str] = None
+        self._initialized: bool = False
 
-        Args:
-            config_dir: Directory to store key configuration
-        """
-        self.config_dir = Path(config_dir)
-        self.config_dir.mkdir(parents=True, exist_ok=True)
-        self.keys_file = self.config_dir / "jwt_keys.json"
-        self.keys = self._load_keys()
-
-        # Perform cleanup of expired keys on init
-        self._cleanup_expired_keys()
-
-    def _load_keys(self) -> Dict:
-        """
-        Load all key configurations from file.
-
-        Returns:
-            Dictionary containing keys configuration
-        """
-        if self.keys_file.exists():
-            try:
-                with open(self.keys_file, "r") as f:
-                    return json.load(f)
-            except (json.JSONDecodeError, IOError) as e:
-                logger.error(f"Failed to load keys file, creating new: {e}")
-                # Fall through to create new keys
-
-        # Initialize: generate primary key for first-time setup
-        logger.warning("🔑 No JWT keys found, generating new primary key")
-        primary_key = self._generate_key()
-        keys = {
-            "primary": primary_key["id"],
-            "keys": [primary_key],
-            "last_rotation": datetime.now(UTC).isoformat(),
-        }
-        self._save_keys_direct(keys)
-        return keys
-
-    @staticmethod
-    def _parse_timestamp(value: str) -> datetime:
-        """
-        Parse ISO timestamps from current or legacy key files.
-
-        Legacy data may contain naive timestamps; treat those as UTC so the
-        rotation logic remains backward compatible after switching to
-        timezone-aware datetimes.
-        """
-        dt = datetime.fromisoformat(value)
-        if dt.tzinfo is None:
-            return dt.replace(tzinfo=UTC)
-        return dt
-
-    def _generate_key(self) -> Dict:
-        """
-        Generate a new cryptographic key.
-
-        Returns:
-            Dictionary with key metadata
-        """
-        # Generate unique key ID (first 16 chars of SHA256)
-        key_id = hashlib.sha256(secrets.token_bytes(16)).hexdigest()[:16]
-
-        # Generate 256-bit key value (URL-safe base64)
-        key_value = secrets.token_urlsafe(32)
-
-        now = datetime.now(UTC)
-
-        return {
-            "id": key_id,
-            "value": key_value,
-            "created_at": now.isoformat(),
-            "expires_at": (now + timedelta(days=90)).isoformat(),
-            "status": "active",
-        }
+    # ── Public sync interface (cache reads) ────────────────────────────────────
 
     def get_current_key(self) -> str:
-        """
-        Get the current primary key value for signing new tokens.
-
-        Returns:
-            The primary key value
-
-        Raises:
-            RuntimeError: If no active primary key found
-        """
-        for key in self.keys["keys"]:
-            if key["id"] == self.keys["primary"] and key["status"] == "active":
-                return key["value"]
-        raise RuntimeError("No active primary key found")
+        """Return primary signing key value (sync, from cache)."""
+        self._require_initialized()
+        entry = self._cache.get(self._primary_key_id or "")
+        if not entry:
+            raise RuntimeError("Primary JWT key not found in cache")
+        return entry["value"]
 
     def get_primary_key_id(self) -> str:
-        """
-        Get the current primary key ID.
-
-        Returns:
-            The primary key ID
-        """
-        return self.keys["primary"]
+        """Return primary key ID (sync, from cache)."""
+        self._require_initialized()
+        return self._primary_key_id  # type: ignore[return-value]
 
     def get_all_active_keys(self) -> Dict[str, str]:
-        """
-        Get all active keys for token validation.
-
-        Includes both active and deprecated keys to allow
-        existing tokens to remain valid during rotation.
-
-        Returns:
-            Dictionary mapping key IDs to key values
-        """
+        """Return all active+deprecated key values for token validation (sync, from cache)."""
+        self._require_initialized()
         return {
-            key["id"]: key["value"]
-            for key in self.keys["keys"]
-            if key["status"] in ["active", "deprecated"]
+            kid: e["value"]
+            for kid, e in self._cache.items()
+            if e["status"] in ("active", "deprecated")
         }
-
-    def rotate_key(self) -> Dict:
-        """
-        Execute key rotation.
-
-        Process:
-        1. Generate new key
-        2. Promote to primary
-        3. Deprecate old primary key
-        4. Save with backup
-
-        Returns:
-            Dictionary with rotation metadata
-        """
-        old_primary_id = self.keys["primary"]
-
-        # Generate new key
-        new_key = self._generate_key()
-        self.keys["keys"].append(new_key)
-
-        # Update primary
-        self.keys["primary"] = new_key["id"]
-
-        # Deprecate old key
-        for key in self.keys["keys"]:
-            if key["id"] == old_primary_id:
-                key["status"] = "deprecated"
-                key["deprecated_at"] = datetime.now(UTC).isoformat()
-
-        self.keys["last_rotation"] = datetime.now(UTC).isoformat()
-
-        # Save with backup
-        self._save_keys()
-
-        result = {
-            "old_key_id": old_primary_id,
-            "new_key_id": new_key["id"],
-            "rotated_at": self.keys["last_rotation"],
-        }
-
-        logger.info(
-            f"🔑 Key rotation completed: {old_primary_id[:8]}... -> {new_key['id'][:8]}..."
-        )
-
-        return result
 
     def verify_token_with_any_key(
         self, token: str, algorithms: Optional[List[str]] = None
     ) -> Optional[Dict]:
-        """
-        Verify token using any active key.
-
-        Tries all active and deprecated keys until one successfully
-        decodes the token. This allows tokens signed with old keys
-        to remain valid.
-
-        Args:
-            token: JWT token string
-            algorithms: List of allowed algorithms (default: ["HS256"])
-
-        Returns:
-            Decoded token payload with _key_id added, or None if invalid
-        """
+        """Try all active/deprecated keys; return decoded payload or None."""
         if algorithms is None:
             algorithms = ["HS256"]
-
-        all_keys = self.get_all_active_keys()
-
-        for key_id, key_value in all_keys.items():
+        for key_id, key_value in self.get_all_active_keys().items():
             try:
                 payload = jwt.decode(
                     token,
@@ -230,228 +125,260 @@ class KeyRotationManager:
                     algorithms=algorithms,
                     options={"verify_exp": True},
                 )
-                # Add key_id to payload for tracking
                 payload["_key_id"] = key_id
                 return payload
             except Exception:
-                # Try next key
                 continue
-
         return None
 
-    def _save_keys(self):
-        """
-        Save keys with automatic backup.
-
-        Creates a timestamped backup before overwriting.
-        Sets file permissions to 600 (owner read/write only).
-        """
-        if self.keys_file.exists():
-            backup_file = self.config_dir / f"jwt_keys.backup.{int(time.time())}"
-            try:
-                shutil.copy(self.keys_file, backup_file)
-                logger.debug(f"Created key backup: {backup_file.name}")
-            except IOError as e:
-                logger.error(f"Failed to create key backup: {e}")
-
-        self._save_keys_direct(self.keys)
-
-    def _save_keys_direct(self, keys_data: Dict):
-        """
-        Direct save of keys data (used during initialization).
-
-        Args:
-            keys_data: Keys dictionary to save
-        """
-        with open(self.keys_file, "w") as f:
-            json.dump(keys_data, f, indent=2)
-
-        # Set file permissions to owner read/write only
-        self.keys_file.chmod(0o600)
-
-    def _cleanup_expired_keys(self):
-        """
-        Remove expired keys from the configuration.
-
-        Keys older than 90 days and in 'expired' status are removed
-        to prevent unlimited file growth.
-        """
-        now = datetime.now(UTC)
-        keys_to_keep = []
-        removed_count = 0
-
-        for key in self.keys["keys"]:
-            try:
-                expires_at = self._parse_timestamp(key["expires_at"])
-                # Keep if not expired, or if still active/deprecated
-                if expires_at > now or key["status"] in ["active", "deprecated"]:
-                    keys_to_keep.append(key)
-                else:
-                    removed_count += 1
-            except (KeyError, ValueError):
-                # Keep keys with invalid dates
-                keys_to_keep.append(key)
-
-        if removed_count > 0:
-            self.keys["keys"] = keys_to_keep
-            self._save_keys_direct(self.keys)
-            logger.info(f"🧹 Cleaned up {removed_count} expired JWT keys")
+    def should_rotate(self, rotation_interval_days: int = 30) -> bool:
+        """True if the primary key is older than rotation_interval_days."""
+        self._require_initialized()
+        entry = self._cache.get(self._primary_key_id or "")
+        if not entry:
+            return True
+        expires_at = entry["expires_at"]
+        if hasattr(expires_at, "tzinfo") and expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=UTC)
+        # Keys are created with 90-day expiry; derive creation time
+        created_approx = expires_at - timedelta(days=90)
+        return datetime.now(UTC) >= created_approx + timedelta(days=rotation_interval_days)
 
     def get_keys_status(self) -> Dict:
-        """
-        Get status of all keys (for admin monitoring).
-
-        Returns:
-            Dictionary with key status information (values masked)
-        """
-        keys_info = []
-        for key in self.keys["keys"]:
-            key_copy = key.copy()
-            # Mask the actual key value for security
-            if "value" in key_copy:
-                key_copy["value"] = (
-                    f"{key_copy['value'][:8]}...{key_copy['value'][-4:]}"
-                )
-            keys_info.append(key_copy)
-
+        """Admin view — key values are NOT included."""
         return {
-            "primary_key_id": self.keys["primary"],
-            "last_rotation": self.keys["last_rotation"],
-            "total_keys": len(self.keys["keys"]),
-            "active_keys": len(
-                [k for k in self.keys["keys"] if k["status"] == "active"]
+            "primary_key_id": self._primary_key_id,
+            "initialized": self._initialized,
+            "total_keys": len(self._cache),
+            "active_keys": sum(
+                1 for e in self._cache.values() if e["status"] == "active"
             ),
-            "deprecated_keys": len(
-                [k for k in self.keys["keys"] if k["status"] == "deprecated"]
+            "deprecated_keys": sum(
+                1 for e in self._cache.values() if e["status"] == "deprecated"
             ),
-            "keys": keys_info,
         }
 
-    def should_rotate(self, rotation_interval_days: int = 30) -> bool:
-        """
-        Check if key rotation is due.
+    # ── Async DB operations ────────────────────────────────────────────────────
 
-        Args:
-            rotation_interval_days: Days between rotations (default: 30)
+    async def initialize(self) -> None:
+        """Load (or bootstrap) keys from DB and populate in-memory cache."""
+        from core.orm.models import JWTKey
+        from core.orm.session import get_session_factory
+        from sqlalchemy import select
 
-        Returns:
-            True if rotation is due
-        """
-        try:
-            last_rotation = self._parse_timestamp(self.keys["last_rotation"])
-            next_rotation = last_rotation + timedelta(days=rotation_interval_days)
-            return datetime.now(UTC) >= next_rotation
-        except (KeyError, ValueError):
-            # If we can't parse the date, rotation is due
-            return True
+        factory = get_session_factory()
+        async with factory() as session:
+            result = await session.execute(
+                select(JWTKey).where(JWTKey.status.in_(["active", "deprecated"]))
+            )
+            rows = result.scalars().all()
+
+            if not rows:
+                await self._bootstrap(session)
+                result = await session.execute(
+                    select(JWTKey).where(JWTKey.status.in_(["active", "deprecated"]))
+                )
+                rows = result.scalars().all()
+
+        self._cache = {}
+        self._primary_key_id = None
+
+        for row in rows:
+            try:
+                value = _decrypt_key_value(row.value_encrypted)
+            except Exception as exc:
+                logger.error(f"Failed to decrypt JWT key {row.id}: {exc}")
+                continue
+            self._cache[row.id] = {
+                "value": value,
+                "status": row.status,
+                "is_primary": row.is_primary,
+                "expires_at": row.expires_at,
+            }
+            if row.is_primary:
+                self._primary_key_id = row.id
+
+        if not self._primary_key_id:
+            raise RuntimeError("No primary JWT key found after initialization")
+
+        self._initialized = True
+        logger.info(
+            f"🔑 JWT KeyRotationManager initialized ({len(self._cache)} key(s) loaded)"
+        )
+
+    async def rotate_key(self) -> Dict:
+        """Demote current primary → deprecated; generate and promote new primary."""
+        from core.orm.models import JWTKey
+        from core.orm.session import get_session_factory
+        from sqlalchemy import select
+
+        factory = get_session_factory()
+        async with factory() as session:
+            result = await session.execute(
+                select(JWTKey).where(JWTKey.is_primary.is_(True))
+            )
+            old_primary = result.scalar_one_or_none()
+            if not old_primary:
+                raise RuntimeError("No primary key found in DB for rotation")
+
+            old_key_id = old_primary.id
+            now = datetime.now(UTC)
+
+            old_primary.is_primary = False
+            old_primary.status = "deprecated"
+            old_primary.deprecated_at = now
+
+            new_id, new_value = _generate_key_pair()
+            new_key = JWTKey(
+                id=new_id,
+                value_encrypted=_encrypt_key_value(new_value),
+                status="active",
+                is_primary=True,
+                created_at=now,
+                expires_at=now + timedelta(days=90),
+            )
+            session.add(new_key)
+            await session.commit()
+
+        # Refresh cache after rotation
+        await self.initialize()
+
+        result = {
+            "old_key_id": old_key_id,
+            "new_key_id": new_id,
+            "rotated_at": now.isoformat(),
+        }
+        logger.info(
+            f"🔑 Key rotation completed: {old_key_id[:8]}... → {new_id[:8]}..."
+        )
+        return result
+
+    async def cleanup_expired_keys(self) -> int:
+        """Delete deprecated keys whose expiry has passed."""
+        from core.orm.models import JWTKey
+        from core.orm.session import get_session_factory
+        from sqlalchemy import delete, select
+
+        now = datetime.now(UTC)
+        factory = get_session_factory()
+        async with factory() as session:
+            result = await session.execute(
+                select(JWTKey.id).where(
+                    JWTKey.status == "deprecated",
+                    JWTKey.expires_at < now,
+                    JWTKey.is_primary.is_(False),
+                )
+            )
+            expired_ids = [row[0] for row in result.fetchall()]
+
+            if expired_ids:
+                await session.execute(
+                    delete(JWTKey).where(JWTKey.id.in_(expired_ids))
+                )
+                await session.commit()
+                logger.info(f"🧹 Cleaned up {len(expired_ids)} expired JWT key(s)")
+
+        return len(expired_ids)
+
+    # ── Private helpers ────────────────────────────────────────────────────────
+
+    def _require_initialized(self) -> None:
+        if not self._initialized:
+            raise RuntimeError(
+                "JWT KeyRotationManager not yet initialized. "
+                "The key_rotation_task must complete initialization before handling requests."
+            )
+
+    @staticmethod
+    async def _bootstrap(session) -> None:
+        """Insert the first key on a fresh DB."""
+        from core.orm.models import JWTKey
+
+        key_id, key_value = _generate_key_pair()
+        now = datetime.now(UTC)
+        session.add(
+            JWTKey(
+                id=key_id,
+                value_encrypted=_encrypt_key_value(key_value),
+                status="active",
+                is_primary=True,
+                created_at=now,
+                expires_at=now + timedelta(days=90),
+            )
+        )
+        await session.commit()
+        logger.info(f"🔑 Bootstrap: generated initial JWT key {key_id[:8]}...")
 
 
-# Global singleton instance
+# ── Helpers ────────────────────────────────────────────────────────────────────
+
+
+def _generate_key_pair() -> tuple[str, str]:
+    """Return (key_id, key_value) — both cryptographically random."""
+    key_id = hashlib.sha256(secrets.token_bytes(16)).hexdigest()[:16]
+    key_value = secrets.token_urlsafe(32)
+    return key_id, key_value
+
+
+# ── Singleton ──────────────────────────────────────────────────────────────────
+
 _global_manager: Optional[KeyRotationManager] = None
 
 
 def get_key_manager() -> KeyRotationManager:
-    """
-    Get the global key rotation manager instance.
-
-    Returns:
-        KeyRotationManager singleton
-    """
+    """Return the global KeyRotationManager singleton (lazy creation, no DB access)."""
     global _global_manager
     if _global_manager is None:
         _global_manager = KeyRotationManager()
     return _global_manager
 
 
-# ============================================================================
-# Auto-Rotation Task
-# ============================================================================
+# ── Background task ────────────────────────────────────────────────────────────
 
 
-async def key_rotation_task():
+async def key_rotation_task() -> None:
     """
-    Scheduled task to automatically rotate JWT keys and API key encryption.
+    Startup: wait for DB, initialize key manager, then check rotation every hour.
 
-    Runs key rotation if it's due (every 30 days by default for JWT, 90 days for API key encryption).
-    Checks every hour and performs rotation when needed.
-
-    This should be started in api_server.py's lifespan function:
-        asyncio.create_task(key_rotation_task())
+    Started by api/lifespan.py when USE_KEY_ROTATION=true.
     """
     import asyncio
 
-    manager = get_key_manager()
+    from core.db_ready import wait_for_db_ready
+
     rotation_interval_days = int(os.getenv("KEY_ROTATION_INTERVAL_DAYS", "30"))
+    manager = get_key_manager()
+
+    # Wait until DB + Alembic migrations are complete
+    await wait_for_db_ready()
+
+    try:
+        await manager.initialize()
+    except Exception as exc:
+        logger.error(f"❌ JWT key manager initialization failed: {exc}")
+        raise
 
     logger.info(
-        f"🔑 Key rotation task started (interval: {rotation_interval_days} days, "
-        f"next check: {manager.keys['last_rotation']})"
+        f"🔑 Key rotation task started (rotation interval: {rotation_interval_days} days)"
     )
 
     while True:
+        await asyncio.sleep(3600)  # check every hour
         try:
-            # JWT Key Rotation
             if manager.should_rotate(rotation_interval_days):
-                logger.info("🔑 JWT key rotation is due, performing rotation...")
-                result = manager.rotate_key()
+                logger.info("🔑 JWT key rotation due, rotating...")
+                result = await manager.rotate_key()
                 logger.info(
-                    f"✅ JWT key rotation completed: "
-                    f"{result['old_key_id'][:8]}... -> {result['new_key_id'][:8]}..."
+                    f"✅ Key rotation: {result['old_key_id'][:8]}... → {result['new_key_id'][:8]}..."
                 )
-
-                # Log audit event
                 try:
                     from core.audit import audit_log
 
-                    audit_log(
-                        action="key_rotation_automatic",
-                        metadata={"type": "jwt", **result},
-                    )
+                    audit_log(action="key_rotation_automatic", metadata={"type": "jwt", **result})
                 except ImportError:
                     pass
 
-            # API Key Encryption Rotation
-            try:
-                from utils.encryption import (
-                    rotate_encryption_key,
-                    should_rotate_api_key_encryption,
-                )
+            await manager.cleanup_expired_keys()
 
-                api_key_interval = int(
-                    os.getenv("API_KEY_ROTATION_INTERVAL_DAYS", "90")
-                )
-
-                if should_rotate_api_key_encryption(api_key_interval):
-                    logger.info(
-                        "🔐 API key encryption rotation is due, performing rotation..."
-                    )
-                    result = rotate_encryption_key()
-                    if result.get("success"):
-                        logger.info(
-                            f"✅ API key encryption rotation completed: "
-                            f"re-encrypted {result.get('re_encrypted_count', 0)} keys"
-                        )
-                        # Log audit event
-                        try:
-                            from core.audit import audit_log
-
-                            audit_log(
-                                action="api_key_encryption_rotation_automatic",
-                                metadata=result,
-                            )
-                        except ImportError:
-                            pass
-                    else:
-                        logger.error(
-                            f"❌ API key encryption rotation failed: {result.get('error')}"
-                        )
-            except ImportError:
-                logger.debug("API key encryption module not available")
-            except Exception as e:
-                logger.error(f"❌ API key encryption rotation check failed: {e}")
-
-        except Exception as e:
-            logger.error(f"❌ Key rotation failed: {e}")
-
-        # Check again in 1 hour
-        await asyncio.sleep(3600)
+        except Exception as exc:
+            logger.error(f"❌ Key rotation task error: {exc}")

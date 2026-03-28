@@ -161,7 +161,7 @@ async def lifespan(app: FastAPI):
 
             asyncio.create_task(key_rotation_task())
             logger.info(
-                "✅ JWT key rotation task scheduled (monthly on 1st at 2 AM UTC)"
+                "✅ JWT key rotation task scheduled (DB-backed, checks every hour)"
             )
             _startup_mark("jwt_rotation_task_scheduled")
         except ImportError:

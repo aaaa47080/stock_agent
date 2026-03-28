@@ -1056,3 +1056,31 @@ class TaskExperience(Base):
         Index("idx_te_created", "created_at"),
         Index("idx_te_tsv", "query_tsv", postgresql_using="gin"),
     )
+
+
+# ── Security: JWT Keys ─────────────────────────────────────────────────────────
+
+
+class JWTKey(Base):
+    __tablename__ = "jwt_keys"
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    value_encrypted: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default="active")
+    is_primary: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
+    expires_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False)
+    deprecated_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('active', 'deprecated', 'expired')",
+            name="ck_jwt_key_status",
+        ),
+        Index("idx_jwt_keys_status", "status"),
+        Index("idx_jwt_keys_is_primary", "is_primary"),
+    )

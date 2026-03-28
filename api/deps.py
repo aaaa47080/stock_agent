@@ -59,6 +59,14 @@ if SECRET_KEY and len(SECRET_KEY) < 32:
         f"Current length: {len(SECRET_KEY)} characters.\n"
         "Generate a stronger key using: openssl rand -hex 32"
     )
+if os.getenv("USE_KEY_ROTATION", "false").lower() == "true":
+    if not os.getenv("JWT_MASTER_KEY"):
+        raise ValueError(
+            "🚨 SECURITY ERROR: JWT_MASTER_KEY environment variable is required when "
+            "USE_KEY_ROTATION=true.\n"
+            "This key encrypts JWT signing keys stored in PostgreSQL.\n"
+            "Generate with: openssl rand -hex 32"
+        )
 
 _key_manager = None
 
