@@ -112,8 +112,8 @@ async function request(method, url, options) {
                 lastError = new Error(errorMsg);
                 lastError.status = response.status;
 
-                if (response.status === 401 && !options._authRetried) {
-                    // Try to refresh token once, then retry the request
+                // Auto-refresh on 401: skip for /api/user/refresh itself to avoid deadlock
+                if (response.status === 401 && !options._authRetried && !url.includes('/api/user/refresh')) {
                     if (typeof AuthManager !== 'undefined' && typeof AuthManager.backendTokenRefresh === 'function') {
                         try {
                             var refreshResult = await AuthManager.backendTokenRefresh();
@@ -123,6 +123,9 @@ async function request(method, url, options) {
                             }
                         } catch (_refreshErr) {}
                     }
+                    // Refresh failed — make error friendlier
+                    lastError = new Error('登入已過期，請重新整理頁面');
+                    lastError.status = 401;
                     throw lastError;
                 }
 
