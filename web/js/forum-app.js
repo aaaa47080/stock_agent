@@ -796,9 +796,15 @@ const ForumApp = {
                 }
             } catch (error) {
                 console.warn('[CreatePost] Failed to update UI status:', error);
-                if (limitDisplay)
-                    limitDisplay.innerHTML =
-                        '<span class="text-danger text-xs">Connection Error</span>';
+                if (limitDisplay) {
+                    if (error?.status === 401) {
+                        limitDisplay.innerHTML =
+                            '<span class="text-warning text-xs">登入已過期，請重新整理頁面</span>';
+                    } else {
+                        limitDisplay.innerHTML =
+                            '<span class="text-danger text-xs">Connection Error</span>';
+                    }
+                }
             }
         };
 
