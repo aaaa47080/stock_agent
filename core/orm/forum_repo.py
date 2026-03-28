@@ -20,10 +20,10 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import List, Optional
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .models import Board, ForumComment, Post, Tip, User
+from .models import Board, ForumComment, Post, PostTag, Tag, Tip, User
 from .session import using_session
 
 logger = logging.getLogger(__name__)
@@ -177,6 +177,7 @@ class ForumRepository:
         self,
         board_id: Optional[int] = None,
         category: Optional[str] = None,
+        tag: Optional[str] = None,
         limit: int = 20,
         offset: int = 0,
         session: AsyncSession | None = None,
@@ -188,6 +189,7 @@ class ForumRepository:
                 Post.user_id,
                 Post.category,
                 Post.title,
+                Post.tags,
                 Post.push_count,
                 Post.boo_count,
                 Post.comment_count,
@@ -211,6 +213,14 @@ class ForumRepository:
             stmt = stmt.where(Post.board_id == board_id)
         if category is not None:
             stmt = stmt.where(Post.category == category)
+        if tag is not None:
+            stmt = stmt.where(
+                Post.id.in_(
+                    select(PostTag.post_id)
+                    .join(Tag, PostTag.tag_id == Tag.id)
+                    .where(Tag.name == tag.upper())
+                )
+            )
 
         async with using_session(session) as s:
             result = await s.execute(stmt)
@@ -222,18 +232,19 @@ class ForumRepository:
                     "user_id": r[2],
                     "category": r[3],
                     "title": r[4],
-                    "push_count": r[5],
-                    "boo_count": r[6],
-                    "comment_count": r[7],
-                    "tips_total": _decimal_to_float(r[8]),
-                    "view_count": r[9],
-                    "is_pinned": bool(r[10]),
-                    "is_hidden": bool(r[11]),
-                    "created_at": _fmt(r[12]),
-                    "username": r[13],
-                    "board_name": r[14],
-                    "board_slug": r[15],
-                    "net_votes": r[5] - r[6],
+                    "tags": json.loads(r[5]) if r[5] else [],
+                    "push_count": r[6],
+                    "boo_count": r[7],
+                    "comment_count": r[8],
+                    "tips_total": _decimal_to_float(r[9]),
+                    "view_count": r[10],
+                    "is_pinned": bool(r[11]),
+                    "is_hidden": bool(r[12]),
+                    "created_at": _fmt(r[13]),
+                    "username": r[14],
+                    "board_name": r[15],
+                    "board_slug": r[16],
+                    "net_votes": r[6] - r[7],
                 }
                 for r in rows
             ]
@@ -303,6 +314,41 @@ class ForumRepository:
                 .where(Board.id == board_id)
                 .values(post_count=Board.post_count + 1)
             )
+
+            if tags:
+                normalized_tags = []
+                seen = set()
+                for tag_name in tags:
+                    normalized = (tag_name or "").strip().upper()
+                    if not normalized or normalized in seen:
+                        continue
+                    seen.add(normalized)
+                    normalized_tags.append(normalized)
+
+                for normalized in normalized_tags:
+                    tag_row = await s.execute(select(Tag).where(Tag.name == normalized))
+                    tag_obj = tag_row.scalar_one_or_none()
+
+                    if tag_obj is None:
+                        tag_obj = Tag(
+                            name=normalized,
+                            post_count=1,
+                            last_used_at=now,
+                            created_at=now,
+                        )
+                        s.add(tag_obj)
+                        await s.flush()
+                    else:
+                        await s.execute(
+                            update(Tag)
+                            .where(Tag.id == tag_obj.id)
+                            .values(
+                                post_count=func.greatest(Tag.post_count + 1, 1),
+                                last_used_at=now,
+                            )
+                        )
+
+                    s.add(PostTag(post_id=post_id, tag_id=tag_obj.id))
 
             return {"success": True, "post_id": post_id}
 

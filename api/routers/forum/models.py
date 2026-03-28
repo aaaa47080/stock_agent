@@ -1,57 +1,46 @@
 """
-論壇 API 請求/回應模型
+Forum API request models.
 """
 
 from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
-# ============================================================================
-# 文章相關
-# ============================================================================
-
 
 class CreatePostRequest(BaseModel):
-    """發表文章請求"""
+    """Create post payload."""
 
-    board_slug: str = Field(..., description="看板 slug")
+    board_slug: str = Field(..., description="Board slug")
     category: str = Field(
-        ..., description="分類: analysis/question/tutorial/news/chat/insight"
+        ..., description="Post category: analysis/question/tutorial/news/chat/insight"
     )
-    title: str = Field(..., max_length=200, description="標題，限 200 字")
-    content: str = Field(..., description="內容")
-    tags: Optional[List[str]] = Field(None, max_length=5, description="標籤，最多 5 個")
+    title: str = Field(..., max_length=200, description="Post title")
+    content: str = Field(..., description="Post content")
+    tags: Optional[List[str]] = Field(None, max_length=5, description="Post tags")
+    payment_id: Optional[str] = Field(
+        None, description="Pi payment ID for server-side verification"
+    )
     payment_tx_hash: Optional[str] = Field(
-        None, description="Pi 支付交易哈希（免費會員需提供）"
+        None, description="Pi blockchain transaction hash"
     )
 
 
 class UpdatePostRequest(BaseModel):
-    """編輯文章請求"""
+    """Update post payload."""
 
     title: Optional[str] = Field(None, max_length=200)
     content: Optional[str] = None
     category: Optional[str] = None
 
 
-# ============================================================================
-# 回覆相關
-# ============================================================================
-
-
 class AddCommentRequest(BaseModel):
-    """新增回覆請求"""
+    """Add comment payload."""
 
-    type: str = Field(..., description="類型: push/boo/comment")
+    type: str = Field(..., description="Comment type: push/boo/comment")
     content: Optional[str] = Field(
-        None, max_length=100, description="回覆內容，限 100 字"
+        None, max_length=100, description="Comment content"
     )
-    parent_id: Optional[int] = Field(None, description="父回覆 ID（用於巢狀回覆）")
-
-
-# ============================================================================
-# 打賞相關
-# ============================================================================
+    parent_id: Optional[int] = Field(None, description="Parent comment ID")
 
 
 class CreateTipRequest(BaseModel):
@@ -62,13 +51,8 @@ class CreateTipRequest(BaseModel):
     amount: float = Field(..., description="Tip amount (from /api/config/prices)")
 
 
-# ============================================================================
-# Pi 支付回調
-# ============================================================================
-
-
 class PiPaymentCallback(BaseModel):
-    """Pi 支付回調"""
+    """Pi payment callback payload."""
 
     payment_id: str
     txid: str

@@ -1,5 +1,5 @@
 """
-文章相關 API
+Forum post API endpoints.
 """
 
 import logging
@@ -12,11 +12,7 @@ from api.deps import get_current_user
 from api.middleware.rate_limit import limiter
 from api.utils import run_sync
 from core.config import TEST_MODE, TEST_USER
-from core.database import (
-    check_daily_post_limit,
-    get_user_membership,
-)
-from core.orm.config_repo import config_repo
+from core.database import check_daily_post_limit, get_user_membership
 from core.orm.forum_repo import forum_repo
 
 from .models import CreatePostRequest, UpdatePostRequest
@@ -25,38 +21,28 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/forum/posts", tags=["Forum - Posts"])
 
-
-# 文章分類列表
 VALID_CATEGORIES = ["analysis", "question", "tutorial", "news", "chat", "insight"]
-
 
 @router.get("")
 async def list_posts(
-    board: Optional[str] = Query(None, description="看板 slug"),
-    category: Optional[str] = Query(None, description="分類"),
-    tag: Optional[str] = Query(None, description="標籤"),
+    board: Optional[str] = Query(None, description="Board slug"),
+    category: Optional[str] = Query(None, description="Post category"),
+    tag: Optional[str] = Query(None, description="Post tag"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ):
-    """
-    獲取文章列表
-
-    可選篩選條件：
-    - board: 看板 slug
-    - category: 分類
-    - tag: 標籤
-    """
     try:
         board_id = None
         if board:
             board_info = await forum_repo.get_board_by_slug(board)
             if not board_info:
-                raise HTTPException(status_code=404, detail="看板不存在")
+                raise HTTPException(status_code=404, detail="Board not found")
             board_id = board_info["id"]
 
         posts = await forum_repo.get_posts(
             board_id=board_id,
             category=category,
+            tag=tag,
             limit=limit,
             offset=offset,
         )
@@ -64,7 +50,7 @@ async def list_posts(
     except HTTPException:
         raise
     except Exception:
-        raise HTTPException(status_code=500, detail="獲取文章列表失敗，請稍後再試")
+        raise HTTPException(status_code=500, detail="Failed to load posts")
 
 
 @router.post("")
@@ -74,29 +60,20 @@ async def create_new_post(
     body: CreatePostRequest,
     current_user: dict = Depends(get_current_user),
 ):
-    """
-    發表新文章
-
-    - 免費會員需提供 payment_tx_hash（支付費用從 /api/config/prices 獲取）
-    - Premium 會員免費發文
-    - 每日發文限制從 /api/config/limits 獲取，Premium 會員無限制
-    """
     try:
         user_id = current_user["user_id"]
 
-        # 驗證分類
         if body.category not in VALID_CATEGORIES:
             raise HTTPException(
                 status_code=400,
-                detail=f"無效的分類，可選: {', '.join(VALID_CATEGORIES)}",
+                detail=f"Invalid category. Allowed: {', '.join(VALID_CATEGORIES)}",
             )
 
-        # 驗證看板
         board = await forum_repo.get_board_by_slug(body.board_slug)
         if not board:
-            raise HTTPException(status_code=404, detail="看板不存在")
+            raise HTTPException(status_code=404, detail="Board not found")
         if not board["is_active"]:
-            raise HTTPException(status_code=400, detail="此看板目前不開放發文")
+            raise HTTPException(status_code=400, detail="Board is not active")
 
         membership = await run_sync(get_user_membership, user_id)
 
@@ -104,24 +81,28 @@ async def create_new_post(
         if not limit_check["allowed"]:
             raise HTTPException(
                 status_code=429,
-                detail=f"已達每日發文上限 ({limit_check['limit']} 篇)，升級 Premium 會員可無限發文",
+                detail=f"Daily post limit reached ({limit_check['limit']})",
             )
 
         is_test_user = TEST_MODE and (
             user_id.startswith("test-user-") or user_id == TEST_USER.get("uid")
         )
 
-        if not membership["is_premium"] and not body.payment_tx_hash:
-            if is_test_user:
+        if not membership["is_premium"]:
+            if is_test_user and not body.payment_tx_hash:
                 body.payment_tx_hash = f"test_post_{int(time.time() * 1000)}"
                 logger.info(
-                    f"TEST_MODE: Bypassing payment requirement for user {user_id}"
+                    "TEST_MODE: Bypassing payment requirement for user %s", user_id
                 )
-            else:
-                prices = await config_repo.get_prices()
+            elif not body.payment_tx_hash:
                 raise HTTPException(
                     status_code=402,
-                    detail=f"免費會員發文需支付 {prices.get('create_post', 1)} Pi，請提供 payment_tx_hash",
+                    detail="Free members must complete payment before posting",
+                )
+            elif body.payment_tx_hash.startswith("mock_"):
+                raise HTTPException(
+                    status_code=402,
+                    detail="Mock payment hashes are not accepted",
                 )
 
         result = await forum_repo.create_post(
@@ -138,42 +119,37 @@ async def create_new_post(
             if result.get("error") == "daily_post_limit_reached":
                 raise HTTPException(
                     status_code=429,
-                    detail=f"已達每日發文上限 ({result['limit']} 篇)，升級 Premium 會員可無限發文",
+                    detail=f"Daily post limit reached ({result['limit']})",
                 )
             raise HTTPException(
-                status_code=500, detail=result.get("error", "發表文章失敗")
+                status_code=500, detail=result.get("error", "Failed to create post")
             )
 
         return {
             "success": True,
-            "message": "文章發表成功",
+            "message": "Post created successfully",
             "post_id": result["post_id"],
         }
     except HTTPException:
         raise
     except Exception:
-        raise HTTPException(status_code=500, detail="發表文章失敗，請稍後再試")
+        raise HTTPException(status_code=500, detail="Failed to create post")
 
 
 @router.get("/{post_id}")
 async def get_post_detail(post_id: int):
-    """
-    獲取文章詳情
-
-    會自動增加瀏覽數
-    """
     try:
         post = await forum_repo.get_post_by_id(post_id, increment_view=True)
         if not post:
-            raise HTTPException(status_code=404, detail="文章不存在")
+            raise HTTPException(status_code=404, detail="Post not found")
         if post["is_hidden"]:
-            raise HTTPException(status_code=404, detail="文章已被刪除")
+            raise HTTPException(status_code=404, detail="Post has been hidden")
 
         return {"success": True, "post": post}
     except HTTPException:
         raise
     except Exception:
-        raise HTTPException(status_code=500, detail="獲取文章詳情失敗，請稍後再試")
+        raise HTTPException(status_code=500, detail="Failed to load post")
 
 
 @router.put("/{post_id}")
@@ -184,17 +160,13 @@ async def update_post_content(
     req: UpdatePostRequest,
     current_user: dict = Depends(get_current_user),
 ):
-    """
-    編輯文章（只有作者可以編輯）
-    """
     try:
         user_id = current_user["user_id"]
 
-        # 驗證分類
         if req.category and req.category not in VALID_CATEGORIES:
             raise HTTPException(
                 status_code=400,
-                detail=f"無效的分類，可選: {', '.join(VALID_CATEGORIES)}",
+                detail=f"Invalid category. Allowed: {', '.join(VALID_CATEGORIES)}",
             )
 
         success = await forum_repo.update_post(
@@ -206,13 +178,13 @@ async def update_post_content(
         )
 
         if not success:
-            raise HTTPException(status_code=403, detail="無權編輯此文章或文章不存在")
+            raise HTTPException(status_code=403, detail="Cannot edit this post")
 
-        return {"success": True, "message": "文章更新成功"}
+        return {"success": True, "message": "Post updated"}
     except HTTPException:
         raise
     except Exception:
-        raise HTTPException(status_code=500, detail="更新文章失敗，請稍後再試")
+        raise HTTPException(status_code=500, detail="Failed to update post")
 
 
 @router.delete("/{post_id}")
@@ -220,19 +192,16 @@ async def update_post_content(
 async def delete_post_by_id(
     request: Request, post_id: int, current_user: dict = Depends(get_current_user)
 ):
-    """
-    刪除文章（軟刪除，只有作者可以刪除）
-    """
     try:
         user_id = current_user["user_id"]
 
         success = await forum_repo.delete_post(post_id=post_id, user_id=user_id)
 
         if not success:
-            raise HTTPException(status_code=403, detail="無權刪除此文章或文章不存在")
+            raise HTTPException(status_code=403, detail="Cannot delete this post")
 
-        return {"success": True, "message": "文章已刪除"}
+        return {"success": True, "message": "Post deleted"}
     except HTTPException:
         raise
     except Exception:
-        raise HTTPException(status_code=500, detail="刪除文章失敗，請稍後再試")
+        raise HTTPException(status_code=500, detail="Failed to delete post")
