@@ -6,9 +6,9 @@ Tests to verify security improvements are working correctly.
 Run with: pytest tests/security/test_security_hardening.py -v
 """
 
+import importlib.util
 import os
 import tempfile
-
 import pytest
 
 # Set test environment before any imports
@@ -100,74 +100,25 @@ class TestSecurityMonitoring:
         assert hasattr(dispatcher, "has_email")
 
 
-class TestKeyRotation:
-    """Tests for key rotation system"""
+class TestKeyRotationRemoval:
+    """Tests for the removed key rotation system."""
 
-    def test_key_rotation_manager_imports(self):
-        """Verify key rotation module can be imported"""
-        from core.key_rotation import KeyRotationManager, get_key_manager
+    def test_key_rotation_module_removed(self):
+        """The legacy key rotation module should no longer exist."""
+        assert importlib.util.find_spec("core.key_rotation") is None
 
-        assert callable(KeyRotationManager)
-        assert callable(get_key_manager)
+    def test_use_key_rotation_flag_falls_back_to_jwt_secret(self):
+        """Enabling the old flag should not break token creation."""
+        from datetime import timedelta
 
-    def test_key_manager_creation(self):
-        """Test key manager can be created"""
-        from core.key_rotation import KeyRotationManager
+        from api.deps import create_access_token
 
-        # Create with test directory
-        with tempfile.TemporaryDirectory() as tmpdir:
-            manager = KeyRotationManager(config_dir=tmpdir)
+        token = create_access_token(
+            {"sub": "test_user"}, expires_delta=timedelta(minutes=30)
+        )
 
-            # Should initialize with a primary key
-            assert manager is not None
-            assert "primary" in manager.keys
-            assert "keys" in manager.keys
-            assert len(manager.keys["keys"]) > 0
-
-    def test_key_generation(self):
-        """Test key generation produces valid keys"""
-        from core.key_rotation import KeyRotationManager
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            manager = KeyRotationManager(config_dir=tmpdir)
-
-            current_key = manager.get_current_key()
-
-            # Key should be a non-empty string
-            assert isinstance(current_key, str)
-            assert len(current_key) > 32  # At least 256 bits (base64)
-
-    def test_get_all_active_keys(self):
-        """Test getting all active keys"""
-        from core.key_rotation import KeyRotationManager
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            manager = KeyRotationManager(config_dir=tmpdir)
-
-            active_keys = manager.get_all_active_keys()
-
-            # Should have at least the primary key
-            assert isinstance(active_keys, dict)
-            assert len(active_keys) > 0
-
-    def test_key_rotation(self):
-        """Test key rotation functionality"""
-        from core.key_rotation import KeyRotationManager
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            manager = KeyRotationManager(config_dir=tmpdir)
-
-            old_primary = manager.keys["primary"]
-
-            # Perform rotation
-            result = manager.rotate_key()
-
-            # Verify the rotation result structure
-            assert "old_key_id" in result
-            assert "new_key_id" in result
-            assert result["old_key_id"] == old_primary
-            assert result["new_key_id"] != old_primary
-            assert manager.keys["primary"] == result["new_key_id"]
+        assert isinstance(token, str)
+        assert len(token.split(".")) == 3
 
 
 class TestProductionSafety:
@@ -260,9 +211,11 @@ class TestAuthentication:
         parts = token.split(".")
         assert len(parts) == 3
 
-    def test_token_creation_with_key_rotation(self):
-        """Test token creation when key rotation is enabled"""
+    def test_token_creation_with_key_rotation_flag_enabled(self):
+        """Token creation should still work when the legacy flag is enabled."""
         from datetime import timedelta
+
+        import jwt
 
         from api.deps import create_access_token
 
@@ -297,30 +250,13 @@ class TestAuthentication:
             parts = token.split(".")
             assert len(parts) == 3
 
-            # Decode payload to check for key_id
-            # Note: When key rotation is enabled, we need to get the key from KeyRotationManager
-            import jwt
+            payload = jwt.decode(
+                token,
+                os.environ["JWT_SECRET_KEY"],
+                algorithms=["HS256"],
+                options={"verify_exp": True},
+            )
 
-            from core.key_rotation import KeyRotationManager
-
-            # Get the current key for decoding
-            key_manager = KeyRotationManager()
-            current_key = key_manager.get_current_key()
-
-            try:
-                # Decode with the current key
-                payload = jwt.decode(
-                    token,
-                    current_key,
-                    algorithms=["HS256"],
-                    options={"verify_exp": True},
-                )
-            except Exception:
-                # If verification fails (e.g., key mismatch during test), decode without verification
-                # to check token structure
-                payload = jwt.decode(token, options={"verify_signature": False})
-
-            # Verify token structure
             assert "sub" in payload
             assert payload["sub"] == "test_user"
 
