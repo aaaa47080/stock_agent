@@ -201,6 +201,19 @@ def get_token_from_cookie(request: Request) -> Optional[str]:
     return None
 
 
+def resolve_request_token(request: Request, bearer_token: Optional[str]) -> str:
+    """
+    Resolve the access token for an authenticated request.
+
+    Prefer the httpOnly cookie over the Authorization header so a stale
+    in-memory bearer token cannot override a freshly refreshed browser session.
+    """
+    cookie_token = request.cookies.get(ACCESS_TOKEN_COOKIE)
+    if cookie_token:
+        return cookie_token
+    return bearer_token or ""
+
+
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """
     Create a new JWT access token.
@@ -263,7 +276,11 @@ def verify_token(token: str) -> dict:
     """
     if _use_key_rotation():
         key_manager = _get_key_manager()
-        payload = key_manager.verify_token_with_any_key(token, algorithms=[ALGORITHM])
+        try:
+            payload = key_manager.verify_token_with_any_key(token, algorithms=[ALGORITHM])
+        except RuntimeError:
+            logger.warning("JWT key manager not yet initialized during verify_token; falling back to SECRET_KEY")
+            payload = None
         # Fallback: accept tokens signed with JWT_SECRET_KEY (pre-rotation migration)
         if payload is None and SECRET_KEY:
             try:
@@ -296,7 +313,7 @@ async def get_current_user_id(
 
     Stage 3 Security: Supports key rotation when enabled.
     """
-    resolved_token = token or get_token_from_cookie(request) or ""
+    resolved_token = resolve_request_token(request, token)
 
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -310,9 +327,13 @@ async def get_current_user_id(
     try:
         if _use_key_rotation():
             key_manager = _get_key_manager()
-            payload = key_manager.verify_token_with_any_key(
-                resolved_token, algorithms=[ALGORITHM]
-            )
+            try:
+                payload = key_manager.verify_token_with_any_key(
+                    resolved_token, algorithms=[ALGORITHM]
+                )
+            except RuntimeError:
+                logger.warning("JWT key manager not yet initialized; falling back to SECRET_KEY")
+                payload = None
             # Fallback: accept tokens signed with JWT_SECRET_KEY (pre-rotation migration)
             if payload is None and SECRET_KEY:
                 try:
@@ -352,7 +373,7 @@ async def get_current_user(
                 "🚨 SECURITY ALERT: TEST_MODE must not be enabled in production environment"
             )
 
-    resolved_token = token or get_token_from_cookie(request) or ""
+    resolved_token = resolve_request_token(request, token)
     user_id = None
 
     # If using regular authentication (not skipped via TEST_MODE without token)
@@ -372,9 +393,21 @@ async def get_current_user(
                 payload: dict
                 if _use_key_rotation():
                     key_manager = _get_key_manager()
-                    payload = key_manager.verify_token_with_any_key(
-                        resolved_token, algorithms=[ALGORITHM]
-                    )
+                    try:
+                        payload = key_manager.verify_token_with_any_key(
+                            resolved_token, algorithms=[ALGORITHM]
+                        )
+                    except RuntimeError:
+                        logger.warning("JWT key manager not yet initialized; falling back to SECRET_KEY")
+                        payload = None
+                    # Fallback: accept tokens signed with JWT_SECRET_KEY (pre-rotation migration)
+                    if payload is None and SECRET_KEY:
+                        try:
+                            payload = jwt.decode(
+                                resolved_token, SECRET_KEY, algorithms=[ALGORITHM]
+                            )
+                        except Exception:
+                            payload = None
                     if payload is None:
                         raise HTTPException(
                             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -470,7 +503,7 @@ async def get_optional_current_user(
 
     Returns the authenticated user when credentials are valid, otherwise None.
     """
-    resolved_token = token or get_token_from_cookie(request)
+    resolved_token = resolve_request_token(request, token)
     if not isinstance(resolved_token, str) or not resolved_token:
         return None
 
