@@ -804,6 +804,23 @@ const ForumApp = {
 
         if (AuthManager.currentUser) {
             updateUIForMembership();
+        } else {
+            // Auth completes async — re-run when user logs in
+            const onAuthReady = () => {
+                if (AuthManager.currentUser) {
+                    updateUIForMembership();
+                    window.removeEventListener('pi-auth-success', onAuthReady);
+                }
+            };
+            window.addEventListener('pi-auth-success', onAuthReady);
+            // Also poll briefly in case auth restores from backend before event fires
+            const checkAuth = setInterval(() => {
+                if (AuthManager.currentUser) {
+                    clearInterval(checkAuth);
+                    updateUIForMembership();
+                }
+            }, 500);
+            setTimeout(() => clearInterval(checkAuth), 10000); // stop after 10s
         }
 
         // 初始化字數統計功能

@@ -651,12 +651,14 @@ const AuthManager = {
             const AUTH_TIMEOUT = 60000;
 
             const authPromise = Pi.authenticate(
-                ['username', 'payments', 'wallet_address', 'roles', 'in_app_notifications'],
+                ['username', 'payments', 'wallet_address'],
                 (payment) => {
                     DebugLog.warn('發現未完成的支付', payment);
+                    const txid = payment.transaction?.txid;
+                    if (!txid) return; // no blockchain tx yet, nothing to complete
                     AppAPI.post('/api/user/payment/complete', {
                         paymentId: payment.identifier,
-                        txid: payment.transaction.txid,
+                        txid,
                     }).catch(() => {
                         console.debug('Pi authenticate: payment complete callback failed');
                     });
@@ -708,6 +710,9 @@ const AuthManager = {
             // 啟動 token 自動刷新定時器
             this.markRecentLoginSuccess();
             this.startTokenRefreshTimer();
+
+            // 通知其他模組 auth 完成
+            window.dispatchEvent(new Event('pi-auth-success'));
 
             DebugLog.info('Pi 登入流程完成', { user: this.currentUser });
             pushAuthDiagnostic('authenticateWithPi:syncSuccess', {
