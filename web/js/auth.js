@@ -483,6 +483,10 @@ const AuthManager = {
             pushAuthDiagnostic('restoreSessionFromBackend:success', {
                 user_id: result?.user?.user_id || null,
             });
+            // 主動刷新 token，確保 accessToken 進入記憶體以供後續 API 呼叫使用
+            await this.backendTokenRefresh().catch((e) => {
+                DebugLog.warn('Proactive token refresh after session restore failed', { error: e.message });
+            });
             return { success: true };
         } catch (error) {
             if (error?.status !== 401) {
