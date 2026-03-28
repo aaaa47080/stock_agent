@@ -96,7 +96,22 @@ async def _verify_pi_payment(payment_id: str) -> dict:
             payment_data = response.json()
 
             status = payment_data.get("status", "")
-            if status not in ("approved", "completed"):
+            # Pi API returns status as a dict object, e.g.:
+            # {"developer_approved": True, "transaction_verified": True,
+            #  "developer_completed": True, "cancelled": False, "user_cancelled": False}
+            if isinstance(status, dict):
+                is_valid = (
+                    status.get("developer_approved") and
+                    status.get("transaction_verified") and
+                    not status.get("cancelled") and
+                    not status.get("user_cancelled")
+                )
+                if not is_valid:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Payment has not been approved yet (status: {status})",
+                    )
+            elif status not in ("approved", "completed"):
                 raise HTTPException(
                     status_code=400,
                     detail=f"Payment has not been approved yet (status: {status})",
