@@ -54,7 +54,6 @@ COPY . .
 # --- Overlay Vite-built frontend assets ---
 COPY --from=builder /build/dist/static/index.html web/index.html
 COPY --from=builder /build/dist/static/assets/ web/assets/
-RUN find /app/web/js -type f -name "*.js" -delete 2>/dev/null || true
 
 RUN find /app -type d -name "__pycache__" -prune -exec rm -rf {} + \
     && find /app -type f -name "*.py[co]" -delete \
