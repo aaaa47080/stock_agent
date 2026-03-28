@@ -225,8 +225,10 @@ const AuthManager = {
             ...this.currentUser,
             accessTokenExpiry: this.currentUser.accessTokenExpiry,
         };
-        delete safe.accessToken;
+        // piAccessToken is Pi Network's own token — never persist it
         delete safe.piAccessToken;
+        // accessToken is our own app JWT — safe to persist in localStorage
+        // so that it survives page reloads in Pi Browser (cookies unreliable)
         localStorage.setItem('pi_user', JSON.stringify(safe));
     },
 
@@ -448,7 +450,7 @@ const AuthManager = {
 
                 const result = await AppAPI.post(
                     '/api/user/refresh',
-                    {},
+                    null,
                     { headers: { Authorization: '' } }
                 );
 
