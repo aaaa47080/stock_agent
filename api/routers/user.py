@@ -786,6 +786,17 @@ async def auth_debug(request: Request):
 
     rows.append(("JWT decode result", jwt_status, jwt_ok))
 
+    # Test ORM DB connection directly (regardless of token)
+    try:
+        from core.orm.repositories import user_repo as _user_repo
+        test_user = await _user_repo.get_by_id("5fc3dbaa-e55f-468e-ba61-84bfacb328fd")
+        if test_user:
+            rows.append(("ORM DB connection", f"OK: {test_user['username']} ✓", True))
+        else:
+            rows.append(("ORM DB connection", "connected but user not found ✗", False))
+    except Exception as _orm_e:
+        rows.append(("ORM DB connection", f"ERROR: {type(_orm_e).__name__}: {str(_orm_e)[:80]} ✗", False))
+
     def row_html(label, value, ok):
         color = "#4ade80" if ok else "#f87171"
         return f'<tr><td style="padding:8px;border-bottom:1px solid #333">{label}</td><td style="padding:8px;border-bottom:1px solid #333;color:{color};font-weight:bold">{value}</td></tr>'
