@@ -298,9 +298,12 @@ class PremiumManager {
      * 認證 Pi 支付權限
      */
     async authenticateForPayment() {
+        console.log('[Premium] authenticateForPayment - 開始');
         if (!window.Pi) {
+            console.error('[Premium] Pi SDK 未載入 (window.Pi is undefined)');
             throw new Error('Pi SDK 未載入');
         }
+        console.log('[Premium] Pi SDK 已載入');
 
         try {
             // 快速環境驗證
@@ -309,21 +312,23 @@ class PremiumManager {
                 typeof window.AuthManager.verifyPiBrowserEnvironment === 'function'
             ) {
                 const envCheck = await window.AuthManager.verifyPiBrowserEnvironment();
+                console.log('[Premium] 環境檢查:', envCheck);
                 if (!envCheck.valid) {
                     throw new Error('Pi Browser 環境異常，請確認已登入 Pi 帳號');
                 }
             }
 
             // 認證 payments scope
-            await window.Pi.authenticate(['payments'], (incompletePayment) => {
-                console.warn('[Premium] 發現未完成的支付', incompletePayment);
-                // 處理未完成的支付
+            console.log('[Premium] 開始 Pi.authenticate');
+            const authResult = await window.Pi.authenticate(['payments'], (incompletePayment) => {
+                console.warn('[Premium] 發現未完成的支付 (callback):', incompletePayment);
                 this.handleIncompletePayment(incompletePayment);
             });
+            console.log('[Premium] Pi.authenticate 完成:', authResult);
 
             console.log('[Premium] payments scope 認證成功');
         } catch (authErr) {
-            console.error('[Premium] payments scope 認證失敗', authErr);
+            console.error('[Premium] payments scope 認證失敗:', authErr);
             throw new Error('支付權限不足，請重新登入 Pi 帳號');
         }
     }
@@ -353,8 +358,13 @@ class PremiumManager {
             let txHash = null;
 
             console.log(`[Premium] 開始支付 ${this.premiumPrice} Pi`);
+            console.log('[Premium] window.Pi:', window.Pi);
+            console.log('[Premium] window.Pi.createPayment:', window.Pi?.createPayment);
 
             try {
+                if (!window.Pi?.createPayment) {
+                    throw new Error('Pi.createPayment 不可用');
+                }
                 window.Pi.createPayment(
                     {
                         amount: this.premiumPrice,
@@ -370,9 +380,11 @@ class PremiumManager {
                     {
                         // 步驟 1: 支付已創建，等待後端批准
                         onReadyForServerApproval: async (paymentId) => {
-                            console.log('[Premium] 支付待批准:', paymentId);
+                            console.log('[Premium] onReadyForServerApproval 支付待批准:', paymentId);
                             try {
+                                console.log('[Premium] 發送批准請求到後端...');
                                 const response = await AppAPI.post('/api/user/payment/approve', { paymentId });
+                                console.log('[Premium] 批准請求響應狀態:', response.status);
 
                                 if (!response.ok) {
                                     const errorData = await response.json();
@@ -381,14 +393,16 @@ class PremiumManager {
                                 }
 
                                 console.log('[Premium] 支付批准成功:', paymentId);
+                                return { success: true };
                             } catch (error) {
                                 console.error('[Premium] 批准支付時發生錯誤:', error);
+                                return { success: false, error: error.message };
                             }
                         },
 
                         // 步驟 2: 區塊鏈交易完成，等待後端確認完成
                         onReadyForServerCompletion: async (paymentId, txid) => {
-                            console.log('[Premium] 支付待完成:', paymentId, txid);
+                            console.log('[Premium] onReadyForServerCompletion 支付待完成:', paymentId, txid);
 
                             // 立即保存 txid 到 localStorage 以防萬一
                             try {
@@ -416,6 +430,7 @@ class PremiumManager {
                                     );
 
                                     const response = await AppAPI.post('/api/user/payment/complete', { paymentId, txid });
+                                    console.log('[Premium] 完成請求響應狀態:', response.status);
 
                                     if (response.ok) {
                                         // 成功！清除 localStorage
@@ -474,7 +489,7 @@ class PremiumManager {
 
                         // 用戶取消支付
                         onCancel: (paymentId) => {
-                            console.log('[Premium] 支付已取消:', paymentId);
+                            console.log('[Premium] onCancel 支付已取消:', paymentId);
                             paymentError = 'CANCELLED';
 
                             reject(new Error('用戶取消支付'));
@@ -482,8 +497,9 @@ class PremiumManager {
 
                         // 發生錯誤
                         onError: (error, payment) => {
-                            console.error('[Premium] 支付錯誤:', error, payment);
-                            paymentError = error;
+                            console.error('[Premium] onError 支付錯誤:', error);
+                            console.error('[Premium] onError payment DTO:', payment);
+                            paymentError = error?.message || error;
 
                             reject(error);
                         },
