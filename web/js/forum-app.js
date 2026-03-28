@@ -1001,9 +1001,28 @@ const ForumApp = {
                     }
                 } catch (error) {
                     console.warn('[CreatePost] Failed to check limits:', error);
-                    if (typeof showToast === 'function')
-                        showToast('無法驗證發文限制，請稍後再試', 'warning');
-                    // Proceed anyway - allow the attempt and let the server enforce limits
+                    if (error?.status === 401) {
+                        // 認證失敗：嘗試刷新 token
+                        try {
+                            const refreshResult = await AuthManager.backendTokenRefresh();
+                            if (!refreshResult.success) {
+                                if (typeof showToast === 'function')
+                                    showToast('登入已過期，請重新登入', 'error');
+                                resetButton();
+                                return;
+                            }
+                            // 刷新成功，繼續發文流程
+                        } catch (refreshErr) {
+                            if (typeof showToast === 'function')
+                                showToast('登入已過期，請重新登入', 'error');
+                            resetButton();
+                            return;
+                        }
+                    } else {
+                        if (typeof showToast === 'function')
+                            showToast('無法驗證發文限制，請稍後再試', 'warning');
+                        // 非認證錯誤（如超時），允許繼續由伺服器端執行限制
+                    }
                 }
             }
 

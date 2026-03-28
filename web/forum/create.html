@@ -196,9 +196,9 @@
         document.addEventListener('DOMContentLoaded', async () => {
             console.log('Create page fully loaded, starting initialization...');
 
-            // 1. 恢復登入狀態
+            // 1. 恢復登入狀態 (必須等待完成，確保 accessToken 已在記憶體中)
             if (typeof initializeAuth === 'function') {
-                initializeAuth();
+                await initializeAuth();
             }
 
             // 2. 初始化論壇邏輯
