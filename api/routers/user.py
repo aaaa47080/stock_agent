@@ -673,6 +673,61 @@ async def delete_user_api_key_endpoint(
         raise HTTPException(status_code=500, detail="刪除失敗")
 
 
+@router.get("/api/user/auth-debug")
+async def auth_debug(request: Request):
+    """Temporary diagnostic endpoint — no auth required. Shows token state in production."""
+    import os
+    import jwt as pyjwt
+    from api.deps import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE
+    from core.orm.repositories import user_repo
+
+    result = {
+        "env_jwt_secret_set": bool(SECRET_KEY),
+        "env_jwt_secret_len": len(SECRET_KEY) if SECRET_KEY else 0,
+        "cookie_names": list(request.cookies.keys()),
+        "access_token_cookie_present": ACCESS_TOKEN_COOKIE in request.cookies,
+        "refresh_token_cookie_present": REFRESH_TOKEN_COOKIE in request.cookies,
+        "authorization_header": bool(request.headers.get("Authorization")),
+    }
+
+    # Try to decode the access token
+    token = request.cookies.get(ACCESS_TOKEN_COOKIE)
+    if not token:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+
+    result["token_found"] = bool(token)
+    result["token_prefix"] = token[:20] + "..." if token else None
+
+    if token and SECRET_KEY:
+        try:
+            payload = pyjwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            result["jwt_decode"] = "success"
+            result["jwt_sub"] = payload.get("sub")
+            result["jwt_type"] = payload.get("type")
+            result["jwt_exp"] = str(payload.get("exp"))
+
+            user_id = payload.get("sub")
+            if user_id:
+                try:
+                    user = await user_repo.get_by_id(user_id)
+                    result["user_found"] = bool(user)
+                    result["user_id"] = user_id
+                    if user:
+                        result["username"] = user.get("username")
+                except Exception as e:
+                    result["user_lookup_error"] = str(e)
+        except pyjwt.ExpiredSignatureError:
+            result["jwt_decode"] = "expired"
+        except pyjwt.InvalidTokenError as e:
+            result["jwt_decode"] = f"invalid: {e}"
+    elif token and not SECRET_KEY:
+        result["jwt_decode"] = "no_secret_key"
+
+    return result
+
+
 @router.post("/api/user/api-keys/model")
 @limiter.limit("10/minute")
 async def save_user_model_endpoint(
