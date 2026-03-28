@@ -355,6 +355,34 @@ async def logout(request: Request, response: Response):
 # --- Pi Payment Handling Endpoints ---
 
 
+class ClientLogRequest(BaseModel):
+    source: str = Field(..., description="Log source (e.g., 'premium', 'forum')")
+    level: str = Field(default="info", description="Log level")
+    message: str = Field(..., description="Log message")
+    data: Optional[dict] = Field(default=None, description="Additional data")
+
+
+@router.post("/api/client/log")
+async def client_log(body: ClientLogRequest, current_user: dict = Depends(get_current_user)):
+    """接收前端 client-side logs 並寫入 server logs"""
+    user_id = current_user.get("user_id", "unknown")
+    log_msg = f"[CLIENT:{body.source}] [{body.level.upper()}] {body.message}"
+
+    if body.data:
+        log_msg += f" | data: {body.data}"
+
+    log_msg += f" | user: {user_id}"
+
+    if body.level == "error":
+        logger.error(log_msg)
+    elif body.level == "warning":
+        logger.warning(log_msg)
+    else:
+        logger.info(log_msg)
+
+    return {"status": "ok"}
+
+
 class ApprovePaymentRequest(BaseModel):
     paymentId: str
 
@@ -372,9 +400,11 @@ async def approve_payment(
     current_user: dict = Depends(get_current_user),
 ):
     """接收前端通知，驗證金額後呼叫 Pi Server API 核准支付"""
-    logger.info(
-        f"Pi Payment Approval Requested: {body.paymentId} by User {current_user['user_id']}"
-    )
+    logger.info(f"[PAYMENT] === APPROVE START ===")
+    logger.info(f"[PAYMENT] paymentId: {body.paymentId}")
+    logger.info(f"[PAYMENT] userId: {current_user['user_id']}")
+    logger.info(f"[PAYMENT] PI_API_KEY configured: {bool(PI_API_KEY and PI_API_KEY != 'your_pi_api_key_here')}")
+    logger.info(f"[PAYMENT] TEST_MODE: {TEST_MODE}")
 
     if not PI_API_KEY or PI_API_KEY == "your_pi_api_key_here":
         if TEST_MODE and current_user.get("user_id") == TEST_USER.get("uid"):
@@ -455,9 +485,12 @@ async def complete_payment(
     current_user: dict = Depends(get_current_user),
 ):
     """接收前端通知，呼叫 Pi Server API 完成支付"""
-    logger.info(
-        f"Pi Payment Completion Requested: {body.paymentId} by User {current_user['user_id']}"
-    )
+    logger.info(f"[PAYMENT] === COMPLETE START ===")
+    logger.info(f"[PAYMENT] paymentId: {body.paymentId}")
+    logger.info(f"[PAYMENT] txid: {body.txid}")
+    logger.info(f"[PAYMENT] userId: {current_user['user_id']}")
+    logger.info(f"[PAYMENT] PI_API_KEY configured: {bool(PI_API_KEY and PI_API_KEY != 'your_pi_api_key_here')}")
+    logger.info(f"[PAYMENT] TEST_MODE: {TEST_MODE}")
 
     if not PI_API_KEY or PI_API_KEY == "your_pi_api_key_here":
         if TEST_MODE and current_user.get("user_id") == TEST_USER.get("uid"):

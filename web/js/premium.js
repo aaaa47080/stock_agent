@@ -13,6 +13,22 @@ class PremiumManager {
     }
 
     /**
+     * 發送 log 到後端服務器
+     */
+    async serverLog(level, message, data = null) {
+        try {
+            await AppAPI.post('/api/client/log', {
+                source: 'premium',
+                level: level,
+                message: message,
+                data: data,
+            });
+        } catch (e) {
+            console.warn('[Premium] 發送 log 到後端失敗:', e);
+        }
+    }
+
+    /**
      * 初始化事件監聽器
      */
     initEventListeners() {
@@ -255,24 +271,32 @@ class PremiumManager {
         try {
             // 顯示處理中提示
             loadingToastId = showToast('正在處理升級...', 'info', 0); // 持續顯示
+            this.serverLog('info', '開始升級流程');
 
             // 1. 認證 Pi 支付權限
+            this.serverLog('info', '步驟 1: 認證 Pi 支付權限');
             await this.authenticateForPayment();
 
             // 2. 執行 Pi 支付
+            this.serverLog('info', '步驟 2: 執行 Pi 支付');
             const { txHash, paymentId } = await this.executePiPayment();
+            this.serverLog('info', 'Pi 支付完成', { txHash, paymentId });
 
             if (!txHash) {
                 clearLoadingToast();
+                this.serverLog('error', '支付失敗或已取消');
                 showToast('支付失敗或已取消', 'error');
                 return;
             }
 
             // 3. 請求後端升級會員
+            this.serverLog('info', '步驟 3: 請求後端升級會員', { txHash, paymentId });
             const upgradeResult = await this.requestUpgrade(txHash, paymentId);
+            this.serverLog('info', '後端升級結果', upgradeResult);
 
             if (upgradeResult.success) {
                 clearLoadingToast();
+                this.serverLog('info', '升級成功');
 
                 showToast('🎉 恭喜！您已成為 Premium 會員！', 'success', 5000);
 
@@ -285,6 +309,7 @@ class PremiumManager {
                 }, 2000);
             } else {
                 clearLoadingToast();
+                this.serverLog('error', '升級失敗', { message: upgradeResult.message });
                 showToast('升級失敗: ' + upgradeResult.message, 'error');
             }
         } catch (error) {
@@ -299,11 +324,14 @@ class PremiumManager {
      */
     async authenticateForPayment() {
         console.log('[Premium] authenticateForPayment - 開始');
+        this.serverLog('info', 'authenticateForPayment 開始');
         if (!window.Pi) {
             console.error('[Premium] Pi SDK 未載入 (window.Pi is undefined)');
+            this.serverLog('error', 'Pi SDK 未載入 (window.Pi is undefined)');
             throw new Error('Pi SDK 未載入');
         }
         console.log('[Premium] Pi SDK 已載入');
+        this.serverLog('info', 'Pi SDK 已載入', { hasCreatePayment: !!window.Pi.createPayment });
 
         try {
             // 快速環境驗證
@@ -313,6 +341,7 @@ class PremiumManager {
             ) {
                 const envCheck = await window.AuthManager.verifyPiBrowserEnvironment();
                 console.log('[Premium] 環境檢查:', envCheck);
+                this.serverLog('info', '環境檢查結果', envCheck);
                 if (!envCheck.valid) {
                     throw new Error('Pi Browser 環境異常，請確認已登入 Pi 帳號');
                 }
@@ -320,15 +349,20 @@ class PremiumManager {
 
             // 認證 payments scope
             console.log('[Premium] 開始 Pi.authenticate');
+            this.serverLog('info', '開始 Pi.authenticate');
             const authResult = await window.Pi.authenticate(['payments'], (incompletePayment) => {
                 console.warn('[Premium] 發現未完成的支付 (callback):', incompletePayment);
+                this.serverLog('warning', '發現未完成的支付', incompletePayment);
                 this.handleIncompletePayment(incompletePayment);
             });
             console.log('[Premium] Pi.authenticate 完成:', authResult);
+            this.serverLog('info', 'Pi.authenticate 完成', { authResult });
 
             console.log('[Premium] payments scope 認證成功');
+            this.serverLog('info', 'payments scope 認證成功');
         } catch (authErr) {
             console.error('[Premium] payments scope 認證失敗:', authErr);
+            this.serverLog('error', 'payments scope 認證失敗', { error: authErr.message });
             throw new Error('支付權限不足，請重新登入 Pi 帳號');
         }
     }
@@ -352,6 +386,8 @@ class PremiumManager {
      * 執行 Pi 支付
      */
     async executePiPayment() {
+        this.serverLog('info', 'executePiPayment 開始', { amount: this.premiumPrice });
+
         return new Promise((resolve, reject) => {
             let paymentComplete = false;
             let paymentError = null;
@@ -360,11 +396,19 @@ class PremiumManager {
             console.log(`[Premium] 開始支付 ${this.premiumPrice} Pi`);
             console.log('[Premium] window.Pi:', window.Pi);
             console.log('[Premium] window.Pi.createPayment:', window.Pi?.createPayment);
+            this.serverLog('info', '支付參數', {
+                amount: this.premiumPrice,
+                hasPi: !!window.Pi,
+                hasCreatePayment: !!window.Pi?.createPayment,
+                userId: window.AuthManager?.currentUser?.user_id || window.AuthManager?.currentUser?.uid
+            });
 
             try {
                 if (!window.Pi?.createPayment) {
+                    this.serverLog('error', 'Pi.createPayment 不可用');
                     throw new Error('Pi.createPayment 不可用');
                 }
+                this.serverLog('info', '調用 Pi.createPayment');
                 window.Pi.createPayment(
                     {
                         amount: this.premiumPrice,
@@ -381,21 +425,27 @@ class PremiumManager {
                         // 步驟 1: 支付已創建，等待後端批准
                         onReadyForServerApproval: async (paymentId) => {
                             console.log('[Premium] onReadyForServerApproval 支付待批准:', paymentId);
+                            this.serverLog('info', 'onReadyForServerApproval', { paymentId });
                             try {
                                 console.log('[Premium] 發送批准請求到後端...');
+                                this.serverLog('info', '發送批准請求到後端', { paymentId });
                                 const response = await AppAPI.post('/api/user/payment/approve', { paymentId });
                                 console.log('[Premium] 批准請求響應狀態:', response.status);
+                                this.serverLog('info', '批准請求響應狀態', { paymentId, status: response.status });
 
                                 if (!response.ok) {
                                     const errorData = await response.json();
                                     console.error('[Premium] 批准請求失敗:', errorData);
+                                    this.serverLog('error', '批准請求失敗', { paymentId, error: errorData });
                                     throw new Error(errorData.detail || '批准請求失敗');
                                 }
 
                                 console.log('[Premium] 支付批准成功:', paymentId);
+                                this.serverLog('info', '支付批准成功', { paymentId });
                                 return { success: true };
                             } catch (error) {
                                 console.error('[Premium] 批准支付時發生錯誤:', error);
+                                this.serverLog('error', '批准支付時發生錯誤', { paymentId, error: error.message });
                                 return { success: false, error: error.message };
                             }
                         },
@@ -403,6 +453,7 @@ class PremiumManager {
                         // 步驟 2: 區塊鏈交易完成，等待後端確認完成
                         onReadyForServerCompletion: async (paymentId, txid) => {
                             console.log('[Premium] onReadyForServerCompletion 支付待完成:', paymentId, txid);
+                            this.serverLog('info', 'onReadyForServerCompletion', { paymentId, txid });
 
                             // 立即保存 txid 到 localStorage 以防萬一
                             try {
@@ -472,6 +523,7 @@ class PremiumManager {
                             // 所有重試都失敗，顯示錯誤並保持 txid
                             console.error('[Premium] 完成支付所有重試均失敗:', lastError);
                             console.error('[Premium] 交易已完成但後端確認失敗，txid:', txid);
+                            this.serverLog('error', '完成支付所有重試均失敗', { paymentId, txid, error: lastError?.message });
 
                             // 不拒絕 Promise，而是設置一個標記並繼續
                             txHash = txid;
@@ -490,6 +542,7 @@ class PremiumManager {
                         // 用戶取消支付
                         onCancel: (paymentId) => {
                             console.log('[Premium] onCancel 支付已取消:', paymentId);
+                            this.serverLog('warning', '用戶取消支付', { paymentId });
                             paymentError = 'CANCELLED';
 
                             reject(new Error('用戶取消支付'));
@@ -499,6 +552,7 @@ class PremiumManager {
                         onError: (error, payment) => {
                             console.error('[Premium] onError 支付錯誤:', error);
                             console.error('[Premium] onError payment DTO:', payment);
+                            this.serverLog('error', 'Pi.createPayment onError', { error: error?.message || String(error), payment });
                             paymentError = error?.message || error;
 
                             reject(error);
