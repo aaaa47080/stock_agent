@@ -11,8 +11,9 @@ const _defaultPiPrices = {
     premium: null,
     loaded: false,
 };
-AppStore.set('PiPrices', _defaultPiPrices);
+// AppStore is optional (not loaded on all pages); always keep window.PiPrices in sync
 window.PiPrices = _defaultPiPrices;
+if (typeof AppStore !== 'undefined') AppStore.set('PiPrices', _defaultPiPrices);
 
 // ============================================
 // 論壇限制配置（從後端動態獲取）
@@ -24,22 +25,20 @@ const _defaultForumLimits = {
     daily_comment_premium: null,
     loaded: false,
 };
-AppStore.set('ForumLimits', _defaultForumLimits);
 window.ForumLimits = _defaultForumLimits;
+if (typeof AppStore !== 'undefined') AppStore.set('ForumLimits', _defaultForumLimits);
 
 // 從後端載入價格配置
 async function loadPiPrices() {
-    if (AppStore.get('PiPrices').loading) return; // Prevent concurrent requests
-    const prices = AppStore.get('PiPrices');
-    prices.loading = true;
-    AppStore.set('PiPrices', prices);
-    window.PiPrices = prices;
+    if (window.PiPrices.loading) return; // Prevent concurrent requests
+    window.PiPrices = { ...window.PiPrices, loading: true };
+    if (typeof AppStore !== 'undefined') AppStore.set('PiPrices', window.PiPrices);
 
     try {
         const data = await AppAPI.get('/api/config/prices');
         const updated = { ...data.prices, loaded: true, loading: false };
-        AppStore.set('PiPrices', updated);
         window.PiPrices = updated;
+        if (typeof AppStore !== 'undefined') AppStore.set('PiPrices', updated);
         console.log('[Forum] Pi 價格配置已載入:', updated);
         // 更新頁面上的價格顯示
         updatePriceDisplays();
@@ -47,16 +46,14 @@ async function loadPiPrices() {
         document.dispatchEvent(new Event('pi-prices-updated'));
     } catch (e) {
         console.error('[Forum] 載入價格配置失敗:', e);
-        const reset = AppStore.get('PiPrices');
-        reset.loading = false;
-        AppStore.set('PiPrices', reset);
-        window.PiPrices = reset;
+        window.PiPrices = { ...window.PiPrices, loading: false };
+        if (typeof AppStore !== 'undefined') AppStore.set('PiPrices', window.PiPrices);
     }
 }
 
 function updatePriceDisplays() {
     // 更新所有帶有 data-price 屬性的元素
-    const prices = AppStore.get('PiPrices');
+    const prices = window.PiPrices;
     if (!prices || !prices.loaded) {
         console.log('[Forum] 價格尚未載入，跳過更新');
         return;
@@ -77,32 +74,28 @@ function updatePriceDisplays() {
 
 // 從後端載入論壇限制配置
 async function loadForumLimits() {
-    const limits = AppStore.get('ForumLimits');
-    if (limits.loading) return;
-    limits.loading = true;
-    AppStore.set('ForumLimits', limits);
-    window.ForumLimits = limits;
+    if (window.ForumLimits.loading) return;
+    window.ForumLimits = { ...window.ForumLimits, loading: true };
+    if (typeof AppStore !== 'undefined') AppStore.set('ForumLimits', window.ForumLimits);
 
     try {
         const data = await AppAPI.get('/api/config/limits');
         const updated = { ...data.limits, loaded: true, loading: false };
-        AppStore.set('ForumLimits', updated);
         window.ForumLimits = updated;
+        if (typeof AppStore !== 'undefined') AppStore.set('ForumLimits', updated);
         console.log('[Forum] 論壇限制配置已載入:', updated);
         // 通知其他模組限制已更新
         document.dispatchEvent(new Event('forum-limits-updated'));
     } catch (e) {
         console.error('[Forum] 載入論壇限制配置失敗:', e);
-        const reset = AppStore.get('ForumLimits');
-        reset.loading = false;
-        AppStore.set('ForumLimits', reset);
-        window.ForumLimits = reset;
+        window.ForumLimits = { ...window.ForumLimits, loading: false };
+        if (typeof AppStore !== 'undefined') AppStore.set('ForumLimits', window.ForumLimits);
     }
 }
 
 // 取得價格的輔助函數（確保有值）
 function getPrice(key) {
-    const prices = AppStore.get('PiPrices');
+    const prices = window.PiPrices;
     if (prices?.loaded && prices[key] !== null) {
         return prices[key];
     }
@@ -112,7 +105,7 @@ function getPrice(key) {
 
 // 取得限制的輔助函數（確保有值）
 function getLimit(key) {
-    const limits = AppStore.get('ForumLimits');
+    const limits = window.ForumLimits;
     if (limits?.loaded && limits[key] !== undefined) {
         return limits[key];
     }
@@ -159,4 +152,3 @@ function formatTWDate(dateStr, full = false) {
 }
 
 export { loadPiPrices, loadForumLimits, getPrice, getLimit, formatTWDate };
-

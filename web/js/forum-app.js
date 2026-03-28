@@ -6,10 +6,10 @@ import { loadPiPrices, loadForumLimits, getPrice, getLimit, formatTWDate } from 
 const ForumApp = {
     init() {
         // Ensure prices and limits are loaded
-        if (!window.PiPrices.loaded) {
+        if (!window.PiPrices?.loaded) {
             loadPiPrices();
         }
-        if (!window.ForumLimits.loaded) {
+        if (!window.ForumLimits?.loaded) {
             loadForumLimits();
         }
 
