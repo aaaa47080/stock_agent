@@ -234,11 +234,18 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
     # Stage 3: Use key rotation if enabled
     if _use_key_rotation():
-        key_manager = _get_key_manager()
-        key = key_manager.get_current_key()
-        # Include key ID in token for tracking
-        to_encode["_kid"] = key_manager.get_primary_key_id()
-        encoded_jwt = jwt.encode(to_encode, key, algorithm=ALGORITHM)
+        try:
+            key_manager = _get_key_manager()
+            key = key_manager.get_current_key()
+            to_encode["_kid"] = key_manager.get_primary_key_id()
+            encoded_jwt = jwt.encode(to_encode, key, algorithm=ALGORITHM)
+        except RuntimeError:
+            # Key manager not yet initialized (background task still starting up)
+            # Fall back to SECRET_KEY so login is not blocked during startup
+            logger.warning("JWT key manager not ready during create_access_token; using SECRET_KEY fallback")
+            if not SECRET_KEY:
+                raise
+            encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     else:
         encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -256,10 +263,16 @@ def create_refresh_token(data: dict) -> str:
     to_encode.update({"exp": expire})
 
     if _use_key_rotation():
-        key_manager = _get_key_manager()
-        key = key_manager.get_current_key()
-        to_encode["_kid"] = key_manager.get_primary_key_id()
-        encoded_jwt = jwt.encode(to_encode, key, algorithm=ALGORITHM)
+        try:
+            key_manager = _get_key_manager()
+            key = key_manager.get_current_key()
+            to_encode["_kid"] = key_manager.get_primary_key_id()
+            encoded_jwt = jwt.encode(to_encode, key, algorithm=ALGORITHM)
+        except RuntimeError:
+            logger.warning("JWT key manager not ready during create_refresh_token; using SECRET_KEY fallback")
+            if not SECRET_KEY:
+                raise
+            encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     else:
         encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
