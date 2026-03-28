@@ -553,11 +553,9 @@ const MessagesPage = {
                 return;
             }
 
-            const res = await AppAPI.delete(`/api/messages/${messageId}?user_id=${userId}`);
+            const data = await AppAPI.delete(`/api/messages/${messageId}?user_id=${userId}`);
 
-            const data = await res.json();
-
-            if (res.ok && data.success) {
+            if (data.success) {
                 // 更新 DOM：將訊息替換為「已收回」樣式
                 const msgEl = document.getElementById(`msg-${messageId}`);
                 if (msgEl) {
