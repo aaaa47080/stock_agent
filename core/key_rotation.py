@@ -161,17 +161,50 @@ class KeyRotationManager:
     # ── Async DB operations ────────────────────────────────────────────────────
 
     async def initialize(self) -> None:
-        """Load (or bootstrap) keys from DB and populate in-memory cache."""
+        """Load (or bootstrap) keys from DB and populate in-memory cache.
+
+        Self-healing: if the jwt_keys table doesn't exist yet (e.g. Alembic
+        migration hasn't run), creates it inline before bootstrapping.
+        """
         from core.orm.models import JWTKey
         from core.orm.session import get_session_factory
-        from sqlalchemy import select
+        from sqlalchemy import select, text
 
         factory = get_session_factory()
         async with factory() as session:
-            result = await session.execute(
-                select(JWTKey).where(JWTKey.status.in_(["active", "deprecated"]))
-            )
-            rows = result.scalars().all()
+            try:
+                result = await session.execute(
+                    select(JWTKey).where(JWTKey.status.in_(["active", "deprecated"]))
+                )
+                rows = result.scalars().all()
+            except Exception as exc:
+                err = str(exc).lower()
+                if "jwt_keys" in err or "does not exist" in err or "undefined" in err:
+                    logger.warning(
+                        "jwt_keys table missing — creating inline as Alembic fallback"
+                    )
+                    await session.rollback()
+                    await session.execute(text("""
+                        CREATE TABLE IF NOT EXISTS jwt_keys (
+                            id TEXT PRIMARY KEY,
+                            value_encrypted TEXT NOT NULL,
+                            status TEXT NOT NULL DEFAULT 'active',
+                            is_primary BOOLEAN NOT NULL DEFAULT FALSE,
+                            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                            expires_at TIMESTAMPTZ NOT NULL,
+                            deprecated_at TIMESTAMPTZ
+                        )
+                    """))
+                    await session.execute(text(
+                        "CREATE INDEX IF NOT EXISTS idx_jwt_keys_status ON jwt_keys(status)"
+                    ))
+                    await session.execute(text(
+                        "CREATE INDEX IF NOT EXISTS idx_jwt_keys_is_primary ON jwt_keys(is_primary)"
+                    ))
+                    await session.commit()
+                    rows = []
+                else:
+                    raise
 
             if not rows:
                 await self._bootstrap(session)
@@ -338,17 +371,33 @@ def get_key_manager() -> KeyRotationManager:
 
 async def key_rotation_task() -> None:
     """
-    Hourly key rotation check. Assumes manager is already initialized by lifespan.
+    Wait for DB, initialize key manager (with retry), then check rotation every hour.
 
-    Started by api/lifespan.py after get_key_manager().initialize() succeeds.
+    Started by api/lifespan.py when USE_KEY_ROTATION=true.
     """
     import asyncio
+
+    from core.db_ready import wait_for_db_ready
 
     rotation_interval_days = int(os.getenv("KEY_ROTATION_INTERVAL_DAYS", "30"))
     manager = get_key_manager()
 
+    await wait_for_db_ready()
+
+    # Initialize with exponential backoff retry
+    retry_delay = 5
+    while not manager._initialized:
+        try:
+            await manager.initialize()
+        except Exception as exc:
+            logger.error(
+                f"❌ JWT key manager init failed (retry in {retry_delay}s): {exc}"
+            )
+            await asyncio.sleep(retry_delay)
+            retry_delay = min(retry_delay * 2, 120)
+
     logger.info(
-        f"🔑 Key rotation task started (rotation interval: {rotation_interval_days} days)"
+        f"🔑 Key rotation task running (interval: {rotation_interval_days} days)"
     )
 
     while True:
