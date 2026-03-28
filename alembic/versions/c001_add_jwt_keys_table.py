@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "c001_add_jwt_keys_table"
-down_revision: Union[str, Sequence[str], None] = "92a35ecee1cf"
+down_revision: Union[str, Sequence[str], None] = "b003_stamp_existing_tables"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
