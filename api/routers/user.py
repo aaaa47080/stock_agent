@@ -673,6 +673,74 @@ async def delete_user_api_key_endpoint(
         raise HTTPException(status_code=500, detail="刪除失敗")
 
 
+@router.get("/api/user/auth-status-page")
+async def auth_status_page():
+    """Mobile-friendly debug page — open this URL in Pi Browser after login."""
+    from fastapi.responses import HTMLResponse
+    html = """<!DOCTYPE html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Auth Status</title>
+<style>
+body{background:#111;color:#eee;font-family:monospace;padding:16px;font-size:14px}
+h2{color:#f5c842}
+.ok{color:#4ade80;font-weight:bold}
+.fail{color:#f87171;font-weight:bold}
+.warn{color:#fbbf24;font-weight:bold}
+table{width:100%;border-collapse:collapse;margin-bottom:16px}
+td{padding:8px;border-bottom:1px solid #333}
+pre{background:#222;padding:8px;overflow:auto;font-size:12px;white-space:pre-wrap}
+button{background:#f5c842;color:#111;border:none;padding:10px 20px;border-radius:8px;font-size:16px;margin:8px 0}
+</style></head><body>
+<h2>Auth Status Debug</h2>
+<table id="ls-table"><tr><td colspan="2">Loading localStorage...</td></tr></table>
+<h3>API /api/user/me result:</h3>
+<pre id="api-result">Loading...</pre>
+<h3>API /api/user/auth-debug result:</h3>
+<pre id="debug-result">Loading...</pre>
+<button onclick="runTest()">Re-run Test</button>
+<script>
+function show(id, html){ document.getElementById(id).innerHTML = html; }
+
+function lsTable(){
+  var data = localStorage.getItem('pi_user');
+  if(!data) return '<tr><td colspan="2" class="fail">No pi_user in localStorage — not logged in</td></tr>';
+  try{
+    var u = JSON.parse(data);
+    var rows = '';
+    for(var k in u){ rows += '<tr><td>'+k+'</td><td class="ok">'+(u[k]||'(empty)')+'</td></tr>'; }
+    return rows;
+  }catch(e){ return '<tr><td colspan="2" class="fail">Parse error: '+e+'</td></tr>'; }
+}
+
+async function runTest(){
+  document.getElementById('ls-table').innerHTML = lsTable();
+
+  // Test /api/user/me with credentials
+  try{
+    var r = await fetch('/api/user/me', {credentials:'include'});
+    var status = r.status;
+    var body = await r.text();
+    var color = status===200?'ok':'fail';
+    show('api-result','<span class="'+color+'">HTTP '+status+'</span>\\n'+body);
+  }catch(e){
+    show('api-result','<span class="fail">Error: '+e+'</span>');
+  }
+
+  // Test auth-debug
+  try{
+    var r2 = await fetch('/api/user/auth-debug', {credentials:'include'});
+    var body2 = await r2.text();
+    show('debug-result', body2);
+  }catch(e){
+    show('debug-result','<span class="fail">Error: '+e+'</span>');
+  }
+}
+
+runTest();
+</script></body></html>"""
+    return HTMLResponse(content=html)
+
+
 @router.get("/api/user/auth-debug")
 async def auth_debug(request: Request):
     """Temporary diagnostic endpoint — no auth required. Returns HTML for mobile debugging."""
