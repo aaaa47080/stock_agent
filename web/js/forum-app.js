@@ -3,6 +3,20 @@
 // ============================================
 import { loadPiPrices, loadForumLimits, getPrice, getLimit, formatTWDate } from './forum-config.js';
 
+function normalizePostTags(rawTags) {
+    if (!rawTags) return [];
+    if (Array.isArray(rawTags)) return rawTags.filter(Boolean);
+    if (typeof rawTags === 'string') {
+        try {
+            const parsed = JSON.parse(rawTags);
+            return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+        } catch {
+            return [];
+        }
+    }
+    return [];
+}
+
 const ForumApp = {
     init() {
         // Ensure prices and limits are loaded
@@ -59,13 +73,17 @@ const ForumApp = {
     // Index Page Logic
     // ===========================================
     async initIndexPage() {
+        this.currentTagFilter = '';
         this.loadBoards();
         this.loadPosts();
         this.loadTrendingTags();
 
         // 搜尋/篩選監聽
         document.getElementById('category-filter')?.addEventListener('change', (e) => {
-            this.loadPosts({ category: e.target.value });
+            this.loadPosts({
+                category: e.target.value,
+                tag: this.currentTagFilter || undefined,
+            });
         });
     },
 
@@ -117,7 +135,7 @@ const ForumApp = {
                 let tagsHtml = '';
                 try {
                     if (post.tags) {
-                        const tags = JSON.parse(post.tags);
+                        const tags = normalizePostTags(post.tags);
                         tagsHtml = tags
                             .map(
                                 (tag) =>
@@ -137,13 +155,13 @@ const ForumApp = {
                 const booCount = Math.max(0, post.boo_count || 0);
 
                 el.innerHTML = `
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="flex items-center gap-2">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-2">
+                        <div class="flex flex-wrap items-center gap-2 min-w-0">
                             <span class="text-xs font-bold text-secondary bg-white/10 px-2 py-0.5 rounded uppercase">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.category) : post.category}</span>
-                            <a href="/static/forum/profile.html?id=${post.user_id}" class="text-xs text-textMuted hover:text-primary transition" onclick="event.stopPropagation()">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.username || post.user_id) : post.username || post.user_id}</a>
+                            <a href="/static/forum/profile.html?id=${post.user_id}" class="text-xs text-textMuted hover:text-primary transition break-all" onclick="event.stopPropagation()">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.username || post.user_id) : post.username || post.user_id}</a>
                             <span class="text-xs text-textMuted">• ${date}</span>
                         </div>
-                        <div class="flex items-center gap-3 text-xs text-textMuted">
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-textMuted">
                             <span class="flex items-center gap-1 ${pushCount > 0 ? 'text-success' : ''}"><i data-lucide="thumbs-up" class="w-3 h-3"></i> ${pushCount}</span>
                             <span class="flex items-center gap-1 ${booCount > 0 ? 'text-danger' : ''}"><i data-lucide="thumbs-down" class="w-3 h-3"></i> ${booCount}</span>
                             <span class="flex items-center gap-1"><i data-lucide="message-square" class="w-3 h-3"></i> ${post.comment_count}</span>
@@ -151,7 +169,7 @@ const ForumApp = {
                         </div>
                     </div>
                     <h3 class="font-bold text-lg text-textMain mb-2 truncate">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.title || '') : post.title || ''}</h3>
-                    <div class="flex items-center">
+                    <div class="flex flex-wrap items-center gap-1.5">
                         ${tagsHtml}
                     </div>
                 `;
@@ -172,13 +190,50 @@ const ForumApp = {
             const response = await ForumAPI.getTrendingTags();
             const tags = response.tags || [];
 
+            if (tags.length === 0) {
+                container.innerHTML = '<div class="text-xs text-textMuted">No trending tags yet</div>';
+                return;
+            }
+
             container.innerHTML = tags
-                .map(
-                    (tag) => `
-                <a href="#" class="block text-sm text-textMuted hover:text-primary transition py-1">#${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(tag.name) : tag.name} <span class="text-xs opacity-50">(${tag.post_count})</span></a>
-            `
-                )
+                .map((tag) => {
+                    const safeName =
+                        typeof SecurityUtils !== 'undefined'
+                            ? SecurityUtils.escapeHTML(tag.name)
+                            : tag.name;
+                    const isActive = this.currentTagFilter === tag.name;
+
+                    return `
+                        <button
+                            type="button"
+                            data-tag="${safeName}"
+                            class="trending-tag w-full text-left text-sm rounded-xl border px-3 py-2 transition ${
+                                isActive
+                                    ? 'border-primary/40 bg-primary/10 text-primary'
+                                    : 'border-white/5 bg-white/5 text-textMuted hover:text-primary hover:border-primary/20'
+                            }"
+                        >
+                            <span>#${safeName}</span>
+                            <span class="text-xs opacity-60 ml-1">(${tag.post_count})</span>
+                        </button>
+                    `;
+                })
                 .join('');
+
+            container.querySelectorAll('.trending-tag').forEach((button) => {
+                button.addEventListener('click', () => {
+                    const nextTag = button.dataset.tag || '';
+                    this.currentTagFilter =
+                        this.currentTagFilter === nextTag ? '' : nextTag;
+                    const category = document.getElementById('category-filter')?.value || '';
+
+                    this.loadPosts({
+                        category: category || undefined,
+                        tag: this.currentTagFilter || undefined,
+                    });
+                    this.loadTrendingTags();
+                });
+            });
         } catch (e) {
             console.error('Failed to load tags', e);
             if (container) {
@@ -273,7 +328,7 @@ const ForumApp = {
             const tagsContainer = document.getElementById('post-tags');
             if (post.tags && tagsContainer) {
                 try {
-                    const tags = JSON.parse(post.tags);
+                    const tags = normalizePostTags(post.tags);
                     tagsContainer.innerHTML = tags
                         .map(
                             (tag) =>
@@ -1146,9 +1201,9 @@ const ForumApp = {
                         window.APP_CONFIG?.DEBUG_MODE &&
                             console.log('[CreatePost] Payment successful, txHash:', txHash);
                     } else {
-                        window.APP_CONFIG?.DEBUG_MODE &&
-                            console.log('[CreatePost] Mock payment (Non-Pi Env)');
-                        txHash = 'mock_' + Date.now();
+                        showToast('Please complete posting inside Pi Browser.', 'warning');
+                        resetButton();
+                        return;
                     }
                 } catch (paymentError) {
                     console.error('[CreatePost] Exception during payment setup:', paymentError);

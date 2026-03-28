@@ -82,7 +82,7 @@
         </nav>
 
         <!-- Main Content -->
-        <main class="flex-1 max-w-6xl mx-auto w-full p-4 grid grid-cols-1 md:grid-cols-4 gap-6">
+        <main class="flex-1 max-w-6xl mx-auto w-full p-4 grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6">
             <!-- Sidebar (Filters & Trending) -->
             <aside class="md:col-span-1 space-y-6">
                 <div class="bg-surface border border-white/5 rounded-2xl p-4">
@@ -109,7 +109,7 @@
                     <h3 class="font-bold text-secondary mb-3 flex items-center gap-2">
                         <i data-lucide="trending-up" class="w-4 h-4"></i> Trending Tags
                     </h3>
-                    <div id="trending-tags" class="space-y-1">
+                    <div id="trending-tags" class="space-y-1 max-h-64 overflow-auto">
                         <!-- Loaded via JS -->
                         <div class="text-xs text-textMuted">Loading...</div>
                     </div>
