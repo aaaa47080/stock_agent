@@ -112,6 +112,20 @@ async function request(method, url, options) {
                 lastError = new Error(errorMsg);
                 lastError.status = response.status;
 
+                if (response.status === 401 && !options._authRetried) {
+                    // Try to refresh token once, then retry the request
+                    if (typeof AuthManager !== 'undefined' && typeof AuthManager.backendTokenRefresh === 'function') {
+                        try {
+                            var refreshResult = await AuthManager.backendTokenRefresh();
+                            if (refreshResult && refreshResult.success) {
+                                var retryOptions = Object.assign({}, options, { _authRetried: true });
+                                return await request(method, url, retryOptions);
+                            }
+                        } catch (_refreshErr) {}
+                    }
+                    throw lastError;
+                }
+
                 if (
                     response.status === 401 ||
                     response.status === 403 ||
