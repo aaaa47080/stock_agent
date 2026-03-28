@@ -563,11 +563,31 @@ const ForumApp = {
                 }
             }, 1000);
         } catch (e) {
+            if (e?.status === 401) {
+                // Token 過期，嘗試刷新後重試
+                try {
+                    const refreshResult = await AuthManager.backendTokenRefresh();
+                    if (refreshResult.success) {
+                        await ForumAPI.deletePost(postId);
+                        showToast('文章已刪除', 'success');
+                        setTimeout(() => {
+                            if (typeof smoothNavigate === 'function') {
+                                smoothNavigate('/static/forum/index.html');
+                            } else {
+                                window.location.href = '/static/forum/index.html';
+                            }
+                        }, 1000);
+                        return;
+                    }
+                } catch (_) {}
+                showToast('登入已過期，請重新整理頁面', 'error');
+            } else {
+                showToast('刪除失敗: ' + e.message, 'error');
+            }
             if (btnElement) {
                 btnElement.disabled = false;
                 btnElement.classList.remove('opacity-50', 'cursor-not-allowed');
             }
-            showToast('刪除失敗: ' + e.message, 'error');
         }
     },
 

@@ -280,11 +280,12 @@
     <script type="module" src="/static/js/forum-api.js?v=2"></script>
     <script type="module" src="/static/js/forum-app.js?v=5"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            if (typeof initializeAuth === 'function') initializeAuth();
-            if (typeof ForumApp !== 'undefined') ForumApp.init();
+        document.addEventListener('DOMContentLoaded', async () => {
+            // 1. 等待認證完成，確保 accessToken 在記憶體中
+            if (typeof initializeAuth === 'function') await initializeAuth();
 
-            // Initialize Report Modal
+            // 2. 初始化論壇與 Report Modal
+            if (typeof ForumApp !== 'undefined') ForumApp.init();
             initReportModal();
         });
 
