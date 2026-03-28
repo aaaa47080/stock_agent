@@ -927,7 +927,6 @@ export {
     onTabSwitch,
     cleanupIntervals,
     showError,
-    closeErrorModal,
     quickAsk,
     hydrateSettingsFromBackend,
     openSettings,
