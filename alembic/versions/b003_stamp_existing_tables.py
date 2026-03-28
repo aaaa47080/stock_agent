@@ -115,6 +115,16 @@ def upgrade() -> None:
 
     # ── user payment / admin tables ────────────────────────────────────────────
     safe_exec("""
+        CREATE TABLE IF NOT EXISTS used_payments (
+            payment_id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        )
+    """)
+    safe_exec("CREATE INDEX IF NOT EXISTS idx_used_payments_user ON used_payments(user_id)")
+    safe_exec("CREATE INDEX IF NOT EXISTS idx_used_payments_payment_id ON used_payments(payment_id)")
+
+    safe_exec("""
         CREATE TABLE IF NOT EXISTS membership_payments (
             id SERIAL PRIMARY KEY,
             user_id TEXT NOT NULL,

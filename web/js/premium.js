@@ -470,6 +470,7 @@ class PremiumManager {
                             }
 
                             // 重試機制：最多 3 次
+                            // Note: AppAPI.post auto-parses JSON on success and throws on HTTP errors
                             let retryCount = 0;
                             const maxRetries = 3;
                             let lastError = null;
@@ -480,35 +481,27 @@ class PremiumManager {
                                         `[Premium] 嘗試完成請求 (${retryCount + 1}/${maxRetries})...`
                                     );
 
-                                    const response = await AppAPI.post('/api/user/payment/complete', { paymentId, txid });
-                                    console.log('[Premium] 完成請求響應狀態:', response.status);
+                                    await AppAPI.post('/api/user/payment/complete', { paymentId, txid });
 
-                                    if (response.ok) {
-                                        // 成功！清除 localStorage
-                                        try {
-                                            localStorage.removeItem('pending_premium_upgrade');
-                                        } catch (e) {}
+                                    // 成功！清除 localStorage
+                                    try {
+                                        localStorage.removeItem('pending_premium_upgrade');
+                                    } catch (e) {}
 
-                                        txHash = txid;
-                                        paymentComplete = true;
-                                        console.log('[Premium] 支付完成:', { paymentId, txid });
+                                    txHash = txid;
+                                    paymentComplete = true;
+                                    console.log('[Premium] 支付完成:', { paymentId, txid });
+                                    this.serverLog('info', '支付完成', { paymentId, txid });
 
-                                        resolve({ txid, paymentId });
-                                        return; // 成功退出
-                                    } else {
-                                        const errorData = await response.json();
-                                        lastError = new Error(errorData.detail || '完成請求失敗');
-                                        console.warn(
-                                            `[Premium] 完成請求失敗 (嘗試 ${retryCount + 1}):`,
-                                            errorData
-                                        );
-                                    }
+                                    resolve({ txHash: txid, paymentId });
+                                    return; // 成功退出
                                 } catch (error) {
                                     lastError = error;
                                     console.warn(
-                                        `[Premium] 網絡錯誤 (嘗試 ${retryCount + 1}):`,
+                                        `[Premium] 完成請求失敗 (嘗試 ${retryCount + 1}):`,
                                         error
                                     );
+                                    this.serverLog('warning', `完成請求失敗 (嘗試 ${retryCount + 1})`, { paymentId, txid, error: error?.message });
                                 }
 
                                 retryCount++;
@@ -536,7 +529,7 @@ class PremiumManager {
                                 10000
                             );
 
-                            resolve({ txid, paymentId }); // 繼續流程，讓用戶可以使用 txid 重試升級
+                            resolve({ txHash: txid, paymentId }); // 繼續流程，讓用戶可以使用 txid 重試升級
                         },
 
                         // 用戶取消支付
