@@ -39,9 +39,12 @@ def create_basic_tables(c):
         CREATE TABLE IF NOT EXISTS revoked_tokens (
             token_hash TEXT PRIMARY KEY,
             revoked_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-            expires_at TIMESTAMP WITH TIME ZONE,
-            INDEX idx_revoked_tokens_expires (expires_at)
+            expires_at TIMESTAMP WITH TIME ZONE
         )
+    """)
+    c.execute("""
+        CREATE INDEX IF NOT EXISTS idx_revoked_tokens_expires
+        ON revoked_tokens (expires_at)
     """)
 
     # 建立系統快取表 (System Cache)
