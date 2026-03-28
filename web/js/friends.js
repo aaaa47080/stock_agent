@@ -1263,11 +1263,9 @@ const SocialHub = {
             const myId = FriendsAPI._getUserId();
             if (!myId) return;
 
-            const res = await AppAPI.delete(`/api/messages/${messageId}?user_id=${myId}`);
+            const data = await AppAPI.delete(`/api/messages/${messageId}?user_id=${myId}`);
 
-            const data = await res.json();
-
-            if (res.ok && data.success) {
+            if (data.success) {
                 // 更新 DOM：將訊息替換為「已收回」樣式
                 const msgEl = document.getElementById(`social-msg-${messageId}`);
                 if (msgEl) {
@@ -1311,11 +1309,9 @@ const SocialHub = {
             const myId = FriendsAPI._getUserId();
             if (!myId) return;
 
-            const res = await AppAPI.post(`/api/messages/${messageId}/hide?user_id=${myId}`);
+            const data = await AppAPI.post(`/api/messages/${messageId}/hide?user_id=${myId}`);
 
-            const data = await res.json();
-
-            if (res.ok && data.success) {
+            if (data.success) {
                 // 從 DOM 中移除訊息
                 const msgEl = document.getElementById(`social-msg-${messageId}`);
                 if (msgEl) {
@@ -1364,11 +1360,9 @@ const SocialHub = {
             const myId = FriendsAPI._getUserId();
             if (!myId) return;
 
-            const res = await AppAPI.delete(`/api/conversations/${conversationId}?user_id=${myId}`);
+            const data = await AppAPI.delete(`/api/conversations/${conversationId}?user_id=${myId}`);
 
-            const data = await res.json();
-
-            if (res.ok && data.success) {
+            if (data.success) {
                 // 從 DOM 中移除對話
                 const convEl = document.getElementById(`conv-${conversationId}`);
                 if (convEl) {
@@ -1465,14 +1459,12 @@ const SocialHub = {
             const myId = FriendsAPI._getUserId();
             if (!myId) throw new Error(t('friends.loginRequired'));
 
-            const res = await AppAPI.post(`/api/messages/send?user_id=${myId}`, {
+            const data = await AppAPI.post(`/api/messages/send?user_id=${myId}`, {
                     to_user_id: this.currentChatUserId,
                     content: content,
                 });
 
-            const data = await res.json();
-
-            if (res.ok && data.success) {
+            if (data.success) {
                 input.value = '';
                 this.autoResizeInput(input);
                 this.updateCharCount();

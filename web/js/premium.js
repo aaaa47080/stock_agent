@@ -429,16 +429,7 @@ class PremiumManager {
                             try {
                                 console.log('[Premium] 發送批准請求到後端...');
                                 this.serverLog('info', '發送批准請求到後端', { paymentId });
-                                const response = await AppAPI.post('/api/user/payment/approve', { paymentId });
-                                console.log('[Premium] 批准請求響應狀態:', response.status);
-                                this.serverLog('info', '批准請求響應狀態', { paymentId, status: response.status });
-
-                                if (!response.ok) {
-                                    const errorData = await response.json();
-                                    console.error('[Premium] 批准請求失敗:', errorData);
-                                    this.serverLog('error', '批准請求失敗', { paymentId, error: errorData });
-                                    throw new Error(errorData.detail || '批准請求失敗');
-                                }
+                                await AppAPI.post('/api/user/payment/approve', { paymentId });
 
                                 console.log('[Premium] 支付批准成功:', paymentId);
                                 this.serverLog('info', '支付批准成功', { paymentId });
