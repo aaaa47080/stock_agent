@@ -582,7 +582,10 @@
         }
 
         // Init
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (typeof AuthManager !== 'undefined') {
+                await AuthManager.init();
+            }
             lucide.createIcons();
             loadProfile();
         });

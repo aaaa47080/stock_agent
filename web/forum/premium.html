@@ -183,13 +183,9 @@
             // 加載用戶會員狀態
             if (window.AuthManager?.currentUser) {
                 const userId = window.AuthManager.currentUser.user_id || window.AuthManager.currentUser.uid;
-                const accessToken = window.AuthManager.currentUser.accessToken;
                 if (userId) {
                     try {
-                        const response = await fetch(`/api/premium/status`, {
-                            headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
-                        });
-                        const result = await response.json();
+                        const result = await AppAPI.get(`/api/premium/status`);
 
                         if (result.success) {
                             const membership = result.membership;
