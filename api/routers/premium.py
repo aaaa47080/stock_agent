@@ -213,9 +213,11 @@ async def upgrade_to_premium(
             )
 
         actual_amount = payment_data.get("amount", 0)
-        from core.config import PI_PAYMENT_PRICES
-
-        expected_amount = PI_PAYMENT_PRICES.get(plan, 5.0)
+        from core.database.system_config import get_prices as _get_prices
+        _prices = _get_prices()
+        # Map plan name to system_config key ("premium_monthly" → "premium")
+        _plan_key = "premium" if "premium" in plan else plan
+        expected_amount = _prices.get(_plan_key) or PI_PAYMENT_PRICES.get(plan, 5.0)
         if abs(float(actual_amount) - float(expected_amount)) > 0.001:
             logger.warning(
                 "Premium upgrade amount mismatch: expected=%s, actual=%s, user=%s",
