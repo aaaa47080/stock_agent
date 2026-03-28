@@ -147,19 +147,21 @@ async def _verify_pi_payment(payment_id: str) -> dict:
 
 @router.get("/pricing")
 async def get_pricing_plans():
-    from core.config import PI_PAYMENT_PRICES
+    from core.database.system_config import get_prices as _get_prices
+    prices = _get_prices()
+    monthly = prices.get("premium", 1.0)
 
     return {
         "success": True,
         "pricing": {
             "premium": {
-                "monthly": PI_PAYMENT_PRICES.get("premium_monthly", 5.0),
-                "yearly": PI_PAYMENT_PRICES.get("premium_yearly", 40.0),
+                "monthly": monthly,
+                "yearly": round(monthly * 10, 2),  # yearly = 10x monthly
             }
         },
         "pi_price_usd": 0.17,
         "savings": {
-            "premium_yearly_save": 20.0,
+            "premium_yearly_save": round(monthly * 2, 2),
         },
     }
 
