@@ -153,33 +153,6 @@ async def lifespan(app: FastAPI):
         logger.warning("⚠️ Audit log cleanup task not available")
         _startup_mark("audit_cleanup_task_unavailable", status="warn")
 
-    # Startup: JWT 密鑰輪換 (Stage 3 Security)
-    # 先等 DB ready 並同步初始化 key manager，再 yield 開始接收請求，
-    # 徹底消除 RuntimeError race condition。
-    if os.getenv("USE_KEY_ROTATION", "false").lower() == "true":
-        try:
-            from core.key_rotation import get_key_manager, key_rotation_task
-
-            _km = get_key_manager()
-            if not _km._initialized:
-                logger.info("🔑 Waiting for DB to initialize JWT key manager before accepting requests...")
-                await wait_for_db_ready(timeout=30.0)
-                await _km.initialize()
-                logger.info("✅ JWT key manager initialized (startup-blocking)")
-                _startup_mark("jwt_key_manager_initialized")
-
-            # Background task handles hourly rotation checks (skips init since already done)
-            asyncio.create_task(key_rotation_task())
-            logger.info("✅ JWT key rotation task scheduled (hourly checks)")
-            _startup_mark("jwt_rotation_task_scheduled")
-        except Exception as e:
-            logger.warning(f"⚠️ JWT key manager startup init failed: {e}, will retry in background")
-            try:
-                from core.key_rotation import key_rotation_task
-                asyncio.create_task(key_rotation_task())
-            except Exception:
-                pass
-            _startup_mark("jwt_rotation_task_fallback", status="warn")
 
     _startup_mark("startup_ready")
 

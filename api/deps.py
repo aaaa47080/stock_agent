@@ -45,48 +45,21 @@ _COOKIE_SECURE = os.getenv("ENVIRONMENT", "development").lower() in (
 _COOKIE_DOMAIN = os.getenv("COOKIE_DOMAIN", "")
 _COOKIE_SAME_SITE = "Lax"
 
-# Security check: require fallback secret unless key rotation is explicitly enabled.
-if not SECRET_KEY and os.getenv("USE_KEY_ROTATION", "false").lower() != "true":
+if not SECRET_KEY:
     raise ValueError(
         "🚨 SECURITY ERROR: JWT_SECRET_KEY environment variable is required.\n"
         "Generate a strong key using: openssl rand -hex 32\n"
-        "Then set it in your .env file: JWT_SECRET_KEY=<your-key>\n"
-        "Alternatively, enable key rotation with: USE_KEY_ROTATION=true"
+        "Then set it in your .env file: JWT_SECRET_KEY=<your-key>"
     )
-if SECRET_KEY and len(SECRET_KEY) < 32:
+if len(SECRET_KEY) < 32:
     raise ValueError(
         "🚨 SECURITY ERROR: JWT_SECRET_KEY must be at least 32 characters long.\n"
         f"Current length: {len(SECRET_KEY)} characters.\n"
         "Generate a stronger key using: openssl rand -hex 32"
     )
-if os.getenv("USE_KEY_ROTATION", "false").lower() == "true":
-    if not os.getenv("JWT_MASTER_KEY"):
-        raise ValueError(
-            "🚨 SECURITY ERROR: JWT_MASTER_KEY environment variable is required when "
-            "USE_KEY_ROTATION=true.\n"
-            "This key encrypts JWT signing keys stored in PostgreSQL.\n"
-            "Generate with: openssl rand -hex 32"
-        )
-
-_key_manager = None
 
 
-def _use_key_rotation() -> bool:
-    """Read rotation switch dynamically so tests/runtime toggles stay consistent."""
-    return os.getenv("USE_KEY_ROTATION", "false").lower() == "true"
-
-
-def _get_key_manager():
-    """Lazy-load key manager to avoid module import-time coupling."""
-    global _key_manager
-    if _key_manager is None:
-        from core.key_rotation import get_key_manager
-
-        _key_manager = get_key_manager()
-    return _key_manager
-
-
-# === Refresh Token Blacklist (in-memory, DB-backed for persistence) ===
+# === Refresh Token Blacklist (in-memory) ===
 _revoked_tokens: dict[str, datetime] = {}  # token_hash -> expiry
 _revoked_tokens_lock = threading.Lock()
 
@@ -97,10 +70,7 @@ def _hash_token(token: str) -> str:
 
 
 def revoke_token(token: str, expires_at: Optional[datetime] = None) -> None:
-    """
-    Revoke a refresh token by adding its hash to the blacklist.
-    Thread-safe for concurrent access.
-    """
+    """Revoke a refresh token by adding its hash to the blacklist."""
     token_hash = _hash_token(token)
     with _revoked_tokens_lock:
         _revoked_tokens[token_hash] = expires_at or (
@@ -110,17 +80,12 @@ def revoke_token(token: str, expires_at: Optional[datetime] = None) -> None:
 
 
 def is_token_revoked(token: str) -> bool:
-    """
-    Check if a token has been revoked.
-    Returns True if revoked, False otherwise.
-    Also auto-cleans expired entries.
-    """
+    """Check if a token has been revoked. Also auto-cleans expired entries."""
     token_hash = _hash_token(token)
     with _revoked_tokens_lock:
         if token_hash in _revoked_tokens:
             expiry = _revoked_tokens[token_hash]
             if expiry and expiry < datetime.now(timezone.utc):
-                # Token has expired, remove from blacklist
                 del _revoked_tokens[token_hash]
                 return False
             return True
@@ -147,7 +112,6 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/user/login", auto_error=Fals
 def _is_expected_user_db_fallback_error(exc: Exception) -> bool:
     if isinstance(exc, ModuleNotFoundError):
         return True
-
     message = str(exc)
     return "async_generator" in message and "context manager" in message
 
@@ -215,106 +179,36 @@ def resolve_request_token(request: Request, bearer_token: Optional[str]) -> str:
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    """
-    Create a new JWT access token.
-
-    Stage 3 Security: Uses key rotation manager when enabled.
-    New tokens are signed with the current primary key.
-    """
+    """Create a new JWT access token."""
     to_encode = data.copy()
     to_encode["type"] = "access"
-    if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
-    else:
-        expire = datetime.now(timezone.utc) + timedelta(
-            minutes=ACCESS_TOKEN_EXPIRE_MINUTES
-        )
-
-    to_encode.update({"exp": expire})
-
-    # Stage 3: Use key rotation if enabled
-    if _use_key_rotation():
-        try:
-            key_manager = _get_key_manager()
-            key = key_manager.get_current_key()
-            to_encode["_kid"] = key_manager.get_primary_key_id()
-            encoded_jwt = jwt.encode(to_encode, key, algorithm=ALGORITHM)
-        except RuntimeError:
-            # Key manager not yet initialized (background task still starting up)
-            # Fall back to SECRET_KEY so login is not blocked during startup
-            logger.warning("JWT key manager not ready during create_access_token; using SECRET_KEY fallback")
-            if not SECRET_KEY:
-                raise
-            encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    else:
-        encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-
-    return encoded_jwt
+    expire = datetime.now(timezone.utc) + (
+        expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    to_encode["exp"] = expire
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
 def create_refresh_token(data: dict) -> str:
-    """
-    Create a new JWT refresh token with longer expiration.
-    Refresh tokens are used to obtain new access tokens without re-authentication.
-    """
+    """Create a new JWT refresh token with longer expiration."""
     to_encode = data.copy()
     to_encode["type"] = "refresh"
-    expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-    to_encode.update({"exp": expire})
-
-    if _use_key_rotation():
-        try:
-            key_manager = _get_key_manager()
-            key = key_manager.get_current_key()
-            to_encode["_kid"] = key_manager.get_primary_key_id()
-            encoded_jwt = jwt.encode(to_encode, key, algorithm=ALGORITHM)
-        except RuntimeError:
-            logger.warning("JWT key manager not ready during create_refresh_token; using SECRET_KEY fallback")
-            if not SECRET_KEY:
-                raise
-            encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    else:
-        encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-
-    return encoded_jwt
+    to_encode["exp"] = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
 def verify_token(token: str) -> dict:
     """
     Verify the token and return the payload.
     Used for WebSocket authentication or where Depends() cannot be used.
-
-    Stage 3 Security: Supports key rotation when enabled.
-    Tries all active keys to validate tokens signed with old keys.
     """
-    if _use_key_rotation():
-        key_manager = _get_key_manager()
-        try:
-            payload = key_manager.verify_token_with_any_key(token, algorithms=[ALGORITHM])
-        except RuntimeError:
-            logger.warning("JWT key manager not yet initialized during verify_token; falling back to SECRET_KEY")
-            payload = None
-        # Fallback: accept tokens signed with JWT_SECRET_KEY (pre-rotation migration)
-        if payload is None and SECRET_KEY:
-            try:
-                payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-            except Exception:
-                payload = None
-        if payload is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could not validate credentials",
-            )
-        return payload
-    else:
-        try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-            return payload
-        except InvalidTokenError:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could not validate credentials",
-            )
+    try:
+        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+        )
 
 
 async def get_current_user_id(
@@ -323,8 +217,6 @@ async def get_current_user_id(
     """
     Validate the token and return the user_id.
     Reads from httpOnly cookie first, falls back to Authorization header.
-
-    Stage 3 Security: Supports key rotation when enabled.
     """
     resolved_token = resolve_request_token(request, token)
 
@@ -338,28 +230,7 @@ async def get_current_user_id(
         raise credentials_exception
 
     try:
-        if _use_key_rotation():
-            key_manager = _get_key_manager()
-            try:
-                payload = key_manager.verify_token_with_any_key(
-                    resolved_token, algorithms=[ALGORITHM]
-                )
-            except RuntimeError:
-                logger.warning("JWT key manager not yet initialized; falling back to SECRET_KEY")
-                payload = None
-            # Fallback: accept tokens signed with JWT_SECRET_KEY (pre-rotation migration)
-            if payload is None and SECRET_KEY:
-                try:
-                    payload = jwt.decode(
-                        resolved_token, SECRET_KEY, algorithms=[ALGORITHM]
-                    )
-                except Exception:
-                    payload = None
-            if payload is None:
-                raise credentials_exception
-        else:
-            payload = jwt.decode(resolved_token, SECRET_KEY, algorithms=[ALGORITHM])
-
+        payload = jwt.decode(resolved_token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: str = payload.get("sub")
         if user_id is None:
             raise credentials_exception
@@ -389,7 +260,6 @@ async def get_current_user(
     resolved_token = resolve_request_token(request, token)
     user_id = None
 
-    # If using regular authentication (not skipped via TEST_MODE without token)
     if resolved_token:
         if TEST_MODE and resolved_token.startswith("test-user-"):
             _allowed = {
@@ -399,64 +269,30 @@ async def get_current_user(
             }
             if resolved_token in _allowed:
                 user_id = resolved_token
-            # Use mock user logic below
         else:
             try:
-                # Normal mode: Validate JWT token
-                payload: dict
-                if _use_key_rotation():
-                    key_manager = _get_key_manager()
-                    try:
-                        payload = key_manager.verify_token_with_any_key(
-                            resolved_token, algorithms=[ALGORITHM]
-                        )
-                    except RuntimeError:
-                        logger.warning("JWT key manager not yet initialized; falling back to SECRET_KEY")
-                        payload = None
-                    # Fallback: accept tokens signed with JWT_SECRET_KEY (pre-rotation migration)
-                    if payload is None and SECRET_KEY:
-                        try:
-                            payload = jwt.decode(
-                                resolved_token, SECRET_KEY, algorithms=[ALGORITHM]
-                            )
-                        except Exception:
-                            payload = None
-                    if payload is None:
-                        raise HTTPException(
-                            status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail="Could not validate credentials",
-                        )
-                else:
-                    payload = jwt.decode(
-                        resolved_token, SECRET_KEY, algorithms=[ALGORITHM]
-                    )
+                payload = jwt.decode(resolved_token, SECRET_KEY, algorithms=[ALGORITHM])
                 user_id = payload.get("sub")
-                if not user_id:
-                    if not TEST_MODE:
-                        raise HTTPException(
-                            status_code=status.HTTP_401_UNAUTHORIZED,
-                            detail="Could not validate credentials",
-                        )
+                if not user_id and not TEST_MODE:
+                    raise HTTPException(
+                        status_code=status.HTTP_401_UNAUTHORIZED,
+                        detail="Could not validate credentials",
+                    )
             except ExpiredSignatureError:
-                # Token expired - in TEST_MODE, allow expired tokens to fall through to test user
                 if not TEST_MODE:
                     raise
                 user_id = None
             except (InvalidTokenError, HTTPException):
-                # Token is invalid (bad signature, malformed, etc.) - reject even in TEST_MODE
                 if not TEST_MODE:
                     raise
-                # Reject invalid tokens in TEST_MODE as well - only expired tokens are allowed
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Could not validate credentials",
                 )
 
-    # Fetch from DB for BOTH normal mode and test mode (if user_id is set)
     if user_id:
         try:
             user = await user_repo.get_by_id(user_id)
-
             if user:
                 if not user.get("is_active", True):
                     raise HTTPException(
@@ -467,7 +303,6 @@ async def get_current_user(
         except HTTPException:
             raise
         except Exception as exc:
-            # DB fetch fails or user doesn't exist
             if _is_expected_user_db_fallback_error(exc):
                 logger.warning(
                     "Failed to load current user from DB; falling back by mode: %s",
@@ -479,14 +314,10 @@ async def get_current_user(
                     exc_info=True,
                 )
 
-    # If we are in TEST_MODE, return mock test user when DB fetch fails or no token
     if TEST_MODE:
         if not user_id:
             user_id = TEST_USER.get("uid", "test-user-001")
 
-        # 🔧 Test mode: Support membership tier switching for testing
-        # IMPORTANT: Use os.environ.get() instead of os.getenv() to get current value
-        # os.getenv() caches at process startup, but os.environ.get() reads current value
         test_tier = _normalize_membership_tier(
             os.environ.get("TEST_USER_TIER", "premium")
         )
@@ -496,11 +327,10 @@ async def get_current_user(
             "username": f"TestUser_{user_id[-3:]}",
             "pi_uid": user_id,
             "is_premium": test_tier == "premium",
-            "membership_tier": test_tier,  # ✅ Add membership_tier for testing
+            "membership_tier": test_tier,
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
 
-    # If not in TEST_MODE and no valid user found
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -513,7 +343,6 @@ async def get_optional_current_user(
 ) -> Optional[CurrentUser]:
     """
     Best-effort user resolution for endpoints that may be viewed anonymously.
-
     Returns the authenticated user when credentials are valid, otherwise None.
     """
     resolved_token = resolve_request_token(request, token)
@@ -529,9 +358,7 @@ async def get_optional_current_user(
 
 
 async def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
-    """
-    Require admin role. Use as dependency on admin-only endpoints.
-    """
+    """Require admin role. Use as dependency on admin-only endpoints."""
     if current_user.get("role") != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"

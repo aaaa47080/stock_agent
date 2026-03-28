@@ -184,6 +184,25 @@ class TestGetCurrentUserId:
 
         assert exc_info.value.status_code == 401
 
+    @pytest.mark.asyncio
+    async def test_cookie_token_takes_precedence_over_stale_header(self):
+        """A valid cookie token should win over an expired Authorization header."""
+        from api.deps import create_access_token, get_current_user_id
+
+        expired_header = jwt.encode(
+            {"sub": "stale-user", "exp": datetime.now(timezone.utc) - timedelta(minutes=1)},
+            "test-secret-key-at-least-32-chars-long!",
+            algorithm="HS256",
+        )
+        cookie_token = create_access_token({"sub": "fresh-user"})
+
+        user_id = await get_current_user_id(
+            _mock_request({"access_token": cookie_token}),
+            expired_header,
+        )
+
+        assert user_id == "fresh-user"
+
 
 class TestGetCurrentUser:
     """Tests for get_current_user function"""
