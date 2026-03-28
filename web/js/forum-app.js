@@ -628,7 +628,7 @@ const ForumApp = {
                 }
 
                 try {
-                    await Pi.authenticate(['payments'], () => {});
+                    await Pi.authenticate(['username', 'payments', 'wallet_address'], () => {});
                 } catch (authErr) {
                     showToast('支付權限不足，請重新登入', 'error');
                     return;
@@ -1016,7 +1016,7 @@ const ForumApp = {
                         window.APP_CONFIG?.DEBUG_MODE &&
                             console.log('[CreatePost] 💳 Real Pi Browser - Starting payment...');
                         try {
-                            await Pi.authenticate(['payments'], () => {});
+                            await Pi.authenticate(['username', 'payments', 'wallet_address'], () => {});
                         } catch (authErr) {
                             console.error('[CreatePost] Pi Auth failed:', authErr);
                             showToast('支付權限不足，請重新登入', 'error');
@@ -1061,13 +1061,8 @@ const ForumApp = {
                                     // Non-blocking call to server completion
                                     AppAPI.post('/api/user/payment/complete', { paymentId, txid })
                                         .then(() => {
-                                    })
-                                        .then((res) => {
                                             window.APP_CONFIG?.DEBUG_MODE &&
-                                                console.log(
-                                                    '[CreatePost] Server completion notified:',
-                                                    res.status
-                                                );
+                                                console.log('[CreatePost] Server completion notified');
                                         })
                                         .catch((err) => {
                                             window.APP_CONFIG?.DEBUG_MODE &&
