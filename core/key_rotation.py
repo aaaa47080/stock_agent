@@ -338,25 +338,14 @@ def get_key_manager() -> KeyRotationManager:
 
 async def key_rotation_task() -> None:
     """
-    Startup: wait for DB, initialize key manager, then check rotation every hour.
+    Hourly key rotation check. Assumes manager is already initialized by lifespan.
 
-    Started by api/lifespan.py when USE_KEY_ROTATION=true.
+    Started by api/lifespan.py after get_key_manager().initialize() succeeds.
     """
     import asyncio
 
-    from core.db_ready import wait_for_db_ready
-
     rotation_interval_days = int(os.getenv("KEY_ROTATION_INTERVAL_DAYS", "30"))
     manager = get_key_manager()
-
-    # Wait until DB + Alembic migrations are complete
-    await wait_for_db_ready()
-
-    try:
-        await manager.initialize()
-    except Exception as exc:
-        logger.error(f"❌ JWT key manager initialization failed: {exc}")
-        raise
 
     logger.info(
         f"🔑 Key rotation task started (rotation interval: {rotation_interval_days} days)"
