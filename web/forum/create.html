@@ -201,7 +201,13 @@
                 await initializeAuth();
             }
 
-            // 2. 初始化論壇邏輯
+            // 2. 若未登入，重導向至論壇首頁（有登入彈窗）
+            if (typeof AuthManager !== 'undefined' && !AuthManager.currentUser) {
+                window.location.replace('/static/forum/index.html');
+                return;
+            }
+
+            // 3. 初始化論壇邏輯
             if (typeof ForumApp !== 'undefined' && typeof ForumApp.init === 'function') {
                 ForumApp.init();
             }

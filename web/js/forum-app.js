@@ -1002,22 +1002,32 @@ const ForumApp = {
                 } catch (error) {
                     console.warn('[CreatePost] Failed to check limits:', error);
                     if (error?.status === 401) {
-                        // 認證失敗：嘗試刷新 token
+                        // 認證失敗：先嘗試刷新 token
+                        let authRecovered = false;
                         try {
                             const refreshResult = await AuthManager.backendTokenRefresh();
-                            if (!refreshResult.success) {
-                                if (typeof showToast === 'function')
-                                    showToast('登入已過期，請重新登入', 'error');
-                                resetButton();
-                                return;
+                            if (refreshResult.success) {
+                                authRecovered = true;
                             }
-                            // 刷新成功，繼續發文流程
-                        } catch (refreshErr) {
+                        } catch (_) {}
+
+                        // 若刷新失敗，嘗試 Pi 重新認證（Pi Browser 環境）
+                        if (!authRecovered && typeof AuthManager.authenticateWithPi === 'function') {
+                            try {
+                                const piResult = await AuthManager.authenticateWithPi();
+                                if (piResult?.success) {
+                                    authRecovered = true;
+                                }
+                            } catch (_) {}
+                        }
+
+                        if (!authRecovered) {
                             if (typeof showToast === 'function')
-                                showToast('登入已過期，請重新登入', 'error');
+                                showToast('登入已過期，請重新整理頁面後登入', 'error');
                             resetButton();
                             return;
                         }
+                        // 認證恢復，繼續發文流程
                     } else {
                         if (typeof showToast === 'function')
                             showToast('無法驗證發文限制，請稍後再試', 'warning');
