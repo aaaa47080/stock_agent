@@ -563,27 +563,7 @@ const ForumApp = {
                 }
             }, 1000);
         } catch (e) {
-            if (e?.status === 401) {
-                // Token 過期，嘗試刷新後重試
-                try {
-                    const refreshResult = await AuthManager.backendTokenRefresh();
-                    if (refreshResult.success) {
-                        await ForumAPI.deletePost(postId);
-                        showToast('文章已刪除', 'success');
-                        setTimeout(() => {
-                            if (typeof smoothNavigate === 'function') {
-                                smoothNavigate('/static/forum/index.html');
-                            } else {
-                                window.location.href = '/static/forum/index.html';
-                            }
-                        }, 1000);
-                        return;
-                    }
-                } catch (_) {}
-                showToast('登入已過期，請重新整理頁面', 'error');
-            } else {
-                showToast('刪除失敗: ' + e.message, 'error');
-            }
+            showToast('刪除失敗: ' + e.message, 'error');
             if (btnElement) {
                 btnElement.disabled = false;
                 btnElement.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -1022,32 +1002,10 @@ const ForumApp = {
                 } catch (error) {
                     console.warn('[CreatePost] Failed to check limits:', error);
                     if (error?.status === 401) {
-                        // 認證失敗：先嘗試刷新 token
-                        let authRecovered = false;
-                        try {
-                            const refreshResult = await AuthManager.backendTokenRefresh();
-                            if (refreshResult.success) {
-                                authRecovered = true;
-                            }
-                        } catch (_) {}
-
-                        // 若刷新失敗，嘗試 Pi 重新認證（Pi Browser 環境）
-                        if (!authRecovered && typeof AuthManager.authenticateWithPi === 'function') {
-                            try {
-                                const piResult = await AuthManager.authenticateWithPi();
-                                if (piResult?.success) {
-                                    authRecovered = true;
-                                }
-                            } catch (_) {}
-                        }
-
-                        if (!authRecovered) {
-                            if (typeof showToast === 'function')
-                                showToast('登入已過期，請重新整理頁面後登入', 'error');
-                            resetButton();
-                            return;
-                        }
-                        // 認證恢復，繼續發文流程
+                        if (typeof showToast === 'function')
+                            showToast('登入已過期，請重新整理頁面後登入', 'error');
+                        resetButton();
+                        return;
                     } else {
                         if (typeof showToast === 'function')
                             showToast('無法驗證發文限制，請稍後再試', 'warning');
