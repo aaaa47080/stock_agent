@@ -260,7 +260,7 @@ class PremiumManager {
             await this.authenticateForPayment();
 
             // 2. 執行 Pi 支付
-            const txHash = await this.executePiPayment();
+            const { txHash, paymentId } = await this.executePiPayment();
 
             if (!txHash) {
                 clearLoadingToast();
@@ -269,7 +269,7 @@ class PremiumManager {
             }
 
             // 3. 請求後端升級會員
-            const upgradeResult = await this.requestUpgrade(txHash);
+            const upgradeResult = await this.requestUpgrade(txHash, paymentId);
 
             if (upgradeResult.success) {
                 clearLoadingToast();
@@ -427,7 +427,7 @@ class PremiumManager {
                                         paymentComplete = true;
                                         console.log('[Premium] 支付完成:', { paymentId, txid });
 
-                                        resolve(txid);
+                                        resolve({ txid, paymentId });
                                         return; // 成功退出
                                     } else {
                                         const errorData = await response.json();
@@ -469,7 +469,7 @@ class PremiumManager {
                                 10000
                             );
 
-                            resolve(txid); // 繼續流程，讓用戶可以使用 txid 重試升級
+                            resolve({ txid, paymentId }); // 繼續流程，讓用戶可以使用 txid 重試升級
                         },
 
                         // 用戶取消支付
@@ -516,7 +516,7 @@ class PremiumManager {
     /**
      * 請求後端升級會員
      */
-    async requestUpgrade(txHash) {
+    async requestUpgrade(txHash, paymentId) {
         const userId =
             window.AuthManager.currentUser?.user_id || window.AuthManager.currentUser?.uid;
 
@@ -529,6 +529,7 @@ class PremiumManager {
             plan: 'premium_monthly',
             months: 1,
             tx_hash: txHash,
+            payment_id: paymentId,
         });
     }
 
