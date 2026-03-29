@@ -78,7 +78,6 @@ const ForumApp = {
         this.loadPosts();
         this.loadTrendingTags();
         this.updatePostFiltersUI();
-        this.initMobileIndexPanels();
 
         // 搜尋/篩選監聽
         document.getElementById('category-filter')?.addEventListener('change', (e) => {
@@ -96,45 +95,6 @@ const ForumApp = {
             this.loadTrendingTags();
             this.updatePostFiltersUI();
         });
-    },
-
-    initMobileIndexPanels() {
-        const bindPanel = (triggerId, contentId) => {
-            const trigger = document.getElementById(triggerId);
-            const content = document.getElementById(contentId);
-            if (!trigger || !content) return;
-
-            const icon = trigger.querySelector('[data-lucide="chevron-down"]');
-            const applyState = () => {
-                const desktop = window.innerWidth >= 768;
-                if (desktop) {
-                    content.classList.remove('hidden');
-                    icon?.classList.remove('rotate-180');
-                    return;
-                }
-
-                const expanded = trigger.dataset.expanded === 'true';
-                content.classList.toggle('hidden', !expanded);
-                icon?.classList.toggle('rotate-180', expanded);
-            };
-
-            if (!trigger.dataset.bound) {
-                trigger.dataset.bound = 'true';
-                trigger.dataset.expanded = 'false';
-                trigger.addEventListener('click', () => {
-                    if (window.innerWidth >= 768) return;
-                    trigger.dataset.expanded =
-                        trigger.dataset.expanded === 'true' ? 'false' : 'true';
-                    applyState();
-                });
-                window.addEventListener('resize', applyState);
-            }
-
-            applyState();
-        };
-
-        bindPanel('toggle-filter-panel', 'filter-panel-content');
-        bindPanel('toggle-trending-panel', 'trending-panel-content');
     },
 
     updatePostFiltersUI() {
@@ -209,7 +169,7 @@ const ForumApp = {
             posts.forEach((post) => {
                 const el = document.createElement('div');
                 el.className =
-                    'group rounded-[24px] bg-surface/95 p-4 md:rounded-[30px] md:p-6 shadow-[0_20px_48px_rgba(0,0,0,0.22)] transition hover:bg-surfaceHighlight/95 cursor-pointer';
+                    'group rounded-[20px] bg-surface/95 p-3.5 md:rounded-[28px] md:p-5 shadow-[0_16px_36px_rgba(0,0,0,0.2)] transition hover:bg-surfaceHighlight/95 cursor-pointer';
                 el.onclick = () => {
                     if (typeof smoothNavigate === 'function') {
                         smoothNavigate(`/static/forum/post.html?id=${post.id}`);
@@ -242,7 +202,7 @@ const ForumApp = {
                 const booCount = Math.max(0, post.boo_count || 0);
 
                 el.innerHTML = `
-                    <div class="flex flex-col gap-4">
+                    <div class="flex flex-col gap-3">
                         <div class="flex min-w-0 flex-col gap-2">
                             <div class="flex flex-wrap items-center gap-2">
                                 <span class="text-[11px] font-bold tracking-[0.18em] text-secondary bg-white/10 px-3 py-1 rounded-full uppercase">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.category) : post.category}</span>
@@ -252,23 +212,23 @@ const ForumApp = {
                                 <span class="text-textMuted">• ${date}</span>
                             </div>
                         </div>
-                        <div class="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:gap-3 text-xs">
-                            <span class="flex items-center justify-center gap-1.5 rounded-full bg-background/55 px-2.5 py-2 text-textMuted ${pushCount > 0 ? 'text-success' : ''}">
+                        <div class="grid grid-cols-3 gap-2 text-xs">
+                            <span class="flex items-center justify-center gap-1.5 rounded-full bg-background/50 px-2 py-1.5 text-textMuted ${pushCount > 0 ? 'text-success' : ''}">
                                 <i data-lucide="thumbs-up" class="w-3.5 h-3.5"></i>
                                 <span>${pushCount}</span>
                             </span>
-                            <span class="flex items-center justify-center gap-1.5 rounded-full bg-background/55 px-2.5 py-2 text-textMuted ${booCount > 0 ? 'text-danger' : ''}">
+                            <span class="flex items-center justify-center gap-1.5 rounded-full bg-background/50 px-2 py-1.5 text-textMuted ${booCount > 0 ? 'text-danger' : ''}">
                                 <i data-lucide="thumbs-down" class="w-3.5 h-3.5"></i>
                                 <span>${booCount}</span>
                             </span>
-                            <span class="flex items-center justify-center gap-1.5 rounded-full bg-background/55 px-2.5 py-2 text-textMuted">
+                            <span class="flex items-center justify-center gap-1.5 rounded-full bg-background/50 px-2 py-1.5 text-textMuted">
                                 <i data-lucide="message-square" class="w-3.5 h-3.5"></i>
                                 <span>${post.comment_count}</span>
                             </span>
-                            ${post.tips_total > 0 ? `<span class="col-span-3 flex items-center justify-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-2 text-primary sm:col-span-1"><i data-lucide="gift" class="w-3.5 h-3.5"></i><span>${post.tips_total}</span></span>` : ''}
+                            ${post.tips_total > 0 ? `<span class="col-span-3 flex items-center justify-center gap-1.5 rounded-full bg-primary/10 px-2 py-1.5 text-primary"><i data-lucide="gift" class="w-3.5 h-3.5"></i><span>${post.tips_total}</span></span>` : ''}
                         </div>
                     </div>
-                    <h3 class="font-bold text-lg leading-snug text-textMain mb-3">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.title || '') : post.title || ''}</h3>
+                    <h3 class="font-bold text-[1.05rem] leading-snug text-textMain mb-2">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.title || '') : post.title || ''}</h3>
                     <div class="flex flex-wrap items-center gap-2">
                         ${tagsHtml || '<span class="text-xs text-textMuted/70">No tags</span>'}
                     </div>
