@@ -69,33 +69,40 @@
             <div class="max-w-3xl mx-auto">
                 <!-- Category Pills -->
                 <div class="flex gap-1.5 px-4 pt-3 pb-2 overflow-x-auto scroll-x-hide" id="category-pills">
-                    <button type="button" data-category="" class="category-pill shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap border border-primary/40 bg-primary/15 text-primary">
+                    <button type="button" data-category=""
+                        class="category-pill shrink-0 inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap border border-[#d4b693]/50 bg-[#d4b693]/15 text-[#d4b693] shadow-[0_0_10px_rgba(212,182,147,0.2)]">
                         全部
                     </button>
-                    <button type="button" data-category="analysis" class="category-pill shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap border border-white/8 text-textMuted hover:border-primary/20 hover:text-primary">
-                        分析
+                    <button type="button" data-category="analysis"
+                        class="category-pill shrink-0 inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap border border-white/8 text-textMuted hover:border-amber-400/40 hover:text-amber-400 hover:bg-amber-400/8">
+                        📈 分析
                     </button>
-                    <button type="button" data-category="question" class="category-pill shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap border border-white/8 text-textMuted hover:border-primary/20 hover:text-primary">
-                        請問
+                    <button type="button" data-category="question"
+                        class="category-pill shrink-0 inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap border border-white/8 text-textMuted hover:border-blue-400/40 hover:text-blue-400 hover:bg-blue-400/8">
+                        ❓ 請問
                     </button>
-                    <button type="button" data-category="tutorial" class="category-pill shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap border border-white/8 text-textMuted hover:border-primary/20 hover:text-primary">
-                        學習
+                    <button type="button" data-category="tutorial"
+                        class="category-pill shrink-0 inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap border border-white/8 text-textMuted hover:border-emerald-400/40 hover:text-emerald-400 hover:bg-emerald-400/8">
+                        📚 學習
                     </button>
-                    <button type="button" data-category="news" class="category-pill shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap border border-white/8 text-textMuted hover:border-primary/20 hover:text-primary">
-                        新聞
+                    <button type="button" data-category="news"
+                        class="category-pill shrink-0 inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap border border-white/8 text-textMuted hover:border-violet-400/40 hover:text-violet-400 hover:bg-violet-400/8">
+                        📰 新聞
                     </button>
-                    <button type="button" data-category="chat" class="category-pill shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap border border-white/8 text-textMuted hover:border-primary/20 hover:text-primary">
-                        閒聊
+                    <button type="button" data-category="chat"
+                        class="category-pill shrink-0 inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap border border-white/8 text-textMuted hover:border-rose-400/40 hover:text-rose-400 hover:bg-rose-400/8">
+                        💬 閒聊
                     </button>
-                    <button type="button" data-category="insight" class="category-pill shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap border border-white/8 text-textMuted hover:border-primary/20 hover:text-primary">
-                        心得
+                    <button type="button" data-category="insight"
+                        class="category-pill shrink-0 inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap border border-white/8 text-textMuted hover:border-cyan-400/40 hover:text-cyan-400 hover:bg-cyan-400/8">
+                        💡 心得
                     </button>
                 </div>
                 <!-- Trending Tags Row -->
-                <div class="flex items-center gap-1.5 px-4 pb-2.5 overflow-x-auto scroll-x-hide">
-                    <span class="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-textMuted/50 mr-0.5">#</span>
-                    <div id="trending-tags" class="flex gap-1.5 min-w-0">
-                        <span class="text-xs text-textMuted/50">載入中...</span>
+                <div class="flex items-center gap-2 px-4 pb-3 overflow-x-auto scroll-x-hide">
+                    <span class="shrink-0 text-[10px] font-bold uppercase tracking-[0.12em] text-textMuted/40">熱門</span>
+                    <div id="trending-tags" class="flex items-center gap-1.5 min-w-0">
+                        <span class="text-xs text-textMuted/40 italic">載入中...</span>
                     </div>
                 </div>
             </div>
@@ -176,25 +183,47 @@
                 }
                 lucide.createIcons();
 
-                // Category pill click logic
+                // Category pill color config
+                const CATEGORY_PILL_ACTIVE = {
+                    '':         ['border-[#d4b693]/50', 'bg-[#d4b693]/15', 'text-[#d4b693]', 'shadow-[0_0_10px_rgba(212,182,147,0.2)]'],
+                    'analysis': ['border-amber-400/50', 'bg-amber-400/15', 'text-amber-400', 'shadow-[0_0_8px_rgba(251,191,36,0.2)]'],
+                    'question': ['border-blue-400/50',  'bg-blue-400/15',  'text-blue-400',  'shadow-[0_0_8px_rgba(96,165,250,0.2)]'],
+                    'tutorial': ['border-emerald-400/50','bg-emerald-400/15','text-emerald-400','shadow-[0_0_8px_rgba(52,211,153,0.2)]'],
+                    'news':     ['border-violet-400/50','bg-violet-400/15','text-violet-400','shadow-[0_0_8px_rgba(167,139,250,0.2)]'],
+                    'chat':     ['border-rose-400/50',  'bg-rose-400/15',  'text-rose-400',  'shadow-[0_0_8px_rgba(251,113,133,0.2)]'],
+                    'insight':  ['border-cyan-400/50',  'bg-cyan-400/15',  'text-cyan-400',  'shadow-[0_0_8px_rgba(34,211,238,0.2)]'],
+                };
+                const PILL_INACTIVE = ['border-white/8', 'text-textMuted'];
+
                 document.getElementById('category-pills')?.addEventListener('click', (e) => {
                     const pill = e.target.closest('.category-pill');
                     if (!pill) return;
 
-                    // Update hidden select for JS compatibility
+                    const cat = pill.dataset.category || '';
+
+                    // Sync hidden select
                     const categoryFilter = document.getElementById('category-filter');
                     if (categoryFilter) {
-                        categoryFilter.value = pill.dataset.category || '';
+                        categoryFilter.value = cat;
                         categoryFilter.dispatchEvent(new Event('change'));
                     }
 
-                    // Update pill styles
+                    // Reset all pills to inactive
                     document.querySelectorAll('.category-pill').forEach(p => {
-                        p.classList.remove('border-primary/40', 'bg-primary/15', 'text-primary');
-                        p.classList.add('border-white/8', 'text-textMuted');
+                        const pCat = p.dataset.category || '';
+                        const activeClasses = CATEGORY_PILL_ACTIVE[pCat] || [];
+                        p.classList.remove(...activeClasses, 'hover:border-amber-400/40', 'hover:text-amber-400', 'hover:bg-amber-400/8',
+                            'hover:border-blue-400/40', 'hover:text-blue-400', 'hover:bg-blue-400/8',
+                            'hover:border-emerald-400/40', 'hover:text-emerald-400', 'hover:bg-emerald-400/8',
+                            'hover:border-violet-400/40', 'hover:text-violet-400', 'hover:bg-violet-400/8',
+                            'hover:border-rose-400/40', 'hover:text-rose-400', 'hover:bg-rose-400/8',
+                            'hover:border-cyan-400/40', 'hover:text-cyan-400', 'hover:bg-cyan-400/8');
+                        p.classList.add(...PILL_INACTIVE);
                     });
-                    pill.classList.remove('border-white/8', 'text-textMuted');
-                    pill.classList.add('border-primary/40', 'bg-primary/15', 'text-primary');
+
+                    // Activate clicked pill
+                    pill.classList.remove(...PILL_INACTIVE);
+                    pill.classList.add(...(CATEGORY_PILL_ACTIVE[cat] || CATEGORY_PILL_ACTIVE['']));
                 });
             });
         </script>
