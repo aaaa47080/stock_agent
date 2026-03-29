@@ -203,22 +203,29 @@ const ForumApp = {
 
                 el.innerHTML = `
                     <div class="flex flex-col gap-4">
-                        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div class="flex min-w-0 flex-col gap-2">
-                            <div class="flex flex-wrap items-center gap-2 min-w-0">
-                            <span class="text-[11px] font-bold tracking-[0.18em] text-secondary bg-white/10 px-3 py-1 rounded-full uppercase">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.category) : post.category}</span>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="text-[11px] font-bold tracking-[0.18em] text-secondary bg-white/10 px-3 py-1 rounded-full uppercase">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.category) : post.category}</span>
                             </div>
                             <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm">
                                 <a href="/static/forum/profile.html?id=${post.user_id}" class="text-textMuted hover:text-primary transition break-all" onclick="event.stopPropagation()">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.username || post.user_id) : post.username || post.user_id}</a>
                                 <span class="text-textMuted">• ${date}</span>
                             </div>
                         </div>
-                        <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-textMuted">
-                            <span class="flex items-center gap-1 ${pushCount > 0 ? 'text-success' : ''}"><i data-lucide="thumbs-up" class="w-3.5 h-3.5"></i> ${pushCount}</span>
-                            <span class="flex items-center gap-1 ${booCount > 0 ? 'text-danger' : ''}"><i data-lucide="thumbs-down" class="w-3.5 h-3.5"></i> ${booCount}</span>
-                            <span class="flex items-center gap-1"><i data-lucide="message-square" class="w-3.5 h-3.5"></i> ${post.comment_count}</span>
-                            ${post.tips_total > 0 ? `<span class="flex items-center gap-1 text-primary"><i data-lucide="gift" class="w-3.5 h-3.5"></i> ${post.tips_total}</span>` : ''}
-                        </div>
+                        <div class="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:gap-3 text-xs">
+                            <span class="flex items-center justify-center gap-1.5 rounded-full bg-background/55 px-2.5 py-2 text-textMuted ${pushCount > 0 ? 'text-success' : ''}">
+                                <i data-lucide="thumbs-up" class="w-3.5 h-3.5"></i>
+                                <span>${pushCount}</span>
+                            </span>
+                            <span class="flex items-center justify-center gap-1.5 rounded-full bg-background/55 px-2.5 py-2 text-textMuted ${booCount > 0 ? 'text-danger' : ''}">
+                                <i data-lucide="thumbs-down" class="w-3.5 h-3.5"></i>
+                                <span>${booCount}</span>
+                            </span>
+                            <span class="flex items-center justify-center gap-1.5 rounded-full bg-background/55 px-2.5 py-2 text-textMuted">
+                                <i data-lucide="message-square" class="w-3.5 h-3.5"></i>
+                                <span>${post.comment_count}</span>
+                            </span>
+                            ${post.tips_total > 0 ? `<span class="col-span-3 flex items-center justify-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-2 text-primary sm:col-span-1"><i data-lucide="gift" class="w-3.5 h-3.5"></i><span>${post.tips_total}</span></span>` : ''}
                         </div>
                     </div>
                     <h3 class="font-bold text-lg leading-snug text-textMain mb-3">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.title || '') : post.title || ''}</h3>
