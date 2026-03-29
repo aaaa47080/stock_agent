@@ -145,7 +145,7 @@ const ForumApp = {
         const container = document.getElementById('post-list');
         if (!container) return;
 
-        container.innerHTML = `<div class="rounded-[28px] border border-white/8 bg-surface/80 px-6 py-10 text-textMuted shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+        container.innerHTML = `<div class="rounded-[28px] bg-surface/80 px-6 py-10 text-textMuted shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
             <div class="flex flex-col items-center justify-center gap-2">
                 <i class="animate-spin" data-lucide="loader-2"></i>
                 <span>Loading...</span>
@@ -162,14 +162,14 @@ const ForumApp = {
 
             if (posts.length === 0) {
                 container.innerHTML =
-                    `<div class="rounded-[28px] border border-dashed border-white/10 bg-surface/70 px-6 py-12 text-center text-textMuted">${this.getFilteredEmptyStateMessage()}</div>`;
+                    `<div class="rounded-[28px] bg-surface/70 px-6 py-12 text-center text-textMuted shadow-[0_12px_30px_rgba(0,0,0,0.14)]">${this.getFilteredEmptyStateMessage()}</div>`;
                 return;
             }
 
             posts.forEach((post) => {
                 const el = document.createElement('div');
                 el.className =
-                    'group rounded-[30px] border border-white/8 bg-surface/95 p-5 md:p-6 shadow-[0_20px_48px_rgba(0,0,0,0.22)] transition hover:border-primary/20 hover:bg-surfaceHighlight/95 cursor-pointer';
+                    'group rounded-[30px] bg-surface/95 p-5 md:p-6 shadow-[0_20px_48px_rgba(0,0,0,0.22)] transition hover:bg-surfaceHighlight/95 cursor-pointer';
                 el.onclick = () => {
                     if (typeof smoothNavigate === 'function') {
                         smoothNavigate(`/static/forum/post.html?id=${post.id}`);
@@ -202,17 +202,19 @@ const ForumApp = {
                 const booCount = Math.max(0, post.boo_count || 0);
 
                 el.innerHTML = `
-                    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="flex flex-col gap-4">
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div class="flex flex-wrap items-center gap-2 min-w-0">
                             <span class="text-[11px] font-bold tracking-[0.18em] text-secondary bg-white/10 px-3 py-1 rounded-full uppercase">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.category) : post.category}</span>
                             <a href="/static/forum/profile.html?id=${post.user_id}" class="text-sm text-textMuted hover:text-primary transition break-all" onclick="event.stopPropagation()">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.username || post.user_id) : post.username || post.user_id}</a>
                             <span class="text-xs text-textMuted">• ${date}</span>
                         </div>
-                        <div class="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-textMuted">
+                        <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-textMuted">
                             <span class="flex items-center gap-1 ${pushCount > 0 ? 'text-success' : ''}"><i data-lucide="thumbs-up" class="w-3.5 h-3.5"></i> ${pushCount}</span>
                             <span class="flex items-center gap-1 ${booCount > 0 ? 'text-danger' : ''}"><i data-lucide="thumbs-down" class="w-3.5 h-3.5"></i> ${booCount}</span>
                             <span class="flex items-center gap-1"><i data-lucide="message-square" class="w-3.5 h-3.5"></i> ${post.comment_count}</span>
                             ${post.tips_total > 0 ? `<span class="flex items-center gap-1 text-primary"><i data-lucide="gift" class="w-3.5 h-3.5"></i> ${post.tips_total}</span>` : ''}
+                        </div>
                         </div>
                     </div>
                     <h3 class="font-bold text-lg leading-snug text-textMain mb-3">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.title || '') : post.title || ''}</h3>
@@ -254,10 +256,10 @@ const ForumApp = {
                         <button
                             type="button"
                             data-tag="${safeName}"
-                            class="trending-tag inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition ${
+                            class="trending-tag inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm transition ${
                                 isActive
-                                    ? 'border-primary/40 bg-primary/12 text-primary shadow-[0_12px_24px_rgba(0,0,0,0.16)]'
-                                    : 'border-white/8 bg-background/70 text-textMuted hover:text-primary hover:border-primary/20'
+                                    ? 'bg-primary/12 text-primary shadow-[0_12px_24px_rgba(0,0,0,0.16)]'
+                                    : 'bg-background/70 text-textMuted hover:text-primary hover:bg-white/6'
                             }"
                         >
                             <span class="font-medium">#${safeName}</span>

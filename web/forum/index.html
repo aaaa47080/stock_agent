@@ -85,7 +85,7 @@
         <main class="flex-1 max-w-6xl mx-auto w-full px-4 pb-10 pt-5 md:px-6 md:pb-12 grid grid-cols-1 md:grid-cols-4 gap-5 md:gap-6">
             <!-- Sidebar (Filters & Trending) -->
             <aside class="md:col-span-1 space-y-4 md:space-y-6">
-                <div class="rounded-[28px] border border-white/8 bg-surface/95 p-4 shadow-[0_18px_40px_rgba(0,0,0,0.22)]">
+                <div class="rounded-[28px] bg-surface/95 p-4 shadow-[0_18px_40px_rgba(0,0,0,0.22)]">
                     <h3 class="font-bold text-secondary flex items-center gap-2">
                         <i data-lucide="filter" class="w-4 h-4"></i> Filter
                     </h3>
@@ -94,7 +94,7 @@
                         <label for="category-filter" class="text-[11px] font-semibold uppercase tracking-[0.22em] text-textMuted/70">Category</label>
                         <select
                             id="category-filter"
-                            class="appearance-none w-full bg-background/80 border border-white/10 rounded-2xl px-3 py-3 text-sm text-textMain focus:border-primary outline-none"
+                            class="appearance-none w-full bg-background/80 rounded-2xl px-3 py-3 text-sm text-textMain outline-none ring-1 ring-white/6 focus:ring-primary/35"
                         >
                             <option value="">All Categories</option>
                             <option value="analysis">Analysis [分析]</option>
@@ -107,7 +107,7 @@
                     </div>
                 </div>
 
-                <div class="rounded-[28px] border border-white/8 bg-surface/95 p-4 shadow-[0_18px_40px_rgba(0,0,0,0.22)]">
+                <div class="rounded-[28px] bg-surface/95 p-4 shadow-[0_18px_40px_rgba(0,0,0,0.22)]">
                     <h3 class="font-bold text-secondary flex items-center gap-2">
                         <i data-lucide="trending-up" class="w-4 h-4"></i> Trending Tags
                     </h3>
@@ -117,7 +117,7 @@
                         <div class="text-xs text-textMuted">Loading...</div>
                     </div>
                 </div>
-                <div id="active-post-filters" class="hidden rounded-[24px] border border-primary/20 bg-gradient-to-r from-primary/10 to-transparent px-4 py-3 shadow-[0_14px_32px_rgba(0,0,0,0.16)]">
+                <div id="active-post-filters" class="hidden rounded-[24px] bg-gradient-to-r from-primary/10 to-transparent px-4 py-3 shadow-[0_14px_32px_rgba(0,0,0,0.16)]">
                     <div class="flex items-center justify-between gap-3">
                         <div class="min-w-0">
                             <div class="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary/70">Active Filter</div>
@@ -126,7 +126,7 @@
                         <button
                             id="clear-post-filters"
                             type="button"
-                            class="shrink-0 rounded-full border border-primary/20 bg-white/5 px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary/10"
+                            class="shrink-0 rounded-full bg-white/5 px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary/10"
                         >
                             Clear
                         </button>

@@ -16,14 +16,14 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import List, Optional
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .models import Board, ForumComment, Post, PostTag, Tag, Tip, User
+from .models import Board, ForumComment, Post, PostTag, Tag, Tip, User, UserDailyPost
 from .session import using_session
 
 logger = logging.getLogger(__name__)
@@ -314,6 +314,23 @@ class ForumRepository:
                 .where(Board.id == board_id)
                 .values(post_count=Board.post_count + 1)
             )
+
+            today = date.today()
+            daily_post_row = await s.execute(
+                select(UserDailyPost).where(
+                    UserDailyPost.user_id == user_id,
+                    UserDailyPost.date == today,
+                )
+            )
+            daily_post = daily_post_row.scalar_one_or_none()
+            if daily_post is None:
+                s.add(UserDailyPost(user_id=user_id, date=today, post_count=1))
+            else:
+                await s.execute(
+                    update(UserDailyPost)
+                    .where(UserDailyPost.user_id == user_id, UserDailyPost.date == today)
+                    .values(post_count=UserDailyPost.post_count + 1)
+                )
 
             if tags:
                 normalized_tags = []
