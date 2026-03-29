@@ -16,7 +16,10 @@ const ForumAPI = {
 
     // Posts
     async getPosts(filters = {}) {
-        const query = new URLSearchParams(filters).toString();
+        const sanitizedFilters = Object.fromEntries(
+            Object.entries(filters).filter(([, value]) => value !== undefined && value !== null && value !== '')
+        );
+        const query = new URLSearchParams(sanitizedFilters).toString();
         return AppAPI.get(`/api/forum/posts?${query}`);
     },
     async getPost(id) {
@@ -125,4 +128,3 @@ const ForumAPI = {
 // Expose globally
 window.ForumAPI = ForumAPI;
 export { ForumAPI };
-

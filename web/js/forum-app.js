@@ -77,6 +77,7 @@ const ForumApp = {
         this.loadBoards();
         this.loadPosts();
         this.loadTrendingTags();
+        this.updatePostFiltersUI();
 
         // 搜尋/篩選監聽
         document.getElementById('category-filter')?.addEventListener('change', (e) => {
@@ -84,7 +85,36 @@ const ForumApp = {
                 category: e.target.value,
                 tag: this.currentTagFilter || undefined,
             });
+            this.updatePostFiltersUI();
         });
+        document.getElementById('clear-post-filters')?.addEventListener('click', () => {
+            this.currentTagFilter = '';
+            const categoryFilter = document.getElementById('category-filter');
+            if (categoryFilter) categoryFilter.value = '';
+            this.loadPosts();
+            this.loadTrendingTags();
+            this.updatePostFiltersUI();
+        });
+    },
+
+    updatePostFiltersUI() {
+        const activeFilters = document.getElementById('active-post-filters');
+        const activeFiltersText = document.getElementById('active-post-filters-text');
+        if (!activeFilters || !activeFiltersText) return;
+
+        const category = document.getElementById('category-filter')?.value || '';
+        const parts = [];
+        if (category) parts.push(`Category: ${category}`);
+        if (this.currentTagFilter) parts.push(`#${this.currentTagFilter}`);
+
+        if (parts.length === 0) {
+            activeFilters.classList.add('hidden');
+            activeFiltersText.textContent = '';
+            return;
+        }
+
+        activeFilters.classList.remove('hidden');
+        activeFiltersText.textContent = parts.join('  ·  ');
     },
 
     async loadBoards() {
@@ -101,15 +131,18 @@ const ForumApp = {
         const container = document.getElementById('post-list');
         if (!container) return;
 
-        container.innerHTML = `<div class="flex flex-col items-center justify-center py-10 text-textMuted gap-2">
-            <i class="animate-spin" data-lucide="loader-2"></i>
-            <span>Loading...</span>
+        container.innerHTML = `<div class="rounded-[28px] border border-white/8 bg-surface/80 px-6 py-10 text-textMuted shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+            <div class="flex flex-col items-center justify-center gap-2">
+                <i class="animate-spin" data-lucide="loader-2"></i>
+                <span>Loading...</span>
+            </div>
         </div>`;
         AppUtils.refreshIcons();
 
         try {
             const response = await ForumAPI.getPosts(filters);
             const posts = response.posts || [];
+            this.updatePostFiltersUI();
 
             container.innerHTML = '';
 
@@ -122,7 +155,7 @@ const ForumApp = {
             posts.forEach((post) => {
                 const el = document.createElement('div');
                 el.className =
-                    'bg-surface hover:bg-surfaceHighlight border border-white/5 rounded-xl p-4 transition cursor-pointer mb-3';
+                    'group rounded-[30px] border border-white/8 bg-surface/95 p-5 md:p-6 shadow-[0_20px_48px_rgba(0,0,0,0.22)] transition hover:border-primary/20 hover:bg-surfaceHighlight/95 cursor-pointer';
                 el.onclick = () => {
                     if (typeof smoothNavigate === 'function') {
                         smoothNavigate(`/static/forum/post.html?id=${post.id}`);
@@ -139,7 +172,7 @@ const ForumApp = {
                         tagsHtml = tags
                             .map(
                                 (tag) =>
-                                    `<span class="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full mr-1">#${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(tag) : tag.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>`
+                                    `<span class="text-xs bg-primary/10 text-primary px-3 py-1 rounded-full">#${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(tag) : tag.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>`
                             )
                             .join('');
                     }
@@ -155,22 +188,22 @@ const ForumApp = {
                 const booCount = Math.max(0, post.boo_count || 0);
 
                 el.innerHTML = `
-                    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-2">
+                    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                         <div class="flex flex-wrap items-center gap-2 min-w-0">
-                            <span class="text-xs font-bold text-secondary bg-white/10 px-2 py-0.5 rounded uppercase">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.category) : post.category}</span>
-                            <a href="/static/forum/profile.html?id=${post.user_id}" class="text-xs text-textMuted hover:text-primary transition break-all" onclick="event.stopPropagation()">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.username || post.user_id) : post.username || post.user_id}</a>
+                            <span class="text-[11px] font-bold tracking-[0.18em] text-secondary bg-white/10 px-3 py-1 rounded-full uppercase">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.category) : post.category}</span>
+                            <a href="/static/forum/profile.html?id=${post.user_id}" class="text-sm text-textMuted hover:text-primary transition break-all" onclick="event.stopPropagation()">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.username || post.user_id) : post.username || post.user_id}</a>
                             <span class="text-xs text-textMuted">• ${date}</span>
                         </div>
-                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-textMuted">
-                            <span class="flex items-center gap-1 ${pushCount > 0 ? 'text-success' : ''}"><i data-lucide="thumbs-up" class="w-3 h-3"></i> ${pushCount}</span>
-                            <span class="flex items-center gap-1 ${booCount > 0 ? 'text-danger' : ''}"><i data-lucide="thumbs-down" class="w-3 h-3"></i> ${booCount}</span>
-                            <span class="flex items-center gap-1"><i data-lucide="message-square" class="w-3 h-3"></i> ${post.comment_count}</span>
-                            ${post.tips_total > 0 ? `<span class="flex items-center gap-1 text-primary"><i data-lucide="gift" class="w-3 h-3"></i> ${post.tips_total}</span>` : ''}
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-textMuted">
+                            <span class="flex items-center gap-1 ${pushCount > 0 ? 'text-success' : ''}"><i data-lucide="thumbs-up" class="w-3.5 h-3.5"></i> ${pushCount}</span>
+                            <span class="flex items-center gap-1 ${booCount > 0 ? 'text-danger' : ''}"><i data-lucide="thumbs-down" class="w-3.5 h-3.5"></i> ${booCount}</span>
+                            <span class="flex items-center gap-1"><i data-lucide="message-square" class="w-3.5 h-3.5"></i> ${post.comment_count}</span>
+                            ${post.tips_total > 0 ? `<span class="flex items-center gap-1 text-primary"><i data-lucide="gift" class="w-3.5 h-3.5"></i> ${post.tips_total}</span>` : ''}
                         </div>
                     </div>
-                    <h3 class="font-bold text-lg text-textMain mb-2 truncate">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.title || '') : post.title || ''}</h3>
-                    <div class="flex flex-wrap items-center gap-1.5">
-                        ${tagsHtml}
+                    <h3 class="font-bold text-lg leading-snug text-textMain mb-3">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.title || '') : post.title || ''}</h3>
+                    <div class="flex flex-wrap items-center gap-2">
+                        ${tagsHtml || '<span class="text-xs text-textMuted/70">No tags</span>'}
                     </div>
                 `;
                 container.appendChild(el);
@@ -207,14 +240,14 @@ const ForumApp = {
                         <button
                             type="button"
                             data-tag="${safeName}"
-                            class="trending-tag w-full text-left text-sm rounded-xl border px-3 py-2 transition ${
+                            class="trending-tag inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition ${
                                 isActive
-                                    ? 'border-primary/40 bg-primary/10 text-primary'
-                                    : 'border-white/5 bg-white/5 text-textMuted hover:text-primary hover:border-primary/20'
+                                    ? 'border-primary/40 bg-primary/12 text-primary shadow-[0_12px_24px_rgba(0,0,0,0.16)]'
+                                    : 'border-white/8 bg-background/70 text-textMuted hover:text-primary hover:border-primary/20'
                             }"
                         >
-                            <span>#${safeName}</span>
-                            <span class="text-xs opacity-60 ml-1">(${tag.post_count})</span>
+                            <span class="font-medium">#${safeName}</span>
+                            <span class="rounded-full bg-white/5 px-2 py-0.5 text-[11px] opacity-70">${tag.post_count}</span>
                         </button>
                     `;
                 })
@@ -232,6 +265,7 @@ const ForumApp = {
                         tag: this.currentTagFilter || undefined,
                     });
                     this.loadTrendingTags();
+                    this.updatePostFiltersUI();
                 });
             });
         } catch (e) {
