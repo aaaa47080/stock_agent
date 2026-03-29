@@ -207,7 +207,7 @@ const ForumApp = {
 
             posts.forEach((post) => {
                 const el = document.createElement('div');
-                el.className = 'group relative overflow-hidden rounded-[26px] bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.025))] shadow-[0_10px_26px_rgba(0,0,0,0.14)] ring-1 ring-white/5 flex cursor-pointer transition-all duration-300 hover:-translate-y-0.5 hover:bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03))] hover:shadow-[0_14px_34px_rgba(0,0,0,0.18)] active:scale-[0.985]';
+                el.className = 'group relative overflow-hidden rounded-[26px] bg-surface shadow-[0_10px_26px_rgba(0,0,0,0.14)] ring-1 ring-white/5 flex cursor-pointer transition-all duration-300 hover:-translate-y-0.5 hover:bg-surfaceHighlight hover:shadow-[0_14px_34px_rgba(0,0,0,0.18)] active:scale-[0.985]';
                 el.onclick = () => this.navigateToPost(post.id);
 
                 const colors = CATEGORY_COLORS[(post.category || '').toLowerCase()] || DEFAULT_COLORS;
@@ -245,24 +245,24 @@ const ForumApp = {
                             <div class="min-w-0 flex-1">
                                 <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1 mb-1.5">
                                     <a href="/static/forum/profile.html?id=${post.user_id}" class="text-sm font-bold text-white/90 hover:text-primary transition-colors truncate z-10 relative" onclick="event.stopPropagation()">${safeUsername}</a>
-                                    <span class="text-[10px] font-bold tracking-[0.18em] px-2.5 py-1 rounded-full ${colors.badge} bg-white/[0.05]">${categoryLabel}</span>
+                                    <span class="text-[10px] font-bold tracking-[0.18em] px-2.5 py-1 rounded-full ${colors.badge} bg-background/60">${categoryLabel}</span>
                                     <span class="text-[11px] text-white/30 hidden sm:inline">·</span>
                                     <span class="text-[11px] text-white/40 font-medium">${date}</span>
                                 </div>
                                 <h3 class="mt-1 text-[1.1rem] font-extrabold leading-relaxed text-white sm:text-[1.15rem] tracking-tight group-hover:text-primary transition-colors">${safeTitle}</h3>
                                 ${tagsHtml ? `<div class="mt-3 flex flex-wrap gap-2">${tagsHtml}</div>` : ''}
                                 <div class="mt-4 flex flex-wrap items-center gap-2.5 text-[12px] font-medium text-white/55">
-                                    <span class="inline-flex items-center gap-1.5 rounded-full bg-white/[0.045] px-3 py-1.5 transition-colors hover:text-white ${pushCount > 0 ? 'text-success/90' : ''}">
+                                    <span class="inline-flex items-center gap-1.5 rounded-full bg-background/65 px-3 py-1.5 transition-colors hover:text-white ${pushCount > 0 ? 'text-success/90' : ''}">
                                         <i data-lucide="thumbs-up" class="h-3.5 w-3.5"></i>${pushCount}
                                     </span>
-                                    <span class="inline-flex items-center gap-1.5 rounded-full bg-white/[0.045] px-3 py-1.5 transition-colors hover:text-white ${booCount > 0 ? 'text-danger/90' : ''}">
+                                    <span class="inline-flex items-center gap-1.5 rounded-full bg-background/65 px-3 py-1.5 transition-colors hover:text-white ${booCount > 0 ? 'text-danger/90' : ''}">
                                         <i data-lucide="thumbs-down" class="h-3.5 w-3.5"></i>${booCount}
                                     </span>
-                                    <span class="inline-flex items-center gap-1.5 rounded-full bg-white/[0.045] px-3 py-1.5 transition-colors hover:text-white">
+                                    <span class="inline-flex items-center gap-1.5 rounded-full bg-background/65 px-3 py-1.5 transition-colors hover:text-white">
                                         <i data-lucide="message-square" class="h-3.5 w-3.5"></i>${post.comment_count}
                                     </span>
                                     ${post.tips_total > 0 ? `<span class="inline-flex items-center gap-1.5 rounded-full bg-[#d4b693]/10 px-3 py-1.5 text-[#d4b693]"><i data-lucide="gift" class="h-3.5 w-3.5"></i>${post.tips_total} Pi</span>` : ''}
-                                    <span class="ml-auto inline-flex items-center rounded-full bg-black/15 px-3 py-1.5 text-[10px] uppercase tracking-[0.15em] text-white/38">
+                                    <span class="ml-auto inline-flex items-center rounded-full bg-background/70 px-3 py-1.5 text-[10px] uppercase tracking-[0.15em] text-white/38">
                                         互動 ${totalEngagement}
                                     </span>
                                 </div>
@@ -471,7 +471,7 @@ const ForumApp = {
             if (isAuthor) {
                 actionsContainer.innerHTML = `
                     <button id="btn-edit"
-                        class="inline-flex items-center gap-2 rounded-full bg-white/[0.055] px-4 py-2 text-sm font-semibold text-secondary transition hover:bg-white/[0.085]">
+                        class="inline-flex items-center gap-2 rounded-full bg-surfaceHighlight/80 px-4 py-2 text-sm font-semibold text-secondary transition hover:bg-white/10">
                         <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
                         <span>編輯</span>
                     </button>
@@ -531,7 +531,7 @@ const ForumApp = {
                 if (comment.type !== 'comment') return; // ?�顯示�??��?�?
 
                 const el = document.createElement('div');
-                el.className = 'rounded-[22px] bg-white/[0.04] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]';
+                el.className = 'rounded-[22px] bg-surfaceHighlight/75 px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]';
                 el.innerHTML = `
                     <div class="mb-2.5 flex items-start justify-between gap-3">
                         <div class="min-w-0">
