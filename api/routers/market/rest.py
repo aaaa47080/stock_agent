@@ -18,12 +18,12 @@ from api.globals import (
 )
 from api.middleware.rate_limit import limiter
 from api.models import KlineRequest, RefreshPulseRequest, ScreenerRequest
-from api.user_llm import resolve_user_llm_credentials
 from api.services import (
     refresh_all_market_pulse_data,
     trigger_on_demand_analysis,
     update_funding_rates,
 )
+from api.user_llm import resolve_user_llm_credentials
 from api.utils import logger
 from data.market_data import get_klines
 from utils.okx_api_connector import OKXAPIConnector

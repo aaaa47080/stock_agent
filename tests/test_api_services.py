@@ -7,8 +7,8 @@ from unittest.mock import patch
 import pytest
 
 from api.services import (
-    _get_cache_timestamps,
     _build_market_pulse_targets,
+    _get_cache_timestamps,
     load_funding_rate_cache,
     load_market_pulse_cache,
     save_funding_rate_cache,

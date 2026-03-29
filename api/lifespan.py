@@ -16,8 +16,8 @@ from api.services import (
     update_screener_task,
 )
 from api.utils import logger
-from core.db_ready import mark_db_failed, mark_db_ready, reset_db_ready_state
 from core.database import init_db
+from core.db_ready import mark_db_failed, mark_db_ready, reset_db_ready_state
 from utils.okx_api_connector import OKXAPIConnector
 
 

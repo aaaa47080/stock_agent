@@ -400,7 +400,7 @@ async def approve_payment(
     current_user: dict = Depends(get_current_user),
 ):
     """接收前端通知，驗證金額後呼叫 Pi Server API 核准支付"""
-    logger.info(f"[PAYMENT] === APPROVE START ===")
+    logger.info("[PAYMENT] === APPROVE START ===")
     logger.info(f"[PAYMENT] paymentId: {body.paymentId}")
     logger.info(f"[PAYMENT] userId: {current_user['user_id']}")
     logger.info(f"[PAYMENT] PI_API_KEY configured: {bool(PI_API_KEY and PI_API_KEY != 'your_pi_api_key_here')}")
@@ -485,7 +485,7 @@ async def complete_payment(
     current_user: dict = Depends(get_current_user),
 ):
     """接收前端通知，呼叫 Pi Server API 完成支付"""
-    logger.info(f"[PAYMENT] === COMPLETE START ===")
+    logger.info("[PAYMENT] === COMPLETE START ===")
     logger.info(f"[PAYMENT] paymentId: {body.paymentId}")
     logger.info(f"[PAYMENT] txid: {body.txid}")
     logger.info(f"[PAYMENT] userId: {current_user['user_id']}")

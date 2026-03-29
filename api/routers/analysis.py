@@ -4,8 +4,8 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 
 from api.deps import get_current_user
 from api.middleware.rate_limit import limiter

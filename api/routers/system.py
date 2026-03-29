@@ -196,11 +196,7 @@ async def validate_key(
 @router.get("/api/config")
 async def get_config(request: Request):
     """回傳前端需要的配置資訊"""
-    from api.deps import get_token_from_cookie
-
     current_provider = core_config.PRIMARY_MODEL.get("provider", "openai")
-    token = get_token_from_cookie(request)
-    is_authenticated = bool(token)
 
     # Helper to check key existence using Factory logic
     def has_key(provider):

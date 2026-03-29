@@ -9,6 +9,7 @@ Run with: pytest tests/security/test_security_hardening.py -v
 import importlib.util
 import os
 import tempfile
+
 import pytest
 
 # Set test environment before any imports

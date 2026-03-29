@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from api.models import ScreenerRequest
 from api.routers.market import SYMBOL_CACHE
 from api.routers.market.helpers import (
     compute_top_bottom_rates,
@@ -18,7 +19,6 @@ from api.routers.market.helpers import (
     try_get_cached_screener,
 )
 from api.routers.market.rest import run_screener
-from api.models import ScreenerRequest
 
 
 class TestReplaceNaNInDataFrame:

@@ -18,7 +18,6 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects.postgresql import JSONB
 
 
 revision: str = "b003_stamp_existing_tables"

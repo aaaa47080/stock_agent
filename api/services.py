@@ -24,7 +24,6 @@ from api.globals import (
     MARKET_PULSE_CACHE,
     cached_screener_result,
     funding_rate_lock,
-    logger,
     market_pulse_lock,
     screener_lock,
 )

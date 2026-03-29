@@ -4,8 +4,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from api.deps import get_current_user
-from api.routers import notifications
-from api.routers import premium
+from api.routers import notifications, premium
 
 
 def _make_client(*routers):
