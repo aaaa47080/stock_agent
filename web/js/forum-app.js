@@ -1006,7 +1006,14 @@ const ForumApp = {
                 resetButton();
                 return;
             }
-            const isPi = typeof isPiBrowser === 'function' ? isPiBrowser() : false;
+            const isPiBrowserContext =
+                typeof isPiBrowser === 'function' ? isPiBrowser() : false;
+            const hasPiPaymentSdk =
+                typeof window.Pi !== 'undefined' &&
+                window.Pi !== null &&
+                typeof window.Pi.createPayment === 'function' &&
+                typeof window.Pi.authenticate === 'function';
+            const isPi = isPiBrowserContext || hasPiPaymentSdk;
             let txHash = '';
 
             const userId = AuthManager.currentUser?.user_id || AuthManager.currentUser?.uid;
