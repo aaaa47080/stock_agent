@@ -14,7 +14,6 @@
         <script src="https://cdn.jsdelivr.net/npm/i18next@23.7.6/i18next.min.js"></script>
         <script src="https://unpkg.com/lucide@latest"></script>
         <script src="https://sdk.minepi.com/pi-sdk.js"></script>
-        <!-- Pi.init() called by JS with correct sandbox setting -->
         <link
             href="https://fonts.googleapis.com/css2?family=Mulish:wght@300;400;600;800&family=JetBrains+Mono:wght@400;500&display=swap"
             rel="stylesheet"
@@ -22,129 +21,105 @@
         <link rel="stylesheet" href="/static/styles.css?v=4" />
         <script src="/static/config.js"></script>
         <script src="/static/js/logger.js"></script>
+        <style>
+            /* Hide scrollbar but allow scrolling */
+            .scroll-x-hide {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
+            .scroll-x-hide::-webkit-scrollbar {
+                display: none;
+            }
+        </style>
     </head>
 
     <body class="relative min-h-screen overflow-x-hidden bg-background text-textMain flex flex-col" data-page="index" style="background:radial-gradient(circle at top, rgba(187,146,87,0.14), transparent 24%), linear-gradient(180deg, #13111a 0%, #0d0c13 32%, #0b0b12 100%)">
         <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(circle_at_top,rgba(255,210,140,0.12),transparent_58%)]"></div>
-        <div aria-hidden="true" class="pointer-events-none absolute left-[-72px] top-[120px] h-48 w-48 rounded-full bg-primary/8 blur-3xl"></div>
-        <div aria-hidden="true" class="pointer-events-none absolute bottom-[18%] right-[-64px] h-56 w-56 rounded-full bg-secondary/10 blur-3xl"></div>
-        <!-- Navbar -->
-        <nav
-            class="sticky top-0 z-50 border-b border-white/6 bg-[#15131d]/90 px-4 py-3 shadow-[0_14px_36px_rgba(0,0,0,0.28)] backdrop-blur-xl"
-        >
-            <div class="max-w-6xl mx-auto flex items-center justify-between">
-                <!-- ËøîÂ?‰∏ªÈ? + Logo -->
-                <div class="flex items-center gap-3">
-                    <a
-                        href="/static/index.html"
-                        class="p-2 hover:bg-white/5 rounded-full text-textMuted hover:text-primary transition"
-                        title="ËøîÂ?‰∏ªÈ?"
-                    >
-                        <i data-lucide="home" class="w-5 h-5"></i>
-                    </a>
-                    <a
-                        href="/static/forum/index.html"
-                        class="font-bold text-lg text-primary tracking-wide"
-                    >
-                        Pi Forum
-                    </a>
-                </div>
 
-                <!-- ?≥ÂÅ¥?âÈ??Ä -->
-                <div class="flex items-center gap-2">
-                    <!-- Â∑≤Áôª?•Á???-->
+        <!-- Navbar -->
+        <nav class="sticky top-0 z-50 border-b border-white/6 bg-[#15131d]/90 px-4 py-3 shadow-[0_8px_24px_rgba(0,0,0,0.24)] backdrop-blur-xl">
+            <div class="max-w-3xl mx-auto flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <a href="/static/index.html" class="p-1.5 hover:bg-white/5 rounded-full text-textMuted hover:text-primary transition">
+                        <i data-lucide="home" class="w-4 h-4"></i>
+                    </a>
+                    <span class="font-bold text-base text-primary tracking-wide">Pi Forum</span>
+                </div>
+                <div class="flex items-center gap-1.5">
                     <div class="auth-only hidden flex items-center gap-1">
-                        <!-- ?ã‰∫∫‰∏≠Â? -->
-                        <a
-                            href="/static/forum/dashboard.html"
-                            class="p-2 hover:bg-white/5 rounded-full text-textMuted hover:text-primary transition"
-                            title="?ã‰∫∫‰∏≠Â?"
-                        >
-                            <i data-lucide="user" class="w-5 h-5"></i>
+                        <a href="/static/forum/dashboard.html" class="p-1.5 hover:bg-white/5 rounded-full text-textMuted hover:text-primary transition">
+                            <i data-lucide="user" class="w-4 h-4"></i>
                         </a>
-                        <!-- ?ºÊ? -->
-                        <a
-                            href="/static/forum/create.html"
-                            class="bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 transition ml-1"
-                        >
-                            <i data-lucide="plus" class="w-4 h-4"></i>
-                            <span class="hidden sm:inline">?ºÊ?</span>
+                        <a href="/static/forum/create.html" class="flex items-center gap-1 bg-primary/15 hover:bg-primary/25 text-primary px-3 py-1.5 rounded-full text-sm font-bold transition">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                            <span>ÁôºÊñá</span>
                         </a>
                     </div>
-                    <!-- ?™Áôª?•Á???-->
                     <div class="guest-only">
-                        <button
-                            onclick="safePiLogin()"
-                            class="bg-primary/10 hover:bg-primary/20 text-primary px-3 py-1.5 rounded-lg text-sm font-bold transition"
-                        >
-                            ?ªÂÖ•
+                        <button onclick="safePiLogin()" class="bg-primary/15 hover:bg-primary/25 text-primary px-3 py-1.5 rounded-full text-sm font-bold transition">
+                            ÁôªÂÖ•
                         </button>
                     </div>
                 </div>
             </div>
         </nav>
 
-        <!-- Main Content -->
-        <main class="relative z-10 flex-1 max-w-6xl mx-auto w-full px-3 pb-28 pt-5 md:px-6 md:pb-14 grid grid-cols-1 gap-4 md:grid-cols-4 md:gap-6">
-            <!-- Sidebar (Filters & Trending) -->
-            <aside class="md:col-span-1 space-y-3 md:space-y-5">
-                <div class="rounded-[28px] border border-white/6 bg-[linear-gradient(180deg,rgba(31,29,39,0.96),rgba(24,23,32,0.94))] px-4 py-4 shadow-[0_18px_40px_rgba(0,0,0,0.26)] backdrop-blur-xl">
-                    <div class="flex items-center gap-2 text-secondary">
-                        <i data-lucide="filter" class="h-4 w-4"></i>
-                        <h3 class="text-base font-bold">ÁØ©ÈÅ∏</h3>
-                    </div>
-                    <div class="mt-3 space-y-2">
-                        <label for="category-filter" class="text-[11px] font-semibold uppercase tracking-[0.18em] text-textMuted/70">Category</label>
-                        <select
-                            id="category-filter"
-                            class="w-full appearance-none rounded-[18px] bg-background/80 px-3 py-3 text-sm text-textMain outline-none ring-1 ring-white/8 transition focus:ring-primary/35"
-                        >
-                            <option value="">?Ä?âÂ?È°?/option>
-                            <option value="analysis">Analysis [?ÜÊ?]</option>
-                            <option value="question">Question [Ë´ãÁ?]</option>
-                            <option value="tutorial">Tutorial [?ôÂ≠∏]</option>
-                            <option value="news">News [?∞Ë?]</option>
-                            <option value="chat">Chat [?íË?]</option>
-                            <option value="insight">Insight [ÂøÉÂ?]</option>
-                        </select>
-                    </div>
+        <!-- Sticky Filter Bar -->
+        <div class="sticky top-[52px] z-40 bg-[#13111a]/95 backdrop-blur-xl border-b border-white/5">
+            <div class="max-w-3xl mx-auto">
+                <!-- Category Pills -->
+                <div class="flex gap-1.5 px-4 pt-3 pb-2 overflow-x-auto scroll-x-hide" id="category-pills">
+                    <button type="button" data-category="" class="category-pill shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap border border-primary/40 bg-primary/15 text-primary">
+                        ÂÖ®ÈÉ®
+                    </button>
+                    <button type="button" data-category="analysis" class="category-pill shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap border border-white/8 text-textMuted hover:border-primary/20 hover:text-primary">
+                        ÂàÜÊûê
+                    </button>
+                    <button type="button" data-category="question" class="category-pill shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap border border-white/8 text-textMuted hover:border-primary/20 hover:text-primary">
+                        Ë´ãÂïè
+                    </button>
+                    <button type="button" data-category="tutorial" class="category-pill shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap border border-white/8 text-textMuted hover:border-primary/20 hover:text-primary">
+                        Â≠∏Áøí
+                    </button>
+                    <button type="button" data-category="news" class="category-pill shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap border border-white/8 text-textMuted hover:border-primary/20 hover:text-primary">
+                        Êñ∞ËÅû
+                    </button>
+                    <button type="button" data-category="chat" class="category-pill shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap border border-white/8 text-textMuted hover:border-primary/20 hover:text-primary">
+                        ÈñíËÅä
+                    </button>
+                    <button type="button" data-category="insight" class="category-pill shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold transition whitespace-nowrap border border-white/8 text-textMuted hover:border-primary/20 hover:text-primary">
+                        ÂøÉÂæó
+                    </button>
                 </div>
-
-                <div class="rounded-[28px] border border-white/6 bg-[linear-gradient(180deg,rgba(31,29,39,0.96),rgba(24,23,32,0.94))] px-4 py-4 shadow-[0_18px_40px_rgba(0,0,0,0.26)] backdrop-blur-xl">
-                    <div class="flex items-center gap-2 text-secondary">
-                        <i data-lucide="trending-up" class="h-4 w-4"></i>
-                        <h3 class="text-base font-bold">?±È?Ê®ôÁ±§</h3>
+                <!-- Trending Tags Row -->
+                <div class="flex items-center gap-1.5 px-4 pb-2.5 overflow-x-auto scroll-x-hide">
+                    <span class="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-textMuted/50 mr-0.5">#</span>
+                    <div id="trending-tags" class="flex gap-1.5 min-w-0">
+                        <span class="text-xs text-textMuted/50">ËºâÂÖ•‰∏≠...</span>
                     </div>
-                    <div id="trending-tags" class="mt-3 flex flex-wrap gap-2">
-                            <!-- Loaded via JS -->
-                            <div class="text-xs text-textMuted">Loading...</div>
-                    </div>
-                </div>
-
-                <div id="active-post-filters" class="hidden rounded-[24px] border border-primary/20 bg-primary/8 px-4 py-3 shadow-[0_12px_24px_rgba(0,0,0,0.16)] backdrop-blur-xl">
-                    <div class="flex items-center justify-between gap-3">
-                        <div class="min-w-0">
-                            <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary/70">Active Filter</div>
-                            <div id="active-post-filters-text" class="mt-1 truncate text-sm font-medium text-textMain"></div>
-                        </div>
-                        <button
-                            id="clear-post-filters"
-                            type="button"
-                            class="shrink-0 rounded-full border border-primary/20 bg-white/5 px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-primary/10"
-                        >
-                            Clear
-                        </button>
-                    </div>
-                </div>
-            </aside>
-
-            <!-- Post List -->
-            <div class="md:col-span-3">
-                <div id="post-list" class="space-y-4 md:space-y-5">
-                    <!-- Posts injected here -->
                 </div>
             </div>
+        </div>
+
+        <!-- Main Content -->
+        <main class="relative z-10 flex-1 max-w-3xl mx-auto w-full px-3 py-4 pb-28">
+            <!-- Active Filter Chip (compact) -->
+            <div id="active-post-filters" class="hidden mb-3 flex items-center gap-2">
+                <span class="text-xs text-textMuted/60">ÁØ©ÈÅ∏Ôºö</span>
+                <span id="active-post-filters-text" class="text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-full"></span>
+                <button id="clear-post-filters" type="button" class="text-xs text-textMuted hover:text-primary transition">
+                    <i data-lucide="x" class="w-3 h-3"></i>
+                </button>
+            </div>
+
+            <!-- Post List -->
+            <div id="post-list" class="space-y-2.5">
+                <!-- Posts injected here -->
+            </div>
         </main>
+
+        <!-- Hidden category-filter for JS compatibility -->
+        <select id="category-filter" class="hidden"></select>
 
         <!-- Toast Container -->
         <div
@@ -157,49 +132,24 @@
         ></div>
 
         <!-- Confirm Modal -->
-        <div
-            id="confirm-modal"
-            class="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4"
-        >
-            <div
-                class="bg-surface w-full max-w-sm p-6 rounded-3xl border border-white/10 shadow-2xl transform transition-all scale-100 opacity-100"
-            >
-                <div
-                    id="confirm-modal-icon"
-                    class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 bg-warning/20"
-                >
+        <div id="confirm-modal" class="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
+            <div class="bg-surface w-full max-w-sm p-6 rounded-3xl border border-white/10 shadow-2xl">
+                <div id="confirm-modal-icon" class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 bg-warning/20">
                     <i data-lucide="alert-circle" class="w-8 h-8 text-warning"></i>
                 </div>
-                <h3
-                    id="confirm-modal-title"
-                    class="text-xl font-bold text-center text-secondary mb-2"
-                >
-                    Confirm
-                </h3>
-                <p id="confirm-modal-message" class="text-textMuted text-center text-sm mb-6">
-                    Are you sure?
-                </p>
+                <h3 id="confirm-modal-title" class="text-xl font-bold text-center text-secondary mb-2">Confirm</h3>
+                <p id="confirm-modal-message" class="text-textMuted text-center text-sm mb-6">Are you sure?</p>
                 <div id="confirm-modal-buttons" class="flex gap-3">
-                    <button
-                        id="confirm-modal-cancel"
-                        class="flex-1 py-3 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-2xl transition border border-white/5"
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        id="confirm-modal-confirm"
-                        class="flex-1 py-3 bg-primary hover:brightness-110 text-background font-bold rounded-2xl transition shadow-lg"
-                    >
-                        Confirm
-                    </button>
+                    <button id="confirm-modal-cancel" class="flex-1 py-3 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-2xl transition border border-white/5">Cancel</button>
+                    <button id="confirm-modal-confirm" class="flex-1 py-3 bg-primary hover:brightness-110 text-background font-bold rounded-2xl transition shadow-lg">Confirm</button>
                 </div>
             </div>
         </div>
 
         <!-- Scripts -->
         <script type="module" src="/static/js/utils.js?v=1"></script>
-    <script type="module" src="/static/js/store.js?v=1"></script>
-    <script type="module" src="/static/js/ui-shell.js?v=1"></script>
+        <script type="module" src="/static/js/store.js?v=1"></script>
+        <script type="module" src="/static/js/ui-shell.js?v=1"></script>
         <script src="/static/js/nav-config.js?v=7"></script>
         <script src="/static/js/i18n.js?v=9"></script>
         <script src="/static/js/components/LanguageSwitcher.js?v=3"></script>
@@ -215,59 +165,50 @@
         <script type="module" src="/static/js/friends.js?v=5"></script>
         <script>
             document.addEventListener('DOMContentLoaded', async () => {
-                // 1. ?ùÂ???i18nÔºàÂ??àÂ?ÂÆåÊ?ÔºåÊ??ΩÊ≠£Á¢∫ÁøªË≠ØÂ?Ë¶ΩÂ?Ôº?
                 if (window.I18n) {
-                    try {
-                        await window.I18n.init();
-                        window.APP_CONFIG?.DEBUG_MODE && console.log('[Forum] i18n ready');
-                    } catch (e) {
-                        console.error('[Forum] i18n Init Error:', e);
-                    }
+                    try { await window.I18n.init(); } catch (e) { console.error('[Forum] i18n Init Error:', e); }
                 }
-
-                // 2. ?ùÂ??ñË?Ë≠âÔ?Á≠âÂ?ÂÆåÊ?Ôº?
                 if (typeof AuthManager !== 'undefined') {
                     await AuthManager.init();
                 }
-
-                // 3. ?ùÂ???ForumApp
                 if (typeof ForumApp !== 'undefined') {
                     ForumApp.init();
                 }
-
                 lucide.createIcons();
+
+                // Category pill click logic
+                document.getElementById('category-pills')?.addEventListener('click', (e) => {
+                    const pill = e.target.closest('.category-pill');
+                    if (!pill) return;
+
+                    // Update hidden select for JS compatibility
+                    const categoryFilter = document.getElementById('category-filter');
+                    if (categoryFilter) {
+                        categoryFilter.value = pill.dataset.category || '';
+                        categoryFilter.dispatchEvent(new Event('change'));
+                    }
+
+                    // Update pill styles
+                    document.querySelectorAll('.category-pill').forEach(p => {
+                        p.classList.remove('border-primary/40', 'bg-primary/15', 'text-primary');
+                        p.classList.add('border-white/8', 'text-textMuted');
+                    });
+                    pill.classList.remove('border-white/8', 'text-textMuted');
+                    pill.classList.add('border-primary/40', 'bg-primary/15', 'text-primary');
+                });
             });
         </script>
 
         <!-- Footer -->
-        <footer class="bg-surface/95 border-t border-white/5 mt-12 py-8">
-            <div class="max-w-6xl mx-auto px-4">
-                <div class="flex flex-col md:flex-row justify-between items-center gap-4">
-                    <div class="text-center md:text-left">
-                        <p class="text-xs text-textMuted">
-                            ¬© 2026 PI CryptoMind. All rights reserved.
-                        </p>
-                    </div>
-                    <div class="flex flex-wrap justify-center gap-4">
-                        <a
-                            href="/static/legal/terms-of-service.html"
-                            class="text-xs text-textMuted hover:text-primary transition"
-                            >Terms of Service</a
-                        >
-                        <a
-                            href="/static/legal/privacy-policy.html"
-                            class="text-xs text-textMuted hover:text-primary transition"
-                            >Privacy Policy</a
-                        >
-                        <a
-                            href="/static/legal/community-guidelines.html"
-                            class="text-xs text-textMuted hover:text-primary transition"
-                            >Community Guidelines</a
-                        >
-                    </div>
+        <footer class="bg-surface/95 border-t border-white/5 py-6">
+            <div class="max-w-3xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-3">
+                <p class="text-xs text-textMuted">¬© 2026 PI CryptoMind. All rights reserved.</p>
+                <div class="flex gap-4">
+                    <a href="/static/legal/terms-of-service.html" class="text-xs text-textMuted hover:text-primary transition">Terms</a>
+                    <a href="/static/legal/privacy-policy.html" class="text-xs text-textMuted hover:text-primary transition">Privacy</a>
+                    <a href="/static/legal/community-guidelines.html" class="text-xs text-textMuted hover:text-primary transition">Guidelines</a>
                 </div>
             </div>
         </footer>
     </body>
 </html>
-
