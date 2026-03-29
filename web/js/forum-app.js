@@ -163,10 +163,20 @@ const ForumApp = {
                 return;
             }
 
+            // Category color config for post cards
+            const CATEGORY_COLORS = {
+                analysis: { rail: 'bg-amber-400',   avatar: 'bg-amber-400/20 text-amber-400',   tag: 'bg-amber-400/10 text-amber-400/80',   badge: 'text-amber-400/90' },
+                question: { rail: 'bg-blue-400',    avatar: 'bg-blue-400/20 text-blue-400',     tag: 'bg-blue-400/10 text-blue-400/80',     badge: 'text-blue-400/90' },
+                tutorial: { rail: 'bg-emerald-400', avatar: 'bg-emerald-400/20 text-emerald-400',tag: 'bg-emerald-400/10 text-emerald-400/80',badge: 'text-emerald-400/90' },
+                news:     { rail: 'bg-violet-400',  avatar: 'bg-violet-400/20 text-violet-400', tag: 'bg-violet-400/10 text-violet-400/80', badge: 'text-violet-400/90' },
+                chat:     { rail: 'bg-rose-400',    avatar: 'bg-rose-400/20 text-rose-400',     tag: 'bg-rose-400/10 text-rose-400/80',     badge: 'text-rose-400/90' },
+                insight:  { rail: 'bg-cyan-400',    avatar: 'bg-cyan-400/20 text-cyan-400',     tag: 'bg-cyan-400/10 text-cyan-400/80',     badge: 'text-cyan-400/90' },
+            };
+            const DEFAULT_COLORS = { rail: 'bg-[#d4b693]', avatar: 'bg-[#d4b693]/20 text-[#d4b693]', tag: 'bg-[#d4b693]/10 text-[#d4b693]/80', badge: 'text-[#d4b693]/90' };
+
             posts.forEach((post) => {
                 const el = document.createElement('div');
-                el.className =
-                    'rounded-2xl border border-white/6 bg-[rgba(28,26,36,0.92)] px-4 py-3.5 transition hover:border-white/12 hover:bg-[rgba(32,30,42,0.95)] cursor-pointer active:scale-[0.99]';
+                el.className = 'overflow-hidden rounded-2xl border border-white/6 bg-[rgba(28,26,36,0.92)] flex cursor-pointer transition hover:brightness-[1.07] hover:border-white/10 active:scale-[0.99]';
                 el.onclick = () => {
                     if (typeof smoothNavigate === 'function') {
                         smoothNavigate(`/static/forum/post.html?id=${post.id}`);
@@ -175,16 +185,18 @@ const ForumApp = {
                     }
                 };
 
+                const colors = CATEGORY_COLORS[(post.category || '').toLowerCase()] || DEFAULT_COLORS;
+
                 // 標籤 HTML
                 let tagsHtml = '';
                 try {
                     if (post.tags) {
                         const tags = normalizePostTags(post.tags);
                         tagsHtml = tags
-                            .map(
-                                (tag) =>
-                                    `<span class="text-[11px] text-primary/80">#${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(tag) : tag.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>`
-                            )
+                            .map((tag) => {
+                                const safe = typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(tag) : tag.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                                return `<span class="text-[10px] font-medium px-2 py-0.5 rounded-full ${colors.tag}">#${safe}</span>`;
+                            })
                             .join('');
                     }
                 } catch (e) {
@@ -194,29 +206,32 @@ const ForumApp = {
                 const date = formatTWDate(post.created_at);
                 const pushCount = Math.max(0, post.push_count || 0);
                 const booCount = Math.max(0, post.boo_count || 0);
-                const safeCategory = typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.category) : post.category;
                 const safeUsername = typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.username || post.user_id) : post.username || post.user_id;
                 const safeTitle = typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.title || '') : post.title || '';
+                const avatarLetter = (safeUsername[0] || '?').toUpperCase();
 
                 el.innerHTML = `
-                    <div class="flex items-center gap-2 mb-1.5">
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-secondary/80 bg-white/6 px-2 py-0.5 rounded">${safeCategory}</span>
-                        ${tagsHtml ? `<span class="flex gap-1.5">${tagsHtml}</span>` : ''}
-                        <span class="ml-auto text-[11px] text-textMuted/50">${date}</span>
-                    </div>
-                    <h3 class="font-semibold text-[0.95rem] leading-snug text-textMain mb-2">${safeTitle}</h3>
-                    <div class="flex items-center gap-4 text-[11px] text-textMuted/60">
-                        <a href="/static/forum/profile.html?id=${post.user_id}" class="hover:text-primary transition truncate max-w-[120px]" onclick="event.stopPropagation()">${safeUsername}</a>
-                        <span class="flex items-center gap-1 ml-auto ${pushCount > 0 ? 'text-success/80' : ''}">
-                            <i data-lucide="thumbs-up" class="h-3 w-3"></i>${pushCount}
-                        </span>
-                        <span class="flex items-center gap-1 ${booCount > 0 ? 'text-danger/80' : ''}">
-                            <i data-lucide="thumbs-down" class="h-3 w-3"></i>${booCount}
-                        </span>
-                        <span class="flex items-center gap-1">
-                            <i data-lucide="message-square" class="h-3 w-3"></i>${post.comment_count}
-                        </span>
-                        ${post.tips_total > 0 ? `<span class="flex items-center gap-1 text-primary/70"><i data-lucide="gift" class="h-3 w-3"></i>${post.tips_total}</span>` : ''}
+                    <div class="w-[3px] shrink-0 ${colors.rail}"></div>
+                    <div class="flex-1 min-w-0 px-4 py-3.5">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="w-6 h-6 rounded-full ${colors.avatar} text-[11px] font-bold flex items-center justify-center shrink-0">${avatarLetter}</span>
+                            <a href="/static/forum/profile.html?id=${post.user_id}" class="text-[11px] text-textMuted/70 hover:text-primary transition truncate" onclick="event.stopPropagation()">${safeUsername}</a>
+                            <span class="text-[11px] text-textMuted/40 ml-auto shrink-0">${date}</span>
+                        </div>
+                        <h3 class="font-bold text-[0.95rem] leading-snug text-textMain mb-2">${safeTitle}</h3>
+                        ${tagsHtml ? `<div class="flex flex-wrap gap-1.5 mb-2.5">${tagsHtml}</div>` : ''}
+                        <div class="flex items-center gap-3.5 text-[11px] text-textMuted/50">
+                            <span class="flex items-center gap-1 ${pushCount > 0 ? 'text-success/70' : ''}">
+                                <i data-lucide="thumbs-up" class="h-3 w-3"></i>${pushCount}
+                            </span>
+                            <span class="flex items-center gap-1 ${booCount > 0 ? 'text-danger/70' : ''}">
+                                <i data-lucide="thumbs-down" class="h-3 w-3"></i>${booCount}
+                            </span>
+                            <span class="flex items-center gap-1">
+                                <i data-lucide="message-square" class="h-3 w-3"></i>${post.comment_count}
+                            </span>
+                            ${post.tips_total > 0 ? `<span class="flex items-center gap-1 text-[#d4b693]/60"><i data-lucide="gift" class="h-3 w-3"></i>${post.tips_total}</span>` : ''}
+                        </div>
                     </div>
                 `;
                 container.appendChild(el);
@@ -241,21 +256,28 @@ const ForumApp = {
                 return;
             }
 
+            const TAG_COLORS = [
+                'text-[#d4b693] bg-[#d4b693]/10 border-[#d4b693]/25',
+                'text-violet-400 bg-violet-400/10 border-violet-400/25',
+                'text-cyan-400 bg-cyan-400/10 border-cyan-400/25',
+                'text-rose-400 bg-rose-400/10 border-rose-400/25',
+            ];
+
             container.innerHTML = tags
-                .map((tag) => {
+                .map((tag, index) => {
                     const safeName =
                         typeof SecurityUtils !== 'undefined'
                             ? SecurityUtils.escapeHTML(tag.name)
                             : tag.name;
                     const isActive = this.currentTagFilter === tag.name;
+                    const colorClass = TAG_COLORS[index % 4];
 
-                    return `<button type="button" data-tag="${safeName}" class="trending-tag shrink-0 inline-flex items-center gap-1 text-[11px] font-medium transition whitespace-nowrap ${
-                        isActive
-                            ? 'text-primary'
-                            : 'text-textMuted/60 hover:text-primary'
-                    }"><span>#${safeName}</span><span class="text-[10px] opacity-60">${tag.post_count}</span></button>`;
+                    return `<button type="button" data-tag="${safeName}"
+                        class="trending-tag shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] font-semibold whitespace-nowrap transition ${colorClass} ${isActive ? 'brightness-125 scale-105' : 'opacity-75 hover:opacity-100 hover:scale-105'}">
+                        <span>#${safeName}</span><span class="opacity-60 text-[10px]">${tag.post_count}</span>
+                    </button>`;
                 })
-                .join('<span class="text-textMuted/20 shrink-0">·</span>');
+                .join('');
 
             container.querySelectorAll('.trending-tag').forEach((button) => {
                 button.addEventListener('click', () => {
