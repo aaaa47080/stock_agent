@@ -1014,7 +1014,22 @@ const ForumApp = {
                 typeof window.Pi.createPayment === 'function' &&
                 typeof window.Pi.authenticate === 'function';
             const isPi = isPiBrowserContext || hasPiPaymentSdk;
+            const createPostWarning = document.getElementById('create-post-warning');
+            const setCreatePostWarning = (message) => {
+                if (!createPostWarning) {
+                    showToast(message, 'warning');
+                    return;
+                }
+                createPostWarning.textContent = message;
+                createPostWarning.classList.remove('hidden');
+            };
+            const clearCreatePostWarning = () => {
+                if (!createPostWarning) return;
+                createPostWarning.textContent = '';
+                createPostWarning.classList.add('hidden');
+            };
             let txHash = '';
+            clearCreatePostWarning();
 
             const userId = AuthManager.currentUser?.user_id || AuthManager.currentUser?.uid;
             let isProMember = false;
@@ -1094,21 +1109,38 @@ const ForumApp = {
             } else {
                 // 關鍵修復：檢查真實的 Pi Browser UA，而非僅檢查 SDK 存在
                 const userAgent = navigator.userAgent || '';
-                const isRealPiBrowser = userAgent.includes('PiBrowser');
+                const isRealPiBrowser =
+                    hasPiPaymentSdk || userAgent.includes('PiBrowser');
 
                 window.APP_CONFIG?.DEBUG_MODE &&
                     console.log('[CreatePost] 🔍 Environment:', {
                         ua: userAgent.substring(0, 60),
-                        hasPiUA: isRealPiBrowser,
-                        hasSDK: typeof window.Pi !== 'undefined',
+                        isRealPiBrowser,
+                        isPiBrowserContext,
+                        hasPiPaymentSdk,
+                        isPi,
                     });
 
                 try {
-                    if (isRealPiBrowser && window.Pi) {
+                    if (hasPiPaymentSdk) {
                         window.APP_CONFIG?.DEBUG_MODE &&
                             console.log('[CreatePost] 💳 Real Pi Browser - Starting payment...');
                         try {
-                            await Pi.authenticate(['username', 'payments', 'wallet_address'], () => {});
+                            await window.Pi.authenticate(
+                                ['username', 'payments', 'wallet_address'],
+                                (incompletePayment) => {
+                                    if (!incompletePayment?.identifier) return;
+                                    AppAPI.post('/api/user/payment/complete', {
+                                        paymentId: incompletePayment.identifier,
+                                        txid: incompletePayment.transaction?.txid || null,
+                                    }).catch((err) => {
+                                        console.warn(
+                                            '[CreatePost] Failed to complete incomplete payment:',
+                                            err
+                                        );
+                                    });
+                                }
+                            );
                         } catch (authErr) {
                             console.error('[CreatePost] Pi Auth failed:', authErr);
                             showToast('支付權限不足，請重新登入', 'error');
@@ -1208,7 +1240,7 @@ const ForumApp = {
                         window.APP_CONFIG?.DEBUG_MODE &&
                             console.log('[CreatePost] Payment successful, txHash:', txHash);
                     } else {
-                        showToast('Please complete posting inside Pi Browser.', 'warning');
+                        setCreatePostWarning('Please complete posting inside Pi Browser.');
                         resetButton();
                         return;
                     }
@@ -1239,6 +1271,7 @@ const ForumApp = {
                 if (window.UIShell && typeof window.UIShell.clearToasts === 'function') {
                     window.UIShell.clearToasts();
                 }
+                clearCreatePostWarning();
 
                 // Success Modal
                 const successModal = document.createElement('div');
