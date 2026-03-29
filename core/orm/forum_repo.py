@@ -328,7 +328,9 @@ class ForumRepository:
             else:
                 await s.execute(
                     update(UserDailyPost)
-                    .where(UserDailyPost.user_id == user_id, UserDailyPost.date == today)
+                    .where(
+                        UserDailyPost.user_id == user_id, UserDailyPost.date == today
+                    )
                     .values(post_count=UserDailyPost.post_count + 1)
                 )
 
