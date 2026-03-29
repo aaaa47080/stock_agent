@@ -153,7 +153,6 @@ async def lifespan(app: FastAPI):
         logger.warning("⚠️ Audit log cleanup task not available")
         _startup_mark("audit_cleanup_task_unavailable", status="warn")
 
-
     _startup_mark("startup_ready")
 
     yield

@@ -20,17 +20,24 @@ def _make_client(*routers):
 
 
 def test_notifications_endpoint_falls_back_when_async_driver_missing():
-    with _make_client(notifications) as client, patch(
-        "api.routers.notifications.notifications_repo.get_notifications",
-        AsyncMock(side_effect=ModuleNotFoundError("asyncpg")),
-    ), patch(
-        "api.routers.notifications.legacy_get_notifications",
-        return_value=[{"id": "n1", "title": "fallback", "is_read": False}],
-    ), patch(
-        "api.routers.notifications.legacy_get_unread_count",
-        return_value=1,
+    with (
+        _make_client(notifications) as client,
+        patch(
+            "api.routers.notifications.notifications_repo.get_notifications",
+            AsyncMock(side_effect=ModuleNotFoundError("asyncpg")),
+        ),
+        patch(
+            "api.routers.notifications.legacy_get_notifications",
+            return_value=[{"id": "n1", "title": "fallback", "is_read": False}],
+        ),
+        patch(
+            "api.routers.notifications.legacy_get_unread_count",
+            return_value=1,
+        ),
     ):
-        response = client.get("/api/notifications", headers={"Authorization": "Bearer test"})
+        response = client.get(
+            "/api/notifications", headers={"Authorization": "Bearer test"}
+        )
 
     assert response.status_code == 200
     payload = response.json()
@@ -40,12 +47,16 @@ def test_notifications_endpoint_falls_back_when_async_driver_missing():
 
 
 def test_notifications_unread_count_falls_back_when_async_driver_missing():
-    with _make_client(notifications) as client, patch(
-        "api.routers.notifications.notifications_repo.get_unread_count",
-        AsyncMock(side_effect=ModuleNotFoundError("asyncpg")),
-    ), patch(
-        "api.routers.notifications.legacy_get_unread_count",
-        return_value=3,
+    with (
+        _make_client(notifications) as client,
+        patch(
+            "api.routers.notifications.notifications_repo.get_unread_count",
+            AsyncMock(side_effect=ModuleNotFoundError("asyncpg")),
+        ),
+        patch(
+            "api.routers.notifications.legacy_get_unread_count",
+            return_value=3,
+        ),
     ):
         response = client.get(
             "/api/notifications/unread-count",
@@ -57,14 +68,20 @@ def test_notifications_unread_count_falls_back_when_async_driver_missing():
 
 
 def test_premium_status_falls_back_when_async_driver_missing():
-    with _make_client(premium) as client, patch(
-        "api.routers.premium.user_repo.get_membership",
-        AsyncMock(side_effect=ModuleNotFoundError("asyncpg")),
-    ), patch(
-        "api.routers.premium.get_user_membership",
-        return_value={"tier": "premium", "is_premium": True},
+    with (
+        _make_client(premium) as client,
+        patch(
+            "api.routers.premium.user_repo.get_membership",
+            AsyncMock(side_effect=ModuleNotFoundError("asyncpg")),
+        ),
+        patch(
+            "api.routers.premium.get_user_membership",
+            return_value={"tier": "premium", "is_premium": True},
+        ),
     ):
-        response = client.get("/api/premium/status", headers={"Authorization": "Bearer test"})
+        response = client.get(
+            "/api/premium/status", headers={"Authorization": "Bearer test"}
+        )
 
     assert response.status_code == 200
     payload = response.json()
@@ -75,18 +92,24 @@ def test_premium_status_falls_back_when_async_driver_missing():
 
 
 def test_premium_status_falls_back_when_async_session_wrapper_is_broken():
-    with _make_client(premium) as client, patch(
-        "api.routers.premium.user_repo.get_membership",
-        AsyncMock(
-            side_effect=TypeError(
-                "'async_generator' object does not support the asynchronous context manager protocol"
-            )
+    with (
+        _make_client(premium) as client,
+        patch(
+            "api.routers.premium.user_repo.get_membership",
+            AsyncMock(
+                side_effect=TypeError(
+                    "'async_generator' object does not support the asynchronous context manager protocol"
+                )
+            ),
         ),
-    ), patch(
-        "api.routers.premium.get_user_membership",
-        return_value={"tier": "free", "is_premium": False},
+        patch(
+            "api.routers.premium.get_user_membership",
+            return_value={"tier": "free", "is_premium": False},
+        ),
     ):
-        response = client.get("/api/premium/status", headers={"Authorization": "Bearer test"})
+        response = client.get(
+            "/api/premium/status", headers={"Authorization": "Bearer test"}
+        )
 
     assert response.status_code == 200
     payload = response.json()

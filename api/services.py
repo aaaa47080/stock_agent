@@ -456,7 +456,9 @@ def _get_cache_timestamps(cache):
                     ts = ts.astimezone(timezone.utc)
                 timestamps.append(ts)
             except ValueError:
-                logger.debug(f"Failed to parse timestamp for {sym}: {data.get('timestamp')}")
+                logger.debug(
+                    f"Failed to parse timestamp for {sym}: {data.get('timestamp')}"
+                )
     return timestamps
 
 

@@ -120,8 +120,12 @@ def upgrade() -> None:
             created_at TIMESTAMPTZ DEFAULT NOW()
         )
     """)
-    safe_exec("CREATE INDEX IF NOT EXISTS idx_used_payments_user ON used_payments(user_id)")
-    safe_exec("CREATE INDEX IF NOT EXISTS idx_used_payments_payment_id ON used_payments(payment_id)")
+    safe_exec(
+        "CREATE INDEX IF NOT EXISTS idx_used_payments_user ON used_payments(user_id)"
+    )
+    safe_exec(
+        "CREATE INDEX IF NOT EXISTS idx_used_payments_payment_id ON used_payments(payment_id)"
+    )
 
     safe_exec("""
         CREATE TABLE IF NOT EXISTS membership_payments (
@@ -609,48 +613,106 @@ def upgrade() -> None:
     """)
 
     # ── content_reports: add columns from b002 (IF NOT EXISTS) ─────────────────
-    safe_exec("ALTER TABLE content_reports ADD COLUMN IF NOT EXISTS points_assigned INTEGER DEFAULT 0")
-    safe_exec("ALTER TABLE content_reports ADD COLUMN IF NOT EXISTS action_taken VARCHAR(50)")
-    safe_exec("ALTER TABLE content_reports ADD COLUMN IF NOT EXISTS processed_by VARCHAR(255)")
+    safe_exec(
+        "ALTER TABLE content_reports ADD COLUMN IF NOT EXISTS points_assigned INTEGER DEFAULT 0"
+    )
+    safe_exec(
+        "ALTER TABLE content_reports ADD COLUMN IF NOT EXISTS action_taken VARCHAR(50)"
+    )
+    safe_exec(
+        "ALTER TABLE content_reports ADD COLUMN IF NOT EXISTS processed_by VARCHAR(255)"
+    )
 
     # ── Indexes (all IF NOT EXISTS) ─────────────────────────────────────────────
     safe_exec("CREATE INDEX IF NOT EXISTS idx_posts_board_id ON posts(board_id)")
     safe_exec("CREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts(user_id)")
     safe_exec("CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at)")
     safe_exec("CREATE INDEX IF NOT EXISTS idx_posts_category ON posts(category)")
-    safe_exec("CREATE INDEX IF NOT EXISTS idx_forum_comments_post_id ON forum_comments(post_id)")
-    safe_exec("CREATE INDEX IF NOT EXISTS idx_forum_comments_user_id ON forum_comments(user_id)")
+    safe_exec(
+        "CREATE INDEX IF NOT EXISTS idx_forum_comments_post_id ON forum_comments(post_id)"
+    )
+    safe_exec(
+        "CREATE INDEX IF NOT EXISTS idx_forum_comments_user_id ON forum_comments(user_id)"
+    )
     safe_exec("CREATE INDEX IF NOT EXISTS idx_tips_post_id ON tips(post_id)")
     safe_exec("CREATE INDEX IF NOT EXISTS idx_tips_from_user ON tips(from_user_id)")
     safe_exec("CREATE INDEX IF NOT EXISTS idx_tags_name ON tags(name)")
-    safe_exec("CREATE INDEX IF NOT EXISTS idx_friendships_user_id ON friendships(user_id)")
-    safe_exec("CREATE INDEX IF NOT EXISTS idx_friendships_friend_id ON friendships(friend_id)")
-    safe_exec("CREATE INDEX IF NOT EXISTS idx_friendships_status ON friendships(status)")
-    safe_exec("CREATE INDEX IF NOT EXISTS idx_dm_conversations_user1 ON dm_conversations(user1_id)")
-    safe_exec("CREATE INDEX IF NOT EXISTS idx_dm_conversations_user2 ON dm_conversations(user2_id)")
-    safe_exec("CREATE INDEX IF NOT EXISTS idx_dm_messages_conversation ON dm_messages(conversation_id)")
-    safe_exec("CREATE INDEX IF NOT EXISTS idx_dm_messages_from_user ON dm_messages(from_user_id)")
-    safe_exec("CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON notifications(user_id, created_at DESC)")
-    safe_exec("CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id) WHERE is_read = FALSE")
-    safe_exec("CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id)")
+    safe_exec(
+        "CREATE INDEX IF NOT EXISTS idx_friendships_user_id ON friendships(user_id)"
+    )
+    safe_exec(
+        "CREATE INDEX IF NOT EXISTS idx_friendships_friend_id ON friendships(friend_id)"
+    )
+    safe_exec(
+        "CREATE INDEX IF NOT EXISTS idx_friendships_status ON friendships(status)"
+    )
+    safe_exec(
+        "CREATE INDEX IF NOT EXISTS idx_dm_conversations_user1 ON dm_conversations(user1_id)"
+    )
+    safe_exec(
+        "CREATE INDEX IF NOT EXISTS idx_dm_conversations_user2 ON dm_conversations(user2_id)"
+    )
+    safe_exec(
+        "CREATE INDEX IF NOT EXISTS idx_dm_messages_conversation ON dm_messages(conversation_id)"
+    )
+    safe_exec(
+        "CREATE INDEX IF NOT EXISTS idx_dm_messages_from_user ON dm_messages(from_user_id)"
+    )
+    safe_exec(
+        "CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON notifications(user_id, created_at DESC)"
+    )
+    safe_exec(
+        "CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id) WHERE is_read = FALSE"
+    )
+    safe_exec(
+        "CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id)"
+    )
     safe_exec("CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action)")
-    safe_exec("CREATE INDEX IF NOT EXISTS idx_scam_wallet ON scam_reports(scam_wallet_address)")
+    safe_exec(
+        "CREATE INDEX IF NOT EXISTS idx_scam_wallet ON scam_reports(scam_wallet_address)"
+    )
     safe_exec("CREATE INDEX IF NOT EXISTS idx_scam_type ON scam_reports(scam_type)")
-    safe_exec("CREATE INDEX IF NOT EXISTS idx_scam_status ON scam_reports(verification_status)")
-    safe_exec("CREATE INDEX IF NOT EXISTS idx_content_reports_status ON content_reports(review_status)")
-    safe_exec("CREATE INDEX IF NOT EXISTS idx_content_reports_reporter ON content_reports(reporter_user_id)")
-    safe_exec("CREATE INDEX IF NOT EXISTS idx_user_violations_user ON user_violations(user_id)")
-    safe_exec("CREATE INDEX IF NOT EXISTS idx_user_activity_logs_user ON user_activity_logs(user_id)")
-    safe_exec("CREATE INDEX IF NOT EXISTS idx_analysis_reports_user ON analysis_reports(user_id)")
-    safe_exec("CREATE INDEX IF NOT EXISTS idx_price_alerts_user ON price_alerts(user_id)")
-    safe_exec("CREATE INDEX IF NOT EXISTS idx_user_api_keys_user ON user_api_keys(user_id)")
-    safe_exec("CREATE INDEX IF NOT EXISTS idx_users_last_active ON users(last_active_at DESC)")
-    safe_exec("CREATE INDEX IF NOT EXISTS idx_users_membership ON users(membership_tier)")
+    safe_exec(
+        "CREATE INDEX IF NOT EXISTS idx_scam_status ON scam_reports(verification_status)"
+    )
+    safe_exec(
+        "CREATE INDEX IF NOT EXISTS idx_content_reports_status ON content_reports(review_status)"
+    )
+    safe_exec(
+        "CREATE INDEX IF NOT EXISTS idx_content_reports_reporter ON content_reports(reporter_user_id)"
+    )
+    safe_exec(
+        "CREATE INDEX IF NOT EXISTS idx_user_violations_user ON user_violations(user_id)"
+    )
+    safe_exec(
+        "CREATE INDEX IF NOT EXISTS idx_user_activity_logs_user ON user_activity_logs(user_id)"
+    )
+    safe_exec(
+        "CREATE INDEX IF NOT EXISTS idx_analysis_reports_user ON analysis_reports(user_id)"
+    )
+    safe_exec(
+        "CREATE INDEX IF NOT EXISTS idx_price_alerts_user ON price_alerts(user_id)"
+    )
+    safe_exec(
+        "CREATE INDEX IF NOT EXISTS idx_user_api_keys_user ON user_api_keys(user_id)"
+    )
+    safe_exec(
+        "CREATE INDEX IF NOT EXISTS idx_users_last_active ON users(last_active_at DESC)"
+    )
+    safe_exec(
+        "CREATE INDEX IF NOT EXISTS idx_users_membership ON users(membership_tier)"
+    )
     safe_exec("CREATE INDEX IF NOT EXISTS idx_user_facts_user ON user_facts(user_id)")
-    safe_exec("CREATE INDEX IF NOT EXISTS idx_te_user_family ON task_experiences(user_id, task_family)")
-    safe_exec("CREATE INDEX IF NOT EXISTS idx_te_created ON task_experiences(created_at DESC)")
+    safe_exec(
+        "CREATE INDEX IF NOT EXISTS idx_te_user_family ON task_experiences(user_id, task_family)"
+    )
+    safe_exec(
+        "CREATE INDEX IF NOT EXISTS idx_te_created ON task_experiences(created_at DESC)"
+    )
     safe_exec("CREATE INDEX IF NOT EXISTS idx_user_memory_user ON user_memory(user_id)")
-    safe_exec("CREATE INDEX IF NOT EXISTS idx_user_history_user ON user_history_log(user_id)")
+    safe_exec(
+        "CREATE INDEX IF NOT EXISTS idx_user_history_user ON user_history_log(user_id)"
+    )
 
     # Release savepoint
     conn.execute(sa.text("RELEASE SAVEPOINT _b003"))

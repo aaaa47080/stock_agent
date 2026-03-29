@@ -241,7 +241,9 @@ async def sync_pi_user(request: Request, response: Response, body: PiUserSyncReq
 @router.get("/api/user/me")
 async def get_current_user_profile(current_user: dict = Depends(get_current_user)):
     """獲取當前登入用戶的資料"""
-    has_wallet = bool(current_user.get("pi_uid")) or bool(current_user.get("has_wallet"))
+    has_wallet = bool(current_user.get("pi_uid")) or bool(
+        current_user.get("has_wallet")
+    )
     if not has_wallet and current_user.get("auth_method") == "pi_network":
         has_wallet = True
 
@@ -363,7 +365,9 @@ class ClientLogRequest(BaseModel):
 
 
 @router.post("/api/client/log")
-async def client_log(body: ClientLogRequest, current_user: dict = Depends(get_current_user)):
+async def client_log(
+    body: ClientLogRequest, current_user: dict = Depends(get_current_user)
+):
     """接收前端 client-side logs 並寫入 server logs"""
     user_id = current_user.get("user_id", "unknown")
     log_msg = f"[CLIENT:{body.source}] [{body.level.upper()}] {body.message}"
@@ -403,7 +407,9 @@ async def approve_payment(
     logger.info("[PAYMENT] === APPROVE START ===")
     logger.info(f"[PAYMENT] paymentId: {body.paymentId}")
     logger.info(f"[PAYMENT] userId: {current_user['user_id']}")
-    logger.info(f"[PAYMENT] PI_API_KEY configured: {bool(PI_API_KEY and PI_API_KEY != 'your_pi_api_key_here')}")
+    logger.info(
+        f"[PAYMENT] PI_API_KEY configured: {bool(PI_API_KEY and PI_API_KEY != 'your_pi_api_key_here')}"
+    )
     logger.info(f"[PAYMENT] TEST_MODE: {TEST_MODE}")
 
     if not PI_API_KEY or PI_API_KEY == "your_pi_api_key_here":
@@ -489,7 +495,9 @@ async def complete_payment(
     logger.info(f"[PAYMENT] paymentId: {body.paymentId}")
     logger.info(f"[PAYMENT] txid: {body.txid}")
     logger.info(f"[PAYMENT] userId: {current_user['user_id']}")
-    logger.info(f"[PAYMENT] PI_API_KEY configured: {bool(PI_API_KEY and PI_API_KEY != 'your_pi_api_key_here')}")
+    logger.info(
+        f"[PAYMENT] PI_API_KEY configured: {bool(PI_API_KEY and PI_API_KEY != 'your_pi_api_key_here')}"
+    )
     logger.info(f"[PAYMENT] TEST_MODE: {TEST_MODE}")
 
     if not PI_API_KEY or PI_API_KEY == "your_pi_api_key_here":
@@ -698,4 +706,3 @@ async def save_user_model_endpoint(
     except Exception as e:
         logger.error(f"Save model error: {e}")
         raise HTTPException(status_code=500, detail="儲存失敗")
-

@@ -18,12 +18,16 @@ def test_commodity_router_registered(client):
     assert response.status_code != 404
 
 
-def test_commodity_market_gracefully_degrades_when_quotes_unavailable(client, monkeypatch):
+def test_commodity_market_gracefully_degrades_when_quotes_unavailable(
+    client, monkeypatch
+):
     """Verify market endpoint returns an empty payload instead of 404 when source fails."""
     from api.routers import commodity
 
     commodity._cache.clear()
-    monkeypatch.setattr(commodity, "_fetch_commodity_sync", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        commodity, "_fetch_commodity_sync", lambda *args, **kwargs: None
+    )
 
     response = client.get("/api/commodity/market?symbols=GC=F")
 

@@ -23,6 +23,7 @@ router = APIRouter(prefix="/api/forum/posts", tags=["Forum - Posts"])
 
 VALID_CATEGORIES = ["analysis", "question", "tutorial", "news", "chat", "insight"]
 
+
 @router.get("")
 async def list_posts(
     board: Optional[str] = Query(None, description="Board slug"),

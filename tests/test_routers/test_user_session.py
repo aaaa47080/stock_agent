@@ -125,7 +125,10 @@ async def test_wallet_status_treats_legacy_pi_network_user_as_wallet_linked(clie
 
     with (
         patch("api.deps.user_repo.get_by_id", new=AsyncMock(return_value=mocked_user)),
-        patch("api.routers.user.run_sync", new=AsyncMock(return_value=mocked_wallet_status)),
+        patch(
+            "api.routers.user.run_sync",
+            new=AsyncMock(return_value=mocked_wallet_status),
+        ),
     ):
         response = await client.get(
             "/api/user/wallet-status",

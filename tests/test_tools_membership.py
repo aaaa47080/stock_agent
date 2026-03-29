@@ -190,7 +190,10 @@ async def test_list_tools_impl_falls_back_when_repo_unavailable():
             new_callable=AsyncMock,
             side_effect=RuntimeError("db down"),
         ),
-        patch("api.routers.tools.seed_tools_catalog", side_effect=RuntimeError("seed down")),
+        patch(
+            "api.routers.tools.seed_tools_catalog",
+            side_effect=RuntimeError("seed down"),
+        ),
     ):
         response = await _list_tools_impl(current_user)
 

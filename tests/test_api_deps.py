@@ -190,7 +190,10 @@ class TestGetCurrentUserId:
         from api.deps import create_access_token, get_current_user_id
 
         expired_header = jwt.encode(
-            {"sub": "stale-user", "exp": datetime.now(timezone.utc) - timedelta(minutes=1)},
+            {
+                "sub": "stale-user",
+                "exp": datetime.now(timezone.utc) - timedelta(minutes=1),
+            },
             "test-secret-key-at-least-32-chars-long!",
             algorithm="HS256",
         )

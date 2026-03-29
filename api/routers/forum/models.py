@@ -37,9 +37,7 @@ class AddCommentRequest(BaseModel):
     """Add comment payload."""
 
     type: str = Field(..., description="Comment type: push/boo/comment")
-    content: Optional[str] = Field(
-        None, max_length=100, description="Comment content"
-    )
+    content: Optional[str] = Field(None, max_length=100, description="Comment content")
     parent_id: Optional[int] = Field(None, description="Parent comment ID")
 
 

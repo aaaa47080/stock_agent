@@ -101,10 +101,10 @@ async def _verify_pi_payment(payment_id: str) -> dict:
             #  "developer_completed": True, "cancelled": False, "user_cancelled": False}
             if isinstance(status, dict):
                 is_valid = (
-                    status.get("developer_approved") and
-                    status.get("transaction_verified") and
-                    not status.get("cancelled") and
-                    not status.get("user_cancelled")
+                    status.get("developer_approved")
+                    and status.get("transaction_verified")
+                    and not status.get("cancelled")
+                    and not status.get("user_cancelled")
                 )
                 if not is_valid:
                     raise HTTPException(
@@ -148,6 +148,7 @@ async def _verify_pi_payment(payment_id: str) -> dict:
 @router.get("/pricing")
 async def get_pricing_plans():
     from core.database.system_config import get_prices as _get_prices
+
     prices = _get_prices()
     monthly = prices.get("premium", 1.0)
 
@@ -216,6 +217,7 @@ async def upgrade_to_premium(
 
         actual_amount = payment_data.get("amount", 0)
         from core.database.system_config import get_prices as _get_prices
+
         _prices = _get_prices()
         # Map plan name to system_config key ("premium_monthly" → "premium")
         _plan_key = "premium" if "premium" in plan else plan

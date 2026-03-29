@@ -317,7 +317,9 @@ async def analyze_crypto(
                         try:
                             await invoke_task
                         except asyncio.CancelledError:
-                            logger.debug("Task cancelled for session=%s", body.session_id)
+                            logger.debug(
+                                "Task cancelled for session=%s", body.session_id
+                            )
                     raise
                 except asyncio.TimeoutError:
                     logger.error(
@@ -460,6 +462,7 @@ async def trigger_idle_consolidation(
 
 class FeedbackRequest(BaseModel):
     """分析品質回饋請求"""
+
     codebook_entry_id: str
     score: int  # 1 = helpful, 0 = not helpful
 
@@ -473,9 +476,7 @@ async def submit_feedback(
 ):
     """儲存分析品質回饋"""
     if body.score not in (0, 1):
-        raise HTTPException(
-            status_code=400, detail="Score must be 0 or 1"
-        )
+        raise HTTPException(status_code=400, detail="Score must be 0 or 1")
     user_id = current_user.get("user_id")
     await run_sync(save_codebook_feedback, body.codebook_entry_id, user_id, body.score)
     return {"success": True}

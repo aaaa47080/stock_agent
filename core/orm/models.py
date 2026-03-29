@@ -1056,5 +1056,3 @@ class TaskExperience(Base):
         Index("idx_te_created", "created_at"),
         Index("idx_te_tsv", "query_tsv", postgresql_using="gin"),
     )
-
-

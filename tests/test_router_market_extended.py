@@ -111,12 +111,15 @@ async def test_run_screener_uses_payload_refresh_flag_for_cache_lookup():
     screener_request = ScreenerRequest(exchange="okx", refresh=True)
     current_user = {"user_id": "u1"}
 
-    with patch(
-        "api.routers.market.rest.try_get_cached_screener",
-        side_effect=[None, None],
-    ) as mock_cache, patch(
-        "api.routers.market.rest.run_default_screener",
-        return_value={"top_volume": [], "top_gainers": [], "top_losers": []},
+    with (
+        patch(
+            "api.routers.market.rest.try_get_cached_screener",
+            side_effect=[None, None],
+        ) as mock_cache,
+        patch(
+            "api.routers.market.rest.run_default_screener",
+            return_value={"top_volume": [], "top_gainers": [], "top_losers": []},
+        ),
     ):
         await run_screener.__wrapped__(request, screener_request, current_user)
 

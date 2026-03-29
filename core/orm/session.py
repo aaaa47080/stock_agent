@@ -43,9 +43,9 @@ _factory_lock = threading.Lock()
 def _normalize_pg_url(url: str) -> str:
     """Convert any postgres:// or postgresql:// URL to asyncpg format."""
     if url.startswith("postgres://"):
-        url = "postgresql+asyncpg://" + url[len("postgres://"):]
+        url = "postgresql+asyncpg://" + url[len("postgres://") :]
     elif url.startswith("postgresql://"):
-        url = "postgresql+asyncpg://" + url[len("postgresql://"):]
+        url = "postgresql+asyncpg://" + url[len("postgresql://") :]
     url = url.replace("sslmode=require", "ssl=require", 1)
     url = url.replace("&channel_binding=require", "", 1)
     return url
@@ -65,7 +65,11 @@ def _resolve_async_url() -> str | None:
 
     # Try individual components — support both POSTGRESQL_* and POSTGRES_* prefixes
     host = os.getenv("POSTGRESQL_HOST") or os.getenv("POSTGRES_HOST")
-    user = os.getenv("POSTGRESQL_USER") or os.getenv("POSTGRES_USERNAME") or os.getenv("POSTGRES_USER")
+    user = (
+        os.getenv("POSTGRESQL_USER")
+        or os.getenv("POSTGRES_USERNAME")
+        or os.getenv("POSTGRES_USER")
+    )
     password = os.getenv("POSTGRESQL_PASSWORD") or os.getenv("POSTGRES_PASSWORD")
     db_name = (
         os.getenv("POSTGRESQL_DB")
