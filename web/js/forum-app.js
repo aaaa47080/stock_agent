@@ -18,6 +18,37 @@ function normalizePostTags(rawTags) {
 }
 
 const ForumApp = {
+    rememberForumReturnTarget() {
+        const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+        try {
+            if (current.includes('/static/forum/post.html')) return;
+
+            if (current.includes('/static/forum/index.html')) {
+                sessionStorage.setItem('forumBackHref', '/static/forum/index.html');
+                return;
+            }
+
+            if (current.includes('/static/index.html')) {
+                sessionStorage.setItem('forumBackHref', '/static/index.html#forum');
+                return;
+            }
+
+            sessionStorage.setItem('forumBackHref', current || '/static/forum/index.html');
+        } catch (e) {
+            console.warn('[Forum] Failed to remember return target:', e);
+        }
+    },
+
+    navigateToPost(postId) {
+        this.rememberForumReturnTarget();
+        const target = `/static/forum/post.html?id=${postId}`;
+        if (typeof smoothNavigate === 'function') {
+            smoothNavigate(target);
+        } else {
+            window.location.href = target;
+        }
+    },
+
     init() {
         // Ensure prices and limits are loaded
         if (!window.PiPrices?.loaded) {
@@ -177,13 +208,7 @@ const ForumApp = {
             posts.forEach((post) => {
                 const el = document.createElement('div');
                 el.className = 'overflow-hidden rounded-2xl border border-white/6 bg-[rgba(28,26,36,0.92)] flex cursor-pointer transition hover:brightness-[1.07] hover:border-white/10 active:scale-[0.99]';
-                el.onclick = () => {
-                    if (typeof smoothNavigate === 'function') {
-                        smoothNavigate(`/static/forum/post.html?id=${post.id}`);
-                    } else {
-                        window.location.href = `/static/forum/post.html?id=${post.id}`;
-                    }
-                };
+                el.onclick = () => this.navigateToPost(post.id);
 
                 const colors = CATEGORY_COLORS[(post.category || '').toLowerCase()] || DEFAULT_COLORS;
 
@@ -209,28 +234,39 @@ const ForumApp = {
                 const safeUsername = typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.username || post.user_id) : post.username || post.user_id;
                 const safeTitle = typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.title || '') : post.title || '';
                 const avatarLetter = (safeUsername[0] || '?').toUpperCase();
+                const categoryLabel = (post.category || 'discussion').toUpperCase();
+                const totalEngagement = pushCount + booCount + (post.comment_count || 0);
 
                 el.innerHTML = `
-                    <div class="w-[3px] shrink-0 ${colors.rail}"></div>
-                    <div class="flex-1 min-w-0 px-4 py-3.5">
-                        <div class="flex items-center gap-2 mb-2">
-                            <span class="w-6 h-6 rounded-full ${colors.avatar} text-[11px] font-bold flex items-center justify-center shrink-0">${avatarLetter}</span>
-                            <a href="/static/forum/profile.html?id=${post.user_id}" class="text-[11px] text-textMuted/70 hover:text-primary transition truncate" onclick="event.stopPropagation()">${safeUsername}</a>
-                            <span class="text-[11px] text-textMuted/40 ml-auto shrink-0">${date}</span>
-                        </div>
-                        <h3 class="font-bold text-[0.95rem] leading-snug text-textMain mb-2">${safeTitle}</h3>
-                        ${tagsHtml ? `<div class="flex flex-wrap gap-1.5 mb-2.5">${tagsHtml}</div>` : ''}
-                        <div class="flex items-center gap-3.5 text-[11px] text-textMuted/50">
-                            <span class="flex items-center gap-1 ${pushCount > 0 ? 'text-success/70' : ''}">
+                    <div class="w-[4px] shrink-0 ${colors.rail}"></div>
+                    <div class="flex-1 min-w-0 px-4 py-4 sm:px-5">
+                        <div class="flex items-start gap-3">
+                            <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${colors.avatar} text-xs font-bold">${avatarLetter}</span>
+                            <div class="min-w-0 flex-1">
+                                <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                    <a href="/static/forum/profile.html?id=${post.user_id}" class="text-sm font-semibold text-secondary hover:text-primary transition truncate" onclick="event.stopPropagation()">${safeUsername}</a>
+                                    <span class="text-[10px] font-semibold tracking-[0.16em] ${colors.badge}">${categoryLabel}</span>
+                                    <span class="text-[11px] text-textMuted/45">·</span>
+                                    <span class="text-[11px] text-textMuted/55">${date}</span>
+                                </div>
+                                <h3 class="mt-2 text-[1rem] font-bold leading-7 text-textMain sm:text-[1.03rem]">${safeTitle}</h3>
+                                ${tagsHtml ? `<div class="mt-3 flex flex-wrap gap-1.5">${tagsHtml}</div>` : ''}
+                                <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-textMuted/55">
+                                    <span class="inline-flex items-center gap-1.5 ${pushCount > 0 ? 'text-success/80' : ''}">
                                 <i data-lucide="thumbs-up" class="h-3 w-3"></i>${pushCount}
                             </span>
-                            <span class="flex items-center gap-1 ${booCount > 0 ? 'text-danger/70' : ''}">
+                                    <span class="inline-flex items-center gap-1.5 ${booCount > 0 ? 'text-danger/80' : ''}">
                                 <i data-lucide="thumbs-down" class="h-3 w-3"></i>${booCount}
                             </span>
-                            <span class="flex items-center gap-1">
+                                    <span class="inline-flex items-center gap-1.5">
                                 <i data-lucide="message-square" class="h-3 w-3"></i>${post.comment_count}
                             </span>
-                            ${post.tips_total > 0 ? `<span class="flex items-center gap-1 text-[#d4b693]/60"><i data-lucide="gift" class="h-3 w-3"></i>${post.tips_total}</span>` : ''}
+                                    ${post.tips_total > 0 ? `<span class="inline-flex items-center gap-1.5 text-[#d4b693]/80"><i data-lucide="gift" class="h-3 w-3"></i>${post.tips_total} Pi</span>` : ''}
+                                    <span class="ml-auto inline-flex items-center rounded-full border border-white/6 bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] text-textMuted/60">
+                                        ${totalEngagement} interactions
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -495,18 +531,20 @@ const ForumApp = {
                 if (comment.type !== 'comment') return; // ?�顯示�??��?�?
 
                 const el = document.createElement('div');
-                el.className = 'border-b border-white/5 py-3';
+                el.className = 'rounded-2xl border border-white/6 bg-white/[0.025] px-4 py-3.5';
                 el.innerHTML = `
-                    <div class="flex justify-between items-start mb-1">
-                        <a href="/static/forum/profile.html?id=${comment.user_id}" class="font-bold text-sm text-secondary hover:text-primary transition">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(comment.username || comment.user_id) : comment.username || comment.user_id}</a>
+                    <div class="flex justify-between items-start gap-3 mb-2">
+                        <div class="min-w-0">
+                            <a href="/static/forum/profile.html?id=${comment.user_id}" class="font-semibold text-sm text-secondary hover:text-primary transition">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(comment.username || comment.user_id) : comment.username || comment.user_id}</a>
+                            <div class="text-[11px] text-textMuted/60 mt-1">${formatTWDate(comment.created_at, true)}</div>
+                        </div>
                         <div class="flex items-center gap-2">
-                            <span class="text-xs text-textMuted">${formatTWDate(comment.created_at, true)}</span>
                             <button data-report-type="comment" data-report-id="${comment.id}" class="text-textMuted hover:text-danger p-1 rounded transition report-trigger" title="Report">
                                 <i data-lucide="flag" class="w-3 h-3"></i>
                             </button>
                         </div>
                     </div>
-                    <div class="text-textMain text-sm">${escapeHtml(comment.content)}</div>
+                    <div class="text-textMain text-sm leading-7">${escapeHtml(comment.content)}</div>
                 `;
                 container.appendChild(el);
             });
@@ -1920,4 +1958,3 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 100);
     }
 });
-

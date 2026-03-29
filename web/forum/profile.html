@@ -24,10 +24,10 @@
     <!-- Pi.init() called by JS with correct sandbox setting -->
 </head>
 
-<body class="bg-background text-textMain min-h-screen flex flex-col" data-page="profile" style="background:#0b0b12">
+<body class="bg-background text-textMain min-h-screen flex flex-col" data-page="profile" style="background:linear-gradient(180deg,#111017 0%,#0b0b11 100%)">
 
     <!-- Navbar -->
-    <nav class="sticky top-0 z-50 bg-surface/95 backdrop-blur-xl border-b border-white/5 px-4 py-3">
+    <nav class="sticky top-0 z-50 bg-[#111017]/94 backdrop-blur-xl border-b border-white/5 px-4 py-3">
         <div class="max-w-3xl mx-auto flex items-center justify-between">
             <button onclick="handleProfileBack()"
                 class="flex items-center gap-2 text-secondary font-bold hover:text-primary transition">
@@ -64,9 +64,18 @@
 
     <!-- Main Content -->
     <main class="flex-1 max-w-3xl mx-auto w-full p-4 space-y-6">
+        <section class="rounded-[26px] border border-white/6 bg-[#17151d] p-5 sm:p-6">
+            <p class="text-[11px] uppercase tracking-[0.22em] text-primary/70">Profile</p>
+            <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                    <h1 class="text-2xl font-extrabold text-textMain">社群成員資料</h1>
+                    <p class="mt-1 text-sm leading-6 text-textMuted">這頁改成更接近論壇人物卡，不再像舊版管理頁加朋友工具列硬塞在一起。</p>
+                </div>
+            </div>
+        </section>
 
         <!-- Profile Header -->
-        <div id="profile-header" class="bg-surface border border-white/5 rounded-2xl p-6 relative overflow-hidden">
+        <div id="profile-header" class="bg-[#17151d] border border-white/6 rounded-[24px] p-6 relative overflow-hidden">
             <div class="flex flex-col md:flex-row md:items-center gap-4">
                 <div id="profile-avatar"
                     class="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center text-primary text-3xl font-bold flex-shrink-0">
@@ -89,26 +98,26 @@
 
         <!-- Stats Grid -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="bg-surface border border-white/5 rounded-xl p-4 text-center">
+            <div class="bg-[#17151d] border border-white/6 rounded-2xl p-4 text-center">
                 <div id="stat-posts" class="text-2xl font-bold text-primary">-</div>
                 <div class="text-xs text-textMuted">Posts</div>
             </div>
-            <div class="bg-surface border border-white/5 rounded-xl p-4 text-center">
+            <div class="bg-[#17151d] border border-white/6 rounded-2xl p-4 text-center">
                 <div id="stat-pushes" class="text-2xl font-bold text-success">-</div>
                 <div class="text-xs text-textMuted">Pushes</div>
             </div>
-            <div class="bg-surface border border-white/5 rounded-xl p-4 text-center">
+            <div class="bg-[#17151d] border border-white/6 rounded-2xl p-4 text-center">
                 <div id="stat-friends" class="text-2xl font-bold text-accent">-</div>
                 <div class="text-xs text-textMuted">Friends</div>
             </div>
-            <div class="bg-surface border border-white/5 rounded-xl p-4 text-center">
+            <div class="bg-[#17151d] border border-white/6 rounded-2xl p-4 text-center">
                 <div id="stat-member" class="text-2xl font-bold text-secondary">-</div>
                 <div class="text-xs text-textMuted">Member Since</div>
             </div>
         </div>
 
         <!-- User Posts -->
-        <div class="bg-surface border border-white/5 rounded-2xl overflow-hidden">
+        <div class="bg-[#17151d] border border-white/6 rounded-[24px] overflow-hidden">
             <div class="px-6 py-4 border-b border-white/5">
                 <h2 class="font-bold text-lg text-textMain flex items-center gap-2">
                     <i data-lucide="file-text" class="w-5 h-5 text-primary"></i>
@@ -127,7 +136,7 @@
 
         <!-- Actions Menu (for non-self profiles) -->
         <div id="more-actions" class="hidden">
-            <div class="bg-surface border border-white/5 rounded-2xl overflow-hidden">
+            <div class="bg-[#17151d] border border-white/6 rounded-[24px] overflow-hidden">
                 <button id="block-btn"
                     class="w-full px-6 py-4 text-left text-danger hover:bg-danger/10 transition flex items-center gap-3">
                     <i data-lucide="ban" class="w-5 h-5"></i>

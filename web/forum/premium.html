@@ -20,12 +20,12 @@
     <script src="/static/js/logger.js"></script>
 </head>
 
-<body class="bg-background text-textMain min-h-screen flex flex-col" data-page="premium" style="background:#0b0b12">
+<body class="bg-background text-textMain min-h-screen flex flex-col" data-page="premium" style="background:linear-gradient(180deg,#111017 0%,#0b0b11 100%)">
 
     <!-- Navbar -->
-    <nav class="sticky top-0 z-50 bg-surface/95 backdrop-blur-xl border-b border-white/5 px-4 py-3">
+    <nav class="sticky top-0 z-50 bg-[#111017]/94 backdrop-blur-xl border-b border-white/5 px-4 py-3">
         <div class="max-w-5xl mx-auto flex items-center justify-between">
-            <a href="/static/forum/index.html"
+            <a href="/static/forum/index.html" id="forum-premium-back-link"
                 class="flex items-center gap-2 text-secondary font-bold hover:text-primary transition">
                 <i data-lucide="arrow-left" class="w-5 h-5"></i>
                 <span>Back to Forum</span>
@@ -42,18 +42,24 @@
     </nav>
 
     <!-- Main Content -->
-    <main class="flex-1 max-w-5xl mx-auto w-full p-4 py-8">
-        <div class="text-center mb-12">
-            <h1 class="text-4xl font-serif font-bold text-secondary mb-4">升級到 <span
-                    class="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">Premium 會員</span>
-            </h1>
-            <p class="text-textMuted max-w-2xl mx-auto">解鎖全部功能，獲得無限的發文和回覆權限，享受更優質的社區體驗。</p>
-        </div>
+    <main class="flex-1 max-w-5xl mx-auto w-full p-4 py-8 space-y-8">
+        <section class="rounded-[28px] border border-white/6 bg-[#17151d] p-6 sm:p-7">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                    <p class="text-[11px] uppercase tracking-[0.22em] text-primary/70">Membership</p>
+                    <h1 class="mt-1 text-3xl font-extrabold text-secondary">升級到 Premium 會員</h1>
+                    <p class="mt-2 max-w-2xl text-sm leading-6 text-textMuted">保留論壇本身的深色基底，但把升級頁做成更像產品內的會員頁，而不是另一個外部落地頁。</p>
+                </div>
+                <div class="rounded-2xl border border-yellow-500/20 bg-yellow-500/8 px-4 py-3 text-sm text-yellow-300">
+                    無限發文、無限回覆、優先體驗新功能
+                </div>
+            </div>
+        </section>
 
         <!-- Premium Features -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
             <div
-                class="bg-surface border border-white/5 rounded-2xl p-6 text-center hover:border-primary/30 transition">
+                class="bg-[#17151d] border border-white/6 rounded-[24px] p-6 text-center hover:border-primary/30 transition">
                 <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                     <i data-lucide="infinity" class="w-6 h-6 text-primary"></i>
                 </div>
@@ -62,7 +68,7 @@
             </div>
 
             <div
-                class="bg-surface border border-white/5 rounded-2xl p-6 text-center hover:border-primary/30 transition">
+                class="bg-[#17151d] border border-white/6 rounded-[24px] p-6 text-center hover:border-primary/30 transition">
                 <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                     <i data-lucide="message-circle" class="w-6 h-6 text-primary"></i>
                 </div>
@@ -71,7 +77,7 @@
             </div>
 
             <div
-                class="bg-surface border border-white/5 rounded-2xl p-6 text-center hover:border-primary/30 transition">
+                class="bg-[#17151d] border border-white/6 rounded-[24px] p-6 text-center hover:border-primary/30 transition">
                 <div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
                     <i data-lucide="sparkles" class="w-6 h-6 text-primary"></i>
                 </div>
@@ -82,7 +88,7 @@
 
         <!-- Pricing Card -->
         <div
-            class="max-w-md mx-auto bg-gradient-to-br from-surface to-surfaceHighlight border border-white/10 rounded-3xl p-8 text-center relative overflow-hidden">
+            class="max-w-md mx-auto bg-[linear-gradient(180deg,#1a1720_0%,#15131b_100%)] border border-white/10 rounded-3xl p-8 text-center relative overflow-hidden">
             <div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-10 -mt-10"></div>
 
             <div class="relative z-10">
@@ -111,7 +117,7 @@
         </div>
 
         <!-- Current Status -->
-        <div class="mt-12 bg-surface border border-white/5 rounded-2xl p-6">
+        <div class="mt-12 bg-[#17151d] border border-white/6 rounded-[24px] p-6">
             <h3 class="font-bold text-secondary mb-4 flex items-center gap-2">
                 <i data-lucide="user" class="w-5 h-5"></i>
                 會員狀態
@@ -175,6 +181,11 @@
     <script>
         // 初始化頁面
         document.addEventListener('DOMContentLoaded', async () => {
+            const backLink = document.getElementById('forum-premium-back-link');
+            if (backLink) {
+                backLink.href = sessionStorage.getItem('forumBackHref') || '/static/forum/index.html';
+            }
+
             // 初始化認證
             if (typeof initializeAuth === 'function') {
                 await initializeAuth();

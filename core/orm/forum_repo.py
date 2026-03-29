@@ -20,7 +20,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import List, Optional
 
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import Board, ForumComment, Post, PostTag, Tag, Tip, User, UserDailyPost
@@ -105,6 +105,7 @@ class ForumRepository:
         self,
         post_id: int,
         increment_view: bool = True,
+        viewer_user_id: Optional[str] = None,
         session: AsyncSession | None = None,
     ) -> Optional[dict]:
         async with using_session(session) as s:
@@ -147,6 +148,18 @@ class ForumRepository:
             if row is None:
                 return None
 
+            viewer_vote = None
+            if viewer_user_id:
+                vote_result = await s.execute(
+                    select(ForumComment.type).where(
+                        ForumComment.post_id == post_id,
+                        ForumComment.user_id == viewer_user_id,
+                        ForumComment.type.in_(["push", "boo"]),
+                        ForumComment.is_hidden == 0,
+                    )
+                )
+                viewer_vote = vote_result.scalar_one_or_none()
+
             tags = json.loads(row[6]) if row[6] else []
             return {
                 "id": row[0],
@@ -170,7 +183,7 @@ class ForumRepository:
                 "board_name": row[18],
                 "board_slug": row[19],
                 "net_votes": row[7] - row[8],
-                "viewer_vote": None,
+                "viewer_vote": viewer_vote,
             }
 
     async def get_posts(
@@ -433,16 +446,66 @@ class ForumRepository:
         session: AsyncSession | None = None,
     ) -> dict:
         now = datetime.now(timezone.utc)
-        new_comment = ForumComment(
-            post_id=post_id,
-            user_id=user_id,
-            parent_id=parent_id,
-            type=comment_type,
-            content=content,
-            created_at=now,
-        )
 
         async with using_session(session) as s:
+            if comment_type in ["push", "boo"]:
+                existing_vote_result = await s.execute(
+                    select(ForumComment).where(
+                        ForumComment.post_id == post_id,
+                        ForumComment.user_id == user_id,
+                        ForumComment.type.in_(["push", "boo"]),
+                        ForumComment.is_hidden == 0,
+                    )
+                )
+                existing_vote = existing_vote_result.scalar_one_or_none()
+
+                if existing_vote is not None:
+                    old_vote = existing_vote.type
+
+                    if old_vote == comment_type:
+                        await s.execute(
+                            delete(ForumComment).where(
+                                ForumComment.id == existing_vote.id
+                            )
+                        )
+                        if old_vote == "push":
+                            await s.execute(
+                                update(Post)
+                                .where(Post.id == post_id)
+                                .values(push_count=func.greatest(Post.push_count - 1, 0))
+                            )
+                        else:
+                            await s.execute(
+                                update(Post)
+                                .where(Post.id == post_id)
+                                .values(boo_count=func.greatest(Post.boo_count - 1, 0))
+                            )
+                        return {"success": True, "action": "cancelled"}
+
+                    await s.execute(
+                        delete(ForumComment).where(ForumComment.id == existing_vote.id)
+                    )
+                    if old_vote == "push":
+                        await s.execute(
+                            update(Post)
+                            .where(Post.id == post_id)
+                            .values(push_count=func.greatest(Post.push_count - 1, 0))
+                        )
+                    else:
+                        await s.execute(
+                            update(Post)
+                            .where(Post.id == post_id)
+                            .values(boo_count=func.greatest(Post.boo_count - 1, 0))
+                        )
+
+            new_comment = ForumComment(
+                post_id=post_id,
+                user_id=user_id,
+                parent_id=parent_id,
+                type=comment_type,
+                content=content,
+                created_at=now,
+            )
             s.add(new_comment)
             await s.flush()
 
@@ -464,6 +527,9 @@ class ForumRepository:
                     .where(Post.id == post_id)
                     .values(comment_count=Post.comment_count + 1)
                 )
+
+            if comment_type in ["push", "boo"]:
+                return {"success": True, "comment_id": new_comment.id, "action": "voted"}
 
             return {"success": True, "comment_id": new_comment.id}
 

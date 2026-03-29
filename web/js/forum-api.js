@@ -23,9 +23,7 @@ const ForumAPI = {
         return AppAPI.get(`/api/forum/posts?${query}`);
     },
     async getPost(id) {
-        const userId = this._getUserId();
-        const query = userId ? `?user_id=${encodeURIComponent(userId)}` : '';
-        return AppAPI.get(`/api/forum/posts/${id}${query}`);
+        return AppAPI.get(`/api/forum/posts/${id}`);
     },
     async createPost(data) {
         const userId = this._getUserId();

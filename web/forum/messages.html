@@ -47,10 +47,10 @@
     <!-- Pi.init() called by JS with correct sandbox setting -->
 </head>
 
-<body class="bg-background text-textMain min-h-screen flex flex-col" data-page="messages" style="background:#0b0b12">
+<body class="bg-background text-textMain min-h-screen flex flex-col" data-page="messages" style="background:linear-gradient(180deg,#111017 0%,#0b0b11 100%)">
 
     <!-- Navbar -->
-    <nav class="sticky top-0 z-50 bg-surface/95 backdrop-blur-xl border-b border-white/5 px-4 py-3">
+    <nav class="sticky top-0 z-50 bg-[#111017]/94 backdrop-blur-xl border-b border-white/5 px-4 py-3">
         <div class="max-w-6xl mx-auto flex items-center justify-between">
             <a id="back-btn" href="/static/index.html"
                 class="flex items-center gap-2 text-secondary font-bold hover:text-primary transition">
@@ -78,11 +78,22 @@
     </div>
 
     <!-- Main Content -->
-    <main class="flex-1 max-w-6xl mx-auto w-full flex messages-container">
+    <main class="flex-1 max-w-6xl mx-auto w-full flex flex-col px-4 py-4">
+        <section class="mb-4 rounded-[26px] border border-white/6 bg-[#17151d] p-5">
+            <div class="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                <div>
+                    <p class="text-[11px] uppercase tracking-[0.22em] text-primary/70">Messages</p>
+                    <h1 class="mt-1 text-2xl font-extrabold text-textMain">私訊與對話</h1>
+                    <p class="mt-1 text-sm leading-6 text-textMuted">把訊息頁也收進同一套論壇語言，保持深色、清楚、偏社群工具而不是聊天 App 模板。</p>
+                </div>
+            </div>
+        </section>
+
+        <div class="flex-1 flex messages-container rounded-[26px] border border-white/6 bg-[#17151d] overflow-hidden">
 
         <!-- 對話列表側邊欄 -->
         <aside id="conversation-sidebar"
-            class="w-full md:w-80 lg:w-96 border-r border-white/5 flex flex-col bg-surface/50">
+            class="w-full md:w-80 lg:w-96 border-r border-white/6 flex flex-col bg-black/10">
             <!-- 側邊欄標題 -->
             <div class="p-4 border-b border-white/5">
                 <h2 class="font-bold text-lg text-textMain">對話</h2>
@@ -106,13 +117,13 @@
         </aside>
 
         <!-- 聊天視窗 -->
-        <section id="chat-section" class="hidden md:flex flex-1 flex-col bg-background overflow-hidden relative">
+        <section id="chat-section" class="hidden md:flex flex-1 flex-col bg-transparent overflow-hidden relative">
             <!-- 訊息列表 - 可滾動 -->
             <div id="messages-container" data-shell-scroll data-shell-scroll-extra="1rem" class="flex-1 overflow-y-auto p-4 messages-scroll">
             </div>
 
             <!-- 訊息輸入框 - 固定在底部 -->
-            <div id="message-input-container" data-shell-fixed-input class="sticky bottom-0 bg-background/95 backdrop-blur-xl p-4 border-t border-white/5 hidden flex-shrink-0">
+            <div id="message-input-container" data-shell-fixed-input class="sticky bottom-0 bg-[#17151d]/96 backdrop-blur-xl p-4 border-t border-white/6 hidden flex-shrink-0">
                 <form id="message-form" onsubmit="MessagesPage.sendMessage(event)" class="flex flex-col">
                     <div class="flex items-end gap-3">
                         <div
@@ -154,8 +165,7 @@
                 <div class="text-center text-textMuted py-8">輸入關鍵字搜尋訊息</div>
             </div>
         </div>
-
-
+        </div>
     </main>
 
     <!-- Scripts -->

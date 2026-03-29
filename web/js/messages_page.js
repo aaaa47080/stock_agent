@@ -50,9 +50,11 @@ const MessagesPage = {
         const params = new URLSearchParams(window.location.search);
 
         // 設置返回按鈕 - 根據來源返回正確頁面
-        const source = params.get('source');
         const backBtn = document.getElementById('back-btn');
         if (backBtn) {
+            const source = params.get('source');
+            const forumBackHref = sessionStorage.getItem('forumBackHref');
+
             if (source === 'friends' || source === 'social') {
                 // 從好友頁面來的，返回好友頁面
                 backBtn.href = '/static/index.html#friends';
@@ -65,6 +67,8 @@ const MessagesPage = {
                         window.location.href = '/static/index.html';
                     }
                 };
+            } else if (forumBackHref) {
+                backBtn.href = forumBackHref;
             }
         }
 
@@ -969,4 +973,3 @@ document.addEventListener('DOMContentLoaded', () => {
 // Export to window
 window.MessagesPage = MessagesPage;
 export { MessagesPage };
-

@@ -7,8 +7,9 @@ import time
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.security import OAuth2PasswordBearer
 
-from api.deps import get_current_user
+from api.deps import get_current_user, resolve_request_token, verify_token
 from api.middleware.rate_limit import limiter
 from api.utils import run_sync
 from core.config import TEST_MODE, TEST_USER
@@ -20,6 +21,9 @@ from .models import CreatePostRequest, UpdatePostRequest
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/forum/posts", tags=["Forum - Posts"])
+oauth2_scheme_optional = OAuth2PasswordBearer(
+    tokenUrl="/api/user/login", auto_error=False
+)
 
 VALID_CATEGORIES = ["analysis", "question", "tutorial", "news", "chat", "insight"]
 
@@ -138,9 +142,21 @@ async def create_new_post(
 
 
 @router.get("/{post_id}")
-async def get_post_detail(post_id: int):
+async def get_post_detail(
+    post_id: int, request: Request, token: Optional[str] = Depends(oauth2_scheme_optional)
+):
     try:
-        post = await forum_repo.get_post_by_id(post_id, increment_view=True)
+        viewer_user_id = None
+        resolved_token = resolve_request_token(request, token)
+        if resolved_token:
+            try:
+                viewer_user_id = verify_token(resolved_token).get("sub")
+            except HTTPException:
+                viewer_user_id = None
+
+        post = await forum_repo.get_post_by_id(
+            post_id, increment_view=True, viewer_user_id=viewer_user_id
+        )
         if not post:
             raise HTTPException(status_code=404, detail="Post not found")
         if post["is_hidden"]:

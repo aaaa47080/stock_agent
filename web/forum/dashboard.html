@@ -24,12 +24,12 @@
     <script src="/static/js/logger.js"></script>
 </head>
 
-<body class="bg-background text-textMain min-h-screen flex flex-col" data-page="dashboard" style="background:#0b0b12">
+<body class="bg-background text-textMain min-h-screen flex flex-col" data-page="dashboard" style="background:linear-gradient(180deg,#111017 0%,#0b0b11 100%)">
 
     <!-- Navbar -->
-    <nav class="sticky top-0 z-50 bg-surface/95 backdrop-blur-xl border-b border-white/5 px-4 py-3">
+    <nav class="sticky top-0 z-50 bg-[#111017]/94 backdrop-blur-xl border-b border-white/5 px-4 py-3">
         <div class="max-w-5xl mx-auto flex items-center justify-between">
-            <a href="/static/forum/index.html"
+            <a href="/static/forum/index.html" id="forum-dashboard-back-link"
                 class="flex items-center gap-2 text-secondary font-bold hover:text-primary transition">
                 <i data-lucide="arrow-left" class="w-5 h-5"></i>
                 <span>Back to Forum</span>
@@ -60,13 +60,26 @@
 
     <!-- Main Content -->
     <main class="flex-1 max-w-5xl mx-auto w-full p-4 space-y-8">
+        <section class="rounded-[28px] border border-white/6 bg-[#17151d] p-6 sm:p-7">
+            <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                <div>
+                    <p class="text-[11px] uppercase tracking-[0.22em] text-primary/70">Overview</p>
+                    <h1 class="mt-1 text-2xl font-extrabold text-textMain">你的 Forum 工作台</h1>
+                    <p class="mt-2 max-w-2xl text-sm leading-6 text-textMuted">把發文、收到的打賞、近期內容與帳戶狀態集中在同一頁。風格上改成更像社群中心，而不是後台控制板。</p>
+                </div>
+                <a href="/static/forum/create.html" class="inline-flex items-center justify-center gap-2 rounded-2xl border border-primary/15 bg-primary/12 px-4 py-3 text-sm font-bold text-primary transition hover:bg-primary/18">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                    <span>寫新貼文</span>
+                </a>
+            </div>
+        </section>
 
         <!-- ==================== OVERVIEW TAB ==================== -->
         <div id="tab-content-overview" class="tab-content space-y-8">
 
             <!-- Wallet Status Card -->
             <div id="wallet-status-card"
-                class="bg-surface border border-white/5 rounded-2xl p-6 relative overflow-hidden">
+                class="bg-[#17151d] border border-white/6 rounded-[24px] p-6 relative overflow-hidden">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-4">
                         <div id="wallet-icon"
@@ -89,7 +102,7 @@
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <!-- My Posts -->
                 <div
-                    class="bg-surface border border-white/5 rounded-2xl p-6 relative overflow-hidden group hover:border-primary/30 transition">
+                    class="bg-[#17151d] border border-white/6 rounded-[24px] p-6 relative overflow-hidden group hover:border-primary/30 transition">
                     <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition">
                         <i data-lucide="file-text" class="w-16 h-16 text-primary"></i>
                     </div>
@@ -100,7 +113,7 @@
 
                 <!-- Tips Received -->
                 <div
-                    class="bg-surface border border-white/5 rounded-2xl p-6 relative overflow-hidden group hover:border-success/30 transition">
+                    class="bg-[#17151d] border border-white/6 rounded-[24px] p-6 relative overflow-hidden group hover:border-success/30 transition">
                     <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition">
                         <i data-lucide="gift" class="w-16 h-16 text-success"></i>
                     </div>
@@ -114,7 +127,7 @@
 
                 <!-- Tips Sent -->
                 <div
-                    class="bg-surface border border-white/5 rounded-2xl p-6 relative overflow-hidden group hover:border-accent/30 transition">
+                    class="bg-[#17151d] border border-white/6 rounded-[24px] p-6 relative overflow-hidden group hover:border-accent/30 transition">
                     <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition">
                         <i data-lucide="send" class="w-16 h-16 text-accent"></i>
                     </div>
@@ -131,11 +144,12 @@
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
                 <!-- Recent Activity / My Posts -->
-                <div class="bg-surface border border-white/5 rounded-2xl p-6 min-h-[300px] col-span-1 lg:col-span-2">
+                <div class="bg-[#17151d] border border-white/6 rounded-[24px] p-6 min-h-[300px] col-span-1 lg:col-span-2">
                     <div class="flex items-center justify-between mb-6">
                         <h3 class="font-bold text-secondary text-lg flex items-center gap-2">
                             <i data-lucide="list" class="w-5 h-5"></i> My Recent Posts
                         </h3>
+                        <div class="text-xs uppercase tracking-[0.16em] text-textMuted/55">Recent activity</div>
                     </div>
 
                     <div id="dash-posts-list" class="space-y-3">
@@ -215,6 +229,11 @@
         // Initialize
         // ========================================
         document.addEventListener('DOMContentLoaded', async () => {
+            const backLink = document.getElementById('forum-dashboard-back-link');
+            if (backLink) {
+                backLink.href = sessionStorage.getItem('forumBackHref') || '/static/forum/index.html';
+            }
+
             // 1. Initialize Auth
             if (typeof AuthManager !== 'undefined') {
                 await AuthManager.init();
