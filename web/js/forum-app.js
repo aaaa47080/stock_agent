@@ -207,7 +207,7 @@ const ForumApp = {
 
             posts.forEach((post) => {
                 const el = document.createElement('div');
-                el.className = 'group relative overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.02] backdrop-blur-xl flex cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:bg-white/[0.04] hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:border-white/20 active:scale-[0.98]';
+                el.className = 'group relative overflow-hidden rounded-[26px] bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.025))] shadow-[0_10px_26px_rgba(0,0,0,0.14)] ring-1 ring-white/5 flex cursor-pointer transition-all duration-300 hover:-translate-y-0.5 hover:bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03))] hover:shadow-[0_14px_34px_rgba(0,0,0,0.18)] active:scale-[0.985]';
                 el.onclick = () => this.navigateToPost(post.id);
 
                 const colors = CATEGORY_COLORS[(post.category || '').toLowerCase()] || DEFAULT_COLORS;
@@ -220,7 +220,7 @@ const ForumApp = {
                         tagsHtml = tags
                             .map((tag) => {
                                 const safe = typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(tag) : tag.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                                return `<span class="text-[11px] font-semibold px-2.5 py-1 rounded-full ${colors.tag} border border-white/5 backdrop-blur-sm">#${safe}</span>`;
+                                return `<span class="text-[11px] font-semibold px-2.5 py-1 rounded-full ${colors.tag}">#${safe}</span>`;
                             })
                             .join('');
                     }
@@ -238,32 +238,32 @@ const ForumApp = {
                 const totalEngagement = pushCount + booCount + (post.comment_count || 0);
 
                 el.innerHTML = `
-                    <div class="absolute inset-y-0 left-0 w-[4px] ${colors.rail}"></div>
-                    <div class="flex-1 min-w-0 px-5 py-5 sm:px-6 pl-6 sm:pl-7">
+                    <div class="absolute inset-x-5 top-0 h-[2px] rounded-full ${colors.rail} opacity-80"></div>
+                    <div class="flex-1 min-w-0 px-5 py-5 sm:px-6">
                         <div class="flex items-start gap-4">
                             <span class="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${colors.avatar} text-sm font-bold shadow-inner ring-1 ring-white/10">${avatarLetter}</span>
                             <div class="min-w-0 flex-1">
                                 <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1 mb-1.5">
                                     <a href="/static/forum/profile.html?id=${post.user_id}" class="text-sm font-bold text-white/90 hover:text-primary transition-colors truncate z-10 relative" onclick="event.stopPropagation()">${safeUsername}</a>
-                                    <span class="text-[10px] font-bold tracking-[0.2em] px-2 py-0.5 rounded-md border border-white/10 ${colors.badge} bg-white/[0.03]">${categoryLabel}</span>
+                                    <span class="text-[10px] font-bold tracking-[0.18em] px-2.5 py-1 rounded-full ${colors.badge} bg-white/[0.05]">${categoryLabel}</span>
                                     <span class="text-[11px] text-white/30 hidden sm:inline">·</span>
                                     <span class="text-[11px] text-white/40 font-medium">${date}</span>
                                 </div>
                                 <h3 class="mt-1 text-[1.1rem] font-extrabold leading-relaxed text-white sm:text-[1.15rem] tracking-tight group-hover:text-primary transition-colors">${safeTitle}</h3>
                                 ${tagsHtml ? `<div class="mt-3 flex flex-wrap gap-2">${tagsHtml}</div>` : ''}
-                                <div class="mt-4 flex flex-wrap items-center gap-x-5 gap-y-3 text-[12px] font-medium text-white/50">
-                                    <span class="flex items-center gap-1.5 transition-colors hover:text-white ${pushCount > 0 ? 'text-success/90' : ''}">
+                                <div class="mt-4 flex flex-wrap items-center gap-2.5 text-[12px] font-medium text-white/55">
+                                    <span class="inline-flex items-center gap-1.5 rounded-full bg-white/[0.045] px-3 py-1.5 transition-colors hover:text-white ${pushCount > 0 ? 'text-success/90' : ''}">
                                         <i data-lucide="thumbs-up" class="h-3.5 w-3.5"></i>${pushCount}
                                     </span>
-                                    <span class="flex items-center gap-1.5 transition-colors hover:text-white ${booCount > 0 ? 'text-danger/90' : ''}">
+                                    <span class="inline-flex items-center gap-1.5 rounded-full bg-white/[0.045] px-3 py-1.5 transition-colors hover:text-white ${booCount > 0 ? 'text-danger/90' : ''}">
                                         <i data-lucide="thumbs-down" class="h-3.5 w-3.5"></i>${booCount}
                                     </span>
-                                    <span class="flex items-center gap-1.5 transition-colors hover:text-white">
+                                    <span class="inline-flex items-center gap-1.5 rounded-full bg-white/[0.045] px-3 py-1.5 transition-colors hover:text-white">
                                         <i data-lucide="message-square" class="h-3.5 w-3.5"></i>${post.comment_count}
                                     </span>
-                                    ${post.tips_total > 0 ? `<span class="flex items-center gap-1.5 text-[#d4b693] drop-shadow-[0_0_8px_rgba(212,182,147,0.4)]"><i data-lucide="gift" class="h-3.5 w-3.5"></i>${post.tips_total} Pi</span>` : ''}
-                                    <span class="ml-auto flex items-center rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[10px] uppercase tracking-[0.15em] text-white/40 backdrop-blur-md">
-                                        ${totalEngagement} interactions
+                                    ${post.tips_total > 0 ? `<span class="inline-flex items-center gap-1.5 rounded-full bg-[#d4b693]/10 px-3 py-1.5 text-[#d4b693]"><i data-lucide="gift" class="h-3.5 w-3.5"></i>${post.tips_total} Pi</span>` : ''}
+                                    <span class="ml-auto inline-flex items-center rounded-full bg-black/15 px-3 py-1.5 text-[10px] uppercase tracking-[0.15em] text-white/38">
+                                        互動 ${totalEngagement}
                                     </span>
                                 </div>
                             </div>
@@ -462,7 +462,7 @@ const ForumApp = {
             if (titleEl) {
                 actionsContainer = document.createElement('div');
                 actionsContainer.id = 'author-actions';
-                actionsContainer.className = 'flex gap-2 mt-4 mb-4';
+                actionsContainer.className = 'mt-4 mb-4 flex flex-wrap gap-2.5';
                 titleEl.parentNode.insertBefore(actionsContainer, titleEl.nextSibling);
             }
         }
@@ -471,12 +471,12 @@ const ForumApp = {
             if (isAuthor) {
                 actionsContainer.innerHTML = `
                     <button id="btn-edit"
-                        class="bg-white/5 hover:bg-white/10 text-secondary px-3 py-1.5 rounded-lg flex items-center gap-2 transition text-sm border border-white/10">
+                        class="inline-flex items-center gap-2 rounded-full bg-white/[0.055] px-4 py-2 text-sm font-semibold text-secondary transition hover:bg-white/[0.085]">
                         <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
                         <span>編輯</span>
                     </button>
                     <button id="btn-delete"
-                        class="bg-danger/10 hover:bg-danger/20 text-danger px-3 py-1.5 rounded-lg flex items-center gap-2 transition text-sm border border-danger/20">
+                        class="inline-flex items-center gap-2 rounded-full bg-danger/12 px-4 py-2 text-sm font-semibold text-danger transition hover:bg-danger/20">
                         <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                         <span>刪除</span>
                     </button>
@@ -531,20 +531,20 @@ const ForumApp = {
                 if (comment.type !== 'comment') return; // ?�顯示�??��?�?
 
                 const el = document.createElement('div');
-                el.className = 'rounded-2xl border border-white/6 bg-white/[0.025] px-4 py-3.5';
+                el.className = 'rounded-[22px] bg-white/[0.04] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]';
                 el.innerHTML = `
-                    <div class="flex justify-between items-start gap-3 mb-2">
+                    <div class="mb-2.5 flex items-start justify-between gap-3">
                         <div class="min-w-0">
                             <a href="/static/forum/profile.html?id=${comment.user_id}" class="font-semibold text-sm text-secondary hover:text-primary transition">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(comment.username || comment.user_id) : comment.username || comment.user_id}</a>
                             <div class="text-[11px] text-textMuted/60 mt-1">${formatTWDate(comment.created_at, true)}</div>
                         </div>
                         <div class="flex items-center gap-2">
-                            <button data-report-type="comment" data-report-id="${comment.id}" class="text-textMuted hover:text-danger p-1 rounded transition report-trigger" title="Report">
+                            <button data-report-type="comment" data-report-id="${comment.id}" class="rounded-full p-2 text-textMuted transition hover:bg-danger/10 hover:text-danger report-trigger" title="檢舉留言">
                                 <i data-lucide="flag" class="w-3 h-3"></i>
                             </button>
                         </div>
                     </div>
-                    <div class="text-textMain text-sm leading-7">${escapeHtml(comment.content)}</div>
+                    <div class="text-sm leading-7 text-textMain/92">${escapeHtml(comment.content)}</div>
                 `;
                 container.appendChild(el);
             });
