@@ -63,19 +63,9 @@
     </div>
 
     <!-- Main Content -->
-    <main class="flex-1 max-w-3xl mx-auto w-full p-4 space-y-6">
-        <section class="rounded-[26px] border border-white/6 bg-[#17151d] p-5 sm:p-6">
-            <p class="text-[11px] uppercase tracking-[0.22em] text-primary/70">Profile</p>
-            <div class="mt-2 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                    <h1 class="text-2xl font-extrabold text-textMain">社群成員資料</h1>
-                    <p class="mt-1 text-sm leading-6 text-textMuted">這頁改成更接近論壇人物卡，不再像舊版管理頁加朋友工具列硬塞在一起。</p>
-                </div>
-            </div>
-        </section>
-
+    <main class="flex-1 max-w-3xl mx-auto w-full px-4 pt-5 pb-10 space-y-4">
         <!-- Profile Header -->
-        <div id="profile-header" class="bg-[#17151d] border border-white/6 rounded-[24px] p-6 relative overflow-hidden">
+        <div id="profile-header" class="bg-surface rounded-[28px] px-6 py-6 relative overflow-hidden shadow-[0_14px_40px_rgba(0,0,0,0.18)]">
             <div class="flex flex-col md:flex-row md:items-center gap-4">
                 <div id="profile-avatar"
                     class="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center text-primary text-3xl font-bold flex-shrink-0">
@@ -97,31 +87,31 @@
         </div>
 
         <!-- Stats Grid -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="bg-[#17151d] border border-white/6 rounded-2xl p-4 text-center">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div class="bg-surface rounded-[20px] px-4 py-5 text-center shadow-[0_6px_18px_rgba(0,0,0,0.14)]">
                 <div id="stat-posts" class="text-2xl font-bold text-primary">-</div>
-                <div class="text-xs text-textMuted">Posts</div>
+                <div class="text-xs text-textMuted mt-1">發文</div>
             </div>
-            <div class="bg-[#17151d] border border-white/6 rounded-2xl p-4 text-center">
+            <div class="bg-surface rounded-[20px] px-4 py-5 text-center shadow-[0_6px_18px_rgba(0,0,0,0.14)]">
                 <div id="stat-pushes" class="text-2xl font-bold text-success">-</div>
-                <div class="text-xs text-textMuted">Pushes</div>
+                <div class="text-xs text-textMuted mt-1">獲讚</div>
             </div>
-            <div class="bg-[#17151d] border border-white/6 rounded-2xl p-4 text-center">
+            <div class="bg-surface rounded-[20px] px-4 py-5 text-center shadow-[0_6px_18px_rgba(0,0,0,0.14)]">
                 <div id="stat-friends" class="text-2xl font-bold text-accent">-</div>
-                <div class="text-xs text-textMuted">Friends</div>
+                <div class="text-xs text-textMuted mt-1">好友</div>
             </div>
-            <div class="bg-[#17151d] border border-white/6 rounded-2xl p-4 text-center">
-                <div id="stat-member" class="text-2xl font-bold text-secondary">-</div>
-                <div class="text-xs text-textMuted">Member Since</div>
+            <div class="bg-surface rounded-[20px] px-4 py-5 text-center shadow-[0_6px_18px_rgba(0,0,0,0.14)]">
+                <div id="stat-member" class="text-lg font-bold text-secondary">-</div>
+                <div class="text-xs text-textMuted mt-1">加入時間</div>
             </div>
         </div>
 
         <!-- User Posts -->
-        <div class="bg-[#17151d] border border-white/6 rounded-[24px] overflow-hidden">
+        <div class="bg-surface rounded-[24px] overflow-hidden shadow-[0_8px_24px_rgba(0,0,0,0.14)]">
             <div class="px-6 py-4 border-b border-white/5">
-                <h2 class="font-bold text-lg text-textMain flex items-center gap-2">
-                    <i data-lucide="file-text" class="w-5 h-5 text-primary"></i>
-                    Recent Posts
+                <h2 class="font-bold text-base text-textMain flex items-center gap-2">
+                    <i data-lucide="file-text" class="w-4 h-4 text-primary"></i>
+                    近期文章
                 </h2>
             </div>
             <div id="user-posts" class="divide-y divide-white/5">
@@ -136,7 +126,7 @@
 
         <!-- Actions Menu (for non-self profiles) -->
         <div id="more-actions" class="hidden">
-            <div class="bg-[#17151d] border border-white/6 rounded-[24px] overflow-hidden">
+            <div class="bg-surface rounded-[24px] overflow-hidden shadow-[0_8px_24px_rgba(0,0,0,0.14)]">
                 <button id="block-btn"
                     class="w-full px-6 py-4 text-left text-danger hover:bg-danger/10 transition flex items-center gap-3">
                     <i data-lucide="ban" class="w-5 h-5"></i>
@@ -328,7 +318,7 @@
             // Actions
             if (isOwn) {
                 document.getElementById('profile-actions').innerHTML = `
-                    <a href="/static/forum/dashboard.html" class="bg-white/5 hover:bg-white/10 text-textMuted px-4 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2">
+                    <a href="/static/forum/dashboard.html" class="bg-white/5 hover:bg-white/10 text-textMuted px-4 py-2 rounded-full text-sm font-bold transition flex items-center gap-2">
                         <i data-lucide="settings" class="w-4 h-4"></i>
                         Dashboard
                     </a>
@@ -352,12 +342,12 @@
                 buttonHtml = `
                     <div class="flex gap-2">
                         <a href="/static/forum/messages.html?with=${encodeURIComponent(p.user_id)}"
-                           class="bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition border border-primary/20">
+                           class="bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 transition">
                             <i data-lucide="message-circle" class="w-4 h-4"></i>
                             <span>Message</span>
                         </a>
                         <button onclick="handleRemoveFriend()"
-                                class="bg-success/10 text-success px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 border border-success/20 hover:bg-danger/10 hover:text-danger hover:border-danger/20 transition group">
+                                class="bg-success/10 text-success px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 hover:bg-danger/10 hover:text-danger transition group">
                             <i data-lucide="user-check" class="w-4 h-4 group-hover:hidden"></i>
                             <i data-lucide="user-minus" class="w-4 h-4 hidden group-hover:block"></i>
                             <span class="group-hover:hidden">Friends</span>
@@ -369,7 +359,7 @@
                 if (p.is_requester) {
                     buttonHtml = `
                         <button onclick="handleCancelRequest()"
-                                class="bg-white/5 text-textMuted px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 border border-white/10 hover:bg-danger/10 hover:text-danger hover:border-danger/20 transition">
+                                class="bg-white/5 text-textMuted px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 hover:bg-danger/10 hover:text-danger transition">
                             <i data-lucide="clock" class="w-4 h-4"></i>
                             <span>Pending</span>
                         </button>
@@ -378,11 +368,11 @@
                     buttonHtml = `
                         <div class="flex gap-2">
                             <button onclick="handleAcceptRequest()"
-                                    class="bg-success/10 hover:bg-success/20 text-success px-4 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2">
+                                    class="bg-success/10 hover:bg-success/20 text-success px-4 py-2 rounded-full text-sm font-bold transition flex items-center gap-2">
                                 <i data-lucide="check" class="w-4 h-4"></i> Accept
                             </button>
                             <button onclick="handleRejectRequest()"
-                                    class="bg-danger/10 hover:bg-danger/20 text-danger px-4 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2">
+                                    class="bg-danger/10 hover:bg-danger/20 text-danger px-4 py-2 rounded-full text-sm font-bold transition flex items-center gap-2">
                                 <i data-lucide="x" class="w-4 h-4"></i> Reject
                             </button>
                         </div>
@@ -391,7 +381,7 @@
             } else if (p.friend_status === 'blocked') {
                 buttonHtml = `
                     <button onclick="handleUnblock()"
-                            class="bg-danger/10 text-danger px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 border border-danger/20 hover:bg-danger/20 transition">
+                            class="bg-danger/10 text-danger px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 hover:bg-danger/20 transition">
                         <i data-lucide="ban" class="w-4 h-4"></i>
                         <span>Blocked</span>
                     </button>
@@ -404,7 +394,7 @@
             } else {
                 buttonHtml = `
                     <button onclick="handleAddFriend()"
-                            class="bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition border border-primary/20">
+                            class="bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 transition">
                         <i data-lucide="user-plus" class="w-4 h-4"></i>
                         <span>Add Friend</span>
                     </button>
