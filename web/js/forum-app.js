@@ -169,7 +169,7 @@ const ForumApp = {
             posts.forEach((post) => {
                 const el = document.createElement('div');
                 el.className =
-                    'group rounded-[30px] bg-surface/95 p-5 md:p-6 shadow-[0_20px_48px_rgba(0,0,0,0.22)] transition hover:bg-surfaceHighlight/95 cursor-pointer';
+                    'group rounded-[24px] bg-surface/95 p-4 md:rounded-[30px] md:p-6 shadow-[0_20px_48px_rgba(0,0,0,0.22)] transition hover:bg-surfaceHighlight/95 cursor-pointer';
                 el.onclick = () => {
                     if (typeof smoothNavigate === 'function') {
                         smoothNavigate(`/static/forum/post.html?id=${post.id}`);
@@ -204,10 +204,14 @@ const ForumApp = {
                 el.innerHTML = `
                     <div class="flex flex-col gap-4">
                         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div class="flex flex-wrap items-center gap-2 min-w-0">
+                        <div class="flex min-w-0 flex-col gap-2">
+                            <div class="flex flex-wrap items-center gap-2 min-w-0">
                             <span class="text-[11px] font-bold tracking-[0.18em] text-secondary bg-white/10 px-3 py-1 rounded-full uppercase">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.category) : post.category}</span>
-                            <a href="/static/forum/profile.html?id=${post.user_id}" class="text-sm text-textMuted hover:text-primary transition break-all" onclick="event.stopPropagation()">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.username || post.user_id) : post.username || post.user_id}</a>
-                            <span class="text-xs text-textMuted">• ${date}</span>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm">
+                                <a href="/static/forum/profile.html?id=${post.user_id}" class="text-textMuted hover:text-primary transition break-all" onclick="event.stopPropagation()">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.username || post.user_id) : post.username || post.user_id}</a>
+                                <span class="text-textMuted">• ${date}</span>
+                            </div>
                         </div>
                         <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-textMuted">
                             <span class="flex items-center gap-1 ${pushCount > 0 ? 'text-success' : ''}"><i data-lucide="thumbs-up" class="w-3.5 h-3.5"></i> ${pushCount}</span>

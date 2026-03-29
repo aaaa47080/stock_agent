@@ -82,14 +82,16 @@
         </div>
     </nav>
 
-    <main class="flex-1 max-w-4xl mx-auto w-full px-4 pb-10 pt-5 md:px-6">
-        <article class="bg-surface/95 rounded-[30px] p-5 sm:p-6 mb-6 shadow-[0_20px_48px_rgba(0,0,0,0.24)] overflow-hidden">
-            <div class="flex flex-wrap items-center gap-x-3 gap-y-2 mb-5 text-sm">
+    <main class="flex-1 max-w-4xl mx-auto w-full px-2.5 pb-24 pt-4 md:px-6">
+        <article class="bg-surface/95 rounded-[24px] p-4 sm:p-6 mb-6 shadow-[0_20px_48px_rgba(0,0,0,0.24)] overflow-hidden md:rounded-[30px]">
+            <div class="flex flex-col gap-2 mb-5 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-2">
                 <span id="post-category"
                     class="bg-primary/20 text-primary px-3 py-1 rounded-full uppercase font-bold tracking-[0.16em]">Analysis</span>
-                <span id="post-author" class="text-secondary font-bold break-all min-w-0">User</span>
-                <span class="text-textMuted hidden sm:inline">|</span>
-                <span id="post-date" class="text-textMuted break-words">Date</span>
+                <div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+                    <span id="post-author" class="text-secondary font-bold break-all min-w-0">User</span>
+                    <span class="text-textMuted hidden sm:inline">|</span>
+                    <span id="post-date" class="text-textMuted break-words text-xs sm:text-sm">Date</span>
+                </div>
             </div>
 
             <h1 id="post-title" class="text-[1.7rem] md:text-3xl font-bold text-textMain mb-5 leading-tight">Loading Title...
@@ -99,7 +101,7 @@
             <div id="post-tags" class="flex flex-wrap gap-2 mb-6"></div>
 
             <div class="flex flex-col gap-5 pt-5">
-                <div class="flex flex-wrap items-center gap-5 rounded-2xl bg-background/35 px-4 py-3">
+                <div class="flex flex-wrap items-center gap-4 rounded-2xl bg-background/35 px-3.5 py-3">
                     <button id="btn-push"
                         class="flex items-center gap-2 text-textMuted hover:text-success transition group text-sm font-semibold">
                         <i data-lucide="thumbs-up" class="w-5 h-5 group-hover:scale-110 transition"></i>
