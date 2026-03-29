@@ -85,6 +85,7 @@ class TestOrmSessionModule:
         with patch.dict(
             os.environ,
             {
+                "DATABASE_URL": "",
                 "POSTGRESQL_HOST": "localhost",
                 "POSTGRESQL_USER": "test",
                 "POSTGRESQL_PASSWORD": "pass",

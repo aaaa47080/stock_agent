@@ -166,11 +166,16 @@ class TestPricingEndpoint:
 
         client = TestClient(app)
 
-        response = client.get("/api/premium/pricing")
+        with patch(
+            "core.database.system_config.get_prices",
+            return_value={"premium": 1.5, "create_post": 0.5, "tip": 0.1},
+        ):
+            response = client.get("/api/premium/pricing")
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
         assert "premium" in data["pricing"]
+        assert data["pricing"]["premium"]["monthly"] == 1.5
 
 
 class TestUpgradeRequestModel:
