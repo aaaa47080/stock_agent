@@ -307,7 +307,7 @@ const ForumApp = {
                         <button
                             type="button"
                             data-tag="${safeName}"
-                            class="trending-tag inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm transition ${
+                            class="trending-tag inline-flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-sm transition ${
                                 isActive
                                     ? 'bg-primary/12 text-primary shadow-[0_12px_24px_rgba(0,0,0,0.16)]'
                                     : 'bg-background/70 text-textMuted hover:text-primary hover:bg-white/6'
