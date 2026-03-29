@@ -117,6 +117,20 @@ const ForumApp = {
         activeFiltersText.textContent = parts.join('  ·  ');
     },
 
+    getFilteredEmptyStateMessage() {
+        const category = document.getElementById('category-filter')?.value || '';
+        if (this.currentTagFilter && category) {
+            return `No posts found for #${this.currentTagFilter} in ${category}.`;
+        }
+        if (this.currentTagFilter) {
+            return `No posts found for #${this.currentTagFilter}.`;
+        }
+        if (category) {
+            return `No posts found in ${category}.`;
+        }
+        return 'No posts yet.';
+    },
+
     async loadBoards() {
         try {
             const boards = await ForumAPI.getBoards();
@@ -148,7 +162,7 @@ const ForumApp = {
 
             if (posts.length === 0) {
                 container.innerHTML =
-                    '<div class="text-center py-10 text-textMuted">暫無文章</div>';
+                    `<div class="rounded-[28px] border border-dashed border-white/10 bg-surface/70 px-6 py-12 text-center text-textMuted">${this.getFilteredEmptyStateMessage()}</div>`;
                 return;
             }
 

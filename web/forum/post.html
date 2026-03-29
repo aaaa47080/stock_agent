@@ -82,53 +82,53 @@
         </div>
     </nav>
 
-    <main class="flex-1 max-w-4xl mx-auto w-full p-4">
-        <article class="bg-surface border border-white/5 rounded-2xl p-4 sm:p-6 mb-6 shadow-xl overflow-hidden">
-            <div class="flex flex-wrap items-center gap-x-3 gap-y-2 mb-4 text-sm">
+    <main class="flex-1 max-w-4xl mx-auto w-full px-4 pb-10 pt-5 md:px-6">
+        <article class="bg-surface/95 border border-white/8 rounded-[30px] p-5 sm:p-6 mb-6 shadow-[0_20px_48px_rgba(0,0,0,0.24)] overflow-hidden">
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-2 mb-5 text-sm">
                 <span id="post-category"
-                    class="bg-primary/20 text-primary px-2 py-0.5 rounded uppercase font-bold">Analysis</span>
+                    class="bg-primary/20 text-primary px-3 py-1 rounded-full uppercase font-bold tracking-[0.16em]">Analysis</span>
                 <span id="post-author" class="text-secondary font-bold break-all min-w-0">User</span>
-                <span class="text-textMuted">|</span>
+                <span class="text-textMuted hidden sm:inline">|</span>
                 <span id="post-date" class="text-textMuted break-words">Date</span>
             </div>
 
-            <h1 id="post-title" class="text-2xl md:text-3xl font-bold text-textMain mb-6 leading-tight">Loading Title...
+            <h1 id="post-title" class="text-[1.7rem] md:text-3xl font-bold text-textMain mb-5 leading-tight">Loading Title...
             </h1>
 
-            <div id="post-content" class="prose text-textMuted text-base leading-relaxed mb-6"></div>
+            <div id="post-content" class="prose max-w-none text-textMuted text-[15px] leading-7 mb-6 rounded-[24px] bg-background/35 px-4 py-4 sm:px-5"></div>
             <div id="post-tags" class="flex flex-wrap gap-2 mb-6"></div>
 
-            <div class="flex flex-col gap-4 border-t border-white/10 pt-4">
-                <div class="flex flex-wrap items-center gap-4">
+            <div class="flex flex-col gap-5 border-t border-white/10 pt-5">
+                <div class="flex flex-wrap items-center gap-5 rounded-2xl bg-background/35 px-4 py-3">
                     <button id="btn-push"
-                        class="flex items-center gap-1.5 text-textMuted hover:text-success transition group">
+                        class="flex items-center gap-2 text-textMuted hover:text-success transition group text-sm font-semibold">
                         <i data-lucide="thumbs-up" class="w-5 h-5 group-hover:scale-110 transition"></i>
                         <span id="stat-push">0</span>
                     </button>
                     <button id="btn-boo"
-                        class="flex items-center gap-1.5 text-textMuted hover:text-danger transition group">
+                        class="flex items-center gap-2 text-textMuted hover:text-danger transition group text-sm font-semibold">
                         <i data-lucide="thumbs-down" class="w-5 h-5 group-hover:scale-110 transition"></i>
                         <span id="stat-boo">0</span>
                     </button>
                 </div>
 
-                <div class="grid grid-cols-2 sm:flex sm:flex-wrap items-stretch gap-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <button id="btn-reply"
-                        class="bg-white/5 hover:bg-white/10 text-secondary px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition text-sm font-bold min-w-0">
+                        class="min-h-[48px] bg-white/5 hover:bg-white/10 text-secondary px-4 py-3 rounded-2xl flex items-center justify-center gap-2 transition text-sm font-bold min-w-0 border border-white/8">
                         <i data-lucide="message-square" class="w-4 h-4"></i> Reply
                     </button>
                     <button id="btn-tip"
-                        class="bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition text-sm font-bold border border-primary/20 min-w-0">
+                        class="min-h-[48px] bg-primary/10 hover:bg-primary/20 text-primary px-4 py-3 rounded-2xl flex items-center justify-center gap-2 transition text-sm font-bold border border-primary/20 min-w-0">
                         <i data-lucide="gift" class="w-4 h-4"></i> Tip <span data-price="tip"><i data-lucide="loader"
                                 class="w-3 h-3 animate-spin inline-block"></i></span>
                     </button>
                     <button id="btn-report-post"
-                        class="col-span-2 sm:col-span-1 bg-white/5 hover:bg-white/10 text-textMuted hover:text-danger px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition text-sm font-bold min-w-0">
+                        class="sm:col-span-2 min-h-[48px] bg-white/5 hover:bg-white/10 text-textMuted hover:text-danger px-4 py-3 rounded-2xl flex items-center justify-center gap-2 transition text-sm font-bold min-w-0 border border-white/8">
                         <i data-lucide="flag" class="w-4 h-4"></i> Report
                     </button>
                 </div>
             </div>
-            <div class="text-left sm:text-right mt-1">
+            <div class="text-left sm:text-right mt-2">
                 <span class="text-xs text-primary/60">Total Tips: <span id="stat-tips">0</span> Pi</span>
             </div>
         </article>
