@@ -168,7 +168,7 @@ const ForumApp = {
             // 渲�??�板?�表 (如�??��?�?
         } catch (e) {
             console.error('Error loading boards:', e);
-            if (typeof showToast === 'function') showToast('?�板載入失�?，�?稍�??�試', 'error');
+            if (typeof showToast === 'function') showToast('看板載入失敗，請稍後再試', 'error');
         }
     },
 
@@ -275,7 +275,7 @@ const ForumApp = {
             AppUtils.refreshIcons();
         } catch (e) {
             console.error(e);
-            container.innerHTML = '<div class="text-center py-10 text-danger">載入失�?</div>';
+            container.innerHTML = '<div class="text-center py-10 text-danger">載入失敗</div>';
         }
     },
 
@@ -333,7 +333,7 @@ const ForumApp = {
         } catch (e) {
             console.error('Failed to load tags', e);
             if (container) {
-                container.innerHTML = '<div class="text-sm text-danger py-1">標籤載入失�?</div>';
+                container.innerHTML = '<div class="text-sm text-danger py-1">標籤載入失敗</div>';
             }
         }
     },
@@ -445,7 +445,7 @@ const ForumApp = {
             // Re-render icons
             AppUtils.refreshIcons();
         } catch (e) {
-            showToast('?��?載入失�?', 'error');
+            showToast('文章載入失敗', 'error');
             console.error(e);
         }
     },
@@ -478,7 +478,7 @@ const ForumApp = {
                     <button id="btn-delete"
                         class="bg-danger/10 hover:bg-danger/20 text-danger px-3 py-1.5 rounded-lg flex items-center gap-2 transition text-sm border border-danger/20">
                         <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                        <span>?�除</span>
+                        <span>刪除</span>
                     </button>
                 `;
             } else {
@@ -523,7 +523,7 @@ const ForumApp = {
             container.innerHTML = '';
 
             if (comments.length === 0) {
-                container.innerHTML = '<div class="text-center text-textMuted py-4">?�無?��?</div>';
+                container.innerHTML = '<div class="text-center text-textMuted py-4">目前還沒有留言</div>';
                 return;
             }
 
@@ -553,13 +553,13 @@ const ForumApp = {
             console.error('[Forum] loadComments failed:', e);
             if (container) {
                 container.innerHTML =
-                    '<div class="text-center py-4 text-danger">評�?載入失�?，�?稍�??�試</div>';
+                    '<div class="text-center py-4 text-danger">留言載入失敗，請稍後再試</div>';
             }
         }
     },
 
     async handlePush(postId) {
-        if (!AuthManager.currentUser) return showToast('請�??�入', 'warning');
+        if (!AuthManager.currentUser) return showToast('請先登入', 'warning');
         const post = this.currentPost;
         if (!post) return;
 
@@ -594,7 +594,7 @@ const ForumApp = {
     },
 
     async handleBoo(postId) {
-        if (!AuthManager.currentUser) return showToast('請�??�入', 'warning');
+        if (!AuthManager.currentUser) return showToast('請先登入', 'warning');
         const post = this.currentPost;
         if (!post) return;
 
@@ -629,7 +629,7 @@ const ForumApp = {
     },
 
     toggleReplyForm() {
-        if (!AuthManager.currentUser) return showToast('請�??�入', 'warning');
+        if (!AuthManager.currentUser) return showToast('請先登入', 'warning');
         const form = document.getElementById('reply-form');
         form.classList.toggle('hidden');
     },
@@ -655,7 +655,7 @@ const ForumApp = {
             if (submitBtn) {
                 submitBtn.disabled = true;
                 submitBtn.innerHTML =
-                    '<div class="flex items-center gap-2 justify-center"><svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span>?�送中</span></div>';
+                    '<div class="flex items-center gap-2 justify-center"><svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span>送出中</span></div>';
             }
 
             await ForumAPI.createComment(postId, { type: 'comment', content });
@@ -667,7 +667,7 @@ const ForumApp = {
             // ?�新載入評�??�表
             this.loadComments(postId);
 
-            showToast('Reply posted successfully.', 'success');
+            showToast('回覆已送出', 'success');
         } catch (e) {
             showToast(e.message, 'error');
         } finally {
@@ -676,23 +676,23 @@ const ForumApp = {
             if (submitBtn) {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML =
-                    '<div class="flex items-center gap-2 justify-center"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg><span>?�出評�?</span></div>';
+                    '<div class="flex items-center gap-2 justify-center"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg><span>送出回覆</span></div>';
             }
         }
     },
 
     async handleDelete(postId) {
         if (!AuthManager.currentUser) {
-            return showToast('請�??�入', 'warning');
+            return showToast('請先登入', 'warning');
         }
 
         // 確�??�除
         const confirmed = await showConfirm({
-            title: '確�??�除',
+            title: '確認刪除',
             message: 'Delete this post? This action cannot be undone.',
             type: 'warning',
-            confirmText: '確�??�除',
-            cancelText: '?��?',
+            confirmText: '刪除',
+            cancelText: '取消',
         });
 
         if (!confirmed) return;
@@ -705,7 +705,7 @@ const ForumApp = {
 
         try {
             await ForumAPI.deletePost(postId);
-            showToast('Post deleted successfully.', 'success');
+            showToast('文章已刪除', 'success');
 
             // 延遲後�??��?首�?
             setTimeout(() => {
@@ -716,7 +716,7 @@ const ForumApp = {
                 }
             }, 1000);
         } catch (e) {
-            showToast('?�除失�?: ' + e.message, 'error');
+            showToast('刪除失敗: ' + e.message, 'error');
             if (btnElement) {
                 btnElement.disabled = false;
                 btnElement.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -726,16 +726,16 @@ const ForumApp = {
 
     async handleEdit(postId) {
         if (!AuthManager.currentUser) {
-            return showToast('請�??�入', 'warning');
+            return showToast('請先登入', 'warning');
         }
 
         // TODO: 實現編輯?�能 - ?�以?�建一?�編輯模?��??��??�到編輯?�面
-        showToast('Edit feature is not available yet.', 'info');
+        showToast('編輯功能尚未開放', 'info');
     },
 
     async handleTip(postId) {
         if (!AuthManager.currentUser) {
-            return showToast('請�??�入', 'warning');
+            return showToast('請先登入', 'warning');
         }
 
         // 檢查?�否?��?賞自己�??��?
@@ -743,7 +743,7 @@ const ForumApp = {
         const postAuthorId = this.currentPost?.user_id;
 
         if (currentUserId && postAuthorId && currentUserId === postAuthorId) {
-            return showToast('You cannot tip your own post.', 'warning');
+            return showToast('不能打賞自己的文章', 'warning');
         }
 
         // 檢查?�否??Pi Browser ?��?
@@ -754,13 +754,13 @@ const ForumApp = {
 
         // 確�??��?
         const confirmed = await showConfirm({
-            title: '確�??��?',
+            title: '確認打賞',
             message: isPi
                 ? ('Tip this post with ' + tipAmount + ' Pi?\nPayment will open in Pi Browser.')
                 : ('Tip this post with ' + tipAmount + ' Pi?\nTest mode will simulate Pi Browser payment flow.'),
             type: 'info',
-            confirmText: '確�??��?',
-            cancelText: '?��?',
+            confirmText: '確認',
+            cancelText: '取消',
         });
 
         if (!confirmed) return;
@@ -775,7 +775,7 @@ const ForumApp = {
                 if (typeof AuthManager.verifyPiBrowserEnvironment === 'function') {
                     const envCheck = await AuthManager.verifyPiBrowserEnvironment();
                     if (!envCheck.valid) {
-                        showToast('Pi Browser ?��??�常，�?確�?已登??Pi 帳�?', 'warning');
+                        showToast('Pi Browser 環境異常，請確認已登入 Pi 帳號', 'warning');
                         return;
                     }
                 }
@@ -783,19 +783,19 @@ const ForumApp = {
                 try {
                     await Pi.authenticate(['username', 'payments', 'wallet_address'], () => {});
                 } catch (authErr) {
-                    showToast('?��?權�?不足，�??�新?�入', 'error');
+                    showToast('授權失敗，請重新登入', 'error');
                     return;
                 }
 
                 let paymentComplete = false;
                 let paymentError = null;
                 let tipPaymentId = null;
-                const loadingToast = showToast('�?��?��??��?...', 'info', 0);
+                const loadingToast = showToast('正在建立打賞付款...', 'info', 0);
 
                 await Pi.createPayment(
                     {
                         amount: tipAmount,
-                        memo: `?��??��? #${postId}`,
+                        memo: `打賞文章 #${postId}`,
                         metadata: { type: 'tip', post_id: postId },
                     },
                     {
@@ -842,7 +842,7 @@ const ForumApp = {
                 }
 
                 if (!txHash) {
-                    showToast('?��?超�?，�??�試', 'warning');
+                    showToast('付款逾時，請稍後再試', 'warning');
                     return;
                 }
             } else {
@@ -850,10 +850,10 @@ const ForumApp = {
             }
 
             await ForumAPI.tipPost(postId, tipAmount, txHash, tipPaymentId);
-            showToast('Tip sent successfully. Thank you for your support.', 'success');
+            showToast('打賞已送出，感謝支持', 'success');
             this.loadPostDetail(postId);
         } catch (e) {
-            showToast('?��?失�?: ' + e.message, 'error');
+            showToast('打賞失敗: ' + e.message, 'error');
         }
     },
 
@@ -952,7 +952,7 @@ const ForumApp = {
                 if (limitDisplay) {
                     if (error?.status === 401) {
                         limitDisplay.innerHTML =
-                            '<span class="text-warning text-xs">?�入已�??��?請�??�整?��???/span>';
+                            '<span class="text-warning text-xs">登入已失效，請重新整理頁面</span>';
                     } else {
                         limitDisplay.innerHTML =
                             '<span class="text-danger text-xs">Connection Error</span>';
@@ -1084,7 +1084,7 @@ const ForumApp = {
             };
 
             if (!AuthManager?.currentUser) {
-                showToast('請�??�入', 'warning');
+                showToast('請先登入', 'warning');
                 resetButton();
                 return;
             }
@@ -1100,7 +1100,7 @@ const ForumApp = {
 
             const postAmount = getPrice('create_post');
             if (postAmount === null) {
-                showToast('?�格?�置載入失�?，�??�新?��??�面', 'error');
+                showToast('價格設定載入失敗，請重新整理頁面', 'error');
                 resetButton();
                 return;
             }
@@ -1157,18 +1157,18 @@ const ForumApp = {
                                                 <div class="w-16 h-16 bg-warning/10 rounded-full flex items-center justify-center mx-auto mb-5 border border-warning/20">
                                                     <i data-lucide="lock" class="w-8 h-8 text-warning"></i>
                                                 </div>
-                                                <h3 class="text-xl font-bold text-secondary mb-2">?��?額度已滿</h3>
+                                                <h3 class="text-xl font-bold text-secondary mb-2">今日發文額度已滿</h3>
                                                 <div class="text-textMuted text-sm mb-6 leading-relaxed">
-                                                    今日已發�?<span class="text-textMain font-bold text-base">${postLimit.count}</span> / <span class="text-textMain font-bold text-base">${postLimit.limit}</span> 篇�?�?br>
-                                                    <span class="opacity-70">?��? Premium ?�員?�可?��??��?�?/span>
+                                                    今日已發文 <span class="text-textMain font-bold text-base">${postLimit.count}</span> / <span class="text-textMain font-bold text-base">${postLimit.limit}</span> 篇<br>
+                                                    <span class="opacity-70">升級 Premium 後可使用更高或無上限額度</span>
                                                 </div>
                                                 <div class="flex flex-col gap-3">
                                                     <button onclick="smoothNavigate('/static/forum/premium.html')" class="w-full py-3.5 bg-gradient-to-r from-primary to-primary/80 hover:to-primary text-background font-bold rounded-2xl transition shadow-lg flex items-center justify-center gap-2 transform active:scale-95">
                                                         <i data-lucide="crown" class="w-4 h-4"></i>
-                                                        <span>?��? Premium ?�員</span>
+                                                        <span>前往 Premium</span>
                                                     </button>
                                                     <button onclick="this.closest('.fixed').remove()" class="w-full py-3.5 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-2xl transition border border-white/5 hover:text-white">
-                                                        ?��?�?
+                                                        關閉
                                                     </button>
                                                 </div>
                                             </div>
@@ -1184,12 +1184,12 @@ const ForumApp = {
                     console.warn('[CreatePost] Failed to check limits:', error);
                     if (error?.status === 401) {
                         if (typeof showToast === 'function')
-                            showToast('?�入已�??��?請�??�整?��??��??�入', 'error');
+                            showToast('登入已失效，請重新登入', 'error');
                         resetButton();
                         return;
                     } else {
                         if (typeof showToast === 'function')
-                            showToast('?��?驗�??��??�制，�?稍�??�試', 'warning');
+                            showToast('檢查發文限制失敗，請稍後再試', 'warning');
                         // ?��?證錯誤�?如�??��?，�?許繼續由伺�??�端?��??�制
                     }
                 }
@@ -1222,7 +1222,7 @@ const ForumApp = {
                 try {
                     if (hasPiPaymentSdk) {
                         window.APP_CONFIG?.DEBUG_MODE &&
-                            console.log('[CreatePost] ?�� Real Pi Browser - Starting payment...');
+                            console.log('[CreatePost] Real Pi Browser - starting payment...');
                         try {
                             await window.Pi.authenticate(
                                 ['username', 'payments', 'wallet_address'],
@@ -1241,7 +1241,7 @@ const ForumApp = {
                             );
                         } catch (authErr) {
                             console.error('[CreatePost] Pi Auth failed:', authErr);
-                            showToast('?��?權�?不足，�??�新?�入', 'error');
+                            showToast('Pi 授權失敗，請重新登入', 'error');
                             resetButton();
                             return;
                         }
@@ -1253,7 +1253,7 @@ const ForumApp = {
                         await Pi.createPayment(
                             {
                                 amount: postAmount,
-                                memo: `?��?: ${title.substring(0, 20)}`,
+                                memo: `發文: ${title.substring(0, 20)}`,
                                 metadata: { type: 'create_post' },
                             },
                             {
@@ -1330,7 +1330,7 @@ const ForumApp = {
 
                         if (!txHash) {
                             console.error('[CreatePost] Payment timed out (no txHash)');
-                            showToast('?��?超�??��??�異常�?請聯繫管?�員', 'warning');
+                            showToast('付款逾時或未取得交易資訊，請稍後再試', 'warning');
                             resetButton();
                             return;
                         }
@@ -1344,7 +1344,7 @@ const ForumApp = {
                     }
                 } catch (paymentError) {
                     console.error('[CreatePost] Exception during payment setup:', paymentError);
-                    showToast('An error occurred while preparing the payment.', 'error');
+                    showToast('準備付款時發生錯誤', 'error');
                     resetButton();
                     return;
                 }
@@ -1380,13 +1380,13 @@ const ForumApp = {
                                     <div class="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-5 border border-success/20">
                                         <i data-lucide="check-circle-2" class="w-8 h-8 text-success"></i>
                                     </div>
-                                    <h3 class="text-xl font-bold text-secondary mb-2">?��??��?�?/h3>
+                                    <h3 class="text-xl font-bold text-secondary mb-2">文章發佈成功</h3>
                                     <div class="text-textMuted text-sm mb-6">
-                                        ?��??��?已�??��??�儲存�?br>
-                                        <span class="text-primary animate-pulse">�?��?��??��?詳�???..</span>
+                                        文章已成功建立。<br>
+                                        <span class="text-primary animate-pulse">即將前往文章頁面...</span>
                                     </div>
                                     <button id="btn-go-now" class="w-full py-3.5 bg-gradient-to-r from-success/80 to-success text-background font-bold rounded-2xl transition shadow-lg transform active:scale-95">
-                                        立即?��?
+                                        立即查看
                                     </button>
                                 </div>
                             `;
@@ -1439,22 +1439,22 @@ const ForumApp = {
                             <div class="w-16 h-16 bg-danger/10 rounded-full flex items-center justify-center mx-auto mb-5 border border-danger/20">
                                 <i data-lucide="alert-triangle" class="w-8 h-8 text-danger"></i>
                             </div>
-                            <h3 class="text-xl font-bold text-secondary mb-3 text-center">?��?失�?但支付已完�?</h3>
+                            <h3 class="text-xl font-bold text-secondary mb-3 text-center">發文失敗，但付款已完成</h3>
                             <div class="text-textMuted text-sm mb-4 leading-relaxed">
-                                <p class="mb-2">?��??��?已�??��?但�?章發布失?�。�?保�?以�?交�? ID 並聯繫客?��??��?</p>
+                                <p class="mb-2">付款已完成，但文章建立失敗。請保留以下交易 ID 並聯繫客服處理。</p>
                                 <div class="bg-background/50 p-3 rounded-xl border border-white/10 mb-3">
-                                    <div class="text-xs text-textMuted mb-1">交�? ID</div>
+                                    <div class="text-xs text-textMuted mb-1">交易 ID</div>
                                     <div class="text-textMain font-mono text-xs break-all" id="error-txhash">${SecurityUtils.escapeHTML(txHash || '')}</div>
                                 </div>
-                                <p class="text-xs opacity-60">?�誤訊息�?{SecurityUtils.escapeHTML(err.message || '')}</p>
+                                <p class="text-xs opacity-60">錯誤訊息：${SecurityUtils.escapeHTML(err.message || '')}</p>
                             </div>
                             <div class="flex flex-col gap-2">
                                 <button id="copy-txhash-btn" class="w-full py-3 bg-primary hover:brightness-110 text-background font-bold rounded-2xl transition shadow-lg flex items-center justify-center gap-2">
                                     <i data-lucide="copy" class="w-4 h-4"></i>
-                                    <span>複製交�? ID</span>
+                                    <span>複製交易 ID</span>
                                 </button>
                                 <button onclick="this.closest('.fixed').remove()" class="w-full py-3 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-2xl transition border border-white/5">
-                                    ?��?
+                                    關閉
                                 </button>
                             </div>
                         </div>
@@ -1467,7 +1467,7 @@ const ForumApp = {
                         navigator.clipboard
                             .writeText(txHash)
                             .then(() => {
-                                showToast('Transaction ID copied.', 'success');
+                                showToast('交易 ID 已複製', 'success');
                             })
                             .catch(() => {
                                 // Fallback for older browsers
@@ -1477,11 +1477,11 @@ const ForumApp = {
                                 textArea.select();
                                 document.execCommand('copy');
                                 document.body.removeChild(textArea);
-                                showToast('Transaction ID copied.', 'success');
+                                showToast('交易 ID 已複製', 'success');
                             });
                     };
                 } else {
-                    showToast('?��?失�?: ' + err.message, 'error');
+                    showToast('發文失敗: ' + err.message, 'error');
                 }
                 resetButton();
             }
@@ -1548,7 +1548,7 @@ const ForumApp = {
             const status = await getWalletStatus();
 
             if (status.has_wallet || status.auth_method === 'pi_network') {
-                statusText.textContent = '已�?��';
+                statusText.textContent = '已連線';
                 statusText.classList.remove('text-textMuted', 'text-danger');
                 statusText.classList.add('text-success');
 
@@ -1578,14 +1578,14 @@ const ForumApp = {
                 actionArea.innerHTML = `
                     <button onclick="safePiLogin()" class="bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-xl flex items-center gap-2 transition text-sm font-bold border border-primary/20">
                         <i data-lucide="log-in" class="w-4 h-4"></i>
-                        ?�入 Pi 帳�?
+                        登入 Pi 帳號
                     </button>
                 `;
             }
 
             AppUtils.refreshIcons();
         } catch (e) {
-            statusText.textContent = '載入失�?';
+            statusText.textContent = '載入失敗';
             statusText.classList.add('text-danger');
 
             actionArea.innerHTML = `
@@ -1637,7 +1637,7 @@ const ForumApp = {
             container.innerHTML = '';
             if (posts.length === 0) {
                 container.innerHTML =
-                    '<div class="text-center text-textMuted py-4">No posts yet</div>';
+                    '<div class="text-center text-textMuted py-4">還沒有文章</div>';
                 return;
             }
 
@@ -1667,7 +1667,7 @@ const ForumApp = {
             AppUtils.refreshIcons();
         } catch (e) {
             console.error('loadMyPosts error', e);
-            container.innerHTML = '<div class="text-center text-danger py-4">Failed to load</div>';
+            container.innerHTML = '<div class="text-center text-danger py-4">載入失敗</div>';
         }
     },
 
@@ -1781,7 +1781,7 @@ const ForumApp = {
             AppUtils.refreshIcons();
         } catch (e) {
             console.error('loadTransactions error', e);
-            container.innerHTML = '<div class="text-center text-danger py-4">Failed to load</div>';
+            container.innerHTML = '<div class="text-center text-danger py-4">載入失敗</div>';
         }
     },
 
@@ -1853,7 +1853,7 @@ const ForumApp = {
     // Reporting Logic
     // ===========================================
     openReportModal(type, id) {
-        if (!AuthManager.currentUser) return showToast('請�??�入', 'warning');
+        if (!AuthManager.currentUser) return showToast('請先登入', 'warning');
 
         const modal = document.getElementById('report-modal');
         if (!modal) return;
@@ -1917,9 +1917,9 @@ const ForumApp = {
                 description: description,
             });
 
-            showToast('Report submitted successfully. We will review it soon.', 'success');
+            showToast('檢舉已送出，我們會盡快審核', 'success');
         } catch (e) {
-            showError('?�交失�?: ' + e.message);
+            showError('送出失敗: ' + e.message);
         } finally {
             btn.disabled = false;
             btn.innerHTML = originalText;

@@ -1,249 +1,178 @@
 <!DOCTYPE html>
 <html lang="zh-TW" class="dark">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Post Detail - Pi Crypto Forum</title>
     <link rel="icon" type="image/png" href="/static/img/title_icon.png">
-
     <link rel="stylesheet" href="/static/css/tailwind-built.css">
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/markdown-it@14.1.0/dist/markdown-it.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
     <script src="https://sdk.minepi.com/pi-sdk.js"></script>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Mulish:wght@300;400;600;800&family=JetBrains+Mono:wght@400;500&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Mulish:wght@300;400;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/styles.css?v=4">
-
-        .prose p {
-            margin-bottom: 1.25em;
-            line-height: 1.8;
-            color: rgba(255, 255, 255, 0.85);
-            font-size: 1.05rem;
-        }
-
-        .prose ul {
-            list-style-type: none;
-            padding-left: 0;
-            margin-bottom: 1.5em;
-        }
-
-        .prose ul li {
-            position: relative;
-            padding-left: 1.5em;
-            margin-bottom: 0.5em;
-            color: rgba(255, 255, 255, 0.85);
-            line-height: 1.7;
-        }
-
-        .prose ul li::before {
-            content: "•";
-            position: absolute;
-            left: 0.25em;
-            color: #d4b693;
-            font-size: 1.2em;
-            line-height: 1;
-        }
-
-        .prose ol {
-            list-style-type: decimal;
-            padding-left: 1.5em;
-            margin-bottom: 1.5em;
-            color: rgba(255, 255, 255, 0.85);
-        }
-        
-        .prose ol li { margin-bottom: 0.5em; line-height: 1.7; }
-
-        .prose h1, .prose h2, .prose h3 {
-            color: #ffffff;
-            font-weight: 800;
-            margin-top: 2em;
-            margin-bottom: 0.75em;
-            letter-spacing: -0.02em;
-        }
-
-        .prose h1 { font-size: 1.875rem; line-height: 1.2; }
-        .prose h2 { font-size: 1.5rem; line-height: 1.3; }
-        .prose h3 { font-size: 1.25rem; line-height: 1.4; color: #e4e4e7; }
-
-        .prose a {
-            color: #d4b693;
-            text-decoration: none;
-            border-bottom: 1px dotted rgba(212, 182, 147, 0.4);
-            transition: all 0.2s ease;
-        }
-        .prose a:hover {
-            color: #e5cdb0;
-            border-bottom-color: #e5cdb0;
-        }
-
-        .prose code {
-            background: rgba(255, 255, 255, 0.06);
-            padding: 0.2em 0.4em;
-            border-radius: 6px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.9em;
-            color: #e5e7eb;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .prose pre {
-            background: #0f0f13;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            padding: 1.25em;
-            border-radius: 12px;
-            overflow-x: auto;
-            margin-bottom: 1.5em;
-            box-shadow: inset 0 2px 8px rgba(0,0,0,0.2);
-        }
-
-        .prose pre code {
-            background: transparent;
-            border: none;
-            padding: 0;
-            color: #a1a1aa;
-            font-size: 0.85rem;
-        }
-
-        .prose blockquote {
-            border-left: 3px solid #d4b693;
-            background: linear-gradient(90deg, rgba(212, 182, 147, 0.05) 0%, transparent 100%);
-            padding: 1em 1.5em;
-            border-radius: 0 12px 12px 0;
-            color: #a1a1aa;
-            font-style: italic;
-            margin: 1.5em 0;
-        }
-    </style>
     <script src="/static/config.js"></script>
     <script src="/static/js/logger.js"></script>
+    <style>
+        .prose p {
+            margin-bottom: 1em;
+            line-height: 1.8;
+        }
+        .prose ul,
+        .prose ol {
+            margin-bottom: 1em;
+            padding-left: 1.5em;
+        }
+        .prose ul {
+            list-style-type: disc;
+        }
+        .prose ol {
+            list-style-type: decimal;
+        }
+        .prose h1,
+        .prose h2,
+        .prose h3 {
+            color: #f5f5f5;
+            font-weight: 800;
+            margin-top: 1.6em;
+            margin-bottom: 0.6em;
+            line-height: 1.3;
+        }
+        .prose code {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 6px;
+            padding: 0.15em 0.4em;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .prose pre {
+            background: #0f0f15;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            padding: 1em 1.1em;
+            overflow-x: auto;
+            margin-bottom: 1em;
+        }
+        .prose pre code {
+            background: transparent;
+            border: 0;
+            padding: 0;
+        }
+        .prose blockquote {
+            margin: 1em 0;
+            padding: 0.9em 1em;
+            border-left: 3px solid #d4b693;
+            background: rgba(212, 182, 147, 0.06);
+            color: #c7c7d1;
+        }
+    </style>
 </head>
-
-<body class="bg-background text-textMain min-h-screen flex flex-col" data-page="post" style="background:linear-gradient(180deg,#111017 0%,#0c0c12 100%)">
-    <nav class="sticky top-0 z-50 bg-[#111017]/94 backdrop-blur-xl border-b border-white/5 px-4 py-3">
+<body class="min-h-screen bg-background text-textMain flex flex-col" data-page="post" style="background:linear-gradient(180deg,#111017 0%,#0b0b11 100%)">
+    <nav class="sticky top-0 z-50 border-b border-white/6 bg-[#111017]/94 px-4 py-3 backdrop-blur-xl">
         <div class="max-w-4xl mx-auto flex items-center justify-between">
-            <a href="/static/forum/index.html" id="forum-back-link"
-                class="flex items-center gap-2 text-secondary font-bold hover:text-primary transition">
+            <a href="/static/forum/index.html" id="forum-back-link" class="flex items-center gap-2 text-secondary font-bold hover:text-primary transition">
                 <i data-lucide="arrow-left" class="w-5 h-5"></i>
-                <span>Back</span>
+                <span>返回論壇</span>
             </a>
-            <div class="font-bold text-lg text-primary tracking-wide">Post Detail</div>
+            <div class="font-bold text-lg text-primary tracking-wide">文章內容</div>
             <div class="w-10"></div>
         </div>
     </nav>
 
-        <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 top-0 h-[400px] bg-[radial-gradient(ellipse_at_top,rgba(212,182,147,0.1)_0%,transparent_70%)]"></div>
-    <main class="relative z-10 flex-1 max-w-4xl mx-auto w-full px-3 pb-24 pt-5 md:px-6">
-        <article class="relative overflow-hidden rounded-[32px] border border-white/10 bg-white/[0.02] backdrop-blur-xl p-6 sm:p-8 mb-6 shadow-2xl">
-            <!-- decorative blur -->
-            <div class="absolute -top-24 -right-24 w-64 h-64 bg-primary/20 rounded-full blur-[100px] pointer-events-none"></div>
-
-            <div class="relative z-10 flex flex-col gap-3 mb-8 text-sm sm:flex-row sm:items-center sm:justify-between">
-                <div class="flex items-center gap-3">
-                    <span id="post-category"
-                        class="bg-primary/10 border border-primary/20 text-primary px-3.5 py-1.5 rounded-full uppercase text-xs font-bold tracking-[0.2em] shadow-[0_0_15px_rgba(212,182,147,0.15)]">Analysis</span>
-                    <div class="flex items-center gap-2">
-                        <span id="post-author" class="text-secondary font-bold text-sm hover:text-primary transition-colors">User</span>
-                        <span class="w-1 h-1 rounded-full bg-white/20"></span>
-                        <span id="post-date" class="text-textMuted text-xs font-medium tracking-wide">Date</span>
-                    </div>
+    <main class="flex-1 max-w-4xl mx-auto w-full px-3 pb-24 pt-5 md:px-6">
+        <article class="rounded-[28px] border border-white/6 bg-[#17151d] p-5 sm:p-7 mb-6">
+            <div class="flex flex-col gap-2 mb-5 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-2">
+                <span id="post-category" class="rounded-full bg-primary/15 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-primary">Analysis</span>
+                <div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+                    <span id="post-author" class="font-semibold text-secondary">User</span>
+                    <span class="hidden text-textMuted sm:inline">·</span>
+                    <span id="post-date" class="text-xs text-textMuted sm:text-sm">Date</span>
                 </div>
             </div>
 
-            <h1 id="post-title" class="relative z-10 text-[1.9rem] md:text-[2.5rem] font-extrabold text-white mb-8 leading-[1.2] tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white to-white/60">Loading Title...
-            </h1>
+            <h1 id="post-title" class="mb-6 text-[1.8rem] font-extrabold leading-tight text-textMain md:text-[2.2rem]">Loading Title...</h1>
 
-            <div id="post-content" class="relative z-10 prose max-w-none mb-8 rounded-[28px] border border-white/5 bg-black/20 backdrop-blur-md px-6 py-8 sm:px-8 shadow-inner"></div>
-            <div id="post-tags" class="flex flex-wrap gap-2 mb-7"></div>
+            <div id="post-content" class="prose max-w-none rounded-[24px] border border-white/5 bg-black/10 px-5 py-5 text-[15px] text-textMuted sm:px-6"></div>
+            <div id="post-tags" class="mt-5 flex flex-wrap gap-2"></div>
 
-            <div class="flex flex-col gap-5 pt-4 border-t border-white/6">
+            <div class="mt-7 border-t border-white/6 pt-5">
                 <div class="flex flex-wrap items-center gap-3 rounded-[22px] border border-white/6 bg-white/[0.03] px-3.5 py-3.5">
-                    <button id="btn-push"
-                        class="flex min-w-[108px] items-center justify-center gap-2 rounded-xl border border-white/6 bg-black/10 px-3.5 py-2.5 text-textMuted hover:text-success hover:border-success/25 transition group text-sm font-semibold">
-                        <i data-lucide="thumbs-up" class="w-5 h-5 group-hover:scale-110 transition"></i>
+                    <button id="btn-push" class="flex min-w-[108px] items-center justify-center gap-2 rounded-xl border border-white/6 bg-black/10 px-3.5 py-2.5 text-sm font-semibold text-textMuted transition hover:border-success/25 hover:text-success">
+                        <i data-lucide="thumbs-up" class="w-5 h-5"></i>
                         <span id="stat-push">0</span>
                     </button>
-                    <button id="btn-boo"
-                        class="flex min-w-[108px] items-center justify-center gap-2 rounded-xl border border-white/6 bg-black/10 px-3.5 py-2.5 text-textMuted hover:text-danger hover:border-danger/25 transition group text-sm font-semibold">
-                        <i data-lucide="thumbs-down" class="w-5 h-5 group-hover:scale-110 transition"></i>
+                    <button id="btn-boo" class="flex min-w-[108px] items-center justify-center gap-2 rounded-xl border border-white/6 bg-black/10 px-3.5 py-2.5 text-sm font-semibold text-textMuted transition hover:border-danger/25 hover:text-danger">
+                        <i data-lucide="thumbs-down" class="w-5 h-5"></i>
                         <span id="stat-boo">0</span>
                     </button>
-                    <div class="ml-auto text-xs text-primary/70">Total Tips: <span id="stat-tips">0</span> Pi</div>
+                    <div class="ml-auto text-xs text-primary/70">累積打賞 <span id="stat-tips">0</span> Pi</div>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <button id="btn-reply"
-                        class="min-h-[52px] bg-white/5 hover:bg-white/10 text-white px-4 py-3 rounded-2xl flex items-center justify-center gap-2 transition-all duration-300 text-sm font-bold min-w-0 border border-white/10 hover:border-white/20 hover:shadow-lg">
-                        <i data-lucide="message-square" class="w-4 h-4"></i> Reply
+                <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <button id="btn-reply" class="min-h-[48px] rounded-2xl border border-white/6 bg-white/5 px-4 py-3 text-sm font-bold text-secondary transition hover:bg-white/10">
+                        <span class="inline-flex items-center justify-center gap-2">
+                            <i data-lucide="message-square" class="w-4 h-4"></i>
+                            回覆
+                        </span>
                     </button>
-                    <button id="btn-tip"
-                        class="min-h-[52px] bg-gradient-to-r from-[#d4b693]/20 to-[#d4b693]/10 hover:from-[#d4b693]/30 hover:to-[#d4b693]/20 text-primary px-4 py-3 rounded-2xl flex items-center justify-center gap-2 transition-all duration-300 text-sm font-bold min-w-0 border border-primary/20 hover:border-primary/40 hover:shadow-[0_0_20px_rgba(212,182,147,0.2)]">
-                        <i data-lucide="gift" class="w-4 h-4"></i> Tip <span data-price="tip"><i data-lucide="loader" class="w-3 h-3 animate-spin inline-block"></i></span>
+                    <button id="btn-tip" class="min-h-[48px] rounded-2xl border border-primary/15 bg-primary/12 px-4 py-3 text-sm font-bold text-primary transition hover:bg-primary/18">
+                        <span class="inline-flex items-center justify-center gap-2">
+                            <i data-lucide="gift" class="w-4 h-4"></i>
+                            打賞 <span data-price="tip"><i data-lucide="loader" class="w-3 h-3 animate-spin inline-block"></i></span>
+                        </span>
                     </button>
-                    <button id="btn-report-post"
-                        class="sm:col-span-2 min-h-[52px] bg-transparent hover:bg-danger/10 text-textMuted hover:text-danger px-4 py-3 rounded-2xl flex items-center justify-center gap-2 transition-all duration-300 text-sm font-bold min-w-0 border border-transparent hover:border-danger/20">
-                        <i data-lucide="flag" class="w-4 h-4"></i> Report
+                    <button id="btn-report-post" class="sm:col-span-2 min-h-[48px] rounded-2xl border border-white/6 bg-white/5 px-4 py-3 text-sm font-bold text-textMuted transition hover:border-danger/20 hover:bg-danger/10 hover:text-danger">
+                        <span class="inline-flex items-center justify-center gap-2">
+                            <i data-lucide="flag" class="w-4 h-4"></i>
+                            檢舉
+                        </span>
                     </button>
                 </div>
             </div>
         </article>
 
-        <div id="reply-form" class="hidden bg-white/[0.02] backdrop-blur-xl border border-white/10 rounded-[28px] p-6 mb-8 shadow-2xl animate-fade-in-down relative overflow-hidden">
-            <div class="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none"></div>
-            <h3 class="font-bold text-white mb-4 relative z-10">Write a Reply</h3>
-            <textarea id="reply-content"
-                class="w-full relative z-10 bg-black/20 border border-white/10 rounded-2xl p-4 text-white focus:border-primary/50 focus:ring-1 focus:ring-primary/50 outline-none transition-all duration-300 min-h-[120px] mb-4 placeholder-white/30"
-                placeholder="Share your thoughts..."></textarea>
-            <div class="flex justify-end gap-3 relative z-10">
-                <button onclick="document.getElementById('reply-form').classList.add('hidden')"
-                    class="px-5 py-2.5 text-textMuted hover:text-white font-medium text-sm transition-colors rounded-xl hover:bg-white/5">Cancel</button>
-                <button id="submit-reply"
-                    class="bg-primary hover:bg-[#e5cdb0] text-black font-extrabold px-6 py-2.5 rounded-xl transition-all duration-300 text-sm shadow-[0_0_15px_rgba(212,182,147,0.3)] hover:shadow-[0_0_25px_rgba(212,182,147,0.5)] hover:-translate-y-0.5">Submit Reply</button>
+        <div id="reply-form" class="hidden rounded-[24px] border border-white/6 bg-[#17151d] p-5 mb-6 animate-fade-in-down">
+            <h3 class="mb-3 font-bold text-secondary">發表回覆</h3>
+            <textarea id="reply-content" class="mb-3 min-h-[110px] w-full rounded-xl border border-white/10 bg-background px-3 py-3 text-textMain outline-none focus:border-primary" placeholder="分享你的想法..."></textarea>
+            <div class="flex justify-end gap-2">
+                <button onclick="document.getElementById('reply-form').classList.add('hidden')" class="px-4 py-2 text-sm text-textMuted hover:text-secondary">取消</button>
+                <button id="submit-reply" class="rounded-xl bg-primary px-6 py-2 text-sm font-bold text-background transition hover:opacity-90">送出回覆</button>
             </div>
         </div>
 
-        <div class="bg-white/[0.02] backdrop-blur-xl border border-white/10 rounded-[32px] p-6 sm:p-8 shadow-2xl relative overflow-hidden">
-            <div class="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none"></div>
-            <h3 class="font-bold text-lg text-secondary mb-5 flex items-center gap-2">
-                <i data-lucide="message-circle" class="w-5 h-5"></i> Comments
+        <section class="rounded-[28px] border border-white/6 bg-[#17151d] p-6">
+            <h3 class="mb-5 flex items-center gap-2 text-lg font-bold text-secondary">
+                <i data-lucide="message-circle" class="w-5 h-5"></i>
+                留言
             </h3>
             <div id="comments-list" class="space-y-3.5">
-                <div class="text-center text-textMuted py-4">Loading comments...</div>
+                <div class="py-4 text-center text-textMuted">載入留言中...</div>
             </div>
-        </div>
+        </section>
     </main>
 
-    <div id="toast-container" role="status" aria-live="polite" aria-atomic="true"
-        class="fixed z-[110] flex flex-col gap-3 pointer-events-none bottom-4 left-4 right-4 items-center md:bottom-auto md:top-24 md:left-auto md:right-4 md:items-end"
-        style="bottom: var(--shell-toast-bottom, calc(1rem + env(safe-area-inset-bottom, 0px)));"></div>
+    <div id="toast-container" role="status" aria-live="polite" aria-atomic="true" class="fixed z-[110] flex flex-col gap-3 pointer-events-none bottom-4 left-4 right-4 items-center md:bottom-auto md:top-24 md:left-auto md:right-4 md:items-end" style="bottom: var(--shell-toast-bottom, calc(1rem + env(safe-area-inset-bottom, 0px)));"></div>
 
-    <div id="confirm-modal"
-        class="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
-        <div
-            class="bg-surface w-full max-w-sm p-6 rounded-3xl border border-white/10 shadow-2xl transform transition-all scale-100 opacity-100">
-            <div id="confirm-modal-icon"
-                class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 bg-warning/20">
+    <div id="confirm-modal" class="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
+        <div class="bg-surface w-full max-w-sm p-6 rounded-3xl border border-white/10 shadow-2xl">
+            <div id="confirm-modal-icon" class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 bg-warning/20">
                 <i data-lucide="alert-circle" class="w-8 h-8 text-warning"></i>
             </div>
             <h3 id="confirm-modal-title" class="text-xl font-bold text-center text-secondary mb-2">Confirm</h3>
             <p id="confirm-modal-message" class="text-textMuted text-center text-sm mb-6">Are you sure?</p>
             <div id="confirm-modal-buttons" class="flex gap-3">
-                <button id="confirm-modal-cancel"
-                    class="flex-1 py-3 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-2xl transition border border-white/5">Cancel</button>
-                <button id="confirm-modal-confirm"
-                    class="flex-1 py-3 bg-primary hover:brightness-110 text-background font-bold rounded-2xl transition shadow-lg">Confirm</button>
+                <button id="confirm-modal-cancel" class="flex-1 py-3 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-2xl transition border border-white/5">Cancel</button>
+                <button id="confirm-modal-confirm" class="flex-1 py-3 bg-primary hover:brightness-110 text-background font-bold rounded-2xl transition shadow-lg">Confirm</button>
             </div>
         </div>
     </div>
 
-    <div id="report-modal"
-        class="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
+    <div id="report-modal" class="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
         <div class="bg-surface w-full max-w-md p-6 rounded-3xl border border-white/10 shadow-2xl">
             <div class="flex items-center justify-between mb-6">
                 <h3 class="text-xl font-bold text-secondary flex items-center gap-2">
-                    <i data-lucide="flag" class="w-5 h-5 text-danger"></i> Report Content
+                    <i data-lucide="flag" class="w-5 h-5 text-danger"></i> 檢舉內容
                 </h3>
                 <button id="report-modal-close" class="text-textMuted hover:text-secondary">
                     <i data-lucide="x" class="w-5 h-5"></i>
@@ -253,52 +182,41 @@
             <form id="report-form" class="space-y-4">
                 <input type="hidden" id="report-content-type" value="post">
                 <input type="hidden" id="report-content-id">
-                <div id="report-error"
-                    class="hidden bg-danger/10 border border-danger/20 text-danger text-sm p-3 rounded-xl mb-4 flex items-start gap-2">
+                <div id="report-error" class="hidden bg-danger/10 border border-danger/20 text-danger text-sm p-3 rounded-xl mb-4 flex items-start gap-2">
                     <i data-lucide="alert-circle" class="w-4 h-4 mt-0.5 shrink-0"></i>
                     <span id="report-error-msg"></span>
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-textMuted mb-2">Report Type</label>
-                    <select id="report-type" required
-                        class="w-full bg-background border border-white/10 rounded-xl p-3 text-textMain focus:border-primary outline-none">
-                        <option value="">Select a reason...</option>
-                        <option value="spam">Spam</option>
-                        <option value="harassment">Harassment</option>
-                        <option value="misinformation">Misinformation</option>
-                        <option value="scam">Scam</option>
-                        <option value="illegal">Illegal Content</option>
-                        <option value="other">Other</option>
+                    <label class="block text-sm font-medium text-textMuted mb-2">檢舉原因</label>
+                    <select id="report-type" required class="w-full bg-background border border-white/10 rounded-xl p-3 text-textMain focus:border-primary outline-none">
+                        <option value="">請選擇原因</option>
+                        <option value="spam">垃圾內容</option>
+                        <option value="harassment">騷擾</option>
+                        <option value="misinformation">錯誤資訊</option>
+                        <option value="scam">詐騙</option>
+                        <option value="illegal">違法內容</option>
+                        <option value="other">其他</option>
                     </select>
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-textMuted mb-2">Description <span
-                            class="text-textMuted/60">(optional)</span></label>
-                    <textarea id="report-description" rows="3"
-                        class="w-full bg-background border border-white/10 rounded-xl p-3 text-textMain focus:border-primary outline-none resize-none"
-                        placeholder="Please provide more details about the violation..."></textarea>
+                    <label class="block text-sm font-medium text-textMuted mb-2">補充說明 <span class="text-textMuted/60">(選填)</span></label>
+                    <textarea id="report-description" rows="3" class="w-full bg-background border border-white/10 rounded-xl p-3 text-textMain focus:border-primary outline-none resize-none" placeholder="請補充需要審核的重點"></textarea>
                 </div>
 
                 <div class="text-xs text-textMuted bg-white/5 rounded-lg p-3">
-                    <p class="font-medium mb-1">Reporting Guidelines:</p>
+                    <p class="font-medium mb-1">檢舉提醒</p>
                     <ul class="space-y-1 text-textMuted/80">
-                        <li>Only report content that violates community guidelines</li>
-                        <li>False reports may result in penalties</li>
-                        <li>Daily limit: 5 reports (FREE), 10 reports (PREMIUM)</li>
+                        <li>僅檢舉違反社群規範的內容</li>
+                        <li>惡意檢舉可能造成帳號限制</li>
+                        <li>每日檢舉次數依會員等級而定</li>
                     </ul>
                 </div>
 
                 <div class="flex gap-3 pt-2">
-                    <button type="button" id="report-modal-cancel"
-                        class="flex-1 py-3 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-2xl transition border border-white/5">
-                        Cancel
-                    </button>
-                    <button type="submit"
-                        class="flex-1 py-3 bg-danger hover:bg-danger/80 text-white font-bold rounded-2xl transition shadow-lg">
-                        Submit Report
-                    </button>
+                    <button type="button" id="report-modal-cancel" class="flex-1 py-3 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-2xl transition border border-white/5">取消</button>
+                    <button type="submit" class="flex-1 py-3 bg-danger hover:bg-danger/80 text-white font-bold rounded-2xl transition shadow-lg">送出檢舉</button>
                 </div>
             </form>
         </div>
@@ -377,17 +295,16 @@
                 };
 
                 if (!reportType) {
-                    showError('Please select a report type');
+                    showError('請先選擇檢舉原因');
                     return;
                 }
 
                 if (errorDiv) errorDiv.classList.add('hidden');
 
                 try {
-                    const token = (typeof AuthManager !== 'undefined' && AuthManager.currentUser?.accessToken)
-                        || localStorage.getItem('access_token');
+                    const token = (typeof AuthManager !== 'undefined' && AuthManager.currentUser?.accessToken) || localStorage.getItem('access_token');
                     if (!token) {
-                        showToast('Please login first', 'error');
+                        showToast('請先登入', 'error');
                         return;
                     }
 
@@ -399,44 +316,26 @@
                         },
                         body: JSON.stringify({
                             content_type: contentType,
-                            content_id: parseInt(contentId),
+                            content_id: parseInt(contentId, 10),
                             report_type: reportType,
-                            description: description || null
+                            description
                         })
                     });
 
                     const result = await response.json();
-                    if (response.ok) {
-                        showToast('Report submitted successfully', 'success');
-                        closeModal();
-                    } else {
-                        showError(result.detail || 'Failed to submit report');
+                    if (!response.ok || !result.success) {
+                        showError(result.detail || '送出檢舉失敗');
+                        return;
                     }
+
+                    showToast('檢舉已送出', 'success');
+                    closeModal();
                 } catch (error) {
-                    console.error('Report error:', error);
-                    showError('Failed to submit report');
+                    showError('送出檢舉失敗');
+                    console.error('Report submit error:', error);
                 }
             });
         }
     </script>
-
-    <footer class="bg-surface/95 border-t border-white/5 mt-12 py-8">
-        <div class="max-w-6xl mx-auto px-4">
-            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
-                <div class="text-center md:text-left">
-                    <p class="text-xs text-textMuted">© 2026 PI CryptoMind. All rights reserved.</p>
-                </div>
-                <div class="flex flex-wrap justify-center gap-4">
-                    <a href="/static/legal/terms-of-service.html"
-                        class="text-xs text-textMuted hover:text-primary transition">Terms of Service</a>
-                    <a href="/static/legal/privacy-policy.html"
-                        class="text-xs text-textMuted hover:text-primary transition">Privacy Policy</a>
-                    <a href="/static/legal/community-guidelines.html"
-                        class="text-xs text-textMuted hover:text-primary transition">Community Guidelines</a>
-                </div>
-            </div>
-        </div>
-    </footer>
 </body>
-
 </html>
