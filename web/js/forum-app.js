@@ -29,7 +29,7 @@ const ForumApp = {
 
         try {
             this.bindEvents();
-            // ?é¢?¹å??å???
+            // ?ï¿½é¢?ï¿½ï¿½??ï¿½ï¿½???
             const page = document.body.dataset.page;
             window.APP_CONFIG?.DEBUG_MODE && console.log('ForumApp: page detected', page);
 
@@ -47,7 +47,7 @@ const ForumApp = {
     },
 
     bindEvents() {
-        // ?¨å?äº‹ä»¶??½
+        // ?ï¿½ï¿½?äº‹ä»¶??ï¿½ï¿½
         document.addEventListener('auth:login', () => this.updateAuthUI());
     },
 
@@ -60,7 +60,7 @@ const ForumApp = {
             authElements.forEach((el) => el.classList.remove('hidden'));
             guestElements.forEach((el) => el.classList.add('hidden'));
 
-            // ?´æ–°?¨æˆ¶é¡¯ç¤º?ç¨±
+            // ?ï¿½æ–°?ï¿½æˆ¶é¡¯ç¤º?ï¿½ç¨±
             const nameEls = document.querySelectorAll('.user-display-name');
             nameEls.forEach((el) => (el.textContent = user.username));
         } else {
@@ -79,7 +79,7 @@ const ForumApp = {
         this.loadTrendingTags();
         this.updatePostFiltersUI();
 
-        // ?œå?/ç¯©é¸??½
+        // ?ï¿½ï¿½?/ç¯©é¸??ï¿½ï¿½
         document.getElementById('category-filter')?.addEventListener('change', (e) => {
             this.loadPosts({
                 category: e.target.value,
@@ -134,10 +134,10 @@ const ForumApp = {
     async loadBoards() {
         try {
             const boards = await ForumAPI.getBoards();
-            // æ¸²æ??‹æ¿?—è¡¨ (å¦‚æ??‰ç?è©?
+            // æ¸²ï¿½??ï¿½æ¿?ï¿½è¡¨ (å¦‚ï¿½??ï¿½ï¿½?ï¿½?
         } catch (e) {
             console.error('Error loading boards:', e);
-            if (typeof showToast === 'function') showToast('?‹æ¿è¼‰å…¥å¤±æ?ï¼Œè?ç¨å??è©¦', 'error');
+            if (typeof showToast === 'function') showToast('?ï¿½æ¿è¼‰å…¥å¤±ï¿½?ï¼Œï¿½?ç¨ï¿½??ï¿½è©¦', 'error');
         }
     },
 
@@ -145,11 +145,8 @@ const ForumApp = {
         const container = document.getElementById('post-list');
         if (!container) return;
 
-        container.innerHTML = `<div class="rounded-[28px] border border-white/6 bg-[linear-gradient(180deg,rgba(31,29,39,0.92),rgba(24,23,32,0.9))] px-6 py-10 text-textMuted shadow-[0_18px_40px_rgba(0,0,0,0.22)] backdrop-blur-xl">
-            <div class="flex flex-col items-center justify-center gap-2">
-                <i class="animate-spin" data-lucide="loader-2"></i>
-                <span>Loading...</span>
-            </div>
+        container.innerHTML = `<div class="py-12 text-center text-textMuted/50">
+            <i class="animate-spin inline-block" data-lucide="loader-2"></i>
         </div>`;
         AppUtils.refreshIcons();
 
@@ -162,14 +159,14 @@ const ForumApp = {
 
             if (posts.length === 0) {
                 container.innerHTML =
-                    `<div class="rounded-[28px] border border-white/6 bg-[linear-gradient(180deg,rgba(31,29,39,0.9),rgba(24,23,32,0.88))] px-6 py-12 text-center text-textMuted shadow-[0_12px_30px_rgba(0,0,0,0.18)] backdrop-blur-xl">${this.getFilteredEmptyStateMessage()}</div>`;
+                    `<div class="py-16 text-center text-textMuted/50 text-sm">${this.getFilteredEmptyStateMessage()}</div>`;
                 return;
             }
 
             posts.forEach((post) => {
                 const el = document.createElement('div');
                 el.className =
-                    'group rounded-[28px] border border-white/6 bg-[linear-gradient(180deg,rgba(31,29,39,0.96),rgba(24,23,32,0.94))] px-4 py-4 md:px-5 md:py-5 shadow-[0_18px_40px_rgba(0,0,0,0.24)] transition hover:border-primary/12 hover:shadow-[0_22px_46px_rgba(0,0,0,0.28)] cursor-pointer backdrop-blur-xl';
+                    'rounded-2xl border border-white/6 bg-[rgba(28,26,36,0.92)] px-4 py-3.5 transition hover:border-white/12 hover:bg-[rgba(32,30,42,0.95)] cursor-pointer active:scale-[0.99]';
                 el.onclick = () => {
                     if (typeof smoothNavigate === 'function') {
                         smoothNavigate(`/static/forum/post.html?id=${post.id}`);
@@ -186,7 +183,7 @@ const ForumApp = {
                         tagsHtml = tags
                             .map(
                                 (tag) =>
-                                    `<span class="text-xs bg-primary/10 text-primary px-3 py-1 rounded-full">#${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(tag) : tag.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>`
+                                    `<span class="text-[11px] text-primary/80">#${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(tag) : tag.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>`
                             )
                             .join('');
                     }
@@ -194,42 +191,32 @@ const ForumApp = {
                     console.warn('[Forum] Tags parsing failed for post', post.id, e);
                 }
 
-                // ?¥æ??¼å???
                 const date = formatTWDate(post.created_at);
-
-                // ?¨å???
                 const pushCount = Math.max(0, post.push_count || 0);
                 const booCount = Math.max(0, post.boo_count || 0);
+                const safeCategory = typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.category) : post.category;
+                const safeUsername = typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.username || post.user_id) : post.username || post.user_id;
+                const safeTitle = typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.title || '') : post.title || '';
 
                 el.innerHTML = `
-                    <div class="flex flex-col gap-3">
-                        <div class="flex min-w-0 flex-col gap-2">
-                            <span class="w-fit rounded-full bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-secondary">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.category) : post.category}</span>
-                            <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-textMuted sm:text-sm">
-                                <a href="/static/forum/profile.html?id=${post.user_id}" class="font-medium text-textMuted transition hover:text-primary break-all" onclick="event.stopPropagation()">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.username || post.user_id) : post.username || post.user_id}</a>
-                                <span>&bull;</span>
-                                <span>${date}</span>
-                            </div>
-                        </div>
+                    <div class="flex items-center gap-2 mb-1.5">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-secondary/80 bg-white/6 px-2 py-0.5 rounded">${safeCategory}</span>
+                        ${tagsHtml ? `<span class="flex gap-1.5">${tagsHtml}</span>` : ''}
+                        <span class="ml-auto text-[11px] text-textMuted/50">${date}</span>
                     </div>
-                    <h3 class="font-bold text-[1.18rem] leading-snug text-textMain">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.title || '') : post.title || ''}</h3>
-                    <div class="flex flex-wrap items-center gap-2">
-                        ${tagsHtml || '<span class="text-xs text-textMuted/70">No tags</span>'}
-                    </div>
-                    <div class="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/6 pt-3 text-xs text-textMuted sm:gap-x-6">
-                        <span class="inline-flex items-center gap-1.5 ${pushCount > 0 ? 'text-success' : ''}">
-                            <i data-lucide="thumbs-up" class="h-3.5 w-3.5"></i>
-                            <span>${pushCount}</span>
+                    <h3 class="font-semibold text-[0.95rem] leading-snug text-textMain mb-2">${safeTitle}</h3>
+                    <div class="flex items-center gap-4 text-[11px] text-textMuted/60">
+                        <a href="/static/forum/profile.html?id=${post.user_id}" class="hover:text-primary transition truncate max-w-[120px]" onclick="event.stopPropagation()">${safeUsername}</a>
+                        <span class="flex items-center gap-1 ml-auto ${pushCount > 0 ? 'text-success/80' : ''}">
+                            <i data-lucide="thumbs-up" class="h-3 w-3"></i>${pushCount}
                         </span>
-                        <span class="inline-flex items-center gap-1.5 ${booCount > 0 ? 'text-danger' : ''}">
-                            <i data-lucide="thumbs-down" class="h-3.5 w-3.5"></i>
-                            <span>${booCount}</span>
+                        <span class="flex items-center gap-1 ${booCount > 0 ? 'text-danger/80' : ''}">
+                            <i data-lucide="thumbs-down" class="h-3 w-3"></i>${booCount}
                         </span>
-                        <span class="inline-flex items-center gap-1.5">
-                            <i data-lucide="message-square" class="h-3.5 w-3.5"></i>
-                            <span>${post.comment_count}</span>
+                        <span class="flex items-center gap-1">
+                            <i data-lucide="message-square" class="h-3 w-3"></i>${post.comment_count}
                         </span>
-                        ${post.tips_total > 0 ? `<span class="inline-flex items-center gap-1.5 text-primary"><i data-lucide="gift" class="h-3.5 w-3.5"></i><span>${post.tips_total}</span></span>` : ''}
+                        ${post.tips_total > 0 ? `<span class="flex items-center gap-1 text-primary/70"><i data-lucide="gift" class="h-3 w-3"></i>${post.tips_total}</span>` : ''}
                     </div>
                 `;
                 container.appendChild(el);
@@ -237,7 +224,7 @@ const ForumApp = {
             AppUtils.refreshIcons();
         } catch (e) {
             console.error(e);
-            container.innerHTML = '<div class="text-center py-10 text-danger">è¼‰å…¥å¤±æ?</div>';
+            container.innerHTML = '<div class="text-center py-10 text-danger">è¼‰å…¥å¤±ï¿½?</div>';
         }
     },
 
@@ -262,22 +249,13 @@ const ForumApp = {
                             : tag.name;
                     const isActive = this.currentTagFilter === tag.name;
 
-                    return `
-                        <button
-                            type="button"
-                            data-tag="${safeName}"
-                            class="trending-tag inline-flex items-center gap-2 rounded-full border border-white/8 bg-background/55 px-3 py-2 text-sm transition backdrop-blur-sm ${
-                                isActive
-                                    ? 'border-primary/30 bg-primary/12 text-primary'
-                                    : 'bg-background/70 text-textMuted hover:border-primary/20 hover:text-primary'
-                            }"
-                        >
-                            <span class="font-medium">#${safeName}</span>
-                            <span class="rounded-full bg-white/5 px-2 py-0.5 text-[11px] opacity-70">${tag.post_count}</span>
-                        </button>
-                    `;
+                    return `<button type="button" data-tag="${safeName}" class="trending-tag shrink-0 inline-flex items-center gap-1 text-[11px] font-medium transition whitespace-nowrap ${
+                        isActive
+                            ? 'text-primary'
+                            : 'text-textMuted/60 hover:text-primary'
+                    }"><span>#${safeName}</span><span class="text-[10px] opacity-60">${tag.post_count}</span></button>`;
                 })
-                .join('');
+                .join('<span class="text-textMuted/20 shrink-0">Â·</span>');
 
             container.querySelectorAll('.trending-tag').forEach((button) => {
                 button.addEventListener('click', () => {
@@ -297,7 +275,7 @@ const ForumApp = {
         } catch (e) {
             console.error('Failed to load tags', e);
             if (container) {
-                container.innerHTML = '<div class="text-sm text-danger py-1">æ¨™ç±¤è¼‰å…¥å¤±æ?</div>';
+                container.innerHTML = '<div class="text-sm text-danger py-1">æ¨™ç±¤è¼‰å…¥å¤±ï¿½?</div>';
             }
         }
     },
@@ -322,7 +300,7 @@ const ForumApp = {
         await this.loadPostDetail(postId);
         await this.loadComments(postId);
 
-        // ç¶å??‰é?äº‹ä»¶ - ä½¿ç”¨?‹é??¿æ?æ³•é˜²æ­¢é?è¤‡ç?å®?
+        // ç¶ï¿½??ï¿½ï¿½?äº‹ä»¶ - ä½¿ç”¨?ï¿½ï¿½??ï¿½ï¿½?æ³•é˜²æ­¢ï¿½?è¤‡ï¿½?ï¿½?
         const bindButton = (id, handler) => {
             const btn = document.getElementById(id);
             if (btn) {
@@ -346,7 +324,7 @@ const ForumApp = {
             const response = await ForumAPI.getPost(id);
             const post = response.post;
 
-            // ä¿å??¶å??‡ç?å°è±¡ï¼Œç”¨?¼å?çºŒæª¢?¥ï?å¦‚æ?è³æ?æª¢æŸ¥ä½œè€…ï?
+            // ä¿ï¿½??ï¿½ï¿½??ï¿½ï¿½?å°è±¡ï¼Œç”¨?ï¿½ï¿½?çºŒæª¢?ï¿½ï¿½?å¦‚ï¿½?è³ï¿½?æª¢æŸ¥ä½œè€…ï¿½?
             this.currentPost = post;
 
             document.title = `${post.title} - Pi Forum`;
@@ -354,7 +332,7 @@ const ForumApp = {
             document.getElementById('post-category').textContent = post.category;
             document.getElementById('post-title').textContent = post.title;
 
-            // å®‰å…¨?°å‰µå»ºä??…é??¥ï??²æ­¢ XSSï¼?
+            // å®‰å…¨?ï¿½å‰µå»ºï¿½??ï¿½ï¿½??ï¿½ï¿½??ï¿½æ­¢ XSSï¿½?
             const authorContainer = document.getElementById('post-author');
             authorContainer.innerHTML = '';
             if (typeof SecurityUtils !== 'undefined') {
@@ -375,10 +353,10 @@ const ForumApp = {
 
             document.getElementById('post-date').textContent = formatTWDate(post.created_at, true);
 
-            // å®‰å…¨?°æ¸²??Markdown ?§å®¹ï¼ˆé˜²æ­?XSSï¼?
+            // å®‰å…¨?ï¿½æ¸²??Markdown ?ï¿½å®¹ï¼ˆé˜²ï¿½?XSSï¿½?
             const contentContainer = document.getElementById('post-content');
             if (typeof SecurityUtils !== 'undefined') {
-                // ä½¿ç”¨ SecurityUtils å®‰å…¨æ¸²æ?
+                // ä½¿ç”¨ SecurityUtils å®‰å…¨æ¸²ï¿½?
                 contentContainer.innerHTML = SecurityUtils.renderMarkdownSafely(post.content);
             } else {
                 contentContainer.textContent = post.content;
@@ -400,7 +378,7 @@ const ForumApp = {
                 }
             }
 
-            // é¡¯ç¤ºä½œè€…æ?ä½œæ??•ï?ç·¨è¼¯/?ªé™¤ï¼?
+            // é¡¯ç¤ºä½œè€…ï¿½?ä½œï¿½??ï¿½ï¿½?ç·¨è¼¯/?ï¿½é™¤ï¿½?
             this.updateAuthorActions(post);
 
             // Stats
@@ -409,7 +387,7 @@ const ForumApp = {
             // Re-render icons
             AppUtils.refreshIcons();
         } catch (e) {
-            showToast('?‡ç?è¼‰å…¥å¤±æ?', 'error');
+            showToast('?ï¿½ï¿½?è¼‰å…¥å¤±ï¿½?', 'error');
             console.error(e);
         }
     },
@@ -418,10 +396,10 @@ const ForumApp = {
         const currentUserId = AuthManager.currentUser?.user_id || AuthManager.currentUser?.uid;
         const isAuthor = currentUserId && post.user_id && currentUserId === post.user_id;
 
-        // å°‹æ‰¾?–å‰µå»ºä??…æ?ä½œæ??•å®¹??
+        // å°‹æ‰¾?ï¿½å‰µå»ºï¿½??ï¿½ï¿½?ä½œï¿½??ï¿½å®¹??
         let actionsContainer = document.getElementById('author-actions');
         if (!actionsContainer) {
-            // ?¨æ?é¡Œä??¹æ??¥æ?ä½œæ??•å®¹??
+            // ?ï¿½ï¿½?é¡Œï¿½??ï¿½ï¿½??ï¿½ï¿½?ä½œï¿½??ï¿½å®¹??
             const titleEl = document.getElementById('post-title');
             if (titleEl) {
                 actionsContainer = document.createElement('div');
@@ -442,7 +420,7 @@ const ForumApp = {
                     <button id="btn-delete"
                         class="bg-danger/10 hover:bg-danger/20 text-danger px-3 py-1.5 rounded-lg flex items-center gap-2 transition text-sm border border-danger/20">
                         <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                        <span>?ªé™¤</span>
+                        <span>?ï¿½é™¤</span>
                     </button>
                 `;
             } else {
@@ -462,13 +440,13 @@ const ForumApp = {
         if (statBoo) statBoo.textContent = post.boo_count;
         if (statTips) statTips.textContent = post.tips_total;
 
-        // ?ç½®é¡è‰²
+        // ?ï¿½ç½®é¡è‰²
         btnPush?.classList.remove('text-success');
         btnPush?.classList.add('text-textMuted');
         btnBoo?.classList.remove('text-danger');
         btnBoo?.classList.add('text-textMuted');
 
-        // ?¹æ??•ç¥¨?€?‹ä???
+        // ?ï¿½ï¿½??ï¿½ç¥¨?ï¿½?ï¿½ï¿½???
         if (post.viewer_vote === 'push') {
             btnPush?.classList.remove('text-textMuted');
             btnPush?.classList.add('text-success');
@@ -487,12 +465,12 @@ const ForumApp = {
             container.innerHTML = '';
 
             if (comments.length === 0) {
-                container.innerHTML = '<div class="text-center text-textMuted py-4">?«ç„¡?è?</div>';
+                container.innerHTML = '<div class="text-center text-textMuted py-4">?ï¿½ç„¡?ï¿½ï¿½?</div>';
                 return;
             }
 
             comments.forEach((comment) => {
-                if (comment.type !== 'comment') return; // ?ªé¡¯ç¤ºä??¬å?è¦?
+                if (comment.type !== 'comment') return; // ?ï¿½é¡¯ç¤ºï¿½??ï¿½ï¿½?ï¿½?
 
                 const el = document.createElement('div');
                 el.className = 'border-b border-white/5 py-3';
@@ -515,13 +493,13 @@ const ForumApp = {
             console.error('[Forum] loadComments failed:', e);
             if (container) {
                 container.innerHTML =
-                    '<div class="text-center py-4 text-danger">è©•è?è¼‰å…¥å¤±æ?ï¼Œè?ç¨å??è©¦</div>';
+                    '<div class="text-center py-4 text-danger">è©•ï¿½?è¼‰å…¥å¤±ï¿½?ï¼Œï¿½?ç¨ï¿½??ï¿½è©¦</div>';
             }
         }
     },
 
     async handlePush(postId) {
-        if (!AuthManager.currentUser) return showToast('è«‹å??»å…¥', 'warning');
+        if (!AuthManager.currentUser) return showToast('è«‹ï¿½??ï¿½å…¥', 'warning');
         const post = this.currentPost;
         if (!post) return;
 
@@ -556,7 +534,7 @@ const ForumApp = {
     },
 
     async handleBoo(postId) {
-        if (!AuthManager.currentUser) return showToast('è«‹å??»å…¥', 'warning');
+        if (!AuthManager.currentUser) return showToast('è«‹ï¿½??ï¿½å…¥', 'warning');
         const post = this.currentPost;
         if (!post) return;
 
@@ -591,16 +569,16 @@ const ForumApp = {
     },
 
     toggleReplyForm() {
-        if (!AuthManager.currentUser) return showToast('è«‹å??»å…¥', 'warning');
+        if (!AuthManager.currentUser) return showToast('è«‹ï¿½??ï¿½å…¥', 'warning');
         const form = document.getElementById('reply-form');
         form.classList.toggle('hidden');
     },
 
     async submitReply(postId) {
-        // ?²é€??ä¿è­·ï¼šå??œæ­£?¨æ?äº¤ä¸­ï¼Œç›´?¥è???
+        // ?ï¿½ï¿½??ä¿è­·ï¼šï¿½??ï¿½æ­£?ï¿½ï¿½?äº¤ä¸­ï¼Œç›´?ï¿½ï¿½???
         if (this.isSubmittingReply) {
             window.APP_CONFIG?.DEBUG_MODE &&
-                console.log('[submitReply] ?š« Already submitting, ignoring duplicate click');
+                console.log('[submitReply] ?ï¿½ï¿½ Already submitting, ignoring duplicate click');
             return;
         }
 
@@ -610,51 +588,51 @@ const ForumApp = {
         const submitBtn = document.getElementById('submit-reply');
 
         try {
-            // è¨­ç½®?äº¤ä¸­æ?èª?
+            // è¨­ç½®?ï¿½äº¤ä¸­ï¿½?ï¿½?
             this.isSubmittingReply = true;
 
-            // ç¦ç”¨?‰é?ä¸¦é¡¯ç¤ºè??¥ç???
+            // ç¦ç”¨?ï¿½ï¿½?ä¸¦é¡¯ç¤ºï¿½??ï¿½ï¿½???
             if (submitBtn) {
                 submitBtn.disabled = true;
                 submitBtn.innerHTML =
-                    '<div class="flex items-center gap-2 justify-center"><svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span>?¼é€ä¸­</span></div>';
+                    '<div class="flex items-center gap-2 justify-center"><svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span>?ï¿½é€ä¸­</span></div>';
             }
 
             await ForumAPI.createComment(postId, { type: 'comment', content });
 
-            // æ¸…ç©ºè¼¸å…¥æ¡†ä¸¦?œé??è?è¡¨å–®
+            // æ¸…ç©ºè¼¸å…¥æ¡†ä¸¦?ï¿½ï¿½??ï¿½ï¿½?è¡¨å–®
             document.getElementById('reply-content').value = '';
             this.toggleReplyForm();
 
-            // ?æ–°è¼‰å…¥è©•è??—è¡¨
+            // ?ï¿½æ–°è¼‰å…¥è©•ï¿½??ï¿½è¡¨
             this.loadComments(postId);
 
-            showToast('è©•è??¼é€æ???, 'success');
+            showToast('è©•ï¿½??ï¿½é€ï¿½???, 'success');
         } catch (e) {
             showToast(e.message, 'error');
         } finally {
-            // ?¢å¾©?‰é??€?‹ä¸¦æ¸…é™¤?äº¤ä¸­æ?èª?
+            // ?ï¿½å¾©?ï¿½ï¿½??ï¿½?ï¿½ä¸¦æ¸…é™¤?ï¿½äº¤ä¸­ï¿½?ï¿½?
             this.isSubmittingReply = false;
             if (submitBtn) {
                 submitBtn.disabled = false;
                 submitBtn.innerHTML =
-                    '<div class="flex items-center gap-2 justify-center"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg><span>?å‡ºè©•è?</span></div>';
+                    '<div class="flex items-center gap-2 justify-center"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg><span>?ï¿½å‡ºè©•ï¿½?</span></div>';
             }
         }
     },
 
     async handleDelete(postId) {
         if (!AuthManager.currentUser) {
-            return showToast('è«‹å??»å…¥', 'warning');
+            return showToast('è«‹ï¿½??ï¿½å…¥', 'warning');
         }
 
-        // ç¢ºè??ªé™¤
+        // ç¢ºï¿½??ï¿½é™¤
         const confirmed = await showConfirm({
-            title: 'ç¢ºè??ªé™¤',
-            message: 'ç¢ºå?è¦åˆª?¤é€™ç??‡ç??ï?\n?ªé™¤å¾Œå??¡æ??¢å¾©??,
+            title: 'ç¢ºï¿½??ï¿½é™¤',
+            message: 'ç¢ºï¿½?è¦åˆª?ï¿½é€™ï¿½??ï¿½ï¿½??ï¿½ï¿½?\n?ï¿½é™¤å¾Œï¿½??ï¿½ï¿½??ï¿½å¾©??,
             type: 'warning',
-            confirmText: 'ç¢ºè??ªé™¤',
-            cancelText: '?–æ?',
+            confirmText: 'ç¢ºï¿½??ï¿½é™¤',
+            cancelText: '?ï¿½ï¿½?',
         });
 
         if (!confirmed) return;
@@ -667,9 +645,9 @@ const ForumApp = {
 
         try {
             await ForumAPI.deletePost(postId);
-            showToast('?‡ç?å·²åˆª??, 'success');
+            showToast('?ï¿½ï¿½?å·²åˆª??, 'success');
 
-            // å»¶é²å¾Œå??ªå?é¦–é?
+            // å»¶é²å¾Œï¿½??ï¿½ï¿½?é¦–ï¿½?
             setTimeout(() => {
                 if (typeof smoothNavigate === 'function') {
                     smoothNavigate('/static/forum/index.html');
@@ -678,7 +656,7 @@ const ForumApp = {
                 }
             }, 1000);
         } catch (e) {
-            showToast('?ªé™¤å¤±æ?: ' + e.message, 'error');
+            showToast('?ï¿½é™¤å¤±ï¿½?: ' + e.message, 'error');
             if (btnElement) {
                 btnElement.disabled = false;
                 btnElement.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -688,41 +666,41 @@ const ForumApp = {
 
     async handleEdit(postId) {
         if (!AuthManager.currentUser) {
-            return showToast('è«‹å??»å…¥', 'warning');
+            return showToast('è«‹ï¿½??ï¿½å…¥', 'warning');
         }
 
-        // TODO: å¯¦ç¾ç·¨è¼¯?Ÿèƒ½ - ?¯ä»¥?µå»ºä¸€?‹ç·¨è¼¯æ¨¡?‹æ??–å??ªåˆ°ç·¨è¼¯?é¢
-        showToast('ç·¨è¼¯?Ÿèƒ½?‹ç™¼ä¸?, 'info');
+        // TODO: å¯¦ç¾ç·¨è¼¯?ï¿½èƒ½ - ?ï¿½ä»¥?ï¿½å»ºä¸€?ï¿½ç·¨è¼¯æ¨¡?ï¿½ï¿½??ï¿½ï¿½??ï¿½åˆ°ç·¨è¼¯?ï¿½é¢
+        showToast('ç·¨è¼¯?ï¿½èƒ½?ï¿½ç™¼ï¿½?, 'info');
     },
 
     async handleTip(postId) {
         if (!AuthManager.currentUser) {
-            return showToast('è«‹å??»å…¥', 'warning');
+            return showToast('è«‹ï¿½??ï¿½å…¥', 'warning');
         }
 
-        // æª¢æŸ¥?¯å¦?¨æ?è³è‡ªå·±ç??‡ç?
+        // æª¢æŸ¥?ï¿½å¦?ï¿½ï¿½?è³è‡ªå·±ï¿½??ï¿½ï¿½?
         const currentUserId = AuthManager.currentUser.user_id || AuthManager.currentUser.uid;
         const postAuthorId = this.currentPost?.user_id;
 
         if (currentUserId && postAuthorId && currentUserId === postAuthorId) {
-            return showToast('ä¸èƒ½?“è??ªå·±?„æ?ç«?, 'warning');
+            return showToast('ä¸èƒ½?ï¿½ï¿½??ï¿½å·±?ï¿½ï¿½?ï¿½?, 'warning');
         }
 
-        // æª¢æŸ¥?¯å¦??Pi Browser ?°å?
+        // æª¢æŸ¥?ï¿½å¦??Pi Browser ?ï¿½ï¿½?
         const isPi = typeof isPiBrowser === 'function' ? isPiBrowser() : false;
 
-        // ?²å??“è??¹æ ¼
+        // ?ï¿½ï¿½??ï¿½ï¿½??ï¿½æ ¼
         const tipAmount = getPrice('tip');
 
-        // ç¢ºè??“è?
+        // ç¢ºï¿½??ï¿½ï¿½?
         const confirmed = await showConfirm({
-            title: 'ç¢ºè??“è?',
+            title: 'ç¢ºï¿½??ï¿½ï¿½?',
             message: isPi
-                ? `ç¢ºè??“è? ${tipAmount} Pi çµ¦ä??…ï?\nå°‡æ??‹å? Pi ?¯ä?æµç??‚`
-                : `ç¢ºè??“è? ${tipAmount} Pi çµ¦ä??…ï?\nï¼ˆæ¸¬è©¦æ¨¡å¼ï???Pi Browser ?°å?ï¼‰`,
+                ? `ç¢ºï¿½??ï¿½ï¿½? ${tipAmount} Pi çµ¦ï¿½??ï¿½ï¿½?\nå°‡ï¿½??ï¿½ï¿½? Pi ?ï¿½ï¿½?æµï¿½??ï¿½`
+                : `ç¢ºï¿½??ï¿½ï¿½? ${tipAmount} Pi çµ¦ï¿½??ï¿½ï¿½?\nï¼ˆæ¸¬è©¦æ¨¡å¼ï¿½???Pi Browser ?ï¿½ï¿½?ï¼‰`,
             type: 'info',
-            confirmText: 'ç¢ºè??“è?',
-            cancelText: '?–æ?',
+            confirmText: 'ç¢ºï¿½??ï¿½ï¿½?',
+            cancelText: '?ï¿½ï¿½?',
         });
 
         if (!confirmed) return;
@@ -731,13 +709,13 @@ const ForumApp = {
             let txHash = '';
 
             if (isPi && window.Pi) {
-                // === Pi ?Ÿå¯¦?¯ä?æµç? ===
-                window.APP_CONFIG?.DEBUG_MODE && console.log('[Tip] ?‹å? Pi ?¯ä?æµç?');
+                // === Pi ?ï¿½å¯¦?ï¿½ï¿½?æµï¿½? ===
+                window.APP_CONFIG?.DEBUG_MODE && console.log('[Tip] ?ï¿½ï¿½? Pi ?ï¿½ï¿½?æµï¿½?');
 
                 if (typeof AuthManager.verifyPiBrowserEnvironment === 'function') {
                     const envCheck = await AuthManager.verifyPiBrowserEnvironment();
                     if (!envCheck.valid) {
-                        showToast('Pi Browser ?°å??°å¸¸ï¼Œè?ç¢ºè?å·²ç™»??Pi å¸³è?', 'warning');
+                        showToast('Pi Browser ?ï¿½ï¿½??ï¿½å¸¸ï¼Œï¿½?ç¢ºï¿½?å·²ç™»??Pi å¸³ï¿½?', 'warning');
                         return;
                     }
                 }
@@ -745,19 +723,19 @@ const ForumApp = {
                 try {
                     await Pi.authenticate(['username', 'payments', 'wallet_address'], () => {});
                 } catch (authErr) {
-                    showToast('?¯ä?æ¬Šé?ä¸è¶³ï¼Œè??æ–°?»å…¥', 'error');
+                    showToast('?ï¿½ï¿½?æ¬Šï¿½?ä¸è¶³ï¼Œï¿½??ï¿½æ–°?ï¿½å…¥', 'error');
                     return;
                 }
 
                 let paymentComplete = false;
                 let paymentError = null;
                 let tipPaymentId = null;
-                const loadingToast = showToast('æ­?œ¨?•ç??¯ä?...', 'info', 0);
+                const loadingToast = showToast('ï¿½?ï¿½ï¿½?ï¿½ï¿½??ï¿½ï¿½?...', 'info', 0);
 
                 await Pi.createPayment(
                     {
                         amount: tipAmount,
-                        memo: `?“è??‡ç? #${postId}`,
+                        memo: `?ï¿½ï¿½??ï¿½ï¿½? #${postId}`,
                         metadata: { type: 'tip', post_id: postId },
                     },
                     {
@@ -799,12 +777,12 @@ const ForumApp = {
                 }
 
                 if (paymentError) {
-                    showToast(paymentError === 'CANCELLED' ? '?¯ä?å·²å?æ¶? : '?¯ä?å¤±æ?', 'warning');
+                    showToast(paymentError === 'CANCELLED' ? '?ï¿½ï¿½?å·²ï¿½?ï¿½? : '?ï¿½ï¿½?å¤±ï¿½?', 'warning');
                     return;
                 }
 
                 if (!txHash) {
-                    showToast('?¯ä?è¶…æ?ï¼Œè??è©¦', 'warning');
+                    showToast('?ï¿½ï¿½?è¶…ï¿½?ï¼Œï¿½??ï¿½è©¦', 'warning');
                     return;
                 }
             } else {
@@ -812,10 +790,10 @@ const ForumApp = {
             }
 
             await ForumAPI.tipPost(postId, tipAmount, txHash, tipPaymentId);
-            showToast('?“è??å?ï¼æ?è¬æ‚¨?„æ”¯??, 'success');
+            showToast('?ï¿½ï¿½??ï¿½ï¿½?ï¼ï¿½?è¬æ‚¨?ï¿½æ”¯??, 'success');
             this.loadPostDetail(postId);
         } catch (e) {
-            showToast('?“è?å¤±æ?: ' + e.message, 'error');
+            showToast('?ï¿½ï¿½?å¤±ï¿½?: ' + e.message, 'error');
         }
     },
 
@@ -843,7 +821,7 @@ const ForumApp = {
 
                 if (limitsData.success) {
                     const isPro = limitsData.membership?.is_premium ?? false;
-                    // ä½¿ç”¨å¾Œç«¯è¿”å??„é??¶ï?fallback ä½¿ç”¨?•æ?è¼‰å…¥?„é?ç½?
+                    // ä½¿ç”¨å¾Œç«¯è¿”ï¿½??ï¿½ï¿½??ï¿½ï¿½?fallback ä½¿ç”¨?ï¿½ï¿½?è¼‰å…¥?ï¿½ï¿½?ï¿½?
                     const defaultLimit = getLimit('daily_post_free');
                     const postLimit = limitsData.limits?.post || {
                         count: 0,
@@ -914,7 +892,7 @@ const ForumApp = {
                 if (limitDisplay) {
                     if (error?.status === 401) {
                         limitDisplay.innerHTML =
-                            '<span class="text-warning text-xs">?»å…¥å·²é??Ÿï?è«‹é??°æ•´?†é???/span>';
+                            '<span class="text-warning text-xs">?ï¿½å…¥å·²ï¿½??ï¿½ï¿½?è«‹ï¿½??ï¿½æ•´?ï¿½ï¿½???/span>';
                     } else {
                         limitDisplay.innerHTML =
                             '<span class="text-danger text-xs">Connection Error</span>';
@@ -944,7 +922,7 @@ const ForumApp = {
             setTimeout(() => clearInterval(checkAuth), 10000); // stop after 10s
         }
 
-        // ?å??–å??¸çµ±è¨ˆå???
+        // ?ï¿½ï¿½??ï¿½ï¿½??ï¿½çµ±è¨ˆï¿½???
         const initCharCounters = () => {
             const titleInput = document.getElementById('input-title');
             const contentInput = document.getElementById('input-content');
@@ -953,21 +931,21 @@ const ForumApp = {
             const titleMax = document.getElementById('title-max');
             const contentMax = document.getElementById('content-max');
 
-            // å¾å?ç«¯é?ç½®ç²?–é??¶ï??‡å?ç«¯ä??ä??´ï?
+            // å¾ï¿½?ç«¯ï¿½?ç½®ç²?ï¿½ï¿½??ï¿½ï¿½??ï¿½ï¿½?ç«¯ï¿½??ï¿½ï¿½??ï¿½ï¿½?
             const MAX_TITLE = 200;
             const MAX_CONTENT = 10000;
 
-            // ?´æ–°é¡¯ç¤º?„æ?å¤§å€?
+            // ?ï¿½æ–°é¡¯ç¤º?ï¿½ï¿½?å¤§ï¿½?
             if (titleMax) titleMax.textContent = MAX_TITLE;
             if (contentMax) contentMax.textContent = MAX_CONTENT;
 
-            // æ¨™é?å­—æ•¸çµ±è?
+            // æ¨™ï¿½?å­—æ•¸çµ±ï¿½?
             if (titleInput && titleCurrent) {
                 const updateTitleCount = () => {
                     const count = titleInput.value.length;
                     titleCurrent.textContent = count;
 
-                    // é¡è‰²è®Šå??ç¤º
+                    // é¡è‰²è®Šï¿½??ï¿½ç¤º
                     const titleCounter = document.getElementById('title-counter');
                     if (count > MAX_TITLE * 0.9) {
                         titleCurrent.className = 'text-danger font-bold';
@@ -983,16 +961,16 @@ const ForumApp = {
 
                 titleInput.addEventListener('input', updateTitleCount);
                 titleInput.addEventListener('paste', () => setTimeout(updateTitleCount, 10));
-                updateTitleCount(); // ?å???
+                updateTitleCount(); // ?ï¿½ï¿½???
             }
 
-            // ?§å®¹å­—æ•¸çµ±è?
+            // ?ï¿½å®¹å­—æ•¸çµ±ï¿½?
             if (contentInput && contentCurrent) {
                 const updateContentCount = () => {
                     const count = contentInput.value.length;
                     contentCurrent.textContent = count;
 
-                    // é¡è‰²è®Šå??ç¤º
+                    // é¡è‰²è®Šï¿½??ï¿½ç¤º
                     const contentCounter = document.getElementById('content-counter');
                     if (count > MAX_CONTENT * 0.9) {
                         contentCurrent.className = 'text-danger font-bold';
@@ -1008,14 +986,14 @@ const ForumApp = {
 
                 contentInput.addEventListener('input', updateContentCount);
                 contentInput.addEventListener('paste', () => setTimeout(updateContentCount, 10));
-                updateContentCount(); // ?å???
+                updateContentCount(); // ?ï¿½ï¿½???
             }
 
             window.APP_CONFIG?.DEBUG_MODE &&
                 console.log('[CharCounter] Character counters initialized');
         };
 
-        // ?·è??å???
+        // ?ï¿½ï¿½??ï¿½ï¿½???
         initCharCounters();
 
         document.getElementById('post-form')?.addEventListener('submit', async (e) => {
@@ -1046,7 +1024,7 @@ const ForumApp = {
             };
 
             if (!AuthManager?.currentUser) {
-                showToast('è«‹å??»å…¥', 'warning');
+                showToast('è«‹ï¿½??ï¿½å…¥', 'warning');
                 resetButton();
                 return;
             }
@@ -1062,7 +1040,7 @@ const ForumApp = {
 
             const postAmount = getPrice('create_post');
             if (postAmount === null) {
-                showToast('?¹æ ¼?ç½®è¼‰å…¥å¤±æ?ï¼Œè??æ–°?´ç??é¢', 'error');
+                showToast('?ï¿½æ ¼?ï¿½ç½®è¼‰å…¥å¤±ï¿½?ï¼Œï¿½??ï¿½æ–°?ï¿½ï¿½??ï¿½é¢', 'error');
                 resetButton();
                 return;
             }
@@ -1119,18 +1097,18 @@ const ForumApp = {
                                                 <div class="w-16 h-16 bg-warning/10 rounded-full flex items-center justify-center mx-auto mb-5 border border-warning/20">
                                                     <i data-lucide="lock" class="w-8 h-8 text-warning"></i>
                                                 </div>
-                                                <h3 class="text-xl font-bold text-secondary mb-2">?¼æ?é¡åº¦å·²æ»¿</h3>
+                                                <h3 class="text-xl font-bold text-secondary mb-2">?ï¿½ï¿½?é¡åº¦å·²æ»¿</h3>
                                                 <div class="text-textMuted text-sm mb-6 leading-relaxed">
-                                                    ä»Šæ—¥å·²ç™¼å¸?<span class="text-textMain font-bold text-base">${postLimit.count}</span> / <span class="text-textMain font-bold text-base">${postLimit.limit}</span> ç¯‡æ?ç«?br>
-                                                    <span class="opacity-70">?‡ç? Premium ?ƒå“¡?³å¯?¡é??¼æ?ï¼?/span>
+                                                    ä»Šæ—¥å·²ç™¼ï¿½?<span class="text-textMain font-bold text-base">${postLimit.count}</span> / <span class="text-textMain font-bold text-base">${postLimit.limit}</span> ç¯‡ï¿½?ï¿½?br>
+                                                    <span class="opacity-70">?ï¿½ï¿½? Premium ?ï¿½å“¡?ï¿½å¯?ï¿½ï¿½??ï¿½ï¿½?ï¿½?/span>
                                                 </div>
                                                 <div class="flex flex-col gap-3">
                                                     <button onclick="smoothNavigate('/static/forum/premium.html')" class="w-full py-3.5 bg-gradient-to-r from-primary to-primary/80 hover:to-primary text-background font-bold rounded-2xl transition shadow-lg flex items-center justify-center gap-2 transform active:scale-95">
                                                         <i data-lucide="crown" class="w-4 h-4"></i>
-                                                        <span>?‡ç? Premium ?ƒå“¡</span>
+                                                        <span>?ï¿½ï¿½? Premium ?ï¿½å“¡</span>
                                                     </button>
                                                     <button onclick="this.closest('.fixed').remove()" class="w-full py-3.5 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-2xl transition border border-white/5 hover:text-white">
-                                                        ?¥é?äº?
+                                                        ?ï¿½ï¿½?ï¿½?
                                                     </button>
                                                 </div>
                                             </div>
@@ -1146,13 +1124,13 @@ const ForumApp = {
                     console.warn('[CreatePost] Failed to check limits:', error);
                     if (error?.status === 401) {
                         if (typeof showToast === 'function')
-                            showToast('?»å…¥å·²é??Ÿï?è«‹é??°æ•´?†é??¢å??»å…¥', 'error');
+                            showToast('?ï¿½å…¥å·²ï¿½??ï¿½ï¿½?è«‹ï¿½??ï¿½æ•´?ï¿½ï¿½??ï¿½ï¿½??ï¿½å…¥', 'error');
                         resetButton();
                         return;
                     } else {
                         if (typeof showToast === 'function')
-                            showToast('?¡æ?é©—è??¼æ??åˆ¶ï¼Œè?ç¨å??è©¦', 'warning');
-                        // ?è?è­‰éŒ¯èª¤ï?å¦‚è??‚ï?ï¼Œå?è¨±ç¹¼çºŒç”±ä¼ºæ??¨ç«¯?·è??åˆ¶
+                            showToast('?ï¿½ï¿½?é©—ï¿½??ï¿½ï¿½??ï¿½åˆ¶ï¼Œï¿½?ç¨ï¿½??ï¿½è©¦', 'warning');
+                        // ?ï¿½ï¿½?è­‰éŒ¯èª¤ï¿½?å¦‚ï¿½??ï¿½ï¿½?ï¼Œï¿½?è¨±ç¹¼çºŒç”±ä¼ºï¿½??ï¿½ç«¯?ï¿½ï¿½??ï¿½åˆ¶
                     }
                 }
             }
@@ -1167,7 +1145,7 @@ const ForumApp = {
                 window.APP_CONFIG?.DEBUG_MODE &&
                     console.log('[CreatePost] Pro member, skipping payment');
             } else {
-                // ?œéµä¿®å¾©ï¼šæª¢?¥ç?å¯¦ç? Pi Browser UAï¼Œè€Œé??…æª¢??SDK å­˜åœ¨
+                // ?ï¿½éµä¿®å¾©ï¼šæª¢?ï¿½ï¿½?å¯¦ï¿½? Pi Browser UAï¼Œè€Œï¿½??ï¿½æª¢??SDK å­˜åœ¨
                 const userAgent = navigator.userAgent || '';
                 const isRealPiBrowser =
                     hasPiPaymentSdk || userAgent.includes('PiBrowser');
@@ -1184,7 +1162,7 @@ const ForumApp = {
                 try {
                     if (hasPiPaymentSdk) {
                         window.APP_CONFIG?.DEBUG_MODE &&
-                            console.log('[CreatePost] ?’³ Real Pi Browser - Starting payment...');
+                            console.log('[CreatePost] ?ï¿½ï¿½ Real Pi Browser - Starting payment...');
                         try {
                             await window.Pi.authenticate(
                                 ['username', 'payments', 'wallet_address'],
@@ -1203,7 +1181,7 @@ const ForumApp = {
                             );
                         } catch (authErr) {
                             console.error('[CreatePost] Pi Auth failed:', authErr);
-                            showToast('?¯ä?æ¬Šé?ä¸è¶³ï¼Œè??æ–°?»å…¥', 'error');
+                            showToast('?ï¿½ï¿½?æ¬Šï¿½?ä¸è¶³ï¼Œï¿½??ï¿½æ–°?ï¿½å…¥', 'error');
                             resetButton();
                             return;
                         }
@@ -1215,7 +1193,7 @@ const ForumApp = {
                         await Pi.createPayment(
                             {
                                 amount: postAmount,
-                                memo: `?¼æ?: ${title.substring(0, 20)}`,
+                                memo: `?ï¿½ï¿½?: ${title.substring(0, 20)}`,
                                 metadata: { type: 'create_post' },
                             },
                             {
@@ -1283,7 +1261,7 @@ const ForumApp = {
 
                         if (paymentError) {
                             showToast(
-                                paymentError === 'CANCELLED' ? '?¯ä?å·²å?æ¶? : '?¯ä?å¤±æ?',
+                                paymentError === 'CANCELLED' ? '?ï¿½ï¿½?å·²ï¿½?ï¿½? : '?ï¿½ï¿½?å¤±ï¿½?',
                                 'warning'
                             );
                             resetButton();
@@ -1292,7 +1270,7 @@ const ForumApp = {
 
                         if (!txHash) {
                             console.error('[CreatePost] Payment timed out (no txHash)');
-                            showToast('?¯ä?è¶…æ??–ç??‹ç•°å¸¸ï?è«‹è¯ç¹«ç®¡?†å“¡', 'warning');
+                            showToast('?ï¿½ï¿½?è¶…ï¿½??ï¿½ï¿½??ï¿½ç•°å¸¸ï¿½?è«‹è¯ç¹«ç®¡?ï¿½å“¡', 'warning');
                             resetButton();
                             return;
                         }
@@ -1306,7 +1284,7 @@ const ForumApp = {
                     }
                 } catch (paymentError) {
                     console.error('[CreatePost] Exception during payment setup:', paymentError);
-                    showToast('?¯ä??ç?ä¸­ç™¼?ŸéŒ¯èª?, 'error');
+                    showToast('?ï¿½ï¿½??ï¿½ï¿½?ä¸­ç™¼?ï¿½éŒ¯ï¿½?, 'error');
                     resetButton();
                     return;
                 }
@@ -1342,13 +1320,13 @@ const ForumApp = {
                                     <div class="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-5 border border-success/20">
                                         <i data-lucide="check-circle-2" class="w-8 h-8 text-success"></i>
                                     </div>
-                                    <h3 class="text-xl font-bold text-secondary mb-2">?¼å??å?ï¼?/h3>
+                                    <h3 class="text-xl font-bold text-secondary mb-2">?ï¿½ï¿½??ï¿½ï¿½?ï¿½?/h3>
                                     <div class="text-textMuted text-sm mb-6">
-                                        ?¨ç??‡ç?å·²æ??Ÿä??ˆå„²å­˜ã€?br>
-                                        <span class="text-primary animate-pulse">æ­?œ¨?å??‡ç?è©³æ???..</span>
+                                        ?ï¿½ï¿½??ï¿½ï¿½?å·²ï¿½??ï¿½ï¿½??ï¿½å„²å­˜ï¿½?br>
+                                        <span class="text-primary animate-pulse">ï¿½?ï¿½ï¿½?ï¿½ï¿½??ï¿½ï¿½?è©³ï¿½???..</span>
                                     </div>
                                     <button id="btn-go-now" class="w-full py-3.5 bg-gradient-to-r from-success/80 to-success text-background font-bold rounded-2xl transition shadow-lg transform active:scale-95">
-                                        ç«‹å³?å?
+                                        ç«‹å³?ï¿½ï¿½?
                                     </button>
                                 </div>
                             `;
@@ -1392,7 +1370,7 @@ const ForumApp = {
                 console.error('[Forum] CreatePost API failed:', err);
                 // If payment was made but post failed, we should alert the user to copy their content
                 if (txHash && txHash !== 'pro_member_free' && !txHash.startsWith('mock_')) {
-                    // é¡¯ç¤º?‹å¥½?„éŒ¯èª?Modal ?Œé? alert
+                    // é¡¯ç¤º?ï¿½å¥½?ï¿½éŒ¯ï¿½?Modal ?ï¿½ï¿½? alert
                     const errorModal = document.createElement('div');
                     errorModal.className =
                         'fixed inset-0 bg-background/90 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-fade-in';
@@ -1401,22 +1379,22 @@ const ForumApp = {
                             <div class="w-16 h-16 bg-danger/10 rounded-full flex items-center justify-center mx-auto mb-5 border border-danger/20">
                                 <i data-lucide="alert-triangle" class="w-8 h-8 text-danger"></i>
                             </div>
-                            <h3 class="text-xl font-bold text-secondary mb-3 text-center">?¼æ?å¤±æ?ä½†æ”¯ä»˜å·²å®Œæ?</h3>
+                            <h3 class="text-xl font-bold text-secondary mb-3 text-center">?ï¿½ï¿½?å¤±ï¿½?ä½†æ”¯ä»˜å·²å®Œï¿½?</h3>
                             <div class="text-textMuted text-sm mb-4 leading-relaxed">
-                                <p class="mb-2">?¨ç??¯ä?å·²æ??Ÿï?ä½†æ?ç« ç™¼å¸ƒå¤±?—ã€‚è?ä¿å?ä»¥ä?äº¤æ? ID ä¸¦è¯ç¹«å®¢?è??†ï?</p>
+                                <p class="mb-2">?ï¿½ï¿½??ï¿½ï¿½?å·²ï¿½??ï¿½ï¿½?ä½†ï¿½?ç« ç™¼å¸ƒå¤±?ï¿½ã€‚ï¿½?ä¿ï¿½?ä»¥ï¿½?äº¤ï¿½? ID ä¸¦è¯ç¹«å®¢?ï¿½ï¿½??ï¿½ï¿½?</p>
                                 <div class="bg-background/50 p-3 rounded-xl border border-white/10 mb-3">
-                                    <div class="text-xs text-textMuted mb-1">äº¤æ? ID</div>
+                                    <div class="text-xs text-textMuted mb-1">äº¤ï¿½? ID</div>
                                     <div class="text-textMain font-mono text-xs break-all" id="error-txhash">${SecurityUtils.escapeHTML(txHash || '')}</div>
                                 </div>
-                                <p class="text-xs opacity-60">?¯èª¤è¨Šæ¯ï¼?{SecurityUtils.escapeHTML(err.message || '')}</p>
+                                <p class="text-xs opacity-60">?ï¿½èª¤è¨Šæ¯ï¿½?{SecurityUtils.escapeHTML(err.message || '')}</p>
                             </div>
                             <div class="flex flex-col gap-2">
                                 <button id="copy-txhash-btn" class="w-full py-3 bg-primary hover:brightness-110 text-background font-bold rounded-2xl transition shadow-lg flex items-center justify-center gap-2">
                                     <i data-lucide="copy" class="w-4 h-4"></i>
-                                    <span>è¤‡è£½äº¤æ? ID</span>
+                                    <span>è¤‡è£½äº¤ï¿½? ID</span>
                                 </button>
                                 <button onclick="this.closest('.fixed').remove()" class="w-full py-3 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-2xl transition border border-white/5">
-                                    ?œé?
+                                    ?ï¿½ï¿½?
                                 </button>
                             </div>
                         </div>
@@ -1424,12 +1402,12 @@ const ForumApp = {
                     document.body.appendChild(errorModal);
                     AppUtils.refreshIcons();
 
-                    // è¤‡è£½?Ÿèƒ½
+                    // è¤‡è£½?ï¿½èƒ½
                     document.getElementById('copy-txhash-btn').onclick = () => {
                         navigator.clipboard
                             .writeText(txHash)
                             .then(() => {
-                                showToast('äº¤æ? ID å·²è?è£?, 'success');
+                                showToast('äº¤ï¿½? ID å·²ï¿½?ï¿½?, 'success');
                             })
                             .catch(() => {
                                 // Fallback for older browsers
@@ -1439,11 +1417,11 @@ const ForumApp = {
                                 textArea.select();
                                 document.execCommand('copy');
                                 document.body.removeChild(textArea);
-                                showToast('äº¤æ? ID å·²è?è£?, 'success');
+                                showToast('äº¤ï¿½? ID å·²ï¿½?ï¿½?, 'success');
                             });
                     };
                 } else {
-                    showToast('?¼å?å¤±æ?: ' + err.message, 'error');
+                    showToast('?ï¿½ï¿½?å¤±ï¿½?: ' + err.message, 'error');
                 }
                 resetButton();
             }
@@ -1472,7 +1450,7 @@ const ForumApp = {
             usernameEl.textContent = user.username || user.pi_username || 'User';
         }
         if (avatarEl && user.username) {
-            // XSS Fix: ä½¿ç”¨ textContent ?¿ä»£ innerHTML
+            // XSS Fix: ä½¿ç”¨ textContent ?ï¿½ä»£ innerHTML
             const span = document.createElement('span');
             span.className = 'text-primary font-bold';
             span.textContent = user.username[0].toUpperCase();
@@ -1510,7 +1488,7 @@ const ForumApp = {
             const status = await getWalletStatus();
 
             if (status.has_wallet || status.auth_method === 'pi_network') {
-                statusText.textContent = 'å·²é€?¥';
+                statusText.textContent = 'å·²ï¿½?ï¿½ï¿½';
                 statusText.classList.remove('text-textMuted', 'text-danger');
                 statusText.classList.add('text-success');
 
@@ -1533,21 +1511,21 @@ const ForumApp = {
                     </div>
                 `;
             } else {
-                statusText.textContent = '?ªç?å®?;
+                statusText.textContent = '?ï¿½ï¿½?ï¿½?;
                 statusText.classList.remove('text-success', 'text-danger');
                 statusText.classList.add('text-textMuted');
 
                 actionArea.innerHTML = `
                     <button onclick="safePiLogin()" class="bg-primary/10 hover:bg-primary/20 text-primary px-4 py-2 rounded-xl flex items-center gap-2 transition text-sm font-bold border border-primary/20">
                         <i data-lucide="log-in" class="w-4 h-4"></i>
-                        ?»å…¥ Pi å¸³è?
+                        ?ï¿½å…¥ Pi å¸³ï¿½?
                     </button>
                 `;
             }
 
             AppUtils.refreshIcons();
         } catch (e) {
-            statusText.textContent = 'è¼‰å…¥å¤±æ?';
+            statusText.textContent = 'è¼‰å…¥å¤±ï¿½?';
             statusText.classList.add('text-danger');
 
             actionArea.innerHTML = `
@@ -1638,13 +1616,13 @@ const ForumApp = {
         if (!container) return;
 
         try {
-            // ä½¿ç”¨ Promise.allSettled ç¢ºä??¨å? API å¤±æ??‚ä??½é¡¯ç¤ºå¯?¨æ•¸??
+            // ä½¿ç”¨ Promise.allSettled ç¢ºï¿½??ï¿½ï¿½? API å¤±ï¿½??ï¿½ï¿½??ï¿½é¡¯ç¤ºå¯?ï¿½æ•¸??
             const results = await Promise.allSettled([
                 ForumAPI.getMyPayments(),
                 ForumAPI.getMyTipsSent(),
             ]);
 
-            // è¨˜é?å¤±æ???API
+            // è¨˜ï¿½?å¤±ï¿½???API
             results.forEach((result, index) => {
                 if (result.status === 'rejected') {
                     const apiNames = ['getMyPayments', 'getMyTipsSent'];
@@ -1652,14 +1630,14 @@ const ForumApp = {
                 }
             });
 
-            // ?å??¸æ?ï¼Œå¤±?—æ?ä½¿ç”¨ç©ºæ•¸çµ?
+            // ?ï¿½ï¿½??ï¿½ï¿½?ï¼Œå¤±?ï¿½ï¿½?ä½¿ç”¨ç©ºæ•¸ï¿½?
             const paymentsData =
                 results[0].status === 'fulfilled' ? results[0].value : { payments: [] };
             const tipsSentData =
                 results[1].status === 'fulfilled' ? results[1].value : { tips: [] };
 
             const payments = (paymentsData.payments || [])
-                // ä¿ç? Premium ?ƒå“¡?è²»?¼æ?è¨˜é?ä½†æ?è¨˜ç‚º?è²»
+                // ä¿ï¿½? Premium ?ï¿½å“¡?ï¿½è²»?ï¿½ï¿½?è¨˜ï¿½?ä½†ï¿½?è¨˜ç‚º?ï¿½è²»
                 .map((p) => {
                     const isFree = p.tx_hash === 'pro_member_free';
                     return {
@@ -1815,7 +1793,7 @@ const ForumApp = {
     // Reporting Logic
     // ===========================================
     openReportModal(type, id) {
-        if (!AuthManager.currentUser) return showToast('è«‹å??»å…¥', 'warning');
+        if (!AuthManager.currentUser) return showToast('è«‹ï¿½??ï¿½å…¥', 'warning');
 
         const modal = document.getElementById('report-modal');
         if (!modal) return;
@@ -1857,7 +1835,7 @@ const ForumApp = {
         };
 
         if (!reportType) {
-            return showError('è«‹é¸?‡é?è¦é???);
+            return showError('è«‹é¸?ï¿½ï¿½?è¦ï¿½???);
         }
 
         const btn = document.getElementById('btn-submit-report');
@@ -1879,9 +1857,9 @@ const ForumApp = {
                 description: description,
             });
 
-            showToast('?‰å ±?äº¤?å?ï¼Œæ??‘æ??¡å¿«å¯©æ ¸', 'success');
+            showToast('?ï¿½å ±?ï¿½äº¤?ï¿½ï¿½?ï¼Œï¿½??ï¿½ï¿½??ï¿½å¿«å¯©æ ¸', 'success');
         } catch (e) {
-            showError('?äº¤å¤±æ?: ' + e.message);
+            showError('?ï¿½äº¤å¤±ï¿½?: ' + e.message);
         } finally {
             btn.disabled = false;
             btn.innerHTML = originalText;
@@ -1890,12 +1868,12 @@ const ForumApp = {
     },
 };
 
-// ?´éœ²?°å…¨å±€
+// ?ï¿½éœ²?ï¿½å…¨å±€
 window.ForumApp = ForumApp;
 export { ForumApp };
 
 
-// ç¢ºä???DOM è¼‰å…¥å¾ŒåŸ·è¡Œï??…é??¨ç? forum ?é¢ï¼ŒSPA ä¸»é???switchTab è§¸ç™¼ï¼?
+// ç¢ºï¿½???DOM è¼‰å…¥å¾ŒåŸ·è¡Œï¿½??ï¿½ï¿½??ï¿½ï¿½? forum ?ï¿½é¢ï¼ŒSPA ä¸»ï¿½???switchTab è§¸ç™¼ï¿½?
 document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', (e) => {
         const trigger = e.target.closest('.report-trigger');
