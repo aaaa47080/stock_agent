@@ -78,6 +78,7 @@ const ForumApp = {
         this.loadPosts();
         this.loadTrendingTags();
         this.updatePostFiltersUI();
+        this.initMobileIndexPanels();
 
         // 搜尋/篩選監聽
         document.getElementById('category-filter')?.addEventListener('change', (e) => {
@@ -95,6 +96,45 @@ const ForumApp = {
             this.loadTrendingTags();
             this.updatePostFiltersUI();
         });
+    },
+
+    initMobileIndexPanels() {
+        const bindPanel = (triggerId, contentId) => {
+            const trigger = document.getElementById(triggerId);
+            const content = document.getElementById(contentId);
+            if (!trigger || !content) return;
+
+            const icon = trigger.querySelector('[data-lucide="chevron-down"]');
+            const applyState = () => {
+                const desktop = window.innerWidth >= 768;
+                if (desktop) {
+                    content.classList.remove('hidden');
+                    icon?.classList.remove('rotate-180');
+                    return;
+                }
+
+                const expanded = trigger.dataset.expanded === 'true';
+                content.classList.toggle('hidden', !expanded);
+                icon?.classList.toggle('rotate-180', expanded);
+            };
+
+            if (!trigger.dataset.bound) {
+                trigger.dataset.bound = 'true';
+                trigger.dataset.expanded = 'false';
+                trigger.addEventListener('click', () => {
+                    if (window.innerWidth >= 768) return;
+                    trigger.dataset.expanded =
+                        trigger.dataset.expanded === 'true' ? 'false' : 'true';
+                    applyState();
+                });
+                window.addEventListener('resize', applyState);
+            }
+
+            applyState();
+        };
+
+        bindPanel('toggle-filter-panel', 'filter-panel-content');
+        bindPanel('toggle-trending-panel', 'trending-panel-content');
     },
 
     updatePostFiltersUI() {
