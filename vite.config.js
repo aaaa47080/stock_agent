@@ -7,6 +7,7 @@ export default defineConfig({
         outDir: '../dist/static',
         emptyOutDir: false,
         sourcemap: true,
+        chunkSizeWarningLimit: 800,
     },
     server: {
         proxy: {
