@@ -629,7 +629,7 @@ const ForumApp = {
             // ?�新載入評�??�表
             this.loadComments(postId);
 
-            showToast('評�??�送�???, 'success');
+            showToast('Reply posted successfully.', 'success');
         } catch (e) {
             showToast(e.message, 'error');
         } finally {
@@ -651,7 +651,7 @@ const ForumApp = {
         // 確�??�除
         const confirmed = await showConfirm({
             title: '確�??�除',
-            message: '確�?要刪?�這�??��??��?\n?�除後�??��??�復??,
+            message: 'Delete this post? This action cannot be undone.',
             type: 'warning',
             confirmText: '確�??�除',
             cancelText: '?��?',
@@ -667,7 +667,7 @@ const ForumApp = {
 
         try {
             await ForumAPI.deletePost(postId);
-            showToast('?��?已刪??, 'success');
+            showToast('Post deleted successfully.', 'success');
 
             // 延遲後�??��?首�?
             setTimeout(() => {
@@ -692,7 +692,7 @@ const ForumApp = {
         }
 
         // TODO: 實現編輯?�能 - ?�以?�建一?�編輯模?��??��??�到編輯?�面
-        showToast('編輯?�能?�發�?, 'info');
+        showToast('Edit feature is not available yet.', 'info');
     },
 
     async handleTip(postId) {
@@ -705,7 +705,7 @@ const ForumApp = {
         const postAuthorId = this.currentPost?.user_id;
 
         if (currentUserId && postAuthorId && currentUserId === postAuthorId) {
-            return showToast('不能?��??�己?��?�?, 'warning');
+            return showToast('You cannot tip your own post.', 'warning');
         }
 
         // 檢查?�否??Pi Browser ?��?
@@ -718,8 +718,8 @@ const ForumApp = {
         const confirmed = await showConfirm({
             title: '確�??��?',
             message: isPi
-                ? `確�??��? ${tipAmount} Pi 給�??��?\n將�??��? Pi ?��?流�??�`
-                : `確�??��? ${tipAmount} Pi 給�??��?\n（測試模式�???Pi Browser ?��?）`,
+                ? ('Tip this post with ' + tipAmount + ' Pi?\nPayment will open in Pi Browser.')
+                : ('Tip this post with ' + tipAmount + ' Pi?\nTest mode will simulate Pi Browser payment flow.'),
             type: 'info',
             confirmText: '確�??��?',
             cancelText: '?��?',
@@ -799,7 +799,7 @@ const ForumApp = {
                 }
 
                 if (paymentError) {
-                    showToast(paymentError === 'CANCELLED' ? '?��?已�?�? : '?��?失�?', 'warning');
+                    showToast(paymentError === 'CANCELLED' ? 'Payment was cancelled.' : 'Payment failed.', 'warning');
                     return;
                 }
 
@@ -812,7 +812,7 @@ const ForumApp = {
             }
 
             await ForumAPI.tipPost(postId, tipAmount, txHash, tipPaymentId);
-            showToast('?��??��?！�?謝您?�支??, 'success');
+            showToast('Tip sent successfully. Thank you for your support.', 'success');
             this.loadPostDetail(postId);
         } catch (e) {
             showToast('?��?失�?: ' + e.message, 'error');
@@ -1283,7 +1283,7 @@ const ForumApp = {
 
                         if (paymentError) {
                             showToast(
-                                paymentError === 'CANCELLED' ? '?��?已�?�? : '?��?失�?',
+                                paymentError === 'CANCELLED' ? 'Payment was cancelled.' : 'Payment failed.',
                                 'warning'
                             );
                             resetButton();
@@ -1306,7 +1306,7 @@ const ForumApp = {
                     }
                 } catch (paymentError) {
                     console.error('[CreatePost] Exception during payment setup:', paymentError);
-                    showToast('?��??��?中發?�錯�?, 'error');
+                    showToast('An error occurred while preparing the payment.', 'error');
                     resetButton();
                     return;
                 }
@@ -1429,7 +1429,7 @@ const ForumApp = {
                         navigator.clipboard
                             .writeText(txHash)
                             .then(() => {
-                                showToast('交�? ID 已�?�?, 'success');
+                                showToast('Transaction ID copied.', 'success');
                             })
                             .catch(() => {
                                 // Fallback for older browsers
@@ -1439,7 +1439,7 @@ const ForumApp = {
                                 textArea.select();
                                 document.execCommand('copy');
                                 document.body.removeChild(textArea);
-                                showToast('交�? ID 已�?�?, 'success');
+                                showToast('Transaction ID copied.', 'success');
                             });
                     };
                 } else {
@@ -1533,7 +1533,7 @@ const ForumApp = {
                     </div>
                 `;
             } else {
-                statusText.textContent = '?��?�?;
+                statusText.textContent = 'Unavailable';
                 statusText.classList.remove('text-success', 'text-danger');
                 statusText.classList.add('text-textMuted');
 
@@ -1857,7 +1857,7 @@ const ForumApp = {
         };
 
         if (!reportType) {
-            return showError('請選?��?規�???);
+            return showError('Please select a report reason.');
         }
 
         const btn = document.getElementById('btn-submit-report');
@@ -1879,7 +1879,7 @@ const ForumApp = {
                 description: description,
             });
 
-            showToast('?�報?�交?��?，�??��??�快審核', 'success');
+            showToast('Report submitted successfully. We will review it soon.', 'success');
         } catch (e) {
             showError('?�交失�?: ' + e.message);
         } finally {
