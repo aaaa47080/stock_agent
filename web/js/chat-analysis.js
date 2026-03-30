@@ -251,9 +251,9 @@ async function sendMessage() {
             const userId = AuthManager.currentUser.user_id;
 
             // 這裡可以傳遞 title (e.g., text.substring(0, 20)) 但後端通常會預設為 New Chat 或由第一條訊息生成
-            const createData = await AppAPI.post(
-                `/api/chat/sessions?user_id=${encodeURIComponent(userId)}`,
-            );
+            const createData = await AppAPI.post('/api/chat/sessions', {
+                title: text.substring(0, 40),
+            });
             window.currentSessionId = createData.session_id;
             AppStore.set('currentSessionId', window.currentSessionId);
 

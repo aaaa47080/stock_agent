@@ -346,6 +346,9 @@ async function saveLLMKey() {
             if (typeof checkApiKeyStatus === 'function') {
                 await checkApiKeyStatus();
             }
+            if (typeof window.updateLLMStatusUI === 'function') {
+                await window.updateLLMStatusUI();
+            }
         } else {
             // 正確處理錯誤消息
             var errorMsg = '保存失敗';

@@ -35,6 +35,10 @@ ANALYSIS_TIMEOUT_SECONDS = 180
 analysis_policy_resolver = AnalysisPolicyResolver()
 
 
+class CreateSessionRequest(BaseModel):
+    title: Optional[str] = None
+
+
 # --- Session Management Endpoints ---
 
 
@@ -51,6 +55,22 @@ async def get_user_sessions(
         lambda: get_sessions(user_id=user_id, limit=limit, offset=offset)
     )
     return {"success": True, "sessions": sessions}
+
+
+@router.post("/api/chat/sessions")
+@limiter.limit("20/minute")
+async def create_user_session(
+    request: Request,
+    body: Optional[CreateSessionRequest] = None,
+    current_user: dict = Depends(get_current_user),
+):
+    """Create a new chat session for the current user."""
+    user_id = current_user["user_id"]
+    session_id = str(uuid.uuid4())
+    title = (body.title.strip() if body and body.title else "") or "New Chat Session"
+
+    await run_sync(lambda: create_session(session_id, title=title, user_id=user_id))
+    return {"success": True, "session_id": session_id, "title": title}
 
 
 @router.delete("/api/chat/sessions/{session_id}")
